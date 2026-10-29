@@ -99,6 +99,7 @@ Scope {
     readonly property var filters: [
         { id: "all", label: "All types", glyph: "\u{f014c}" }, { id: "pinned", label: "Pinned", glyph: "\u{f0403}" },
         { id: "text", label: "Text", glyph: "\u{f09ed}" }, { id: "image", label: "Images", glyph: "\u{f02e9}" },
+        { id: "files", label: "Files", glyph: "\u{f0214}" },
         { id: "link", label: "Links", glyph: "\u{f0339}" }, { id: "code", label: "Code", glyph: "\u{f0169}" },
         { id: "color", label: "Colours", glyph: "\u{f03d8}" }
     ]
@@ -108,13 +109,15 @@ Scope {
     readonly property var ts: Clipboard.terms(query.replace(/(^|\s)@(today|yesterday|7d|week|month)\b/gi, " "))
     function searchText(e) {
         if (e.kind === "image") return "image " + e.ext + " " + e.dims;
+        if (e.kind === "files") return "file " + decodeURIComponent(e.preview.replace(/file:\/\//g, " "));
         if (e.secret) return "secret key token";
         return e.preview;
     }
     function inFilter(e) {
         switch (filter) {
         case "pinned": return Clipboard.isPinned(e);
-        case "text": return ["text", "email", "path"].includes(e.kind);
+        case "text": return ["text", "email"].includes(e.kind);
+        case "files": return e.kind === "files" || e.kind === "path";
         case "image": return e.kind === "image";
         case "link": return e.kind === "link";
         case "code": return e.kind === "code";

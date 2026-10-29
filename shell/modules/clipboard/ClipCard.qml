@@ -29,12 +29,21 @@ Item {
     readonly property bool masked: e ? e.secret && !(selected && panel.revealed) : false
     readonly property int rank: header ? -1 : panel.entries.indexOf(r)
     readonly property alias markItem: face
+    // Files: what was copied, checked now (exists? moved?).
+    readonly property bool isFiles: e ? (e.kind === "files" || e.kind === "path") : false
+    readonly property var fileList: isFiles ? (Clipboard.fileInfo[Clipboard.ref(e)] || null) : null
+    readonly property var file0: fileList && fileList.length ? fileList[0] : null
+    readonly property int missing: fileList ? fileList.filter(f => !f.exists).length : 0
+    function bytes(n) { return n > 1048576 ? (n / 1048576).toFixed(1) + " MB" : n > 1024 ? Math.round(n / 1024) + " KB" : (n || 0) + " B"; }
 
     width: header ? 30 : 184
     height: ListView.view ? ListView.view.height : 220
 
     onSelectedChanged: if (selected) panel.selRow = card
-    Component.onCompleted: if (selected) panel.selRow = card
+    Component.onCompleted: {
+        if (selected) panel.selRow = card;
+        if (isFiles) Clipboard.files(e);
+    }
     Component.onDestruction: if (panel.selRow === card) panel.selRow = null
 
     // Gradual reveal: rise and settle, a step apart.
@@ -106,6 +115,55 @@ Item {
             }
             Skeleton { anchors.fill: parent; radius: 13; visible: card.e && card.e.kind === "image" && img.status !== Image.Ready }
 
+            // Files: a PDF's first page or the image itself; else its kind.
+            Image {
+                visible: card.isFiles && !!(card.file0 && card.file0.preview)
+                anchors.fill: parent
+                source: visible ? "file://" + card.file0.preview : ""
+                sourceSize: Qt.size(Math.round(face.width * 2), Math.round(face.height * 2))
+                fillMode: Image.PreserveAspectCrop
+                verticalAlignment: Image.AlignTop
+                asynchronous: true
+                smooth: true
+                mipmap: true
+                opacity: card.missing && card.missing === (card.fileList || []).length ? 0.35 : 1
+            }
+            Column {
+                visible: card.isFiles && !(card.file0 && card.file0.preview)
+                anchors.centerIn: parent
+                spacing: 6
+                Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: card.file0 && card.file0.dir ? "\u{f024b}" : "\u{f0214}"
+                    font.family: Theme.fontGlyph
+                    font.pixelSize: 34
+                    color: card.file0 && card.file0.dir ? "#64d2ff" : Theme.textSecondary
+                }
+                Label {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: card.file0 ? (card.file0.name.split(".").length > 1 && !card.file0.dir ? card.file0.name.split(".").pop().toUpperCase() : card.file0.dir ? "Folder" : "File") : ""
+                    size: 11
+                    weight: Theme.wSemibold
+                    color: Theme.textTertiary
+                }
+            }
+            // How many, and whether they're all still there.
+            Rectangle {
+                visible: card.isFiles && card.fileList !== null && (card.fileList.length > 1 || card.missing > 0)
+                anchors { left: parent.left; bottom: parent.bottom; margins: 8 }
+                height: 20; radius: 10
+                width: fcount.implicitWidth + 14
+                color: card.missing ? Qt.alpha(Theme.red, 0.9) : Qt.rgba(0.08, 0.08, 0.1, 0.9)
+                Label {
+                    id: fcount
+                    anchors.centerIn: parent
+                    text: !card.fileList ? "" : card.missing ? (card.missing === card.fileList.length ? "Missing" : card.missing + " missing") : card.fileList.length + " files"
+                    size: 11
+                    weight: Theme.wSemibold
+                    color: "white"
+                }
+            }
+
             // Colour: its value on the swatch, in whichever ink reads on it.
             Label {
                 visible: card.e && card.e.kind === "color"
@@ -132,7 +190,7 @@ Item {
             // Code: highlighted (rendered once, cached); text: its first lines.
             TextEdit {
                 id: snippet
-                visible: card.e && !card.masked && ["code", "text", "path", "email"].includes(card.e.kind)
+                visible: card.e && !card.masked && ["code", "text", "email"].includes(card.e.kind)
                 anchors { fill: parent; margins: 10 }
                 readOnly: true
                 activeFocusOnPress: false
@@ -222,6 +280,7 @@ Item {
             textFormat: Text.StyledText
             text: !card.e ? ""
                 : card.e.kind === "image" ? "Image" + (card.e.dims ? "  " + card.e.dims.replace("x", " × ") : "")
+                : card.isFiles && card.file0 ? card.file0.name + (card.fileList.length > 1 ? "  +" + (card.fileList.length - 1) : "")
                 : card.masked ? "•••••••••"
                 : Clipboard.marked(card.e.preview.replace(/\s+/g, " ").slice(0, 120), card.r.m ? card.r.m.pos : [], Theme.yellow)
             size: 12
@@ -231,7 +290,12 @@ Item {
             anchors { left: title.left; right: title.right }
             y: parent.height - 34
             elide: Text.ElideRight
-            text: card.e ? card.panel.metaOf(card.e) : ""
+            text: !card.e ? ""
+                : card.isFiles && card.file0 ? (card.missing === card.fileList.length ? "Moved or deleted"
+                    : [card.file0.dir ? "Folder" : card.file0.type === "application/pdf" ? "PDF" : (card.file0.type.split("/")[1] || "File").toUpperCase(),
+                       card.file0.dir ? "" : card.bytes(card.file0.size),
+                       card.file0.pages ? card.file0.pages + (card.file0.pages === 1 ? " page" : " pages") : ""].filter(x => x).join("  ·  "))
+                : card.panel.metaOf(card.e)
             size: 11
             color: Theme.textTertiary
         }

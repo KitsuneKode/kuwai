@@ -21,6 +21,9 @@
 #   rice-clip save ID|pin:N        save to ~/Pictures/Clipboard; prints the path
 #   rice-clip stamp                record when the newest entry was copied (run by
 #                                  `wl-paste --watch rice-clip stamp`, hypr/rice.conf)
+#   rice-clip files ID|pin:N       copied files (file:// URIs or a path): JSON with
+#                                  each one's path, name, size, type, whether it still
+#                                  exists, and a preview (PDF first page, the image)
 #   rice-clip pin ID               save an entry as a pin; prints its pin file
 #   rice-clip unpin FILE           remove a pin
 set -euo pipefail
@@ -45,10 +48,26 @@ ext_of() {   # sniff the type: png, jpg, … or txt
     esac
 }
 
+# Copied files come back as files: a list of file:// URIs goes on the
+# clipboard as text/uri-list (what file managers and upload fields take),
+# without the ones that no longer exist.
+uris_existing() {
+    while IFS= read -r line; do
+        line="${line%$'\r'}"
+        case "$line" in file://*) ;; *) continue ;; esac
+        path=$(printf '%s' "${line#file://}" | python3 -I -c 'import sys,urllib.parse;print(urllib.parse.unquote(sys.stdin.read()))')
+        [ -e "$path" ] && printf '%s\r\n' "$line"
+    done
+}
+
 copy() {
     local tmp; tmp=$(mktemp "$cache/open/.copy.XXXXXX")
     emit "$1" > "$tmp"
     local mime; mime=$(file -b --mime-type "$tmp")
+    if head -c 7 "$tmp" | grep -q '^file://'; then
+        local list; list=$(uris_existing < "$tmp")
+        if [ -n "$list" ]; then printf '%s' "$list" | wl-copy --type text/uri-list; rm -f -- "$tmp"; return; fi
+    fi
     case "$mime" in
         image/*) wl-copy --type "$mime" < "$tmp" ;;
         *)       wl-copy < "$tmp" ;;
@@ -95,6 +114,37 @@ case "${1:-}" in
         mv -- "$tmp" "$out"
         exec xdg-open "$out" ;;
     copy-text) printf '%s' "$2" | wl-copy ;;
+    files)
+        emit "$2" | head -c 65536 | THUMBS="$cache/thumbs" python3 -I -c '
+import json, mimetypes, os, subprocess, sys, hashlib, urllib.parse
+text = sys.stdin.read().strip()
+paths = [urllib.parse.unquote(l[7:]) for l in text.splitlines() if l.startswith("file://")]
+if not paths and text.startswith(("/", "~/")) and "\n" not in text:
+    paths = [os.path.expanduser(text)]
+out = []
+for p in paths[:50]:
+    e = {"path": p, "name": os.path.basename(p.rstrip("/")) or p, "exists": os.path.exists(p), "dir": os.path.isdir(p)}
+    e["type"] = "folder" if e["dir"] else (mimetypes.guess_type(p)[0] or "")
+    if e["exists"] and not e["dir"]:
+        st = os.stat(p)
+        e["size"] = st.st_size
+        if e["type"] == "application/pdf" or e["type"].startswith("image/"):
+            key = hashlib.sha1(f"{p}:{st.st_mtime}".encode()).hexdigest()[:16]
+            thumb = os.path.join(os.environ["THUMBS"], f"file-{key}.png")
+            if not os.path.exists(thumb):
+                if e["type"] == "application/pdf":
+                    subprocess.run(["pdftoppm", "-png", "-r", "72", "-f", "1", "-l", "1", "-singlefile", p, thumb[:-4]], capture_output=True, timeout=10)
+                else:
+                    thumb = p
+            if os.path.exists(thumb):
+                e["preview"] = thumb
+        if e["type"] == "application/pdf":
+            info = subprocess.run(["pdfinfo", p], capture_output=True, text=True, timeout=5).stdout
+            pages = [l.split(":", 1)[1].strip() for l in info.splitlines() if l.startswith("Pages:")]
+            if pages: e["pages"] = int(pages[0])
+    out.append(e)
+print(json.dumps(out))
+' ;;
     stamp)
         # wl-paste hands us the new contents on stdin; we only want the moment.
         cat > /dev/null

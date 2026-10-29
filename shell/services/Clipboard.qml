@@ -100,6 +100,9 @@ Singleton {
         }
         if (/^\[\[ binary data/.test(preview)) { e.kind = "file"; return e; }
         const t = preview.trim();
+        // Copied files: a list of file:// URIs (what a file manager puts on
+        // the clipboard). They paste back as files (rice-clip copy).
+        if (/^file:\/\//.test(t)) { e.kind = "files"; return e; }
         if (/^(https?|ftp):\/\/\S+$/i.test(t)) e.kind = "link";
         else if (/^mailto:\S+$|^[\w.+-]+@[\w-]+\.[\w.-]+$/.test(t)) e.kind = "email";
         else if (/^(#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})|rgba?\([\d\s.,%]+\)|hsla?\([\d\s.,%deg]+\))$/i.test(t)) e.kind = "color";
@@ -263,6 +266,19 @@ Singleton {
     // Edited or transformed text: copy it, or paste it where you were.
     function copyText(t) { open = false; run(["copy-text", t]); }
     function pasteText(t) { open = false; run(["paste-text", t]); }
+    // Copied files, checked each time they're shown (moved? deleted?):
+    // cb([{ path, name, exists, dir, type, size, pages, preview }]).
+    property var fileInfo: ({})
+    function files(e, cb) {
+        const r = ref(e);
+        capture(["files", r], out => {
+            let d = [];
+            try { d = JSON.parse(out); } catch (err) {}
+            root.fileInfo = Object.assign({}, root.fileInfo, { [r]: d });
+            if (cb) cb(d);
+        });
+    }
+
     // Rich rendering of text (markdown, highlighted code, mermaid), cached
     // per entry: cb({ kind, lang, html, image }).
     property var renders: ({})
