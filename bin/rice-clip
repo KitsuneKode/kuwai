@@ -129,11 +129,11 @@ for p in paths[:50]:
         st = os.stat(p)
         e["size"] = st.st_size
         if e["type"] == "application/pdf" or e["type"].startswith("image/"):
-            key = hashlib.sha1(f"{p}:{st.st_mtime}".encode()).hexdigest()[:16]
+            key = hashlib.sha1(f"{p}:{st.st_mtime}:110dpi".encode()).hexdigest()[:16]
             thumb = os.path.join(os.environ["THUMBS"], f"file-{key}.png")
             if not os.path.exists(thumb):
                 if e["type"] == "application/pdf":
-                    subprocess.run(["pdftoppm", "-png", "-r", "72", "-f", "1", "-l", "1", "-singlefile", p, thumb[:-4]], capture_output=True, timeout=10)
+                    subprocess.run(["pdftoppm", "-png", "-r", "110", "-f", "1", "-l", "1", "-singlefile", p, thumb[:-4]], capture_output=True, timeout=10)
                 else:
                     thumb = p
             if os.path.exists(thumb):

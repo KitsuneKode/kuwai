@@ -43,7 +43,7 @@ Item {
     readonly property bool isImage: entry && entry.kind === "image"
     readonly property bool isColor: entry && entry.kind === "color"
     readonly property bool masked: entry && entry.secret && !panel.revealed
-    readonly property bool rich: !raw && !editing && !masked && ["markdown", "code", "mermaid"].includes(rendered.kind)
+    readonly property bool rich: !raw && !editing && !masked && !isImage && !isColor && ["markdown", "code", "mermaid"].includes(rendered.kind)
     readonly property var dims: {
         const m = entry && entry.dims ? entry.dims.match(/(\d+)x(\d+)/) : null;
         return m ? { w: +m[1], h: +m[2] } : { w: 4, h: 3 };
@@ -63,7 +63,9 @@ Item {
         raw = false;
         editing = false;
         rendered = { kind: "text" };
-        if (!entry || isImage || entry.kind === "file") return;
+        // Read the entry's own kind here: `isImage` is a binding on `entry` and may not have re-run yet when this
+        // handler does (an image then went through the text renderer, its PNG bytes shown as "code").
+        if (!entry || ["image", "file", "files", "color"].includes(entry.kind)) return;
         const r = Clipboard.ref(entry);
         Clipboard.fetchText(entry);
         if (!entry.secret) Clipboard.render(entry, d => { if (ql.entry && Clipboard.ref(ql.entry) === r) ql.rendered = d; });
@@ -104,6 +106,21 @@ Item {
             smooth: true
             mipmap: true
             retainWhileLoading: true
+        }
+
+        // Files: the first one's page or picture, big (PDFs re-rendered at the size they're shown).
+        Image {
+            readonly property var files: ql.entry && (ql.entry.kind === "files" || ql.entry.kind === "path") ? (Clipboard.fileInfo[Clipboard.ref(ql.entry)] || []) : []
+            readonly property var first: files.length ? files[0] : null
+            visible: !!(first && first.preview)
+            anchors.fill: parent
+            anchors.margins: 10
+            source: visible ? "file://" + first.preview : ""
+            sourceSize: Qt.size(Math.round(ql.to.width * 2), Math.round(ql.to.height * 2))
+            fillMode: Image.PreserveAspectFit
+            asynchronous: true
+            smooth: true
+            mipmap: true
         }
 
         // Colour: its values, large, in whichever ink reads on it.
@@ -165,7 +182,7 @@ Item {
 
         // Raw text, readable, or being edited.
         Flickable {
-            visible: !ql.isImage && !ql.isColor && !ql.rich
+            visible: !ql.isImage && !ql.isColor && !ql.rich && !(ql.entry && ql.entry.kind === "files")
             anchors.fill: parent
             anchors.margins: 22
             clip: true

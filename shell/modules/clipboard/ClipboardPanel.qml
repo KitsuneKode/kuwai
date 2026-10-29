@@ -322,6 +322,9 @@ Scope {
         quickLook.from = selRow ? selRow.markItem.mapToItem(quickLook, 0, 0, selRow.markItem.width, selRow.markItem.height)
                                 : Qt.rect(quickLook.width / 2 - 16, quickLook.height / 2 - 16, 32, 32);
         quickLook.open = true;
+        // An image or a file preview opens big: the island grows to the reading size with it (a tall screenshot
+        // fitted into the shelf's height came out a few hundred pixels wide).
+        if (["image", "files"].includes(entry.kind) || entry.kind === "path") reading = true;
     }
     onEntryChanged: if (quickLook && quickLook.open && entry) {
         quickLook.entry = entry;
