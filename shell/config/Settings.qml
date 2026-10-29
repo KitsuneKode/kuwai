@@ -21,6 +21,7 @@ Singleton {
     readonly property alias hoverMedia: s.hoverMedia
     readonly property alias hoverDelay: s.hoverDelay
     readonly property alias workspaceCount: s.workspaceCount
+    readonly property alias notifKeepSeenHours: s.notifKeepSeenHours
 
     function set(key, value) { s[key] = value; }
 
@@ -47,6 +48,8 @@ Singleton {
             property int hoverDelay: 220
             // Capsules shown at least (more appear as workspaces fill).
             property int workspaceCount: 5
+            // Notifications: seen ones nobody acted on clear after this many hours (0 keeps them).
+            property int notifKeepSeenHours: 24
         }
     }
 }

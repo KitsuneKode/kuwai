@@ -55,4 +55,16 @@ Scope {
         description: "Screen recording: set up, or stop"
         onPressed: Clipboard.recordKey()
     }
+    GlobalShortcut {
+        appid: "rice"
+        name: "power"
+        description: "Power menu: lock, sleep, log out, restart, shut down"
+        onPressed: Island.toggle("power", "", "key")
+    }
+    GlobalShortcut {
+        appid: "rice"
+        name: "calendar"
+        description: "Calendar"
+        onPressed: Island.toggle("calendar", "", "key")
+    }
 }

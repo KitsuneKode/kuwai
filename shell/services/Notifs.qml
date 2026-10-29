@@ -12,6 +12,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
 import Quickshell.Services.Notifications
+import qs.config
 
 Singleton {
     id: root
@@ -96,11 +97,17 @@ Singleton {
     }
 
     // ── Card interactions ────────────────────────────────────────────────
+    // A notification you act on is handled: like macOS, it leaves the history
+    // as well as the screen (click, an action button, opening it from the
+    // center). Ones the app withdraws go too (NotifItem: read in the app).
+    // Seen ones that nobody touched clear after Settings.notifKeepSeenHours.
+    //
     // Click: run the app's default action (or its only one) and bring its
     // window forward.
     function activate(item) {
         const n = item.notification;
         const focusClass = item.focusClass;
+        item.discard = true;
         item.leaving = true;
         if (item.jump) { jumpTo(item); return; }
         if (n) {
@@ -124,7 +131,9 @@ Singleton {
 
     function invokeAction(item, id) {
         const n = item.notification;
-        item.leaving = true;
+        item.discard = true;
+        if (item.popup) item.leaving = true;
+        else forget.later(item);
         const act = n ? n.actions.find(x => x.identifier === id) : null;
         if (act) act.invoke();
     }
@@ -175,14 +184,23 @@ Singleton {
     // its app's window, and the center gets out of the way.
     function openItem(item) {
         const n = item.notification;
-        if (item.jump) { jumpTo(item); setCenter(false); return; }
-        if (n) {
+        if (item.jump) jumpTo(item);
+        else if (n) {
             const act = n.actions.find(x => x.identifier === "default")
                      || (n.actions.length === 1 ? n.actions[0] : null);
             if (act) act.invoke();
         }
         if (item.focusClass) focusDelay.focus(item.focusClass);
         setCenter(false);
+        // Handled: out of the history once the center has folded away.
+        forget.later(item);
+    }
+    Timer {
+        id: forget
+        property var queue: []
+        function later(item) { queue = [...queue, item]; restart(); }
+        interval: 400
+        onTriggered: { for (const i of queue) if (root.items.includes(i)) root.remove(i); queue = []; }
     }
 
     // Toggle the center onto a tab; with it open on the other tab, switch.
@@ -216,6 +234,17 @@ Singleton {
         item.destroy();
         save();
     }
+
+    // Seen and untouched for a day (by default): cleared, so the center holds
+    // what is still news. Checked on load and every ten minutes.
+    function sweepSeen() {
+        const hours = Settings.notifKeepSeenHours;
+        if (!loaded || hours <= 0) return;
+        const cutoff = Date.now() - hours * 3600000;
+        const old = items.filter(i => !i.popup && i.time <= lastSeen && i.time < cutoff);
+        for (const i of old) remove(i);
+    }
+    Timer { interval: 600000; running: root.loaded; repeat: true; triggeredOnStart: true; onTriggered: root.sweepSeen() }
 
     function trim() {
         if (items.length <= maxItems) return;

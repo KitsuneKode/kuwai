@@ -58,8 +58,13 @@ QtObject {
         function onActionsChanged() { item.refresh(); }
         function onClosed(reason) {
             item.notification = null;
-            // The app took it back (e.g. it replaced or withdrew it).
-            if (reason === NotificationCloseReason.CloseRequested) item.leaving = true;
+            // The app took it back: it was read or answered there, so it
+            // leaves the center as well as the screen.
+            if (reason === NotificationCloseReason.CloseRequested) {
+                item.discard = true;
+                if (item.popup) item.leaving = true;
+                else Qt.callLater(() => Notifs.remove(item));
+            }
         }
     }
 

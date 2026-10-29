@@ -12,6 +12,11 @@
 // roll (RollingNumber, after Skiper's animated number). Click a capsule to go
 // to that workspace, the clock or status for the center, the media card for
 // Sound. Workspaces come from Hyprland's IPC events: nothing polls.
+//
+// Panels grow out of it too (services/Island): the clock opens the calendar,
+// Super+Escape the power menu. They take the keyboard while open; Esc or a
+// click outside folds them back. With Waybar still the bar, the island is
+// invisible at rest and appears under Waybar only to hold a panel.
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
@@ -26,7 +31,7 @@ Scope {
     id: root
 
     Variants {
-        model: Settings.bar === "island" ? Quickshell.screens : []
+        model: Quickshell.screens
 
         PanelWindow {
             id: win
@@ -39,24 +44,73 @@ Scope {
             // Taller only when the media card is there to fill it.
             readonly property int hoverH: showMedia ? 112 : 78
 
+            // The bar at rest is the island's own setting; panels (calendar,
+            // power) use the island either way, under Waybar when it's in charge.
+            readonly property bool showBar: Settings.bar === "island"
+            readonly property string screenName: modelData ? modelData.name : screen ? screen.name : (Quickshell.screens[0] ? Quickshell.screens[0].name : "")
+            readonly property bool panelHere: Island.panel !== "" && Island.screen === screenName
+            property string shownPanel: ""
+            onPanelHereChanged: {
+                if (panelHere) {
+                    shownPanel = Island.panel;
+                    grown = false;
+                    armed = false;
+                    arm.restart();
+                }
+                // Keys open and close it in place: no grow for what a key does.
+                if (Island.via === "key") Qt.callLater(() => { sw.settle(); sh.settle(); pv.settle(); });
+            }
+            Connections {
+                target: Island
+                function onPanelChanged() { if (win.panelHere) win.shownPanel = Island.panel; }
+            }
+
             anchors.top: true
-            implicitWidth: hoverW + 80
-            implicitHeight: 112 + 60
-            exclusiveZone: restH + 10
+            implicitWidth: Math.max(hoverW, 520) + 80
+            implicitHeight: 420
+            exclusiveZone: showBar ? restH + 10 : 0
             color: "transparent"
             WlrLayershell.namespace: "rice-islandbar"
             WlrLayershell.layer: WlrLayer.Top
-            mask: Region { item: frame }
+            WlrLayershell.keyboardFocus: panelHere ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+            mask: Region { item: frame.opacity > 0.01 ? frame : null }
+
+            // A click outside closes the panel; armed a beat after opening so
+            // the click (or key) that opened it doesn't close it again.
+            property bool armed: false
+            Timer { id: arm; interval: 160; onTriggered: win.armed = true }
+            HyprlandFocusGrab {
+                windows: [win]
+                active: win.panelHere && win.armed
+                onCleared: if (win.panelHere) Island.close()
+            }
 
             // ── Hover, with intent ───────────────────────────────────────
             property bool hovered: false
             property bool grown: false
-            Timer { id: intent; interval: Settings.hoverDelay; onTriggered: win.grown = win.hovered }
+            Timer { id: intent; interval: Settings.hoverDelay; onTriggered: win.grown = win.hovered && !win.panelHere }
             Timer { id: leave; interval: 160; onTriggered: if (!win.hovered) win.grown = false }
             onHoveredChanged: hovered ? intent.restart() : leave.restart()
-            Spring { id: m; tier: Theme.springModerate; epsilon: 0.001; target: win.grown ? 1 : 0 }
-            readonly property real mh: Math.pow(Math.max(0, Math.min(1, m.value)), 0.8)
+            // m: the hover layout; pv: the panel. The frame's width and height
+            // ride their own springs toward whichever is showing, so a change
+            // of mind mid-flight turns around without a seam.
+            Spring { id: m; tier: Theme.springModerate; epsilon: 0.001; target: win.grown && !win.panelHere ? 1 : 0 }
+            Spring { id: pv; tier: Theme.springModerate; epsilon: 0.001; target: win.panelHere ? 1 : 0 }
+            readonly property size panelSize: panelLoader.item ? Qt.size(panelLoader.item.implicitWidth, panelLoader.item.implicitHeight) : Qt.size(420, 300)
+            Spring {
+                id: sw; tier: Theme.springModerate; epsilon: 0.3
+                target: win.panelHere ? win.panelSize.width : win.grown ? win.hoverW : rest.implicitWidth + 30
+                Component.onCompleted: settle()
+            }
+            Spring {
+                id: sh; tier: Theme.springModerate; epsilon: 0.3
+                target: win.panelHere ? win.panelSize.height : win.grown ? win.hoverH : win.restH
+                Component.onCompleted: settle()
+            }
             function lerp(a, b, k) { return a + (b - a) * k; }
+
+            Component { id: calendarPanel; CalendarPanel {} }
+            Component { id: powerPanel; PowerPanel {} }
 
             // ── Data ─────────────────────────────────────────────────────
             readonly property int activeWs: monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : 1
@@ -69,15 +123,17 @@ Scope {
             property date now: new Date()
             Timer { interval: Settings.showSeconds ? 1000 : 5000; running: true; repeat: true; triggeredOnStart: true; onTriggered: win.now = new Date() }
 
-            Elevation { target: frame; radius: frame.radius; strength: 0.35 + 0.65 * m.value }
+            Elevation { target: frame; radius: frame.radius; strength: (0.35 + 0.65 * Math.max(m.value, pv.value)) * frame.opacity }
             Item {
                 id: frame
-                readonly property real restW: rest.implicitWidth + 30
-                width: win.lerp(restW, win.hoverW, m.value)
-                height: win.lerp(win.restH, win.hoverH, win.mh)
+                width: Math.max(0, sw.value)
+                // Height leads width a touch, so the island reads as dropping open.
+                height: Math.max(0, sh.value)
                 x: Math.round((win.width - width) / 2)
                 y: 4
-                readonly property real radius: win.lerp(win.restH / 2, 28, Math.min(1, m.value))
+                // Without the bar it is only there for a panel: it fades in as it grows.
+                opacity: win.showBar ? 1 : Math.max(0, Math.min(1, pv.value * 2.5))
+                readonly property real radius: Math.min(height / 2, 30)
                 clip: true
 
                 HoverHandler { onHoveredChanged: win.hovered = hovered }
@@ -94,11 +150,37 @@ Scope {
                     id: rest
                     anchors.centerIn: parent
                     spacing: 14
-                    opacity: Math.max(0, 1 - m.value * 3)
+                    opacity: Math.max(0, 1 - Math.max(m.value, pv.value) * 3)
                     visible: opacity > 0.01
                     Capsules { bar: win; visible: Settings.restWorkspaces; anchors.verticalCenter: parent.verticalCenter }
-                    IslandClock { now: win.now; anchors.verticalCenter: parent.verticalCenter; size: 14 }
-                    IslandStatus { visible: Settings.restStatus; anchors.verticalCenter: parent.verticalCenter }
+                    IslandClock {
+                        now: win.now; anchors.verticalCenter: parent.verticalCenter; size: 14
+                        // Handlers, not a MouseArea: a Row would lay a MouseArea out as a child.
+                        HoverHandler { cursorShape: Qt.PointingHandCursor }
+                        TapHandler { onTapped: Island.toggle("calendar", win.screenName, "pointer") }
+                    }
+                    IslandStatus {
+                        visible: Settings.restStatus; anchors.verticalCenter: parent.verticalCenter
+                        HoverHandler { cursorShape: Qt.PointingHandCursor }
+                        TapHandler { onTapped: Notifs.toggleCenter("controls", "pointer") }
+                    }
+                }
+
+                // ── A panel ──────────────────────────────────────────────
+                FocusScope {
+                    width: win.panelSize.width
+                    height: win.panelSize.height
+                    x: Math.round((frame.width - width) / 2)
+                    focus: win.panelHere
+                    opacity: Math.max(0, Math.min(1, (pv.value - 0.55) / 0.35))
+                    visible: opacity > 0.01 || win.panelHere
+                    Keys.onEscapePressed: Island.close()
+                    Loader {
+                        id: panelLoader
+                        active: win.panelHere || pv.value > 0.01
+                        focus: true
+                        sourceComponent: win.shownPanel === "calendar" ? calendarPanel : win.shownPanel === "power" ? powerPanel : null
+                    }
                 }
 
                 // ── Hovered ──────────────────────────────────────────────
@@ -106,7 +188,7 @@ Scope {
                     width: win.hoverW
                     height: win.hoverH
                     x: Math.round((frame.width - width) / 2)
-                    opacity: Math.max(0, Math.min(1, (m.value - 0.5) / 0.4))
+                    opacity: Math.max(0, Math.min(1, (m.value - 0.5) / 0.4)) * Math.max(0, 1 - pv.value * 3)
                     visible: opacity > 0.01
 
                     Column {
@@ -142,7 +224,12 @@ Scope {
                         Row {
                             anchors.horizontalCenter: parent.horizontalCenter
                             spacing: 9
-                            IslandClock { now: win.now; anchors.verticalCenter: date.verticalCenter; size: 22 }
+                            IslandClock {
+                                now: win.now; anchors.verticalCenter: date.verticalCenter; size: 22
+                                // Handlers, not a MouseArea: a Row would lay a MouseArea out as a child.
+                        HoverHandler { cursorShape: Qt.PointingHandCursor }
+                        TapHandler { onTapped: Island.toggle("calendar", win.screenName, "pointer") }
+                            }
                             Label { id: date; text: Qt.formatDate(win.now, "ddd, MMM d"); size: 14; color: Theme.textSecondary }
                         }
                         // Now playing: art, title, artist, a quiet waveform.
