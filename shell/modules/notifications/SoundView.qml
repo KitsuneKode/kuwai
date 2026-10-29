@@ -453,6 +453,7 @@ Item {
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
+                    onContainsMouseChanged: view.center.tip(parent, containsMouse, strip.muted ? "Unmute " + strip.title : "Mute " + strip.title + "  (or right-click the fader)")
                     onClicked: if (strip.audio) strip.audio.muted = !strip.audio.muted
                 }
             }

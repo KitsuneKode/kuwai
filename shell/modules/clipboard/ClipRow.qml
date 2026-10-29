@@ -169,9 +169,9 @@ Item {
             spacing: 2
             Repeater {
                 model: [
-                    { a: "pin", g: "\u{f0403}" },
-                    { a: "open", g: "\u{f03cc}" },
-                    { a: "delete", g: "\u{f0a7a}" }
+                    { a: "pin", g: "\u{f0403}", t: row.pinned ? "Unpin" : "Pin", k: ["⌃", "P"] },
+                    { a: "open", g: "\u{f03cc}", t: "Open with its app", k: ["⌃", "↵"] },
+                    { a: "delete", g: "\u{f0a7a}", t: "Delete", k: ["⇧", "⌦"] }
                 ]
                 Rectangle {
                     id: q
@@ -192,7 +192,8 @@ Item {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: { row.panel.select(row.r.key); row.panel.run(q.modelData.a); }
+                        onContainsMouseChanged: row.panel.tip(q, containsMouse, q.modelData.t, q.modelData.k)
+                        onClicked: { row.panel.tip(q, false); row.panel.select(row.r.key); row.panel.run(q.modelData.a); }
                     }
                 }
             }

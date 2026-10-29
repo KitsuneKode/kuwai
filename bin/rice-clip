@@ -13,6 +13,7 @@
 #   rice-clip wipe                 clear history (pins stay)
 #   rice-clip copy-text TEXT       put this text on the clipboard (edits, transforms)
 #   rice-clip paste-text TEXT      …and paste it into the focused window
+#   rice-clip render ID|pin:N      what the text is, as rich text (bin/rice-render)
 #   rice-clip ocr ID|pin:N         the text in an image (tesseract)
 #   rice-clip save ID|pin:N        save to ~/Pictures/Clipboard; prints the path
 #   rice-clip pin ID               save an entry as a pin; prints its pin file
@@ -89,6 +90,7 @@ case "${1:-}" in
         mv -- "$tmp" "$out"
         exec xdg-open "$out" ;;
     copy-text) printf '%s' "$2" | wl-copy ;;
+    render) emit "$2" | head -c 262144 | "$(dirname "$0")/rice-render" ;;
     ocr)
         tmp=$(mktemp "$cache/open/.ocr.XXXXXX")
         emit "$2" > "$tmp"

@@ -3,6 +3,11 @@
 // Text arrives from cliphist after selection; until then a skeleton holds
 // its shape. ⌃E makes the text editable: ⌃↵ pastes the edited version, Esc
 // drops the edit.
+//
+// Text that is something gets shown as that (bin/rice-render): Markdown
+// rendered (headings, tables, quotes, highlighted code blocks), code
+// syntax-highlighted in SF Mono, a Mermaid diagram drawn (with mermaid-cli).
+// ⌃R flips between that and the raw text.
 import QtQuick
 import Quickshell
 import qs.config
@@ -22,17 +27,31 @@ Item {
     readonly property string ref: entry ? Clipboard.ref(entry) : ""
     property string full: ""
     property bool loading: false
+    property var rendered: ({ kind: "text" })
+    property bool raw: false
+    readonly property bool rich: !raw && !editing && !masked && (rendered.kind === "markdown" || rendered.kind === "code" || rendered.kind === "mermaid")
     readonly property bool textual: entry && entry.kind !== "image" && entry.kind !== "file"
     readonly property bool masked: entry && entry.secret && !revealed
 
     onRefChanged: {
         editing = false;
         full = "";
+        raw = false;
+        rendered = { kind: "text" };
         loading = textual;
         if (textual) fetch.restart();
     }
     // Arrowing fast through the list shouldn't decode every row it passes.
-    Timer { id: fetch; interval: 60; onTriggered: if (pv.entry) Clipboard.fetchText(pv.entry) }
+    Timer {
+        id: fetch
+        interval: 60
+        onTriggered: {
+            if (!pv.entry) return;
+            const r = pv.ref;
+            Clipboard.fetchText(pv.entry);
+            if (!pv.entry.secret) Clipboard.render(pv.entry, d => { if (r === pv.ref) pv.rendered = d; });
+        }
+    }
     Connections {
         target: Clipboard
         function onTextReady(ref, text) {
@@ -109,6 +128,39 @@ Item {
     }
 
     // ── Text, code, links, paths ─────────────────────────────────────────
+    // ── Rendered: markdown, highlighted code, a diagram ──────────────────
+    Flickable {
+        id: richFlick
+        visible: pv.rich && pv.rendered.kind !== "mermaid" || (pv.rich && pv.rendered.kind === "mermaid" && !pv.rendered.image)
+        anchors { left: parent.left; right: parent.right; top: parent.top; bottom: info.top; bottomMargin: 10 }
+        clip: true
+        contentHeight: richText.implicitHeight + 8
+        boundsBehavior: Flickable.StopAtBounds
+        TextEdit {
+            id: richText
+            width: richFlick.width - 8
+            readOnly: true
+            selectByMouse: true
+            textFormat: TextEdit.RichText
+            wrapMode: TextEdit.Wrap
+            text: pv.rich ? (pv.rendered.html || "") : ""
+            color: Theme.textPrimary
+            selectionColor: Qt.alpha(Theme.blue, 0.5)
+            font.family: Theme.fontText
+            font.pixelSize: 14
+            onLinkActivated: link => Qt.openUrlExternally(link)
+        }
+    }
+    Image {
+        visible: pv.rich && pv.rendered.kind === "mermaid" && !!pv.rendered.image
+        anchors { left: parent.left; right: parent.right; top: parent.top; bottom: info.top; bottomMargin: 10 }
+        source: pv.rendered.image ? "file://" + pv.rendered.image : ""
+        fillMode: Image.PreserveAspectFit
+        asynchronous: true
+        smooth: true
+        mipmap: true
+    }
+
     // Editing: a quiet frame says this text is yours to change now.
     Rectangle {
         visible: pv.editing
@@ -121,7 +173,7 @@ Item {
     }
     Flickable {
         id: textFlick
-        visible: pv.textual && pv.entry.kind !== "color"
+        visible: pv.textual && pv.entry.kind !== "color" && !pv.rich
         anchors { left: parent.left; right: parent.right; top: parent.top; bottom: info.top; bottomMargin: 10 }
         clip: true
         contentHeight: body.implicitHeight + 8
@@ -184,7 +236,12 @@ Item {
         id: info
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
         elide: Text.ElideRight
-        text: pv.editing ? "Editing  ·  ⌃↵ paste this  ·  Esc cancel" : pv.entry ? pv.panel.detailOf(pv.entry, pv.full) : ""
+        text: pv.editing ? "Editing  ·  ⌃↵ paste this  ·  Esc cancel"
+            : !pv.entry ? ""
+            : [({ markdown: "Markdown", code: "Code", mermaid: "Mermaid diagram" })[pv.rendered.kind] || "",
+               pv.rendered.kind === "code" ? pv.rendered.lang : "",
+               pv.panel.detailOf(pv.entry, pv.full),
+               pv.rendered.kind !== "text" ? (pv.raw ? "⌃R rendered" : "⌃R raw") : ""].filter(x => x).join("  ·  ")
         size: 11
         color: Theme.textTertiary
     }

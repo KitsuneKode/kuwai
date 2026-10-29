@@ -406,7 +406,13 @@ Scope {
                         Label { anchors.verticalCenter: parent.verticalCenter; text: root.filterLabel(root.filter); size: 12; weight: Theme.wSemibold }
                         Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f0156}"; font.family: Theme.fontGlyph; font.pixelSize: 10; color: Theme.textSecondary }
                     }
-                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: { root.filter = "all"; root.focusSearch(); } }
+                    MouseArea {
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onContainsMouseChanged: root.tip(scope, containsMouse, "Show everything", ["⌫"])
+                        onClicked: { root.filter = "all"; root.focusSearch(); }
+                    }
                 }
                 TextInput {
                     id: search
@@ -447,7 +453,14 @@ Scope {
                         Label { anchors.verticalCenter: parent.verticalCenter; text: root.filterLabel(root.filter); size: 12; weight: Theme.wMedium }
                         Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f0140}"; font.family: Theme.fontGlyph; font.pixelSize: 14; color: Theme.textSecondary }
                     }
-                    MouseArea { id: typeArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { if (root.filterMenu) root.filterMenu.toggle(); root.focusSearch(); } }
+                    MouseArea {
+                        id: typeArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onContainsMouseChanged: root.tip(typeBtn, containsMouse && !(root.filterMenu && root.filterMenu.open), "Filter by type", ["⇥"])
+                        onClicked: { root.tip(typeBtn, false); if (root.filterMenu) root.filterMenu.toggle(); root.focusSearch(); }
+                    }
                 }
                 Rectangle { anchors { left: parent.left; right: parent.right; bottom: parent.bottom } height: 1; color: Qt.rgba(1, 1, 1, 0.07) }
             }
@@ -619,7 +632,14 @@ Scope {
                         KeyCap { anchors.verticalCenter: parent.verticalCenter; text: "⌃" }
                         KeyCap { anchors.verticalCenter: parent.verticalCenter; text: "K" }
                     }
-                    MouseArea { id: actArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { if (root.actionMenu) root.actionMenu.toggle(); root.focusSearch(); } }
+                    MouseArea {
+                        id: actArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onContainsMouseChanged: root.tip(actionsBtn, containsMouse && !(root.actionMenu && root.actionMenu.open), "Every action for this entry")
+                        onClicked: { root.tip(actionsBtn, false); if (root.actionMenu) root.actionMenu.toggle(); root.focusSearch(); }
+                    }
                 }
             }
 
@@ -637,6 +657,10 @@ Scope {
                 items: root.actionItems
                 onPicked: id => root.run(id)
             }
+            Tips {
+                id: tipLayer
+                Component.onCompleted: root.tips = tipLayer
+            }
             ActionMenu {
                 id: types
                 Component.onCompleted: root.filterMenu = types
@@ -651,6 +675,8 @@ Scope {
     }
     property Item typeButton: null
     property Item actionsButton: null
+    property Item tips: null
+    function tip(item, on, text, keys) { if (!tips) return; if (on) tips.show(item, text, keys); else tips.hide(item); }
 
     // ── Keys ─────────────────────────────────────────────────────────────
     function key(event) {
@@ -681,6 +707,7 @@ Scope {
         else if (ctrl && k === Qt.Key_O) run("ocr");
         else if (ctrl && k === Qt.Key_S) run("save");
         else if (ctrl && k === Qt.Key_H) run("reveal");
+        else if (ctrl && k === Qt.Key_R) { if (previewPane) previewPane.raw = !previewPane.raw; }
         else if (ctrl && shift && k === Qt.Key_Backspace) run("wipe");
         else if ((shift && k === Qt.Key_Delete) || (ctrl && k === Qt.Key_X && field && !field.selectedText)) run("delete");
         else if (k === Qt.Key_Backspace && field && field.text === "" && filter !== "all") filter = "all";

@@ -462,6 +462,10 @@ Item {
             anchors.fill: parent
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
+            // Expandable tiles say which half does what.
+            property bool onDisc: mouseX < disc.x + disc.width + 4
+            onContainsMouseChanged: if (tile.expandable) view.center.tip(tile, containsMouse, onDisc ? "Turn " + tile.title + (tile.on ? " off" : " on") : "Show networks")
+            onOnDiscChanged: if (tile.expandable && containsMouse) view.center.tip(tile, true, onDisc ? "Turn " + tile.title + (tile.on ? " off" : " on") : "Show networks")
             onClicked: mouse => {
                 if (tile.expandable && mouse.x > disc.x + disc.width + 4) tile.opened();
                 else tile.toggled();

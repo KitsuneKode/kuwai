@@ -202,6 +202,19 @@ Singleton {
     // Edited or transformed text: copy it, or paste it where you were.
     function copyText(t) { open = false; run(["copy-text", t]); }
     function pasteText(t) { open = false; run(["paste-text", t]); }
+    // Rich rendering of text (markdown, highlighted code, mermaid), cached
+    // per entry: cb({ kind, lang, html, image }).
+    property var renders: ({})
+    function render(e, cb) {
+        const r = ref(e);
+        if (renders[r]) { cb(renders[r]); return; }
+        capture(["render", r], out => {
+            let d = { kind: "text" };
+            try { d = JSON.parse(out); } catch (err) {}
+            root.renders[r] = d;
+            cb(d);
+        });
+    }
     // Text out of an image; an image saved as a file. cb(output).
     function ocr(e, cb) { capture(["ocr", ref(e)], cb); }
     function save(e, cb) { capture(["save", ref(e)], cb); }

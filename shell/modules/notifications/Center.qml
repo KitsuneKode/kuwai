@@ -172,6 +172,8 @@ Scope {
     Timer { id: beginSoon; interval: 34; onTriggered: root.begin() }
 
     function lerp(a, b, t) { return a + (b - a) * t; }
+    // Tooltips on the hosting copy's layer (components/Tips).
+    function tip(item, on, text, keys) { if (!ui) return; if (on) ui.tips.show(item, text, keys); else ui.tips.hide(item); }
     function currentView() { return ui ? ui.currentView() : null; }
 
     // ── Screenshots ──────────────────────────────────────────────────────

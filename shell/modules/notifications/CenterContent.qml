@@ -21,6 +21,7 @@ Item {
     readonly property alias agents: agents
     readonly property alias sound: sound
     readonly property alias display: display
+    readonly property alias tips: tipLayer
     readonly property var order: ["notifications", "agents", "sound", "controls"]
 
     function currentView() {
@@ -292,4 +293,6 @@ Item {
         anchors.fill: parent
         z: 10
     }
+
+    Tips { id: tipLayer }
 }
