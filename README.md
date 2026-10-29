@@ -1,0 +1,93 @@
+# rice
+
+My own Hyprland desktop shell, built in Quickshell, one piece at a time,
+replacing what HyDE / Waybar / dunst do today. Every surface shares one look:
+dark liquid glass over Hyprland's blur, SF Pro text, smooth no-bounce motion
+(see [docs/DESIGN.md](docs/DESIGN.md)).
+
+## What's in it
+
+| Piece | Replaces | Where |
+|---|---|---|
+| Glass HUD: brightness, volume, mic | HyDE volume popups, dunst brightness OSD | `shell/modules/osd/` |
+| Notification server + Sonner-style toast stack | dunst | `shell/services/Notifs.qml`, `shell/modules/notifications/Popups.qml` |
+| The center (Super+N): Notifications · Agents (kittymux) · Sound (mixer: per-app faders, live meters, devices) · Display (brightness per monitor, Night Shift) | dunst history, pavucontrol, brightness/hyprsunset scripts | `shell/modules/notifications/Center.qml` + `*View.qml` |
+
+Next up: dynamic island, control center, bar.
+
+## Run / control
+
+```sh
+bin/rice start        # (re)start; stops dunst and takes org.freedesktop.Notifications
+bin/rice stop         # dunst comes back by itself on the next notification
+bin/rice logs         # follow the shell's log
+bin/rice notifs dnd   # also: dnd-on dnd-off clear hide open last count waybar
+bin/rice center [agents]   # toggle the center; starts the shell if it isn't running
+```
+
+Quickshell hot-reloads on save, so editing a `.qml` file updates the running
+shell. The shell runs by path (`qs -p ~/Projects/rice/shell`), not `qs -c`,
+because `~/.config/quickshell/shell.qml` exists and makes Quickshell ignore
+named configs there.
+
+## Shortcuts
+
+| Keys | Does |
+|---|---|
+| Super+N | Notifications (again: close) |
+| Super+Shift+N | Agents (kittymux); with the center open, switches tab |
+| Super+Alt+N | Do Not Disturb on/off (the HUD confirms) |
+| Super+Shift+Alt+N | Open the newest notification (its app, its thread) |
+| Super+Ctrl+Shift+N | kittymux's own panel |
+
+Inside the center: type to search · ↑↓ select · ↵ open · ⌦ dismiss (or mark
+read) · →← expand/fold a group · ⇥ filter · ⌃⇥ next tab · ⌥1–4 a tab ·
+⌃D Do Not Disturb · ⌃⇧⌫ clear all · Esc clears the search, then closes ·
+? (or F1, ⌃/) shows every shortcut.
+
+The Super shortcuts are Hyprland global shortcuts (`global, rice:center` …)
+that call straight into the running shell (`shell/modules/Shortcuts.qml`):
+no process per keypress. `hyprctl globalshortcuts` lists them.
+
+## Layout
+
+```
+shell/
+  shell.qml                 entry: instantiates the modules
+  config/Theme.qml          design tokens (material, text, type, motion)
+  components/               shared visuals (GlassCard, …)
+  services/                 data + state singletons (Notifs, NotifAdapters, …)
+  modules/                  surfaces (osd/, notifications/, …)
+bin/                        rice (control CLI), rice-shell (launcher)
+hypr/rice.conf              autostart + layer rules, sourced from userprefs.conf
+waybar/                     Waybar module overrides (symlinked into ~/.config/waybar/modules)
+docs/                       DESIGN.md (the look), BORROWING.md (what to take from where)
+refs/                       shallow clones of other shells to read (gitignored)
+```
+
+## How it hooks into the system
+
+- `~/.config/hypr/userprefs.conf` sources `hypr/rice.conf`, which autostarts
+  `bin/rice-shell` and gives every `rice-*` layer blur without animation.
+- `~/.config/hypr/windowrules.conf` exempts `rice-*` from the global xray rule,
+  so the glass blurs real windows, not just the wallpaper.
+- `~/.config/waybar/modules/custom-dunst.jsonc` → `waybar/custom-dunst.jsonc`
+  keeps HyDE's bell working against the rice (or dunst, as fallback).
+- dunst stays installed as the fallback. Its drop-ins in
+  `~/.config/dunst/dunstrc.d/` (T3 Code, Ghostty) keep it presentable.
+- Brightness events come from `~/Scripts/brightness.sh watch --part osd`.
+
+## Notifications: adding an app
+
+Apps send inconsistent things. `shell/services/NotifAdapters.qml` has one rule
+per app that rewrites the D-Bus notification into what the card should say
+(headline, status line + tone, icon, group key, window to focus). Examples:
+
+- **T3 Code** sends `"Thread completed"` + the thread name and no icon. The card
+  shows the thread as the headline, a green check status, the T3 icon, merges
+  repeats for the same thread (`×2`), and focuses T3 on click.
+- **Ghostty** (and Claude Code running in it) sends an empty app name. Matched
+  on its desktop-entry hint instead.
+
+Everything else gets the generic rule, with icons resolved from the
+notification image → app icon → desktop entry.

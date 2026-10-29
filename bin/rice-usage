@@ -1,0 +1,206 @@
+#!/usr/bin/env node
+// Usage limits for the center's Agents tab, shaped like T3 Code's own view:
+// providers, each with every signed-in account, each with its windows.
+//
+//   T3 Code    the running desktop server (~/.t3/userdata/server-runtime.json),
+//              `server.getConfig` over its WebSocket RPC, read with a
+//              read-only bearer token kept in ~/.local/state/rice/t3-token
+//              (issue one with: t3 auth session issue --scope orchestration:read
+//              --label rice-usage --ttl 365d --token-only)
+//   kittymux   ~/.local/state/kittymux/agent-usage.json: one account per
+//              provider; used when T3 Code isn't running or has no token
+//
+// Prints one JSON object:
+//   { source, checkedAt, providers: [{ driver, label, color,
+//       accounts: [{ key, name, email, plan, note, windows: [{ id, kind, label,
+//         used, resetsAt, durationMins }] }] }] }
+// Times are epoch milliseconds; `used` is 0–100.
+import { readFileSync } from "node:fs";
+import { homedir } from "node:os";
+
+const HOME = homedir();
+const STATE = process.env.XDG_STATE_HOME || `${HOME}/.local/state`;
+const T3_HOME = process.env.T3CODE_HOME || `${HOME}/.t3`;
+
+// T3 Code's provider presentation (apps/web/src/components/usage/usageProviders.ts).
+const PROVIDERS = {
+  codex: { label: "Codex", color: "#e5e5ea" },
+  claude: { label: "Claude Code", color: "#d97757" },
+  grok: { label: "Grok Build", color: "#b8b8c0" },
+  cursor: { label: "Cursor", color: "#8b8b8b" },
+  opencode: { label: "OpenCode", color: "#5b9bbd" },
+  antigravity: { label: "Antigravity", color: "#8c7bd1" },
+  pi: { label: "Pi", color: "#4d9f8a" },
+  muse: { label: "Muse Code", color: "#0866ff" },
+  devin: { label: "Devin", color: "#5ac8fa" },
+};
+const ORDER = Object.keys(PROVIDERS);
+const providerOf = (driver) => (driver === "claudeAgent" ? "claude" : String(driver || ""));
+
+const readJson = (path) => {
+  try { return JSON.parse(readFileSync(path, "utf8")); } catch { return null; }
+};
+const readText = (path) => {
+  try { return readFileSync(path, "utf8").trim(); } catch { return ""; }
+};
+
+// ── T3 Code ──────────────────────────────────────────────────────────────
+function rpc(url, token, tag, payload, timeoutMs = 4000) {
+  return new Promise((resolve, reject) => {
+    const ws = new WebSocket(url, { headers: { Authorization: `Bearer ${token}` } });
+    const timer = setTimeout(() => { ws.close(); reject(new Error("timeout")); }, timeoutMs);
+    const done = (fn, v) => { clearTimeout(timer); try { ws.close(); } catch {} fn(v); };
+    ws.onerror = () => done(reject, new Error("connect failed"));
+    ws.onopen = () => ws.send(JSON.stringify({ _tag: "Request", id: "1", tag, payload, headers: [] }));
+    ws.onmessage = async (event) => {
+      const text = typeof event.data === "string" ? event.data : await new Response(event.data).text();
+      let messages;
+      try { messages = JSON.parse(text); } catch { return; }
+      for (const m of Array.isArray(messages) ? messages : [messages]) {
+        if (m?._tag === "Ping") ws.send(JSON.stringify({ _tag: "Pong" }));
+        if (m?._tag === "Exit" && String(m.requestId) === "1") {
+          if (m.exit?._tag === "Success") done(resolve, m.exit.value);
+          else done(reject, new Error(JSON.stringify(m.exit?.cause ?? m.exit).slice(0, 300)));
+        }
+        if (m?._tag === "Defect" || m?._tag === "ClientProtocolError")
+          done(reject, new Error(JSON.stringify(m).slice(0, 300)));
+      }
+    };
+  });
+}
+
+function windowOf(w) {
+  return {
+    id: w.id,
+    kind: w.kind,
+    label: w.label,
+    used: Math.max(0, Math.min(100, Number(w.usedPercent) || 0)),
+    resetsAt: w.resetsAt ? Date.parse(w.resetsAt) : null,
+    durationMins: w.windowDurationMins ?? null,
+  };
+}
+
+async function fromT3() {
+  const token = process.env.RICE_T3_TOKEN || readText(`${STATE}/rice/t3-token`);
+  const runtime = readJson(`${T3_HOME}/userdata/server-runtime.json`);
+  if (!token || !runtime?.port) return null;
+  const host = runtime.host || "127.0.0.1";
+  const config = await rpc(`ws://${host}:${runtime.port}/ws?orchestrationProtocol=2`, token, "server.getConfig", {});
+
+  // One entry per real account: the same login reached through two
+  // instances (or a hub) shows once, the freshest read winning.
+  const accounts = new Map();
+  const add = (key, account) => {
+    const prev = accounts.get(key);
+    if (!prev || (account.checkedAt || 0) > (prev.checkedAt || 0)) accounts.set(key, account);
+  };
+  for (const p of config.providers || []) {
+    const limits = p.usageLimits;
+    if (!p.enabled || !p.installed || !limits) continue;
+    const email = p.auth?.email;
+    const key = `${p.driver}:${email ? email.toLowerCase() : limits.credentialFingerprint || p.instanceId}${p.auth?.workspaceId ? ":" + p.auth.workspaceId : ""}`;
+    add(key, {
+      key,
+      driver: providerOf(p.driver),
+      name: p.displayName || null,
+      email: email || null,
+      plan: p.auth?.plan || p.auth?.planType || null,
+      accent: p.accentColor || null,
+      note: limits.unavailable?.message || null,
+      credits: limits.resetCredits?.availableCount || 0,
+      checkedAt: Date.parse(limits.checkedAt) || 0,
+      windows: (limits.windows || []).map(windowOf),
+    });
+  }
+  for (const source of config.usageLimitSources || []) {
+    for (const a of source.accounts || []) {
+      const key = `${a.driver}:${a.email ? a.email.toLowerCase() : a.id}${a.workspaceId ? ":" + a.workspaceId : ""}`;
+      add(key, {
+        key,
+        driver: providerOf(a.driver),
+        name: null,
+        email: a.email || null,
+        plan: a.plan || null,
+        accent: null,
+        note: a.usageLimits.unavailable?.message || null,
+        credits: a.usageLimits.resetCredits?.availableCount || 0,
+        checkedAt: Date.parse(a.usageLimits.checkedAt) || 0,
+        windows: (a.usageLimits.windows || []).map(windowOf),
+        via: source.label,
+      });
+    }
+  }
+  return group([...accounts.values()], "t3");
+}
+
+// ── kittymux ─────────────────────────────────────────────────────────────
+const KM_WINDOWS = {
+  "5h": { kind: "session", label: "5 hour", mins: 300 },
+  day: { kind: "session", label: "Daily", mins: 1440 },
+  wk: { kind: "weekly", label: "Weekly", mins: 10080 },
+  mo: { kind: "monthly", label: "Overall", mins: null },
+  auto: { kind: "monthly", label: "Cursor Models", mins: null },
+  api: { kind: "monthly", label: "Other Models", mins: null },
+};
+
+function fromKittymux() {
+  const d = readJson(`${STATE}/kittymux/agent-usage.json`);
+  if (!d) return null;
+  const at = (d.ts || Date.now() / 1000) * 1000;
+  const accounts = (d.providers || []).map((p) => {
+    const text = (label) => (p.rows || []).find((r) => r.label === label)?.text;
+    const windows = (p.rows || []).filter((r) => typeof r.pct === "number").map((r) => {
+      const known = KM_WINDOWS[r.label] || { kind: "other", label: r.label, mins: null };
+      const resetsAt = r.rem_s > 0 ? at + r.rem_s * 1000 : null;
+      return {
+        id: r.label,
+        kind: known.kind,
+        label: known.label,
+        used: Math.max(0, Math.min(100, r.pct)),
+        resetsAt,
+        durationMins: r.window_s ? r.window_s / 60 : known.mins,
+      };
+    });
+    // Cursor: "Overall" is both pools together, not a third quota.
+    const pools = windows.some((w) => w.id === "auto") && windows.some((w) => w.id === "api");
+    return {
+      key: `${p.name}:kittymux`,
+      driver: providerOf(p.name),
+      name: null,
+      email: null,
+      plan: (text("plan") || p.note || "").split(" · ")[0] || null,
+      note: text("over") || text("spend") || null,
+      credits: 0,
+      checkedAt: at,
+      windows: pools ? windows.filter((w) => w.id !== "mo") : windows,
+    };
+  }).filter((a) => a.windows.length);
+  return group(accounts, "kittymux");
+}
+
+// ── Shape ────────────────────────────────────────────────────────────────
+function group(accounts, source) {
+  const byDriver = new Map();
+  for (const a of accounts) {
+    if (!byDriver.has(a.driver)) byDriver.set(a.driver, []);
+    byDriver.get(a.driver).push(a);
+  }
+  const rank = (d) => { const i = ORDER.indexOf(d); return i < 0 ? ORDER.length : i; };
+  return {
+    source,
+    checkedAt: Date.now(),
+    providers: [...byDriver].sort(([a], [b]) => rank(a) - rank(b) || a.localeCompare(b)).map(([driver, list]) => ({
+      driver,
+      label: PROVIDERS[driver]?.label || driver.charAt(0).toUpperCase() + driver.slice(1),
+      color: PROVIDERS[driver]?.color || "#8e8e93",
+      accounts: list,
+    })),
+  };
+}
+
+let out = null;
+let t3Error = null;
+try { out = await fromT3(); } catch (e) { t3Error = e.message; }
+if (!out || !out.providers.length) out = { ...(fromKittymux() || group([], "none")), t3Error };
+process.stdout.write(JSON.stringify(out) + "\n");
+process.exit(0);

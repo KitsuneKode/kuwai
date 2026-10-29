@@ -1,0 +1,40 @@
+// Overrides HyDE's custom/dunst bell (same name, so the layout needn't change).
+// Symlinked into ~/.config/waybar/modules/, which Waybar includes before
+// HyDE's ~/.local/share/waybar/modules/, so this definition wins.
+// `rice notifs` talks to the rice's notification server, or to dunst when
+// the rice isn't running. Icons are copied from HyDE's module.
+{
+  "custom/dunst": {
+    "format": "{icon} {0}",
+    "rotate": 0,
+    "format-icons": {
+      "notification": "<span foreground='red'><sup></sup></span>",
+      "dnd-notification": "<span foreground='red'><sup></sup></span>",
+      "inhibited-notification": "<span foreground='red'><sup></sup></span>",
+      "inhibited-none": "",
+      "dnd-inhibited-notification": "<span foreground='red'><sup></sup></span>",
+      "dnd-inhibited-none": "",
+      "dnd-none": "",
+      "email-notification": "<span foreground='white'><sup></sup></span>",
+      "chat-notification": "󱋊<span foreground='white'><sup></sup></span>",
+      "warning-notification": "󱨪<span foreground='yellow'><sup></sup></span>",
+      "error-notification": "󱨪<span foreground='red'><sup></sup></span>",
+      "network-notification": "󱂇<span foreground='white'><sup></sup></span>",
+      "battery-notification": "󰁺<span foreground='white'><sup></sup></span>",
+      "update-notification": "󰚰<span foreground='white'><sup></sup></span>",
+      "music-notification": "󰝚<span foreground='white'><sup></sup></span>",
+      "volume-notification": "󰕿<span foreground='white'><sup></sup></span>",
+      "dnd": "",
+      "none": ""
+    },
+    "return-type": "json",
+    "exec": "~/Projects/rice/bin/rice notifs waybar",
+    "on-click": "~/Projects/rice/bin/rice center notifications pointer",
+    "on-click-right": "~/Projects/rice/bin/rice notifs dnd",
+    "on-click-middle": "~/Projects/rice/bin/rice notifs clear",
+    "on-scroll-down": "~/Projects/rice/bin/rice notifs last",
+    "interval": 2,
+    "tooltip": true,
+    "escape": true
+  }
+}

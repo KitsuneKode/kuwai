@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# Start (or restart) the rice and make it the notification server.
+#
+# Only one process can own org.freedesktop.Notifications. HyDE starts dunst at
+# login, so stop it, start Quickshell, and check Quickshell really got the
+# name (a notification arriving in between can D-Bus-activate dunst again).
+# If the rice ever dies, the next notification activates dunst on its own:
+# that is the fallback, nothing to do here.
+#
+# Stopping uses SIGKILL, not `qs kill`: Quickshell 0.3.2 can segfault while
+# tearing down on a polite exit (Wayland objects destroyed after the
+# connection), and its crash handler then relaunches the very instance we
+# stopped, leaving two rices running (two HUDs, two toast stacks, doubled
+# global shortcuts). A killed process tears nothing down and isn't relaunched.
+set -u
+
+RICE="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+SHELL_DIR="$RICE/shell"
+NAME=org.freedesktop.Notifications
+
+owner_pid() {
+    busctl --user call org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus \
+        GetConnectionUnixProcessID s "$NAME" 2>/dev/null | awk '{print $2}'
+}
+
+rice_pids() {
+    qs list -p "$SHELL_DIR" --json 2>/dev/null | jq -r '.[].pid' 2>/dev/null
+}
+
+stop_rice() {
+    for pid in $(rice_pids); do kill -9 "$pid" 2>/dev/null; done
+    for _ in $(seq 20); do
+        [ -z "$(rice_pids)" ] && return
+        sleep 0.1
+    done
+}
+
+stop_dunst() {
+    pkill -x dunst 2>/dev/null
+    for _ in $(seq 20); do
+        [ -z "$(owner_pid)" ] && return
+        sleep 0.1
+    done
+}
+
+# Retire any running rice (all of them, if a crash ever left two), and the
+# standalone glass HUD it replaces.
+stop_rice
+pkill -f 'qs -p .*/quickshell/glass-osd' 2>/dev/null
+
+for attempt in 1 2 3; do
+    stop_dunst
+    qs -p "$SHELL_DIR" -d >/dev/null 2>&1
+    for _ in $(seq 30); do
+        pid=$(owner_pid)
+        if [ -n "$pid" ]; then
+            if [ "$(cat /proc/"$pid"/comm 2>/dev/null)" = "dunst" ]; then break; fi
+            exit 0
+        fi
+        sleep 0.1
+    done
+    echo "rice-shell: notification name not acquired (attempt $attempt), retrying" >&2
+    stop_rice
+done
+
+echo "rice-shell: gave up; dunst stays the notification server" >&2
+exit 1

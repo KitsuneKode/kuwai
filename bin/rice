@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+# Control the running rice.
+#
+#   rice start|restart        (re)start the shell, take over notifications
+#   rice stop                 stop it (dunst takes notifications back)
+#   rice logs                 follow the shell's log
+#   rice notifs <cmd>         dnd | dnd-on | dnd-off | clear | hide | open | last | count | waybar
+#   rice center [agents] [pointer]   toggle the center (Notifications or Agents);
+#                             `pointer` (the bell) morphs it, keys open it instantly
+#
+# `notifs` falls back to dunstctl when the rice isn't the notification server,
+# so Waybar and keybinds keep working either way.
+set -u
+
+RICE="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+SHELL_DIR="$RICE/shell"
+
+ipc() { qs ipc -p "$SHELL_DIR" call "$@" 2>/dev/null; }
+
+rice_owns_notifications() {
+    local pid
+    pid=$(busctl --user call org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus \
+        GetConnectionUnixProcessID s org.freedesktop.Notifications 2>/dev/null | awk '{print $2}')
+    [ -n "$pid" ] && [ "$(cat /proc/"$pid"/comm 2>/dev/null)" != "dunst" ]
+}
+
+dunst_waybar() {
+    # Same JSON shape as the rice's, from dunst's history and pause state.
+    # Only if dunst is already running: dunstctl would otherwise make D-Bus
+    # launch it, racing the rice for the notification name during a restart.
+    if ! pgrep -x dunst >/dev/null; then
+        printf '{"text":"","alt":"none","class":"none","tooltip":"Notifications starting…"}\n'
+        return
+    fi
+    local count paused alt
+    count=$(dunstctl count history 2>/dev/null || echo 0)
+    paused=$(dunstctl is-paused 2>/dev/null || echo false)
+    if [ "$paused" = true ]; then alt=dnd; [ "$count" -gt 0 ] && alt=dnd-notification
+    else alt=none; [ "$count" -gt 0 ] && alt=notification; fi
+    printf '{"text":"%s","alt":"%s","class":"%s","tooltip":"󰎟 Notifications (dunst fallback)"}\n' "$count" "$alt" "$alt"
+}
+
+notifs() {
+    local cmd=${1:-}
+    if rice_owns_notifications; then
+        case $cmd in
+            dnd)     ipc notifs toggleDnd >/dev/null ;;
+            dnd-on)  ipc notifs setDnd true ;;
+            dnd-off) ipc notifs setDnd false ;;
+            clear)   ipc notifs clear ;;
+            hide)    ipc notifs dismissPopups ;;
+            open)    ipc notifs openLatest ;;
+            last)    ipc notifs showLast ;;
+            count)   ipc notifs count ;;
+            waybar)  ipc notifs waybar ;;
+            *) echo "usage: rice notifs dnd|dnd-on|dnd-off|clear|hide|open|last|count|waybar" >&2; return 2 ;;
+        esac
+    else
+        case $cmd in
+            dnd)     dunstctl set-paused toggle ;;
+            dnd-on)  dunstctl set-paused true ;;
+            dnd-off) dunstctl set-paused false ;;
+            clear)   dunstctl history-clear ;;
+            hide)    dunstctl close-all ;;
+            open)    dunstctl action 0 ;;
+            last)    dunstctl history-pop ;;
+            count)   dunstctl count history ;;
+            waybar)  dunst_waybar ;;
+            *) echo "usage: rice notifs dnd|dnd-on|dnd-off|clear|hide|open|last|count|waybar" >&2; return 2 ;;
+        esac
+    fi
+}
+
+case ${1:-} in
+    start|restart) exec "$RICE/bin/rice-shell" ;;
+    stop)          for pid in $(qs list -p "$SHELL_DIR" --json 2>/dev/null | jq -r ".[].pid"); do kill -9 "$pid"; done ;;
+    logs)          exec qs log -p "$SHELL_DIR" -f ;;
+    notifs)        shift; notifs "$@" ;;
+    center)
+        # Needs the shell running, not the notification name: start it if
+        # it isn't up rather than doing nothing.
+        if ! qs ipc -p "$SHELL_DIR" show >/dev/null 2>&1; then
+            "$RICE/bin/rice-shell" >/dev/null 2>&1
+            for _ in $(seq 20); do qs ipc -p "$SHELL_DIR" show >/dev/null 2>&1 && break; sleep 0.1; done
+        fi
+        ipc center toggle "${2:-notifications}" "${3:-key}" ;;
+    *) sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+esac
