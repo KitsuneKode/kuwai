@@ -26,10 +26,15 @@ case "$mode" in
     *) sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
 esac
 
-# grimblast exits non-zero when the selection is cancelled (Esc, right
-# click): that's the user changing their mind, so leave quietly.
-if ! grimblast "${args[@]}" "$out" >/dev/null 2>&1 || [ ! -s "$out" ]; then
+# A cancelled selection (Esc, right click: slurp says "selection
+# cancelled") is the user changing their mind: leave quietly. Anything else
+# is a real failure and says so, with grimblast's own words.
+err=$(grimblast "${args[@]}" "$out" 2>&1 >/dev/null)
+if [ $? -ne 0 ] || [ ! -s "$out" ]; then
     rm -f -- "$out"
+    if [ -n "$err" ] && ! printf '%s' "$err" | grep -qi "cancel"; then
+        notify-send -a "Screenshot" -u normal "Screenshot failed" "$(printf '%s' "$err" | tail -3)"
+    fi
     exit 0
 fi
 
