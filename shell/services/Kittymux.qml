@@ -30,6 +30,7 @@ Singleton {
 
     property var inbox: ({ unread: 0, needs_you: 0, events: [] })
     property var rows: []                      // kittymux pick --json
+    property bool loaded: false                // first pick has answered
     property var usage: []                     // [{ name, rows: [{ label, pct, reset }] }]
 
     // What needs you: unread inbox events, the ones blocking an agent first.
@@ -145,6 +146,7 @@ Singleton {
         stdout: StdioCollector {
             onStreamFinished: {
                 try { root.rows = JSON.parse(text); } catch (e) {}
+                root.loaded = true;
             }
         }
     }

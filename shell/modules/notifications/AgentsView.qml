@@ -201,12 +201,44 @@ Item {
                 }
             }
 
-            // Usage: every provider and account, T3 Code's way (UsageCard)
+            // Loading: the shape of agent rows until kittymux first answers.
+            Column {
+                visible: Kittymux.available && !Kittymux.loaded
+                width: parent.width
+                spacing: 8
+                Repeater {
+                    model: 3
+                    Rectangle {
+                        required property int index
+                        width: parent.width
+                        height: 60
+                        radius: 18
+                        color: Qt.rgba(1, 1, 1, 0.04)
+                        Skeleton { x: 12; anchors.verticalCenter: parent.verticalCenter; width: 34; height: 34; radius: 10 }
+                        Skeleton { x: 58; y: 15; width: parent.width * (0.55 - parent.index * 0.08); height: 12 }
+                        Skeleton { x: 58; y: 35; width: parent.width * 0.3; height: 10 }
+                    }
+                }
+            }
+
+            // Usage: every provider and account, T3 Code's way (UsageCard).
+            // Until T3 Code's first snapshot arrives: a card's shape.
             Section {
                 title: "Usage"
-                visible: view.usage.length > 0
+                visible: view.usage.length > 0 || (Limits.watching && !Limits.loaded)
                 revealDelay: 160
                 UsageCard { providers: view.usage }
+                Rectangle {
+                    visible: view.usage.length === 0
+                    width: parent.width
+                    height: 112
+                    radius: 18
+                    color: Qt.rgba(1, 1, 1, 0.04)
+                    Skeleton { x: 14; y: 14; width: 22; height: 22; radius: 7 }
+                    Skeleton { x: 44; y: 19; width: 110; height: 12 }
+                    Skeleton { x: 14; y: 50; width: parent.width - 28; height: 8 }
+                    Skeleton { x: 14; y: 74; width: parent.width - 28; height: 8 }
+                }
             }
 
             // Recent

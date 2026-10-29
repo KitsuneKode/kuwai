@@ -20,6 +20,7 @@ Singleton {
     id: root
 
     property bool watching: false
+    property bool loaded: false                 // the first snapshot has arrived
     property var providers: []
     property string source: ""                 // t3 | kittymux | none
     property real now: Date.now()               // advanced on each read, not per frame
@@ -53,6 +54,7 @@ Singleton {
                 root.source = d.source || "";
                 root.error = d.t3Error || "";
                 root.providers = d.providers || [];
+                root.loaded = true;
             }
         }
     }
