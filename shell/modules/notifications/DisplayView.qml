@@ -33,8 +33,20 @@ Item {
     Component.onCompleted: Hyprland.refreshMonitors()
 
     function key(event, queryEmpty) { return false; }
-    function reset() { flick.contentY = 0; }
+    function reset() { flick.contentY = 0; wifiOpen = false; }
     function selectFirst() {}
+    // Esc: the password field, then the network list, then (false) close.
+    function back() {
+        if (wifiList.back()) return true;
+        if (wifiOpen) { wifiOpen = false; return true; }
+        return false;
+    }
+    // Typing a search opens the network list, so a network can be found.
+    property bool wifiOpen: false
+    Connections {
+        target: view.center
+        function onQueryChanged() { if (view.shown && view.center.query !== "") view.wifiOpen = true; }
+    }
 
     function modelOf(name) {
         const m = Hyprland.monitors.values.find(x => x.name === name);
@@ -102,7 +114,10 @@ Item {
                     subtitle: !Networking.wifiEnabled ? "Off" : view.wifiNetwork ? view.wifiNetwork.name : "Not connected"
                     on: Networking.wifiEnabled
                     tone: Theme.blue
+                    expandable: true
+                    expanded: view.wifiOpen
                     onToggled: Networking.wifiEnabled = !Networking.wifiEnabled
+                    onOpened: view.wifiOpen = !view.wifiOpen
                 }
                 Tile {
                     glyph: view.adapter && view.adapter.enabled ? "\u{f00af}" : "\u{f00b2}"
@@ -147,6 +162,14 @@ Item {
                     onToggled: if (view.mic && view.mic.audio) view.mic.audio.muted = !view.mic.audio.muted
                 }
                 Tile {
+                    glyph: "\u{f1b35}"                                  // motion-pause-outline
+                    title: "Reduce Motion"
+                    subtitle: Theme.reduceMotion ? (Theme.envReduce || Theme.hyprStill ? "On (system)" : "On") : "Off"
+                    on: Theme.reduceMotion
+                    tone: "#64d2ff"
+                    onToggled: Theme.setReduceMotion(!Theme.reduceMotion)
+                }
+                Tile {
                     visible: view.profilesAvailable
                     glyph: PowerProfiles.profile === PowerProfile.Performance ? "\u{f04c5}"
                          : PowerProfiles.profile === PowerProfile.PowerSaver ? "\u{f032a}" : "\u{f0a7a}"
@@ -159,6 +182,23 @@ Item {
                         const i = view.profiles.findIndex(p => p.id === PowerProfiles.profile);
                         PowerProfiles.profile = view.profiles[(i + 1) % 3].id;
                     }
+                }
+            }
+
+            // ── Wi‑Fi networks (from the tile's chevron) ─────────────────
+            Item {
+                width: parent.width
+                height: view.wifiOpen ? wifiList.implicitHeight : 0
+                visible: height > 0.5
+                clip: true
+                Behavior on height { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.reflowMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+                WifiList {
+                    id: wifiList
+                    center: view.center
+                    device: view.wifiDevice
+                    open: view.wifiOpen && view.shown
+                    opacity: view.wifiOpen ? 1 : 0
+                    Behavior on opacity { NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                 }
             }
 
@@ -368,7 +408,11 @@ Item {
         property string subtitle
         property bool on: false
         property color tone: Theme.blue
+        // Expandable tiles (Wi‑Fi): the disc toggles, the rest opens more.
+        property bool expandable: false
+        property bool expanded: false
         signal toggled()
+        signal opened()
 
         width: (view.width - 8) / 2
         height: 56
@@ -396,17 +440,32 @@ Item {
             }
         }
         Column {
-            anchors { left: disc.right; leftMargin: 10; right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
+            anchors { left: disc.right; leftMargin: 10; right: chevron.left; rightMargin: 6; verticalCenter: parent.verticalCenter }
             spacing: 1
             Label { width: parent.width; elide: Text.ElideRight; text: tile.title; size: 13; weight: Theme.wSemibold }
             Label { width: parent.width; elide: Text.ElideRight; text: tile.subtitle; size: 11; color: Theme.textTertiary }
+        }
+        Text {
+            id: chevron
+            anchors { right: parent.right; rightMargin: tile.expandable ? 10 : 0; verticalCenter: parent.verticalCenter }
+            width: tile.expandable ? implicitWidth : 0
+            visible: tile.expandable
+            text: "\u{f0142}"                                     // chevron-right
+            font.family: Theme.fontGlyph
+            font.pixelSize: 16
+            color: Theme.textTertiary
+            rotation: tile.expanded ? 90 : 0
+            Behavior on rotation { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
         }
         MouseArea {
             id: area
             anchors.fill: parent
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
-            onClicked: tile.toggled()
+            onClicked: mouse => {
+                if (tile.expandable && mouse.x > disc.x + disc.width + 4) tile.opened();
+                else tile.toggled();
+            }
         }
     }
 }

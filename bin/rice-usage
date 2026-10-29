@@ -10,7 +10,16 @@
 //   kittymux   ~/.local/state/kittymux/agent-usage.json: one account per
 //              provider; used when T3 Code isn't running or has no token
 //
-// Prints one JSON object:
+//   rice-usage           prints one snapshot and exits
+//   rice-usage --watch   stays connected and prints a line on every change:
+//                        T3 Code pushes provider and usage updates itself
+//                        (subscribeServerConfig), so nothing polls; without
+//                        T3 Code it rereads kittymux's file once a minute
+//
+// Read-only throughout: the token can only read (orchestration:read), and
+// nothing here writes to T3 Code or kittymux.
+//
+// Each line is one JSON object:
 //   { source, checkedAt, providers: [{ driver, label, color,
 //       accounts: [{ key, name, email, plan, note, windows: [{ id, kind, label,
 //         used, resetsAt, durationMins }] }] }] }
@@ -80,13 +89,22 @@ function windowOf(w) {
   };
 }
 
-async function fromT3() {
+function t3Endpoint() {
   const token = process.env.RICE_T3_TOKEN || readText(`${STATE}/rice/t3-token`);
   const runtime = readJson(`${T3_HOME}/userdata/server-runtime.json`);
   if (!token || !runtime?.port) return null;
-  const host = runtime.host || "127.0.0.1";
-  const config = await rpc(`ws://${host}:${runtime.port}/ws?orchestrationProtocol=2`, token, "server.getConfig", {});
+  return { url: `ws://${runtime.host || "127.0.0.1"}:${runtime.port}/ws?orchestrationProtocol=2`, token };
+}
 
+async function fromT3() {
+  const ep = t3Endpoint();
+  if (!ep) return null;
+  const config = await rpc(ep.url, ep.token, "server.getConfig", {});
+  return shapeT3(config.providers, config.usageLimitSources);
+}
+
+// T3 Code's server config → accounts, the way its usage view collects them.
+function shapeT3(providers, sources) {
   // One entry per real account: the same login reached through two
   // instances (or a hub) shows once, the freshest read winning.
   const accounts = new Map();
@@ -94,7 +112,7 @@ async function fromT3() {
     const prev = accounts.get(key);
     if (!prev || (account.checkedAt || 0) > (prev.checkedAt || 0)) accounts.set(key, account);
   };
-  for (const p of config.providers || []) {
+  for (const p of providers || []) {
     const limits = p.usageLimits;
     if (!p.enabled || !p.installed || !limits) continue;
     const email = p.auth?.email;
@@ -112,7 +130,7 @@ async function fromT3() {
       windows: (limits.windows || []).map(windowOf),
     });
   }
-  for (const source of config.usageLimitSources || []) {
+  for (const source of sources || []) {
     for (const a of source.accounts || []) {
       const key = `${a.driver}:${a.email ? a.email.toLowerCase() : a.id}${a.workspaceId ? ":" + a.workspaceId : ""}`;
       add(key, {
@@ -131,6 +149,42 @@ async function fromT3() {
     }
   }
   return group([...accounts.values()], "t3");
+}
+
+// Live: subscribeServerConfig streams a snapshot, then provider and usage
+// source updates. Effect RPC over the socket: each chunk is acknowledged.
+function watchT3(ep, onState) {
+  return new Promise((resolve) => {
+    let providers = null, sources = [];
+    const ws = new WebSocket(ep.url, { headers: { Authorization: `Bearer ${ep.token}` } });
+    const ping = setInterval(() => { try { ws.send(JSON.stringify({ _tag: "Ping" })); } catch {} }, 20000);
+    const end = (why) => { clearInterval(ping); try { ws.close(); } catch {} resolve(why); };
+    ws.onerror = () => end("connect failed");
+    ws.onclose = () => end("closed");
+    ws.onopen = () => ws.send(JSON.stringify({
+      _tag: "Request", id: "1", tag: "subscribeServerConfig",
+      payload: { usageLimitSources: true, workspaceSnapshotsOnDemand: true }, headers: [],
+    }));
+    ws.onmessage = async (event) => {
+      const text = typeof event.data === "string" ? event.data : await new Response(event.data).text();
+      let messages;
+      try { messages = JSON.parse(text); } catch { return; }
+      for (const m of Array.isArray(messages) ? messages : [messages]) {
+        if (m?._tag === "Ping") ws.send(JSON.stringify({ _tag: "Pong" }));
+        if (m?._tag === "Exit" || m?._tag === "Defect" || m?._tag === "ClientProtocolError")
+          return end(JSON.stringify(m).slice(0, 200));
+        if (m?._tag !== "Chunk" || String(m.requestId) !== "1") continue;
+        let changed = false;
+        for (const e of m.values || []) {
+          if (e.type === "snapshot") { providers = e.config?.providers || []; sources = e.config?.usageLimitSources || []; changed = true; }
+          else if (e.type === "providerStatuses" || e.type === "configUpdated") { providers = e.payload?.providers || providers; changed = true; }
+          else if (e.type === "usageLimitSourcesUpdated") { sources = e.payload?.sources || []; changed = true; }
+        }
+        ws.send(JSON.stringify({ _tag: "Ack", requestId: "1" }));
+        if (changed && providers) onState(shapeT3(providers, sources));
+      }
+    };
+  });
 }
 
 // ── kittymux ─────────────────────────────────────────────────────────────
@@ -198,9 +252,28 @@ function group(accounts, source) {
   };
 }
 
+const print = (o) => process.stdout.write(JSON.stringify(o) + "\n");
+const fallback = (t3Error) => ({ ...(fromKittymux() || group([], "none")), t3Error });
+
+if (process.argv.includes("--watch")) {
+  let last = "";
+  const emit = (o) => { const line = JSON.stringify({ ...o, checkedAt: 0 }); if (line !== last) { last = line; print(o); } };
+  for (let wait = 2000; ; ) {
+    const ep = t3Endpoint();
+    if (ep) {
+      let live = false;
+      const why = await watchT3(ep, (state) => { live = true; wait = 2000; emit(state); });
+      if (!live) emit(fallback(why));
+    } else emit(fallback(null));
+    // Reconnect (T3 Code restarts, sleeps) with backoff; kittymux meanwhile.
+    await new Promise((r) => setTimeout(r, wait));
+    wait = Math.min(60000, wait * 2);
+  }
+}
+
 let out = null;
 let t3Error = null;
 try { out = await fromT3(); } catch (e) { t3Error = e.message; }
-if (!out || !out.providers.length) out = { ...(fromKittymux() || group([], "none")), t3Error };
-process.stdout.write(JSON.stringify(out) + "\n");
+if (!out || !out.providers.length) out = fallback(t3Error);
+print(out);
 process.exit(0);

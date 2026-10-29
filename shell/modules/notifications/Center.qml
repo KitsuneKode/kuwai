@@ -22,6 +22,7 @@
 // on every open: the card starts a frame later.
 import QtQuick
 import QtQuick.Effects
+import QtQuick.Shapes
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
@@ -64,8 +65,12 @@ Scope {
     // ── Reveal clock: content fades in a step apart after the card ───────
     property real clock: 0
     NumberAnimation { id: clockRun; target: root; property: "clock"; from: 0; to: 600; duration: 600 }
+    // Steps are half the nominal delay and 90ms long: the whole card is in
+    // by ~190ms, so it reads instant, but still lands in order. Reduced
+    // motion: everything at once.
     function revealAt(ms) {
-        const t = Math.max(0, Math.min(1, (clock - ms) / 120));
+        if (Theme.reduceMotion) return 1;
+        const t = Math.max(0, Math.min(1, (clock - ms * 0.5) / 90));
         return 1 - Math.pow(1 - t, 3);      // ease-out
     }
 
@@ -89,11 +94,28 @@ Scope {
 
     // Card geometry, shared by every monitor's surface.
     readonly property int cardW: 420
-    readonly property int padX: 40                 // room for the shadow (none above: it hangs from the bar)
+    readonly property int padX: 52                 // room for the shadow (none above: it hangs from the bar)
     readonly property int padY: 6
+    readonly property int padBottom: 84
     function cardH(screen) { return Math.round(Math.min(780, Math.max(440, (screen ? screen.height : 1000) * 0.74))); }
 
     property var shownScreen: Quickshell.screens[0]
+
+    // Where the card is on its screen, now (the scrim's cut-out follows it).
+    // The card's surface sits under the bar's reserved strip, at the right.
+    readonly property real reservedTop: {
+        const m = shownScreen ? Hyprland.monitorFor(shownScreen) : null;
+        const r = m && m.lastIpcObject ? m.lastIpcObject.reserved : null;
+        return r ? r[1] : 40;
+    }
+    readonly property var cardRect: {
+        const sw = shownScreen ? shownScreen.width : 1920;
+        const ox = sw - (cardW + 12 + padX), oy = reservedTop + Theme.barGap;
+        const dh = cardH(shownScreen);
+        if (mode === "morph")
+            return { x: ox + lerp(from.x, padX, p), y: oy + lerp(from.y, padY, p), w: lerp(from.w, cardW, p), h: lerp(from.h, dh, p), r: lerp(from.r, 22, Math.min(1, p)) };
+        return { x: ox + padX, y: oy + padY, w: cardW, h: dh, r: 22 };
+    }
     onOpenChanged: {
         if (open) {
             const reopening = foldAnim.running;
@@ -209,10 +231,31 @@ Scope {
             WlrLayershell.namespace: "rice.scrim"
             WlrLayershell.layer: WlrLayer.Top
             WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
-            Rectangle {
+            // A spotlight from the bell: darkest far away, lighter toward the
+            // card, and nothing under the card itself (its glass shows the
+            // desktop as it is). The light spreads out as the card opens.
+            Shape {
+                id: spot
                 anchors.fill: parent
-                color: "black"
-                opacity: 0.22 * Math.max(0, Math.min(1, root.p))
+                readonly property real t: Math.max(0, Math.min(1, root.p))
+                readonly property var c: root.cardRect
+                opacity: t
+                preferredRendererType: Shape.CurveRenderer
+                ShapePath {
+                    fillRule: ShapePath.OddEvenFill
+                    strokeWidth: -1
+                    fillGradient: RadialGradient {
+                        centerX: spot.c.x + spot.c.w; centerY: spot.c.y
+                        focalX: centerX; focalY: centerY
+                        centerRadius: Math.hypot(spot.width, spot.height) * (Theme.reduceMotion ? 1 : 0.75 + 0.25 * spot.t)
+                        focalRadius: 0
+                        GradientStop { position: 0.0; color: Qt.rgba(0, 0, 0, 0.06) }
+                        GradientStop { position: 0.35; color: Qt.rgba(0, 0, 0, 0.22) }
+                        GradientStop { position: 1.0; color: Qt.rgba(0, 0, 0, 0.42) }
+                    }
+                    PathRectangle { x: 0; y: 0; width: spot.width; height: spot.height }
+                    PathRectangle { x: spot.c.x + 1; y: spot.c.y + 1; width: spot.c.w - 2; height: spot.c.h - 2; radius: spot.c.r }
+                }
             }
         }
     }
@@ -230,7 +273,7 @@ Scope {
             readonly property bool hosts: root.shownScreen === modelData
             readonly property bool up: hosts && (root.open || root.folding)
             readonly property int fullW: root.cardW + 12 + root.padX
-            readonly property int fullH: root.cardH(modelData) + root.padY + 56
+            readonly property int fullH: root.cardH(modelData) + root.padY + root.padBottom
 
             anchors.top: true
             anchors.right: true
@@ -279,13 +322,32 @@ Scope {
                 scale: morphing || Theme.reduceMotion ? 1 : 0.96 + 0.04 * root.p
                 opacity: morphing ? Math.min(1, root.p * 5) : Math.min(1, root.p * 1.6)
 
+                // Elevation from layered shadows, not one big smudge: a tight
+                // contact shadow that grounds the edge, a mid one for form,
+                // and a wide soft ambient one that lifts the card off the page.
                 RectangularShadow {
                     anchors.fill: glass
                     radius: glass.radius
-                    offset.y: 18
-                    blur: 48
+                    offset.y: 30
+                    blur: 72
+                    spread: -14
+                    color: Qt.rgba(0, 0, 0, 0.42 * Math.min(1, root.p))
+                }
+                RectangularShadow {
+                    anchors.fill: glass
+                    radius: glass.radius
+                    offset.y: 10
+                    blur: 24
                     spread: -6
-                    color: Qt.rgba(0, 0, 0, 0.5 * Math.min(1, root.p))
+                    color: Qt.rgba(0, 0, 0, 0.30 * Math.min(1, root.p))
+                }
+                RectangularShadow {
+                    anchors.fill: glass
+                    radius: glass.radius
+                    offset.y: 1
+                    blur: 3
+                    spread: 0
+                    color: Qt.rgba(0, 0, 0, 0.35 * Math.min(1, root.p))
                 }
                 GlassCard {
                     id: glass

@@ -11,7 +11,7 @@ dark liquid glass over Hyprland's blur, SF Pro text, smooth no-bounce motion
 |---|---|---|
 | Glass HUD: brightness, volume, mic | HyDE volume popups, dunst brightness OSD | `shell/modules/osd/` |
 | Notification server + Sonner-style toast stack | dunst | `shell/services/Notifs.qml`, `shell/modules/notifications/Popups.qml` |
-| The center (Super+N): Notifications · Agents (kittymux) · Sound (mixer: per-app faders, live meters, devices) · Display (brightness per monitor, Night Shift) | dunst history, pavucontrol, brightness/hyprsunset scripts | `shell/modules/notifications/Center.qml` + `*View.qml` |
+| The center (Super+N): Notifications · Agents (kittymux, usage limits per account as in T3 Code) · Sound (coloured mixer, per-app output, device lists) · Controls (Wi‑Fi picker, Bluetooth, DND, Night Shift, Caffeine, Mic, Reduce Motion, battery, brightness) | dunst history, pavucontrol, nm-applet, brightness/hyprsunset scripts | `shell/modules/notifications/Center.qml` + `CenterContent.qml` + `*View.qml` |
 
 Next up: dynamic island, control center, bar.
 
@@ -58,7 +58,7 @@ shell/
   components/               shared visuals (GlassCard, …)
   services/                 data + state singletons (Notifs, NotifAdapters, …)
   modules/                  surfaces (osd/, notifications/, …)
-bin/                        rice (control CLI), rice-shell (launcher)
+bin/                        rice (control CLI), rice-shell (launcher), rice-usage (usage limits, read-only)
 hypr/rice.conf              autostart + layer rules, sourced from userprefs.conf
 waybar/                     Waybar module overrides (symlinked into ~/.config/waybar/modules)
 docs/                       DESIGN.md (the look), BORROWING.md (what to take from where)
@@ -76,6 +76,34 @@ refs/                       shallow clones of other shells to read (gitignored)
 - dunst stays installed as the fallback. Its drop-ins in
   `~/.config/dunst/dunstrc.d/` (T3 Code, Ghostty) keep it presentable.
 - Brightness events come from `~/Scripts/brightness.sh watch --part osd`.
+
+## Usage limits (Agents tab)
+
+`bin/rice-usage` reads T3 Code's own usage data: every provider and every
+signed-in account (two Claude logins show as two segments), pushed live over
+T3 Code's config subscription while the Agents tab is open. It only reads.
+Give it a read-only token once:
+
+```sh
+umask 077; mkdir -p ~/.local/state/rice
+t3 auth session issue --scope orchestration:read --label rice-usage --ttl 365d --token-only > ~/.local/state/rice/t3-token
+```
+
+Without a token, or with T3 Code closed, it falls back to kittymux's
+`agent-usage.json` (one account per provider).
+
+## Motion
+
+Reduce Motion (Controls tab) turns travel, scale and stagger into plain
+fades; it's remembered in `~/.local/state/rice/prefs.json`, and it's also on
+when `RICE_REDUCE_MOTION=1` or Hyprland's animations are off. `hypr/rice.conf`
+sets quicker Hyprland window and workspace animations (~250–360ms).
+
+## Screenshots of the center
+
+Screenshot pickers work over it: when slurp, hyprpicker, grimblast and the
+like take the pointer, the center stays open and takes the keyboard back
+after they exit.
 
 ## Notifications: adding an app
 

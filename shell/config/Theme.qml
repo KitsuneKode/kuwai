@@ -11,6 +11,7 @@ import Quickshell
 import Quickshell.Io
 
 Singleton {
+    id: root
     // ── Material ─────────────────────────────────────────────────────────
     readonly property color glassTint: Qt.rgba(0.10, 0.10, 0.12, 0.46)
     // Text-heavy cards (toasts) sit over anything, so a thicker material:
@@ -106,17 +107,33 @@ Singleton {
     readonly property int hudOutMs: 150
     readonly property int revealStepMs: 40      // stagger between groups of content (30–80ms)
 
-    // Reduced motion: Hyprland has no system-wide signal, so it's on when
-    // RICE_REDUCE_MOTION=1 or Hyprland's own animations are off. Reduced
-    // means fewer and gentler: fades and colour stay, travel and scale go.
-    property bool reduceMotion: Quickshell.env("RICE_REDUCE_MOTION") === "1"
+    // Reduced motion: fewer and gentler: fades and colour stay, travel,
+    // scale and stagger go. On when you switch it on (Controls → Reduce
+    // Motion, remembered in ~/.local/state/rice/prefs.json), when
+    // RICE_REDUCE_MOTION=1, or when Hyprland's own animations are off.
+    readonly property bool reduceMotion: prefs.reduceMotion || envReduce || hyprStill
+    readonly property bool envReduce: Quickshell.env("RICE_REDUCE_MOTION") === "1"
+    property bool hyprStill: false
+    function setReduceMotion(on) { prefs.reduceMotion = on; }
     Process {
         running: true
         command: ["hyprctl", "getoption", "animations:enabled", "-j"]
         stdout: StdioCollector {
             onStreamFinished: {
-                try { if (JSON.parse(text).int === 0) reduceMotion = true; } catch (e) {}
+                try { if (JSON.parse(text).int === 0) root.hyprStill = true; } catch (e) {}
             }
+        }
+    }
+    FileView {
+        path: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/rice/prefs.json"
+        watchChanges: true
+        printErrors: false
+        onFileChanged: reload()
+        onAdapterUpdated: writeAdapter()
+        onLoadFailed: error => { if (error === FileViewError.FileNotFound) writeAdapter(); }
+        JsonAdapter {
+            id: prefs
+            property bool reduceMotion: false
         }
     }
 

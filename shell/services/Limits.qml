@@ -1,15 +1,17 @@
+pragma Singleton
+
 // Usage limits, the way T3 Code shows them: providers, each with every
-// signed-in account, each with its windows (bin/rice-usage reads T3 Code's
-// server, or kittymux when T3 Code isn't there).
+// signed-in account, each with its windows. Read-only, from T3 Code itself
+// (bin/rice-usage --watch holds its config subscription: T3 Code pushes
+// changes, nothing polls), or from kittymux when T3 Code isn't there.
 //
 //   providers: [{ driver, label, color, accounts: [{ key, name, email, plan,
 //                note, credits, windows: [{ id, kind, label, used, resetsAt,
 //                durationMins }] }] }]
 //
-// Read while the Agents tab is on screen (every minute) and whenever
-// kittymux rewrites its usage file; nothing runs while it's closed.
-pragma Singleton
-
+// Connected only while the Agents tab is on screen; the last state stays.
+// (The pragma sits above this comment: Quickshell's scanner stops at the
+// first brace, comments included.)
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -24,16 +26,14 @@ Singleton {
 
     readonly property string bin: Quickshell.env("HOME") + "/Projects/rice/bin/rice-usage"
 
-    function refresh() { if (!reader.running) reader.running = true; }
-    onWatchingChanged: if (watching) refresh()
+    property string error: ""                   // why T3 Code isn't the source, if it isn't
 
-    Timer {
-        interval: 60000
-        repeat: true
-        running: root.watching
-        onTriggered: root.refresh()
+    IpcHandler {
+        target: "limits"
+        function state(): string { return JSON.stringify({ watching: root.watching, source: root.source, error: root.error, providers: root.providers.map(p => p.label + ":" + p.accounts.length) }); }
     }
-    // Countdowns move on their own between reads.
+
+    // Countdowns move on their own between updates.
     Timer {
         interval: 30000
         repeat: true
@@ -41,22 +41,17 @@ Singleton {
         onTriggered: root.now = Date.now()
     }
 
-    FileView {
-        path: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/kittymux/agent-usage.json"
-        watchChanges: true
-        printErrors: false
-        onFileChanged: if (root.watching) root.refresh()
-    }
-
     Process {
         id: reader
-        command: [root.bin]
-        stdout: StdioCollector {
-            onStreamFinished: {
+        running: root.watching
+        command: [root.bin, "--watch"]
+        stdout: SplitParser {
+            onRead: line => {
                 let d;
-                try { d = JSON.parse(text); } catch (e) { return; }
+                try { d = JSON.parse(line); } catch (e) { return; }
                 root.now = Date.now();
                 root.source = d.source || "";
+                root.error = d.t3Error || "";
                 root.providers = d.providers || [];
             }
         }
