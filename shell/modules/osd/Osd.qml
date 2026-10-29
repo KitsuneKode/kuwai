@@ -12,6 +12,11 @@
 // card drops out from under the bar and leaves back up the same path; the
 // level fill chases its target so held keys glide instead of stepping; a
 // brightness key pressed at 0/100 stretches the track like a rubber band.
+//
+// It is also a control: while the pointer rests on it, it stays. Scroll or
+// drag the track to set the level, click the glyph to mute (or the mic, or
+// Do Not Disturb), click anywhere else to open the full page in the center
+// (Sound: outputs, inputs, the microphone; Controls for brightness).
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -36,6 +41,8 @@ Scope {
     property string valueText: ""
     property bool muted: false
     property bool showTrack: true
+    property string kind: ""              // volume | mic | brightness | dnd
+    property string output: ""            // the brightness event's output
 
     // ── Brightness: event stream from the controller ─────────────────────
     Process {
@@ -63,6 +70,8 @@ Scope {
     function showBrightness(ev) {
         if (quietFor("controls")) return;
         const v = ev.value;
+        kind = "brightness";
+        output = ev.output || "";
         glyph = brightnessGlyph(v);
         title = ev.label;
         accessoryGlyph = ""; accessory = "";
@@ -168,6 +177,7 @@ Scope {
         const type = deviceType(rawLabel, props, bt, dev ? (dev.icon || "") : "");
         const v = Math.round(sink.audio.volume * 100);
 
+        kind = "volume";
         title = sinkLabel(type, props, dev);
         muted = sink.audio.muted;
         glyph = muted ? "\u{f075f}" : typeGlyph[type];
@@ -187,12 +197,18 @@ Scope {
 
     function showMic() {
         if (quietFor("sound")) return;
-        title = micMuted ? "Microphone Off" : "Microphone On";
+        kind = "mic";
+        title = micMuted ? "Microphone Off" : (source ? (source.description || "Microphone") : "Microphone");
         glyph = micMuted ? "\u{f036d}" : "\u{f036c}";
         muted = micMuted;
         accessoryGlyph = ""; accessory = "";
-        showTrack = false;
-        subtitle = source ? (source.description || "Input") : "Input";
+        // On: its input level, adjustable like volume. Off: say so.
+        showTrack = !micMuted && !!source && !!source.audio;
+        subtitle = micMuted ? "Click the microphone to turn it on" : "";
+        if (showTrack) {
+            level = Math.min(1, source.audio.volume);
+            valueText = String(Math.round(source.audio.volume * 100));
+        }
         hud.present(focusedScreenName());
     }
 
@@ -205,6 +221,7 @@ Scope {
         }
     }
     function showDnd() {
+        kind = "dnd";
         title = Notifs.dnd ? "Do Not Disturb" : "Notifications On";
         glyph = Notifs.dnd ? "\u{f0594}" : "\u{f009a}";
         muted = false;
@@ -216,6 +233,40 @@ Scope {
 
     function focusedScreenName() {
         return Screens.focusedName;
+    }
+
+    // ── Using it ─────────────────────────────────────────────────────────
+    // Set the level the card shows (0–1) on whatever it is showing.
+    function setLevel(f) {
+        f = Math.max(0, Math.min(1, f));
+        if (kind === "volume" && sink && sink.audio) {
+            sink.audio.volume = f;
+            if (sink.audio.muted && f > 0) sink.audio.muted = false;
+        } else if (kind === "mic" && source && source.audio) {
+            source.audio.volume = f;
+            level = f;
+            valueText = String(Math.round(f * 100));
+        } else if (kind === "brightness" && output) {
+            const v = Math.max(1, Math.round(f * 100));
+            Display.setBrightness(output, v);
+            level = v / 100;
+            valueText = String(v);
+            glyph = brightnessGlyph(v);
+        }
+    }
+    // A scroll notch: 2% of volume or gain, 5% of brightness.
+    function nudge(steps) {
+        if (!showTrack) return;
+        setLevel(level + steps * (kind === "brightness" ? 0.05 : 0.02));
+    }
+    function toggleMute() {
+        if (kind === "volume" && sink && sink.audio) sink.audio.muted = !sink.audio.muted;
+        else if (kind === "mic" && source && source.audio) source.audio.muted = !source.audio.muted;
+        else if (kind === "dnd") Notifs.dnd = !Notifs.dnd;
+    }
+    function openPage() {
+        hud.dismiss();
+        Notifs.toggleCenter(kind === "brightness" ? "controls" : kind === "dnd" ? "notifications" : "sound", "pointer");
     }
 
     // ── The HUD surface ──────────────────────────────────────────────────
@@ -238,13 +289,9 @@ Scope {
         WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
-        // Click-through: the HUD is feedback, never in the way.
-        mask: Region {
-            intersection: Intersection.Subtract
-            x: 0; y: 0
-            width: hud.width
-            height: hud.height
-        }
+        // Only the card takes the pointer, and only once it's there: the
+        // margins stay click-through, and a leaving card is never in the way.
+        mask: Region { item: card.reveal > 0.6 ? card : null }
 
         function present(screenName) {
             const s = Quickshell.screens.find(x => x.name === screenName) || shownScreen;
@@ -258,8 +305,10 @@ Scope {
             mapped = true;
             leave.stop();
             if (card.reveal < 1 && !enter.running) enter.start();
-            linger.restart();
+            if (!cardHover.hovered) linger.restart();
         }
+
+        function dismiss() { linger.stop(); leave.start(); }
 
         function stretch(direction) {
             trackScale.origin.x = direction > 0 ? 0 : track.width;
@@ -284,8 +333,37 @@ Scope {
             x: (hud.width - width) / 2
             y: 10 - (1 - reveal) * (Theme.reduceMotion ? 0 : 6)
             opacity: Math.min(1, reveal * 1.4)
-            scale: Theme.reduceMotion ? 1 : 0.97 + 0.03 * reveal
+            scale: (Theme.reduceMotion ? 1 : 0.97 + 0.03 * reveal) * (cardArea.pressed && !cardArea.dragging ? 0.98 : 1)
             transformOrigin: Item.Top
+            Behavior on scale { enabled: !enter.running && !leave.running; NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+
+            // Resting on it keeps it; leaving lets it go a moment later.
+            HoverHandler {
+                id: cardHover
+                onHoveredChanged: {
+                    if (hovered) { linger.stop(); if (leave.running) { leave.stop(); enter.start(); } }
+                    else linger.restart();
+                }
+            }
+
+            // Scroll anywhere on the card; click it for the full page; drag
+            // the track (below) to set the level.
+            MouseArea {
+                id: cardArea
+                property bool dragging: false
+                property real wheelAcc: 0
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.openPage()
+                onWheel: wheel => {
+                    const d = wheel.angleDelta.y !== 0 ? wheel.angleDelta.y : -wheel.angleDelta.x;
+                    wheelAcc += d;
+                    while (Math.abs(wheelAcc) >= 120) {
+                        root.nudge(wheelAcc > 0 ? 1 : -1);
+                        wheelAcc -= wheelAcc > 0 ? 120 : -120;
+                    }
+                }
+            }
 
             // Glyph platter
             Rectangle {
@@ -294,8 +372,18 @@ Scope {
                 anchors.left: parent.left
                 anchors.leftMargin: 15
                 anchors.verticalCenter: parent.verticalCenter
-                color: root.muted ? Theme.platterDim : Theme.platter
+                color: root.kind !== "brightness" && platterArea.containsMouse ? Theme.pillHover : root.muted ? Theme.platterDim : Theme.platter
+                scale: platterArea.pressed ? 0.94 : 1
                 Behavior on color { ColorAnimation { duration: Theme.colorMs } }
+                Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+                MouseArea {
+                    id: platterArea
+                    anchors.fill: parent
+                    enabled: root.kind !== "brightness"
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.toggleMute()
+                }
 
                 Text {
                     anchors.centerIn: parent
@@ -334,9 +422,23 @@ Scope {
                         color: Theme.textPrimary
                     }
 
+                    // On hover: a chevron says the card opens into its page.
+                    Text {
+                        id: chevron
+                        anchors.right: parent.right
+                        anchors.verticalCenter: titleText.verticalCenter
+                        text: "\u{f0142}"
+                        font.family: Theme.fontGlyph
+                        font.pixelSize: 14
+                        color: Theme.textSecondary
+                        opacity: cardHover.hovered ? 1 : 0
+                        Behavior on opacity { NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+                    }
+
                     Row {
                         id: accessoryRow
-                        anchors.right: parent.right
+                        anchors.right: chevron.opacity > 0 ? chevron.left : parent.right
+                        anchors.rightMargin: chevron.opacity > 0 ? 4 : 0
                         anchors.verticalCenter: titleText.verticalCenter
                         spacing: 4
                         Text {
@@ -393,12 +495,26 @@ Scope {
                             radius: 3
                             color: Theme.track
                         }
+                        // Drag (or click) along the track to set the level; the
+                        // hit area is taller than the 6px line.
+                        MouseArea {
+                            anchors.fill: parent
+                            anchors.topMargin: -10
+                            anchors.bottomMargin: -10
+                            cursorShape: Qt.PointingHandCursor
+                            preventStealing: true
+                            onPressed: mouse => { cardArea.dragging = true; root.setLevel(mouse.x / width); }
+                            onPositionChanged: mouse => { if (pressed) root.setLevel(mouse.x / width); }
+                            onReleased: cardArea.dragging = false
+                            onCanceled: cardArea.dragging = false
+                        }
                         Rectangle {
                             id: fill
                             property real shown: root.level
                             // The fill chases its target from wherever it is,
                             // so held keys glide instead of stepping.
-                            Behavior on shown { NumberAnimation { duration: Theme.glideMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+                            // A dragging pointer is followed 1:1.
+                            Behavior on shown { enabled: !cardArea.dragging; NumberAnimation { duration: Theme.glideMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                             width: Math.max(height, parent.width * Math.max(0, Math.min(1, shown)))
                             visible: shown > 0.004
                             height: parent.height
