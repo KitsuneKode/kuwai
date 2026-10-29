@@ -23,8 +23,43 @@ dir="${XDG_PICTURES_DIR:-$HOME/Pictures}/Screenshots"
 mkdir -p "$dir"
 out="$dir/Screenshot_$(date +%Y%m%d_%H%M%S).png"
 
+# Our own region pick (grimblast's, through slurp, let a click that moved a
+# pixel or two turn into a tiny drag: "only a small part comes"). Visible
+# windows are offered as boxes; a click selects one; a drag selects a region;
+# a "drag" smaller than 16 px is taken as the click it was meant to be.
+pick() {
+    local ws boxes geo x y w h
+    ws=$(hyprctl -j monitors | jq -c '[.[] | .activeWorkspace.id, .specialWorkspace.id] | map(select(. != 0))')
+    boxes=$(hyprctl -j clients | jq -r --argjson ws "$ws" \
+        '.[] | select(.hidden | not) | select(.workspace.id as $w | $ws | index($w)) | "\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])"')
+    geo=$(printf '%s\n' "$boxes" | slurp -d 2>/dev/null) || return 1
+    read -r x y w h <<<"$(printf '%s' "$geo" | sed -E 's/^(-?[0-9]+),(-?[0-9]+) ([0-9]+)x([0-9]+)$/\1 \2 \3 \4/')"
+    if [ "${w:-0}" -lt 16 ] && [ "${h:-0}" -lt 16 ]; then
+        local hit
+        hit=$(printf '%s\n' "$boxes" | awk -v px="$x" -v py="$y" '{ split($1, a, ","); split($2, b, "x");
+            if (px >= a[1] && px < a[1] + b[1] && py >= a[2] && py < a[2] + b[2]) { print; exit } }')
+        [ -n "$hit" ] && geo="$hit" || return 1
+    fi
+    printf '%s\n' "$geo"
+}
+
+# area/quick/freeze: pick, then grim the region; the rest go through grimblast.
+if [ "$mode" = area ] || [ "$mode" = quick ] || [ "$mode" = freeze ]; then
+    frz=""
+    if [ "$mode" = freeze ]; then hyprpicker -r -z >/dev/null 2>&1 & frz=$!; sleep 0.15; fi
+    geo=$(pick); ok=$?
+    [ -n "$frz" ] && kill "$frz" 2>/dev/null
+    [ $ok -eq 0 ] && [ -n "$geo" ] || exit 0                      # cancelled
+    if ! grim -g "$geo" "$out" 2>/dev/null || [ ! -s "$out" ]; then
+        rm -f -- "$out"; notify-send -a "Screenshot" "Screenshot failed" "grim couldn't capture $geo"; exit 0
+    fi
+    wl-copy --type image/png < "$out"
+    case "$mode" in quick) exit 0 ;; esac
+    args=()
+fi
+
 case "$mode" in
-    area|quick) args=(copysave area) ;;
+    area|quick|freeze) ;;
     window)  args=(copysave active) ;;
     delay)   args=(--wait 3 copysave output) ;;
     ocr)
@@ -38,7 +73,6 @@ case "$mode" in
             fi
         fi
         rm -f -- "$tmp"; exit 0 ;;
-    freeze)  args=(--freeze copysave area) ;;
     monitor) args=(copysave output) ;;
     all)     args=(copysave screen) ;;
     *) sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
@@ -51,8 +85,11 @@ esac
 # background to serve the clipboard, and it would hold a pipe open, so
 # waiting for grimblast's output would wait until the next copy.
 errf=$(mktemp)
-grimblast "${args[@]}" "$out" >/dev/null 2>"$errf" </dev/null
-rc=$?
+rc=0
+if [ ${#args[@]} -gt 0 ]; then
+    grimblast "${args[@]}" "$out" >/dev/null 2>"$errf" </dev/null
+    rc=$?
+fi
 err=$(cat "$errf"); rm -f -- "$errf"
 if [ $rc -ne 0 ] || [ ! -s "$out" ]; then
     rm -f -- "$out"
