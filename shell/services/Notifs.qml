@@ -180,6 +180,7 @@ Singleton {
     }
 
     function setCenter(open, via) {
+        console.info("center: " + (open ? "open" : "close") + " via " + via + (open === centerOpen ? " (no change)" : ""));
         if (open === centerOpen) return;
         centerVia = via === "pointer" ? "pointer" : "key";
         // A click on the bell while open first closes it (focus grab), then

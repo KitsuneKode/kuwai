@@ -405,6 +405,7 @@ Item {
                     dim: strip.muted
                     fillColor: Qt.alpha(strip.tint, strip.tint === Qt.color("white") ? 0.30 : 0.62)
                     onMoved: v => { if (strip.audio) strip.audio.volume = v; }
+                    onRightClicked: if (strip.audio) strip.audio.muted = !strip.audio.muted
                 }
             }
 
@@ -412,13 +413,12 @@ Item {
             Column {
                 anchors.horizontalCenter: parent.horizontalCenter
                 spacing: 0
-                Label {
+                RollingNumber {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: strip.audio ? Math.round(strip.vol * 100) + "%" : "—"
+                    value: strip.vol * 100
+                    suffix: "%"
                     size: 13
-                    rounded: true
                     weight: Theme.wSemibold
-                    font.features: ({ "tnum": 1 })
                     color: strip.muted ? Theme.textTertiary : Theme.textPrimary
                 }
                 Label {

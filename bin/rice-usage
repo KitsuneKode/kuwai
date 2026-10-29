@@ -103,6 +103,14 @@ async function fromT3() {
   return shapeT3(config.providers, config.usageLimitSources);
 }
 
+// "ChatGPT Plus Subscription" → "Plus", "Claude Pro Subscription" → "Pro";
+// generic labels ("Google account") say nothing about the plan.
+function planOf(auth) {
+  const label = auth?.label || "";
+  if (!/subscription/i.test(label)) return null;
+  return label.replace(/\b(subscription|chatgpt|claude|openai|anthropic)\b/gi, "").trim() || null;
+}
+
 // T3 Code's server config → accounts, the way its usage view collects them.
 function shapeT3(providers, sources) {
   // One entry per real account: the same login reached through two
@@ -122,7 +130,7 @@ function shapeT3(providers, sources) {
       driver: providerOf(p.driver),
       name: p.displayName || null,
       email: email || null,
-      plan: p.auth?.plan || p.auth?.planType || null,
+      plan: planOf(p.auth),
       accent: p.accentColor || null,
       note: limits.unavailable?.message || null,
       credits: limits.resetCredits?.availableCount || 0,
@@ -148,7 +156,8 @@ function shapeT3(providers, sources) {
       });
     }
   }
-  return group([...accounts.values()], "t3");
+  // Signed in but no limit windows (OpenCode, some Cursor plans): nothing to draw.
+  return group([...accounts.values()].filter((a) => a.windows.length), "t3");
 }
 
 // Live: subscribeServerConfig streams a snapshot, then provider and usage
@@ -252,6 +261,8 @@ function group(accounts, source) {
   };
 }
 
+// The reader (the shell) going away ends us quietly.
+process.stdout.on("error", () => process.exit(0));
 const print = (o) => process.stdout.write(JSON.stringify(o) + "\n");
 const fallback = (t3Error) => ({ ...(fromKittymux() || group([], "none")), t3Error });
 

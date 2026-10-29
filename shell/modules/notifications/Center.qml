@@ -151,9 +151,11 @@ Scope {
         }
     }
 
+    Component.onCompleted: console.info("center: ready")
     property bool pendingBegin: false
     function begin() {
         if (!pendingBegin || !open) return;
+        console.info("center: begin on " + (shownScreen ? shownScreen.name : "?"));
         pendingBegin = false;
         morph.target = 1;
         clockRun.restart();
@@ -172,12 +174,14 @@ Scope {
     property bool capturing: false
     readonly property var captureTools: ["pgrep", "-x", "slurp|hyprpicker|grim|grimblast|hyprshot|wayfreeze|satty|swappy|wf-recorder|wl-screenrec|gpu-screen-reco"]
     function grabCleared() {
+        console.info("center: focus grab cleared (open=" + open + ")");
         if (open) captureProbe.running = true;
     }
     Process {
         id: captureProbe
         command: root.captureTools
         onExited: code => {
+            console.info("center: screenshot tool running: " + (code === 0));
             if (code === 0) root.capturing = true;
             else Notifs.setCenter(false, "pointer");
         }

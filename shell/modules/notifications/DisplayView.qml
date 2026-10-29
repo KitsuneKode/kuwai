@@ -240,12 +240,11 @@ Item {
                 Column {
                     anchors { left: cell.right; leftMargin: 14; verticalCenter: parent.verticalCenter }
                     spacing: 1
-                    Label {
-                        text: parent.parent.level + "%"
+                    RollingNumber {
+                        value: parent.parent.level
+                        suffix: "%"
                         size: 14
-                        rounded: true
                         weight: Theme.wSemibold
-                        font.features: ({ "tnum": 1 })
                     }
                     Label {
                         text: {

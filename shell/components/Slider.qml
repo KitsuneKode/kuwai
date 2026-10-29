@@ -28,6 +28,9 @@ Item {
     property color fillColor: Qt.rgba(1, 1, 1, 0.16)
     property bool dim: false                  // muted: the fill goes quiet
     signal moved(real value)
+    // Right-click: a secondary action on the whole track (audio: mute), as
+    // in Omarchy's PanelSlider. Dragging stays on the left button.
+    signal rightClicked()
 
     readonly property bool active: area.pressed
     readonly property bool hot: area.containsMouse || area.pressed
@@ -127,21 +130,26 @@ Item {
         hoverEnabled: true
         preventStealing: true
         cursorShape: Qt.PointingHandCursor
+        acceptedButtons: Qt.LeftButton | Qt.RightButton
         property bool dragged: false
 
         function fractionAt(mx, my) {
             const p = s.vertical ? (s.height + 8 - my) : (mx - 8);
             return Math.max(0, Math.min(1, (p - s.zeroOffset) / Math.max(1, s.length - s.zeroOffset)));
         }
-        onPressed: mouse => { dragged = false; }
+        onPressed: mouse => {
+            dragged = false;
+            if (mouse.button === Qt.RightButton) s.rightClicked();
+        }
         onPositionChanged: mouse => {
-            if (!pressed) return;
+            if (!pressed || (pressedButtons & Qt.RightButton)) return;
             dragged = true;
             const f = fractionAt(mouse.x, mouse.y);
             shown.snap(f);                       // glued to the pointer
             s.moved(s.denorm(f));
         }
         onReleased: mouse => {
+            if (mouse.button === Qt.RightButton) return;
             if (dragged) { shown.target = s.norm(s.value); return; }
             // A click: spring there.
             const f = fractionAt(mouse.x, mouse.y);

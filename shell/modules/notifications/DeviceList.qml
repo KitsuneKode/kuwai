@@ -118,6 +118,7 @@ Column {
                         dim: muteBtn.muted
                         fillColor: dev.on ? Qt.alpha(Theme.blue, 0.55) : Qt.rgba(1, 1, 1, 0.18)
                         onMoved: v => { if (dev.audio) dev.audio.volume = v; }
+                        onRightClicked: if (dev.audio) dev.audio.muted = !dev.audio.muted
                     }
                 }
             }
