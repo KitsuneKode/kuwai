@@ -29,8 +29,14 @@ esac
 # A cancelled selection (Esc, right click: slurp says "selection
 # cancelled") is the user changing their mind: leave quietly. Anything else
 # is a real failure and says so, with grimblast's own words.
-err=$(grimblast "${args[@]}" "$out" 2>&1 >/dev/null)
-if [ $? -ne 0 ] || [ ! -s "$out" ]; then
+# Errors go to a file, not a pipe: grimblast leaves wl-copy running in the
+# background to serve the clipboard, and it would hold a pipe open, so
+# waiting for grimblast's output would wait until the next copy.
+errf=$(mktemp)
+grimblast "${args[@]}" "$out" >/dev/null 2>"$errf" </dev/null
+rc=$?
+err=$(cat "$errf"); rm -f -- "$errf"
+if [ $rc -ne 0 ] || [ ! -s "$out" ]; then
     rm -f -- "$out"
     if [ -n "$err" ] && ! printf '%s' "$err" | grep -qi "cancel"; then
         notify-send -a "Screenshot" -u normal "Screenshot failed" "$(printf '%s' "$err" | tail -3)"
@@ -38,7 +44,8 @@ if [ $? -ne 0 ] || [ ! -s "$out" ]; then
     exit 0
 fi
 
-satty --filename "$out" --output-filename "$out" --copy-command wl-copy --early-exit >/dev/null 2>&1 &
+log="${XDG_STATE_HOME:-$HOME/.local/state}/rice/rice-shot.log"
+satty --filename "$out" --output-filename "$out" --copy-command wl-copy --early-exit >>"$log" 2>&1 &
 pid=$!
 
 # Give Satty the keyboard once it's on screen.
