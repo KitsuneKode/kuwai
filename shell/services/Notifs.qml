@@ -71,6 +71,7 @@ Singleton {
             return;
         }
         const a = NotifAdapters.adapt(n);
+        if (a.silent) { n.dismiss(); return; }
         const twin = a.groupKey ? items.find(i => i.groupKey === a.groupKey && i.popup && !i.leaving) : null;
         if (twin) {
             twin.absorb(n, a);
@@ -101,6 +102,7 @@ Singleton {
         const n = item.notification;
         const focusClass = item.focusClass;
         item.leaving = true;
+        if (item.jump) { jumpTo(item); return; }
         if (n) {
             const act = n.actions.find(x => x.identifier === "default")
                      || (n.actions.length === 1 ? n.actions[0] : null);
@@ -108,6 +110,17 @@ Singleton {
         }
         if (focusClass) focusDelay.focus(focusClass);
     }
+
+    // A kittymux agent pane: kitty focuses it (and its tab), then exactly its
+    // OS window (kittymux_wmfocus). The notification's own helper would do
+    // the same, but only while it lives (30s); this works from history.
+    function jumpTo(item) {
+        const [pid, w] = item.jump.split(":");
+        const p = jumper.createObject(root, { command: [Quickshell.env("HOME") + "/.local/bin/kittymux", "act", JSON.stringify({ op: "jump", pid: Number(pid), w: w })] });
+        p.running = true;
+        if (item.notification) item.notification.dismiss();     // its helper exits without acting
+    }
+    Component { id: jumper; Process { onExited: destroy() } }
 
     function invokeAction(item, id) {
         const n = item.notification;
@@ -162,6 +175,7 @@ Singleton {
     // its app's window, and the center gets out of the way.
     function openItem(item) {
         const n = item.notification;
+        if (item.jump) { jumpTo(item); setCenter(false); return; }
         if (n) {
             const act = n.actions.find(x => x.identifier === "default")
                      || (n.actions.length === 1 ? n.actions[0] : null);

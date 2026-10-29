@@ -76,9 +76,23 @@ Singleton {
         }
     ]
 
+    // "Copied to clipboard" confirmations (satty, grimblast, pickers…): the
+    // clipboard island already shows every copy, with the thing itself, so
+    // these would only say it twice. They're dropped, not shown or kept.
+    function isCopyConfirmation(n) {
+        const t = ((n.summary || "") + " " + (n.body || "")).trim();
+        return t.length < 140 && /^(the )?(image|screenshot|text|filepath|colou?r|link|path)?\s*(was )?copied (to|into) (the )?clipboard\b/i.test(t);
+    }
+
     function adapt(n) {
         const rule = rules.find(r => r.match(n));
         const out = rule ? rule.adapt(n) : generic(n);
+        out.silent = isCopyConfirmation(n);
+        // kittymux names the agent pane it's about (bin/mux-notify hints):
+        // a click jumps there through kittymux, even from history later.
+        const h = n.hints || {};
+        const kpid = h["x-kittymux-pid"], kwin = h["x-kittymux-window"];
+        out.jump = /^\d+$/.test(String(kpid || "")) && /^\d+$/.test(String(kwin || "")) ? kpid + ":" + kwin : "";
         if (!out.icon) out.icon = imageOrIcon(n);
         out.severity = severityOf(n, out.severity);
         return out;

@@ -21,6 +21,7 @@ QtObject {
     property string savedIcon            // what history keeps (see NotifAdapters.lastingIcon)
     property string groupKey
     property string focusClass
+    property string jump                 // "pid:window" of a kittymux agent pane (works after the sender is gone)
     property int urgency: NotificationUrgency.Normal
     property string severity: "normal"   // critical | warning | normal | low
     property var actions: []          // [{ id, text }] besides the default one
@@ -74,6 +75,7 @@ QtObject {
         savedIcon = NotifAdapters.lastingIcon(n, a.icon);
         groupKey = a.groupKey;
         focusClass = a.focusClass;
+        jump = a.jump || "";
         urgency = n.urgency;
         severity = a.severity;
         hasDefault = n.actions.some(x => x.identifier === "default");
@@ -105,6 +107,6 @@ QtObject {
     }
 
     function toJson() {
-        return { nid, time, app, title, body, status, statusGlyph, statusTone, icon: savedIcon || icon, groupKey, focusClass, urgency, severity, count };
+        return { nid, time, app, title, body, status, statusGlyph, statusTone, icon: savedIcon || icon, groupKey, focusClass, jump, urgency, severity, count };
     }
 }
