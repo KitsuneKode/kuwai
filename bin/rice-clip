@@ -11,6 +11,10 @@
 #   rice-clip open ID|pin:N        open with the default app (URL, path, image, text)
 #   rice-clip delete ID            remove from history
 #   rice-clip wipe                 clear history (pins stay)
+#   rice-clip copy-text TEXT       put this text on the clipboard (edits, transforms)
+#   rice-clip paste-text TEXT      …and paste it into the focused window
+#   rice-clip ocr ID|pin:N         the text in an image (tesseract)
+#   rice-clip save ID|pin:N        save to ~/Pictures/Clipboard; prints the path
 #   rice-clip pin ID               save an entry as a pin; prints its pin file
 #   rice-clip unpin FILE           remove a pin
 set -euo pipefail
@@ -54,8 +58,8 @@ case "${1:-}" in
         [ -s "$out" ] || emit "$2" > "$out"
         printf '%s\n' "$out" ;;
     copy)  copy "$2" ;;
-    paste)
-        copy "$2"
+    paste|paste-text)
+        if [ "$1" = paste ]; then copy "$2"; else printf '%s' "$2" | wl-copy; fi
         # Let the panel hand keyboard focus back first, then paste the way
         # the window expects: terminals take Ctrl+Shift+V.
         sleep 0.08
@@ -84,6 +88,19 @@ case "${1:-}" in
         out="$cache/open/clip-$(date +%Y%m%d-%H%M%S).$ext"
         mv -- "$tmp" "$out"
         exec xdg-open "$out" ;;
+    copy-text) printf '%s' "$2" | wl-copy ;;
+    ocr)
+        tmp=$(mktemp "$cache/open/.ocr.XXXXXX")
+        emit "$2" > "$tmp"
+        tesseract "$tmp" - 2>/dev/null | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}'
+        rm -f -- "$tmp" ;;
+    save)
+        dir="$HOME/Pictures/Clipboard"; mkdir -p "$dir"
+        tmp=$(mktemp "$cache/open/.save.XXXXXX")
+        emit "$2" > "$tmp"
+        out="$dir/clip-$(date +%Y%m%d-%H%M%S).$(ext_of "$tmp")"
+        mv -- "$tmp" "$out"
+        printf '%s\n' "$out" ;;
     delete) printf '%s\t\n' "$2" | cliphist delete ;;
     wipe)   cliphist wipe ;;
     pin)

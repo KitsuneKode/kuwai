@@ -95,6 +95,7 @@ Item {
             font.variableAxes: ({ "opsz": Theme.opszFor(14), "wght": Theme.wRegular })
             font.letterSpacing: Theme.tracking(14, false)
             renderType: Text.NativeRendering
+            cursorDelegate: SpringCaret {}
             clip: true
 
             Label {

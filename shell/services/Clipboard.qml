@@ -41,7 +41,28 @@ Singleton {
         startFilter = filter || "all";
         screen = Screens.focused;
         refresh();
+        targetProbe.running = true;
         open = true;
+    }
+
+    // Where ↵ will paste: the window that had focus when the panel opened.
+    property var target: ({ cls: "", title: "" })
+    Process {
+        id: targetProbe
+        command: ["hyprctl", "activewindow", "-j"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try { const w = JSON.parse(text); root.target = { cls: w.class || "", title: w.title || "" }; }
+                catch (e) { root.target = { cls: "", title: "" }; }
+            }
+        }
+    }
+    function targetName() {
+        const c = target.cls || "";
+        if (!c) return "";
+        const known = { "kitty": "Kitty", "com.mitchellh.ghostty": "Ghostty", "zen": "Zen", "zen-browser": "Zen", "firefox": "Firefox", "google-chrome": "Chrome", "brave-browser": "Brave", "code": "VS Code", "code-oss": "VS Code", "cursor": "Cursor", "t3 code": "T3 Code", "t3code": "T3 Code", "obsidian": "Obsidian", "discord": "Discord", "vesktop": "Discord", "org.gnome.nautilus": "Files" };
+        const k = c.toLowerCase();
+        return known[k] || (c.split(".").pop().charAt(0).toUpperCase() + c.split(".").pop().slice(1));
     }
 
     // ── Reading ──────────────────────────────────────────────────────────
@@ -178,6 +199,25 @@ Singleton {
         run(["delete", e.id]);
     }
     function wipe() { items = []; run(["wipe"]); }
+    // Edited or transformed text: copy it, or paste it where you were.
+    function copyText(t) { open = false; run(["copy-text", t]); }
+    function pasteText(t) { open = false; run(["paste-text", t]); }
+    // Text out of an image; an image saved as a file. cb(output).
+    function ocr(e, cb) { capture(["ocr", ref(e)], cb); }
+    function save(e, cb) { capture(["save", ref(e)], cb); }
+    function capture(args, cb) {
+        const p = capturer.createObject(root, { command: [root.bin, ...args], done: cb });
+        p.running = true;
+    }
+    Component {
+        id: capturer
+        Process {
+            id: cap
+            property var done
+            stdout: StdioCollector { onStreamFinished: if (cap.done) cap.done(text.trim()) }
+            onExited: destroy(1000)
+        }
+    }
     // Forget everything that looks like a secret, in one go.
     function forgetSecrets() {
         const s = items.filter(e => e.secret);

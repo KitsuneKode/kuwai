@@ -1,7 +1,8 @@
 // The selected entry in full: images at size, colours as a swatch with their
 // values, text in full (monospace when it's code), secrets masked until ⌃H.
 // Text arrives from cliphist after selection; until then a skeleton holds
-// its shape.
+// its shape. ⌃E makes the text editable: ⌃↵ pastes the edited version, Esc
+// drops the edit.
 import QtQuick
 import Quickshell
 import qs.config
@@ -14,6 +15,9 @@ Item {
     property var panel
     property var entry: null
     property bool revealed: false
+    property bool editing: false
+    readonly property alias editor: body
+    onEditingChanged: if (editing) { body.forceActiveFocus(); body.cursorPosition = body.length; }
 
     readonly property string ref: entry ? Clipboard.ref(entry) : ""
     property string full: ""
@@ -22,6 +26,7 @@ Item {
     readonly property bool masked: entry && entry.secret && !revealed
 
     onRefChanged: {
+        editing = false;
         full = "";
         loading = textual;
         if (textual) fetch.restart();
@@ -104,6 +109,16 @@ Item {
     }
 
     // ── Text, code, links, paths ─────────────────────────────────────────
+    // Editing: a quiet frame says this text is yours to change now.
+    Rectangle {
+        visible: pv.editing
+        anchors.fill: textFlick
+        anchors.margins: -8
+        radius: 12
+        color: Qt.rgba(1, 1, 1, 0.04)
+        border.width: 1
+        border.color: Qt.alpha(Theme.blue, 0.5)
+    }
     Flickable {
         id: textFlick
         visible: pv.textual && pv.entry.kind !== "color"
@@ -115,11 +130,20 @@ Item {
         TextEdit {
             id: body
             width: textFlick.width - 8
-            readOnly: true
+            readOnly: !pv.editing
             selectByMouse: true
             wrapMode: TextEdit.WrapAnywhere
             visible: !pv.loading
             text: pv.masked ? "•".repeat(Math.min(48, (pv.full || pv.entry.preview).length)) : pv.full
+            cursorDelegate: SpringCaret {}
+            Keys.onPressed: event => {
+                if (!pv.editing) return;
+                if (event.key === Qt.Key_Escape) { pv.editing = false; pv.panel.focusSearch(); event.accepted = true; }
+                else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && (event.modifiers & Qt.ControlModifier)) {
+                    Clipboard.pasteText(body.text);
+                    event.accepted = true;
+                }
+            }
             color: pv.masked ? Theme.textTertiary : Theme.textPrimary
             selectionColor: Qt.alpha(Theme.blue, 0.5)
             font.family: pv.entry && (pv.entry.kind === "code" || pv.entry.secret) ? Theme.fontMono : Theme.fontText
@@ -160,7 +184,7 @@ Item {
         id: info
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
         elide: Text.ElideRight
-        text: pv.entry ? pv.panel.detailOf(pv.entry, pv.full) : ""
+        text: pv.editing ? "Editing  ·  ⌃↵ paste this  ·  Esc cancel" : pv.entry ? pv.panel.detailOf(pv.entry, pv.full) : ""
         size: 11
         color: Theme.textTertiary
     }
