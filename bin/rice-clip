@@ -19,6 +19,8 @@
 #                                  ($RICE_EDITOR, else $EDITOR, else nvim; $RICE_TERMINAL, else kitty)
 #   rice-clip ocr ID|pin:N         the text in an image (tesseract)
 #   rice-clip save ID|pin:N        save to ~/Pictures/Clipboard; prints the path
+#   rice-clip save-as ID|pin:N NAME   save into ~/Pictures/Screenshots as NAME (an
+#                                  extension is added; a taken name gets -2, -3…)
 #   rice-clip stamp                record when the newest entry was copied (run by
 #                                  `wl-paste --watch rice-clip stamp`, hypr/rice.conf)
 #   rice-clip files ID|pin:N       copied files (file:// URIs or a path): JSON with
@@ -181,6 +183,17 @@ print(json.dumps(out))
         tmp=$(mktemp "$cache/open/.save.XXXXXX")
         emit "$2" > "$tmp"
         out="$dir/clip-$(date +%Y%m%d-%H%M%S).$(ext_of "$tmp")"
+        mv -- "$tmp" "$out"
+        printf '%s\n' "$out" ;;
+    save-as)
+        dir="${XDG_PICTURES_DIR:-$HOME/Pictures}/Screenshots"; mkdir -p "$dir"
+        tmp=$(mktemp "$cache/open/.save.XXXXXX")
+        emit "$2" > "$tmp"
+        ext=$(ext_of "$tmp")
+        name=$(printf '%s' "${3:-Screenshot_$(date +%Y%m%d_%H%M%S)}" | tr '/\0' '__' | sed 's/^[.-]*//')
+        name="${name%.$ext}"; [ -n "$name" ] || name="Screenshot_$(date +%Y%m%d_%H%M%S)"
+        out="$dir/$name.$ext"; n=2
+        while [ -e "$out" ]; do out="$dir/$name-$n.$ext"; n=$((n + 1)); done
         mv -- "$tmp" "$out"
         printf '%s\n' "$out" ;;
     delete) printf '%s\t\n' "$2" | cliphist delete ;;

@@ -210,7 +210,7 @@ Scope {
         if (txt) a.push({ id: "nvim", label: "Edit in Neovim (the edit is copied)", glyph: "\u{f06e5}", keys: ["⌃", "⇧", "E"], section: "Entry" });
         if (img) {
             a.push({ id: "ocr", label: "Copy text from image", glyph: "\u{f05e7}", keys: ["⌃", "O"], section: "Image" });
-            a.push({ id: "save", label: "Save to Pictures/Clipboard", glyph: "\u{f0193}", keys: ["⌃", "S"], section: "Image" });
+            a.push({ id: "save", label: "Save to Screenshots…", glyph: "\u{f0193}", keys: ["⌃", "S"], section: "Image" });
         }
         if (txt) {
             a.push({ id: "trim", label: "Paste trimmed, one line", glyph: "\u{f0a73}", section: "Paste as" });
@@ -253,7 +253,11 @@ Scope {
                 say(`Copied ${txt.length.toLocaleString()} characters of text`);
             });
             break;
-        case "save": Clipboard.save(e, path => say(path ? "Saved " + path.replace(Quickshell.env("HOME"), "~") : "Couldn't save")); break;
+        case "save":
+            // Images get a name first (prefilled; Enter keeps it), then go to ~/Pictures/Screenshots.
+            if (e.kind === "image") { naming = true; nameField.text = "Screenshot_" + new Date().toISOString().replace(/[-:]/g, "").replace("T", "_").slice(0, 15); nameField.selectAll(); nameField.forceActiveFocus(); }
+            else Clipboard.save(e, path => say(path ? "Saved " + path.replace(Quickshell.env("HOME"), "~") : "Couldn't save"));
+            break;
         case "trim": withText(e, t => Clipboard.pasteText(t.replace(/\s+/g, " ").trim())); break;
         case "upper": withText(e, t => Clipboard.pasteText(t.toUpperCase())); break;
         case "lower": withText(e, t => Clipboard.pasteText(t.toLowerCase())); break;
@@ -293,7 +297,7 @@ Scope {
             { k: ["⌃", "⇧", "⌫"], t: "Clear history, twice (pins stay)" } ] },
         { title: "Images", items: [
             { k: ["⌃", "O"], t: "Copy the text in it (OCR)" },
-            { k: ["⌃", "S"], t: "Save to Pictures/Clipboard" } ] },
+            { k: ["⌃", "S"], t: "Save to Screenshots, named" } ] },
         { title: "When", items: [
             { k: ["⌃", "D"], t: "Calendar: a day, ⇧-click a range" },
             { k: ["@today"], t: "Also @yesterday, @7d, @month" } ] },
@@ -305,6 +309,18 @@ Scope {
             { k: ["⌃", "K"], t: "Every action for the card" },
             { k: ["Esc"], t: "Back out, step by step" } ] }
     ]
+
+    // Naming a screenshot before it's saved (⌃S on an image).
+    property bool naming: false
+    property Item nameField: null
+    function finishNaming(save) {
+        const e = entry;
+        naming = false;
+        focusSearch();
+        if (!save || !e) return;
+        Clipboard.capture(["save-as", Clipboard.ref(e), nameField.text.trim()],
+                          path => say(path ? "Saved " + path.replace(Quickshell.env("HOME"), "~") : "Couldn't save"));
+    }
 
     property bool confirmWipe: false
     Timer { id: wipeWindow; interval: 3000; onTriggered: root.confirmWipe = false }
@@ -474,7 +490,7 @@ Scope {
     // Left alone, it puts itself away: 45s without a key or the pointer on
     // it (never while you're reading, editing or in a menu).
     property bool pointerIn: false
-    readonly property bool busy: pointerIn || reading || (quickLook && quickLook.editing) || (actionMenu && actionMenu.open)
+    readonly property bool busy: pointerIn || reading || naming || (quickLook && quickLook.editing) || (actionMenu && actionMenu.open)
                                  || (datePicker && datePicker.open) || (keySheet && keySheet.open)
     function touched() { if (open) idle.restart(); }
     onBusyChanged: touched()
@@ -929,6 +945,38 @@ Scope {
                     size: 12
                     color: Theme.textTertiary
                 }
+            }
+
+            // ── Naming a screenshot (⌃S) ─────────────────────────────────
+            Rectangle {
+                anchors { horizontalCenter: parent.horizontalCenter; bottom: foot.top; bottomMargin: 8 }
+                width: 460; height: 40; radius: 13
+                z: 21
+                visible: opacity > 0.01
+                opacity: root.naming ? 1 : 0
+                Behavior on opacity { NumberAnimation { duration: 120; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+                color: Qt.rgba(0.11, 0.11, 0.13, 0.98)
+                border.width: 1
+                border.color: Qt.alpha(Theme.blue, 0.6)
+                Text { id: saveGlyph; x: 12; anchors.verticalCenter: parent.verticalCenter; text: "\u{f0193}"; font.family: Theme.fontGlyph; font.pixelSize: 14; color: Theme.textSecondary }
+                TextInput {
+                    id: nameInput
+                    Component.onCompleted: root.nameField = nameInput
+                    anchors { left: saveGlyph.right; leftMargin: 10; right: ext.left; rightMargin: 6; verticalCenter: parent.verticalCenter }
+                    color: Theme.textPrimary
+                    selectionColor: Qt.alpha(Theme.blue, 0.5)
+                    font.family: Theme.fontText
+                    font.pixelSize: 14
+                    renderType: Text.NativeRendering
+                    cursorDelegate: SpringCaret {}
+                    clip: true
+                    Keys.onPressed: event => {
+                        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) { root.finishNaming(true); event.accepted = true; }
+                        else if (event.key === Qt.Key_Escape) { root.finishNaming(false); event.accepted = true; }
+                    }
+                }
+                Label { id: ext; anchors { right: hint.left; rightMargin: 10; verticalCenter: parent.verticalCenter } text: "." + (root.entry && root.entry.ext ? root.entry.ext : "png"); size: 13; color: Theme.textTertiary }
+                Label { id: hint; anchors { right: parent.right; rightMargin: 12; verticalCenter: parent.verticalCenter } text: "↵ save to Screenshots · esc"; size: 11; color: Theme.textTertiary }
             }
 
             // ── Feedback ─────────────────────────────────────────────────
