@@ -67,7 +67,7 @@ Scope {
 
             anchors.top: true
             implicitWidth: Math.max(hoverW, 520) + 80
-            implicitHeight: 420
+            implicitHeight: 600
             exclusiveZone: showBar ? restH + 10 : 0
             color: "transparent"
             WlrLayershell.namespace: "rice-islandbar"
@@ -111,6 +111,7 @@ Scope {
 
             Component { id: calendarPanel; CalendarPanel {} }
             Component { id: powerPanel; PowerPanel {} }
+            Component { id: launcherPanel; LauncherPanel {} }
 
             // ── Data ─────────────────────────────────────────────────────
             readonly property int activeWs: monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : 1
@@ -179,7 +180,7 @@ Scope {
                         id: panelLoader
                         active: win.panelHere || pv.value > 0.01
                         focus: true
-                        sourceComponent: win.shownPanel === "calendar" ? calendarPanel : win.shownPanel === "power" ? powerPanel : null
+                        sourceComponent: ({ calendar: calendarPanel, power: powerPanel, launcher: launcherPanel })[win.shownPanel] || null
                     }
                 }
 
