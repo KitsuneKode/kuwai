@@ -279,9 +279,11 @@ Scope {
         visible: mapped
 
         anchors.top: true
-        margins.top: Theme.barGap
-        implicitWidth: card.width + 32
-        implicitHeight: card.height + 36
+        // With the island bar, the HUD is the island growing: same place, same black.
+        readonly property bool inIsland: Settings.bar === "island"
+        margins.top: inIsland ? 0 : Theme.barGap
+        implicitWidth: 316 + 32          // fixed: the card morphs inside, the surface never resizes
+        implicitHeight: 74 + 36
         exclusionMode: ExclusionMode.Normal
         color: "transparent"
 
@@ -328,11 +330,16 @@ Scope {
         GlassCard {
             id: card
             property real reveal: 0
-            width: 316
-            height: 74
+            // In the island it grows out of the pill (≈ its rest size) instead of dropping in.
+            width: hud.inIsland ? 220 + (316 - 220) * reveal : 316
+            height: hud.inIsland ? 34 + (74 - 34) * reveal : 74
+            radius: hud.inIsland ? Math.min(height / 2, 30) : height / 2.9
+            tint: hud.inIsland ? Qt.rgba(0, 0, 0, 0.9) : Theme.glassTint
             x: (hud.width - width) / 2
-            y: 10 - (1 - reveal) * (Theme.reduceMotion ? 0 : 6)
-            opacity: Math.min(1, reveal * 1.4)
+            y: hud.inIsland ? 4 : 10 - (1 - reveal) * (Theme.reduceMotion ? 0 : 6)
+            opacity: hud.inIsland ? Math.min(1, reveal * 4) : Math.min(1, reveal * 1.4)
+            // Contents arrive once there's room for them (in the island).
+            readonly property real inner: hud.inIsland ? Math.max(0, Math.min(1, (reveal - 0.45) / 0.45)) : 1
             scale: (Theme.reduceMotion ? 1 : 0.97 + 0.03 * reveal) * (cardArea.pressed && !cardArea.dragging ? 0.98 : 1)
             transformOrigin: Item.Top
             Behavior on scale { enabled: !enter.running && !leave.running; NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
@@ -368,6 +375,7 @@ Scope {
             // Glyph platter
             Rectangle {
                 id: platter
+                opacity: card.inner
                 width: 44; height: 44; radius: 22
                 anchors.left: parent.left
                 anchors.leftMargin: 15
@@ -395,6 +403,7 @@ Scope {
             }
 
             Column {
+                opacity: card.inner
                 anchors.left: platter.right
                 anchors.leftMargin: 13
                 anchors.right: parent.right
