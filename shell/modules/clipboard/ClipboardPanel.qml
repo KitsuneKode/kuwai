@@ -56,6 +56,41 @@ Scope {
     property Item actionsButton: null
     property Item tips: null
     property Item keySheet: null
+    property Item datePicker: null
+    property Item dateButton: null
+
+    // ── When: a date range from the calendar, or @today / @yesterday / @7d /
+    // @month typed in the search (the token wins while it's there) ─────────
+    property real dateFrom: 0
+    property real dateTo: 0
+    property string dateLabel: ""
+    function setDate(from, to, label) { dateFrom = from; dateTo = to; dateLabel = label; }
+    readonly property var typedDate: {
+        const m = query.match(/(^|\s)@(today|yesterday|7d|week|month)\b/i);
+        if (!m) return null;
+        const day = 86400000, now = new Date(), today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+        const w = m[2].toLowerCase();
+        return w === "today" ? { from: today, to: today + day, label: "Today" }
+             : w === "yesterday" ? { from: today - day, to: today, label: "Yesterday" }
+             : w === "month" ? { from: new Date(now.getFullYear(), now.getMonth(), 1).getTime(), to: today + day, label: "This month" }
+             : { from: today - 6 * day, to: today + day, label: "Last 7 days" };
+    }
+    readonly property real fromMs: typedDate ? typedDate.from : dateFrom
+    readonly property real toMs: typedDate ? typedDate.to : dateTo
+    readonly property string whenLabel: typedDate ? typedDate.label : dateLabel
+    function timeOf(e) { return e.pin !== "" ? (e.pinnedAt || 0) : (Clipboard.times[e.id] || 0); }
+    function inDate(e) {
+        if (!fromMs && !toMs) return true;
+        const t = timeOf(e);
+        return t > 0 && t >= fromMs && (!toMs || t < toMs);
+    }
+    readonly property var dayCounts: {
+        const c = {};
+        const add = t => { if (!t) return; const d = new Date(t); const k = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); c[k] = (c[k] || 0) + 1; };
+        for (const id in Clipboard.times) add(Clipboard.times[id]);
+        for (const p of Clipboard.pins) add(p.pinnedAt);
+        return c;
+    }
     // Reading: Quick Look grows past the shelf into a large reading view.
     property bool reading: false
     onReadingChanged: if (reading && quickLook && !quickLook.open) toggleQuickLook()
@@ -70,7 +105,7 @@ Scope {
     function filterLabel(id) { return (filters.find(f => f.id === id) || filters[0]).label; }
 
     // ── Results ──────────────────────────────────────────────────────────
-    readonly property var ts: Clipboard.terms(query)
+    readonly property var ts: Clipboard.terms(query.replace(/(^|\s)@(today|yesterday|7d|week|month)\b/gi, " "))
     function searchText(e) {
         if (e.kind === "image") return "image " + e.ext + " " + e.dims;
         if (e.secret) return "secret key token";
@@ -94,7 +129,7 @@ Scope {
         const hits = [];
         for (let i = 0; i < pool.length; i++) {
             const x = pool[i];
-            if (!inFilter(x.e)) continue;
+            if (!inFilter(x.e) || !inDate(x.e)) continue;
             const m = Clipboard.match(ts, searchText(x.e));
             if (m) hits.push({ key: x.pin ? "p:" + x.e.pin : "i:" + x.e.id, e: x.e, m: m, pin: x.pin, order: i });
         }
@@ -121,6 +156,7 @@ Scope {
     onRowsChanged: if (entries && !current) selKey = entries.length ? entries[0].key : ""
     onQueryChanged: first()
     onFilterChanged: first()
+    onFromMsChanged: first()
     function first() {
         selKey = entries.length ? entries[0].key : "";
         if (listView) listView.positionViewAtBeginning();
@@ -255,6 +291,9 @@ Scope {
         { title: "Images", items: [
             { k: ["⌃", "O"], t: "Copy the text in it (OCR)" },
             { k: ["⌃", "S"], t: "Save to Pictures/Clipboard" } ] },
+        { title: "When", items: [
+            { k: ["⌃", "D"], t: "Calendar: a day, ⇧-click a range" },
+            { k: ["@today"], t: "Also @yesterday, @7d, @month" } ] },
         { title: "Search", items: [
             { k: ["'word"], t: "Exact match" },
             { k: ["^word"], t: "Starts with" },
@@ -379,12 +418,27 @@ Scope {
             if (filterMenu) filterMenu.open = false;
             if (quickLook) quickLook.open = false;
             if (keySheet) keySheet.open = false;
+            if (datePicker) datePicker.open = false;
+            setDate(0, 0, "");
             reading = false;
             clock = 0;
             clockRun.restart();
             armSoon.restart();
             if (Theme.reduceMotion) { pill.settle(); melt.settle(); }
         } else if (Theme.reduceMotion) { pill.settle(); melt.settle(); }
+    }
+    // Left alone, it puts itself away: 45s without a key or the pointer on
+    // it (never while you're reading, editing or in a menu).
+    property bool pointerIn: false
+    readonly property bool busy: pointerIn || reading || (quickLook && quickLook.editing) || (actionMenu && actionMenu.open)
+                                 || (datePicker && datePicker.open) || (keySheet && keySheet.open)
+    function touched() { if (open) idle.restart(); }
+    onBusyChanged: touched()
+    Timer {
+        id: idle
+        interval: 45000
+        running: root.open && !root.busy
+        onTriggered: Clipboard.open = false
     }
     Timer { id: armSoon; interval: 160; onTriggered: { root.armed = root.open; if (root.open) root.focusSearch(); } }
 
@@ -424,6 +478,7 @@ Scope {
                 active: win.up && root.open && root.armed
                 onCleared: Clipboard.open = false
             }
+            HoverHandler { onHoveredChanged: if (win.hosts) root.pointerIn = hovered }
 
             function lerp(a, b, k) { return a + (b - a) * k; }
             readonly property real m: melt.value
@@ -571,10 +626,35 @@ Scope {
                         onClicked: { root.tip(scope, false); root.filter = "all"; root.focusSearch(); }
                     }
                 }
+                Rectangle {
+                    id: whenTag
+                    visible: root.whenLabel !== "" && !root.typedDate
+                    anchors { left: scope.visible ? scope.right : glyph.right; leftMargin: scope.visible ? 6 : 10; verticalCenter: parent.verticalCenter }
+                    width: visible ? whenRow.implicitWidth + 16 : 0
+                    height: 26; radius: 8
+                    color: Qt.alpha(Theme.orange, 0.20)
+                    border.width: 1
+                    border.color: Qt.alpha(Theme.orange, 0.42)
+                    Row {
+                        id: whenRow
+                        anchors.centerIn: parent
+                        spacing: 6
+                        Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f00ed}"; font.family: Theme.fontGlyph; font.pixelSize: 11; color: Theme.orange }
+                        Label { anchors.verticalCenter: parent.verticalCenter; text: root.whenLabel; size: 12; weight: Theme.wSemibold }
+                        Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f0156}"; font.family: Theme.fontGlyph; font.pixelSize: 10; color: Theme.textSecondary }
+                    }
+                    MouseArea {
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onContainsMouseChanged: root.tip(whenTag, containsMouse, "Any time")
+                        onClicked: { root.tip(whenTag, false); root.setDate(0, 0, ""); root.focusSearch(); }
+                    }
+                }
                 TextInput {
                     id: search
                     Component.onCompleted: root.searchField = search
-                    anchors { left: scope.visible ? scope.right : glyph.right; leftMargin: 12; right: typeBtn.left; rightMargin: 12; verticalCenter: parent.verticalCenter }
+                    anchors { left: whenTag.visible ? whenTag.right : scope.visible ? scope.right : glyph.right; leftMargin: 12; right: dateBtn.left; rightMargin: 12; verticalCenter: parent.verticalCenter }
                     color: Theme.textPrimary
                     selectionColor: Qt.alpha(Theme.blue, 0.5)
                     font.family: Theme.fontText
@@ -596,8 +676,50 @@ Scope {
                     Keys.onReleased: event => { if (event.key === Qt.Key_Alt) root.altHeld = false; }
                 }
                 Rectangle {
-                    id: typeBtn
+                    id: dateBtn
+                    Component.onCompleted: root.dateButton = dateBtn
+                    anchors { right: typeBtn.left; rightMargin: 6; verticalCenter: parent.verticalCenter }
+                    height: 30; radius: 10
+                    width: dateRow.implicitWidth + 20
+                    color: dateArea.containsMouse || (root.datePicker && root.datePicker.open) ? Theme.pillHover : Theme.pill
+                    Row {
+                        id: dateRow
+                        anchors.centerIn: parent
+                        spacing: 6
+                        Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f00ed}"; font.family: Theme.fontGlyph; font.pixelSize: 13; color: Theme.textSecondary }
+                        Label { anchors.verticalCenter: parent.verticalCenter; text: root.whenLabel || "Any time"; size: 12; weight: Theme.wMedium }
+                    }
+                    MouseArea {
+                        id: dateArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onContainsMouseChanged: root.tip(dateBtn, containsMouse && !(root.datePicker && root.datePicker.open), "When it was copied", ["⌃", "D"])
+                        onClicked: { root.tip(dateBtn, false); if (root.datePicker) root.datePicker.toggle(); root.focusSearch(); }
+                    }
+                }
+                // Close by mouse (Esc, a click outside, or the idle timeout too).
+                Rectangle {
+                    id: closeBtn
                     anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
+                    width: 30; height: 30; radius: 15
+                    color: closeArea.containsMouse ? Qt.alpha(Theme.red, 0.85) : Theme.pill
+                    scale: closeArea.pressed ? 0.92 : 1
+                    Behavior on color { ColorAnimation { duration: 80 } }
+                    Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+                    Text { anchors.centerIn: parent; text: "\u{f0156}"; font.family: Theme.fontGlyph; font.pixelSize: 13; color: closeArea.containsMouse ? "white" : Theme.textSecondary }
+                    MouseArea {
+                        id: closeArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onContainsMouseChanged: root.tip(closeBtn, containsMouse, "Close", ["Esc"])
+                        onClicked: { root.tip(closeBtn, false); Clipboard.open = false; }
+                    }
+                }
+                Rectangle {
+                    id: typeBtn
+                    anchors { right: closeBtn.left; rightMargin: 6; verticalCenter: parent.verticalCenter }
                     height: 30; radius: 10
                     width: typeRow.implicitWidth + 20
                     color: typeArea.containsMouse || (root.filterMenu && root.filterMenu.open) ? Theme.pillHover : Theme.pill
@@ -816,6 +938,15 @@ Scope {
             }
 
             // ── Overlays ─────────────────────────────────────────────────
+            DatePicker {
+                id: dates
+                Component.onCompleted: root.datePicker = dates
+                anchorItem: dateBtn
+                counts: root.dayCounts
+                from: root.fromMs
+                to: root.toMs
+                onPicked: (from, to, label) => { root.setDate(from, to, label); if (searchField) root.focusSearch(); }
+            }
             KeySheet {
                 id: sheet
                 Component.onCompleted: root.keySheet = sheet
@@ -852,6 +983,7 @@ Scope {
         const k = event.key, m = event.modifiers;
         const ctrl = m & Qt.ControlModifier, shift = m & Qt.ShiftModifier, alt = m & Qt.AltModifier;
         const field = searchField;
+        touched();
         if (k === Qt.Key_Alt) { altHeld = true; return; }
         if (keySheet && keySheet.open && keySheet.key(event)) { event.accepted = true; return; }
         if (k === Qt.Key_F1 || (ctrl && k === Qt.Key_Slash) || (k === Qt.Key_Question && field && field.text === "")) {
@@ -860,6 +992,8 @@ Scope {
             return;
         }
         if (filterMenu && filterMenu.open && filterMenu.key(event)) { event.accepted = true; return; }
+        if (datePicker && datePicker.open && datePicker.key(event)) { event.accepted = true; return; }
+        if (ctrl && k === Qt.Key_D) { if (datePicker) datePicker.toggle(); event.accepted = true; return; }
         if (actionMenu && actionMenu.open && actionMenu.key(event)) { event.accepted = true; return; }
         const ql = quickLook && quickLook.open;
         if (ql && k === Qt.Key_Space && shift) { reading = !reading; event.accepted = true; return; }
@@ -905,6 +1039,7 @@ Scope {
         else if (k === Qt.Key_Escape) {
             if (field && field.text !== "") field.text = "";
             else if (filter !== "all") filter = "all";
+            else if (dateFrom || dateTo) setDate(0, 0, "");
             else Clipboard.open = false;
         }
         else return;
