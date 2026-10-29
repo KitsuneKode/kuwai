@@ -7,6 +7,9 @@
 #   rice notifs <cmd>         dnd | dnd-on | dnd-off | clear | hide | open | last | count | waybar
 #   rice center [agents] [pointer]   toggle the center (Notifications or Agents);
 #                             `pointer` (the bell) morphs it, keys open it instantly
+#   rice bar [island|waybar]  which top bar: the rice's island or HyDE's Waybar
+#   rice set KEY VALUE        change a setting (~/.config/rice/settings.json)
+#   rice get [KEY]            print one setting, or all of them
 #
 # `notifs` falls back to dunstctl when the rice isn't the notification server,
 # so Waybar and keybinds keep working either way.
@@ -38,6 +41,41 @@ dunst_waybar() {
     if [ "$paused" = true ]; then alt=dnd; [ "$count" -gt 0 ] && alt=dnd-notification
     else alt=none; [ "$count" -gt 0 ] && alt=notification; fi
     printf '{"text":"%s","alt":"%s","class":"%s","tooltip":"󰎟 Notifications (dunst fallback)"}\n' "$count" "$alt" "$alt"
+}
+
+SETTINGS="${XDG_CONFIG_HOME:-$HOME/.config}/rice/settings.json"
+
+# Settings are JSON the shell watches: write the file, the shell follows.
+# Values parse as JSON when they can (true, 220, "x"), else as a string.
+set_setting() {
+    local key=$1 value=$2 tmp
+    mkdir -p "$(dirname "$SETTINGS")"
+    [ -s "$SETTINGS" ] || echo '{}' > "$SETTINGS"
+    tmp=$(mktemp "$SETTINGS.XXXXXX")
+    if jq -e . >/dev/null 2>&1 <<<"$value"; then
+        jq --arg k "$key" --argjson v "$value" '.[$k] = $v' "$SETTINGS" > "$tmp"
+    else
+        jq --arg k "$key" --arg v "$value" '.[$k] = $v' "$SETTINGS" > "$tmp"
+    fi && mv -- "$tmp" "$SETTINGS" || { rm -f -- "$tmp"; return 1; }
+}
+
+get_setting() { jq -r --arg k "$1" '.[$k] // empty' "$SETTINGS" 2>/dev/null; }
+
+# The island bar replaces Waybar: one of the two runs. `apply` makes the
+# processes match the setting (rice-shell calls it after starting).
+bar() {
+    case ${1:-} in
+        island|waybar) set_setting bar "\"$1\"" ;;
+        apply|"") ;;
+        *) echo "usage: rice bar [island|waybar|apply]" >&2; return 2 ;;
+    esac
+    [ -z "${1:-}" ] && { get_setting bar || echo waybar; return; }
+    if [ "$(get_setting bar)" = island ]; then
+        pkill -x waybar 2>/dev/null
+    elif ! pgrep -x waybar >/dev/null; then
+        setsid -f hyde-shell waybar >/dev/null 2>&1 </dev/null
+    fi
+    return 0
 }
 
 notifs() {
@@ -76,6 +114,9 @@ case ${1:-} in
     stop)          for pid in $(qs list -p "$SHELL_DIR" --json 2>/dev/null | jq -r ".[].pid"); do kill -9 "$pid"; done ;;
     logs)          exec qs log -p "$SHELL_DIR" -f ;;
     notifs)        shift; notifs "$@" ;;
+    bar)           shift; bar "$@" ;;
+    set)           [ $# -eq 3 ] || { echo "usage: rice set KEY VALUE" >&2; exit 2; }; set_setting "$2" "$3" ;;
+    get)           if [ -n "${2:-}" ]; then get_setting "$2"; else jq . "$SETTINGS" 2>/dev/null || echo '{}'; fi ;;
     center)
         # Needs the shell running, not the notification name: start it if
         # it isn't up rather than doing nothing.
@@ -84,5 +125,5 @@ case ${1:-} in
             for _ in $(seq 20); do qs ipc -p "$SHELL_DIR" show >/dev/null 2>&1 && break; sleep 0.1; done
         fi
         ipc center toggle "${2:-notifications}" "${3:-key}" ;;
-    *) sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+    *) sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
 esac

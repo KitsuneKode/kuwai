@@ -55,6 +55,8 @@ for attempt in 1 2 3; do
         pid=$(owner_pid)
         if [ -n "$pid" ]; then
             if [ "$(cat /proc/"$pid"/comm 2>/dev/null)" = "dunst" ]; then break; fi
+            # One top bar: the island or Waybar, as the settings say.
+            "$RICE/bin/rice" bar apply
             exit 0
         fi
         sleep 0.1

@@ -9,6 +9,7 @@ import Quickshell
 import qs.modules.osd
 import qs.modules.notifications
 import qs.modules.clipboard
+import qs.modules.island
 import qs.modules
 
 ShellRoot {
@@ -16,5 +17,6 @@ ShellRoot {
     Popups {}
     Center {}
     ClipboardPanel {}
+    IslandBar {}
     Shortcuts {}
 }

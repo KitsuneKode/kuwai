@@ -1,0 +1,52 @@
+pragma Singleton
+
+// The rice's settings: one JSON file every module reads
+// (~/.config/rice/settings.json), written back as soon as anything changes,
+// reloaded when the file changes on disk. The settings app (docs/ISLAND.md)
+// will edit it; until then `rice set KEY VALUE` and the file itself do.
+// (No braces before the pragma: Quickshell's scanner stops at the first.)
+
+import QtQuick
+import Quickshell
+import Quickshell.Io
+
+Singleton {
+    id: root
+
+    readonly property alias bar: s.bar
+    readonly property alias clock24: s.clock24
+    readonly property alias showSeconds: s.showSeconds
+    readonly property alias restWorkspaces: s.restWorkspaces
+    readonly property alias restStatus: s.restStatus
+    readonly property alias hoverMedia: s.hoverMedia
+    readonly property alias hoverDelay: s.hoverDelay
+    readonly property alias workspaceCount: s.workspaceCount
+
+    function set(key, value) { s[key] = value; }
+
+    FileView {
+        id: file
+        path: (Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config") + "/rice/settings.json"
+        watchChanges: true
+        printErrors: false
+        onFileChanged: reload()
+        onAdapterUpdated: writeAdapter()
+        onLoadFailed: error => { if (error === FileViewError.FileNotFound) writeAdapter(); }
+        JsonAdapter {
+            id: s
+            // Which top bar: "waybar" (HyDE's, as now) or "island" (the rice's).
+            property string bar: "waybar"
+            // Clock & Date
+            property bool clock24: true
+            property bool showSeconds: false
+            // Island at rest: workspace capsules and signal + battery beside the clock.
+            property bool restWorkspaces: true
+            property bool restStatus: true
+            // Island on hover: the media card under the clock; how long to rest the pointer first (ms).
+            property bool hoverMedia: true
+            property int hoverDelay: 220
+            // Capsules shown at least (more appear as workspaces fill).
+            property int workspaceCount: 5
+        }
+    }
+}

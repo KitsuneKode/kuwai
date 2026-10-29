@@ -6,6 +6,7 @@
 // width never jumps. Reduced motion: digits just change.
 //
 //   RollingNumber { value: 64; suffix: "%"; size: 13; weight: Theme.wSemibold }
+//   RollingNumber { value: minutes; pad: 2 }                       // "09"
 import QtQuick
 import qs.config
 
@@ -18,8 +19,10 @@ Row {
     property int weight: Theme.wRegular
     property color color: Theme.textPrimary
     property bool rounded: true
+    // At least this many digits, zero-padded ("09" for minutes).
+    property int pad: 1
 
-    readonly property string digits: String(Math.max(0, Math.round(value)))
+    readonly property string digits: String(Math.max(0, Math.round(value))).padStart(pad, "0")
     readonly property var spring: ({ stiffness: 933, damping: 60 })
 
     TextMetrics {

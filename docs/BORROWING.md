@@ -10,9 +10,26 @@ rewrite in our own style and tokens. Don't copy whole files in.
 | `end-4_dots-hyprland` | Quickshell "illogical-impulse" (`dots/.config/quickshell/ii`) | feature breadth: overview, sidebars, OSK, region selector |
 | `AvengeMedia_DankMaterialShell` | Quickshell (`quickshell/`), very complete | notification rules/policy, control center, settings UI |
 | `emilkowalski_sonner` | the React toast library, the reference for our toast stack | exact constants and transitions (`src/index.tsx`, `src/styles.css`) |
+| `Tide-island` | Quickshell + C++ Dynamic Island for Hyprland/niri (GPL-3: ideas only, never code) | island morph, swipe between capsules, exact-shape blur, lean-memory habits |
 | `noctalia-dev_noctalia-shell` | now a native C++ shell, no longer Quickshell | design and UX ideas only, plus its ARCHITECTURE.md on frame phases |
 
 ## Pointers by topic
+
+**The island (Tide-island)**
+- `qml/common/InsetBlurRegion.qml` + `DynamicIslandWindow.qml` (`BackgroundEffect.blurRegion`):
+  real compositor blur through `ext-background-effect-v1`, which Hyprland 0.56 has. The region is inset
+  one pixel inside the antialiased outline and its corners are cut row by row (Qt's ellipse region is
+  lopsided), re-measured after each animation frame (`Window.afterAnimating`). Better than our
+  `ignore_alpha` layer rule, which also blurs under soft shadows. Adopt for the island and the center.
+- `IslandRootGestureArea.qml`: horizontal wheel/touchpad swipe on the island flips between capsules
+  (time → now playing → custom), with progress following the fingers and a settle after 150 ms idle.
+- `DynamicIslandWindow.qml`: one layer per screen holding every layer of the island; the input mask is
+  a union of the visible parts; the exclusive zone animates (fast in, slow out) for auto-hide.
+- `qml/island/OsdLayer.qml`: volume/brightness as an island state, not a separate HUD.
+- `docs/PROJECT_REVIEW.zh-CN.md` (their own audit): set `sourceSize` on every preview (30 MiB saved per
+  4K image), never call D-Bus synchronously on the UI thread, sample system stats once and share them
+  across screens, build long lists with `ListView` not `Repeater`, stop child processes asynchronously,
+  unload panels that are closed. All of these are rules here too.
 
 **Notifications**
 - caelestia `services/Notifs.qml` + `NotifData.qml`: wrapper objects over

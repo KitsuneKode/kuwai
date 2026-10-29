@@ -1,6 +1,6 @@
 # The rice as one island
 
-Status: roadmap, 2026-10-29. Built so far: the clipboard island (copy pill, shelf, Quick Look), the recording island
+Status: roadmap, 2026-10-29. Built so far: the island bar at rest and on hover (`rice bar island`, step 1), the clipboard island (copy pill, shelf, Quick Look), the recording island
 (setup, pill, saved), the center (notifications, agents, sound, controls), the OSD. This page is the plan for making
 the island the whole shell, replacing Waybar, rofi, hyprlock's look and the scattered popups.
 
