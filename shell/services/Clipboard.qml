@@ -130,32 +130,36 @@ Singleton {
     // ── When things were copied ──────────────────────────────────────────
     // wl-paste prints a line on every clipboard change; the next list says
     // which id that was. Entries from before the shell started have no time.
-    Process {
-        running: true
-        command: ["wl-paste", "--watch", "echo", "changed"]
-        stdout: SplitParser { onRead: () => stampSoon.restart() }
-    }
+    // A copy appends a line to times.tsv (rice-clip stamp): that's our cue
+    // to re-read the list (no clipboard watcher of the shell's own: one per
+    // reload was being left behind).
     Timer { id: stampSoon; interval: 400; onTriggered: root.refresh() }
     property bool firstList: true
     signal copied(var entry)
+    // Copy times live in times.tsv ("id<TAB>ms" lines), written by
+    // `rice-clip stamp` from its own wl-paste watcher at the moment of every
+    // copy, whether or not this shell is running. Re-copying something moves
+    // it to the top under the same id; its latest time wins.
+    property string lastTop: ""
     function stampNew(list) {
         if (!list.length) return;
-        if (firstList) {
-            // Known ids only: don't claim everything was copied just now.
-            firstList = false;
-            return;
-        }
-        const t = Object.assign({}, times);
-        let changed = false;
-        const fresh = [];
-        for (const e of list.slice(0, 5)) if (!(e.id in t)) { t[e.id] = Date.now(); changed = true; fresh.push(e); }
-        // The island shows what was just copied.
-        if (fresh.length) copied(fresh[0]);
-        if (changed) {
-            const keep = new Set(list.map(e => e.id));
-            for (const k in t) if (!keep.has(k)) delete t[k];
-            times = t;
-            saveState();
+        const top = list[0].id;
+        // The island shows what was just copied (not what was there at start).
+        if (lastTop !== "" && top !== lastTop) copied(list[0]);
+        lastTop = top;
+    }
+    FileView {
+        path: root.dataDir + "/times.tsv"
+        watchChanges: true
+        printErrors: false
+        onFileChanged: { reload(); stampSoon.restart(); }
+        onLoaded: {
+            const t = {};
+            for (const line of text().split("\n")) {
+                const tab = line.indexOf("\t");
+                if (tab > 0) t[line.slice(0, tab)] = Number(line.slice(tab + 1));
+            }
+            root.times = t;
         }
     }
 
@@ -358,14 +362,12 @@ Singleton {
         onLoaded: {
             try {
                 const d = JSON.parse(text());
-                root.times = d.times || {};
                 root.pins = (d.pins || []).map(p => Object.assign(root.parse("", p.preview || "", { pin: p.pin, source: p.source || "" }), { pinnedAt: p.pinnedAt || 0, time: p.time || 0 }));
             } catch (e) {}
         }
     }
     function saveState() {
         state.setText(JSON.stringify({
-            times: times,
             pins: pins.map(p => ({ pin: p.pin, source: p.source, preview: p.preview, pinnedAt: p.pinnedAt, time: p.time }))
         }));
     }

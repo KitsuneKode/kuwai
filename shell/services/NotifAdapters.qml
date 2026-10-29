@@ -88,6 +88,13 @@ Singleton {
         const rule = rules.find(r => r.match(n));
         const out = rule ? rule.adapt(n) : generic(n);
         out.silent = isCopyConfirmation(n);
+        // kittymux sends its own art (the agent's mark with its mascot); show
+        // the agent's real brand mark instead.
+        if (/^kittymux$/i.test(n.appName || "")) {
+            const m = String(n.appIcon || n.image || "").match(/notify\/([\w-]+)\.png$/);
+            const b = m ? Kittymux.brand(m[1]) : "";
+            if (b) out.icon = b;
+        }
         // kittymux names the agent pane it's about (bin/mux-notify hints):
         // a click jumps there through kittymux, even from history later.
         const h = n.hints || {};

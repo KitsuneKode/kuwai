@@ -63,9 +63,23 @@ Singleton {
         };
     }
 
+    // The real brand mark (shell/assets/brands, tinted copies of kittymux's
+    // assets/icons), else kittymux's own notification art.
+    readonly property var brands: ({
+        claude: "claude", "claude-code": "claudecode", codex: "openai", openai: "openai", cursor: "cursor",
+        "cursor-agent": "cursor", gemini: "googlegemini", agy: "antigravity", antigravity: "antigravity",
+        grok: "grok", devin: "devin", opencode: "opencode", amp: "amp", goose: "goose", kimi: "kimi",
+        qwen: "qwen", vibe: "mistralvibe", junie: "junie", kilo: "kilo", auggie: "auggie", droid: "factorydroid",
+        kittymux: "kittymux"
+    })
+    readonly property string brandDir: Qt.resolvedUrl("../assets/brands")
+    function brand(agent) {
+        const name = (agent || "").toLowerCase().replace(/[^a-z0-9-]/g, "");
+        return brands[name] ? brandDir + "/" + brands[name] + ".svg" : "";
+    }
     function icon(agent) {
         const name = (agent || "").toLowerCase().replace(/[^a-z0-9-]/g, "");
-        return name ? "file://" + iconDir + "/" + name + ".png" : "";
+        return brand(name) || (name ? "file://" + iconDir + "/" + name + ".png" : "");
     }
 
     // ── Actions ──────────────────────────────────────────────────────────

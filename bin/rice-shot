@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# Screenshots for the rice, in place of HyDE's script (hypr/rice.conf binds).
+#
+#   rice-shot area      pick a region (Super+P)
+#   rice-shot freeze    freeze the screen, then pick (Super+Ctrl+P)
+#   rice-shot monitor   the focused monitor (Super+Ctrl+Shift+P)
+#   rice-shot all       every monitor (Print)
+#
+# The shot goes on the clipboard at once (the clipboard island shows it) and
+# is saved to ~/Pictures/Screenshots; then Satty opens on it to annotate,
+# floating and centred, and gets the keyboard: Super+Q closes Satty, not the
+# window under the mouse (HyDE's script left focus wherever the mouse was).
+# Cancelling the selection is not an error: nothing is said.
+set -uo pipefail
+
+mode="${1:-area}"
+dir="${XDG_PICTURES_DIR:-$HOME/Pictures}/Screenshots"
+mkdir -p "$dir"
+out="$dir/Screenshot_$(date +%Y%m%d_%H%M%S).png"
+
+case "$mode" in
+    area)    args=(copysave area) ;;
+    freeze)  args=(--freeze copysave area) ;;
+    monitor) args=(copysave output) ;;
+    all)     args=(copysave screen) ;;
+    *) sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+esac
+
+# grimblast exits non-zero when the selection is cancelled (Esc, right
+# click): that's the user changing their mind, so leave quietly.
+if ! grimblast --notify=false "${args[@]}" "$out" >/dev/null 2>&1 || [ ! -s "$out" ]; then
+    rm -f -- "$out"
+    exit 0
+fi
+
+satty --filename "$out" --output-filename "$out" --copy-command wl-copy --early-exit >/dev/null 2>&1 &
+pid=$!
+
+# Give Satty the keyboard once it's on screen.
+for _ in $(seq 60); do
+    addr=$(hyprctl clients -j 2>/dev/null | jq -r --argjson p "$pid" '.[] | select(.pid == $p) | .address' | head -1)
+    if [ -n "$addr" ]; then
+        hyprctl dispatch focuswindow "address:$addr" >/dev/null
+        break
+    fi
+    sleep 0.05
+done
+wait "$pid"

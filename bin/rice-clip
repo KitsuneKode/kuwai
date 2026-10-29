@@ -19,6 +19,8 @@
 #                                  ($RICE_EDITOR, else $EDITOR, else nvim; $RICE_TERMINAL, else kitty)
 #   rice-clip ocr ID|pin:N         the text in an image (tesseract)
 #   rice-clip save ID|pin:N        save to ~/Pictures/Clipboard; prints the path
+#   rice-clip stamp                record when the newest entry was copied (run by
+#                                  `wl-paste --watch rice-clip stamp`, hypr/rice.conf)
 #   rice-clip pin ID               save an entry as a pin; prints its pin file
 #   rice-clip unpin FILE           remove a pin
 set -euo pipefail
@@ -93,6 +95,18 @@ case "${1:-}" in
         mv -- "$tmp" "$out"
         exec xdg-open "$out" ;;
     copy-text) printf '%s' "$2" | wl-copy ;;
+    stamp)
+        # wl-paste hands us the new contents on stdin; we only want the moment.
+        cat > /dev/null
+        now=$(date +%s%3N)
+        # cliphist's own watcher stores the same copy; give it a moment.
+        sleep 0.4
+        id=$(cliphist list 2>/dev/null | head -1 | cut -f1)
+        [ -n "$id" ] || exit 0
+        times="$(dirname "$pins")/times.tsv"
+        # Once per entry: re-copying the same thing moves it to the top with
+        # the same id, which counts as copying it again.
+        tail -1 "$times" 2>/dev/null | grep -q "^$id	" || printf '%s\t%s\n' "$id" "$now" >> "$times" ;;
     edit)
         dir="$cache/edit"; mkdir -p "$dir"
         tmp=$(mktemp "$dir/.raw.XXXXXX")

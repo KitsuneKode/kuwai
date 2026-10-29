@@ -76,6 +76,10 @@ Item {
         const now = new Date(), today = startOf(now);
         if (id === "today") picked(today, today + day, "Today");
         else if (id === "yesterday") picked(today - day, today, "Yesterday");
+        else if (id.startsWith("ago:")) {
+            const n = Number(id.slice(4)), s = today - n * day;
+            picked(s, s + day, new Date(s).toLocaleDateString(Qt.locale(), "ddd d MMM"));
+        }
         else if (id === "week") picked(today - 6 * day, today + day, "Last 7 days");
         else if (id === "month") picked(new Date(now.getFullYear(), now.getMonth(), 1).getTime(), today + day, "This month");
         else picked(0, 0, "");
@@ -85,7 +89,7 @@ Item {
     // ── Geometry: grows out of its button, downward ──────────────────────
     property rect src: Qt.rect(0, 0, 40, 30)
     readonly property real toW: 420
-    readonly property real toH: 300
+    readonly property real toH: 316
     readonly property real toX: Math.max(8, Math.min(width - toW - 8, src.x + src.width - toW))
     readonly property real toY: Math.min(height - toH - 8, src.y + src.height + 6)
     Spring { id: t; tier: Theme.springModerate; epsilon: 0.001 }
@@ -120,18 +124,32 @@ Item {
                 width: 118
                 spacing: 2
                 Repeater {
-                    model: [
-                        { id: "today", t: "Today" }, { id: "yesterday", t: "Yesterday" },
-                        { id: "week", t: "Last 7 days" }, { id: "month", t: "This month" }, { id: "any", t: "Any time" }
-                    ]
+                    // Today, Yesterday, then the days before by name (Mon 27…),
+                    // each with how much was copied that day.
+                    model: {
+                        const day = 86400000, now = new Date(), today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+                        const out = [{ id: "today", t: "Today", ms: today }, { id: "yesterday", t: "Yesterday", ms: today - day }];
+                        for (let n = 2; n <= 5; n++) out.push({ id: "ago:" + n, t: new Date(today - n * day).toLocaleDateString(Qt.locale(), "ddd d"), ms: today - n * day });
+                        out.push({ id: "week", t: "Last 7 days" }, { id: "month", t: "This month" }, { id: "any", t: "Any time" });
+                        return out;
+                    }
                     Rectangle {
                         id: q
                         required property var modelData
                         width: quickCol.width
-                        height: 30
+                        height: 28
                         radius: 8
                         color: qa.containsMouse ? Qt.alpha(Theme.blue, 0.85) : "transparent"
                         Label { x: 10; anchors.verticalCenter: parent.verticalCenter; text: q.modelData.t; size: 13; color: qa.containsMouse ? "white" : Theme.textPrimary }
+                        Label {
+                            readonly property int n: q.modelData.ms ? (dp.counts[dp.dayKey(new Date(q.modelData.ms))] || 0) : 0
+                            visible: n > 0
+                            anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
+                            text: n
+                            size: 11
+                            rounded: true
+                            color: qa.containsMouse ? "white" : Theme.textTertiary
+                        }
                         MouseArea { id: qa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: dp.quick(q.modelData.id) }
                     }
                 }
