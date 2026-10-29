@@ -28,7 +28,7 @@ esac
 
 # grimblast exits non-zero when the selection is cancelled (Esc, right
 # click): that's the user changing their mind, so leave quietly.
-if ! grimblast --notify=false "${args[@]}" "$out" >/dev/null 2>&1 || [ ! -s "$out" ]; then
+if ! grimblast "${args[@]}" "$out" >/dev/null 2>&1 || [ ! -s "$out" ]; then
     rm -f -- "$out"
     exit 0
 fi
