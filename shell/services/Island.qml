@@ -2,7 +2,8 @@ pragma Singleton
 
 // What the island is showing beyond the bar: one panel at a time ("" when
 // none), on one screen. Panels grow out of the island (docs/ISLAND.md):
-// calendar from the clock, the power menu (Super+Backspace), the launcher (Super+A).
+// calendar from the clock, the power menu (Super+Backspace), the launcher (Super+A),
+// settings (Super+Ctrl+I).
 //
 //   Island.toggle("calendar", "DP-3")     qs ipc call island toggle power
 //
@@ -17,7 +18,7 @@ import Quickshell.Io
 Singleton {
     id: root
 
-    readonly property var panels: ["calendar", "power", "launcher"]
+    readonly property var panels: ["calendar", "power", "launcher", "settings"]
     property string panel: ""
     property string screen: ""
     // "key" opens without the grow (Emil: never animate what a key does

@@ -112,6 +112,7 @@ Scope {
             Component { id: calendarPanel; CalendarPanel {} }
             Component { id: powerPanel; PowerPanel {} }
             Component { id: launcherPanel; LauncherPanel {} }
+            Component { id: settingsPanel; SettingsPanel {} }
 
             // ── Data ─────────────────────────────────────────────────────
             readonly property int activeWs: monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : 1
@@ -180,7 +181,7 @@ Scope {
                         id: panelLoader
                         active: win.panelHere || pv.value > 0.01
                         focus: true
-                        sourceComponent: ({ calendar: calendarPanel, power: powerPanel, launcher: launcherPanel })[win.shownPanel] || null
+                        sourceComponent: ({ calendar: calendarPanel, power: powerPanel, launcher: launcherPanel, settings: settingsPanel })[win.shownPanel] || null
                     }
                 }
 

@@ -69,6 +69,12 @@ Scope {
     }
     GlobalShortcut {
         appid: "rice"
+        name: "settings"
+        description: "Settings"
+        onPressed: Island.toggle("settings", "", "key")
+    }
+    GlobalShortcut {
+        appid: "rice"
         name: "calendar"
         description: "Calendar"
         onPressed: Island.toggle("calendar", "", "key")

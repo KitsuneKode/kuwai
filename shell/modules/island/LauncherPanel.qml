@@ -64,6 +64,7 @@ FocusScope {
     readonly property var actions: [
         { name: "Lock Screen", sub: "Lock now", glyph: "\u{f033e}", run: () => Quickshell.execDetached(["loginctl", "lock-session"]) },
         { name: "Power", sub: "Sleep, restart, shut down", glyph: "\u{f0425}", run: () => Qt.callLater(() => Island.open("power", Island.screen, "key")), keep: true },
+        { name: "Settings", sub: "Bar, clock, notifications, motion", glyph: "\u{f0493}", run: () => Qt.callLater(() => Island.open("settings", Island.screen, "key")), keep: true },
         { name: "Calendar", sub: "This month", glyph: "\u{f00ed}", run: () => Qt.callLater(() => Island.open("calendar", Island.screen, "key")), keep: true },
         { name: "Clipboard", sub: "History and pins", glyph: "\u{f014c}", run: () => Clipboard.toggle("all") },
         { name: "Screen Recording", sub: "Choose a screen, audio and frame rate", glyph: "\u{f044a}", run: () => Clipboard.recordKey() },
