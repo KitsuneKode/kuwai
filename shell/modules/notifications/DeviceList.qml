@@ -1,5 +1,6 @@
 import QtQuick
 import Quickshell
+import Quickshell.Services.Pipewire
 import qs.config
 import qs.components
 
@@ -111,8 +112,42 @@ Column {
                             onClicked: if (dev.audio) dev.audio.muted = !dev.audio.muted
                         }
                     }
+                    // Live level, pavucontrol-style: one slim bar per channel under the
+                    // slider (green, yellow from -12 dB, red from -3 dB), only while
+                    // the Sound tab is on screen and the device isn't muted.
+                    PwNodePeakMonitor {
+                        id: peak
+                        node: dev.modelData
+                        enabled: devList.view.shown && !(dev.audio && dev.audio.muted)
+                    }
+                    Column {
+                        anchors { left: pick.right; leftMargin: 14; right: parent.right; rightMargin: 14; bottom: parent.bottom; bottomMargin: 1 }
+                        spacing: 1
+                        Repeater {
+                            model: 2
+                            Rectangle {
+                                required property int index
+                                readonly property real v: {
+                                    const ps = peak.peaks && peak.peaks.length ? peak.peaks : [peak.peak, peak.peak];
+                                    const p = ps[Math.min(index, ps.length - 1)] || 0;
+                                    return p > 0.001 ? Math.max(0, Math.min(1, 1 + (20 * Math.log10(p)) / 60)) : 0;
+                                }
+                                width: parent.width
+                                height: 2
+                                radius: 1
+                                color: Qt.rgba(1, 1, 1, 0.06)
+                                Rectangle {
+                                    height: parent.height
+                                    radius: 1
+                                    width: parent.width * parent.v
+                                    color: parent.v > 0.95 ? Theme.red : parent.v > 0.8 ? Theme.yellow : Theme.green
+                                    Behavior on width { NumberAnimation { duration: 60 } }
+                                }
+                            }
+                        }
+                    }
                     Slider {
-                        anchors { left: pick.right; leftMargin: 10; right: parent.right; rightMargin: 10; bottom: parent.bottom; bottomMargin: 6 }
+                        anchors { left: pick.right; leftMargin: 10; right: parent.right; rightMargin: 10; bottom: parent.bottom; bottomMargin: 7 }
                         height: 22
                         value: dev.audio ? dev.audio.volume : 0
                         dim: muteBtn.muted

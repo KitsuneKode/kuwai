@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Screenshots for the rice, in place of HyDE's script (hypr/rice.conf binds).
 #
-#   rice-shot area      pick a region (Super+P)
+#   rice-shot area      pick a region, then annotate it in Satty (Super+P)
+#   rice-shot quick     pick a region, done: copied and saved, no editor; the
+#                       clipboard island shows it (Super+Alt+P)
 #   rice-shot freeze    freeze the screen, then pick (Super+Ctrl+P)
 #   rice-shot monitor   the focused monitor (Super+Ctrl+Shift+P)
 #   rice-shot all       every monitor (Print)
@@ -19,7 +21,7 @@ mkdir -p "$dir"
 out="$dir/Screenshot_$(date +%Y%m%d_%H%M%S).png"
 
 case "$mode" in
-    area)    args=(copysave area) ;;
+    area|quick) args=(copysave area) ;;
     freeze)  args=(--freeze copysave area) ;;
     monitor) args=(copysave output) ;;
     all)     args=(copysave screen) ;;
@@ -43,6 +45,9 @@ if [ $rc -ne 0 ] || [ ! -s "$out" ]; then
     fi
     exit 0
 fi
+
+# Quick: the shot is on the clipboard and on disk; that's all.
+[ "$mode" = quick ] && exit 0
 
 log="${XDG_STATE_HOME:-$HOME/.local/state}/rice/rice-shot.log"
 satty --filename "$out" --output-filename "$out" --copy-command wl-copy --early-exit >>"$log" 2>&1 &
