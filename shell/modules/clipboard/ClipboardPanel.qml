@@ -393,11 +393,49 @@ Scope {
     }
     Timer { id: toastTimer; interval: 1900; onTriggered: root.toasting = false }
 
+    // Recording (bin/rice-rec): the pill holds a red dot and the time while
+    // it lasts; a click on it stops the recording.
+    property real recSince: 0
+    property string recTarget: ""
+    readonly property bool recording: recSince > 0
+    property real nowSec: Date.now() / 1000
+    Timer { running: root.recording; interval: 1000; repeat: true; triggeredOnStart: true; onTriggered: root.nowSec = Date.now() / 1000 }
+    function elapsed(s) { s = Math.max(0, Math.floor(s)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); }
+    FileView {
+        path: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/rice/recording"
+        watchChanges: true
+        printErrors: false
+        onFileChanged: reload()
+        onLoaded: {
+            const f = text().trim().split(" ");
+            root.recSince = f.length >= 4 ? Number(f[1]) : 0;
+            root.recTarget = f.length >= 4 ? f[3] : "";
+        }
+        onLoadFailed: { root.recSince = 0; root.recTarget = ""; }
+    }
+    Process { id: recStop; command: [Quickshell.env("HOME") + "/Projects/rice/bin/rice-rec", "stop"] }
+    // A copied image's pill: a click opens it in Satty to annotate.
+    Process { id: annotate }
+    function pillClicked() {
+        if (recording) { recStop.running = true; return; }
+        const e = toastEntry;
+        if (e && e.kind === "image") {
+            const src = Clipboard.thumb(e).replace(/^file:\/\//, "");
+            if (src) {
+                annotate.command = ["satty", "--filename", src, "--output-filename",
+                    Quickshell.env("HOME") + "/Pictures/Screenshots/Screenshot_" + new Date().toISOString().replace(/[-:T]/g, "").slice(0, 15) + ".png",
+                    "--copy-command", "wl-copy", "--early-exit"];
+                annotate.running = true;
+                toasting = false;
+            }
+        } else Clipboard.toggle("all");
+    }
+
     // pill: 0 gone → 1 there (it swells out of a dot). melt: 0 pill → 1 shelf.
-    Spring { id: pill; tier: Theme.springFast; epsilon: 0.002; target: root.open || root.toasting ? 1 : 0 }
+    Spring { id: pill; tier: Theme.springFast; epsilon: 0.002; target: root.open || root.toasting || root.recording ? 1 : 0 }
     Spring { id: melt; tier: Theme.springModerate; epsilon: 0.001; target: root.open ? 1 : 0 }
     Spring { id: read; tier: Theme.springModerate; epsilon: 0.001; target: root.open && root.reading ? 1 : 0 }
-    readonly property bool shownAtAll: open || toasting || pill.value > 0.003 || melt.value > 0.003
+    readonly property bool shownAtAll: open || toasting || recording || pill.value > 0.003 || melt.value > 0.003
     readonly property var hostScreen: open ? (Clipboard.screen || Quickshell.screens[0]) : (toastScreen || Clipboard.screen || Quickshell.screens[0])
 
     // Reveal clock for the cards' rise.
@@ -466,7 +504,9 @@ Scope {
             readonly property real readH: Math.min(1020, modelData.height - 150)
             readonly property real rd: read.value
             readonly property real side: 64
-            readonly property real pillW: root.open && !root.toastEntry ? 180 : Math.max(170, Math.min(470, toastRow.implicitWidth + 36))
+            readonly property real pillW: root.open && !root.toastEntry ? 180
+                : root.recording && !root.toasting ? recRow.implicitWidth + 36
+                : Math.max(170, Math.min(470, toastRow.implicitWidth + 36))
             readonly property real pillH: 40
 
             anchors.top: true
@@ -477,7 +517,7 @@ Scope {
             WlrLayershell.namespace: "rice-island"
             WlrLayershell.layer: WlrLayer.Overlay
             WlrLayershell.keyboardFocus: up && root.open ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
-            mask: Region { item: win.up && (root.open || root.toasting) ? frame : null }
+            mask: Region { item: win.up && (root.open || root.toasting || root.recording) ? frame : null }
 
             HyprlandFocusGrab {
                 windows: [win]
@@ -519,7 +559,7 @@ Scope {
                     id: toastRow
                     anchors.centerIn: parent
                     spacing: 10
-                    opacity: Math.max(0, 1 - win.m * 4)
+                    opacity: root.recording && !root.toasting ? 0 : Math.max(0, 1 - win.m * 4)
                     visible: opacity > 0.01
                     readonly property var e: root.toastEntry
                     ClippingRectangle {
@@ -561,6 +601,35 @@ Scope {
                         size: 13
                         color: Theme.textSecondary
                     }
+                }
+
+                // ── Pill: recording ──────────────────────────────────────
+                Row {
+                    id: recRow
+                    anchors.centerIn: parent
+                    spacing: 9
+                    opacity: root.recording && !root.toasting ? Math.max(0, 1 - win.m * 4) : 0
+                    visible: opacity > 0.01
+                    Rectangle {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 10; height: 10; radius: 5
+                        color: Theme.red
+                        SequentialAnimation on opacity {
+                            running: root.recording && !Theme.reduceMotion
+                            loops: Animation.Infinite
+                            NumberAnimation { to: 0.35; duration: 700; easing.type: Easing.InOutSine }
+                            NumberAnimation { to: 1; duration: 700; easing.type: Easing.InOutSine }
+                        }
+                    }
+                    Label { anchors.verticalCenter: parent.verticalCenter; text: root.elapsed(root.nowSec - root.recSince); size: 13; rounded: true; weight: Theme.wSemibold; font.features: ({ "tnum": 1 }) }
+                    Label { anchors.verticalCenter: parent.verticalCenter; text: "Recording · " + (root.recTarget === "region" ? "region" : root.recTarget) + " · click to stop"; size: 12; color: Theme.textSecondary }
+                }
+                // The pill is a button while it's a pill: stop a recording, annotate a copied image.
+                MouseArea {
+                    anchors.fill: parent
+                    enabled: !root.open
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.pillClicked()
                 }
 
                 // ── Shelf ────────────────────────────────────────────────

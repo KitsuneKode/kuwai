@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# Screen recording with GPU Screen Recorder (encodes on the GPU: NVENC here).
+#
+#   rice-rec toggle            record the focused monitor; again to stop (Super+Shift+Alt+R)
+#   rice-rec toggle region     pick a region with slurp, record it (Super+Ctrl+Alt+R)
+#   rice-rec stop              stop if recording
+#   rice-rec status            "recording PATH SINCE TARGET" or "idle"
+#
+# System audio is recorded with it. Files go to ~/Videos/Recordings. While it
+# records, ~/.local/state/rice/recording holds "pid since path target": the
+# clipboard island shows a red dot and the time, and a click on it stops.
+set -uo pipefail
+
+state="${XDG_STATE_HOME:-$HOME/.local/state}/rice/recording"
+dir="${XDG_VIDEOS_DIR:-$HOME/Videos}/Recordings"
+mkdir -p "$(dirname "$state")" "$dir"
+
+running() { [ -s "$state" ] && kill -0 "$(cut -d' ' -f1 "$state")" 2>/dev/null; }
+
+stop() {
+    running || { rm -f -- "$state"; return 0; }
+    read -r pid _since path _target < "$state"
+    kill -INT "$pid"                      # SIGINT: gpu-screen-recorder finishes the file
+    for _ in $(seq 50); do kill -0 "$pid" 2>/dev/null || break; sleep 0.1; done
+    rm -f -- "$state"
+    notify-send -a "Screen recording" -i video-x-generic "Recording saved" "${path/#$HOME/\~}"
+}
+
+start() {
+    local target="${1:-monitor}" window args=()
+    if [ "$target" = region ]; then
+        local geo; geo=$(slurp -f '%wx%h+%x+%y' 2>/dev/null) || exit 0     # cancelled: nothing to say
+        window=region; args=(-region "$geo")
+    else
+        window=$(hyprctl monitors -j | jq -r '.[] | select(.focused) | .name')
+    fi
+    local path="$dir/Recording_$(date +%Y%m%d_%H%M%S).mp4"
+    gpu-screen-recorder -w "$window" "${args[@]}" -f 60 -a default_output -o "$path" \
+        >/dev/null 2>"${state}.log" </dev/null &
+    local pid=$!
+    sleep 0.4
+    if ! kill -0 "$pid" 2>/dev/null; then
+        notify-send -a "Screen recording" -u normal "Couldn't start recording" "$(tail -2 "${state}.log")"
+        exit 1
+    fi
+    printf '%s %s %s %s\n' "$pid" "$(date +%s)" "$path" "$window" > "$state"
+}
+
+case "${1:-toggle}" in
+    toggle) if running; then stop; else start "${2:-monitor}"; fi ;;
+    stop)   stop ;;
+    status) if running; then read -r _ since path target < "$state"; echo "recording $path $since $target"; else echo idle; fi ;;
+    *) sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+esac

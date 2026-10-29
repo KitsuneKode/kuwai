@@ -4,6 +4,9 @@
 #   rice-shot area      pick a region, then annotate it in Satty (Super+P)
 #   rice-shot quick     pick a region, done: copied and saved, no editor; the
 #                       clipboard island shows it (Super+Alt+P)
+#   rice-shot window    the window you're in (Super+Ctrl+Alt+P)
+#   rice-shot delay     this monitor in 3 s, for menus that close on a click (Shift+Print)
+#   rice-shot ocr       pick a region; its text is copied, not the picture (Super+Shift+Alt+P)
 #   rice-shot freeze    freeze the screen, then pick (Super+Ctrl+P)
 #   rice-shot monitor   the focused monitor (Super+Ctrl+Shift+P)
 #   rice-shot all       every monitor (Print)
@@ -22,6 +25,19 @@ out="$dir/Screenshot_$(date +%Y%m%d_%H%M%S).png"
 
 case "$mode" in
     area|quick) args=(copysave area) ;;
+    window)  args=(copysave active) ;;
+    delay)   args=(--wait 3 copysave output) ;;
+    ocr)
+        tmp=$(mktemp --suffix=.png)
+        if grimblast save area "$tmp" >/dev/null 2>&1 </dev/null && [ -s "$tmp" ]; then
+            text=$(tesseract "$tmp" - 2>/dev/null | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}')
+            if [ -n "$text" ]; then
+                printf '%s' "$text" | wl-copy
+            else
+                notify-send -a "Screenshot" "No text found" "Nothing readable in that region."
+            fi
+        fi
+        rm -f -- "$tmp"; exit 0 ;;
     freeze)  args=(--freeze copysave area) ;;
     monitor) args=(copysave output) ;;
     all)     args=(copysave screen) ;;
@@ -47,7 +63,7 @@ if [ $rc -ne 0 ] || [ ! -s "$out" ]; then
 fi
 
 # Quick: the shot is on the clipboard and on disk; that's all.
-[ "$mode" = quick ] && exit 0
+case "$mode" in quick|window|delay) exit 0 ;; esac
 
 log="${XDG_STATE_HOME:-$HOME/.local/state}/rice/rice-shot.log"
 satty --filename "$out" --output-filename "$out" --copy-command wl-copy --early-exit >>"$log" 2>&1 &
