@@ -13,13 +13,15 @@ import Quickshell.Io
 Singleton {
     id: root
     // ── Material ─────────────────────────────────────────────────────────
-    readonly property color glassTint: Qt.rgba(0.10, 0.10, 0.12, 0.46)
-    // Text-heavy cards (toasts) sit over anything, so a thicker material:
-    // the blur still shows, but body copy stays readable over busy windows.
-    readonly property color glassTintThick: Qt.rgba(0.075, 0.075, 0.09, 0.66)
-    // Floating menus sit above the windows, so their glass is lighter than a
-    // window and casts a deep shadow: it reads as raised, not as a tile.
-    readonly property color glassTintElevated: Qt.rgba(0.16, 0.16, 0.19, 0.80)
+    // One glass, the voxtype HUD's: near-black #111114 over the compositor's
+    // blur (components/GlassCard draws the ring, sheen and hairline).
+    readonly property color glassTint: Qt.rgba(0.067, 0.067, 0.078, 0.58)
+    // Text-heavy cards (toasts) sit over anything: a little denser, so body
+    // copy stays readable over busy windows.
+    readonly property color glassTintThick: Qt.rgba(0.067, 0.067, 0.078, 0.68)
+    // Floating menus (the center, the island): the same glass, denser still,
+    // with a deep shadow under it; it reads as raised, not as a lighter grey.
+    readonly property color glassTintElevated: Qt.rgba(0.067, 0.067, 0.078, 0.74)
     readonly property color platter: Qt.rgba(1, 1, 1, 0.15)
     readonly property color platterDim: Qt.rgba(1, 1, 1, 0.08)
     readonly property color track: Qt.rgba(1, 1, 1, 0.18)

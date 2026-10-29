@@ -25,11 +25,50 @@ import sys
 from pygments import highlight
 from pygments.formatters import HtmlFormatter
 from pygments.lexers import get_lexer_by_name, guess_lexer
+from pygments.style import Style
+from pygments.token import (Comment, Error, Generic, Keyword, Name, Number, Operator, Punctuation, String, Text,
+                            Token)
 from pygments.util import ClassNotFound
 
-STYLE = "one-dark"
 MONO = "SF Mono"
-TEXT = "SF Pro"
+TEXT = "SF Pro Text"          # body copy: Apple's Text cut (made for 11–19px)
+DISPLAY = "SF Pro Display"    # headings: the Display cut
+
+
+class RiceDark(Style):
+    """Xcode's dark palette, tuned for the rice's glass: pink keywords, coral strings, gold numbers, mint functions,
+    lavender types, slate comments, on a near-black that sits in the glass instead of a coloured slab."""
+    background_color = "#16161a"
+    default_style = "#e6e6eb"
+    styles = {
+        Token: "#e6e6eb",
+        Comment: "italic #7f8c98",
+        Comment.Preproc: "#fd8f3f",
+        Keyword: "bold #ff7ab2",
+        Keyword.Constant: "bold #ff7ab2",
+        Keyword.Type: "#dabaff",
+        Name.Builtin: "#b281eb",
+        Name.Function: "#67b7a4",
+        Name.Class: "#5dd8ff",
+        Name.Decorator: "#fd8f3f",
+        Name.Tag: "#ff7ab2",
+        Name.Attribute: "#67b7a4",
+        Name.Variable: "#acf2e4",
+        String: "#ff8170",
+        String.Escape: "#d9c97c",
+        Number: "#d9c97c",
+        Operator: "#e6e6eb",
+        Punctuation: "#a0a0a8",
+        Generic.Inserted: "#30d158",
+        Generic.Deleted: "#ff453a",
+        Generic.Heading: "bold #5dd8ff",
+        Generic.Subheading: "#5dd8ff",
+        Error: "#ff453a",
+        Text: "#e6e6eb",
+    }
+
+
+STYLE = RiceDark
 CACHE = os.path.join(os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache")), "rice", "clip", "render")
 
 MERMAID_START = re.compile(r"^\s*(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram(-v2)?|erDiagram|gantt|pie|mindmap|journey|gitGraph|timeline|quadrantChart|xychart-beta|block-beta)\b")
@@ -39,8 +78,8 @@ def code_html(src, lexer, size=13):
     fmt = HtmlFormatter(style=STYLE, noclasses=True, nowrap=True)
     body = highlight(src.rstrip("\n"), lexer, fmt)
     bg = fmt.style.background_color or "#282c34"
-    return (f'<table width="100%" cellpadding="12" style="background-color:{bg}; border-radius:10px">'
-            f'<tr><td><pre style="font-family:\'{MONO}\'; font-size:{size}px; margin:0">{body}</pre></td></tr></table>')
+    return (f'<table width="100%" cellpadding="14" cellspacing="0" style="background-color:{bg}; border-radius:12px">'
+            f'<tr><td><pre style="font-family:\'{MONO}\'; font-size:{size}px; margin:0; line-height:140%">{body}</pre></td></tr></table>')
 
 
 def lexer_for(src, name=""):
@@ -117,18 +156,22 @@ def mermaid(src):
 
 STYLESHEET = f"""
 <style>
-body {{ font-family: '{TEXT}'; font-size: 14px; color: #f2f2f7; }}
-h1 {{ font-size: 24px; font-weight: 700; margin-top: 4px; margin-bottom: 10px; }}
-h2 {{ font-size: 19px; font-weight: 650; margin-top: 16px; margin-bottom: 8px; }}
-h3 {{ font-size: 16px; font-weight: 600; margin-top: 14px; margin-bottom: 6px; }}
-p {{ margin-top: 0; margin-bottom: 10px; line-height: 145%; }}
-a {{ color: #4da3ff; text-decoration: none; }}
-code {{ font-family: '{MONO}'; font-size: 12px; color: #ffd60a; background-color: #2c2c32; }}
-blockquote {{ color: #aeaeb2; margin-left: 12px; border-left: 3px solid #48484a; padding-left: 10px; }}
-th {{ background-color: #2c2c32; font-weight: 600; padding: 6px 10px; }}
-td {{ padding: 6px 10px; }}
+body {{ font-family: '{TEXT}'; font-size: 15px; color: #e6e6eb; }}
+h1 {{ font-family: '{DISPLAY}'; font-size: 26px; font-weight: 700; color: #ffffff; margin-top: 2px; margin-bottom: 12px; }}
+h2 {{ font-family: '{DISPLAY}'; font-size: 21px; font-weight: 600; color: #ffffff; margin-top: 20px; margin-bottom: 8px; }}
+h3 {{ font-size: 17px; font-weight: 600; color: #ffffff; margin-top: 16px; margin-bottom: 6px; }}
+h4, h5, h6 {{ font-size: 15px; font-weight: 600; color: #c7c7cc; margin-top: 12px; margin-bottom: 4px; }}
+p {{ margin-top: 0; margin-bottom: 12px; line-height: 150%; }}
+a {{ color: #0a84ff; text-decoration: none; }}
+strong, b {{ color: #ffffff; font-weight: 600; }}
+em, i {{ color: #d1d1d6; }}
+code {{ font-family: '{MONO}'; font-size: 13px; color: #ff8170; background-color: #26262c; }}
+blockquote {{ color: #aeaeb2; margin-left: 4px; padding-left: 14px; border-left: 3px solid #0a84ff; }}
+table {{ border-collapse: collapse; }}
+th {{ background-color: #26262c; color: #ffffff; font-weight: 600; padding: 7px 12px; }}
+td {{ padding: 7px 12px; border-bottom: 1px solid #2c2c32; }}
 hr {{ color: #3a3a3c; }}
-li {{ margin-bottom: 4px; }}
+li {{ margin-bottom: 5px; line-height: 145%; }}
 </style>"""
 
 

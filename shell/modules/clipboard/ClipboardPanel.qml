@@ -55,6 +55,10 @@ Scope {
     property Item typeButton: null
     property Item actionsButton: null
     property Item tips: null
+    property Item keySheet: null
+    // Reading: Quick Look grows past the shelf into a large reading view.
+    property bool reading: false
+    onReadingChanged: if (reading && quickLook && !quickLook.open) toggleQuickLook()
     function tip(item, on, text, keys) { if (!tips) return; if (on) tips.show(item, text, keys); else tips.hide(item); }
 
     readonly property var filters: [
@@ -158,11 +162,13 @@ Scope {
         const a = [
             { id: "paste", label: where ? "Paste to " + where : "Paste", glyph: "\u{f0192}", keys: ["↵"], section: "Entry" },
             { id: "copy", label: "Copy to clipboard", glyph: "\u{f018f}", keys: ["⇧", "↵"], section: "Entry" },
-            { id: "open", label: e.kind === "link" ? "Open in browser" : img ? "Open in image viewer" : "Open with default app", glyph: "\u{f03cc}", keys: ["⌃", "↵"], section: "Entry" },
+            { id: "open", label: Clipboard.openLabel(e), glyph: "\u{f03cc}", keys: ["⌃", "↵"], section: "Entry" },
             { id: "quicklook", label: "Quick Look", glyph: "\u{f0208}", keys: ["Space"], section: "Entry" },
+            { id: "read", label: "Read it large", glyph: "\u{f0293}", keys: ["⇧", "Space"], section: "Entry" },
             { id: "pin", label: Clipboard.isPinned(e) ? "Unpin" : "Pin", glyph: "\u{f0403}", keys: ["⌃", "P"], section: "Entry" }
         ];
         if (txt) a.push({ id: "edit", label: "Edit, then paste", glyph: "\u{f03eb}", keys: ["⌃", "E"], section: "Entry" });
+        if (txt) a.push({ id: "nvim", label: "Edit in Neovim (the edit is copied)", glyph: "\u{f06e5}", keys: ["⌃", "⇧", "E"], section: "Entry" });
         if (img) {
             a.push({ id: "ocr", label: "Copy text from image", glyph: "\u{f05e7}", keys: ["⌃", "O"], section: "Image" });
             a.push({ id: "save", label: "Save to Pictures/Clipboard", glyph: "\u{f0193}", keys: ["⌃", "S"], section: "Image" });
@@ -191,6 +197,8 @@ Scope {
         case "open": Clipboard.openWith(e); break;
         case "pin": say(Clipboard.isPinned(e) ? "Unpinned" : "Pinned"); Clipboard.togglePin(e); break;
         case "quicklook": toggleQuickLook(); break;
+        case "read": reading = !reading; break;
+        case "nvim": Clipboard.editIn(e); break;
         case "edit":
             if (e.secret) revealed = true;
             if (!quickLook.open) toggleQuickLook();
@@ -221,6 +229,41 @@ Scope {
             break;
         }
     }
+    readonly property var keySections: [
+        { title: "Paste and copy", items: [
+            { k: ["↵"], t: "Paste into the window you came from" },
+            { k: ["⇧", "↵"], t: "Copy, don't paste" },
+            { k: ["⌥", "1–9"], t: "Paste the nth card (hold ⌥ to see)" },
+            { k: ["⌃", "E"], t: "Edit, then paste" },
+            { k: ["⌃", "⇧", "E"], t: "Edit in Neovim; the edit is copied" } ] },
+        { title: "Look", items: [
+            { k: ["Space"], t: "Quick Look" },
+            { k: ["⇧", "Space"], t: "Read it large" },
+            { k: ["⌃", "R"], t: "Rendered or raw (Markdown, code)" },
+            { k: ["⌃", "H"], t: "Show or hide a secret" },
+            { k: ["⌃", "↵"], t: "Open it where it belongs (Cider, browser…)" } ] },
+        { title: "Move", items: [
+            { k: ["←", "→"], t: "Previous or next card" },
+            { k: ["PgUp", "PgDn"], t: "Five at a time" },
+            { k: ["⌃", "Home"], t: "First or last (⌃End)" },
+            { k: ["⇥"], t: "Next filter (⇧⇥ back)" },
+            { k: ["⌫"], t: "Clear the filter (empty search)" } ] },
+        { title: "Keep and tidy", items: [
+            { k: ["⌃", "P"], t: "Pin or unpin" },
+            { k: ["⇧", "⌦"], t: "Delete the card (or ⌃X)" },
+            { k: ["⌃", "⇧", "⌫"], t: "Clear history, twice (pins stay)" } ] },
+        { title: "Images", items: [
+            { k: ["⌃", "O"], t: "Copy the text in it (OCR)" },
+            { k: ["⌃", "S"], t: "Save to Pictures/Clipboard" } ] },
+        { title: "Search", items: [
+            { k: ["'word"], t: "Exact match" },
+            { k: ["^word"], t: "Starts with" },
+            { k: ["word$"], t: "Ends with" },
+            { k: ["!word"], t: "Leave out" },
+            { k: ["⌃", "K"], t: "Every action for the card" },
+            { k: ["Esc"], t: "Back out, step by step" } ] }
+    ]
+
     property bool confirmWipe: false
     Timer { id: wipeWindow; interval: 3000; onTriggered: root.confirmWipe = false }
 
@@ -231,7 +274,7 @@ Scope {
 
     function toggleQuickLook() {
         if (!quickLook) return;
-        if (quickLook.open) { quickLook.open = false; return; }
+        if (quickLook.open) { quickLook.open = false; reading = false; return; }
         if (!entry) return;
         quickLook.entry = entry;
         quickLook.from = selRow ? selRow.markItem.mapToItem(quickLook, 0, 0, selRow.markItem.width, selRow.markItem.height)
@@ -308,6 +351,7 @@ Scope {
     // pill: 0 gone → 1 there (it swells out of a dot). melt: 0 pill → 1 shelf.
     Spring { id: pill; tier: Theme.springFast; epsilon: 0.002; target: root.open || root.toasting ? 1 : 0 }
     Spring { id: melt; tier: Theme.springModerate; epsilon: 0.001; target: root.open ? 1 : 0 }
+    Spring { id: read; tier: Theme.springModerate; epsilon: 0.001; target: root.open && root.reading ? 1 : 0 }
     readonly property bool shownAtAll: open || toasting || pill.value > 0.003 || melt.value > 0.003
     readonly property var hostScreen: open ? (Clipboard.screen || Quickshell.screens[0]) : (toastScreen || Clipboard.screen || Quickshell.screens[0])
 
@@ -334,6 +378,8 @@ Scope {
             if (actionMenu) actionMenu.open = false;
             if (filterMenu) filterMenu.open = false;
             if (quickLook) quickLook.open = false;
+            if (keySheet) keySheet.open = false;
+            reading = false;
             clock = 0;
             clockRun.restart();
             armSoon.restart();
@@ -355,13 +401,17 @@ Scope {
             // The shelf, and the pill it melts out of.
             readonly property real shelfW: Math.min(1000, modelData.width - 80)
             readonly property real shelfH: 476
+            // Reading size: most of the screen, still clear of its edges.
+            readonly property real readW: Math.min(1280, modelData.width - 80)
+            readonly property real readH: Math.min(1020, modelData.height - 150)
+            readonly property real rd: read.value
             readonly property real side: 64
             readonly property real pillW: root.open && !root.toastEntry ? 180 : Math.max(170, Math.min(470, toastRow.implicitWidth + 36))
             readonly property real pillH: 40
 
             anchors.top: true
-            implicitWidth: up ? shelfW + side * 2 : 1
-            implicitHeight: up ? shelfH + 96 : 1
+            implicitWidth: up ? Math.max(shelfW, readW) + side * 2 : 1
+            implicitHeight: up ? Math.max(shelfH, readH) + 96 : 1
             exclusionMode: ExclusionMode.Normal
             color: "transparent"
             WlrLayershell.namespace: "rice-island"
@@ -386,19 +436,22 @@ Scope {
                 id: frame
                 visible: win.up
                 readonly property real baseW: win.lerp(44, win.pillW, Math.min(1, win.pv))
-                width: Math.max(1, win.lerp(baseW, win.shelfW, win.m))
-                height: Math.max(1, win.lerp(win.pillH, win.shelfH, win.mh))
+                width: Math.max(1, win.lerp(win.lerp(baseW, win.shelfW, win.m), win.readW, win.rd))
+                height: Math.max(1, win.lerp(win.lerp(win.pillH, win.shelfH, win.mh), win.readH, win.rd))
                 x: Math.round((win.width - width) / 2)
                 y: 6
                 radius: win.lerp(win.pillH / 2, 26, Math.min(1, win.m))
-                // The island is ink-dark like Apple's, not frosted: it reads
-                // as an object the shelf grows out of, distinct from the
-                // center's glass.
-                color: Qt.rgba(0.055, 0.055, 0.065, 0.97)
-                border.width: 1
-                border.color: Qt.rgba(1, 1, 1, 0.09)
+                // The same liquid glass (and grain) as the center and the
+                // toasts: one material across the rice. The pill is the
+                // glass's elevated tint, a touch denser so words read on it.
+                color: "transparent"
                 opacity: Math.min(1, win.pv * 2.5)
                 clip: true
+                GlassCard {
+                    anchors.fill: parent
+                    radius: frame.radius
+                    tint: Theme.glassTintElevated
+                }
 
                 // ── Pill: what was just copied ───────────────────────────
                 Row {
@@ -461,6 +514,15 @@ Scope {
                     opacity: Math.max(0, Math.min(1, (win.m - 0.55) / 0.4))
                     visible: opacity > 0.01 || root.open
                     sourceComponent: shelfBody
+                }
+                // Quick Look lives on the island itself, so reading can grow
+                // it past the shelf.
+                Loader {
+                    anchors.fill: parent
+                    active: win.hosts
+                    z: 30
+                    sourceComponent: QuickLook { panel: root }
+                    onLoaded: root.quickLook = item
                 }
             }
         }
@@ -586,7 +648,7 @@ Scope {
                 Behavior on opacity { NumberAnimation { duration: 120 } }
                 gradient: Gradient {
                     orientation: Gradient.Horizontal
-                    GradientStop { position: 0; color: Qt.rgba(0.055, 0.055, 0.065, 1) }
+                    GradientStop { position: 0; color: Theme.glassTintElevated }
                     GradientStop { position: 1; color: "transparent" }
                 }
             }
@@ -598,7 +660,7 @@ Scope {
                 gradient: Gradient {
                     orientation: Gradient.Horizontal
                     GradientStop { position: 0; color: "transparent" }
-                    GradientStop { position: 1; color: Qt.rgba(0.055, 0.055, 0.065, 1) }
+                    GradientStop { position: 1; color: Theme.glassTintElevated }
                 }
             }
 
@@ -720,6 +782,12 @@ Scope {
                         KeyCap { anchors.verticalCenter: parent.verticalCenter; text: "↵" }
                     }
                 }
+                Row {
+                    anchors { right: actionsBtn.left; rightMargin: 14; verticalCenter: parent.verticalCenter }
+                    spacing: 6
+                    Label { anchors.verticalCenter: parent.verticalCenter; text: "Shortcuts"; size: 12; color: Theme.textTertiary }
+                    KeyCap { anchors.verticalCenter: parent.verticalCenter; text: "?" }
+                }
                 Rectangle {
                     id: actionsBtn
                     anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
@@ -748,10 +816,11 @@ Scope {
             }
 
             // ── Overlays ─────────────────────────────────────────────────
-            QuickLook {
-                id: ql
-                Component.onCompleted: root.quickLook = ql
-                panel: root
+            KeySheet {
+                id: sheet
+                Component.onCompleted: root.keySheet = sheet
+                title: "Clipboard shortcuts"
+                sections: root.keySections
             }
             ActionMenu {
                 id: actions
@@ -784,10 +853,17 @@ Scope {
         const ctrl = m & Qt.ControlModifier, shift = m & Qt.ShiftModifier, alt = m & Qt.AltModifier;
         const field = searchField;
         if (k === Qt.Key_Alt) { altHeld = true; return; }
+        if (keySheet && keySheet.open && keySheet.key(event)) { event.accepted = true; return; }
+        if (k === Qt.Key_F1 || (ctrl && k === Qt.Key_Slash) || (k === Qt.Key_Question && field && field.text === "")) {
+            if (keySheet) keySheet.open = true;
+            event.accepted = true;
+            return;
+        }
         if (filterMenu && filterMenu.open && filterMenu.key(event)) { event.accepted = true; return; }
         if (actionMenu && actionMenu.open && actionMenu.key(event)) { event.accepted = true; return; }
         const ql = quickLook && quickLook.open;
-        if (ql && (k === Qt.Key_Escape || k === Qt.Key_Space || (ctrl && k === Qt.Key_Y))) { quickLook.open = false; event.accepted = true; return; }
+        if (ql && k === Qt.Key_Space && shift) { reading = !reading; event.accepted = true; return; }
+        if (ql && (k === Qt.Key_Escape || k === Qt.Key_Space || (ctrl && k === Qt.Key_Y))) { quickLook.open = false; reading = false; event.accepted = true; return; }
         if (ctrl && k === Qt.Key_K) { if (actionMenu) actionMenu.toggle(); }
         else if (k === Qt.Key_Right || k === Qt.Key_Down || (ctrl && k === Qt.Key_N)) {
             // → moves the caret while it isn't at the end of the search.
@@ -806,7 +882,9 @@ Scope {
         else if ((k === Qt.Key_Return || k === Qt.Key_Enter) && ctrl) run("open");
         else if ((k === Qt.Key_Return || k === Qt.Key_Enter) && shift) run("copy");
         else if (k === Qt.Key_Return || k === Qt.Key_Enter) run("paste");
+        else if (k === Qt.Key_Space && shift && field && field.text === "") reading = true;
         else if ((k === Qt.Key_Space && field && field.text === "") || (ctrl && k === Qt.Key_Y)) run("quicklook");
+        else if (ctrl && shift && k === Qt.Key_E) run("nvim");
         else if (ctrl && k === Qt.Key_P) run("pin");
         else if (ctrl && k === Qt.Key_E) run("edit");
         else if (ctrl && k === Qt.Key_O) run("ocr");

@@ -196,7 +196,60 @@ Singleton {
     function ref(e) { return e.pin !== "" ? "pin:" + e.pin : e.id; }
     function paste(e) { open = false; run(["paste", ref(e)]); }
     function copy(e) { open = false; run(["copy", ref(e)]); }
-    function openWith(e) { open = false; run(["open", ref(e)]); }
+    function openWith(e) {
+        open = false;
+        const h = e.kind === "link" ? linkHandler(e.preview.trim()) : null;
+        if (h) {
+            const p = runner.createObject(root, { command: h.command });
+            p.running = true;
+        } else run(["open", ref(e)]);
+    }
+    function editIn(e) { open = false; run(["edit", ref(e)]); }
+
+    // ── Links go to the app that's best at them ──────────────────────────
+    // Apple Music → Cider, YouTube Music → its app, Discord → Vesktop, Zoom
+    // → the meeting, a media file → mpv; anything else the default browser.
+    // Only apps that are installed are used (probed once at start).
+    property var apps: ({})
+    Process {
+        running: true
+        command: ["sh", "-c", "for a in cider youtube-music vesktop zoom mpv obsidian; do command -v $a >/dev/null && echo $a; done"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const a = {};
+                for (const n of text.split("\n")) if (n) a[n] = true;
+                root.apps = a;
+            }
+        }
+    }
+    function linkHandler(url) {
+        let u;
+        try { u = new URL(url); } catch (err) { return null; }
+        const host = u.hostname.replace(/^www\./, "");
+        if (host === "music.apple.com" && apps.cider)
+            return { name: "Cider", glyph: "\u{f0388}", command: ["xdg-open", "itmss://" + host + u.pathname + u.search] };
+        if (host === "music.youtube.com" && apps["youtube-music"])
+            return { name: "YouTube Music", glyph: "\u{f05c3}", command: ["youtube-music", url] };
+        if ((host === "discord.com" || host === "discord.gg" || host === "canary.discord.com") && apps.vesktop)
+            return { name: "Vesktop", glyph: "\u{f066f}", command: ["vesktop", url] };
+        const zoom = host.endsWith("zoom.us") && u.pathname.match(/^\/j\/(\d+)/);
+        if (zoom && apps.zoom)
+            return { name: "Zoom", glyph: "\u{f0567}", command: ["xdg-open", "zoommtg://zoom.us/join?confno=" + zoom[1] + (u.searchParams.get("pwd") ? "&pwd=" + u.searchParams.get("pwd") : "")] };
+        if (/\.(mp4|mkv|webm|mov|m3u8|mp3|flac|ogg|opus)(\?|$)/i.test(u.pathname) && apps.mpv)
+            return { name: "mpv", glyph: "\u{f0567}", command: ["mpv", "--force-window=immediate", url] };
+        return null;
+    }
+    // What "open" will do with this entry, in words.
+    function openLabel(e) {
+        if (!e) return "Open";
+        if (e.kind === "link") {
+            const h = linkHandler(e.preview.trim());
+            if (h) return "Open in " + h.name;
+            const host = e.preview.trim().replace(/^\w+:\/\//, "").split("/")[0].replace(/^www\./, "");
+            return /(^|\.)youtube\.com$|youtu\.be$/.test(host) ? "Watch in browser" : "Open in browser";
+        }
+        return e.kind === "image" ? "Open in image viewer" : e.kind === "path" ? "Open the file" : "Open with default app";
+    }
     function remove(e) {
         if (e.pin !== "") { togglePin(e); return; }
         items = items.filter(x => x.id !== e.id);
