@@ -1,24 +1,19 @@
-// The island expanded on hover: three rows, each with one job.
+// The island expanded on hover, three columns (after the reference):
 //
-//   ▣ Kitty                                        ☁ 24°   🔔 1 new
-//     T3code notification improvement
+//   ▣ Kitty                      23:29  Thu, Oct 30                 All caught up 🔔
+//   ▮ ▯ ▯ ▯ ▯             ┌ ▧  ROCK IT          ∙∙∙▂▄▆▄∙∙ ┐        [tray]  ▂▄▆ ▭
+//                         └    Tokyo Machine              ┘
 //
-//   23:29              ┌ ▧  Rock It                 ⏮  ⏯  ⏭ ┐
-//   Thursday, 29 Oct   └    Tokyo Machine    ━━━━━━━━──────── ┘
-//                      (nothing playing: CPU · RAM · GPU rings)
-//
-//   ● ▮ ● ● ●                                  [tray]   ▂▄▆  87% ⚡
-//
-// Where you are (app and window), when (clock and date), what's playing (or
-// how hard the machine works), then the workspaces and the tray. Every part
-// is a door: the app row opens the launcher, the clock the calendar, the
-// bell the notifications, the rings the System panel, the battery the
-// controls.
+// Where you are (the app, your workspaces), when (a time chip that opens the
+// calendar), what's playing (art, song, a waveform that moves with what you
+// hear; the controls appear when you hover it), or, with nothing playing,
+// how hard the machine works; then notifications and status. Every part is a
+// door: the app opens the launcher, the time the calendar, the rings the
+// System panel, the bell the notifications.
 import QtQuick
 import Quickshell
 import Quickshell.Hyprland
-import Quickshell.Services.Mpris
-import Quickshell.Services.UPower
+import Quickshell.Services.Pipewire
 import Quickshell.Widgets
 import qs.config
 import qs.components
@@ -32,136 +27,141 @@ Item {
     readonly property var focusWin: Hyprland.activeToplevel
     readonly property var topInfo: focusWin && focusWin.lastIpcObject ? focusWin.lastIpcObject : ({})
     readonly property var app: topInfo.class ? DesktopEntries.heuristicLookup(topInfo.class) : null
-    readonly property var battery: UPower.displayDevice
-    readonly property bool hasBattery: battery && battery.isLaptopBattery && battery.isPresent
-    readonly property int pct: hasBattery ? Math.round(battery.percentage > 1 ? battery.percentage : battery.percentage * 100) : 0
-    readonly property bool charging: hasBattery && (battery.state === UPowerDeviceState.Charging || battery.state === UPowerDeviceState.FullyCharged)
-    // On the charger or on battery (UPower's line power), and how long either way.
-    readonly property bool onAC: !UPower.onBattery
-    function hm(s) { const h = Math.floor(s / 3600), m = Math.round(s % 3600 / 60); return h ? h + "h " + m + "m" : m + "m"; }
-    readonly property string powerText: !hasBattery ? "" : battery.state === UPowerDeviceState.FullyCharged || (onAC && pct >= 99) ? "Plugged in · full"
-        : battery.state === UPowerDeviceState.Charging ? "Charging" + (battery.timeToFull > 0 ? " · full in " + hm(battery.timeToFull) : "")
-        : onAC ? "Plugged in · not charging"
-        : "On battery" + (battery.timeToEmpty > 0 ? " · " + hm(battery.timeToEmpty) + " left" : "")
-    // This week, Monday first (the week strip under the clock).
-    readonly property var week: { const d = bar.now, w = []; const mon = new Date(d.getFullYear(), d.getMonth(), d.getDate() - (d.getDay() + 6) % 7); for (let i = 0; i < 7; i++) w.push(new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + i)); return w; }
 
-    implicitWidth: 600
-    implicitHeight: 200
+    implicitWidth: 720
+    implicitHeight: 148
 
-    // Stats are read only while this is on screen.
     Component.onCompleted: SystemStats.watch()
     Component.onDestruction: SystemStats.unwatch()
 
-    // ── Where ────────────────────────────────────────────────────────────
-    Item {
-        id: rowA
-        x: 22; y: 18
-        width: parent.width - 44; height: 34
-
-        Item {
-            id: appIcon
-            width: 30; height: 30
-            anchors.verticalCenter: parent.verticalCenter
-            readonly property string path: hover.app && hover.app.icon ? Quickshell.iconPath(hover.app.icon, true) : ""
-            IconImage { anchors.fill: parent; visible: appIcon.path !== ""; source: appIcon.path; asynchronous: true }
-            Rectangle {
-                visible: appIcon.path === ""
-                anchors.fill: parent; radius: 8; color: Theme.pill
-                Text { anchors.centerIn: parent; text: "\u{f05b5}"; font.family: Theme.fontGlyph; font.pixelSize: 16; color: Theme.textSecondary }
-            }
-        }
-        Column {
-            anchors { left: appIcon.right; leftMargin: 10; right: right.left; rightMargin: 16; verticalCenter: parent.verticalCenter }
-            spacing: 0
-            Label { width: parent.width; elide: Text.ElideRight; text: hover.app ? hover.app.name : hover.topInfo.class ? hover.topInfo.class.charAt(0).toUpperCase() + hover.topInfo.class.slice(1) : "Desktop"; size: 13; weight: Theme.wSemibold }
-            Label { width: parent.width; elide: Text.ElideRight; text: hover.focusWin ? (hover.focusWin.title || "") : "Workspace " + hover.bar.activeWs; size: 11; color: Theme.textTertiary }
-        }
-        MouseArea {
-            anchors { left: parent.left; top: parent.top; bottom: parent.bottom; right: right.left }
-            cursorShape: Qt.PointingHandCursor
-            onClicked: Island.open("launcher", hover.bar.screenName, "pointer", "island")
-        }
-
+    // ── Left: where ──────────────────────────────────────────────────────
+    Column {
+        x: 28; y: 24
+        width: 200
+        spacing: 16
         Row {
-            id: right
-            anchors { right: parent.right; verticalCenter: parent.verticalCenter }
             spacing: 8
-            Chip {
-                visible: SystemStats.weatherTemp !== ""
-                glyph: SystemStats.weatherGlyph
-                text: SystemStats.weatherTemp
-                tip: SystemStats.weatherText
+            Item {
+                id: appIcon
+                width: 18; height: 18
+                anchors.verticalCenter: parent.verticalCenter
+                readonly property string path: hover.app && hover.app.icon ? Quickshell.iconPath(hover.app.icon, true) : ""
+                IconImage { anchors.fill: parent; visible: appIcon.path !== ""; source: appIcon.path; asynchronous: true }
+                Text { visible: appIcon.path === ""; anchors.centerIn: parent; text: "\u{f05b5}"; font.family: Theme.fontGlyph; font.pixelSize: 14; color: Theme.textSecondary }
             }
-            Chip {
-                glyph: Notifs.dnd ? "\u{f009b}" : "\u{f009a}"
-                text: Notifs.unread ? Notifs.unread + " new" : "All caught up"
-                tint: Notifs.unread ? Theme.accent : "transparent"
-                onClicked: Notifs.toggleCenter("notifications", "pointer")
+            Label {
+                anchors.verticalCenter: parent.verticalCenter
+                width: Math.min(implicitWidth, 170)
+                elide: Text.ElideRight
+                text: hover.app ? hover.app.name : hover.topInfo.class ? hover.topInfo.class.charAt(0).toUpperCase() + hover.topInfo.class.slice(1) : "Desktop"
+                size: 14; weight: Theme.wMedium
             }
+            HoverHandler { id: appHover; cursorShape: Qt.PointingHandCursor }
+            TapHandler { onTapped: Island.open("launcher", hover.bar.screenName, "pointer", "island") }
         }
+        Capsules { bar: hover.bar; scale: 1.1 }
+    }
+    Item {
+        x: 28; y: 24; width: 200; height: 18
+        Tip { anchors.horizontalCenter: undefined; x: 0; text: hover.focusWin ? (hover.focusWin.title || "") : ""; shown: appHover.hovered; below: true }
     }
 
-    // ── When, and what's playing ─────────────────────────────────────────
-    Item {
-        id: rowB
-        x: 22; y: 64
-        width: parent.width - 44; height: 76
-
-        Item {
-          id: when
-          anchors.verticalCenter: parent.verticalCenter
-          width: whenCol.implicitWidth; height: whenCol.implicitHeight
-          Column {
-            id: whenCol
+    // ── Centre: when, and what's playing ─────────────────────────────────
+    Rectangle {
+        id: timeChip
+        anchors.horizontalCenter: parent.horizontalCenter
+        y: 12
+        height: 38; radius: 12
+        width: timeRow.implicitWidth + 22
+        color: chipHover.hovered ? Qt.rgba(1, 1, 1, 0.08) : "transparent"
+        Behavior on color { ColorAnimation { duration: Theme.colorMs } }
+        Row {
+            id: timeRow
+            anchors.centerIn: parent
             spacing: 10
-            IslandClock { now: hover.bar.now; size: 36 }
-            // The week, today lit: a glance at the date without the calendar.
+            IslandClock {
+                now: hover.bar.now; size: 26
+                rounded: false; weight: Theme.wMedium
+                color: Qt.rgba(1, 0.98, 0.95, 0.95)
+                anchors.verticalCenter: parent.verticalCenter
+            }
+            Label {
+                anchors.verticalCenter: parent.verticalCenter
+                text: Qt.formatDate(hover.bar.now, "ddd, MMM d")
+                size: 15; weight: Theme.wMedium
+                color: Theme.textTertiary
+            }
+        }
+        HoverHandler { id: chipHover; cursorShape: Qt.PointingHandCursor }
+        TapHandler { onTapped: Island.open("calendar", hover.bar.screenName, "pointer", "island") }
+    }
+
+    // Now playing
+    Rectangle {
+        id: card
+        visible: hover.media
+        anchors.horizontalCenter: parent.horizontalCenter
+        y: 62
+        width: 380; height: 66; radius: 18
+        color: Qt.rgba(1, 1, 1, cardHover.hovered ? 0.07 : 0.045)
+        Behavior on color { ColorAnimation { duration: Theme.colorMs } }
+        HoverHandler { id: cardHover }
+
+        ClippingRectangle {
+            id: art
+            x: 9; anchors.verticalCenter: parent.verticalCenter
+            width: 48; height: 48; radius: 11
+            color: Qt.rgba(1, 1, 1, 0.08)
+            Image { anchors.fill: parent; source: hover.player ? (hover.player.trackArtUrl || "") : ""; sourceSize: Qt.size(96, 96); fillMode: Image.PreserveAspectCrop; asynchronous: true }
+            MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: Notifs.toggleCenter("sound", "pointer") }
+        }
+        Column {
+            anchors { left: art.right; leftMargin: 12; right: trail.left; rightMargin: 10; verticalCenter: parent.verticalCenter }
+            spacing: 2
+            Label { width: parent.width; elide: Text.ElideRight; text: hover.player ? (hover.player.trackTitle || "Unknown") : ""; size: 14; weight: Theme.wSemibold }
+            Label { width: parent.width; elide: Text.ElideRight; text: hover.player ? (hover.player.trackArtist || hover.player.identity || "") : ""; size: 12; color: Theme.textTertiary }
+        }
+
+        // The waveform at rest; the controls once the pointer is on the card.
+        Item {
+            id: trail
+            anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
+            width: 112; height: 30
+
+            PwObjectTracker { objects: [Pipewire.defaultAudioSink] }
+            PwNodePeakMonitor {
+                id: peak
+                node: Pipewire.defaultAudioSink
+                enabled: hover.visible && hover.media && hover.player && hover.player.isPlaying
+            }
+            readonly property real level: peak.peaks && peak.peaks.length ? Math.max(...peak.peaks) : (peak.peak || 0)
             Row {
-                spacing: 2
+                anchors.centerIn: parent
+                spacing: 4
+                opacity: cardHover.hovered ? 0 : 1
+                Behavior on opacity { NumberAnimation { duration: 160; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                 Repeater {
-                    model: hover.week
-                    Column {
-                        required property var modelData
+                    model: 13
+                    Rectangle {
                         required property int index
-                        readonly property bool today: modelData.getDate() === hover.bar.now.getDate()
-                        width: 24
-                        spacing: 1
-                        Label { anchors.horizontalCenter: parent.horizontalCenter; text: Qt.formatDate(parent.modelData, "ddd").charAt(0); size: 9; weight: Theme.wSemibold; color: parent.today ? Theme.accent : parent.index >= 5 ? Theme.textTertiary : Theme.textSecondary }
-                        Label { anchors.horizontalCenter: parent.horizontalCenter; text: parent.modelData.getDate(); size: 12; rounded: true; weight: parent.today ? Theme.wSemibold : Theme.wRegular; color: parent.today ? Theme.accent : Theme.textSecondary; font.features: ({ "tnum": 1 }) }
+                        readonly property real shape: 0.35 + 0.65 * Math.sin(Math.PI * (index + 0.5) / 13)
+                        property real jitter: 1
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 3; radius: 1.5
+                        height: Math.max(3, 24 * Math.min(1, trail.level * shape * jitter * 1.7))
+                        color: Theme.accent
+                        opacity: 0.9
+                        Behavior on height { NumberAnimation { duration: 90 } }
+                        Timer { running: peak.enabled && !Theme.reduceMotion; interval: 110 + (index % 4) * 35; repeat: true; onTriggered: parent.jitter = 0.65 + Math.random() * 0.55 }
                     }
                 }
             }
-          }
-          HoverHandler { id: whenHover; cursorShape: Qt.PointingHandCursor }
-          TapHandler { onTapped: Island.open("calendar", hover.bar.screenName, "pointer", "island") }
-          Tip { text: Qt.formatDate(hover.bar.now, "dddd, d MMMM yyyy") + " · open the calendar"; shown: whenHover.hovered; below: true }
-        }
-
-        // Now playing
-        Rectangle {
-            visible: hover.media
-            anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-            width: 330; height: 62; radius: 16
-            color: Qt.rgba(1, 1, 1, 0.06)
-            ClippingRectangle {
-                id: art
-                x: 8; anchors.verticalCenter: parent.verticalCenter
-                width: 46; height: 46; radius: 10
-                color: Qt.rgba(1, 1, 1, 0.08)
-                Image { anchors.fill: parent; source: hover.player ? (hover.player.trackArtUrl || "") : ""; sourceSize: Qt.size(92, 92); fillMode: Image.PreserveAspectCrop; asynchronous: true }
-                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: Notifs.toggleCenter("sound", "pointer") }
-            }
-            Column {
-                anchors { left: art.right; leftMargin: 10; right: transport.left; rightMargin: 8; top: art.top; topMargin: 2 }
-                spacing: 1
-                Label { width: parent.width; elide: Text.ElideRight; text: hover.player ? (hover.player.trackTitle || "Unknown") : ""; size: 13; weight: Theme.wSemibold }
-                Label { width: parent.width; elide: Text.ElideRight; text: hover.player ? (hover.player.trackArtist || hover.player.identity || "") : ""; size: 11; color: Theme.textTertiary }
-            }
             Row {
-                id: transport
-                anchors { right: parent.right; rightMargin: 10; top: art.top }
-                spacing: 2
+                anchors.centerIn: parent
+                spacing: 4
+                opacity: cardHover.hovered ? 1 : 0
+                visible: opacity > 0.01
+                Behavior on opacity { NumberAnimation { duration: 160; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                 Repeater {
                     model: [
                         { g: "\u{f04ae}", on: () => hover.player.previous(), ok: hover.player && hover.player.canGoPrevious },
@@ -171,138 +171,81 @@ Item {
                     Rectangle {
                         id: tb
                         required property var modelData
-                        width: 28; height: 28; radius: 14
+                        width: 32; height: 30; radius: 15
                         opacity: modelData.ok ? 1 : 0.35
                         color: tbArea.containsMouse ? Theme.pillHover : "transparent"
                         scale: tbArea.pressed ? 0.9 : 1
                         Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
-                        Text { anchors.centerIn: parent; text: tb.modelData.g; font.family: Theme.fontGlyph; font.pixelSize: tb.modelData.big ? 18 : 15; color: Theme.textPrimary }
+                        Text { anchors.centerIn: parent; text: tb.modelData.g; font.family: Theme.fontGlyph; font.pixelSize: tb.modelData.big ? 19 : 15; color: Theme.textPrimary }
                         MouseArea { id: tbArea; anchors.fill: parent; enabled: tb.modelData.ok; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: tb.modelData.on() }
                     }
                 }
             }
-            // Progress
-            Item {
-                anchors { left: art.right; leftMargin: 10; right: parent.right; rightMargin: 14; bottom: art.bottom; bottomMargin: 3 }
-                height: 4
-                readonly property real p: hover.player && hover.player.length > 0 ? Math.min(1, hover.player.position / hover.player.length) : 0
-                Rectangle { anchors.fill: parent; radius: 2; color: Qt.rgba(1, 1, 1, 0.12) }
-                Rectangle { width: parent.width * parent.p; height: parent.height; radius: 2; color: Theme.accent }
-                Timer { running: hover.visible && hover.player && hover.player.isPlaying; interval: 1000; repeat: true; onTriggered: hover.player.positionChanged() }
-            }
         }
-
-        // Nothing playing: how hard the machine is working.
-        Row {
-            visible: !hover.media
-            anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-            spacing: 16
-            StatRing {
-                value: SystemStats.cpu; label: "CPU"
-                HoverHandler { id: h1 }
-                Tip { text: SystemStats.cores.length + " threads · load " + (SystemStats.load.split(" ")[0] || "–"); shown: h1.hovered; below: true }
+        // Where in the song
+        Rectangle {
+            anchors { left: art.right; leftMargin: 12; right: parent.right; rightMargin: 14; bottom: parent.bottom; bottomMargin: 7 }
+            height: 2; radius: 1
+            color: Qt.rgba(1, 1, 1, 0.08)
+            Rectangle {
+                width: parent.width * (hover.player && hover.player.length > 0 ? Math.min(1, hover.player.position / hover.player.length) : 0)
+                height: parent.height; radius: 1
+                color: Qt.alpha(Theme.accent, 0.8)
             }
-            StatRing {
-                value: SystemStats.mem; label: "Memory"
-                HoverHandler { id: h2 }
-                Tip { text: SystemStats.bytes(SystemStats.memUsed) + " of " + SystemStats.bytes(SystemStats.memTotal) + (SystemStats.swapUsed > 1073741824 ? " · swap " + SystemStats.bytes(SystemStats.swapUsed) : ""); shown: h2.hovered; below: true }
-            }
-            StatRing {
-                value: SystemStats.gpu
-                label: "GPU"
-                text: SystemStats.gpuState === "suspended" ? "off" : Math.round(SystemStats.gpu * 100) + "%"
-                HoverHandler { id: h3 }
-                Tip { text: SystemStats.gpuState === "suspended" ? "NVIDIA asleep · Intel drives the screens" : "NVIDIA " + SystemStats.gpuTemp + "° · " + Math.round(SystemStats.gpuPower) + " W · Intel " + SystemStats.igpuMHz + " MHz"; shown: h3.hovered; below: true }
-            }
-            StatRing {
-                value: Math.min(1, SystemStats.cpuTemp / 100)
-                label: "Temp"
-                text: SystemStats.cpuTemp ? SystemStats.cpuTemp + "°" : "–"
-                color: SystemStats.cpuTemp >= 90 ? Theme.red : SystemStats.cpuTemp >= 80 ? Theme.orange : Theme.green
-                HoverHandler { id: h4 }
-                Tip { text: "CPU " + SystemStats.cpuTemp + "° · GPU " + SystemStats.gpuTemp + "°" + (SystemStats.fans.length ? " · fans " + SystemStats.fans.join(" / ") + " rpm" : ""); shown: h4.hovered; below: true }
-            }
-            HoverHandler { cursorShape: Qt.PointingHandCursor }
-            TapHandler { onTapped: Island.open("system", hover.bar.screenName, "pointer", "island") }
+            Timer { running: hover.visible && hover.player && hover.player.isPlaying; interval: 1000; repeat: true; onTriggered: hover.player.positionChanged() }
         }
     }
 
-    Rectangle { x: 22; y: rowC.y - 14; width: parent.width - 44; height: 1; color: Qt.rgba(1, 1, 1, 0.08) }
-
-    // ── Workspaces, tray, power ──────────────────────────────────────────
-    Item {
-        id: rowC
-        x: 22; y: parent.height - 36
-        width: parent.width - 44; height: 24
-
-        Capsules { bar: hover.bar; anchors.verticalCenter: parent.verticalCenter }
-        Item {
-            anchors { right: parent.right; top: parent.top; bottom: parent.bottom }
-            width: batRow.width
-            Tip { text: hover.powerText; shown: batHover.hovered }
+    // Nothing playing: how hard the machine works.
+    Row {
+        visible: !hover.media
+        anchors.horizontalCenter: parent.horizontalCenter
+        y: 64
+        spacing: 22
+        StatRing {
+            value: SystemStats.cpu; label: "CPU"; size: 40
+            HoverHandler { id: h1 }
+            Tip { text: SystemStats.cores.length + " threads · load " + (SystemStats.load.split(" ")[0] || "–"); shown: h1.hovered }
         }
+        StatRing {
+            value: SystemStats.mem; label: "Memory"; size: 40
+            HoverHandler { id: h2 }
+            Tip { text: SystemStats.bytes(SystemStats.memUsed) + " of " + SystemStats.bytes(SystemStats.memTotal) + (SystemStats.swapUsed > 1073741824 ? " · swap " + SystemStats.bytes(SystemStats.swapUsed) : ""); shown: h2.hovered }
+        }
+        StatRing {
+            value: SystemStats.gpu; label: "GPU"; size: 40
+            text: SystemStats.gpuState === "suspended" ? "off" : Math.round(SystemStats.gpu * 100) + "%"
+            HoverHandler { id: h3 }
+            Tip { text: SystemStats.gpuState === "suspended" ? "NVIDIA asleep · Intel drives the screens" : "NVIDIA " + SystemStats.gpuTemp + "° · " + Math.round(SystemStats.gpuPower) + " W · Intel " + SystemStats.igpuMHz + " MHz"; shown: h3.hovered }
+        }
+        StatRing {
+            value: Math.min(1, SystemStats.cpuTemp / 100); label: "Temp"; size: 40
+            text: SystemStats.cpuTemp ? SystemStats.cpuTemp + "°" : "–"
+            color: SystemStats.cpuTemp >= 90 ? Theme.red : SystemStats.cpuTemp >= 80 ? Theme.orange : Theme.green
+            HoverHandler { id: h4 }
+            Tip { text: "CPU " + SystemStats.cpuTemp + "° · GPU " + SystemStats.gpuTemp + "°" + (SystemStats.fans.length ? " · fans " + SystemStats.fans.join(" / ") + " rpm" : ""); shown: h4.hovered }
+        }
+        TapHandler { onTapped: Island.open("system", hover.bar.screenName, "pointer", "island") }
+    }
 
+    // ── Right: news and status ───────────────────────────────────────────
+    Column {
+        anchors { right: parent.right; rightMargin: 28 }
+        y: 22
+        spacing: 16
         Row {
-            anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+            anchors.right: parent.right
+            spacing: 8
+            Label { anchors.verticalCenter: parent.verticalCenter; text: Notifs.unread ? Notifs.unread + " new" : "All caught up"; size: 14; weight: Theme.wMedium }
+            Text { anchors.verticalCenter: parent.verticalCenter; text: Notifs.dnd ? "\u{f009b}" : "\u{f009a}"; font.family: Theme.fontGlyph; font.pixelSize: 15; color: Notifs.unread ? Theme.accent : Theme.textSecondary }
+            HoverHandler { cursorShape: Qt.PointingHandCursor }
+            TapHandler { onTapped: Notifs.toggleCenter("notifications", "pointer") }
+        }
+        Row {
+            anchors.right: parent.right
             spacing: 14
             TrayRow { window: hover.bar; anchors.verticalCenter: parent.verticalCenter }
-            // With media in the middle row, the machine fits in one line here.
-            Label {
-                visible: hover.media
-                anchors.verticalCenter: parent.verticalCenter
-                text: "CPU " + Math.round(SystemStats.cpu * 100) + "%  ·  RAM " + Math.round(SystemStats.mem * 100) + "%  ·  GPU " + (SystemStats.gpuState === "suspended" ? "off" : Math.round(SystemStats.gpu * 100) + "%")
-                size: 11
-                color: Theme.textTertiary
-                font.features: ({ "tnum": 1 })
-                HoverHandler { cursorShape: Qt.PointingHandCursor }
-                TapHandler { onTapped: Island.open("system", hover.bar.screenName, "pointer", "island") }
-            }
-            Row {
-                id: batRow
-                anchors.verticalCenter: parent.verticalCenter
-                spacing: 6
-                IslandStatus { anchors.verticalCenter: parent.verticalCenter }
-                // On the charger: a plug; on battery: nothing extra.
-                Text {
-                    visible: hover.hasBattery && hover.onAC
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: "\u{f06a5}"
-                    font.family: Theme.fontGlyph; font.pixelSize: 13
-                    color: hover.charging ? Theme.green : Theme.textSecondary
-                }
-                Label {
-                    visible: hover.hasBattery
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: hover.pct + "%"
-                    size: 12; weight: Theme.wMedium; rounded: true
-                    color: hover.charging ? Theme.green : hover.pct <= 20 ? Theme.red : Theme.textSecondary
-                    font.features: ({ "tnum": 1 })
-                }
-                HoverHandler { id: batHover; cursorShape: Qt.PointingHandCursor }
-                TapHandler { onTapped: Notifs.toggleCenter("controls", "pointer") }
-            }
+            IslandStatus { anchors.verticalCenter: parent.verticalCenter }
         }
-    }
-
-    // A small labelled pill (weather, notifications).
-    component Chip: Rectangle {
-        id: chip
-        property string glyph
-        property string text
-        property string tip
-        property color tint: "transparent"
-        signal clicked()
-        height: 26; radius: 13
-        width: chipRow.implicitWidth + 20
-        color: chipArea.containsMouse ? Theme.pillHover : tint.a > 0 ? Qt.alpha(tint, 0.18) : Theme.pill
-        Behavior on color { ColorAnimation { duration: Theme.colorMs } }
-        Row {
-            id: chipRow
-            anchors.centerIn: parent
-            spacing: 6
-            Text { anchors.verticalCenter: parent.verticalCenter; text: chip.glyph; font.family: Theme.fontGlyph; font.pixelSize: 13; color: chip.tint.a > 0 ? chip.tint : Theme.textSecondary }
-            Label { anchors.verticalCenter: parent.verticalCenter; text: chip.text; size: 12; weight: Theme.wMedium }
-        }
-        MouseArea { id: chipArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: chip.clicked() }
     }
 }

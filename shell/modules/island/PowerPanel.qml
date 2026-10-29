@@ -97,6 +97,7 @@ FocusScope {
 
     FileView {
         path: "/proc/uptime"
+        blockLoading: true          // read now: an async read finishing after the panel closed could crash
         onLoaded: {
             const s = Math.floor(parseFloat(text()));
             const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60);

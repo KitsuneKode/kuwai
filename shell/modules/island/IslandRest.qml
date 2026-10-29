@@ -12,10 +12,17 @@ import qs.config
 import qs.components
 import qs.services
 
-Row {
+Item {
     id: rest
     required property var bar
-    spacing: 12
+    // Left (activity + pills) and right (status + activity) take the same
+    // width, so the time sits in the middle; the gap either side of it is
+    // wider than the spacing inside each group (Apple's grouping).
+    readonly property real side: Math.max(leftGroup.implicitWidth, rightGroup.implicitWidth)
+    readonly property bool pillsHovered: pills.hovered
+    implicitWidth: side * 2 + clock.width + gap * 2
+    implicitHeight: 32
+    readonly property int gap: 22
 
     // Which live activity, if any.
     readonly property string activity: Activities.voxActive ? "vox"
@@ -30,6 +37,10 @@ Row {
         onTriggered: rest.voxSecs = Math.max(0, (Date.now() - Activities.voxSince) / 1000)
     }
 
+    Row {
+      id: leftGroup
+      anchors { left: parent.left; verticalCenter: parent.verticalCenter }
+      spacing: 10
     // ── Leading ──────────────────────────────────────────────────────────
     Item {
         visible: rest.activity !== ""
@@ -92,14 +103,26 @@ Row {
         }
     }
 
-    // ── The core ─────────────────────────────────────────────────────────
-    Capsules { bar: rest.bar; visible: Settings.restWorkspaces; anchors.verticalCenter: parent.verticalCenter }
+    Capsules { id: pills; bar: rest.bar; visible: Settings.restWorkspaces; anchors.verticalCenter: parent.verticalCenter }
+    }
+
+    // ── The time, centred ────────────────────────────────────────────────
     IslandClock {
-        now: rest.bar.now; size: 14
+        id: clock
+        now: rest.bar.now; size: 15
+        rounded: false
+        weight: Theme.wMedium
+        color: Qt.rgba(1, 0.98, 0.95, 0.92)
+        x: rest.side + rest.gap
         anchors.verticalCenter: parent.verticalCenter
         HoverHandler { cursorShape: Qt.PointingHandCursor }
         TapHandler { onTapped: Island.toggle("calendar", rest.bar.screenName, "pointer", "island") }
     }
+
+    Row {
+      id: rightGroup
+      anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+      spacing: 10
     Row {
         visible: Settings.restStatus
         spacing: 7
@@ -163,6 +186,8 @@ Row {
                 }
             }
         }
+    }
+
     }
 
     // A click on an activity acts on it: stop dictation, open the song.

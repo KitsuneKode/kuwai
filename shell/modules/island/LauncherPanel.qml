@@ -34,30 +34,9 @@ FocusScope {
     implicitWidth: 640
     implicitHeight: 64 + maxRows * rowH + 46
 
-    // ── Frecency ─────────────────────────────────────────────────────────
-    FileView {
-        id: store
-        path: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/rice/launcher.json"
-        printErrors: false
-        onLoadFailed: error => { if (error === FileViewError.FileNotFound) writeAdapter(); }
-        JsonAdapter {
-            id: uses
-            property var counts: ({})
-        }
-    }
-    function frecency(id) {
-        const u = uses.counts[id];
-        if (!u) return 0;
-        const days = (Date.now() - u.t) / 86400000;
-        return u.n / (1 + days / 7);
-    }
-    function used(id) {
-        const c = Object.assign({}, uses.counts);
-        const u = c[id] || { n: 0, t: 0 };
-        c[id] = { n: u.n + 1, t: Date.now() };
-        uses.counts = c;
-        store.writeAdapter();
-    }
+    // ── Frecency (kept by the Island service, which outlives this panel) ─
+    function frecency(id) { return Island.frecency(id); }
+    function used(id) { Island.used(id); }
 
     // ── Sources ──────────────────────────────────────────────────────────
     readonly property var apps: DesktopEntries.applications.values.filter(e => !e.noDisplay)
@@ -301,7 +280,7 @@ FocusScope {
                     text: row.modelData.pos && row.modelData.pos.length ? launcher.marked(row.modelData.name, row.modelData.pos) : row.modelData.name
                     size: row.modelData.kind === "calc" ? 17 : 14; weight: Theme.wMedium; rounded: row.modelData.kind === "calc"
                 }
-                Label { visible: text !== ""; width: parent.width; elide: Text.ElideRight; text: row.modelData.sub; size: 12; color: Theme.textTertiary }
+                Label { visible: text !== ""; width: parent.width; elide: Text.ElideRight; text: row.modelData.sub || ""; size: 12; color: Theme.textTertiary }
             }
             Row {
                 id: hint
@@ -310,7 +289,7 @@ FocusScope {
                 opacity: row.on && !row.header ? 1 : 0
                 Label {
                     anchors.verticalCenter: parent.verticalCenter
-                    text: ({ app: "Open", window: "Switch to", action: "Run", calc: "Copy" })[row.modelData.kind]
+                    text: ({ app: "Open", window: "Switch to", action: "Run", calc: "Copy" })[row.modelData.kind] || ""
                     size: 12
                     color: Theme.textSecondary
                 }

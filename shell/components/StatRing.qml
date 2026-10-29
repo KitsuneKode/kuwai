@@ -13,6 +13,8 @@ Item {
     property string label
     property string text: Math.round(value * 100) + "%"
     property color color: value > 0.9 ? Theme.red : value > 0.7 ? Theme.orange : Theme.accent
+    // Load changes colour gradually, not in jumps.
+    Behavior on color { ColorAnimation { duration: 500; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
     property int size: 44
     implicitWidth: col.implicitWidth
     implicitHeight: col.implicitHeight
@@ -38,7 +40,8 @@ Item {
                 PathAngleArc { centerX: ring.size / 2; centerY: ring.size / 2; radiusX: ring.size / 2 - 3; radiusY: ring.size / 2 - 3; startAngle: -90; sweepAngle: 360 * Math.max(0.005, Math.min(1, ring.shown)) }
             }
         }
-        Label { anchors.centerIn: parent; text: ring.text; size: 11; weight: Theme.wSemibold; rounded: true; font.features: ({ "tnum": 1 }) }
+        // The number morphs digit by digit when it changes (TextMorph, quick).
+        TextMorph { anchors.centerIn: parent; text: ring.text; size: 11; weight: Theme.wSemibold; rounded: true; duration: 320; stagger: 25 }
     }
     Label { anchors.horizontalCenter: parent.horizontalCenter; text: ring.label; size: 11; weight: Theme.wMedium; color: Theme.textSecondary }
   }

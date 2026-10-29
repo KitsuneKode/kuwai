@@ -64,6 +64,32 @@ Singleton {
         else open(name, s, how);
     }
 
+    // ── Launcher frecency ────────────────────────────────────────────────
+    // Lives here, not in the launcher: a panel is destroyed the moment it
+    // closes, and an async file save finishing into a destroyed object
+    // crashed the whole shell (three times, 2026-10-29). Plain text JSON,
+    // no JsonAdapter `var` (that path was in the crash too).
+    property var uses: ({})
+    FileView {
+        id: usesFile
+        path: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/rice/launcher.json"
+        printErrors: false
+        onLoaded: { try { const d = JSON.parse(text()); root.uses = d.counts || d || {}; } catch (e) { root.uses = {}; } }
+    }
+    Timer { id: usesSave; interval: 800; onTriggered: usesFile.setText(JSON.stringify({ counts: root.uses })) }
+    function frecency(id) {
+        const u = uses[id];
+        if (!u) return 0;
+        return u.n / (1 + (Date.now() - u.t) / 86400000 / 7);
+    }
+    function used(id) {
+        const c = Object.assign({}, uses);
+        const u = c[id] || { n: 0, t: 0 };
+        c[id] = { n: u.n + 1, t: Date.now() };
+        uses = c;
+        usesSave.restart();
+    }
+
     IpcHandler {
         target: "island"
         function toggle(panel: string): void { root.toggle(panel, "", "key"); }

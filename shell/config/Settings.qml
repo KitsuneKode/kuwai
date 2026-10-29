@@ -54,7 +54,7 @@ Singleton {
             // Notifications: seen ones nobody acted on clear after this many hours (0 keeps them).
             property int notifKeepSeenHours: 24
             // The island's shape: "notch" (hangs from the top edge, like a MacBook's) or "floating" (a pill below it).
-            property string islandStyle: "notch"
+            property string islandStyle: "floating"
             // At rest, show what's playing (tiny art and bars) beside the island.
             property bool restMedia: true
             // Themes starred in the island's theme picker (shown first).

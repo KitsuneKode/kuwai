@@ -15,7 +15,10 @@ Row {
     spacing: 10
 
     Repeater {
-        model: SystemTray.items
+        // Applets the island already does better (Wi-Fi, Bluetooth, drives)
+        // are hidden here; they keep running for what only they provide
+        // (nm-applet's password prompts, blueman's pairing agent).
+        model: SystemTray.items.values.filter(i => !/nm-applet|network|blueman|bluetooth|udiskie/i.test((i.id || "") + " " + (i.title || "")))
         Item {
             id: it
             required property var modelData

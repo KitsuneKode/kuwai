@@ -39,9 +39,11 @@ Scope {
 
             readonly property var monitor: Hyprland.monitorFor(modelData)
             readonly property string screenName: modelData ? modelData.name : screen ? screen.name : (Quickshell.screens[0] ? Quickshell.screens[0].name : "")
-            readonly property bool notch: Settings.islandStyle !== "floating"
-            readonly property int restH: notch ? 32 : 34
-            readonly property int top: notch ? 0 : 4
+            // The dynamic island floats below the edge (the reference); the
+            // notch hangs from it (Settings → Bar & Island → Shape).
+            readonly property bool notch: Settings.islandStyle === "notch"
+            readonly property int restH: 34
+            readonly property int top: notch ? 0 : 6
             readonly property real ear: notch ? 9 : 0
 
             readonly property bool showBar: Settings.bar === "island"
@@ -99,28 +101,43 @@ Scope {
             // ── Hover, with intent ───────────────────────────────────────
             property bool hovered: false
             property bool grown: false
-            Timer { id: intent; interval: Settings.hoverDelay; onTriggered: win.grown = win.hovered && !win.panelHere }
+            // Over the workspace pills the island stays put: they're for clicking.
+            readonly property bool overPills: restRow.pillsHovered
+            onOverPillsChanged: if (!overPills && hovered && !grown) intent.restart()
+            Timer { id: intent; interval: Settings.hoverDelay; onTriggered: win.grown = win.hovered && !win.panelHere && !win.overPills }
             Timer { id: leave; interval: 260; onTriggered: if (!win.hovered) win.grown = false }
             onHoveredChanged: hovered ? intent.restart() : leave.restart()
 
-            readonly property var grow: ({ stiffness: 230, damping: 25 })
-            readonly property var shrink: ({ stiffness: 330, damping: 33 })
+            // Growing: a soft spring with visible give (damping ratio ≈ 0.68,
+            // the island's bounce); shrinking: firmer (≈ 0.82), a touch quicker.
+            readonly property var grow: ({ stiffness: 260, damping: 22 })
+            readonly property var shrink: ({ stiffness: 340, damping: 30 })
             Spring { id: m; tier: win.grown ? win.grow : win.shrink; epsilon: 0.001; target: win.grown && !win.panelHere ? 1 : 0 }
             Spring { id: pv; tier: win.panelHere ? win.grow : win.shrink; epsilon: 0.001; target: win.panelHere ? 1 : 0 }
 
             readonly property real backH: Island.canBack ? 34 : 0
             readonly property size panelSize: panelLoader.item ? Qt.size(panelLoader.item.implicitWidth, panelLoader.item.implicitHeight + backH) : Qt.size(420, 300)
-            readonly property size hoverSize: Qt.size(600, 200)
+            readonly property size hoverSize: Qt.size(720, 148)
             // A warning grows the island too (below panels and hover in priority).
             readonly property bool bannerHere: Alerts.banner !== null && screenName === Screens.focusedName && !panelHere && !grown
             Spring { id: bv; tier: win.bannerHere ? win.grow : win.shrink; epsilon: 0.001; target: win.bannerHere ? 1 : 0 }
-            readonly property real targetW: panelHere ? panelSize.width : grown ? hoverSize.width : bannerHere ? 440 : restRow.implicitWidth + 30
+            readonly property real targetW: panelHere ? panelSize.width : grown ? hoverSize.width : bannerHere ? 440 : restRow.implicitWidth + 32
             readonly property real targetH: panelHere ? panelSize.height : grown ? hoverSize.height : bannerHere ? 72 : restH
             Spring { id: sw; tier: win.targetW >= sw.value ? win.grow : win.shrink; epsilon: 0.3; target: win.targetW; Component.onCompleted: settle() }
             Spring { id: sh; tier: win.targetH >= sh.value ? win.grow : win.shrink; epsilon: 0.3; target: win.targetH; Component.onCompleted: settle() }
 
             // ── Data the parts share ─────────────────────────────────────
             readonly property int activeWs: monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : 1
+            // The special (scratchpad) workspace open on this monitor, from Hyprland's events.
+            property string special: ""
+            Connections {
+                target: Hyprland
+                function onRawEvent(event) {
+                    if (event.name !== "activespecial") return;
+                    const [ws, mon] = event.data.split(",");
+                    if (mon === win.screenName) win.special = ws || "";
+                }
+            }
             readonly property var mine: Hyprland.workspaces.values.filter(w => w.id > 0 && w.monitor === monitor)
             readonly property int wsCount: Math.max(Settings.workspaceCount, ...mine.map(w => w.id), activeWs)
             readonly property var player: Mpris.players.values.find(p => p.playbackState === MprisPlaybackState.Playing) || Mpris.players.values[0] || null
