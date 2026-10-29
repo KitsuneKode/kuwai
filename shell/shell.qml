@@ -10,6 +10,7 @@ import qs.modules.osd
 import qs.modules.notifications
 import qs.modules.clipboard
 import qs.modules.island
+import qs.modules.lock
 import qs.modules
 
 ShellRoot {
@@ -18,5 +19,6 @@ ShellRoot {
     Center {}
     ClipboardPanel {}
     IslandBar {}
+    Lock {}
     Shortcuts {}
 }

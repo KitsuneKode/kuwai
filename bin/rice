@@ -8,6 +8,7 @@
 #   rice center [agents] [pointer]   toggle the center (Notifications or Agents);
 #                             `pointer` (the bell) morphs it, keys open it instantly
 #   rice bar [island|waybar]  which top bar: the rice's island or HyDE's Waybar
+#   rice lock                 lock with the rice's lock screen (hyprlock stays the default)
 #   rice set KEY VALUE        change a setting (~/.config/rice/settings.json)
 #   rice get [KEY]            print one setting, or all of them
 #
@@ -115,6 +116,7 @@ case ${1:-} in
     logs)          exec qs log -p "$SHELL_DIR" -f ;;
     notifs)        shift; notifs "$@" ;;
     bar)           shift; bar "$@" ;;
+    lock)          ipc lock lock ;;
     set)           [ $# -eq 3 ] || { echo "usage: rice set KEY VALUE" >&2; exit 2; }; set_setting "$2" "$3" ;;
     get)           if [ -n "${2:-}" ]; then get_setting "$2"; else jq . "$SETTINGS" 2>/dev/null || echo '{}'; fi ;;
     center)
@@ -125,5 +127,5 @@ case ${1:-} in
             for _ in $(seq 20); do qs ipc -p "$SHELL_DIR" show >/dev/null 2>&1 && break; sleep 0.1; done
         fi
         ipc center toggle "${2:-notifications}" "${3:-key}" ;;
-    *) sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+    *) sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
 esac
