@@ -152,7 +152,10 @@ FocusScope {
         return out;
     }
     readonly property int selectable: results.filter(r => r.kind !== "header").length
-    onResultsChanged: current = results.findIndex(r => r.kind !== "header")
+    onResultsChanged: {
+        current = results.findIndex(r => r.kind !== "header");
+        Qt.callLater(() => { list.currentIndex = current; });   // the model reset put it back on 0
+    }
     // A ListView drops a bound currentIndex when its model changes: set it.
     onCurrentChanged: Qt.callLater(() => { list.currentIndex = current; })
 
