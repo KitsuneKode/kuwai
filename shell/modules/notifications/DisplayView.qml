@@ -28,8 +28,9 @@ Item {
     id: view
 
     required property var center
-    readonly property bool shown: center.open && center.tab === "controls"
-    Binding { target: Display; property: "watching"; value: view.shown }
+    property bool hosting: true
+    readonly property bool shown: hosting && center.open && center.tab === "controls"
+    Binding { target: Display; property: "watching"; value: view.shown; when: view.hosting }
     Component.onCompleted: Hyprland.refreshMonitors()
 
     function key(event, queryEmpty) { return false; }

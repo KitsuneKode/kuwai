@@ -24,9 +24,10 @@ Item {
 
     required property var center
 
-    readonly property bool shown: center.open && center.tab === "agents"
-    Binding { target: Kittymux; property: "watching"; value: view.shown }
-    Binding { target: Limits; property: "watching"; value: view.shown }
+    property bool hosting: true
+    readonly property bool shown: hosting && center.open && center.tab === "agents"
+    Binding { target: Kittymux; property: "watching"; value: view.shown; when: view.hosting }
+    Binding { target: Limits; property: "watching"; value: view.shown; when: view.hosting }
 
     function ago(ms) {
         const m = Math.floor((Date.now() - ms) / 60000);

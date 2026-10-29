@@ -10,6 +10,8 @@ Item {
     id: content
 
     required property var center
+    // Only the hosting monitor's copy polls and meters; the others sleep.
+    property bool hosting: false
 
     // For Center: the pieces it resets, focuses and asks for keys.
     readonly property alias search: search
@@ -175,6 +177,7 @@ Item {
         function drift(i) { return Theme.reduceMotion ? 0 : (i - tabT.value) * 24; }
 
         NotificationsView {
+            hosting: content.hosting
             id: notifications
             center: content.center
             anchors.fill: parent
@@ -183,6 +186,7 @@ Item {
             transform: Translate { x: pages.drift(0) }
         }
         AgentsView {
+            hosting: content.hosting
             id: agents
             center: content.center
             anchors.fill: parent
@@ -191,6 +195,7 @@ Item {
             transform: Translate { x: pages.drift(1) }
         }
         SoundView {
+            hosting: content.hosting
             id: sound
             center: content.center
             anchors.fill: parent
@@ -199,6 +204,7 @@ Item {
             transform: Translate { x: pages.drift(2) }
         }
         DisplayView {
+            hosting: content.hosting
             id: display
             center: content.center
             anchors.fill: parent

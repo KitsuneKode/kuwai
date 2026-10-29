@@ -128,6 +128,7 @@ Scope {
                     from = { x: padX + cardW + 12 - 16 - Theme.toastWidth, y: 12, w: Theme.toastWidth, h: ft.height, r: 22 };
             }
             capturing = false;
+            armed = false;
             if (ui) ui.reset();
             foldAnim.stop();
             contentOut.stop();
@@ -144,6 +145,7 @@ Scope {
         } else {
             pendingBegin = false;
             capturing = false;
+            armed = false;
             closeT = morph.value;
             clockRun.stop();
             contentOut.restart();
@@ -159,7 +161,13 @@ Scope {
         pendingBegin = false;
         morph.target = 1;
         clockRun.restart();
+        armSoon.restart();
     }
+    // Click-outside-closes (the focus grab) is armed only once the card is
+    // on screen with the keyboard: armed while the surface was still growing
+    // from 1×1, Hyprland cleared it at once and the center shut as it opened.
+    property bool armed: false
+    Timer { id: armSoon; interval: 120; onTriggered: root.armed = root.open }
     // Fallback if the surface already has its size (reopening) or is slow.
     Timer { id: beginSoon; interval: 34; onTriggered: root.begin() }
 
@@ -174,8 +182,8 @@ Scope {
     property bool capturing: false
     readonly property var captureTools: ["pgrep", "-x", "slurp|hyprpicker|grim|grimblast|hyprshot|wayfreeze|satty|swappy|wf-recorder|wl-screenrec|gpu-screen-reco"]
     function grabCleared() {
-        console.info("center: focus grab cleared (open=" + open + ")");
-        if (open) captureProbe.running = true;
+        console.info("center: focus grab cleared (open=" + open + ", armed=" + armed + ")");
+        if (open && armed) captureProbe.running = true;
     }
     Process {
         id: captureProbe
@@ -221,14 +229,20 @@ Scope {
     }
 
     // ── Scrim: everything else steps back while the card is up ────────────
-    // Its own surface on the layer under the card's, mapped only while the
-    // card is up, and click-through (the focus grab handles a click out).
-    // Named outside rice-* so Hyprland doesn't blur under it.
-    LazyLoader {
-        active: root.open || root.folding
+    // Its own surface on the layer under the card's, click-through (the focus
+    // grab handles a click out), named outside rice-* so Hyprland doesn't blur
+    // under it. Like the card it stays mapped, 1×1 while closed, so opening
+    // never waits for a new surface.
+    Variants {
+        model: Quickshell.screens
         PanelWindow {
-            screen: root.shownScreen
-            anchors { top: true; bottom: true; left: true; right: true }
+            id: scrim
+            required property ShellScreen modelData
+            screen: modelData
+            readonly property bool up: root.shownScreen === modelData && (root.open || root.folding)
+            anchors { top: true; left: true }
+            implicitWidth: up ? modelData.width : 1
+            implicitHeight: up ? modelData.height : 1
             exclusionMode: ExclusionMode.Ignore
             color: "transparent"
             mask: Region {}
@@ -241,6 +255,7 @@ Scope {
             Shape {
                 id: spot
                 anchors.fill: parent
+                visible: scrim.up
                 readonly property real t: Math.max(0, Math.min(1, root.p))
                 readonly property var c: root.cardRect
                 opacity: t
@@ -275,6 +290,13 @@ Scope {
 
             // This monitor hosts the card (and its content).
             readonly property bool hosts: root.shownScreen === modelData
+            // The hosting monitor's content is the one keys and resets go to.
+            function claim() {
+                if (!hosts || !body.item) return;
+                root.ui = body.item;
+                if (root.open) body.item.search.forceActiveFocus();
+            }
+            onHostsChanged: claim()
             readonly property bool up: hosts && (root.open || root.folding)
             readonly property int fullW: root.cardW + 12 + root.padX
             readonly property int fullH: root.cardH(modelData) + root.padY + root.padBottom
@@ -298,7 +320,7 @@ Scope {
 
             HyprlandFocusGrab {
                 windows: [win]
-                active: win.up && root.open && !root.capturing
+                active: win.up && root.open && root.armed && !root.capturing
                 onCleared: root.grabCleared()
             }
 
@@ -364,10 +386,12 @@ Scope {
                     anchors.fill: parent
                     clip: true
 
-                    // Built once this monitor first hosts the card, kept
-                    // while it does: opening is then just motion.
+                    // Built in the background at start on every monitor
+                    // (asynchronously, so nothing blocks), kept for good:
+                    // opening is then just motion, on any monitor.
                     Loader {
-                        active: win.hosts
+                        id: body
+                        asynchronous: true
                         // Morph: pinned to the destination and revealed by the
                         // growing clip. Pop: rides along with the card.
                         x: frame.morphing ? win.dx - frame.x : 0
@@ -376,14 +400,10 @@ Scope {
                         height: win.dh
                         opacity: root.contentFade
                         sourceComponent: CenterContent {
-                            id: cc
                             center: root
-                            Component.onCompleted: {
-                                root.ui = cc;
-                                if (root.open) cc.search.forceActiveFocus();
-                            }
-                            Component.onDestruction: if (root.ui === cc) root.ui = null
+                            hosting: win.hosts
                         }
+                        onLoaded: win.claim()
                     }
                 }
             }

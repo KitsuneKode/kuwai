@@ -15,6 +15,7 @@ Item {
     id: view
 
     required property var center                    // the Center scope (query, reveal)
+    property bool hosting: true                     // the hosting monitor's copy (Center)
 
     // Rows and groups talk to the view through these.
     readonly property var terms: center.terms

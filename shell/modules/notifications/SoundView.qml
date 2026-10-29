@@ -25,7 +25,8 @@ Item {
     id: view
 
     required property var center
-    readonly property bool shown: center.open && center.tab === "sound"
+    property bool hosting: true
+    readonly property bool shown: hosting && center.open && center.tab === "sound"
 
     function key(event, queryEmpty) { return false; }
     function reset() { strips.contentX = 0; routeFor = null; }

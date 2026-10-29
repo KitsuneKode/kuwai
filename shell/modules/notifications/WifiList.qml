@@ -33,7 +33,7 @@ Column {
     }
     onOpenChanged: if (!open) { asking = null; failed = {}; }
 
-    Binding { target: wifi.device; property: "scannerEnabled"; value: wifi.open; when: wifi.device !== null }
+    Binding { target: wifi.device; property: "scannerEnabled"; value: true; when: wifi.device !== null && wifi.open }
 
     readonly property var networks: (device ? device.networks.values : [])
         .filter(n => n.name && center.matchesText(n.name))

@@ -20,10 +20,14 @@ Rectangle {
     // Given a width, the segments share the spare room evenly on top of
     // their natural widths (so a long label never squeezes a short one).
     implicitWidth: naturalSum + pad * 2
-    readonly property real naturalSum: {
+    // Summed when segments come and go or change size (itemAt() isn't
+    // something a binding can watch: built in the background, the segments
+    // arrive after a binding would have run).
+    property real naturalSum: 0
+    function measure() {
         let sum = 0;
         for (let k = 0; k < rep.count; k++) { const it = rep.itemAt(k); if (it) sum += it.natural; }
-        return sum;
+        naturalSum = sum;
     }
     readonly property real extra: rep.count ? Math.max(0, (width - pad * 2 - naturalSum) / rep.count) : 0
     color: Qt.rgba(1, 1, 1, 0.06)
@@ -64,12 +68,15 @@ Rectangle {
         Repeater {
             id: rep
             model: seg.options
+            onItemAdded: Qt.callLater(seg.measure)
+            onItemRemoved: Qt.callLater(seg.measure)
             delegate: Item {
                 id: opt
                 required property var modelData
                 readonly property string optionId: modelData.id
                 readonly property bool on: seg.current === modelData.id
                 readonly property real natural: inner.implicitWidth + 20
+                onNaturalChanged: Qt.callLater(seg.measure)
                 width: natural + seg.extra
                 height: 28
                 scale: optArea.pressed ? 0.97 : 1
