@@ -30,10 +30,12 @@ Singleton {
     property var history: []
     readonly property bool canBack: history.length > 0
 
-    function open(name, screenName, how) {
+    // `from` "island": opened from the island itself (its clock, rings…);
+    // going back returns to it, expanded while the pointer is still there.
+    function open(name, screenName, how, from) {
         if (panels.indexOf(name) < 0) return;
         const s = screenName || Screens.focusedName;
-        history = panel && panel !== name && s === screen ? [...history, panel] : [];
+        history = panel && panel !== name && s === screen ? [...history, panel] : from === "island" ? ["island"] : [];
         screen = s;
         via = how === "key" ? "key" : "pointer";
         panel = name;
@@ -41,7 +43,9 @@ Singleton {
     function back() {
         if (!history.length) { close(); return; }
         const h = history.slice();
-        panel = h.pop();
+        const to = h.pop();
+        if (to === "island") { close(); return; }
+        panel = to;
         history = h;
     }
     function close() { panel = ""; history = []; }

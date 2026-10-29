@@ -1,5 +1,5 @@
-// Workspace pills: small dots, and the workspace you're on stands up as a
-// taller pill in the theme's colour (a little wider, mostly taller). Moving
+// Workspace pills: slim vertical capsules, and the workspace you're on is a
+// wider, taller one in the theme's colour. Moving
 // between workspaces, the old one settles back into a dot as the new one
 // rises, both on a spring. Occupied workspaces are brighter dots than empty
 // ones. Click to go there; scroll on them to step through.
@@ -29,14 +29,15 @@ Row {
             readonly property int ws: index + 1
             readonly property bool on: ws === caps.bar.activeWs
             readonly property bool used: caps.bar.mine.some(w => w.id === ws && w.toplevels && w.toplevels.values.length > 0)
-            width: 8 * caps.scale
+            width: 12 * caps.scale
             height: caps.height
 
             Spring { id: grow; tier: ({ stiffness: 420, damping: 30 }); target: cap.on ? 1 : 0; Component.onCompleted: settle() }
             Rectangle {
                 anchors.centerIn: parent
-                width: (6 + 2 * grow.value) * caps.scale
-                height: (6 + 10 * grow.value) * caps.scale
+                // Rest: a slim vertical capsule. Current: wider and taller.
+                width: (5 + 7 * grow.value) * caps.scale
+                height: (11 + 5 * grow.value) * caps.scale
                 radius: width / 2
                 color: Qt.tint(cap.used ? Qt.rgba(1, 1, 1, capArea.containsMouse ? 0.75 : 0.5)
                                         : Qt.rgba(1, 1, 1, capArea.containsMouse ? 0.45 : 0.2),

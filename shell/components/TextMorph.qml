@@ -29,8 +29,27 @@ Row {
             property string was: ch
             property real t: 1           // 0 → 1 while changing
             width: Math.ceil(metrics.advanceWidth)
-            height: Math.ceil(metrics.height)
+            // The cell is the cap height, so a row centres the digits
+            // themselves (not their line box with its empty descender).
+            height: Math.round(capH)
+            // A digit's height above the baseline (QML's FontMetrics has no
+            // capHeight): from the tight box of "0".
+            readonly property real capH: digit.tightBoundingRect.height || caps.ascent * 0.72
+            TextMetrics {
+                id: digit
+                text: "0"
+                font.family: morph.rounded ? Theme.fontRounded : Theme.fontText
+                font.pixelSize: morph.size
+                font.variableAxes: ({ "wght": morph.weight })
+            }
             clip: false
+            FontMetrics {
+                id: caps
+                font.family: morph.rounded ? Theme.fontRounded : Theme.fontText
+                font.pixelSize: morph.size
+                font.variableAxes: ({ "wght": morph.weight })
+            }
+            readonly property real lift: -Math.round(caps.ascent - capH)
 
             TextMetrics {
                 id: metrics
@@ -60,7 +79,7 @@ Row {
                 id: oldGlyph
                 visible: cell.t < 1 && cell.was !== cell.ch
                 anchors.horizontalCenter: parent.horizontalCenter
-                y: -cell.height * 0.55 * cell.t
+                y: cell.lift - cell.height * 0.9 * cell.t
                 opacity: 1 - cell.t
                 text: cell.was
                 size: morph.size; weight: morph.weight; rounded: morph.rounded; color: morph.color
@@ -72,7 +91,7 @@ Row {
             Label {
                 id: newGlyph
                 anchors.horizontalCenter: parent.horizontalCenter
-                y: cell.height * 0.55 * (1 - cell.t)
+                y: cell.lift + cell.height * 0.9 * (1 - cell.t)
                 opacity: Math.min(1, cell.t * 1.6)
                 text: cell.ch
                 size: morph.size; weight: morph.weight; rounded: morph.rounded; color: morph.color

@@ -548,11 +548,16 @@ Scope {
             Rectangle {
                 id: frame
                 visible: win.up
-                readonly property real baseW: win.lerp(44, win.pillW, Math.min(1, win.pv))
+                // Grows from the island's own size when the island is the bar.
+                readonly property real baseW: win.lerp(Settings.bar === "island" ? 220 : 44, win.pillW, Math.min(1, win.pv))
                 width: Math.max(1, win.lerp(win.lerp(baseW, win.shelfW, win.m), win.readW, win.rd))
                 height: Math.max(1, win.lerp(win.lerp(win.pillH, win.shelfH, win.mh), win.readH, win.rd))
                 x: Math.round((win.width - width) / 2)
-                y: 6
+                // With the island bar, the clipboard is the island growing:
+                // flush with the top edge (or the floating pill's place), black.
+                readonly property bool inIsland: Settings.bar === "island"
+                readonly property bool notch: inIsland && Settings.islandStyle !== "floating"
+                y: inIsland ? (notch ? 0 : 4) : 6
                 radius: win.lerp(win.pillH / 2, 26, Math.min(1, win.m))
                 // The same liquid glass (and grain) as the center and the
                 // toasts: one material across the rice. The pill is the
@@ -561,9 +566,18 @@ Scope {
                 opacity: Math.min(1, win.pv * 2.5)
                 clip: true
                 GlassCard {
+                    visible: !frame.notch
                     anchors.fill: parent
                     radius: frame.radius
-                    tint: Theme.glassTintElevated
+                    tint: frame.inIsland ? Qt.rgba(0, 0, 0, 0.9) : Theme.glassTintElevated
+                }
+                NotchShape {
+                    visible: frame.notch
+                    ear: 9
+                    w: frame.width - 18
+                    h: frame.height
+                    radius: Math.min(frame.radius, 30)
+                    fill: Qt.rgba(0, 0, 0, 0.94)
                 }
 
                 // ── Pill: what was just copied ───────────────────────────
@@ -884,11 +898,28 @@ Scope {
                 cacheBuffer: 600
                 model: ScriptModel { values: root.rows; objectProp: "key" }
                 delegate: ClipCard { panel: root }
-                // A mouse wheel scrolls the shelf sideways.
+                // A mouse wheel or a touchpad scrolls the shelf sideways, either
+                // axis: wheel notches glide (one card-ish per notch), a
+                // touchpad's pixels track 1:1 (direct manipulation).
+                NumberAnimation { id: glide; target: shelf; property: "contentX"; duration: 220; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
                 WheelHandler {
-                    acceptedDevices: PointerDevice.Mouse
+                    acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
                     onWheel: event => {
-                        shelf.contentX = Math.max(0, Math.min(shelf.contentWidth - shelf.width, shelf.contentX - event.angleDelta.y));
+                        const px = event.pixelDelta, ad = event.angleDelta;
+                        const max = Math.max(0, shelf.contentWidth - shelf.width);
+                        if (px.x !== 0 || px.y !== 0) {
+                            glide.stop();
+                            const d = Math.abs(px.x) > Math.abs(px.y) ? -px.x : -px.y;
+                            shelf.contentX = Math.max(0, Math.min(max, shelf.contentX + d));
+                        } else {
+                            const d = -(Math.abs(ad.x) > Math.abs(ad.y) ? ad.x : ad.y) * 1.6;
+                            const from = glide.running ? glide.to : shelf.contentX;
+                            glide.stop();
+                            glide.from = shelf.contentX;
+                            glide.to = Math.max(0, Math.min(max, from + d));
+                            glide.start();
+                        }
+                        event.accepted = true;
                     }
                 }
             }

@@ -19,6 +19,7 @@ Row {
 
     // Which live activity, if any.
     readonly property string activity: Activities.voxActive ? "vox"
+        : Alerts.active.length ? "alert"
         : (Activities.shazamListening || Activities.shazamFound) ? "shazam"
         : bar.player && bar.player.isPlaying && Settings.restMedia ? "media" : ""
 
@@ -54,6 +55,18 @@ Row {
                 loops: Animation.Infinite; from: 0; to: 360; duration: 1100
             }
         }
+        // A warning that hasn't cleared: its mark, in its colour.
+        Text {
+            visible: rest.activity === "alert"
+            anchors.centerIn: parent
+            text: Alerts.active.length ? Alerts.active[0].glyph : ""
+            font.family: Theme.fontGlyph
+            font.pixelSize: 15
+            color: Alerts.active.length && Alerts.active[0].level === "crit" ? Theme.red : Theme.orange
+            HoverHandler { id: alertHover; cursorShape: Qt.PointingHandCursor }
+            TapHandler { onTapped: Island.open("system", rest.bar.screenName, "pointer", "island") }
+            Tip { text: Alerts.active.length ? Alerts.active.map(a => a.title).join(" · ") : ""; shown: alertHover.hovered; below: true }
+        }
         // Shazam: its mark, pulsing while it listens.
         Text {
             visible: rest.activity === "shazam"
@@ -85,7 +98,7 @@ Row {
         now: rest.bar.now; size: 14
         anchors.verticalCenter: parent.verticalCenter
         HoverHandler { cursorShape: Qt.PointingHandCursor }
-        TapHandler { onTapped: Island.toggle("calendar", rest.bar.screenName, "pointer") }
+        TapHandler { onTapped: Island.toggle("calendar", rest.bar.screenName, "pointer", "island") }
     }
     Row {
         visible: Settings.restStatus
@@ -104,7 +117,7 @@ Row {
 
     // ── Trailing ─────────────────────────────────────────────────────────
     Item {
-        visible: rest.activity !== ""
+        visible: rest.activity !== "" && rest.activity !== "alert"
         width: trailing.implicitWidth
         height: 20
         anchors.verticalCenter: parent.verticalCenter

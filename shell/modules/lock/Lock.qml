@@ -93,6 +93,8 @@ Scope {
     IpcHandler {
         target: "lock"
         function lock(): void { root.lock(); }
-        function state(): string { return root.locked ? "locked" : "unlocked"; }
+        // "locked" only once the compositor confirms the lock (secure):
+        // what `rice lock --wait` waits for before the machine may sleep.
+        function state(): string { return session.secure ? "locked" : root.locked ? "locking" : "unlocked"; }
     }
 }

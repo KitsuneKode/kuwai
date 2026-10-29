@@ -36,9 +36,18 @@ Item {
     readonly property bool hasBattery: battery && battery.isLaptopBattery && battery.isPresent
     readonly property int pct: hasBattery ? Math.round(battery.percentage > 1 ? battery.percentage : battery.percentage * 100) : 0
     readonly property bool charging: hasBattery && (battery.state === UPowerDeviceState.Charging || battery.state === UPowerDeviceState.FullyCharged)
+    // On the charger or on battery (UPower's line power), and how long either way.
+    readonly property bool onAC: !UPower.onBattery
+    function hm(s) { const h = Math.floor(s / 3600), m = Math.round(s % 3600 / 60); return h ? h + "h " + m + "m" : m + "m"; }
+    readonly property string powerText: !hasBattery ? "" : battery.state === UPowerDeviceState.FullyCharged || (onAC && pct >= 99) ? "Plugged in · full"
+        : battery.state === UPowerDeviceState.Charging ? "Charging" + (battery.timeToFull > 0 ? " · full in " + hm(battery.timeToFull) : "")
+        : onAC ? "Plugged in · not charging"
+        : "On battery" + (battery.timeToEmpty > 0 ? " · " + hm(battery.timeToEmpty) + " left" : "")
+    // This week, Monday first (the week strip under the clock).
+    readonly property var week: { const d = bar.now, w = []; const mon = new Date(d.getFullYear(), d.getMonth(), d.getDate() - (d.getDay() + 6) % 7); for (let i = 0; i < 7; i++) w.push(new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + i)); return w; }
 
     implicitWidth: 600
-    implicitHeight: 182
+    implicitHeight: 200
 
     // Stats are read only while this is on screen.
     Component.onCompleted: SystemStats.watch()
@@ -65,13 +74,13 @@ Item {
         Column {
             anchors { left: appIcon.right; leftMargin: 10; right: right.left; rightMargin: 16; verticalCenter: parent.verticalCenter }
             spacing: 0
-            Label { width: parent.width; elide: Text.ElideRight; text: hover.app ? hover.app.name : (hover.topInfo.class || "Desktop"); size: 13; weight: Theme.wSemibold }
+            Label { width: parent.width; elide: Text.ElideRight; text: hover.app ? hover.app.name : hover.topInfo.class ? hover.topInfo.class.charAt(0).toUpperCase() + hover.topInfo.class.slice(1) : "Desktop"; size: 13; weight: Theme.wSemibold }
             Label { width: parent.width; elide: Text.ElideRight; text: hover.focusWin ? (hover.focusWin.title || "") : "Workspace " + hover.bar.activeWs; size: 11; color: Theme.textTertiary }
         }
         MouseArea {
             anchors { left: parent.left; top: parent.top; bottom: parent.bottom; right: right.left }
             cursorShape: Qt.PointingHandCursor
-            onClicked: Island.open("launcher", hover.bar.screenName, "pointer")
+            onClicked: Island.open("launcher", hover.bar.screenName, "pointer", "island")
         }
 
         Row {
@@ -96,17 +105,37 @@ Item {
     // ── When, and what's playing ─────────────────────────────────────────
     Item {
         id: rowB
-        x: 22; y: 66
-        width: parent.width - 44; height: 62
+        x: 22; y: 64
+        width: parent.width - 44; height: 76
 
-        Column {
-            id: when
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: 0
-            IslandClock { now: hover.bar.now; size: 38 }
-            Label { text: Qt.formatDate(hover.bar.now, "dddd, d MMMM"); size: 12; color: Theme.textTertiary }
-            HoverHandler { cursorShape: Qt.PointingHandCursor }
-            TapHandler { onTapped: Island.open("calendar", hover.bar.screenName, "pointer") }
+        Item {
+          id: when
+          anchors.verticalCenter: parent.verticalCenter
+          width: whenCol.implicitWidth; height: whenCol.implicitHeight
+          Column {
+            id: whenCol
+            spacing: 10
+            IslandClock { now: hover.bar.now; size: 36 }
+            // The week, today lit: a glance at the date without the calendar.
+            Row {
+                spacing: 2
+                Repeater {
+                    model: hover.week
+                    Column {
+                        required property var modelData
+                        required property int index
+                        readonly property bool today: modelData.getDate() === hover.bar.now.getDate()
+                        width: 24
+                        spacing: 1
+                        Label { anchors.horizontalCenter: parent.horizontalCenter; text: Qt.formatDate(parent.modelData, "ddd").charAt(0); size: 9; weight: Theme.wSemibold; color: parent.today ? Theme.accent : parent.index >= 5 ? Theme.textTertiary : Theme.textSecondary }
+                        Label { anchors.horizontalCenter: parent.horizontalCenter; text: parent.modelData.getDate(); size: 12; rounded: true; weight: parent.today ? Theme.wSemibold : Theme.wRegular; color: parent.today ? Theme.accent : Theme.textSecondary; font.features: ({ "tnum": 1 }) }
+                    }
+                }
+            }
+          }
+          HoverHandler { id: whenHover; cursorShape: Qt.PointingHandCursor }
+          TapHandler { onTapped: Island.open("calendar", hover.bar.screenName, "pointer", "island") }
+          Tip { text: Qt.formatDate(hover.bar.now, "dddd, d MMMM yyyy") + " · open the calendar"; shown: whenHover.hovered; below: true }
         }
 
         // Now playing
@@ -167,34 +196,51 @@ Item {
         Row {
             visible: !hover.media
             anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-            spacing: 18
-            StatRing { value: SystemStats.cpu; label: "CPU" }
-            StatRing { value: SystemStats.mem; label: "Memory" }
+            spacing: 16
+            StatRing {
+                value: SystemStats.cpu; label: "CPU"
+                HoverHandler { id: h1 }
+                Tip { text: SystemStats.cores.length + " threads · load " + (SystemStats.load.split(" ")[0] || "–"); shown: h1.hovered; below: true }
+            }
+            StatRing {
+                value: SystemStats.mem; label: "Memory"
+                HoverHandler { id: h2 }
+                Tip { text: SystemStats.bytes(SystemStats.memUsed) + " of " + SystemStats.bytes(SystemStats.memTotal) + (SystemStats.swapUsed > 1073741824 ? " · swap " + SystemStats.bytes(SystemStats.swapUsed) : ""); shown: h2.hovered; below: true }
+            }
             StatRing {
                 value: SystemStats.gpu
                 label: "GPU"
                 text: SystemStats.gpuState === "suspended" ? "off" : Math.round(SystemStats.gpu * 100) + "%"
+                HoverHandler { id: h3 }
+                Tip { text: SystemStats.gpuState === "suspended" ? "NVIDIA asleep · Intel drives the screens" : "NVIDIA " + SystemStats.gpuTemp + "° · " + Math.round(SystemStats.gpuPower) + " W · Intel " + SystemStats.igpuMHz + " MHz"; shown: h3.hovered; below: true }
             }
             StatRing {
                 value: Math.min(1, SystemStats.cpuTemp / 100)
-                label: "CPU temp"
+                label: "Temp"
                 text: SystemStats.cpuTemp ? SystemStats.cpuTemp + "°" : "–"
                 color: SystemStats.cpuTemp >= 90 ? Theme.red : SystemStats.cpuTemp >= 80 ? Theme.orange : Theme.green
+                HoverHandler { id: h4 }
+                Tip { text: "CPU " + SystemStats.cpuTemp + "° · GPU " + SystemStats.gpuTemp + "°" + (SystemStats.fans.length ? " · fans " + SystemStats.fans.join(" / ") + " rpm" : ""); shown: h4.hovered; below: true }
             }
             HoverHandler { cursorShape: Qt.PointingHandCursor }
-            TapHandler { onTapped: Island.open("system", hover.bar.screenName, "pointer") }
+            TapHandler { onTapped: Island.open("system", hover.bar.screenName, "pointer", "island") }
         }
     }
 
-    Rectangle { x: 22; y: rowC.y - 10; width: parent.width - 44; height: 1; color: Qt.rgba(1, 1, 1, 0.07) }
+    Rectangle { x: 22; y: rowC.y - 14; width: parent.width - 44; height: 1; color: Qt.rgba(1, 1, 1, 0.08) }
 
     // ── Workspaces, tray, power ──────────────────────────────────────────
     Item {
         id: rowC
-        x: 22; y: parent.height - 38
+        x: 22; y: parent.height - 36
         width: parent.width - 44; height: 24
 
         Capsules { bar: hover.bar; anchors.verticalCenter: parent.verticalCenter }
+        Item {
+            anchors { right: parent.right; top: parent.top; bottom: parent.bottom }
+            width: batRow.width
+            Tip { text: hover.powerText; shown: batHover.hovered }
+        }
 
         Row {
             anchors { right: parent.right; verticalCenter: parent.verticalCenter }
@@ -209,12 +255,21 @@ Item {
                 color: Theme.textTertiary
                 font.features: ({ "tnum": 1 })
                 HoverHandler { cursorShape: Qt.PointingHandCursor }
-                TapHandler { onTapped: Island.open("system", hover.bar.screenName, "pointer") }
+                TapHandler { onTapped: Island.open("system", hover.bar.screenName, "pointer", "island") }
             }
             Row {
+                id: batRow
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 6
                 IslandStatus { anchors.verticalCenter: parent.verticalCenter }
+                // On the charger: a plug; on battery: nothing extra.
+                Text {
+                    visible: hover.hasBattery && hover.onAC
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "\u{f06a5}"
+                    font.family: Theme.fontGlyph; font.pixelSize: 13
+                    color: hover.charging ? Theme.green : Theme.textSecondary
+                }
                 Label {
                     visible: hover.hasBattery
                     anchors.verticalCenter: parent.verticalCenter
@@ -223,7 +278,7 @@ Item {
                     color: hover.charging ? Theme.green : hover.pct <= 20 ? Theme.red : Theme.textSecondary
                     font.features: ({ "tnum": 1 })
                 }
-                HoverHandler { cursorShape: Qt.PointingHandCursor }
+                HoverHandler { id: batHover; cursorShape: Qt.PointingHandCursor }
                 TapHandler { onTapped: Notifs.toggleCenter("controls", "pointer") }
             }
         }

@@ -53,6 +53,9 @@ Scope {
                     grown = false;
                     armed = false;
                     arm.restart();
+                    idle.restart();
+                } else if (hovered) {
+                    grown = true;           // back to the island you came from, not all the way down
                 }
                 // Keys open and close it in place: no grow for what a key does.
                 if (Island.via === "key") Qt.callLater(() => { sw.settle(); sh.settle(); pv.settle(); });
@@ -60,6 +63,19 @@ Scope {
             Connections {
                 target: Island
                 function onPanelChanged() { if (win.panelHere) win.shownPanel = Island.panel; }
+            }
+            // Another workspace: a panel left open would only be in the way (and its key would close it).
+            Connections {
+                target: win.monitor
+                function onActiveWorkspaceChanged() { if (win.panelHere) Island.close(); }
+            }
+            // A panel left alone folds back by itself once the pointer has gone:
+            // glance panels quickly, the ones you work in after a while.
+            Timer {
+                id: idle
+                interval: ["calendar", "system", "power"].includes(win.shownPanel) ? 12000 : 30000
+                running: win.panelHere && !win.hovered
+                onTriggered: Island.close()
             }
 
             anchors.top: true
@@ -94,9 +110,12 @@ Scope {
 
             readonly property real backH: Island.canBack ? 34 : 0
             readonly property size panelSize: panelLoader.item ? Qt.size(panelLoader.item.implicitWidth, panelLoader.item.implicitHeight + backH) : Qt.size(420, 300)
-            readonly property size hoverSize: Qt.size(600, showMedia ? 182 : 176)
-            readonly property real targetW: panelHere ? panelSize.width : grown ? hoverSize.width : restRow.implicitWidth + 30
-            readonly property real targetH: panelHere ? panelSize.height : grown ? hoverSize.height : restH
+            readonly property size hoverSize: Qt.size(600, 200)
+            // A warning grows the island too (below panels and hover in priority).
+            readonly property bool bannerHere: Alerts.banner !== null && screenName === Screens.focusedName && !panelHere && !grown
+            Spring { id: bv; tier: win.bannerHere ? win.grow : win.shrink; epsilon: 0.001; target: win.bannerHere ? 1 : 0 }
+            readonly property real targetW: panelHere ? panelSize.width : grown ? hoverSize.width : bannerHere ? 440 : restRow.implicitWidth + 30
+            readonly property real targetH: panelHere ? panelSize.height : grown ? hoverSize.height : bannerHere ? 72 : restH
             Spring { id: sw; tier: win.targetW >= sw.value ? win.grow : win.shrink; epsilon: 0.3; target: win.targetW; Component.onCompleted: settle() }
             Spring { id: sh; tier: win.targetH >= sh.value ? win.grow : win.shrink; epsilon: 0.3; target: win.targetH; Component.onCompleted: settle() }
 
@@ -128,7 +147,7 @@ Scope {
                 x: Math.round((win.width - width) / 2)
                 y: win.top
                 // Without the bar it is only there for a panel: it fades in as it grows.
-                opacity: win.showBar ? 1 : Math.max(0, Math.min(1, pv.value * 2.5))
+                opacity: win.showBar ? 1 : Math.max(0, Math.min(1, Math.max(pv.value, bv.value) * 2.5))
 
                 HoverHandler { onHoveredChanged: win.hovered = hovered }
 
@@ -161,7 +180,7 @@ Scope {
                         bar: win
                         anchors.horizontalCenter: parent.horizontalCenter
                         y: Math.round((win.restH - height) / 2)
-                        opacity: Math.max(0, 1 - Math.max(m.value, pv.value) * 3)
+                        opacity: Math.max(0, 1 - Math.max(m.value, pv.value, bv.value) * 3)
                         visible: opacity > 0.01
                     }
 
@@ -180,6 +199,20 @@ Scope {
                         sourceComponent: IslandHover { bar: win }
                     }
 
+                    // ── A warning ────────────────────────────────────────
+                    Loader {
+                        id: alertLoader
+                        active: win.bannerHere || bv.value > 0.01
+                        x: Math.round((body.width - 440) / 2)
+                        readonly property real k: Math.max(0, Math.min(1, (bv.value - 0.3) / 0.5))
+                        opacity: k * Math.max(0, 1 - Math.max(m.value, pv.value) * 3)
+                        visible: opacity > 0.01
+                        property var keep: null
+                        // Keeps the last alert on screen while the island folds back.
+                        sourceComponent: AlertBanner { alert: Alerts.banner || alertLoader.keep; bar: win }
+                        Connections { target: Alerts; function onBannerChanged() { if (Alerts.banner) alertLoader.keep = Alerts.banner; } }
+                    }
+
                     // ── A panel ──────────────────────────────────────────
                     FocusScope {
                         id: panelScope
@@ -193,6 +226,7 @@ Scope {
                         transformOrigin: Item.Top
                         visible: opacity > 0.01 || win.panelHere
                         Keys.onEscapePressed: Island.back()
+                        Keys.onPressed: event => { idle.restart(); event.accepted = false; }
 
                         // Back strip: where you came from, one click away.
                         Item {

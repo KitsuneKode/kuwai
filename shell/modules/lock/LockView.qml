@@ -133,12 +133,21 @@ Item {
                 id: field
                 anchors { left: parent.left; leftMargin: 18; right: go.left; rightMargin: 8; verticalCenter: parent.verticalCenter }
                 focus: !view.preview
-                enabled: !view.lock.checking
+                // Never disabled: a disabled field drops the keyboard, and the
+                // next keys would go nowhere. While PAM checks, it's read-only.
+                readOnly: view.lock.checking
                 echoMode: TextInput.Password
                 passwordCharacter: "●"
                 passwordMaskDelay: 0
-                text: view.lock.password
                 onTextChanged: if (text !== view.lock.password) view.lock.password = text
+                // Typing breaks a `text:` binding, so follow the shared password
+                // explicitly: a miss clears it on every screen.
+                Connections {
+                    target: view.lock
+                    function onPasswordChanged() { if (field.text !== view.lock.password) field.text = view.lock.password; }
+                    function onFailuresChanged() { if (!view.preview) field.forceActiveFocus(); }
+                }
+                onActiveFocusChanged: if (!activeFocus && !view.preview) Qt.callLater(() => field.forceActiveFocus())
                 color: "white"
                 font.pixelSize: 14
                 font.letterSpacing: 2
@@ -149,7 +158,7 @@ Item {
                 Label {
                     visible: !field.text
                     anchors.centerIn: parent
-                    text: view.lock.checking ? "Checking…" : "Enter Password"
+                    text: "Enter Password"
                     size: 14
                     color: Qt.rgba(1, 1, 1, 0.6)
                 }
@@ -160,13 +169,22 @@ Item {
                 width: 30; height: 30; radius: 15
                 color: Qt.rgba(1, 1, 1, view.lock.password ? 0.3 : 0.12)
                 Behavior on color { ColorAnimation { duration: Theme.colorMs } }
-                Text { anchors.centerIn: parent; text: "\u{f0054}"; font.family: Theme.fontGlyph; font.pixelSize: 16; color: "white" }
+                Text {
+                    anchors.centerIn: parent
+                    text: view.lock.checking ? "\u{f0772}" : "\u{f0054}"
+                    font.family: Theme.fontGlyph; font.pixelSize: 16; color: "white"
+                    RotationAnimation on rotation { running: view.lock.checking && !Theme.reduceMotion; loops: Animation.Infinite; from: 0; to: 360; duration: 900 }
+                    onTextChanged: rotation = 0
+                }
                 MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: view.lock.submit() }
             }
         }
         Label {
             anchors.horizontalCenter: parent.horizontalCenter
-            text: view.lock.error || "Type your password, then ↵"
+            text: view.lock.checking ? "Checking…" : view.lock.error || "Type your password, then ↵"
+            width: Math.min(implicitWidth, 320)
+            elide: Text.ElideRight
+            horizontalAlignment: Text.AlignHCenter
             size: 12
             color: view.lock.error ? "#ff6961" : Qt.rgba(1, 1, 1, 0.6)
         }

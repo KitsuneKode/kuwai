@@ -40,7 +40,7 @@ Row {
         Rectangle {
             height: parent.height; radius: 4
             width: Math.max(4, (parent.width - 2) * status.pct / 100)
-            color: status.charging ? Theme.green : status.pct <= 20 ? Theme.red : "white"
+            color: status.charging ? Theme.green : status.pct <= 20 ? Theme.red : Qt.tint("white", Qt.alpha(Theme.accent, 0.55))
         }
         Rectangle { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; width: 2; height: 5; radius: 1; color: Qt.rgba(1, 1, 1, 0.4) }
         Text {

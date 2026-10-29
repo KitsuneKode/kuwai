@@ -34,6 +34,12 @@ Singleton {
     property real gpuMemTotal: 0
     property real gpuPower: 0            // W
     property string load: ""
+    property var coreMHz: []             // current frequency per thread
+    property var pThreads: []            // thread numbers on performance cores (the rest are efficiency cores)
+    property int igpuMHz: 0              // Intel GPU: current and top frequency (it has no busy %)
+    property int igpuMax: 0
+    function coreKind(i) { return pThreads.length ? (pThreads.includes(i) ? "Performance core" : "Efficiency core") : "Core"; }
+    function ranges(text) { const out = []; for (const part of text.split(",")) { const [a, b] = part.split("-").map(Number); for (let i = a; i <= (isNaN(b) ? a : b); i++) out.push(i); } return out; }
     property int updates: -1             // pending package updates (-1: not checked yet)
     property bool ready: false
 
@@ -67,6 +73,9 @@ Singleton {
                 const g = l.slice(4).split(",").map(s => Number(s.trim()));
                 gpu = (g[0] || 0) / 100; gpuMemUsed = g[1] || 0; gpuMemTotal = g[2] || 0; gpuPower = g[3] || 0;
             } else if (f[0] === "load") load = f.slice(1).join(" ");
+            else if (f[0] === "freq") coreMHz = f.slice(1).map(n => Math.round(Number(n) / 1000));
+            else if (f[0] === "kinds" && f[1]) pThreads = ranges(f[1]);
+            else if (f[0] === "igpu") { igpuMHz = Number(f[1]) || 0; igpuMax = Number(f[2]) || 0; }
         }
         if (gpuState !== "active") gpu = 0;
         // Each core's own idle/total were remembered under its name, so the
@@ -92,6 +101,9 @@ Singleton {
                     [ "$st" = active ] && echo "gpu $(nvidia-smi --query-gpu=utilization.gpu,memory.used,memory.total,power.draw --format=csv,noheader,nounits 2>/dev/null | head -1)"
                 fi
                 read -r a b c _ < /proc/loadavg; echo "load $a $b $c"
+                s=; i=0; while [ -e "/sys/devices/system/cpu/cpu$i/cpufreq/scaling_cur_freq" ]; do read -r v < "/sys/devices/system/cpu/cpu$i/cpufreq/scaling_cur_freq"; s="$s $v"; i=$((i+1)); done; echo "freq$s"
+                [ -r /sys/devices/cpu_core/cpus ] && { read -r p < /sys/devices/cpu_core/cpus; echo "kinds $p"; }
+                for c in /sys/class/drm/card[0-9]; do [ -r "$c/gt_act_freq_mhz" ] && { read -r x < "$c/gt_act_freq_mhz"; read -r y < "$c/gt_max_freq_mhz"; echo "igpu $x $y"; }; done
                 echo '#'
                 sleep 2
             done`]

@@ -7,18 +7,22 @@ import QtQuick
 import QtQuick.Shapes
 import qs.config
 
-Column {
+Item {
     id: ring
     property real value: 0               // 0–1
     property string label
     property string text: Math.round(value * 100) + "%"
     property color color: value > 0.9 ? Theme.red : value > 0.7 ? Theme.orange : Theme.accent
-    property int size: 46
-    spacing: 4
+    property int size: 44
+    implicitWidth: col.implicitWidth
+    implicitHeight: col.implicitHeight
 
     property real shown: value
     Behavior on shown { NumberAnimation { duration: 400; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
 
+  Column {
+    id: col
+    spacing: 4
     Item {
         width: ring.size; height: ring.size
         anchors.horizontalCenter: parent.horizontalCenter
@@ -36,5 +40,6 @@ Column {
         }
         Label { anchors.centerIn: parent; text: ring.text; size: 11; weight: Theme.wSemibold; rounded: true; font.features: ({ "tnum": 1 }) }
     }
-    Label { anchors.horizontalCenter: parent.horizontalCenter; text: ring.label; size: 10; weight: Theme.wMedium; color: Theme.textTertiary }
+    Label { anchors.horizontalCenter: parent.horizontalCenter; text: ring.label; size: 11; weight: Theme.wMedium; color: Theme.textSecondary }
+  }
 }

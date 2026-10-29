@@ -93,6 +93,11 @@ FocusScope {
                             required property int index
                             readonly property real v: SystemStats.cores[index] || 0
                             width: 14; height: 48
+                            HoverHandler { id: coreHover }
+                            Tip {
+                                text: "Thread " + parent.index + " · " + SystemStats.coreKind(parent.index) + " · " + Math.round(parent.v * 100) + "%" + (SystemStats.coreMHz[parent.index] ? " · " + (SystemStats.coreMHz[parent.index] / 1000).toFixed(1) + " GHz" : "")
+                                shown: coreHover.hovered
+                            }
                             Rectangle { anchors.fill: parent; radius: 4; color: Qt.rgba(1, 1, 1, 0.07) }
                             Rectangle {
                                 anchors.bottom: parent.bottom
@@ -120,11 +125,22 @@ FocusScope {
         Card {
             visible: SystemStats.gpuState !== ""
             Meter {
-                title: "GPU" + (SystemStats.gpuTemp ? "  ·  " + SystemStats.gpuTemp + "°" : "") + (SystemStats.gpuPower ? "  ·  " + Math.round(SystemStats.gpuPower) + " W" : "")
+                title: "NVIDIA GPU" + (SystemStats.gpuTemp ? "  ·  " + SystemStats.gpuTemp + "°" : "") + (SystemStats.gpuPower ? "  ·  " + Math.round(SystemStats.gpuPower) + " W" : "")
                 value: SystemStats.gpu
                 big: SystemStats.gpuState === "suspended" ? "Asleep" : Math.round(SystemStats.gpu * 100) + "%"
                 detail: SystemStats.gpuState === "suspended" ? "The NVIDIA GPU is powered down (nothing is using it)"
                       : "VRAM " + (SystemStats.gpuMemUsed / 1024).toFixed(1) + " of " + (SystemStats.gpuMemTotal / 1024).toFixed(0) + " GB"
+            }
+        }
+
+        // The Intel GPU (it drives the laptop screen; no busy % is exposed, so its clock stands in).
+        Card {
+            visible: SystemStats.igpuMax > 0
+            Meter {
+                title: "Intel GPU (integrated)"
+                value: SystemStats.igpuMax ? SystemStats.igpuMHz / SystemStats.igpuMax : 0
+                big: SystemStats.igpuMHz ? SystemStats.igpuMHz + " MHz" : "Idle"
+                detail: "Clock " + SystemStats.igpuMHz + " of " + SystemStats.igpuMax + " MHz"
             }
         }
 
