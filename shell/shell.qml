@@ -8,11 +8,13 @@
 import Quickshell
 import qs.modules.osd
 import qs.modules.notifications
+import qs.modules.clipboard
 import qs.modules
 
 ShellRoot {
     Osd {}
     Popups {}
     Center {}
+    ClipboardPanel {}
     Shortcuts {}
 }

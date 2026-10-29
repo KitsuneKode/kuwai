@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+# The clipboard panel's hands (shell/services/Clipboard.qml). History is
+# cliphist's (the wl-paste watchers keep feeding it); pins are the rice's own
+# and outlive cliphist's 750-item cap.
+#
+#   rice-clip list                 cliphist list, wide previews
+#   rice-clip text ID              the entry's text (first 64 KiB)
+#   rice-clip thumb ID EXT         decode an image entry into the cache, print its path
+#   rice-clip copy ID|pin:N        put an entry (or pin) on the clipboard
+#   rice-clip paste ID|pin:N       copy, then paste into the focused window
+#   rice-clip open ID|pin:N        open with the default app (URL, path, image, text)
+#   rice-clip delete ID            remove from history
+#   rice-clip wipe                 clear history (pins stay)
+#   rice-clip pin ID               save an entry as a pin; prints its pin file
+#   rice-clip unpin FILE           remove a pin
+set -euo pipefail
+
+cache="${XDG_CACHE_HOME:-$HOME/.cache}/rice/clip"
+pins="${XDG_DATA_HOME:-$HOME/.local/share}/rice/clipboard/pins"
+mkdir -p "$cache/thumbs" "$cache/open" "$pins"
+
+# An entry's bytes on stdout: a cliphist id, or pin:FILE.
+emit() {
+    case "$1" in
+        pin:*) cat -- "$pins/${1#pin:}" ;;
+        *)     printf '%s\t\n' "$1" | cliphist decode ;;
+    esac
+}
+
+ext_of() {   # sniff the type: png, jpg, … or txt
+    case "$(file -b --mime-type "$1")" in
+        image/png) echo png ;; image/jpeg) echo jpg ;; image/gif) echo gif ;;
+        image/webp) echo webp ;; image/bmp) echo bmp ;; image/svg+xml) echo svg ;;
+        image/tiff) echo tiff ;; text/*|application/json) echo txt ;; *) echo bin ;;
+    esac
+}
+
+copy() {
+    local tmp; tmp=$(mktemp "$cache/open/.copy.XXXXXX")
+    emit "$1" > "$tmp"
+    local mime; mime=$(file -b --mime-type "$tmp")
+    case "$mime" in
+        image/*) wl-copy --type "$mime" < "$tmp" ;;
+        *)       wl-copy < "$tmp" ;;
+    esac
+    rm -f -- "$tmp"
+}
+
+case "${1:-}" in
+    list)  cliphist list -preview-width 400 ;;
+    text)  emit "$2" | head -c 65536 ;;
+    thumb)
+        out="$cache/thumbs/$2.${3:-png}"
+        [ -s "$out" ] || emit "$2" > "$out"
+        printf '%s\n' "$out" ;;
+    copy)  copy "$2" ;;
+    paste)
+        copy "$2"
+        # Let the panel hand keyboard focus back first, then paste the way
+        # the window expects: terminals take Ctrl+Shift+V.
+        sleep 0.08
+        class=$(hyprctl activewindow -j 2>/dev/null | sed -n 's/.*"class": *"\([^"]*\)".*/\1/p' | head -1)
+        case "${class,,}" in
+            *kitty*|*ghostty*|*foot*|*alacritty*|*wezterm*|*konsole*|*terminal*|*terminator*|*tilix*)
+                wtype -M ctrl -M shift -k v -m shift -m ctrl ;;
+            *)  wtype -M ctrl -k v -m ctrl ;;
+        esac ;;
+    open)
+        tmp=$(mktemp "$cache/open/.raw.XXXXXX")
+        emit "$2" > "$tmp"
+        ext=$(ext_of "$tmp")
+        if [ "$ext" = txt ]; then
+            text=$(head -c 4096 "$tmp" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+            single=$(printf '%s' "$text" | wc -l)
+            # A link, a path, or a file:// URI opens what it points at.
+            if [ "$single" -eq 0 ] && [[ "$text" =~ ^(https?|ftp|mailto):[^[:space:]]+$ ]]; then
+                rm -f -- "$tmp"; exec xdg-open "$text"
+            fi
+            path="${text#file://}"; path="${path/#\~/$HOME}"
+            if [ "$single" -eq 0 ] && [ -e "$path" ]; then
+                rm -f -- "$tmp"; exec xdg-open "$path"
+            fi
+        fi
+        out="$cache/open/clip-$(date +%Y%m%d-%H%M%S).$ext"
+        mv -- "$tmp" "$out"
+        exec xdg-open "$out" ;;
+    delete) printf '%s\t\n' "$2" | cliphist delete ;;
+    wipe)   cliphist wipe ;;
+    pin)
+        tmp=$(mktemp "$pins/.new.XXXXXX")
+        emit "$2" > "$tmp"
+        name="$(date +%s%N).$(ext_of "$tmp")"
+        mv -- "$tmp" "$pins/$name"
+        printf '%s\n' "$name" ;;
+    unpin)  rm -f -- "$pins/${2##*/}" ;;
+    *) sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+esac

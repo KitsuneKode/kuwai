@@ -37,4 +37,16 @@ Scope {
             if (top) Notifs.activate(top);
         }
     }
+    GlobalShortcut {
+        appid: "rice"
+        name: "clipboard"
+        description: "Clipboard history"
+        onPressed: Clipboard.toggle("all")
+    }
+    GlobalShortcut {
+        appid: "rice"
+        name: "clipboard-pins"
+        description: "Clipboard: pinned entries"
+        onPressed: Clipboard.toggle("pinned")
+    }
 }

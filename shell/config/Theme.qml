@@ -60,6 +60,7 @@ Singleton {
     readonly property string fontRounded: "SF Pro Rounded"
     readonly property string fontUi: fontText          // older name, same face
     readonly property string fontGlyph: "Symbols Nerd Font"
+    readonly property string fontMono: "SF Mono"           // code and raw text
 
     // Apple's SF weights
     readonly property int wRegular: 400
