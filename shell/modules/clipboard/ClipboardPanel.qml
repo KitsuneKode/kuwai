@@ -409,31 +409,23 @@ Scope {
     }
     Timer { id: toastTimer; interval: 1900; onTriggered: root.toasting = false }
 
-    // Recording (bin/rice-rec): the pill holds a red dot and the time while
-    // it lasts; a click on it stops the recording.
-    property real recSince: 0
-    property string recTarget: ""
-    readonly property bool recording: recSince > 0
+    // Recording (bin/rice-rec, state in the Clipboard service): the pill holds
+    // a red dot, the time and a stop button while it lasts; after a stop it
+    // shows "Recording saved" with a frame of it for a few seconds.
+    readonly property bool recording: Clipboard.recSince > 0
+    readonly property bool saved: Clipboard.recSaved !== null
+    readonly property bool setup: Clipboard.recordSetup
+    // The island is open as the shelf (Super+V) or the recording setup.
+    readonly property bool expanded: open || setup
     property real nowSec: Date.now() / 1000
-    Timer { running: root.recording; interval: 1000; repeat: true; triggeredOnStart: true; onTriggered: root.nowSec = Date.now() / 1000 }
+    Timer { running: root.recording; interval: 250; repeat: true; triggeredOnStart: true; onTriggered: root.nowSec = Date.now() / 1000 }
     function elapsed(s) { s = Math.max(0, Math.floor(s)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); }
-    FileView {
-        path: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/rice/recording"
-        watchChanges: true
-        printErrors: false
-        onFileChanged: reload()
-        onLoaded: {
-            const f = text().trim().split(" ");
-            root.recSince = f.length >= 4 ? Number(f[1]) : 0;
-            root.recTarget = f.length >= 4 ? f[3] : "";
-        }
-        onLoadFailed: { root.recSince = 0; root.recTarget = ""; }
-    }
-    Process { id: recStop; command: [Quickshell.env("HOME") + "/Projects/rice/bin/rice-rec", "stop"] }
+    Process { id: opener }
     // A copied image's pill: a click opens it in Satty to annotate.
     Process { id: annotate }
     function pillClicked() {
-        if (recording) { recStop.running = true; return; }
+        if (recording) { Clipboard.stopRecording(); return; }
+        if (saved) { opener.command = ["xdg-open", Clipboard.recSaved.path]; opener.running = true; Clipboard.recSaved = null; return; }
         const e = toastEntry;
         if (e && e.kind === "image") {
             const src = Clipboard.thumb(e).replace(/^file:\/\//, "");
@@ -448,11 +440,11 @@ Scope {
     }
 
     // pill: 0 gone → 1 there (it swells out of a dot). melt: 0 pill → 1 shelf.
-    Spring { id: pill; tier: Theme.springFast; epsilon: 0.002; target: root.open || root.toasting || root.recording ? 1 : 0 }
-    Spring { id: melt; tier: Theme.springModerate; epsilon: 0.001; target: root.open ? 1 : 0 }
+    Spring { id: pill; tier: Theme.springFast; epsilon: 0.002; target: root.expanded || root.toasting || root.recording || root.saved ? 1 : 0 }
+    Spring { id: melt; tier: Theme.springModerate; epsilon: 0.001; target: root.expanded ? 1 : 0 }
     Spring { id: read; tier: Theme.springModerate; epsilon: 0.001; target: root.open && root.reading ? 1 : 0 }
-    readonly property bool shownAtAll: open || toasting || recording || pill.value > 0.003 || melt.value > 0.003
-    readonly property var hostScreen: open ? (Clipboard.screen || Quickshell.screens[0]) : (toastScreen || Clipboard.screen || Quickshell.screens[0])
+    readonly property bool shownAtAll: expanded || toasting || recording || saved || pill.value > 0.003 || melt.value > 0.003
+    readonly property var hostScreen: expanded ? (Clipboard.screen || Quickshell.screens[0]) : (toastScreen || Clipboard.screen || Quickshell.screens[0])
 
     // Reveal clock for the cards' rise.
     property real clock: 1000
@@ -462,6 +454,9 @@ Scope {
         const k = Math.max(0, Math.min(1, (clock - ms - 90) / 160));
         return 1 - Math.pow(1 - k, 3);
     }
+    onSetupChanged: { armed = false; if (setup) setupArm.restart(); }
+    Timer { id: setupArm; interval: 160; onTriggered: { root.armed = root.setup; if (root.setupPanel) root.setupPanel.forceActiveFocus(); } }
+    property Item setupPanel: null
     onOpenChanged: {
         armed = false;
         altHeld = false;
@@ -513,15 +508,16 @@ Scope {
             readonly property bool up: hosts && root.shownAtAll
 
             // The shelf, and the pill it melts out of.
-            readonly property real shelfW: Math.min(1000, modelData.width - 80)
-            readonly property real shelfH: 476
+            readonly property real shelfW: root.setup ? 540 : Math.min(1000, modelData.width - 80)
+            readonly property real shelfH: root.setup ? 262 : 476
             // Reading size: most of the screen, still clear of its edges.
             readonly property real readW: Math.min(1280, modelData.width - 80)
             readonly property real readH: Math.min(1020, modelData.height - 150)
             readonly property real rd: read.value
             readonly property real side: 64
-            readonly property real pillW: root.open && !root.toastEntry ? 180
-                : root.recording && !root.toasting ? recRow.implicitWidth + 36
+            readonly property real pillW: root.expanded && !root.toastEntry ? 180
+                : root.saved && !root.toasting ? savedRow.implicitWidth + 30
+                : root.recording && !root.toasting ? recRow.implicitWidth + 30
                 : Math.max(170, Math.min(470, toastRow.implicitWidth + 36))
             readonly property real pillH: 40
 
@@ -532,13 +528,13 @@ Scope {
             color: "transparent"
             WlrLayershell.namespace: "rice-island"
             WlrLayershell.layer: WlrLayer.Overlay
-            WlrLayershell.keyboardFocus: up && root.open ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
-            mask: Region { item: win.up && (root.open || root.toasting || root.recording) ? frame : null }
+            WlrLayershell.keyboardFocus: up && root.expanded ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+            mask: Region { item: win.up && (root.expanded || root.toasting || root.recording || root.saved) ? frame : null }
 
             HyprlandFocusGrab {
                 windows: [win]
-                active: win.up && root.open && root.armed
-                onCleared: Clipboard.open = false
+                active: win.up && root.expanded && root.armed
+                onCleared: { Clipboard.open = false; Clipboard.recordSetup = false; }
             }
             HoverHandler { onHoveredChanged: if (win.hosts) root.pointerIn = hovered }
 
@@ -575,7 +571,7 @@ Scope {
                     id: toastRow
                     anchors.centerIn: parent
                     spacing: 10
-                    opacity: root.recording && !root.toasting ? 0 : Math.max(0, 1 - win.m * 4)
+                    opacity: (root.recording || root.saved) && !root.toasting ? 0 : Math.max(0, 1 - win.m * 4)
                     visible: opacity > 0.01
                     readonly property var e: root.toastEntry
                     ClippingRectangle {
@@ -619,16 +615,16 @@ Scope {
                     }
                 }
 
-                // ── Pill: recording ──────────────────────────────────────
+                // ── Pill: recording (Skiper's island: dot, time, label, stop) ──
                 Row {
                     id: recRow
                     anchors.centerIn: parent
-                    spacing: 9
-                    opacity: root.recording && !root.toasting ? Math.max(0, 1 - win.m * 4) : 0
+                    spacing: 10
+                    opacity: root.recording && !root.toasting && !root.saved ? Math.max(0, 1 - win.m * 4) : 0
                     visible: opacity > 0.01
                     Rectangle {
                         anchors.verticalCenter: parent.verticalCenter
-                        width: 10; height: 10; radius: 5
+                        width: 9; height: 9; radius: 4.5
                         color: Theme.red
                         SequentialAnimation on opacity {
                             running: root.recording && !Theme.reduceMotion
@@ -637,13 +633,49 @@ Scope {
                             NumberAnimation { to: 1; duration: 700; easing.type: Easing.InOutSine }
                         }
                     }
-                    Label { anchors.verticalCenter: parent.verticalCenter; text: root.elapsed(root.nowSec - root.recSince); size: 13; rounded: true; weight: Theme.wSemibold; font.features: ({ "tnum": 1 }) }
-                    Label { anchors.verticalCenter: parent.verticalCenter; text: "Recording · " + (root.recTarget === "region" ? "region" : root.recTarget) + " · click to stop"; size: 12; color: Theme.textSecondary }
+                    Label { anchors.verticalCenter: parent.verticalCenter; text: root.elapsed(root.nowSec - Clipboard.recSince); size: 13; rounded: true; weight: Theme.wSemibold; color: Theme.red; font.features: ({ "tnum": 1 }) }
+                    Label { anchors.verticalCenter: parent.verticalCenter; text: "Screen Recording"; size: 13; weight: Theme.wMedium }
+                    // Stop: a red square in a ring that sweeps once a second.
+                    Item {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 26; height: 26
+                        Rectangle { anchors.fill: parent; radius: 13; color: "transparent"; border.width: 2; border.color: Qt.rgba(1, 1, 1, 0.16) }
+                        Canvas {
+                            id: sweep
+                            anchors.fill: parent
+                            property real f: (root.nowSec - Clipboard.recSince) % 1
+                            onFChanged: requestPaint()
+                            onPaint: {
+                                const c = getContext("2d"); c.reset();
+                                c.strokeStyle = "#ff453a"; c.lineWidth = 2; c.lineCap = "round";
+                                c.beginPath(); c.arc(13, 13, 12, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0.02, f)); c.stroke();
+                            }
+                        }
+                        Rectangle { anchors.centerIn: parent; width: 10; height: 10; radius: 3; color: Theme.red }
+                    }
+                }
+                // ── Pill: recording saved ────────────────────────────────
+                Row {
+                    id: savedRow
+                    anchors.centerIn: parent
+                    spacing: 10
+                    opacity: root.saved && !root.toasting ? Math.max(0, 1 - win.m * 4) : 0
+                    visible: opacity > 0.01
+                    Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f012c}"; font.family: Theme.fontGlyph; font.pixelSize: 15; color: Theme.green }
+                    Label { anchors.verticalCenter: parent.verticalCenter; text: root.saved ? root.elapsed(Clipboard.recSaved.duration) : ""; size: 13; rounded: true; weight: Theme.wSemibold; font.features: ({ "tnum": 1 }) }
+                    Label { anchors.verticalCenter: parent.verticalCenter; text: "Recording saved · click to open"; size: 13; color: Theme.textSecondary }
+                    ClippingRectangle {
+                        anchors.verticalCenter: parent.verticalCenter
+                        visible: root.saved && Clipboard.recSaved.thumb !== ""
+                        width: 46; height: 28; radius: 7
+                        color: Qt.rgba(1, 1, 1, 0.08)
+                        Image { anchors.fill: parent; source: parent.visible ? "file://" + Clipboard.recSaved.thumb : ""; fillMode: Image.PreserveAspectCrop; asynchronous: true; cache: false; sourceSize: Qt.size(92, 56) }
+                    }
                 }
                 // The pill is a button while it's a pill: stop a recording, annotate a copied image.
                 MouseArea {
                     anchors.fill: parent
-                    enabled: !root.open
+                    enabled: !root.expanded
                     cursorShape: Qt.PointingHandCursor
                     onClicked: root.pillClicked()
                 }
@@ -657,9 +689,16 @@ Scope {
                     y: 0
                     width: win.shelfW
                     height: win.shelfH
-                    opacity: Math.max(0, Math.min(1, (win.m - 0.55) / 0.4))
+                    opacity: root.setup ? 0 : Math.max(0, Math.min(1, (win.m - 0.55) / 0.4))
                     visible: opacity > 0.01 || root.open
                     sourceComponent: shelfBody
+                }
+                Loader {
+                    active: win.hosts
+                    anchors.fill: parent
+                    opacity: root.setup ? Math.max(0, Math.min(1, (win.m - 0.55) / 0.4)) : 0
+                    visible: opacity > 0.01
+                    sourceComponent: RecordSetup { id: rs; panel: root; Component.onCompleted: root.setupPanel = rs }
                 }
                 // Quick Look lives on the island itself, so reading can grow
                 // it past the shelf.

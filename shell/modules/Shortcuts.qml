@@ -49,4 +49,10 @@ Scope {
         description: "Clipboard: pinned entries"
         onPressed: Clipboard.toggle("pinned")
     }
+    GlobalShortcut {
+        appid: "rice"
+        name: "record"
+        description: "Screen recording: set up, or stop"
+        onPressed: Clipboard.recordKey()
+    }
 }

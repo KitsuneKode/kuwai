@@ -23,6 +23,50 @@ Singleton {
     id: root
 
     property bool open: false
+
+    // ── Screen recording (bin/rice-rec), shown by the island ─────────────
+    // recordSetup: the island's setup panel (source, audio, frame rate).
+    property bool recordSetup: false
+    property real recSince: 0                  // epoch seconds while recording, else 0
+    property string recTarget: ""
+    property var recSaved: null                // { at, duration, path, thumb } just after a stop
+    readonly property string recBin: Quickshell.env("HOME") + "/Projects/rice/bin/rice-rec"
+    readonly property string recState: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/rice/recording"
+    function recordKey() {
+        if (recSince > 0) { recCmd.command = [recBin, "stop"]; recCmd.running = true; return; }
+        if (!recordSetup) { open = false; screen = Screens.focused; }
+        recordSetup = !recordSetup;
+    }
+    function startRecording(source, audio, fps) {
+        recordSetup = false;
+        recCmd.command = [recBin, "start", source, audio, String(fps)];
+        recStartLater.restart();                 // let the island fold away first (a region pick follows)
+    }
+    function stopRecording() { recCmd.command = [recBin, "stop"]; recCmd.running = true; }
+    Timer { id: recStartLater; interval: 260; onTriggered: recCmd.running = true }
+    Process { id: recCmd }
+    FileView {
+        path: root.recState
+        watchChanges: true
+        printErrors: false
+        onFileChanged: reload()
+        onLoaded: { const f = text().trim().split(" "); root.recSince = f.length >= 4 ? Number(f[1]) : 0; root.recTarget = f.length >= 4 ? f[3] : ""; }
+        onLoadFailed: { root.recSince = 0; root.recTarget = ""; }
+    }
+    FileView {
+        path: root.recState + "-saved"
+        watchChanges: true
+        printErrors: false
+        onFileChanged: reload()
+        onLoaded: {
+            const f = text().trim().split(" ");
+            if (f.length >= 3 && Date.now() / 1000 - Number(f[0]) < 8) {
+                root.recSaved = { at: Number(f[0]), duration: Number(f[1]), path: f[2], thumb: f[3] || "" };
+                savedClear.restart();
+            }
+        }
+    }
+    Timer { id: savedClear; interval: 5000; onTriggered: root.recSaved = null }
     property var screen: null
     property string startFilter: "all"
 
