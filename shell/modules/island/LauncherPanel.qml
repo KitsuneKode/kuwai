@@ -98,8 +98,11 @@ FocusScope {
         if (!q) {
             const top = apps.map(e => ({ e: e, f: frecency(e.id) })).filter(x => x.f > 0).sort((a, b) => b.f - a.f).slice(0, 5);
             section("Frequent", top.map(x => ({ kind: "app", entry: x.e, name: x.e.name, sub: x.e.genericName || x.e.comment || "", icon: x.e.icon })));
-            section("Actions", actions.slice().sort((a, b) => frecency("action:" + b.name) - frecency("action:" + a.name)).slice(0, top.length ? 4 : 8)
+            section("Actions", actions.slice().sort((a, b) => frecency("action:" + b.name) - frecency("action:" + a.name)).slice(0, 4)
                                       .map(a => ({ kind: "action", action: a, name: a.name, sub: a.sub, glyph: a.glyph })));
+            // Every app, A to Z, to browse instead of search (scroll or ↓).
+            section("All Applications", apps.slice().sort((a, b) => a.name.localeCompare(b.name))
+                                            .map(e => ({ kind: "app", entry: e, name: e.name, sub: e.genericName || e.comment || "", icon: e.icon })));
             return out;
         }
         const appsHit = [], winHit = [], actHit = [];

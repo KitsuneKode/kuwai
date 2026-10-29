@@ -116,6 +116,14 @@ FocusScope {
                     }
                 }
                 SettingsRow {
+                    label: "Shape"; detail: "A floating island, or a notch hanging from the top edge"
+                    Segmented {
+                        options: [{ id: "floating", label: "Island" }, { id: "notch", label: "Notch" }]
+                        current: Settings.islandStyle
+                        onPicked: id => Settings.set("islandStyle", id)
+                    }
+                }
+                SettingsRow {
                     label: "Workspaces at rest"; detail: "Capsules beside the clock"
                     Toggle { on: Settings.restWorkspaces; onToggled: Settings.set("restWorkspaces", !Settings.restWorkspaces) }
                 }

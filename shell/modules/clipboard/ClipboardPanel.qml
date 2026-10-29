@@ -167,8 +167,17 @@ Scope {
     onSelKeyChanged: {
         revealed = false;
         const i = rows.findIndex(r => r.key === selKey);
-        if (i >= 0 && listView) listView.positionViewAtIndex(i, ListView.Contain);
+        if (i < 0 || !listView) return;
+        // Glide to it (fast): where it needs to be, then animate there.
+        const from = listView.contentX;
+        listView.positionViewAtIndex(i, ListView.Contain);
+        const to = listView.contentX;
+        if (Math.abs(to - from) > 1 && !Theme.reduceMotion) { listView.contentX = from; shelfGlide.to = to; shelfGlide.restart(); }
     }
+    NumberAnimation { id: shelfGlide; target: root.listView; property: "contentX"; duration: 140; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+    // Where you were last time (the item selected when it closed): ⌥← returns there.
+    property string lastKey: ""
+    function backToLast() { if (lastKey && entries.some(r => r.key === lastKey)) selKey = lastKey; }
     function focusSearch() { if (searchField) searchField.forceActiveFocus(); }
     function select(key) { selKey = key; focusSearch(); }
     function move(step) {
@@ -307,7 +316,8 @@ Scope {
             { k: ["word$"], t: "Ends with" },
             { k: ["!word"], t: "Leave out" },
             { k: ["⌃", "K"], t: "Every action for the card" },
-            { k: ["Esc"], t: "Back out, step by step" } ] }
+            { k: ["Esc"], t: "Back out, step by step" },
+            { k: ["Alt", "←"], t: "Back to where you were last time" } ] }
     ]
 
     // Naming a screenshot before it's saved (⌃S on an image).
@@ -480,7 +490,10 @@ Scope {
             clockRun.restart();
             armSoon.restart();
             if (Theme.reduceMotion) { pill.settle(); melt.settle(); }
-        } else if (Theme.reduceMotion) { pill.settle(); melt.settle(); }
+        } else {
+            if (selKey) lastKey = selKey;          // ⌥← brings you back here next time
+            if (Theme.reduceMotion) { pill.settle(); melt.settle(); }
+        }
     }
     // Left alone, it puts itself away: 45s without a key or the pointer on
     // it (never while you're reading, editing or in a menu).
@@ -898,26 +911,20 @@ Scope {
                 cacheBuffer: 600
                 model: ScriptModel { values: root.rows; objectProp: "key" }
                 delegate: ClipCard { panel: root }
-                // A mouse wheel or a touchpad scrolls the shelf sideways, either
-                // axis: wheel notches glide (one card-ish per notch), a
-                // touchpad's pixels track 1:1 (direct manipulation).
-                NumberAnimation { id: glide; target: shelf; property: "contentX"; duration: 220; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+                // Scrolling steps through the items: one wheel notch = one item
+                // (the selection moves and the shelf glides to it, 140 ms); a
+                // touchpad steps once per 56 px of travel, either axis.
+                property real swipe: 0
                 WheelHandler {
                     acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
                     onWheel: event => {
                         const px = event.pixelDelta, ad = event.angleDelta;
-                        const max = Math.max(0, shelf.contentWidth - shelf.width);
                         if (px.x !== 0 || px.y !== 0) {
-                            glide.stop();
-                            const d = Math.abs(px.x) > Math.abs(px.y) ? -px.x : -px.y;
-                            shelf.contentX = Math.max(0, Math.min(max, shelf.contentX + d));
+                            shelf.swipe += Math.abs(px.x) > Math.abs(px.y) ? -px.x : -px.y;
+                            while (Math.abs(shelf.swipe) >= 56) { root.move(shelf.swipe > 0 ? 1 : -1); shelf.swipe -= shelf.swipe > 0 ? 56 : -56; }
                         } else {
-                            const d = -(Math.abs(ad.x) > Math.abs(ad.y) ? ad.x : ad.y) * 1.6;
-                            const from = glide.running ? glide.to : shelf.contentX;
-                            glide.stop();
-                            glide.from = shelf.contentX;
-                            glide.to = Math.max(0, Math.min(max, from + d));
-                            glide.start();
+                            const d = Math.abs(ad.x) > Math.abs(ad.y) ? ad.x : ad.y;
+                            root.move(d > 0 ? -1 : 1);
                         }
                         event.accepted = true;
                     }
@@ -1187,6 +1194,7 @@ Scope {
         if (filterMenu && filterMenu.open && filterMenu.key(event)) { event.accepted = true; return; }
         if (datePicker && datePicker.open && datePicker.key(event)) { event.accepted = true; return; }
         if (ctrl && k === Qt.Key_D) { if (datePicker) datePicker.toggle(); event.accepted = true; return; }
+        if (alt && k === Qt.Key_Left) { backToLast(); event.accepted = true; return; }
         if (actionMenu && actionMenu.open && actionMenu.key(event)) { event.accepted = true; return; }
         const ql = quickLook && quickLook.open;
         if (ql && k === Qt.Key_Space && shift) { reading = !reading; event.accepted = true; return; }

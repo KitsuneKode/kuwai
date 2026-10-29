@@ -49,6 +49,21 @@ Singleton {
         shown = now;
     }
     Timer { id: bannerFor; interval: 7000; onTriggered: root.banner = null }
+
+    // Updates: announced once when they appear or their number grows (an
+    // "info" moment in the accent, not a warning), then shown in System.
+    property int updatesSeen: 0
+    Connections {
+        target: SystemStats
+        function onUpdatesChanged() {
+            const n = SystemStats.updates;
+            if (n > root.updatesSeen && n > 0) {
+                root.banner = { id: "updates", level: "info", glyph: "\u{f06b0}", title: n + (n === 1 ? " update" : " updates") + " available", detail: "Open System to update in a terminal" };
+                bannerFor.restart();
+            }
+            root.updatesSeen = Math.max(0, n);
+        }
+    }
     function dismiss() { banner = null; }
 
     property var frame: ({})

@@ -12,7 +12,7 @@ Item {
     required property var bar
     implicitWidth: 440
     implicitHeight: 72
-    readonly property color tone: alert && alert.level === "crit" ? Theme.red : Theme.orange
+    readonly property color tone: !alert ? Theme.orange : alert.level === "crit" ? Theme.red : alert.level === "info" ? Theme.accent : Theme.orange
 
     Rectangle {
         id: mark
