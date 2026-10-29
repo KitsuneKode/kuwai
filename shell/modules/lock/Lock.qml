@@ -4,10 +4,15 @@
 //
 //   rice lock                     lock now (qs ipc call lock lock)
 //
-// Not the default yet: hypridle still runs hyprlock. If this ever crashes
-// while locked, Hyprland keeps the session locked (that is the protocol's
-// promise); unlock from a TTY with `hyprctl --instance 0 keyword
-// misc:allow_session_lock_restore 1` and `hyprlock`, or run `rice lock` again.
+// Not the default yet: hypridle still runs hyprlock.
+//
+// Fail-safe: while locked, ~/.local/state/rice/locked exists. If the shell
+// dies while locked, Hyprland keeps the session locked (the protocol's
+// promise: nothing is ever exposed) and, with misc:allow_session_lock_restore
+// (hypr/rice.conf), lets a new locker take over: Quickshell's crash handler
+// restarts the shell, which sees the file and locks again at once. From a
+// TTY, `hyprlock` (or `rice restart`) does the same. Nothing you were doing
+// is closed: the lock only covers the screen.
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -24,9 +29,24 @@ Scope {
     property string error: ""
     property int failures: 0            // bumps on every miss: the field shakes
 
+    readonly property string flag: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/rice/locked"
     function lock() {
         password = ""; error = ""; checking = false;
+        mark.command = ["sh", "-c", 'mkdir -p "$(dirname "$1")" && : > "$1"', "sh", flag];
+        mark.running = true;
         locked = true;
+    }
+    function unlocked() {
+        mark.command = ["rm", "-f", flag];
+        mark.running = true;
+        locked = false;
+    }
+    Process { id: mark }
+    // Started (or restarted after a crash) while the flag says locked: lock again.
+    FileView {
+        path: root.flag
+        printErrors: false
+        onLoaded: if (!root.locked) { console.warn("lock: the session was locked when the shell stopped; locking again"); root.lock(); }
     }
     function submit() {
         if (checking || password === "") return;
@@ -46,7 +66,7 @@ Scope {
             root.checking = false;
             if (result === PamResult.Success) {
                 root.password = "";
-                root.locked = false;
+                root.unlocked();
             } else {
                 root.password = "";
                 root.error = result === PamResult.MaxTries ? "Too many attempts" : "Incorrect password";

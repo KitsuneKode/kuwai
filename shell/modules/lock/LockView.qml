@@ -11,6 +11,7 @@ import Quickshell
 import Quickshell.Widgets
 import qs.config
 import qs.components
+import qs.modules.island
 
 Item {
     id: view
@@ -73,13 +74,21 @@ Item {
             weight: Theme.wSemibold
             color: Qt.rgba(1, 1, 1, 0.85)
         }
-        Row {
+        TextMorph {
             anchors.horizontalCenter: parent.horizontalCenter
-            RollingNumber { value: view.now.getHours(); pad: 2; size: 132; weight: Theme.wSemibold; color: Qt.rgba(1, 1, 1, 0.92) }
-            Label { text: ":"; size: 132; weight: Theme.wSemibold; rounded: true; color: Qt.rgba(1, 1, 1, 0.92) }
-            RollingNumber { value: view.now.getMinutes(); pad: 2; size: 132; weight: Theme.wSemibold; color: Qt.rgba(1, 1, 1, 0.92) }
+            text: Qt.formatTime(view.now, "HH:mm")
+            size: 132; weight: Theme.wSemibold; color: Qt.rgba(1, 1, 1, 0.92)
+            duration: 700; stagger: 60
         }
     }
+
+    // ── Now playing (bottom right) ───────────────────────────────────────
+    LockMedia {
+        anchors { right: parent.right; bottom: parent.bottom; margins: 36 }
+    }
+
+    // ── Battery (top right) ──────────────────────────────────────────────
+    IslandStatus { anchors { right: parent.right; top: parent.top; margins: 28 } }
 
     // ── Who, and the password ────────────────────────────────────────────
     Column {

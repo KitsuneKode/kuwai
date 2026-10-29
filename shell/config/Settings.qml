@@ -22,6 +22,9 @@ Singleton {
     readonly property alias hoverDelay: s.hoverDelay
     readonly property alias workspaceCount: s.workspaceCount
     readonly property alias notifKeepSeenHours: s.notifKeepSeenHours
+    readonly property alias islandStyle: s.islandStyle
+    readonly property alias restMedia: s.restMedia
+    readonly property alias favoriteThemes: s.favoriteThemes
 
     function set(key, value) { s[key] = value; }
 
@@ -50,6 +53,12 @@ Singleton {
             property int workspaceCount: 5
             // Notifications: seen ones nobody acted on clear after this many hours (0 keeps them).
             property int notifKeepSeenHours: 24
+            // The island's shape: "notch" (hangs from the top edge, like a MacBook's) or "floating" (a pill below it).
+            property string islandStyle: "notch"
+            // At rest, show what's playing (tiny art and bars) beside the island.
+            property bool restMedia: true
+            // Themes starred in the island's theme picker (shown first).
+            property var favoriteThemes: []
         }
     }
 }

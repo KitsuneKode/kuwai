@@ -48,6 +48,28 @@ Singleton {
     readonly property color caution: orange
     readonly property color critical: red
 
+    // The theme's own colour (HyDE's wallbash palette for the current
+    // wallpaper, ~/.cache/hyde/wall.dcol): the island's accent, glows and
+    // the active workspace follow it, live, when the theme or wallpaper
+    // changes. accentSoft is a quieter step of the same hue.
+    property color accent: blue
+    property color accentSoft: Qt.rgba(0.04, 0.52, 1, 0.5)
+    FileView {
+        path: Quickshell.env("HOME") + "/.cache/hyde/wall.dcol"
+        watchChanges: true
+        printErrors: false
+        onFileChanged: reload()
+        onLoaded: {
+            const v = {};
+            for (const l of text().split("\n")) {
+                const m = l.match(/^(dcol_[a-z0-9]+)="([0-9A-Fa-f]{6})"$/);
+                if (m) v[m[1]] = "#" + m[2];
+            }
+            if (v.dcol_1xa7) root.accent = v.dcol_1xa7;
+            if (v.dcol_1xa5) root.accentSoft = v.dcol_1xa5;
+        }
+    }
+
     // ── Type ─────────────────────────────────────────────────────────────
     // Apple's own faces (/usr/share/fonts/apple-fonts):
     //   fontText     variable "SF Pro": opsz 17 (Text cut) → 28 (Display cut),

@@ -75,6 +75,24 @@ Scope {
     }
     GlobalShortcut {
         appid: "rice"
+        name: "themes"
+        description: "Themes"
+        onPressed: Island.themes("themes")
+    }
+    GlobalShortcut {
+        appid: "rice"
+        name: "wallpapers"
+        description: "Wallpapers"
+        onPressed: Island.themes("wallpapers")
+    }
+    GlobalShortcut {
+        appid: "rice"
+        name: "system"
+        description: "System: CPU, memory, GPU, updates"
+        onPressed: Island.toggle("system", "", "key")
+    }
+    GlobalShortcut {
+        appid: "rice"
         name: "calendar"
         description: "Calendar"
         onPressed: Island.toggle("calendar", "", "key")

@@ -21,7 +21,7 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: height / 2
-        color: Qt.tint(Qt.rgba(1, 1, 1, 0.16), Qt.alpha(Theme.green, k.value))
+        color: Qt.tint(Qt.rgba(1, 1, 1, 0.16), Qt.alpha(Theme.green, Math.max(0, Math.min(1, k.value))))
     }
     Rectangle {
         property real stretch: area.pressed ? 5 : 0

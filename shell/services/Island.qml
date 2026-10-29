@@ -18,20 +18,42 @@ import Quickshell.Io
 Singleton {
     id: root
 
-    readonly property var panels: ["calendar", "power", "launcher", "settings"]
+    readonly property var panels: ["calendar", "power", "launcher", "settings", "system", "theme"]
     property string panel: ""
     property string screen: ""
     // "key" opens without the grow (Emil: never animate what a key does
     // a hundred times a day); "pointer" grows out of the island.
     property string via: "pointer"
 
+    // Panels opened from another panel remember where they came from: a
+    // back chevron (or a right click, or the mouse's back button) returns.
+    property var history: []
+    readonly property bool canBack: history.length > 0
+
     function open(name, screenName, how) {
         if (panels.indexOf(name) < 0) return;
-        screen = screenName || Screens.focusedName;
+        const s = screenName || Screens.focusedName;
+        history = panel && panel !== name && s === screen ? [...history, panel] : [];
+        screen = s;
         via = how === "key" ? "key" : "pointer";
         panel = name;
     }
-    function close() { panel = ""; }
+    function back() {
+        if (!history.length) { close(); return; }
+        const h = history.slice();
+        panel = h.pop();
+        history = h;
+    }
+    function close() { panel = ""; history = []; }
+    // The launcher's last search, kept between openings (selected, so typing replaces it).
+    property string lastQuery: ""
+    // The theme picker's tab: "themes" or "wallpapers".
+    property string themeMode: "themes"
+    function themes(mode) {
+        themeMode = mode;
+        if (panel === "theme" && screen === Screens.focusedName) close();
+        else open("theme", "", "key");
+    }
     function toggle(name, screenName, how) {
         const s = screenName || Screens.focusedName;
         if (panel === name && screen === s) close();
@@ -43,6 +65,8 @@ Singleton {
         function toggle(panel: string): void { root.toggle(panel, "", "key"); }
         function open(panel: string): void { root.open(panel, "", "key"); }
         function close(): void { root.close(); }
+        function back(): void { root.back(); }
+        function themes(mode: string): void { root.themes(mode || "themes"); }
         function state(): string { return root.panel ? root.panel + " " + root.screen : "none"; }
     }
 }

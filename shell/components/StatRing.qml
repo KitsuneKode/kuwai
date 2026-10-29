@@ -1,0 +1,40 @@
+// A small ring gauge with its value in the middle and a label under it,
+// Apple Watch–style: the arc in a colour, the track faint; amber past 70 %,
+// red past 90 %. The arc glides to new values.
+//
+//   StatRing { value: SystemStats.cpu; label: "CPU" }
+import QtQuick
+import QtQuick.Shapes
+import qs.config
+
+Column {
+    id: ring
+    property real value: 0               // 0–1
+    property string label
+    property string text: Math.round(value * 100) + "%"
+    property color color: value > 0.9 ? Theme.red : value > 0.7 ? Theme.orange : Theme.accent
+    property int size: 46
+    spacing: 4
+
+    property real shown: value
+    Behavior on shown { NumberAnimation { duration: 400; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+
+    Item {
+        width: ring.size; height: ring.size
+        anchors.horizontalCenter: parent.horizontalCenter
+        Shape {
+            anchors.fill: parent
+            preferredRendererType: Shape.CurveRenderer
+            ShapePath {
+                strokeColor: Qt.rgba(1, 1, 1, 0.1); strokeWidth: 4; fillColor: "transparent"; capStyle: ShapePath.RoundCap
+                PathAngleArc { centerX: ring.size / 2; centerY: ring.size / 2; radiusX: ring.size / 2 - 3; radiusY: ring.size / 2 - 3; startAngle: -90; sweepAngle: 360 }
+            }
+            ShapePath {
+                strokeColor: ring.color; strokeWidth: 4; fillColor: "transparent"; capStyle: ShapePath.RoundCap
+                PathAngleArc { centerX: ring.size / 2; centerY: ring.size / 2; radiusX: ring.size / 2 - 3; radiusY: ring.size / 2 - 3; startAngle: -90; sweepAngle: 360 * Math.max(0.005, Math.min(1, ring.shown)) }
+            }
+        }
+        Label { anchors.centerIn: parent; text: ring.text; size: 11; weight: Theme.wSemibold; rounded: true; font.features: ({ "tnum": 1 }) }
+    }
+    Label { anchors.horizontalCenter: parent.horizontalCenter; text: ring.label; size: 10; weight: Theme.wMedium; color: Theme.textTertiary }
+}
