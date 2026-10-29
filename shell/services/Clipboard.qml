@@ -137,6 +137,7 @@ Singleton {
     }
     Timer { id: stampSoon; interval: 400; onTriggered: root.refresh() }
     property bool firstList: true
+    signal copied(var entry)
     function stampNew(list) {
         if (!list.length) return;
         if (firstList) {
@@ -146,7 +147,10 @@ Singleton {
         }
         const t = Object.assign({}, times);
         let changed = false;
-        for (const e of list.slice(0, 5)) if (!(e.id in t)) { t[e.id] = Date.now(); changed = true; }
+        const fresh = [];
+        for (const e of list.slice(0, 5)) if (!(e.id in t)) { t[e.id] = Date.now(); changed = true; fresh.push(e); }
+        // The island shows what was just copied.
+        if (fresh.length) copied(fresh[0]);
         if (changed) {
             const keep = new Set(list.map(e => e.id));
             for (const k in t) if (!keep.has(k)) delete t[k];

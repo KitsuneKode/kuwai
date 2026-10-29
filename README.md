@@ -12,6 +12,7 @@ dark liquid glass over Hyprland's blur, SF Pro text, smooth no-bounce motion
 | Glass HUD: brightness, volume, mic | HyDE volume popups, dunst brightness OSD | `shell/modules/osd/` |
 | Notification server + Sonner-style toast stack | dunst | `shell/services/Notifs.qml`, `shell/modules/notifications/Popups.qml` |
 | The center (Super+N): Notifications · Agents (kittymux, usage limits per account as in T3 Code) · Sound (coloured mixer, per-app output, device lists) · Controls (Wi‑Fi picker, Bluetooth, DND, Night Shift, Caffeine, Mic, Reduce Motion, battery, brightness) | dunst history, pavucontrol, nm-applet, brightness/hyprsunset scripts | `shell/modules/notifications/Center.qml` + `CenterContent.qml` + `*View.qml` |
+| The clipboard island (Super+V): a pill at the top centre that shows each copy, and melts into a shelf of cards: fzf search, Quick Look, ⌃K actions, OCR, pins, rendered Markdown/code/Mermaid, secrets masked | HyDE's rofi cliphist menus | `shell/modules/clipboard/`, `shell/services/Clipboard.qml`, `bin/rice-clip`, `bin/rice-render` |
 
 Next up: dynamic island, control center, bar.
 
@@ -98,6 +99,15 @@ Reduce Motion (Controls tab) turns travel, scale and stagger into plain
 fades; it's remembered in `~/.local/state/rice/prefs.json`, and it's also on
 when `RICE_REDUCE_MOTION=1` or Hyprland's animations are off. `hypr/rice.conf`
 sets quicker Hyprland window and workspace animations (~250–360ms).
+
+## Clipboard island
+
+Super+V opens it (Super+Shift+V / Super+Alt+V on your pins). cliphist stays
+the store; the rice adds copy times, pins (files that outlive the 750-entry
+cap) and the island. ↵ pastes into the window you came from, ⌃K lists every
+action. Mermaid diagrams draw if mermaid-cli is installed
+(`npm i -g @mermaid-js/mermaid-cli`); without it their source shows
+highlighted.
 
 ## Screenshots of the center
 

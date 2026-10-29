@@ -1,34 +1,37 @@
-// Clipboard (Super+V): history with previews, fzf search, pins.
+// The clipboard island: the rice's dynamic island, at the top centre under
+// the bar, doing its first job.
 //
-//   ⌕ [Images ×] search…                                 All types ⌄
-//   ┌ list ─────────────────┐ ┌ preview ───────────────────────────┐
-//   │ PINNED                │ │ the entry in full: an image at its │
-//   │ ▣ Image 2525 × 1352   │ │ size, a colour with its values,    │
-//   │ TODAY                 │ │ text (mono for code); secrets      │
-//   │ ⌘ npm run dev     2m  │ │ masked until ⌃H                    │
-//   └───────────────────────┘ └────────────────────────────────────┘
-//   ⎘ Paste to Kitty ↵   Copy ⇧↵                         Actions ⌃K
+//   copy anything →      ╭──────────────────────────────╮
+//                        │ ▣  Copied   npm run dev       │   (1.9s, then gone)
+//                        ╰──────────────────────────────╯
+//   Super+V → the pill melts down into a shelf of cards:
+//   ╭──────────────────────────────────────────────────────────────╮
+//   │ ⌕ [Images ×] search…                              All types ⌄ │
+//   │ T ┌──────┐┌──────┐┌──────┐  Y ┌──────┐┌──────┐                │
+//   │ O │ img  ││ </>  ││ ████ │  E │ x.com││ text │  …             │
+//   │ D └──────┘└──────┘└──────┘  S └──────┘└──────┘                │
+//   │ npm run dev                  Code · Bash · 11 characters      │
+//   │ ⎘ Paste to Kitty ↵   Look Space                   Actions ⌃K  │
+//   ╰──────────────────────────────────────────────────────────────╯
 //
-// It works like Raycast's clipboard: ↵ pastes into the window you came from
-// (named in the footer; terminals get Ctrl+Shift+V), ⌃K opens every action
-// with its shortcut, Space opens Quick Look (the row grows into the panel),
-// ⌃E edits before pasting. Keys:
-//   ↑↓ PgUp PgDn ⌃Home ⌃End   move           ⇥ ⇧⇥   filter
-//   ↵ paste  ⇧↵ copy  ⌃↵ open with its app   ⌥1–9   paste the nth (hold ⌥ to see)
-//   Space/⌃Y Quick Look  ⌃E edit  ⌃P pin      ⌃O     text from an image (OCR)
-//   ⌃S save image  ⇧⌦/⌃X delete  ⌃H show secret  ⌃⇧⌫ twice: clear history
-//   Esc: the menu, Quick Look, the search, the filter, then closes.
+// One surface morphs between the two (Aceternity's fluid notch, Apple's
+// island): width and radius on the moderate spring, height a touch ahead of
+// width so it reads as melting down rather than scaling; the pill's words
+// fade out early, the shelf's cards rise in late, 22ms apart. Interruptible
+// both ways. Reduce Motion: it just appears.
 //
-// Motion: it's opened from the keyboard many times a day, so the panel
-// itself just appears (a 110ms fade); the first rows then settle in 18ms
-// apart, which reads as the list arriving rather than as waiting. Menus and
-// Quick Look morph out of what opened them on the moderate spring.
-// Reduce Motion: no travel, no stagger.
+// Keys: ←→ (or ↑↓) move · ↵ paste into the window you came from (named in
+// the footer) · ⇧↵ copy · ⌃↵ open with its app · Space/⌃Y Quick Look ·
+// ⌃K every action · ⌃E edit then paste · ⌃P pin · ⌃O text from an image ·
+// ⌃S save image · ⇧⌦/⌃X delete · ⌃H show secret · ⌃R raw/rendered (Quick
+// Look) · ⇥ filter · ⌥1–9 paste the nth (hold ⌥ to see) · ⌃⇧⌫ twice clears
+// history · Esc: menu, Quick Look, search, filter, then closes.
 import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Hyprland
+import Quickshell.Widgets
 import qs.config
 import qs.components
 import qs.services
@@ -46,10 +49,13 @@ Scope {
     property Item selRow: null
     property Item searchField: null
     property Item listView: null
-    property Item previewPane: null
     property Item actionMenu: null
     property Item filterMenu: null
     property Item quickLook: null
+    property Item typeButton: null
+    property Item actionsButton: null
+    property Item tips: null
+    function tip(item, on, text, keys) { if (!tips) return; if (on) tips.show(item, text, keys); else tips.hide(item); }
 
     readonly property var filters: [
         { id: "all", label: "All types", glyph: "\u{f014c}" }, { id: "pinned", label: "Pinned", glyph: "\u{f0403}" },
@@ -129,8 +135,11 @@ Scope {
     }
 
     // ── Actions ──────────────────────────────────────────────────────────
-    // The full text if the preview has it, else what the list knows.
-    function textOf(e) { return previewPane && previewPane.full ? previewPane.full : e.preview; }
+    // The entry's full text: Quick Look may already have it; else fetch.
+    function withText(e, fn) {
+        if (quickLook && quickLook.entry === e && quickLook.full) fn(quickLook.full);
+        else Clipboard.capture(["text", Clipboard.ref(e)], fn);
+    }
     function isJson(t) { try { const v = JSON.parse(t); return typeof v === "object" && v !== null; } catch (e) { return false; } }
     function isB64(t) { return /^[A-Za-z0-9+/=\s]{16,}$/.test(t) && t.replace(/\s/g, "").length % 4 === 0; }
     function b64decode(t) {
@@ -144,7 +153,7 @@ Scope {
         const e = entry;
         if (!e) return [];
         const img = e.kind === "image", txt = !img && e.kind !== "file";
-        const t = txt ? (previewPane && previewPane.full ? previewPane.full : e.preview) : "";
+        const t = e.preview;
         const where = Clipboard.targetName();
         const a = [
             { id: "paste", label: where ? "Paste to " + where : "Paste", glyph: "\u{f0192}", keys: ["↵"], section: "Entry" },
@@ -162,7 +171,7 @@ Scope {
             a.push({ id: "trim", label: "Paste trimmed, one line", glyph: "\u{f0a73}", section: "Paste as" });
             a.push({ id: "upper", label: "Paste as UPPERCASE", glyph: "\u{f0b34}", section: "Paste as" });
             a.push({ id: "lower", label: "Paste as lowercase", glyph: "\u{f0b33}", section: "Paste as" });
-            if (isJson(t)) a.push({ id: "json", label: "Paste formatted JSON", glyph: "\u{f0626}", section: "Paste as" });
+            if (t.trim().startsWith("{") || t.trim().startsWith("[")) a.push({ id: "json", label: "Paste formatted JSON", glyph: "\u{f0626}", section: "Paste as" });
             if (e.kind === "link") a.push({ id: "urldec", label: "Paste URL decoded", glyph: "\u{f0339}", section: "Paste as" });
             else a.push({ id: "urlenc", label: "Paste URL encoded", glyph: "\u{f0339}", section: "Paste as" });
             if (isB64(t)) a.push({ id: "b64", label: "Paste Base64 decoded", glyph: "\u{f0bb4}", section: "Paste as" });
@@ -176,14 +185,17 @@ Scope {
     function run(id) {
         const e = entry;
         if (!e && id !== "wipe") return;
-        const t = e ? textOf(e) : "";
         switch (id) {
         case "paste": Clipboard.paste(e); break;
         case "copy": Clipboard.copy(e); break;
         case "open": Clipboard.openWith(e); break;
-        case "pin": Clipboard.togglePin(e); say(Clipboard.isPinned(e) ? "Unpinned" : "Pinned"); break;
+        case "pin": say(Clipboard.isPinned(e) ? "Unpinned" : "Pinned"); Clipboard.togglePin(e); break;
         case "quicklook": toggleQuickLook(); break;
-        case "edit": if (previewPane) previewPane.editing = true; break;
+        case "edit":
+            if (e.secret) revealed = true;
+            if (!quickLook.open) toggleQuickLook();
+            quickLook.editing = true;
+            break;
         case "reveal": revealed = !revealed; break;
         case "delete": move(1); if (entry === e) move(-1); Clipboard.remove(e); break;
         case "ocr":
@@ -195,13 +207,13 @@ Scope {
             });
             break;
         case "save": Clipboard.save(e, path => say(path ? "Saved " + path.replace(Quickshell.env("HOME"), "~") : "Couldn't save")); break;
-        case "trim": Clipboard.pasteText(t.replace(/\s+/g, " ").trim()); break;
-        case "upper": Clipboard.pasteText(t.toUpperCase()); break;
-        case "lower": Clipboard.pasteText(t.toLowerCase()); break;
-        case "json": Clipboard.pasteText(JSON.stringify(JSON.parse(t), null, 2)); break;
-        case "urlenc": Clipboard.pasteText(encodeURIComponent(t.trim())); break;
-        case "urldec": try { Clipboard.pasteText(decodeURIComponent(t.trim())); } catch (err) { say("Not a valid encoded URL"); } break;
-        case "b64": { const d = b64decode(t); if (d) Clipboard.pasteText(d); else say("Not valid Base64 text"); } break;
+        case "trim": withText(e, t => Clipboard.pasteText(t.replace(/\s+/g, " ").trim())); break;
+        case "upper": withText(e, t => Clipboard.pasteText(t.toUpperCase())); break;
+        case "lower": withText(e, t => Clipboard.pasteText(t.toLowerCase())); break;
+        case "json": withText(e, t => { if (isJson(t)) Clipboard.pasteText(JSON.stringify(JSON.parse(t), null, 2)); else say("Not valid JSON"); }); break;
+        case "urlenc": withText(e, t => Clipboard.pasteText(encodeURIComponent(t.trim()))); break;
+        case "urldec": withText(e, t => { try { Clipboard.pasteText(decodeURIComponent(t.trim())); } catch (err) { say("Not a valid encoded URL"); } }); break;
+        case "b64": withText(e, t => { const d = b64decode(t); if (d) Clipboard.pasteText(d); else say("Not valid Base64 text"); }); break;
         case "secrets": Clipboard.forgetSecrets(); say("Forgot everything that looked like a secret"); break;
         case "wipe":
             if (confirmWipe) { confirmWipe = false; Clipboard.wipe(); say("History cleared; pins kept"); }
@@ -212,11 +224,10 @@ Scope {
     property bool confirmWipe: false
     Timer { id: wipeWindow; interval: 3000; onTriggered: root.confirmWipe = false }
 
-    // A short line of feedback above the footer.
+    // A short line of feedback over the footer.
     property string status: ""
-    property bool statusSticky: false
-    function say(msg, sticky) { status = msg; statusSticky = !!sticky; statusTimer.restart(); }
-    Timer { id: statusTimer; interval: 2600; onTriggered: if (!root.statusSticky || !root.confirmWipe) root.status = "" }
+    function say(msg) { status = msg; statusTimer.restart(); }
+    Timer { id: statusTimer; interval: 2600; onTriggered: root.status = "" }
 
     function toggleQuickLook() {
         if (!quickLook) return;
@@ -227,27 +238,27 @@ Scope {
                                 : Qt.rect(quickLook.width / 2 - 16, quickLook.height / 2 - 16, 32, 32);
         quickLook.open = true;
     }
-    onEntryChanged: if (quickLook && quickLook.open && entry) quickLook.entry = entry
-
-    // ── Presentation helpers (rows and preview use these) ─────────────────
-    function glyphOf(e) {
-        if (e.secret) return "\u{f0306}";                                     // key
-        return ({ link: "\u{f0339}", path: "\u{f024b}", email: "\u{f01ee}", code: "\u{f0169}", file: "\u{f0214}" })[e.kind] || "\u{f09ed}";
+    onEntryChanged: if (quickLook && quickLook.open && entry) {
+        quickLook.entry = entry;
+        if (selRow) quickLook.from = selRow.markItem.mapToItem(quickLook, 0, 0, selRow.markItem.width, selRow.markItem.height);
     }
-    function toneOf(e) {
-        if (!e) return Theme.textSecondary;
-        return ({ link: Theme.blue, path: "#64d2ff", email: "#5e5ce6", code: Theme.green, file: Theme.textSecondary })[e.kind] || Theme.textSecondary;
+
+    // ── Presentation helpers (cards and Quick Look use these) ─────────────
+    function glyphOf(e) {
+        if (e.secret) return "\u{f0306}";
+        return ({ link: "\u{f0339}", path: "\u{f024b}", email: "\u{f01ee}", code: "\u{f0169}", file: "\u{f0214}", image: "\u{f02e9}", color: "\u{f03d8}" })[e.kind] || "\u{f09ed}";
     }
     function ago(t) {
         if (!t) return "";
         const m = Math.floor((Date.now() - t) / 60000);
         return m < 1 ? "now" : m < 60 ? m + "m" : m < 1440 ? Math.floor(m / 60) + "h" : Math.floor(m / 1440) + "d";
     }
+    function kindOf(e) {
+        return e.secret ? "Secret" : ({ image: "Image", link: "Link", path: "Path", email: "Email", code: "Code", color: "Colour", file: "File" })[e.kind] || "Text";
+    }
     function metaOf(e) {
-        const kind = e.secret ? "Secret" : ({ image: "Image", link: "Link", path: "Path", email: "Email", code: "Code", color: "Colour", file: "File" })[e.kind] || "Text";
-        const parts = [kind];
+        const parts = [kindOf(e)];
         if (e.kind === "image") parts.push([e.ext.toUpperCase(), e.size].filter(x => x).join(" · "));
-        else if (e.kind === "link") parts.push(e.preview.replace(/^\w+:\/\//, "").split("/")[0]);
         const t = e.pin !== "" ? e.pinnedAt : Clipboard.times[e.id];
         if (t) parts.push(ago(t));
         return parts.filter(x => x).join("  ·  ");
@@ -277,24 +288,43 @@ Scope {
         ];
     }
 
-    // ── Open/close ───────────────────────────────────────────────────────
-    property real p: 0
-    Behavior on p {
-        enabled: !Theme.reduceMotion
-        NumberAnimation { duration: root.open ? 110 : 80; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+    // ── The island's states ──────────────────────────────────────────────
+    // Live: a copy shows in the pill for a moment (not while the shelf is open).
+    property var toastEntry: null
+    property bool toasting: false
+    property var toastScreen: null
+    Connections {
+        target: Clipboard
+        function onCopied(e) {
+            if (Clipboard.open) return;
+            root.toastEntry = e;
+            root.toastScreen = Screens.focused;
+            root.toasting = true;
+            toastTimer.restart();
+        }
     }
-    // Reveal clock: the rows' stagger reads it (reveal(ms) → 0…1).
+    Timer { id: toastTimer; interval: 1900; onTriggered: root.toasting = false }
+
+    // pill: 0 gone → 1 there (it swells out of a dot). melt: 0 pill → 1 shelf.
+    Spring { id: pill; tier: Theme.springFast; epsilon: 0.002; target: root.open || root.toasting ? 1 : 0 }
+    Spring { id: melt; tier: Theme.springModerate; epsilon: 0.001; target: root.open ? 1 : 0 }
+    readonly property bool shownAtAll: open || toasting || pill.value > 0.003 || melt.value > 0.003
+    readonly property var hostScreen: open ? (Clipboard.screen || Quickshell.screens[0]) : (toastScreen || Clipboard.screen || Quickshell.screens[0])
+
+    // Reveal clock for the cards' rise.
     property real clock: 1000
-    NumberAnimation { id: clockRun; target: root; property: "clock"; from: 0; to: 400; duration: 400 }
+    NumberAnimation { id: clockRun; target: root; property: "clock"; from: 0; to: 500; duration: 500 }
     function reveal(ms) {
         if (Theme.reduceMotion) return 1;
-        const k = Math.max(0, Math.min(1, (clock - ms) / 150));
+        const k = Math.max(0, Math.min(1, (clock - ms - 90) / 160));
         return 1 - Math.pow(1 - k, 3);
     }
     onOpenChanged: {
         armed = false;
         altHeld = false;
         if (open) {
+            toasting = false;
+            toastEntry = null;
             query = "";
             if (searchField) searchField.text = "";
             filter = Clipboard.startFilter;
@@ -303,42 +333,41 @@ Scope {
             status = "";
             if (actionMenu) actionMenu.open = false;
             if (filterMenu) filterMenu.open = false;
-            if (quickLook) { quickLook.open = false; }
-            if (previewPane) previewPane.editing = false;
+            if (quickLook) quickLook.open = false;
             clock = 0;
+            clockRun.restart();
             armSoon.restart();
-            showSoon.restart();
-        } else {
-            p = 0;
-        }
+            if (Theme.reduceMotion) { pill.settle(); melt.settle(); }
+        } else if (Theme.reduceMotion) { pill.settle(); melt.settle(); }
     }
-    // One frame for the surface to take its size, then in.
-    Timer { id: showSoon; interval: 16; onTriggered: { root.p = root.open ? 1 : 0; if (root.open) clockRun.restart(); } }
-    Timer { id: armSoon; interval: 140; onTriggered: { root.armed = root.open; if (root.open) root.focusSearch(); } }
-    readonly property bool shownAtAll: open || p > 0.001
+    Timer { id: armSoon; interval: 160; onTriggered: { root.armed = root.open; if (root.open) root.focusSearch(); } }
 
-    // ── Surface: one per monitor, mapped for good ────────────────────────
+    // ── Surface: one per monitor, mapped for good (1×1 while idle) ────────
     Variants {
         model: Quickshell.screens
         PanelWindow {
             id: win
             required property ShellScreen modelData
             screen: modelData
-            readonly property bool hosts: (Clipboard.screen || Quickshell.screens[0]) === modelData
+            readonly property bool hosts: root.hostScreen === modelData
             readonly property bool up: hosts && root.shownAtAll
-            readonly property int cardW: Math.min(880, modelData.width - 80)
-            readonly property int cardH: Math.min(580, modelData.height - 160)
+
+            // The shelf, and the pill it melts out of.
+            readonly property real shelfW: Math.min(1000, modelData.width - 80)
+            readonly property real shelfH: 476
+            readonly property real side: 64
+            readonly property real pillW: root.open && !root.toastEntry ? 180 : Math.max(170, Math.min(470, toastRow.implicitWidth + 36))
+            readonly property real pillH: 40
 
             anchors.top: true
-            margins.top: Math.round(modelData.height * 0.13)
-            implicitWidth: up ? cardW + 120 : 1
-            implicitHeight: up ? cardH + 110 : 1
-            exclusionMode: ExclusionMode.Ignore
+            implicitWidth: up ? shelfW + side * 2 : 1
+            implicitHeight: up ? shelfH + 96 : 1
+            exclusionMode: ExclusionMode.Normal
             color: "transparent"
-            WlrLayershell.namespace: "rice-clipboard"
+            WlrLayershell.namespace: "rice-island"
             WlrLayershell.layer: WlrLayer.Overlay
             WlrLayershell.keyboardFocus: up && root.open ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
-            mask: Region { item: win.up ? card : null }
+            mask: Region { item: win.up && (root.open || root.toasting) ? frame : null }
 
             HyprlandFocusGrab {
                 windows: [win]
@@ -346,31 +375,99 @@ Scope {
                 onCleared: Clipboard.open = false
             }
 
-            Elevation { target: card; radius: card.radius; strength: root.p }
-            GlassCard {
-                id: card
-                visible: win.up
-                x: 60; y: 10
-                width: win.cardW
-                height: win.cardH
-                radius: 22
-                tint: Theme.glassTintElevated
-                opacity: root.p
-                scale: Theme.reduceMotion ? 1 : 0.985 + 0.015 * root.p
-                transformOrigin: Item.Top
+            function lerp(a, b, k) { return a + (b - a) * k; }
+            readonly property real m: melt.value
+            readonly property real pv: pill.value
+            // Height runs a little ahead of width: it melts down, not scales.
+            readonly property real mh: Math.pow(Math.max(0, Math.min(1, m)), 0.78)
 
-                // The content lives on the hosting monitor's surface only.
+            Elevation { target: frame; radius: frame.radius; strength: Math.min(1, win.pv) * (0.55 + 0.45 * Math.min(1, win.m)) }
+            Rectangle {
+                id: frame
+                visible: win.up
+                readonly property real baseW: win.lerp(44, win.pillW, Math.min(1, win.pv))
+                width: Math.max(1, win.lerp(baseW, win.shelfW, win.m))
+                height: Math.max(1, win.lerp(win.pillH, win.shelfH, win.mh))
+                x: Math.round((win.width - width) / 2)
+                y: 6
+                radius: win.lerp(win.pillH / 2, 26, Math.min(1, win.m))
+                // The island is ink-dark like Apple's, not frosted: it reads
+                // as an object the shelf grows out of, distinct from the
+                // center's glass.
+                color: Qt.rgba(0.055, 0.055, 0.065, 0.97)
+                border.width: 1
+                border.color: Qt.rgba(1, 1, 1, 0.09)
+                opacity: Math.min(1, win.pv * 2.5)
+                clip: true
+
+                // ── Pill: what was just copied ───────────────────────────
+                Row {
+                    id: toastRow
+                    anchors.centerIn: parent
+                    spacing: 10
+                    opacity: Math.max(0, 1 - win.m * 4)
+                    visible: opacity > 0.01
+                    readonly property var e: root.toastEntry
+                    ClippingRectangle {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 24; height: 24; radius: 7
+                        color: toastRow.e && toastRow.e.kind === "color" ? root.colorOf(toastRow.e.preview) : Qt.rgba(1, 1, 1, 0.1)
+                        Image {
+                            anchors.fill: parent
+                            visible: toastRow.e && toastRow.e.kind === "image"
+                            source: visible ? Clipboard.thumb(toastRow.e) : ""
+                            sourceSize: Qt.size(64, 64)
+                            fillMode: Image.PreserveAspectCrop
+                            asynchronous: true
+                        }
+                        Text {
+                            anchors.centerIn: parent
+                            visible: !(toastRow.e && (toastRow.e.kind === "image" || toastRow.e.kind === "color"))
+                            text: toastRow.e ? root.glyphOf(toastRow.e) : "\u{f014c}"
+                            font.family: Theme.fontGlyph
+                            font.pixelSize: 13
+                            color: toastRow.e && toastRow.e.secret ? Theme.orange : Theme.textSecondary
+                        }
+                    }
+                    Label {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: root.open && !root.toastEntry ? "Clipboard" : "Copied"
+                        size: 13
+                        weight: Theme.wSemibold
+                        color: Theme.green
+                    }
+                    Label {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: Math.min(implicitWidth, 300)
+                        elide: Text.ElideRight
+                        text: !toastRow.e ? ""
+                            : toastRow.e.kind === "image" ? "Image " + toastRow.e.dims.replace("x", " × ")
+                            : toastRow.e.secret ? "Something secret (hidden)"
+                            : toastRow.e.preview.replace(/\s+/g, " ").slice(0, 80)
+                        size: 13
+                        color: Theme.textSecondary
+                    }
+                }
+
+                // ── Shelf ────────────────────────────────────────────────
                 Loader {
-                    anchors.fill: parent
                     active: win.hosts
-                    sourceComponent: body
+                    // Laid out at the shelf's size, pinned to its centre: the
+                    // growing island reveals it.
+                    x: Math.round((frame.width - win.shelfW) / 2)
+                    y: 0
+                    width: win.shelfW
+                    height: win.shelfH
+                    opacity: Math.max(0, Math.min(1, (win.m - 0.55) / 0.4))
+                    visible: opacity > 0.01 || root.open
+                    sourceComponent: shelfBody
                 }
             }
         }
     }
 
     Component {
-        id: body
+        id: shelfBody
         Item {
             id: bodyRoot
 
@@ -381,15 +478,13 @@ Scope {
                 height: 58
                 Text {
                     id: glyph
-                    x: 20
+                    x: 22
                     anchors.verticalCenter: parent.verticalCenter
-                    text: "\u{f0349}"                                   // magnify
+                    text: "\u{f0349}"
                     font.family: Theme.fontGlyph
                     font.pixelSize: 18
                     color: Theme.textTertiary
                 }
-                // Scope tag: the filter lives in the search, like Spotlight's
-                // tokens; ⌫ on an empty search takes it off.
                 Rectangle {
                     id: scope
                     visible: root.filter !== "all"
@@ -411,7 +506,7 @@ Scope {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onContainsMouseChanged: root.tip(scope, containsMouse, "Show everything", ["⌫"])
-                        onClicked: { root.filter = "all"; root.focusSearch(); }
+                        onClicked: { root.tip(scope, false); root.filter = "all"; root.focusSearch(); }
                     }
                 }
                 TextInput {
@@ -431,17 +526,15 @@ Scope {
                     Label {
                         visible: search.text === ""
                         anchors.verticalCenter: parent.verticalCenter
-                        text: root.filter === "all" ? "Search clipboard" : "Search " + root.filterLabel(root.filter).toLowerCase()
+                        text: root.filter === "all" ? "Search your clipboard" : "Search " + root.filterLabel(root.filter).toLowerCase()
                         size: 18
                         color: Theme.textTertiary
                     }
                     Keys.onPressed: event => root.key(event)
                     Keys.onReleased: event => { if (event.key === Qt.Key_Alt) root.altHeld = false; }
                 }
-                // Type filter, Raycast-style: a quiet pill that opens a menu.
                 Rectangle {
                     id: typeBtn
-                    Component.onCompleted: root.typeButton = typeBtn
                     anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
                     height: 30; radius: 10
                     width: typeRow.implicitWidth + 20
@@ -462,70 +555,72 @@ Scope {
                         onClicked: { root.tip(typeBtn, false); if (root.filterMenu) root.filterMenu.toggle(); root.focusSearch(); }
                     }
                 }
-                Rectangle { anchors { left: parent.left; right: parent.right; bottom: parent.bottom } height: 1; color: Qt.rgba(1, 1, 1, 0.07) }
             }
 
-            // ── List ─────────────────────────────────────────────────────
+            // ── Shelf of cards ───────────────────────────────────────────
             ListView {
-                id: list
-                Component.onCompleted: root.listView = list
-                anchors { left: parent.left; top: head.bottom; bottom: foot.top; leftMargin: 8; topMargin: 6; bottomMargin: 4 }
-                width: 350
+                id: shelf
+                Component.onCompleted: root.listView = shelf
+                anchors { left: parent.left; right: parent.right; top: head.bottom; leftMargin: 14; rightMargin: 14 }
+                height: 252
+                orientation: ListView.Horizontal
+                spacing: 8
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
-                cacheBuffer: 480
+                cacheBuffer: 600
                 model: ScriptModel { values: root.rows; objectProp: "key" }
-                delegate: ClipRow { panel: root }
+                delegate: ClipCard { panel: root }
+                // A mouse wheel scrolls the shelf sideways.
+                WheelHandler {
+                    acceptedDevices: PointerDevice.Mouse
+                    onWheel: event => {
+                        shelf.contentX = Math.max(0, Math.min(shelf.contentWidth - shelf.width, shelf.contentX - event.angleDelta.y));
+                    }
+                }
             }
-            // Scroll edges fade into the glass instead of cutting (Skiper's
-            // scroll fade): only where there's more to scroll to.
+            // Edges fade into the island where there's more to see.
             Rectangle {
-                anchors { left: list.left; right: list.right; top: list.top }
-                height: 22
-                opacity: list.contentY > 4 ? 1 : 0
+                anchors { left: shelf.left; top: shelf.top; bottom: shelf.bottom }
+                width: 36
+                opacity: shelf.contentX > 4 ? 1 : 0
                 Behavior on opacity { NumberAnimation { duration: 120 } }
                 gradient: Gradient {
-                    GradientStop { position: 0; color: Theme.glassTintElevated }
+                    orientation: Gradient.Horizontal
+                    GradientStop { position: 0; color: Qt.rgba(0.055, 0.055, 0.065, 1) }
                     GradientStop { position: 1; color: "transparent" }
                 }
             }
             Rectangle {
-                anchors { left: list.left; right: list.right; bottom: list.bottom }
-                height: 28
-                opacity: list.contentY + list.height < list.contentHeight - 4 ? 1 : 0
+                anchors { right: shelf.right; top: shelf.top; bottom: shelf.bottom }
+                width: 48
+                opacity: shelf.contentX + shelf.width < shelf.contentWidth - 4 ? 1 : 0
                 Behavior on opacity { NumberAnimation { duration: 120 } }
                 gradient: Gradient {
+                    orientation: Gradient.Horizontal
                     GradientStop { position: 0; color: "transparent" }
-                    GradientStop { position: 1; color: Theme.glassTintElevated }
+                    GradientStop { position: 1; color: Qt.rgba(0.055, 0.055, 0.065, 1) }
                 }
             }
-            ScrollHint { flickable: list; anchors { right: list.right; top: list.top; bottom: list.bottom } }
 
-            // Loading: the list's shape until cliphist answers.
-            Column {
+            // Loading: the shelf's shape until cliphist answers.
+            Row {
                 visible: !Clipboard.loaded
-                anchors { left: list.left; top: list.top; leftMargin: 8; topMargin: 8 }
-                spacing: 14
+                anchors { left: shelf.left; top: shelf.top; leftMargin: 4; topMargin: 4 }
+                spacing: 8
                 Repeater {
-                    model: 7
-                    Row {
-                        required property int index
-                        spacing: 11
-                        Skeleton { width: 34; height: 34; radius: 9 }
-                        Column {
-                            spacing: 7
-                            anchors.verticalCenter: parent.verticalCenter
-                            Skeleton { width: 210 - (index % 3) * 44; height: 11 }
-                            Skeleton { width: 92; height: 9 }
-                        }
+                    model: 5
+                    Column {
+                        spacing: 10
+                        Skeleton { width: 176; height: 182; radius: 16 }
+                        Skeleton { width: 130; height: 11 }
+                        Skeleton { width: 80; height: 9 }
                     }
                 }
             }
-
             // Empty / no results
             Column {
                 visible: Clipboard.loaded && root.entries.length === 0
-                anchors.centerIn: list
+                anchors.centerIn: shelf
                 spacing: 6
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -543,36 +638,46 @@ Scope {
                 }
                 Label {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: root.query ? `Nothing matches “${root.query}”.` : root.filter === "pinned" ? "⌃P pins the selected entry." : "Copy something and it shows up here."
+                    text: root.query ? `Nothing matches “${root.query}”.` : root.filter === "pinned" ? "⌃P pins the selected card." : "Copy something and it lands here."
                     size: 12
                     color: Theme.textTertiary
                 }
             }
 
-            Rectangle {
-                id: split
-                anchors { left: list.right; leftMargin: 8; top: head.bottom; bottom: foot.top }
-                width: 1
-                color: Qt.rgba(1, 1, 1, 0.07)
-            }
-
-            // ── Preview ──────────────────────────────────────────────────
-            ClipPreview {
-                id: preview
-                Component.onCompleted: root.previewPane = preview
-                panel: root
-                entry: root.entry
-                revealed: root.revealed
-                opacity: root.reveal(60)
-                anchors { left: split.right; right: parent.right; top: head.bottom; bottom: foot.top; leftMargin: 18; rightMargin: 18; topMargin: 16; bottomMargin: 12 }
+            // ── The selected card, in words ──────────────────────────────
+            Item {
+                id: detail
+                anchors { left: parent.left; right: parent.right; top: shelf.bottom; leftMargin: 22; rightMargin: 22; topMargin: 10 }
+                height: 44
+                opacity: root.reveal(160)
+                Label {
+                    id: detailTitle
+                    anchors { left: parent.left; right: detailMeta.left; rightMargin: 16; verticalCenter: parent.verticalCenter }
+                    elide: Text.ElideRight
+                    textFormat: Text.StyledText
+                    text: !root.entry ? ""
+                        : root.entry.kind === "image" ? "Image"
+                        : root.entry.secret && !root.revealed ? "Looks like a secret · ⌃H to show"
+                        : Clipboard.marked(root.entry.preview.replace(/\s+/g, " ").slice(0, 200), root.current && root.current.m ? root.current.m.pos : [], Theme.yellow)
+                    size: 14
+                    weight: Theme.wMedium
+                    font.family: root.entry && root.entry.kind === "code" ? Theme.fontMono : Theme.fontText
+                }
+                Label {
+                    id: detailMeta
+                    anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                    text: root.entry ? root.kindOf(root.entry) + "  ·  " + root.detailOf(root.entry, "") : ""
+                    size: 12
+                    color: Theme.textTertiary
+                }
             }
 
             // ── Feedback ─────────────────────────────────────────────────
             Rectangle {
-                anchors { horizontalCenter: parent.horizontalCenter; bottom: foot.top; bottomMargin: 10 }
+                anchors { horizontalCenter: parent.horizontalCenter; bottom: foot.top; bottomMargin: 8 }
                 width: statusLabel.implicitWidth + 28
                 height: 30; radius: 15
-                color: Qt.rgba(0.18, 0.18, 0.21, 0.97)
+                color: Qt.rgba(0.18, 0.18, 0.21, 0.98)
                 border.width: 1
                 border.color: root.confirmWipe ? Qt.alpha(Theme.red, 0.5) : Qt.rgba(1, 1, 1, 0.12)
                 opacity: root.status ? 1 : 0
@@ -584,41 +689,40 @@ Scope {
                 Label { id: statusLabel; anchors.centerIn: parent; text: root.status; size: 12; weight: Theme.wMedium; color: root.confirmWipe ? Theme.red : Theme.textPrimary }
             }
 
-            // ── Footer: the primary action, and everything else under ⌃K ──
+            // ── Footer: the primary action, everything else under ⌃K ──────
             Item {
                 id: foot
                 anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
-                height: 46
-                opacity: root.reveal(90)
-                Rectangle { anchors { left: parent.left; right: parent.right; top: parent.top } height: 1; color: Qt.rgba(1, 1, 1, 0.07) }
+                height: 48
+                opacity: root.reveal(200)
+                Rectangle { anchors { left: parent.left; right: parent.right; top: parent.top; leftMargin: 14; rightMargin: 14 } height: 1; color: Qt.rgba(1, 1, 1, 0.07) }
                 Row {
-                    x: 16
+                    x: 20
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: 16
+                    visible: root.entry !== null
                     Row {
                         spacing: 7
-                        visible: root.entry !== null
                         Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f0192}"; font.family: Theme.fontGlyph; font.pixelSize: 14; color: Theme.textSecondary }
-                        Label {
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: root.previewPane && root.previewPane.editing ? "Paste edited text" : Clipboard.targetName() ? "Paste to " + Clipboard.targetName() : "Paste"
-                            size: 13
-                            weight: Theme.wMedium
-                        }
-                        KeyCap { anchors.verticalCenter: parent.verticalCenter; text: root.previewPane && root.previewPane.editing ? "⌃↵" : "↵" }
+                        Label { anchors.verticalCenter: parent.verticalCenter; text: Clipboard.targetName() ? "Paste to " + Clipboard.targetName() : "Paste"; size: 13; weight: Theme.wMedium }
+                        KeyCap { anchors.verticalCenter: parent.verticalCenter; text: "↵" }
                     }
-                    Rectangle { width: 1; height: 16; anchors.verticalCenter: parent.verticalCenter; color: Qt.rgba(1, 1, 1, 0.1); visible: root.entry !== null }
+                    Rectangle { width: 1; height: 16; anchors.verticalCenter: parent.verticalCenter; color: Qt.rgba(1, 1, 1, 0.1) }
                     Row {
                         spacing: 6
-                        visible: root.entry !== null
-                        Label { anchors.verticalCenter: parent.verticalCenter; text: "Quick Look"; size: 12; color: Theme.textTertiary }
+                        Label { anchors.verticalCenter: parent.verticalCenter; text: "Look"; size: 12; color: Theme.textTertiary }
                         KeyCap { anchors.verticalCenter: parent.verticalCenter; text: "Space" }
+                    }
+                    Row {
+                        spacing: 6
+                        Label { anchors.verticalCenter: parent.verticalCenter; text: "Copy"; size: 12; color: Theme.textTertiary }
+                        KeyCap { anchors.verticalCenter: parent.verticalCenter; text: "⇧" }
+                        KeyCap { anchors.verticalCenter: parent.verticalCenter; text: "↵" }
                     }
                 }
                 Rectangle {
                     id: actionsBtn
-                    Component.onCompleted: root.actionsButton = actionsBtn
-                    anchors { right: parent.right; rightMargin: 12; verticalCenter: parent.verticalCenter }
+                    anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
                     height: 30; radius: 10
                     width: actRow.implicitWidth + 20
                     color: actArea.containsMouse || (root.actionMenu && root.actionMenu.open) ? Theme.pillHover : "transparent"
@@ -637,13 +741,13 @@ Scope {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onContainsMouseChanged: root.tip(actionsBtn, containsMouse && !(root.actionMenu && root.actionMenu.open), "Every action for this entry")
+                        onContainsMouseChanged: root.tip(actionsBtn, containsMouse && !(root.actionMenu && root.actionMenu.open), "Every action for this card")
                         onClicked: { root.tip(actionsBtn, false); if (root.actionMenu) root.actionMenu.toggle(); root.focusSearch(); }
                     }
                 }
             }
 
-            // ── Overlays: Quick Look and the two menus ────────────────────
+            // ── Overlays ─────────────────────────────────────────────────
             QuickLook {
                 id: ql
                 Component.onCompleted: root.quickLook = ql
@@ -653,13 +757,9 @@ Scope {
                 id: actions
                 Component.onCompleted: root.actionMenu = actions
                 anchorItem: actionsBtn
-                title: root.entry ? (root.entry.kind === "image" ? "Image" : root.entry.secret ? "Secret" : "Entry") + " actions" : "Actions"
+                title: root.entry ? root.kindOf(root.entry) + " actions" : "Actions"
                 items: root.actionItems
                 onPicked: id => root.run(id)
-            }
-            Tips {
-                id: tipLayer
-                Component.onCompleted: root.tips = tipLayer
             }
             ActionMenu {
                 id: types
@@ -671,12 +771,12 @@ Scope {
                 items: root.filters.map(f => ({ id: f.id, label: f.label, glyph: f.glyph, keys: f.id === root.filter ? ["✓"] : [] }))
                 onPicked: id => { root.filter = id; root.focusSearch(); }
             }
+            Tips {
+                id: tipLayer
+                Component.onCompleted: root.tips = tipLayer
+            }
         }
     }
-    property Item typeButton: null
-    property Item actionsButton: null
-    property Item tips: null
-    function tip(item, on, text, keys) { if (!tips) return; if (on) tips.show(item, text, keys); else tips.hide(item); }
 
     // ── Keys ─────────────────────────────────────────────────────────────
     function key(event) {
@@ -684,18 +784,23 @@ Scope {
         const ctrl = m & Qt.ControlModifier, shift = m & Qt.ShiftModifier, alt = m & Qt.AltModifier;
         const field = searchField;
         if (k === Qt.Key_Alt) { altHeld = true; return; }
-        // Menus first: they take every key while open.
         if (filterMenu && filterMenu.open && filterMenu.key(event)) { event.accepted = true; return; }
         if (actionMenu && actionMenu.open && actionMenu.key(event)) { event.accepted = true; return; }
-        // Quick Look: Space/Esc close it, arrows keep browsing.
-        if (quickLook && quickLook.open && (k === Qt.Key_Escape || k === Qt.Key_Space || (ctrl && k === Qt.Key_Y))) {
-            quickLook.open = false; event.accepted = true; return;
-        }
+        const ql = quickLook && quickLook.open;
+        if (ql && (k === Qt.Key_Escape || k === Qt.Key_Space || (ctrl && k === Qt.Key_Y))) { quickLook.open = false; event.accepted = true; return; }
         if (ctrl && k === Qt.Key_K) { if (actionMenu) actionMenu.toggle(); }
-        else if (k === Qt.Key_Down || (ctrl && k === Qt.Key_N)) move(1);
-        else if (k === Qt.Key_Up || (ctrl && k === Qt.Key_J && false)) move(-1);
-        else if (k === Qt.Key_PageDown) move(8);
-        else if (k === Qt.Key_PageUp) move(-8);
+        else if (k === Qt.Key_Right || k === Qt.Key_Down || (ctrl && k === Qt.Key_N)) {
+            // → moves the caret while it isn't at the end of the search.
+            if (k === Qt.Key_Right && field && field.cursorPosition < field.text.length && !ql) return;
+            move(1);
+        }
+        else if (k === Qt.Key_Left || k === Qt.Key_Up) {
+            // ← moves the caret while there's search text to move in.
+            if (k === Qt.Key_Left && field && field.text !== "" && field.cursorPosition > 0 && !ql) return;
+            move(-1);
+        }
+        else if (k === Qt.Key_PageDown) move(5);
+        else if (k === Qt.Key_PageUp) move(-5);
         else if (ctrl && k === Qt.Key_Home) move(-1e6);
         else if (ctrl && k === Qt.Key_End) move(1e6);
         else if ((k === Qt.Key_Return || k === Qt.Key_Enter) && ctrl) run("open");
@@ -707,7 +812,7 @@ Scope {
         else if (ctrl && k === Qt.Key_O) run("ocr");
         else if (ctrl && k === Qt.Key_S) run("save");
         else if (ctrl && k === Qt.Key_H) run("reveal");
-        else if (ctrl && k === Qt.Key_R) { if (previewPane) previewPane.raw = !previewPane.raw; }
+        else if (ctrl && k === Qt.Key_R) { if (quickLook) quickLook.raw = !quickLook.raw; }
         else if (ctrl && shift && k === Qt.Key_Backspace) run("wipe");
         else if ((shift && k === Qt.Key_Delete) || (ctrl && k === Qt.Key_X && field && !field.selectedText)) run("delete");
         else if (k === Qt.Key_Backspace && field && field.text === "" && filter !== "all") filter = "all";
