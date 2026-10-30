@@ -19,9 +19,9 @@ import qs.services
 FocusScope {
     id: picker
     focus: true
-    implicitWidth: 780
+    implicitWidth: 980
     // Exactly three rows of cards between the header and the key hints.
-    implicitHeight: 66 + 3 * (Math.round(Math.floor((780 - 32) / 4) * 0.5625) + 40) + 40
+    implicitHeight: 66 + 3 * (Math.round(Math.floor((980 - 32 - 330) / 4) * 0.5625) + 40) + 40
 
     property string mode: Island.themeMode || "themes"      // themes | wallpapers
     property var info: ({ current: "", themes: [], wallpapers: [] })
@@ -99,10 +99,51 @@ FocusScope {
         }
     }
 
+    // The one you're on, large: the wallpaper as it will look, its name, the
+    // theme's colours, and how to apply it.
+    Item {
+        id: preview
+        anchors { right: parent.right; rightMargin: 22; top: parent.top; topMargin: 66 }
+        width: 310
+        readonly property var it: picker.items[picker.current] || null
+        ClippingRectangle {
+            id: big
+            width: parent.width; height: Math.round(width * 0.5625)
+            radius: 16
+            color: preview.it && preview.it.bg ? preview.it.bg : Theme.pill
+            Image {
+                id: bigImg
+                anchors.fill: parent
+                source: preview.it ? "file://" + (preview.it.thumb || preview.it.path || "") : ""
+                sourceSize: Qt.size(620, 349)
+                fillMode: Image.PreserveAspectCrop
+                asynchronous: true
+                // A quick crossfade as the selection moves (not a slide: you're comparing).
+                opacity: status === Image.Ready ? 1 : 0
+                Behavior on opacity { NumberAnimation { duration: 140 } }
+            }
+        }
+        Column {
+            anchors { top: big.bottom; topMargin: 14; left: parent.left; right: parent.right }
+            spacing: 6
+            Label { width: parent.width; elide: Text.ElideRight; text: preview.it ? preview.it.name.replace(/-/g, " ") : ""; size: 17; weight: Theme.wSemibold }
+            Row {
+                visible: picker.mode === "themes" && !!preview.it
+                spacing: 6
+                Repeater {
+                    model: preview.it ? [preview.it.bg, preview.it.accent] : []
+                    Rectangle { required property var modelData; width: 18; height: 18; radius: 9; color: modelData || "transparent"; border.width: 1; border.color: Qt.rgba(1, 1, 1, 0.2) }
+                }
+                Label { anchors.verticalCenter: parent.verticalCenter; text: "Background · accent"; size: 11; color: Theme.textTertiary }
+            }
+            Label { text: preview.it && preview.it.current ? "In use now" : "Press ↵ or click to apply"; size: 12; color: Theme.textSecondary }
+        }
+    }
+
     GridView {
         id: grid
         x: 16; y: 66
-        width: parent.width - 32
+        width: parent.width - 32 - 330
         height: parent.height - y - 40
         cellWidth: Math.floor(width / 4)
         cellHeight: Math.round(cellWidth * 0.5625) + 40

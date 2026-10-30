@@ -46,6 +46,7 @@ FocusScope {
         { name: "Settings", sub: "Bar, clock, notifications, motion", glyph: "\u{f0493}", run: () => Qt.callLater(() => Island.open("settings", Island.screen, "key")), keep: true },
         { name: "Themes", sub: "Switch the theme or the wallpaper", glyph: "\u{f03d8}", run: () => Qt.callLater(() => { Island.themeMode = "themes"; Island.open("theme", Island.screen, "key"); }), keep: true },
         { name: "System", sub: "CPU, memory, GPU, updates", glyph: "\u{f0ee0}", run: () => Qt.callLater(() => Island.open("system", Island.screen, "key")), keep: true },
+        { name: "Keyboard Shortcuts", sub: "Every Hyprland and rice shortcut", glyph: "\u{f030c}", run: () => Qt.callLater(() => Island.open("keys", Island.screen, "key")), keep: true },
         { name: "Calendar", sub: "This month", glyph: "\u{f00ed}", run: () => Qt.callLater(() => Island.open("calendar", Island.screen, "key")), keep: true },
         { name: "Clipboard", sub: "History and pins", glyph: "\u{f014c}", run: () => Clipboard.toggle("all") },
         { name: "Screen Recording", sub: "Choose a screen, audio and frame rate", glyph: "\u{f044a}", run: () => Clipboard.recordKey() },

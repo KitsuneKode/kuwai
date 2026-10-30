@@ -151,6 +151,7 @@ Scope {
             Component { id: settingsPanel; SettingsPanel {} }
             Component { id: systemPanel; SystemPanel {} }
             Component { id: themePanel; ThemePanel {} }
+            Component { id: keysPanel; KeysPanel {} }
 
             Elevation {
                 target: frame
@@ -263,7 +264,7 @@ Scope {
                                     Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f0141}"; font.family: Theme.fontGlyph; font.pixelSize: 14; color: Theme.textSecondary }
                                     Label {
                                         anchors.verticalCenter: parent.verticalCenter
-                                        text: ({ calendar: "Calendar", power: "Power", launcher: "Search", settings: "Settings", system: "System", theme: "Themes" })[Island.history[Island.history.length - 1]] || "Back"
+                                        text: ({ calendar: "Calendar", power: "Power", launcher: "Search", settings: "Settings", system: "System", theme: "Themes", keys: "Shortcuts" })[Island.history[Island.history.length - 1]] || "Back"
                                         size: 12; weight: Theme.wMedium; color: Theme.textSecondary
                                     }
                                 }
@@ -275,7 +276,7 @@ Scope {
                             y: win.backH
                             active: win.panelHere || pv.value > 0.01
                             focus: true
-                            sourceComponent: ({ calendar: calendarPanel, power: powerPanel, launcher: launcherPanel, settings: settingsPanel, system: systemPanel, theme: themePanel })[win.shownPanel] || null
+                            sourceComponent: ({ calendar: calendarPanel, power: powerPanel, launcher: launcherPanel, settings: settingsPanel, system: systemPanel, theme: themePanel, keys: keysPanel })[win.shownPanel] || null
                         }
                         // Right click (anywhere a control doesn't take it) or the mouse's back button: back.
                         TapHandler {

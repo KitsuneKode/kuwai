@@ -18,7 +18,7 @@ import Quickshell.Io
 Singleton {
     id: root
 
-    readonly property var panels: ["calendar", "power", "launcher", "settings", "system", "theme"]
+    readonly property var panels: ["calendar", "power", "launcher", "settings", "system", "theme", "keys"]
     property string panel: ""
     property string screen: ""
     // "key" opens without the grow (Emil: never animate what a key does
@@ -56,7 +56,9 @@ Singleton {
     function themes(mode) {
         themeMode = mode;
         if (panel === "theme" && screen === Screens.focusedName) close();
-        else open("theme", "", "key");
+        // Used now and then (not a hundred times a day), so it grows open
+        // even from the keyboard: the motion shows where it came from.
+        else open("theme", "", "pointer");
     }
     function toggle(name, screenName, how) {
         const s = screenName || Screens.focusedName;
