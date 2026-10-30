@@ -57,7 +57,8 @@ Row {
             Rectangle {
                 id: pill
                 anchors.centerIn: parent
-                width: 8 * caps.scale
+                // Inactive ones a little narrower; the current one widens as it rises.
+                width: (6 + 2 * Math.min(1, cap.g)) * caps.scale
                 height: (13 + 5 * cap.g) * caps.scale
                 radius: width / 2
                 color: Qt.tint(Qt.alpha(Theme.accent, cap.used ? (capArea.containsMouse ? 0.6 : 0.42) : (capArea.containsMouse ? 0.4 : 0.22)),
