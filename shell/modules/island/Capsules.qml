@@ -44,9 +44,9 @@ Row {
             // Its number on its own screen (kuwai: 1–10 per screen).
             readonly property int label: ((ws - 1) % 10) + 1
             readonly property var wsObj: caps.bar.mine.find(w => w.id === ws) || null
-            readonly property int windows: wsObj && wsObj.toplevels ? wsObj.toplevels.values.length : 0
+            readonly property int windows: modelData.windows !== undefined ? modelData.windows : (wsObj && wsObj.toplevels ? wsObj.toplevels.values.length : 0)
             readonly property bool on: ws === caps.bar.activeWs
-            readonly property bool used: caps.bar.mine.some(w => w.id === ws && w.toplevels && w.toplevels.values.length > 0)
+            readonly property bool used: modelData.used !== undefined ? modelData.used : caps.bar.mine.some(w => w.id === ws && w.toplevels && w.toplevels.values.length > 0)
             // The first guest (another screen's workspace) keeps a little distance.
             readonly property bool firstGuest: guest && (index === 0 || !caps.bar.wsList[index - 1].guest)
             width: (8 + (firstGuest ? 8 : 0)) * caps.scale
@@ -86,10 +86,11 @@ Row {
                 anchors.margins: -2
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
-                onClicked: Hyprland.dispatch("hl.dsp.focus({workspace = " + JSON.stringify(cap.ws) + "})")
+                // Desktops: every screen switches together (kuwai.desktop).
+                onClicked: Hyprland.dispatch(cap.modelData.desktop ? "kuwai.desktop(" + cap.modelData.desktop + ")" : "hl.dsp.focus({workspace = " + JSON.stringify(cap.ws) + "})")
             }
             Tip {
-                text: "Workspace " + cap.label + (cap.guest ? " · from the other screen (its home is there)" : "") + (cap.windows ? " · " + cap.windows + (cap.windows === 1 ? " window" : " windows") : " · empty")
+                text: (cap.modelData.desktop ? "Desktop " : "Workspace ") + cap.label + (cap.guest ? " · from the other screen (its home is there)" : "") + (cap.windows ? " · " + cap.windows + (cap.windows === 1 ? " window" : " windows") : " · empty")
                 shown: capArea.containsMouse
                 below: true
             }

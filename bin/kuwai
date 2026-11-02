@@ -92,7 +92,7 @@ cmd_binds() {
       "\(.g)\t\(.k)\t\(.t)"' | sort -t$'\t' -k1,1 -s | awk -F'\t' '$1 != g { g = $1; printf "\n\033[1m%s\033[0m\n", g } { printf "  %-26s %s\n", $2, $3 }'
 }
 
-FEATURES="island_switcher clamshell battery_guard session_restore launch_focus quake minimize per_monitor_ws layouts screenshare_privacy auto_battery auto_game night_light persistent_size hold_super wobble resize_mode remember_place pip_dodge focus_sessions overview"
+FEATURES="desktops island_switcher clamshell battery_guard session_restore launch_focus quake minimize per_monitor_ws layouts screenshare_privacy auto_battery auto_game night_light persistent_size hold_super wobble resize_mode remember_place pip_dodge focus_sessions overview"
 cmd_feature() {
     local name=${1:-} v=${2:-}
     if [ -z "$name" ]; then

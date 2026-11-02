@@ -177,7 +177,22 @@ Scope {
                 for (const b in counts) if (counts[b] > n) { n = counts[b]; best = Number(b); }
                 return best;
             }
-            readonly property var wsList: {
+            // Desktops (kuwai `desktops`): one row, the same on every screen.
+            // A desktop is in use if it has windows on any screen.
+            readonly property var deskList: {
+                if (!Island.desktops) return null;
+                const all = Hyprland.workspaces.values.filter(w => w.id > 0);
+                const count = {};
+                for (const w of all) { const n = (w.id - 1) % 10 + 1; count[n] = (count[n] || 0) + (w.toplevels ? w.toplevels.values.length : 0); }
+                const cur = activeWs > 0 ? (activeWs - 1) % 10 + 1 : 1;
+                let n = Math.max(Settings.workspaceCount, cur);
+                for (const k in count) if (count[k] > 0) n = Math.max(n, Number(k));
+                const base = Math.floor((Math.max(1, activeWs) - 1) / 10) * 10;
+                const out = [];
+                for (let i = 1; i <= Math.min(10, n); i++) out.push({ id: base + i, desktop: i, guest: false, windows: count[i] || 0, used: (count[i] || 0) > 0 });
+                return out;
+            }
+            readonly property var wsList: deskList || (function() {
                 const base = wsBlock * 10;
                 const inBlock = id => id > base && id <= base + 10;
                 const used = mine.filter(w => w.toplevels && w.toplevels.values.length > 0).map(w => w.id);
@@ -188,7 +203,7 @@ Scope {
                 const guests = used.concat([activeWs]).filter(id => id > 0 && !inBlock(id));
                 for (const id of [...new Set(guests)].sort((a, b) => a - b)) out.push({ id: id, guest: true });
                 return out;
-            }
+            })()
             readonly property var player: Mpris.players.values.find(p => p.playbackState === MprisPlaybackState.Playing) || Mpris.players.values[0] || null
             readonly property bool showMedia: Settings.hoverMedia && player !== null
             property date now: new Date()

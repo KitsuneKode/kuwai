@@ -27,6 +27,7 @@ FocusScope {
         { id: "clock", label: "Clock & Date", glyph: "\u{f0954}", tint: "#ff9f0a" },
         { id: "notifs", label: "Notifications", glyph: "\u{f009a}", tint: "#ff453a" },
         { id: "motion", label: "Motion", glyph: "\u{f0e7d}", tint: "#bf5af2" },
+        { id: "workspaces", label: "Workspaces", glyph: "\u{f0570}", tint: "#5e5ce6" },
         { id: "clipboard", label: "Clipboard", glyph: "\u{f014c}", tint: "#64d2ff" },
         { id: "updates", label: "Software Update", glyph: "\u{f06b0}", tint: "#30d158" },
         { id: "about", label: "About", glyph: "\u{f02fd}", tint: "#8e8e93" }
@@ -98,7 +99,7 @@ FocusScope {
             Loader {
                 id: page
                 width: parent.width
-                sourceComponent: [barPage, clockPage, notifPage, motionPage, clipboardPage, updatesPage, aboutPage][settings.current]
+                sourceComponent: [barPage, clockPage, notifPage, motionPage, workspacesPage, clipboardPage, updatesPage, aboutPage][settings.current]
             }
         }
     }
@@ -211,6 +212,41 @@ FocusScope {
                     label: "Reduce motion"; detail: "Fades instead of slides and springs; digits change without rolling"
                     Toggle { on: Theme.reduceMotion; enabled: !Theme.envReduce; onToggled: Theme.setReduceMotion(!Theme.reduceMotion) }
                 }
+            }
+        }
+    }
+    Component {
+        id: workspacesPage
+        Column {
+            spacing: 18
+            SettingsGroup {
+                title: "With more than one screen"
+                SettingsRow {
+                    label: "Workspaces"
+                    detail: Island.desktops ? "Desktops: Super+3 or Super+Ctrl+→ switch every screen together; one row of pills everywhere"
+                                            : "Per screen: each screen switches on its own; its pills are its own"
+                    Segmented {
+                        options: [{ id: "desktops", label: "Desktops" }, { id: "per_screen", label: "Per screen" }]
+                        current: Island.desktops ? "desktops" : "per_screen"
+                        onPicked: id => Quickshell.execDetached([Paths.bin + "/kuwai", "feature", "desktops", id === "desktops" ? "on" : "off"])
+                    }
+                }
+                SettingsRow {
+                    label: "Pills shown at least"; detail: "More appear as you use them"
+                    Segmented {
+                        options: [{ id: "3", label: "3" }, { id: "5", label: "5" }, { id: "7", label: "7" }, { id: "10", label: "10" }]
+                        current: String(Settings.workspaceCount)
+                        onPicked: id => Settings.set("workspaceCount", parseInt(id))
+                    }
+                }
+            }
+            SettingsGroup {
+                title: "Keys"
+                SettingsRow { label: "Go to 1–9"; detail: "Super+1…9" }
+                SettingsRow { label: "Previous / next"; detail: "Super+Ctrl+← →  (Shift: take the window along)" }
+                SettingsRow { label: "Move a window there"; detail: "Super+Shift+1…9  (Alt instead of Shift: send it, stay here)" }
+                SettingsRow { label: "Window to the other screen"; detail: "Super+Ctrl+Alt+← →" }
+                SettingsRow { label: "See everything"; detail: "Super+Tab or Super+Ctrl+↑  (Mission Control)" }
             }
         }
     }

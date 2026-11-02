@@ -54,6 +54,17 @@ Singleton {
         printErrors: false
         atomicWrites: true
     }
+    // kuwai's workspace model (features.lua `desktops`): "desktops" (every
+    // screen switches together; one row of pills everywhere), "per_screen",
+    // or "global". Read from kuwai's state file.
+    property string workspaceModel: "per_screen"
+    FileView {
+        path: Quickshell.env("HOME") + "/.local/state/kuwai/state"
+        watchChanges: true; printErrors: false
+        onFileChanged: reload()
+        onLoaded: { const m = text().match(/^workspace_model=(\S+)/m); root.workspaceModel = m ? m[1] : "per_screen"; }
+    }
+    readonly property bool desktops: workspaceModel === "desktops"
     property string screen: ""
     // "key" opens without the grow (Emil: never animate what a key does
     // a hundred times a day); "pointer" grows out of the island.

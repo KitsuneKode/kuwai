@@ -13,7 +13,8 @@ local F = {
 		launch_focus = true, -- app keys focus an open window (again = next one) before launching
 		quake = true, -- Super+` drop-down console over any workspace
 		minimize = true, -- Super+O hides a window, Super+Shift+O brings it back
-		per_monitor_ws = true, -- each screen owns workspaces 1–10 (Niri-style)
+		per_monitor_ws = true, -- each screen owns a block of ten workspace ids (11–20 for the second…)
+		desktops = true, -- desktops span every screen: Super+3 / Super+Ctrl+→ switch all screens together (off: each screen on its own)
 		layouts = true, -- Super+Alt+L cycles a workspace: scrolling/dwindle/monocle/floating
 		screenshare_privacy = true, -- DND + blacked-out private apps while sharing the screen
 		auto_battery = true, -- unplugged → battery mode, plugged in → back
@@ -37,6 +38,7 @@ local F = {
 		quake = "Super+` drop-down console",
 		minimize = "Super+O hide window, Super+Shift+O bring back",
 		per_monitor_ws = "Each screen has its own workspaces 1–10",
+		desktops = "Desktops span every screen (switch all screens together)",
 		layouts = "Super+Alt+L: scrolling → dwindle → monocle → floating",
 		screenshare_privacy = "DND and private apps hidden while sharing",
 		auto_battery = "Battery mode when unplugged",

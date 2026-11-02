@@ -112,15 +112,64 @@ function W.ws(n)
 	return W.base() + n
 end
 
+---------------------------------------------------------------------------
+-- Desktops (feature desktops): "desktop n" is workspace n of every screen
+-- (each screen's own block: laptop n, the next screen 10+n…). Switching a
+-- desktop switches every screen together; keys, pills and the island all
+-- speak in desktops, so there is one row, the same on every screen.
+---------------------------------------------------------------------------
+local function desktops()
+	return K.feature("desktops") and K.feature("per_monitor_ws")
+end
+W.desktops = desktops
+K.set_state("workspace_model", desktops() and "desktops" or (K.feature("per_monitor_ws") and "per_screen" or "global"))
+
+-- The desktop you're on: the focused screen's workspace, within its block.
+function W.current()
+	local cur = hl.get_active_workspace()
+	local base = W.base()
+	local id = cur and cur.id or 0
+	if id > base and id <= base + 10 then
+		return id - base
+	end
+	return 1
+end
+
+-- Show desktop n: every other screen first (cursor warps off, so neither the
+-- pointer nor focus leaves you), then your own screen last, so focus ends
+-- where you are and all screens slide together.
+function W.go(n)
+	n = math.max(1, math.min(10, n))
+	if not desktops() then
+		hl.dispatch(dsp.focus({ workspace = W.ws(n) }))
+		return
+	end
+	local here = hl.get_active_monitor()
+	K.config({ cursor = { no_warps = true } })
+	for _, m in ipairs(hl.get_monitors() or {}) do
+		if not here or m.name ~= here.name then
+			hl.dispatch(dsp.focus({ workspace = W.base(m) + n }))
+		end
+	end
+	if here then
+		hl.dispatch(dsp.focus({ workspace = W.base(here) + n }))
+	end
+	K.config({ cursor = { no_warps = false } })
+	K.set_state("desktop", n)
+end
+
 function W.focus(n)
 	return function()
-		hl.dispatch(dsp.focus({ workspace = W.ws(n) }))
+		W.go(n)
 	end
 end
 
 function W.send(n, follow)
 	return function()
-		hl.dispatch(dsp.window.move({ workspace = W.ws(n), follow = follow }))
+		hl.dispatch(dsp.window.move({ workspace = W.ws(n), follow = false }))
+		if follow then
+			W.go(n)
+		end
 	end
 end
 
@@ -137,10 +186,9 @@ function W.step(delta, carry)
 		end
 		local n = math.max(1, math.min(10, (id - base) + delta))
 		if carry then
-			hl.dispatch(dsp.window.move({ workspace = base + n }))
-		else
-			hl.dispatch(dsp.focus({ workspace = base + n }))
+			hl.dispatch(dsp.window.move({ workspace = base + n, follow = false }))
 		end
+		W.go(n)
 	end
 end
 
@@ -156,8 +204,17 @@ function W.empty()
 			end
 		end
 		for n = 1, 10 do
-			if not used[base + n] then
-				hl.dispatch(dsp.focus({ workspace = base + n }))
+			local empty = not used[base + n]
+			if empty and desktops() then
+				-- a desktop is empty only if it's empty on every screen
+				for _, m in ipairs(hl.get_monitors() or {}) do
+					if used[W.base(m) + n] then
+						empty = false
+					end
+				end
+			end
+			if empty then
+				W.go(n)
 				return
 			end
 		end
@@ -359,6 +416,56 @@ end
 
 _G.kuwai = _G.kuwai or {}
 kuwai.workspaces = W
+-- A screen goes away (unplugged, lid shut on the second screen…): in desktops
+-- mode its windows fold into the same desktop on a remaining screen (desktop
+-- 3 stays desktop 3), each remembered; when that screen comes back they go
+-- home. Without desktops, Hyprland's own behaviour (its workspaces move over).
+local homes = {} -- window address → the workspace id it came from
+local function wsid(w)
+	local ws = w and w.workspace
+	if not ws then
+		return nil
+	end
+	return ws.id or tonumber(tostring(ws):match("%((%-?%d+):"))
+end
+hl.on("monitor.removed", function()
+	if not desktops() then
+		return
+	end
+	hl.timer(function()
+		local here = hl.get_active_monitor()
+		local base = here and W.base(here) or 0
+		for _, w in ipairs(hl.get_windows() or {}) do
+			local id = wsid(w)
+			if id and id > 0 and (id <= base or id > base + 10) then
+				local n = (id - 1) % 10 + 1
+				homes[tostring(w.address)] = id
+				hl.dispatch(dsp.window.move({ window = "address:" .. tostring(w.address), workspace = base + n, follow = false }))
+			end
+		end
+	end, { timeout = 700, type = "oneshot" })
+end)
+hl.on("monitor.added", function()
+	if not desktops() or next(homes) == nil then
+		return
+	end
+	hl.timer(function()
+		for _, w in ipairs(hl.get_windows() or {}) do
+			local home = homes[tostring(w.address)]
+			if home then
+				hl.dispatch(dsp.window.move({ window = "address:" .. tostring(w.address), workspace = home, follow = false }))
+			end
+		end
+		homes = {}
+		W.go(W.current())
+	end, { timeout = 700, type = "oneshot" })
+end)
+
+-- The island speaks in desktops too: a pill click → kuwai.desktop(n).
+function kuwai.desktop(n)
+	W.go(tonumber(n) or 1)
+	return hl.dsp.no_op()
+end
 -- The island steps the same way the keys do (pills scroll → kuwai.ws_step(±1)).
 function kuwai.ws_step(d)
 	W.step(d >= 0 and 1 or -1)()
