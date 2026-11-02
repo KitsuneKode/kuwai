@@ -153,7 +153,7 @@ Item {
         }
         IslandStatus { anchors.verticalCenter: parent.verticalCenter }
         HoverHandler { cursorShape: Qt.PointingHandCursor }
-        TapHandler { onTapped: Notifs.toggleCenter("controls", "pointer") }
+        TapHandler { onTapped: Notifs.toggleCenter("controls", "pointer", rest.bar.screenName) }
     }
 
     // ── Trailing ─────────────────────────────────────────────────────────

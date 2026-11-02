@@ -162,7 +162,7 @@ Item {
             cursorShape: Qt.PointingHandCursor
             acceptedButtons: Qt.LeftButton | Qt.RightButton
             onClicked: mouse => {
-                if (mouse.button === Qt.RightButton) Notifs.toggleCenter("sound", "pointer");
+                if (mouse.button === Qt.RightButton) Notifs.toggleCenter("sound", "pointer", hover.bar.screenName);
                 else hover.goToPlayer(hover.player);
             }
         }
@@ -290,7 +290,7 @@ Item {
             Label { anchors.verticalCenter: parent.verticalCenter; text: Notifs.unread ? Notifs.unread + " new" : "All caught up"; size: 14; weight: Theme.wMedium }
             Text { anchors.verticalCenter: parent.verticalCenter; text: Notifs.dnd ? "\u{f009b}" : "\u{f009a}"; font.family: Theme.fontGlyph; font.pixelSize: 15; color: Notifs.unread ? Theme.accent : Theme.textSecondary }
             HoverHandler { cursorShape: Qt.PointingHandCursor }
-            TapHandler { onTapped: Notifs.toggleCenter("notifications", "pointer") }
+            TapHandler { onTapped: Notifs.toggleCenter("notifications", "pointer", hover.bar.screenName) }
         }
         Row {
             anchors.right: parent.right
@@ -336,7 +336,34 @@ Item {
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: Island.open("updates", hover.bar.screenName, "pointer", "island")
+                    acceptedButtons: Qt.LeftButton | Qt.RightButton
+                    onClicked: mouse => {
+                        if (mouse.button === Qt.RightButton) { updMenu.confirmAll = false; updMenu.open = !updMenu.open; }
+                        else Island.open("updates", hover.bar.screenName, "pointer", "island");
+                    }
+                }
+                // Right-click: the quick routes (same menu as the tray's).
+                TrayMenu {
+                    id: updMenu
+                    property bool confirmAll: false
+                    anchorItem: updChip
+                    anchorHovered: updArea.containsMouse
+                    window: hover.bar
+                    property bool counted: false
+                    onOpenChanged: {
+                        if (open && !counted) { counted = true; hover.bar.menus++; }
+                        else if (!open && counted) { counted = false; hover.bar.menus = Math.max(0, hover.bar.menus - 1); }
+                    }
+                    items: Updates.running ? [
+                        { text: "Show progress", glyph: "\u{f06b0}", triggered: () => Island.open("updates", hover.bar.screenName, "pointer", "island") }
+                    ] : [
+                        { text: "Review and update", glyph: "\u{f06b0}", triggered: () => Island.open("updates", hover.bar.screenName, "pointer", "island") },
+                        { text: updMenu.confirmAll ? "Click again: AUR without review" : "Update everything now", glyph: "\u{f0e4f}", danger: updMenu.confirmAll, keepOpen: !updMenu.confirmAll,
+                          enabled: Updates.total > 0, triggered: () => { if (!updMenu.confirmAll) { updMenu.confirmAll = true; return; } Updates.runAll(); } },
+                        { text: "Update in a terminal (sysup)", glyph: "\u{f018d}", triggered: () => Updates.terminal() },
+                        { isSeparator: true },
+                        { text: "Check again", glyph: "\u{f0450}", triggered: () => Updates.check() }
+                    ]
                 }
                 Tip {
                     text: Updates.running ? "Updating · " + Updates.phaseLabel

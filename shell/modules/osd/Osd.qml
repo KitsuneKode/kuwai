@@ -266,7 +266,7 @@ Scope {
     }
     function openPage() {
         hud.dismiss();
-        Notifs.toggleCenter(kind === "brightness" ? "controls" : kind === "dnd" ? "notifications" : "sound", "pointer");
+        Notifs.toggleCenter(kind === "brightness" ? "controls" : kind === "dnd" ? "notifications" : "sound", "pointer", hud.shownScreen ? hud.shownScreen.name : "");
     }
 
     // ── The HUD surface ──────────────────────────────────────────────────

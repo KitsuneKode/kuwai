@@ -7,7 +7,9 @@
     rice-update approve PKG SHA        remember that you reviewed PKG at commit SHA
     rice-update trust PKG on|off       skip review for PKG from now on (your call, per package)
     rice-update state                  JSON: approvals and trusted packages
-    rice-update start [--repo] [--aur PKG ...] [--flatpak APP ...]
+    rice-update start [--repo] [--aur PKG ...] [--flatpak APP ...] [--unreviewed]
+                                       (--unreviewed: build the AUR packages' newest commits without a
+                                       review, for this run only; you chose it explicitly)
                                        run the update as its own background job (systemd user unit
                                        kuwai-update, sleep/shutdown held off): it keeps going whatever
                                        happens to the shell; follow it in $XDG_RUNTIME_DIR/rice/update.jsonl
@@ -496,6 +498,7 @@ def run(args):
         print(json.dumps({"e": "error", "msg": "An update is already running."}), flush=True)
         return 1
     want_repo = "--repo" in args
+    unreviewed = "--unreviewed" in args
     def after(flag):
         if flag not in args:
             return []
@@ -529,7 +532,8 @@ def run(args):
         except Exception as ex:
             result["skipped"].append({"pkg": pkg, "why": f"couldn't fetch it: {ex}"})
             continue
-        want = head if pkg in trusted else approved.get(pkg, "")
+        # --unreviewed: you chose "update everything now" for this run.
+        want = head if (pkg in trusted or unreviewed) else approved.get(pkg, "")
         if want != head:
             result["skipped"].append({"pkg": pkg, "why": "it changed after you reviewed it: review it again" if want else "not reviewed"})
             continue

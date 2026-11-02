@@ -37,6 +37,7 @@ Row {
                 anchorItem: it
                 handle: it.modelData.menu
                 window: tray.window
+                anchorHovered: area.containsMouse
                 // Keep the island open while this menu is (see IslandBar.menus).
                 property bool counted: false
                 onOpenChanged: {

@@ -204,11 +204,21 @@ Singleton {
     }
 
     // Toggle the center onto a tab; with it open on the other tab, switch.
-    function toggleCenter(tab, via) {
-        const t = ["agents", "sound", "controls"].includes(tab) ? tab : "notifications";
-        if (centerOpen && centerTab !== t) { centerTab = t; return; }
-        centerTab = t;
-        setCenter(!centerOpen, via);
+    // `screenName`: the screen the click was on (a surface passes its own);
+    // without it (a shortcut) Hyprland is asked which screen has focus.
+    property string centerScreen: ""
+    function toggleCenter(tab, via, screenName) {
+        const go = s => {
+            const t = ["agents", "sound", "controls"].includes(tab) ? tab : "notifications";
+            if (centerOpen && centerTab !== t && s === centerScreen) { centerTab = t; return; }
+            if (centerOpen && s !== centerScreen) {           // open elsewhere: bring it here
+                centerTab = t; centerScreen = s; setCenter(false, via); Qt.callLater(() => setCenter(true, via)); return;
+            }
+            centerTab = t;
+            if (!centerOpen) centerScreen = s;
+            setCenter(!centerOpen, via);
+        };
+        if (screenName) go(screenName); else Screens.refresh(go);
     }
 
     function setCenter(open, via) {

@@ -119,10 +119,10 @@ Scope {
     onOpenChanged: {
         if (open) {
             const reopening = foldAnim.running;
-            if (!reopening) shownScreen = Screens.focused || shownScreen;
+            if (!reopening) shownScreen = (Notifs.centerScreen ? Screens.screenNamed(Notifs.centerScreen) : Screens.focused) || shownScreen;
             const ft = Notifs.frontToast;
             if (!reopening) {
-                mode = ft && ft.screen === Screens.focusedName && !Theme.reduceMotion ? "morph" : "pop";
+                mode = ft && ft.screen === (Notifs.centerScreen || Screens.focusedName) && !Theme.reduceMotion ? "morph" : "pop";
                 morph.tier = mode === "morph" ? Theme.springSlow : Theme.springModerate;
                 if (mode === "morph")
                     from = { x: padX + cardW + 12 - 16 - Theme.toastWidth, y: 12, w: Theme.toastWidth, h: ft.height, r: 22 };

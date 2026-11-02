@@ -10,6 +10,10 @@
 //
 //   TrayMenu { id: m; anchorItem: icon; handle: trayItem.menu; window: islandWindow }
 //   m.open = true
+//
+// Or a menu of your own, same look and behaviour:
+//   TrayMenu { anchorItem: chip; items: [{ text: "Check again", glyph: "…", triggered: () => … },
+//                                         { isSeparator: true }, { text: "…", keepOpen: true, … }] }
 import QtQuick
 import Quickshell
 import Quickshell.Hyprland
@@ -20,8 +24,10 @@ Item {
     id: tm
     property Item anchorItem
     property var handle                 // the root menu (SystemTrayItem.menu)
+    property var items: null            // or plain actions: { text, glyph, enabled, isSeparator, keepOpen, danger, triggered }
     property var window                 // the island window (focus grab, menu count)
     property bool open: false
+    property bool anchorHovered: false   // the pointer is on the icon that opened it
     property var stack: []              // submenus drilled into: [{ entry, title }]
     readonly property var current: stack.length ? stack[stack.length - 1].entry : handle
     signal closed()
@@ -36,7 +42,7 @@ Item {
         if (!entry || !entry.enabled || entry.isSeparator) return;
         if (entry.hasChildren) { stack = [...stack, { entry: entry, title: entry.text }]; slide.restart(); return; }
         entry.triggered();
-        close();
+        if (!entry.keepOpen) close();
     }
     function back() { if (stack.length) { stack = stack.slice(0, -1); slide.restart(); } }
 
@@ -62,6 +68,19 @@ Item {
         implicitWidth: 260
         implicitHeight: Math.min(560, card.implicitHeight) + 24
 
+        // It goes away the way macOS menus do: a click elsewhere (focus grab),
+        // the pointer leaving both the menu and its icon for a moment, or a
+        // few seconds of nothing while it isn't being pointed at.
+        Timer {
+            interval: 650
+            running: tm.open && !cardHover.hovered && !tm.anchorHovered
+            onTriggered: tm.close()
+        }
+        Timer {
+            interval: 6000
+            running: tm.open && !cardHover.hovered
+            onTriggered: tm.close()
+        }
         HyprlandFocusGrab {
             windows: [pop, ...(tm.window ? [tm.window] : [])]
             active: tm.open
@@ -77,6 +96,7 @@ Item {
             opacity: k.value
             scale: 0.96 + 0.04 * k.value
             transformOrigin: Item.Top
+            HoverHandler { id: cardHover }
 
             // Shadow, then the glass.
             Repeater {
@@ -123,7 +143,7 @@ Item {
                 clip: true
                 interactive: contentHeight > height
                 boundsBehavior: Flickable.StopAtBounds
-                model: opener.children
+                model: tm.items && !tm.stack.length ? tm.items.map(i => Object.assign({ enabled: true, isSeparator: false, hasChildren: false, buttonType: QsMenuButtonType.None, icon: "" }, i)) : opener.children
                 transform: Translate { id: drift; x: 0 }
                 SequentialAnimation {
                     id: slide
@@ -165,21 +185,28 @@ Item {
                             font.family: Theme.fontGlyph; font.pixelSize: 12
                             color: Theme.accent
                         }
+                        Text {
+                            visible: !!row.e.glyph
+                            x: 26; anchors.verticalCenter: parent.verticalCenter
+                            text: row.e.glyph || ""
+                            font.family: Theme.fontGlyph; font.pixelSize: 14
+                            color: row.e.danger ? Theme.orange : Theme.textSecondary
+                        }
                         IconImage {
                             id: icon
-                            visible: !!row.e.icon
+                            visible: !!row.e.icon && !row.e.glyph
                             x: 26; anchors.verticalCenter: parent.verticalCenter
                             implicitSize: 16
                             source: row.e.icon || ""
                             asynchronous: true
                         }
                         Label {
-                            anchors { left: parent.left; leftMargin: row.e.icon ? 50 : 26; right: chev.left; rightMargin: 6; verticalCenter: parent.verticalCenter }
+                            anchors { left: parent.left; leftMargin: row.e.icon || row.e.glyph ? 50 : 26; right: chev.left; rightMargin: 6; verticalCenter: parent.verticalCenter }
                             elide: Text.ElideRight
                             // Mnemonic underscores ("_Quit") are for keyboard menus.
                             text: (row.e.text || "").replace(/_(?!_)/g, "")
                             size: 13
-                            color: Theme.textPrimary
+                            color: row.e.danger ? Theme.orange : Theme.textPrimary
                         }
                         Text {
                             id: chev

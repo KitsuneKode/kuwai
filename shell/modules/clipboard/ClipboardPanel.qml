@@ -607,7 +607,11 @@ Scope {
             readonly property real readH: Math.min(1020, modelData.height - 150)
             readonly property real rd: read.value
             readonly property real side: 64
-            readonly property real pillW: root.expanded && !root.toastEntry ? 180
+            // The chip states (just copied, recording, saved) have their own
+            // width; opening and closing the shelf go straight from and back to
+            // the island's own shape, with no label pill in between.
+            readonly property bool chip: root.toasting || root.recording || root.saved
+            readonly property real pillW: !chip ? (inIsland ? islandW : 180)
                 : root.saved && !root.toasting ? savedRow.implicitWidth + 30
                 : root.recording && !root.toasting ? recRow.implicitWidth + 30
                 : Math.max(170, Math.min(470, toastRow.implicitWidth + 36))
@@ -619,8 +623,11 @@ Scope {
             readonly property real pillH: inIsland ? 34 : 40
 
             anchors.top: true
-            implicitWidth: up ? Math.max(shelfW, readW) + side * 2 : 1
-            implicitHeight: up ? Math.max(shelfH, readH) + 96 : 1
+            // Sized for good (input is masked to the frame): resizing the
+            // surface as it opens costs a round trip, and the first frames of
+            // the grow arrived late and jumped.
+            implicitWidth: Math.max(shelfW, readW) + side * 2
+            implicitHeight: Math.max(shelfH, readH) + 96
             // On the island it must sit where the island is, not under the
             // island's reserved strip.
             exclusionMode: inIsland ? ExclusionMode.Ignore : ExclusionMode.Normal
@@ -655,7 +662,9 @@ Scope {
                 // With the island bar, the clipboard is the island growing:
                 // flush with the top edge (or the floating pill's place), black.
                 y: win.inIsland ? (win.notch ? 0 : 6) : 6
-                radius: win.lerp(win.inIsland ? 14 : win.pillH / 2, 26, Math.min(1, win.m))
+                // From the island's own corners (a floating capsule's are half
+                // its height; the notch's 14) to the shelf's.
+                radius: win.lerp(win.notch ? 14 : win.pillH / 2, 26, Math.min(1, win.m))
                 // The same liquid glass (and grain) as the center and the
                 // toasts: one material across the rice. The pill is the
                 // glass's elevated tint, a touch denser so words read on it.
@@ -682,7 +691,7 @@ Scope {
                     id: toastRow
                     anchors.centerIn: parent
                     spacing: 10
-                    opacity: (root.recording || root.saved) && !root.toasting ? 0 : Math.max(0, 1 - win.m * 4)
+                    opacity: root.toasting ? Math.max(0, 1 - win.m * 4) : 0
                     visible: opacity > 0.01
                     readonly property var e: root.toastEntry
                     ClippingRectangle {

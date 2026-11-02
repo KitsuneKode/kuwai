@@ -13,6 +13,7 @@ import qs.modules.clipboard
 import qs.modules.island
 import qs.modules.lock
 import qs.modules.overview
+import qs.modules.voxtype
 import qs.modules
 
 ShellRoot {
@@ -23,5 +24,6 @@ ShellRoot {
     IslandBar {}
     Lock {}
     Overview {}
+    VoxtypeHost {}
     Shortcuts {}
 }

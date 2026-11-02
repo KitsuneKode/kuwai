@@ -196,6 +196,21 @@ Singleton {
         running = true;
         starter.running = true;
     }
+    // Everything, now: Arch, every AUR package at its newest commit without a
+    // review (for this run only; you chose it), every Flatpak app.
+    function runAll() {
+        if (running || total <= 0 || lowSpace) return;
+        plan = { repo: repo.length > 0, aur: aur.map(p => p.name), flatpak: flatpak.map(p => p.id) };
+        const args = [bin, "start"];
+        if (plan.repo) args.push("--repo");
+        if (plan.aur.length) args.push("--aur", ...plan.aur);
+        if (plan.flatpak.length) args.push("--flatpak", ...plan.flatpak);
+        args.push("--unreviewed");
+        starter.command = args;
+        resetRun();
+        running = true;
+        starter.running = true;
+    }
     function resetRun() { log = []; result = null; runError = ""; phase = ""; phaseLabel = "Starting"; phasesSeen = []; progress = 0.02; currentLine = ""; }
     Process {
         id: starter
