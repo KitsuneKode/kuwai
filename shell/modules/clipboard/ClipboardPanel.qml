@@ -156,7 +156,84 @@ Scope {
     readonly property var entries: rows.filter(r => !r.header)
     readonly property var current: entries.find(r => r.key === selKey) || null
     readonly property var entry: current ? current.e : null
-    onRowsChanged: if (entries && !current) selKey = entries.length ? entries[0].key : ""
+    // When the selected card leaves the list (pinned, unpinned, deleted), land
+    // on its neighbour (the next card, or the previous one if it was last)
+    // instead of jumping back to the first.
+    property string anchorKey: ""
+    function anchorAround(keys) {
+        const idx = keys.map(k => entries.findIndex(r => r.key === k)).filter(i => i >= 0);
+        if (!idx.length) { anchorKey = ""; return; }
+        const gone = new Set(keys);
+        const after = entries.slice(Math.max(...idx) + 1).find(r => !gone.has(r.key));
+        const before = entries.slice(0, Math.min(...idx)).reverse().find(r => !gone.has(r.key));
+        anchorKey = (after || before || { key: "" }).key;
+        anchorExpiry.restart();
+    }
+    Timer { id: anchorExpiry; interval: 4000; onTriggered: root.anchorKey = "" }
+    onRowsChanged: {
+        if (!entries || current) return;
+        if (anchorKey && entries.some(r => r.key === anchorKey)) selKey = anchorKey;
+        else selKey = entries.length ? entries[0].key : "";
+        anchorKey = "";
+        // Marks on cards that are gone go with them.
+        const keep = {};
+        for (const k in marked) if (entries.some(r => r.key === k)) keep[k] = true;
+        marked = keep;
+    }
+
+    // ── Several at once ──────────────────────────────────────────────────
+    // ⌃-click marks a card, ⇧-click marks the run up to it, ⇧←/→ extends,
+    // ⌃A marks everything shown; Esc clears. With cards marked, pin, delete,
+    // copy and paste act on all of them (text joined by new lines).
+    property var marked: ({})
+    readonly property int markedCount: Object.keys(marked).length
+    readonly property var markedEntries: entries.filter(r => marked[r.key])
+    function mark(key, on) {
+        const m = Object.assign({}, marked);
+        if (on === undefined ? !m[key] : on) m[key] = true; else delete m[key];
+        marked = m;
+    }
+    function markRange(toKey) {
+        const a = entries.findIndex(r => r.key === selKey), b = entries.findIndex(r => r.key === toKey);
+        if (a < 0 || b < 0) return;
+        const m = Object.assign({}, marked);
+        for (let i = Math.min(a, b); i <= Math.max(a, b); i++) m[entries[i].key] = true;
+        marked = m;
+        selKey = toKey;
+    }
+    function clearMarks() { marked = ({}); }
+    function markAll() { const m = {}; for (const r of entries) m[r.key] = true; marked = m; }
+    // Text of every marked card, in list order, joined by new lines.
+    function joinedText(cb) {
+        const list = markedEntries.map(r => r.e).filter(e => e.kind !== "image");
+        const parts = new Array(list.length);
+        let left = list.length;
+        if (!left) { cb(""); return; }
+        list.forEach((e, i) => withText(e, t => { parts[i] = t; if (--left === 0) cb(parts.join("\n")); }));
+    }
+    function runMarked(id) {
+        const rs = markedEntries;
+        if (!rs.length) return false;
+        switch (id) {
+        case "pin": {
+            const pinAll = rs.some(r => !Clipboard.isPinned(r.e));
+            anchorAround(rs.map(r => r.key));
+            for (const r of rs) if (Clipboard.isPinned(r.e) !== pinAll) Clipboard.togglePin(r.e);
+            say((pinAll ? "Pinned " : "Unpinned ") + rs.length);
+            break;
+        }
+        case "delete":
+            anchorAround(rs.map(r => r.key));
+            for (const r of rs) Clipboard.remove(r.e);
+            say("Removed " + rs.length);
+            break;
+        case "copy": joinedText(t => { if (t) { Clipboard.run(["copy-text", t]); say("Copied " + rs.length + " as one"); } }); break;
+        case "paste": joinedText(t => { if (t) Clipboard.pasteText(t); }); break;
+        default: return false;
+        }
+        clearMarks();
+        return true;
+    }
     onQueryChanged: first()
     onFilterChanged: first()
     onFromMsChanged: first()
@@ -237,13 +314,14 @@ Scope {
         return a;
     }
     function run(id) {
+        if (markedCount && runMarked(id)) return;
         const e = entry;
         if (!e && id !== "wipe") return;
         switch (id) {
         case "paste": Clipboard.paste(e); break;
         case "copy": Clipboard.copy(e); break;
         case "open": Clipboard.openWith(e); break;
-        case "pin": say(Clipboard.isPinned(e) ? "Unpinned" : "Pinned"); Clipboard.togglePin(e); break;
+        case "pin": say(Clipboard.isPinned(e) ? "Unpinned" : "Pinned"); anchorAround([selKey]); Clipboard.togglePin(e); break;
         case "quicklook": toggleQuickLook(); break;
         case "read": reading = !reading; break;
         case "nvim": Clipboard.editIn(e); break;
@@ -253,7 +331,7 @@ Scope {
             quickLook.editing = true;
             break;
         case "reveal": revealed = !revealed; break;
-        case "delete": move(1); if (entry === e) move(-1); Clipboard.remove(e); break;
+        case "delete": anchorAround([selKey]); move(1); if (entry === e) move(-1); Clipboard.remove(e); break;
         case "ocr":
             say("Reading text…", true);
             Clipboard.ocr(e, txt => {
@@ -296,6 +374,7 @@ Scope {
             { k: ["⌃", "↵"], t: "Open it where it belongs (Cider, browser…)" } ] },
         { title: "Move", items: [
             { k: ["←", "→"], t: "Previous or next card" },
+            { k: ["⇧", "← →"], t: "Mark several (⌃-click one, ⇧-click a run, ⌃A all)" },
             { k: ["PgUp", "PgDn"], t: "Five at a time" },
             { k: ["⌃", "Home"], t: "First or last (⌃End)" },
             { k: ["⇥"], t: "Next filter (⇧⇥ back)" },
@@ -1205,6 +1284,13 @@ Scope {
         if (ql && k === Qt.Key_Space && shift) { reading = !reading; event.accepted = true; return; }
         if (ql && (k === Qt.Key_Escape || k === Qt.Key_Space || (ctrl && k === Qt.Key_Y))) { quickLook.open = false; reading = false; event.accepted = true; return; }
         if (ctrl && k === Qt.Key_K) { if (actionMenu) actionMenu.toggle(); }
+        else if (shift && (k === Qt.Key_Right || k === Qt.Key_Left) && field && field.text === "") {
+            const i = entries.findIndex(r => r.key === selKey);
+            const j = Math.max(0, Math.min(entries.length - 1, i + (k === Qt.Key_Right ? 1 : -1)));
+            if (i >= 0 && entries[j]) { mark(selKey, true); markRange(entries[j].key); }
+        }
+        else if (ctrl && k === Qt.Key_A && field && field.text === "") markAll();
+        else if (k === Qt.Key_Escape && markedCount) clearMarks();
         else if (k === Qt.Key_Right || k === Qt.Key_Down || (ctrl && k === Qt.Key_N)) {
             // → moves the caret while it isn't at the end of the search.
             if (k === Qt.Key_Right && field && field.cursorPosition < field.text.length && !ql) return;

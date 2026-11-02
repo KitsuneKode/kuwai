@@ -15,10 +15,12 @@ Text {
     property real extraTracking: 0
     property real opsz: Theme.opszFor(size)
 
-    font.family: rounded ? Theme.fontRounded : Theme.fontText
+    // Apple's optical sizes as Apple ships them: the Text cut below 20 px,
+    // Display from 20 px, static weights. (The variable SF Pro was mapped
+    // once per weight × size combination: ~300 MB of the shell's memory.)
+    font.family: rounded ? Theme.fontRounded : (size >= 20 ? Theme.fontDisplay : Theme.fontText)
     font.pixelSize: size
     font.weight: weight
-    font.variableAxes: rounded ? ({}) : ({ "opsz": opsz, "wght": weight })
     font.letterSpacing: Theme.tracking(size, rounded) + extraTracking
     // FreeType, not Qt's distance-field glyph atlas: with a variable font at
     // many weight/optical-size combinations the atlas drew labels blank or

@@ -157,20 +157,24 @@ Item {
                 font.family: Theme.fontMono; font.pixelSize: dv.fontSize
                 color: row.del ? Qt.rgba(1, 0.86, 0.85, 0.82) : row.add ? Qt.rgba(0.88, 1, 0.9, 0.95) : Theme.textSecondary
             }
-            // Why it's flagged / that it's routine, at the right edge.
+            // Why it's flagged, at the right edge, on a solid chip so it never
+            // blends into the code under it. (Routine lines carry no tag: the
+            // review's header already says only versions changed.)
             Rectangle {
-                visible: !!row.why || (row.add && row.r.routine)
+                visible: !!row.why
                 anchors { right: parent.right; rightMargin: list.contentWidth - list.contentX - list.width + 8; verticalCenter: parent.verticalCenter }
                 height: dv.rowH - 4; radius: height / 2
                 width: tag.implicitWidth + 14
-                color: row.why ? Qt.rgba(1, 0.62, 0.04, 0.22) : Qt.rgba(1, 1, 1, 0.07)
+                color: "#3a2a0c"
+                border.width: 1
+                border.color: Qt.rgba(1, 0.62, 0.04, 0.5)
                 z: 3
                 Text {
                     id: tag
                     anchors.centerIn: parent
-                    text: row.why || "version bump"
+                    text: row.why
                     font.family: Theme.fontText; font.pixelSize: dv.fontSize - 1; font.weight: Theme.wMedium
-                    color: row.why ? Theme.orange : Theme.textTertiary
+                    color: Theme.orange
                 }
             }
         }

@@ -35,6 +35,14 @@ FocusScope {
     property int fileIx: 0
 
     function openReview(name) { pkg = name; fileIx = 0; Updates.review(name); go("review"); }
+    // The island's Back row leads back to the list from a review (or a result).
+    readonly property bool deep: view === "review" || (view === "run" && !Updates.running && !!Updates.result)
+    function syncBack() {
+        if (deep) { Island.innerBack = () => { if (up.view === "run") Updates.result = null; up.go("list"); }; Island.innerBackLabel = "Software Update"; }
+        else if (Island.innerBackLabel === "Software Update") { Island.innerBack = null; Island.innerBackLabel = ""; }
+    }
+    onDeepChanged: syncBack()
+    Component.onDestruction: if (Island.innerBackLabel === "Software Update") { Island.innerBack = null; Island.innerBackLabel = ""; }
     function go(v) { view = v; swap.restart(); }
 
     Component.onCompleted: {
@@ -406,18 +414,10 @@ FocusScope {
         // Back + title
         Item {
             id: rvHead
-            x: 22; y: 18
+            x: 22; y: 12
             width: parent.width - 44; height: 44
-            Rectangle {
-                id: backBtn
-                width: 34; height: 34; radius: 17
-                anchors.verticalCenter: parent.verticalCenter
-                color: backArea.containsMouse ? Theme.pillHover : Theme.pill
-                Text { anchors.centerIn: parent; text: "\u{f0141}"; font.family: Theme.fontGlyph; font.pixelSize: 16; color: Theme.textPrimary }
-                MouseArea { id: backArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: up.go("list") }
-            }
             Column {
-                x: 46; anchors.verticalCenter: parent.verticalCenter
+                anchors.verticalCenter: parent.verticalCenter
                 spacing: 2
                 Label { text: up.pkg; size: 17; weight: Theme.wSemibold }
                 Version { visible: !!reviewView.p; from: reviewView.p ? reviewView.p.old : ""; to: reviewView.p ? reviewView.p.new : "" }

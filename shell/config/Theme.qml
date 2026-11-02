@@ -69,6 +69,16 @@ Singleton {
     property string themeName: ""
     readonly property string hydeThemes: Quickshell.env("HOME") + "/.config/hyde/themes/"
 
+    // The theme's colour, made vivid enough to read as an accent: its hue is
+    // kept, saturation and lightness pulled into the band of the voxtype HUD's
+    // colours (#66C7FF, #86E0B4, #FF7A98: S ≥ 0.6, L 0.62–0.74). A washed-out
+    // wallpaper pink becomes a clear pink; near-grey themes (1-Bit) stay grey.
+    function vivid(c) {
+        c = Qt.color(c);
+        const h = c.hslHue, s = c.hslSaturation, l = c.hslLightness;
+        if (h < 0 || s < 0.12) return Qt.hsla(0, 0, Math.max(0.62, Math.min(0.8, l)), 1);
+        return Qt.hsla(h, Math.max(0.62, s), Math.max(0.62, Math.min(0.74, l)), 1);
+    }
     function parseDcol(text) {
         const v = {};
         for (const l of text.split("\n")) {
@@ -79,7 +89,7 @@ Singleton {
     }
     function fromDcol(v) {
         if (!v.pry1 && !v["1xa7"]) return false;
-        if (v["1xa7"]) accent = v["1xa7"];
+        if (v["1xa7"]) accent = vivid(v["1xa7"]);
         if (v["1xa5"]) accentSoft = v["1xa5"];
         if (v.pry1) themeBg = v.pry1;
         if (v.txt1) themeFg = v.txt1;
@@ -93,7 +103,7 @@ Singleton {
             if (p.length >= 2 && /^#[0-9A-Fa-f]{6}$/.test(p[1])) v[p[0]] = p[1];
         }
         if (!v.color4) return false;
-        accent = v.color4;
+        accent = vivid(v.color4);
         accentSoft = Qt.rgba(Qt.color(v.color4).r, Qt.color(v.color4).g, Qt.color(v.color4).b, 0.5);
         if (v.background) themeBg = v.background;
         if (v.foreground) themeFg = v.foreground;
@@ -159,7 +169,8 @@ Singleton {
     //   fontGlyph    Symbols Nerd Font, never mixed into text runs
     // SF Compact (watchOS) and New York (serif) are installed but don't
     // belong in a desktop UI.
-    readonly property string fontText: "SF Pro"
+    readonly property string fontText: "SF Pro Text"          // static faces: see Label
+    readonly property string fontDisplay: "SF Pro Display"
     readonly property string fontRounded: "SF Pro Rounded"
     readonly property string fontUi: fontText          // older name, same face
     readonly property string fontGlyph: "Symbols Nerd Font"

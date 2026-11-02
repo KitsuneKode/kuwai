@@ -295,6 +295,56 @@ Item {
         Row {
             anchors.right: parent.right
             spacing: 14
+            // Updates, only when there are some (or one is running): a quiet
+            // accent chip with the count, the run's ring and % while it
+            // installs. Click: Software Update.
+            Rectangle {
+                id: updChip
+                visible: Updates.running || Updates.total > 0
+                anchors.verticalCenter: parent.verticalCenter
+                height: 24; radius: 12
+                width: updRow.implicitWidth + 16
+                color: updArea.containsMouse ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.28) : Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.16)
+                Behavior on color { ColorAnimation { duration: Theme.colorMs } }
+                Row {
+                    id: updRow
+                    anchors.centerIn: parent
+                    spacing: 5
+                    StatRing {
+                        visible: Updates.running
+                        anchors.verticalCenter: parent.verticalCenter
+                        size: 14; stroke: 2; text: ""; label: ""
+                        value: Updates.progress; color: Theme.accent
+                    }
+                    Text {
+                        visible: !Updates.running
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "\u{f06b0}"
+                        font.family: Theme.fontGlyph; font.pixelSize: 13
+                        color: Theme.accent
+                    }
+                    Label {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: Updates.running ? Math.round(Updates.progress * 100) + "%" : String(Updates.total)
+                        size: 12; weight: Theme.wSemibold; rounded: true
+                        color: Theme.accent
+                        font.features: ({ "tnum": 1 })
+                    }
+                }
+                MouseArea {
+                    id: updArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: Island.open("updates", hover.bar.screenName, "pointer", "island")
+                }
+                Tip {
+                    text: Updates.running ? "Updating · " + Updates.phaseLabel
+                        : Updates.repo.length + " Arch · " + Updates.aur.length + " AUR" + (Updates.waitingReview ? " · " + Updates.waitingReview + " to review" : "")
+                    shown: updArea.containsMouse
+                    below: true
+                }
+            }
             TrayRow { window: hover.bar; anchors.verticalCenter: parent.verticalCenter }
             IslandStatus { anchors.verticalCenter: parent.verticalCenter }
         }

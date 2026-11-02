@@ -36,6 +36,16 @@ Singleton {
     property string themeName: ""
     readonly property string home: Quickshell.env("HOME")
 
+    // The theme's colour, made vivid enough to read as an accent: its hue is
+    // kept, saturation and lightness pulled into the band of the voxtype HUD's
+    // colours (#66C7FF, #86E0B4, #FF7A98: S ≥ 0.6, L 0.62–0.74). A washed-out
+    // wallpaper pink becomes a clear pink; near-grey themes (1-Bit) stay grey.
+    function vivid(c) {
+        c = Qt.color(c);
+        const h = c.hslHue, s = c.hslSaturation, l = c.hslLightness;
+        if (h < 0 || s < 0.12) return Qt.hsla(0, 0, Math.max(0.62, Math.min(0.8, l)), 1);
+        return Qt.hsla(h, Math.max(0.62, s), Math.max(0.62, Math.min(0.74, l)), 1);
+    }
     function dcolAccent(text) {
         const m = text.match(/^dcol_1xa7="([0-9A-Fa-f]{6})"$/m);
         return m ? "#" + m[1] : "";
@@ -51,7 +61,7 @@ Singleton {
             if (!a && themeKitty.ok) a = kittyAccent(themeKitty.text());
         }
         if (!a && wallDcol.ok) a = dcolAccent(wallDcol.text());
-        if (a) accent = a;
+        if (a) accent = vivid(a);
     }
     FileView {
         path: root.home + "/.local/state/hyde/staterc"
@@ -96,7 +106,8 @@ Singleton {
     }
 
     // ── Type (Apple's faces, optical sizes, tracking) ────────────────────
-    readonly property string fontText: "SF Pro"
+    readonly property string fontText: "SF Pro Text"          // static faces: see Label
+    readonly property string fontDisplay: "SF Pro Display"
     readonly property string fontRounded: "SF Pro Rounded"
     readonly property string fontGlyph: "Symbols Nerd Font"
     readonly property string fontMono: "SF Mono"

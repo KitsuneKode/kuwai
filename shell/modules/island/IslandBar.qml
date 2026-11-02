@@ -328,7 +328,7 @@ Scope {
                                     Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f0141}"; font.family: Theme.fontGlyph; font.pixelSize: 14; color: Theme.textSecondary }
                                     Label {
                                         anchors.verticalCenter: parent.verticalCenter
-                                        text: ({ calendar: "Calendar", power: "Power", launcher: "Search", settings: "Settings", system: "System", theme: "Themes", keys: "Shortcuts", switcher: "Windows" })[Island.history[Island.history.length - 1]] || "Back"
+                                        text: Island.innerBackLabel || ({ calendar: "Calendar", power: "Power", launcher: "Search", settings: "Settings", system: "System", theme: "Themes", keys: "Shortcuts", switcher: "Windows", updates: "Software Update" })[Island.history[Island.history.length - 1]] || "Back"
                                         size: 12; weight: Theme.wMedium; color: Theme.textSecondary
                                     }
                                 }

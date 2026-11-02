@@ -130,6 +130,11 @@ function W.step(delta, carry)
 		local cur = hl.get_active_workspace()
 		local base = W.base()
 		local id = (cur and cur.id and cur.id > 0) and cur.id or (base + 1)
+		-- On a workspace from another screen's block (a guest after an unplug),
+		-- step from this screen's first one instead of jumping to its edge.
+		if id <= base or id > base + 10 then
+			id = base + 1 - (delta > 0 and 1 or -1)
+		end
 		local n = math.max(1, math.min(10, (id - base) + delta))
 		if carry then
 			hl.dispatch(dsp.window.move({ workspace = base + n }))
@@ -334,5 +339,10 @@ end
 
 _G.kuwai = _G.kuwai or {}
 kuwai.workspaces = W
+-- The island steps the same way the keys do (pills scroll → kuwai.ws_step(±1)).
+function kuwai.ws_step(d)
+	W.step(d >= 0 and 1 or -1)()
+	return hl.dsp.no_op()
+end
 
 return W

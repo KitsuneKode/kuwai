@@ -25,6 +25,7 @@ Item {
     readonly property bool header: !!r.header
     readonly property var e: r.e || null
     readonly property bool selected: !header && panel.selKey === r.key
+    readonly property bool marked: !header && !!panel.marked[r.key]
     readonly property bool pinned: e ? Clipboard.isPinned(e) : false
     readonly property bool masked: e ? e.secret && !(selected && panel.revealed) : false
     readonly property int rank: header ? -1 : panel.entries.indexOf(r)
@@ -78,14 +79,35 @@ Item {
             anchors.fill: parent
             radius: 18
             color: Qt.rgba(1, 1, 1, card.selected ? 0.10 : 0.06)
-            border.width: card.selected ? 2 : 1
-            border.color: card.selected ? Qt.alpha(Theme.blue, 0.85) : Qt.rgba(1, 1, 1, 0.08)
+            border.width: card.selected || card.marked ? 2 : 1
+            border.color: card.selected ? Qt.alpha(Theme.blue, 0.85) : card.marked ? Qt.alpha(Theme.accent, 0.7) : Qt.rgba(1, 1, 1, 0.08)
             Behavior on color { ColorAnimation { duration: 100 } }
         }
         HoverHandler { id: hover }
         TapHandler {
-            onTapped: card.panel.select(card.r.key)
+            acceptedModifiers: Qt.NoModifier
+            onTapped: { card.panel.clearMarks(); card.panel.select(card.r.key); }
             onDoubleTapped: { card.panel.select(card.r.key); card.panel.run("paste"); }
+        }
+        TapHandler {
+            acceptedModifiers: Qt.ControlModifier
+            onTapped: { card.panel.mark(card.r.key); card.panel.select(card.r.key); }
+        }
+        TapHandler {
+            acceptedModifiers: Qt.ShiftModifier
+            onTapped: { card.panel.mark(card.panel.selKey, true); card.panel.markRange(card.r.key); card.panel.focusSearch(); }
+        }
+        // Marked: a check in the theme's colour, top left.
+        Rectangle {
+            z: 5
+            visible: card.marked
+            x: 12; y: 12
+            width: 20; height: 20; radius: 10
+            color: Theme.accent
+            border.width: 2; border.color: Qt.rgba(0, 0, 0, 0.5)
+            scale: card.marked ? 1 : 0.6
+            Behavior on scale { NumberAnimation { duration: 160; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+            Text { anchors.centerIn: parent; text: "\u{f012c}"; font.family: Theme.fontGlyph; font.pixelSize: 12; color: Theme.onAccent }
         }
 
         // Face: the entry itself.

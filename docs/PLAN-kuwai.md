@@ -83,6 +83,31 @@ they land. User wants: extremely secure, premium, tasteful, fast, Apple-grade.
 - Login: recommend greetd + a Quickshell greeter reusing the rice lock (DMS's dms-greeter
   approach) so login → lock look identical; SDDM (astronaut theme now) stays until tested.
 
+## Done 2026-11-02 (morning)
+- Software Update: bin/rice-update (+ detached systemd job kuwai-update: survives shell restarts,
+  pacman writes to a file not a pipe, single-instance lock, inhibits sleep/shutdown), Updates
+  service (follows update.jsonl, rejoins after restart, watchdog), UpdatesPanel (list / review /
+  run), DiffView, island ring + %, hover chip, alert "Review", System row. Routine version bumps
+  detected (versions/hashes normalised). Review = diff since the commit that built the
+  installed version. One island Back row (Island.innerBack) for panel levels.
+- rice-auth: vendored tokens (no links), `kuwai auth diff|status`, doctor audit (no IPC/process
+  in config/components, 4 known commands), pacman prompts named "Install system/AUR updates".
+- Shell started via Hyprland (rice-shell), not as a child of whatever terminal ran it.
+- Fonts: static SF Pro Text/Display (948 → 741 MB RSS; variable SF-Pro.ttf no longer mapped ×15).
+- Accent: Theme.vivid() keeps the theme hue, S ≥ 0.6, L 0.62–0.74 (voxtype HUD band).
+- Pills back to the reference (taller lit pill, no numbers; hover tips; Super+Tab for all);
+  pill scroll = kuwai.ws_step (same as Super+Alt+←/→); guests step from the block start.
+- Clipboard: lands on the neighbour after pin/unpin/delete; multi-select (⌃-click, ⇧-click,
+  ⇧←/→, ⌃A, Esc) with pin/delete/copy/paste on all; inline status, no toasts.
+- Brightness (~/Scripts/brightness.py, backup in ~/backups): external monitor ramps in eased 1%
+  steps through libddcutil (~70 ms/write), handle released after each ramp (bus lock).
+
+## NEXT (added)
+- Move voxtype's MeetingControls/EnginePicker into the island, then `[osd] enabled = false`
+  (its own qs is ~400 MB); user's call (voxtype is their project).
+- Main shell anon memory ~255 MB: profile images/thumb caches, Loader-unload heavy panels.
+- Rename rice → kuwai (units rice-auth/kuwai-update, bins, layers) in one pass.
+
 ## NEXT
 3. One switcher UI for Super+Tab and Alt+Tab (Mission Control = zoomed-out view of the same
    surface); windows grouped by workspace; apps with many windows = one stacked card with

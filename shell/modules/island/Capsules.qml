@@ -1,9 +1,9 @@
-// Workspace pills, iOS page-control style: every workspace is a small dot;
-// the one you're on stretches into a capsule in the theme's colour carrying
-// its number, with a soft glow, so "where am I" reads at a glance. Occupied
-// dots are a quiet tint, empty ones darker still. The stretch rides a spring
-// with a little give: moving between workspaces reads as one capsule
-// handing over to the next. (It used to be "taller", which didn't read.)
+// Workspace pills, as in the reference: slim capsules side by side; the one
+// you're on stands taller and lit in the theme's colour with a soft glow,
+// occupied ones are a quiet tint of it, empty ones darker still. No numbers
+// in the bar: hover a pill for its name and windows; Super+Tab shows all.
+// The height rides a spring with a little give, so moving between
+// workspaces reads as one pill rising while the other settles.
 //
 // The special (hidden, scratchpad) workspace shows as an extra ring that
 // pops in on a bouncier spring while it's open, and the others dim behind
@@ -29,7 +29,8 @@ Row {
     HoverHandler { id: hover }
     WheelHandler {
         acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
-        onWheel: event => Hyprland.dispatch("hl.dsp.focus({workspace = '" + (event.angleDelta.y > 0 ? "m-1" : "m+1") + "'})")
+        // The same stepping as Super+Alt+← →: this screen's workspaces in order.
+        onWheel: event => Hyprland.dispatch("kuwai.ws_step(" + (event.angleDelta.y > 0 ? -1 : 1) + ")")
     }
 
     Repeater {
@@ -48,7 +49,7 @@ Row {
             readonly property bool used: caps.bar.mine.some(w => w.id === ws && w.toplevels && w.toplevels.values.length > 0)
             // The first guest (another screen's workspace) keeps a little distance.
             readonly property bool firstGuest: guest && (index === 0 || !caps.bar.wsList[index - 1].guest)
-            width: (8 + 14 * Math.min(1, cap.g) + (firstGuest ? 8 : 0)) * caps.scale
+            width: (8 + (firstGuest ? 8 : 0)) * caps.scale
             height: caps.height
             opacity: caps.bar.special ? 0.45 : 1
             Behavior on opacity { NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
@@ -68,9 +69,9 @@ Row {
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.right: parent.right
                 anchors.rightMargin: 1 * caps.scale
-                // A dot; the current one stretches into a numbered capsule.
-                width: (6 + 14 * cap.g) * caps.scale
-                height: (12 + 4 * Math.min(1, cap.g)) * caps.scale
+                // Slim; the current one a little wider as it rises.
+                width: (6 + 2 * Math.min(1, cap.g)) * caps.scale
+                height: (13 + 5 * cap.g) * caps.scale
                 radius: width / 2
                 color: cap.guest && !cap.on ? "transparent"
                      : Qt.tint(Qt.alpha(Theme.accent, cap.used ? (capArea.containsMouse ? 0.6 : 0.42) : (capArea.containsMouse ? 0.4 : 0.22)),
@@ -78,15 +79,6 @@ Row {
                 // Guests (from a screen that's gone): hollow, so they read as visiting.
                 border.width: cap.guest && !cap.on ? 1.5 : 0
                 border.color: Qt.alpha(Theme.accent, capArea.containsMouse ? 0.8 : 0.55)
-                Text {
-                    anchors.centerIn: parent
-                    text: cap.label
-                    opacity: Math.max(0, Math.min(1, (cap.g - 0.55) / 0.35))
-                    font.family: Theme.fontRounded
-                    font.pixelSize: 10 * caps.scale
-                    font.weight: Theme.wBold
-                    color: Theme.onAccent
-                }
             }
             MouseArea {
                 id: capArea

@@ -61,7 +61,12 @@ Singleton {
     // Panels opened from another panel remember where they came from: a
     // back chevron (or a right click, or the mouse's back button) returns.
     property var history: []
-    readonly property bool canBack: history.length > 0
+    // A panel with its own levels (Updates → a package's review) takes the
+    // one Back row: it sets innerBack to a function and innerBackLabel to where
+    // it leads, so there is never a second back button inside the panel.
+    property var innerBack: null
+    property string innerBackLabel: ""
+    readonly property bool canBack: history.length > 0 || innerBack !== null
 
     // `from` "island": opened from the island itself (its clock, rings…);
     // going back returns to it, expanded while the pointer is still there.
@@ -79,6 +84,7 @@ Singleton {
         panel = name;
     }
     function back() {
+        if (innerBack) { innerBack(); return; }
         if (!history.length) { close(); return; }
         const h = history.slice();
         const to = h.pop();
@@ -86,7 +92,7 @@ Singleton {
         panel = to;
         history = h;
     }
-    function close() { panel = ""; history = []; }
+    function close() { panel = ""; history = []; innerBack = null; innerBackLabel = ""; }
     // The launcher's last search, kept between openings (selected, so typing replaces it).
     property string lastQuery: ""
     // A mode to open the launcher in (":" emoji, ";" glyphs): placed with the
