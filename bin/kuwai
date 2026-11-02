@@ -76,7 +76,8 @@ cmd_motion() {
 cmd_gpu() {
     case ${1:-} in
         "") echo "renderer now: ${KUWAI_GPU_PRIMARY:-$(lua 'return kuwai.K.gpu and kuwai.K.gpu.primary or "?"')}  ·  choice: $(state_get gpu || true)${KUWAI_GPU:+ (KUWAI_GPU=$KUWAI_GPU)}"
-            [ -z "$(state_get gpu)" ] && echo "(auto: NVIDIA when a screen hangs off it at login, the iGPU otherwise)"; return ;;
+            [ -z "$(state_get gpu)" ] && echo "(auto: NVIDIA when a screen hangs off it at login, the iGPU otherwise)"
+            return 0 ;;
         auto) state_set gpu "" ;;
         nvidia|intel) state_set gpu "$1" ;;
         *) echo "usage: kuwai gpu [auto|nvidia|intel]" >&2; return 2 ;;
