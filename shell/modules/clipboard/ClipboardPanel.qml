@@ -148,10 +148,16 @@ Scope {
         }
         return true;
     }
+    // Your history in the order you copied it. A pinned item stays in its own
+    // place (with its pin); the pins themselves (including ones whose copy has
+    // left the history) show with @pin, the Pinned filter, or "Pinned first".
+    readonly property bool showPins: filter === "pinned" || atKinds.indexOf("pinned") >= 0 || Settings.clipPinsFirst
     readonly property var rows: {
         const pinned = new Set(Clipboard.pins.map(p => p.source).filter(x => x));
-        const pool = [...Clipboard.pins.map(p => ({ e: p, pin: true })),
-                      ...Clipboard.items.filter(e => !pinned.has(e.id)).map(e => ({ e: e, pin: false }))];
+        const pool = showPins
+            ? [...Clipboard.pins.map(p => ({ e: p, pin: true })),
+               ...Clipboard.items.filter(e => !pinned.has(e.id)).map(e => ({ e: e, pin: false }))]
+            : Clipboard.items.map(e => ({ e: e, pin: false }));
         const hits = [];
         for (let i = 0; i < pool.length; i++) {
             const x = pool[i];
@@ -166,14 +172,18 @@ Scope {
         }
         // Browsing: by when it was copied; pins sit in their place with their
         // badge (Settings → Clipboard → "Pinned first" puts them on top).
+        // (Already in copy order: the history is newest first, pins on top
+        // only when they're asked for.)
         const when = h => h.pin ? (h.e.time || h.e.pinnedAt || 0) : (Clipboard.times[h.e.id] || 0);
-        if (!Settings.clipPinsFirst) hits.sort((a, b) => when(b) - when(a));
         const out = [];
         let last = "";
         const day = 86400000, today = new Date().setHours(0, 0, 0, 0);
         for (const h of hits) {
             const t = when(h);
-            const sec = h.pin && Settings.clipPinsFirst ? "Pinned" : t >= today ? "Today" : t >= today - day ? "Yesterday" : "Earlier";
+            let sec = h.pin ? "Pinned" : !t ? "Earlier" : t >= today ? "Today" : t >= today - day ? "Yesterday" : "Earlier";
+            // Never back up a section (an item without a copy time mid-list).
+            const rank = { Pinned: -1, Today: 0, Yesterday: 1, Earlier: 2 };
+            if (last && rank[sec] < rank[last] && !(h.pin)) sec = last;
             if (sec !== last) { out.push({ key: "h:" + sec, header: sec }); last = sec; }
             out.push(h);
         }
@@ -649,11 +659,10 @@ Scope {
             readonly property real pillH: inIsland ? 34 : 40
 
             anchors.top: true
-            // Sized for good (input is masked to the frame): resizing the
-            // surface as it opens costs a round trip, and the first frames of
-            // the grow arrived late and jumped.
-            implicitWidth: Math.max(shelfW, readW) + side * 2
-            implicitHeight: Math.max(shelfH, readH) + 96
+            // 1×1 while idle: a full-size idle surface kept showing the shelf's
+            // last frame on the other screen after it closed there.
+            implicitWidth: up ? Math.max(shelfW, readW) + side * 2 : 1
+            implicitHeight: up ? Math.max(shelfH, readH) + 96 : 1
             // On the island it must sit where the island is, not under the
             // island's reserved strip.
             exclusionMode: inIsland ? ExclusionMode.Ignore : ExclusionMode.Normal

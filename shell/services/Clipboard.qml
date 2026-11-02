@@ -35,7 +35,7 @@ Singleton {
     readonly property string recState: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/rice/recording"
     function recordKey() {
         if (recSince > 0) { recCmd.command = [recBin, "stop"]; recCmd.running = true; return; }
-        if (!recordSetup) { open = false; screen = Screens.focused; }
+        if (!recordSetup) { open = false; screen = Screens.screenNamed(Screens.focusedName); }
         recordSetup = !recordSetup;
     }
     function startRecording(source, audio, fps) {
@@ -84,10 +84,11 @@ Singleton {
     function toggle(filter) {
         if (open && (!filter || filter === startFilter)) { open = false; return; }
         startFilter = filter || "all";
-        screen = Screens.focused;
         refresh();
         targetProbe.running = true;
-        open = true;
+        // On the screen you're on: ask Hyprland (the shell's own idea of the
+        // focused screen can lag behind).
+        Screens.refresh(n => { root.screen = Screens.screenNamed(n); root.open = true; });
     }
 
     // Where ↵ will paste: the window that had focus when the panel opened.
