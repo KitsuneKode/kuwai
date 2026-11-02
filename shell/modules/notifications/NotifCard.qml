@@ -71,10 +71,18 @@ Item {
     property bool mounted: false
     readonly property bool behind: !front && !stack.expanded && !removed
 
+    // Island mode: enter from the island, the front one leaves into it.
+    property real islandW: 260
+    readonly property bool fromIsland: !!stack.fromIsland && !Theme.reduceMotion
+    readonly property real islandY: -(stack.islandGap + stack.islandH)
+    readonly property bool inIsland: fromIsland && (!mounted || (removed && lastIndex === 0))
+    property real em: inIsland ? 0 : 1
+    Behavior on em { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.stackMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+
     readonly property real targetY: {
-        if (!mounted) return -naturalHeight;
+        if (!mounted) return fromIsland ? islandY : -naturalHeight;
         if (removed) {
-            if (lastIndex === 0) return -height;
+            if (lastIndex === 0) return fromIsland ? islandY : -height;
             if (lastExpanded) return lastOffset - height;
             return height * 0.4;
         }
@@ -140,7 +148,14 @@ Item {
 
     transform: [
         Translate { x: card.swipeX; y: card.swipeY },
-        Scale { id: pulse; origin.x: card.width / 2; origin.y: card.height / 2 }
+        Scale { id: pulse; origin.x: card.width / 2; origin.y: card.height / 2 },
+        // Out of / back into the island: the island's width and a sliver of
+        // height at em = 0, the full card at em = 1 (top edge stays put).
+        Scale {
+            origin.x: card.width / 2; origin.y: 0
+            xScale: card.fromIsland ? (card.islandW / card.width) + (1 - card.islandW / card.width) * card.em : 1
+            yScale: card.fromIsland ? 0.25 + 0.75 * card.em : 1
+        }
     ]
 
     ParallelAnimation {

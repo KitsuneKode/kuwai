@@ -33,7 +33,7 @@ Item {
         height: 28; radius: 14
         width: goLabel.implicitWidth + 22
         color: goArea.containsMouse ? Qt.alpha(banner.tone, 0.35) : Qt.alpha(banner.tone, 0.2)
-        Label { id: goLabel; anchors.centerIn: parent; text: "Details"; size: 12; weight: Theme.wMedium; color: banner.tone }
-        MouseArea { id: goArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { Alerts.dismiss(); Island.open("system", banner.bar.screenName, "pointer", "island"); } }
+        Label { id: goLabel; anchors.centerIn: parent; text: banner.alert && banner.alert.action ? banner.alert.action : "Details"; size: 12; weight: Theme.wMedium; color: banner.tone }
+        MouseArea { id: goArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { Alerts.dismiss(); Island.open(banner.alert && banner.alert.panel ? banner.alert.panel : "system", banner.bar.screenName, "pointer", "island"); } }
     }
 }

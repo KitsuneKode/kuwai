@@ -281,10 +281,14 @@ Scope {
         anchors.top: true
         // With the island bar, the HUD is the island growing: same place, same black.
         readonly property bool inIsland: Settings.bar === "island"
+        readonly property bool notch: inIsland && Settings.islandStyle !== "floating"
+        // The island's own width on this screen: the HUD starts as the island.
+        readonly property real islandW: Island.restWidths[shownScreen ? shownScreen.name : ""] || 220
         margins.top: inIsland ? 0 : Theme.barGap
         implicitWidth: 316 + 32          // fixed: the card morphs inside, the surface never resizes
         implicitHeight: 74 + 36
-        exclusionMode: ExclusionMode.Normal
+        // On the island it sits where the island is, not under its reserved strip.
+        exclusionMode: inIsland ? ExclusionMode.Ignore : ExclusionMode.Normal
         color: "transparent"
 
         WlrLayershell.namespace: "rice-osd"
@@ -331,12 +335,12 @@ Scope {
             id: card
             property real reveal: 0
             // In the island it grows out of the pill (≈ its rest size) instead of dropping in.
-            width: hud.inIsland ? 220 + (316 - 220) * reveal : 316
+            width: hud.inIsland ? hud.islandW + (316 - hud.islandW) * reveal : 316
             height: hud.inIsland ? 34 + (74 - 34) * reveal : 74
-            radius: hud.inIsland ? Math.min(height / 2, 30) : height / 2.9
+            radius: hud.inIsland ? 14 + (30 - 14) * reveal : height / 2.9
             tint: hud.inIsland ? Qt.rgba(0, 0, 0, 0.9) : Theme.glassTint
             x: (hud.width - width) / 2
-            y: hud.inIsland ? 4 : 10 - (1 - reveal) * (Theme.reduceMotion ? 0 : 6)
+            y: hud.inIsland ? (hud.notch ? 0 : 6) : 10 - (1 - reveal) * (Theme.reduceMotion ? 0 : 6)
             opacity: hud.inIsland ? Math.min(1, reveal * 4) : Math.min(1, reveal * 1.4)
             // Contents arrive once there's room for them (in the island).
             readonly property real inner: hud.inIsland ? Math.max(0, Math.min(1, (reveal - 0.45) / 0.45)) : 1
@@ -361,7 +365,18 @@ Scope {
                 property real wheelAcc: 0
                 anchors.fill: parent
                 cursorShape: Qt.PointingHandCursor
-                onClicked: root.openPage()
+                acceptedButtons: Qt.LeftButton | Qt.RightButton
+                // Flick it up (or right click) and it goes back into the island
+                // at once; a plain click opens the full page.
+                property real pressY: 0
+                property bool flicked: false
+                onPressed: mouse => { pressY = mouse.y; flicked = false; }
+                onPositionChanged: mouse => { if (pressed && !dragging && pressY - mouse.y > 16) { flicked = true; hud.dismiss(); } }
+                onClicked: mouse => {
+                    if (flicked) return;
+                    if (mouse.button === Qt.RightButton) hud.dismiss();
+                    else root.openPage();
+                }
                 onWheel: wheel => {
                     const d = wheel.angleDelta.y !== 0 ? wheel.angleDelta.y : -wheel.angleDelta.x;
                     wheelAcc += d;

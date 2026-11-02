@@ -168,8 +168,8 @@ FocusScope {
                 Label { anchors.verticalCenter: parent.verticalCenter; text: SystemStats.updates + (SystemStats.updates === 1 ? " update" : " updates") + " available"; size: 13; weight: Theme.wMedium }
             }
             Label { anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
-                text: "Update in a terminal ›"; size: 12; color: Theme.textSecondary }
-            MouseArea { id: updArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { Island.close(); Quickshell.execDetached(["hyde-shell", "app", "system.update.sh", "up"]); } }
+                text: "Review and update ›"; size: 12; color: Theme.textSecondary }
+            MouseArea { id: updArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: Island.open("updates", Island.screen, "pointer", "island") }
         }
     }
 

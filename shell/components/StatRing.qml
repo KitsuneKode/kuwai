@@ -16,6 +16,7 @@ Item {
     // Load changes colour gradually, not in jumps.
     Behavior on color { ColorAnimation { duration: 500; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
     property int size: 44
+    property real stroke: 4              // a thinner ring for small sizes (the island's 18 px)
     implicitWidth: col.implicitWidth
     implicitHeight: col.implicitHeight
 
@@ -32,17 +33,17 @@ Item {
             anchors.fill: parent
             preferredRendererType: Shape.CurveRenderer
             ShapePath {
-                strokeColor: Qt.rgba(1, 1, 1, 0.1); strokeWidth: 4; fillColor: "transparent"; capStyle: ShapePath.RoundCap
-                PathAngleArc { centerX: ring.size / 2; centerY: ring.size / 2; radiusX: ring.size / 2 - 3; radiusY: ring.size / 2 - 3; startAngle: -90; sweepAngle: 360 }
+                strokeColor: Qt.rgba(1, 1, 1, 0.1); strokeWidth: ring.stroke; fillColor: "transparent"; capStyle: ShapePath.RoundCap
+                PathAngleArc { centerX: ring.size / 2; centerY: ring.size / 2; radiusX: ring.size / 2 - ring.stroke / 2 - 1; radiusY: ring.size / 2 - ring.stroke / 2 - 1; startAngle: -90; sweepAngle: 360 }
             }
             ShapePath {
-                strokeColor: ring.color; strokeWidth: 4; fillColor: "transparent"; capStyle: ShapePath.RoundCap
-                PathAngleArc { centerX: ring.size / 2; centerY: ring.size / 2; radiusX: ring.size / 2 - 3; radiusY: ring.size / 2 - 3; startAngle: -90; sweepAngle: 360 * Math.max(0.005, Math.min(1, ring.shown)) }
+                strokeColor: ring.color; strokeWidth: ring.stroke; fillColor: "transparent"; capStyle: ShapePath.RoundCap
+                PathAngleArc { centerX: ring.size / 2; centerY: ring.size / 2; radiusX: ring.size / 2 - ring.stroke / 2 - 1; radiusY: ring.size / 2 - ring.stroke / 2 - 1; startAngle: -90; sweepAngle: 360 * Math.max(0.005, Math.min(1, ring.shown)) }
             }
         }
         // The number morphs digit by digit when it changes (TextMorph, quick).
-        TextMorph { anchors.centerIn: parent; text: ring.text; size: 11; weight: Theme.wSemibold; rounded: true; duration: 320; stagger: 25 }
+        TextMorph { visible: ring.text !== ""; anchors.centerIn: parent; text: ring.text; size: 11; weight: Theme.wSemibold; rounded: true; duration: 320; stagger: 25 }
     }
-    Label { anchors.horizontalCenter: parent.horizontalCenter; text: ring.label; size: 11; weight: Theme.wMedium; color: Theme.textSecondary }
+    Label { visible: ring.label !== ""; anchors.horizontalCenter: parent.horizontalCenter; text: ring.label; size: 11; weight: Theme.wMedium; color: Theme.textSecondary }
   }
 }

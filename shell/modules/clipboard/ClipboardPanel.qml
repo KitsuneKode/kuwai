@@ -532,12 +532,19 @@ Scope {
                 : root.saved && !root.toasting ? savedRow.implicitWidth + 30
                 : root.recording && !root.toasting ? recRow.implicitWidth + 30
                 : Math.max(170, Math.min(470, toastRow.implicitWidth + 36))
-            readonly property real pillH: 40
+            // With the island bar, the clipboard *is* the island growing: it
+            // starts from the island's own width, height and corners.
+            readonly property bool inIsland: Settings.bar === "island"
+            readonly property bool notch: inIsland && Settings.islandStyle !== "floating"
+            readonly property real islandW: Island.restWidths[modelData.name] || 220
+            readonly property real pillH: inIsland ? 34 : 40
 
             anchors.top: true
             implicitWidth: up ? Math.max(shelfW, readW) + side * 2 : 1
             implicitHeight: up ? Math.max(shelfH, readH) + 96 : 1
-            exclusionMode: ExclusionMode.Normal
+            // On the island it must sit where the island is, not under the
+            // island's reserved strip.
+            exclusionMode: inIsland ? ExclusionMode.Ignore : ExclusionMode.Normal
             color: "transparent"
             WlrLayershell.namespace: "rice-island"
             WlrLayershell.layer: WlrLayer.Overlay
@@ -562,16 +569,14 @@ Scope {
                 id: frame
                 visible: win.up
                 // Grows from the island's own size when the island is the bar.
-                readonly property real baseW: win.lerp(Settings.bar === "island" ? 220 : 44, win.pillW, Math.min(1, win.pv))
+                readonly property real baseW: win.lerp(win.inIsland ? win.islandW : 44, win.pillW, Math.min(1, win.pv))
                 width: Math.max(1, win.lerp(win.lerp(baseW, win.shelfW, win.m), win.readW, win.rd))
                 height: Math.max(1, win.lerp(win.lerp(win.pillH, win.shelfH, win.mh), win.readH, win.rd))
                 x: Math.round((win.width - width) / 2)
                 // With the island bar, the clipboard is the island growing:
                 // flush with the top edge (or the floating pill's place), black.
-                readonly property bool inIsland: Settings.bar === "island"
-                readonly property bool notch: inIsland && Settings.islandStyle !== "floating"
-                y: inIsland ? (notch ? 0 : 4) : 6
-                radius: win.lerp(win.pillH / 2, 26, Math.min(1, win.m))
+                y: win.inIsland ? (win.notch ? 0 : 6) : 6
+                radius: win.lerp(win.inIsland ? 14 : win.pillH / 2, 26, Math.min(1, win.m))
                 // The same liquid glass (and grain) as the center and the
                 // toasts: one material across the rice. The pill is the
                 // glass's elevated tint, a touch denser so words read on it.
@@ -579,13 +584,13 @@ Scope {
                 opacity: Math.min(1, win.pv * 2.5)
                 clip: true
                 GlassCard {
-                    visible: !frame.notch
+                    visible: !win.notch
                     anchors.fill: parent
                     radius: frame.radius
-                    tint: frame.inIsland ? Qt.rgba(0, 0, 0, 0.9) : Theme.glassTintElevated
+                    tint: win.inIsland ? Qt.rgba(0, 0, 0, 0.9) : Theme.glassTintElevated
                 }
                 NotchShape {
-                    visible: frame.notch
+                    visible: win.notch
                     ear: 9
                     w: frame.width - 18
                     h: frame.height

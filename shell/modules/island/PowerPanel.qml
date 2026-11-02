@@ -29,7 +29,7 @@ FocusScope {
     readonly property var actions: [
         { id: "lock", label: "Lock", glyph: "\u{f033e}", hold: false, cmd: ["loginctl", "lock-session"] },     // hyprlock until the rice lock is the default
         { id: "sleep", label: "Sleep", glyph: "\u{f0594}", hold: false, cmd: ["systemctl", "suspend"] },
-        { id: "logout", label: "Log Out", glyph: "\u{f0343}", hold: true, cmd: ["hyprctl", "dispatch", "exit"] },
+        { id: "logout", label: "Log Out", glyph: "\u{f0343}", hold: true, cmd: ["hyprctl", "dispatch", "hl.dsp.exit()"] },
         { id: "reboot", label: "Restart", glyph: "\u{f0709}", hold: true, cmd: ["systemctl", "reboot"] },
         { id: "firmware", label: "Firmware", glyph: "\u{f061a}", hold: true, cmd: ["systemctl", "reboot", "--firmware-setup"] },
         { id: "off", label: "Shut Down", glyph: "\u{f0425}", hold: true, danger: true, cmd: ["systemctl", "poweroff"] }

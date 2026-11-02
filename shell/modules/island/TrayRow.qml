@@ -7,6 +7,7 @@ import Quickshell
 import Quickshell.Services.SystemTray
 import Quickshell.Widgets
 import qs.config
+import qs.components
 
 Row {
     id: tray
@@ -30,12 +31,19 @@ Row {
                 opacity: area.containsMouse ? 1 : 0.8
                 Behavior on opacity { NumberAnimation { duration: Theme.colorMs } }
             }
-            QsMenuAnchor {
+            // Our own menu (the theme's glass and accent), not Qt's native one.
+            TrayMenu {
                 id: menu
-                menu: it.modelData.menu
-                anchor.window: tray.window
-                anchor.item: it
-                anchor.edges: Edges.Bottom
+                anchorItem: it
+                handle: it.modelData.menu
+                window: tray.window
+                // Keep the island open while this menu is (see IslandBar.menus).
+                property bool counted: false
+                onOpenChanged: {
+                    if (open && !counted) { counted = true; tray.window.menus++; }
+                    else if (!open && counted) { counted = false; tray.window.menus = Math.max(0, tray.window.menus - 1); }
+                }
+                Component.onDestruction: if (counted) tray.window.menus = Math.max(0, tray.window.menus - 1)
             }
             MouseArea {
                 id: area
@@ -45,7 +53,7 @@ Row {
                 acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
                 cursorShape: Qt.PointingHandCursor
                 onClicked: mouse => {
-                    if (mouse.button === Qt.RightButton || (mouse.button === Qt.LeftButton && it.modelData.onlyMenu)) { if (it.modelData.hasMenu) menu.open(); }
+                    if (mouse.button === Qt.RightButton || (mouse.button === Qt.LeftButton && it.modelData.onlyMenu)) { if (it.modelData.hasMenu) menu.open = !menu.open; }
                     else if (mouse.button === Qt.MiddleButton) it.modelData.secondaryActivate();
                     else it.modelData.activate();
                 }

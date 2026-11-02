@@ -40,7 +40,7 @@ Singleton {
     property int igpuMax: 0
     function coreKind(i) { return pThreads.length ? (pThreads.includes(i) ? "Performance core" : "Efficiency core") : "Core"; }
     function ranges(text) { const out = []; for (const part of text.split(",")) { const [a, b] = part.split("-").map(Number); for (let i = a; i <= (isNaN(b) ? a : b); i++) out.push(i); } return out; }
-    property int updates: -1             // pending package updates (-1: not checked yet)
+    readonly property int updates: Updates.total   // pending updates (-1: not checked yet); services/Updates owns them
     property bool ready: false
 
     property var prev: ({})              // cpu name -> [busy, total]
@@ -115,15 +115,6 @@ Singleton {
             }
         }
     }
-
-    // Pending updates: checkupdates reads a private copy of the sync
-    // databases (it never touches pacman's), every six hours.
-    Process {
-        id: upd
-        command: ["sh", "-c", "checkupdates 2>/dev/null | wc -l"]
-        stdout: StdioCollector { onStreamFinished: root.updates = parseInt(text) || 0 }
-    }
-    Timer { interval: 6 * 3600 * 1000; running: true; repeat: true; triggeredOnStart: true; onTriggered: upd.running = true }
 
     // Weather (what Waybar's weather module showed; HyDE's own script is
     // broken here): wttr.in for the location in HyDE's config, every 30 min.

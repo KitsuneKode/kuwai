@@ -9,7 +9,7 @@
 // Fail-safe: while locked, ~/.local/state/rice/locked exists. If the shell
 // dies while locked, Hyprland keeps the session locked (the protocol's
 // promise: nothing is ever exposed) and, with misc:allow_session_lock_restore
-// (hypr/rice.conf), lets a new locker take over: Quickshell's crash handler
+// (hypr/kuwai/system.lua), lets a new locker take over: Quickshell's crash handler
 // restarts the shell, which sees the file and locks again at once. From a
 // TTY, `hyprlock` (or `rice restart`) does the same. Nothing you were doing
 // is closed: the lock only covers the screen.

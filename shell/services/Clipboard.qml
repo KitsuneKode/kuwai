@@ -17,6 +17,7 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
+import qs.config
 import Quickshell.Io
 
 Singleton {
@@ -30,7 +31,7 @@ Singleton {
     property real recSince: 0                  // epoch seconds while recording, else 0
     property string recTarget: ""
     property var recSaved: null                // { at, duration, path, thumb } just after a stop
-    readonly property string recBin: Quickshell.env("HOME") + "/Projects/rice/bin/rice-rec"
+    readonly property string recBin: Paths.bin + "/rice-rec"
     readonly property string recState: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/rice/recording"
     function recordKey() {
         if (recSince > 0) { recCmd.command = [recBin, "stop"]; recCmd.running = true; return; }
@@ -75,7 +76,7 @@ Singleton {
     property var times: ({})        // cliphist id → when it was copied (ms)
     property bool loaded: false
 
-    readonly property string bin: Quickshell.env("HOME") + "/Projects/rice/bin/rice-clip"
+    readonly property string bin: Paths.bin + "/rice-clip"
     readonly property string dataDir: (Quickshell.env("XDG_DATA_HOME") || Quickshell.env("HOME") + "/.local/share") + "/rice/clipboard"
     readonly property string stateFile: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/rice/clipboard.json"
     readonly property string thumbDir: (Quickshell.env("XDG_CACHE_HOME") || Quickshell.env("HOME") + "/.cache") + "/rice/clip/thumbs"

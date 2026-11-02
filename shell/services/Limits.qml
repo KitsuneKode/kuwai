@@ -14,6 +14,7 @@ pragma Singleton
 // first brace, comments included.)
 import QtQuick
 import Quickshell
+import qs.config
 import Quickshell.Io
 
 Singleton {
@@ -25,7 +26,7 @@ Singleton {
     property string source: ""                 // t3 | kittymux | none
     property real now: Date.now()               // advanced on each read, not per frame
 
-    readonly property string bin: Quickshell.env("HOME") + "/Projects/rice/bin/rice-usage"
+    readonly property string bin: Paths.bin + "/rice-usage"
 
     property string error: ""                   // why T3 Code isn't the source, if it isn't
 

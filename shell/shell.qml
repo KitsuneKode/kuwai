@@ -1,3 +1,4 @@
+//@ pragma UseQApplication
 // The rice: one Quickshell process for every desktop surface.
 //
 //   bin/rice-shell        start it (takes over notifications from dunst)
@@ -11,6 +12,7 @@ import qs.modules.notifications
 import qs.modules.clipboard
 import qs.modules.island
 import qs.modules.lock
+import qs.modules.overview
 import qs.modules
 
 ShellRoot {
@@ -20,5 +22,6 @@ ShellRoot {
     ClipboardPanel {}
     IslandBar {}
     Lock {}
+    Overview {}
     Shortcuts {}
 }

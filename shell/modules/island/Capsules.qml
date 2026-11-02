@@ -1,8 +1,9 @@
-// Workspace pills, as in the reference: equal-width capsules side by side;
-// the one you're on stands taller in the theme's colour with a soft glow,
-// occupied ones are a quiet tint, empty ones darker still. The height rides
-// a spring with a little give, so moving between workspaces reads as one
-// pill rising while the other settles.
+// Workspace pills, iOS page-control style: every workspace is a small dot;
+// the one you're on stretches into a capsule in the theme's colour carrying
+// its number, with a soft glow, so "where am I" reads at a glance. Occupied
+// dots are a quiet tint, empty ones darker still. The stretch rides a spring
+// with a little give: moving between workspaces reads as one capsule
+// handing over to the next. (It used to be "taller", which didn't read.)
 //
 // The special (hidden, scratchpad) workspace shows as an extra ring that
 // pops in on a bouncier spring while it's open, and the others dim behind
@@ -28,18 +29,26 @@ Row {
     HoverHandler { id: hover }
     WheelHandler {
         acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
-        onWheel: event => Hyprland.dispatch("workspace " + (event.angleDelta.y > 0 ? "m-1" : "m+1"))
+        onWheel: event => Hyprland.dispatch("hl.dsp.focus({workspace = '" + (event.angleDelta.y > 0 ? "m-1" : "m+1") + "'})")
     }
 
     Repeater {
-        model: caps.bar.wsCount
+        model: caps.bar.wsList
         Item {
             id: cap
             required property int index
-            readonly property int ws: index + 1
+            required property var modelData
+            readonly property int ws: modelData.id
+            readonly property bool guest: modelData.guest
+            // Its number on its own screen (kuwai: 1–10 per screen).
+            readonly property int label: ((ws - 1) % 10) + 1
+            readonly property var wsObj: caps.bar.mine.find(w => w.id === ws) || null
+            readonly property int windows: wsObj && wsObj.toplevels ? wsObj.toplevels.values.length : 0
             readonly property bool on: ws === caps.bar.activeWs
             readonly property bool used: caps.bar.mine.some(w => w.id === ws && w.toplevels && w.toplevels.values.length > 0)
-            width: 8 * caps.scale
+            // The first guest (another screen's workspace) keeps a little distance.
+            readonly property bool firstGuest: guest && (index === 0 || !caps.bar.wsList[index - 1].guest)
+            width: (8 + 14 * Math.min(1, cap.g) + (firstGuest ? 8 : 0)) * caps.scale
             height: caps.height
             opacity: caps.bar.special ? 0.45 : 1
             Behavior on opacity { NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
@@ -56,13 +65,28 @@ Row {
             }
             Rectangle {
                 id: pill
-                anchors.centerIn: parent
-                // Inactive ones a little narrower; the current one widens as it rises.
-                width: (6 + 2 * Math.min(1, cap.g)) * caps.scale
-                height: (13 + 5 * cap.g) * caps.scale
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.right: parent.right
+                anchors.rightMargin: 1 * caps.scale
+                // A dot; the current one stretches into a numbered capsule.
+                width: (6 + 14 * cap.g) * caps.scale
+                height: (12 + 4 * Math.min(1, cap.g)) * caps.scale
                 radius: width / 2
-                color: Qt.tint(Qt.alpha(Theme.accent, cap.used ? (capArea.containsMouse ? 0.6 : 0.42) : (capArea.containsMouse ? 0.4 : 0.22)),
+                color: cap.guest && !cap.on ? "transparent"
+                     : Qt.tint(Qt.alpha(Theme.accent, cap.used ? (capArea.containsMouse ? 0.6 : 0.42) : (capArea.containsMouse ? 0.4 : 0.22)),
                                Qt.alpha(Theme.accent, Math.max(0, Math.min(1, grow.value))))
+                // Guests (from a screen that's gone): hollow, so they read as visiting.
+                border.width: cap.guest && !cap.on ? 1.5 : 0
+                border.color: Qt.alpha(Theme.accent, capArea.containsMouse ? 0.8 : 0.55)
+                Text {
+                    anchors.centerIn: parent
+                    text: cap.label
+                    opacity: Math.max(0, Math.min(1, (cap.g - 0.55) / 0.35))
+                    font.family: Theme.fontRounded
+                    font.pixelSize: 10 * caps.scale
+                    font.weight: Theme.wBold
+                    color: Theme.onAccent
+                }
             }
             MouseArea {
                 id: capArea
@@ -70,31 +94,67 @@ Row {
                 anchors.margins: -2
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
-                onClicked: Hyprland.dispatch("workspace " + cap.ws)
+                onClicked: Hyprland.dispatch("hl.dsp.focus({workspace = " + JSON.stringify(cap.ws) + "})")
+            }
+            Tip {
+                text: "Workspace " + cap.label + (cap.guest ? " · from the other screen (its home is there)" : "") + (cap.windows ? " · " + cap.windows + (cap.windows === 1 ? " window" : " windows") : " · empty")
+                shown: capArea.containsMouse
+                below: true
             }
         }
     }
 
-    // The special workspace: a ring that pops in.
+    // A special workspace (scratchpad, notes, console, minimized) open on this
+    // screen: an accent capsule with its glyph pops in on a bouncy spring, and
+    // the workspace pills dim behind it — it sits on top of your workspace.
     Item {
+        id: sp
+        readonly property string name: (caps.bar.special || "").replace(/^special:/, "")
+        property string shown: ""
+        onNameChanged: if (name) shown = name
+        readonly property var glyphs: ({ special: "\u{f0328}", notes: "\u{f082e}", console: "\u{f018d}", minimized: "\u{f05b0}" })
         visible: special.value > 0.01
-        width: 12 * caps.scale * Math.min(1, special.value)
+        width: 24 * caps.scale * Math.min(1, special.value)
         height: caps.height
         Spring { id: special; tier: ({ stiffness: 380, damping: 16 }); target: caps.bar.special ? 1 : 0 }
+        RectangularShadow {
+            anchors.fill: chip
+            radius: chip.radius
+            blur: 10; spread: 1
+            color: Qt.alpha(Theme.accent, 0.45 * Math.max(0, Math.min(1, special.value)))
+        }
         Rectangle {
+            id: chip
             anchors.centerIn: parent
-            width: 12 * caps.scale; height: 12 * caps.scale
-            radius: width / 2
+            width: 22 * caps.scale; height: 16 * caps.scale
+            radius: height / 2
             scale: Math.max(0, special.value)
-            color: "transparent"
-            border.width: 2
-            border.color: Theme.accent
-            Rectangle { anchors.centerIn: parent; width: 4; height: 4; radius: 2; color: Theme.accent }
+            gradient: Gradient {
+                orientation: Gradient.Horizontal
+                GradientStop { position: 0; color: Theme.accent }
+                GradientStop { position: 1; color: Qt.lighter(Theme.accent, 1.35) }
+            }
+            border.width: 1
+            border.color: Qt.rgba(1, 1, 1, 0.25)
+            Text {
+                anchors.centerIn: parent
+                text: sp.glyphs[sp.shown] || sp.glyphs.special
+                font.family: Theme.fontGlyph
+                font.pixelSize: 11 * caps.scale
+                color: Qt.rgba(0, 0, 0, 0.75)
+            }
         }
         MouseArea {
+            id: spArea
             anchors.fill: parent
+            hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
-            onClicked: Hyprland.dispatch("togglespecialworkspace")
+            onClicked: Hyprland.dispatch("hl.dsp.workspace.toggle_special('" + (sp.shown || "special").replace(/[^A-Za-z0-9_-]/g, "") + "')")
+        }
+        Tip {
+            text: ({ special: "Scratchpad", notes: "Notes", console: "Console", minimized: "Minimized windows" })[sp.shown] || ("Special: " + sp.shown)
+            shown: spArea.containsMouse
+            below: true
         }
     }
 }

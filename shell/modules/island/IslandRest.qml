@@ -19,13 +19,20 @@ Item {
     // width, so the time sits in the middle; the gap either side of it is
     // wider than the spacing inside each group (Apple's grouping).
     readonly property real side: Math.max(leftGroup.implicitWidth, rightGroup.implicitWidth)
+    // Centred only when the two sides are within a few pixels anyway. Past
+    // that, padding the lighter side reads as a hole next to the time (it was
+    // 48 px: 9 pills vs signal + battery left ~30 px of nothing), so the groups
+    // sit at equal gaps and the time is off-centre by half the difference.
+    readonly property bool balanced: Math.abs(leftGroup.implicitWidth - rightGroup.implicitWidth) < 10
     readonly property bool pillsHovered: pills.hovered
-    implicitWidth: side * 2 + clock.width + gap * 2
+    implicitWidth: balanced ? side * 2 + clock.width + gap * 2
+                            : leftGroup.implicitWidth + rightGroup.implicitWidth + clock.width + gap * 2
     implicitHeight: 32
     readonly property int gap: 22
 
     // Which live activity, if any.
     readonly property string activity: Activities.voxActive ? "vox"
+        : Updates.running ? "update"
         : Alerts.active.length ? "alert"
         : (Activities.shazamListening || Activities.shazamFound) ? "shazam"
         : bar.player && bar.player.isPlaying && Settings.restMedia ? "media" : ""
@@ -47,6 +54,17 @@ Item {
         width: 20; height: 20
         anchors.verticalCenter: parent.verticalCenter
 
+        // Updating: a ring that fills as it goes (click: the Updates panel).
+        StatRing {
+            visible: rest.activity === "update"
+            anchors.centerIn: parent
+            size: 18
+            stroke: 2.5
+            value: Updates.progress
+            color: Theme.accent
+            text: ""
+            label: ""
+        }
         // Dictation: a mic that breathes while it listens, a spinner while it writes.
         Text {
             visible: rest.activity === "vox"
@@ -113,7 +131,7 @@ Item {
         rounded: false
         weight: Theme.wMedium
         color: Qt.rgba(1, 0.98, 0.95, 0.92)
-        x: rest.side + rest.gap
+        x: (rest.balanced ? rest.side : leftGroup.implicitWidth) + rest.gap
         anchors.verticalCenter: parent.verticalCenter
         HoverHandler { cursorShape: Qt.PointingHandCursor }
         TapHandler { onTapped: Island.toggle("calendar", rest.bar.screenName, "pointer", "island") }
@@ -157,6 +175,14 @@ Item {
                 font.features: ({ "tnum": 1 })
             }
             Label {
+                visible: rest.activity === "update"
+                anchors.verticalCenter: parent.verticalCenter
+                text: Math.round(Updates.progress * 100) + "%"
+                size: 13; weight: Theme.wSemibold; rounded: true
+                color: Theme.accent
+                font.features: ({ "tnum": 1 })
+            }
+            Label {
                 visible: rest.activity === "shazam"
                 anchors.verticalCenter: parent.verticalCenter
                 width: Math.min(implicitWidth, 170)
@@ -192,9 +218,10 @@ Item {
 
     // A click on an activity acts on it: stop dictation, open the song.
     TapHandler {
-        enabled: rest.activity === "vox" || (rest.activity === "shazam" && !!Activities.shazamFound)
+        enabled: rest.activity === "vox" || rest.activity === "update" || (rest.activity === "shazam" && !!Activities.shazamFound)
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         onTapped: (point, button) => {
+            if (rest.activity === "update") { Island.open("updates", rest.bar.screenName, "pointer", "island"); return; }
             if (rest.activity === "vox") { if (button === Qt.RightButton) Activities.voxCancel(); else Activities.voxToggle(); }
             else Activities.shazamOpen();
         }

@@ -26,12 +26,19 @@ FocusScope {
     property string mode: Island.themeMode || "themes"      // themes | wallpapers
     property var info: ({ current: "", themes: [], wallpapers: [] })
     property bool loading: true
-    readonly property string bin: Quickshell.env("HOME") + "/Projects/rice/bin/rice-themes"
+    readonly property string bin: Paths.bin + "/rice-themes"
     readonly property var favs: Settings.favoriteThemes || []
     readonly property var items: mode === "themes"
-        ? info.themes.slice().sort((a, b) => (favs.includes(b.name) - favs.includes(a.name)))
+        ? info.themes.slice().sort((a, b) => (favs.includes(b.name) - favs.includes(a.name)) || a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
         : info.wallpapers
     property int current: 0
+    property string colorMode: (info.modes || ["theme", "auto", "dark", "light"])[info.mode || 0]
+    function setColorMode(id) {
+        if (id === colorMode) return;
+        info = Object.assign({}, info, { mode: ["theme", "auto", "dark", "light"].indexOf(id) });
+        Quickshell.execDetached([bin, "colormode", id]);
+        relist.restart();
+    }
     property string applied: ""        // what was just applied (shown until the listing catches up)
 
     Process {
@@ -127,16 +134,45 @@ FocusScope {
             anchors { top: big.bottom; topMargin: 14; left: parent.left; right: parent.right }
             spacing: 6
             Label { width: parent.width; elide: Text.ElideRight; text: preview.it ? preview.it.name.replace(/-/g, " ") : ""; size: 17; weight: Theme.wSemibold }
-            Row {
-                visible: picker.mode === "themes" && !!preview.it
-                spacing: 6
-                Repeater {
-                    model: preview.it ? [preview.it.bg, preview.it.accent] : []
-                    Rectangle { required property var modelData; width: 18; height: 18; radius: 9; color: modelData || "transparent"; border.width: 1; border.color: Qt.rgba(1, 1, 1, 0.2) }
+            // The palette, as one strip: the theme's own colours (its terminal
+            // palette), or the wallpaper's wallbash colours.
+            Item {
+                width: parent.width; height: 34
+                visible: !!(preview.it && preview.it.palette && preview.it.palette.length)
+                ClippingRectangle {
+                    y: 4; width: parent.width; height: 14; radius: 7
+                    color: "transparent"
+                    Row {
+                        anchors.fill: parent
+                        Repeater {
+                            model: preview.it && preview.it.palette ? preview.it.palette : []
+                            Rectangle {
+                                required property var modelData
+                                width: parent.width / (preview.it.palette.length || 1); height: parent.height
+                                color: modelData
+                                Behavior on color { ColorAnimation { duration: 140 } }
+                            }
+                        }
+                    }
                 }
-                Label { anchors.verticalCenter: parent.verticalCenter; text: "Background · accent"; size: 11; color: Theme.textTertiary }
+                Label { y: 22; text: picker.mode === "themes" ? "Theme palette" : "Wallpaper colours"; size: 11; color: Theme.textTertiary }
             }
             Label { text: preview.it && preview.it.current ? "In use now" : "Press ↵ or click to apply"; size: 12; color: Theme.textSecondary }
+        }
+    }
+
+    // Where colours come from, for every app at once (HyDE's wallbash mode):
+    // the theme's own palette, or the wallpaper's (as it is, darkened, lightened).
+    Column {
+        anchors { right: parent.right; rightMargin: 22; bottom: parent.bottom; bottomMargin: 14 }
+        width: 310
+        spacing: 8
+        Label { text: "Colours"; size: 12; weight: Theme.wMedium; color: Theme.textSecondary }
+        Segmented {
+            width: parent.width
+            options: [{ id: "theme", label: "Theme" }, { id: "auto", label: "Wallpaper" }, { id: "dark", label: "Dark" }, { id: "light", label: "Light" }]
+            current: picker.colorMode
+            onPicked: id => picker.setColorMode(id)
         }
     }
 
@@ -175,6 +211,15 @@ FocusScope {
                     asynchronous: true
                     cache: true
                 }
+                Row {
+                    anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
+                    height: 5
+                    visible: !!(card.modelData.palette && card.modelData.palette.length)
+                    Repeater {
+                        model: card.modelData.palette || []
+                        Rectangle { required property var modelData; width: shot.width / card.modelData.palette.length; height: 5; color: modelData }
+                    }
+                }
                 scale: cardArea.pressed ? 0.97 : 1
                 Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
             }
@@ -198,10 +243,9 @@ FocusScope {
                 anchors { left: shot.left; leftMargin: 2; top: shot.bottom; topMargin: 8 }
                 width: shot.width
                 spacing: 6
-                Rectangle { visible: !!card.modelData.accent; anchors.verticalCenter: parent.verticalCenter; width: 8; height: 8; radius: 4; color: card.modelData.accent || "transparent" }
                 Label {
                     anchors.verticalCenter: parent.verticalCenter
-                    width: parent.width - 40
+                    width: parent.width - 26
                     elide: Text.ElideRight
                     text: card.modelData.name.replace(/-/g, " ")
                     size: 12; weight: card.on ? Theme.wMedium : Theme.wRegular

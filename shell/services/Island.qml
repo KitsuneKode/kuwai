@@ -18,8 +18,41 @@ import Quickshell.Io
 Singleton {
     id: root
 
-    readonly property var panels: ["calendar", "power", "launcher", "settings", "system", "theme", "keys"]
+    readonly property var panels: ["calendar", "power", "launcher", "settings", "system", "theme", "keys", "switcher", "updates"]
     property string panel: ""
+    // Each screen's island width at rest, so other surfaces (the clipboard,
+    // toasts) can grow out of exactly its shape. Set by IslandBar.
+    property var restWidths: ({})
+    function setRestWidth(screenName, w) {
+        if (!screenName || restWidths[screenName] === w) return;
+        const m = Object.assign({}, restWidths);
+        m[screenName] = w;
+        restWidths = m;
+    }
+    // The island's resting shape per screen, published for kuwai's password
+    // prompt (shell-auth/, its own process) so it can grow out of exactly this
+    // shape: $XDG_RUNTIME_DIR/rice/island.json (tmpfs, this user only).
+    property var restShapes: ({})
+    function setRestShape(screenName, w, h, top, notch) {
+        if (!screenName) return;
+        const cur = restShapes[screenName];
+        if (cur && cur.w === w && cur.h === h && cur.top === top && cur.notch === notch) return;
+        const m = Object.assign({}, restShapes);
+        m[screenName] = { w: w, h: h, top: top, notch: notch };
+        restShapes = m;
+        publish.restart();
+    }
+    Timer {
+        id: publish
+        interval: 400
+        onTriggered: shapeFile.setText(JSON.stringify({ screens: root.restShapes }))
+    }
+    FileView {
+        id: shapeFile
+        path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/rice/island.json"
+        printErrors: false
+        atomicWrites: true
+    }
     property string screen: ""
     // "key" opens without the grow (Emil: never animate what a key does
     // a hundred times a day); "pointer" grows out of the island.
@@ -34,6 +67,11 @@ Singleton {
     // going back returns to it, expanded while the pointer is still there.
     function open(name, screenName, how, from) {
         if (panels.indexOf(name) < 0) return;
+        // From a key (no screen given): ask Hyprland where you are first.
+        if (!screenName) { Screens.refresh(n => root.openOn(name, n, how, from)); return; }
+        openOn(name, screenName, how, from);
+    }
+    function openOn(name, screenName, how, from) {
         const s = screenName || Screens.focusedName;
         history = panel && panel !== name && s === screen ? [...history, panel] : from === "island" ? ["island"] : [];
         screen = s;
@@ -51,19 +89,27 @@ Singleton {
     function close() { panel = ""; history = []; }
     // The launcher's last search, kept between openings (selected, so typing replaces it).
     property string lastQuery: ""
+    // A mode to open the launcher in (":" emoji, ";" glyphs): placed with the
+    // cursor after it, not selected, so typing continues the search.
+    property string prefill: ""
+    function openWith(prefix) { prefill = prefix; open("launcher", "", "key"); }
     // The theme picker's tab: "themes" or "wallpapers".
     property string themeMode: "themes"
     function themes(mode) {
         themeMode = mode;
-        if (panel === "theme" && screen === Screens.focusedName) close();
         // Used now and then (not a hundred times a day), so it grows open
         // even from the keyboard: the motion shows where it came from.
-        else open("theme", "", "pointer");
+        Screens.refresh(n => {
+            if (root.panel === "theme" && root.screen === n) root.close();
+            else root.openOn("theme", n, "pointer");
+        });
     }
     function toggle(name, screenName, how) {
-        const s = screenName || Screens.focusedName;
-        if (panel === name && screen === s) close();
-        else open(name, s, how);
+        const go = s => {
+            if (root.panel === name && root.screen === s) root.close();
+            else root.openOn(name, s, how);
+        };
+        if (screenName) go(screenName); else Screens.refresh(go);
     }
 
     // ── Launcher frecency ────────────────────────────────────────────────

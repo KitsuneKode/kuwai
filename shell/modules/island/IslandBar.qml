@@ -18,6 +18,7 @@
 // on top; a right click anywhere in a panel, or the mouse's back button, goes
 // back (or closes the first panel). Keys: Esc. A click outside closes.
 import QtQuick
+import QtQuick.Effects
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Hyprland
@@ -43,6 +44,7 @@ Scope {
             // notch hangs from it (Settings → Bar & Island → Shape).
             readonly property bool notch: Settings.islandStyle === "notch"
             readonly property int restH: 34
+            readonly property real restW: restRow.implicitWidth + 32
             readonly property int top: notch ? 0 : 6
             readonly property real ear: notch ? 9 : 0
 
@@ -59,8 +61,6 @@ Scope {
                 } else if (hovered) {
                     grown = true;           // back to the island you came from, not all the way down
                 }
-                // Keys open and close it in place: no grow for what a key does.
-                if (Island.via === "key") Qt.callLater(() => { sw.settle(); sh.settle(); pv.settle(); });
             }
             Connections {
                 target: Island
@@ -81,7 +81,9 @@ Scope {
             }
 
             anchors.top: true
-            implicitWidth: 900
+            // Wide enough for the widest panel (themes, 980) plus its shadow;
+            // the mask keeps the empty sides click-through.
+            implicitWidth: 1120
             implicitHeight: 640
             exclusiveZone: showBar ? restH + top + (notch ? 2 : 6) : 0
             color: "transparent"
@@ -104,14 +106,26 @@ Scope {
             // Over the workspace pills the island stays put: they're for clicking.
             readonly property bool overPills: restRow.pillsHovered
             onOverPillsChanged: if (!overPills && hovered && !grown) intent.restart()
-            Timer { id: intent; interval: Settings.hoverDelay; onTriggered: win.grown = win.hovered && !win.panelHere && !win.overPills }
-            Timer { id: leave; interval: 260; onTriggered: if (!win.hovered) win.grown = false }
+            // A banner on show stays a banner under the pointer (so its button
+            // can be clicked): hovering only grows the island when there's none.
+            Timer { id: intent; interval: Settings.hoverDelay; onTriggered: win.grown = win.hovered && !win.panelHere && !win.overPills && !win.bannerHere }
+            // Open tray menus (TrayRow): the pointer is on the menu, not the
+            // island, but the island must stay grown or the menu loses its anchor.
+            property int menus: 0
+            onMenusChanged: if (menus === 0 && !hovered) leave.restart()
+            Timer { id: leave; interval: 260; onTriggered: if (!win.hovered && win.menus === 0) win.grown = false }
             onHoveredChanged: hovered ? intent.restart() : leave.restart()
 
-            // Growing: a soft spring with visible give (damping ratio ≈ 0.68,
-            // the island's bounce); shrinking: firmer (≈ 0.82), a touch quicker.
-            readonly property var grow: ({ stiffness: 260, damping: 22 })
-            readonly property var shrink: ({ stiffness: 340, damping: 30 })
+            // Critically damped both ways (ratio 1.0): the shape lands without
+            // overshoot, so quick back-to-back changes (a flick through the
+            // switcher, a HUD pulse) never jiggle. Growing ~0.33 s, shrinking a
+            // touch firmer and quicker.
+            // From a key the same morph runs, just quicker (~0.15 s): it is the
+            // same object whether you click or press Super+A, so it moves the
+            // same way; it only must not make a keypress wait.
+            readonly property bool keyed: Island.via === "key"
+            readonly property var grow: keyed ? ({ stiffness: 1400, damping: 74.8 }) : ({ stiffness: 300, damping: 34.6 })
+            readonly property var shrink: keyed ? ({ stiffness: 1600, damping: 80 }) : ({ stiffness: 380, damping: 39 })
             Spring { id: m; tier: win.grown ? win.grow : win.shrink; epsilon: 0.001; target: win.grown && !win.panelHere ? 1 : 0 }
             Spring { id: pv; tier: win.panelHere ? win.grow : win.shrink; epsilon: 0.001; target: win.panelHere ? 1 : 0 }
 
@@ -123,6 +137,13 @@ Scope {
             Spring { id: bv; tier: win.bannerHere ? win.grow : win.shrink; epsilon: 0.001; target: win.bannerHere ? 1 : 0 }
             readonly property real targetW: panelHere ? panelSize.width : grown ? hoverSize.width : bannerHere ? 440 : restRow.implicitWidth + 32
             readonly property real targetH: panelHere ? panelSize.height : grown ? hoverSize.height : bannerHere ? 72 : restH
+            // Published so surfaces that grow out of the island (the HUD, the
+            // clipboard) start from the shape actually on screen: rest, banner,
+            // hover or panel. Changes with the state, not per frame.
+            onTargetWChanged: Island.setRestWidth(screenName, targetW)
+            Component.onCompleted: Island.setRestWidth(screenName, targetW)
+            readonly property var restShape: [restW, restH, top, notch]
+            onRestShapeChanged: Island.setRestShape(screenName, restW, restH, top, notch)
             Spring { id: sw; tier: win.targetW >= sw.value ? win.grow : win.shrink; epsilon: 0.3; target: win.targetW; Component.onCompleted: settle() }
             Spring { id: sh; tier: win.targetH >= sh.value ? win.grow : win.shrink; epsilon: 0.3; target: win.targetH; Component.onCompleted: settle() }
 
@@ -139,7 +160,35 @@ Scope {
                 }
             }
             readonly property var mine: Hyprland.workspaces.values.filter(w => w.id > 0 && w.monitor === monitor)
-            readonly property int wsCount: Math.max(Settings.workspaceCount, ...mine.map(w => w.id), activeWs)
+            // kuwai gives each screen its own block of ten (1–10, 11–20, …): pills are
+            // numbered within this screen's block.
+            readonly property int wsBase: Math.floor((Math.max(1, activeWs) - 1) / 10) * 10
+            readonly property int wsCount: Math.max(Settings.workspaceCount, ...mine.map(w => w.id - wsBase), activeWs - wsBase)
+            // The pills. kuwai gives each screen a block of ten (laptop 1–10, the
+            // next screen 11–20…): show this screen's 1…N, N = the larger of the
+            // minimum (Settings.workspaceCount), the highest one in use and the
+            // current one. Workspaces from another screen's block that ended up
+            // here (an unplugged monitor) follow after a gap, hollow.
+            readonly property int wsBlock: {
+                if (screenName.startsWith("eDP")) return 0;
+                const counts = {};
+                for (const w of mine) { const b = Math.floor((w.id - 1) / 10); if (b > 0) counts[b] = (counts[b] || 0) + 1; }
+                let best = 1, n = -1;
+                for (const b in counts) if (counts[b] > n) { n = counts[b]; best = Number(b); }
+                return best;
+            }
+            readonly property var wsList: {
+                const base = wsBlock * 10;
+                const inBlock = id => id > base && id <= base + 10;
+                const used = mine.filter(w => w.toplevels && w.toplevels.values.length > 0).map(w => w.id);
+                let n = Settings.workspaceCount;
+                for (const id of used.concat([activeWs])) if (inBlock(id)) n = Math.max(n, id - base);
+                const out = [];
+                for (let i = 1; i <= Math.min(10, n); i++) out.push({ id: base + i, guest: false });
+                const guests = used.concat([activeWs]).filter(id => id > 0 && !inBlock(id));
+                for (const id of [...new Set(guests)].sort((a, b) => a - b)) out.push({ id: id, guest: true });
+                return out;
+            }
             readonly property var player: Mpris.players.values.find(p => p.playbackState === MprisPlaybackState.Playing) || Mpris.players.values[0] || null
             readonly property bool showMedia: Settings.hoverMedia && player !== null
             property date now: new Date()
@@ -152,6 +201,8 @@ Scope {
             Component { id: systemPanel; SystemPanel {} }
             Component { id: themePanel; ThemePanel {} }
             Component { id: keysPanel; KeysPanel {} }
+            Component { id: switcherPanel; SwitcherPanel {} }
+            Component { id: updatesPanel; UpdatesPanel {} }
 
             Elevation {
                 target: frame
@@ -167,7 +218,7 @@ Scope {
                 // Without the bar it is only there for a panel: it fades in as it grows.
                 opacity: win.showBar ? 1 : Math.max(0, Math.min(1, Math.max(pv.value, bv.value) * 2.5))
 
-                HoverHandler { onHoveredChanged: win.hovered = hovered }
+                HoverHandler { onHoveredChanged: { win.hovered = hovered; if (win.bannerHere || !hovered) Alerts.held = hovered && win.bannerHere; } }
 
                 // The island itself: a notch, or a floating black-glass pill.
                 NotchShape {
@@ -243,6 +294,19 @@ Scope {
                         scale: 0.97 + 0.03 * k
                         transformOrigin: Item.Top
                         visible: opacity > 0.01 || win.panelHere
+                        // Materialize: the content comes into focus while it drops the
+                        // last few pixels out of the island, and goes back the same
+                        // way. The blur layer exists only mid-transition (never at
+                        // rest, so no offscreen texture while you use the panel).
+                        transform: Translate { y: Theme.reduceMotion ? 0 : -8 * (1 - panelScope.k) }
+                        layer.enabled: !Theme.reduceMotion && panelScope.k > 0.001 && panelScope.k < 0.995
+                        layer.smooth: true
+                        layer.effect: MultiEffect {
+                            blurEnabled: true
+                            blurMax: 24
+                            blur: Math.pow(1 - panelScope.k, 1.5) * 0.7
+                            autoPaddingEnabled: false
+                        }
                         Keys.onEscapePressed: Island.back()
                         Keys.onPressed: event => { idle.restart(); event.accepted = false; }
 
@@ -264,7 +328,7 @@ Scope {
                                     Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f0141}"; font.family: Theme.fontGlyph; font.pixelSize: 14; color: Theme.textSecondary }
                                     Label {
                                         anchors.verticalCenter: parent.verticalCenter
-                                        text: ({ calendar: "Calendar", power: "Power", launcher: "Search", settings: "Settings", system: "System", theme: "Themes", keys: "Shortcuts" })[Island.history[Island.history.length - 1]] || "Back"
+                                        text: ({ calendar: "Calendar", power: "Power", launcher: "Search", settings: "Settings", system: "System", theme: "Themes", keys: "Shortcuts", switcher: "Windows" })[Island.history[Island.history.length - 1]] || "Back"
                                         size: 12; weight: Theme.wMedium; color: Theme.textSecondary
                                     }
                                 }
@@ -276,7 +340,7 @@ Scope {
                             y: win.backH
                             active: win.panelHere || pv.value > 0.01
                             focus: true
-                            sourceComponent: ({ calendar: calendarPanel, power: powerPanel, launcher: launcherPanel, settings: settingsPanel, system: systemPanel, theme: themePanel, keys: keysPanel })[win.shownPanel] || null
+                            sourceComponent: ({ calendar: calendarPanel, power: powerPanel, launcher: launcherPanel, settings: settingsPanel, system: systemPanel, theme: themePanel, keys: keysPanel, switcher: switcherPanel, updates: updatesPanel })[win.shownPanel] || null
                         }
                         // Right click (anywhere a control doesn't take it) or the mouse's back button: back.
                         TapHandler {

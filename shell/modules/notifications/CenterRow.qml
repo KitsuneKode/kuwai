@@ -11,16 +11,19 @@ Item {
     id: row
 
     required property var item
+    // The row can outlive its notification for a frame while it collapses:
+    // read through `it` so bindings see an empty object, not null.
+    readonly property var it: item || ({})
     property var center                         // the NotificationsView
     property bool showTime: true
     readonly property bool selected: center && center.selected === item
     onSelectedChanged: if (selected && center) center.selectedRow = row
     Component.onDestruction: if (center && center.hoverRow === row) center.hoverRow = null
 
-    readonly property bool critical: item.severity === "critical"
-    readonly property bool warning: item.severity === "warning"
+    readonly property bool critical: it.severity === "critical"
+    readonly property bool warning: it.severity === "warning"
     readonly property color accent: critical ? Theme.red : warning ? Theme.orange : "transparent"
-    readonly property bool unread: item.time > Notifs.lastSeen
+    readonly property bool unread: it.time > Notifs.lastSeen
 
     property real reveal: 0
     property bool removing: false
@@ -40,7 +43,7 @@ Item {
     NumberAnimation { id: grow; target: row; property: "reveal"; to: 1; duration: Theme.reduceMotion ? 0 : Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
     NumberAnimation {
         id: shrink; target: row; property: "reveal"; to: 0; duration: Theme.exitMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut
-        onFinished: row.item.popup ? Notifs.dismiss(row.item) : Notifs.remove(row.item)
+        onFinished: row.it.popup ? Notifs.dismiss(row.item) : Notifs.remove(row.item)
     }
     function remove() {
         if (removing) return;
@@ -52,7 +55,7 @@ Item {
     HoverHandler {
         id: hover
         onHoveredChanged: if (row.center) row.center.setHover(row, hovered)
-        cursorShape: row.item.notification || row.item.focusClass ? Qt.PointingHandCursor : Qt.ArrowCursor
+        cursorShape: row.it.notification || row.it.focusClass ? Qt.PointingHandCursor : Qt.ArrowCursor
     }
     // Press feedback, kept tiny: rows are hit often.
     scale: tapH.pressed ? 0.985 : 1
@@ -117,7 +120,7 @@ Item {
                 Label {
                     id: titleText
                     width: titleRow.width - (row.critical || row.warning ? chip.implicitWidth + 18 : 0)
-                    text: row.center ? row.center.highlight(row.item.title) : row.item.title
+                    text: row.center ? row.center.highlight(row.it.title) : row.it.title
                     textFormat: Text.StyledText
                     elide: Text.ElideRight
                     size: 14
@@ -170,8 +173,8 @@ Item {
         Label {
             width: parent.width
             // Bodies may carry markup; matches highlight on the plain text.
-            text: row.center && row.center.terms.length ? row.center.highlight(row.item.body.replace(/<[^>]*>/g, "")) : row.item.body
-            visible: row.item.body !== ""
+            text: row.center && row.center.terms.length ? row.center.highlight(row.it.body.replace(/<[^>]*>/g, "")) : row.it.body
+            visible: row.it.body !== ""
             textFormat: Text.StyledText
             wrapMode: Text.Wrap
             maximumLineCount: 3
@@ -182,23 +185,23 @@ Item {
         }
 
         Row {
-            visible: row.item.status !== ""
+            visible: row.it.status !== ""
             spacing: 6
             topPadding: 2
             Text {
-                visible: row.item.statusGlyph !== ""
+                visible: row.it.statusGlyph !== ""
                 anchors.verticalCenter: parent.verticalCenter
-                text: row.item.statusGlyph
+                text: row.it.statusGlyph
                 font.family: Theme.fontGlyph
                 font.pixelSize: 13
-                color: row.item.statusTone === "positive" ? Theme.positive
-                     : row.item.statusTone === "caution" ? Theme.caution
-                     : row.item.statusTone === "critical" ? Theme.critical
+                color: row.it.statusTone === "positive" ? Theme.positive
+                     : row.it.statusTone === "caution" ? Theme.caution
+                     : row.it.statusTone === "critical" ? Theme.critical
                      : Theme.textSecondary
             }
             Label {
                 anchors.verticalCenter: parent.verticalCenter
-                text: row.item.status
+                text: row.it.status
                 size: 12
                 weight: Theme.wMedium
                 color: Theme.textSecondary
@@ -213,7 +216,7 @@ Item {
         triggeredOnStart: true
         interval: 30000
         onTriggered: {
-            const m = Math.floor((Date.now() - row.item.time) / 60000);
+            const m = Math.floor((Date.now() - row.it.time) / 60000);
             const d = Math.floor(m / 1440);
             row.ageText = m < 1 ? "now" : m < 60 ? m + "m" : m < 1440 ? Math.floor(m / 60) + "h" : d + "d";
         }

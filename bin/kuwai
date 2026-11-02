@@ -1,0 +1,242 @@
+#!/usr/bin/env bash
+# kuwai — the Hyprland half of the rice, from the command line.
+#
+#   kuwai info                      version, mode, GPU, theme
+#   kuwai doctor                    check config, session, scripts; exit 1 on problems
+#   kuwai mode [NAME|--pick|list]   focus · default · glass · gaming · battery
+#   kuwai motion [full|reduced|off]
+#   kuwai gpu [auto|nvidia|intel]   renderer for the next login
+#   kuwai feature [NAME on|off]     list / switch what kuwai does on its own
+#   kuwai focus [MINUTES|stop]      focus session: DND + focus mode for a while
+#   kuwai session [save|restore]    the open apps and where they were
+#   kuwai binds [WORD]              every bind, grouped as in the Shortcuts panel
+#   kuwai reload
+set -uo pipefail
+
+ROOT=${KUWAI_ROOT:-$HOME/Projects/rice}
+ENTRY=${XDG_CONFIG_HOME:-$HOME/.config}/hypr/hyprland.lua
+STATE_DIR=${XDG_STATE_HOME:-$HOME/.local/state}/kuwai
+STATE=$STATE_DIR/state
+
+lua() { hyprctl repl "$1" 2>/dev/null; }
+live() { [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && hyprctl version >/dev/null 2>&1; }
+
+state_set() { # key value (value empty = delete)
+    mkdir -p "$STATE_DIR"; touch "$STATE"
+    local tmp; tmp=$(mktemp "$STATE_DIR/.state.XXXXXX")
+    grep -v "^$1=" "$STATE" >"$tmp" || true
+    [ -n "${2:-}" ] && printf '%s=%s\n' "$1" "$2" >>"$tmp"
+    sort -o "$tmp" "$tmp"; mv "$tmp" "$STATE"
+}
+state_get() { sed -n "s/^$1=//p" "$STATE" 2>/dev/null | tail -1; }
+
+MODES="focus default glass gaming battery"
+describe() {
+    case $1 in
+        focus) echo "Opaque windows, glass on the shell only" ;;
+        default) echo "Theme as designed, per-app translucency" ;;
+        glass) echo "Liquid glass: acrylic lens blur, translucent windows" ;;
+        gaming) echo "Nothing between you and the frame" ;;
+        battery) echo "Light effects, longer battery" ;;
+    esac
+}
+
+cmd_mode() {
+    local m=${1:-}
+    case $m in
+        "") state_get mode || true; [ -z "$(state_get mode)" ] && echo focus; return ;;
+        list) for x in $MODES; do printf '%-8s %s\n' "$x" "$(describe "$x")"; done; return ;;
+        --pick)
+            local menu cur; cur=$(state_get mode); cur=${cur:-focus}
+            menu=$(for x in $MODES; do printf '%s%s\t%s\n' "$x" "$([ "$x" = "$cur" ] && echo ' ●')" "$(describe "$x")"; done)
+            if command -v rofi >/dev/null; then
+                m=$(printf '%s\n' "$menu" | rofi -dmenu -i -p "Mode" -theme-str 'window {width: 34em;}' | cut -f1 | awk '{print $1}')
+            elif command -v fuzzel >/dev/null; then
+                m=$(printf '%s\n' "$menu" | fuzzel --dmenu -p "Mode " | cut -f1 | awk '{print $1}')
+            fi
+            [ -n "$m" ] || return 0 ;;
+    esac
+    case " $MODES " in *" $m "*) ;; *) echo "kuwai: no mode '$m' (try: $MODES)" >&2; return 2 ;; esac
+    if live; then hyprctl eval "kuwai.mode('$m')" >/dev/null; else state_set mode "$m"; fi
+    echo "mode: $m — $(describe "$m")"
+}
+
+cmd_motion() {
+    case ${1:-} in
+        "") echo "${RICE_REDUCE_MOTION:+reduced (RICE_REDUCE_MOTION)}$(state_get motion)"; [ -z "$(state_get motion)" ] && echo full; return ;;
+        full) state_set motion "" ;;
+        reduced|off) state_set motion "$1" ;;
+        *) echo "usage: kuwai motion [full|reduced|off]" >&2; return 2 ;;
+    esac
+    live && hyprctl reload >/dev/null; echo "motion: $1"
+}
+
+cmd_gpu() {
+    case ${1:-} in
+        "") echo "renderer now: ${KUWAI_GPU_PRIMARY:-$(lua 'return kuwai.K.gpu and kuwai.K.gpu.primary or "?"')}  ·  choice: $(state_get gpu || true)${KUWAI_GPU:+ (KUWAI_GPU=$KUWAI_GPU)}"
+            [ -z "$(state_get gpu)" ] && echo "(auto: NVIDIA when a screen hangs off it at login, the iGPU otherwise)"; return ;;
+        auto) state_set gpu "" ;;
+        nvidia|intel) state_set gpu "$1" ;;
+        *) echo "usage: kuwai gpu [auto|nvidia|intel]" >&2; return 2 ;;
+    esac
+    echo "gpu: $1 — takes effect at the next login (Hyprland picks its renderer once)"
+}
+
+cmd_binds() {
+    hyprctl binds -j | jq -r --arg q "${1:-}" '
+      .[] | select(.has_description and .description != "") | .modmask as $mm |
+      (.description | (capture("^\\[(?<g>[^\\]]+)\\]\\s*(?<t>.*)$") // {g: "Other", t: .})) as $d |
+      ([[64, "Super"], [4, "Ctrl"], [8, "Alt"], [1, "Shift"]] | map(select((($mm / .[0]) | floor) % 2 == 1) | .[1])) as $mods |
+      {g: ($d.g | split("|") | join(" · ")), t: $d.t, k: ($mods + [.key] | join("+"))} |
+      select($q == "" or ((.g + " " + .t + " " + .k) | ascii_downcase | contains($q | ascii_downcase))) |
+      "\(.g)\t\(.k)\t\(.t)"' | sort -t$'\t' -k1,1 -s | awk -F'\t' '$1 != g { g = $1; printf "\n\033[1m%s\033[0m\n", g } { printf "  %-26s %s\n", $2, $3 }'
+}
+
+FEATURES="island_switcher clamshell battery_guard session_restore launch_focus quake minimize per_monitor_ws layouts screenshare_privacy auto_battery auto_game night_light persistent_size hold_super wobble resize_mode remember_place pip_dodge focus_sessions overview"
+cmd_feature() {
+    local name=${1:-} v=${2:-}
+    if [ -z "$name" ]; then
+        if live && out=$(lua 'return kuwai.features()') && [[ $out == *=* ]]; then
+            printf '%s\n' "$out" | awk -F'\t' '{split($1,a,"="); printf "  %-22s %-4s %s\n", a[1], a[2], $2}'
+        else
+            for f in $FEATURES; do v=$(state_get "feature.$f"); printf '  %-22s %s\n' "$f" "${v:-on (default)}"; done
+        fi
+        return
+    fi
+    case " $FEATURES " in *" $name "*) ;; *) echo "kuwai: no feature '$name' ($FEATURES)" >&2; return 2 ;; esac
+    case $v in
+        on|off) ;;
+        *) echo "usage: kuwai feature $name on|off" >&2; return 2 ;;
+    esac
+    if live; then hyprctl eval "kuwai.feature('$name', $([ "$v" = on ] && echo true || echo false))" >/dev/null; else state_set "feature.$name" "$v"; fi
+    echo "$name: $v"
+}
+
+problems=0
+ok() { printf '  \033[32m✓\033[0m %s\n' "$*"; }
+bad() { printf '  \033[31m✗\033[0m %s\n' "$*"; problems=$((problems + 1)); }
+note() { printf '  \033[33m•\033[0m %s\n' "$*"; }
+
+cmd_doctor() {
+    echo "Config"
+    out=$(Hyprland --verify-config -c "$ENTRY" 2>&1); vrc=$?
+    if [ $vrc -ge 128 ]; then
+        bad "Hyprland --verify-config crashed (signal $((vrc - 128))) — see coredumpctl"
+    elif [ $vrc -eq 0 ]; then
+        res=$(printf '%s\n' "$out" | sed 's/\x1b\[[0-9;]*m//g' | sed -n '/Config parsing result:/,$p' | tail -n +2 | sed '/^$/d')
+        if [ "$res" = "config ok" ]; then ok "Hyprland --verify-config: ok"; else bad "verify-config:"; printf '%s\n' "$res" | sed 's/^/      /'; fi
+        kerr=$(printf '%s\n' "$out" | sed 's/\x1b\[[0-9;]*m//g' | grep -E '\[kuwai\] ' | grep -v 'gpu:' | sed 's/.*\[kuwai\] //')
+        [ -z "$kerr" ] && ok "kuwai modules: no errors" || { bad "kuwai module errors:"; printf '%s\n' "$kerr" | sed 's/^/      /'; }
+    else
+        bad "could not run Hyprland --verify-config"
+    fi
+    for f in "$ENTRY" "$ROOT/hypr/init.lua" "$ROOT"/hypr/kuwai/*.lua "${ENTRY%/*}"/monitors.lua "${ENTRY%/*}"/user.lua; do
+        [ -f "$f" ] && { luac -p "$f" 2>/dev/null || bad "syntax: $f"; }
+    done
+
+    echo "Session"
+    if live; then
+        # Ask the live process: /proc/PID/environ only shows the env it started with.
+        cfg=$(lua 'return os.getenv("HYPRLAND_CONFIG") or ""')
+        case $cfg in
+            ""|*hyprland.lua) ok "Hyprland reads ${cfg:-~/.config/hypr/hyprland.lua}" ;;
+            *) bad "HYPRLAND_CONFIG=$cfg is not the Lua entry — Hyprland will load the wrong file" ;;
+        esac
+        if grep -qs 'HYPRLAND_CONFIG=.*hyprland\.conf' "${ZDOTDIR:-$HOME}"/conf.d/hyde/env.zsh "$HOME"/.config/uwsm/env-hyprland.d/*.sh; then
+            bad "your login env still exports a hyprlang HYPRLAND_CONFIG (HyDE's env.zsh / uwsm env)"
+        fi
+        # loaded_at is set by init.lua on every real load. A `hyprctl eval`
+        # dofile doesn't count, and Hyprland caches its config path at start.
+        stamp=$(lua 'return tostring(kuwai and kuwai.loaded_at)')
+        [[ $stamp =~ ^[0-9]+$ ]] && ok "kuwai loaded by Hyprland $(date -d "@$stamp" +%H:%M:%S)" || bad "kuwai isn't what Hyprland loaded this session — log out and back in"
+        errs=$(hyprctl configerrors 2>/dev/null | sed '/^$/d')
+        [ -z "$errs" ] && ok "no live config errors" || { bad "live config errors:"; printf '%s\n' "$errs" | sed 's/^/      /'; }
+        info=$(lua 'return kuwai and kuwai.info() or "kuwai not loaded"'); [[ $info == kuwai\ 0* ]] && ok "$info" || bad "$info"
+        [ -s "$STATE_DIR/errors" ] && { bad "errors at last load:"; sed 's/^/      /' "$STATE_DIR/errors"; }
+        n=$(hyprctl binds -j | jq '[.[] | select(.submap == "")] | length'); ok "$n binds"
+        hyprctl monitors -j | jq -r '.[] | "\(.name) \(.width)x\(.height)@\(.refreshRate|floor)Hz ×\(.scale|tostring|.[0:5]) \(.currentFormat) vrr:\(.vrr)"' | while read -r l; do ok "screen $l"; done
+    else
+        note "not inside Hyprland — session checks skipped"
+    fi
+    for u in hypridle.service voxtype.service gcr-ssh-agent.socket; do
+        st=$(systemctl --user is-active "$u" 2>/dev/null); [ "$st" = active ] && ok "$u" || note "$u: $st"
+    done
+    # Password prompts: kuwai's (rice-auth), or KDE's as the fallback; never none.
+    if [ "$(systemctl --user is-active rice-auth.service 2>/dev/null)" = active ]; then ok "password prompt: kuwai (rice-auth)"
+    elif [ "$(systemctl --user is-active plasma-polkit-agent.service 2>/dev/null)" = active ]; then note "password prompt: KDE's fallback (rice-auth not running)"
+    else bad "no password prompt (polkit agent) running: systemctl --user start rice-auth"; fi
+    auth_audit
+    n=$(faillock --user "$USER" 2>/dev/null | grep -c ' V$'); deny=$(sed -nE 's/^\s*deny\s*=\s*([0-9]+).*/\1/p' /etc/security/faillock.conf); deny=${deny:-3}
+    [ "${n:-0}" -ge "$deny" ] && bad "account locked by faillock ($n/$deny failed tries): faillock --user $USER --reset" || ok "faillock: ${n:-0}/$deny recent failed tries"
+    [ -S "${XDG_RUNTIME_DIR:-/run/user/$UID}/gcr/ssh" ] && ok "ssh agent socket" || note "no ssh agent socket"
+
+    echo "Scripts"
+    legacy=$(grep -rlE "hyprctl( -q| -j)? (keyword|dispatch (workspace|exit|focuswindow|movetoworkspace|togglespecialworkspace|killactive|exec |submap [a-z]))|hyprctl --batch" \
+        "$HOME/Scripts" "$ROOT/bin" "$ROOT/shell" "$HOME/.config/voxtype" "$HOME/.local/share/waybar/modules" 2>/dev/null | grep -vE '\.(bak|orig)|lib-dispatch.sh|esc-guard|/bin/kuwai$' )
+    [ -z "$legacy" ] && ok "no pre-0.57 hyprctl syntax in your scripts" || { bad "pre-0.57 hyprctl syntax:"; printf '%s\n' "$legacy" | sed "s|$HOME|~|; s/^/      /"; }
+    grep -rqP 'Hyprland\.dispatch\(["`](?!hl\.|kuwai\.)' "$ROOT/shell" 2>/dev/null && bad "shell: Hyprland.dispatch with classic syntax" || ok "shell dispatches are Lua"
+
+    echo
+    [ $problems -eq 0 ] && echo "kuwai: all good" || echo "kuwai: $problems problem(s)"
+    [ $problems -eq 0 ]
+}
+
+# The password prompt (shell-auth/) may only read files and draw. Its own
+# shell.qml runs four known commands; the vendored config/ and components/ run
+# none. Links into the shell are refused: anything added there later would
+# run next to your password.
+auth_audit() {
+    local A="$ROOT/shell-auth" bad_=0
+    [ -d "$A" ] || { note "shell-auth not found"; return; }
+    if [ -n "$(find "$A" -type l)" ]; then bad "shell-auth contains links: $(find "$A" -type l -printf '%P ' )"; bad_=1; fi
+    local talk
+    talk=$(grep -rnE 'Process|Socket|execDetached|XMLHttpRequest|IpcHandler|Quickshell\.Hyprland|Quickshell\.Services|qs\.services|qs\.modules' "$A/config" "$A/components" 2>/dev/null | grep -vE '^[^:]+:[0-9]+:\s*//' | cut -d: -f1 | sort -u | sed "s|$A/||" | tr '\n' ' ')
+    if [ -n "$talk" ]; then bad "shell-auth config/ or components/ talk to other programs: $talk"; bad_=1; fi
+    if grep -E 'execDetached|XMLHttpRequest|IpcHandler|Socket \{|qs\.services|qs\.modules' "$A/shell.qml" >/dev/null; then bad "shell-auth/shell.qml uses IPC, sockets or the shell's services"; bad_=1; fi
+    local unknown
+    unknown=$(grep -E '^\s*command:' "$A/shell.qml" | grep -vE '"hyprctl", "monitors", "-j"|"hyprctl", "devices", "-j"|"faillock", "--user", root\.me|"sh", "-c", .f="\$HOME/\.face"' )
+    if [ -n "$unknown" ]; then bad "shell-auth/shell.qml runs a command not on its list:"; printf '      %s\n' "$unknown"; bad_=1; fi
+    [ $bad_ -eq 0 ] && ok "password prompt code: files and drawing only (no links, 4 known commands)"
+}
+
+cmd_auth() {
+    case ${1:-status} in
+        diff)   # where the prompt's vendored copies drifted from the shell's
+            for f in Label Spring NotchShape GlassCard; do
+                diff -u <(cat "$ROOT/shell/components/$f.qml") <(sed '1,/^\/\/ on purpose/d' "$ROOT/shell-auth/components/$f.qml") \
+                    --label "shell/components/$f.qml" --label "shell-auth/components/$f.qml" || true
+            done ;;
+        status) systemctl --user --no-pager status rice-auth.service | head -5; auth_audit ;;
+        *) echo "kuwai auth [status|diff]" >&2; return 2 ;;
+    esac
+}
+
+case ${1:-info} in
+    info) live && lua 'return kuwai.info()' && echo || echo "kuwai (not running) · mode $(state_get mode || echo focus)" ;;
+    doctor) cmd_doctor ;;
+    auth) shift; cmd_auth "$@" ;;
+    mode) shift; cmd_mode "$@" ;;
+    motion) shift; cmd_motion "$@" ;;
+    gpu) shift; cmd_gpu "$@" ;;
+    binds) shift; cmd_binds "$@" ;;
+    feature|features) shift; cmd_feature "$@" ;;
+    session) shift; snap=$STATE_DIR/session
+        case ${1:-show} in
+            save) lua 'return kuwai.session_save and kuwai.session_save() or 0' | sed 's/$/ apps saved/' ;;
+            restore) lua 'return kuwai.session_restore and kuwai.session_restore() or "session_restore is off"'; echo ;;
+            offer)  # asked at login (kuwai.resilience): one notification, one button
+                [ -s "$snap" ] || exit 0
+                n=$(grep -vc '^#' "$snap"); when=$(head -1 "$snap" | sed 's/^# kuwai session //')
+                a=$(notify-send -a kuwai -i view-restore -t 30000 -A restore="Restore" -A no="Not now" \
+                    "Restore your last session?" "$n apps on their workspaces, saved $when")
+                [ "$a" = restore ] && lua 'return kuwai.session_restore()' >/dev/null ;;
+            show|*) [ -s "$snap" ] && { head -1 "$snap"; grep -v '^#' "$snap" | awk -F'\t' '{printf "  ws %-3s %-28s %s\n", $1, $5, ($2=="1"?"floating":"")}'; } || echo "no saved session" ;;
+        esac ;;
+    focus) shift; case ${1:-} in
+               stop) lua 'return kuwai.focus and kuwai.focus() or "focus_sessions is off"' ;;
+               *) lua "return kuwai.focus and kuwai.focus(${1:-25}) or 'focus_sessions is off'" ;;
+           esac; echo ;;
+    reload) hyprctl reload ;;
+    -h|--help|help) sed -n '2,/^set/p' "$0" | grep '^#' | sed 's/^# \{0,1\}//' ;;
+    *) echo "kuwai: unknown command '$1' (kuwai help)" >&2; exit 2 ;;
+esac

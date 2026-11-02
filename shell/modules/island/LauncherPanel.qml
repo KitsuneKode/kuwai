@@ -24,6 +24,8 @@ FocusScope {
     focus: true
 
     property string query: ""
+    // When this panel appeared: rows cascade in only during the first moment.
+    readonly property real born: Date.now()
     property int current: 0
     property var lastPointer: null
     readonly property int rowH: 50
@@ -50,7 +52,7 @@ FocusScope {
         { name: "Calendar", sub: "This month", glyph: "\u{f00ed}", run: () => Qt.callLater(() => Island.open("calendar", Island.screen, "key")), keep: true },
         { name: "Clipboard", sub: "History and pins", glyph: "\u{f014c}", run: () => Clipboard.toggle("all") },
         { name: "Screen Recording", sub: "Choose a screen, audio and frame rate", glyph: "\u{f044a}", run: () => Clipboard.recordKey() },
-        { name: "Screenshot", sub: "Pick an area or a window, then annotate", glyph: "\u{f0104}", run: () => Quickshell.execDetached([Quickshell.env("HOME") + "/Projects/rice/bin/rice-shot", "area"]) },
+        { name: "Screenshot", sub: "Pick an area or a window, then annotate", glyph: "\u{f0104}", run: () => Quickshell.execDetached([Paths.bin + "/rice-shot", "area"]) },
         { name: "Notifications", sub: "The center", glyph: "\u{f009a}", run: () => Notifs.toggleCenter("notifications", "key") },
         { name: "Do Not Disturb", sub: Notifs.dnd ? "On: turn off" : "Off: turn on", glyph: "\u{f0594}", run: () => { Notifs.dnd = !Notifs.dnd; } },
         { name: "Sound", sub: "Outputs, inputs, the microphone", glyph: "\u{f057e}", run: () => Notifs.toggleCenter("sound", "key") }
@@ -96,6 +98,14 @@ FocusScope {
         const q = query.trim().toLowerCase();
         const out = [];
         const section = (title, rows) => { if (rows.length) out.push({ kind: "header", name: title }, ...rows); };
+        // `:` emoji, `;` Nerd-font glyphs (HyDE's databases, services/Glyphs).
+        if (query.startsWith(":") || query.startsWith(";")) {
+            const emo = query.startsWith(":");
+            if (emo) Glyphs.wantEmoji = true; else Glyphs.wantGlyphs = true;
+            const hits = Glyphs.search(emo ? Glyphs.emoji : Glyphs.glyphs, query.slice(1), 60);
+            section(emo ? "Emoji" : "Glyphs", hits.map(e => ({ kind: emo ? "emoji" : "glyph", name: e.name, sub: emo ? "Emoji" : "Nerd Font glyph", ch: e.ch, glyph: e.ch })));
+            return out;
+        }
         if (!q) {
             const top = apps.map(e => ({ e: e, f: frecency(e.id) })).filter(x => x.f > 0).sort((a, b) => b.f - a.f).slice(0, 5);
             section("Frequent", top.map(x => ({ kind: "app", entry: x.e, name: x.e.name, sub: x.e.genericName || x.e.comment || "", icon: x.e.icon })));
@@ -135,22 +145,29 @@ FocusScope {
         return out;
     }
     readonly property int selectable: results.filter(r => r.kind !== "header").length
+    // New results snap: the selection lands on the first real row and the list
+    // is back at the top on the same frame. No highlight travels between
+    // keystrokes (DESIGN.md: searching snaps, no choreography between keys) —
+    // each row draws its own selection, like Spotlight.
     onResultsChanged: {
         current = results.findIndex(r => r.kind !== "header");
-        Qt.callLater(() => { list.currentIndex = current; });   // the model reset put it back on 0
+        list.positionViewAtBeginning();
     }
-    // A ListView drops a bound currentIndex when its model changes: set it.
-    onCurrentChanged: Qt.callLater(() => { list.currentIndex = current; })
 
     function run(r) {
         if (!r) return;
-        if (r.kind === "calc") {
+        if (r.kind === "emoji" || r.kind === "glyph") {
+            // Typed into the window you came from once the island lets go of
+            // the keyboard, and left on the clipboard too.
+            Quickshell.execDetached(["wl-copy", "--", r.ch]);
+            Quickshell.execDetached(["sh", "-c", "sleep 0.18; wtype -- \"$1\"", "sh", r.ch]);
+        } else if (r.kind === "calc") {
             Quickshell.execDetached(["wl-copy", r.name]);
         } else if (r.kind === "app") {
             used(r.entry.id);
             r.entry.execute();
         } else if (r.kind === "window") {
-            Hyprland.dispatch("focuswindow address:0x" + r.toplevel.address);
+            Hyprland.dispatch("hl.dsp.focus({window = 'address:0x" + r.toplevel.address + "'})");
         } else if (r.kind === "action") {
             used("action:" + r.name);
             if (!r.action.keep) Island.close();
@@ -203,7 +220,10 @@ FocusScope {
             cursorDelegate: Rectangle { width: 2; radius: 1; color: Theme.blue; visible: field.cursorVisible }
             onTextChanged: { launcher.query = text; Island.lastQuery = text; }
             // The last search comes back, selected: typing replaces it, ↵ repeats it.
-            Component.onCompleted: { text = Island.lastQuery; selectAll(); }
+            Component.onCompleted: {
+                if (Island.prefill) { text = Island.prefill; cursorPosition = text.length; Island.prefill = ""; }
+                else { text = Island.lastQuery; selectAll(); }
+            }
             Keys.onPressed: event => {
                 const k = event.key, ctrl = event.modifiers & Qt.ControlModifier;
                 if (k === Qt.Key_Down || k === Qt.Key_Tab || (ctrl && (k === Qt.Key_J || k === Qt.Key_N))) launcher.move(1);
@@ -215,7 +235,7 @@ FocusScope {
             Label {
                 visible: !field.text
                 anchors.verticalCenter: parent.verticalCenter
-                text: "Search apps, windows and actions"
+                text: "Search apps, windows, actions   :emoji   ;glyphs"
                 size: 19
                 color: Theme.textTertiary
             }
@@ -232,9 +252,8 @@ FocusScope {
         clip: true
         model: launcher.results
         boundsBehavior: Flickable.StopAtBounds
-        highlightMoveDuration: Theme.reduceMotion ? 0 : 110
-        highlightMoveVelocity: -1
-        highlight: Rectangle { radius: 12; color: Qt.rgba(1, 1, 1, 0.10) }
+        currentIndex: -1
+        highlightFollowsCurrentItem: false
 
         delegate: Item {
             id: row
@@ -244,6 +263,34 @@ FocusScope {
             readonly property bool header: modelData.kind === "header"
             width: list.width
             height: header ? 30 : launcher.rowH
+
+            // First paint after opening: rows cascade in (20 ms apart, the
+            // first nine), rising 6 px. Afterwards results just appear —
+            // typing must never replay this.
+            property real enter: 1
+            opacity: enter
+            transform: Translate { y: 6 * (1 - row.enter) }
+            Component.onCompleted: if (!Theme.reduceMotion && Date.now() - launcher.born < 260 && index < 9) { enter = 0; cascade.start(); }
+            SequentialAnimation {
+                id: cascade
+                PauseAnimation { duration: 40 + row.index * 20 }
+                NumberAnimation { target: row; property: "enter"; to: 1; duration: 240; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+            }
+
+            // Selection: drawn by the row itself, so it can't travel or flicker
+            // when the results change under it. Keyboard/pointer moves fade it
+            // across in 90ms; a new result list shows it already in place.
+            Rectangle {
+                anchors.fill: parent
+                anchors.leftMargin: 2; anchors.rightMargin: 2
+                radius: 12
+                visible: !row.header
+                color: Qt.rgba(1, 1, 1, 0.10)
+                border.width: 1
+                border.color: Qt.rgba(1, 1, 1, 0.06)
+                opacity: row.on ? 1 : 0
+                Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 0 : 90; easing.type: Easing.OutCubic } }
+            }
 
             Label {
                 visible: row.header
@@ -267,8 +314,8 @@ FocusScope {
                     Text {
                         anchors.centerIn: parent
                         text: row.modelData.glyph || "\u{f0b2a}"
-                        font.family: row.modelData.kind === "calc" ? Theme.fontRounded : Theme.fontGlyph
-                        font.pixelSize: row.modelData.kind === "calc" ? 18 : 17
+                        font.family: row.modelData.kind === "calc" ? Theme.fontRounded : row.modelData.kind === "emoji" ? "Noto Color Emoji" : Theme.fontGlyph
+                        font.pixelSize: row.modelData.kind === "calc" ? 18 : row.modelData.kind === "emoji" ? 22 : 17
                         color: Theme.textSecondary
                     }
                 }
@@ -293,7 +340,7 @@ FocusScope {
                 opacity: row.on && !row.header ? 1 : 0
                 Label {
                     anchors.verticalCenter: parent.verticalCenter
-                    text: ({ app: "Open", window: "Switch to", action: "Run", calc: "Copy" })[row.modelData.kind] || ""
+                    text: ({ app: "Open", window: "Switch to", action: "Run", calc: "Copy", emoji: "Type", glyph: "Type" })[row.modelData.kind] || ""
                     size: 12
                     color: Theme.textSecondary
                 }

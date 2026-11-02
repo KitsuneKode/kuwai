@@ -268,7 +268,12 @@ Singleton {
         property string cls
         interval: 120
         function focus(c) { cls = c; restart(); }
-        onTriggered: Hyprland.dispatch(`focuswindow class:^(${cls.replace(/\./g, "\\.")})$`)
+        // The class comes from the sending app: keep app-ID characters only, so
+        // nothing it contains can end the Lua string this is pasted into.
+        onTriggered: {
+            const safe = String(cls).replace(/[^A-Za-z0-9._-]/g, "");
+            if (safe) Hyprland.dispatch(`hl.dsp.focus({window = [[class:^(${safe.replace(/\./g, "\\.")})$]]})`);
+        }
     }
 
     // ── Persistence ──────────────────────────────────────────────────────

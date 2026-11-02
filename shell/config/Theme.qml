@@ -48,26 +48,105 @@ Singleton {
     readonly property color caution: orange
     readonly property color critical: red
 
-    // The theme's own colour (HyDE's wallbash palette for the current
-    // wallpaper, ~/.cache/hyde/wall.dcol): the island's accent, glows and
-    // the active workspace follow it, live, when the theme or wallpaper
-    // changes. accentSoft is a quieter step of the same hue.
+    // The theme's own colour, the way HyDE's colour mode says (Themes panel →
+    // Colours, or HyDE's wallbash toggle; enableWallDcol in its staterc):
+    //   theme  the theme's palette: its theme.dcol when it ships one, else its
+    //          kitty.theme (blue slot = accent)
+    //   auto · dark · light   the wallpaper's wallbash palette (wall.dcol)
+    // The island's accent, glows, pills and status icons follow it live. The
+    // island body itself stays near-black in every mode, like the hardware
+    // island it's modelled on; light themes tint it, never whiten it.
     property color accent: blue
+    // A theme change recolours the island as a 400 ms blend, not a cut.
+    Behavior on accent { ColorAnimation { duration: 400; easing.type: Easing.OutCubic } }
     property color accentSoft: Qt.rgba(0.04, 0.52, 1, 0.5)
+    // Text and glyphs that sit *on* the accent: dark on light accents, white on dark.
+    readonly property color onAccent: (0.2126 * accent.r + 0.7152 * accent.g + 0.0722 * accent.b) > 0.55 ? "#111114" : "#ffffff"
+    property color themeBg: "#16161d"         // the palette's own background
+    property color themeFg: "#ffffff"
+    property var palette: []                   // a few swatches, for pickers
+    property int colorMode: 0                  // 0 theme · 1 auto · 2 dark · 3 light
+    property string themeName: ""
+    readonly property string hydeThemes: Quickshell.env("HOME") + "/.config/hyde/themes/"
+
+    function parseDcol(text) {
+        const v = {};
+        for (const l of text.split("\n")) {
+            const m = l.match(/^dcol_([a-z0-9]+)="([0-9A-Fa-f]{6})"$/);
+            if (m) v[m[1]] = "#" + m[2];
+        }
+        return v;
+    }
+    function fromDcol(v) {
+        if (!v.pry1 && !v["1xa7"]) return false;
+        if (v["1xa7"]) accent = v["1xa7"];
+        if (v["1xa5"]) accentSoft = v["1xa5"];
+        if (v.pry1) themeBg = v.pry1;
+        if (v.txt1) themeFg = v.txt1;
+        palette = ["pry1", "pry2", "1xa7", "2xa7", "3xa7", "4xa7"].filter(k => v[k]).map(k => v[k]);
+        return true;
+    }
+    function fromKitty(text) {
+        const v = {};
+        for (const l of text.split("\n")) {
+            const p = l.trim().split(/\s+/);
+            if (p.length >= 2 && /^#[0-9A-Fa-f]{6}$/.test(p[1])) v[p[0]] = p[1];
+        }
+        if (!v.color4) return false;
+        accent = v.color4;
+        accentSoft = Qt.rgba(Qt.color(v.color4).r, Qt.color(v.color4).g, Qt.color(v.color4).b, 0.5);
+        if (v.background) themeBg = v.background;
+        if (v.foreground) themeFg = v.foreground;
+        palette = ["background", "color1", "color3", "color2", "color6", "color4", "color5"].filter(k => v[k]).map(k => v[k]);
+        return true;
+    }
+    function recolor() {
+        if (colorMode === 0 && themeName) {
+            if (themeDcol.loaded && fromDcol(parseDcol(themeDcol.text()))) return;
+            if (themeKitty.loaded && fromKitty(themeKitty.text())) return;
+        }
+        if (wallDcol.loaded) fromDcol(parseDcol(wallDcol.text()));
+    }
     FileView {
-        path: Quickshell.env("HOME") + "/.cache/hyde/wall.dcol"
+        path: Quickshell.env("HOME") + "/.local/state/hyde/staterc"
         watchChanges: true
         printErrors: false
         onFileChanged: reload()
         onLoaded: {
-            const v = {};
-            for (const l of text().split("\n")) {
-                const m = l.match(/^(dcol_[a-z0-9]+)="([0-9A-Fa-f]{6})"$/);
-                if (m) v[m[1]] = "#" + m[2];
-            }
-            if (v.dcol_1xa7) root.accent = v.dcol_1xa7;
-            if (v.dcol_1xa5) root.accentSoft = v.dcol_1xa5;
+            const t = text();
+            const m = t.match(/^enableWallDcol="?(\d)"?/m);
+            const n = t.match(/^HYDE_THEME="?([^"\n]+)"?/m);
+            root.colorMode = m ? parseInt(m[1]) : 0;
+            root.themeName = n ? n[1] : "";
+            root.recolor();
         }
+    }
+    FileView {
+        id: themeDcol
+        property bool loaded: false
+        path: root.themeName ? root.hydeThemes + root.themeName + "/theme.dcol" : ""
+        printErrors: false
+        onPathChanged: loaded = false
+        onLoaded: { loaded = true; root.recolor(); }
+        onLoadFailed: { loaded = false; root.recolor(); }
+    }
+    FileView {
+        id: themeKitty
+        property bool loaded: false
+        path: root.themeName ? root.hydeThemes + root.themeName + "/kitty.theme" : ""
+        printErrors: false
+        onPathChanged: loaded = false
+        onLoaded: { loaded = true; root.recolor(); }
+        onLoadFailed: { loaded = false; root.recolor(); }
+    }
+    FileView {
+        id: wallDcol
+        property bool loaded: false
+        path: Quickshell.env("HOME") + "/.cache/hyde/wall.dcol"
+        watchChanges: true
+        printErrors: false
+        onFileChanged: reload()
+        onLoaded: { loaded = true; root.recolor(); }
     }
 
     // ── Type ─────────────────────────────────────────────────────────────
@@ -110,7 +189,10 @@ Singleton {
         }
         return v / 2048 * px;
     }
-    function opszFor(px) { return Math.max(17, Math.min(28, px)); }
+    // Three optical sizes, not one per pixel size: every distinct value is its
+    // own font face with its own glyph cache (and its own mapping of the 20 MB
+    // variable font). Text 17 up to 19 px, a middle cut, Display from 25 px.
+    function opszFor(px) { return px < 20 ? 17 : px < 25 ? 22 : 28; }
 
     // ── Motion ───────────────────────────────────────────────────────────
     // Curves (Emil Kowalski's strong curves; Qt's built-ins are too weak):

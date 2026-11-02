@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Screenshots for the rice, in place of HyDE's script (hypr/rice.conf binds).
+# Screenshots for the rice, in place of HyDE's script (hypr/kuwai/binds.lua).
 #
 #   rice-shot area      pick a region, then annotate it in Satty (Super+P)
 #   rice-shot quick     pick a region, done: copied and saved, no editor; the
@@ -103,14 +103,18 @@ fi
 case "$mode" in quick|window|delay) exit 0 ;; esac
 
 log="${XDG_STATE_HOME:-$HOME/.local/state}/rice/rice-shot.log"
-satty --filename "$out" --output-filename "$out" --copy-command wl-copy --early-exit >>"$log" 2>&1 &
+# Copying keeps the editor open (copy, annotate more, copy again); Enter copies
+# and closes, Esc closes, saving still exits. A bare --early-exit used to close
+# Satty on every copy (0.21: it means "after any action").
+satty --filename "$out" --output-filename "$out" --copy-command wl-copy \
+    --early-exit save --actions-on-enter save-to-clipboard,exit --actions-on-escape exit >>"$log" 2>&1 &
 pid=$!
 
 # Give Satty the keyboard once it's on screen.
 for _ in $(seq 60); do
     addr=$(hyprctl clients -j 2>/dev/null | jq -r --argjson p "$pid" '.[] | select(.pid == $p) | .address' | head -1)
     if [ -n "$addr" ]; then
-        hyprctl dispatch focuswindow "address:$addr" >/dev/null
+        hyprctl dispatch "hl.dsp.focus({window = 'address:$addr'})" >/dev/null
         break
     fi
     sleep 0.05

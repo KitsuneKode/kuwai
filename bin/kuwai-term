@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# kuwai-term [PID] — a new terminal in the folder the focused terminal is in.
+# PID is the focused window's process (kitty/ghostty/foot…); its newest child
+# shell's working directory is used. No PID or no shell → $HOME.
+set -u
+dir=$HOME
+if [ -n "${1:-}" ] && [ -d "/proc/$1" ]; then
+    pid=$1
+    # walk down to the deepest child (shell, or what the shell runs)
+    for _ in 1 2 3 4; do
+        kids=$(cat /proc/"$pid"/task/*/children 2>/dev/null | tr ' ' '\n' | grep -v '^$' | tail -1)
+        [ -n "$kids" ] || break
+        pid=$kids
+    done
+    d=$(readlink "/proc/$pid/cwd" 2>/dev/null) && [ -d "$d" ] && dir=$d
+fi
+term=${KUWAI_TERMINAL:-kitty}
+case $term in
+    *kitty*)   exec prime-run kitty --single-instance --instance-group=local --directory "$dir" ;;
+    *ghostty*) exec prime-run ghostty --working-directory="$dir" ;;
+    *foot*)    exec foot --working-directory="$dir" ;;
+    *)         cd "$dir" && exec $term ;;
+esac

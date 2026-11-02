@@ -60,7 +60,7 @@ shell/
   services/                 data + state singletons (Notifs, NotifAdapters, …)
   modules/                  surfaces (osd/, notifications/, …)
 bin/                        rice (control CLI), rice-shell (launcher), rice-usage (usage limits, read-only)
-hypr/rice.conf              autostart + layer rules, sourced from userprefs.conf
+hypr/                       kuwai: the Hyprland side (Lua) — see hypr/README.md
 waybar/                     Waybar module overrides (symlinked into ~/.config/waybar/modules)
 docs/                       DESIGN.md (the look), BORROWING.md (what to take from where)
 refs/                       shallow clones of other shells to read (gitignored)
@@ -68,10 +68,10 @@ refs/                       shallow clones of other shells to read (gitignored)
 
 ## How it hooks into the system
 
-- `~/.config/hypr/userprefs.conf` sources `hypr/rice.conf`, which autostarts
-  `bin/rice-shell` and gives every `rice-*` layer blur without animation.
-- `~/.config/hypr/windowrules.conf` exempts `rice-*` from the global xray rule,
-  so the glass blurs real windows, not just the wallpaper.
+- `~/.config/hypr/hyprland.lua` loads kuwai (`hypr/init.lua`), which autostarts
+  `bin/rice-shell`, binds the shell's global shortcuts and gives every `rice-*`
+  layer blur without animation, exempt from xray so the glass blurs real
+  windows, not just the wallpaper. Details: [hypr/README.md](hypr/README.md).
 - `~/.config/waybar/modules/custom-dunst.jsonc` → `waybar/custom-dunst.jsonc`
   keeps HyDE's bell working against the rice (or dunst, as fallback).
 - dunst stays installed as the fallback. Its drop-ins in
@@ -97,8 +97,9 @@ Without a token, or with T3 Code closed, it falls back to kittymux's
 
 Reduce Motion (Controls tab) turns travel, scale and stagger into plain
 fades; it's remembered in `~/.local/state/rice/prefs.json`, and it's also on
-when `RICE_REDUCE_MOTION=1` or Hyprland's animations are off. `hypr/rice.conf`
-sets quicker Hyprland window and workspace animations (~250–360ms).
+when `RICE_REDUCE_MOTION=1` or Hyprland's animations are off. `hypr/kuwai/motion.lua`
+gives Hyprland the same language: one ease-out, ~250ms in, ~160ms out, and a
+critically damped spring for window moves (`kuwai motion reduced|off`).
 
 ## Clipboard island
 

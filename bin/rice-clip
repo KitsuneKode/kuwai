@@ -22,7 +22,7 @@
 #   rice-clip save-as ID|pin:N NAME   save into ~/Pictures/Screenshots as NAME (an
 #                                  extension is added; a taken name gets -2, -3…)
 #   rice-clip stamp                record when the newest entry was copied (run by
-#                                  `wl-paste --watch rice-clip stamp`, hypr/rice.conf)
+#                                  `wl-paste --watch rice-clip stamp`, hypr/kuwai/startup.lua)
 #   rice-clip files ID|pin:N       copied files (file:// URIs or a path): JSON with
 #                                  each one's path, name, size, type, whether it still
 #                                  exists, and a preview (PDF first page, the image)
@@ -169,7 +169,7 @@ print(json.dumps(out))
         before=$(sha1sum < "$f")
         editor="${RICE_EDITOR:-${EDITOR:-nvim}}"
         term="${RICE_TERMINAL:-kitty}"
-        # The window class lets Hyprland float and centre it (hypr/rice.conf).
+        # The window class lets Hyprland float and centre it (hypr/kuwai/rules.lua).
         $term --class rice-edit --title "Clipboard · $(basename "$f")" -e $editor "$f"
         if [ "$(sha1sum < "$f")" != "$before" ]; then wl-copy < "$f"; fi ;;
     render) emit "$2" | head -c 262144 | "$(dirname "$0")/rice-render" ;;

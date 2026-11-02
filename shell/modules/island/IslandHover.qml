@@ -24,6 +24,22 @@ Item {
     required property var bar
     readonly property var player: bar.player
     readonly property bool media: bar.showMedia
+    // Go to the window that's playing: the one whose title carries the track
+    // (a browser tab: "ADDICTED - YouTube"), else the player app's window,
+    // else ask the player to raise itself (MPRIS Raise).
+    function goToPlayer(p) {
+        if (!p) return;
+        const norm = x => String(x || "").toLowerCase();
+        const keys = [norm(p.desktopEntry), norm(p.identity).split(" ").pop(), norm(p.dbusName).replace(/^org\.mpris\.mediaplayer2\./, "").split(".")[0]].filter(k => k.length > 1);
+        const wins = Hyprland.toplevels.values.filter(t => t.lastIpcObject);
+        const cls = t => norm(t.lastIpcObject.class) + " " + norm(t.lastIpcObject.initialClass);
+        const ofApp = wins.filter(t => keys.some(k => cls(t).includes(k)));
+        const title = norm(p.trackTitle);
+        const byTitle = title.length > 2 ? (ofApp.length ? ofApp : wins).find(t => norm(t.title).includes(title)) : null;
+        const t = byTitle || ofApp[0] || null;
+        if (t) Hyprland.dispatch(`hl.dsp.focus({window = 'address:0x${t.address}'})`);
+        else if (p.canRaise) p.raise();
+    }
     readonly property var focusWin: Hyprland.activeToplevel
     readonly property var topInfo: focusWin && focusWin.lastIpcObject ? focusWin.lastIpcObject : ({})
     readonly property var app: topInfo.class ? DesktopEntries.heuristicLookup(topInfo.class) : null
@@ -91,6 +107,31 @@ Item {
                 size: 15; weight: Theme.wMedium
                 color: Theme.textTertiary
             }
+            // Weather beside the date (services/Weather): glyph and degrees,
+            // conditions in the tooltip. Not on the resting island.
+            Label {
+                visible: Settings.restWeather && Weather.ok
+                anchors.verticalCenter: parent.verticalCenter
+                text: "·"; size: 15; color: Theme.textTertiary
+            }
+            Row {
+                visible: Settings.restWeather && Weather.ok
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 5
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: Weather.glyph; font.family: Theme.fontGlyph; font.pixelSize: 17
+                    color: Theme.textSecondary
+                }
+                Label {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: Weather.temp + "°"
+                    size: 15; weight: Theme.wMedium; rounded: true
+                    color: Theme.textSecondary
+                }
+                HoverHandler { id: wxHover }
+                Tip { text: Weather.desc + " · feels " + Weather.feels + "° · " + Weather.humidity + "% humidity · " + Weather.wind + " km/h"; shown: wxHover.hovered; below: true }
+            }
         }
         HoverHandler { id: chipHover; cursorShape: Qt.PointingHandCursor }
         TapHandler { onTapped: Island.open("calendar", hover.bar.screenName, "pointer", "island") }
@@ -113,7 +154,17 @@ Item {
             width: 48; height: 48; radius: 11
             color: Qt.rgba(1, 1, 1, 0.08)
             Image { anchors.fill: parent; source: hover.player ? (hover.player.trackArtUrl || "") : ""; sourceSize: Qt.size(96, 96); fillMode: Image.PreserveAspectCrop; asynchronous: true }
-            MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: Notifs.toggleCenter("sound", "pointer") }
+        }
+        // The art and the title take you to what's playing (the tab, the app);
+        // right-click for the sound panel (outputs, per-app volume).
+        MouseArea {
+            anchors { left: parent.left; top: parent.top; bottom: parent.bottom; right: trail.left }
+            cursorShape: Qt.PointingHandCursor
+            acceptedButtons: Qt.LeftButton | Qt.RightButton
+            onClicked: mouse => {
+                if (mouse.button === Qt.RightButton) Notifs.toggleCenter("sound", "pointer");
+                else hover.goToPlayer(hover.player);
+            }
         }
         Column {
             anchors { left: art.right; leftMargin: 12; right: trail.left; rightMargin: 10; verticalCenter: parent.verticalCenter }

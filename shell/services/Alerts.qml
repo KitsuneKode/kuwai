@@ -48,17 +48,20 @@ Singleton {
         }
         shown = now;
     }
-    Timer { id: bannerFor; interval: 7000; onTriggered: root.banner = null }
+    // Folds away after 7 s — but never while the pointer is on it.
+    property bool held: false
+    onHeldChanged: if (held) bannerFor.stop(); else if (banner) bannerFor.restart()
+    Timer { id: bannerFor; interval: 7000; onTriggered: if (!root.held) root.banner = null }
 
     // Updates: announced once when they appear or their number grows (an
     // "info" moment in the accent, not a warning), then shown in System.
     property int updatesSeen: 0
     Connections {
-        target: SystemStats
-        function onUpdatesChanged() {
-            const n = SystemStats.updates;
+        target: Updates
+        function onTotalChanged() {
+            const n = Updates.total;
             if (n > root.updatesSeen && n > 0) {
-                root.banner = { id: "updates", level: "info", glyph: "\u{f06b0}", title: n + (n === 1 ? " update" : " updates") + " available", detail: "Open System to update in a terminal" };
+                root.banner = { id: "updates", level: "info", glyph: "\u{f06b0}", title: n + (n === 1 ? " update" : " updates") + " available", detail: "Review what changes, then update", panel: "updates", action: "Review" };
                 bannerFor.restart();
             }
             root.updatesSeen = Math.max(0, n);

@@ -28,6 +28,17 @@ import qs.services
 Scope {
     id: root
 
+    // Island bar: toasts pour out of the island (top centre) and go back into
+    // it; with Waybar they keep the top-right corner under the bar.
+    // Toasts keep the top-right corner (the island extends only for the
+    // volume / brightness HUD). Flip to `Settings.bar === "island"` to have
+    // them pour out of the island instead — the code path is kept.
+    readonly property bool fromIsland: false
+    readonly property real islandH: 34
+    readonly property real islandTop: Settings.islandStyle === "floating" ? 6 : 0
+    readonly property real islandGap: 10
+    function islandWidth(screenName) { return Island.restWidths[screenName] || 260; }
+
     readonly property var stack: Notifs.popups                 // includes leaving ones
     readonly property var live: stack.filter(i => !i.leaving)  // laid out
 
@@ -111,15 +122,16 @@ Scope {
             visible: root.active && here
 
             anchors.top: true
-            anchors.right: true
-            margins.top: Theme.barGap
-            margins.right: 4
+            anchors.right: !root.fromIsland
+            margins.top: root.fromIsland ? 0 : Theme.barGap
+            margins.right: root.fromIsland ? 0 : 4
             // Room for the cards, the close button's overhang and swipes,
             // which all happen inside the surface.
             implicitWidth: Theme.toastWidth + 72
             implicitHeight: modelData ? Math.min(modelData.height - 80, 900) : 900
-            exclusionMode: ExclusionMode.Normal
+            exclusionMode: root.fromIsland ? ExclusionMode.Ignore : ExclusionMode.Normal
             color: "transparent"
+            readonly property real islandW: root.islandWidth(modelData ? modelData.name : "")
 
             WlrLayershell.namespace: "rice-notifs"
             WlrLayershell.layer: WlrLayer.Overlay
@@ -129,9 +141,10 @@ Scope {
 
             Item {
                 id: area
-                anchors.right: parent.right
+                anchors.right: root.fromIsland ? undefined : parent.right
                 anchors.rightMargin: 12
-                y: 12
+                anchors.horizontalCenter: root.fromIsland ? parent.horizontalCenter : undefined
+                y: root.fromIsland ? root.islandTop + root.islandH + root.islandGap : 12
                 width: Theme.toastWidth
                 height: root.expanded ? root.expandedHeight : root.collapsedHeight
                 opacity: root.handoff
@@ -151,7 +164,7 @@ Scope {
                 // Cards exist only on the screen the stack is on.
                 Repeater {
                     model: ScriptModel { values: win.here ? root.stack : [] }
-                    NotifCard { stack: root }
+                    NotifCard { stack: root; islandW: win.islandW }
                 }
             }
         }

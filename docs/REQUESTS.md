@@ -32,6 +32,15 @@ Keep it current: tick things off in the commit that does them.
 - Voxtype OSD font (check it uses the same type as the rice).
 
 ## This round (2026-10-30)
+Done since: floating island default + Shape setting; pills like the reference (narrower inactive);
+centred SF Pro time; hover not expanding over pills; special-workspace ring; three-column expanded
+island with level waveform; per-item tooltips; tray trimmed; animated stats; updates moment; launcher
+crash fixed + browse all apps; clipboard one-notch-one-item + ⌥← last position; Mac key glyphs; lock
+screen after the reference (press any key → password pill); themes grow open + large preview;
+shortcuts panel from Hyprland binds (Super+/).
+Still open from this round: clipboard multi-select; night light in the notification panel; the
+center growing out of the island (configurable); kittymux Rex-level UI.
+
 - Island default = floating dynamic island (the photos), notch as an option.
 - Workspace pills like the reference: equal widths, dim inactive, glowing active, tighter group spacing;
   hover over the pills must not expand the island; a distinct animation for special (hidden) workspaces.
@@ -53,3 +62,11 @@ Keep it current: tick things off in the commit that does them.
 - kittymux: group tabs by session (folders, stable) with a pinned "Needs you"; Rex-level UI: tab pills
   with icon chips, pane title bars with split/zoom/close, session switcher ("Filter or create…"), command
   palette, tab previews with thumbnails, find bar, sliding hover highlight.
+
+## 2026-11-01 — Hyprland 0.57 Lua port (kuwai)
+
+Done: hyprlang → Lua (`hypr/`, `bin/kuwai`, docs in `hypr/README.md`); shell
+dispatch calls and scripts moved to Lua syntax; backups in
+`~/backups/hypr-pre-lua-2026-11-01/`. Next: log in again (the running session
+still has HyDE's old config path cached), then `kuwai doctor`. Roadmap in
+`docs/KUWAI.md`.

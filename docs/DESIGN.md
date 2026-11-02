@@ -15,7 +15,7 @@ Hyprland does the blur, the surface draws the material (`components/GlassCard.qm
 - **Hyprland side:** every surface is a layer named `rice-*`, with blur,
   `ignore_alpha 0.3` (blur only under the card, not the clear margins),
   `xray 0` (blur real windows), and `no_anim` (the surface animates itself).
-  This is all in `hypr/rice.conf` already; just name new layers `rice-<thing>`.
+  This is all in `hypr/kuwai/rules.lua` already; just name new layers `rice-<thing>`.
 
 ## Type
 

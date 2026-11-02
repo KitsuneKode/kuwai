@@ -4,6 +4,8 @@
     rice-themes list                 {"current": NAME, "themes": [...], "wallpapers": [...]}
     rice-themes theme NAME           switch theme (HyDE's theme.switch.sh: GTK, kitty, Hyprland, Waybar, wallpaper)
     rice-themes wallpaper PATH       set the wallpaper (HyDE's wallpaper.sh --global; wallbash recolours from it)
+    rice-themes colormode MODE       theme | auto | dark | light: where apps take colours from (HyDE's wallbash
+                                     mode: the theme's own palette, or the wallpaper's in its own/dark/light tone)
 
 A theme: name, its wallpaper's thumbnail (HyDE's own cache, ~/.cache/hyde/thumbs/<sha1>.thmb, made on demand
 when missing), background and accent (from its kitty.theme), and whether it's the current one. Hashes are cached
@@ -73,7 +75,49 @@ def colors(theme_dir: str) -> dict:
                 out[p[0]] = p[1]
     except OSError:
         pass
-    return {"bg": out.get("background", "#1e1e2e"), "accent": out.get("color4", out.get("active_border_color", "#89b4fa"))}
+    keys = ["background", "color1", "color3", "color2", "color6", "color4", "color5", "foreground"]
+    return {"bg": out.get("background", "#1e1e2e"), "fg": out.get("foreground", "#cdd6f4"),
+            "accent": out.get("color4", out.get("active_border_color", "#89b4fa")),
+            "palette": [out[k] for k in keys if k in out]}
+
+
+def dcol(path: str) -> dict:
+    """A wallbash palette file (dcol_*="RRGGBB") as a dict."""
+    out = {}
+    try:
+        for line in open(path):
+            k, _, v = line.strip().partition("=")
+            v = v.strip('"')
+            if k.startswith("dcol_") and len(v) == 6:
+                out[k[5:]] = "#" + v
+            elif k == "dcol_mode":
+                out["mode"] = v
+    except OSError:
+        pass
+    return out
+
+
+def wall_palette(path: str, cache: dict) -> list:
+    """The wallpaper's wallbash colours (HyDE caches them per image hash)."""
+    try:
+        d = dcol(os.path.join(HOME, ".cache/hyde/dcols", sha1(path, cache) + ".dcol"))
+    except OSError:
+        return []
+    keys = ["pry1", "pry2", "1xa7", "2xa7", "3xa7", "4xa7", "pry4", "txt1"]
+    return [d[k] for k in keys if k in d]
+
+
+MODES = ["theme", "auto", "dark", "light"]
+
+
+def color_mode() -> int:
+    try:
+        for line in open(os.path.join(HOME, ".local/state/hyde/staterc")):
+            if line.startswith("enableWallDcol="):
+                return int(line.split("=", 1)[1].strip().strip('"'))
+    except (OSError, ValueError):
+        pass
+    return 0
 
 
 def listing() -> dict:
@@ -92,12 +136,13 @@ def listing() -> dict:
         for f in sorted(os.listdir(wd)):
             p = os.path.join(wd, f)
             if f.lower().endswith(IMG):
-                walls.append({"path": p, "name": os.path.splitext(f)[0], "thumb": thumb(p, cache), "current": os.path.realpath(p) == active})
+                walls.append({"path": p, "name": os.path.splitext(f)[0], "thumb": thumb(p, cache),
+                              "current": os.path.realpath(p) == active, "palette": wall_palette(p, cache)})
     os.makedirs(os.path.dirname(CACHE), exist_ok=True)
     tmp = CACHE + ".tmp"
     json.dump(cache, open(tmp, "w"))
     os.replace(tmp, CACHE)
-    return {"current": cur, "themes": themes, "wallpapers": walls}
+    return {"current": cur, "themes": themes, "wallpapers": walls, "mode": color_mode(), "modes": MODES}
 
 
 def main(argv):
@@ -109,6 +154,11 @@ def main(argv):
                          stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     elif cmd == "wallpaper" and len(argv) == 2 and os.path.isfile(argv[1]):
         subprocess.Popen([os.path.join(LIB, "wallpaper.sh"), "-s", argv[1], "--global"], start_new_session=True,
+                         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    elif cmd == "colormode" and len(argv) == 2 and argv[1] in MODES:
+        # HyDE's own setter, then its theme switch re-runs wallbash for every app.
+        script = 'eval "$(hyde-shell init)"; set_conf enableWallDcol "$1"; "$LIB_DIR/hyde/theme.switch.sh"'
+        subprocess.Popen(["bash", "-c", script, "rice-themes", str(MODES.index(argv[1]))], start_new_session=True,
                          stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     else:
         print(__doc__.strip(), file=sys.stderr)

@@ -23,6 +23,8 @@ Singleton {
     readonly property alias workspaceCount: s.workspaceCount
     readonly property alias notifKeepSeenHours: s.notifKeepSeenHours
     readonly property alias islandStyle: s.islandStyle
+    readonly property alias restWeather: s.restWeather
+    readonly property alias weatherLocation: s.weatherLocation
     readonly property alias restMedia: s.restMedia
     readonly property alias favoriteThemes: s.favoriteThemes
 
@@ -55,6 +57,9 @@ Singleton {
             property int notifKeepSeenHours: 24
             // The island's shape: "notch" (hangs from the top edge, like a MacBook's) or "floating" (a pill below it).
             property string islandStyle: "floating"
+            // Island weather chip (services/Weather): on/off and the place.
+            property bool restWeather: true
+            property string weatherLocation: "North Lakhimpur"
             // At rest, show what's playing (tiny art and bars) beside the island.
             property bool restMedia: true
             // Themes starred in the island's theme picker (shown first).

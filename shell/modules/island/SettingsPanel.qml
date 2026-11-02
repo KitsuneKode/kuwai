@@ -21,7 +21,7 @@ FocusScope {
     implicitWidth: 780
     implicitHeight: 520
 
-    readonly property string rice: Quickshell.env("HOME") + "/Projects/rice/bin/rice"
+    readonly property string rice: Paths.bin + "/rice"
     readonly property var sections: [
         { id: "bar", label: "Bar & Island", glyph: "\u{f0d6f}", tint: "#0a84ff" },
         { id: "clock", label: "Clock & Date", glyph: "\u{f0954}", tint: "#ff9f0a" },
