@@ -27,6 +27,7 @@ FocusScope {
         { id: "clock", label: "Clock & Date", glyph: "\u{f0954}", tint: "#ff9f0a" },
         { id: "notifs", label: "Notifications", glyph: "\u{f009a}", tint: "#ff453a" },
         { id: "motion", label: "Motion", glyph: "\u{f0e7d}", tint: "#bf5af2" },
+        { id: "island", label: "Island", glyph: "\u{f0d6f}", tint: "#ff9f0a" },
         { id: "workspaces", label: "Workspaces", glyph: "\u{f0570}", tint: "#5e5ce6" },
         { id: "clipboard", label: "Clipboard", glyph: "\u{f014c}", tint: "#64d2ff" },
         { id: "updates", label: "Software Update", glyph: "\u{f06b0}", tint: "#30d158" },
@@ -99,7 +100,7 @@ FocusScope {
             Loader {
                 id: page
                 width: parent.width
-                sourceComponent: [barPage, clockPage, notifPage, motionPage, workspacesPage, clipboardPage, updatesPage, aboutPage][settings.current]
+                sourceComponent: [barPage, clockPage, notifPage, motionPage, islandRestPage, workspacesPage, clipboardPage, updatesPage, aboutPage][settings.current]
             }
         }
     }
@@ -211,6 +212,25 @@ FocusScope {
                 SettingsRow {
                     label: "Reduce motion"; detail: "Fades instead of slides and springs; digits change without rolling"
                     Toggle { on: Theme.reduceMotion; enabled: !Theme.envReduce; onToggled: Theme.setReduceMotion(!Theme.reduceMotion) }
+                }
+            }
+        }
+    }
+    Component {
+        id: islandRestPage
+        Column {
+            spacing: 18
+            SettingsGroup {
+                title: "The island at rest"
+                SettingsRow {
+                    label: "Show"
+                    detail: Settings.islandRest === "minimal" ? "Only what's alive (music, recording, timer, updates, a password); workspaces, time and status when you near the top edge or press Super+Alt+I"
+                                                              : "Workspaces, time and status, always"
+                    Segmented {
+                        options: [{ id: "full", label: "Everything" }, { id: "minimal", label: "Minimal" }]
+                        current: Settings.islandRest
+                        onPicked: id => Settings.set("islandRest", id)
+                    }
                 }
             }
         }

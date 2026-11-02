@@ -100,6 +100,11 @@ Singleton {
     readonly property bool authLive: authWant !== "" && authAlive
     FileView { id: summonFile; path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/rice/auth-summon"; printErrors: false }
     function summonAuth(screenName) { summonFile.setText(screenName + "\n"); }
+    // Minimal island: reveal the resting details for a moment (Super+Alt+I, or
+    // the pointer nearing the top edge by the island).
+    property bool peek: false
+    function peekFor(ms) { peek = true; peekTimer.interval = ms || 2500; peekTimer.restart(); }
+    Timer { id: peekTimer; onTriggered: root.peek = false }
     property string screen: ""
     // "key" opens without the grow (Emil: never animate what a key does
     // a hundred times a day); "pointer" grows out of the island.

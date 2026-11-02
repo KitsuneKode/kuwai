@@ -91,6 +91,7 @@ Scope {
         description: "System: CPU, memory, GPU, updates"
         onPressed: Island.toggle("system", "", "key")
     }
+    GlobalShortcut { appid: "rice"; name: "island-peek"; description: "Show the island's details (minimal island)"; onPressed: Island.peekFor(2500) }
     GlobalShortcut {
         appid: "rice"
         name: "updates"

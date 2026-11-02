@@ -32,6 +32,7 @@ Singleton {
     readonly property alias updatesFlatpak: s.updatesFlatpak
     readonly property alias updatesAnnounce: s.updatesAnnounce
     readonly property alias clipPinsFirst: s.clipPinsFirst
+    readonly property alias islandRest: s.islandRest
 
     function set(key, value) { s[key] = value; }
 
@@ -78,6 +79,10 @@ Singleton {
             property bool updatesAnnounce: true
             // Clipboard: pinned cards on top (off: in their place by time, with a pin).
             property bool clipPinsFirst: false
+            // The island at rest: "full" (workspaces · time · status, always) or
+            // "minimal" (only what's alive; the rest when you near the top edge
+            // or press Super+I).
+            property string islandRest: "full"
         }
     }
 }

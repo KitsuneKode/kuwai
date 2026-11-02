@@ -25,8 +25,14 @@ Item {
     // sit at equal gaps and the time is off-centre by half the difference.
     readonly property bool balanced: Math.abs(leftGroup.implicitWidth - rightGroup.implicitWidth) < 10
     readonly property bool pillsHovered: pills.hovered
-    implicitWidth: balanced ? side * 2 + clock.width + gap * 2
-                            : leftGroup.implicitWidth + rightGroup.implicitWidth + clock.width + gap * 2
+    // Minimal (Settings → Bar & Island): only what's alive; workspaces, time
+    // and status come back while you near the island or press Super+Alt+I.
+    readonly property bool compact: Settings.islandRest === "minimal" && !Island.peek && !bar.near && !bar.hovered
+    readonly property real clockW: compact ? 0 : clock.width
+    readonly property real gaps: compact ? (leftGroup.implicitWidth > 0 && rightGroup.implicitWidth > 0 ? gap : 0) : gap * 2
+    implicitWidth: compact ? Math.max(78, leftGroup.implicitWidth + rightGroup.implicitWidth + gaps)
+                 : balanced ? side * 2 + clockW + gaps
+                            : leftGroup.implicitWidth + rightGroup.implicitWidth + clockW + gaps
     implicitHeight: 32
     readonly property int gap: 22
 
@@ -136,12 +142,13 @@ Item {
         }
     }
 
-    Capsules { id: pills; bar: rest.bar; visible: Settings.restWorkspaces; anchors.verticalCenter: parent.verticalCenter }
+    Capsules { id: pills; bar: rest.bar; visible: Settings.restWorkspaces && !rest.compact; anchors.verticalCenter: parent.verticalCenter }
     }
 
     // ── The time, centred ────────────────────────────────────────────────
     IslandClock {
         id: clock
+        visible: !rest.compact
         now: rest.bar.now; size: 15
         rounded: false
         weight: Theme.wMedium
@@ -166,7 +173,7 @@ Item {
             width: 6; height: 6; radius: 3
             color: Theme.orange
         }
-        IslandStatus { anchors.verticalCenter: parent.verticalCenter; bar: rest.bar }
+        IslandStatus { visible: !rest.compact; anchors.verticalCenter: parent.verticalCenter; bar: rest.bar }
         HoverHandler { cursorShape: Qt.PointingHandCursor }
         TapHandler { onTapped: Notifs.toggleCenter("controls", "pointer", rest.bar.screenName) }
     }
@@ -192,7 +199,10 @@ Item {
             Label {
                 visible: rest.activity === "auth"
                 anchors.verticalCenter: parent.verticalCenter
-                text: Island.authScreen === rest.bar.screenName ? "Password" : "Password · bring here"
+                // No words: the pulsing lock says it; on the other screen a
+                // small arrow says "click to bring it here".
+                text: Island.authScreen === rest.bar.screenName ? "" : "\u{f0045}"
+                font.family: Theme.fontGlyph
                 size: 12; weight: Theme.wSemibold
                 color: Theme.accent
             }

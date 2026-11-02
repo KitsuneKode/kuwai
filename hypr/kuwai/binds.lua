@@ -84,6 +84,7 @@ else
 end
 if K.feature("overview") then
 	bind(S .. " + Tab", "Mission Control: every workspace and window", rice("overview"))
+	bind(S .. " + ALT + I", "Show the island's details (minimal island)", rice("island-peek"))
 else
 	bind(S .. " + Tab", "Previous workspace", dsp.focus({ workspace = "previous_per_monitor" }))
 end

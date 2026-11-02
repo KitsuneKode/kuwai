@@ -90,7 +90,21 @@ Scope {
             WlrLayershell.namespace: "rice-islandbar"
             WlrLayershell.layer: WlrLayer.Top
             WlrLayershell.keyboardFocus: panelHere ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
-            mask: Region { item: frame.opacity > 0.01 ? frame : null }
+            mask: Region {
+                item: frame.opacity > 0.01 ? frame : null
+                // Minimal island: the strip along the top edge beside it counts too.
+                Region { item: Settings.islandRest === "minimal" ? nearStrip : null }
+            }
+            // Nearing the island (the pointer at the top edge beside it) shows
+            // the minimal island's details; they fold away 700 ms after you leave.
+            property bool near: false
+            Item {
+                id: nearStrip
+                width: Math.max(frame.width + 260, 420); height: 5
+                x: Math.round((win.width - width) / 2); y: 0
+                HoverHandler { onHoveredChanged: { if (hovered) { nearOff.stop(); win.near = true; } else nearOff.restart(); } }
+            }
+            Timer { id: nearOff; interval: 700; onTriggered: win.near = win.hovered }
 
             property bool armed: false
             Timer { id: arm; interval: 160; onTriggered: win.armed = true }
