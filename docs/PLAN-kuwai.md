@@ -166,6 +166,36 @@ they land. User wants: extremely secure, premium, tasteful, fast, Apple-grade.
 - Live-desktop rule (from that session): batch shell restarts; don't open the user's panels
   or move focus to test; verify with logs, state and off-screen where possible.
 
+## Audit 2026-11-02 (memory, leaks, primitives)
+Measured (PSS): shell ~400 MB at start → ~530 MB after opening heavy panels, then flat
+(6 samples over 3 min: 529–536 MB) = caches, not a leak. Anon 442 MB, file 107 MB.
+rice-auth 127 MB, brightness daemon 20 MB, voxtype launcher 3 MB, watchers <1 MB each.
+Leak scan: every dynamic Process (Clipboard pinner/runner/capturer/thumber/texter,
+Display, Kittymux, SoundView, Notifs jumper) destroys itself on exit; notification items
+destroyed on removal; Switcher MRU capped 200; Updates log capped 400. OK.
+Fixed today: variable SF Pro mapped ×15 (−200 MB RSS); voxtype 2nd Quickshell (−400 MB);
+clipboard surface stale frame; bare watchers dying silently (now a service).
+To do (memory): unload panel content on close (Loader active only while shown + 10 s),
+cap image cache for thumbnails (sourceSize everywhere, cache:false for one-shots),
+release Updates.reviews after a run (done) and on panel close.
+Primitives to consolidate (no duplication):
+- components/Chip, Notice, Card (now local to UpdatesPanel) → shared
+- PillButton → RaisedButton kind "secondary" (one button)
+- Nerd-glyph Text → components/Icon (Phosphor) everywhere
+- inline spring tiers (Capsules, LockView) → Theme tokens
+- 5 services each declare a `runner` Process component → one services/Run (exec + callback)
+- kuwai state file read in Island and IslandStatus → one services/Kuwai (mode, model, features)
+- TrayMenu (popup) + ActionMenu (in-panel) share one item model already; keep both surfaces
+- ~/Scripts dependencies (brightness.sh/py) → move into the repo for distribution
+
+## NEXT (2026-11-02 evening asks)
+- Island theming: accent source option (theme · voxtype palette #66C7FF #86E0B4 #F2CC4D
+  #FF7A98 #F2594D), two-stop gradients (accent → hue-shifted neighbour) on the lit pill,
+  rings, progress and the raised button; glows tinted; keep the body near-black.
+- Browser scripts in ~/Scripts: review, fold the good ones into kuwai (launch-or-focus,
+  profiles, tabs → launcher), drop the rest.
+- Shortcut menu (Super+/) and key scheme review after the reboot.
+
 ## NEXT (added)
 - Move voxtype's MeetingControls/EnginePicker into the island, then `[osd] enabled = false`
   (its own qs is ~400 MB); user's call (voxtype is their project).
