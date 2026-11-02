@@ -158,7 +158,7 @@ cmd_doctor() {
     else
         note "not inside Hyprland — session checks skipped"
     fi
-    for u in hypridle.service voxtype.service gcr-ssh-agent.socket; do
+    for u in hypridle.service voxtype.service gcr-ssh-agent.socket rice-clipboard.service; do
         st=$(systemctl --user is-active "$u" 2>/dev/null); [ "$st" = active ] && ok "$u" || note "$u: $st"
     done
     # Password prompts: kuwai's (rice-auth), or KDE's as the fallback; never none.

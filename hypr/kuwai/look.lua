@@ -146,12 +146,18 @@ function L.apply_identity()
 	K.config({
 		decoration = {
 			rounding_power = 4,
-			blur = { noise = 0.02, vibrancy = 0.3, vibrancy_darkness = 0.35, special = true },
+			-- At most 3 passes whatever the theme says (some ask for 4): on two
+			-- 1440p screens a fourth pass costs ~25% more blur work for a
+			-- difference you can't see; a slightly wider radius makes up for it.
+			blur = { noise = 0.02, vibrancy = 0.3, vibrancy_darkness = 0.35, special = true, passes = 3, size = 6 },
 		},
+		-- Triple buffering when a frame runs late (hybrid laptops: the iGPU's
+		-- panel is fed across from the NVIDIA renderer): smoother, not slower.
+		render = { new_render_scheduling = true },
 		group = { groupbar = { rounding_power = 4, gradient_rounding_power = 4, font_family = "SF Pro Text" } },
 	})
 	-- Hyprland's own notifications and error bar, in the rice's face.
-	K.config({ misc = { font_family = "SF Pro" } })
+	K.config({ misc = { font_family = "SF Pro Text" } })
 end
 
 L.apply_theme()

@@ -25,10 +25,15 @@ curve("kuwaiLinear", { 0, 0 }, { 1, 1 })
 hl.curve("kuwaiGlide", { type = "spring", mass = 1, stiffness = 550, damping = 47 })
 -- A touch softer for large surfaces (special workspaces sliding in).
 hl.curve("kuwaiSheet", { type = "spring", mass = 1, stiffness = 380, damping = 39 })
+-- Workspaces: pages on a spring, critically damped (no wobble, ~0.3 s),
+-- interruptible: pressing again mid-slide keeps the momentum instead of
+-- restarting. A full slide says where you went; no fade, so nothing on the
+-- screen is blended while it moves (cheaper than slidefade).
+hl.curve("kuwaiPage", { type = "spring", mass = 1, stiffness = 520, damping = 45.6 })
 
 local function anim(leaf, speed, curve_name, style)
 	local spec = { leaf = leaf, enabled = true, speed = speed or 1 }
-	if curve_name and curve_name:match("Glide$") or curve_name and curve_name:match("Sheet$") then
+	if curve_name and curve_name:match("Glide$") or curve_name and (curve_name:match("Sheet$") or curve_name:match("Page$")) then
 		spec.spring = curve_name
 	else
 		spec.bezier = curve_name or "kuwaiOut"
@@ -69,7 +74,7 @@ function M.apply()
 	anim("fadeLayersOut", 1.2, "kuwaiOut")
 
 	-- Workspaces: a short slide that fades, so direction still reads.
-	anim("workspaces", 2.5, "kuwaiOut", "slidefade 8%")
+	anim("workspaces", 3, "kuwaiPage", "slide")
 	anim("specialWorkspaceIn", 1, "kuwaiSheet", "slidevert")
 	anim("specialWorkspaceOut", 1.6, "kuwaiOut", "slidevert")
 

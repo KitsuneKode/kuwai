@@ -1,0 +1,18 @@
+# kuwai's clipboard history: wl-paste watchers feeding cliphist (text and
+# images) and the copy-time stamps the clipboard shelf sorts by. A service, not
+# bare background commands, so a crash restarts it instead of silently ending
+# history. Installed by `kuwai doctor --fix` / startup (a link into
+# ~/.config/systemd/user).
+[Unit]
+Description=kuwai clipboard history (cliphist watchers)
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+ExecStart=/bin/sh -c 'R="${KUWAI_ROOT:-%h/Projects/rice}"; wl-paste --type text --watch cliphist store & wl-paste --type image --watch cliphist store & wl-paste --watch "$R/bin/rice-clip" stamp & wait -n; exit 1'
+Restart=always
+RestartSec=1
+Slice=background.slice
+
+[Install]
+WantedBy=graphical-session.target

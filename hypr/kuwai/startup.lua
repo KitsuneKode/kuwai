@@ -39,9 +39,9 @@ hl.on("hyprland.start", function()
 	hl.exec_cmd(K.bin .. "/rice-shell")
 
 	-- Clipboard history (cliphist is the store) and the rice's copy times.
-	hl.exec_cmd("wl-paste --type text --watch cliphist store")
-	hl.exec_cmd("wl-paste --type image --watch cliphist store")
-	hl.exec_cmd("wl-paste --watch " .. K.bin .. "/rice-clip stamp")
+	-- A user service (systemd/rice-clipboard.service): restarted if it dies,
+	-- instead of bare watchers that silently stopped history when they did.
+	hl.exec_cmd(unit("rice-clipboard.service"))
 
 	-- Tray helpers: Wi-Fi secrets agent, removable media.
 	if K.has("nm-applet") then
