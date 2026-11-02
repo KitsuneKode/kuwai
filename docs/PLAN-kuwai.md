@@ -134,6 +134,38 @@ they land. User wants: extremely secure, premium, tasteful, fast, Apple-grade.
   agent, kittymux tab vs window), Voxtype host on/off, Icons (Material/Nerd), Buttons/motion.
 - oxf-cli (~/Projects/cli-tools/oxf-cli): separate session — UX/UI, corpus, images, cheap LLMs.
 
+## Done 2026-11-02 (afternoon)
+- voxtype fork commit 9446e6c (VOXTYPE_OSD_HOST); island reclaims after a fallback (tested:
+  kill shell → voxtype's own OSD in <8 s → shell back → it takes over again).
+- Motion: Theme.surfaceIn/Out/KeyIn/KeyOut used by island, clipboard, Quick Look, overview.
+- Toasts go to the screen under the pointer (Screens.underPointer).
+- Super+Ctrl+←/→ workspaces, +Shift carry, ↑ Mission Control, ↓ first empty (own block);
+  resize → Super+Alt+arrows.
+- AUR standing via AUR RPC (votes, popularity, maintainer, age, out-of-date → "established");
+  auto-approve needs established + routine + nothing flagged.
+- Clipboard @-filters, pins in place by time (setting), Clipboard settings page.
+- Island Wi-Fi / battery right-click menus (known networks, Wi-Fi toggle, nmgui; kuwai modes,
+  time left, Power…). Lock screen has no menus.
+
+## NEXT (2026-11-02 afternoon asks)
+- Switcher: snappy's context mode (group by app+workspace, stacked card, cycle within),
+  Super+Alt+Tab = this workspace's windows; then uninstall snappy-switcher.
+- Icons: Phosphor (thin…fill + duotone; MIT) into ~/.local/share/fonts (no root), a DuoIcon
+  component (two layers: 20% back + front), state animations only (fill/weight, 160 ms).
+  Material Symbols variable is the alternative (needs pacman).
+- Apple roundness: a Squircle component (continuous corners, like NotchShape) for cards,
+  panels, toasts; capsules stay capsules.
+- Glass: one material pass (GlassCard + Elevation) across island surfaces, toasts, center.
+- Notifications: full UX pass (grouping, actions, inline reply, image previews, swipe).
+- Weekly AUR digest (optional cheap LLM: Groq/OpenRouter free) reading upstream release notes
+  for non-established packages; Omarchy's package repo as a future source of vetted builds.
+- From the T3code session (not done yet): hover-scroll volume/brightness on the island,
+  Bluetooth pages (saved/nearby/pair), squircles, dock, installer + folder layout, shaders,
+  clipboard pin folders + encrypted secrets vault + dedupe review, native chat window
+  (docs/CHAT.md), cava visualiser, kittymux pane title bars / tab thumbnails / progress.
+- Live-desktop rule (from that session): batch shell restarts; don't open the user's panels
+  or move focus to test; verify with logs, state and off-screen where possible.
+
 ## NEXT (added)
 - Move voxtype's MeetingControls/EnginePicker into the island, then `[osd] enabled = false`
   (its own qs is ~400 MB); user's call (voxtype is their project).
