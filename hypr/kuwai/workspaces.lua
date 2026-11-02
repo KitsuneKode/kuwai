@@ -416,10 +416,10 @@ end
 
 _G.kuwai = _G.kuwai or {}
 kuwai.workspaces = W
--- A screen goes away (unplugged, lid shut on the second screen…): in desktops
--- mode its windows fold into the same desktop on a remaining screen (desktop
--- 3 stays desktop 3), each remembered; when that screen comes back they go
--- home. Without desktops, Hyprland's own behaviour (its workspaces move over).
+-- A screen goes away (unplugged, lid shut on the second screen…): its windows
+-- fold into the same-numbered workspace on a remaining screen (its 3 joins
+-- your 3), each remembered; when that screen comes back they go home. No
+-- "guest" workspaces from another screen ever sit in your row.
 local homes = {} -- window address → the workspace id it came from
 local function wsid(w)
 	local ws = w and w.workspace
@@ -429,7 +429,7 @@ local function wsid(w)
 	return ws.id or tonumber(tostring(ws):match("%((%-?%d+):"))
 end
 hl.on("monitor.removed", function()
-	if not desktops() then
+	if not K.feature("per_monitor_ws") then
 		return
 	end
 	hl.timer(function()
@@ -446,7 +446,7 @@ hl.on("monitor.removed", function()
 	end, { timeout = 700, type = "oneshot" })
 end)
 hl.on("monitor.added", function()
-	if not desktops() or next(homes) == nil then
+	if not K.feature("per_monitor_ws") or next(homes) == nil then
 		return
 	end
 	hl.timer(function()
@@ -457,7 +457,9 @@ hl.on("monitor.added", function()
 			end
 		end
 		homes = {}
-		W.go(W.current())
+		if desktops() then
+			W.go(W.current())
+		end
 	end, { timeout = 700, type = "oneshot" })
 end)
 

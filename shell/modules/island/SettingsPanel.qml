@@ -223,10 +223,10 @@ FocusScope {
                 title: "With more than one screen"
                 SettingsRow {
                     label: "Workspaces"
-                    detail: Island.desktops ? "Desktops: Super+3 or Super+Ctrl+→ switch every screen together; one row of pills everywhere"
-                                            : "Per screen: each screen switches on its own; its pills are its own"
+                    detail: Island.desktops ? "Together: Super+3 or Super+Ctrl+→ switch every screen at once; one row of pills everywhere"
+                                            : "Per screen: each screen switches on its own (the one you're on); its pills are its own"
                     Segmented {
-                        options: [{ id: "desktops", label: "Desktops" }, { id: "per_screen", label: "Per screen" }]
+                        options: [{ id: "per_screen", label: "Per screen" }, { id: "desktops", label: "All together" }]
                         current: Island.desktops ? "desktops" : "per_screen"
                         onPicked: id => Quickshell.execDetached([Paths.bin + "/kuwai", "feature", "desktops", id === "desktops" ? "on" : "off"])
                     }
