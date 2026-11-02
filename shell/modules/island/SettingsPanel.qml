@@ -240,7 +240,7 @@ FocusScope {
                 title: "AUR"
                 SettingsRow {
                     label: "Approve version bumps by themselves"
-                    detail: "Each change is still read first; only ones that move versions and checksums, nothing flagged and not new to you, are approved. Anything else waits for you."
+                    detail: "Only when the build script moved nothing but versions and checksums, nothing is flagged, and the package is established in the AUR (100+ votes or popular, maintained, a year old). The program inside a -bin package is never reviewed: trust its author, not the label."
                     Toggle { on: Settings.updatesAutoRoutine; onToggled: Settings.set("updatesAutoRoutine", !Settings.updatesAutoRoutine) }
                 }
                 SettingsRow {

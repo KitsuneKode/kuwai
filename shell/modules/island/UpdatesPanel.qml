@@ -473,6 +473,29 @@ FocusScope {
                     Label { text: modelData.author + " · " + modelData.when; size: 11; color: Theme.textTertiary }
                 }
             }
+            // Its standing in the AUR: how many use it, who keeps it, how old.
+            Row {
+                readonly property var c: reviewView.r ? reviewView.r.community : null
+                visible: !!c
+                spacing: 6
+                Chip {
+                    readonly property var c: parent.c
+                    text: c ? (c.established ? "Established" : "Not established") : ""
+                    tone: c && c.established ? Theme.green : Theme.orange
+                    glyph: c && c.established ? "\u{f012c}" : "\u{f0026}"
+                }
+                Label {
+                    anchors.verticalCenter: parent.verticalCenter
+                    readonly property var c: parent.c
+                    readonly property real years: c ? (Date.now() / 1000 - c.firstSubmitted) / (365 * 86400) : 0
+                    text: !c ? "" : [c.votes + (c.votes === 1 ? " vote" : " votes"), "popularity " + c.popularity,
+                                     c.maintainer ? "kept by " + c.maintainer : "orphaned",
+                                     years >= 1 ? Math.floor(years) + (Math.floor(years) === 1 ? " year" : " years") + " on the AUR" : Math.max(1, Math.round(years * 12)) + " months on the AUR",
+                                     c.outOfDate ? "flagged out of date" : "",
+                                     c.binary ? "prebuilt program (not reviewable)" : ""].filter(x => x).join(" · ")
+                    size: 11; color: Theme.textTertiary
+                }
+            }
             Flow {
                 width: parent.width
                 spacing: 6

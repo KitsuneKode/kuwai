@@ -177,9 +177,11 @@ def check():
         aur = parse_updates(sh(["paru", "-Qua"]).stdout, "aur")
     trusted = set(load(TRUSTED, []))
     approved = load(APPROVED, {})
+    community = aur_info([p["name"] for p in aur])
     for p in aur:
         p["trusted"] = p["name"] in trusted
         p["approved"] = approved.get(p["name"], "")
+        p["community"] = community.get(p["name"])
     since = last_upgrade()
     st = os.statvfs("/")
     free = st.f_bavail * st.f_frsize
@@ -230,6 +232,44 @@ def flatpak_updates():
             continue
         name, old = have.get((p[0], p[3]), (p[0].split(".")[-1], ""))
         out.append({"id": p[0], "name": name, "old": old, "new": p[1] or "newer build", "origin": p[2], "install": p[3]})
+    return out
+
+
+# ── AUR community standing ──────────────────────────────────────────────────
+AUR_RPC = "https://aur.archlinux.org/rpc/v5/info"
+
+
+def aur_info(names):
+    """The AUR's own facts about packages (one request): votes, popularity,
+    maintainer, age, out-of-date flag. `established` is the bar for
+    approving routine bumps by themselves: widely used (≥ 100 votes or
+    popularity ≥ 2), maintained, not flagged out of date, a year old or more.
+    It says the package is established, not that a new upstream release is
+    safe; for -bin packages the program itself is never reviewed."""
+    names = [n for n in names if NAME_OK.match(n)]
+    if not names:
+        return {}
+    q = "&".join("arg[]=" + urllib.request.quote(n) for n in names)
+    try:
+        req = urllib.request.Request(f"{AUR_RPC}?{q}", headers={"User-Agent": "kuwai-rice-update"})
+        with urllib.request.urlopen(req, timeout=8) as r:
+            res = json.load(r).get("results", [])
+    except Exception:
+        return {}
+    now = time.time()
+    out = {}
+    for p in res:
+        votes = p.get("NumVotes") or 0
+        pop = p.get("Popularity") or 0
+        first = p.get("FirstSubmitted") or now
+        info = {
+            "votes": votes, "popularity": round(pop, 2), "maintainer": p.get("Maintainer"),
+            "firstSubmitted": first, "lastModified": p.get("LastModified"), "outOfDate": p.get("OutOfDate"),
+            "url": p.get("URL") or "", "binary": p.get("PackageBase", p.get("Name", "")).endswith("-bin"),
+        }
+        info["established"] = bool((votes >= 100 or pop >= 2) and info["maintainer"] and not info["outOfDate"]
+                                   and now - first > 365 * 86400)
+        out[p.get("Name")] = info
     return out
 
 
@@ -397,6 +437,7 @@ def review(pkg):
         "commits": commits,
         "url": f"https://aur.archlinux.org/cgit/aur.git/log/?h={pkg}",
         "approved": load(APPROVED, {}).get(pkg, "") == head,
+        "community": aur_info([pkg]).get(pkg),
         "trusted": pkg in load(TRUSTED, []),
     }
 

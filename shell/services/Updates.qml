@@ -139,7 +139,10 @@ Singleton {
                 // Settings → Updates: a change that only moves versions and
                 // checksums (nothing flagged, not new to you) is approved as read.
                 const rv = r[name];
-                if (Settings.updatesAutoRoutine && rv && !rv.error && rv.routine && !rv.firstTime && !(rv.flags && rv.flags.length) && rv.head) {
+                // …and only for packages the AUR community has established
+                // (≥ 100 votes or popular, maintained, not flagged, a year old).
+                if (Settings.updatesAutoRoutine && rv && !rv.error && rv.routine && !rv.firstTime && !(rv.flags && rv.flags.length) && rv.head
+                        && rv.community && rv.community.established) {
                     root.approve(name);
                     root.autoApproved = [...root.autoApproved.filter(n => n !== name), name];
                 }
