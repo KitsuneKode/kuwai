@@ -84,30 +84,10 @@ FocusScope {
             Label { anchors.verticalCenter: parent.verticalCenter; text: parent.parent.text; size: 11; weight: Theme.wMedium; color: parent.parent.tone }
         }
     }
-    component Button: Rectangle {
-        id: btn
-        property string text
-        property string glyph: ""
+    // The rice's one button (components/RaisedButton), with this panel's old API.
+    component Button: RaisedButton {
         property bool primary: false
-        property bool enabled: true
-        signal clicked()
-        height: 34; radius: 17
-        width: Math.max(88, btnRow.implicitWidth + 30)
-        color: !enabled ? Theme.pill
-             : primary ? (btnArea.containsMouse ? Qt.lighter(Theme.accent, 1.08) : Theme.accent)
-             : (btnArea.containsMouse ? Theme.pillHover : Theme.pill)
-        Behavior on color { ColorAnimation { duration: 120 } }
-        scale: btnArea.pressed && enabled ? 0.97 : 1
-        Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
-        Row {
-            id: btnRow
-            anchors.centerIn: parent
-            spacing: 6
-            Text { visible: btn.glyph !== ""; anchors.verticalCenter: parent.verticalCenter; text: btn.glyph; font.family: Theme.fontGlyph; font.pixelSize: 13; color: btnLabel.color }
-            Label { id: btnLabel; anchors.verticalCenter: parent.verticalCenter; text: btn.text; size: 13; weight: btn.primary ? Theme.wSemibold : Theme.wMedium
-                    color: !btn.enabled ? Theme.textTertiary : btn.primary ? Theme.onAccent : Theme.textPrimary }
-        }
-        MouseArea { id: btnArea; anchors.fill: parent; hoverEnabled: true; cursorShape: btn.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor; onClicked: if (btn.enabled) btn.clicked() }
+        kind: primary ? "primary" : "secondary"
     }
     component Card: Rectangle {
         default property alias body: cardCol.data

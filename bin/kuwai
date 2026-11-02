@@ -202,7 +202,7 @@ auth_audit() {
 cmd_auth() {
     case ${1:-status} in
         diff)   # where the prompt's vendored copies drifted from the shell's
-            for f in Label Spring NotchShape GlassCard; do
+            for f in Label Spring NotchShape GlassCard RaisedButton; do
                 diff -u <(cat "$ROOT/shell/components/$f.qml") <(sed '1,/^\/\/ on purpose/d' "$ROOT/shell-auth/components/$f.qml") \
                     --label "shell/components/$f.qml" --label "shell-auth/components/$f.qml" || true
             done ;;

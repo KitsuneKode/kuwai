@@ -550,29 +550,12 @@ ShellRoot {
                             id: buttons
                             anchors.right: parent.right
                             spacing: 8
-                            Rectangle {
-                                width: 96; height: 36; radius: 18
-                                color: cancelArea.containsMouse ? Theme.pillHover : Theme.pill
-                                scale: cancelArea.pressed ? 0.97 : 1
-                                Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
-                                Behavior on color { ColorAnimation { duration: 120 } }
-                                Label { anchors.centerIn: parent; text: "Cancel"; size: 13; weight: Theme.wMedium }
-                                MouseArea { id: cancelArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.cancel() }
-                            }
-                            Rectangle {
-                                readonly property bool ready: !!field.text && !root.busy && root.lockLeft === 0
-                                width: 128; height: 36; radius: 18
-                                color: !ready && !root.busy ? Theme.pill : okArea.containsMouse ? Qt.lighter(Theme.accent, 1.08) : Theme.accent
-                                Behavior on color { ColorAnimation { duration: 140 } }
-                                scale: okArea.pressed && ready ? 0.97 : 1
-                                Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
-                                Label {
-                                    anchors.centerIn: parent
-                                    text: root.busy ? "Checking…" : "Authenticate"
-                                    size: 13; weight: Theme.wSemibold
-                                    color: parent.ready || root.busy ? root.onAccent(Theme.accent) : Theme.textTertiary
-                                }
-                                MouseArea { id: okArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: win.submit() }
+                            RaisedButton { width: 96; height: 36; kind: "secondary"; text: "Cancel"; onClicked: root.cancel() }
+                            RaisedButton {
+                                width: 128; height: 36
+                                enabled: !!field.text && !root.busy && root.lockLeft === 0
+                                text: root.busy ? "Checking…" : "Authenticate"
+                                onClicked: win.submit()
                             }
                         }
                     }
