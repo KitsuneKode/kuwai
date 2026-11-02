@@ -31,7 +31,8 @@ Item {
     readonly property int gap: 22
 
     // Which live activity, if any.
-    readonly property string activity: Activities.voxActive ? "vox"
+    readonly property string activity: Island.authPending ? "auth"
+        : Activities.voxActive ? "vox"
         : Updates.running ? "update"
         : Alerts.active.length ? "alert"
         : (Activities.shazamListening || Activities.shazamFound) ? "shazam"
@@ -54,6 +55,20 @@ Item {
         width: 20; height: 20
         anchors.verticalCenter: parent.verticalCenter
 
+        // A password prompt is waiting: a lock (click: bring it here).
+        Icon {
+            visible: rest.activity === "auth"
+            anchors.centerIn: parent
+            name: "lock-key"; size: 16
+            active: true
+            color: Theme.accent
+            SequentialAnimation on opacity {
+                running: rest.activity === "auth" && !Theme.reduceMotion
+                loops: Animation.Infinite
+                NumberAnimation { to: 0.55; duration: 700; easing.type: Easing.InOutSine }
+                NumberAnimation { to: 1; duration: 700; easing.type: Easing.InOutSine }
+            }
+        }
         // Updating: a ring that fills as it goes (click: the Updates panel).
         StatRing {
             visible: rest.activity === "update"
@@ -175,6 +190,13 @@ Item {
                 font.features: ({ "tnum": 1 })
             }
             Label {
+                visible: rest.activity === "auth"
+                anchors.verticalCenter: parent.verticalCenter
+                text: Island.authScreen === rest.bar.screenName ? "Password" : "Password · bring here"
+                size: 12; weight: Theme.wSemibold
+                color: Theme.accent
+            }
+            Label {
                 visible: rest.activity === "update"
                 anchors.verticalCenter: parent.verticalCenter
                 text: Math.round(Updates.progress * 100) + "%"
@@ -218,9 +240,10 @@ Item {
 
     // A click on an activity acts on it: stop dictation, open the song.
     TapHandler {
-        enabled: rest.activity === "vox" || rest.activity === "update" || (rest.activity === "shazam" && !!Activities.shazamFound)
+        enabled: rest.activity === "auth" || rest.activity === "vox" || rest.activity === "update" || (rest.activity === "shazam" && !!Activities.shazamFound)
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         onTapped: (point, button) => {
+            if (rest.activity === "auth") { Island.summonAuth(rest.bar.screenName); return; }
             if (rest.activity === "update") { Island.open("updates", rest.bar.screenName, "pointer", "island"); return; }
             if (rest.activity === "vox") { if (button === Qt.RightButton) Activities.voxCancel(); else Activities.voxToggle(); }
             else Activities.shazamOpen();

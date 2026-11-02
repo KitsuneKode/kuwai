@@ -42,6 +42,8 @@ ShellRoot {
         id: agent
         onAuthenticationRequestStarted: root.begin()
         onIsActiveChanged: if (!isActive && !root.succeeded) root.finish()
+        // A queued request becomes the current one while we're closed.
+        onFlowChanged: if (flow && !root.open && !hold.running) root.begin()
     }
     readonly property var flow: agent.flow
 
@@ -75,6 +77,28 @@ ShellRoot {
     function finish() {
         open = false;
         busy = false;
+        pendingFile.setText("");
+        // Another request was waiting behind this one: bring it up (it used to
+        // stay invisible until something else woke the agent).
+        Qt.callLater(() => { if (agent.flow && !agent.flow.isCompleted && !root.open) root.begin(); });
+    }
+    // "A password is needed" for the island (every screen shows a lock chip
+    // until it's answered; clicking it brings this prompt to that screen).
+    // Only what is asking goes in this file, never anything typed.
+    FileView { id: pendingFile; path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/rice/auth-pending"; printErrors: false }
+    onOpenChanged: if (open) pendingFile.setText(describe(actionId) + "\n" + screenName + "\n")
+    // The island asks for the prompt on another screen: move it there.
+    FileView {
+        path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/rice/auth-summon"
+        watchChanges: true; printErrors: false
+        onFileChanged: reload()
+        onLoaded: {
+            const n = text().trim();
+            if (root.open && n && Quickshell.screens.some(s => s.name === n) && n !== root.screenName) {
+                root.screenName = n;
+                pendingFile.setText(root.describe(root.actionId) + "\n" + n + "\n");
+            }
+        }
     }
     function syncPrompt() {
         const f = agent.flow;
@@ -143,11 +167,13 @@ ShellRoot {
     // ── Which screen (Hyprland's word; Quickshell's can be stale) ────────
     Process {
         id: where
-        command: ["hyprctl", "monitors", "-j"]
+        // The screen you're looking at (kuwai.where(): pointer and focus agree,
+        // or you just typed → the focused one, else the pointer's).
+        command: ["hyprctl", "repl", "return kuwai.where()"]
         stdout: StdioCollector {
             onStreamFinished: {
                 let name = "";
-                try { const m = JSON.parse(text).find(x => x.focused); if (m) name = m.name; } catch (e) {}
+                try { const w = JSON.parse(text.trim().split("\n").pop()); name = w.looking || w.focused || ""; } catch (e) {}
                 if (!Quickshell.screens.some(s => s.name === name))
                     name = Quickshell.screens.length ? Quickshell.screens[0].name : "";
                 root.screenName = name;

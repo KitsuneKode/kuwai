@@ -59,8 +59,8 @@ Singleton {
         if (!pointerProbe.running) pointerProbe.running = true;
         pointerGiveUp.restart();
     }
-    // cb(pointerScreen, focusedScreen): both from the same answer; "" for
-    // either if Hyprland didn't answer in 150 ms.
+    // cb(lookingScreen, focusedScreen) from kuwai.where(); "" for both if
+    // Hyprland didn't answer in 150 ms.
     function flushPointer(name, focused) {
         pointerGiveUp.stop();
         const w = pointerWaiting; pointerWaiting = [];
@@ -69,19 +69,19 @@ Singleton {
     Timer { id: pointerGiveUp; interval: 150; onTriggered: root.flushPointer("", "") }
     Process {
         id: pointerProbe
-        command: ["sh", "-c", "hyprctl cursorpos -j; echo; hyprctl monitors -j"]
+        // kuwai.where(): the screen you're looking at (pointer and focus
+        // agree, or you just typed → focused, else the pointer's), 6 ms.
+        command: ["hyprctl", "repl", "return kuwai.where()"]
         stdout: StdioCollector {
             onStreamFinished: {
-                let name = "", focused = "";
+                let looking = "", focused = "";
                 try {
-                    const i = text.indexOf("\n");
-                    const c = JSON.parse(text.slice(0, i)), ms = JSON.parse(text.slice(i + 1));
-                    const m = ms.find(m => c.x >= m.x && c.y >= m.y && c.x < m.x + m.width / m.scale && c.y < m.y + m.height / m.scale);
-                    if (m) name = m.name;
-                    const f = ms.find(m => m.focused);
-                    if (f) { focused = f.name; root.tracked = f.name; }
+                    const w = JSON.parse(text.trim().split("\n").pop());
+                    looking = w.looking || w.pointer || "";
+                    focused = w.focused || "";
+                    if (focused) root.tracked = focused;
                 } catch (e) {}
-                root.flushPointer(name, focused);
+                root.flushPointer(looking, focused);
             }
         }
     }

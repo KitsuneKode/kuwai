@@ -71,11 +71,10 @@ Scope {
     }
 
     // ── Which screen ─────────────────────────────────────────────────────
-    // Where the stack shows: the screen under the pointer. When that isn't
-    // the screen with keyboard focus (mouse on one, typing on the other) it's
-    // ambiguous where you're looking, so it shows on both, as one stack:
-    // acting on it on either acts on it everywhere. No answer from Hyprland:
-    // every screen, rather than a guess.
+    // Where the stack shows: the screen you're looking at (kuwai.where():
+    // pointer and focus agree → there; you just typed → the focused screen;
+    // else the pointer's). No answer from Hyprland: every screen, as one
+    // stack, rather than a guess.
     property string targetName: ""
     property var targets: []
     function focusedName() { return Screens.focusedName; }
@@ -87,14 +86,15 @@ Scope {
     function follow() {
         if (hovered || interacting) return;
         placing = true;
-        Screens.underPointer((pointer, focused) => {
+        Screens.underPointer((looking, focused) => {
             if (!root.hovered && !root.interacting) {
-                if (!pointer && !focused) {
+                if (!looking) {
+                    // No answer: every screen rather than a guess.
                     root.targets = Quickshell.screens.map(s => s.name);
                     root.targetName = Screens.focusedName;
                 } else {
-                    root.targetName = pointer || focused;
-                    root.targets = [...new Set([pointer, focused].filter(x => x))];
+                    root.targetName = looking;
+                    root.targets = [looking];
                 }
             }
             root.placing = false;

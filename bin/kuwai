@@ -194,7 +194,7 @@ auth_audit() {
     if [ -n "$talk" ]; then bad "shell-auth config/ or components/ talk to other programs: $talk"; bad_=1; fi
     if grep -E 'execDetached|XMLHttpRequest|IpcHandler|Socket \{|qs\.services|qs\.modules' "$A/shell.qml" >/dev/null; then bad "shell-auth/shell.qml uses IPC, sockets or the shell's services"; bad_=1; fi
     local unknown
-    unknown=$(grep -E '^\s*command:' "$A/shell.qml" | grep -vE '"hyprctl", "monitors", "-j"|"hyprctl", "devices", "-j"|"faillock", "--user", root\.me|"sh", "-c", .f="\$HOME/\.face"' )
+    unknown=$(grep -E '^\s*command:' "$A/shell.qml" | grep -vE '"hyprctl", "repl", "return kuwai.where\(\)"|"hyprctl", "devices", "-j"|"faillock", "--user", root\.me|"sh", "-c", .f="\$HOME/\.face"' )
     if [ -n "$unknown" ]; then bad "shell-auth/shell.qml runs a command not on its list:"; printf '      %s\n' "$unknown"; bad_=1; fi
     [ $bad_ -eq 0 ] && ok "password prompt code: files and drawing only (no links, 4 known commands)"
 }

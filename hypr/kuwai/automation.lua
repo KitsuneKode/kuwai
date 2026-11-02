@@ -250,6 +250,35 @@ if K.feature("night_light") then
 end
 
 ---------------------------------------------------------------------------
+-- Where are you looking? One answer for every surface that appears on its
+-- own (toasts, the password prompt): the pointer's screen and the focused
+-- screen agree → that one; you typed in the last 5 s → the focused screen
+-- (you're reading what you type); otherwise the pointer's screen. Hyprland's
+-- Lua exposes key events but not pointer motion, so typing is the signal.
+---------------------------------------------------------------------------
+local last_key = 0
+hl.on("input.keyboard.key", function()
+	last_key = os.time()
+end)
+function kuwai.where()
+	local p = hl.get_cursor_pos()
+	local focused = hl.get_active_monitor()
+	local pointer
+	for _, m in ipairs(hl.get_monitors() or {}) do
+		local w, h = m.width / (m.scale or 1), m.height / (m.scale or 1)
+		if p and p.x >= m.x and p.y >= m.y and p.x < m.x + w and p.y < m.y + h then
+			pointer = m.name
+		end
+	end
+	local f = focused and focused.name or ""
+	pointer = pointer or f
+	local typing = os.time() - last_key <= 5
+	local looking = (pointer == f or not typing) and pointer or f
+	return string.format('{"looking":%s,"pointer":%s,"focused":%s,"typing":%s}',
+		K.json_str(looking), K.json_str(pointer), K.json_str(f), typing and "true" or "false")
+end
+
+---------------------------------------------------------------------------
 -- Hold Super alone → the Shortcuts panel while held (macOS CheatSheet)
 ---------------------------------------------------------------------------
 if K.feature("hold_super") then

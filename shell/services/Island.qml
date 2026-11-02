@@ -65,6 +65,22 @@ Singleton {
         onLoaded: { const m = text().match(/^workspace_model=(\S+)/m); root.workspaceModel = m ? m[1] : "per_screen"; }
     }
     readonly property bool desktops: workspaceModel === "desktops"
+
+    // A password prompt is waiting (kuwai's polkit agent, shell-auth, writes
+    // what is asking and on which screen; nothing typed ever comes here).
+    // The island shows a lock chip on every screen; a click brings the prompt
+    // to that screen (auth-summon).
+    property string authPending: ""
+    property string authScreen: ""
+    FileView {
+        path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/rice/auth-pending"
+        watchChanges: true; printErrors: false
+        onFileChanged: reload()
+        onLoaded: { const l = text().split("\n"); root.authPending = (l[0] || "").trim(); root.authScreen = (l[1] || "").trim(); }
+        onLoadFailed: { root.authPending = ""; root.authScreen = ""; }
+    }
+    FileView { id: summonFile; path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/rice/auth-summon"; printErrors: false }
+    function summonAuth(screenName) { summonFile.setText(screenName + "\n"); }
     property string screen: ""
     // "key" opens without the grow (Emil: never animate what a key does
     // a hundred times a day); "pointer" grows out of the island.
