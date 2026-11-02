@@ -66,12 +66,18 @@ Scope {
         target: Notifs
         property: "frontToast"
         when: !Notifs.centerOpen
-        value: root.live.length ? { screen: root.targetName, height: root.frontHeight } : null
+        value: root.live.length ? { screen: root.targetName, height: root.frontHeight } : null   // (the pointer's screen)
         restoreMode: Binding.RestoreNone
     }
 
     // ── Which screen ─────────────────────────────────────────────────────
+    // Where the stack shows: the screen under the pointer. When that isn't
+    // the screen with keyboard focus (mouse on one, typing on the other) it's
+    // ambiguous where you're looking, so it shows on both, as one stack:
+    // acting on it on either acts on it everywhere. No answer from Hyprland:
+    // every screen, rather than a guess.
     property string targetName: ""
+    property var targets: []
     function focusedName() { return Screens.focusedName; }
     // A new toast goes to the screen under the pointer (where you're looking),
     // not the one that happens to hold keyboard focus.
@@ -81,12 +87,20 @@ Scope {
     function follow() {
         if (hovered || interacting) return;
         placing = true;
-        Screens.underPointer(n => {
-            if (!root.hovered && !root.interacting) root.targetName = n;
+        Screens.underPointer((pointer, focused) => {
+            if (!root.hovered && !root.interacting) {
+                if (!pointer && !focused) {
+                    root.targets = Quickshell.screens.map(s => s.name);
+                    root.targetName = Screens.focusedName;
+                } else {
+                    root.targetName = pointer || focused;
+                    root.targets = [...new Set([pointer, focused].filter(x => x))];
+                }
+            }
             root.placing = false;
         });
     }
-    Component.onCompleted: targetName = focusedName()
+    Component.onCompleted: { targetName = focusedName(); targets = [targetName]; }
     Connections {
         target: Notifs
         function onArrived() { root.follow(); }
@@ -115,7 +129,7 @@ Scope {
         // Diagnostics: where the stack is and what Hyprland says is focused.
         function where(): string {
             const m = Hyprland.focusedMonitor;
-            return JSON.stringify({ target: root.targetName, focused: Screens.focusedName, quickshell: m ? m.name : null,
+            return JSON.stringify({ target: root.targetName, targets: root.targets, focused: Screens.focusedName, quickshell: m ? m.name : null,
                                     ipc: Hyprland.monitors.values.filter(x => x.lastIpcObject && x.lastIpcObject.focused).map(x => x.name) });
         }
     }
@@ -126,7 +140,7 @@ Scope {
         PanelWindow {
             id: win
             required property ShellScreen modelData
-            readonly property bool here: !!modelData && modelData.name === root.targetName
+            readonly property bool here: !!modelData && root.targets.indexOf(modelData.name) >= 0
 
             screen: modelData
             visible: root.active && here && !root.placing

@@ -59,25 +59,29 @@ Singleton {
         if (!pointerProbe.running) pointerProbe.running = true;
         pointerGiveUp.restart();
     }
-    function flushPointer(name) {
+    // cb(pointerScreen, focusedScreen): both from the same answer; "" for
+    // either if Hyprland didn't answer in 150 ms.
+    function flushPointer(name, focused) {
         pointerGiveUp.stop();
         const w = pointerWaiting; pointerWaiting = [];
-        for (const f of w) { try { f(name || focusedName); } catch (e) {} }
+        for (const f of w) { try { f(name || "", focused || ""); } catch (e) {} }
     }
-    Timer { id: pointerGiveUp; interval: 150; onTriggered: root.flushPointer("") }
+    Timer { id: pointerGiveUp; interval: 150; onTriggered: root.flushPointer("", "") }
     Process {
         id: pointerProbe
         command: ["sh", "-c", "hyprctl cursorpos -j; echo; hyprctl monitors -j"]
         stdout: StdioCollector {
             onStreamFinished: {
-                let name = "";
+                let name = "", focused = "";
                 try {
                     const i = text.indexOf("\n");
                     const c = JSON.parse(text.slice(0, i)), ms = JSON.parse(text.slice(i + 1));
                     const m = ms.find(m => c.x >= m.x && c.y >= m.y && c.x < m.x + m.width / m.scale && c.y < m.y + m.height / m.scale);
                     if (m) name = m.name;
+                    const f = ms.find(m => m.focused);
+                    if (f) { focused = f.name; root.tracked = f.name; }
                 } catch (e) {}
-                root.flushPointer(name);
+                root.flushPointer(name, focused);
             }
         }
     }
