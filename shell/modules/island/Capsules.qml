@@ -54,7 +54,7 @@ Row {
             opacity: caps.bar.special ? 0.45 : 1
             Behavior on opacity { NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
 
-            Spring { id: grow; tier: ({ stiffness: 520, damping: 26 }); target: cap.on ? 1 : 0; Component.onCompleted: settle() }
+            Spring { id: grow; tier: ({ stiffness: 520, damping: 38 }); target: cap.on ? 1 : 0; Component.onCompleted: settle() }   // settles with the workspace slide (kuwaiPage 520), a hint of give
             readonly property real g: Math.max(0, Math.min(1.15, grow.value))
             RectangularShadow {
                 anchors.fill: pill

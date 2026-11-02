@@ -75,9 +75,16 @@ Scope {
     function focusedName() { return Screens.focusedName; }
     // A new toast goes to the screen under the pointer (where you're looking),
     // not the one that happens to hold keyboard focus.
+    // The toast waits (≤150 ms) for Hyprland's answer before it shows: shown
+    // at once it flashed on the previous screen, or stayed there.
+    property bool placing: false
     function follow() {
         if (hovered || interacting) return;
-        Screens.underPointer(n => { if (!root.hovered && !root.interacting) root.targetName = n; });
+        placing = true;
+        Screens.underPointer(n => {
+            if (!root.hovered && !root.interacting) root.targetName = n;
+            root.placing = false;
+        });
     }
     Component.onCompleted: targetName = focusedName()
     Connections {
@@ -122,7 +129,7 @@ Scope {
             readonly property bool here: !!modelData && modelData.name === root.targetName
 
             screen: modelData
-            visible: root.active && here
+            visible: root.active && here && !root.placing
 
             anchors.top: true
             anchors.right: !root.fromIsland
