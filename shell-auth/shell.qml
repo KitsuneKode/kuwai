@@ -452,13 +452,15 @@ ShellRoot {
                             height: parent.height
                             verticalAlignment: TextInput.AlignVCenter
                             enabled: !root.busy && !root.succeeded && root.lockLeft === 0
-                            echoMode: root.echo ? TextInput.Normal : TextInput.Password
-                            passwordMaskDelay: 0
-                            passwordCharacter: "●"
+                            // Nothing on screen says how long it is (a dot per
+                            // character tells anyone watching or recording the
+                            // length): no echo at all, like a terminal; the
+                            // dots below only pulse once per keystroke.
+                            echoMode: root.echo ? TextInput.Normal : TextInput.NoEcho
                             inputMethodHints: Qt.ImhSensitiveData | Qt.ImhNoPredictiveText | Qt.ImhHiddenText | Qt.ImhNoAutoUppercase
                             font.family: Theme.fontText
-                            font.pixelSize: root.echo ? 15 : 11
-                            font.letterSpacing: root.echo ? 0 : 3
+                            font.pixelSize: 15
+                            onTextChanged: if (!root.echo && text.length) keyPulse.hit()
                             color: Theme.textPrimary
                             selectByMouse: false
                             focus: true
@@ -468,6 +470,38 @@ ShellRoot {
                             Keys.onPressed: event => {
                                 if (event.key === Qt.Key_CapsLock) { root.caps = !root.caps; capsProbe.running = true; }
                             }
+                            // Typing feedback that gives nothing away: always
+                            // five dots, a wave runs across them on each key.
+                            Row {
+                                visible: !root.echo && !!field.text
+                                anchors.verticalCenter: parent.verticalCenter
+                                spacing: 6
+                                Repeater {
+                                    model: 5
+                                    Rectangle {
+                                        id: dot
+                                        required property int index
+                                        width: 7; height: 7; radius: 3.5
+                                        color: Theme.textPrimary
+                                        opacity: 0.55
+                                        SequentialAnimation {
+                                            id: wave
+                                            PauseAnimation { duration: dot.index * 28 }
+                                            ParallelAnimation {
+                                                NumberAnimation { target: dot; property: "opacity"; to: 1; duration: 90; easing.type: Easing.OutQuad }
+                                                NumberAnimation { target: dot; property: "scale"; to: 1.25; duration: 90; easing.type: Easing.OutQuad }
+                                            }
+                                            ParallelAnimation {
+                                                NumberAnimation { target: dot; property: "opacity"; to: 0.55; duration: 220; easing.type: Easing.OutCubic }
+                                                NumberAnimation { target: dot; property: "scale"; to: 1; duration: 220; easing.type: Easing.OutCubic }
+                                            }
+                                        }
+                                        Connections { target: keyPulse; function onHit() { if (!Theme.reduceMotion) wave.restart(); } }
+                                    }
+                                }
+                            }
+                            // (only a trigger for the dots' wave)
+                            QtObject { id: keyPulse; signal hit() }
                             Label {
                                 visible: !field.text
                                 anchors.verticalCenter: parent.verticalCenter

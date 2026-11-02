@@ -167,6 +167,8 @@ layer({ name = "rice-glass", match = { namespace = "^rice-.*$" }, blur = true, i
 -- shape itself. At 0.3 the soft shadow around a panel was blurred too, which
 -- showed as a square halo behind the rounded panel.
 layer({ name = "rice-island-shape", match = { namespace = "^rice-(island|islandbar|osd|auth)$" }, ignore_alpha = 0.75 })
+-- The password prompt never appears in a screen share, recording or screenshot.
+layer({ name = "rice-auth-private", match = { namespace = "^rice-auth$" }, no_screen_share = true })
 -- The center's scrim: deliberately outside rice-* so nothing blurs under it.
 layer({ name = "rice-scrim", match = { namespace = "^rice\\.scrim$" }, no_anim = true })
 layer({ name = "glass-osd", match = { namespace = "^glass-osd$" }, blur = true, ignore_alpha = 0.3, xray = false, no_anim = true })

@@ -180,10 +180,39 @@ Item {
                     focus: !view.preview
                     // Never disabled (a disabled field drops the keyboard): read-only while PAM checks.
                     readOnly: view.lock.checking
-                    echoMode: TextInput.Password
-                    passwordCharacter: "●"
-                    passwordMaskDelay: 0
-                    onTextChanged: if (text !== view.lock.password) view.lock.password = text
+                    // No echo (a dot per character shows anyone watching
+                    // the length); five dots pulse once per keystroke instead.
+                    echoMode: TextInput.NoEcho
+                    onTextChanged: { if (text !== view.lock.password) view.lock.password = text; if (text.length && !Theme.reduceMotion) for (const w of lockDots.waves) w.restart(); }
+                    Row {
+                        id: lockDots
+                        property var waves: []
+                        visible: field.text.length > 0
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: 7
+                        Repeater {
+                            model: 5
+                            Rectangle {
+                                id: ld
+                                required property int index
+                                width: 8; height: 8; radius: 4
+                                color: "white"; opacity: 0.6
+                                SequentialAnimation {
+                                    id: ldWave
+                                    PauseAnimation { duration: ld.index * 28 }
+                                    ParallelAnimation {
+                                        NumberAnimation { target: ld; property: "opacity"; to: 1; duration: 90; easing.type: Easing.OutQuad }
+                                        NumberAnimation { target: ld; property: "scale"; to: 1.25; duration: 90; easing.type: Easing.OutQuad }
+                                    }
+                                    ParallelAnimation {
+                                        NumberAnimation { target: ld; property: "opacity"; to: 0.6; duration: 220; easing.type: Easing.OutCubic }
+                                        NumberAnimation { target: ld; property: "scale"; to: 1; duration: 220; easing.type: Easing.OutCubic }
+                                    }
+                                }
+                                Component.onCompleted: lockDots.waves = [...lockDots.waves, ldWave]
+                            }
+                        }
+                    }
                     // Typing breaks a `text:` binding: follow the shared password (a miss clears every screen).
                     Connections {
                         target: view.lock
