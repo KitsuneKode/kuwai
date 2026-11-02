@@ -27,6 +27,7 @@ FocusScope {
         { id: "clock", label: "Clock & Date", glyph: "\u{f0954}", tint: "#ff9f0a" },
         { id: "notifs", label: "Notifications", glyph: "\u{f009a}", tint: "#ff453a" },
         { id: "motion", label: "Motion", glyph: "\u{f0e7d}", tint: "#bf5af2" },
+        { id: "clipboard", label: "Clipboard", glyph: "\u{f014c}", tint: "#64d2ff" },
         { id: "updates", label: "Software Update", glyph: "\u{f06b0}", tint: "#30d158" },
         { id: "about", label: "About", glyph: "\u{f02fd}", tint: "#8e8e93" }
     ]
@@ -97,7 +98,7 @@ FocusScope {
             Loader {
                 id: page
                 width: parent.width
-                sourceComponent: [barPage, clockPage, notifPage, motionPage, updatesPage, aboutPage][settings.current]
+                sourceComponent: [barPage, clockPage, notifPage, motionPage, clipboardPage, updatesPage, aboutPage][settings.current]
             }
         }
     }
@@ -209,6 +210,25 @@ FocusScope {
                 SettingsRow {
                     label: "Reduce motion"; detail: "Fades instead of slides and springs; digits change without rolling"
                     Toggle { on: Theme.reduceMotion; enabled: !Theme.envReduce; onToggled: Theme.setReduceMotion(!Theme.reduceMotion) }
+                }
+            }
+        }
+    }
+    Component {
+        id: clipboardPage
+        Column {
+            spacing: 18
+            SettingsGroup {
+                title: "Order"
+                SettingsRow {
+                    label: "Pinned first"; detail: "Off: pins sit in their place by time, with a pin. Type @pin to see only them."
+                    Toggle { on: Settings.clipPinsFirst; onToggled: Settings.set("clipPinsFirst", !Settings.clipPinsFirst) }
+                }
+            }
+            SettingsGroup {
+                title: "Search"
+                SettingsRow {
+                    label: "Filters you can type"; detail: "@pin @image @text @file @link @code @color @secret, and @today @week; mix with words"
                 }
             }
         }

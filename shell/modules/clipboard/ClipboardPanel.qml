@@ -106,7 +106,29 @@ Scope {
     function filterLabel(id) { return (filters.find(f => f.id === id) || filters[0]).label; }
 
     // ── Results ──────────────────────────────────────────────────────────
-    readonly property var ts: Clipboard.terms(query.replace(/(^|\s)@(today|yesterday|7d|week|month)\b/gi, " "))
+    // @-filters typed into the search: @pin @image @text @file @link @code
+    // @color @secret (any of them; with words: "@link github").
+    readonly property var kindAliases: ({ pin: "pinned", pins: "pinned", pinned: "pinned", image: "image", images: "image", img: "image",
+        text: "text", file: "files", files: "files", path: "files", link: "link", links: "link", url: "link",
+        code: "code", color: "color", colour: "color", colors: "color", secret: "secret", secrets: "secret" })
+    readonly property var atKinds: {
+        const out = [];
+        const re = /(^|\s)@([a-z]+)\b/gi;
+        let m;
+        while ((m = re.exec(query)) !== null) { const k = kindAliases[m[2].toLowerCase()]; if (k && out.indexOf(k) < 0) out.push(k); }
+        return out;
+    }
+    readonly property var ts: Clipboard.terms(query.replace(/(^|\s)@(today|yesterday|7d|week|month)\b/gi, " ")
+                                                  .replace(/(^|\s)@([a-z]+)\b/gi, (all, sp, w) => kindAliases[w.toLowerCase()] ? " " : all))
+    function kindIs(e, k) {
+        switch (k) {
+        case "pinned": return Clipboard.isPinned(e);
+        case "text": return ["text", "email"].includes(e.kind);
+        case "files": return e.kind === "files" || e.kind === "path";
+        case "secret": return !!e.secret;
+        default: return e.kind === k;
+        }
+    }
     function searchText(e) {
         if (e.kind === "image") return "image " + e.ext + " " + e.dims;
         if (e.kind === "files") return "file " + decodeURIComponent(e.preview.replace(/file:\/\//g, " "));
@@ -114,6 +136,7 @@ Scope {
         return e.preview;
     }
     function inFilter(e) {
+        if (atKinds.length && !atKinds.some(k => kindIs(e, k))) return false;
         switch (filter) {
         case "pinned": return Clipboard.isPinned(e);
         case "text": return ["text", "email"].includes(e.kind);
@@ -141,13 +164,16 @@ Scope {
             hits.sort((a, b) => (b.m.score - b.order * 0.02) - (a.m.score - a.order * 0.02));
             return hits;
         }
-        // Browsing: pins, then by when it was copied.
+        // Browsing: by when it was copied; pins sit in their place with their
+        // badge (Settings → Clipboard → "Pinned first" puts them on top).
+        const when = h => h.pin ? (h.e.time || h.e.pinnedAt || 0) : (Clipboard.times[h.e.id] || 0);
+        if (!Settings.clipPinsFirst) hits.sort((a, b) => when(b) - when(a));
         const out = [];
         let last = "";
         const day = 86400000, today = new Date().setHours(0, 0, 0, 0);
         for (const h of hits) {
-            const t = h.pin ? 0 : (Clipboard.times[h.e.id] || 0);
-            const sec = h.pin ? "Pinned" : t >= today ? "Today" : t >= today - day ? "Yesterday" : "Earlier";
+            const t = when(h);
+            const sec = h.pin && Settings.clipPinsFirst ? "Pinned" : t >= today ? "Today" : t >= today - day ? "Yesterday" : "Earlier";
             if (sec !== last) { out.push({ key: "h:" + sec, header: sec }); last = sec; }
             out.push(h);
         }
@@ -918,7 +944,7 @@ Scope {
                     Label {
                         visible: search.text === ""
                         anchors.verticalCenter: parent.verticalCenter
-                        text: root.filter === "all" ? "Search your clipboard" : "Search " + root.filterLabel(root.filter).toLowerCase()
+                        text: root.filter === "all" ? "Search, or @pin @image @link @code…" : "Search " + root.filterLabel(root.filter).toLowerCase()
                         size: 18
                         color: Theme.textTertiary
                     }

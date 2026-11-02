@@ -31,6 +31,7 @@ Singleton {
     readonly property alias updatesCheckHours: s.updatesCheckHours
     readonly property alias updatesFlatpak: s.updatesFlatpak
     readonly property alias updatesAnnounce: s.updatesAnnounce
+    readonly property alias clipPinsFirst: s.clipPinsFirst
 
     function set(key, value) { s[key] = value; }
 
@@ -75,6 +76,8 @@ Singleton {
             property int updatesCheckHours: 3
             property bool updatesFlatpak: true
             property bool updatesAnnounce: true
+            // Clipboard: pinned cards on top (off: in their place by time, with a pin).
+            property bool clipPinsFirst: false
         }
     }
 }
