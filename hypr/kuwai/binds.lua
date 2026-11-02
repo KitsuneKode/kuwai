@@ -187,6 +187,16 @@ bind(S .. " + SHIFT + RETURN", "Terminal here (focused terminal's folder)", func
 	local w = hl.get_active_window()
 	hl.exec_cmd(K.bin .. "/kuwai-term" .. (w and w.pid and (" " .. w.pid) or ""))
 end)
+-- Agents where you are: Claude / Codex in the focused terminal's folder, as a
+-- kittymux tab when you're in kitty (bin/kuwai-agent).
+local function agent(name)
+	return function()
+		local w = hl.get_active_window()
+		hl.exec_cmd(K.bin .. "/kuwai-agent " .. name .. (w and w.pid and (" " .. w.pid) or ""))
+	end
+end
+bind(S .. " + ALT + RETURN", "Claude here (kittymux tab in this folder)", agent("claude"))
+bind(S .. " + ALT + SHIFT + RETURN", "Codex here (kittymux tab in this folder)", agent("codex"))
 bind(S .. " + E", "Files", app("files"))
 bind(S .. " + C", "Editor", app("editor"))
 bind(S .. " + SHIFT + B", "Browser", app("browser"))

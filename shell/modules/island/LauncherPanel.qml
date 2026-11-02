@@ -24,6 +24,13 @@ FocusScope {
     focus: true
 
     property string query: ""
+    // Claude / Codex in the folder of the window you came from (bin/kuwai-agent).
+    function agentHere(name) {
+        const t = Hyprland.activeToplevel;
+        const pid = t && t.lastIpcObject && t.lastIpcObject.pid ? String(t.lastIpcObject.pid) : "";
+        Island.close();
+        Quickshell.execDetached([Paths.bin + "/kuwai-agent", name, pid]);
+    }
     // When this panel appeared: rows cascade in only during the first moment.
     readonly property real born: Date.now()
     property int current: 0
@@ -54,6 +61,9 @@ FocusScope {
         { name: "Screen Recording", sub: "Choose a screen, audio and frame rate", glyph: "\u{f044a}", run: () => Clipboard.recordKey() },
         { name: "Screenshot", sub: "Pick an area or a window, then annotate", glyph: "\u{f0104}", run: () => Quickshell.execDetached([Paths.bin + "/rice-shot", "area"]) },
         { name: "Notifications", sub: "The center", glyph: "\u{f009a}", run: () => Notifs.toggleCenter("notifications", "key") },
+        { name: "Claude here", sub: "Claude Code in this folder, as a kittymux tab", glyph: "\u{f06a9}", run: () => launcher.agentHere("claude") },
+        { name: "Codex here", sub: "Codex in this folder, as a kittymux tab", glyph: "\u{f06a9}", run: () => launcher.agentHere("codex") },
+        { name: "Agents", sub: "Every running agent and what needs you", glyph: "\u{f0e7b}", run: () => Notifs.toggleCenter("agents", "key") },
         { name: "Software Update", sub: "Review and install updates", glyph: "\u{f06b0}", run: () => Qt.callLater(() => Island.open("updates", Island.screen, "key")), keep: true },
         { name: "Update everything now", sub: "Arch, AUR without review, Flatpak: in the background", glyph: "\u{f0e4f}", run: () => Updates.runAll() },
         { name: "Update in a terminal", sub: "sysup", glyph: "\u{f018d}", run: () => Updates.terminal() },
