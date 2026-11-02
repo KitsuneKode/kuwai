@@ -59,8 +59,9 @@ if nv and igpu then
 		primary = nv
 	elseif mode == "intel" or mode == "igpu" then
 		primary = igpu
-	else -- auto: render where the screens are
-		primary = (#nv.outputs > 0) and nv or igpu
+	else -- auto: render where the screens are; default to dGPU on AC to prevent boot handshake race
+		local on_ac = K.read_line("/sys/class/power_supply/ACAD/online") == "1"
+		primary = (#nv.outputs > 0 or on_ac) and nv or igpu
 	end
 end
 G.mode, G.primary = mode, primary and primary.vendor or "none"
