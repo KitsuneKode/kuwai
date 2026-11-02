@@ -82,7 +82,7 @@ Singleton {
             // The island at rest: "full" (workspaces · time · status, always) or
             // "minimal" (only what's alive; the rest when you near the top edge
             // or press Super+I).
-            property string islandRest: "full"
+            property string islandRest: "auto"
         }
     }
 }

@@ -129,6 +129,12 @@ Scope {
             onMenusChanged: if (menus === 0 && !hovered) leave.restart()
             Timer { id: leave; interval: 260; onTriggered: if (!win.hovered && win.menus === 0) win.grown = false }
             onHoveredChanged: hovered ? intent.restart() : leave.restart()
+            // Super+Alt+I (Island.peek): grow here as if hovered, for a moment.
+            readonly property bool peeked: Island.peek && Island.peekScreen === screenName
+            onPeekedChanged: {
+                if (peeked && !panelHere) { if (bannerHere) Alerts.dismiss(); grown = true; }
+                else if (!peeked && !hovered && menus === 0) grown = false;
+            }
 
             // Critically damped both ways (ratio 1.0): the shape lands without
             // overshoot, so quick back-to-back changes (a flick through the

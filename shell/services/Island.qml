@@ -102,8 +102,20 @@ Singleton {
     function summonAuth(screenName) { summonFile.setText(screenName + "\n"); }
     // Minimal island: reveal the resting details for a moment (Super+Alt+I, or
     // the pointer nearing the top edge by the island).
+    // Super+Alt+I: on the screen you're looking at, the island opens its
+    // expanded view (as if hovered) and, if it's minimal or showing a live
+    // activity, its details too. Again while open: it closes.
     property bool peek: false
-    function peekFor(ms) { peek = true; peekTimer.interval = ms || 2500; peekTimer.restart(); }
+    property string peekScreen: ""
+    function peekFor(ms) {
+        if (peek) { peek = false; peekTimer.stop(); return; }
+        Screens.underPointer(looking => {
+            root.peekScreen = looking || Screens.focusedName;
+            root.peek = true;
+            peekTimer.interval = ms || 4000;
+            peekTimer.restart();
+        });
+    }
     Timer { id: peekTimer; onTriggered: root.peek = false }
     property string screen: ""
     // "key" opens without the grow (Emil: never animate what a key does

@@ -27,7 +27,14 @@ Item {
     readonly property bool pillsHovered: pills.hovered
     // Minimal (Settings → Bar & Island): only what's alive; workspaces, time
     // and status come back while you near the island or press Super+Alt+I.
-    readonly property bool compact: Settings.islandRest === "minimal" && !Island.peek && !bar.near && !bar.hovered
+    // "auto" (default): as always, but a moment that matters (a password, an
+    // update, dictation, Shazam) takes the stage and the details step back,
+    // like a live activity. Music doesn't: it plays for hours beside them.
+    // "minimal": only what's alive, always. Either way, nearing the top edge,
+    // hovering or Super+Alt+I brings the details back.
+    readonly property bool takeover: ["auth", "update", "vox", "shazam"].indexOf(activity) >= 0
+    readonly property bool compact: (Settings.islandRest === "minimal" || (Settings.islandRest === "auto" && takeover))
+                                    && !Island.peek && !bar.near && !bar.hovered
     readonly property real clockW: compact ? 0 : clock.width
     readonly property real gaps: compact ? (leftGroup.implicitWidth > 0 && rightGroup.implicitWidth > 0 ? gap : 0) : gap * 2
     implicitWidth: compact ? Math.max(78, leftGroup.implicitWidth + rightGroup.implicitWidth + gaps)

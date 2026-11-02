@@ -224,10 +224,11 @@ FocusScope {
                 title: "The island at rest"
                 SettingsRow {
                     label: "Show"
-                    detail: Settings.islandRest === "minimal" ? "Only what's alive (music, recording, timer, updates, a password); workspaces, time and status when you near the top edge or press Super+Alt+I"
-                                                              : "Workspaces, time and status, always"
+                    detail: Settings.islandRest === "minimal" ? "Only what's alive; workspaces, time and status when you near the top edge or press Super+Alt+I"
+                          : Settings.islandRest === "auto" ? "Everything, until a moment matters (a password, an update, dictation): then it takes the stage. Near the top edge or Super+Alt+I shows the rest."
+                          : "Workspaces, time and status, always"
                     Segmented {
-                        options: [{ id: "full", label: "Everything" }, { id: "minimal", label: "Minimal" }]
+                        options: [{ id: "auto", label: "Auto" }, { id: "full", label: "Everything" }, { id: "minimal", label: "Minimal" }]
                         current: Settings.islandRest
                         onPicked: id => Settings.set("islandRest", id)
                     }
