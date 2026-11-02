@@ -86,7 +86,15 @@ ShellRoot {
     // until it's answered; clicking it brings this prompt to that screen).
     // Only what is asking goes in this file, never anything typed.
     FileView { id: pendingFile; path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/rice/auth-pending"; printErrors: false }
-    onOpenChanged: if (open) pendingFile.setText(describe(actionId) + "\n" + screenName + "\n")
+    // Line 3: this process's pid, so the island can tell a live prompt from a
+    // leftover (a crash mid-request). Cleared whenever the prompt starts.
+    property string myPid: ""
+    Process {
+        running: true
+        command: ["sh", "-c", "echo $PPID"]
+        stdout: StdioCollector { onStreamFinished: { root.myPid = text.trim(); pendingFile.setText(""); } }
+    }
+    onOpenChanged: if (open) pendingFile.setText(describe(actionId) + "\n" + screenName + "\n" + myPid + "\n")
     // The island asks for the prompt on another screen: move it there.
     FileView {
         path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/rice/auth-summon"
@@ -96,7 +104,7 @@ ShellRoot {
             const n = text().trim();
             if (root.open && n && Quickshell.screens.some(s => s.name === n) && n !== root.screenName) {
                 root.screenName = n;
-                pendingFile.setText(root.describe(root.actionId) + "\n" + n + "\n");
+                pendingFile.setText(root.describe(root.actionId) + "\n" + n + "\n" + root.myPid + "\n");
             }
         }
     }

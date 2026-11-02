@@ -70,15 +70,34 @@ Singleton {
     // what is asking and on which screen; nothing typed ever comes here).
     // The island shows a lock chip on every screen; a click brings the prompt
     // to that screen (auth-summon).
-    property string authPending: ""
+    readonly property string authPending: authLive ? authWant : ""
     property string authScreen: ""
     FileView {
         path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/rice/auth-pending"
         watchChanges: true; printErrors: false
         onFileChanged: reload()
-        onLoaded: { const l = text().split("\n"); root.authPending = (l[0] || "").trim(); root.authScreen = (l[1] || "").trim(); }
-        onLoadFailed: { root.authPending = ""; root.authScreen = ""; }
+        onLoaded: {
+            const l = text().split("\n");
+            root.authWant = (l[0] || "").trim();
+            root.authScreen = (l[1] || "").trim();
+            root.authPid = (l[2] || "").trim();
+        }
+        onLoadFailed: { root.authWant = ""; root.authScreen = ""; root.authPid = ""; }
     }
+    // Only believe it while that prompt process is alive (a crash mid-request
+    // must not leave a lock in the island for good).
+    property string authWant: ""
+    property string authPid: ""
+    property bool authAlive: false
+    FileView {
+        id: procFile
+        path: root.authPid ? "/proc/" + root.authPid + "/comm" : ""
+        printErrors: false
+        onLoaded: root.authAlive = text().trim() === "qs"
+        onLoadFailed: root.authAlive = false
+    }
+    Timer { interval: 4000; repeat: true; running: root.authWant !== ""; onTriggered: procFile.reload() }
+    readonly property bool authLive: authWant !== "" && authAlive
     FileView { id: summonFile; path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/rice/auth-summon"; printErrors: false }
     function summonAuth(screenName) { summonFile.setText(screenName + "\n"); }
     property string screen: ""
