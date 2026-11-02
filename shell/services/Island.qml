@@ -13,6 +13,7 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
+import Quickshell.Hyprland
 import Quickshell.Io
 
 Singleton {
@@ -91,6 +92,11 @@ Singleton {
         if (to === "island") { close(); return; }
         panel = to;
         history = h;
+    }
+    // Same for the island's panels (not the switcher: it decides on Alt-up).
+    Connections {
+        target: Hyprland
+        function onRawEvent(event) { if (event.name === "openwindow" && root.panel && root.panel !== "switcher") root.close(); }
     }
     function close() { panel = ""; history = []; innerBack = null; innerBackLabel = ""; }
     // The launcher's last search, kept between openings (selected, so typing replaces it).

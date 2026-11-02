@@ -17,6 +17,7 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
+import Quickshell.Hyprland
 import qs.config
 import Quickshell.Io
 
@@ -81,6 +82,12 @@ Singleton {
     readonly property string stateFile: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/rice/clipboard.json"
     readonly property string thumbDir: (Quickshell.env("XDG_CACHE_HOME") || Quickshell.env("HOME") + "/.cache") + "/rice/clip/thumbs"
 
+    // A window that opens while the shelf holds the keyboard (Satty after a
+    // screenshot, a dialog, an app you launched) must get it: the shelf steps aside.
+    Connections {
+        target: typeof Hyprland !== "undefined" ? Hyprland : null
+        function onRawEvent(event) { if (event.name === "openwindow" && (root.open || root.recordSetup)) { root.open = false; root.recordSetup = false; } }
+    }
     function toggle(filter) {
         if (open && (!filter || filter === startFilter)) { open = false; return; }
         startFilter = filter || "all";

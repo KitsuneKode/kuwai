@@ -288,7 +288,7 @@ Item {
             anchors.right: parent.right
             spacing: 8
             Label { anchors.verticalCenter: parent.verticalCenter; text: Notifs.unread ? Notifs.unread + " new" : "All caught up"; size: 14; weight: Theme.wMedium }
-            Text { anchors.verticalCenter: parent.verticalCenter; text: Notifs.dnd ? "\u{f009b}" : "\u{f009a}"; font.family: Theme.fontGlyph; font.pixelSize: 15; color: Notifs.unread ? Theme.accent : Theme.textSecondary }
+            Icon { anchors.verticalCenter: parent.verticalCenter; name: Notifs.dnd ? "bell-slash" : "bell"; size: 16; active: Notifs.unread > 0; color: Notifs.unread ? Theme.accent : Theme.textSecondary }
             HoverHandler { cursorShape: Qt.PointingHandCursor }
             TapHandler { onTapped: Notifs.toggleCenter("notifications", "pointer", hover.bar.screenName) }
         }
@@ -316,12 +316,12 @@ Item {
                         size: 14; stroke: 2; text: ""; label: ""
                         value: Updates.progress; color: Theme.accent
                     }
-                    Text {
+                    Icon {
                         visible: !Updates.running
                         anchors.verticalCenter: parent.verticalCenter
-                        text: "\u{f06b0}"
-                        font.family: Theme.fontGlyph; font.pixelSize: 13
+                        name: "arrow-circle-up"; size: 14
                         color: Theme.accent
+                        active: updArea.containsMouse
                     }
                     Label {
                         anchors.verticalCenter: parent.verticalCenter
