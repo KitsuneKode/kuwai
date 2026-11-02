@@ -102,6 +102,38 @@ they land. User wants: extremely secure, premium, tasteful, fast, Apple-grade.
 - Brightness (~/Scripts/brightness.py, backup in ~/backups): external monitor ramps in eased 1%
   steps through libddcutil (~70 ms/write), handle released after each ramp (bus lock).
 
+## Done 2026-11-02 (midday)
+- voxtype UI hosted in the island shell (modules/voxtype/VoxtypeHost) via the fork's new
+  VOXTYPE_OSD_HOST handshake (src/bin/voxtype_osd_quickshell.rs, uncommitted in the fork;
+  installed to ~/.local/lib/voxtype-fork, old binary in ~/backups; drop-in
+  ~/.config/systemd/user/voxtype.service.d/kuwai-osd-host.conf). Falls back to voxtype's own
+  Quickshell if this shell is gone >5 s. Saves ~400 MB.
+- Center opens on the clicked screen / Hyprland's focused one; tray menus dismiss (leave 650 ms,
+  idle 6 s, outside click); TrayMenu also takes plain action lists (one menu everywhere).
+- Clipboard: grows from / folds into the island shape (no label-pill flash), sized surface.
+- Updates quick routes: chip right-click (review · update everything now [confirm, AUR
+  --unreviewed] · sysup · check), launcher entries.
+- kuwai-agent + Super+Alt(+Shift)+Return: Claude/Codex in the focused terminal's folder
+  (kittymux tab in kitty, else new kitty); launcher "Claude here / Codex here / Agents".
+- RaisedButton (Kobra plate) shared by Updates + prompt (vendored).
+
+## NEXT (from 2026-11-02 asks)
+- Icons: install `ttf-material-symbols-variable` (user, root) → AnimatedIcon component (FILL
+  0→1 + weight on active/hover, 160 ms; never looping decoration); replace Nerd glyphs in the
+  island/panels progressively. Keep Nerd Font for brand/app glyphs.
+- RaisedButton everywhere a primary action exists (Settings, Power, Clipboard actions); PillButton
+  → secondary raise.
+- Steal list (clones in Claude scratchpad refs/): DMS process list + control center polish,
+  dock, notepad; Caelestia dashboard (media + perf + weather), lock with media; end-4 AI sidebar
+  (cheap LLM: Groq/OpenRouter free) and overview live previews; Omarchy menu tree + snapshot.
+- Workspaces: drag-to-pill is not possible (layer surfaces get no window DnD); keep
+  Super+Ctrl+Alt+←/→ (window to screen), +Shift (workspace to screen), Ctrl+Alt+Tab (screen).
+  Idea: pills show a tiny dot for windows that need attention; Mission Control drag between
+  screens.
+- Settings additions: Updates (done), Workspaces (count, per-monitor on/off), Agents (default
+  agent, kittymux tab vs window), Voxtype host on/off, Icons (Material/Nerd), Buttons/motion.
+- oxf-cli (~/Projects/cli-tools/oxf-cli): separate session — UX/UI, corpus, images, cheap LLMs.
+
 ## NEXT (added)
 - Move voxtype's MeetingControls/EnginePicker into the island, then `[osd] enabled = false`
   (its own qs is ~400 MB); user's call (voxtype is their project).
