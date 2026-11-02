@@ -151,7 +151,7 @@ Item {
             width: 6; height: 6; radius: 3
             color: Theme.orange
         }
-        IslandStatus { anchors.verticalCenter: parent.verticalCenter }
+        IslandStatus { anchors.verticalCenter: parent.verticalCenter; bar: rest.bar }
         HoverHandler { cursorShape: Qt.PointingHandCursor }
         TapHandler { onTapped: Notifs.toggleCenter("controls", "pointer", rest.bar.screenName) }
     }

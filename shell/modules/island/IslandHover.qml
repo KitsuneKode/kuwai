@@ -373,7 +373,7 @@ Item {
                 }
             }
             TrayRow { window: hover.bar; anchors.verticalCenter: parent.verticalCenter }
-            IslandStatus { anchors.verticalCenter: parent.verticalCenter }
+            IslandStatus { anchors.verticalCenter: parent.verticalCenter; bar: hover.bar }
         }
     }
 }

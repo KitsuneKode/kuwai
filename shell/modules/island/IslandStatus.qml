@@ -2,10 +2,13 @@
 // Each has its own tooltip: the network (name, strength) and the battery
 // (charge, plugged in or on battery, time left). No battery, no battery.
 import QtQuick
+import Quickshell
+import Quickshell.Io
 import Quickshell.Services.UPower
 import Quickshell.Networking
 import qs.config
 import qs.components
+import qs.services
 
 Row {
     id: status
@@ -20,9 +23,19 @@ Row {
     readonly property var wifiDev: Networking.devices.values.find(d => d.type === DeviceType.Wifi) || null
     readonly property var net: wifiDev ? wifiDev.networks.values.find(n => n.connected) || null : null
     readonly property real signal: net ? net.signalStrength : 0
+    // The island window it sits in (rest or hover); set → right-click menus.
+    property var bar: null
+    property string mode: ""
+    FileView {
+        path: Quickshell.env("HOME") + "/.local/state/kuwai/state"
+        watchChanges: true; printErrors: false
+        onFileChanged: reload()
+        onLoaded: { const m = text().match(/^mode=(\S+)/m); status.mode = m ? m[1] : ""; }
+    }
     function hm(s) { const h = Math.floor(s / 3600), m = Math.round(s % 3600 / 60); return h ? h + "h " + m + "m" : m + "m"; }
 
     Item {
+        id: netItem
         width: bars.width; height: 14
         anchors.verticalCenter: parent.verticalCenter
         Row {
@@ -49,6 +62,7 @@ Row {
         }
     }
     Item {
+        id: batItem
         visible: status.hasBattery
         anchors.verticalCenter: parent.verticalCenter
         width: 27; height: 13
@@ -75,6 +89,61 @@ Row {
                   : status.onAC ? "Plugged in" : "On battery" + (status.battery.timeToEmpty > 0 ? ", " + status.hm(status.battery.timeToEmpty) + " left" : ""))
             shown: batHover.hovered
             below: true
+        }
+    }
+
+    // ── Right-click menus (the island's own menu: components/TrayMenu) ──
+    TapHandler {
+        enabled: !!status.bar
+        acceptedButtons: Qt.RightButton
+        onTapped: (point) => {
+            const onNet = point.position.x < netItem.x + netItem.width + 6;
+            (onNet ? netMenu : batMenu).open = true;
+        }
+    }
+    component Menu: TrayMenu {
+        window: status.bar
+        property bool counted: false
+        onOpenChanged: {
+            if (!status.bar) return;
+            if (open && !counted) { counted = true; status.bar.menus++; }
+            else if (!open && counted) { counted = false; status.bar.menus = Math.max(0, status.bar.menus - 1); }
+        }
+    }
+    Menu {
+        id: netMenu
+        anchorItem: netItem
+        items: {
+            const dev = status.wifiDev;
+            const nets = dev ? dev.networks.values.filter(n => n.known || n.connected).sort((a, b) => b.signalStrength - a.signalStrength).slice(0, 5) : [];
+            const out = [{ text: status.net ? "Connected to " + status.net.name : Networking.wifiEnabled ? "Not connected" : "Wi-Fi is off", enabled: false }];
+            for (const n of nets) out.push({
+                text: n.name + (n.connected ? "" : "  ·  " + Math.round(n.signalStrength * 100) + "%"),
+                glyph: n.connected ? "\u{f012c}" : "\u{f05a9}",
+                enabled: !n.connected,
+                triggered: () => n.connect()
+            });
+            out.push({ isSeparator: true });
+            out.push({ text: Networking.wifiEnabled ? "Turn Wi-Fi off" : "Turn Wi-Fi on", glyph: Networking.wifiEnabled ? "\u{f05aa}" : "\u{f05a9}", triggered: () => Networking.wifiEnabled = !Networking.wifiEnabled });
+            out.push({ text: "Other networks and settings…", glyph: "\u{f0493}", triggered: () => Quickshell.execDetached(["nmgui"]) });
+            return out;
+        }
+    }
+    Menu {
+        id: batMenu
+        anchorItem: batItem
+        items: {
+            const b = status.battery;
+            const left = b && status.hasBattery ? (status.charging ? (b.timeToFull > 0 ? " · full in " + status.hm(b.timeToFull) : " · charging") : (!status.onAC && b.timeToEmpty > 0 ? " · " + status.hm(b.timeToEmpty) + " left" : status.onAC ? " · plugged in" : "")) : "";
+            const modes = [["battery", "Battery saver", "\u{f0083}"], ["focus", "Focus", "\u{f04b2}"], ["default", "As designed", "\u{f0e09}"], ["glass", "Glass", "\u{f0e7d}"], ["gaming", "Gaming", "\u{f0297}"]];
+            const out = [{ text: status.pct + "%" + left, enabled: false }, { isSeparator: true }];
+            for (const m of modes) out.push({
+                text: m[1], glyph: status.mode === m[0] ? "\u{f012c}" : m[2],
+                triggered: () => Quickshell.execDetached([Paths.bin + "/kuwai", "mode", m[0]])
+            });
+            out.push({ isSeparator: true });
+            out.push({ text: "Power…", glyph: "\u{f0425}", triggered: () => Island.open("power", status.bar ? status.bar.screenName : "", "pointer", "island") });
+            return out;
         }
     }
 }

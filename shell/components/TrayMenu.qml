@@ -55,7 +55,7 @@ Item {
         onTargetChanged: value = target
     }
 
-    QsMenuOpener { id: opener; menu: tm.current }
+    QsMenuOpener { id: opener; menu: tm.items && !tm.stack.length ? null : (tm.current || null) }
 
     PopupWindow {
         id: pop
