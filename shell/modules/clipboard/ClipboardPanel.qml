@@ -530,8 +530,8 @@ Scope {
 
     // pill: 0 gone → 1 there (it swells out of a dot). melt: 0 pill → 1 shelf.
     Spring { id: pill; tier: Theme.springFast; epsilon: 0.002; target: root.expanded || root.toasting || root.recording || root.saved ? 1 : 0 }
-    Spring { id: melt; tier: Theme.springModerate; epsilon: 0.001; target: root.expanded ? 1 : 0 }
-    Spring { id: read; tier: Theme.springModerate; epsilon: 0.001; target: root.open && root.reading ? 1 : 0 }
+    Spring { id: melt; tier: root.expanded ? Theme.surfaceIn : Theme.surfaceOut; epsilon: 0.001; target: root.expanded ? 1 : 0 }
+    Spring { id: read; tier: root.reading ? Theme.surfaceIn : Theme.surfaceOut; epsilon: 0.001; target: root.open && root.reading ? 1 : 0 }
     readonly property bool shownAtAll: expanded || toasting || recording || saved || pill.value > 0.003 || melt.value > 0.003
     readonly property var hostScreen: expanded ? (Clipboard.screen || Quickshell.screens[0]) : (toastScreen || Clipboard.screen || Quickshell.screens[0])
 

@@ -49,6 +49,38 @@ Singleton {
         for (const f of w) { try { f(focusedName); } catch (e) {} }
     }
     Timer { id: giveUp; interval: 150; onTriggered: root.flush() }
+
+    // The screen under the pointer (where you're looking, usually), for
+    // things that arrive on their own (toasts): cb(name), focused screen if
+    // Hyprland doesn't answer in 150 ms.
+    property var pointerWaiting: []
+    function underPointer(cb) {
+        pointerWaiting.push(cb);
+        if (!pointerProbe.running) pointerProbe.running = true;
+        pointerGiveUp.restart();
+    }
+    function flushPointer(name) {
+        pointerGiveUp.stop();
+        const w = pointerWaiting; pointerWaiting = [];
+        for (const f of w) { try { f(name || focusedName); } catch (e) {} }
+    }
+    Timer { id: pointerGiveUp; interval: 150; onTriggered: root.flushPointer("") }
+    Process {
+        id: pointerProbe
+        command: ["sh", "-c", "hyprctl cursorpos -j; echo; hyprctl monitors -j"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let name = "";
+                try {
+                    const i = text.indexOf("\n");
+                    const c = JSON.parse(text.slice(0, i)), ms = JSON.parse(text.slice(i + 1));
+                    const m = ms.find(m => c.x >= m.x && c.y >= m.y && c.x < m.x + m.width / m.scale && c.y < m.y + m.height / m.scale);
+                    if (m) name = m.name;
+                } catch (e) {}
+                root.flushPointer(name);
+            }
+        }
+    }
     // (Guarded: while a hot reload tears the old copy down, Hyprland can be
     // briefly unavailable.)
     readonly property string focusedName: {

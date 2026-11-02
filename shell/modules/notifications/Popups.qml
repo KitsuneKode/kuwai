@@ -73,8 +73,11 @@ Scope {
     // ── Which screen ─────────────────────────────────────────────────────
     property string targetName: ""
     function focusedName() { return Screens.focusedName; }
+    // A new toast goes to the screen under the pointer (where you're looking),
+    // not the one that happens to hold keyboard focus.
     function follow() {
-        if (!hovered && !interacting) targetName = focusedName();
+        if (hovered || interacting) return;
+        Screens.underPointer(n => { if (!root.hovered && !root.interacting) root.targetName = n; });
     }
     Component.onCompleted: targetName = focusedName()
     Connections {

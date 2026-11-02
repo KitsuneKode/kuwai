@@ -124,8 +124,8 @@ Scope {
             // same object whether you click or press Super+A, so it moves the
             // same way; it only must not make a keypress wait.
             readonly property bool keyed: Island.via === "key"
-            readonly property var grow: keyed ? ({ stiffness: 1400, damping: 74.8 }) : ({ stiffness: 300, damping: 34.6 })
-            readonly property var shrink: keyed ? ({ stiffness: 1600, damping: 80 }) : ({ stiffness: 380, damping: 39 })
+            readonly property var grow: keyed ? Theme.surfaceKeyIn : Theme.surfaceIn
+            readonly property var shrink: keyed ? Theme.surfaceKeyOut : Theme.surfaceOut
             Spring { id: m; tier: win.grown ? win.grow : win.shrink; epsilon: 0.001; target: win.grown && !win.panelHere ? 1 : 0 }
             Spring { id: pv; tier: win.panelHere ? win.grow : win.shrink; epsilon: 0.001; target: win.panelHere ? 1 : 0 }
 

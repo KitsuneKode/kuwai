@@ -71,7 +71,7 @@ Scope {
 
             onHereChanged: if (here) { viewWs = activeWs; picked = 0; keys.forceActiveFocus(); }
 
-            Spring { id: show; tier: Theme.springModerate; target: win.here ? 1 : 0 }
+            Spring { id: show; tier: win.here ? Theme.surfaceIn : Theme.surfaceOut; target: win.here ? 1 : 0 }
 
             // Monitor geometry in logical pixels, for placing windows in tiles.
             readonly property var mon: monitor && monitor.lastIpcObject ? monitor.lastIpcObject : ({})

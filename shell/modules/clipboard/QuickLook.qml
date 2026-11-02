@@ -31,7 +31,7 @@ Item {
     visible: t.value > 0.002 || open
     z: 25
 
-    Spring { id: t; tier: Theme.springModerate; epsilon: 0.001 }
+    Spring { id: t; tier: Theme.surfaceIn; epsilon: 0.001 }
     onOpenChanged: {
         if (!open) editing = false;
         t.target = open ? 1 : 0;

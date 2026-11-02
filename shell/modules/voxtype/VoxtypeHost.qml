@@ -32,19 +32,27 @@ Scope {
     Process {
         running: true
         command: ["sh", "-c", "mkdir -p \"$XDG_RUNTIME_DIR/rice\"; echo $PPID"]
-        stdout: StdioCollector { onStreamFinished: pidFile.setText(text.trim() + "\n") }
+        stdout: StdioCollector { onStreamFinished: { pidFile.setText(text.trim() + "\n"); host.announced = true; } }
     }
 
     // Host only while voxtype's own Quickshell isn't running.
     Process {
         id: probe
-        command: ["pgrep", "-f", "qs -p .*/voxtype/quickshell"]
+        command: ["pgrep", "-f", "^qs -p .*/voxtype/quickshell$"]
         onExited: (code, status) => {
             const theirs = code === 0;
             if (!theirs && !host.hosting) host.build();
             else if (theirs && host.hosting) host.teardown();
+            // voxtype fell back to its own Quickshell while this shell was
+            // away (a restart, a crash). Now that it's back, take over again:
+            // stop theirs; voxtype's supervisor restarts the launcher, which
+            // sees this shell alive and waits instead of drawing.
+            else if (theirs && !host.hosting && host.announced) { reclaim.running = true; reprobe.restart(); }
         }
     }
+    property bool announced: false
+    Process { id: reclaim; command: ["pkill", "-f", "^qs -p .*/voxtype/quickshell$"] }
+    Timer { id: reprobe; interval: 3000; onTriggered: probe.running = true }
     Timer { interval: 1500; running: true; onTriggered: probe.running = true }
     Timer { interval: 10000; running: true; repeat: true; onTriggered: probe.running = true }
 

@@ -144,6 +144,26 @@ function W.step(delta, carry)
 	end
 end
 
+-- The first empty workspace of the focused screen's own block (Hyprland's
+-- "empty" picks the lowest empty id anywhere, which can be another screen's).
+function W.empty()
+	return function()
+		local base = W.base()
+		local used = {}
+		for _, ws in ipairs(hl.get_workspaces() or {}) do
+			if ws.id and (ws.windows or 0) > 0 then
+				used[ws.id] = true
+			end
+		end
+		for n = 1, 10 do
+			if not used[base + n] then
+				hl.dispatch(dsp.focus({ workspace = base + n }))
+				return
+			end
+		end
+	end
+end
+
 ---------------------------------------------------------------------------
 -- Layout per workspace
 ---------------------------------------------------------------------------

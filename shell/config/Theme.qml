@@ -266,6 +266,14 @@ Singleton {
     readonly property var springFast: ({ stiffness: 13300, damping: 231, exitMs: 60 })
     readonly property var springModerate: ({ stiffness: 3329, damping: 115, exitMs: 120 })
     readonly property var springSlow: ({ stiffness: 1069, damping: 57.5, exitMs: 160 })
+    // Surfaces that grow out of the island (panels, the clipboard shelf,
+    // Quick Look, Mission Control): one motion everywhere, critically damped
+    // (no wobble), ~0.33 s to grow, a touch firmer to fold back. From the
+    // keyboard the same curve, a little quicker (~0.24 s), never a snap.
+    readonly property var surfaceIn: ({ stiffness: 300, damping: 34.6 })
+    readonly property var surfaceOut: ({ stiffness: 380, damping: 39 })
+    readonly property var surfaceKeyIn: ({ stiffness: 560, damping: 47.3 })
+    readonly property var surfaceKeyOut: ({ stiffness: 640, damping: 50.6 })
 
     // ── Toast stack: Sonner's numbers (emilkowalski/sonner, refs/) ───────
     readonly property int toastWidth: 368        // Sonner 356; ours carries an icon

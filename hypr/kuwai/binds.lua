@@ -96,10 +96,11 @@ bind(S .. " + SHIFT + up", "Move window up", A.move("up", 0, -30), rep)
 bind(S .. " + SHIFT + down", "Move window down", A.move("down", 0, 30), rep)
 
 group("Windows|Resize")
-bind(S .. " + CTRL + right", "Wider", dsp.window.resize({ x = 30, y = 0, relative = true }), rep)
-bind(S .. " + CTRL + left", "Narrower", dsp.window.resize({ x = -30, y = 0, relative = true }), rep)
-bind(S .. " + CTRL + up", "Shorter", dsp.window.resize({ x = 0, y = -30, relative = true }), rep)
-bind(S .. " + CTRL + down", "Taller", dsp.window.resize({ x = 0, y = 30, relative = true }), rep)
+-- (Super+Ctrl+arrows are workspaces now, the Windows/GNOME habit.)
+bind(S .. " + ALT + right", "Wider", dsp.window.resize({ x = 30, y = 0, relative = true }), rep)
+bind(S .. " + ALT + left", "Narrower", dsp.window.resize({ x = -30, y = 0, relative = true }), rep)
+bind(S .. " + ALT + up", "Shorter", dsp.window.resize({ x = 0, y = -30, relative = true }), rep)
+bind(S .. " + ALT + down", "Taller", dsp.window.resize({ x = 0, y = 30, relative = true }), rep)
 
 group("Windows|Move")
 bind(S .. " + mouse:272", "Drag to move", dsp.window.drag(), { mouse = true })
@@ -151,16 +152,18 @@ for i = 1, 10 do
 	bind(S .. " + SHIFT + " .. key, "Move window to workspace " .. i, W.send(i, true))
 	bind(S .. " + ALT + " .. key, "Send window to workspace " .. i .. " (stay)", W.send(i, false))
 end
-bind(S .. " + ALT + right", "Next workspace", W.step(1))
-bind(S .. " + ALT + left", "Previous workspace", W.step(-1))
-bind(S .. " + ALT + down", "First empty workspace", dsp.focus({ workspace = "empty" }))
-bind(S .. " + ALT + up", "Back to the last workspace", dsp.focus({ workspace = "previous_per_monitor" }))
+-- Super+Ctrl+← → steps through this screen's workspaces (Windows/GNOME
+-- muscle memory); ↑ Mission Control (macOS's Ctrl+↑); ↓ an empty one.
+bind(S .. " + CTRL + right", "Next workspace", W.step(1))
+bind(S .. " + CTRL + left", "Previous workspace", W.step(-1))
+bind(S .. " + CTRL + down", "First empty workspace on this screen", W.empty())
+bind(S .. " + CTRL + up", "Mission Control", function() hl.dispatch(dsp.global("rice:overview")) end)
 bind(S .. " + ALT + SHIFT + L", "Next busy workspace", dsp.focus({ workspace = "m+1" }))
 bind(S .. " + ALT + SHIFT + H", "Previous busy workspace", dsp.focus({ workspace = "m-1" }))
 bind(S .. " + mouse_down", "Next busy workspace", dsp.focus({ workspace = "m+1" }))
 bind(S .. " + mouse_up", "Previous busy workspace", dsp.focus({ workspace = "m-1" }))
-bind(S .. " + ALT + SHIFT + right", "Carry window to the next workspace", W.step(1, true))
-bind(S .. " + ALT + SHIFT + left", "Carry window to the previous workspace", W.step(-1, true))
+bind(S .. " + CTRL + SHIFT + right", "Carry window to the next workspace", W.step(1, true))
+bind(S .. " + CTRL + SHIFT + left", "Carry window to the previous workspace", W.step(-1, true))
 if K.feature("layouts") then
 	bind(S .. " + ALT + L", "Cycle layout: scrolling, dwindle, monocle, floating", W.layout_next(1))
 end
