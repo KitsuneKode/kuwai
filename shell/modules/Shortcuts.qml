@@ -112,6 +112,7 @@ Scope {
     GlobalShortcut { appid: "rice"; name: "switch-next"; description: "Windows: next (hold Alt)"; onPressed: Switcher.begin(1, false) }
     GlobalShortcut { appid: "rice"; name: "switch-prev"; description: "Windows: previous"; onPressed: Switcher.begin(-1, false) }
     GlobalShortcut { appid: "rice"; name: "switch-app"; description: "Windows of this app"; onPressed: Switcher.begin(1, true) }
+    GlobalShortcut { appid: "rice"; name: "switch-ws"; description: "Windows on this workspace"; onPressed: Switcher.begin(1, false, true) }
     GlobalShortcut { appid: "rice"; name: "switch-commit"; description: "Windows: switch (Alt released)"; onPressed: Switcher.commit() }
     GlobalShortcut { appid: "rice"; name: "switch-cancel"; description: "Windows: cancel"; onPressed: Switcher.cancel() }
     GlobalShortcut {

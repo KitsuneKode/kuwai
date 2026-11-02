@@ -4,6 +4,7 @@ pragma Singleton
 //
 //   Alt+Tab        hold Alt, tap Tab to step; let go of Alt to switch
 //   Alt+Shift+Tab  step back             Alt+`   only the focused app's windows
+//   Super+Alt+Tab  only this workspace's windows (snappy-switcher's --workspace)
 //   a quick flick  (Alt released within 140 ms) switches without any UI
 //   in the panel   ←→ step · ↵ switch · Esc cancel · Q close the selected
 //                  window · W only this workspace · hover picks, click switches
@@ -83,13 +84,13 @@ Singleton {
     readonly property var selected: list.length ? list[Math.max(0, Math.min(index, list.length - 1))] : null
 
     // ── Flow ─────────────────────────────────────────────────────────────
-    function begin(dir, app) {
+    function begin(dir, app, ws) {
         if (!active) {
             if (Hyprland.activeToplevel) touch(Hyprland.activeToplevel.address);
             Hyprland.refreshToplevels();
             appOnly = !!app;
             appClass = app ? classOf(Hyprland.activeToplevel) : "";
-            workspaceOnly = false;
+            workspaceOnly = !!ws;
             active = true;
             // Start on the previous window (or the last, going back).
             index = list.length > 1 ? (dir > 0 ? 1 : list.length - 1) : 0;

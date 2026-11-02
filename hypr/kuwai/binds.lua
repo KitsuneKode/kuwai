@@ -70,6 +70,9 @@ if K.feature("island_switcher") then
 	bind("ALT + SHIFT + Tab", "Switch windows (back)", sw("prev"))
 	bind("ALT + grave", "Switch between this app's windows", sw("app"))
 	bind("ALT + SHIFT + grave", "Switch between this app's windows (back)", sw("prev"))
+	-- snappy-switcher's --workspace: only the windows on this workspace
+	-- (hold Super+Alt, tap Tab; letting go of Alt switches).
+	bind(S .. " + ALT + Tab", "Switch between this workspace's windows", sw("ws"))
 elseif K.has("snappy-switcher") then
 	bind("ALT + Tab", "Switch windows", "snappy-switcher next --mod alt")
 	bind("ALT + SHIFT + Tab", "Switch windows (back)", "snappy-switcher prev --mod alt")
