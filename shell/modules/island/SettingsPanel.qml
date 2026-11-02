@@ -27,6 +27,7 @@ FocusScope {
         { id: "clock", label: "Clock & Date", glyph: "\u{f0954}", tint: "#ff9f0a" },
         { id: "notifs", label: "Notifications", glyph: "\u{f009a}", tint: "#ff453a" },
         { id: "motion", label: "Motion", glyph: "\u{f0e7d}", tint: "#bf5af2" },
+        { id: "updates", label: "Software Update", glyph: "\u{f06b0}", tint: "#30d158" },
         { id: "about", label: "About", glyph: "\u{f02fd}", tint: "#8e8e93" }
     ]
     property int current: 0
@@ -96,7 +97,7 @@ FocusScope {
             Loader {
                 id: page
                 width: parent.width
-                sourceComponent: [barPage, clockPage, notifPage, motionPage, aboutPage][settings.current]
+                sourceComponent: [barPage, clockPage, notifPage, motionPage, updatesPage, aboutPage][settings.current]
             }
         }
     }
@@ -208,6 +209,43 @@ FocusScope {
                 SettingsRow {
                     label: "Reduce motion"; detail: "Fades instead of slides and springs; digits change without rolling"
                     Toggle { on: Theme.reduceMotion; enabled: !Theme.envReduce; onToggled: Theme.setReduceMotion(!Theme.reduceMotion) }
+                }
+            }
+        }
+    }
+    Component {
+        id: updatesPage
+        Column {
+            spacing: 18
+            SettingsGroup {
+                title: "Checking"
+                SettingsRow {
+                    label: "Check every"; detail: Settings.updatesCheckHours > 0 ? Settings.updatesCheckHours + (Settings.updatesCheckHours === 1 ? " hour" : " hours") + " (needs no password)" : "Only when you open Software Update"
+                    Segmented {
+                        options: [{ id: "0", label: "Never" }, { id: "1", label: "1 h" }, { id: "3", label: "3 h" }, { id: "12", label: "12 h" }]
+                        current: String(Settings.updatesCheckHours)
+                        onPicked: id => Settings.set("updatesCheckHours", parseInt(id))
+                    }
+                }
+                SettingsRow {
+                    label: "Say when updates appear"; detail: "A short note from the island when there are new ones"
+                    Toggle { on: Settings.updatesAnnounce; onToggled: Settings.set("updatesAnnounce", !Settings.updatesAnnounce) }
+                }
+                SettingsRow {
+                    label: "Include Flatpak apps"; detail: "Sandboxed and signed; your own installs need no password"
+                    Toggle { on: Settings.updatesFlatpak; onToggled: Settings.set("updatesFlatpak", !Settings.updatesFlatpak) }
+                }
+            }
+            SettingsGroup {
+                title: "AUR"
+                SettingsRow {
+                    label: "Approve version bumps by themselves"
+                    detail: "Each change is still read first; only ones that move versions and checksums, nothing flagged and not new to you, are approved. Anything else waits for you."
+                    Toggle { on: Settings.updatesAutoRoutine; onToggled: Settings.set("updatesAutoRoutine", !Settings.updatesAutoRoutine) }
+                }
+                SettingsRow {
+                    label: "Trusted packages"; detail: Updates.trusted.length ? Updates.trusted.join(", ") : "None: trust one from its review"
+                    PillButton { visible: Updates.trusted.length > 0; text: "Open Software Update"; onClicked: Island.open("updates", Island.screen, "pointer", "island") }
                 }
             }
         }

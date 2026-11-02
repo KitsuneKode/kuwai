@@ -27,6 +27,10 @@ Singleton {
     readonly property alias weatherLocation: s.weatherLocation
     readonly property alias restMedia: s.restMedia
     readonly property alias favoriteThemes: s.favoriteThemes
+    readonly property alias updatesAutoRoutine: s.updatesAutoRoutine
+    readonly property alias updatesCheckHours: s.updatesCheckHours
+    readonly property alias updatesFlatpak: s.updatesFlatpak
+    readonly property alias updatesAnnounce: s.updatesAnnounce
 
     function set(key, value) { s[key] = value; }
 
@@ -64,6 +68,13 @@ Singleton {
             property bool restMedia: true
             // Themes starred in the island's theme picker (shown first).
             property var favoriteThemes: []
+            // Software Update: approve AUR changes that only move versions and
+            // checksums (each one is still read and checked first); how often to
+            // check; include Flatpak apps; say when new updates appear.
+            property bool updatesAutoRoutine: false
+            property int updatesCheckHours: 3
+            property bool updatesFlatpak: true
+            property bool updatesAnnounce: true
         }
     }
 }

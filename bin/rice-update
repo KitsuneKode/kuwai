@@ -7,7 +7,7 @@
     rice-update approve PKG SHA        remember that you reviewed PKG at commit SHA
     rice-update trust PKG on|off       skip review for PKG from now on (your call, per package)
     rice-update state                  JSON: approvals and trusted packages
-    rice-update start [--repo] [--aur PKG ...]
+    rice-update start [--repo] [--aur PKG ...] [--flatpak APP ...]
                                        run the update as its own background job (systemd user unit
                                        kuwai-update, sleep/shutdown held off): it keeps going whatever
                                        happens to the shell; follow it in $XDG_RUNTIME_DIR/rice/update.jsonl
@@ -192,6 +192,7 @@ def check():
                 power["battery"] = int(open(os.path.join(base, "capacity")).read().strip())
         except (OSError, ValueError):
             pass
+    flatpak = flatpak_updates()
     kernel = any(re.match(r"^linux(-zen|-lts|-hardened|-rt)?$", p["name"]) for p in repo)
     return {
         "checkedAt": int(time.time()),
@@ -203,7 +204,31 @@ def check():
         "freeBytes": free,
         "power": power,
         "kernel": kernel,
+        "flatpak": flatpak,
     }
+
+
+def flatpak_updates():
+    """Flatpak apps with updates (sandboxed and signed: each can update on its
+    own, no review needed). Runtimes come along with the apps that use them."""
+    if not shutil.which("flatpak"):
+        return []
+    r = sh(["flatpak", "remote-ls", "--updates", "--app", "--columns=application,version,origin,installation"], timeout=60)
+    if r.returncode != 0:
+        return []
+    have = {}
+    for l in sh(["flatpak", "list", "--app", "--columns=application,name,version,installation"]).stdout.splitlines():
+        p = l.split("\t")
+        if len(p) >= 4:
+            have[(p[0], p[3])] = (p[1], p[2])
+    out = []
+    for l in r.stdout.splitlines():
+        p = l.split("\t")
+        if len(p) < 4 or not p[0]:
+            continue
+        name, old = have.get((p[0], p[3]), (p[0].split(".")[-1], ""))
+        out.append({"id": p[0], "name": name, "old": old, "new": p[1] or "newer build", "origin": p[2], "install": p[3]})
+    return out
 
 
 # ── AUR review ───────────────────────────────────────────────────────────────
@@ -471,9 +496,17 @@ def run(args):
         print(json.dumps({"e": "error", "msg": "An update is already running."}), flush=True)
         return 1
     want_repo = "--repo" in args
-    aur = []
-    if "--aur" in args:
-        aur = [valid_name(a) for a in args[args.index("--aur") + 1:] if not a.startswith("--")]
+    def after(flag):
+        if flag not in args:
+            return []
+        out = []
+        for a in args[args.index(flag) + 1:]:
+            if a.startswith("--"):
+                break
+            out.append(a)
+        return out
+    aur = [valid_name(a) for a in after("--aur")]
+    flatpaks = [a for a in after("--flatpak") if re.match(r"^[A-Za-z0-9._-]+$", a)]
     R = Run()
     approved = load(APPROVED, {})
     trusted = set(load(TRUSTED, []))
@@ -563,7 +596,16 @@ def run(args):
                 approved.pop(pkg, None)
             save(APPROVED, approved)
 
-    # 4. What needs your attention afterwards.
+    # 4. Flatpak apps (yours: no password; system-wide ones ask through polkit).
+    if flatpaks:
+        R.emit(e="phase", id="flatpak", label=f"Updating {len(flatpaks)} Flatpak app" + ("s" if len(flatpaks) > 1 else ""))
+        rc = R.stream(["flatpak", "update", "-y", "--noninteractive", *flatpaks], progress="flatpak")
+        result["flatpak"] = rc == 0
+        if rc != 0:
+            R.emit(e="error", msg="Some Flatpak apps didn't update (see the log).")
+            result["ok"] = False
+
+    # 5. What needs your attention afterwards.
     R.emit(e="phase", id="after", label="Finishing")
     running = os.uname().release
     result["restart"] = not os.path.isdir(f"/usr/lib/modules/{running}")
@@ -602,9 +644,9 @@ def main(argv):
             print(json.dumps({"running": sh(["systemctl", "--user", "is-active", "--quiet", UNIT + ".service"]).returncode == 0}))
         elif cmd == "start":
             args = argv[1:]
-            if "--aur" in args:
-                for a in args[args.index("--aur") + 1:]:
-                    valid_name(a)
+            for a in args:
+                if not a.startswith("--") and not re.match(r"^[A-Za-z0-9@._+-]+$", a):
+                    raise SystemExit(f"rice-update: not a package or app id: {a!r}")
             if sh(["systemctl", "--user", "is-active", "--quiet", UNIT + ".service"]).returncode == 0:
                 print(json.dumps({"error": "An update is already running."}))
                 return 1

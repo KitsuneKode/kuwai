@@ -32,8 +32,9 @@ Singleton {
     readonly property var repo: data && data.repo ? data.repo : []
     readonly property var aur: data && data.aur ? data.aur : []
     readonly property var news: data && data.news ? data.news : []
+    readonly property var flatpak: data && data.flatpak && Settings.updatesFlatpak ? data.flatpak : []
     readonly property var manualNews: news.filter(n => n.manual)
-    readonly property int total: data ? repo.length + aur.length : -1
+    readonly property int total: data ? repo.length + aur.length + flatpak.length : -1
     readonly property real checkedAt: data ? data.checkedAt * 1000 : 0
 
     function check() {
@@ -69,7 +70,7 @@ Singleton {
         onLoaded: { if (!root.data) { try { root.data = JSON.parse(text()); } catch (e) {} } }
     }
     Timer { interval: 120 * 1000; running: true; onTriggered: root.check() }
-    Timer { interval: 3 * 3600 * 1000; running: true; repeat: true; onTriggered: root.check() }
+    Timer { interval: Math.max(1, Settings.updatesCheckHours) * 3600 * 1000; running: Settings.updatesCheckHours > 0; repeat: true; onTriggered: root.check() }
 
     // ── AUR review ───────────────────────────────────────────────────────
     property var reviews: ({})          // name → rice-update review JSON
@@ -78,8 +79,29 @@ Singleton {
     property var trusted: []
     property var excluded: ({})         // name → true: you switched it off for this run
     property bool includeRepo: true
+    property var autoApproved: []       // approved by the setting (shown as such)
+    property var flatpakOff: ({})       // Flatpak apps switched off for this run
+    function setFlatpakOff(id, off) { const e = Object.assign({}, flatpakOff); if (off) e[id] = true; else delete e[id]; flatpakOff = e; }
+    // Review in the background as soon as a check finds AUR changes, so the
+    // panel (and the auto-approve setting) has answers before you open it.
+    onDataChanged: { for (const p of aur) if (aurState(p.name) === "review") review(p.name); }
 
     function reviewOf(name) { return reviews[name] || null; }
+    // Your saved approvals and trusted packages, at once on start (the
+    // cached check can predate them).
+    Process {
+        running: true
+        command: [root.bin, "state"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    const st = JSON.parse(text);
+                    root.trusted = st.trusted || [];
+                    root.approvedSha = Object.assign({}, st.approved || {}, root.approvedSha);
+                } catch (e) {}
+            }
+        }
+    }
     // "trusted" · "approved" · "routine" (looked at: only versions changed) · "review" · "loading"
     function aurState(name) {
         if (trusted.indexOf(name) >= 0) return "trusted";
@@ -114,6 +136,13 @@ Singleton {
                 const r = Object.assign({}, root.reviews);
                 try { r[name] = JSON.parse(text); } catch (e) { r[name] = { error: "Couldn't read the review" }; }
                 root.reviews = r;
+                // Settings → Updates: a change that only moves versions and
+                // checksums (nothing flagged, not new to you) is approved as read.
+                const rv = r[name];
+                if (Settings.updatesAutoRoutine && rv && !rv.error && rv.routine && !rv.firstTime && !(rv.flags && rv.flags.length) && rv.head) {
+                    root.approve(name);
+                    root.autoApproved = [...root.autoApproved.filter(n => n !== name), name];
+                }
                 root.reviewing = "";
                 root.nextReview();
             }
@@ -136,7 +165,8 @@ Singleton {
 
     // ── The run ──────────────────────────────────────────────────────────
     readonly property var chosenAur: aur.filter(p => selected(p.name)).map(p => p.name)
-    readonly property int chosenCount: (includeRepo ? repo.length : 0) + chosenAur.length
+    readonly property var chosenFlatpak: flatpak.filter(p => !flatpakOff[p.id]).map(p => p.id)
+    readonly property int chosenCount: (includeRepo ? repo.length : 0) + chosenAur.length + chosenFlatpak.length
     readonly property int waitingReview: aur.filter(p => !selectable(p.name)).length
     readonly property bool lowPower: !!(data && data.power && !data.power.ac && data.power.battery !== null && data.power.battery < 30)
     readonly property bool lowSpace: !!(data && data.freeBytes < 3 * 1024 * 1024 * 1024)
@@ -150,14 +180,15 @@ Singleton {
     property var log: []
     property var result: null
     property string runError: ""
-    property var plan: ({ repo: false, aur: [] })
+    property var plan: ({ repo: false, aur: [], flatpak: [] })
 
     function run() {
         if (running || chosenCount === 0 || lowSpace) return;
-        plan = { repo: includeRepo && repo.length > 0, aur: chosenAur.slice() };
+        plan = { repo: includeRepo && repo.length > 0, aur: chosenAur.slice(), flatpak: chosenFlatpak.slice() };
         const args = [bin, "start"];
         if (plan.repo) args.push("--repo");
         if (plan.aur.length) args.push("--aur", ...plan.aur);
+        if (plan.flatpak.length) args.push("--flatpak", ...plan.flatpak);
         // Its own background job (systemd user unit kuwai-update, sleep and
         // shutdown held off): restarting or crashing the shell can't touch it.
         starter.command = args;
@@ -186,7 +217,7 @@ Singleton {
         command: [root.bin, "status"]
         stdout: StdioCollector {
             onStreamFinished: {
-                try { if (JSON.parse(text).running) { root.plan = { repo: true, aur: [] }; root.resetRun(); root.running = true; follower.running = true; } } catch (e) {}
+                try { if (JSON.parse(text).running) { root.plan = { repo: true, aur: [], flatpak: [] }; root.resetRun(); root.running = true; follower.running = true; } } catch (e) {}
             }
         }
     }

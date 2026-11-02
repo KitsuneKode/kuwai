@@ -25,7 +25,7 @@ FocusScope {
     id: up
     focus: true
     implicitWidth: 720
-    implicitHeight: Math.min(560, (view === "review" ? 540 : view === "run" ? runCol.implicitHeight + 44 : listCol.implicitHeight + 44))
+    implicitHeight: Math.min(560, (view === "review" ? 540 : view === "run" ? runCol.implicitHeight + 44 : listCol.y + listCol.implicitHeight + listFoot.height + 30))
     Behavior on implicitHeight { NumberAnimation { duration: 200; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
 
     property string view: Updates.running || Updates.result ? "run" : "list"
@@ -47,13 +47,12 @@ FocusScope {
 
     Component.onCompleted: {
         Updates.checkIfStale();
-        // Read every AUR change in the background now, so the list can say
-        // which ones are only version bumps before you open them.
+        // Read every AUR change now (the service also does on each check), so
+        // the list can say which ones are only version bumps.
         for (const p of Updates.aur) if (Updates.aurState(p.name) === "review") Updates.review(p.name);
     }
     Connections {
         target: Updates
-        function onDataChanged() { for (const p of Updates.aur) if (Updates.aurState(p.name) === "review") Updates.review(p.name); }
         function onRunningChanged() { if (Updates.running) up.go("run"); }
     }
 
@@ -162,7 +161,7 @@ FocusScope {
         opacity: up.view === "list" ? up.enter : 0
         x: (1 - up.enter) * -14
         anchors { left: parent.left; right: parent.right; top: parent.top; bottom: listFoot.top; bottomMargin: 8 }
-        contentHeight: listCol.implicitHeight - listFoot.height
+        contentHeight: listCol.y + listCol.implicitHeight + 8
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 
@@ -182,7 +181,7 @@ FocusScope {
                     Label {
                         text: Updates.checking ? "Checking…"
                             : Updates.total < 0 ? "Not checked yet"
-                            : (Updates.repo.length + " Arch · " + Updates.aur.length + " AUR · checked " + Updates.ago(Updates.checkedAt))
+                            : ([Updates.repo.length + " Arch", Updates.aur.length + " AUR", Updates.flatpak.length ? Updates.flatpak.length + " Flatpak" : ""].filter(x => x).join(" · ") + " · checked " + Updates.ago(Updates.checkedAt))
                         size: 12; color: Theme.textTertiary
                     }
                 }
@@ -349,7 +348,7 @@ FocusScope {
                             readonly property var look: {
                                 const s = aurRow.st, r = aurRow.rv;
                                 if (s === "trusted") return ["Trusted", Theme.accent, "\u{f0565}"];
-                                if (s === "approved") return ["Approved", Theme.green, "\u{f012c}"];
+                                if (s === "approved") return [Updates.autoApproved.indexOf(aurRow.modelData.name) >= 0 ? "Version bump · auto" : "Approved", Theme.green, "\u{f012c}"];
                                 if (s === "loading" || !r) return ["Reading…", Theme.textTertiary, ""];
                                 if (r.error) return ["Couldn't read", Theme.red, ""];
                                 if (r.firstTime) return ["New to you · review", Theme.orange, "\u{f0026}"];
@@ -360,6 +359,43 @@ FocusScope {
                             text: look[0]; tone: look[1]; glyph: look[2]
                         }
                         Text { id: chev; anchors.right: parent.right; anchors.rightMargin: 4; anchors.verticalCenter: parent.verticalCenter; text: "\u{f0142}"; font.family: Theme.fontGlyph; font.pixelSize: 15; color: Theme.textTertiary }
+                    }
+                }
+            }
+
+            // Flatpak apps: sandboxed and signed, each updates on its own.
+            Card {
+                visible: Updates.flatpak.length > 0
+                Item {
+                    width: parent.width; height: 34
+                    Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f08c4}"; font.family: Theme.fontGlyph; font.pixelSize: 19; color: Theme.accent }
+                    Column {
+                        x: 32; anchors.verticalCenter: parent.verticalCenter
+                        spacing: 1
+                        Label { text: "Flatpak · " + Updates.flatpak.length + (Updates.flatpak.length === 1 ? " app" : " apps"); size: 14; weight: Theme.wSemibold }
+                        Label { text: "Sandboxed and signed: pick any, no review needed"; size: 11; color: Theme.textTertiary }
+                    }
+                }
+                Repeater {
+                    model: Updates.flatpak
+                    Item {
+                        id: fpRow
+                        required property var modelData
+                        required property int index
+                        width: parent.width; height: 42
+                        Rectangle { visible: fpRow.index > 0; width: parent.width; height: 1; color: Qt.rgba(1, 1, 1, 0.06) }
+                        Toggle {
+                            anchors.verticalCenter: parent.verticalCenter
+                            on: !Updates.flatpakOff[fpRow.modelData.id]
+                            onToggled: Updates.setFlatpakOff(fpRow.modelData.id, !Updates.flatpakOff[fpRow.modelData.id])
+                        }
+                        Column {
+                            x: 56; anchors.verticalCenter: parent.verticalCenter
+                            width: parent.width - 56
+                            spacing: 1
+                            Label { width: parent.width; elide: Text.ElideRight; text: fpRow.modelData.name + "  ·  " + fpRow.modelData.id; size: 13; weight: Theme.wMedium }
+                            Version { visible: fpRow.modelData.old !== ""; from: fpRow.modelData.old; to: fpRow.modelData.new }
+                        }
                     }
                 }
             }
@@ -616,6 +652,7 @@ FocusScope {
                     { id: "check", label: "Space and power" },
                     ...(Updates.plan.repo ? [{ id: "repo", label: "Arch packages" }] : []),
                     ...(Updates.plan.aur.length ? [{ id: "build", label: "Build AUR packages, as you" }, { id: "install", label: "Install AUR packages" }] : []),
+                    ...(Updates.plan.flatpak && Updates.plan.flatpak.length ? [{ id: "flatpak", label: "Flatpak apps" }] : []),
                     { id: "after", label: "Finish up" }
                 ]
                 Row {

@@ -12,6 +12,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.UPower
+import qs.config
 
 Singleton {
     id: root
@@ -60,7 +61,7 @@ Singleton {
         target: Updates
         function onTotalChanged() {
             const n = Updates.total;
-            if (n > root.updatesSeen && n > 0) {
+            if (n > root.updatesSeen && n > 0 && Settings.updatesAnnounce) {
                 root.banner = { id: "updates", level: "info", glyph: "\u{f06b0}", title: n + (n === 1 ? " update" : " updates") + " available", detail: "Review what changes, then update", panel: "updates", action: "Review" };
                 bannerFor.restart();
             }
