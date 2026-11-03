@@ -1,0 +1,2 @@
+#!/bin/sh
+echo "gtk-launch $*" >> "$RICE_TEST_TMP/launched"

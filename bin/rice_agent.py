@@ -21,6 +21,7 @@ Stdlib only.
 import base64
 import json
 import os
+import signal
 import sys
 import urllib.error
 import urllib.request
@@ -303,6 +304,100 @@ def tool_web_search(args):
     return _cap("\n".join(parts), 6000)
 
 
+def tool_run_command(args):
+    import subprocess
+    cmd = str(args.get("command") or "")
+    cwd = os.path.expanduser(str(args.get("cwd") or "~"))
+    if not os.path.isdir(cwd):
+        cwd = os.path.expanduser("~")
+    try:
+        p = subprocess.run(["bash", "-lc", cmd], cwd=cwd, capture_output=True, text=True, timeout=30)
+    except subprocess.TimeoutExpired:
+        raise ToolError("The command ran for 30 s and was stopped")
+    out = (p.stdout or "") + (("\n" + p.stderr) if p.stderr else "")
+    return _cap(out.strip(), 8192) + f"\n(exit {p.returncode})"
+
+
+def desktop_dirs():
+    home = os.environ.get("XDG_DATA_HOME") or os.path.expanduser("~/.local/share")
+    rest = (os.environ.get("XDG_DATA_DIRS") or "/usr/local/share:/usr/share").split(":")
+    return [os.path.join(d, "applications") for d in [home] + rest if d]
+
+
+def find_app(query):
+    """(desktop_id, name) like OllamaService.findApp: exact, prefix, substring."""
+    q = (query or "").strip().lower()
+    if not q:
+        return None
+    apps, seen = [], set()
+    for d in desktop_dirs():
+        if not os.path.isdir(d):
+            continue
+        for fn in sorted(os.listdir(d)):
+            if not fn.endswith(".desktop") or fn in seen:
+                continue
+            seen.add(fn)
+            name, hidden, in_entry = "", False, False
+            try:
+                with open(os.path.join(d, fn), encoding="utf-8", errors="ignore") as f:
+                    for line in f:
+                        line = line.strip()
+                        if line.startswith("["):
+                            in_entry = line == "[Desktop Entry]"
+                        elif in_entry and line.startswith("Name=") and not name:
+                            name = line[5:]
+                        elif in_entry and line in ("NoDisplay=true", "Hidden=true"):
+                            hidden = True
+            except OSError:
+                continue
+            if name and not hidden:
+                apps.append((fn[:-8], name))
+    for test in (lambda i, n: n.lower() == q or i.lower() == q,
+                 lambda i, n: n.lower().startswith(q),
+                 lambda i, n: q in n.lower()):
+        for i, n in apps:
+            if test(i, n):
+                return i, n
+    return None
+
+
+def tool_launch_app(args):
+    found = find_app(args.get("name"))
+    if not found:
+        raise ToolError(f"No app called {args.get('name')!r}")
+    p = _run(["gtk-launch", found[0]], timeout=5)
+    if p.returncode != 0:
+        raise ToolError(f"Couldn't open {found[1]}: {p.stderr.strip()}")
+    return f"Opened {found[1]}."
+
+
+def check_url(args):
+    url = str(args.get("url") or "").strip()
+    if not (url.startswith("https://") or url.startswith("http://")):
+        raise ToolError("Only http and https links can be opened")
+    return url
+
+
+def tool_open_url(args):
+    url = check_url(args)
+    p = _run(["xdg-open", url], timeout=5)
+    if p.returncode != 0:
+        raise ToolError(f"Couldn't open the link: {p.stderr.strip()}")
+    return f"Opened {url}."
+
+
+def _launch_request(args):
+    found = find_app(args.get("name"))
+    if not found:
+        raise ToolError(f"No app called {args.get('name')!r}")
+    return "launch", f"Open {found[1]}", found[0]
+
+
+def _url_request(args):
+    url = check_url(args)
+    return "open_url", "Open a link", url
+
+
 def _fn(name, description, props=None, required=()):
     return {"type": "function", "function": {
         "name": name, "description": description,
@@ -313,24 +408,102 @@ TOOLS = {
     "web_search": dict(
         schema=_fn("web_search", "Search the web. Use for facts you don't know or anything recent.",
                    {"query": {"type": "string", "description": "What to search for"}}, ["query"]),
-        item="web_search", title=lambda a: f"Searching “{a.get('query', '')}”", approve=False, run=tool_web_search),
+        item="web_search", title=lambda a: f"Searching “{a.get('query', '')}”", approve=None, run=tool_web_search),
     "active_window": dict(
         schema=_fn("active_window", "The app and window title the user is looking at right now."),
-        item="dynamic_tool_call", title=lambda a: "Active window", approve=False, run=tool_active_window),
+        item="dynamic_tool_call", title=lambda a: "Active window", approve=None, run=tool_active_window),
     "system_info": dict(
         schema=_fn("system_info", "Live CPU load, memory, GPU and the focused window."),
-        item="dynamic_tool_call", title=lambda a: "System info", approve=False, run=tool_system_info),
+        item="dynamic_tool_call", title=lambda a: "System info", approve=None, run=tool_system_info),
     "read_clipboard": dict(
         schema=_fn("read_clipboard", "The text on the user's clipboard."),
-        item="dynamic_tool_call", title=lambda a: "Reading clipboard", approve=False, run=tool_read_clipboard),
+        item="dynamic_tool_call", title=lambda a: "Reading clipboard", approve=None, run=tool_read_clipboard),
     "read_selection": dict(
         schema=_fn("read_selection", "The text the user has selected (highlighted) on screen."),
-        item="dynamic_tool_call", title=lambda a: "Reading selection", approve=False, run=tool_read_selection),
+        item="dynamic_tool_call", title=lambda a: "Reading selection", approve=None, run=tool_read_selection),
     "read_file": dict(
         schema=_fn("read_file", "Read a text file in the user's home folder.",
                    {"path": {"type": "string", "description": "Path, e.g. ~/notes.txt"}}, ["path"]),
-        item="dynamic_tool_call", title=lambda a: f"Reading {a.get('path', '')}", approve=False, run=tool_read_file),
+        item="dynamic_tool_call", title=lambda a: f"Reading {a.get('path', '')}", approve=None, run=tool_read_file),
+    # These act on the machine: each asks first (request.opened → stdin).
+    # approve(args) -> (kind, summary, detail); it may raise ToolError to
+    # fail the call before anyone is asked.
+    "run_command": dict(
+        schema=_fn("run_command", "Run a bash command on the user's machine. The user approves it first.",
+                   {"command": {"type": "string", "description": "The bash command"},
+                    "cwd": {"type": "string", "description": "Folder to run in (default ~)"}}, ["command"]),
+        item="command_execution", title=lambda a: str(a.get("command", ""))[:80],
+        approve=lambda a: ("command", "Run a command", str(a.get("command", ""))), run=tool_run_command),
+    "launch_app": dict(
+        schema=_fn("launch_app", "Open a desktop app by name. The user approves it first.",
+                   {"name": {"type": "string", "description": "App name, e.g. Firefox"}}, ["name"]),
+        item="dynamic_tool_call", title=lambda a: f"Open {a.get('name', '')}",
+        approve=_launch_request, run=tool_launch_app),
+    "open_url": dict(
+        schema=_fn("open_url", "Open a web link in the browser. The user approves it first.",
+                   {"url": {"type": "string", "description": "An http(s) URL"}}, ["url"]),
+        item="dynamic_tool_call", title=lambda a: f"Open {a.get('url', '')}",
+        approve=_url_request, run=tool_open_url),
 }
+
+
+# ── Approvals and cancel ──────────────────────────────────────────────────
+
+class Interrupted(Exception):
+    pass
+
+
+class Approvals:
+    """Reads {"type":"request.resolve"} lines from stdin on a thread."""
+
+    def __init__(self):
+        import queue
+        import threading
+        self.queue = queue.Queue()
+        self.pending = None
+        self.timeout = float(os.environ.get("RICE_AGENT_APPROVAL_TIMEOUT") or 120)
+        threading.Thread(target=self._read, daemon=True).start()
+
+    def _read(self):
+        for line in sys.stdin:
+            try:
+                msg = json.loads(line)
+            except ValueError:
+                continue
+            if msg.get("type") == "request.resolve":
+                self.queue.put((msg.get("id"), msg.get("decision")))
+
+    def ask(self, ids, item_id, kind, summary, detail):
+        import queue
+        import time
+        rid = ids.next("q")
+        self.pending = rid
+        emit({"type": "request.opened", "id": rid, "itemId": item_id, "kind": kind,
+              "summary": summary, "detail": detail})
+        deadline = time.monotonic() + self.timeout
+        decision = "timeout"
+        while True:
+            left = deadline - time.monotonic()
+            if left <= 0:
+                break
+            try:
+                got_id, got = self.queue.get(timeout=min(left, 0.25))
+            except queue.Empty:
+                continue
+            if got_id == rid and got in ("accept", "decline"):
+                decision = got
+                break
+        self.pending = None
+        emit({"type": "request.resolved", "id": rid, "decision": decision})
+        return decision
+
+    def cancel_pending(self):
+        if self.pending:
+            emit({"type": "request.resolved", "id": self.pending, "decision": "decline"})
+            self.pending = None
+
+
+APPROVALS = None
 
 
 def parse_args(raw):
@@ -360,17 +533,32 @@ def run_tool(ids, name, raw_args):
     title = tool["title"](args) if tool else name
     item_id = ids.next("t")
     emit({"type": "item.started", "id": item_id, "itemType": item_type, "title": title, "input": args})
-    if not tool:
-        status, output = "failed", f"Unknown tool: {name}. Use only the tools you were given."
-    elif bad:
-        status, output = "failed", bad
-    else:
-        try:
-            status, output = "completed", tool["run"](args)
-        except ToolError as e:
-            status, output = "failed", str(e)
-        except Exception as e:
-            status, output = "failed", f"{name} failed: {e}"
+    try:
+        if not tool:
+            status, output = "failed", f"Unknown tool: {name}. Use only the tools you were given."
+        elif bad:
+            status, output = "failed", bad
+        else:
+            try:
+                if tool["approve"]:
+                    kind, summary, detail = tool["approve"](args)
+                    decision = APPROVALS.ask(ids, item_id, kind, summary, detail)
+                    if decision != "accept":
+                        what = "command" if kind == "command" else "action"
+                        emit({"type": "item.completed", "id": item_id, "status": "declined",
+                              "output": "Timed out" if decision == "timeout" else "Declined"})
+                        return "declined", f"The user declined this {what}."
+                status, output = "completed", tool["run"](args)
+            except ToolError as e:
+                status, output = "failed", str(e)
+            except Interrupted:
+                raise
+            except Exception as e:
+                status, output = "failed", f"{name} failed: {e}"
+    except Interrupted:
+        APPROVALS.cancel_pending()
+        emit({"type": "item.completed", "id": item_id, "status": "declined", "output": "Stopped"})
+        raise
     emit({"type": "item.completed", "id": item_id, "status": status, "output": output})
     return status, output
 
@@ -441,6 +629,9 @@ def run_turn(req):
                 name = fn.get("name", "")
                 _, output = run_tool(ids, name, fn.get("arguments"))
                 messages.append({"role": "tool", "tool_name": name, "content": output})
+    except Interrupted:
+        stream.close()
+        status = "interrupted"
     except urllib.error.URLError as e:
         stream.close("failed")
         status, error = "failed", f"Can't reach Ollama at {OLLAMA_HOST} ({e.reason})"
@@ -451,7 +642,15 @@ def run_turn(req):
     emit({"type": "turn.completed", "status": status, "error": error, "stats": stats})
 
 
+def _on_term(_sig, _frame):
+    signal.signal(signal.SIGTERM, signal.SIG_IGN)  # once: the unwind must finish
+    raise Interrupted()
+
+
 def main(req_file):
+    global APPROVALS
+    signal.signal(signal.SIGTERM, _on_term)
+    APPROVALS = Approvals()
     try:
         with open(req_file, "r", encoding="utf-8") as f:
             req = json.load(f)

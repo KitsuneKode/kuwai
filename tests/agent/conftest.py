@@ -46,6 +46,31 @@ def run_agent(tmp_path):
     return run
 
 
+@pytest.fixture
+def start_agent(tmp_path):
+    """start_agent(req, script, caps) -> context manager yielding (Popen, fake)"""
+    import contextlib
+
+    @contextlib.contextmanager
+    def start(req, script, caps=None):
+        req = {"model": "hermes3:8b", "options": {"num_ctx": 4096}, **req}
+        req_file = tmp_path / "request.json"
+        req_file.write_text(json.dumps(req))
+        with FakeOllama(script, caps) as fake:
+            e = {**os.environ, "OLLAMA_HOST": fake.url, "PATH": f"{STUBS}:{os.environ['PATH']}",
+                 "HOME": str(tmp_path), "RICE_TEST_TMP": str(tmp_path)}
+            proc = subprocess.Popen([str(HELPER), "agent", str(req_file)], stdin=subprocess.PIPE,
+                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=e)
+            try:
+                yield proc, fake
+            finally:
+                if proc.poll() is None:
+                    proc.kill()
+                proc.wait(timeout=10)
+
+    return start
+
+
 def types(events):
     return [e["type"] for e in events]
 
