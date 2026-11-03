@@ -837,7 +837,7 @@ COMPACT_PROMPT = (
     "conversation changed it. Plain bullet points, at most 200 words. Don't answer anything and don't add "
     "anything new."
 )
-SUMMARY_HEAD = "Summary of the earlier conversation (older messages were compacted):\n"
+SUMMARY_HEAD = "Here is a summary of what I told you earlier in this conversation (older messages were compacted):\n"
 
 
 def compact(ids, model, caps, options, summary, convo):
@@ -929,7 +929,10 @@ def run_turn(req):
             summary, convo = compact(ids, model, caps, options, summary, convo)
         messages = [{"role": "system", "content": system}]
         if summary:
-            messages.append({"role": "system", "content": SUMMARY_HEAD + summary})
+            # An opening exchange, not a second system message: with tools offered,
+            # hermes3 ignores everything after a second system message (0/5 recall vs 5/5).
+            messages += [{"role": "user", "content": SUMMARY_HEAD + summary},
+                         {"role": "assistant", "content": "Got it."}]
         messages += convo
         vision_hop(ids, messages, stats)
         while True:

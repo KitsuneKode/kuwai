@@ -26,8 +26,12 @@ def test_compaction_summarises_older_and_keeps_recent(run_agent):
 
     msgs = turn_req["messages"]
     assert msgs[0]["role"] == "system"
-    assert msgs[1]["role"] == "system" and "- user likes Lua" in msgs[1]["content"]
-    assert [m["content"] for m in msgs[2:]] == ["q3", "a3", "now?"]
+    # The summary is an opening exchange, not a second system message: with tools
+    # offered, hermes3 ignores everything after a second system message (measured 0/5 vs 5/5).
+    assert msgs[1]["role"] == "user" and "- user likes Lua" in msgs[1]["content"]
+    assert msgs[2] == {"role": "assistant", "content": "Got it."}
+    assert [m["content"] for m in msgs[3:]] == ["q3", "a3", "now?"]
+    assert [m["role"] for m in msgs].count("system") == 1
     assert events[-1]["status"] == "completed"
 
 
@@ -35,8 +39,8 @@ def test_existing_summary_is_prepended(run_agent):
     req = {"messages": convo(1), "summary": "- earlier: set up the island"}
     _, fake = run_agent(req, [answer()], caps=CAPS)
     msgs = fake.requests[0]["messages"]
-    assert msgs[1]["role"] == "system" and "- earlier: set up the island" in msgs[1]["content"]
-    assert [m["content"] for m in msgs[2:]] == ["q0", "a0", "now?"]
+    assert msgs[1]["role"] == "user" and "- earlier: set up the island" in msgs[1]["content"]
+    assert [m["content"] for m in msgs[3:]] == ["q0", "a0", "now?"]
 
 
 def test_compaction_folds_in_the_previous_summary(run_agent):
