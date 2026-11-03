@@ -221,7 +221,21 @@ BLOCK_STYLE = STYLESHEET.replace("margin-top: 2px; margin-bottom: 12px;", "margi
     .replace("margin-top: 16px; margin-bottom: 6px;", "margin-top: 0; margin-bottom: 0;") \
     .replace("margin-top: 12px; margin-bottom: 4px;", "margin-top: 0; margin-bottom: 0;") \
     .replace("margin-top: 0; margin-bottom: 12px; line-height: 150%;", "margin-top: 0; margin-bottom: 0; line-height: 150%;") \
+    .replace("font-size: 26px; font-weight: 700;", "font-size: 20px; font-weight: 700;") \
+    .replace("font-size: 21px; font-weight: 600;", "font-size: 17px; font-weight: 600;") \
+    .replace("h3 {{ font-size: 17px;".replace("{{", "{"), "h3 { font-size: 15px;") \
+    .replace("th { background-color: #26262c; color: #ffffff; font-weight: 600; padding: 7px 12px; }",
+             "th { color: #aeaeb2; font-size: 13px; font-weight: 600; padding: 4px 12px 6px 0; }") \
+    .replace("td { padding: 7px 12px; border-bottom: 1px solid #2c2c32; }", "td { padding: 6px 12px 6px 0; }") \
     .replace("</style>", "ul, ol { margin-top: 0; margin-bottom: 0; margin-left: 0; -qt-list-indent: 1; }\n</style>")
+
+BARE_URL = re.compile(r"(?<![(<\[\"'=/])\b(https?://[^\s<>()\[\]`]+[^\s<>()\[\]`.,;:!?'\"*_])")
+
+
+def autolink(text):
+    """Bare URLs become links (Markdown only links <url> and [text](url)); code spans are left alone."""
+    parts = re.split(r"(`[^`]*`)", text)
+    return "".join(p if p.startswith("`") else BARE_URL.sub(r"<\1>", p) for p in parts)
 
 
 def render_block(req):
@@ -232,7 +246,7 @@ def render_block(req):
         pre = re.search(r"<pre[\s\S]*</pre>", code_html(text, lexer, 12))
         return pre.group(0) if pre else html.escape(text)
     import markdown
-    body = markdown.markdown(text, extensions=["tables", "sane_lists"])
+    body = markdown.markdown(autolink(text), extensions=["tables", "sane_lists"])
     body = body.replace("<table>", '<table width="100%" cellspacing="0" cellpadding="0">').replace("<th>", '<th align="left">')
     # The last paragraph's bottom margin would still add height; trim the edges.
     return BLOCK_STYLE + body.strip()

@@ -3,6 +3,7 @@
 // Features Compact HUD mode (840x560) & Expanded Studio mode (1080x820) with shadcn ChatSidebar.
 // Bound to SUPER + CTRL + SHIFT + A.
 import QtQuick
+import QtQuick.Effects
 import QtQuick.Controls
 import Quickshell
 import Quickshell.Wayland
@@ -339,6 +340,16 @@ Scope {
                                     }
                                     onMovementEnded: if (fromEnd <= 40) userScrolledUp = false
 
+                                    // Scroll fade (AI Elements' utility): the edges fade out only when
+                                    // there's more to scroll that way, so text never meets a hard cut.
+                                    layer.enabled: contentHeight > height
+                                    layer.effect: MultiEffect {
+                                        maskEnabled: true
+                                        maskSource: fadeMask
+                                        maskThresholdMin: 0.0
+                                        maskSpreadAtMin: 1.0
+                                    }
+
                                     onContentHeightChanged: {
                                         // Auto-follow bottom during stream unless user manually scrolled up
                                         if (!userScrolledUp || !OllamaService.streaming) {
@@ -400,6 +411,24 @@ Scope {
                                                 anchors.verticalCenter: parent.verticalCenter
                                                 MouseArea { anchors.fill: parent; anchors.margins: -4; cursorShape: Qt.PointingHandCursor; onClicked: OllamaService.retry() }
                                             }
+                                        }
+                                    }
+                                }
+
+                                Item {
+                                    id: fadeMask
+                                    anchors.fill: scroll
+                                    visible: false
+                                    layer.enabled: true
+                                    readonly property real fadeTop: Math.min(1, scroll.contentY / 24) * 28 / Math.max(1, height)
+                                    readonly property real fadeBottom: Math.min(1, scroll.fromEnd / 24) * 28 / Math.max(1, height)
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        gradient: Gradient {
+                                            GradientStop { position: 0.0; color: fadeMask.fadeTop > 0 ? "transparent" : "white" }
+                                            GradientStop { position: Math.max(0.001, fadeMask.fadeTop); color: "white" }
+                                            GradientStop { position: Math.min(0.999, 1 - fadeMask.fadeBottom); color: "white" }
+                                            GradientStop { position: 1.0; color: fadeMask.fadeBottom > 0 ? "transparent" : "white" }
                                         }
                                     }
                                 }

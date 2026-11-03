@@ -130,13 +130,24 @@ Singleton {
 
     function modelLabel(m) {
         if (!m) return "";
-        const base = m.split(":")[0];
-        const known = { "hermes3": "Hermes 3", "deepseek-r1": "DeepSeek R1", "minicpm-v": "MiniCPM-V",
+        let base = m.split(":")[0].replace(/^[\w.-]+\//, "");       // huihui_ai/qwen3-abliterated → qwen3-abliterated
+        const uncensored = /-abliterated$/.test(base);
+        base = base.replace(/-abliterated$/, "");
+        const known = { "hermes3": "Hermes 3", "deepseek-r1": "DeepSeek R1", "minicpm-v": "MiniCPM-V", "qwen3.5": "Qwen 3.5",
                         "qwen3": "Qwen 3", "llama3.2": "Llama 3.2", "llama3.1": "Llama 3.1", "gemma3": "Gemma 3" };
         const tag = m.indexOf(":") >= 0 ? m.split(":")[1] : "";
         const size = /^\d+(\.\d+)?b$/i.test(tag) ? " " + tag.toUpperCase() : "";
-        return (known[base] || base) + size;
+        return (known[base] || base) + size + (uncensored ? " Uncensored" : "");
     }
+
+    // The models worth keeping on this rig (6 GB VRAM), from the partner
+    // benchmark (docs/research/2026-11-03-partner.md). The picker lists these
+    // first with what each is for; anything else installed comes after.
+    readonly property var curated: [
+        { id: "qwen3.5:4b", role: "Everyday", note: "Fastest and most accurate · sees images · 16k context" },
+        { id: "huihui_ai/qwen3-abliterated:8b", role: "Uncensored", note: "No refusals · accurate, ~3× slower · 4k context" },
+        { id: "huihui_ai/qwen3.5-abliterated:4b", role: "Uncensored, fast", note: "No refusals · sees images · weaker at code" }
+    ]
 
     // Retry: drop the answer at `index` (and everything after) and run the
     // turn again from the message before it, with the current model.
@@ -808,7 +819,9 @@ function onPanelClosed() {
         merged.forEach(e => { d = Turn.applyEvent(d, e); });
         root.draft = d;
     }
-    Timer { id: deltaTimer; interval: 16; onTriggered: root.flushDeltas() }
+    // 50 ms, as T3 Code lands text: whole words and phrases arrive together instead
+    // of a ragged token at a time, and the live block re-renders 20 times a second.
+    Timer { id: deltaTimer; interval: 50; onTriggered: root.flushDeltas() }
 
     // The draft becomes a message in the chat it was started in.
     function finishTurn() {

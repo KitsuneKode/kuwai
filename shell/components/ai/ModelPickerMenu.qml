@@ -47,9 +47,17 @@ Item {
                  : think ? "Thinking, no tools" : "Chat only";
         return what + (i.sizeGb ? " · " + i.sizeGb + " GB" : "");
     }
-    readonly property var models: (OllamaService.availableModels || []).map(n => ({
-        id: n, label: OllamaService.modelLabel(n), detail: describe(n), loaded: OllamaService.isLoaded(n)
-    }))
+    // The recommended models first, with what each is for; then everything else installed.
+    readonly property var models: {
+        const have = OllamaService.availableModels || [];
+        const picks = OllamaService.curated.filter(c => have.indexOf(c.id) >= 0).map(c => ({
+            id: c.id, label: OllamaService.modelLabel(c.id), role: c.role, detail: c.note,
+            loaded: OllamaService.isLoaded(c.id), other: false }));
+        const rest = have.filter(n => !OllamaService.curated.some(c => c.id === n)).map((n, i) => ({
+            id: n, label: OllamaService.modelLabel(n), role: "", detail: describe(n),
+            loaded: OllamaService.isLoaded(n), other: true, firstOther: i === 0 && picks.length > 0 }));
+        return picks.concat(rest);
+    }
 
     // Kobra's ranking: exact 0, prefix 1, substring 2, letters in order 3, else no match.
     function rank(text, q) {
@@ -94,7 +102,7 @@ Item {
     // ── Geometry: from the pill to the card, opening upward ──────────────
     property rect from: Qt.rect(0, 0, 120, 30)
     readonly property real toW: menuW
-    readonly property real toH: Math.min(360, head.height + list.contentHeight + 14)
+    readonly property real toH: Math.min(460, head.height + list.contentHeight + 14)
     readonly property real toX: Math.max(8, Math.min(width - toW - 8, from.x))
     readonly property real toY: Math.max(8, from.y - toH - 8)
     Spring { id: t; tier: Theme.springModerate; epsilon: 0.001 }
@@ -161,7 +169,7 @@ Item {
 
                 FluidHighlight {
                     parent: list.contentItem
-                    target: menu.open ? list.currentItem : null
+                    target: menu.open && list.currentItem ? list.currentItem.hit : null
                     ring: menu.keyboard
                     radius: 10
                 }
@@ -171,19 +179,54 @@ Item {
                     required property var modelData
                     required property int index
                     readonly property bool current: modelData.id === OllamaService.model
+                    readonly property bool sep: !!modelData.firstOther && !menu.query
+                    readonly property Item hit: hitBox
+                    Item { id: hitBox; width: parent.width; height: 52; anchors.bottom: parent.bottom }
                     width: ListView.view.width
-                    height: 48
+                    height: 52 + (sep ? 28 : 0)
+
+                    // "Other installed" above the first model that isn't a pick.
+                    Label {
+                        visible: row.sep
+                        x: 12; y: 10
+                        text: "Other installed"
+                        size: 11
+                        weight: Theme.wMedium
+                        color: Theme.textTertiary
+                    }
 
                     Column {
-                        anchors { left: parent.left; leftMargin: 12; right: marks.left; rightMargin: 8; verticalCenter: parent.verticalCenter }
+                        anchors { left: parent.left; leftMargin: 12; right: marks.left; rightMargin: 8; bottom: parent.bottom; bottomMargin: 9 }
                         spacing: 2
-                        Label {
+                        Row {
                             width: parent.width
-                            text: row.modelData.label
-                            size: 13
-                            weight: Theme.wMedium
-                            color: Theme.textPrimary
-                            elide: Text.ElideRight
+                            spacing: 8
+                            Label {
+                                text: row.modelData.label
+                                size: 13
+                                weight: Theme.wMedium
+                                color: row.modelData.other ? Theme.textSecondary : Theme.textPrimary
+                                elide: Text.ElideRight
+                                width: Math.min(implicitWidth, parent.width - roleTag.width - 8)
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+                            Rectangle {
+                                id: roleTag
+                                visible: !!row.modelData.role
+                                width: visible ? roleText.implicitWidth + 12 : 0
+                                height: 18
+                                radius: 9
+                                color: /Uncensored/.test(row.modelData.role) ? Qt.alpha(Theme.orange, 0.16) : Qt.alpha(Theme.accent, 0.16)
+                                anchors.verticalCenter: parent.verticalCenter
+                                Label {
+                                    id: roleText
+                                    anchors.centerIn: parent
+                                    text: row.modelData.role || ""
+                                    size: 10
+                                    weight: Theme.wSemibold
+                                    color: /Uncensored/.test(row.modelData.role) ? Theme.orange : Theme.accent
+                                }
+                            }
                         }
                         Label {
                             width: parent.width
@@ -196,7 +239,7 @@ Item {
 
                     Row {
                         id: marks
-                        anchors { right: parent.right; rightMargin: 12; verticalCenter: parent.verticalCenter }
+                        anchors { right: parent.right; rightMargin: 12; verticalCenter: parent.verticalCenter; verticalCenterOffset: row.sep ? 14 : 0 }
                         spacing: 10
                         Row {
                             visible: row.modelData.loaded

@@ -200,9 +200,11 @@ Item {
         // ── Assistant ──────────────────────────────────────────────────
         // Before the first word: loading the model into memory (cold, ~10 s) or
         // thinking; a seconds counter once it's been a moment.
-        Label {
+        Item {
             id: waiting
             visible: !root.isUser && root.isStreaming && (root.parts.length === 0 || root.parts[root.parts.length - 1].kind === "steer")
+            width: parent.width
+            height: 22
             property int secs: 0
             Timer {
                 running: waiting.visible
@@ -211,17 +213,24 @@ Item {
                 onRunningChanged: if (running) waiting.secs = 0
                 onTriggered: waiting.secs++
             }
-            // "Loading …" only before anything came back; after a steer it's thinking again.
-            text: (root.msg.phase === "loading" && root.parts.length === 0
-                   ? "Loading " + OllamaService.modelLabel(root.msg.model) + "…" : "Thinking")
-                  + (secs >= 2 ? "  " + secs + "s" : "")
-            size: 14
-            color: Theme.textTertiary
-            SequentialAnimation on opacity {
-                running: waiting.visible && !Theme.reduceMotion
-                loops: Animation.Infinite
-                NumberAnimation { from: 1; to: 0.45; duration: 700; easing.type: Easing.InOutSine }
-                NumberAnimation { from: 0.45; to: 1; duration: 700; easing.type: Easing.InOutSine }
+            readonly property bool loading: root.msg.phase === "loading" && root.parts.length === 0
+            Row {
+                spacing: 8
+                anchors.verticalCenter: parent.verticalCenter
+                // "Loading …" only before anything came back; after a steer it's thinking again.
+                Shimmer {
+                    text: waiting.loading ? "Loading " + OllamaService.modelLabel(root.msg.model) + " into memory" : "Thinking"
+                    size: 14
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+                Label {
+                    visible: waiting.secs >= 2
+                    text: waiting.secs + "s"
+                    size: 12
+                    color: Theme.textDim
+                    font.features: { "tnum": 1 }
+                    anchors.verticalCenter: parent.verticalCenter
+                }
             }
         }
 
@@ -332,7 +341,7 @@ Item {
                                     id: fadeIn
                                     running: false
                                     from: 0; to: 1
-                                    duration: 260
+                                    duration: 450
                                     easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut
                                 }
                                 Component.onCompleted: { if (html) shown = html; if (root.isStreaming && !Theme.reduceMotion) fadeIn.start(); }
@@ -352,6 +361,7 @@ Item {
                                         font.family: Theme.fontText
                                         font.pixelSize: 15
                                         onLinkActivated: link => Qt.openUrlExternally(link)
+                                        HoverHandler { cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.IBeamCursor }
                                     }
                                 }
                                 Component {

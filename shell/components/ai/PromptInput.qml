@@ -347,7 +347,7 @@ Rectangle {
                         : root.editIndex >= 0 ? "Edit your message"
                         : OllamaService.pendingRequest && OllamaService.pendingRequest.kind === "question"
                         ? (OllamaService.pendingRequest.options.length ? "Pick 1–" + OllamaService.pendingRequest.options.length + ", or type your answer" : "Type your answer")
-                        : OllamaService.streaming ? "Steer it (↵) or queue for after (⇥)"
+                        : OllamaService.streaming ? "Enter steers this answer · Tab queues for after"
                         : OllamaService.pendingImage !== "" ? "Ask about the screenshot" : "Ask anything"
                     color: Theme.textDim
                     font.family: Theme.fontText
