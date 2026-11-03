@@ -35,6 +35,13 @@ SYSTEM_GENERAL = (
     "integration. Be direct, concise, and technically rigorous. Never give corporate boilerplate or claim to be "
     "fictional. For code, output clean idiomatic snippets."
 )
+TOOL_GUIDE = (
+    "\n\nYou have tools. When a tool can answer or do what the user asked, call it right away instead of "
+    "describing what you would do. Don't ask for permission in your reply: tools that change things (run_command, "
+    "launch_app, open_url) already ask the user to approve before they run. Use only the tools you were given, with "
+    "arguments as a JSON object. After a tool returns, answer from its result; if it failed or was declined, say so "
+    "briefly and don't retry the same call."
+)
 SYSTEM_VISION = (
     "You are a visual AI assistant operating on Arch Linux. Inspect screenshots, code, and interfaces with high "
     "fidelity and precision."
@@ -399,7 +406,8 @@ def tool_run_command(args):
     except subprocess.TimeoutExpired:
         raise ToolError("The command ran for 30 s and was stopped")
     out = (p.stdout or "") + (("\n" + p.stderr) if p.stderr else "")
-    return _cap(out.strip(), 8192) + f"\n(exit {p.returncode})"
+    out = _cap(out.strip(), 8192)
+    return (out + "\n" if out else "(no output)\n") + f"(exit {p.returncode})"
 
 
 def desktop_dirs():
@@ -684,6 +692,8 @@ def run_turn(req):
     emit({"type": "turn.started", "model": model})
 
     system = SYSTEM_VISION if ("vision" in caps and not use_tools) else SYSTEM_GENERAL
+    if use_tools:
+        system += TOOL_GUIDE
     messages = [{"role": "system", "content": system}] + to_ollama_messages(req.get("messages") or [],
                                                                            "vision" in caps)
     stats = {"evalCount": 0, "promptEvalCount": 0, "numCtx": int(options.get("num_ctx", 4096)), "tokensPerSec": 0.0}
