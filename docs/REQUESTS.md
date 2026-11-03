@@ -19,8 +19,9 @@ Keep it current: tick things off in the commit that does them.
   launcher, settings, system, themes), alerts, lock screen with media, Waybar's modules.
 
 ## Pending (oldest first)
-- Native chat app (ChatGPT/Claude subscriptions via official SDKs, ai-elements look, sidebar): plan in
-  docs/CHAT.md, not built.
+- Native chat app: the local agent and its UI are built (2026-11-03: tools, approvals, reasoning,
+  model picker, context chips, / commands; plan in docs/superpowers/plans/). Still open: real web
+  search, auto-compaction, the ChatGPT/Claude subscription backends (docs/CHAT.md).
 - Audio devices with real product photos (the Audiocular DAC) in the sound picker.
 - Shaders (screen and per-surface), used sparingly; use the GPUs well without waking the NVIDIA one.
 - Hyprland 0.57 port (when it's installed here; 0.56.2 now); monocle and scrolling layouts.

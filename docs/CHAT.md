@@ -1,6 +1,20 @@
 # Chat: a native ask-anything window for the rice
 
-Status: planned (2026-10-29). Nothing built yet.
+Status: the local half is built (2026-11-03): the assistant runs a local agent on Ollama
+(`bin/rice_agent.py`, tools and approvals, events below) with this window's UI. The subscription
+backends (Codex, Claude) below are still to do; they plug in by printing the same events.
+
+## The agent protocol (built)
+
+`rice-ollama agent <request.json>` prints one JSON event per line, in T3 Code's vocabulary
+(`refs/pingdotgg_t3code/packages/contracts/src/providerRuntime.ts`), each with `ts`:
+`turn.started` · `item.started {id, itemType, title, input}` · `item.delta {id, text}` ·
+`item.completed {id, status, output}` · `request.opened {id, itemId, kind, summary, detail}` ·
+`request.resolved {id, decision}` · `turn.completed {status, error, stats}`. Approvals come back on
+stdin as `{"type":"request.resolve","id","decision"}`; SIGTERM declines what's pending and ends the
+turn as `interrupted`. The UI folds events into a message of parts with `shell/services/ai/turn.mjs`.
+Plan and decisions: `docs/superpowers/plans/2026-11-03-assistant-agent-parity.md`. Tests:
+`pytest tests/agent` (agent, against a fake Ollama) and `bun test shell/services/ai` (the reducer).
 
 ## Why
 

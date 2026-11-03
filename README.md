@@ -14,6 +14,8 @@ dark liquid glass over Hyprland's blur, SF Pro text, smooth no-bounce motion
 | The center (Super+N): Notifications · Agents (kittymux, usage limits per account as in T3 Code) · Sound (coloured mixer, per-app output, device lists) · Controls (Wi‑Fi picker, Bluetooth, DND, Night Shift, Caffeine, Mic, Reduce Motion, battery, brightness) | dunst history, pavucontrol, nm-applet, brightness/hyprsunset scripts | `shell/modules/notifications/Center.qml` + `CenterContent.qml` + `*View.qml` |
 | The clipboard island (Super+V): a pill at the top centre that shows each copy, and melts into a shelf of cards: fzf search, Quick Look, ⌃K actions, OCR, pins, rendered Markdown/code/Mermaid, secrets masked | HyDE's rofi cliphist menus | `shell/modules/clipboard/`, `shell/services/Clipboard.qml`, `bin/rice-clip`, `bin/rice-render` |
 
+| The assistant (Super+Ctrl+Shift+A): a local agent on Ollama that uses tools (the focused window, system load, clipboard, selection, files in ~, web search) and asks before it runs a command, opens an app or a link; reasoning folds away; screenshots go to a vision model first when the chosen model can't see | — | `shell/modules/assistant/`, `shell/components/ai/`, `shell/services/OllamaService.qml`, `bin/rice_agent.py` |
+
 Next up: dynamic island, control center, bar.
 
 ## Run / control
@@ -45,6 +47,10 @@ Inside the center: type to search · ↑↓ select · ↵ open · ⌦ dismiss (o
 read) · →← expand/fold a group · ⇥ filter · ⌃⇥ next tab · ⌥1–4 a tab ·
 ⌃D Do Not Disturb · ⌃⇧⌫ clear all · Esc clears the search, then closes ·
 ? (or F1, ⌃/) shows every shortcut.
+
+Inside the assistant: ↵ send · ⇧↵ newline · ⌃K model · / commands · ⌃V paste an image ·
+⌃N new chat · ⌃O apps · ⌃M studio · ⌃B sidebar · ⌃↵ run (when it asks) · Esc don't run,
+then stop, then close · ⌫ on an empty prompt removes the last attachment.
 
 The Super shortcuts are Hyprland global shortcuts (`global, rice:center` …)
 that call straight into the running shell (`shell/modules/Shortcuts.qml`):
