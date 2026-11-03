@@ -1,0 +1,6 @@
+#!/bin/sh
+case "$1" in
+  activewindow) echo '{"class":"kitty","title":"stub-title","pid":1,"workspace":{"name":"2"}}' ;;
+  activeworkspace) echo '{"name":"2"}' ;;
+  *) echo '{}' ;;
+esac

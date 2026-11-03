@@ -1,0 +1,3 @@
+#!/bin/sh
+for a in "$@"; do [ "$a" = "--primary" ] && { printf 'selected text'; exit 0; }; done
+printf 'clipboard text'
