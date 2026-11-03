@@ -5,7 +5,7 @@
 // Qt 6.12's module loader rejects object spread ({...a}): use Object.assign.
 //
 //   Msg  = { role: "assistant", model, timestamp, status, parts, stats, error }
-//   Part = { id, kind: "reasoning"|"text"|"tool", itemType, title, input, text,
+//   Part = { id, kind: "reasoning"|"text"|"tool"|"steer", itemType, title, input, text,
 //            output, status: "running"|"completed"|"failed"|"declined", request,
 //            startedAt, endedAt }   (ms, from the events' ts; 0 if unknown)
 //   request = null | { id, kind, summary, detail, state: "pending"|"accept"|"decline"|"timeout" }
@@ -53,13 +53,18 @@ export function applyEvent(msg, ev) {
         if (!p) return msg;
         return withPart(msg, p.id, q => ({ request: Object.assign({}, q.request, { state: ev.decision }) }));
     }
+    case "turn.steered": {
+        const part = { id: ev.id || "steer", kind: "steer", itemType: "user_message", title: "", input: {},
+            text: ev.text || "", output: "", status: "completed", request: null, startedAt: ev.ts || 0, endedAt: ev.ts || 0 };
+        return Object.assign({}, msg, { parts: msg.parts.concat([part]) });
+    }
     case "turn.started":
         return Object.assign({}, msg, { startedAt: ev.ts || msg.startedAt || 0 });
     case "turn.phase":
         return Object.assign({}, msg, { phase: ev.phase || "" });
     case "turn.completed":
         return Object.assign({}, msg, { status: ev.status || "completed", error: ev.error || "", stats: ev.stats || null,
-            endedAt: ev.ts || 0 });
+            endedAt: ev.ts || 0, unapplied: ev.unapplied || [] });
     default:
         return msg;
     }
@@ -113,6 +118,17 @@ export function toApiMessagesWithIndex(msgs, offset) {
             if (m.image) e.image = m.image;
             if (m.context) e.context = m.context;
         } else if (m.role === "assistant") {
+            // A steered turn goes back as it happened: assistant, your steer, assistant…
+            if (m.parts && m.parts.some(p => p.kind === "steer")) {
+                let buf = [];
+                const flush = () => { if (buf.length) { api.push({ role: "assistant", content: buf.join("\n\n") }); index.push(i + (offset || 0)); buf = []; } };
+                m.parts.forEach(p => {
+                    if (p.kind === "text" && p.text) buf.push(p.text);
+                    else if (p.kind === "steer") { flush(); api.push({ role: "user", content: p.text }); index.push(i + (offset || 0)); }
+                });
+                flush();
+                return;
+            }
             const t = textOf(m);
             if (t) e = { role: "assistant", content: t };
         }

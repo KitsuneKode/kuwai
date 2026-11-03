@@ -169,3 +169,33 @@ describe("sourcesOf", () => {
   });
 });
 
+describe("steer", () => {
+  test("a steer becomes a part where it landed", () => {
+    const m = run([started("m1", "assistant_message"), delta("m1", "Half an"), done("m1"),
+      { type: "turn.steered", id: "s-1", text: "shorter please" },
+      started("m2", "assistant_message"), delta("m2", "Short."), done("m2")]);
+    expect(m.parts.map(p => p.kind)).toEqual(["text", "steer", "text"]);
+    expect(m.parts[1]).toMatchObject({ id: "s-1", text: "shorter please", status: "completed" });
+    expect(textOf(m)).toBe("Half an\n\nShort.");
+  });
+
+  test("history splits a steered turn back into assistant / user / assistant", () => {
+    const m = run([started("m1", "assistant_message"), delta("m1", "Half an"),
+      { type: "turn.steered", id: "s-1", text: "shorter please" },
+      started("m2", "assistant_message"), delta("m2", "Short.")]);
+    const r = toApiMessagesWithIndex([{ role: "user", text: "explain", image: "", timestamp: 1 }, m], 0);
+    expect(r.api).toEqual([
+      { role: "user", content: "explain" },
+      { role: "assistant", content: "Half an" },
+      { role: "user", content: "shorter please" },
+      { role: "assistant", content: "Short." },
+    ]);
+    expect(r.index).toEqual([0, 1, 1, 1]);
+  });
+
+  test("unapplied steers are on the finished message for the queue", () => {
+    const m = run([{ type: "turn.completed", status: "completed", stats: {}, unapplied: [{ id: "s-2", text: "late" }] }]);
+    expect(m.unapplied).toEqual([{ id: "s-2", text: "late" }]);
+  });
+});
+

@@ -57,6 +57,63 @@ Singleton {
 
     property bool storeLoaded: false
 
+    // ── Queue and steer (Codex's model) ───────────────────────────────
+    // While an answer streams: ↵ steers (the message goes into the running
+    // turn: text being written stops, the model answers it), ⇥ queues it for
+    // after this answer. Queued messages keep their screenshot and context and
+    // send one by one when a turn finishes normally (not after Stop or a
+    // failure). Steers the turn couldn't take go back to the front of the queue.
+    property var queue: []              // [{ id, text, image, context }]
+    property var steering: []           // [{ id, text }] written, not yet taken
+    property bool drainAfterTurn: false
+
+    function newId(prefix) { return prefix + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36); }
+
+    function enqueue(text) {
+        const t = (text || "").trim();
+        if (!t && !pendingImage) return;
+        root.queue = root.queue.concat([{ id: newId("q-"), text: t, image: root.pendingImage, context: root.pendingContext }]);
+        root.pendingImage = ""; root.pendingContext = null; root.pendingAppTitle = "";
+    }
+
+    function steer(text) {
+        const t = (text || "").trim();
+        if (!t) return;
+        // A steer is words only; with a screenshot or context attached it waits its turn.
+        if (!streaming || !chatProc.running || chatProc.sawTurnEnd || pendingImage || pendingContext) { enqueue(t); return; }
+        const id = newId("s-");
+        root.steering = root.steering.concat([{ id: id, text: t }]);
+        chatProc.write(JSON.stringify({ type: "turn.steer", id: id, text: t }) + "\n");
+    }
+
+    function removeQueued(id) { root.queue = root.queue.filter(q => q.id !== id); }
+
+    // Pull a queued message back into the prompt to change it.
+    function takeQueued(id) {
+        const q = root.queue.find(x => x.id === id);
+        if (!q) return "";
+        removeQueued(id);
+        if (q.image) root.pendingImage = q.image;
+        if (q.context) root.pendingContext = q.context;
+        return q.text;
+    }
+
+    function sendQueuedNow(id) {
+        const q = root.queue.find(x => x.id === id);
+        if (!q) return;
+        if (streaming && !q.image && !q.context) { removeQueued(id); steer(q.text); return; }
+        if (streaming) return;
+        removeQueued(id);
+        root.pendingImage = q.image || ""; root.pendingContext = q.context || null;
+        send(q.text || "Look at this.");
+    }
+
+    Timer {
+        id: drainTimer
+        interval: 350
+        onTriggered: if (!root.streaming && root.queue.length > 0) root.sendQueuedNow(root.queue[0].id)
+    }
+
     // Compaction (bin/rice_agent.py `compact`): a note standing in for
     // messages[0 .. summaryUpTo), kept with the chat.
     property string summary: ""
@@ -204,6 +261,7 @@ Singleton {
             root.sessions = [newSess];
         }
         root.activeSessionId = newId;
+        root.queue = [];
         root.messages = [];
         root.summary = "";
         root.summaryUpTo = 0;
@@ -297,6 +355,7 @@ Singleton {
     function switchSession(id) {
         if (id === root.activeSessionId) return;
         if (streaming) abandon();
+        root.queue = [];
 
         syncCurrentSession();
 
@@ -351,6 +410,7 @@ Singleton {
 
     function clear() {
         if (streaming) abandon();
+        root.queue = [];
         root.messages = [];
         root.summary = "";
         root.summaryUpTo = 0;
@@ -664,7 +724,15 @@ function onPanelClosed() {
                         root.syncCurrentSession();
                     }
                 }
+                if (ev.type === "turn.steered") root.steering = root.steering.filter(x => x.id !== ev.id);
                 if (ev.type === "turn.completed") {
+                    // Steers it couldn't take (and any still in flight) wait at the front of the queue.
+                    const back = (ev.unapplied || []).concat(root.steering)
+                        .filter((x, i, a) => a.findIndex(y => y.id === x.id) === i)
+                        .map(x => ({ id: x.id, text: x.text, image: "", context: null }));
+                    if (back.length) root.queue = back.concat(root.queue);
+                    root.steering = [];
+                    root.drainAfterTurn = ev.status === "completed" || ev.status === "max_tool_rounds" || ev.status === "repeating";
                     chatProc.sawTurnEnd = true;
                     root.lastStats = ev.stats || null;
                     if (ev.status === "failed") root.errorText = ev.error || "The turn failed.";
@@ -685,7 +753,10 @@ function onPanelClosed() {
         const keep = d && !root.discardDraft && d.parts.length > 0;
         root.streaming = false;
         root.draft = null;
+        if (root.discardDraft) { root.queue = []; root.steering = []; }
         root.discardDraft = false;
+        if (root.drainAfterTurn && root.queue.length > 0) drainTimer.restart();
+        root.drainAfterTurn = false;
         if (!keep) return;
 
         const msg = root.withParts(Object.assign({}, d, { time: formatTime(Date.now()) }));
@@ -758,6 +829,9 @@ function onPanelClosed() {
         function pendingImage(): string { return root.pendingImage; }
         function newChat() { root.newChat(); }
         function cancel() { root.cancel(); }
+        function steer(text: string) { root.steer(text); }
+        function enqueue(text: string) { root.enqueue(text); }
+        function queue(): string { return JSON.stringify(root.queue.map(q => q.text)); }
         function summary(): string { return JSON.stringify({ summary: root.summary, upTo: root.summaryUpTo, count: root.messages.length }); }
         function clearPending() { root.pendingImage = ""; root.pendingContext = null; root.pendingAppTitle = ""; }
         function resolveRequest(id: string, decision: string) { root.resolveRequest(id, decision); }

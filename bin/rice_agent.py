@@ -10,12 +10,14 @@ stdout, using T3 Code's runtime vocabulary so other providers can emit the same:
   item.completed    {id, status: completed|failed|declined, output}
   request.opened    {id, itemId, kind, summary, detail}
   request.resolved  {id, decision: accept|decline|timeout}
-  turn.completed    {status: completed|interrupted|failed|max_tool_rounds|repeating, error, stats}
+  turn.completed    {status: completed|interrupted|failed|max_tool_rounds|repeating, error, stats, unapplied}
+  turn.steered      {id, text}   a message from the user, taken into the running turn
 Every event also carries ts (ms since the epoch).
 
 itemType: reasoning | assistant_message | command_execution | web_search |
           image_view | dynamic_tool_call
-stdin (approvals): {"type": "request.resolve", "id": "q1", "decision": "accept"|"decline"}
+stdin: {"type": "request.resolve", "id": "q1", "decision": "accept"|"decline"}
+       {"type": "turn.steer", "id": "s-1", "text": "…"}   (cuts text being written; else lands after the tool)
 
 Stdlib only.
 """
@@ -772,13 +774,20 @@ class Interrupted(Exception):
     pass
 
 
+class Steer(Exception):
+    """A message from the user arrived mid-turn: cut the text being written."""
+
+
 class Approvals:
-    """Reads {"type":"request.resolve"} lines from stdin on a thread."""
+    """Reads stdin on a thread: approvals ({"type":"request.resolve"}) and
+    steers ({"type":"turn.steer","id","text"}: a message into the running turn)."""
 
     def __init__(self):
         import queue
         import threading
         self.queue = queue.Queue()
+        self.lock = threading.Lock()
+        self.steers = []
         self.pending = None
         self.timeout = float(os.environ.get("RICE_AGENT_APPROVAL_TIMEOUT") or 120)
         threading.Thread(target=self._read, daemon=True).start()
@@ -791,6 +800,18 @@ class Approvals:
                 continue
             if msg.get("type") == "request.resolve":
                 self.queue.put((msg.get("id"), msg.get("decision")))
+            elif msg.get("type") == "turn.steer" and str(msg.get("text") or "").strip():
+                with self.lock:
+                    self.steers.append({"id": str(msg.get("id") or ""), "text": str(msg["text"]).strip()})
+
+    def has_steer(self):
+        with self.lock:
+            return bool(self.steers)
+
+    def take_steers(self):
+        with self.lock:
+            out, self.steers = self.steers, []
+        return out
 
     def ask(self, ids, item_id, kind, summary, detail):
         import queue
@@ -944,6 +965,8 @@ def stream_round(payload, stream, stats):
         if chunk.get("error"):
             raise RuntimeError(chunk["error"])
         msg = chunk.get("message") or {}
+        if stream.kind is not None and not calls and APPROVALS is not None and APPROVALS.has_steer():
+            raise Steer()
         if msg.get("thinking"):
             stream.write("reasoning", msg["thinking"])
         if msg.get("content"):
@@ -963,6 +986,12 @@ def stream_round(payload, stream, stats):
             stats["tokensPerSec"] = round(ev / (dur / 1e9), 1) if dur else stats["tokensPerSec"]
     stream.close()
     return calls
+
+
+def apply_steers(messages):
+    for st in APPROVALS.take_steers():
+        emit({"type": "turn.steered", "id": st["id"], "text": st["text"]})
+        messages.append({"role": "user", "content": st["text"]})
 
 
 def run_turn(req):
@@ -1009,20 +1038,38 @@ def run_turn(req):
                 payload["tools"] = [t["schema"] for t in TOOLS.values()]
             if "thinking" in caps:
                 payload["think"] = bool(req.get("think", True))     # the composer's Think toggle
-            calls = stream_round(payload, stream, stats)
+            try:
+                calls = stream_round(payload, stream, stats)
+            except Steer:
+                # Keep what it had written, then let it hear the user.
+                stream.close()
+                partial = stream.message_text()
+                stream.text.clear()
+                if partial:
+                    messages.append({"role": "assistant", "content": partial})
+                apply_steers(messages)
+                continue
             if capped:
                 status = "max_tool_rounds"
                 break
+            if calls:
+                rounds += 1
+                messages.append({"role": "assistant", "content": stream.message_text(), "tool_calls": calls})
+                stream.text.clear()
+                for c in calls:
+                    fn = c.get("function") or {}
+                    name = fn.get("name", "")
+                    _, output = run_tool(ids, name, fn.get("arguments"))
+                    messages.append({"role": "tool", "tool_name": name, "content": output})
+            if APPROVALS is not None and APPROVALS.has_steer():
+                # A steer that came in during the round or a tool: answer it in this turn.
+                if not calls:
+                    messages.append({"role": "assistant", "content": stream.message_text()})
+                    stream.text.clear()
+                apply_steers(messages)
+                continue
             if not calls:
                 break
-            rounds += 1
-            messages.append({"role": "assistant", "content": stream.message_text(), "tool_calls": calls})
-            stream.text.clear()
-            for c in calls:
-                fn = c.get("function") or {}
-                name = fn.get("name", "")
-                _, output = run_tool(ids, name, fn.get("arguments"))
-                messages.append({"role": "tool", "tool_name": name, "content": output})
     except Interrupted:
         stream.close()
         status = "interrupted"
@@ -1036,7 +1083,9 @@ def run_turn(req):
         stream.close("failed")
         status, error = "failed", str(e) or e.__class__.__name__
 
-    emit({"type": "turn.completed", "status": status, "error": error, "stats": stats})
+    late = APPROVALS.take_steers() if APPROVALS is not None else []
+    emit({"type": "turn.completed", "status": status, "error": error, "stats": stats,
+          "unapplied": late})
 
 
 def _on_term(_sig, _frame):

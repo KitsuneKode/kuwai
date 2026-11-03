@@ -89,6 +89,89 @@ Rectangle {
         anchors.margins: 12
         spacing: 10
 
+        // ── Queue: what's waiting, and steers on their way in ─────────
+        // (AI Elements queue.tsx: a ring per item, actions on hover.)
+        Column {
+            id: queueList
+            readonly property var items: OllamaService.steering.map(x => ({ id: x.id, text: x.text, steering: true }))
+                .concat(OllamaService.queue.map(x => ({ id: x.id, text: x.text || "Screenshot", steering: false, image: !!x.image })))
+            visible: items.length > 0
+            width: parent.width
+            spacing: 2
+
+            Label {
+                text: OllamaService.queue.length > 0 ? "Queued · sends when this answer is done" : "Steering"
+                visible: queueList.items.length > 0
+                size: 11
+                weight: Theme.wMedium
+                color: Theme.textTertiary
+                leftPadding: 6
+                bottomPadding: 2
+            }
+
+            Repeater {
+                model: queueList.items
+                Rectangle {
+                    id: qrow
+                    required property var modelData
+                    width: queueList.width
+                    height: 30
+                    radius: 8
+                    color: Qt.rgba(1, 1, 1, qArea.containsMouse ? 0.06 : 0)
+                    Behavior on color { ColorAnimation { duration: Theme.colorMs } }
+                    opacity: 0
+                    Component.onCompleted: opacity = 1
+                    Behavior on opacity { NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+
+                    HoverHandler { id: qArea; readonly property bool containsMouse: hovered }
+
+                    Item {
+                        id: ring
+                        x: 8
+                        width: 14; height: 14
+                        anchors.verticalCenter: parent.verticalCenter
+                        Rectangle {
+                            visible: !qrow.modelData.steering
+                            anchors.centerIn: parent
+                            width: 9; height: 9; radius: 4.5
+                            color: "transparent"
+                            border.width: 1.5
+                            border.color: Theme.textTertiary
+                        }
+                        Icon {
+                            visible: qrow.modelData.steering
+                            anchors.centerIn: parent
+                            name: "circle-notch"; style: "bold"; size: 12; color: Theme.accent
+                            RotationAnimation on rotation { running: qrow.modelData.steering && !Theme.reduceMotion; loops: Animation.Infinite; from: 0; to: 360; duration: 1200 }
+                        }
+                    }
+                    Label {
+                        anchors { left: ring.right; leftMargin: 8; right: qActions.left; rightMargin: 6; verticalCenter: parent.verticalCenter }
+                        text: (qrow.modelData.image ? "Screenshot · " : "") + qrow.modelData.text.split("\n")[0]
+                        size: 13
+                        color: Theme.textSecondary
+                        elide: Text.ElideRight
+                    }
+                    Row {
+                        id: qActions
+                        anchors.right: parent.right
+                        anchors.rightMargin: 2
+                        anchors.verticalCenter: parent.verticalCenter
+                        visible: !qrow.modelData.steering
+                        opacity: qArea.containsMouse ? 1 : 0
+                        Behavior on opacity { NumberAnimation { duration: Theme.colorMs } }
+                        spacing: 0
+                        MessageAction { width: 26; height: 26; icon: "arrow-up"; onClicked: OllamaService.sendQueuedNow(qrow.modelData.id) }
+                        MessageAction {
+                            width: 26; height: 26; icon: "pencil-simple"
+                            onClicked: { inputArea.text = OllamaService.takeQueued(qrow.modelData.id); inputArea.cursorPosition = inputArea.text.length; root.focusInput(); }
+                        }
+                        MessageAction { width: 26; height: 26; icon: "x"; onClicked: OllamaService.removeQueued(qrow.modelData.id) }
+                    }
+                }
+            }
+        }
+
         // ── Context chips: what goes with the next message ─────────────
         // The screenshot (and the window it's from), its folder and branch,
         // the selection, the clipboard. Each can go (× or ⌫ on an empty prompt).
@@ -190,7 +273,8 @@ Rectangle {
                 // Placeholder Text
                 Text {
                     anchors.fill: parent
-                    text: OllamaService.pendingImage !== "" ? "Ask about the screenshot" : "Ask anything"
+                    text: OllamaService.streaming ? "Steer it (↵) or queue for after (⇥)"
+                        : OllamaService.pendingImage !== "" ? "Ask about the screenshot" : "Ask anything"
                     color: Theme.textDim
                     font.family: Theme.fontText
                     font.pixelSize: 15
@@ -213,6 +297,12 @@ Rectangle {
 
                 Keys.onPressed: event => {
                     if (root.routeToPopup(event)) return;
+                    if (event.key === Qt.Key_Tab && OllamaService.streaming && root.canSend) {
+                        event.accepted = true;
+                        OllamaService.enqueue(inputArea.text);
+                        inputArea.text = "";
+                        return;
+                    }
                     if (inputArea.text === "" && !(event.modifiers & Qt.ControlModifier)) {
                         if (event.text === "/") { event.accepted = true; root.slashRequested(); return; }
                         if (event.key === Qt.Key_Backspace && root.chips.length > 0) {
@@ -341,7 +431,8 @@ Rectangle {
                 Rectangle {
                     anchors.fill: parent
                     radius: 18
-                    color: OllamaService.streaming
+                    readonly property bool stopping: OllamaService.streaming && !root.canSend
+                    color: stopping
                         ? (btnArea.containsMouse ? Theme.red : Qt.alpha(Theme.red, 0.90))
                         : (root.canSend ? (btnArea.containsMouse ? Theme.accent : Qt.alpha(Theme.accent, 0.92)) : Qt.rgba(1, 1, 1, 0.08))
                     scale: btnArea.pressed ? 0.97 : 1
@@ -351,10 +442,10 @@ Rectangle {
 
                     Icon {
                         anchors.centerIn: parent
-                        name: OllamaService.streaming ? "stop" : "arrow-up"
-                        style: OllamaService.streaming ? "fill" : "bold"
+                        name: parent.stopping ? "stop" : "arrow-up"
+                        style: parent.stopping ? "fill" : "bold"
                         size: 16
-                        color: OllamaService.streaming || root.canSend ? Theme.onAccent : Theme.textDim
+                        color: parent.stopping || root.canSend ? Theme.onAccent : Theme.textDim
                     }
 
                     MouseArea {
@@ -363,11 +454,8 @@ Rectangle {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            if (OllamaService.streaming) {
-                                OllamaService.cancel();
-                            } else if (root.canSend) {
-                                root.submit();
-                            }
+                            if (parent.stopping) OllamaService.cancel();
+                            else if (root.canSend) root.submit();          // mid-answer this steers
                         }
                     }
                 }
@@ -384,6 +472,7 @@ Rectangle {
         if (prompt === "") return;
 
         inputArea.text = "";
+        if (OllamaService.streaming) { OllamaService.steer(prompt); return; }   // ↵ mid-answer steers it
         root.submitted(prompt);
         OllamaService.send(prompt);
     }

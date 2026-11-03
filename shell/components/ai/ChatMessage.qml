@@ -178,7 +178,7 @@ Item {
         // thinking; a seconds counter once it's been a moment.
         Label {
             id: waiting
-            visible: !root.isUser && root.isStreaming && root.parts.length === 0
+            visible: !root.isUser && root.isStreaming && (root.parts.length === 0 || root.parts[root.parts.length - 1].kind === "steer")
             property int secs: 0
             Timer {
                 running: waiting.visible
@@ -187,7 +187,9 @@ Item {
                 onRunningChanged: if (running) waiting.secs = 0
                 onTriggered: waiting.secs++
             }
-            text: (root.msg.phase === "loading" ? "Loading " + OllamaService.modelLabel(root.msg.model) + "…" : "Thinking")
+            // "Loading …" only before anything came back; after a steer it's thinking again.
+            text: (root.msg.phase === "loading" && root.parts.length === 0
+                   ? "Loading " + OllamaService.modelLabel(root.msg.model) + "…" : "Thinking")
                   + (secs >= 2 ? "  " + secs + "s" : "")
             size: 14
             color: Theme.textTertiary
@@ -210,7 +212,8 @@ Item {
                 width: col.width
                 sourceComponent: block.type === "reasoning" ? reasoningBlock
                     : block.type === "tools" ? toolsBlock
-                    : block.type === "text" ? textBlock : null
+                    : block.type === "text" ? textBlock
+                    : block.type === "steer" ? steerBlock : null
 
                 Component {
                     id: reasoningBlock
@@ -228,6 +231,33 @@ Item {
                         width: blockLoader.width
                         parts: blockLoader.block.parts || []
                         live: root.isStreaming
+                    }
+                }
+                // Your message steered into this turn: your bubble, where it landed.
+                Component {
+                    id: steerBlock
+                    Item {
+                        width: blockLoader.width
+                        implicitHeight: steerBubble.height + 8
+                        Rectangle {
+                            id: steerBubble
+                            anchors.right: parent.right
+                            y: 4
+                            width: Math.min(parent.width * 0.8, steerText.implicitWidth + 30)
+                            height: steerText.implicitHeight + 20
+                            radius: 16
+                            color: Qt.rgba(1, 1, 1, 0.09)
+                            Text {
+                                id: steerText
+                                x: 15; y: 10
+                                width: Math.min(implicitWidth, blockLoader.width * 0.8 - 30)
+                                text: blockLoader.block.part ? blockLoader.block.part.text : ""
+                                wrapMode: Text.Wrap
+                                color: Theme.textPrimary
+                                font.family: Theme.fontText
+                                font.pixelSize: 14
+                            }
+                        }
                     }
                 }
                 Component {

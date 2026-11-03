@@ -85,14 +85,21 @@ class FakeOllama:
                     self.send_header("Content-Type", "application/x-ndjson")
                     self.end_headers()
                     for c in chunks:
+                        if "_sleep" in c:                # scripts can pause between chunks
+                            import time
+                            time.sleep(c["_sleep"])
+                            continue
                         c = dict(c)
                         c.setdefault("model", body.get("model", ""))
                         c.setdefault("done", False)
                         if "message" in c:
                             c["message"] = {"role": "assistant", "content": "", **c["message"]}
                         line = json.dumps(c).replace("__FAKE__", fake.url)   # scripts can point at this server
-                        self.wfile.write((line + "\n").encode())
-                        self.wfile.flush()
+                        try:
+                            self.wfile.write((line + "\n").encode())
+                            self.wfile.flush()
+                        except (BrokenPipeError, ConnectionResetError):
+                            return                       # the agent hung up (a steer cut the round)
                     return
                 self.send_response(404)
                 self.end_headers()
