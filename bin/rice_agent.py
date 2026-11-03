@@ -9,7 +9,7 @@ stdout, using T3 Code's runtime vocabulary so other providers can emit the same:
   item.completed    {id, status: completed|failed|declined, output}
   request.opened    {id, itemId, kind, summary, detail}
   request.resolved  {id, decision: accept|decline|timeout}
-  turn.completed    {status: completed|interrupted|failed|max_tool_rounds, error, stats}
+  turn.completed    {status: completed|interrupted|failed|max_tool_rounds|repeating, error, stats}
 Every event also carries ts (ms since the epoch).
 
 itemType: reasoning | assistant_message | command_execution | web_search |
@@ -31,6 +31,19 @@ import urllib.request
 OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 UA = {"User-Agent": "rice-ollama/1.0"}
 MAX_TOOL_ROUNDS = 6
+# Ollama's num_predict is unlimited by default; a small model that falls into
+# a loop then writes forever. 2048 tokens is ~8k characters, plenty for an answer.
+NUM_PREDICT = 2048
+
+
+class Repeating(Exception):
+    """The answer is looping: the same stretch keeps coming back."""
+
+
+def is_repeating(text, window=200, times=5):
+    if len(text) < window * times:
+        return False
+    return text.count(text[-window:]) >= times
 
 SYSTEM_GENERAL = (
     "You are a local AI assistant and systems architect running directly on Arch Linux with direct desktop "
@@ -811,6 +824,58 @@ def run_tool(ids, name, raw_args):
 
 # ── The turn ──────────────────────────────────────────────────────────────
 
+# ── Compaction ────────────────────────────────────────────────────────────
+# Codex's approach, sized for a 4k window: when the UI says the chat is near
+# full (`compact: true`), everything before the last two exchanges becomes a
+# short handoff note written by the same model (already loaded), and the
+# turn runs on note + recent messages. The UI keeps the note (`summary`).
+
+COMPACT_PROMPT = (
+    "Summarise this conversation for yourself, so you can carry on with less context. Keep what the user wants "
+    "and prefers, the facts and decisions so far, names, numbers, paths, commands and apps exactly as written, "
+    "and anything still open. If there is an earlier summary, carry over every point from it unless the "
+    "conversation changed it. Plain bullet points, at most 200 words. Don't answer anything and don't add "
+    "anything new."
+)
+SUMMARY_HEAD = "Summary of the earlier conversation (older messages were compacted):\n"
+
+
+def compact(ids, model, caps, options, summary, convo):
+    users = [i for i, m in enumerate(convo) if m.get("role") == "user"]
+    if len(users) < 2 or users[-2] == 0:
+        return summary, convo
+    keep_from = users[-2]
+    older = convo[:keep_from]
+    # Each message cut to 1,500 characters, so one runaway answer can't crowd out the rest.
+    lines = [("User: " if m["role"] == "user" else "Assistant: ") + _cap(m.get("content") or "", 1500) for m in older]
+    text = ("Earlier summary:\n" + summary + "\n\n" if summary else "") + "Conversation:\n" + "\n\n".join(lines)
+    item_id = ids.next("t")
+    emit({"type": "item.started", "id": item_id, "itemType": "context_compaction",
+          "title": "Summarising earlier messages", "input": {"kept": len(convo) - keep_from}})
+    payload = {"model": model, "stream": True, "keep_alive": "5m", "options": options,
+               "messages": [{"role": "system", "content": COMPACT_PROMPT}, {"role": "user", "content": _cap(text, 12000)}]}
+    if "thinking" in caps:
+        payload["think"] = False
+    out, splitter = "", ThinkSplitter()
+    try:
+        for chunk in chat_stream(payload):
+            if chunk.get("error"):
+                raise RuntimeError(chunk["error"])
+            for kind, t in splitter.feed((chunk.get("message") or {}).get("content") or ""):
+                if kind == "assistant_message":
+                    out += t
+        out += "".join(t for k, t in splitter.flush() if k == "assistant_message")
+    except Exception as e:
+        emit({"type": "item.completed", "id": item_id, "status": "failed", "output": f"Couldn't summarise: {e}"})
+        return summary, convo
+    out = out.strip()
+    if not out:
+        emit({"type": "item.completed", "id": item_id, "status": "failed", "output": "The summary came back empty"})
+        return summary, convo
+    emit({"type": "item.completed", "id": item_id, "status": "completed", "output": out})
+    return out, convo[keep_from:]
+
+
 def stream_round(payload, stream, stats):
     """One /api/chat call. Streams text/reasoning items, returns tool calls."""
     splitter = ThinkSplitter()
@@ -824,6 +889,9 @@ def stream_round(payload, stream, stats):
         if msg.get("content"):
             for kind, text in splitter.feed(msg["content"]):
                 stream.write(kind, text)
+            if stream.kind == "assistant_message" and len(stream.text[stream.id]) % 400 < len(msg["content"]) \
+                    and is_repeating(stream.text[stream.id]):
+                raise Repeating()
         if msg.get("tool_calls"):
             calls.extend(msg["tool_calls"])
         if chunk.get("done"):
@@ -839,7 +907,8 @@ def stream_round(payload, stream, stats):
 
 def run_turn(req):
     model = req.get("model") or "hermes3:8b"
-    options = req.get("options") or {"num_ctx": 4096}
+    options = dict(req.get("options") or {"num_ctx": 4096})
+    options.setdefault("num_predict", NUM_PREDICT)
     caps = capabilities(model)
     use_tools = "tools" in caps
     ids = Ids()
@@ -848,14 +917,20 @@ def run_turn(req):
     system = SYSTEM_VISION if ("vision" in caps and not use_tools) else SYSTEM_GENERAL
     if use_tools:
         system += TOOL_GUIDE
-    messages = [{"role": "system", "content": system}] + to_ollama_messages(req.get("messages") or [],
-                                                                           "vision" in caps)
+    convo = to_ollama_messages(req.get("messages") or [], "vision" in caps)
+    summary = (req.get("summary") or "").strip()
     stats = {"evalCount": 0, "promptEvalCount": 0, "numCtx": int(options.get("num_ctx", 4096)), "tokensPerSec": 0.0}
 
     stream = Stream(ids)
     status, error = "completed", ""
     rounds = 0
     try:
+        if req.get("compact"):
+            summary, convo = compact(ids, model, caps, options, summary, convo)
+        messages = [{"role": "system", "content": system}]
+        if summary:
+            messages.append({"role": "system", "content": SUMMARY_HEAD + summary})
+        messages += convo
         vision_hop(ids, messages, stats)
         while True:
             capped = rounds >= MAX_TOOL_ROUNDS
@@ -882,6 +957,9 @@ def run_turn(req):
     except Interrupted:
         stream.close()
         status = "interrupted"
+    except Repeating:
+        stream.close()
+        status = "repeating"
     except urllib.error.URLError as e:
         stream.close("failed")
         status, error = "failed", f"Can't reach Ollama at {OLLAMA_HOST} ({e.reason})"

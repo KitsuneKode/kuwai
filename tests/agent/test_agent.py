@@ -57,3 +57,17 @@ def test_ollama_down_fails_turn(run_agent):
     assert types(events) == ["turn.started", "turn.completed"]
     assert events[-1]["status"] == "failed"
     assert events[-1]["error"]
+
+
+def test_output_is_capped_by_default(run_agent):
+    _, fake = run_agent(USER, [[{"message": {"content": "hi"}}, {"done": True}]])
+    assert fake.requests[0]["options"]["num_predict"] == 2048
+
+
+def test_repetition_stops_the_turn(run_agent):
+    loop = [{"message": {"content": "The island shows the clock. "}} for _ in range(300)]
+    events, _ = run_agent(USER, [loop + [{"done": True}]])
+    text = "".join(e["text"] for e in events if e["type"] == "item.delta")
+    assert len(text) < 300 * 28
+    assert events[-1]["type"] == "turn.completed"
+    assert events[-1]["status"] == "repeating"

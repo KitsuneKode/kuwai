@@ -35,6 +35,8 @@ Scope {
         } else {
             armTimer.stop();
             armed = false;
+            // Nobody is there to say yes: a pending request is declined, the turn carries on.
+            if (OllamaService.pendingRequest) OllamaService.resolveRequest(OllamaService.pendingRequest.id, "decline");
         }
     }
 

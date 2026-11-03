@@ -67,6 +67,12 @@ Singleton {
 
     property bool storeLoaded: false
 
+    // Compaction (bin/rice_agent.py `compact`): a note standing in for
+    // messages[0 .. summaryUpTo), kept with the chat.
+    property string summary: ""
+    property int summaryUpTo: 0
+    readonly property real compactAt: 0.75      // of the context window
+
     // Tokens the last turn used (prompt + answer) against the window it ran with.
     readonly property int contextUsed: lastStats ? (lastStats.promptEvalCount || 0) + (lastStats.evalCount || 0) : 0
     readonly property int contextTotal: lastStats ? (lastStats.numCtx || 4096) : 4096
@@ -87,6 +93,7 @@ Singleton {
         if (streaming || index < 1 || index >= messages.length) return;
         if (messages[index].role !== "assistant") return;
         root.messages = Turn.truncateAt(root.messages, index);
+        root.dropSummaryPast(index);
         root.syncCurrentSession();
         root.startTurn();
     }
@@ -96,8 +103,14 @@ Singleton {
         if (streaming || index < 0 || index >= messages.length || messages[index].role !== "user") return;
         const edited = Object.assign({}, messages[index], { text: text, timestamp: Date.now(), time: formatTime(Date.now()) });
         root.messages = [...Turn.truncateAt(root.messages, index), edited];
+        root.dropSummaryPast(index);
         root.syncCurrentSession();
         root.startTurn();
+    }
+
+    // Cutting the chat back into what the summary covers makes the summary wrong.
+    function dropSummaryPast(index) {
+        if (index < root.summaryUpTo) { root.summary = ""; root.summaryUpTo = 0; }
     }
 
     function legacyTool(p) {
@@ -136,6 +149,8 @@ Singleton {
                     const first = parsed[0];
                     root.activeSessionId = first.id;
                     root.messages = first.messages || [];
+                    root.summary = first.summary || "";
+                    root.summaryUpTo = first.summaryUpTo || 0;
                     if (first.model) root.model = first.model;
                 }
             } catch (e) {}
@@ -209,6 +224,8 @@ Singleton {
         }
         root.activeSessionId = newId;
         root.messages = [];
+        root.summary = "";
+        root.summaryUpTo = 0;
         root.lastStats = null;
         root.pendingImage = "";
         root.pendingContext = null;
@@ -306,6 +323,8 @@ Singleton {
         if (found) {
             root.activeSessionId = id;
             root.messages = found.messages || [];
+            root.summary = found.summary || "";
+            root.summaryUpTo = found.summaryUpTo || 0;
             root.lastStats = null;
             if (found.model) root.model = found.model;
             root.pendingImage = "";
@@ -323,6 +342,8 @@ Singleton {
             if (filtered.length > 0) {
                 root.activeSessionId = filtered[0].id;
                 root.messages = filtered[0].messages || [];
+                root.summary = filtered[0].summary || "";
+                root.summaryUpTo = filtered[0].summaryUpTo || 0;
                 if (filtered[0].model) root.model = filtered[0].model;
             } else {
                 ensureInitialSession();
@@ -336,6 +357,8 @@ Singleton {
         if (idx >= 0) {
             const curr = Object.assign({}, root.sessions[idx]);
             curr.messages = root.messages;
+            curr.summary = root.summary;
+            curr.summaryUpTo = root.summaryUpTo;
             curr.model = root.model;
             curr.updatedAt = Date.now();
             const updated = [...root.sessions];
@@ -348,6 +371,8 @@ Singleton {
     function clear() {
         if (streaming) abandon();
         root.messages = [];
+        root.summary = "";
+        root.summaryUpTo = 0;
         root.pendingImage = "";
         root.errorText = "";
         syncCurrentSession();
@@ -619,9 +644,20 @@ function onPanelClosed() {
         root.draft = Turn.newAssistant(root.model, Date.now());
         root.streaming = true;
 
+        const sent = Turn.toApiMessagesWithIndex(root.messages.slice(root.summaryUpTo), root.summaryUpTo);
+        // Compact when the last turn filled 3/4 of the window, or the history
+        // looks that big (≈4 characters a token, plus ~900 for the system prompt and tools).
+        const chars = sent.api.reduce((n, m) => n + (m.content || "").length, root.summary.length);
+        const estimate = chars / 4 + 900;
+        const compact = Math.max(root.contextUsed, estimate) >= root.compactAt * 4096;
+        chatProc.sentIndex = sent.index;
+        chatProc.sentUpTo = root.summaryUpTo;
+
         reqFileWriter.setText(JSON.stringify({
             model: root.model,
-            messages: Turn.toApiMessages(root.messages),
+            messages: sent.api,
+            summary: root.summary,
+            compact: compact,
             keep_alive: "5m",
             options: { num_ctx: 4096, temperature: root.model.indexOf("hermes") >= 0 ? 0.4 : 0.7 }
         }, null, 2));
@@ -634,6 +670,8 @@ function onPanelClosed() {
     Process {
         id: chatProc
         property bool sawTurnEnd: false
+        property var sentIndex: []
+        property int sentUpTo: 0
         command: [root.bin, "agent", root.reqPath]
         stdinEnabled: true
         stdout: SplitParser {
@@ -643,6 +681,14 @@ function onPanelClosed() {
                 let ev;
                 try { ev = JSON.parse(line); } catch (e) { return; }
                 root.draft = Turn.applyEvent(root.draft, ev);
+                if (ev.type === "item.completed" && ev.status === "completed" && root.draft) {
+                    const p = root.draft.parts.find(q => q.id === ev.id);
+                    if (p && p.itemType === "context_compaction" && root.draftSessionId === root.activeSessionId) {
+                        root.summary = ev.output || "";
+                        root.summaryUpTo = Turn.compactedUpTo(chatProc.sentUpTo, chatProc.sentIndex, (p.input || {}).kept || 0);
+                        root.syncCurrentSession();
+                    }
+                }
                 if (ev.type === "turn.completed") {
                     chatProc.sawTurnEnd = true;
                     root.lastStats = ev.stats || null;
@@ -738,6 +784,7 @@ function onPanelClosed() {
         function pendingImage(): string { return root.pendingImage; }
         function newChat() { root.newChat(); }
         function cancel() { root.cancel(); }
+        function summary(): string { return JSON.stringify({ summary: root.summary, upTo: root.summaryUpTo, count: root.messages.length }); }
         function clearPending() { root.pendingImage = ""; root.pendingContext = null; root.pendingAppTitle = ""; }
         function resolveRequest(id: string, decision: string) { root.resolveRequest(id, decision); }
         function draft(): string { return root.draft ? JSON.stringify(root.draft) : ""; }

@@ -250,7 +250,8 @@ Item {
                 text: [OllamaService.modelLabel(root.msg.model),
                        root.msg.stats && root.msg.stats.tokensPerSec ? root.msg.stats.tokensPerSec + " tok/s" : "",
                        root.msg.time || "",
-                       root.msg.status === "interrupted" ? "Stopped" : root.msg.status === "max_tool_rounds" ? "Stopped after 6 tool rounds" : ""]
+                       root.msg.status === "interrupted" ? "Stopped" : root.msg.status === "max_tool_rounds" ? "Stopped after 6 tool rounds"
+                       : root.msg.status === "repeating" ? "Stopped: it was repeating itself" : ""]
                       .filter(s => !!s).join(" · ")
                 size: 12
                 color: Theme.textTertiary

@@ -25,6 +25,7 @@ Item {
     readonly property string icon: itemType === "command_execution" ? "terminal-window"
         : itemType === "web_search" ? "globe-simple"
         : itemType === "image_view" ? "image"
+        : itemType === "context_compaction" ? "stack"
         : "wrench"
 
     readonly property string statusText: status === "failed" ? "Failed"

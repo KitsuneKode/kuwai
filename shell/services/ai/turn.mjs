@@ -97,20 +97,33 @@ export function migrateMessage(old) {
 
 // History for the next request. Earlier tool calls are not replayed: the
 // agent's own loop pairs tool calls with results inside a turn.
-export function toApiMessages(msgs) {
-    const out = [];
-    (msgs || []).forEach(m => {
+// `index[i]` is the chat position (plus `offset`) that api[i] came from.
+export function toApiMessagesWithIndex(msgs, offset) {
+    const api = [], index = [];
+    (msgs || []).forEach((m, i) => {
+        let e = null;
         if (m.role === "user") {
-            const e = { role: "user", content: m.text || "" };
+            e = { role: "user", content: m.text || "" };
             if (m.image) e.image = m.image;
             if (m.context) e.context = m.context;
-            out.push(e);
         } else if (m.role === "assistant") {
             const t = textOf(m);
-            if (t) out.push({ role: "assistant", content: t });
+            if (t) e = { role: "assistant", content: t };
         }
+        if (e) { api.push(e); index.push(i + (offset || 0)); }
     });
-    return out;
+    return { api: api, index: index };
+}
+
+export function toApiMessages(msgs) {
+    return toApiMessagesWithIndex(msgs, 0).api;
+}
+
+// After the agent compacted and kept the last `kept` api messages, the chat
+// position the new summary covers up to (messages before it are summarised).
+export function compactedUpTo(upTo, index, kept) {
+    const first = index[index.length - kept];
+    return first === undefined ? upTo : first;
 }
 
 export function truncateAt(msgs, index) {

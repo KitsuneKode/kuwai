@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { applyEvent, migrateMessage, newAssistant, pendingRequest, textOf, toApiMessages, truncateAt } from "./turn.mjs";
+import { applyEvent, compactedUpTo, migrateMessage, newAssistant, pendingRequest, textOf, toApiMessages, toApiMessagesWithIndex, truncateAt } from "./turn.mjs";
 
 const run = (events, msg = newAssistant("hermes3:8b", 1000)) => events.reduce(applyEvent, msg);
 const started = (id, itemType, extra = {}) => Object.assign({ type: "item.started", id, itemType, title: "", input: {} }, extra);
@@ -114,6 +114,20 @@ describe("history", () => {
   test("toApiMessages skips failed assistant turns with no text", () => {
     const failed = run([{ type: "turn.completed", status: "failed", error: "x", stats: {} }]);
     expect(toApiMessages([user("q"), failed, user("again")]).map(m => m.role)).toEqual(["user", "user"]);
+  });
+
+  test("toApiMessagesWithIndex maps each api message to its chat message", () => {
+    const failed = run([{ type: "turn.completed", status: "failed", error: "x", stats: {} }]);
+    const r = toApiMessagesWithIndex([user("q0"), failed, user("q1"), asst, user("q2")]);
+    expect(r.api.map(m => m.content)).toEqual(["q0", "q1", "Answer", "q2"]);
+    expect(r.index).toEqual([0, 2, 3, 4]);
+  });
+
+  test("compactedUpTo: kept api messages map back to the first kept chat index", () => {
+    // chat from upTo=2: [user q1 (2), asst (3), user q2 (4)] → api index [2,3,4]; kept 1 → covers up to 4
+    expect(compactedUpTo(2, [2, 3, 4], 1)).toBe(4);
+    expect(compactedUpTo(0, [0, 2, 3, 4], 3)).toBe(2);
+    expect(compactedUpTo(5, [], 0)).toBe(5);
   });
 
   test("truncateAt keeps earlier turns only", () => {
