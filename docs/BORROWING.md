@@ -12,6 +12,11 @@ rewrite in our own style and tokens. Don't copy whole files in.
 | `emilkowalski_sonner` | the React toast library, the reference for our toast stack | exact constants and transitions (`src/index.tsx`, `src/styles.css`) |
 | `Tide-island` | Quickshell + C++ Dynamic Island for Hyprland/niri (GPL-3: ideas only, never code) | island morph, swipe between capsules, exact-shape blur, lean-memory habits |
 | `noctalia-dev_noctalia-shell` | now a native C++ shell, no longer Quickshell | design and UX ideas only, plus its ARCHITECTURE.md on frame phases |
+| `vercel_ai-elements` | shadcn AI Elements (`packages/elements/src/`) | tool / confirmation / reasoning / model-selector / prompt-input / context states and anatomy |
+| `ibelick_prompt-kit` | shadcn chat blocks (`components/prompt-kit/`) | stick-to-bottom chat container, scroll button, thinking bar, steps |
+| `assistant-ui_assistant-ui` | React chat runtime | message action semantics (copy, edit, regenerate, feedback) |
+| `pingdotgg_t3code` | T3 Code, multi-provider agent GUI (MIT) | the runtime event vocabulary, how Antigravity/Codex/Claude tool calls and child work are normalised, timeline rows, model picker |
+| `openai_codex` | Codex CLI, sparse: `codex-rs/tui`, `codex-rs/protocol` | how a running command and its approval read; compaction |
 
 ## Pointers by topic
 
@@ -54,6 +59,21 @@ rewrite in our own style and tokens. Don't copy whole files in.
 **OSD / bar / control center**
 - DMS `Modules/OSD`, `Modules/ControlCenter`, `Modules/DankBar`.
 - end-4 `ii/modules/ii/onScreenDisplay`, `ii/modules/ii/bar`, `sidebarRight` (quick toggles).
+
+**Chat / agent UI** (the assistant, `docs/superpowers/plans/2026-11-03-assistant-agent-parity.md`)
+- AI Elements `packages/elements/src/`: `tool.tsx` (input-streaming → input-available → output),
+  `confirmation.tsx` (approval card), `reasoning.tsx`, `chain-of-thought.tsx`, `model-selector.tsx`,
+  `prompt-input.tsx`, `context.tsx` (token meter), `queue.tsx`, `task.tsx`, `message.tsx`, `shimmer.tsx`.
+- prompt-kit `components/prompt-kit/`: `chat-container.tsx` (stick to bottom), `scroll-button.tsx`,
+  `thinking-bar.tsx`, `steps.tsx`, `feedback-bar.tsx`, `tool.tsx`.
+- assistant-ui `packages/core/src/react/primitive-hooks/useActionBar{Copy,Edit,Feedback}.ts`.
+- T3 Code: `packages/contracts/src/providerRuntime.ts` (event and tool-item names we use),
+  `apps/server/src/orchestration-v2/Adapters/AntigravityAdapterV2.ts`, `apps/server/src/provider/acp/AntigravityChildWork.ts`,
+  `apps/web/src/components/chat/` (`TimelineAssistantRows`, `TimelinePendingApprovalRow`, `TimelineToolActivityIcon`,
+  `ModelPickerContent`, `ModelListRow`, `ComposerCommandMenu`).
+- Codex `codex-rs/tui/src/`: `exec_cell/`, `bottom_pane/approval_overlay.rs`.
+- Web only (no clone): kobra.systems, skiper-ui.com, animate-ui.com, shadcn/ui; findings in
+  `docs/research/2026-11-03-ui-libraries.md`.
 
 **Quickshell gotchas found so far**
 - `DesktopEntries` scans lazily: touch `DesktopEntries.applications` at startup
