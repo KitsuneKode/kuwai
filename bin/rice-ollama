@@ -1,0 +1,535 @@
+#!/usr/bin/env -S python3 -u
+"""Helper backend for Quickshell AI Assistant (shell/services/OllamaService.qml).
+Owns HTTP calls to Ollama, status probes, clipboard image pasting, screenshot captures,
+web search, system inspection tools, and VRAM lifetime.
+
+Commands:
+    rice-ollama status           -> probe /api/tags and /api/ps, prints JSON status
+    rice-ollama snip             -> slurp + grim screenshot to private runtime dir
+    rice-ollama paste            -> save clipboard image to private runtime dir if present
+    rice-ollama search <query>   -> query web/wiki API for concise information
+    rice-ollama sysinfo          -> inspect active Hyprland window, CPU, RAM, GPU
+    rice-ollama chat [file]      -> stream chat from JSON request file or stdin
+    rice-ollama agent <file>     -> run one agent turn (tools, approvals), JSON events on stdout
+    rice-ollama unload [model]   -> unload model(s) to free VRAM (keep_alive: 0)
+    rice-ollama render [file]    -> pass stdin or file to rice-render for rich text
+"""
+
+import sys
+import os
+import json
+import base64
+import time
+import subprocess
+import signal
+import urllib.request
+import urllib.parse
+import urllib.error
+import re
+
+OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
+
+def get_runtime_dir():
+    base = os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
+    path = os.path.join(base, "rice", "ai")
+    os.makedirs(path, mode=0o700, exist_ok=True)
+    shots = os.path.join(path, "screenshots")
+    os.makedirs(shots, mode=0o700, exist_ok=True)
+    return path, shots
+
+def cmd_status():
+    status = {"status": "offline", "models": [], "running": []}
+    try:
+        req = urllib.request.Request(f"{OLLAMA_HOST}/api/tags", headers={"User-Agent": "rice-ollama/1.0"})
+        with urllib.request.urlopen(req, timeout=1.5) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            status["models"] = [m.get("name", "") for m in data.get("models", []) if m.get("name")]
+            status["status"] = "ready"
+    except Exception:
+        print(json.dumps(status))
+        return
+
+    try:
+        req_ps = urllib.request.Request(f"{OLLAMA_HOST}/api/ps", headers={"User-Agent": "rice-ollama/1.0"})
+        with urllib.request.urlopen(req_ps, timeout=1.0) as resp:
+            data_ps = json.loads(resp.read().decode("utf-8"))
+            status["running"] = [
+                {
+                    "name": m.get("name", ""),
+                    "size_vram": m.get("size_vram", 0),
+                    "expires_at": m.get("expires_at", "")
+                }
+                for m in data_ps.get("models", [])
+            ]
+    except Exception:
+        pass
+
+    print(json.dumps(status))
+
+def get_process_cwd(pid):
+    try:
+        children_file = f"/proc/{pid}/task/{pid}/children"
+        if os.path.isfile(children_file):
+            with open(children_file, "r") as f:
+                c_pids = f.read().strip().split()
+                if c_pids:
+                    deepest = c_pids[-1]
+                    try:
+                        c_cwd = os.readlink(f"/proc/{deepest}/cwd")
+                        if c_cwd and os.path.isdir(c_cwd):
+                            return c_cwd
+                    except Exception:
+                        pass
+        return os.readlink(f"/proc/{pid}/cwd")
+    except Exception:
+        return ""
+
+def get_git_info(cwd):
+    if not cwd or not os.path.isdir(cwd):
+        return None
+    try:
+        res = subprocess.run(["git", "-C", cwd, "rev-parse", "--show-toplevel"], capture_output=True, text=True, timeout=1)
+        if res.returncode != 0:
+            return None
+        repo_root = res.stdout.strip()
+        repo_name = os.path.basename(repo_root)
+        
+        branch_res = subprocess.run(["git", "-C", cwd, "branch", "--show-current"], capture_output=True, text=True, timeout=1)
+        branch = branch_res.stdout.strip() or "detached"
+        
+        status_res = subprocess.run(["git", "-C", cwd, "status", "--short"], capture_output=True, text=True, timeout=1)
+        status_lines = [l.strip() for l in status_res.stdout.splitlines() if l.strip()][:8]
+        
+        log_res = subprocess.run(["git", "-C", cwd, "log", "-1", "--oneline"], capture_output=True, text=True, timeout=1)
+        last_commit = log_res.stdout.strip()
+        
+        return {
+            "root": repo_root,
+            "name": repo_name,
+            "branch": branch,
+            "dirty_files": status_lines,
+            "commit": last_commit
+        }
+    except Exception:
+        return None
+
+def get_wayland_selection():
+    try:
+        res = subprocess.run(["wl-paste", "--primary"], capture_output=True, text=True, timeout=1)
+        t = res.stdout.strip()
+        if t and len(t) <= 3000 and "Nothing is copied" not in t:
+            return t
+    except Exception:
+        pass
+    return ""
+
+def get_wayland_clipboard():
+    try:
+        res = subprocess.run(["wl-paste", "-t", "text/plain"], capture_output=True, text=True, timeout=1)
+        t = res.stdout.strip()
+        if t and len(t) <= 2000 and "Nothing is copied" not in t:
+            return t
+    except Exception:
+        pass
+    return ""
+
+def cmd_snapshot(mode="window"):
+    """T3 Code-style window & screen snapshotting with rich context."""
+    _, shots_dir = get_runtime_dir()
+    stamp = int(time.time() * 1000)
+    out_file = os.path.join(shots_dir, f"snap_{stamp}.png")
+
+    if mode == "screen":
+        try:
+            subprocess.run(["grim", out_file], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            os.chmod(out_file, 0o600)
+            print(json.dumps({"status": "ok", "path": out_file, "type": "screen"}))
+            return
+        except Exception as e:
+            print(json.dumps({"status": "error", "message": str(e)}))
+            sys.exit(1)
+
+    if mode == "region":
+        # Interactive region pick with grab release buffer
+        try:
+            time.sleep(0.18)  # Let Wayland exclusive seat grab release
+            slurp = subprocess.run(["slurp", "-d"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, check=True)
+            geometry = slurp.stdout.strip()
+            if not geometry:
+                sys.exit(1)
+            subprocess.run(["grim", "-g", geometry, out_file], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            os.chmod(out_file, 0o600)
+            print(json.dumps({"status": "ok", "path": out_file, "type": "region"}))
+            return
+        except Exception as e:
+            print(json.dumps({"status": "error", "message": str(e)}))
+            sys.exit(1)
+
+    # Default: mode == "window" (T3 Code pattern: snap active foreground app directly)
+    try:
+        res = subprocess.run(["hyprctl", "activewindow", "-j"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+        w = json.loads(res.stdout) if res.stdout.strip() else {}
+        if not w or not w.get("mapped") or w.get("hidden"):
+            subprocess.run(["grim", out_file], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            os.chmod(out_file, 0o600)
+            print(json.dumps({"status": "ok", "path": out_file, "type": "screen"}))
+            return
+
+        at = w.get("at", [0, 0])
+        size = w.get("size", [1920, 1080])
+        geom = f"{at[0]},{at[1]} {size[0]}x{size[1]}"
+        subprocess.run(["grim", "-g", geom, out_file], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        os.chmod(out_file, 0o600)
+
+        app_name = w.get("class", "Window")
+        title = w.get("title", "")
+        pid = w.get("pid", 0)
+        ws_info = w.get("workspace", {})
+        ws_name = ws_info.get("name", "") if isinstance(ws_info, dict) else str(ws_info)
+        bounds = {"x": at[0], "y": at[1], "width": size[0], "height": size[1]}
+
+        # Deep context extraction: CWD, Git state, highlighted text, clipboard
+        cwd = get_process_cwd(pid)
+        git_info = get_git_info(cwd)
+        selected_text = get_wayland_selection()
+        clipboard_text = get_wayland_clipboard()
+
+        lines = [
+            f'### Active Foreground Window Context:',
+            f'- **Application**: {app_name} (PID: {pid})',
+            f'- **Title**: "{title}"'
+        ]
+        if ws_name:
+            lines.append(f'- **Workspace**: {ws_name}')
+        if cwd:
+            lines.append(f'- **Working Directory**: `{cwd}`')
+        if git_info:
+            lines.append(f'- **Git Repository**: `{git_info["name"]}` on `{git_info["branch"]}` (Latest commit: `{git_info["commit"]}`)')
+            if git_info["dirty_files"]:
+                lines.append(f'  - Uncommitted changes: {", ".join(git_info["dirty_files"][:5])}')
+        if selected_text:
+            lines.append(f'\n### Selected On-Screen Text (Exact Selection):\n```\n{selected_text}\n```')
+        elif clipboard_text:
+            lines.append(f'\n### Clipboard Content:\n```\n{clipboard_text[:600]}\n```')
+
+        context_str = "\n".join(lines)
+
+        print(json.dumps({
+            "status": "ok",
+            "path": out_file,
+            "type": "window",
+            "app": app_name,
+            "title": title,
+            "pid": pid,
+            "workspace": ws_name,
+            "cwd": cwd,
+            "git": git_info,
+            "has_selection": bool(selected_text),
+            "bounds": bounds,
+            "context": context_str
+        }))
+    except Exception as e:
+        print(json.dumps({"status": "error", "message": str(e)}))
+        sys.exit(1)
+
+def cmd_snip():
+    _, shots_dir = get_runtime_dir()
+    stamp = int(time.time() * 1000)
+    out_file = os.path.join(shots_dir, f"shot_{stamp}.png")
+
+    try:
+        slurp = subprocess.run(["slurp", "-d"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, check=True)
+        geometry = slurp.stdout.strip()
+        if not geometry:
+            sys.exit(1)
+
+        subprocess.run(["grim", "-g", geometry, out_file], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        os.chmod(out_file, 0o600)
+        print(out_file)
+    except subprocess.CalledProcessError:
+        sys.exit(1)
+    except Exception as e:
+        sys.stderr.write(f"Snip failed: {e}\n")
+        sys.exit(1)
+
+def cmd_paste():
+    """Extract image directly from Wayland clipboard if present."""
+    _, shots_dir = get_runtime_dir()
+    stamp = int(time.time() * 1000)
+    out_file = os.path.join(shots_dir, f"paste_{stamp}.png")
+
+    try:
+        res = subprocess.run(["wl-paste", "--list-types"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+        if res.returncode != 0:
+            sys.exit(1)
+        types = res.stdout.splitlines()
+        target_mime = None
+        for t in ["image/png", "image/jpeg", "image/webp"]:
+            if t in types:
+                target_mime = t
+                break
+
+        if not target_mime:
+            sys.exit(1)
+
+        with open(out_file, "wb") as f:
+            proc = subprocess.run(["wl-paste", "-t", target_mime], stdout=f, stderr=subprocess.DEVNULL, check=True)
+
+        if os.path.isfile(out_file) and os.path.getsize(out_file) > 0:
+            os.chmod(out_file, 0o600)
+            print(out_file)
+            sys.exit(0)
+    except Exception:
+        pass
+    sys.exit(1)
+
+def cmd_search(query):
+    """Fast DuckDuckGo / Wikipedia instant answer lookup."""
+    if not query:
+        print(json.dumps({"error": "Empty query"}))
+        return
+
+    result = {"query": query, "heading": "", "abstract": "", "url": "", "related": []}
+    try:
+        url = "https://api.duckduckgo.com/?" + urllib.parse.urlencode({"q": query, "format": "json"})
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64)"})
+        with urllib.request.urlopen(req, timeout=4.0) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            result["heading"] = data.get("Heading", "")
+            result["abstract"] = data.get("Abstract", "")
+            result["url"] = data.get("AbstractURL", "")
+            topics = data.get("RelatedTopics", [])
+            for t in topics[:3]:
+                if isinstance(t, dict) and t.get("Text"):
+                    result["related"].append(t.get("Text"))
+    except Exception as e:
+        result["error"] = str(e)
+
+    print(json.dumps(result))
+
+def cmd_sysinfo():
+    """Gather live desktop and hardware telemetry for context-aware assistance."""
+    info = {
+        "active_window": {},
+        "workspace": "",
+        "cpu_load": "",
+        "memory": "",
+        "gpu": ""
+    }
+    # Active Window
+    try:
+        w_proc = subprocess.run(["hyprctl", "activewindow", "-j"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+        if w_proc.returncode == 0 and w_proc.stdout.strip():
+            w = json.loads(w_proc.stdout)
+            info["active_window"] = {
+                "class": w.get("class", ""),
+                "title": w.get("title", ""),
+                "pid": w.get("pid", 0)
+            }
+    except Exception:
+        pass
+
+    # Active Workspace
+    try:
+        ws_proc = subprocess.run(["hyprctl", "activeworkspace", "-j"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+        if ws_proc.returncode == 0 and ws_proc.stdout.strip():
+            ws = json.loads(ws_proc.stdout)
+            info["workspace"] = ws.get("name", "")
+    except Exception:
+        pass
+
+    # RAM
+    try:
+        m_proc = subprocess.run(["free", "-h"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+        if m_proc.returncode == 0:
+            lines = m_proc.stdout.splitlines()
+            if len(lines) >= 2:
+                info["memory"] = lines[1]
+    except Exception:
+        pass
+
+    # GPU
+    try:
+        g_proc = subprocess.run(
+            ["nvidia-smi", "--query-gpu=gpu_name,memory.used,memory.total,temperature.gpu", "--format=csv,noheader,nounits"],
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True
+        )
+        if g_proc.returncode == 0 and g_proc.stdout.strip():
+            info["gpu"] = g_proc.stdout.strip()
+    except Exception:
+        pass
+
+    print(json.dumps(info))
+
+def cmd_chat(req_file=None):
+    raw_input = ""
+    if req_file and os.path.isfile(req_file):
+        try:
+            with open(req_file, "r", encoding="utf-8") as f:
+                raw_input = f.read().strip()
+        except Exception as e:
+            sys.stderr.write(f"Cannot read {req_file}: {e}\n")
+            sys.exit(1)
+    else:
+        raw_input = sys.stdin.read().strip()
+
+    if not raw_input:
+        sys.stderr.write("Empty request payload\n")
+        sys.exit(1)
+
+    try:
+        req_data = json.loads(raw_input)
+    except Exception as e:
+        sys.stderr.write(f"Invalid JSON: {e}\n")
+        sys.exit(1)
+
+    model = req_data.get("model", "deepseek-r1:8b")
+    messages = req_data.get("messages", [])
+    keep_alive = req_data.get("keep_alive", "5m")
+    options = req_data.get("options", {"num_ctx": 4096})
+
+    # Prepare messages payload for Ollama
+    ollama_messages = []
+    for msg in messages:
+        entry = {
+            "role": msg.get("role", "user"),
+            "content": msg.get("content", "")
+        }
+        img_path = msg.get("image", "")
+        if img_path and os.path.isfile(img_path):
+            try:
+                with open(img_path, "rb") as f:
+                    b64 = base64.b64encode(f.read()).decode("utf-8")
+                    entry["images"] = [b64]
+            except Exception as e:
+                sys.stderr.write(f"Warning: could not read image {img_path}: {e}\n")
+
+        ollama_messages.append(entry)
+
+    payload = {
+        "model": model,
+        "messages": ollama_messages,
+        "stream": True,
+        "keep_alive": keep_alive,
+        "options": options
+    }
+
+    req_bytes = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        f"{OLLAMA_HOST}/api/chat",
+        data=req_bytes,
+        headers={"Content-Type": "application/json", "User-Agent": "rice-ollama/1.0"}
+    )
+
+    try:
+        with urllib.request.urlopen(req, timeout=180) as resp:
+            # Unbuffered line-by-line reading for instantaneous token streaming
+            while True:
+                line = resp.readline()
+                if not line:
+                    break
+                sys.stdout.buffer.write(line)
+                sys.stdout.buffer.flush()
+    except BrokenPipeError:
+        try:
+            sys.stdout.close()
+        except Exception:
+            pass
+        sys.exit(0)
+    except urllib.error.URLError as e:
+        err_msg = json.dumps({"error": f"Ollama connection error: {e.reason}"})
+        sys.stdout.write(err_msg + "\n")
+        sys.stdout.flush()
+        sys.exit(1)
+    except Exception as e:
+        err_msg = json.dumps({"error": f"Stream error: {str(e)}"})
+        sys.stdout.write(err_msg + "\n")
+        sys.stdout.flush()
+        sys.exit(1)
+
+def cmd_unload(target_model=None):
+    models_to_unload = []
+    if target_model:
+        models_to_unload = [target_model]
+    else:
+        try:
+            req = urllib.request.Request(f"{OLLAMA_HOST}/api/ps", headers={"User-Agent": "rice-ollama/1.0"})
+            with urllib.request.urlopen(req, timeout=1.5) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                models_to_unload = [m.get("name") for m in data.get("models", []) if m.get("name")]
+        except Exception:
+            pass
+
+    for m in models_to_unload:
+        try:
+            req_data = json.dumps({"model": m, "keep_alive": 0}).encode("utf-8")
+            req = urllib.request.Request(
+                f"{OLLAMA_HOST}/api/generate",
+                data=req_data,
+                headers={"Content-Type": "application/json"}
+            )
+            with urllib.request.urlopen(req, timeout=2.0) as resp:
+                resp.read()
+        except Exception:
+            pass
+
+    print(json.dumps({"unloaded": models_to_unload}))
+
+def cmd_render(input_file=None):
+    raw_text = ""
+    if input_file and os.path.isfile(input_file):
+        try:
+            with open(input_file, "r", encoding="utf-8") as f:
+                raw_text = f.read()
+        except Exception:
+            raw_text = ""
+    else:
+        raw_text = sys.stdin.read()
+
+    render_bin = os.path.expanduser("~/Projects/rice/bin/rice-render")
+    if os.path.isfile(render_bin) and os.access(render_bin, os.X_OK):
+        proc = subprocess.run([render_bin], input=raw_text, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        sys.stdout.write(proc.stdout)
+    else:
+        out = {"kind": "text", "html": raw_text}
+        print(json.dumps(out))
+
+def main():
+    if len(sys.argv) < 2:
+        print("Usage: rice-ollama <status|snip|paste|search|sysinfo|chat|unload|render> [args...]")
+        sys.exit(1)
+
+    cmd = sys.argv[1]
+    if cmd == "status":
+        cmd_status()
+    elif cmd == "snapshot":
+        mode = sys.argv[2] if len(sys.argv) > 2 else "window"
+        cmd_snapshot(mode)
+    elif cmd == "snip":
+        cmd_snapshot("region")
+    elif cmd == "paste":
+        cmd_paste()
+    elif cmd == "search":
+        q = " ".join(sys.argv[2:]) if len(sys.argv) > 2 else ""
+        cmd_search(q)
+    elif cmd == "sysinfo":
+        cmd_sysinfo()
+    elif cmd == "chat":
+        target = sys.argv[2] if len(sys.argv) > 2 else None
+        cmd_chat(target)
+    elif cmd == "agent":
+        sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+        import rice_agent
+        rice_agent.main(sys.argv[2] if len(sys.argv) > 2 else "")
+    elif cmd == "unload":
+        target = sys.argv[2] if len(sys.argv) > 2 else None
+        cmd_unload(target)
+    elif cmd == "render":
+        target = sys.argv[2] if len(sys.argv) > 2 else None
+        cmd_render(target)
+    else:
+        sys.stderr.write(f"Unknown command: {cmd}\n")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()

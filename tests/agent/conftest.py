@@ -1,0 +1,58 @@
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+
+sys.path.insert(0, str(Path(__file__).parent))
+from fake_ollama import FakeOllama  # noqa: E402
+
+ROOT = Path(__file__).resolve().parents[2]
+HELPER = ROOT / "bin" / "rice-ollama"
+STUBS = Path(__file__).parent / "stubs"
+
+
+def parse_events(stdout):
+    return [json.loads(line) for line in stdout.splitlines() if line.strip()]
+
+
+@pytest.fixture
+def run_agent(tmp_path):
+    """run_agent(req, script, caps={}, stdin_lines=[], env={}) -> (events, fake)"""
+
+    def run(req, script, caps=None, stdin_lines=(), env=None, host=None):
+        req = {"model": "hermes3:8b", "options": {"num_ctx": 4096}, **req}
+        req_file = tmp_path / "request.json"
+        req_file.write_text(json.dumps(req))
+        with FakeOllama(script, caps) as fake:
+            e = {
+                **os.environ,
+                "OLLAMA_HOST": host or fake.url,
+                "PATH": f"{STUBS}:{os.environ['PATH']}",
+                "HOME": str(tmp_path),
+                "RICE_TEST_TMP": str(tmp_path),
+                **(env or {}),
+            }
+            stdin = "".join(json.dumps(l) + "\n" for l in stdin_lines)
+            proc = subprocess.run(
+                [str(HELPER), "agent", str(req_file)],
+                input=stdin, capture_output=True, text=True, env=e, timeout=30,
+            )
+        assert proc.returncode == 0, proc.stderr
+        return parse_events(proc.stdout), fake
+
+    return run
+
+
+def types(events):
+    return [e["type"] for e in events]
+
+
+def item_text(events, item_id):
+    return "".join(e["text"] for e in events if e["type"] == "item.delta" and e["id"] == item_id)
+
+
+def started(events, item_type):
+    return [e for e in events if e["type"] == "item.started" and e["itemType"] == item_type]
