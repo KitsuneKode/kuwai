@@ -26,7 +26,7 @@ class FakeOllama:
 
             def do_GET(self):
                 if self.path == "/api/tags":
-                    data = json.dumps({"models": [{"name": m} for m in fake.caps]}).encode()
+                    data = json.dumps({"models": [{"name": m, "size": 4_700_000_000, "details": {"parameter_size": "8.0B"}} for m in fake.caps]}).encode()
                     self.send_response(200)
                     self.send_header("Content-Type", "application/json")
                     self.send_header("Content-Length", str(len(data)))

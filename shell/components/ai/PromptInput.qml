@@ -11,7 +11,11 @@ Rectangle {
     id: root
 
     property alias text: inputArea.text
+    // The model picker (ModelPickerMenu) gets the keys while it's open.
+    property var picker: null
+    readonly property alias modelPill: modelPill
     signal submitted(string prompt)
+    signal modelPickerRequested()
     signal openAppLauncherRequested()
     signal toggleSidebarRequested()
     signal toggleStudioRequested()
@@ -156,9 +160,7 @@ Rectangle {
                 // Placeholder Text
                 Text {
                     anchors.fill: parent
-                    text: OllamaService.pendingImage !== ""
-                        ? "Ask about this screenshot, or press Enter to analyze..."
-                        : "Ask a question, explain code, or snip the screen..."
+                    text: OllamaService.pendingImage !== "" ? "Ask about the screenshot" : "Ask anything"
                     color: Theme.textDim
                     font.family: Theme.fontText
                     font.pixelSize: 15
@@ -178,6 +180,11 @@ Rectangle {
                 }
 
                 Keys.onPressed: event => {
+                    if (root.picker && root.picker.open) {
+                        root.picker.key(event);
+                        event.accepted = true;
+                        return;
+                    }
                     const ctrl = (event.modifiers & Qt.ControlModifier);
                     if (ctrl) {
                         if (event.key === Qt.Key_V) {
@@ -192,7 +199,7 @@ Rectangle {
                             root.openAppLauncherRequested();
                         } else if (event.key === Qt.Key_K) {
                             event.accepted = true;
-                            OllamaService.cycleModel();
+                            root.modelPickerRequested();
                         } else if (event.key === Qt.Key_L) {
                             event.accepted = true;
                             inputArea.text = "";
@@ -230,137 +237,51 @@ Rectangle {
             width: parent.width
             height: 36
 
-            // Left cluster: Screenshot button + Model switcher
+            // Left: attach the focused window, or a region; then the model.
             Row {
                 anchors.left: parent.left
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: 8
+                spacing: 4
 
-                // Snapshot Active App (T3 Code pattern: instant window capture)
+                MessageAction { width: 30; height: 30; radius: 15; icon: "app-window"; onClicked: OllamaService.snapshotActiveWindow() }
+                MessageAction { width: 30; height: 30; radius: 15; icon: "selection"; onClicked: OllamaService.takeScreenshot() }
+
+                Item { width: 4; height: 1 }
+
                 Rectangle {
+                    id: modelPill
                     height: 30
-                    width: snapAppRow.implicitWidth + 16
+                    width: modelRow.implicitWidth + 22
                     radius: 15
-                    color: snapAppArea.containsMouse ? Qt.rgba(1, 1, 1, 0.12) : Qt.rgba(1, 1, 1, 0.06)
-                    border.width: 1
-                    border.color: Qt.rgba(1, 1, 1, 0.08)
-
-                    Row {
-                        id: snapAppRow
-                        anchors.centerIn: parent
-                        spacing: 6
-
-                        Icon {
-                            name: "browsers"
-                            size: 14
-                            color: snapAppArea.containsMouse ? Theme.accent : Theme.textSecondary
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
-
-                        Label {
-                            text: "Snap App"
-                            size: 13
-                            weight: Theme.wMedium
-                            color: Theme.textSecondary
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
-                    }
-
-                    MouseArea {
-                        id: snapAppArea
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: OllamaService.snapshotActiveWindow()
-                    }
-                }
-
-                // Region Snip Trigger (interactive slurp)
-                Rectangle {
-                    height: 30
-                    width: snapRow.implicitWidth + 16
-                    radius: 15
-                    color: snapArea.containsMouse ? Qt.rgba(1, 1, 1, 0.12) : Qt.rgba(1, 1, 1, 0.06)
-                    border.width: 1
-                    border.color: Qt.rgba(1, 1, 1, 0.08)
-
-                    Row {
-                        id: snapRow
-                        anchors.centerIn: parent
-                        spacing: 6
-
-                        Icon {
-                            name: "camera"
-                            size: 14
-                            color: snapArea.containsMouse ? Theme.accent : Theme.textSecondary
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
-
-                        Label {
-                            text: "Snip Region"
-                            size: 13
-                            weight: Theme.wMedium
-                            color: Theme.textSecondary
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
-                    }
-
-                    MouseArea {
-                        id: snapArea
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: OllamaService.takeScreenshot()
-                    }
-                }
-
-                // Model Selector Pill (dynamic from OllamaService.availableModels)
-                Rectangle {
-                    height: 30
-                    width: modelRow.implicitWidth + 18
-                    radius: 15
-                    color: modelArea.containsMouse ? Qt.rgba(1, 1, 1, 0.12) : Qt.rgba(1, 1, 1, 0.06)
-                    border.width: 1
-                    border.color: Qt.rgba(1, 1, 1, 0.08)
+                    anchors.verticalCenter: parent.verticalCenter
+                    color: Qt.rgba(1, 1, 1, modelArea.containsMouse || (root.picker && root.picker.open) ? 0.10 : 0.05)
+                    scale: modelArea.pressed ? 0.97 : 1
+                    Behavior on color { ColorAnimation { duration: Theme.colorMs } }
+                    Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
 
                     Row {
                         id: modelRow
                         anchors.centerIn: parent
                         spacing: 6
 
-                        Icon {
-                            name: OllamaService.model.indexOf("minicpm") >= 0 ? "image" : "sparkle"
-                            size: 13
-                            color: Theme.accent
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
-
                         Label {
-                            text: {
-                                const m = OllamaService.model;
-                                if (m.indexOf("deepseek-r1") >= 0) return "DeepSeek-R1 8B";
-                                if (m.indexOf("minicpm") >= 0) return "MiniCPM-V";
-                                if (m.indexOf("hermes") >= 0) return "Hermes 3";
-                                return m;
-                            }
+                            text: OllamaService.modelLabel(OllamaService.model)
                             size: 13
-                            weight: Theme.wSemibold
+                            weight: Theme.wMedium
                             color: Theme.textPrimary
                             anchors.verticalCenter: parent.verticalCenter
                         }
-
-                        Row {
-                            spacing: 2
-                            anchors.verticalCenter: parent.verticalCenter
-                            KeyCap { text: "Ctrl"; size: 9 }
-                            KeyCap { text: "K"; size: 9 }
-                        }
-
                         Icon {
                             name: "caret-down"
-                            size: 11
+                            style: "bold"
+                            size: 10
                             color: Theme.textTertiary
+                            rotation: root.picker && root.picker.open ? 180 : 0
                             anchors.verticalCenter: parent.verticalCenter
+                            Behavior on rotation {
+                                enabled: !Theme.reduceMotion
+                                NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+                            }
                         }
                     }
 
@@ -369,15 +290,7 @@ Rectangle {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            // Cycle through available models from /api/tags
-                            const models = OllamaService.availableModels;
-                            if (models.length > 0) {
-                                const curIdx = models.indexOf(OllamaService.model);
-                                const nextIdx = (curIdx + 1) % models.length;
-                                OllamaService.model = models[nextIdx];
-                            }
-                        }
+                        onClicked: root.modelPickerRequested()
                     }
                 }
             }
@@ -394,14 +307,15 @@ Rectangle {
                     color: OllamaService.streaming
                         ? (btnArea.containsMouse ? Theme.red : Qt.alpha(Theme.red, 0.90))
                         : (root.canSend ? (btnArea.containsMouse ? Theme.accent : Qt.alpha(Theme.accent, 0.92)) : Qt.rgba(1, 1, 1, 0.08))
-                    scale: btnArea.pressed ? 0.94 : 1
+                    scale: btnArea.pressed ? 0.97 : 1
 
-                    Behavior on scale { NumberAnimation { duration: 120 } }
+                    Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                     Behavior on color { ColorAnimation { duration: Theme.colorMs } }
 
                     Icon {
                         anchors.centerIn: parent
                         name: OllamaService.streaming ? "stop" : "arrow-up"
+                        style: OllamaService.streaming ? "fill" : "bold"
                         size: 16
                         color: OllamaService.streaming || root.canSend ? Theme.onAccent : Theme.textDim
                     }
@@ -423,59 +337,6 @@ Rectangle {
             }
         }
 
-        // ── Keyboard Shortcuts Hint Bar (T3 Code / shadcn UX parity) ─
-        Row {
-            width: parent.width
-            spacing: 12
-            opacity: 0.70
-
-            Row {
-                spacing: 4
-                anchors.verticalCenter: parent.verticalCenter
-                KeyCap { text: "Enter"; size: 9 }
-                Label { text: "Send"; size: 10; color: Theme.textDim; anchors.verticalCenter: parent.verticalCenter }
-            }
-
-            Row {
-                spacing: 3
-                anchors.verticalCenter: parent.verticalCenter
-                KeyCap { text: "Shift"; size: 9 }
-                KeyCap { text: "Enter"; size: 9 }
-                Label { text: "Newline"; size: 10; color: Theme.textDim; anchors.verticalCenter: parent.verticalCenter }
-            }
-
-            Row {
-                spacing: 3
-                anchors.verticalCenter: parent.verticalCenter
-                KeyCap { text: "Ctrl"; size: 9 }
-                KeyCap { text: "V"; size: 9 }
-                Label { text: "Paste Shot"; size: 10; color: Theme.textDim; anchors.verticalCenter: parent.verticalCenter }
-            }
-
-            Row {
-                spacing: 3
-                anchors.verticalCenter: parent.verticalCenter
-                KeyCap { text: "Ctrl"; size: 9 }
-                KeyCap { text: "N"; size: 9 }
-                Label { text: "New Chat"; size: 10; color: Theme.textDim; anchors.verticalCenter: parent.verticalCenter }
-            }
-
-            Row {
-                spacing: 3
-                anchors.verticalCenter: parent.verticalCenter
-                KeyCap { text: "Ctrl"; size: 9 }
-                KeyCap { text: "O"; size: 9 }
-                Label { text: "Apps"; size: 10; color: Theme.textDim; anchors.verticalCenter: parent.verticalCenter }
-            }
-
-            Row {
-                spacing: 3
-                anchors.verticalCenter: parent.verticalCenter
-                KeyCap { text: "Ctrl"; size: 9 }
-                KeyCap { text: "K"; size: 9 }
-                Label { text: "Model"; size: 10; color: Theme.textDim; anchors.verticalCenter: parent.verticalCenter }
-            }
-        }
     }
 
     readonly property bool canSend: (inputArea.text.trim().length > 0) || (OllamaService.pendingImage !== "")

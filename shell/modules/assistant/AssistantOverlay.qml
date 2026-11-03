@@ -107,7 +107,7 @@ Scope {
                             root.appLauncherOpen = !root.appLauncherOpen;
                         } else if (event.key === Qt.Key_K) {
                             event.accepted = true;
-                            OllamaService.cycleModel();
+                            modelPicker.toggle();
                         } else if (event.key === Qt.Key_L) {
                             event.accepted = true;
                             OllamaService.clear();
@@ -685,6 +685,8 @@ Scope {
                             PromptInput {
                                 id: promptInput
                                 width: parent.width
+                                picker: modelPicker
+                                onModelPickerRequested: modelPicker.toggle()
                                 onOpenAppLauncherRequested: root.appLauncherOpen = !root.appLauncherOpen
                                 onToggleSidebarRequested: {
                                     if (!root.studioMode) root.studioMode = true;
@@ -714,6 +716,13 @@ Scope {
                 }
             }
 
+
+                // ── Model picker: grows out of the model pill (⌃K) ────────
+                ModelPickerMenu {
+                    id: modelPicker
+                    anchorItem: promptInput.modelPill
+                    onClosed: promptInput.focusInput()
+                }
 
                 // ── App Launcher / Command Palette Modal (Ctrl+O) ────────
                 Rectangle {

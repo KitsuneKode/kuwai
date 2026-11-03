@@ -22,6 +22,14 @@ Singleton {
     property string model: "hermes3:8b"
     property var availableModels: ["hermes3:8b", "minicpm-v:latest"]
     property var runningModels: []
+    // From `rice-ollama status`: { name: { capabilities: [...], sizeGb, params } }.
+    property var modelInfo: ({})
+
+    function hasCap(m, cap) {
+        const i = modelInfo[m];
+        return !!i && (i.capabilities || []).indexOf(cap) >= 0;
+    }
+    function isLoaded(m) { return runningModels.some(r => r.name === m); }
     property bool streaming: false
 
     // The assistant message being streamed (Turn.newAssistant shape), or null.
@@ -396,6 +404,7 @@ Singleton {
                         }
                     }
                     root.runningModels = data.running || [];
+                    if (data.info) root.modelInfo = data.info;
                 } catch (e) {
                     root.status = "offline";
                 }

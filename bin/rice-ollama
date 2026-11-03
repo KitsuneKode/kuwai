@@ -43,8 +43,26 @@ def cmd_status():
         req = urllib.request.Request(f"{OLLAMA_HOST}/api/tags", headers={"User-Agent": "rice-ollama/1.0"})
         with urllib.request.urlopen(req, timeout=1.5) as resp:
             data = json.loads(resp.read().decode("utf-8"))
-            status["models"] = [m.get("name", "") for m in data.get("models", []) if m.get("name")]
+            listed = [m for m in data.get("models", []) if m.get("name")]
+            status["models"] = [m["name"] for m in listed]
             status["status"] = "ready"
+            # What each model can do (tools / thinking / vision), for the picker.
+            status["info"] = {}
+            for m in listed:
+                caps = []
+                try:
+                    body = json.dumps({"model": m["name"]}).encode("utf-8")
+                    show = urllib.request.Request(f"{OLLAMA_HOST}/api/show", data=body,
+                                                  headers={"Content-Type": "application/json", "User-Agent": "rice-ollama/1.0"})
+                    with urllib.request.urlopen(show, timeout=1.5) as r:
+                        caps = json.loads(r.read().decode("utf-8")).get("capabilities", []) or []
+                except Exception:
+                    pass
+                status["info"][m["name"]] = {
+                    "capabilities": caps,
+                    "sizeGb": round((m.get("size") or 0) / 1e9, 1),
+                    "params": (m.get("details") or {}).get("parameter_size", ""),
+                }
     except Exception:
         print(json.dumps(status))
         return
