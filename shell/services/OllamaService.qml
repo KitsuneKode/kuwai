@@ -59,6 +59,39 @@ Singleton {
 
     property bool storeLoaded: false
 
+    // Tokens the last turn used (prompt + answer) against the window it ran with.
+    readonly property int contextUsed: lastStats ? (lastStats.promptEvalCount || 0) + (lastStats.evalCount || 0) : 0
+    readonly property int contextTotal: lastStats ? (lastStats.numCtx || 4096) : 4096
+
+    function modelLabel(m) {
+        if (!m) return "";
+        const base = m.split(":")[0];
+        const known = { "hermes3": "Hermes 3", "deepseek-r1": "DeepSeek R1", "minicpm-v": "MiniCPM-V",
+                        "qwen3": "Qwen 3", "llama3.2": "Llama 3.2", "llama3.1": "Llama 3.1", "gemma3": "Gemma 3" };
+        const tag = m.indexOf(":") >= 0 ? m.split(":")[1] : "";
+        const size = /^\d+(\.\d+)?b$/i.test(tag) ? " " + tag.toUpperCase() : "";
+        return (known[base] || base) + size;
+    }
+
+    // Retry: drop the answer at `index` (and everything after) and run the
+    // turn again from the message before it, with the current model.
+    function regenerate(index) {
+        if (streaming || index < 1 || index >= messages.length) return;
+        if (messages[index].role !== "assistant") return;
+        root.messages = Turn.truncateAt(root.messages, index);
+        root.syncCurrentSession();
+        root.startTurn();
+    }
+
+    // Edit the message you sent at `index`: later turns go, the edit is resent.
+    function editAndResend(index, text) {
+        if (streaming || index < 0 || index >= messages.length || messages[index].role !== "user") return;
+        const edited = Object.assign({}, messages[index], { text: text, timestamp: Date.now(), time: formatTime(Date.now()) });
+        root.messages = [...Turn.truncateAt(root.messages, index), edited];
+        root.syncCurrentSession();
+        root.startTurn();
+    }
+
     function legacyTool(p) {
         return {
             name: p.itemType, title: p.title, input: p.input, output: p.output,
@@ -168,6 +201,7 @@ Singleton {
         }
         root.activeSessionId = newId;
         root.messages = [];
+        root.lastStats = null;
         root.pendingImage = "";
         root.pendingContext = null;
         root.pendingAppTitle = "";
@@ -264,6 +298,7 @@ Singleton {
         if (found) {
             root.activeSessionId = id;
             root.messages = found.messages || [];
+            root.lastStats = null;
             if (found.model) root.model = found.model;
             root.pendingImage = "";
             root.errorText = "";
@@ -629,7 +664,9 @@ function onPanelClosed() {
             const updated = [...root.messages, msg];
             root.messages = updated;
             root.syncCurrentSession();
-            root.renderMessage(updated.length - 1, msg.text);
+            // Markdown for the last text part (the answer); earlier ones are short lead-ins.
+            const texts = msg.parts.filter(p => p.kind === "text");
+            if (texts.length) root.renderMessage(updated.length - 1, texts[texts.length - 1].text);
         }
     }
 
