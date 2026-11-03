@@ -225,6 +225,8 @@ def cmd_snapshot(mode="window"):
             "cwd": cwd,
             "git": git_info,
             "has_selection": bool(selected_text),
+            "selection": selected_text[:4096] if selected_text else "",
+            "clipboard": clipboard_text[:4096] if clipboard_text else "",
             "bounds": bounds,
             "context": context_str
         }))

@@ -173,19 +173,103 @@ def chat_stream(payload):
                 continue
 
 
-def to_ollama_messages(messages):
+def installed_models():
+    try:
+        req = urllib.request.Request(f"{OLLAMA_HOST}/api/tags", headers=UA)
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            return [m.get("name", "") for m in json.loads(resp.read().decode()).get("models", []) if m.get("name")]
+    except Exception:
+        return []
+
+
+def read_image(path):
+    if not path or not os.path.isfile(path):
+        return ""
+    try:
+        with open(path, "rb") as f:
+            return base64.b64encode(f.read()).decode()
+    except OSError:
+        return ""
+
+
+def context_block(ctx):
+    """The snapshot fields the user kept, as a short block before their text.
+    Order: App, Window, Workspace, Folder, Git, Selection, Clipboard."""
+    if not isinstance(ctx, dict):
+        return ""
+    lines = []
+    for key, label in (("app", "App"), ("title", "Window"), ("workspace", "Workspace"), ("cwd", "Folder")):
+        if ctx.get(key):
+            lines.append(f"{label}: {ctx[key]}")
+    git = ctx.get("git")
+    if isinstance(git, dict) and git.get("name"):
+        g = f"Git: {git['name']} on {git.get('branch', '')}"
+        if git.get("dirty_files"):
+            g += "; changed: " + ", ".join(git["dirty_files"][:5])
+        lines.append(g)
+    for key, label in (("selection", "Selected text"), ("clipboard", "Clipboard")):
+        if ctx.get(key):
+            lines.append(f"{label}:\n```\n{_cap(str(ctx[key]), 4096)}\n```")
+    if not lines:
+        return ""
+    return "Context (what I'm looking at):\n" + "\n".join(lines) + "\n\n"
+
+
+def to_ollama_messages(messages, vision):
+    """Request messages → Ollama's. Images go only to a vision model; for the
+    others the caller replaces the last one with a description."""
     out = []
     for m in messages:
-        entry = {"role": m.get("role", "user"), "content": m.get("content", "")}
+        content = context_block(m.get("context")) + (m.get("content") or "")
+        entry = {"role": m.get("role", "user"), "content": content}
         img = m.get("image") or ""
-        if img and os.path.isfile(img):
-            try:
-                with open(img, "rb") as f:
-                    entry["images"] = [base64.b64encode(f.read()).decode()]
-            except OSError:
-                pass
+        if img:
+            if vision:
+                b64 = read_image(img)
+                if b64:
+                    entry["images"] = [b64]
+            else:
+                entry["_image"] = img
         out.append(entry)
     return out
+
+
+DESCRIBE = ("Describe this screenshot for another assistant who can't see it. Name the app, quote the text that "
+            "matters (code, errors, headings) exactly, and say what the user seems to be doing. Plain text, under "
+            "200 words.")
+
+
+def vision_hop(ids, messages, stats):
+    """Turn images into text for a model that can't see: the last image is
+    described by an installed vision model (unloaded right after, one model
+    in VRAM at a time); earlier ones become a short note."""
+    last = max((i for i, m in enumerate(messages) if m.get("_image")), default=-1)
+    for i, m in enumerate(messages):
+        if i != last and m.pop("_image", ""):
+            m["content"] += "\n\n[A screenshot was attached here.]"
+    if last < 0:
+        return
+    img = messages[last].pop("_image", "") or ""
+    item_id = ids.next("t")
+    emit({"type": "item.started", "id": item_id, "itemType": "image_view",
+          "title": "Looking at the screenshot", "input": {}})
+    vision = next((m for m in installed_models() if "vision" in capabilities(m)), None)
+    b64 = read_image(img)
+    if not vision or not b64:
+        why = "No vision model is installed" if not vision else "The screenshot is gone"
+        emit({"type": "item.completed", "id": item_id, "status": "failed", "output": why})
+        messages[last]["content"] += "\n\n[A screenshot was attached but couldn't be read.]"
+        return
+    payload = {"model": vision, "stream": True, "keep_alive": 0, "options": {"num_ctx": 4096},
+               "messages": [{"role": "user", "content": DESCRIBE, "images": [b64]}]}
+    text = ""
+    for chunk in chat_stream(payload):
+        if chunk.get("error"):
+            raise RuntimeError(chunk["error"])
+        text += (chunk.get("message") or {}).get("content") or ""
+    text = text.strip()
+    emit({"type": "item.completed", "id": item_id, "status": "completed", "output": text})
+    messages[last]["content"] += f"\n\n[Screenshot: {text}]"
 
 
 # ── Tools ─────────────────────────────────────────────────────────────────
@@ -600,13 +684,15 @@ def run_turn(req):
     emit({"type": "turn.started", "model": model})
 
     system = SYSTEM_VISION if ("vision" in caps and not use_tools) else SYSTEM_GENERAL
-    messages = [{"role": "system", "content": system}] + to_ollama_messages(req.get("messages") or [])
+    messages = [{"role": "system", "content": system}] + to_ollama_messages(req.get("messages") or [],
+                                                                           "vision" in caps)
     stats = {"evalCount": 0, "promptEvalCount": 0, "numCtx": int(options.get("num_ctx", 4096)), "tokensPerSec": 0.0}
 
     stream = Stream(ids)
     status, error = "completed", ""
     rounds = 0
     try:
+        vision_hop(ids, messages, stats)
         while True:
             capped = rounds >= MAX_TOOL_ROUNDS
             payload = {"model": model, "messages": messages, "stream": True,

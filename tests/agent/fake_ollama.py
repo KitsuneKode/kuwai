@@ -1,7 +1,7 @@
 """A scripted stand-in for Ollama's HTTP API, for the agent tests.
 
 Each POST /api/chat pops the next round from `script` and streams it as NDJSON.
-POST /api/show answers {"capabilities": caps[model]}. Request bodies are kept.
+POST /api/show answers {"capabilities": caps[model]}; GET /api/tags lists caps' models. Request bodies are kept.
 """
 
 import json
@@ -23,6 +23,18 @@ class FakeOllama:
             def _body(self):
                 n = int(self.headers.get("Content-Length") or 0)
                 return json.loads(self.rfile.read(n) or b"{}")
+
+            def do_GET(self):
+                if self.path == "/api/tags":
+                    data = json.dumps({"models": [{"name": m} for m in fake.caps]}).encode()
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Content-Length", str(len(data)))
+                    self.end_headers()
+                    self.wfile.write(data)
+                    return
+                self.send_response(404)
+                self.end_headers()
 
             def do_POST(self):
                 body = self._body()
