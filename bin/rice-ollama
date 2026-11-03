@@ -347,9 +347,30 @@ def cmd_render(input_file=None):
         out = {"kind": "text", "html": raw_text}
         print(json.dumps(out))
 
+def cmd_sandbox(args):
+    """rice-ollama sandbox <status|build|stop|path [chat]>"""
+    sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+    import rice_sandbox as sb
+    sub = args[0] if args else "status"
+    try:
+        if sub == "status":
+            print(json.dumps({"state": sb.state(), "dir": str(sb.host_root()), "image": sb.IMAGE}))
+        elif sub == "build":
+            sys.exit(sb.build(stream=sys.stdout))
+        elif sub == "stop":
+            sb.stop()
+        elif sub == "path":
+            print(sb.workspace(args[1] if len(args) > 1 else ""))
+        else:
+            sys.stderr.write("Usage: rice-ollama sandbox <status|build|stop|path [chat]>\n")
+            sys.exit(1)
+    except sb.SandboxError as e:
+        sys.stderr.write(f"{e}\n")
+        sys.exit(1)
+
 def main():
     if len(sys.argv) < 2:
-        print("Usage: rice-ollama <status|snapshot|snip|paste|agent|unload|render> [args...]")
+        print("Usage: rice-ollama <status|snapshot|snip|paste|agent|unload|render|sandbox> [args...]")
         sys.exit(1)
 
     cmd = sys.argv[1]
@@ -369,6 +390,8 @@ def main():
     elif cmd == "unload":
         target = sys.argv[2] if len(sys.argv) > 2 else None
         cmd_unload(target)
+    elif cmd == "sandbox":
+        cmd_sandbox(sys.argv[2:])
     elif cmd == "render":
         target = sys.argv[2] if len(sys.argv) > 2 else None
         cmd_render(target)

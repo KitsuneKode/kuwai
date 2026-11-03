@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { applyEvent, compactedUpTo, sourcesOf, splitFences, chatMarkdown, migrateMessage, newAssistant, pendingRequest, textOf, toApiMessages, toApiMessagesWithIndex, truncateAt } from "./turn.mjs";
+import { applyEvent, compactedUpTo, splitBlocks, healTail, sourcesOf, splitFences, chatMarkdown, migrateMessage, newAssistant, pendingRequest, textOf, toApiMessages, toApiMessagesWithIndex, truncateAt } from "./turn.mjs";
 
 const run = (events, msg = newAssistant("hermes3:8b", 1000)) => events.reduce(applyEvent, msg);
 const started = (id, itemType, extra = {}) => Object.assign({ type: "item.started", id, itemType, title: "", input: {} }, extra);
@@ -37,10 +37,18 @@ describe("applyEvent", () => {
     let m = run([started("t1", "command_execution", { title: "ls" }),
       { type: "request.opened", id: "q1", itemId: "t1", kind: "command", summary: "Run a command", detail: "ls" }]);
     expect(m.parts[0].request).toMatchObject({ id: "q1", state: "pending", detail: "ls" });
-    expect(pendingRequest(m)).toEqual({ id: "q1", partId: "t1" });
+    expect(pendingRequest(m)).toEqual({ id: "q1", partId: "t1", kind: "command", options: [] });
     m = applyEvent(m, { type: "request.resolved", id: "q1", decision: "accept" });
     expect(m.parts[0].request.state).toBe("accept");
     expect(pendingRequest(m)).toBe(null);
+  });
+
+  test("a question carries its options and the answer", () => {
+    let m = run([started("t1", "user_input", { title: "Which size?" }),
+      { type: "request.opened", id: "q1", itemId: "t1", kind: "question", summary: "Which size?", detail: "", options: ["S", "L"] }]);
+    expect(pendingRequest(m)).toEqual({ id: "q1", partId: "t1", kind: "question", options: ["S", "L"] });
+    m = applyEvent(m, { type: "request.resolved", id: "q1", decision: "accept", answer: "L" });
+    expect(m.parts[0].request).toMatchObject({ state: "accept", answer: "L" });
   });
 
   test("turn.completed failed keeps partial text and sets error", () => {
@@ -230,3 +238,30 @@ describe("chatMarkdown", () => {
   });
 });
 
+
+describe("splitBlocks", () => {
+  test("paragraphs, a loose list and code are separate blocks", () => {
+    const b = splitBlocks("Intro line\n\n- a\n\n- b\n\nAfter\n\n```py\nx = 1\n```\n\nEnd");
+    expect(b.map(x => x.kind + ":" + x.text)).toEqual(["md:Intro line", "md:- a\n\n- b", "md:After", "code:x = 1", "md:End"]);
+  });
+  test("earlier blocks don't change as text streams in", () => {
+    const a = splitBlocks("One.\n\nTwo is gro"), b = splitBlocks("One.\n\nTwo is growing\n\nThr");
+    expect(a[0]).toEqual(b[0]);
+    expect(b.length).toBe(3);
+  });
+  test("an open fence is one open code block", () => {
+    const b = splitBlocks("Run:\n\n```bash\nls -la");
+    expect(b[1]).toEqual({ kind: "code", lang: "bash", text: "ls -la", open: true });
+  });
+  test("a table stays one block", () => {
+    expect(splitBlocks("| a | b |\n|---|---|\n| 1 | 2 |").length).toBe(1);
+  });
+});
+
+describe("healTail", () => {
+  test("closes half-written bold and code", () => {
+    expect(healTail("This is **bo")).toBe("This is **bo**");
+    expect(healTail("Use `ls")).toBe("Use `ls`");
+    expect(healTail("Done **ok** and `x`")).toBe("Done **ok** and `x`");
+  });
+});

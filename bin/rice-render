@@ -215,6 +215,50 @@ def render(text):
     return {"kind": "text"}
 
 
+# Chat blocks: no margins (the chat spaces its blocks), same type and colours.
+BLOCK_STYLE = STYLESHEET.replace("margin-top: 2px; margin-bottom: 12px;", "margin-top: 0; margin-bottom: 0;") \
+    .replace("margin-top: 20px; margin-bottom: 8px;", "margin-top: 0; margin-bottom: 0;") \
+    .replace("margin-top: 16px; margin-bottom: 6px;", "margin-top: 0; margin-bottom: 0;") \
+    .replace("margin-top: 12px; margin-bottom: 4px;", "margin-top: 0; margin-bottom: 0;") \
+    .replace("margin-top: 0; margin-bottom: 12px; line-height: 150%;", "margin-top: 0; margin-bottom: 0; line-height: 150%;") \
+    .replace("</style>", "ul, ol { margin-top: 0; margin-bottom: 0; margin-left: 0; -qt-list-indent: 1; }\n</style>")
+
+
+def render_block(req):
+    """One chat block: {"kind": "md"|"code", "text", "lang"} -> Qt rich text."""
+    text = req.get("text") or ""
+    if req.get("kind") == "code":
+        lexer = lexer_for(text, req.get("lang") or "") or get_lexer_by_name("text")
+        pre = re.search(r"<pre[\s\S]*</pre>", code_html(text, lexer, 12))
+        return pre.group(0) if pre else html.escape(text)
+    import markdown
+    body = markdown.markdown(text, extensions=["tables", "sane_lists"])
+    body = body.replace("<table>", '<table width="100%" cellspacing="0" cellpadding="0">').replace("<th>", '<th align="left">')
+    # The last paragraph's bottom margin would still add height; trim the edges.
+    return BLOCK_STYLE + body.strip()
+
+
+def serve():
+    """`rice-render --serve`: one JSON request per line on stdin
+    ({"id", "kind", "text", "lang"}), one {"id", "html"} per line on stdout.
+    The assistant keeps one of these running, so a block renders in ~1 ms
+    instead of a ~150 ms process start."""
+    for line in sys.stdin:
+        try:
+            req = json.loads(line)
+        except ValueError:
+            continue
+        try:
+            out = {"id": req.get("id"), "html": render_block(req)}
+        except Exception as e:  # one bad block mustn't stop the server
+            out = {"id": req.get("id"), "html": html.escape(req.get("text") or ""), "error": str(e)}
+        sys.stdout.write(json.dumps(out) + "\n")
+        sys.stdout.flush()
+
+
 if __name__ == "__main__":
+    if sys.argv[1:] == ["--serve"]:
+        serve()
+        sys.exit(0)
     data = sys.stdin.buffer.read(262144).decode("utf-8", "replace")
     print(json.dumps(render(data)))

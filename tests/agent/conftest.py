@@ -33,11 +33,14 @@ def run_agent(tmp_path):
                 "RICE_SEARCH_DDG_URL": fake.url + "/ddg",
                 "RICE_SEARCH_BING_URL": fake.url + "/bing",
                 "RICE_SEARCH_WIKI_URL": fake.url + "/wiki",
+                "RICE_SHOP_AMAZON_URL": fake.url + "/amz",
                 "RICE_SEARXNG_URL": "",
                 "OLLAMA_API_KEY": "",
                 "PATH": f"{STUBS}:{os.environ['PATH']}",
                 "HOME": str(tmp_path),
                 "RICE_TEST_TMP": str(tmp_path),
+                "RICE_SANDBOX": "off",
+                "RICE_SANDBOX_DIR": str(tmp_path / "sandbox"),
                 **(env or {}),
             }
             stdin = "".join(json.dumps(l) + "\n" for l in stdin_lines)

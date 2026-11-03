@@ -1,0 +1,20 @@
+#!/usr/bin/env python3
+"""Fake docker for the sandbox tests: the container is a folder. `exec -w /work/X`
+runs the command locally in $RICE_SANDBOX_DIR/X; inspect says it's running."""
+import os, subprocess, sys
+a = sys.argv[1:]
+root = os.environ["RICE_SANDBOX_DIR"]
+if a[:2] == ["image", "inspect"]:
+    sys.exit(0)
+if a[0] == "inspect":
+    print("true"); sys.exit(0)
+if a[0] == "exec":
+    i, cwd = 1, root
+    while a[i].startswith("-"):
+        if a[i] == "-w":
+            cwd = a[i + 1].replace("/work", root, 1)
+        i += 2
+    cmd = a[i + 1:]          # after the container name
+    os.makedirs(cwd, exist_ok=True)
+    sys.exit(subprocess.run(cmd, cwd=cwd).returncode)
+sys.exit(0)

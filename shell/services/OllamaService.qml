@@ -122,7 +122,11 @@ Singleton {
 
     // Tokens the last turn used (prompt + answer) against the window it ran with.
     readonly property int contextUsed: lastStats ? (lastStats.promptEvalCount || 0) + (lastStats.evalCount || 0) : 0
-    readonly property int contextTotal: lastStats ? (lastStats.numCtx || 4096) : 4096
+    // The window each model gets. Qwen3.5's hybrid attention keeps its KV cache
+    // small: 16k fits beside the desktop in 6 GB at 27 tok/s (8k: 36, measured
+    // 2026-11-03). Older 8B models need all of it at 4k.
+    function contextFor(m) { return /qwen3\.5/.test(m || "") ? 16384 : 4096; }
+    readonly property int contextTotal: lastStats && lastStats.numCtx ? lastStats.numCtx : contextFor(model)
 
     function modelLabel(m) {
         if (!m) return "";
@@ -175,12 +179,13 @@ Singleton {
         const msg = Turn.migrateMessage(m);
         const out = Object.assign({}, m, msg, {
             text: Turn.textOf(msg),
-            html: m.html || "",
             time: m.time || root.formatTime(msg.timestamp)
         });
         delete out.tools;
         delete out.reasoning;
         delete out.tokensPerSec;
+        delete out.html;          // rendered on view now (blockHtml), not stored
+        delete out.segHtml;
         return out;
     }
 
@@ -432,9 +437,12 @@ Singleton {
         cancel();
     }
 
-    function resolveRequest(id, decision) {
+    // An approval (accept / decline) or a question's answer (accept + answer text).
+    function resolveRequest(id, decision, answer) {
         if (!chatProc.running) return;
-        chatProc.write(JSON.stringify({ type: "request.resolve", id: id, decision: decision }) + "\n");
+        const msg = { type: "request.resolve", id: id, decision: decision };
+        if (answer) msg.answer = answer;
+        chatProc.write(JSON.stringify(msg) + "\n");
     }
 
     // ── Status Probing ────────────────────────────────────────────────
@@ -683,8 +691,9 @@ function onPanelClosed() {
         // Compact when the last turn filled 3/4 of the window, or the history
         // looks that big (≈4 characters a token, plus ~900 for the system prompt and tools).
         const chars = sent.api.reduce((n, m) => n + (m.content || "").length, root.summary.length);
-        const estimate = chars / 4 + 900;
-        const compact = Math.max(root.contextUsed, estimate) >= root.compactAt * 4096;
+        const estimate = chars / 4 + 1500;     // + system prompt and tool schemas
+        const ctx = root.contextFor(root.model);
+        const compact = Math.max(root.contextUsed, estimate) >= root.compactAt * ctx;
         chatProc.sentIndex = sent.index;
         chatProc.sentUpTo = root.summaryUpTo;
 
@@ -693,8 +702,9 @@ function onPanelClosed() {
             messages: sent.api,
             summary: root.summary,
             compact: compact,
+            chat: root.activeSessionId,
             keep_alive: "5m",
-            options: { num_ctx: 4096, temperature: root.model.indexOf("hermes") >= 0 ? 0.4 : 0.7 }
+            options: { num_ctx: ctx, temperature: root.model.indexOf("hermes") >= 0 ? 0.4 : 0.7 }
         }, null, 2));
 
         chatProc.sawTurnEnd = false;
@@ -715,6 +725,14 @@ function onPanelClosed() {
                 if (!line || line.trim() === "") return;
                 let ev;
                 try { ev = JSON.parse(line); } catch (e) { return; }
+                // Text arrives a token at a time; fold the tokens into one update a frame
+                // (T3 Code merges per 50 ms on its server). Anything else lands at once, in order.
+                if (ev.type === "item.delta") {
+                    root.pendingDeltas.push(ev);
+                    if (!deltaTimer.running) deltaTimer.start();
+                    return;
+                }
+                root.flushDeltas();
                 root.draft = Turn.applyEvent(root.draft, ev);
                 if (ev.type === "item.completed" && ev.status === "completed" && root.draft) {
                     const p = root.draft.parts.find(q => q.id === ev.id);
@@ -747,8 +765,28 @@ function onPanelClosed() {
         }
     }
 
+    property var pendingDeltas: []
+    function flushDeltas() {
+        deltaTimer.stop();
+        if (!pendingDeltas.length) return;
+        const evs = pendingDeltas;
+        pendingDeltas = [];
+        // Consecutive deltas to one item become one.
+        const merged = [];
+        evs.forEach(e => {
+            const last = merged[merged.length - 1];
+            if (last && last.id === e.id) last.text += e.text || "";
+            else merged.push({ type: "item.delta", id: e.id, text: e.text || "", ts: e.ts });
+        });
+        let d = root.draft;
+        merged.forEach(e => { d = Turn.applyEvent(d, e); });
+        root.draft = d;
+    }
+    Timer { id: deltaTimer; interval: 16; onTriggered: root.flushDeltas() }
+
     // The draft becomes a message in the chat it was started in.
     function finishTurn() {
+        root.flushDeltas();
         const d = root.draft;
         const keep = d && !root.discardDraft && d.parts.length > 0;
         root.streaming = false;
@@ -764,70 +802,61 @@ function onPanelClosed() {
             const updated = [...root.messages, msg];
             root.messages = updated;
             root.syncCurrentSession();
-            // Markdown for the last text part (the answer); earlier ones are short lead-ins.
-            const texts = msg.parts.filter(p => p.kind === "text");
-            if (texts.length) root.renderMessage(updated.length - 1, texts[texts.length - 1].text);
         }
     }
 
-    // ── Rich Text Markdown Rendering ──────────────────────────────────
-    // The answer's Markdown, one segment at a time (prose / fenced code, see
-    // Turn.splitFences), so code blocks get their own header and Copy. Each
-    // segment's HTML lands in messages[index].segHtml[i]; older messages keep
-    // their one `html`.
-    function renderMessage(index, rawText) {
-        if (!rawText || rawText.trim() === "") return;
-        const segs = Turn.splitFences(rawText);
-        segs.forEach((seg, i) => {
-            // Code goes in bare (rice-render detects and highlights it); fenced, it highlights the fences too.
-            const source = seg.text;
-            const file = root.runtimeDir + "/render_" + index + "_" + i + ".md";
-            renderProcComponent.createObject(root, { msgIndex: index, segIndex: i, segCount: segs.length, filePath: file, source: source, isCode: seg.kind === "code" });
-        });
+    // ── Block rendering (rice-render --serve) ─────────────────────────
+    // Answers render block by block (Turn.splitBlocks): one long-running
+    // rice-render turns each block into Qt rich text in ~1 ms, cached by its
+    // text. A finished block never changes, so it renders once; the block
+    // being written re-renders as it grows. Messages store no HTML.
+    property var htmlCache: ({})
+    property var htmlOrder: []
+    property var renderWaiting: ({})     // key → true while in flight
+    property var renderKeys: ({})        // request id → key
+    property int renderSeq: 0
+    property int renderTick: 0           // bumps when a block's HTML arrives
+
+    function blockKey(b) { return b.kind + "\u0001" + (b.lang || "") + "\u0001" + b.text; }
+    // The block's HTML, or "" while it's being rendered (it asks for it).
+    function blockHtml(b) {
+        if (!b || !b.text) return "";
+        const k = blockKey(b);
+        const h = htmlCache[k];
+        if (h !== undefined) return h;
+        if (!renderWaiting[k]) {
+            renderWaiting[k] = true;
+            const id = ++renderSeq;
+            renderKeys[id] = k;
+            if (!renderProc.running) renderProc.running = true;
+            renderProc.write(JSON.stringify({ id: id, kind: b.kind, lang: b.lang || "", text: b.text }) + "\n");
+        }
+        return "";
     }
 
-    Component {
-        id: renderProcComponent
-        Process {
-            id: rProc
-            property int msgIndex: -1
-            property int segIndex: 0
-            property int segCount: 1
-            property string filePath: ""
-            property string source: ""
-            property bool isCode: false
-            command: [root.bin, "render", filePath]
-            // Each run writes its own file first (one shared writer would race).
-            property FileView writer: FileView { path: rProc.filePath; blockWrites: true; printErrors: false }
-            Component.onCompleted: { writer.setText(source); running = true; }
-            stdout: StdioCollector {
-                onStreamFinished: {
-                    const out = text.trim();
-                    if (!out || rProc.msgIndex < 0 || rProc.msgIndex >= root.messages.length) return;
-                    try {
-                        const parsed = JSON.parse(out);
-                        if (!parsed.html) return;
-                        // Code: just the highlighted <pre>; our block draws the frame (rice-render's table draws a second one).
-                        let html = parsed.html;
-                        if (rProc.isCode) {
-                            const pre = /<pre[\s\S]*<\/pre>/.exec(html);
-                            html = pre ? pre[0] : "";
-                            if (!html) return;
-                        }
-                        const msgs = [...root.messages];
-                        const m = Object.assign({}, msgs[rProc.msgIndex]);
-                        const seg = (m.segHtml || []).slice();
-                        while (seg.length < rProc.segCount) seg.push("");
-                        seg[rProc.segIndex] = html;
-                        m.segHtml = seg;
-                        msgs[rProc.msgIndex] = m;
-                        root.messages = msgs;
-                        root.syncCurrentSession();
-                    } catch (e) {}
-                }
+    Process {
+        id: renderProc
+        command: [Quickshell.env("HOME") + "/Projects/rice/bin/rice-render", "--serve"]
+        stdinEnabled: true
+        running: true
+        stdout: SplitParser {
+            splitMarker: "\n"
+            onRead: line => {
+                let r;
+                try { r = JSON.parse(line); } catch (e) { return; }
+                const k = root.renderKeys[r.id];
+                delete root.renderKeys[r.id];
+                if (k === undefined) return;
+                delete root.renderWaiting[k];
+                root.htmlCache[k] = r.html || "";
+                root.htmlOrder.push(k);
+                // Streaming leaves a trail of half-written versions: keep the last 1500.
+                while (root.htmlOrder.length > 1500) delete root.htmlCache[root.htmlOrder.shift()];
+                root.renderTick++;
             }
-            onExited: destroy(500)
         }
+        // It restarts on the next request if it ever dies; anything in flight asks again.
+        onExited: { root.renderWaiting = ({}); root.renderKeys = ({}); root.renderTick++; }
     }
 
     // ── Copy chat as Markdown ─────────────────────────────────────────
@@ -852,7 +881,8 @@ function onPanelClosed() {
         function queue(): string { return JSON.stringify(root.queue.map(q => q.text)); }
         function summary(): string { return JSON.stringify({ summary: root.summary, upTo: root.summaryUpTo, count: root.messages.length }); }
         function clearPending() { root.pendingImage = ""; root.pendingContext = null; root.pendingAppTitle = ""; }
-        function resolveRequest(id: string, decision: string) { root.resolveRequest(id, decision); }
+        function resolveRequest(id: string, decision: string) { root.resolveRequest(id, decision, ""); }
+        function answer(text: string) { if (root.pendingRequest) root.resolveRequest(root.pendingRequest.id, "accept", text); }
         function draft(): string { return root.draft ? JSON.stringify(root.draft) : ""; }
         function switchSession(id: string) { root.switchSession(id); }
         function deleteSession(id: string) { root.deleteSession(id); }

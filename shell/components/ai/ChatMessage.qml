@@ -260,52 +260,66 @@ Item {
                         }
                     }
                 }
-                // Text: prose and fenced code as separate segments. Streaming, the prose
-                // shows as Markdown live; done, each segment is rice-render's HTML.
-                // Code gets a block with its language and Copy (AI Elements code-block).
+                // Text, block by block (Turn.splitBlocks; T3 Code's idea): a finished
+                // paragraph, list, table or code block never changes, so it renders once
+                // (rice-render, cached by text) and stays put; only the block being
+                // written re-renders as it grows, and new blocks fade in. The same HTML
+                // shows while streaming and after, so nothing swaps at the end.
+                // Code gets a block with its language and Copy, highlighted once its
+                // fence closes (AI Elements code-block).
                 Component {
                     id: textBlock
                     Column {
                         id: tcol
                         width: blockLoader.width
-                        spacing: 10
+                        spacing: 12
                         readonly property string raw: blockLoader.block.part ? blockLoader.block.part.text : ""
-                        readonly property var segs: Turn.splitFences(raw)
-                        readonly property bool settled: !root.isStreaming && !!blockLoader.block.isLastText
-                        readonly property var segHtml: settled ? (root.msg.segHtml || []) : []
-                        readonly property bool legacy: settled && !root.msg.segHtml && !!root.msg.html
-
-                        TextEdit {
-                            visible: tcol.legacy
-                            width: tcol.width
-                            textFormat: TextEdit.RichText
-                            text: tcol.legacy ? root.msg.html : ""
-                            readOnly: true
-                            selectByMouse: true
-                            selectionColor: Qt.alpha(Theme.accent, 0.5)
-                            wrapMode: TextEdit.Wrap
-                            color: Theme.textPrimary
-                            font.family: Theme.fontText
-                            font.pixelSize: 15
-                            onLinkActivated: link => Qt.openUrlExternally(link)
-                        }
+                        readonly property var blocks: Turn.splitBlocks(raw)
+                        readonly property bool live: root.isStreaming && !!blockLoader.block.isLastText
 
                         Repeater {
-                            model: tcol.legacy ? 0 : tcol.segs.length
+                            model: tcol.blocks.length
                             Loader {
-                                id: segLoader
+                                id: seg
                                 required property int index
-                                readonly property var seg: tcol.segs[index] || ({ kind: "md", text: "" })
-                                readonly property string html: tcol.segHtml[index] || ""
+                                // Declared properties only notify on a real change: a finished block's
+                                // text stays the same string, so its delegate is left alone.
+                                property string text: (tcol.blocks[index] || {}).text || ""
+                                property string kind: (tcol.blocks[index] || {}).kind || "md"
+                                property string lang: (tcol.blocks[index] || {}).lang || ""
+                                property bool open: !!(tcol.blocks[index] || {}).open
+                                readonly property bool tail: tcol.live && index === tcol.blocks.length - 1
+                                // The tail renders healed (`**bo` → `**bo**`); an open fence stays plain.
+                                readonly property string html: {
+                                    OllamaService.renderTick;
+                                    if (kind === "code" && open) return "";
+                                    return OllamaService.blockHtml({ kind: kind, lang: lang, text: tail && kind === "md" ? Turn.healTail(text) : text });
+                                }
+                                // Keep the last HTML while the next is on its way (no flicker).
+                                property string shown: ""
+                                onHtmlChanged: if (html) shown = html
+                                onOpenChanged: if (open) shown = ""
+
                                 width: tcol.width
-                                sourceComponent: seg.kind === "code" ? codeSeg : mdSeg
+                                sourceComponent: kind === "code" ? codeSeg : mdSeg
+
+                                // New blocks fade in while the answer streams (not when a chat opens).
+                                NumberAnimation on opacity {
+                                    id: fadeIn
+                                    running: false
+                                    from: 0; to: 1
+                                    duration: 260
+                                    easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut
+                                }
+                                Component.onCompleted: { if (html) shown = html; if (root.isStreaming && !Theme.reduceMotion) fadeIn.start(); }
 
                                 Component {
                                     id: mdSeg
                                     TextEdit {
-                                        width: segLoader.width
-                                        textFormat: segLoader.html ? TextEdit.RichText : TextEdit.MarkdownText
-                                        text: segLoader.html ? segLoader.html : segLoader.seg.text
+                                        width: seg.width
+                                        textFormat: seg.shown ? TextEdit.RichText : TextEdit.MarkdownText
+                                        text: seg.shown ? seg.shown : Turn.healTail(seg.text)
+                                        topPadding: /^#{1,3}\s/.test(seg.text) && seg.index > 0 ? 6 : 0
                                         readOnly: true
                                         selectByMouse: true
                                         selectionColor: Qt.alpha(Theme.accent, 0.5)
@@ -320,8 +334,8 @@ Item {
                                     id: codeSeg
                                     Rectangle {
                                         id: codeBox
-                                        width: segLoader.width
-                                        height: codeHead.height + codeFlick.height + 10
+                                        width: seg.width
+                                        height: codeHead.height + codeFlick.height + 12
                                         radius: 10
                                         color: Qt.rgba(0, 0, 0, 0.30)
                                         border.width: 1
@@ -336,7 +350,7 @@ Item {
                                             Label {
                                                 x: 12
                                                 anchors.verticalCenter: parent.verticalCenter
-                                                text: segLoader.seg.lang || "code"
+                                                text: seg.lang || "code"
                                                 size: 11
                                                 weight: Theme.wMedium
                                                 color: Theme.textTertiary
@@ -353,7 +367,7 @@ Item {
                                                 anchors.right: parent.right
                                                 width: 80; height: parent.height
                                                 cursorShape: Qt.PointingHandCursor
-                                                onClicked: { Clipboard.copyText(segLoader.seg.text); codeBox.copied = true; codeCopied.restart(); }
+                                                onClicked: { Clipboard.copyText(seg.text); codeBox.copied = true; codeCopied.restart(); }
                                             }
                                             Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Qt.rgba(1, 1, 1, 0.06) }
                                         }
@@ -361,7 +375,7 @@ Item {
                                         Flickable {
                                             id: codeFlick
                                             anchors.top: codeHead.bottom
-                                            anchors.topMargin: 6
+                                            anchors.topMargin: 8
                                             x: 12
                                             width: parent.width - 24
                                             height: codeText.implicitHeight
@@ -373,8 +387,9 @@ Item {
                                             clip: true
                                             TextEdit {
                                                 id: codeText
-                                                textFormat: segLoader.html ? TextEdit.RichText : TextEdit.PlainText
-                                                text: segLoader.html ? segLoader.html : segLoader.seg.text
+                                                // Plain while the fence is open, highlighted the moment it closes.
+                                                textFormat: seg.shown ? TextEdit.RichText : TextEdit.PlainText
+                                                text: seg.shown ? seg.shown : seg.text
                                                 readOnly: true
                                                 selectByMouse: true
                                                 selectionColor: Qt.alpha(Theme.accent, 0.5)

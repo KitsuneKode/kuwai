@@ -98,3 +98,31 @@ def test_web_fetch_keeps_machine_dates(run_agent):
     out = completion(events, item["id"])["output"]
     assert "03 Nov 09:47 (2026-11-03)" in out
     assert "last week (2026-10-28)" in out
+
+
+AMAZON = """<html><body>
+<div data-component-type="s-search-result" data-asin="B0AAA"><h2 aria-label="Sponsored Ad - Acer Aspire 3, 16GB RAM"><span>x</span></h2>
+<a class="a-link-normal" href="/Acer-Aspire/dp/B0AAA?ref=sr_1"></a><span class="a-price"><span class="a-offscreen">₹49,300</span></span>
+<span class="a-text-price"><span class="a-offscreen">M.R.P: ₹65,900</span></span><span class="a-icon-alt">4.1 out of 5 stars</span></div>
+<div data-component-type="s-search-result" data-asin="B0BBB"><h2><span>No price here</span></h2><a href="/x/dp/B0BBB"></a></div>
+</body></html>"""
+
+
+def test_shop_search_reads_amazon(run_agent, tmp_path):
+    events, fake = run_agent(USER, [[call("shop_search", {"query": "laptop 16gb", "store": "amazon"}), {"done": True}],
+                                    answer()], caps=CAPS, pages={"/amz/s": ("text/html", AMAZON)})
+    item = started(events, "web_search")[0]
+    assert item["title"] == "Shopping “laptop 16gb”"
+    out = completion(events, item["id"])["output"]
+    assert "1. Acer Aspire 3, 16GB RAM — " in out and out.split(" — ")[1].startswith(fake.url + "/amz/dp/B0AAA")
+    assert "Amazon ₹49,300 · MRP ₹65,900 · 4.1★" in out
+    assert "No price here" not in out
+
+
+def test_duckduckgo_ads_are_skipped(run_agent):
+    ad = ('<div class="result result--ad"><h2><a class="result__a" href="https://duckduckgo.com/y.js?ad_domain=x">'
+          'Buy now</a></h2></div>')
+    events, _ = run_agent(USER, [[call("web_search", {"query": "q"}), {"done": True}], answer()],
+                          caps=CAPS, pages={"/ddg": ("text/html", DDG.replace("<body>", "<body>" + ad))})
+    out = completion(events, started(events, "web_search")[0]["id"])["output"]
+    assert "Buy now" not in out and out.startswith("1. Hyprland 0.57")

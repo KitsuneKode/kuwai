@@ -273,7 +273,9 @@ Rectangle {
                 // Placeholder Text
                 Text {
                     anchors.fill: parent
-                    text: OllamaService.streaming ? "Steer it (↵) or queue for after (⇥)"
+                    text: OllamaService.pendingRequest && OllamaService.pendingRequest.kind === "question"
+                        ? (OllamaService.pendingRequest.options.length ? "Pick 1–" + OllamaService.pendingRequest.options.length + ", or type your answer" : "Type your answer")
+                        : OllamaService.streaming ? "Steer it (↵) or queue for after (⇥)"
                         : OllamaService.pendingImage !== "" ? "Ask about the screenshot" : "Ask anything"
                     color: Theme.textDim
                     font.family: Theme.fontText
@@ -284,7 +286,13 @@ Rectangle {
                 // Qt calls these key-specific handlers before onPressed, so each asks the popups first.
                 Keys.onReturnPressed: event => {
                     if (root.routeToPopup(event)) return;
-                    if ((event.modifiers & Qt.ControlModifier) && OllamaService.pendingRequest) {
+                    const pend = OllamaService.pendingRequest;
+                    if (pend && pend.kind === "question" && !(event.modifiers & Qt.ShiftModifier)) {
+                        // The composer answers the question.
+                        event.accepted = true;
+                        const t = inputArea.text.trim();
+                        if (t) { OllamaService.resolveRequest(pend.id, "accept", t); inputArea.text = ""; }
+                    } else if ((event.modifiers & Qt.ControlModifier) && pend && pend.kind !== "question") {
                         event.accepted = true;
                         OllamaService.resolveRequest(OllamaService.pendingRequest.id, "accept");
                     } else if (event.modifiers & Qt.ShiftModifier) {
@@ -297,6 +305,13 @@ Rectangle {
 
                 Keys.onPressed: event => {
                     if (root.routeToPopup(event)) return;
+                    const pend = OllamaService.pendingRequest;
+                    if (pend && pend.kind === "question" && inputArea.text === "" && !(event.modifiers & Qt.ControlModifier)
+                            && event.key >= Qt.Key_1 && event.key <= Qt.Key_9 && event.key - Qt.Key_1 < pend.options.length) {
+                        event.accepted = true;     // 1–9 picks an option
+                        OllamaService.resolveRequest(pend.id, "accept", pend.options[event.key - Qt.Key_1]);
+                        return;
+                    }
                     if (event.key === Qt.Key_Tab && OllamaService.streaming && root.canSend) {
                         event.accepted = true;
                         OllamaService.enqueue(inputArea.text);

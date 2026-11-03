@@ -35,7 +35,7 @@ export function applyEvent(msg, ev) {
     case "item.started": {
         const part = {
             id: ev.id, kind: KIND[ev.itemType] || "tool", itemType: ev.itemType, title: ev.title || "",
-            input: ev.input || {}, text: "", output: "", status: "running", request: null,
+            input: ev.input || {}, where: ev.where || "", text: "", output: "", status: "running", request: null,
             startedAt: ev.ts || 0, endedAt: 0,
         };
         return Object.assign({}, msg, { parts: msg.parts.concat([part]) });
@@ -46,12 +46,13 @@ export function applyEvent(msg, ev) {
         return withPart(msg, ev.id, () => ({ status: ev.status || "completed", output: ev.output || "", endedAt: ev.ts || 0 }));
     case "request.opened":
         return withPart(msg, ev.itemId, () => ({
-            request: { id: ev.id, kind: ev.kind, summary: ev.summary || "", detail: ev.detail || "", state: "pending" },
+            request: { id: ev.id, kind: ev.kind, summary: ev.summary || "", detail: ev.detail || "",
+                options: ev.options || [], state: "pending" },
         }));
     case "request.resolved": {
         const p = partWithRequest(msg, ev.id);
         if (!p) return msg;
-        return withPart(msg, p.id, q => ({ request: Object.assign({}, q.request, { state: ev.decision }) }));
+        return withPart(msg, p.id, q => ({ request: Object.assign({}, q.request, { state: ev.decision, answer: ev.answer || "" }) }));
     }
     case "turn.steered": {
         const part = { id: ev.id || "steer", kind: "steer", itemType: "user_message", title: "", input: {},
@@ -79,7 +80,7 @@ export function textOf(msg) {
 export function pendingRequest(msg) {
     if (!msg || !msg.parts) return null;
     const p = msg.parts.find(q => q.request && q.request.state === "pending");
-    return p ? { id: p.request.id, partId: p.id } : null;
+    return p ? { id: p.request.id, partId: p.id, kind: p.request.kind, options: p.request.options || [] } : null;
 }
 
 // Chats saved before parts: { text, reasoning, tools: [{name, title, state, input, output, errorText}] }.
@@ -196,6 +197,46 @@ export function splitFences(text) {
     if (code !== null) out.push({ kind: "code", lang: code.lang, text: code.lines.join("\n"), open: true });
     else flushMd();
     return out;
+}
+
+// An answer as render blocks (T3 Code's idea: finished blocks stay put, only
+// the last one changes while it streams). Prose splits at blank lines, except
+// a list split by blank lines stays one block; code fences are blocks of their
+// own (`open` while still being written). Each block's text is stable once
+// later text arrives, so its rendered HTML can be cached by text.
+const LISTISH = /^\s*([-*+]|\d+[.)])\s/;
+export function splitBlocks(text) {
+    const out = [];
+    splitFences(text).forEach(seg => {
+        if (seg.kind === "code") { out.push(seg); return; }
+        let cur = [];
+        const flush = () => { const t = cur.join("\n").trim(); if (t) out.push({ kind: "md", text: t }); cur = []; };
+        const lines = seg.text.split("\n");
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            if (line.trim() !== "") { cur.push(line); continue; }
+            // A blank line: keep going if this is a list and the list carries on.
+            let j = i + 1;
+            while (j < lines.length && lines[j].trim() === "") j++;
+            const inList = cur.some(l => LISTISH.test(l));
+            const next = j < lines.length ? lines[j] : "";
+            if (inList && (LISTISH.test(next) || /^\s{2,}\S/.test(next))) { cur.push(""); continue; }
+            flush();
+        }
+        flush();
+    });
+    return out;
+}
+
+// Close what a half-written block leaves open (`**bo`, `` `co ``), so the
+// live block doesn't flash raw asterisks; the text itself is unchanged.
+export function healTail(text) {
+    let t = String(text || "");
+    const ticks = (t.match(/`/g) || []).length;
+    if (ticks % 2 === 1) t += "`";
+    const bold = (t.replace(/`[^`]*`/g, "").match(/\*\*/g) || []).length;
+    if (bold % 2 === 1) t = t.replace(/\s+$/, "") + "**";
+    return t;
 }
 
 // The chat as Markdown (Copy chat): what was said, not the tools or reasoning.

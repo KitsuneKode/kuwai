@@ -22,19 +22,25 @@ Item {
     readonly property bool pending: !!request && request.state === "pending"
     readonly property string itemType: part.itemType || "dynamic_tool_call"
 
+    readonly property bool question: itemType === "user_input"
     readonly property string icon: itemType === "command_execution" ? "terminal-window"
+        : itemType === "file_change" ? "file-code"
+        : itemType === "user_input" ? "question"
         : itemType === "web_search" ? "globe-simple"
         : itemType === "image_view" ? "image"
         : itemType === "context_compaction" ? "stack"
         : "wrench"
 
     readonly property string statusText: status === "failed" ? "Failed"
-        : status === "declined" ? (part.output === "Timed out" ? "Timed out" : part.output === "Stopped" ? "Stopped" : "Declined")
+        : status === "declined" ? (part.output === "Timed out" ? "Timed out" : part.output === "Stopped" ? "Stopped"
+            : part.output === "Skipped" ? "Skipped" : "Declined")
         : ""
 
     function inputText() {
         const i = part.input || {};
         if (itemType === "command_execution") return "$ " + (i.command || "");
+        if (itemType === "file_change") return i.content || "";
+        if (itemType === "user_input") return "";
         const keys = Object.keys(i);
         if (keys.length === 0) return "";
         if (keys.length === 1 && typeof i[keys[0]] === "string") return i[keys[0]];
@@ -45,7 +51,7 @@ Item {
         if (itemType === "web_search") return b;
         return a && b ? a + "\n\n" + b : (a || b);
     }
-    readonly property bool hasBody: bodyText !== "" && !pending
+    readonly property bool hasBody: bodyText !== "" && !pending && !question
 
     implicitWidth: parent ? parent.width : 500
     implicitHeight: col.implicitHeight
@@ -110,9 +116,27 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 6
 
+                // A question answered: the answer, where a duration would be.
+                Label {
+                    visible: root.question && root.status === "completed"
+                    text: root.part.output || ""
+                    size: 12
+                    weight: Theme.wMedium
+                    color: Theme.textSecondary
+                    elide: Text.ElideRight
+                    width: Math.min(implicitWidth, row.width * 0.4)
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+                Label {
+                    visible: root.part.where === "sandbox" && !root.running
+                    text: "Sandbox"
+                    size: 11
+                    color: Theme.textTertiary
+                    anchors.verticalCenter: parent.verticalCenter
+                }
                 Label {
                     readonly property real ms: root.part.endedAt > root.part.startedAt && root.part.startedAt > 0 ? root.part.endedAt - root.part.startedAt : 0
-                    visible: root.statusText === "" && !root.running && ms > 0
+                    visible: root.statusText === "" && !root.running && ms > 0 && !root.question
                     text: ms < 1000 ? Math.round(ms) + " ms" : (ms / 1000).toFixed(1) + "s"
                     size: 12
                     color: Theme.textTertiary
@@ -153,11 +177,19 @@ Item {
             }
         }
 
-        ApprovalCard {
-            visible: root.pending
+        QuestionCard {
+            visible: root.pending && root.request.kind === "question"
             width: parent.width
             request: root.request || ({})
-            onDecided: d => OllamaService.resolveRequest(root.request.id, d)
+            onAnswered: text => OllamaService.resolveRequest(root.request.id, "accept", text)
+            onSkipped: OllamaService.resolveRequest(root.request.id, "decline", "")
+        }
+
+        ApprovalCard {
+            visible: root.pending && root.request.kind !== "question"
+            width: parent.width
+            request: root.request || ({})
+            onDecided: d => OllamaService.resolveRequest(root.request.id, d, "")
         }
 
         Item {

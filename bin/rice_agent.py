@@ -5,18 +5,18 @@ stdout, using T3 Code's runtime vocabulary so other providers can emit the same:
 
   turn.started      {model}
   turn.phase        {phase: loading|waiting}   before the first item
-  item.started      {id, itemType, title, input}
+  item.started      {id, itemType, title, input, where?: "sandbox"}
   item.delta        {id, text}
   item.completed    {id, status: completed|failed|declined, output}
-  request.opened    {id, itemId, kind, summary, detail}
-  request.resolved  {id, decision: accept|decline|timeout}
+  request.opened    {id, itemId, kind: command|launch|open_url|question, summary, detail, options?}
+  request.resolved  {id, decision: accept|decline|timeout, answer?}
   turn.completed    {status: completed|interrupted|failed|max_tool_rounds|repeating, error, stats, unapplied}
   turn.steered      {id, text}   a message from the user, taken into the running turn
 Every event also carries ts (ms since the epoch).
 
-itemType: reasoning | assistant_message | command_execution | web_search |
-          image_view | dynamic_tool_call
-stdin: {"type": "request.resolve", "id": "q1", "decision": "accept"|"decline"}
+itemType: reasoning | assistant_message | command_execution | file_change | web_search |
+          image_view | dynamic_tool_call | user_input | context_compaction
+stdin: {"type": "request.resolve", "id": "q1", "decision": "accept"|"decline", "answer"?: "…"}
        {"type": "turn.steer", "id": "s-1", "text": "…"}   (cuts text being written; else lands after the tool)
 
 Stdlib only.
@@ -33,7 +33,8 @@ import urllib.request
 
 OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 UA = {"User-Agent": "rice-ollama/1.0"}
-MAX_TOOL_ROUNDS = 6
+MAX_TOOL_ROUNDS = 8
+CHAT = ""            # the chat's id: its sandbox folder
 # Ollama's num_predict is unlimited by default; a small model that falls into
 # a loop then writes forever. 2048 tokens is ~8k characters, plenty for an answer.
 NUM_PREDICT = 2048
@@ -66,6 +67,11 @@ TOOL_GUIDE = (
     "or confirmation in text. Never tell the user to use a tool: use it yourself (after web_search, read the "
     "best link with web_fetch when the snippets aren't enough). After a tool returns, answer from its result; "
     "if it failed or was declined, say so in one line."
+)
+SANDBOX_GUIDE = (
+    " You also have your own isolated Linux sandbox: use sandbox_write and sandbox_run to write and run code, "
+    "check calculations, or try things out, without asking; fix errors and run again until it works. Use "
+    "run_command only for things on the user's own computer."
 )
 SYSTEM_VISION = (
     "You are a visual AI assistant operating on Arch Linux. Inspect screenshots, code, and interfaces with high "
@@ -450,8 +456,8 @@ def search_duckduckgo(q, n):
     out = []
     for block in re.split(r'<div[^>]+class="[^"]*\bresult\b', page)[1:]:
         a = re.search(r'class="result__a"[^>]*href="([^"]+)"[^>]*>(.*?)</a>', block, re.S)
-        if not a:
-            continue
+        if not a or "/y.js?" in a.group(1) or "result--ad" in block[:300]:
+            continue          # no link, or an ad (y.js click-through)
         snip = re.search(r'class="result__snippet"[^>]*>(.*?)</a>', block, re.S)
         out.append({"title": _strip_tags(a.group(2)), "url": _real_link(a.group(1)),
                     "snippet": _strip_tags(snip.group(1)) if snip else ""})
@@ -549,6 +555,100 @@ def tool_web_search(args):
     return _cap("\n".join(lines), 6000)
 
 
+# ── Shopping: live prices from the stores' own search pages ─────────────
+# Amazon.in answers a plain request with full HTML (22 results, measured);
+# Flipkart builds its results with JavaScript, so it goes through the
+# sandbox's headless Chromium (~13 s). Both read 2026-11-03.
+
+def _amazon(q, n):
+    import html as h
+    import re
+    import urllib.parse
+    base = os.environ.get("RICE_SHOP_AMAZON_URL") or "https://www.amazon.in"
+    page, _ = _http(f"{base}/s?k={urllib.parse.quote_plus(q)}", timeout=12, limit=4_000_000,
+                    headers={"Accept-Language": "en-IN,en;q=0.9", "Accept": "text/html"})
+    out = []
+    for b in re.split(r'data-component-type="s-search-result"', page)[1:]:
+        b = b[:40000]
+        title = re.search(r'<h2[^>]*aria-label="([^"]+)"', b) or re.search(r'<h2[^>]*>.*?<span[^>]*>([^<]+)</span>', b, re.S)
+        link = re.search(r'href="(/[^"]*?/dp/\w+)', b)
+        prices = re.findall(r'class="a-offscreen">([^<]+)<', b)
+        if not (title and link and prices):
+            continue
+        rating = re.search(r'(\d\.\d) out of 5 stars', b)
+        mrp = next((x.replace("M.R.P: ", "").replace("M.R.P.: ", "") for x in prices[1:] if x != prices[0]), "")
+        asin = link.group(1).rsplit("/dp/", 1)[1]
+        out.append({"title": h.unescape(title.group(1)).replace("Sponsored Ad - ", "").strip(), "price": prices[0],
+                    "mrp": mrp, "rating": rating.group(1) if rating else "", "url": f"{base}/dp/{asin}",
+                    "store": "Amazon"})
+        if len(out) >= n:
+            break
+    return out
+
+
+def _flipkart(q, n):
+    import html as h
+    import re
+    import urllib.parse
+    url = f"https://www.flipkart.com/search?q={urllib.parse.quote_plus(q)}"
+    page = rice_sandbox.render_page(url, timeout=30)
+    links = list(re.finditer(r'<a[^>]+href="(/[^"]+/p/itm[^"&]+)[^"]*"', page))
+    out, seen = [], set()
+    for i, m in enumerate(links):
+        href = m.group(1)
+        if href in seen:
+            continue
+        seen.add(href)
+        nxt = next((x.start() for x in links[i + 1:] if x.group(1) != href), m.start() + 8000)
+        text = h.unescape(re.sub(r"<[^>]+>", "\n", page[m.start():nxt]))
+        lines = [l.strip() for l in text.split("\n") if l.strip() and l.strip() != "Add to Compare"]
+        prices = [l for l in lines if re.fullmatch(r"₹[\d,]+", l)]
+        title = next((l for l in lines if len(l) > 25 and not l.startswith("₹")), "")
+        if not (title and prices):
+            continue
+        rating = next((l for l in lines if re.fullmatch(r"[1-5]\.\d", l)), "")
+        out.append({"title": title, "price": prices[0], "mrp": prices[1] if len(prices) > 1 else "",
+                    "rating": rating, "url": "https://www.flipkart.com" + href, "store": "Flipkart"})
+        if len(out) >= n:
+            break
+    return out
+
+
+def tool_shop_search(args):
+    q = str(args.get("query") or "").strip()
+    if not q:
+        raise ToolError("Give a product to search for")
+    store = str(args.get("store") or "both").lower()
+    want = [("amazon", _amazon), ("flipkart", _flipkart)]
+    lines, errors, i = [], [], 0
+    for name, fn in want:
+        if store not in ("both", "all", "") and store != name:
+            continue
+        if name == "flipkart" and not sandbox_ready():
+            errors.append("Flipkart needs the sandbox's browser")
+            continue
+        try:
+            found = fn(q, 5)
+        except Exception as e:
+            errors.append(f"{name.title()}: {e}")
+            continue
+        for r in found:
+            i += 1
+            t = r["title"] if len(r["title"]) <= 100 else r["title"][:99].rstrip(" ,-(/") + "…"
+            lines.append(f"{i}. {t} — {r['url']}")
+            extra = [f"{r['store']} {r['price']}"]
+            if r["mrp"]:
+                extra.append(f"MRP {r['mrp']}")
+            if r["rating"]:
+                extra.append(f"{r['rating']}★")
+            lines.append("   " + " · ".join(extra))
+    if not lines:
+        raise ToolError("No products found" + (f" ({'; '.join(errors)})" if errors else ""))
+    lines.append(f"\nLive prices, {time.strftime('%d %b %Y %H:%M')}. Quote prices and links exactly as listed here."
+                 + (f" ({'; '.join(errors)})" if errors else ""))
+    return _cap("\n".join(lines), 6000)
+
+
 def page_text(html_text):
     """Readable text of a page: the title, then the body without scripts,
     styles, navigation, headers and footers; blocks become lines."""
@@ -615,6 +715,14 @@ def tool_web_fetch(args):
         raise ToolError(f"Couldn't read the page: {e}")
     looks_html = "html" in (ctype or "") or page.lstrip()[:200].lower().startswith(("<!doctype html", "<html"))
     text = page_text(page) if looks_html else page
+    # Shops and apps fill the page with JavaScript: little text, or "enable JavaScript".
+    if looks_html and (len(text) < 800 or "enable javascript" in text.lower()) and sandbox_ready():
+        try:
+            rendered = page_text(rice_sandbox.render_page(url))
+            if len(rendered) > len(text):
+                text = rendered
+        except rice_sandbox.SandboxError:
+            pass
     if not text.strip():
         raise ToolError("The page has no readable text")
     return _cap(text, 8000)       # ~2k tokens
@@ -633,6 +741,70 @@ def tool_run_command(args):
     out = (p.stdout or "") + (("\n" + p.stderr) if p.stderr else "")
     out = _cap(out.strip(), 8192)
     return (out + "\n" if out else "(no output)\n") + f"(exit {p.returncode})"
+
+
+# ── Sandbox (bin/rice_sandbox.py): its own Linux box, so no approval ─────
+
+import rice_sandbox  # noqa: E402
+
+_SANDBOX = None
+
+
+def sandbox_ready():
+    global _SANDBOX
+    if _SANDBOX is None:
+        if os.environ.get("RICE_SANDBOX") == "off":
+            _SANDBOX = False
+        else:
+            try:
+                _SANDBOX = rice_sandbox.state() != "no-image"
+            except rice_sandbox.SandboxError:
+                _SANDBOX = False
+    return _SANDBOX
+
+
+def tool_sandbox_run(args):
+    cmd = str(args.get("command") or "").strip()
+    if not cmd:
+        raise ToolError("No command given")
+    try:
+        code, out = rice_sandbox.run(CHAT, cmd, timeout=120)
+    except rice_sandbox.SandboxError as e:
+        raise ToolError(str(e))
+    out = _cap(out, 8192)
+    return (out + "\n" if out else "(no output)\n") + f"(exit {code})"
+
+
+def tool_sandbox_write(args):
+    try:
+        full = rice_sandbox.resolve(CHAT, args.get("path"))
+    except rice_sandbox.SandboxError as e:
+        raise ToolError(str(e))
+    content = str(args.get("content") or "")
+    full.parent.mkdir(parents=True, exist_ok=True)
+    full.write_text(content, encoding="utf-8")
+    rel = full.relative_to(rice_sandbox.workspace(CHAT))
+    return f"Wrote {rel} ({content.count(chr(10)) + (1 if content and not content.endswith(chr(10)) else 0)} lines)"
+
+
+def tool_sandbox_read(args):
+    try:
+        full = rice_sandbox.resolve(CHAT, args.get("path"))
+    except rice_sandbox.SandboxError as e:
+        raise ToolError(str(e))
+    if not full.is_file():
+        raise ToolError("No such file in the sandbox")
+    with open(full, "rb") as f:
+        data = f.read(16385)
+    return _cap(data.decode(errors="replace"), 16384)
+
+
+def _question_request(args):
+    q = str(args.get("question") or "").strip()
+    if not q:
+        raise ToolError("No question given")
+    opts = [str(o).strip() for o in (args.get("options") or []) if str(o).strip()][:6]
+    return "question", q, "", opts
 
 
 def desktop_dirs():
@@ -726,6 +898,12 @@ TOOLS = {
         schema=_fn("web_search", "Search the web. Use for facts you don't know or anything recent.",
                    {"query": {"type": "string", "description": "What to search for"}}, ["query"]),
         item="web_search", title=lambda a: f"Searching “{a.get('query', '')}”", approve=None, run=tool_web_search),
+    "shop_search": dict(
+        schema=_fn("shop_search", "Live product prices and links from Amazon.in and Flipkart. Use for any "
+                   "question about buying something or what it costs now.",
+                   {"query": {"type": "string", "description": "The product, e.g. laptop 16GB RAM under 60000"},
+                    "store": {"type": "string", "enum": ["both", "amazon", "flipkart"]}}, ["query"]),
+        item="web_search", title=lambda a: f"Shopping “{a.get('query', '')}”", approve=None, run=tool_shop_search),
     "web_fetch": dict(
         schema=_fn("web_fetch", "Read a web page as plain text, e.g. a link from web_search.",
                    {"url": {"type": "string", "description": "An http(s) URL"}}, ["url"]),
@@ -746,6 +924,32 @@ TOOLS = {
         schema=_fn("read_file", "Read a text file in the user's home folder.",
                    {"path": {"type": "string", "description": "Path, e.g. ~/notes.txt"}}, ["path"]),
         item="dynamic_tool_call", title=lambda a: f"Reading {a.get('path', '')}", approve=None, run=tool_read_file),
+    "sandbox_run": dict(
+        schema=_fn("sandbox_run", "Run bash in your own isolated Linux sandbox (Debian with python3, node, npm, "
+                   "git, curl, gcc, jq, rg). Use it to run code, test, calculate, convert files or install packages "
+                   "with pip/npm. It can't see the user's files. Runs in the chat's folder.",
+                   {"command": {"type": "string", "description": "The bash command"}}, ["command"]),
+        item="command_execution", title=lambda a: str(a.get("command", ""))[:80], approve=None,
+        run=tool_sandbox_run, sandbox=True),
+    "sandbox_write": dict(
+        schema=_fn("sandbox_write", "Create or overwrite a file in the sandbox folder.",
+                   {"path": {"type": "string", "description": "File path relative to the folder, e.g. main.py"},
+                    "content": {"type": "string", "description": "The whole file"}}, ["path", "content"]),
+        item="file_change", title=lambda a: f"Writing {a.get('path', '')}", approve=None,
+        run=tool_sandbox_write, sandbox=True),
+    "sandbox_read": dict(
+        schema=_fn("sandbox_read", "Read a file from the sandbox folder.",
+                   {"path": {"type": "string", "description": "File path relative to the folder"}}, ["path"]),
+        item="dynamic_tool_call", title=lambda a: f"Reading {a.get('path', '')}", approve=None,
+        run=tool_sandbox_read, sandbox=True),
+    "ask_user": dict(
+        schema=_fn("ask_user", "Ask the user a short question when you need their choice or a detail you can't "
+                   "find out yourself. Give 2-4 likely answers as options; they can also type their own.",
+                   {"question": {"type": "string", "description": "The question"},
+                    "options": {"type": "array", "items": {"type": "string"}, "description": "Likely answers"}},
+                   ["question"]),
+        item="user_input", title=lambda a: str(a.get("question", ""))[:80], approve=None, ask=_question_request,
+        run=None),
     # These act on the machine: each asks first (request.opened → stdin).
     # approve(args) -> (kind, summary, detail); it may raise ToolError to
     # fail the call before anyone is asked.
@@ -799,7 +1003,7 @@ class Approvals:
             except ValueError:
                 continue
             if msg.get("type") == "request.resolve":
-                self.queue.put((msg.get("id"), msg.get("decision")))
+                self.queue.put((msg.get("id"), msg.get("decision"), str(msg.get("answer") or "").strip()))
             elif msg.get("type") == "turn.steer" and str(msg.get("text") or "").strip():
                 with self.lock:
                     self.steers.append({"id": str(msg.get("id") or ""), "text": str(msg["text"]).strip()})
@@ -813,28 +1017,37 @@ class Approvals:
             out, self.steers = self.steers, []
         return out
 
-    def ask(self, ids, item_id, kind, summary, detail):
+    def ask(self, ids, item_id, kind, summary, detail, options=None, timeout=None):
+        """Open a request and wait for its answer. Returns the decision; a
+        question's typed or picked answer is left in self.answer."""
         import queue
         import time
         rid = ids.next("q")
         self.pending = rid
-        emit({"type": "request.opened", "id": rid, "itemId": item_id, "kind": kind,
-              "summary": summary, "detail": detail})
-        deadline = time.monotonic() + self.timeout
+        self.answer = ""
+        ev = {"type": "request.opened", "id": rid, "itemId": item_id, "kind": kind, "summary": summary, "detail": detail}
+        if options is not None:
+            ev["options"] = options
+        emit(ev)
+        deadline = time.monotonic() + (timeout or self.timeout)
         decision = "timeout"
         while True:
             left = deadline - time.monotonic()
             if left <= 0:
                 break
             try:
-                got_id, got = self.queue.get(timeout=min(left, 0.25))
+                got_id, got, answer = self.queue.get(timeout=min(left, 0.25))
             except queue.Empty:
                 continue
             if got_id == rid and got in ("accept", "decline"):
                 decision = got
+                self.answer = answer if got == "accept" else ""
                 break
         self.pending = None
-        emit({"type": "request.resolved", "id": rid, "decision": decision})
+        ev = {"type": "request.resolved", "id": rid, "decision": decision}
+        if self.answer:
+            ev["answer"] = self.answer
+        emit(ev)
         return decision
 
     def cancel_pending(self):
@@ -872,7 +1085,10 @@ def run_tool(ids, name, raw_args):
     item_type = tool["item"] if tool else "dynamic_tool_call"
     title = tool["title"](args) if tool else name
     item_id = ids.next("t")
-    emit({"type": "item.started", "id": item_id, "itemType": item_type, "title": title, "input": args})
+    ev = {"type": "item.started", "id": item_id, "itemType": item_type, "title": title, "input": args}
+    if tool and tool.get("sandbox"):
+        ev["where"] = "sandbox"
+    emit(ev)
     try:
         if not tool:
             status, output = "failed", f"Unknown tool: {name}. Use only the tools you were given."
@@ -880,6 +1096,17 @@ def run_tool(ids, name, raw_args):
             status, output = "failed", bad
         else:
             try:
+                if tool.get("ask"):
+                    kind, question, detail, options = tool["ask"](args)
+                    # A question waits longer than an approval: the user may need to think.
+                    decision = APPROVALS.ask(ids, item_id, kind, question, detail, options, timeout=600)
+                    answer = APPROVALS.answer
+                    if decision != "accept" or not answer:
+                        emit({"type": "item.completed", "id": item_id, "status": "declined",
+                              "output": "Timed out" if decision == "timeout" else "Skipped"})
+                        return "declined", "The user didn't answer. Carry on with your best judgement and say what you assumed."
+                    emit({"type": "item.completed", "id": item_id, "status": "completed", "output": answer})
+                    return "completed", f"The user answered: {answer}"
                 if tool["approve"]:
                     kind, summary, detail = tool["approve"](args)
                     decision = APPROVALS.ask(ids, item_id, kind, summary, detail)
@@ -995,6 +1222,8 @@ def apply_steers(messages):
 
 
 def run_turn(req):
+    global CHAT
+    CHAT = str(req.get("chat") or "")
     model = req.get("model") or "hermes3:8b"
     options = dict(req.get("options") or {"num_ctx": 4096})
     options.setdefault("num_predict", NUM_PREDICT)
@@ -1010,8 +1239,9 @@ def run_turn(req):
     # and ask for what the source says, as written.
     system += time.strftime(" Today is %A, %d %B %Y.") + (
         " When you answer from a tool result or a page, copy dates, numbers and names exactly as written there.")
+    tools = [t["schema"] for t in TOOLS.values() if not t.get("sandbox") or sandbox_ready()]
     if use_tools:
-        system += TOOL_GUIDE
+        system += TOOL_GUIDE + (SANDBOX_GUIDE if sandbox_ready() else "")
     convo = to_ollama_messages(req.get("messages") or [], "vision" in caps)
     summary = (req.get("summary") or "").strip()
     stats = {"evalCount": 0, "promptEvalCount": 0, "numCtx": int(options.get("num_ctx", 4096)), "tokensPerSec": 0.0}
@@ -1035,7 +1265,7 @@ def run_turn(req):
             payload = {"model": model, "messages": messages, "stream": True,
                        "keep_alive": req.get("keep_alive", "5m"), "options": options}
             if use_tools and not capped:
-                payload["tools"] = [t["schema"] for t in TOOLS.values()]
+                payload["tools"] = tools
             if "thinking" in caps:
                 payload["think"] = bool(req.get("think", True))     # the composer's Think toggle
             try:

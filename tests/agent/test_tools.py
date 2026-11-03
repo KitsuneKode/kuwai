@@ -62,9 +62,9 @@ def test_string_arguments_are_parsed(run_agent):
 
 
 def test_tool_round_cap(run_agent):
-    rounds = [[call("active_window", cid=f"c{i}"), {"done": True}] for i in range(7)]
+    rounds = [[call("active_window", cid=f"c{i}"), {"done": True}] for i in range(9)]
     events, fake = run_agent(USER, rounds, caps=TOOLS_CAPS)
-    assert len(tool_items(events)) == 6
+    assert len(tool_items(events)) == 8
     assert events[-1]["status"] == "max_tool_rounds"
     assert "tools" not in fake.requests[-1]
 
