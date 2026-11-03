@@ -39,5 +39,8 @@ Singleton {
         function open() { root.show(); }
         function close() { root.hide(); }
         function state(): string { return root.open ? "open" : "closed"; }
+        // Ask about what you're looking at: the focused window's screenshot, its app,
+        // folder and git, your selection and clipboard come attached (bind it to a key).
+        function here() { OllamaService.snapshotActiveWindow(); }
     }
 }

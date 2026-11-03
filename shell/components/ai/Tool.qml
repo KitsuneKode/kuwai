@@ -52,6 +52,12 @@ Item {
         return a && b ? a + "\n\n" + b : (a || b);
     }
     readonly property bool hasBody: bodyText !== "" && !pending && !question
+    // A command's exit code (the output ends "(exit N)"): a chip on the row, red when it failed.
+    readonly property int exitCode: {
+        if (itemType !== "command_execution" || status !== "completed") return -1;
+        const m = /\(exit (\d+)\)\s*$/.exec(part.output || "");
+        return m ? parseInt(m[1]) : -1;
+    }
 
     implicitWidth: parent ? parent.width : 500
     implicitHeight: col.implicitHeight
@@ -126,6 +132,23 @@ Item {
                     elide: Text.ElideRight
                     width: Math.min(implicitWidth, row.width * 0.4)
                     anchors.verticalCenter: parent.verticalCenter
+                }
+                Rectangle {
+                    visible: root.exitCode > 0
+                    width: exitLabel.implicitWidth + 12
+                    height: 18
+                    radius: 9
+                    color: Qt.alpha(Theme.red, 0.16)
+                    anchors.verticalCenter: parent.verticalCenter
+                    Label {
+                        id: exitLabel
+                        anchors.centerIn: parent
+                        text: "exit " + root.exitCode
+                        size: 11
+                        weight: Theme.wMedium
+                        color: Theme.red
+                        font.features: { "tnum": 1 }
+                    }
                 }
                 Label {
                     visible: root.part.where === "sandbox" && !root.running

@@ -62,3 +62,31 @@ def test_question_skipped(run_agent):
     done = completion(events, started(events, "user_input")[0]["id"])
     assert done["status"] == "declined"
     assert "best judgement" in fake.requests[1]["messages"][-1]["content"]
+
+
+def test_sandbox_output_drops_ansi(run_agent):
+    script = [[call("sandbox_run", {"command": "printf '\\033[31mred\\033[0m ok'"}), {"done": True}], answer()]
+    events, _ = run_agent(USER, script, caps=CAPS, env=ON)
+    out = completion(events, started(events, "command_execution")[0]["id"])["output"]
+    assert out.startswith("red ok") and "\x1b" not in out
+
+
+def test_attached_text_file_goes_inline_and_into_sandbox(run_agent, tmp_path):
+    f = tmp_path / "notes.txt"
+    f.write_text("budget: 35000\nneeds: 16GB RAM\n")
+    req = {"chat": "c42", "messages": [{"role": "user", "content": "what's my budget?",
+                                        "context": {"files": [{"path": str(f)}]}}]}
+    _, fake = run_agent(req, [answer()], caps=CAPS)
+    sent = fake.requests[0]["messages"][-1]["content"]
+    assert '<file name="notes.txt">' in sent and "budget: 35000" in sent and sent.endswith("what's my budget?")
+    assert (tmp_path / "sandbox" / "c42" / "files" / "notes.txt").read_text().startswith("budget")
+
+
+def test_big_file_is_cut_to_the_window(run_agent, tmp_path):
+    f = tmp_path / "big.log"
+    f.write_text("x" * 50_000)
+    req = {"chat": "c42", "options": {"num_ctx": 4096},
+           "messages": [{"role": "user", "content": "sum up", "context": {"files": [{"path": str(f)}]}}]}
+    _, fake = run_agent(req, [answer()], caps=CAPS)
+    sent = fake.requests[0]["messages"][-1]["content"]
+    assert len(sent) < 7000 and "cut: 50,000 characters in all" in sent and "files/big.log" in sent

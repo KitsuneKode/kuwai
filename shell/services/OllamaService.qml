@@ -19,7 +19,7 @@ Singleton {
     readonly property string reqPath: runtimeDir + "/request.json"
 
     property string status: "offline" // "ready" | "loading" | "offline"
-    property string model: "hermes3:8b"
+    property string model: "qwen3.5:4b"
     property var availableModels: ["hermes3:8b", "minicpm-v:latest"]
     property var runningModels: []
     // From `rice-ollama status`: { name: { capabilities: [...], sizeGb, params } }.
@@ -569,6 +569,32 @@ function onPanelClosed() {
         }
     }
 
+// ── Attachments: files (text, code, PDF) and images ───────────────
+    // Text and PDFs go to the agent as their text (and into the sandbox, so
+    // code can work on them); an image becomes the message's picture.
+    readonly property var imageExt: /\.(png|jpe?g|webp|gif|bmp)$/i
+    function attach(path) {
+        const p = String(path || "").trim().replace(/^file:\/\//, "");
+        if (!p) return;
+        if (imageExt.test(p) && !root.pendingImage) { root.pendingImage = p; return; }
+        const c = Object.assign({}, root.pendingContext || {});
+        const files = (c.files || []).filter(f => f.path !== p);
+        files.push({ path: p, name: p.split("/").pop() });
+        c.files = files.slice(-6);
+        root.pendingContext = c;
+    }
+    function pickFiles() {
+        if (!filePicker.running) filePicker.running = true;
+    }
+    Process {
+        id: filePicker
+        command: ["zenity", "--file-selection", "--multiple", "--separator=\n", "--title=Attach files",
+                  "--filename=" + Quickshell.env("HOME") + "/"]
+        stdout: StdioCollector {
+            onStreamFinished: text.split("\n").forEach(p => root.attach(p))
+        }
+    }
+
 // ── Screenshot Workflow (no grab conflict) ────────────────────────
     function takeScreenshot() {
         Assistant.sniping = true;
@@ -877,6 +903,7 @@ function onPanelClosed() {
         function newChat() { root.newChat(); }
         function cancel() { root.cancel(); }
         function steer(text: string) { root.steer(text); }
+        function attach(path: string) { root.attach(path); }
         function enqueue(text: string) { root.enqueue(text); }
         function queue(): string { return JSON.stringify(root.queue.map(q => q.text)); }
         function summary(): string { return JSON.stringify({ summary: root.summary, upTo: root.summaryUpTo, count: root.messages.length }); }

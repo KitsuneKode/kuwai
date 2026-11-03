@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { applyEvent, compactedUpTo, splitBlocks, healTail, sourcesOf, splitFences, chatMarkdown, migrateMessage, newAssistant, pendingRequest, textOf, toApiMessages, toApiMessagesWithIndex, truncateAt } from "./turn.mjs";
+import { applyEvent, compactedUpTo, splitBlocks, healTail, toolSummary, sourcesOf, splitFences, chatMarkdown, migrateMessage, newAssistant, pendingRequest, textOf, toApiMessages, toApiMessagesWithIndex, truncateAt } from "./turn.mjs";
 
 const run = (events, msg = newAssistant("hermes3:8b", 1000)) => events.reduce(applyEvent, msg);
 const started = (id, itemType, extra = {}) => Object.assign({ type: "item.started", id, itemType, title: "", input: {} }, extra);
@@ -263,5 +263,15 @@ describe("healTail", () => {
     expect(healTail("This is **bo")).toBe("This is **bo**");
     expect(healTail("Use `ls")).toBe("Use `ls`");
     expect(healTail("Done **ok** and `x`")).toBe("Done **ok** and `x`");
+  });
+});
+
+describe("toolSummary", () => {
+  test("says what the tools did", () => {
+    const t = (itemType, title) => ({ itemType, title });
+    expect(toolSummary([t("web_search", "Searching “a”"), t("web_search", "Searching “b”"), t("dynamic_tool_call", "Reading https://x")]))
+      .toBe("Searched 2 times and read a page or file");
+    expect(toolSummary([t("web_search", "Shopping “laptop”"), t("file_change", "Writing a.py"), t("command_execution", "python3 a.py")]))
+      .toBe("Checked prices, wrote a file and ran a command");
   });
 });

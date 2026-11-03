@@ -323,19 +323,21 @@ Scope {
                                     contentHeight: msgCol.implicitHeight
                                     clip: true
 
+                                    // Following the newest text (T3 Code's rule): only scrolling *up*
+                                    // lets go of the bottom. Scrolling down while text streams in reads as
+                                    // "not at the end" for a frame, so it mustn't count; coming back within
+                                    // 40 px of the end picks the stream up again.
                                     property bool userScrolledUp: false
-
-                                    onMovementStarted: {
-                                        if (scroll.contentY < scroll.contentHeight - scroll.height - 30) {
-                                            userScrolledUp = true;
+                                    property real lastY: 0
+                                    readonly property real fromEnd: contentHeight - height - contentY
+                                    onContentYChanged: {
+                                        if (moving) {
+                                            if (contentY < lastY - 1) userScrolledUp = true;
+                                            else if (fromEnd <= 40) userScrolledUp = false;
                                         }
+                                        lastY = contentY;
                                     }
-
-                                    onMovementEnded: {
-                                        if (scroll.atYEnd || scroll.contentY >= scroll.contentHeight - scroll.height - 30) {
-                                            userScrolledUp = false;
-                                        }
-                                    }
+                                    onMovementEnded: if (fromEnd <= 40) userScrolledUp = false
 
                                     onContentHeightChanged: {
                                         // Auto-follow bottom during stream unless user manually scrolled up
@@ -405,7 +407,9 @@ Scope {
                                 // Scrolled up: a way back to the newest message (prompt-kit's scroll button).
                                 Rectangle {
                                     id: toBottom
-                                    readonly property bool show: scroll.visible && scroll.contentHeight - scroll.height - scroll.contentY > 120
+                                    // Not while it's following the stream (a big block landing would flash it).
+                                    readonly property bool show: scroll.visible && scroll.fromEnd > 120
+                                                                 && (scroll.userScrolledUp || !OllamaService.streaming)
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     anchors.bottom: parent.bottom
                                     anchors.bottomMargin: show || Theme.reduceMotion ? 10 : 6

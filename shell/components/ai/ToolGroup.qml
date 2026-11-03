@@ -5,6 +5,7 @@ import QtQuick
 import qs.config
 import qs.components
 import qs.components.ai
+import "../../services/ai/turn.mjs" as Turn
 
 Item {
     id: root
@@ -48,7 +49,7 @@ Item {
                     Icon { anchors.centerIn: parent; name: "wrench"; size: 14; color: Theme.textTertiary }
                 }
                 Label {
-                    text: "Used " + root.parts.length + " tools" + (root.anyFailed ? " · one failed" : "")
+                    text: (Turn.toolSummary(root.parts) || ("Used " + root.parts.length + " tools")) + (root.anyFailed ? " · one failed" : "")
                     size: 13
                     color: Theme.textSecondary
                     anchors.verticalCenter: parent.verticalCenter

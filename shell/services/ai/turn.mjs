@@ -239,6 +239,33 @@ export function healTail(text) {
     return t;
 }
 
+// A group of tool calls in one line (T3 Code's work-log summaries):
+// "Searched 2 times, read 3 pages and ran a command".
+export function toolSummary(parts) {
+    const n = { search: 0, shop: 0, read: 0, run: 0, write: 0, ask: 0, other: 0 };
+    (parts || []).forEach(p => {
+        const t = p.title || "";
+        if (p.itemType === "web_search") n[/^Shopping/.test(t) ? "shop" : "search"]++;
+        else if (p.itemType === "command_execution") n.run++;
+        else if (p.itemType === "file_change") n.write++;
+        else if (p.itemType === "user_input") n.ask++;
+        else if (/^Reading /.test(t)) n.read++;
+        else n.other++;
+    });
+    const count = (k, one, many) => n[k] === 1 ? one : n[k] + " " + many;
+    const bits = [];
+    if (n.search) bits.push(n.search === 1 ? "searched the web" : "searched " + n.search + " times");
+    if (n.shop) bits.push(n.shop === 1 ? "checked prices" : "checked prices " + n.shop + " times");
+    if (n.read) bits.push("read " + count("read", "a page or file", "pages and files"));
+    if (n.write) bits.push("wrote " + count("write", "a file", "files"));
+    if (n.run) bits.push("ran " + count("run", "a command", "commands"));
+    if (n.ask) bits.push("asked you");
+    if (n.other) bits.push("used " + count("other", "a tool", "tools"));
+    if (!bits.length) return "";
+    const s = bits.length === 1 ? bits[0] : bits.slice(0, -1).join(", ") + " and " + bits[bits.length - 1];
+    return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 // The chat as Markdown (Copy chat): what was said, not the tools or reasoning.
 export function chatMarkdown(title, msgs) {
     const parts = ["# " + (title || "Chat")];

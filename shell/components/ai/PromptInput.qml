@@ -4,6 +4,7 @@
 import QtQuick
 import QtQuick.Controls
 import Quickshell
+import Quickshell.Io
 import qs.config
 import qs.components
 import qs.services
@@ -64,6 +65,8 @@ Rectangle {
             out.push({ key: "cwd", icon: "folder-simple", label: c.cwd.replace(home, "~") + (c.git && c.git.branch ? " · " + c.git.branch : "") });
         if (c.selection) out.push({ key: "selection", icon: "cursor-text", label: firstLine(c.selection) });
         if (c.clipboard && c.clipboard !== c.selection) out.push({ key: "clipboard", icon: "clipboard-text", label: firstLine(c.clipboard) });
+        (c.files || []).forEach((f, i) => out.push({ key: "file:" + i, label: f.name,
+            icon: /\.pdf$/i.test(f.name) ? "file-pdf" : /\.(md|txt|log|csv|json)$/i.test(f.name) ? "file-text" : "file-code" }));
         return out;
     }
     function removeChip(key) {
@@ -73,12 +76,78 @@ Rectangle {
             OllamaService.pendingAppTitle = "";
             c.app = ""; c.title = ""; c.workspace = "";
         } else if (key === "cwd") { c.cwd = ""; c.git = null; }
+        else if (key.indexOf("file:") === 0) { const i = parseInt(key.slice(5)); c.files = (c.files || []).filter((_, j) => j !== i); }
         else c[key] = "";
         OllamaService.pendingContext = c;
     }
 
     function focusInput() {
         inputArea.forceActiveFocus();
+    }
+
+    // Drop files on the composer to attach them (text, code, PDF, images).
+    DropArea {
+        id: drop
+        anchors.fill: parent
+        keys: ["text/uri-list"]
+        onDropped: drop => { (drop.urls || []).forEach(u => OllamaService.attach(decodeURIComponent(String(u)))); drop.accept(); }
+    }
+    Rectangle {
+        anchors.fill: parent
+        radius: root.radius
+        color: Qt.alpha(Theme.accent, 0.08)
+        border.width: 1.5
+        border.color: Qt.alpha(Theme.accent, 0.6)
+        opacity: drop.containsDrag ? 1 : 0
+        visible: opacity > 0
+        z: 20
+        Behavior on opacity { NumberAnimation { duration: Theme.colorMs } }
+        Label { anchors.centerIn: parent; text: "Drop to attach"; size: 13; weight: Theme.wMedium; color: Theme.accent }
+    }
+
+    // ── Dictation (AI Elements speech-input) via voxtype ──────────────
+    // Click the mic: voxtype records; click again: it transcribes into a file,
+    // and the text lands in the composer where the cursor is. Esc cancels.
+    property int editIndex: -1                  // ↑: editing that message; ↵ resends from it
+    property string micState: "idle"            // idle | recording | transcribing
+    property string dictPath: ""
+    function toggleMic() {
+        if (micState === "idle") {
+            dictPath = (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/rice/ai/dictation-" + Date.now() + ".txt";
+            micProc.command = ["voxtype", "record", "start", "--file=" + dictPath];
+            micProc.running = true;
+            micState = "recording";
+        } else if (micState === "recording") {
+            micProc.command = ["voxtype", "record", "stop"];
+            micProc.running = true;
+            micState = "transcribing";
+            micTimeout.restart();
+        }
+    }
+    function cancelMic() {
+        if (micState === "idle") return false;
+        micProc.command = ["voxtype", "record", "cancel"];
+        micProc.running = true;
+        micState = "idle";
+        return true;
+    }
+    Process { id: micProc }
+    Timer { id: micTimeout; interval: 30000; onTriggered: if (root.micState === "transcribing") root.micState = "idle" }
+    FileView {
+        id: dictFile
+        path: root.dictPath
+        watchChanges: true
+        printErrors: false
+        onFileChanged: reload()
+        onLoaded: {
+            const t = text().trim();
+            if (!t || root.micState === "idle") return;
+            root.micState = "idle";
+            const pos = inputArea.cursorPosition;
+            const before = inputArea.text.slice(0, pos);
+            inputArea.insert(pos, (before && !/\s$/.test(before) ? " " : "") + t);
+            inputArea.forceActiveFocus();
+        }
     }
 
     Column {
@@ -273,7 +342,10 @@ Rectangle {
                 // Placeholder Text
                 Text {
                     anchors.fill: parent
-                    text: OllamaService.pendingRequest && OllamaService.pendingRequest.kind === "question"
+                    text: root.micState === "recording" ? "Listening… click the mic or ⌃D to stop"
+                        : root.micState === "transcribing" ? "Writing it down…"
+                        : root.editIndex >= 0 ? "Edit your message"
+                        : OllamaService.pendingRequest && OllamaService.pendingRequest.kind === "question"
                         ? (OllamaService.pendingRequest.options.length ? "Pick 1–" + OllamaService.pendingRequest.options.length + ", or type your answer" : "Type your answer")
                         : OllamaService.streaming ? "Steer it (↵) or queue for after (⇥)"
                         : OllamaService.pendingImage !== "" ? "Ask about the screenshot" : "Ask anything"
@@ -326,7 +398,27 @@ Rectangle {
                             return;
                         }
                     }
+                    // ↑ in an empty composer edits your last message (Codex, ChatGPT).
+                    if (event.key === Qt.Key_Up && inputArea.text === "" && !OllamaService.streaming && root.editIndex < 0) {
+                        const msgs = OllamaService.messages;
+                        for (let i = msgs.length - 1; i >= 0; i--) {
+                            if (msgs[i].role === "user") {
+                                event.accepted = true;
+                                root.editIndex = i;
+                                inputArea.text = msgs[i].text || "";
+                                inputArea.cursorPosition = inputArea.text.length;
+                                return;
+                            }
+                        }
+                    }
                     const ctrl = (event.modifiers & Qt.ControlModifier);
+                    if (ctrl && event.key === Qt.Key_D) { event.accepted = true; root.toggleMic(); return; }
+                    if (ctrl && (event.modifiers & Qt.ShiftModifier) && event.key === Qt.Key_C) {
+                        event.accepted = true;      // ⌃⇧C copies the last answer
+                        const msgs = OllamaService.messages;
+                        for (let i = msgs.length - 1; i >= 0; i--) if (msgs[i].role === "assistant") { Clipboard.copyText(msgs[i].text || ""); break; }
+                        return;
+                    }
                     if (ctrl) {
                         if (event.key === Qt.Key_V) {
                             event.accepted = true;
@@ -354,6 +446,8 @@ Rectangle {
                         }
                     } else if (event.key === Qt.Key_Escape) {
                         event.accepted = true;
+                        if (root.cancelMic()) return;
+                        if (root.editIndex >= 0) { root.editIndex = -1; inputArea.text = ""; return; }
                         root.escapeRequested();
                     }
                 }
@@ -385,6 +479,38 @@ Rectangle {
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 4
 
+                MessageAction { width: 30; height: 30; radius: 15; icon: "paperclip"; onClicked: OllamaService.pickFiles() }
+                // Mic: red and breathing while it listens, a spinner while voxtype writes.
+                Item {
+                    width: 30; height: 30
+                    anchors.verticalCenter: parent.verticalCenter
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width: 30; height: 30; radius: 15
+                        color: root.micState === "recording" ? Qt.alpha(Theme.red, 0.18) : Qt.rgba(1, 1, 1, micArea.containsMouse ? 0.08 : 0)
+                        Behavior on color { ColorAnimation { duration: Theme.colorMs } }
+                        SequentialAnimation on scale {
+                            running: root.micState === "recording" && !Theme.reduceMotion
+                            loops: Animation.Infinite
+                            onRunningChanged: if (!running) parent.scale = 1
+                            NumberAnimation { to: 1.12; duration: 700; easing.type: Easing.InOutSine }
+                            NumberAnimation { to: 1.0; duration: 700; easing.type: Easing.InOutSine }
+                        }
+                    }
+                    Icon {
+                        anchors.centerIn: parent
+                        name: root.micState === "transcribing" ? "circle-notch" : "microphone"
+                        style: root.micState === "recording" ? "fill" : root.micState === "transcribing" ? "bold" : "regular"
+                        size: 15
+                        color: root.micState === "recording" ? Theme.red : micArea.containsMouse ? Theme.textPrimary : Theme.textTertiary
+                        RotationAnimation on rotation {
+                            running: root.micState === "transcribing" && !Theme.reduceMotion
+                            loops: Animation.Infinite; from: 0; to: 360; duration: 1000
+                        }
+                        onNameChanged: rotation = 0
+                    }
+                    MouseArea { id: micArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.toggleMic() }
+                }
                 MessageAction { width: 30; height: 30; radius: 15; icon: "app-window"; onClicked: OllamaService.snapshotActiveWindow() }
                 MessageAction { width: 30; height: 30; radius: 15; icon: "selection"; onClicked: OllamaService.takeScreenshot() }
 
@@ -494,6 +620,13 @@ Rectangle {
         if (prompt === "") return;
 
         inputArea.text = "";
+        if (root.editIndex >= 0 && !OllamaService.streaming) {
+            const i = root.editIndex;
+            root.editIndex = -1;
+            root.submitted(prompt);
+            OllamaService.editAndResend(i, prompt);
+            return;
+        }
         if (OllamaService.streaming) { OllamaService.steer(prompt); return; }   // ↵ mid-answer steers it
         root.submitted(prompt);
         OllamaService.send(prompt);

@@ -259,9 +259,62 @@ def context_block(ctx):
     for key, label in (("selection", "Selected text"), ("clipboard", "Clipboard")):
         if ctx.get(key):
             lines.append(f"{label}:\n```\n{_cap(str(ctx[key]), 4096)}\n```")
+    files = files_block(ctx.get("files"))
     if not lines:
+        return files
+    return "Context (what I'm looking at):\n" + "\n".join(lines) + "\n\n" + files
+
+
+FILE_BUDGET = 6000      # characters of attached files per message; run_turn sizes it to the window
+
+
+def file_text(path):
+    """A file's readable text: PDFs through pdftotext, text as UTF-8; None for binary."""
+    if path.lower().endswith(".pdf"):
+        p = _run(["pdftotext", "-layout", "-l", "40", path, "-"], timeout=20)
+        if p.returncode != 0:
+            raise ToolError(f"pdftotext failed: {p.stderr.strip()[:120]}")
+        return p.stdout
+    with open(path, "rb") as f:
+        head = f.read(200_000)
+    if b"\0" in head[:8192]:
+        return None
+    return head.decode("utf-8", errors="replace")
+
+
+def files_block(files):
+    """Attached files: their text inline (the budget split between them), and a
+    copy in the chat's sandbox folder (files/) so code can work on the whole thing."""
+    import shutil
+    if not isinstance(files, list) or not files:
         return ""
-    return "Context (what I'm looking at):\n" + "\n".join(lines) + "\n\n"
+    files = [f for f in files if isinstance(f, dict) and f.get("path")][:6]
+    share = max(1500, FILE_BUDGET // max(1, len(files)))
+    out = []
+    for f in files:
+        path = os.path.expanduser(str(f["path"]))
+        name = os.path.basename(path)
+        where = ""
+        try:
+            if os.path.getsize(path) <= 50_000_000:
+                dest = rice_sandbox.workspace(CHAT) / "files"
+                dest.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(path, dest / name)
+                where = f" (also in your sandbox at files/{name})"
+        except OSError:
+            pass
+        try:
+            text = file_text(path)
+        except (OSError, ToolError) as e:
+            out.append(f"<file name=\"{name}\">Couldn't read it: {e}</file>")
+            continue
+        if text is None:
+            out.append(f'<file name="{name}">A binary file{where}.</file>')
+            continue
+        cut = len(text) > share
+        body = text[:share] + (f"\n… (cut: {len(text):,} characters in all{where})" if cut else "")
+        out.append(f'<file name="{name}"{" cut" if cut else ""}>{where}\n{body}\n</file>')
+    return "Attached files:\n" + "\n".join(out) + "\n\n"
 
 
 def to_ollama_messages(messages, vision):
@@ -339,6 +392,18 @@ def _run(argv, timeout=3, input_text=None):
     except subprocess.TimeoutExpired:
         raise ToolError(f"{argv[0]} timed out")
     return p
+
+
+ANSI = None
+
+
+def strip_ansi(text):
+    """Terminal colour and cursor codes: noise for the model and the UI."""
+    global ANSI
+    import re
+    if ANSI is None:
+        ANSI = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07]*(\x07|\x1b\\)|\r(?!\n)")
+    return ANSI.sub("", text or "")
 
 
 def _cap(text, limit):
@@ -738,7 +803,7 @@ def tool_run_command(args):
         p = subprocess.run(["bash", "-lc", cmd], cwd=cwd, capture_output=True, text=True, timeout=30)
     except subprocess.TimeoutExpired:
         raise ToolError("The command ran for 30 s and was stopped")
-    out = (p.stdout or "") + (("\n" + p.stderr) if p.stderr else "")
+    out = strip_ansi((p.stdout or "") + (("\n" + p.stderr) if p.stderr else ""))
     out = _cap(out.strip(), 8192)
     return (out + "\n" if out else "(no output)\n") + f"(exit {p.returncode})"
 
@@ -771,7 +836,7 @@ def tool_sandbox_run(args):
         code, out = rice_sandbox.run(CHAT, cmd, timeout=120)
     except rice_sandbox.SandboxError as e:
         raise ToolError(str(e))
-    out = _cap(out, 8192)
+    out = _cap(strip_ansi(out), 8192)
     return (out + "\n" if out else "(no output)\n") + f"(exit {code})"
 
 
@@ -1222,9 +1287,11 @@ def apply_steers(messages):
 
 
 def run_turn(req):
-    global CHAT
+    global CHAT, FILE_BUDGET
     CHAT = str(req.get("chat") or "")
-    model = req.get("model") or "hermes3:8b"
+    # Files may fill about 40% of the window (≈3.5 characters a token).
+    FILE_BUDGET = int(int((req.get("options") or {}).get("num_ctx", 4096)) * 1.4)
+    model = req.get("model") or "qwen3.5:4b"
     options = dict(req.get("options") or {"num_ctx": 4096})
     options.setdefault("num_predict", NUM_PREDICT)
     caps = capabilities(model)

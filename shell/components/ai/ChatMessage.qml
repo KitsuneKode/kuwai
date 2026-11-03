@@ -77,6 +77,30 @@ Item {
         spacing: 8
 
         // ── You ────────────────────────────────────────────────────────
+        // Files that went with it.
+        Row {
+            visible: root.isUser && !!root.msg.context && (root.msg.context.files || []).length > 0
+            anchors.right: parent.right
+            spacing: 6
+            Repeater {
+                model: root.isUser && root.msg.context ? (root.msg.context.files || []) : []
+                Rectangle {
+                    required property var modelData
+                    height: 26
+                    width: fRow.implicitWidth + 16
+                    radius: 8
+                    color: Qt.rgba(1, 1, 1, 0.06)
+                    Row {
+                        id: fRow
+                        anchors.centerIn: parent
+                        spacing: 6
+                        Icon { name: /\.pdf$/i.test(parent.parent.modelData.name) ? "file-pdf" : "file-text"; size: 13; color: Theme.textTertiary; anchors.verticalCenter: parent.verticalCenter }
+                        Label { text: parent.parent.modelData.name; size: 12; color: Theme.textSecondary; anchors.verticalCenter: parent.verticalCenter }
+                    }
+                }
+            }
+        }
+
         Row {
             visible: root.isUser && !!root.msg.context && !!root.msg.context.app
             anchors.right: parent.right
