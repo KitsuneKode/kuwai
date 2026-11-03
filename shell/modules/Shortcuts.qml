@@ -24,6 +24,12 @@ Scope {
     }
     GlobalShortcut {
         appid: "rice"
+        name: "assistant"
+        description: "AI Assistant: local LLM chat and multimodal vision"
+        onPressed: Assistant.toggle()
+    }
+    GlobalShortcut {
+        appid: "rice"
         name: "dnd"
         description: "Do Not Disturb on/off"
         onPressed: Notifs.dnd = !Notifs.dnd

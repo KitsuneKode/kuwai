@@ -221,6 +221,7 @@ group("Shell")
 -- Global shortcuts go straight into the running Quickshell (GlobalShortcut in
 -- shell/modules/Shortcuts.qml): no process per keypress, same-frame response.
 bind(S .. " + A", "Launcher", rice("launcher"))
+bind(S .. " + CTRL + SHIFT + A", "AI Assistant", rice("assistant"))
 bind(S .. " + N", "Notifications", rice("center"))
 bind(S .. " + SHIFT + N", "Agents (kittymux)", rice("agents"))
 bind(S .. " + ALT + N", "Do not disturb", rice("dnd"))
