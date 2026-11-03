@@ -376,22 +376,65 @@ Scope {
                                             isStreaming: true
                                         }
 
-                                        // Error display if any
-                                        Rectangle {
-                                            visible: OllamaService.errorText !== ""
+                                        // A failed turn: one quiet line and a way to try again.
+                                        Row {
+                                            visible: OllamaService.errorText !== "" && !OllamaService.streaming
                                             width: parent.width
-                                            height: visible ? 40 : 0
-                                            radius: 10
-                                            color: Qt.alpha(Theme.red, 0.15)
-                                            border.width: 1
-                                            border.color: Qt.alpha(Theme.red, 0.3)
-
-                                            Row {
-                                                anchors.centerIn: parent
-                                                spacing: 8
-                                                Icon { name: "x"; size: 14; color: Theme.red; anchors.verticalCenter: parent.verticalCenter }
-                                                Label { text: OllamaService.errorText; size: 13; color: Theme.red; anchors.verticalCenter: parent.verticalCenter }
+                                            spacing: 8
+                                            Icon { name: "warning-circle"; size: 15; color: Theme.red; anchors.verticalCenter: parent.verticalCenter }
+                                            Label {
+                                                text: OllamaService.errorText
+                                                size: 13
+                                                color: Theme.textSecondary
+                                                wrapMode: Text.Wrap
+                                                width: Math.min(implicitWidth, parent.width - 90)
+                                                anchors.verticalCenter: parent.verticalCenter
                                             }
+                                            Label {
+                                                text: "Try again"
+                                                size: 13
+                                                weight: Theme.wMedium
+                                                color: Theme.accent
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                MouseArea { anchors.fill: parent; anchors.margins: -4; cursorShape: Qt.PointingHandCursor; onClicked: OllamaService.retry() }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Scrolled up: a way back to the newest message (prompt-kit's scroll button).
+                                Rectangle {
+                                    id: toBottom
+                                    readonly property bool show: scroll.visible && scroll.contentHeight - scroll.height - scroll.contentY > 120
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    anchors.bottom: parent.bottom
+                                    anchors.bottomMargin: show || Theme.reduceMotion ? 10 : 6
+                                    width: 34; height: 34
+                                    radius: 17
+                                    color: Qt.rgba(0.16, 0.16, 0.19, 0.96)
+                                    border.width: 1
+                                    border.color: Qt.rgba(1, 1, 1, 0.12)
+                                    opacity: show ? 1 : 0
+                                    visible: opacity > 0.01
+                                    scale: tbArea.pressed ? 0.97 : 1
+                                    Behavior on opacity { NumberAnimation { duration: toBottom.show ? Theme.enterMs : Theme.exitMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+                                    Behavior on anchors.bottomMargin { NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+                                    Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+                                    Icon { anchors.centerIn: parent; name: "arrow-down"; style: "bold"; size: 14; color: Theme.textPrimary }
+                                    NumberAnimation {
+                                        id: glideDown
+                                        target: scroll; property: "contentY"
+                                        duration: Theme.reduceMotion ? 0 : 260
+                                        easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut
+                                    }
+                                    MouseArea {
+                                        id: tbArea
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            scroll.userScrolledUp = false;
+                                            glideDown.to = Math.max(0, scroll.contentHeight - scroll.height);
+                                            glideDown.restart();
                                         }
                                     }
                                 }

@@ -88,6 +88,14 @@ Singleton {
         root.startTurn();
     }
 
+    // Try a failed turn again: rerun from your last message.
+    function retry() {
+        if (streaming || messages.length === 0) return;
+        const last = messages.length - 1;
+        if (messages[last].role === "assistant") regenerate(last);
+        else startTurn();
+    }
+
     // Edit the message you sent at `index`: later turns go, the edit is resent.
     function editAndResend(index, text) {
         if (streaming || index < 0 || index >= messages.length || messages[index].role !== "user") return;

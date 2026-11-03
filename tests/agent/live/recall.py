@@ -26,7 +26,8 @@ def run(variant):
         a.run_turn({"model": MODEL, "keep_alive": "10m", "summary": SUMMARY, "messages": MSGS,
                     "options": {"num_ctx": 4096, "temperature": 0.4}})
     ev = [json.loads(l) for l in buf.getvalue().splitlines() if l.strip()]
-    return "".join(e["text"] for e in ev if e["type"] == "item.delta")
+    answer_ids = {e["id"] for e in ev if e["type"] == "item.started" and e["itemType"] == "assistant_message"}
+    return "".join(e["text"] for e in ev if e["type"] == "item.delta" and e["id"] in answer_ids)
 
 
 variant, n = sys.argv[1], int(sys.argv[2])

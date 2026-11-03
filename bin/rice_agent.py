@@ -995,7 +995,7 @@ def run_turn(req):
             if use_tools and not capped:
                 payload["tools"] = [t["schema"] for t in TOOLS.values()]
             if "thinking" in caps:
-                payload["think"] = True
+                payload["think"] = bool(req.get("think", True))     # the composer's Think toggle
             calls = stream_round(payload, stream, stats)
             if capped:
                 status = "max_tool_rounds"

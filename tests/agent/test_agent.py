@@ -91,3 +91,15 @@ def test_phase_waiting_when_model_is_loaded(run_agent, monkeypatch):
     monkeypatch.setattr(fake_ollama.FakeOllama, "__init__", warm)
     events, _ = run_agent(USER, [[{"message": {"content": "hi"}}, {"done": True}]])
     assert [e["phase"] for e in events if e["type"] == "turn.phase"][0] == "waiting"
+
+
+def test_think_can_be_turned_off(run_agent):
+    _, fake = run_agent({**USER, "think": False}, [[{"message": {"content": "hi"}}, {"done": True}]],
+                        caps={"hermes3:8b": ["completion", "tools", "thinking"]})
+    assert fake.requests[0]["think"] is False
+
+
+def test_think_not_sent_to_models_without_it(run_agent):
+    _, fake = run_agent({**USER, "think": True}, [[{"message": {"content": "hi"}}, {"done": True}]],
+                        caps={"hermes3:8b": ["completion", "tools"]})
+    assert "think" not in fake.requests[0]
