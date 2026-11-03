@@ -135,3 +135,28 @@ export function compactedUpTo(upTo, index, kept) {
 export function truncateAt(msgs, index) {
     return (msgs || []).slice(0, Math.max(0, index));
 }
+
+// What a turn's answer rests on, for the Sources row: pages it read first
+// (web_fetch), then the top search results it saw; deduped, at most 4.
+// [{ url, title, domain, read }]
+export function sourcesOf(msg) {
+    if (!msg || !msg.parts) return [];
+    const read = [], seen = [];
+    const domain = u => { const m = /^https?:\/\/([^\/?#]+)/.exec(u); return m ? m[1].replace(/^www\./, "") : u; };
+    msg.parts.forEach(p => {
+        if (p.kind !== "tool" || p.status !== "completed") return;
+        const url = p.input && p.input.url;
+        if (url && /^Reading /.test(p.title || "")) {
+            read.push({ url: url, title: (p.output || "").split("\n")[0] || domain(url), domain: domain(url), read: true });
+        } else if (p.itemType === "web_search") {
+            (p.output || "").split("\n").forEach(line => {
+                const m = /^\d+\. (.*) — (https?:\/\/\S+)$/.exec(line.trim());
+                if (m) seen.push({ url: m[2], title: m[1], domain: domain(m[2]), read: false });
+            });
+        }
+    });
+    const out = [];
+    read.concat(seen).forEach(s => { if (out.length < 4 && !out.some(o => o.url === s.url)) out.push(s); });
+    return out;
+}
+

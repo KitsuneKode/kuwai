@@ -10,6 +10,7 @@ import QtQuick
 import qs.config
 import qs.components
 import qs.services
+import "../../services/ai/turn.mjs" as Turn
 
 Item {
     id: root
@@ -245,6 +246,42 @@ Item {
                         font.pixelSize: 15
                         onLinkActivated: link => Qt.openUrlExternally(link)
                     }
+                }
+            }
+        }
+
+        // Sources: the pages it read (document) and the search results it saw (globe),
+        // so an answer can be checked. Click opens the page.
+        Flow {
+            readonly property var sources: root.isUser || root.isStreaming ? [] : Turn.sourcesOf(root.msg)
+            visible: sources.length > 0
+            width: parent.width
+            spacing: 6
+            Repeater {
+                model: parent.sources
+                Rectangle {
+                    id: src
+                    required property var modelData
+                    height: 26
+                    width: srcRow.implicitWidth + 16
+                    radius: 8
+                    color: Qt.rgba(1, 1, 1, srcArea.containsMouse ? 0.09 : 0.05)
+                    scale: srcArea.pressed ? 0.97 : 1
+                    Behavior on color { ColorAnimation { duration: Theme.colorMs } }
+                    Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+                    Row {
+                        id: srcRow
+                        anchors.centerIn: parent
+                        spacing: 6
+                        Icon { name: src.modelData.read ? "file-text" : "globe-simple"; size: 12; color: Theme.textTertiary; anchors.verticalCenter: parent.verticalCenter }
+                        Label {
+                            text: src.modelData.domain
+                            size: 12
+                            color: srcArea.containsMouse ? Theme.textPrimary : Theme.textSecondary
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                    }
+                    MouseArea { id: srcArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: Qt.openUrlExternally(src.modelData.url) }
                 }
             }
         }

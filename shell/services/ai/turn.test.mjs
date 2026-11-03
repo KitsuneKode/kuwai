@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { applyEvent, compactedUpTo, migrateMessage, newAssistant, pendingRequest, textOf, toApiMessages, toApiMessagesWithIndex, truncateAt } from "./turn.mjs";
+import { applyEvent, compactedUpTo, sourcesOf, migrateMessage, newAssistant, pendingRequest, textOf, toApiMessages, toApiMessagesWithIndex, truncateAt } from "./turn.mjs";
 
 const run = (events, msg = newAssistant("hermes3:8b", 1000)) => events.reduce(applyEvent, msg);
 const started = (id, itemType, extra = {}) => Object.assign({ type: "item.started", id, itemType, title: "", input: {} }, extra);
@@ -147,3 +147,25 @@ describe("history", () => {
     expect(truncateAt([user("a")], 0)).toEqual([]);
   });
 });
+
+describe("sourcesOf", () => {
+  test("pages read come first, then search results, deduped, at most 4", () => {
+    const search = "1. Hyprland 0.57 — https://hypr.land/news/update57/\n   snippet\n2. Releases — https://github.com/hyprwm/Hyprland/releases\n" +
+      "3. Wiki — https://wiki.hypr.land/\n4. Reddit — https://www.reddit.com/r/hyprland/x\n5. More — https://example.com/";
+    const m = run([started("t1", "web_search", { title: "Searching", input: { query: "q" } }), done("t1", "completed", search),
+      started("t2", "dynamic_tool_call", { title: "Reading https://github.com/hyprwm/Hyprland/releases", input: { url: "https://github.com/hyprwm/Hyprland/releases" } }),
+      done("t2", "completed", "Releases · hyprwm/Hyprland\n\ntext")]);
+    const s = sourcesOf(m);
+    expect(s.map(x => x.url)).toEqual(["https://github.com/hyprwm/Hyprland/releases", "https://hypr.land/news/update57/",
+      "https://wiki.hypr.land/", "https://www.reddit.com/r/hyprland/x"]);
+    expect(s[0]).toMatchObject({ read: true, domain: "github.com", title: "Releases · hyprwm/Hyprland" });
+    expect(s[1]).toMatchObject({ read: false, domain: "hypr.land", title: "Hyprland 0.57" });
+  });
+
+  test("failed fetches and no web tools give no sources", () => {
+    const m = run([started("t1", "dynamic_tool_call", { title: "Reading https://x.org/", input: { url: "https://x.org/" } }), done("t1", "failed", "nope"),
+      started("t2", "dynamic_tool_call", { title: "Active window", input: {} }), done("t2", "completed", "App: kitty")]);
+    expect(sourcesOf(m)).toEqual([]);
+  });
+});
+
