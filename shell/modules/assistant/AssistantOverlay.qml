@@ -268,132 +268,46 @@ Scope {
                                 height: parent.height - 38 - 1 - 12 - promptInput.implicitHeight - 12
                                 clip: true
 
-                                // Empty State (Welcome + Suggestions)
+                                // Empty state: one question, and a few things it can do right now.
                                 Item {
                                     anchors.fill: parent
                                     visible: OllamaService.messages.length === 0 && !OllamaService.streaming
 
                                     Column {
                                         anchors.centerIn: parent
-                                        spacing: 16
-                                        width: Math.min(540, parent.width * 0.9)
-
-                                        Rectangle {
-                                            anchors.horizontalCenter: parent.horizontalCenter
-                                            width: 48; height: 48
-                                            radius: 24
-                                            color: Qt.alpha(Theme.accent, 0.15)
-                                            border.width: 1
-                                            border.color: Qt.alpha(Theme.accent, 0.3)
-
-                                            Icon {
-                                                anchors.centerIn: parent
-                                                name: "brain"
-                                                size: 24
-                                                color: Theme.accent
-                                            }
-                                        }
+                                        spacing: 18
+                                        width: Math.min(560, parent.width * 0.9)
 
                                         Column {
                                             anchors.horizontalCenter: parent.horizontalCenter
-                                            spacing: 4
-
+                                            spacing: 6
                                             Label {
                                                 anchors.horizontalCenter: parent.horizontalCenter
-                                                text: OllamaService.status === "ready" ? "Local Intelligence Ready" : "Ollama Is Not Running"
-                                                size: 17
-                                                weight: Theme.wBold
+                                                text: OllamaService.status === "ready" ? "What can I help with?" : "Ollama isn't running"
+                                                size: 22
+                                                weight: Theme.wSemibold
                                                 color: Theme.textPrimary
                                             }
-
                                             Label {
+                                                visible: OllamaService.status !== "ready"
                                                 anchors.horizontalCenter: parent.horizontalCenter
-                                                text: OllamaService.status === "ready"
-                                                    ? "DeepSeek-R1 (reasoning), Hermes 3, and MiniCPM-V (vision) running locally."
-                                                    : "Start the daemon with 'systemctl --user start ollama' or run 'ollama serve'."
+                                                text: "Start it with systemctl --user start ollama"
                                                 size: 13
                                                 color: Theme.textTertiary
                                             }
                                         }
 
-                                        // Suggestions Grid with real queries
-                                        Column {
+                                        Flow {
+                                            visible: OllamaService.status === "ready"
                                             anchors.horizontalCenter: parent.horizontalCenter
+                                            width: Math.min(parent.width, implicitWidthGuess)
+                                            readonly property real implicitWidthGuess: 520
                                             spacing: 8
-                                            width: parent.width
 
-                                            Repeater {
-                                                model: [
-                                                    { title: "Analyze current screen", sub: "Snip a region with slurp to analyze visually", action: "screenshot" },
-                                                    { title: "Explain Voxtype & Quickshell architecture", sub: "How speech recognition and desktop HUD integrate", action: "voxtype" },
-                                                    { title: "Review live system performance", sub: "Inspect real CPU, RAM, and GPU telemetry", action: "system" }
-                                                ]
-
-                                                Rectangle {
-                                                    width: parent.width
-                                                    height: 48
-                                                    radius: 10
-                                                    color: sArea.containsMouse ? Qt.rgba(1, 1, 1, 0.08) : Qt.rgba(1, 1, 1, 0.04)
-                                                    border.width: 1
-                                                    border.color: Qt.rgba(1, 1, 1, 0.07)
-
-                                                    Row {
-                                                        anchors.left: parent.left
-                                                        anchors.leftMargin: 12
-                                                        anchors.verticalCenter: parent.verticalCenter
-                                                        spacing: 10
-
-                                                        Icon {
-                                                            name: modelData.action === "screenshot" ? "camera" : "sparkle"
-                                                            size: 14
-                                                            color: Theme.accent
-                                                            anchors.verticalCenter: parent.verticalCenter
-                                                        }
-
-                                                        Column {
-                                                            anchors.verticalCenter: parent.verticalCenter
-                                                            spacing: 2
-
-                                                            Label {
-                                                                text: modelData.title
-                                                                size: 13
-                                                                weight: Theme.wMedium
-                                                                color: Theme.textPrimary
-                                                            }
-                                                            Label {
-                                                                text: modelData.sub
-                                                                size: 11
-                                                                color: Theme.textTertiary
-                                                            }
-                                                        }
-                                                    }
-
-                                                    MouseArea {
-                                                        id: sArea
-                                                        anchors.fill: parent
-                                                        hoverEnabled: true
-                                                        cursorShape: Qt.PointingHandCursor
-                                                        onClicked: {
-                                                            if (modelData.action === "screenshot") {
-                                                                OllamaService.takeScreenshot();
-                                                            } else if (modelData.action === "voxtype") {
-                                                                OllamaService.send("Explain the Voxtype and Quickshell architecture on this system, how speech tokens stream into the Dynamic Island, and how CPU/GPU loads are balanced.");
-                                                            } else if (modelData.action === "system") {
-                                                                // Feed live SystemStats metrics into prompt
-                                                                const cpuPct = Math.round(SystemStats.cpu * 100);
-                                                                const memGb = (SystemStats.memUsed / 1e9).toFixed(1);
-                                                                const memTot = (SystemStats.memTotal / 1e9).toFixed(1);
-                                                                let gpuInfo = "NVIDIA GPU is suspended.";
-                                                                if (SystemStats.gpuState === "active") {
-                                                                    gpuInfo = `RTX 4050 active at ${Math.round(SystemStats.gpu * 100)}% load, ${SystemStats.gpuMemUsed.toFixed(0)}/${SystemStats.gpuMemTotal.toFixed(0)} MiB VRAM, ${SystemStats.gpuTemp}°C.`;
-                                                                }
-                                                                const query = `Here are my live system metrics: CPU: ${cpuPct}% (${SystemStats.cpuTemp}°C), RAM: ${memGb}/${memTot} GB. GPU: ${gpuInfo}. How healthy is my memory and compute headroom for running local LLMs alongside Voxtype?`;
-                                                                OllamaService.send(query);
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
+                                            Suggestion { icon: "app-window"; text: "Look at this window"; onClicked: OllamaService.snapshotActiveWindow() }
+                                            Suggestion { icon: "cursor-text"; text: "Explain what I've selected"; onClicked: OllamaService.send("Explain the text I have selected.") }
+                                            Suggestion { icon: "clipboard-text"; text: "Summarise my clipboard"; onClicked: OllamaService.send("Summarise what's on my clipboard.") }
+                                            Suggestion { icon: "cpu"; text: "What's using my GPU?"; onClicked: OllamaService.send("How busy is my GPU and memory right now?") }
                                         }
                                     }
                                 }
