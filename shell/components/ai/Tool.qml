@@ -111,6 +111,15 @@ Item {
                 spacing: 6
 
                 Label {
+                    readonly property real ms: root.part.endedAt > root.part.startedAt && root.part.startedAt > 0 ? root.part.endedAt - root.part.startedAt : 0
+                    visible: root.statusText === "" && !root.running && ms > 0
+                    text: ms < 1000 ? Math.round(ms) + " ms" : (ms / 1000).toFixed(1) + "s"
+                    size: 12
+                    color: Theme.textTertiary
+                    font.features: { "tnum": 1 }
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+                Label {
                     visible: root.statusText !== ""
                     text: root.statusText
                     size: 12

@@ -10,7 +10,7 @@ def test_plain_answer_streams_one_message(run_agent):
         {"done": True, "eval_count": 20, "eval_duration": 1e9, "prompt_eval_count": 232},
     ]])
     assert types(events) == [
-        "turn.started", "item.started", "item.delta", "item.delta", "item.completed", "turn.completed",
+        "turn.started", "turn.phase", "item.started", "item.delta", "item.delta", "item.completed", "turn.completed",
     ]
     msg = started(events, "assistant_message")[0]
     assert item_text(events, msg["id"]) == "Hello"
@@ -54,7 +54,7 @@ def test_think_tags_fallback(run_agent):
 
 def test_ollama_down_fails_turn(run_agent):
     events, _ = run_agent(USER, [], host="http://127.0.0.1:9")
-    assert types(events) == ["turn.started", "turn.completed"]
+    assert types(events) == ["turn.started", "turn.phase", "turn.completed"]
     assert events[-1]["status"] == "failed"
     assert events[-1]["error"]
 
@@ -71,3 +71,23 @@ def test_repetition_stops_the_turn(run_agent):
     assert len(text) < 300 * 28
     assert events[-1]["type"] == "turn.completed"
     assert events[-1]["status"] == "repeating"
+
+
+def test_phase_loading_when_model_is_cold(run_agent):
+    events, _ = run_agent(USER, [[{"message": {"content": "hi"}}, {"done": True}]])
+    phases = [e["phase"] for e in events if e["type"] == "turn.phase"]
+    assert phases[0] == "loading"
+    first_item = next(i for i, e in enumerate(events) if e["type"] == "item.started")
+    assert events.index(next(e for e in events if e["type"] == "turn.phase")) < first_item
+
+
+def test_phase_waiting_when_model_is_loaded(run_agent, monkeypatch):
+    import fake_ollama
+    orig = fake_ollama.FakeOllama.__init__
+
+    def warm(self, *a, **k):
+        orig(self, *a, **k)
+        self.loaded = ["hermes3:8b"]
+    monkeypatch.setattr(fake_ollama.FakeOllama, "__init__", warm)
+    events, _ = run_agent(USER, [[{"message": {"content": "hi"}}, {"done": True}]])
+    assert [e["phase"] for e in events if e["type"] == "turn.phase"][0] == "waiting"

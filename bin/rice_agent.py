@@ -4,6 +4,7 @@ Drives Ollama's /api/chat, runs tools, and prints one JSON event per line on
 stdout, using T3 Code's runtime vocabulary so other providers can emit the same:
 
   turn.started      {model}
+  turn.phase        {phase: loading|waiting}   before the first item
   item.started      {id, itemType, title, input}
   item.delta        {id, text}
   item.completed    {id, status: completed|failed|declined, output}
@@ -182,6 +183,16 @@ def capabilities(model):
         except Exception:
             _caps[model] = []
     return _caps[model]
+
+
+def is_loaded(model):
+    try:
+        req = urllib.request.Request(f"{OLLAMA_HOST}/api/ps", headers=UA)
+        with urllib.request.urlopen(req, timeout=2) as resp:
+            return any(m.get("name") == model or m.get("model") == model
+                       for m in json.loads(resp.read().decode()).get("models", []))
+    except Exception:
+        return False
 
 
 def chat_stream(payload):
@@ -953,6 +964,8 @@ def run_turn(req):
     use_tools = "tools" in caps
     ids = Ids()
     emit({"type": "turn.started", "model": model})
+    # Before the first word: is the model still loading into VRAM (~10 s cold) or just thinking?
+    emit({"type": "turn.phase", "phase": "waiting" if is_loaded(model) else "loading"})
 
     system = SYSTEM_VISION if ("vision" in caps and not use_tools) else SYSTEM_GENERAL
     if use_tools:

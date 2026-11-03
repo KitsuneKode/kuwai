@@ -13,7 +13,8 @@
 const KIND = { reasoning: "reasoning", assistant_message: "text" };
 
 export function newAssistant(model, nowMs) {
-    return { role: "assistant", model: model, timestamp: nowMs, status: "streaming", parts: [], stats: null, error: "" };
+    return { role: "assistant", model: model, timestamp: nowMs, status: "streaming", parts: [], stats: null, error: "",
+        phase: "", startedAt: 0, endedAt: 0 };
 }
 
 function withPart(msg, id, change) {
@@ -52,8 +53,13 @@ export function applyEvent(msg, ev) {
         if (!p) return msg;
         return withPart(msg, p.id, q => ({ request: Object.assign({}, q.request, { state: ev.decision }) }));
     }
+    case "turn.started":
+        return Object.assign({}, msg, { startedAt: ev.ts || msg.startedAt || 0 });
+    case "turn.phase":
+        return Object.assign({}, msg, { phase: ev.phase || "" });
     case "turn.completed":
-        return Object.assign({}, msg, { status: ev.status || "completed", error: ev.error || "", stats: ev.stats || null });
+        return Object.assign({}, msg, { status: ev.status || "completed", error: ev.error || "", stats: ev.stats || null,
+            endedAt: ev.ts || 0 });
     default:
         return msg;
     }

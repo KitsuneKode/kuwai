@@ -15,6 +15,7 @@ class FakeOllama:
         self.caps = caps or {}
         # Other paths served as-is (search results, web pages): {path: (content_type, body)}.
         self.pages = pages or {}
+        self.loaded = []          # what /api/ps reports as in memory
         self.requests = []
         fake = self
 
@@ -41,6 +42,14 @@ class FakeOllama:
 
             def do_GET(self):
                 if self._page():
+                    return
+                if self.path == "/api/ps":
+                    data = json.dumps({"models": [{"name": m} for m in fake.loaded]}).encode()
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Content-Length", str(len(data)))
+                    self.end_headers()
+                    self.wfile.write(data)
                     return
                 if self.path == "/api/tags":
                     data = json.dumps({"models": [{"name": m, "size": 4_700_000_000, "details": {"parameter_size": "8.0B"}} for m in fake.caps]}).encode()

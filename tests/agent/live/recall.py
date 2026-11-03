@@ -1,5 +1,5 @@
 """Recall after compaction, against the real Ollama: does the model answer from the summary + kept
-messages? python3 tests/agent/live/recall.py current 3   (prints facts recalled out of 5 per run)"""
+messages? python3 tests/agent/live/recall.py current 3 [model]   (prints facts recalled out of 5 per run)"""
 import io
 import json
 import sys
@@ -17,12 +17,13 @@ MSGS = [
     {"role": "user", "content": "Without using any tools: what's my name, GPU, config preference, editor and repo?"},
 ]
 FACTS = ["Kitsune", "4050", "Lua", "Neovim", "Projects/rice"]
+MODEL = sys.argv[3] if len(sys.argv) > 3 else "hermes3:8b"
 
 
 def run(variant):
     buf = io.StringIO()
     with redirect_stdout(buf):
-        a.run_turn({"model": "hermes3:8b", "keep_alive": "10m", "summary": SUMMARY, "messages": MSGS,
+        a.run_turn({"model": MODEL, "keep_alive": "10m", "summary": SUMMARY, "messages": MSGS,
                     "options": {"num_ctx": 4096, "temperature": 0.4}})
     ev = [json.loads(l) for l in buf.getvalue().splitlines() if l.strip()]
     return "".join(e["text"] for e in ev if e["type"] == "item.delta")

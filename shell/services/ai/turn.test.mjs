@@ -57,6 +57,14 @@ describe("applyEvent", () => {
     expect(m.parts[0].endedAt).toBe(4200);
   });
 
+  test("phase and turn timing", () => {
+    const m = run([{ type: "turn.started", ts: 100 }, { type: "turn.phase", phase: "loading" },
+      { type: "turn.completed", status: "completed", stats: {}, ts: 3100 }]);
+    expect(m.phase).toBe("loading");
+    expect(m.startedAt).toBe(100);
+    expect(m.endedAt).toBe(3100);
+  });
+
   test("returns new objects (QML needs new references)", () => {
     const a = run([started("m1", "assistant_message")]);
     const b = applyEvent(a, delta("m1", "x"));

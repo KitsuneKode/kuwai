@@ -173,10 +173,21 @@ Item {
         }
 
         // ── Assistant ──────────────────────────────────────────────────
+        // Before the first word: loading the model into memory (cold, ~10 s) or
+        // thinking; a seconds counter once it's been a moment.
         Label {
             id: waiting
             visible: !root.isUser && root.isStreaming && root.parts.length === 0
-            text: "Thinking"
+            property int secs: 0
+            Timer {
+                running: waiting.visible
+                interval: 1000
+                repeat: true
+                onRunningChanged: if (running) waiting.secs = 0
+                onTriggered: waiting.secs++
+            }
+            text: (root.msg.phase === "loading" ? "Loading " + OllamaService.modelLabel(root.msg.model) + "…" : "Thinking")
+                  + (secs >= 2 ? "  " + secs + "s" : "")
             size: 14
             color: Theme.textTertiary
             SequentialAnimation on opacity {
@@ -248,6 +259,8 @@ Item {
             MessageAction { icon: "arrow-clockwise"; visible: !OllamaService.streaming; onClicked: OllamaService.regenerate(root.msgIndex) }
             Label {
                 text: [OllamaService.modelLabel(root.msg.model),
+                       root.msg.startedAt && root.msg.endedAt > root.msg.startedAt
+                           ? ((root.msg.endedAt - root.msg.startedAt) / 1000).toFixed(1) + "s" : "",
                        root.msg.stats && root.msg.stats.tokensPerSec ? root.msg.stats.tokensPerSec + " tok/s" : "",
                        root.msg.time || "",
                        root.msg.status === "interrupted" ? "Stopped" : root.msg.status === "max_tool_rounds" ? "Stopped after 6 tool rounds"

@@ -38,22 +38,12 @@ Singleton {
     property bool discardDraft: false
     property string draftSessionId: ""
 
-    // Views of the draft for components that predate parts.
-    readonly property string currentText: Turn.textOf(draft)
-    readonly property string currentReasoning: draft ? draft.parts.filter(p => p.kind === "reasoning").map(p => p.text).join("\n") : ""
-    readonly property var currentTools: draft ? draft.parts.filter(p => p.kind === "tool").map(root.legacyTool) : []
-    readonly property bool inThinkBlock: {
-        if (!draft || draft.parts.length === 0) return false;
-        const last = draft.parts[draft.parts.length - 1];
-        return last.kind === "reasoning" && last.status === "running";
-    }
     readonly property var pendingRequest: Turn.pendingRequest(draft)
 
     // Snapshot context the next message carries: {app, title, workspace, cwd, git, selection, clipboard} or null.
     property var pendingContext: null
     property string pendingAppTitle: ""
     property string pendingImage: ""
-    property real tokensPerSec: 0
     property var lastStats: null
     property string errorText: ""
 
@@ -113,26 +103,20 @@ Singleton {
         if (index < root.summaryUpTo) { root.summary = ""; root.summaryUpTo = 0; }
     }
 
-    function legacyTool(p) {
-        return {
-            name: p.itemType, title: p.title, input: p.input, output: p.output,
-            state: p.status === "running" ? "running" : (p.status === "failed" || p.status === "declined") ? "error" : "completed",
-            errorText: p.status === "failed" ? p.output : p.status === "declined" ? "Declined" : ""
-        };
-    }
-
-    // Parts plus the flat fields, from either shape.
+    // Parts, plus the flat fields still read elsewhere (text for copy / history /
+    // rendering, html, time); the older flat tools / reasoning copies go.
     function withParts(m) {
         if (!m || m.role !== "assistant") return m;
         const msg = Turn.migrateMessage(m);
-        return Object.assign({}, m, msg, {
+        const out = Object.assign({}, m, msg, {
             text: Turn.textOf(msg),
-            reasoning: msg.parts.filter(p => p.kind === "reasoning").map(p => p.text).join("\n"),
-            tools: msg.parts.filter(p => p.kind === "tool").map(root.legacyTool),
             html: m.html || "",
-            time: m.time || root.formatTime(msg.timestamp),
-            tokensPerSec: (msg.stats && msg.stats.tokensPerSec) || m.tokensPerSec || 0
+            time: m.time || root.formatTime(msg.timestamp)
         });
+        delete out.tools;
+        delete out.reasoning;
+        delete out.tokensPerSec;
+        return out;
     }
 
     // ── Persistent Sessions Store ─────────────────────────────────────
@@ -177,17 +161,6 @@ Singleton {
         if (!timestamp) return "";
         const d = new Date(timestamp);
         return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    }
-
-    function formatRelative(timestamp) {
-        if (!timestamp) return "";
-        const now = Date.now();
-        const diff = Math.floor((now - timestamp) / 1000);
-        if (diff < 60) return "Just now";
-        if (diff < 3600) return Math.floor(diff / 60) + "m ago";
-        if (diff < 86400) return Math.floor(diff / 3600) + "h ago";
-        const d = new Date(timestamp);
-        return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
     }
 
     function ensureInitialSession() {
@@ -438,14 +411,6 @@ Singleton {
     }
 
     // ── Unload VRAM when closed ───────────────────────────────────────
-        // ── Model Cycling ────────────────────────────────────────────────
-    function cycleModel() {
-        if (root.availableModels.length <= 1) return;
-        const curIdx = root.availableModels.indexOf(root.model);
-        const nextIdx = (curIdx + 1) % root.availableModels.length;
-        root.model = root.availableModels[nextIdx];
-    }
-
     // ── Clipboard Image Pasting ───────────────────────────────────────
     function pasteClipboardImage() {
         pasteProc.running = false;
@@ -610,7 +575,9 @@ function onPanelClosed() {
         const idx = root.sessions.findIndex(s => s.id === root.activeSessionId);
         if (idx >= 0 && (root.sessions[idx].title === "New Chat" || root.messages.length === 0)) {
             const trimmed = promptText.trim();
-            const autoTitle = trimmed.length > 28 ? trimmed.slice(0, 28) + "…" : trimmed;
+            // The first line, up to 80 characters; the views elide it to fit.
+            const line = trimmed.split("\n")[0];
+            const autoTitle = line.length > 80 ? line.slice(0, 80) + "…" : line;
             const curr = Object.assign({}, root.sessions[idx]);
             curr.title = autoTitle;
             curr.updatedAt = nowMs;
@@ -692,7 +659,6 @@ function onPanelClosed() {
                 if (ev.type === "turn.completed") {
                     chatProc.sawTurnEnd = true;
                     root.lastStats = ev.stats || null;
-                    if (ev.stats && ev.stats.tokensPerSec) root.tokensPerSec = ev.stats.tokensPerSec;
                     if (ev.status === "failed") root.errorText = ev.error || "The turn failed.";
                 }
             }
