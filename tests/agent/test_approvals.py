@@ -35,7 +35,7 @@ def test_decline_never_runs(run_agent, tmp_path):
     assert not (tmp_path / "flag").exists()
     item = started(events, "command_execution")[0]
     assert completion(events, item["id"])["status"] == "declined"
-    assert fake.requests[1]["messages"][-1]["content"] == "The user declined this command."
+    assert fake.requests[1]["messages"][-1]["content"].startswith("The user declined this command. Don't run it again")
 
 
 def test_timeout_declines(run_agent, tmp_path):

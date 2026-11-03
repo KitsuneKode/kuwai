@@ -1179,7 +1179,8 @@ def run_tool(ids, name, raw_args):
                         what = "command" if kind == "command" else "action"
                         emit({"type": "item.completed", "id": item_id, "status": "declined",
                               "output": "Timed out" if decision == "timeout" else "Declined"})
-                        return "declined", f"The user declined this {what}."
+                        return "declined", (f"The user declined this {what}. Don't run it again or try another way "
+                                            "to do it; say in one line that you didn't, and carry on without it.")
                 status, output = "completed", tool["run"](args)
             except ToolError as e:
                 status, output = "failed", str(e)
