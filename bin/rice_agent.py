@@ -395,7 +395,7 @@ def tool_read_file(args):
 # ── Web ───────────────────────────────────────────────────────────────────
 # Search, free and keyless by default: SearXNG when you run one
 # (RICE_SEARXNG_URL, JSON format enabled), Ollama's hosted search when
-# OLLAMA_API_KEY is set, else DuckDuckGo's HTML endpoint. web_fetch reads a
+# OLLAMA_API_KEY is set, then DuckDuckGo's HTML endpoint, Bing's, Wikipedia. web_fetch reads a
 # page as plain text. Checked 2026-11-03: html.duckduckgo.com/html returns
 # `a.result__a` (title, link) and `a.result__snippet` per result.
 
@@ -446,6 +446,42 @@ def search_duckduckgo(q, n):
     return out
 
 
+def search_bing(q, n):
+    """Bing's HTML results: `li.b_algo` → `h2 a` (href is a /ck/a redirect whose
+    `u=a1<base64url>` is the real link) and `p.b_lineclamp*` (snippet)."""
+    import base64
+    import re
+    import urllib.parse
+    base = os.environ.get("RICE_SEARCH_BING_URL") or "https://www.bing.com/search"
+    page, _ = _http(base + "?" + urllib.parse.urlencode({"q": q}))
+    out = []
+    for block in page.split('<li class="b_algo"')[1:]:
+        a = re.search(r'<h2[^>]*>\s*<a[^>]*href="([^"]+)"[^>]*>(.*?)</a>', block, re.S)
+        if not a:
+            continue
+        import html as h
+        href = h.unescape(a.group(1))
+        u = urllib.parse.parse_qs(urllib.parse.urlparse(href).query).get("u", [""])[0]
+        if u.startswith("a1"):
+            try:
+                href = base64.urlsafe_b64decode(u[2:] + "=" * (-len(u[2:]) % 4)).decode()
+            except Exception:
+                pass
+        snip = re.search(r'<p class="b_lineclamp\d*"[^>]*>(.*?)</p>', block, re.S) or re.search(r'<p[^>]*>(.*?)</p>', block, re.S)
+        out.append({"title": _strip_tags(a.group(2)), "url": href, "snippet": _strip_tags(snip.group(1)) if snip else ""})
+        if len(out) >= n:
+            break
+    return out
+
+
+def search_wikipedia(q, n):
+    import urllib.parse
+    base = os.environ.get("RICE_SEARCH_WIKI_URL") or "https://en.wikipedia.org/w/rest.php/v1/search/page"
+    page, _ = _http(base + "?" + urllib.parse.urlencode({"q": q, "limit": n}))
+    return [{"title": p.get("title", ""), "url": "https://en.wikipedia.org/wiki/" + urllib.parse.quote(p.get("key", "")),
+             "snippet": _strip_tags(p.get("excerpt", ""))} for p in (json.loads(page).get("pages") or [])[:n]]
+
+
 def search_searxng(base, q, n):
     import urllib.parse
     page, _ = _http(base.rstrip("/") + "/search?" + urllib.parse.urlencode({"q": q, "format": "json"}))
@@ -473,7 +509,11 @@ def tool_web_search(args):
         chain.append(lambda: search_searxng(os.environ["RICE_SEARXNG_URL"], q, n))
     if os.environ.get("OLLAMA_API_KEY"):
         chain.append(lambda: search_ollama(os.environ["OLLAMA_API_KEY"], q, n))
+    # DuckDuckGo starts answering an "anomaly" (bot check) page after a burst of
+    # searches (seen 2026-11-03), so Bing's HTML and then Wikipedia back it up.
     chain.append(lambda: search_duckduckgo(q, n))
+    chain.append(lambda: search_bing(q, n))
+    chain.append(lambda: search_wikipedia(q, n))
     errors, results = [], []
     for source in chain:
         try:

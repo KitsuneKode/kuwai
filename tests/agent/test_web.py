@@ -60,3 +60,30 @@ def test_web_fetch_sniffs_html_without_content_type(run_agent):
     item = [e for e in events if e["type"] == "item.started" and e["itemType"] == "dynamic_tool_call"][0]
     out = completion(events, item["id"])["output"]
     assert "<" not in out and "Update 57" in out
+
+
+BING = """<html><body><ol id="b_results">
+<li class="b_algo"><div class="b_tpcn"></div><h2><a target="_blank" href="https://www.bing.com/ck/a?!&amp;&amp;p=x&amp;u=a1aHR0cHM6Ly9naXRodWIuY29tL2h5cHJ3bS9IeXBybGFuZA&amp;ntb=1"><strong>GitHub</strong> - hyprwm/Hyprland</a></h2>
+<div class="b_caption"><p class="b_lineclamp2">Hyprland is a dynamic tiling Wayland compositor.</p></div></li>
+<li class="b_algo"><h2><a href="https://hypr.land/news/update57/">Hyprland 0.57</a></h2><p class="b_lineclamp3">Lua configs.</p></li>
+</ol></body></html>"""
+ANOMALY = "<html><body><div class='anomaly-modal'>Unfortunately, bots use DuckDuckGo too.</div></body></html>"
+WIKI = '{"pages":[{"key":"Hyprland","title":"Hyprland","excerpt":"<span class=\\"searchmatch\\">Hyprland</span> is a tiling compositor"}]}'
+
+
+def test_search_falls_back_to_bing_when_duckduckgo_blocks(run_agent):
+    events, _ = run_agent(USER, [[call("web_search", {"query": "hyprland"}), {"done": True}], answer()],
+                          caps=CAPS, pages={"/ddg": ("text/html", ANOMALY), "/bing": ("text/html", BING)})
+    out = completion(events, started(events, "web_search")[0]["id"])["output"]
+    assert "1. GitHub - hyprwm/Hyprland — https://github.com/hyprwm/Hyprland" in out
+    assert "Hyprland is a dynamic tiling Wayland compositor." in out
+    assert "2. Hyprland 0.57 — https://hypr.land/news/update57/" in out
+
+
+def test_search_falls_back_to_wikipedia_last(run_agent):
+    events, _ = run_agent(USER, [[call("web_search", {"query": "hyprland"}), {"done": True}], answer()],
+                          caps=CAPS, pages={"/ddg": ("text/html", ANOMALY), "/bing": ("text/html", "<html></html>"),
+                                            "/wiki": ("application/json", WIKI)})
+    out = completion(events, started(events, "web_search")[0]["id"])["output"]
+    assert "1. Hyprland — https://en.wikipedia.org/wiki/Hyprland" in out
+    assert "Hyprland is a tiling compositor" in out
