@@ -84,7 +84,7 @@ def test_launch_app_resolves_desktop_id(run_agent, tmp_path):
     apps.mkdir(parents=True)
     (apps / "org.example.ZebraNotes.desktop").write_text("[Desktop Entry]\nType=Application\nName=Zebra Notes\nExec=zebra\n")
     events, _ = run_agent(USER, [[call("launch_app", {"name": "zebra"}), {"done": True}], answer()],
-                          caps=CAPS, stdin_lines=[ACCEPT])
+                          caps=CAPS, stdin_lines=[ACCEPT], env={"XDG_DATA_HOME": str(tmp_path / ".local/share")})
     opened = of_type(events, "request.opened")[0]
     assert opened["kind"] == "launch" and opened["summary"] == "Open Zebra Notes"
     assert (tmp_path / "launched").read_text().strip() == "gtk-launch org.example.ZebraNotes"
