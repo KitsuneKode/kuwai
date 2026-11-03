@@ -51,6 +51,12 @@ describe("applyEvent", () => {
     expect(m.error).toBe("Can't reach Ollama");
   });
 
+  test("parts keep start and end times from event ts", () => {
+    const m = run([Object.assign(started("r1", "reasoning"), { ts: 1000 }), Object.assign(done("r1"), { ts: 4200 })]);
+    expect(m.parts[0].startedAt).toBe(1000);
+    expect(m.parts[0].endedAt).toBe(4200);
+  });
+
   test("returns new objects (QML needs new references)", () => {
     const a = run([started("m1", "assistant_message")]);
     const b = applyEvent(a, delta("m1", "x"));

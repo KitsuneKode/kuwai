@@ -206,6 +206,8 @@ Item {
                         width: blockLoader.width
                         text: blockLoader.block.part ? blockLoader.block.part.text : ""
                         isThinking: !!blockLoader.block.part && blockLoader.block.part.status === "running"
+                        startedAt: blockLoader.block.part ? (blockLoader.block.part.startedAt || 0) : 0
+                        endedAt: blockLoader.block.part ? (blockLoader.block.part.endedAt || 0) : 0
                     }
                 }
                 Component {

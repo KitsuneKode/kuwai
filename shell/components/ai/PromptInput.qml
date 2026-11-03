@@ -61,15 +61,20 @@ Rectangle {
             border.width: 1
             border.color: Qt.rgba(1, 1, 1, 0.10)
 
+            // Arrives in enterMs, leaves quicker (exitMs).
             Behavior on height {
                 NumberAnimation {
-                    duration: Theme.reflowMs
+                    duration: OllamaService.pendingImage !== "" ? Theme.enterMs : Theme.exitMs
                     easing.type: Easing.BezierSpline
                     easing.bezierCurve: Theme.easeOut
                 }
             }
             Behavior on opacity {
-                NumberAnimation { duration: Theme.colorMs }
+                NumberAnimation {
+                    duration: OllamaService.pendingImage !== "" ? Theme.enterMs : Theme.exitMs
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: Theme.easeOut
+                }
             }
 
             Row {

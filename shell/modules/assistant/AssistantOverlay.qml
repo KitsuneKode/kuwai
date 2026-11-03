@@ -202,256 +202,56 @@ Scope {
                             anchors.margins: 16
                             spacing: 12
 
-                            // ── Top Header Navigation Bar ─────────────
+                            // ── Header: the chat's title; quiet icon buttons ──────
+                            // (sidebar · title … new chat · apps · studio · close).
+                            // Status only speaks when something is wrong.
                             Item {
                                 width: parent.width
                                 height: 38
 
-                                // Left cluster: Sidebar toggle, Assistant brand, Status
                                 Row {
                                     anchors.left: parent.left
                                     anchors.verticalCenter: parent.verticalCenter
-                                    spacing: 10
+                                    spacing: 8
 
-                                    // Sidebar Toggle Button (visible in Studio mode)
-                                    Rectangle {
+                                    MessageAction {
                                         visible: root.studioMode
                                         width: 30; height: 30
-                                        radius: 8
-                                        color: sideToggleArea.containsMouse ? Qt.rgba(1, 1, 1, 0.12) : Qt.rgba(1, 1, 1, 0.05)
-                                        border.width: 1
-                                        border.color: Qt.rgba(1, 1, 1, 0.08)
-
-                                        Icon {
-                                            anchors.centerIn: parent
-                                            name: "sidebar-simple"
-                                            size: 15
-                                            color: root.sidebarOpen ? Theme.accent : Theme.textSecondary
-                                        }
-
-                                        MouseArea {
-                                            id: sideToggleArea
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: root.sidebarOpen = !root.sidebarOpen
-                                        }
-                                    }
-
-                                    Rectangle {
-                                        width: 30; height: 30
-                                        radius: 9
-                                        color: Qt.alpha(Theme.accent, 0.2)
-                                        border.width: 1
-                                        border.color: Qt.alpha(Theme.accent, 0.4)
-
-                                        Icon {
-                                            anchors.centerIn: parent
-                                            name: "sparkle"
-                                            size: 16
-                                            color: Theme.accent
-                                        }
+                                        icon: "sidebar-simple"
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        onClicked: root.sidebarOpen = !root.sidebarOpen
                                     }
 
                                     Column {
                                         anchors.verticalCenter: parent.verticalCenter
                                         spacing: 1
-
-                                        Row {
-                                            spacing: 7
-                                            Label {
-                                                text: "Assistant"
-                                                size: 15
-                                                weight: Theme.wBold
-                                                color: Theme.textPrimary
-                                            }
-                                            Rectangle {
-                                                width: 7; height: 7
-                                                radius: 3.5
-                                                color: OllamaService.status === "ready" ? Theme.green : Theme.red
-                                                anchors.verticalCenter: parent.verticalCenter
-                                            }
-                                            Label {
-                                                text: OllamaService.status === "ready" ? "Local AI Ready" : "Ollama Offline"
-                                                size: 12
-                                                weight: Theme.wMedium
-                                                color: OllamaService.status === "ready" ? Theme.green : Theme.red
-                                                anchors.verticalCenter: parent.verticalCenter
-                                            }
-                                        }
-
                                         Label {
-                                            text: root.studioMode ? "Studio Mode • Multi-turn Sessions" : "Island HUD • Quick Intelligence"
-                                            size: 12
-                                            color: Theme.textTertiary
+                                            readonly property var sess: OllamaService.sessions.find(x => x.id === OllamaService.activeSessionId)
+                                            text: sess && sess.title && OllamaService.messages.length > 0 ? sess.title : "New chat"
+                                            size: 14
+                                            weight: Theme.wSemibold
+                                            color: Theme.textPrimary
+                                            elide: Text.ElideRight
+                                            width: Math.min(implicitWidth, 420)
+                                        }
+                                        Row {
+                                            visible: OllamaService.status !== "ready"
+                                            spacing: 6
+                                            Rectangle { width: 6; height: 6; radius: 3; color: Theme.red; anchors.verticalCenter: parent.verticalCenter }
+                                            Label { text: "Ollama isn't running"; size: 12; color: Theme.textTertiary }
                                         }
                                     }
                                 }
 
-                                // Right cluster: App Launcher, Shrink/Expand toggle, Clear, Close with Keyboard Badges
                                 Row {
                                     anchors.right: parent.right
                                     anchors.verticalCenter: parent.verticalCenter
-                                    spacing: 8
+                                    spacing: 2
 
-                                    // App Launcher / Command Button
-                                    Rectangle {
-                                        height: 30
-                                        width: appRow.implicitWidth + 14
-                                        radius: 8
-                                        color: root.appLauncherOpen ? Qt.alpha(Theme.accent, 0.2) : (appArea.containsMouse ? Qt.rgba(1, 1, 1, 0.12) : Qt.rgba(1, 1, 1, 0.05))
-                                        border.width: 1
-                                        border.color: root.appLauncherOpen ? Theme.accent : Qt.rgba(1, 1, 1, 0.08)
-
-                                        Row {
-                                            id: appRow
-                                            anchors.centerIn: parent
-                                            spacing: 6
-
-                                            Icon {
-                                                name: "rocket"
-                                                size: 13
-                                                color: Theme.accent
-                                                anchors.verticalCenter: parent.verticalCenter
-                                            }
-
-                                            Label {
-                                                text: "Apps"
-                                                size: 12
-                                                weight: Theme.wMedium
-                                                color: Theme.textPrimary
-                                                anchors.verticalCenter: parent.verticalCenter
-                                            }
-
-                                            Row {
-                                                spacing: 2
-                                                anchors.verticalCenter: parent.verticalCenter
-                                                KeyCap { text: "Ctrl"; size: 9 }
-                                                KeyCap { text: "O"; size: 9 }
-                                            }
-                                        }
-
-                                        MouseArea {
-                                            id: appArea
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: root.appLauncherOpen = !root.appLauncherOpen
-                                        }
-                                    }
-
-                                    // Shrink / Expand Toggle Button
-                                    Rectangle {
-                                        height: 30
-                                        width: shrinkRow.implicitWidth + 14
-                                        radius: 8
-                                        color: shrinkArea.containsMouse ? Qt.rgba(1, 1, 1, 0.12) : Qt.rgba(1, 1, 1, 0.05)
-                                        border.width: 1
-                                        border.color: Qt.rgba(1, 1, 1, 0.08)
-
-                                        Row {
-                                            id: shrinkRow
-                                            anchors.centerIn: parent
-                                            spacing: 6
-
-                                            Icon {
-                                                name: root.studioMode ? "arrows-in-simple" : "arrows-out-simple"
-                                                size: 13
-                                                color: Theme.textSecondary
-                                                anchors.verticalCenter: parent.verticalCenter
-                                            }
-
-                                            Label {
-                                                text: root.studioMode ? "Shrink" : "Studio"
-                                                size: 12
-                                                weight: Theme.wMedium
-                                                color: Theme.textSecondary
-                                                anchors.verticalCenter: parent.verticalCenter
-                                            }
-
-                                            Row {
-                                                spacing: 2
-                                                anchors.verticalCenter: parent.verticalCenter
-                                                KeyCap { text: "Ctrl"; size: 9 }
-                                                KeyCap { text: "M"; size: 9 }
-                                            }
-                                        }
-
-                                        MouseArea {
-                                            id: shrinkArea
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: root.studioMode = !root.studioMode
-                                        }
-                                    }
-
-                                    // Clear conversation button
-                                    Rectangle {
-                                        height: 30
-                                        width: clearRow.implicitWidth + 14
-                                        radius: 8
-                                        color: clearArea.containsMouse ? Qt.rgba(1, 1, 1, 0.12) : Qt.rgba(1, 1, 1, 0.05)
-                                        border.width: 1
-                                        border.color: Qt.rgba(1, 1, 1, 0.08)
-
-                                        Row {
-                                            id: clearRow
-                                            anchors.centerIn: parent
-                                            spacing: 5
-                                            Icon { name: "trash"; size: 13; color: Theme.textSecondary; anchors.verticalCenter: parent.verticalCenter }
-                                            Label { text: "Clear"; size: 12; color: Theme.textSecondary; anchors.verticalCenter: parent.verticalCenter }
-                                            Row {
-                                                spacing: 2
-                                                anchors.verticalCenter: parent.verticalCenter
-                                                KeyCap { text: "Ctrl"; size: 9 }
-                                                KeyCap { text: "L"; size: 9 }
-                                            }
-                                        }
-
-                                        MouseArea {
-                                            id: clearArea
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: OllamaService.clear()
-                                        }
-                                    }
-
-                                    // Close button
-                                    Rectangle {
-                                        height: 30
-                                        width: closeRow.implicitWidth + 12
-                                        radius: 8
-                                        color: closeArea.containsMouse ? Qt.rgba(1, 1, 1, 0.15) : Qt.rgba(1, 1, 1, 0.05)
-                                        border.width: 1
-                                        border.color: Qt.rgba(1, 1, 1, 0.08)
-
-                                        Row {
-                                            id: closeRow
-                                            anchors.centerIn: parent
-                                            spacing: 4
-                                            Icon {
-                                                name: "x"
-                                                size: 13
-                                                color: Theme.textSecondary
-                                                anchors.verticalCenter: parent.verticalCenter
-                                            }
-                                            KeyCap {
-                                                text: "Esc"
-                                                size: 9
-                                                anchors.verticalCenter: parent.verticalCenter
-                                            }
-                                        }
-
-                                        MouseArea {
-                                            id: closeArea
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: Assistant.hide()
-                                        }
-                                    }
+                                    MessageAction { width: 30; height: 30; icon: "note-pencil"; onClicked: { OllamaService.newChat(); promptInput.focusInput(); } }
+                                    MessageAction { width: 30; height: 30; icon: "squares-four"; onClicked: root.appLauncherOpen = !root.appLauncherOpen }
+                                    MessageAction { width: 30; height: 30; icon: root.studioMode ? "arrows-in-simple" : "arrows-out-simple"; onClicked: root.studioMode = !root.studioMode }
+                                    MessageAction { width: 30; height: 30; icon: "x"; onClicked: Assistant.hide() }
                                 }
                             }
 
@@ -725,20 +525,26 @@ Scope {
                 }
 
                 // ── App Launcher / Command Palette Modal (Ctrl+O) ────────
+                // A dialog: the slow spring (0.96 → 1, fading in), the backdrop
+                // dimming with it; reduced motion keeps only the fades.
+                Spring { id: appT; tier: Theme.springSlow; epsilon: 0.002; target: root.appLauncherOpen ? 1 : 0 }
                 Rectangle {
                     id: appModal
-                    visible: root.appLauncherOpen
+                    visible: appT.value > 0.002 || root.appLauncherOpen
                     anchors.fill: parent
-                    color: Qt.rgba(0, 0, 0, 0.65)
+                    color: Qt.rgba(0, 0, 0, 0.65 * Math.min(1, appT.value))
                     radius: frame.radius
                     z: 99
 
                     MouseArea {
                         anchors.fill: parent
+                        enabled: root.appLauncherOpen
                         onClicked: root.appLauncherOpen = false
                     }
 
                     Rectangle {
+                        scale: Theme.reduceMotion ? 1 : 0.96 + 0.04 * appT.value
+                        opacity: Math.min(1, appT.value * 3)
                         width: Math.min(540, parent.width - 40)
                         height: Math.min(420, parent.height - 40)
                         anchors.centerIn: parent

@@ -10,6 +10,7 @@ stdout, using T3 Code's runtime vocabulary so other providers can emit the same:
   request.opened    {id, itemId, kind, summary, detail}
   request.resolved  {id, decision: accept|decline|timeout}
   turn.completed    {status: completed|interrupted|failed|max_tool_rounds, error, stats}
+Every event also carries ts (ms since the epoch).
 
 itemType: reasoning | assistant_message | command_execution | web_search |
           image_view | dynamic_tool_call
@@ -23,6 +24,7 @@ import json
 import os
 import signal
 import sys
+import time
 import urllib.error
 import urllib.request
 
@@ -51,6 +53,7 @@ SYSTEM_VISION = (
 # ── Output ────────────────────────────────────────────────────────────────
 
 def emit(ev):
+    ev["ts"] = int(time.time() * 1000)
     sys.stdout.write(json.dumps(ev) + "\n")
     sys.stdout.flush()
 

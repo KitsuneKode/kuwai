@@ -6,7 +6,8 @@
 //
 //   Msg  = { role: "assistant", model, timestamp, status, parts, stats, error }
 //   Part = { id, kind: "reasoning"|"text"|"tool", itemType, title, input, text,
-//            output, status: "running"|"completed"|"failed"|"declined", request }
+//            output, status: "running"|"completed"|"failed"|"declined", request,
+//            startedAt, endedAt }   (ms, from the events' ts; 0 if unknown)
 //   request = null | { id, kind, summary, detail, state: "pending"|"accept"|"decline"|"timeout" }
 
 const KIND = { reasoning: "reasoning", assistant_message: "text" };
@@ -34,13 +35,14 @@ export function applyEvent(msg, ev) {
         const part = {
             id: ev.id, kind: KIND[ev.itemType] || "tool", itemType: ev.itemType, title: ev.title || "",
             input: ev.input || {}, text: "", output: "", status: "running", request: null,
+            startedAt: ev.ts || 0, endedAt: 0,
         };
         return Object.assign({}, msg, { parts: msg.parts.concat([part]) });
     }
     case "item.delta":
         return withPart(msg, ev.id, p => ({ text: p.text + (ev.text || "") }));
     case "item.completed":
-        return withPart(msg, ev.id, () => ({ status: ev.status || "completed", output: ev.output || "" }));
+        return withPart(msg, ev.id, () => ({ status: ev.status || "completed", output: ev.output || "", endedAt: ev.ts || 0 }));
     case "request.opened":
         return withPart(msg, ev.itemId, () => ({
             request: { id: ev.id, kind: ev.kind, summary: ev.summary || "", detail: ev.detail || "", state: "pending" },

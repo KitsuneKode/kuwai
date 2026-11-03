@@ -86,5 +86,11 @@ rewrite in our own style and tokens. Don't copy whole files in.
   files: never persist them, keep the app icon instead.
 - New files in a module dir aren't picked up by hot reload: restart.
 - `font.pixelSize` is an int; fractional values fail to load the whole file.
+- Inline components (`component X: …`) inside files under `components/ai/` fail to load ("X is not a type",
+  the whole config fails); they work under `modules/`. Put small shared pieces in their own file.
+- Qt 6.12's ES module loader (`import "x.mjs" as X`) rejects object spread `{...a}`; array spread, `?.`, `??`
+  are fine. Use `Object.assign`.
+- From an agent/tool shell, `bin/rice start` must reach Hyprland's exec (HYPRLAND_INSTANCE_SIGNATURE set),
+  or the shell lives in that shell's process group and dies with it.
 - With `~/.config/quickshell/shell.qml` present, `qs -c <name>` finds nothing:
   run by path.
