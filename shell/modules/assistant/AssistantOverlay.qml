@@ -498,6 +498,7 @@ Scope {
                         { id: "model", label: "Choose model", keys: ["⌃", "K"], section: "Chat" },
                         { id: "new", label: "New chat", keys: ["⌃", "N"] },
                         { id: "clear", label: "Clear this chat", keys: ["⌃", "L"] },
+                        { id: "copychat", label: "Copy chat as Markdown", keys: [] },
                         { id: "apps", label: "Open an app", keys: ["⌃", "O"] }
                     ]
                     onPicked: id => {
@@ -507,6 +508,7 @@ Scope {
                         else if (id === "model") modelPicker.open = true;
                         else if (id === "new") OllamaService.newChat();
                         else if (id === "clear") OllamaService.clear();
+                        else if (id === "copychat") OllamaService.copyChat();
                         else if (id === "apps") root.appLauncherOpen = true;
                         promptInput.focusInput();
                     }

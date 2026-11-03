@@ -176,3 +176,36 @@ export function sourcesOf(msg) {
     return out;
 }
 
+// An answer's text as prose and fenced code, so code gets its own block
+// (language, Copy). A fence still being written comes back `open`.
+export function splitFences(text) {
+    const out = [];
+    const lines = String(text || "").split("\n");
+    let md = [], code = null;
+    const flushMd = () => { const t = md.join("\n").trim(); if (t) out.push({ kind: "md", text: t }); md = []; };
+    lines.forEach(line => {
+        const fence = /^\s*```\s*([\w+#.-]*)\s*$/.exec(line);
+        if (code === null && fence) { flushMd(); code = { lang: fence[1] || "", lines: [] }; }
+        else if (code !== null && /^\s*```\s*$/.test(line)) {
+            out.push({ kind: "code", lang: code.lang, text: code.lines.join("\n"), open: false });
+            code = null;
+        }
+        else if (code !== null) code.lines.push(line);
+        else md.push(line);
+    });
+    if (code !== null) out.push({ kind: "code", lang: code.lang, text: code.lines.join("\n"), open: true });
+    else flushMd();
+    return out;
+}
+
+// The chat as Markdown (Copy chat): what was said, not the tools or reasoning.
+export function chatMarkdown(title, msgs) {
+    const parts = ["# " + (title || "Chat")];
+    (msgs || []).forEach(m => {
+        const t = m.role === "user" ? (m.text || "") : textOf(m);
+        if (!t) return;
+        parts.push("**" + (m.role === "user" ? "You" : "Assistant") + "**", t);
+    });
+    return parts.join("\n\n") + "\n";
+}
+

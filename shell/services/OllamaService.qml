@@ -771,23 +771,19 @@ function onPanelClosed() {
     }
 
     // ── Rich Text Markdown Rendering ──────────────────────────────────
+    // The answer's Markdown, one segment at a time (prose / fenced code, see
+    // Turn.splitFences), so code blocks get their own header and Copy. Each
+    // segment's HTML lands in messages[index].segHtml[i]; older messages keep
+    // their one `html`.
     function renderMessage(index, rawText) {
         if (!rawText || rawText.trim() === "") return;
-        const renderFile = root.runtimeDir + "/render_" + index + ".md";
-        renderFileWriter.path = renderFile;
-        renderFileWriter.setText(rawText);
-
-        const p = renderProcComponent.createObject(root, {
-            msgIndex: index,
-            filePath: renderFile
+        const segs = Turn.splitFences(rawText);
+        segs.forEach((seg, i) => {
+            // Code goes in bare (rice-render detects and highlights it); fenced, it highlights the fences too.
+            const source = seg.text;
+            const file = root.runtimeDir + "/render_" + index + "_" + i + ".md";
+            renderProcComponent.createObject(root, { msgIndex: index, segIndex: i, segCount: segs.length, filePath: file, source: source, isCode: seg.kind === "code" });
         });
-        p.running = true;
-    }
-
-    FileView {
-        id: renderFileWriter
-        path: root.runtimeDir + "/render_temp.md"
-        printErrors: false
     }
 
     Component {
@@ -795,27 +791,49 @@ function onPanelClosed() {
         Process {
             id: rProc
             property int msgIndex: -1
+            property int segIndex: 0
+            property int segCount: 1
             property string filePath: ""
+            property string source: ""
+            property bool isCode: false
             command: [root.bin, "render", filePath]
+            // Each run writes its own file first (one shared writer would race).
+            property FileView writer: FileView { path: rProc.filePath; blockWrites: true; printErrors: false }
+            Component.onCompleted: { writer.setText(source); running = true; }
             stdout: StdioCollector {
                 onStreamFinished: {
                     const out = text.trim();
                     if (!out || rProc.msgIndex < 0 || rProc.msgIndex >= root.messages.length) return;
                     try {
                         const parsed = JSON.parse(out);
-                        if (parsed.html) {
-                            const msgs = [...root.messages];
-                            const m = Object.assign({}, msgs[rProc.msgIndex]);
-                            m.html = parsed.html;
-                            msgs[rProc.msgIndex] = m;
-                            root.messages = msgs;
-                            root.syncCurrentSession();
+                        if (!parsed.html) return;
+                        // Code: just the highlighted <pre>; our block draws the frame (rice-render's table draws a second one).
+                        let html = parsed.html;
+                        if (rProc.isCode) {
+                            const pre = /<pre[\s\S]*<\/pre>/.exec(html);
+                            html = pre ? pre[0] : "";
+                            if (!html) return;
                         }
+                        const msgs = [...root.messages];
+                        const m = Object.assign({}, msgs[rProc.msgIndex]);
+                        const seg = (m.segHtml || []).slice();
+                        while (seg.length < rProc.segCount) seg.push("");
+                        seg[rProc.segIndex] = html;
+                        m.segHtml = seg;
+                        msgs[rProc.msgIndex] = m;
+                        root.messages = msgs;
+                        root.syncCurrentSession();
                     } catch (e) {}
                 }
             }
             onExited: destroy(500)
         }
+    }
+
+    // ── Copy chat as Markdown ─────────────────────────────────────────
+    function copyChat() {
+        const sess = root.sessions.find(x => x.id === root.activeSessionId);
+        Clipboard.copyText(Turn.chatMarkdown(sess ? sess.title : "Chat", root.messages));
     }
 
     IpcHandler {

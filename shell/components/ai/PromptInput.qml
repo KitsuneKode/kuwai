@@ -422,8 +422,15 @@ Rectangle {
                 }
             }
 
+            ContextMeter {
+                anchors.right: sendBox.left
+                anchors.rightMargin: 6
+                anchors.verticalCenter: parent.verticalCenter
+            }
+
             // Right cluster: Cancel or Send Button (Raised Button Plate)
             Item {
+                id: sendBox
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
                 width: 36; height: 36

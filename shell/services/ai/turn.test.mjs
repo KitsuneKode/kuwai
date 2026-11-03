@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { applyEvent, compactedUpTo, sourcesOf, migrateMessage, newAssistant, pendingRequest, textOf, toApiMessages, toApiMessagesWithIndex, truncateAt } from "./turn.mjs";
+import { applyEvent, compactedUpTo, sourcesOf, splitFences, chatMarkdown, migrateMessage, newAssistant, pendingRequest, textOf, toApiMessages, toApiMessagesWithIndex, truncateAt } from "./turn.mjs";
 
 const run = (events, msg = newAssistant("hermes3:8b", 1000)) => events.reduce(applyEvent, msg);
 const started = (id, itemType, extra = {}) => Object.assign({ type: "item.started", id, itemType, title: "", input: {} }, extra);
@@ -196,6 +196,37 @@ describe("steer", () => {
   test("unapplied steers are on the finished message for the queue", () => {
     const m = run([{ type: "turn.completed", status: "completed", stats: {}, unapplied: [{ id: "s-2", text: "late" }] }]);
     expect(m.unapplied).toEqual([{ id: "s-2", text: "late" }]);
+  });
+});
+
+describe("splitFences", () => {
+  test("prose and fenced code alternate", () => {
+    const t = "Here:\n\n```python\ndef hi():\n    return 1\n```\n\nDone.";
+    expect(splitFences(t)).toEqual([
+      { kind: "md", text: "Here:" },
+      { kind: "code", lang: "python", text: "def hi():\n    return 1", open: false },
+      { kind: "md", text: "Done." },
+    ]);
+  });
+
+  test("a fence still streaming is open", () => {
+    expect(splitFences("Try:\n```sh\nls -la")).toEqual([
+      { kind: "md", text: "Try:" },
+      { kind: "code", lang: "sh", text: "ls -la", open: true },
+    ]);
+  });
+
+  test("no fences is one prose segment; empty is none", () => {
+    expect(splitFences("plain **text**")).toEqual([{ kind: "md", text: "plain **text**" }]);
+    expect(splitFences("")).toEqual([]);
+  });
+});
+
+describe("chatMarkdown", () => {
+  test("a chat as Markdown, tools and reasoning left out", () => {
+    const a = run([started("t1", "web_search"), done("t1", "completed", "x"), started("m1", "assistant_message"), delta("m1", "Answer.")]);
+    expect(chatMarkdown("My chat", [{ role: "user", text: "Question?" }, a]))
+      .toBe("# My chat\n\n**You**\n\nQuestion?\n\n**Assistant**\n\nAnswer.\n");
   });
 });
 

@@ -260,21 +260,134 @@ Item {
                         }
                     }
                 }
+                // Text: prose and fenced code as separate segments. Streaming, the prose
+                // shows as Markdown live; done, each segment is rice-render's HTML.
+                // Code gets a block with its language and Copy (AI Elements code-block).
                 Component {
                     id: textBlock
-                    TextEdit {
-                        readonly property bool rich: !root.isStreaming && blockLoader.block.isLastText && !!root.msg.html
+                    Column {
+                        id: tcol
                         width: blockLoader.width
-                        textFormat: rich ? TextEdit.RichText : TextEdit.PlainText
-                        text: rich ? root.msg.html : (blockLoader.block.part ? blockLoader.block.part.text : "")
-                        readOnly: true
-                        selectByMouse: true
-                        selectionColor: Qt.alpha(Theme.accent, 0.5)
-                        wrapMode: TextEdit.Wrap
-                        color: Theme.textPrimary
-                        font.family: Theme.fontText
-                        font.pixelSize: 15
-                        onLinkActivated: link => Qt.openUrlExternally(link)
+                        spacing: 10
+                        readonly property string raw: blockLoader.block.part ? blockLoader.block.part.text : ""
+                        readonly property var segs: Turn.splitFences(raw)
+                        readonly property bool settled: !root.isStreaming && !!blockLoader.block.isLastText
+                        readonly property var segHtml: settled ? (root.msg.segHtml || []) : []
+                        readonly property bool legacy: settled && !root.msg.segHtml && !!root.msg.html
+
+                        TextEdit {
+                            visible: tcol.legacy
+                            width: tcol.width
+                            textFormat: TextEdit.RichText
+                            text: tcol.legacy ? root.msg.html : ""
+                            readOnly: true
+                            selectByMouse: true
+                            selectionColor: Qt.alpha(Theme.accent, 0.5)
+                            wrapMode: TextEdit.Wrap
+                            color: Theme.textPrimary
+                            font.family: Theme.fontText
+                            font.pixelSize: 15
+                            onLinkActivated: link => Qt.openUrlExternally(link)
+                        }
+
+                        Repeater {
+                            model: tcol.legacy ? 0 : tcol.segs.length
+                            Loader {
+                                id: segLoader
+                                required property int index
+                                readonly property var seg: tcol.segs[index] || ({ kind: "md", text: "" })
+                                readonly property string html: tcol.segHtml[index] || ""
+                                width: tcol.width
+                                sourceComponent: seg.kind === "code" ? codeSeg : mdSeg
+
+                                Component {
+                                    id: mdSeg
+                                    TextEdit {
+                                        width: segLoader.width
+                                        textFormat: segLoader.html ? TextEdit.RichText : TextEdit.MarkdownText
+                                        text: segLoader.html ? segLoader.html : segLoader.seg.text
+                                        readOnly: true
+                                        selectByMouse: true
+                                        selectionColor: Qt.alpha(Theme.accent, 0.5)
+                                        wrapMode: TextEdit.Wrap
+                                        color: Theme.textPrimary
+                                        font.family: Theme.fontText
+                                        font.pixelSize: 15
+                                        onLinkActivated: link => Qt.openUrlExternally(link)
+                                    }
+                                }
+                                Component {
+                                    id: codeSeg
+                                    Rectangle {
+                                        id: codeBox
+                                        width: segLoader.width
+                                        height: codeHead.height + codeFlick.height + 10
+                                        radius: 10
+                                        color: Qt.rgba(0, 0, 0, 0.30)
+                                        border.width: 1
+                                        border.color: Qt.rgba(1, 1, 1, 0.06)
+                                        property bool copied: false
+                                        Timer { id: codeCopied; interval: 1500; onTriggered: codeBox.copied = false }
+
+                                        Item {
+                                            id: codeHead
+                                            width: parent.width
+                                            height: 30
+                                            Label {
+                                                x: 12
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                text: segLoader.seg.lang || "code"
+                                                size: 11
+                                                weight: Theme.wMedium
+                                                color: Theme.textTertiary
+                                            }
+                                            Row {
+                                                anchors.right: parent.right
+                                                anchors.rightMargin: 10
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                spacing: 5
+                                                Icon { name: codeBox.copied ? "check" : "copy"; size: 12; color: codeBox.copied ? Theme.green : Theme.textTertiary; anchors.verticalCenter: parent.verticalCenter }
+                                                Label { text: codeBox.copied ? "Copied" : "Copy"; size: 11; color: codeBox.copied ? Theme.green : Theme.textTertiary; anchors.verticalCenter: parent.verticalCenter }
+                                            }
+                                            MouseArea {
+                                                anchors.right: parent.right
+                                                width: 80; height: parent.height
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: { Clipboard.copyText(segLoader.seg.text); codeBox.copied = true; codeCopied.restart(); }
+                                            }
+                                            Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Qt.rgba(1, 1, 1, 0.06) }
+                                        }
+
+                                        Flickable {
+                                            id: codeFlick
+                                            anchors.top: codeHead.bottom
+                                            anchors.topMargin: 6
+                                            x: 12
+                                            width: parent.width - 24
+                                            height: codeText.implicitHeight
+                                            contentWidth: codeText.implicitWidth
+                                            contentHeight: codeText.implicitHeight
+                                            interactive: contentWidth > width
+                                            boundsBehavior: Flickable.StopAtBounds
+                                            flickableDirection: Flickable.HorizontalFlick
+                                            clip: true
+                                            TextEdit {
+                                                id: codeText
+                                                textFormat: segLoader.html ? TextEdit.RichText : TextEdit.PlainText
+                                                text: segLoader.html ? segLoader.html : segLoader.seg.text
+                                                readOnly: true
+                                                selectByMouse: true
+                                                selectionColor: Qt.alpha(Theme.accent, 0.5)
+                                                wrapMode: TextEdit.NoWrap
+                                                color: Theme.textPrimary
+                                                font.family: Theme.fontMono
+                                                font.pixelSize: 12
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
