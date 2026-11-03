@@ -23,8 +23,17 @@ Item {
         radius: height / 2
         color: Qt.tint(Qt.rgba(1, 1, 1, 0.16), Qt.alpha(Theme.green, Math.max(0, Math.min(1, k.value))))
     }
+    // The knob: Apple's pressed stretch is 19/16 of its width (22 → 26 px),
+    // with a soft shadow under it so it sits on the track rather than in it.
     Rectangle {
-        property real stretch: area.pressed ? 5 : 0
+        x: knob.x; y: knob.y + 1
+        width: knob.width; height: knob.height
+        radius: knob.radius
+        color: Qt.rgba(0, 0, 0, 0.22)
+    }
+    Rectangle {
+        id: knob
+        property real stretch: area.pressed ? 22 * (19 / 16 - 1) : 0
         Behavior on stretch { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
         width: 22 + stretch
         height: 22
