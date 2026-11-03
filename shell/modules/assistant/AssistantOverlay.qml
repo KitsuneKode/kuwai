@@ -486,7 +486,9 @@ Scope {
                                 id: promptInput
                                 width: parent.width
                                 picker: modelPicker
+                                popups: [slashMenu]
                                 onModelPickerRequested: modelPicker.toggle()
+                                onSlashRequested: slashMenu.open = true
                                 onOpenAppLauncherRequested: root.appLauncherOpen = !root.appLauncherOpen
                                 onToggleSidebarRequested: {
                                     if (!root.studioMode) root.studioMode = true;
@@ -522,6 +524,33 @@ Scope {
                     id: modelPicker
                     anchorItem: promptInput.modelPill
                     onClosed: promptInput.focusInput()
+                }
+
+                // ── Slash commands: "/" on an empty prompt ────────────────
+                ActionMenu {
+                    id: slashMenu
+                    anchorItem: promptInput.slashAnchor
+                    title: "Commands"
+                    menuW: 300
+                    items: [
+                        { id: "snap", label: "Attach this window", keys: [], section: "Context" },
+                        { id: "shot", label: "Attach a region of the screen", keys: [] },
+                        { id: "paste", label: "Paste an image", keys: ["⌃", "V"] },
+                        { id: "model", label: "Choose model", keys: ["⌃", "K"], section: "Chat" },
+                        { id: "new", label: "New chat", keys: ["⌃", "N"] },
+                        { id: "clear", label: "Clear this chat", keys: ["⌃", "L"] },
+                        { id: "apps", label: "Open an app", keys: ["⌃", "O"] }
+                    ]
+                    onPicked: id => {
+                        if (id === "snap") OllamaService.snapshotActiveWindow();
+                        else if (id === "shot") OllamaService.takeScreenshot();
+                        else if (id === "paste") OllamaService.pasteClipboardImage();
+                        else if (id === "model") modelPicker.open = true;
+                        else if (id === "new") OllamaService.newChat();
+                        else if (id === "clear") OllamaService.clear();
+                        else if (id === "apps") root.appLauncherOpen = true;
+                        promptInput.focusInput();
+                    }
                 }
 
                 // ── App Launcher / Command Palette Modal (Ctrl+O) ────────

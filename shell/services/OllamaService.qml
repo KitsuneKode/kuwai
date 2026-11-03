@@ -738,6 +738,7 @@ function onPanelClosed() {
         function pendingImage(): string { return root.pendingImage; }
         function newChat() { root.newChat(); }
         function cancel() { root.cancel(); }
+        function clearPending() { root.pendingImage = ""; root.pendingContext = null; root.pendingAppTitle = ""; }
         function resolveRequest(id: string, decision: string) { root.resolveRequest(id, decision); }
         function draft(): string { return root.draft ? JSON.stringify(root.draft) : ""; }
         function switchSession(id: string) { root.switchSession(id); }

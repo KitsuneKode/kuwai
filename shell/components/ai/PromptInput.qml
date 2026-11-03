@@ -3,6 +3,7 @@
 // model selector pill, and cancel/send actions.
 import QtQuick
 import QtQuick.Controls
+import Quickshell
 import qs.config
 import qs.components
 import qs.services
@@ -11,8 +12,12 @@ Rectangle {
     id: root
 
     property alias text: inputArea.text
-    // The model picker (ModelPickerMenu) gets the keys while it's open.
+    // The model picker (ModelPickerMenu) gets the keys while it's open; so do
+    // the other popups listed here (the slash menu).
     property var picker: null
+    property var popups: []
+    readonly property alias slashAnchor: slashAnchor
+    signal slashRequested()
     readonly property alias modelPill: modelPill
     signal submitted(string prompt)
     signal modelPickerRequested()
@@ -36,6 +41,42 @@ Rectangle {
         }
     }
 
+    // An open popup (model picker, slash menu) takes the keys. True if it did.
+    function routeToPopup(event) {
+        const open = [root.picker].concat(root.popups).find(p => p && p.open);
+        if (!open) return false;
+        open.key(event);
+        event.accepted = true;
+        return true;
+    }
+
+    function firstLine(t) {
+        const l = String(t || "").trim().split("\n")[0];
+        return l.length > 60 ? l.slice(0, 60) + "…" : l;
+    }
+    readonly property var chips: {
+        const out = [];
+        const c = OllamaService.pendingContext || {};
+        const home = Quickshell.env("HOME") || "";
+        if (OllamaService.pendingImage)
+            out.push({ key: "image", thumb: OllamaService.pendingImage, label: c.app ? [c.app, c.title].filter(x => !!x).join(" · ") : "Screenshot" });
+        if (c.cwd)
+            out.push({ key: "cwd", icon: "folder-simple", label: c.cwd.replace(home, "~") + (c.git && c.git.branch ? " · " + c.git.branch : "") });
+        if (c.selection) out.push({ key: "selection", icon: "cursor-text", label: firstLine(c.selection) });
+        if (c.clipboard && c.clipboard !== c.selection) out.push({ key: "clipboard", icon: "clipboard-text", label: firstLine(c.clipboard) });
+        return out;
+    }
+    function removeChip(key) {
+        const c = Object.assign({}, OllamaService.pendingContext || {});
+        if (key === "image") {
+            OllamaService.pendingImage = "";
+            OllamaService.pendingAppTitle = "";
+            c.app = ""; c.title = ""; c.workspace = "";
+        } else if (key === "cwd") { c.cwd = ""; c.git = null; }
+        else c[key] = "";
+        OllamaService.pendingContext = c;
+    }
+
     function focusInput() {
         inputArea.forceActiveFocus();
     }
@@ -48,97 +89,79 @@ Rectangle {
         anchors.margins: 12
         spacing: 10
 
-        // ── Attachment Preview (if screenshot pending) ────────────────
-        Rectangle {
-            id: attachBox
-            visible: height > 0
+        // ── Context chips: what goes with the next message ─────────────
+        // The screenshot (and the window it's from), its folder and branch,
+        // the selection, the clipboard. Each can go (× or ⌫ on an empty prompt).
+        Flow {
+            id: chipFlow
             width: parent.width
-            height: OllamaService.pendingImage !== "" ? 52 : 0
-            opacity: OllamaService.pendingImage !== "" ? 1 : 0
-            clip: true
-            radius: 10
-            color: Qt.rgba(1, 1, 1, 0.06)
-            border.width: 1
-            border.color: Qt.rgba(1, 1, 1, 0.10)
+            spacing: 6
+            visible: root.chips.length > 0
 
-            // Arrives in enterMs, leaves quicker (exitMs).
-            Behavior on height {
-                NumberAnimation {
-                    duration: OllamaService.pendingImage !== "" ? Theme.enterMs : Theme.exitMs
-                    easing.type: Easing.BezierSpline
-                    easing.bezierCurve: Theme.easeOut
-                }
-            }
-            Behavior on opacity {
-                NumberAnimation {
-                    duration: OllamaService.pendingImage !== "" ? Theme.enterMs : Theme.exitMs
-                    easing.type: Easing.BezierSpline
-                    easing.bezierCurve: Theme.easeOut
-                }
-            }
-
-            Row {
-                anchors.left: parent.left
-                anchors.leftMargin: 8
-                anchors.verticalCenter: parent.verticalCenter
-                spacing: 10
-
+            Repeater {
+                model: root.chips
                 Rectangle {
-                    width: 52
-                    height: 38
-                    radius: 6
-                    clip: true
-                    color: "black"
+                    id: chip
+                    required property var modelData
+                    height: 30
+                    width: chipRow.implicitWidth + 14
+                    radius: 10
+                    color: Qt.rgba(1, 1, 1, 0.06)
+                    border.width: 1
+                    border.color: Qt.rgba(1, 1, 1, 0.08)
+                    opacity: 0
+                    transform: Translate { id: chipLift; y: Theme.reduceMotion ? 0 : 4
+                        Behavior on y { NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } } }
+                    Behavior on opacity { NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+                    Component.onCompleted: { opacity = 1; chipLift.y = 0; }
 
-                    Image {
-                        anchors.fill: parent
-                        source: OllamaService.pendingImage !== "" ? "file://" + OllamaService.pendingImage : ""
-                        fillMode: Image.PreserveAspectCrop
+                    Row {
+                        id: chipRow
+                        anchors.left: parent.left
+                        anchors.leftMargin: chip.modelData.thumb ? 4 : 9
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: 6
+
+                        Rectangle {
+                            visible: !!chip.modelData.thumb
+                            width: 30; height: 22
+                            radius: 6
+                            clip: true
+                            color: "black"
+                            anchors.verticalCenter: parent.verticalCenter
+                            Image {
+                                anchors.fill: parent
+                                source: chip.modelData.thumb ? "file://" + chip.modelData.thumb : ""
+                                sourceSize.width: 60
+                                fillMode: Image.PreserveAspectCrop
+                                asynchronous: true
+                            }
+                        }
+                        Icon {
+                            visible: !chip.modelData.thumb
+                            name: chip.modelData.icon
+                            size: 13
+                            color: Theme.textTertiary
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                        Label {
+                            text: chip.modelData.label
+                            size: 12
+                            color: Theme.textSecondary
+                            elide: Text.ElideRight
+                            width: Math.min(implicitWidth, 240)
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                        Rectangle {
+                            width: 18; height: 18
+                            radius: 9
+                            color: Qt.rgba(1, 1, 1, xArea.containsMouse ? 0.14 : 0)
+                            anchors.verticalCenter: parent.verticalCenter
+                            Behavior on color { ColorAnimation { duration: Theme.colorMs } }
+                            Icon { anchors.centerIn: parent; name: "x"; style: "bold"; size: 10; color: Theme.textTertiary }
+                            MouseArea { id: xArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.removeChip(chip.modelData.key) }
+                        }
                     }
-                }
-
-                Column {
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: 2
-
-                    Label {
-                        text: OllamaService.pendingAppTitle !== "" ? OllamaService.pendingAppTitle : "Snapshot attached"
-                        size: 13
-                        weight: Theme.wSemibold
-                        color: Theme.textPrimary
-                        elide: Text.ElideRight
-                        width: 320
-                    }
-                    Label {
-                        text: "Vision analysis active via " + (OllamaService.model.indexOf("minicpm") >= 0 ? "MiniCPM-V" : OllamaService.model)
-                        size: 11
-                        color: Theme.textTertiary
-                    }
-                }
-            }
-
-            // Remove Attachment Button
-            Rectangle {
-                anchors.right: parent.right
-                anchors.rightMargin: 10
-                anchors.verticalCenter: parent.verticalCenter
-                width: 26; height: 26
-                radius: 13
-                color: removeArea.containsMouse ? Qt.rgba(1, 1, 1, 0.16) : Qt.rgba(1, 1, 1, 0.08)
-
-                Icon {
-                    anchors.centerIn: parent
-                    name: "x"
-                    size: 13
-                    color: Theme.textSecondary
-                }
-
-                MouseArea {
-                    id: removeArea
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: OllamaService.pendingImage = ""
                 }
             }
         }
@@ -147,6 +170,8 @@ Rectangle {
         Item {
             width: parent.width
             implicitHeight: Math.max(42, Math.min(160, inputArea.contentHeight + 10))
+
+            Item { id: slashAnchor; x: 0; y: 0; width: 300; height: 1 }
 
             TextEdit {
                 id: inputArea
@@ -172,7 +197,9 @@ Rectangle {
                     visible: !inputArea.text && !inputArea.inputMethodComposing
                 }
 
+                // Qt calls these key-specific handlers before onPressed, so each asks the popups first.
                 Keys.onReturnPressed: event => {
+                    if (root.routeToPopup(event)) return;
                     if ((event.modifiers & Qt.ControlModifier) && OllamaService.pendingRequest) {
                         event.accepted = true;
                         OllamaService.resolveRequest(OllamaService.pendingRequest.id, "accept");
@@ -185,10 +212,14 @@ Rectangle {
                 }
 
                 Keys.onPressed: event => {
-                    if (root.picker && root.picker.open) {
-                        root.picker.key(event);
-                        event.accepted = true;
-                        return;
+                    if (root.routeToPopup(event)) return;
+                    if (inputArea.text === "" && !(event.modifiers & Qt.ControlModifier)) {
+                        if (event.text === "/") { event.accepted = true; root.slashRequested(); return; }
+                        if (event.key === Qt.Key_Backspace && root.chips.length > 0) {
+                            event.accepted = true;
+                            root.removeChip(root.chips[root.chips.length - 1].key);
+                            return;
+                        }
                     }
                     const ctrl = (event.modifiers & Qt.ControlModifier);
                     if (ctrl) {
@@ -223,6 +254,7 @@ Rectangle {
                 }
 
                 Keys.onUpPressed: event => {
+                    if (root.routeToPopup(event)) return;
                     if (inputArea.text === "" && OllamaService.messages.length > 0) {
                         for (let i = OllamaService.messages.length - 1; i >= 0; i--) {
                             if (OllamaService.messages[i].role === "user") {
