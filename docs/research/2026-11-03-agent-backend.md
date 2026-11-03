@@ -73,3 +73,19 @@ Built: `bin/rice_agent.py` `tool_web_search` (chain SearXNG → Ollama → DuckD
 
 Memory across chats, projects, voice input, file attachments other than images, MCP servers,
 conversation branches, the subscription backends (docs/CHAT.md). The event protocol has room for each.
+
+## E. Second round (measured, same day)
+
+- **qwen3:4b** (pulled, 2.5 GB, 3.18 GB in VRAM): tool prompts 3/3 on run_command, launch_app and
+  active_window; plain questions without a tool 2/3 and 1/3; 7–23 s a turn (it thinks every turn).
+  Recall after compaction 5/5 ×3. `think: false` doesn't make it faster: it reasons inside the
+  answer instead (so no Think toggle in the UI).
+- **DuckDuckGo's bot check** ("anomaly" page) starts after a burst of searches from one machine;
+  the chain now falls back to Bing's HTML (`li.b_algo`, `/ck/a?…&u=a1<base64url>` links) and then
+  Wikipedia's REST search.
+- **Search → read**: hermes3 read a page after searching 0/3 → 2/3 once the result's last line told
+  *it* (not the user) to call web_fetch; qwen3:4b 3/3. Both still mis-copy years from pages (GitHub
+  shows "03 Nov 09:47" with the year only in `<relative-time datetime>`); fetched text now keeps
+  those dates and the system prompt carries today's date. Small models stay unreliable at copying
+  facts, so answers show their Sources (pages read, then search results).
+- Harnesses: `tests/agent/live/toolhabits.py`, `recall.py`, `followup.py`.
