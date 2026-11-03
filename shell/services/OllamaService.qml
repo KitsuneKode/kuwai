@@ -209,6 +209,8 @@ Singleton {
             try {
                 const parsed = JSON.parse(text());
                 if (Array.isArray(parsed) && parsed.length > 0) {
+                    // What was on disk at start, kept aside: a bad save can't take the chats with it.
+                    sessionBackup.setText(text());
                     parsed.forEach(s => { s.messages = (s.messages || []).map(root.withParts); });
                     root.sessions = parsed;
                     const first = parsed[0];
@@ -226,6 +228,13 @@ Singleton {
             root.ensureInitialSession();
             root.storeLoaded = true;
         }
+    }
+
+    FileView {
+        id: sessionBackup
+        path: sessionStore.path.replace(/\.json$/, ".bak.json")
+        blockWrites: true
+        printErrors: false
     }
 
     Timer {
@@ -269,12 +278,15 @@ Singleton {
             messages: [],
             updatedAt: Date.now()
         };
-        if (root.messages.length > 0) {
-            root.sessions = [newSess, ...root.sessions];
-        } else if (root.sessions.length > 0) {
-            root.sessions[0] = newSess;
+        // Reuse the current chat only if it's the empty one; never overwrite another
+        // (this used to replace sessions[0], which could be a real chat).
+        const cur = root.sessions.findIndex(x => x.id === root.activeSessionId);
+        if (cur >= 0 && root.messages.length === 0 && (root.sessions[cur].messages || []).length === 0) {
+            const updated = [...root.sessions];
+            updated[cur] = newSess;
+            root.sessions = updated;
         } else {
-            root.sessions = [newSess];
+            root.sessions = [newSess, ...root.sessions];
         }
         root.activeSessionId = newId;
         root.queue = [];
