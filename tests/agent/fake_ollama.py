@@ -10,9 +10,11 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 
 class FakeOllama:
-    def __init__(self, script, caps=None):
+    def __init__(self, script, caps=None, pages=None):
         self.script = list(script)
         self.caps = caps or {}
+        # Other paths served as-is (search results, web pages): {path: (content_type, body)}.
+        self.pages = pages or {}
         self.requests = []
         fake = self
 
@@ -24,7 +26,22 @@ class FakeOllama:
                 n = int(self.headers.get("Content-Length") or 0)
                 return json.loads(self.rfile.read(n) or b"{}")
 
+            def _page(self):
+                path = self.path.split("?")[0]
+                if path not in fake.pages:
+                    return False
+                ctype, body = fake.pages[path]
+                data = body.encode() if isinstance(body, str) else body
+                self.send_response(200)
+                self.send_header("Content-Type", ctype)
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+                return True
+
             def do_GET(self):
+                if self._page():
+                    return
                 if self.path == "/api/tags":
                     data = json.dumps({"models": [{"name": m, "size": 4_700_000_000, "details": {"parameter_size": "8.0B"}} for m in fake.caps]}).encode()
                     self.send_response(200)
@@ -37,6 +54,10 @@ class FakeOllama:
                 self.end_headers()
 
             def do_POST(self):
+                if self.path.split("?")[0] in fake.pages:
+                    self.rfile.read(int(self.headers.get("Content-Length") or 0))
+                    self._page()
+                    return
                 body = self._body()
                 if self.path == "/api/show":
                     model = body.get("model", "")
@@ -60,7 +81,8 @@ class FakeOllama:
                         c.setdefault("done", False)
                         if "message" in c:
                             c["message"] = {"role": "assistant", "content": "", **c["message"]}
-                        self.wfile.write((json.dumps(c) + "\n").encode())
+                        line = json.dumps(c).replace("__FAKE__", fake.url)   # scripts can point at this server
+                        self.wfile.write((line + "\n").encode())
                         self.wfile.flush()
                     return
                 self.send_response(404)

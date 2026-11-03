@@ -373,29 +373,170 @@ def tool_read_file(args):
     return _cap(data.decode(errors="replace"), 16384)
 
 
-def tool_web_search(args):
+# ── Web ───────────────────────────────────────────────────────────────────
+# Search, free and keyless by default: SearXNG when you run one
+# (RICE_SEARXNG_URL, JSON format enabled), Ollama's hosted search when
+# OLLAMA_API_KEY is set, else DuckDuckGo's HTML endpoint. web_fetch reads a
+# page as plain text. Checked 2026-11-03: html.duckduckgo.com/html returns
+# `a.result__a` (title, link) and `a.result__snippet` per result.
+
+BROWSER_UA = "Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0"
+
+
+def _http(url, data=None, headers=None, timeout=8, limit=2_000_000):
+    req = urllib.request.Request(url, data=data, headers={"User-Agent": BROWSER_UA, **(headers or {})})
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        raw = resp.read(limit)
+        charset = resp.headers.get_content_charset() or "utf-8"
+        return raw.decode(charset, errors="replace"), resp.headers.get_content_type()
+
+
+def _real_link(href):
+    import html as h
     import urllib.parse
+    href = h.unescape(href or "")
+    if "duckduckgo.com/l/?" in href:
+        q = urllib.parse.parse_qs(urllib.parse.urlparse(href).query)
+        href = (q.get("uddg") or [href])[0]
+    if href.startswith("//"):
+        href = "https:" + href
+    return href
+
+
+def _strip_tags(text):
+    import html as h
+    import re
+    return re.sub(r"\s+", " ", h.unescape(re.sub(r"<[^>]+>", "", text or ""))).strip()
+
+
+def search_duckduckgo(q, n):
+    import re
+    import urllib.parse
+    url = os.environ.get("RICE_SEARCH_DDG_URL") or "https://html.duckduckgo.com/html/"
+    page, _ = _http(url, data=urllib.parse.urlencode({"q": q}).encode())
+    out = []
+    for block in re.split(r'<div[^>]+class="[^"]*\bresult\b', page)[1:]:
+        a = re.search(r'class="result__a"[^>]*href="([^"]+)"[^>]*>(.*?)</a>', block, re.S)
+        if not a:
+            continue
+        snip = re.search(r'class="result__snippet"[^>]*>(.*?)</a>', block, re.S)
+        out.append({"title": _strip_tags(a.group(2)), "url": _real_link(a.group(1)),
+                    "snippet": _strip_tags(snip.group(1)) if snip else ""})
+        if len(out) >= n:
+            break
+    return out
+
+
+def search_searxng(base, q, n):
+    import urllib.parse
+    page, _ = _http(base.rstrip("/") + "/search?" + urllib.parse.urlencode({"q": q, "format": "json"}))
+    d = json.loads(page)
+    return [{"title": r.get("title", ""), "url": r.get("url", ""), "snippet": r.get("content", "")}
+            for r in (d.get("results") or [])[:n]]
+
+
+def search_ollama(key, q, n):
+    body = json.dumps({"query": q, "max_results": n}).encode()
+    page, _ = _http("https://ollama.com/api/web_search", data=body,
+                    headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"})
+    d = json.loads(page)
+    return [{"title": r.get("title", ""), "url": r.get("url", ""), "snippet": (r.get("content") or "")[:300]}
+            for r in (d.get("results") or [])[:n]]
+
+
+def tool_web_search(args):
     q = str(args.get("query") or "").strip()
     if not q:
         raise ToolError("Give a query")
-    url = "https://api.duckduckgo.com/?" + urllib.parse.urlencode({"q": q, "format": "json", "no_html": 1})
-    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64)"})
+    n = 6
+    chain = []
+    if os.environ.get("RICE_SEARXNG_URL"):
+        chain.append(lambda: search_searxng(os.environ["RICE_SEARXNG_URL"], q, n))
+    if os.environ.get("OLLAMA_API_KEY"):
+        chain.append(lambda: search_ollama(os.environ["OLLAMA_API_KEY"], q, n))
+    chain.append(lambda: search_duckduckgo(q, n))
+    errors, results = [], []
+    for source in chain:
+        try:
+            results = source()
+        except Exception as e:
+            errors.append(str(e))
+            continue
+        if results:
+            break
+    if not results:
+        raise ToolError("No results" + (f" ({errors[-1]})" if errors else ""))
+    lines = []
+    for i, r in enumerate(results, 1):
+        lines.append(f"{i}. {r['title']} — {r['url']}")
+        if r["snippet"]:
+            lines.append("   " + r["snippet"])
+    lines.append("\nUse web_fetch on a link to read the page.")
+    return _cap("\n".join(lines), 6000)
+
+
+def page_text(html_text):
+    """Readable text of a page: the title, then the body without scripts,
+    styles, navigation, headers and footers; blocks become lines."""
+    from html.parser import HTMLParser
+
+    class P(HTMLParser):
+        SKIP = {"script", "style", "noscript", "svg", "nav", "header", "footer", "aside", "form", "template"}
+        BLOCK = {"p", "div", "br", "li", "h1", "h2", "h3", "h4", "h5", "h6", "tr", "section", "article", "pre",
+                 "blockquote", "main", "table", "ul", "ol"}
+
+        def __init__(self):
+            super().__init__(convert_charrefs=True)
+            self.skip = 0
+            self.in_title = False
+            self.title = ""
+            self.parts = []
+
+        def handle_starttag(self, tag, attrs):
+            if tag in self.SKIP:
+                self.skip += 1
+            elif tag == "title":
+                self.in_title = True
+            elif tag in self.BLOCK:
+                self.parts.append("\n")
+
+        def handle_endtag(self, tag):
+            if tag in self.SKIP:
+                self.skip = max(0, self.skip - 1)
+            elif tag == "title":
+                self.in_title = False
+            elif tag in self.BLOCK:
+                self.parts.append("\n")
+
+        def handle_data(self, data):
+            if self.in_title:
+                self.title += data
+            elif not self.skip:
+                self.parts.append(data)
+
+    import re
+    p = P()
+    p.feed(html_text)
+    body = "".join(p.parts).replace("\xa0", " ")
+    lines = [re.sub(r"[ \t]+", " ", l).strip() for l in body.split("\n")]
+    text = "\n".join(l for l in lines if l)
+    title = re.sub(r"\s+", " ", p.title).strip()
+    return (title + "\n\n" if title else "") + text
+
+
+def tool_web_fetch(args):
+    url = str(args.get("url") or "").strip()
+    if not (url.startswith("https://") or url.startswith("http://")):
+        raise ToolError("Only http and https links can be read")
     try:
-        with urllib.request.urlopen(req, timeout=6) as resp:
-            d = json.loads(resp.read().decode())
+        page, ctype = _http(url, timeout=10)
     except Exception as e:
-        raise ToolError(f"Search failed: {e}")
-    parts = []
-    if d.get("Heading"):
-        parts.append(d["Heading"])
-    if d.get("AbstractText"):
-        parts.append(d["AbstractText"] + (f" ({d['AbstractURL']})" if d.get("AbstractURL") else ""))
-    for t in (d.get("RelatedTopics") or [])[:5]:
-        if isinstance(t, dict) and t.get("Text"):
-            parts.append("- " + t["Text"] + (f" ({t['FirstURL']})" if t.get("FirstURL") else ""))
-    if not parts:
-        raise ToolError("No results")
-    return _cap("\n".join(parts), 6000)
+        raise ToolError(f"Couldn't read the page: {e}")
+    looks_html = "html" in (ctype or "") or page.lstrip()[:200].lower().startswith(("<!doctype html", "<html"))
+    text = page_text(page) if looks_html else page
+    if not text.strip():
+        raise ToolError("The page has no readable text")
+    return _cap(text, 8000)       # ~2k tokens
 
 
 def tool_run_command(args):
@@ -504,6 +645,10 @@ TOOLS = {
         schema=_fn("web_search", "Search the web. Use for facts you don't know or anything recent.",
                    {"query": {"type": "string", "description": "What to search for"}}, ["query"]),
         item="web_search", title=lambda a: f"Searching “{a.get('query', '')}”", approve=None, run=tool_web_search),
+    "web_fetch": dict(
+        schema=_fn("web_fetch", "Read a web page as plain text, e.g. a link from web_search.",
+                   {"url": {"type": "string", "description": "An http(s) URL"}}, ["url"]),
+        item="dynamic_tool_call", title=lambda a: f"Reading {a.get('url', '')}", approve=None, run=tool_web_fetch),
     "active_window": dict(
         schema=_fn("active_window", "The app and window title the user is looking at right now."),
         item="dynamic_tool_call", title=lambda a: "Active window", approve=None, run=tool_active_window),

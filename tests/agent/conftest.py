@@ -22,14 +22,17 @@ def parse_events(stdout):
 def run_agent(tmp_path):
     """run_agent(req, script, caps={}, stdin_lines=[], env={}) -> (events, fake)"""
 
-    def run(req, script, caps=None, stdin_lines=(), env=None, host=None):
+    def run(req, script, caps=None, stdin_lines=(), env=None, host=None, pages=None):
         req = {"model": "hermes3:8b", "options": {"num_ctx": 4096}, **req}
         req_file = tmp_path / "request.json"
         req_file.write_text(json.dumps(req))
-        with FakeOllama(script, caps) as fake:
+        with FakeOllama(script, caps, pages) as fake:
             e = {
                 **os.environ,
                 "OLLAMA_HOST": host or fake.url,
+                "RICE_SEARCH_DDG_URL": fake.url + "/ddg",
+                "RICE_SEARXNG_URL": "",
+                "OLLAMA_API_KEY": "",
                 "PATH": f"{STUBS}:{os.environ['PATH']}",
                 "HOME": str(tmp_path),
                 "RICE_TEST_TMP": str(tmp_path),
