@@ -20,8 +20,10 @@ Keep it current: tick things off in the commit that does them.
 
 ## Pending (oldest first)
 - Native chat app: the local agent and its UI are built (2026-11-03: tools, approvals, reasoning,
-  model picker, context chips, / commands; plan in docs/superpowers/plans/). Still open: real web
-  search, auto-compaction, the ChatGPT/Claude subscription backends (docs/CHAT.md).
+  model picker, context chips, / commands, web search + fetch, auto-compaction; plan in
+  docs/superpowers/plans/, findings in docs/research/). Still open: memory across chats, voice, file
+  attachments beyond images, a better small tool model (Qwen3 4B to try), the ChatGPT/Claude
+  subscription backends (docs/CHAT.md).
 - Audio devices with real product photos (the Audiocular DAC) in the sound picker.
 - Shaders (screen and per-surface), used sparingly; use the GPUs well without waking the NVIDIA one.
 - Hyprland 0.57 port (when it's installed here; 0.56.2 now); monocle and scrolling layouts.
