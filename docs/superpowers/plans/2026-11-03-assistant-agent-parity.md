@@ -30,7 +30,7 @@ longer-term provider plan this stays compatible with).
   overshoot on a close, never a delay on a close.
 - Press feedback: scale `0.97` (rows `0.985`), `Theme.pressMs`, `Theme.easeOut`.
 - Helper stays Python stdlib only (no pip deps); runs as `bin/rice-ollama <cmd>`.
-- `.mjs` files use what Qt's V4 engine and Bun both accept: ES2017 + spread, no `?.`, no `??`, no top-level await.
+- `.mjs` files: Qt 6.12's module loader rejects object spread `{...a}` (probed 2026-11-03; array spread, `?.`, `??`, arrows work). Use `Object.assign`.
 - Tools that only read run without asking. Tools that execute, launch or open (run_command, launch_app, open_url)
   emit `request.opened` and wait; no answer in 120 s = `timeout` = declined.
 - One model in VRAM at a time (RTX 4050, 6 GB): a vision hop unloads with `keep_alive: 0` before the tool model runs.
