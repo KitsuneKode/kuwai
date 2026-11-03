@@ -61,8 +61,9 @@ TOOL_GUIDE = (
     "the user's files or clipboard, running or opening something, or anything recent you'd need to look up. "
     "Otherwise answer directly with no tool. When the user asks you to run, open or do something, call the "
     "tool in this reply: the app shows the user a Run / Don't run prompt itself, so never ask for permission "
-    "or confirmation in text. After a tool returns, answer from its result; if it failed or was declined, say "
-    "so in one line."
+    "or confirmation in text. Never tell the user to use a tool: use it yourself (after web_search, read the "
+    "best link with web_fetch when the snippets aren't enough). After a tool returns, answer from its result; "
+    "if it failed or was declined, say so in one line."
 )
 SYSTEM_VISION = (
     "You are a visual AI assistant operating on Arch Linux. Inspect screenshots, code, and interfaces with high "
@@ -541,7 +542,8 @@ def tool_web_search(args):
         lines.append(f"{i}. {r['title']} — {r['url']}")
         if r["snippet"]:
             lines.append("   " + r["snippet"])
-    lines.append("\nUse web_fetch on a link to read the page.")
+    lines.append("\nIf these snippets don't answer the question, call web_fetch on the most relevant link "
+                 "now, before answering.")
     return _cap("\n".join(lines), 6000)
 
 
@@ -558,6 +560,7 @@ def page_text(html_text):
         def __init__(self):
             super().__init__(convert_charrefs=True)
             self.skip = 0
+            self.dates = []        # datetime of open <time>/<relative-time>: "03 Nov" → "03 Nov (2026-11-03)"
             self.in_title = False
             self.title = ""
             self.parts = []
@@ -567,6 +570,8 @@ def page_text(html_text):
                 self.skip += 1
             elif tag == "title":
                 self.in_title = True
+            elif tag in ("time", "relative-time"):
+                self.dates.append((dict(attrs).get("datetime") or "")[:10])
             elif tag in self.BLOCK:
                 self.parts.append("\n")
 
@@ -575,6 +580,10 @@ def page_text(html_text):
                 self.skip = max(0, self.skip - 1)
             elif tag == "title":
                 self.in_title = False
+            elif tag in ("time", "relative-time") and self.dates:
+                d = self.dates.pop()
+                if d and not self.skip:
+                    self.parts.append(f" ({d})")
             elif tag in self.BLOCK:
                 self.parts.append("\n")
 
@@ -968,6 +977,10 @@ def run_turn(req):
     emit({"type": "turn.phase", "phase": "waiting" if is_loaded(model) else "loading"})
 
     system = SYSTEM_VISION if ("vision" in caps and not use_tools) else SYSTEM_GENERAL
+    # Small models fill in years from their training data ("released 2022"): give them today,
+    # and ask for what the source says, as written.
+    system += time.strftime(" Today is %A, %d %B %Y.") + (
+        " When you answer from a tool result or a page, copy dates, numbers and names exactly as written there.")
     if use_tools:
         system += TOOL_GUIDE
     convo = to_ollama_messages(req.get("messages") or [], "vision" in caps)

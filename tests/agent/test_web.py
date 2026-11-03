@@ -87,3 +87,14 @@ def test_search_falls_back_to_wikipedia_last(run_agent):
     out = completion(events, started(events, "web_search")[0]["id"])["output"]
     assert "1. Hyprland — https://en.wikipedia.org/wiki/Hyprland" in out
     assert "Hyprland is a tiling compositor" in out
+
+
+def test_web_fetch_keeps_machine_dates(run_agent):
+    page = ('<html><body><main><h2>Hyprland 0.57.1</h2><relative-time datetime="2026-11-03T09:47:12Z">03 Nov 09:47'
+            '</relative-time><p>Posted <time datetime="2026-10-28">last week</time>.</p></main></body></html>')
+    events, _ = run_agent(USER, [[call("web_fetch", {"url": "__FAKE__/page"}), {"done": True}], answer()],
+                          caps=CAPS, pages={"/page": ("text/html", page)})
+    item = [e for e in events if e["type"] == "item.started" and e["itemType"] == "dynamic_tool_call"][0]
+    out = completion(events, item["id"])["output"]
+    assert "03 Nov 09:47 (2026-11-03)" in out
+    assert "last week (2026-10-28)" in out
