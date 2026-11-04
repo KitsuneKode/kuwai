@@ -52,8 +52,13 @@ Item {
                                : compact ? (leftGroup.implicitWidth > 0 && rightGroup.implicitWidth > 0 ? gap : 0) : gap * 2
     // What the mini notch holds, and the room either side when it's
     // narrower than the notch's minimum: the time sits in the middle.
-    readonly property real miniContent: clock.width + (soonText ? soonLabel.implicitWidth + 12 : 0) + rightGroup.implicitWidth + gaps
-    readonly property real miniPad: Math.max(0, (56 - miniContent) / 2)
+    // Symmetric: whatever sits on the right (a privacy dot, the agents)
+    // gets the same room on the left, so the time stays dead centre on
+    // every screen (it used to drift by the right side's width).
+    readonly property real miniSide: rightGroup.implicitWidth > 0 ? rightGroup.implicitWidth + 12 : 0
+    readonly property real miniCore: clock.width + (soonText ? soonLabel.implicitWidth + 12 : 0)
+    readonly property real miniContent: miniCore + 2 * miniSide
+    readonly property real miniPad: Math.max(miniSide, (56 - miniCore) / 2)
     implicitWidth: mini ? Math.max(56, miniContent)
                  : compact ? Math.max(activity === "moment" ? 220 : 78, leftGroup.implicitWidth + rightGroup.implicitWidth + gaps)
                  : balanced ? side * 2 + clockW + gaps
@@ -395,7 +400,7 @@ Item {
         // Agents at work (kittymux): their marks, stacked (AgentStack).
         AgentStack {
             id: agents
-            visible: Kittymux.working.length > 0
+            visible: list.length > 0
             anchors.verticalCenter: parent.verticalCenter
             bar: rest.bar
         }

@@ -187,8 +187,16 @@ Singleton {
     }
     // Osd, for inputs: a USB microphone plugged in or out, or the input
     // picked in Sound (quiet): { key, glyph, image, title, link, gone, quiet, detail }.
-    // "Sony WF-C510" → "WF-C510": the model, where a detail line is short of room.
-    function short(t) { const w = (t || "").split(" "); return t.length > 10 && w.length > 1 ? w[w.length - 1] : t; }
+    // "Sony WF-C510" → "WF-C510", "Kiwi Ears Cadenza" → "Cadenza": the maker
+    // goes where a detail line is short of room; a name that is the model
+    // ("AirPods Pro", "Galaxy Buds 2") stays whole.
+    readonly property var makers: ["Kiwi Ears", "Audio-Technica", "Sennheiser", "Soundcore", "Moondrop", "Truthear", "Samsung", "OnePlus",
+                                   "Xiaomi", "Nothing", "Google", "Realme", "Anker", "Jabra", "Apple", "Beats", "Sony", "Bose", "FiiO", "JBL", "7Hz", "BOYA"]
+    function short(t) {
+        t = t || "";
+        for (const m of makers) if (t.toLowerCase().startsWith(m.toLowerCase() + " ") && t.length > m.length + 1) return t.slice(m.length + 1);
+        return t;
+    }
     function inputCard(c) {
         if (c.gone) lastGone = { key: c.key, at: Date.now() };
         showCard({ key: c.key, glyph: c.glyph, image: c.image, title: c.title, link: c.link, gone: c.gone, quiet: !!c.quiet,
@@ -196,12 +204,14 @@ Singleton {
                    tone: c.gone || c.quiet ? Theme.textSecondary : Theme.green, detail: c.detail || "", battery: -1 },
                  c.gone ? 3400 : c.quiet ? 2600 : 4000);
     }
-    // Once, after the hello: what's already here. Bluetooth if any (sound
-    // gear first), else Osd's output if it's a DAC or known IEMs.
+    // Once per login, after the hello: what's already here. Bluetooth if any
+    // (sound gear first), else Osd's output if it's a DAC or known IEMs. A
+    // shell restart in the session already knows.
     signal askOutput()
     Timer {
         interval: 5800; running: true
         onTriggered: {
+            if (!root.freshLogin) return;
             const audio = ["earbuds", "iem", "headphones", "speaker"];
             const ds = root.connected.slice().sort((a, b) => (audio.indexOf(root.btKind(a)) < 0) - (audio.indexOf(root.btKind(b)) < 0));
             // The gear sound is on comes first (the IEMs, though the earbuds

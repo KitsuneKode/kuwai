@@ -1,5 +1,6 @@
 // Agents at work (kittymux), as their marks stacked one over the next, the
-// first on top (three at most, then "+2"). Resting on it, the stack fans
+// first on top (three at most, then "+2"). One blocked on you (an unread
+// needs-you event) comes first, ringed in orange. Resting on it, the stack fans
 // a little apart: there's more than one in there.
 //
 //   one     ✳                 click: the Agents tab · right-click: go to it
@@ -27,7 +28,9 @@ import qs.services
 Item {
     id: stack
     property var bar
-    readonly property var list: Kittymux.working
+    readonly property var waiting: Kittymux.attention.filter(e => e.severity === "needs-you")
+        .map(e => ({ agent: e.agent, title: Kittymux.clean(e.tab || e.title), where: "", status: "needs you", needs: true, event: e.id }))
+    readonly property var list: waiting.concat(Kittymux.working)
     readonly property int shown: Math.min(3, list.length)
     readonly property bool many: list.length > 1
     readonly property bool hovered: hover.hovered
@@ -51,10 +54,12 @@ Item {
             width: stack.markSize; height: stack.markSize
             // Over the one behind it: a ring of the island's black between them.
             Rectangle {
-                visible: stack.many
+                visible: stack.many || (!!parent.a && !!parent.a.needs)
                 anchors.centerIn: parent
                 width: parent.width + 4; height: width; radius: width / 2
                 color: Qt.rgba(0, 0, 0, 0.94)
+                border.width: parent.a && parent.a.needs ? 1.5 : 0
+                border.color: Theme.orange
             }
             Image {
                 id: mark
@@ -91,7 +96,7 @@ Item {
             if (stack.many) {
                 if (button === Qt.RightButton) { stack.open = false; Notifs.toggleCenter("agents", "pointer", stack.bar.screenName); }
                 else stack.open = !stack.open;
-            } else if (button === Qt.RightButton) Kittymux.act(stack.list[0].action);
+            } else if (button === Qt.RightButton) stack.go(stack.list[0]);
             else Notifs.toggleCenter("agents", "pointer", stack.bar.screenName);
         }
     }
@@ -99,8 +104,8 @@ Item {
         shown: hover.hovered && !stack.open
         below: true
         text: !stack.list.length ? ""
-            : stack.many ? stack.list.length + " agents working · click: choose one · right-click: all agents"
-            : stack.list[0].agent + " · " + stack.list[0].title + " · working\nClick: all agents · right-click: go to it"
+            : stack.many ? (stack.waiting.length ? stack.waiting.length + " need you · " : "") + Kittymux.working.length + " working · click: choose one · right-click: all agents"
+            : stack.list[0].agent + " · " + stack.list[0].title + " · " + stack.list[0].status + "\nClick: all agents · right-click: go to it"
     }
 
     // Keep the island as it is while the chooser is open (IslandBar.menus).
@@ -112,7 +117,8 @@ Item {
     }
     Component.onDestruction: if (counted) bar.menus = Math.max(0, bar.menus - 1)
     Spring { id: k; tier: stack.open ? Theme.surfaceIn : Theme.surfaceOut; epsilon: 0.002 }
-    function pick(a) { open = false; if (a) Kittymux.act(a.action); }
+    function go(a) { if (!a) return; if (a.event) Kittymux.jumpEvent(a.event); else Kittymux.act(a.action); }
+    function pick(a) { open = false; go(a); }
 
     PopupWindow {
         id: pop
@@ -213,7 +219,7 @@ Item {
                                 width: parent.width; elide: Text.ElideRight
                                 text: row.modelData.agent + (row.modelData.status ? " · " + row.modelData.status : "")
                                 size: 11
-                                color: Theme.textSecondary
+                                color: row.modelData.needs ? Theme.orange : Theme.textSecondary
                             }
                         }
                         Label {

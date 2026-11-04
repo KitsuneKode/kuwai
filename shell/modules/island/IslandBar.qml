@@ -138,8 +138,9 @@ Scope {
             // compact row holds still under the pointer, so the art or a mark
             // you aimed at stays there; music opens Now Playing from it.
             property bool holdCompact: false
-            // Reached by the island itself, kept by it and 12 px around (hit
-            // slop): grazing its edge doesn't flicker it.
+            // Reached by the island itself, kept by it and 8 px around (hit
+            // slop): grazing its edge doesn't flicker it. A press there lets
+            // go at once, so the next click reaches what's beneath.
             function syncHover() {
                 const h = frameHover.hovered || (hovered && slopHover.hovered);
                 if (h && !hovered) holdCompact = restRow.compact;
@@ -377,9 +378,10 @@ Scope {
             }
             Item {
                 id: slop
-                x: frame.x - 12; y: 0
-                width: frame.width + 24; height: frame.y + frame.height + 12
+                x: frame.x - 8; y: 0
+                width: frame.width + 16; height: frame.y + frame.height + 8
                 HoverHandler { id: slopHover; onHoveredChanged: win.syncHover() }
+                PointHandler { acceptedButtons: Qt.AllButtons; onActiveChanged: if (active && !frameHover.hovered) { win.hovered = false; win.syncHover(); } }
             }
             Item {
                 id: frame
@@ -407,7 +409,13 @@ Scope {
                 WheelHandler {
                     enabled: win.cardHere
                     property real sum: 0
-                    onWheel: event => { sum += Math.abs(event.angleDelta.y) + Math.abs(event.pixelDelta.y); if (sum >= 60) { sum = 0; win.pushBack(-600); } }
+                    // Upward only (the wheel rolled up, or two fingers swiped up,
+                    // whichever way natural scrolling flips the delta).
+                    onWheel: event => {
+                        const up = (event.inverted ? -1 : 1) * (event.pixelDelta.y || event.angleDelta.y);
+                        sum = up > 0 ? sum + up : 0;
+                        if (sum >= 60) { sum = 0; win.pushBack(-600); }
+                    }
                 }
                 TapHandler { enabled: win.cardHere; acceptedButtons: Qt.RightButton; onTapped: win.pushBack(0) }
 
