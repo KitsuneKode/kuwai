@@ -36,7 +36,7 @@ Item {
     property date now: new Date()
     Timer { interval: 1000; running: true; repeat: true; onTriggered: view.now = new Date() }
     readonly property int hour: now.getHours()
-    readonly property string greeting: hour < 5 ? "Good night" : hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening"
+    readonly property string greeting: hour < 5 ? "Up late" : hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening"
 
     // ── Rest ⇄ asking ────────────────────────────────────────────────────
     property bool asking: false

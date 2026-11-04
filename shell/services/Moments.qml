@@ -178,7 +178,8 @@ Singleton {
     readonly property string userName: { const u = Quickshell.env("USER") || ""; return u.charAt(0).toUpperCase() + u.slice(1); }
     function greeting() {
         const h = new Date().getHours();
-        return h < 5 ? "Good night" : h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+        // "Good night" is a goodbye (Farewell says it); arriving late is "Up late".
+        return h < 5 ? "Up late" : h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
     }
     FileView {
         id: hello
