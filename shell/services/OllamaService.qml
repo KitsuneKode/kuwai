@@ -1002,7 +1002,7 @@ function onPanelClosed() {
     property int renderSeq: 0
     property int renderTick: 0           // bumps when a block's HTML arrives
 
-    function blockKey(b) { return b.kind + "\u0001" + (b.lang || "") + "\u0001" + b.text; }
+    function blockKey(b) { return b.kind + (b.live ? "~" : "") + "\u0001" + (b.lang || "") + "\u0001" + b.text; }
     // The block's HTML, or "" while it's being rendered (it asks for it).
     function blockHtml(b) {
         if (!b || !b.text) return "";
@@ -1014,7 +1014,7 @@ function onPanelClosed() {
             const id = ++renderSeq;
             renderKeys[id] = k;
             if (!renderProc.running) renderProc.running = true;
-            renderProc.write(JSON.stringify({ id: id, kind: b.kind, lang: b.lang || "", text: b.text }) + "\n");
+            renderProc.write(JSON.stringify({ id: id, kind: b.kind, lang: b.lang || "", text: b.text, live: !!b.live }) + "\n");
         }
         return "";
     }

@@ -245,11 +245,13 @@ def render_block(req):
         lexer = lexer_for(text, req.get("lang") or "") or get_lexer_by_name("text")
         pre = re.search(r"<pre[\s\S]*</pre>", code_html(text, lexer, 12))
         return pre.group(0) if pre else html.escape(text)
-    import markdown
-    body = markdown.markdown(autolink(text), extensions=["tables", "sane_lists"])
-    body = body.replace("<table>", '<table width="100%" cellspacing="0" cellpadding="0">').replace("<th>", '<th align="left">')
-    # The last paragraph's bottom margin would still add height; trim the edges.
-    return BLOCK_STYLE + body.strip()
+    # Our own Streamdown-style renderer (bin/rice_md.py, stdlib): python-markdown went
+    # missing with Python 3.14 and every block came back as raw text.
+    sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+    import rice_md
+    if req.get("live"):
+        text = rice_md.heal(text)      # the block being written: close what's still open
+    return BLOCK_STYLE + rice_md.render(text)
 
 
 def serve():
@@ -264,8 +266,8 @@ def serve():
             continue
         try:
             out = {"id": req.get("id"), "html": render_block(req)}
-        except Exception as e:  # one bad block mustn't stop the server
-            out = {"id": req.get("id"), "html": html.escape(req.get("text") or ""), "error": str(e)}
+        except Exception as e:  # one bad block mustn't stop the server; "" → the chat shows Qt's own Markdown
+            out = {"id": req.get("id"), "html": "", "error": str(e)}
         sys.stdout.write(json.dumps(out) + "\n")
         sys.stdout.flush()
 

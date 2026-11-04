@@ -344,7 +344,8 @@ Item {
                                 readonly property string html: {
                                     OllamaService.renderTick;
                                     if (kind === "code" && open) return "";
-                                    return OllamaService.blockHtml({ kind: kind, lang: lang, text: tail && kind === "md" ? Turn.healTail(text) : text });
+                                    // The block being written is repaired by the renderer (Streamdown's remend).
+                                    return OllamaService.blockHtml({ kind: kind, lang: lang, text: text, live: tail && kind === "md" });
                                 }
                                 // Keep the last HTML while the next is on its way (no flicker).
                                 property string shown: ""
