@@ -98,4 +98,36 @@ Singleton {
         return bin !== "quickshell" && bin !== "qs" && p["stream.monitor"] !== "true" && !(p["node.name"] || "").startsWith("quickshell");
     }).map(n => (n.properties || {})["application.name"] || n.name || "An app")
     readonly property bool micInUse: micUsers.length > 0
+
+    // ── Privacy: who is using the camera ─────────────────────────────────
+    // The UVC driver's use count goes up while anything has the camera open
+    // (an app, or PipeWire for one): a tiny sysfs read every 2 s, no
+    // process. Who it is gets looked up once, when it turns on.
+    property bool camInUse: false
+    property var camHolders: []
+    readonly property var camStreams: Pipewire.nodes.values.filter(n => ((n.properties || {})["media.class"] || "") === "Stream/Input/Video")
+        .map(n => (n.properties || {})["application.name"] || n.name || "An app")
+    readonly property var camUsers: [...new Set(camHolders.concat(camStreams))]
+    property bool camKnown: false
+    FileView {
+        id: camRef
+        path: "/sys/module/uvcvideo/refcnt"
+        printErrors: false
+        onLoaded: {
+            root.camKnown = true;
+            const on = Number(text().trim()) > 0;
+            if (on === root.camInUse) return;
+            root.camInUse = on;
+            if (on) camWho.running = true;
+            else root.camHolders = [];
+        }
+    }
+    Timer { interval: 2000; repeat: true; running: true; onTriggered: camRef.reload() }
+    Process {
+        id: camWho
+        command: ["sh", "-c", "for p in $(fuser /dev/video* 2>/dev/null); do cat /proc/$p/comm; done | sort -u"]
+        stdout: StdioCollector {
+            onStreamFinished: root.camHolders = text.trim().split("\n").filter(x => x && x !== "pipewire" && x !== "wireplumber")
+        }
+    }
 }

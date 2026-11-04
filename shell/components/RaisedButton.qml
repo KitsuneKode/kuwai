@@ -108,4 +108,12 @@ Item {
         cursorShape: b.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
         onClicked: if (b.enabled) b.clicked()
     }
+
+    // Keyboard and screen readers: Tab reaches it, Space/Enter presses it.
+    activeFocusOnTab: b.enabled
+    Accessible.role: Accessible.Button
+    Accessible.name: b.text
+    Accessible.onPressAction: if (b.enabled) b.clicked()
+    Keys.onPressed: e => { if (b.enabled && (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter)) { b.clicked(); e.accepted = true; } }
+    FocusRing { cornerRadius: 10 }
 }

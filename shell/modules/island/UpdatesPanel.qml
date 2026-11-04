@@ -352,7 +352,7 @@ FocusScope {
                     Column {
                         x: 32; anchors.verticalCenter: parent.verticalCenter
                         spacing: 1
-                        Label { text: "Flatpak · " + Updates.flatpak.length + (Updates.flatpak.length === 1 ? " app" : " apps"); size: 14; weight: Theme.wSemibold }
+                        Label { text: "Flatpak · " + Updates.flatpak.length + (Updates.flatpak.length === 1 ? " update" : " updates"); size: 14; weight: Theme.wSemibold }
                         Label { text: "Sandboxed and signed: pick any, no review needed"; size: 11; color: Theme.textTertiary }
                     }
                 }
@@ -373,7 +373,11 @@ FocusScope {
                             x: 56; anchors.verticalCenter: parent.verticalCenter
                             width: parent.width - 56
                             spacing: 1
-                            Label { width: parent.width; elide: Text.ElideRight; text: fpRow.modelData.name + "  ·  " + fpRow.modelData.id; size: 13; weight: Theme.wMedium }
+                            Label {
+                                width: parent.width; elide: Text.ElideRight; size: 13; weight: Theme.wMedium
+                                text: fpRow.modelData.name + "  ·  " + (fpRow.modelData.app || fpRow.modelData.id)
+                                    + (fpRow.modelData.runtime ? "  ·  runtime" : "") + (fpRow.modelData.install === "system" ? "  ·  system-wide" : "")
+                            }
                             Version { visible: fpRow.modelData.old !== ""; from: fpRow.modelData.old; to: fpRow.modelData.new }
                         }
                     }
@@ -655,22 +659,25 @@ FocusScope {
                     { id: "check", label: "Space and power" },
                     ...(Updates.plan.repo ? [{ id: "repo", label: "Arch packages" }] : []),
                     ...(Updates.plan.aur.length ? [{ id: "build", label: "Build AUR packages, as you" }, { id: "install", label: "Install AUR packages" }] : []),
-                    ...(Updates.plan.flatpak && Updates.plan.flatpak.length ? [{ id: "flatpak", label: "Flatpak apps" }] : []),
+                    ...(Updates.plan.flatpak && Updates.plan.flatpak.length ? [{ id: "flatpak", label: "Flatpak" }] : []),
                     { id: "after", label: "Finish up" }
                 ]
                 Row {
                     required property var modelData
                     readonly property bool seen: Updates.phasesSeen.indexOf(modelData.id) >= 0
                     readonly property bool now: Updates.running && Updates.phase === modelData.id
+                    // The run is over and this step never ran (its packages were skipped):
+                    // say so, instead of an empty circle that looks like it stalled.
+                    readonly property bool skipped: !Updates.running && !!runCol.res && !seen
                     spacing: 10
                     Text {
                         width: 16
                         anchors.verticalCenter: parent.verticalCenter
-                        text: parent.now ? "\u{f0997}" : parent.seen ? "\u{f012c}" : "\u{f0766}"
+                        text: parent.now ? "\u{f0997}" : parent.seen ? "\u{f012c}" : parent.skipped ? "\u{f0374}" : "\u{f0766}"
                         font.family: Theme.fontGlyph; font.pixelSize: 13
                         color: parent.now ? Theme.accent : parent.seen ? Theme.green : Theme.textTertiary
                     }
-                    Label { anchors.verticalCenter: parent.verticalCenter; text: modelData.label; size: 13; weight: parent.now ? Theme.wSemibold : Theme.wRegular; color: parent.seen || parent.now ? Theme.textPrimary : Theme.textTertiary }
+                    Label { anchors.verticalCenter: parent.verticalCenter; text: modelData.label + (parent.skipped ? " · skipped" : ""); size: 13; weight: parent.now ? Theme.wSemibold : Theme.wRegular; color: parent.seen || parent.now ? Theme.textPrimary : Theme.textTertiary }
                 }
             }
         }
@@ -700,6 +707,15 @@ FocusScope {
                 title: modelData.pkg + " wasn't updated"
                 detail: modelData.why
             }
+        }
+        // Asked more than once: offer the one-password helper (asks once more, to set it up).
+        Notice {
+            visible: !Updates.running && !!runCol.res && runCol.res.oneprompt === false && (runCol.res.prompts || 0) > 1 && Updates.helperState !== "done"
+            glyph: "\u{f0306}"; tone: Theme.accent
+            title: Updates.helperState === "failed" ? "Not set up (cancelled?)" : "Asked for your password " + (runCol.res ? runCol.res.prompts : 0) + " times"
+            detail: "Set up once (your password one more time) and every update after asks just once."
+            action: Updates.helperState === "working" ? "" : "Set up"
+            onActed: Updates.setupOnePrompt()
         }
         Notice {
             visible: !Updates.running && !!runCol.res && !!runCol.res.pacnew && runCol.res.pacnew.length > 0

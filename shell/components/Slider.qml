@@ -156,10 +156,45 @@ Item {
             shown.target = f;
             s.moved(s.denorm(f));
         }
+        // Scrolling scrolls the page, not the slider under the pointer on its
+        // way past (that set brightness to nothing while you scrolled
+        // Controls). A slider takes the wheel only once the pointer has
+        // rested on it (wheelArm) and the scroll began there, not as the tail
+        // of a page scroll that swept across it.
+        onContainsMouseChanged: { if (containsMouse) wheelArm.restart(); else { wheelArm.stop(); s.wheelReady = false; } }
         onWheel: wheel => {
+            if (!s.wheelReady || Date.now() - s.lastPassWheel < 350) {
+                s.lastPassWheel = Date.now();
+                wheelArm.restart();          // keep scrolling the page: rest again to adjust
+                wheel.accepted = false;
+                return;
+            }
             const d = (wheel.angleDelta.y || -wheel.angleDelta.x) / 120;
             const f = Math.max(0, Math.min(1, s.norm(s.value) + d * Math.max(0.01, s.stepSize / Math.abs(s.to - s.from || 1)) * 5));
             s.moved(s.denorm(f));
         }
     }
+    property bool wheelReady: false
+    property real lastPassWheel: 0
+    Timer { id: wheelArm; interval: 450; onTriggered: s.wheelReady = true }
+
+    // Keyboard and screen readers: ←→ (↑↓) move it a twentieth, Shift a
+    // fifth; Home/End to the ends.
+    activeFocusOnTab: true
+    Accessible.role: Accessible.Slider
+    Accessible.name: s.label + (s.valueText ? ", " + s.valueText : "")
+    Keys.onPressed: e => {
+        const span = s.to - s.from, big = e.modifiers & Qt.ShiftModifier;
+        const step = Math.max(Math.abs(s.stepSize), Math.abs(span) / (big ? 5 : 20)) * (span < 0 ? -1 : 1);
+        let v = null;
+        if (e.key === Qt.Key_Right || e.key === Qt.Key_Up) v = s.value + step;
+        else if (e.key === Qt.Key_Left || e.key === Qt.Key_Down) v = s.value - step;
+        else if (e.key === Qt.Key_Home) v = s.from;
+        else if (e.key === Qt.Key_End) v = s.to;
+        if (v === null) return;
+        const lo = Math.min(s.from, s.to), hi = Math.max(s.from, s.to);
+        s.moved(Math.max(lo, Math.min(hi, v)));
+        e.accepted = true;
+    }
+    FocusRing { cornerRadius: 12 }
 }

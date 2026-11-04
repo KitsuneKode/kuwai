@@ -119,4 +119,17 @@ Rectangle {
             }
         }
     }
+
+    // Keyboard and screen readers: a tab bar; ←→ move between its options.
+    activeFocusOnTab: true
+    Accessible.role: Accessible.PageTabList
+    Accessible.name: (seg.options.find(o => o.id === seg.current) || {}).label || ""
+    Keys.onPressed: e => {
+        const ids = seg.options.map(o => o.id), i = ids.indexOf(seg.current);
+        if (e.key === Qt.Key_Right && i < ids.length - 1) seg.picked(ids[i + 1]);
+        else if (e.key === Qt.Key_Left && i > 0) seg.picked(ids[i - 1]);
+        else return;
+        e.accepted = true;
+    }
+    FocusRing {}
 }

@@ -10,6 +10,7 @@ Item {
     id: t
     property bool on: false
     property bool enabled: true
+    property string label: ""         // what it switches, for screen readers
     signal toggled()
 
     implicitWidth: 42
@@ -50,4 +51,21 @@ Item {
         cursorShape: Qt.PointingHandCursor
         onClicked: t.toggled()
     }
+
+    // Keyboard and screen readers: a switch; Space/Enter flips it.
+    activeFocusOnTab: t.enabled
+    Accessible.role: Accessible.CheckBox
+    Accessible.checkable: true
+    Accessible.checked: t.on
+    // Named by its own label, else the SettingsRow it sits in.
+    Accessible.name: {
+        if (t.label) return t.label;
+        for (let p = t.parent, k = 0; p && k < 4; p = p.parent, k++)
+            if (typeof p.label === "string" && p.label) return p.label;
+        return "";
+    }
+    Accessible.onToggleAction: if (t.enabled) t.toggled()
+    Accessible.onPressAction: if (t.enabled) t.toggled()
+    Keys.onPressed: e => { if (t.enabled && (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter)) { t.toggled(); e.accepted = true; } }
+    FocusRing { cornerRadius: 13 }
 }

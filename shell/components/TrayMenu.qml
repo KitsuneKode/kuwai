@@ -153,7 +153,8 @@ Item {
                 delegate: Item {
                     id: row
                     required property var modelData
-                    readonly property var e: modelData
+                    // (null for a moment while the list is replaced: a Wi-Fi scan, a device connecting)
+                    readonly property var e: modelData || ({ isSeparator: true, enabled: false, text: "", hasChildren: false })
                     width: list.width
                     height: e.isSeparator ? 9 : 30
 

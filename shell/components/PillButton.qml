@@ -50,4 +50,12 @@ Rectangle {
         cursorShape: Qt.PointingHandCursor
         onClicked: pill.clicked()
     }
+
+    // Keyboard and screen readers: Tab reaches it, Space/Enter presses it.
+    activeFocusOnTab: true
+    Accessible.role: Accessible.Button
+    Accessible.name: pill.text || pill.glyph
+    Accessible.onPressAction: pill.clicked()
+    Keys.onPressed: e => { if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { pill.clicked(); e.accepted = true; } }
+    FocusRing {}
 }

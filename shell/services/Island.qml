@@ -19,7 +19,7 @@ import Quickshell.Io
 Singleton {
     id: root
 
-    readonly property var panels: ["calendar", "power", "launcher", "settings", "system", "theme", "keys", "switcher", "updates"]
+    readonly property var panels: ["calendar", "power", "launcher", "settings", "system", "theme", "keys", "switcher", "updates", "media"]
     property string panel: ""
     // Each screen's island width at rest, so other surfaces (the clipboard,
     // toasts) can grow out of exactly its shape. Set by IslandBar.
@@ -62,8 +62,18 @@ Singleton {
         path: Quickshell.env("HOME") + "/.local/state/kuwai/state"
         watchChanges: true; printErrors: false
         onFileChanged: reload()
-        onLoaded: { const m = text().match(/^workspace_model=(\S+)/m); root.workspaceModel = m ? m[1] : "per_screen"; }
+        onLoaded: {
+            const t = text();
+            const m = t.match(/^workspace_model=(\S+)/m);
+            root.workspaceModel = m ? m[1] : "per_screen";
+            // Each screen's workspace block, as kuwai assigned it (wsbase.DP-3=10).
+            const bases = {};
+            const rx = /^wsbase\.(\S+)=(\d+)$/gm;   // (no String.matchAll in QML's engine)
+            for (let b = rx.exec(t); b; b = rx.exec(t)) bases[b[1]] = Number(b[2]);
+            root.wsBases = bases;
+        }
     }
+    property var wsBases: ({})
     readonly property bool desktops: workspaceModel === "desktops"
 
     // A password prompt is waiting (kuwai's polkit agent, shell-auth, writes
@@ -141,6 +151,7 @@ Singleton {
         openOn(name, screenName, how, from);
     }
     function openOn(name, screenName, how, from) {
+        previewing = false;
         const s = screenName || Screens.focusedName;
         history = panel && panel !== name && s === screen ? [...history, panel] : from === "island" ? ["island"] : [];
         screen = s;
@@ -161,7 +172,11 @@ Singleton {
         target: Hyprland
         function onRawEvent(event) { if (event.name === "openwindow" && root.panel && root.panel !== "switcher") root.close(); }
     }
-    function close() { panel = ""; history = []; innerBack = null; innerBackLabel = ""; }
+    function close() { panel = ""; history = []; innerBack = null; innerBackLabel = ""; previewing = false; }
+    // Opened by resting the pointer (the music's art): it folds away when the
+    // pointer leaves the island, unless you click to keep it (open()).
+    property bool previewing: false
+    function preview(name, screenName) { openOn(name, screenName, "pointer", "island"); previewing = true; }
     // The launcher's last search, kept between openings (selected, so typing replaces it).
     property string lastQuery: ""
     // A mode to open the launcher in (":" emoji, ";" glyphs): placed with the

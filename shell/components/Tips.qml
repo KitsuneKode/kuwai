@@ -42,7 +42,7 @@ Item {
         instant = now;
         shown = true;
     }
-    Timer { id: wait; interval: 450; onTriggered: tips.apply(false) }
+    Timer { id: wait; interval: Theme.tipMs; onTriggered: tips.apply(false) }
 
     readonly property rect at: target && shown ? target.mapToItem(tips, 0, 0, target.width, target.height) : Qt.rect(0, 0, 0, 0)
     readonly property bool flip: at.y - bubble.height - 8 < 0

@@ -1,11 +1,13 @@
-// Signal bars and a battery, in the theme's colour (as in the reference).
-// Each has its own tooltip: the network (name, strength) and the battery
-// (charge, plugged in or on battery, time left). No battery, no battery.
+// Bluetooth (in the expanded island), signal bars and a battery, in the
+// theme's colour (as in the reference). Each has its own tooltip — what's
+// connected, the network (name, strength), the battery (charge, time left) —
+// and a menu on a click (left or right). No battery, no battery.
 import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.UPower
 import Quickshell.Networking
+import Quickshell.Bluetooth
 import qs.config
 import qs.components
 import qs.services
@@ -13,7 +15,10 @@ import qs.services
 Row {
     id: status
     spacing: 8
-    property color tint: Theme.accent
+    // Status is white, like any status bar: the accent means "where you are"
+    // (the current workspace) and nothing else. Colour here only says
+    // something: green charging, red low.
+    property color tint: Theme.textPrimary
 
     readonly property var battery: UPower.displayDevice
     readonly property bool hasBattery: battery && battery.isLaptopBattery && battery.isPresent
@@ -23,8 +28,12 @@ Row {
     readonly property var wifiDev: Networking.devices.values.find(d => d.type === DeviceType.Wifi) || null
     readonly property var net: wifiDev ? wifiDev.networks.values.find(n => n.connected) || null : null
     readonly property real signal: net ? net.signalStrength : 0
-    // The island window it sits in (rest or hover); set → right-click menus.
+    // The island window it sits in (rest or hover); set → click menus.
     property var bar: null
+    // Bluetooth shows in the expanded island (at rest it would crowd it).
+    property bool showBluetooth: false
+    readonly property var bt: Bluetooth.defaultAdapter
+    readonly property var btConnected: Bluetooth.devices.values.filter(d => d.connected)
     property string mode: ""
     FileView {
         path: Quickshell.env("HOME") + "/.local/state/kuwai/state"
@@ -34,6 +43,28 @@ Row {
     }
     function hm(s) { const h = Math.floor(s / 3600), m = Math.round(s % 3600 / 60); return h ? h + "h " + m + "m" : m + "m"; }
 
+    Item {
+        id: btItem
+        visible: status.showBluetooth && !!status.bt
+        width: 14; height: 14
+        anchors.verticalCenter: parent.verticalCenter
+        Text {
+            anchors.centerIn: parent
+            // On with something connected / on / off.
+            text: !status.bt || !status.bt.enabled ? "\u{f00b2}" : status.btConnected.length ? "\u{f00b1}" : "\u{f00af}"
+            font.family: Theme.fontGlyph; font.pixelSize: 14
+            color: status.bt && status.bt.enabled ? (status.btConnected.length ? status.tint : Qt.alpha(status.tint, 0.6)) : Qt.alpha(status.tint, 0.3)
+        }
+        HoverHandler { id: btHover; cursorShape: status.bar ? Qt.PointingHandCursor : Qt.ArrowCursor }
+        TapHandler { enabled: !!status.bar; acceptedButtons: Qt.LeftButton | Qt.RightButton; onTapped: btMenu.open = !btMenu.open }
+        Tip {
+            text: !status.bt ? "" : !status.bt.enabled ? "Bluetooth is off"
+                : status.btConnected.length ? status.btConnected.map(d => (d.name || d.deviceName) + (d.batteryAvailable ? " · " + Math.round(d.battery * 100) + "%" : "")).join("  ·  ")
+                : "Bluetooth · nothing connected"
+            shown: btHover.hovered && !btMenu.open
+            below: true
+        }
+    }
     Item {
         id: netItem
         width: bars.width; height: 14
@@ -54,10 +85,11 @@ Row {
                 }
             }
         }
-        HoverHandler { id: netHover }
+        HoverHandler { id: netHover; cursorShape: status.bar ? Qt.PointingHandCursor : Qt.ArrowCursor }
+        TapHandler { enabled: !!status.bar; acceptedButtons: status.showBluetooth ? Qt.LeftButton | Qt.RightButton : Qt.RightButton; onTapped: netMenu.open = !netMenu.open }
         Tip {
             text: !status.wifiDev ? "No Wi-Fi" : status.net ? status.net.name + " · " + Math.round(status.signal * 100) + "%" : "Not connected"
-            shown: netHover.hovered
+            shown: netHover.hovered && !netMenu.open
             below: true
         }
     }
@@ -70,7 +102,7 @@ Row {
         Rectangle {
             height: parent.height; radius: 4
             width: Math.max(5, (parent.width - 2) * status.pct / 100)
-            color: status.pct <= 20 && !status.onAC ? Theme.red : status.tint
+            color: status.pct <= 20 && !status.onAC ? Theme.critical : status.charging ? Theme.positive : status.tint
             Behavior on width { NumberAnimation { duration: 400; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
         }
         Rectangle { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; width: 2; height: 5; radius: 1; color: Qt.alpha(status.tint, 0.45) }
@@ -83,24 +115,17 @@ Row {
             font.pixelSize: 10
             color: "#0b0b0d"
         }
-        HoverHandler { id: batHover }
+        HoverHandler { id: batHover; cursorShape: status.bar ? Qt.PointingHandCursor : Qt.ArrowCursor }
+        TapHandler { enabled: !!status.bar; acceptedButtons: status.showBluetooth ? Qt.LeftButton | Qt.RightButton : Qt.RightButton; onTapped: batMenu.open = !batMenu.open }
         Tip {
             text: status.pct + "% · " + (status.charging ? "Charging" + (status.battery.timeToFull > 0 ? ", full in " + status.hm(status.battery.timeToFull) : "")
                   : status.onAC ? "Plugged in" : "On battery" + (status.battery.timeToEmpty > 0 ? ", " + status.hm(status.battery.timeToEmpty) + " left" : ""))
-            shown: batHover.hovered
+            shown: batHover.hovered && !batMenu.open
             below: true
         }
     }
 
-    // ── Right-click menus (the island's own menu: components/TrayMenu) ──
-    TapHandler {
-        enabled: !!status.bar
-        acceptedButtons: Qt.RightButton
-        onTapped: (point) => {
-            const onNet = point.position.x < netItem.x + netItem.width + 6;
-            (onNet ? netMenu : batMenu).open = true;
-        }
-    }
+    // ── Menus (the island's own: components/TrayMenu) ──────────────────
     component Menu: TrayMenu {
         window: status.bar
         property bool counted: false
@@ -115,17 +140,46 @@ Row {
         anchorItem: netItem
         items: {
             const dev = status.wifiDev;
-            const nets = dev ? dev.networks.values.filter(n => n.known || n.connected).sort((a, b) => b.signalStrength - a.signalStrength).slice(0, 5) : [];
-            const out = [{ text: status.net ? "Connected to " + status.net.name : Networking.wifiEnabled ? "Not connected" : "Wi-Fi is off", enabled: false }];
-            for (const n of nets) out.push({
-                text: n.name + (n.connected ? "" : "  ·  " + Math.round(n.signalStrength * 100) + "%"),
-                glyph: n.connected ? "\u{f012c}" : "\u{f05a9}",
+            // Everything in range (the scanner runs while this is open), one
+            // row per name: connected, then saved, then by strength.
+            const seen = {};
+            const nets = (dev ? dev.networks.values : [])
+                .filter(n => n.name && !seen[n.name] && (seen[n.name] = true))
+                .sort((a, b) => (b.connected - a.connected) || (b.known - a.known) || (b.signalStrength - a.signalStrength))
+                .slice(0, 8);
+            const secured = n => n.security !== WifiSecurityType.Open && n.security !== WifiSecurityType.Owe;
+            const out = [{ text: status.net ? "Connected to " + status.net.name : Networking.wifiEnabled ? (nets.length ? "Not connected" : "Looking for networks…") : "Wi-Fi is off", enabled: false }];
+            if (Networking.wifiEnabled) for (const n of nets) out.push({
+                text: n.name + (n.connected ? "" : "  ·  " + Math.round(n.signalStrength * 100) + "%" + (n.known ? "  ·  saved" : secured(n) ? "  ·  locked" : "")),
+                glyph: n.connected ? "\u{f012c}" : secured(n) && !n.known ? "\u{f033e}" : "\u{f05a9}",
                 enabled: !n.connected,
-                triggered: () => n.connect()
+                // A new locked network needs its password: Controls asks for it.
+                triggered: () => { if (n.known || !secured(n)) n.connect(); else Notifs.toggleCenter("controls", "pointer", status.bar ? status.bar.screenName : ""); }
             });
             out.push({ isSeparator: true });
             out.push({ text: Networking.wifiEnabled ? "Turn Wi-Fi off" : "Turn Wi-Fi on", glyph: Networking.wifiEnabled ? "\u{f05aa}" : "\u{f05a9}", triggered: () => Networking.wifiEnabled = !Networking.wifiEnabled });
-            out.push({ text: "Other networks and settings…", glyph: "\u{f0493}", triggered: () => Quickshell.execDetached(["nmgui"]) });
+            out.push({ text: "Wi-Fi settings…", glyph: "\u{f0493}", triggered: () => Notifs.toggleCenter("controls", "pointer", status.bar ? status.bar.screenName : "") });
+            return out;
+        }
+    }
+    Binding { target: status.wifiDev; property: "scannerEnabled"; value: true; when: status.wifiDev !== null && netMenu.open }
+    Menu {
+        id: btMenu
+        anchorItem: btItem
+        items: {
+            const a = status.bt;
+            if (!a) return [{ text: "No Bluetooth", enabled: false }];
+            const devs = Bluetooth.devices.values.filter(d => d.paired || d.connected)
+                .sort((x, y) => (y.connected - x.connected) || String(x.name).localeCompare(String(y.name)));
+            const out = [{ text: a.enabled ? (status.btConnected.length ? status.btConnected.length + " connected" : "Bluetooth on") : "Bluetooth is off", enabled: false }];
+            if (a.enabled) for (const d of devs) out.push({
+                text: (d.name || d.deviceName) + (d.connected && d.batteryAvailable ? "  ·  " + Math.round(d.battery * 100) + "%" : d.connected ? "" : "  ·  connect"),
+                glyph: d.connected ? "\u{f012c}" : "\u{f00af}",
+                triggered: () => { if (d.connected) d.disconnect(); else d.connect(); }
+            });
+            out.push({ isSeparator: true });
+            out.push({ text: a.enabled ? "Turn Bluetooth off" : "Turn Bluetooth on", glyph: a.enabled ? "\u{f00b2}" : "\u{f00af}", triggered: () => a.enabled = !a.enabled });
+            out.push({ text: "Bluetooth settings…", glyph: "\u{f0493}", triggered: () => Quickshell.execDetached(["blueman-manager"]) });
             return out;
         }
     }

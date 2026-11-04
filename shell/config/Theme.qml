@@ -221,6 +221,12 @@ Singleton {
     readonly property int glideMs: 150          // values chasing a target (level fill, meters)
     readonly property int reflowMs: 200         // neighbours closing a gap
     readonly property int colorMs: 140
+    // Hover timing, one set for the whole shell: things open after
+    // Settings.hoverDelay (your setting), stay hoverLeaveMs after the pointer
+    // leaves (crossing a gap doesn't close them), and tooltips wait tipMs
+    // (slower than panels on purpose: no flashing as you cross the island).
+    readonly property int hoverLeaveMs: 300
+    readonly property int tipMs: 450
     readonly property int hudInMs: 180          // the HUD answers a keypress: fast, 6px, no scale bounce
     readonly property int hudOutMs: 150
     readonly property int revealStepMs: 40      // stagger between groups of content (30–80ms)

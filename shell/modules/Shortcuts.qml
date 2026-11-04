@@ -7,6 +7,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Hyprland
+import qs.config
 import qs.services
 
 Scope {
@@ -98,6 +99,8 @@ Scope {
         onPressed: Island.toggle("system", "", "key")
     }
     GlobalShortcut { appid: "rice"; name: "island-peek"; description: "Show the island's details (minimal island)"; onPressed: Island.peekFor(2500) }
+    GlobalShortcut { appid: "rice"; name: "island-tuck"; description: "Tuck the island away / bring it back"; onPressed: Settings.set("islandTucked", !Settings.islandTucked) }
+    GlobalShortcut { appid: "rice"; name: "caffeine"; description: "Caffeine: keep awake (no dim, lock or sleep)"; onPressed: Caffeine.toggle() }
     GlobalShortcut {
         appid: "rice"
         name: "updates"

@@ -119,7 +119,7 @@ FocusScope {
         Column {
             anchors { left: face.right; leftMargin: 12; verticalCenter: parent.verticalCenter }
             Label { text: power.user; size: 15; weight: Theme.wSemibold }
-            Label { text: power.uptime + (power.hasBattery ? "  ·  " + power.pct + "%" + (power.charging ? " charging" : "") : ""); size: 12; color: Theme.textTertiary }
+            Label { text: power.uptime + (power.hasBattery ? "  ·  " + power.pct + "%" + (power.charging ? " charging" : !UPower.onBattery ? " plugged in" : "") : ""); size: 12; color: Theme.textTertiary }
         }
     }
 

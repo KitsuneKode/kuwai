@@ -144,6 +144,13 @@ FocusScope {
                         color: day.isToday ? "#111114" : !day.inMonth ? Qt.rgba(1, 1, 1, 0.25) : Theme.textPrimary
                         font.features: ({ "tnum": 1 })
                     }
+                    // Something on that day: a small dot under the number.
+                    Rectangle {
+                        visible: Calendar.events.length > 0 && Calendar.eventsOn(day.modelData).length > 0
+                        anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 1 }
+                        width: 4; height: 4; radius: 2
+                        color: day.inMonth ? Theme.textSecondary : Qt.rgba(1, 1, 1, 0.25)
+                    }
                     MouseArea { id: dayArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: cal.select(day.modelData) }
                 }
             }
@@ -165,6 +172,47 @@ FocusScope {
                 text: (cal.sameDay(cal.selected, cal.today) ? "Today · " : "") + "Week " + cal.week(cal.selected)
                 size: 12
                 color: Theme.textTertiary
+            }
+        }
+
+        // ── That day's events (services/Calendar) ────────────────────────
+        Column {
+            width: cal.cell * 7
+            spacing: 8
+            readonly property var dayEvents: Calendar.eventsOn(cal.selected)
+            Label {
+                visible: !Calendar.configured || parent.dayEvents.length === 0
+                width: parent.width
+                wrapMode: Text.Wrap
+                text: Calendar.configured ? "No events" : "Add your calendars (iCal links or .ics files) to ~/.config/rice/calendars.txt"
+                size: 12
+                color: Theme.textTertiary
+            }
+            Repeater {
+                model: parent.dayEvents.slice(0, 5)
+                Row {
+                    id: evRow
+                    required property var modelData
+                    readonly property bool past: modelData.end < Date.now()
+                    spacing: 10
+                    opacity: past ? 0.45 : 1
+                    Rectangle { width: 3; height: 30; radius: 1.5; color: evRow.modelData.start <= Date.now() && !evRow.past ? Theme.green : Theme.textSecondary }
+                    Column {
+                        width: cal.cell * 7 - 13
+                        spacing: 1
+                        Label { width: parent.width; elide: Text.ElideRight; text: evRow.modelData.title; size: 13; weight: Theme.wMedium }
+                        Label {
+                            width: parent.width; elide: Text.ElideRight
+                            text: Calendar.timeOf(evRow.modelData) + (evRow.modelData.location ? " · " + evRow.modelData.location : "")
+                            size: 11; color: Theme.textTertiary
+                        }
+                    }
+                }
+            }
+            Label {
+                visible: parent.dayEvents.length > 5
+                text: "+" + (parent.dayEvents.length - 5) + " more"
+                size: 11; color: Theme.textTertiary
             }
         }
     }

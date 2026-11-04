@@ -27,22 +27,13 @@ Item {
     // Go to the window that's playing: the one whose title carries the track
     // (a browser tab: "ADDICTED - YouTube"), else the player app's window,
     // else ask the player to raise itself (MPRIS Raise).
-    function goToPlayer(p) {
-        if (!p) return;
-        const norm = x => String(x || "").toLowerCase();
-        const keys = [norm(p.desktopEntry), norm(p.identity).split(" ").pop(), norm(p.dbusName).replace(/^org\.mpris\.mediaplayer2\./, "").split(".")[0]].filter(k => k.length > 1);
-        const wins = Hyprland.toplevels.values.filter(t => t.lastIpcObject);
-        const cls = t => norm(t.lastIpcObject.class) + " " + norm(t.lastIpcObject.initialClass);
-        const ofApp = wins.filter(t => keys.some(k => cls(t).includes(k)));
-        const title = norm(p.trackTitle);
-        const byTitle = title.length > 2 ? (ofApp.length ? ofApp : wins).find(t => norm(t.title).includes(title)) : null;
-        const t = byTitle || ofApp[0] || null;
-        if (t) Hyprland.dispatch(`hl.dsp.focus({window = 'address:0x${t.address}'})`);
-        else if (p.canRaise) p.raise();
-    }
-    readonly property var focusWin: Hyprland.activeToplevel
+    function goToPlayer(p) { Media.goTo(p); }
+    // This screen's window (bar.screenWin), not the one focused on another screen.
+    readonly property var focusWin: bar.screenWin
     readonly property var topInfo: focusWin && focusWin.lastIpcObject ? focusWin.lastIpcObject : ({})
-    readonly property var app: topInfo.class ? DesktopEntries.heuristicLookup(topInfo.class) : null
+    // Hyprland's class; else the Wayland app id (a window the shell hasn't asked Hyprland about yet).
+    readonly property string winClass: topInfo.class || (focusWin && focusWin.wayland ? (focusWin.wayland.appId || "") : "")
+    readonly property var app: winClass ? DesktopEntries.heuristicLookup(winClass) : null
 
     implicitWidth: 720
     implicitHeight: 148
@@ -57,6 +48,8 @@ Item {
         spacing: 16
         Row {
             spacing: 8
+            // Quieter on a screen that isn't focused, like its pills.
+            opacity: hover.bar.focusedHere ? 1 : 0.55
             Item {
                 id: appIcon
                 width: 18; height: 18
@@ -69,7 +62,7 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 width: Math.min(implicitWidth, 170)
                 elide: Text.ElideRight
-                text: hover.app ? hover.app.name : hover.topInfo.class ? hover.topInfo.class.charAt(0).toUpperCase() + hover.topInfo.class.slice(1) : "Desktop"
+                text: hover.app ? hover.app.name : hover.winClass ? hover.winClass.charAt(0).toUpperCase() + hover.winClass.slice(1) : "Desktop"
                 size: 14; weight: Theme.wMedium
             }
             HoverHandler { id: appHover; cursorShape: Qt.PointingHandCursor }
@@ -155,15 +148,16 @@ Item {
             color: Qt.rgba(1, 1, 1, 0.08)
             Image { anchors.fill: parent; source: hover.player ? (hover.player.trackArtUrl || "") : ""; sourceSize: Qt.size(96, 96); fillMode: Image.PreserveAspectCrop; asynchronous: true }
         }
-        // The art and the title take you to what's playing (the tab, the app);
-        // right-click for the sound panel (outputs, per-app volume).
+        // The art and the title open Now Playing (MediaPanel); right-click for
+        // the sound panel (outputs, per-app volume).
         MouseArea {
             anchors { left: parent.left; top: parent.top; bottom: parent.bottom; right: trail.left }
             cursorShape: Qt.PointingHandCursor
             acceptedButtons: Qt.LeftButton | Qt.RightButton
             onClicked: mouse => {
+                // Click: Now Playing (scrub, shuffle, repeat, output). Right-click: the Sound tab.
                 if (mouse.button === Qt.RightButton) Notifs.toggleCenter("sound", "pointer", hover.bar.screenName);
-                else hover.goToPlayer(hover.player);
+                else Island.open("media", hover.bar.screenName, "pointer", "island");
             }
         }
         Column {
@@ -200,7 +194,7 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         width: 3; radius: 1.5
                         height: Math.max(3, 24 * Math.min(1, trail.level * shape * jitter * 1.7))
-                        color: Theme.accent
+                        color: Media.artColor
                         opacity: 0.9
                         Behavior on height { NumberAnimation { duration: 90 } }
                         Timer { running: peak.enabled && !Theme.reduceMotion; interval: 110 + (index % 4) * 35; repeat: true; onTriggered: parent.jitter = 0.65 + Math.random() * 0.55 }
@@ -239,11 +233,12 @@ Item {
             height: 2; radius: 1
             color: Qt.rgba(1, 1, 1, 0.08)
             Rectangle {
-                width: parent.width * (hover.player && hover.player.length > 0 ? Math.min(1, hover.player.position / hover.player.length) : 0)
+                width: parent.width * Media.fraction
                 height: parent.height; radius: 1
-                color: Qt.alpha(Theme.accent, 0.8)
+                color: Qt.alpha(Media.artColor, 0.85)
             }
-            Timer { running: hover.visible && hover.player && hover.player.isPlaying; interval: 1000; repeat: true; onTriggered: hover.player.positionChanged() }
+            Component.onCompleted: Media.watch()
+            Component.onDestruction: Media.unwatch()
         }
     }
 
@@ -287,10 +282,36 @@ Item {
         Row {
             anchors.right: parent.right
             spacing: 8
-            Label { anchors.verticalCenter: parent.verticalCenter; text: Notifs.unread ? Notifs.unread + " new" : "All caught up"; size: 14; weight: Theme.wMedium }
+            id: bellRow
+            Label { anchors.verticalCenter: parent.verticalCenter; text: Notifs.missed.length ? Notifs.missed.length + " to look at" : Notifs.unread ? Notifs.unread + " new" : "All caught up"; size: 14; weight: Theme.wMedium; color: Notifs.missed.length ? Theme.accent : Theme.textPrimary }
             Icon { anchors.verticalCenter: parent.verticalCenter; name: Notifs.dnd ? "bell-slash" : "bell"; size: 16; active: Notifs.unread > 0; color: Notifs.unread ? Theme.accent : Theme.textSecondary }
-            HoverHandler { cursorShape: Qt.PointingHandCursor }
-            TapHandler { onTapped: Notifs.toggleCenter("notifications", "pointer", hover.bar.screenName) }
+            // Rest on it: the missed ones, each with its buttons. Click: the center.
+            HoverHandler { id: bellHover; cursorShape: Qt.PointingHandCursor }
+            Timer { running: bellHover.hovered && Notifs.missed.length > 0 && !missedMenu.open; interval: Settings.hoverDelay; onTriggered: missedMenu.open = true }
+            TapHandler { onTapped: { missedMenu.open = false; Notifs.toggleCenter("notifications", "pointer", hover.bar.screenName); } }
+            TrayMenu {
+                id: missedMenu
+                anchorItem: bellRow
+                anchorHovered: bellHover.hovered
+                window: hover.bar
+                property bool counted: false
+                onOpenChanged: {
+                    if (open && !counted) { counted = true; hover.bar.menus++; }
+                    else if (!open && counted) { counted = false; hover.bar.menus = Math.max(0, hover.bar.menus - 1); }
+                }
+                items: {
+                    const out = [];
+                    for (const it of Notifs.missed.slice(0, 5)) {
+                        if (out.length) out.push({ isSeparator: true });
+                        const tone = it.severity === "critical" ? "\u{f0026}" : it.severity === "warning" ? "\u{f0028}" : "\u{f009a}";
+                        out.push({ text: (it.title || it.app) + (it.app && it.title ? "  ·  " + it.app : ""), glyph: tone, triggered: () => Notifs.activate(it) });
+                        for (const a of (it.actions || []).slice(0, 3))
+                            out.push({ text: "    " + a.text, glyph: "\u{f0142}", triggered: () => Notifs.invokeAction(it, a.id) });
+                    }
+                    if (Notifs.missed.length > 5) out.push({ isSeparator: true }, { text: (Notifs.missed.length - 5) + " more in the center…", glyph: "\u{f009a}", triggered: () => Notifs.toggleCenter("notifications", "pointer", hover.bar.screenName) });
+                    return out;
+                }
+            }
         }
         Row {
             anchors.right: parent.right
@@ -372,8 +393,34 @@ Item {
                     below: true
                 }
             }
+            // Caffeine on: a cup here, not at rest (the first look stays
+            // minimal; the moment already said so when it turned on). Click,
+            // Enter or Space: off. The Controls page has the switch either way.
+            Item {
+                id: cup
+                visible: Caffeine.on
+                width: 22; height: 22
+                anchors.verticalCenter: parent.verticalCenter
+                activeFocusOnTab: true
+                Accessible.role: Accessible.Button
+                Accessible.name: "Caffeine is on. Turn off"
+                Rectangle {
+                    anchors.fill: parent; radius: width / 2
+                    color: cupArea.containsMouse || cup.activeFocus ? Qt.alpha(Theme.yellow, 0.16) : "transparent"
+                    Behavior on color { ColorAnimation { duration: Theme.colorMs } }
+                }
+                Text {
+                    anchors.centerIn: parent
+                    text: "\u{f0176}"
+                    font.family: Theme.fontGlyph; font.pixelSize: 15
+                    color: Theme.yellow
+                }
+                Keys.onPressed: e => { if (e.key === Qt.Key_Return || e.key === Qt.Key_Space) { Caffeine.toggle(); e.accepted = true; } }
+                MouseArea { id: cupArea; anchors.fill: parent; anchors.margins: -4; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: Caffeine.toggle() }
+                Tip { text: "Caffeine on: no dim, lock or sleep · click to turn off"; shown: cupArea.containsMouse; below: true }
+            }
             TrayRow { window: hover.bar; anchors.verticalCenter: parent.verticalCenter }
-            IslandStatus { anchors.verticalCenter: parent.verticalCenter; bar: hover.bar }
+            IslandStatus { anchors.verticalCenter: parent.verticalCenter; bar: hover.bar; showBluetooth: true }
         }
     }
 }

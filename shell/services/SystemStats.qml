@@ -118,8 +118,10 @@ Singleton {
 
     // Weather (what Waybar's weather module showed; HyDE's own script is
     // broken here): wttr.in for the location in HyDE's config, every 30 min.
-    property string weatherTemp: ""
-    property string weatherText: ""
+    // From services/Weather (one fetch for the island and the lock screen;
+    // this used to fetch wttr.in a second time, every 30 minutes).
+    readonly property string weatherTemp: Weather.ok ? Weather.temp + "°" : ""
+    readonly property string weatherText: Weather.ok ? Weather.desc : ""
     readonly property string weatherGlyph: {
         const t = weatherText.toLowerCase();
         if (/thunder/.test(t)) return "\u{f0593}";
@@ -129,19 +131,6 @@ Singleton {
         if (/overcast|cloud/.test(t)) return /partly/.test(t) ? "\u{f0595}" : "\u{f0590}";
         return new Date().getHours() >= 18 || new Date().getHours() < 6 ? "\u{f0594}" : "\u{f0599}";
     }
-    Process {
-        id: weather
-        command: ["sh", "-c", `loc=$(sed -n 's/^location *= *"\\(.*\\)"/\\1/p' "$HOME/.config/hyde/config.toml" 2>/dev/null | head -1)
-                               curl -sf --max-time 8 "https://wttr.in/$loc?format=%t|%C&m"`]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                const p = text.trim().split("|");
-                if (p.length >= 2 && /°/.test(p[0])) { root.weatherTemp = p[0].replace(/^\+/, "").replace("°C", "°"); root.weatherText = p[1].trim(); }
-            }
-        }
-    }
-    Timer { interval: 30 * 60 * 1000; running: true; repeat: true; triggeredOnStart: true; onTriggered: weather.running = true }
-
     function bytes(n) {
         if (n >= 1073741824) return (n / 1073741824).toFixed(n >= 10737418240 ? 0 : 1) + " GB";
         return Math.round(n / 1048576) + " MB";

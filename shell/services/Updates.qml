@@ -299,6 +299,8 @@ Singleton {
                     const l = root.log.length >= 400 ? root.log.slice(-399) : root.log.slice();
                     l.push(ev.line);
                     root.log = l;
+                } else if (ev.e === "status") {
+                    root.currentLine = ev.line;        // a progress bar mid-draw (flatpak)
                 } else if (ev.e === "phase") {
                     root.phase = ev.id;
                     root.phaseLabel = ev.label;
@@ -321,6 +323,25 @@ Singleton {
         Quickshell.execDetached(["hyde-shell", "app", "system.update.sh", "up"]);
     }
     function restart() { Quickshell.execDetached(["systemctl", "reboot"]); }
+
+    // One password per update: `rice-update install-helper` puts rice-update-root
+    // in place (root-owned; asks for the password this once).
+    property string helperState: ""     // "", "working", "done", "failed"
+    function setupOnePrompt() {
+        if (helperProc.running) return;
+        helperState = "working";
+        helperProc.running = true;
+    }
+    Process {
+        id: helperProc
+        command: [root.bin, "install-helper"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try { root.helperState = JSON.parse(text.trim().split("\n").pop()).installed ? "done" : "failed"; }
+                catch (e) { root.helperState = "failed"; }
+            }
+        }
+    }
 
     // ── Words ────────────────────────────────────────────────────────────
     function ago(ms) {

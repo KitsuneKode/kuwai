@@ -35,6 +35,7 @@ Scope {
     property string glyph: ""
     property string title: ""
     property string subtitle: ""          // shown instead of the track
+    property string artImage: ""          // the device's photo (DeviceArt), in place of the glyph
     property string accessoryGlyph: ""
     property string accessory: ""
     property real level: 0                // 0..1 fill
@@ -141,7 +142,7 @@ Scope {
     }
 
     readonly property var typeGlyph: ({
-        earbuds: "\u{f184f}", headphones: "\u{f02cb}", speaker: "\u{f04c3}",
+        earbuds: "\u{f184f}", iem: "\u{f184f}", headphones: "\u{f02cb}", speaker: "\u{f04c3}",
         display: "\u{f0f5f}", laptop: "\u{f0322}", usb: "\u{f0553}", car: "\u{f04c3}"
     })
 
@@ -177,10 +178,14 @@ Scope {
         const type = deviceType(rawLabel, props, bt, dev ? (dev.icon || "") : "");
         const v = Math.round(sink.audio.volume * 100);
 
+        // What it really is (devices.json): the IEMs behind a DAC, with a photo.
+        const art = DeviceArt.lookup(rawLabel) || DeviceArt.lookup(props["device.description"] || "");
+        const shownType = art && art.kind && typeGlyph[art.kind] ? art.kind : type;
         kind = "volume";
-        title = sinkLabel(type, props, dev);
+        title = art ? art.label : sinkLabel(type, props, dev);
         muted = sink.audio.muted;
-        glyph = muted ? "\u{f075f}" : typeGlyph[type];
+        glyph = muted ? "\u{f075f}" : typeGlyph[shownType];
+        artImage = art && !muted ? art.image : "";
         if (dev && dev.batteryAvailable) {
             accessoryGlyph = batteryGlyph(dev.battery);
             accessory = Math.round(dev.battery * 100) + "%";
@@ -188,8 +193,9 @@ Scope {
             accessoryGlyph = bt ? "\u{f00af}" : "";
             accessory = "";
         }
-        showTrack = true;
-        subtitle = "";
+        // Just connected: say so (and through what) instead of the level.
+        showTrack = !connected;
+        subtitle = connected ? (art && art.via ? "Connected via " + art.via : "Connected") : "";
         level = Math.min(1, v / 100);
         valueText = muted ? "Muted" : String(v);
         hud.present(focusedScreenName());
@@ -217,7 +223,8 @@ Scope {
     Connections {
         target: Notifs
         function onDndChanged() {
-            if (Notifs.loaded && root.armed && !Notifs.centerOpen) root.showDnd();
+            // With the island as the bar, the island says it (services/Moments).
+            if (Notifs.loaded && root.armed && !Notifs.centerOpen && Settings.bar !== "island") root.showDnd();
         }
     }
     function showDnd() {
@@ -408,8 +415,21 @@ Scope {
                     onClicked: root.toggleMute()
                 }
 
+                // The device's photo when there is one (DeviceArt).
+                Image {
+                    id: artPic
+                    anchors.fill: parent
+                    anchors.margins: 3
+                    visible: root.artImage !== "" && root.kind === "volume" && status === Image.Ready
+                    source: root.kind === "volume" ? root.artImage : ""
+                    sourceSize: Qt.size(96, 96)
+                    fillMode: Image.PreserveAspectFit
+                    asynchronous: true
+                    smooth: true; mipmap: true
+                }
                 Text {
                     anchors.centerIn: parent
+                    visible: !artPic.visible
                     text: root.glyph
                     font.family: Theme.fontGlyph
                     font.pixelSize: 22

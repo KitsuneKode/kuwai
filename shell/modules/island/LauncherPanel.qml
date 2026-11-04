@@ -24,6 +24,26 @@ FocusScope {
     focus: true
 
     property string query: ""
+
+    // ── Files (fd over your home), a moment after you stop typing ────────
+    readonly property string home: Quickshell.env("HOME") || ""
+    property var fileHits: []
+    onQueryChanged: { fileHits = []; if (query.trim().length >= 3 && !/^[:;]/.test(query)) fileSoon.restart(); else fileSoon.stop(); }
+    Timer { id: fileSoon; interval: 160; onTriggered: { files.running = false; files.running = true; } }
+    Process {
+        id: files
+        // The query is an argument ("$1"), never part of the command.
+        command: ["sh", "-c", "cd \"$HOME\" && timeout 1.5 fd --ignore-case --max-results 8 --max-depth 6 --exclude node_modules --exclude .cache --exclude .git --exclude .local/share/Steam --exclude .npm --exclude .cargo --exclude .rustup -- \"$1\" 2>/dev/null", "sh", launcher.query.trim()]
+        stdout: StdioCollector {
+            onStreamFinished: launcher.fileHits = text.split("\n").filter(x => x).map(rel => {
+                const isDir = rel.endsWith("/");
+                const clean = rel.replace(/\/$/, "");
+                const cut = clean.lastIndexOf("/");
+                return { kind: "file", path: launcher.home + "/" + clean, dir: isDir, name: cut >= 0 ? clean.slice(cut + 1) : clean,
+                         sub: "~/" + (cut >= 0 ? clean.slice(0, cut) : ""), glyph: isDir ? "\u{f024b}" : "\u{f0214}" };
+            })
+        }
+    }
     // Claude / Codex in the folder of the window you came from (bin/kuwai-agent).
     function agentHere(name) {
         const t = Hyprland.activeToplevel;
@@ -70,6 +90,61 @@ FocusScope {
         { name: "Do Not Disturb", sub: Notifs.dnd ? "On: turn off" : "Off: turn on", glyph: "\u{f0594}", run: () => { Notifs.dnd = !Notifs.dnd; } },
         { name: "Sound", sub: "Outputs, inputs, the microphone", glyph: "\u{f057e}", run: () => Notifs.toggleCenter("sound", "key") }
     ]
+
+    // ── Conversions: "5 km to mi", "72 f in c", "100 usd to inr" ────────
+    // Units are offline; currencies use open.er-api.com's daily rates (no
+    // key, nothing about you is sent), cached 12 h in ~/.cache/rice/fx.json.
+    readonly property var units: ({
+        // length (m)
+        mm: ["len", 0.001], cm: ["len", 0.01], m: ["len", 1], km: ["len", 1000], in: ["len", 0.0254], inch: ["len", 0.0254], ft: ["len", 0.3048], feet: ["len", 0.3048], yd: ["len", 0.9144], mi: ["len", 1609.344], mile: ["len", 1609.344], miles: ["len", 1609.344],
+        // mass (g)
+        mg: ["mass", 0.001], g: ["mass", 1], kg: ["mass", 1000], lb: ["mass", 453.59237], lbs: ["mass", 453.59237], oz: ["mass", 28.349523125], t: ["mass", 1e6],
+        // data (bytes)
+        b: ["data", 1], kb: ["data", 1e3], mb: ["data", 1e6], gb: ["data", 1e9], tb: ["data", 1e12], kib: ["data", 1024], mib: ["data", 1048576], gib: ["data", 1073741824], tib: ["data", 1099511627776],
+        // time (s)
+        ms: ["time", 0.001], s: ["time", 1], sec: ["time", 1], min: ["time", 60], h: ["time", 3600], hr: ["time", 3600], d: ["time", 86400], day: ["time", 86400], days: ["time", 86400], wk: ["time", 604800], week: ["time", 604800],
+        // volume (l)
+        ml: ["vol", 0.001], l: ["vol", 1], gal: ["vol", 3.785411784], cup: ["vol", 0.2365882365], floz: ["vol", 0.0295735295625],
+        // speed (m/s)
+        kmh: ["speed", 1 / 3.6], mph: ["speed", 0.44704], mps: ["speed", 1], knot: ["speed", 0.514444], knots: ["speed", 0.514444]
+    })
+    readonly property string fxPath: (Quickshell.env("XDG_CACHE_HOME") || Quickshell.env("HOME") + "/.cache") + "/rice/fx.json"
+    property var fx: null                 // { base: "USD", time, rates: { INR: 83.1, … } }
+    FileView {
+        id: fxFile
+        path: launcher.fxPath
+        printErrors: false
+        watchChanges: true
+        onFileChanged: reload()
+        onLoaded: { try { const d = JSON.parse(text()); if (d && d.rates) launcher.fx = { time: (d.time_last_update_unix || 0) * 1000, rates: d.rates }; } catch (e) {} }
+    }
+    Process {
+        id: fxFetch
+        command: ["sh", "-c", "mkdir -p \"$(dirname \"$1\")\" && curl -sf --max-time 6 https://open.er-api.com/v6/latest/USD -o \"$1.tmp\" && mv -f \"$1.tmp\" \"$1\"", "sh", launcher.fxPath]
+    }
+    readonly property var convert: {
+        const m = /^(-?[\d.,]+)\s*([a-z°]+)\s*(?:to|in|->|=|as)\s*([a-z°]+)$/i.exec(query.trim());
+        if (!m) return null;
+        const v = Number(m[1].replace(/,/g, ""));
+        if (!isFinite(v)) return null;
+        const a = m[2].toLowerCase().replace("°", ""), b = m[3].toLowerCase().replace("°", "");
+        const fmt = x => { const r = Math.abs(x) >= 100 ? Math.round(x * 100) / 100 : Math.round(x * 1e4) / 1e4; return r.toLocaleString(Qt.locale(), "f", Math.abs(r) >= 100 ? 2 : 4).replace(/\.?0+$/, ""); };
+        // Temperature isn't a ratio.
+        const tc = { c: x => x, f: x => (x - 32) * 5 / 9, k: x => x - 273.15 }, fc = { c: x => x, f: x => x * 9 / 5 + 32, k: x => x + 273.15 };
+        if (tc[a] && fc[b]) return { value: fmt(fc[b](tc[a](v))) + " °" + b.toUpperCase().replace("K", "K"), sub: m[1] + " °" + a.toUpperCase() + " =" };
+        const ua = units[a], ub = units[b];
+        if (ua && ub && ua[0] === ub[0]) return { value: fmt(v * ua[1] / ub[1]) + " " + m[3], sub: m[1] + " " + m[2] + " =" };
+        // Currencies: three-letter codes.
+        if (/^[a-z]{3}$/.test(a) && /^[a-z]{3}$/.test(b)) {
+            const stale = !fx || Date.now() - fx.time > 12 * 3600 * 1000;
+            if (stale && !fxFetch.running) Qt.callLater(() => { fxFetch.running = true; });
+            if (!fx) return { value: "…", sub: "Fetching today's rates", pending: true };
+            const A = a.toUpperCase(), B = b.toUpperCase(), ra = fx.rates[A], rb = fx.rates[B];
+            if (!ra || !rb) return null;
+            return { value: fmt(v / ra * rb) + " " + B, sub: m[1] + " " + A + " = · rates of " + Qt.formatDate(new Date(fx.time), "MMM d") };
+        }
+        return null;
+    }
 
     // A plain arithmetic expression (digits, + - * / % ^ ( ) .) and its value.
     readonly property var calc: {
@@ -138,7 +213,7 @@ FocusScope {
             const cls = t.lastIpcObject ? (t.lastIpcObject.class || "") : "";
             const app = cls ? DesktopEntries.heuristicLookup(cls) : null;
             const m = score(q, t.title, [cls, app ? app.name : ""]);
-            if (m) winHit.push({ kind: "window", toplevel: t, name: t.title || cls, pos: m.pos, sub: (app ? app.name : cls) + (t.workspace ? " · workspace " + t.workspace.name : ""), icon: app ? app.icon : cls.toLowerCase(), rank: m.score * 0.85 });
+            if (m) winHit.push({ kind: "window", toplevel: t, name: t.title || cls, pos: m.pos, sub: (app ? app.name : cls) + (t.workspace && t.workspace.id > 0 ? " · workspace " + ((t.workspace.id - 1) % 10 + 1) : ""), icon: app ? app.icon : cls.toLowerCase(), rank: m.score * 0.85 });
         }
         for (const a of actions) {
             const m = score(q, a.name, [a.sub]);
@@ -150,11 +225,15 @@ FocusScope {
         const keep = r => r.rank >= bestRank * 0.35;
         const by = rows => rows.filter(keep).sort((a, b) => b.rank - a.rank);
         if (calc) section("Calculator", [{ kind: "calc", name: String(calc.value), sub: calc.expr + " =", glyph: "=" }]);
+        if (convert) section("Convert", [{ kind: "calc", name: convert.value, sub: convert.sub, glyph: "\u{f0a12}" }]);
         const top = all.filter(keep).sort((a, b) => b.rank - a.rank)[0];
         if (top) section("Top Hit", [top]);
         section("Applications", by(appsHit).filter(r => r !== top).slice(0, 8));
         section("Windows", by(winHit).filter(r => r !== top).slice(0, 5));
         section("Actions", by(actHit).filter(r => r !== top).slice(0, 4));
+        section("Files", fileHits);
+        // Last: the web, for anything the machine doesn't have.
+        if (!calc && !convert) section("Web", [{ kind: "web", name: "Search the web for “" + query.trim() + "”", sub: "DuckDuckGo", glyph: "\u{f059f}" }]);
         return out;
     }
     readonly property int selectable: results.filter(r => r.kind !== "header").length
@@ -179,6 +258,10 @@ FocusScope {
         } else if (r.kind === "app") {
             used(r.entry.id);
             r.entry.execute();
+        } else if (r.kind === "file") {
+            Quickshell.execDetached(["xdg-open", r.path]);
+        } else if (r.kind === "web") {
+            Quickshell.execDetached(["xdg-open", "https://duckduckgo.com/?q=" + encodeURIComponent(query.trim())]);
         } else if (r.kind === "window") {
             Hyprland.dispatch("hl.dsp.focus({window = 'address:0x" + r.toplevel.address + "'})");
         } else if (r.kind === "action") {
@@ -241,6 +324,13 @@ FocusScope {
                 const k = event.key, ctrl = event.modifiers & Qt.ControlModifier;
                 if (k === Qt.Key_Down || k === Qt.Key_Tab || (ctrl && (k === Qt.Key_J || k === Qt.Key_N))) launcher.move(1);
                 else if (k === Qt.Key_Up || k === Qt.Key_Backtab || (ctrl && (k === Qt.Key_K || k === Qt.Key_P))) launcher.move(-1);
+                else if ((k === Qt.Key_Return || k === Qt.Key_Enter) && launcher.results[launcher.current] && launcher.results[launcher.current].kind === "file" && (ctrl || (event.modifiers & Qt.AltModifier))) {
+                    // A file: Ctrl+↩ its folder, Alt+↩ copy its path.
+                    const r = launcher.results[launcher.current];
+                    if (ctrl) Quickshell.execDetached(["xdg-open", r.dir ? r.path : r.path.slice(0, r.path.lastIndexOf("/"))]);
+                    else Quickshell.execDetached(["wl-copy", "--", r.path]);
+                    Island.close();
+                }
                 else if (k === Qt.Key_Return || k === Qt.Key_Enter) launcher.run(launcher.results[launcher.current]);
                 else return;
                 event.accepted = true;
@@ -353,7 +443,7 @@ FocusScope {
                 opacity: row.on && !row.header ? 1 : 0
                 Label {
                     anchors.verticalCenter: parent.verticalCenter
-                    text: ({ app: "Open", window: "Switch to", action: "Run", calc: "Copy", emoji: "Type", glyph: "Type" })[row.modelData.kind] || ""
+                    text: ({ app: "Open", window: "Switch to", action: "Run", calc: "Copy", emoji: "Type", glyph: "Type", file: "Open", web: "Search" })[row.modelData.kind] || ""
                     size: 12
                     color: Theme.textSecondary
                 }
@@ -393,7 +483,9 @@ FocusScope {
         anchors { left: parent.left; leftMargin: 20; bottom: parent.bottom; bottomMargin: 14 }
         spacing: 16
         Repeater {
-            model: [["↑↓", "Choose"], ["↩", "Open"], ["esc", "Close"]]
+            model: launcher.results[launcher.current] && launcher.results[launcher.current].kind === "file"
+                ? [["↩", "Open"], ["⌃↩", "Folder"], ["⌥↩", "Copy path"], ["esc", "Close"]]
+                : [["↑↓", "Choose"], ["↩", "Open"], ["esc", "Close"]]
             Row {
                 required property var modelData
                 spacing: 6

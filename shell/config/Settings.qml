@@ -33,6 +33,7 @@ Singleton {
     readonly property alias updatesAnnounce: s.updatesAnnounce
     readonly property alias clipPinsFirst: s.clipPinsFirst
     readonly property alias islandRest: s.islandRest
+    readonly property alias islandTucked: s.islandTucked
 
     function set(key, value) { s[key] = value; }
 
@@ -83,6 +84,11 @@ Singleton {
             // "minimal" (only what's alive; the rest when you near the top edge
             // or press Super+I).
             property string islandRest: "auto"
+            // Tucked away (Ctrl+Alt+W, like Waybar's toggle): the island gives
+            // its strip back to your windows and comes out only for what
+            // matters (a notification banner, an activity, a panel) or when
+            // the pointer nears the top edge.
+            property bool islandTucked: false
         }
     }
 }

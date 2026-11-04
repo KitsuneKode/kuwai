@@ -409,7 +409,8 @@ Scope {
             { k: ["⌃", "H"], t: "Show or hide a secret" },
             { k: ["⌃", "↵"], t: "Open it where it belongs (Cider, browser…)" } ] },
         { title: "Move", items: [
-            { k: ["←", "→"], t: "Previous or next card" },
+            { k: ["←", "→"], t: "Previous or next card (while searching: the text cursor)" },
+            { k: ["↑", "↓"], t: "Previous or next card, even while searching" },
             { k: ["⇧", "← →"], t: "Mark several (⌃-click one, ⇧-click a run, ⌃A all)" },
             { k: ["PgUp", "PgDn"], t: "Five at a time" },
             { k: ["⌃", "Home"], t: "First or last (⌃End)" },
@@ -579,10 +580,19 @@ Scope {
         const k = Math.max(0, Math.min(1, (clock - ms - 90) / 160));
         return 1 - Math.pow(1 - k, 3);
     }
-    onSetupChanged: { armed = false; if (setup) setupArm.restart(); }
+    // The shelf, Quick Look and the recording setup are built when the
+    // island first opens as one (on the screen that shows it) and kept a few
+    // minutes after it closes, then released: ~100 MB that sat unused while
+    // only the pill (or nothing) showed. The surfaces stay mapped as before.
+    property bool warm: false
+    function warmUp() { warm = true; coolDown.stop(); }
+    Timer { id: coolDown; interval: 180000; onTriggered: root.warm = root.expanded || melt.value > 0.003 }
+    onExpandedChanged: if (!expanded) coolDown.restart()
+    onSetupChanged: { if (setup) warmUp(); armed = false; if (setup) setupArm.restart(); }
     Timer { id: setupArm; interval: 160; onTriggered: { root.armed = root.setup; if (root.setupPanel) root.setupPanel.forceActiveFocus(); } }
     property Item setupPanel: null
     onOpenChanged: {
+        if (open) warmUp();
         armed = false;
         altHeld = false;
         if (open) {
@@ -837,7 +847,7 @@ Scope {
 
                 // ── Shelf ────────────────────────────────────────────────
                 Loader {
-                    active: win.hosts
+                    active: win.hosts && root.warm
                     // Laid out at the shelf's size, pinned to its centre: the
                     // growing island reveals it.
                     x: Math.round((frame.width - win.shelfW) / 2)
@@ -849,7 +859,7 @@ Scope {
                     sourceComponent: shelfBody
                 }
                 Loader {
-                    active: win.hosts
+                    active: win.hosts && root.warm
                     anchors.fill: parent
                     opacity: root.setup ? Math.max(0, Math.min(1, (win.m - 0.55) / 0.4)) : 0
                     visible: opacity > 0.01
@@ -859,7 +869,7 @@ Scope {
                 // it past the shelf.
                 Loader {
                     anchors.fill: parent
-                    active: win.hosts
+                    active: win.hosts && root.warm
                     z: 30
                     sourceComponent: QuickLook { panel: root }
                     onLoaded: root.quickLook = item
@@ -1039,22 +1049,56 @@ Scope {
                 cacheBuffer: 600
                 model: ScriptModel { values: root.rows; objectProp: "key" }
                 delegate: ClipCard { panel: root }
-                // Scrolling steps through the items: one wheel notch = one item
-                // (the selection moves and the shelf glides to it, 140 ms); a
-                // touchpad steps once per 56 px of travel, either axis.
-                property real swipe: 0
+                // Scrolling moves the shelf, not the selection (that was a
+                // glide restarted on every touchpad tick: slow and rubbery).
+                // A touchpad scrolls 1:1 on either axis; a wheel notch moves one
+                // card, gliding to a target that more notches extend. Once it
+                // stops, the selection follows if it scrolled out of view.
+                readonly property real maxX: Math.max(originX, originX + contentWidth - width)
+                function clampX(x) { return Math.max(originX, Math.min(maxX, x)); }
+                property real wheelTo: 0
+                property int lastDir: 0
+                NumberAnimation { id: wheelGlide; target: shelf; property: "contentX"; duration: 160; easing.type: Easing.OutCubic }
                 WheelHandler {
                     acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
                     onWheel: event => {
                         const px = event.pixelDelta, ad = event.angleDelta;
+                        shelfGlide.stop();
                         if (px.x !== 0 || px.y !== 0) {
-                            shelf.swipe += Math.abs(px.x) > Math.abs(px.y) ? -px.x : -px.y;
-                            while (Math.abs(shelf.swipe) >= 56) { root.move(shelf.swipe > 0 ? 1 : -1); shelf.swipe -= shelf.swipe > 0 ? 56 : -56; }
+                            wheelGlide.stop();
+                            const d = Math.abs(px.x) > Math.abs(px.y) ? -px.x : -px.y;
+                            shelf.lastDir = d > 0 ? 1 : -1;
+                            shelf.contentX = shelf.clampX(shelf.contentX + d);
                         } else {
                             const d = Math.abs(ad.x) > Math.abs(ad.y) ? ad.x : ad.y;
-                            root.move(d > 0 ? -1 : 1);
+                            const step = (d > 0 ? -1 : 1) * (184 + shelf.spacing) * Math.max(1, Math.round(Math.abs(d) / 120));
+                            shelf.lastDir = step > 0 ? 1 : -1;
+                            const from = wheelGlide.running ? shelf.wheelTo : shelf.contentX;
+                            shelf.wheelTo = shelf.clampX(from + step);
+                            wheelGlide.stop();
+                            wheelGlide.to = shelf.wheelTo;
+                            if (Theme.reduceMotion) shelf.contentX = shelf.wheelTo; else wheelGlide.start();
                         }
+                        scrollSettle.restart();
+                        root.touched();
                         event.accepted = true;
+                    }
+                }
+                Timer {
+                    id: scrollSettle
+                    interval: 180
+                    onTriggered: {
+                        // The selection, if it's out of view: the first card fully in view on the side you scrolled toward.
+                        const i = root.rows.findIndex(r => r.key === root.selKey);
+                        const it = i >= 0 ? shelf.itemAtIndex(i) : null;
+                        const inView = it && it.x >= shelf.contentX - 1 && it.x + it.width <= shelf.contentX + shelf.width + 1;
+                        if (inView) return;
+                        const probe = shelf.lastDir >= 0 ? shelf.contentX + 4 : shelf.contentX + shelf.width - 4;
+                        let j = shelf.indexAt(probe, 20);
+                        const cand = j >= 0 ? shelf.itemAtIndex(j) : null;
+                        if (cand && (cand.x < shelf.contentX - 1 || cand.x + cand.width > shelf.contentX + shelf.width + 1)) j += shelf.lastDir >= 0 ? 1 : -1;
+                        const r = root.rows[Math.max(0, Math.min(root.rows.length - 1, j))];
+                        if (r && r.key) root.selKey = r.key;
                     }
                 }
             }
@@ -1335,14 +1379,15 @@ Scope {
         }
         else if (ctrl && k === Qt.Key_A && field && field.text === "") markAll();
         else if (k === Qt.Key_Escape && markedCount) clearMarks();
+        // One rule: with a search typed, ← → belong to the text (the caret,
+        // never jumping into the shelf at its ends); ↓ ↑ and Ctrl+N/P move
+        // between cards. With nothing typed, ← → move between cards too.
         else if (k === Qt.Key_Right || k === Qt.Key_Down || (ctrl && k === Qt.Key_N)) {
-            // → moves the caret while it isn't at the end of the search.
-            if (k === Qt.Key_Right && field && field.cursorPosition < field.text.length && !ql) return;
+            if (k === Qt.Key_Right && field && field.text !== "" && !ql) return;
             move(1);
         }
         else if (k === Qt.Key_Left || k === Qt.Key_Up) {
-            // ← moves the caret while there's search text to move in.
-            if (k === Qt.Key_Left && field && field.text !== "" && field.cursorPosition > 0 && !ql) return;
+            if (k === Qt.Key_Left && field && field.text !== "" && !ql) return;
             move(-1);
         }
         else if (k === Qt.Key_PageDown) move(5);

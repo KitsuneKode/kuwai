@@ -49,6 +49,12 @@ Scope {
             readonly property real ear: notch ? 9 : 0
 
             readonly property bool showBar: Settings.bar === "island"
+            // Tucked (Settings.islandTucked): no reserved strip; out only while
+            // something is alive here or you're near it.
+            readonly property bool tucked: showBar && Settings.islandTucked
+            readonly property bool outNow: !tucked || panelHere || bannerHere || grown || near || hovered
+                                           || (Island.peek && Island.peekScreen === screenName) || restRow.activity !== ""
+                                           || Notifs.missed.length > 0
             readonly property bool panelHere: Island.panel !== "" && Island.screen === screenName
             property string shownPanel: ""
             onPanelHereChanged: {
@@ -85,7 +91,7 @@ Scope {
             // the mask keeps the empty sides click-through.
             implicitWidth: 1120
             implicitHeight: 640
-            exclusiveZone: showBar ? restH + top + (notch ? 2 : 6) : 0
+            exclusiveZone: showBar && !tucked ? restH + top + (notch ? 2 : 6) : 0
             color: "transparent"
             WlrLayershell.namespace: "rice-islandbar"
             WlrLayershell.layer: WlrLayer.Top
@@ -93,7 +99,7 @@ Scope {
             mask: Region {
                 item: frame.opacity > 0.01 ? frame : null
                 // Minimal island: the strip along the top edge beside it counts too.
-                Region { item: Settings.islandRest === "minimal" ? nearStrip : null }
+                Region { item: Settings.islandRest === "minimal" || win.tucked ? nearStrip : null }
             }
             // Nearing the island (the pointer at the top edge beside it) shows
             // the minimal island's details; they fold away 700 ms after you leave.
@@ -118,7 +124,7 @@ Scope {
             property bool hovered: false
             property bool grown: false
             // Over the workspace pills the island stays put: they're for clicking.
-            readonly property bool overPills: restRow.pillsHovered
+            readonly property bool overPills: restRow.pillsHovered || restRow.musicHovered
             onOverPillsChanged: if (!overPills && hovered && !grown) intent.restart()
             // A banner on show stays a banner under the pointer (so its button
             // can be clicked): hovering only grows the island when there's none.
@@ -127,8 +133,10 @@ Scope {
             // island, but the island must stay grown or the menu loses its anchor.
             property int menus: 0
             onMenusChanged: if (menus === 0 && !hovered) leave.restart()
-            Timer { id: leave; interval: 260; onTriggered: if (!win.hovered && win.menus === 0) win.grown = false }
-            onHoveredChanged: hovered ? intent.restart() : leave.restart()
+            Timer { id: leave; interval: Theme.hoverLeaveMs; onTriggered: if (!win.hovered && win.menus === 0) win.grown = false }
+            onHoveredChanged: { hovered ? intent.restart() : leave.restart(); if (hovered) previewOut.stop(); else if (panelHere && Island.previewing) previewOut.restart(); }
+            // A previewed panel (Now Playing from the music's art) folds when you leave.
+            Timer { id: previewOut; interval: Theme.hoverLeaveMs; onTriggered: if (!win.hovered && win.panelHere && Island.previewing && win.menus === 0) Island.close() }
             // Super+Alt+I (Island.peek): grow here as if hovered, for a moment.
             readonly property bool peeked: Island.peek && Island.peekScreen === screenName
             onPeekedChanged: {
@@ -180,16 +188,12 @@ Scope {
                 }
             }
             readonly property var mine: Hyprland.workspaces.values.filter(w => w.id > 0 && w.monitor === monitor)
-            // kuwai gives each screen its own block of ten (1–10, 11–20, …): pills are
-            // numbered within this screen's block.
-            readonly property int wsBase: Math.floor((Math.max(1, activeWs) - 1) / 10) * 10
-            readonly property int wsCount: Math.max(Settings.workspaceCount, ...mine.map(w => w.id - wsBase), activeWs - wsBase)
-            // The pills. kuwai gives each screen a block of ten (laptop 1–10, the
-            // next screen 11–20…): show this screen's 1…N, N = the larger of the
-            // minimum (Settings.workspaceCount), the highest one in use and the
-            // current one. Workspaces from another screen's block that ended up
-            // here (an unplugged monitor) follow after a gap, hollow.
+            // kuwai gives each screen its own block of ten (laptop 1–10, the Acer
+            // 11–20, …) and publishes it (Island.wsBases). Until it has, a guess
+            // from the workspaces on this screen.
             readonly property int wsBlock: {
+                const known = Island.wsBases[screenName];
+                if (known !== undefined) return Math.floor(known / 10);
                 if (screenName.startsWith("eDP")) return 0;
                 const counts = {};
                 for (const w of mine) { const b = Math.floor((w.id - 1) / 10); if (b > 0) counts[b] = (counts[b] || 0) + 1; }
@@ -197,37 +201,98 @@ Scope {
                 for (const b in counts) if (counts[b] > n) { n = counts[b]; best = Number(b); }
                 return best;
             }
+            readonly property int wsBase: wsBlock * 10
+            // The focused screen's island is "on" (where your keys act); the others are quieter.
+            readonly property bool focusedHere: screenName === Screens.focusedName
+            // The window this screen is showing: the focused window when it's
+            // here, else the one you used last on this screen's workspace.
+            readonly property var screenWin: {
+                const a = Hyprland.activeToplevel;
+                if (focusedHere && a && a.workspace && a.workspace.id === activeWs) return a;
+                const here = Hyprland.toplevels.values.filter(t => t.workspace && t.workspace.id === activeWs && t.workspace.name !== "special:minimized");
+                if (!here.length) return null;
+                const rank = t => { const i = Switcher.mru.indexOf(t.address); return i < 0 ? 1e6 : i; };
+                return here.slice().sort((x, y) => rank(x) - rank(y))[0];
+            }
+            // How many pills: this screen's 1…N, N = the larger of the minimum
+            // (Settings.workspaceCount), the highest one in use and the current
+            // one. Desktops: in use on any screen.
+            readonly property var deskCount: {
+                const count = {};
+                if (!Island.desktops) return count;
+                for (const w of Hyprland.workspaces.values) if (w.id > 0) { const n = (w.id - 1) % 10 + 1; count[n] = (count[n] || 0) + (w.toplevels ? w.toplevels.values.length : 0); }
+                return count;
+            }
+            readonly property int wsNeed: {
+                const inBlock = id => id > wsBase && id <= wsBase + 10;
+                let n = Settings.workspaceCount;
+                if (inBlock(activeWs)) n = Math.max(n, activeWs - wsBase);
+                if (Island.desktops) { for (const k in deskCount) if (deskCount[k] > 0) n = Math.max(n, Number(k)); }
+                else for (const w of mine) if (inBlock(w.id) && w.toplevels && w.toplevels.values.length > 0) n = Math.max(n, w.id - wsBase);
+                return Math.min(10, n);
+            }
+            // The row grows at once but shrinks back only after a pause, and not
+            // while you're on the island: it doesn't jump around under you.
+            property int wsHeld: 0
+            onWsNeedChanged: { if (wsNeed > wsHeld) wsHeld = wsNeed; wsShrink.restart(); }
+            Timer { id: wsShrink; interval: 2500; onTriggered: { if (win.hovered) restart(); else win.wsHeld = win.wsNeed; } }
+            readonly property int wsShown: Math.max(wsNeed, wsHeld)
             // Desktops (kuwai `desktops`): one row, the same on every screen.
-            // A desktop is in use if it has windows on any screen.
             readonly property var deskList: {
                 if (!Island.desktops) return null;
-                const all = Hyprland.workspaces.values.filter(w => w.id > 0);
-                const count = {};
-                for (const w of all) { const n = (w.id - 1) % 10 + 1; count[n] = (count[n] || 0) + (w.toplevels ? w.toplevels.values.length : 0); }
-                const cur = activeWs > 0 ? (activeWs - 1) % 10 + 1 : 1;
-                let n = Math.max(Settings.workspaceCount, cur);
-                for (const k in count) if (count[k] > 0) n = Math.max(n, Number(k));
-                const base = Math.floor((Math.max(1, activeWs) - 1) / 10) * 10;
                 const out = [];
-                for (let i = 1; i <= Math.min(10, n); i++) out.push({ id: base + i, desktop: i, guest: false, windows: count[i] || 0, used: (count[i] || 0) > 0 });
+                for (let i = 1; i <= wsShown; i++) out.push({ id: wsBase + i, desktop: i, guest: false, windows: deskCount[i] || 0, used: (deskCount[i] || 0) > 0 });
                 return out;
             }
+            // Workspaces from another screen's block that ended up here (an
+            // unplugged monitor) follow after a gap, hollow.
             readonly property var wsList: deskList || (function() {
-                const base = wsBlock * 10;
+                const base = wsBase;
                 const inBlock = id => id > base && id <= base + 10;
                 const used = mine.filter(w => w.toplevels && w.toplevels.values.length > 0).map(w => w.id);
-                let n = Settings.workspaceCount;
-                for (const id of used.concat([activeWs])) if (inBlock(id)) n = Math.max(n, id - base);
                 const out = [];
-                for (let i = 1; i <= Math.min(10, n); i++) out.push({ id: base + i, guest: false });
+                for (let i = 1; i <= wsShown; i++) out.push({ id: base + i, guest: false });
                 const guests = used.concat([activeWs]).filter(id => id > 0 && !inBlock(id));
                 for (const id of [...new Set(guests)].sort((a, b) => a - b)) out.push({ id: id, guest: true });
                 return out;
             })()
-            readonly property var player: Mpris.players.values.find(p => p.playbackState === MprisPlaybackState.Playing) || Mpris.players.values[0] || null
+            // The other screens, for the small dots beside the pills: what each
+            // one shows and what's open there, on the side it sits (a screen to
+            // the left of this one, left of the pills). A click goes there.
+            // Desktops switch together, so there's nothing to show.
+            readonly property var others: {
+                if (Island.desktops || !modelData) return [];
+                const out = [];
+                for (const s of Quickshell.screens) {
+                    if (!s || s.name === screenName) continue;
+                    const hm = Hyprland.monitorFor(s);
+                    if (!hm) continue;
+                    const act = hm.activeWorkspace ? hm.activeWorkspace.id : 0;
+                    const list = Hyprland.workspaces.values
+                        .filter(w => w.id > 0 && w.monitor === hm && (w.id === act || (w.toplevels && w.toplevels.values.length > 0)))
+                        .sort((a, b) => a.id - b.id)
+                        .map(w => ({ id: w.id, on: w.id === act, windows: w.toplevels ? w.toplevels.values.length : 0 }));
+                    if (!list.length) continue;
+                    const make = ((hm.lastIpcObject || {}).make || "").split(" ")[0];
+                    out.push({ screen: s.name, label: s.name.startsWith("eDP") ? "Laptop" : (make || s.name), x: s.x, left: s.x < modelData.x, list: list });
+                }
+                return out.sort((a, b) => a.x - b.x);
+            }
+            // One player for every part (services/Media: it stays the one you
+            // used until another starts playing; pausing no longer swaps it).
+            readonly property var player: Media.active
             readonly property bool showMedia: Settings.hoverMedia && player !== null
             property date now: new Date()
-            Timer { interval: 1000; running: true; repeat: true; triggeredOnStart: true; onTriggered: win.now = new Date() }
+            // Once a minute, on the minute (the clock shows hours:minutes);
+            // every second only when it shows seconds.
+            Timer {
+                running: true; repeat: true; triggeredOnStart: true
+                interval: Settings.showSeconds ? 1000 : 60000 - (Date.now() % 60000) + 20
+                onTriggered: {
+                    win.now = new Date();
+                    if (!Settings.showSeconds) interval = 60000 - (Date.now() % 60000) + 20;
+                }
+            }
 
             Component { id: calendarPanel; CalendarPanel {} }
             Component { id: powerPanel; PowerPanel {} }
@@ -238,6 +303,7 @@ Scope {
             Component { id: keysPanel; KeysPanel {} }
             Component { id: switcherPanel; SwitcherPanel {} }
             Component { id: updatesPanel; UpdatesPanel {} }
+            Component { id: mediaPanel; MediaPanel {} }
 
             Elevation {
                 target: frame
@@ -251,7 +317,8 @@ Scope {
                 x: Math.round((win.width - width) / 2)
                 y: win.top
                 // Without the bar it is only there for a panel: it fades in as it grows.
-                opacity: win.showBar ? 1 : Math.max(0, Math.min(1, Math.max(pv.value, bv.value) * 2.5))
+                opacity: win.showBar ? (win.outNow ? 1 : 0) : Math.max(0, Math.min(1, Math.max(pv.value, bv.value) * 2.5))
+                Behavior on opacity { enabled: win.tucked || !win.outNow; NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
 
                 HoverHandler { onHoveredChanged: { win.hovered = hovered; if (win.bannerHere || !hovered) Alerts.held = hovered && win.bannerHere; } }
 
@@ -375,7 +442,7 @@ Scope {
                             y: win.backH
                             active: win.panelHere || pv.value > 0.01
                             focus: true
-                            sourceComponent: ({ calendar: calendarPanel, power: powerPanel, launcher: launcherPanel, settings: settingsPanel, system: systemPanel, theme: themePanel, keys: keysPanel, switcher: switcherPanel, updates: updatesPanel })[win.shownPanel] || null
+                            sourceComponent: ({ calendar: calendarPanel, power: powerPanel, launcher: launcherPanel, settings: settingsPanel, system: systemPanel, theme: themePanel, keys: keysPanel, switcher: switcherPanel, updates: updatesPanel, media: mediaPanel })[win.shownPanel] || null
                         }
                         // Right click (anywhere a control doesn't take it) or the mouse's back button: back.
                         TapHandler {
