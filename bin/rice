@@ -12,6 +12,8 @@
 #   rice lock [--wait]        lock with the rice's lock screen (--wait: until it is locked)
 #   rice set KEY VALUE        change a setting (~/.config/rice/settings.json)
 #   rice get [KEY]            print one setting, or all of them
+#   rice channel [stable|dev] run from the stable copy (~/.local/share/kuwai) or the repo
+#   rice promote              move stable up to the repo's latest commit (and reload it)
 #
 # `notifs` falls back to dunstctl when the rice isn't the notification server,
 # so Waybar and keybinds keep working either way.
@@ -111,7 +113,47 @@ notifs() {
     fi
 }
 
+# Stable and dev (hypr/templates/hyprland.lua reads the channel): stable is
+# ~/.local/share/kuwai, a worktree on the repo's `stable` branch; dev is the
+# repo you edit. Switching reloads Hyprland and restarts the shell from the
+# other copy, so keys, PATH and the shell all move together.
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/kuwai"
+STABLE="${XDG_DATA_HOME:-$HOME/.local/share}/kuwai"
+dev_root() { for d in "$HOME/Projects/kuwai" "$HOME/Projects/rice"; do [ -e "$d/hypr/init.lua" ] && { echo "$d"; return; }; done; }
+switch_to() {   # $1 = the root to run from
+    hyprctl reload >/dev/null 2>&1
+    sleep 0.5
+    # The old copy's shell: stopped by its own rice-shell's rule (kill -9).
+    for pid in $(pgrep -f '^qs -p .*/shell -d$'); do
+        case "$(tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null)" in
+            *"$1/shell"*) ;;
+            *) kill -9 "$pid" 2>/dev/null ;;
+        esac
+    done
+    systemctl --user set-environment KUWAI_ROOT="$1" 2>/dev/null
+    exec "$1/bin/rice-shell"
+}
+
 case ${1:-} in
+    channel)
+        mkdir -p "$STATE_DIR"
+        case ${2:-} in
+            stable)
+                [ -d "$STABLE/.git" ] || [ -f "$STABLE/.git" ] || { echo "rice: no stable copy at $STABLE (git worktree add $STABLE stable)" >&2; exit 1; }
+                echo stable > "$STATE_DIR/channel"; switch_to "$STABLE" ;;
+            dev)
+                echo dev > "$STATE_DIR/channel"; switch_to "$(dev_root)" ;;
+            "") cat "$STATE_DIR/channel" 2>/dev/null || echo "dev (no channel set)" ;;
+            *) echo "usage: rice channel [stable|dev]" >&2; exit 2 ;;
+        esac ;;
+    promote)
+        # Stable moves up to the repo's latest commit (fast-forward only:
+        # nothing on stable is ever rewritten). Uncommitted work stays behind.
+        dev=$(dev_root)
+        head=$(git -C "$dev" rev-parse HEAD) || exit 1
+        git -C "$STABLE" merge --ff-only --quiet "$head" || { echo "rice: stable can't fast-forward to $(git -C "$dev" log --oneline -1)" >&2; exit 1; }
+        echo "stable is now $(git -C "$STABLE" log --oneline -1)"
+        [ "$(cat "$STATE_DIR/channel" 2>/dev/null)" = stable ] && switch_to "$STABLE" ;;
     start|restart) exec "$RICE/bin/rice-shell" ;;
     stop)          for pid in $(qs list -p "$SHELL_DIR" --json 2>/dev/null | jq -r ".[].pid"); do kill -9 "$pid"; done ;;
     logs)          exec qs log -p "$SHELL_DIR" -f ;;

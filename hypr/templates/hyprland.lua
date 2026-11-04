@@ -12,7 +12,20 @@ do
 	local home = os.getenv("HOME") or ""
 	local data = os.getenv("XDG_DATA_HOME") or (home .. "/.local/share")
 	local tries = { home .. "/Projects/kuwai", home .. "/Projects/rice", data .. "/kuwai" }
-	if os.getenv("KUWAI_ROOT") then
+	-- The channel (`rice channel stable|dev`): stable is a checkout of the
+	-- repo's `stable` branch in ~/.local/share/kuwai (moved forward with
+	-- `rice promote`), so a half-saved edit in the repo never reaches your
+	-- session; dev runs straight from the repo. It wins over $KUWAI_ROOT,
+	-- which the live Hyprland keeps from its last load.
+	local state = (os.getenv("XDG_STATE_HOME") or (home .. "/.local/state")) .. "/kuwai/channel"
+	local cf, channel = io.open(state, "r"), nil
+	if cf then
+		channel = (cf:read("l") or ""):match("^%s*(%a+)")
+		cf:close()
+	end
+	if channel == "stable" then
+		tries = { data .. "/kuwai", home .. "/Projects/kuwai", home .. "/Projects/rice" }
+	elseif channel ~= "dev" and os.getenv("KUWAI_ROOT") then
 		table.insert(tries, 1, os.getenv("KUWAI_ROOT")) -- (a nil in the list would stop ipairs)
 	end
 	for _, dir in ipairs(tries) do

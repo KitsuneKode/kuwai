@@ -57,8 +57,13 @@ local function add(dir, front)
 		end
 	end
 end
+-- The other kuwai copy's bin (stable ↔ dev) drops out: one `rice` on PATH,
+-- the one this session runs.
+local others = { [K.home .. "/Projects/rice/bin"] = true, [K.home .. "/Projects/kuwai/bin"] = true, [(os.getenv("XDG_DATA_HOME") or (K.home .. "/.local/share")) .. "/kuwai/bin"] = true }
 for dir in path:gmatch("[^:]+") do
-	add(dir)
+	if not (others[dir] and dir ~= K.bin) then
+		add(dir)
+	end
 end
 add(K.home .. "/.local/bin", true)
 add(K.bin, true)
