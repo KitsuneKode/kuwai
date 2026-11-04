@@ -42,7 +42,7 @@ Item {
     readonly property bool compact: (Settings.islandRest === "minimal" || Settings.islandTucked || (Settings.islandRest === "auto" && takeover))
                                     && !Island.peek && !bar.near && (!bar.hovered || bar.holdCompact)
     // On the small marks (agents, the dots): their tips and clicks, not a grown island.
-    readonly property bool marksHovered: agents.hovered || agents.open || missedHover.hovered || micHover.hovered || camHover.hovered
+    readonly property bool marksHovered: agents.hovered || agents.open || alertMarkHover.hovered || missedHover.hovered || micHover.hovered || camHover.hovered
     // The mini notch: compact with nothing alive shows the time, and only
     // the time (plus a privacy dot when one is lit). Anything alive (music,
     // a moment, a password, dictation, a recording) takes its place.
@@ -99,9 +99,12 @@ Item {
         : Clipboard.recSince > 0 ? "rec"
         : Timers.next ? "timer"
         : Updates.running ? "update"
-        : Alerts.active.length ? "alert"
         : (Activities.shazamListening || Activities.shazamFound) ? "shazam"
-        : bar.player && bar.player.isPlaying && Settings.restMedia ? "media" : ""
+        : bar.player && bar.player.isPlaying && Settings.restMedia ? "media"
+        // A warning takes the stage only when nothing else is alive; beside
+        // music (or anything) it's a mark next to it (alertMark), so a hot
+        // CPU doesn't hide what's playing.
+        : Alerts.active.length ? "alert" : ""
 
     property real voxSecs: 0
     Timer {
@@ -403,6 +406,19 @@ Item {
             visible: list.length > 0
             anchors.verticalCenter: parent.verticalCenter
             bar: rest.bar
+        }
+        // A warning that isn't on stage (something else is): its mark, small.
+        Text {
+            id: alertMark
+            visible: Alerts.active.length > 0 && rest.activity !== "alert"
+            anchors.verticalCenter: parent.verticalCenter
+            text: Alerts.active.length ? Alerts.active[0].glyph : ""
+            font.family: Theme.fontGlyph
+            font.pixelSize: 13
+            color: Alerts.active.length && Alerts.active[0].level === "crit" ? Theme.red : Theme.orange
+            HoverHandler { id: alertMarkHover; margin: 6; cursorShape: Qt.PointingHandCursor }
+            TapHandler { onTapped: Island.open("system", rest.bar.screenName, "pointer", "island") }
+            Tip { text: Alerts.active.length ? Alerts.active.map(a => a.title).join(" · ") : ""; shown: alertMarkHover.hovered; below: true }
         }
         // The camera is on: a green dot (Apple's), with who has it.
         Rectangle {

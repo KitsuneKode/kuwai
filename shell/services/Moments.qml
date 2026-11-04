@@ -497,6 +497,12 @@ Singleton {
             const e = fresh[0];
             const needs = e.severity === "needs-you";
             const name = String(e.agent || "Agent");
+            // A tool asking for a password in a pane (sudo, ssh, git, pacman…)
+            // isn't an agent: say what it is, with a key, not a robot.
+            if (e.source === "tool" || /^(sudo|su|ssh|scp|git|pacman|paru|yay|gpg|doas|pkexec)$/i.test(name)) {
+                root.show({ kind: "agent", glyph: "\u{f0306}", label: "Password", value: name.toLowerCase() + " in kitty", ring: -1, tone: Theme.orange }, 6000);
+                return;
+            }
             root.show({
                 kind: "agent", image: Kittymux.brand(e.agent), glyph: "\u{f06a9}",
                 label: name.charAt(0).toUpperCase() + name.slice(1),
