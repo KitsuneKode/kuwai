@@ -51,9 +51,14 @@ Scope {
         }
     }
     property bool announced: false
-    Process { id: reclaim; command: ["pkill", "-f", "^qs -p .*/voxtype/quickshell$"] }
+    // A Quickshell that's killed leaves its audio bridge running (theirs
+    // here, this shell's at a restart): any bridge whose parent isn't a live
+    // qs is one of those, idle forever.
+    readonly property string sweep: 'for p in $(pgrep -f "/voxtype-audio-bridge$"); do [ "$(cat /proc/$(ps -o ppid= -p $p | tr -d " ")/comm 2>/dev/null)" = qs ] || kill $p; done'
+    Process { id: reclaim; command: ["sh", "-c", 'pkill -f "^qs -p .*/voxtype/quickshell$"; sleep 1; ' + host.sweep] }
+    Process { id: tidy; command: ["sh", "-c", host.sweep] }
     Timer { id: reprobe; interval: 3000; onTriggered: probe.running = true }
-    Timer { interval: 1500; running: true; onTriggered: probe.running = true }
+    Timer { interval: 1500; running: true; onTriggered: { probe.running = true; tidy.running = true; } }
     // A slow safety net (voxtype's own launcher also checks us at its start).
     Timer { interval: 30000; running: true; repeat: true; onTriggered: probe.running = true }
 
