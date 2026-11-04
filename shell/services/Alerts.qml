@@ -54,20 +54,33 @@ Singleton {
     onHeldChanged: if (held) bannerFor.stop(); else if (banner) bannerFor.restart()
     Timer { id: bannerFor; interval: 7000; onTriggered: if (!root.held) root.banner = null }
 
-    // Updates: announced once when they appear or their number grows (an
-    // "info" moment in the accent, not a warning), then shown in System.
-    property int updatesSeen: 0
-    Connections {
-        target: Updates
-        function onTotalChanged() {
-            const n = Updates.total;
-            if (n > root.updatesSeen && n > 0 && Settings.updatesAnnounce) {
-                root.banner = { id: "updates", level: "info", glyph: "\u{f06b0}", title: n + (n === 1 ? " update" : " updates") + " available", detail: "Review what changes, then update", panel: "updates", action: "Review" };
-                bannerFor.restart();
-            }
-            root.updatesSeen = Math.max(0, n);
-        }
+    // Updates: told once, when the session has settled (after the greeting
+    // and the first look at what's connected) and the island is free; only
+    // for versions not told before (remembered across restarts), at most
+    // every 6 h (a nightly package moves daily). Then shown in System.
+    readonly property var updateKeys: Updates.total > 0 ? Updates.repo.concat(Updates.aur).map(p => p.name + "@" + (p.new || "")).concat(Updates.flatpak.map(p => p.id + "@" + (p.new || p.version || ""))) : []
+    FileView {
+        id: told
+        path: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/rice/updates-told.json"
+        blockLoading: true
+        printErrors: false
     }
+    function toldData() { try { return JSON.parse(told.text() || "{}"); } catch (e) { return {}; } }
+    function tellUpdates() {
+        const n = Updates.total;
+        if (n <= 0 || !Settings.updatesAnnounce) return;
+        if (!Moments.settled || Moments.now || Moments.card || banner) { tellLater.restart(); return; }
+        const t = toldData();
+        const seen = t.keys || [];
+        const unseen = updateKeys.filter(k => seen.indexOf(k) < 0);
+        if (!unseen.length || Date.now() - (t.at || 0) < 6 * 3600 * 1000) return;
+        told.setText(JSON.stringify({ at: Date.now(), keys: updateKeys }) + "\n");
+        banner = { id: "updates", level: "info", glyph: "\u{f06b0}", title: n + (n === 1 ? " update" : " updates") + " available", detail: "Review what changes, then update", panel: "updates", action: "Review" };
+        bannerFor.restart();
+    }
+    Timer { id: tellLater; interval: 4000; onTriggered: root.tellUpdates() }
+    Connections { target: Updates; function onTotalChanged() { root.tellUpdates(); } }
+    Connections { target: Moments; function onSettledChanged() { root.tellUpdates(); } }
     function dismiss() { banner = null; }
 
     property var frame: ({})

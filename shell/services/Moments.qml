@@ -139,9 +139,23 @@ Singleton {
             const c = root.btCard(ds[ds.length - 1]);
             if (ds.length > 1) c.detail = "and " + ds.slice(0, -1).map(d => d.name || "a device").join(", ");
             root.showCard(c);
+            if (["earbuds", "iem", "headphones", "speaker"].indexOf(root.btKind(ds[ds.length - 1])) >= 0) { stays.key = c.key; stays.restart(); }
+        }
+    }
+    // Sound gear connected while sound stays elsewhere (the IEMs still
+    // plugged in): say where it is, once the sound has had time to move.
+    Timer {
+        id: stays
+        property string key: ""
+        interval: 2500
+        onTriggered: {
+            if (!root.card || root.card.key !== key || !root.output || root.output.key === key) return;
+            root.showCard(Object.assign({}, root.card, { detail: "Sound stays on " + root.short(root.output.title) }), 3000);
         }
     }
     property var lastGone: null
+    // Osd: the output sound is on now ({ key, title, wired, bt, … }).
+    property var output: null
     function deviceGone(g) {
         const art = DeviceArt.lookup(g.name);
         lastGone = { key: g.name.toLowerCase(), at: Date.now(), output: true };
@@ -160,7 +174,7 @@ Singleton {
     function outputSwitched(o) {
         // Headphones just went: say where the sound went instead.
         if (lastGone && lastGone.output && Date.now() - lastGone.at < 4000 && card && card.gone && lastGone.key !== o.key) {
-            showCard(Object.assign({}, card, { detail: "Sound on " + o.title }), 3400);
+            showCard(Object.assign({}, card, { detail: "Sound on " + short(o.title) }), 3400);
             return;
         }
         // Plugged in or just connected: "Connected". Already there, picked
@@ -168,10 +182,13 @@ Singleton {
         const linked = o.live && o.fresh;
         showCard({ key: o.key, glyph: o.glyph, image: o.image, title: o.title,
                    state: linked ? "Connected" : "Sound output", tone: linked ? Theme.green : Theme.textSecondary,
-                   detail: o.via ? "via " + o.via : "", battery: o.battery, gone: false, link: o.link || "", quiet: !linked }, linked ? 4000 : 2600);
+                   detail: o.via ? "via " + o.via : "", battery: o.battery, gone: false, link: o.link || "", quiet: !linked,
+                   level: linked ? o.level : -1, muted: !!o.muted }, linked ? 4800 : 2600);
     }
     // Osd, for inputs: a USB microphone plugged in or out, or the input
     // picked in Sound (quiet): { key, glyph, image, title, link, gone, quiet, detail }.
+    // "Sony WF-C510" → "WF-C510": the model, where a detail line is short of room.
+    function short(t) { const w = (t || "").split(" "); return t.length > 10 && w.length > 1 ? w[w.length - 1] : t; }
     function inputCard(c) {
         if (c.gone) lastGone = { key: c.key, at: Date.now() };
         showCard({ key: c.key, glyph: c.glyph, image: c.image, title: c.title, link: c.link, gone: c.gone, quiet: !!c.quiet,
@@ -187,7 +204,10 @@ Singleton {
         onTriggered: {
             const audio = ["earbuds", "iem", "headphones", "speaker"];
             const ds = root.connected.slice().sort((a, b) => (audio.indexOf(root.btKind(a)) < 0) - (audio.indexOf(root.btKind(b)) < 0));
-            if (!ds.length) { root.askOutput(); return; }
+            // The gear sound is on comes first (the IEMs, though the earbuds
+            // are connected too); then Bluetooth, sound gear first.
+            const out = root.output;
+            if (!ds.length || (out && (out.wired || out.bt))) { root.askOutput(); return; }
             const c = root.btCard(ds[0]);
             if (ds.length > 1) c.detail = "and " + ds.slice(1).map(d => d.name || "a device").join(", ");
             root.showCard(c, 4200);
@@ -209,8 +229,14 @@ Singleton {
         id: hello
         path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/rice/welcomed"
         printErrors: false
-        onLoadFailed: { setText(String(Date.now()) + "\n"); helloLater.start(); }
+        onLoadFailed: { root.freshLogin = true; setText(String(Date.now()) + "\n"); helloLater.start(); }
     }
+    // Settled: the greeting and the first look at what's here are over, and
+    // news that can wait (updates) may come. A fresh login gets a minute to
+    // breathe; a shell restart in the session, less.
+    property bool freshLogin: false
+    property bool settled: false
+    Timer { interval: root.freshLogin ? 60000 : 20000; running: !root.settled; onTriggered: root.settled = true }
     // After the desktop has drawn, so it's seen.
     Timer { id: helloLater; interval: 1800; onTriggered: root.show({ kind: "hello", image: root.face, round: true, label: root.greeting(), value: root.userName, ring: -1, tone: Theme.textPrimary }, 3600) }
     // Lock.qml, on the right password: how long you were away.
@@ -287,20 +313,36 @@ Singleton {
         return { key: "power", glyph: on ? "\u{f06a5}" : "\u{f06a6}", image: "", link: "", battery: root.pct / 100,
                  title: !on ? "On Battery" : holding ? (b.state === UPowerDeviceState.FullyCharged ? "Fully Charged" : "Plugged In") : "Charging",
                  state: on ? "Connected" : "Disconnected", tone: on ? Theme.green : Theme.textSecondary, gone: !on,
-                 detail: holding ? "Charge limit on, not charging" : est,
+                 detail: holding ? "Running on power, battery at rest" : est,
                  open: () => Island.open("power", Screens.focusedName, "pointer", "island") };
     }
-    Timer { id: powerSettle; interval: 700; onTriggered: { root.showCard(root.powerCard(), 4000); powerEstimate.restart(); } }
+    // A charger that flickers (a loose plug) says so once, not every time:
+    // a second change within 20 s only updates a card still showing.
+    property real powerToldAt: 0
+    Timer {
+        id: powerSettle; interval: 700
+        onTriggered: {
+            const showing = root.card && root.card.key === "power";
+            if (!showing && Date.now() - root.powerToldAt < 20000) return;
+            root.powerToldAt = Date.now();
+            root.toldDone = !UPower.onBattery && root.holding();
+            root.showCard(root.powerCard(), 4000);
+            powerEstimate.restart();
+        }
+    }
     Timer { id: powerEstimate; interval: 3500; onTriggered: if (root.card && root.card.key === "power") root.showCard(root.powerCard(), 3000) }
-    // Charged to the full (or to its limit), once each time it's plugged in.
-    property bool toldFull: false
+    // Done charging, once each time it's plugged in: to the full, or to the
+    // charge limit (it then runs on power, the battery left alone).
+    property bool toldDone: false
+    function holding() { return !!battery && (battery.state === UPowerDeviceState.PendingCharge || battery.state === UPowerDeviceState.FullyCharged); }
     readonly property int powerState: battery ? battery.state : 0
     onPowerStateChanged: {
-        if (UPower.onBattery) { toldFull = false; return; }
-        if (armed && !toldFull && powerState === UPowerDeviceState.FullyCharged && !powerSettle.running) {
-            toldFull = true;
-            showCard(Object.assign(powerCard(), { title: "Fully Charged", state: "Charged", detail: "" }), 4000);
-        }
+        if (UPower.onBattery) { toldDone = false; return; }
+        if (!armed || toldDone || powerSettle.running || !holding() || !battery.isLaptopBattery) return;
+        toldDone = true;
+        const full = powerState === UPowerDeviceState.FullyCharged;
+        showCard(Object.assign(powerCard(), full ? { title: "Fully Charged", state: "Charged", detail: "Running on power" }
+                                                 : { title: "Charge Limit Reached", state: "Charged", detail: "Held at " + pct + "%, running on power" }), 4500);
     }
 
     // ── Displays: one plugged in or out ──────────────────────────────────

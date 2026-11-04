@@ -101,16 +101,24 @@ Scope {
                 // Minimal island: the strip along the top edge beside it counts too.
                 Region { item: Settings.islandRest === "minimal" || win.tucked ? nearStrip : null }
             }
-            // Nearing the island (the pointer at the top edge beside it) shows
-            // the minimal island's details; they fold away 700 ms after you leave.
+            // Nearing the island: the pointer resting on the top edge over it
+            // (its resting width and 80 px either side, not the grown one, so
+            // passing along the edge to a tab doesn't catch it) shows the
+            // minimal island's details, or the tucked island itself. A brief
+            // rest (90 ms) tells reaching it from passing by. It folds away
+            // 450 ms after the pointer has left both the edge and the island.
             property bool near: false
             Item {
                 id: nearStrip
-                width: Math.max(frame.width + 260, 420); height: 5
+                width: Math.max(win.restW + 160, 360); height: 4
                 x: Math.round((win.width - width) / 2); y: 0
-                HoverHandler { onHoveredChanged: { if (hovered) { nearOff.stop(); win.near = true; } else nearOff.restart(); } }
+                HoverHandler { id: nearHover; onHoveredChanged: { if (hovered) { nearOff.stop(); nearDwell.restart(); } else { nearDwell.stop(); if (win.near) nearOff.restart(); } } }
             }
-            Timer { id: nearOff; interval: 700; onTriggered: win.near = win.hovered }
+            Timer { id: nearDwell; interval: 90; onTriggered: win.near = true }
+            Timer { id: nearOff; interval: 450; onTriggered: if (!win.hovered && !nearHover.hovered) win.near = false }
+            // Shown by nearing, the island grows only once the pointer comes
+            // down onto it, not while it rests on the screen's edge.
+            readonly property bool edgeOnly: (win.tucked || Settings.islandRest === "minimal") && frameHover.hovered && frameHover.point.position.y < 6
 
             property bool armed: false
             Timer { id: arm; interval: 160; onTriggered: win.armed = true }
@@ -128,13 +136,23 @@ Scope {
             onOverPillsChanged: if (!overPills && hovered && !grown) intent.restart()
             // A banner on show stays a banner under the pointer (so its button
             // can be clicked): hovering only grows the island when there's none.
-            Timer { id: intent; interval: Settings.hoverDelay; onTriggered: win.grown = win.hovered && !win.panelHere && !win.overPills && !win.bannerHere && !win.peekHere && !win.deviceHere }
+            Timer {
+                id: intent; interval: Settings.hoverDelay
+                onTriggered: {
+                    if (win.hovered && win.edgeOnly && !win.grown) { restart(); return; }
+                    win.grown = win.hovered && !win.panelHere && !win.overPills && !win.bannerHere && !win.peekHere && !win.deviceHere;
+                }
+            }
             // Open tray menus (TrayRow): the pointer is on the menu, not the
             // island, but the island must stay grown or the menu loses its anchor.
             property int menus: 0
             onMenusChanged: if (menus === 0 && !hovered) leave.restart()
             Timer { id: leave; interval: Theme.hoverLeaveMs; onTriggered: if (!win.hovered && win.menus === 0) win.grown = false }
-            onHoveredChanged: { hovered ? intent.restart() : leave.restart(); if (hovered) previewOut.stop(); else if (panelHere && Island.previewing) previewOut.restart(); }
+            onHoveredChanged: {
+                hovered ? intent.restart() : leave.restart();
+                if (hovered) previewOut.stop(); else if (panelHere && Island.previewing) previewOut.restart();
+                if (!hovered && near) nearOff.restart();
+            }
             // A previewed panel (Now Playing from the music's art) folds when you leave.
             Timer { id: previewOut; interval: Theme.hoverLeaveMs; onTriggered: if (!win.hovered && win.panelHere && Island.previewing && win.menus === 0) Island.close() }
             // Super+Alt+I (Island.peek): grow here as if hovered, for a moment.
@@ -326,7 +344,7 @@ Scope {
                 opacity: win.showBar ? (win.outNow ? 1 : 0) : Math.max(0, Math.min(1, Math.max(pv.value, bv.value, nv.value, dv.value) * 2.5))
                 Behavior on opacity { enabled: win.tucked || !win.outNow; NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
 
-                HoverHandler { onHoveredChanged: { win.hovered = hovered; if (win.bannerHere || !hovered) Alerts.held = hovered && win.bannerHere; if (win.peekHere || !hovered) Notifs.peekHeld = hovered && win.peekHere; if (win.deviceHere || !hovered) Moments.cardHeld = hovered && win.deviceHere; } }
+                HoverHandler { id: frameHover; onHoveredChanged: { win.hovered = hovered; if (win.bannerHere || !hovered) Alerts.held = hovered && win.bannerHere; if (win.peekHere || !hovered) Notifs.peekHeld = hovered && win.peekHere; if (win.deviceHere || !hovered) Moments.cardHeld = hovered && win.deviceHere; } }
 
                 // The island itself: a notch, or a floating black-glass pill.
                 NotchShape {

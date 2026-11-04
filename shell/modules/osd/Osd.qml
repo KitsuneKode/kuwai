@@ -127,15 +127,19 @@ Scope {
     property var leftOut: null
     function remember() {
         if (!sink || !sink.audio) return;
-        const props = sink.properties || {};
+        lastOut = outInfo(sink);
+        Moments.output = lastOut;
+    }
+    function outInfo(node) {
+        const props = node.properties || {};
         const dev = bluetoothDevice(props);
         const bt = props["device.api"] === "bluez5" || !!props["api.bluez5.address"];
-        const rawLabel = (dev && dev.name) || props["device.description"] || sink.description || "";
+        const rawLabel = (dev && dev.name) || props["device.description"] || node.description || "";
         const type = deviceType(rawLabel, props, bt, dev ? (dev.icon || "") : "");
         const art = DeviceArt.lookup(rawLabel) || DeviceArt.lookup(props["device.description"] || "");
         const shownType = art && art.kind && typeGlyph[art.kind] ? art.kind : type;
-        lastOut = { name: sink.name, key: rawLabel.toLowerCase(), title: art ? art.label : sinkLabel(type, props, dev),
-                    glyph: typeGlyph[shownType], image: art ? art.image : "", wired: !bt && (type === "usb" || !!art) };
+        return { name: node.name, key: rawLabel.toLowerCase(), title: art ? art.label : sinkLabel(type, props, dev),
+                 glyph: typeGlyph[shownType], image: art ? art.image : "", wired: !bt && (type === "usb" || !!art), bt: bt };
     }
     function unplugged(o) {
         return !!o && o.wired && (!sink || o.name !== sink.name)
@@ -235,6 +239,36 @@ Scope {
         }
     }
 
+    // ── USB outputs (a DAC) plugged in or out while sound stays where it is;
+    // one that takes the sound is told by onSinkChanged.
+    readonly property var externalOuts: Pipewire.nodes.values.filter(n => !n.isStream && /^Audio\/Sink/.test((n.properties || {})["media.class"] || "")
+                                                                      && (n.properties || {})["device.bus"] === "usb")
+    property var knownOuts: []
+    onExternalOutsChanged: outsSettle.restart()
+    Timer { id: outsSettle; interval: 500; onTriggered: root.diffOuts() }
+    function diffOuts() {
+        const now = externalOuts.map(n => outInfo(n));
+        const added = now.filter(x => !knownOuts.some(k => k.name === x.name));
+        const gone = knownOuts.filter(k => !now.some(x => x.name === k.name));
+        knownOuts = now;
+        if (!armed || Settings.bar !== "island" || (!added.length && !gone.length)) return;
+        outCard.pending = added.length ? Object.assign({}, added[added.length - 1], { gone: false })
+                                       : Object.assign({}, gone[gone.length - 1], { gone: true });
+        outCard.restart();
+    }
+    Timer {
+        id: outCard
+        property var pending: null
+        interval: 1500
+        onTriggered: {
+            const c = pending; pending = null;
+            if (!c || !root.sink || root.sink.name === c.name || (root.lastOut && root.lastOut.name === c.name)) return;
+            const on = root.lastOut ? Moments.short(root.lastOut.title) : "";
+            Moments.inputCard({ key: c.key, glyph: c.glyph, image: c.image, title: c.title, link: "usb", gone: c.gone,
+                                detail: on ? (c.gone ? "Sound on " : "Sound stays on ") + on : "" });
+        }
+    }
+
     function bluetoothDevice(props) {
         const addr = (props["api.bluez5.address"] || "").toUpperCase();
         if (!addr) return null;
@@ -319,7 +353,8 @@ Scope {
                 key: rawLabel.toLowerCase(), glyph: typeGlyph[shownType], image: art ? art.image : "",
                 title: art ? art.label : sinkLabel(type, props, dev), via: art ? art.via : "",
                 battery: dev && dev.batteryAvailable ? dev.battery : -1, live: live, boot: !!boot,
-                link: bt ? "bluetooth" : wired ? "usb" : "", fresh: !!boot || fresh(sink.name)
+                link: bt ? "bluetooth" : wired ? "usb" : "", fresh: !!boot || fresh(sink.name),
+                level: live ? Math.min(1, v / 100) : -1, muted: sink.audio.muted
             });
             return;
         }

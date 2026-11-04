@@ -6,13 +6,16 @@
 // it folds back by itself, never under the pointer.
 //
 // Motion: it's rare (gear comes and goes a few times a day), so connecting
-// gets a moment, in order, as the island springs open:
-//   the device slides in    320 ms ease-out, from 12 px left and 0.9
-//   its name, then its state, 60 ms apart, rising 6 px   280 ms ease-out
-//   the link closes around it    460 ms ease-out
-//   and, as it closes: the ring pings out (420 ms), the device settles
-//   (a 4 % overshoot), the badge lands, the state's dot ripples once, the
+// gets a moment, in order, as the island springs open. Nothing overshoots:
+// nothing was thrown.
+//   the device comes up, dim, from 0.92           300 ms ease-out
+//   its name, then its state, 50 ms apart, rising 4 px   260 ms ease-out
+//   a ring of light closes around it              480 ms ease-out
+//   and, as it closes: the device lights up, the ring breathes out and
+//   fades (450 ms), the badge lands, the state's dot ripples once, the
 //   battery ring fills (StatRing's 400 ms glide) or the tick lands.
+//   Sound gear then says how loud: "Connected" hands its line to the level,
+//   which fills from empty (220 ms crossfade, 600 ms fill).
 // Going, the same entrance, greyed, and the ring comes undone (420 ms
 // ease-in-out): the link breaking. Picked in Sound (quiet), no link: just
 // the entrance. Reduced motion: the island's fade alone.
@@ -33,7 +36,7 @@ Item {
     readonly property bool quiet: !!(item && item.quiet)
     readonly property real battery: item && item.battery >= 0 ? item.battery : -1
 
-    property real enter: 1            // the device sliding in
+    property real enter: 1            // the device coming up
     property real line1: 1            // the name
     property real line2: 1            // the state
     property real link: 0             // the ring: drawn (connecting) or undone (going)
@@ -41,44 +44,59 @@ Item {
     property real settle: 1
     property real ripple: 1
     property real fill: 1
+    // Sound gear: its level (0..1), once "Connected" has been read.
+    readonly property real level: item && item.level >= 0 ? item.level : -1
+    property real swap: 0
+    property real levelFill: 1
     property string shownKey: ""
     onItemChanged: {
         if (!item || item.key + !!item.gone + !!item.quiet === shownKey) return;
         shownKey = item.key + !!item.gone + !!item.quiet;
         connecting.stop(); going.stop(); entering.stop();
-        if (Theme.reduceMotion) { enter = 1; line1 = 1; line2 = 1; link = 0; ping = 0; settle = 1; ripple = 1; fill = 1; return; }
+        swap = 0; levelFill = 1;
+        if (Theme.reduceMotion) { enter = 1; line1 = 1; line2 = 1; link = 0; ping = 0; settle = 1; ripple = 1; fill = 1; swap = level >= 0 && !gone && !quiet ? 1 : 0; return; }
         enter = 0; line1 = 0; line2 = 0; ping = 0; ripple = 1;
         entering.restart();
         if (gone) { link = 1; settle = 1; fill = 1; going.restart(); }
         else if (quiet) { link = 0; settle = 1; fill = 1; }
         else { link = 0; settle = 0; fill = 0; ripple = 0; connecting.restart(); }
     }
+    // The level can arrive a moment after the link (the sound moving to it).
+    onLevelChanged: if (level >= 0 && !gone && !quiet && swap === 0 && !connecting.running && !Theme.reduceMotion && shownKey !== "") toLevel.restart()
     readonly property var ease: Theme.easeOut
     ParallelAnimation {
         id: entering
         SequentialAnimation {
             PauseAnimation { duration: 80 }
-            NumberAnimation { target: card; property: "enter"; to: 1; duration: 320; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
+            NumberAnimation { target: card; property: "enter"; to: 1; duration: 300; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
         }
         SequentialAnimation {
             PauseAnimation { duration: 140 }
-            NumberAnimation { target: card; property: "line1"; to: 1; duration: 280; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
+            NumberAnimation { target: card; property: "line1"; to: 1; duration: 260; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
         }
         SequentialAnimation {
-            PauseAnimation { duration: 200 }
-            NumberAnimation { target: card; property: "line2"; to: 1; duration: 280; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
+            PauseAnimation { duration: 190 }
+            NumberAnimation { target: card; property: "line2"; to: 1; duration: 260; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
         }
     }
     SequentialAnimation {
         id: connecting
         PauseAnimation { duration: 200 }
-        NumberAnimation { target: card; property: "link"; to: 1; duration: 460; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
+        NumberAnimation { target: card; property: "link"; to: 1; duration: 480; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
         ParallelAnimation {
-            NumberAnimation { target: card; property: "ping"; to: 1; duration: 420; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
-            NumberAnimation { target: card; property: "settle"; to: 1; duration: 380; easing.type: Easing.OutBack; easing.overshoot: 1.2 }
+            NumberAnimation { target: card; property: "ping"; to: 1; duration: 450; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
+            NumberAnimation { target: card; property: "settle"; to: 1; duration: 320; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
             NumberAnimation { target: card; property: "ripple"; to: 1; duration: 520; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
             PropertyAction { target: card; property: "fill"; value: 1 }      // StatRing glides there itself
         }
+        ScriptAction { script: if (card.level >= 0) toLevel.restart() }
+    }
+    SequentialAnimation {
+        id: toLevel
+        PauseAnimation { duration: 700 }
+        PropertyAction { target: card; property: "levelFill"; value: 0 }
+        NumberAnimation { target: card; property: "swap"; to: 1; duration: 220; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
+        NumberAnimation { target: card; property: "levelFill"; to: 1; duration: 600; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
     }
     SequentialAnimation {
         id: going
@@ -100,10 +118,9 @@ Item {
         id: mark
         x: 18; anchors.verticalCenter: parent.verticalCenter
         width: 54; height: 54
-        opacity: card.enter * (card.gone ? 0.5 : 1)
-        // Connecting: in from a little small, a touch over as the link closes.
-        scale: (0.9 + 0.1 * card.enter) * (card.gone ? 0.94 : 0.96 + 0.04 * card.settle)
-        transform: Translate { x: -12 * (1 - card.enter) }
+        // Connecting: up from a little small and dim; lit as the link closes.
+        opacity: card.enter * (card.gone ? 0.5 : 0.6 + 0.4 * card.settle)
+        scale: (0.92 + 0.08 * card.enter) * (card.gone ? 0.94 : 1)
         Image {
             id: photo
             anchors.fill: parent
@@ -130,7 +147,7 @@ Item {
     }
     LinkRing {
         anchors.centerIn: mark
-        width: 64; height: 64
+        width: 76; height: 76
         draw: card.link; ping: card.gone ? 0 : card.ping
         color: card.gone ? Theme.textTertiary : Theme.green
     }
@@ -142,8 +159,8 @@ Item {
         width: 22; height: 22; radius: 11
         color: "#2c2c2e"
         border.width: 2; border.color: "black"
-        scale: 0.6 + 0.4 * card.settle
-        opacity: card.enter * Math.min(1, card.settle * 1.5) * (card.gone ? 0.6 : 1)
+        scale: 0.8 + 0.2 * card.settle
+        opacity: card.enter * card.settle * (card.gone ? 0.6 : 1)
         Text {
             anchors.centerIn: parent
             text: parent.linkGlyph
@@ -161,47 +178,83 @@ Item {
             size: 16; weight: Theme.wSemibold
             color: card.gone ? Theme.textSecondary : Theme.textPrimary
             opacity: card.line1
-            transform: Translate { y: 6 * (1 - card.line1) }
+            transform: Translate { y: 4 * (1 - card.line1) }
         }
-        Row {
+        Item {
             width: parent.width
-            spacing: 6
+            height: stateRow.height
             opacity: card.line2
-            transform: Translate { y: 6 * (1 - card.line2) }
-            Item {
-                anchors.verticalCenter: parent.verticalCenter
-                width: 6; height: 6
-                Rectangle {
-                    anchors.fill: parent
-                    radius: 3
+            transform: Translate { y: 4 * (1 - card.line2) }
+            Row {
+                id: stateRow
+                width: parent.width
+                spacing: 6
+                opacity: 1 - card.swap
+                visible: card.swap < 1
+                Item {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 6; height: 6
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: 3
+                        color: card.item ? card.item.tone || Theme.green : Theme.green
+                    }
+                    // One ripple from the dot as the link closes.
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width: 6; height: 6; radius: 3
+                        color: "transparent"
+                        border.width: 1.5; border.color: Theme.green
+                        visible: card.ripple > 0.001 && card.ripple < 0.999
+                        scale: 1 + 2.2 * card.ripple
+                        opacity: 1 - card.ripple
+                    }
+                }
+                Label {
+                    id: stateLabel
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: card.item ? card.item.state || "" : ""
+                    size: 12; weight: Theme.wMedium
                     color: card.item ? card.item.tone || Theme.green : Theme.green
                 }
-                // One ripple from the dot as the link closes.
-                Rectangle {
-                    anchors.centerIn: parent
-                    width: 6; height: 6; radius: 3
-                    color: "transparent"
-                    border.width: 1.5; border.color: Theme.green
-                    visible: card.ripple > 0.001 && card.ripple < 0.999
-                    scale: 1 + 2.2 * card.ripple
-                    opacity: 1 - card.ripple
+                Label {
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: text !== ""
+                    width: Math.min(implicitWidth, parent.width - stateLabel.width - 18)
+                    elide: Text.ElideRight
+                    text: card.item && card.item.detail ? "·  " + card.item.detail : ""
+                    size: 12
+                    color: Theme.textSecondary
                 }
             }
-            Label {
-                id: stateLabel
-                anchors.verticalCenter: parent.verticalCenter
-                text: card.item ? card.item.state || "" : ""
-                size: 12; weight: Theme.wMedium
-                color: card.item ? card.item.tone || Theme.green : Theme.green
-            }
-            Label {
-                anchors.verticalCenter: parent.verticalCenter
-                visible: text !== ""
-                width: Math.min(implicitWidth, parent.width - stateLabel.width - 18)
-                elide: Text.ElideRight
-                text: card.item && card.item.detail ? "·  " + card.item.detail : ""
-                size: 12
-                color: Theme.textSecondary
+            // Sound gear, connected: how loud, filling from empty.
+            Row {
+                anchors.verticalCenter: stateRow.verticalCenter
+                width: parent.width
+                spacing: 10
+                visible: card.swap > 0
+                opacity: card.swap
+                Item {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: parent.width - levelText.width - 10
+                    height: 6
+                    Rectangle { anchors.fill: parent; radius: 3; color: Theme.track }
+                    Rectangle {
+                        height: parent.height; radius: 3
+                        width: Math.max(height, parent.width * Math.max(0, Math.min(1, card.level)) * card.levelFill)
+                        visible: card.level * card.levelFill > 0.004
+                        color: card.item && card.item.muted ? Theme.fillDim : Theme.fill
+                    }
+                }
+                Label {
+                    id: levelText
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: Math.max(26, implicitWidth); horizontalAlignment: Text.AlignRight
+                    text: card.item && card.item.muted ? "Muted" : String(Math.round(Math.max(0, card.level) * 100 * card.levelFill))
+                    size: 12; weight: Theme.wMedium
+                    color: Theme.textSecondary
+                    font.features: { "tnum": 1 }
+                }
             }
         }
     }
@@ -227,8 +280,8 @@ Item {
             anchors.centerIn: parent
             visible: card.battery < 0
             width: 30; height: 30; radius: 15
-            scale: 0.6 + 0.4 * card.settle
-            opacity: Math.min(1, card.settle * 1.5)
+            scale: 0.8 + 0.2 * card.settle
+            opacity: card.settle
             color: Qt.alpha(Theme.green, 0.18)
             Text {
                 anchors.centerIn: parent
