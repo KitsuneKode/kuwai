@@ -34,12 +34,13 @@ Item {
     readonly property var alerts: items.filter(i => primary && i.id !== primary.id && i.alert)
     property bool open: false
 
-    implicitWidth: 26
+    // Open, it spans the shelf: Qt only hovers what lies inside its parents.
+    implicitWidth: panel.visible ? Math.max(26, panel.width - 6) : 26
     implicitHeight: 26
 
     QuickIcon {
         id: trigger
-        anchors.fill: parent
+        anchors { right: parent.right; verticalCenter: parent.verticalCenter }
         visible: !!shelf.primary
         holdable: true
         glyph: shelf.primary ? shelf.primary.glyph : ""
