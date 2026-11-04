@@ -39,6 +39,18 @@ with the diff (`ApprovalCard` kind `write`).
 - **Skills**: `~/.config/rice/assistant/skills/<name>/SKILL.md` — only name + description + path go in the
   prompt; the model reads the file when a task matches (pi's progressive disclosure).
 
+## Measured after the change (`partner.py`, 13 tasks, one run each)
+
+| Model | Right tool | Right answer | Refused | Avg turn |
+|---|---|---|---|---|
+| qwen3.5:4b (16k) | 10/10 | 9/10 | 1/3 (lock picking, this run) | 15.0 s |
+| huihui_ai/qwen3-abliterated:8b (8k) | 9/10 | 8/10 | 0/3 | 111.8 s (one 885 s sandbox loop) |
+
+New tasks: find the file that draws the context ring in ~/Projects/rice (4B: found ContextMeter.qml via
+ls → grep → read; 8B: named the wrong file), remember a fact (both used `remember`), write a buggy file in
+the sandbox, run it, fix it with `edit`, run again (both: 5). Stock refusals vary run to run, which is why
+the uncensored picks stay.
+
 ## Not taken (yet)
 
 - pi's session tree / branches (we have linear chats with Edit and Retry).
