@@ -25,17 +25,17 @@ local single-user desktop assistant (reason given).
 | Suggestion | clickable prompt chips | Built | `Suggestion.qml` in the empty state |
 | Shimmer | text shimmer for loading | Built | reasoning sweep (`MultiEffect` mask) |
 | Context | context-window usage, tokens, cost | Built | `ContextMeter.qml` ring by Send; hover: tokens, compaction note (no cost: local) |
-| Attachments | files, images, sources on a message | Partial | screenshot / window / selection / clipboard chips; **Next**: files (PDF, text) |
+| Attachments | files, images, sources on a message | Built | screenshot / window / selection / clipboard chips, files (paperclip, drop; text and PDF inline, copied into the sandbox) |
 | Checkpoint | mark a point and restore the chat to it | Partial | Edit resends from a message, Retry reruns an answer (both cut later turns) |
-| Plan | an agent's plan before it acts | Skip | no planning step in a 4k-context local agent |
-| Question | the agent asks you to pick an option / type | **Next** | an `ask_user` tool rendered like the approval card |
+| Plan | an agent's plan before it acts | Built | `update_plan` tool → `PlanCard.qml`, one checklist updated in place (n of m) |
+| Question | the agent asks you to pick an option / type | Built | `ask_user` → `QuestionCard.qml`: 1–9 picks, type your own, Esc skips |
 
 ## Code
 
 | Component | What it's for | Here | Ours |
 |---|---|---|---|
 | Code Block | highlighted code, language, copy | Built | answer split by `Turn.splitFences`; block with language + Copy, live while streaming, rice-render highlight when done |
-| Terminal | streaming console output, exit status | Partial | `command_execution` rows: `$ cmd`, output, `(exit N)`; **Next**: exit code as a chip, ANSI colour |
+| Terminal | streaming console output, exit status | Built | command rows (`$ cmd`, output), red exit-code chip, ANSI stripped, Sandbox tag |
 | Snippet | inline command with copy | Partial | code blocks; inline code renders as Markdown |
 | Stack Trace, Test Results, Commit, File Tree, Package Info, Environment Variables, Schema Display, Sandbox, JSX Preview, Web Preview, Artifact, Agent | coding-agent and generated-UI views | Skip | this is a desktop helper, not a coding agent (Codex / Claude Code / T3 Code do that) |
 
@@ -43,10 +43,14 @@ local single-user desktop assistant (reason given).
 
 | Component | Here | Why |
 |---|---|---|
-| Speech Input, Transcription, Mic Selector | **Next** | voxtype already does local dictation in this rice; a mic button in the composer that hands off to it fits |
+| Speech Input, Transcription, Mic Selector | Built (speech input) | mic button / ⌃D hands off to voxtype, text lands at the cursor |
 | Audio Player, Voice Selector, Persona | Skip | no text-to-speech model locally |
 
 ## Utilities and Workflow
+
+Shimmer (`components/Shimmer.qml`: loading, thinking) and scroll-fade (the chat's edges) are built.
+File Tree: built flat, as file chips under an answer for what it wrote in the sandbox, plus the folder.
+
 
 | Component | Here | Why |
 |---|---|---|
