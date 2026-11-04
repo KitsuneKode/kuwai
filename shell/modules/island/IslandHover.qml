@@ -301,7 +301,7 @@ Item {
                       tip: Caffeine.on ? "Caffeine on: no dim, lock or sleep" : "Caffeine: keep awake", toggle: () => Caffeine.toggle() },
                     { id: "mic", glyph: "\u{f036c}", glyphOff: "\u{f036d}", on: !micMuted, alert: micMuted,
                       tone: Activities.micInUse ? Theme.orange : Theme.textPrimary, offTone: Theme.red,
-                      tip: micMuted ? "Microphone muted" : "Microphone on" + (Activities.micInUse ? " · in use by " + [...new Set(Activities.micUsers)].join(", ") : ""),
+                      tip: (micMuted ? "Microphone muted" : "Microphone on") + (Activities.micName ? " · " + Activities.micName : "") + (!micMuted && Activities.micInUse ? " · in use by " + [...new Set(Activities.micUsers)].join(", ") : ""),
                       toggle: () => { if (src && src.audio) src.audio.muted = !src.audio.muted; } },
                     { id: "speaker", glyph: vol >= 60 ? "\u{f057e}" : vol >= 25 ? "\u{f0580}" : "\u{f057f}", glyphOff: "\u{f075f}", on: !spkMuted, alert: spkMuted,
                       tone: Theme.textPrimary, offTone: Theme.red,

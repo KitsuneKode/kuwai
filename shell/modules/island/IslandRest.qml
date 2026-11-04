@@ -388,7 +388,7 @@ Item {
             width: 6; height: 6; radius: 3
             color: Theme.orange
             HoverHandler { id: micHover; margin: 6 }
-            Tip { text: "Microphone in use" + (Activities.micUsers.length ? " · " + [...new Set(Activities.micUsers)].join(", ") : ""); shown: micHover.hovered; below: true }
+            Tip { text: "Microphone in use" + (Activities.micName ? " · " + Activities.micName : "") + (Activities.micUsers.length ? " · " + [...new Set(Activities.micUsers)].join(", ") : ""); shown: micHover.hovered; below: true }
         }
         // Agents at work (kittymux): the first one's mark, and how many.
         // Click: the Agents tab. One needs you: a moment says so.

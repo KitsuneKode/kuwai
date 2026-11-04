@@ -98,6 +98,12 @@ Singleton {
         return bin !== "quickshell" && bin !== "qs" && p["stream.monitor"] !== "true" && !(p["node.name"] || "").startsWith("quickshell");
     }).map(n => (n.properties || {})["application.name"] || n.name || "An app")
     readonly property bool micInUse: micUsers.length > 0
+    // Which mic, when it isn't the laptop's own (a USB one, the Boya).
+    readonly property var mic: Pipewire.defaultAudioSource
+    readonly property string micName: {
+        const p = mic ? mic.properties || {} : {};
+        return p["device.bus"] === "usb" ? (p["device.description"] || mic.description || "").replace(/ (Mono|Stereo|Analog Stereo|Digital Stereo)$/, "") : "";
+    }
 
     // ── Privacy: who is using the camera ─────────────────────────────────
     // The UVC driver's use count goes up while anything has the camera open

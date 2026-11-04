@@ -15,6 +15,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Bluetooth
+import Quickshell.Hyprland
 import Quickshell.Services.UPower
 import qs.config
 
@@ -68,8 +69,10 @@ Singleton {
     // pad); the sound moving to another output (Osd says so: it knows the
     // IEMs behind a DAC); and once at login, what's already connected.
     //
-    //   card: { key, glyph, image, title, state, tone, detail, battery (0..1 or -1), gone, link }
+    //   card: { key, glyph, image, title, state, tone, detail, battery (0..1 or -1), gone, link, quiet, open }
     //   link: "bluetooth" | "usb" | "", a badge on the device
+    //   quiet: chosen, not connected (an output picked in Sound): no link ring
+    //   open: what a click does (Sound in the center if unset)
     property var card: null
     property bool cardHeld: false
     function showCard(c, ms) {
@@ -110,19 +113,8 @@ Singleton {
         return { key: name.toLowerCase(), glyph: kindGlyph[btKind(d)], image: art ? art.image : "",
                  title: art ? art.label : name, state: "Connected", tone: Theme.green,
                  detail: art && art.via ? "via " + art.via : "", battery: d.batteryAvailable ? d.battery : -1, gone: false,
-                 link: "bluetooth", audio: audioKinds.indexOf(btKind(d)) >= 0 };
+                 link: "bluetooth" };
     }
-    readonly property var audioKinds: ["earbuds", "iem", "headphones", "speaker"]
-    // Sound gear connects in the volume HUD once its output is up (Osd
-    // claims it); the card waits for that, and shows only if it never comes.
-    property var waiting: null
-    property var claimed: null        // { key, at }
-    function claim(key) {
-        claimed = { key: key, at: Date.now() };
-        if (waiting && waiting.key === key) { waiting = null; audioWait.stop(); }
-        if (card && card.key === key) dropCard();
-    }
-    Timer { id: audioWait; interval: 3500; onTriggered: if (root.waiting) { root.showCard(root.waiting); root.waiting = null; } }
 
     readonly property var connected: Bluetooth.devices.values.filter(d => d.connected)
     property var known: []            // [{ address, name, kind }]
@@ -146,24 +138,20 @@ Singleton {
             if (!ds.length) return;
             const c = root.btCard(ds[ds.length - 1]);
             if (ds.length > 1) c.detail = "and " + ds.slice(0, -1).map(d => d.name || "a device").join(", ");
-            const early = root.claimed && root.claimed.key === c.key && Date.now() - root.claimed.at < 6000;
-            if (early) return;
-            if (c.audio && ds.length === 1) { root.waiting = c; audioWait.restart(); }
-            else root.showCard(c);
+            root.showCard(c);
         }
     }
     property var lastGone: null
     function deviceGone(g) {
         const art = DeviceArt.lookup(g.name);
-        lastGone = { key: g.name.toLowerCase(), at: Date.now() };
-        if (waiting && waiting.key === lastGone.key) { waiting = null; audioWait.stop(); }
+        lastGone = { key: g.name.toLowerCase(), at: Date.now(), output: true };
         showCard({ key: lastGone.key, glyph: kindGlyph[g.kind], image: art ? art.image : "", title: art ? art.label : g.name,
                    state: "Disconnected", tone: Theme.textSecondary, detail: "", battery: -1, gone: true, link: "bluetooth" }, 3400);
     }
     // Osd, when wired gear (a DAC, the IEMs behind it) is unplugged:
     // { key, glyph, image, title }. Then outputSwitched says where sound went.
     function wiredGone(o) {
-        lastGone = { key: o.key, at: Date.now() };
+        lastGone = { key: o.key, at: Date.now(), output: true };
         showCard({ key: o.key, glyph: o.glyph, image: o.image, title: o.title,
                    state: "Disconnected", tone: Theme.textSecondary, detail: "", battery: -1, gone: true, link: "usb" }, 3400);
     }
@@ -171,13 +159,25 @@ Singleton {
     // `live`: a device that comes and goes (Bluetooth, USB, a known DAC).
     function outputSwitched(o) {
         // Headphones just went: say where the sound went instead.
-        if (lastGone && Date.now() - lastGone.at < 4000 && card && card.gone && lastGone.key !== o.key) {
+        if (lastGone && lastGone.output && Date.now() - lastGone.at < 4000 && card && card.gone && lastGone.key !== o.key) {
             showCard(Object.assign({}, card, { detail: "Sound on " + o.title }), 3400);
             return;
         }
+        // Plugged in or just connected: "Connected". Already there, picked
+        // in Sound: which output it is now, quietly.
+        const linked = o.live && o.fresh;
         showCard({ key: o.key, glyph: o.glyph, image: o.image, title: o.title,
-                   state: o.live ? "Connected" : "Sound output", tone: o.live ? Theme.green : Theme.textSecondary,
-                   detail: o.via ? "via " + o.via : "", battery: o.battery, gone: false, link: o.link || "" }, o.live ? 4000 : 2600);
+                   state: linked ? "Connected" : "Sound output", tone: linked ? Theme.green : Theme.textSecondary,
+                   detail: o.via ? "via " + o.via : "", battery: o.battery, gone: false, link: o.link || "", quiet: !linked }, linked ? 4000 : 2600);
+    }
+    // Osd, for inputs: a USB microphone plugged in or out, or the input
+    // picked in Sound (quiet): { key, glyph, image, title, link, gone, quiet, detail }.
+    function inputCard(c) {
+        if (c.gone) lastGone = { key: c.key, at: Date.now() };
+        showCard({ key: c.key, glyph: c.glyph, image: c.image, title: c.title, link: c.link, gone: c.gone, quiet: !!c.quiet,
+                   state: c.gone ? "Disconnected" : c.quiet ? "Sound input" : "Connected",
+                   tone: c.gone || c.quiet ? Theme.textSecondary : Theme.green, detail: c.detail || "", battery: -1 },
+                 c.gone ? 3400 : c.quiet ? 2600 : 4000);
     }
     // Once, after the hello: what's already here. Bluetooth if any (sound
     // gear first), else Osd's output if it's a DAC or known IEMs.
@@ -185,19 +185,11 @@ Singleton {
     Timer {
         interval: 5800; running: true
         onTriggered: {
-            const audio = root.audioKinds;
+            const audio = ["earbuds", "iem", "headphones", "speaker"];
             const ds = root.connected.slice().sort((a, b) => (audio.indexOf(root.btKind(a)) < 0) - (audio.indexOf(root.btKind(b)) < 0));
             if (!ds.length) { root.askOutput(); return; }
             const c = root.btCard(ds[0]);
             if (ds.length > 1) c.detail = "and " + ds.slice(1).map(d => d.name || "a device").join(", ");
-            // Sound on them: the HUD connects them (it claims the card).
-            if (c.audio && ds.length === 1) {
-                root.waiting = c;
-                root.claimed = null;
-                root.askOutput();
-                root.waiting = null;
-                if (root.claimed) return;
-            }
             root.showCard(c, 4200);
         }
     }
@@ -269,17 +261,158 @@ Singleton {
         }
     }
 
-    // ── Power and network: plugged in, and the connection coming and going ─
+    // ── Power: the charger in and out, and charged ───────────────────────
+    // A card like a device's: the plug, what it's doing, the charge as its
+    // ring. Plugged in but holding (a charge limit): it says so, not
+    // "Charging". The estimate comes a few seconds after, and fills in.
     property bool wasOnBattery: UPower.onBattery
     Connections {
         target: UPower
         function onOnBatteryChanged() {
-            const plugged = root.wasOnBattery && !UPower.onBattery;
+            if (UPower.onBattery === root.wasOnBattery) return;
             root.wasOnBattery = UPower.onBattery;
-            if (!root.armed || !plugged) return;
-            root.show({ kind: "battery", label: "Charging", value: root.pct + "%", ring: -1, tone: Theme.green, glyph: "\u{f0084}" }, 2600);
+            if (!root.armed || !root.battery || !root.battery.isLaptopBattery) return;
+            powerSettle.restart();
         }
     }
+    function duration(secs) {
+        const m = Math.round(secs / 60);
+        return m < 60 ? m + " min" : Math.floor(m / 60) + " h" + (m % 60 ? " " + (m % 60) + " min" : "");
+    }
+    function powerCard() {
+        const b = root.battery;
+        const on = !UPower.onBattery;
+        const holding = on && (b.state === UPowerDeviceState.PendingCharge || b.state === UPowerDeviceState.FullyCharged);
+        const est = on ? (b.timeToFull > 0 ? "Full in " + duration(b.timeToFull) : "") : (b.timeToEmpty > 0 ? duration(b.timeToEmpty) + " left" : "");
+        return { key: "power", glyph: on ? "\u{f06a5}" : "\u{f06a6}", image: "", link: "", battery: root.pct / 100,
+                 title: !on ? "On Battery" : holding ? (b.state === UPowerDeviceState.FullyCharged ? "Fully Charged" : "Plugged In") : "Charging",
+                 state: on ? "Connected" : "Disconnected", tone: on ? Theme.green : Theme.textSecondary, gone: !on,
+                 detail: holding ? "Charge limit on, not charging" : est,
+                 open: () => Island.open("power", Screens.focusedName, "pointer", "island") };
+    }
+    Timer { id: powerSettle; interval: 700; onTriggered: { root.showCard(root.powerCard(), 4000); powerEstimate.restart(); } }
+    Timer { id: powerEstimate; interval: 3500; onTriggered: if (root.card && root.card.key === "power") root.showCard(root.powerCard(), 3000) }
+    // Charged to the full (or to its limit), once each time it's plugged in.
+    property bool toldFull: false
+    readonly property int powerState: battery ? battery.state : 0
+    onPowerStateChanged: {
+        if (UPower.onBattery) { toldFull = false; return; }
+        if (armed && !toldFull && powerState === UPowerDeviceState.FullyCharged && !powerSettle.running) {
+            toldFull = true;
+            showCard(Object.assign(powerCard(), { title: "Fully Charged", state: "Charged", detail: "" }), 4000);
+        }
+    }
+
+    // ── Displays: one plugged in or out ──────────────────────────────────
+    // Its model and its mode; Hyprland fills those in a moment after.
+    property var displays: ({})       // name → title
+    function displayTitle(name) {
+        const m = Hyprland.monitors.values.find(x => x.name === name);
+        const o = m ? m.lastIpcObject || {} : {};
+        const model = /^0x[0-9a-f]+$/i.test(o.model || "") ? "" : o.model;
+        return { title: /^(eDP|LVDS|DSI)-/.test(name) ? "Built-in Display" : model || o.description || name,
+                 detail: o.width ? o.width + " × " + o.height + (o.refreshRate ? " · " + Math.round(o.refreshRate) + " Hz" : "") : "" };
+    }
+    Connections {
+        target: Hyprland
+        function onRawEvent(event) {
+            if (event.name === "monitoraddedv2") {
+                const name = String(event.data).split(",")[1] || "";
+                if (!name || /^HEADLESS|^FALLBACK/.test(name)) return;
+                displayAdded.names = displayAdded.names.concat([name]);
+                Hyprland.refreshMonitors();
+                displayAdded.restart();
+            } else if (event.name === "monitorremovedv2" || event.name === "monitorremoved") {
+                const name = event.name === "monitorremovedv2" ? String(event.data).split(",")[1] : String(event.data);
+                const t = root.displays[name];
+                if (!t || !root.armed) return;
+                root.lastGone = { key: "display:" + name, at: Date.now() };
+                root.showCard({ key: "display:" + name, glyph: "\u{f0379}", image: "", title: t, state: "Disconnected",
+                                tone: Theme.textSecondary, detail: "", battery: -1, gone: true, link: "" }, 3400);
+            }
+        }
+    }
+    Timer {
+        id: displayAdded
+        property var names: []
+        interval: 600
+        onTriggered: {
+            const name = names[names.length - 1];
+            names = [];
+            const t = root.displayTitle(name);
+            const d = Object.assign({}, root.displays); d[name] = t.title; root.displays = d;
+            if (!root.armed) return;
+            root.showCard({ key: "display:" + name, glyph: "\u{f0379}", image: "", title: t.title, state: "Connected",
+                            tone: Theme.green, detail: t.detail, battery: -1, gone: false, link: "",
+                            open: () => Notifs.toggleCenter("controls", "pointer", Screens.focusedName) }, 4000);
+        }
+    }
+    Component.onCompleted: {
+        Hyprland.refreshMonitors();
+        const d = {};
+        for (const m of Hyprland.monitors.values) d[m.name] = displayTitle(m.name).title;
+        displays = d;
+    }
+
+    // ── Drives: a USB stick or disk plugged in or out ───────────────────
+    // udev says something changed; lsblk says what's there. Pulled out
+    // while still mounted: it says so, in orange.
+    property var drives: []           // [{ path, title, size, removable, mounted }]
+    property bool drivesKnown: false
+    Process {
+        running: true
+        command: ["udevadm", "monitor", "--udev", "--subsystem-match=block"]
+        stdout: SplitParser { onRead: line => { if (/ (add|remove) /.test(line)) drivesLater.restart(); } }
+    }
+    Timer { id: drivesLater; interval: 1200; onTriggered: if (!lsblk.running) lsblk.running = true }
+    Timer { interval: 2000; running: true; onTriggered: lsblk.running = true }
+    function bytes(n) {
+        const gb = n / 1e9;
+        return gb >= 1000 ? (gb / 1000).toFixed(gb >= 10000 ? 0 : 1) + " TB" : gb >= 1 ? Math.round(gb) + " GB" : Math.round(n / 1e6) + " MB";
+    }
+    Process {
+        id: lsblk
+        command: ["lsblk", "-J", "-b", "-o", "PATH,TYPE,TRAN,HOTPLUG,RM,SIZE,LABEL,MODEL,VENDOR,MOUNTPOINTS"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let devs = [];
+                try { devs = JSON.parse(text).blockdevices || []; } catch (e) { return; }
+                const now = devs.filter(d => d.type === "disk" && d.tran === "usb" && d.hotplug).map(d => {
+                    const parts = d.children || [];
+                    const label = (parts.find(p => p.label) || {}).label || "";
+                    const name = [d.vendor, d.model].filter(x => x && x.trim()).map(x => x.trim()).join(" ");
+                    const mounts = parts.concat([d]).flatMap(p => (p.mountpoints || []).filter(m => m));
+                    return { path: d.path, title: label || name || "USB Drive", size: root.bytes(d.size),
+                             removable: !!d.rm, mounted: mounts.length > 0, part: (parts[0] || d).path };
+                });
+                const was = root.drives;
+                root.drives = now;
+                if (!root.drivesKnown) { root.drivesKnown = true; return; }
+                if (!root.armed) return;
+                const added = now.filter(x => !was.some(w => w.path === x.path));
+                const gone = was.filter(w => !now.some(x => x.path === w.path));
+                const glyph = d => d.removable ? "\u{f129e}" : "\u{f02ca}";
+                if (added.length) {
+                    const d = added[added.length - 1];
+                    root.showCard({ key: "drive:" + d.path, glyph: glyph(d), image: "", title: d.title, state: "Connected",
+                                    tone: Theme.green, detail: d.size, battery: -1, gone: false, link: "usb",
+                                    open: () => root.openDrive(d.part) }, 4000);
+                } else if (gone.length) {
+                    const d = gone[gone.length - 1];
+                    root.lastGone = { key: "drive:" + d.path, at: Date.now() };
+                    root.showCard({ key: "drive:" + d.path, glyph: glyph(d), image: "", title: d.title,
+                                    state: "Disconnected", tone: d.mounted ? Theme.orange : Theme.textSecondary,
+                                    detail: d.mounted ? "Removed without ejecting" : "", battery: -1, gone: true, link: "usb" }, d.mounted ? 5000 : 3400);
+                }
+            }
+        }
+    }
+    // Mounted already (an automounter), or mount it now; then the files.
+    function openDrive(dev) {
+        Quickshell.execDetached(["sh", "-c", 'm=$(lsblk -nro MOUNTPOINT "$1" | head -n1); [ -n "$m" ] || m=$(udisksctl mount -b "$1" | sed -n "s/.* at //p"); [ -n "$m" ] && xdg-open "$m"', "sh", dev]);
+    }
+
+    // ── Network: the connection coming and going ─────────────────────────
     // Online is a quick NetworkManager check, every 20 s and on any change.
     property bool online: true
     property bool onlineKnown: false
