@@ -7,7 +7,7 @@
 #   rice notifs <cmd>         dnd | dnd-on | dnd-off | clear | hide | open | last | count | waybar
 #   rice center [agents] [pointer]   toggle the center (Notifications or Agents);
 #                             `pointer` (the bell) morphs it, keys open it instantly
-#   rice assistant [here]     toggle the AI assistant; `here` opens it about the focused window
+#   rice assistant [here|open] toggle the AI assistant; `here` opens it about the focused window
 #   rice bar [island|waybar]  which top bar: the rice's island or HyDE's Waybar
 #   rice lock [--wait]        lock with the rice's lock screen (--wait: until it is locked; hyprlock if the shell is down)
 #   rice fade [start|stop]    darken the screens before the idle lock
@@ -195,6 +195,7 @@ case ${1:-} in
         fi
         case "${2:-}" in
             here) ipc assistant here ;;      # with the focused window's screenshot, selection, folder
+            open) ipc assistant open ;;
             *)    ipc assistant toggle ;;
         esac ;;
     *) sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;

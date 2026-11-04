@@ -347,8 +347,25 @@ def cmd_render(input_file=None):
         out = {"kind": "text", "html": raw_text}
         print(json.dumps(out))
 
+def cmd_search(args):
+    """rice-ollama search <start|stop|status>: the local SearXNG the assistant searches first."""
+    sub = args[0] if args else "status"
+    conf = os.path.expanduser("~/.config/rice/searxng")
+    if sub == "start":
+        subprocess.run(["docker", "rm", "-f", "rice-searxng"], capture_output=True)
+        p = subprocess.run(["docker", "run", "-d", "--name", "rice-searxng", "--restart", "unless-stopped",
+                            "-p", "127.0.0.1:8888:8080", "-v", f"{conf}:/etc/searxng:rw", "--cap-drop", "ALL",
+                            "--cap-add", "CHOWN", "--cap-add", "SETGID", "--cap-add", "SETUID", "--memory", "512m",
+                            "searxng/searxng:latest"], capture_output=True, text=True)
+        sys.exit(p.returncode)
+    elif sub == "stop":
+        subprocess.run(["docker", "rm", "-f", "rice-searxng"], capture_output=True)
+    else:
+        p = subprocess.run(["docker", "inspect", "-f", "{{.State.Status}}", "rice-searxng"], capture_output=True, text=True)
+        print(json.dumps({"state": p.stdout.strip() or "missing", "url": "http://127.0.0.1:8888"}))
+
 def cmd_sandbox(args):
-    """rice-ollama sandbox <status|build|stop|path [chat]>"""
+    """rice-ollama sandbox <status|build|stop|jobs|path [chat]>"""
     sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
     import rice_sandbox as sb
     sub = args[0] if args else "status"
@@ -359,10 +376,13 @@ def cmd_sandbox(args):
             sys.exit(sb.build(stream=sys.stdout))
         elif sub == "stop":
             sb.stop()
+        elif sub == "jobs":
+            # Finished background jobs not yet announced (the shell polls this while jobs run).
+            print(json.dumps(sb.finished_unnotified()))
         elif sub == "path":
             print(sb.workspace(args[1] if len(args) > 1 else ""))
         else:
-            sys.stderr.write("Usage: rice-ollama sandbox <status|build|stop|path [chat]>\n")
+            sys.stderr.write("Usage: rice-ollama sandbox <status|build|stop|jobs|path [chat]>\n")
             sys.exit(1)
     except sb.SandboxError as e:
         sys.stderr.write(f"{e}\n")
@@ -390,6 +410,8 @@ def main():
     elif cmd == "unload":
         target = sys.argv[2] if len(sys.argv) > 2 else None
         cmd_unload(target)
+    elif cmd == "search":
+        cmd_search(sys.argv[2:])
     elif cmd == "sandbox":
         cmd_sandbox(sys.argv[2:])
     elif cmd == "render":

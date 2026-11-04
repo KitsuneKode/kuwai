@@ -582,8 +582,11 @@ def tool_web_search(args):
         raise ToolError("Give a query")
     n = 6
     chain = []
-    if os.environ.get("RICE_SEARXNG_URL"):
-        chain.append(lambda: search_searxng(os.environ["RICE_SEARXNG_URL"], q, n))
+    # Local SearXNG (rice-ollama search start: Brave, DuckDuckGo, Google, Wikipedia… at once, JSON, no key)
+    # first; RICE_SEARXNG_URL="" turns it off.
+    searx = os.environ.get("RICE_SEARXNG_URL", "http://127.0.0.1:8888")
+    if searx:
+        chain.append(lambda: search_searxng(searx, q, n))
     if os.environ.get("OLLAMA_API_KEY"):
         chain.append(lambda: search_ollama(os.environ["OLLAMA_API_KEY"], q, n))
     # DuckDuckGo starts answering an "anomaly" (bot check) page after a burst of
@@ -825,8 +828,24 @@ def tool_sandbox_run(args):
     cmd = str(args.get("command") or "").strip()
     if not cmd:
         raise ToolError("No command given")
+    if args.get("background"):
+        try:
+            jid = rice_sandbox.start_job(CHAT, cmd)
+        except rice_sandbox.SandboxError as e:
+            raise ToolError(str(e))
+        time.sleep(2)
+        state, code, out, _ = rice_sandbox.job_state(CHAT, jid)
+        head = rice_files.head_tail(strip_ansi(out), 2000)
+        if state == "done":
+            return (head + "\n" if head else "") + f"(finished at once, exit {code})"
+        return (f"Started background job {jid}; it keeps running after this reply and the user is notified when it "
+                f"ends. Check it with job(id=\"{jid}\").") + ("\nOutput so far:\n" + head if head else "")
     try:
-        code, out = rice_sandbox.run(CHAT, cmd, timeout=120)
+        timeout = max(5, min(600, int(args.get("timeout") or 120)))
+    except (TypeError, ValueError):
+        timeout = 120
+    try:
+        code, out = rice_sandbox.run(CHAT, cmd, timeout=timeout)
     except rice_sandbox.SandboxError as e:
         raise ToolError(str(e))
     out = rice_files.head_tail(strip_ansi(out), 8000)
@@ -916,6 +935,19 @@ def tool_grep(args):
     full, _ = _path(args, default=str(rice_files.HOME))
     return _files(rice_files.grep, str(args.get("pattern") or ""), full, args.get("glob"),
                   bool(args.get("ignoreCase")), False)
+
+
+def tool_job(args):
+    jid = str(args.get("id") or "").strip()
+    try:
+        if args.get("stop"):
+            rice_sandbox.stop_job(CHAT, jid)
+            return f"Stopped {jid}."
+        state, code, out, cmd = rice_sandbox.job_state(CHAT, jid)
+    except rice_sandbox.SandboxError as e:
+        raise ToolError(str(e))
+    body = rice_files.head_tail(strip_ansi(out), 6000) or "(no output yet)"
+    return f"$ {cmd}\n{body}\n" + (f"(done, exit {code})" if state == "done" else "(still running)")
 
 
 def tool_remember(args):
@@ -1070,9 +1102,18 @@ TOOLS = {
         schema=_fn("sandbox_run", "Run bash in your own isolated Linux sandbox (Debian with python3, node, npm, "
                    "git, curl, gcc, jq, rg). Use it to run code, test, calculate, convert files or install packages "
                    "with pip/npm. It can't see the user's files. Runs in the chat's folder.",
-                   {"command": {"type": "string", "description": "The bash command"}}, ["command"]),
-        item="command_execution", title=lambda a: str(a.get("command", ""))[:80], approve=None,
-        run=tool_sandbox_run, sandbox=True),
+                   {"command": {"type": "string", "description": "The bash command"},
+                    "timeout": {"type": "integer", "description": "Seconds before it's stopped (default 120, max 600)"},
+                    "background": {"type": "boolean", "description": "Run it as a background job (builds, downloads, "
+                                   "servers, anything long); returns a job id at once"}}, ["command"]),
+        item="command_execution", title=lambda a: ("⏵ " if a.get("background") else "") + str(a.get("command", ""))[:80],
+        approve=None, run=tool_sandbox_run, sandbox=True),
+    "job": dict(
+        schema=_fn("job", "Check a background job from sandbox_run: its output so far and whether it finished. "
+                   "stop=true ends it.",
+                   {"id": {"type": "string"}, "stop": {"type": "boolean"}}, ["id"]),
+        item="dynamic_tool_call", title=lambda a: f"Checking job {a.get('id', '')}", approve=None, run=tool_job,
+        sandbox=True),
     # Files, after pi: relative paths are the sandbox folder, ~/ and / are the user's.
     "read": dict(
         schema=_fn("read", "Read a text file. Relative paths are your sandbox folder; ~/ or / paths are the "
@@ -1459,6 +1500,7 @@ def run_turn(req):
     status, error = "completed", ""
     rounds = 0
     nudged = False
+    planned = False
     try:
         if req.get("compact"):
             summary, convo = compact(ids, model, caps, options, summary, convo)
@@ -1471,7 +1513,8 @@ def run_turn(req):
         messages += convo
         vision_hop(ids, messages, stats)
         while True:
-            capped = rounds >= MAX_TOOL_ROUNDS
+            # A task with a plan is long work: it gets three times the rounds.
+            capped = rounds >= (MAX_TOOL_ROUNDS * 3 if planned else MAX_TOOL_ROUNDS)
             payload = {"model": model, "messages": messages, "stream": True,
                        "keep_alive": req.get("keep_alive", "5m"), "options": options}
             if use_tools and not capped:
@@ -1498,6 +1541,8 @@ def run_turn(req):
                 status = "max_tool_rounds"
                 break
             if calls:
+                if any((c.get("function") or {}).get("name") == "update_plan" for c in calls):
+                    planned = True
                 # Keeping the plan current isn't work: it doesn't use up a round.
                 if any((c.get("function") or {}).get("name") != "update_plan" for c in calls):
                     rounds += 1

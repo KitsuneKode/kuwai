@@ -138,3 +138,12 @@ def test_context_profile_memory_and_instructions(run_agent, tmp_path):
     assert "Prefers Rust over Go" in (cfg / "memory.md").read_text()
     _, fake2 = run_agent(USER, [answer()], caps=CAPS)
     assert "Prefers Rust over Go" in fake2.requests[0]["messages"][0]["content"]
+
+
+def test_background_job_and_check(run_agent, tmp_path):
+    ws = tmp_path / "sandbox" / "c42" / ".jobs"
+    script = [[call("sandbox_run", {"command": "echo hi; sleep 0.1", "background": True}), {"done": True}], answer()]
+    events, fake = run_agent(USER, script, caps=CAPS, env=ON)
+    out = completion(events, started(events, "command_execution")[0]["id"])["output"]
+    assert "hi" in out
+    assert list(ws.glob("*.cmd"))

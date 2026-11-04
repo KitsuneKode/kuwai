@@ -129,6 +129,68 @@ def run(chat, command, timeout=120):
     return code, out.strip()
 
 
+# ── Background jobs: they run on after the turn; files in <chat>/.jobs/ ──
+# <id>.cmd the command, <id>.log its output, <id>.status its exit code when done,
+# <id>.notified once the desktop said so. The folder is mounted, so the host
+# reads them directly.
+
+def jobs_dir(chat):
+    d = workspace(chat) / ".jobs"
+    d.mkdir(exist_ok=True)
+    return d
+
+
+def start_job(chat, command):
+    import secrets
+    ensure()
+    jid = "j" + secrets.token_hex(3)
+    d = jobs_dir(chat)
+    (d / f"{jid}.cmd").write_text(command, encoding="utf-8")
+    ws = workspace(chat)
+    script = f"( {command} ) > .jobs/{jid}.log 2>&1; echo $? > .jobs/{jid}.status"
+    p = _docker("exec", "-d", "-w", f"/work/{ws.name}", "-e", "TERM=dumb", NAME, "bash", "-lc", script)
+    if p.returncode != 0:
+        raise SandboxError(f"Couldn't start it: {p.stderr.strip()[:200]}")
+    return jid
+
+
+def job_state(chat, jid):
+    """(state 'running'|'done', exit code or None, output, command)."""
+    d = jobs_dir(chat)
+    if not (d / f"{jid}.cmd").is_file():
+        raise SandboxError(f"No job {jid}")
+    status = d / f"{jid}.status"
+    log = d / f"{jid}.log"
+    out = log.read_text(encoding="utf-8", errors="replace") if log.is_file() else ""
+    cmd = (d / f"{jid}.cmd").read_text(encoding="utf-8")
+    if status.is_file():
+        code = status.read_text().strip()
+        return "done", int(code) if code.lstrip("-").isdigit() else None, out, cmd
+    return "running", None, out, cmd
+
+
+def stop_job(chat, jid):
+    ensure()
+    _docker("exec", NAME, "pkill", "-f", f".jobs/{jid}.log", timeout=10)
+    (jobs_dir(chat) / f"{jid}.status").write_text("143")
+
+
+def finished_unnotified():
+    """Every chat's jobs that finished and haven't been announced; marks them announced."""
+    out = []
+    root = host_root()
+    for st in root.glob("*/.jobs/*.status"):
+        jid, d = st.stem, st.parent
+        mark = d / f"{jid}.notified"
+        if mark.exists():
+            continue
+        mark.write_text("")
+        cmd = (d / f"{jid}.cmd").read_text(encoding="utf-8", errors="replace") if (d / f"{jid}.cmd").exists() else ""
+        code = st.read_text().strip()
+        out.append({"chat": d.parent.name, "id": jid, "command": cmd[:120], "exit": code})
+    return out
+
+
 def stop():
     _docker("rm", "-f", NAME, timeout=30)
 

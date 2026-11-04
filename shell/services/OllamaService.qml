@@ -575,10 +575,62 @@ Singleton {
     }
 
 function onPanelClosed() {
-        if (!streaming && unloadProc) {
-            unloadProc.running = false;
-            unloadProc.running = true;
+        // The model stays loaded for Ollama's keep_alive (5 min) so reopening is instant;
+        // it was unloaded on every close, which made each reopen wait ~5 s.
+    }
+
+    // ── Background work and notifications ─────────────────────────────
+    // A turn keeps running with the overlay closed; when it ends (or needs you),
+    // a notification says so and its Open button brings the assistant back.
+    readonly property string riceBin: Quickshell.shellDir + "/../bin/rice"
+    function notify(title, body, urgency) {
+        const p = notifyComponent.createObject(root, { command: ["sh", "-c",
+            'r=$(notify-send -a Assistant -i "$4" -u "$3" -w -A open=Open -- "$1" "$2"); [ "$r" = open ] && "$5" assistant open',
+            "sh", title, body, urgency || "normal", "chat-bubbles", root.riceBin] });
+        p.running = true;
+    }
+    Component {
+        id: notifyComponent
+        Process { onExited: destroy(100) }
+    }
+    function notifyPending() {
+        const r = root.pendingRequest;
+        if (!r || Assistant.open) return;
+        const part = root.draft ? root.draft.parts.find(q => q.id === r.partId) : null;
+        const req = part ? part.request : {};
+        root.notify(r.kind === "question" ? "The assistant has a question" : "The assistant is waiting for you",
+                    (req.summary || "") + (req.detail ? "\n" + req.detail.slice(0, 160) : ""), "critical");
+    }
+    // Background jobs (sandbox_run background=true): while any run, look every 10 s
+    // for finished ones and say so.
+    property var runningJobs: []
+    Timer {
+        interval: 10000
+        repeat: true
+        running: root.runningJobs.length > 0
+        onTriggered: if (!jobsProc.running) jobsProc.running = true
+    }
+    Process {
+        id: jobsProc
+        command: [root.bin, "sandbox", "jobs"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let done = [];
+                try { done = JSON.parse(text.trim() || "[]"); } catch (e) { return; }
+                done.forEach(j => {
+                    root.notify(j.exit === "0" ? "Job finished" : "Job failed (exit " + j.exit + ")", j.command);
+                    root.runningJobs = root.runningJobs.filter(x => x !== j.id);
+                });
+            }
         }
+    }
+
+    function notifyDone(msg) {
+        if (Assistant.open || !msg) return;
+        const sess = root.sessions.find(s => s.id === root.draftSessionId);
+        const text = Turn.textOf(msg).replace(/\s+/g, " ").trim();
+        root.notify(msg.status === "failed" ? "The assistant hit a problem" : "Done: " + (sess ? sess.title : "your chat"),
+                    msg.status === "failed" ? (msg.error || "The turn failed") : (text.slice(0, 180) || "Finished."));
     }
 
     Process {
@@ -831,6 +883,9 @@ function onPanelClosed() {
                 }
                 root.flushDeltas();
                 root.draft = Turn.applyEvent(root.draft, ev);
+                if (ev.type === "request.opened") Qt.callLater(root.notifyPending);
+                if (ev.type === "item.completed" && /^Started background job (j[0-9a-f]+)/.test(ev.output || ""))
+                    root.runningJobs = root.runningJobs.concat([/^Started background job (j[0-9a-f]+)/.exec(ev.output)[1]]);
                 if (ev.type === "item.completed" && ev.status === "completed" && root.draft) {
                     const p = root.draft.parts.find(q => q.id === ev.id);
                     if (p && p.itemType === "context_compaction" && root.draftSessionId === root.activeSessionId) {
@@ -891,6 +946,7 @@ function onPanelClosed() {
         root.flushDeltas();
         const d = root.draft;
         const keep = d && !root.discardDraft && d.parts.length > 0;
+        if (keep && d.status !== "interrupted") root.notifyDone(d);
         root.streaming = false;
         root.draft = null;
         if (root.discardDraft) { root.queue = []; root.steering = []; }
