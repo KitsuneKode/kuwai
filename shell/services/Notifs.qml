@@ -80,7 +80,11 @@ Singleton {
             return;
         }
         const a = NotifAdapters.adapt(n);
-        if (a.silent) { n.dismiss(); return; }
+        if (a.silent) {
+            if (a.copied) Moments.show({ kind: "copied", glyph: "\u{f018f}", label: "Copied", value: "", ring: -1, tone: Theme.textPrimary }, 1400);
+            n.dismiss();
+            return;
+        }
         const twin = a.groupKey ? items.find(i => i.groupKey === a.groupKey && i.popup && !i.leaving) : null;
         if (twin) {
             twin.absorb(n, a);

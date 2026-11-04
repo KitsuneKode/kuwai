@@ -146,6 +146,14 @@ FocusScope {
         return null;
     }
 
+    // "timer 10m pizza", "25m", "1h30m tea": a timer row (services/Timers).
+    readonly property var timerRow: {
+        const m = /^(?:timer\s+)?(\d+(?:\.\d+)?\s*(?:h|hr|hours?|m|min|mins|minutes?|s|sec|secs|seconds?)(?:\s*\d+\s*(?:m|min|s|sec))?|\d+:\d{2})(?:\s+(.+))?$/i.exec(query.trim());
+        if (!m) { const t = /^timer\s+(\d+)(?:\s+(.+))?$/i.exec(query.trim()); if (!t) return null; return { secs: +t[1] * 60, name: t[2] || "" }; }
+        const secs = Timers.parse(m[1]);
+        return secs > 0 ? { secs: secs, name: m[2] || "" } : null;
+    }
+
     // A plain arithmetic expression (digits, + - * / % ^ ( ) .) and its value.
     readonly property var calc: {
         const q = query.trim().replace(/×/g, "*").replace(/÷/g, "/").replace(/,/g, ".");
@@ -225,6 +233,7 @@ FocusScope {
         const keep = r => r.rank >= bestRank * 0.35;
         const by = rows => rows.filter(keep).sort((a, b) => b.rank - a.rank);
         if (calc) section("Calculator", [{ kind: "calc", name: String(calc.value), sub: calc.expr + " =", glyph: "=" }]);
+        if (timerRow) section("Timer", [{ kind: "timer", name: "Start a " + Timers.label(timerRow.secs) + " timer" + (timerRow.name ? " · " + timerRow.name : ""), sub: "In the island, with a ring", glyph: "\u{f13ab}", secs: timerRow.secs, label: timerRow.name }]);
         if (convert) section("Convert", [{ kind: "calc", name: convert.value, sub: convert.sub, glyph: "\u{f0a12}" }]);
         const top = all.filter(keep).sort((a, b) => b.rank - a.rank)[0];
         if (top) section("Top Hit", [top]);
@@ -233,7 +242,7 @@ FocusScope {
         section("Actions", by(actHit).filter(r => r !== top).slice(0, 4));
         section("Files", fileHits);
         // Last: the web, for anything the machine doesn't have.
-        if (!calc && !convert) section("Web", [{ kind: "web", name: "Search the web for “" + query.trim() + "”", sub: "DuckDuckGo", glyph: "\u{f059f}" }]);
+        if (!calc && !convert && !timerRow) section("Web", [{ kind: "web", name: "Search the web for “" + query.trim() + "”", sub: "DuckDuckGo", glyph: "\u{f059f}" }]);
         return out;
     }
     readonly property int selectable: results.filter(r => r.kind !== "header").length
@@ -258,6 +267,8 @@ FocusScope {
         } else if (r.kind === "app") {
             used(r.entry.id);
             r.entry.execute();
+        } else if (r.kind === "timer") {
+            Timers.start(r.secs, r.label);
         } else if (r.kind === "file") {
             Quickshell.execDetached(["xdg-open", r.path]);
         } else if (r.kind === "web") {
@@ -443,7 +454,7 @@ FocusScope {
                 opacity: row.on && !row.header ? 1 : 0
                 Label {
                     anchors.verticalCenter: parent.verticalCenter
-                    text: ({ app: "Open", window: "Switch to", action: "Run", calc: "Copy", emoji: "Type", glyph: "Type", file: "Open", web: "Search" })[row.modelData.kind] || ""
+                    text: ({ app: "Open", window: "Switch to", action: "Run", calc: "Copy", emoji: "Type", glyph: "Type", file: "Open", web: "Search", timer: "Start" })[row.modelData.kind] || ""
                     size: 12
                     color: Theme.textSecondary
                 }

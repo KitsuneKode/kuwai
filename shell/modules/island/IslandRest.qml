@@ -38,7 +38,7 @@ Item {
     // like a live activity. Music doesn't: it plays for hours beside them.
     // "minimal": only what's alive, always. Either way, nearing the top edge,
     // hovering or Super+Alt+I brings the details back.
-    readonly property bool takeover: ["auth", "update", "vox", "rec", "shazam", "moment"].indexOf(activity) >= 0
+    readonly property bool takeover: ["auth", "update", "vox", "rec", "timer", "shazam", "moment"].indexOf(activity) >= 0
     readonly property bool compact: (Settings.islandRest === "minimal" || Settings.islandTucked || (Settings.islandRest === "auto" && takeover))
                                     && !Island.peek && !bar.near && !bar.hovered
     // The mini notch: compact with nothing alive shows the time, and only
@@ -48,14 +48,21 @@ Item {
     readonly property real clockW: compact && !mini ? 0 : clock.width
     readonly property real gaps: mini ? (rightGroup.implicitWidth > 0 ? 12 : 0)
                                : compact ? (leftGroup.implicitWidth > 0 && rightGroup.implicitWidth > 0 ? gap : 0) : gap * 2
-    implicitWidth: mini ? Math.max(56, clock.width + rightGroup.implicitWidth + gaps)
+    implicitWidth: mini ? Math.max(56, clock.width + (soonText ? soonLabel.implicitWidth + 12 : 0) + rightGroup.implicitWidth + gaps)
                  : compact ? Math.max(activity === "moment" ? 220 : 78, leftGroup.implicitWidth + rightGroup.implicitWidth + gaps)
                  : balanced ? side * 2 + clockW + gaps
                             : leftGroup.implicitWidth + rightGroup.implicitWidth + clockW + gaps
     implicitHeight: 32
     readonly property int gap: 22
     // Activities whose value sits beside their icon when the full row shows.
-    readonly property bool joined: !compact && ["update", "vox", "auth", "rec"].indexOf(activity) >= 0
+    readonly property bool joined: !compact && ["update", "vox", "auth", "rec", "timer"].indexOf(activity) >= 0
+    readonly property string timerLeft: Timers.next ? Timers.clock(Timers.remaining(Timers.next)) : ""
+    // The next calendar event within half an hour: the mini notch says so.
+    readonly property var soonEvent: {
+        const t = bar.now.getTime();
+        return Calendar.events.find(e => !e.allDay && e.start > t && e.start - t <= 30 * 60000) || null;
+    }
+    readonly property string soonText: soonEvent ? soonEvent.title + " · " + Math.max(1, Math.round((soonEvent.start - bar.now.getTime()) / 60000)) + "m" : ""
     function clockOf(secs) { const s = Math.max(0, Math.floor(secs)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); }
     property real recSecs: 0
     Timer {
@@ -69,6 +76,7 @@ Item {
         if (activity === "vox") return Activities.voxListening ? "Dictating · click to finish · right-click to cancel" : "Writing out what you said…";
         if (activity === "auth") return "A password is needed · click to bring it here";
         if (activity === "rec") return "Recording " + (Clipboard.recTarget || "the screen") + " · click to stop";
+        if (activity === "timer") return Timers.next.label + " · " + timerLeft + " left" + (Timers.timers.length > 1 ? " · " + (Timers.timers.length - 1) + " more" : "") + " · right-click to cancel";
         if (activity === "shazam") return Activities.shazamFound ? "Found: " + Activities.shazamFound.title + " · click to open" : "Listening for a song…";
         return "";
     }
@@ -78,6 +86,7 @@ Item {
         : Moments.now ? "moment"
         : Activities.voxActive ? "vox"
         : Clipboard.recSince > 0 ? "rec"
+        : Timers.next ? "timer"
         : Updates.running ? "update"
         : Alerts.active.length ? "alert"
         : (Activities.shazamListening || Activities.shazamFound) ? "shazam"
@@ -156,6 +165,17 @@ Item {
                 NumberAnimation { to: 1; duration: 700; easing.type: Easing.InOutSine }
             }
         }
+        // A timer: a ring that empties as it runs.
+        StatRing {
+            visible: rest.activity === "timer"
+            anchors.centerIn: parent
+            size: 18
+            stroke: 2.5
+            value: Timers.next ? Timers.fraction(Timers.next) : 0
+            color: Theme.orange
+            text: ""
+            label: ""
+        }
         // Updating: a ring that fills as it goes (click: the Updates panel).
             StatRing {
                 visible: rest.activity === "update"
@@ -229,7 +249,8 @@ Item {
             text: rest.activity === "update" ? Math.round(Updates.progress * 100) + "%"
                 : rest.activity === "vox" ? (Activities.voxListening ? Math.floor(rest.voxSecs / 60) + ":" + String(Math.floor(rest.voxSecs % 60)).padStart(2, "0") : "Writing")
                 : rest.activity === "auth" ? "Password"
-                : rest.activity === "rec" ? rest.clockOf(rest.recSecs) : ""
+                : rest.activity === "rec" ? rest.clockOf(rest.recSecs)
+                : rest.activity === "timer" ? rest.timerLeft : ""
             size: 13; weight: Theme.wSemibold; rounded: true
             color: Theme.textPrimary
             font.features: ({ "tnum": 1 })
@@ -314,6 +335,18 @@ Item {
         HoverHandler { cursorShape: Qt.PointingHandCursor }
         TapHandler { onTapped: Island.toggle("calendar", rest.bar.screenName, "pointer", "island") }
     }
+    // Mini notch, an event soon: "19:35 · Standup · 25m".
+    Label {
+        id: soonLabel
+        visible: rest.mini && rest.soonText !== ""
+        x: clock.x + clock.width + 12
+        anchors.verticalCenter: parent.verticalCenter
+        width: Math.min(implicitWidth, 220)
+        elide: Text.ElideRight
+        text: rest.soonText
+        size: 13; weight: Theme.wMedium
+        color: Theme.textSecondary
+    }
 
     Row {
       id: rightGroup
@@ -344,6 +377,37 @@ Item {
             color: Theme.orange
             HoverHandler { id: micHover; margin: 6 }
             Tip { text: "Microphone in use" + (Activities.micUsers.length ? " · " + [...new Set(Activities.micUsers)].join(", ") : ""); shown: micHover.hovered; below: true }
+        }
+        // Agents at work (kittymux): the first one's mark, and how many.
+        // Click: the Agents tab. One needs you: a moment says so.
+        Row {
+            visible: Kittymux.working.length > 0
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 3
+            Image {
+                id: agentMark
+                anchors.verticalCenter: parent.verticalCenter
+                width: 13; height: 13
+                sourceSize: Qt.size(26, 26)
+                source: Kittymux.working.length ? Kittymux.brand(Kittymux.working[0].agent) : ""
+                visible: status === Image.Ready
+            }
+            Text {
+                visible: !agentMark.visible
+                anchors.verticalCenter: parent.verticalCenter
+                text: "\u{f06a9}"; font.family: Theme.fontGlyph; font.pixelSize: 13
+                color: Theme.textSecondary
+            }
+            Label {
+                visible: Kittymux.working.length > 1
+                anchors.verticalCenter: parent.verticalCenter
+                text: Kittymux.working.length
+                size: 11; weight: Theme.wSemibold; rounded: true
+                color: Theme.textSecondary
+            }
+            HoverHandler { id: agentHover; margin: 6; cursorShape: Qt.PointingHandCursor }
+            TapHandler { onTapped: Notifs.toggleCenter("agents", "pointer", rest.bar.screenName) }
+            Tip { text: Kittymux.working.map(w => w.agent + " · " + w.title).join("  |  ") + " · working"; shown: agentHover.hovered; below: true }
         }
         // The camera is on: a green dot (Apple's), with who has it.
         Rectangle {
@@ -401,6 +465,14 @@ Item {
             id: trailing
             anchors.verticalCenter: parent.verticalCenter
             spacing: 6
+            Label {
+                visible: rest.activity === "timer"
+                anchors.verticalCenter: parent.verticalCenter
+                text: rest.timerLeft
+                size: 13; weight: Theme.wSemibold; rounded: true
+                color: Theme.orange
+                font.features: ({ "tnum": 1 })
+            }
             Label {
                 visible: rest.activity === "rec"
                 anchors.verticalCenter: parent.verticalCenter
@@ -482,12 +554,13 @@ Item {
     // A click on an activity acts on it: stop dictation, open the song.
     // (Music: its art and waveform open Now Playing; see musicTap.)
     TapHandler {
-        enabled: rest.activity === "auth" || rest.activity === "vox" || rest.activity === "update" || rest.activity === "rec" || (rest.activity === "shazam" && !!Activities.shazamFound)
+        enabled: rest.activity === "auth" || rest.activity === "vox" || rest.activity === "update" || rest.activity === "rec" || rest.activity === "timer" || (rest.activity === "shazam" && !!Activities.shazamFound)
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         onTapped: (point, button) => {
             if (rest.activity === "auth") { Island.summonAuth(rest.bar.screenName); return; }
             if (rest.activity === "update") { Island.open("updates", rest.bar.screenName, "pointer", "island"); return; }
             if (rest.activity === "rec") { Clipboard.recordKey(); return; }
+            if (rest.activity === "timer") { if (button === Qt.RightButton && Timers.next) Timers.cancel(Timers.next.id); return; }
             if (rest.activity === "vox") { if (button === Qt.RightButton) Activities.voxCancel(); else Activities.voxToggle(); }
             else Activities.shazamOpen();
         }

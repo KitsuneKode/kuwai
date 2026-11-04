@@ -148,6 +148,10 @@ Singleton {
     }
 
     Timer { id: refresh; interval: 300; onTriggered: if (!pick.running) pick.running = true }
+    // The island shows who is working: a look every 20 s (the inbox file
+    // already says the moment one needs you or finishes).
+    Timer { interval: 20000; repeat: true; triggeredOnStart: true; running: root.available && !root.watching; onTriggered: if (!pick.running) pick.running = true }
+    readonly property var working: running.filter(r => r.working)
     Timer {
         interval: 4000
         repeat: true

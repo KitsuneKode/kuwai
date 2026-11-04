@@ -92,14 +92,20 @@ Singleton {
     // clipboard island already shows every copy, with the thing itself, so
     // these would only say it twice. They're dropped, not shown or kept.
     function isCopyConfirmation(n) {
-        const t = ((n.summary || "") + " " + (n.body || "")).trim();
-        return t.length < 140 && /^(the )?(image|screenshot|text|filepath|colou?r|link|path)?\s*(was )?copied (to|into) (the )?clipboard\b/i.test(t);
+        // The title, the body, or both together (Satty: "Satty" / "Copied to clipboard").
+        const rx = /^(the )?(image|screenshot|text|filepath|colou?r|link|path)?\s*(was )?copied (to|into) (the )?clipboard\b/i;
+        const s = (n.summary || "").trim(), b = (n.body || "").trim(), t = (s + " " + b).trim();
+        return t.length < 140 && (rx.test(t) || rx.test(b) || rx.test(s));
     }
 
     function adapt(n) {
         const rule = rules.find(r => r.match(n));
         const out = rule ? rule.adapt(n) : generic(n);
         out.silent = isCopyConfirmation(n) || isNowPlaying(n);
+        // A copy you asked for (a screenshot, the colour picker, a capture
+        // tool): the island says "Copied" instead of a toast. Plain Ctrl+C
+        // sends nothing, so nothing shows for it.
+        out.copied = isCopyConfirmation(n);
         // kittymux sends its own art (the agent's mark with its mascot); show
         // the agent's real brand mark instead.
         if (/^kittymux$/i.test(n.appName || "")) {

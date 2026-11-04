@@ -141,6 +141,34 @@ Singleton {
     }
     Timer { interval: 20000; running: true; repeat: true; triggeredOnStart: true; onTriggered: if (!netCheck.running) netCheck.running = true }
 
+    // ── Agents (kittymux's inbox): one needs you, or finished ───────────
+    // Each event once, newest only; the brand mark, the agent and its tab.
+    property real agentSeen: Date.now() / 1000
+    Connections {
+        target: Kittymux
+        function onInboxChanged() {
+            const fresh = (Kittymux.inbox.events || []).filter(e => e.status === "unread" && e.t > root.agentSeen).sort((a, b) => b.t - a.t);
+            if (!fresh.length) return;
+            root.agentSeen = fresh[0].t;
+            if (!root.armed) return;
+            const e = fresh[0];
+            const needs = e.severity === "needs-you";
+            const name = String(e.agent || "Agent");
+            root.show({
+                kind: "agent", image: Kittymux.brand(e.agent), glyph: "\u{f06a9}",
+                label: name.charAt(0).toUpperCase() + name.slice(1),
+                value: needs ? (e.kind === "permission" ? "Needs you" : "Waiting") : e.kind === "limit" ? "Hit a limit" : "Done",
+                ring: -1, tone: needs || e.kind === "limit" ? Theme.orange : Theme.green
+            }, needs ? 6000 : 3000);
+        }
+    }
+
+    // ── Timers (services/Timers) ending ─────────────────────────────────
+    Connections {
+        target: Timers
+        function onFinished(t) { root.show({ kind: "timer", glyph: "\u{f13ab}", label: t.label, value: "Done", ring: -1, tone: Theme.green }, 6000); }
+    }
+
     // ── Low battery (20 %, on battery; 10 % is the Alerts banner) ────────
     readonly property var battery: UPower.displayDevice
     readonly property int pct: battery && battery.isLaptopBattery && battery.isPresent ? Math.round(battery.percentage > 1 ? battery.percentage : battery.percentage * 100) : 100
