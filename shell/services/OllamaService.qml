@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Widgets
+import qs.config
 import qs.services
 import "ai/turn.mjs" as Turn
 
@@ -625,7 +626,32 @@ function onPanelClosed() {
         }
     }
 
+    // In the notch while it works with the panel closed (Moments: the island shows
+    // whatever moment is current): what it's doing and for how long; "Done" at the end.
+    property real workStarted: 0
+    onStreamingChanged: if (streaming) workStarted = Date.now()
+    function workLabel() {
+        const d = root.draft;
+        if (root.pendingRequest) return "Needs you";
+        const p = d && d.parts.length ? d.parts[d.parts.length - 1] : null;
+        if (!p || p.kind === "reasoning") return "Thinking";
+        if (p.kind === "text") return "Writing";
+        const t = (p.title || "").replace(/^⏵ /, "");
+        return t.length > 26 ? t.slice(0, 25) + "…" : t;
+    }
+    Timer {
+        interval: 1000
+        repeat: true
+        triggeredOnStart: true
+        running: root.streaming && !Assistant.open
+        onTriggered: Moments.show({ kind: "assistant", label: root.workLabel(),
+            value: Math.round((Date.now() - root.workStarted) / 1000) + "s",
+            tone: root.pendingRequest ? Theme.orange : Theme.accent }, 1600)
+    }
+
     function notifyDone(msg) {
+        if (!Assistant.open && msg) Moments.show({ kind: "assistant", label: msg.status === "failed" ? "Assistant: failed" : "Assistant: done",
+            value: "", tone: msg.status === "failed" ? Theme.red : Theme.green }, 4000);
         if (Assistant.open || !msg) return;
         const sess = root.sessions.find(s => s.id === root.draftSessionId);
         const text = Turn.textOf(msg).replace(/\s+/g, " ").trim();

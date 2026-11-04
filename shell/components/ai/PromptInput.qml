@@ -26,6 +26,7 @@ Rectangle {
     signal toggleSidebarRequested()
     signal toggleStudioRequested()
     signal escapeRequested()
+    signal searchRequested()
 
     implicitHeight: mainCol.implicitHeight + 24
     radius: 18
@@ -413,6 +414,7 @@ Rectangle {
                     }
                     const ctrl = (event.modifiers & Qt.ControlModifier);
                     if (ctrl && event.key === Qt.Key_D) { event.accepted = true; root.toggleMic(); return; }
+                    if (ctrl && event.key === Qt.Key_F) { event.accepted = true; root.searchRequested(); return; }
                     if (ctrl && (event.modifiers & Qt.ShiftModifier) && event.key === Qt.Key_C) {
                         event.accepted = true;      // ⌃⇧C copies the last answer
                         const msgs = OllamaService.messages;

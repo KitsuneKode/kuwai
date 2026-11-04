@@ -33,6 +33,18 @@ Rectangle {
     property string renaming: ""       // id of the chat being renamed (double-click)
     property Item hoverRow: null
 
+    function focusSearch() { search.forceActiveFocus(); search.selectAll(); }
+    // Where a search hit in a chat's messages (not its title): ~70 characters around it.
+    function snippet(s, q) {
+        if (!q || (s.title || "").toLowerCase().indexOf(q) >= 0) return "";
+        for (const m of (s.messages || [])) {
+            const t = (m.text || "").replace(/\s+/g, " ");
+            const i = t.toLowerCase().indexOf(q);
+            if (i >= 0) return (i > 24 ? "…" : "") + t.slice(Math.max(0, i - 24), i + 46) + (i + 46 < t.length ? "…" : "");
+        }
+        return "";
+    }
+
     function dayStart(t) { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); }
     readonly property var rows: {
         const q = query.toLowerCase().trim();
@@ -156,7 +168,8 @@ Rectangle {
                     readonly property bool asking: !!chat && root.confirming === chat.id
                     readonly property bool renamingThis: !!chat && root.renaming === chat.id
                     width: ListView.view.width
-                    height: isHeader ? (index === 0 ? 24 : 34) : 34
+                    readonly property string hit: !!chat && root.query ? root.snippet(chat, root.query.toLowerCase().trim()) : ""
+                    height: isHeader ? (index === 0 ? 24 : 34) : (hit ? 50 : 34)
 
                     Label {
                         visible: row.isHeader
@@ -200,8 +213,16 @@ Rectangle {
                     }
 
                     Label {
+                        visible: !!row.hit && !row.asking && !row.renamingThis
+                        anchors { left: parent.left; leftMargin: 8; right: parent.right; rightMargin: 8; bottom: parent.bottom; bottomMargin: 7 }
+                        text: row.hit
+                        size: 11
+                        color: Theme.textTertiary
+                        elide: Text.ElideRight
+                    }
+                    Label {
                         visible: !row.isHeader && !row.asking && !row.renamingThis
-                        anchors { left: parent.left; leftMargin: 8; right: trash.left; rightMargin: 4; verticalCenter: parent.verticalCenter }
+                        anchors { left: parent.left; leftMargin: 8; right: trash.left; rightMargin: 4; verticalCenter: parent.verticalCenter; verticalCenterOffset: row.hit ? -8 : 0 }
                         text: row.chat ? (row.chat.title && row.chat.title !== "New Chat" ? row.chat.title : "New chat") : ""
                         size: 13
                         weight: row.selected ? Theme.wMedium : Theme.wRegular

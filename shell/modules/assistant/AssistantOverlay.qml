@@ -21,6 +21,13 @@ Scope {
     property bool studioMode: false
     property bool sidebarOpen: true
     property bool appLauncherOpen: false
+    // ⌃F / "Search chats": the sidebar opens (studio) with its search focused.
+    signal searchRequested()
+    function searchChats() {
+        root.studioMode = true;
+        root.sidebarOpen = true;
+        Qt.callLater(root.searchRequested);
+    }
     property bool armed: false
 
     Timer {
@@ -76,8 +83,9 @@ Scope {
             anchors.top: true
             margins.top: inIsland ? (notch ? 0 : 6) : 6
 
-            implicitWidth: up ? Math.max(studioW, compactW) + 40 : 1
-            implicitHeight: up ? Math.max(studioH, compactH) + 60 : 1
+            readonly property bool shown: up || melt.value > 0.01
+            implicitWidth: shown ? Math.max(studioW, compactW) + 40 : 1
+            implicitHeight: shown ? Math.max(studioH, compactH) + 60 : 1
             exclusionMode: ExclusionMode.Ignore
             color: "transparent"
 
@@ -118,6 +126,9 @@ Scope {
                         } else if (event.key === Qt.Key_K) {
                             event.accepted = true;
                             modelPicker.toggle();
+                        } else if (event.key === Qt.Key_F) {
+                            event.accepted = true;
+                            root.searchChats();
                         } else if (event.key === Qt.Key_L) {
                             event.accepted = true;
                             OllamaService.clear();
@@ -136,7 +147,8 @@ Scope {
             // ── Dynamic Island Emergence Springs ───────────────────────
             Spring {
                 id: melt
-                tier: Theme.springModerate
+                // Out quicker than in (an exit shouldn't linger), on the same curve back into the notch.
+                tier: win.up ? Theme.springModerate : Theme.springFast
                 target: win.up ? 1 : 0
                 epsilon: 0.001
             }
@@ -172,7 +184,8 @@ Scope {
             // ── Main Glass Frame (Emerging from Island) ───────────────
             Rectangle {
                 id: frame
-                visible: win.up && win.m > 0.01
+                // Stays while it melts back into the notch (it vanished the moment you closed it).
+                visible: win.m > 0.01
                 width: Math.max(1, win.currentW)
                 height: Math.max(1, win.currentH)
                 x: Math.round((win.width - width) / 2)
@@ -193,6 +206,10 @@ Scope {
                     anchors.fill: parent
 
                     // ── Collapsible Chat Sidebar ──────────────────────
+                    Connections {
+                        target: root
+                        function onSearchRequested() { if (win.up) sidebar.focusSearch(); }
+                    }
                     ChatSidebar {
                         id: sidebar
                         open: root.studioMode && root.sidebarOpen
@@ -488,6 +505,7 @@ Scope {
                                 popups: [slashMenu]
                                 onModelPickerRequested: modelPicker.toggle()
                                 onSlashRequested: slashMenu.open = true
+                                onSearchRequested: root.searchChats()
                                 onOpenAppLauncherRequested: root.appLauncherOpen = !root.appLauncherOpen
                                 onToggleSidebarRequested: {
                                     if (!root.studioMode) root.studioMode = true;
@@ -541,6 +559,7 @@ Scope {
                         { id: "copychat", label: "Copy chat as Markdown", keys: [] },
                         { id: "compact", label: "Summarise this chat now", keys: [] },
                         { id: "fork", label: "Fork this chat", keys: [] },
+                        { id: "search", label: "Search chats", keys: ["⌃", "F"] },
                         { id: "apps", label: "Open an app", keys: ["⌃", "O"] }
                     ]
                     onPicked: id => {
@@ -553,6 +572,7 @@ Scope {
                         else if (id === "copychat") OllamaService.copyChat();
                         else if (id === "compact") OllamaService.compactNext = true;
                         else if (id === "fork") OllamaService.forkAt(-1);
+                        else if (id === "search") { root.searchChats(); return; }
                         else if (id === "apps") root.appLauncherOpen = true;
                         promptInput.focusInput();
                     }
