@@ -21,13 +21,41 @@ import qs.config
 Singleton {
     id: root
 
+    // One at a time, in order: a moment arriving while another shows waits
+    // its turn, unless it's the same kind (Focus on, then off), which just
+    // updates. Only the newest of each kind waits. "Copied" answers a key
+    // press, so it cuts in and what it interrupted goes next.
     property var now: null
+    property int nowMs: 0
+    property var queue: []            // [{ m, ms }]
     function show(m, ms) {
+        if (now && now.kind !== m.kind && m.kind === "copied") {
+            queue = [{ m: now, ms: nowMs }].concat(queue);
+            now = null;
+        } else if (now && now.kind !== m.kind) {
+            queue = queue.filter(q => q.m.kind !== m.kind).concat([{ m: m, ms: ms }]).slice(-3);
+            return;
+        }
+        if (!now && gap.running) {
+            queue = [{ m: m, ms: ms }].concat(queue.filter(q => q.m.kind !== m.kind));
+            return;
+        }
         now = m;
-        hide.interval = ms || 3200;
+        nowMs = ms || 3200;
+        hide.interval = nowMs;
         hide.restart();
     }
-    Timer { id: hide; onTriggered: root.now = null }
+    // The island closes between two, so the next reads as new.
+    Timer { id: hide; onTriggered: { root.now = null; if (root.queue.length) gap.start(); } }
+    Timer {
+        id: gap
+        interval: 450
+        onTriggered: {
+            const q = root.queue[0];
+            root.queue = root.queue.slice(1);
+            if (q) root.show(q.m, q.ms);
+        }
+    }
 
     // Nothing at startup: devices and settings arriving aren't news.
     property bool armed: false

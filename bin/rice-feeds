@@ -21,23 +21,34 @@ Needs 2-Step Verification and an app password
 password lives in the keyring (secret-tool), never in a file.
 
 Each one is a real notification (the rice's server) with Open and Mark as
-read; read elsewhere (on github.com, in Gmail), it leaves the center by
-itself. The shell's adapter reads the x-rice-* hints (NotifAdapters.qml).
+Read, plus Archive for mail. Where there's someone to answer, the card has a
+reply field (the center's Reply): a comment on the pull request or issue, or
+an email reply Gmail threads with the original (sent over smtp.gmail.com
+with the same app password; never to a no-reply address). Read, archived or
+answered elsewhere (github.com, Gmail), the card leaves the center by itself.
+The shell's adapter reads the x-rice-* hints (NotifAdapters.qml).
+
+Settings: ~/.config/rice/feeds.json (see conf(); read each time, no
+restart): repos to mute or keep quiet, what bots do, the Gmail search.
 State: ~/.local/state/rice/feeds.json. RICE_FEEDS_DRYRUN=1 prints instead.
 """
 import email
+import email.message
 import email.policy
 import email.utils
+import fnmatch
 import getpass
 import html
 import imaplib
 import json
 import os
 import re
+import smtplib
 import subprocess
 import sys
 import threading
 import time
+import urllib.request
 
 STATE = os.path.expanduser("~/.local/state/rice/feeds.json")
 CONFIG = os.path.expanduser("~/.config/rice/feeds.json")
@@ -58,6 +69,30 @@ def load(path, default):
 
 
 state = load(STATE, {})
+
+
+# ~/.config/rice/feeds.json, read each time (edit it, no restart):
+#   { "gmail": "you@gmail.com",
+#     "gmailQuery": "is:unread is:important category:primary",
+#     "github": { "enabled": true,
+#                 "mute":  ["someorg/*"],          never tell me
+#                 "quiet": ["me/dotfiles"],        the center only
+#                 "bots":  "quiet" } }             quiet | hide | show
+def conf():
+    c = load(CONFIG, {})
+    g = c.get("github") if isinstance(c.get("github"), dict) else {}
+    return {
+        "gmail": c.get("gmail", ""),
+        "gmailQuery": c.get("gmailQuery") or "is:unread is:important category:primary",
+        "github": g.get("enabled", True) is not False,
+        "mute": [str(x).lower() for x in g.get("mute", [])],
+        "quiet": [str(x).lower() for x in g.get("quiet", [])],
+        "bots": g.get("bots", "quiet") if g.get("bots") in ("quiet", "hide", "show") else "quiet",
+    }
+
+
+def matches(repo, patterns):
+    return any(fnmatch.fnmatch(repo.lower(), p) for p in patterns)
 
 
 def save():
@@ -83,7 +118,7 @@ class Notifier:
         self.by_id = {}       # notification id -> { key, on }
         self.by_key = {}      # key -> notification id
         self._pending = []    # sent, waiting for their id (replies come in order)
-        for sig in ("ActionInvoked", "NotificationClosed"):
+        for sig in ("ActionInvoked", "NotificationReplied", "NotificationClosed"):
             self.bus.signal_subscribe(None, "org.freedesktop.Notifications", sig, "/org/freedesktop/Notifications",
                                       None, 0, self._signal)
 
@@ -108,20 +143,30 @@ class Notifier:
             self.by_key[key] = nid
             self.by_id[nid] = {"key": key, "on": on}
 
-    def send(self, app, icon, title, body, hints, key, on):
-        """on: { action id: fn } ("default" is a click on the card)."""
+    LABELS = {"default": "Open", "read": "Mark as Read", "archive": "Archive", "inline-reply": "Reply"}
+
+    def send(self, app, icon, title, body, hints, key, on, expire=-1):
+        """on: { action id: fn } in button order; "default" is a click on the
+        card, "inline-reply" gets the text typed into the card's reply field."""
         if DRY:
-            log("would notify:", app, "|", title, "|", clip(body, 80), "|", {k: v for k, v in hints.items() if k != "x-rice-feed"})
+            log("would notify:", app, "|", title, "|", clip(body, 80), "|", list(on),
+                {k: v for k, v in hints.items() if k != "x-rice-feed" and v})
             return
         GLib = self.GLib
 
         def go():
-            actions = ["default", "Open", "read", "Mark as Read"]
-            h = {k: GLib.Variant("s", str(v)) for k, v in hints.items()}
+            actions = [x for a in on for x in (a, self.LABELS.get(a, a))]
+            h = {k: GLib.Variant("s", str(v)) for k, v in hints.items() if v}
             self._pending.append((key, on))
-            self._call("Notify", GLib.Variant("(susssasa{sv}i)", (app, 0, icon, title, body, actions, h, -1)), "(u)")
+            self._call("Notify", GLib.Variant("(susssasa{sv}i)", (app, 0, icon, title, body, actions, h, expire)), "(u)")
             return False
         GLib.idle_add(go)
+
+    def flash(self, app, icon, title, body=""):
+        """A short word back ("Reply sent"): a quiet toast that clears itself."""
+        key = f"flash:{time.time()}"
+        self.send(app, icon, title, body, {"x-rice-feed": "flash", "x-rice-severity": "low"}, key, {}, expire=2500)
+        threading.Timer(4, lambda: self.close_key(key)).start()
 
     def close_key(self, key):
         if DRY:
@@ -141,8 +186,12 @@ class Notifier:
             return
         if sig == "ActionInvoked":
             fn = entry["on"].get(args[1])
-            if fn:
+            if fn and args[1] != "inline-reply":
                 threading.Thread(target=fn, daemon=True).start()
+        elif sig == "NotificationReplied":
+            fn = entry["on"].get("inline-reply")
+            if fn and args[1].strip():
+                threading.Thread(target=fn, args=(args[1].strip(),), daemon=True).start()
         elif sig == "NotificationClosed":
             self.by_id.pop(nid, None)
             if self.by_key.get(entry["key"]) == nid:
@@ -196,6 +245,36 @@ def web_url(t):
     return f"https://github.com/{repo}"
 
 
+def gh_fetch(path):
+    """One API object (a comment, a pull request), or None."""
+    r = gh([path.replace("https://api.github.com", "")], timeout=20)
+    if r.returncode != 0:
+        return None
+    try:
+        return json.loads(r.stdout)
+    except ValueError:
+        return None
+
+
+AVATARS = os.path.expanduser("~/.cache/rice/feeds/avatars")
+
+
+def avatar(login, url):
+    """Their GitHub picture as a file URL (fetched once, then cached)."""
+    if not login or not url:
+        return ""
+    path = os.path.join(AVATARS, re.sub(r"[^\w.-]", "_", login) + ".png")
+    if not os.path.exists(path) or time.time() - os.path.getmtime(path) > 7 * 86400:
+        try:
+            os.makedirs(AVATARS, exist_ok=True)
+            with urllib.request.urlopen(url + ("&" if "?" in url else "?") + "s=96", timeout=10) as r, open(path + ".tmp", "wb") as f:
+                f.write(r.read())
+            os.replace(path + ".tmp", path)
+        except Exception:
+            return "file://" + path if os.path.exists(path) else ""
+    return "file://" + path
+
+
 _me = []
 
 
@@ -213,9 +292,15 @@ def short(repo):
     return name if me() and owner.lower() == me() else repo
 
 
-def gh_thread(t):
+REPLYABLE = {"mention", "team_mention", "comment", "author", "manual", "subscribed", "assign", "state_change"}
+
+
+def gh_thread(t, fetch=gh_fetch, c=None):
     """What the card says about one thread, or None for nothing to say."""
+    c = c or conf()
     repo = t["repository"]["full_name"]
+    if matches(repo, c["mute"]):
+        return None
     s = t["subject"]
     reason = t.get("reason", "")
     status, glyph, tone, severity, peek = REASONS.get(reason, ("Activity", "", "", "", False))
@@ -233,41 +318,43 @@ def gh_thread(t):
         body = f"{short(repo)} · {branch}" if branch else short(repo)
         status, glyph = ("Run failed", "\U000f0028") if failed else ("Run " + (outcome or "finished"), "\U000f05e0")
         tone, severity, peek = ("critical", "warning", True) if failed else ("positive", "", False)
-        quiet = bool(branch and BOT_BRANCH.match(branch))
+        bot = bool(branch and BOT_BRANCH.match(branch))
         # One card per workflow and branch: the next run replaces it.
         t["_group"] = f"gh:ci:{repo}:{wf}:{branch}"
         if branch:
             t["_url"] = f"https://github.com/{repo}/actions?query=branch%3A{branch}"
     else:
-        quiet = bool(BOT_TITLE.search(title))
+        bot = bool(BOT_TITLE.search(title))
         # Who said what: the latest comment, or the pull request / issue itself.
         url = s.get("latest_comment_url") or s.get("url")
-        if url:
-            r = gh([url.replace("https://api.github.com", "")], timeout=20)
-            if r.returncode == 0:
-                try:
-                    c = json.loads(r.stdout)
-                    who = ((c.get("user") or c.get("author") or {}).get("login")) or ""
-                    text = c.get("body") or ""
-                    if c.get("html_url") and "#issuecomment" in c.get("html_url", ""):
-                        t["_url"] = c["html_url"]
-                    if who and BOTS.search(who):
-                        quiet = True
-                    # Your own comment or push: you know.
-                    if who and who.lower() == me() and reason not in ("review_requested", "assign", "mention"):
-                        return None
-                    text = re.sub(r"<!--.*?-->|<[^>]+>|```.*?```|!\[[^\]]*\]\([^)]*\)", " ", text, flags=re.S)
-                    text = re.sub(r"[#>*_`|]+", " ", text)
-                    if who and text.strip() and reason not in ("review_requested", "assign"):
-                        body = f"{who}: {clip(text, 160)}"
-                    elif who:
-                        body = f"{short(repo)} {number} · by {who}".strip()
-                except ValueError:
-                    pass
+        got = fetch(url) if url else None
+        if isinstance(got, dict):
+            who = ((got.get("user") or got.get("author") or {}).get("login")) or ""
+            text = got.get("body") or ""
+            if "#issuecomment" in (got.get("html_url") or ""):
+                t["_url"] = got["html_url"]
+            if who and BOTS.search(who):
+                bot = True
+            # Your own comment or push: you know.
+            if who and who.lower() == me() and reason not in ("review_requested", "assign", "mention"):
+                return None
+            t["_avatar"] = (who, (got.get("user") or {}).get("avatar_url") or "")
+            text = re.sub(r"<!--.*?-->|<[^>]+>|```.*?```|!\[[^\]]*\]\([^)]*\)", " ", text, flags=re.S)
+            text = re.sub(r"[#>*_`|]+", " ", text)
+            if who and text.strip() and reason not in ("review_requested", "assign"):
+                body = f"{who}: {clip(text, 160)}"
+            elif who:
+                body = f"{short(repo)} {number} · by {who}".strip()
+    if bot and c["bots"] == "hide":
+        return None
+    quiet = (bot and c["bots"] == "quiet") or matches(repo, c["quiet"])
+    # Somewhere to answer: a comment on the pull request or issue.
+    reply = (repo, m.group(2)) if m and reason in REPLYABLE and not bot else None
     return {
         "title": title, "body": body, "status": status, "glyph": glyph, "tone": tone,
-        "severity": severity, "peek": peek, "quiet": quiet, "url": t.get("_url") or web_url(t),
-        "group": t.get("_group") or "gh:" + t["id"],
+        "severity": severity, "peek": peek and not quiet, "quiet": quiet, "url": t.get("_url") or web_url(t),
+        "group": t.get("_group") or "gh:" + t["id"], "reply": reply, "who": t.get("_avatar", ("", ""))[0],
+        "avatar": t.get("_avatar", ("", ""))[1],
     }
 
 
@@ -277,6 +364,15 @@ def gh_mark_read(tid):
         log("github: mark read", tid, r.stderr.strip())
 
 
+def gh_reply(notify, repo, number, tid, text):
+    r = gh(["-X", "POST", f"/repos/{repo}/issues/{number}/comments", "-f", f"body={text}"], timeout=30)
+    if r.returncode == 0:
+        gh_mark_read(tid)
+        notify.flash("GitHub", "github", "Comment posted", f"{short(repo)} #{number}")
+    else:
+        notify.flash("GitHub", "github", "Couldn't post the comment", clip(r.stderr, 120))
+
+
 def github(notify):
     g = state.setdefault("github", {})
     first = "seen" not in g
@@ -284,6 +380,9 @@ def github(notify):
     shown = {}                               # thread id -> card key, up this run
     wait, backoff = 60, 60
     while True:
+        if not conf()["github"]:
+            time.sleep(300)
+            continue
         args = ["-i", "/notifications?per_page=50"]
         if g.get("modified") and not first:
             args += ["-H", f"If-Modified-Since: {g['modified']}"]
@@ -339,12 +438,15 @@ def github(notify):
                 hints = {"x-rice-feed": "github", "x-rice-status": c["status"], "x-rice-glyph": c["glyph"],
                          "x-rice-tone": c["tone"], "x-rice-group": key, "x-rice-url": c["url"],
                          "x-rice-severity": c["severity"], "x-rice-quiet": "1" if c["quiet"] else "",
-                         "x-rice-calm": "" if c["peek"] else "1"}
+                         "x-rice-calm": "" if c["peek"] else "1", "image-path": avatar(c["who"], c["avatar"])}
                 url = c["url"]
-                notify.send("GitHub", "github", c["title"], c["body"], hints, key, {
-                    "default": lambda u=url, i=tid: (open_url(u), gh_mark_read(i)),
-                    "read": lambda i=tid: gh_mark_read(i),
-                })
+                on = {"default": lambda u=url, i=tid: (open_url(u), gh_mark_read(i)),
+                      "read": lambda i=tid: gh_mark_read(i)}
+                if c["reply"]:
+                    rp, num = c["reply"]
+                    on["inline-reply"] = lambda text, rp=rp, num=num, i=tid: gh_reply(notify, rp, num, i, text)
+                    hints["x-kde-reply-placeholder-text"] = f"Comment on {short(rp)} #{num}"
+                notify.send("GitHub", "github", c["title"], c["body"], hints, key, on)
                 shown[tid] = key
             # Forget what's long gone, so the state stays small.
             if len(seen) > 600:
@@ -360,9 +462,6 @@ def github(notify):
 
 
 # ── Gmail ───────────────────────────────────────────────────────────────────
-IMPORTANT = 'X-GM-RAW "is:unread is:important category:primary"'
-
-
 def gmail_secret(address):
     r = subprocess.run(["secret-tool", "lookup", "service", "rice-feeds", "account", address],
                        capture_output=True, text=True)
@@ -391,36 +490,85 @@ def text_of(msg):
     return clip(t, 180)
 
 
+def mail_card(head_bytes, full_bytes=None, thrid=""):
+    """What a card says about one message (headers, and the message if small)."""
+    head = email.message_from_bytes(head_bytes, policy=email.policy.default)
+    name, addr = email.utils.parseaddr(str(head.get("From", "")))
+    reply_to = email.utils.parseaddr(str(head.get("Reply-To", "")))[1] or addr
+    subject = clip(str(head.get("Subject", "")) or "(no subject)", 120)
+    snippet = text_of(email.message_from_bytes(full_bytes, policy=email.policy.default)) if full_bytes else ""
+    thread = format(int(thrid), "x") if thrid else ""
+    return {
+        "from": name or addr or "Someone", "addr": addr, "replyTo": reply_to, "subject": subject,
+        "snippet": snippet, "thread": thread,
+        "messageId": str(head.get("Message-ID", "")).strip(), "references": str(head.get("References", "")).strip(),
+        "noreply": bool(re.search(r"no[-_.]?reply|do[-_.]?not[-_.]?reply|notifications?@|mailer-daemon", reply_to, re.I)),
+        "url": f"https://mail.google.com/mail/u/0/#all/{thread}" if thread else "https://mail.google.com/mail/u/0/#inbox",
+    }
+
+
 def gmail_card(m, uid):
-    typ, data = m.uid("FETCH", uid, "(X-GM-THRID RFC822.SIZE BODY.PEEK[HEADER.FIELDS (FROM SUBJECT)])")
+    typ, data = m.uid("FETCH", uid, "(X-GM-THRID RFC822.SIZE BODY.PEEK[HEADER.FIELDS (FROM REPLY-TO SUBJECT MESSAGE-ID REFERENCES)])")
     if typ != "OK" or not data or not isinstance(data[0], tuple):
         return None
     meta = data[0][0].decode(errors="replace")
     thr = re.search(r"X-GM-THRID (\d+)", meta)
     size = re.search(r"RFC822.SIZE (\d+)", meta)
-    head = email.message_from_bytes(data[0][1], policy=email.policy.default)
-    name, addr = email.utils.parseaddr(str(head.get("From", "")))
-    subject = clip(str(head.get("Subject", "")) or "(no subject)", 120)
-    snippet = ""
+    full = None
     if size and int(size.group(1)) < 400_000:
-        typ, full = m.uid("FETCH", uid, "(BODY.PEEK[])")
-        if typ == "OK" and full and isinstance(full[0], tuple):
-            snippet = text_of(email.message_from_bytes(full[0][1], policy=email.policy.default))
-    thread = format(int(thr.group(1)), "x") if thr else ""
-    return {
-        "from": name or addr or "Someone", "subject": subject, "snippet": snippet, "thread": thread,
-        "url": f"https://mail.google.com/mail/u/0/#all/{thread}" if thread else "https://mail.google.com/mail/u/0/#inbox",
-    }
+        typ, got = m.uid("FETCH", uid, "(BODY.PEEK[])")
+        if typ == "OK" and got and isinstance(got[0], tuple):
+            full = got[0][1]
+    return mail_card(data[0][1], full, thr.group(1) if thr else "")
 
 
-def gmail_mark_read(address, uid):
+def gmail_act(address, uid, *stores):
+    """Mark read, archive: a short second connection (the first one idles)."""
     try:
         m = imap_login(address)
         m.select("INBOX")
-        m.uid("STORE", uid, "+FLAGS", "(\\Seen)")
+        for flags in stores:
+            m.uid("STORE", uid, *flags)
         m.logout()
+        return True
     except Exception as e:
-        log("gmail: mark read", e)
+        log("gmail:", e)
+        return False
+
+
+def gmail_mark_read(address, uid):
+    gmail_act(address, uid, ("+FLAGS", "(\\Seen)"))
+
+
+def gmail_archive(notify, address, uid):
+    # Archiving in Gmail is losing the Inbox label (it stays in All Mail).
+    if not gmail_act(address, uid, ("+FLAGS", "(\\Seen)"), ("-X-GM-LABELS", "(\\Inbox)")):
+        notify.flash("Gmail", "gmail", "Couldn't archive it")
+
+
+def reply_message(address, c, text):
+    """A reply Gmail threads with the original (In-Reply-To, References, Re:)."""
+    msg = email.message.EmailMessage()
+    msg["From"] = address
+    msg["To"] = c["replyTo"]
+    msg["Subject"] = c["subject"] if re.match(r"(?i)re:", c["subject"]) else "Re: " + c["subject"]
+    if c["messageId"]:
+        msg["In-Reply-To"] = c["messageId"]
+        msg["References"] = (c["references"] + " " + c["messageId"]).strip()
+    msg.set_content(text)
+    return msg
+
+
+def gmail_reply(notify, address, uid, c, text):
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=30) as smtp:
+            smtp.login(address, gmail_secret(address))
+            smtp.send_message(reply_message(address, c, text))
+        gmail_mark_read(address, uid)
+        notify.flash("Gmail", "gmail", f"Sent to {c['from']}", clip(text, 80))
+    except Exception as e:
+        log("gmail: reply", e)
+        notify.flash("Gmail", "gmail", "Couldn't send the reply", clip(str(e), 120))
 
 
 def gmail(notify, address):
@@ -459,10 +607,12 @@ def gmail(notify, address):
 
 
 def gmail_check(m, notify, address, g, shown):
-    # Read in Gmail since: those cards go.
+    # Read, archived or deleted in Gmail since: those cards go.
     if shown:
-        typ, d = m.uid("SEARCH", None, f"UID {','.join(shown)} SEEN")
-        for uid in (d[0].decode().split() if typ == "OK" and d[0] else []):
+        uids = ",".join(shown)
+        typ, d = m.uid("SEARCH", None, f"UID {uids} UNSEEN")
+        still = set(d[0].decode().split()) if typ == "OK" and d[0] else set()
+        for uid in [u for u in shown if u not in still]:
             notify.close_key(shown.pop(uid))
     typ, d = m.uid("SEARCH", None, f"UID {g['last'] + 1}:*")
     new = [int(x) for x in d[0].split()] if typ == "OK" and d[0] else []
@@ -471,20 +621,24 @@ def gmail_check(m, notify, address, g, shown):
         return
     g["last"] = max(new)
     save()
-    typ, d = m.uid("SEARCH", None, f"UID {min(new)}:{max(new)} {IMPORTANT}")
+    query = conf()["gmailQuery"].replace('"', "")
+    typ, d = m.uid("SEARCH", None, f'UID {min(new)}:{max(new)} X-GM-RAW "{query}"')
     picks = [x.decode() for x in d[0].split()] if typ == "OK" and d[0] else []
     for uid in picks[-5:]:
         c = gmail_card(m, uid)
         if not c:
             continue
         key = "gmail:" + (c["thread"] or uid)
-        hints = {"x-rice-feed": "gmail", "x-rice-group": key, "x-rice-url": c["url"],
-                 "x-rice-status": "", "x-rice-glyph": "", "x-rice-tone": "", "x-rice-severity": ""}
+        hints = {"x-rice-feed": "gmail", "x-rice-group": key, "x-rice-url": c["url"]}
         body = c["subject"] + ("\n" + c["snippet"] if c["snippet"] else "")
-        notify.send("Gmail", "gmail", c["from"], body, hints, key, {
-            "default": lambda u=c["url"]: open_url(u),
-            "read": lambda i=uid: gmail_mark_read(address, i),
-        })
+        on = {"default": lambda u=c["url"]: open_url(u),
+              "archive": lambda i=uid: gmail_archive(notify, address, i),
+              "read": lambda i=uid: gmail_mark_read(address, i)}
+        # Nobody reads a no-reply inbox: no reply field for those.
+        if not c["noreply"]:
+            on["inline-reply"] = lambda text, i=uid, c=c: gmail_reply(notify, address, i, c, text)
+            hints["x-kde-reply-placeholder-text"] = f"Reply to {c['from']}"
+        notify.send("Gmail", "gmail", c["from"], body, hints, key, on)
         shown[uid] = key
 
 

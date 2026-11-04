@@ -214,9 +214,34 @@ into ordinary notifications, without their apps:
   mail Gmail marks important, in Primary, unread. It needs an app password
   (2-Step Verification on), kept in the keyring: `rice feeds gmail-setup`.
 
-Every card has Open and Mark as Read, and goes away by itself once you've
-read it on github.com or in Gmail. `rice feeds` shows the status, `rice feeds
-logs` follows it.
+Every card has Open and Mark as Read (mail has Archive too), and goes away
+by itself once you've read it on github.com or in Gmail. GitHub cards show
+the person's avatar. Where there's someone to answer, Reply in the center
+answers without a browser: a comment on the issue or pull request, or an
+email Gmail threads with the original (sent through smtp.gmail.com with the
+same app password; no-reply senders get no reply field). Anything longer,
+Open. `rice feeds` shows the status, `rice feeds logs` follows it.
+
+Settings live in `~/.config/rice/feeds.json`, read each time, so changes need
+no restart (the address is the exception; `gmail-setup` sets it and restarts):
+
+```json
+{
+  "gmail": "you@gmail.com",
+  "gmailQuery": "is:unread is:important category:primary",
+  "github": {
+    "enabled": true,
+    "mute": ["someorg/*"],
+    "quiet": ["KitsuneKode/dotfiles"],
+    "bots": "quiet"
+  }
+}
+```
+
+`mute` drops a repository (glob patterns), `quiet` keeps it out of the notch
+and the toasts but in the center, and `bots` is `quiet`, `hide` or `show`.
+`gmailQuery` is any Gmail search. `tests/feeds` checks what each kind of
+thread and message turns into (`python -m pytest tests/feeds`).
 
 ## Notifications: adding an app
 
