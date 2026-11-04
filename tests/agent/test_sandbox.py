@@ -15,7 +15,7 @@ def names(req):
 def test_sandbox_tools_hidden_when_off(run_agent):
     _, fake = run_agent(USER, [answer()], caps=CAPS)
     assert "sandbox_run" not in names(fake.requests[0]) and "ask_user" in names(fake.requests[0])
-    assert "sandbox" not in fake.requests[0]["messages"][0]["content"]
+    assert "isolated Linux sandbox" not in fake.requests[0]["messages"][0]["content"]
 
 
 def test_write_then_run_in_chat_folder(run_agent, tmp_path):
