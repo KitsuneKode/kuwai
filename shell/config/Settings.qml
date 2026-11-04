@@ -34,6 +34,7 @@ Singleton {
     readonly property alias clipPinsFirst: s.clipPinsFirst
     readonly property alias islandRest: s.islandRest
     readonly property alias islandTucked: s.islandTucked
+    readonly property alias liveOnBattery: s.liveOnBattery
 
     function set(key, value) { s[key] = value; }
 
@@ -89,6 +90,7 @@ Singleton {
             // matters (a notification banner, an activity, a panel) or when
             // the pointer nears the top edge.
             property bool islandTucked: false
+            property bool liveOnBattery: false   // live wallpaper keeps playing on battery
         }
     }
 }

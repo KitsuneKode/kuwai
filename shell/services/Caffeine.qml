@@ -1,7 +1,13 @@
-// Caffeine: keep the machine awake (no dim, lock or suspend) while on.
-// Wayland's idle-inhibit protocol works through a surface, so while it's on
-// a 1×1 transparent, click-through layer exists purely to carry the
-// inhibitor; off, nothing exists.
+// Caffeine: keep the machine awake (no dim, lock, screen-off or suspend) while on.
+//
+// Hyprland 0.57 only counts a Wayland idle inhibitor after the surface is
+// mapped, accepts input, and its alpha is above zero, and it does not look
+// again when a layer maps or when that layer's fade (alpha 0 → 1) ends.
+// The carrier below is created before it maps, so the cup can read On while
+// hypridle still dims, locks and blanks. hypridle does watch logind's idle
+// inhibit, so while On we hold one with systemd-inhibit. The process dies
+// with the switch or the shell. A leftover user unit used to stay on for
+// days, which is why this is not caffeine-mode.service.
 pragma Singleton
 
 import QtQuick
@@ -37,6 +43,25 @@ Singleton {
         stdout: StdioCollector {
             onStreamFinished: if (text.trim() === "adopted") root.on = true
         }
+    }
+
+    // What hypridle actually obeys. Released when On goes false or the shell
+    // exits, including a kill -9 (rice-shell restarts that way): both the
+    // inhibitor and the `sleep` holding its lock die with their parent
+    // (setpriv --pdeathsig). Without that every restart left one behind,
+    // still blocking idle: eight of them had piled up.
+    Process {
+        id: hold
+        running: root.loaded && root.on && root.swept
+        command: ["setpriv", "--pdeathsig", "KILL", "--", "systemd-inhibit", "--what=idle", "--who=rice", "--why=Caffeine", "--mode=block",
+                  "setpriv", "--pdeathsig", "KILL", "--", "sleep", "infinity"]
+    }
+    // Leftovers from an older shell (before the above), swept once at start.
+    property bool swept: false
+    Process {
+        running: true
+        command: ["sh", "-c", "for p in $(pgrep -f '^systemd-inhibit --what=idle --who=rice --why=Caffeine'); do pkill -KILL -P \"$p\"; kill -KILL \"$p\"; done 2>/dev/null; true"]
+        onExited: root.swept = true
     }
 
     LazyLoader {

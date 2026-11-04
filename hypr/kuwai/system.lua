@@ -15,7 +15,7 @@ K.config({
 		on_focus_under_fullscreen = 2, -- a new window un-fullscreens the old one
 		initial_workspace_tracking = 0,
 		allow_session_lock_restore = true, -- a restarted shell can take the lock back
-		session_lock_xray = true,
+		session_lock_xray = false, -- a monitor with no lock surface must not show the session
 		anr_missed_pings = 5,
 		disable_scale_notification = true,
 		-- 10-bit outputs: keep grim/slurp/screen share on 8-bit buffers so

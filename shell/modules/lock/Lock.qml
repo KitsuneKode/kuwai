@@ -16,6 +16,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Hyprland
 import Quickshell.Wayland
 import Quickshell.Services.Pam
 import qs.config
@@ -86,12 +87,42 @@ Scope {
         }
     }
 
-    WlSessionLock {
-        id: session
-        locked: root.locked
-        WlSessionLockSurface {
-            color: "black"
-            LockView { anchors.fill: parent; lock: root }
+    // One lock surface per screen. Quickshell only builds those for the
+    // screens it already has, and it will not build a new one for a screen
+    // it already tracked. Turning the screens off (hypridle) drops the Acer
+    // off the bus; it comes back as a new monitor, the old surface died with
+    // the old output, and the laptop panel (which never disconnects) is the
+    // only place the lock still shows. Drop the locker and take the session
+    // back — allow_session_lock_restore is on — once the new output is up.
+    readonly property bool secure: lockLoader.item ? lockLoader.item.secure : false
+    function resurface() {
+        if (!locked) return;
+        console.warn("lock: a monitor came back while locked; covering every screen again");
+        lockLoader.active = false;
+        relockCreate.restart();
+    }
+    Timer { id: relockWait; interval: 500; onTriggered: root.resurface() }
+    Timer { id: relockCreate; interval: 50; onTriggered: if (root.locked) lockLoader.active = true }
+    Connections {
+        target: typeof Hyprland !== "undefined" ? Hyprland : null
+        function onRawEvent(event) {
+            if (!root.locked) return;
+            if (event.name === "monitoradded" || event.name === "monitoraddedv2") relockWait.restart();
+        }
+    }
+    Loader {
+        id: lockLoader
+        active: true
+        sourceComponent: lockFace
+    }
+    Component {
+        id: lockFace
+        WlSessionLock {
+            locked: root.locked
+            WlSessionLockSurface {
+                color: "black"
+                LockView { anchors.fill: parent; lock: root }
+            }
         }
     }
 
@@ -137,6 +168,6 @@ Scope {
         function lock(): void { root.lock(); }
         // "locked" only once the compositor confirms the lock (secure):
         // what `rice lock --wait` waits for before the machine may sleep.
-        function state(): string { return session.secure ? "locked" : root.locked ? "locking" : "unlocked"; }
+        function state(): string { return root.secure ? "locked" : root.locked ? "locking" : "unlocked"; }
     }
 }
