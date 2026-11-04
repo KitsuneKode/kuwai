@@ -47,6 +47,7 @@ FocusScope {
 
     Component.onCompleted: {
         Updates.checkIfStale();
+        Updates.loadPacnew();
         // Read every AUR change now (the service also does on each check), so
         // the list can say which ones are only version bumps.
         for (const p of Updates.aur) if (Updates.aurState(p.name) === "review") Updates.review(p.name);
@@ -130,6 +131,105 @@ FocusScope {
             Label { width: parent.width; wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight; text: parent.parent.detail; size: 11; color: Theme.textSecondary; visible: text !== "" }
         }
         Button { id: nAct; visible: parent.action !== ""; text: parent.action; anchors.right: parent.right; anchors.rightMargin: 10; anchors.verticalCenter: parent.verticalCenter; height: 28; onClicked: parent.acted() }
+    }
+
+
+    // Config files an update left beside yours (Updates.pacnew): each with
+    // what the new default would change, a recommendation, and Keep mine /
+    // Use new. One password applies them all.
+    component ConfigReview: Card {
+        visible: Updates.pacnew.length > 0 && !Updates.running
+        Row {
+            width: parent.width
+            spacing: 8
+            Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f0219}"; font.family: Theme.fontGlyph; font.pixelSize: 16; color: Theme.textSecondary }
+            Column {
+                width: parent.width - 30
+                spacing: 2
+                Label { text: Updates.pacnew.length + " config files from updates"; size: 14; weight: Theme.wSemibold }
+                Label { width: parent.width; wrapMode: Text.Wrap; text: "An update ships a new default beside a file you have (X.pacnew). Yours stays in use until you choose."; size: 11; color: Theme.textTertiary }
+            }
+        }
+        Repeater {
+            model: Updates.pacnew
+            Item {
+                id: row
+                required property var modelData
+                readonly property string choice: Updates.pacnewChoice[modelData.path] || ""
+                width: parent.width
+                height: info.implicitHeight + 12
+                Column {
+                    id: info
+                    y: 6
+                    width: parent.width - choices.width - 12
+                    spacing: 2
+                    Row {
+                        spacing: 6
+                        Label { text: row.modelData.name; size: 12; weight: Theme.wMedium; font.family: Theme.fontMono || Theme.fontText }
+                        Chip {
+                            anchors.verticalCenter: parent.verticalCenter
+                            height: 18
+                            text: ({ keep: "keep yours", take: "use new", review: "look first" })[row.modelData.rec] || row.modelData.rec
+                            tone: row.modelData.rec === "review" ? Theme.orange : Theme.textSecondary
+                        }
+                    }
+                    Label { width: parent.width; wrapMode: Text.Wrap; text: row.modelData.why; size: 11; color: Theme.textSecondary }
+                    Label {
+                        visible: (row.modelData.gone || []).length > 0
+                        width: parent.width; elide: Text.ElideRight
+                        text: "New default drops: " + (row.modelData.gone || []).join(", ")
+                        size: 10; color: Theme.textTertiary
+                    }
+                    Label {
+                        visible: (row.modelData.added || []).length > 0
+                        width: parent.width; elide: Text.ElideRight
+                        text: "Adds: " + (row.modelData.added || []).join(", ")
+                        size: 10; color: Theme.textTertiary
+                    }
+                    Label {
+                        visible: !row.modelData.readable
+                        width: parent.width; wrapMode: Text.Wrap
+                        text: "See it: sudo diff /etc/" + row.modelData.name + "{,.pacnew}"
+                        size: 10; color: Theme.textTertiary
+                    }
+                }
+                Row {
+                    id: choices
+                    anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                    spacing: 6
+                    Repeater {
+                        model: [{ id: "keep", label: "Keep mine" }, { id: "take", label: "Use new" }]
+                        Rectangle {
+                            required property var modelData
+                            readonly property bool on: row.choice === modelData.id
+                            height: 26; radius: 13
+                            width: chLabel.implicitWidth + 20
+                            color: on ? Qt.rgba(1, 1, 1, 0.9) : chArea.containsMouse ? Theme.pillHover : Theme.pill
+                            Behavior on color { ColorAnimation { duration: Theme.colorMs } }
+                            Label { id: chLabel; anchors.centerIn: parent; text: parent.modelData.label; size: 11; weight: Theme.wMedium; color: parent.on ? "#111114" : Theme.textPrimary }
+                            MouseArea { id: chArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: Updates.choosePacnew(row.modelData.path, parent.modelData.id) }
+                        }
+                    }
+                }
+            }
+        }
+        Row {
+            width: parent.width
+            spacing: 10
+            Button {
+                primary: true
+                text: Updates.pacnewBusy ? "Applying…" : "Apply " + Updates.pacnewChosen + (Updates.pacnewChosen === 1 ? " choice" : " choices")
+                enabled: Updates.pacnewChosen > 0 && !Updates.pacnewBusy
+                height: 30
+                onClicked: Updates.applyPacnew()
+            }
+            Label {
+                anchors.verticalCenter: parent.verticalCenter
+                width: parent.width - 180; wrapMode: Text.Wrap
+                text: Updates.pacnewResult || "Use new keeps yours as X.rice-bak. sudoers is checked with visudo first."
+                size: 11; color: Updates.pacnewResult ? Theme.textSecondary : Theme.textTertiary
+            }
+        }
     }
 
     // ═════════════════════════════════════════════════════════════════════
@@ -224,6 +324,8 @@ FocusScope {
                 model: Updates.total < 0 ? 3 : 0
                 Skeleton { width: listCol.width; height: 48; radius: 14 }
             }
+
+            ConfigReview {}
 
             // Arch packages
             Card {
@@ -717,12 +819,7 @@ FocusScope {
             action: Updates.helperState === "working" ? "" : "Set up"
             onActed: Updates.setupOnePrompt()
         }
-        Notice {
-            visible: !Updates.running && !!runCol.res && !!runCol.res.pacnew && runCol.res.pacnew.length > 0
-            glyph: "\u{f0219}"; tone: Theme.textSecondary
-            title: (runCol.res && runCol.res.pacnew ? runCol.res.pacnew.length : 0) + " new config files to merge"
-            detail: runCol.res && runCol.res.pacnew ? runCol.res.pacnew.slice(0, 3).join(" · ") + " (pacdiff in a terminal)" : ""
-        }
+        ConfigReview {}
         Notice {
             visible: !Updates.running && !!runCol.res && !!runCol.res.failedUnits && runCol.res.failedUnits.length > 0
             glyph: "\u{f0026}"; tone: Theme.red

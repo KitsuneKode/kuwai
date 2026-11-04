@@ -1,0 +1,206 @@
+#!/usr/bin/python3 -I
+"""rice-pacnew: the config files an update left beside yours (X.pacnew), with a choice each.
+
+    rice-pacnew list            JSON: [{path, name, readable, rec, why, gone, added, lines}]
+    rice-pacnew diff PATH       the difference, yours (-) against the new default (+)
+    rice-pacnew apply JSON      [{"path": ..., "action": "keep"|"take"}]: one password for all,
+                                through the root helper (rice-update-root), installing or
+                                updating it first when needed
+
+What the recommendation means (rec):
+    keep    you changed this file and the new default would undo it (your repos, your
+            initramfs modules, your locale); delete the .pacnew, nothing is lost
+    take    you never changed it: the new default replaces it (yours saved as X.rice-bak)
+    review  both sides have changes, or the file is root-only (sudoers): look first
+"""
+import json
+import os
+import re
+import subprocess
+import sys
+
+HELPER = "/usr/local/lib/kuwai/rice-update-root"
+HELPER_SRC = os.path.join(os.path.dirname(os.path.realpath(__file__)), "rice-update-root")
+# Files whose own tools keep them current: always keep yours.
+KEEP = {"/etc/pacman.d/mirrorlist": "reflector keeps your mirror list fresh"}
+
+
+def active(path):
+    """The lines that do something: not blank, not comments."""
+    with open(path, errors="replace") as f:
+        return [l.strip() for l in f if l.strip() and not l.lstrip().startswith(("#", ";", "//"))]
+
+
+def find():
+    out = subprocess.run(["find", "/etc", "-xdev", "-name", "*.pacnew", "-type", "f"],
+                         capture_output=True, text=True).stdout.split()
+    return sorted(p[:-len(".pacnew")] for p in out)
+
+
+def short(lines, n=4):
+    lines = [l if len(l) <= 48 else l[:47] + "…" for l in lines]
+    return lines[:n] + ([f"+{len(lines) - n} more"] if len(lines) > n else [])
+
+
+def original(path):
+    """The default you had before this update, from the previous package in pacman's cache
+    (the .pacnew is the new one). None when it isn't cached."""
+    owner = subprocess.run(["pacman", "-Qoq", path], capture_output=True, text=True).stdout.strip()
+    if not owner:
+        return None
+    cur = subprocess.run(["pacman", "-Q", owner], capture_output=True, text=True).stdout.split()
+    cur = cur[1] if len(cur) == 2 else ""
+    cache = "/var/cache/pacman/pkg"
+    try:
+        pkgs = [f for f in os.listdir(cache) if f.startswith(owner + "-") and ".pkg.tar" in f and not f.endswith(".sig")]
+    except OSError:
+        return None
+    # name-version-rel-arch.pkg.tar.*: older than the installed version, newest first.
+    def ver(f):
+        rest = f[len(owner) + 1:].split(".pkg.tar")[0].rsplit("-", 1)[0]   # drop arch
+        return rest if re.match(r"^[0-9:]", rest) else None
+    olds = [(ver(f), f) for f in pkgs if ver(f) and ver(f) != cur]
+    if not olds:
+        return None
+    olds.sort(key=lambda x: subprocess.run(["vercmp", x[0], cur], capture_output=True, text=True).stdout.strip())
+    for v, f in sorted(olds, key=lambda x: x[0], reverse=True):
+        r = subprocess.run(["bsdtar", "-xOf", os.path.join(cache, f), path.lstrip("/")], capture_output=True)
+        if r.returncode == 0 and r.stdout:
+            return r.stdout.decode(errors="replace")
+    return None
+
+
+def yours_evident(gone, new):
+    """Every setting the default would drop is plainly yours: a line the default ships
+    commented out (#Color → you wrote Color), or a value it leaves empty (MODULES=())."""
+    with open(new, errors="replace") as f:
+        lines = f.read().splitlines()
+    norm = lambda l: re.sub(r"\s+", "", l)
+    commented = {norm(l.lstrip()[1:]) for l in lines if l.lstrip().startswith("#")}
+    empty_keys = set()
+    for l in lines:
+        m = re.match(r"^\s*([A-Za-z_][\w.-]*)\s*=\s*(\(\s*\)|\"\"|''|)\s*$", l)
+        if m:
+            empty_keys.add(m.group(1))
+    everywhere = {norm(l.lstrip().lstrip("#")) for l in lines}
+    keys_anywhere = {norm(l.lstrip().lstrip("#").split("=", 1)[0]) for l in lines if "=" in l}
+    def added_by_you(l):
+        # A section or a setting the default doesn't mention at all, even commented.
+        if re.match(r"^\s*\[.+\]\s*$", l):
+            return norm(l) not in everywhere
+        if "=" in l:
+            return norm(l.split("=", 1)[0]) not in keys_anywhere
+        # A bare one-word flag it never mentions (ILoveCandy); not JSON or other syntax.
+        return bool(re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]*", l.strip())) and norm(l) not in everywhere
+    def mine(l):
+        if added_by_you(l):
+            return True
+        k = re.match(r"^\s*([A-Za-z_][\w.-]*)\s*=", l)
+        return norm(l) in commented or (k and k.group(1) in empty_keys) or (k and norm(l.split("=", 1)[0]) in {norm(c.split("=", 1)[0]) for c in commented if "=" in c})
+    return bool(gone) and all(mine(l) for l in gone if not l.startswith("+"))
+
+
+def describe(path):
+    new = path + ".pacnew"
+    item = {"path": path, "name": path[len("/etc/"):], "readable": os.access(path, os.R_OK) and os.access(new, os.R_OK)}
+    if path in KEEP:
+        item.update(rec="keep", why=KEEP[path], gone=[], added=[], lines=0)
+        return item
+    if not item["readable"]:
+        item.update(rec="review", why="Only root can read it: look before choosing", gone=[], added=[], lines=0)
+        return item
+    # Three-way, when the previous default is still cached: yours untouched → take.
+    orig = original(path)
+    if orig is not None:
+        with open(path, errors="replace") as f:
+            yours = f.read()
+        if yours.strip() == orig.strip():
+            item.update(rec="take", why="You never changed it: the new default replaces it", gone=[], added=[], lines=0)
+            return item
+    mine, theirs = active(path), active(new)
+    # Spacing isn't a change ("type": "x" vs "type":"x").
+    norm = lambda l: re.sub(r"\s+", "", l)
+    nm, nt = {norm(l) for l in mine}, {norm(l) for l in theirs}
+    gone = [l for l in mine if norm(l) not in nt]      # your settings the default doesn't have
+    added = [l for l in theirs if norm(l) not in nm]   # new settings you don't have
+    # The same settings with the default's values (MODULES=() for your
+    # MODULES=(nvidia …)) aren't new: taking them would only undo yours.
+    key = lambda l: re.split(r"\s*[=:]\s*", l, maxsplit=1)[0].strip().strip('"') if re.search(r"[=:]", l) else None
+    gone_keys = {key(l) for l in gone if key(l)}
+    really_added = [l for l in added if key(l) not in gone_keys]
+    item.update(gone=short(gone), added=short(added), lines=len(gone) + len(added))
+    if not gone and not added:
+        item.update(rec="keep", why="Only the comments changed")
+    elif not gone:
+        item.update(rec="take", why="You never changed it; the new default adds settings")
+    elif not really_added and yours_evident(gone, new):
+        item.update(rec="keep", why="You switched these on or filled them in; the new default would undo that")
+    elif not really_added and orig is None:
+        # Same settings, other values, and the old default isn't cached: we
+        # can't tell whether you or the package set them. Say what differs.
+        item.update(rec="review", why="The new default changes these values (you may have set them)")
+    elif not really_added:
+        item.update(rec="keep", why="The new default would only undo your settings")
+    else:
+        item.update(rec="review", why="Both have changes")
+    return item
+
+
+def helper_cmd():
+    """pkexec the root helper, installing it from the repo copy if it's missing or stale."""
+    ok = False
+    try:
+        st = os.stat(HELPER)
+        with open(HELPER, "rb") as a, open(HELPER_SRC, "rb") as b:
+            ok = st.st_uid == 0 and not (st.st_mode & 0o022) and a.read() == b.read()
+    except OSError:
+        pass
+    if ok:
+        return ["pkexec", HELPER]
+    return ["pkexec", "/bin/sh", "-c", 'umask 022 && /usr/bin/install -D -o root -g root -m 0755 -- "$1" "$2" && exec "$2"',
+            "sh", HELPER_SRC, HELPER]
+
+
+def apply(raw):
+    items = json.loads(raw)
+    known = set(find())
+    items = [i for i in items if i.get("path") in known and i.get("action") in ("keep", "take")]
+    if not items:
+        print(json.dumps({"ok": True, "done": 0}))
+        return 0
+    p = subprocess.Popen(helper_cmd(), stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+    log, rc = [], 1
+    for line in p.stdout:
+        msg = json.loads(line)
+        if msg.get("ready"):
+            p.stdin.write(json.dumps({"op": "pacnew", "items": items}) + "\n")
+            p.stdin.flush()
+        elif "log" in msg:
+            log.append(msg["log"])
+        elif "rc" in msg:
+            rc = msg["rc"]
+            p.stdin.close()
+    p.wait()
+    print(json.dumps({"ok": rc == 0, "done": len(items), "log": log}))
+    return 0 if rc == 0 else 1
+
+
+def main(argv):
+    cmd = argv[1] if len(argv) > 1 else "list"
+    if cmd == "list":
+        print(json.dumps([describe(p) for p in find()]))
+    elif cmd == "diff" and len(argv) > 2:
+        p = argv[2]
+        if p not in find():
+            return 1
+        subprocess.run(["diff", "-u", "--label", "yours", "--label", "new default", p, p + ".pacnew"])
+    elif cmd == "apply" and len(argv) > 2:
+        return apply(argv[2])
+    else:
+        print(__doc__.strip())
+        return 2
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

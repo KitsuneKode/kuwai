@@ -15,6 +15,12 @@ It reads one JSON request per line on stdin and only ever runs pacman:
     {"op": "deps", "deps": [PKG...]}      pacman -S --noconfirm --needed --asdeps PKG...
     {"op": "install", "files": [FILE...]} pacman -U --noconfirm --needed FILE...
                                           (package files owned by you, in your home folder)
+    {"op": "pacnew", "items": [{"path": "/etc/X", "action": "keep"|"take"}]}
+                                          a config file's .pacnew after an update: keep yours
+                                          (delete X.pacnew) or take the new default (X.pacnew
+                                          replaces X, X saved as X.rice-bak). Only real files
+                                          under /etc with a root-owned X.pacnew beside them, no
+                                          symlinks; sudoers only after `visudo -c` passes.
 
 While pacman runs it answers {"log": LINE}, then {"rc": N}. It says {"ready": true} first.
 It ends when stdin closes (rice-update finished or died), or after four hours at most.
@@ -29,6 +35,8 @@ import re
 import signal
 import subprocess
 import sys
+import shutil
+import stat
 import time
 
 PACMAN = "/usr/bin/pacman"
@@ -96,6 +104,45 @@ def files(req, home, uid):
     return out
 
 
+def pacnew(req):
+    """Keep yours or take the new default, for each X with an X.pacnew."""
+    items = req.get("items") or []
+    if not isinstance(items, list) or not items:
+        raise ValueError("no config files")
+    rc = 0
+    for it in items:
+        path, action = (it or {}).get("path"), (it or {}).get("action")
+        if action not in ("keep", "take") or not isinstance(path, str) or not path.startswith("/etc/") \
+                or "\0" in path or any(part in ("", ".", "..") for part in path[1:].split("/")):
+            raise ValueError(f"not a config file: {path!r}")
+        new = path + ".pacnew"
+        # No symlinks anywhere: the file, its .pacnew, or a directory on the way.
+        if os.path.realpath(new) != new or os.path.realpath(os.path.dirname(path)) != os.path.dirname(path):
+            raise ValueError(f"symlink in the way: {path!r}")
+        st = os.lstat(new)
+        if not stat.S_ISREG(st.st_mode) or st.st_uid != 0:
+            raise ValueError(f"not a root-owned .pacnew: {new!r}")
+        if os.path.lexists(path) and (os.path.islink(path) or not stat.S_ISREG(os.lstat(path).st_mode)):
+            raise ValueError(f"not a regular file: {path!r}")
+        if action == "keep":
+            os.unlink(new)
+            say(log=f"kept yours: {path}")
+            continue
+        if path == "/etc/sudoers" or path.startswith("/etc/sudoers.d/"):
+            if subprocess.run(["/usr/bin/visudo", "-c", "-q", "-f", new], env=ENV).returncode != 0:
+                say(log=f"refused: {new} doesn't pass visudo -c; yours stays")
+                rc = 1
+                continue
+        if os.path.exists(path):
+            old = os.lstat(path)
+            shutil.copy2(path, path + ".rice-bak")
+            os.chmod(new, stat.S_IMODE(old.st_mode))
+            os.chown(new, old.st_uid, old.st_gid)
+        os.replace(new, path)
+        say(log=f"took the new default: {path} (yours saved as {path}.rice-bak)")
+    return rc
+
+
 def main():
     signal.signal(signal.SIGHUP, signal.SIG_IGN)
     signal.signal(signal.SIGPIPE, signal.SIG_IGN)
@@ -117,6 +164,8 @@ def main():
                     rc = pacman(["-S", "--noconfirm", "--needed", "--asdeps", "--", *deps])
             elif op == "deps":
                 rc = pacman(["-S", "--noconfirm", "--needed", "--asdeps", "--", *names(req)])
+            elif op == "pacnew":
+                rc = pacnew(req)
             elif op == "install":
                 rc = pacman(["-U", "--noconfirm", "--needed", "--", *files(req, home, uid)])
             else:

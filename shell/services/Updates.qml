@@ -364,4 +364,57 @@ Singleton {
         while (i > 0 && !/[.\-_:+]/.test(newV[i - 1])) i--;
         return [newV.slice(0, i), newV.slice(i)];
     }
+
+    // ── Config files an update left beside yours (X.pacnew) ─────────────
+    // bin/rice-pacnew says what each new default would change and what it
+    // recommends: keep yours (it would undo your settings), take the new one
+    // (you never changed it), or review. Your choices apply behind one
+    // password, through the root helper. Nothing happens until you press Apply.
+    property var pacnew: []                 // [{ path, name, rec, why, gone, added, readable }]
+    property var pacnewChoice: ({})          // path → "keep" | "take"
+    property string pacnewResult: ""
+    property bool pacnewBusy: false
+    readonly property int pacnewChosen: Object.keys(pacnewChoice).length
+    function loadPacnew() { if (!pacnewLister.running) pacnewLister.running = true; }
+    function choosePacnew(path, action) {
+        const c = Object.assign({}, pacnewChoice);
+        if (c[path] === action) delete c[path]; else c[path] = action;
+        pacnewChoice = c;
+    }
+    function applyPacnew() {
+        const items = Object.keys(pacnewChoice).map(p => ({ path: p, action: pacnewChoice[p] }));
+        if (!items.length || pacnewBusy) return;
+        pacnewBusy = true;
+        pacnewResult = "";
+        pacnewApplier.command = [root.bin.replace(/rice-update$/, "rice-pacnew"), "apply", JSON.stringify(items)];
+        pacnewApplier.running = true;
+    }
+    Process {
+        id: pacnewLister
+        running: true
+        command: [root.bin.replace(/rice-update$/, "rice-pacnew"), "list"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let l = [];
+                try { l = JSON.parse(text); } catch (e) {}
+                root.pacnew = l;
+                // Start each one on its recommendation (review: undecided).
+                const c = {};
+                for (const it of l) if (it.rec === "keep" || it.rec === "take") c[it.path] = it.rec;
+                root.pacnewChoice = c;
+            }
+        }
+    }
+    Process {
+        id: pacnewApplier
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let r = {};
+                try { r = JSON.parse(text); } catch (e) {}
+                root.pacnewBusy = false;
+                root.pacnewResult = r.ok ? "Done: " + (r.done || 0) + " config files sorted" : "Not applied (cancelled, or a file was refused)";
+                root.loadPacnew();
+            }
+        }
+    }
 }
