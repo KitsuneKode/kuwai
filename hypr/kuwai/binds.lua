@@ -48,7 +48,7 @@ bind(S .. " + J", "Rearrange (split / column / next)", W.arrange, { locked = tru
 bind(S .. " + Escape", "Jump to the window that needs you, or back", dsp.focus({ urgent_or_last = true }))
 bind(S .. " + CTRL + K", "Click a window to kill it", "hyprctl kill")
 bind(S .. " + DELETE", "Quit Hyprland", A.exit)
-bind(S .. " + L", "Lock", "pidof hypridle >/dev/null && loginctl lock-session || hyprlock")
+bind(S .. " + L", "Lock", "pidof hypridle >/dev/null && loginctl lock-session || rice lock")
 
 group("Windows|Focus")
 bind(S .. " + left", "Focus left", dsp.focus({ direction = "left" }))

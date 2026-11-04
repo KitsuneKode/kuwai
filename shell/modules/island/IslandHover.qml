@@ -35,7 +35,7 @@ Item {
     readonly property string winClass: topInfo.class || (focusWin && focusWin.wayland ? (focusWin.wayland.appId || "") : "")
     readonly property var app: winClass ? DesktopEntries.heuristicLookup(winClass) : null
 
-    implicitWidth: 720
+    implicitWidth: 780   // room for the quick switches beside the bell
     implicitHeight: 148
 
     Component.onCompleted: SystemStats.watch()
@@ -279,8 +279,54 @@ Item {
         anchors { right: parent.right; rightMargin: 28 }
         y: 22
         spacing: 16
+        // Top right: the quick switches, then the bell.
         Row {
             anchors.right: parent.right
+            spacing: 16
+            Row {
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 4
+                // Quick switches: Caffeine (always here: dim off, yellow on), the
+                // microphone and the speaker (click mutes; scroll the speaker for
+                // volume). The first look stays minimal; these live one hover in.
+                PwObjectTracker { objects: [Pipewire.defaultAudioSink, Pipewire.defaultAudioSource] }
+                QuickIcon {
+                    anchors.verticalCenter: parent.verticalCenter
+                    glyph: "\u{f0176}"
+                    on: Caffeine.on
+                    tone: Theme.yellow
+                    tip: Caffeine.on ? "Caffeine on: no dim, lock or sleep · click to turn off" : "Caffeine: keep awake"
+                    onClicked: Caffeine.toggle()
+                }
+                QuickIcon {
+                    readonly property var src: Pipewire.defaultAudioSource
+                    readonly property bool muted: !!src && !!src.audio && src.audio.muted
+                    visible: !!src
+                    anchors.verticalCenter: parent.verticalCenter
+                    glyph: "\u{f036c}"; glyphOff: "\u{f036d}"
+                    on: !muted
+                    tone: Activities.micInUse ? Theme.orange : Theme.textPrimary
+                    offTone: Theme.red
+                    tip: muted ? "Microphone muted · click to unmute" : "Microphone on" + (Activities.micInUse ? " · in use by " + [...new Set(Activities.micUsers)].join(", ") : "") + " · click to mute"
+                    onClicked: if (src && src.audio) src.audio.muted = !src.audio.muted
+                }
+                QuickIcon {
+                    readonly property var sink: Pipewire.defaultAudioSink
+                    readonly property bool muted: !!sink && !!sink.audio && sink.audio.muted
+                    readonly property int vol: sink && sink.audio ? Math.round(sink.audio.volume * 100) : 0
+                    visible: !!sink
+                    anchors.verticalCenter: parent.verticalCenter
+                    glyph: vol >= 60 ? "\u{f057e}" : vol >= 25 ? "\u{f0580}" : "\u{f057f}"; glyphOff: "\u{f075f}"
+                    on: !muted
+                    tone: Theme.textPrimary
+                    offTone: Theme.red
+                    tip: (muted ? "Muted" : "Volume " + vol + "%") + " · click to " + (muted ? "unmute" : "mute") + ", scroll to change"
+                    onClicked: if (sink && sink.audio) sink.audio.muted = !sink.audio.muted
+                    onWheel: steps => { if (sink && sink.audio) { sink.audio.muted = false; sink.audio.volume = Math.max(0, Math.min(1.5, Math.round((sink.audio.volume + steps * 0.05) * 20) / 20)); } }
+                }
+            }
+        Row {
+            anchors.verticalCenter: parent.verticalCenter
             spacing: 8
             id: bellRow
             Label { anchors.verticalCenter: parent.verticalCenter; text: Notifs.missed.length ? Notifs.missed.length + " to look at" : Notifs.unread ? Notifs.unread + " new" : "All caught up"; size: 14; weight: Theme.wMedium; color: Notifs.missed.length ? Theme.accent : Theme.textPrimary }
@@ -312,6 +358,7 @@ Item {
                     return out;
                 }
             }
+        }
         }
         Row {
             anchors.right: parent.right
@@ -392,32 +439,6 @@ Item {
                     shown: updArea.containsMouse
                     below: true
                 }
-            }
-            // Caffeine on: a cup here, not at rest (the first look stays
-            // minimal; the moment already said so when it turned on). Click,
-            // Enter or Space: off. The Controls page has the switch either way.
-            Item {
-                id: cup
-                visible: Caffeine.on
-                width: 22; height: 22
-                anchors.verticalCenter: parent.verticalCenter
-                activeFocusOnTab: true
-                Accessible.role: Accessible.Button
-                Accessible.name: "Caffeine is on. Turn off"
-                Rectangle {
-                    anchors.fill: parent; radius: width / 2
-                    color: cupArea.containsMouse || cup.activeFocus ? Qt.alpha(Theme.yellow, 0.16) : "transparent"
-                    Behavior on color { ColorAnimation { duration: Theme.colorMs } }
-                }
-                Text {
-                    anchors.centerIn: parent
-                    text: "\u{f0176}"
-                    font.family: Theme.fontGlyph; font.pixelSize: 15
-                    color: Theme.yellow
-                }
-                Keys.onPressed: e => { if (e.key === Qt.Key_Return || e.key === Qt.Key_Space) { Caffeine.toggle(); e.accepted = true; } }
-                MouseArea { id: cupArea; anchors.fill: parent; anchors.margins: -4; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: Caffeine.toggle() }
-                Tip { text: "Caffeine on: no dim, lock or sleep · click to turn off"; shown: cupArea.containsMouse; below: true }
             }
             TrayRow { window: hover.bar; anchors.verticalCenter: parent.verticalCenter }
             IslandStatus { anchors.verticalCenter: parent.verticalCenter; bar: hover.bar; showBluetooth: true }

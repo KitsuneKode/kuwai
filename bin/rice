@@ -9,7 +9,8 @@
 #                             `pointer` (the bell) morphs it, keys open it instantly
 #   rice assistant [here]     toggle the AI assistant; `here` opens it about the focused window
 #   rice bar [island|waybar]  which top bar: the rice's island or HyDE's Waybar
-#   rice lock [--wait]        lock with the rice's lock screen (--wait: until it is locked)
+#   rice lock [--wait]        lock with the rice's lock screen (--wait: until it is locked; hyprlock if the shell is down)
+#   rice fade [start|stop]    darken the screens before the idle lock
 #   rice set KEY VALUE        change a setting (~/.config/rice/settings.json)
 #   rice get [KEY]            print one setting, or all of them
 #   rice channel [stable|dev] run from the stable copy (~/.local/share/kuwai) or the repo
@@ -160,13 +161,19 @@ case ${1:-} in
     notifs)        shift; notifs "$@" ;;
     bar)           shift; bar "$@" ;;
     lock)
-        # --wait: return only once the screen is really locked (hypridle's
-        # before_sleep_cmd uses it, so nothing shows unlocked after a resume).
-        ipc lock lock
+        # The shell's lock screen. --wait: return only once the compositor
+        # confirms the lock (before_sleep_cmd uses it, so nothing shows
+        # unlocked after a resume). The shell not running: hyprlock, so
+        # locking never fails.
+        if ! ipc lock lock 2>/dev/null; then
+            pidof hyprlock >/dev/null || { setsid -f hyprlock >/dev/null 2>&1 </dev/null; sleep 0.5; }
+            exit 0
+        fi
         if [ "${2:-}" = --wait ]; then
-            for _ in $(seq 40); do [ "$(ipc lock state)" = locked ] && exit 0; sleep 0.05; done
+            for _ in $(seq 60); do [ "$(ipc lock state)" = locked ] && exit 0; sleep 0.05; done
             exit 1
         fi ;;
+    fade)          ipc fade "${2:-start}" >/dev/null 2>&1 ;;   # hypridle: darken before the lock (stop: any input)
     set)           [ $# -eq 3 ] || { echo "usage: rice set KEY VALUE" >&2; exit 2; }; set_setting "$2" "$3" ;;
     get)           if [ -n "${2:-}" ]; then get_setting "$2"; else jq . "$SETTINGS" 2>/dev/null || echo '{}'; fi ;;
     center)

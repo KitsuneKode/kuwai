@@ -48,9 +48,13 @@ Singleton {
                     root.desc = (c.weatherDesc && c.weatherDesc[0] ? c.weatherDesc[0].value : "").trim();
                     root.glyph = root.glyphFor(c.weatherCode, h < 6 || h >= 18);
                     root.ok = true;
-                } catch (e) { /* keep the last good reading */ }
+                    retry.stop();
+                } catch (e) { retry.start(); /* keep the last good reading; try again soon */ }
             }
         }
+        // No answer (offline, wttr.in busy): try again in 2 minutes, not 30.
+        onExited: code => { if (code !== 0) retry.start(); }
     }
+    Timer { id: retry; interval: 2 * 60 * 1000; onTriggered: fetch.running = true }
     Timer { interval: 30 * 60 * 1000; running: true; repeat: true; triggeredOnStart: true; onTriggered: fetch.running = true }
 }
