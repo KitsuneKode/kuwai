@@ -6,6 +6,7 @@
 // here by Center): ↑↓ select, ↵ open, ⌦ (or ⌫ on an empty query) dismiss,
 // →← expand or fold the selected group, ⇥ next filter.
 import QtQuick
+import QtQuick.Effects
 import Quickshell
 import qs.config
 import qs.components
@@ -104,6 +105,14 @@ Item {
         selected = visibleItems[Math.max(0, Math.min(visibleItems.length - 1, at + step))];
         const g = groups.findIndex(x => x.items.includes(selected));
         if (g >= 0) list.positionViewAtIndex(g, ListView.Contain);
+        // A tall group can still leave the row itself half out of view.
+        Qt.callLater(() => {
+            const r = view.selectedRow;
+            if (!r || !r.visible) return;
+            const y = r.mapToItem(list.contentItem, 0, 0).y;
+            if (y + r.height > list.contentY + list.height - 6) list.contentY = y + r.height - list.height + 6;
+            else if (y < list.contentY + 6) list.contentY = Math.max(0, y - 6);
+        });
     }
 
     function key(event, queryEmpty) {
@@ -236,6 +245,22 @@ Item {
         ScriptAction { script: { Notifs.clearAll(); list.opacity = 1; listShift.y = 0; } }
     }
 
+    // The fade's shape: opaque, then the bottom 28 px going to nothing.
+    Item {
+        id: listFade
+        visible: false
+        layer.enabled: true
+        width: list.width; height: list.height
+        Rectangle {
+            anchors.fill: parent
+            gradient: Gradient {
+                GradientStop { position: 0; color: "white" }
+                GradientStop { position: Math.max(0, 1 - 28 / Math.max(1, listFade.height)); color: "white" }
+                GradientStop { position: 1; color: "transparent" }
+            }
+        }
+    }
+
     // ── List ─────────────────────────────────────────────────────────────
     ListView {
         id: list
@@ -243,6 +268,14 @@ Item {
         clip: true
         spacing: 18
         boundsBehavior: Flickable.DragAndOvershootBounds
+        // More below: the last rows fade out instead of being cut at an edge.
+        layer.enabled: contentHeight > height + 4 && !atYEnd
+        layer.effect: MultiEffect {
+            maskEnabled: true
+            maskSource: listFade
+            maskThresholdMin: 0
+            maskSpreadAtMin: 1
+        }
         transform: Translate { id: listShift }
         model: ScriptModel { values: view.groups; objectProp: "key" }
 

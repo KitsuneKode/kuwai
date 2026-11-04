@@ -91,6 +91,13 @@ Singleton {
         item.apply(n, a);
         // While the center is open the new one just lands in its list.
         item.popup = !centerOpen && (!dnd || item.severity === "critical");
+        // One app, one toast: a burst (14 meeting reminders) replaces its own
+        // toast on screen instead of pushing everyone else's off. The earlier
+        // ones stay in the history; the toast counts them (+13).
+        if (item.popup && item.severity !== "critical") {
+            const prev = items.filter(i => i.popup && !i.leaving && i.app === item.app && i.severity !== "critical");
+            for (const p of prev) { item.burst += 1 + p.burst; p.leaving = true; }
+        }
         items = [item, ...items];
         // Sound only where it earns its place: critical alerts (they also
         // break through do-not-disturb), unless the sender asked for silence.
@@ -311,9 +318,15 @@ Singleton {
     }
     Timer { interval: 600000; running: root.loaded; repeat: true; triggeredOnStart: true; onTriggered: root.sweepSeen() }
 
+    // History: at most maxItems, and at most perApp from any one app, so a
+    // noisy app can't push everyone else's out.
+    readonly property int perApp: 50
     function trim() {
-        if (items.length <= maxItems) return;
-        const extra = items.slice(maxItems).filter(i => !i.popup);
+        const seen = {};
+        const over = items.filter(i => !i.popup && (seen[i.app] = (seen[i.app] || 0) + 1) > perApp);
+        const rest = items.filter(i => !over.includes(i));
+        const extra = over.concat(rest.slice(maxItems).filter(i => !i.popup));
+        if (!extra.length) return;
         items = items.filter(i => !extra.includes(i));
         for (const i of extra) {
             if (i.notification) i.notification.dismiss();

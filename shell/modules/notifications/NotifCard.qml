@@ -378,7 +378,7 @@ Item {
                         color: Theme.textTertiary
                     }
                     Rectangle {
-                        visible: card.item.count > 1
+                        visible: card.item.count > 1 || card.item.burst > 0
                         anchors.verticalCenter: parent.verticalCenter
                         height: 16
                         width: countLabel.implicitWidth + 10
@@ -388,7 +388,8 @@ Item {
                             id: countLabel
                             rounded: true
                             anchors.centerIn: parent
-                            text: card.item.count
+                            // Replaced in place: ×3; a burst it stands for: +13.
+                            text: card.item.burst > 0 ? "+" + card.item.burst : card.item.count
                             size: 10
                             weight: Theme.wSemibold
                             font.features: ({ "tnum": 1 })

@@ -28,6 +28,7 @@ QtObject {
     property bool hasDefault: false
     property int count: 1             // times this card was replaced in place
     property real snoozedUntil: 0     // snoozed: out of the list until then (ms)
+    property int burst: 0             // earlier ones from the same app this toast replaced on screen
     property int bumps: 0             // ticks when replaced, the card pulses
 
     // ── Popup state ──────────────────────────────────────────────────────

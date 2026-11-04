@@ -103,7 +103,7 @@ Row {
             height: parent.height; radius: 4
             width: Math.max(5, (parent.width - 2) * status.pct / 100)
             color: status.pct <= 20 && !status.onAC ? Theme.critical : status.charging ? Theme.positive : status.tint
-            Behavior on width { NumberAnimation { duration: 400; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+            Behavior on width { NumberAnimation { duration: Theme.glideMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
         }
         Rectangle { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; width: 2; height: 5; radius: 1; color: Qt.alpha(status.tint, 0.45) }
         Text {

@@ -119,7 +119,8 @@ Scope {
                 function onNext(d) { if (win.here) win.cycle(d); }
             }
 
-            Spring { id: show; tier: win.here ? Theme.surfaceIn : Theme.surfaceOut; target: win.here ? 1 : 0 }
+            Spring { id: show; tier: win.here ? Theme.surfaceKeyIn : Theme.surfaceKeyOut;   // opened from the keyboard: the quick spring
+            target: win.here ? 1 : 0 }
 
             // Monitor geometry in logical pixels, for placing windows in tiles.
             readonly property var mon: monitor && monitor.lastIpcObject ? monitor.lastIpcObject : ({})

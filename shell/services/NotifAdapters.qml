@@ -127,7 +127,7 @@ Singleton {
         if (!playerApps.test(String(n.appName || "").trim())) return false;
         if (n.urgency === NotificationUrgency.Critical) return false;
         const text = (n.summary || "") + " " + (n.body || "");
-        if (warningWords.test(text)) return false;
+        if (warns(text)) return false;
         const p = Media.active;
         const norm = x => String(x || "").toLowerCase().trim();
         const t = norm(text);
@@ -138,12 +138,19 @@ Singleton {
 
     // Critical is the sender's call (urgency); it always wins. Warnings are
     // the adapter's call, or the wording's: "battery low", "failed", …
-    readonly property var warningWords: /\b(warning|battery low|low battery|critically low|failed|failure|error|limit reached|disconnected|overheat\w*)\b/i
+    readonly property var warningWords: /\b(warning|battery low|low battery|critically low|failed|failure|errors?|limit reached|disconnected|overheat\w*)\b/i
+    // Good news that mentions failure isn't a warning: "0 failed", "no
+    // errors", or a title that says it passed / succeeded.
+    function warns(text) {
+        const t = String(text || "").replace(/\b(0|no|zero)\s+(failed|failures?|errors?|warnings?)\b/gi, "");
+        return warningWords.test(t);
+    }
     function severityOf(n, suggested) {
         if (n.urgency === NotificationUrgency.Critical) return "critical";
         if (suggested) return suggested;
         const category = (n.hints && n.hints.category) || "";
-        if (/error|warning/.test(category) || warningWords.test(n.summary + " " + n.body)) return "warning";
+        const good = /\b(passed|succeeded|successful(ly)?|completed|done)\b/i.test(n.summary || "") && !warns(n.summary);
+        if (/error|warning/.test(category) || (!good && warns(n.summary + " " + n.body))) return "warning";
         if (n.urgency === NotificationUrgency.Low) return "low";
         return "normal";
     }

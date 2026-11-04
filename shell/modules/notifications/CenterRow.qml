@@ -127,6 +127,9 @@ Item {
                     width: titleRow.width - (row.critical || row.warning ? chip.implicitWidth + 18 : 0)
                     text: row.center ? row.center.highlight(row.it.title) : row.it.title
                     textFormat: Text.StyledText
+                    // Two lines, like the toasts: the title is what tells them apart.
+                    wrapMode: Text.Wrap
+                    maximumLineCount: 2
                     elide: Text.ElideRight
                     size: 14
                     weight: Theme.wSemibold

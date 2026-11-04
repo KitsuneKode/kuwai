@@ -34,7 +34,7 @@ send() {   # app title body [urgency] [actions…]
 
 clear_sent() {
     [ -f "$STATE" ] || return 0
-    sort -u "$STATE" | while IFS=$'\t' read -r app title; do ipc removeMatching "$app" "$title" >/dev/null 2>&1; done
+    sort -u "$STATE" | while IFS=$'\t' read -r app title; do ipc removeMatching "$app" "$title" >/dev/null 2>&1 </dev/null; done   # (qs would read the list from stdin)
     : > "$STATE"
 }
 

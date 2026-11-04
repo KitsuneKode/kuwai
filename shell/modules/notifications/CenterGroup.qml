@@ -55,6 +55,7 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 color: Theme.platter
                 Image {
+                    id: appIcon
                     anchors.fill: parent
                     source: group.modelData.icon || NotifAdapters.iconForApp(group.modelData.app)
                     sourceSize: Qt.size(36, 36)
@@ -62,9 +63,20 @@ Item {
                     smooth: true
                     mipmap: true
                 }
+                // No icon: the app's first letter, not a blank tile.
+                Label {
+                    visible: appIcon.status !== Image.Ready
+                    anchors.centerIn: parent
+                    text: (Array.from(String(group.modelData.app || "").trim())[0] || "?").toUpperCase()
+                    size: 11; weight: Theme.wSemibold
+                    color: Theme.textSecondary
+                }
             }
             Label {
                 anchors.verticalCenter: parent.verticalCenter
+                // Long app names end in "…" and leave the count its room.
+                width: Math.min(implicitWidth, group.width - 150)
+                elide: Text.ElideRight
                 text: group.modelData.app
                 size: 13
                 weight: Theme.wSemibold

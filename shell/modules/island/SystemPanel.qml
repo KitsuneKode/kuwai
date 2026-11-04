@@ -105,7 +105,7 @@ FocusScope {
                                 width: parent.width; radius: 4
                                 height: Math.max(3, parent.height * parent.v)
                                 color: parent.v > 0.9 ? Theme.red : parent.v > 0.7 ? Theme.orange : Theme.accent
-                                Behavior on height { NumberAnimation { duration: 400; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+                                Behavior on height { NumberAnimation { duration: Theme.glideMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                             }
                         }
                     }
@@ -200,7 +200,7 @@ FocusScope {
             Rectangle {
                 width: Math.max(8, parent.width * Math.min(1, parent.parent.value)); height: parent.height; radius: 4
                 color: parent.parent.value > 0.9 ? Theme.red : parent.parent.value > 0.75 ? Theme.orange : Theme.accent
-                Behavior on width { NumberAnimation { duration: 400; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+                Behavior on width { NumberAnimation { duration: Theme.glideMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
             }
         }
         Label { text: parent.detail; size: 11; color: Theme.textTertiary }
