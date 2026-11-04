@@ -51,6 +51,15 @@ ls → grep → read; 8B: named the wrong file), remember a fact (both used `rem
 the sandbox, run it, fix it with `edit`, run again (both: 5). Stock refusals vary run to run, which is why
 the uncensored picks stay.
 
+## Bigger models through RAM (2026-11-05)
+
+Mixture-of-experts models run mostly from the 23 GB of RAM; models live on Depot (`OLLAMA_MODELS=~/Depot/ollama/models`).
+
+| Model (8k) | Speed | Load | Right tool | Right answer | Refused | Avg turn | Notes |
+|---|---|---|---|---|---|---|---|
+| gpt-oss:20b | 16.8 tok/s | 27.6 s cold | 9/10 | 8/10 | 0/3 | 40 s | kept as **Deep**; searched the web instead of shop_search (guide now says to use it), looped on the repo task and called a tool that doesn't exist ("open") |
+| qwen3:30b-a3b | 12.6 tok/s | 26.7 s cold | 9/10 | 7/10 | 1/3 | 80 s | dropped: empty code answer, named the wrong file, refused lock picking |
+
 ## Not taken (yet)
 
 - pi's session tree / branches (we have linear chats with Edit and Retry).
