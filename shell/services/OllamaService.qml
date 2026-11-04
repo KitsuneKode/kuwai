@@ -627,8 +627,7 @@ function onPanelClosed() {
         }
     }
 
-    // In the notch while it works with the panel closed (Moments: the island shows
-    // whatever moment is current): what it's doing and for how long; "Done" at the end.
+    // What it's doing, for the island's stacked row.
     property real workStarted: 0
     onStreamingChanged: if (streaming) workStarted = Date.now()
     function workLabel() {
@@ -640,19 +639,37 @@ function onPanelClosed() {
         const t = (p.title || "").replace(/^⏵ /, "");
         return t.length > 26 ? t.slice(0, 25) + "…" : t;
     }
+    // The island stacks this under its rest row (IslandBar: assistRow) while the
+    // assistant works with the panel closed, and lists recent background work
+    // when it's expanded (IslandHover).
+    readonly property bool bgWorking: streaming && !Assistant.open
+    property string bgLabel: ""
+    property int bgSecs: 0
+    property var bgDone: null              // { status, title } for a few seconds after
+    property var recentWork: []            // [{ sessionId, title, status, at }], newest first
     Timer {
         interval: 1000
         repeat: true
         triggeredOnStart: true
-        running: root.streaming && !Assistant.open
-        onTriggered: Moments.show({ kind: "assistant", label: root.workLabel(),
-            value: Math.round((Date.now() - root.workStarted) / 1000) + "s",
-            tone: root.pendingRequest ? Theme.orange : Theme.accent }, 1600)
+        running: root.bgWorking
+        onTriggered: { root.bgLabel = root.workLabel(); root.bgSecs = Math.round((Date.now() - root.workStarted) / 1000); }
+    }
+    Timer { id: bgDoneClear; interval: 5000; onTriggered: root.bgDone = null }
+    function openSession(id) {
+        if (id) root.switchSession(id);
+        Assistant.show();
     }
 
     function notifyDone(msg) {
-        if (!Assistant.open && msg) Moments.show({ kind: "assistant", label: msg.status === "failed" ? "Assistant: failed" : "Assistant: done",
-            value: "", tone: msg.status === "failed" ? Theme.red : Theme.green }, 4000);
+        if (!Assistant.open && msg) {
+            const sess = root.sessions.find(s => s.id === root.draftSessionId);
+            const title = sess && sess.title && sess.title !== "New Chat" ? sess.title : "Your chat";
+            const ok = msg.status !== "failed";
+            root.bgDone = { status: ok ? "done" : "failed", title: title };
+            bgDoneClear.restart();
+            root.recentWork = [{ sessionId: root.draftSessionId, title: title, status: ok ? "done" : "failed", at: Date.now() }]
+                .concat(root.recentWork.filter(w => w.sessionId !== root.draftSessionId)).slice(0, 3);
+        }
         if (Assistant.open || !msg) return;
         const sess = root.sessions.find(s => s.id === root.draftSessionId);
         const text = Turn.textOf(msg).replace(/\s+/g, " ").trim();

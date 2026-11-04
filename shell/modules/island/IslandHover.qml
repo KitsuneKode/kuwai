@@ -36,7 +36,57 @@ Item {
     readonly property var app: winClass ? DesktopEntries.heuristicLookup(winClass) : null
 
     implicitWidth: 780   // room for the quick switches beside the bell
-    implicitHeight: 148
+    implicitHeight: 148 + (OllamaService.recentWork.length ? 38 : 0)
+
+    // Recent background work from the assistant (done or failed while its panel
+    // was closed): click one to open that chat.
+    Row {
+        visible: OllamaService.recentWork.length > 0
+        x: 18
+        y: 148
+        height: 30
+        spacing: 8
+        Label {
+            anchors.verticalCenter: parent.verticalCenter
+            text: "Assistant"
+            size: 11
+            weight: Theme.wSemibold
+            color: Theme.textTertiary
+        }
+        Repeater {
+            model: OllamaService.recentWork
+            Rectangle {
+                id: workChip
+                required property var modelData
+                height: 26
+                width: workRow.implicitWidth + 16
+                radius: 13
+                color: Qt.rgba(1, 1, 1, workArea.containsMouse ? 0.12 : 0.07)
+                Behavior on color { ColorAnimation { duration: Theme.colorMs } }
+                Row {
+                    id: workRow
+                    anchors.centerIn: parent
+                    spacing: 6
+                    Icon {
+                        anchors.verticalCenter: parent.verticalCenter
+                        name: workChip.modelData.status === "done" ? "check-circle" : "warning-circle"
+                        style: "fill"
+                        size: 12
+                        color: workChip.modelData.status === "done" ? Theme.green : Theme.red
+                    }
+                    Label {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: workChip.modelData.title
+                        size: 12
+                        color: Theme.textSecondary
+                        elide: Text.ElideRight
+                        width: Math.min(implicitWidth, 200)
+                    }
+                }
+                MouseArea { id: workArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: OllamaService.openSession(workChip.modelData.sessionId) }
+            }
+        }
+    }
 
     Component.onCompleted: SystemStats.watch()
     Component.onDestruction: SystemStats.unwatch()
