@@ -73,6 +73,18 @@ Singleton {
                     focusClass: ""
                 };
             }
+        },
+        {
+            // Cider (4.0.9+) sends track changes as title + artist only: no
+            // icon, no image hint. Its MPRIS player already has the new cover
+            // (it updates just before the notification), so take it from there.
+            match: n => n.desktopEntry === "cider" || /^cider$/i.test(n.appName),
+            adapt: n => {
+                const out = root.generic(n);
+                const p = Array.from(Media.players || []).find(p => /cider/i.test((p.dbusName || "") + " " + (p.identity || "")));
+                if (p && p.trackArtUrl && (!p.trackTitle || p.trackTitle === n.summary)) out.icon = p.trackArtUrl;
+                return out;
+            }
         }
     ]
 
@@ -87,7 +99,7 @@ Singleton {
     function adapt(n) {
         const rule = rules.find(r => r.match(n));
         const out = rule ? rule.adapt(n) : generic(n);
-        out.silent = isCopyConfirmation(n);
+        out.silent = isCopyConfirmation(n) || isNowPlaying(n);
         // kittymux sends its own art (the agent's mark with its mascot); show
         // the agent's real brand mark instead.
         if (/^kittymux$/i.test(n.appName || "")) {
@@ -103,6 +115,25 @@ Singleton {
         if (!out.icon) out.icon = imageOrIcon(n);
         out.severity = severityOf(n, out.severity);
         return out;
+    }
+
+    // A music player announcing the song (Cider, Spotify…): the island
+    // already shows what's playing, so it neither toasts nor piles up in the
+    // center. Its errors and anything else it says (sign-in, updates) still
+    // come through: only the "now playing" kind is dropped — the song's own
+    // title or artist, or the album art with nothing to act on.
+    readonly property var playerApps: /^(cider|spotify|music|apple music|rhythmbox|amberol|tidal|tidal-hifi|youtube music|elisa|strawberry|lollypop|ncspot|mpd|mpdris|g4music|gapless|feishin|supersonic)$/i
+    function isNowPlaying(n) {
+        if (!playerApps.test(String(n.appName || "").trim())) return false;
+        if (n.urgency === NotificationUrgency.Critical) return false;
+        const text = (n.summary || "") + " " + (n.body || "");
+        if (warningWords.test(text)) return false;
+        const p = Media.active;
+        const norm = x => String(x || "").toLowerCase().trim();
+        const t = norm(text);
+        const song = p && ((norm(p.trackTitle).length > 1 && t.includes(norm(p.trackTitle))) || (norm(p.trackArtist).length > 1 && t.includes(norm(p.trackArtist))));
+        const art = !!n.image && !(n.actions && n.actions.some(a => a.identifier !== "default"));
+        return song || art;
     }
 
     // Critical is the sender's call (urgency); it always wins. Warnings are

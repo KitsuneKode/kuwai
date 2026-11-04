@@ -27,7 +27,14 @@ Item {
     function currentView() {
         return ({ notifications: notifications, agents: agents, sound: sound, controls: display })[center.tab] || notifications;
     }
+    // The card's height for the tab showing: the chrome above and below the
+    // pages, plus what the page wants (Center clamps it to the screen).
+    readonly property real wantH: searchBox.y + searchBox.height + 14 + 18 + footer.height + 12 + 8
+                                  + Math.max(160, currentView().naturalHeight || 0)
+    // The key hints show once you use the keyboard here (the ? stays).
+    property bool usedKeys: false
     function reset() {
+        usedKeys = false;
         search.text = "";
         sheet.open = false;
         notifications.reset();
@@ -66,7 +73,8 @@ Item {
         opacity: content.center.revealAt(40)
         color: Qt.rgba(1, 1, 1, search.activeFocus ? 0.10 : 0.07)
         border.width: 1
-        border.color: search.activeFocus ? Qt.alpha(Theme.blue, 0.6) : Qt.rgba(1, 1, 1, 0.07)
+        // Focused: a soft white edge, not the accent (that means "where you are").
+        border.color: search.activeFocus ? Qt.rgba(1, 1, 1, 0.22) : Qt.rgba(1, 1, 1, 0.07)
         Behavior on color { ColorAnimation { duration: 80 } }
         Behavior on border.color { ColorAnimation { duration: 80 } }
 
@@ -109,6 +117,9 @@ Item {
 
             Keys.onPressed: event => {
                 const k = event.key;
+                if ([Qt.Key_Up, Qt.Key_Down, Qt.Key_Return, Qt.Key_Enter, Qt.Key_Tab, Qt.Key_Backtab, Qt.Key_Delete].indexOf(k) >= 0
+                    || (k === Qt.Key_Backspace && search.text === ""))
+                    content.usedKeys = true;
                 const ctrl = event.modifiers & Qt.ControlModifier;
                 const alt = event.modifiers & Qt.AltModifier;
                 const shift = event.modifiers & Qt.ShiftModifier;
@@ -234,6 +245,9 @@ Item {
             id: hints
             anchors.verticalCenter: parent.verticalCenter
             spacing: 14
+            opacity: content.usedKeys || sheet.open ? 1 : 0
+            visible: opacity > 0.01
+            Behavior on opacity { NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
             Repeater {
                 model: content.center.tab === "agents"
                     ? [{ k: ["↑", "↓"], t: "Select" }, { k: ["↩"], t: "Jump" }, { k: ["⌫"], t: "Mark read" }]

@@ -135,6 +135,9 @@ Item {
     readonly property int groupCount: groups.length
     readonly property int listCount: list.count
     readonly property real listContentHeight: list.contentHeight
+    // How tall it wants to be (the card fits it): the filters, then the
+    // list, or the empty state's room.
+    readonly property real naturalHeight: filterRow.height + 14 + (list.count > 0 ? list.contentHeight + 8 : 220)
 
     // ── Filters row ──────────────────────────────────────────────────────
     Row {
@@ -145,8 +148,10 @@ Item {
 
         Repeater {
             model: [
-                { id: "all", label: "All", n: Notifs.items.length },
-                { id: "unread", label: "Unread", n: Notifs.unread },
+                // The tab already says how many are unread: no second and
+                // third copy here. Only Important has a count of its own.
+                { id: "all", label: "All", n: 0 },
+                { id: "unread", label: "Unread", n: 0 },
                 { id: "important", label: "Important", n: view.importantCount }
             ]
             delegate: Rectangle {

@@ -47,6 +47,13 @@ Singleton {
     property string centerVia: "key"                // what opened/closed it: key | pointer
     property real lastSeen: 0
     readonly property int unread: items.filter(i => i.time > lastSeen).length
+    // Missed and worth acting on: unread, not on screen any more, and either
+    // urgent (critical / a warning) or carrying something to do (an action).
+    // The island keeps a dot for them and lists them, with their buttons, when
+    // you hover its bell. Newest first.
+    readonly property var missed: items.filter(i => i.time > lastSeen && !i.popup && !i.discard
+        && (i.severity === "critical" || i.severity === "warning" || i.urgency === NotificationUrgency.Critical || i.hasDefault || (i.actions && i.actions.length)))
+        .sort((a, b) => b.time - a.time)
 
     readonly property string stateDir: Quickshell.env("HOME") + "/.local/state/rice"
     property bool loaded: false
@@ -56,6 +63,7 @@ Singleton {
         keepOnReload: true
         persistenceSupported: true
         actionsSupported: true
+        inlineReplySupported: true
         bodyMarkupSupported: true
         imageSupported: true
         onNotification: n => root.receive(n)
@@ -136,6 +144,53 @@ Singleton {
         else forget.later(item);
         const act = n ? n.actions.find(x => x.identifier === id) : null;
         if (act) act.invoke();
+    }
+
+    // Reply from the notification (apps that offer it: chat apps). Sent
+    // through the app, then the notification is handled, like an action.
+    function canReply(item) { return !!item && !!item.notification && item.notification.hasInlineReply; }
+    function reply(item, text) {
+        const n = item.notification;
+        if (!n || !n.hasInlineReply || !String(text || "").trim()) return;
+        n.sendInlineReply(String(text));
+        item.discard = true;
+        if (item.popup) item.leaving = true;
+        else forget.later(item);
+    }
+
+    // Snooze: out of the list (and the island's "missed") until `until`,
+    // then back as a fresh toast. Kept across restarts.
+    property var snoozed: []
+    function snooze(item, until) {
+        item.snoozedUntil = until;
+        item.popup = false;
+        item.leaving = false;
+        items = items.filter(i => i !== item);
+        snoozed = [...snoozed.filter(i => i !== item), item];
+        save();
+    }
+    function wake(item) {
+        item.snoozedUntil = 0;
+        snoozed = snoozed.filter(i => i !== item);
+        item.time = Date.now();
+        item.discard = false;
+        item.popup = !centerOpen && (!dnd || item.severity === "critical");
+        items = [item, ...items];
+        if (item.popup) arrived();
+        save();
+    }
+    Timer {
+        interval: 20000; repeat: true; triggeredOnStart: true
+        running: root.snoozed.length > 0
+        onTriggered: { for (const i of root.snoozed.slice()) if (i.snoozedUntil <= Date.now()) root.wake(i); }
+    }
+    // The choices, from now: an hour; this evening (before 6 pm); tomorrow 9.
+    function snoozeChoices() {
+        const now = new Date(), out = [{ label: "1 hour", until: Date.now() + 3600000 }];
+        if (now.getHours() < 18) { const e = new Date(now); e.setHours(19, 0, 0, 0); out.push({ label: "This evening", until: e.getTime() }); }
+        const t = new Date(now); t.setDate(t.getDate() + 1); t.setHours(9, 0, 0, 0);
+        out.push({ label: "Tomorrow", until: t.getTime() });
+        return out;
     }
 
     // Close button, right click or swipe: gone from history as well.
@@ -312,7 +367,8 @@ Singleton {
             for (const h of data.history || [])
                 if (/^image:\/\/qsimage\/|\/tmp\//.test(h.icon || "")) h.icon = "";
             const restored = (data.history || []).map(h => itemComp.createObject(root, h));
-            root.items = [...root.items, ...restored];
+            root.items = [...root.items, ...restored.filter(i => !(i.snoozedUntil > 0))];
+            root.snoozed = restored.filter(i => i.snoozedUntil > 0);
             root.loaded = true;
         }
         onLoadFailed: root.loaded = true
@@ -329,7 +385,7 @@ Singleton {
         onTriggered: store.setText(JSON.stringify({
             dnd: root.dnd,
             lastSeen: root.lastSeen,
-            history: root.items.filter(i => !i.discard).map(i => i.toJson())
+            history: [...root.items, ...root.snoozed].filter(i => !i.discard).map(i => i.toJson())
         }))
     }
 

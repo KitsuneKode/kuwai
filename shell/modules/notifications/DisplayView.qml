@@ -89,6 +89,7 @@ Item {
 
     readonly property string profileLabel: (profiles.find(p => p.id === PowerProfiles.profile) || profiles[1]).label
 
+    readonly property real naturalHeight: column.implicitHeight + 8
     Flickable {
         id: flick
         anchors.fill: parent
@@ -163,7 +164,7 @@ Item {
                     onToggled: if (view.mic && view.mic.audio) view.mic.audio.muted = !view.mic.audio.muted
                 }
                 Tile {
-                    glyph: "\u{f1b35}"                                  // motion-pause-outline
+                    glyph: "\u{f04c5}"                                  // speedometer (f1b35 isn't in the font)
                     title: "Reduce Motion"
                     subtitle: Theme.reduceMotion ? (Theme.envReduce || Theme.hyprStill ? "On (system)" : "On") : "Off"
                     on: Theme.reduceMotion
@@ -253,6 +254,9 @@ Item {
                             if (!view.hasBattery) return "";
                             if (b.state === UPowerDeviceState.FullyCharged) return "Fully charged";
                             if (b.state === UPowerDeviceState.Charging) return "Charging" + (b.timeToFull > 0 ? " · full in " + view.duration(b.timeToFull) : "");
+                            // Plugged in but not charging: held at a charge limit
+                            // (pending-charge) or just topping off. Not "on battery".
+                            if (!UPower.onBattery) return b.state === UPowerDeviceState.PendingCharge ? "Plugged in · holding charge" : "Plugged in";
                             return b.timeToEmpty > 0 ? view.duration(b.timeToEmpty) + " left" : "On battery";
                         }
                         size: 12
@@ -290,6 +294,7 @@ Item {
                             glyph: out.modelData.internal ? "\u{f0322}" : "\u{f0379}"     // laptop / monitor
                             label: out.modelData.internal ? "Built-in Display" : (view.modelOf(out.modelData.name) || out.modelData.name)
                             valueText: Math.round(out.modelData.value) + "%"
+                            fillColor: Qt.rgba(1, 1, 1, 0.42)   // white you can see, like the Warmth fill's weight
                             onMoved: v => Display.setBrightness(out.modelData.name, v)
                         }
                         Label {

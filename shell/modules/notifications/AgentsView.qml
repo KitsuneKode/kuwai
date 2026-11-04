@@ -110,6 +110,7 @@ Item {
     }
 
     // ── Layout ───────────────────────────────────────────────────────────
+    readonly property real naturalHeight: Math.max(220, column.implicitHeight + 8)
     Flickable {
         id: flick
         anchors.fill: parent

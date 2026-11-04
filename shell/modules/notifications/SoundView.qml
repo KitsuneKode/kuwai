@@ -62,13 +62,13 @@ Item {
     readonly property var sink: Pipewire.defaultAudioSink
     readonly property var source: Pipewire.defaultAudioSource
     readonly property var all: Pipewire.nodes.values
-    readonly property var apps: all.filter(n => n.isStream && n.audio
-        && (n.properties["media.class"] || "") === "Stream/Output/Audio"
-        && center.matchesText(appName(n)))
-    readonly property var allSinks: all.filter(n => !n.isStream && n.audio && (n.properties["media.class"] || "") === "Audio/Sink")
+    // By node type, which PipeWire tells before a node is bound. (Its
+    // properties come only once bound, and only listed nodes get bound: the
+    // old media.class filter left most outputs and every app out for good.)
+    readonly property var apps: all.filter(n => n.type === PwNodeType.AudioOutStream && center.matchesText(appName(n)))
+    readonly property var allSinks: all.filter(n => n.type === PwNodeType.AudioSink)
     readonly property var sinks: allSinks.filter(n => center.matchesText(deviceName(n)))
-    readonly property var sources: all.filter(n => !n.isStream && n.audio && (n.properties["media.class"] || "") === "Audio/Source"
-        && center.matchesText(deviceName(n)))
+    readonly property var sources: all.filter(n => n.type === PwNodeType.AudioSource && center.matchesText(deviceName(n)))
 
     PwObjectTracker { objects: [view.sink, view.source, ...view.apps, ...view.allSinks, ...view.sources].filter(n => n) }
 
@@ -78,11 +78,15 @@ Item {
         return (d > 0.05 ? "+" : d < -0.05 ? "−" : "") + Math.abs(d).toFixed(1) + " dB";
     }
     function appName(n) {
-        const p = n.properties;
-        return p["application.name"] || p["media.name"] || n.description || n.name || "App";
+        const p = n.properties || {};
+        const raw = p["application.name"] || p["media.name"] || n.description || n.name || "App";
+        // ALSA apps (voxtype…) all arrive as "ALSA plug-in [binary]": use the binary.
+        const alsa = /^ALSA plug-in \[(.+)\]$/.exec(raw);
+        const bin = alsa ? alsa[1] : "";
+        return bin ? bin.charAt(0).toUpperCase() + bin.slice(1) : raw;
     }
     function appIcon(n) {
-        const p = n.properties;
+        const p = n.properties || {};
         const own = p["application.icon-name"] ? Quickshell.iconPath(p["application.icon-name"], true) : "";
         return own || NotifAdapters.iconForApp(appName(n)) || "";
     }
@@ -90,6 +94,7 @@ Item {
         return n ? (n.nickname || n.description || n.name) : "";
     }
 
+    readonly property real naturalHeight: body.implicitHeight + 8
     Flickable {
         anchors.fill: parent
         clip: true
@@ -129,7 +134,8 @@ Item {
                             node: view.source
                             title: "Mic"
                             glyph: "\u{f036c}"
-                            tint: Theme.orange
+                            // Orange means "recording now" (the island's dot too).
+                            tint: Activities.micInUse ? Theme.orange : "white"
                             caption: view.deviceName(view.source)
                         }
                         Repeater {
@@ -370,7 +376,8 @@ Item {
                     width: parent.width - 10
                     horizontalAlignment: Text.AlignHCenter
                     elide: Text.ElideRight
-                    text: strip.routable ? (strip.target ? view.deviceName(strip.target) : "—") + " \u25BE" : strip.caption
+                    // No link seen yet (it follows the default output): name that, not "—".
+                    text: strip.routable ? view.deviceName(strip.target || view.sink) + " \u25BE" : strip.caption
                     size: 11
                     color: Theme.textTertiary
                 }

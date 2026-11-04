@@ -27,6 +27,7 @@ QtObject {
     property var actions: []          // [{ id, text }] besides the default one
     property bool hasDefault: false
     property int count: 1             // times this card was replaced in place
+    property real snoozedUntil: 0     // snoozed: out of the list until then (ms)
     property int bumps: 0             // ticks when replaced, the card pulses
 
     // ── Popup state ──────────────────────────────────────────────────────
@@ -112,6 +113,6 @@ QtObject {
     }
 
     function toJson() {
-        return { nid, time, app, title, body, status, statusGlyph, statusTone, icon: savedIcon || icon, groupKey, focusClass, jump, urgency, severity, count };
+        return { nid, time, app, title, body, status, statusGlyph, statusTone, icon: savedIcon || icon, groupKey, focusClass, jump, urgency, severity, count, snoozedUntil };
     }
 }

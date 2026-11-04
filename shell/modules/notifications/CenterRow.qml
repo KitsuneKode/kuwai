@@ -27,6 +27,11 @@ Item {
 
     property real reveal: 0
     property bool removing: false
+    property bool replying: false
+    property bool snoozing: false
+    // Live buttons: the app's actions (while it's still listening) and Reply.
+    readonly property var liveActions: it.notification ? (it.actions || []).slice(0, 3) : []
+    readonly property bool canReply: Notifs.canReply(item)
 
     width: parent ? parent.width : 0
     height: (body.implicitHeight + 24) * reveal
@@ -137,7 +142,7 @@ Item {
                     visible: row.unread
                     anchors.verticalCenter: parent.verticalCenter
                     width: 7; height: 7; radius: 3.5
-                    color: Theme.blue
+                    color: Theme.textPrimary         // unread: white, like the island's dot
                 }
                 Label {
                     visible: row.showTime && !hover.hovered
@@ -146,8 +151,20 @@ Item {
                     font.features: ({ "tnum": 1 })
                     color: Theme.textTertiary
                 }
+                // Snooze, beside close while hovered
+                Rectangle {
+                    visible: hover.hovered || row.snoozing
+                    width: 20; height: 20; radius: 10
+                    color: snoozeArea.containsMouse || row.snoozing ? Theme.pillHover : Theme.pill
+                    Accessible.role: Accessible.Button
+                    Accessible.name: "Snooze"
+                    Text { anchors.centerIn: parent; text: "\u{f051b}"; font.family: Theme.fontGlyph; font.pixelSize: 11; color: Theme.textPrimary }
+                    MouseArea { id: snoozeArea; anchors.fill: parent; anchors.margins: -4; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { row.snoozing = !row.snoozing; row.replying = false; } }
+                }
                 // Close, in place of the time while hovered
                 Rectangle {
+                    Accessible.role: Accessible.Button
+                    Accessible.name: "Dismiss"
                     visible: hover.hovered
                     width: 20; height: 20; radius: 10
                     color: closeArea.containsMouse ? Theme.pillHover : Theme.pill
@@ -205,6 +222,54 @@ Item {
                 size: 12
                 weight: Theme.wMedium
                 color: Theme.textSecondary
+            }
+        }
+
+        // ── Its buttons: the app's actions, Reply; or the snooze times ───
+        Flow {
+            visible: row.liveActions.length > 0 || row.canReply || row.snoozing
+            width: parent.width
+            spacing: 6
+            topPadding: 4
+            Repeater {
+                model: row.snoozing ? Notifs.snoozeChoices() : row.liveActions
+                RowChip {
+                    required property var modelData
+                    text: row.snoozing ? modelData.label : modelData.text
+                    onClicked: row.snoozing ? Notifs.snooze(row.item, modelData.until) : Notifs.invokeAction(row.item, modelData.id)
+                }
+            }
+            RowChip {
+                visible: row.canReply && !row.snoozing && !row.replying
+                text: "Reply"
+                glyph: "\u{f0167}"
+                onClicked: { row.replying = true; replyField.forceActiveFocus(); }
+            }
+        }
+        // Reply in place: Enter sends, Esc puts it away.
+        Rectangle {
+            visible: row.replying
+            width: parent.width; height: 34; radius: 10
+            color: Qt.rgba(1, 1, 1, 0.08)
+            border.width: 1; border.color: replyField.activeFocus ? Qt.rgba(1, 1, 1, 0.22) : Qt.rgba(1, 1, 1, 0.08)
+            TextInput {
+                id: replyField
+                anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
+                verticalAlignment: TextInput.AlignVCenter
+                color: Theme.textPrimary
+                font.family: Theme.fontText; font.pixelSize: 13
+                clip: true
+                Accessible.name: "Reply to " + (row.it.app || "the app")
+                Keys.onPressed: event => {
+                    if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) { Notifs.reply(row.item, text); text = ""; row.replying = false; event.accepted = true; }
+                    else if (event.key === Qt.Key_Escape) { text = ""; row.replying = false; event.accepted = true; }
+                }
+                Label {
+                    visible: replyField.text === ""
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: (row.it.notification && row.it.notification.inlineReplyPlaceholder) || "Reply…"
+                    size: 13; color: Theme.textTertiary
+                }
             }
         }
     }

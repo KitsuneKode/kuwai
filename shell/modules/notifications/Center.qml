@@ -98,6 +98,13 @@ Scope {
     readonly property int padY: 6
     readonly property int padBottom: 84
     function cardH(screen) { return Math.round(Math.min(780, Math.max(440, (screen ? screen.height : 1000) * 0.74))); }
+    // The card fits what the tab shows (one notification: a short card, not
+    // 780 px of nothing), up to cardH. The surface stays cardH tall.
+    function fitH(screen) {
+        const max = cardH(screen);
+        const want = ui && ui.wantH > 0 ? ui.wantH : max;
+        return Math.round(Math.min(max, Math.max(300, want)));
+    }
 
     property var shownScreen: Quickshell.screens[0]
 
@@ -111,12 +118,13 @@ Scope {
     readonly property var cardRect: {
         const sw = shownScreen ? shownScreen.width : 1920;
         const ox = sw - (cardW + 12 + padX), oy = reservedTop + Theme.barGap;
-        const dh = cardH(shownScreen);
+        const dh = fitH(shownScreen);
         if (mode === "morph")
             return { x: ox + lerp(from.x, padX, p), y: oy + lerp(from.y, padY, p), w: lerp(from.w, cardW, p), h: lerp(from.h, dh, p), r: lerp(from.r, 22, Math.min(1, p)) };
         return { x: ox + padX, y: oy + padY, w: cardW, h: dh, r: 22 };
     }
     onOpenChanged: {
+        if (open) { warm = true; coolDown.stop(); } else coolDown.restart();
         if (open) {
             const reopening = foldAnim.running;
             if (!reopening) shownScreen = (Notifs.centerScreen ? Screens.screenNamed(Notifs.centerScreen) : Screens.focused) || shownScreen;
@@ -153,6 +161,12 @@ Scope {
         }
     }
 
+    // The card's content is built the first time it opens, on the screen
+    // that shows it, and kept a few minutes after it closes (opening again
+    // is just motion), then released: ~150 MB that sat unused while closed,
+    // a full copy per monitor. The surfaces stay mapped (1×1) as before.
+    property bool warm: false
+    Timer { id: coolDown; interval: 180000; onTriggered: root.warm = root.open || root.folding }
     Component.onCompleted: console.info("center: ready")
     property bool pendingBegin: false
     function begin() {
@@ -330,7 +344,13 @@ Scope {
             readonly property real dx: root.padX
             readonly property real dy: root.padY
             readonly property real dw: root.cardW
-            readonly property real dh: root.cardH(modelData)
+            // Grows and shrinks with the tab (switching tabs, a list getting
+            // longer); on open it starts at the right size.
+            property real dh: root.fitH(modelData)
+            Behavior on dh {
+                enabled: root.open && root.p > 0.98 && !Theme.reduceMotion
+                NumberAnimation { duration: 260; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+            }
 
             // The morphing surface: rectangle and radius between source and
             // destination; content stays put inside and is revealed by the clip.
@@ -388,12 +408,12 @@ Scope {
                     anchors.fill: parent
                     clip: true
 
-                    // Built in the background at start on every monitor
-                    // (asynchronously, so nothing blocks), kept for good:
-                    // opening is then just motion, on any monitor.
+                    // Built in the background (asynchronously, so nothing
+                    // blocks) on the hosting monitor while warm (root.warm).
                     Loader {
                         id: body
                         asynchronous: true
+                        active: win.hosts && root.warm
                         // Morph: pinned to the destination and revealed by the
                         // growing clip. Pop: rides along with the card.
                         x: frame.morphing ? win.dx - frame.x : 0
