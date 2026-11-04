@@ -80,9 +80,16 @@ Item {
     property bool keyboard: false
     onQueryChanged: sel = 0
 
+    // ↵ switches this chat to the model (history is plain text; a smaller window just
+    // compacts sooner). ⌃↵ forks the chat into a new one on that model, leaving this as it was.
     function pick(m) {
         if (!m) return;
         OllamaService.model = m.id;
+        open = false;
+    }
+    function pickFork(m) {
+        if (!m) return;
+        OllamaService.forkAt(-1, m.id);
         open = false;
     }
 
@@ -93,6 +100,7 @@ Item {
         if (k === Qt.Key_Escape || ((event.modifiers & Qt.ControlModifier) && k === Qt.Key_K)) open = false;
         else if (k === Qt.Key_Down) { keyboard = true; sel = Math.min(shown.length - 1, sel + 1); }
         else if (k === Qt.Key_Up) { keyboard = true; sel = Math.max(0, sel - 1); }
+        else if ((k === Qt.Key_Return || k === Qt.Key_Enter) && (event.modifiers & Qt.ControlModifier)) pickFork(shown[sel]);
         else if (k === Qt.Key_Return || k === Qt.Key_Enter) pick(shown[sel]);
         else if (k === Qt.Key_Backspace) query = query.slice(0, -1);
         else if (event.text && event.text.length === 1 && event.text >= " " && !(event.modifiers & Qt.ControlModifier)) query += event.text;
@@ -150,7 +158,8 @@ Item {
                 }
                 Label {
                     anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
-                    text: menu.query ? (menu.shown.length ? "" : "No match") : "Type to filter"
+                    text: menu.query ? (menu.shown.length ? "" : "No match")
+                        : OllamaService.messages.length > 0 ? "↵ switch · ⌃↵ new chat with it" : "Type to filter"
                     size: 11
                     color: Theme.textTertiary
                 }

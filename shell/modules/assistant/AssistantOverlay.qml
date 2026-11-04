@@ -538,6 +538,8 @@ Scope {
                         { id: "new", label: "New chat", keys: ["⌃", "N"] },
                         { id: "clear", label: "Clear this chat", keys: ["⌃", "L"] },
                         { id: "copychat", label: "Copy chat as Markdown", keys: [] },
+                        { id: "compact", label: "Summarise this chat now", keys: [] },
+                        { id: "fork", label: "Fork this chat", keys: [] },
                         { id: "apps", label: "Open an app", keys: ["⌃", "O"] }
                     ]
                     onPicked: id => {
@@ -548,6 +550,8 @@ Scope {
                         else if (id === "new") OllamaService.newChat();
                         else if (id === "clear") OllamaService.clear();
                         else if (id === "copychat") OllamaService.copyChat();
+                        else if (id === "compact") OllamaService.compactNext = true;
+                        else if (id === "fork") OllamaService.forkAt(-1);
                         else if (id === "apps") root.appLauncherOpen = true;
                         promptInput.focusInput();
                     }
@@ -560,8 +564,10 @@ Scope {
                 Rectangle {
                     id: appModal
                     visible: appT.value > 0.002 || root.appLauncherOpen
-                    anchors.fill: parent
-                    color: Qt.rgba(0, 0, 0, 0.65 * Math.min(1, appT.value))
+                    // Only over the panel (the layer window is bigger than the panel: filling
+                    // it drew a black box around the panel).
+                    x: frame.x; y: frame.y; width: frame.width; height: frame.height
+                    color: Qt.rgba(0, 0, 0, 0.45 * Math.min(1, appT.value))
                     radius: frame.radius
                     z: 99
 
@@ -717,11 +723,20 @@ Scope {
                                         anchors.verticalCenter: parent.verticalCenter
                                         spacing: 10
 
-                                        Icon {
-                                            name: "rocket"
-                                            size: 16
-                                            color: appListView.currentIndex === index ? Theme.accent : Theme.textSecondary
+                                        // The app's own icon from the icon theme; a quiet glyph if it has none.
+                                        Item {
+                                            id: appIcon
+                                            width: 26; height: 26
                                             anchors.verticalCenter: parent.verticalCenter
+                                            readonly property string path: modelData.icon ? Quickshell.iconPath(modelData.icon, true) : ""
+                                            IconImage { anchors.fill: parent; visible: appIcon.path !== ""; source: appIcon.path; asynchronous: true }
+                                            Icon {
+                                                visible: appIcon.path === ""
+                                                anchors.centerIn: parent
+                                                name: "app-window"
+                                                size: 18
+                                                color: Theme.textTertiary
+                                            }
                                         }
 
                                         Column {

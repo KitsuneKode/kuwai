@@ -1334,12 +1334,13 @@ def run_tool(ids, name, raw_args):
 # short handoff note written by the same model (already loaded), and the
 # turn runs on note + recent messages. The UI keeps the note (`summary`).
 
+# pi's structured handoff (coding-agent compaction.ts), shortened for a small model.
 COMPACT_PROMPT = (
-    "Summarise this conversation for yourself, so you can carry on with less context. Keep what the user wants "
-    "and prefers, the facts and decisions so far, names, numbers, paths, commands and apps exactly as written, "
-    "and anything still open. If there is an earlier summary, carry over every point from it unless the "
-    "conversation changed it. Plain bullet points, at most 200 words. Don't answer anything and don't add "
-    "anything new."
+    "Summarise this conversation for yourself, so you can carry on with less context. Do NOT continue the "
+    "conversation or answer anything in it. Output only this, at most 250 words:\n"
+    "## Goal\n## Preferences\n## Done\n## In progress\n## Key facts and decisions\n## Next\n"
+    "Keep names, numbers, file paths, commands, URLs and error messages exactly as written. If there is an "
+    "earlier summary, merge it in: keep every point unless the conversation changed it. Leave out empty sections."
 )
 SUMMARY_HEAD = "Here is a summary of what I told you earlier in this conversation (older messages were compacted):\n"
 
@@ -1348,7 +1349,14 @@ def compact(ids, model, caps, options, summary, convo):
     users = [i for i, m in enumerate(convo) if m.get("role") == "user"]
     if len(users) < 2 or users[-2] == 0:
         return summary, convo
+    # Keep the last two exchanges word for word, or only the last one when two would take more
+    # than ~30% of the window (≈3.5 characters a token); the rest becomes the summary.
+    budget = int(int(options.get("num_ctx", 4096)) * 0.30 * 3.5)
     keep_from = users[-2]
+    if sum(len(m.get("content") or "") for m in convo[keep_from:]) > budget:
+        keep_from = users[-1]
+    if keep_from == 0:
+        return summary, convo
     older = convo[:keep_from]
     # Each message cut to 1,500 characters, so one runaway answer can't crowd out the rest.
     lines = [("User: " if m["role"] == "user" else "Assistant: ") + _cap(m.get("content") or "", 1500) for m in older]

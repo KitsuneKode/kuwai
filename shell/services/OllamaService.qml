@@ -381,6 +381,35 @@ Singleton {
         return launchApp(appName);
     }
 
+    // Fork (AI Elements branch / checkpoint): a new chat with this one's messages up
+    // to `index` (all of them if index < 0), optionally on another model. The
+    // original stays as it was. The summary comes along when it covers only those.
+    function forkAt(index, model) {
+        if (streaming) return;
+        syncCurrentSession();
+        const src = root.sessions.find(s => s.id === root.activeSessionId);
+        const msgs = (index === undefined || index < 0 ? root.messages : root.messages.slice(0, index + 1))
+            .map(m => Object.assign({}, m));
+        if (msgs.length === 0) { if (model) root.model = model; return; }
+        const keep = root.summaryUpTo > 0 && root.summaryUpTo <= msgs.length;
+        const now = Date.now();
+        const sess = {
+            id: now.toString(),
+            title: ((src && src.title && src.title !== "New Chat") ? src.title : "Chat").replace(/ \(fork\)$/, "") + " (fork)",
+            renamed: true, model: model || root.model, messages: msgs,
+            summary: keep ? root.summary : "", summaryUpTo: keep ? root.summaryUpTo : 0, updatedAt: now
+        };
+        root.sessions = [sess, ...root.sessions];
+        root.activeSessionId = sess.id;
+        root.messages = sess.messages;
+        root.summary = sess.summary;
+        root.summaryUpTo = sess.summaryUpTo;
+        root.model = sess.model;
+        root.queue = [];
+        root.errorText = "";
+        saveDelay.restart();
+    }
+
     function switchSession(id) {
         if (id === root.activeSessionId) return;
         if (streaming) abandon();
@@ -760,7 +789,8 @@ function onPanelClosed() {
         const chars = sent.api.reduce((n, m) => n + (m.content || "").length, root.summary.length);
         const estimate = chars / 4 + 2600;     // + system prompt, context and 20 tool schemas (measured 2,499)
         const ctx = root.contextFor(root.model);
-        const compact = Math.max(root.contextUsed, estimate) >= root.compactAt * ctx;
+        const compact = root.compactNext || Math.max(root.contextUsed, estimate) >= root.compactAt * ctx;
+        root.compactNext = false;
         chatProc.sentIndex = sent.index;
         chatProc.sentUpTo = root.summaryUpTo;
 
@@ -831,6 +861,9 @@ function onPanelClosed() {
             root.finishTurn();
         }
     }
+
+    // "/ Summarise this chat now": the next turn compacts first, whatever the meter says.
+    property bool compactNext: false
 
     property var pendingDeltas: []
     function flushDeltas() {
@@ -947,6 +980,7 @@ function onPanelClosed() {
         function cancel() { root.cancel(); }
         function steer(text: string) { root.steer(text); }
         function attach(path: string) { root.attach(path); }
+        function fork(index: int, model: string) { root.forkAt(index, model); }
         function enqueue(text: string) { root.enqueue(text); }
         function queue(): string { return JSON.stringify(root.queue.map(q => q.text)); }
         function summary(): string { return JSON.stringify({ summary: root.summary, upTo: root.summaryUpTo, count: root.messages.length }); }

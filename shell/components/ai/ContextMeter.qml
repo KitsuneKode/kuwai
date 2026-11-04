@@ -85,7 +85,8 @@ Item {
                 color: Theme.textPrimary
             }
             Label {
-                text: OllamaService.summary ? "Earlier messages are summarised" : "Older messages get summarised at 75%"
+                text: OllamaService.compactNext ? "Summarises before your next message"
+                    : OllamaService.summary ? "Earlier messages are summarised" : "Older messages get summarised at 75%"
                 size: 11
                 color: Theme.textTertiary
             }

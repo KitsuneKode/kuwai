@@ -7,6 +7,7 @@ import qs.components
 Rectangle {
     id: ab
     property string icon
+    property string tip: ""          // a label above it after a moment's hover (AI Elements MessageAction tooltip)
     signal clicked()
     width: 28; height: 28
     radius: 8
@@ -16,4 +17,31 @@ Rectangle {
     Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
     Icon { anchors.centerIn: parent; name: ab.icon; size: 15; color: abArea.containsMouse ? Theme.textPrimary : Theme.textTertiary }
     MouseArea { id: abArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: ab.clicked() }
+
+    property bool tipShown: false
+    Timer { id: tipDelay; interval: 450; onTriggered: ab.tipShown = true }
+    Connections {
+        target: abArea
+        function onContainsMouseChanged() {
+            if (abArea.containsMouse && ab.tip !== "") tipDelay.restart();
+            else { tipDelay.stop(); ab.tipShown = false; }
+        }
+    }
+    Rectangle {
+        readonly property bool show: ab.tipShown
+        visible: opacity > 0.01
+        opacity: show ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: parent.show ? Theme.enterMs : Theme.exitMs } }
+        anchors.bottom: parent.top
+        anchors.bottomMargin: 6
+        anchors.horizontalCenter: parent.horizontalCenter
+        width: tipLabel.implicitWidth + 14
+        height: 22
+        radius: 6
+        color: Qt.rgba(0.15, 0.15, 0.18, 0.98)
+        border.width: 1
+        border.color: Qt.rgba(1, 1, 1, 0.10)
+        z: 60
+        Label { id: tipLabel; anchors.centerIn: parent; text: ab.tip; size: 11; color: Theme.textPrimary }
+    }
 }

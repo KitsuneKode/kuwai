@@ -195,9 +195,11 @@ Item {
             spacing: 2
             opacity: hover.hovered ? 1 : 0
             Behavior on opacity { NumberAnimation { duration: Theme.colorMs } }
-            MessageAction { icon: root.copied ? "check" : "copy"; onClicked: root.copyText() }
+            MessageAction { icon: root.copied ? "check" : "copy"; tip: root.copied ? "Copied" : "Copy"; onClicked: root.copyText() }
+            MessageAction { icon: "git-branch"; tip: "Fork from here"; visible: !OllamaService.streaming; onClicked: OllamaService.forkAt(root.msgIndex) }
             MessageAction {
                 icon: "pencil-simple"
+                tip: "Edit"
                 visible: !OllamaService.streaming
                 onClicked: { editor.text = root.msg.text || ""; root.editing = true; editor.forceActiveFocus(); editor.cursorPosition = editor.text.length; }
             }
@@ -558,8 +560,9 @@ Item {
             opacity: root.isLast || hover.hovered ? 1 : 0
             Behavior on opacity { NumberAnimation { duration: Theme.colorMs } }
 
-            MessageAction { icon: root.copied ? "check" : "copy"; visible: root.plainText !== ""; onClicked: root.copyText() }
-            MessageAction { icon: "arrow-clockwise"; visible: !OllamaService.streaming; onClicked: OllamaService.regenerate(root.msgIndex) }
+            MessageAction { icon: root.copied ? "check" : "copy"; tip: root.copied ? "Copied" : "Copy"; visible: root.plainText !== ""; onClicked: root.copyText() }
+            MessageAction { icon: "arrow-clockwise"; tip: "Retry"; visible: !OllamaService.streaming; onClicked: OllamaService.regenerate(root.msgIndex) }
+            MessageAction { icon: "git-branch"; tip: "Fork from here"; visible: !OllamaService.streaming && root.msgIndex >= 0; onClicked: OllamaService.forkAt(root.msgIndex) }
             Label {
                 text: [OllamaService.modelLabel(root.msg.model),
                        root.msg.startedAt && root.msg.endedAt > root.msg.startedAt
