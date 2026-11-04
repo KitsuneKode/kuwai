@@ -9,6 +9,7 @@
 //   └───────┘ └───────┘ └───────┘ └───────┘        Tab switch, F favourite
 //   ● Dracula ★ ● Nord   …
 import QtQuick
+import QtMultimedia
 import Quickshell
 import Quickshell.Io
 import Quickshell.Widgets
@@ -23,12 +24,28 @@ FocusScope {
     // Exactly three rows of cards between the header and the key hints.
     implicitHeight: 66 + 3 * (Math.round(Math.floor((980 - 32 - 330) / 4) * 0.5625) + 40) + 40
 
-    property string mode: Island.themeMode || "themes"      // themes | wallpapers
+    property string mode: Island.themeMode || "themes"      // themes | wallpapers | live
+    readonly property var modes: ["themes", "wallpapers", "live"]
+    // Live wallpapers (bin/rice-wall json), with "Off" first: back to the still one.
+    property var live: []
+    readonly property var liveItems: [{ name: "Off", path: "", thumb: "", off: true, current: !live.some(x => x.current) }].concat(live)
+    Process {
+        id: liveLister
+        running: picker.mode === "live"
+        command: [Paths.bin + "/rice-wall", "json"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try { picker.live = JSON.parse(text); } catch (e) {}
+                if (picker.mode === "live") picker.current = Math.max(0, picker.items.findIndex(x => x.current));
+            }
+        }
+    }
     property var info: ({ current: "", themes: [], wallpapers: [] })
     property bool loading: true
     readonly property string bin: Paths.bin + "/rice-themes"
     readonly property var favs: Settings.favoriteThemes || []
-    readonly property var items: mode === "themes"
+    readonly property var items: mode === "live" ? liveItems
+        : mode === "themes"
         ? info.themes.slice().sort((a, b) => (favs.includes(b.name) - favs.includes(a.name)) || a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
         : info.wallpapers
     property int current: 0
@@ -61,11 +78,17 @@ FocusScope {
         const it = items[i];
         if (!it) return;
         applied = it.name;
+        if (mode === "live") {
+            Quickshell.execDetached(it.off ? [Paths.bin + "/rice-wall", "off"] : [Paths.bin + "/rice-wall", "play", it.path]);
+            relive.restart();
+            return;
+        }
         if (mode === "themes") Quickshell.execDetached([bin, "theme", it.name]);
         else Quickshell.execDetached([bin, "wallpaper", it.path]);
         relist.restart();
     }
     Timer { id: relist; interval: 2500; onTriggered: lister.running = true }
+    Timer { id: relive; interval: 600; onTriggered: { liveLister.running = false; liveLister.running = true; } }
     function toggleFav(i) {
         const it = items[i];
         if (!it || mode !== "themes") return;
@@ -82,7 +105,7 @@ FocusScope {
         else if (k === Qt.Key_Down) current = Math.min(items.length - 1, current + cols);
         else if (k === Qt.Key_Up) current = Math.max(0, current - cols);
         else if (k === Qt.Key_Return || k === Qt.Key_Enter) apply(current);
-        else if (k === Qt.Key_Tab || k === Qt.Key_Backtab) mode = mode === "themes" ? "wallpapers" : "themes";
+        else if (k === Qt.Key_Tab || k === Qt.Key_Backtab) mode = modes[(modes.indexOf(mode) + (k === Qt.Key_Backtab ? 2 : 1)) % 3];
         else if (k === Qt.Key_F) toggleFav(current);
         else return;
         grid.positionViewAtIndex(current, GridView.Contain);
@@ -95,13 +118,13 @@ FocusScope {
         width: parent.width - 44; height: 36
         Segmented {
             anchors.verticalCenter: parent.verticalCenter
-            options: [{ id: "themes", label: "Themes" }, { id: "wallpapers", label: "Wallpapers" }]
+            options: [{ id: "themes", label: "Themes" }, { id: "wallpapers", label: "Wallpapers" }, { id: "live", label: "Live" }]
             current: picker.mode
             onPicked: id => picker.mode = id
         }
         Label {
             anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-            text: picker.loading ? "Reading themes…" : (picker.info.current || "").replace(/-/g, " ")
+            text: picker.mode === "live" ? "Plays behind your windows; pauses when they cover it" : picker.loading ? "Reading themes…" : (picker.info.current || "").replace(/-/g, " ")
             size: 13; weight: Theme.wMedium; color: Theme.textSecondary
         }
     }
@@ -128,6 +151,31 @@ FocusScope {
                 // A quick crossfade as the selection moves (not a slide: you're comparing).
                 opacity: status === Image.Ready ? 1 : 0
                 Behavior on opacity { NumberAnimation { duration: 140 } }
+            }
+            // Live: the selected one plays here, muted (the panel's only decoder;
+            // the cards are stills). A short wait so arrowing past doesn't decode each.
+            Loader {
+                anchors.fill: parent
+                active: picker.mode === "live" && !!preview.it && !!preview.it.path && previewDwell.ready
+                sourceComponent: Item {
+                    VideoOutput { id: pv; anchors.fill: parent; fillMode: VideoOutput.PreserveAspectCrop }
+                    MediaPlayer {
+                        source: "file://" + preview.it.path
+                        videoOutput: pv
+                        audioOutput: AudioOutput { muted: true }
+                        loops: MediaPlayer.Infinite
+                        Component.onCompleted: play()
+                    }
+                }
+            }
+            Timer { id: previewDwell; property bool ready: false; interval: 250; onTriggered: ready = true }
+            Connections { target: picker; function onCurrentChanged() { previewDwell.ready = false; previewDwell.restart(); } function onModeChanged() { previewDwell.ready = false; previewDwell.restart(); } }
+            Text {
+                visible: !!preview.it && !!preview.it.off
+                anchors.centerIn: parent
+                text: "\u{f0e09}  Still wallpaper"
+                font.family: Theme.fontGlyph; font.pixelSize: 15
+                color: Theme.textSecondary
             }
         }
         Column {
@@ -157,7 +205,8 @@ FocusScope {
                 }
                 Label { y: 22; text: picker.mode === "themes" ? "Theme palette" : "Wallpaper colours"; size: 11; color: Theme.textTertiary }
             }
-            Label { text: preview.it && preview.it.current ? "In use now" : "Press ↵ or click to apply"; size: 12; color: Theme.textSecondary }
+            Label { text: preview.it && preview.it.current ? "In use now" : picker.mode === "live" && preview.it && preview.it.off ? "Press ↵ to turn the live wallpaper off" : "Press ↵ or click to apply"; size: 12; color: Theme.textSecondary }
+            Label { visible: picker.mode === "live"; width: parent.width; wrapMode: Text.Wrap; text: "Add your own: rice-wall add FILE.mp4 \"name\""; size: 11; color: Theme.textTertiary }
         }
     }
 
@@ -203,9 +252,16 @@ FocusScope {
                 height: Math.round(width * 0.5625)
                 radius: 12
                 color: card.modelData.bg || Theme.pill
+                Text {
+                    visible: !!card.modelData.off
+                    anchors.centerIn: parent
+                    text: "\u{f0e09}"; font.family: Theme.fontGlyph; font.pixelSize: 22
+                    color: Theme.textTertiary
+                }
                 Image {
                     anchors.fill: parent
-                    source: "file://" + card.modelData.thumb
+                    visible: !card.modelData.off
+                    source: card.modelData.thumb ? "file://" + card.modelData.thumb : ""
                     sourceSize: Qt.size(360, 202)
                     fillMode: Image.PreserveAspectCrop
                     asynchronous: true
@@ -275,7 +331,7 @@ FocusScope {
         anchors { left: parent.left; leftMargin: 22; bottom: parent.bottom; bottomMargin: 14 }
         spacing: 14
         Repeater {
-            model: [["← → ↑ ↓", "Choose"], ["↩", "Apply"], ["⇥", picker.mode === "themes" ? "Wallpapers" : "Themes"], ["F", "Favourite"]]
+            model: [["← → ↑ ↓", "Choose"], ["↩", "Apply"], ["⇥", ({ themes: "Wallpapers", wallpapers: "Live", live: "Themes" })[picker.mode]], ["F", "Favourite"]]
             Row {
                 required property var modelData
                 spacing: 6

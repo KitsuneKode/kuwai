@@ -124,7 +124,7 @@ Scope {
             // positive: two samples in a row inside it (≈160 ms) and not
             // flying past (> 2500 px/s). Out: 20 px of slack, then the same
             // 450 ms fold.
-            readonly property bool wantsProximity: showBar && (Settings.islandRest === "minimal" || tucked) && !hovered
+            readonly property bool wantsProximity: showBar && Settings.islandProximity && (Settings.islandRest === "minimal" || tucked) && !hovered
             onWantsProximityChanged: wantsProximity ? Pointer.want() : Pointer.unwant()
             // (A helper: this window already has its own onCompleted.)
             QtObject {

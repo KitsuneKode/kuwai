@@ -96,7 +96,31 @@ import() {
     echo "imported $n video wallpapers; $skipped scene/web ones skipped"
 }
 
+# For the island's Live tab: [{ name, path, thumb, current }] (thumbnails
+# made once, from a frame a third of the way in, into ~/.cache/rice/live-thumbs).
+json() {
+    local cache="${XDG_CACHE_HOME:-$HOME/.cache}/rice/live-thumbs" cur
+    mkdir -p "$cache"
+    cur=$(cat "${XDG_STATE_HOME:-$HOME/.local/state}/live-wallpaper/last" 2>/dev/null)
+    local first=1
+    printf '['
+    while IFS= read -r f; do
+        local path="$LIB/$f" base="${f%.*}" thumb="$cache/${f%.*}.jpg"
+        if [ ! -s "$thumb" ] || [ "$thumb" -ot "$path" ]; then
+            local d; d=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$path" 2>/dev/null)
+            ffmpeg -nostdin -v error -y -ss "$(awk -v d="${d:-3}" 'BEGIN{print d/3}')" -i "$path" -frames:v 1 -vf "scale=640:-2" -q:v 4 "$thumb" 2>/dev/null
+        fi
+        [ $first = 1 ] || printf ','
+        first=0
+        jq -cn --arg n "$(printf '%s' "$base" | sed 's/^[0-9]*-//')" --arg p "$path" --arg t "$thumb" --argjson c "$([ "$path" = "$cur" ] && echo true || echo false)" \
+            '{name: $n, path: $p, thumb: $t, current: $c}' | tr -d '\n'
+    done < <(find "$LIB" -maxdepth 1 -type f \( -iname '*.mp4' -o -iname '*.webm' -o -iname '*.mkv' \) -printf '%f\n' | sort -V)
+    printf ']\n'
+}
+
 case "${1:-list}" in
+    json)   json ;;
+    off)    "$SCRIPT" stop ;;
     add)    shift; add "$@" ;;
     import) shift; import "$@" ;;
     list)   find "$LIB" -maxdepth 1 -type f \( -iname '*.mp4' -o -iname '*.webm' -o -iname '*.mkv' \) -printf '%f\n' | sort -V ;;
