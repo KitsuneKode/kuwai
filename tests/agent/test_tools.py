@@ -91,3 +91,12 @@ def test_clipboard_and_selection(run_agent):
                                  [call("read_selection", cid="c2"), {"done": True}], answer()], caps=TOOLS_CAPS)
     outs = [completion(events, t["id"])["output"] for t in tool_items(events)]
     assert outs == ["clipboard text", "selected text"]
+
+
+def test_silent_finish_after_tools_gets_one_nudge(run_agent):
+    silent = [{"message": {"thinking": "all done, I think"}}, {"done": True}]
+    events, fake = run_agent(USER, [[call("active_window"), {"done": True}], silent, answer("It's kitty.")],
+                             caps={"hermes3:8b": ["completion", "tools", "thinking"]})
+    assert fake.requests[2]["messages"][-1]["content"] == "(Now answer my request from what you found.)"
+    text = "".join(e["text"] for e in events if e["type"] == "item.delta")
+    assert "It's kitty." in text and events[-1]["status"] == "completed"

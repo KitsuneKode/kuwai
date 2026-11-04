@@ -1356,6 +1356,7 @@ def run_turn(req):
     stream = Stream(ids)
     status, error = "completed", ""
     rounds = 0
+    nudged = False
     try:
         if req.get("compact"):
             summary, convo = compact(ids, model, caps, options, summary, convo)
@@ -1413,6 +1414,12 @@ def run_turn(req):
                 apply_steers(messages)
                 continue
             if not calls:
+                # Small thinking models sometimes finish their tool work, think, and stop
+                # without a word (seen with qwen3.5 after a sandbox loop): ask once for the answer.
+                if not stream.message_text().strip() and rounds > 0 and not nudged and not capped:
+                    nudged = True
+                    messages.append({"role": "user", "content": "(Now answer my request from what you found.)"})
+                    continue
                 break
     except Interrupted:
         stream.close()
