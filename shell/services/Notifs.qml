@@ -95,7 +95,7 @@ Singleton {
         item.apply(n, a);
         // While the center is open the new one just lands in its list; so
         // does a quiet one (a bot's pull request, say).
-        item.popup = !item.quiet && !centerOpen && (!dnd || item.severity === "critical");
+        item.popup = toastsFor(item);
         // One app, one toast: a burst (14 meeting reminders) replaces its own
         // toast on screen instead of pushing everyone else's off. The earlier
         // ones stay in the history; the toast counts them (+13).
@@ -108,12 +108,7 @@ Singleton {
         // break through do-not-disturb), unless the sender asked for silence.
         if (item.severity === "critical" && !(n.hints && n.hints["suppress-sound"])) alertSound.running = true;
 
-        if (item.popup) arrived();
-        // Agents finishing or waiting are a moment in the island (kittymux's
-        // own panes already are, from its inbox); what matters otherwise
-        // peeks out of it.
-        if (item.app === "T3 Code") Moments.agentNote(item);
-        else if (!item.jump && !item.quiet && !a.calm && !centerOpen && (!dnd || item.severity === "critical") && important(item)) showPeek(item);
+        deliver(item, a.calm);
         // Too many on screen: the oldest steps out.
         const shown = popups.filter(i => !i.leaving);
         for (let k = maxPopups; k < shown.length; k++) shown[k].leaving = true;
@@ -121,21 +116,65 @@ Singleton {
         save();
     }
 
-    // ── The island's peek ────────────────────────────────────────────────
-    // What's worth growing the island for (IslandBar, NotifPeek): critical
-    // and warning ones, something you can reply to, something with actions.
-    // The toast still shows; the peek folds back after 5 s, not while the
-    // pointer is on it.
+    // ── Where a notification shows: one surface each ────────────────────
+    //   critical / a warning        the island (it's urgent; your eye is there)
+    //   someone you can reply to    the island, with Reply
+    //   everything else             a toast (GitHub, mail, updates, app news)
+    //   low                         the center only
+    // (Settings.notifSurface "both" puts island ones in a toast too.)
+    // In a fullscreen app only critical ones interrupt; the rest wait in the
+    // center with the missed dot. Bursts from one app are one toast (+N).
+    //
+    // The island shows one at a time: most severe first, then newest; a
+    // more severe one takes over (the current one goes back in line); at
+    // most two wait, the rest become toasts. 5 s each, held under the pointer.
     function important(i) {
-        return i.severity === "critical" || i.severity === "warning" || i.urgency === NotificationUrgency.Critical
-            || canReply(i) || (i.actions && i.actions.length > 0);
+        return i.severity === "critical" || i.severity === "warning" || i.urgency === NotificationUrgency.Critical || canReply(i);
     }
+    function rank(i) { return i.severity === "critical" || i.urgency === NotificationUrgency.Critical ? 0 : i.severity === "warning" ? 1 : canReply(i) ? 2 : 3; }
+    readonly property bool fullscreenNow: !!Hyprland.focusedWorkspace && !!Hyprland.focusedWorkspace.lastIpcObject && Hyprland.focusedWorkspace.lastIpcObject.hasfullscreen === true
+    function interrupts(i) { return !i.quiet && !centerOpen && (!dnd || i.severity === "critical") && (!fullscreenNow || rank(i) === 0); }
+    function islandFor(i) { return !i.jump && i.app !== "T3 Code" && important(i) && interrupts(i); }
+    // Toast? Not for low ones, not for what the island shows (unless "both").
+    function toastsFor(i) {
+        if (!interrupts(i) || i.severity === "low") return false;
+        return !islandFor(i) || Settings.notifSurface === "both";
+    }
+    function deliver(item, calm) {
+        // Agents finishing or waiting are a moment in the island (kittymux's
+        // own panes already are, from its inbox).
+        if (item.app === "T3 Code") Moments.agentNote(item);
+        else if (!calm && islandFor(item)) showPeek(item);
+        if (item.popup) arrived();
+    }
+
     property var peek: null
+    property var peekQueue: []
     property bool peekHeld: false
-    function showPeek(item) { peek = item; if (!peekHeld) peekFor.restart(); }
-    function dropPeek() { peek = null; }
+    function showPeek(item) {
+        if (!peek) { peek = item; if (!peekHeld) peekFor.restart(); return; }
+        if (rank(item) < rank(peek)) {               // more urgent: it goes first
+            peekQueue = [peek, ...peekQueue].slice(0, 2);
+            peek = item;
+            if (!peekHeld) peekFor.restart();
+            return;
+        }
+        if (peekQueue.length < 2) {
+            peekQueue = [...peekQueue, item].sort((a, b) => rank(a) - rank(b) || b.time - a.time);
+            return;
+        }
+        // The line is full: a toast instead, so nothing is lost or late.
+        if (!item.popup && interrupts(item)) { item.popup = true; arrived(); }
+    }
+    function nextPeek() {
+        const q = peekQueue.filter(i => !i.discard && !i.leaving);
+        peek = q.length ? q[0] : null;
+        peekQueue = q.slice(1);
+        if (peek && !peekHeld) peekFor.restart();
+    }
+    function dropPeek() { nextPeek(); }
     onPeekHeldChanged: if (peekHeld) peekFor.stop(); else if (peek) peekFor.restart()
-    Timer { id: peekFor; interval: 5000; onTriggered: if (!root.peekHeld) root.peek = null }
+    Timer { id: peekFor; interval: 5000; onTriggered: if (!root.peekHeld) root.nextPeek() }
 
     // ── Card interactions ────────────────────────────────────────────────
     // A notification you act on is handled: like macOS, it leaves the history
@@ -214,14 +253,9 @@ Singleton {
         snoozed = snoozed.filter(i => i !== item);
         item.time = Date.now();
         item.discard = false;
-        item.popup = !item.quiet && !centerOpen && (!dnd || item.severity === "critical");
+        item.popup = toastsFor(item);
         items = [item, ...items];
-        if (item.popup) arrived();
-        // Agents finishing or waiting are a moment in the island (kittymux's
-        // own panes already are, from its inbox); what matters otherwise
-        // peeks out of it.
-        if (item.app === "T3 Code") Moments.agentNote(item);
-        else if (!item.jump && !item.quiet && !centerOpen && (!dnd || item.severity === "critical") && important(item)) showPeek(item);
+        deliver(item, false);
         save();
     }
     Timer {
