@@ -30,6 +30,7 @@ Rectangle {
 
     property string query: ""
     property string confirming: ""     // id of the chat asking "Delete?"
+    property string renaming: ""       // id of the chat being renamed (double-click)
     property Item hoverRow: null
 
     function dayStart(t) { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); }
@@ -153,6 +154,7 @@ Rectangle {
                     readonly property var chat: modelData.chat || null
                     readonly property bool selected: !!chat && chat.id === OllamaService.activeSessionId
                     readonly property bool asking: !!chat && root.confirming === chat.id
+                    readonly property bool renamingThis: !!chat && root.renaming === chat.id
                     width: ListView.view.width
                     height: isHeader ? (index === 0 ? 24 : 34) : 34
 
@@ -174,8 +176,31 @@ Rectangle {
                         color: Qt.rgba(1, 1, 1, 0.08)
                     }
 
+                    TextInput {
+                        id: renameField
+                        visible: row.renamingThis
+                        anchors { left: parent.left; leftMargin: 8; right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter }
+                        color: Theme.textPrimary
+                        font.family: Theme.fontText
+                        font.pixelSize: 13
+                        selectionColor: Qt.alpha(Theme.accent, 0.5)
+                        clip: true
+                        onVisibleChanged: if (visible) { text = row.chat ? row.chat.title : ""; selectAll(); forceActiveFocus(); }
+                        Keys.onReturnPressed: { OllamaService.renameSession(row.chat.id, text); root.renaming = ""; }
+                        Keys.onEscapePressed: event => { root.renaming = ""; event.accepted = true; }
+                        onActiveFocusChanged: if (!activeFocus && row.renamingThis) root.renaming = ""
+                    }
+                    Rectangle {
+                        visible: row.renamingThis
+                        anchors.fill: parent
+                        radius: 8
+                        color: "transparent"
+                        border.width: 1
+                        border.color: Qt.alpha(Theme.accent, 0.5)
+                    }
+
                     Label {
-                        visible: !row.isHeader && !row.asking
+                        visible: !row.isHeader && !row.asking && !row.renamingThis
                         anchors { left: parent.left; leftMargin: 8; right: trash.left; rightMargin: 4; verticalCenter: parent.verticalCenter }
                         text: row.chat ? (row.chat.title && row.chat.title !== "New Chat" ? row.chat.title : "New chat") : ""
                         size: 13
@@ -187,7 +212,7 @@ Rectangle {
                     MouseArea {
                         id: rowArea
                         anchors.fill: parent
-                        enabled: !row.isHeader && !row.asking
+                        enabled: !row.isHeader && !row.asking && !row.renamingThis
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onContainsMouseChanged: {
@@ -195,11 +220,12 @@ Rectangle {
                             else if (root.hoverRow === row) root.hoverRow = null;
                         }
                         onClicked: { OllamaService.switchSession(row.chat.id); root.sessionSelected(row.chat.id); }
+                        onDoubleClicked: root.renaming = row.chat.id
                     }
 
                     MessageAction {
                         id: trash
-                        visible: !row.isHeader && !row.asking
+                        visible: !row.isHeader && !row.asking && !row.renamingThis
                         opacity: rowArea.containsMouse || hovered ? 1 : 0
                         readonly property bool hovered: trashHover.hovered
                         HoverHandler { id: trashHover }

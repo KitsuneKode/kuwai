@@ -400,6 +400,16 @@ Singleton {
         }
     }
 
+    function renameSession(id, title) {
+        const t = String(title || "").trim().split("\n")[0].slice(0, 80);
+        const i = root.sessions.findIndex(s => s.id === id);
+        if (i < 0 || !t) return;
+        const updated = [...root.sessions];
+        updated[i] = Object.assign({}, updated[i], { title: t, renamed: true });
+        root.sessions = updated;
+        saveDelay.restart();
+    }
+
     function deleteSession(id) {
         if (streaming && root.activeSessionId === id) abandon();
 
@@ -705,7 +715,7 @@ function onPanelClosed() {
 
         // Auto-title session from first prompt if "New Chat"
         const idx = root.sessions.findIndex(s => s.id === root.activeSessionId);
-        if (idx >= 0 && (root.sessions[idx].title === "New Chat" || root.messages.length === 0)) {
+        if (idx >= 0 && !root.sessions[idx].renamed && (root.sessions[idx].title === "New Chat" || root.messages.length === 0)) {
             const trimmed = promptText.trim();
             // The first line, up to 80 characters; the views elide it to fit.
             const line = trimmed.split("\n")[0];
