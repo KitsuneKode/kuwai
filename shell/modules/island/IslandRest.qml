@@ -42,7 +42,7 @@ Item {
     readonly property bool compact: (Settings.islandRest === "minimal" || Settings.islandTucked || (Settings.islandRest === "auto" && takeover))
                                     && !Island.peek && !bar.near && (!bar.hovered || bar.holdCompact)
     // On the small marks (agents, the dots): their tips and clicks, not a grown island.
-    readonly property bool marksHovered: agentHover.hovered || missedHover.hovered || micHover.hovered || camHover.hovered
+    readonly property bool marksHovered: agents.hovered || agents.open || missedHover.hovered || micHover.hovered || camHover.hovered
     // The mini notch: compact with nothing alive shows the time, and only
     // the time (plus a privacy dot when one is lit). Anything alive (music,
     // a moment, a password, dictation, a recording) takes its place.
@@ -392,47 +392,12 @@ Item {
             HoverHandler { id: micHover; margin: 6 }
             Tip { text: "Microphone in use" + (Activities.micName ? " · " + Activities.micName : "") + (Activities.micUsers.length ? " · " + [...new Set(Activities.micUsers)].join(", ") : ""); shown: micHover.hovered; below: true }
         }
-        // Agents at work (kittymux): the first one's mark, and how many.
-        // Click: the Agents tab. One needs you: a moment says so.
-        Row {
+        // Agents at work (kittymux): their marks, stacked (AgentStack).
+        AgentStack {
+            id: agents
             visible: Kittymux.working.length > 0
             anchors.verticalCenter: parent.verticalCenter
-            spacing: 3
-            Image {
-                id: agentMark
-                anchors.verticalCenter: parent.verticalCenter
-                width: 13; height: 13
-                sourceSize: Qt.size(26, 26)
-                source: Kittymux.working.length ? Kittymux.brand(Kittymux.working[0].agent) : ""
-                visible: status === Image.Ready
-            }
-            Text {
-                visible: !agentMark.visible
-                anchors.verticalCenter: parent.verticalCenter
-                text: "\u{f06a9}"; font.family: Theme.fontGlyph; font.pixelSize: 13
-                color: Theme.textSecondary
-            }
-            Label {
-                visible: Kittymux.working.length > 1
-                anchors.verticalCenter: parent.verticalCenter
-                text: Kittymux.working.length
-                size: 11; weight: Theme.wSemibold; rounded: true
-                color: Theme.textSecondary
-            }
-            // Click: the Agents tab. Right-click: straight to the (first) agent's tab.
-            HoverHandler { id: agentHover; margin: 6; cursorShape: Qt.PointingHandCursor }
-            TapHandler {
-                acceptedButtons: Qt.LeftButton | Qt.RightButton
-                onTapped: (point, button) => {
-                    if (button === Qt.RightButton && Kittymux.working.length) Kittymux.act(Kittymux.working[0].action);
-                    else Notifs.toggleCenter("agents", "pointer", rest.bar.screenName);
-                }
-            }
-            Tip {
-                text: Kittymux.working.map(w => w.agent + " · " + w.title).join("  |  ") + " · working"
-                      + "\nClick: Agents · Right-click: go to " + (Kittymux.working.length > 1 ? "the first" : "it")
-                shown: agentHover.hovered; below: true
-            }
+            bar: rest.bar
         }
         // The camera is on: a green dot (Apple's), with who has it.
         Rectangle {
@@ -445,7 +410,7 @@ Item {
         }
         IslandStatus { visible: !rest.compact; anchors.verticalCenter: parent.verticalCenter; bar: rest.bar }
         HoverHandler { cursorShape: Qt.PointingHandCursor }
-        TapHandler { onTapped: if (!agentHover.hovered) Notifs.toggleCenter("controls", "pointer", rest.bar.screenName) }
+        TapHandler { onTapped: if (!agents.hovered) Notifs.toggleCenter("controls", "pointer", rest.bar.screenName) }
     }
 
     // ── Trailing ─────────────────────────────────────────────────────────

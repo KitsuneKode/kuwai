@@ -66,7 +66,7 @@ Item {
         onCanceled: { holdFill.stop(); holdBack.restart(); }
         // A press that became a hold doesn't also click (MouseArea's rule).
         onPressAndHold: { if (q.holdable) { holdFill.stop(); holdBack.restart(); q.held(); } }
-        onClicked: m => { if (m.button === Qt.RightButton) { if (q.holdable) q.held(); } else q.clicked(); }
+        onClicked: m => { if (m.button === Qt.RightButton || (m.modifiers & Qt.ControlModifier)) { if (q.holdable) q.held(); } else q.clicked(); }
         onWheel: w => { const s = w.angleDelta.y > 0 ? 1 : w.angleDelta.y < 0 ? -1 : 0; if (s) q.wheel(s); }
     }
     // The hold ring, around the glyph.

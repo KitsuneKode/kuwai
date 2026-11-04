@@ -1,5 +1,5 @@
 // Quick switches, one at a time: the pinned switch (Caffeine by default) sits
-// in the hover view; click toggles it. Press and hold (or right-click) and a
+// in the hover view; click toggles it. Press and hold (or right- or Ctrl+click) and a
 // shelf grows out of it toward the middle with all of them, bigger:
 //
 //              ╭──────────────────────────────────────╮
@@ -48,7 +48,8 @@ Item {
         on: !!shelf.primary && shelf.primary.on
         tone: shelf.primary ? shelf.primary.tone : Theme.textPrimary
         offTone: shelf.primary && shelf.primary.offTone ? shelf.primary.offTone : Theme.textTertiary
-        tip: shelf.open || !shelf.primary ? "" : shelf.primary.tip + " · hold for more"
+        tip: shelf.open || !shelf.primary ? "" : shelf.primary.tip + "\nClick: toggle · Ctrl+click, right-click or hold: all switches"
+             + (shelf.primary.wheel ? " · scroll: adjust" : "")
         badge: shelf.alerts.length > 0 && !shelf.open
         badgeTone: shelf.alerts.length ? (shelf.alerts[0].tone || Theme.red) : Theme.red
         onClicked: if (shelf.primary) shelf.primary.toggle()
@@ -111,7 +112,7 @@ Item {
                     on: modelData.on
                     tone: modelData.tone
                     offTone: modelData.offTone || Theme.textTertiary
-                    tip: modelData.tip + (shelf.primary && shelf.primary.id === modelData.id ? " · pinned" : " · hold to pin")
+                    tip: modelData.tip + (shelf.primary && shelf.primary.id === modelData.id ? " · pinned" : "\nHold, right-click or Ctrl+click: pin it in the island")
                     onClicked: modelData.toggle()
                     onHeld: { Settings.set("quickPrimary", modelData.id); shelf.open = false; }
                     onWheel: steps => { if (modelData.wheel) modelData.wheel(steps); }
