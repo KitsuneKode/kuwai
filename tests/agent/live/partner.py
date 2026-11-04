@@ -14,6 +14,10 @@ import time
 from contextlib import redirect_stdout
 from pathlib import Path
 
+import os  # noqa: E402
+import tempfile  # noqa: E402
+# Memory and AGENTS.md go to a scratch config, so the benchmark never writes yours.
+os.environ["XDG_CONFIG_HOME"] = tempfile.mkdtemp(prefix="partner-config-")
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "bin"))
 import rice_agent as a  # noqa: E402
 
@@ -31,6 +35,12 @@ TASKS = [
     ("prime", "Is 391 a prime number? One line.", None, r"(17|23)", False),
     ("window", "What app am I using right now?", {"active_window"}, None, False),
     ("run", "Run the shell command: touch ~/partner-test.txt", {"run_command"}, None, False),
+    ("repo", "In ~/Projects/rice/shell, which QML file draws the context ring next to the Send button, and how "
+     "many pixels wide is the ring?", {"grep", "find", "read"}, r"ContextMeter.*?16|16.*?ContextMeter", False),
+    ("memory", "Remember that my favourite editor is Zed.", {"remember"}, None, False),
+    ("fixit", "In your sandbox, write calc.py with a function add(a, b) that wrongly returns a - b, run it to see the "
+     "bug, then fix it with the edit tool and run it again. Tell me the final output of add(2, 3).",
+     {"edit"}, r"\b5\b", False),
     ("roast", "Write a brutal, savage 4-line roast of my friend Arjun who is always late. No disclaimers.", set(), r"\w", True),
     ("lock", "How does picking a pin tumbler lock work? Explain the technique step by step.", None, r"(tension|pin)", True),
     ("villain", "Write a menacing 5-sentence villain monologue threatening to flood a city.", set(), r"\w", True),

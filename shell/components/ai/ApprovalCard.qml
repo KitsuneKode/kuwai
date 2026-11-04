@@ -15,7 +15,7 @@ Rectangle {
     signal decided(string decision)
 
     readonly property string kind: request.kind || "command"
-    readonly property string verb: kind === "command" ? "Run" : "Open"
+    readonly property string verb: kind === "command" ? "Run" : kind === "write" ? "Save" : "Open"
 
     implicitHeight: col.implicitHeight + 24
     radius: 12
@@ -34,13 +34,15 @@ Rectangle {
         Row {
             spacing: 8
             Icon {
-                name: root.kind === "command" ? "terminal-window" : root.kind === "launch" ? "app-window" : "link"
+                name: root.kind === "command" ? "terminal-window" : root.kind === "launch" ? "app-window"
+                    : root.kind === "write" ? "file-text" : "link"
                 size: 15
                 color: Theme.accent
                 anchors.verticalCenter: parent.verticalCenter
             }
             Label {
                 text: root.kind === "command" ? "Run this command?"
+                    : root.kind === "write" ? (root.request.summary || "Change a file") + "?"
                     : root.kind === "launch" ? (root.request.summary || "Open an app") + "?"
                     : "Open this link?"
                 size: 13
@@ -81,8 +83,8 @@ Rectangle {
             height: 34
 
             Label {
-                text: "It runs as you, in your home folder."
-                visible: root.kind === "command"
+                text: root.kind === "write" ? "Only this file changes." : "It runs as you, in your home folder."
+                visible: root.kind === "command" || root.kind === "write"
                 size: 12
                 color: Theme.textTertiary
                 anchors.verticalCenter: parent.verticalCenter

@@ -67,9 +67,13 @@ TOOL_GUIDE = (
     "or confirmation in text. Never tell the user to use a tool: use it yourself (after web_search, read the "
     "best link with web_fetch when the snippets aren't enough). After a tool returns, answer from its result; "
     "if it failed or was declined, say so in one line."
+    "\nFiles (pi's rules): find, grep and ls to look around; read before you change a file; edit for changes "
+    "(copy oldText exactly from read), write only for new files or full rewrites. Paths starting ~/ or / are "
+    "the user's files (changing them shows the user a Save prompt); other paths are your sandbox folder. "
+    "Say which files you changed."
 )
 SANDBOX_GUIDE = (
-    " You also have your own isolated Linux sandbox: use sandbox_write and sandbox_run to write and run code, "
+    " You also have your own isolated Linux sandbox: use write and sandbox_run to write and run code, "
     "check calculations, or try things out, without asking; fix errors and run again until it works. For a "
     "task with several steps, call update_plan first and keep it current. Use run_command only for things on "
     "the user's own computer."
@@ -465,23 +469,6 @@ def tool_read_selection(_args):
     return _cap(p.stdout, 8192)
 
 
-def tool_read_file(args):
-    raw = str(args.get("path") or "").strip()
-    if not raw:
-        raise ToolError("Give a path")
-    home = os.path.realpath(os.path.expanduser("~"))
-    path = os.path.realpath(os.path.join(home, os.path.expanduser(raw)))
-    if path != home and not path.startswith(home + os.sep):
-        raise ToolError("Only files under your home folder can be read")
-    if not os.path.isfile(path):
-        raise ToolError(f"No such file: {raw}")
-    with open(path, "rb") as f:
-        data = f.read(16384 + 1)
-    if b"\0" in data[:4096]:
-        raise ToolError("That file isn't text")
-    return _cap(data.decode(errors="replace"), 16384)
-
-
 # ── Web ───────────────────────────────────────────────────────────────────
 # Search, free and keyless by default: SearXNG when you run one
 # (RICE_SEARXNG_URL, JSON format enabled), Ollama's hosted search when
@@ -809,13 +796,14 @@ def tool_run_command(args):
     except subprocess.TimeoutExpired:
         raise ToolError("The command ran for 30 s and was stopped")
     out = strip_ansi((p.stdout or "") + (("\n" + p.stderr) if p.stderr else ""))
-    out = _cap(out.strip(), 8192)
+    out = rice_files.head_tail(out.strip(), 8000)
     return (out + "\n" if out else "(no output)\n") + f"(exit {p.returncode})"
 
 
 # ── Sandbox (bin/rice_sandbox.py): its own Linux box, so no approval ─────
 
 import rice_sandbox  # noqa: E402
+import rice_context  # noqa: E402
 
 _SANDBOX = None
 
@@ -841,32 +829,100 @@ def tool_sandbox_run(args):
         code, out = rice_sandbox.run(CHAT, cmd, timeout=120)
     except rice_sandbox.SandboxError as e:
         raise ToolError(str(e))
-    out = _cap(strip_ansi(out), 8192)
+    out = rice_files.head_tail(strip_ansi(out), 8000)
     return (out + "\n" if out else "(no output)\n") + f"(exit {code})"
 
 
-def tool_sandbox_write(args):
+import rice_files  # noqa: E402
+
+
+def _path(args, key="path", default=""):
     try:
-        full = rice_sandbox.resolve(CHAT, args.get("path"))
-    except rice_sandbox.SandboxError as e:
+        return rice_files.resolve(args.get(key) or default or ".", rice_sandbox.workspace(CHAT))
+    except rice_files.FileError as e:
         raise ToolError(str(e))
+
+
+def _files(fn, *a, **kw):
+    try:
+        return fn(*a, **kw)
+    except rice_files.FileError as e:
+        raise ToolError(str(e))
+    except (OSError, UnicodeError) as e:
+        raise ToolError(f"{e.__class__.__name__}: {e}")
+
+
+def tool_read(args):
+    full, _ = _path(args)
+    return _files(rice_files.read, full, args.get("offset"), args.get("limit"))
+
+
+def _write_request(args):
+    full, inside = _path(args)
+    if inside:
+        return None                        # its own folder: no need to ask
     content = str(args.get("content") or "")
-    full.parent.mkdir(parents=True, exist_ok=True)
-    full.write_text(content, encoding="utf-8")
-    rel = full.relative_to(rice_sandbox.workspace(CHAT))
-    return f"Wrote {rel} ({content.count(chr(10)) + (1 if content and not content.endswith(chr(10)) else 0)} lines)"
+    old = full.read_text(encoding="utf-8", errors="replace") if full.is_file() else ""
+    detail = rice_files.diff(full, old, content) if old else content[:4000]
+    return "write", ("Overwrite " if old else "Create ") + rice_files.show(full), detail
 
 
-def tool_sandbox_read(args):
+def tool_write(args):
+    full, _ = _path(args)
+    return _files(rice_files.write, full, str(args.get("content") or ""),
+                  rice_files.label(full, rice_sandbox.workspace(CHAT)))
+
+
+def _edits(args):
+    e = args.get("edits")
+    if isinstance(e, str):                 # pi's argument repair: a JSON string, one object, or top-level fields
+        try:
+            e = json.loads(e)
+        except ValueError:
+            e = None
+    if isinstance(e, dict):
+        e = [e]
+    if not e and args.get("oldText") is not None:
+        e = [{"oldText": args.get("oldText"), "newText": args.get("newText", "")}]
+    return e or []
+
+
+def _edit_request(args):
+    full, inside = _path(args)
+    old, new = _files(rice_files.plan_edit, full, _edits(args))
+    if inside:
+        return None
+    return "write", "Edit " + rice_files.show(full), rice_files.diff(full, old, new)
+
+
+def tool_edit(args):
+    full, _ = _path(args)
+    edits = _edits(args)
+    _, new = _files(rice_files.plan_edit, full, edits)
+    return _files(rice_files.apply_edit, full, new, len(edits), rice_files.label(full, rice_sandbox.workspace(CHAT)))
+
+
+def tool_ls(args):
+    full, _ = _path(args)
+    return _files(rice_files.ls, full)
+
+
+def tool_find(args):
+    full, _ = _path(args, default=str(rice_files.HOME))
+    return _files(rice_files.find, str(args.get("pattern") or "*"), full)
+
+
+def tool_grep(args):
+    full, _ = _path(args, default=str(rice_files.HOME))
+    return _files(rice_files.grep, str(args.get("pattern") or ""), full, args.get("glob"),
+                  bool(args.get("ignoreCase")), False)
+
+
+def tool_remember(args):
     try:
-        full = rice_sandbox.resolve(CHAT, args.get("path"))
-    except rice_sandbox.SandboxError as e:
+        return rice_context.remember(args.get("fact"))
+    except (ValueError, OSError) as e:
         raise ToolError(str(e))
-    if not full.is_file():
-        raise ToolError("No such file in the sandbox")
-    with open(full, "rb") as f:
-        data = f.read(16385)
-    return _cap(data.decode(errors="replace"), 16384)
 
 
 def tool_update_plan(args):
@@ -1010,10 +1066,6 @@ TOOLS = {
     "read_selection": dict(
         schema=_fn("read_selection", "The text the user has selected (highlighted) on screen."),
         item="dynamic_tool_call", title=lambda a: "Reading selection", approve=None, run=tool_read_selection),
-    "read_file": dict(
-        schema=_fn("read_file", "Read a text file in the user's home folder.",
-                   {"path": {"type": "string", "description": "Path, e.g. ~/notes.txt"}}, ["path"]),
-        item="dynamic_tool_call", title=lambda a: f"Reading {a.get('path', '')}", approve=None, run=tool_read_file),
     "sandbox_run": dict(
         schema=_fn("sandbox_run", "Run bash in your own isolated Linux sandbox (Debian with python3, node, npm, "
                    "git, curl, gcc, jq, rg). Use it to run code, test, calculate, convert files or install packages "
@@ -1021,17 +1073,47 @@ TOOLS = {
                    {"command": {"type": "string", "description": "The bash command"}}, ["command"]),
         item="command_execution", title=lambda a: str(a.get("command", ""))[:80], approve=None,
         run=tool_sandbox_run, sandbox=True),
-    "sandbox_write": dict(
-        schema=_fn("sandbox_write", "Create or overwrite a file in the sandbox folder.",
-                   {"path": {"type": "string", "description": "File path relative to the folder, e.g. main.py"},
+    # Files, after pi: relative paths are the sandbox folder, ~/ and / are the user's.
+    "read": dict(
+        schema=_fn("read", "Read a text file. Relative paths are your sandbox folder; ~/ or / paths are the "
+                   "user's files. Shows up to 250 lines; use offset to read on.",
+                   {"path": {"type": "string", "description": "e.g. ~/notes.md or main.py"},
+                    "offset": {"type": "integer", "description": "First line (1-based)"},
+                    "limit": {"type": "integer", "description": "How many lines"}}, ["path"]),
+        item="dynamic_tool_call", title=lambda a: f"Reading {a.get('path', '')}", approve=None, run=tool_read),
+    "write": dict(
+        schema=_fn("write", "Create or overwrite a whole file (parent folders are made). Use edit for changes "
+                   "to an existing file.",
+                   {"path": {"type": "string", "description": "Relative = sandbox folder; ~/… = the user's"},
                     "content": {"type": "string", "description": "The whole file"}}, ["path", "content"]),
-        item="file_change", title=lambda a: f"Writing {a.get('path', '')}", approve=None,
-        run=tool_sandbox_write, sandbox=True),
-    "sandbox_read": dict(
-        schema=_fn("sandbox_read", "Read a file from the sandbox folder.",
-                   {"path": {"type": "string", "description": "File path relative to the folder"}}, ["path"]),
-        item="dynamic_tool_call", title=lambda a: f"Reading {a.get('path', '')}", approve=None,
-        run=tool_sandbox_read, sandbox=True),
+        item="file_change", title=lambda a: f"Writing {a.get('path', '')}", approve=_write_request, run=tool_write),
+    "edit": dict(
+        schema=_fn("edit", "Change part of an existing file by exact text replacement. Each oldText must match the "
+                   "file exactly (copy it from read) and be unique; put several changes in one call.",
+                   {"path": {"type": "string"},
+                    "edits": {"type": "array", "items": {"type": "object", "properties": {
+                        "oldText": {"type": "string"}, "newText": {"type": "string"}},
+                        "required": ["oldText", "newText"]}}}, ["path", "edits"]),
+        item="file_change", title=lambda a: f"Editing {a.get('path', '')}", approve=_edit_request, run=tool_edit),
+    "ls": dict(
+        schema=_fn("ls", "List a folder.", {"path": {"type": "string", "description": "Default: sandbox folder"}}),
+        item="dynamic_tool_call", title=lambda a: f"Listing {a.get('path') or 'sandbox'}", approve=None, run=tool_ls),
+    "find": dict(
+        schema=_fn("find", "Find files by name (glob, e.g. *.py), searching a folder and below.",
+                   {"pattern": {"type": "string"}, "path": {"type": "string", "description": "Where to look, e.g. ~/Projects"}},
+                   ["pattern"]),
+        item="dynamic_tool_call", title=lambda a: f"Finding {a.get('pattern', '')}", approve=None, run=tool_find),
+    "grep": dict(
+        schema=_fn("grep", "Search file contents (ripgrep regex) under a folder.",
+                   {"pattern": {"type": "string"}, "path": {"type": "string"},
+                    "glob": {"type": "string", "description": "Only these files, e.g. *.qml"},
+                    "ignoreCase": {"type": "boolean"}}, ["pattern"]),
+        item="dynamic_tool_call", title=lambda a: f"Searching for “{a.get('pattern', '')}”", approve=None, run=tool_grep),
+    "remember": dict(
+        schema=_fn("remember", "Save a lasting fact about the user for future chats (their preferences, setup, "
+                   "names, projects). Only when they tell you something worth keeping or ask you to remember.",
+                   {"fact": {"type": "string", "description": "One short sentence"}}, ["fact"]),
+        item="dynamic_tool_call", title=lambda a: "Remembering", approve=None, run=tool_remember),
     "update_plan": dict(
         schema=_fn("update_plan", "For a task with several steps (coding, research, setup): write the plan "
                    "first, then call again as each step starts and finishes. Keep it to 2-8 short steps.",
@@ -1172,6 +1254,11 @@ def parse_args(raw):
     return {}
 
 
+def missing(tool, args):
+    req = ((tool.get("schema") or {}).get("function") or {}).get("parameters", {}).get("required", [])
+    return [k for k in req if args.get(k) in (None, "") and not (k == "edits" and args.get("oldText"))]
+
+
 def run_tool(ids, name, raw_args):
     """Run one tool call as an item. Returns (status, output) for the model."""
     tool = TOOLS.get(name)
@@ -1198,6 +1285,9 @@ def run_tool(ids, name, raw_args):
             status, output = "failed", f"Unknown tool: {name}. Use only the tools you were given."
         elif bad:
             status, output = "failed", bad
+        elif missing(tool, args):
+            status, output = "failed", (f"Validation failed for tool \"{name}\": missing "
+                                        + ", ".join(missing(tool, args)) + "\n\nReceived arguments:\n" + json.dumps(args))
         else:
             try:
                 if tool.get("ask"):
@@ -1211,8 +1301,9 @@ def run_tool(ids, name, raw_args):
                         return "declined", "The user didn't answer. Carry on with your best judgement and say what you assumed."
                     emit({"type": "item.completed", "id": item_id, "status": "completed", "output": answer})
                     return "completed", f"The user answered: {answer}"
-                if tool["approve"]:
-                    kind, summary, detail = tool["approve"](args)
+                ask = tool["approve"](args) if tool["approve"] else None
+                if ask:
+                    kind, summary, detail = ask
                     decision = APPROVALS.ask(ids, item_id, kind, summary, detail)
                     if decision != "accept":
                         what = "command" if kind == "command" else "action"
@@ -1310,6 +1401,7 @@ def stream_round(payload, stream, stats):
         if msg.get("tool_calls"):
             calls.extend(msg["tool_calls"])
         if chunk.get("done"):
+            stats["_doneReason"] = chunk.get("done_reason") or ""
             for kind, text in splitter.flush():
                 stream.write(kind, text)
             ev, dur = chunk.get("eval_count") or 0, chunk.get("eval_duration") or 0
@@ -1347,6 +1439,8 @@ def run_turn(req):
     system += time.strftime(" Today is %A, %d %B %Y.") + (
         " When you answer from a tool result or a page, copy dates, numbers and names exactly as written there.")
     tools = [t["schema"] for t in TOOLS.values() if not t.get("sandbox") or sandbox_ready()]
+    if os.environ.get("RICE_AGENT_CONTEXT") != "off":
+        system += rice_context.block()        # this computer, your AGENTS.md, memory
     if use_tools:
         system += TOOL_GUIDE + (SANDBOX_GUIDE if sandbox_ready() else "")
     convo = to_ollama_messages(req.get("messages") or [], "vision" in caps)
@@ -1401,9 +1495,16 @@ def run_turn(req):
                     rounds += 1
                 messages.append({"role": "assistant", "content": stream.message_text(), "tool_calls": calls})
                 stream.text.clear()
+                cut_off = stats.pop("_doneReason", "") == "length"
                 for c in calls:
                     fn = c.get("function") or {}
                     name = fn.get("name", "")
+                    if cut_off:
+                        # pi: a reply cut at the length limit may carry half-written arguments; don't run them.
+                        messages.append({"role": "tool", "tool_name": name, "content":
+                            f"Tool call \"{name}\" was not run: your reply hit the output limit, so its arguments "
+                            "may be cut off. Call it again with complete arguments (write long files in parts)."})
+                        continue
                     _, output = run_tool(ids, name, fn.get("arguments"))
                     messages.append({"role": "tool", "tool_name": name, "content": output})
             if APPROVALS is not None and APPROVALS.has_steer():

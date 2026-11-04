@@ -242,12 +242,14 @@ export function healTail(text) {
 // A group of tool calls in one line (T3 Code's work-log summaries):
 // "Searched 2 times, read 3 pages and ran a command".
 export function toolSummary(parts) {
-    const n = { search: 0, shop: 0, read: 0, run: 0, write: 0, ask: 0, other: 0 };
+    const n = { search: 0, shop: 0, read: 0, look: 0, run: 0, write: 0, edit: 0, ask: 0, mem: 0, other: 0 };
     (parts || []).forEach(p => {
         const t = p.title || "";
         if (p.itemType === "web_search") n[/^Shopping/.test(t) ? "shop" : "search"]++;
         else if (p.itemType === "command_execution") n.run++;
-        else if (p.itemType === "file_change") n.write++;
+        else if (p.itemType === "file_change") n[/^Editing /.test(t) ? "edit" : "write"]++;
+        else if (/^(Finding|Listing|Searching for) /.test(t)) n.look++;
+        else if (/^Remembering/.test(t)) n.mem++;
         else if (p.itemType === "user_input") n.ask++;
         else if (/^Reading /.test(t)) n.read++;
         else n.other++;
@@ -257,9 +259,12 @@ export function toolSummary(parts) {
     if (n.search) bits.push(n.search === 1 ? "searched the web" : "searched " + n.search + " times");
     if (n.shop) bits.push(n.shop === 1 ? "checked prices" : "checked prices " + n.shop + " times");
     if (n.read) bits.push("read " + count("read", "a page or file", "pages and files"));
+    if (n.look) bits.push(n.look === 1 ? "looked through files" : "searched files " + n.look + " times");
     if (n.write) bits.push("wrote " + count("write", "a file", "files"));
+    if (n.edit) bits.push("edited " + count("edit", "a file", "files"));
     if (n.run) bits.push("ran " + count("run", "a command", "commands"));
     if (n.ask) bits.push("asked you");
+    if (n.mem) bits.push("saved a memory");
     if (n.other) bits.push("used " + count("other", "a tool", "tools"));
     if (!bits.length) return "";
     const s = bits.length === 1 ? bits[0] : bits.slice(0, -1).join(", ") + " and " + bits[bits.length - 1];

@@ -40,6 +40,8 @@ def run_agent(tmp_path):
                 "HOME": str(tmp_path),
                 "RICE_TEST_TMP": str(tmp_path),
                 "RICE_SANDBOX": "off",
+                "XDG_CONFIG_HOME": str(tmp_path / "config"),
+                "XDG_CACHE_HOME": str(tmp_path / "cache"),
                 "RICE_SANDBOX_DIR": str(tmp_path / "sandbox"),
                 **(env or {}),
             }

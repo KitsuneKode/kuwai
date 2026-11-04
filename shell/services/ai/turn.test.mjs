@@ -273,5 +273,7 @@ describe("toolSummary", () => {
       .toBe("Searched 2 times and read a page or file");
     expect(toolSummary([t("web_search", "Shopping “laptop”"), t("file_change", "Writing a.py"), t("command_execution", "python3 a.py")]))
       .toBe("Checked prices, wrote a file and ran a command");
+    expect(toolSummary([t("dynamic_tool_call", "Searching for “x”"), t("dynamic_tool_call", "Reading ~/a.qml"), t("file_change", "Editing ~/a.qml")]))
+      .toBe("Read a page or file, looked through files and edited a file");
   });
 });

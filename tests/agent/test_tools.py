@@ -30,7 +30,7 @@ def test_tool_call_runs_and_answers(run_agent):
     assert done["status"] == "completed"
     assert "stub-title" in done["output"]
     assert events.index(started(events, "assistant_message")[0]) > events.index(done)
-    assert {t["function"]["name"] for t in fake.requests[0]["tools"]} >= {"active_window", "web_search", "read_file"}
+    assert {t["function"]["name"] for t in fake.requests[0]["tools"]} >= {"active_window", "web_search", "read", "edit", "grep"}
     sent = fake.requests[1]["messages"]
     assert sent[-2]["role"] == "assistant" and sent[-2]["tool_calls"][0]["function"]["name"] == "active_window"
     assert sent[-1]["role"] == "tool" and sent[-1]["tool_name"] == "active_window"
@@ -55,7 +55,7 @@ def test_unknown_tool_fails_item_not_turn(run_agent):
 
 
 def test_string_arguments_are_parsed(run_agent):
-    events, _ = run_agent(USER, [[call("read_file", '{"path": "notes.txt"}'), {"done": True}], answer()],
+    events, _ = run_agent(USER, [[call("read", '{"path": "notes.txt"}'), {"done": True}], answer()],
                           caps=TOOLS_CAPS)
     tool = tool_items(events)[0]
     assert tool["input"] == {"path": "notes.txt"}
@@ -69,21 +69,35 @@ def test_tool_round_cap(run_agent):
     assert "tools" not in fake.requests[-1]
 
 
-def test_read_file_refuses_outside_home(run_agent):
-    events, _ = run_agent(USER, [[call("read_file", {"path": "/etc/shadow"}), {"done": True}], answer()],
+def test_read_refuses_secrets(run_agent, tmp_path):
+    (tmp_path / ".ssh").mkdir()
+    (tmp_path / ".ssh" / "id_ed25519").write_text("PRIVATE")
+    events, _ = run_agent(USER, [[call("read", {"path": "~/.ssh/id_ed25519"}), {"done": True}], answer()],
                           caps=TOOLS_CAPS)
     done = completion(events, tool_items(events)[0]["id"])
-    assert done["status"] == "failed"
-    assert "home" in done["output"].lower()
+    assert done["status"] == "failed" and "secrets" in done["output"] and "PRIVATE" not in done["output"]
 
 
-def test_read_file_reads_inside_home(run_agent, tmp_path):
-    (tmp_path / "notes.txt").write_text("remember the milk")
-    events, _ = run_agent(USER, [[call("read_file", {"path": "~/notes.txt"}), {"done": True}], answer()],
+def test_read_home_file_with_offset_note(run_agent, tmp_path):
+    (tmp_path / "notes.txt").write_text("\n".join(f"line {i}" for i in range(1, 401)))
+    events, _ = run_agent(USER, [[call("read", {"path": "~/notes.txt"}), {"done": True}], answer()],
                           caps=TOOLS_CAPS)
     done = completion(events, tool_items(events)[0]["id"])
-    assert done["status"] == "completed"
-    assert "remember the milk" in done["output"]
+    assert done["status"] == "completed" and done["output"].startswith("line 1\n")
+    assert "[Showing lines 1-250 of 400. Use offset=251 to continue.]" in done["output"]
+
+
+def test_missing_argument_is_explained(run_agent):
+    events, fake = run_agent(USER, [[call("grep", {}), {"done": True}], answer()], caps=TOOLS_CAPS)
+    out = fake.requests[1]["messages"][-1]["content"]
+    assert out.startswith('Validation failed for tool "grep": missing pattern') and "Received arguments" in out
+
+
+def test_cut_off_calls_are_not_run(run_agent, tmp_path):
+    cut = [call("write", {"path": "a.txt", "content": "half"}), {"done": True, "done_reason": "length"}]
+    events, fake = run_agent(USER, [cut, answer()], caps=TOOLS_CAPS)
+    assert not tool_items(events) and not (tmp_path / "a.txt").exists()
+    assert "hit the output limit" in fake.requests[1]["messages"][-1]["content"]
 
 
 def test_clipboard_and_selection(run_agent):

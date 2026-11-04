@@ -125,7 +125,8 @@ Singleton {
     // The window each model gets. Qwen3.5's hybrid attention keeps its KV cache
     // small: 16k fits beside the desktop in 6 GB at 27 tok/s (8k: 36, measured
     // 2026-11-03). Older 8B models need all of it at 4k.
-    function contextFor(m) { return /qwen3\.5/.test(m || "") ? 16384 : 4096; }
+    // The 8B gets 8k: the system prompt and 20 tools are ~2,500 tokens, 61% of 4k.
+    function contextFor(m) { return /qwen3\.5/.test(m || "") ? 16384 : /8b/.test(m || "") ? 8192 : 4096; }
     readonly property int contextTotal: lastStats && lastStats.numCtx ? lastStats.numCtx : contextFor(model)
 
     function modelLabel(m) {
@@ -145,7 +146,7 @@ Singleton {
     // first with what each is for; anything else installed comes after.
     readonly property var curated: [
         { id: "qwen3.5:4b", role: "Everyday", note: "Fastest and most accurate · sees images · 16k context" },
-        { id: "huihui_ai/qwen3-abliterated:8b", role: "Uncensored", note: "No refusals · accurate, ~3× slower · 4k context" },
+        { id: "huihui_ai/qwen3-abliterated:8b", role: "Uncensored", note: "No refusals · accurate, slower · 8k context" },
         { id: "huihui_ai/qwen3.5-abliterated:4b", role: "Uncensored, fast", note: "No refusals · sees images · weaker at code" }
     ]
 
@@ -757,7 +758,7 @@ function onPanelClosed() {
         // Compact when the last turn filled 3/4 of the window, or the history
         // looks that big (≈4 characters a token, plus ~900 for the system prompt and tools).
         const chars = sent.api.reduce((n, m) => n + (m.content || "").length, root.summary.length);
-        const estimate = chars / 4 + 1500;     // + system prompt and tool schemas
+        const estimate = chars / 4 + 2600;     // + system prompt, context and 20 tool schemas (measured 2,499)
         const ctx = root.contextFor(root.model);
         const compact = Math.max(root.contextUsed, estimate) >= root.compactAt * ctx;
         chatProc.sentIndex = sent.index;
