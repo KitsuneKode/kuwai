@@ -116,7 +116,43 @@ Scope {
                 HoverHandler { id: nearHover; onHoveredChanged: { if (hovered) { nearOff.stop(); nearDwell.restart(); } else { nearDwell.stop(); if (win.near) nearOff.restart(); } } }
             }
             Timer { id: nearDwell; interval: 90; onTriggered: win.near = true }
-            Timer { id: nearOff; interval: 450; onTriggered: if (!win.hovered && !nearHover.hovered) win.near = false }
+            Timer { id: nearOff; interval: 450; onTriggered: if (!win.hovered && !nearHover.hovered && !win.inZone(20)) win.near = false }
+            // Nearing from below or the sides too, 30–60 px out (services/
+            // Pointer asks Hyprland where the pointer is; no input region, so
+            // the windows under this zone keep every click). The zone: 56 px
+            // either side of the resting island, 48 px below it. Not a false
+            // positive: two samples in a row inside it (≈160 ms) and not
+            // flying past (> 2500 px/s). Out: 20 px of slack, then the same
+            // 450 ms fold.
+            readonly property bool wantsProximity: showBar && (Settings.islandRest === "minimal" || tucked) && !hovered
+            onWantsProximityChanged: wantsProximity ? Pointer.want() : Pointer.unwant()
+            // (A helper: this window already has its own onCompleted.)
+            QtObject {
+                Component.onCompleted: if (win.wantsProximity) Pointer.want()
+                Component.onDestruction: if (win.wantsProximity) Pointer.unwant()
+            }
+            readonly property var monGeo: monitor && monitor.lastIpcObject ? monitor.lastIpcObject : ({})
+            readonly property real localX: Pointer.x - (monGeo.x || 0)
+            readonly property real localY: Pointer.y - (monGeo.y || 0)
+            readonly property bool onThisScreen: localX >= 0 && localX < width && localY >= 0 && localY < height
+            function inZone(slack) {
+                return onThisScreen && Math.abs(localX - width / 2) <= restW / 2 + 56 + slack && localY <= restH + top + 48 + slack;
+            }
+            property int zoneHits: 0
+            Connections {
+                target: Pointer
+                function onTChanged() {
+                    if (!win.wantsProximity) { win.zoneHits = 0; return; }
+                    if (win.inZone(win.near ? 20 : 0) && (win.near || Pointer.speed < 2500)) {
+                        win.zoneHits++;
+                        if (win.near) nearOff.stop();
+                        else if (win.zoneHits >= 2) { nearOff.stop(); win.near = true; }
+                    } else {
+                        win.zoneHits = 0;
+                        if (win.near && !win.hovered && !nearHover.hovered && !nearOff.running) nearOff.restart();
+                    }
+                }
+            }
             // Shown by nearing, the island grows only once the pointer comes
             // down onto it, not while it rests on the screen's edge.
             readonly property bool edgeOnly: (win.tucked || Settings.islandRest === "minimal") && frameHover.hovered && frameHover.point.position.y < 6

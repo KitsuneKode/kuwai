@@ -242,8 +242,12 @@ Singleton {
     // Watchdog: the job ended without saying "done" (killed, crashed).
     Timer {
         interval: 4000; repeat: true
-        running: root.running && follower.running
-        onTriggered: alive.running = true
+        // While a run is shown, whether or not its feed is still being read:
+        // a feed that ended without "done" left the island saying "updating"
+        // for good (the check only ran while the feed did).
+        running: root.running
+        triggeredOnStart: true
+        onTriggered: if (!alive.running) alive.running = true
     }
     Process {
         id: alive

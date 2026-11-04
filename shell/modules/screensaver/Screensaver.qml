@@ -51,6 +51,10 @@ Scope {
         onLoaded: root.video = text().trim()
     }
     readonly property bool useVideo: video !== "" && (!UPower.onBattery || Settings.liveOnBattery)
+    readonly property string style: Settings.screensaverStyle || "dusk"   // dusk · live · still
+    // The screen you were on when it came up: the one Live plays on.
+    property string mainScreen: ""
+    onShowingChanged: { if (showing) mainScreen = Screens.focusedName; Saver.showing = showing; }
     readonly property string still: "file://" + Quickshell.env("HOME") + "/.cache/hyde/wall.set"
 
     function dismiss() { forced = false; }
@@ -89,38 +93,47 @@ Scope {
 
                     Rectangle { anchors.fill: parent; color: "black" }
 
-                    // The still wallpaper, slowly drifting (Ken Burns), when there's no video.
-                    Image {
-                        id: wall
-                        visible: !root.useVideo
+                    // What fills the screen: the Dusk scene (default, drawn live,
+                    // nothing to decode), your live wallpaper, or the still one.
+                    // Live plays on one screen only (the one you were using);
+                    // the others show Dusk, so it is decoded once, not per screen.
+                    readonly property bool liveHere: root.style === "live" && root.useVideo && win.screen.name === root.mainScreen
+                    readonly property bool stillHere: root.style === "still"
+                    Loader {
                         anchors.fill: parent
-                        source: root.still
+                        active: !stage.liveHere && !stage.stillHere
+                        sourceComponent: DuskScene { running: root.showing }
+                    }
+                    Image {
+                        visible: stage.stillHere
+                        anchors.fill: parent
+                        source: stage.stillHere ? root.still : ""
                         fillMode: Image.PreserveAspectCrop
                         asynchronous: true
-                        cache: false
-                        sourceSize: Qt.size(win.width, win.height)
+                        // Decoded once at a sensible size (and cached): it was
+                        // full size, uncached, on every appearance.
+                        sourceSize: Qt.size(Math.min(win.width, 1920), Math.min(win.height, 1080))
                         scale: 1.06
                         SequentialAnimation on scale {
-                            running: !root.useVideo && root.showing && !Theme.reduceMotion
+                            running: stage.stillHere && root.showing && !Theme.reduceMotion
                             loops: Animation.Infinite
                             NumberAnimation { to: 1.12; duration: 40000; easing.type: Easing.InOutSine }
                             NumberAnimation { to: 1.06; duration: 40000; easing.type: Easing.InOutSine }
                         }
                     }
-                    VideoOutput {
-                        id: out
-                        visible: root.useVideo
+                    Loader {
                         anchors.fill: parent
-                        fillMode: VideoOutput.PreserveAspectCrop
-                    }
-                    MediaPlayer {
-                        id: player
-                        source: root.useVideo ? "file://" + root.video : ""
-                        videoOutput: out
-                        audioOutput: AudioOutput { muted: true }
-                        loops: MediaPlayer.Infinite
-                        Component.onCompleted: if (root.useVideo) play()
-                        onSourceChanged: if (root.useVideo) play(); else stop()
+                        active: stage.liveHere
+                        sourceComponent: Item {
+                            VideoOutput { id: out; anchors.fill: parent; fillMode: VideoOutput.PreserveAspectCrop }
+                            MediaPlayer {
+                                source: "file://" + root.video
+                                videoOutput: out
+                                audioOutput: AudioOutput { muted: true }
+                                loops: MediaPlayer.Infinite
+                                Component.onCompleted: play()
+                            }
+                        }
                     }
                     // A soft vignette so the clock reads on any wallpaper.
                     Rectangle {

@@ -18,6 +18,7 @@ import Quickshell.Wayland
 import Quickshell.Hyprland
 import Quickshell.Services.UPower
 import qs.config
+import qs.services
 
 Scope {
     id: root
@@ -86,7 +87,7 @@ Scope {
                     return W > 0 && H > 0 ? Math.min(1, area / (W * H)) : 0;
                 }
                 readonly property bool covered: fullscreen || coverage >= 0.85
-                readonly property bool shouldPlay: root.video !== "" && !covered && !root.locked && root.batteryOk
+                readonly property bool shouldPlay: root.video !== "" && !covered && !root.locked && root.batteryOk && !Saver.showing   // under the screensaver: nobody sees it
 
                 VideoOutput {
                     id: out

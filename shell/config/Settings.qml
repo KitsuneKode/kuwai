@@ -38,6 +38,7 @@ Singleton {
     readonly property alias quickPrimary: s.quickPrimary
     readonly property alias screensaverWhen: s.screensaverWhen
     readonly property alias screensaverMins: s.screensaverMins
+    readonly property alias screensaverStyle: s.screensaverStyle
 
     function set(key, value) { s[key] = value; }
 
@@ -95,6 +96,7 @@ Singleton {
             property bool islandTucked: false
             property string screensaverWhen: "caffeine"   // caffeine · always · off
             property int screensaverMins: 3
+            property string screensaverStyle: "dusk"   // dusk · live · still
             property string quickPrimary: "caffeine"   // the quick switch shown in the hover view
             property bool liveOnBattery: false   // live wallpaper keeps playing on battery
         }
