@@ -110,10 +110,20 @@ Scope {
     onMicMutedChanged: if (armed) showMic()
     onSinkChanged: {
         sinkSwitchedAt = Date.now();
-        if (armed) sinkConnected.restart();
+        if (armed) { sinkTries = 0; sinkConnected.restart(); }
     }
-    // Wait for the new node to bind its properties before naming it.
-    Timer { id: sinkConnected; interval: 350; onTriggered: if (root.sink && root.sink.ready) root.showVolume(true) }
+    // Wait for the new node to bind its properties before naming it. A
+    // device just plugged in (a DAC) is a new node and can take a few
+    // seconds; one already known is ready at the first look.
+    property int sinkTries: 0
+    Timer {
+        id: sinkConnected
+        interval: 350; repeat: true
+        onTriggered: {
+            if (root.sink && root.sink.ready && root.sink.audio) { stop(); root.sinkSwitchedAt = Date.now(); root.showVolume(true); }
+            else if (++root.sinkTries > 12) stop();
+        }
+    }
 
     function bluetoothDevice(props) {
         const addr = (props["api.bluez5.address"] || "").toUpperCase();

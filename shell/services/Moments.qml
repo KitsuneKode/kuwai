@@ -184,7 +184,7 @@ Singleton {
         id: hello
         path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/rice/welcomed"
         printErrors: false
-        onLoadFailed: { setText(""); helloLater.start(); }
+        onLoadFailed: { setText(String(Date.now()) + "\n"); helloLater.start(); }
     }
     // After the desktop has drawn, so it's seen.
     Timer { id: helloLater; interval: 1800; onTriggered: root.show({ kind: "hello", image: root.face, round: true, label: root.greeting(), value: root.userName, ring: -1, tone: Theme.textPrimary }, 3600) }

@@ -23,12 +23,21 @@ Singleton {
 
     readonly property string dir: Quickshell.env("HOME") + "/.config/rice/devices"
     property var entries: []
+    property bool parsed: false
+    function parse() {
+        try { const d = JSON.parse(file.text()); entries = Array.isArray(d) ? d : []; } catch (e) { entries = []; }
+        parsed = true;
+    }
     FileView {
+        id: file
         path: Quickshell.env("HOME") + "/.config/rice/devices.json"
+        // This singleton is made on first use (the device at login), before
+        // `loaded` arrives: the first lookup reads the file itself.
+        blockLoading: true
         watchChanges: true; printErrors: false
         onFileChanged: reload()
-        onLoaded: { try { const d = JSON.parse(text()); root.entries = Array.isArray(d) ? d : []; } catch (e) { root.entries = []; } }
-        onLoadFailed: root.entries = []
+        onLoaded: root.parse()
+        onLoadFailed: { root.entries = []; root.parsed = true; }
     }
     // Which image files exist (so a missing one shows the glyph, not a hole).
     property var present: ({})
@@ -49,6 +58,7 @@ Singleton {
     // { label, via, image (file URL or ""), kind } for a device name, or null.
     function lookup(name) {
         if (!name) return null;
+        if (!parsed) parse();
         for (const e of entries) {
             if (!e || !e.match) continue;
             let hit = false;

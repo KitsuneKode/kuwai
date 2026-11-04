@@ -97,7 +97,11 @@ ShellRoot {
         interval: 1100
         onTriggered: {
             root.locked = false;
-            Greetd.launch(["sh", "-c", 'exec "${SHELL:-/bin/sh}" -l -c "$1"', "sh", root.session], [], true);
+            // greetd joins these with spaces into `sh -c "…profile…; exec <them>"`,
+            // so they're one shell line, quoted for that: separate argv words
+            // (sh -c 'script' sh arg) fall apart into `sh -c exec`, which
+            // ends the session at once, and greetd shows the login again.
+            Greetd.launch(['"${SHELL:-/bin/sh}"', "-l", "-c", "'" + root.session.replace(/'/g, "'\\''") + "'"], [], true);
         }
     }
 
