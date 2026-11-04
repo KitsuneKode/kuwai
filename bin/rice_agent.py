@@ -1374,7 +1374,12 @@ def run_turn(req):
             if use_tools and not capped:
                 payload["tools"] = tools
             if "thinking" in caps:
-                payload["think"] = bool(req.get("think", True))     # the composer's Think toggle
+                payload["think"] = bool(req.get("think", True)) and not capped
+            if capped:
+                # Out of tool rounds: answer now from what it has, no more thinking or tools.
+                payload["messages"] = messages + [{"role": "user", "content":
+                    "(You've used all your tool calls for this turn. Answer now from what you have, "
+                    "and say what's left undone.)"}]
             try:
                 calls = stream_round(payload, stream, stats)
             except Steer:
