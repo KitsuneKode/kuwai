@@ -100,6 +100,7 @@ Scope {
                 item: frame.opacity > 0.01 ? frame : null
                 // Minimal island: the strip along the top edge beside it counts too.
                 Region { item: Settings.islandRest === "minimal" || win.tucked ? nearStrip : null }
+                Region { item: win.hovered ? slop : null }
             }
             // Nearing the island: the pointer resting on the top edge over it
             // (its resting width and 80 px either side, not the grown one, so
@@ -132,7 +133,22 @@ Scope {
             property bool hovered: false
             property bool grown: false
             // Over the workspace pills the island stays put: they're for clicking.
-            readonly property bool overPills: restRow.pillsHovered || restRow.musicHovered
+            readonly property bool overPills: restRow.pillsHovered || restRow.musicHovered || restRow.marksHovered
+            // Minimal, reached on the island itself (not by the edge): the
+            // compact row holds still under the pointer, so the art or a mark
+            // you aimed at stays there; music opens Now Playing from it.
+            property bool holdCompact: false
+            // Reached by the island itself, kept by it and 12 px around (hit
+            // slop): grazing its edge doesn't flicker it.
+            function syncHover() {
+                const h = frameHover.hovered || (hovered && slopHover.hovered);
+                if (h && !hovered) holdCompact = restRow.compact;
+                if (!h) { holdCompact = false; pushed = false; }
+                hovered = h;
+                if (bannerHere || !h) Alerts.held = h && bannerHere;
+                if (peekHere || !h) Notifs.peekHeld = h && peekHere;
+                if (deviceHere || !h) Moments.cardHeld = h && deviceHere;
+            }
             onOverPillsChanged: if (!overPills && hovered && !grown) intent.restart()
             // A banner on show stays a banner under the pointer (so its button
             // can be clicked): hovering only grows the island when there's none.
@@ -140,7 +156,8 @@ Scope {
                 id: intent; interval: Settings.hoverDelay
                 onTriggered: {
                     if (win.hovered && win.edgeOnly && !win.grown) { restart(); return; }
-                    win.grown = win.hovered && !win.panelHere && !win.overPills && !win.bannerHere && !win.peekHere && !win.deviceHere;
+                    if (win.hovered && win.holdCompact && restRow.activity === "media" && !win.panelHere && !win.pushed) { Island.preview("media", win.screenName); return; }
+                    win.grown = win.hovered && !win.panelHere && !win.overPills && !win.bannerHere && !win.peekHere && !win.deviceHere && !win.pushed;
                 }
             }
             // Open tray menus (TrayRow): the pointer is on the menu, not the
@@ -187,6 +204,30 @@ Scope {
             // A device connecting or going (Moments.card), below both.
             readonly property bool deviceHere: Moments.card !== null && screenName === Screens.focusedName && !panelHere && !grown && !bannerHere && !peekHere
             Spring { id: dv; tier: win.deviceHere ? win.grow : win.shrink; epsilon: 0.001; target: win.deviceHere ? 1 : 0 }
+
+            // ── Pushing a card back ──────────────────────────────────────
+            // A banner, notification or device card isn't something to sit
+            // through: drag it up (it follows, rubber-banded, and goes on
+            // release past 18 px or a flick), scroll on it, or right-click.
+            // The island then stays at rest until the pointer leaves.
+            readonly property bool cardHere: bannerHere || peekHere || deviceHere
+            property real pull: 0
+            property bool committing: false
+            property bool pushed: false
+            Behavior on pull { enabled: !pushDrag.active && !win.committing; NumberAnimation { duration: 260; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+            function rubber(d, dim) { return d * dim * 0.55 / (dim + 0.55 * d); }
+            function pushBack(v) {
+                committing = true;
+                sh.value = sh.value - pull;
+                sh.velocity = Math.min(0, v || 0);
+                pull = 0;
+                committing = false;
+                pushed = true;
+                Alerts.held = false; Notifs.peekHeld = false; Moments.cardHeld = false;
+                if (bannerHere) Alerts.dismiss();
+                else if (peekHere) Notifs.dropPeek();
+                else if (deviceHere) Moments.dropCard();
+            }
             readonly property real targetW: panelHere ? panelSize.width : grown ? hoverSize.width : bannerHere ? 440 : peekHere ? 460 : deviceHere ? 420 : restRow.implicitWidth + 32
             readonly property real targetH: panelHere ? panelSize.height : grown ? hoverSize.height : bannerHere ? 72 : peekHere ? 76 : deviceHere ? 84 : restH
             // Published so surfaces that grow out of the island (the HUD, the
@@ -335,16 +376,40 @@ Scope {
                 strength: (0.25 + 0.75 * Math.max(m.value, pv.value)) * frame.opacity
             }
             Item {
+                id: slop
+                x: frame.x - 12; y: 0
+                width: frame.width + 24; height: frame.y + frame.height + 12
+                HoverHandler { id: slopHover; onHoveredChanged: win.syncHover() }
+            }
+            Item {
                 id: frame
                 width: Math.max(0, sw.value) + win.ear * 2
-                height: Math.max(0, sh.value)
+                height: Math.max(0, sh.value - win.pull)
                 x: Math.round((win.width - width) / 2)
                 y: win.top
                 // Without the bar it is only there for a panel: it fades in as it grows.
                 opacity: win.showBar ? (win.outNow ? 1 : 0) : Math.max(0, Math.min(1, Math.max(pv.value, bv.value, nv.value, dv.value) * 2.5))
                 Behavior on opacity { enabled: win.tucked || !win.outNow; NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
 
-                HoverHandler { id: frameHover; onHoveredChanged: { win.hovered = hovered; if (win.bannerHere || !hovered) Alerts.held = hovered && win.bannerHere; if (win.peekHere || !hovered) Notifs.peekHeld = hovered && win.peekHere; if (win.deviceHere || !hovered) Moments.cardHeld = hovered && win.deviceHere; } }
+                HoverHandler { id: frameHover; onHoveredChanged: win.syncHover() }
+                DragHandler {
+                    id: pushDrag
+                    enabled: win.cardHere
+                    target: null
+                    xAxis.enabled: false
+                    onCentroidChanged: {
+                        if (!active) return;
+                        const dy = centroid.scenePosition.y - centroid.scenePressPosition.y;
+                        win.pull = dy < 0 ? win.rubber(-dy, 80) : -win.rubber(dy, 30);
+                    }
+                    onActiveChanged: if (!active && win.cardHere) { if (win.pull > 18 || centroid.velocity.y < -400) win.pushBack(centroid.velocity.y); else win.pull = 0; }
+                }
+                WheelHandler {
+                    enabled: win.cardHere
+                    property real sum: 0
+                    onWheel: event => { sum += Math.abs(event.angleDelta.y) + Math.abs(event.pixelDelta.y); if (sum >= 60) { sum = 0; win.pushBack(-600); } }
+                }
+                TapHandler { enabled: win.cardHere; acceptedButtons: Qt.RightButton; onTapped: win.pushBack(0) }
 
                 // The island itself: a notch, or a floating black-glass pill.
                 NotchShape {
@@ -368,6 +433,7 @@ Scope {
                     width: Math.max(0, sw.value)
                     height: frame.height
                     clip: true
+                    opacity: 1 - 0.7 * Math.min(1, Math.max(0, win.pull) / 45)
 
                     // ── At rest ──────────────────────────────────────────
                     IslandRest {

@@ -40,7 +40,9 @@ Item {
     // hovering or Super+Alt+I brings the details back.
     readonly property bool takeover: ["auth", "update", "vox", "rec", "timer", "shazam", "moment"].indexOf(activity) >= 0
     readonly property bool compact: (Settings.islandRest === "minimal" || Settings.islandTucked || (Settings.islandRest === "auto" && takeover))
-                                    && !Island.peek && !bar.near && !bar.hovered
+                                    && !Island.peek && !bar.near && (!bar.hovered || bar.holdCompact)
+    // On the small marks (agents, the dots): their tips and clicks, not a grown island.
+    readonly property bool marksHovered: agentHover.hovered || missedHover.hovered || micHover.hovered || camHover.hovered
     // The mini notch: compact with nothing alive shows the time, and only
     // the time (plus a privacy dot when one is lit). Anything alive (music,
     // a moment, a password, dictation, a recording) takes its place.
@@ -417,9 +419,20 @@ Item {
                 size: 11; weight: Theme.wSemibold; rounded: true
                 color: Theme.textSecondary
             }
+            // Click: the Agents tab. Right-click: straight to the (first) agent's tab.
             HoverHandler { id: agentHover; margin: 6; cursorShape: Qt.PointingHandCursor }
-            TapHandler { onTapped: Notifs.toggleCenter("agents", "pointer", rest.bar.screenName) }
-            Tip { text: Kittymux.working.map(w => w.agent + " · " + w.title).join("  |  ") + " · working"; shown: agentHover.hovered; below: true }
+            TapHandler {
+                acceptedButtons: Qt.LeftButton | Qt.RightButton
+                onTapped: (point, button) => {
+                    if (button === Qt.RightButton && Kittymux.working.length) Kittymux.act(Kittymux.working[0].action);
+                    else Notifs.toggleCenter("agents", "pointer", rest.bar.screenName);
+                }
+            }
+            Tip {
+                text: Kittymux.working.map(w => w.agent + " · " + w.title).join("  |  ") + " · working"
+                      + "\nClick: Agents · Right-click: go to " + (Kittymux.working.length > 1 ? "the first" : "it")
+                shown: agentHover.hovered; below: true
+            }
         }
         // The camera is on: a green dot (Apple's), with who has it.
         Rectangle {
@@ -432,7 +445,7 @@ Item {
         }
         IslandStatus { visible: !rest.compact; anchors.verticalCenter: parent.verticalCenter; bar: rest.bar }
         HoverHandler { cursorShape: Qt.PointingHandCursor }
-        TapHandler { onTapped: Notifs.toggleCenter("controls", "pointer", rest.bar.screenName) }
+        TapHandler { onTapped: if (!agentHover.hovered) Notifs.toggleCenter("controls", "pointer", rest.bar.screenName) }
     }
 
     // ── Trailing ─────────────────────────────────────────────────────────
