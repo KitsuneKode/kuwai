@@ -34,9 +34,15 @@ Item {
     // Parts → blocks; consecutive tool parts become one group.
     readonly property var blocks: {
         const out = [];
+        let plan = null;          // one checklist, where the plan first appeared, showing its latest version
         for (let i = 0; i < parts.length; i++) {
             const p = parts[i];
             const last = out.length ? out[out.length - 1] : null;
+            if (p.kind === "plan") {
+                if (plan) plan.part = p;
+                else { plan = { type: "plan", part: p }; out.push(plan); }
+                continue;
+            }
             if (p.kind === "tool") {
                 if (last && last.type === "tools") last.parts.push(p);
                 else out.push({ type: "tools", parts: [p] });
@@ -246,7 +252,17 @@ Item {
                 sourceComponent: block.type === "reasoning" ? reasoningBlock
                     : block.type === "tools" ? toolsBlock
                     : block.type === "text" ? textBlock
-                    : block.type === "steer" ? steerBlock : null
+                    : block.type === "steer" ? steerBlock
+                    : block.type === "plan" ? planBlock : null
+
+                Component {
+                    id: planBlock
+                    PlanCard {
+                        width: blockLoader.width
+                        steps: blockLoader.block.part && blockLoader.block.part.input ? (blockLoader.block.part.input.steps || []) : []
+                        live: root.isStreaming
+                    }
+                }
 
                 Component {
                     id: reasoningBlock
@@ -439,6 +455,64 @@ Item {
                         }
                     }
                 }
+            }
+        }
+
+        // Files it wrote in its sandbox (AI Elements file tree, flat): click one to
+        // open it, or the folder. Each path once.
+        Flow {
+            readonly property var files: {
+                if (root.isUser || root.isStreaming || !root.msg.parts) return [];
+                const seen = [];
+                root.msg.parts.forEach(p => {
+                    if (p.itemType === "file_change" && p.status === "completed" && p.input && p.input.path
+                        && seen.indexOf(p.input.path) < 0) seen.push(p.input.path);
+                });
+                return seen;
+            }
+            visible: files.length > 0
+            width: parent.width
+            spacing: 6
+            Repeater {
+                model: parent.files
+                Rectangle {
+                    id: fileChip
+                    required property string modelData
+                    height: 28
+                    width: fileRow.implicitWidth + 18
+                    radius: 8
+                    color: Qt.rgba(1, 1, 1, fileArea.containsMouse ? 0.09 : 0.05)
+                    Behavior on color { ColorAnimation { duration: Theme.colorMs } }
+                    Row {
+                        id: fileRow
+                        anchors.centerIn: parent
+                        spacing: 6
+                        Icon { name: "file-code"; size: 13; color: Theme.textTertiary; anchors.verticalCenter: parent.verticalCenter }
+                        Label { text: fileChip.modelData; size: 12; color: Theme.textSecondary; anchors.verticalCenter: parent.verticalCenter }
+                    }
+                    MouseArea {
+                        id: fileArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: Qt.openUrlExternally("file://" + OllamaService.sandboxDir() + "/" + fileChip.modelData.replace(/^\/?(work\/[^\/]+\/)?/, ""))
+                    }
+                }
+            }
+            Rectangle {
+                height: 28
+                width: folderRow.implicitWidth + 18
+                radius: 8
+                color: Qt.rgba(1, 1, 1, folderArea.containsMouse ? 0.09 : 0)
+                Behavior on color { ColorAnimation { duration: Theme.colorMs } }
+                Row {
+                    id: folderRow
+                    anchors.centerIn: parent
+                    spacing: 6
+                    Icon { name: "folder-open"; size: 13; color: Theme.textTertiary; anchors.verticalCenter: parent.verticalCenter }
+                    Label { text: "Sandbox folder"; size: 12; color: Theme.textTertiary; anchors.verticalCenter: parent.verticalCenter }
+                }
+                MouseArea { id: folderArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: Qt.openUrlExternally("file://" + OllamaService.sandboxDir()) }
             }
         }
 

@@ -20,7 +20,7 @@ Singleton {
 
     property string status: "offline" // "ready" | "loading" | "offline"
     property string model: "qwen3.5:4b"
-    property var availableModels: ["hermes3:8b", "minicpm-v:latest"]
+    property var availableModels: ["qwen3.5:4b"]
     property var runningModels: []
     // From `rice-ollama status`: { name: { capabilities: [...], sizeGb, params } }.
     property var modelInfo: ({})
@@ -590,6 +590,13 @@ function onPanelClosed() {
             snapWinProc.rawOutput = "";
             Assistant.show();
         }
+    }
+
+    // The chat's sandbox folder on this machine (bin/rice_sandbox.py: workspace()).
+    function sandboxDir(chatId) {
+        const base = (Quickshell.env("XDG_DATA_HOME") || Quickshell.env("HOME") + "/.local/share") + "/rice/sandbox/";
+        const slug = String(chatId || root.activeSessionId || "").replace(/[^A-Za-z0-9_.-]/g, "").slice(0, 64) || "scratch";
+        return base + slug;
     }
 
 // ── Attachments: files (text, code, PDF) and images ───────────────

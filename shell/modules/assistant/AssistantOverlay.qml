@@ -64,7 +64,13 @@ Scope {
             readonly property int studioH: Math.min(880, Math.round(modelData.height * 0.82))
 
             readonly property real targetW: root.studioMode ? studioW : compactW
-            readonly property real targetH: root.studioMode ? studioH : compactH
+            // Compact grows with the conversation (Spotlight / Raycast): a short chat
+            // gets a short panel, not a tall one with dead space; it stops at compactH
+            // and scrolls from there. Studio stays full height.
+            readonly property real chatNeed: OllamaService.messages.length === 0 && !OllamaService.streaming
+                                             ? 260 : scroll.contentHeight + 12
+            readonly property real fitH: chatNeed + 38 + 1 + 12 + promptInput.implicitHeight + 12 + 32
+            readonly property real targetH: root.studioMode ? studioH : Math.max(300, Math.min(compactH, fitH))
 
             anchors.top: true
             margins.top: inIsland ? (notch ? 0 : 6) : 6

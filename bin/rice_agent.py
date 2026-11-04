@@ -33,7 +33,7 @@ import urllib.request
 
 OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 UA = {"User-Agent": "rice-ollama/1.0"}
-MAX_TOOL_ROUNDS = 8
+MAX_TOOL_ROUNDS = 10
 CHAT = ""            # the chat's id: its sandbox folder
 # Ollama's num_predict is unlimited by default; a small model that falls into
 # a loop then writes forever. 2048 tokens is ~8k characters, plenty for an answer.
@@ -70,8 +70,9 @@ TOOL_GUIDE = (
 )
 SANDBOX_GUIDE = (
     " You also have your own isolated Linux sandbox: use sandbox_write and sandbox_run to write and run code, "
-    "check calculations, or try things out, without asking; fix errors and run again until it works. Use "
-    "run_command only for things on the user's own computer."
+    "check calculations, or try things out, without asking; fix errors and run again until it works. For a "
+    "task with several steps, call update_plan first and keep it current. Use run_command only for things on "
+    "the user's own computer."
 )
 SYSTEM_VISION = (
     "You are a visual AI assistant operating on Arch Linux. Inspect screenshots, code, and interfaces with high "
@@ -355,7 +356,9 @@ def vision_hop(ids, messages, stats):
     item_id = ids.next("t")
     emit({"type": "item.started", "id": item_id, "itemType": "image_view",
           "title": "Looking at the screenshot", "input": {}})
-    vision = next((m for m in installed_models() if "vision" in capabilities(m)), None)
+    have = installed_models()
+    # The everyday model sees images and is the quickest to load; else any vision model.
+    vision = "qwen3.5:4b" if "qwen3.5:4b" in have else next((m for m in have if "vision" in capabilities(m)), None)
     b64 = read_image(img)
     if not vision or not b64:
         why = "No vision model is installed" if not vision else "The screenshot is gone"
@@ -364,6 +367,8 @@ def vision_hop(ids, messages, stats):
         return
     payload = {"model": vision, "stream": True, "keep_alive": 0, "options": {"num_ctx": 4096},
                "messages": [{"role": "user", "content": DESCRIBE, "images": [b64]}]}
+    if "thinking" in capabilities(vision):
+        payload["think"] = False
     text = ""
     for chunk in chat_stream(payload):
         if chunk.get("error"):
@@ -864,6 +869,26 @@ def tool_sandbox_read(args):
     return _cap(data.decode(errors="replace"), 16384)
 
 
+def tool_update_plan(args):
+    steps = args.get("steps") or []
+    if not isinstance(steps, list) or not steps:
+        raise ToolError("Give the steps")
+    clean = []
+    for s in steps[:12]:
+        if isinstance(s, str):
+            s = {"step": s}
+        if not isinstance(s, dict) or not str(s.get("step") or "").strip():
+            continue
+        st = str(s.get("status") or "pending")
+        clean.append({"step": str(s["step"]).strip()[:160],
+                      "status": st if st in ("pending", "in_progress", "completed") else "pending"})
+    if not clean:
+        raise ToolError("Give the steps")
+    args["steps"] = clean          # the UI reads the cleaned list from the item's input
+    done = sum(1 for s in clean if s["status"] == "completed")
+    return f"Plan updated ({done} of {len(clean)} done). Carry on with the next step."
+
+
 def _question_request(args):
     q = str(args.get("question") or "").strip()
     if not q:
@@ -1007,6 +1032,15 @@ TOOLS = {
                    {"path": {"type": "string", "description": "File path relative to the folder"}}, ["path"]),
         item="dynamic_tool_call", title=lambda a: f"Reading {a.get('path', '')}", approve=None,
         run=tool_sandbox_read, sandbox=True),
+    "update_plan": dict(
+        schema=_fn("update_plan", "For a task with several steps (coding, research, setup): write the plan "
+                   "first, then call again as each step starts and finishes. Keep it to 2-8 short steps.",
+                   {"steps": {"type": "array", "description": "The whole plan, in order",
+                              "items": {"type": "object", "properties": {
+                                  "step": {"type": "string"},
+                                  "status": {"type": "string", "enum": ["pending", "in_progress", "completed"]}},
+                                  "required": ["step", "status"]}}}, ["steps"]),
+        item="todo_list", title=lambda a: "Plan", approve=None, run=tool_update_plan),
     "ask_user": dict(
         schema=_fn("ask_user", "Ask the user a short question when you need their choice or a detail you can't "
                    "find out yourself. Give 2-4 likely answers as options; they can also type their own.",
@@ -1150,6 +1184,11 @@ def run_tool(ids, name, raw_args):
     item_type = tool["item"] if tool else "dynamic_tool_call"
     title = tool["title"](args) if tool else name
     item_id = ids.next("t")
+    if tool and name == "update_plan" and not bad:
+        try:
+            tool_update_plan(args)         # clean the steps before the UI sees them
+        except ToolError:
+            pass
     ev = {"type": "item.started", "id": item_id, "itemType": item_type, "title": title, "input": args}
     if tool and tool.get("sandbox"):
         ev["where"] = "sandbox"
@@ -1351,7 +1390,9 @@ def run_turn(req):
                 status = "max_tool_rounds"
                 break
             if calls:
-                rounds += 1
+                # Keeping the plan current isn't work: it doesn't use up a round.
+                if any((c.get("function") or {}).get("name") != "update_plan" for c in calls):
+                    rounds += 1
                 messages.append({"role": "assistant", "content": stream.message_text(), "tool_calls": calls})
                 stream.text.clear()
                 for c in calls:

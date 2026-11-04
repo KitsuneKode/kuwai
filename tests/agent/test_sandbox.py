@@ -90,3 +90,12 @@ def test_big_file_is_cut_to_the_window(run_agent, tmp_path):
     _, fake = run_agent(req, [answer()], caps=CAPS)
     sent = fake.requests[0]["messages"][-1]["content"]
     assert len(sent) < 7000 and "cut: 50,000 characters in all" in sent and "files/big.log" in sent
+
+
+def test_update_plan_cleans_steps(run_agent):
+    plan = {"steps": [{"step": "Write it", "status": "completed"}, "Test it", {"step": "x", "status": "weird"}]}
+    events, fake = run_agent(USER, [[call("update_plan", plan), {"done": True}], answer()], caps=CAPS)
+    item = started(events, "todo_list")[0]
+    assert item["input"]["steps"] == [{"step": "Write it", "status": "completed"}, {"step": "Test it", "status": "pending"},
+                                      {"step": "x", "status": "pending"}]
+    assert fake.requests[1]["messages"][-1]["content"].startswith("Plan updated (1 of 3 done)")

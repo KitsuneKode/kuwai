@@ -10,7 +10,7 @@
 //            startedAt, endedAt }   (ms, from the events' ts; 0 if unknown)
 //   request = null | { id, kind, summary, detail, state: "pending"|"accept"|"decline"|"timeout" }
 
-const KIND = { reasoning: "reasoning", assistant_message: "text" };
+const KIND = { reasoning: "reasoning", assistant_message: "text", todo_list: "plan" };
 
 export function newAssistant(model, nowMs) {
     return { role: "assistant", model: model, timestamp: nowMs, status: "streaming", parts: [], stats: null, error: "",
