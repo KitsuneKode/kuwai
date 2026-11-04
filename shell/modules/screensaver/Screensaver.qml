@@ -1,0 +1,195 @@
+// The screensaver. While Caffeine keeps the machine awake nothing dims or
+// locks, so after Settings.screensaverMins idle minutes this fades in: your
+// live wallpaper full screen (or the still wallpaper, slowly drifting), a
+// large clock that moves a little every minute (no burn-in), the date and
+// what's playing. Any key, click, scroll or move dismisses it; that first
+// input is swallowed, so it never lands on a window.
+//
+//   Settings.screensaverWhen: "caffeine" (default: only while Caffeine is on)
+//                             "always"   (also before the idle lock)
+//                             "off"
+// Never over a fullscreen window (a film with Caffeine on stays a film).
+// `rice screensaver` shows it now.
+import QtQuick
+import QtQuick.Effects
+import QtMultimedia
+import Quickshell
+import Quickshell.Io
+import Quickshell.Wayland
+import Quickshell.Hyprland
+import Quickshell.Services.UPower
+import qs.config
+import qs.components
+import qs.services
+
+Scope {
+    id: root
+
+    readonly property string when: Settings.screensaverWhen || "caffeine"
+    readonly property bool allowed: when === "always" || (when === "caffeine" && Caffeine.on)
+    property bool forced: false
+    readonly property bool fullscreenAnywhere: Hyprland.workspaces.values.some(w => w.lastIpcObject && w.lastIpcObject.hasfullscreen === true
+        && Hyprland.monitors.values.some(m => m.activeWorkspace === w))
+    readonly property bool showing: (forced || (allowed && idle.isIdle)) && !fullscreenAnywhere
+
+    IdleMonitor {
+        id: idle
+        enabled: root.allowed
+        timeout: Math.max(1, Settings.screensaverMins || 3) * 60
+        // Caffeine is an inhibitor of our own: idle still counts here.
+        respectInhibitors: false
+        onIsIdleChanged: if (!isIdle) root.forced = false
+    }
+
+    // What to play: the live wallpaper's pick, else the still wallpaper.
+    readonly property string stateDir: Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state"
+    property string video: ""
+    FileView {
+        path: root.stateDir + "/live-wallpaper/last"
+        watchChanges: true; printErrors: false
+        onFileChanged: reload()
+        onLoaded: root.video = text().trim()
+    }
+    readonly property bool useVideo: video !== "" && (!UPower.onBattery || Settings.liveOnBattery)
+    readonly property string still: "file://" + Quickshell.env("HOME") + "/.cache/hyde/wall.set"
+
+    function dismiss() { forced = false; }
+    IpcHandler {
+        target: "screensaver"
+        // (Not show/hide: `qs ipc … show` is the CLI's own "list functions".)
+        function start(): void { root.forced = true; }
+        function stop(): void { root.forced = false; }
+    }
+
+    property real level: showing ? 1 : 0
+    Behavior on level { NumberAnimation { duration: root.showing ? 1200 : 220; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+
+    Variants {
+        model: Quickshell.screens
+        LazyLoader {
+            id: slot
+            required property ShellScreen modelData
+            active: root.showing || root.level > 0.01
+            PanelWindow {
+                id: win
+                screen: slot.modelData
+                anchors { top: true; bottom: true; left: true; right: true }
+                exclusionMode: ExclusionMode.Ignore
+                WlrLayershell.layer: WlrLayer.Overlay
+                WlrLayershell.namespace: "rice-screensaver"
+                WlrLayershell.keyboardFocus: root.showing ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+                color: "transparent"
+
+                Item {
+                    id: stage
+                    anchors.fill: parent
+                    opacity: root.level
+                    focus: true
+                    Keys.onPressed: e => { root.dismiss(); e.accepted = true; }
+
+                    Rectangle { anchors.fill: parent; color: "black" }
+
+                    // The still wallpaper, slowly drifting (Ken Burns), when there's no video.
+                    Image {
+                        id: wall
+                        visible: !root.useVideo
+                        anchors.fill: parent
+                        source: root.still
+                        fillMode: Image.PreserveAspectCrop
+                        asynchronous: true
+                        cache: false
+                        sourceSize: Qt.size(win.width, win.height)
+                        scale: 1.06
+                        SequentialAnimation on scale {
+                            running: !root.useVideo && root.showing && !Theme.reduceMotion
+                            loops: Animation.Infinite
+                            NumberAnimation { to: 1.12; duration: 40000; easing.type: Easing.InOutSine }
+                            NumberAnimation { to: 1.06; duration: 40000; easing.type: Easing.InOutSine }
+                        }
+                    }
+                    VideoOutput {
+                        id: out
+                        visible: root.useVideo
+                        anchors.fill: parent
+                        fillMode: VideoOutput.PreserveAspectCrop
+                    }
+                    MediaPlayer {
+                        id: player
+                        source: root.useVideo ? "file://" + root.video : ""
+                        videoOutput: out
+                        audioOutput: AudioOutput { muted: true }
+                        loops: MediaPlayer.Infinite
+                        Component.onCompleted: if (root.useVideo) play()
+                        onSourceChanged: if (root.useVideo) play(); else stop()
+                    }
+                    // A soft vignette so the clock reads on any wallpaper.
+                    Rectangle {
+                        anchors.fill: parent
+                        gradient: Gradient {
+                            GradientStop { position: 0; color: Qt.rgba(0, 0, 0, 0.15) }
+                            GradientStop { position: 0.6; color: Qt.rgba(0, 0, 0, 0.25) }
+                            GradientStop { position: 1; color: Qt.rgba(0, 0, 0, 0.55) }
+                        }
+                    }
+
+                    // The clock: large, light, and somewhere new each minute.
+                    Column {
+                        id: face
+                        spacing: 2
+                        property date now: new Date()
+                        Timer { interval: 1000; repeat: true; running: root.showing; onTriggered: face.now = new Date() }
+                        Text {
+                            text: Qt.formatTime(face.now, Settings.clock24 ? "HH:mm" : "h:mm")
+                            font.family: Theme.fontRounded || Theme.fontText
+                            font.pixelSize: Math.round(win.height * 0.13)
+                            font.weight: Font.Light
+                            font.features: ({ "tnum": 1 })
+                            color: Qt.rgba(1, 1, 1, 0.92)
+                        }
+                        Text {
+                            text: Qt.formatDate(face.now, "dddd, d MMMM")
+                            font.family: Theme.fontText
+                            font.pixelSize: Math.round(win.height * 0.022)
+                            color: Qt.rgba(1, 1, 1, 0.7)
+                            leftPadding: 6
+                        }
+                        Text {
+                            visible: Media.playing && !!Media.active
+                            text: Media.active ? "\u{f075a}  " + (Media.active.trackTitle || "") + (Media.active.trackArtist ? " · " + Media.active.trackArtist : "") : ""
+                            font.family: Theme.fontText
+                            font.pixelSize: Math.round(win.height * 0.017)
+                            color: Qt.rgba(1, 1, 1, 0.6)
+                            leftPadding: 6; topPadding: 10
+                        }
+                        // Bottom-left third at first, then a new place each minute.
+                        x: win.width * 0.07; y: win.height * 0.62
+                        Behavior on x { NumberAnimation { duration: 6000; easing.type: Easing.InOutSine } }
+                        Behavior on y { NumberAnimation { duration: 6000; easing.type: Easing.InOutSine } }
+                        Timer {
+                            interval: 60000; repeat: true; running: root.showing && !Theme.reduceMotion
+                            onTriggered: {
+                                face.x = win.width * (0.05 + Math.random() * 0.5);
+                                face.y = win.height * (0.08 + Math.random() * 0.6);
+                            }
+                        }
+                    }
+
+                    // Any pointer input: dismiss (and keep it from reaching a window).
+                    MouseArea {
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        acceptedButtons: Qt.AllButtons
+                        property point last: Qt.point(-1, -1)
+                        onPositionChanged: m => {
+                            if (last.x >= 0 && (Math.abs(m.x - last.x) > 3 || Math.abs(m.y - last.y) > 3)) root.dismiss();
+                            last = Qt.point(m.x, m.y);
+                        }
+                        onPressed: root.dismiss()
+                        onWheel: root.dismiss()
+                        cursorShape: Qt.BlankCursor
+                    }
+                }
+            }
+        }
+    }
+}

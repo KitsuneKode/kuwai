@@ -16,6 +16,7 @@ import qs.modules.overview
 import qs.modules.voxtype
 import qs.modules.assistant
 import qs.modules.wallpaper
+import qs.modules.screensaver
 import qs.modules
 
 ShellRoot {
@@ -26,6 +27,7 @@ ShellRoot {
     IslandBar {}
     Lock {}
     LiveWallpaper {}
+    Screensaver {}
     Overview {}
     VoxtypeHost {}
     AssistantOverlay {}

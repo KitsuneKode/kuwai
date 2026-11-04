@@ -35,6 +35,9 @@ Singleton {
     readonly property alias islandRest: s.islandRest
     readonly property alias islandTucked: s.islandTucked
     readonly property alias liveOnBattery: s.liveOnBattery
+    readonly property alias quickPrimary: s.quickPrimary
+    readonly property alias screensaverWhen: s.screensaverWhen
+    readonly property alias screensaverMins: s.screensaverMins
 
     function set(key, value) { s[key] = value; }
 
@@ -90,6 +93,9 @@ Singleton {
             // matters (a notification banner, an activity, a panel) or when
             // the pointer nears the top edge.
             property bool islandTucked: false
+            property string screensaverWhen: "caffeine"   // caffeine · always · off
+            property int screensaverMins: 3
+            property string quickPrimary: "caffeine"   // the quick switch shown in the hover view
             property bool liveOnBattery: false   // live wallpaper keeps playing on battery
         }
     }

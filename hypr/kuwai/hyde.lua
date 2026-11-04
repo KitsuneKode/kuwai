@@ -46,12 +46,10 @@ bind("SUPER + SHIFT + U", "Lock screen layout", rofi(hyde("hyprlock.sh") .. " --
 -- The top bar on/off: with the island as the bar, tuck it away (its strip
 -- goes back to your windows; it comes out for what matters, or near the top
 -- edge); with Waybar, Waybar on/off as before.
-bind("CTRL + ALT + W", "Top bar: tuck the island / Waybar on/off",
-	function()
-		-- The island setting, read when pressed (`rice bar` says which bar runs).
-		hl.exec_cmd('[ "$(' .. K.bin .. '/rice bar)" = island ] && hyprctl eval \'hl.dispatch(hl.dsp.global("rice:island-tuck"))\' || { pkill -x waybar || hyde-shell waybar; }')
-	end,
-	{ locked = true })
+-- Straight to the shell (it knows which bar runs: the island tucks, Waybar
+-- toggles). The old route, a shell command calling `hyprctl eval` back into
+-- Hyprland, silently did nothing.
+bind("CTRL + ALT + W", "Top bar: tuck the island (Minimal ⇄ Hidden) / Waybar on/off", hl.dsp.global("rice:island-tuck"), { locked = true })
 bind("CTRL + ALT + SHIFT + W", "Island: minimal ⇄ everything (workspaces, time, status)", hl.dsp.global("rice:island-style"), { locked = true })
 
 group("Utilities")

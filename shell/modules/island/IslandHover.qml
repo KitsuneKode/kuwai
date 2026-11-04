@@ -286,50 +286,40 @@ Item {
             Row {
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 4
-                // Quick switches: Caffeine (always here: dim off, yellow on), the
-                // microphone and the speaker (click mutes; scroll the speaker for
-                // volume). The first look stays minimal; these live one hover in.
-                PwObjectTracker { objects: [Pipewire.defaultAudioSink, Pipewire.defaultAudioSource] }
-                QuickIcon {
-                    anchors.verticalCenter: parent.verticalCenter
-                    glyph: "\u{f0176}"
-                    on: Caffeine.on
-                    tone: Theme.yellow
-                    tip: Caffeine.on ? "Caffeine on: no dim, lock or sleep · click to turn off" : "Caffeine: keep awake"
-                    onClicked: Caffeine.toggle()
-                }
-                QuickIcon {
-                    readonly property var src: Pipewire.defaultAudioSource
-                    readonly property bool muted: !!src && !!src.audio && src.audio.muted
-                    visible: !!src
-                    anchors.verticalCenter: parent.verticalCenter
-                    glyph: "\u{f036c}"; glyphOff: "\u{f036d}"
-                    on: !muted
-                    tone: Activities.micInUse ? Theme.orange : Theme.textPrimary
-                    offTone: Theme.red
-                    tip: muted ? "Microphone muted · click to unmute" : "Microphone on" + (Activities.micInUse ? " · in use by " + [...new Set(Activities.micUsers)].join(", ") : "") + " · click to mute"
-                    onClicked: if (src && src.audio) src.audio.muted = !src.audio.muted
-                }
-                QuickIcon {
-                    readonly property var sink: Pipewire.defaultAudioSink
-                    readonly property bool muted: !!sink && !!sink.audio && sink.audio.muted
-                    readonly property int vol: sink && sink.audio ? Math.round(sink.audio.volume * 100) : 0
-                    visible: !!sink
-                    anchors.verticalCenter: parent.verticalCenter
-                    glyph: vol >= 60 ? "\u{f057e}" : vol >= 25 ? "\u{f0580}" : "\u{f057f}"; glyphOff: "\u{f075f}"
-                    on: !muted
-                    tone: Theme.textPrimary
-                    offTone: Theme.red
-                    tip: (muted ? "Muted" : "Volume " + vol + "%") + " · click to " + (muted ? "unmute" : "mute") + ", scroll to change"
-                    onClicked: if (sink && sink.audio) sink.audio.muted = !sink.audio.muted
-                    onWheel: steps => { if (sink && sink.audio) { sink.audio.muted = false; sink.audio.volume = Math.max(0, Math.min(1.5, Math.round((sink.audio.volume + steps * 0.05) * 20) / 20)); } }
-                }
+                // Quick switches: one shown (pinned; Caffeine first), the rest a
+            // hold away in a shelf (QuickShelf). Adding one is one entry here.
+            PwObjectTracker { objects: [Pipewire.defaultAudioSink, Pipewire.defaultAudioSource] }
+            QuickShelf {
+                anchors.verticalCenter: parent.verticalCenter
+                readonly property var src: Pipewire.defaultAudioSource
+                readonly property var sink: Pipewire.defaultAudioSink
+                readonly property bool micMuted: !!src && !!src.audio && src.audio.muted
+                readonly property bool spkMuted: !!sink && !!sink.audio && sink.audio.muted
+                readonly property int vol: sink && sink.audio ? Math.round(sink.audio.volume * 100) : 0
+                items: [
+                    { id: "caffeine", glyph: "\u{f0176}", on: Caffeine.on, tone: Theme.yellow, alert: Caffeine.on,
+                      tip: Caffeine.on ? "Caffeine on: no dim, lock or sleep" : "Caffeine: keep awake", toggle: () => Caffeine.toggle() },
+                    { id: "mic", glyph: "\u{f036c}", glyphOff: "\u{f036d}", on: !micMuted, alert: micMuted,
+                      tone: Activities.micInUse ? Theme.orange : Theme.textPrimary, offTone: Theme.red,
+                      tip: micMuted ? "Microphone muted" : "Microphone on" + (Activities.micInUse ? " · in use by " + [...new Set(Activities.micUsers)].join(", ") : ""),
+                      toggle: () => { if (src && src.audio) src.audio.muted = !src.audio.muted; } },
+                    { id: "speaker", glyph: vol >= 60 ? "\u{f057e}" : vol >= 25 ? "\u{f0580}" : "\u{f057f}", glyphOff: "\u{f075f}", on: !spkMuted, alert: spkMuted,
+                      tone: Theme.textPrimary, offTone: Theme.red,
+                      tip: (spkMuted ? "Muted" : "Volume " + vol + "%") + " · scroll to change",
+                      toggle: () => { if (sink && sink.audio) sink.audio.muted = !sink.audio.muted; },
+                      wheel: steps => { if (sink && sink.audio) { sink.audio.muted = false; sink.audio.volume = Math.max(0, Math.min(1.5, Math.round((sink.audio.volume + steps * 0.05) * 20) / 20)); } } },
+                    { id: "focus", glyph: "\u{f0594}", on: Notifs.dnd, alert: Notifs.dnd, tone: "#bf5af2",
+                      tip: Notifs.dnd ? "Focus on: notifications held" : "Focus (Do Not Disturb)", toggle: () => { Notifs.dnd = !Notifs.dnd; } },
+                    { id: "night", glyph: "\u{f0599}", on: Display.nightOn, alert: false, tone: Theme.orange,
+                      tip: Display.nightOn ? "Night Shift on" : "Night Shift", toggle: () => Display.toggleNight() }
+                ]
+            }
             }
         Row {
             anchors.verticalCenter: parent.verticalCenter
             spacing: 8
             id: bellRow
-            Label { anchors.verticalCenter: parent.verticalCenter; text: Notifs.missed.length ? Notifs.missed.length + " to look at" : Notifs.unread ? Notifs.unread + " new" : "All caught up"; size: 14; weight: Theme.wMedium; color: Notifs.missed.length ? Theme.accent : Theme.textPrimary }
+            Label { anchors.verticalCenter: parent.verticalCenter; text: Notifs.missed.length ? Notifs.missed.length + " to look at" : Notifs.unread ? Notifs.unread + " new" : "All caught up"; size: 14; weight: Theme.wMedium; color: Theme.textPrimary }   // white: the accent means "where you are"
             Icon { anchors.verticalCenter: parent.verticalCenter; name: Notifs.dnd ? "bell-slash" : "bell"; size: 16; active: Notifs.unread > 0; color: Notifs.unread ? Theme.accent : Theme.textSecondary }
             // Rest on it: the missed ones, each with its buttons. Click: the center.
             HoverHandler { id: bellHover; cursorShape: Qt.PointingHandCursor }

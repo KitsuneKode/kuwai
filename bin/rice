@@ -12,6 +12,7 @@
 #   rice lock [--wait]        lock with the rice's lock screen (--wait: until it is locked; hyprlock if the shell is down)
 #   rice fade [start|stop]    darken the screens before the idle lock
 #   rice timer 10m [label]    a timer in the island (cancel · list)
+#   rice screensaver          show the screensaver now (it also comes on idle while Caffeine is on)
 #   rice set KEY VALUE        change a setting (~/.config/rice/settings.json)
 #   rice get [KEY]            print one setting, or all of them
 #   rice channel [stable|dev] run from the stable copy (~/.local/share/kuwai) or the repo
@@ -179,6 +180,7 @@ case ${1:-} in
             exit 1
         fi ;;
     fade)          ipc fade "${2:-start}" >/dev/null 2>&1 ;;   # (hypridle)
+    screensaver)   ipc screensaver "${2:-start}" ;;   # start it now (any input dismisses) · stop
     timer)         # rice timer 10m pizza · rice timer cancel · rice timer list
         case ${2:-} in
             cancel) ipc timer cancel ;;

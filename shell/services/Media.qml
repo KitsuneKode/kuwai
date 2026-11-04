@@ -21,7 +21,9 @@ import qs.config
 Singleton {
     id: root
 
-    readonly property var players: Mpris.players.values
+    // Players with something to show: a title, or playing. (Chromium apps
+    // like T3 Code register an empty player that read "Unknown".)
+    readonly property var players: Mpris.players.values.filter(p => (p.trackTitle || "").trim() !== "" || p.playbackState === MprisPlaybackState.Playing)
     property var active: null
     readonly property bool playing: !!active && active.playbackState === MprisPlaybackState.Playing
 
