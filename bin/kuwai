@@ -161,7 +161,7 @@ cmd_doctor() {
     else
         note "not inside Hyprland — session checks skipped"
     fi
-    for u in hypridle.service voxtype.service gcr-ssh-agent.socket rice-clipboard.service; do
+    for u in hypridle.service voxtype.service gcr-ssh-agent.socket rice-clipboard.service rice-feeds.service; do
         st=$(systemctl --user is-active "$u" 2>/dev/null); [ "$st" = active ] && ok "$u" || note "$u: $st"
     done
     # Password prompts: kuwai's (rice-auth), or KDE's as the fallback; never none.
@@ -239,9 +239,10 @@ cmd_auth() {
 cmd_rescue() {
     echo "kuwai rescue"
     local rt="${XDG_RUNTIME_DIR:-/run/user/$UID}/rice"
-    systemctl --user reset-failed rice-auth.service rice-clipboard.service 2>/dev/null
+    systemctl --user reset-failed rice-auth.service rice-clipboard.service rice-feeds.service 2>/dev/null
     systemctl --user restart rice-auth.service && echo "  ✓ password prompt restarted"
     systemctl --user restart rice-clipboard.service && echo "  ✓ clipboard history watchers restarted"
+    systemctl --user restart rice-feeds.service && echo "  ✓ GitHub and Gmail notifications restarted"
     : > "$rt/auth-pending" 2>/dev/null
     "$ROOT/bin/rice-shell" >/dev/null 2>&1 && echo "  ✓ island shell restarted"
     systemctl --user is-active --quiet hypridle.service || { systemctl --user start hypridle.service && echo "  ✓ idle (hypridle) started"; }

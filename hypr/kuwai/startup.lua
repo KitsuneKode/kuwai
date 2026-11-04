@@ -37,11 +37,16 @@ hl.on("hyprland.start", function()
 	-- The rice: shell (island, HUD, notifications, lock) — it also decides
 	-- whether Waybar or the island is the bar (`rice bar apply`).
 	hl.exec_cmd(K.bin .. "/rice-shell")
+	-- The login screen's copy of the shell and your picture (greeter/sync;
+	-- does nothing until greeter/install has run).
+	hl.exec_cmd(KUWAI_ROOT .. "/greeter/sync")
 
 	-- Clipboard history (cliphist is the store) and the rice's copy times.
 	-- A user service (systemd/rice-clipboard.service): restarted if it dies,
 	-- instead of bare watchers that silently stopped history when they did.
 	hl.exec_cmd(unit("rice-clipboard.service"))
+	-- GitHub and Gmail as notifications (systemd/rice-feeds.service).
+	hl.exec_cmd(unit("rice-feeds.service"))
 
 	-- Tray helpers: Wi-Fi secrets agent, removable media.
 	if K.has("nm-applet") then

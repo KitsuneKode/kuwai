@@ -1,0 +1,563 @@
+#!/usr/bin/env python3
+"""GitHub and Gmail as desktop notifications, without their apps.
+
+    rice-feeds                 run (systemd/rice-feeds.service does)
+    rice-feeds gmail-setup     your address and an app password, into the keyring
+    rice-feeds gmail-forget    take them out again
+    rice-feeds status          what it's watching, and when it last looked
+
+GitHub: your notifications inbox through `gh` (its login, no token of ours).
+It asks every X-Poll-Interval seconds (60) with If-Modified-Since, and a 304
+("nothing new") doesn't count against the rate limit; each new thread costs
+one more call, for who wrote it and what they said. Review requests,
+mentions, assignments and failed CI peek out of the island; comments and
+the rest are a plain toast; bots (Dependabot, Renovate, their branches' CI)
+go quietly into the center.
+
+Gmail: IMAP IDLE, so Gmail tells us when mail arrives: no polling, nothing
+to rate-limit. Only what Gmail itself marks important, in Primary, unread.
+Needs 2-Step Verification and an app password
+(https://myaccount.google.com/apppasswords): `rice-feeds gmail-setup`. The
+password lives in the keyring (secret-tool), never in a file.
+
+Each one is a real notification (the rice's server) with Open and Mark as
+read; read elsewhere (on github.com, in Gmail), it leaves the center by
+itself. The shell's adapter reads the x-rice-* hints (NotifAdapters.qml).
+State: ~/.local/state/rice/feeds.json. RICE_FEEDS_DRYRUN=1 prints instead.
+"""
+import email
+import email.policy
+import email.utils
+import getpass
+import html
+import imaplib
+import json
+import os
+import re
+import subprocess
+import sys
+import threading
+import time
+
+STATE = os.path.expanduser("~/.local/state/rice/feeds.json")
+CONFIG = os.path.expanduser("~/.config/rice/feeds.json")
+DRY = os.environ.get("RICE_FEEDS_DRYRUN") == "1"
+lock = threading.Lock()
+
+
+def log(*a):
+    print(time.strftime("%H:%M:%S"), *a, flush=True)
+
+
+def load(path, default):
+    try:
+        with open(path) as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return default
+
+
+state = load(STATE, {})
+
+
+def save():
+    with lock:
+        os.makedirs(os.path.dirname(STATE), exist_ok=True)
+        tmp = STATE + ".tmp"
+        with open(tmp, "w") as f:
+            json.dump(state, f)
+        os.replace(tmp, STATE)
+
+
+def clip(s, n):
+    s = re.sub(r"\s+", " ", str(s or "")).strip()
+    return s if len(s) <= n else s[: n - 1].rstrip() + "…"
+
+
+# ── Notifications (org.freedesktop.Notifications, on GLib's loop) ────────────
+class Notifier:
+    def __init__(self):
+        from gi.repository import Gio, GLib
+        self.GLib = GLib
+        self.bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+        self.by_id = {}       # notification id -> { key, on }
+        self.by_key = {}      # key -> notification id
+        self._pending = []    # sent, waiting for their id (replies come in order)
+        for sig in ("ActionInvoked", "NotificationClosed"):
+            self.bus.signal_subscribe(None, "org.freedesktop.Notifications", sig, "/org/freedesktop/Notifications",
+                                      None, 0, self._signal)
+
+    def _call(self, method, args, reply=None):
+        self.bus.call(
+            "org.freedesktop.Notifications", "/org/freedesktop/Notifications", "org.freedesktop.Notifications",
+            method, args, reply and self.GLib.VariantType(reply), 0, -1, None,
+            (lambda b, r, _: self._done(b, r, method)), None)
+
+    def _done(self, bus, res, method):
+        try:
+            out = bus.call_finish(res)
+        except Exception as e:  # the server is gone (a restart): it comes back
+            log("notify:", method, e)
+            return
+        if method == "Notify" and self._pending:
+            nid = out.unpack()[0]
+            key, on = self._pending.pop(0)
+            old = self.by_key.get(key)
+            if old and old != nid:
+                self.close_id(old)
+            self.by_key[key] = nid
+            self.by_id[nid] = {"key": key, "on": on}
+
+    def send(self, app, icon, title, body, hints, key, on):
+        """on: { action id: fn } ("default" is a click on the card)."""
+        if DRY:
+            log("would notify:", app, "|", title, "|", clip(body, 80), "|", {k: v for k, v in hints.items() if k != "x-rice-feed"})
+            return
+        GLib = self.GLib
+
+        def go():
+            actions = ["default", "Open", "read", "Mark as Read"]
+            h = {k: GLib.Variant("s", str(v)) for k, v in hints.items()}
+            self._pending.append((key, on))
+            self._call("Notify", GLib.Variant("(susssasa{sv}i)", (app, 0, icon, title, body, actions, h, -1)), "(u)")
+            return False
+        GLib.idle_add(go)
+
+    def close_key(self, key):
+        if DRY:
+            return
+        self.GLib.idle_add(lambda: (self.close_id(self.by_key.pop(key, 0)), False)[1])
+
+    def close_id(self, nid):
+        if nid:
+            self.by_id.pop(nid, None)
+            self._call("CloseNotification", self.GLib.Variant("(u)", (nid,)))
+
+    def _signal(self, bus, sender, path, iface, sig, params):
+        args = params.unpack()
+        nid = args[0]
+        entry = self.by_id.get(nid)
+        if not entry:
+            return
+        if sig == "ActionInvoked":
+            fn = entry["on"].get(args[1])
+            if fn:
+                threading.Thread(target=fn, daemon=True).start()
+        elif sig == "NotificationClosed":
+            self.by_id.pop(nid, None)
+            if self.by_key.get(entry["key"]) == nid:
+                self.by_key.pop(entry["key"], None)
+
+    def run(self):
+        self.GLib.MainLoop().run()
+
+
+def open_url(url):
+    subprocess.Popen(["xdg-open", url], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+# ── GitHub ──────────────────────────────────────────────────────────────────
+def gh(args, timeout=30):
+    return subprocess.run(["gh", "api", *args], capture_output=True, text=True, timeout=timeout)
+
+
+BOTS = re.compile(r"(\[bot\]$|^dependabot|^renovate|^github-actions|^snyk-bot|^greenkeeper)", re.I)
+BOT_TITLE = re.compile(r"^(chore|build|fix|ci)\((deps|deps-dev|dev-deps)\)|^bump |^update dependency |^\[snyk\]", re.I)
+BOT_BRANCH = re.compile(r"^(dependabot|renovate|snyk)[/-]", re.I)
+
+# reason -> (status, glyph, tone, severity, peek)
+REASONS = {
+    "review_requested": ("Review requested", "\U000f04c2", "caution", "warning", True),
+    "mention": ("Mentioned you", "\U000f01ee", "caution", "warning", True),
+    "team_mention": ("Mentioned your team", "\U000f01ee", "caution", "warning", True),
+    "assign": ("Assigned to you", "\U000f0004", "caution", "warning", True),
+    "approval_requested": ("Approval requested", "\U000f0b79", "caution", "warning", True),
+    "invitation": ("Invitation", "\U000f0014", "caution", "warning", True),
+    "security_alert": ("Security alert", "\U000f0028", "critical", "warning", True),
+    "member_feature_requested": ("Feature request", "", "", "", False),
+    "comment": ("New comment", "\U000f0188", "", "", False),
+    "author": ("Activity on yours", "\U000f0188", "", "", False),
+    "manual": ("Activity", "", "", "", False),
+    "subscribed": ("Activity", "", "", "", False),
+    "state_change": ("Status changed", "", "", "", False),
+}
+
+
+def web_url(t):
+    repo = t["repository"]["full_name"]
+    s = t["subject"]
+    api = s.get("url") or ""
+    m = re.search(r"/(pulls|issues|commits|releases|discussions)/([^/]+)$", api)
+    if s["type"] == "CheckSuite":
+        return f"https://github.com/{repo}/actions"
+    if m:
+        kind = {"pulls": "pull", "commits": "commit"}.get(m.group(1), m.group(1))
+        return f"https://github.com/{repo}/{kind}/{m.group(2)}" if kind != "releases" else f"https://github.com/{repo}/releases"
+    return f"https://github.com/{repo}"
+
+
+_me = []
+
+
+def me():
+    """Your GitHub login, lower-cased (asked once)."""
+    if not _me:
+        r = gh(["user", "--jq", ".login"], timeout=20)
+        _me.append(r.stdout.strip().lower() if r.returncode == 0 else "")
+    return _me[0]
+
+
+def short(repo):
+    """Your own repos without your name in front."""
+    owner, _, name = repo.partition("/")
+    return name if me() and owner.lower() == me() else repo
+
+
+def gh_thread(t):
+    """What the card says about one thread, or None for nothing to say."""
+    repo = t["repository"]["full_name"]
+    s = t["subject"]
+    reason = t.get("reason", "")
+    status, glyph, tone, severity, peek = REASONS.get(reason, ("Activity", "", "", "", False))
+    title = s["title"]
+    m = re.search(r"/(pulls|issues)/(\d+)$", s.get("url") or "")
+    number = f"#{m.group(2)}" if m else ""
+    body, who = f"{short(repo)} {number}".strip(), ""
+
+    if s["type"] == "CheckSuite":
+        # "CI workflow run failed for <branch> branch"
+        cm = re.match(r"^(.*?) workflow run (\w+) for (\S+) branch", title)
+        wf, outcome, branch = cm.groups() if cm else ("Workflow", "failed" if "fail" in title.lower() else "", "")
+        failed = outcome in ("failed", "cancelled", "timed_out") or "fail" in title.lower()
+        title = wf
+        body = f"{short(repo)} · {branch}" if branch else short(repo)
+        status, glyph = ("Run failed", "\U000f0028") if failed else ("Run " + (outcome or "finished"), "\U000f05e0")
+        tone, severity, peek = ("critical", "warning", True) if failed else ("positive", "", False)
+        quiet = bool(branch and BOT_BRANCH.match(branch))
+        # One card per workflow and branch: the next run replaces it.
+        t["_group"] = f"gh:ci:{repo}:{wf}:{branch}"
+        if branch:
+            t["_url"] = f"https://github.com/{repo}/actions?query=branch%3A{branch}"
+    else:
+        quiet = bool(BOT_TITLE.search(title))
+        # Who said what: the latest comment, or the pull request / issue itself.
+        url = s.get("latest_comment_url") or s.get("url")
+        if url:
+            r = gh([url.replace("https://api.github.com", "")], timeout=20)
+            if r.returncode == 0:
+                try:
+                    c = json.loads(r.stdout)
+                    who = ((c.get("user") or c.get("author") or {}).get("login")) or ""
+                    text = c.get("body") or ""
+                    if c.get("html_url") and "#issuecomment" in c.get("html_url", ""):
+                        t["_url"] = c["html_url"]
+                    if who and BOTS.search(who):
+                        quiet = True
+                    # Your own comment or push: you know.
+                    if who and who.lower() == me() and reason not in ("review_requested", "assign", "mention"):
+                        return None
+                    text = re.sub(r"<!--.*?-->|<[^>]+>|```.*?```|!\[[^\]]*\]\([^)]*\)", " ", text, flags=re.S)
+                    text = re.sub(r"[#>*_`|]+", " ", text)
+                    if who and text.strip() and reason not in ("review_requested", "assign"):
+                        body = f"{who}: {clip(text, 160)}"
+                    elif who:
+                        body = f"{short(repo)} {number} · by {who}".strip()
+                except ValueError:
+                    pass
+    return {
+        "title": title, "body": body, "status": status, "glyph": glyph, "tone": tone,
+        "severity": severity, "peek": peek, "quiet": quiet, "url": t.get("_url") or web_url(t),
+        "group": t.get("_group") or "gh:" + t["id"],
+    }
+
+
+def gh_mark_read(tid):
+    r = gh(["-X", "PATCH", f"/notifications/threads/{tid}"], timeout=20)
+    if r.returncode != 0 and "205" not in (r.stdout + r.stderr):
+        log("github: mark read", tid, r.stderr.strip())
+
+
+def github(notify):
+    g = state.setdefault("github", {})
+    first = "seen" not in g
+    seen = g.setdefault("seen", {})          # thread id -> updated_at we've told you about
+    shown = {}                               # thread id -> card key, up this run
+    wait, backoff = 60, 60
+    while True:
+        args = ["-i", "/notifications?per_page=50"]
+        if g.get("modified") and not first:
+            args += ["-H", f"If-Modified-Since: {g['modified']}"]
+        try:
+            r = gh(args)
+        except subprocess.TimeoutExpired:
+            r = None
+        out = r.stdout if r else ""
+        parts = re.split(r"\r?\n\r?\n", out, maxsplit=1)
+        head, body = parts[0], parts[1] if len(parts) > 1 else ""
+        code = re.match(r"HTTP/\S+ (\d+)", head)
+        code = int(code.group(1)) if code else 0
+        pi = re.search(r"(?im)^x-poll-interval:\s*(\d+)", head)
+        wait = max(60, int(pi.group(1))) if pi else wait
+        if code == 304:
+            backoff = 60
+            g["checked"] = int(time.time())
+            save()
+        elif code == 200:
+            backoff = 60
+            lm = re.search(r"(?im)^last-modified:\s*(.+?)\s*$", head)
+            if lm:
+                g["modified"] = lm.group(1)
+            try:
+                threads = json.loads(body)
+            except ValueError:
+                threads = []
+            live = {t["id"] for t in threads}
+            # Read on github.com (or anywhere): the card goes too.
+            for tid in list(shown):
+                if tid not in live:
+                    key = shown.pop(tid)
+                    if key not in shown.values():
+                        notify.close_key(key)
+            fresh = [t for t in threads if seen.get(t["id"]) != t["updated_at"]]
+            for t in fresh:
+                seen[t["id"]] = t["updated_at"]
+            if first:
+                log(f"github: {len(threads)} unread now; telling you about new ones from here")
+                fresh, first = [], False
+            cards = {}                       # newest per card: a burst of runs is one
+            for t in sorted(fresh, key=lambda t: t["updated_at"])[-12:]:
+                try:
+                    c = gh_thread(t)
+                except Exception as e:
+                    log("github: thread", t.get("id"), e)
+                    continue
+                if c:
+                    cards.pop(c["group"], None)
+                    cards[c["group"]] = (t, c)
+            for t, c in list(cards.values())[-6:]:
+                tid, key = t["id"], c["group"]
+                hints = {"x-rice-feed": "github", "x-rice-status": c["status"], "x-rice-glyph": c["glyph"],
+                         "x-rice-tone": c["tone"], "x-rice-group": key, "x-rice-url": c["url"],
+                         "x-rice-severity": c["severity"], "x-rice-quiet": "1" if c["quiet"] else "",
+                         "x-rice-calm": "" if c["peek"] else "1"}
+                url = c["url"]
+                notify.send("GitHub", "github", c["title"], c["body"], hints, key, {
+                    "default": lambda u=url, i=tid: (open_url(u), gh_mark_read(i)),
+                    "read": lambda i=tid: gh_mark_read(i),
+                })
+                shown[tid] = key
+            # Forget what's long gone, so the state stays small.
+            if len(seen) > 600:
+                for k in sorted(seen, key=seen.get)[:-400]:
+                    seen.pop(k, None)
+            g["checked"] = int(time.time())
+            save()
+        else:
+            err = (r.stderr.strip() if r else "timed out") or f"HTTP {code}"
+            log("github:", err)
+            backoff = min(backoff * 2, 900)
+        time.sleep(backoff if code not in (200, 304) else wait)
+
+
+# ── Gmail ───────────────────────────────────────────────────────────────────
+IMPORTANT = 'X-GM-RAW "is:unread is:important category:primary"'
+
+
+def gmail_secret(address):
+    r = subprocess.run(["secret-tool", "lookup", "service", "rice-feeds", "account", address],
+                       capture_output=True, text=True)
+    return r.stdout.strip() if r.returncode == 0 else ""
+
+
+def imap_login(address):
+    m = imaplib.IMAP4_SSL("imap.gmail.com", timeout=60)
+    m.login(address, gmail_secret(address))
+    return m
+
+
+def text_of(msg):
+    part = msg.get_body(preferencelist=("plain", "html"))
+    if not part:
+        return ""
+    try:
+        t = part.get_content()
+    except Exception:
+        return ""
+    if part.get_content_type() == "text/html":
+        t = re.sub(r"(?is)<(style|script|head).*?</\1>", " ", t)
+        t = html.unescape(re.sub(r"<[^>]+>", " ", t))
+    # Drop quoted replies and the signature.
+    t = re.split(r"\n\s*(On .+ wrote:|-- \n|>)", t, maxsplit=1)[0]
+    return clip(t, 180)
+
+
+def gmail_card(m, uid):
+    typ, data = m.uid("FETCH", uid, "(X-GM-THRID RFC822.SIZE BODY.PEEK[HEADER.FIELDS (FROM SUBJECT)])")
+    if typ != "OK" or not data or not isinstance(data[0], tuple):
+        return None
+    meta = data[0][0].decode(errors="replace")
+    thr = re.search(r"X-GM-THRID (\d+)", meta)
+    size = re.search(r"RFC822.SIZE (\d+)", meta)
+    head = email.message_from_bytes(data[0][1], policy=email.policy.default)
+    name, addr = email.utils.parseaddr(str(head.get("From", "")))
+    subject = clip(str(head.get("Subject", "")) or "(no subject)", 120)
+    snippet = ""
+    if size and int(size.group(1)) < 400_000:
+        typ, full = m.uid("FETCH", uid, "(BODY.PEEK[])")
+        if typ == "OK" and full and isinstance(full[0], tuple):
+            snippet = text_of(email.message_from_bytes(full[0][1], policy=email.policy.default))
+    thread = format(int(thr.group(1)), "x") if thr else ""
+    return {
+        "from": name or addr or "Someone", "subject": subject, "snippet": snippet, "thread": thread,
+        "url": f"https://mail.google.com/mail/u/0/#all/{thread}" if thread else "https://mail.google.com/mail/u/0/#inbox",
+    }
+
+
+def gmail_mark_read(address, uid):
+    try:
+        m = imap_login(address)
+        m.select("INBOX")
+        m.uid("STORE", uid, "+FLAGS", "(\\Seen)")
+        m.logout()
+    except Exception as e:
+        log("gmail: mark read", e)
+
+
+def gmail(notify, address):
+    g = state.setdefault("gmail", {})
+    shown = {}                               # uid -> key, cards up this run
+    backoff = 30
+    while True:
+        try:
+            m = imap_login(address)
+            typ, _ = m.select("INBOX", readonly=True)
+            if typ != "OK":
+                raise RuntimeError("can't open INBOX")
+            validity = int(re.search(rb"\d+", m.response("UIDVALIDITY")[1][0]).group())
+            if g.get("validity") != validity or "last" not in g:
+                # First time (or Gmail renumbered): start from now, no flood.
+                typ, d = m.uid("SEARCH", None, "ALL")
+                uids = [int(x) for x in d[0].split()] if typ == "OK" and d[0] else []
+                g.update(validity=validity, last=max(uids) if uids else 0)
+                save()
+                log(f"gmail: watching {address}")
+            backoff = 30
+            while True:
+                gmail_check(m, notify, address, g, shown)
+                # Gmail drops an IDLE after ~30 min; renew a little sooner.
+                with m.idle(duration=24 * 60) as idler:
+                    for typ, _ in idler:
+                        if typ in ("EXISTS", "EXPUNGE", "FETCH"):
+                            break
+        except Exception as e:
+            log("gmail:", e)
+            if "AUTHENTICATIONFAILED" in str(e) or "Invalid credentials" in str(e):
+                log("gmail: the app password was refused; run `rice-feeds gmail-setup` again")
+                backoff = 3600
+            time.sleep(backoff)
+            backoff = min(backoff * 2, 900)
+
+
+def gmail_check(m, notify, address, g, shown):
+    # Read in Gmail since: those cards go.
+    if shown:
+        typ, d = m.uid("SEARCH", None, f"UID {','.join(shown)} SEEN")
+        for uid in (d[0].decode().split() if typ == "OK" and d[0] else []):
+            notify.close_key(shown.pop(uid))
+    typ, d = m.uid("SEARCH", None, f"UID {g['last'] + 1}:*")
+    new = [int(x) for x in d[0].split()] if typ == "OK" and d[0] else []
+    new = [u for u in new if u > g["last"]]
+    if not new:
+        return
+    g["last"] = max(new)
+    save()
+    typ, d = m.uid("SEARCH", None, f"UID {min(new)}:{max(new)} {IMPORTANT}")
+    picks = [x.decode() for x in d[0].split()] if typ == "OK" and d[0] else []
+    for uid in picks[-5:]:
+        c = gmail_card(m, uid)
+        if not c:
+            continue
+        key = "gmail:" + (c["thread"] or uid)
+        hints = {"x-rice-feed": "gmail", "x-rice-group": key, "x-rice-url": c["url"],
+                 "x-rice-status": "", "x-rice-glyph": "", "x-rice-tone": "", "x-rice-severity": ""}
+        body = c["subject"] + ("\n" + c["snippet"] if c["snippet"] else "")
+        notify.send("Gmail", "gmail", c["from"], body, hints, key, {
+            "default": lambda u=c["url"]: open_url(u),
+            "read": lambda i=uid: gmail_mark_read(address, i),
+        })
+        shown[uid] = key
+
+
+# ── Commands ────────────────────────────────────────────────────────────────
+def gmail_setup():
+    cfg = load(CONFIG, {})
+    address = input(f"Gmail address [{cfg.get('gmail', '')}]: ").strip() or cfg.get("gmail", "")
+    if not address:
+        sys.exit("no address")
+    print("An app password (https://myaccount.google.com/apppasswords; needs 2-Step Verification).")
+    pw = getpass.getpass("App password: ").replace(" ", "")
+    try:
+        m = imaplib.IMAP4_SSL("imap.gmail.com", timeout=30)
+        m.login(address, pw)
+        m.logout()
+    except Exception as e:
+        sys.exit(f"Gmail refused it: {e}")
+    r = subprocess.run(["secret-tool", "store", "--label", f"rice-feeds: Gmail ({address})",
+                        "service", "rice-feeds", "account", address], input=pw, text=True)
+    if r.returncode != 0:
+        sys.exit("couldn't store it in the keyring")
+    cfg["gmail"] = address
+    os.makedirs(os.path.dirname(CONFIG), exist_ok=True)
+    with open(CONFIG, "w") as f:
+        json.dump(cfg, f, indent=2)
+    print(f"✓ {address}: signed in, kept in the keyring. Restarting the service…")
+    subprocess.run(["systemctl", "--user", "restart", "rice-feeds.service"])
+
+
+def gmail_forget():
+    cfg = load(CONFIG, {})
+    address = cfg.pop("gmail", "")
+    if address:
+        subprocess.run(["secret-tool", "clear", "service", "rice-feeds", "account", address])
+        with open(CONFIG, "w") as f:
+            json.dump(cfg, f, indent=2)
+        subprocess.run(["systemctl", "--user", "restart", "rice-feeds.service"])
+    print("✓ Gmail forgotten" if address else "no Gmail account set up")
+
+
+def status():
+    cfg = load(CONFIG, {})
+    g = state.get("github", {})
+    when = time.strftime("%H:%M:%S", time.localtime(g["checked"])) if g.get("checked") else "not yet"
+    print(f"GitHub: last looked {when}, {len(g.get('seen', {}))} threads known")
+    print(f"Gmail:  {cfg['gmail'] + ' (IMAP IDLE)' if cfg.get('gmail') else 'not set up (rice-feeds gmail-setup)'}")
+    r = subprocess.run(["systemctl", "--user", "is-active", "rice-feeds.service"], capture_output=True, text=True)
+    print(f"service: {r.stdout.strip()}")
+
+
+def main():
+    cmd = sys.argv[1] if len(sys.argv) > 1 else "run"
+    if cmd in ("-h", "--help", "help"):
+        print(__doc__)
+        return
+    if cmd == "gmail-setup":
+        return gmail_setup()
+    if cmd == "gmail-forget":
+        return gmail_forget()
+    if cmd == "status":
+        return status()
+    notify = Notifier()
+    if subprocess.run(["gh", "auth", "status"], capture_output=True).returncode == 0:
+        threading.Thread(target=github, args=(notify,), daemon=True).start()
+    else:
+        log("github: gh isn't signed in (gh auth login); skipping")
+    address = load(CONFIG, {}).get("gmail")
+    if address and gmail_secret(address):
+        threading.Thread(target=gmail, args=(notify, address), daemon=True).start()
+    else:
+        log("gmail: not set up (rice-feeds gmail-setup)")
+    notify.run()
+
+
+if __name__ == "__main__":
+    main()

@@ -5,6 +5,7 @@
 #   rice stop                 stop it (dunst takes notifications back)
 #   rice logs                 follow the shell's log
 #   rice notifs <cmd>         dnd | dnd-on | dnd-off | clear | hide | open | last | count | waybar
+#   rice feeds [status|gmail-setup|gmail-forget|logs]   GitHub and Gmail notifications (bin/rice-feeds)
 #   rice center [agents] [pointer]   toggle the center (Notifications or Agents);
 #                             `pointer` (the bell) morphs it, keys open it instantly
 #   rice assistant [here|open] toggle the AI assistant; `here` opens it about the focused window
@@ -165,6 +166,10 @@ case ${1:-} in
     stop)          for pid in $(qs list -p "$SHELL_DIR" --json 2>/dev/null | jq -r ".[].pid"); do kill -9 "$pid"; done ;;
     logs)          exec qs log -p "$SHELL_DIR" -f ;;
     notifs)        shift; notifs "$@" ;;
+    feeds)         case ${2:-status} in
+                       logs) exec journalctl --user -u rice-feeds.service -f ;;
+                       *) exec "$RICE/bin/rice-feeds" "${2:-status}" ;;
+                   esac ;;
     bar)           shift; bar "$@" ;;
     lock)
         # The shell's lock screen. --wait: return only once the compositor

@@ -1,0 +1,18 @@
+# GitHub and Gmail as notifications (bin/rice-feeds): GitHub's inbox through
+# gh, Gmail's important mail over IMAP IDLE. A service so it outlives shell
+# reloads (its notifications keep their buttons) and comes back if it dies.
+# Installed like the others (a link into ~/.config/systemd/user), started by
+# startup.lua.
+[Unit]
+Description=kuwai feeds (GitHub and Gmail notifications)
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+ExecStart=/bin/sh -c 'exec "${KUWAI_ROOT:-%h/Projects/rice}/bin/rice-feeds"'
+Restart=always
+RestartSec=10
+Slice=background.slice
+
+[Install]
+WantedBy=graphical-session.target
