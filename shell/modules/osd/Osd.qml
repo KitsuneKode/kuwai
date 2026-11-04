@@ -187,9 +187,14 @@ Scope {
         const art = DeviceArt.lookup(rawLabel) || DeviceArt.lookup(props["device.description"] || "");
         const shownType = art && art.kind && typeGlyph[art.kind] ? art.kind : type;
 
-        // With the island, it says what connected (Moments.card), not the HUD.
-        if (connected && Settings.bar === "island") {
-            const live = bt || type === "usb" || !!art;
+        // With the island, Bluetooth gear gets its card (Moments.card: the
+        // battery ring). Wired gear (a DAC, the IEMs behind it) has no battery
+        // to show: the volume HUD says what it is, its level sweeping up from
+        // empty. Unless headphones just went: the card says where sound went.
+        const wired = !bt && (type === "usb" || !!art);
+        const justGone = Moments.lastGone && Date.now() - Moments.lastGone.at < 4000;
+        if (connected && Settings.bar === "island" && !(wired && !justGone)) {
+            const live = bt || wired;
             if (boot && !live) return;
             Moments.outputSwitched({
                 key: rawLabel.toLowerCase(), glyph: typeGlyph[shownType], image: art ? art.image : "",
@@ -198,7 +203,8 @@ Scope {
             });
             return;
         }
-        if (boot) return;
+        if (boot && !wired) return;
+        const intro = connected && wired && Settings.bar === "island";
         kind = "volume";
         title = art ? art.label : sinkLabel(type, props, dev);
         muted = sink.audio.muted;
@@ -208,15 +214,25 @@ Scope {
             accessoryGlyph = batteryGlyph(dev.battery);
             accessory = Math.round(dev.battery * 100) + "%";
         } else {
-            accessoryGlyph = bt ? "\u{f00af}" : "";
+            accessoryGlyph = bt ? "\u{f00af}" : intro ? "\u{f0553}" : "";
             accessory = "";
         }
-        // Just connected: say so (and through what) instead of the level.
-        showTrack = !connected;
+        // Just connected: say so (and through what) instead of the level;
+        // wired gear in the island shows its level, filling from empty.
+        showTrack = !connected || intro;
         subtitle = connected ? (art && art.via ? "Connected via " + art.via : "Connected") : "";
         level = Math.min(1, v / 100);
         valueText = muted ? "Muted" : String(v);
-        hud.present(focusedScreenName());
+        if (intro && !Theme.reduceMotion) { introFill = 0; introSweep.restart(); }
+        else if (!introSweep.running) introFill = 1;
+        hud.present(focusedScreenName(), intro ? 2800 : 0);
+    }
+    // The connect sweep: the track's fill, as a share of the level.
+    property real introFill: 1
+    SequentialAnimation {
+        id: introSweep
+        PauseAnimation { duration: 260 }
+        NumberAnimation { target: root; property: "introFill"; to: 1; duration: 900; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
     }
 
     function showMic() {
@@ -324,7 +340,8 @@ Scope {
         // margins stay click-through, and a leaving card is never in the way.
         mask: Region { item: card.reveal > 0.6 ? card : null }
 
-        function present(screenName) {
+        function present(screenName, hold) {
+            linger.interval = hold || 1600;
             const s = Quickshell.screens.find(x => x.name === screenName) || shownScreen;
             if (mapped && s !== shownScreen) {
                 // Moving a mapped layer surface recreates it; restart cleanly.
@@ -577,8 +594,8 @@ Scope {
                             // so held keys glide instead of stepping.
                             // A dragging pointer is followed 1:1.
                             Behavior on shown { enabled: !cardArea.dragging; NumberAnimation { duration: Theme.glideMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
-                            width: Math.max(height, parent.width * Math.max(0, Math.min(1, shown)))
-                            visible: shown > 0.004
+                            width: Math.max(height, parent.width * Math.max(0, Math.min(1, shown * root.introFill)))
+                            visible: shown * root.introFill > 0.004
                             height: parent.height
                             radius: 3
                             color: root.muted ? Theme.fillDim : Theme.fill
@@ -595,7 +612,7 @@ Scope {
                         horizontalAlignment: Text.AlignRight
                         TextMetrics { id: widest; font: valueLabel.font; text: "100" }
                         TextMetrics { id: current; font: valueLabel.font; text: valueLabel.text }
-                        text: root.valueText
+                        text: root.introFill < 1 && !root.muted ? String(Math.round(root.level * 100 * root.introFill)) : root.valueText
                         font.family: Theme.fontRounded
                         font.weight: Theme.wMedium
                         font.pixelSize: 13

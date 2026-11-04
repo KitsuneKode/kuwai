@@ -51,11 +51,16 @@ if K.feature("screenshare_privacy") then
 		end
 		return hl.dsp.no_op()
 	end
+	-- `run` changes whenever captures stop, so a burst of screenshots (each
+	-- short, but one always in flight 2.5 s later) isn't taken for a share:
+	-- only a capture that never stopped since the timer started counts.
+	local run = 0
 	hl.on("screenshare.state", function(active)
 		if active then
 			shares = shares + 1
+			local mine = run
 			hl.timer(function()
-				if shares > 0 and not engaged and held == 0 and os.time() >= grace then
+				if shares > 0 and run == mine and not engaged and held == 0 and os.time() >= grace then
 					engaged = true
 					privacy(true)
 					hl.exec_cmd(K.bin .. "/rice notifs dnd-on")
@@ -64,6 +69,9 @@ if K.feature("screenshare_privacy") then
 			end, { timeout = 2500, type = "oneshot" })
 		else
 			shares = math.max(0, shares - 1)
+			if shares == 0 then
+				run = run + 1
+			end
 			if shares == 0 and engaged then
 				engaged = false
 				privacy(false)
