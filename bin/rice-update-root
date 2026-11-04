@@ -1,0 +1,132 @@
+#!/usr/bin/python3 -I
+"""rice-update-root: root's half of rice-update, so one password covers a whole update.
+
+rice-update starts it once per update as
+
+    pkexec /usr/local/lib/kuwai/rice-update-root
+
+from where `rice-update install-helper` put it: owned by root, writable only by root. It is
+never run from your home folder, which anything running as you could rewrite.
+
+It reads one JSON request per line on stdin and only ever runs pacman:
+
+    {"op": "upgrade", "deps": [PKG...]}   pacman -Syu --noconfirm --needed, then (deps given)
+                                          pacman -S --noconfirm --needed --asdeps PKG...
+    {"op": "deps", "deps": [PKG...]}      pacman -S --noconfirm --needed --asdeps PKG...
+    {"op": "install", "files": [FILE...]} pacman -U --noconfirm --needed FILE...
+                                          (package files owned by you, in your home folder)
+
+While pacman runs it answers {"log": LINE}, then {"rc": N}. It says {"ready": true} first.
+It ends when stdin closes (rice-update finished or died), or after four hours at most.
+
+pacman writes to a file, not to the pipe: if rice-update dies halfway, pacman still has
+somewhere to write and finishes its transaction instead of dying of a broken pipe.
+"""
+import json
+import os
+import pwd
+import re
+import signal
+import subprocess
+import sys
+import time
+
+PACMAN = "/usr/bin/pacman"
+OUT = "/run/rice-update-root.out"
+NAME = re.compile(r"^[a-z0-9@_+][a-z0-9@._+-]*$")
+PKGFILE = re.compile(r"\.pkg\.tar(\.[a-z0-9]+)?$")
+ENV = {"PATH": "/usr/bin:/bin", "LC_ALL": "C", "PACMAN_COLOR": "never", "HOME": "/root"}
+
+alive = True
+
+
+def say(**msg):
+    global alive
+    if not alive:
+        return
+    try:
+        sys.stdout.write(json.dumps(msg) + "\n")
+        sys.stdout.flush()
+    except (BrokenPipeError, OSError):
+        alive = False  # nobody listening: keep going, so pacman finishes
+
+
+def pacman(args):
+    with open(OUT, "w") as w:
+        p = subprocess.Popen([PACMAN, *args], stdin=subprocess.DEVNULL, stdout=w, stderr=subprocess.STDOUT,
+                             env=ENV, start_new_session=True)
+    pending = ""
+    with open(OUT) as r:
+        while True:
+            chunk = r.read()
+            if chunk:
+                pending += chunk
+                *lines, pending = pending.split("\n")
+                for line in lines:
+                    line = line.rstrip("\r")
+                    if line.strip():
+                        say(log=line)
+            elif p.poll() is not None:
+                if pending.strip():
+                    say(log=pending.strip())
+                return p.returncode
+            else:
+                time.sleep(0.1)
+
+
+def names(req):
+    pkgs = req.get("deps") or []
+    if not isinstance(pkgs, list) or not all(isinstance(x, str) and NAME.match(x) for x in pkgs):
+        raise ValueError("not package names")
+    return pkgs
+
+
+def files(req, home, uid):
+    out = []
+    for f in req.get("files") or []:
+        if not isinstance(f, str) or os.path.islink(f):
+            raise ValueError(f"not a package file: {f!r}")
+        real = os.path.realpath(f)
+        st = os.stat(real)
+        if not (real.startswith(home + "/") and PKGFILE.search(real) and os.path.isfile(real) and st.st_uid == uid):
+            raise ValueError(f"not a package file of yours: {f!r}")
+        out.append(real)
+    if not out:
+        raise ValueError("no package files")
+    return out
+
+
+def main():
+    signal.signal(signal.SIGHUP, signal.SIG_IGN)
+    signal.signal(signal.SIGPIPE, signal.SIG_IGN)
+    signal.alarm(4 * 3600)
+    if os.geteuid() != 0 or "PKEXEC_UID" not in os.environ:
+        print("rice-update-root: run by rice-update through pkexec", file=sys.stderr)
+        return 2
+    uid = int(os.environ["PKEXEC_UID"])
+    home = os.path.realpath(pwd.getpwuid(uid).pw_dir)
+    say(ready=True)
+    for line in sys.stdin:
+        try:
+            req = json.loads(line)
+            op = req.get("op")
+            if op == "upgrade":
+                deps = names(req)
+                rc = pacman(["-Syu", "--noconfirm", "--needed"])
+                if rc == 0 and deps:
+                    rc = pacman(["-S", "--noconfirm", "--needed", "--asdeps", "--", *deps])
+            elif op == "deps":
+                rc = pacman(["-S", "--noconfirm", "--needed", "--asdeps", "--", *names(req)])
+            elif op == "install":
+                rc = pacman(["-U", "--noconfirm", "--needed", "--", *files(req, home, uid)])
+            else:
+                raise ValueError(f"unknown request {op!r}")
+        except (ValueError, OSError, TypeError, AttributeError) as ex:
+            say(log=f"rice-update-root: refused: {ex}")
+            rc = 2
+        say(rc=rc)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

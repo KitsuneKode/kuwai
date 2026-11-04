@@ -36,6 +36,44 @@ stop_rice() {
     done
 }
 
+# The log of the newest rice instance (Quickshell keeps one per run).
+# (Not `qs list`: an instance whose config failed to load isn't listed.)
+# Only ones started after $MARK, the moment this launch began.
+newest_log() {
+    local d
+    for d in $(find "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/quickshell/by-id" -mindepth 1 -maxdepth 1 -type d -newer "$MARK" 2>/dev/null); do
+        if strings "$d/log.qslog" 2>/dev/null | grep -qF "Launching config: \"$SHELL_DIR/shell.qml\""; then
+            echo "$d/log.qslog"
+            return
+        fi
+    done
+}
+
+# The config didn't load (a typo, a half-saved file mid-edit): say so, keep a
+# bar on screen, and come back by itself. Quickshell exits when its config
+# fails at startup, so a watcher waits for the next save to any of the
+# shell's files and tries again (one watcher: it becomes the next attempt).
+broken() {
+    local log=$1 why
+    why=$(strings "$log" 2>/dev/null | grep -m3 'caused by' | sed 's/^[^c]*caused by //' | paste -sd ' ' | cut -c1-220)
+    echo "rice-shell: the shell didn't load: $why" >&2
+    pgrep -x waybar >/dev/null || setsid -f hyde-shell waybar >/dev/null 2>&1 </dev/null
+    notify-send -u critical -a "Shell" "The island didn't load" "${why:-see the Quickshell log} · Waybar is up meanwhile; the island comes back by itself once the file is saved fixed" 2>/dev/null
+    setsid -f bash -c '
+        dir=$1 rice=$2
+        stamp() { find "$dir" \( -name "*.qml" -o -name "*.js" -o -name "*.mjs" -o -name qmldir \) -printf "%T@\n" 2>/dev/null | sort -n | tail -1; }
+        was=$(stamp)
+        for _ in $(seq 3600); do       # two hours, then give up quietly
+            sleep 2
+            now=$(stamp)
+            if [ "$now" != "$was" ]; then
+                sleep 1                # let a burst of saves finish
+                exec "$rice/bin/rice-shell"
+            fi
+        done' rice-shell-watch "$SHELL_DIR" "$RICE" >/dev/null 2>&1 </dev/null
+    exit 1
+}
+
 stop_dunst() {
     pkill -x dunst 2>/dev/null
     for _ in $(seq 20); do
@@ -48,17 +86,37 @@ stop_dunst() {
 # standalone glass HUD it replaces.
 stop_rice
 pkill -f 'qs -p .*/quickshell/glass-osd' 2>/dev/null
+# A watcher from an earlier failed start: this run replaces it.
+for p in $(pgrep -f "rice-shell-watch $SHELL_DIR $RICE\$"); do [ "$p" != "$$" ] && kill "$p" 2>/dev/null; done
 
+MARK=$(mktemp "${XDG_RUNTIME_DIR:-/tmp}/rice/launch.XXXXXX")
+trap 'rm -f -- "$MARK"' EXIT
 for attempt in 1 2 3; do
     stop_dunst
+    touch "$MARK"
     # Started by Hyprland, as at login: run from a terminal it would otherwise
     # live (and die) in that terminal's process group and cgroup.
-    if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && hyprctl dispatch "hl.dsp.exec_cmd('qs -p $SHELL_DIR -d')" >/dev/null 2>&1; then :
-    else qs -p "$SHELL_DIR" -d >/dev/null 2>&1; fi
-    for _ in $(seq 30); do
+    # The allocator: 2 arenas, not 8 per core (each thread's arena kept its
+    # own freed memory), and freed memory goes back to the system sooner.
+    # Same speed for a shell; a smaller idle footprint after panels close.
+    ENV="GLIBC_TUNABLES=glibc.malloc.arena_max=2:glibc.malloc.trim_threshold=8388608"
+    if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && hyprctl dispatch "hl.dsp.exec_cmd('env $ENV qs -p $SHELL_DIR -d')" >/dev/null 2>&1; then :
+    else env "$ENV" qs -p "$SHELL_DIR" -d >/dev/null 2>&1; fi
+    for i in $(seq 40); do
+        # Every half second: did the config fail to load?
+        if [ $((i % 5)) -eq 0 ]; then
+            log=$(newest_log)
+            if [ -n "$log" ] && strings "$log" 2>/dev/null | grep -q 'Failed to load configuration' \
+               && ! strings "$log" 2>/dev/null | grep -q 'Configuration Loaded'; then
+                broken "$log"
+            fi
+        fi
         pid=$(owner_pid)
         if [ -n "$pid" ]; then
             if [ "$(cat /proc/"$pid"/comm 2>/dev/null)" = "dunst" ]; then break; fi
+            # Only the new rice counts (the old one can still hold the name
+            # for a moment after it was killed).
+            rice_pids | grep -qx "$pid" || { sleep 0.1; continue; }
             # One top bar: the island or Waybar, as the settings say.
             "$RICE/bin/rice" bar apply
             exit 0

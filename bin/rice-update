@@ -14,20 +14,28 @@
                                        kuwai-update, sleep/shutdown held off): it keeps going whatever
                                        happens to the shell; follow it in $XDG_RUNTIME_DIR/rice/update.jsonl
     rice-update status                 JSON: {"running": bool}
+    rice-update install-helper         install rice-update-root (one password, once): from then on a
+                                       whole update asks for your password once, not once per step
     rice-update run [--repo] [--aur PKG ...]
                                        the update itself (what `start` runs): one JSON event per line
                                        (phase, log, progress, error, done) on stdout and in update.jsonl;
                                        the whole log in ~/.local/state/rice/updates/
 
 How it updates (no terminal, no stored passwords, no sudo rules):
-  · Arch's packages update together: `pkexec pacman -Syu --noconfirm` (one password prompt; pacman's
-    defaults answer its questions, and the risky ones default to "no", so a conflict stops it instead
-    of guessing). Never per-package: Arch doesn't support partial upgrades.
+  · One password for the whole update: root's part is rice-update-root, started once with pkexec
+    (installed root-owned by `install-helper`; it only runs pacman). Without it, each root step
+    asks on its own (`pkexec pacman …`), as before.
+  · Arch's packages update together: `pacman -Syu --noconfirm` (pacman's defaults answer its
+    questions, and the risky ones default to "no", so a conflict stops it instead of guessing).
+    Never per-package: Arch doesn't support partial upgrades. Build dependencies the AUR packages
+    need come after, marked as dependencies (`--asdeps`), so they can be cleaned up as orphans.
   · AUR packages are built as you with makepkg, from the exact commit you approved (or the newest
     one for packages you trust), in ~/.cache/rice/aur/PKG, never as root; then all of them install
-    with one `pkexec pacman -U`. A package that changed after you reviewed it is not built.
-  · A package that needs another AUR package, or a PGP key, is left for the terminal (paru) and
-    says so; nothing is half-done silently.
+    with one `pacman -U`. A package that changed after you reviewed it is not built.
+  · Tests (checkdepends) run when their dependencies come from Arch's repos; when one is only in
+    the AUR, the build skips the tests (`--nocheck`) instead of the whole package.
+  · A package that needs another AUR package to build or run, or a PGP key, is left for the
+    terminal (paru) and says so; nothing is half-done silently.
 """
 import fcntl
 import json
@@ -54,6 +62,9 @@ RUNTIME = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "rice")
 EVENTS = os.path.join(RUNTIME, "update.jsonl")
 LOCK = os.path.join(RUNTIME, "update.lock")
 UNIT = "kuwai-update"
+HELPER = "/usr/local/lib/kuwai/rice-update-root"
+HELPER_SRC = os.path.join(os.path.dirname(os.path.realpath(__file__)), "rice-update-root")
+FLATPAK_TARGET = re.compile(r"^(?:(user|system):)?([A-Za-z0-9][A-Za-z0-9._/-]*)$")
 NAME_OK = re.compile(r"^[a-z0-9@._+-]+$")
 SHA_OK = re.compile(r"^[0-9a-f]{40}$")
 
@@ -213,25 +224,31 @@ def check():
 
 
 def flatpak_updates():
-    """Flatpak apps with updates (sandboxed and signed: each can update on its
-    own, no review needed). Runtimes come along with the apps that use them."""
+    """Flatpak apps and runtimes with updates (sandboxed and signed: each can
+    update on its own, no review needed), from your own installation and the
+    system-wide one. `id` is what `run --flatpak` takes: "user:app/ID/arch/branch".
+    (remote-ls has no "installation" column: ask each installation in turn.)"""
     if not shutil.which("flatpak"):
         return []
-    r = sh(["flatpak", "remote-ls", "--updates", "--app", "--columns=application,version,origin,installation"], timeout=60)
-    if r.returncode != 0:
-        return []
-    have = {}
-    for l in sh(["flatpak", "list", "--app", "--columns=application,name,version,installation"]).stdout.splitlines():
-        p = l.split("\t")
-        if len(p) >= 4:
-            have[(p[0], p[3])] = (p[1], p[2])
     out = []
-    for l in r.stdout.splitlines():
-        p = l.split("\t")
-        if len(p) < 4 or not p[0]:
+    for inst in ("user", "system"):
+        r = sh(["flatpak", "remote-ls", f"--{inst}", "--updates", "--columns=ref,application,version,origin"], timeout=60)
+        if r.returncode != 0:
             continue
-        name, old = have.get((p[0], p[3]), (p[0].split(".")[-1], ""))
-        out.append({"id": p[0], "name": name, "old": old, "new": p[1] or "newer build", "origin": p[2], "install": p[3]})
+        have = {}
+        for l in sh(["flatpak", "list", f"--{inst}", "--columns=ref,name,version"]).stdout.splitlines():
+            p = l.split("\t")
+            if len(p) >= 3:
+                have[p[0]] = (p[1], p[2])
+        for l in r.stdout.splitlines():
+            p = l.split("\t")
+            if len(p) < 4 or not FLATPAK_TARGET.match(p[0]):
+                continue
+            ref, app = p[0], p[1]
+            # `list` shows refs without the app/ or runtime/ that `remote-ls` puts first.
+            name, old = have.get(ref.split("/", 1)[-1], (app.split(".")[-1], ""))
+            out.append({"id": f"{inst}:{ref}", "app": app, "name": name, "old": old, "new": p[2] or "newer build",
+                        "origin": p[3], "install": inst, "runtime": ref.startswith("runtime/")})
     return out
 
 
@@ -489,42 +506,158 @@ class Run:
             p = subprocess.Popen(cmd, cwd=cwd, stdin=subprocess.DEVNULL, stdout=w, stderr=subprocess.STDOUT,
                                  env={**os.environ, "LC_ALL": "C", "PACMAN_COLOR": "never"}, start_new_session=True)
         pending = ""
-        with open(out) as r:
+        shown = ""
+        with open(out, newline="") as r:   # keep \r: progress redraws are handled below
             while True:
                 chunk = r.read()
                 if chunk:
-                    pending += chunk
+                    pending += ANSI.sub("", chunk)
                     *lines, pending = pending.split("\n")
                     for line in lines:
-                        line = line.rstrip("\r")
-                        if not line.strip():
-                            continue
-                        self.emit(e="log", line=line)
-                        m = re.match(r"^\(\s*(\d+)/(\d+)\)\s+(\S+)\s+(\S+)", line)
-                        if m and progress:
-                            self.emit(e="progress", phase=progress, k=int(m[1]), n=int(m[2]), what=f"{m[3]} {m[4]}")
+                        # A progress bar redrawn with \r (flatpak, curl): the log
+                        # keeps the line's final state, not every redraw.
+                        self.line(line.split("\r")[-1] if "\r" in line.rstrip("\r") else line, progress)
+                    # Still drawing (no newline yet): show where it is now.
+                    now = pending.rstrip("\r").split("\r")[-1].strip()
+                    if now and now != shown:
+                        shown = now
+                        self.emit(e="status", line=now)
                 elif p.poll() is not None:
-                    if pending.strip():
-                        self.emit(e="log", line=pending.strip())
+                    last = pending.rstrip("\r").split("\r")[-1].strip()
+                    if last:
+                        self.emit(e="log", line=last)
                     return p.returncode
                 else:
                     time.sleep(0.1)
 
+    def line(self, line, progress=None):
+        """One line of a command's output: logged, and pacman's (k/n) as progress."""
+        line = line.rstrip("\r")
+        if not line.strip():
+            return
+        self.emit(e="log", line=line)
+        m = re.match(r"^\(\s*(\d+)/(\d+)\)\s+(\S+)\s+(\S+)", line)
+        if m and progress:
+            self.emit(e="progress", phase=progress, k=int(m[1]), n=int(m[2]), what=f"{m[3]} {m[4]}")
+
 
 AUTH_FAIL = (126, 127)
+ANSI = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]|\x1b\][^\x07]*\x07")
+
+
+def helper_ok():
+    """rice-update-root is installed where root alone can change it, and is this version."""
+    try:
+        for p in (HELPER, os.path.dirname(HELPER)):
+            st = os.stat(p)
+            if st.st_uid != 0 or st.st_mode & 0o022:
+                return False
+        with open(HELPER, "rb") as a, open(HELPER_SRC, "rb") as b:
+            return a.read() == b.read()
+    except OSError:
+        return False
+
+
+class Root:
+    """Root's part of a run. With rice-update-root installed: one pkexec (one password) for the
+    whole run, opened up front so the prompt comes before the builds, not after them. Without
+    it: one pkexec per step, as before."""
+
+    def __init__(self, R):
+        self.R = R
+        self.p = None
+        self.prompts = 0
+        # The helper is used whenever its source is here: not installed yet (or
+        # out of date), the same password installs it and starts it, so even the
+        # first run asks once (it used to be once per step until `install-helper`).
+        self.helper = os.path.isfile(HELPER_SRC)
+
+    def open(self):
+        """0 once root is there; pkexec's code (126/127: cancelled) when it isn't."""
+        if not self.helper or self.p:
+            return 0
+        self.prompts += 1
+        if helper_ok():
+            cmd = ["pkexec", HELPER]
+        else:
+            # Copied to a root-owned place first, then run from there (never from
+            # your home folder, which anything running as you could rewrite).
+            self.R.emit(e="log", line="Setting up one-password updates (rice-update-root)")
+            cmd = ["pkexec", "/bin/sh", "-c", 'umask 022 && /usr/bin/install -D -o root -g root -m 0755 -- "$1" "$2" && exec "$2"',
+                   "sh", HELPER_SRC, HELPER]
+        self.p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, bufsize=1)
+        hello = self.p.stdout.readline()
+        if '"ready"' not in hello:
+            rc = self.p.wait()
+            self.p = None
+            return rc or 127
+        return 0
+
+    def run(self, op, progress=None, deps=(), files=()):
+        if not self.helper:
+            self.prompts += 1
+            if op == "upgrade" and deps:
+                # One prompt for both: the upgrade, then the build deps marked as deps.
+                script = '/usr/bin/pacman -Syu --noconfirm --needed && /usr/bin/pacman -S --noconfirm --needed --asdeps -- "$@"'
+                return self.R.stream(["pkexec", "/bin/sh", "-c", script, "sh", *deps], progress=progress)
+            cmd = {"upgrade": ["-Syu", "--noconfirm", "--needed"],
+                   "deps": ["-S", "--noconfirm", "--needed", "--asdeps", "--", *deps],
+                   "install": ["-U", "--noconfirm", "--needed", "--", *files]}[op]
+            return self.R.stream(["pkexec", "pacman", *cmd], progress=progress)
+        rc = self.open()
+        if rc:
+            return rc
+        self.R.log.write(f"$ (root) pacman {op} {' '.join([*deps, *files])}\n")
+        try:
+            self.p.stdin.write(json.dumps({"op": op, "deps": list(deps), "files": list(files)}) + "\n")
+            self.p.stdin.flush()
+            for raw in self.p.stdout:
+                try:
+                    msg = json.loads(raw)
+                except ValueError:
+                    continue
+                if "log" in msg:
+                    self.R.line(msg["log"], progress)
+                elif "rc" in msg:
+                    return msg["rc"]
+        except (BrokenPipeError, OSError):
+            pass
+        self.R.emit(e="log", line="rice-update-root stopped unexpectedly")
+        self.p = None
+        return 1
+
+    def close(self):
+        if self.p:
+            try:
+                self.p.stdin.close()
+                self.p.wait(timeout=10)
+            except (OSError, subprocess.TimeoutExpired):
+                pass
+            self.p = None
 
 
 def missing_deps(d):
+    """What a build still needs, split by where it comes from: (from Arch's repos, only in the
+    AUR, run tests). The package's own names (a split package's parts depend on each other)
+    don't count. Tests run only when everything they need comes from the repos."""
     si = sh(["makepkg", "--printsrcinfo"], cwd=d).stdout
-    deps = re.findall(r"^\s*(?:depends|makedepends|checkdepends)(?:_\w+)? = (.+)$", si, re.M)
-    if not deps:
-        return [], []
-    r = sh(["pacman", "-T", *deps])
-    miss = [x for x in r.stdout.split() if x]
-    names = [re.split(r"[<>=]", x)[0] for x in miss]
-    in_repo = [x for x in names if sh(["pacman", "-Si", x]).returncode == 0]
-    aur_only = [x for x in names if x not in in_repo]
-    return in_repo, aur_only
+    own = set(re.findall(r"^pkgname = (\S+)$", si, re.M))
+
+    def missing(kinds):
+        deps = re.findall(rf"^\s*(?:{kinds})(?:_\w+)? = (.+)$", si, re.M)
+        deps = [x for x in deps if re.split(r"[<>=]", x)[0] not in own]
+        if not deps:
+            return [], []
+        miss = [x for x in sh(["pacman", "-T", *deps]).stdout.split() if x]
+        names = sorted({re.split(r"[<>=]", x)[0] for x in miss})
+        in_repo = [x for x in names if sh(["pacman", "-Si", x]).returncode == 0]
+        return in_repo, [x for x in names if x not in in_repo]
+
+    in_repo, aur_only = missing("depends|makedepends")
+    check_repo, check_aur = missing("checkdepends")
+    if check_aur:
+        return in_repo, aur_only, False   # tests skipped: what they need is only in the AUR
+    return sorted(set(in_repo + check_repo)), aur_only, True
 
 
 def run(args):
@@ -550,7 +683,7 @@ def run(args):
             out.append(a)
         return out
     aur = [valid_name(a) for a in after("--aur")]
-    flatpaks = [a for a in after("--flatpak") if re.match(r"^[A-Za-z0-9._-]+$", a)]
+    flatpaks = [a for a in after("--flatpak") if FLATPAK_TARGET.match(a)]
     R = Run()
     approved = load(APPROVED, {})
     trusted = set(load(TRUSTED, []))
@@ -580,21 +713,28 @@ def run(args):
             continue
         git(d, "checkout", "-q", "--force", "--detach", head)
         git(d, "clean", "-qfdx", "-e", "src", "-e", "pkg")
-        in_repo, aur_only = missing_deps(d)
+        in_repo, aur_only, tests = missing_deps(d)
         if aur_only:
             result["skipped"].append({"pkg": pkg, "why": "needs AUR packages first (" + ", ".join(aur_only) + "): update it in the terminal with paru"})
             continue
         extra_repo_deps += in_repo
-        plan.append((pkg, d, head))
+        plan.append((pkg, d, head, tests))
     extra_repo_deps = sorted(set(extra_repo_deps))
 
-    # 1. Arch's packages, together (plus repo deps the AUR builds need).
+    # Root, once (rice-update-root installed): the password now, before the builds.
+    root = Root(R)
+    result["oneprompt"] = root.helper
+    if root.helper and (want_repo or extra_repo_deps or plan):
+        rc = root.open()
+        if rc:
+            R.emit(e="error", msg="Cancelled at the password prompt. Nothing was changed.")
+            R.emit(e="done", **{**result, "ok": False, "cancelled": True})
+            return 1
+
+    # 1. Arch's packages, together; then the repo deps the AUR builds need, as deps.
     if want_repo or extra_repo_deps:
         R.emit(e="phase", id="repo", label="Updating Arch packages" if want_repo else "Installing build dependencies")
-        cmd = ["pkexec", "pacman", "-Syu" if want_repo else "-S", "--noconfirm", "--needed"]
-        if not want_repo:
-            cmd.append("--asdeps")
-        rc = R.stream(cmd + extra_repo_deps, progress="repo")
+        rc = root.run("upgrade" if want_repo else "deps", progress="repo", deps=extra_repo_deps)
         if rc in AUTH_FAIL:
             R.emit(e="error", msg="Cancelled at the password prompt. Nothing was changed.")
             R.emit(e="done", **{**result, "ok": False, "cancelled": True})
@@ -607,9 +747,11 @@ def run(args):
 
     # 2. AUR builds, as you.
     built = []
-    for i, (pkg, d, head) in enumerate(plan, 1):
+    for i, (pkg, d, head, tests) in enumerate(plan, 1):
         R.emit(e="phase", id="build", label=f"Building {pkg}", k=i, n=len(plan))
-        rc = R.stream(["makepkg", "-f", "--noconfirm", "--noprogressbar"], cwd=d)
+        if not tests:
+            R.emit(e="log", line=f"{pkg}: its tests need AUR packages; building without them (--nocheck)")
+        rc = R.stream(["makepkg", "-f", "--noconfirm", "--noprogressbar", *([] if tests else ["--nocheck"])], cwd=d)
         if rc != 0:
             why = "build failed (see the log)"
             if rc == 13:
@@ -627,7 +769,7 @@ def run(args):
     if built:
         R.emit(e="phase", id="install", label=f"Installing {len(built)} AUR package" + ("s" if len(built) > 1 else ""))
         files = [f for b in built for f in b[3]]
-        rc = R.stream(["pkexec", "pacman", "-U", "--noconfirm", "--needed", *files], progress="install")
+        rc = root.run("install", progress="install", files=files)
         if rc in AUTH_FAIL:
             R.emit(e="error", msg="Cancelled at the password prompt; the AUR packages are built but not installed.")
             result["ok"] = False
@@ -640,14 +782,24 @@ def run(args):
                 result["installed"].append(pkg)
                 approved.pop(pkg, None)
             save(APPROVED, approved)
+    root.close()
+    result["prompts"] = root.prompts
 
-    # 4. Flatpak apps (yours: no password; system-wide ones ask through polkit).
+    # 4. Flatpak (yours: no password; system-wide ones ask through polkit), one
+    # flatpak call per installation ("user:app/ID/arch/branch"; a bare ID from an
+    # older check: whichever installation has it).
     if flatpaks:
-        R.emit(e="phase", id="flatpak", label=f"Updating {len(flatpaks)} Flatpak app" + ("s" if len(flatpaks) > 1 else ""))
-        rc = R.stream(["flatpak", "update", "-y", "--noninteractive", *flatpaks], progress="flatpak")
+        R.emit(e="phase", id="flatpak", label=f"Updating {len(flatpaks)} Flatpak item" + ("s" if len(flatpaks) > 1 else ""))
+        groups = {}
+        for t in flatpaks:
+            m = FLATPAK_TARGET.match(t)
+            groups.setdefault(m[1] or "", []).append(m[2])
+        rc = 0
+        for inst, refs in groups.items():
+            rc |= R.stream(["flatpak", "update", *([f"--{inst}"] if inst else []), "-y", "--noninteractive", *refs], progress="flatpak")
         result["flatpak"] = rc == 0
         if rc != 0:
-            R.emit(e="error", msg="Some Flatpak apps didn't update (see the log).")
+            R.emit(e="error", msg="Some Flatpak updates didn't install (see the log).")
             result["ok"] = False
 
     # 5. What needs your attention afterwards.
@@ -685,12 +837,21 @@ def main(argv):
             print(json.dumps({"approved": load(APPROVED, {}), "trusted": load(TRUSTED, [])}))
         elif cmd == "run":
             return run(argv[1:])
+        elif cmd == "install-helper":
+            # Root-owned, outside your home, so nothing running as you can change what runs as root.
+            if helper_ok():
+                print(json.dumps({"installed": True, "already": True}))
+                return 0
+            r = subprocess.run(["pkexec", "/usr/bin/install", "-D", "-o", "root", "-g", "root", "-m", "0755", HELPER_SRC, HELPER])
+            ok = r.returncode == 0 and helper_ok()
+            print(json.dumps({"installed": ok} if ok else {"error": "not installed (cancelled at the password prompt?)"}))
+            return 0 if ok else 1
         elif cmd == "status":
             print(json.dumps({"running": sh(["systemctl", "--user", "is-active", "--quiet", UNIT + ".service"]).returncode == 0}))
         elif cmd == "start":
             args = argv[1:]
             for a in args:
-                if not a.startswith("--") and not re.match(r"^[A-Za-z0-9@._+-]+$", a):
+                if not a.startswith("--") and not (re.match(r"^[A-Za-z0-9@._+-]+$", a) or FLATPAK_TARGET.match(a)):
                     raise SystemExit(f"rice-update: not a package or app id: {a!r}")
             if sh(["systemctl", "--user", "is-active", "--quiet", UNIT + ".service"]).returncode == 0:
                 print(json.dumps({"error": "An update is already running."}))
