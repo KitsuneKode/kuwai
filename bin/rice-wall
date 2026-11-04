@@ -1,0 +1,107 @@
+#!/usr/bin/env bash
+# Live wallpapers: add your own, and play them in the shell.
+#
+#   rice-wall add FILE [NAME] [--no-loop]   make FILE a live wallpaper: 30 fps,
+#                                           your largest screen's height (max
+#                                           1440p), GPU-encoded, and a seamless
+#                                           loop (the last 1.5 s fade into the
+#                                           first) unless it already loops
+#   rice-wall import [STEAM_DIR]            Wallpaper Engine's *video* wallpapers
+#                                           from the Steam Workshop (431960)
+#   rice-wall list                          the library, in play order
+#   rice-wall play NAME|FILE                play one now
+#
+# The library is ~/Pictures/live-wallpapers (or a theme's own
+# ~/.config/hyde/themes/<theme>/wallpapers/live). Names start with a number
+# for the order Super+Ctrl+Shift+W steps through.
+set -u
+unset LD_LIBRARY_PATH   # some app terminals ship an older libnotify (T3 Code)
+LIB="$HOME/Pictures/live-wallpapers"
+SCRIPT="$HOME/Scripts/live-wallpaper.sh"
+mkdir -p "$LIB"
+
+next_number() {
+    local n
+    n=$(find "$LIB" -maxdepth 1 -name '[0-9]*-*' -printf '%f\n' 2>/dev/null | sed -n 's/^\([0-9]\+\)-.*/\1/p' | sort -n | tail -1)
+    echo $(( ${n:-0} + 1 ))
+}
+slug() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]\+/-/g; s/^-//; s/-$//' | cut -c1-40; }
+
+# The tallest screen, capped at 1440 (a 4K decode costs four times a 1080p one).
+target_h() {
+    local h
+    h=$(hyprctl monitors -j 2>/dev/null | jq '[.[].height] | max' 2>/dev/null)
+    [ -n "$h" ] && [ "$h" -gt 0 ] 2>/dev/null || h=1080
+    [ "$h" -gt 1440 ] && h=1440
+    echo "$h"
+}
+
+encoder() {
+    if ffmpeg -hide_banner -encoders 2>/dev/null | grep -q h264_nvenc; then echo "-c:v h264_nvenc -preset p6 -rc vbr -cq 23 -b:v 0"
+    else echo "-c:v libx264 -preset slow -crf 22"; fi
+}
+
+add() {
+    local src=$1 name=${2:-} loop=1
+    [ "${3:-}" = --no-loop ] || [ "${2:-}" = --no-loop ] && loop=0
+    [ "${2:-}" = --no-loop ] && name=""
+    [ -r "$src" ] || { echo "rice-wall: can't read $src" >&2; return 1; }
+    [ -n "$name" ] || name=$(slug "$(basename "${src%.*}")")
+    local out="$LIB/$(next_number)-$(slug "$name").mp4"
+    local H; H=$(target_h)
+    local D; D=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$src")
+    local F=1.5
+    local base="scale=-2:$H:flags=lanczos,fps=30,format=yuv420p"
+    # Short clips (< 4 s) and --no-loop: as they are.
+    if [ "$loop" = 1 ] && awk -v d="$D" 'BEGIN{exit !(d > 4)}'; then
+        local off; off=$(awk -v d="$D" -v f="$F" 'BEGIN{printf "%.3f", d-2*f}')
+        # shellcheck disable=SC2046
+        ffmpeg -nostdin -v error -stats -y -i "$src" -filter_complex \
+            "[0:v]$base,split[x][y];[x]trim=start=$F,setpts=PTS-STARTPTS[a];[y]trim=end=$F,setpts=PTS-STARTPTS[b];[a][b]xfade=transition=fade:duration=$F:offset=$off[v]" \
+            -map "[v]" -an $(encoder) -movflags +faststart "$out" || return 1
+    else
+        # shellcheck disable=SC2046
+        ffmpeg -nostdin -v error -stats -y -i "$src" -vf "$base" -an $(encoder) -movflags +faststart "$out" || return 1
+    fi
+    echo "added $(basename "$out") ($(du -h "$out" | cut -f1))"
+}
+
+# Wallpaper Engine: subscribed Workshop items live in
+# steamapps/workshop/content/431960/<id>/ with a project.json. Only type
+# "video" is a plain video file; "scene" and "web" need linux-wallpaperengine.
+import() {
+    local steam=${1:-}
+    if [ -z "$steam" ]; then
+        for d in "$HOME/.local/share/Steam" "$HOME/.steam/steam" "$HOME/.var/app/com.valvesoftware.Steam/data/Steam"; do
+            [ -d "$d/steamapps/workshop/content/431960" ] && { steam=$d; break; }
+        done
+    fi
+    local ws="$steam/steamapps/workshop/content/431960"
+    [ -d "$ws" ] || { echo "rice-wall: no Wallpaper Engine Workshop folder (install Steam, own Wallpaper Engine, subscribe to some wallpapers)" >&2; return 1; }
+    local seen="$LIB/.imported"; touch "$seen"
+    local n=0 skipped=0
+    for dir in "$ws"/*/; do
+        local id; id=$(basename "$dir")
+        grep -qx "$id" "$seen" && continue
+        local pj="$dir/project.json"
+        [ -r "$pj" ] || continue
+        local type file title
+        type=$(jq -r '.type // "" | ascii_downcase' "$pj"); file=$(jq -r '.file // ""' "$pj"); title=$(jq -r '.title // ""' "$pj")
+        if [ "$type" = video ] && [ -r "$dir/$file" ]; then
+            add "$dir/$file" "${title:-we-$id}" && echo "$id" >> "$seen" && n=$((n + 1))
+        else
+            echo "  skipped $id \"$title\" (${type:-unknown}: needs linux-wallpaperengine)"; skipped=$((skipped + 1))
+        fi
+    done
+    echo "imported $n video wallpapers; $skipped scene/web ones skipped"
+}
+
+case "${1:-list}" in
+    add)    shift; add "$@" ;;
+    import) shift; import "$@" ;;
+    list)   find "$LIB" -maxdepth 1 -type f \( -iname '*.mp4' -o -iname '*.webm' -o -iname '*.mkv' \) -printf '%f\n' | sort -V ;;
+    play)   f=${2:?usage: rice-wall play NAME|FILE}; [ -f "$f" ] || f=$(find "$LIB" -maxdepth 1 -iname "*$f*" | sort -V | head -1)
+            [ -f "$f" ] || { echo "rice-wall: no wallpaper matches $2" >&2; exit 1; }
+            "$SCRIPT" play "$f" ;;
+    *)      sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+esac
