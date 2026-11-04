@@ -1,8 +1,11 @@
 // A device, grown out of the island (Moments.card), as AirPods do on an
-// iPhone: its photo (devices.json) or its kind pops in, then its name, what
-// happened ("Connected", "via Audiocular D07", "Disconnected · Sound on
-// Built-in Speakers") and its battery, the ring filling from empty. A click
-// opens Sound in the center; it folds back by itself, never under the pointer.
+// iPhone: its photo (devices.json) or its kind, a badge for how it's
+// attached (Bluetooth, USB), its name, what happened ("Connected", "via
+// Audiocular D07", "Disconnected · Sound on Built-in Speakers") and its
+// battery. Connecting, the link closes around it and pings out as it
+// settles, then the battery ring fills; going, it greys and sinks a little.
+// A click opens Sound in the center; it folds back by itself, never under
+// the pointer.
 import QtQuick
 import QtQuick.Effects
 import Quickshell.Widgets
@@ -19,23 +22,31 @@ Item {
     readonly property bool gone: !!item && item.gone
     readonly property real battery: item && item.battery >= 0 ? item.battery : -1
 
-    // Each new device: the picture pops, the ring sweeps up to its charge.
-    property real pop: 1
+    property real settle: 1
+    property real link: 0
+    property real ping: 0
     property real fill: 1
     property string shownKey: ""
     onItemChanged: {
-        if (!item || item.key === shownKey) return;
-        shownKey = item.key;
+        if (!item || item.key + !!item.gone === shownKey) return;
+        shownKey = item.key + !!item.gone;
         if (Theme.reduceMotion) return;
-        popIn.restart();
-        fill = 0; sweep.restart();
+        connecting.stop(); going.stop();
+        if (gone) { going.restart(); return; }
+        settle = 0; link = 0; ping = 0; fill = 0;
+        connecting.restart();
     }
-    NumberAnimation { id: popIn; target: card; property: "pop"; from: 0.5; to: 1; duration: 520; easing.type: Easing.OutBack; easing.overshoot: 2.4 }
     SequentialAnimation {
-        id: sweep
-        PauseAnimation { duration: 220 }
-        NumberAnimation { target: card; property: "fill"; to: 1; duration: 900; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+        id: connecting
+        PauseAnimation { duration: 160 }
+        NumberAnimation { target: card; property: "link"; to: 1; duration: 520; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+        ParallelAnimation {
+            NumberAnimation { target: card; property: "ping"; to: 1; duration: 480; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+            NumberAnimation { target: card; property: "settle"; to: 1; duration: 420; easing.type: Easing.OutBack; easing.overshoot: 1.4 }
+            NumberAnimation { target: card; property: "fill"; to: 1; duration: 900; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+        }
     }
+    NumberAnimation { id: going; target: card; property: "settle"; from: 1.12; to: 1; duration: 360; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
 
     HoverHandler { onHoveredChanged: Moments.cardHeld = hovered }
     TapHandler {
@@ -46,8 +57,9 @@ Item {
         id: mark
         x: 18; anchors.verticalCenter: parent.verticalCenter
         width: 54; height: 54
-        scale: card.pop
-        opacity: card.gone ? 0.5 : 1
+        // Settling in from a little small; going, it sinks to a little small.
+        scale: card.gone ? 0.94 + 0.06 * (card.settle - 1) / 0.12 : 0.86 + 0.14 * card.settle
+        opacity: card.gone ? 0.5 : 0.55 + 0.45 * Math.min(1, card.settle)
         Behavior on opacity { NumberAnimation { duration: Theme.colorMs } }
         Image {
             id: photo
@@ -71,6 +83,28 @@ Item {
                 font.family: Theme.fontGlyph; font.pixelSize: 27
                 color: Theme.textPrimary
             }
+        }
+    }
+    LinkRing {
+        anchors.centerIn: mark
+        width: 64; height: 64
+        draw: card.link; ping: card.ping
+    }
+    // How it's attached, on the device's shoulder.
+    Rectangle {
+        readonly property string linkGlyph: !card.item ? "" : card.item.link === "bluetooth" ? "\u{f00af}" : card.item.link === "usb" ? "\u{f0553}" : ""
+        visible: linkGlyph !== ""
+        x: mark.x + mark.width - width + 3; y: mark.y - 3
+        width: 22; height: 22; radius: 11
+        color: "#2c2c2e"
+        border.width: 2; border.color: "black"
+        scale: card.gone ? 1 : 0.4 + 0.6 * Math.min(1.1, card.settle)
+        opacity: card.gone ? 0.6 : Math.min(1, card.settle * 1.5)
+        Text {
+            anchors.centerIn: parent
+            text: parent.linkGlyph
+            font.family: Theme.fontGlyph; font.pixelSize: 12
+            color: card.gone ? Theme.textSecondary : card.item && card.item.link === "bluetooth" ? Theme.blue : Theme.textPrimary
         }
     }
 
@@ -129,7 +163,7 @@ Item {
             anchors.centerIn: parent
             visible: card.battery < 0
             width: 30; height: 30; radius: 15
-            scale: card.pop
+            scale: 0.5 + 0.5 * Math.min(1, card.settle)
             color: Qt.alpha(Theme.green, 0.18)
             Text {
                 anchors.centerIn: parent

@@ -68,7 +68,8 @@ Singleton {
     // pad); the sound moving to another output (Osd says so: it knows the
     // IEMs behind a DAC); and once at login, what's already connected.
     //
-    //   card: { key, glyph, image, title, state, tone, detail, battery (0..1 or -1), gone }
+    //   card: { key, glyph, image, title, state, tone, detail, battery (0..1 or -1), gone, link }
+    //   link: "bluetooth" | "usb" | "", a badge on the device
     property var card: null
     property bool cardHeld: false
     function showCard(c, ms) {
@@ -108,8 +109,20 @@ Singleton {
         const art = DeviceArt.lookup(name);
         return { key: name.toLowerCase(), glyph: kindGlyph[btKind(d)], image: art ? art.image : "",
                  title: art ? art.label : name, state: "Connected", tone: Theme.green,
-                 detail: art && art.via ? "via " + art.via : "", battery: d.batteryAvailable ? d.battery : -1, gone: false };
+                 detail: art && art.via ? "via " + art.via : "", battery: d.batteryAvailable ? d.battery : -1, gone: false,
+                 link: "bluetooth", audio: audioKinds.indexOf(btKind(d)) >= 0 };
     }
+    readonly property var audioKinds: ["earbuds", "iem", "headphones", "speaker"]
+    // Sound gear connects in the volume HUD once its output is up (Osd
+    // claims it); the card waits for that, and shows only if it never comes.
+    property var waiting: null
+    property var claimed: null        // { key, at }
+    function claim(key) {
+        claimed = { key: key, at: Date.now() };
+        if (waiting && waiting.key === key) { waiting = null; audioWait.stop(); }
+        if (card && card.key === key) dropCard();
+    }
+    Timer { id: audioWait; interval: 3500; onTriggered: if (root.waiting) { root.showCard(root.waiting); root.waiting = null; } }
 
     readonly property var connected: Bluetooth.devices.values.filter(d => d.connected)
     property var known: []            // [{ address, name, kind }]
@@ -133,34 +146,38 @@ Singleton {
             if (!ds.length) return;
             const c = root.btCard(ds[ds.length - 1]);
             if (ds.length > 1) c.detail = "and " + ds.slice(0, -1).map(d => d.name || "a device").join(", ");
-            root.showCard(c);
+            const early = root.claimed && root.claimed.key === c.key && Date.now() - root.claimed.at < 6000;
+            if (early) return;
+            if (c.audio && ds.length === 1) { root.waiting = c; audioWait.restart(); }
+            else root.showCard(c);
         }
     }
     property var lastGone: null
     function deviceGone(g) {
         const art = DeviceArt.lookup(g.name);
         lastGone = { key: g.name.toLowerCase(), at: Date.now() };
+        if (waiting && waiting.key === lastGone.key) { waiting = null; audioWait.stop(); }
         showCard({ key: lastGone.key, glyph: kindGlyph[g.kind], image: art ? art.image : "", title: art ? art.label : g.name,
-                   state: "Disconnected", tone: Theme.textSecondary, detail: "", battery: -1, gone: true }, 3400);
+                   state: "Disconnected", tone: Theme.textSecondary, detail: "", battery: -1, gone: true, link: "bluetooth" }, 3400);
     }
     // Osd, when wired gear (a DAC, the IEMs behind it) is unplugged:
     // { key, glyph, image, title }. Then outputSwitched says where sound went.
     function wiredGone(o) {
         lastGone = { key: o.key, at: Date.now() };
         showCard({ key: o.key, glyph: o.glyph, image: o.image, title: o.title,
-                   state: "Disconnected", tone: Theme.textSecondary, detail: "", battery: -1, gone: true }, 3400);
+                   state: "Disconnected", tone: Theme.textSecondary, detail: "", battery: -1, gone: true, link: "usb" }, 3400);
     }
     // Osd, when the sound moves: { key, glyph, image, title, via, battery, live, boot }.
     // `live`: a device that comes and goes (Bluetooth, USB, a known DAC).
     function outputSwitched(o) {
         // Headphones just went: say where the sound went instead.
-        if (lastGone && Date.now() - lastGone.at < 4000 && card && card.gone) {
+        if (lastGone && Date.now() - lastGone.at < 4000 && card && card.gone && lastGone.key !== o.key) {
             showCard(Object.assign({}, card, { detail: "Sound on " + o.title }), 3400);
             return;
         }
         showCard({ key: o.key, glyph: o.glyph, image: o.image, title: o.title,
                    state: o.live ? "Connected" : "Sound output", tone: o.live ? Theme.green : Theme.textSecondary,
-                   detail: o.via ? "via " + o.via : "", battery: o.battery, gone: false }, o.live ? 4000 : 2600);
+                   detail: o.via ? "via " + o.via : "", battery: o.battery, gone: false, link: o.link || "" }, o.live ? 4000 : 2600);
     }
     // Once, after the hello: what's already here. Bluetooth if any (sound
     // gear first), else Osd's output if it's a DAC or known IEMs.
@@ -168,11 +185,19 @@ Singleton {
     Timer {
         interval: 5800; running: true
         onTriggered: {
-            const audio = ["earbuds", "iem", "headphones", "speaker"];
+            const audio = root.audioKinds;
             const ds = root.connected.slice().sort((a, b) => (audio.indexOf(root.btKind(a)) < 0) - (audio.indexOf(root.btKind(b)) < 0));
             if (!ds.length) { root.askOutput(); return; }
             const c = root.btCard(ds[0]);
             if (ds.length > 1) c.detail = "and " + ds.slice(1).map(d => d.name || "a device").join(", ");
+            // Sound on them: the HUD connects them (it claims the card).
+            if (c.audio && ds.length === 1) {
+                root.waiting = c;
+                root.claimed = null;
+                root.askOutput();
+                root.waiting = null;
+                if (root.claimed) return;
+            }
             root.showCard(c, 4200);
         }
     }

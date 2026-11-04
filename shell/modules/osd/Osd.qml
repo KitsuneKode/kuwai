@@ -37,6 +37,7 @@ Scope {
     property string subtitle: ""          // shown instead of the track
     property string artImage: ""          // the device's photo (DeviceArt), in place of the glyph
     property string accessoryGlyph: ""
+    property string linkGlyph: ""         // how it's attached: Bluetooth or USB
     property string accessory: ""
     property real level: 0                // 0..1 fill
     property string valueText: ""
@@ -75,7 +76,8 @@ Scope {
         output = ev.output || "";
         glyph = brightnessGlyph(v);
         title = ev.label;
-        accessoryGlyph = ""; accessory = "";
+        accessoryGlyph = ""; accessory = ""; linkGlyph = "";
+        settleIntro();
         muted = false;
         if (ev.error || v === null) {
             showTrack = false;
@@ -231,53 +233,73 @@ Scope {
         const art = DeviceArt.lookup(rawLabel) || DeviceArt.lookup(props["device.description"] || "");
         const shownType = art && art.kind && typeGlyph[art.kind] ? art.kind : type;
 
-        // With the island, Bluetooth gear gets its card (Moments.card: the
-        // battery ring). Wired gear (a DAC, the IEMs behind it) has no battery
-        // to show: the volume HUD says what it is, its level sweeping up from
-        // empty. Unless headphones just went: the card says where sound went.
+        // With the island, gear that comes and goes (Bluetooth earbuds, a
+        // DAC and the IEMs behind it) connects here: the HUD says what it is
+        // and how it's attached, the link closes around it, then its level
+        // fills from empty. Anything else (the speakers, a display) gets
+        // the card, as does headphones just going (where sound went).
         const wired = !bt && (type === "usb" || !!art);
+        const live = bt || wired;
         remember();
-        const justGone = Moments.lastGone && Date.now() - Moments.lastGone.at < 4000;
-        if (connected && Settings.bar === "island" && !(wired && !justGone)) {
-            const live = bt || wired;
+        const justGone = Moments.lastGone && Date.now() - Moments.lastGone.at < 4000 && Moments.lastGone.key !== rawLabel.toLowerCase();
+        if (connected && Settings.bar === "island" && !(live && !justGone)) {
             if (boot && !live) return;
             Moments.outputSwitched({
                 key: rawLabel.toLowerCase(), glyph: typeGlyph[shownType], image: art ? art.image : "",
                 title: art ? art.label : sinkLabel(type, props, dev), via: art ? art.via : "",
-                battery: dev && dev.batteryAvailable ? dev.battery : -1, live: live, boot: !!boot
+                battery: dev && dev.batteryAvailable ? dev.battery : -1, live: live, boot: !!boot,
+                link: bt ? "bluetooth" : wired ? "usb" : ""
             });
             return;
         }
-        if (boot && !wired) return;
-        const intro = connected && wired && Settings.bar === "island";
+        if (boot && !live) return;
+        const intro = connected && live && Settings.bar === "island";
+        if (intro) Moments.claim(rawLabel.toLowerCase());
         kind = "volume";
         title = art ? art.label : sinkLabel(type, props, dev);
         muted = sink.audio.muted;
         glyph = muted ? "\u{f075f}" : typeGlyph[shownType];
         artImage = art && !muted ? art.image : "";
-        if (dev && dev.batteryAvailable) {
-            accessoryGlyph = batteryGlyph(dev.battery);
-            accessory = Math.round(dev.battery * 100) + "%";
-        } else {
-            accessoryGlyph = bt ? "\u{f00af}" : intro ? "\u{f0553}" : "";
-            accessory = "";
-        }
-        // Just connected: say so (and through what) instead of the level;
-        // wired gear in the island shows its level, filling from empty.
+        linkGlyph = bt ? "\u{f00af}" : wired ? "\u{f0553}" : "";
+        accessoryGlyph = dev && dev.batteryAvailable ? batteryGlyph(dev.battery) : "";
+        accessory = dev && dev.batteryAvailable ? Math.round(dev.battery * 100) + "%" : "";
+        // Just connected: say so (and through what); in the island the
+        // level then takes the line, filling from empty.
         showTrack = !connected || intro;
         subtitle = connected ? (art && art.via ? "Connected via " + art.via : "Connected") : "";
         level = Math.min(1, v / 100);
         valueText = muted ? "Muted" : String(v);
-        if (intro && !Theme.reduceMotion) { introFill = 0; introSweep.restart(); }
-        else if (!introSweep.running) introFill = 1;
-        hud.present(focusedScreenName(), intro ? 2800 : 0);
+        if (intro && !Theme.reduceMotion) {
+            introLink = 0; introPing = 0; introSettle = 0; introSwap = 0; introFill = 0;
+            introRun.restart();
+        } else if (!intro) settleIntro();
+        hud.present(focusedScreenName(), intro ? 3400 : 0);
     }
-    // The connect sweep: the track's fill, as a share of the level.
+    // Connecting, in order: the arc closes around the device (the link),
+    // the ring pings out as the device and its link mark settle in;
+    // "Connected" reads for a beat; then the level takes the line, filling
+    // from empty. A key pressed meanwhile skips to the end.
+    property real introLink: 0
+    property real introPing: 0
+    property real introSettle: 1
+    property real introSwap: 1
     property real introFill: 1
+    function settleIntro() {
+        introRun.stop();
+        introLink = 0; introPing = 0; introSettle = 1; introSwap = 1; introFill = 1;
+    }
     SequentialAnimation {
-        id: introSweep
-        PauseAnimation { duration: 260 }
-        NumberAnimation { target: root; property: "introFill"; to: 1; duration: 900; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+        id: introRun
+        PauseAnimation { duration: 140 }
+        NumberAnimation { target: root; property: "introLink"; to: 1; duration: 520; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+        ParallelAnimation {
+            NumberAnimation { target: root; property: "introPing"; to: 1; duration: 480; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+            NumberAnimation { target: root; property: "introSettle"; to: 1; duration: 420; easing.type: Easing.OutBack; easing.overshoot: 1.4 }
+        }
+        PauseAnimation { duration: 420 }
+        NumberAnimation { target: root; property: "introSwap"; to: 1; duration: 220; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+        NumberAnimation { target: root; property: "introFill"; to: 1; duration: 700; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+        ScriptAction { script: { root.introLink = 0; root.introPing = 0; } }
     }
 
     function showMic() {
@@ -286,7 +308,8 @@ Scope {
         title = micMuted ? "Microphone Off" : (source ? (source.description || "Microphone") : "Microphone");
         glyph = micMuted ? "\u{f036d}" : "\u{f036c}";
         muted = micMuted;
-        accessoryGlyph = ""; accessory = "";
+        accessoryGlyph = ""; accessory = ""; linkGlyph = "";
+        settleIntro();
         // On: its input level, adjustable like volume. Off: say so.
         showTrack = !micMuted && !!source && !!source.audio;
         subtitle = micMuted ? "Click the microphone to turn it on" : "";
@@ -311,7 +334,8 @@ Scope {
         title = Notifs.dnd ? "Do Not Disturb" : "Notifications On";
         glyph = Notifs.dnd ? "\u{f0594}" : "\u{f009a}";
         muted = false;
-        accessoryGlyph = ""; accessory = "";
+        accessoryGlyph = ""; accessory = ""; linkGlyph = "";
+        settleIntro();
         showTrack = false;
         subtitle = Notifs.dnd ? "Only critical alerts will show" : "Alerts will show again";
         hud.present(focusedScreenName());
@@ -506,6 +530,8 @@ Scope {
                     fillMode: Image.PreserveAspectFit
                     asynchronous: true
                     smooth: true; mipmap: true
+                    scale: 0.86 + 0.14 * root.introSettle
+                    opacity: 0.55 + 0.45 * Math.min(1, root.introSettle)
                 }
                 Text {
                     anchors.centerIn: parent
@@ -514,7 +540,16 @@ Scope {
                     font.family: Theme.fontGlyph
                     font.pixelSize: 22
                     color: root.muted ? Theme.textDim : Theme.textPrimary
+                    scale: 0.86 + 0.14 * root.introSettle
+                    opacity: 0.55 + 0.45 * Math.min(1, root.introSettle)
                 }
+            }
+
+            LinkRing {
+                anchors.centerIn: platter
+                width: 54; height: 54
+                opacity: card.inner * (1 - root.introPing)
+                draw: root.introLink; ping: root.introPing
             }
 
             Column {
@@ -565,6 +600,16 @@ Scope {
                         anchors.rightMargin: chevron.opacity > 0 ? 4 : 0
                         anchors.verticalCenter: titleText.verticalCenter
                         spacing: 4
+                        // The link lands as the ring closes.
+                        Text {
+                            visible: root.linkGlyph !== ""
+                            text: root.linkGlyph
+                            font.family: Theme.fontGlyph
+                            font.pixelSize: 14
+                            color: Theme.textSecondary
+                            opacity: Math.min(1, root.introSettle * 1.5)
+                            scale: 0.5 + 0.5 * root.introSettle
+                        }
                         Text {
                             visible: root.accessoryGlyph !== ""
                             text: root.accessoryGlyph
@@ -587,84 +632,94 @@ Scope {
                     }
                 }
 
-                Text {
-                    visible: !root.showTrack
-                    width: parent.width
-                    text: root.subtitle
-                    elide: Text.ElideRight
-                    font.family: Theme.fontText
-                    font.pixelSize: 13
-                    font.variableAxes: ({ "opsz": Theme.opszFor(13), "wght": Theme.wRegular })
-                    font.letterSpacing: Theme.tracking(13, false)
-                    renderType: Text.NativeRendering
-                    color: Theme.textSecondary
-                }
-
                 Item {
-                    visible: root.showTrack
                     width: parent.width
-                    height: 12
-
-                    Item {
-                        id: track
-                        anchors.left: parent.left
-                        anchors.right: valueLabel.left
-                        anchors.rightMargin: 10
+                    height: Math.max(sub.implicitHeight, 12)
+                    Text {
+                        id: sub
+                        readonly property bool connecting: root.showTrack && root.introSwap < 1
+                        visible: !root.showTrack || connecting
                         anchors.verticalCenter: parent.verticalCenter
-                        height: 6
-                        transform: Scale { id: trackScale; xScale: 1 }
-
-                        Rectangle {
-                            anchors.fill: parent
-                            radius: 3
-                            color: Theme.track
-                        }
-                        // Drag (or click) along the track to set the level; the
-                        // hit area is taller than the 6px line.
-                        MouseArea {
-                            anchors.fill: parent
-                            anchors.topMargin: -10
-                            anchors.bottomMargin: -10
-                            cursorShape: Qt.PointingHandCursor
-                            preventStealing: true
-                            onPressed: mouse => { cardArea.dragging = true; root.setLevel(mouse.x / width); }
-                            onPositionChanged: mouse => { if (pressed) root.setLevel(mouse.x / width); }
-                            onReleased: cardArea.dragging = false
-                            onCanceled: cardArea.dragging = false
-                        }
-                        Rectangle {
-                            id: fill
-                            property real shown: root.level
-                            // The fill chases its target from wherever it is,
-                            // so held keys glide instead of stepping.
-                            // A dragging pointer is followed 1:1.
-                            Behavior on shown { enabled: !cardArea.dragging; NumberAnimation { duration: Theme.glideMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
-                            width: Math.max(height, parent.width * Math.max(0, Math.min(1, shown * root.introFill)))
-                            visible: shown * root.introFill > 0.004
-                            height: parent.height
-                            radius: 3
-                            color: root.muted ? Theme.fillDim : Theme.fill
-                            Behavior on color { ColorAnimation { duration: Theme.colorMs } }
-                        }
+                        opacity: connecting ? 1 - root.introSwap : 1
+                        width: parent.width
+                        text: connecting ? "\u25CF  " + root.subtitle : root.subtitle
+                        elide: Text.ElideRight
+                        font.family: Theme.fontText
+                        font.pixelSize: 13
+                        font.variableAxes: ({ "opsz": Theme.opszFor(13), "wght": Theme.wRegular })
+                        font.letterSpacing: Theme.tracking(13, false)
+                        renderType: Text.NativeRendering
+                        color: connecting ? Theme.green : Theme.textSecondary
                     }
 
-                    Text {
-                        id: valueLabel
-                        anchors.right: parent.right
+                    Item {
+                        visible: root.showTrack && root.introSwap > 0
+                        opacity: root.introSwap
                         anchors.verticalCenter: parent.verticalCenter
-                        // Reserve room for "100" so the track length never jitters.
-                        width: Math.max(widest.advanceWidth, current.advanceWidth)
-                        horizontalAlignment: Text.AlignRight
-                        TextMetrics { id: widest; font: valueLabel.font; text: "100" }
-                        TextMetrics { id: current; font: valueLabel.font; text: valueLabel.text }
-                        text: root.introFill < 1 && !root.muted ? String(Math.round(root.level * 100 * root.introFill)) : root.valueText
-                        font.family: Theme.fontRounded
-                        font.weight: Theme.wMedium
-                        font.pixelSize: 13
-                        font.letterSpacing: Theme.tracking(13, true)
-                        renderType: Text.NativeRendering
-                        font.features: { "tnum": 1 }
-                        color: Theme.textSecondary
+                        width: parent.width
+                        height: 12
+
+                        Item {
+                            id: track
+                            anchors.left: parent.left
+                            anchors.right: valueLabel.left
+                            anchors.rightMargin: 10
+                            anchors.verticalCenter: parent.verticalCenter
+                            height: 6
+                            transform: Scale { id: trackScale; xScale: 1 }
+
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: 3
+                                color: Theme.track
+                            }
+                            // Drag (or click) along the track to set the level; the
+                            // hit area is taller than the 6px line.
+                            MouseArea {
+                                anchors.fill: parent
+                                anchors.topMargin: -10
+                                anchors.bottomMargin: -10
+                                cursorShape: Qt.PointingHandCursor
+                                preventStealing: true
+                                onPressed: mouse => { cardArea.dragging = true; root.setLevel(mouse.x / width); }
+                                onPositionChanged: mouse => { if (pressed) root.setLevel(mouse.x / width); }
+                                onReleased: cardArea.dragging = false
+                                onCanceled: cardArea.dragging = false
+                            }
+                            Rectangle {
+                                id: fill
+                                property real shown: root.level
+                                // The fill chases its target from wherever it is,
+                                // so held keys glide instead of stepping.
+                                // A dragging pointer is followed 1:1.
+                                Behavior on shown { enabled: !cardArea.dragging; NumberAnimation { duration: Theme.glideMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+                                width: Math.max(height, parent.width * Math.max(0, Math.min(1, shown * root.introFill)))
+                                visible: shown * root.introFill > 0.004
+                                height: parent.height
+                                radius: 3
+                                color: root.muted ? Theme.fillDim : Theme.fill
+                                Behavior on color { ColorAnimation { duration: Theme.colorMs } }
+                            }
+                        }
+
+                        Text {
+                            id: valueLabel
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            // Reserve room for "100" so the track length never jitters.
+                            width: Math.max(widest.advanceWidth, current.advanceWidth)
+                            horizontalAlignment: Text.AlignRight
+                            TextMetrics { id: widest; font: valueLabel.font; text: "100" }
+                            TextMetrics { id: current; font: valueLabel.font; text: valueLabel.text }
+                            text: root.introFill < 1 && !root.muted ? String(Math.round(root.level * 100 * root.introFill)) : root.valueText
+                            font.family: Theme.fontRounded
+                            font.weight: Theme.wMedium
+                            font.pixelSize: 13
+                            font.letterSpacing: Theme.tracking(13, true)
+                            renderType: Text.NativeRendering
+                            font.features: { "tnum": 1 }
+                            color: Theme.textSecondary
+                        }
                     }
                 }
             }
