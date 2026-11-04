@@ -131,7 +131,11 @@ switch_to() {   # $1 = the root to run from
             *) kill -9 "$pid" 2>/dev/null ;;
         esac
     done
+    # systemd's copy (hypridle and the units run `rice` from it): Hyprland's
+    # environment, which the reload just updated, exported again.
     systemctl --user set-environment KUWAI_ROOT="$1" 2>/dev/null
+    hyprctl dispatch "hl.dsp.exec_cmd('dbus-update-activation-environment --systemd PATH KUWAI_ROOT')" >/dev/null 2>&1
+    sleep 0.3
     exec "$1/bin/rice-shell"
 }
 
