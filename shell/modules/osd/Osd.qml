@@ -98,19 +98,47 @@ Scope {
     // Ignore the burst of property changes while PipeWire binds at startup,
     // and right after the default sink switches (handled as "connected").
     property bool armed: false
-    Timer { running: Pipewire.ready; interval: 1500; onTriggered: root.armed = true }
+    Timer { running: Pipewire.ready; interval: 1500; onTriggered: { root.armed = true; root.remember(); } }
     property real sinkSwitchedAt: 0
 
     readonly property real sinkVolume: sink && sink.audio ? sink.audio.volume : -1
     readonly property bool sinkMuted: sink && sink.audio ? sink.audio.muted : false
     readonly property bool micMuted: source && source.audio ? source.audio.muted : false
 
-    onSinkVolumeChanged: if (armed && sinkVolume >= 0 && Date.now() - sinkSwitchedAt > 600) showVolume(false)
+    // A device being unplugged drops to 0 just before it goes: wait a moment
+    // on a fall to 0, and say nothing if the output changed meanwhile.
+    onSinkVolumeChanged: {
+        if (!armed || sinkVolume < 0 || Date.now() - sinkSwitchedAt <= 600) return;
+        if (sinkVolume === 0) zeroHold.restart();
+        else showVolume(false);
+    }
+    Timer { id: zeroHold; interval: 400; onTriggered: if (Date.now() - root.sinkSwitchedAt > 400 && root.sinkVolume === 0) root.showVolume(false) }
     onSinkMutedChanged: if (armed && Date.now() - sinkSwitchedAt > 600) showVolume(false)
     onMicMutedChanged: if (armed) showMic()
     onSinkChanged: {
         sinkSwitchedAt = Date.now();
+        leftOut = lastOut;
         if (armed) { sinkTries = 0; sinkConnected.restart(); }
+    }
+    // The output sound was on, and the one it just left: if that was wired
+    // gear and its node is gone, it was unplugged (not just switched away).
+    property var lastOut: null        // { name, key, title, glyph, image, wired }
+    property var leftOut: null
+    function remember() {
+        if (!sink || !sink.audio) return;
+        const props = sink.properties || {};
+        const dev = bluetoothDevice(props);
+        const bt = props["device.api"] === "bluez5" || !!props["api.bluez5.address"];
+        const rawLabel = (dev && dev.name) || props["device.description"] || sink.description || "";
+        const type = deviceType(rawLabel, props, bt, dev ? (dev.icon || "") : "");
+        const art = DeviceArt.lookup(rawLabel) || DeviceArt.lookup(props["device.description"] || "");
+        const shownType = art && art.kind && typeGlyph[art.kind] ? art.kind : type;
+        lastOut = { name: sink.name, key: rawLabel.toLowerCase(), title: art ? art.label : sinkLabel(type, props, dev),
+                    glyph: typeGlyph[shownType], image: art ? art.image : "", wired: !bt && (type === "usb" || !!art) };
+    }
+    function unplugged(o) {
+        return !!o && o.wired && (!sink || o.name !== sink.name)
+            && !Pipewire.nodes.values.some(n => n.name === o.name);
     }
     // Wait for the new node to bind its properties before naming it. A
     // device just plugged in (a DAC) is a new node and can take a few
@@ -120,7 +148,13 @@ Scope {
         id: sinkConnected
         interval: 350; repeat: true
         onTriggered: {
-            if (root.sink && root.sink.ready && root.sink.audio) { stop(); root.sinkSwitchedAt = Date.now(); root.showVolume(true); }
+            if (root.sink && root.sink.ready && root.sink.audio) {
+                stop();
+                root.sinkSwitchedAt = Date.now();
+                if (Settings.bar === "island" && root.unplugged(root.leftOut)) Moments.wiredGone(root.leftOut);
+                root.leftOut = null;
+                root.showVolume(true);
+            }
             else if (++root.sinkTries > 12) stop();
         }
     }
@@ -202,6 +236,7 @@ Scope {
         // to show: the volume HUD says what it is, its level sweeping up from
         // empty. Unless headphones just went: the card says where sound went.
         const wired = !bt && (type === "usb" || !!art);
+        remember();
         const justGone = Moments.lastGone && Date.now() - Moments.lastGone.at < 4000;
         if (connected && Settings.bar === "island" && !(wired && !justGone)) {
             const live = bt || wired;

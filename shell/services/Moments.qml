@@ -143,6 +143,13 @@ Singleton {
         showCard({ key: lastGone.key, glyph: kindGlyph[g.kind], image: art ? art.image : "", title: art ? art.label : g.name,
                    state: "Disconnected", tone: Theme.textSecondary, detail: "", battery: -1, gone: true }, 3400);
     }
+    // Osd, when wired gear (a DAC, the IEMs behind it) is unplugged:
+    // { key, glyph, image, title }. Then outputSwitched says where sound went.
+    function wiredGone(o) {
+        lastGone = { key: o.key, at: Date.now() };
+        showCard({ key: o.key, glyph: o.glyph, image: o.image, title: o.title,
+                   state: "Disconnected", tone: Theme.textSecondary, detail: "", battery: -1, gone: true }, 3400);
+    }
     // Osd, when the sound moves: { key, glyph, image, title, via, battery, live, boot }.
     // `live`: a device that comes and goes (Bluetooth, USB, a known DAC).
     function outputSwitched(o) {
