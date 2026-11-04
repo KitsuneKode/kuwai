@@ -222,15 +222,24 @@ FocusScope {
             spacing: 18
             SettingsGroup {
                 title: "The island at rest"
+                // Two looks for the same island. Minimal: a mini notch with the
+                // time, or whatever is alive (music, a moment, a password, a
+                // recording). Hidden: nothing at all until you near the top,
+                // press Ctrl+Alt+W, or something needs you; then the same
+                // mini notch. Near the top, either shows the full row.
                 SettingsRow {
-                    label: "Show"
-                    detail: Settings.islandRest === "minimal" ? "Only what's alive; workspaces, time and status when you near the top edge or press Super+Alt+I"
-                          : Settings.islandRest === "auto" ? "Everything, until a moment matters (a password, an update, dictation): then it takes the stage. Near the top edge or Super+Alt+I shows the rest."
-                          : "Workspaces, time and status, always"
+                    readonly property string style: Settings.islandTucked ? "hidden" : Settings.islandRest === "full" ? "full" : "minimal"
+                    label: "Style"
+                    detail: style === "hidden" ? "Out of the way: it appears near the top edge, with Ctrl+Alt+W, or when something needs you. Windows get the whole screen."
+                          : style === "full" ? "Workspaces, time and status, always"
+                          : "Just the time, or what's alive: music, a moment, a password, a recording. Near the top edge for the rest."
                     Segmented {
-                        options: [{ id: "auto", label: "Auto" }, { id: "full", label: "Everything" }, { id: "minimal", label: "Minimal" }]
-                        current: Settings.islandRest
-                        onPicked: id => Settings.set("islandRest", id)
+                        options: [{ id: "minimal", label: "Minimal" }, { id: "hidden", label: "Hidden" }, { id: "full", label: "Everything" }]
+                        current: parent.style
+                        onPicked: id => {
+                            Settings.set("islandTucked", id === "hidden");
+                            Settings.set("islandRest", id === "full" ? "full" : "minimal");
+                        }
                     }
                 }
             }

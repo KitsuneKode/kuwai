@@ -83,7 +83,7 @@ Singleton {
             // The island at rest: "full" (workspaces · time · status, always) or
             // "minimal" (only what's alive; the rest when you near the top edge
             // or press Super+I).
-            property string islandRest: "auto"
+            property string islandRest: "minimal"   // minimal (the mini notch) · full · auto
             // Tucked away (Ctrl+Alt+W, like Waybar's toggle): the island gives
             // its strip back to your windows and comes out only for what
             // matters (a notification banner, an activity, a panel) or when

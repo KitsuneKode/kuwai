@@ -38,23 +38,37 @@ Item {
     // like a live activity. Music doesn't: it plays for hours beside them.
     // "minimal": only what's alive, always. Either way, nearing the top edge,
     // hovering or Super+Alt+I brings the details back.
-    readonly property bool takeover: ["auth", "update", "vox", "shazam", "moment"].indexOf(activity) >= 0
+    readonly property bool takeover: ["auth", "update", "vox", "rec", "shazam", "moment"].indexOf(activity) >= 0
     readonly property bool compact: (Settings.islandRest === "minimal" || Settings.islandTucked || (Settings.islandRest === "auto" && takeover))
                                     && !Island.peek && !bar.near && !bar.hovered
-    readonly property real clockW: compact ? 0 : clock.width
-    readonly property real gaps: compact ? (leftGroup.implicitWidth > 0 && rightGroup.implicitWidth > 0 ? gap : 0) : gap * 2
-    implicitWidth: compact ? Math.max(activity === "moment" ? 220 : 78, leftGroup.implicitWidth + rightGroup.implicitWidth + gaps)
+    // The mini notch: compact with nothing alive shows the time, and only
+    // the time (plus a privacy dot when one is lit). Anything alive (music,
+    // a moment, a password, dictation, a recording) takes its place.
+    readonly property bool mini: compact && activity === ""
+    readonly property real clockW: compact && !mini ? 0 : clock.width
+    readonly property real gaps: mini ? (rightGroup.implicitWidth > 0 ? 12 : 0)
+                               : compact ? (leftGroup.implicitWidth > 0 && rightGroup.implicitWidth > 0 ? gap : 0) : gap * 2
+    implicitWidth: mini ? Math.max(56, clock.width + rightGroup.implicitWidth + gaps)
+                 : compact ? Math.max(activity === "moment" ? 220 : 78, leftGroup.implicitWidth + rightGroup.implicitWidth + gaps)
                  : balanced ? side * 2 + clockW + gaps
                             : leftGroup.implicitWidth + rightGroup.implicitWidth + clockW + gaps
     implicitHeight: 32
     readonly property int gap: 22
     // Activities whose value sits beside their icon when the full row shows.
-    readonly property bool joined: !compact && ["update", "vox", "auth"].indexOf(activity) >= 0
+    readonly property bool joined: !compact && ["update", "vox", "auth", "rec"].indexOf(activity) >= 0
+    function clockOf(secs) { const s = Math.max(0, Math.floor(secs)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); }
+    property real recSecs: 0
+    Timer {
+        running: rest.activity === "rec"
+        interval: 500; repeat: true; triggeredOnStart: true
+        onTriggered: rest.recSecs = Date.now() / 1000 - Clipboard.recSince
+    }
     readonly property string activityDetail: {
         const line = s => { s = String(s || "").trim(); return s.length > 70 ? s.slice(0, 69) + "…" : s; };
         if (activity === "update") return [Updates.phaseLabel || "Updating", line(Updates.currentLine)].filter(x => x).join(" · ") + " · click for details";
         if (activity === "vox") return Activities.voxListening ? "Dictating · click to finish · right-click to cancel" : "Writing out what you said…";
         if (activity === "auth") return "A password is needed · click to bring it here";
+        if (activity === "rec") return "Recording " + (Clipboard.recTarget || "the screen") + " · click to stop";
         if (activity === "shazam") return Activities.shazamFound ? "Found: " + Activities.shazamFound.title + " · click to open" : "Listening for a song…";
         return "";
     }
@@ -63,6 +77,7 @@ Item {
     readonly property string activity: Island.authPending ? "auth"
         : Moments.now ? "moment"
         : Activities.voxActive ? "vox"
+        : Clipboard.recSince > 0 ? "rec"
         : Updates.running ? "update"
         : Alerts.active.length ? "alert"
         : (Activities.shazamListening || Activities.shazamFound) ? "shazam"
@@ -128,7 +143,20 @@ Item {
                     NumberAnimation { to: 1; duration: 700; easing.type: Easing.InOutSine }
                 }
             }
-            // Updating: a ring that fills as it goes (click: the Updates panel).
+            // Recording the screen: a red dot that breathes (click: stop).
+        Rectangle {
+            visible: rest.activity === "rec"
+            anchors.centerIn: parent
+            width: 10; height: 10; radius: 5
+            color: Theme.red
+            SequentialAnimation on opacity {
+                running: rest.activity === "rec" && !Theme.reduceMotion
+                loops: Animation.Infinite
+                NumberAnimation { to: 0.45; duration: 700; easing.type: Easing.InOutSine }
+                NumberAnimation { to: 1; duration: 700; easing.type: Easing.InOutSine }
+            }
+        }
+        // Updating: a ring that fills as it goes (click: the Updates panel).
             StatRing {
                 visible: rest.activity === "update"
                 anchors.centerIn: parent
@@ -200,7 +228,8 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             text: rest.activity === "update" ? Math.round(Updates.progress * 100) + "%"
                 : rest.activity === "vox" ? (Activities.voxListening ? Math.floor(rest.voxSecs / 60) + ":" + String(Math.floor(rest.voxSecs % 60)).padStart(2, "0") : "Writing")
-                : rest.activity === "auth" ? "Password" : ""
+                : rest.activity === "auth" ? "Password"
+                : rest.activity === "rec" ? rest.clockOf(rest.recSecs) : ""
             size: 13; weight: Theme.wSemibold; rounded: true
             color: Theme.textPrimary
             font.features: ({ "tnum": 1 })
@@ -273,14 +302,14 @@ Item {
 
     IslandClock {
         id: clock
-        visible: !rest.compact
+        visible: !rest.compact || rest.mini
         opacity: 1 - rest.hintOn
         Behavior on opacity { NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
         now: rest.bar.now; size: 15
         rounded: false
         weight: Theme.wMedium
         color: Qt.rgba(1, 0.98, 0.95, 0.92)
-        x: (rest.balanced ? rest.side : leftGroup.implicitWidth) + rest.gap
+        x: rest.mini ? 0 : (rest.balanced ? rest.side : leftGroup.implicitWidth) + rest.gap
         anchors.verticalCenter: parent.verticalCenter
         HoverHandler { cursorShape: Qt.PointingHandCursor }
         TapHandler { onTapped: Island.toggle("calendar", rest.bar.screenName, "pointer", "island") }
@@ -373,6 +402,14 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             spacing: 6
             Label {
+                visible: rest.activity === "rec"
+                anchors.verticalCenter: parent.verticalCenter
+                text: rest.clockOf(rest.recSecs)
+                size: 13; weight: Theme.wSemibold; rounded: true
+                color: Theme.red
+                font.features: ({ "tnum": 1 })
+            }
+            Label {
                 visible: rest.activity === "vox"
                 anchors.verticalCenter: parent.verticalCenter
                 text: Activities.voxListening ? Math.floor(rest.voxSecs / 60) + ":" + String(Math.floor(rest.voxSecs % 60)).padStart(2, "0") : "Writing"
@@ -445,11 +482,12 @@ Item {
     // A click on an activity acts on it: stop dictation, open the song.
     // (Music: its art and waveform open Now Playing; see musicTap.)
     TapHandler {
-        enabled: rest.activity === "auth" || rest.activity === "vox" || rest.activity === "update" || (rest.activity === "shazam" && !!Activities.shazamFound)
+        enabled: rest.activity === "auth" || rest.activity === "vox" || rest.activity === "update" || rest.activity === "rec" || (rest.activity === "shazam" && !!Activities.shazamFound)
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         onTapped: (point, button) => {
             if (rest.activity === "auth") { Island.summonAuth(rest.bar.screenName); return; }
             if (rest.activity === "update") { Island.open("updates", rest.bar.screenName, "pointer", "island"); return; }
+            if (rest.activity === "rec") { Clipboard.recordKey(); return; }
             if (rest.activity === "vox") { if (button === Qt.RightButton) Activities.voxCancel(); else Activities.voxToggle(); }
             else Activities.shazamOpen();
         }

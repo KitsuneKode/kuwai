@@ -13,6 +13,7 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import Quickshell.Bluetooth
 import Quickshell.Services.UPower
 import qs.config
@@ -109,6 +110,36 @@ Singleton {
             }
         }
     }
+
+    // ── Power and network: plugged in, and the connection coming and going ─
+    property bool wasOnBattery: UPower.onBattery
+    Connections {
+        target: UPower
+        function onOnBatteryChanged() {
+            const plugged = root.wasOnBattery && !UPower.onBattery;
+            root.wasOnBattery = UPower.onBattery;
+            if (!root.armed || !plugged) return;
+            root.show({ kind: "battery", label: "Charging", value: root.pct + "%", ring: -1, tone: Theme.green, glyph: "\u{f0084}" }, 2600);
+        }
+    }
+    // Online is a quick NetworkManager check, every 20 s and on any change.
+    property bool online: true
+    property bool onlineKnown: false
+    Process {
+        id: netCheck
+        command: ["nmcli", "-t", "-f", "CONNECTIVITY", "general"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const now = /full|limited|portal/.test(text);
+                if (root.onlineKnown && now !== root.online && root.armed)
+                    root.show(now ? { kind: "net", glyph: "\u{f05a9}", label: "Back online", value: "", ring: -1, tone: Theme.green }
+                                  : { kind: "net", glyph: "\u{f05aa}", label: "Offline", value: "", ring: -1, tone: Theme.red }, now ? 2200 : 4000);
+                root.online = now;
+                root.onlineKnown = true;
+            }
+        }
+    }
+    Timer { interval: 20000; running: true; repeat: true; triggeredOnStart: true; onTriggered: if (!netCheck.running) netCheck.running = true }
 
     // ── Low battery (20 %, on battery; 10 % is the Alerts banner) ────────
     readonly property var battery: UPower.displayDevice
