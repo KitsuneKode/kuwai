@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# Dev only: worst-case data for the shell, through the same door real data
+# uses (D-Bus notifications), so it tests the components, not an edit.
+#
+#   rice-fixture notifs worst   long names, emails, emoji, markup, RTL, Thai,
+#                                long actions, critical, a 14-deep group
+#   rice-fixture notifs one     a single notification (every count at 1)
+#   rice-fixture notifs many    300 notifications (the list's real upper bound)
+#   rice-fixture notifs clear   remove what this script sent (yours stay)
+#
+# Every notification it sends is recorded (app + title) and removed again by
+# `clear` through the shell's removeMatching, so your history is untouched.
+set -u
+# (Some app terminals leak LD_LIBRARY_PATH with an old libnotify: T3 Code.)
+unset LD_LIBRARY_PATH
+STATE="${XDG_RUNTIME_DIR:-/tmp}/rice/fixture-sent.tsv"
+ROOT="${KUWAI_ROOT:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}"
+mkdir -p "$(dirname "$STATE")"
+
+ipc() { qs ipc -p "$ROOT/shell" call notifs "$@"; }
+
+send() {   # app title body [urgency] [actions…]
+    local app=$1 title=$2 body=$3 urg=${4:-normal}; shift 4 2>/dev/null || shift $#
+    local args=(-a "$app" -u "$urg")
+    for a in "$@"; do args+=(-A "$a"); done
+    printf '%s\t%s\n' "$app" "$title" >> "$STATE"
+    if [ $# -gt 0 ]; then
+        # With actions notify-send waits for a click: let it go on its own.
+        (timeout 600 notify-send "${args[@]}" "$title" "$body" >/dev/null 2>&1 &)
+    else
+        notify-send "${args[@]}" "$title" "$body" >/dev/null 2>&1
+    fi
+}
+
+clear_sent() {
+    [ -f "$STATE" ] || return 0
+    sort -u "$STATE" | while IFS=$'\t' read -r app title; do ipc removeMatching "$app" "$title" >/dev/null 2>&1; done
+    : > "$STATE"
+}
+
+worst() {
+    send "Northwind Industries Holdings — Customer Success Portal" \
+        "Aleksandra Wiśniewska-Kowalczyk mentioned you in #q3-planning-and-roadmap-sync" \
+        "Can you loop in bartholomew.fitzgerald@northwind-industries-holdings.example.com before Thursday's review? The deck is at https://drive.northwind-industries-holdings.example.com/presentations/2026/Q3-roadmap-final-v12-FINAL-really-final.pptx" \
+        normal "open=Open in Northwind Customer Portal" "snooze=Snooze for the rest of the day" "resolve=Mark as resolved"
+    send "Jo" "Jo" "" low
+    send "GitHub Actions" "🎉🎉 Build #18,442 passed on feat/assistant-agent" \
+        "<b>rice</b> &amp; kuwai: 1,284 checks · 0 failed · 3 skipped <i>(cached)</i>" normal
+    send "Zalo" "Thông báo: Cuộc họp đã được dời sang ngày mai lúc 9 giờ sáng" "Nguyễn Thị Phương Thảo đã cập nhật lịch họp của nhóm Kỹ thuật." normal
+    send "LINE" "ประชุมทีมเลื่อนไปพรุ่งนี้" "กรุณายืนยันการเข้าร่วมภายในวันนี้ ขอบคุณครับ" normal
+    send "WhatsApp" "تم تحديث التطبيق بنجاح" "سيتم إعادة تشغيل الخدمة خلال خمس دقائق، يرجى حفظ عملك." normal
+    send "Disk" "Disk / at 97%" "2.1 GB free of 476 GB · /home/kitsunekode/.local/share/Steam/steamapps/common is 214 GB" critical
+    send "Slack" "x" "a" normal
+    for i in $(seq 1 14); do
+        send "Microsoft Teams (work or school)" "Meeting reminder $i of 14: Weekly Cross-Functional Sync" "Starts in $((15 - i)) min · Room 4.12 \"The Big One\"" normal
+    done
+}
+
+case "${1:-} ${2:-}" in
+    "notifs worst") clear_sent; worst ;;
+    "notifs one")   clear_sent; send "Calendar" "Standup" "In 1 minute" normal ;;
+    "notifs many")  clear_sent; for i in $(seq 1 300); do send "Load test" "Item $i of 300" "Body $i" low; done ;;
+    "notifs clear") clear_sent ;;
+    *) sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+esac

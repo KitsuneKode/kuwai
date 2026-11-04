@@ -137,7 +137,11 @@ Item {
     readonly property real listContentHeight: list.contentHeight
     // How tall it wants to be (the card fits it): the filters, then the
     // list, or the empty state's room.
-    readonly property real naturalHeight: filterRow.height + 14 + (list.count > 0 ? list.contentHeight + 8 : 220)
+    // (A list builds rows only for the room it has, so contentHeight reads
+    // short right after opening: more than a few groups simply wants the
+    // full card, and a few want at least their rows' typical height.)
+    readonly property real naturalHeight: filterRow.height + 14 + (list.count === 0 ? 220
+        : list.count > 3 ? 100000 : Math.max(list.contentHeight, list.count * 96) + 8)
 
     // ── Filters row ──────────────────────────────────────────────────────
     Row {
