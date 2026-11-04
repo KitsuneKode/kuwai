@@ -43,7 +43,15 @@ group("Theming")
 -- Wallpapers: the island's panel (Super+Shift+W). Super+Alt+arrows are workspaces.
 bind("SUPER + SHIFT + R", "Wallbash mode", rofi(hyde("wallbashtoggle.sh") .. " -m"), { locked = true })
 bind("SUPER + SHIFT + U", "Lock screen layout", rofi(hyde("hyprlock.sh") .. " --select"))
-bind("CTRL + ALT + W", "Waybar on/off", "pkill -x waybar || hyde-shell waybar", { locked = true })
+-- The top bar on/off: with the island as the bar, tuck it away (its strip
+-- goes back to your windows; it comes out for what matters, or near the top
+-- edge); with Waybar, Waybar on/off as before.
+bind("CTRL + ALT + W", "Top bar: tuck the island / Waybar on/off",
+	function()
+		-- The island setting, read when pressed (`rice bar` says which bar runs).
+		hl.exec_cmd('[ "$(' .. K.bin .. '/rice bar)" = island ] && hyprctl eval \'hl.dispatch(hl.dsp.global("rice:island-tuck"))\' || { pkill -x waybar || hyde-shell waybar; }')
+	end,
+	{ locked = true })
 
 group("Utilities")
 bind("SUPER + SHIFT + G", "Game launcher", hyde("gamelauncher.sh"))

@@ -85,6 +85,7 @@ end
 if K.feature("overview") then
 	bind(S .. " + Tab", "Mission Control: every workspace and window", rice("overview"))
 	bind(S .. " + ALT + I", "Show the island's details (minimal island)", rice("island-peek"))
+	bind(S .. " + SHIFT + C", "Caffeine: keep awake (no dim, lock or sleep)", rice("caffeine"))
 else
 	bind(S .. " + Tab", "Previous workspace", dsp.focus({ workspace = "previous_per_monitor" }))
 end
@@ -117,8 +118,8 @@ bind("CTRL + ALT + Tab", "Next screen", A.focus_screen(1))
 bind("CTRL + ALT + SHIFT + Tab", "Previous screen", A.focus_screen(-1))
 bind(S .. " + CTRL + ALT + left", "Window to the screen on the left", dsp.window.move({ monitor = "left" }))
 bind(S .. " + CTRL + ALT + right", "Window to the screen on the right", dsp.window.move({ monitor = "right" }))
-bind(S .. " + CTRL + ALT + SHIFT + left", "Workspace to the screen on the left", dsp.workspace.move({ monitor = "left" }))
-bind(S .. " + CTRL + ALT + SHIFT + right", "Workspace to the screen on the right", dsp.workspace.move({ monitor = "right" }))
+bind(S .. " + CTRL + ALT + SHIFT + left", "This workspace's windows to the screen on the left", W.windows_to_screen(-1))
+bind(S .. " + CTRL + ALT + SHIFT + right", "This workspace's windows to the screen on the right", W.windows_to_screen(1))
 
 ---------------------------------------------------------------------------
 group("Columns")
@@ -162,10 +163,10 @@ bind(S .. " + CTRL + right", "Next workspace", W.step(1))
 bind(S .. " + CTRL + left", "Previous workspace", W.step(-1))
 bind(S .. " + CTRL + down", "First empty workspace on this screen", W.empty())
 bind(S .. " + CTRL + up", "Mission Control", function() hl.dispatch(dsp.global("rice:overview")) end)
-bind(S .. " + ALT + SHIFT + L", "Next busy workspace", dsp.focus({ workspace = "m+1" }))
-bind(S .. " + ALT + SHIFT + H", "Previous busy workspace", dsp.focus({ workspace = "m-1" }))
-bind(S .. " + mouse_down", "Next busy workspace", dsp.focus({ workspace = "m+1" }))
-bind(S .. " + mouse_up", "Previous busy workspace", dsp.focus({ workspace = "m-1" }))
+bind(S .. " + ALT + SHIFT + L", "Next busy workspace", W.busy(1))
+bind(S .. " + ALT + SHIFT + H", "Previous busy workspace", W.busy(-1))
+bind(S .. " + mouse_down", "Next busy workspace", W.busy(1))
+bind(S .. " + mouse_up", "Previous busy workspace", W.busy(-1))
 bind(S .. " + CTRL + SHIFT + right", "Carry window to the next workspace", W.step(1, true))
 bind(S .. " + CTRL + SHIFT + left", "Carry window to the previous workspace", W.step(-1, true))
 if K.feature("layouts") then
