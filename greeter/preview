@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+# Renders the login and lock screens into docs/media/login for the README:
+# stills of the login screen (greeter.qml's own shot mode) and GIFs of each
+# motion, filmed by shell/film.qml. Runs inside your Hyprland session; draws
+# windows for a few seconds each, locks nothing.
+#
+#   greeter/preview          all of it (~1 min)
+#
+# It runs in a throwaway HOME and runtime dir (your picture, wallpaper and
+# theme linked in), so the fake notifications and timers never touch yours.
+#
+# Needs quickshell, ffmpeg, ImageMagick and python3.
+set -euo pipefail
+
+RICE="$(cd "$(dirname "$0")/.." && pwd)"
+SHELL_DIR="$RICE/shell"
+OUT="$RICE/docs/media/login"
+WORK="$(mktemp -d)"
+trap 'rm -rf "$WORK"' EXIT
+mkdir -p "$OUT"
+face="$HOME/.face"
+
+# A throwaway HOME (your picture, wallpaper and theme linked in) and runtime
+# dir: what the films do to notifications and timers stays in there.
+SB="$WORK/sandbox"
+mkdir -p "$SB/home/.cache" "$SB/home/.config" "$SB/home/.local/state" "$SB/run"
+chmod 700 "$SB/run"
+ln -s "$HOME/.face" "$SB/home/.face"
+ln -s "$HOME/.cache/hyde" "$SB/home/.cache/hyde"
+for d in hyde rice; do [ -e "$HOME/.config/$d" ] && ln -s "$HOME/.config/$d" "$SB/home/.config/$d"; done
+sandboxed() {
+    env HOME="$SB/home" XDG_RUNTIME_DIR="$SB/run" XDG_STATE_HOME="$SB/home/.local/state" \
+        WAYLAND_DISPLAY="$XDG_RUNTIME_DIR/${WAYLAND_DISPLAY:-wayland-0}" "$@"
+}
+
+shot() {   # shot <demo|""> <name>
+    KUWAI_GREETER_DEMO="$1" KUWAI_GREETER_FACE="$face" KUWAI_GREETER_SHOT="$WORK/$2.png" \
+        sandboxed timeout 30 qs -p "$SHELL_DIR/greeter.qml" >/dev/null 2>&1
+    magick "$WORK/$2.png" -resize 1920x -quality 90 "$OUT/$2.webp"
+    echo "  $2.webp"
+}
+film() {   # film <scene> <ms> [full]
+    mkdir -p "$WORK/$1"
+    SCENE="$1" LENGTH="$2" OUT="$WORK/$1" FULL="${3:-}" \
+        sandboxed timeout 40 qs -p "$SHELL_DIR/film.qml" >/dev/null 2>&1
+}
+# gif <scene> <name> <fps> <hold ms> <width> [crop w:h:x:y] [colours]
+gif() {
+    python3 - "$WORK" "$OUT" "$@" <<'EOF'
+import glob, os, subprocess, sys
+work, out, scene, name, fps, hold, width = sys.argv[1:8]
+crop = sys.argv[8] if len(sys.argv) > 8 and sys.argv[8] else None
+colours = sys.argv[9] if len(sys.argv) > 9 else "200"
+fps, hold = int(fps), int(hold)
+frames = sorted(glob.glob(f"{work}/{scene}/*.bmp"))
+times = [int(os.path.basename(f).split("-")[1].split(".")[0]) for f in frames]
+# One frame per tick of the GIF's clock: the one taken nearest that moment.
+picks, t = [], 0
+while t <= times[-1]:
+    picks.append(frames[min(range(len(times)), key=lambda i: abs(times[i] - t))])
+    t += 1000 / fps
+lst = f"{work}/{scene}.txt"
+with open(lst, "w") as f:
+    for p in picks:
+        f.write(f"file '{p}'\nduration {1 / fps:.4f}\n")
+    f.write(f"file '{picks[-1]}'\nduration {hold / 1000:.3f}\nfile '{picks[-1]}'\n")
+# Grabs come out at the monitor's scale (2560 wide on a 4/3 panel): back to
+# the nominal 1920 (FULL) or 960 first, which is what crops are given in.
+w0 = int(subprocess.run(["magick", "identify", "-format", "%w", frames[0]], capture_output=True, text=True).stdout)
+base = 1920 if w0 > 1300 else 960
+vf = f"scale={base}:-1:flags=lanczos," + (f"crop={crop}," if crop else "") + f"scale={width}:-1:flags=lanczos,split[a][b];" \
+     f"[a]palettegen=max_colors={colours}:stats_mode=diff[p];[b][p]paletteuse=dither=sierra2_4a:diff_mode=rectangle"
+subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "concat", "-safe", "0", "-i", lst,
+                "-vf", vf, "-loop", "0", f"{out}/{name}.gif"], check=True)
+print(f"  {name}.gif  {os.path.getsize(f'{out}/{name}.gif') // 1024} KB")
+EOF
+}
+drop() { rm -rf "${WORK:?}/$1"; }   # a scene's frames, once encoded
+# still <scene> <ms> <name>: the full-size frame taken nearest that moment.
+still() {
+    local f
+    f=$(python3 -c "
+import glob, os, sys
+fs = sorted(glob.glob('$WORK/$1/*.bmp'))
+print(min(fs, key=lambda f: abs(int(os.path.basename(f).split('-')[1].split('.')[0]) - $2)))")
+    magick "$f" -resize 1920x -quality 90 "$OUT/$3.webp"
+    echo "  $3.webp"
+}
+
+echo "login screen"
+shot "" login
+shot typing login-typing
+film login-intro 2200;    gif login-intro login-intro 20 1500 720 "" 128; drop login-intro
+film login-ask 1600;      gif login-ask login-ask 25 1200 800; drop login-ask
+film login-error 3400;    gif login-error login-wrong-password 25 800 800; drop login-error
+film login-handoff 2400;  gif login-handoff login-handoff 25 1000 800; drop login-handoff
+film login-hold 3400;     gif login-hold login-hold-restart 25 300 800; drop login-hold
+film login-poweroff 2600; gif login-poweroff goodbye-shut-down 20 200 480 480:300:240:120 96; drop login-poweroff
+film login-suspend 2600;  gif login-suspend goodbye-sleep 20 200 480 480:300:240:120 96; drop login-suspend
+
+echo "lock screen"
+film lock-locking 2400 full; gif lock-locking lock-locking 25 200 520 520:88:700:0; drop lock-locking
+film lock-unlock 3200;       gif lock-unlock lock-unlock 25 1000 800; drop lock-unlock
+film lock-notifs 4200;       gif lock-notifs lock-notifications 25 1500 560 480:200:240:234; drop lock-notifs
+film lock-charge 2200 full;  gif lock-charge lock-charging 25 400 440 440:88:1480:0; still lock-charge 2150 lock; drop lock-charge
+film lock-timer 5400 full;   gif lock-timer lock-timer 25 300 520 520:88:700:0; still lock-timer 1500 lock-timer; drop lock-timer
+
+echo "island"
+film island-device 6600 full; gif island-device island-device 30 300 560 700:110:610:0; drop island-device
