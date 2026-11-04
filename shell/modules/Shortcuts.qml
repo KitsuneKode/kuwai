@@ -99,6 +99,8 @@ Scope {
         onPressed: Island.toggle("system", "", "key")
     }
     GlobalShortcut { appid: "rice"; name: "island-peek"; description: "Show the island's details (minimal island)"; onPressed: Island.peekFor(2500) }
+    // Ctrl+Alt+Shift+W: the mini notch ⇄ everything (workspaces, time, status).
+    GlobalShortcut { appid: "rice"; name: "island-style"; description: "Island: minimal ⇄ everything"; onPressed: { Settings.set("islandTucked", false); Settings.set("islandRest", Settings.islandRest === "full" ? "minimal" : "full"); } }
     GlobalShortcut { appid: "rice"; name: "island-tuck"; description: "Tuck the island away / bring it back"; onPressed: Settings.set("islandTucked", !Settings.islandTucked) }
     GlobalShortcut { appid: "rice"; name: "caffeine"; description: "Caffeine: keep awake (no dim, lock or sleep)"; onPressed: Caffeine.toggle() }
     GlobalShortcut {

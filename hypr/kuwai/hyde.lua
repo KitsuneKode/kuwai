@@ -52,6 +52,7 @@ bind("CTRL + ALT + W", "Top bar: tuck the island / Waybar on/off",
 		hl.exec_cmd('[ "$(' .. K.bin .. '/rice bar)" = island ] && hyprctl eval \'hl.dispatch(hl.dsp.global("rice:island-tuck"))\' || { pkill -x waybar || hyde-shell waybar; }')
 	end,
 	{ locked = true })
+bind("CTRL + ALT + SHIFT + W", "Island: minimal ⇄ everything (workspaces, time, status)", hl.dsp.global("rice:island-style"), { locked = true })
 
 group("Utilities")
 bind("SUPER + SHIFT + G", "Game launcher", hyde("gamelauncher.sh"))

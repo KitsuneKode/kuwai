@@ -48,7 +48,11 @@ Item {
     readonly property real clockW: compact && !mini ? 0 : clock.width
     readonly property real gaps: mini ? (rightGroup.implicitWidth > 0 ? 12 : 0)
                                : compact ? (leftGroup.implicitWidth > 0 && rightGroup.implicitWidth > 0 ? gap : 0) : gap * 2
-    implicitWidth: mini ? Math.max(56, clock.width + (soonText ? soonLabel.implicitWidth + 12 : 0) + rightGroup.implicitWidth + gaps)
+    // What the mini notch holds, and the room either side when it's
+    // narrower than the notch's minimum: the time sits in the middle.
+    readonly property real miniContent: clock.width + (soonText ? soonLabel.implicitWidth + 12 : 0) + rightGroup.implicitWidth + gaps
+    readonly property real miniPad: Math.max(0, (56 - miniContent) / 2)
+    implicitWidth: mini ? Math.max(56, miniContent)
                  : compact ? Math.max(activity === "moment" ? 220 : 78, leftGroup.implicitWidth + rightGroup.implicitWidth + gaps)
                  : balanced ? side * 2 + clockW + gaps
                             : leftGroup.implicitWidth + rightGroup.implicitWidth + clockW + gaps
@@ -330,7 +334,7 @@ Item {
         rounded: false
         weight: Theme.wMedium
         color: Qt.rgba(1, 0.98, 0.95, 0.92)
-        x: rest.mini ? 0 : (rest.balanced ? rest.side : leftGroup.implicitWidth) + rest.gap
+        x: rest.mini ? rest.miniPad : (rest.balanced ? rest.side : leftGroup.implicitWidth) + rest.gap
         anchors.verticalCenter: parent.verticalCenter
         HoverHandler { cursorShape: Qt.PointingHandCursor }
         TapHandler { onTapped: Island.toggle("calendar", rest.bar.screenName, "pointer", "island") }
