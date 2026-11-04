@@ -20,6 +20,7 @@ import Quickshell.Hyprland
 import Quickshell.Wayland
 import Quickshell.Services.Pam
 import qs.config
+import qs.services
 
 Scope {
     id: root
@@ -29,10 +30,25 @@ Scope {
     property bool checking: false
     property string error: ""
     property int failures: 0            // bumps on every miss: the field shakes
+    // The right password: the views play their unlock, then the lock goes.
+    property bool leaving: false
+    property real lockedAt: Date.now()
+    // A notification tapped on the lock screen: opened once you're in.
+    property var openAfter: null
+    Timer { id: release; interval: 760; onTriggered: {
+        root.leaving = false;
+        root.unlocked();
+        if (root.openAfter && !root.openAfter.discard) Notifs.activate(root.openAfter);
+        else Moments.welcomeBack(root.lockedAt);
+        root.openAfter = null;
+    } }
 
     readonly property string flag: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/rice/locked"
     function lock() {
         password = ""; error = ""; checking = false;
+        release.stop(); leaving = false;
+        lockedAt = Date.now();
+        openAfter = null;
         mark.command = ["sh", "-c", 'mkdir -p "$(dirname "$1")" && : > "$1"', "sh", flag];
         mark.running = true;
         locked = true;
@@ -53,7 +69,7 @@ Scope {
         onLoaded: if (!root.locked) { console.warn("lock: the session was locked when the shell stopped; locking again"); root.lock(); }
     }
     function submit() {
-        if (checking || password === "") return;
+        if (checking || leaving || password === "") return;
         error = "";
         checking = true;
         pam.start();
@@ -72,7 +88,8 @@ Scope {
             root.checking = false;
             if (result === PamResult.Success) {
                 root.password = "";
-                root.unlocked();
+                root.leaving = true;
+                release.restart();
             } else {
                 root.password = "";
                 root.error = result === PamResult.MaxTries ? "Too many attempts" : "Incorrect password";
@@ -94,9 +111,14 @@ Scope {
     // the old output, and the laptop panel (which never disconnects) is the
     // only place the lock still shows. Drop the locker and take the session
     // back — allow_session_lock_restore is on — once the new output is up.
+    // Only once the lock is confirmed: Hyprland ignores a new locker while
+    // the old one is still waiting for "locked", so dropping it then leaves
+    // the session locked with nothing drawing the lock. That is the boot
+    // case (the Acer comes up seconds after the lock starts), and a screen
+    // that was never tracked gets its surface without any of this.
     readonly property bool secure: lockLoader.item ? lockLoader.item.secure : false
     function resurface() {
-        if (!locked) return;
+        if (!locked || !secure) return;
         console.warn("lock: a monitor came back while locked; covering every screen again");
         lockLoader.active = false;
         relockCreate.restart();

@@ -1,7 +1,9 @@
 // Bluetooth (in the expanded island), signal bars and a battery, in the
 // theme's colour (as in the reference). Each has its own tooltip — what's
 // connected, the network (name, strength), the battery (charge, time left) —
-// and a menu on a click (left or right). No battery, no battery.
+// and a menu on a click (left or right). No battery, no battery. On a cable
+// (or a phone tethered over USB, which is one) with no Wi-Fi up, an Ethernet
+// glyph takes the bars' place.
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -28,10 +30,19 @@ Row {
     readonly property var wifiDev: Networking.devices.values.find(d => d.type === DeviceType.Wifi) || null
     readonly property var net: wifiDev ? wifiDev.networks.values.find(n => n.connected) || null : null
     readonly property real signal: net ? net.signalStrength : 0
+    readonly property bool wired: !net && Networking.devices.values.some(d => d.type === DeviceType.Wired && d.connected)
     // The island window it sits in (rest or hover); set → click menus.
     property var bar: null
     // Bluetooth shows in the expanded island (at rest it would crowd it).
     property bool showBluetooth: false
+    // The lock and login screens: Bluetooth whenever it's on, and the charge
+    // as a number beside the battery.
+    property bool bluetoothWhenOn: false
+    property bool showPercent: false
+    // What the battery shows, if not the charge (LockCorner's plug-in sweep).
+    property real shownPct: -1
+    readonly property real drawnPct: shownPct >= 0 ? shownPct : pct
+    readonly property Item batteryItem: batItem
     readonly property var bt: Bluetooth.defaultAdapter
     readonly property var btConnected: Bluetooth.devices.values.filter(d => d.connected)
     property string mode: ""
@@ -45,7 +56,7 @@ Row {
 
     Item {
         id: btItem
-        visible: status.showBluetooth && !!status.bt
+        visible: !!status.bt && (status.showBluetooth || (status.bluetoothWhenOn && status.bt.enabled))
         width: 14; height: 14
         anchors.verticalCenter: parent.verticalCenter
         Text {
@@ -67,10 +78,18 @@ Row {
     }
     Item {
         id: netItem
-        width: bars.width; height: 14
+        width: status.wired ? 14 : bars.width; height: 14
         anchors.verticalCenter: parent.verticalCenter
+        Text {
+            visible: status.wired
+            anchors.centerIn: parent
+            text: "\u{f0200}"
+            font.family: Theme.fontGlyph; font.pixelSize: 14
+            color: status.tint
+        }
         Row {
             id: bars
+            visible: !status.wired
             anchors.bottom: parent.bottom
             spacing: 2
             Repeater {
@@ -88,10 +107,18 @@ Row {
         HoverHandler { id: netHover; cursorShape: status.bar ? Qt.PointingHandCursor : Qt.ArrowCursor }
         TapHandler { enabled: !!status.bar; acceptedButtons: status.showBluetooth ? Qt.LeftButton | Qt.RightButton : Qt.RightButton; onTapped: netMenu.open = !netMenu.open }
         Tip {
-            text: !status.wifiDev ? "No Wi-Fi" : status.net ? status.net.name + " · " + Math.round(status.signal * 100) + "%" : "Not connected"
+            text: status.wired ? "Wired" : !status.wifiDev ? "No Wi-Fi" : status.net ? status.net.name + " · " + Math.round(status.signal * 100) + "%" : "Not connected"
             shown: netHover.hovered && !netMenu.open
             below: true
         }
+    }
+    Label {
+        visible: status.showPercent && status.hasBattery
+        anchors.verticalCenter: parent.verticalCenter
+        text: Math.round(status.drawnPct) + "%"
+        size: 12; weight: Theme.wMedium
+        color: status.shownPct >= 0 ? Theme.positive : status.tint
+        font.features: ({ "tnum": 1 })
     }
     Item {
         id: batItem
@@ -101,9 +128,9 @@ Row {
         Rectangle { anchors.fill: parent; anchors.rightMargin: 2; radius: 4; color: Qt.alpha(status.tint, 0.22) }
         Rectangle {
             height: parent.height; radius: 4
-            width: Math.max(5, (parent.width - 2) * status.pct / 100)
+            width: Math.max(5, (parent.width - 2) * status.drawnPct / 100)
             color: status.pct <= 20 && !status.onAC ? Theme.critical : status.charging ? Theme.positive : status.tint
-            Behavior on width { NumberAnimation { duration: Theme.glideMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+            Behavior on width { enabled: status.shownPct < 0; NumberAnimation { duration: Theme.glideMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
         }
         Rectangle { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; width: 2; height: 5; radius: 1; color: Qt.alpha(status.tint, 0.45) }
         Text {

@@ -16,6 +16,9 @@
 //   focusClass  Hyprland window class to focus after the default action
 //   severity    "critical" | "warning" | "normal" | "low" (optional: derived
 //               from urgency and wording when an adapter doesn't set it)
+//   url         opened by a click once the sender has gone (optional)
+//   quiet       to the center only: no toast, no peek (optional)
+//   calm        a toast but no peek out of the island (optional)
 pragma Singleton
 
 import QtQuick
@@ -26,6 +29,31 @@ Singleton {
     id: root
 
     readonly property var rules: [
+        {
+            // bin/rice-feeds (GitHub, Gmail) says what each one is in its
+            // hints: the status, the thread to group by, the link, and
+            // whether it's quiet (a bot's: the center only) or calm (a toast,
+            // no peek).
+            match: n => !!(n.hints && n.hints["x-rice-feed"]),
+            adapt: n => {
+                const h = n.hints;
+                return {
+                    app: n.appName,
+                    title: n.summary,
+                    body: n.body,
+                    status: h["x-rice-status"] || "",
+                    statusGlyph: h["x-rice-glyph"] || "",
+                    statusTone: h["x-rice-tone"] || "",
+                    icon: root.imageOrIcon(n),
+                    groupKey: h["x-rice-group"] || "",
+                    focusClass: "",
+                    url: h["x-rice-url"] || "",
+                    quiet: h["x-rice-quiet"] === "1",
+                    calm: h["x-rice-calm"] === "1",
+                    severity: h["x-rice-severity"] || ""
+                };
+            }
+        },
         {
             // T3 Code: "Thread completed" / "Usage limit reached" + thread title
             match: n => /^T3 Code/.test(n.appName),

@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# Copy what the login screen needs into /var/lib/kuwai-greeter: the shell, the
+# greeter's Hyprland config, and your current wallpaper and theme files
+# (greetd's `greeter` user can't read your home). Runs as you, at every login
+# (hypr/kuwai/startup.lua), so the login screen follows theme changes.
+# Does nothing until greeter/install has made the directory.
+set -eu
+DEST=${KUWAI_GREETER_DIR:-/var/lib/kuwai-greeter}
+[ -w "$DEST" ] || exit 0
+
+RICE="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+H="$DEST/home"
+
+rsync -a --delete "$RICE/shell/" "$DEST/shell/"
+install -m755 "$RICE/greeter/start" "$DEST/start"
+install -m644 "$RICE/greeter/hyprland.lua" "$DEST/hyprland.lua"
+id -un >"$DEST/user"
+if [ -f "$HOME/.face" ]; then cp -fL "$HOME/.face" "$DEST/face"; else rm -f "$DEST/face"; fi
+
+copy() {   # $1 = path under $HOME
+    [ -e "$HOME/$1" ] || return 0
+    mkdir -p "$H/$(dirname "$1")"
+    cp -fL "$HOME/$1" "$H/$1"
+}
+copy .cache/hyde/wall.set
+copy .cache/hyde/wall.dcol
+copy .local/state/hyde/staterc
+copy .config/rice/settings.json
+copy .local/state/rice/prefs.json
+theme=$(sed -n 's/^HYDE_THEME="\{0,1\}\([^"]*\)"\{0,1\}$/\1/p' "$HOME/.local/state/hyde/staterc" 2>/dev/null | head -n 1)
+if [ -n "$theme" ]; then
+    copy ".config/hyde/themes/$theme/theme.dcol"
+    copy ".config/hyde/themes/$theme/kitty.theme"
+fi
+chmod -R a+rX "$DEST"

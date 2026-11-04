@@ -26,6 +26,7 @@ ShellRoot {
     ClipboardPanel {}
     IslandBar {}
     Lock {}
+    GoodbyeOverlay {}
     LiveWallpaper {}
     Screensaver {}
     Overview {}

@@ -1,0 +1,23 @@
+#!/bin/sh
+# Runs the login face inside the greeter's Hyprland, then ends that Hyprland
+# whatever happened (logged in: greetd starts the session; crashed: greetd
+# starts the greeter again).
+#
+# HOME points at the copy of your theme files (greeter/sync), so the face
+# shows your wallpaper and accent. Anything written goes to the runtime dir.
+ROOT=/var/lib/kuwai-greeter
+[ -n "${LANG:-}" ] || . /etc/locale.conf 2>/dev/null
+export LANG="${LANG:-C.UTF-8}"
+run="${XDG_RUNTIME_DIR:-/tmp}/kuwai-greeter"
+mkdir -p "$run/state/rice" "$run/cache"
+cp -f "$ROOT/home/.local/state/rice/prefs.json" "$run/state/rice/" 2>/dev/null
+
+HOME="$ROOT/home" \
+	XDG_CONFIG_HOME="$ROOT/home/.config" \
+	XDG_STATE_HOME="$run/state" \
+	XDG_CACHE_HOME="$run/cache" \
+	KUWAI_GREETER_USER="$(cat "$ROOT/user" 2>/dev/null)" \
+	KUWAI_GREETER_FACE="$([ -f "$ROOT/face" ] && echo "$ROOT/face")" \
+	qs -p "$ROOT/shell/greeter.qml" >"$run/qs.log" 2>&1
+
+hyprctl dispatch 'hl.dsp.exit()'

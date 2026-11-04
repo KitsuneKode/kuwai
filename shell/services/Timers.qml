@@ -16,6 +16,9 @@ Singleton {
     property var timers: []          // [{ id, label, start: ms, end: ms }], soonest first
     readonly property var next: timers.length ? timers[0] : null
     property real now: Date.now()
+    // The tick only runs while a timer does, so a new one would be measured
+    // against a stale clock until its first tick.
+    onTimersChanged: now = Date.now()
 
     // "10m", "1h30m", "90s", "1:30", "25" (minutes) → seconds, or 0.
     function parse(s) {

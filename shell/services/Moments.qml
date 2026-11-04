@@ -3,12 +3,12 @@ pragma Singleton
 // Brief moments the island shows by itself, Apple's compact activities: one
 // thing on the left, its state on the right, for a few seconds.
 //
-//   🎧 (earbuds / your IEMs' photo)        ◯ 80 %   connected, battery ring
 //   ☾  Focus                                  On    Do Not Disturb on / off
 //   Low Battery                        20 %  ▭      on battery, at 20 %
 //
 // `now` is the moment showing ({ kind, glyph, image, label, value, ring, tone })
 // or null. IslandRest draws it; anything urgent (a password) still wins.
+// Devices get more room: `card`, grown out of the island (DeviceCard).
 // (No braces before the pragma: Quickshell's scanner stops at the first.)
 
 import QtQuick
@@ -33,41 +33,138 @@ Singleton {
     property bool armed: false
     Timer { interval: 4000; running: true; onTriggered: root.armed = true }
 
-    // ── Headphones and earbuds connecting ───────────────────────────────
-    readonly property var connected: Bluetooth.devices.values.filter(d => d.connected)
-    property var known: []
-    onConnectedChanged: {
-        const addrs = connected.map(d => d.address);
-        const fresh = connected.filter(d => known.indexOf(d.address) < 0);
-        known = addrs;
-        if (!armed) return;
-        for (const d of fresh) if (audioLike(d)) { pending = d; settle.restart(); }
+    // ── Devices: what's connected, as it happens ────────────────────────
+    // A card grows out of the island (DeviceCard): the device's photo
+    // (DeviceArt) or its kind, its name, what happened, its battery. For any
+    // Bluetooth device connecting or going (earbuds, a speaker, a mouse, a
+    // pad); the sound moving to another output (Osd says so: it knows the
+    // IEMs behind a DAC); and once at login, what's already connected.
+    //
+    //   card: { key, glyph, image, title, state, tone, detail, battery (0..1 or -1), gone }
+    property var card: null
+    property bool cardHeld: false
+    function showCard(c, ms) {
+        // The same device again (its link, then its sound): fill in, don't replay.
+        if (card && card.key === c.key && cardFor.running)
+            card = Object.assign({}, card, c, { battery: c.battery >= 0 ? c.battery : card.battery, detail: c.detail || card.detail });
+        else card = c;
+        cardFor.interval = ms || 4000;
+        cardFor.restart();
     }
-    function audioLike(d) {
+    function dropCard() { cardFor.stop(); card = null; }
+    Timer { id: cardFor; onTriggered: if (root.cardHeld) restart(); else root.card = null }
+
+    readonly property var kindGlyph: ({
+        earbuds: "\u{f184f}", iem: "\u{f184f}", headphones: "\u{f02cb}", speaker: "\u{f04c3}", car: "\u{f010b}",
+        mouse: "\u{f037d}", keyboard: "\u{f030c}", gamepad: "\u{f0296}", phone: "\u{f011c}", watch: "\u{f0897}",
+        usb: "\u{f0553}", laptop: "\u{f0322}", display: "\u{f0f5f}", bluetooth: "\u{f00af}"
+    })
+    // BlueZ calls most audio gear "audio-headset" (earbuds and speakers
+    // alike), so the name decides first; devices.json beats both.
+    function btKind(d) {
+        const art = DeviceArt.lookup(d.name || "");
+        if (art && art.kind) return art.kind;
         const s = ((d.icon || "") + " " + (d.name || "")).toLowerCase();
-        return /audio|head|ear|buds|pods|speaker|wf-|wh-/.test(s) || !!DeviceArt.lookup(d.name || "");
+        if (/mouse|trackpad|mx (master|anywhere)/.test(s)) return "mouse";
+        if (/keyboard|keychron|\bkeys\b/.test(s)) return "keyboard";
+        if (/gaming|joystick|gamepad|controller|dualsense|dualshock|xbox|8bitdo|joy-con/.test(s)) return "gamepad";
+        if (/phone|iphone|pixel|galaxy s/.test(s)) return "phone";
+        if (/watch|band\b/.test(s)) return "watch";
+        if (/buds|pods|\bwf-|earbud|\btws\b|freebuds|liberty|\biem\b/.test(s)) return "earbuds";
+        if (/speaker|boost|\bflip|\bcharge|soundlink|soundcore|\bsrs-|boom/.test(s)) return "speaker";
+        if (/audio|head|\bear|\bwh-|dac|btr|qudelix/.test(s)) return "headphones";
+        return "bluetooth";
+    }
+    function btCard(d) {
+        const name = d.name || d.deviceName || "Device";
+        const art = DeviceArt.lookup(name);
+        return { key: name.toLowerCase(), glyph: kindGlyph[btKind(d)], image: art ? art.image : "",
+                 title: art ? art.label : name, state: "Connected", tone: Theme.green,
+                 detail: art && art.via ? "via " + art.via : "", battery: d.batteryAvailable ? d.battery : -1, gone: false };
+    }
+
+    readonly property var connected: Bluetooth.devices.values.filter(d => d.connected)
+    property var known: []            // [{ address, name, kind }]
+    property var pending: []
+    onConnectedChanged: {
+        const now = connected.map(d => ({ address: d.address, name: d.name || d.deviceName || "Device", kind: btKind(d) }));
+        const fresh = connected.filter(d => !known.some(k => k.address === d.address));
+        const gone = known.filter(k => !now.some(n => n.address === k.address));
+        known = now;
+        if (!armed) return;
+        for (const g of gone) deviceGone(g);
+        if (fresh.length) { pending = pending.concat(fresh); settle.restart(); }
     }
     // BlueZ reports the battery a moment after the link comes up.
-    property var pending: null
     Timer {
         id: settle
         interval: 1500
         onTriggered: {
-            const d = root.pending;
-            if (!d || !d.connected) return;
-            const art = DeviceArt.lookup(d.name || d.deviceName || "");
-            const s = ((d.icon || "") + " " + (d.name || "")).toLowerCase();
-            const buds = /buds|pods|wf-|ear|tws/.test(s) || (art && (art.kind === "earbuds" || art.kind === "iem"));
-            root.show({
-                kind: "device",
-                glyph: /speaker/.test(s) ? "\u{f04c3}" : buds ? "\u{f184f}" : "\u{f02cb}",
-                image: art ? art.image : "",
-                label: art ? art.label : (d.name || d.deviceName),
-                ring: d.batteryAvailable ? d.battery : -1,
-                value: d.batteryAvailable ? Math.round(d.battery * 100) + "%" : "Connected",
-                tone: d.batteryAvailable && d.battery <= 0.2 ? Theme.red : Theme.green
-            }, 3600);
+            const ds = root.pending.filter(d => d.connected);
+            root.pending = [];
+            if (!ds.length) return;
+            const c = root.btCard(ds[ds.length - 1]);
+            if (ds.length > 1) c.detail = "and " + ds.slice(0, -1).map(d => d.name || "a device").join(", ");
+            root.showCard(c);
         }
+    }
+    property var lastGone: null
+    function deviceGone(g) {
+        const art = DeviceArt.lookup(g.name);
+        lastGone = { key: g.name.toLowerCase(), at: Date.now() };
+        showCard({ key: lastGone.key, glyph: kindGlyph[g.kind], image: art ? art.image : "", title: art ? art.label : g.name,
+                   state: "Disconnected", tone: Theme.textSecondary, detail: "", battery: -1, gone: true }, 3400);
+    }
+    // Osd, when the sound moves: { key, glyph, image, title, via, battery, live, boot }.
+    // `live`: a device that comes and goes (Bluetooth, USB, a known DAC).
+    function outputSwitched(o) {
+        // Headphones just went: say where the sound went instead.
+        if (lastGone && Date.now() - lastGone.at < 4000 && card && card.gone) {
+            showCard(Object.assign({}, card, { detail: "Sound on " + o.title }), 3400);
+            return;
+        }
+        showCard({ key: o.key, glyph: o.glyph, image: o.image, title: o.title,
+                   state: o.live ? "Connected" : "Sound output", tone: o.live ? Theme.green : Theme.textSecondary,
+                   detail: o.via ? "via " + o.via : "", battery: o.battery, gone: false }, o.live ? 4000 : 2600);
+    }
+    // Once, after the hello: what's already here. Bluetooth if any (sound
+    // gear first), else Osd's output if it's a DAC or known IEMs.
+    signal askOutput()
+    Timer {
+        interval: 5800; running: true
+        onTriggered: {
+            const audio = ["earbuds", "iem", "headphones", "speaker"];
+            const ds = root.connected.slice().sort((a, b) => (audio.indexOf(root.btKind(a)) < 0) - (audio.indexOf(root.btKind(b)) < 0));
+            if (!ds.length) { root.askOutput(); return; }
+            const c = root.btCard(ds[0]);
+            if (ds.length > 1) c.detail = "and " + ds.slice(1).map(d => d.name || "a device").join(", ");
+            root.showCard(c, 4200);
+        }
+    }
+
+    // ── Hello: once per login, and back from the lock ───────────────────
+    // Your picture and a greeting. Once per login: the flag lives in the
+    // runtime dir, which goes with the session, so a shell restart doesn't
+    // greet you again.
+    readonly property string face: Quickshell.env("HOME") + "/.face"
+    readonly property string userName: { const u = Quickshell.env("USER") || ""; return u.charAt(0).toUpperCase() + u.slice(1); }
+    function greeting() {
+        const h = new Date().getHours();
+        return h < 5 ? "Good night" : h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+    }
+    FileView {
+        id: hello
+        path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/rice/welcomed"
+        printErrors: false
+        onLoadFailed: { setText(""); helloLater.start(); }
+    }
+    // After the desktop has drawn, so it's seen.
+    Timer { id: helloLater; interval: 1800; onTriggered: root.show({ kind: "hello", image: root.face, round: true, label: root.greeting(), value: root.userName, ring: -1, tone: Theme.textPrimary }, 3600) }
+    // Lock.qml, on the right password: how long you were away.
+    function welcomeBack(since) {
+        const m = Math.round((Date.now() - since) / 60000);
+        const away = m < 1 ? "" : m < 60 ? "away " + m + " min" : "away " + Math.floor(m / 60) + " h " + (m % 60) + " min";
+        show({ kind: "hello", image: face, round: true, label: "Welcome back", value: away, ring: -1, tone: Theme.textSecondary }, 2800);
     }
 
     // ── Focus (Do Not Disturb) ──────────────────────────────────────────
@@ -161,6 +258,22 @@ Singleton {
                 ring: -1, tone: needs || e.kind === "limit" ? Theme.orange : Theme.green
             }, needs ? 6000 : 3000);
         }
+    }
+
+    // T3 Code's threads (Notifs, through its adapter): the thread, and how it
+    // ended, in the adapter's tone.
+    function agentNote(item) {
+        const s = String(item.status || "").toLowerCase();
+        const tone = item.statusTone;
+        const value = tone === "critical" ? "Failed" : /limit/.test(s) ? "Hit a limit"
+                    : tone === "caution" ? "Needs you" : "Done";
+        const t = String(item.title || item.app);
+        show({
+            kind: "agent", image: item.icon, glyph: "\u{f06a9}",
+            label: t.length > 28 ? t.slice(0, 27).trim() + "…" : t,
+            value: value, ring: -1,
+            tone: tone === "critical" ? Theme.red : tone === "caution" ? Theme.orange : Theme.green
+        }, tone === "caution" || tone === "critical" ? 6000 : 3200);
     }
 
     // ── Timers (services/Timers) ending ─────────────────────────────────

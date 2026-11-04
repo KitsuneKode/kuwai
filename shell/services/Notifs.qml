@@ -51,7 +51,7 @@ Singleton {
     // urgent (critical / a warning) or carrying something to do (an action).
     // The island keeps a dot for them and lists them, with their buttons, when
     // you hover its bell. Newest first.
-    readonly property var missed: items.filter(i => i.time > lastSeen && !i.popup && !i.discard
+    readonly property var missed: items.filter(i => i.time > lastSeen && !i.popup && !i.discard && !i.quiet
         && (i.severity === "critical" || i.severity === "warning" || i.urgency === NotificationUrgency.Critical || i.hasDefault || (i.actions && i.actions.length)))
         .sort((a, b) => b.time - a.time)
 
@@ -93,8 +93,9 @@ Singleton {
         }
         const item = itemComp.createObject(root, { notification: n });
         item.apply(n, a);
-        // While the center is open the new one just lands in its list.
-        item.popup = !centerOpen && (!dnd || item.severity === "critical");
+        // While the center is open the new one just lands in its list; so
+        // does a quiet one (a bot's pull request, say).
+        item.popup = !item.quiet && !centerOpen && (!dnd || item.severity === "critical");
         // One app, one toast: a burst (14 meeting reminders) replaces its own
         // toast on screen instead of pushing everyone else's off. The earlier
         // ones stay in the history; the toast counts them (+13).
@@ -108,12 +109,33 @@ Singleton {
         if (item.severity === "critical" && !(n.hints && n.hints["suppress-sound"])) alertSound.running = true;
 
         if (item.popup) arrived();
+        // Agents finishing or waiting are a moment in the island (kittymux's
+        // own panes already are, from its inbox); what matters otherwise
+        // peeks out of it.
+        if (item.app === "T3 Code") Moments.agentNote(item);
+        else if (!item.jump && !item.quiet && !a.calm && !centerOpen && (!dnd || item.severity === "critical") && important(item)) showPeek(item);
         // Too many on screen: the oldest steps out.
         const shown = popups.filter(i => !i.leaving);
         for (let k = maxPopups; k < shown.length; k++) shown[k].leaving = true;
         trim();
         save();
     }
+
+    // ── The island's peek ────────────────────────────────────────────────
+    // What's worth growing the island for (IslandBar, NotifPeek): critical
+    // and warning ones, something you can reply to, something with actions.
+    // The toast still shows; the peek folds back after 5 s, not while the
+    // pointer is on it.
+    function important(i) {
+        return i.severity === "critical" || i.severity === "warning" || i.urgency === NotificationUrgency.Critical
+            || canReply(i) || (i.actions && i.actions.length > 0);
+    }
+    property var peek: null
+    property bool peekHeld: false
+    function showPeek(item) { peek = item; if (!peekHeld) peekFor.restart(); }
+    function dropPeek() { peek = null; }
+    onPeekHeldChanged: if (peekHeld) peekFor.stop(); else if (peek) peekFor.restart()
+    Timer { id: peekFor; interval: 5000; onTriggered: if (!root.peekHeld) root.peek = null }
 
     // ── Card interactions ────────────────────────────────────────────────
     // A notification you act on is handled: like macOS, it leaves the history
@@ -124,17 +146,24 @@ Singleton {
     // Click: run the app's default action (or its only one) and bring its
     // window forward.
     function activate(item) {
-        const n = item.notification;
         const focusClass = item.focusClass;
         item.discard = true;
         item.leaving = true;
         if (item.jump) { jumpTo(item); return; }
-        if (n) {
-            const act = n.actions.find(x => x.identifier === "default")
-                     || (n.actions.length === 1 ? n.actions[0] : null);
-            if (act) act.invoke();
-        }
+        if (!invokeDefault(item)) openUrl(item);
         if (focusClass) focusDelay.focus(focusClass);
+    }
+    function invokeDefault(item) {
+        const n = item.notification;
+        const act = n ? (n.actions.find(x => x.identifier === "default") || (n.actions.length === 1 ? n.actions[0] : null)) : null;
+        if (act) act.invoke();
+        return !!act;
+    }
+    // Its sender gone (a restart since), a link still opens (bin/rice-feeds).
+    function openUrl(item) {
+        if (!/^https?:\/\//.test(item.url || "")) return;
+        const p = jumper.createObject(root, { command: ["xdg-open", item.url] });
+        p.running = true;
     }
 
     // A kittymux agent pane: kitty focuses it (and its tab), then exactly its
@@ -185,9 +214,14 @@ Singleton {
         snoozed = snoozed.filter(i => i !== item);
         item.time = Date.now();
         item.discard = false;
-        item.popup = !centerOpen && (!dnd || item.severity === "critical");
+        item.popup = !item.quiet && !centerOpen && (!dnd || item.severity === "critical");
         items = [item, ...items];
         if (item.popup) arrived();
+        // Agents finishing or waiting are a moment in the island (kittymux's
+        // own panes already are, from its inbox); what matters otherwise
+        // peeks out of it.
+        if (item.app === "T3 Code") Moments.agentNote(item);
+        else if (!item.jump && !item.quiet && !centerOpen && (!dnd || item.severity === "critical") && important(item)) showPeek(item);
         save();
     }
     Timer {
@@ -249,13 +283,8 @@ Singleton {
     // Open a notification from the center: its action if it's still live,
     // its app's window, and the center gets out of the way.
     function openItem(item) {
-        const n = item.notification;
         if (item.jump) jumpTo(item);
-        else if (n) {
-            const act = n.actions.find(x => x.identifier === "default")
-                     || (n.actions.length === 1 ? n.actions[0] : null);
-            if (act) act.invoke();
-        }
+        else if (!invokeDefault(item)) openUrl(item);
         if (item.focusClass) focusDelay.focus(item.focusClass);
         setCenter(false);
         // Handled: out of the history once the center has folded away.

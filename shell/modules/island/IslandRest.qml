@@ -110,6 +110,7 @@ Item {
     // ── Leading ──────────────────────────────────────────────────────────
     // A moment (services/Moments): earbuds connecting, Focus, low battery.
     Row {
+        id: momentLead
         visible: rest.activity === "moment"
         anchors.verticalCenter: parent.verticalCenter
         spacing: 8
@@ -118,7 +119,14 @@ Item {
             visible: !!parent.m.glyph || !!parent.m.image
             width: 22; height: 22
             anchors.verticalCenter: parent.verticalCenter
-            Image { id: momentPic; anchors.fill: parent; source: parent.parent.m.image || ""; visible: status === Image.Ready; sourceSize: Qt.size(44, 44); fillMode: Image.PreserveAspectFit; asynchronous: true; mipmap: true }
+            // A face is round (Moments' hello); a device's photo isn't cut.
+            ClippingRectangle {
+                anchors.fill: parent
+                radius: momentLead.m.round ? width / 2 : 0
+                color: "transparent"
+                visible: momentPic.status === Image.Ready
+                Image { id: momentPic; anchors.fill: parent; source: momentLead.m.image || ""; sourceSize: Qt.size(44, 44); fillMode: momentLead.m.round ? Image.PreserveAspectCrop : Image.PreserveAspectFit; asynchronous: true; mipmap: true }
+            }
             Text { visible: !momentPic.visible; anchors.centerIn: parent; text: parent.parent.m.glyph || ""; font.family: Theme.fontGlyph; font.pixelSize: 17; color: parent.parent.m.kind !== "device" && parent.parent.m.tone ? parent.parent.m.tone : Theme.textPrimary }
         }
         Label {

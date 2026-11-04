@@ -52,7 +52,7 @@ Scope {
             // Tucked (Settings.islandTucked): no reserved strip; out only while
             // something is alive here or you're near it.
             readonly property bool tucked: showBar && Settings.islandTucked
-            readonly property bool outNow: !tucked || panelHere || bannerHere || grown || near || hovered
+            readonly property bool outNow: !tucked || panelHere || bannerHere || peekHere || deviceHere || grown || near || hovered
                                            || (Island.peek && Island.peekScreen === screenName) || restRow.activity !== ""
                                            || Notifs.missed.length > 0
             readonly property bool panelHere: Island.panel !== "" && Island.screen === screenName
@@ -128,7 +128,7 @@ Scope {
             onOverPillsChanged: if (!overPills && hovered && !grown) intent.restart()
             // A banner on show stays a banner under the pointer (so its button
             // can be clicked): hovering only grows the island when there's none.
-            Timer { id: intent; interval: Settings.hoverDelay; onTriggered: win.grown = win.hovered && !win.panelHere && !win.overPills && !win.bannerHere }
+            Timer { id: intent; interval: Settings.hoverDelay; onTriggered: win.grown = win.hovered && !win.panelHere && !win.overPills && !win.bannerHere && !win.peekHere && !win.deviceHere }
             // Open tray menus (TrayRow): the pointer is on the menu, not the
             // island, but the island must stay grown or the menu loses its anchor.
             property int menus: 0
@@ -163,8 +163,14 @@ Scope {
             // A warning grows the island too (below panels and hover in priority).
             readonly property bool bannerHere: Alerts.banner !== null && screenName === Screens.focusedName && !panelHere && !grown
             Spring { id: bv; tier: win.bannerHere ? win.grow : win.shrink; epsilon: 0.001; target: win.bannerHere ? 1 : 0 }
-            readonly property real targetW: panelHere ? panelSize.width : grown ? hoverSize.width : bannerHere ? 440 : restRow.implicitWidth + 32
-            readonly property real targetH: panelHere ? panelSize.height : grown ? hoverSize.height : bannerHere ? 72 : restH
+            // A notification that matters peeks the same way (below a warning).
+            readonly property bool peekHere: Notifs.peek !== null && !Notifs.peek.discard && screenName === Screens.focusedName && !panelHere && !grown && !bannerHere
+            Spring { id: nv; tier: win.peekHere ? win.grow : win.shrink; epsilon: 0.001; target: win.peekHere ? 1 : 0 }
+            // A device connecting or going (Moments.card), below both.
+            readonly property bool deviceHere: Moments.card !== null && screenName === Screens.focusedName && !panelHere && !grown && !bannerHere && !peekHere
+            Spring { id: dv; tier: win.deviceHere ? win.grow : win.shrink; epsilon: 0.001; target: win.deviceHere ? 1 : 0 }
+            readonly property real targetW: panelHere ? panelSize.width : grown ? hoverSize.width : bannerHere ? 440 : peekHere ? 460 : deviceHere ? 420 : restRow.implicitWidth + 32
+            readonly property real targetH: panelHere ? panelSize.height : grown ? hoverSize.height : bannerHere ? 72 : peekHere ? 76 : deviceHere ? 84 : restH
             // Published so surfaces that grow out of the island (the HUD, the
             // clipboard) start from the shape actually on screen: rest, banner,
             // hover or panel. Changes with the state, not per frame.
@@ -317,10 +323,10 @@ Scope {
                 x: Math.round((win.width - width) / 2)
                 y: win.top
                 // Without the bar it is only there for a panel: it fades in as it grows.
-                opacity: win.showBar ? (win.outNow ? 1 : 0) : Math.max(0, Math.min(1, Math.max(pv.value, bv.value) * 2.5))
+                opacity: win.showBar ? (win.outNow ? 1 : 0) : Math.max(0, Math.min(1, Math.max(pv.value, bv.value, nv.value, dv.value) * 2.5))
                 Behavior on opacity { enabled: win.tucked || !win.outNow; NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
 
-                HoverHandler { onHoveredChanged: { win.hovered = hovered; if (win.bannerHere || !hovered) Alerts.held = hovered && win.bannerHere; } }
+                HoverHandler { onHoveredChanged: { win.hovered = hovered; if (win.bannerHere || !hovered) Alerts.held = hovered && win.bannerHere; if (win.peekHere || !hovered) Notifs.peekHeld = hovered && win.peekHere; if (win.deviceHere || !hovered) Moments.cardHeld = hovered && win.deviceHere; } }
 
                 // The island itself: a notch, or a floating black-glass pill.
                 NotchShape {
@@ -351,7 +357,7 @@ Scope {
                         bar: win
                         anchors.horizontalCenter: parent.horizontalCenter
                         y: Math.round((win.restH - height) / 2)
-                        opacity: Math.max(0, 1 - Math.max(m.value, pv.value, bv.value) * 3)
+                        opacity: Math.max(0, 1 - Math.max(m.value, pv.value, bv.value, nv.value, dv.value) * 3)
                         visible: opacity > 0.01
                     }
 
@@ -382,6 +388,32 @@ Scope {
                         // Keeps the last alert on screen while the island folds back.
                         sourceComponent: AlertBanner { alert: Alerts.banner || alertLoader.keep; bar: win }
                         Connections { target: Alerts; function onBannerChanged() { if (Alerts.banner) alertLoader.keep = Alerts.banner; } }
+                    }
+
+                    // ── A notification that matters ──────────────────────
+                    Loader {
+                        id: peekLoader
+                        active: win.peekHere || nv.value > 0.01
+                        x: Math.round((body.width - 460) / 2)
+                        readonly property real k: Math.max(0, Math.min(1, (nv.value - 0.3) / 0.5))
+                        opacity: k * Math.max(0, 1 - Math.max(m.value, pv.value, bv.value) * 3)
+                        visible: opacity > 0.01
+                        property var keep: null
+                        sourceComponent: NotifPeek { item: Notifs.peek || peekLoader.keep; bar: win }
+                        Connections { target: Notifs; function onPeekChanged() { if (Notifs.peek) peekLoader.keep = Notifs.peek; } }
+                    }
+
+                    // ── A device ─────────────────────────────────────────
+                    Loader {
+                        id: deviceLoader
+                        active: win.deviceHere || dv.value > 0.01
+                        x: Math.round((body.width - 420) / 2)
+                        readonly property real k: Math.max(0, Math.min(1, (dv.value - 0.3) / 0.5))
+                        opacity: k * Math.max(0, 1 - Math.max(m.value, pv.value, bv.value, nv.value) * 3)
+                        visible: opacity > 0.01
+                        property var keep: null
+                        sourceComponent: DeviceCard { item: Moments.card || deviceLoader.keep; bar: win }
+                        Connections { target: Moments; function onCardChanged() { if (Moments.card) deviceLoader.keep = Moments.card; } }
                     }
 
                     // ── A panel ──────────────────────────────────────────

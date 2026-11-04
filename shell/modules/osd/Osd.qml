@@ -169,8 +169,13 @@ Scope {
         return String.fromCodePoint(0xf007a + Math.max(0, Math.floor(b * 10) - 1));
     }
 
-    function showVolume(connected) {
-        if (!sink || !sink.audio || quietFor("sound")) return;
+    // At login the island asks what's playing sound (Moments).
+    Connections {
+        target: Moments
+        function onAskOutput() { root.showVolume(true, true); }
+    }
+    function showVolume(connected, boot) {
+        if (!sink || !sink.audio || (quietFor("sound") && !boot)) return;
         const props = sink.properties || {};
         const dev = bluetoothDevice(props);
         const bt = props["device.api"] === "bluez5" || !!props["api.bluez5.address"];
@@ -181,6 +186,19 @@ Scope {
         // What it really is (devices.json): the IEMs behind a DAC, with a photo.
         const art = DeviceArt.lookup(rawLabel) || DeviceArt.lookup(props["device.description"] || "");
         const shownType = art && art.kind && typeGlyph[art.kind] ? art.kind : type;
+
+        // With the island, it says what connected (Moments.card), not the HUD.
+        if (connected && Settings.bar === "island") {
+            const live = bt || type === "usb" || !!art;
+            if (boot && !live) return;
+            Moments.outputSwitched({
+                key: rawLabel.toLowerCase(), glyph: typeGlyph[shownType], image: art ? art.image : "",
+                title: art ? art.label : sinkLabel(type, props, dev), via: art ? art.via : "",
+                battery: dev && dev.batteryAvailable ? dev.battery : -1, live: live, boot: !!boot
+            });
+            return;
+        }
+        if (boot) return;
         kind = "volume";
         title = art ? art.label : sinkLabel(type, props, dev);
         muted = sink.audio.muted;

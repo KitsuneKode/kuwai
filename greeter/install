@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# Make the rice's login screen the system login (replaces SDDM):
+#
+#   sudo greeter/install            greetd + the login face, from the next boot
+#   sudo greeter/install --undo     back to SDDM
+#
+# tty2–tty6 stay plain text logins either way (Ctrl+Alt+F2).
+set -eu
+[ "$(id -u)" = 0 ] || { echo "run with sudo" >&2; exit 1; }
+USER_NAME=${SUDO_USER:?run with sudo from your account}
+RICE="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+DEST=/var/lib/kuwai-greeter
+
+if [ "${1:-}" = --undo ]; then
+    systemctl disable greetd.service
+    systemctl enable sddm.service
+    echo "SDDM is the login again from the next boot."
+    exit 0
+fi
+
+pacman -S --needed --noconfirm greetd
+
+# Log in the way SDDM did: the same PAM stack, so the GNOME keyring (and the
+# SSH agent on it) is unlocked by the login password.
+[ -f /etc/pam.d/greetd.orig ] || cp /etc/pam.d/greetd /etc/pam.d/greetd.orig
+cat >/etc/pam.d/greetd <<'EOF'
+#%PAM-1.0
+
+auth        include     system-login
+-auth       optional    pam_gnome_keyring.so
+-auth       optional    pam_kwallet5.so
+
+account     include     system-login
+
+password    include     system-login
+-password   optional    pam_gnome_keyring.so    use_authtok
+
+session     optional    pam_keyinit.so          force revoke
+session     include     system-login
+-session    optional    pam_gnome_keyring.so    auto_start
+-session    optional    pam_kwallet5.so         auto_start
+EOF
+
+install -d -m755 -o "$USER_NAME" "$DEST"
+sudo -u "$USER_NAME" -H "$RICE/greeter/sync"
+
+install -d /etc/greetd
+[ -f /etc/greetd/config.toml ] && [ ! -f /etc/greetd/config.toml.orig ] && cp /etc/greetd/config.toml /etc/greetd/config.toml.orig
+cat >/etc/greetd/config.toml <<EOF
+[terminal]
+vt = 1
+
+[default_session]
+command = "start-hyprland -- --config $DEST/hyprland.lua"
+user = "greeter"
+EOF
+
+# tty1 belongs to greetd now: no autologin or prefilled name left over there.
+rm -f /etc/systemd/system/getty@tty1.service.d/override.conf
+rmdir /etc/systemd/system/getty@tty1.service.d 2>/dev/null || true
+systemctl daemon-reload
+
+systemctl disable sddm.service 2>/dev/null || true
+systemctl enable greetd.service
+echo "Done. Reboot to get the login screen. Undo: sudo $RICE/greeter/install --undo"

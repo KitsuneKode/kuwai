@@ -1,8 +1,9 @@
 // The power menu, grown out of the island (Super+Backspace). Who you are and
-// how long the machine has been up on top, then large tiles. Lock and Sleep
-// act at once; Log Out, Restart, Firmware (restart into the UEFI setup) and
+// how long the machine has been up on top, then large tiles. Lock acts at
+// once; Sleep, Log Out, Restart, Firmware (restart into the UEFI setup) and
 // Shut Down are held: a wash of colour fills the tile while you hold (0.9 s,
-// linear: the deliberate part) and drains quickly if you let go (200 ms).
+// linear: the deliberate part) and drains quickly if you let go (200 ms);
+// then every screen says goodbye (services/Goodbye) before it happens.
 //
 //   (◉) Kitsunekode                         up 1d 11h · 87% ⚡
 //   ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐
@@ -28,11 +29,11 @@ FocusScope {
 
     readonly property var actions: [
         { id: "lock", label: "Lock", glyph: "\u{f033e}", hold: false, cmd: ["loginctl", "lock-session"] },     // hyprlock until the rice lock is the default
-        { id: "sleep", label: "Sleep", glyph: "\u{f0594}", hold: false, cmd: ["systemctl", "suspend"] },
-        { id: "logout", label: "Log Out", glyph: "\u{f0343}", hold: true, cmd: ["hyprctl", "dispatch", "hl.dsp.exit()"] },
-        { id: "reboot", label: "Restart", glyph: "\u{f0709}", hold: true, cmd: ["systemctl", "reboot"] },
-        { id: "firmware", label: "Firmware", glyph: "\u{f061a}", hold: true, cmd: ["systemctl", "reboot", "--firmware-setup"] },
-        { id: "off", label: "Shut Down", glyph: "\u{f0425}", hold: true, danger: true, cmd: ["systemctl", "poweroff"] }
+        { id: "sleep", label: "Sleep", glyph: "\u{f0594}", hold: true, bye: "suspend", cmd: ["systemctl", "suspend"] },
+        { id: "logout", label: "Log Out", glyph: "\u{f0343}", hold: true, bye: "logout", cmd: ["hyprctl", "dispatch", "hl.dsp.exit()"] },
+        { id: "reboot", label: "Restart", glyph: "\u{f0709}", hold: true, bye: "reboot", cmd: ["systemctl", "reboot"] },
+        { id: "firmware", label: "Firmware", glyph: "\u{f061a}", hold: true, bye: "reboot", cmd: ["systemctl", "reboot", "--firmware-setup"] },
+        { id: "off", label: "Shut Down", glyph: "\u{f0425}", hold: true, danger: true, bye: "poweroff", cmd: ["systemctl", "poweroff"] }
     ]
     property int current: 0
     property int holding: -1
@@ -50,6 +51,8 @@ FocusScope {
     function run(i) {
         const a = actions[i];
         Island.close();
+        // The rest say goodbye first (services/Goodbye runs the command).
+        if (a.bye) { Goodbye.run(a.bye, a.cmd); return; }
         if (Quickshell.env("RICE_DRYRUN") === "1") { console.warn("power (dry run): " + a.cmd.join(" ")); return; }
         // Let the island fold away first, so a lock screen doesn't catch it half-open.
         launch.command = a.cmd;

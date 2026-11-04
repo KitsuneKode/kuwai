@@ -22,6 +22,8 @@ QtObject {
     property string groupKey
     property string focusClass
     property string jump                 // "pid:window" of a kittymux agent pane (works after the sender is gone)
+    property string url                  // what a click opens once the sender is gone (bin/rice-feeds)
+    property bool quiet: false           // straight to the center: no toast, no peek, not "missed"
     property int urgency: NotificationUrgency.Normal
     property string severity: "normal"   // critical | warning | normal | low
     property var actions: []          // [{ id, text }] besides the default one
@@ -83,6 +85,8 @@ QtObject {
         groupKey = a.groupKey;
         focusClass = a.focusClass;
         jump = a.jump || "";
+        url = a.url || "";
+        quiet = !!a.quiet;
         urgency = n.urgency;
         severity = a.severity;
         hasDefault = n.actions.some(x => x.identifier === "default");
@@ -114,6 +118,6 @@ QtObject {
     }
 
     function toJson() {
-        return { nid, time, app, title, body, status, statusGlyph, statusTone, icon: savedIcon || icon, groupKey, focusClass, jump, urgency, severity, count, snoozedUntil };
+        return { nid, time, app, title, body, status, statusGlyph, statusTone, icon: savedIcon || icon, groupKey, focusClass, jump, url, quiet, urgency, severity, count, snoozedUntil };
     }
 }
