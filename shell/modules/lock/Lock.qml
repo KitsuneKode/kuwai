@@ -6,7 +6,8 @@
 //
 // Not the default yet: hypridle still runs hyprlock.
 //
-// Fail-safe: while locked, ~/.local/state/rice/locked exists. If the shell
+// Fail-safe: while locked, Paths.lockFlag exists (this session's, in the
+// runtime dir, so it goes at a reboot or logout). If the shell
 // dies while locked, Hyprland keeps the session locked (the protocol's
 // promise: nothing is ever exposed) and, with misc:allow_session_lock_restore
 // (hypr/kuwai/system.lua), lets a new locker take over: Quickshell's crash handler
@@ -43,7 +44,7 @@ Scope {
         root.openAfter = null;
     } }
 
-    readonly property string flag: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/rice/locked"
+    readonly property string flag: Paths.lockFlag
     function lock() {
         password = ""; error = ""; checking = false;
         release.stop(); leaving = false;
@@ -109,22 +110,20 @@ Scope {
     // it already tracked. Turning the screens off (hypridle) drops the Acer
     // off the bus; it comes back as a new monitor, the old surface died with
     // the old output, and the laptop panel (which never disconnects) is the
-    // only place the lock still shows. Drop the locker and take the session
-    // back — allow_session_lock_restore is on — once the new output is up.
-    // Only once the lock is confirmed: Hyprland ignores a new locker while
-    // the old one is still waiting for "locked", so dropping it then leaves
-    // the session locked with nothing drawing the lock. That is the boot
-    // case (the Acer comes up seconds after the lock starts), and a screen
-    // that was never tracked gets its surface without any of this.
+    // only place the lock still shows. A new lock from this same process is
+    // refused (Quickshell keeps the old one alive so the session can't fail
+    // open: "Failed to acquire session lock", and Hyprland's crash screen),
+    // so restart the shell instead: the process going away releases the
+    // lock, allow_session_lock_restore lets the new one take it, and the
+    // flag tells it to. Only once the lock is confirmed: a locker still
+    // waiting for "locked" makes Hyprland ignore the next.
     readonly property bool secure: lockLoader.item ? lockLoader.item.secure : false
     function resurface() {
         if (!locked || !secure) return;
-        console.warn("lock: a monitor came back while locked; covering every screen again");
-        lockLoader.active = false;
-        relockCreate.restart();
+        console.warn("lock: a monitor came back while locked; restarting the shell to cover it");
+        Quickshell.execDetached([Paths.bin + "/rice-shell"]);
     }
-    Timer { id: relockWait; interval: 500; onTriggered: root.resurface() }
-    Timer { id: relockCreate; interval: 50; onTriggered: if (root.locked) lockLoader.active = true }
+    Timer { id: relockWait; interval: 800; onTriggered: root.resurface() }
     Connections {
         target: typeof Hyprland !== "undefined" ? Hyprland : null
         function onRawEvent(event) {

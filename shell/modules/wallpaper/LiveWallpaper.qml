@@ -36,7 +36,7 @@ Scope {
     }
     // The lock screen's flag (modules/lock): present while locked.
     FileView {
-        path: root.stateDir + "/rice/locked"
+        path: Paths.lockFlag
         watchChanges: true
         printErrors: false
         onFileChanged: reload()

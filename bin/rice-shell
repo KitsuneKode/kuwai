@@ -89,6 +89,8 @@ pkill -f 'qs -p .*/quickshell/glass-osd' 2>/dev/null
 # A watcher from an earlier failed start: this run replaces it.
 for p in $(pgrep -f "rice-shell-watch $SHELL_DIR $RICE\$"); do [ "$p" != "$$" ] && kill "$p" 2>/dev/null; done
 
+loaded() { [ -n "$1" ] && strings "$1" 2>/dev/null | grep -q 'Configuration Loaded'; }
+
 MARK=$(mktemp "${XDG_RUNTIME_DIR:-/tmp}/rice/launch.XXXXXX")
 trap 'rm -f -- "$MARK"' EXIT
 for attempt in 1 2 3; do
@@ -102,28 +104,37 @@ for attempt in 1 2 3; do
     ENV="GLIBC_TUNABLES=glibc.malloc.arena_max=2:glibc.malloc.trim_threshold=8388608"
     if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && hyprctl dispatch "hl.dsp.exec_cmd('env $ENV qs -p $SHELL_DIR -d')" >/dev/null 2>&1; then :
     else env "$ENV" qs -p "$SHELL_DIR" -d >/dev/null 2>&1; fi
-    for i in $(seq 40); do
+    log=
+    for i in $(seq 60); do
         # Every half second: did the config fail to load?
         if [ $((i % 5)) -eq 0 ]; then
             log=$(newest_log)
             if [ -n "$log" ] && strings "$log" 2>/dev/null | grep -q 'Failed to load configuration' \
-               && ! strings "$log" 2>/dev/null | grep -q 'Configuration Loaded'; then
+               && ! loaded "$log"; then
                 broken "$log"
             fi
         fi
         pid=$(owner_pid)
-        if [ -n "$pid" ]; then
-            if [ "$(cat /proc/"$pid"/comm 2>/dev/null)" = "dunst" ]; then break; fi
-            # Only the new rice counts (the old one can still hold the name
-            # for a moment after it was killed).
-            rice_pids | grep -qx "$pid" || { sleep 0.1; continue; }
-            # One top bar: the island or Waybar, as the settings say.
-            "$RICE/bin/rice" bar apply
+        # Dunst, D-Bus-activated by a notification in between: again.
+        [ -n "$pid" ] && [ "$(cat /proc/"$pid"/comm 2>/dev/null)" = "dunst" ] && pkill -x dunst
+        # The new rice has the name: done.
+        if [ -n "$pid" ] && rice_pids | grep -qx "$pid"; then
+            "$RICE/bin/rice" bar apply      # one top bar: the island or Waybar
             exit 0
         fi
         sleep 0.1
     done
-    echo "rice-shell: notification name not acquired (attempt $attempt), retrying" >&2
+    # Loaded but without the name: someone else has it, most likely the rice
+    # of another session on another tty (one D-Bus for both). Keep this one;
+    # Quickshell takes the name by itself once that one lets go. Killing it
+    # would also drop a lock it may already hold.
+    if loaded "$log" && [ -n "$(rice_pids)" ]; then
+        owner=$(owner_pid)
+        echo "rice-shell: running; notifications stay with pid ${owner:-?} ($(tr '\0' ' ' </proc/"${owner:-0}"/cmdline 2>/dev/null | cut -c1-80)) until it exits" >&2
+        "$RICE/bin/rice" bar apply
+        exit 0
+    fi
+    echo "rice-shell: the shell didn't come up (attempt $attempt), retrying" >&2
     stop_rice
 done
 
