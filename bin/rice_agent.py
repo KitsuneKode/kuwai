@@ -25,6 +25,7 @@ Stdlib only.
 import base64
 import json
 import os
+import re
 import signal
 import sys
 import time
@@ -77,7 +78,9 @@ TOOL_GUIDE = (
     "don't; mention it to the user instead."
 )
 SANDBOX_GUIDE = (
-    " You also have your own isolated Linux sandbox: use write and sandbox_run to write and run code, "
+    " You also have your own isolated Linux sandbox: use write and sandbox_run to write and run code "
+    "(files you write with relative paths are in sandbox_run's current folder: run them as `python3 calc.py`, "
+    "not from ~), "
     "check calculations, or try things out, without asking; fix errors and run again until it works. For a "
     "task with several steps, call update_plan first and keep it current. Use run_command only for things on "
     "the user's own computer."
@@ -1344,6 +1347,11 @@ class Interrupted(Exception):
     pass
 
 
+class MalformedCall(Exception):
+    """Ollama couldn't parse the model's tool call (qwen3.5 sometimes writes broken
+    tool-call XML: "XML syntax error … element <function> closed by </parameter>")."""
+
+
 class Steer(Exception):
     """A message from the user arrived mid-turn: cut the text being written."""
 
@@ -1579,7 +1587,10 @@ def stream_round(payload, stream, stats):
     calls = []
     for chunk in chat_stream(payload):
         if chunk.get("error"):
-            raise RuntimeError(chunk["error"])
+            err = str(chunk["error"])
+            if re.search(r"XML syntax|tool call|parse|unexpected EOF|invalid character", err, re.I):
+                raise MalformedCall(err)
+            raise RuntimeError(err)
         msg = chunk.get("message") or {}
         if stream.kind is not None and not calls and APPROVALS is not None and APPROVALS.has_steer():
             raise Steer()
@@ -1645,6 +1656,7 @@ def run_turn(req):
     stream = Stream(ids)
     status, error = "completed", ""
     rounds = 0
+    malformed = 0
     nudged = False
     planned = False
     try:
@@ -1674,6 +1686,19 @@ def run_turn(req):
                     "and say what's left undone.)"}]
             try:
                 calls = stream_round(payload, stream, stats)
+            except MalformedCall as e:
+                # pi's rule: a broken call goes back to the model as an error it can fix, not a dead turn.
+                stream.close()
+                partial = stream.message_text()
+                stream.text.clear()
+                malformed += 1
+                if malformed > 2:
+                    raise RuntimeError(f"The model kept writing broken tool calls ({e})")
+                if partial:
+                    messages.append({"role": "assistant", "content": partial})
+                messages.append({"role": "user", "content": f"(Your last tool call couldn't be read: {str(e)[:160]}. "
+                                 "Call the tool again with valid arguments, one call at a time.)"})
+                continue
             except Steer:
                 # Keep what it had written, then let it hear the user.
                 stream.close()

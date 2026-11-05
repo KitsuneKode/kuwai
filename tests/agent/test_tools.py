@@ -121,3 +121,10 @@ def test_system_audit_is_read_only_and_needs_no_approval(run_agent):
     assert not [e for e in events if e["type"] == "request.opened"]
     out = completion(events, tool_items(events)[0]["id"])["output"]
     assert "## Ports reachable from the network" in out and "## Firewall services" in out
+
+
+def test_broken_tool_call_is_retried_not_fatal(run_agent):
+    broken = [{"error": "XML syntax error on line 3: element <function> closed by </parameter>"}]
+    events, fake = run_agent(USER, [broken, answer("Fine now.")], caps=TOOLS_CAPS)
+    assert events[-1]["status"] == "completed"
+    assert "couldn't be read" in fake.requests[1]["messages"][-1]["content"]
