@@ -7,6 +7,7 @@
 //   qs ipc -p <shell> call test timer    SECONDS LABEL
 //   qs ipc -p <shell> call test clear                       (back to the real state)
 //   qs ipc -p <shell> call test gallery  [on|off]           (the design system on one sheet; no keyboard)
+//   qs ipc -p <shell> call test settings N                  (the Settings panel on page N, no keyboard; -1 closes)
 //   qs ipc -p <shell> call test compile  modules/x/Y.qml    (compiles it, makes nothing: "ok" or the error)
 // (Notification bursts: bin/rice-fixture, through the real D-Bus path.)
 //
@@ -22,6 +23,8 @@ Scope {
     property bool testing: false
     property var realFeed: null
     LazyLoader { id: galleryLoader; active: false; Gallery {} }
+    property int settingsPage: 0
+    LazyLoader { id: settingsLoader; active: false; SettingsPreview { page: hook.settingsPage } }
     IpcHandler {
         target: "test"
         function moment(kind: string, label: string, value: string): void {
@@ -52,6 +55,7 @@ Scope {
             return r;
         }
         function gallery(state: string): void { galleryLoader.active = state !== "off"; }
+        function settings(page: int): void { hook.settingsPage = page; settingsLoader.active = page >= 0; }
         function timer(seconds: int, label: string): void { Timers.start(seconds, label); }
         function clear(): void {
             Alerts.active = [];

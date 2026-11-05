@@ -12,6 +12,7 @@ import QtQuick
 import Quickshell
 import qs.config
 import qs.components
+import qs.components.ui
 import qs.services
 
 FocusScope {
@@ -29,6 +30,9 @@ FocusScope {
         { id: "motion", label: "Motion", glyph: "\u{f0e7d}", tint: "#bf5af2" },
         { id: "island", label: "Island", glyph: "\u{f0d6f}", tint: "#ff9f0a" },
         { id: "workspaces", label: "Workspaces", glyph: "\u{f0570}", tint: "#5e5ce6" },
+        { id: "power", label: "Power & Idle", glyph: "\u{f0425}", tint: "#30d158" },
+        { id: "saver", label: "Screensaver", glyph: "\u{f0379}", tint: "#5e5ce6" },
+        { id: "time", label: "Reminders & Alarms", glyph: "\u{f0020}", tint: "#ff9f0a" },
         { id: "clipboard", label: "Clipboard", glyph: "\u{f014c}", tint: "#64d2ff" },
         { id: "updates", label: "Software Update", glyph: "\u{f06b0}", tint: "#30d158" },
         { id: "about", label: "About", glyph: "\u{f02fd}", tint: "#8e8e93" }
@@ -100,7 +104,7 @@ FocusScope {
             Loader {
                 id: page
                 width: parent.width
-                sourceComponent: [barPage, clockPage, notifPage, motionPage, islandRestPage, workspacesPage, clipboardPage, updatesPage, aboutPage][settings.current]
+                sourceComponent: [barPage, clockPage, notifPage, motionPage, islandRestPage, workspacesPage, powerPage, saverPage, timePage, clipboardPage, updatesPage, aboutPage][settings.current]
             }
         }
     }
@@ -147,6 +151,14 @@ FocusScope {
             SettingsGroup {
                 title: "On hover"
                 SettingsRow {
+                    label: "Music at rest"; detail: "Tiny art and bars beside the island while something plays"
+                    Toggle { on: Settings.restMedia; onToggled: Settings.set("restMedia", !Settings.restMedia) }
+                }
+                SettingsRow {
+                    label: "Weather"; detail: "In the island, for " + (Settings.weatherLocation || "where you are") + "  ·  rice set weatherLocation \"City\""
+                    Toggle { on: Settings.restWeather; onToggled: Settings.set("restWeather", !Settings.restWeather) }
+                }
+                SettingsRow {
                     label: "Now playing"; detail: "The media card under the clock"
                     Toggle { on: Settings.hoverMedia; onToggled: Settings.set("hoverMedia", !Settings.hoverMedia) }
                 }
@@ -185,6 +197,15 @@ FocusScope {
                 SettingsRow {
                     label: "Do Not Disturb"; detail: "Only critical alerts show"
                     Toggle { on: Notifs.dnd; onToggled: Notifs.dnd = !Notifs.dnd }
+                }
+                SettingsRow {
+                    label: "Where they appear"
+                    detail: Settings.notifSurface === "both" ? "In the island and as a toast" : "One place each: urgent, warnings and replies in the island; the rest as a toast; low ones only in the center"
+                    Segmented {
+                        options: [{ id: "one", label: "One place" }, { id: "both", label: "Both" }]
+                        current: Settings.notifSurface
+                        onPicked: id => Settings.set("notifSurface", id)
+                    }
                 }
                 SettingsRow {
                     label: "Clear seen notifications"; detail: "Ones you saw and didn't act on"
@@ -228,6 +249,7 @@ FocusScope {
                 // press Ctrl+Alt+W, or something needs you; then the same
                 // mini notch. Near the top, either shows the full row.
                 SettingsRow {
+                    id: styleRow
                     readonly property string style: Settings.islandTucked ? "hidden" : Settings.islandRest === "full" ? "full" : "minimal"
                     label: "Style"
                     detail: style === "hidden" ? "Out of the way: it appears near the top edge, with Ctrl+Alt+W, or when something needs you. Windows get the whole screen."
@@ -235,13 +257,152 @@ FocusScope {
                           : "Just the time, or what's alive: music, a moment, a password, a recording. Near the top edge for the rest."
                     Segmented {
                         options: [{ id: "minimal", label: "Minimal" }, { id: "hidden", label: "Hidden" }, { id: "full", label: "Everything" }]
-                        current: parent.style
+                        current: styleRow.style
                         onPicked: id => {
                             Settings.set("islandTucked", id === "hidden");
                             Settings.set("islandRest", id === "full" ? "full" : "minimal");
                         }
                     }
                 }
+                SettingsRow {
+                    label: "Reveal on approach"; detail: Settings.islandProximity ? "The pointer coming within 30–60 px of the island shows it" : "Only touching the top edge shows it"
+                    Toggle { on: Settings.islandProximity; onToggled: Settings.set("islandProximity", !Settings.islandProximity) }
+                }
+                SettingsRow {
+                    label: "Quick switch"; detail: "Shown first in the hover shelf: " + (Settings.quickPrimary || "caffeine") + ". Hold another one in the shelf to make it first."
+                }
+            }
+        }
+    }
+    Component {
+        id: powerPage
+        Column {
+            spacing: 18
+            SettingsGroup {
+                SettingsRow {
+                    label: "Who handles idle"; detail: Settings.idleOwner === "shell" ? "The shell: dims, fades, locks and sleeps, aware of Caffeine and of music playing" : "hypridle (~/.config/hypr/hypridle.conf); the rows below don't apply"
+                    Segmented {
+                        options: [{ id: "shell", label: "Shell" }, { id: "hypridle", label: "hypridle" }]
+                        current: Settings.idleOwner
+                        onPicked: id => Settings.set("idleOwner", id)
+                    }
+                }
+                SettingsRow {
+                    label: "Don't sleep while music plays"
+                    Toggle { on: Settings.idleNoSleepWhilePlaying; onToggled: Settings.set("idleNoSleepWhilePlaying", !Settings.idleNoSleepWhilePlaying) }
+                }
+            }
+            SettingsGroup {
+                title: "On power"
+                opacity: Settings.idleOwner === "shell" ? 1 : 0.45
+                SettingsRow { label: "Dim the screen"; SecondsChoice { key: "idleDimAc"; values: [120, 240, 600, 0] } }
+                SettingsRow { label: "Lock"; SecondsChoice { key: "idleLockAc"; values: [180, 300, 900, 0] } }
+                SettingsRow { label: "Screen off"; SecondsChoice { key: "idleOffAc"; values: [330, 600, 1800, 0] } }
+                SettingsRow { label: "Sleep"; SecondsChoice { key: "idleSleepAc"; values: [1800, 3600, 0] } }
+            }
+            SettingsGroup {
+                title: "On battery"
+                opacity: Settings.idleOwner === "shell" ? 1 : 0.45
+                SettingsRow { label: "Dim the screen"; SecondsChoice { key: "idleDimBattery"; values: [60, 120, 300, 0] } }
+                SettingsRow { label: "Lock"; SecondsChoice { key: "idleLockBattery"; values: [120, 180, 600, 0] } }
+                SettingsRow { label: "Screen off"; SecondsChoice { key: "idleOffBattery"; values: [210, 300, 900, 0] } }
+                SettingsRow { label: "Sleep"; SecondsChoice { key: "idleSleepBattery"; values: [600, 900, 1800, 0] } }
+            }
+            Label {
+                width: parent.width; wrapMode: Text.WordWrap; size: 12; color: Theme.textTertiary
+                text: "Caffeine (the cup in the island) holds all of these off. The screen always locks before the laptop sleeps."
+            }
+        }
+    }
+    Component {
+        id: saverPage
+        Column {
+            spacing: 18
+            SettingsGroup {
+                SettingsRow {
+                    label: "Show the screensaver"
+                    detail: Settings.screensaverWhen === "caffeine" ? "While Caffeine keeps the screen on, after a while of no input" : Settings.screensaverWhen === "always" ? "Whenever you're away, before the lock" : "Never"
+                    Segmented {
+                        options: [{ id: "caffeine", label: "With Caffeine" }, { id: "always", label: "Always" }, { id: "off", label: "Off" }]
+                        current: Settings.screensaverWhen
+                        onPicked: id => Settings.set("screensaverWhen", id)
+                    }
+                }
+                SettingsRow {
+                    label: "After"
+                    Segmented {
+                        options: [1, 3, 5, 10].map(n => ({ id: String(n), label: n + " min" }))
+                        current: String(Settings.screensaverMins)
+                        onPicked: id => Settings.set("screensaverMins", Number(id))
+                    }
+                }
+                SettingsRow {
+                    label: "Look"; detail: Settings.screensaverStyle === "dusk" ? "A slow dusk sky with drifting petals" : Settings.screensaverStyle === "live" ? "Your live wallpaper, full screen" : "Your wallpaper, still, with the time"
+                    Segmented {
+                        options: [{ id: "dusk", label: "Dusk" }, { id: "live", label: "Live" }, { id: "still", label: "Still" }]
+                        current: Settings.screensaverStyle
+                        onPicked: id => Settings.set("screensaverStyle", id)
+                    }
+                }
+                SettingsRow {
+                    label: "Preview"; detail: "Any input ends it"
+                    PillButton { text: "Start now"; onClicked: Quickshell.execDetached([settings.rice, "screensaver", "start"]) }
+                }
+            }
+            SettingsGroup {
+                title: "Live wallpaper"
+                SettingsRow {
+                    label: "Keep playing on battery"; detail: "Off: it pauses on battery to save power"
+                    Toggle { on: Settings.liveOnBattery; onToggled: Settings.set("liveOnBattery", !Settings.liveOnBattery) }
+                }
+            }
+        }
+    }
+    Component {
+        id: timePage
+        Column {
+            spacing: 18
+            SettingsGroup {
+                title: "Reminders"
+                SettingsRow {
+                    visible: Reminders.items.length === 0
+                    label: "None"; detail: "Type \"remind me in 20m tea\" or \"tomorrow 9am dentist\" in the launcher, or press Super+Ctrl+R"
+                }
+                Repeater {
+                    model: Reminders.items
+                    SettingsRow {
+                        id: remRow
+                        required property var modelData
+                        label: modelData.text; detail: Reminders.when(modelData.at)
+                        PillButton { text: "Remove"; onClicked: Reminders.cancel(remRow.modelData.id) }
+                    }
+                }
+            }
+            SettingsGroup {
+                title: "Alarms"
+                SettingsRow {
+                    visible: Alarms.items.length === 0
+                    label: "None"; detail: "Type \"alarm 7:30\" in the launcher"
+                }
+                Repeater {
+                    model: Alarms.items
+                    SettingsRow {
+                        id: alRow
+                        required property var modelData
+                        label: modelData.label; detail: Qt.formatDateTime(new Date(modelData.at), "ddd " + (Settings.clock24 ? "HH:mm" : "h:mm AP"))
+                        PillButton { text: "Remove"; onClicked: Alarms.cancel(alRow.modelData.id) }
+                    }
+                }
+                SettingsRow {
+                    label: "Wake from sleep"
+                    detail: Alarms.canWake ? "On: the laptop wakes a minute before an alarm" : "Off: alarms ring when the laptop is next awake. Turn on once with: sudo ~/Projects/rice/system/install"
+                }
+            }
+            SettingsGroup {
+                title: "Notes and focus"
+                SettingsRow { label: "Quick note"; detail: "Super+Ctrl+N, or \"note …\" in the launcher: a line in " + Notes.file.replace(Quickshell.env("HOME"), "~")
+                    PillButton { text: "Open"; onClicked: Notes.open() } }
+                SettingsRow { label: "Pomodoro"; detail: "\"pomodoro\" in the launcher: 25 min focus, 5 min break, ×4, then 15" }
             }
         }
     }

@@ -11,7 +11,8 @@ Item {
     property string detail
     default property alias control: slot.data
     width: parent ? parent.width : 480
-    height: detail ? 60 : 46
+    // The detail wraps (up to three lines) and the row grows with it.
+    height: Math.max(detail ? 60 : 46, text.implicitHeight + 24)
 
     Rectangle {
         visible: !row.Positioner.isFirstItem
@@ -19,10 +20,11 @@ Item {
         color: Qt.rgba(1, 1, 1, 0.07)
     }
     Column {
+        id: text
         anchors { left: parent.left; leftMargin: 14; right: slot.left; rightMargin: 16; verticalCenter: parent.verticalCenter }
         spacing: 2
         Label { width: parent.width; elide: Text.ElideRight; text: row.label; size: 13 }
-        Label { visible: row.detail !== ""; width: parent.width; elide: Text.ElideRight; text: row.detail; size: 11; color: Theme.textTertiary }
+        Label { visible: row.detail !== ""; width: parent.width; wrapMode: Text.Wrap; maximumLineCount: 3; elide: Text.ElideRight; text: row.detail; size: 11; color: Theme.textTertiary }
     }
     Item {
         id: slot

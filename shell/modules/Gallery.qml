@@ -19,6 +19,7 @@ PanelWindow {
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
     WlrLayershell.namespace: "rice-gallery"
+    mask: Region {}                      // click-through: it is only a picture
 
     Rectangle {
         anchors.fill: parent
