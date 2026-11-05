@@ -16,7 +16,27 @@ they land. User wants: extremely secure, premium, tasteful, fast, Apple-grade.
 - Hyprland reaps children: no `os.execute` exit codes inside kuwai; no popen in hot paths.
 - Timers in kuwai: create via `K.defer` (verify-config crash otherwise).
 
-## NOW — in progress
+## NOW (2026-11-05 night) — road to 9.5, see docs/design/STATES.md
+Done: live shell runs from `stable` (349 MB, was 652 from dev reloads); shared
+components/Popover (bell quick list on it); AssistantOverlay built only while
+used; udiskie off (KUWAI_UDISKIE=1); Night screensaver; Cider ♥ / link action.
+Next, in order:
+1. Reload leak root cause (dev only now; ~25–30 MB per reload): suspects are
+   singletons with Process/FileView/PwObjectTracker; test = 10 reloads, Δ < 20 MB.
+2. Panels: Center/Overview/Clipboard contents behind LazyLoader (Clipboard
+   stays mapped on purpose for instant Super+V; lazy its content only).
+3. State rules (STATES.md) per panel: Wi-Fi, Bluetooth, Launcher, Clipboard.
+4. Type tokens: migrate island modules onto Theme.t*; rice-check fails on new
+   literal sizes/durations/hex.
+5. AgentStack + IslandStatus menus onto Popover/TrayMenu (one popup family).
+6. Super+N: keep as the deep surface grown from the island; Wi-Fi/sound
+   right-click menus → drill into the same lists (no second copy).
+7. Login gap: user runs the GRUB line (vt.global_cursor_default=0
+   systemd.show_status=false nvidia_drm.fbdev=1); then seamless handoff.
+8. Later (user): live wallpapers from Wallpaper Engine's video wallpapers
+   without installing WE; meters baseline-align label and value.
+
+## Earlier — in progress
 1. **Polkit agent (rice-auth)** — BUILT 2026-11-01: shell-auth/shell.qml + systemd/rice-auth.service
    (linked into ~/.config/systemd/user, started by startup.lua; hardened: no crash handler/dumps,
    LimitCORE=0, NoNewPrivileges, no file watcher, software renderer ~140 MB, exit 3 = another agent

@@ -49,11 +49,15 @@ hl.on("hyprland.start", function()
 	-- GitHub and Gmail as notifications (systemd/rice-feeds.service).
 	hl.exec_cmd(unit("rice-feeds.service"))
 
-	-- Tray helpers: Wi-Fi secrets agent, removable media.
+	-- Wi-Fi secrets agent: the island lists and switches networks but can't
+	-- ask a new network's password; nm-applet does (its tray icon is hidden,
+	-- TrayRow). udiskie used to run here too (60 MB of Python for a hidden
+	-- tray with automount off); the island's device card announces drives
+	-- and file managers mount them. KUWAI_UDISKIE=1 brings it back.
 	if K.has("nm-applet") then
 		hl.exec_cmd("nm-applet --indicator")
 	end
-	if K.has("udiskie") then
+	if os.getenv("KUWAI_UDISKIE") == "1" and K.has("udiskie") then
 		hl.exec_cmd("udiskie --no-automount --smart-tray")
 	end
 end)
