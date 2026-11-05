@@ -13,6 +13,10 @@ ExecStart=/bin/sh -c 'exec "${KUWAI_ROOT:-%h/Projects/rice}/bin/rice-feeds"'
 Restart=always
 RestartSec=10
 Slice=background.slice
+# The script needs ~45 MB plus a gh run at a time; links open in their own
+# units (open_url), so anything near these limits is a leak, not a browser.
+MemoryHigh=200M
+MemoryMax=400M
 
 [Install]
 WantedBy=graphical-session.target
