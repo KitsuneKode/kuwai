@@ -17,17 +17,24 @@ Item {
     property string text
     property bool shown: false
     property bool below: false
-    // Shared feel across all tips: whether one was shown a moment ago.
-    property bool warm: false
+    // Shared across all tips (config/TipClock): one showing, or one just
+    // closed, means this one shows at once. (A per-tip flag was never set.)
+    property bool counted: false
+    function count(on) {
+        if (on && !counted) { counted = true; TipClock.showing++; }
+        else if (!on && counted) { counted = false; TipClock.showing = Math.max(0, TipClock.showing - 1); TipClock.lastHidden = Date.now(); }
+    }
+    onKChanged: count(k > 0.5)
+    Component.onDestruction: count(false)
 
     width: 0
     height: 0
     property real k: 0               // 0 hidden → 1 shown
     Behavior on k { NumberAnimation { duration: 120; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
 
-    Timer { id: rest; interval: tip.warm ? 0 : Theme.tipMs; onTriggered: tip.k = 1 }
+    Timer { id: rest; interval: Theme.tipMs; onTriggered: tip.k = 1 }
     onShownChanged: {
-        if (shown && text !== "") rest.restart();
+        if (shown && text !== "") { if (TipClock.warm()) k = 1; else rest.restart(); }
         else { rest.stop(); k = 0; }
     }
 
