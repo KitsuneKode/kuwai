@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Gmail · toast, center, reply — rice mockup</title>
+<style>
+  @font-face {
+    font-family: "SF Pro";
+    src: local("SF Pro Display"), local("SF Pro Text"), local("Inter");
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "SF Pro", -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #08080a;
+    color: rgba(255,255,255,.96);
+    padding: 32px 28px 48px;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1 {
+    font-size: 13px;
+    font-weight: 590;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.42);
+    margin: 28px 0 10px;
+  }
+  h1:first-of-type { margin-top: 0; }
+  .sub {
+    font-size: 14px;
+    line-height: 1.5;
+    color: rgba(255,255,255,.62);
+    max-width: 720px;
+    margin-bottom: 20px;
+    letter-spacing: -.012em;
+  }
+  .sub strong { color: rgba(255,255,255,.9); font-weight: 590; }
+  .sub code { font-size: 12px; color: rgba(255,255,255,.5); }
+  .today-tag {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 590;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: #ff9f0a;
+    margin-left: 8px;
+  }
+  .prop-tag { color: #30d158; }
+  /* wallpaper scene behind notch */
+  .top-scene {
+    position: relative;
+    border-radius: 22px;
+    padding: 36px 24px 40px;
+    margin-bottom: 32px;
+    background:
+      radial-gradient(ellipse 100% 70% at 50% 0%, rgba(70, 100, 180, .28), transparent 60%),
+      radial-gradient(ellipse 60% 40% at 90% 80%, rgba(120, 60, 90, .15), transparent 50%),
+      linear-gradient(180deg, #1c1c24 0%, #0e0e12 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .top-scene::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.035'/%3E%3C/svg%3E");
+    pointer-events: none;
+  }
+  .lane-label {
+    position: relative;
+    z-index: 1;
+    font-size: 10px;
+    font-weight: 590;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.38);
+    margin-bottom: 14px;
+    align-self: flex-start;
+    width: 100%;
+    max-width: 520px;
+    padding-left: 4px;
+  }
+  .glass {
+    position: relative;
+    background: rgba(17, 17, 20, .68);
+    border: 1px solid rgba(0, 0, 0, .55);
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, .07) inset,
+      0 1px 0 rgba(255, 255, 255, .1) inset,
+      0 20px 50px rgba(0, 0, 0, .5);
+    overflow: hidden;
+  }
+  .glass::before {
+    content: "";
+    position: absolute;
+    inset: 1px;
+    border-radius: inherit;
+    pointer-events: none;
+    background: linear-gradient(180deg,
+      rgba(255,255,255,.16) 0%,
+      rgba(255,255,255,.05) 5%,
+      rgba(255,255,255,.02) 38%,
+      transparent 68%,
+      rgba(0,0,0,.1) 100%);
+  }
+  .rest {
+    position: relative;
+    z-index: 1;
+    width: 300px;
+    height: 34px;
+    border-radius: 17px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    font-size: 13px;
+    font-weight: 510;
+    color: rgba(255,255,255,.7);
+    margin-bottom: 14px;
+  }
+  .rest .t { font-weight: 590; color: #fff; font-variant-numeric: tabular-nums; }
+  .row-layout {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 28px;
+    width: 100%;
+    max-width: 920px;
+    align-items: start;
+  }
+  @media (max-width: 860px) {
+    .row-layout { grid-template-columns: 1fr; }
+  }
+  .notch-col { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .callout-box {
+    font-size: 11px;
+    line-height: 1.4;
+    color: rgba(255,255,255,.48);
+    text-align: center;
+    max-width: 460px;
+    padding: 0 8px;
+  }
+  .toast-wrap {
+    position: relative;
+    z-index: 1;
+    width: 368px;
+    max-width: 100%;
+    align-self: end;
+    justify-self: end;
+  }
+  .toast {
+    border-radius: 22px;
+    padding: 15px 17px 14px;
+  }
+  .toast-row { display: flex; gap: 13px; position: relative; z-index: 1; }
+  .gmail-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 11px;
+    flex-shrink: 0;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,.25);
+  }
+  .gmail-icon svg { width: 26px; height: 20px; }
+  .toast-head {
+    font-size: 12px;
+    font-weight: 510;
+    color: rgba(255,255,255,.45);
+    margin-bottom: 2px;
+  }
+  .from {
+    font-size: 15px;
+    font-weight: 590;
+    letter-spacing: -.02em;
+    line-height: 1.15;
+  }
+  .subject {
+    font-size: 13px;
+    font-weight: 510;
+    color: rgba(255,255,255,.85);
+    margin-top: 4px;
+    line-height: 1.25;
+  }
+  .snippet {
+    font-size: 13px;
+    line-height: 1.3;
+    color: rgba(255,255,255,.65);
+    margin-top: 4px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; position: relative; z-index: 1; }
+  .chip {
+    height: 28px;
+    padding: 0 13px;
+    border-radius: 14px;
+    border: none;
+    font-size: 12px;
+    font-weight: 590;
+    background: rgba(255,255,255,.12);
+    color: rgba(255,255,255,.88);
+  }
+  .chip.ghost { font-weight: 510; color: rgba(255,255,255,.7); }
+  .grid2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    max-width: 920px;
+  }
+  @media (max-width: 780px) { .grid2 { grid-template-columns: 1fr; } }
+  .panel {
+    border-radius: 22px;
+    padding: 14px 16px 16px;
+    max-width: 440px;
+  }
+  .center-shell {
+    border-radius: 22px;
+    padding: 14px;
+    max-width: 400px;
+  }
+  .tabs { display: flex; gap: 4px; margin-bottom: 12px; position: relative; z-index: 1; }
+  .tab {
+    flex: 1;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 510;
+    padding: 7px 4px;
+    border-radius: 10px;
+    color: rgba(255,255,255,.42);
+  }
+  .tab.on { background: rgba(255,255,255,.1); color: #fff; }
+  .tab .b {
+    display: inline-block;
+    min-width: 15px;
+    height: 15px;
+    line-height: 15px;
+    padding: 0 4px;
+    margin-left: 3px;
+    border-radius: 8px;
+    background: #0a84ff;
+    font-size: 9px;
+    font-weight: 600;
+  }
+  .search {
+    height: 36px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,.07);
+    background: rgba(255,255,255,.07);
+    padding: 0 12px;
+    font-size: 13px;
+    color: rgba(255,255,255,.32);
+    display: flex;
+    align-items: center;
+    margin-bottom: 12px;
+    position: relative;
+    z-index: 1;
+  }
+  .nrow {
+    border-radius: 18px;
+    padding: 12px 14px;
+    background: rgba(255,255,255,.065);
+    border: 1px solid rgba(255,255,255,.06);
+    position: relative;
+    z-index: 1;
+  }
+  .nrow.sel {
+    border-color: rgba(10, 132, 255, .4);
+    box-shadow: 0 0 0 1px rgba(10, 132, 255, .18);
+    background: rgba(10, 132, 255, .07);
+  }
+  .nrow .meta { font-size: 11px; color: rgba(255,255,255,.42); margin-bottom: 3px; }
+  .nrow .from-t { font-size: 14px; font-weight: 590; letter-spacing: -.015em; }
+  .nrow .subj { font-size: 13px; color: rgba(255,255,255,.78); margin-top: 3px; line-height: 1.3; }
+  .nrow .snip {
+    font-size: 13px;
+    color: rgba(255,255,255,.62);
+    margin-top: 6px;
+    line-height: 1.35;
+  }
+  .nrow .snip.clamp {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .reply {
+    margin-top: 10px;
+    height: 34px;
+    border-radius: 10px;
+    border: 1px solid rgba(10, 132, 255, .32);
+    background: rgba(255,255,255,.08);
+    padding: 0 12px;
+    display: flex;
+    align-items: center;
+    font-size: 13px;
+    color: rgba(255,255,255,.85);
+  }
+  .caret {
+    width: 2px; height: 14px; background: #0a84ff; margin-left: 2px;
+    animation: blink 1s step-end infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+  .hint {
+    font-size: 10px;
+    color: rgba(255,255,255,.35);
+    margin-top: 10px;
+    line-height: 1.4;
+  }
+  .hint kbd {
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: rgba(255,255,255,.08);
+    font-size: 9px;
+  }
+  .divider {
+    height: 1px;
+    background: rgba(255,255,255,.06);
+    margin: 8px 0;
+  }
+  .peek-ghost {
+    width: 460px;
+    max-width: 100%;
+    height: 76px;
+    border-radius: 38px;
+    opacity: .35;
+    border: 1px dashed rgba(255,255,255,.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: rgba(255,255,255,.35);
+    text-align: center;
+    padding: 0 20px;
+    position: relative;
+    z-index: 1;
+  }
+</style>
+</head>
+<body>
+
+<p class="sub">
+  <strong>Gmail in rice today:</strong> <code>rice-feeds</code> sends app <strong>Gmail</strong>, title = sender,
+  body = subject + ~180 char snippet. Actions: <strong>Open</strong>, <strong>Mark as Read</strong>, <strong>Archive</strong>,
+  and <strong>Reply</strong> (SMTP) when it’s not a no-reply sender. Normal severity → <strong>toast</strong>, not the notch peek
+  (unlike GitHub review requests).
+</p>
+
+<h1>Today · notch + toast<span class="today-tag">as shipped</span></h1>
+<div class="top-scene">
+  <div class="lane-label">Top of screen · Hyprland blur behind glass</div>
+  <div class="glass rest">
+    <span class="t">15:08</span>
+    <span>▭ 78%</span>
+  </div>
+  <div class="row-layout">
+    <div class="notch-col">
+      <div class="peek-ghost">Gmail does not grow the island today — only critical / GitHub-warning items peek.</div>
+      <p class="callout-box">Important Primary mail still lands as a <strong style="color:rgba(255,255,255,.7)">top-right toast</strong> (368px). Tap = Gmail in browser + handled.</p>
+    </div>
+    <div class="toast-wrap">
+      <div class="glass toast">
+        <div class="toast-row">
+          <div class="gmail-icon">
+            <svg viewBox="0 0 48 36" xmlns="http://www.w3.org/2000/svg">
+              <path fill="#EA4335" d="M0 8v20l13-8z"/>
+              <path fill="#FBBC04" d="M0 8l24 14 24-14v20L24 22z"/>
+              <path fill="#34A853" d="M48 28V8l-13 8z"/>
+              <path fill="#4285F4" d="M0 8l24 14L48 8H0z"/>
+            </svg>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div class="toast-head">Gmail · now</div>
+            <div class="from">Priya Shah</div>
+            <div class="subject">Offer letter — next steps</div>
+            <div class="snippet">Hi, Offer &amp; timeline attached. Let me know if Thursday works for a call.</div>
+            <div class="chips">
+              <span class="chip ghost">Archive</span>
+              <span class="chip ghost">Mark as Read</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="callout-box" style="margin-top:10px;text-align:right">No Reply on toast — only action pills. Reply exists in the <strong style="color:rgba(255,255,255,.65)">center</strong>.</p>
+    </div>
+  </div>
+</div>
+
+<h1>Today · notification center<span class="today-tag">click = browser</span></h1>
+<div class="grid2">
+  <div>
+    <p class="sub" style="margin-bottom:12px;font-size:13px">Row click → <code>openItem</code> → Gmail tab. Body capped at 3 lines. Reply chip works here already.</p>
+    <div class="glass center-shell">
+      <div class="tabs">
+        <div class="tab on">Notifications <span class="b">2</span></div>
+        <div class="tab">Agents</div>
+        <div class="tab">Sound</div>
+      </div>
+      <div class="search">Search notifications…</div>
+      <div class="nrow">
+        <div class="meta">Gmail · 12m</div>
+        <div class="from-t">Priya Shah</div>
+        <div class="subj">Offer letter — next steps</div>
+        <div class="snip clamp">Hi, Offer &amp; timeline attached. Let me know if Thursday works for a call.</div>
+      </div>
+      <p class="hint"><kbd>↵</kbd> today opens Gmail · no expand step</p>
+    </div>
+  </div>
+  <div>
+    <p class="sub" style="margin-bottom:12px;font-size:13px"><strong>Read it all:</strong> only what IMAP fetched (~180 chars). Long mail still needs <strong>Open</strong> in Gmail.</p>
+    <div class="glass panel" style="opacity:.85">
+      <div style="position:relative;z-index:1;font-size:11px;color:rgba(255,255,255,.4);margin-bottom:8px">What you cannot get in-shell</div>
+      <div style="position:relative;z-index:1;font-size:12px;line-height:1.45;color:rgba(255,255,255,.55)">
+        Attachments, HTML layout, full thread history, calendar invites rendered — none of that is in the notification payload. Preview = <strong style="color:rgba(255,255,255,.75)">snippet + subject</strong>, not the whole inbox message.
+      </div>
+    </div>
+  </div>
+</div>
+
+<h1>Proposed · read, reply, archive in the center<span class="prop-tag">same theme</span></h1>
+<div class="grid2">
+  <div class="glass center-shell">
+    <div class="tabs">
+      <div class="tab on">Notifications <span class="b">2</span></div>
+      <div class="tab">Agents</div>
+      <div class="tab">Sound</div>
+    </div>
+    <div class="search">Search notifications…</div>
+    <div class="nrow sel">
+      <div class="meta">Gmail · 12m · Primary</div>
+      <div class="from-t">Priya Shah</div>
+      <div class="subj">Offer letter — next steps</div>
+      <div class="snip">Hi,<br/><br/>Offer &amp; timeline attached. Let me know if Thursday works for a call — happy to walk through equity and start date.<br/><br/>Best,<br/>Priya</div>
+      <div class="chips">
+        <button type="button" class="chip" style="background:rgba(255,255,255,.92);color:#111">Open in Gmail</button>
+        <button type="button" class="chip ghost">Archive</button>
+        <button type="button" class="chip ghost">Mark as Read</button>
+        <button type="button" class="chip ghost">Reply</button>
+      </div>
+      <div class="reply">Thanks Priya — Thursday 4pm works for me.<span class="caret"></span></div>
+    </div>
+    <p class="hint"><kbd>↵</kbd> on row selects · <kbd>↵</kbd> in field sends via SMTP · <kbd>Esc</kbd> dismiss reply</p>
+  </div>
+  <div class="glass center-shell">
+    <div class="tabs"><div class="tab on">Notifications</div></div>
+    <div class="nrow" style="opacity:.5;margin-bottom:8px">
+      <div class="from-t" style="font-size:13px">noreply@github.com</div>
+      <div class="subj" style="font-size:12px">[rice] Run failed</div>
+    </div>
+    <div class="divider"></div>
+    <p class="sub" style="margin:10px 0 0;font-size:12px">
+      <strong>No-reply senders</strong> (GitHub mail, banks): no Reply field — only Open + Mark as Read. Same rule as <code>rice-feeds</code> today.
+    </p>
+  </div>
+</div>
+
+<h1>Proposed · optional notch for important mail</h1>
+<p class="sub">If Primary + Important should interrupt like GitHub: compact peek → expand → Reply hands off to center (same Gmail card).</p>
+<div class="top-scene" style="padding-bottom:32px">
+  <div class="glass" style="width:min(460px,100%);height:76px;border-radius:38px;padding:0 16px;display:flex;align-items:center;gap:12px;position:relative;z-index:1">
+    <div class="gmail-icon" style="width:40px;height:40px;border-radius:10px">
+      <svg viewBox="0 0 48 36" xmlns="http://www.w3.org/2000/svg"><path fill="#EA4335" d="M0 8v20l13-8z"/><path fill="#FBBC04" d="M0 8l24 14 24-14v20L24 22z"/><path fill="#34A853" d="M48 28V8l-13 8z"/><path fill="#4285F4" d="M0 8l24 14L48 8H0z"/></svg>
+    </div>
+    <div style="flex:1;min-width:0;position:relative;z-index:1">
+      <div class="toast-head">Gmail · Important</div>
+      <div class="from" style="font-size:14px">Priya Shah</div>
+      <div class="snippet">Offer letter — next steps · Hi, Offer &amp; timeline…</div>
+    </div>
+    <button type="button" class="chip" style="height:28px;background:rgba(255,255,255,.14);color:#fff">Open</button>
+  </div>
+  <p class="callout-box" style="margin-top:12px">Plain glass (normal severity) — no orange wash unless you promote mail to warning.</p>
+</div>
+
+</body>
+</html>

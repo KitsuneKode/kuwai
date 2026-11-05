@@ -1,14 +1,14 @@
-# rice
+# kuwai
 
-My own Hyprland desktop shell, built in Quickshell, one piece at a time,
-replacing what HyDE / Waybar / dunst do today. Every surface shares one look:
-dark liquid glass over Hyprland's blur, SF Pro text, smooth no-bounce motion
-(see [docs/DESIGN.md](docs/DESIGN.md)).
+**kuwai** is my Hyprland desktop: the **kuwai** session (Hyprland + Lua) and the **rice** shell (Quickshell — island, notifications, lock, center). One look: dark liquid glass, SF Pro, calm motion ([docs/DESIGN.md](docs/DESIGN.md), [docs/brandkit/README.md](docs/brandkit/README.md)).
+
+Commands stay `bin/rice …` (control plane); the product name is **kuwai**.
 
 ## Install
 
 ```sh
-git clone <this repo> ~/Projects/rice && cd ~/Projects/rice
+git clone git@github.com:KitsuneKode/kuwai.git ~/Projects/kuwai && cd ~/Projects/kuwai
+# legacy path ~/Projects/rice works if KUWAI_ROOT points at the clone
 ./install.sh --dry-run     # what it would change (nothing yet)
 ./install.sh --deps        # install: packages, the stable channel, Hyprland's entry point, user services
 sudo greeter/install       # optional: the login screen (greetd; --undo puts SDDM back)
@@ -18,7 +18,7 @@ sudo system/install        # optional: alarms that wake the laptop from sleep
 Everything it replaces is backed up first (`./install.sh --uninstall` puts it
 back). It never touches your `monitors.lua`, `user.lua` or settings, never
 needs root for itself, and never sets up autologin. Check a running desktop
-any time with `./install.sh --doctor` (`kuwai doctor` + `rice-check`).
+any time with `./install.sh --doctor` or `bin/rice doctor` (kuwai + notifications + shell).
 
 Your session runs from the **stable channel** (`~/.local/share/kuwai`, the
 `stable` branch). Changes in the repo reach it with `rice promote`, which
@@ -58,14 +58,25 @@ The design system (one primitive per job, Theme tokens) is in
 bin/rice start        # (re)start; stops dunst and takes org.freedesktop.Notifications
 bin/rice stop         # dunst comes back by itself on the next notification
 bin/rice logs         # follow the shell's log
-bin/rice notifs dnd   # also: dnd-on dnd-off clear hide open last count waybar
+bin/rice notifs dnd   # also: dnd-on dnd-off mute-on mute-off clear hide open last count waybar
 bin/rice center [agents]   # toggle the center; starts the shell if it isn't running
 ```
+
+### Notifications not showing (ZapZap, toasts, peek)
+
+0. **`bin/rice doctor`** — one report: notification owner, DND, `rice-notify`, shell health, feeds, ZapZap hint.
+1. **Who owns the bus?** `busctl --user get-property org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus GetNameOwner s org.freedesktop.Notifications` — should be **qs**, not empty and not dunst alone while you use the island.
+2. **Focus / DND** — `rice notifs dnd-off` (clears Focus and screen-share mute). Island hover: purple **Focus** chip or **bell-slash** = normal alerts suppressed (WhatsApp included). Center moon button too.
+3. **Shell failed to load** — `rice restart`; if QML broke, nothing owns notifications until fixed. **`rice-check`** must pass. Restart **ZapZap** after a long outage (it disables the backend for the session).
+4. **ZapZap** — Settings → Notifications on; message with the app **in the background** (WhatsApp often skips notify for the focused chat).
+5. **Stress test** — `bin/rice-fixture notifs one` · `bin/rice-notify -a test Title Body` (D-Bus, no libnotify); worst case: `bin/rice-fixture notifs worst`.
 
 Quickshell hot-reloads on save, so editing a `.qml` file updates the running
 shell. The shell runs by path (`qs -p ~/Projects/rice/shell`), not `qs -c`,
 because `~/.config/quickshell/shell.qml` exists and makes Quickshell ignore
 named configs there.
+
+Manual (one page per area): [docs/manual/README.md](docs/manual/README.md).
 
 ## Shortcuts
 
@@ -77,7 +88,7 @@ named configs there.
 | Super+Shift+Alt+N | Open the newest notification (its app, its thread) |
 | Super+Ctrl+Shift+N | kittymux's own panel |
 
-Inside the center: type to search · ↑↓ select · ↵ open · ⌦ dismiss (or mark
+Inside the center: type to search · ↑↓ select · click row · Open or ↵ · double-click open · ⌦ dismiss (or mark
 read) · →← expand/fold a group · ⇥ filter · ⌃⇥ next tab · ⌥1–4 a tab ·
 ⌃D Do Not Disturb · ⌃⇧⌫ clear all · Esc clears the search, then closes ·
 ? (or F1, ⌃/) shows every shortcut.

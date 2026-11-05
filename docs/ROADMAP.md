@@ -59,6 +59,20 @@ session), *you* (needs the user).
 - [ ] **Split the branch** (*you* + all): island moments · proximity ·
   agents · idle · updater · AI into separate PRs.
 
+## Phase 1.5: ship the assistant-agent track (target: Reliability 8 + daily driver)
+
+Order matters: each slice should pass `rice doctor` and `rice-check` before the next.
+
+| Slice | What | Done when |
+|-------|------|-----------|
+| **A. Notify reliability** | `rice-notify` everywhere shell/kuwai/scripts need it; DND/share-mute; crash poll | Alarms, reminders, battery, assistant, screenshots, recordings work with broken libnotify; README/manual say so |
+| **B. Doctor** | `bin/rice doctor` (kuwai + owner + DND + feeds + ZapZap hint) | One command explains a dead notify session and what to run |
+| **C. Agent limits** | `rice-usage --watch`; peek at 90%/cap with provider + account; **no** clock badge | Opt-in setting; manual updated |
+| **D. Assistant opt-in** | Overlay gate, crash→diagnose, lazy stubs, CI compile | Default off; promote only after sandbox plan (Phase 6) for “on by default” |
+| **E. Manual + CI** | `docs/manual/*`, shell-check workflow | New user can fix notifications without reading the whole repo |
+
+**Do not** in this phase: Quattro-style always-on bar usage, new peek surfaces for the same event, or assistant on by default.
+
 ## Phase 2: one design system (target: Consistency 9)
 
 - [x] **Primitives** in `components/ui/`: `Button` (primary · secondary ·

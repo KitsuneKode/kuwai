@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Notification center — preview &amp; reply</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+    background: #0a0a0c;
+    color: rgba(255,255,255,.96);
+    padding: 28px 24px 40px;
+  }
+  h1 {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.45);
+    margin-bottom: 8px;
+  }
+  .intro {
+    font-size: 15px;
+    line-height: 1.45;
+    color: rgba(255,255,255,.72);
+    max-width: 920px;
+    margin-bottom: 28px;
+  }
+  .intro strong { color: rgba(255,255,255,.92); font-weight: 600; }
+  .row3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    max-width: 1200px;
+  }
+  @media (max-width: 980px) {
+    .row3 { grid-template-columns: 1fr; max-width: 400px; }
+  }
+  .stage { display: flex; flex-direction: column; gap: 10px; }
+  .label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.4);
+  }
+  .label span {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: rgba(255,255,255,.08);
+    color: rgba(255,255,255,.55);
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 500;
+  }
+  /* Center card shell */
+  .center {
+    width: 100%;
+    border-radius: 22px;
+    background: rgba(17,17,20,.74);
+    border: 1px solid rgba(255,255,255,.08);
+    box-shadow: 0 24px 64px rgba(0,0,0,.55), 0 0 0 1px rgba(0,0,0,.3);
+    overflow: hidden;
+    backdrop-filter: blur(24px);
+  }
+  .tabs {
+    display: flex;
+    gap: 4px;
+    padding: 14px 14px 0;
+  }
+  .tab {
+    flex: 1;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 8px 6px;
+    border-radius: 10px;
+    color: rgba(255,255,255,.45);
+  }
+  .tab.on {
+    background: rgba(255,255,255,.1);
+    color: rgba(255,255,255,.95);
+  }
+  .tab .badge {
+    display: inline-block;
+    min-width: 16px;
+    height: 16px;
+    line-height: 16px;
+    padding: 0 5px;
+    margin-left: 4px;
+    border-radius: 8px;
+    background: #0a84ff;
+    font-size: 10px;
+    font-weight: 600;
+  }
+  .search {
+    margin: 12px 14px 0;
+    height: 36px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,.07);
+    background: rgba(255,255,255,.07);
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    font-size: 13px;
+    color: rgba(255,255,255,.35);
+  }
+  .list { padding: 12px 14px 14px; }
+  .group-h {
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(255,255,255,.4);
+    margin: 4px 0 8px 2px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .group-h .dot { width: 6px; height: 6px; border-radius: 50%; background: #fff; opacity: .9; }
+  /* Notification row */
+  .notif {
+    position: relative;
+    border-radius: 18px;
+    padding: 12px 14px;
+    margin-bottom: 6px;
+    background: rgba(255,255,255,.065);
+    border: 1px solid rgba(255,255,255,.06);
+    cursor: default;
+  }
+  .notif.dim { opacity: .55; }
+  .notif.selected {
+    border-color: rgba(10,132,255,.45);
+    box-shadow: 0 0 0 1px rgba(10,132,255,.25), inset 0 0 0 1px rgba(10,132,255,.12);
+    background: rgba(10,132,255,.08);
+  }
+  .notif .hl {
+    position: absolute;
+    inset: -1px;
+    border-radius: 18px;
+    pointer-events: none;
+    border: 1px solid rgba(255,255,255,.12);
+    opacity: 0;
+  }
+  .notif.selected .hl { opacity: 1; }
+  .head {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .av {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    flex-shrink: 0;
+    background: linear-gradient(135deg, #24292f 0%, #57606a 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+  }
+  .av.gh { background: #24292f; }
+  .av.gm { background: linear-gradient(135deg, #ea4335, #fbbc04); font-size: 11px; }
+  .meta { flex: 1; min-width: 0; }
+  .title-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    align-items: flex-start;
+  }
+  .title {
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.25;
+    color: rgba(255,255,255,.96);
+  }
+  .time { font-size: 11px; color: rgba(255,255,255,.4); font-variant-numeric: tabular-nums; flex-shrink: 0; }
+  .app-line {
+    font-size: 11px;
+    color: rgba(255,255,255,.45);
+    margin-top: 2px;
+  }
+  .app-line .st { color: #ff9f0a; }
+  .body {
+    font-size: 13px;
+    line-height: 1.35;
+    color: rgba(255,255,255,.72);
+    margin-top: 6px;
+  }
+  .body.clamp {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .chip {
+    height: 28px;
+    padding: 0 13px;
+    border-radius: 14px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border: none;
+    background: rgba(255,255,255,.12);
+    color: rgba(255,255,255,.92);
+  }
+  .chip:hover { background: rgba(255,255,255,.18); }
+  .chip.primary {
+    background: rgba(255,255,255,.92);
+    color: #111114;
+  }
+  .chip.quiet { font-weight: 500; color: rgba(255,255,255,.75); }
+  .reply-box {
+    margin-top: 10px;
+    height: 34px;
+    border-radius: 10px;
+    border: 1px solid rgba(10,132,255,.35);
+    background: rgba(255,255,255,.08);
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    font-size: 13px;
+    color: rgba(255,255,255,.35);
+  }
+  .reply-box.focus { color: rgba(255,255,255,.85); }
+  .caret {
+    display: inline-block;
+    width: 2px;
+    height: 14px;
+    background: #0a84ff;
+    margin-left: 2px;
+    vertical-align: middle;
+    animation: blink 1s step-end infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+  .footer {
+    margin-top: 10px;
+    padding: 8px 14px 12px;
+    border-top: 1px solid rgba(255,255,255,.06);
+    font-size: 11px;
+    color: rgba(255,255,255,.38);
+    line-height: 1.4;
+  }
+  .footer kbd {
+    display: inline-block;
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: rgba(255,255,255,.1);
+    font-size: 10px;
+    font-family: inherit;
+  }
+  .callout {
+    margin-top: 8px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    background: rgba(255,159,10,.12);
+    border: 1px solid rgba(255,159,10,.25);
+    font-size: 11px;
+    line-height: 1.35;
+    color: rgba(255,255,255,.75);
+  }
+  .callout.bad { background: rgba(255,69,58,.1); border-color: rgba(255,69,58,.25); }
+  .arrow-note {
+    font-size: 11px;
+    color: rgba(255,255,255,.5);
+    padding: 0 4px;
+    line-height: 1.35;
+  }
+  /* Cursor for stage 2 */
+  .cursor-wrap { position: relative; }
+  .cursor {
+    position: absolute;
+    right: 24px;
+    top: 118px;
+    width: 18px;
+    height: 22px;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,.5));
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+<h1>Proposed · notification center</h1>
+<p class="intro">
+  Three beats on the same GitHub card: <strong>today</strong> a row click opens the browser;
+  <strong>preview</strong> first click selects and shows the full snippet with explicit actions;
+  <strong>reply</strong> Reply opens an in-place field (center only, unchanged idea — just reachable without opening GitHub first).
+</p>
+
+<div class="row3">
+  <!-- Stage 1: Today -->
+  <div class="stage">
+    <div class="label">Today <span>click row → browser</span></div>
+    <div class="center">
+      <div class="tabs">
+        <div class="tab on">Notifications <span class="badge">3</span></div>
+        <div class="tab">Agents</div>
+        <div class="tab">Sound</div>
+      </div>
+      <div class="search">Search notifications…</div>
+      <div class="list">
+        <div class="group-h"><span class="dot"></span> GitHub · 2</div>
+        <div class="notif">
+          <div class="head">
+            <div class="av gh">K</div>
+            <div class="meta">
+              <div class="title-row">
+                <div class="title">Review: agent parity plan</div>
+                <div class="time">4m</div>
+              </div>
+              <div class="app-line">GitHub · <span class="st">Review requested</span></div>
+              <div class="body clamp">rice · #142 · by KitsuneKode: can you look at the compaction section…</div>
+            </div>
+          </div>
+        </div>
+        <div class="notif dim">
+          <div class="head">
+            <div class="av gh">D</div>
+            <div class="meta">
+              <div class="title-row">
+                <div class="title">CI failed on feat/notifs</div>
+                <div class="time">1h</div>
+              </div>
+              <div class="body clamp">rice · main</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="footer"><kbd>↵</kbd> opens in browser · row has no expand</div>
+    </div>
+    <p class="callout bad">Whole row is one hit target → <code>xdg-open</code> + mark read. Easy to mis-click when you only wanted to read.</p>
+  </div>
+
+  <!-- Stage 2: Preview -->
+  <div class="stage">
+    <div class="label">Preview <span>click selects · Open is explicit</span></div>
+    <div class="center cursor-wrap">
+      <svg class="cursor" viewBox="0 0 24 24" fill="none"><path d="M5 3l14 7-6 1-3 8-2-8-3-1z" fill="#fff" stroke="#111" stroke-width="1.2"/></svg>
+      <div class="tabs">
+        <div class="tab on">Notifications <span class="badge">3</span></div>
+        <div class="tab">Agents</div>
+        <div class="tab">Sound</div>
+      </div>
+      <div class="search">Search notifications…</div>
+      <div class="list">
+        <div class="group-h">GitHub · 2</div>
+        <div class="notif selected">
+          <div class="hl"></div>
+          <div class="head">
+            <div class="av gh">K</div>
+            <div class="meta">
+              <div class="title-row">
+                <div class="title">Review: agent parity plan</div>
+                <div class="time">4m</div>
+              </div>
+              <div class="app-line">GitHub · <span class="st">Review requested</span></div>
+              <div class="body">rice · #142<br/>
+                KitsuneKode: can you look at the compaction section before we merge? I trimmed the OpenCode notes but kept Codex — want a second pair of eyes on the token math.</div>
+            </div>
+          </div>
+          <div class="actions">
+            <button type="button" class="chip primary">Open</button>
+            <button type="button" class="chip quiet">Mark as Read</button>
+            <button type="button" class="chip quiet">Reply</button>
+          </div>
+        </div>
+        <div class="notif dim">
+          <div class="head">
+            <div class="av gh">D</div>
+            <div class="meta">
+              <div class="title-row"><div class="title">CI failed on feat/notifs</div><div class="time">1h</div></div>
+              <div class="body clamp">rice · main</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="footer"><kbd>↵</kbd> expand/select · <kbd>⌘↵</kbd> or Open → browser</div>
+    </div>
+    <p class="arrow-note">Accent ring = keyboard/hover selection (same gliding highlight the center already uses). Body uncapped while selected — still only the stored snippet (~160 chars), not a live fetch.</p>
+  </div>
+
+  <!-- Stage 3: Reply -->
+  <div class="stage">
+    <div class="label">Reply <span>short answer in-shell</span></div>
+    <div class="center">
+      <div class="tabs">
+        <div class="tab on">Notifications <span class="badge">3</span></div>
+        <div class="tab">Agents</div>
+        <div class="tab">Sound</div>
+      </div>
+      <div class="search">Search notifications…</div>
+      <div class="list">
+        <div class="group-h">GitHub · 2</div>
+        <div class="notif selected">
+          <div class="hl"></div>
+          <div class="head">
+            <div class="av gh">K</div>
+            <div class="meta">
+              <div class="title-row">
+                <div class="title">Review: agent parity plan</div>
+                <div class="time">4m</div>
+              </div>
+              <div class="app-line">GitHub · <span class="st">Review requested</span></div>
+              <div class="body">rice · #142 · KitsuneKode: can you look at the compaction section…</div>
+            </div>
+          </div>
+          <div class="actions">
+            <button type="button" class="chip quiet">Open</button>
+            <button type="button" class="chip quiet">Mark as Read</button>
+          </div>
+          <div class="reply-box focus">LGTM on the Codex numbers — posting comment<span class="caret"></span></div>
+        </div>
+      </div>
+      <div class="footer"><kbd>↵</kbd> send · <kbd>Esc</kbd> dismiss reply · posts via <code>gh</code> API</div>
+    </div>
+    <p class="callout">Gmail looks the same: Reply threads over SMTP; Open still goes to Gmail in the browser for long mail.</p>
+  </div>
+</div>
+
+<!-- Toast comparison strip -->
+<h1 style="margin-top: 36px;">Toast · unchanged default</h1>
+<p class="intro" style="margin-bottom: 16px;">Toasts can stay <strong>tap = Open</strong>; optional long-press or a chevron could open the center on that item instead (not shown as a fourth panel — keeps Sonner simple).</p>
+<div style="max-width: 368px;">
+  <div style="border-radius:22px;padding:15px 17px;background:rgba(17,17,20,.68);border:1px solid rgba(255,255,255,.1);box-shadow:0 12px 40px rgba(0,0,0,.45);">
+    <div style="display:flex;gap:13px;">
+      <div class="av gh" style="width:42px;height:42px;border-radius:11px;">K</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:12px;color:rgba(255,255,255,.45);">GitHub · Review requested</div>
+        <div style="font-size:15px;font-weight:600;margin-top:3px;">Review: agent parity plan</div>
+        <div class="body clamp" style="margin-top:4px;">rice · #142 · KitsuneKode: can you look at…</div>
+        <div class="actions" style="margin-top:8px;">
+          <span class="chip quiet" style="cursor:default;">Mark as Read</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="arrow-note" style="margin-top:8px;">Tap toast → browser (today). Center is where preview + Reply live.</p>
+</div>
+</body>
+</html>

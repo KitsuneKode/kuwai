@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>rice · C1 notifications — how to see it</title>
+<style>
+  :root {
+    --glass: rgba(17, 17, 20, 0.72);
+    --edge: rgba(0, 0, 0, 0.55);
+    --text: rgba(255, 255, 255, 0.96);
+    --text-2: rgba(255, 255, 255, 0.72);
+    --text-3: rgba(255, 255, 255, 0.48);
+    --orange: #ff9f0a;
+    --blue: #0a84ff;
+    --shadow-lg: 0 12.5px 10px rgba(0,0,0,.06), 0 41.8px 33.4px rgba(0,0,0,.086);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+    background: #070708;
+    color: var(--text);
+    padding: 24px 20px 40px;
+    -webkit-font-smoothing: antialiased;
+    max-width: 720px;
+  }
+  h1 { font-size: 20px; font-weight: 590; letter-spacing: -0.03em; margin-bottom: 8px; }
+  h2 { font-size: 14px; font-weight: 590; margin: 22px 0 8px; color: var(--text); }
+  p, li { font-size: 13px; color: var(--text-2); line-height: 1.55; }
+  p { margin-bottom: 10px; }
+  ul { padding-left: 18px; margin-bottom: 12px; }
+  code, pre {
+    font-family: ui-monospace, "SF Mono", monospace;
+    font-size: 12px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 8px;
+    padding: 2px 6px;
+  }
+  pre {
+    padding: 12px 14px;
+    margin: 10px 0 14px;
+    overflow-x: auto;
+    line-height: 1.45;
+    color: var(--text-2);
+  }
+  .warn {
+    border-radius: 14px;
+    padding: 14px 16px;
+    background: rgba(255, 159, 10, 0.12);
+    border: 1px solid rgba(255, 159, 10, 0.35);
+    margin: 16px 0;
+  }
+  .warn strong { color: var(--orange); font-weight: 590; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.08); color: var(--text-2); }
+  th { color: var(--text-3); font-weight: 590; text-transform: uppercase; letter-spacing: 0.06em; font-size: 10px; }
+</style>
+</head>
+<body>
+<h1>C1 notifications — why click still opened the browser</h1>
+<div class="warn">
+  <strong>Root cause:</strong> the live shell was running from
+  <code>~/.local/share/kuwai/shell</code> (stable), not your repo.
+  Edits under <code>~/Projects/rice/shell</code> do nothing until you switch channel or promote.
+</div>
+
+<h2>1 · Run the code you edited</h2>
+<pre>rice channel dev          # run shell from the repo
+rice restart              # or: bin/rice-shell
+
+# confirm:
+pgrep -af 'qs -p .*/shell'</pre>
+<p>You should see <code>qs -p …/Projects/rice/shell</code> (or your dev root), not <code>.local/share/kuwai</code>.</p>
+<p>When you are happy: <code>rice promote</code> copies the repo into stable (after <code>rice-check</code>).</p>
+
+<h2>2 · Where to test (not the same surface)</h2>
+<table>
+  <tr><th>Surface</th><th>How to open</th><th>First click</th><th>Open browser</th></tr>
+  <tr><td>Toast (corner)</td><td>Arrives automatically</td><td>Engage (white rim)</td><td>Tap filled <strong>Open</strong></td></tr>
+  <tr><td>Center (Super+N)</td><td>Bell / shortcut</td><td>Select row</td><td><strong>Open</strong> chip or ↵</td></tr>
+  <tr><td>Island peek</td><td>GitHub review / warning</td><td>Tap text → expand</td><td><strong>Open</strong> pill only</td></tr>
+  <tr><td>Super+Shift+Alt+N</td><td>Shortcut</td><td>—</td><td>Still instant open (by design)</td></tr>
+</table>
+<p>No hold-click. One normal click on the body; explicit <strong>Open</strong> for the browser.</p>
+
+<h2>3 · Quick checks</h2>
+<ul>
+  <li>Toast: first click should <em>not</em> launch a tab — rim + Open chip appear.</li>
+  <li>Center: row gets a brighter border; action chips only when selected.</li>
+  <li>Peek: tapping the headline expands height; whole-card open is gone.</li>
+</ul>
+
+<h2>4 · Performance</h2>
+<ul>
+  <li>Expanded app groups in the center load rows via <code>Loader</code> (lazy).</li>
+  <li>Island peek stays in an existing <code>Loader</code>; height morph is one spring.</li>
+  <li>Icons: async + mipmap (unchanged).</li>
+</ul>
+</body>
+</html>
