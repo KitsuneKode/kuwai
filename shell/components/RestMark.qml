@@ -19,6 +19,9 @@ Item {
     property string icon: ""
     property string wordmark: ""         // a product's name as its mark ("T3")
     property bool previews: false        // rest on it: previewRequested() (its panel)
+    // The count in a ring (live work): "spin" while it works, "solid" when it
+    // needs you, "" for a plain count.
+    property string ring: ""
     property string value: ""
     property color tone: Theme.textSecondary
     property string tip: ""
@@ -67,8 +70,46 @@ Item {
             source: mark.icon
             asynchronous: true
         }
+        // ③: the number centred in a 16 px ring; a quarter arc turns while
+        // working (calm: Theme.spinMs a turn), a full ring when it needs you.
+        Item {
+            visible: mark.ring !== "" && mark.value !== ""
+            anchors.verticalCenter: parent.verticalCenter
+            width: 18; height: 18
+            Rectangle {
+                anchors.fill: parent; radius: width / 2
+                color: "transparent"
+                border.width: 1.5
+                border.color: mark.ring === "solid" ? mark.tone : Qt.alpha(mark.tone, 0.25)
+                Behavior on border.color { ColorAnimation { duration: Theme.colorMs } }
+            }
+            Canvas {
+                id: arc
+                visible: mark.ring === "spin"
+                anchors.fill: parent
+                property color ink: mark.tone
+                onInkChanged: requestPaint()
+                onPaint: {
+                    const c = getContext("2d");
+                    c.reset(); c.lineWidth = 1.5; c.lineCap = "round"; c.strokeStyle = ink;
+                    c.beginPath(); c.arc(9, 9, 8.25, -Math.PI / 2, 0); c.stroke();
+                }
+                RotationAnimation on rotation {
+                    running: arc.visible && !Theme.reduceMotion
+                    from: 0; to: 360; duration: Theme.spinMs; loops: Animation.Infinite
+                }
+            }
+            Label {
+                anchors.centerIn: parent
+                anchors.verticalCenterOffset: 1
+                text: mark.value
+                size: Theme.tCaption; weight: Theme.wBold; rounded: true
+                color: mark.tone
+                font.features: ({ "tnum": 1 })
+            }
+        }
         Label {
-            visible: mark.value !== ""
+            visible: mark.value !== "" && mark.ring === ""
             anchors.verticalCenter: parent.verticalCenter
             // Optical: measured on screen, SF digits rode 2 px above the
             // glyph's and the clock's centre (15.0 vs 16.5 / 17.0).

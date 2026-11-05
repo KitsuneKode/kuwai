@@ -92,6 +92,7 @@ Item {
     }
 
     function open(x) {
+        if (x.type === "t3") { T3Code.focus(); Notifs.setCenter(false); return; }
         if (x.type === "event") Kittymux.jumpEvent(x.e.id);
         else Kittymux.act(x.r.action);
         Notifs.setCenter(false);
@@ -197,6 +198,30 @@ Item {
                         title: modelData.r.title
                         subtitle: [modelData.r.where, modelData.r.status].filter(s => s).join("  ·  ")
                         working: modelData.r.working
+                        live: true
+                    }
+                }
+            }
+
+            // T3 Code's threads (services/T3Code): the same rows, so every
+            // agent you run is in one place whichever tool started it. Their
+            // mark is the agent that runs the thread (Claude, Codex, Cursor…).
+            Section {
+                title: "T3 Code"
+                count: T3Code.items.length
+                actionText: "Open T3"
+                onAction: { T3Code.focus(); Notifs.setCenter(false); }
+                visible: T3Code.items.length > 0
+                revealDelay: 140
+                Repeater {
+                    model: ScriptModel { values: T3Code.items.map(i => ({ key: "t3:" + i.title + ":" + i.provider, type: "t3", t: i })); objectProp: "key" }
+                    AgentRow {
+                        required property var modelData
+                        entry: modelData
+                        agent: ({ claudeAgent: "claude" })[String(modelData.t.provider).replace(/_\d+$/, "")] || String(modelData.t.provider).replace(/_\d+$/, "").toLowerCase()
+                        title: modelData.t.title || "Untitled thread"
+                        subtitle: modelData.t.status === "waiting" ? "Needs you" : modelData.t.status === "running" ? "Working" : "Starting"
+                        working: modelData.t.status !== "waiting"
                         live: true
                     }
                 }

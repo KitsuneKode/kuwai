@@ -511,7 +511,10 @@ Item {
             visible: T3Code.total > 0 && !rest.stageTaken
             anchors.verticalCenter: parent.verticalCenter
             wordmark: "T3"
-            value: T3Code.waiting > 0 ? T3Code.waiting + " need" + (T3Code.waiting === 1 ? "s" : "") + " you" : T3Code.running + " active"
+            // T3 ③: the count in a ring that turns while threads work, solid
+            // orange (with how many) when one needs you. Hover says which.
+            value: T3Code.waiting > 0 ? String(T3Code.waiting) : String(T3Code.running)
+            ring: T3Code.waiting > 0 ? "solid" : "spin"
             tone: T3Code.waiting > 0 ? Theme.orange : Theme.cyan
             previews: true
             onPreviewRequested: if (Island.panel === "") Island.preview("t3", rest.bar.screenName)

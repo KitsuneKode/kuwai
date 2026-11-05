@@ -129,10 +129,21 @@ FocusScope {
             }
         }
 
-        PillButton {
+        // The way on: T3 itself, or every agent you run (kittymux's too) in
+        // the center's Agents tab.
+        Row {
             width: parent.width
-            text: "Open T3 Code"
-            onClicked: { T3Code.focus(); Island.close(); }
+            spacing: 8
+            PillButton {
+                width: (parent.width - 8) / 2
+                text: "Open T3 Code"
+                onClicked: { T3Code.focus(); Island.close(); }
+            }
+            PillButton {
+                width: (parent.width - 8) / 2
+                text: "All agents"
+                onClicked: { Island.close(); Notifs.toggleCenter("agents", "pointer", Island.screen); }
+            }
         }
     }
 }
