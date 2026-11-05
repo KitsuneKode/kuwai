@@ -72,6 +72,24 @@ Singleton {
         return r;
     }
     function cancel(id) { items = items.filter(i => i.id !== id); save(); }
+    function snooze(r, mins) {
+        items = [...items, { id: Date.now() * 100 + items.length % 100, text: r.text, at: Date.now() + mins * 60000 }].sort((a, b) => a.at - b.at);
+        save();
+    }
+
+    // The notification, with Snooze (10 min) and Done; it waits for the
+    // answer (notify-send -w prints the action's key) and then goes.
+    Component {
+        id: asker
+        Process {
+            property var reminder
+            running: true
+            command: ["notify-send", "-w", "-a", "Reminders", "-i", "appointment-soon", "-u", "critical",
+                      "-A", "snooze=Snooze 10 min", "-A", "done=Done", "Reminder", reminder.text]
+            stdout: StdioCollector { id: said }
+            onExited: { if (said.text.trim() === "snooze") root.snooze(reminder, 10); destroy(); }
+        }
+    }
 
     // ── Due ──────────────────────────────────────────────────────────────
     signal due(var r)
@@ -87,7 +105,7 @@ Singleton {
             for (const r of done) {
                 root.due(r);
                 Moments.show({ kind: "reminder", glyph: "\u{f009a}", label: r.text, value: "Now", ring: -1, tone: Theme.orange }, 8000);
-                Quickshell.execDetached(["notify-send", "-a", "Reminders", "-i", "appointment-soon", "Reminder", r.text]);
+                asker.createObject(root, { reminder: r });
             }
         }
     }
