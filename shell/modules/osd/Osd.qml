@@ -239,6 +239,31 @@ Scope {
         }
     }
 
+    // Once per login, after hello: a named or external default mic (Boya, USB, Bluetooth)
+    // gets the same device card as a Cadenza connect. A plain built-in mic stays quiet.
+    property bool loginMicShown: false
+    Timer {
+        id: loginMic
+        interval: 6400
+        repeat: false
+        running: !root.loginMicShown && root.armed && Moments.freshLogin && Settings.bar === "island"
+        onTriggered: {
+            root.loginMicShown = true;
+            const src = root.source;
+            if (!src) return;
+            const t = root.inTitle(src);
+            const p = src.properties || {};
+            const bus = p["device.bus"] || "";
+            const raw = t.raw || "";
+            const named = /boya|cadenza|kiwi|iem|headset/i.test(raw);
+            const ext = bus === "usb" || bus === "bluetooth";
+            const jack = /plugged/i.test(raw) || /plugged/i.test(p["port.name"] || "") || /plugged/i.test(src.description || "");
+            if (!named && !ext && !jack) return;
+            Moments.inputCard({ key: raw.toLowerCase(), glyph: ext ? root.externalMicGlyph : root.micGlyph, image: t.image,
+                                title: t.title, link: ext ? bus : (jack ? "jack" : ""), gone: false, quiet: false, detail: "Microphone" });
+        }
+    }
+
     // ── USB outputs (a DAC) plugged in or out while sound stays where it is;
     // one that takes the sound is told by onSinkChanged.
     readonly property var externalOuts: Pipewire.nodes.values.filter(n => !n.isStream && /^Audio\/Sink/.test((n.properties || {})["media.class"] || "")

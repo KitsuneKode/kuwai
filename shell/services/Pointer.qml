@@ -27,7 +27,7 @@ Singleton {
     function unwant() { wanted = Math.max(0, wanted - 1); }
     // Near the top edge of any screen (where the island is): look more often.
     property real hotBand: 140
-    readonly property bool hot: Hyprland.monitors.values.some(m => {
+    readonly property bool hot: !!(Hyprland.monitors && Hyprland.monitors.values || []).some(m => {
         const o = m.lastIpcObject || {};
         const w = (o.width || 0) / (o.scale || 1);
         return x >= (o.x || 0) && x < (o.x || 0) + w && y >= (o.y || 0) && y < (o.y || 0) + hotBand;

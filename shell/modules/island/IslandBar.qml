@@ -130,7 +130,7 @@ Scope {
             // positive: two samples in a row inside it (≈160 ms) and not
             // flying past (> 2500 px/s). Out: 20 px of slack, then the same
             // 450 ms fold.
-            readonly property bool wantsProximity: showBar && Settings.islandProximity && (Settings.islandRest === "minimal" || tucked) && !hovered
+            readonly property bool wantsProximity: showBar && Settings.islandProximity && (Settings.islandRest === "minimal" || tucked || (Settings.islandRest === "auto" && restRow.compact)) && !hovered
             onWantsProximityChanged: wantsProximity ? Pointer.want() : Pointer.unwant()
             // (A helper: this window already has its own onCompleted.)
             QtObject {
@@ -578,12 +578,15 @@ Scope {
                     Loader {
                         id: peekLoader
                         active: win.peekHere || nv.value > 0.01
-                        x: Math.round((body.width - 460) / 2)
-                        width: 460
+                        x: Math.round((body.width - Math.min(460, body.width)) / 2)
+                        width: Math.min(460, Math.max(body.width, 1))
                         height: body.height
                         readonly property real k: Math.max(0, Math.min(1, (nv.value - 0.3) / 0.5))
-                        opacity: k * Math.max(0, 1 - Math.max(m.value, pv.value, bv.value) * 3)
-                        visible: opacity > 0.01
+                        readonly property real fit: Math.min(1, body.width / 460)
+                        opacity: k * fit * Math.max(0, 1 - Math.max(m.value, pv.value, bv.value) * 3)
+                        scale: 0.85 + 0.15 * fit
+                        transformOrigin: Item.Top
+                        visible: opacity > 0.01 && body.width > 120
                         property var keep: null
                         sourceComponent: NotifPeek { item: Notifs.peek || peekLoader.keep; bar: win; reveal: Math.max(0, Math.min(1, (nv.value - 0.2) / 0.6)) }
                         Connections { target: Notifs; function onPeekChanged() { if (Notifs.peek) peekLoader.keep = Notifs.peek; } }

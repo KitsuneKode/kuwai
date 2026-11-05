@@ -40,8 +40,10 @@ Rectangle {
         return null;
     }
     onCurrentItemChanged: place(false)
-    onExtraChanged: Qt.callLater(() => seg.place(true))
-    Component.onCompleted: Qt.callLater(() => seg.place(true))
+    // Deferred: on a reload the item can be gone by the time this runs.
+    function placeLater() { Qt.callLater(() => { if (seg && typeof seg.place === "function") seg.place(true); }); }
+    onExtraChanged: placeLater()
+    Component.onCompleted: placeLater()
     function place(snap) {
         if (!currentItem) return;
         if (snap) { px.snap(currentItem.x); pw.snap(currentItem.width); }

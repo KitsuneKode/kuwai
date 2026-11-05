@@ -140,7 +140,14 @@ cmd_doctor() {
         bad "could not run Hyprland --verify-config"
     fi
     for f in "$ENTRY" "$ROOT/hypr/init.lua" "$ROOT"/hypr/kuwai/*.lua "${ENTRY%/*}"/monitors.lua "${ENTRY%/*}"/user.lua; do
-        [ -f "$f" ] && { luac -p "$f" 2>/dev/null || bad "syntax: $f"; }
+        [ -f "$f" ] || continue
+        if ! luac -p "$f" 2>/dev/null; then
+            if [ "$f" = "${ENTRY%/*}/user.lua" ]; then
+                bad "syntax: $f (your overrides — fix or move aside; kuwai repo configs are ok)"
+            else
+                bad "syntax: $f"
+            fi
+        fi
     done
 
     echo "Session"
@@ -193,7 +200,12 @@ cmd_doctor() {
     grep -rqP 'Hyprland\.dispatch\(["`](?!hl\.|kuwai\.)' "$ROOT/shell" 2>/dev/null && bad "shell: Hyprland.dispatch with classic syntax" || ok "shell dispatches are Lua"
 
     echo
-    [ $problems -eq 0 ] && echo "kuwai: all good" || echo "kuwai: $problems problem(s)"
+    if [ $problems -eq 0 ]; then
+        echo "Hyprland & kuwai: all good"
+    else
+        echo "Hyprland & kuwai: $problems problem(s)"
+        echo "  (user.lua errors are in ~/.config/hypr — not the kuwai repo)"
+    fi
     [ $problems -eq 0 ]
 }
 

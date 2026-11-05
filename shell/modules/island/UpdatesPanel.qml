@@ -29,7 +29,9 @@ FocusScope {
     implicitHeight: Math.min(560, (view === "review" ? 540 : view === "run" ? runCol.implicitHeight + 44 : listCol.y + listCol.implicitHeight + listFoot.height + 30))
     Behavior on implicitHeight { NumberAnimation { duration: 200; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
 
-    property string view: Updates.running || Updates.result ? "run" : "list"
+    // A result only keeps the run view when this session actually started the job.
+    // A restart must land on the package list (the review), not a stale failure.
+    property string view: Updates.running || (Updates.ownedRun && Updates.result) ? "run" : "list"
     property string pkg: ""                       // the package under review
     property bool showAllRepo: false
     property bool showLog: false

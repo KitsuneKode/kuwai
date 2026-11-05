@@ -50,6 +50,8 @@ Singleton {
     property string centerVia: "key"                // what opened/closed it: key | pointer
     property real lastSeen: 0
     readonly property int unread: items.filter(i => i.time > lastSeen).length
+    // Bell badge: still in the center until dismissed (not cleared by opening the panel).
+    readonly property int inbox: items.filter(i => !i.discard).length
     // Missed and worth acting on: unread, not on screen any more, and either
     // urgent (critical / a warning) or carrying something to do (an action).
     // The island keeps a dot for them and lists them, with their buttons, when
@@ -57,6 +59,33 @@ Singleton {
     readonly property var missed: items.filter(i => i.time > lastSeen && !i.popup && !i.discard && !i.quiet
         && (i.severity === "critical" || i.severity === "warning" || i.urgency === NotificationUrgency.Critical || i.hasDefault || (i.actions && i.actions.length)))
         .sort((a, b) => b.time - a.time)
+
+    readonly property string bellBadge: inbox <= 0 ? "" : (inbox > 9 ? "9+" : String(inbox))
+    readonly property color bellBadgeTone: missed.some(i => i.severity === "critical") ? Theme.critical
+        : missed.length ? Theme.orange : Theme.accent
+    readonly property string bellTip: dnd ? "Focus on · notifications held"
+        : dndMute ? "Held while sharing"
+        : inbox === 0 ? "Notifications · click · right-click list"
+        : (inbox > 9 ? "9+ in center" : inbox === 1 ? "1 in center" : inbox + " in center") + " · click · right-click list"
+
+    function bellQuickList(maxN) {
+        const cap = maxN || 8;
+        const out = [];
+        const seen = new Set();
+        const key = i => String(i.nid || "") + "|" + i.time + "|" + i.app + "|" + i.title;
+        const add = i => { const k = key(i); if (seen.has(k)) return; seen.add(k); out.push(i); };
+        for (const i of missed) { add(i); if (out.length >= cap) return out; }
+        const unreadItems = items.filter(i => i.time > lastSeen && !i.discard);
+        const pri = unreadItems.filter(i => {
+            if (seen.has(key(i))) return false;
+            if (i.severity === "critical" || i.severity === "warning") return true;
+            return sensitiveApps.test(String(i.app || ""));
+        }).sort((a, b) => b.time - a.time);
+        for (const i of pri) { add(i); if (out.length >= cap) return out; }
+        for (const i of unreadItems.sort((a, b) => b.time - a.time)) { add(i); if (out.length >= cap) return out; }
+        for (const i of items.filter(x => !x.discard).sort((a, b) => b.time - a.time)) { add(i); if (out.length >= cap) return out; }
+        return out;
+    }
 
     readonly property string stateDir: Quickshell.env("HOME") + "/.local/state/rice"
     property bool loaded: false
@@ -152,17 +181,24 @@ Singleton {
     }
 
     // ── Privacy: hide message bodies for chat/mail apps (title = who) ─────
-    readonly property var sensitiveApps: /zapzap|whatsapp|telegram|signal|discord|slack|element|matrix|messenger|sms|messages|gmail|proton|thunderbird|chat|mail/i
+    // Private chats, matched on the app's name only (a GitHub title that says
+    // "mail" is not a chat). Gmail and GitHub are previews you asked for.
+    readonly property var sensitiveApps: /\b(zapzap|whatsapp|telegram|signal|discord|slack|element|messenger|beeper)\b/i
+    // Sharing the screen: every body is private, even when opened.
+    readonly property bool sharing: dndMute
     function bodyRedacted(item) {
-        if (!item || !Settings.notifRedactSensitive) return false;
+        if (!item) return false;
         if (item.severity === "critical" || item.severity === "warning") return false;
-        const hay = (item.app + " " + item.title).toLowerCase();
-        return sensitiveApps.test(hay);
+        if (sharing) return true;
+        return Settings.notifRedactSensitive && sensitiveApps.test(String(item.app || ""));
     }
+    // reveal: the person opened it on purpose (expanded, selected, the bell
+    // list). That shows a chat's body too, unless the screen is being shared.
+    function bodyHidden(item, reveal) { return bodyRedacted(item) && (!reveal || sharing); }
     function bodyForDisplay(item, reveal) {
         if (!item) return "";
-        if (bodyRedacted(item) && !reveal)
-            return "Message hidden · Open to read";
+        if (bodyHidden(item, reveal))
+            return sharing ? "Hidden while sharing your screen" : "Message hidden · Open to read";
         return String(item.body || "").replace(/\s+/g, " ");
     }
 
@@ -462,8 +498,15 @@ Singleton {
         // as the center morphs out of the front one).
         if (!open) {
             closedAt = Date.now();
+            // Badge is the inbox (rows until dismissed). lastSeen only retires the
+            // "missed" dot and the Unread filter after you've opened the center.
             markSeen();
         }
+    }
+
+    function markAllRead() {
+        lastSeen = Date.now();
+        save();
     }
 
     function remove(item) {

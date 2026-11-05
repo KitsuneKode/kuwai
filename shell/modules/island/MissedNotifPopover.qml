@@ -1,5 +1,5 @@
-// Missed notifications under the island bell: scrollable preview cards with
-// Open / Reply instead of a flat tray menu.
+// Notifications under the island bell (PopupWindow like TrayMenu — not clipped by the island body).
+// Left-click → center; right-click / hold / Ctrl+click → quick list.
 import QtQuick
 import Quickshell
 import Quickshell.Hyprland
@@ -14,28 +14,34 @@ Item {
     property var window
     property bool open: false
     property bool anchorHovered: false
+    property bool dismissOnAnchorLeave: true
     signal closed()
+    // One list per change, and only while shown (not 4× per notification while closed).
+    readonly property var quick: (open || k.value > 0.01) ? Notifs.bellQuickList(8) : []
+
     property bool counted: false
     onOpenChanged: {
         if (open && !counted && pop.window) { counted = true; pop.window.menus++; }
         else if (!open && counted && pop.window) { counted = false; pop.window.menus = Math.max(0, pop.window.menus - 1); }
-        if (!open) { closed(); k.target = 0; } else k.target = 1;
+        k.target = open ? 1 : 0;
     }
     Component.onDestruction: if (counted && window) window.menus = Math.max(0, window.menus - 1)
 
-    width: 0; height: 0
+    width: 0
+    height: 0
 
     QtObject {
         id: k
         property real target: 0
         property real value: 0
-        Behavior on value { NumberAnimation { duration: k.target > 0 ? Theme.enterMs : Theme.exitMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+        Behavior on value { NumberAnimation { duration: k.target > 0 ? 200 : 120; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
         onTargetChanged: value = target
     }
 
-    function close() { open = false; }
+    function close() { closed(); }
 
     PopupWindow {
+        id: popWin
         visible: pop.anchorItem && (pop.open || k.value > 0.01)
         color: "transparent"
         anchor.item: pop.anchorItem
@@ -43,24 +49,26 @@ Item {
         anchor.gravity: Edges.Bottom
         anchor.margins.top: 10
         implicitWidth: 320
-        implicitHeight: Math.min(420, card.implicitHeight + 20)
+        implicitHeight: Math.min(420, card.implicitHeight + 16)
 
         Timer {
             interval: 650
-            running: pop.open && !cardHover.hovered && !pop.anchorHovered
+            running: pop.open && pop.dismissOnAnchorLeave && !cardHover.hovered && !pop.anchorHovered
             onTriggered: pop.close()
         }
         HyprlandFocusGrab {
-            windows: [parent, ...(pop.window ? [pop.window] : [])]
+            // The popup itself must be in the grab, or the first click inside
+            // it counts as "outside" and closes the list.
+            windows: [popWin, ...(pop.window ? [pop.window] : [])]
             active: pop.open
             onCleared: pop.close()
         }
 
         Item {
             id: card
-            x: 10; y: 6
+            x: 10; y: 4
             width: parent.implicitWidth - 20
-            implicitHeight: header.height + list.contentHeight + 14
+            implicitHeight: header.height + list.contentHeight + footer.height + 24
             height: Math.min(400, implicitHeight)
             opacity: k.value
             scale: 0.96 + 0.04 * k.value
@@ -77,30 +85,49 @@ Item {
                 id: header
                 anchors { left: parent.left; right: parent.right; top: parent.top; margins: 12 }
                 spacing: 2
-                Label { text: "Missed"; size: 14; weight: Theme.wSemibold }
                 Label {
-                    text: Notifs.missed.length + " to look at · scroll for more"
+                    text: Notifs.missed.length ? "Need you"
+                        : Notifs.unread ? (Notifs.inbox > 9 ? "Unread · 9+" : Notifs.inbox === 1 ? "Unread · 1" : "Unread · " + Notifs.inbox)
+                        : "Recent"
+                    size: 14; weight: Theme.wSemibold
+                }
+                Label {
+                    visible: pop.quick.length > 0
+                    text: Notifs.missed.length ? "Act on these first" : "Newest first · center for all"
                     size: 11; color: Theme.textTertiary
                 }
             }
 
+            Label {
+                visible: pop.quick.length === 0
+                anchors.centerIn: parent
+                anchors.verticalCenterOffset: 24
+                text: "Nothing urgent right now"
+                size: 12; color: Theme.textTertiary
+            }
+
             ListView {
                 id: list
-                anchors { left: parent.left; right: parent.right; top: header.bottom; bottom: parent.bottom; margins: 8; topMargin: 6 }
+                anchors { left: parent.left; right: parent.right; top: header.bottom; bottom: footer.top; margins: 8; topMargin: 6; bottomMargin: 4 }
                 clip: true
                 spacing: 8
                 boundsBehavior: Flickable.StopAtBounds
-                model: Notifs.missed.slice(0, 6)
+                visible: pop.quick.length > 0
+                model: pop.quick
 
                 delegate: Rectangle {
                     required property var modelData
+                    readonly property bool fresh: modelData.time > Notifs.lastSeen && !modelData.discard
+                    readonly property bool hot: modelData.severity === "critical" || modelData.severity === "warning"
                     width: list.width
                     height: inner.implicitHeight + 20
                     radius: 14
-                    color: Qt.rgba(1, 1, 1, 0.06)
-                    border.width: 1
-                    border.color: modelData.severity === "critical" ? Qt.alpha(Theme.red, 0.35)
-                        : modelData.severity === "warning" ? Qt.alpha(Theme.orange, 0.28) : Qt.rgba(1, 1, 1, 0.08)
+                    color: hot ? Qt.alpha(modelData.severity === "critical" ? Theme.red : Theme.orange, 0.12)
+                        : fresh ? Qt.alpha(Theme.accent, 0.1) : Qt.rgba(1, 1, 1, 0.06)
+                    border.width: fresh || hot ? 1.5 : 1
+                    border.color: modelData.severity === "critical" ? Qt.alpha(Theme.red, 0.45)
+                        : modelData.severity === "warning" ? Qt.alpha(Theme.orange, 0.35)
+                        : fresh ? Qt.alpha(Theme.accent, 0.4) : Qt.rgba(1, 1, 1, 0.08)
 
                     Column {
                         id: inner
@@ -127,7 +154,7 @@ Item {
                                     id: bodyLbl
                                     width: bodyFlick.width
                                     wrapMode: Text.Wrap
-                                    text: String(modelData.body || "").replace(/<[^>]*>/g, "")
+                                    text: Notifs.bodyForDisplay(modelData, true).replace(/<[^>]*>/g, "")
                                     size: 11; lineHeight: 1.35; color: Theme.textSecondary
                                 }
                             }
@@ -159,6 +186,22 @@ Item {
                             }
                         }
                     }
+                }
+            }
+
+            Rectangle {
+                id: footer
+                anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: 10 }
+                height: 36
+                radius: 12
+                color: allArea.containsMouse ? Theme.pillHover : Theme.pill
+                Label { anchors.centerIn: parent; text: "Open notification center"; size: 12; weight: Theme.wSemibold }
+                MouseArea {
+                    id: allArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: { pop.close(); Notifs.toggleCenter("notifications", "pointer", pop.window ? pop.window.screenName : ""); }
                 }
             }
         }

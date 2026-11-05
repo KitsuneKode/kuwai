@@ -25,11 +25,11 @@ notify_send_broken() {
     notify-send --version >/dev/null 2>&1
 }
 
-[ "$QUIET" = 1 ] || echo "rice doctor"
+[ "$QUIET" = 1 ] || echo "Kuwai doctor · session checks (rice + Hyprland + shell)"
 
 # ── Kuwai (Hyprland, units, binds) ───────────────────────────────────────
 if [ -x "$RICE/bin/kuwai" ]; then
-    [ "$QUIET" = 1 ] || echo "Kuwai"
+    [ "$QUIET" = 1 ] || echo "Hyprland & kuwai"
     KUWAI_ROOT="$RICE" "$RICE/bin/kuwai" doctor || fail=1
     [ "$QUIET" = 1 ] || echo
 fi
@@ -48,25 +48,29 @@ else
 fi
 
 if notify_send_broken; then
-    note "notify-send works (libnotify)"
+    ok "notify-send works (libnotify)"
 else
     if command -v notify-send >/dev/null 2>&1; then
-        bad "notify-send is broken (libnotify); use bin/rice-notify in scripts"
+        note "notify-send broken (libnotify) — use bin/rice-notify in scripts (expected on some installs)"
     else
         note "notify-send not installed (fine if everything uses rice-notify)"
     fi
-    fix "HyDE/kuwai scripts on this branch use rice-notify; reload Hyprland after promote"
 fi
 
 if [ -x "$RICE/bin/rice-notify" ]; then
-    if "$RICE/bin/rice-notify" -a "rice doctor" -u low "Doctor" "Smoke test (ignore)" >/dev/null 2>&1; then
-        ok "rice-notify → D-Bus Notify"
+    if [ -n "$npid" ] && [ "$(cat /proc/"$npid"/comm 2>/dev/null)" != dunst ]; then
+        if "$RICE/bin/rice-notify" -u low "Doctor" "Smoke test (ignore)" >/dev/null 2>&1; then
+            ok "rice-notify → D-Bus Notify"
+        else
+            bad "rice-notify could not reach the notification server"
+            fix "rice restart · confirm org.freedesktop.Notifications is owned by qs (not dunst)"
+        fi
     else
-        bad "rice-notify failed (is the notification server running?)"
-        fix "rice restart"
+        note "rice-notify smoke skipped (no rice shell on D-Bus yet)"
     fi
 else
     bad "missing $RICE/bin/rice-notify"
+    fail=1
 fi
 
 STATE="${XDG_STATE_HOME:-$HOME/.local/state}/rice/notifications.json"
@@ -138,6 +142,6 @@ fi
 if [ "$fail" -eq 0 ]; then
     [ "$QUIET" = 1 ] || echo "rice: all good"
 else
-    echo "rice: fix the items above, then rice doctor again"
+    echo "Session: fix notifications/shell above, then kuwai doctor again"
 fi
 exit "$fail"

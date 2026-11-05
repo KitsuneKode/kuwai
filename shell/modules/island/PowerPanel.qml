@@ -28,7 +28,7 @@ FocusScope {
     focus: true
 
     readonly property var actions: [
-        { id: "lock", label: "Lock", glyph: "\u{f033e}", hold: false, cmd: ["loginctl", "lock-session"] },     // hyprlock until the rice lock is the default
+        { id: "lock", label: "Lock", glyph: "\u{f033e}", hold: false, cmd: [Quickshell.shellDir + "/../bin/rice", "lock"] },
         { id: "sleep", label: "Sleep", glyph: "\u{f0594}", hold: true, bye: "suspend", cmd: ["systemctl", "suspend"] },
         { id: "logout", label: "Log Out", glyph: "\u{f0343}", hold: true, bye: "logout", cmd: ["hyprctl", "dispatch", "hl.dsp.exit()"] },
         { id: "reboot", label: "Restart", glyph: "\u{f0709}", hold: true, bye: "reboot", cmd: ["systemctl", "reboot"] },

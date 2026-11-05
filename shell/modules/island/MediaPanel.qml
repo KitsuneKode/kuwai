@@ -8,10 +8,12 @@
 // Shuffle and repeat show only when the player supports them; the last
 // button is where it plays (the Sound tab: outputs, per-app). The art and
 // title take you to the player. Keys: Space play/pause, ← → ±10 s (⇧ ±30 s),
-// N / P next / previous, S shuffle, R repeat, Esc closes.
+// N / P next / previous, S shuffle, R repeat, L the player's own action
+// (♥ in Cider, copy link in a web player: bin/rice-player), Esc closes.
 import QtQuick
 import QtQuick.Effects
 import Quickshell
+import Quickshell.Io
 import Quickshell.Widgets
 import Quickshell.Services.Mpris
 import Quickshell.Services.Pipewire
@@ -41,8 +43,48 @@ FocusScope {
         else if (k === Qt.Key_P && p.canGoPrevious) p.previous();
         else if (k === Qt.Key_S && p.shuffleSupported) p.shuffle = !p.shuffle;
         else if (k === Qt.Key_R && p.loopSupported) np.cycleLoop();
+        else if (k === Qt.Key_L && np.kind !== "") np.contextAct();
         else return;
         event.accepted = true;
+    }
+    // ── What this player can do beyond MPRIS (bin/rice-player) ──────────
+    // Cider: Love (Apple Music rating). A web player that tells us its page
+    // (Chromium-family browsers do; Firefox/Zen don't): copy the link, at
+    // this second for YouTube. Anything else: no extra button.
+    readonly property string pageUrl: {
+        const m = p && p.metadata ? p.metadata : null;
+        const u = m ? String(m["xesam:url"] || "") : "";
+        return /^https?:\/\//.test(u) ? u : "";
+    }
+    readonly property string kind: !p ? "" : /cider/i.test(p.identity || "") ? "cider" : pageUrl ? "link" : ""
+    readonly property bool youtube: /youtube\.com\/watch|youtu\.be\//.test(pageUrl)
+    property var loved: ({})                       // this session: track → loved
+    readonly property string trackKey: p ? (p.trackTitle || "") + "|" + (p.trackArtist || "") : ""
+    readonly property bool isLoved: !!loved[trackKey]
+    property string note: ""                       // a short answer in the subtitle line
+    Timer { id: noteFor; interval: 2600; onTriggered: np.note = "" }
+    function say(t) { note = t; noteFor.restart(); }
+    Process {
+        id: act
+        property var onOk: null
+        stderr: StdioCollector { id: actErr }
+        onExited: code => {
+            if (code === 0) { if (act.onOk) act.onOk(); }
+            else np.say((actErr.text || "Didn't work").trim().split("\n").pop());
+        }
+    }
+    function run(args, ok) { if (act.running) return; act.onOk = ok; act.command = [Quickshell.shellDir + "/../bin/rice-player", ...args]; act.running = true; }
+    function contextAct() {
+        if (kind === "cider") {
+            const key = trackKey, was = isLoved;
+            run(["cider", was ? "unlove" : "love"], () => {
+                const l = Object.assign({}, np.loved); l[key] = !was; np.loved = l;
+                np.say(was ? "Removed love" : "Loved");
+            });
+        } else if (kind === "link") {
+            const at = youtube ? Math.floor(Media.position) : 0;
+            run(["link", pageUrl, String(at)], () => np.say(at > 0 ? "Link copied at " + Media.clock(at) : "Link copied"));
+        }
     }
     function cycleLoop() {
         p.loopState = p.loopState === MprisLoopState.None ? MprisLoopState.Playlist
@@ -73,10 +115,15 @@ FocusScope {
         }
         Column {
             id: titles
-            anchors { left: art.right; leftMargin: 14; right: wave.left; rightMargin: 12; verticalCenter: art.verticalCenter }
+            anchors { left: art.right; leftMargin: 14; right: ctx.visible ? ctx.left : wave.left; rightMargin: 12; verticalCenter: art.verticalCenter }
             spacing: 3
             Label { width: parent.width; elide: Text.ElideRight; text: np.p ? (np.p.trackTitle || "Unknown") : ""; size: 16; weight: Theme.wSemibold }
-            Label { width: parent.width; elide: Text.ElideRight; text: np.p ? [np.p.trackArtist, np.p.identity].filter(x => x).join(" · ") : ""; size: 13; color: Theme.textSecondary }
+            Label {
+                width: parent.width; elide: Text.ElideRight
+                text: np.note !== "" ? np.note : np.p ? [np.p.trackArtist, np.p.identity].filter(x => x).join(" · ") : ""
+                size: 13; color: np.note !== "" ? np.tint : Theme.textSecondary
+                Behavior on color { ColorAnimation { duration: Theme.colorMs } }
+            }
         }
         MouseArea {
             id: artArea
@@ -86,6 +133,34 @@ FocusScope {
         }
         Tip { anchors.horizontalCenter: undefined; x: 0; text: "Go to " + (np.p ? np.p.identity : "the player"); shown: artArea.containsMouse; below: true }
 
+        // The player's own action: ♥ for Cider, a link for web players.
+        Item {
+            id: ctx
+            visible: np.kind !== ""
+            anchors { right: wave.left; rightMargin: 8; verticalCenter: art.verticalCenter }
+            width: 34; height: 34
+            Rectangle {
+                anchors.fill: parent; radius: width / 2
+                color: ctxArea.containsMouse ? Qt.rgba(1, 1, 1, 0.1) : np.isLoved && np.kind === "cider" ? Qt.alpha(np.tint, 0.18) : "transparent"
+                Behavior on color { ColorAnimation { duration: Theme.colorMs } }
+            }
+            Text {
+                anchors.centerIn: parent
+                text: np.kind === "cider" ? (np.isLoved ? "\u{f02d1}" : "\u{f02d5}") : "\u{f0337}"
+                font.family: Theme.fontGlyph; font.pixelSize: 17
+                color: np.kind === "cider" && np.isLoved ? np.tint : Theme.textPrimary
+                opacity: act.running ? 0.5 : 1
+                scale: ctxArea.pressed ? 0.86 : 1
+                Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+            }
+            MouseArea { id: ctxArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: np.contextAct() }
+            Tip {
+                text: np.kind === "cider" ? (np.isLoved ? "Loved · click to undo" : "Love this song (Apple Music)")
+                    : np.youtube ? "Copy link at " + Media.clock(Media.position) : "Copy link"
+                shown: ctxArea.containsMouse; below: true
+            }
+        }
+
         // Live level of what's playing, in the art's colour; flat while paused.
         Item {
             id: wave
@@ -93,7 +168,7 @@ FocusScope {
             width: 40; height: 24
             PwObjectTracker { objects: [Pipewire.defaultAudioSink] }
             PwNodePeakMonitor { id: peak; node: Pipewire.defaultAudioSink; enabled: Media.playing }
-            readonly property real level: Media.playing ? (peak.peaks && peak.peaks.length ? Math.max(...peak.peaks) : (peak.peak || 0)) : 0
+            readonly property real level: peak.enabled ? (peak.peaks && peak.peaks.length ? Math.max(...peak.peaks) : (peak.peak || 0)) : 0
             Row {
                 anchors.centerIn: parent
                 spacing: 3
@@ -105,9 +180,13 @@ FocusScope {
                         property real jitter: 1
                         anchors.verticalCenter: parent.verticalCenter
                         width: 3; radius: 1.5
-                        height: Math.max(3, 22 * Math.min(1, wave.level * shape * jitter * 1.8))
+                        readonly property real liveH: Math.max(3, 22 * Math.min(1, wave.level * shape * jitter * 1.8))
+                        readonly property real pauseH: Math.max(4, 20 * shape * 0.45)
+                        height: Media.playing ? liveH : pauseH
                         color: np.tint
-                        Behavior on height { NumberAnimation { duration: 90 } }
+                        opacity: Media.playing ? 1 : 0.55
+                        Behavior on height { NumberAnimation { duration: Media.playing ? 90 : 380; easing.type: Easing.OutCubic } }
+                        Behavior on opacity { NumberAnimation { duration: Theme.colorMs } }
                         Behavior on color { ColorAnimation { duration: 400 } }
                         Timer { running: Media.playing && !Theme.reduceMotion; interval: 120 + (index % 3) * 40; repeat: true; onTriggered: parent.jitter = 0.7 + Math.random() * 0.5 }
                     }

@@ -73,7 +73,13 @@ Singleton {
         const t = toldData();
         const seen = t.keys || [];
         const unseen = updateKeys.filter(k => seen.indexOf(k) < 0);
-        if (!unseen.length || Date.now() - (t.at || 0) < 6 * 3600 * 1000) return;
+        if (!unseen.length) return;
+        // Unseen versions are new by definition: tell them. Only space two
+        // notes that would land within 45 min of each other (no nagging), and
+        // never drop the set (an early return used to lose it for good).
+        const wait = (t.at || 0) > 0 ? 45 * 60 * 1000 - (Date.now() - t.at) : 0;
+        if (wait > 0) { tellLater.interval = wait; tellLater.restart(); return; }
+        tellLater.interval = 4000;
         told.setText(JSON.stringify({ at: Date.now(), keys: updateKeys }) + "\n");
         banner = { id: "updates", level: "info", glyph: "\u{f06b0}", title: n + (n === 1 ? " update" : " updates") + " available", detail: "Review what changes, then update", panel: "updates", action: "Review" };
         bannerFor.restart();

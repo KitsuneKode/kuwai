@@ -175,6 +175,10 @@ Singleton {
     readonly property bool lowSpace: !!(data && data.freeBytes < 3 * 1024 * 1024 * 1024)
 
     property bool running: false
+    // True for a run this process started, or a rejoined one that reported
+    // "done". A restart that only finds a dead job must not invent a
+    // "stopped before finishing" result.
+    property bool ownedRun: false
     property string phase: ""           // check · repo · build · install · after
     property string phaseLabel: ""
     property var phasesSeen: []
@@ -196,6 +200,7 @@ Singleton {
         // shutdown held off): restarting or crashing the shell can't touch it.
         starter.command = args;
         resetRun();
+        ownedRun = true;
         running = true;
         starter.running = true;
     }
@@ -211,6 +216,7 @@ Singleton {
         args.push("--unreviewed");
         starter.command = args;
         resetRun();
+        ownedRun = true;
         running = true;
         starter.running = true;
     }
@@ -282,6 +288,7 @@ Singleton {
                     try {
                         const ev = JSON.parse(lines[i]);
                         if (ev.e === "done") {
+                            root.ownedRun = true;
                             root.result = ev;
                             if (ev.error) root.runError = ev.error;
                             else if (!ev.ok && ev.msg) root.runError = ev.msg;
@@ -289,6 +296,13 @@ Singleton {
                             return;
                         }
                     } catch (e) {}
+                }
+                if (!root.ownedRun) {
+                    root.running = false;
+                    root.result = null;
+                    root.runError = "";
+                    follower.running = false;
+                    return;
                 }
                 if (!root.result) root.runError = root.runError || "The update job stopped before finishing (see the log).";
                 root.finishRun();
@@ -336,6 +350,8 @@ Singleton {
                 } else if (ev.e === "error") {
                     root.runError = ev.msg;
                 } else if (ev.e === "done") {
+                    // A real outcome (also for a job rejoined after a restart): show it.
+                    root.ownedRun = true;
                     root.result = ev;
                     if (ev.repo === null && root.plan.repo && !ev.installed.length) root.plan = Object.assign({}, root.plan);
                     Qt.callLater(root.finishRun);

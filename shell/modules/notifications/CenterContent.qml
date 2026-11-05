@@ -55,7 +55,7 @@ Item {
             width: parent.width
             current: content.center.tab
             options: [
-                { id: "notifications", label: "Notifications", badge: Notifs.unread },
+                { id: "notifications", label: "Notifications", badge: Notifs.inbox },
                 { id: "agents", label: "Agents", badge: Kittymux.attention.length, alert: Kittymux.needsYou > 0 },
                 { id: "sound", label: "Sound" },
                 { id: "controls", label: "Controls" }

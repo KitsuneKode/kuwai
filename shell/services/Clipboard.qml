@@ -105,7 +105,7 @@ Singleton {
         command: ["hyprctl", "activewindow", "-j"]
         stdout: StdioCollector {
             onStreamFinished: {
-                try { const w = JSON.parse(text); root.target = { cls: w.class || "", title: w.title || "" }; }
+                try { const w = JSON.parse(text); root.target = { cls: w.class || "", title: w.title || "", address: w.address || "" }; }
                 catch (e) { root.target = { cls: "", title: "" }; }
             }
         }
@@ -286,7 +286,7 @@ Singleton {
 
     // ── Actions ──────────────────────────────────────────────────────────
     function ref(e) { return e.pin !== "" ? "pin:" + e.pin : e.id; }
-    function paste(e) { open = false; run(["paste", ref(e)]); }
+    function paste(e) { const cls = target.cls || ""; const addr = target.address || ""; open = false; run(["paste", ref(e), cls, addr]); }
     function copy(e) { open = false; run(["copy", ref(e)]); }
     function openWith(e) {
         open = false;
@@ -350,7 +350,7 @@ Singleton {
     function wipe() { items = []; run(["wipe"]); }
     // Edited or transformed text: copy it, or paste it where you were.
     function copyText(t) { open = false; run(["copy-text", t]); }
-    function pasteText(t) { open = false; run(["paste-text", t]); }
+    function pasteText(t) { const cls = target.cls || ""; const addr = target.address || ""; open = false; run(["paste-text", t, cls, addr]); }
     // Copied files, checked each time they're shown (moved? deleted?):
     // cb([{ path, name, exists, dir, type, size, pages, preview }]).
     property var fileInfo: ({})

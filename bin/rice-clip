@@ -87,10 +87,18 @@ case "${1:-}" in
     copy)  copy "$2" ;;
     paste|paste-text)
         if [ "$1" = paste ]; then copy "$2"; else printf '%s' "$2" | wl-copy; fi
-        # Let the panel hand keyboard focus back first, then paste the way
-        # the window expects: terminals take Ctrl+Shift+V.
+        # Class and address from when the panel opened (the window that should
+        # receive the paste). Focus it, then paste the way that app expects.
+        hint_class=${3:-}
+        hint_addr=${4:-}
+        # Spliced into a Lua string below: only a Hyprland address (0x + hex).
+        [[ "$hint_addr" =~ ^0x[0-9a-fA-F]+$ ]] || hint_addr=""
         sleep 0.08
-        class=$(hyprctl activewindow -j 2>/dev/null | sed -n 's/.*"class": *"\([^"]*\)".*/\1/p' | head -1)
+        if [ -n "$hint_addr" ]; then
+            hyprctl dispatch "hl.dsp.focus({ window = \"address:$hint_addr\" })" >/dev/null 2>&1 || true
+            sleep 0.06
+        fi
+        class=${hint_class:-$(hyprctl activewindow -j 2>/dev/null | sed -n 's/.*"class": *"\([^"]*\)".*/\1/p' | head -1)}
         case "${class,,}" in
             *kitty*|*ghostty*|*foot*|*alacritty*|*wezterm*|*konsole*|*terminal*|*terminator*|*tilix*)
                 wtype -M ctrl -M shift -k v -m shift -m ctrl ;;

@@ -117,7 +117,9 @@ Scope {
     }
     readonly property var cardRect: {
         const sw = shownScreen ? shownScreen.width : 1920;
-        const ox = sw - (cardW + 12 + padX), oy = reservedTop + Theme.barGap;
+        const island = Settings.bar === "island";
+        const ox = island ? (sw - cardW) / 2 - padX : sw - (cardW + 12 + padX);
+        const oy = reservedTop + Theme.barGap;
         const dh = fitH(shownScreen);
         if (mode === "morph")
             return { x: ox + lerp(from.x, padX, p), y: oy + lerp(from.y, padY, p), w: lerp(from.w, cardW, p), h: lerp(from.h, dh, p), r: lerp(from.r, 22, Math.min(1, p)) };
@@ -150,6 +152,8 @@ Scope {
                 } else {
                     mode = "pop";
                     morph.tier = Theme.springModerate;
+                    if (Settings.bar === "island" && !Theme.reduceMotion)
+                        from = { x: padX + (cardW - 48) / 2, y: padY - 4, w: 48, h: 34, r: 17 };
                 }
             }
             capturing = false;

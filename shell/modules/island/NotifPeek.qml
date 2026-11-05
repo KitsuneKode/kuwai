@@ -18,6 +18,8 @@ Item {
     opacity: reveal * swipeFade
     readonly property bool expanded: Notifs.peekExpanded
     readonly property bool redacted: !!item && Notifs.bodyRedacted(item)
+    // Opened on purpose: the body shows (a chat's too), unless sharing the screen.
+    readonly property bool hiddenOpen: !!item && Notifs.bodyHidden(item, true)
     readonly property bool loud: !!item && (item.severity === "critical" || item.severity === "warning")
     readonly property bool canReply: Notifs.canReply(item)
     readonly property color tone: item && item.severity === "critical" ? Theme.red : Theme.orange
@@ -113,7 +115,7 @@ Item {
             top: peek.expanded ? mark.top : undefined
             verticalCenter: peek.expanded ? undefined : parent.verticalCenter
         }
-        height: peek.expanded ? copyCol.implicitHeight : undefined
+        height: copyCol.implicitHeight   // centred on the mark, not hanging from its middle
         TapHandler {
             onTapped: {
                 if (peek.expanded) return;
@@ -148,7 +150,7 @@ Item {
                 font.italic: peek.redacted
             }
             Label {
-                visible: !!peek.item && (!!peek.item.body || peek.redacted) && peek.expanded && !peek.redacted
+                visible: !!peek.item && (!!peek.item.body || peek.redacted) && peek.expanded && !peek.hiddenOpen
                 width: parent.width
                 height: Math.min(bodyScroll.contentHeight, 72)
                 clip: true
@@ -169,16 +171,16 @@ Item {
                 }
             }
             Label {
-                visible: peek.expanded && peek.redacted
+                visible: peek.expanded && peek.hiddenOpen
                 width: parent.width
                 wrapMode: Text.WordWrap
-                text: "Message hidden for privacy. Open to read in the app."
+                text: "Hidden while you share your screen."
                 size: 12; color: Theme.textTertiary
             }
             Label {
                 visible: !peek.expanded && !!peek.item
                 width: parent.width
-                text: peek.redacted ? "Swipe up to dismiss" : "Tap for more · swipe up to dismiss"
+                text: peek.hiddenOpen ? "Swipe up to dismiss" : peek.redacted ? "Tap to read · swipe up to dismiss" : "Tap for more · swipe up to dismiss"
                 size: 10
                 weight: Theme.wMedium
                 color: Theme.textTertiary

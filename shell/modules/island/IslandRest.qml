@@ -60,7 +60,34 @@ Item {
     readonly property real miniContent: miniCore + 2 * miniSide
     readonly property real miniPad: Math.max(miniSide, (56 - miniCore) / 2)
     readonly property bool momentUnified: activity === "moment" && Moments.now && (Moments.now.kind === "hello" || Moments.now.kind === "focus" || Moments.now.kind === "caffeine")
-    implicitWidth: mini ? Math.max(56, miniContent)
+    // Welcome / Good morning: only the hello row, then the rest of the notch eases back in.
+    readonly property bool helloFocus: activity === "moment" && Moments.now && Moments.now.kind === "hello"
+    property real chromeReveal: 1
+    NumberAnimation {
+        id: chromeRevealAnim
+        target: rest
+        property: "chromeReveal"
+        to: 1
+        duration: Theme.enterMs + 120
+        easing.type: Easing.BezierSpline
+        easing.bezierCurve: Theme.easeOut
+    }
+    // A hello already on stage when this row is built (fresh login) starts hidden too.
+    Component.onCompleted: if (helloFocus) chromeReveal = 0
+    Connections {
+        target: Moments
+        function onNowChanged() {
+            if (Moments.now && Moments.now.kind === "hello") {
+                chromeRevealAnim.stop();
+                rest.chromeReveal = 0;
+            } else if (rest.chromeReveal < 0.99) {
+                chromeRevealAnim.from = rest.chromeReveal;
+                chromeRevealAnim.restart();
+            }
+        }
+    }
+    implicitWidth: helloFocus ? Math.max(120, momentLead.implicitWidth + 28)
+                 : mini ? Math.max(56, miniContent)
                  : compact ? (momentUnified ? Math.max(56, leftGroup.implicitWidth + gaps)
                               : Math.max(activity === "moment" ? 220 : 78, leftGroup.implicitWidth + rightGroup.implicitWidth + gaps))
                  : balanced ? side * 2 + clockW + gaps
@@ -69,6 +96,7 @@ Item {
     readonly property int gap: 22
     // Activities whose value sits beside their icon when the full row shows.
     readonly property bool joined: !compact && ["update", "vox", "auth", "rec", "timer"].indexOf(activity) >= 0
+    readonly property bool restMusic: bar.player && Settings.restMedia && !!Media.active
     readonly property string timerLeft: Timers.next ? Timers.clock(Timers.remaining(Timers.next)) : ""
     // The next calendar event within half an hour: the mini notch says so.
     readonly property var soonEvent: {
@@ -91,6 +119,8 @@ Item {
         if (activity === "rec") return "Recording " + (Clipboard.recTarget || "the screen") + " · click to stop";
         if (activity === "timer" && Timers.next) return Timers.next.label + " · " + timerLeft + " left" + (Timers.timers.length > 1 ? " · " + (Timers.timers.length - 1) + " more" : "") + " · right-click to cancel";
         if (activity === "shazam") return Activities.shazamFound ? "Found: " + Activities.shazamFound.title + " · click to open" : "Listening for a song…";
+        if (activity === "media") return Media.playing ? "Now playing · click for controls" : "Click for controls";
+        if (restMusic && !Media.playing && activity === "") return "Click to resume";
         return "";
     }
 
@@ -103,10 +133,11 @@ Item {
         : Updates.running ? "update"
         : (Activities.shazamListening || Activities.shazamFound) ? "shazam"
         : bar.player && bar.player.isPlaying && Settings.restMedia ? "media"
-        // A warning takes the stage only when nothing else is alive; beside
-        // music (or anything) it's a mark next to it (alertMark), so a hot
-        // CPU doesn't hide what's playing.
-        : Alerts.active.length ? "alert" : ""
+        // A warning never takes the stage: it's a mark with its value
+        // (alertMark, e.g. 🌡 96°) beside the time or the music. Alone on the
+        // stage it left an icon at one end and a number at the other with
+        // nothing between, and hid the clock.
+        : ""
 
     property real voxSecs: 0
     Timer {
@@ -117,7 +148,9 @@ Item {
 
     Row {
       id: leftGroup
-      anchors { left: parent.left; verticalCenter: parent.verticalCenter }
+      anchors.verticalCenter: parent.verticalCenter
+      anchors.left: helloFocus ? undefined : parent.left
+      anchors.horizontalCenter: helloFocus ? parent.horizontalCenter : undefined
       spacing: 10
     // ── Leading ──────────────────────────────────────────────────────────
     // A moment (services/Moments): earbuds connecting, Focus, low battery.
@@ -163,7 +196,9 @@ Item {
     // leading, value trailing). Rest on it: what it's doing, in words.
     Row {
         id: actChip
-        visible: rest.activity !== "" && rest.activity !== "moment"
+        visible: ((rest.activity !== "" && rest.activity !== "moment")
+                 || (rest.restMusic && !Media.playing && rest.activity === "")) && !rest.helloFocus
+        opacity: rest.chromeReveal
         anchors.verticalCenter: parent.verticalCenter
         spacing: 7
         Item {
@@ -267,7 +302,7 @@ Item {
             }
             // Music: the album art, tiny.
             ClippingRectangle {
-                visible: rest.activity === "media"
+                visible: rest.activity === "media" || (rest.restMusic && !Media.playing)
                 anchors.centerIn: parent
                 width: 20; height: 20; radius: 5
                 color: Theme.pill
@@ -291,7 +326,7 @@ Item {
         Tip { text: rest.activityDetail; shown: actHover.hovered; below: true }
     }
 
-    Capsules { id: pills; bar: rest.bar; tips: false; visible: Settings.restWorkspaces && !rest.compact; anchors.verticalCenter: parent.verticalCenter }
+    Capsules { id: pills; bar: rest.bar; tips: false; visible: Settings.restWorkspaces && !rest.compact && !rest.helloFocus; opacity: rest.chromeReveal; anchors.verticalCenter: parent.verticalCenter }
     }
 
     // ── The time, centred ────────────────────────────────────────────────
@@ -306,7 +341,7 @@ Item {
     Item {
         id: hintBox
         visible: opacity > 0.01
-        opacity: rest.hintOn
+        opacity: rest.hintOn * rest.chromeReveal
         Behavior on opacity { NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
         x: clock.x + clock.width / 2 - width / 2
         anchors.verticalCenter: parent.verticalCenter
@@ -355,8 +390,8 @@ Item {
 
     IslandClock {
         id: clock
-        visible: !rest.compact || rest.mini
-        opacity: 1 - rest.hintOn
+        visible: (!rest.compact || rest.mini) && !rest.helloFocus && rest.chromeReveal > 0.01
+        opacity: (1 - rest.hintOn) * rest.chromeReveal
         Behavior on opacity { NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
         now: rest.bar.now; size: 15
         rounded: false
@@ -370,7 +405,8 @@ Item {
     // Mini notch, an event soon: "19:35 · Standup · 25m".
     Label {
         id: soonLabel
-        visible: rest.mini && rest.soonText !== ""
+        visible: rest.mini && rest.soonText !== "" && !rest.helloFocus
+        opacity: rest.chromeReveal
         x: clock.x + clock.width + 12
         anchors.verticalCenter: parent.verticalCenter
         width: Math.min(implicitWidth, 220)
@@ -382,6 +418,8 @@ Item {
 
     Row {
       id: rightGroup
+      opacity: rest.chromeReveal
+      visible: !rest.helloFocus || rest.chromeReveal > 0.01
       anchors { right: parent.right; verticalCenter: parent.verticalCenter }
       spacing: 10
     Row {
@@ -408,7 +446,7 @@ Item {
             width: 6; height: 6; radius: 3
             color: Theme.orange
             HoverHandler { id: micHover; margin: 6 }
-            Tip { text: "Microphone in use" + (Activities.micName ? " · " + Activities.micName : "") + (Activities.micUsers.length ? " · " + [...new Set(Activities.micUsers)].join(", ") : ""); shown: micHover.hovered; below: true }
+            Tip { text: "Microphone in use" + (Activities.micUseSummary ? " · " + Activities.micUseSummary : Activities.micName ? " · " + Activities.micName : ""); shown: micHover.hovered; below: true }
         }
         // Agents at work (kittymux): their marks, stacked (AgentStack).
         AgentStack {
@@ -417,15 +455,53 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             bar: rest.bar
         }
-        // A warning that isn't on stage (something else is): its mark, small.
-        Text {
-            id: alertMark
-            visible: Alerts.active.length > 0 && rest.activity !== "alert"
+        // Pending system updates: the count stays on the notch (the banner is once).
+        Rectangle {
+            visible: Updates.total > 0 && !Updates.running
             anchors.verticalCenter: parent.verticalCenter
-            text: Alerts.active.length ? Alerts.active[0].glyph : ""
-            font.family: Theme.fontGlyph
-            font.pixelSize: 13
-            color: Alerts.active.length && Alerts.active[0].level === "crit" ? Theme.red : Theme.orange
+            height: 22; radius: 11
+            width: updRest.implicitWidth + 18
+            color: updRestArea.containsMouse ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.28) : Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.16)
+            Row {
+                id: updRest
+                anchors.centerIn: parent
+                spacing: 4
+                Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f06b0}"; font.family: Theme.fontGlyph; font.pixelSize: 13; color: Theme.accent }
+                Label { anchors.verticalCenter: parent.verticalCenter; text: Updates.total > 9 ? "9+" : String(Updates.total); size: 12; weight: Theme.wSemibold; color: Theme.accent }
+            }
+            MouseArea {
+                id: updRestArea
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: Island.open("updates", rest.bar.screenName, "pointer", "island")
+            }
+            Tip { text: Updates.total + (Updates.total === 1 ? " system update" : " system updates") + " · click to review"; shown: updRestArea.containsMouse; below: true }
+        }
+        // A warning that isn't on stage (something else is): its mark, small.
+        Row {
+            id: alertMark
+            visible: Alerts.active.length > 0
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 4
+            readonly property color tone: Alerts.active.length && Alerts.active[0].level === "crit" ? Theme.red : Theme.orange
+            // The number that matters (96°, 91 %), when the title has one.
+            readonly property string value: Alerts.active.length ? ((Alerts.active[0].title.match(/\d+\s*[%°]/) || [""])[0]).replace(/\s+/g, "") : ""
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: Alerts.active.length ? Alerts.active[0].glyph : ""
+                font.family: Theme.fontGlyph
+                font.pixelSize: 13
+                color: alertMark.tone
+            }
+            Label {
+                visible: alertMark.value !== ""
+                anchors.verticalCenter: parent.verticalCenter
+                text: alertMark.value
+                size: Theme.tSub; weight: Theme.wSemibold
+                color: alertMark.tone
+                font.features: ({ "tnum": 1 })
+            }
             HoverHandler { id: alertMarkHover; margin: 6; cursorShape: Qt.PointingHandCursor }
             TapHandler { onTapped: Island.open("system", rest.bar.screenName, "pointer", "island") }
             Tip { text: Alerts.active.length ? Alerts.active.map(a => a.title).join(" · ") : ""; shown: alertMarkHover.hovered; below: true }
@@ -479,7 +555,9 @@ Item {
         }
     }
     Item {
-        visible: rest.activity !== "" && rest.activity !== "moment" && !rest.joined
+        visible: (rest.activity !== "" && rest.activity !== "moment" && !rest.joined)
+                 || (rest.restMusic && !Media.playing && rest.activity === "")
+        opacity: rest.chromeReveal
         width: trailing.implicitWidth
         height: 20
         anchors.verticalCenter: parent.verticalCenter
@@ -546,15 +624,16 @@ Item {
                 text: Activities.shazamFound ? Activities.shazamFound.title + " · " + Activities.shazamFound.artist : "Listening"
                 size: 12; weight: Theme.wMedium
             }
-            // Music: a live waveform in the album art's colour (Apple's
-            // compact music activity), moving with what you hear; still while paused.
+            // Music: waveform while playing; a low, still silhouette when paused.
             Item {
-                visible: rest.activity === "media"
+                id: restMediaWave
+                visible: rest.activity === "media" || (rest.restMusic && !Media.playing)
                 anchors.verticalCenter: parent.verticalCenter
-                width: musicBars.implicitWidth; height: 16
+                width: musicBars.implicitWidth
+                height: 16
                 MusicTap {}
                 PwObjectTracker { objects: [Pipewire.defaultAudioSink] }
-                PwNodePeakMonitor { id: restPeak; node: Pipewire.defaultAudioSink; enabled: rest.activity === "media" && Media.playing }
+                PwNodePeakMonitor { id: restPeak; node: Pipewire.defaultAudioSink; enabled: (rest.activity === "media" || rest.restMusic) && Media.playing }
                 readonly property real level: restPeak.enabled ? (restPeak.peaks && restPeak.peaks.length ? Math.max(...restPeak.peaks) : (restPeak.peak || 0)) : 0
                 Row {
                     id: musicBars
@@ -568,9 +647,13 @@ Item {
                             property real jitter: 1
                             anchors.verticalCenter: parent.verticalCenter
                             width: 3; radius: 1.5
-                            height: Math.max(3, 15 * Math.min(1, parent.parent.level * shape * jitter * 1.9))
+                            readonly property real liveH: Math.max(3, 15 * Math.min(1, restMediaWave.level * shape * jitter * 1.9))
+                            readonly property real pauseH: Math.max(4, 13 * shape * 0.48)
+                            height: Media.playing ? liveH : pauseH
                             color: Media.artColor
-                            Behavior on height { NumberAnimation { duration: 90 } }
+                            opacity: Media.playing ? 1 : 0.55
+                            Behavior on height { NumberAnimation { duration: Media.playing ? 90 : 380; easing.type: Easing.OutCubic } }
+                            Behavior on opacity { NumberAnimation { duration: Theme.colorMs } }
                             Behavior on color { ColorAnimation { duration: 400 } }
                             Timer { running: restPeak.enabled && !Theme.reduceMotion; interval: 120 + (index % 3) * 45; repeat: true; onTriggered: parent.jitter = 0.7 + Math.random() * 0.5 }
                         }

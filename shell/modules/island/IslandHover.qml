@@ -259,7 +259,7 @@ Item {
                 node: Pipewire.defaultAudioSink
                 enabled: hover.visible && hover.media && hover.player && hover.player.isPlaying
             }
-            readonly property real level: peak.peaks && peak.peaks.length ? Math.max(...peak.peaks) : (peak.peak || 0)
+            readonly property real level: peak.enabled ? (peak.peaks && peak.peaks.length ? Math.max(...peak.peaks) : (peak.peak || 0)) : 0
             Row {
                 anchors.centerIn: parent
                 spacing: 4
@@ -273,10 +273,14 @@ Item {
                         property real jitter: 1
                         anchors.verticalCenter: parent.verticalCenter
                         width: 3; radius: 1.5
-                        height: Math.max(3, 24 * Math.min(1, trail.level * shape * jitter * 1.7))
+                        readonly property bool live: hover.player && hover.player.isPlaying
+                        readonly property real liveH: Math.max(3, 24 * Math.min(1, trail.level * shape * jitter * 1.7))
+                        readonly property real pauseH: Math.max(4, 22 * shape * 0.42)
+                        height: live ? liveH : pauseH
                         color: Media.artColor
-                        opacity: 0.9
-                        Behavior on height { NumberAnimation { duration: 90 } }
+                        opacity: live ? 0.9 : 0.5
+                        Behavior on height { NumberAnimation { duration: live ? 90 : 380; easing.type: Easing.OutCubic } }
+                        Behavior on opacity { NumberAnimation { duration: Theme.colorMs } }
                         Timer { running: peak.enabled && !Theme.reduceMotion; interval: 110 + (index % 4) * 35; repeat: true; onTriggered: parent.jitter = 0.65 + Math.random() * 0.55 }
                     }
                 }
@@ -381,14 +385,16 @@ Item {
                       tip: Caffeine.on ? "Caffeine on: no dim, lock or sleep" : "Caffeine: keep awake", toggle: () => Caffeine.toggle() },
                     { id: "mic", glyph: "\u{f036c}", glyphOff: "\u{f036d}", on: !micMuted, alert: micMuted,
                       tone: Activities.micInUse ? Theme.orange : Theme.textPrimary, offTone: Theme.red,
-                      tip: (micMuted ? "Microphone muted" : "Microphone on") + (Activities.micName ? " · " + Activities.micName : "") + (!micMuted && Activities.micInUse ? " · in use by " + [...new Set(Activities.micUsers)].join(", ") : ""),
+                      tip: (micMuted ? "Microphone muted" : "Microphone on")
+                          + (Activities.micName ? " · " + Activities.micName : "")
+                          + (Activities.voxListening ? "" : (!micMuted && Activities.micInUse && Activities.micUseSummary ? " · in use by " + Activities.micUseSummary : "")),
                       toggle: () => { if (src && src.audio) src.audio.muted = !src.audio.muted; } },
                     { id: "speaker", glyph: vol >= 60 ? "\u{f057e}" : vol >= 25 ? "\u{f0580}" : "\u{f057f}", glyphOff: "\u{f075f}", on: !spkMuted, alert: spkMuted,
                       tone: Theme.textPrimary, offTone: Theme.red,
                       tip: (spkMuted ? "Muted" : "Volume " + vol + "%") + " · scroll to change",
                       toggle: () => { if (sink && sink.audio) sink.audio.muted = !sink.audio.muted; },
                       wheel: steps => { if (sink && sink.audio) { sink.audio.muted = false; sink.audio.volume = Math.max(0, Math.min(1.5, Math.round((sink.audio.volume + steps * 0.05) * 20) / 20)); } } },
-                    { id: "focus", glyph: "\u{f0594}", on: Notifs.dnd, alert: Notifs.dnd, tone: "#bf5af2",
+                    { id: "focus", glyph: "\u{f0594}", on: Notifs.dnd, alert: Notifs.dnd, tone: Theme.focus,
                       tip: Notifs.dnd ? "Focus on: notifications held" : "Focus (Do Not Disturb)", toggle: () => { Notifs.toggleUserDnd(); } },
                     { id: "night", glyph: "\u{f0599}", on: Display.nightOn, alert: false, tone: Theme.orange,
                       tip: Display.nightOn ? "Night Shift on" : "Night Shift", toggle: () => Display.toggleNight() },
@@ -399,23 +405,40 @@ Item {
                 ]
             }
             }
-        Row {
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: 8
+        Item {
             id: bellRow
-            Label { anchors.verticalCenter: parent.verticalCenter; text: Notifs.dnd ? "Focus on" : Notifs.dndMute ? "Held while sharing" : Notifs.missed.length ? Notifs.missed.length + " to look at" : Notifs.unread ? Notifs.unread + " new" : "All caught up"; size: 14; weight: Theme.wMedium; color: Theme.textPrimary }   // white: the accent means "where you are"
-            Icon { anchors.verticalCenter: parent.verticalCenter; name: Notifs.muted ? "bell-slash" : "bell"; size: 16; active: Notifs.unread > 0; color: Notifs.unread ? Theme.accent : Theme.textSecondary }
-            // Rest on it: the missed ones, each with its buttons. Click: the center.
+            anchors.verticalCenter: parent.verticalCenter
+            width: bell.implicitWidth
+            height: bell.implicitHeight
+            property bool bellPopOpen: false
+            BellIcon {
+                id: bell
+                suppressTip: bellRow.bellPopOpen
+                count: Notifs.inbox
+                muted: Notifs.muted
+                dnd: Notifs.dnd
+                missed: Notifs.missed.length > 0
+                urgent: Notifs.missed.some(i => i.severity === "critical")
+                badgeTone: Notifs.bellBadgeTone
+                tip: Notifs.bellTip
+                onTapped: {
+                    bellPop.dismissOnAnchorLeave = true;
+                    bellRow.bellPopOpen = false;
+                    Notifs.toggleCenter("notifications", "pointer", hover.bar.screenName);
+                }
+                onQuickPressed: {
+                    bellPop.dismissOnAnchorLeave = false;
+                    bellRow.bellPopOpen = !bellRow.bellPopOpen;
+                }
+            }
             HoverHandler { id: bellHover; cursorShape: Qt.PointingHandCursor }
-            property bool missedOpen: false
-            Timer { running: bellHover.hovered && Notifs.missed.length > 0 && !missedOpen; interval: Settings.hoverDelay; onTriggered: missedOpen = true }
-            TapHandler { onTapped: { missedOpen = false; Notifs.toggleCenter("notifications", "pointer", hover.bar.screenName); } }
             MissedNotifPopover {
-                anchorItem: bellRow
+                id: bellPop
+                anchorItem: bell
                 window: hover.bar
-                open: missedOpen
+                open: bellRow.bellPopOpen
                 anchorHovered: bellHover.hovered
-                onClosed: missedOpen = false
+                onClosed: { bellRow.bellPopOpen = false; bellPop.dismissOnAnchorLeave = true; }
             }
         }
         }

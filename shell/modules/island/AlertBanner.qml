@@ -34,10 +34,12 @@ Item {
             top: expanded ? mark.top : undefined
             verticalCenter: expanded ? undefined : parent.verticalCenter
         }
-        height: expanded ? copyCol.implicitHeight : undefined
+        // Always the column's height: an Item with no height centres its top
+        // edge, so the text hung below the mark.
+        height: copyCol.implicitHeight
         TapHandler {
             onTapped: {
-                if (!banner.alert || !banner.alert.detail) return;
+                if (!banner.alert || !banner.alert.detail || (!detailLine.truncated && !banner.expanded)) return;
                 banner.expanded = !banner.expanded;
             }
         }
@@ -47,9 +49,10 @@ Item {
             spacing: expanded ? 4 : 2
             Label { width: parent.width; elide: Text.ElideRight; text: banner.alert ? banner.alert.title : ""; size: 14; weight: Theme.wSemibold }
             Label {
-                visible: !banner.expanded
+                id: detailLine
+                visible: !banner.expanded && text !== ""
                 width: parent.width; elide: Text.ElideRight
-                text: banner.alert ? banner.alert.detail : ""
+                text: banner.alert ? banner.alert.detail || "" : ""
                 size: 12; color: Theme.textSecondary
             }
             Item {
@@ -72,7 +75,8 @@ Item {
                 }
             }
             Label {
-                visible: !banner.expanded && !!banner.alert && !!banner.alert.detail
+                // Only when there is more to read than the line shows.
+                visible: !banner.expanded && detailLine.truncated
                 text: "Tap for more"
                 size: 10; weight: Theme.wMedium; color: Theme.textTertiary
             }

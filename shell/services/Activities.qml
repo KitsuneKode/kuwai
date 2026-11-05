@@ -91,18 +91,67 @@ Singleton {
     // ── Privacy: who is using the microphone ─────────────────────────────
     readonly property var streams: Pipewire.nodes.values.filter(n => n.isStream && n.audio && !n.isSink)
     PwObjectTracker { objects: root.streams }
-    // Our own level meters are capture streams too: not "someone listening".
-    readonly property var micUsers: streams.filter(n => {
+
+    function cleanMicLabel(n) {
+        if (!n) return "";
         const p = n.properties || {};
+        const raw = p["device.description"] || n.description || n.nickname || p["node.description"] || n.name || "";
+        return String(raw).replace(/ (Mono|Stereo|Analog Stereo|Digital Stereo)$/, "").replace(/^Monitor of /i, "");
+    }
+    function streamProps(n) { return n && n.properties ? n.properties : {}; }
+    function isMonitorStream(n) {
+        const p = streamProps(n);
+        if (p["stream.monitor"] === "true" || p["stream.monitor"] === true) return true;
+        if ((p["media.role"] || "") === "Monitor") return true;
+        const label = (p["node.name"] || n.name || n.description || p["media.name"] || "");
+        return /^Monitor of /i.test(label) || /\.monitor$/i.test(label);
+    }
+    function isRiceInternalStream(n) {
+        const p = streamProps(n);
         const bin = (p["application.process.binary"] || "").toLowerCase();
-        return bin !== "quickshell" && bin !== "qs" && p["stream.monitor"] !== "true" && !(p["node.name"] || "").startsWith("quickshell");
-    }).map(n => (n.properties || {})["application.name"] || n.name || "An app")
-    readonly property bool micInUse: micUsers.length > 0
-    // Which mic, when it isn't the laptop's own (a USB one, the Boya).
+        const app = (p["application.name"] || "").toLowerCase();
+        if (bin === "quickshell" || bin === "qs") return true;
+        if ((p["node.name"] || "").startsWith("quickshell")) return true;
+        if (/^voxtype|voxtype-audio-bridge|^pw-(play|record|cat)|^pipewire$/.test(bin)) return true;
+        if (/^alsa plug-in \[voxtype/.test(app)) return true;
+        return false;
+    }
+    function captureStreams() {
+        return streams.filter(n => !isMonitorStream(n) && !isRiceInternalStream(n));
+    }
+    readonly property var voxStreams: streams.filter(n => {
+        const p = streamProps(n);
+        const bin = (p["application.process.binary"] || "").toLowerCase();
+        const app = (p["application.name"] || "").toLowerCase();
+        return !isMonitorStream(n) && (/voxtype/.test(bin) || /^alsa plug-in \[voxtype/.test(app));
+    })
+    readonly property var micUsers: captureStreams().map(n => {
+        const p = streamProps(n);
+        const raw = p["application.name"] || n.description || n.name || "An app";
+        const alsa = /^ALSA plug-in \[(.+)\]$/.exec(raw);
+        if (alsa) {
+            const b = alsa[1];
+            return b.charAt(0).toUpperCase() + b.slice(1).replace(/-audio-bridge$/, "");
+        }
+        return raw.replace(/^Monitor of /i, "");
+    })
+    // Dictation already has its own live activity — don't also flash the privacy dot.
+    readonly property bool micInUse: !voxListening && micUsers.length > 0
     readonly property var mic: Pipewire.defaultAudioSource
+    // Default input label (USB Boya, built-in, …). Prefer voxtype's capture device while dictating.
     readonly property string micName: {
-        const p = mic ? mic.properties || {} : {};
-        return p["device.bus"] === "usb" ? (p["device.description"] || mic.description || "").replace(/ (Mono|Stereo|Analog Stereo|Digital Stereo)$/, "") : "";
+        if (voxListening && voxStreams.length) {
+            const vs = voxStreams[0];
+            const fromStream = cleanMicLabel(vs);
+            if (fromStream && !/^alsa plug-in/i.test(fromStream) && !/audio-bridge/i.test(fromStream)) return fromStream;
+        }
+        return cleanMicLabel(mic);
+    }
+    readonly property string micUseSummary: {
+        if (voxListening) return micName ? "Dictating · " + micName : "Dictating";
+        if (!micInUse) return "";
+        const who = [...new Set(micUsers)].join(", ");
+        return who;
     }
 
     // ── Privacy: who is using the camera ─────────────────────────────────

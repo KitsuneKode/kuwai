@@ -275,7 +275,10 @@ Scope {
     onFromMsChanged: first()
     function first() {
         selKey = entries.length ? entries[0].key : "";
-        if (listView) listView.positionViewAtBeginning();
+        if (listView) {
+            listView.contentX = listView.originX;
+            listView.positionViewAtBeginning();
+        }
     }
     onSelKeyChanged: {
         revealed = false;
@@ -1372,7 +1375,7 @@ Scope {
         if (ql && k === Qt.Key_Space && shift) { reading = !reading; event.accepted = true; return; }
         if (ql && (k === Qt.Key_Escape || k === Qt.Key_Space || (ctrl && k === Qt.Key_Y))) { quickLook.open = false; reading = false; event.accepted = true; return; }
         if (ctrl && k === Qt.Key_K) { if (actionMenu) actionMenu.toggle(); }
-        else if (shift && (k === Qt.Key_Right || k === Qt.Key_Left) && field && field.text === "") {
+        else if (shift && (k === Qt.Key_Right || k === Qt.Key_Left) && field && field.text === "" && !ctrl) {
             const i = entries.findIndex(r => r.key === selKey);
             const j = Math.max(0, Math.min(entries.length - 1, i + (k === Qt.Key_Right ? 1 : -1)));
             if (i >= 0 && entries[j]) { mark(selKey, true); markRange(entries[j].key); }
@@ -1386,7 +1389,7 @@ Scope {
             if (k === Qt.Key_Right && field && field.text !== "" && !ql) return;
             move(1);
         }
-        else if (k === Qt.Key_Left || k === Qt.Key_Up) {
+        else if (k === Qt.Key_Left || k === Qt.Key_Up || (ctrl && k === Qt.Key_P)) {
             if (k === Qt.Key_Left && field && field.text !== "" && !ql) return;
             move(-1);
         }

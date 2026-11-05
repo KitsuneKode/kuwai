@@ -252,7 +252,10 @@ Singleton {
     // Lock.qml, on the right password: how long you were away.
     function welcomeBack(since) {
         const m = Math.round((Date.now() - since) / 60000);
-        const away = m < 1 ? "Unlocked" : m < 60 ? "away " + m + " min" : "away " + Math.floor(m / 60) + " h " + (m % 60) + " min";
+        // A short lock is not an absence: the lock island already said
+        // "Unlocked", so no second greeting saying the same thing.
+        if (m < 2) return;
+        const away = m < 60 ? "Away " + m + " min" : "Away " + Math.floor(m / 60) + " h" + (m % 60 ? " " + (m % 60) + " min" : "");
         show({ kind: "hello", image: face, round: true, label: "Welcome back", value: away, ring: -1, tone: Theme.textSecondary }, 2800);
     }
 
@@ -269,7 +272,7 @@ Singleton {
     }
     function focusMoment() {
         if (!root.armed || !Notifs.loaded) return;
-        root.show({ kind: "focus", glyph: "\u{f0594}", label: "Focus", value: focusMomentValue(), ring: -1, tone: "#bf5af2" }, 2400);
+        root.show({ kind: "focus", glyph: "\u{f0594}", label: "Focus", value: focusMomentValue(), ring: -1, tone: Theme.focus }, 2400);
     }
 
     // ── Caffeine (Super+\, Super+Shift+C, Controls, the cup) ───────────

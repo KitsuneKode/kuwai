@@ -580,7 +580,7 @@ Rectangle {
                                         onClicked: { OllamaService.mode = "agent"; OllamaService.syncCurrentSession(); } }
                         }
                     }
-                    MessageAction { anchors.fill: chatSeg; color: "transparent"; icon: ""; enabled: false; hoverSource: chatSegArea
+                    MessageAction { x: 0; width: chatSeg.width; height: 30; color: "transparent"; icon: ""; enabled: false; hoverSource: chatSegArea
                                     tip: "Chat: answers, search, prices, your screen · reads, never changes · ⌃." }
                     MessageAction { x: chatSeg.width; width: agentSeg.width; height: 30; color: "transparent"; icon: ""; enabled: false; hoverSource: agentSegArea
                                     tip: "Agent: files, sandbox, plans, your machine (asks first) · ⌃." }
