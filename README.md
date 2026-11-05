@@ -5,6 +5,40 @@ replacing what HyDE / Waybar / dunst do today. Every surface shares one look:
 dark liquid glass over Hyprland's blur, SF Pro text, smooth no-bounce motion
 (see [docs/DESIGN.md](docs/DESIGN.md)).
 
+## Install
+
+```sh
+git clone <this repo> ~/Projects/rice && cd ~/Projects/rice
+./install.sh --dry-run     # what it would change (nothing yet)
+./install.sh --deps        # install: packages, the stable channel, Hyprland's entry point, user services
+sudo greeter/install       # optional: the login screen (greetd; --undo puts SDDM back)
+sudo system/install        # optional: alarms that wake the laptop from sleep
+```
+
+Everything it replaces is backed up first (`./install.sh --uninstall` puts it
+back). It never touches your `monitors.lua`, `user.lua` or settings, never
+needs root for itself, and never sets up autologin. Check a running desktop
+any time with `./install.sh --doctor` (`kuwai doctor` + `rice-check`).
+
+Your session runs from the **stable channel** (`~/.local/share/kuwai`, the
+`stable` branch). Changes in the repo reach it with `rice promote`, which
+refuses unless `rice-check` passes (`rice channel dev` runs straight from
+the repo while you work).
+
+## Every day
+
+| | |
+|---|---|
+| Launcher (Super+A) | apps, windows, files, maths, conversions, and words: `timer 10m pizza`, `pomodoro`, `remind me at 5 to call mum`, `in 20m stretch`, `alarm 7:30`, `note buy milk`, a setting's name (`idle`, `screensaver`) |
+| Quick note · remind me | Super+Ctrl+N · Super+Ctrl+R |
+| Settings | Super+Ctrl+I or `rice settings [power\|saver\|time\|notifs\|island…]`: every setting, applied at once |
+| Software Update | the island's update chip: packages, AUR reviews, config files an update left (`.pacnew`) with a recommendation each |
+| From a terminal | `rice remind …`, `rice alarm …`, `rice note …`, `rice pomodoro`, `rice timer 10m` |
+
+The design system (one primitive per job, Theme tokens) is in
+[docs/DESIGN.md](docs/DESIGN.md); where it's going, in
+[docs/ROADMAP.md](docs/ROADMAP.md).
+
 ## What's in it
 
 | Piece | Replaces | Where |
@@ -17,7 +51,6 @@ dark liquid glass over Hyprland's blur, SF Pro text, smooth no-bounce motion
 | The login screen and the lock screen: one design, the same password pill, status and motion | SDDM (astronaut theme), hyprlock | `greeter/`, `shell/greeter.qml`, `shell/modules/lock/` |
 | The assistant (Super+Ctrl+Shift+A): a local agent on Ollama that uses tools (the focused window, system load, clipboard, selection, files in ~, web search) and asks before it runs a command, opens an app or a link; reasoning folds away; screenshots go to a vision model first when the chosen model can't see | — | `shell/modules/assistant/`, `shell/components/ai/`, `shell/services/OllamaService.qml`, `bin/rice_agent.py` |
 
-Next up: dynamic island, control center, bar.
 
 ## Run / control
 
