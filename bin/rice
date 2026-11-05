@@ -176,7 +176,8 @@ case ${1:-} in
         # The QML that would go live must load: rice-check above only sees the
         # running shell, so a broken import in the new code took the island
         # down once. Lint just the changed files, for the fatal classes.
-        if [ "${2:-}" != --force ] && command -v /usr/lib/qt6/bin/qmllint >/dev/null; then
+        # Always, even with --force (that only skips the running shell's health).
+        if command -v /usr/lib/qt6/bin/qmllint >/dev/null; then
             bad=""
             for f in $(git -C "$dev" diff --name-only "$(git -C "$STABLE" rev-parse HEAD)" "$head" -- '*.qml'); do
                 [ -f "$dev/$f" ] || continue

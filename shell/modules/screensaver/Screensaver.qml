@@ -12,7 +12,6 @@
 // `rice screensaver` shows it now.
 import QtQuick
 import QtQuick.Effects
-import QtMultimedia
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
@@ -63,6 +62,29 @@ Scope {
     onShowingChanged: { if (showing) mainScreen = Screens.focusedName; Saver.showing = showing; }
     readonly property string still: "file://" + Quickshell.env("HOME") + "/.cache/hyde/wall.set"
 
+    // ── The film (Night, Live) plays in its own process: shell-saver/ ─────
+    // A player inside the shell kept ~110 MB for good after it stopped
+    // (measured); a separate process gives all of it back when killed.
+    readonly property string film: style === "night" && !clipFailed ? clip
+        : style === "live" && useVideo ? video : ""
+    readonly property bool filmUp: showing && film !== ""
+    Process {
+        id: filmProc
+        // A missing file never starts it (test -r).
+        command: ["sh", "-c", 'test -r "$KUWAI_SAVER_FILE" && exec qs -p "$1"', "rice-saver", Quickshell.shellDir + "/../shell-saver"]
+        environment: ({ KUWAI_SAVER_FILE: root.film, KUWAI_SAVER_SCREEN: root.mainScreen })
+        // The shell is the only one that ends it (SIGKILL, filmUp false), so
+        // any exit while the film should be up is a failure: Dusk instead.
+        onExited: { if (root.filmUp && root.style === "night") root.clipFailed = true; }
+    }
+    // SIGKILL, never SIGTERM: Quickshell can crash on a polite exit and its
+    // crash handler would relaunch the film (bin/rice-shell has the story).
+    onFilmUpChanged: {
+        if (filmUp) { if (!filmProc.running) filmProc.running = true; }
+        else if (filmProc.running) filmProc.signal(9);
+    }
+    Component.onDestruction: if (filmProc.running) filmProc.signal(9)
+
     function dismiss() { forced = false; }
     IpcHandler {
         target: "screensaver"
@@ -97,21 +119,23 @@ Scope {
                     focus: true
                     Keys.onPressed: e => { root.dismiss(); e.accepted = true; }
 
-                    Rectangle { anchors.fill: parent; color: "black" }
+                    // The film's screen stays clear: the film is under this
+                    // surface (its own process, Top layer).
+                    readonly property bool filmHere: root.film !== "" && win.screen.name === root.mainScreen
+                    Rectangle { anchors.fill: parent; color: "black"; visible: !stage.filmHere }
 
                     // What fills the screen: the Dusk scene (default, drawn live,
                     // nothing to decode), your live wallpaper, or the still one.
                     // Live plays on one screen only (the one you were using);
                     // the others show Dusk, so it is decoded once, not per screen.
-                    readonly property bool liveHere: root.style === "live" && root.useVideo && win.screen.name === root.mainScreen
                     readonly property bool stillHere: root.style === "still"
                     // Night: the film on one screen, true black on the rest
                     // (decoded once; black costs nothing and can't burn in).
+                    // Live: the film on one screen, Dusk on the others.
                     readonly property bool night: root.style === "night" && !root.clipFailed
-                    readonly property bool nightHere: night && win.screen.name === root.mainScreen
                     Loader {
                         anchors.fill: parent
-                        active: !stage.liveHere && !stage.stillHere && !stage.night
+                        active: !stage.filmHere && !stage.stillHere && !stage.night
                         sourceComponent: DuskScene { running: root.showing }
                     }
                     Image {
@@ -129,40 +153,6 @@ Scope {
                             loops: Animation.Infinite
                             NumberAnimation { to: 1.12; duration: 40000; easing.type: Easing.InOutSine }
                             NumberAnimation { to: 1.06; duration: 40000; easing.type: Easing.InOutSine }
-                        }
-                    }
-                    Loader {
-                        anchors.fill: parent
-                        active: stage.liveHere
-                        sourceComponent: Item {
-                            VideoOutput { id: out; anchors.fill: parent; fillMode: VideoOutput.PreserveAspectCrop }
-                            MediaPlayer {
-                                id: livePlayer
-                                source: "file://" + root.video
-                                videoOutput: out
-                                audioOutput: AudioOutput { muted: true }
-                                loops: MediaPlayer.Infinite
-                                Component.onCompleted: play()
-                                // Stop before teardown: a player destroyed while
-                                // playing can keep its decoder memory.
-                                Component.onDestruction: stop()
-                            }
-                        }
-                    }
-                    Loader {
-                        anchors.fill: parent
-                        active: stage.nightHere
-                        sourceComponent: Item {
-                            VideoOutput { id: nightOut; anchors.fill: parent; fillMode: VideoOutput.PreserveAspectCrop }
-                            MediaPlayer {
-                                source: "file://" + root.clip
-                                videoOutput: nightOut
-                                loops: MediaPlayer.Infinite
-                                Component.onCompleted: play()
-                                Component.onDestruction: stop()
-                                // A missing file: fall back to Dusk, not a black hole.
-                                onErrorOccurred: (error, msg) => { console.warn("screensaver: " + msg); root.clipFailed = true; }
-                            }
                         }
                     }
                     // A soft vignette so the clock reads on any wallpaper.
