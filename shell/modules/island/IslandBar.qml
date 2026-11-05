@@ -275,7 +275,8 @@ Scope {
             // The assistant working with its panel closed (or just finished): the edge light below.
             readonly property bool assistHere: (OllamaService.bgWorking || !!OllamaService.bgDone)
                 && !panelHere && !grown && !bannerHere && !peekHere && !deviceHere
-            readonly property real peekH: Notifs.peekExpanded ? 172 : 76
+            // Expanded with a whole message (a mail, a comment): room to read it.
+            readonly property real peekH: Notifs.peekExpanded ? (Notifs.peek && Notifs.peek.full ? 340 : 172) : 76
             readonly property real bannerH: bannerHere && alertLoader.item ? alertLoader.item.implicitHeight : 72
             readonly property real targetW: panelHere ? panelSize.width : grown ? hoverSize.width : bannerHere ? 440 : peekHere ? 460 : deviceHere ? 420 : restRow.implicitWidth + 32
             readonly property real targetH: panelHere ? panelSize.height : grown ? hoverSize.height : bannerHere ? bannerH : peekHere ? peekH : deviceHere ? 84 : restH
@@ -493,9 +494,16 @@ Scope {
                     opacity: 1 - 0.7 * Math.min(1, Math.max(0, win.pull) / 45)
 
                     // ── At rest ──────────────────────────────────────────
+                    // The row's width follows a spring of the same tier as
+                    // the shape: its edges (and what's anchored to them) move
+                    // with the notch. It took its new width at once before, so
+                    // content jumped to the final layout and was clipped
+                    // while the black shape caught up.
+                    Spring { id: rw; tier: restRow.implicitWidth >= rw.value ? win.grow : win.shrink; epsilon: 0.3; target: restRow.implicitWidth; Component.onCompleted: settle() }
                     IslandRest {
                         id: restRow
                         bar: win
+                        width: Math.max(0, rw.value)
                         anchors.horizontalCenter: parent.horizontalCenter
                         y: Math.round((win.restH - height) / 2)
                         opacity: Math.max(0, 1 - Math.max(m.value, pv.value, bv.value, nv.value, dv.value) * 3)

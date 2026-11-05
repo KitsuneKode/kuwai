@@ -109,6 +109,14 @@ def clip(s, n):
     return s if len(s) <= n else s[: n - 1].rstrip() + "…"
 
 
+def full_text(s, n=6000):
+    """The whole readable text for the island's preview: paragraphs kept,
+    runs of blank lines folded, each line trimmed, capped at n characters."""
+    lines = [re.sub(r"[ \t\u00a0]+", " ", l).strip() for l in str(s or "").replace("\r", "").split("\n")]
+    t = re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip()
+    return t if len(t) <= n else t[: n - 1].rstrip() + "…"
+
+
 # ── Notifications (org.freedesktop.Notifications, on GLib's loop) ────────────
 class Notifier:
     def __init__(self):
@@ -357,6 +365,7 @@ def gh_thread(t, fetch=gh_fetch, c=None):
             text = re.sub(r"[#>*_`|]+", " ", text)
             if who and text.strip() and reason not in ("review_requested", "assign"):
                 body = f"{who}: {clip(text, 160)}"
+                t["_full"] = f"{who}:\n\n{full_text(text, 4000)}"
             elif who:
                 body = f"{short(repo)} {number} · by {who}".strip()
     if bot and c["bots"] == "hide":
@@ -368,7 +377,7 @@ def gh_thread(t, fetch=gh_fetch, c=None):
         "title": title, "body": body, "status": status, "glyph": glyph, "tone": tone,
         "severity": severity, "peek": peek and not quiet, "quiet": quiet, "url": t.get("_url") or web_url(t),
         "group": t.get("_group") or "gh:" + t["id"], "reply": reply, "who": t.get("_avatar", ("", ""))[0],
-        "avatar": t.get("_avatar", ("", ""))[1],
+        "avatar": t.get("_avatar", ("", ""))[1], "full": t.get("_full", ""),
     }
 
 
@@ -452,7 +461,8 @@ def github(notify):
                 hints = {"x-rice-feed": "github", "x-rice-status": c["status"], "x-rice-glyph": c["glyph"],
                          "x-rice-tone": c["tone"], "x-rice-group": key, "x-rice-url": c["url"],
                          "x-rice-severity": c["severity"], "x-rice-quiet": "1" if c["quiet"] else "",
-                         "x-rice-calm": "" if c["peek"] else "1", "image-path": avatar(c["who"], c["avatar"])}
+                         "x-rice-calm": "" if c["peek"] else "1", "image-path": avatar(c["who"], c["avatar"]),
+                         "x-rice-full": c.get("full") or ""}
                 url = c["url"]
                 on = {"default": lambda u=url, i=tid: (open_url(u), gh_mark_read(i)),
                       "read": lambda i=tid: gh_mark_read(i)}
@@ -488,7 +498,7 @@ def imap_login(address):
     return m
 
 
-def text_of(msg):
+def text_of(msg, full=False):
     part = msg.get_body(preferencelist=("plain", "html"))
     if not part:
         return ""
@@ -501,7 +511,7 @@ def text_of(msg):
         t = html.unescape(re.sub(r"<[^>]+>", " ", t))
     # Drop quoted replies and the signature.
     t = re.split(r"\n\s*(On .+ wrote:|-- \n|>)", t, maxsplit=1)[0]
-    return clip(t, 180)
+    return full_text(t) if full else clip(t, 180)
 
 
 def mail_card(head_bytes, full_bytes=None, thrid=""):
@@ -510,11 +520,13 @@ def mail_card(head_bytes, full_bytes=None, thrid=""):
     name, addr = email.utils.parseaddr(str(head.get("From", "")))
     reply_to = email.utils.parseaddr(str(head.get("Reply-To", "")))[1] or addr
     subject = clip(str(head.get("Subject", "")) or "(no subject)", 120)
-    snippet = text_of(email.message_from_bytes(full_bytes, policy=email.policy.default)) if full_bytes else ""
+    msg = email.message_from_bytes(full_bytes, policy=email.policy.default) if full_bytes else None
+    snippet = text_of(msg) if msg else ""
+    whole = text_of(msg, full=True) if msg else ""
     thread = format(int(thrid), "x") if thrid else ""
     return {
         "from": name or addr or "Someone", "addr": addr, "replyTo": reply_to, "subject": subject,
-        "snippet": snippet, "thread": thread,
+        "snippet": snippet, "full": whole, "thread": thread,
         "messageId": str(head.get("Message-ID", "")).strip(), "references": str(head.get("References", "")).strip(),
         "noreply": bool(re.search(r"no[-_.]?reply|do[-_.]?not[-_.]?reply|notifications?@|mailer-daemon", reply_to, re.I)),
         "url": f"https://mail.google.com/mail/u/0/#all/{thread}" if thread else "https://mail.google.com/mail/u/0/#inbox",
@@ -644,6 +656,10 @@ def gmail_check(m, notify, address, g, shown):
             continue
         key = "gmail:" + (c["thread"] or uid)
         hints = {"x-rice-feed": "gmail", "x-rice-group": key, "x-rice-url": c["url"]}
+        # The whole message for the island's preview (the body stays short for
+        # the toast); only when there's more than the snippet.
+        if c.get("full") and len(c["full"]) > len(c["snippet"]) + 20:
+            hints["x-rice-full"] = c["subject"] + "\n\n" + c["full"]
         body = c["subject"] + ("\n" + c["snippet"] if c["snippet"] else "")
         on = {"default": lambda u=c["url"]: open_url(u),
               "archive": lambda i=uid: gmail_archive(notify, address, i),

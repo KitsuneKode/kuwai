@@ -33,7 +33,9 @@ Item {
     readonly property var liveActions: it.notification ? (it.actions || []).slice(0, 3) : []
     readonly property bool canReply: Notifs.canReply(item)
     readonly property bool canOpen: !!row.it.notification || !!row.it.focusClass || !!row.it.jump || /^https?:\/\//.test(row.it.url || "")
-    readonly property bool previewScroll: row.selected && (row.warning || row.critical || String(row.it.body || "").length > 120)
+    readonly property bool previewScroll: row.selected && (row.warning || row.critical || String(row.it.body || "").length > 120 || !!row.it.full)
+    // Selected with a whole message (a mail, a comment): read it all here.
+    readonly property bool reading: row.selected && !!row.it.full && !Notifs.bodyHidden(row.it, true)
 
     function beginReply() {
         replying = true;
@@ -229,7 +231,7 @@ Item {
             id: previewBox
             visible: row.previewScroll
             width: parent.width
-            height: Math.min(120, previewFlick.contentHeight)
+            height: Math.min(row.reading ? 260 : 120, previewFlick.contentHeight)
             clip: true
             Flickable {
                 id: previewFlick
@@ -240,8 +242,10 @@ Item {
                     id: previewBody
                     width: previewFlick.width
                     wrapMode: Text.Wrap
-                    text: row.center && row.center.terms.length ? row.center.highlight(row.it.body.replace(/<[^>]*>/g, "")) : row.it.body
-                    textFormat: Text.StyledText
+                    text: row.reading ? row.it.full
+                        : row.center && row.center.terms.length ? row.center.highlight(row.it.body.replace(/<[^>]*>/g, "")) : row.it.body
+                    // A whole message is plain text (paragraphs kept, nothing parsed).
+                    textFormat: row.reading ? Text.PlainText : Text.StyledText
                     size: 13; lineHeight: 1.18; color: Theme.textSecondary
                 }
             }

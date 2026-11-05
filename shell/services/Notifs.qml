@@ -201,6 +201,13 @@ Singleton {
             return sharing ? "Hidden while sharing your screen" : "Message hidden · Open to read";
         return String(item.body || "").replace(/\s+/g, " ");
     }
+    // The reading view (expanded peek, a selected row): the whole message
+    // when the sender sent it, paragraphs kept; else the body.
+    function fullForDisplay(item) {
+        if (!item) return "";
+        if (bodyHidden(item, true)) return bodyForDisplay(item, true);
+        return String(item.full || item.body || "");
+    }
 
     property var peek: null
     property var peekQueue: []

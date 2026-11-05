@@ -152,7 +152,9 @@ Item {
             Label {
                 visible: !!peek.item && (!!peek.item.body || peek.redacted) && peek.expanded && !peek.hiddenOpen
                 width: parent.width
-                height: Math.min(bodyScroll.contentHeight, 72)
+                // The whole message scrolls here (240 px when the sender sent
+                // it all; the short body needs 72).
+                height: Math.min(bodyScroll.contentHeight, peek.item && peek.item.full ? 240 : 72)
                 clip: true
                 Flickable {
                     id: bodyScroll
@@ -164,7 +166,7 @@ Item {
                         id: bodyLong
                         width: bodyScroll.width
                         wrapMode: Text.Wrap
-                        text: Notifs.bodyForDisplay(peek.item, true)
+                        text: Notifs.fullForDisplay(peek.item)
                         textFormat: Text.PlainText
                         size: 12; color: Theme.textSecondary
                     }
