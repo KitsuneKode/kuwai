@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# T3 Code's live work, for the island (services/T3Code.qml): one JSON line.
+#
+#   {"alive":true,"running":2,"waiting":0,"items":[{"status":"running","title":"…","provider":"…"}]}
+#
+# Read-only and local: T3 Code's own state database (statev2.sqlite, opened
+# with mode=ro) through an indexed query (~3 ms), only while its server is up
+# (server-runtime.json's pid). Nothing is written, nothing leaves the machine.
+# An unofficial interface: if T3 changes its schema this prints alive:false
+# rather than anything wrong.
+set -u
+DIR="${T3_USERDATA:-$HOME/.t3/userdata}"
+DB="$DIR/statev2.sqlite"
+none() { printf '{"alive":false,"running":0,"waiting":0,"items":[]}\n'; exit 0; }
+
+pid=$(jq -r '.pid // empty' "$DIR/server-runtime.json" 2>/dev/null) || none
+[[ "$pid" =~ ^[0-9]+$ ]] && kill -0 "$pid" 2>/dev/null || none
+[ -r "$DB" ] || none
+
+rows=$(timeout 3 sqlite3 -readonly -json "file:$DB?mode=ro" "
+  select r.status as status, r.provider as provider, coalesce(t.title, '') as title
+  from orchestration_v2_projection_runs r
+  left join orchestration_v2_projection_threads t on t.thread_id = r.thread_id
+  where r.status in ('queued','preparing','starting','running','waiting')
+    and t.deleted_at is null and t.archived_at is null
+  order by (r.status = 'waiting') desc, r.requested_at desc
+  limit 12;" 2>/dev/null) || none
+[ -n "$rows" ] || rows="[]"
+printf '%s' "$rows" | jq -c '{alive: true,
+    running: ([.[] | select(.status != "waiting")] | length),
+    waiting: ([.[] | select(.status == "waiting")] | length),
+    items: [.[] | {status, provider, title: (.title | .[0:80])}]}' 2>/dev/null || none

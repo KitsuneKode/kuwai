@@ -412,8 +412,8 @@ Scope {
             { k: ["⌃", "H"], t: "Show or hide a secret" },
             { k: ["⌃", "↵"], t: "Open it where it belongs (Cider, browser…)" } ] },
         { title: "Move", items: [
-            { k: ["←", "→"], t: "Previous or next card (while searching: the text cursor)" },
-            { k: ["↑", "↓"], t: "Previous or next card, even while searching" },
+            { k: ["←", "→"], t: "Previous or next card, always (also ↑ ↓)" },
+            { k: ["⌃", "← →"], t: "Move the search cursor by word (Home / End: its ends)" },
             { k: ["⇧", "← →"], t: "Mark several (⌃-click one, ⇧-click a run, ⌃A all)" },
             { k: ["PgUp", "PgDn"], t: "Five at a time" },
             { k: ["⌃", "Home"], t: "First or last (⌃End)" },
@@ -1375,24 +1375,21 @@ Scope {
         if (ql && k === Qt.Key_Space && shift) { reading = !reading; event.accepted = true; return; }
         if (ql && (k === Qt.Key_Escape || k === Qt.Key_Space || (ctrl && k === Qt.Key_Y))) { quickLook.open = false; reading = false; event.accepted = true; return; }
         if (ctrl && k === Qt.Key_K) { if (actionMenu) actionMenu.toggle(); }
-        else if (shift && (k === Qt.Key_Right || k === Qt.Key_Left) && field && field.text === "" && !ctrl) {
+        else if (shift && (k === Qt.Key_Right || k === Qt.Key_Left) && !ctrl) {
             const i = entries.findIndex(r => r.key === selKey);
             const j = Math.max(0, Math.min(entries.length - 1, i + (k === Qt.Key_Right ? 1 : -1)));
             if (i >= 0 && entries[j]) { mark(selKey, true); markRange(entries[j].key); }
         }
         else if (ctrl && k === Qt.Key_A && field && field.text === "") markAll();
         else if (k === Qt.Key_Escape && markedCount) clearMarks();
-        // One rule: with a search typed, ← → belong to the text (the caret,
-        // never jumping into the shelf at its ends); ↓ ↑ and Ctrl+N/P move
-        // between cards. With nothing typed, ← → move between cards too.
-        else if (k === Qt.Key_Right || k === Qt.Key_Down || (ctrl && k === Qt.Key_N)) {
-            if (k === Qt.Key_Right && field && field.text !== "" && !ql) return;
-            move(1);
-        }
-        else if (k === Qt.Key_Left || k === Qt.Key_Up || (ctrl && k === Qt.Key_P)) {
-            if (k === Qt.Key_Left && field && field.text !== "" && !ql) return;
-            move(-1);
-        }
+        // One rule, whatever is typed: ← → move between cards (the shelf is
+        // horizontal, as in macOS's Paste). The search keeps its editing keys:
+        // Backspace, Home / End, and Ctrl+← → to jump by word. (Switching ← →
+        // between caret and cards depending on the field felt like two tools.)
+        else if (ctrl && (k === Qt.Key_Left || k === Qt.Key_Right) && field && field.text !== "") return;
+        // (⌃P is Pin: it was also "previous card" here, first, so pinning broke.)
+        else if (k === Qt.Key_Right || k === Qt.Key_Down) move(1);
+        else if (k === Qt.Key_Left || k === Qt.Key_Up) move(-1);
         else if (k === Qt.Key_PageDown) move(5);
         else if (k === Qt.Key_PageUp) move(-5);
         else if (ctrl && k === Qt.Key_Home) move(-1e6);

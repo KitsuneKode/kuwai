@@ -3,6 +3,7 @@
 // island count, enter/exit, Esc). Left-click on the bell opens the center;
 // right-click, hold or Ctrl+click opens this.
 import QtQuick
+import Quickshell
 import qs.config
 import qs.components
 import qs.services
@@ -67,7 +68,10 @@ Popover {
             clip: true
             spacing: 8
             boundsBehavior: Flickable.StopAtBounds
-            model: pop.quick
+            // ScriptModel keeps the rows that stay (a plain array re-creates
+            // every delegate on each change: Quickshell docs). Same objects as
+            // Notifs.items, so identity is the right comparison.
+            model: ScriptModel { values: pop.quick; comparisonMode: ObjectComparison.Identity }
 
             delegate: Rectangle {
                 id: row

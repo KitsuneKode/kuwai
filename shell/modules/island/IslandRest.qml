@@ -455,6 +455,50 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             bar: rest.bar
         }
+        // T3 Code at work (services/T3Code): its icon and how many threads are
+        // running; orange with the count of those waiting for you. Click: T3.
+        Rectangle {
+            id: t3chip
+            visible: T3Code.total > 0
+            readonly property bool needsYou: T3Code.waiting > 0
+            readonly property color tone: needsYou ? Theme.orange : Theme.accent
+            anchors.verticalCenter: parent.verticalCenter
+            height: 22; radius: 11
+            width: t3row.implicitWidth + 14
+            color: t3area.containsMouse ? Qt.alpha(tone, 0.28) : Qt.alpha(tone, 0.16)
+            Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
+            Row {
+                id: t3row
+                anchors.centerIn: parent
+                spacing: 5
+                IconImage {
+                    anchors.verticalCenter: parent.verticalCenter
+                    implicitSize: 14
+                    source: Quickshell.iconPath("t3code-nightly", "t3code")
+                    asynchronous: true
+                }
+                Label {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: t3chip.needsYou ? String(T3Code.waiting) : String(T3Code.running)
+                    size: Theme.tSub; weight: Theme.wSemibold; rounded: true
+                    color: t3chip.tone
+                    font.features: ({ "tnum": 1 })
+                }
+            }
+            MouseArea {
+                id: t3area
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: T3Code.focus()
+            }
+            Tip {
+                shown: t3area.containsMouse; below: true
+                text: "T3 Code · " + T3Code.running + " running" + (T3Code.waiting ? " · " + T3Code.waiting + " waiting for you" : "")
+                    + T3Code.items.slice(0, 4).map(i => "\n" + (i.status === "waiting" ? "● " : "· ") + i.title).join("")
+                    + "\nClick to open"
+            }
+        }
         // Pending system updates: the count stays on the notch (the banner is once).
         Rectangle {
             visible: Updates.total > 0 && !Updates.running
