@@ -15,6 +15,8 @@
 #              and hypridle not running beside it
 #   memory     the shell's anonymous memory (Pss_Anon) under RICE_MEM_BUDGET_MB (450)
 #   cpu        the shell under 5 % CPU over 3 s at rest
+#   compile    every file in modules/ and components/ compiles (panels load on first
+#              open, so a broken one would otherwise hide until you open it)
 # Exit 0 = all good, 1 = something failed (listed).
 set -u
 QUIET=0; SHOTS=0
@@ -74,6 +76,15 @@ if [ -n "$anon" ] && [ "$anon" -le "$BUDGET" ]; then ok "memory: ${anon} MB (bud
 t0=$(awk '{print $14+$15}' /proc/$pid/stat); sleep 3; t1=$(awk '{print $14+$15}' /proc/$pid/stat)
 cpu=$(( (t1 - t0) * 100 / $(getconf CLK_TCK) / 3 ))
 [ "$cpu" -lt 5 ] && ok "cpu: ${cpu}% at rest" || bad "cpu: ${cpu}% at rest (want < 5)"
+
+# compile (after memory and cpu: compiling caches types)
+broken=""
+for f in $(cd "$root/shell" && find modules components -name '*.qml' | sort); do
+    r=$(qs ipc -p "$root/shell" call test compile "$f" </dev/null 2>&1)
+    [ "$r" = ok ] || broken="$broken
+      $f: $(printf '%s' "$r" | head -1 | cut -c1-160)"
+done
+if [ -z "$broken" ]; then ok "compile: every module and component"; else bad "compile:$broken"; fi
 
 # shots
 if [ $SHOTS = 1 ]; then

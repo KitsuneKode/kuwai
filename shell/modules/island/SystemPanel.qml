@@ -13,6 +13,7 @@ import Quickshell
 import Quickshell.Io
 import qs.config
 import qs.components
+import qs.components.ui
 import qs.services
 
 FocusScope {
@@ -148,10 +149,10 @@ FocusScope {
         // ── Quick switches and updates ───────────────────────────────────
         Row {
             spacing: 8
-            Switch { glyph: "\u{f0eb5}"; label: "Game mode"; on: sys.gameMode; onClicked: sys.toggleGame() }
-            Switch { glyph: "\u{f0594}"; label: "Night light"; on: Display.nightOn; onClicked: Display.toggleNight() }
-            Switch { glyph: "\u{f0176}"; label: "Caffeine"; on: Caffeine.on; onClicked: Caffeine.on = !Caffeine.on }
-            Switch { glyph: "\u{f009b}"; label: "Focus"; on: Notifs.dnd; onClicked: Notifs.dnd = !Notifs.dnd }
+            Tile { glyph: "\u{f0eb5}"; label: "Game mode"; on: sys.gameMode; onClicked: sys.toggleGame() }
+            Tile { glyph: "\u{f0594}"; label: "Night light"; on: Display.nightOn; onClicked: Display.toggleNight() }
+            Tile { glyph: "\u{f0176}"; label: "Caffeine"; on: Caffeine.on; onClicked: Caffeine.on = !Caffeine.on }
+            Tile { glyph: "\u{f009b}"; label: "Focus"; on: Notifs.dnd; onClicked: Notifs.dnd = !Notifs.dnd }
         }
         Item {
             width: parent.width; height: 34
@@ -172,57 +173,5 @@ FocusScope {
             MouseArea { id: updArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: Island.open("updates", Island.screen, "pointer", "island") }
         }
     }
-
-    component Card: Rectangle {
-        default property alias content: inner.data
-        width: parent ? parent.width : 576
-        height: inner.childrenRect.height + 28
-        radius: 14
-        color: Qt.rgba(1, 1, 1, 0.05)
-        Item { id: inner; x: 14; y: 14; width: parent.width - 28 }
-    }
-    component Meter: Column {
-        property string title
-        property real value
-        property string big: Math.round(value * 100) + "%"
-        property string detail
-        width: parent ? parent.width : 400
-        spacing: 6
-        Item {
-            width: parent.width; height: 26
-            Label { anchors.verticalCenter: parent.verticalCenter; text: parent.parent.title; size: 11; weight: Theme.wMedium; color: Theme.textTertiary }
-            Label { anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-                text: parent.parent.big; size: 20; weight: Theme.wSemibold; rounded: true; font.features: ({ "tnum": 1 }) }
-        }
-        Item {
-            width: parent.width; height: 8
-            Rectangle { anchors.fill: parent; radius: 4; color: Qt.rgba(1, 1, 1, 0.08) }
-            Rectangle {
-                width: Math.max(8, parent.width * Math.min(1, parent.parent.value)); height: parent.height; radius: 4
-                color: parent.parent.value > 0.9 ? Theme.red : parent.parent.value > 0.75 ? Theme.orange : Theme.accent
-                Behavior on width { NumberAnimation { duration: Theme.glideMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
-            }
-        }
-        Label { text: parent.detail; size: 11; color: Theme.textTertiary }
-    }
-    component Switch: Rectangle {
-        id: sw
-        property string glyph
-        property string label
-        property bool on
-        signal clicked()
-        height: 38; radius: 12
-        width: 138
-        color: on ? Qt.alpha(Theme.accent, 0.9) : swArea.containsMouse ? Theme.pillHover : Theme.pill
-        scale: swArea.pressed ? 0.96 : 1
-        Behavior on color { ColorAnimation { duration: Theme.colorMs } }
-        Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
-        Row {
-            anchors.centerIn: parent
-            spacing: 7
-            Text { anchors.verticalCenter: parent.verticalCenter; text: sw.glyph; font.family: Theme.fontGlyph; font.pixelSize: 15; color: sw.on ? "#111114" : Theme.textPrimary }
-            Label { anchors.verticalCenter: parent.verticalCenter; text: sw.label; size: 12; weight: Theme.wMedium; color: sw.on ? "#111114" : Theme.textPrimary }
-        }
-        MouseArea { id: swArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: sw.clicked() }
-    }
+    // Card, Meter, Tile: components/ui.
 }

@@ -6,6 +6,8 @@
 //   qs ipc -p <shell> call test agents   N WAITING          (N agents working, WAITING of them waiting)
 //   qs ipc -p <shell> call test timer    SECONDS LABEL
 //   qs ipc -p <shell> call test clear                       (back to the real state)
+//   qs ipc -p <shell> call test gallery  [on|off]           (the design system on one sheet; no keyboard)
+//   qs ipc -p <shell> call test compile  modules/x/Y.qml    (compiles it, makes nothing: "ok" or the error)
 // (Notification bursts: bin/rice-fixture, through the real D-Bus path.)
 //
 // Same reach as every other `qs ipc` call: your own user only.
@@ -19,6 +21,7 @@ Scope {
     id: hook
     property bool testing: false
     property var realFeed: null
+    LazyLoader { id: galleryLoader; active: false; Gallery {} }
     IpcHandler {
         target: "test"
         function moment(kind: string, label: string, value: string): void {
@@ -40,6 +43,15 @@ Scope {
             }
             Kittymux.feed = { version: 1, agents: list };
         }
+        // Panels load on first open, so a broken one hides until then; this
+        // compiles a file (types, imports, syntax) without creating it.
+        function compile(file: string): string {
+            const c = Qt.createComponent(Quickshell.shellDir + "/" + file, Component.PreferSynchronous);
+            const r = c.status === Component.Ready ? "ok" : c.status === Component.Error ? c.errorString() : "status " + c.status;
+            c.destroy();
+            return r;
+        }
+        function gallery(state: string): void { galleryLoader.active = state !== "off"; }
         function timer(seconds: int, label: string): void { Timers.start(seconds, label); }
         function clear(): void {
             Alerts.active = [];

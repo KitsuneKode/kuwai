@@ -29,6 +29,24 @@ Singleton {
     readonly property color fillDim: Qt.rgba(1, 1, 1, 0.32)
     readonly property color pill: Qt.rgba(1, 1, 1, 0.12)
     readonly property color pillHover: Qt.rgba(1, 1, 1, 0.22)
+    // Grouped content inside a panel (components/ui/Card): a whisper of a
+    // surface and a hairline, so cards separate without boxes everywhere.
+    readonly property color card: Qt.rgba(1, 1, 1, 0.05)
+    readonly property color cardEdge: Qt.rgba(1, 1, 1, 0.05)
+    // Tinted surfaces (Chip, Notice): the tone at these strengths.
+    readonly property real tintChip: 0.16
+    readonly property real tintNotice: 0.12
+
+    // ── Shape and space (docs/ROADMAP.md, Phase 2) ───────────────────────
+    readonly property int r1: 8          // small controls, thumbnails
+    readonly property int r2: 12         // tiles, switches
+    readonly property int r3: 16         // cards, notices
+    readonly property int r4: 22         // panels
+    readonly property int s1: 4
+    readonly property int s2: 8
+    readonly property int s3: 12
+    readonly property int s4: 16
+    readonly property int s5: 24
 
     // ── Text ─────────────────────────────────────────────────────────────
     // Over blur, flat grey washes out: keep secondary/tertiary brighter than

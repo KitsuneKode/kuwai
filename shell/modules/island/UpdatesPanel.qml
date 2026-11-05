@@ -19,6 +19,7 @@ import QtQuick
 import Quickshell
 import qs.config
 import qs.components
+import qs.components.ui
 import qs.services
 
 FocusScope {
@@ -70,36 +71,7 @@ FocusScope {
     NumberAnimation { id: swap; target: up; property: "enter"; from: 0; to: 1; duration: 220; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
 
     // ── Small building blocks ────────────────────────────────────────────
-    component Chip: Rectangle {
-        property string text
-        property color tone: Theme.textSecondary
-        property string glyph: ""
-        height: 22; radius: 11
-        width: chipRow.implicitWidth + 16
-        color: Qt.rgba(tone.r, tone.g, tone.b, 0.16)
-        Row {
-            id: chipRow
-            anchors.centerIn: parent
-            spacing: 4
-            Text { visible: parent.parent.glyph !== ""; anchors.verticalCenter: parent.verticalCenter; text: parent.parent.glyph; font.family: Theme.fontGlyph; font.pixelSize: 11; color: parent.parent.tone }
-            Label { anchors.verticalCenter: parent.verticalCenter; text: parent.parent.text; size: 11; weight: Theme.wMedium; color: parent.parent.tone }
-        }
-    }
-    // The rice's one button (components/RaisedButton), with this panel's old API.
-    component Button: RaisedButton {
-        property bool primary: false
-        kind: primary ? "primary" : "secondary"
-    }
-    component Card: Rectangle {
-        default property alias body: cardCol.data
-        width: parent ? parent.width : 0
-        height: cardCol.implicitHeight + 24
-        radius: 16
-        color: Qt.rgba(1, 1, 1, 0.045)
-        border.width: 1
-        border.color: Qt.rgba(1, 1, 1, 0.05)
-        Column { id: cardCol; x: 14; y: 12; width: parent.width - 28; spacing: 10 }
-    }
+    // Chip, Button, Card, Notice: components/ui (one primitive per job).
     component Version: Row {
         property string from
         property string to
@@ -109,28 +81,6 @@ FocusScope {
         Label { text: "  →  "; size: 11; color: Theme.textTertiary }
         Label { text: parent.split[0]; size: 11; color: Theme.textSecondary; font.features: ({ "tnum": 1 }) }
         Label { text: parent.split[1]; size: 11; weight: Theme.wSemibold; color: Theme.accent; font.features: ({ "tnum": 1 }) }
-    }
-    component Notice: Rectangle {
-        property string glyph
-        property string title
-        property string detail
-        property color tone: Theme.orange
-        property string action: ""
-        signal acted()
-        width: parent ? parent.width : 0
-        height: Math.max(48, nCol.implicitHeight + 20)
-        radius: 14
-        color: Qt.rgba(tone.r, tone.g, tone.b, 0.12)
-        Text { x: 14; anchors.verticalCenter: parent.verticalCenter; text: parent.glyph; font.family: Theme.fontGlyph; font.pixelSize: 17; color: parent.tone }
-        Column {
-            id: nCol
-            x: 42; anchors.verticalCenter: parent.verticalCenter
-            width: parent.width - 42 - (nAct.visible ? nAct.width + 24 : 14)
-            spacing: 2
-            Label { width: parent.width; elide: Text.ElideRight; text: parent.parent.title; size: 13; weight: Theme.wSemibold }
-            Label { width: parent.width; wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight; text: parent.parent.detail; size: 11; color: Theme.textSecondary; visible: text !== "" }
-        }
-        Button { id: nAct; visible: parent.action !== ""; text: parent.action; anchors.right: parent.right; anchors.rightMargin: 10; anchors.verticalCenter: parent.verticalCenter; height: 28; onClicked: parent.acted() }
     }
 
 

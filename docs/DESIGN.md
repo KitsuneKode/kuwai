@@ -135,3 +135,29 @@ Closing marks everything seen: blue dots and the bell's count clear.
 - Toasts: click acts (default action, then focus the app's window), right
   click, the hover close button or a swipe right dismisses.
 - Every surface gets an IPC entry (`bin/rice …`) so it can be bound to keys.
+
+## Primitives (`components/ui`)
+
+One primitive per job: no panel draws its own button, chip, card or notice.
+Import `qs.components.ui`; build only from `Theme` tokens (surfaces
+`card`/`cardEdge`, tints `tintChip`/`tintNotice`, radii `r1`–`r4` = 8/12/16/22,
+space `s1`–`s5` = 4/8/12/16/24). See them all: `qs ipc -p <shell> call test
+gallery on` (no keyboard taken), `off` to close.
+
+![The primitives](media/primitives.png)
+
+| Primitive | Use it for | Don't |
+| --- | --- | --- |
+| `Button` | `primary` (the one thing to do; at most one per view), `secondary`, `danger` (destroys something; still asks), `quiet` (the third action: "Details", "Later") | Two primaries side by side; danger for "Cancel" |
+| `Chip` | A state, a kind or a count next to a title ("Security", "AUR") | Making it clickable (use a Button) |
+| `Notice` | Something to know inside a panel, in its tone: orange needs you, red broke, green done; one action at most | Stacking three; using it for a toast (that's Notifs) |
+| `Card` | Grouping related rows inside a panel; children stack 10 px apart, 14 px in | Cards inside cards |
+| `Meter` | A level with its number (memory, disk, GPU): accent, orange > 75 %, red > 90 % | A meter for things that aren't levels |
+| `Tile` | Quick on/off for a mode (Caffeine, Focus), Control Center style: accent while on | A settings row (use `Toggle`) |
+| `Toggle` (`components/`) | A setting's on/off in a row: green while on, like iOS | A mode tile |
+| `Segmented`, `Slider`, `Tip`, `KeyCap`, `FocusRing` (`components/`) | Tabs, levels you drag, hover help, key hints, keyboard focus | Re-drawing any of them in a panel |
+
+States every pressable primitive has: hover (a wash, `colorMs`), press
+(scale 0.97, `pressMs`), disabled (tertiary ink, no press), keyboard focus
+(`FocusRing`, Tab reaches it, Space/Enter presses), a screen-reader role and
+name.
