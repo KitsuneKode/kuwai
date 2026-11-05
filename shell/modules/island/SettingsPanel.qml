@@ -389,7 +389,7 @@ FocusScope {
                 }
                 SettingsRow {
                     label: "Wake from sleep"
-                    detail: Alarms.canWake ? "On: the laptop wakes a minute before an alarm" : "Off: alarms ring when the laptop is next awake. Turn on once with: sudo ~/Projects/rice/system/install"
+                    detail: Alarms.canWake ? "On: the laptop wakes a minute before an alarm" : "Off: alarms ring when the laptop is next awake. Turn on once with: sudo " + Paths.root.replace(Quickshell.env("HOME"), "~") + "/system/install"
                 }
             }
             SettingsGroup {

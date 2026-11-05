@@ -124,7 +124,13 @@ cmd_doctor() {
     echo "Config"
     out=$(Hyprland --verify-config -c "$ENTRY" 2>&1); vrc=$?
     if [ $vrc -ge 128 ]; then
-        bad "Hyprland --verify-config crashed (signal $((vrc - 128))) — see coredumpctl"
+        # A crash of the verifier is Hyprland's bug, not a config error: in a
+        # session, the live config's own errors say whether it's fine.
+        if live && [ -z "$(hyprctl configerrors 2>/dev/null | tr -d '[:space:]')" ]; then
+            note "Hyprland --verify-config crashed (signal $((vrc - 128)), Hyprland's bug); the live config has no errors"
+        else
+            bad "Hyprland --verify-config crashed (signal $((vrc - 128))) — see coredumpctl"
+        fi
     elif [ $vrc -eq 0 ]; then
         res=$(printf '%s\n' "$out" | sed 's/\x1b\[[0-9;]*m//g' | sed -n '/Config parsing result:/,$p' | tail -n +2 | sed '/^$/d')
         if [ "$res" = "config ok" ]; then ok "Hyprland --verify-config: ok"; else bad "verify-config:"; printf '%s\n' "$res" | sed 's/^/      /'; fi
@@ -161,7 +167,12 @@ cmd_doctor() {
     else
         note "not inside Hyprland — session checks skipped"
     fi
-    for u in hypridle.service voxtype.service gcr-ssh-agent.socket rice-clipboard.service rice-feeds.service; do
+    # hypridle only when settings hand idle to it (else the shell's services/Idle does it).
+    idle_owner=$(jq -r '.idleOwner // "shell"' "${XDG_CONFIG_HOME:-$HOME/.config}/rice/settings.json" 2>/dev/null || echo shell)
+    if [ "$idle_owner" = hypridle ]; then units="hypridle.service"; else units=""
+        systemctl --user is-active --quiet hypridle.service && bad "hypridle runs beside the shell's idle: systemctl --user stop hypridle" || ok "idle: the shell's (hypridle off)"
+    fi
+    for u in $units voxtype.service gcr-ssh-agent.socket rice-clipboard.service rice-feeds.service; do
         st=$(systemctl --user is-active "$u" 2>/dev/null); [ "$st" = active ] && ok "$u" || note "$u: $st"
     done
     # Password prompts: kuwai's (rice-auth), or KDE's as the fallback; never none.
@@ -245,7 +256,12 @@ cmd_rescue() {
     systemctl --user restart rice-feeds.service && echo "  ✓ GitHub and Gmail notifications restarted"
     : > "$rt/auth-pending" 2>/dev/null
     "$ROOT/bin/rice-shell" >/dev/null 2>&1 && echo "  ✓ island shell restarted"
-    systemctl --user is-active --quiet hypridle.service || { systemctl --user start hypridle.service && echo "  ✓ idle (hypridle) started"; }
+    # Idle: the shell's own (services/Idle) unless settings hand it to hypridle.
+    if [ "$(jq -r '.idleOwner // "shell"' "${XDG_CONFIG_HOME:-$HOME/.config}/rice/settings.json" 2>/dev/null)" = hypridle ]; then
+        systemctl --user is-active --quiet hypridle.service || { systemctl --user start hypridle.service && echo "  ✓ idle (hypridle) started"; }
+    else
+        systemctl --user stop hypridle.service 2>/dev/null; echo "  ✓ idle is the shell's (lock, dim, sleep)"
+    fi
     if [ "$(faillock --user "$USER" 2>/dev/null | grep -c ' V$')" -gt 0 ]; then echo "  • failed password tries recorded: kuwai auth reset-tries clears them"; fi
     echo "  then: kuwai doctor"
 }
