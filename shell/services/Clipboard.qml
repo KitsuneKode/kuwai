@@ -201,7 +201,10 @@ Singleton {
         if (!list.length) return;
         const top = list[0].id;
         // The island shows what was just copied (not what was there at start).
-        if (lastTop !== "" && top !== lastTop) copied(list[0]);
+        if (lastTop !== "" && top !== lastTop) {
+            copied(list[0]);
+            if (list[0].secret) expireSoon(list[0].id);
+        }
         lastTop = top;
     }
     FileView {
@@ -216,6 +219,35 @@ Singleton {
                 if (tab > 0) t[line.slice(0, tab)] = Number(line.slice(tab + 1));
             }
             root.times = t;
+        }
+    }
+
+    // ── Secrets leave history after a minute ─────────────────────────────
+    // Password managers mark their copies (x-kde-passwordManagerHint), and
+    // cliphist never stores those. What it can't know: an API key, a token,
+    // a private key you copied by hand (looksSecret). Those stay long enough
+    // to paste, then leave the history (not the clipboard itself, and never
+    // a pin: pinning one is saying "keep it").
+    readonly property int secretSecs: 60
+    property var expiring: []                 // [{ id, at }]
+    function expireSoon(id) {
+        if (expiring.some(x => x.id === id)) return;
+        expiring = [...expiring, { id: id, at: Date.now() + secretSecs * 1000 }];
+    }
+    Timer {
+        interval: 5000; repeat: true
+        running: root.expiring.length > 0
+        onTriggered: {
+            const now = Date.now();
+            const due = root.expiring.filter(x => x.at <= now);
+            if (!due.length) return;
+            root.expiring = root.expiring.filter(x => x.at > now);
+            for (const x of due) {
+                const e = root.items.find(i => i.id === x.id);
+                if (e && root.isPinned(e)) continue;
+                root.items = root.items.filter(i => i.id !== x.id);
+                root.run(["delete", x.id]);
+            }
         }
     }
 

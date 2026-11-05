@@ -44,16 +44,16 @@ session), *you* (needs the user).
 
 ## Phase 1: reliability first (target: Reliability 8)
 
-- [ ] **Test hook** (`qs ipc … call test …`, dev only): inject a moment,
+- [x] **Test hook** (`qs ipc … call test …`, dev only): inject a moment,
   a device connect/disconnect, a charger state, an agent list (working /
   waiting / done), a timer, an alert, a notification burst. **Done when**
   every island state in `docs/ISLAND.md` can be shown without real hardware.
-- [ ] **`rice-check`**: the shell loaded with no "caused by"; no orphaned
+- [x] **`rice-check`**: the shell loaded with no "caused by"; no orphaned
   helpers (inhibitors, gdbus, systemd-inhibit) outside the running shell;
   memory under budget (Pss_Anon < 450 MB idle); one sleep guard; hypridle
   off while the shell owns idle. **Done when** `rice promote` runs it and
   refuses on failure (`--force` to override).
-- [ ] **State screenshots**: `rice-check --shots` drives the test hook
+- [x] **State screenshots**: `rice-check --shots` drives the test hook
   and saves island / toast / center states to `~/.cache/rice/shots/<commit>/`
   (never opening keyboard-grabbing panels unless `--interactive`).
 - [ ] **Split the branch** (*you* + all): island moments · proximity ·
@@ -61,18 +61,18 @@ session), *you* (needs the user).
 
 ## Phase 2: one design system (target: Consistency 9)
 
-- [ ] **Primitives** in `components/ui/`: `Button` (primary · secondary ·
+- [x] **Primitives** in `components/ui/`: `Button` (primary · secondary ·
   danger · quiet), `IconButton`, `Chip`, `Card`, `Notice`, `Switch`,
   `Segmented`, `Slider`, `Menu`, `Tooltip`, `ListRow`, `Sheet`, `Field`,
   `KeyHint`, `Badge`, `Ring`. Built only from `Theme` tokens.
-- [ ] **Replace the copies**: UpdatesPanel's Chip/Card/Notice, RowChip,
+- [~] **Replace the copies** (UpdatesPanel, SystemPanel done): UpdatesPanel's Chip/Card/Notice, RowChip,
   QuickIcon, PillButton/RaisedButton, the several Segmented and toggle
   variants. **Done when** `rg "component (Chip|Card|Button|Notice)"`
   finds nothing outside `components/ui/`.
 - [ ] **Tokens audit**: every literal colour, radius, duration and font
   size in `modules/` moves to `Theme` (spacing scale 4/8/12/16/24, radii
   8/12/16/22, type scale 11/12/13/15/17/22/34).
-- [ ] **docs/DESIGN.md**: each primitive with a screenshot, states and
+- [x] **docs/DESIGN.md**: each primitive with a screenshot, states and
   do/don't.
 
 ## Phase 3: settings you can click (target: Settings 8.5)
@@ -97,23 +97,24 @@ session), *you* (needs the user).
   single biggest RAM/heat win (14 GB, ~3 cores).
 - [ ] Screensaver: 10 start/stop cycles with no growth; Dusk under 5 %
   CPU.
-- [ ] Kittymux `agents.json` (kittymux plan 014) replaces the 20 s poll.
+- [x] Kittymux `agents.json` (kittymux plan 014) replaces the 20 s poll.
 
 ## Phase 5: productivity, the Apple way (target: Productivity 8.5)
 
-- [ ] **Quick note**: from the island (hover → note) or Super+N twice; a
+- [~] **Quick note** (launcher `note …`, `rice note`, ~/Notes/inbox.md done; the sheet and Super+N still open): from the island (hover → note) or Super+N twice; a
   sheet that saves to `~/Notes/inbox.md` (Markdown, timestamped); search
   in the launcher.
-- [ ] **Reminders**: "remind me at 5 to call mum" / "in 20m stretch" in
+- [x] **Reminders**: "remind me at 5 to call mum" / "in 20m stretch" in
   the launcher; kept in `~/.local/share/rice/reminders.json`; an island
   moment and a toast with Snooze/Done; survive restarts and sleep.
-- [ ] **Pomodoro**: the timer with cycles (25/5 ×4, 15 long), a ring in
+- [x] **Pomodoro**: the timer with cycles (25/5 ×4, 15 long), a ring in
   the notch, Focus on during work blocks (optional).
 - [ ] **Alarm**: a time of day that wakes the laptop (`rtcwake`/systemd
   timer with WakeSystem through the root helper or a user timer), plays
   through the lock screen.
-- [ ] **Clipboard**: browser passwords (no hint) filtered by window
-  class rules; expire sensitive entries after 60 s.
+- [x] **Clipboard**: password-manager copies never stored (cliphist reads
+  the hint); keys and tokens that look secret leave history after 60 s.
+  (Window-class rules for hint-less browsers: still open.)
 
 ## Phase 6: security and edge cases (target: Security 8.5)
 
