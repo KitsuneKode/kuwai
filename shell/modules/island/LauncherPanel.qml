@@ -120,7 +120,7 @@ FocusScope {
     }
     Process {
         id: fxFetch
-        command: ["sh", "-c", "mkdir -p \"$(dirname \"$1\")\" && curl -sf --max-time 6 https://open.er-api.com/v6/latest/USD -o \"$1.tmp\" && mv -f \"$1.tmp\" \"$1\"", "sh", launcher.fxPath]
+        command: ["sh", "-c", "mkdir -p \"$(dirname \"$1\")\" && curl -sf --max-time 6 --max-filesize 512K --proto =https https://open.er-api.com/v6/latest/USD -o \"$1.tmp\" && mv -f \"$1.tmp\" \"$1\"", "sh", launcher.fxPath]
     }
     readonly property var convert: {
         const m = /^(-?[\d.,]+)\s*([a-z°]+)\s*(?:to|in|->|=|as)\s*([a-z°]+)$/i.exec(query.trim());

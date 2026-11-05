@@ -261,14 +261,18 @@ AVATARS = os.path.expanduser("~/.cache/rice/feeds/avatars")
 
 def avatar(login, url):
     """Their GitHub picture as a file URL (fetched once, then cached)."""
-    if not login or not url:
+    # Only GitHub's own avatar host, at most 1 MB (the URL comes from the API).
+    if not login or not url or not url.startswith("https://avatars.githubusercontent.com/"):
         return ""
     path = os.path.join(AVATARS, re.sub(r"[^\w.-]", "_", login) + ".png")
     if not os.path.exists(path) or time.time() - os.path.getmtime(path) > 7 * 86400:
         try:
             os.makedirs(AVATARS, exist_ok=True)
             with urllib.request.urlopen(url + ("&" if "?" in url else "?") + "s=96", timeout=10) as r, open(path + ".tmp", "wb") as f:
-                f.write(r.read())
+                data = r.read(1024 * 1024 + 1)
+                if len(data) > 1024 * 1024:
+                    raise ValueError("avatar too large")
+                f.write(data)
             os.replace(path + ".tmp", path)
         except Exception:
             return "file://" + path if os.path.exists(path) else ""

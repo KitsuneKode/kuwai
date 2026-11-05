@@ -56,7 +56,7 @@ Singleton {
                 case $src in
                     http://*|https://*|webcal://*)
                         url=$(printf %s "$src" | sed 's#^webcal://#https://#')
-                        curl -sfL --max-time 15 "$url" -o "$dir/$i.ics.tmp" && mv -f "$dir/$i.ics.tmp" "$dir/$i.ics"
+                        curl -sfL --max-time 15 --max-filesize 8M --proto =https,http --proto-redir =https "$url" -o "$dir/$i.ics.tmp" && mv -f "$dir/$i.ics.tmp" "$dir/$i.ics"
                         f="$dir/$i.ics" ;;
                     "~/"*) f="$HOME/\${src#\\~/}" ;;
                     *) f=$src ;;

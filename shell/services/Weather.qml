@@ -34,7 +34,7 @@ Singleton {
 
     Process {
         id: fetch
-        command: ["curl", "-sf", "--max-time", "8", "https://wttr.in/" + encodeURIComponent(root.location) + "?format=j1"]
+        command: ["curl", "-sf", "--max-time", "8", "--max-filesize", "512K", "--proto", "=https", "https://wttr.in/" + encodeURIComponent(root.location) + "?format=j1"]
         stdout: StdioCollector {
             onStreamFinished: {
                 try {
