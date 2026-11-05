@@ -288,9 +288,9 @@ group("Hardware|Brightness")
 local BR = K.exists(K.home .. "/Scripts/brightness.sh") and (K.home .. "/Scripts/brightness.sh ") or nil
 bind("XF86MonBrightnessUp", "Brighter", BR and (BR .. "i") or "brightnessctl -e4 -n2 set 5%+", lr)
 bind("XF86MonBrightnessDown", "Dimmer", BR and (BR .. "d") or "brightnessctl -e4 -n2 set 5%-", lr)
+bind("F8", "Brighter", BR and (BR .. "i") or "brightnessctl -e4 -n2 set 5%+", lr)
+bind("F7", "Dimmer", BR and (BR .. "d") or "brightnessctl -e4 -n2 set 5%-", lr)
 if BR then
-	bind("F8", "Brighter", BR .. "i", lr)
-	bind("F7", "Dimmer", BR .. "d", lr)
 	bind(S .. " + ALT + F7", "Brightness: this screen / all", BR .. "toggle")
 end
 

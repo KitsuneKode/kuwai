@@ -59,8 +59,10 @@ Item {
     readonly property real miniCore: clock.width + (soonText ? soonLabel.implicitWidth + 12 : 0)
     readonly property real miniContent: miniCore + 2 * miniSide
     readonly property real miniPad: Math.max(miniSide, (56 - miniCore) / 2)
+    readonly property bool momentUnified: activity === "moment" && Moments.now && (Moments.now.kind === "hello" || Moments.now.kind === "focus" || Moments.now.kind === "caffeine")
     implicitWidth: mini ? Math.max(56, miniContent)
-                 : compact ? Math.max(activity === "moment" ? 220 : 78, leftGroup.implicitWidth + rightGroup.implicitWidth + gaps)
+                 : compact ? (momentUnified ? Math.max(56, leftGroup.implicitWidth + gaps)
+                              : Math.max(activity === "moment" ? 220 : 78, leftGroup.implicitWidth + rightGroup.implicitWidth + gaps))
                  : balanced ? side * 2 + clockW + gaps
                             : leftGroup.implicitWidth + rightGroup.implicitWidth + clockW + gaps
     implicitHeight: 32
@@ -145,6 +147,14 @@ Item {
             text: parent.m.label || ""
             size: 13; weight: Theme.wSemibold
             color: Theme.textPrimary
+        }
+        Label {
+            visible: !!parent.m.value && (parent.m.kind === "hello" || parent.m.kind === "focus" || parent.m.kind === "caffeine")
+            anchors.verticalCenter: parent.verticalCenter
+            text: parent.m.value ? " · " + parent.m.value : ""
+            size: 13; weight: Theme.wMedium; rounded: true
+            color: parent.m.tone || Theme.textSecondary
+            font.features: ({ "tnum": 1 })
         }
     }
     // The live activity, as one thing: its icon or ring and, with the full
@@ -437,12 +447,13 @@ Item {
     // ── Trailing ─────────────────────────────────────────────────────────
     // The moment's state: a battery ring, or "On", or "20 %" with a battery.
     Row {
-        visible: rest.activity === "moment"
+        visible: rest.activity === "moment" && !rest.momentUnified
         anchors.verticalCenter: parent.verticalCenter
         spacing: 6
         readonly property var m: Moments.now || ({})
         Label {
-            visible: parent.m.ring === undefined || parent.m.ring < 0 || parent.m.kind !== "device"
+            visible: (parent.m.ring === undefined || parent.m.ring < 0 || parent.m.kind !== "device")
+                     && parent.m.kind !== "hello" && parent.m.kind !== "focus" && parent.m.kind !== "caffeine"
             anchors.verticalCenter: parent.verticalCenter
             text: parent.m.value || ""
             size: 13; weight: Theme.wSemibold; rounded: true

@@ -24,6 +24,10 @@ Last reviewed: 2026-11-05.
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
+| Welcome back pill empty on the right | `away` was blank for short unlocks; moment split label/value across island sides | Fixed: unified hello row + “Unlocked” when <1 min |
+| Notch stuck after fast unlock | Welcome moment queued behind another; island width min 220 | Hello cuts in; +520 ms delay after unlock anim |
+| Volume HUD looks unlike notch | OSD is a separate layer but **morphs from island width** when `Settings.bar === island`; lock/greeter use **LockOsd** (bottom pill) | Session: island bar + `brightness.sh watch --part osd`; greeter: brightness only without PipeWire user |
+| F7/F8 do nothing | Binds only existed when `~/Scripts/brightness.sh` present | Now fall back to `brightnessctl` always |
 | No WhatsApp toasts | DND, shell down, ZapZap backend disabled | `rice doctor`; restart ZapZap after shell outage |
 | Double notifications | Hot reload + keepOnReload | By design; dismiss duplicates |
 | Limit alert on every reload | Seeding | First snapshot seeds without alert (`alertSeeded`) |

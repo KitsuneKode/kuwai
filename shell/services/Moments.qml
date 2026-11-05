@@ -30,7 +30,7 @@ Singleton {
     property int nowMs: 0
     property var queue: []            // [{ m, ms }]
     function show(m, ms) {
-        if (now && now.kind !== m.kind && m.kind === "copied") {
+        if (now && now.kind !== m.kind && (m.kind === "copied" || m.kind === "hello")) {
             queue = [{ m: now, ms: nowMs }].concat(queue);
             now = null;
         } else if (now && now.kind !== m.kind) {
@@ -252,7 +252,7 @@ Singleton {
     // Lock.qml, on the right password: how long you were away.
     function welcomeBack(since) {
         const m = Math.round((Date.now() - since) / 60000);
-        const away = m < 1 ? "" : m < 60 ? "away " + m + " min" : "away " + Math.floor(m / 60) + " h " + (m % 60) + " min";
+        const away = m < 1 ? "Unlocked" : m < 60 ? "away " + m + " min" : "away " + Math.floor(m / 60) + " h " + (m % 60) + " min";
         show({ kind: "hello", image: face, round: true, label: "Welcome back", value: away, ring: -1, tone: Theme.textSecondary }, 2800);
     }
 

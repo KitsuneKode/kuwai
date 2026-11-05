@@ -41,14 +41,16 @@ Scope {
         root.leaving = false;
         root.unlocked();
         if (root.openAfter && !root.openAfter.discard) Notifs.activate(root.openAfter);
-        else Moments.welcomeBack(root.lockedAt);
+        else welcomeLater.restart();
         root.openAfter = null;
     } }
+    Timer { id: welcomeLater; interval: 520; onTriggered: Moments.welcomeBack(root.lockedAt) }
 
     readonly property string flag: Paths.lockFlag
     function lock() {
         password = ""; error = ""; checking = false;
         release.stop(); leaving = false;
+        welcomeLater.stop();
         lockedAt = Date.now();
         openAfter = null;
         mark.command = ["sh", "-c", 'mkdir -p "$(dirname "$1")" && : > "$1"', "sh", flag];
