@@ -30,6 +30,11 @@ Scope {
         Qt.callLater(root.searchRequested);
     }
     property bool armed: false
+    // Built only while used: open, and 10 s after (the close animation, and a
+    // quick reopen stays instant). It used to be mapped for good on every
+    // screen as a 1×1 surface with the whole chat UI inside.
+    property bool alive: open
+    Timer { id: linger; interval: 10000; onTriggered: root.alive = root.open }
 
     Timer {
         id: armTimer
@@ -39,11 +44,14 @@ Scope {
 
     onOpenChanged: {
         if (open) {
+            linger.stop();
+            alive = true;
             armed = false;
             armTimer.restart();
         } else {
             armTimer.stop();
             armed = false;
+            linger.restart();
             // Closing doesn't decline: the request waits (it times out on its own) and you get a
             // notification to come back to it; the turn carries on in the background.
             if (OllamaService.pendingRequest) OllamaService.notifyPending();
@@ -53,9 +61,13 @@ Scope {
     Variants {
         model: Quickshell.screens
 
+        LazyLoader {
+            id: slot
+            required property ShellScreen modelData
+            active: root.alive
         PanelWindow {
             id: win
-            required property ShellScreen modelData
+            readonly property ShellScreen modelData: slot.modelData
             screen: modelData
 
             readonly property bool isTarget: Assistant.targetScreen === "" || Assistant.targetScreen === modelData.name || Quickshell.screens.length === 1
@@ -852,6 +864,7 @@ Scope {
                     }
                 }
             }
+        }
         }
     }
 }
