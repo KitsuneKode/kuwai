@@ -247,7 +247,7 @@ Item {
             width: 28
             glyph: "\u{f0594}"                     // moon
             text: ""
-            tint: Notifs.muted ? "#5e5ce6" : "transparent"
+            tint: Notifs.muted ? Theme.indigo : "transparent"
             onClicked: Notifs.toggleUserDnd()
         }
         PillButton {

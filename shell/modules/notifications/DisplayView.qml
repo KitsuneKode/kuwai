@@ -138,7 +138,7 @@ Item {
                     title: "Do Not Disturb"
                     subtitle: Notifs.dnd ? "On" : "Off"
                     on: Notifs.dnd
-                    tone: "#5e5ce6"
+                    tone: Theme.indigo
                     onToggled: Notifs.toggleUserDnd()
                 }
                 Tile {
@@ -170,7 +170,7 @@ Item {
                     title: "Reduce Motion"
                     subtitle: Theme.reduceMotion ? (Theme.envReduce || Theme.hyprStill ? "On (system)" : "On") : "Off"
                     on: Theme.reduceMotion
-                    tone: "#64d2ff"
+                    tone: Theme.cyan
                     onToggled: Theme.setReduceMotion(!Theme.reduceMotion)
                 }
                 Tile {

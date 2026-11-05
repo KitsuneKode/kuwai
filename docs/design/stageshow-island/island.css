@@ -1,0 +1,262 @@
+/* kuwai's island. Stage px; the notch hangs from the screen's top edge at x 450. */
+.kw {
+  --kw-accent: #3b9bff;
+  --kw-accent-soft: rgba(59, 155, 255, 0.18);
+  --kw-on-accent: #fff;
+  --kw-orange: #ff9f0a;
+  --kw-green: #30d158;
+  --kw-t1: rgba(255, 255, 255, 0.96);
+  --kw-t2: rgba(255, 255, 255, 0.72);
+  --kw-t3: rgba(255, 255, 255, 0.5);
+  --kw-row: rgba(255, 255, 255, 0.06);
+  --kw-font: 'SF Pro Text', 'Inter', system-ui, sans-serif;
+  /* The kit's bars on near-black */
+  --ss-bar: rgba(255, 255, 255, 0.14);
+
+  .ss-stage {
+    overflow: hidden;
+    /* The desktop: a deep, quiet wallpaper with one cool light from above */
+    background:
+      radial-gradient(60% 70% at 50% -10%, rgba(70, 110, 200, 0.35), rgba(70, 110, 200, 0) 70%),
+      radial-gradient(50% 60% at 85% 110%, rgba(120, 70, 160, 0.22), rgba(120, 70, 160, 0) 70%),
+      linear-gradient(180deg, #121624 0%, #0b0d15 100%);
+  }
+}
+
+.kw-desk {
+  position: absolute;
+  inset: 0;
+  font-family: var(--kw-font);
+}
+.kw-desk[data-layout='compact'] { --kw-cx: 179px; }
+.kw-desk { --kw-cx: 450px; }
+
+/* Filler windows, below and out of focus */
+.kw-win {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 44px 20px;
+  border-radius: 14px;
+  background: rgba(24, 27, 38, 0.9);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 30px 60px rgba(0, 0, 0, 0.45);
+  filter: blur(1.2px);
+  opacity: 0.75;
+}
+.kw-win--a { left: 60px; top: 150px; width: 420px; height: 330px; }
+.kw-win--b { left: 520px; top: 190px; width: 340px; height: 300px; }
+.kw-desk[data-layout='compact'] .kw-win--a { left: 12px; top: 210px; width: 250px; }
+.kw-desk[data-layout='compact'] .kw-win--b { left: 200px; top: 250px; width: 200px; }
+
+/* ---- The island ---- */
+.kw-island {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+.kw-shape {
+  position: absolute;
+  top: 0;
+  left: var(--kw-cx);
+  translate: -50% 0;
+  background: #000;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5), inset 0 -1px 0 rgba(255, 255, 255, 0.06);
+  transition-property: width, height, border-radius;
+  will-change: width, height;
+}
+
+/* Every presentation's content sits at its final size and fades/blurs as one
+   group: out fast (90 ms) before the edge passes it, in once the shape is
+   mostly there (160 ms late). Nothing inside ever scales with the shape. */
+.kw-layer {
+  position: absolute;
+  top: 0;
+  left: var(--kw-cx);
+  translate: -50% 0;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  color: var(--kw-t1);
+  opacity: 0;
+  filter: blur(6px);
+  scale: 0.97;
+  transition: opacity 0.09s ease-out, filter 0.09s ease-out, scale 0.09s ease-out;
+  /* A lasting layer: text lands exactly where it rests, no sub-pixel hop */
+  will-change: transform, opacity, filter;
+}
+.kw-layer[data-on] {
+  opacity: 1;
+  filter: blur(0);
+  scale: 1;
+  transition: opacity 0.22s ease-out 0.16s, filter 0.22s ease-out 0.16s, scale 0.3s cubic-bezier(0.23, 1, 0.32, 1) 0.16s;
+}
+
+/* Rest: count · clock · battery. The clock is the centre of the notch. */
+.kw-rest { justify-content: center; padding: 0 14px; }
+.kw-clock {
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+.kw-chip {
+  position: absolute;
+  left: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 22px;
+  min-width: 36px;
+  justify-content: center;
+  padding: 0 8px 0 6px;
+  box-sizing: border-box;
+  will-change: transform;
+  border-radius: 11px;
+  background: var(--kw-accent-soft);
+  color: var(--kw-accent);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  opacity: 0;
+  scale: 0.6;
+  transition: opacity 0.18s ease-out, scale 0.38s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+.kw-chip[data-on] { opacity: 1; scale: 1; }
+.kw-batt {
+  position: absolute;
+  right: 14px;
+  width: 22px;
+  height: 11px;
+  border-radius: 3.5px;
+  box-shadow: inset 0 0 0 1.2px rgba(255, 255, 255, 0.45);
+  padding: 2px;
+  box-sizing: border-box;
+}
+.kw-batt__fill { display: block; width: 70%; height: 100%; border-radius: 1.5px; background: var(--kw-t1); }
+
+/* Banner */
+.kw-banner { gap: 12px; padding: 14px 16px 14px 16px; padding-top: 18px; }
+.kw-badge {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: var(--kw-accent-soft);
+  color: var(--kw-accent);
+}
+.kw-banner__words { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.kw-banner__title { font-size: 14px; font-weight: 600; line-height: 1.3; }
+.kw-banner__sub { font-size: 12px; color: var(--kw-t2); line-height: 1.3; }
+
+.kw .kw-primary {
+  --ss-accent: var(--kw-accent);
+  flex: none;
+  border-radius: 999px;
+  padding: 0 14px;
+  font-weight: 600;
+  transition: opacity 0.2s ease-out;
+}
+.kw .kw-primary[data-dim] { opacity: 0.4; }
+
+/* Panel */
+.kw-panel {
+  flex-direction: column;
+  align-items: stretch;
+  padding: 18px 16px 14px;
+  gap: 12px;
+}
+.kw-panel__head { display: flex; flex-direction: column; gap: 3px; padding: 0 4px; }
+.kw-panel__title { font-size: 15px; font-weight: 600; line-height: 1.3; }
+.kw-panel__sub { font-size: 12px; color: var(--kw-t3); line-height: 1.3; }
+.kw-rows { display: flex; flex-direction: column; gap: 6px; }
+.kw-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 52px;
+  padding: 0 12px;
+  border-radius: 14px;
+  background: var(--kw-row);
+  transition: background-color 0.24s ease-out, box-shadow 0.24s ease-out;
+}
+.kw-row[data-bad] {
+  background: rgba(255, 159, 10, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(255, 159, 10, 0.28);
+}
+.kw-row__tile {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #b9bcc6;   /* opaque: a translucent glyph shows its own overlaps */
+}
+.kw-row[data-skel] .kw-row__tile { background: rgba(255, 255, 255, 0.07); }
+.kw-row__words { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.kw-row__title { font-size: 13px; font-weight: 600; line-height: 1.3; min-height: 17px; display: flex; align-items: center; }
+.kw-row__sub { font-size: 12px; color: var(--kw-t3); line-height: 1.3; min-height: 16px; display: flex; align-items: center; font-variant-numeric: tabular-nums; }
+.kw-row__err { color: var(--kw-orange); }
+.kw-row__end { flex: none; display: flex; align-items: center; justify-content: flex-end; min-width: 58px; }
+.kw-tag {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--kw-t2);
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+.kw .kw-retry { border-radius: 999px; padding: 0 12px; }
+.kw-spin { color: var(--kw-orange); }
+/* The skeleton breathes, so it reads as working, not empty */
+.kw-row[data-skel] .ss-bar { animation: kw-breathe 1.4s ease-in-out infinite; }
+@keyframes kw-breathe { 50% { opacity: 0.55; } }
+
+.kw-panel__foot { display: flex; align-items: center; justify-content: space-between; padding: 2px 4px 0; margin-top: auto; }
+
+/* Progress */
+.kw-progress { gap: 10px; padding: 0 16px; }
+.kw-ring { flex: none; rotate: -90deg; }
+.kw-ring__track { fill: none; stroke: #2a2c33; stroke-width: 2.6; }
+.kw-ring__arc {
+  fill: none;
+  stroke: var(--kw-accent);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  transition: stroke-dashoffset 0.7s cubic-bezier(0.23, 1, 0.32, 1);
+}
+.kw-progress__words { font-size: 13px; font-weight: 600; }
+.kw-progress__step { margin-left: auto; font-size: 12px; color: var(--kw-t2); font-variant-numeric: tabular-nums; }
+
+/* Done */
+.kw-done { gap: 9px; justify-content: center; }
+.kw .kw-check { --ss-success: var(--kw-green); }
+.kw-done__words { font-size: 13px; font-weight: 600; }
+
+/* Compact (phone column): the island keeps its sizes but the panel narrows */
+.kw-desk[data-layout='compact'] .kw-shape,
+.kw-desk[data-layout='compact'] .kw-layer { max-width: 342px; }
+
+/* Crossfade cells: each state sits in the same grid cell, mounted for good */
+.kw-row__end, .kw-stack, .kw-row__tile { display: grid; }
+.kw-row__end > *, .kw-stack > *, .kw-row__tile > * { grid-area: 1 / 1; align-self: center; justify-self: end; }
+.kw-stack > * { justify-self: start; }
+.kw-row__tile > * { justify-self: center; display: grid; place-items: center; }
+.kw-fade {
+  opacity: 0;
+  filter: blur(3px);
+  transition: opacity 0.14s ease-out, filter 0.14s ease-out;
+  pointer-events: none;
+}
+.kw-fade[data-on] {
+  opacity: 1;
+  filter: blur(0);
+  transition: opacity 0.22s ease-out 0.06s, filter 0.22s ease-out 0.06s;
+  pointer-events: auto;
+}

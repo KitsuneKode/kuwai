@@ -28,7 +28,7 @@ Scope {
     IpcHandler {
         target: "test"
         function moment(kind: string, label: string, value: string): void {
-            const tone = { focus: "#bf5af2", battery: Theme.red, timer: Theme.green, agent: Theme.orange }[kind] || Theme.textPrimary;
+            const tone = { focus: Theme.focus, battery: Theme.red, timer: Theme.green, agent: Theme.orange }[kind] || Theme.textPrimary;
             Moments.show({ kind: kind, glyph: "\u{f02cb}", label: label, value: value, ring: -1, tone: tone }, 4000);
         }
         function alert(level: string, title: string): void {

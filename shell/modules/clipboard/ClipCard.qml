@@ -159,7 +159,7 @@ Item {
                     text: card.file0 && card.file0.dir ? "\u{f024b}" : "\u{f0214}"
                     font.family: Theme.fontGlyph
                     font.pixelSize: 34
-                    color: card.file0 && card.file0.dir ? "#64d2ff" : Theme.textSecondary
+                    color: card.file0 && card.file0.dir ? Theme.cyan : Theme.textSecondary
                 }
                 Label {
                     anchors.horizontalCenter: parent.horizontalCenter

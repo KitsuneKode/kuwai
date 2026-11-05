@@ -1,7 +1,7 @@
 // A capsule button on glass: optional glyph + label. Presses in on
 // pointer-down; `tint` fills it with a colour when it represents an "on" state.
 //
-//   PillButton { glyph: "\u{f0594}"; text: "Do Not Disturb"; tint: on ? "#5e5ce6" : "transparent" }
+//   PillButton { glyph: "\u{f0594}"; text: "Do Not Disturb"; tint: on ? Theme.indigo : "transparent" }
 import QtQuick
 import qs.config
 

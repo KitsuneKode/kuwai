@@ -38,6 +38,17 @@ Singleton {
     readonly property real tintNotice: 0.12
 
     // ── Shape and space (docs/ROADMAP.md, Phase 2) ───────────────────────
+    // Type scale (px). Nine steps; anything else is a bug. Weight and colour
+    // carry hierarchy before size does: Primary/Secondary/Tertiary text first.
+    readonly property int tCaption: 10     // badges, chip counts, meta under meta
+    readonly property int tFootnote: 11    // secondary lines, timestamps, hints
+    readonly property int tSub: 12         // list detail, buttons, tips
+    readonly property int tBody: 13        // rows, notification bodies (default)
+    readonly property int tCallout: 14     // row titles, panel section labels
+    readonly property int tHeadline: 15    // the island's clock, card titles
+    readonly property int tTitle3: 18      // panel titles
+    readonly property int tTitle2: 20      // big values (volume %, battery)
+    readonly property int tTitle1: 24      // hero numbers; displays scale from screen size
     readonly property int r1: 8          // small controls, thumbnails
     readonly property int r2: 12         // tiles, switches
     readonly property int r3: 16         // cards, notices
@@ -65,6 +76,10 @@ Singleton {
     readonly property color positive: green
     readonly property color caution: orange
     readonly property color critical: red
+    // Fixed state colours (Apple's dark palette), named once so no file types the hex.
+    readonly property color focus: "#bf5af2"     // Focus / Do Not Disturb (purple)
+    readonly property color indigo: "#5e5ce6"    // secondary actions, sliders
+    readonly property color cyan: "#64d2ff"      // info, links on dark
 
     // The theme's own colour, the way HyDE's colour mode says (Themes panel →
     // Colours, or HyDE's wallbash toggle; enableWallDcol in its staterc):
