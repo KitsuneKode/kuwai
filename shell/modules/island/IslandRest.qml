@@ -55,16 +55,20 @@ Item {
                                : compact ? (leftGroup.implicitWidth > 0 && rightGroup.implicitWidth > 0 ? gap : 0) : gap * 2
     // What the mini notch holds, and the room either side when it's
     // narrower than the notch's minimum: the time sits in the middle.
-    // Symmetric: whatever sits on the right (a privacy dot, the agents)
-    // gets the same room on the left, so the time stays dead centre on
-    // every screen (it used to drift by the right side's width).
     // Balanced by content, not padding: system news leads (leadSys), who's
-    // active trails; each side reserves the wider of the two.
+    // active trails.
     readonly property real miniLead: leadSys.visible ? leadSys.implicitWidth : 0
-    readonly property real miniSide: Math.max(miniLead, rightGroup.implicitWidth) > 0 ? Math.max(miniLead, rightGroup.implicitWidth) + 12 : 0
+    // Marks on both sides: they mirror (the wider reserves both) and the
+    // time stays dead centre. Marks on one side only: no mirrored void, the
+    // notch hugs "time · marks" (a reserved empty side read as uneven).
+    readonly property real miniL: miniLead > 0 ? miniLead + 12 : 0
+    readonly property real miniR: rightGroup.implicitWidth > 0 ? rightGroup.implicitWidth + 12 : 0
+    readonly property bool miniBoth: miniL > 0 && miniR > 0
+    readonly property real miniLeft: miniBoth ? Math.max(miniL, miniR) : miniL
+    readonly property real miniRight: miniBoth ? Math.max(miniL, miniR) : miniR
     readonly property real miniCore: clock.width + (soonText ? soonLabel.implicitWidth + 12 : 0)
-    readonly property real miniContent: miniCore + 2 * miniSide
-    readonly property real miniPad: Math.max(miniSide, (56 - miniCore) / 2)
+    readonly property real miniContent: miniCore + miniLeft + miniRight
+    readonly property real miniPad: Math.max(miniLeft, (56 - miniContent) / 2 + miniLeft)
     readonly property bool momentUnified: activity === "moment" && Moments.now && (Moments.now.kind === "hello" || Moments.now.kind === "focus" || Moments.now.kind === "caffeine")
     // Welcome / Good morning: only the hello row, then the rest of the notch eases back in.
     readonly property bool helloFocus: activity === "moment" && Moments.now && Moments.now.kind === "hello"
