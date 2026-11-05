@@ -1734,6 +1734,7 @@ def run_turn(req):
         stream.close("failed")
         status, error = "failed", str(e) or e.__class__.__name__
 
+    stats.pop("_doneReason", None)
     late = APPROVALS.take_steers() if APPROVALS is not None else []
     emit({"type": "turn.completed", "status": status, "error": error, "stats": stats,
           "unapplied": late})

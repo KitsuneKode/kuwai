@@ -1015,7 +1015,6 @@ function onPanelClosed() {
     property var htmlOrder: []
     property var renderWaiting: ({})     // key → true while in flight
     property var renderKeys: ({})        // request id → key
-    property int renderSeq: 0
     property int renderTick: 0           // bumps when a block's HTML arrives
 
     function blockKey(b) { return b.kind + (b.live ? "~" : "") + "\u0001" + (b.lang || "") + "\u0001" + b.text; }
@@ -1027,7 +1026,9 @@ function onPanelClosed() {
         if (h !== undefined) return h;
         if (!renderWaiting[k]) {
             renderWaiting[k] = true;
-            const id = ++renderSeq;
+            // Not ++renderSeq: blockHtml runs inside the chat's bindings, and writing a
+            // property a binding just read loops it (Qt warned: binding loop on "html").
+            const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
             renderKeys[id] = k;
             if (!renderProc.running) renderProc.running = true;
             renderProc.write(JSON.stringify({ id: id, kind: b.kind, lang: b.lang || "", text: b.text, live: !!b.live }) + "\n");
