@@ -1,0 +1,13 @@
+[Unit]
+Description=Rice alarms: set the RTC wake time
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/rice-wake-root
+# It only writes the RTC.
+ProtectSystem=strict
+ReadWritePaths=/sys/class/rtc
+ProtectHome=yes
+PrivateTmp=yes
+PrivateNetwork=yes
+NoNewPrivileges=yes

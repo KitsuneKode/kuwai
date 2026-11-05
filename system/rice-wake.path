@@ -1,0 +1,9 @@
+[Unit]
+Description=Rice alarms: watch the next wake time
+
+[Path]
+PathChanged=/var/lib/rice-wake/at
+Unit=rice-wake.service
+
+[Install]
+WantedBy=multi-user.target

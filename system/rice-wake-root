@@ -1,0 +1,37 @@
+#!/usr/bin/python3 -I
+# Root side of the rice's alarms: set the RTC to wake the machine.
+# Runs from rice-wake.service when /var/lib/rice-wake/at changes. That file
+# holds one integer (a Unix time, or 0 for none) and is the only input; it is
+# parsed as a number, bounded to the next 8 days, and written to the RTC.
+# Installed root-owned at /usr/local/libexec/rice-wake-root by system/install.
+import os, sys, time
+
+AT = "/var/lib/rice-wake/at"
+RTC = "/sys/class/rtc/rtc0/wakealarm"
+
+def main():
+    try:
+        fd = os.open(AT, os.O_RDONLY | os.O_NOFOLLOW)
+        raw = os.read(fd, 32).decode("ascii", "strict").strip()
+        os.close(fd)
+    except (OSError, UnicodeDecodeError):
+        raw = "0"
+    if not raw.isdigit() or len(raw) > 12:
+        print("rice-wake: not a time; ignored", file=sys.stderr)
+        return 1
+    t = int(raw)
+    now = int(time.time())
+    with open(RTC, "w") as f:      # clear first: the kernel refuses to overwrite a set alarm
+        f.write("0")
+    if t == 0:
+        print("rice-wake: cleared")
+        return 0
+    if not (now + 30 <= t <= now + 8 * 86400):
+        print(f"rice-wake: {t} is not within the next 8 days; cleared", file=sys.stderr)
+        return 1
+    with open(RTC, "w") as f:
+        f.write(str(t))
+    print(f"rice-wake: wake at {time.strftime('%F %T', time.localtime(t))}")
+    return 0
+
+sys.exit(main())

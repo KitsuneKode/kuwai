@@ -15,6 +15,7 @@
 #   rice timer 10m [label]    a timer in the island (cancel · list)
 #   rice pomodoro             start/stop 25/5 focus cycles
 #   rice remind in 20m tea    a reminder ("at 5 call mum", "tomorrow 9am x"; list · clear)
+#   rice alarm 7:30 [label]   an alarm (wakes the laptop with system/install; list · clear · stop · snooze)
 #   rice note buy milk        a line in ~/Notes/inbox.md (no text: open it)
 #   rice screensaver          show the screensaver now (it also comes on idle while Caffeine is on)
 #   rice set KEY VALUE        change a setting (~/.config/rice/settings.json)
@@ -202,6 +203,11 @@ case ${1:-} in
             list) ipc remind list ;;
             clear) ipc remind clear ;;
             *) ipc remind add "${*:2}" ;;
+        esac ;;
+    alarm)
+        case "${2:-list}" in
+            list|clear|stop|snooze) ipc alarm "${2:-list}" ;;
+            *) ipc alarm add "${*:2}" ;;
         esac ;;
     note)
         if [ $# -lt 2 ]; then ipc note open; else ipc note add "${*:2}"; fi ;;

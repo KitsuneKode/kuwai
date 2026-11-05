@@ -25,6 +25,7 @@ ShellRoot {
     readonly property bool idleOwned: Idle.enabled
     // Reminders fire from the shell, so they load with it (not on first use).
     readonly property int remindersKept: Reminders.items.length
+    readonly property int alarmsKept: Alarms.items.length
     Osd {}
     Popups {}
     Center {}

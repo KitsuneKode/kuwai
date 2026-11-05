@@ -126,6 +126,8 @@ Scope {
     // Alt+Shift+Tab, Alt+` and the moment Alt comes back up.
     GlobalShortcut { appid: "rice"; name: "emoji"; description: "Emoji (the launcher's : mode)"; onPressed: Island.openWith(":") }
     GlobalShortcut { appid: "rice"; name: "glyphs"; description: "Nerd Font glyphs (the launcher's ; mode)"; onPressed: Island.openWith(";") }
+    GlobalShortcut { appid: "rice"; name: "note"; description: "Quick note (a line in ~/Notes/inbox.md)"; onPressed: Island.openWith("note ") }
+    GlobalShortcut { appid: "rice"; name: "remind"; description: "Remind me (\"in 20m tea\", \"at 5 call mum\")"; onPressed: Island.openWith("remind me ") }
     GlobalShortcut { appid: "rice"; name: "switch-next"; description: "Windows: next (hold Alt)"; onPressed: Switcher.begin(1, false) }
     GlobalShortcut { appid: "rice"; name: "switch-prev"; description: "Windows: previous"; onPressed: Switcher.begin(-1, false) }
     GlobalShortcut { appid: "rice"; name: "switch-app"; description: "Windows of this app"; onPressed: Switcher.begin(1, true) }

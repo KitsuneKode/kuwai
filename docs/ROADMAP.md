@@ -101,7 +101,7 @@ session), *you* (needs the user).
 
 ## Phase 5: productivity, the Apple way (target: Productivity 8.5)
 
-- [~] **Quick note** (launcher `note …`, `rice note`, ~/Notes/inbox.md done; the sheet and Super+N still open): from the island (hover → note) or Super+N twice; a
+- [x] **Quick note** (Super+Ctrl+N opens the launcher on `note `; `rice note`): from the island (hover → note) or Super+N twice; a
   sheet that saves to `~/Notes/inbox.md` (Markdown, timestamped); search
   in the launcher.
 - [x] **Reminders**: "remind me at 5 to call mum" / "in 20m stretch" in
@@ -109,7 +109,7 @@ session), *you* (needs the user).
   moment and a toast with Snooze/Done; survive restarts and sleep.
 - [x] **Pomodoro**: the timer with cycles (25/5 ×4, 15 long), a ring in
   the notch, Focus on during work blocks (optional).
-- [ ] **Alarm**: a time of day that wakes the laptop (`rtcwake`/systemd
+- [x] **Alarm** (services/Alarms, `system/install` for rice-wake; Stop on the lock screen itself still open): a time of day that wakes the laptop (`rtcwake`/systemd
   timer with WakeSystem through the root helper or a user timer), plays
   through the lock screen.
 - [x] **Clipboard**: password-manager copies never stored (cliphist reads
