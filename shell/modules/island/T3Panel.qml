@@ -70,6 +70,7 @@ FocusScope {
                     id: row
                     required property var modelData
                     readonly property bool waits: modelData.status === "waiting"
+                    readonly property bool done: modelData.status === "completed"
                     width: parent.width
                     height: 46
                     radius: 12
@@ -87,8 +88,16 @@ FocusScope {
                             width: 8; height: 8; radius: 4
                             color: Theme.orange
                         }
+                        // Finished in the last 15 minutes: a check, still.
+                        Text {
+                            visible: row.done
+                            anchors.centerIn: parent
+                            text: "\u{f012c}"
+                            font.family: Theme.fontGlyph; font.pixelSize: 14
+                            color: Theme.green
+                        }
                         Canvas {
-                            visible: !row.waits
+                            visible: !row.waits && !row.done
                             anchors.fill: parent
                             onPaint: {
                                 const c = getContext("2d");
@@ -97,7 +106,7 @@ FocusScope {
                                 c.strokeStyle = Theme.cyan; c.beginPath(); c.arc(7, 7, 5.5, -Math.PI / 2, Math.PI * 0.35); c.stroke();
                             }
                             RotationAnimation on rotation {
-                                running: !row.waits && t3.visible && !Theme.reduceMotion
+                                running: !row.waits && !row.done && t3.visible && !Theme.reduceMotion
                                 from: 0; to: 360; duration: Theme.spinMs; loops: Animation.Infinite
                             }
                         }
@@ -112,7 +121,7 @@ FocusScope {
                         }
                         Label {
                             width: parent.width; elide: Text.ElideRight
-                            text: (row.waits ? "Needs you" : row.modelData.status === "running" ? "Working" : "Starting")
+                            text: (row.waits ? "Needs you" : row.done ? "Finished" : row.modelData.status === "running" ? "Working" : "Starting")
                                 + (t3.agentName(row.modelData.provider) ? " · " + t3.agentName(row.modelData.provider) : "")
                             size: Theme.tFootnote
                             color: row.waits ? Theme.orange : Theme.textTertiary

@@ -16,6 +16,7 @@ Singleton {
     property bool alive: false
     property int running: 0
     property int waiting: 0
+    property int finished: 0             // completed in the last 15 min (shown in the panel)
     property var items: []
     readonly property int total: running + waiting
 
@@ -30,6 +31,7 @@ Singleton {
                     root.alive = !!d.alive;
                     root.running = d.running || 0;
                     root.waiting = d.waiting || 0;
+                    root.finished = d.finished || 0;
                     // Only replace the list when it changed: an identical array
                     // still re-creates every delegate bound to it.
                     const next = d.items || [];

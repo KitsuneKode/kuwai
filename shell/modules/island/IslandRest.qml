@@ -57,7 +57,7 @@ Item {
     // narrower than the notch's minimum: the time sits in the middle.
     // Balanced by content, not padding: system news leads (leadSys), who's
     // active trails.
-    readonly property real miniLead: leadSys.visible ? leadSys.implicitWidth : 0
+    readonly property real miniLead: mini ? leftGroup.implicitWidth : 0
     // Marks on both sides: they mirror (the wider reserves both) and the
     // time stays dead centre. Marks on one side only: no mirrored void, the
     // notch hugs "time · marks" (a reserved empty side read as uneven).
@@ -99,7 +99,8 @@ Item {
     implicitWidth: helloFocus ? Math.max(120, momentLead.implicitWidth + 28)
                  : mini ? Math.max(56, miniContent)
                  : compact ? (momentUnified ? Math.max(56, leftGroup.implicitWidth + gaps)
-                              : Math.max(activity === "moment" ? 220 : 78, leftGroup.implicitWidth + rightGroup.implicitWidth + gaps))
+                              : Math.max(activity === "moment" ? 220 : 78, leftGroup.implicitWidth + rightGroup.implicitWidth + gaps
+                                         + (t3centre.visible ? t3centre.implicitWidth + gap : 0)))
                  : balanced ? side * 2 + clockW + gaps
                             : leftGroup.implicitWidth + rightGroup.implicitWidth + clockW + gaps
     implicitHeight: 32
@@ -198,6 +199,19 @@ Item {
       anchors.horizontalCenter: helloFocus ? parent.horizontalCenter : undefined
       spacing: 10
     SysMarks { id: leadSys; bar: rest.bar; visible: rest.mini && any && !rest.helloFocus; anchors.verticalCenter: parent.verticalCenter }
+    // Mini notch, T3 at work: its name leads the time and its count (t3mark)
+    // trails it, like a live activity's leading and trailing sides, so the
+    // time stays the centre.
+    RestMark {
+        id: t3word
+        visible: rest.mini && T3Code.total > 0 && !rest.helloFocus
+        anchors.verticalCenter: parent.verticalCenter
+        wordmark: "T3"
+        tone: T3Code.waiting > 0 ? Theme.orange : Theme.cyan
+        previews: true
+        onPreviewRequested: if (Island.panel === "") Island.preview("t3", rest.bar.screenName)
+        onClicked: T3Code.focus()
+    }
     // ── Leading ──────────────────────────────────────────────────────────
     // A moment (services/Moments): earbuds connecting, Focus, low battery.
     Row {
@@ -434,6 +448,23 @@ Item {
         }
     }
 
+    // A live activity has the stage (dictation, a recording, a timer): it
+    // keeps the two sides, and T3 ③ takes the middle where the time was.
+    RestMark {
+        id: t3centre
+        visible: rest.stageTaken && T3Code.total > 0 && !rest.momentUnified && !rest.helloFocus
+        x: Math.round((rest.width - width) / 2)
+        Behavior on x { NumberAnimation { duration: Theme.reflowMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+        anchors.verticalCenter: parent.verticalCenter
+        wordmark: "T3"
+        value: T3Code.waiting > 0 ? String(T3Code.waiting) : String(T3Code.running)
+        ring: T3Code.waiting > 0 ? "solid" : "spin"
+        tone: T3Code.waiting > 0 ? Theme.orange : Theme.cyan
+        previews: true
+        onPreviewRequested: if (Island.panel === "") Island.preview("t3", rest.bar.screenName)
+        onClicked: T3Code.focus()
+    }
+
     IslandClock {
         id: clock
         visible: (!rest.compact || rest.mini) && !rest.helloFocus && rest.chromeReveal > 0.01
@@ -444,6 +475,8 @@ Item {
         weight: Theme.wMedium
         color: Qt.rgba(1, 0.98, 0.95, 0.92)
         x: rest.mini ? rest.miniPad : (rest.balanced ? rest.side : leftGroup.implicitWidth) + rest.gap
+        // Glides with the shape (it jumped while the notch sprang).
+        Behavior on x { NumberAnimation { duration: Theme.reflowMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
         anchors.verticalCenter: parent.verticalCenter
         HoverHandler { cursorShape: Qt.PointingHandCursor }
         TapHandler { onTapped: Island.toggle("calendar", rest.bar.screenName, "pointer", "island") }
@@ -472,6 +505,26 @@ Item {
         visible: Settings.restStatus
         spacing: 7
         anchors.verticalCenter: parent.verticalCenter
+        // (First: the count hugs the time, its name sits the other side.)
+        // T3 Code at work (services/T3Code): its icon and how many threads are
+        // running; orange with the count waiting for you. Click: T3.
+        // Like T3's own live activity ("T3 · 24 active"): the wordmark and
+        // the state in words, one colour; orange when a thread needs you.
+        // Rest on it: the T3 panel (threads, who's waiting). Click: T3 Code.
+        RestMark {
+            id: t3mark
+            visible: T3Code.total > 0 && !rest.stageTaken
+            anchors.verticalCenter: parent.verticalCenter
+            wordmark: rest.mini ? "" : "T3"
+            // T3 ③: the count in a ring that turns while threads work, solid
+            // orange (with how many) when one needs you. Hover says which.
+            value: T3Code.waiting > 0 ? String(T3Code.waiting) : String(T3Code.running)
+            ring: T3Code.waiting > 0 ? "solid" : "spin"
+            tone: T3Code.waiting > 0 ? Theme.orange : Theme.cyan
+            previews: true
+            onPreviewRequested: if (Island.panel === "") Island.preview("t3", rest.bar.screenName)
+            onClicked: T3Code.focus()
+        }
         // Something you missed that wants you (Notifs.missed): a white dot,
         // red if urgent. Hover the island's bell for them.
         Rectangle {
@@ -500,25 +553,6 @@ Item {
             visible: list.length > 0 && !rest.stageTaken
             anchors.verticalCenter: parent.verticalCenter
             bar: rest.bar
-        }
-        // T3 Code at work (services/T3Code): its icon and how many threads are
-        // running; orange with the count waiting for you. Click: T3.
-        // Like T3's own live activity ("T3 · 24 active"): the wordmark and
-        // the state in words, one colour; orange when a thread needs you.
-        // Rest on it: the T3 panel (threads, who's waiting). Click: T3 Code.
-        RestMark {
-            id: t3mark
-            visible: T3Code.total > 0 && !rest.stageTaken
-            anchors.verticalCenter: parent.verticalCenter
-            wordmark: "T3"
-            // T3 ③: the count in a ring that turns while threads work, solid
-            // orange (with how many) when one needs you. Hover says which.
-            value: T3Code.waiting > 0 ? String(T3Code.waiting) : String(T3Code.running)
-            ring: T3Code.waiting > 0 ? "solid" : "spin"
-            tone: T3Code.waiting > 0 ? Theme.orange : Theme.cyan
-            previews: true
-            onPreviewRequested: if (Island.panel === "") Island.preview("t3", rest.bar.screenName)
-            onClicked: T3Code.focus()
         }
         // System news (updates, a warning): trailing here, leading in the
         // mini notch (leadSys) so the two sides balance.

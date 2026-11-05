@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # T3 Code's live work, for the island (services/T3Code.qml): one JSON line.
 #
-#   {"alive":true,"running":2,"waiting":0,"items":[{"status":"running","title":"…","provider":"…"}]}
+#   {"alive":true,"running":2,"waiting":0,"finished":1,"items":[{"status":"running"|"waiting"|"completed","title":"…","provider":"…"}]}
 #
 # Read-only and local: T3 Code's own state database (statev2.sqlite, opened
 # with mode=ro) through an indexed query (~3 ms), only while its server is up
@@ -11,7 +11,7 @@
 set -u
 DIR="${T3_USERDATA:-$HOME/.t3/userdata}"
 DB="$DIR/statev2.sqlite"
-none() { printf '{"alive":false,"running":0,"waiting":0,"items":[]}\n'; exit 0; }
+none() { printf '{"alive":false,"running":0,"waiting":0,"finished":0,"items":[]}\n'; exit 0; }
 
 pid=$(jq -r '.pid // empty' "$DIR/server-runtime.json" 2>/dev/null) || none
 [[ "$pid" =~ ^[0-9]+$ ]] && kill -0 "$pid" 2>/dev/null || none
@@ -26,7 +26,21 @@ rows=$(timeout 3 sqlite3 -readonly -json "file:$DB?mode=ro" "
   order by (r.status = 'waiting') desc, r.requested_at desc
   limit 12;" 2>/dev/null) || none
 [ -n "$rows" ] || rows="[]"
-printf '%s' "$rows" | jq -c '{alive: true,
-    running: ([.[] | select(.status != "waiting")] | length),
-    waiting: ([.[] | select(.status == "waiting")] | length),
-    items: [.[] | {status, provider, title: (.title | .[0:80])}]}' 2>/dev/null || none
+# Finished in the last 15 minutes (and not running again): the panel shows
+# them as done, so a thread that just completed is one glance away.
+done_rows=$(timeout 3 sqlite3 -readonly -json "file:$DB?mode=ro" "
+  select 'completed' as status, r.provider as provider, coalesce(t.title, '') as title, max(r.completed_at) as at
+  from orchestration_v2_projection_runs r
+  left join orchestration_v2_projection_threads t on t.thread_id = r.thread_id
+  where r.status = 'completed' and r.completed_at >= strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-15 minutes')
+    and t.deleted_at is null and t.archived_at is null
+    and not exists (select 1 from orchestration_v2_projection_runs a where a.thread_id = r.thread_id
+                    and a.status in ('queued','preparing','starting','running','waiting'))
+  group by r.thread_id order by at desc limit 4;" 2>/dev/null)
+[ -n "$done_rows" ] || done_rows="[]"
+jq -cn --argjson live "$rows" --argjson done "$done_rows" '{alive: true,
+    running: ([$live[] | select(.status != "waiting")] | length),
+    waiting: ([$live[] | select(.status == "waiting")] | length),
+    finished: ($done | length),
+    items: ([$live[] | {status, provider, title: (.title | .[0:80])}]
+          + [$done[] | {status, provider, title: (.title | .[0:80])}])}' 2>/dev/null || none
