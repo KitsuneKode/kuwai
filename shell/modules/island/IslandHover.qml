@@ -435,6 +435,7 @@ Item {
             MissedNotifPopover {
                 id: bellPop
                 anchorItem: bell
+                belowItem: hover
                 window: hover.bar
                 open: bellRow.bellPopOpen
                 anchorHovered: bellHover.hovered

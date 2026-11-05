@@ -5,6 +5,9 @@
 // for state (a warning, something waiting), never to decorate a count.
 //
 //   RestMark { glyph: "\u{f06b0}"; value: "4"; tip: "…"; onClicked: … }
+//   RestMark { wordmark: "T3"; value: "3 active"; previews: true; onPreviewRequested: … }
+// previews: resting on the mark (Settings.hoverDelay) asks for its panel
+// (previewRequested); the owner opens it with Island.preview.
 //   RestMark { icon: Quickshell.iconPath("t3code"); value: "3"; tone: Theme.orange }
 import QtQuick
 import Quickshell.Widgets
@@ -14,11 +17,14 @@ Item {
     id: mark
     property string glyph: ""
     property string icon: ""
+    property string wordmark: ""         // a product's name as its mark ("T3")
+    property bool previews: false        // rest on it: previewRequested() (its panel)
     property string value: ""
     property color tone: Theme.textSecondary
     property string tip: ""
     readonly property alias hovered: area.containsMouse
     signal clicked()
+    signal previewRequested()
 
     implicitWidth: row.implicitWidth + 12
     implicitHeight: 22
@@ -37,8 +43,16 @@ Item {
         spacing: 4
         scale: area.pressed ? 0.96 : 1
         Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.OutCubic } }
+        Label {
+            visible: mark.wordmark !== ""
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.verticalCenterOffset: 1
+            text: mark.wordmark
+            size: Theme.tBody; weight: Theme.wBold; rounded: true
+            color: mark.tone
+        }
         Text {
-            visible: mark.glyph !== "" && mark.icon === ""
+            visible: mark.glyph !== "" && mark.icon === "" && mark.wordmark === ""
             anchors.verticalCenter: parent.verticalCenter
             text: mark.glyph
             font.family: Theme.fontGlyph
@@ -47,7 +61,7 @@ Item {
             Behavior on color { ColorAnimation { duration: Theme.colorMs } }
         }
         IconImage {
-            visible: mark.icon !== ""
+            visible: mark.icon !== "" && mark.wordmark === ""
             anchors.verticalCenter: parent.verticalCenter
             implicitSize: 14
             source: mark.icon
@@ -73,5 +87,12 @@ Item {
         cursorShape: Qt.PointingHandCursor
         onClicked: mark.clicked()
     }
-    Tip { text: mark.tip; shown: area.containsMouse && mark.tip !== ""; below: true }
+    Timer {
+        id: intent
+        interval: Settings.hoverDelay
+        running: area.containsMouse && mark.previews
+        onTriggered: mark.previewRequested()
+    }
+    // A tip only when there's no panel to preview (the panel says more).
+    Tip { text: mark.tip; shown: area.containsMouse && mark.tip !== "" && !mark.previews; below: true }
 }

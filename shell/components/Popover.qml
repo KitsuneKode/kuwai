@@ -25,6 +25,10 @@ import qs.config
 Item {
     id: po
     property Item anchorItem
+    // Optional: open below this item (the island body) instead of just under
+    // the anchor, still centred on the anchor. Under the bell alone it landed
+    // on the hover view's lower row and covered it.
+    property Item belowItem: null
     property var window                  // the island window (focus grab, menu count)
     property bool open: false
     property bool anchorHovered: false   // the pointer is on what opened it
@@ -66,7 +70,11 @@ Item {
         id: popWin
         visible: !!po.anchorItem && po.shown
         color: "transparent"
-        anchor.item: po.anchorItem
+        anchor.item: po.belowItem || po.anchorItem
+        anchor.rect.x: po.belowItem && po.anchorItem ? po.anchorItem.mapToItem(po.belowItem, po.anchorItem.width / 2, 0).x : 0
+        anchor.rect.y: 0
+        anchor.rect.width: po.belowItem ? 1 : (po.anchorItem ? po.anchorItem.width : 0)
+        anchor.rect.height: po.belowItem ? po.belowItem.height : (po.anchorItem ? po.anchorItem.height : 0)
         anchor.edges: Edges.Bottom
         anchor.gravity: Edges.Bottom
         anchor.margins.top: 10
@@ -101,10 +109,15 @@ Item {
             Keys.onEscapePressed: po.close()
             HoverHandler { id: cardHover }
 
-            GlassCard {
+            // Near-solid, like TrayMenu: a popup is no layer surface, so
+            // Hyprland's blur doesn't reach it, and see-through glass let the
+            // window behind read through the text.
+            Rectangle {
                 anchors.fill: parent
                 radius: po.cardRadius
-                tint: Theme.glassTintElevated
+                color: Qt.rgba(0.07, 0.07, 0.08, 0.97)
+                border.width: 1
+                border.color: Qt.rgba(1, 1, 1, 0.09)
             }
             Item {
                 id: body

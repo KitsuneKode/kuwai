@@ -35,6 +35,24 @@ Singleton {
     readonly property var flatpak: data && data.flatpak && Settings.updatesFlatpak ? data.flatpak : []
     readonly property var manualNews: news.filter(n => n.manual)
     readonly property int total: data ? repo.length + aur.length + flatpak.length : -1
+    // The set as names@versions: has the person seen *this* set yet? The notch
+    // shows the count only while it's new to them (opening Software Update
+    // marks it seen); a different set brings it back.
+    readonly property string setKey: total > 0 ? repo.concat(aur).map(p => p.name + "@" + (p.new || ""))
+        .concat(flatpak.map(p => p.id + "@" + (p.new || p.version || ""))).join(",") : ""
+    property string viewedKey: ""
+    readonly property bool fresh: total > 0 && setKey !== viewedKey
+    FileView {
+        id: viewedFile
+        path: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/rice/updates-viewed"
+        printErrors: false
+        onLoaded: root.viewedKey = text().trim()
+    }
+    function markViewed() {
+        if (!setKey || setKey === viewedKey) return;
+        viewedKey = setKey;
+        viewedFile.setText(setKey + "\n");
+    }
     readonly property real checkedAt: data ? data.checkedAt * 1000 : 0
 
     function check() {
@@ -309,11 +327,23 @@ Singleton {
             }
         }
     }
+    // A cancel at the password prompt changed nothing: no result card (it
+    // stayed until "Done" and came back every time the panel opened); the
+    // list says so in one line instead, for a few minutes.
+    property real cancelledAt: 0
     function finishRun() {
         follower.running = false;
         running = false;
         progress = 1;
-        if (!result) result = { ok: false, skipped: [], installed: [], built: [] };
+        if (result && result.cancelled) {
+            cancelledAt = Date.now();
+            result = null;
+            runError = "";
+            ownedRun = false;
+        } else if (!result) {
+            // Ended without saying how (killed, crashed): say exactly that.
+            result = { ok: false, unknown: true, skipped: [], installed: [], built: [] };
+        }
         reviews = ({});
         excluded = ({});
         Qt.callLater(check);
@@ -335,7 +365,8 @@ Singleton {
             onRead: line => {
                 let ev = null;
                 try { ev = JSON.parse(line); } catch (e) { return; }
-                root.place(ev);
+                // The ring is cosmetic: it must never stop "done" from landing.
+                try { root.place(ev); } catch (e) {}
                 if (ev.e === "log") {
                     root.currentLine = ev.line;
                     const l = root.log.length >= 400 ? root.log.slice(-399) : root.log.slice();

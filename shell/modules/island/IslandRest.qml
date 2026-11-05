@@ -157,15 +157,18 @@ Item {
         spacing: 2
         // From the data, not the children's `visible`: a hidden parent makes
         // every child report invisible, so `any` could never turn on.
-        readonly property bool any: (Updates.total > 0 && !Updates.running) || Alerts.active.length > 0
+        readonly property bool any: (Updates.fresh && !Updates.running) || Alerts.active.length > 0
         readonly property bool hovered: upd.hovered || warn.hovered
         RestMark {
             id: upd
-            visible: Updates.total > 0 && !Updates.running
+            // Only while this set is new to you: once you've looked, it steps
+            // back (the hover view and Super+Ctrl+Shift+U still have it).
+            visible: Updates.fresh && !Updates.running
             anchors.verticalCenter: parent.verticalCenter
             glyph: "\u{f06b0}"
             value: Updates.total > 9 ? "9+" : String(Updates.total)
-            tip: Updates.total + (Updates.total === 1 ? " system update" : " system updates") + " · click to review"
+            previews: true
+            onPreviewRequested: if (Island.panel === "" && sys.bar) Island.preview("updates", sys.bar.screenName)
             onClicked: Island.open("updates", sys.bar ? sys.bar.screenName : "", "pointer", "island")
         }
         RestMark {
@@ -493,16 +496,18 @@ Item {
         }
         // T3 Code at work (services/T3Code): its icon and how many threads are
         // running; orange with the count waiting for you. Click: T3.
+        // Like T3's own live activity ("T3 · 24 active"): the wordmark and
+        // the state in words, one colour; orange when a thread needs you.
+        // Rest on it: the T3 panel (threads, who's waiting). Click: T3 Code.
         RestMark {
             id: t3mark
             visible: T3Code.total > 0
             anchors.verticalCenter: parent.verticalCenter
-            icon: Quickshell.iconPath("t3code-nightly", "t3code")
-            value: T3Code.waiting > 0 ? String(T3Code.waiting) : String(T3Code.running)
-            tone: T3Code.waiting > 0 ? Theme.orange : Theme.textSecondary
-            tip: "T3 Code · " + T3Code.running + " running" + (T3Code.waiting ? " · " + T3Code.waiting + " waiting for you" : "")
-                + T3Code.items.slice(0, 4).map(i => "\n" + (i.status === "waiting" ? "● " : "· ") + i.title).join("")
-                + "\nClick to open"
+            wordmark: "T3"
+            value: T3Code.waiting > 0 ? T3Code.waiting + " need" + (T3Code.waiting === 1 ? "s" : "") + " you" : T3Code.running + " active"
+            tone: T3Code.waiting > 0 ? Theme.orange : Theme.cyan
+            previews: true
+            onPreviewRequested: if (Island.panel === "") Island.preview("t3", rest.bar.screenName)
             onClicked: T3Code.focus()
         }
         // System news (updates, a warning): trailing here, leading in the

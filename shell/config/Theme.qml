@@ -256,6 +256,7 @@ Singleton {
     readonly property int colorMs: 140
     readonly property int hoverMs: 80           // hover tints: answer the pointer at once
     readonly property int artMs: 400            // album-art colour following a new track
+    readonly property int spinMs: 1100          // one turn of a working spinner (calm, not busy)
     // Hover timing, one set for the whole shell: things open after
     // Settings.hoverDelay (your setting), stay hoverLeaveMs after the pointer
     // leaves (crossing a gap doesn't close them), and tooltips wait tipMs

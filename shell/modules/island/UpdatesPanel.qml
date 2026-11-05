@@ -49,6 +49,7 @@ FocusScope {
     function go(v) { view = v; swap.restart(); }
 
     Component.onCompleted: {
+        Updates.markViewed();
         Updates.checkIfStale();
         Updates.loadPacnew();
         // Read every AUR change now (the service also does on each check), so
@@ -234,6 +235,16 @@ FocusScope {
             }
 
             // Notices
+            Notice {
+                id: cancelNote
+                // Re-evaluated every half minute so it goes away by itself.
+                property real now: Date.now()
+                Timer { running: cancelNote.visible; interval: 30000; repeat: true; onTriggered: cancelNote.now = Date.now() }
+                visible: Updates.cancelledAt > 0 && now - Updates.cancelledAt < 5 * 60 * 1000
+                glyph: "\u{f033e}"; tone: Theme.textSecondary
+                title: "Cancelled at the password prompt"
+                detail: "Nothing was changed. Update again when you're ready."
+            }
             Repeater {
                 model: Updates.manualNews
                 Notice {
@@ -676,7 +687,8 @@ FocusScope {
                 width: parent.width - 56
                 spacing: 2
                 Label {
-                    text: Updates.running ? "Updating" : runCol.ok ? "All done" : (runCol.res && runCol.res.cancelled) ? "Cancelled" : "Finished, with things to look at"
+                    text: Updates.running ? "Updating" : runCol.ok ? "All done" : (runCol.res && runCol.res.cancelled) ? "Cancelled"
+                        : (runCol.res && runCol.res.unknown) ? "Update stopped" : "Finished, with things to look at"
                     size: 18; weight: Theme.wSemibold
                 }
                 Label {
@@ -722,7 +734,8 @@ FocusScope {
                     readonly property bool now: Updates.running && Updates.phase === modelData.id
                     // The run is over and this step never ran (its packages were skipped):
                     // say so, instead of an empty circle that looks like it stalled.
-                    readonly property bool skipped: !Updates.running && !!runCol.res && !seen
+                    // (Not after a run that ended unexplained: "skipped" would be a guess.)
+                    readonly property bool skipped: !Updates.running && !!runCol.res && !runCol.res.unknown && !seen
                     spacing: 10
                     Text {
                         width: 16

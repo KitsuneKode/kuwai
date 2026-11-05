@@ -418,6 +418,7 @@ Scope {
             Component { id: switcherPanel; SwitcherPanel {} }
             Component { id: updatesPanel; UpdatesPanel {} }
             Component { id: mediaPanel; MediaPanel {} }
+            Component { id: t3Panel; T3Panel {} }
 
             Elevation {
                 target: frame
@@ -663,7 +664,7 @@ Scope {
                             y: win.backH
                             active: win.panelHere || pv.value > 0.01
                             focus: true
-                            sourceComponent: ({ calendar: calendarPanel, power: powerPanel, launcher: launcherPanel, settings: settingsPanel, system: systemPanel, theme: themePanel, keys: keysPanel, switcher: switcherPanel, updates: updatesPanel, media: mediaPanel })[win.shownPanel] || null
+                            sourceComponent: ({ calendar: calendarPanel, power: powerPanel, launcher: launcherPanel, settings: settingsPanel, system: systemPanel, theme: themePanel, keys: keysPanel, switcher: switcherPanel, updates: updatesPanel, media: mediaPanel, t3: t3Panel })[win.shownPanel] || null
                         }
                         // Right click (anywhere a control doesn't take it) or the mouse's back button: back.
                         TapHandler {
