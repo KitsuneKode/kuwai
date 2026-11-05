@@ -70,8 +70,8 @@ Item {
             source: mark.icon
             asynchronous: true
         }
-        // ③: the number centred in a 16 px ring; a quarter arc turns while
-        // working (calm: Theme.spinMs a turn), a full ring when it needs you.
+        // ③: the number centred in an 18 px ring; a quarter arc steps round
+        // while working, a full ring when it needs you.
         Item {
             visible: mark.ring !== "" && mark.value !== ""
             anchors.verticalCenter: parent.verticalCenter
@@ -94,9 +94,14 @@ Item {
                     c.reset(); c.lineWidth = 1.5; c.lineCap = "round"; c.strokeStyle = ink;
                     c.beginPath(); c.arc(9, 9, 8.25, -Math.PI / 2, 0); c.stroke();
                 }
-                RotationAnimation on rotation {
-                    running: arc.visible && !Theme.reduceMotion
-                    from: 0; to: 360; duration: Theme.spinMs; loops: Animation.Infinite
+                // Steps, not a spin: a third of a turn every 3 s, gliding for
+                // 500 ms. A continuous spin redrew the notch every frame at
+                // 200 Hz (15 % CPU at rest); this draws ~1/6 of the time.
+                Behavior on rotation { NumberAnimation { duration: Theme.stepMs; easing.type: Easing.InOutCubic } }
+                Timer {
+                    interval: 3000; repeat: true
+                    running: arc.visible && mark.visible && !Theme.reduceMotion
+                    onTriggered: arc.rotation += 120
                 }
             }
             Label {
