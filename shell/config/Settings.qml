@@ -39,6 +39,7 @@ Singleton {
     readonly property alias screensaverWhen: s.screensaverWhen
     readonly property alias screensaverMins: s.screensaverMins
     readonly property alias screensaverStyle: s.screensaverStyle
+    readonly property alias screensaverClip: s.screensaverClip
     readonly property alias islandProximity: s.islandProximity
     readonly property alias kittyTabs: s.kittyTabs
     readonly property alias notifSurface: s.notifSurface
@@ -116,7 +117,8 @@ Singleton {
             property bool islandTucked: false
             property string screensaverWhen: "caffeine"   // caffeine · always · off
             property int screensaverMins: 3
-            property string screensaverStyle: "dusk"   // dusk · live · still
+            property string screensaverStyle: "dusk"   // dusk · night · live · still
+            property string screensaverClip: "smoke-soft"   // a file in ~/.local/share/rice/screensavers
             // Idle (services/Idle): seconds, 0 = never. idleOwner "hypridle" hands it back.
             property string idleOwner: "shell"
             property int idleDimAc: 240

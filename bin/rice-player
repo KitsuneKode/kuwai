@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# Player-specific actions for the island's Now Playing (MediaPanel.qml).
+# MPRIS covers play/seek/shuffle/repeat; this covers what MPRIS can't.
+#
+#   rice-player cider love | unlove      Apple Music "Love" via Cider's local API
+#   rice-player cider library            add the playing track to your library
+#   rice-player cider alive              exit 0 if Cider's API answers
+#   rice-player cider-token              store Cider's app token in the keyring
+#                                        (Cider → Settings → Connectivity →
+#                                        Manage External Application Access)
+#   rice-player link URL [SECONDS]       copy the link (YouTube: at that second)
+#
+# Cider's API is localhost only (127.0.0.1:10767). The token lives in the
+# keyring (secret-tool service rice-cider), never in a file or argv.
+set -u
+API="http://127.0.0.1:10767/api/v1/playback"
+
+token() { secret-tool lookup service rice-cider 2>/dev/null; }
+
+cider() {
+    local method=$1 path=$2 body=${3:-}
+    local tok; tok=$(token)
+    local args=(-s -m 3 -o /dev/null -w '%{http_code}' -X "$method" "$API$path")
+    # The token goes in through a header file descriptor, not the command line.
+    [ -n "$tok" ] && args+=(-H @<(printf 'apptoken: %s\n' "$tok"))
+    [ -n "$body" ] && args+=(-H 'Content-Type: application/json' --data "$body")
+    local code; code=$(curl "${args[@]}")
+    case "$code" in
+        2*) return 0 ;;
+        401|403) echo "Cider refused: add an app token (rice-player cider-token)" >&2; return 3 ;;
+        000) echo "Cider isn't answering (is it running, with its API on?)" >&2; return 2 ;;
+        *) echo "Cider said $code" >&2; return 1 ;;
+    esac
+}
+
+case "${1:-}" in
+    cider)
+        case "${2:-}" in
+            love)    cider POST /set-rating '{"rating":1}' ;;
+            unlove)  cider POST /set-rating '{"rating":0}' ;;
+            library) cider POST /add-to-library ;;
+            alive)   cider GET /active ;;
+            *) echo "usage: rice-player cider love|unlove|library|alive" >&2; exit 64 ;;
+        esac ;;
+    cider-token)
+        printf 'Cider app token: ' >&2
+        IFS= read -rs tok; echo >&2
+        [ -n "$tok" ] || { echo "nothing stored" >&2; exit 1; }
+        printf '%s' "$tok" | secret-tool store --label "Cider app token (kuwai)" service rice-cider \
+            && echo "✓ stored in the keyring" >&2 ;;
+    link)
+        url=${2:-}; secs=${3:-}
+        [[ "$url" =~ ^https?:// ]] || { echo "not a web link" >&2; exit 1; }
+        if [[ "$url" =~ (youtube\.com/watch|youtu\.be/) ]] && [[ "$secs" =~ ^[0-9]+$ ]] && [ "$secs" -gt 0 ]; then
+            url=$(printf '%s' "$url" | sed -E 's/([?&])t=[0-9]+s?(&|$)/\1/; s/[?&]$//')
+            case "$url" in *\?*) url="$url&t=${secs}s" ;; *) url="$url?t=${secs}s" ;; esac
+        fi
+        printf '%s' "$url" | wl-copy && printf '%s\n' "$url" ;;
+    *) sed -n '2,15p' "$0"; exit 64 ;;
+esac

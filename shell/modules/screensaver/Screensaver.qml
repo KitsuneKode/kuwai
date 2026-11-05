@@ -51,7 +51,13 @@ Scope {
         onLoaded: root.video = text().trim()
     }
     readonly property bool useVideo: video !== "" && (!UPower.onBattery || Settings.liveOnBattery)
-    readonly property string style: Settings.screensaverStyle || "dusk"   // dusk · live · still
+    readonly property string style: Settings.screensaverStyle || "dusk"   // dusk · night · live · still
+    // Night: a dark film from ~/.local/share/rice/screensavers (seamless
+    // half-speed loops, ~3–7 Mbit/s: cheap to decode, made by kuwai's setup).
+    readonly property string clipDir: Quickshell.env("HOME") + "/.local/share/rice/screensavers"
+    readonly property string clip: clipDir + "/" + (Settings.screensaverClip || "smoke-soft") + ".mp4"
+    property bool clipFailed: false      // this session only: Dusk instead
+    onClipChanged: clipFailed = false
     // The screen you were on when it came up: the one Live plays on.
     property string mainScreen: ""
     onShowingChanged: { if (showing) mainScreen = Screens.focusedName; Saver.showing = showing; }
@@ -99,9 +105,13 @@ Scope {
                     // the others show Dusk, so it is decoded once, not per screen.
                     readonly property bool liveHere: root.style === "live" && root.useVideo && win.screen.name === root.mainScreen
                     readonly property bool stillHere: root.style === "still"
+                    // Night: the film on one screen, true black on the rest
+                    // (decoded once; black costs nothing and can't burn in).
+                    readonly property bool night: root.style === "night" && !root.clipFailed
+                    readonly property bool nightHere: night && win.screen.name === root.mainScreen
                     Loader {
                         anchors.fill: parent
-                        active: !stage.liveHere && !stage.stillHere
+                        active: !stage.liveHere && !stage.stillHere && !stage.night
                         sourceComponent: DuskScene { running: root.showing }
                     }
                     Image {
@@ -127,11 +137,31 @@ Scope {
                         sourceComponent: Item {
                             VideoOutput { id: out; anchors.fill: parent; fillMode: VideoOutput.PreserveAspectCrop }
                             MediaPlayer {
+                                id: livePlayer
                                 source: "file://" + root.video
                                 videoOutput: out
                                 audioOutput: AudioOutput { muted: true }
                                 loops: MediaPlayer.Infinite
                                 Component.onCompleted: play()
+                                // Stop before teardown: a player destroyed while
+                                // playing can keep its decoder memory.
+                                Component.onDestruction: stop()
+                            }
+                        }
+                    }
+                    Loader {
+                        anchors.fill: parent
+                        active: stage.nightHere
+                        sourceComponent: Item {
+                            VideoOutput { id: nightOut; anchors.fill: parent; fillMode: VideoOutput.PreserveAspectCrop }
+                            MediaPlayer {
+                                source: "file://" + root.clip
+                                videoOutput: nightOut
+                                loops: MediaPlayer.Infinite
+                                Component.onCompleted: play()
+                                Component.onDestruction: stop()
+                                // A missing file: fall back to Dusk, not a black hole.
+                                onErrorOccurred: (error, msg) => { console.warn("screensaver: " + msg); root.clipFailed = true; }
                             }
                         }
                     }

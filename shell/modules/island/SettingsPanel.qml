@@ -390,11 +390,22 @@ FocusScope {
                     }
                 }
                 SettingsRow {
-                    label: "Look"; detail: Settings.screensaverStyle === "dusk" ? "A slow dusk sky with drifting petals" : Settings.screensaverStyle === "live" ? "Your live wallpaper, full screen" : "Your wallpaper, still, with the time"
+                    label: "Look"; detail: Settings.screensaverStyle === "dusk" ? "A slow dusk sky with drifting petals"
+                        : Settings.screensaverStyle === "night" ? "A dark film on the screen you were using; black on the others"
+                        : Settings.screensaverStyle === "live" ? "Your live wallpaper, full screen" : "Your wallpaper, still, with the time"
                     Segmented {
-                        options: [{ id: "dusk", label: "Dusk" }, { id: "live", label: "Live" }, { id: "still", label: "Still" }]
+                        options: [{ id: "dusk", label: "Dusk" }, { id: "night", label: "Night" }, { id: "live", label: "Live" }, { id: "still", label: "Still" }]
                         current: Settings.screensaverStyle
                         onPicked: id => Settings.set("screensaverStyle", id)
+                    }
+                }
+                SettingsRow {
+                    visible: Settings.screensaverStyle === "night"
+                    label: "Film"; detail: "Files in ~/.local/share/rice/screensavers"
+                    Segmented {
+                        options: [{ id: "smoke-soft", label: "Smoke" }, { id: "aurora", label: "Aurora" }, { id: "stars-lake", label: "Stars" }]
+                        current: Settings.screensaverClip
+                        onPicked: id => Settings.set("screensaverClip", id)
                     }
                 }
                 SettingsRow {
