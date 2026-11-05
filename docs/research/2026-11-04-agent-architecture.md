@@ -68,6 +68,22 @@ the same 13 tasks: **10/10 right tool, 9/10 right answer, 0/3 refused, 7.7 s a t
 the repo task found ContextMeter.qml but didn't state the ring size. The fix-it task tried `run_command` on the
 host twice before using the sandbox ("run" also routes the host-action group).
 
+## Three runs per task, and coding models (2026-11-05)
+
+qwen3.5:4b, 15 tasks × 3 runs (router + q8 KV): right tool 34/36, right answer **27/36 (75%)**, refused 0/9,
+13.4 s a turn. The weak spots were coding: two failures were real bugs — the model ran its files from
+`~/sandbox` (the guide now says relative files live in sandbox_run's folder) and Ollama failed whole turns on
+qwen3.5's broken tool-call XML (now sent back to the model to retry, as pi does). After both fixes, the coding
+tasks × 3: fix-a-bug 3/3 (was 1/3), pytest-until-green 3/3 (was 1/3), code 2/3, repo 1/3.
+
+| Coding model | Speed | Right answer (coding tasks) | Avg turn | Kept |
+|---|---|---|---|---|
+| qwen3.5:4b (16k) | ~50 tok/s | 9/12 | 31 s | yes, default |
+| qwen3-coder:30b MoE (8k, RAM+VRAM) | ~22 tok/s | 6/10 (pytest 0/2, repo 0/2) | 52 s | no, deleted |
+
+The bigger coders that score best in published rankings (Qwen3.8 27B, Devstral Small 2 24B) are dense and
+would run mostly on the CPU here.
+
 ## Not taken (yet)
 
 - pi's session tree / branches (we have linear chats with Edit and Retry).
