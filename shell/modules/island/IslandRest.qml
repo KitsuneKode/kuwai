@@ -39,6 +39,9 @@ Item {
     // "minimal": only what's alive, always. Either way, nearing the top edge,
     // hovering or Super+Alt+I brings the details back.
     readonly property bool takeover: ["auth", "update", "vox", "rec", "timer", "shazam", "moment"].indexOf(activity) >= 0
+    // A live activity has the stage: the other activities step aside (it sat
+    // between a ring and its own value); privacy dots and warnings stay.
+    readonly property bool stageTaken: compact && !mini
     readonly property bool compact: (Settings.islandRest === "minimal" || Settings.islandTucked || (Settings.islandRest === "auto" && takeover))
                                     && !Island.peek && !bar.near && (!bar.hovered || bar.holdCompact)
     // On the small marks (agents, the dots): their tips and clicks, not a grown island.
@@ -490,7 +493,7 @@ Item {
         // Agents at work (kittymux): their marks, stacked (AgentStack).
         AgentStack {
             id: agents
-            visible: list.length > 0
+            visible: list.length > 0 && !rest.stageTaken
             anchors.verticalCenter: parent.verticalCenter
             bar: rest.bar
         }
@@ -501,7 +504,7 @@ Item {
         // Rest on it: the T3 panel (threads, who's waiting). Click: T3 Code.
         RestMark {
             id: t3mark
-            visible: T3Code.total > 0
+            visible: T3Code.total > 0 && !rest.stageTaken
             anchors.verticalCenter: parent.verticalCenter
             wordmark: "T3"
             value: T3Code.waiting > 0 ? T3Code.waiting + " need" + (T3Code.waiting === 1 ? "s" : "") + " you" : T3Code.running + " active"
