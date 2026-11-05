@@ -87,7 +87,7 @@ Item {
         if (activity === "vox") return Activities.voxListening ? "Dictating · click to finish · right-click to cancel" : "Writing out what you said…";
         if (activity === "auth") return "A password is needed · click to bring it here";
         if (activity === "rec") return "Recording " + (Clipboard.recTarget || "the screen") + " · click to stop";
-        if (activity === "timer") return Timers.next.label + " · " + timerLeft + " left" + (Timers.timers.length > 1 ? " · " + (Timers.timers.length - 1) + " more" : "") + " · right-click to cancel";
+        if (activity === "timer" && Timers.next) return Timers.next.label + " · " + timerLeft + " left" + (Timers.timers.length > 1 ? " · " + (Timers.timers.length - 1) + " more" : "") + " · right-click to cancel";
         if (activity === "shazam") return Activities.shazamFound ? "Found: " + Activities.shazamFound.title + " · click to open" : "Listening for a song…";
         return "";
     }
@@ -468,7 +468,7 @@ Item {
         }
     }
     Item {
-        visible: rest.activity !== "" && rest.activity !== "alert" && rest.activity !== "moment" && !rest.joined
+        visible: rest.activity !== "" && rest.activity !== "moment" && !rest.joined
         width: trailing.implicitWidth
         height: 20
         anchors.verticalCenter: parent.verticalCenter
@@ -482,6 +482,15 @@ Item {
                 text: rest.timerLeft
                 size: 13; weight: Theme.wSemibold; rounded: true
                 color: Theme.orange
+                font.features: ({ "tnum": 1 })
+            }
+            // A warning on stage says its number ("95°", "3%"), not just its mark.
+            Label {
+                visible: rest.activity === "alert" && text !== ""
+                anchors.verticalCenter: parent.verticalCenter
+                text: Alerts.active.length ? ((Alerts.active[0].title.match(/\d+\s*[%°]/) || [""])[0]).replace(/\s+/g, "") : ""
+                size: 13; weight: Theme.wSemibold; rounded: true
+                color: Alerts.active.length && Alerts.active[0].level === "crit" ? Theme.red : Theme.orange
                 font.features: ({ "tnum": 1 })
             }
             Label {

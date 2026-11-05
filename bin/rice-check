@@ -3,6 +3,9 @@
 #
 #   rice-check            check the shell running from this copy (or stable)
 #   rice-check --quiet    only failures
+#   rice-check --shots    also put the island through its states (test hook) and save
+#                         the notch of every screen to ~/.cache/rice/shots/<commit>/
+#                         (no keyboard-grabbing panel is ever opened)
 #
 # Checks (docs/ROADMAP.md, Phase 1):
 #   load       the shell's last load says "Configuration Loaded", no "caused by" after it
@@ -14,7 +17,8 @@
 #   cpu        the shell under 5 % CPU over 3 s at rest
 # Exit 0 = all good, 1 = something failed (listed).
 set -u
-QUIET=0; [ "${1:-}" = --quiet ] && QUIET=1
+QUIET=0; SHOTS=0
+for a in "$@"; do case $a in --quiet) QUIET=1 ;; --shots) SHOTS=1 ;; esac; done
 BUDGET=${RICE_MEM_BUDGET_MB:-450}
 fail=0
 ok()   { [ $QUIET = 1 ] || printf '  ✓ %s\n' "$1"; }
@@ -70,5 +74,31 @@ if [ -n "$anon" ] && [ "$anon" -le "$BUDGET" ]; then ok "memory: ${anon} MB (bud
 t0=$(awk '{print $14+$15}' /proc/$pid/stat); sleep 3; t1=$(awk '{print $14+$15}' /proc/$pid/stat)
 cpu=$(( (t1 - t0) * 100 / $(getconf CLK_TCK) / 3 ))
 [ "$cpu" -lt 5 ] && ok "cpu: ${cpu}% at rest" || bad "cpu: ${cpu}% at rest (want < 5)"
+
+# shots
+if [ $SHOTS = 1 ]; then
+    commit=$(git -C "$root" rev-parse --short HEAD 2>/dev/null || echo unknown)
+    dir=${XDG_CACHE_HOME:-$HOME/.cache}/rice/shots/$commit
+    mkdir -p "$dir"
+    T() { qs ipc -p "$root/shell" call test "$@" </dev/null >/dev/null 2>&1; }
+    snap() {   # $1 = state name: the top 160 px around the centre of every screen
+        sleep "${2:-0.9}"
+        hyprctl monitors -j | jq -r '.[] | "\(.name) \(.x) \(.y) \(.width) \(.height) \(.scale)"' |
+        while read -r name x y w h sc; do
+            lw=$(awk -v w="$w" -v s="$sc" 'BEGIN{printf "%d", w/s}')
+            grim -g "$(( x + lw / 2 - 420 )),$y 840x160" "$dir/$1-$name.png" 2>/dev/null
+        done
+    }
+    T clear;                                   snap rest
+    T moment focus "Focus" "On";               snap moment
+    T clear; T alert warn "CPU at 95 °C";      snap alert-warn
+    T alert crit "Battery at 3 %";             snap alert-crit
+    T clear; T agents 3 0;                     snap agents-working
+    T agents 3 2;                              snap agents-waiting
+    T clear; T timer 300 "test pizza";         snap timer
+    T clear
+    n=$(ls "$dir" | wc -l)
+    [ "$n" -gt 0 ] && ok "shots: $n in $dir" || bad "shots: none saved (grim?)"
+fi
 
 exit $fail
