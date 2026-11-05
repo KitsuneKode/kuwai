@@ -100,8 +100,7 @@ Item {
                 }
             }
             Label {
-                anchors.centerIn: parent
-                anchors.verticalCenterOffset: 1
+                anchors.centerIn: parent           // measured: centred (a +1 sat 1 px low)
                 text: mark.value
                 size: Theme.tCaption; weight: Theme.wBold; rounded: true
                 color: mark.tone
