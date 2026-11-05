@@ -23,7 +23,6 @@ Item {
         id: status
         tint: Qt.rgba(1, 1, 1, 0.92)
         bluetoothWhenOn: true
-        showPercent: true
         // The picture behind is anything; a soft shadow keeps white legible.
         layer.enabled: true
         layer.effect: MultiEffect { shadowEnabled: true; shadowBlur: 0.5; shadowOpacity: 0.45; shadowVerticalOffset: 1; shadowHorizontalOffset: 0 }

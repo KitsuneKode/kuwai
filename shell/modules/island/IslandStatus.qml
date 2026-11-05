@@ -35,9 +35,9 @@ Row {
     property var bar: null
     // Bluetooth shows in the expanded island (at rest it would crowd it).
     property bool showBluetooth: false
-    // The lock and login screens: Bluetooth whenever it's on, and the charge
-    // as a number beside the battery.
+    // The lock and login screens: Bluetooth whenever it's on.
     property bool bluetoothWhenOn: false
+    // Legacy: percent now lives inside the battery icon (showPercent unused).
     property bool showPercent: false
     // What the battery shows, if not the charge (LockCorner's plug-in sweep).
     property real shownPct: -1
@@ -112,19 +112,11 @@ Row {
             below: true
         }
     }
-    Label {
-        visible: status.showPercent && status.hasBattery
-        anchors.verticalCenter: parent.verticalCenter
-        text: Math.round(status.drawnPct) + "%"
-        size: 12; weight: Theme.wMedium
-        color: status.shownPct >= 0 ? Theme.positive : status.tint
-        font.features: ({ "tnum": 1 })
-    }
     Item {
         id: batItem
         visible: status.hasBattery
         anchors.verticalCenter: parent.verticalCenter
-        width: 27; height: 13
+        width: 32; height: 14
         Rectangle { anchors.fill: parent; anchors.rightMargin: 2; radius: 4; color: Qt.alpha(status.tint, 0.22) }
         Rectangle {
             height: parent.height; radius: 4
@@ -133,14 +125,14 @@ Row {
             Behavior on width { enabled: status.shownPct < 0; NumberAnimation { duration: Theme.glideMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
         }
         Rectangle { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; width: 2; height: 5; radius: 1; color: Qt.alpha(status.tint, 0.45) }
-        Text {
-            visible: status.onAC
+        Label {
+            z: 1
             anchors.centerIn: parent
             anchors.horizontalCenterOffset: -1
-            text: "\u{f140b}"
-            font.family: Theme.fontGlyph
-            font.pixelSize: 10
-            color: "#0b0b0d"
+            text: Math.round(status.drawnPct)
+            size: 9; weight: Theme.wBold
+            font.features: ({ "tnum": 1 })
+            color: status.drawnPct > 38 ? Qt.rgba(0.08, 0.08, 0.1, 0.92) : status.tint
         }
         HoverHandler { id: batHover; cursorShape: status.bar ? Qt.PointingHandCursor : Qt.ArrowCursor }
         TapHandler { enabled: !!status.bar; acceptedButtons: status.showBluetooth ? Qt.LeftButton | Qt.RightButton : Qt.RightButton; onTapped: batMenu.open = !batMenu.open }
