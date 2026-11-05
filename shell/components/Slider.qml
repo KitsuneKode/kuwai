@@ -61,7 +61,7 @@ Item {
         border.width: 1
         border.color: Qt.rgba(1, 1, 1, 0.06)
         clip: true
-        Behavior on color { ColorAnimation { duration: 80 } }
+        Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
 
         Rectangle {
             x: 0
@@ -83,7 +83,7 @@ Item {
             height: s.vertical ? 2 : parent.height - inset * 2
             radius: 1
             color: Qt.rgba(1, 1, 1, s.active ? 1 : s.hot ? 0.5 : 0.25)
-            Behavior on color { ColorAnimation { duration: 80 } }
+            Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
         }
 
         // Horizontal: label (and glyph) on the left, value on the right.
@@ -119,7 +119,7 @@ Item {
             weight: Theme.wMedium
             font.features: ({ "tnum": 1 })
             color: s.hot ? Theme.textPrimary : Theme.textSecondary
-            Behavior on color { ColorAnimation { duration: 80 } }
+            Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
         }
     }
 

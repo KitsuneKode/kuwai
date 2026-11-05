@@ -31,7 +31,24 @@ Column {
         if (asking) { asking = null; return true; }
         return false;
     }
-    onOpenChanged: if (!open) { asking = null; failed = {}; }
+    onOpenChanged: { if (!open) { asking = null; failed = {}; } scanStale = false; }
+
+    // States: off · scanning · none found (after 8 s, with a rescan) · no
+    // match for the search · the list. "Scanning…" used to stay forever.
+    readonly property int found: device ? device.networks.values.filter(n => n.name).length : 0
+    property bool scanStale: false
+    onFoundChanged: if (found > 0) scanStale = false
+    Timer { interval: 8000; running: wifi.open && Networking.wifiEnabled && wifi.found === 0 && !wifi.scanStale; onTriggered: wifi.scanStale = true }
+    function rescan() {
+        if (!device) return;
+        scanStale = false;
+        device.scannerEnabled = false;
+        Qt.callLater(() => { if (wifi.device) wifi.device.scannerEnabled = true; });
+    }
+    readonly property string status: !Networking.wifiEnabled ? "Wi‑Fi is off"
+        : !device ? "No Wi‑Fi adapter"
+        : found === 0 ? (scanStale ? "None found" : "Scanning…")
+        : networks.length === 0 ? "No match" : ""
 
     Binding { target: wifi.device; property: "scannerEnabled"; value: true; when: wifi.device !== null && wifi.open }
 
@@ -50,11 +67,23 @@ Column {
         width: wifi.width
         height: 26
         Label { x: 4; anchors.verticalCenter: parent.verticalCenter; text: "Networks"; size: 13; weight: Theme.wSemibold; color: Theme.textSecondary }
-        Label {
+        Row {
             anchors { right: parent.right; rightMargin: 4; verticalCenter: parent.verticalCenter }
-            text: !Networking.wifiEnabled ? "Wi‑Fi is off" : wifi.networks.length ? "" : "Scanning…"
-            size: 11
-            color: Theme.textTertiary
+            spacing: 8
+            Label {
+                anchors.verticalCenter: parent.verticalCenter
+                text: wifi.status
+                size: Theme.tFootnote
+                color: Theme.textTertiary
+            }
+            Label {
+                visible: wifi.status === "None found"
+                anchors.verticalCenter: parent.verticalCenter
+                text: "Rescan"
+                size: Theme.tFootnote; weight: Theme.wSemibold
+                color: rescanArea.containsMouse ? Theme.textPrimary : Theme.accent
+                MouseArea { id: rescanArea; anchors.fill: parent; anchors.margins: -6; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: wifi.rescan() }
+            }
         }
     }
 

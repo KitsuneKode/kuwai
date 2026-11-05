@@ -14,7 +14,7 @@ Item {
     property string text: Math.round(value * 100) + "%"
     property color color: value > 0.9 ? Theme.red : value > 0.7 ? Theme.orange : Theme.accent
     // Load changes colour gradually, not in jumps.
-    Behavior on color { ColorAnimation { duration: 500; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+    Behavior on color { ColorAnimation { duration: Theme.artMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
     property int size: 44
     property real stroke: 4              // a thinner ring for small sizes (the island's 18 px)
     implicitWidth: col.implicitWidth

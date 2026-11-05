@@ -53,7 +53,7 @@ Item {
                 width: plate.width + s * 2; height: plate.height + s * 2
                 radius: height / 2
                 color: Qt.rgba(0, 0, 0, (b.pressed ? 0.04 : 0.12) / (index + 1))
-                Behavior on color { ColorAnimation { duration: 200 } }
+                Behavior on color { ColorAnimation { duration: Theme.colorMs } }
             }
         }
         // Fill + the edge ring (a darker step of the fill itself).
@@ -62,7 +62,7 @@ Item {
             anchors.fill: parent
             radius: height / 2
             color: b.lit && b.solid ? Qt.lighter(b.fill, 1.08) : b.lit ? Qt.rgba(1, 1, 1, 0.18) : b.fill
-            Behavior on color { ColorAnimation { duration: 140 } }
+            Behavior on color { ColorAnimation { duration: Theme.colorMs } }
             border.width: 1
             border.color: b.solid ? Qt.darker(b.fill, 1.45) : Qt.rgba(1, 1, 1, 0.1)
         }

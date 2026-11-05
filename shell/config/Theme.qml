@@ -254,6 +254,8 @@ Singleton {
     readonly property int glideMs: 150          // values chasing a target (level fill, meters)
     readonly property int reflowMs: 200         // neighbours closing a gap
     readonly property int colorMs: 140
+    readonly property int hoverMs: 80           // hover tints: answer the pointer at once
+    readonly property int artMs: 400            // album-art colour following a new track
     // Hover timing, one set for the whole shell: things open after
     // Settings.hoverDelay (your setting), stay hoverLeaveMs after the pointer
     // leaves (crossing a gap doesn't close them), and tooltips wait tipMs

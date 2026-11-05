@@ -376,7 +376,7 @@ FocusScope {
                 visible: !field.text
                 anchors.verticalCenter: parent.verticalCenter
                 text: "Search apps, windows, actions   :emoji   ;glyphs"
-                size: 19
+                size: Theme.tTitle3
                 color: Theme.textTertiary
             }
         }

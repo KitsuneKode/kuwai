@@ -17,6 +17,8 @@
 #   cpu        the shell under 5 % CPU over 3 s at rest
 #   compile    every file in modules/ and components/ compiles (panels load on first
 #              open, so a broken one would otherwise hide until you open it)
+#   tokens     literal font sizes, durations and hex colours never increase
+#              (bin/rice-tokens; the baseline only goes down)
 # Exit 0 = all good, 1 = something failed (listed).
 set -u
 QUIET=0; SHOTS=0
@@ -87,6 +89,10 @@ done
 if [ -z "$broken" ]; then ok "compile: every module and component"; else bad "compile:$broken"; fi
 
 # shots
+# tokens: hand-typed sizes, durations and colours may only go down (bin/rice-tokens)
+RICE_ROOT="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+if out=$("$RICE_ROOT/bin/rice-tokens" --check 2>&1); then ok "$out"; else bad "tokens went up: $out (use Theme tokens)"; fi
+
 if [ $SHOTS = 1 ]; then
     commit=$(git -C "$root" rev-parse --short HEAD 2>/dev/null || echo unknown)
     dir=${XDG_CACHE_HOME:-$HOME/.cache}/rice/shots/$commit

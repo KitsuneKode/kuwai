@@ -60,6 +60,6 @@ Item {
         color: Qt.rgba(1, 1, 1, h.ring ? 0.10 : 0.06)
         border.width: h.ring ? 2 : 0
         border.color: Qt.alpha(Theme.blue, 0.9)
-        Behavior on color { ColorAnimation { duration: 80 } }
+        Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
     }
 }

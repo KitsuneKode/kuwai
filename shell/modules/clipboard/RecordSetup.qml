@@ -51,7 +51,7 @@ FocusScope {
         x: 22; y: 20
         spacing: 10
         Rectangle { anchors.verticalCenter: parent.verticalCenter; width: 10; height: 10; radius: 5; color: Theme.red }
-        Label { anchors.verticalCenter: parent.verticalCenter; text: "Screen Recording"; size: 17; weight: Theme.wSemibold }
+        Label { anchors.verticalCenter: parent.verticalCenter; text: "Screen Recording"; size: Theme.tTitle3; weight: Theme.wSemibold }
     }
     Rectangle {
         anchors { right: parent.right; rightMargin: 16; verticalCenter: title.verticalCenter }
@@ -87,7 +87,7 @@ FocusScope {
                         width: chipRow.implicitWidth + 24
                         color: on ? Qt.rgba(1, 1, 1, 0.92) : chipArea.containsMouse ? Theme.pillHover : Theme.pill
                         scale: chipArea.pressed ? 0.96 : 1
-                        Behavior on color { ColorAnimation { duration: 100 } }
+                        Behavior on color { ColorAnimation { duration: Theme.colorMs } }
                         Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                         Row {
                             id: chipRow

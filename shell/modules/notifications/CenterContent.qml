@@ -75,8 +75,8 @@ Item {
         border.width: 1
         // Focused: a soft white edge, not the accent (that means "where you are").
         border.color: search.activeFocus ? Qt.rgba(1, 1, 1, 0.22) : Qt.rgba(1, 1, 1, 0.07)
-        Behavior on color { ColorAnimation { duration: 80 } }
-        Behavior on border.color { ColorAnimation { duration: 80 } }
+        Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
+        Behavior on border.color { ColorAnimation { duration: Theme.hoverMs } }
 
         Text {
             id: searchGlyph

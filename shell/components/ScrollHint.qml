@@ -38,7 +38,7 @@ Item {
         y: (bar.height - height) * Math.max(0, Math.min(1, bar.flickable.visibleArea.yPosition / Math.max(0.0001, 1 - ratio)))
         color: Qt.rgba(1, 1, 1, drag.active ? 0.16 : hover.hovered ? 0.12 : 0.08)
         Behavior on width { NumberAnimation { duration: 120 } }
-        Behavior on color { ColorAnimation { duration: 120 } }
+        Behavior on color { ColorAnimation { duration: Theme.colorMs } }
 
         DragHandler {
             id: drag

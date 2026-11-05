@@ -169,7 +169,7 @@ Item {
                         anchors.fill: parent
                         radius: 8
                         color: rowArea.containsMouse && row.e.enabled ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.22) : "transparent"
-                        Behavior on color { ColorAnimation { duration: 80 } }
+                        Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
                     }
                     // Check / radio mark, the app's icon, the label, a submenu chevron.
                     Item {

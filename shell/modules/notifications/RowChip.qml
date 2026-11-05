@@ -16,7 +16,7 @@ Rectangle {
         : (chipArea.containsMouse ? Theme.pillHover : Theme.pill)
     Accessible.role: Accessible.Button
     Accessible.name: chip.text
-    Behavior on color { ColorAnimation { duration: 80 } }
+    Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
     Row {
         id: chipRow
         anchors.centerIn: parent

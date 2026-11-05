@@ -191,7 +191,7 @@ Item {
                             anchors.fill: parent
                             radius: 10
                             color: rowArea.containsMouse ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.22) : "transparent"
-                            Behavior on color { ColorAnimation { duration: 80 } }
+                            Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
                         }
                         Image {
                             id: rowMark

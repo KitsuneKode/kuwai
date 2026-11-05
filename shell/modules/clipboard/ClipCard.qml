@@ -81,7 +81,7 @@ Item {
             color: Qt.rgba(1, 1, 1, card.selected ? 0.10 : 0.06)
             border.width: card.selected || card.marked ? 2 : 1
             border.color: card.selected ? Qt.alpha(Theme.blue, 0.85) : card.marked ? Qt.alpha(Theme.accent, 0.7) : Qt.rgba(1, 1, 1, 0.08)
-            Behavior on color { ColorAnimation { duration: 100 } }
+            Behavior on color { ColorAnimation { duration: Theme.colorMs } }
         }
         HoverHandler { id: hover }
         TapHandler {

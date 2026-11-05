@@ -46,7 +46,7 @@ Item {
         Label {
             id: head
             text: sheet.title
-            size: 17
+            size: Theme.tTitle3
             weight: Theme.wSemibold
         }
         Label {

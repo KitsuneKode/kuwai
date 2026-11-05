@@ -117,7 +117,7 @@ FocusScope {
             id: titles
             anchors { left: art.right; leftMargin: 14; right: ctx.visible ? ctx.left : wave.left; rightMargin: 12; verticalCenter: art.verticalCenter }
             spacing: 3
-            Label { width: parent.width; elide: Text.ElideRight; text: np.p ? (np.p.trackTitle || "Unknown") : ""; size: 16; weight: Theme.wSemibold }
+            Label { width: parent.width; elide: Text.ElideRight; text: np.p ? (np.p.trackTitle || "Unknown") : ""; size: Theme.tHeadline; weight: Theme.wSemibold }
             Label {
                 width: parent.width; elide: Text.ElideRight
                 text: np.note !== "" ? np.note : np.p ? [np.p.trackArtist, np.p.identity].filter(x => x).join(" · ") : ""
@@ -187,7 +187,7 @@ FocusScope {
                         opacity: Media.playing ? 1 : 0.55
                         Behavior on height { NumberAnimation { duration: Media.playing ? 90 : 380; easing.type: Easing.OutCubic } }
                         Behavior on opacity { NumberAnimation { duration: Theme.colorMs } }
-                        Behavior on color { ColorAnimation { duration: 400 } }
+                        Behavior on color { ColorAnimation { duration: Theme.artMs } }
                         Timer { running: Media.playing && !Theme.reduceMotion; interval: 120 + (index % 3) * 40; repeat: true; onTriggered: parent.jitter = 0.7 + Math.random() * 0.5 }
                     }
                 }
@@ -234,7 +234,7 @@ FocusScope {
                         width: parent.width * scrub.f
                         height: parent.height; radius: parent.radius
                         color: track.active ? np.tint : Qt.rgba(1, 1, 1, 0.85)
-                        Behavior on color { ColorAnimation { duration: 160 } }
+                        Behavior on color { ColorAnimation { duration: Theme.colorMs } }
                     }
                 }
                 MouseArea {

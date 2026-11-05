@@ -199,7 +199,7 @@ Item {
                 scale: chipArea.pressed ? 0.97 : 1
                 Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                 color: on ? Qt.rgba(1, 1, 1, 0.92) : chipArea.containsMouse ? Theme.pillHover : Theme.pill
-                Behavior on color { ColorAnimation { duration: 80 } }
+                Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
                 Row {
                     id: chipRow
                     anchors.centerIn: parent

@@ -493,7 +493,7 @@ FocusScope {
             Column {
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 2
-                Label { text: up.pkg; size: 17; weight: Theme.wSemibold }
+                Label { text: up.pkg; size: Theme.tTitle3; weight: Theme.wSemibold }
                 Version { visible: !!reviewView.p; from: reviewView.p ? reviewView.p.old : ""; to: reviewView.p ? reviewView.p.new : "" }
             }
             Row {

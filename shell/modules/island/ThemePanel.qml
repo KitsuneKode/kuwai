@@ -198,7 +198,7 @@ FocusScope {
                                 required property var modelData
                                 width: parent.width / (preview.it.palette.length || 1); height: parent.height
                                 color: modelData
-                                Behavior on color { ColorAnimation { duration: 140 } }
+                                Behavior on color { ColorAnimation { duration: Theme.colorMs } }
                             }
                         }
                     }

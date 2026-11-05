@@ -1003,7 +1003,7 @@ Scope {
                     width: 30; height: 30; radius: 15
                     color: closeArea.containsMouse ? Qt.alpha(Theme.red, 0.85) : Theme.pill
                     scale: closeArea.pressed ? 0.92 : 1
-                    Behavior on color { ColorAnimation { duration: 80 } }
+                    Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
                     Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                     Text { anchors.centerIn: parent; text: "\u{f0156}"; font.family: Theme.fontGlyph; font.pixelSize: 13; color: closeArea.containsMouse ? "white" : Theme.textSecondary }
                     MouseArea {

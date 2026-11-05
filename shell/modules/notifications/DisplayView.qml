@@ -351,7 +351,7 @@ Item {
                         border.width: 1
                         border.color: Qt.rgba(1, 1, 1, 0.06)
                         scale: devArea.pressed ? 0.985 : 1
-                        Behavior on color { ColorAnimation { duration: 80 } }
+                        Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
                         Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
 
                         Rectangle {

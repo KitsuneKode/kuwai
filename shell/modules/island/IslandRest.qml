@@ -654,7 +654,7 @@ Item {
                             opacity: Media.playing ? 1 : 0.55
                             Behavior on height { NumberAnimation { duration: Media.playing ? 90 : 380; easing.type: Easing.OutCubic } }
                             Behavior on opacity { NumberAnimation { duration: Theme.colorMs } }
-                            Behavior on color { ColorAnimation { duration: 400 } }
+                            Behavior on color { ColorAnimation { duration: Theme.artMs } }
                             Timer { running: restPeak.enabled && !Theme.reduceMotion; interval: 120 + (index % 3) * 45; repeat: true; onTriggered: parent.jitter = 0.7 + Math.random() * 0.5 }
                         }
                     }

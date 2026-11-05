@@ -175,7 +175,7 @@ Item {
         Label {
             width: parent.width; elide: Text.ElideRight
             text: card.item ? card.item.title || "" : ""
-            size: 16; weight: Theme.wSemibold
+            size: Theme.tHeadline; weight: Theme.wSemibold
             color: card.gone ? Theme.textSecondary : Theme.textPrimary
             opacity: card.line1
             transform: Translate { y: 4 * (1 - card.line1) }
