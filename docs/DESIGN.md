@@ -154,6 +154,7 @@ gallery on` (no keyboard taken), `off` to close.
 | `Card` | Grouping related rows inside a panel; children stack 10 px apart, 14 px in | Cards inside cards |
 | `Meter` | A level with its number (memory, disk, GPU): accent, orange > 75 %, red > 90 % | A meter for things that aren't levels |
 | `Tile` | Quick on/off for a mode (Caffeine, Focus), Control Center style: accent while on | A settings row (use `Toggle`) |
+| `ControlTile` | The Control Center grid (Wi‑Fi, Bluetooth, Night Shift): disc in its tone while on, a status line; expandable ones open more from the right half | Small rows of modes (use `Tile`) |
 | `Toggle` (`components/`) | A setting's on/off in a row: green while on, like iOS | A mode tile |
 | `Segmented`, `Slider`, `Tip`, `KeyCap`, `FocusRing` (`components/`) | Tabs, levels you drag, hover help, key hints, keyboard focus | Re-drawing any of them in a panel |
 

@@ -67,5 +67,11 @@ PanelWindow {
             Toggle { anchors.verticalCenter: parent.verticalCenter; on: true; label: "Example" }
             Toggle { anchors.verticalCenter: parent.verticalCenter; on: false; label: "Example" }
         }
+        Row {
+            spacing: Theme.s2
+            ControlTile { width: 220; glyph: "\u{f05a9}"; title: "Wi‑Fi"; subtitle: "Home 5G"; on: true; tone: Theme.blue; expandable: true }
+            ControlTile { width: 220; glyph: "\u{f00af}"; title: "Bluetooth"; subtitle: "AirPods Pro"; on: true; tone: Theme.blue }
+            ControlTile { width: 220; glyph: "\u{f0594}"; title: "Night Shift"; subtitle: "Off"; on: false; tone: Theme.orange }
+        }
     }
 }
