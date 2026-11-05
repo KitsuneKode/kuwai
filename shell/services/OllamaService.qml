@@ -21,6 +21,9 @@ Singleton {
 
     property string status: "offline" // "ready" | "loading" | "offline"
     property string model: "qwen3.5:4b"
+    // Chat (answers, search, prices, what's on screen; reads, never changes) or Agent (files,
+    // sandbox, plans, your machine with approval). Saved per chat; a new chat keeps the last one.
+    property string mode: "chat"
     property var availableModels: ["qwen3.5:4b"]
     property var runningModels: []
     // From `rice-ollama status`: { name: { capabilities: [...], sizeGb, params } }.
@@ -397,7 +400,7 @@ Singleton {
         const sess = {
             id: now.toString(),
             title: ((src && src.title && src.title !== "New Chat") ? src.title : "Chat").replace(/ \(fork\)$/, "") + " (fork)",
-            renamed: true, model: model || root.model, messages: msgs,
+            renamed: true, model: model || root.model, mode: root.mode, messages: msgs,
             summary: keep ? root.summary : "", summaryUpTo: keep ? root.summaryUpTo : 0, updatedAt: now
         };
         root.sessions = [sess, ...root.sessions];
@@ -426,6 +429,7 @@ Singleton {
             root.summaryUpTo = found.summaryUpTo || 0;
             root.lastStats = null;
             if (found.model) root.model = found.model;
+            root.mode = found.mode || "chat";
             root.pendingImage = "";
             root.errorText = "";
         }
@@ -469,6 +473,7 @@ Singleton {
             curr.summary = root.summary;
             curr.summaryUpTo = root.summaryUpTo;
             curr.model = root.model;
+            curr.mode = root.mode;
             curr.updatedAt = Date.now();
             const updated = [...root.sessions];
             updated[idx] = curr;
@@ -895,6 +900,7 @@ function onPanelClosed() {
             summary: root.summary,
             compact: compact,
             chat: root.activeSessionId,
+            mode: root.mode,
             keep_alive: "5m",
             options: { num_ctx: ctx, temperature: root.model.indexOf("hermes") >= 0 ? 0.4 : 0.7 }
         }, null, 2));
@@ -1080,6 +1086,8 @@ function onPanelClosed() {
         function cancel() { root.cancel(); }
         function steer(text: string) { root.steer(text); }
         function attach(path: string) { root.attach(path); }
+        function setMode(m: string) { root.mode = m === "agent" ? "agent" : "chat"; root.syncCurrentSession(); }
+        function mode(): string { return root.mode; }
         function fork(index: int, model: string) { root.forkAt(index, model); }
         function enqueue(text: string) { root.enqueue(text); }
         function queue(): string { return JSON.stringify(root.queue.map(q => q.text)); }

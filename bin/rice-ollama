@@ -148,6 +148,64 @@ def get_wayland_clipboard():
         pass
     return ""
 
+# ── Making the snapshot's context mean something ─────────────────────────
+TERMINALS = {"kitty", "foot", "alacritty", "wezterm", "org.wezfurlong.wezterm", "ghostty", "com.mitchellh.ghostty",
+             "konsole", "org.kde.konsole", "gnome-terminal", "xterm", "code", "code-oss", "codium", "zed", "dev.zed.zed",
+             "cursor", "neovide", "jetbrains-idea", "jetbrains-pycharm"}
+SECRETY = re.compile(r"(-----BEGIN [A-Z ]*PRIVATE KEY-----|\bgh[pousr]_[A-Za-z0-9]{20,}|\bsk-[A-Za-z0-9_-]{20,}"
+                     r"|\bAKIA[0-9A-Z]{16}\b|\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.|\bxox[baprs]-[A-Za-z0-9-]{10,}"
+                     r"|\b[A-Za-z0-9+/]{40,}={0,2}\b)")
+
+
+def app_display_name(wm_class):
+    """com.t3tools.T3Code → "T3 Code", from its desktop entry (StartupWMClass or file name)."""
+    if not wm_class:
+        return "Window"
+    dirs = [os.path.expanduser("~/.local/share/applications"), "/usr/local/share/applications", "/usr/share/applications",
+            os.path.expanduser("~/.local/share/flatpak/exports/share/applications"), "/var/lib/flatpak/exports/share/applications"]
+    want = wm_class.lower()
+    for d in dirs:
+        if not os.path.isdir(d):
+            continue
+        for f in os.listdir(d):
+            if not f.endswith(".desktop"):
+                continue
+            try:
+                text = open(os.path.join(d, f), encoding="utf-8", errors="replace").read(8000)
+            except OSError:
+                continue
+            klass = re.search(r"^StartupWMClass=(.+)$", text, re.M)
+            if f[:-8].lower() == want or (klass and klass.group(1).strip().lower() == want):
+                name = re.search(r"^Name=(.+)$", text, re.M)
+                if name:
+                    return name.group(1).strip()
+    return wm_class.split(".")[-1]
+
+
+def fresh_text(kind, text):
+    """Selection / clipboard only when they changed since the last snapshot: what you copied an hour
+    ago isn't what you're asking about. Secrets are never passed on."""
+    import hashlib
+    if not text:
+        return ""
+    if SECRETY.search(text):
+        return ""
+    state_file = os.path.expanduser("~/.cache/rice/assistant/last-context.json")
+    try:
+        state = json.load(open(state_file))
+    except (OSError, ValueError):
+        state = {}
+    h = hashlib.sha256(text.encode()).hexdigest()[:16]
+    seen = state.get(kind) == h
+    state[kind] = h
+    try:
+        os.makedirs(os.path.dirname(state_file), exist_ok=True)
+        json.dump(state, open(state_file, "w"))
+    except OSError:
+        pass
+    return "" if seen else text
+
+
 def cmd_snapshot(mode="window"):
     """T3 Code-style window & screen snapshotting with rich context."""
     _, shots_dir = get_runtime_dir()
@@ -196,7 +254,8 @@ def cmd_snapshot(mode="window"):
         subprocess.run(["grim", "-g", geom, out_file], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         os.chmod(out_file, 0o600)
 
-        app_name = w.get("class", "Window")
+        wm_class = w.get("class", "")
+        app_name = app_display_name(wm_class)
         title = w.get("title", "")
         pid = w.get("pid", 0)
         ws_info = w.get("workspace", {})
@@ -205,9 +264,12 @@ def cmd_snapshot(mode="window"):
 
         # Deep context extraction: CWD, Git state, highlighted text, clipboard
         cwd = get_process_cwd(pid)
-        git_info = get_git_info(cwd)
-        selected_text = get_wayland_selection()
-        clipboard_text = get_wayland_clipboard()
+        # A folder only means something for terminals and editors (T3 Code's "cwd" is just ~).
+        if wm_class.lower() not in TERMINALS and (not cwd or os.path.realpath(cwd) == os.path.realpath(os.path.expanduser("~"))):
+            cwd = ""
+        git_info = get_git_info(cwd) if cwd else None
+        selected_text = fresh_text("selection", get_wayland_selection())
+        clipboard_text = fresh_text("clipboard", get_wayland_clipboard())
 
         lines = [
             f'### Active Foreground Window Context:',

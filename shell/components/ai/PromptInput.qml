@@ -415,6 +415,12 @@ Rectangle {
                     const ctrl = (event.modifiers & Qt.ControlModifier);
                     if (ctrl && event.key === Qt.Key_D) { event.accepted = true; root.toggleMic(); return; }
                     if (ctrl && event.key === Qt.Key_F) { event.accepted = true; root.searchRequested(); return; }
+                    if (ctrl && event.key === Qt.Key_Period) {
+                        event.accepted = true;      // ⌃. Chat ⇄ Agent
+                        OllamaService.mode = OllamaService.mode === "agent" ? "chat" : "agent";
+                        OllamaService.syncCurrentSession();
+                        return;
+                    }
                     if (ctrl && (event.modifiers & Qt.ShiftModifier) && event.key === Qt.Key_C) {
                         event.accepted = true;      // ⌃⇧C copies the last answer
                         const msgs = OllamaService.messages;
@@ -527,6 +533,60 @@ Rectangle {
                 MessageAction { width: 30; height: 30; radius: 15; icon: "selection"; tip: "Attach part of the screen"; onClicked: OllamaService.takeScreenshot() }
 
                 Item { width: 4; height: 1 }
+
+                // Chat | Agent (⌃.): a two-part switch, the highlight slides to the one that's on.
+                Rectangle {
+                    id: modeSwitch
+                    height: 30
+                    width: chatSeg.width + agentSeg.width + 6
+                    radius: 15
+                    color: Qt.rgba(1, 1, 1, 0.05)
+                    anchors.verticalCenter: parent.verticalCenter
+                    readonly property bool agent: OllamaService.mode === "agent"
+                    Rectangle {
+                        x: 3 + (modeSwitch.agent ? chatSeg.width : 0)
+                        y: 3
+                        width: modeSwitch.agent ? agentSeg.width : chatSeg.width
+                        height: 24
+                        radius: 12
+                        color: modeSwitch.agent ? Qt.alpha(Theme.accent, 0.22) : Qt.rgba(1, 1, 1, 0.10)
+                        Behavior on x { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+                        Behavior on width { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+                        Behavior on color { ColorAnimation { duration: Theme.colorMs } }
+                    }
+                    Row {
+                        x: 3; y: 3
+                        Item {
+                            id: chatSeg
+                            width: chatLbl.implicitWidth + 20; height: 24
+                            Label { id: chatLbl; anchors.centerIn: parent; text: "Chat"; size: 12; weight: Theme.wMedium
+                                    color: !modeSwitch.agent ? Theme.textPrimary : Theme.textTertiary }
+                            MouseArea { id: chatSegArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                        onClicked: { OllamaService.mode = "chat"; OllamaService.syncCurrentSession(); } }
+                        }
+                        Item {
+                            id: agentSeg
+                            width: agentRow.implicitWidth + 20; height: 24
+                            Row {
+                                id: agentRow
+                                anchors.centerIn: parent
+                                spacing: 5
+                                Icon { anchors.verticalCenter: parent.verticalCenter; name: "lightning"; style: modeSwitch.agent ? "fill" : "regular"; size: 12
+                                       color: modeSwitch.agent ? Theme.accent : Theme.textTertiary }
+                                Label { anchors.verticalCenter: parent.verticalCenter; text: "Agent"; size: 12; weight: Theme.wMedium
+                                        color: modeSwitch.agent ? Theme.textPrimary : Theme.textTertiary }
+                            }
+                            MouseArea { id: agentSegArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                        onClicked: { OllamaService.mode = "agent"; OllamaService.syncCurrentSession(); } }
+                        }
+                    }
+                    MessageAction { anchors.fill: chatSeg; color: "transparent"; icon: ""; enabled: false; hoverSource: chatSegArea
+                                    tip: "Chat: answers, search, prices, your screen · reads, never changes · ⌃." }
+                    MessageAction { x: chatSeg.width; width: agentSeg.width; height: 30; color: "transparent"; icon: ""; enabled: false; hoverSource: agentSegArea
+                                    tip: "Agent: files, sandbox, plans, your machine (asks first) · ⌃." }
+                }
+
+                Item { width: 2; height: 1 }
 
                 Rectangle {
                     id: modelPill

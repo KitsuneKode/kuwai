@@ -11,7 +11,7 @@ def route(*texts):
 
 
 def test_plain_chat_gets_only_the_web():
-    assert route("hi, how are you?") == {"web_search", "web_fetch", "ask_user"}
+    assert a.route_tools([{"role": "user", "content": "hi, how are you?"}], mode="chat") == {"web_search", "web_fetch", "ask_user"}
 
 
 def test_prices_get_shopping():
@@ -47,3 +47,14 @@ def test_running_code_doesnt_offer_your_machine():
     assert "sandbox_run" in r and "run_command" not in r
     assert "run_command" in route("Run the shell command: touch ~/x")
     assert "run_command" in route("install htop on my laptop")
+
+
+def test_chat_mode_reads_but_never_changes():
+    r = a.route_tools([{"role": "user", "content": "write a python script, edit ~/notes.md and open firefox"}], mode="chat")
+    assert not r & {"write", "edit", "sandbox_run", "run_command", "launch_app", "open_url"}
+    assert "web_search" in r
+
+
+def test_agent_mode_always_has_the_workbench():
+    r = a.route_tools([{"role": "user", "content": "hi"}], mode="agent")
+    assert {"sandbox_run", "write", "edit", "read", "update_plan"} <= r
