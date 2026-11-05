@@ -28,6 +28,10 @@ ShellRoot {
     readonly property int remindersKept: Reminders.items.length
     readonly property int alarmsKept: Alarms.items.length
     readonly property var crashWatcher: Crashes
+    // The stable copy (~/.local/share/kuwai) doesn't hot-reload: each reload
+    // left ~25–30 MB behind, and `rice promote` restarts it cleanly anyway.
+    // The dev tree keeps live reload for editing.
+    Component.onCompleted: Quickshell.watchFiles = !Quickshell.shellDir.includes("/.local/share/kuwai/")
     Osd {}
     Popups {}
     Center {}
