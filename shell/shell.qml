@@ -6,6 +6,7 @@
 //
 // Layout: config/ design tokens · components/ shared visuals ·
 // services/ data and state (singletons) · modules/ the surfaces.
+import QtQuick
 import Quickshell
 import qs.modules.osd
 import qs.modules.notifications
