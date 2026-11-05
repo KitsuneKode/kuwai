@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+# rice-check: is the running shell healthy? `rice promote` runs it first.
+#
+#   rice-check            check the shell running from this copy (or stable)
+#   rice-check --quiet    only failures
+#
+# Checks (docs/ROADMAP.md, Phase 1):
+#   load       the shell's last load says "Configuration Loaded", no "caused by" after it
+#   orphans    no helper (systemd-inhibit, gdbus monitor, sleep infinity) that isn't
+#              a descendant of the running shell: a left-over one blocks idle or sleep
+#   idle       exactly one "lock before sleeping" guard while the shell owns idle,
+#              and hypridle not running beside it
+#   memory     the shell's anonymous memory (Pss_Anon) under RICE_MEM_BUDGET_MB (450)
+#   cpu        the shell under 5 % CPU over 3 s at rest
+# Exit 0 = all good, 1 = something failed (listed).
+set -u
+QUIET=0; [ "${1:-}" = --quiet ] && QUIET=1
+BUDGET=${RICE_MEM_BUDGET_MB:-450}
+fail=0
+ok()   { [ $QUIET = 1 ] || printf '  ✓ %s\n' "$1"; }
+bad()  { printf '  ✗ %s\n' "$1"; fail=1; }
+
+pid=$(pgrep -f '^qs -p .*/shell -d$' | head -1)
+[ -n "$pid" ] || { bad "no shell running"; exit 1; }
+root=$(tr '\0' ' ' < /proc/$pid/cmdline | sed -n 's#^qs -p \(.*\)/shell -d.*#\1#p')
+[ $QUIET = 1 ] || echo "rice-check: shell $pid from $root"
+
+# load
+log=$(readlink -f /run/user/$(id -u)/quickshell/by-pid/$pid 2>/dev/null)/log.qslog
+if [ -r "$log" ]; then
+    last=$(strings "$log" | grep -nE "Configuration Loaded|Failed to load configuration" | tail -1)
+    case $last in
+        *Loaded*) ok "load: configuration loaded" ;;
+        *)        bad "load: the last reload failed ($(strings "$log" | grep -m1 -A1 'Failed to load' | tail -1 | cut -c1-120))" ;;
+    esac
+else
+    bad "load: no log for pid $pid"
+fi
+
+# orphans
+descends() {   # $1 descends from $pid?
+    local a=$1
+    while [ -n "$a" ] && [ "$a" -gt 1 ] 2>/dev/null; do
+        [ "$a" = "$pid" ] && return 0
+        a=$(ps -o ppid= -p "$a" 2>/dev/null | tr -d ' ')
+    done
+    return 1
+}
+orph=""
+for p in $(pgrep -f '^systemd-inhibit .*--who=rice' ; pgrep -f 'gdbus monitor --system --dest org.freedesktop.login1'); do
+    descends "$p" || orph="$orph $p"
+done
+if [ -z "$orph" ]; then ok "orphans: none"; else bad "orphans: helpers left by an earlier shell:$orph (kill them)"; fi
+
+# idle
+owner=$(jq -r '.idleOwner // "shell"' "${XDG_CONFIG_HOME:-$HOME/.config}/rice/settings.json" 2>/dev/null)
+guards=$(systemd-inhibit --list --no-pager 2>/dev/null | grep -c "Lock the screen before sleeping")
+if [ "$owner" = shell ]; then
+    [ "$guards" = 1 ] && ok "idle: one sleep guard" || bad "idle: $guards sleep guards (want 1)"
+    pgrep -x hypridle >/dev/null && bad "idle: hypridle runs beside the shell's idle" || ok "idle: hypridle off"
+else
+    ok "idle: handed to hypridle"
+fi
+
+# memory
+anon=$(awk '/Pss_Anon/ {print int($2/1024)}' /proc/$pid/smaps_rollup 2>/dev/null)
+if [ -n "$anon" ] && [ "$anon" -le "$BUDGET" ]; then ok "memory: ${anon} MB (budget $BUDGET)"; else bad "memory: ${anon:-?} MB over the $BUDGET MB budget"; fi
+
+# cpu (3 s)
+t0=$(awk '{print $14+$15}' /proc/$pid/stat); sleep 3; t1=$(awk '{print $14+$15}' /proc/$pid/stat)
+cpu=$(( (t1 - t0) * 100 / $(getconf CLK_TCK) / 3 ))
+[ "$cpu" -lt 5 ] && ok "cpu: ${cpu}% at rest" || bad "cpu: ${cpu}% at rest (want < 5)"
+
+exit $fail

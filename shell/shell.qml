@@ -36,4 +36,5 @@ ShellRoot {
     VoxtypeHost {}
     AssistantOverlay {}
     Shortcuts {}
+    TestHook {}
 }
