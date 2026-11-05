@@ -83,15 +83,17 @@ Singleton {
     Process {
         id: sleepGuard
         running: root.enabled
-        command: ["systemd-inhibit", "--what=sleep", "--mode=delay", "--who=rice", "--why=Lock the screen before sleeping",
-                  "sh", "-c", 'gdbus monitor --system --dest org.freedesktop.login1 --object-path /org/freedesktop/login1 | while read -r l; do case $l in *PrepareForSleep*true*) "$1" lock --wait; exit 0;; esac; done', "sh", root.rice]
+        // setpriv --pdeathsig: these die with the shell, even a kill -9 (a
+        // left-over guard would delay every sleep; a listener, lock twice).
+        command: ["setpriv", "--pdeathsig", "KILL", "--", "systemd-inhibit", "--what=sleep", "--mode=delay", "--who=rice", "--why=Lock the screen before sleeping",
+                  "setpriv", "--pdeathsig", "KILL", "--", "sh", "-c", 'setpriv --pdeathsig KILL -- gdbus monitor --system --dest org.freedesktop.login1 --object-path /org/freedesktop/login1 | while read -r l; do case $l in *PrepareForSleep*true*) "$1" lock --wait; exit 0;; esac; done', "sh", root.rice]
         onExited: if (root.enabled) rearm.restart()
     }
     Timer { id: rearm; interval: 3000; onTriggered: if (root.enabled) sleepGuard.running = true }
     Process {
         id: lockSignal
         running: root.enabled
-        command: ["sh", "-c", 'gdbus monitor --system --dest org.freedesktop.login1 | grep --line-buffered -E "Session\\.Lock \\(\\)"']
+        command: ["setpriv", "--pdeathsig", "KILL", "--", "sh", "-c", 'setpriv --pdeathsig KILL -- gdbus monitor --system --dest org.freedesktop.login1 | grep --line-buffered -E "Session\\.Lock \\(\\)"']
         stdout: SplitParser { onRead: Quickshell.execDetached([root.rice, "lock"]) }
         onExited: if (root.enabled) relisten.restart()
     }
