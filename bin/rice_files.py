@@ -20,8 +20,14 @@ LINE_CAP = 400
 HOME = Path.home()
 # Never read these, even if asked: keys and secrets.
 SECRET = [HOME / ".ssh", HOME / ".gnupg", HOME / ".local/share/keyrings", HOME / ".password-store",
-          HOME / ".config/rice/secrets", HOME / ".aws", HOME / ".kube"]
-SECRET_NAME = re.compile(r"(^id_[a-z0-9]+$|\.pem$|\.key$|^\.env(\..*)?$|^credentials(\.json)?$|\.kdbx$)", re.I)
+          HOME / ".config/rice/secrets", HOME / ".aws", HOME / ".kube", HOME / ".mozilla", HOME / ".zen",
+          HOME / ".config/chromium", HOME / ".config/google-chrome", HOME / ".config/BraveSoftware",
+          HOME / ".config/gh", HOME / ".docker", HOME / ".gcloud", HOME / ".config/gcloud", HOME / ".azure",
+          HOME / ".local/share/kwalletd", HOME / ".pki", HOME / ".cert"]
+# Keys, tokens and password stores by name, anywhere.
+SECRET_NAME = re.compile(r"(^id_[a-z0-9]+$|\.pem$|\.key$|\.p12$|\.pfx$|^\.env(\..*)?$|^credentials(\.json)?$|\.kdbx$"
+                         r"|^\.netrc$|^\.git-credentials$|^\.npmrc$|^\.pypirc$|^cookies(\.sqlite)?$|^login data$"
+                         r"|^key[34]\.db$|^logins\.json$|^hosts\.ya?ml$|^auth\.json$|token)", re.I)
 
 
 class FileError(Exception):

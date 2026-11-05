@@ -40,6 +40,8 @@ def run_agent(tmp_path):
                 "HOME": str(tmp_path),
                 "RICE_TEST_TMP": str(tmp_path),
                 "RICE_SANDBOX": "off",
+                "RICE_AGENT_TOOLS": "all",
+                "RICE_FETCH_ALLOW_LOCAL": "1",      # the fake web lives on 127.0.0.1
                 "XDG_CONFIG_HOME": str(tmp_path / "config"),
                 "XDG_CACHE_HOME": str(tmp_path / "cache"),
                 "RICE_SANDBOX_DIR": str(tmp_path / "sandbox"),
