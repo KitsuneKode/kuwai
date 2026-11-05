@@ -155,7 +155,9 @@ Item {
         // Passed in: an inline component doesn't see this file's ids.
         property var bar
         spacing: 2
-        readonly property bool any: upd.visible || warn.visible
+        // From the data, not the children's `visible`: a hidden parent makes
+        // every child report invisible, so `any` could never turn on.
+        readonly property bool any: (Updates.total > 0 && !Updates.running) || Alerts.active.length > 0
         readonly property bool hovered: upd.hovered || warn.hovered
         RestMark {
             id: upd
