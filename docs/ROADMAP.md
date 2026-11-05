@@ -101,7 +101,7 @@ session), *you* (needs the user).
 
 ## Phase 5: productivity, the Apple way (target: Productivity 8.5)
 
-- [x] **Quick note** (Super+Ctrl+N opens the launcher on `note `; `rice note`): from the island (hover → note) or Super+N twice; a
+- [x] **Quick note** (Super+Ctrl+J opens the launcher on `note `; `rice note`): from the island (hover → note) or Super+N twice; a
   sheet that saves to `~/Notes/inbox.md` (Markdown, timestamped); search
   in the launcher.
 - [x] **Reminders**: "remind me at 5 to call mum" / "in 20m stretch" in

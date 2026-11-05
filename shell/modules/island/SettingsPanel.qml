@@ -165,6 +165,14 @@ FocusScope {
                     }
                 }
             }
+            SettingsGroup {
+                title: "Kitty"
+                SettingsRow {
+                    label: "Tabs beside kitty"
+                    detail: "A glass column of this window's tabs, on the left, while kitty is focused. Off until you turn it on."
+                    Toggle { on: Settings.kittyTabs; onToggled: Settings.set("kittyTabs", !Settings.kittyTabs) }
+                }
+            }
         }
     }
     Component {
@@ -360,7 +368,7 @@ FocusScope {
                 title: "Reminders"
                 SettingsRow {
                     visible: Reminders.items.length === 0
-                    label: "None"; detail: "Type \"remind me in 20m tea\" or \"tomorrow 9am dentist\" in the launcher, or press Super+Ctrl+R"
+                    label: "None"; detail: "Type \"remind me in 20m tea\" or \"tomorrow 9am dentist\" in the launcher, or press Super+Ctrl+Shift+J"
                 }
                 Repeater {
                     model: Reminders.items
@@ -394,7 +402,7 @@ FocusScope {
             }
             SettingsGroup {
                 title: "Notes and focus"
-                SettingsRow { label: "Quick note"; detail: "Super+Ctrl+N, or \"note …\" in the launcher: a line in " + Notes.file.replace(Quickshell.env("HOME"), "~")
+                SettingsRow { label: "Quick note"; detail: "Super+Ctrl+J, or \"note …\" in the launcher: a line in " + Notes.file.replace(Quickshell.env("HOME"), "~")
                     PillButton { text: "Open"; onClicked: Notes.open() } }
                 SettingsRow { label: "Pomodoro"; detail: "\"pomodoro\" in the launcher: 25 min focus, 5 min break, ×4, then 15" }
             }

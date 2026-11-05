@@ -30,7 +30,7 @@ the repo while you work).
 | | |
 |---|---|
 | Launcher (Super+A) | apps, windows, files, maths, conversions, and words: `timer 10m pizza`, `pomodoro`, `remind me at 5 to call mum`, `in 20m stretch`, `alarm 7:30`, `note buy milk`, a setting's name (`idle`, `screensaver`) |
-| Quick note · remind me | Super+Ctrl+N · Super+Ctrl+R |
+| Quick note · remind me | Super+Ctrl+J · Super+Ctrl+Shift+J |
 | Settings | Super+Ctrl+I or `rice settings [power\|saver\|time\|notifs\|island…]`: every setting, applied at once |
 | Software Update | the island's update chip: packages, AUR reviews, config files an update left (`.pacnew`) with a recommendation each |
 | From a terminal | `rice remind …`, `rice alarm …`, `rice note …`, `rice pomodoro`, `rice timer 10m` |

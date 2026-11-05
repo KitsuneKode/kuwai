@@ -163,6 +163,8 @@ cmd_doctor() {
         info=$(lua 'return kuwai and kuwai.info() or "kuwai not loaded"'); [[ $info == kuwai\ 0* ]] && ok "$info" || bad "$info"
         [ -s "$STATE_DIR/errors" ] && { bad "errors at last load:"; sed 's/^/      /' "$STATE_DIR/errors"; }
         n=$(hyprctl binds -j | jq '[.[] | select(.submap == "")] | length'); ok "$n binds"
+        clash=$(lua 'return kuwai.bind_conflicts and kuwai.bind_conflicts() or ""' | sed '/^$/d; /^ok$/d; /^nil$/d')
+        if [ -z "$clash" ]; then ok "no two kuwai binds on the same keys"; else bad "binds on the same keys (the later one wins):"; printf '%s\n' "$clash" | sed 's/^/      /'; fi
         hyprctl monitors -j | jq -r '.[] | "\(.name) \(.width)x\(.height)@\(.refreshRate|floor)Hz ×\(.scale|tostring|.[0:5]) \(.currentFormat) vrr:\(.vrr)"' | while read -r l; do ok "screen $l"; done
     else
         note "not inside Hyprland — session checks skipped"

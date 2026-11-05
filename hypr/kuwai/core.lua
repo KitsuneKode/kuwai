@@ -221,6 +221,12 @@ end
 local group = nil
 local submap = "" -- binds inside K.submap() are keyed apart from global ones
 K.binds = {} -- submap|keys -> handle, so a later bind on the same keys replaces it
+K.bind_desc = {} -- submap|keys -> its description
+K.conflicts = {} -- kuwai binds that replaced another kuwai bind (kuwai doctor)
+_G.kuwai = _G.kuwai or {}
+_G.kuwai.bind_conflicts = function()
+	return table.concat(K.conflicts, "\n")
+end
 
 local function bind_id(keys, release)
 	return submap .. "|" .. keys:upper():gsub("%s+", "") .. (release and "#release" or "")
@@ -241,6 +247,13 @@ function K.bind(keys, desc, action, opts)
 	end
 	local id = bind_id(keys, opts.release)
 	if K.binds[id] then
+		-- Replacing is how user.lua overrides a kuwai bind. Two of kuwai's
+		-- own files on the same keys is a mistake: kept for `kuwai doctor`.
+		local src = (debug.getinfo(2, "S") or {}).short_src or ""
+		local was = K.bind_desc[id]
+		if not src:find("user%.lua") and was and was ~= opts.description then
+			K.conflicts[#K.conflicts + 1] = keys .. ": " .. tostring(was) .. " ← replaced by " .. tostring(opts.description)
+		end
 		pcall(function()
 			K.binds[id]:remove()
 		end)
@@ -251,6 +264,7 @@ function K.bind(keys, desc, action, opts)
 		return nil
 	end
 	K.binds[id] = b
+	K.bind_desc[id] = opts.description
 	-- The palette (Super+/ in the shell) lists and runs every described,
 	-- pressable bind of the main keymap.
 	if desc and desc ~= "" and submap == "" and not opts.mouse and not opts.release and not keys:find("^switch:") then
