@@ -36,12 +36,12 @@ Item {
     readonly property var app: winClass ? DesktopEntries.heuristicLookup(winClass) : null
 
     implicitWidth: 780   // room for the quick switches beside the bell
-    implicitHeight: 148 + (OllamaService.recentWork.length ? 38 : 0)
+    implicitHeight: 148 + (OllamaService.recentWork.length || OllamaService.bgWorking ? 38 : 0)
 
     // Recent background work from the assistant (done or failed while its panel
     // was closed): click one to open that chat.
     Row {
-        visible: OllamaService.recentWork.length > 0
+        visible: OllamaService.recentWork.length > 0 || OllamaService.bgWorking
         x: 18
         y: 148
         height: 30
@@ -52,6 +52,36 @@ Item {
             size: 11
             weight: Theme.wSemibold
             color: Theme.textTertiary
+        }
+        // What it's doing right now, in the shimmer the panel uses for thinking.
+        Rectangle {
+            visible: OllamaService.bgWorking
+            height: 26
+            width: nowRow.implicitWidth + 18
+            radius: 13
+            color: Qt.rgba(1, 1, 1, nowArea.containsMouse ? 0.12 : 0.07)
+            Behavior on color { ColorAnimation { duration: Theme.colorMs } }
+            Row {
+                id: nowRow
+                anchors.centerIn: parent
+                spacing: 6
+                Shimmer {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: OllamaService.pendingRequest ? "Needs you" : (OllamaService.bgLabel || "Thinking")
+                    size: 12
+                    color: OllamaService.pendingRequest ? Theme.orange : Theme.textSecondary
+                    active: !OllamaService.pendingRequest
+                }
+                Label {
+                    visible: OllamaService.bgSecs >= 2
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: OllamaService.bgSecs + "s"
+                    size: 12
+                    color: Theme.textTertiary
+                    font.features: ({ "tnum": 1 })
+                }
+            }
+            MouseArea { id: nowArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: OllamaService.openSession(OllamaService.draftSessionId) }
         }
         Repeater {
             model: OllamaService.recentWork
@@ -361,7 +391,11 @@ Item {
                     { id: "focus", glyph: "\u{f0594}", on: Notifs.dnd, alert: Notifs.dnd, tone: "#bf5af2",
                       tip: Notifs.dnd ? "Focus on: notifications held" : "Focus (Do Not Disturb)", toggle: () => { Notifs.dnd = !Notifs.dnd; } },
                     { id: "night", glyph: "\u{f0599}", on: Display.nightOn, alert: false, tone: Theme.orange,
-                      tip: Display.nightOn ? "Night Shift on" : "Night Shift", toggle: () => Display.toggleNight() }
+                      tip: Display.nightOn ? "Night Shift on" : "Night Shift", toggle: () => Display.toggleNight() },
+                    // The AI assistant: lit while it works, a dot when it needs you; click opens it.
+                    { id: "assistant", glyph: "\u{f0674}", on: OllamaService.streaming, alert: !!OllamaService.pendingRequest, tone: Theme.accent,
+                      tip: OllamaService.pendingRequest ? "Assistant: needs you" : OllamaService.streaming ? "Assistant: " + (OllamaService.bgLabel || "working") : "Assistant · Super+Ctrl+Shift+A",
+                      toggle: () => Assistant.show() }
                 ]
             }
             }

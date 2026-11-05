@@ -245,6 +245,7 @@ Scope {
                                         visible: root.studioMode
                                         width: 30; height: 30
                                         icon: "sidebar-simple"
+                                        tip: "Chats · ⌃B"
                                         anchors.verticalCenter: parent.verticalCenter
                                         onClicked: root.sidebarOpen = !root.sidebarOpen
                                     }
@@ -275,10 +276,10 @@ Scope {
                                     anchors.verticalCenter: parent.verticalCenter
                                     spacing: 2
 
-                                    MessageAction { width: 30; height: 30; icon: "note-pencil"; onClicked: { OllamaService.newChat(); promptInput.focusInput(); } }
-                                    MessageAction { width: 30; height: 30; icon: "squares-four"; onClicked: root.appLauncherOpen = !root.appLauncherOpen }
-                                    MessageAction { width: 30; height: 30; icon: root.studioMode ? "arrows-in-simple" : "arrows-out-simple"; onClicked: root.studioMode = !root.studioMode }
-                                    MessageAction { width: 30; height: 30; icon: "x"; onClicked: Assistant.hide() }
+                                    MessageAction { width: 30; height: 30; icon: "note-pencil"; tip: "New chat · ⌃N"; onClicked: { OllamaService.newChat(); promptInput.focusInput(); } }
+                                    MessageAction { width: 30; height: 30; icon: "squares-four"; tip: "Open an app · ⌃O"; onClicked: root.appLauncherOpen = !root.appLauncherOpen }
+                                    MessageAction { width: 30; height: 30; icon: root.studioMode ? "arrows-in-simple" : "arrows-out-simple"; tip: (root.studioMode ? "Smaller" : "Bigger, with your chats") + " · ⌃M"; onClicked: root.studioMode = !root.studioMode }
+                                    MessageAction { width: 30; height: 30; icon: "x"; tip: "Close · Esc"; onClicked: Assistant.hide() }
                                 }
                             }
 

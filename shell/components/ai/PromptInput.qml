@@ -481,7 +481,7 @@ Rectangle {
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 4
 
-                MessageAction { width: 30; height: 30; radius: 15; icon: "paperclip"; onClicked: OllamaService.pickFiles() }
+                MessageAction { width: 30; height: 30; radius: 15; icon: "paperclip"; tip: "Attach files · or drop them here"; onClicked: OllamaService.pickFiles() }
                 // Mic: red and breathing while it listens, a spinner while voxtype writes.
                 Item {
                     width: 30; height: 30
@@ -512,9 +512,19 @@ Rectangle {
                         onNameChanged: rotation = 0
                     }
                     MouseArea { id: micArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.toggleMic() }
+                    MessageAction {
+                        // Only for its tooltip: sits under the mic, never takes the click.
+                        anchors.fill: parent
+                        color: "transparent"
+                        icon: ""
+                        enabled: false
+                        opacity: 1
+                        tip: root.micState === "recording" ? "Stop and write it down · ⌃D" : root.micState === "transcribing" ? "Writing it down…" : "Dictate · ⌃D"
+                        hoverSource: micArea
+                    }
                 }
-                MessageAction { width: 30; height: 30; radius: 15; icon: "app-window"; onClicked: OllamaService.snapshotActiveWindow() }
-                MessageAction { width: 30; height: 30; radius: 15; icon: "selection"; onClicked: OllamaService.takeScreenshot() }
+                MessageAction { width: 30; height: 30; radius: 15; icon: "app-window"; tip: "Attach the window you were in"; onClicked: OllamaService.snapshotActiveWindow() }
+                MessageAction { width: 30; height: 30; radius: 15; icon: "selection"; tip: "Attach part of the screen"; onClicked: OllamaService.takeScreenshot() }
 
                 Item { width: 4; height: 1 }
 
@@ -562,6 +572,12 @@ Rectangle {
                         cursorShape: Qt.PointingHandCursor
                         onClicked: root.modelPickerRequested()
                     }
+                    MessageAction {
+                        anchors.fill: parent
+                        color: "transparent"; icon: ""; enabled: false
+                        tip: "Model · ⌃K"
+                        hoverSource: modelArea
+                    }
                 }
             }
 
@@ -607,6 +623,12 @@ Rectangle {
                             if (parent.stopping) OllamaService.cancel();
                             else if (root.canSend) root.submit();          // mid-answer this steers
                         }
+                    }
+                    MessageAction {
+                        anchors.fill: parent
+                        color: "transparent"; icon: ""; enabled: false
+                        tip: parent.stopping ? "Stop · Esc" : OllamaService.streaming ? "Steer this answer · ↵" : "Send · ↵"
+                        hoverSource: btnArea
                     }
                 }
             }

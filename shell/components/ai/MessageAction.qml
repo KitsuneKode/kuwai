@@ -8,6 +8,7 @@ Rectangle {
     id: ab
     property string icon
     property string tip: ""          // a label above it after a moment's hover (AI Elements MessageAction tooltip)
+    property var hoverSource: abArea  // whose hover shows the tip (another MouseArea can lend its own)
     signal clicked()
     width: 28; height: 28
     radius: 8
@@ -21,9 +22,9 @@ Rectangle {
     property bool tipShown: false
     Timer { id: tipDelay; interval: 450; onTriggered: ab.tipShown = true }
     Connections {
-        target: abArea
+        target: ab.hoverSource
         function onContainsMouseChanged() {
-            if (abArea.containsMouse && ab.tip !== "") tipDelay.restart();
+            if (ab.hoverSource.containsMouse && ab.tip !== "") tipDelay.restart();
             else { tipDelay.stop(); ab.tipShown = false; }
         }
     }

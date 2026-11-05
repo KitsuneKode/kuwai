@@ -232,7 +232,7 @@ Scope {
             readonly property real backH: Island.canBack ? 34 : 0
             readonly property size panelSize: panelLoader.item ? Qt.size(panelLoader.item.implicitWidth, panelLoader.item.implicitHeight + backH) : Qt.size(420, 300)
             // Expanded, recent background work from the assistant gets a row at the bottom.
-            readonly property size hoverSize: Qt.size(720, 148 + (OllamaService.recentWork.length ? 38 : 0))
+            readonly property size hoverSize: Qt.size(720, 148 + (OllamaService.recentWork.length || OllamaService.bgWorking ? 38 : 0))
             // A warning grows the island too (below panels and hover in priority).
             readonly property bool bannerHere: Alerts.banner !== null && screenName === Screens.focusedName && !panelHere && !grown
             Spring { id: bv; tier: win.bannerHere ? win.grow : win.shrink; epsilon: 0.001; target: win.bannerHere ? 1 : 0 }
@@ -266,14 +266,11 @@ Scope {
                 else if (peekHere) Notifs.dropPeek();
                 else if (deviceHere) Moments.dropCard();
             }
-            // The assistant working with its panel closed (or just finished): a slim row
-            // stacked under the rest row, inside the notch, instead of taking it over.
+            // The assistant working with its panel closed (or just finished): the edge light below.
             readonly property bool assistHere: (OllamaService.bgWorking || !!OllamaService.bgDone)
                 && !panelHere && !grown && !bannerHere && !peekHere && !deviceHere
-            readonly property real assistH: assistHere ? 24 : 0
-            readonly property real targetW: panelHere ? panelSize.width : grown ? hoverSize.width : bannerHere ? 440 : peekHere ? 460 : deviceHere ? 420
-                : Math.max(restRow.implicitWidth + 32, assistHere ? assistRow.implicitWidth + 44 : 0)
-            readonly property real targetH: panelHere ? panelSize.height : grown ? hoverSize.height : bannerHere ? 72 : peekHere ? 76 : deviceHere ? 84 : restH + assistH
+            readonly property real targetW: panelHere ? panelSize.width : grown ? hoverSize.width : bannerHere ? 440 : peekHere ? 460 : deviceHere ? 420 : restRow.implicitWidth + 32
+            readonly property real targetH: panelHere ? panelSize.height : grown ? hoverSize.height : bannerHere ? 72 : peekHere ? 76 : deviceHere ? 84 : restH
             // Published so surfaces that grow out of the island (the HUD, the
             // clipboard) start from the shape actually on screen: rest, banner,
             // hover or panel. Changes with the state, not per frame.
@@ -468,7 +465,7 @@ Scope {
                     w: Math.max(0, sw.value)
                     h: frame.height
                     ear: win.ear
-                    radius: frame.height <= win.restH + win.assistH + 1 ? 14 : 30
+                    radius: frame.height <= win.restH + 1 ? 14 : 30
                     fill: Qt.rgba(0, 0, 0, 0.94)
                 }
                 GlassCard {
@@ -496,49 +493,48 @@ Scope {
                         visible: opacity > 0.01
                     }
 
-                    // ── The assistant, stacked under the rest row ────────
-                    Row {
-                        id: assistRow
+                    // ── The assistant, working with its panel closed ─────
+                    // A light that runs along the bottom edge of the notch (Apple
+                    // Intelligence's edge glow, at 2 px; no extra height): accent
+                    // while it works, orange when it needs you, green for a moment when
+                    // done. Expanded, the island says what it's doing.
+                    Item {
+                        id: assistGlow
+                        readonly property var done: OllamaService.bgDone
+                        readonly property color tone: done ? (done.status === "done" ? Theme.green : Theme.red)
+                            : OllamaService.pendingRequest ? Theme.orange : Theme.accent
                         anchors.horizontalCenter: parent.horizontalCenter
-                        y: win.restH - 6
-                        height: 22
-                        spacing: 7
+                        y: win.restH - 3
+                        width: Math.max(0, body.width - 40)
+                        height: 2
+                        clip: true
                         opacity: win.assistHere ? restRow.opacity : 0
                         visible: opacity > 0.01
                         Behavior on opacity { NumberAnimation { duration: win.assistHere ? Theme.enterMs : Theme.exitMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
-                        readonly property var done: OllamaService.bgDone
-                        Icon {
-                            anchors.verticalCenter: parent.verticalCenter
-                            name: assistRow.done ? (assistRow.done.status === "done" ? "check-circle" : "warning-circle")
-                                : OllamaService.pendingRequest ? "hand-palm" : "circle-notch"
-                            style: assistRow.done || OllamaService.pendingRequest ? "fill" : "bold"
-                            size: 13
-                            color: assistRow.done ? (assistRow.done.status === "done" ? Theme.green : Theme.red)
-                                : OllamaService.pendingRequest ? Theme.orange : Theme.accent
-                            RotationAnimation on rotation {
-                                running: assistRow.visible && !assistRow.done && !OllamaService.pendingRequest && !Theme.reduceMotion
-                                loops: Animation.Infinite; from: 0; to: 360; duration: 1100
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: 1
+                            color: Qt.alpha(assistGlow.tone, assistGlow.done || OllamaService.pendingRequest ? 0.75 : 0.16)
+                            Behavior on color { ColorAnimation { duration: Theme.colorMs } }
+                        }
+                        Rectangle {
+                            visible: !assistGlow.done && !OllamaService.pendingRequest && !Theme.reduceMotion
+                            width: parent.width * 0.4
+                            height: parent.height
+                            radius: 1
+                            property real pos: 0
+                            x: -width + pos * (parent.width + width)
+                            NumberAnimation on pos {
+                                running: assistGlow.visible && !assistGlow.done && !Theme.reduceMotion
+                                from: 0; to: 1; duration: 1800; loops: Animation.Infinite; easing.type: Easing.InOutSine
                             }
-                            onNameChanged: rotation = 0
+                            gradient: Gradient {
+                                orientation: Gradient.Horizontal
+                                GradientStop { position: 0.0; color: "transparent" }
+                                GradientStop { position: 0.5; color: Theme.accent }
+                                GradientStop { position: 1.0; color: "transparent" }
+                            }
                         }
-                        Label {
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: assistRow.done ? (assistRow.done.status === "done" ? "Done · " : "Failed · ") + assistRow.done.title
-                                : OllamaService.pendingRequest ? "Needs you" : OllamaService.bgLabel
-                            size: 12
-                            color: Theme.textSecondary
-                            elide: Text.ElideRight
-                            width: Math.min(implicitWidth, 260)
-                        }
-                        Label {
-                            visible: !assistRow.done && OllamaService.bgSecs >= 2
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: OllamaService.bgSecs + "s"
-                            size: 12
-                            color: Theme.textTertiary
-                            font.features: ({ "tnum": 1 })
-                        }
-                        TapHandler { onTapped: OllamaService.openSession(OllamaService.draftSessionId) }
                     }
 
                     // ── Hovered ──────────────────────────────────────────
