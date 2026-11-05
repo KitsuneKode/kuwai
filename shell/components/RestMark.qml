@@ -56,6 +56,9 @@ Item {
         Label {
             visible: mark.value !== ""
             anchors.verticalCenter: parent.verticalCenter
+            // Optical: measured on screen, SF digits rode 2 px above the
+            // glyph's and the clock's centre (15.0 vs 16.5 / 17.0).
+            anchors.verticalCenterOffset: 2
             text: mark.value
             size: Theme.tSub; weight: Theme.wSemibold
             color: mark.tone
