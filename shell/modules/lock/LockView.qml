@@ -200,4 +200,10 @@ Item {
 
     // Any click wakes the password pill too.
     TapHandler { onTapped: view.ask() }
+
+    // Volume and brightness keys: their HUD (the session's own is under the lock).
+    LockOsd {
+        anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 72 }
+        z: 50
+    }
 }

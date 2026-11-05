@@ -69,3 +69,16 @@ hl.config({
 hl.on("hyprland.start", function()
 	hl.exec_cmd(ROOT .. "/start")
 end)
+
+-- Brightness and volume keys on the login screen (the face shows their HUD,
+-- shell/modules/lock/LockOsd). Brightness: the greeter user is in `video`.
+-- Volume: only if a sound server runs for it (usually none; harmless).
+for _, k in ipairs({
+	{ "XF86MonBrightnessUp", "brightnessctl -e4 -n2 set 5%+" },
+	{ "XF86MonBrightnessDown", "brightnessctl -e4 -n2 set 5%-" },
+	{ "XF86AudioRaiseVolume", "wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+" },
+	{ "XF86AudioLowerVolume", "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-" },
+	{ "XF86AudioMute", "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle" },
+}) do
+	pcall(hl.bind, k[1], hl.dsp.exec_cmd(k[2]), { locked = true, repeating = true })
+end

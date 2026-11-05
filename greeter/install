@@ -51,7 +51,7 @@ cat >/etc/greetd/config.toml <<EOF
 vt = 1
 
 [default_session]
-command = "start-hyprland -- --config $DEST/hyprland.lua"
+command = "sh -c 'printf \"\\\\033[2J\\\\033[3J\\\\033[H\\\\033[?25l\"; exec start-hyprland -- --config $DEST/hyprland.lua >/dev/null 2>&1'"
 user = "greeter"
 EOF
 

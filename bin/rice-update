@@ -669,8 +669,11 @@ def run(args):
     try:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except OSError:
-        print(json.dumps({"e": "error", "msg": "An update is already running."}), flush=True)
-        return 1
+        # Another update holds it (sysup in a terminal, an earlier start):
+        # wait for it instead of failing every step as "skipped"; then this
+        # one runs (what's left to do is checked afresh below).
+        print(json.dumps({"e": "status", "line": "Waiting for the update that's already running…"}), flush=True)
+        fcntl.flock(lock, fcntl.LOCK_EX)
     want_repo = "--repo" in args
     unreviewed = "--unreviewed" in args
     def after(flag):

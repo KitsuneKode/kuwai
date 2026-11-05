@@ -33,7 +33,10 @@ ShellRoot {
     readonly property color accent: Quickshell.env("KUWAI_GREETER_ACCENT") || "#fc2e64"
     // What your session will show first: its wallpaper (greeter/sync copies it).
     readonly property string desktopWall: Quickshell.env("HOME") + "/.cache/hyde/wall.set"
-    readonly property string session: Quickshell.env("KUWAI_SESSION") || "exec start-hyprland"
+    // The session, without the terminal in between: clear tty1 and hide its
+    // cursor, and send start-hyprland's own lines nowhere (they used to flash
+    // up as a raw terminal between the login screen and the desktop).
+    readonly property string session: Quickshell.env("KUWAI_SESSION") || "printf '\\033[2J\\033[3J\\033[H\\033[?25l'; exec start-hyprland >/dev/null 2>&1"
     readonly property string shot: Quickshell.env("KUWAI_GREETER_SHOT") || ""
     readonly property bool film: shot.indexOf("%d") >= 0
     readonly property string demo: Quickshell.env("KUWAI_GREETER_DEMO") || ""
