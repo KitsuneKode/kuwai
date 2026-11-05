@@ -20,21 +20,27 @@ they land. User wants: extremely secure, premium, tasteful, fast, Apple-grade.
 Done: live shell runs from `stable` (349 MB, was 652 from dev reloads); shared
 components/Popover (bell quick list on it); AssistantOverlay built only while
 used; udiskie off (KUWAI_UDISKIE=1); Night screensaver; Cider ♥ / link action.
-Next, in order:
-1. Reload leak root cause (dev only now; ~25–30 MB per reload): suspects are
-   singletons with Process/FileView/PwObjectTracker; test = 10 reloads, Δ < 20 MB.
-2. Panels: Center/Overview/Clipboard contents behind LazyLoader (Clipboard
-   stays mapped on purpose for instant Super+V; lazy its content only).
-3. State rules (STATES.md) per panel: Wi-Fi, Bluetooth, Launcher, Clipboard.
-4. Type tokens: migrate island modules onto Theme.t*; rice-check fails on new
-   literal sizes/durations/hex.
-5. AgentStack + IslandStatus menus onto Popover/TrayMenu (one popup family).
-6. Super+N: keep as the deep surface grown from the island; Wi-Fi/sound
-   right-click menus → drill into the same lists (no second copy).
-7. Login gap: user runs the GRUB line (vt.global_cursor_default=0
-   systemd.show_status=false nvidia_drm.fbdev=1); then seamless handoff.
-8. Later (user): live wallpapers from Wallpaper Engine's video wallpapers
-   without installing WE; meters baseline-align label and value.
+Status (2026-11-05, late):
+1. Reload leak: neutralised. Stable shell has Quickshell.watchFiles=false and
+   `rice promote` restarts it (fresh process). Root cause still unknown (dev
+   only); find it with a nested/headless compositor when one is installed.
+   Promote also lints changed QML (qmllint) and refuses code that won't load.
+2. Lazy panels: done (Center warms on open, cools after 3 min; Overview
+   LazyLoader; Assistant built on open; Clipboard mapped on purpose).
+3. States: Updates skeleton, Wi-Fi (off/scanning/none found+Rescan/no match),
+   launcher and clipboard empty states, bell quick list empty state. Left:
+   Bluetooth pairing screen (blueman until then).
+4. Tokens: bin/rice-tokens ratchet in rice-check (baseline in
+   docs/design/tokens-baseline.json, only goes down). sizes 62, durations 165,
+   hex 70. Keep migrating module by module; run `rice-tokens --update` after.
+5. Popovers: bell on components/Popover; status menus on TrayMenu;
+   AgentStack keeps its own popup on purpose (marks fly into rows).
+6. Super+N: already island = quick switch, Center = deep list (+ passwords).
+7. Login gap: needs the user's GRUB line (see below); then seamless handoff.
+8. Clipboard: copies vanished when the copying window closed (drop-down
+   kitty is its own process); wl-clip-persist starts at login once installed.
+9. Later: Wallpaper Engine video wallpapers (owning WE + steamcmd, or
+   licence-clean sources); meters baseline-align.
 
 ## Earlier — in progress
 1. **Polkit agent (rice-auth)** — BUILT 2026-11-01: shell-auth/shell.qml + systemd/rice-auth.service
