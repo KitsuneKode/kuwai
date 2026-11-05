@@ -195,7 +195,11 @@ Item {
     Row {
       id: leftGroup
       anchors.verticalCenter: parent.verticalCenter
-      anchors.left: helloFocus ? undefined : parent.left
+      // Mini notch: the marks hug the time (12 px), spare room goes outside.
+      // At the outer edge, a mark on the shorter side sat far from the time.
+      anchors.left: helloFocus || mini ? undefined : parent.left
+      anchors.right: mini && !helloFocus ? clock.left : undefined
+      anchors.rightMargin: 12
       anchors.horizontalCenter: helloFocus ? parent.horizontalCenter : undefined
       spacing: 10
     SysMarks { id: leadSys; bar: rest.bar; visible: rest.mini && any && !rest.helloFocus; anchors.verticalCenter: parent.verticalCenter }
@@ -499,7 +503,10 @@ Item {
       id: rightGroup
       opacity: rest.chromeReveal
       visible: !rest.helloFocus || rest.chromeReveal > 0.01
-      anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+      anchors.verticalCenter: parent.verticalCenter
+      anchors.right: rest.mini ? undefined : parent.right
+      anchors.left: rest.mini ? (soonLabel.visible ? soonLabel.right : clock.right) : undefined
+      anchors.leftMargin: 12
       spacing: 10
     Row {
         visible: Settings.restStatus
