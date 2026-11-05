@@ -5,6 +5,8 @@
 //   unlocking   the shackle springs open ("Unlocked"), then the screen lifts
 //   a timer     the ring emptying, its name and what's left (as an iPhone's
 //               lock screen keeps one); when it ends it swells once, "Done"
+//   an alarm    its name and time, Snooze and Stop (services/Alarms): the one
+//               thing on the lock screen you can answer without unlocking
 //
 // `lock` is the lock's state (Lock.qml: leaving); `preview` skips the
 // locking moment (the off-screen render).
@@ -35,9 +37,9 @@ Item {
     property var last: null
     onTimerChanged: if (timer) last = timer
 
-    readonly property string mode: unlocking ? "unlock" : locking ? "lock" : timer ? "timer" : ""
+    readonly property string mode: unlocking ? "unlock" : locking ? "lock" : Alarms.ringing ? "alarm" : timer ? "timer" : ""
     property string drawn: ""
-    onModeChanged: if (mode) drawn = mode
+    onModeChanged: { if (mode) drawn = mode; if (mode === "alarm") bump.restart(); }
     onUnlockingChanged: if (unlocking) { shackleUp.restart(); bump.restart(); }
 
     Spring { id: open; tier: Theme.springSlow; target: island.mode ? 1 : 0 }
@@ -125,6 +127,35 @@ Item {
                 text: "Unlocked"
                 size: 13; weight: Theme.wSemibold
                 color: Theme.positive
+            }
+
+            // An alarm, ringing.
+            Text {
+                visible: island.drawn === "alarm"
+                anchors.verticalCenter: parent.verticalCenter
+                text: "\u{f0020}"
+                font.family: Theme.fontGlyph; font.pixelSize: 16
+                color: Theme.orange
+            }
+            Label {
+                visible: island.drawn === "alarm"
+                anchors.verticalCenter: parent.verticalCenter
+                text: Alarms.ringing ? Alarms.ringing.label : ""
+                size: 13; weight: Theme.wSemibold
+            }
+            Repeater {
+                model: island.drawn === "alarm" ? [{ id: "snooze", text: "Snooze" }, { id: "stop", text: "Stop" }] : []
+                Rectangle {
+                    required property var modelData
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: actLabel.implicitWidth + 22; height: 24; radius: 12
+                    color: modelData.id === "stop" ? Qt.alpha(Theme.orange, actArea.containsMouse ? 0.95 : 0.85) : actArea.containsMouse ? Theme.pillHover : Theme.pill
+                    scale: actArea.pressed ? 0.97 : 1
+                    Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+                    Label { id: actLabel; anchors.centerIn: parent; text: parent.modelData.text; size: 12; weight: Theme.wSemibold; color: parent.modelData.id === "stop" ? "#1c1c1e" : Theme.textPrimary }
+                    MouseArea { id: actArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                        onClicked: parent.modelData.id === "stop" ? Alarms.stop() : Alarms.snooze(9) }
+                }
             }
 
             // A timer.
