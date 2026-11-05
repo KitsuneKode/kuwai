@@ -36,8 +36,15 @@ PROMPTS = [
 
 class Decline:
     pending = None
+    answer = ""
 
-    def ask(self, ids, item_id, kind, summary, detail):
+    def has_steer(self):
+        return False
+
+    def take_steers(self):
+        return []
+
+    def ask(self, ids, item_id, kind, summary, detail, options=None, timeout=None):
         a.emit({"type": "request.opened", "id": "q", "itemId": item_id, "kind": kind, "summary": summary, "detail": detail})
         a.emit({"type": "request.resolved", "id": "q", "decision": "decline"})
         return "decline"
