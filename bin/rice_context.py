@@ -137,15 +137,24 @@ def remember(fact):
 SKILLS = CONFIG / "skills"
 
 
+# Skills shipped with the rice (assistant/skills/) and your own; yours win on a name clash.
+REPO_SKILLS = Path(__file__).resolve().parents[1] / "assistant" / "skills"
+
+
 def skills():
     """pi's progressive disclosure: name, description and where it lives; the
     model reads SKILL.md only when a task matches. ~/.config/rice/assistant/skills/<name>/SKILL.md
     with `name:` and `description:` in its front matter."""
     out = []
-    try:
-        dirs = sorted(d for d in SKILLS.iterdir() if (d / "SKILL.md").is_file())
-    except OSError:
-        return out
+    dirs, seen = [], set()
+    for root in (SKILLS, REPO_SKILLS):
+        try:
+            for d in sorted(root.iterdir()):
+                if (d / "SKILL.md").is_file() and d.name not in seen:
+                    seen.add(d.name)
+                    dirs.append(d)
+        except OSError:
+            continue
     for d in dirs[:40]:
         head = (d / "SKILL.md").read_text(encoding="utf-8", errors="replace")[:2000]
         meta = {}

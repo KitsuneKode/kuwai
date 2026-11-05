@@ -12,8 +12,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         nodejs npm \
         gcc libc6-dev make \
         chromium-headless-shell fonts-dejavu-core \
+        shellcheck \
     && ln -s /usr/bin/fdfind /usr/local/bin/fd \
     && rm -rf /var/lib/apt/lists/* /usr/share/doc /usr/share/man
+
+# Code-audit scanners for the security-audit skill: Python (bandit, pip-audit), secrets (gitleaks).
+RUN pip install --no-cache-dir --break-system-packages bandit pip-audit \
+    && curl -fsSL https://github.com/gitleaks/gitleaks/releases/download/v8.24.2/gitleaks_8.24.2_linux_x64.tar.gz \
+       | tar -xz -C /usr/local/bin gitleaks
 
 # HOME lives in the mounted folder, so `pip install --user` and npm packages persist.
 ENV HOME=/work/.home \

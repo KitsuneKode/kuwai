@@ -114,3 +114,10 @@ def test_silent_finish_after_tools_gets_one_nudge(run_agent):
     assert fake.requests[2]["messages"][-1]["content"] == "(Now answer my request from what you found.)"
     text = "".join(e["text"] for e in events if e["type"] == "item.delta")
     assert "It's kitty." in text and events[-1]["status"] == "completed"
+
+
+def test_system_audit_is_read_only_and_needs_no_approval(run_agent):
+    events, _ = run_agent(USER, [[call("system_audit"), {"done": True}], answer()], caps=TOOLS_CAPS)
+    assert not [e for e in events if e["type"] == "request.opened"]
+    out = completion(events, tool_items(events)[0]["id"])["output"]
+    assert "## Ports reachable from the network" in out and "## Firewall services" in out

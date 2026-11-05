@@ -993,6 +993,54 @@ def tool_job(args):
     return f"$ {cmd}\n{body}\n" + (f"(done, exit {code})" if state == "done" else "(still running)")
 
 
+def tool_system_audit(_args):
+    """Read-only security facts about this machine for an audit. Fixed commands,
+    no arguments from the model, nothing changed: so it needs no approval."""
+    import shutil
+    def run(argv, timeout=8):
+        try:
+            p = _run(argv, timeout=timeout)
+            return (p.stdout or p.stderr or "").strip()
+        except ToolError as e:
+            return f"({e})"
+    out = []
+    def section(title, text, limit=1800):
+        out.append(f"## {title}\n{_cap(text or '(nothing)', limit)}")
+    # Reachable from the network first (what an audit is about); local-only ones just counted.
+    ports = run(["ss", "-tulpnH"]).splitlines()
+    local = ("127.", "[::1]", "::1", "[fe80", "fe80")
+    public = [l for l in ports if len(l.split()) > 4 and not l.split()[4].startswith(local)]
+    section("Ports reachable from the network (proto, state, address, process)",
+            "\n".join(" ".join(l.split()[:1] + l.split()[4:5] + l.split()[6:]) for l in public) or "(none)")
+    out.append(f"({len(ports) - len(public)} more listen on this computer only)")
+    fw = [f"{u}: {run(['systemctl', 'is-active', u])}" for u in ("firewalld", "ufw", "nftables", "iptables")]
+    section("Firewall services", "\n".join(fw))
+    ssh = run(["systemctl", "is-active", "sshd"])
+    cfg = ""
+    try:
+        cfg = "\n".join(l.strip() for l in open("/etc/ssh/sshd_config", encoding="utf-8", errors="replace")
+                        if l.strip() and not l.lstrip().startswith("#")
+                        and l.split()[0] in ("PermitRootLogin", "PasswordAuthentication", "Port", "PubkeyAuthentication",
+                                             "KbdInteractiveAuthentication", "AllowUsers"))
+    except OSError:
+        cfg = "(sshd_config not readable)"
+    section("SSH server", f"sshd: {ssh}\n{cfg or '(defaults)'}")
+    section("Failed services", run(["systemctl", "--failed", "--no-legend", "--plain"]))
+    section("Admin users (wheel, sudo, docker groups)",
+            "\n".join(f"{g}: {run(['getent', 'group', g])}" for g in ("wheel", "sudo", "docker")))
+    if shutil.which("checkupdates"):
+        ups = run(["checkupdates"], timeout=40)
+        section("Pending updates", f"{len([l for l in ups.splitlines() if '->' in l])} packages\n" + "\n".join(ups.splitlines()[:25]))
+    if shutil.which("docker"):
+        section("Docker containers and published ports", run(["docker", "ps", "--format", "{{.Names}}  {{.Image}}  {{.Ports}}"]))
+    section("Your enabled user services", run(["systemctl", "--user", "list-unit-files", "--state=enabled", "--no-legend", "--plain"]))
+    auto = os.path.expanduser("~/.config/autostart")
+    section("Autostart entries", "\n".join(sorted(os.listdir(auto))) if os.path.isdir(auto) else "(none)")
+    section("Your crontab", run(["crontab", "-l"]))
+    section("Kernel and uptime", run(["uname", "-sr"]) + "\n" + run(["uptime", "-p"]))
+    return "\n\n".join(out)
+
+
 def tool_remember(args):
     try:
         return rice_context.remember(args.get("fact"))
@@ -1193,6 +1241,11 @@ TOOLS = {
                     "glob": {"type": "string", "description": "Only these files, e.g. *.qml"},
                     "ignoreCase": {"type": "boolean"}}, ["pattern"]),
         item="dynamic_tool_call", title=lambda a: f"Searching for “{a.get('pattern', '')}”", approve=None, run=tool_grep),
+    "system_audit": dict(
+        schema=_fn("system_audit", "Read-only security check of this computer: listening ports, firewall, SSH "
+                   "settings, failed services, admin users, pending updates, Docker's published ports, user "
+                   "services, autostarts, cron. Use it for security audits, then explain risks and fixes."),
+        item="dynamic_tool_call", title=lambda a: "Auditing this computer", approve=None, run=tool_system_audit),
     "remember": dict(
         schema=_fn("remember", "Save a lasting fact about the user for future chats (their preferences, setup, "
                    "names, projects). Only when they tell you something worth keeping or ask you to remember.",
@@ -1252,14 +1305,19 @@ TOOL_GROUPS = {
     "act": ["run_command", "launch_app", "open_url"],
     "memory": ["remember"],
     "plan": ["update_plan", "ask_user"],
+    "audit": ["system_audit", "read", "grep", "find", "sandbox_run", "update_plan"],
 }
 ROUTES = [
     ("shop", r"\b(buy|price|prices|cost|costs|cheap|cheapest|deal|deals|discount|amazon|flipkart|₹|rs\.?|inr|under \d|budget)\b|₹"),
     ("files", r"(~/|\b/[a-z]|\.(py|js|ts|tsx|qml|lua|rs|go|json|md|toml|ya?ml|conf|sh|txt|csv|log)\b|\b(file|files|folder|directory|dir|repo|project|codebase|config|dotfile|path|grep|search (in|my|the) (code|files))\b)"),
     ("code", r"\b(code|script|python|node|javascript|bash|program|function|compute|calculate|calc|test|tests|debug|bug|fix|compile|build|install|package|pip|npm|sandbox|run (it|this|the))\b"),
     ("desktop", r"\b(screen|window|app i|using|clipboard|copied|selected|selection|highlighted|cpu|gpu|ram|memory|battery|load|system|temperature)\b"),
-    ("act", r"\b(open|launch|start|run|execute|command|terminal|shell|install|kill|restart|systemctl|pacman|paru|go to|visit)\b"),
+    # Your own machine only when it's explicit: opening things, system tools, or "on my computer". Plain "run"
+    # or "install" is the sandbox's (measured: "run it again" offered run_command and the 4B used it twice).
+    ("act", r"\b(open|launch|go to|visit|terminal|systemctl|pacman|paru|yay|flatpak|kill|restart|reboot|shutdown)\b"
+            r"|shell command|run_command|\bon (my|this) (computer|machine|system|laptop|pc|desktop)\b"),
     ("memory", r"\b(remember|my name|i prefer|i like|i use|i'm a|i am a|call me|forget)\b"),
+    ("audit", r"\b(secur\w*|audit\w*|vulnerab\w*|harden\w*|exposed|firewall|ports?|cve|malware|leak\w*|secrets?|ssh|attack)\b"),
     ("plan", r"\b(steps|plan|multi|then|after that|and then|project|set up|setup|migrate|refactor)\b"),
 ]
 

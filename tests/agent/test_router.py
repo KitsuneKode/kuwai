@@ -40,3 +40,10 @@ def test_all_switch():
         assert route("hi") == set(a.TOOLS)
     finally:
         del os.environ["RICE_AGENT_TOOLS"]
+
+
+def test_running_code_doesnt_offer_your_machine():
+    r = route("write calc.py in your sandbox, run it, fix the bug and run it again")
+    assert "sandbox_run" in r and "run_command" not in r
+    assert "run_command" in route("Run the shell command: touch ~/x")
+    assert "run_command" in route("install htop on my laptop")

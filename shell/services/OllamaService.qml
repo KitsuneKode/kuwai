@@ -148,8 +148,7 @@ Singleton {
     readonly property var curated: [
         { id: "qwen3.5:4b", role: "Everyday", note: "Fastest and most accurate · sees images · 16k context" },
         { id: "gpt-oss:20b", role: "Deep", note: "Much bigger brain for hard questions · ~17 tok/s, 27 s to load · 8k context" },
-        { id: "huihui_ai/qwen3-abliterated:8b", role: "Uncensored", note: "No refusals · accurate, slower · 8k context" },
-        { id: "huihui_ai/qwen3.5-abliterated:4b", role: "Uncensored, fast", note: "No refusals · sees images · weaker at code" }
+        { id: "huihui_ai/qwen3-abliterated:8b", role: "Uncensored", note: "No refusals · accurate, slower · 8k context" }
     ]
 
     // Retry: drop the answer at `index` (and everything after) and run the
