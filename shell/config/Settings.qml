@@ -40,6 +40,7 @@ Singleton {
     readonly property alias screensaverMins: s.screensaverMins
     readonly property alias screensaverStyle: s.screensaverStyle
     readonly property alias islandProximity: s.islandProximity
+    readonly property alias kittyTabs: s.kittyTabs
     readonly property alias notifSurface: s.notifSurface
     readonly property alias idleOwner: s.idleOwner
     readonly property alias idleDimAc: s.idleDimAc
@@ -122,6 +123,9 @@ Singleton {
             property bool idleNoSleepWhilePlaying: true
             property string notifSurface: "one"   // one (island or toast) · both
             property bool islandProximity: true   // nearing the island 30–60 px out reveals it (off: only the top edge)
+            // Tabs & agents: a glass column on the left while kitty is focused
+            // on that screen. Off until asked — it reserves a strip of the display.
+            property bool kittyTabs: false
             property string quickPrimary: "caffeine"   // the quick switch shown in the hover view
             property bool liveOnBattery: false   // live wallpaper keeps playing on battery
         }

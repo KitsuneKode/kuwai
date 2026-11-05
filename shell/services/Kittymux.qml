@@ -12,6 +12,9 @@
 //                          jump action. With it, nothing parses menu text and the
 //                          island needs no poll; without it (older kittymux) the
 //                          20 s `pick` look below is the fallback.
+//   tabs.json              watched; one kitty OS window per entry and its tabs
+//                          (version 1). The tabs column reads `tabs`. Until the
+//                          file exists, `tabs` is the running agents.
 //
 // Rows are refreshed when the inbox changes and every few seconds while the
 // Agents tab is on screen; nothing polls while it's closed.
@@ -37,6 +40,8 @@ Singleton {
     property var rows: []                      // kittymux pick --json
     property var feed: null                    // agents.json, when this kittymux publishes it
     readonly property bool live: !!feed && feed.version === 1 && Array.isArray(feed.agents)
+    property var tabsDoc: null                 // tabs.json, when this kittymux publishes it
+    readonly property bool tabsLive: !!tabsDoc && tabsDoc.version === 1 && Array.isArray(tabsDoc.windows)
     property bool loaded: false                // first pick has answered
     property var usage: []                     // [{ name, rows: [{ label, pct, reset }] }]
 
@@ -49,6 +54,98 @@ Singleton {
     readonly property int needsYou: inbox.needs_you || 0
     readonly property var running: live ? feed.agents.map(fromFeed) : rows.filter(r => r.kind === "running").map(parse)
     readonly property var recent: rows.filter(r => r.kind === "closed").slice(0, 6).map(parse)
+
+    // OSC 9;4: a fraction from agents.json, or {state, pct} from tabs.json (pct is 0–100).
+    function progressPct(p) {
+        if (p == null) return null;
+        if (typeof p === "number") return Math.max(0, Math.min(100, Math.round(p <= 1 ? p * 100 : p)));
+        if (typeof p === "object" && p.state === "set" && typeof p.pct === "number")
+            return Math.max(0, Math.min(100, Math.round(p.pct)));
+        return null;
+    }
+    function ageFrom(since) {
+        if (!since) return "";
+        const s = Math.max(0, Date.now() / 1000 - since);
+        if (s < 45) return "<1m";
+        const m = Math.round(s / 60);
+        if (m < 60) return m + "m";
+        const h = Math.floor(m / 60);
+        return h + "h";
+    }
+    function placeOf(t) {
+        const sub = (t.subtitle || "").trim();
+        if (sub) return sub;
+        const bits = [t.project, t.branch].filter(s => s);
+        if (bits.length) return bits.join(" · ");
+        return t.cwd || "";
+    }
+    // One tab, whether it came from tabs.json or from an agents.json row.
+    function normalizeTab(t, i) {
+        const state = t.state || (t.needs_you ? "waiting" : "");
+        return {
+            key: String(t.tab_id != null ? t.tab_id : (t.key || i)),
+            index: t.index || i + 1,
+            active: !!t.active,
+            title: clean(t.title) || t.tab_title || t.agent || "Terminal",
+            place: placeOf(t),
+            project: t.project || "",
+            hue: typeof t.hue === "string" && /^#[0-9A-Fa-f]{6}$/.test(t.hue) ? t.hue : "",
+            agent: t.agent || "",
+            brand: t.brand || "",
+            state: state,
+            age: t.age || ageFrom(t.since),
+            progress: progressPct(t.progress),
+            needsYou: !!t.needs_you || state === "waiting",
+            limitReset: t.limit_reset || t.limitReset || null,
+            question: t.question || "",
+            panes: t.panes || 1,
+            action: t.action || null
+        };
+    }
+    function normalizeWindow(w) {
+        return {
+            kittyPid: w.kitty_pid || w.kittyPid || 0,
+            osWindowId: w.os_window_id || w.osWindowId || 0,
+            wmClass: w.wm_class || w.wmClass || "kitty",
+            focused: !!w.focused,
+            session: w.session || "",
+            tabs: (w.tabs || []).map(normalizeTab)
+        };
+    }
+    // No tabs.json yet: the agents the island already shows, one group per kitty.
+    function fallbackTabs() {
+        const raw = (live && feed && Array.isArray(feed.agents)) ? feed.agents : null;
+        const list = raw || (running || []).map(a => ({
+            key: a.key,
+            kitty_pid: a.action && a.action.pid,
+            agent: a.agent,
+            brand: a.brand || "",
+            state: a.state || (a.working ? "working" : "idle"),
+            title: a.title,
+            cwd: a.where || "",
+            question: a.question || "",
+            progress: a.progress,
+            needs_you: a.state === "waiting" || /needs you/i.test(a.status || ""),
+            action: a.action
+        }));
+        const groups = {};
+        const order = [];
+        list.forEach((a, i) => {
+            const pid = String(a.kitty_pid || 0);
+            if (!groups[pid]) { groups[pid] = { session: a.session || "", tabs: [] }; order.push(pid); }
+            if (a.session && !groups[pid].session) groups[pid].session = a.session;
+            groups[pid].tabs.push(normalizeTab(a, i));
+        });
+        return order.map(pid => ({
+            kittyPid: Number(pid) || 0,
+            osWindowId: 0,
+            wmClass: "kitty",
+            focused: true,
+            session: groups[pid].session,
+            tabs: groups[pid].tabs
+        }));
+    }
+    readonly property var tabs: tabsLive ? tabsDoc.windows.map(normalizeWindow) : fallbackTabs()
 
     // Tab titles carry the agent's status glyph (✳ ◐ ◑ …): drop it.
     function clean(t) {
@@ -173,6 +270,17 @@ Singleton {
             try { root.feed = JSON.parse(text()); root.loaded = true; } catch (e) {}
         }
         onLoadFailed: root.feed = null           // no file: an older kittymux, so pick stays the source
+    }
+
+    FileView {
+        path: root.available ? root.stateDir + "/tabs.json" : ""
+        watchChanges: true
+        printErrors: false
+        onFileChanged: reload()
+        onLoaded: {
+            try { root.tabsDoc = JSON.parse(text()); } catch (e) {}
+        }
+        onLoadFailed: root.tabsDoc = null        // not written yet: `tabs` falls back to running agents
     }
 
     FileView {

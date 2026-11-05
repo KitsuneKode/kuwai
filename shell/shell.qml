@@ -17,6 +17,7 @@ import qs.modules.voxtype
 import qs.modules.assistant
 import qs.modules.wallpaper
 import qs.modules.screensaver
+import qs.modules.kitty
 import qs.modules
 import qs.services
 
@@ -39,5 +40,6 @@ ShellRoot {
     VoxtypeHost {}
     AssistantOverlay {}
     Shortcuts {}
+    TabsSidebar {}
     TestHook {}
 }
