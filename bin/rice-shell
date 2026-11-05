@@ -58,6 +58,9 @@ broken() {
     why=$(strings "$log" 2>/dev/null | grep -m3 'caused by' | sed 's/^[^c]*caused by //' | paste -sd ' ' | cut -c1-220)
     echo "rice-shell: the shell didn't load: $why" >&2
     pgrep -x waybar >/dev/null || setsid -f hyde-shell waybar >/dev/null 2>&1 </dev/null
+    # Idle and locking fall back to hypridle (its config locks with `rice
+    # lock`, which uses hyprlock while the shell is down).
+    systemctl --user start hypridle.service 2>/dev/null
     notify-send -u critical -a "Shell" "The island didn't load" "${why:-see the Quickshell log} · Waybar is up meanwhile; the island comes back by itself once the file is saved fixed" 2>/dev/null
     setsid -f bash -c '
         dir=$1 rice=$2
@@ -120,6 +123,7 @@ for attempt in 1 2 3; do
         # The new rice has the name: done.
         if [ -n "$pid" ] && rice_pids | grep -qx "$pid"; then
             "$RICE/bin/rice" bar apply      # one top bar: the island or Waybar
+            systemctl --user stop hypridle.service 2>/dev/null   # idle is the shell's (services/Idle)
             exit 0
         fi
         sleep 0.1
@@ -132,6 +136,7 @@ for attempt in 1 2 3; do
         owner=$(owner_pid)
         echo "rice-shell: running; notifications stay with pid ${owner:-?} ($(tr '\0' ' ' </proc/"${owner:-0}"/cmdline 2>/dev/null | cut -c1-80)) until it exits" >&2
         "$RICE/bin/rice" bar apply
+        systemctl --user stop hypridle.service 2>/dev/null
         exit 0
     fi
     echo "rice-shell: the shell didn't come up (attempt $attempt), retrying" >&2

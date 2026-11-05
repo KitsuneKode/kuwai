@@ -18,8 +18,11 @@ import qs.modules.assistant
 import qs.modules.wallpaper
 import qs.modules.screensaver
 import qs.modules
+import qs.services
 
 ShellRoot {
+    // Idle (dim, lock, screens off, sleep) lives in services/Idle: wake it up.
+    readonly property bool idleOwned: Idle.enabled
     Osd {}
     Popups {}
     Center {}

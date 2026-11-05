@@ -32,7 +32,8 @@ hl.on("hyprland.start", function()
 	else
 		hl.exec_cmd(unit("plasma-polkit-agent.service"))
 	end
-	hl.exec_cmd(unit("hypridle.service"))
+	-- Idle (dim, lock, screens off, sleep) is the shell's (services/Idle);
+	-- rice-shell starts hypridle only as the fallback when the shell can't run.
 
 	-- The rice: shell (island, HUD, notifications, lock) — it also decides
 	-- whether Waybar or the island is the bar (`rice bar apply`).

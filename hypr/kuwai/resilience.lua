@@ -36,7 +36,8 @@ end
 ---------------------------------------------------------------------------
 -- Lid / clamshell
 ---------------------------------------------------------------------------
-local LOCK = "pidof hypridle >/dev/null && loginctl lock-session || hyprlock"
+-- The shell's lock (it falls back to hyprlock when the shell is down).
+local LOCK = K.bin .. "/rice lock"
 
 if K.feature("clamshell") then
 	K.bind("switch:on:Lid Switch", "", function()

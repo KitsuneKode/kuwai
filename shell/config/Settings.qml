@@ -41,6 +41,16 @@ Singleton {
     readonly property alias screensaverStyle: s.screensaverStyle
     readonly property alias islandProximity: s.islandProximity
     readonly property alias notifSurface: s.notifSurface
+    readonly property alias idleOwner: s.idleOwner
+    readonly property alias idleDimAc: s.idleDimAc
+    readonly property alias idleLockAc: s.idleLockAc
+    readonly property alias idleOffAc: s.idleOffAc
+    readonly property alias idleSleepAc: s.idleSleepAc
+    readonly property alias idleDimBattery: s.idleDimBattery
+    readonly property alias idleLockBattery: s.idleLockBattery
+    readonly property alias idleOffBattery: s.idleOffBattery
+    readonly property alias idleSleepBattery: s.idleSleepBattery
+    readonly property alias idleNoSleepWhilePlaying: s.idleNoSleepWhilePlaying
 
     function set(key, value) { s[key] = value; }
 
@@ -99,6 +109,17 @@ Singleton {
             property string screensaverWhen: "caffeine"   // caffeine · always · off
             property int screensaverMins: 3
             property string screensaverStyle: "dusk"   // dusk · live · still
+            // Idle (services/Idle): seconds, 0 = never. idleOwner "hypridle" hands it back.
+            property string idleOwner: "shell"
+            property int idleDimAc: 240
+            property int idleLockAc: 300
+            property int idleOffAc: 330
+            property int idleSleepAc: 0
+            property int idleDimBattery: 120
+            property int idleLockBattery: 180
+            property int idleOffBattery: 210
+            property int idleSleepBattery: 900
+            property bool idleNoSleepWhilePlaying: true
             property string notifSurface: "one"   // one (island or toast) · both
             property bool islandProximity: true   // nearing the island 30–60 px out reveals it (off: only the top edge)
             property string quickPrimary: "caffeine"   // the quick switch shown in the hover view
