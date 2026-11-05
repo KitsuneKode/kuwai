@@ -589,10 +589,11 @@ function onPanelClosed() {
     // A turn keeps running with the overlay closed; when it ends (or needs you),
     // a notification says so and its Open button brings the assistant back.
     readonly property string riceBin: Quickshell.shellDir + "/../bin/rice"
+    readonly property string notifyBin: Quickshell.shellDir + "/../bin/rice-notify"
     function notify(title, body, urgency) {
         const p = notifyComponent.createObject(root, { command: ["sh", "-c",
-            'r=$(notify-send -a Assistant -i "$4" -u "$3" -w -A open=Open -- "$1" "$2"); [ "$r" = open ] && "$5" assistant open',
-            "sh", title, body, urgency || "normal", "chat-bubbles", root.riceBin] });
+            'r=$("$6" -a Assistant -i chat-bubbles -u "$3" -w -A open=Open -- "$1" "$2"); [ "$r" = open ] && "$5" assistant open',
+            "sh", title, body, urgency || "normal", root.riceBin, root.notifyBin] });
         p.running = true;
     }
     Component {

@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -eu
+ROOT="$(cd "$(dirname "$(readlink -f "$0")")/../.." && pwd)"
+"$ROOT/bin/rice-notify" -a kuwai "Agents" "Install codex CLI, then run: codex"
+exit 1

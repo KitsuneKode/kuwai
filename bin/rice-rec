@@ -14,6 +14,9 @@
 # clipboard island shows a red dot and the time, and a click on it stops.
 set -uo pipefail
 
+NOTIFY="$(dirname "$(readlink -f "$0")")/rice-notify"
+notify() { [ -x "$NOTIFY" ] && "$NOTIFY" "$@" || command -v notify-send >/dev/null && notify-send "$@" || true; }
+
 state="${XDG_STATE_HOME:-$HOME/.local/state}/rice/recording"
 dir="${XDG_VIDEOS_DIR:-$HOME/Videos}/Recordings"
 mkdir -p "$(dirname "$state")" "$dir"
@@ -54,7 +57,7 @@ start() {
     local pid=$!
     sleep 0.4
     if ! kill -0 "$pid" 2>/dev/null; then
-        notify-send -a "Screen recording" -u normal "Couldn't start recording" "$(tail -2 "${state}.log")"
+        notify -a "Screen recording" -u normal "Couldn't start recording" "$(tail -2 "${state}.log")"
         exit 1
     fi
     printf '%s %s %s %s\n' "$pid" "$(date +%s)" "$path" "$window" > "$state"

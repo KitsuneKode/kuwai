@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Emit one JSON object per user coredump from the last 3 minutes not in state file.
+set -eu
+STATE="${XDG_STATE_HOME:-$HOME/.local/state}/rice/crashes-seen.json"
+mkdir -p "$(dirname "$STATE")"
+[ -s "$STATE" ] || echo '{}' > "$STATE"
+seen=$STATE
+list=$(coredumpctl list --user --since "3 min ago" --no-pager --no-legend 2>/dev/null || true)
+[ -n "$list" ] || exit 0
+while read -r time pid uid gid sig core exe rest; do
+    [ -n "$pid" ] || continue
+    id="${time}-${pid}-${exe}"
+    if jq -e --arg k "$id" '.[$k]' "$seen" >/dev/null 2>&1; then continue; fi
+    brief=$(coredumpctl info "$pid" --user 2>/dev/null | head -25 | tail -20 || echo "$exe signal $sig")
+    jq -n --arg id "$id" --arg exe "$exe" --arg sig "$sig" --arg time "$time" --arg brief "$brief" \
+        '{id:$id,exe:$exe,signal:$sig,time:$time,brief:$brief}'
+    jq --arg k "$id" '.[$k]=true' "$seen" > "${seen}.tmp" && mv "${seen}.tmp" "$seen"
+done <<< "$list"

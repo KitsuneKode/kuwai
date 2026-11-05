@@ -18,6 +18,9 @@
 # Cancelling the selection is not an error: nothing is said.
 set -uo pipefail
 
+NOTIFY="$(dirname "$(readlink -f "$0")")/rice-notify"
+notify() { [ -x "$NOTIFY" ] && "$NOTIFY" "$@" || command -v notify-send >/dev/null && notify-send "$@" || true; }
+
 mode="${1:-area}"
 dir="${XDG_PICTURES_DIR:-$HOME/Pictures}/Screenshots"
 mkdir -p "$dir"
@@ -51,7 +54,7 @@ if [ "$mode" = area ] || [ "$mode" = quick ] || [ "$mode" = freeze ]; then
     [ -n "$frz" ] && kill "$frz" 2>/dev/null
     [ $ok -eq 0 ] && [ -n "$geo" ] || exit 0                      # cancelled
     if ! grim -g "$geo" "$out" 2>/dev/null || [ ! -s "$out" ]; then
-        rm -f -- "$out"; notify-send -a "Screenshot" "Screenshot failed" "grim couldn't capture $geo"; exit 0
+        rm -f -- "$out"; notify -a "Screenshot" "Screenshot failed" "grim couldn't capture $geo"; exit 0
     fi
     wl-copy --type image/png < "$out"
     case "$mode" in quick) exit 0 ;; esac
@@ -69,7 +72,7 @@ case "$mode" in
             if [ -n "$text" ]; then
                 printf '%s' "$text" | wl-copy
             else
-                notify-send -a "Screenshot" "No text found" "Nothing readable in that region."
+                notify -a "Screenshot" "No text found" "Nothing readable in that region."
             fi
         fi
         rm -f -- "$tmp"; exit 0 ;;
@@ -94,7 +97,7 @@ err=$(cat "$errf"); rm -f -- "$errf"
 if [ $rc -ne 0 ] || [ ! -s "$out" ]; then
     rm -f -- "$out"
     if [ -n "$err" ] && ! printf '%s' "$err" | grep -qi "cancel"; then
-        notify-send -a "Screenshot" -u normal "Screenshot failed" "$(printf '%s' "$err" | tail -3)"
+        notify -a "Screenshot" -u normal "Screenshot failed" "$(printf '%s' "$err" | tail -3)"
     fi
     exit 0
 fi

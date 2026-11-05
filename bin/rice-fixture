@@ -21,14 +21,13 @@ ipc() { qs ipc -p "$ROOT/shell" call notifs "$@"; }
 
 send() {   # app title body [urgency] [actions…]
     local app=$1 title=$2 body=$3 urg=${4:-normal}; shift 4 2>/dev/null || shift $#
-    local args=(-a "$app" -u "$urg")
-    for a in "$@"; do args+=(-A "$a"); done
     printf '%s\t%s\n' "$app" "$title" >> "$STATE"
+    local notify=( "$ROOT/bin/rice-notify" -a "$app" -u "$urg" )
+    for a in "$@"; do notify+=(-A "$a"); done
     if [ $# -gt 0 ]; then
-        # With actions notify-send waits for a click: let it go on its own.
-        (timeout 600 notify-send "${args[@]}" "$title" "$body" >/dev/null 2>&1 &)
+        (timeout 600 "${notify[@]}" "$title" "$body" >/dev/null 2>&1 &)
     else
-        notify-send "${args[@]}" "$title" "$body" >/dev/null 2>&1
+        "${notify[@]}" "$title" "$body" >/dev/null 2>&1
     fi
 }
 

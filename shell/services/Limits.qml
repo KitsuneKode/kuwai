@@ -27,8 +27,18 @@ Singleton {
     property real now: Date.now()               // advanced on each read, not per frame
 
     readonly property string bin: Paths.bin + "/rice-usage"
+    readonly property string notifyBin: Paths.bin + "/rice-notify"
 
     property string error: ""                   // why T3 Code isn't the source, if it isn't
+
+    // Last `used` per window; cleared below 80% so the next spike can alert again.
+    property var alertPrev: ({})
+    property var alertSent: ({})              // key+tier → true
+    property bool alertSeeded: false
+
+    onWatchingChanged: if (!watching) { alertSeeded = false; alertPrev = ({}); alertSent = ({}) }
+
+    onProvidersChanged: if (loaded) checkLimitAlerts()
 
     IpcHandler {
         target: "limits"
@@ -56,8 +66,87 @@ Singleton {
                 root.error = d.t3Error || "";
                 root.providers = d.providers || [];
                 root.loaded = true;
+                root.checkLimitAlerts();
             }
         }
+    }
+
+    function alertKey(p, a, w) {
+        return (p.driver || p.label || "p") + ":" + (a.key || a.email || "") + ":" + (w.id || w.label || "");
+    }
+
+    function checkLimitAlerts() {
+        if (!Settings.islandAgentUsage || !providers.length) return;
+        const next = Object.assign({}, alertPrev);
+        for (const p of providers) {
+            for (const a of p.accounts || []) {
+                for (const w of a.windows || []) {
+                    const used = Math.round(Math.max(0, Math.min(100, w.used || 0)));
+                    const key = alertKey(p, a, w);
+                    const prev = alertPrev[key] ?? -1;
+                    next[key] = used;
+                    if (used < 80) {
+                        const copy = Object.assign({}, alertSent);
+                        delete copy[key + ":high"];
+                        delete copy[key + ":limit"];
+                        alertSent = copy;
+                    }
+                    if (!alertSeeded) continue;
+                    if (used >= 98 && prev < 98 && !alertSent[key + ":limit"])
+                        pushLimitAlert(p, a, w, "limit", used);
+                    else if (used >= 90 && prev < 90 && used < 98 && !alertSent[key + ":high"])
+                        pushLimitAlert(p, a, w, "high", used);
+                }
+            }
+        }
+        alertPrev = next;
+        if (!alertSeeded) alertSeeded = true;
+    }
+
+    function pushLimitAlert(p, a, w, tier, used) {
+        const key = alertKey(p, a, w);
+        alertSent = Object.assign({}, alertSent, { [key + ":" + tier]: true });
+        const left = remaining(w);
+        const clean = s => String(s || "").replace(/[\r\n\t]+/g, " ").trim().slice(0, 120);
+        const acct = clean(label(a));
+        const win = clean(w.label || w.kind || "Quota");
+        const app = clean(p.label || p.driver || "Agent");
+        const resets = resetsIn(w);
+        const title = tier === "limit" ? win + " limit reached" : win + " almost full";
+        const body = (acct + " · " + used + "% used"
+            + (left >= 0 && left < 100 ? " · " + left + "% left" : "")
+            + (resets ? " · resets " + resets : "")
+            + (source ? " · " + source : "")).slice(0, 240);
+        const status = tier === "limit" ? "Coding agent quota" : left + "% left";
+        alertProc.app = app;
+        alertProc.title = title;
+        alertProc.body = body;
+        alertProc.status = status;
+        alertProc.severity = tier === "limit" ? "critical" : "warning";
+        alertProc.driver = String(p.driver || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 32);
+        alertProc.group = "agent-limit:" + key.replace(/[^a-zA-Z0-9:_-]/g, "").slice(0, 80);
+        alertProc.running = true;
+    }
+
+    Process {
+        id: alertProc
+        property string app: ""
+        property string title: ""
+        property string body: ""
+        property string status: ""
+        property string severity: "warning"
+        property string driver: ""
+        property string group: ""
+        command: [
+            root.notifyBin, "-a", app, "-u", severity === "critical" ? "critical" : "normal",
+            "-A", "default=Open usage",
+            "-H", "x-rice-agent-limit=1",
+            "-H", "x-rice-group=" + group,
+            "-H", "x-rice-driver=" + driver,
+            "-H", "x-rice-severity=" + severity,
+            "-H", "x-rice-status=" + status,
+            title, body
+        ]
     }
 
     // ── T3 Code's arithmetic (packages/shared/src/usageLimits.ts) ─────────

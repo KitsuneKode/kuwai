@@ -166,7 +166,7 @@ if K.feature("focus_sessions") then
 		K.set_state("focus_until", nil)
 		hl.exec_cmd(K.bin .. "/rice notifs dnd-off")
 		if not quiet then
-			hl.exec_cmd("notify-send -a kuwai -i alarm-symbolic 'Focus session done' 'Notifications are back. Take a break.'")
+			hl.exec_cmd(K.bin .. "/rice-notify -a kuwai -i alarm-symbolic 'Focus session done' 'Notifications are back. Take a break.'")
 		end
 	end
 	local function arm(until_ts)

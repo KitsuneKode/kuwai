@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Lazy stub: install your agent CLI, then replace this with a real launcher or mise shim.
+set -eu
+ROOT="$(cd "$(dirname "$(readlink -f "$0")")/../.." && pwd)"
+"$ROOT/bin/rice-notify" -a kuwai "Agents" "Install claude (Claude Code CLI), then run: claude — or point bin/agents/claude at your launcher."
+echo "Install Claude Code: https://docs.anthropic.com/en/docs/claude-code" >&2
+exit 1

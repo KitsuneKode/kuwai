@@ -4,7 +4,7 @@
 #   rice start|restart        (re)start the shell, take over notifications
 #   rice stop                 stop it (dunst takes notifications back)
 #   rice logs                 follow the shell's log
-#   rice notifs <cmd>         dnd | dnd-on | dnd-off | clear | hide | open | last | count | waybar
+#   rice notifs <cmd>         dnd | dnd-on | dnd-off | mute-on | mute-off | clear | hide | open | last | count | waybar
 #   rice feeds [status|gmail-setup|gmail-forget|logs]   GitHub and Gmail notifications (bin/rice-feeds)
 #   rice center [agents] [pointer]   toggle the center (Notifications or Agents);
 #                             `pointer` (the bell) morphs it, keys open it instantly
@@ -24,6 +24,7 @@
 #   rice channel [stable|dev] run from the stable copy (~/.local/share/kuwai) or the repo
 #   rice promote [--force]    move stable up to the repo's latest commit (and reload it), after rice-check
 #   rice check                is the running shell healthy (load, orphans, idle, memory, cpu)
+#   rice doctor               kuwai + notifications + shell + feeds (before promote)
 #
 # `notifs` falls back to dunstctl when the rice isn't the notification server,
 # so Waybar and keybinds keep working either way.
@@ -99,6 +100,8 @@ notifs() {
             dnd)     ipc notifs toggleDnd >/dev/null ;;
             dnd-on)  ipc notifs setDnd true ;;
             dnd-off) ipc notifs setDnd false ;;
+            mute-on) ipc notifs setDndMute true ;;
+            mute-off) ipc notifs setDndMute false ;;
             clear)   ipc notifs clear ;;
             hide)    ipc notifs dismissPopups ;;
             open)    ipc notifs openLatest ;;
@@ -173,7 +176,8 @@ case ${1:-} in
         git -C "$STABLE" merge --ff-only --quiet "$head" || { echo "rice: stable can't fast-forward to $(git -C "$dev" log --oneline -1)" >&2; exit 1; }
         echo "stable is now $(git -C "$STABLE" log --oneline -1)"
         if [ "$(cat "$STATE_DIR/channel" 2>/dev/null)" = stable ]; then switch_to "$STABLE"; fi ;;
-    check)         exec "$RICE/bin/rice-check" ;;
+    check)         exec "$RICE/bin/rice-check" "$@" ;;
+    doctor)        exec "$RICE/bin/rice-doctor" "$@" ;;
     start|restart) exec "$RICE/bin/rice-shell" ;;
     stop)          for pid in $(qs list -p "$SHELL_DIR" --json 2>/dev/null | jq -r ".[].pid"); do kill -9 "$pid"; done ;;
     logs)          exec qs log -p "$SHELL_DIR" -f ;;

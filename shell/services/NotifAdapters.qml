@@ -30,7 +30,42 @@ Singleton {
 
     readonly property var rules: [
         {
-            // bin/rice-feeds (GitHub, Gmail) says what each one is in its
+            match: n => !!(n.hints && n.hints["x-rice-agent-limit"]),
+            adapt: n => {
+                const h = n.hints;
+                const driver = h["x-rice-driver"] || "";
+                const icon = driver === "codex" ? root.entryIcon("com.openai.chatgpt")
+                           : driver === "claude" ? root.entryIcon("com.anthropic.claude") || root.entryIcon("t3code")
+                           : root.entryIcon("t3code") || root.entryIcon("com.t3tools.T3Code");
+                const sev = h["x-rice-severity"] || "warning";
+                return {
+                    app: n.appName || "Agent",
+                    title: n.summary,
+                    body: n.body,
+                    status: h["x-rice-status"] || "",
+                    statusGlyph: sev === "critical" ? "\u{f04c5}" : "\u{f04c5}",
+                    statusTone: sev === "critical" ? "critical" : "caution",
+                    icon: icon,
+                    groupKey: h["x-rice-group"] || "agent-limit",
+                    severity: sev === "critical" ? "critical" : "warning"
+                };
+            }
+        },
+        {
+            match: n => !!(n.hints && n.hints["x-rice-crash"]),
+            adapt: n => ({
+                app: "System",
+                title: n.summary,
+                body: n.body,
+                status: "Tap Diagnose to brief the assistant",
+                statusGlyph: "\u{f0028}",
+                statusTone: "caution",
+                icon: root.entryIcon("dialog-warning") || "",
+                groupKey: "crash:" + (n.body || "").slice(0, 40),
+                severity: "warning"
+            })
+        },
+        {
             // hints: the status, the thread to group by, the link, and
             // whether it's quiet (a bot's: the center only) or calm (a toast,
             // no peek).

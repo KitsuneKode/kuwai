@@ -53,6 +53,14 @@ newest_log() {
 # bar on screen, and come back by itself. Quickshell exits when its config
 # fails at startup, so a watcher waits for the next save to any of the
 # shell's files and tries again (one watcher: it becomes the next attempt).
+notify_critical() {
+    local title=$1 body=$2
+    gdbus call --session --dest org.freedesktop.Notifications \
+        --object-path /org/freedesktop/Notifications \
+        --method org.freedesktop.Notifications.Notify \
+        'Shell' 0 'dialog-error' "$title" "$body" '[]' '{"urgency": <byte 2>}' 15000 \
+        >/dev/null 2>&1 || true
+}
 broken() {
     local log=$1 why
     why=$(strings "$log" 2>/dev/null | grep -m3 'caused by' | sed 's/^[^c]*caused by //' | paste -sd ' ' | cut -c1-220)
@@ -61,7 +69,7 @@ broken() {
     # Idle and locking fall back to hypridle (its config locks with `rice
     # lock`, which uses hyprlock while the shell is down).
     systemctl --user start hypridle.service 2>/dev/null
-    notify-send -u critical -a "Shell" "The island didn't load" "${why:-see the Quickshell log} · Waybar is up meanwhile; the island comes back by itself once the file is saved fixed" 2>/dev/null
+    notify_critical "The island didn't load" "${why:-see the Quickshell log} · Waybar is up meanwhile; saving a fixed QML file reloads the island"
     setsid -f bash -c '
         dir=$1 rice=$2
         stamp() { find "$dir" \( -name "*.qml" -o -name "*.js" -o -name "*.mjs" -o -name qmldir \) -printf "%T@\n" 2>/dev/null | sort -n | tail -1; }

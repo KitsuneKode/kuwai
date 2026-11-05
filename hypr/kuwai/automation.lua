@@ -63,7 +63,7 @@ if K.feature("screenshare_privacy") then
 				if shares > 0 and run == mine and not engaged and held == 0 and os.time() >= grace then
 					engaged = true
 					privacy(true)
-					hl.exec_cmd(K.bin .. "/rice notifs dnd-on")
+					hl.exec_cmd(K.bin .. "/rice notifs mute-on")
 					K.notify("Sharing your screen — notifications muted, private apps hidden", 3000, "info")
 				end
 			end, { timeout = 2500, type = "oneshot" })
@@ -75,7 +75,7 @@ if K.feature("screenshare_privacy") then
 			if shares == 0 and engaged then
 				engaged = false
 				privacy(false)
-				hl.exec_cmd(K.bin .. "/rice notifs dnd-off")
+				hl.exec_cmd(K.bin .. "/rice notifs mute-off")
 			end
 		end
 	end)

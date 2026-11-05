@@ -32,6 +32,7 @@ QtObject {
     property real snoozedUntil: 0     // snoozed: out of the list until then (ms)
     property int burst: 0             // earlier ones from the same app this toast replaced on screen
     property int bumps: 0             // ticks when replaced, the card pulses
+    property bool replyable: false    // feeds offered inline reply when live
 
     // ── Popup state ──────────────────────────────────────────────────────
     property bool popup: false        // on screen (including while leaving)
@@ -92,6 +93,7 @@ QtObject {
         hasDefault = n.actions.some(x => x.identifier === "default");
         actions = n.actions.filter(x => x.identifier !== "default" && x.text)
                            .map(x => ({ id: x.identifier, text: x.text }));
+        replyable = n.hasInlineReply || n.actions.some(x => x.identifier === "inline-reply");
         // Critical stays until dealt with; warnings get time to be read;
         // low-priority ones get out of the way sooner.
         expireMs = severity === "critical" ? 0
@@ -118,6 +120,6 @@ QtObject {
     }
 
     function toJson() {
-        return { nid, time, app, title, body, status, statusGlyph, statusTone, icon: savedIcon || icon, groupKey, focusClass, jump, url, quiet, urgency, severity, count, snoozedUntil };
+        return { nid, time, app, title, body, status, statusGlyph, statusTone, icon: savedIcon || icon, groupKey, focusClass, jump, url, quiet, urgency, severity, count, snoozedUntil, replyable };
     }
 }

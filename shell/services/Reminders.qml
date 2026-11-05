@@ -78,13 +78,13 @@ Singleton {
     }
 
     // The notification, with Snooze (10 min) and Done; it waits for the
-    // answer (notify-send -w prints the action's key) and then goes.
+    // answer (rice-notify -w prints the action's key) and then goes.
     Component {
         id: asker
         Process {
             property var reminder
             running: true
-            command: ["notify-send", "-w", "-a", "Reminders", "-i", "appointment-soon", "-u", "critical",
+            command: [Paths.bin + "/rice-notify", "-w", "-a", "Reminders", "-i", "appointment-soon", "-u", "critical",
                       "-A", "snooze=Snooze 10 min", "-A", "done=Done", "Reminder", reminder.text]
             stdout: StdioCollector { id: said }
             onExited: { if (said.text.trim() === "snooze") root.snooze(reminder, 10); destroy(); }

@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+# Send a freedesktop notification without libnotify (notify-send breaks on some hosts).
+#   rice-notify TITLE BODY
+#   rice-notify -a APP -i ICON -u low|normal|critical TITLE BODY
+#   rice-notify -A key=Label ...   (actions; blocks until clicked if -w)
+#   rice-notify -H key=value ...   (rice hints only: keys must match x-rice-*)
+set -eu
+app=rice
+icon=""
+urgency=1
+wait=0
+actions=()
+declare -A xhints=()
+while getopts "a:i:u:wA:H:" opt; do
+    case $opt in
+        a) app=$OPTARG ;;
+        i) icon=$OPTARG ;;
+        u) case $OPTARG in critical) urgency=2 ;; low) urgency=0 ;; *) urgency=1 ;; esac ;;
+        w) wait=1 ;;
+        A) actions+=("$OPTARG") ;;
+        H)
+            key=${OPTARG%%=*}; val=${OPTARG#*=}
+            case $key in x-rice-*) xhints[$key]=$val ;;
+                *) echo "rice-notify: hint key must start with x-rice- ($key)" >&2; exit 2 ;;
+            esac
+            ;;
+        *) exit 2 ;;
+    esac
+done
+shift $((OPTIND - 1))
+title=${1:-Notification}; body=${2:-}
+
+hints="{\"urgency\": <byte $urgency>"
+if command -v jq >/dev/null 2>&1; then
+    for k in "${!xhints[@]}"; do
+        esc=$(jq -Rn --arg v "${xhints[$k]}" '$v')
+        hints+=", \"$k\": $esc"
+    done
+else
+    for k in "${!xhints[@]}"; do
+        v=${xhints[$k]//\\/\\\\}; v=${v//\"/\\\"}
+        hints+=", \"$k\": \"$v\""
+    done
+fi
+hints+="}"
+
+if [ ${#actions[@]} -gt 0 ]; then
+    arr="["
+    for a in "${actions[@]}"; do
+        key=${a%%=*}; label=${a#*=}
+        key=${key//\\/\\\\}; key=${key//\"/\\\"}
+        label=${label//\\/\\\\}; label=${label//\"/\\\"}
+        [ "$arr" != "[" ] && arr+=", "
+        arr+="\"$key\", \"$label\""
+    done
+    arr+="]"
+else
+    arr="'[]'"
+fi
+
+reply=$(gdbus call --session --dest org.freedesktop.Notifications \
+    --object-path /org/freedesktop/Notifications \
+    --method org.freedesktop.Notifications.Notify \
+    "$app" 0 "$icon" "$title" "$body" "$arr" "$hints" 0 2>/dev/null) || exit 1
+if [ "$wait" = 1 ] && [ ${#actions[@]} -gt 0 ]; then
+    nid=$(echo "$reply" | awk '{print $2}' | tr -d '(),')
+    gdbus monitor --session --dest org.freedesktop.Notifications 2>/dev/null | while read -r line; do
+        case "$line" in
+            *"ActionInvoked"*"uint32 $nid"*)
+                echo "$line" | sed -n "s/.*'\\([^']*\\)'.*/\\1/p" | head -1
+                exit 0
+                ;;
+        esac
+    done
+fi

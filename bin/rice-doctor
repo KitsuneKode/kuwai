@@ -1,0 +1,143 @@
+#!/usr/bin/env bash
+# Session doctor for rice + kuwai: config, notifications, shell, feeds.
+#   rice doctor           human-readable report (exit 1 if anything failed)
+#   rice doctor --quiet   failures only
+#
+# Run after odd notification behaviour, before `rice promote`, or when ZapZap
+# "stopped working" after a shell crash.
+set -u
+RICE="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+QUIET=0
+for a in "$@"; do [ "$a" = --quiet ] && QUIET=1; done
+fail=0
+ok()   { [ "$QUIET" = 1 ] || printf '  \033[32m✓\033[0m %s\n' "$*"; }
+bad()  { printf '  \033[31m✗\033[0m %s\n' "$*"; fail=1; }
+note() { [ "$QUIET" = 1 ] || printf '  \033[33m•\033[0m %s\n' "$*"; }
+fix()  { [ "$QUIET" = 1 ] || printf '      → %s\n' "$*"; }
+
+notif_owner() {
+    busctl --user call org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus \
+        GetConnectionUnixProcessID s org.freedesktop.Notifications 2>/dev/null | awk '{print $2}'
+}
+
+notify_send_broken() {
+    command -v notify-send >/dev/null 2>&1 || return 1
+    notify-send --version >/dev/null 2>&1
+}
+
+[ "$QUIET" = 1 ] || echo "rice doctor"
+
+# ── Kuwai (Hyprland, units, binds) ───────────────────────────────────────
+if [ -x "$RICE/bin/kuwai" ]; then
+    [ "$QUIET" = 1 ] || echo "Kuwai"
+    KUWAI_ROOT="$RICE" "$RICE/bin/kuwai" doctor || fail=1
+    [ "$QUIET" = 1 ] || echo
+fi
+
+# ── Notifications ─────────────────────────────────────────────────────────
+[ "$QUIET" = 1 ] || echo "Notifications"
+npid=$(notif_owner)
+if [ -z "$npid" ]; then
+    bad "no org.freedesktop.Notifications owner (start the shell: rice restart)"
+    fix "rice restart · or systemctl --user start dunst if you use dunst alone"
+elif [ "$(cat /proc/"$npid"/comm 2>/dev/null)" = dunst ]; then
+    note "notification server: dunst (pid $npid) — the rice shell is not owning the bus"
+    fix "rice restart while logged in to hand notifications to the shell"
+else
+    ok "notification server: rice shell (pid $npid, $(cat /proc/"$npid"/comm 2>/dev/null))"
+fi
+
+if notify_send_broken; then
+    note "notify-send works (libnotify)"
+else
+    if command -v notify-send >/dev/null 2>&1; then
+        bad "notify-send is broken (libnotify); use bin/rice-notify in scripts"
+    else
+        note "notify-send not installed (fine if everything uses rice-notify)"
+    fi
+    fix "HyDE/kuwai scripts on this branch use rice-notify; reload Hyprland after promote"
+fi
+
+if [ -x "$RICE/bin/rice-notify" ]; then
+    if "$RICE/bin/rice-notify" -a "rice doctor" -u low "Doctor" "Smoke test (ignore)" >/dev/null 2>&1; then
+        ok "rice-notify → D-Bus Notify"
+    else
+        bad "rice-notify failed (is the notification server running?)"
+        fix "rice restart"
+    fi
+else
+    bad "missing $RICE/bin/rice-notify"
+fi
+
+STATE="${XDG_STATE_HOME:-$HOME/.local/state}/rice/notifications.json"
+if [ -f "$STATE" ]; then
+    dnd=$(jq -r '.dnd // false' "$STATE" 2>/dev/null)
+    if [ "$dnd" = true ]; then
+        note "Focus / DND is ON (saved in notifications.json) — normal toasts are suppressed"
+        fix "rice notifs dnd-off · or toggle Focus in the island"
+    else
+        ok "Focus / DND: off"
+    fi
+else
+    note "no notification history file yet ($STATE)"
+fi
+
+# ── Shell ─────────────────────────────────────────────────────────────────
+[ "$QUIET" = 1 ] || echo "Shell"
+if pgrep -f '^qs -p .*/shell -d$' >/dev/null; then
+    if ! "$RICE/bin/rice-check" --quiet; then
+        "$RICE/bin/rice-check" || fail=1
+    else
+        ok "rice-check passed"
+    fi
+    if command -v qs >/dev/null 2>&1; then
+        lim=$(qs ipc -p "$RICE/shell" call limits state 2>/dev/null || true)
+        [ -n "$lim" ] && note "agent limits: $lim"
+    fi
+else
+    bad "Quickshell rice shell is not running"
+    fix "rice restart · or log in again (Hyprland starts rice-shell)"
+    if command -v qs >/dev/null 2>&1 && qs -p "$RICE/shell" --compile >/dev/null 2>&1; then
+        ok "shell compiles offline (qs --compile)"
+    else
+        bad "shell compile check failed or qs missing"
+    fi
+fi
+
+# ── Feeds & sidecars ──────────────────────────────────────────────────────
+[ "$QUIET" = 1 ] || echo "Services"
+for u in rice-feeds.service rice-clipboard.service; do
+    st=$(systemctl --user is-active "$u" 2>/dev/null)
+    case $st in
+        active) ok "$u" ;;
+        inactive|failed) note "$u: $st (optional unless you use GitHub/Gmail feeds)" ;;
+        *) note "$u: $st" ;;
+    esac
+done
+if pgrep -x zapzap >/dev/null 2>&1; then
+    if [ -n "$npid" ] && [ "$(cat /proc/"$npid"/comm 2>/dev/null)" != dunst ]; then
+        ok "ZapZap running · WhatsApp → D-Bus → rice"
+    else
+        bad "ZapZap running but notifications are not owned by the rice shell"
+        fix "rice restart · then restart ZapZap if it disabled its backend after a shell outage"
+    fi
+else
+    note "ZapZap not running (WhatsApp notifications need it)"
+fi
+
+# ── Channel ───────────────────────────────────────────────────────────────
+CH="${XDG_STATE_HOME:-$HOME/.local/state}/kuwai/channel"
+[ "$QUIET" = 1 ] || echo "Channel"
+if [ -f "$CH" ]; then
+    ok "rice channel $(cat "$CH")"
+else
+    note "no channel file (defaults to dev checkout)"
+fi
+
+[ "$QUIET" = 1 ] || echo
+if [ "$fail" -eq 0 ]; then
+    [ "$QUIET" = 1 ] || echo "rice: all good"
+else
+    echo "rice: fix the items above, then rice doctor again"
+fi
+exit "$fail"

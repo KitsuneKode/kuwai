@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -eu
+ROOT="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+brief=${1:?usage: rice-crash-alert BRIEF}
+brief=${brief:0:8000}
+exec "$ROOT/bin/rice-notify" -a System -u critical -i dialog-warning \
+    -H x-rice-crash=1 \
+    -A default=Diagnose -A dismiss=Dismiss \
+    "Something crashed" "$brief"

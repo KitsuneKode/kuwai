@@ -180,7 +180,10 @@ doctor() {
     if [ -x "$STABLE/bin/kuwai" ] || [ -x "$REPO/bin/kuwai" ]; then
         KUWAI_ROOT=$STABLE "${STABLE}/bin/kuwai" doctor 2>/dev/null || KUWAI_ROOT=$REPO "$REPO/bin/kuwai" doctor || rc=1
     fi
-    if pgrep -f '^qs -p .*/shell -d$' >/dev/null; then
+    if [ -x "$REPO/bin/rice-doctor" ]; then
+        KUWAI_ROOT=$REPO "$REPO/bin/rice-doctor" --quiet || rc=1
+        [ $rc -eq 0 ] || "$REPO/bin/rice-doctor" || true
+    elif pgrep -f '^qs -p .*/shell -d$' >/dev/null; then
         "$REPO/bin/rice-check" || rc=1
     else
         warn "the shell isn't running (it starts with Hyprland); rice-check skipped"

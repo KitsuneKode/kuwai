@@ -73,7 +73,7 @@ Singleton {
         Process {
             property var alarm
             running: true
-            command: ["notify-send", "-w", "-a", "Alarm", "-i", "alarm-symbolic", "-u", "critical",
+            command: [Paths.bin + "/rice-notify", "-w", "-a", "Alarm", "-i", "alarm-symbolic", "-u", "critical",
                       "-A", "stop=Stop", "-A", "snooze=Snooze 9 min", alarm.label, Qt.formatTime(new Date(alarm.at), Settings.clock24 ? "HH:mm" : "h:mm AP")]
             stdout: StdioCollector { id: said }
             onExited: {
@@ -96,7 +96,7 @@ Singleton {
             // Missed by more than an hour (the laptop was off): say so, don't ring.
             const fresh = due.filter(a => now - a.at < 3600000);
             for (const a of due) if (now - a.at >= 3600000)
-                Quickshell.execDetached(["notify-send", "-a", "Alarm", "-i", "alarm-symbolic", "Missed alarm", a.label + " · " + Qt.formatTime(new Date(a.at), "HH:mm")]);
+                Quickshell.execDetached([Paths.bin + "/rice-notify", "-a", "Alarm", "-i", "alarm-symbolic", "Missed alarm", a.label + " · " + Qt.formatTime(new Date(a.at), "HH:mm")]);
             if (fresh.length) root.ring(fresh[fresh.length - 1]);
         }
     }

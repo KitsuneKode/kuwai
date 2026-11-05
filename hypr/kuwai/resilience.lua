@@ -248,7 +248,7 @@ if K.feature("battery_guard") and BAT then
 		if cap <= K.battery.critical and not pending then
 			pending = true
 			R.save()
-			hl.exec_cmd("notify-send -u critical -a kuwai -i battery-empty 'Battery " .. cap .. "% — saving your session' 'Plug in within 30 seconds, or the laptop will " .. K.battery.critical_action .. ".'")
+			hl.exec_cmd(K.bin .. "/rice-notify -u critical -a kuwai -i battery-empty 'Battery " .. cap .. "% — saving your session' 'Plug in within 30 seconds, or the laptop will " .. K.battery.critical_action .. ".'")
 			hl.timer(function()
 				pending = false
 				if K.read_line(BAT .. "/status") == "Discharging" then
@@ -257,7 +257,7 @@ if K.feature("battery_guard") and BAT then
 			end, { timeout = 30000, type = "oneshot" })
 		elseif cap <= K.battery.low and not warned then
 			warned = true
-			hl.exec_cmd("notify-send -u critical -a kuwai -i battery-caution 'Battery " .. cap .. "%' 'Plug in soon. At " .. K.battery.critical .. "% kuwai saves your session and suspends.'")
+			hl.exec_cmd(K.bin .. "/rice-notify -u critical -a kuwai -i battery-caution 'Battery " .. cap .. "%' 'Plug in soon. At " .. K.battery.critical .. "% kuwai saves your session and suspends.'")
 		end
 	end
 	K.defer(function()

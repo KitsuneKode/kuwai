@@ -24,6 +24,9 @@ Singleton {
         return [...shown.filter(i => i.severity === "critical"), ...shown.filter(i => i.severity !== "critical")];
     }
     property bool dnd: false
+    // Screen share / automation: mutes toasts without persisting Focus (saved dnd).
+    property bool dndMute: false
+    readonly property bool muted: root.dnd || root.dndMute
     // Toasts beyond the visible three wait (hidden) behind the stack, as in
     // Sonner; this only bounds how many can pile up.
     readonly property int maxPopups: 8
@@ -133,7 +136,7 @@ Singleton {
     }
     function rank(i) { return i.severity === "critical" || i.urgency === NotificationUrgency.Critical ? 0 : i.severity === "warning" ? 1 : canReply(i) ? 2 : 3; }
     readonly property bool fullscreenNow: !!Hyprland.focusedWorkspace && !!Hyprland.focusedWorkspace.lastIpcObject && Hyprland.focusedWorkspace.lastIpcObject.hasfullscreen === true
-    function interrupts(i) { return !i.quiet && !centerOpen && (!dnd || i.severity === "critical") && (!fullscreenNow || rank(i) === 0); }
+    function interrupts(i) { return !i.quiet && !centerOpen && (!muted || i.severity === "critical") && (!fullscreenNow || rank(i) === 0); }
     function islandFor(i) { return !i.jump && i.app !== "T3 Code" && important(i) && interrupts(i); }
     // Toast? Not for low ones, not for what the island shows (unless "both").
     function toastsFor(i) {
@@ -151,6 +154,13 @@ Singleton {
     property var peek: null
     property var peekQueue: []
     property bool peekHeld: false
+    property bool peekExpanded: false
+    // After openInCenter: NotificationsView selects this row (and optional reply).
+    property var centerFocusItem: null
+    property bool centerFocusReply: false
+    property string centerMorphFrom: ""          // "" | "peek" | "toast"
+    property var centerMorphFromRect: null
+    onPeekChanged: { peekExpanded = false; peekFor.interval = 5000; }
     function showPeek(item) {
         if (!peek) { peek = item; if (!peekHeld) peekFor.restart(); return; }
         if (rank(item) < rank(peek)) {               // more urgent: it goes first
@@ -172,9 +182,62 @@ Singleton {
         peekQueue = q.slice(1);
         if (peek && !peekHeld) peekFor.restart();
     }
-    function dropPeek() { nextPeek(); }
+    function dropPeek() { peekExpanded = false; peekFor.interval = 5000; nextPeek(); }
     onPeekHeldChanged: if (peekHeld) peekFor.stop(); else if (peek) peekFor.restart()
     Timer { id: peekFor; interval: 5000; onTriggered: if (!root.peekHeld) root.nextPeek() }
+
+    function expandPeek() {
+        if (!peek) return;
+        peekExpanded = true;
+        peekFor.interval = 12000;
+        if (!peekHeld) peekFor.restart();
+    }
+
+    function toggleUserDnd() {
+        dnd = !dnd;
+        if (!dnd) dndMute = false;
+    }
+
+    // Island peek → notification center: select the row; Reply opens the inline field.
+    function openInCenter(item, reply, screenName) {
+        if (!item) return;
+        centerFocusItem = item;
+        centerFocusReply = !!reply;
+        const morphPeek = peek === item;
+        const morphH = morphPeek && peekExpanded ? 172 : 76;
+        if (morphPeek) {
+            centerMorphFrom = "peek";
+            centerMorphFromRect = { w: 460, h: morphH, r: morphH > 100 ? 28 : 38 };
+            nextPeek();
+        } else {
+            centerMorphFrom = "";
+            centerMorphFromRect = null;
+        }
+        peekExpanded = false;
+        peekFor.interval = 5000;
+        const go = s => {
+            centerTab = "notifications";
+            if (centerOpen && centerScreen !== s) {
+                centerScreen = s;
+                setCenter(false, "pointer");
+                Qt.callLater(() => setCenter(true, "pointer"));
+                return;
+            }
+            if (!centerOpen) {
+                centerScreen = s;
+                setCenter(true, "pointer");
+            }
+        };
+        if (screenName) go(screenName);
+        else Screens.refresh(go);
+    }
+
+    function takeCenterFocus() {
+        const out = { item: centerFocusItem, reply: centerFocusReply };
+        centerFocusItem = null;
+        centerFocusReply = false;
+        return out.item ? out : null;
+    }
 
     // ── Card interactions ────────────────────────────────────────────────
     // A notification you act on is handled: like macOS, it leaves the history
@@ -218,6 +281,20 @@ Singleton {
 
     function invokeAction(item, id) {
         const n = item.notification;
+        if (n && n.hints && n.hints["x-rice-crash"] === "1") {
+            item.discard = true;
+            if (item.popup) item.leaving = true;
+            else forget.later(item);
+            if (id === "default") Crashes.runDiagnose(item.body);
+            return;
+        }
+        if (n && n.hints && n.hints["x-rice-agent-limit"] === "1") {
+            item.discard = true;
+            if (item.popup) item.leaving = true;
+            else forget.later(item);
+            if (id === "default") root.toggleCenter("agents", "pointer", Screens.focusedName);
+            return;
+        }
         item.discard = true;
         if (item.popup) item.leaving = true;
         else forget.later(item);
@@ -479,14 +556,18 @@ Singleton {
         target: "notifs"
 
         function toggleDnd(): bool {
-            root.dnd = !root.dnd;
+            root.toggleUserDnd();
             return root.dnd;
         }
         function setDnd(on: bool): void {
             root.dnd = on;
+            if (!on) root.dndMute = false;
+        }
+        function setDndMute(on: bool): void {
+            root.dndMute = on;
         }
         function isDnd(): bool {
-            return root.dnd;
+            return root.muted;
         }
         // Remove notifications by app and exact title (scripts, tests).
         function removeMatching(app: string, title: string): int {
@@ -522,13 +603,14 @@ Singleton {
         // The bell: unread count (cleared by opening the center), DND state.
         function waybar(): string {
             const n = root.unread;
-            const alt = (root.dnd ? "dnd" : "") + (root.dnd && n ? "-" : "") + (n ? "notification" : (root.dnd ? "" : "none"));
+            const alt = (root.muted ? "dnd" : "") + (root.muted && n ? "-" : "") + (n ? "notification" : (root.muted ? "" : "none"));
             const recent = root.items.slice(0, 8).map(i => ` ${i.app}: ${i.title}`).join("\n");
+            const why = root.dnd ? (root.dndMute ? " (focus + sharing)" : " (focus)") : (root.dndMute ? " (sharing)" : "");
             return JSON.stringify({
                 text: n ? String(n) : "",
                 alt: alt,
                 class: alt,
-                tooltip: "󰎟 Notifications" + (root.dnd ? " (do not disturb)" : "")
+                tooltip: "󰎟 Notifications" + (root.muted ? " (do not disturb)" + why : "")
                        + `\n${n} unread · ${root.items.length} total`
                        + "\n󰳽 click: open · right: do not disturb · middle: clear"
                        + (recent ? "\n\n" + recent : "")

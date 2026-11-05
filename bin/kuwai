@@ -285,7 +285,10 @@ case ${1:-info} in
             offer)  # asked at login (kuwai.resilience): one notification, one button
                 [ -s "$snap" ] || exit 0
                 n=$(grep -vc '^#' "$snap"); when=$(head -1 "$snap" | sed 's/^# kuwai session //')
-                a=$(notify-send -a kuwai -i view-restore -t 30000 -A restore="Restore" -A no="Not now" \
+                RN="$ROOT/bin/rice-notify"
+                a=$([ -x "$RN" ] && "$RN" -w -a kuwai -i view-restore -A restore="Restore" -A no="Not now" \
+                    "Restore your last session?" "$n apps on their workspaces, saved $when" \
+                    || notify-send -a kuwai -i view-restore -t 30000 -A restore="Restore" -A no="Not now" \
                     "Restore your last session?" "$n apps on their workspaces, saved $when")
                 [ "$a" = restore ] && lua 'return kuwai.session_restore()' >/dev/null ;;
             show|*) [ -s "$snap" ] && { head -1 "$snap"; grep -v '^#' "$snap" | awk -F'\t' '{printf "  ws %-3s %-28s %s\n", $1, $5, ($2=="1"?"floating":"")}'; } || echo "no saved session" ;;
