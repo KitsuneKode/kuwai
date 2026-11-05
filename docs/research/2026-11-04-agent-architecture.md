@@ -60,6 +60,14 @@ Mixture-of-experts models run mostly from the 23 GB of RAM; models live on Depot
 | gpt-oss:20b | 16.8 tok/s | 27.6 s cold | 9/10 | 8/10 | 0/3 | 40 s | kept as **Deep**; searched the web instead of shop_search (guide now says to use it), looped on the repo task and called a tool that doesn't exist ("open") |
 | qwen3:30b-a3b | 12.6 tok/s | 26.7 s cold | 9/10 | 7/10 | 1/3 | 80 s | dropped: empty code answer, named the wrong file, refused lock picking |
 
+## Tool routing + 8-bit KV cache (2026-11-05)
+
+`OLLAMA_KV_CACHE_TYPE=q8_0` (systemd override) puts qwen3.5:4b at 16k wholly in VRAM (3.36 GB): 200-token
+generation 51.1 tok/s (was 27.5). With routing (each request offers only the tool groups its words point to),
+the same 13 tasks: **10/10 right tool, 9/10 right answer, 0/3 refused, 7.7 s a turn** (was 15.0 s). The one miss:
+the repo task found ContextMeter.qml but didn't state the ring size. The fix-it task tried `run_command` on the
+host twice before using the sandbox ("run" also routes the host-action group).
+
 ## Not taken (yet)
 
 - pi's session tree / branches (we have linear chats with Edit and Retry).
