@@ -27,6 +27,7 @@ ShellRoot {
     // Reminders fire from the shell, so they load with it (not on first use).
     readonly property int remindersKept: Reminders.items.length
     readonly property int alarmsKept: Alarms.items.length
+    readonly property var crashWatcher: Crashes
     Osd {}
     Popups {}
     Center {}

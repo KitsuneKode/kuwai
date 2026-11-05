@@ -42,6 +42,12 @@ Singleton {
     readonly property alias islandProximity: s.islandProximity
     readonly property alias kittyTabs: s.kittyTabs
     readonly property alias notifSurface: s.notifSurface
+    readonly property alias notifToastInstantOpen: s.notifToastInstantOpen
+    readonly property alias notifEngageReply: s.notifEngageReply
+    readonly property alias seenNotifC1Hint: s.seenNotifC1Hint
+    readonly property alias assistantOptIn: s.assistantOptIn
+    readonly property alias seenAssistantPrompt: s.seenAssistantPrompt
+    readonly property alias islandAgentUsage: s.islandAgentUsage
     readonly property alias idleOwner: s.idleOwner
     readonly property alias idleDimAc: s.idleDimAc
     readonly property alias idleLockAc: s.idleLockAc
@@ -122,6 +128,16 @@ Singleton {
             property int idleSleepBattery: 900
             property bool idleNoSleepWhilePlaying: true
             property string notifSurface: "one"   // one (island or toast) · both
+            // Toasts: off = tap to preview, then Open; on = one tap runs the default action.
+            property bool notifToastInstantOpen: false
+            property bool seenNotifC1Hint: false
+            // Toasts: when engaging a replyable notification, open the reply field immediately.
+            property bool notifEngageReply: true
+            // Local assistant: off until you opt in (Settings or first shortcut).
+            property bool assistantOptIn: false
+            property bool seenAssistantPrompt: false
+            // Island: one-time notch peek when agent quotas cross 90% / cap (bin/rice-usage).
+            property bool islandAgentUsage: false
             property bool islandProximity: true   // nearing the island 30–60 px out reveals it (off: only the top edge)
             // Tabs & agents: a glass column on the left while kitty is focused
             // on that screen. Off until asked — it reserves a strip of the display.

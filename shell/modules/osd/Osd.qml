@@ -404,12 +404,14 @@ Scope {
     }
     function showDnd() {
         kind = "dnd";
-        title = Notifs.dnd ? "Do Not Disturb" : "Notifications On";
-        glyph = Notifs.dnd ? "\u{f0594}" : "\u{f009a}";
+        title = Notifs.muted ? "Do Not Disturb" : "Notifications On";
+        glyph = Notifs.muted ? "\u{f0594}" : "\u{f009a}";
         muted = false;
         accessoryGlyph = ""; accessory = ""; linkGlyph = "";
         showTrack = false;
-        subtitle = Notifs.dnd ? "Only critical alerts will show" : "Alerts will show again";
+        subtitle = Notifs.muted
+            ? (Notifs.dndMute && !Notifs.dnd ? "Screen share — only critical alerts" : "Only critical alerts will show")
+            : "Alerts will show again";
         hud.present(focusedScreenName());
     }
 
@@ -444,7 +446,7 @@ Scope {
     function toggleMute() {
         if (kind === "volume" && sink && sink.audio) sink.audio.muted = !sink.audio.muted;
         else if (kind === "mic" && source && source.audio) source.audio.muted = !source.audio.muted;
-        else if (kind === "dnd") Notifs.dnd = !Notifs.dnd;
+        else if (kind === "dnd") Notifs.toggleUserDnd();
     }
     function openPage() {
         hud.dismiss();

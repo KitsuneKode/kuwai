@@ -267,8 +267,32 @@ Singleton {
         id: settle
         interval: 1500
         onTriggered: if (root.running) {
-            if (!root.result) { root.runError = root.runError || "The update job stopped before finishing (see the log)."; }
-            root.finishRun();
+            if (!root.result) recoverLastEvent.running = true;
+            else root.finishRun();
+        }
+    }
+    Process {
+        id: recoverLastEvent
+        command: ["tail", "-n", "20", (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/rice/update.jsonl"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                if (!root.running) return;
+                const lines = text.trim().split("\n");
+                for (let i = lines.length - 1; i >= 0; i--) {
+                    try {
+                        const ev = JSON.parse(lines[i]);
+                        if (ev.e === "done") {
+                            root.result = ev;
+                            if (ev.error) root.runError = ev.error;
+                            else if (!ev.ok && ev.msg) root.runError = ev.msg;
+                            root.finishRun();
+                            return;
+                        }
+                    } catch (e) {}
+                }
+                if (!root.result) root.runError = root.runError || "The update job stopped before finishing (see the log).";
+                root.finishRun();
+            }
         }
     }
     function finishRun() {

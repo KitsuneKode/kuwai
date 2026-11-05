@@ -18,6 +18,7 @@ Scope {
     id: root
 
     readonly property bool open: Assistant.open
+    readonly property bool needsOptIn: !Settings.assistantOptIn
     property bool studioMode: false
     property bool sidebarOpen: true
     property bool appLauncherOpen: false
@@ -201,9 +202,38 @@ Scope {
                     tint: win.inIsland ? Qt.rgba(0.05, 0.05, 0.07, 0.88) : Theme.glassTintElevated
                 }
 
+                Column {
+                    anchors.centerIn: parent
+                    width: Math.min(320, parent.width - 48)
+                    visible: root.needsOptIn && win.m > 0.4
+                    spacing: 14
+                    Label { width: parent.width; wrapMode: Text.WordWrap; text: "Local assistant"; size: 20; weight: Theme.wSemibold; horizontalAlignment: Text.AlignHCenter }
+                    Label {
+                        width: parent.width; wrapMode: Text.WordWrap; horizontalAlignment: Text.AlignHCenter
+                        text: "Chat with Ollama on this machine. Off until you opt in — like Omarchy Quattro, nothing runs in the background without your choice."
+                        size: 13; color: Theme.textSecondary
+                    }
+                    Row {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        spacing: 10
+                        PillButton {
+                            text: "Not now"
+                            onClicked: Assistant.hide()
+                        }
+                        RaisedButton {
+                            text: "Turn on"
+                            onClicked: {
+                                Settings.set("assistantOptIn", true);
+                                Settings.set("seenAssistantPrompt", true);
+                            }
+                        }
+                    }
+                }
+
                 // Inner Main Split: [Sidebar | Conversation Canvas]
                 Row {
                     anchors.fill: parent
+                    visible: !root.needsOptIn
 
                     // ── Collapsible Chat Sidebar ──────────────────────
                     Connections {

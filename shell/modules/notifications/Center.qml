@@ -128,16 +128,34 @@ Scope {
         if (open) {
             const reopening = foldAnim.running;
             if (!reopening) shownScreen = (Notifs.centerScreen ? Screens.screenNamed(Notifs.centerScreen) : Screens.focused) || shownScreen;
-            const ft = Notifs.frontToast;
             if (!reopening) {
-                mode = ft && ft.screen === (Notifs.centerScreen || Screens.focusedName) && !Theme.reduceMotion ? "morph" : "pop";
-                morph.tier = mode === "morph" ? Theme.springSlow : Theme.springModerate;
-                if (mode === "morph")
+                const ft = Notifs.frontToast;
+                const pr = Notifs.centerMorphFromRect;
+                if (Notifs.centerMorphFrom === "peek" && pr && !Theme.reduceMotion) {
+                    mode = "morph";
+                    morph.tier = Theme.springSlow;
+                    from = {
+                        x: padX + (cardW - pr.w) / 2,
+                        y: padY + 6,
+                        w: pr.w,
+                        h: pr.h,
+                        r: pr.r
+                    };
+                    Notifs.centerMorphFrom = "";
+                    Notifs.centerMorphFromRect = null;
+                } else if (ft && ft.screen === (Notifs.centerScreen || Screens.focusedName) && !Theme.reduceMotion) {
+                    mode = "morph";
+                    morph.tier = Theme.springSlow;
                     from = { x: padX + cardW + 12 - 16 - Theme.toastWidth, y: 12, w: Theme.toastWidth, h: ft.height, r: 22 };
+                } else {
+                    mode = "pop";
+                    morph.tier = Theme.springModerate;
+                }
             }
             capturing = false;
             armed = false;
             if (ui) ui.reset();
+            if (ui && Notifs.centerTab === "notifications") Qt.callLater(() => ui.notifications.applyHandoff());
             foldAnim.stop();
             contentOut.stop();
             contentFade = 1;
@@ -149,7 +167,7 @@ Scope {
             // would show up already part way through.
             pendingBegin = true;
             beginSoon.restart();
-            if (ui) ui.search.forceActiveFocus();
+            if (ui && !Notifs.centerFocusReply) ui.search.forceActiveFocus();
         } else {
             pendingBegin = false;
             capturing = false;

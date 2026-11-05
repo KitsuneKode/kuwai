@@ -7,10 +7,13 @@ Rectangle {
     id: chip
     property string text
     property string glyph: ""
+    property bool filled: false
     signal clicked()
     height: 26; radius: 13
     width: chipRow.implicitWidth + 20
-    color: chipArea.containsMouse ? Theme.pillHover : Theme.pill
+    color: chip.filled
+        ? (chipArea.containsMouse ? Qt.rgba(1, 1, 1, 0.92) : Qt.rgba(1, 1, 1, 0.88))
+        : (chipArea.containsMouse ? Theme.pillHover : Theme.pill)
     Accessible.role: Accessible.Button
     Accessible.name: chip.text
     Behavior on color { ColorAnimation { duration: 80 } }
@@ -19,7 +22,7 @@ Rectangle {
         anchors.centerIn: parent
         spacing: 5
         Text { visible: chip.glyph !== ""; anchors.verticalCenter: parent.verticalCenter; text: chip.glyph; font.family: Theme.fontGlyph; font.pixelSize: 12; color: Theme.textPrimary }
-        Label { anchors.verticalCenter: parent.verticalCenter; text: chip.text; size: 12; weight: Theme.wMedium }
+        Label { anchors.verticalCenter: parent.verticalCenter; text: chip.text; size: 12; weight: Theme.wMedium; color: chip.filled ? "#111111" : Theme.textPrimary }
     }
     MouseArea { id: chipArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: chip.clicked() }
 }

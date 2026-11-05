@@ -389,7 +389,7 @@ Item {
                       toggle: () => { if (sink && sink.audio) sink.audio.muted = !sink.audio.muted; },
                       wheel: steps => { if (sink && sink.audio) { sink.audio.muted = false; sink.audio.volume = Math.max(0, Math.min(1.5, Math.round((sink.audio.volume + steps * 0.05) * 20) / 20)); } } },
                     { id: "focus", glyph: "\u{f0594}", on: Notifs.dnd, alert: Notifs.dnd, tone: "#bf5af2",
-                      tip: Notifs.dnd ? "Focus on: notifications held" : "Focus (Do Not Disturb)", toggle: () => { Notifs.dnd = !Notifs.dnd; } },
+                      tip: Notifs.dnd ? "Focus on: notifications held" : "Focus (Do Not Disturb)", toggle: () => { Notifs.toggleUserDnd(); } },
                     { id: "night", glyph: "\u{f0599}", on: Display.nightOn, alert: false, tone: Theme.orange,
                       tip: Display.nightOn ? "Night Shift on" : "Night Shift", toggle: () => Display.toggleNight() },
                     // The AI assistant: lit while it works, a dot when it needs you; click opens it.
@@ -403,34 +403,19 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             spacing: 8
             id: bellRow
-            Label { anchors.verticalCenter: parent.verticalCenter; text: Notifs.missed.length ? Notifs.missed.length + " to look at" : Notifs.unread ? Notifs.unread + " new" : "All caught up"; size: 14; weight: Theme.wMedium; color: Theme.textPrimary }   // white: the accent means "where you are"
-            Icon { anchors.verticalCenter: parent.verticalCenter; name: Notifs.dnd ? "bell-slash" : "bell"; size: 16; active: Notifs.unread > 0; color: Notifs.unread ? Theme.accent : Theme.textSecondary }
+            Label { anchors.verticalCenter: parent.verticalCenter; text: Notifs.dnd ? "Focus on" : Notifs.dndMute ? "Held while sharing" : Notifs.missed.length ? Notifs.missed.length + " to look at" : Notifs.unread ? Notifs.unread + " new" : "All caught up"; size: 14; weight: Theme.wMedium; color: Theme.textPrimary }   // white: the accent means "where you are"
+            Icon { anchors.verticalCenter: parent.verticalCenter; name: Notifs.muted ? "bell-slash" : "bell"; size: 16; active: Notifs.unread > 0; color: Notifs.unread ? Theme.accent : Theme.textSecondary }
             // Rest on it: the missed ones, each with its buttons. Click: the center.
             HoverHandler { id: bellHover; cursorShape: Qt.PointingHandCursor }
-            Timer { running: bellHover.hovered && Notifs.missed.length > 0 && !missedMenu.open; interval: Settings.hoverDelay; onTriggered: missedMenu.open = true }
-            TapHandler { onTapped: { missedMenu.open = false; Notifs.toggleCenter("notifications", "pointer", hover.bar.screenName); } }
-            TrayMenu {
-                id: missedMenu
+            property bool missedOpen: false
+            Timer { running: bellHover.hovered && Notifs.missed.length > 0 && !missedOpen; interval: Settings.hoverDelay; onTriggered: missedOpen = true }
+            TapHandler { onTapped: { missedOpen = false; Notifs.toggleCenter("notifications", "pointer", hover.bar.screenName); } }
+            MissedNotifPopover {
                 anchorItem: bellRow
-                anchorHovered: bellHover.hovered
                 window: hover.bar
-                property bool counted: false
-                onOpenChanged: {
-                    if (open && !counted) { counted = true; hover.bar.menus++; }
-                    else if (!open && counted) { counted = false; hover.bar.menus = Math.max(0, hover.bar.menus - 1); }
-                }
-                items: {
-                    const out = [];
-                    for (const it of Notifs.missed.slice(0, 5)) {
-                        if (out.length) out.push({ isSeparator: true });
-                        const tone = it.severity === "critical" ? "\u{f0026}" : it.severity === "warning" ? "\u{f0028}" : "\u{f009a}";
-                        out.push({ text: (it.title || it.app) + (it.app && it.title ? "  ·  " + it.app : ""), glyph: tone, triggered: () => Notifs.activate(it) });
-                        for (const a of (it.actions || []).slice(0, 3))
-                            out.push({ text: "    " + a.text, glyph: "\u{f0142}", triggered: () => Notifs.invokeAction(it, a.id) });
-                    }
-                    if (Notifs.missed.length > 5) out.push({ isSeparator: true }, { text: (Notifs.missed.length - 5) + " more in the center…", glyph: "\u{f009a}", triggered: () => Notifs.toggleCenter("notifications", "pointer", hover.bar.screenName) });
-                    return out;
-                }
+                open: missedOpen
+                anchorHovered: bellHover.hovered
+                onClosed: missedOpen = false
             }
         }
         }

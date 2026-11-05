@@ -152,7 +152,7 @@ FocusScope {
             Tile { glyph: "\u{f0eb5}"; label: "Game mode"; on: sys.gameMode; onClicked: sys.toggleGame() }
             Tile { glyph: "\u{f0594}"; label: "Night light"; on: Display.nightOn; onClicked: Display.toggleNight() }
             Tile { glyph: "\u{f0176}"; label: "Caffeine"; on: Caffeine.on; onClicked: Caffeine.on = !Caffeine.on }
-            Tile { glyph: "\u{f009b}"; label: "Focus"; on: Notifs.dnd; onClicked: Notifs.dnd = !Notifs.dnd }
+            Tile { glyph: "\u{f009b}"; label: "Focus"; on: Notifs.dnd; onClicked: Notifs.toggleUserDnd() }
         }
         Item {
             width: parent.width; height: 34

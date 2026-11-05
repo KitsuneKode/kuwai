@@ -130,7 +130,7 @@ Item {
                 } else if (sheet.open && k === Qt.Key_Escape) {
                     sheet.open = false;
                 } else if (ctrl && k === Qt.Key_D) {
-                    Notifs.dnd = !Notifs.dnd;
+                    Notifs.toggleUserDnd();
                 } else if (ctrl && shift && (k === Qt.Key_Backspace || k === Qt.Key_Delete)) {
                     if (content.center.tab === "agents") Kittymux.ackAll();
                     else notifications.clearAll();
@@ -252,7 +252,7 @@ Item {
                 model: content.center.tab === "agents"
                     ? [{ k: ["↑", "↓"], t: "Select" }, { k: ["↩"], t: "Jump" }, { k: ["⌫"], t: "Mark read" }]
                     : content.center.tab === "notifications"
-                    ? [{ k: ["↑", "↓"], t: "Select" }, { k: ["↩"], t: "Open" }, { k: ["⌫"], t: "Dismiss" }]
+                    ? [{ k: ["↑", "↓"], t: "Select" }, { k: ["↩"], t: "Open" }, { k: ["r"], t: "Reply" }, { k: ["⌫"], t: "Dismiss" }]
                     : [{ k: ["⌥", "1–4"], t: "Tabs" }, { k: ["⎋"], t: "Close" }]
                 Row {
                     id: hint

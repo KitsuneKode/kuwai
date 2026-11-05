@@ -139,7 +139,7 @@ Item {
                     subtitle: Notifs.dnd ? "On" : "Off"
                     on: Notifs.dnd
                     tone: "#5e5ce6"
-                    onToggled: Notifs.dnd = !Notifs.dnd
+                    onToggled: Notifs.toggleUserDnd()
                 }
                 Tile {
                     glyph: Display.nightOn ? "\u{f0594}" : "\u{f05a8}"

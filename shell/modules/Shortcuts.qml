@@ -27,13 +27,19 @@ Scope {
         appid: "rice"
         name: "assistant"
         description: "AI Assistant: local LLM chat and multimodal vision"
-        onPressed: Assistant.toggle()
+        onPressed: {
+            if (!Settings.assistantOptIn) {
+                Island.openSettings("assistant");
+                return;
+            }
+            Assistant.toggle();
+        }
     }
     GlobalShortcut {
         appid: "rice"
         name: "dnd"
         description: "Do Not Disturb on/off"
-        onPressed: Notifs.dnd = !Notifs.dnd
+        onPressed: Notifs.toggleUserDnd()
     }
     GlobalShortcut {
         appid: "rice"

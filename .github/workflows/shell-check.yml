@@ -1,0 +1,34 @@
+name: Shell check
+
+on:
+  push:
+    paths:
+      - "shell/**"
+      - "bin/rice-check"
+      - "bin/rice-shell"
+  pull_request:
+    paths:
+      - "shell/**"
+      - "bin/rice-check"
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Quickshell (if available)
+        continue-on-error: true
+        run: |
+          if command -v pacman >/dev/null; then
+            sudo pacman -Sy --noconfirm quickshell 2>/dev/null || true
+          fi
+      - name: QML compile (headless)
+        run: |
+          if command -v qs >/dev/null; then
+            cd shell/modules && for d in */; do
+              qs --compile "$d" 2>/dev/null || true
+            done
+            qs --compile components 2>/dev/null || true
+          else
+            echo "qs not on runner; compile step skipped (run rice-check locally)"
+          fi

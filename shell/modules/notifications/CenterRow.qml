@@ -1,6 +1,6 @@
 // One notification inside the center: a lighter plate on the panel's glass.
-// Click opens it (the app's default action if the notification is still
-// live, then its window); the hover close button removes it, collapsing the
+// Click selects (read the snippet, Reply, or Open); Enter or Open runs the
+// app's default action; the hover close button removes it, collapsing the
 // space it took so the rows below glide up.
 import QtQuick
 import qs.config
@@ -32,6 +32,20 @@ Item {
     // Live buttons: the app's actions (while it's still listening) and Reply.
     readonly property var liveActions: it.notification ? (it.actions || []).slice(0, 3) : []
     readonly property bool canReply: Notifs.canReply(item)
+    readonly property bool canOpen: !!row.it.notification || !!row.it.focusClass || !!row.it.jump || /^https?:\/\//.test(row.it.url || "")
+    readonly property bool previewScroll: row.selected && (row.warning || row.critical || String(row.it.body || "").length > 120)
+
+    function beginReply() {
+        replying = true;
+        Qt.callLater(() => replyField.forceActiveFocus());
+    }
+    function selectRow() {
+        if (!center) return;
+        if (!Settings.seenNotifC1Hint) Settings.set("seenNotifC1Hint", true);
+        center.setExpanded(row.it.app, true);
+        center.selected = row.item;
+        center.keyboard = false;
+    }
 
     width: parent ? parent.width : 0
     height: (body.implicitHeight + 24) * reveal
@@ -60,7 +74,7 @@ Item {
     HoverHandler {
         id: hover
         onHoveredChanged: if (row.center) row.center.setHover(row, hovered)
-        cursorShape: row.it.notification || row.it.focusClass ? Qt.PointingHandCursor : Qt.ArrowCursor
+        cursorShape: Qt.ArrowCursor
     }
     // Press feedback, kept tiny: rows are hit often.
     scale: tapH.pressed ? 0.985 : 1
@@ -70,7 +84,11 @@ Item {
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         onTapped: (point, button) => {
             if (button === Qt.RightButton) row.remove();
-            else Notifs.openItem(row.item);
+            else row.selectRow();
+        }
+        onDoubleTapped: () => {
+            if (!Settings.seenNotifC1Hint) Settings.set("seenNotifC1Hint", true);
+            if (row.canOpen) Notifs.openItem(row.item);
         }
     }
 
@@ -81,7 +99,8 @@ Item {
         // Hover and the keyboard ring are the view's one gliding highlight.
         color: Qt.rgba(1, 1, 1, 0.065)
         border.width: 1
-        border.color: row.critical || row.warning ? Qt.alpha(row.accent, 0.35) : Qt.rgba(1, 1, 1, 0.06)
+        border.color: row.selected ? Qt.rgba(1, 1, 1, row.critical || row.warning ? 0.28 : 0.18)
+            : row.critical || row.warning ? Qt.alpha(row.accent, 0.35) : Qt.rgba(1, 1, 1, 0.06)
 
         Rectangle {
             anchors.fill: parent
@@ -192,16 +211,46 @@ Item {
 
         Label {
             width: parent.width
-            // Bodies may carry markup; matches highlight on the plain text.
+            visible: row.it.body !== "" && !(row.selected && row.previewScroll)
             text: row.center && row.center.terms.length ? row.center.highlight(row.it.body.replace(/<[^>]*>/g, "")) : row.it.body
-            visible: row.it.body !== ""
             textFormat: Text.StyledText
             wrapMode: Text.Wrap
-            maximumLineCount: 3
-            elide: Text.ElideRight
+            maximumLineCount: row.selected && (row.warning || row.critical) ? 6 : 3
+            elide: row.selected ? Text.ElideNone : Text.ElideRight
             size: 13
             lineHeight: 1.18
             color: Theme.textSecondary
+        }
+        Item {
+            id: previewBox
+            visible: row.previewScroll
+            width: parent.width
+            height: Math.min(120, previewFlick.contentHeight)
+            clip: true
+            Flickable {
+                id: previewFlick
+                anchors.fill: parent
+                contentHeight: previewBody.implicitHeight
+                boundsBehavior: Flickable.StopAtBounds
+                Label {
+                    id: previewBody
+                    width: previewFlick.width
+                    wrapMode: Text.Wrap
+                    text: row.center && row.center.terms.length ? row.center.highlight(row.it.body.replace(/<[^>]*>/g, "")) : row.it.body
+                    textFormat: Text.StyledText
+                    size: 13; lineHeight: 1.18; color: Theme.textSecondary
+                }
+            }
+        }
+
+        Label {
+            visible: row.selected && !row.canReply && !!row.it.url && (row.warning || row.critical || row.it.status !== "")
+            width: parent.width
+            wrapMode: Text.WordWrap
+            text: "Reply needs a live notification — use Open for the thread, or wait for the next alert from feeds."
+            size: 11
+            color: Theme.textTertiary
+            topPadding: 2
         }
 
         Row {
@@ -228,12 +277,24 @@ Item {
             }
         }
 
-        // ── Its buttons: the app's actions, Reply; or the snooze times ───
+        // ── Its buttons: shown once the row is selected (or while snoozing) ─
         Flow {
-            visible: row.liveActions.length > 0 || row.canReply || row.snoozing
+            visible: row.snoozing || (row.selected && (row.canOpen || row.liveActions.length > 0 || row.canReply))
             width: parent.width
             spacing: 6
             topPadding: 4
+            RowChip {
+                visible: row.selected && row.canOpen && !row.snoozing
+                text: "Open"
+                filled: true
+                onClicked: Notifs.openItem(row.item)
+            }
+            RowChip {
+                visible: row.selected && /^https?:\/\//.test(row.it.url || "")
+                text: "Copy link"
+                glyph: "\u{f0339}"
+                onClicked: Clipboard.copyText(row.it.url)
+            }
             Repeater {
                 model: row.snoozing ? Notifs.snoozeChoices() : row.liveActions
                 RowChip {
@@ -246,7 +307,7 @@ Item {
                 visible: row.canReply && !row.snoozing && !row.replying
                 text: "Reply"
                 glyph: "\u{f0167}"
-                onClicked: { row.replying = true; replyField.forceActiveFocus(); }
+                onClicked: row.beginReply()
             }
         }
         // Reply in place: Enter sends, Esc puts it away.

@@ -29,8 +29,8 @@
 //   normal    plain glass, 5.5s
 //   low       lighter glass, one line of body, 3.5s
 //
-// Click acts (default action, then focus the app); right click or the hover
-// close button dismisses.
+// Click the card to engage (Open / actions); right click or the hover
+// close button dismisses. Engaged: explicit Open, then activate.
 import QtQuick
 import QtQuick.Effects
 import Quickshell
@@ -69,6 +69,11 @@ Item {
     onStackExpandedChanged: if (!removed) lastExpanded = stackExpanded
 
     property bool mounted: false
+    readonly property bool engaged: stack.engaged === item
+    readonly property bool canOpen: item.hasDefault || !!item.focusClass || !!item.jump || /^https?:\/\//.test(item.url || "")
+    readonly property bool canReply: Notifs.canReply(item)
+    property bool replying: false
+
     readonly property bool behind: !front && !stack.expanded && !removed
 
     // Island mode: enter from the island, the front one leaves into it.
@@ -214,14 +219,20 @@ Item {
 
     HoverHandler {
         id: hover
-        cursorShape: card.item.hasDefault || card.item.focusClass ? Qt.PointingHandCursor : Qt.ArrowCursor
+        cursorShape: Qt.PointingHandCursor
     }
 
     TapHandler {
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         onTapped: (point, button) => {
-            if (button === Qt.RightButton) Notifs.dismiss(card.item);
-            else Notifs.activate(card.item);
+            if (button === Qt.RightButton) { card.stack.engaged = null; Notifs.dismiss(card.item); }
+            else if (Settings.notifToastInstantOpen) Notifs.activate(card.item);
+            else if (card.stack.engaged !== card.item) {
+                card.stack.engaged = card.item;
+                card.stack.interacting = true;
+                if (Settings.notifEngageReply && card.canReply)
+                    Qt.callLater(() => { card.replying = true; });
+            }
         }
     }
 
@@ -256,6 +267,15 @@ Item {
         }
         border.width: 1
         border.color: Qt.alpha(card.accent, card.critical ? 0.55 : 0.32)
+    }
+
+    Rectangle {
+        anchors.fill: parent
+        radius: glass.radius
+        visible: card.engaged && !card.critical && !card.warning
+        color: "transparent"
+        border.width: 1
+        border.color: Qt.rgba(1, 1, 1, 0.22)
     }
 
     // Critical arrival: one ring of light leaves the card. Once, not a loop.
@@ -462,9 +482,33 @@ Item {
 
             Flow {
                 width: parent.width
-                visible: card.item.actions.length > 0
+                visible: card.engaged && (card.canOpen || card.canReply || card.item.actions.length > 0)
                 spacing: 6
                 topPadding: 8
+                Rectangle {
+                    visible: card.canOpen
+                    height: 28; radius: 14
+                    width: openAct.implicitWidth + 26
+                    color: openArea.containsMouse ? Qt.rgba(1, 1, 1, 0.92) : Qt.rgba(1, 1, 1, 0.88)
+                    Label { id: openAct; anchors.centerIn: parent; text: "Open"; size: 12; weight: Theme.wSemibold; color: "#111111" }
+                    MouseArea {
+                        id: openArea
+                        anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                        onClicked: { card.stack.engaged = null; Notifs.activate(card.item) }
+                    }
+                }
+                Rectangle {
+                    visible: card.canReply && !card.replying
+                    height: 28; radius: 14
+                    width: replyChip.implicitWidth + 26
+                    color: replyBtn.containsMouse ? Theme.pillHover : Theme.pill
+                    Label { id: replyChip; anchors.centerIn: parent; text: "Reply"; size: 12; weight: Theme.wSemibold }
+                    MouseArea {
+                        id: replyBtn
+                        anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                        onClicked: { card.replying = true; card.stack.interacting = true; }
+                    }
+                }
                 Repeater {
                     model: card.item.actions
                     delegate: Rectangle {
@@ -499,6 +543,47 @@ Item {
                     }
                 }
             }
+
+            Rectangle {
+                visible: card.engaged && card.canReply && card.replying
+                width: parent.width
+                height: 34
+                radius: 10
+                color: Qt.rgba(1, 1, 1, 0.08)
+                border.width: 1
+                border.color: toastReply.activeFocus ? Qt.rgba(1, 1, 1, 0.22) : Qt.rgba(1, 1, 1, 0.08)
+                TextInput {
+                    id: toastReply
+                    anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
+                    verticalAlignment: TextInput.AlignVCenter
+                    color: Theme.textPrimary
+                    font.family: Theme.fontText
+                    font.pixelSize: 13
+                    clip: true
+                    Component.onCompleted: if (card.replying) forceActiveFocus()
+                    onVisibleChanged: if (visible) Qt.callLater(() => forceActiveFocus())
+                    Keys.onPressed: event => {
+                        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                            Notifs.reply(card.item, text);
+                            text = "";
+                            card.replying = false;
+                            card.stack.engaged = null;
+                            event.accepted = true;
+                        } else if (event.key === Qt.Key_Escape) {
+                            text = "";
+                            card.replying = false;
+                            event.accepted = true;
+                        }
+                    }
+                    Label {
+                        visible: toastReply.text === ""
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: (card.item.notification && card.item.notification.inlineReplyPlaceholder) || "Reply…"
+                        size: 13
+                        color: Theme.textTertiary
+                    }
+                }
+            }
         }
     }
 
@@ -528,7 +613,7 @@ Item {
             anchors.margins: -4
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
-            onClicked: Notifs.dismiss(card.item)
+            onClicked: { card.stack.engaged = null; Notifs.dismiss(card.item) }
         }
     }
 

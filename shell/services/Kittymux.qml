@@ -31,7 +31,9 @@ Singleton {
     readonly property string stateDir: Quickshell.env("KITTYMUX_STATE")
         || ((Quickshell.env("XDG_STATE_HOME") || home + "/.local/state") + "/kittymux")
     readonly property string bin: home + "/.local/bin/kittymux"
-    readonly property string iconDir: home + "/Projects/kittymux/assets/notify"
+    // Override with KITTYMUX_ROOT when kittymux isn't under ~/Projects/kittymux.
+    readonly property string muxRoot: Quickshell.env("KITTYMUX_ROOT") || (home + "/Projects/kittymux")
+    readonly property string iconDir: muxRoot + "/assets/notify"
 
     property bool available: false
     property bool watching: false              // set while the Agents tab is visible

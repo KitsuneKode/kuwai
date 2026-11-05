@@ -3,7 +3,7 @@
 // pointer or the keyboard selection.
 //
 // Search and filters narrow the list and fan every group out. Keyboard (sent
-// here by Center): ↑↓ select, ↵ open, ⌦ (or ⌫ on an empty query) dismiss,
+// here by Center): ↑↓ select, ↵ open selected, ⌦ (or ⌫ on an empty query) dismiss,
 // →← expand or fold the selected group, ⇥ next filter.
 import QtQuick
 import QtQuick.Effects
@@ -98,6 +98,23 @@ Item {
     }
     function selectFirst() { selected = visibleItems[0] || null; }
 
+    // Island peek Reply → center: runs after Center.reset() on open.
+    function applyHandoff() {
+        const h = Notifs.takeCenterFocus();
+        if (!h) return;
+        setExpanded(h.item.app, true);
+        selected = h.item;
+        if (!h.reply) return;
+        function focusReply(tries) {
+            if (view.selectedRow) {
+                view.selectedRow.beginReply();
+                return;
+            }
+            if (tries > 0) Qt.callLater(() => focusReply(tries - 1));
+        }
+        Qt.callLater(() => focusReply(8));
+    }
+
     function move(step) {
         if (!visibleItems.length) return;
         keyboard = true;
@@ -119,7 +136,13 @@ Item {
         const k = event.key;
         if (k === Qt.Key_Down) move(1);
         else if (k === Qt.Key_Up) move(-1);
-        else if (k === Qt.Key_Return || k === Qt.Key_Enter) { if (selected) Notifs.openItem(selected); }
+        else if (k === Qt.Key_Return || k === Qt.Key_Enter) {
+            if (selected && selectedRow && selectedRow.replying) return false;
+            if (selected) Notifs.openItem(selected);
+        }
+        else if (k === Qt.Key_R && queryEmpty && selected && selectedRow && selectedRow.canReply && !selectedRow.replying) {
+            selectedRow.beginReply();
+        }
         else if (k === Qt.Key_Delete || (k === Qt.Key_Backspace && queryEmpty)) removeSelected();
         else if (k === Qt.Key_Right && queryEmpty && selected) setExpanded(selected.app, true);
         else if (k === Qt.Key_Left && queryEmpty && selected) setExpanded(selected.app, false);
@@ -224,8 +247,8 @@ Item {
             width: 28
             glyph: "\u{f0594}"                     // moon
             text: ""
-            tint: Notifs.dnd ? "#5e5ce6" : "transparent"
-            onClicked: Notifs.dnd = !Notifs.dnd
+            tint: Notifs.muted ? "#5e5ce6" : "transparent"
+            onClicked: Notifs.toggleUserDnd()
         }
         PillButton {
             visible: Notifs.items.length > 0
@@ -233,6 +256,17 @@ Item {
             text: "Clear"
             onClicked: view.clearAll()
         }
+    }
+
+    Label {
+        id: c1Hint
+        visible: !Settings.seenNotifC1Hint && !view.narrowed
+        anchors { left: parent.left; right: parent.right; top: filterRow.bottom; topMargin: 10 }
+        wrapMode: Text.WordWrap
+        text: "Click a row to select, then Open — or double-click to open. Toasts: tap to preview unless Settings → Toast opens on first click."
+        size: 12
+        color: Theme.textTertiary
+        opacity: view.center.revealAt(100)
     }
 
     // Clear all: the list falls away, then empties.
@@ -264,7 +298,7 @@ Item {
     // ── List ─────────────────────────────────────────────────────────────
     ListView {
         id: list
-        anchors { left: parent.left; right: parent.right; top: filterRow.bottom; bottom: parent.bottom; topMargin: 14 }
+        anchors { left: parent.left; right: parent.right; top: c1Hint.visible ? c1Hint.bottom : filterRow.bottom; bottom: parent.bottom; topMargin: c1Hint.visible ? 8 : 14 }
         clip: true
         spacing: 18
         boundsBehavior: Flickable.DragAndOvershootBounds
@@ -299,14 +333,22 @@ Item {
 
         FluidHighlight {
             parent: list.contentItem
-            target: view.keyboard ? view.selectedRow : (view.hoverRow || null)
-            ring: view.keyboard && target !== null
+            target: view.selectedRow || view.hoverRow || null
+            ring: view.keyboard && view.selectedRow !== null
         }
     }
 
     ScrollHint {
         flickable: list
         anchors { right: parent.right; rightMargin: -10; top: list.top; bottom: list.bottom }
+    }
+
+    Connections {
+        target: Notifs
+        function onCenterFocusItemChanged() {
+            if (Notifs.centerOpen && Notifs.centerFocusItem)
+                Qt.callLater(() => view.applyHandoff());
+        }
     }
 
     // Empty: nothing at all, or nothing matching.

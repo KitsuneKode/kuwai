@@ -257,12 +257,19 @@ Singleton {
     }
 
     // ── Focus (Do Not Disturb) ──────────────────────────────────────────
+    function focusMomentValue() {
+        if (!Notifs.muted) return "Off";
+        if (Notifs.dnd) return Notifs.dndMute ? "On · sharing" : "On";
+        return "Sharing";
+    }
     Connections {
         target: Notifs
-        function onDndChanged() {
-            if (!root.armed || !Notifs.loaded) return;
-            root.show({ kind: "focus", glyph: "\u{f0594}", label: "Focus", value: Notifs.dnd ? "On" : "Off", ring: -1, tone: "#bf5af2" }, 2400);
-        }
+        function onDndChanged() { root.focusMoment(); }
+        function onDndMuteChanged() { root.focusMoment(); }
+    }
+    function focusMoment() {
+        if (!root.armed || !Notifs.loaded) return;
+        root.show({ kind: "focus", glyph: "\u{f0594}", label: "Focus", value: focusMomentValue(), ring: -1, tone: "#bf5af2" }, 2400);
     }
 
     // ── Caffeine (Super+\, Super+Shift+C, Controls, the cup) ───────────

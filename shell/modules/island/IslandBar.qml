@@ -30,6 +30,12 @@ import qs.services
 Scope {
     id: root
 
+    Binding {
+        target: Limits
+        property: "watching"
+        value: Settings.bar === "island" && Settings.islandAgentUsage
+    }
+
     Variants {
         model: Quickshell.screens
 
@@ -269,8 +275,10 @@ Scope {
             // The assistant working with its panel closed (or just finished): the edge light below.
             readonly property bool assistHere: (OllamaService.bgWorking || !!OllamaService.bgDone)
                 && !panelHere && !grown && !bannerHere && !peekHere && !deviceHere
+            readonly property real peekH: Notifs.peekExpanded ? 172 : 76
+            readonly property real bannerH: bannerHere && alertLoader.item ? alertLoader.item.implicitHeight : 72
             readonly property real targetW: panelHere ? panelSize.width : grown ? hoverSize.width : bannerHere ? 440 : peekHere ? 460 : deviceHere ? 420 : restRow.implicitWidth + 32
-            readonly property real targetH: panelHere ? panelSize.height : grown ? hoverSize.height : bannerHere ? 72 : peekHere ? 76 : deviceHere ? 84 : restH
+            readonly property real targetH: panelHere ? panelSize.height : grown ? hoverSize.height : bannerHere ? bannerH : peekHere ? peekH : deviceHere ? 84 : restH
             // Published so surfaces that grow out of the island (the HUD, the
             // clipboard) start from the shape actually on screen: rest, banner,
             // hover or panel. Changes with the state, not per frame.
@@ -571,11 +579,13 @@ Scope {
                         id: peekLoader
                         active: win.peekHere || nv.value > 0.01
                         x: Math.round((body.width - 460) / 2)
+                        width: 460
+                        height: body.height
                         readonly property real k: Math.max(0, Math.min(1, (nv.value - 0.3) / 0.5))
                         opacity: k * Math.max(0, 1 - Math.max(m.value, pv.value, bv.value) * 3)
                         visible: opacity > 0.01
                         property var keep: null
-                        sourceComponent: NotifPeek { item: Notifs.peek || peekLoader.keep; bar: win }
+                        sourceComponent: NotifPeek { item: Notifs.peek || peekLoader.keep; bar: win; reveal: Math.max(0, Math.min(1, (nv.value - 0.2) / 0.6)) }
                         Connections { target: Notifs; function onPeekChanged() { if (Notifs.peek) peekLoader.keep = Notifs.peek; } }
                     }
 

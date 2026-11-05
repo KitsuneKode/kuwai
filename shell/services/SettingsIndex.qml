@@ -12,6 +12,7 @@ Singleton {
         { id: "bar", keys: "top bar waybar notch shape workspaces at rest battery signal music weather hover delay now playing", label: "Bar & Island", glyph: "\u{f0d6f}", tint: "#0a84ff" },
         { id: "clock", keys: "clock 24-hour time seconds date", label: "Clock & Date", glyph: "\u{f0954}", tint: "#ff9f0a" },
         { id: "notifs", keys: "notifications do not disturb dnd focus toast where they appear clear seen", label: "Notifications", glyph: "\u{f009a}", tint: "#ff453a" },
+        { id: "assistant", keys: "assistant ai agent opt in local ollama diagnose crash", label: "Assistant", glyph: "\u{f06a9}", tint: "#5e5ce6" },
         { id: "motion", keys: "reduce motion animation accessibility", label: "Motion", glyph: "\u{f0e7d}", tint: "#bf5af2" },
         { id: "island", keys: "island style minimal hidden everything reveal approach proximity quick switch caffeine", label: "Island", glyph: "\u{f0d6f}", tint: "#ff9f0a" },
         { id: "workspaces", keys: "workspaces screens monitors desktops pills keys", label: "Workspaces", glyph: "\u{f0570}", tint: "#5e5ce6" },

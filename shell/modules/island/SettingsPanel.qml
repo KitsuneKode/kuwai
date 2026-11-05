@@ -98,7 +98,7 @@ FocusScope {
             Loader {
                 id: page
                 width: parent.width
-                sourceComponent: [barPage, clockPage, notifPage, motionPage, islandRestPage, workspacesPage, powerPage, saverPage, timePage, clipboardPage, updatesPage, aboutPage][settings.current]
+                sourceComponent: [barPage, clockPage, notifPage, assistantPage, motionPage, islandRestPage, workspacesPage, powerPage, saverPage, timePage, clipboardPage, updatesPage, aboutPage][settings.current]
             }
         }
     }
@@ -140,6 +140,10 @@ FocusScope {
                         current: String(Settings.workspaceCount)
                         onPicked: id => Settings.set("workspaceCount", Number(id))
                     }
+                }
+                SettingsRow {
+                    label: "Agent limit alerts"; detail: "When a harness quota crosses 90% or hits the cap, peek once from the island (provider, account, window) — not a badge on the clock"
+                    Toggle { on: Settings.islandAgentUsage; onToggled: Settings.set("islandAgentUsage", !Settings.islandAgentUsage) }
                 }
             }
             SettingsGroup {
@@ -198,7 +202,7 @@ FocusScope {
             SettingsGroup {
                 SettingsRow {
                     label: "Do Not Disturb"; detail: "Only critical alerts show"
-                    Toggle { on: Notifs.dnd; onToggled: Notifs.dnd = !Notifs.dnd }
+                    Toggle { on: Notifs.dnd; onToggled: Notifs.toggleUserDnd() }
                 }
                 SettingsRow {
                     label: "Where they appear"
@@ -210,7 +214,24 @@ FocusScope {
                     }
                 }
                 SettingsRow {
-                    label: "Clear seen notifications"; detail: "Ones you saw and didn't act on"
+                    label: "Toast opens on first click"
+                    detail: Settings.notifToastInstantOpen ? "Tap a toast to open or run its default action" : "Tap to preview, then Open (center and island peek stay explicit)"
+                    Toggle {
+                        on: Settings.notifToastInstantOpen
+                        onToggled: Settings.set("notifToastInstantOpen", !Settings.notifToastInstantOpen)
+                    }
+                }
+                SettingsRow {
+                    label: "Reply when toast opens"
+                    detail: Settings.notifEngageReply ? "Engaging a replyable toast focuses the reply field" : "Show Open and Reply chips first"
+                    Toggle {
+                        on: Settings.notifEngageReply
+                        onToggled: Settings.set("notifEngageReply", !Settings.notifEngageReply)
+                    }
+                }
+                SettingsRow {
+                    label: "Keep seen notifications"
+                    detail: "How long dismissed-but-unread rows stay in the center"
                     Segmented {
                         options: [{ id: "6", label: "6 h" }, { id: "24", label: "1 day" }, { id: "72", label: "3 days" }, { id: "0", label: "Never" }]
                         current: String(Settings.notifKeepSeenHours)
@@ -224,6 +245,28 @@ FocusScope {
                 text: "A notification you click, answer or open from the center leaves the list, and so does one the app withdraws (you read it there)."
                 size: 12
                 color: Theme.textTertiary
+            }
+        }
+    }
+    Component {
+        id: assistantPage
+        Column {
+            spacing: 18
+            SettingsGroup {
+                SettingsRow {
+                    label: "Local assistant"; detail: Settings.assistantOptIn ? "Super+Ctrl+Shift+A opens the overlay (Ollama)" : "Off until you turn this on"
+                    Toggle {
+                        on: Settings.assistantOptIn
+                        onToggled: {
+                            Settings.set("assistantOptIn", !Settings.assistantOptIn);
+                            if (Settings.assistantOptIn) Settings.set("seenAssistantPrompt", true);
+                        }
+                    }
+                }
+                SettingsRow {
+                    label: "Crash diagnosis"
+                    detail: "Coredump toasts offer Diagnose → local assistant only; nothing sent upstream without you"
+                }
             }
         }
     }

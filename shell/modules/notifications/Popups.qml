@@ -45,6 +45,9 @@ Scope {
     property bool hovered: false
     property bool interacting: false
     property bool pinnedOpen: false
+    // One toast engaged (tap to preview actions); pauses auto-dismiss like hover.
+    property var engaged: null
+    onEngagedChanged: if (!engaged && !hovered) interacting = false
     // A single toast has nothing to fan out.
     readonly property bool expanded: (hovered || interacting || pinnedOpen) && live.length > 1
 
@@ -60,7 +63,7 @@ Scope {
     readonly property real expandedHeight: shownCount ? offsetOf(shownCount - 1) + live[shownCount - 1].cardHeight : 0
     readonly property real collapsedHeight: frontHeight + Theme.stackGap * Math.max(0, shownCount - 1)
 
-    Binding { target: Notifs; property: "held"; value: root.expanded || root.interacting }
+    Binding { target: Notifs; property: "held"; value: root.expanded || root.interacting || !!root.engaged }
     // Where the center morphs out of; frozen while it's open.
     Binding {
         target: Notifs

@@ -33,7 +33,7 @@ Item {
     readonly property int peeks: stacked ? Math.min(2, count - 1) : 0
 
     width: ListView.view ? ListView.view.width : 0
-    height: header.height + 8 + (expanded ? list.height : first.height + peeks * 8)
+    height: header.height + 8 + (expanded ? (listLoader.item ? listLoader.item.height : 0) : first.height + peeks * 8)
     Behavior on height { enabled: !(group.center && group.center.instant); NumberAnimation { duration: Theme.reflowMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
 
     // Header
@@ -193,27 +193,34 @@ Item {
             visible: group.stacked
             anchors.fill: parent
             cursorShape: Qt.PointingHandCursor
-            onClicked: group.toggled()
+            onClicked: {
+                if (!group.center) return;
+                group.center.setExpanded(group.modelData.key, true);
+                group.center.selected = group.items[0];
+                group.center.keyboard = false;
+            }
         }
     }
 
-    // Expanded: every notification, newest first.
-    Column {
-        id: list
-        visible: group.expanded
+    // Expanded: every notification, newest first (rows load only when open).
+    Loader {
+        id: listLoader
+        active: group.expanded
         anchors.top: header.bottom
         anchors.topMargin: 8
         width: parent.width
-        spacing: 8
-        // No move transition: rows grow/shrink their own height, and the
-        // column follows that directly (a lagging move would overlap them).
-
-        Repeater {
-            model: ScriptModel { values: group.expanded ? group.items : [] }
-            CenterRow {
-                required property var modelData
-                item: modelData
-                center: group.center
+        sourceComponent: Component {
+            Column {
+                width: group.width
+                spacing: 8
+                Repeater {
+                    model: ScriptModel { values: group.items }
+                    CenterRow {
+                        required property var modelData
+                        item: modelData
+                        center: group.center
+                    }
+                }
             }
         }
     }
