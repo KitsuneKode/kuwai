@@ -46,6 +46,26 @@ Singleton {
         save();
     }
     function cancel(id) { timers = timers.filter(t => t.id !== id); save(); }
+
+    // ── Pomodoro: 25 work · 5 break, ×4, then a 15 break, round again ─────
+    // A pomodoro is just a timer carrying { pomo: { round, phase } }: the next
+    // phase starts when it ends, and it survives restarts like any timer.
+    readonly property var pomo: { const t = timers.find(x => x.pomo); return t ? t : null; }
+    function pomoStep(round, phase) {
+        const secs = phase === "work" ? 25 * 60 : round === 4 ? 15 * 60 : 5 * 60;
+        const name = phase === "work" ? "Focus " + round + "/4" : round === 4 ? "Long break" : "Break";
+        const t = Date.now();
+        timers = [...timers, { id: t, label: name, start: t, end: t + secs * 1000, pomo: { round: round, phase: phase } }].sort((a, b) => a.end - b.end);
+        save();
+    }
+    function startPomo() { if (!pomo) pomoStep(1, "work"); }
+    function stopPomo() { timers = timers.filter(t => !t.pomo); save(); }
+    onFinished: t => {
+        if (!t.pomo) return;
+        const p = t.pomo;
+        if (p.phase === "work") pomoStep(p.round, "break");
+        else pomoStep(p.round === 4 ? 1 : p.round + 1, "work");
+    }
     function remaining(t) { return t ? Math.max(0, (t.end - now) / 1000) : 0; }
     function fraction(t) { return t ? Math.max(0, Math.min(1, (t.end - now) / Math.max(1, t.end - t.start))) : 0; }
     function clock(secs) {
@@ -90,5 +110,6 @@ Singleton {
         }
         function cancel(): void { if (root.next) root.cancel(root.next.id); }
         function list(): string { return JSON.stringify(root.timers); }
+        function pomodoro(): string { if (root.pomo) { root.stopPomo(); return "pomodoro stopped"; } root.startPomo(); return "pomodoro: 25 min focus"; }
     }
 }

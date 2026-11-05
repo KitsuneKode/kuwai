@@ -23,6 +23,8 @@ import qs.services
 ShellRoot {
     // Idle (dim, lock, screens off, sleep) lives in services/Idle: wake it up.
     readonly property bool idleOwned: Idle.enabled
+    // Reminders fire from the shell, so they load with it (not on first use).
+    readonly property int remindersKept: Reminders.items.length
     Osd {}
     Popups {}
     Center {}

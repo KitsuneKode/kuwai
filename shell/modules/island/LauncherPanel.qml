@@ -154,6 +154,13 @@ FocusScope {
         return secs > 0 ? { secs: secs, name: m[2] || "" } : null;
     }
 
+    // "remind me at 5 to call mum", "in 20m stretch", "tomorrow 9am dentist" (services/Reminders).
+    readonly property var remindRow: /^(remind\b|in\s+\d|tomorrow\s+\d)/i.test(query.trim()) ? Reminders.parse(query) : null
+    // "note buy milk": a line in ~/Notes/inbox.md (services/Notes).
+    readonly property string noteText: { const m = /^note\s+(.+)$/i.exec(query.trim()); return m ? m[1] : ""; }
+    // "pomodoro" / "pomo": 25 min work, 5 min break, ×4, then 15 (services/Timers).
+    readonly property bool pomoRow: /^(pomodoro|pomo)$/i.test(query.trim())
+
     // A plain arithmetic expression (digits, + - * / % ^ ( ) .) and its value.
     readonly property var calc: {
         const q = query.trim().replace(/×/g, "*").replace(/÷/g, "/").replace(/,/g, ".");
@@ -234,6 +241,9 @@ FocusScope {
         const by = rows => rows.filter(keep).sort((a, b) => b.rank - a.rank);
         if (calc) section("Calculator", [{ kind: "calc", name: String(calc.value), sub: calc.expr + " =", glyph: "=" }]);
         if (timerRow) section("Timer", [{ kind: "timer", name: "Start a " + Timers.label(timerRow.secs) + " timer" + (timerRow.name ? " · " + timerRow.name : ""), sub: "In the island, with a ring", glyph: "\u{f13ab}", secs: timerRow.secs, label: timerRow.name }]);
+        if (remindRow) section("Reminder", [{ kind: "remind", name: "Remind me " + Reminders.when(remindRow.at) + " · " + remindRow.text, sub: "In the island and as a notification", glyph: "\u{f009a}" }]);
+        if (noteText) section("Note", [{ kind: "note", name: "Note “" + noteText + "”", sub: "Added to " + Notes.file.replace(Quickshell.env("HOME"), "~"), glyph: "\u{f0219}", text: noteText }]);
+        if (pomoRow) section("Focus", [{ kind: "pomo", name: Timers.pomo ? "Stop the pomodoro" : "Start a pomodoro", sub: "25 min work · 5 min break · ×4, then 15", glyph: "\u{f13ab}" }]);
         if (convert) section("Convert", [{ kind: "calc", name: convert.value, sub: convert.sub, glyph: "\u{f0a12}" }]);
         const top = all.filter(keep).sort((a, b) => b.rank - a.rank)[0];
         if (top) section("Top Hit", [top]);
@@ -242,7 +252,7 @@ FocusScope {
         section("Actions", by(actHit).filter(r => r !== top).slice(0, 4));
         section("Files", fileHits);
         // Last: the web, for anything the machine doesn't have.
-        if (!calc && !convert && !timerRow) section("Web", [{ kind: "web", name: "Search the web for “" + query.trim() + "”", sub: "DuckDuckGo", glyph: "\u{f059f}" }]);
+        if (!calc && !convert && !timerRow && !remindRow && !noteText && !pomoRow) section("Web", [{ kind: "web", name: "Search the web for “" + query.trim() + "”", sub: "DuckDuckGo", glyph: "\u{f059f}" }]);
         return out;
     }
     readonly property int selectable: results.filter(r => r.kind !== "header").length
@@ -269,6 +279,12 @@ FocusScope {
             r.entry.execute();
         } else if (r.kind === "timer") {
             Timers.start(r.secs, r.label);
+        } else if (r.kind === "remind") {
+            Reminders.add(query);
+        } else if (r.kind === "note") {
+            Notes.add(r.text);
+        } else if (r.kind === "pomo") {
+            Timers.pomo ? Timers.stopPomo() : Timers.startPomo();
         } else if (r.kind === "file") {
             Quickshell.execDetached(["xdg-open", r.path]);
         } else if (r.kind === "web") {

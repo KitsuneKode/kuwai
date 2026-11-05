@@ -16,6 +16,9 @@ import qs.config
 import qs.services
 
 Scope {
+    id: hook
+    property bool testing: false
+    property var realFeed: null
     IpcHandler {
         target: "test"
         function moment(kind: string, label: string, value: string): void {
@@ -26,21 +29,22 @@ Scope {
             Alerts.active = [{ id: "test", level: level === "crit" ? "crit" : "warn", glyph: "\u{f050f}", title: title, detail: "test" }];
         }
         function agents(n: int, waiting: int): void {
+            // The agents.json shape (kittymux plan 014); the real feed comes back on clear.
+            if (!hook.testing) { hook.realFeed = Kittymux.feed; hook.testing = true; }
             const names = ["claude", "codex", "agy", "opencode", "gemini"];
-            const rows = [];
+            const list = [];
             for (let i = 0; i < n; i++) {
                 const name = names[i % names.length];
-                rows.push({ kind: "running", agent: name, tone: i < waiting ? "" : "active", jkey: "test" + i,
-                            text: "◐  " + name + "  ◑ Test task " + (i + 1) + "   ~/Projects/test   " + (i < waiting ? "waiting" : "working"),
-                            action: { op: "jump", pid: 0, w: "0" } });
+                list.push({ key: "test" + i, agent: name, brand: name, title: "Test task " + (i + 1),
+                            tab_title: "test", cwd: "~/Projects/test", state: i < waiting ? "waiting" : "working" });
             }
-            Kittymux.rows = rows;
+            Kittymux.feed = { version: 1, agents: list };
         }
         function timer(seconds: int, label: string): void { Timers.start(seconds, label); }
         function clear(): void {
             Alerts.active = [];
             Moments.now = null;
-            Kittymux.rows = [];
+            if (hook.testing) { Kittymux.feed = hook.realFeed; hook.testing = false; }
             for (const t of Timers.timers.slice()) if (/^test/i.test(t.label)) Timers.cancel(t.id);
         }
     }
