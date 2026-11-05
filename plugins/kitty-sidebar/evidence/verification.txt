@@ -1,0 +1,11 @@
+Test project /home/kitsunekode/Projects/rice/plugins/kitty-sidebar/build
+    Start 1: feed-contract
+1/1 Test #1: feed-contract ....................   Passed    0.00 sec
+
+100% tests passed out of 1
+
+Total Test time (real) =   0.00 sec
+
+Python probe syntax: PASS (ast.parse; no process started)
+0.57.1
+c++ (GCC) 16.2.1 20260810

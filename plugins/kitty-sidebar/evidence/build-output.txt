@@ -1,0 +1,9 @@
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/kitsunekode/Projects/rice/plugins/kitty-sidebar/build
+[ 25%] Building CXX object CMakeFiles/feed-test.dir/feed-test.cpp.o
+[ 50%] Building CXX object CMakeFiles/kitty-sidebar.dir/sidebar.cpp.o
+[ 75%] Linking CXX executable feed-test
+[ 75%] Built target feed-test
+[100%] Linking CXX shared library libkitty-sidebar.so
+[100%] Built target kitty-sidebar

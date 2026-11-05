@@ -1,0 +1,7 @@
+Device-isolated baseline compositor. No plugin loaded. Exit status: 134.
+ERR from aquamarine ]: Failed to open a session
+ERR from aquamarine ]: DRM Backend failed
+ERR from aquamarine ]: Wayland backend cannot start: wl_display_connect failed (is a wayland compositor running?)
+CRIT from aquamarine ]: Cannot open backend: no allocator available
+CRIT ]: [throwError] Critical error thrown: CBackend::create() failed!
+  what():  CBackend::create() failed!

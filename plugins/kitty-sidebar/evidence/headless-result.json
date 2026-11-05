@@ -1,0 +1,12 @@
+{
+  "probe": "private baseline compositor, no plugin loaded",
+  "returncode": 134,
+  "timed_out": false,
+  "dri_available": true,
+  "parent_display_inherited": false,
+  "log": "evidence/headless.log",
+  "isolated_runtime": ".runs/headless-fmsyht0n/runtime",
+  "devices_hidden": true,
+  "namespace_launcher": "bubblewrap",
+  "config": "private Lua, no autostart or plugin"
+}
