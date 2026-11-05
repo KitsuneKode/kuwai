@@ -211,8 +211,12 @@ Item {
 
         Label {
             width: parent.width
-            visible: row.it.body !== "" && !(row.selected && row.previewScroll)
-            text: row.center && row.center.terms.length ? row.center.highlight(row.it.body.replace(/<[^>]*>/g, "")) : row.it.body
+            visible: (row.it.body !== "" || Notifs.bodyRedacted(row.it)) && !(row.selected && row.previewScroll)
+            text: {
+                const raw = row.it.body.replace(/<[^>]*>/g, "");
+                const show = Notifs.bodyRedacted(row.it) && !row.selected ? Notifs.bodyForDisplay(row.it, false) : raw;
+                return row.center && row.center.terms.length ? row.center.highlight(show) : show;
+            }
             textFormat: Text.StyledText
             wrapMode: Text.Wrap
             maximumLineCount: row.selected && (row.warning || row.critical) ? 6 : 3

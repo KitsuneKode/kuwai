@@ -445,8 +445,8 @@ Item {
 
             Label {
                 width: parent.width
-                text: card.item.body
-                visible: text !== ""
+                text: Notifs.bodyRedacted(card.item) && !card.engaged ? Notifs.bodyForDisplay(card.item, false) : card.item.body
+                visible: text !== "" || Notifs.bodyRedacted(card.item)
                 textFormat: Text.StyledText
                 wrapMode: Text.Wrap
                 maximumLineCount: card.low ? 1 : 3
@@ -454,6 +454,7 @@ Item {
                 size: 13
                 lineHeight: 1.18
                 color: Theme.textSecondary
+                font.italic: Notifs.bodyRedacted(card.item) && !card.engaged
             }
 
             Row {

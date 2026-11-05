@@ -214,6 +214,14 @@ FocusScope {
                     }
                 }
                 SettingsRow {
+                    label: "Hide sensitive message text"
+                    detail: Settings.notifRedactSensitive ? "Chat/mail: show who, not the body, until you Open" : "Full text on peek, toasts and center"
+                    Toggle {
+                        on: Settings.notifRedactSensitive
+                        onToggled: Settings.set("notifRedactSensitive", !Settings.notifRedactSensitive)
+                    }
+                }
+                SettingsRow {
                     label: "Toast opens on first click"
                     detail: Settings.notifToastInstantOpen ? "Tap a toast to open or run its default action" : "Tap to preview, then Open (center and island peek stay explicit)"
                     Toggle {

@@ -151,6 +151,21 @@ Singleton {
         if (item.popup) arrived();
     }
 
+    // ── Privacy: hide message bodies for chat/mail apps (title = who) ─────
+    readonly property var sensitiveApps: /zapzap|whatsapp|telegram|signal|discord|slack|element|matrix|messenger|sms|messages|gmail|proton|thunderbird|chat|mail/i
+    function bodyRedacted(item) {
+        if (!item || !Settings.notifRedactSensitive) return false;
+        if (item.severity === "critical" || item.severity === "warning") return false;
+        const hay = (item.app + " " + item.title).toLowerCase();
+        return sensitiveApps.test(hay);
+    }
+    function bodyForDisplay(item, reveal) {
+        if (!item) return "";
+        if (bodyRedacted(item) && !reveal)
+            return "Message hidden · Open to read";
+        return String(item.body || "").replace(/\s+/g, " ");
+    }
+
     property var peek: null
     property var peekQueue: []
     property bool peekHeld: false
@@ -183,6 +198,13 @@ Singleton {
         if (peek && !peekHeld) peekFor.restart();
     }
     function dropPeek() { peekExpanded = false; peekFor.interval = 5000; nextPeek(); }
+    function dismissPeekItem(item) {
+        const i = item || peek;
+        if (!i) return;
+        peekExpanded = false;
+        if (peek === i) nextPeek();
+        dismiss(i);
+    }
     onPeekHeldChanged: if (peekHeld) peekFor.stop(); else if (peek) peekFor.restart()
     Timer { id: peekFor; interval: 5000; onTriggered: if (!root.peekHeld) root.nextPeek() }
 

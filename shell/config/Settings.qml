@@ -44,6 +44,7 @@ Singleton {
     readonly property alias notifSurface: s.notifSurface
     readonly property alias notifToastInstantOpen: s.notifToastInstantOpen
     readonly property alias notifEngageReply: s.notifEngageReply
+    readonly property alias notifRedactSensitive: s.notifRedactSensitive
     readonly property alias seenNotifC1Hint: s.seenNotifC1Hint
     readonly property alias assistantOptIn: s.assistantOptIn
     readonly property alias seenAssistantPrompt: s.seenAssistantPrompt
@@ -133,6 +134,8 @@ Singleton {
             property bool seenNotifC1Hint: false
             // Toasts: when engaging a replyable notification, open the reply field immediately.
             property bool notifEngageReply: true
+            // Chat apps: hide message body on peek/toast/center until Open (title stays).
+            property bool notifRedactSensitive: true
             // Local assistant: off until you opt in (Settings or first shortcut).
             property bool assistantOptIn: false
             property bool seenAssistantPrompt: false
