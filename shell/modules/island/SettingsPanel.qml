@@ -23,21 +23,15 @@ FocusScope {
     implicitHeight: 520
 
     readonly property string rice: Paths.bin + "/rice"
-    readonly property var sections: [
-        { id: "bar", label: "Bar & Island", glyph: "\u{f0d6f}", tint: "#0a84ff" },
-        { id: "clock", label: "Clock & Date", glyph: "\u{f0954}", tint: "#ff9f0a" },
-        { id: "notifs", label: "Notifications", glyph: "\u{f009a}", tint: "#ff453a" },
-        { id: "motion", label: "Motion", glyph: "\u{f0e7d}", tint: "#bf5af2" },
-        { id: "island", label: "Island", glyph: "\u{f0d6f}", tint: "#ff9f0a" },
-        { id: "workspaces", label: "Workspaces", glyph: "\u{f0570}", tint: "#5e5ce6" },
-        { id: "power", label: "Power & Idle", glyph: "\u{f0425}", tint: "#30d158" },
-        { id: "saver", label: "Screensaver", glyph: "\u{f0379}", tint: "#5e5ce6" },
-        { id: "time", label: "Reminders & Alarms", glyph: "\u{f0020}", tint: "#ff9f0a" },
-        { id: "clipboard", label: "Clipboard", glyph: "\u{f014c}", tint: "#64d2ff" },
-        { id: "updates", label: "Software Update", glyph: "\u{f06b0}", tint: "#30d158" },
-        { id: "about", label: "About", glyph: "\u{f02fd}", tint: "#8e8e93" }
-    ]
+    readonly property var sections: SettingsIndex.sections   // services/SettingsIndex (the launcher searches it too)
     property int current: 0
+    function goTo(page) {
+        const i = sections.findIndex(x => x.id === page);
+        if (i >= 0) current = i;
+        if (page) Island.settingsPage = "";
+    }
+    Component.onCompleted: goTo(Island.settingsPage)
+    Connections { target: Island; function onSettingsPageChanged() { settings.goTo(Island.settingsPage); } }
 
     Keys.onPressed: event => {
         if (event.key === Qt.Key_Down || event.key === Qt.Key_Tab) current = (current + 1) % sections.length;

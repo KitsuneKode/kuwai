@@ -182,6 +182,9 @@ Singleton {
     // A mode to open the launcher in (":" emoji, ";" glyphs): placed with the
     // cursor after it, not selected, so typing continues the search.
     property string prefill: ""
+    // Settings opens on this page (a SettingsPanel section id), then forgets it.
+    property string settingsPage: ""
+    function openSettings(page) { settingsPage = page || ""; open("settings", "", "key"); }
     function openWith(prefix) { prefill = prefix; open("launcher", "", "key"); }
     // The theme picker's tab: "themes" or "wallpapers".
     property string themeMode: "themes"
@@ -234,6 +237,7 @@ Singleton {
         function open(panel: string): void { root.open(panel, "", "key"); }
         function close(): void { root.close(); }
         function back(): void { root.back(); }
+        function settings(page: string): void { root.openSettings(page); }
         function themes(mode: string): void { root.themes(mode || "themes"); }
         function state(): string { return root.panel ? root.panel + " " + root.screen : "none"; }
     }

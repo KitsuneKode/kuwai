@@ -253,6 +253,8 @@ FocusScope {
         section("Applications", by(appsHit).filter(r => r !== top).slice(0, 8));
         section("Windows", by(winHit).filter(r => r !== top).slice(0, 5));
         section("Actions", by(actHit).filter(r => r !== top).slice(0, 4));
+        // Settings pages that match ("idle", "screensaver", "24-hour"), like Spotlight.
+        if (q.length >= 3) section("Settings", SettingsIndex.search(q).slice(0, 2).map(x => ({ kind: "setting", name: x.label, sub: "Settings", glyph: x.glyph, page: x.id })));
         section("Files", fileHits);
         // Last: the web, for anything the machine doesn't have.
         if (!calc && !convert && !timerRow && !remindRow && !alarmRow && !noteText && !pomoRow) section("Web", [{ kind: "web", name: "Search the web for “" + query.trim() + "”", sub: "DuckDuckGo", glyph: "\u{f059f}" }]);
@@ -284,6 +286,9 @@ FocusScope {
             Timers.start(r.secs, r.label);
         } else if (r.kind === "remind") {
             Reminders.add(query);
+        } else if (r.kind === "setting") {
+            Qt.callLater(() => Island.openSettings(r.page));
+            return;
         } else if (r.kind === "alarm") {
             Alarms.add(query);
         } else if (r.kind === "note") {
