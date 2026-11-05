@@ -162,16 +162,19 @@ Item {
         id: sys
         // Passed in: an inline component doesn't see this file's ids.
         property var bar
+        // While a live activity has the stage only a warning stays; update
+        // news waits (it sat beside a timer's countdown).
+        property bool quiet: false
         spacing: 2
         // From the data, not the children's `visible`: a hidden parent makes
         // every child report invisible, so `any` could never turn on.
-        readonly property bool any: (Updates.fresh && !Updates.running) || Alerts.active.length > 0
+        readonly property bool any: (Updates.fresh && !Updates.running && !quiet) || Alerts.active.length > 0
         readonly property bool hovered: upd.hovered || warn.hovered
         RestMark {
             id: upd
             // Only while this set is new to you: once you've looked, it steps
             // back (the hover view and Super+Ctrl+Shift+U still have it).
-            visible: Updates.fresh && !Updates.running
+            visible: Updates.fresh && !Updates.running && !sys.quiet
             anchors.verticalCenter: parent.verticalCenter
             glyph: "\u{f06b0}"
             value: Updates.total > 9 ? "9+" : String(Updates.total)
@@ -563,7 +566,7 @@ Item {
         }
         // System news (updates, a warning): trailing here, leading in the
         // mini notch (leadSys) so the two sides balance.
-        SysMarks { id: trailSys; bar: rest.bar; visible: !rest.mini && any; anchors.verticalCenter: parent.verticalCenter }
+        SysMarks { id: trailSys; bar: rest.bar; quiet: rest.stageTaken; visible: !rest.mini && any; anchors.verticalCenter: parent.verticalCenter }
         // The camera is on: a green dot (Apple's), with who has it.
         Rectangle {
             visible: Activities.camInUse
