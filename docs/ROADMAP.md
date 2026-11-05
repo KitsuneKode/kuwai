@@ -5,7 +5,7 @@ consistent, fast, safe, and with a few original ideas (the island, the
 updater, agents in the notch) done better than anyone. Not more features:
 fewer, finished ones.
 
-Ratings (2026-11-05, my judgement /10): **ours 6.6** · Omarchy 7.5 ·
+Ratings (2026-11-05, my judgement /10): **ours 6.6 → 7.9 after Phases 1–2, 5, most of 3, 6, 7** · Omarchy 7.5 ·
 DankMaterialShell 7.4 · Caelestia 7.1 · end-4 6.8 · HyDE 6.1. We lead on the
 island, notifications, motion, the updater and agent awareness; we trail on
 install, docs, settings UI and reliability.
@@ -65,7 +65,7 @@ session), *you* (needs the user).
   danger · quiet), `IconButton`, `Chip`, `Card`, `Notice`, `Switch`,
   `Segmented`, `Slider`, `Menu`, `Tooltip`, `ListRow`, `Sheet`, `Field`,
   `KeyHint`, `Badge`, `Ring`. Built only from `Theme` tokens.
-- [~] **Replace the copies** (UpdatesPanel, SystemPanel done): UpdatesPanel's Chip/Card/Notice, RowChip,
+- [x] **Replace the copies** (UpdatesPanel, SystemPanel, DisplayView's tile → ControlTile; PillButton/RaisedButton are the shared buttons under `Button`): UpdatesPanel's Chip/Card/Notice, RowChip,
   QuickIcon, PillButton/RaisedButton, the several Segmented and toggle
   variants. **Done when** `rg "component (Chip|Card|Button|Notice)"`
   finds nothing outside `components/ui/`.
@@ -77,18 +77,18 @@ session), *you* (needs the user).
 
 ## Phase 3: settings you can click (target: Settings 8.5)
 
-- [ ] Every `settings.json` key has a row in the Settings panel, grouped
+- [x] Every `settings.json` key has a row in the Settings panel, grouped
   like macOS System Settings: Appearance · Island · Notifications ·
   Displays · Sound · Power & Idle · Wallpaper & Screensaver · Keyboard ·
   Privacy & Security · Updates · About.
-- [ ] Search across settings; "Reset to default" per row; changes apply
+- [x] Search across settings (from the launcher, Spotlight-style); [ ] "Reset to default" per row; changes apply
   live.
 - [ ] Theme switching in the shell (wallbash colours, GTK/Qt/kitty
   themes) so HyDE's rofi menus and scripts can go.
 
 ## Phase 4: performance and memory (target: Performance 8)
 
-- [ ] **Budget**: shell idle ≤ 350 MB Pss_Anon, ≤ 2 % CPU idle, no
+- [~] **Budget** (fresh start 207 MB; hot reloads grow it, so the gate stays 450): shell idle ≤ 350 MB Pss_Anon, ≤ 2 % CPU idle, no
   per-second timers while hidden (checked by `rice-check`).
 - [ ] Lazy: the assistant overlay (*ai*), clipboard thumbnails (release
   on cool-down), the Notification Center's Sound/Controls tabs.
@@ -120,22 +120,22 @@ session), *you* (needs the user).
 
 - [ ] **AI sandbox review** (*ai*): file rules, network, which commands
   run without confirmation; a deny-list for `sudo`, `rm -rf`, `curl | sh`.
-- [ ] **Lock**: shell crash while locked (stays locked, re-locks);
+- [~] **Lock**: shell crash while locked (stays locked, re-locks: done by design, Lock.qml);
   monitor hot-plug while locked (Lock.qml resurface; test with a headless
   output); notification and OTP text on the lock screen (masked);
   clipboard not readable while locked; media controls only.
 - [ ] **Login**: no autologin; the password never reveals its length;
   greeter has no shell or terminal reachable; failed-login back-off.
-- [ ] **Updater**: root helper ops fuzzed with bad paths (symlinks,
+- [x] **Updater** (tests/root): root helper ops fuzzed with bad paths (symlinks,
   `..`, non-root .pacnew); sudoers only after `visudo -c`.
-- [ ] **Network fetches** (weather, currency, calendars): timeouts,
+- [x] **Network fetches** (weather, currency, calendars): timeouts,
   size limits (`curl --max-filesize`), never executed or interpolated.
 - [ ] **Portal/screen-share privacy**: password managers blacked out in
   shares and screenshots (kuwai privacy rules) — verify with a share.
 
 ## Phase 7: install, docs, story (target: Install 8, Docs 8)
 
-- [ ] `install.sh` with `--dry-run`, a doctor (`kuwai doctor` + `rice
+- [x] `install.sh` with `--dry-run`, a doctor (`kuwai doctor` + `rice
   doctor`), uninstall, and a backup of every file it replaces.
 - [ ] A README with a 60 s video, the island states, the updater, the
   lock and login screens; a manual like Omarchy's (one page per area).

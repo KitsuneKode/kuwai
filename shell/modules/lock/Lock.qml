@@ -4,7 +4,8 @@
 //
 //   rice lock                     lock now (qs ipc call lock lock)
 //
-// Not the default yet: hypridle still runs hyprlock.
+// The default: the shell's idle (services/Idle) and sleep guard lock here;
+// hyprlock is only the fallback when the shell isn't up (bin/rice lock).
 //
 // Fail-safe: while locked, Paths.lockFlag exists (this session's, in the
 // runtime dir, so it goes at a reboot or logout). If the shell
