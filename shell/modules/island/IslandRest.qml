@@ -42,7 +42,7 @@ Item {
     readonly property bool compact: (Settings.islandRest === "minimal" || Settings.islandTucked || (Settings.islandRest === "auto" && takeover))
                                     && !Island.peek && !bar.near && (!bar.hovered || bar.holdCompact)
     // On the small marks (agents, the dots): their tips and clicks, not a grown island.
-    readonly property bool marksHovered: agents.hovered || agents.open || alertMarkHover.hovered || missedHover.hovered || micHover.hovered || camHover.hovered
+    readonly property bool marksHovered: agents.hovered || agents.open || leadSys.hovered || trailSys.hovered || t3mark.hovered || missedHover.hovered || micHover.hovered || camHover.hovered
     // The mini notch: compact with nothing alive shows the time, and only
     // the time (plus a privacy dot when one is lit). Anything alive (music,
     // a moment, a password, dictation, a recording) takes its place.
@@ -55,7 +55,10 @@ Item {
     // Symmetric: whatever sits on the right (a privacy dot, the agents)
     // gets the same room on the left, so the time stays dead centre on
     // every screen (it used to drift by the right side's width).
-    readonly property real miniSide: rightGroup.implicitWidth > 0 ? rightGroup.implicitWidth + 12 : 0
+    // Balanced by content, not padding: system news leads (leadSys), who's
+    // active trails; each side reserves the wider of the two.
+    readonly property real miniLead: leadSys.visible ? leadSys.implicitWidth : 0
+    readonly property real miniSide: Math.max(miniLead, rightGroup.implicitWidth) > 0 ? Math.max(miniLead, rightGroup.implicitWidth) + 12 : 0
     readonly property real miniCore: clock.width + (soonText ? soonLabel.implicitWidth + 12 : 0)
     readonly property real miniContent: miniCore + 2 * miniSide
     readonly property real miniPad: Math.max(miniSide, (56 - miniCore) / 2)
@@ -134,7 +137,7 @@ Item {
         : (Activities.shazamListening || Activities.shazamFound) ? "shazam"
         : bar.player && bar.player.isPlaying && Settings.restMedia ? "media"
         // A warning never takes the stage: it's a mark with its value
-        // (alertMark, e.g. 🌡 96°) beside the time or the music. Alone on the
+        // (SysMarks, e.g. 🌡 96°) beside the time or the music. Alone on the
         // stage it left an icon at one end and a number at the other with
         // nothing between, and hid the clock.
         : ""
@@ -146,12 +149,43 @@ Item {
         onTriggered: rest.voxSecs = Math.max(0, (Date.now() - Activities.voxSince) / 1000)
     }
 
+    // Updates waiting and a warning, as marks (components/RestMark).
+    component SysMarks: Row {
+        id: sys
+        // Passed in: an inline component doesn't see this file's ids.
+        property var bar
+        spacing: 2
+        readonly property bool any: upd.visible || warn.visible
+        readonly property bool hovered: upd.hovered || warn.hovered
+        RestMark {
+            id: upd
+            visible: Updates.total > 0 && !Updates.running
+            anchors.verticalCenter: parent.verticalCenter
+            glyph: "\u{f06b0}"
+            value: Updates.total > 9 ? "9+" : String(Updates.total)
+            tip: Updates.total + (Updates.total === 1 ? " system update" : " system updates") + " · click to review"
+            onClicked: Island.open("updates", sys.bar ? sys.bar.screenName : "", "pointer", "island")
+        }
+        RestMark {
+            id: warn
+            visible: Alerts.active.length > 0
+            anchors.verticalCenter: parent.verticalCenter
+            glyph: Alerts.active.length ? Alerts.active[0].glyph : ""
+            // The number that matters (96°, 91 %), when the title has one.
+            value: Alerts.active.length ? ((Alerts.active[0].title.match(/\d+\s*[%°]/) || [""])[0]).replace(/\s+/g, "") : ""
+            tone: Alerts.active.length && Alerts.active[0].level === "crit" ? Theme.red : Theme.orange
+            tip: Alerts.active.length ? Alerts.active.map(a => a.title).join(" · ") + " · click for System" : ""
+            onClicked: Island.open("system", sys.bar ? sys.bar.screenName : "", "pointer", "island")
+        }
+    }
+
     Row {
       id: leftGroup
       anchors.verticalCenter: parent.verticalCenter
       anchors.left: helloFocus ? undefined : parent.left
       anchors.horizontalCenter: helloFocus ? parent.horizontalCenter : undefined
       spacing: 10
+    SysMarks { id: leadSys; bar: rest.bar; visible: rest.mini && any && !rest.helloFocus; anchors.verticalCenter: parent.verticalCenter }
     // ── Leading ──────────────────────────────────────────────────────────
     // A moment (services/Moments): earbuds connecting, Focus, low battery.
     Row {
@@ -456,100 +490,22 @@ Item {
             bar: rest.bar
         }
         // T3 Code at work (services/T3Code): its icon and how many threads are
-        // running; orange with the count of those waiting for you. Click: T3.
-        Rectangle {
-            id: t3chip
+        // running; orange with the count waiting for you. Click: T3.
+        RestMark {
+            id: t3mark
             visible: T3Code.total > 0
-            readonly property bool needsYou: T3Code.waiting > 0
-            readonly property color tone: needsYou ? Theme.orange : Theme.accent
             anchors.verticalCenter: parent.verticalCenter
-            height: 22; radius: 11
-            width: t3row.implicitWidth + 14
-            color: t3area.containsMouse ? Qt.alpha(tone, 0.28) : Qt.alpha(tone, 0.16)
-            Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
-            Row {
-                id: t3row
-                anchors.centerIn: parent
-                spacing: 5
-                IconImage {
-                    anchors.verticalCenter: parent.verticalCenter
-                    implicitSize: 14
-                    source: Quickshell.iconPath("t3code-nightly", "t3code")
-                    asynchronous: true
-                }
-                Label {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: t3chip.needsYou ? String(T3Code.waiting) : String(T3Code.running)
-                    size: Theme.tSub; weight: Theme.wSemibold; rounded: true
-                    color: t3chip.tone
-                    font.features: ({ "tnum": 1 })
-                }
-            }
-            MouseArea {
-                id: t3area
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: T3Code.focus()
-            }
-            Tip {
-                shown: t3area.containsMouse; below: true
-                text: "T3 Code · " + T3Code.running + " running" + (T3Code.waiting ? " · " + T3Code.waiting + " waiting for you" : "")
-                    + T3Code.items.slice(0, 4).map(i => "\n" + (i.status === "waiting" ? "● " : "· ") + i.title).join("")
-                    + "\nClick to open"
-            }
+            icon: Quickshell.iconPath("t3code-nightly", "t3code")
+            value: T3Code.waiting > 0 ? String(T3Code.waiting) : String(T3Code.running)
+            tone: T3Code.waiting > 0 ? Theme.orange : Theme.textSecondary
+            tip: "T3 Code · " + T3Code.running + " running" + (T3Code.waiting ? " · " + T3Code.waiting + " waiting for you" : "")
+                + T3Code.items.slice(0, 4).map(i => "\n" + (i.status === "waiting" ? "● " : "· ") + i.title).join("")
+                + "\nClick to open"
+            onClicked: T3Code.focus()
         }
-        // Pending system updates: the count stays on the notch (the banner is once).
-        Rectangle {
-            visible: Updates.total > 0 && !Updates.running
-            anchors.verticalCenter: parent.verticalCenter
-            height: 22; radius: 11
-            width: updRest.implicitWidth + 18
-            color: updRestArea.containsMouse ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.28) : Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.16)
-            Row {
-                id: updRest
-                anchors.centerIn: parent
-                spacing: 4
-                Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f06b0}"; font.family: Theme.fontGlyph; font.pixelSize: 13; color: Theme.accent }
-                Label { anchors.verticalCenter: parent.verticalCenter; text: Updates.total > 9 ? "9+" : String(Updates.total); size: 12; weight: Theme.wSemibold; color: Theme.accent }
-            }
-            MouseArea {
-                id: updRestArea
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: Island.open("updates", rest.bar.screenName, "pointer", "island")
-            }
-            Tip { text: Updates.total + (Updates.total === 1 ? " system update" : " system updates") + " · click to review"; shown: updRestArea.containsMouse; below: true }
-        }
-        // A warning that isn't on stage (something else is): its mark, small.
-        Row {
-            id: alertMark
-            visible: Alerts.active.length > 0
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: 4
-            readonly property color tone: Alerts.active.length && Alerts.active[0].level === "crit" ? Theme.red : Theme.orange
-            // The number that matters (96°, 91 %), when the title has one.
-            readonly property string value: Alerts.active.length ? ((Alerts.active[0].title.match(/\d+\s*[%°]/) || [""])[0]).replace(/\s+/g, "") : ""
-            Text {
-                anchors.verticalCenter: parent.verticalCenter
-                text: Alerts.active.length ? Alerts.active[0].glyph : ""
-                font.family: Theme.fontGlyph
-                font.pixelSize: 13
-                color: alertMark.tone
-            }
-            Label {
-                visible: alertMark.value !== ""
-                anchors.verticalCenter: parent.verticalCenter
-                text: alertMark.value
-                size: Theme.tSub; weight: Theme.wSemibold
-                color: alertMark.tone
-                font.features: ({ "tnum": 1 })
-            }
-            HoverHandler { id: alertMarkHover; margin: 6; cursorShape: Qt.PointingHandCursor }
-            TapHandler { onTapped: Island.open("system", rest.bar.screenName, "pointer", "island") }
-            Tip { text: Alerts.active.length ? Alerts.active.map(a => a.title).join(" · ") : ""; shown: alertMarkHover.hovered; below: true }
-        }
+        // System news (updates, a warning): trailing here, leading in the
+        // mini notch (leadSys) so the two sides balance.
+        SysMarks { id: trailSys; bar: rest.bar; visible: !rest.mini && any; anchors.verticalCenter: parent.verticalCenter }
         // The camera is on: a green dot (Apple's), with who has it.
         Rectangle {
             visible: Activities.camInUse
