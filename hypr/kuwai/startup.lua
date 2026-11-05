@@ -49,6 +49,13 @@ hl.on("hyprland.start", function()
 	-- GitHub and Gmail as notifications (systemd/rice-feeds.service).
 	hl.exec_cmd(unit("rice-feeds.service"))
 
+	-- Copies outlive the window they came from. On Wayland the copying app
+	-- serves the text at paste time, so closing it (the drop-down terminal is
+	-- its own kitty) left Ctrl+V empty. wl-clip-persist takes each copy over.
+	if K.has("wl-clip-persist") then
+		hl.exec_cmd("wl-clip-persist --clipboard regular")
+	end
+
 	-- Wi-Fi secrets agent: the island lists and switches networks but can't
 	-- ask a new network's password; nm-applet does (its tray icon is hidden,
 	-- TrayRow). udiskie used to run here too (60 MB of Python for a hidden
