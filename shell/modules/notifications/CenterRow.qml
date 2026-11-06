@@ -287,7 +287,7 @@ Item {
 
         // ── Its buttons: shown once the row is selected (or while snoozing) ─
         Flow {
-            visible: row.snoozing || (row.selected && (row.canOpen || row.liveActions.length > 0 || row.canReply))
+            visible: row.snoozing || (row.selected && (row.canOpen || row.liveActions.length > 0 || row.canReply || !!row.it.full || String(row.it.body || "").length > 0))
             width: parent.width
             spacing: 6
             topPadding: 4
@@ -296,6 +296,14 @@ Item {
                 text: "Open"
                 filled: true
                 onClicked: Notifs.openItem(row.item)
+            }
+            // Read it in the island: the whole message in the expanded peek,
+            // Reply under it (the center closes).
+            RowChip {
+                visible: row.selected && !row.snoozing && (!!row.it.full || String(row.it.body || "").length > 0)
+                text: "Read"
+                glyph: "\u{f0208}"
+                onClicked: Notifs.readInIsland(row.item)
             }
             RowChip {
                 visible: row.selected && /^https?:\/\//.test(row.it.url || "")

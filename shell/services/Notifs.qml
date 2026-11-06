@@ -251,6 +251,37 @@ Singleton {
     onPeekHeldChanged: if (peekHeld) peekFor.stop(); else if (peek) peekFor.restart()
     Timer { id: peekFor; interval: 5000; onTriggered: if (!root.peekHeld) root.nextPeek() }
 
+    // Read one in the island: the expanded peek (the whole message when the
+    // sender gave it, Reply under it), from the bell's list or the center.
+    // Held 45 s, and for as long as the pointer rests on it.
+    // A window opening while the center holds the keyboard (a screenshot's
+    // satty, an app from a notification): the center steps aside and the new
+    // window gets focus. It kept the keyboard before, so Super+Q closed the
+    // window behind instead of the one under your eyes.
+    Connections {
+        target: Hyprland
+        function onRawEvent(event) {
+            if (event.name !== "openwindow" || !root.centerOpen) return;
+            root.setCenter(false, "pointer");
+            const addr = String(event.data || "").split(",")[0];
+            if (/^[0-9a-f]+$/i.test(addr)) focusNew.addr = addr, focusNew.restart();
+        }
+    }
+    Timer {
+        id: focusNew
+        property string addr: ""
+        interval: 120     // after the center has let go of the keyboard
+        onTriggered: Hyprland.dispatch("hl.dsp.focus({window = 'address:0x" + addr + "'})")
+    }
+    function readInIsland(item) {
+        if (!item) return;
+        if (centerOpen) setCenter(false, "pointer");
+        if (peek && peek !== item) peekQueue = [peek, ...peekQueue.filter(i => i !== item)].slice(0, 2);
+        peek = item;                 // (resets peekExpanded and the timer: set them after)
+        peekExpanded = true;
+        peekFor.interval = 45000;
+        if (!peekHeld) peekFor.restart();
+    }
     function expandPeek() {
         if (!peek) return;
         peekExpanded = true;

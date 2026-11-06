@@ -51,7 +51,17 @@ Item {
     function close() { if (open) closed(); }
 
     property bool counted: false
+    // Where the anchor's centre is, in belowItem's coordinates: measured each
+    // time it opens. A mapToItem() binding is evaluated once (it doesn't
+    // follow layout), so the list opened under where the bell was before the
+    // hover view laid out: far to the left.
+    property real anchorX: 0
+    function place() {
+        if (belowItem && anchorItem) anchorX = anchorItem.mapToItem(belowItem, anchorItem.width / 2, 0).x;
+        popWin.anchor.updateAnchor();
+    }
     onOpenChanged: {
+        if (open) place();
         k.target = open ? 1 : 0;
         if (open && !counted && window) { counted = true; window.menus++; }
         else if (!open && counted && window) { counted = false; window.menus = Math.max(0, window.menus - 1); }
@@ -71,7 +81,7 @@ Item {
         visible: !!po.anchorItem && po.shown
         color: "transparent"
         anchor.item: po.belowItem || po.anchorItem
-        anchor.rect.x: po.belowItem && po.anchorItem ? po.anchorItem.mapToItem(po.belowItem, po.anchorItem.width / 2, 0).x : 0
+        anchor.rect.x: po.belowItem ? po.anchorX : 0
         anchor.rect.y: 0
         anchor.rect.width: po.belowItem ? 1 : (po.anchorItem ? po.anchorItem.width : 0)
         anchor.rect.height: po.belowItem ? po.belowItem.height : (po.anchorItem ? po.anchorItem.height : 0)

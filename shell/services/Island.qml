@@ -170,7 +170,14 @@ Singleton {
     // Same for the island's panels (not the switcher: it decides on Alt-up).
     Connections {
         target: Hyprland
-        function onRawEvent(event) { if (event.name === "openwindow" && root.panel && root.panel !== "switcher") root.close(); }
+        function onRawEvent(event) {
+            if (event.name !== "openwindow" || !root.panel || root.panel === "switcher") return;
+            root.close();
+            // Give the new window the keyboard (the panel held it): Super+Q
+            // and typing then go to the window you're looking at.
+            const addr = String(event.data || "").split(",")[0];
+            if (/^[0-9a-f]+$/i.test(addr)) { focusNew.addr = addr; focusNew.restart(); }
+        }
     }
     function close() { panel = ""; history = []; innerBack = null; innerBackLabel = ""; previewing = false; }
     // Opened by resting the pointer (the music's art): it folds away when the
@@ -240,5 +247,12 @@ Singleton {
         function settings(page: string): void { root.openSettings(page); }
         function themes(mode: string): void { root.themes(mode || "themes"); }
         function state(): string { return root.panel ? root.panel + " " + root.screen : "none"; }
+    }
+
+    Timer {
+        id: focusNew
+        property string addr: ""
+        interval: 120
+        onTriggered: Hyprland.dispatch("hl.dsp.focus({window = 'address:0x" + addr + "'})")
     }
 }

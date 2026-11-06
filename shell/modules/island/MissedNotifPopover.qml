@@ -66,32 +66,41 @@ Popover {
             width: parent.width
             height: Math.min(contentHeight, 300)
             clip: true
-            spacing: 8
+            spacing: 2
             boundsBehavior: Flickable.StopAtBounds
             // ScriptModel keeps the rows that stay (a plain array re-creates
             // every delegate on each change: Quickshell docs). Same objects as
             // Notifs.items, so identity is the right comparison.
             model: ScriptModel { values: pop.quick; comparisonMode: ObjectComparison.Identity }
 
+            // A row each, flat: a dot for its state (accent unread, orange or
+            // red urgent), app · age, the title, two lines of it. The whole row
+            // reads it in the island (the expanded peek: all of it, Reply).
+            // (Bordered tinted cards with Open/Reply in each were boxes in a
+            // box, and Open left the island for the center.)
             delegate: Rectangle {
                 id: row
                 required property var modelData
                 readonly property bool fresh: modelData.time > Notifs.lastSeen && !modelData.discard
                 readonly property bool hot: modelData.severity === "critical" || modelData.severity === "warning"
-                readonly property color hue: modelData.severity === "critical" ? Theme.red : Theme.orange
+                readonly property color dot: modelData.severity === "critical" ? Theme.red : hot ? Theme.orange : Theme.accent
                 width: list.width
-                height: inner.implicitHeight + 24
-                radius: 14
-                color: hot ? Qt.alpha(hue, 0.12) : fresh ? Qt.alpha(Theme.accent, 0.08) : Qt.rgba(1, 1, 1, 0.06)
-                border.width: 1
-                border.color: hot ? Qt.alpha(hue, 0.4) : fresh ? Qt.alpha(Theme.accent, 0.32) : Qt.rgba(1, 1, 1, 0.08)
+                height: inner.implicitHeight + 20
+                radius: Theme.r2
+                color: rowArea.containsMouse ? Qt.rgba(1, 1, 1, 0.07) : "transparent"
+                Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
 
+                Rectangle {
+                    visible: row.fresh || row.hot
+                    x: 10; y: 16
+                    width: 6; height: 6; radius: 3
+                    color: row.dot
+                }
                 Column {
                     id: inner
-                    x: 12; y: 12
-                    width: parent.width - 24
-                    spacing: 4
-                    // App · time on one quiet line, the title under it.
+                    x: 24; y: 10
+                    width: parent.width - 36
+                    spacing: 3
                     Row {
                         width: parent.width
                         spacing: 6
@@ -100,7 +109,7 @@ Popover {
                             elide: Text.ElideRight
                             text: row.modelData.app || ""
                             size: Theme.tFootnote; weight: Theme.wMedium
-                            color: row.hot ? row.hue : Theme.textTertiary
+                            color: row.hot ? row.dot : Theme.textTertiary
                         }
                         Label {
                             id: stamp
@@ -111,42 +120,24 @@ Popover {
                     Label {
                         width: parent.width
                         visible: text !== ""
-                        wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight
+                        elide: Text.ElideRight
                         text: row.modelData.title || ""
                         size: Theme.tBody; weight: Theme.wSemibold
                     }
-                    Item {
-                        visible: bodyLbl.text !== ""
+                    Label {
                         width: parent.width
-                        height: Math.min(56, bodyFlick.contentHeight)
-                        clip: true
-                        Flickable {
-                            id: bodyFlick
-                            anchors.fill: parent
-                            contentHeight: bodyLbl.implicitHeight
-                            boundsBehavior: Flickable.StopAtBounds
-                            Label {
-                                id: bodyLbl
-                                width: bodyFlick.width
-                                wrapMode: Text.Wrap
-                                text: Notifs.bodyForDisplay(row.modelData, true).replace(/<[^>]*>/g, "")
-                                size: Theme.tSub; lineHeight: 1.35; color: Theme.textSecondary
-                            }
-                        }
+                        visible: text !== ""
+                        wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight
+                        text: Notifs.bodyForDisplay(row.modelData, true).replace(/<[^>]*>/g, "")
+                        size: Theme.tSub; lineHeight: 1.3; color: Theme.textSecondary
                     }
-                    Row {
-                        topPadding: 4
-                        spacing: 6
-                        PillButton {
-                            text: "Open"
-                            onClicked: { pop.close(); Notifs.openInCenter(row.modelData, false, pop.screenName); }
-                        }
-                        PillButton {
-                            visible: Notifs.canReply(row.modelData)
-                            text: "Reply"
-                            onClicked: { pop.close(); Notifs.openInCenter(row.modelData, true, pop.screenName); }
-                        }
-                    }
+                }
+                MouseArea {
+                    id: rowArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: { pop.close(); Notifs.readInIsland(row.modelData); }
                 }
             }
         }
