@@ -68,7 +68,7 @@ Scope {
 
                 readonly property var mon: Hyprland.monitorFor(slot.modelData)
                 readonly property var ws: mon ? mon.activeWorkspace : null
-                readonly property bool fullscreen: !!ws && !!ws.lastIpcObject && ws.lastIpcObject.hasfullscreen === true
+                readonly property bool fullscreen: !!ws && ws.hasFullscreen
                 // Mostly behind windows: decoding a video for the gaps between
                 // them costs a core for nothing. Plays on an empty or sparse
                 // desktop; pauses (the frame stays) once windows cover ~85%.

@@ -176,7 +176,8 @@ Singleton {
         return i.severity === "critical" || i.severity === "warning" || i.urgency === NotificationUrgency.Critical || canReply(i);
     }
     function rank(i) { return i.severity === "critical" || i.urgency === NotificationUrgency.Critical ? 0 : i.severity === "warning" ? 1 : canReply(i) ? 2 : 3; }
-    readonly property bool fullscreenNow: !!Hyprland.focusedWorkspace && !!Hyprland.focusedWorkspace.lastIpcObject && Hyprland.focusedWorkspace.lastIpcObject.hasfullscreen === true
+    // Live (hasFullscreen follows Hyprland's events; lastIpcObject was a stale snapshot).
+    readonly property bool fullscreenNow: !!Hyprland.focusedWorkspace && Hyprland.focusedWorkspace.hasFullscreen
     function interrupts(i) { return !i.quiet && !centerOpen && (!muted || i.severity === "critical") && (!fullscreenNow || rank(i) === 0); }
     function islandFor(i) { return !i.jump && i.app !== "T3 Code" && important(i) && interrupts(i); }
     // Toast? Not for low ones, not for what the island shows (unless "both").

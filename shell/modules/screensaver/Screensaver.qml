@@ -27,7 +27,10 @@ Scope {
     readonly property string when: Settings.screensaverWhen || "caffeine"
     readonly property bool allowed: when === "always" || (when === "caffeine" && Caffeine.on)
     property bool forced: false
-    readonly property bool fullscreenAnywhere: Hyprland.workspaces.values.some(w => w.lastIpcObject && w.lastIpcObject.hasfullscreen === true
+    // hasFullscreen is live (Hyprland events). lastIpcObject was a snapshot
+    // that only refreshed on request: one fullscreen video earlier kept it
+    // "true", and the screensaver never came again (nor `rice screensaver`).
+    readonly property bool fullscreenAnywhere: Hyprland.workspaces.values.some(w => w.hasFullscreen
         && Hyprland.monitors.values.some(m => m.activeWorkspace === w))
     readonly property bool showing: (forced || (allowed && idle.isIdle)) && !fullscreenAnywhere
 
@@ -59,7 +62,11 @@ Scope {
     onClipChanged: clipFailed = false
     // The screen you were on when it came up: the one Live plays on.
     property string mainScreen: ""
-    onShowingChanged: { if (showing) mainScreen = Screens.focusedName; Saver.showing = showing; }
+    onShowingChanged: {
+        if (showing) mainScreen = Screens.focusedName;
+        Saver.showing = showing;
+        if (!showing && (dimmed || dimSave.text() !== "")) undim();
+    }
     readonly property string still: "file://" + Quickshell.env("HOME") + "/.cache/hyde/wall.set"
 
     // ── The film (Night, Live) plays in its own process: shell-saver/ ─────
@@ -85,6 +92,50 @@ Scope {
         // counting it latched Night off to Dusk for the rest of the session.
         onExited: { if (!root.killing && root.filmUp && root.style === "night") root.clipFailed = true; root.killing = false; }
     }
+    // ── Dim after a while ────────────────────────────────────────────────
+    // Ten minutes in, every screen goes down to 15 % (never brighter than you
+    // had it); on wake each comes back to exactly where it was. The levels
+    // are kept in a file first, so a shell restart while dimmed still
+    // restores them (on its next start).
+    readonly property string brightCtl: Quickshell.env("HOME") + "/Scripts/brightness.sh"
+    readonly property string dimFile: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/rice/saver-dim.json"
+    readonly property int dimTo: 15
+    property bool dimmed: false
+    Timer {
+        id: dimLater
+        interval: 10 * 60 * 1000
+        running: root.showing && !root.dimmed
+        onTriggered: dimRead.running = true
+    }
+    Process {
+        id: dimRead
+        command: [root.brightCtl, "status"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let st = null;
+                try { st = JSON.parse(text); } catch (e) { return; }
+                if (!root.showing || !st || !st.outputs) return;
+                const was = {};
+                for (const name in st.outputs) {
+                    const v = st.outputs[name].value;
+                    if (typeof v === "number" && v > root.dimTo) was[name] = v;
+                }
+                if (!Object.keys(was).length) return;
+                dimSave.setText(JSON.stringify(was));
+                root.dimmed = true;
+                for (const name in was) Quickshell.execDetached([root.brightCtl, "--output", name, "set", String(root.dimTo)]);
+            }
+        }
+    }
+    FileView { id: dimSave; path: root.dimFile; printErrors: false; blockLoading: true }
+    function undim() {
+        let was = null;
+        try { was = JSON.parse(dimSave.text() || "null"); } catch (e) {}
+        if (was) for (const name in was) Quickshell.execDetached([root.brightCtl, "--output", name, "set", String(was[name])]);
+        dimmed = false;
+        if (was) Quickshell.execDetached(["rm", "-f", root.dimFile]);
+    }
+
     // SIGKILL, never SIGTERM: Quickshell can crash on a polite exit and its
     // crash handler would relaunch the film (bin/rice-shell has the story).
     onFilmUpChanged: {
@@ -95,7 +146,10 @@ Scope {
     Component.onDestruction: if (filmProc.running) filmProc.signal(9)
     // Backstop: a film left over from an earlier shell (before pdeathsig, or
     // however it happened) goes when this one starts.
-    Component.onCompleted: Quickshell.execDetached(["pkill", "-9", "-f", "^qs -p .*/shell-saver$"])
+    Component.onCompleted: {
+        Quickshell.execDetached(["pkill", "-9", "-f", "^qs -p .*/shell-saver$"]);
+        if (dimSave.text() !== "") undim();       // dimmed when the last shell went
+    }
 
     function dismiss() { forced = false; }
     IpcHandler {
