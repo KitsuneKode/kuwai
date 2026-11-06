@@ -192,13 +192,19 @@ Row {
                 .sort((x, y) => (y.connected - x.connected) || String(x.name).localeCompare(String(y.name)));
             const out = [{ text: a.enabled ? (status.btConnected.length ? status.btConnected.length + " connected" : "Bluetooth on") : "Bluetooth is off", enabled: false }];
             if (a.enabled) for (const d of devs) out.push({
-                text: (d.name || d.deviceName) + (d.connected && d.batteryAvailable ? "  ·  " + Math.round(d.battery * 100) + "%" : d.connected ? "" : "  ·  connect"),
+                // Connecting or disconnecting keeps the menu open (it used to
+                // close under you); the row says what's happening.
+                text: (d.name || d.deviceName) + (d.state === BluetoothDeviceState.Connecting ? "  ·  connecting…"
+                    : d.state === BluetoothDeviceState.Disconnecting ? "  ·  disconnecting…"
+                    : d.connected && d.batteryAvailable ? "  ·  " + Math.round(d.battery * 100) + "%" : d.connected ? "" : "  ·  connect"),
                 glyph: d.connected ? "\u{f012c}" : "\u{f00af}",
+                keepOpen: true,
                 triggered: () => { if (d.connected) d.disconnect(); else d.connect(); }
             });
             out.push({ isSeparator: true });
-            out.push({ text: a.enabled ? "Turn Bluetooth off" : "Turn Bluetooth on", glyph: a.enabled ? "\u{f00b2}" : "\u{f00af}", triggered: () => a.enabled = !a.enabled });
-            out.push({ text: "Bluetooth settings…", glyph: "\u{f0493}", triggered: () => Quickshell.execDetached(["blueman-manager"]) });
+            out.push({ text: a.enabled ? "Turn Bluetooth off" : "Turn Bluetooth on", glyph: a.enabled ? "\u{f00b2}" : "\u{f00af}", keepOpen: true, triggered: () => a.enabled = !a.enabled });
+            // Pairing and the rest in the island itself (blueman for the rare deep setting).
+            out.push({ text: "Pair a device…", glyph: "\u{f0493}", triggered: () => Island.open("bluetooth", status.bar ? status.bar.screenName : "", "pointer", "island") });
             return out;
         }
     }
