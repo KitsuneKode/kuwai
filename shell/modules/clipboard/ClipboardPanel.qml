@@ -271,8 +271,16 @@ Scope {
         return true;
     }
     onQueryChanged: first()
-    onFilterChanged: first()
-    onFromMsChanged: first()
+    // A new search starts at its best match; a filter or a date keeps the
+    // card you were on when it's still shown (it jumped to the start).
+    onFilterChanged: keepOrFirst()
+    onFromMsChanged: keepOrFirst()
+    function keepOrFirst() {
+        if (selKey && entries.some(r => r.key === selKey)) {
+            const i = rows.findIndex(r => r.key === selKey);
+            if (listView && i >= 0) listView.positionViewAtIndex(i, ListView.Contain);
+        } else first();
+    }
     function first() {
         selKey = entries.length ? entries[0].key : "";
         if (listView) {
