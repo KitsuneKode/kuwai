@@ -513,11 +513,23 @@ def text_of(msg, full=False):
     except Exception:
         return ""
     if part.get_content_type() == "text/html":
-        t = re.sub(r"(?is)<(style|script|head).*?</\1>", " ", t)
-        t = html.unescape(re.sub(r"<[^>]+>", " ", t))
-    # Drop quoted replies and the signature.
-    t = re.split(r"\n\s*(On .+ wrote:|-- \n|>)", t, maxsplit=1)[0]
-    return full_text(t) if full else clip(t, 180)
+        # Keep the shape: blocks and breaks become new lines, list items
+        # bullets (every tag became a space before, so a newsletter read as
+        # one paragraph-less blob). Hidden preheaders go.
+        t = re.sub(r"(?is)<(style|script|head|title)\b.*?</\1>", " ", t)
+        t = re.sub(r"(?is)<([a-z0-9]+)[^>]*display\s*:\s*none[^>]*>.*?</\1>", " ", t)
+        t = re.sub(r"(?i)<br\s*/?>", "\n", t)
+        t = re.sub(r"(?i)<li\b[^>]*>", "\n• ", t)
+        t = re.sub(r"(?i)</?(p|div|tr|table|h[1-6]|blockquote|section|article|ul|ol)\b[^>]*>", "\n", t)
+        t = html.unescape(re.sub(r"<[^>]+>", "", t))
+        t = t.replace("\u200c", "").replace("\u00a0", " ").replace("\u034f", "")
+        t = "\n".join(l.strip() for l in t.split("\n"))
+    t = t.replace("\r\n", "\n")
+    # The reply itself, not the thread under it: cut at "On … wrote:", an
+    # "Original Message" block or the signature; quoted lines (">") go.
+    t = re.split(r"\n\s*(On .{4,200}? wrote:|-{2,}\s*Original Message\s*-{2,}|-- \n)", t, maxsplit=1)[0]
+    t = "\n".join(l for l in t.split("\n") if not l.lstrip().startswith(">"))
+    return full_text(t) if full else clip(re.sub(r"\s+", " ", t), 180)
 
 
 def mail_card(head_bytes, full_bytes=None, thrid=""):
@@ -547,7 +559,7 @@ def gmail_card(m, uid):
     thr = re.search(r"X-GM-THRID (\d+)", meta)
     size = re.search(r"RFC822.SIZE (\d+)", meta)
     full = None
-    if size and int(size.group(1)) < 400_000:
+    if size and int(size.group(1)) < 3_000_000:      # inline images made most newsletters "too big" at 400 KB
         typ, got = m.uid("FETCH", uid, "(BODY.PEEK[])")
         if typ == "OK" and got and isinstance(got[0], tuple):
             full = got[0][1]

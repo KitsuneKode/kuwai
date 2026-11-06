@@ -329,15 +329,16 @@ Singleton {
         interval: 120     // after the center has let go of the keyboard
         onTriggered: Hyprland.dispatch("hl.dsp.focus({window = 'address:0x" + addr + "'})")
     }
+    // Read it in the island: the Read & Reply panel (modules/island/
+    // ReadPanel), with the keyboard, so you can answer right there. (It used
+    // to expand the floating peek, which can't take typing.)
+    property var reading: null
     function readInIsland(item) {
         if (!item) return;
         if (centerOpen) setCenter(false, "pointer");
-        if (peek && peek !== item) peekQueue = [peek, ...peekQueue.filter(i => i !== item)].slice(0, 2);
-        peek = item;                 // (resets peekExpanded and the timer: set them after)
-        peekOn = Screens.focusedName;   // read where you asked, not where the last one was
-        peekExpanded = true;
-        peekFor.interval = 45000;
-        if (!peekHeld) peekFor.restart();
+        if (peek === item) dropPeek();
+        reading = item;
+        Island.open("read", Screens.focusedName, "pointer", "island");
     }
     function expandPeek() {
         if (!peek) return;

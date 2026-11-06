@@ -253,7 +253,7 @@ Item {
                 onClicked: {
                     const i = peek.item;
                     if (!i) return;
-                    Notifs.openInCenter(i, true, peek.bar ? peek.bar.screenName : "");
+                    Notifs.readInIsland(i);     // read it and answer, in the island
                 }
             }
         }
