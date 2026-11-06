@@ -378,6 +378,36 @@ FocusScope {
         id: powerPage
         Column {
             spacing: 18
+            // Wellbeing (services/Wellbeing): two quiet nudges on the notch.
+            SettingsGroup {
+                title: "Wellbeing"
+                SettingsRow {
+                    label: "Break reminders"; detail: "A moment after a long stretch at the screen; five idle minutes or a lock counts as a break"
+                    Toggle { on: Settings.breakReminders; label: "Break reminders"; onToggled: Settings.set("breakReminders", !Settings.breakReminders) }
+                }
+                SettingsRow {
+                    visible: Settings.breakReminders
+                    label: "Every"
+                    Segmented {
+                        options: [{ id: "40", label: "40 min" }, { id: "50", label: "50 min" }, { id: "60", label: "1 h" }, { id: "90", label: "90 min" }]
+                        current: String(Settings.breakMins)
+                        onPicked: id => Settings.set("breakMins", Number(id))
+                    }
+                }
+                SettingsRow {
+                    label: "Bedtime nudge"; detail: "Past this time, a calm reminder to wind down (three at most, 45 min apart)"
+                    Toggle { on: Settings.sleepReminder; label: "Bedtime nudge"; onToggled: Settings.set("sleepReminder", !Settings.sleepReminder) }
+                }
+                SettingsRow {
+                    visible: Settings.sleepReminder
+                    label: "After"
+                    Segmented {
+                        options: [{ id: "23:30", label: "23:30" }, { id: "00:00", label: "00:00" }, { id: "00:30", label: "00:30" }, { id: "01:00", label: "01:00" }]
+                        current: Settings.sleepAt
+                        onPicked: id => Settings.set("sleepAt", id)
+                    }
+                }
+            }
             SettingsGroup {
                 SettingsRow {
                     label: "Who handles idle"; detail: Settings.idleOwner === "shell" ? "The shell: dims, fades, locks and sleeps, aware of Caffeine and of music playing" : "hypridle (~/.config/hypr/hypridle.conf); the rows below don't apply"
