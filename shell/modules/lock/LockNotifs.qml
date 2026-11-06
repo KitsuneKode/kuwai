@@ -223,6 +223,29 @@ Column {
                 }
                 HoverHandler { id: over; cursorShape: Qt.PointingHandCursor }
                 TapHandler { onTapped: stack.tapped(card.item) }
+                // Swipe it away, either way: past 100 px or a quick flick, the
+                // conversation clears (it only clears; nothing opens while locked).
+                DragHandler {
+                    id: swipe
+                    target: face
+                    yAxis.enabled: false
+                    property real t0: 0
+                    onActiveChanged: {
+                        if (active) { t0 = Date.now(); return; }
+                        const v = Math.abs(face.x) / Math.max(1, Date.now() - t0);
+                        if (Math.abs(face.x) > 100 || v > 0.6) { flingTo.to = face.x < 0 ? -card.width : card.width; fling.start(); }
+                        else back.start();
+                    }
+                }
+                NumberAnimation { id: back; target: face; property: "x"; to: 0; duration: Theme.enterMs; easing.type: Easing.OutBack; easing.overshoot: 1.2 }
+                SequentialAnimation {
+                    id: fling
+                    ParallelAnimation {
+                        NumberAnimation { id: flingTo; target: face; property: "x"; duration: Theme.exitMs; easing.type: Easing.OutCubic }
+                        NumberAnimation { target: face; property: "opacity"; to: 0; duration: Theme.exitMs }
+                    }
+                    ScriptAction { script: { const k = card.k; for (const i of Notifs.items.filter(i => stack.key(i) === k)) Notifs.remove(i); } }
+                }
             }
         }
     }
