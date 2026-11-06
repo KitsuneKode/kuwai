@@ -692,6 +692,11 @@ def run(args):
     trusted = set(load(TRUSTED, []))
     result = {"ok": True, "repo": None, "built": [], "skipped": [], "installed": [], "log": R.path}
 
+    # The plan first: a shell that joins mid-run (a restart, the panel opened
+    # later) reads it from the top of the feed, so its progress ring is scaled
+    # to what this run will do (it assumed "repo only" and sat at 97 % through
+    # every AUR build).
+    R.emit(e="plan", repo=want_repo, aur=aur, flatpak=flatpaks)
     # Pre-flight
     R.emit(e="phase", id="check", label="Checking space and power")
     st = os.statvfs("/")

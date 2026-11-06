@@ -246,6 +246,17 @@ Singleton {
                 let r = null;
                 try { r = JSON.parse(text); } catch (e) {}
                 if (r && r.started) { follower.running = true; return; }
+                // One is already running (started elsewhere, or before a shell
+                // restart): join it and show its progress. It used to become a
+                // "Finished, with things to look at" card while it ran on.
+                if (r && /already running/i.test(r.error || "")) {
+                    root.resetRun();
+                    root.running = true;
+                    root.ownedRun = true;
+                    follower.running = false;
+                    follower.running = true;
+                    return;
+                }
                 root.running = false;
                 root.runError = r && r.error ? r.error : "Couldn't start the update.";
                 root.result = { ok: false, skipped: [], installed: [], built: [] };
@@ -378,6 +389,10 @@ Singleton {
                     root.phase = ev.id;
                     root.phaseLabel = ev.label;
                     if (root.phasesSeen.indexOf(ev.id) < 0) root.phasesSeen = [...root.phasesSeen, ev.id];
+                } else if (ev.e === "plan") {
+                    // What this run will do (rice-update writes it first), so
+                    // the ring is scaled right when joining mid-run.
+                    root.plan = { repo: !!ev.repo, aur: ev.aur || [], flatpak: ev.flatpak || [] };
                 } else if (ev.e === "error") {
                     root.runError = ev.msg;
                 } else if (ev.e === "done") {

@@ -70,8 +70,10 @@ Item {
             source: mark.icon
             asynchronous: true
         }
-        // ③: the number centred in an 18 px ring; a quarter arc steps round
-        // while working, a full ring when it needs you.
+        // ③: the number centred in an 18 px ring. Working: a still
+        // three-quarter arc. Needs you: a full ring. Nothing moves at rest;
+        // when the count changes the arc makes one smooth turn (a stepping
+        // arc read as a stuck spinner; a continuous one cost 15 % CPU).
         Item {
             visible: mark.ring !== "" && mark.value !== ""
             anchors.verticalCenter: parent.verticalCenter
@@ -92,16 +94,19 @@ Item {
                 onPaint: {
                     const c = getContext("2d");
                     c.reset(); c.lineWidth = 1.5; c.lineCap = "round"; c.strokeStyle = ink;
-                    c.beginPath(); c.arc(9, 9, 8.25, -Math.PI / 2, 0); c.stroke();
+                    c.beginPath(); c.arc(9, 9, 8.25, -Math.PI / 2, Math.PI); c.stroke();
                 }
-                // Steps, not a spin: a third of a turn every 3 s, gliding for
-                // 500 ms. A continuous spin redrew the notch every frame at
-                // 200 Hz (15 % CPU at rest); this draws ~1/6 of the time.
-                Behavior on rotation { NumberAnimation { duration: Theme.stepMs; easing.type: Easing.InOutCubic } }
-                Timer {
-                    interval: 3000; repeat: true
-                    running: arc.visible && mark.visible && !Theme.reduceMotion
-                    onTriggered: arc.rotation += 120
+                // One turn when the count changes, then still.
+                NumberAnimation on rotation {
+                    id: turn
+                    running: false
+                    from: 0; to: 360
+                    duration: Theme.spinMs / 2
+                    easing.type: Easing.InOutCubic
+                }
+                Connections {
+                    target: mark
+                    function onValueChanged() { if (arc.visible && !Theme.reduceMotion) turn.restart(); }
                 }
             }
             Label {
