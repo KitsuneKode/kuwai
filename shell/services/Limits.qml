@@ -66,7 +66,38 @@ Singleton {
                 }
         return out;
     }
-    readonly property var exhausted: windows.filter(x => x.level === "exhausted")
+    // One per window: two accounts on one shared quota (Antigravity's
+    // "Claude & GPT (shared)") reported it twice, so it was said twice.
+    readonly property var exhausted: {
+        const seen = {}, out = [];
+        for (const x of windows) {
+            if (x.level !== "exhausted") continue;
+            const k = x.name + "|" + Math.round((x.window.resetsAt || 0) / 600000);
+            if (seen[k]) continue;
+            seen[k] = true; out.push(x);
+        }
+        return out;
+    }
+    // The brands that are used up, one each, soonest reset first: the
+    // notch's stacked logos ("which agent is out", not a bare gauge).
+    readonly property var exhaustedBrands: {
+        const by = {};
+        for (const x of exhausted) {
+            const b = brandFor(x.provider);
+            const r = x.window.resetsAt || Infinity;
+            if (!by[b] || r < by[b].resetsAt) by[b] = { brand: b, name: providerShort(x.provider), resetsAt: r };
+        }
+        return Object.values(by).sort((a, b) => a.resetsAt - b.resetsAt);
+    }
+    // A provider's brand mark (shell/assets/brands), "" for none.
+    readonly property string brandDir: Qt.resolvedUrl("../assets/brands")
+    function brandFor(p) {
+        const n = String((p && (p.driver || p.label)) || "").toLowerCase();
+        const f = /claude/.test(n) ? "claude" : /codex|openai|gpt/.test(n) ? "openai" : /cursor/.test(n) ? "cursor"
+            : /antigravity|agy/.test(n) ? "antigravity" : /grok/.test(n) ? "grok" : /gemini/.test(n) ? "googlegemini"
+            : /opencode/.test(n) ? "opencode" : /kimi/.test(n) ? "kimi" : /qwen/.test(n) ? "qwen" : "";
+        return f ? brandDir + "/" + f + ".svg" : "";
+    }
     // The soonest reset among exhausted windows (ms from now, -1 if none known).
     readonly property real soonestReset: {
         const t = exhausted.map(x => x.window.resetsAt).filter(r => r > now).sort((a, b) => a - b);
@@ -152,7 +183,11 @@ Singleton {
 
     function say(x, value, tone, ms) {
         if (Notifs.muted) return;
-        Moments.show({ kind: "limit:" + x.key, glyph: "\u{f029a}", label: x.name, value: value, ring: -1, tone: tone }, ms);
+        // The agent's logo leads; its ring fills to how much is used (a reset:
+        // a full green ring), the way the island shows any live gauge.
+        const reset = value === "reset";
+        Moments.show({ kind: "limit:" + x.key, image: brandFor(x.provider), glyph: "\u{f029a}", label: x.name,
+                       value: value, ring: reset ? 1 : x.used, tone: reset ? Theme.green : tone }, ms);
     }
 
     function scan() {
@@ -160,6 +195,7 @@ Singleton {
         const t = Object.assign({}, told);
         let changed = false;
         const seen = {};
+        const said = {};                 // a shared window on two accounts: said once
         for (const x of windows) {
             seen[x.key] = true;
             const prev = t[x.key];
@@ -169,13 +205,20 @@ Singleton {
             // told about (the shell was off across the reset). Small drift in
             // resetsAt (kittymux recomputes it each read) isn't a new period.
             const later = prev && prev.resetsAt && r && r - prev.resetsAt > 3600000;
+            const once = x.name + "|" + Math.round(r / 600000);
             if (prev && (x.level === "" || later)) {
-                if (prev.exhausted) say(x, "reset", Theme.textSecondary, 2400);
+                if (prev.exhausted && !said[once]) { said[once] = true; say(x, "reset", Theme.textSecondary, 2800); }
                 delete t[x.key];
                 changed = true;
             }
             if (x.level === "") continue;
             const cur = t[x.key] || { resetsAt: r, name: x.name, approach: false, exhausted: false };
+            if (said[once]) {
+                const ex = x.level === "exhausted" || cur.exhausted;
+                if (!t[x.key] || cur.exhausted !== ex || !cur.approach) { t[x.key] = Object.assign(cur, { exhausted: ex, approach: true }); changed = true; }
+                continue;
+            }
+            said[once] = true;
             if (x.level === "exhausted" && !cur.exhausted) {
                 say(x, "used up" + (r ? " · resets in " + resetsIn(x.window) : ""), Theme.orange, 6000);
                 cur.exhausted = true; cur.approach = true;
@@ -191,7 +234,7 @@ Singleton {
         for (const k of Object.keys(t)) {
             if (seen[k] || !t[k].resetsAt || t[k].resetsAt > now) continue;
             if (t[k].exhausted && !Notifs.muted)
-                Moments.show({ kind: "limit:" + k, glyph: "\u{f029a}", label: t[k].name, value: "reset", ring: -1, tone: Theme.textSecondary }, 2400);
+                Moments.show({ kind: "limit:" + k, glyph: "\u{f029a}", label: t[k].name, value: "reset", ring: 1, tone: Theme.green }, 2800);
             delete t[k];
             changed = true;
         }

@@ -33,6 +33,7 @@ Singleton {
     // surface and a hairline, so cards separate without boxes everywhere.
     readonly property color card: Qt.rgba(1, 1, 1, 0.05)
     readonly property color cardEdge: Qt.rgba(1, 1, 1, 0.05)
+    readonly property color chip: Qt.rgba(0.11, 0.11, 0.12, 1)   // an opaque disc on black (stacked logos)
     // Tinted surfaces (Chip, Notice): the tone at these strengths.
     readonly property real tintChip: 0.16
     readonly property real tintNotice: 0.12

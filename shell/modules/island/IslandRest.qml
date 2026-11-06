@@ -213,17 +213,81 @@ Item {
         // soonest reset ("3d") in a solid orange ring, until it resets. Like
         // a warning it stays while a live activity has the stage. Rest on
         // it: the Usage panel.
-        RestMark {
+        // Which agents are out: their logos, stacked (three at most, then
+        // "+2"), and when the first comes back, in orange. A bare gauge with
+        // "3d" didn't say whose limit it was.
+        Item {
             id: lim
+            readonly property alias hovered: limArea.containsMouse
+            readonly property var shown: Limits.exhaustedBrands.slice(0, 3)
+            readonly property int more: Math.max(0, Limits.exhaustedBrands.length - 3)
             visible: Limits.markShown
             anchors.verticalCenter: parent.verticalCenter
-            glyph: "\u{f029a}"
-            value: Limits.compact(Limits.soonestReset) || "0%"
-            ring: "solid"
-            tone: Theme.orange
-            previews: true
-            onPreviewRequested: if (Island.panel === "" && sys.bar) Island.preview("usage", sys.bar.screenName)
-            onClicked: Island.open("usage", sys.bar ? sys.bar.screenName : "", "pointer", "island")
+            implicitWidth: limRow.implicitWidth + 12
+            implicitHeight: 22
+            Rectangle {
+                anchors.fill: parent; radius: height / 2
+                color: Qt.rgba(1, 1, 1, limArea.pressed ? 0.14 : 0.09)
+                opacity: limArea.containsMouse ? 1 : 0
+                Behavior on opacity { NumberAnimation { duration: Theme.hoverMs } }
+            }
+            Row {
+                id: limRow
+                anchors.centerIn: parent
+                spacing: 5
+                scale: limArea.pressed ? 0.96 : 1
+                Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.OutCubic } }
+                Row {
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: -5                       // overlapped, each on a black ring
+                    Repeater {
+                        model: ScriptModel { values: lim.shown; objectProp: "brand" }
+                        delegate: Rectangle {
+                            required property var modelData
+                            required property int index
+                            z: 10 - index                    // the soonest on top
+                            width: 18; height: 18; radius: 9
+                            color: Theme.chip
+                            border.width: 1.5; border.color: "black"
+                            Image {
+                                anchors.centerIn: parent
+                                width: 11; height: 11
+                                source: parent.modelData.brand
+                                sourceSize: Qt.size(22, 22)
+                                asynchronous: true
+                                visible: source != ""
+                            }
+                        }
+                    }
+                }
+                Label {
+                    visible: lim.more > 0
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "+" + lim.more
+                    size: Theme.tCaption; weight: Theme.wBold; rounded: true
+                    color: Theme.textSecondary
+                }
+                Label {
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.verticalCenterOffset: 2      // digits sit optically low, as RestMark's
+                    text: Limits.compact(Limits.soonestReset) || "out"
+                    size: Theme.tSub; weight: Theme.wSemibold
+                    color: Theme.orange
+                    font.features: ({ "tnum": 1 })
+                }
+            }
+            MouseArea {
+                id: limArea
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: Island.open("usage", sys.bar ? sys.bar.screenName : "", "pointer", "island")
+            }
+            Timer {
+                interval: Settings.hoverDelay
+                running: limArea.containsMouse
+                onTriggered: if (Island.panel === "" && sys.bar) Island.preview("usage", sys.bar.screenName)
+            }
         }
     }
 
@@ -239,12 +303,12 @@ Item {
          : 0
       spacing: 10
     SysMarks { id: leadSys; bar: rest.bar; updateOffStage: Updates.running && rest.activity !== "update"; visible: rest.mini && any && !rest.helloFocus; anchors.verticalCenter: parent.verticalCenter }
-    // Mini notch, T3 at work: its name leads the time and its count (t3mark)
-    // trails it, like a live activity's leading and trailing sides, so the
-    // time stays the centre.
+    // (T3's name used to lead the time with its count trailing it: two
+    // marks for one thing read as clutter. One mark now, "T3 ④", after the
+    // time. Kept, hidden, so the layout's references stay valid.)
     RestMark {
         id: t3word
-        visible: rest.mini && T3Code.total > 0 && !rest.helloFocus
+        visible: false
         anchors.verticalCenter: parent.verticalCenter
         wordmark: "T3"
         tone: T3Code.waiting > 0 ? Theme.orange : Theme.cyan
@@ -557,7 +621,7 @@ Item {
             id: t3mark
             visible: T3Code.total > 0 && !rest.stageTaken
             anchors.verticalCenter: parent.verticalCenter
-            wordmark: rest.mini ? "" : "T3"
+            wordmark: "T3"
             // T3 ③: the count in a ring that turns while threads work, solid
             // orange (with how many) when one needs you. Hover says which.
             value: T3Code.waiting > 0 ? String(T3Code.waiting) : String(T3Code.running)
@@ -629,11 +693,14 @@ Item {
             color: parent.m.tone || Theme.textPrimary
             font.features: ({ "tnum": 1 })
         }
+        // A device's battery, or an agent's usage window: the ring fills
+        // from empty each time it comes up (a reset: all the way, in green).
         StatRing {
-            visible: parent.m.kind === "device" && parent.m.ring >= 0
+            readonly property bool limit: String(parent.m.kind || "").indexOf("limit:") === 0
+            visible: (parent.m.kind === "device" || limit) && parent.m.ring >= 0
             anchors.verticalCenter: parent.verticalCenter
             size: 20; stroke: 2.5
-            value: Math.max(0, parent.m.ring || 0)
+            value: rest.activity === "moment" && visible ? Math.max(0, parent.m.ring || 0) : 0
             color: parent.m.tone || Theme.green
             text: ""; label: ""
         }
