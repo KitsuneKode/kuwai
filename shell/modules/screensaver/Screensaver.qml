@@ -65,7 +65,7 @@ Scope {
     onShowingChanged: {
         if (showing) mainScreen = Screens.focusedName;
         Saver.showing = showing;
-        if (!showing && (dimmed || dimSave.text() !== "")) undim();
+        if (!showing && dimmed) undim();      // (the file only at startup: its cached text outlives the restore)
     }
     readonly property string still: "file://" + Quickshell.env("HOME") + "/.cache/hyde/wall.set"
 
@@ -101,6 +101,10 @@ Scope {
     readonly property string dimFile: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/rice/saver-dim.json"
     readonly property int dimTo: 15
     property bool dimmed: false
+    // The levels before dimming, in memory: FileView doesn't hand back what
+    // setText() just wrote (text() stayed empty), so wake restored nothing.
+    // The file is only for a restart while dimmed.
+    property var dimWas: null
     Timer {
         id: dimLater
         interval: 10 * 60 * 1000
@@ -121,6 +125,7 @@ Scope {
                     if (typeof v === "number" && v > root.dimTo) was[name] = v;
                 }
                 if (!Object.keys(was).length) return;
+                root.dimWas = was;
                 dimSave.setText(JSON.stringify(was));
                 root.dimmed = true;
                 for (const name in was) Quickshell.execDetached([root.brightCtl, "--output", name, "set", String(root.dimTo)]);
@@ -129,8 +134,9 @@ Scope {
     }
     FileView { id: dimSave; path: root.dimFile; printErrors: false; blockLoading: true }
     function undim() {
-        let was = null;
-        try { was = JSON.parse(dimSave.text() || "null"); } catch (e) {}
+        let was = dimWas;
+        if (!was) try { was = JSON.parse(dimSave.text() || "null"); } catch (e) {}
+        dimWas = null;
         if (was) for (const name in was) Quickshell.execDetached([root.brightCtl, "--output", name, "set", String(was[name])]);
         dimmed = false;
         if (was) Quickshell.execDetached(["rm", "-f", root.dimFile]);
