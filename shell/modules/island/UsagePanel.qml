@@ -58,10 +58,19 @@ FocusScope {
             g.top = Math.max(g.top, x.used);
             if (rank === 2 && x.window.resetsAt) g.back = Math.min(g.back, x.window.resetsAt);
         }
-        return Object.values(by).map(g => Object.assign(g, {
-            accounts: Object.keys(g.accounts).length,
-            rows: Object.values(g.rows).sort((a, b) => (b.level === "exhausted") - (a.level === "exhausted") || b.used - a.used)
-        })).sort((a, b) => (b.claude - a.claude) || (b.rank - a.rank) || (b.top - a.top) || a.name.localeCompare(b.name));
+        // Within a card: one section per account (the first account first),
+        // and inside it a fixed order, shortest window first (Session, then
+        // Weekly). Sorting every row by urgency across accounts read as one
+        // shuffled table (Weekly·A, Session·B, Weekly·B, Session·A).
+        const order = (a, b) => ((a.window.durationMins || 1e9) - (b.window.durationMins || 1e9)) || a.label.localeCompare(b.label);
+        return Object.values(by).map(g => {
+            const rows = Object.values(g.rows);
+            const accts = {};
+            for (const row of rows) (accts[row.acct] = accts[row.acct] || []).push(row);
+            const sections = Object.keys(accts).sort((a, b) => a.length - b.length || a.localeCompare(b))
+                .map(name => ({ name: name, rows: accts[name].sort(order) }));
+            return Object.assign(g, { accounts: Object.keys(g.accounts).length, rows: rows, sections: sections });
+        }).sort((a, b) => (b.claude - a.claude) || (b.rank - a.rank) || (b.top - a.top) || a.name.localeCompare(b.name));
     }
     readonly property var shown: tab === "all" ? groups : groups.filter(g => g.id === tab)
     readonly property int outCount: groups.filter(g => g.rank === 2).length
@@ -194,6 +203,9 @@ FocusScope {
         }
 
         // ── One card per agent ───────────────────────────────────────────
+        Item {
+          width: parent.width
+          height: flick.height
         Flickable {
             id: flick
             width: parent.width
@@ -286,9 +298,32 @@ FocusScope {
                                 }
                             }
 
-                            // Windows: name ……… percent, a bar, when it resets.
+                            // Windows, per account: a quiet account line (with a hairline
+                            // above it from the second on), then its windows:
+                            // name ……… what's left, a bar, pace and reset.
                             Repeater {
-                                model: card.g.rows
+                              model: card.g.sections
+                              delegate: Column {
+                                id: sec
+                                required property var modelData
+                                required property int index
+                                width: inner.width
+                                spacing: 8
+                                Rectangle {
+                                    visible: sec.index > 0
+                                    width: parent.width; height: 1
+                                    color: Theme.cardEdge
+                                }
+                                Label {
+                                    visible: card.g.sections.length > 1
+                                    text: sec.modelData.name
+                                    size: Theme.tCaption; weight: Theme.wSemibold
+                                    color: Theme.textTertiary
+                                    font.capitalization: Font.AllUppercase
+                                    font.letterSpacing: 0.6
+                                }
+                              Repeater {
+                                model: sec.modelData.rows
                                 delegate: Column {
                                     id: w
                                     required property var modelData
@@ -310,7 +345,7 @@ FocusScope {
                                             width: parent.width - pc.width - 8
                                             elide: Text.ElideRight
                                             // Two accounts: say whose ("Weekly · work"), or that it's one shared quota.
-                                            text: w.r.label + (w.r.shared > 1 ? "  ·  shared" : card.g.accounts > 1 ? "  ·  " + w.r.acct : "")
+                                            text: w.r.label + (w.r.shared > 1 ? "  ·  shared" : "")
                                             size: Theme.tSub; color: Theme.textSecondary
                                         }
                                         Label {
@@ -374,10 +409,25 @@ FocusScope {
                                     }
                                 }
                             }
+                              }
+                            }
                         }
                     }
                 }
             }
+        }
+        // More below: the list fades into the panel (a row cut through its
+        // middle read as broken), and a slim scroll hint shows on the edge.
+        Rectangle {
+            anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
+            height: 36
+            visible: flick.contentY < flick.contentHeight - flick.height - 1
+            gradient: Gradient {
+                GradientStop { position: 0; color: Qt.rgba(0, 0, 0, 0) }
+                GradientStop { position: 1; color: Qt.rgba(0, 0, 0, 0.92) }
+            }
+        }
+        ScrollHint { flickable: flick; anchors { right: parent.right; top: parent.top; bottom: parent.bottom; rightMargin: -10 } }
         }
 
         // The way on: every agent and account, in the center's Agents tab.
