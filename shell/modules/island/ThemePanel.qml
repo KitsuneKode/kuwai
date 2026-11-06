@@ -68,6 +68,37 @@ FocusScope {
     function previewSaver() { Island.close(); saverGo.restart(); }
     Timer { id: saverGo; interval: 350; onTriggered: Quickshell.execDetached([Paths.bin + "/rice", "screensaver", "start"]) }
 
+    // ── How to add your own (? or the header button): per tab, the steps,
+    // the command (click: copied), the folder (Open), and what's worth adding.
+    property bool guide: false
+    property string copied: ""
+    Timer { id: copiedFor; interval: 1600; onTriggered: picker.copied = "" }
+    function copyCmd(t) { Quickshell.execDetached(["sh", "-c", 'printf %s "$1" | wl-copy', "copy", t]); copied = t; copiedFor.restart(); }
+    readonly property string home: Quickshell.env("HOME")
+    readonly property var guides: ({
+        themes: { title: "Add a theme",
+            steps: ["Find a HyDE theme repository (search “hyde theme” on GitHub).", "Run the command with its name and URL.", "It appears here on the next open; ↵ applies it."],
+            cmd: home + "/.local/lib/hyde/theme.patch.sh \"Theme-Name\" https://github.com/User/Repository",
+            folder: home + "/.config/hyde/themes",
+            worth: "One clear accent on near-black: the island keeps colour for state." },
+        wallpapers: { title: "Add a wallpaper",
+            steps: ["Pick an image at least 2560×1440 (PNG or JPG).", "Copy it into this theme's wallpapers folder.", "Reopen this tab; ↵ sets it, Colours can follow it."],
+            cmd: "cp ~/Pictures/my-wallpaper.png \"" + home + "/.config/hyde/themes/" + (info.current || "THEME") + "/wallpapers/\"",
+            folder: home + "/.config/hyde/themes/" + (info.current || "") + "/wallpapers",
+            worth: "A calm, dark top edge: the island and its text sit there." },
+        live: { title: "Add a live wallpaper",
+            steps: ["Any video works (MP4/WebM); slow and dark looks best.", "rice-wall makes it loop without a seam and sizes it for your screens.", "Wallpaper Engine videos: rice-wall import <workshop folder>."],
+            cmd: "rice-wall add ~/Videos/clip.mp4 \"name\"",
+            folder: home + "/Pictures/live-wallpapers",
+            worth: "Slow motion, dark tones; it pauses when windows cover it." },
+        saver: { title: "Add a screensaver",
+            steps: ["Any video: smoke, stars, aurora, ink in water.", "rice saver plays it at half speed, forward then back (no seam).", "Pick it here as “Night · Name”; P shows it now."],
+            cmd: "rice saver add ~/Videos/clip.mp4 name",
+            folder: home + "/.local/share/rice/screensavers",
+            worth: "Mostly black with slow movement: kind to OLED, never distracting." }
+    })
+    readonly property var guideNow: guides[mode] || guides.themes
+
     property var info: ({ current: "", themes: [], wallpapers: [] })
     property bool loading: true
     readonly property string bin: Paths.bin + "/rice-themes"
@@ -141,6 +172,8 @@ FocusScope {
         else if (k === Qt.Key_Return || k === Qt.Key_Enter) apply(current);
         else if (k === Qt.Key_Tab || k === Qt.Key_Backtab) mode = modes[(modes.indexOf(mode) + (k === Qt.Key_Backtab ? modes.length - 1 : 1)) % modes.length];
         else if (k === Qt.Key_P && mode === "saver") { previewSaver(); return; }
+        else if (k === Qt.Key_Question || (k === Qt.Key_Slash && (event.modifiers & Qt.ShiftModifier))) { guide = !guide; event.accepted = true; return; }
+        else if (k === Qt.Key_Escape && guide) { guide = false; event.accepted = true; return; }
         else if (k === Qt.Key_F) toggleFav(current);
         else return;
         grid.positionViewAtIndex(current, GridView.Contain);
@@ -157,8 +190,14 @@ FocusScope {
             current: picker.mode
             onPicked: id => picker.mode = id
         }
-        Label {
+        PillButton {
+            id: guideBtn
             anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+            text: picker.guide ? "Done" : "How to add"
+            onClicked: picker.guide = !picker.guide
+        }
+        Label {
+            anchors { right: guideBtn.left; rightMargin: 14; verticalCenter: parent.verticalCenter }
             text: picker.mode === "saver" ? (Settings.screensaverWhen === "off" ? "Off · Settings → Screensaver"
                     : (Settings.screensaverWhen === "always" ? "When idle" : "With Caffeine on") + " · after " + (Settings.screensaverMins || 3) + " min · P to see it")
                 : picker.mode === "live" ? "Plays behind your windows; pauses when they cover it" : picker.loading ? "Reading themes…" : (picker.info.current || "").replace(/-/g, " ")
@@ -375,6 +414,75 @@ FocusScope {
                 spacing: 6
                 KeyCap { anchors.verticalCenter: parent.verticalCenter; text: parent.modelData[0] }
                 Label { anchors.verticalCenter: parent.verticalCenter; text: parent.modelData[1]; size: 12; color: Theme.textTertiary }
+            }
+        }
+    }
+
+    // ── The guide sheet, over the preview column ─────────────────────────
+    Rectangle {
+        id: guideSheet
+        x: preview.x - 8; y: 58
+        width: preview.width + 16
+        height: Math.min(parent.height - y - 14, gcol.implicitHeight + 32)
+        radius: Theme.r3
+        color: Qt.rgba(0.07, 0.07, 0.08, 0.98)
+        border.width: 1; border.color: Qt.rgba(1, 1, 1, 0.08)
+        z: 10
+        visible: opacity > 0.01
+        opacity: picker.guide ? 1 : 0
+        transform: Translate { y: picker.guide || Theme.reduceMotion ? 0 : 8; Behavior on y { NumberAnimation { duration: picker.guide ? Theme.enterMs : Theme.exitMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } } }
+        Behavior on opacity { NumberAnimation { duration: picker.guide ? Theme.enterMs : Theme.exitMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+        MouseArea { anchors.fill: parent }   // keeps clicks off the grid behind
+
+        Column {
+            id: gcol
+            x: 16; y: 16
+            width: parent.width - 32
+            spacing: 12
+            Label { text: picker.guideNow.title; size: Theme.tTitle3; weight: Theme.wSemibold }
+            Repeater {
+                model: picker.guideNow.steps
+                Row {
+                    required property var modelData
+                    required property int index
+                    width: gcol.width
+                    spacing: 10
+                    Rectangle {
+                        width: 20; height: 20; radius: 10
+                        color: Qt.rgba(1, 1, 1, 0.08)
+                        Label { anchors.centerIn: parent; text: String(index + 1); size: Theme.tCaption; weight: Theme.wSemibold; color: Theme.textSecondary }
+                    }
+                    Label { width: gcol.width - 30; wrapMode: Text.Wrap; text: modelData; size: Theme.tBody; color: Theme.textPrimary; lineHeight: 1.3 }
+                }
+            }
+            // The command: click to copy.
+            Rectangle {
+                width: gcol.width
+                height: cmdText.implicitHeight + 20
+                radius: Theme.r2
+                color: cmdArea.containsMouse ? Qt.rgba(1, 1, 1, 0.09) : Qt.rgba(1, 1, 1, 0.05)
+                Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
+                Text {
+                    id: cmdText
+                    x: 12; y: 10
+                    width: parent.width - 24
+                    wrapMode: Text.WrapAnywhere
+                    text: picker.guideNow.cmd
+                    font.family: "monospace"; font.pixelSize: Theme.tSub
+                    color: Theme.textPrimary
+                }
+                MouseArea { id: cmdArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: picker.copyCmd(picker.guideNow.cmd) }
+            }
+            Label {
+                text: picker.copied === picker.guideNow.cmd ? "Copied: paste it in a terminal" : "Click the command to copy it"
+                size: Theme.tFootnote
+                color: picker.copied === picker.guideNow.cmd ? Theme.green : Theme.textTertiary
+            }
+            Label { width: gcol.width; wrapMode: Text.Wrap; text: picker.guideNow.worth; size: Theme.tSub; color: Theme.textSecondary }
+            Row {
+                spacing: 8
+                PillButton { text: "Open folder"; onClicked: Quickshell.execDetached(["xdg-open", picker.guideNow.folder]) }
+                PillButton { text: "Full guide"; onClicked: Quickshell.execDetached(["xdg-open", Paths.root + "/docs/manual/looks.md"]) }
             }
         }
     }

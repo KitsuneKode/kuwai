@@ -57,7 +57,7 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             spacing: 3
             opacity: over.hovered ? 0 : 1
-            Behavior on opacity { NumberAnimation { duration: 160; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+            Behavior on opacity { NumberAnimation { duration: Theme.microMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
             Repeater {
                 model: 4
                 Rectangle {
@@ -78,7 +78,7 @@ Item {
             spacing: 2
             opacity: over.hovered ? 1 : 0
             visible: opacity > 0.01
-            Behavior on opacity { NumberAnimation { duration: 160; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+            Behavior on opacity { NumberAnimation { duration: Theme.microMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
             Repeater {
                 model: [
                     { g: "\u{f04ae}", on: () => media.player.previous(), ok: media.player && media.player.canGoPrevious },

@@ -38,7 +38,7 @@ Item {
     onManyChanged: if (!many) open = false
 
     property real step: hover.hovered && many && !open ? 10 : 8
-    Behavior on step { enabled: !Theme.reduceMotion; NumberAnimation { duration: 160; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+    Behavior on step { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.microMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
     readonly property int markSize: 13
     implicitWidth: shown ? markSize + (shown - 1) * step + (list.length > 3 ? moreLabel.implicitWidth + 4 : 0) : 0
     implicitHeight: 16
@@ -68,7 +68,7 @@ Item {
                 source: parent.a ? Kittymux.brand(parent.a.agent) : ""
                 visible: status === Image.Ready
                 opacity: stack.open ? 0.35 : 1
-                Behavior on opacity { NumberAnimation { duration: 120 } }
+                Behavior on opacity { NumberAnimation { duration: Theme.quickMs } }
             }
             Text {
                 visible: !mark.visible

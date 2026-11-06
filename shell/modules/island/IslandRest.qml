@@ -283,8 +283,8 @@ Item {
                 SequentialAnimation on opacity {
                     running: rest.activity === "auth" && !Theme.reduceMotion
                     loops: Animation.Infinite
-                    NumberAnimation { to: 0.55; duration: 700; easing.type: Easing.InOutSine }
-                    NumberAnimation { to: 1; duration: 700; easing.type: Easing.InOutSine }
+                    NumberAnimation { to: 0.55; duration: Theme.breatheMs; easing.type: Easing.InOutSine }
+                    NumberAnimation { to: 1; duration: Theme.breatheMs; easing.type: Easing.InOutSine }
                 }
             }
             // Recording the screen: a red dot that breathes (click: stop).
@@ -296,8 +296,8 @@ Item {
             SequentialAnimation on opacity {
                 running: rest.activity === "rec" && !Theme.reduceMotion
                 loops: Animation.Infinite
-                NumberAnimation { to: 0.45; duration: 700; easing.type: Easing.InOutSine }
-                NumberAnimation { to: 1; duration: 700; easing.type: Easing.InOutSine }
+                NumberAnimation { to: 0.45; duration: Theme.breatheMs; easing.type: Easing.InOutSine }
+                NumberAnimation { to: 1; duration: Theme.breatheMs; easing.type: Easing.InOutSine }
             }
         }
         // A timer: a ring that empties as it runs.
@@ -333,8 +333,8 @@ Item {
                 SequentialAnimation on opacity {
                     running: rest.activity === "vox" && Activities.voxListening && !Theme.reduceMotion
                     loops: Animation.Infinite
-                    NumberAnimation { to: 0.45; duration: 700; easing.type: Easing.InOutSine }
-                    NumberAnimation { to: 1; duration: 700; easing.type: Easing.InOutSine }
+                    NumberAnimation { to: 0.45; duration: Theme.breatheMs; easing.type: Easing.InOutSine }
+                    NumberAnimation { to: 1; duration: Theme.breatheMs; easing.type: Easing.InOutSine }
                 }
                 RotationAnimation on rotation {
                     running: rest.activity === "vox" && !Activities.voxListening && !Theme.reduceMotion
@@ -364,8 +364,8 @@ Item {
                 SequentialAnimation on scale {
                     running: rest.activity === "shazam" && Activities.shazamListening && !Theme.reduceMotion
                     loops: Animation.Infinite
-                    NumberAnimation { to: 1.18; duration: 520; easing.type: Easing.InOutSine }
-                    NumberAnimation { to: 1; duration: 520; easing.type: Easing.InOutSine }
+                    NumberAnimation { to: 1.18; duration: Theme.pulseMs; easing.type: Easing.InOutSine }
+                    NumberAnimation { to: 1; duration: Theme.pulseMs; easing.type: Easing.InOutSine }
                 }
             }
             // Music: the album art, tiny.

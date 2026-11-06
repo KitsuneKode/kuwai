@@ -115,7 +115,7 @@ Column {
             color: entry.lock.password ? Qt.alpha(entry.accent, 0.9) : Qt.rgba(1, 1, 1, 0.12)
             Behavior on color { ColorAnimation { duration: Theme.colorMs } }
             scale: goPress.pressed ? 0.9 : 1
-            Behavior on scale { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
+            Behavior on scale { NumberAnimation { duration: Theme.quickMs; easing.type: Easing.OutCubic } }
             Text {
                 anchors.centerIn: parent
                 text: entry.lock.checking ? "\u{f0772}" : "\u{f0054}"

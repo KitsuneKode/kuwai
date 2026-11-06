@@ -229,7 +229,7 @@ FocusScope {
                     width: parent.width
                     height: track.active ? 8 : 5; radius: height / 2
                     color: Qt.rgba(1, 1, 1, 0.14)
-                    Behavior on height { NumberAnimation { duration: 120; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+                    Behavior on height { NumberAnimation { duration: Theme.quickMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                     Rectangle {
                         width: parent.width * scrub.f
                         height: parent.height; radius: parent.radius

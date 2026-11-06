@@ -22,7 +22,7 @@ Item {
     readonly property bool duo: style === "duotone" && Icons.glyph(name, "df") !== ""
     readonly property string family: ({ thin: "Phosphor-Thin", light: "Phosphor-Light", regular: "Phosphor", bold: "Phosphor-Bold", fill: "Phosphor-Fill" })[style] || "Phosphor"
     property real k: active ? 1 : 0
-    Behavior on k { NumberAnimation { duration: 160; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+    Behavior on k { NumberAnimation { duration: Theme.microMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
 
     // Duotone: the fill layer (20% → full when active) and the outline.
     Text {

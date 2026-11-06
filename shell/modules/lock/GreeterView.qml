@@ -226,8 +226,8 @@ Item {
                     running: view.lock.checking && !Theme.reduceMotion
                     loops: Animation.Infinite
                     onRunningChanged: if (!running) parent.opacity = 1
-                    NumberAnimation { to: 0.35; duration: 520; easing.type: Easing.InOutSine }
-                    NumberAnimation { to: 1; duration: 520; easing.type: Easing.InOutSine }
+                    NumberAnimation { to: 0.35; duration: Theme.pulseMs; easing.type: Easing.InOutSine }
+                    NumberAnimation { to: 1; duration: Theme.pulseMs; easing.type: Easing.InOutSine }
                 }
             }
             ClippingRectangle {

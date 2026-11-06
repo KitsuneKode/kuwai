@@ -30,7 +30,7 @@ Item {
     width: 0
     height: 0
     property real k: 0               // 0 hidden → 1 shown
-    Behavior on k { NumberAnimation { duration: 120; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+    Behavior on k { NumberAnimation { duration: Theme.quickMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
 
     Timer { id: rest; interval: Theme.tipMs; onTriggered: tip.k = 1 }
     onShownChanged: {

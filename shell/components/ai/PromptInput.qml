@@ -501,8 +501,8 @@ Rectangle {
                             running: root.micState === "recording" && !Theme.reduceMotion
                             loops: Animation.Infinite
                             onRunningChanged: if (!running) parent.scale = 1
-                            NumberAnimation { to: 1.12; duration: 700; easing.type: Easing.InOutSine }
-                            NumberAnimation { to: 1.0; duration: 700; easing.type: Easing.InOutSine }
+                            NumberAnimation { to: 1.12; duration: Theme.breatheMs; easing.type: Easing.InOutSine }
+                            NumberAnimation { to: 1.0; duration: Theme.breatheMs; easing.type: Easing.InOutSine }
                         }
                     }
                     Icon {

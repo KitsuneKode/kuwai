@@ -264,7 +264,7 @@ Item {
                 anchors.centerIn: parent
                 spacing: 4
                 opacity: cardHover.hovered ? 0 : 1
-                Behavior on opacity { NumberAnimation { duration: 160; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+                Behavior on opacity { NumberAnimation { duration: Theme.microMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                 Repeater {
                     model: 13
                     Rectangle {
@@ -290,7 +290,7 @@ Item {
                 spacing: 4
                 opacity: cardHover.hovered ? 1 : 0
                 visible: opacity > 0.01
-                Behavior on opacity { NumberAnimation { duration: 160; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+                Behavior on opacity { NumberAnimation { duration: Theme.microMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                 Repeater {
                     model: [
                         { g: "\u{f04ae}", on: () => hover.player.previous(), ok: hover.player && hover.player.canGoPrevious },

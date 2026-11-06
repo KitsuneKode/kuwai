@@ -797,8 +797,8 @@ Scope {
                         SequentialAnimation on opacity {
                             running: root.recording && !Theme.reduceMotion
                             loops: Animation.Infinite
-                            NumberAnimation { to: 0.35; duration: 700; easing.type: Easing.InOutSine }
-                            NumberAnimation { to: 1; duration: 700; easing.type: Easing.InOutSine }
+                            NumberAnimation { to: 0.35; duration: Theme.breatheMs; easing.type: Easing.InOutSine }
+                            NumberAnimation { to: 1; duration: Theme.breatheMs; easing.type: Easing.InOutSine }
                         }
                     }
                     Label { anchors.verticalCenter: parent.verticalCenter; text: root.elapsed(root.nowSec - Clipboard.recSince); size: 13; rounded: true; weight: Theme.wSemibold; color: Theme.red; font.features: ({ "tnum": 1 }) }
@@ -1061,7 +1061,7 @@ Scope {
                 function clampX(x) { return Math.max(originX, Math.min(maxX, x)); }
                 property real wheelTo: 0
                 property int lastDir: 0
-                NumberAnimation { id: wheelGlide; target: shelf; property: "contentX"; duration: 160; easing.type: Easing.OutCubic }
+                NumberAnimation { id: wheelGlide; target: shelf; property: "contentX"; duration: Theme.microMs; easing.type: Easing.OutCubic }
                 WheelHandler {
                     acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
                     onWheel: event => {
@@ -1110,7 +1110,7 @@ Scope {
                 anchors { left: shelf.left; top: shelf.top; bottom: shelf.bottom }
                 width: 36
                 opacity: shelf.contentX > 4 ? 1 : 0
-                Behavior on opacity { NumberAnimation { duration: 120 } }
+                Behavior on opacity { NumberAnimation { duration: Theme.quickMs } }
                 gradient: Gradient {
                     orientation: Gradient.Horizontal
                     GradientStop { position: 0; color: Theme.glassTintElevated }
@@ -1121,7 +1121,7 @@ Scope {
                 anchors { right: shelf.right; top: shelf.top; bottom: shelf.bottom }
                 width: 48
                 opacity: shelf.contentX + shelf.width < shelf.contentWidth - 4 ? 1 : 0
-                Behavior on opacity { NumberAnimation { duration: 120 } }
+                Behavior on opacity { NumberAnimation { duration: Theme.quickMs } }
                 gradient: Gradient {
                     orientation: Gradient.Horizontal
                     GradientStop { position: 0; color: "transparent" }
@@ -1206,7 +1206,7 @@ Scope {
                 z: 21
                 visible: opacity > 0.01
                 opacity: root.naming ? 1 : 0
-                Behavior on opacity { NumberAnimation { duration: 120; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+                Behavior on opacity { NumberAnimation { duration: Theme.quickMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                 color: Qt.rgba(0.11, 0.11, 0.13, 0.98)
                 border.width: 1
                 border.color: Qt.alpha(Theme.blue, 0.6)

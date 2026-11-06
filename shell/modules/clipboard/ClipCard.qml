@@ -106,7 +106,7 @@ Item {
             color: Theme.accent
             border.width: 2; border.color: Qt.rgba(0, 0, 0, 0.5)
             scale: card.marked ? 1 : 0.6
-            Behavior on scale { NumberAnimation { duration: 160; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+            Behavior on scale { NumberAnimation { duration: Theme.microMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
             Text { anchors.centerIn: parent; text: "\u{f012c}"; font.family: Theme.fontGlyph; font.pixelSize: 12; color: Theme.onAccent }
         }
 

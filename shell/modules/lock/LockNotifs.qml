@@ -89,7 +89,7 @@ Column {
             NumberAnimation { property: "y"; duration: 420; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
         }
         remove: Transition {
-            NumberAnimation { property: "opacity"; to: 0; duration: 160 }
+            NumberAnimation { property: "opacity"; to: 0; duration: Theme.microMs }
         }
         delegate: Item {
             id: card
