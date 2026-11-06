@@ -41,7 +41,7 @@ void main() {
     float bevel = exp(d / 7.0) * step(d, 0.0);                  // inner, fades in ~7 px
     float sheen = smoothstep(size.y * 0.35, 0.0, px.y) * 0.035;
 
-    float a = hair * (0.10 + 0.55 * facing * (0.35 + 0.65 * near))
+    float a = hair * (0.16 + 0.60 * facing * (0.35 + 0.65 * near))
             + bevel * 0.06 * facing
             + sheen;
     a *= strength * smoothstep(0.5, -0.5, d);

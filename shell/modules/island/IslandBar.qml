@@ -497,7 +497,7 @@ Scope {
                     strength: Math.max(pv.value, m.value * 0.8)
                     light: frameHover.hovered && !Theme.reduceMotion
                         ? Qt.point(frameHover.point.position.x - x, frameHover.point.position.y)
-                        : Qt.point(width / 2, -60)
+                        : Qt.point(width * 0.22, height + 90)
                 }
                 GlassCard {
                     visible: !win.notch
