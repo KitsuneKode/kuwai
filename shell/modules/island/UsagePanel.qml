@@ -152,8 +152,10 @@ FocusScope {
                         }
                         Label {
                             width: parent.width; elide: Text.ElideRight
-                            text: Limits.providerShort(row.modelData.provider)
-                                + (usage.multiAccount ? " · " + Limits.label(row.modelData.account) : "")
+                            // The account only when it says something ("Codex · Codex" didn't).
+                            readonly property string who: Limits.providerShort(row.modelData.provider)
+                            readonly property string acct: usage.multiAccount ? Limits.label(row.modelData.account) : ""
+                            text: who + (acct && acct !== who ? " · " + acct : "")
                             size: Theme.tFootnote
                             color: Theme.textTertiary
                         }
