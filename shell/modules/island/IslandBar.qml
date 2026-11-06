@@ -488,6 +488,17 @@ Scope {
                     radius: frame.height <= win.restH + 1 ? 14 : 30
                     fill: Qt.rgba(0, 0, 0, 0.94)
                 }
+                // Liquid glass, expanded only: the rim catches the pointer.
+                LiquidRim {
+                    x: win.notch ? win.ear : 0
+                    width: win.notch ? Math.max(0, sw.value) : frame.width
+                    height: frame.height
+                    radius: win.notch ? 30 : Math.min(frame.height / 2, 30)
+                    strength: Math.max(pv.value, m.value * 0.8)
+                    light: frameHover.hovered && !Theme.reduceMotion
+                        ? Qt.point(frameHover.point.position.x - x, frameHover.point.position.y)
+                        : Qt.point(width / 2, -60)
+                }
                 GlassCard {
                     visible: !win.notch
                     anchors.fill: parent
