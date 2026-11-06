@@ -12,6 +12,7 @@ ShaderEffect {
     property real radius: 30
     property point light: Qt.point(width / 2, -40)
     property real strength: 1
+    property real full: 0                // 1: a floating card, all four corners
     readonly property vector2d size: Qt.vector2d(width, height)
     readonly property bool onBattery: UPower.onBattery
     visible: strength > 0.01 && width > 40 && !onBattery

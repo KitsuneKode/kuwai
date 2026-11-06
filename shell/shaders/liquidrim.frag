@@ -14,9 +14,10 @@ layout(std140, binding = 0) uniform buf {
     vec2 light;     // px, in the item
     float radius;   // bottom corners, px
     float strength; // 0..1
+    float full;     // 1: a floating card (all four corners); 0: hangs from the top edge
 };
 
-// A box whose top edge runs off the item: only the bottom corners round.
+// A rounded box (centre p, half size b).
 float sdBox(vec2 p, vec2 b, float r) {
     vec2 q = abs(p) - b + vec2(r);
     return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;
@@ -24,8 +25,9 @@ float sdBox(vec2 p, vec2 b, float r) {
 
 void main() {
     vec2 px = qt_TexCoord0 * size;
-    vec2 c = vec2(size.x * 0.5, (size.y - radius * 2.0) * 0.5);
-    vec2 b = vec2(size.x * 0.5, size.y * 0.5 + radius);
+    float lift = radius * (1.0 - full);                 // the top edge runs off the item
+    vec2 c = vec2(size.x * 0.5, size.y * 0.5 - lift);
+    vec2 b = vec2(size.x * 0.5, size.y * 0.5 + lift);
     float d = sdBox(px - c, b, radius);                 // < 0 inside
     if (d > 0.5) { fragColor = vec4(0.0); return; }
 

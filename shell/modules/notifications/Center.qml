@@ -425,6 +425,15 @@ Scope {
                     radius: frame.radius
                     tint: Theme.glassTintElevated
                 }
+                // The island's glass edge, so the center reads as the same material.
+                LiquidRim {
+                    anchors.fill: glass
+                    radius: glass.radius
+                    full: 1
+                    strength: Math.min(1, root.p) * 0.8
+                    light: centerHover.hovered && !Theme.reduceMotion ? centerHover.point.position : Qt.point(width * 0.22, height + 120)
+                }
+                HoverHandler { id: centerHover }
 
                 Item {
                     anchors.fill: parent
