@@ -172,8 +172,8 @@ FocusScope {
                         Label {
                             anchors.right: parent.right
                             visible: text !== ""
-                            readonly property string left: row.modelData.window.resetsAt ? Limits.resetsIn(row.modelData.window) : ""
-                            text: left === "now" ? "resetting" : left ? "resets in " + left : ""
+                            readonly property string resetIn: row.modelData.window.resetsAt ? Limits.resetsIn(row.modelData.window) : ""
+                            text: resetIn === "now" ? "resetting" : resetIn ? "resets in " + resetIn : ""
                             size: Theme.tFootnote
                             color: Theme.textTertiary
                             font.features: ({ "tnum": 1 })
