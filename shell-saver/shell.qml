@@ -4,7 +4,7 @@
 // plays and left ~110 MB behind for good inside the shell once it stopped;
 // here the whole process ends, so all of it goes back.
 //
-// One screen (KUWAI_SAVER_SCREEN), on the Top layer: under the shell's own
+// Every screen (KUWAI_SAVER_SCREEN "*", one player each; a name for one), on the Top layer: under the shell's own
 // screensaver surface (Overlay: the clock, the input that dismisses), no
 // keyboard, no input region. Any failure quits; the shell (which only ever kills it) then
 // treats any exit as a failure and falls back to Dusk.
@@ -20,7 +20,7 @@ ShellRoot {
     Component.onCompleted: if (file === "") Qt.quit()
 
     Variants {
-        model: Quickshell.screens.filter(s => root.want === "" ? s === Quickshell.screens[0] : s.name === root.want)
+        model: Quickshell.screens.filter(s => root.want === "*" ? true : root.want === "" ? s === Quickshell.screens[0] : s.name === root.want)
         PanelWindow {
             id: win
             required property ShellScreen modelData

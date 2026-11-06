@@ -75,7 +75,10 @@ Scope {
         // while the screensaver showed (a restart, `rice promote`) left the
         // film orphaned, covering a monitor for hours; input couldn't reach it.
         command: ["sh", "-c", 'test -r "$KUWAI_SAVER_FILE" && exec setpriv --pdeathsig KILL qs -p "$1"', "rice-saver", Quickshell.shellDir + "/../shell-saver"]
-        environment: ({ KUWAI_SAVER_FILE: root.film, KUWAI_SAVER_SCREEN: root.mainScreen })
+        // Every screen: one screen with the film and the other black read as
+        // "the screensaver only came up on one monitor". It's a separate
+        // process, killed on wake, so the second decoder costs nothing after.
+        environment: ({ KUWAI_SAVER_FILE: root.film, KUWAI_SAVER_SCREEN: "*" })
         // The shell is the only one that ends it (SIGKILL, filmUp false), so
         // any exit while the film should be up is a failure: Dusk instead.
         onExited: { if (root.filmUp && root.style === "night") root.clipFailed = true; }
@@ -127,17 +130,13 @@ Scope {
 
                     // The film's screen stays clear: the film is under this
                     // surface (its own process, Top layer).
-                    readonly property bool filmHere: root.film !== "" && win.screen.name === root.mainScreen
+                    readonly property bool filmHere: root.film !== ""
                     Rectangle { anchors.fill: parent; color: "black"; visible: !stage.filmHere }
 
                     // What fills the screen: the Dusk scene (default, drawn live,
                     // nothing to decode), your live wallpaper, or the still one.
-                    // Live plays on one screen only (the one you were using);
-                    // the others show Dusk, so it is decoded once, not per screen.
                     readonly property bool stillHere: root.style === "still"
-                    // Night: the film on one screen, true black on the rest
-                    // (decoded once; black costs nothing and can't burn in).
-                    // Live: the film on one screen, Dusk on the others.
+                    // Night and Live: the film on every screen (the saver process).
                     readonly property bool night: root.style === "night" && !root.clipFailed
                     Loader {
                         anchors.fill: parent

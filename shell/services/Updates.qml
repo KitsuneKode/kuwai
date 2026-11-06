@@ -197,6 +197,13 @@ Singleton {
     // "done". A restart that only finds a dead job must not invent a
     // "stopped before finishing" result.
     property bool ownedRun: false
+    // The job is known to exist (the starter said so, status saw it, or the
+    // feed spoke). Until then the watchdog waits: it used to ask "is it
+    // running?" before systemd-run had registered the unit, hear "no", and
+    // call a run that went on to finish fine "stopped before finishing" (it
+    // then stopped reading the feed, so the real result and the notch's
+    // "updated" never landed).
+    property bool jobSeen: false
     property string phase: ""           // check · repo · build · install · after
     property string phaseLabel: ""
     property var phasesSeen: []
@@ -238,14 +245,14 @@ Singleton {
         running = true;
         starter.running = true;
     }
-    function resetRun() { log = []; result = null; runError = ""; phase = ""; phaseLabel = "Starting"; phasesSeen = []; progress = 0.02; currentLine = ""; }
+    function resetRun() { jobSeen = false; log = []; result = null; runError = ""; phase = ""; phaseLabel = "Starting"; phasesSeen = []; progress = 0.02; currentLine = ""; }
     Process {
         id: starter
         stdout: StdioCollector {
             onStreamFinished: {
                 let r = null;
                 try { r = JSON.parse(text); } catch (e) {}
-                if (r && r.started) { follower.running = true; return; }
+                if (r && r.started) { root.jobSeen = true; follower.running = true; return; }
                 // One is already running (started elsewhere, or before a shell
                 // restart): join it and show its progress. It used to become a
                 // "Finished, with things to look at" card while it ran on.
@@ -253,6 +260,7 @@ Singleton {
                     root.resetRun();
                     root.running = true;
                     root.ownedRun = true;
+                    root.jobSeen = true;
                     follower.running = false;
                     follower.running = true;
                     return;
@@ -270,7 +278,7 @@ Singleton {
         command: [root.bin, "status"]
         stdout: StdioCollector {
             onStreamFinished: {
-                try { if (JSON.parse(text).running) { root.plan = { repo: true, aur: [], flatpak: [] }; root.resetRun(); root.running = true; follower.running = true; } } catch (e) {}
+                try { if (JSON.parse(text).running) { root.plan = { repo: true, aur: [], flatpak: [] }; root.resetRun(); root.running = true; root.jobSeen = true; follower.running = true; } } catch (e) {}
             }
         }
     }
@@ -280,9 +288,8 @@ Singleton {
         // While a run is shown, whether or not its feed is still being read:
         // a feed that ended without "done" left the island saying "updating"
         // for good (the check only ran while the feed did).
-        running: root.running
-        triggeredOnStart: true
-        onTriggered: if (!alive.running) alive.running = true
+        running: root.running && root.jobSeen
+        onTriggered: if (!alive.running && !settle.running && !confirm.running) alive.running = true
     }
     Process {
         id: alive
@@ -298,12 +305,27 @@ Singleton {
             }
         }
     }
+    // Gone twice, 1.5 s apart, before it's believed (and the feed has had
+    // that long to deliver its last lines).
     Timer {
         id: settle
         interval: 1500
         onTriggered: if (root.running) {
-            if (!root.result) recoverLastEvent.running = true;
-            else root.finishRun();
+            if (root.result) root.finishRun();
+            else confirm.running = true;
+        }
+    }
+    Process {
+        id: confirm
+        command: [root.bin, "status"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let gone = false;
+                try { gone = !JSON.parse(text).running; } catch (e) {}
+                if (!gone || !root.running) return;
+                if (root.result) root.finishRun();
+                else recoverLastEvent.running = true;
+            }
         }
     }
     Process {
@@ -376,6 +398,7 @@ Singleton {
             onRead: line => {
                 let ev = null;
                 try { ev = JSON.parse(line); } catch (e) { return; }
+                root.jobSeen = true;
                 // The ring is cosmetic: it must never stop "done" from landing.
                 try { root.place(ev); } catch (e) {}
                 if (ev.e === "log") {
