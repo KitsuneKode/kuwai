@@ -211,16 +211,34 @@ Singleton {
     // Markdown and mail clutter to plain reading text (GitHub comments and
     // newsletters showed **, [text](url), # and long tracking links as-is).
     // Not Qt's MarkdownText: it could fetch remote images (tracking pixels).
+    readonly property var entities: ({ amp: "&", lt: "<", gt: ">", quot: "\"", apos: "'", nbsp: " ", ndash: "–", mdash: "—", hellip: "…", rsquo: "’", lsquo: "‘", rdquo: "”", ldquo: "“", copy: "©", reg: "®", trade: "™", middot: "·", bull: "•" })
+    function decodeEntities(t) {
+        return t.replace(/&(#x[0-9a-f]{1,6}|#\d{1,7}|[a-z]{2,8});/gi, (m, e) => {
+            if (e[0] === "#") {
+                const n = e[1] === "x" || e[1] === "X" ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10);
+                return n > 0 && n <= 0x10ffff && !(n >= 0xd800 && n <= 0xdfff) ? String.fromCodePoint(n) : m;
+            }
+            const v = root.entities[e.toLowerCase()];
+            return v === undefined ? m : v;
+        });
+    }
     function readable(t) {
-        return String(t || "")
+        return decodeEntities(String(t || "")
+            .replace(/\r\n?/g, "\n")
+            .replace(/[\u200b-\u200d\ufeff]/g, "")                        // zero-width
             .replace(/<!--[\s\S]*?-->/g, "")
-            .replace(/<[^>]+>/g, "")
+            .replace(/<(br|\/p|\/div|\/li|\/tr|\/h\d)\b[^>]*>/gi, "\n")
+            .replace(/<[^>]+>/g, ""))
+            .replace(/^[ \t]*(```|~~~).*$/gm, "")                           // code fences (the code stays)
+            .replace(/^[ \t]*\|?[ \t]*:?-{3,}:?[ \t]*(\|[ \t]*:?-{3,}:?[ \t]*)*\|?[ \t]*$/gm, "")  // table rules
+            .replace(/^[ \t]*\|(.*)\|[ \t]*$/gm, (m, row) => row.split("|").map(c => c.trim()).filter(c => c).join("  ·  "))
             .replace(/!\[[^\]]*\]\([^)]*\)/g, "")                       // images
             .replace(/\[([^\]]+)\]\((?:[^()]|\([^)]*\))*\)/g, "$1")          // [text](url) → text
             .replace(/https?:\/\/(?:www\.)?([^\/\s?#]+)[^\s)]*/g, "$1…")    // bare links → their site
             .replace(/^\s{0,3}#{1,6}\s+/gm, "")                           // headings
-            .replace(/^\s*[-*+]\s+/gm, "• ")                               // bullets
+            .replace(/^([ \t]*)[-*+]\s+(?:\[[ xX]\]\s+)?/gm, (m, ind) => "  ".repeat(Math.min(3, Math.floor(ind.replace(/\t/g, "  ").length / 2))) + "• ")  // bullets, nesting kept
             .replace(/(\*\*|__)(.+?)\1/g, "$2").replace(/`([^`]+)`/g, "$1")  // bold, code
+            .replace(/\*\*/g, "")                                          // an unclosed **
             .replace(/^\s*>\s?/gm, "")                                    // quotes
             .replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
     }
@@ -375,8 +393,10 @@ Singleton {
     }
     // Its sender gone (a restart since), a link still opens (bin/rice-feeds).
     function openUrl(item) {
-        if (!/^https?:\/\//.test(item.url || "")) return;
-        const p = jumper.createObject(root, { command: ["xdg-open", item.url] });
+        // Web and mail links only, and never with a newline or NUL smuggled in.
+        const u = String(item.url || "");
+        if (!/^(https?:\/\/[^\s]+|mailto:[^\s]+)$/.test(u) || /[\0\n\r]/.test(u)) return;
+        const p = jumper.createObject(root, { command: ["xdg-open", u] });
         p.running = true;
     }
 
