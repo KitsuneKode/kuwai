@@ -191,6 +191,9 @@ case ${1:-} in
                 exit 1
             fi
         fi
+        # And it must load: a throwaway offscreen shell (bin/rice-loadtest)
+        # reports what lint can't (a handler set twice, a singleton that fails).
+        "$dev/bin/rice-loadtest" "$head" || { echo "rice: stable left as it is" >&2; exit 1; }
         git -C "$STABLE" merge --ff-only --quiet "$head" || { echo "rice: stable can't fast-forward to $(git -C "$dev" log --oneline -1)" >&2; exit 1; }
         echo "stable is now $(git -C "$STABLE" log --oneline -1)"
         if [ "$(cat "$STATE_DIR/channel" 2>/dev/null)" = stable ]; then switch_to "$STABLE"; fi ;;
