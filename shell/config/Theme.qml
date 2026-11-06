@@ -22,6 +22,10 @@ Singleton {
     // Floating menus (the center, the island): the same glass, denser still,
     // with a deep shadow under it; it reads as raised, not as a lighter grey.
     readonly property color glassTintElevated: Qt.rgba(0.067, 0.067, 0.078, 0.74)
+    // The island's material, for the surfaces that belong with it (the
+    // notification center, toasts): near-black, a little see-through so the
+    // blur behind still reads on a large surface. One object, one material.
+    readonly property color glassIsland: Qt.rgba(0.02, 0.02, 0.027, 0.84)
     readonly property color platter: Qt.rgba(1, 1, 1, 0.15)
     readonly property color platterDim: Qt.rgba(1, 1, 1, 0.08)
     readonly property color track: Qt.rgba(1, 1, 1, 0.18)

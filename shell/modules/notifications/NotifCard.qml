@@ -250,7 +250,7 @@ Item {
         id: glass
         anchors.fill: parent
         radius: 22
-        tint: card.low ? Theme.glassTint : Theme.glassTintThick
+        tint: card.low ? Theme.glassTint : Theme.glassIsland
     }
 
     // Severity wash: colour soaks into the glass from the top-left, where

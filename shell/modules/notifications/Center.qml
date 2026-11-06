@@ -423,7 +423,7 @@ Scope {
                     id: glass
                     anchors.fill: parent
                     radius: frame.radius
-                    tint: Theme.glassTintElevated
+                    tint: Theme.glassIsland
                 }
                 // The island's glass edge, so the center reads as the same material.
                 LiquidRim {

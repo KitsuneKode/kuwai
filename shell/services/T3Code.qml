@@ -18,6 +18,7 @@ Singleton {
     property int waiting: 0
     property int finished: 0             // completed in the last 15 min (shown in the panel)
     property var items: []
+    property string lastText: ""
     readonly property int total: running + waiting
 
     readonly property string bin: Quickshell.shellDir + "/../bin/rice-t3"
@@ -26,6 +27,9 @@ Singleton {
         command: [root.bin]
         stdout: StdioCollector {
             onStreamFinished: {
+                // Unchanged output (most polls): nothing to parse or compare.
+                if (text === root.lastText) return;
+                root.lastText = text;
                 try {
                     const d = JSON.parse(text);
                     root.alive = !!d.alive;
