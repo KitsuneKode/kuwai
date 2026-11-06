@@ -374,7 +374,7 @@ Item {
             delegate: StatRing {
                 id: ag
                 required property var modelData
-                size: 40
+                size: Theme.statRingSize
                 value: Math.max(0, modelData.left)
                 color: modelData.out ? Theme.red : modelData.near ? Theme.orange : modelData.tint
                 text: ""

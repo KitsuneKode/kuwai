@@ -34,6 +34,7 @@ Singleton {
     readonly property color card: Qt.rgba(1, 1, 1, 0.05)
     readonly property color cardEdge: Qt.rgba(1, 1, 1, 0.05)
     readonly property color chip: Qt.rgba(0.11, 0.11, 0.12, 1)   // an opaque disc on black (stacked logos)
+    readonly property int statRingSize: 40   // the hover view's rings (machine and agents)
     // Agents' own colours (T3 Code's usage palette), for their bars and discs.
     readonly property var brandTint: ({ claude: "#d97757", antigravity: "#8c7bd1", opencode: "#5b9bbd",
                                         cursor: "#8b8b8b", openai: "#e8e8ea", grok: "#b8b8bc", googlegemini: "#7aa2f7",
