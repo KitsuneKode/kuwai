@@ -94,7 +94,7 @@ FocusScope {
             Label {
                 anchors { left: parent.left; verticalCenter: parent.verticalCenter }
                 text: "Usage"
-                size: Theme.tTitle2; weight: Theme.wBold; rounded: true
+                size: Theme.tTitle3; weight: Theme.wSemibold   // the panels' one title style
             }
             Label {
                 anchors { right: parent.right; verticalCenter: parent.verticalCenter }
