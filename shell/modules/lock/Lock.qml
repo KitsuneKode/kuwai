@@ -44,7 +44,7 @@ Scope {
         else welcomeLater.restart();
         root.openAfter = null;
     } }
-    Timer { id: welcomeLater; interval: 520; onTriggered: Moments.welcomeBack(root.lockedAt) }
+    Timer { id: welcomeLater; interval: 520; onTriggered: { Wellbeing.rested(); Moments.welcomeBack(root.lockedAt); } }
 
     readonly property string flag: Paths.lockFlag
     function lock() {

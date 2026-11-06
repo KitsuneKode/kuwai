@@ -31,6 +31,7 @@ ShellRoot {
     // Usage limits too: connected from the start (push-based, cheap).
     readonly property bool limitsAlive: Limits.alive
     readonly property var crashWatcher: Crashes
+    readonly property var wellbeing: Wellbeing   // breaks and bedtime (services/Wellbeing)
     readonly property var memDiary: MemLog       // ~/.local/state/rice/memlog.tsv every 10 min
     // The stable copy (~/.local/share/kuwai) doesn't hot-reload: each reload
     // left ~25–30 MB behind, and `rice promote` restarts it cleanly anyway.

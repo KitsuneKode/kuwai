@@ -260,7 +260,8 @@ Singleton {
         // "Unlocked", so no second greeting saying the same thing.
         if (m < 2) return;
         const away = m < 60 ? "Away " + m + " min" : "Away " + Math.floor(m / 60) + " h" + (m % 60 ? " " + (m % 60) + " min" : "");
-        show({ kind: "hello", image: face, round: true, label: "Welcome back", value: away, ring: -1, tone: Theme.textSecondary }, 2800);
+        // Hours away is arriving: say the time of day ("Good morning · away 7 h").
+        show({ kind: "hello", image: face, round: true, label: m >= 180 ? greeting() : "Welcome back", value: away.replace("Away", "away"), ring: -1, tone: Theme.textSecondary }, m >= 180 ? 3600 : 2800);
     }
 
     // ── Focus (Do Not Disturb) ──────────────────────────────────────────

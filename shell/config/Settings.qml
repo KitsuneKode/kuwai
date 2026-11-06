@@ -51,6 +51,10 @@ Singleton {
     readonly property alias assistantOptIn: s.assistantOptIn
     readonly property alias seenAssistantPrompt: s.seenAssistantPrompt
     readonly property alias limitAlerts: s.limitAlerts
+    readonly property alias breakReminders: s.breakReminders
+    readonly property alias breakMins: s.breakMins
+    readonly property alias sleepReminder: s.sleepReminder
+    readonly property alias sleepAt: s.sleepAt
     readonly property alias limitThreshold: s.limitThreshold
     readonly property alias idleOwner: s.idleOwner
     readonly property alias idleDimAc: s.idleDimAc
@@ -147,6 +151,12 @@ Singleton {
             // Island: agent usage limits (services/Limits): a Moment when a
             // window crosses limitThreshold %, a mark on the notch while one is used up.
             property bool limitAlerts: true
+            // Wellbeing (services/Wellbeing): a break after breakMins of
+            // continuous use; past sleepAt, a calm nudge to wind down.
+            property bool breakReminders: true
+            property int breakMins: 50
+            property bool sleepReminder: true
+            property string sleepAt: "00:30"
             property int limitThreshold: 80
             property bool islandProximity: true   // nearing the island 30–60 px out reveals it (off: only the top edge)
             // Tabs & agents: a glass column on the left while kitty is focused

@@ -403,7 +403,8 @@ Item {
             size: 18
             stroke: 2.5
             value: Timers.next ? Timers.fraction(Timers.next) : 0
-            color: Theme.orange
+            // A pomodoro: red while you focus, green on a break; else a timer's orange.
+            color: Timers.next && Timers.next.pomo ? (Timers.next.pomo.phase === "work" ? Theme.red : Theme.green) : Theme.orange
             text: ""
             label: ""
         }
@@ -731,8 +732,32 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 text: rest.timerLeft
                 size: 13; weight: Theme.wSemibold; rounded: true
-                color: Theme.orange
+                color: Timers.next && Timers.next.pomo ? (Timers.next.pomo.phase === "work" ? Theme.red : Theme.green) : Theme.orange
                 font.features: ({ "tnum": 1 })
+            }
+            // A pomodoro's four rounds: done ones filled, the current one
+            // breathing while you focus.
+            Row {
+                visible: rest.activity === "timer" && !!Timers.next && !!Timers.next.pomo
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 3
+                Repeater {
+                    model: 4
+                    Rectangle {
+                        required property int index
+                        readonly property var p: Timers.next && Timers.next.pomo ? Timers.next.pomo : null
+                        readonly property bool done: !!p && (index + 1 < p.round || (index + 1 === p.round && p.phase !== "work"))
+                        readonly property bool now: !!p && index + 1 === p.round && p.phase === "work"
+                        width: 5; height: 5; radius: 2.5
+                        color: done ? Theme.red : now ? Theme.red : Theme.platter
+                        SequentialAnimation on opacity {
+                            running: parent.now && !Theme.reduceMotion
+                            loops: Animation.Infinite
+                            NumberAnimation { to: 0.35; duration: Theme.breatheMs * 2; easing.type: Easing.InOutSine }
+                            NumberAnimation { to: 1; duration: Theme.breatheMs * 2; easing.type: Easing.InOutSine }
+                        }
+                    }
+                }
             }
             // A warning on stage says its number ("95°", "3%"), not just its mark.
             Label {
