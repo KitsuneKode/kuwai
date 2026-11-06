@@ -27,13 +27,13 @@ gates now: offscreen load test + anchor-line names) · consistency 8.0
 
 Gating 9.5, in order:
 1. Lock/login: user runs the GRUB line, then the seamless greeter → shell handoff.
-2. Panel-level load check before promote (TestHook compile of changed panels
-   in a throwaway shell, or a headless compositor).
+2. ~~Panel-level load check~~ done differently: promote rolls stable back to
+   the last good commit if the new shell doesn't load (live-tested: 4 s).
 3. Tokens to zero: sizes (62) and the remaining durations (111) by meaning.
 4. Clipboard onto the island's row/header style; one Row/Header component
    shared by NotifsPanel, T3Panel, BluetoothPanel, UsagePanel.
-5. Notifications: a chat's burst folds into one card with a count; toast →
-   its row in the center as one motion.
+5. Notifications: toast → its row in the center as one motion (bursts
+   already fold into one toast with a count).
 6. Verify by eye: hover pill reveal, GPU/Temp page turn, back-soon mark,
    "Claude is back" moment, dim restore (test running in background).
 Not possible: one decoder for both screensaver screens (QML can't feed a
