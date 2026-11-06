@@ -185,6 +185,11 @@ case ${1:-} in
                 [ -f "$dev/$f" ] || continue
                 out=$(/usr/lib/qt6/bin/qmllint --bare -I /usr/lib/qt6/qml "$dev/$f" 2>&1 | grep -E "unknown attached property scope|\[syntax\]|^Error")
                 [ -n "$out" ] && bad="$bad\n$f:\n$out"
+                # A property named like one of Item's anchor lines (left, top…) is
+                # a FINAL override: the file won't load, and lint is silent.
+                # The offscreen load test can't reach panels, so check by name.
+                fin=$(grep -nE '^\s*(readonly\s+)?property\s+[A-Za-z_.<>]+\s+(left|right|top|bottom|horizontalCenter|verticalCenter|baseline)\s*[:;]' "$dev/$f")
+                [ -n "$fin" ] && bad="$bad\n$f (a property named like an anchor line, a FINAL override; it won't load — rename it):\n$fin"
             done
             if [ -n "$bad" ]; then
                 printf "rice: this QML wouldn't load; stable left as it is:%b\n" "$bad" >&2
