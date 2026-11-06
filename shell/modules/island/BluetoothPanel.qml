@@ -104,7 +104,7 @@ FocusScope {
                 x: 10; anchors.verticalCenter: parent.verticalCenter
                 name: String(row.dev.icon || "").indexOf("audio") >= 0 ? "headphones"
                     : String(row.dev.icon || "").indexOf("input") >= 0 ? "keyboard" : "bluetooth"
-                size: 16
+                size: 18
                 color: row.dev.connected ? Theme.accent : Theme.textSecondary
             }
             Column {
