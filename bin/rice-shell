@@ -13,6 +13,10 @@
 # stopped, leaving two rices running (two HUDs, two toast stacks, doubled
 # global shortcuts). A killed process tears nothing down and isn't relaunched.
 set -u
+# glibc gives every thread its own malloc arena and rarely hands freed memory
+# back: after a long day the shell sat at ~550 MB (flat, not leaking). Two
+# arenas keep that from piling up across its ~25 threads.
+export MALLOC_ARENA_MAX=2
 mkdir -p "${XDG_RUNTIME_DIR:-/tmp}/rice"   # shared shapes for shell-auth (island.json)
 
 RICE="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
