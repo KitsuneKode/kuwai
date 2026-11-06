@@ -262,7 +262,6 @@ Singleton {
     // The screen it came up on: it stays there while it shows (it jumped
     // to the other monitor mid-read when focus moved).
     property string peekOn: ""
-    onPeekChanged: if (!peek) peekOn = ""; else if (!peekOn || !Screens.present(peekOn)) peekOn = Screens.focusedName
     property var peekQueue: []
     property bool peekHeld: false
     property bool peekExpanded: false
@@ -271,7 +270,10 @@ Singleton {
     property bool centerFocusReply: false
     property string centerMorphFrom: ""          // "" | "peek" | "toast"
     property var centerMorphFromRect: null
-    onPeekChanged: { peekExpanded = false; peekFor.interval = 5000; }
+    onPeekChanged: {
+        peekExpanded = false; peekFor.interval = 5000;
+        if (!peek) peekOn = ""; else if (!peekOn || !Screens.present(peekOn)) peekOn = Screens.focusedName;
+    }
     function showPeek(item) {
         if (!peek) { peek = item; if (!peekHeld) peekFor.restart(); return; }
         if (rank(item) < rank(peek)) {               // more urgent: it goes first
