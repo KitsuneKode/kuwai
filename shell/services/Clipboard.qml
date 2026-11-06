@@ -161,7 +161,9 @@ Singleton {
         else if (/^(#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})|rgba?\([\d\s.,%]+\)|hsla?\([\d\s.,%deg]+\))$/i.test(t)) e.kind = "color";
         else if (/^(file:\/\/|~\/|\/)[^\s]*$/.test(t)) e.kind = "path";
         else if (/[{};]\s|=>|\bfunction\b|\bconst\b|\bimport\b|\bdef\b|\breturn\b|^\s*(\$|#!)|<\/?\w+>/.test(t)) e.kind = "code";
-        e.secret = looksSecret(t);
+        // A one-time code just copied from a notification is a secret too.
+        e.secret = looksSecret(t) || (root.pendingSecret !== "" && t.trim() === root.pendingSecret);
+        if (root.pendingSecret !== "" && t.trim() === root.pendingSecret) root.pendingSecret = "";
         return e;
     }
 
@@ -229,6 +231,7 @@ Singleton {
     // to paste, then leave the history (not the clipboard itself, and never
     // a pin: pinning one is saying "keep it").
     readonly property int secretSecs: 60
+    property string pendingSecret: ""         // Notifs.copyCode: the next copy is a code
     property var expiring: []                 // [{ id, at }]
     function expireSoon(id) {
         if (expiring.some(x => x.id === id)) return;

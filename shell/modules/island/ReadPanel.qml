@@ -83,6 +83,9 @@ FocusScope {
             }
         }
 
+        // A one-time code leads, with Copy.
+        OtpChip { item: rp.item; width: parent.width }
+
         // ── The message: paragraphs, scrolls past ~16 lines ──────────────
         Item {
             width: parent.width

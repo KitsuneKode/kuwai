@@ -333,6 +333,42 @@ Singleton {
     // ReadPanel), with the keyboard, so you can answer right there. (It used
     // to expand the floating peek, which can't take typing.)
     property var reading: null
+
+    // A one-time code in a notification (Gmail sign-in mail, a bank, 2FA
+    // texts): the code itself, so the card can show it big with Copy. ""
+    // when there's none. Prefers a code right after "code / OTP / PIN";
+    // never a year.
+    function otpOf(item) {
+        if (!item) return "";
+        const t = [item.title, item.body, item.full].filter(x => x).join("\n");
+        if (!/(code|otp|verif|passcode|one[- ]?time|2fa|two[- ]factor|sign[- ]?in|log[- ]?in|security|confirm|\bpin\b)/i.test(t)) return "";
+        const near = t.match(/(?:code|otp|passcode|pin|is|use|enter)\W{0,3}[:\s]\s*([0-9]{3}[- ][0-9]{3}|[0-9]{4,8})\b/i);
+        const any = t.match(/\b([0-9]{3}[- ][0-9]{3}|[0-9]{6,8})\b/);
+        const alnum = t.match(/\b(?=[A-Z0-9]*[0-9])(?=[A-Z0-9]*[A-Z])([A-Z0-9]{6,8})\b/);
+        const m = near || any || alnum;
+        if (!m) return "";
+        const c = m[1].replace(/[- ]/g, "");
+        return /^(19|20)\d\d$/.test(c) ? "" : c;
+    }
+    // "482913" → "482 913"; "12345678" → "1234 5678".
+    function spacedCode(c) {
+        if (c.length === 6) return c.slice(0, 3) + " " + c.slice(3);
+        if (c.length === 8) return c.slice(0, 4) + " " + c.slice(4);
+        return c;
+    }
+    // Copy it (it leaves the clipboard history after a minute, as secrets
+    // do), say so, and the card is done: read, then gone.
+    function copyCode(item) {
+        const c = otpOf(item);
+        if (!c) return;
+        Clipboard.pendingSecret = c;
+        Quickshell.execDetached(["wl-copy", "--", c]);
+        Moments.show({ kind: "copied", glyph: "\u{f018f}", label: "Code copied", value: spacedCode(c), ring: -1, tone: Theme.textPrimary }, 1600);
+        const n = item.notification;
+        const rd = n ? n.actions.find(x => x.identifier === "read") : null;
+        if (rd) rd.invoke();
+        dismiss(item);
+    }
     function readInIsland(item) {
         if (!item) return;
         if (centerOpen) setCenter(false, "pointer");

@@ -22,6 +22,7 @@ Item {
     readonly property bool hiddenOpen: !!item && Notifs.bodyHidden(item, true)
     readonly property bool loud: !!item && (item.severity === "critical" || item.severity === "warning")
     readonly property bool canReply: Notifs.canReply(item)
+    readonly property string otp: Notifs.sharing ? "" : Notifs.otpOf(item)
     readonly property color tone: item && item.severity === "critical" ? Theme.red : Theme.orange
     readonly property color statusColor: !item ? Theme.textSecondary
         : item.statusTone === "positive" ? Theme.green : item.statusTone === "caution" ? Theme.orange
@@ -148,11 +149,15 @@ Item {
                 elide: Text.ElideRight
                 wrapMode: Text.NoWrap
                 maximumLineCount: 1
-                text: Notifs.bodyForDisplay(peek.item, false)
+                // A one-time code takes the line: big, spaced, tabular.
+                text: peek.otp !== "" ? Notifs.spacedCode(peek.otp) : Notifs.bodyForDisplay(peek.item, false)
                 textFormat: Text.PlainText
-                size: 12
-                color: peek.redacted ? Theme.textTertiary : Theme.textSecondary
-                font.italic: peek.redacted
+                size: peek.otp !== "" ? Theme.tTitle3 : 12
+                weight: peek.otp !== "" ? Theme.wSemibold : Theme.wRegular
+                font.letterSpacing: peek.otp !== "" ? 1.5 : 0
+                font.features: ({ "tnum": 1 })
+                color: peek.otp !== "" ? Theme.textPrimary : peek.redacted ? Theme.textTertiary : Theme.textSecondary
+                font.italic: peek.redacted && peek.otp === ""
             }
             Label {
                 visible: !!peek.item && (!!peek.item.body || peek.redacted) && peek.expanded && !peek.hiddenOpen
@@ -239,6 +244,18 @@ Item {
                 id: openArea
                 anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                 onClicked: peek.openItem()
+            }
+        }
+        Rectangle {
+            visible: peek.otp !== ""
+            height: 28; radius: 14
+            width: copyLbl.implicitWidth + 22
+            color: copyArea.containsMouse ? Qt.alpha(Theme.accent, 0.4) : Qt.alpha(Theme.accent, 0.25)
+            Label { id: copyLbl; anchors.centerIn: parent; text: "Copy code"; size: 12; weight: Theme.wMedium }
+            MouseArea {
+                id: copyArea
+                anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                onClicked: Notifs.copyCode(peek.item)
             }
         }
         Rectangle {

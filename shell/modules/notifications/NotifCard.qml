@@ -456,6 +456,8 @@ Item {
                 color: Theme.textSecondary
                 font.italic: Notifs.bodyRedacted(card.item) && !card.engaged
             }
+            // A one-time code: the hero, with Copy.
+            OtpChip { item: card.item; width: parent.width }
 
             Row {
                 visible: card.item.status !== ""
