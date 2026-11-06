@@ -6,6 +6,7 @@
 //   qs ipc -p <shell> call test agents   N WAITING          (N agents working, WAITING of them waiting)
 //   qs ipc -p <shell> call test timer    SECONDS LABEL
 //   qs ipc -p <shell> call test clear                       (back to the real state)
+//   qs ipc -p <shell> call test collect                     (run the JS garbage collector)
 //   qs ipc -p <shell> call test gallery  [on|off]           (the design system on one sheet; no keyboard)
 //   qs ipc -p <shell> call test settings N                  (the Settings panel on page N, no keyboard; -1 closes)
 //   qs ipc -p <shell> call test compile  modules/x/Y.qml    (compiles it, makes nothing: "ok" or the error)
@@ -57,6 +58,8 @@ Scope {
         function gallery(state: string): void { galleryLoader.active = state !== "off"; }
         function settings(page: int): void { hook.settingsPage = page; settingsLoader.active = page >= 0; }
         function timer(seconds: int, label: string): void { Timers.start(seconds, label); }
+        // Memory: run the JS garbage collector now (for measuring what it frees).
+        function collect(): void { gc(); }
         function clear(): void {
             Alerts.active = [];
             Moments.now = null;
