@@ -559,7 +559,10 @@ Scope {
 
         function present(screenName, hold) {
             linger.interval = hold || 1600;
-            const s = Quickshell.screens.find(x => x.name === screenName) || shownScreen;
+            // Never a screen that's gone (unplugged, DPMS): the focused one, or any.
+            const s = Quickshell.screens.find(x => x.name === screenName)
+                || (shownScreen && Quickshell.screens.indexOf(shownScreen) >= 0 ? shownScreen : null)
+                || Screens.focused || Quickshell.screens[0];
             if (mapped && s !== shownScreen) {
                 // Moving a mapped layer surface recreates it; restart cleanly.
                 enter.stop(); leave.stop();

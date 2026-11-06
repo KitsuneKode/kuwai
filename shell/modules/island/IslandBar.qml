@@ -234,13 +234,13 @@ Scope {
             // Expanded, recent background work from the assistant gets a row at the bottom.
             readonly property size hoverSize: Qt.size(720, 148 + (OllamaService.recentWork.length || OllamaService.bgWorking ? 38 : 0))
             // A warning grows the island too (below panels and hover in priority).
-            readonly property bool bannerHere: Alerts.banner !== null && screenName === Screens.focusedName && !panelHere && !grown
+            readonly property bool bannerHere: Alerts.banner !== null && screenName === (Screens.present(Alerts.bannerOn) ? Alerts.bannerOn : Screens.focusedName) && !panelHere && !grown
             Spring { id: bv; tier: win.bannerHere ? win.grow : win.shrink; epsilon: 0.001; target: win.bannerHere ? 1 : 0 }
             // A notification that matters peeks the same way (below a warning).
-            readonly property bool peekHere: Notifs.peek !== null && !Notifs.peek.discard && screenName === Screens.focusedName && !panelHere && !grown && !bannerHere
+            readonly property bool peekHere: Notifs.peek !== null && !Notifs.peek.discard && screenName === (Screens.present(Notifs.peekOn) ? Notifs.peekOn : Screens.focusedName) && !panelHere && !grown && !bannerHere
             Spring { id: nv; tier: win.peekHere ? win.grow : win.shrink; epsilon: 0.001; target: win.peekHere ? 1 : 0 }
             // A device connecting or going (Moments.card), below both.
-            readonly property bool deviceHere: Moments.card !== null && screenName === Screens.focusedName && !panelHere && !grown && !bannerHere && !peekHere
+            readonly property bool deviceHere: Moments.card !== null && screenName === (Screens.present(Moments.cardOn) ? Moments.cardOn : Screens.focusedName) && !panelHere && !grown && !bannerHere && !peekHere
             Spring { id: dv; tier: win.deviceHere ? win.grow : win.shrink; epsilon: 0.001; target: win.deviceHere ? 1 : 0 }
 
             // ── Pushing a card back ──────────────────────────────────────

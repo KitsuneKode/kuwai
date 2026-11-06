@@ -259,6 +259,10 @@ Singleton {
     }
 
     property var peek: null
+    // The screen it came up on: it stays there while it shows (it jumped
+    // to the other monitor mid-read when focus moved).
+    property string peekOn: ""
+    onPeekChanged: if (!peek) peekOn = ""; else if (!peekOn || !Screens.present(peekOn)) peekOn = Screens.focusedName
     property var peekQueue: []
     property bool peekHeld: false
     property bool peekExpanded: false
@@ -327,6 +331,7 @@ Singleton {
         if (centerOpen) setCenter(false, "pointer");
         if (peek && peek !== item) peekQueue = [peek, ...peekQueue.filter(i => i !== item)].slice(0, 2);
         peek = item;                 // (resets peekExpanded and the timer: set them after)
+        peekOn = Screens.focusedName;   // read where you asked, not where the last one was
         peekExpanded = true;
         peekFor.interval = 45000;
         if (!peekHeld) peekFor.restart();
@@ -575,7 +580,9 @@ Singleton {
             const t = ["agents", "sound", "controls"].includes(tab) ? tab : "notifications";
             if (centerOpen && centerTab !== t && s === centerScreen) { centerTab = t; return; }
             if (centerOpen && s !== centerScreen) {           // open elsewhere: bring it here
-                centerTab = t; centerScreen = s; setCenter(false, via); Qt.callLater(() => setCenter(true, via)); return;
+                // (closedAt cleared: the reopen fell inside the click guard and was
+                // dropped, so the center closed on one screen and never came up here)
+                centerTab = t; centerScreen = s; setCenter(false, via); closedAt = 0; Qt.callLater(() => setCenter(true, via)); return;
             }
             centerTab = t;
             if (!centerOpen) centerScreen = s;

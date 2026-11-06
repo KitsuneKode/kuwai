@@ -19,6 +19,10 @@ Singleton {
 
     property var active: []              // [{ id, level: "warn"|"crit", glyph, title, detail }]
     property var banner: null            // the one being shown big right now
+    // The screen it came up on: it stays there while it shows (it jumped
+    // to the other monitor mid-read when focus moved).
+    property string bannerOn: ""
+    onBannerChanged: bannerOn = banner ? Screens.focusedName : ""
     property var shown: ({})             // id -> level last announced
     property int hot: 0                  // consecutive hot CPU samples
 

@@ -87,11 +87,14 @@ Singleton {
     }
     // (Guarded: while a hot reload tears the old copy down, Hyprland can be
     // briefly unavailable.)
+    // Only a screen that still exists: after unplugging (or DPMS dropping)
+    // the focused monitor, its name stayed, and no screen counted as focused.
+    function present(n) { return !!n && Quickshell.screens.some(s => s.name === n); }
     readonly property string focusedName: {
-        if (tracked) return tracked;
+        if (present(tracked)) return tracked;
         const m = typeof Hyprland !== "undefined" && Hyprland ? Hyprland.focusedMonitor : null;
-        if (m && m.name) return m.name;
-        if (probed) return probed;
+        if (m && present(m.name)) return m.name;
+        if (present(probed)) return probed;
         const first = Quickshell.screens.length ? Quickshell.screens[0] : null;
         return first && first.name ? first.name : "";
     }
