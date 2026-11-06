@@ -16,6 +16,28 @@ they land. User wants: extremely secure, premium, tasteful, fast, Apple-grade.
 - Hyprland reaps children: no `os.execute` exit codes inside kuwai; no popen in hot paths.
 - Timers in kuwai: create via `K.defer` (verify-config crash otherwise).
 
+## NOW (2026-11-06) — state, monitors, consistency
+
+Done today: device cards for jack/USB, bell list as island panel "notifs",
+pull down to read, readable() markdown, calm stepping ring (Theme.stepMs),
+update watchdog race (a finished run read as "stopped"), screensaver film on
+every screen, Bluetooth menu keepOpen + island panel "bluetooth", LiquidRim.
+
+Open:
+- [ ] Audits running: Grok 4.7 (state reconciliation), Gemini 3.8 Flash
+      (multi-monitor), Composer 2.5 (clipboard, links, markdown). Fix what verifies.
+- [ ] Notification center adopts the island look (LiquidRim, row style of NotifsPanel).
+- [ ] Usage limits in the notch: review the delegate's worktree branch, merge.
+- [ ] Login/lock: user runs the GRUB line (docs/manual), then a seamless greeter→shell handoff.
+- [ ] **Design consistency (token migration):** every raw size/duration/hex
+      onto Theme tokens (bin/rice-tokens ratchet: sizes 62, durations 131,
+      hex 70 → 0); one row style (NotifsPanel/T3Panel/BluetoothPanel: 46 px,
+      Theme.r2, 0.07 hover) used by the center, launcher, clipboard; one
+      header style (tTitle3 semibold + right meta in tFootnote tertiary); one
+      empty state (glyph + tSub line); one button set (PillButton, RestMark).
+      Migrate file by file, lowest-traffic first, screenshot before/after.
+- [ ] Long uptime: read ~/.local/state/rice/memlog.tsv after 2+ days; find what grows.
+
 ## NOW (2026-11-05 night) — road to 9.5, see docs/design/STATES.md
 Done: live shell runs from `stable` (349 MB, was 652 from dev reloads); shared
 components/Popover (bell quick list on it); AssistantOverlay built only while
