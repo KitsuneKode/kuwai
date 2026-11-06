@@ -260,11 +260,19 @@ Scope {
                         x: win.width * 0.07; y: win.height * 0.62
                         Behavior on x { NumberAnimation { duration: 6000; easing.type: Easing.InOutSine } }
                         Behavior on y { NumberAnimation { duration: 6000; easing.type: Easing.InOutSine } }
+                        // Each screen on its own rhythm (45–75 s, new each time), so
+                        // two monitors don't move in lockstep; always fully inside a
+                        // 6 % margin (it could be placed with its date past the edge).
                         Timer {
-                            interval: 60000; repeat: true; running: root.showing && !Theme.reduceMotion
+                            interval: 45000 + Math.random() * 30000; repeat: true
+                            running: root.showing && !Theme.reduceMotion
                             onTriggered: {
-                                face.x = win.width * (0.05 + Math.random() * 0.5);
-                                face.y = win.height * (0.08 + Math.random() * 0.6);
+                                const m = 0.06;
+                                const maxX = Math.max(win.width * m, win.width * (1 - m) - face.width);
+                                const maxY = Math.max(win.height * m, win.height * (1 - m) - face.height);
+                                face.x = win.width * m + Math.random() * (maxX - win.width * m);
+                                face.y = win.height * m + Math.random() * (maxY - win.height * m);
+                                interval = 45000 + Math.random() * 30000;
                             }
                         }
                     }
