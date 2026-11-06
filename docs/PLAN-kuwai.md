@@ -16,6 +16,15 @@ they land. User wants: extremely secure, premium, tasteful, fast, Apple-grade.
 - Hyprland reaps children: no `os.execute` exit codes inside kuwai; no popen in hot paths.
 - Timers in kuwai: create via `K.defer` (verify-config crash otherwise).
 
+## DONE 2026-11-07 (night)
+Read & Reply panel (whole email, composer, Ctrl+Enter); email text keeps its
+shape; usage cards by account (Session, then Weekly) with edge fade; hover
+ring pairs per account (session outer, weekly inner) taking turns; T3 folds
+while music owns the sides; no T3 mark over moments; rim follows the corners;
+Settings scrolls and Tab walks controls; promote auto-rollback (4 s);
+Wellbeing (breaks, bedtime) with settings; pomodoro colours and round dots;
+welcome back by time of day after hours; swipe to clear on the lock screen.
+
 ## STATUS (2026-11-06 late) — ratings and what gates 9.5
 
 Notch rest 9.3 · hover 9.0 · Usage 9.3 · Bluetooth 9.0 · bell list 8.8 ·
