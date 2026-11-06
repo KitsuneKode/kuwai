@@ -62,18 +62,32 @@ FocusScope {
         // and inside it a fixed order, shortest window first (Session, then
         // Weekly). Sorting every row by urgency across accounts read as one
         // shuffled table (Weekly·A, Session·B, Weekly·B, Session·A).
-        const order = (a, b) => ((a.window.durationMins || 1e9) - (b.window.durationMins || 1e9)) || a.label.localeCompare(b.label);
+        // Limits first (Session, Weekly, Overall), then each pool together
+        // (Gemini 5-hour, Gemini weekly, then Claude & GPT), shortest first.
+        const order = (a, b) => Limits.poolOf(a.window).localeCompare(Limits.poolOf(b.window))
+            || ((a.window.durationMins || 1e9) - (b.window.durationMins || 1e9)) || a.label.localeCompare(b.label);
         return Object.values(by).map(g => {
             const rows = Object.values(g.rows);
             const accts = {};
             for (const row of rows) (accts[row.acct] = accts[row.acct] || []).push(row);
             const sections = Object.keys(accts).sort((a, b) => a.length - b.length || a.localeCompare(b))
-                .map(name => ({ name: name, rows: accts[name].sort(order) }));
-            return Object.assign(g, { accounts: Object.keys(g.accounts).length, rows: rows, sections: sections });
+                .map(name => ({ name: name, rows: accts[name].sort(order), state: Limits.stateOf(accts[name]) }));
+            // The agent's state: out only when every account is out (a limit
+            // spent, or every pool); one empty pool or one spent account of
+            // several is "partly". (One empty pool used to mark it all Out.)
+            const outs = sections.filter(x => x.state.out);
+            const out = outs.length === sections.length;
+            const partial = !out && (outs.length > 0 || sections.some(x => x.state.partial));
+            const back = Math.min(...rows.filter(x => x.level === "exhausted" && x.window.resetsAt).map(x => x.window.resetsAt), Infinity);
+            const why = outs.length && sections.length > 1 ? outs.length + " of " + sections.length + " accounts out"
+                : (sections.find(x => x.state.partial) || { state: { pool: "" } }).state.pool + " out";
+            return Object.assign(g, { accounts: Object.keys(g.accounts).length, rows: rows, sections: sections,
+                                      rank: out ? 2 : partial ? 1.5 : g.rank >= 1 ? 1 : 0, back: back, why: why });
         }).sort((a, b) => (b.claude - a.claude) || (b.rank - a.rank) || (b.top - a.top) || a.name.localeCompare(b.name));
     }
     readonly property var shown: tab === "all" ? groups : groups.filter(g => g.id === tab)
     readonly property int outCount: groups.filter(g => g.rank === 2).length
+    readonly property int partCount: groups.filter(g => g.rank === 1.5).length
     readonly property real firstBack: Math.min(...groups.filter(g => g.rank === 2).map(g => g.back), Infinity)
 
     // "Tue 21:00" a day or more away, else "21:00".
@@ -100,8 +114,8 @@ FocusScope {
                 anchors { right: parent.right; verticalCenter: parent.verticalCenter }
                 visible: Limits.loaded
                 text: usage.outCount
-                    ? usage.outCount + " out" + (usage.backIn(usage.firstBack) ? " · first back in " + usage.backIn(usage.firstBack) : "")
-                    : "All agents have room"
+                    ? usage.outCount + " out" + (usage.partCount ? " · " + usage.partCount + " partly" : "") + (usage.backIn(usage.firstBack) ? " · first back in " + usage.backIn(usage.firstBack) : "")
+                    : usage.partCount ? usage.partCount + " partly out · the rest have room" : "All agents have room"
                 size: Theme.tFootnote; weight: Theme.wSemibold
                 color: usage.outCount ? Theme.orange : Theme.textTertiary
                 font.features: ({ "tnum": 1 })
@@ -145,10 +159,10 @@ FocusScope {
                         }
                     }
                     Rectangle {
-                        visible: tb.modelData.rank === 2 && !tb.on
+                        visible: tb.modelData.rank >= 1.5 && !tb.on
                         anchors { right: parent.right; top: parent.top; rightMargin: 5; topMargin: 4 }
                         width: 6; height: 6; radius: 3
-                        color: Theme.red
+                        color: tb.modelData.rank === 2 ? Theme.red : Theme.orange
                     }
                     MouseArea {
                         id: tbArea
@@ -285,14 +299,15 @@ FocusScope {
                                     height: 20
                                     width: status.implicitWidth + 16
                                     radius: 10
-                                    color: Qt.alpha(usage.tone(card.g.rank === 2 ? "exhausted" : card.g.rank === 1 ? "approaching" : ""), 0.14)
+                                    color: Qt.alpha(usage.tone(card.g.rank === 2 ? "exhausted" : card.g.rank >= 1 ? "approaching" : ""), 0.14)
                                     Label {
                                         id: status
                                         anchors.centerIn: parent
                                         text: card.g.rank === 2 ? "Out" + (usage.backIn(card.g.back) ? " · back in " + usage.backIn(card.g.back) : "")
+                                            : card.g.rank === 1.5 ? card.g.why
                                             : card.g.rank === 1 ? Math.round(card.g.top * 100) + "%" : "OK"
                                         size: Theme.tCaption; weight: Theme.wBold
-                                        color: usage.tone(card.g.rank === 2 ? "exhausted" : card.g.rank === 1 ? "approaching" : "")
+                                        color: usage.tone(card.g.rank === 2 ? "exhausted" : card.g.rank >= 1 ? "approaching" : "")
                                         font.features: ({ "tnum": 1 })
                                     }
                                 }

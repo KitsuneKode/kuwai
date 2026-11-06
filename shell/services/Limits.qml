@@ -114,6 +114,28 @@ Singleton {
     //  back soon: an out agent resets within 15 min → its logo and a ring
     //    draining to the reset (backSoon);
     //  back: the reset moment (scan), the ring sweeps full in green.
+    // Pools vs limits. Some agents meter model families apart (Cursor's
+    // "Cursor Models" / "Other Models", Antigravity's "Gemini" and "Claude &
+    // GPT"): one empty pool isn't the agent being out. A limit (Session,
+    // Weekly, Overall) caps everything.
+    function poolOf(w) {
+        const l = String(w.label || "");
+        const i = l.indexOf(" · ");
+        if (i > 0) return l.slice(0, i);                    // "Gemini · Weekly" → "Gemini"
+        return /models?\b/i.test(l) ? l : "";               // "Other Models"
+    }
+    // An agent's state from its windows ([{ window, level }]):
+    //   { out, partial, near, pool }   pool: the empty pool's name when partial.
+    function stateOf(list) {
+        const gates = list.filter(x => !poolOf(x.window)), pools = list.filter(x => !!poolOf(x.window));
+        const gateOut = gates.some(x => x.level === "exhausted");
+        const poolsOut = pools.filter(x => x.level === "exhausted");
+        const allPoolsOut = pools.length > 0 && poolsOut.length === new Set(pools.map(x => poolOf(x.window))).size
+            && new Set(poolsOut.map(x => poolOf(x.window))).size === new Set(pools.map(x => poolOf(x.window))).size;
+        const out = gateOut || (gates.length === 0 && allPoolsOut);
+        return { out: out, partial: !out && poolsOut.length > 0, near: list.some(x => x.level === "approaching"),
+                 pool: poolsOut.length ? poolOf(poolsOut[0].window) : "" };
+    }
     readonly property int soonMs: 15 * 60000
     // The tab the Usage panel opens on (an agent's id), set by whoever opens
     // it; the panel takes it once.
@@ -144,9 +166,13 @@ Singleton {
                                name: providerShort(x.provider), session: null, weekly: null };
             }
             const d = x.window.durationMins || 0;
-            const w = { left: 1 - x.used, out: x.level === "exhausted", near: x.level === "approaching", window: x.window, label: windowLabel(x.window), d: d };
-            if (!e.session || d < e.session.d) e.session = w;
-            if (!e.weekly || d > e.weekly.d) e.weekly = w;
+            const w = { left: 1 - x.used, out: x.level === "exhausted", near: x.level === "approaching", window: x.window, label: windowLabel(x.window), d: d,
+                        gate: !poolOf(x.window) };
+            // The rings read an account's limits (Session/Weekly/Overall);
+            // its pools only when it has no limit at all.
+            const better = (cur, cand, shorter) => !cur || (cand.gate && !cur.gate) || (cand.gate === cur.gate && (shorter ? cand.d < cur.d : cand.d > cur.d));
+            if (better(e.session, w, true)) e.session = w;
+            if (better(e.weekly, w, false)) e.weekly = w;
         }
         const list = Object.values(by).map(e => {
             if (e.session === e.weekly) e.weekly = null;               // one window only
