@@ -24,8 +24,8 @@ FocusScope {
     // Exactly three rows of cards between the header and the key hints.
     implicitHeight: 66 + 3 * (Math.round(Math.floor((980 - 32 - 330) / 4) * 0.5625) + 40) + 40
 
-    property string mode: Island.themeMode || "themes"      // themes | wallpapers | live
-    readonly property var modes: ["themes", "wallpapers", "live"]
+    property string mode: Island.themeMode || "themes"      // themes | wallpapers | live | saver
+    readonly property var modes: ["themes", "wallpapers", "live", "saver"]
     // Live wallpapers (bin/rice-wall json), with "Off" first: back to the still one.
     property var live: []
     readonly property var liveItems: [{ name: "Off", path: "", thumb: "", off: true, current: !live.some(x => x.current) }].concat(live)
@@ -40,11 +40,40 @@ FocusScope {
             }
         }
     }
+    // Screensavers: Dusk (drawn live), every film in the folder (drop an .mp4
+    // in, it's listed), your live wallpaper, or the still one. ↵ uses it,
+    // P shows it now. Settings → Screensaver has when and after how long.
+    readonly property string saverDir: Quickshell.env("HOME") + "/.local/share/rice/screensavers"
+    property var clips: []
+    Process {
+        id: saverLister
+        running: picker.mode === "saver"
+        command: ["sh", "-c", 'cd "$1" 2>/dev/null && for f in *.mp4; do [ -e "$f" ] && echo "${f%.mp4}"; done', "saver", picker.saverDir]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                picker.clips = text.split("\n").filter(x => x);
+                if (picker.mode === "saver") picker.current = Math.max(0, picker.items.findIndex(x => x.current));
+            }
+        }
+    }
+    function clipName(c) { return ({ "smoke-soft": "Smoke", "stars-lake": "Stars" })[c] || c.replace(/[-_]/g, " ").replace(/^./, x => x.toUpperCase()); }
+    readonly property var saverItems: {
+        const st = Settings.screensaverStyle || "dusk", clip = Settings.screensaverClip || "smoke-soft";
+        const liveThumb = (live.find(x => x.current) || {}).thumb || "";
+        return [{ name: "Dusk", style: "dusk", thumb: saverDir + "/dusk.jpg", current: st === "dusk" }]
+            .concat(clips.map(c => ({ name: "Night · " + clipName(c), style: "night", clip: c, thumb: saverDir + "/" + c + ".jpg", current: st === "night" && clip === c })))
+            .concat([{ name: "Live wallpaper", style: "live", thumb: liveThumb, current: st === "live" },
+                     { name: "Still wallpaper", style: "still", thumb: Quickshell.env("HOME") + "/.cache/hyde/wall.set", current: st === "still" }]);
+    }
+    function previewSaver() { Island.close(); saverGo.restart(); }
+    Timer { id: saverGo; interval: 350; onTriggered: Quickshell.execDetached([Paths.bin + "/rice", "screensaver", "start"]) }
+
     property var info: ({ current: "", themes: [], wallpapers: [] })
     property bool loading: true
     readonly property string bin: Paths.bin + "/rice-themes"
     readonly property var favs: Settings.favoriteThemes || []
-    readonly property var items: mode === "live" ? liveItems
+    readonly property var items: mode === "saver" ? saverItems
+        : mode === "live" ? liveItems
         : mode === "themes"
         ? info.themes.slice().sort((a, b) => (favs.includes(b.name) - favs.includes(a.name)) || a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
         : info.wallpapers
@@ -78,6 +107,11 @@ FocusScope {
         const it = items[i];
         if (!it) return;
         applied = it.name;
+        if (mode === "saver") {
+            Settings.set("screensaverStyle", it.style);
+            if (it.clip) Settings.set("screensaverClip", it.clip);
+            return;
+        }
         if (mode === "live") {
             Quickshell.execDetached(it.off ? [Paths.bin + "/rice-wall", "off"] : [Paths.bin + "/rice-wall", "play", it.path]);
             relive.restart();
@@ -105,7 +139,8 @@ FocusScope {
         else if (k === Qt.Key_Down) current = Math.min(items.length - 1, current + cols);
         else if (k === Qt.Key_Up) current = Math.max(0, current - cols);
         else if (k === Qt.Key_Return || k === Qt.Key_Enter) apply(current);
-        else if (k === Qt.Key_Tab || k === Qt.Key_Backtab) mode = modes[(modes.indexOf(mode) + (k === Qt.Key_Backtab ? 2 : 1)) % 3];
+        else if (k === Qt.Key_Tab || k === Qt.Key_Backtab) mode = modes[(modes.indexOf(mode) + (k === Qt.Key_Backtab ? modes.length - 1 : 1)) % modes.length];
+        else if (k === Qt.Key_P && mode === "saver") { previewSaver(); return; }
         else if (k === Qt.Key_F) toggleFav(current);
         else return;
         grid.positionViewAtIndex(current, GridView.Contain);
@@ -118,13 +153,15 @@ FocusScope {
         width: parent.width - 44; height: 36
         Segmented {
             anchors.verticalCenter: parent.verticalCenter
-            options: [{ id: "themes", label: "Themes" }, { id: "wallpapers", label: "Wallpapers" }, { id: "live", label: "Live" }]
+            options: [{ id: "themes", label: "Themes" }, { id: "wallpapers", label: "Wallpapers" }, { id: "live", label: "Live" }, { id: "saver", label: "Screensaver" }]
             current: picker.mode
             onPicked: id => picker.mode = id
         }
         Label {
             anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-            text: picker.mode === "live" ? "Plays behind your windows; pauses when they cover it" : picker.loading ? "Reading themes…" : (picker.info.current || "").replace(/-/g, " ")
+            text: picker.mode === "saver" ? (Settings.screensaverWhen === "off" ? "Off · Settings → Screensaver"
+                    : (Settings.screensaverWhen === "always" ? "When idle" : "With Caffeine on") + " · after " + (Settings.screensaverMins || 3) + " min · P to see it")
+                : picker.mode === "live" ? "Plays behind your windows; pauses when they cover it" : picker.loading ? "Reading themes…" : (picker.info.current || "").replace(/-/g, " ")
             size: 13; weight: Theme.wMedium; color: Theme.textSecondary
         }
     }
@@ -206,7 +243,8 @@ FocusScope {
                 Label { y: 22; text: picker.mode === "themes" ? "Theme palette" : "Wallpaper colours"; size: 11; color: Theme.textTertiary }
             }
             Label { text: preview.it && preview.it.current ? "In use now" : picker.mode === "live" && preview.it && preview.it.off ? "Press ↵ to turn the live wallpaper off" : "Press ↵ or click to apply"; size: 12; color: Theme.textSecondary }
-            Label { visible: picker.mode === "live"; width: parent.width; wrapMode: Text.Wrap; text: "Add your own: rice-wall add FILE.mp4 \"name\""; size: 11; color: Theme.textTertiary }
+            Label { visible: picker.mode === "live"; width: parent.width; wrapMode: Text.Wrap; text: "Add your own: rice-wall add FILE.mp4 \"name\" · guide: docs/manual/looks.md"; size: 11; color: Theme.textTertiary }
+            Label { visible: picker.mode === "saver"; width: parent.width; wrapMode: Text.Wrap; text: "Add your own: rice saver add FILE.mp4 · guide: docs/manual/looks.md"; size: 11; color: Theme.textTertiary }
         }
     }
 

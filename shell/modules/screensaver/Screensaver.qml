@@ -71,7 +71,10 @@ Scope {
     Process {
         id: filmProc
         // A missing file never starts it (test -r).
-        command: ["sh", "-c", 'test -r "$KUWAI_SAVER_FILE" && exec qs -p "$1"', "rice-saver", Quickshell.shellDir + "/../shell-saver"]
+        // pdeathsig: the film dies with the shell. Without it, a shell killed
+        // while the screensaver showed (a restart, `rice promote`) left the
+        // film orphaned, covering a monitor for hours; input couldn't reach it.
+        command: ["sh", "-c", 'test -r "$KUWAI_SAVER_FILE" && exec setpriv --pdeathsig KILL qs -p "$1"', "rice-saver", Quickshell.shellDir + "/../shell-saver"]
         environment: ({ KUWAI_SAVER_FILE: root.film, KUWAI_SAVER_SCREEN: root.mainScreen })
         // The shell is the only one that ends it (SIGKILL, filmUp false), so
         // any exit while the film should be up is a failure: Dusk instead.
@@ -84,6 +87,9 @@ Scope {
         else if (filmProc.running) filmProc.signal(9);
     }
     Component.onDestruction: if (filmProc.running) filmProc.signal(9)
+    // Backstop: a film left over from an earlier shell (before pdeathsig, or
+    // however it happened) goes when this one starts.
+    Component.onCompleted: Quickshell.execDetached(["pkill", "-9", "-f", "^qs -p .*/shell-saver$"])
 
     function dismiss() { forced = false; }
     IpcHandler {

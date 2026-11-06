@@ -19,6 +19,7 @@
 #   rice alarm 7:30 [label]   an alarm (wakes the laptop with system/install; list · clear · stop · snooze)
 #   rice note buy milk        a line in ~/Notes/inbox.md (no text: open it)
 #   rice screensaver          show the screensaver now (it also comes on idle while Caffeine is on)
+#   rice saver add FILE [name]  make a video a screensaver film (seamless loop + thumbnail); list · remove
 #   rice set KEY VALUE        change a setting (~/.config/rice/settings.json)
 #   rice get [KEY]            print one setting, or all of them
 #   rice channel [stable|dev] run from the stable copy (~/.local/share/kuwai) or the repo
@@ -218,6 +219,30 @@ case ${1:-} in
         fi ;;
     fade)          ipc fade "${2:-start}" >/dev/null 2>&1 ;;   # (hypridle)
     screensaver)   ipc screensaver "${2:-start}" ;;   # start it now (any input dismisses) · stop
+    saver)
+        # Screensaver films: ~/.local/share/rice/screensavers/NAME.mp4 (+ .jpg).
+        # Themes → Screensaver lists every film there; this makes one well:
+        # half speed, then reversed, so the loop has no seam; a little darker;
+        # 24 fps, ~3–7 Mbit/s (cheap to decode); a thumbnail beside it.
+        dir="${XDG_DATA_HOME:-$HOME/.local/share}/rice/screensavers"
+        case ${2:-} in
+            add)
+                src=${3:-}; [ -f "$src" ] || { echo "usage: rice saver add FILE [name]" >&2; exit 2; }
+                name=${4:-$(basename "${src%.*}")}; name=$(printf '%s' "$name" | tr 'A-Z ' 'a-z-' | tr -cd 'a-z0-9-')
+                [ -n "$name" ] || { echo "rice: give it a name (letters, digits, -)" >&2; exit 2; }
+                mkdir -p "$dir"
+                echo "making $dir/$name.mp4 (a seamless half-speed loop)…"
+                ffmpeg -nostdin -v error -y -i "$src" -filter_complex \
+                    "[0:v]scale='min(2560,iw)':-2,setpts=2.0*PTS,fps=24,split[a][b];[b]reverse[r];[a][r]concat=n=2:v=1,eq=brightness=-0.03:saturation=0.9,format=yuv420p[v]" \
+                    -map "[v]" -an -c:v libx264 -preset slow -crf 23 -maxrate 7M -bufsize 14M -g 48 -movflags +faststart "$dir/$name.mp4" \
+                    && ffmpeg -nostdin -v error -y -ss 4 -i "$dir/$name.mp4" -frames:v 1 -vf scale=480:-2 -q:v 3 "$dir/$name.jpg" \
+                    && echo "✓ $name: pick it in Themes → Screensaver (or: rice set screensaverClip $name; rice set screensaverStyle night)" ;;
+            remove)
+                [ -n "${3:-}" ] && rm -i -- "$dir/${3}.mp4" "$dir/${3}.jpg" ;;
+            ""|list)
+                for f in "$dir"/*.mp4; do [ -e "$f" ] && basename "${f%.mp4}"; done ;;
+            *) echo "usage: rice saver [list|add FILE [name]|remove NAME]" >&2; exit 2 ;;
+        esac ;;
     pomodoro|pomo) ipc timer pomodoro ;;
     remind)
         case "${2:-list}" in
