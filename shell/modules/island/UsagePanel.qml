@@ -25,8 +25,8 @@ FocusScope {
     function isClaude(p) { return /claude/i.test(String(p.driver || p.label || "")); }
 
     property string tab: "all"
-    readonly property var tabs: [{ id: "all", label: "All" }].concat(
-        usage.groups.map(g => ({ id: g.id, label: g.name })))
+    readonly property var tabs: [{ id: "all", label: "All", brand: "" }].concat(
+        usage.groups.map(g => ({ id: g.id, label: g.name, brand: g.brand, rank: g.rank })))
     onTabsChanged: if (!tabs.some(t => t.id === tab)) tab = "all"
 
     Keys.onPressed: e => {
@@ -45,7 +45,7 @@ FocusScope {
         for (const x of Limits.windows) {
             const id = pid(x.provider);
             const g = by[id] || (by[id] = { id: id, p: x.provider, name: Limits.providerShort(x.provider),
-                                            brand: Limits.brandFor(x.provider), claude: isClaude(x.provider),
+                                            brand: Limits.brandFor(x.provider), tint: Limits.tintFor(x.provider), claude: isClaude(x.provider),
                                             accounts: {}, rows: {}, rank: 0, back: Infinity, top: 0 });
             g.accounts[Limits.label(x.account)] = true;
             const k = Limits.windowLabel(x.window) + "|" + Math.round((x.window.resetsAt || 0) / 600000);
@@ -66,6 +66,8 @@ FocusScope {
     readonly property int outCount: groups.filter(g => g.rank === 2).length
     readonly property real firstBack: Math.min(...groups.filter(g => g.rank === 2).map(g => g.back), Infinity)
 
+    // "Tue 21:00" a day or more away, else "21:00".
+    function at(t) { return !t ? "" : t - Limits.now >= 86400000 ? Qt.formatDateTime(new Date(t), Settings.clock24 ? "ddd HH:mm" : "ddd h:mm ap") : Qt.formatTime(new Date(t), Settings.clock24 ? "HH:mm" : "h:mm ap"); }
     function backIn(at) { return at === Infinity || !at ? "" : at <= Limits.now ? "now" : Limits.duration(at - Limits.now); }
     function tone(level) { return level === "exhausted" ? Theme.red : level === "approaching" ? Theme.orange : Theme.green; }
 
@@ -96,12 +98,57 @@ FocusScope {
             }
         }
 
-        Segmented {
+        // Tabs as the agents' logos; the chosen one opens to say its name
+        // (six names didn't fit, and logos are what you scan for). A red dot: out.
+        Row {
             visible: usage.tabs.length > 2
-            width: parent.width
-            options: usage.tabs
-            current: usage.tab
-            onPicked: id => usage.tab = id
+            spacing: 4
+            Repeater {
+                model: usage.tabs
+                delegate: Rectangle {
+                    id: tb
+                    required property var modelData
+                    readonly property bool on: usage.tab === modelData.id
+                    height: 28
+                    width: tbRow.implicitWidth + 20
+                    radius: 14
+                    color: on ? Theme.platter : tbArea.containsMouse ? Theme.platterDim : "transparent"
+                    Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
+                    Behavior on width { NumberAnimation { duration: Theme.reflowMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+                    Row {
+                        id: tbRow
+                        anchors.centerIn: parent
+                        spacing: 6
+                        Image {
+                            visible: tb.modelData.brand !== ""
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 14; height: 14
+                            source: tb.modelData.brand
+                            sourceSize: Qt.size(28, 28)
+                            asynchronous: true
+                        }
+                        Label {
+                            visible: tb.on || tb.modelData.brand === ""
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: tb.modelData.label
+                            size: Theme.tSub; weight: Theme.wSemibold
+                        }
+                    }
+                    Rectangle {
+                        visible: tb.modelData.rank === 2 && !tb.on
+                        anchors { right: parent.right; top: parent.top; rightMargin: 5; topMargin: 4 }
+                        width: 6; height: 6; radius: 3
+                        color: Theme.red
+                    }
+                    MouseArea {
+                        id: tbArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: usage.tab = tb.modelData.id
+                    }
+                }
+            }
         }
 
         // ── Error: on the thing that failed, with Retry beside it ─────────
@@ -173,16 +220,9 @@ FocusScope {
                         border.width: 1
                         border.color: g.rank === 2 ? Qt.alpha(Theme.red, 0.28) : Theme.cardEdge
 
-                        // In with the panel, a beat apart (30–80 ms stagger).
-                        opacity: 0
-                        transform: Translate { id: lift; y: 6 }
-                        Component.onCompleted: enter.start()
-                        ParallelAnimation {
-                            id: enter
-                            PauseAnimation { duration: Math.min(card.index, 5) * Theme.revealStepMs }
-                            NumberAnimation { target: card; property: "opacity"; to: 1; duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
-                            NumberAnimation { target: lift; property: "y"; to: 0; duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
-                        }
+                        // No entrance of its own: the island's morph carries the cards
+                        // in (one entrance per container); only the bars move, filling
+                        // with the morph as the one piece of data worth watching.
 
                         Column {
                             id: inner
@@ -255,6 +295,12 @@ FocusScope {
                                     readonly property var r: modelData
                                     width: inner.width
                                     spacing: 5
+                                    // T3 Code's reading: what's LEFT, in the agent's colour,
+                                    // with a tick where even spending would be.
+                                    readonly property int left: Limits.remaining(w.r.window)
+                                    readonly property int paceAt: Limits.paceLeft(w.r.window)
+                                    readonly property string pace: Limits.pace(w.r.window)
+                                    readonly property bool out: w.r.level === "exhausted"
                                     Item {
                                         width: parent.width
                                         height: 16
@@ -269,37 +315,61 @@ FocusScope {
                                         Label {
                                             id: pc
                                             anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-                                            text: w.r.level === "exhausted" ? "100%" : Math.round(w.r.used * 100) + "%"
+                                            text: w.out ? "Out" : w.left + "% left"
                                             size: Theme.tSub; weight: Theme.wSemibold
-                                            color: w.r.level === "" ? Theme.textPrimary : usage.tone(w.r.level)
+                                            color: w.out ? Theme.red : w.r.level === "approaching" ? Theme.orange : Theme.textPrimary
                                             font.features: ({ "tnum": 1 })
                                         }
                                     }
-                                    // The bar: fills from empty as the card comes in.
-                                    Rectangle {
+                                    // The bar drains as you spend; it fills to what's left as the card comes in.
+                                    Item {
                                         width: parent.width
-                                        height: 4; radius: 2
-                                        color: Theme.track
+                                        height: 8
                                         Rectangle {
-                                            id: fillBar
-                                            height: parent.height; radius: 2
-                                            color: w.r.level === "" ? Theme.textSecondary : usage.tone(w.r.level)
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            width: parent.width; height: 4; radius: 2
+                                            color: w.out ? Qt.alpha(Theme.red, 0.22) : Theme.track
+                                        }
+                                        Rectangle {
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            height: 4; radius: 2
+                                            color: w.r.level === "approaching" ? Theme.orange : card.g.tint
                                             property real k: 0
-                                            width: Math.max(w.r.used > 0 ? 4 : 0, parent.width * Math.min(1, w.r.used) * k)
+                                            width: w.left > 0 ? Math.max(4, parent.width * w.left / 100 * k) : 0
                                             Component.onCompleted: k = 1
                                             Behavior on k {
                                                 enabled: !Theme.reduceMotion
                                                 NumberAnimation { duration: Theme.artMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
                                             }
                                         }
+                                        // Pace: where the bar would be if spending were even across the window.
+                                        Rectangle {
+                                            visible: w.paceAt >= 0 && !w.out
+                                            x: Math.max(1, Math.min(parent.width - 3, parent.width * w.paceAt / 100 - 1))
+                                            width: 2; height: 8; radius: 1
+                                            color: Theme.textPrimary
+                                            opacity: 0.85
+                                        }
                                     }
-                                    Label {
-                                        visible: text !== ""
-                                        readonly property string inS: w.r.window.resetsAt ? Limits.resetsIn(w.r.window) : ""
-                                        text: inS === "now" ? "Resetting" : !inS ? "" : w.r.level === "exhausted" ? "Back in " + inS : "Resets in " + inS
-                                        size: Theme.tCaption
-                                        color: w.r.level === "exhausted" ? Qt.alpha(Theme.red, 0.85) : Theme.textTertiary
-                                        font.features: ({ "tnum": 1 })
+                                    Item {
+                                        width: parent.width
+                                        height: 14
+                                        visible: !!w.r.window.resetsAt || w.pace !== ""
+                                        Label {
+                                            anchors { left: parent.left; verticalCenter: parent.verticalCenter }
+                                            visible: w.pace !== "" && !w.out
+                                            text: w.pace === "ahead" ? "↗ Ahead of pace" : w.pace === "under" ? "↘ Under pace" : "On pace"
+                                            size: Theme.tCaption
+                                            color: w.pace === "ahead" ? Theme.orange : Theme.textTertiary
+                                        }
+                                        Label {
+                                            anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                                            readonly property string inS: w.r.window.resetsAt ? Limits.resetsIn(w.r.window) : ""
+                                            text: inS === "now" ? "Resetting" : !inS ? "" : (w.out ? "Back " : "Resets ") + usage.at(w.r.window.resetsAt) + " · in " + inS
+                                            size: Theme.tCaption
+                                            color: w.out ? Qt.alpha(Theme.red, 0.85) : Theme.textTertiary
+                                            font.features: ({ "tnum": 1 })
+                                        }
                                     }
                                 }
                             }

@@ -34,6 +34,10 @@ Singleton {
     readonly property color card: Qt.rgba(1, 1, 1, 0.05)
     readonly property color cardEdge: Qt.rgba(1, 1, 1, 0.05)
     readonly property color chip: Qt.rgba(0.11, 0.11, 0.12, 1)   // an opaque disc on black (stacked logos)
+    // Agents' own colours (T3 Code's usage palette), for their bars and discs.
+    readonly property var brandTint: ({ claude: "#d97757", antigravity: "#8c7bd1", opencode: "#5b9bbd",
+                                        cursor: "#8b8b8b", openai: "#e8e8ea", grok: "#b8b8bc", googlegemini: "#7aa2f7",
+                                        kimi: "#6d8cff", qwen: "#7f6cf0" })
     // Tinted surfaces (Chip, Notice): the tone at these strengths.
     readonly property real tintChip: 0.16
     readonly property real tintNotice: 0.12
@@ -259,6 +263,12 @@ Singleton {
     readonly property int artMs: 400            // album-art colour following a new track
     readonly property int spinMs: 1100          // one turn of a working spinner (calm, not busy)
     readonly property int stepMs: 600           // one step of a working ring (glides, then rests ~2.4 s)
+    // The one beat every working ring on the notch steps to: T3's and an
+    // update's moved on their own timers, so two rings side by side ticked
+    // out of phase (a queue, not one rhythm). One wake every 3 s.
+    readonly property int stepEvery: 3000
+    property int step: 0
+    property Timer stepClock: Timer { interval: root.stepEvery; repeat: true; running: !root.reduceMotion; onTriggered: root.step++ }
     readonly property int quickMs: 120          // a quick fade in place: tooltips, hints, a caret
     readonly property int microMs: 160          // a small state change in place: an icon's fill, a fade, a press
     readonly property int pulseMs: 520          // half a quick pulse (InOutSine there and back)

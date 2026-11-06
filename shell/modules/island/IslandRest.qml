@@ -239,19 +239,22 @@ Item {
                 Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.OutCubic } }
                 Row {
                     anchors.verticalCenter: parent.verticalCenter
-                    spacing: -5                       // overlapped, each on a black ring
+                    spacing: -6                       // overlapped; each cut out of the next by a black ring
                     Repeater {
                         model: ScriptModel { values: lim.shown; objectProp: "brand" }
                         delegate: Rectangle {
                             required property var modelData
                             required property int index
                             z: 10 - index                    // the soonest on top
-                            width: 18; height: 18; radius: 9
-                            color: Theme.chip
-                            border.width: 1.5; border.color: "black"
+                            // Its own colour, faintly (Claude warm, Antigravity violet), so
+                            // the discs read as different agents, not grey buttons.
+                            readonly property color tint: Theme.brandTint[String(modelData.brand).replace(/^.*\//, "").replace(/\.svg$/, "")] || Theme.textPrimary
+                            width: 20; height: 20; radius: 10
+                            color: Qt.tint(Theme.chip, Qt.alpha(tint, 0.22))
+                            border.width: 2; border.color: "black"
                             Image {
                                 anchors.centerIn: parent
-                                width: 11; height: 11
+                                width: 10; height: 10
                                 source: parent.modelData.brand
                                 sourceSize: Qt.size(22, 22)
                                 asynchronous: true

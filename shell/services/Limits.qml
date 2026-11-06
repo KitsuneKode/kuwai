@@ -91,6 +91,11 @@ Singleton {
     }
     // A provider's brand mark (shell/assets/brands), "" for none.
     readonly property string brandDir: Qt.resolvedUrl("../assets/brands")
+    // The agent's colour (Theme.brandTint), the text colour when unknown.
+    function tintFor(p) {
+        const b = brandFor(p).replace(/^.*\//, "").replace(/\.svg$/, "");
+        return Theme.brandTint[b] || Theme.textPrimary;
+    }
     function brandFor(p) {
         const n = String((p && (p.driver || p.label)) || "").toLowerCase();
         const f = /claude/.test(n) ? "claude" : /codex|openai|gpt/.test(n) ? "openai" : /cursor/.test(n) ? "cursor"

@@ -103,15 +103,14 @@ Item {
                 // still (the notch redraws only while it moves: ~1/5 of the
                 // time; a continuous spin cost 15 % CPU at 200 Hz). A bigger
                 // step when the count changes.
-                Behavior on rotation { NumberAnimation { duration: Theme.stepMs; easing.type: Easing.InOutCubic } }
-                Timer {
-                    interval: 3000; repeat: true
-                    running: arc.visible && mark.visible && !Theme.reduceMotion
-                    onTriggered: arc.rotation += 120
-                }
+                // On the shared beat (Theme.step), so every ring on the notch
+                // moves together; a count change adds a bigger step of its own.
+                property int bump: 0
+                rotation: Theme.step * 120 + bump * 240     // (no wrap: a modulo spun it backwards at the wrap)
+                Behavior on rotation { enabled: arc.visible; NumberAnimation { duration: Theme.stepMs; easing.type: Easing.InOutCubic } }
                 Connections {
                     target: mark
-                    function onValueChanged() { if (arc.visible && !Theme.reduceMotion) arc.rotation += 240; }
+                    function onValueChanged() { if (arc.visible && !Theme.reduceMotion) arc.bump++; }
                 }
             }
             Label {
