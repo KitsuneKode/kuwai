@@ -331,8 +331,11 @@ Item {
     Row {
         visible: !hover.media
         anchors.horizontalCenter: parent.horizontalCenter
+        // With agents beside the machine: tighter, and nudged left of the
+        // status column (Antigravity's ring ran into the update chip).
+        anchors.horizontalCenterOffset: hover.agentsHere ? -36 : 0
         y: 64
-        spacing: 22
+        spacing: hover.agentsHere ? 14 : 22
         StatRing {
             value: SystemStats.cpu; label: "CPU"; size: 40
             HoverHandler { id: h1 }
