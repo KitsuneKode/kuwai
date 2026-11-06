@@ -49,7 +49,7 @@ Item {
     SequentialAnimation {
         id: bump
         NumberAnimation { target: pill; property: "swell"; to: 1; duration: Theme.microMs; easing.type: Easing.OutCubic }
-        NumberAnimation { target: pill; property: "swell"; to: 0; duration: 520; easing.type: Easing.OutBack; easing.overshoot: 2 }
+        NumberAnimation { target: pill; property: "swell"; to: 0; duration: Theme.pulseMs; easing.type: Easing.OutBack; easing.overshoot: 2 }
     }
 
     // ── The padlock: drawn, so the shackle can move ──────────────────────

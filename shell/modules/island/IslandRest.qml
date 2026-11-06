@@ -429,7 +429,7 @@ Item {
                 }
                 RotationAnimation on rotation {
                     running: rest.activity === "vox" && !Activities.voxListening && !Theme.reduceMotion
-                    loops: Animation.Infinite; from: 0; to: 360; duration: 1100
+                    loops: Animation.Infinite; from: 0; to: 360; duration: Theme.spinMs
                 }
             }
             // A warning that hasn't cleared: its mark, in its colour.

@@ -67,7 +67,7 @@ Item {
     ParallelAnimation {
         id: entering
         SequentialAnimation {
-            PauseAnimation { duration: 80 }
+            PauseAnimation { duration: Theme.hoverMs }
             NumberAnimation { target: card; property: "enter"; to: 1; duration: 300; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
         }
         SequentialAnimation {
@@ -81,19 +81,19 @@ Item {
     }
     SequentialAnimation {
         id: connecting
-        PauseAnimation { duration: 200 }
+        PauseAnimation { duration: Theme.enterMs }
         NumberAnimation { target: card; property: "link"; to: 1; duration: 480; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
         ParallelAnimation {
             NumberAnimation { target: card; property: "ping"; to: 1; duration: 450; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
             NumberAnimation { target: card; property: "settle"; to: 1; duration: 320; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
-            NumberAnimation { target: card; property: "ripple"; to: 1; duration: 520; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
+            NumberAnimation { target: card; property: "ripple"; to: 1; duration: Theme.pulseMs; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
             PropertyAction { target: card; property: "fill"; value: 1 }      // StatRing glides there itself
         }
         ScriptAction { script: if (card.level >= 0) toLevel.restart() }
     }
     SequentialAnimation {
         id: toLevel
-        PauseAnimation { duration: 700 }
+        PauseAnimation { duration: Theme.breatheMs }
         PropertyAction { target: card; property: "levelFill"; value: 0 }
         NumberAnimation { target: card; property: "swap"; to: 1; duration: 220; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
         NumberAnimation { target: card; property: "levelFill"; to: 1; duration: 600; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }

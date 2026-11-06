@@ -82,7 +82,7 @@ Column {
         add: Transition {
             ParallelAnimation {
                 NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 260; easing.type: Easing.OutCubic }
-                NumberAnimation { property: "scale"; from: 1 - 0.08 * stack.move; to: 1; duration: 520; easing.type: Easing.OutBack; easing.overshoot: 1.4 }
+                NumberAnimation { property: "scale"; from: 1 - 0.08 * stack.move; to: 1; duration: Theme.pulseMs; easing.type: Easing.OutBack; easing.overshoot: 1.4 }
             }
         }
         displaced: Transition {

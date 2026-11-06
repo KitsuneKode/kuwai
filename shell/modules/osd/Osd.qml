@@ -856,7 +856,7 @@ Scope {
         SequentialAnimation {
             id: rubber
             NumberAnimation { target: trackScale; property: "xScale"; to: 1.035; duration: 90; easing.type: Easing.OutQuad }
-            NumberAnimation { target: trackScale; property: "xScale"; to: 1.0; duration: 200; easing.type: Easing.OutCubic }
+            NumberAnimation { target: trackScale; property: "xScale"; to: 1.0; duration: Theme.enterMs; easing.type: Easing.OutCubic }
         }
     }
 }

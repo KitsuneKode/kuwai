@@ -84,7 +84,7 @@ Item {
         Step { target: view; property: "tClock"; delay: 260; duration: 560 }
         Step { target: view; property: "tHint"; delay: 520 }
         Step { target: view; property: "tPower"; delay: 600 }
-        Step { target: view; property: "tCorner"; delay: 660; duration: 520 }
+        Step { target: view; property: "tCorner"; delay: 660; duration: Theme.pulseMs }
     }
     NumberAnimation {
         id: outro
@@ -180,7 +180,7 @@ Item {
             text: Settings.clock24 ? Qt.formatTime(view.now, "HH:mm") : Qt.formatTime(view.now, "h:mm")
             size: 150; weight: Theme.wBold; rounded: true
             color: view.tint
-            duration: 700; stagger: 60
+            duration: Theme.breatheMs; stagger: 60
         }
         Label {
             anchors.horizontalCenter: parent.horizontalCenter

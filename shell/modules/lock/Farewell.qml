@@ -46,7 +46,7 @@ Item {
     }
     SequentialAnimation {
         id: play
-        NumberAnimation { target: bye; property: "tIn"; to: 1; duration: 520; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+        NumberAnimation { target: bye; property: "tIn"; to: 1; duration: Theme.pulseMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
         NumberAnimation { target: bye; property: "tMark"; to: 1; duration: 900; easing.type: Easing.InOutCubic }
         PauseAnimation { duration: 250 }
         NumberAnimation { target: bye; property: "tOut"; to: 1; duration: 420; easing.type: Easing.InCubic }

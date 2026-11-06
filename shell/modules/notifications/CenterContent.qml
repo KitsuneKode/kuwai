@@ -158,7 +158,7 @@ Item {
             width: 20; height: 20; radius: 10
             opacity: search.text !== "" ? 1 : 0
             visible: opacity > 0
-            Behavior on opacity { NumberAnimation { duration: 80 } }
+            Behavior on opacity { NumberAnimation { duration: Theme.hoverMs } }
             color: clearQueryArea.containsMouse ? Theme.pillHover : Theme.pill
             Text {
                 anchors.centerIn: parent

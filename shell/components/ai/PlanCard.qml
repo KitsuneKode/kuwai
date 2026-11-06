@@ -64,7 +64,7 @@ Rectangle {
                         Behavior on color { ColorAnimation { duration: Theme.colorMs } }
                         RotationAnimation on rotation {
                             running: stepRow.isNow && root.live && !Theme.reduceMotion
-                            loops: Animation.Infinite; from: 0; to: 360; duration: 1100
+                            loops: Animation.Infinite; from: 0; to: 360; duration: Theme.spinMs
                         }
                         onNameChanged: rotation = 0
                     }

@@ -108,7 +108,7 @@ Item {
             shown: view.preview ? 1 : 0
             NumberAnimation on shown {
                 running: !view.preview
-                from: 0; to: 1; duration: 520
+                from: 0; to: 1; duration: Theme.pulseMs
                 easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut
             }
         }
@@ -132,7 +132,7 @@ Item {
                 text: Settings.clock24 ? Qt.formatTime(view.now, "HH:mm") : Qt.formatTime(view.now, "h:mm")
                 size: 150; weight: Theme.wBold; rounded: true
                 color: view.tint
-                duration: 700; stagger: 60
+                duration: Theme.breatheMs; stagger: 60
             }
             Row {
                 anchors.horizontalCenter: parent.horizontalCenter

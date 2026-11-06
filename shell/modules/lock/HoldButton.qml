@@ -24,7 +24,7 @@ Item {
         target: btn; property: "held"; to: 1
         onFinished: if (btn.holding) btn.fired()
     }
-    NumberAnimation { id: drain; target: btn; property: "held"; to: 0; duration: 200; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+    NumberAnimation { id: drain; target: btn; property: "held"; to: 0; duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
     onHoldingChanged: {
         if (holding) { drain.stop(); fill.duration = Math.round(800 * (1 - held)); fill.restart(); }
         else if (held < 1) { fill.stop(); drain.restart(); }

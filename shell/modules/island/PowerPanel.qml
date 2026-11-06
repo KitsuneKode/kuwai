@@ -81,7 +81,7 @@ FocusScope {
         target: power; property: "held"; to: 1
         onFinished: if (power.holding >= 0 && power.held >= 1) { const i = power.holding; power.holding = -1; power.run(i); }
     }
-    NumberAnimation { id: release; target: power; property: "held"; to: 0; duration: 200; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+    NumberAnimation { id: release; target: power; property: "held"; to: 0; duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
 
     Keys.onPressed: event => {
         const k = event.key;
