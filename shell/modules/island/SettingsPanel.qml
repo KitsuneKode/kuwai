@@ -33,11 +33,29 @@ FocusScope {
     Component.onCompleted: goTo(Island.settingsPage)
     Connections { target: Island; function onSettingsPageChanged() { settings.goTo(Island.settingsPage); } }
 
+    // ↑ ↓ sections · Tab / ⇧Tab the page's controls (Tab used to switch
+    // sections, so no control was reachable without a mouse) · PgUp / PgDn
+    // scroll the page · Esc back (IslandBar).
     Keys.onPressed: event => {
-        if (event.key === Qt.Key_Down || event.key === Qt.Key_Tab) current = (current + 1) % sections.length;
-        else if (event.key === Qt.Key_Up || event.key === Qt.Key_Backtab) current = (current + sections.length - 1) % sections.length;
+        if (event.key === Qt.Key_Down) current = (current + 1) % sections.length;
+        else if (event.key === Qt.Key_Up) current = (current + sections.length - 1) % sections.length;
+        else if (event.key === Qt.Key_PageDown) pageFlick.contentY = Math.min(Math.max(0, pageFlick.contentHeight - pageFlick.height), pageFlick.contentY + pageFlick.height * 0.85);
+        else if (event.key === Qt.Key_PageUp) pageFlick.contentY = Math.max(0, pageFlick.contentY - pageFlick.height * 0.85);
         else return;
         event.accepted = true;
+    }
+    onCurrentChanged: { pageFlick.contentY = 0; sideFlick.reveal(current); }
+    // A control reached with Tab scrolls into view.
+    readonly property Item focusedItem: Window.activeFocusItem
+    onFocusedItemChanged: {
+        const f = focusedItem;
+        if (!f || !page.item) return;
+        let p = f; while (p && p !== page.item) p = p.parent;
+        if (!p) return;
+        const y = f.mapToItem(page, 0, 0).y;
+        if (y < pageFlick.contentY + 8) pageFlick.contentY = Math.max(0, y - 16);
+        else if (y + f.height > pageFlick.contentY + pageFlick.height - 8)
+            pageFlick.contentY = Math.min(pageFlick.contentHeight - pageFlick.height, y + f.height - pageFlick.height + 16);
     }
 
     // ── Sidebar ──────────────────────────────────────────────────────────
@@ -47,9 +65,25 @@ FocusScope {
         height: parent.height
         color: Qt.rgba(1, 1, 1, 0.03)
         Label { x: 22; y: 22; text: "Settings"; size: 13; weight: Theme.wSemibold; color: Theme.textTertiary }
+        // Scrolls (13 sections didn't fit: About was out of reach), and keeps
+        // the current one in view as ↑ ↓ move.
+        Flickable {
+          id: sideFlick
+          x: 10; y: 52
+          width: parent.width - 20
+          height: parent.height - y - 10
+          contentHeight: sideCol.implicitHeight
+          clip: true
+          boundsBehavior: Flickable.StopAtBounds
+          interactive: contentHeight > height
+          function reveal(i) {
+              const y = i * 38, h = 36;
+              if (y < contentY) contentY = y;
+              else if (y + h > contentY + height) contentY = y + h - height;
+          }
         Column {
-            x: 10; y: 52
-            width: parent.width - 20
+            id: sideCol
+            width: parent.width
             spacing: 2
             Repeater {
                 model: settings.sections
@@ -76,6 +110,8 @@ FocusScope {
                 }
             }
         }
+        }
+        ScrollHint { flickable: sideFlick; anchors { right: parent.right; top: sideFlick.top; bottom: sideFlick.bottom; rightMargin: 2 } }
     }
     Rectangle { x: side.width; width: 1; height: parent.height; color: Qt.rgba(1, 1, 1, 0.07) }
 
@@ -89,6 +125,7 @@ FocusScope {
         Label { id: heading; x: 28; y: 20; text: settings.sections[settings.current].label; size: 20; weight: Theme.wSemibold }
 
         Flickable {
+            id: pageFlick
             x: 28; y: 62
             width: parent.width - 56
             height: parent.height - y - 16
@@ -101,6 +138,7 @@ FocusScope {
                 sourceComponent: [barPage, clockPage, notifPage, assistantPage, motionPage, islandRestPage, workspacesPage, powerPage, saverPage, timePage, clipboardPage, updatesPage, aboutPage][settings.current]
             }
         }
+        ScrollHint { flickable: pageFlick; anchors { right: parent.right; top: pageFlick.top; bottom: pageFlick.bottom; rightMargin: 10 } }
     }
 
     // ── Pages ────────────────────────────────────────────────────────────

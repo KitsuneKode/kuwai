@@ -108,6 +108,11 @@ Item {
     // Activities whose value sits beside their icon when the full row shows.
     readonly property bool joined: !compact && ["update", "vox", "auth", "rec", "timer"].indexOf(activity) >= 0
     readonly property bool restMusic: bar.player && Settings.restMedia && !!Media.active
+    // Music owns the two sides (art leading, waveform trailing). Then a
+    // second activity doesn't split itself around the clock as well: T3
+    // folds into one "T3 ②" mark after the time. (Split, it read as
+    // "T3 [art] 21:43 ② • ····", nothing in its place.)
+    readonly property bool musicSides: activity === "media" || (restMusic && !Media.playing && activity === "")
     readonly property string timerLeft: Timers.next ? Timers.clock(Timers.remaining(Timers.next)) : ""
     // The next calendar event within half an hour: the mini notch says so.
     readonly property var soonEvent: {
@@ -303,7 +308,7 @@ Item {
     // it (t3mark), a live activity's two sides with the time between.
     RestMark {
         id: t3word
-        visible: rest.mini && T3Code.total > 0 && !rest.helloFocus
+        visible: rest.mini && T3Code.total > 0 && !rest.helloFocus && !rest.musicSides
         anchors.verticalCenter: parent.verticalCenter
         wordmark: "T3"
         tone: T3Code.waiting > 0 ? Theme.orange : Theme.cyan
@@ -551,7 +556,8 @@ Item {
     // keeps the two sides, and T3 ③ takes the middle where the time was.
     RestMark {
         id: t3centre
-        visible: rest.stageTaken && T3Code.total > 0 && !rest.momentUnified && !rest.helloFocus
+        // Not during a moment: its words run through the middle (they overlapped).
+        visible: rest.stageTaken && T3Code.total > 0 && !rest.momentUnified && !rest.helloFocus && rest.activity !== "moment"
         x: Math.round((rest.width - width) / 2)
         Behavior on x { NumberAnimation { duration: Theme.reflowMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
         anchors.verticalCenter: parent.verticalCenter
@@ -616,7 +622,7 @@ Item {
             id: t3mark
             visible: T3Code.total > 0 && !rest.stageTaken
             anchors.verticalCenter: parent.verticalCenter
-            wordmark: rest.mini ? "" : "T3"
+            wordmark: rest.mini && !rest.musicSides ? "" : "T3"
             // T3 ③: the count in a ring that turns while threads work, solid
             // orange (with how many) when one needs you. Hover says which.
             value: T3Code.waiting > 0 ? String(T3Code.waiting) : String(T3Code.running)

@@ -489,7 +489,9 @@ Scope {
                     x: win.notch ? win.ear : 0
                     width: win.notch ? Math.max(0, sw.value) : frame.width
                     height: frame.height
-                    radius: win.notch ? 30 : Math.min(frame.height / 2, 30)
+                    // The notch's corners are continuous (squircle, NotchShape k = 1.28 r):
+                    // a circle of ~1.2 r follows them; at 30 the line cut inside the curve.
+                    radius: win.notch ? 36 : Math.min(frame.height / 2, 30)
                     strength: Math.max(pv.value, m.value * 0.8)
                     light: frameHover.hovered && !Theme.reduceMotion
                         ? Qt.point(frameHover.point.position.x - x, frameHover.point.position.y)
