@@ -171,6 +171,7 @@ layer({ name = "rice-island-shape", match = { namespace = "^rice-(island|islandb
 -- purpose outside rice-*: rice-glass blurred behind them wherever alpha passed
 -- 0.3, and the vignette crossed that two-thirds down (a hard line, the film
 -- blurred below it). A later blur = false did not undo rice-glass's blur.
+layer({ name = "kuwai-saver", match = { namespace = "^kuwai-(screensaver|saver-film)$" }, no_anim = true })
 -- The password prompt never appears in a screen share, recording or screenshot.
 layer({ name = "rice-auth-private", match = { namespace = "^rice-auth$" }, no_screen_share = true })
 -- The center's scrim: deliberately outside rice-* so nothing blurs under it.
