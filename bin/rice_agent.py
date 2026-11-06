@@ -1159,7 +1159,8 @@ def tool_launch_app(args):
 
 def check_url(args):
     url = str(args.get("url") or "").strip()
-    if not (url.startswith("https://") or url.startswith("http://")):
+    u = urllib.parse.urlparse(url)
+    if u.scheme not in ("http", "https") or not u.netloc or any(c in url for c in "\0\n\r\t "):
         raise ToolError("Only http and https links can be opened")
     return url
 
