@@ -25,6 +25,7 @@ FocusScope {
     function isClaude(p) { return /claude/i.test(String(p.driver || p.label || "")); }
 
     property string tab: "all"
+    Component.onCompleted: if (Limits.usageTab) { tab = Limits.usageTab; Limits.usageTab = ""; }
     readonly property var tabs: [{ id: "all", label: "All", brand: "" }].concat(
         usage.groups.map(g => ({ id: g.id, label: g.name, brand: g.brand, rank: g.rank })))
     onTabsChanged: if (!tabs.some(t => t.id === tab)) tab = "all"

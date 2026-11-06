@@ -115,6 +115,9 @@ Singleton {
     //    draining to the reset (backSoon);
     //  back: the reset moment (scan), the ring sweeps full in green.
     readonly property int soonMs: 15 * 60000
+    // The tab the Usage panel opens on (an agent's id), set by whoever opens
+    // it; the panel takes it once.
+    property string usageTab: ""
     readonly property var backSoon: {
         let best = null;
         for (const x of exhausted) {

@@ -336,30 +336,64 @@ Item {
         anchors.horizontalCenterOffset: hover.agentsHere ? -36 : 0
         y: 64
         spacing: hover.agentsHere ? 14 : 22
-        StatRing {
-            value: SystemStats.cpu; label: "CPU"; size: 40
-            HoverHandler { id: h1 }
-            Tip { text: SystemStats.cores.length + " threads · load " + (SystemStats.load.split(" ")[0] || "–"); shown: h1.hovered }
-        }
-        StatRing {
-            value: SystemStats.mem; label: "Memory"; size: 40
-            HoverHandler { id: h2 }
-            Tip { text: SystemStats.bytes(SystemStats.memUsed) + " of " + SystemStats.bytes(SystemStats.memTotal) + (SystemStats.swapUsed > 1073741824 ? " · swap " + SystemStats.bytes(SystemStats.swapUsed) : ""); shown: h2.hovered }
-        }
-        StatRing {
-            visible: !hover.agentsHere
-            value: SystemStats.gpu; label: "GPU"; size: 40
-            text: SystemStats.gpuState === "suspended" ? "off" : Math.round(SystemStats.gpu * 100) + "%"
-            HoverHandler { id: h3 }
-            Tip { text: SystemStats.gpuState === "suspended" ? "NVIDIA asleep · Intel drives the screens" : "NVIDIA " + SystemStats.gpuTemp + "° · " + Math.round(SystemStats.gpuPower) + " W · Intel " + SystemStats.igpuMHz + " MHz"; shown: h3.hovered }
-        }
-        StatRing {
-            visible: !hover.agentsHere
-            value: Math.min(1, SystemStats.cpuTemp / 100); label: "Temp"; size: 40
-            text: SystemStats.cpuTemp ? SystemStats.cpuTemp + "°" : "–"
-            color: SystemStats.cpuTemp >= 90 ? Theme.red : SystemStats.cpuTemp >= 80 ? Theme.orange : Theme.green
-            HoverHandler { id: h4 }
-            Tip { text: "CPU " + SystemStats.cpuTemp + "° · GPU " + SystemStats.gpuTemp + "°" + (SystemStats.fans.length ? " · fans " + SystemStats.fans.join(" / ") + " rpm" : ""); shown: h4.hovered }
+        // The machine. With your agents beside it there's room for two rings:
+        // CPU and Memory, and resting on them a moment turns the page to GPU
+        // and Temp (a crossfade with a small lift; leaving turns it back).
+        // Without agents all four sit in one row.
+        Item {
+            id: machine
+            readonly property bool paged: hover.agentsHere
+            property int page: 0
+            width: paged ? Math.max(pageA.width, pageB.width) : pageA.width + 22 + pageB.width
+            height: pageA.height
+            HoverHandler { id: machineHover }
+            Timer { interval: 700; running: machine.paged && machineHover.hovered && machine.page === 0; onTriggered: machine.page = 1 }
+            Timer { interval: Theme.hoverLeaveMs; running: machine.page === 1 && !machineHover.hovered; onTriggered: machine.page = 0 }
+            Row {
+                id: pageA
+                spacing: hover.agentsHere ? 14 : 22
+                opacity: !machine.paged || machine.page === 0 ? 1 : 0
+                y: !machine.paged || machine.page === 0 || Theme.reduceMotion ? 0 : -4
+                visible: opacity > 0.01
+                Behavior on opacity { NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+                Behavior on y { NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+                StatRing {
+                    value: SystemStats.cpu; label: "CPU"; size: 40
+                    HoverHandler { id: h1 }
+                    Tip { text: SystemStats.cores.length + " threads · load " + (SystemStats.load.split(" ")[0] || "–"); shown: h1.hovered }
+                }
+                StatRing {
+                    value: SystemStats.mem; label: "Memory"; size: 40
+                    HoverHandler { id: h2 }
+                    Tip { text: SystemStats.bytes(SystemStats.memUsed) + " of " + SystemStats.bytes(SystemStats.memTotal) + (SystemStats.swapUsed > 1073741824 ? " · swap " + SystemStats.bytes(SystemStats.swapUsed) : ""); shown: h2.hovered }
+                }
+            }
+            Row {
+                id: pageB
+                x: machine.paged ? 0 : pageA.width + 22
+                spacing: hover.agentsHere ? 14 : 22
+                opacity: !machine.paged || machine.page === 1 ? 1 : 0
+                y: !machine.paged || machine.page === 1 || Theme.reduceMotion ? 0 : 4
+                visible: opacity > 0.01
+                Behavior on opacity { NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+                Behavior on y { NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+                StatRing {
+                    value: SystemStats.gpu; label: "GPU"; size: 40
+                    text: SystemStats.gpuState === "suspended" ? "off" : Math.round(SystemStats.gpu * 100) + "%"
+                    HoverHandler { id: h3 }
+                    Tip { text: SystemStats.gpuState === "suspended" ? "NVIDIA asleep · Intel drives the screens" : "NVIDIA " + SystemStats.gpuTemp + "° · " + Math.round(SystemStats.gpuPower) + " W · Intel " + SystemStats.igpuMHz + " MHz"; shown: h3.hovered }
+                }
+                StatRing {
+                    value: Math.min(1, SystemStats.cpuTemp / 100); label: "Temp"; size: 40
+                    text: SystemStats.cpuTemp ? SystemStats.cpuTemp + "°" : "–"
+                    color: SystemStats.cpuTemp >= 90 ? Theme.red : SystemStats.cpuTemp >= 80 ? Theme.orange : Theme.green
+                    HoverHandler { id: h4 }
+                    Tip { text: "CPU " + SystemStats.cpuTemp + "° · GPU " + SystemStats.gpuTemp + "°" + (SystemStats.fans.length ? " · fans " + SystemStats.fans.join(" / ") + " rpm" : ""); shown: h4.hovered }
+                }
+            }
+            // Its own click (System); the agents' rings have theirs (Usage), so a
+            // click on Claude no longer falls through to System.
+            TapHandler { onTapped: Island.open("system", hover.bar.screenName, "pointer", "island") }
         }
         // Your agents beside the machine: what each has LEFT (its worst
         // window), in its own colour, its logo inside; red when out. Claude
@@ -395,11 +429,12 @@ Item {
                     text: ag.modelData.out ? ag.modelData.name + " is out · back in " + Limits.resetsIn(ag.modelData.window)
                         : Math.round(ag.modelData.left * 100) + "% left" + (ag.modelData.window.resetsAt ? " · resets in " + Limits.resetsIn(ag.modelData.window) : "")
                     shown: agHover.hovered
+                    below: true        // above, it covered the date under the clock
                 }
-                TapHandler { onTapped: Island.open("usage", hover.bar.screenName, "pointer", "island") }
+                // Its own tab in the Usage panel, not All.
+                TapHandler { onTapped: { Limits.usageTab = ag.modelData.id; Island.open("usage", hover.bar.screenName, "pointer", "island"); } }
             }
         }
-        TapHandler { onTapped: Island.open("system", hover.bar.screenName, "pointer", "island") }
     }
 
     // ── Right: news and status ───────────────────────────────────────────
