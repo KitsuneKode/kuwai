@@ -20,6 +20,20 @@ they land. User wants: extremely secure, premium, tasteful, fast, Apple-grade.
 Done: live shell runs from `stable` (349 MB, was 652 from dev reloads); shared
 components/Popover (bell quick list on it); AssistantOverlay built only while
 used; udiskie off (KUWAI_UDISKIE=1); Night screensaver; Cider ♥ / link action.
+Next (2026-11-06):
+1. Memory over a long session: ~550 MB after 6 h even with glibc arena_max=2
+   (flat at idle, so held, not leaking). Find what holds it: image caches
+   (notification icons/avatars, art), Notifs history objects, the JS heap;
+   sample Pss_Anon per surface opened. rice-check's memory gate blocks
+   promote after long sessions until then (promote --force restarts).
+2. kittymux premium pass: running in its own thread (wave3-premium on top
+   of PR #12/wave2); review its PR when it lands.
+3. Login gap: user's GRUB line (vt.global_cursor_default=0
+   systemd.show_status=false nvidia_drm.fbdev=1); wl-clip-persist install.
+4. Token migration module by module (sizes 62, durations 165, hex 70).
+5. Bluetooth pairing screen (blueman until then); T3 thread deep link when
+   T3 ships one (t3code:// has no thread route today).
+
 Status (2026-11-05, late):
 1. Reload leak: neutralised. Stable shell has Quickshell.watchFiles=false and
    `rice promote` restarts it (fresh process). Root cause still unknown (dev
