@@ -139,7 +139,10 @@ Scope {
         const art = DeviceArt.lookup(rawLabel) || DeviceArt.lookup(props["device.description"] || "");
         const shownType = art && art.kind && typeGlyph[art.kind] ? art.kind : type;
         return { name: node.name, key: rawLabel.toLowerCase(), title: art ? art.label : sinkLabel(type, props, dev),
-                 glyph: typeGlyph[shownType], image: art ? art.image : "", wired: !bt && (type === "usb" || !!art), bt: bt };
+                 glyph: typeGlyph[shownType], image: art ? art.image : "",
+                 // By its bus too: a DAC named like headphones (Audiocular) was
+                 // "not wired", so unplugging it said nothing.
+                 wired: !bt && (type === "usb" || props["device.bus"] === "usb" || !!art), bt: bt };
     }
     function unplugged(o) {
         return !!o && o.wired && (!sink || o.name !== sink.name)
@@ -158,7 +161,12 @@ Scope {
                 root.sinkSwitchedAt = Date.now();
                 if (Settings.bar === "island" && root.unplugged(root.leftOut)) Moments.wiredGone(root.leftOut);
                 root.leftOut = null;
-                root.showVolume(true);
+                // Just plugged in and it took the sound (WirePlumber moves to a
+                // new DAC): say it connected, not only the volume.
+                const o = root.outInfo(root.sink);
+                if (Settings.bar === "island" && o.wired && root.fresh(root.sink.name) && !root.quietFor("sound"))
+                    Moments.inputCard({ key: o.key, glyph: o.glyph, image: o.image, title: o.title, link: "usb", gone: false, detail: "Sound is on it" });
+                else root.showVolume(true);
             }
             else if (++root.sinkTries > 12) stop();
         }
@@ -261,6 +269,47 @@ Scope {
             if (!named && !ext && !jack) return;
             Moments.inputCard({ key: raw.toLowerCase(), glyph: ext ? root.externalMicGlyph : root.micGlyph, image: t.image,
                                 title: t.title, link: ext ? bus : (jack ? "jack" : ""), gone: false, quiet: false, detail: "Microphone" });
+        }
+    }
+
+    // ── The 3.5 mm jack: a mic (the Boya) or headphones plugged in or out.
+    // Not a new device, a port on the built-in card becoming available, so
+    // the node lists never changed and nothing was said. pactl tells us when
+    // the card changes; then the ports' availability is compared.
+    property var jackPorts: null        // { "analog-input-mic": "available", … }
+    Process {
+        id: cardWatch
+        running: true
+        command: ["pactl", "subscribe"]
+        stdout: SplitParser { onRead: line => { if (/ on card #/.test(line)) jackCheck.restart(); } }
+        onExited: cardRetry.restart()
+    }
+    Timer { id: cardRetry; interval: 5000; onTriggered: cardWatch.running = true }
+    Timer { id: jackCheck; interval: 400; onTriggered: if (!jackList.running) jackList.running = true }
+    Process {
+        id: jackList
+        running: true
+        command: ["pactl", "-f", "json", "list", "cards"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let ports = {};
+                try {
+                    for (const c of JSON.parse(text))
+                        for (const [k, v] of Object.entries(c.ports || {}))
+                            if (/^analog-(input-(mic|headset-mic|headphone-mic)|output-headphones)/.test(k)) ports[k] = v.availability;
+                } catch (e) { return; }
+                const before = root.jackPorts;
+                root.jackPorts = ports;
+                if (!before || !root.armed || Settings.bar !== "island") return;
+                for (const k in ports) {
+                    const was = before[k] === "available", now = ports[k] === "available";
+                    if (was === now || before[k] === undefined) continue;
+                    const mic = /input/.test(k);
+                    Moments.inputCard({ key: "jack:" + k, glyph: mic ? root.micGlyph : root.typeGlyph.headphones, image: "",
+                                        title: mic ? (Settings.jackMicName || "Jack microphone") : "Wired headphones",
+                                        link: "jack", gone: !now, detail: mic ? "Microphone" : "" });
+                }
+            }
         }
     }
 

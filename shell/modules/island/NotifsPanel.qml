@@ -1,95 +1,92 @@
-// The bell's quick list (island hover): what needs you first, then unread
-// chats and mail, then the newest. Built on components/Popover (focus grab,
-// island count, enter/exit, Esc). Left-click on the bell opens the center;
-// right-click, hold or Ctrl+click opens this.
+// The bell's list, as the island itself (right-click or hold the bell): what
+// needs you first, then unread chats and mail, then the newest. The island
+// grows into it like the T3 panel (one black glass, one morph), so it's
+// attached by construction; it used to be a separate popup below the island,
+// styled apart. A row reads it in the island (the whole message, Reply).
+//   ↑ ↓ choose · ↵ read · Esc back
 import QtQuick
 import Quickshell
 import qs.config
 import qs.components
 import qs.services
 
-Popover {
-    id: pop
-    // Opened by a deliberate gesture: it stays until a click elsewhere.
-    property bool dismissOnAnchorLeave: true
-    sticky: !dismissOnAnchorLeave
-    cardWidth: 320
-    maxHeight: 440
-    // One list per change, and only while shown (not on every notification).
-    readonly property var quick: pop.shown ? Notifs.bellQuickList(8) : []
-    readonly property string screenName: pop.window ? pop.window.screenName : ""
+FocusScope {
+    id: np
+    focus: true
+    implicitWidth: 420
+    implicitHeight: col.implicitHeight + 36
+
+    readonly property var quick: Notifs.bellQuickList(10)
+    property int sel: 0
+    onQuickChanged: sel = Math.min(sel, Math.max(0, quick.length - 1))
     function ago(t) {
         const m = Math.max(0, Math.round((Date.now() - t) / 60000));
         return m < 1 ? "now" : m < 60 ? m + "m" : m < 1440 ? Math.floor(m / 60) + "h" : Math.floor(m / 1440) + "d";
     }
+    function read(item) { if (!item) return; Island.close(); Notifs.readInIsland(item); }
+
+    Keys.onPressed: e => {
+        if (e.key === Qt.Key_Down) sel = Math.min(quick.length - 1, sel + 1);
+        else if (e.key === Qt.Key_Up) sel = Math.max(0, sel - 1);
+        else if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) read(quick[sel]);
+        else return;
+        list.positionViewAtIndex(sel, ListView.Contain);
+        e.accepted = true;
+    }
 
     Column {
         id: col
-        width: parent.width
+        x: 18; y: 18
+        width: np.width - 36
         spacing: 10
 
-        // ── Header: what this list is ─────────────────────────────────
-        Column {
+        Item {
             width: parent.width
-            spacing: 2
+            height: 22
             Label {
-                text: Notifs.missed.length ? "Need you"
-                    : Notifs.unread ? "Unread · " + (Notifs.inbox > 9 ? "9+" : Notifs.inbox)
-                    : "Recent"
-                size: Theme.tCallout; weight: Theme.wSemibold
+                anchors { left: parent.left; verticalCenter: parent.verticalCenter }
+                text: Notifs.missed.length ? "Need you" : Notifs.unread ? "Unread" : "Recent"
+                size: Theme.tTitle3; weight: Theme.wSemibold
             }
             Label {
-                visible: pop.quick.length > 0
-                text: Notifs.missed.length ? "Act on these first" : "Newest first"
+                anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                text: Notifs.inbox > 0 ? (Notifs.inbox > 9 ? "9+" : String(Notifs.inbox)) + " in the center" : ""
                 size: Theme.tFootnote; color: Theme.textTertiary
+                font.features: ({ "tnum": 1 })
             }
         }
 
-        // ── Empty: say so, and offer the way in ────────────────────────
+        // Empty: say so.
         Column {
-            visible: pop.quick.length === 0
+            visible: np.quick.length === 0
             width: parent.width
-            topPadding: 6; bottomPadding: 6
+            topPadding: 10; bottomPadding: 10
             spacing: 6
             Icon { anchors.horizontalCenter: parent.horizontalCenter; name: "bell"; size: 22; color: Theme.textTertiary }
-            Label {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: "You're all caught up"
-                size: Theme.tSub; color: Theme.textSecondary
-            }
+            Label { anchors.horizontalCenter: parent.horizontalCenter; text: "You're all caught up"; size: Theme.tSub; color: Theme.textSecondary }
         }
 
-        // ── The list ──────────────────────────────────────────────────
         ListView {
             id: list
-            visible: pop.quick.length > 0
+            visible: np.quick.length > 0
             width: parent.width
-            height: Math.min(contentHeight, 300)
+            height: Math.min(contentHeight, 360)
             clip: true
             spacing: 2
             boundsBehavior: Flickable.StopAtBounds
-            // ScriptModel keeps the rows that stay (a plain array re-creates
-            // every delegate on each change: Quickshell docs). Same objects as
-            // Notifs.items, so identity is the right comparison.
-            model: ScriptModel { values: pop.quick; comparisonMode: ObjectComparison.Identity }
-
-            // A row each, flat: a dot for its state (accent unread, orange or
-            // red urgent), app · age, the title, two lines of it. The whole row
-            // reads it in the island (the expanded peek: all of it, Reply).
-            // (Bordered tinted cards with Open/Reply in each were boxes in a
-            // box, and Open left the island for the center.)
+            model: ScriptModel { values: np.quick; comparisonMode: ObjectComparison.Identity }
             delegate: Rectangle {
                 id: row
                 required property var modelData
+                required property int index
                 readonly property bool fresh: modelData.time > Notifs.lastSeen && !modelData.discard
                 readonly property bool hot: modelData.severity === "critical" || modelData.severity === "warning"
                 readonly property color dot: modelData.severity === "critical" ? Theme.red : hot ? Theme.orange : Theme.accent
                 width: list.width
                 height: inner.implicitHeight + 20
                 radius: Theme.r2
-                color: rowArea.containsMouse ? Qt.rgba(1, 1, 1, 0.07) : "transparent"
+                color: rowArea.containsMouse || np.sel === index ? Qt.rgba(1, 1, 1, 0.07) : "transparent"
                 Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
-
                 Rectangle {
                     visible: row.fresh || row.hot
                     x: 10; y: 16
@@ -111,11 +108,7 @@ Popover {
                             size: Theme.tFootnote; weight: Theme.wMedium
                             color: row.hot ? row.dot : Theme.textTertiary
                         }
-                        Label {
-                            id: stamp
-                            text: "· " + pop.ago(row.modelData.time)
-                            size: Theme.tFootnote; color: Theme.textTertiary
-                        }
+                        Label { id: stamp; text: "· " + np.ago(row.modelData.time); size: Theme.tFootnote; color: Theme.textTertiary }
                     }
                     Label {
                         width: parent.width
@@ -128,7 +121,7 @@ Popover {
                         width: parent.width
                         visible: text !== ""
                         wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight
-                        text: Notifs.bodyForDisplay(row.modelData, true).replace(/<[^>]*>/g, "")
+                        text: Notifs.readable(Notifs.bodyForDisplay(row.modelData, true))
                         size: Theme.tSub; lineHeight: 1.3; color: Theme.textSecondary
                     }
                 }
@@ -137,16 +130,15 @@ Popover {
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: { pop.close(); Notifs.readInIsland(row.modelData); }
+                    onClicked: np.read(row.modelData)
                 }
             }
         }
 
-        // ── Always: the way to everything ─────────────────────────────
         PillButton {
             width: parent.width
             text: "Open notification center"
-            onClicked: { pop.close(); Notifs.toggleCenter("notifications", "pointer", pop.screenName); }
+            onClicked: { Island.close(); Notifs.toggleCenter("notifications", "pointer", Island.screen); }
         }
     }
 }

@@ -40,6 +40,7 @@ Singleton {
     readonly property alias screensaverMins: s.screensaverMins
     readonly property alias screensaverStyle: s.screensaverStyle
     readonly property alias screensaverClip: s.screensaverClip
+    readonly property alias jackMicName: s.jackMicName
     readonly property alias islandProximity: s.islandProximity
     readonly property alias kittyTabs: s.kittyTabs
     readonly property alias notifSurface: s.notifSurface
@@ -118,6 +119,7 @@ Singleton {
             property string screensaverWhen: "caffeine"   // caffeine · always · off
             property int screensaverMins: 3
             property string screensaverStyle: "dusk"   // dusk · night · live · still
+            property string jackMicName: "Jack microphone"   // what's on the 3.5 mm jack (a Boya): rice set jackMicName Boya
             property string screensaverClip: "smoke-soft"   // a file in ~/.local/share/rice/screensavers
             // Idle (services/Idle): seconds, 0 = never. idleOwner "hypridle" hands it back.
             property string idleOwner: "shell"

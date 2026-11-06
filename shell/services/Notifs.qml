@@ -206,7 +206,23 @@ Singleton {
     function fullForDisplay(item) {
         if (!item) return "";
         if (bodyHidden(item, true)) return bodyForDisplay(item, true);
-        return String(item.full || item.body || "");
+        return readable(String(item.full || item.body || ""));
+    }
+    // Markdown and mail clutter to plain reading text (GitHub comments and
+    // newsletters showed **, [text](url), # and long tracking links as-is).
+    // Not Qt's MarkdownText: it could fetch remote images (tracking pixels).
+    function readable(t) {
+        return String(t || "")
+            .replace(/<!--[\s\S]*?-->/g, "")
+            .replace(/<[^>]+>/g, "")
+            .replace(/!\[[^\]]*\]\([^)]*\)/g, "")                       // images
+            .replace(/\[([^\]]+)\]\((?:[^()]|\([^)]*\))*\)/g, "$1")          // [text](url) → text
+            .replace(/https?:\/\/(?:www\.)?([^\/\s?#]+)[^\s)]*/g, "$1…")    // bare links → their site
+            .replace(/^\s{0,3}#{1,6}\s+/gm, "")                           // headings
+            .replace(/^\s*[-*+]\s+/gm, "• ")                               // bullets
+            .replace(/(\*\*|__)(.+?)\1/g, "$2").replace(/`([^`]+)`/g, "$1")  // bold, code
+            .replace(/^\s*>\s?/gm, "")                                    // quotes
+            .replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
     }
 
     property var peek: null

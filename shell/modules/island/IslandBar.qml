@@ -420,6 +420,7 @@ Scope {
             Component { id: updatesPanel; UpdatesPanel {} }
             Component { id: mediaPanel; MediaPanel {} }
             Component { id: t3Panel; T3Panel {} }
+            Component { id: notifsPanel; NotifsPanel {} }
 
             Elevation {
                 target: frame
@@ -454,7 +455,15 @@ Scope {
                         const dy = centroid.scenePosition.y - centroid.scenePressPosition.y;
                         win.pull = dy < 0 ? win.rubber(-dy, 80) : -win.rubber(dy, 30);
                     }
-                    onActiveChanged: if (!active && win.cardHere) { if (win.pull > 18 || centroid.velocity.y < -400) win.pushBack(centroid.velocity.y); else win.pull = 0; }
+                    onActiveChanged: {
+                        if (active || !win.cardHere) return;
+                        if (win.pull > 18 || centroid.velocity.y < -400) { win.pushBack(centroid.velocity.y); return; }
+                        // Pulled down on a notification: open it to read (the
+                        // whole message, Reply). This handler owns the card's
+                        // drag, so the peek's own pull never saw it.
+                        if (win.pull < -10 && win.peekHere && Notifs.peek && !Notifs.peekExpanded) Notifs.readInIsland(Notifs.peek);
+                        win.pull = 0;
+                    }
                 }
                 WheelHandler {
                     enabled: win.cardHere
@@ -672,7 +681,7 @@ Scope {
                             y: win.backH
                             active: win.panelHere || pv.value > 0.01
                             focus: true
-                            sourceComponent: ({ calendar: calendarPanel, power: powerPanel, launcher: launcherPanel, settings: settingsPanel, system: systemPanel, theme: themePanel, keys: keysPanel, switcher: switcherPanel, updates: updatesPanel, media: mediaPanel, t3: t3Panel })[win.shownPanel] || null
+                            sourceComponent: ({ calendar: calendarPanel, power: powerPanel, launcher: launcherPanel, settings: settingsPanel, system: systemPanel, theme: themePanel, keys: keysPanel, switcher: switcherPanel, updates: updatesPanel, media: mediaPanel, t3: t3Panel, notifs: notifsPanel })[win.shownPanel] || null
                         }
                         // Right click (anywhere a control doesn't take it) or the mouse's back button: back.
                         TapHandler {

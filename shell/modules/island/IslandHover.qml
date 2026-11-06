@@ -410,10 +410,8 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             width: bell.implicitWidth
             height: bell.implicitHeight
-            property bool bellPopOpen: false
             BellIcon {
                 id: bell
-                suppressTip: bellRow.bellPopOpen
                 count: Notifs.inbox
                 muted: Notifs.muted
                 dnd: Notifs.dnd
@@ -421,26 +419,11 @@ Item {
                 urgent: Notifs.missed.some(i => i.severity === "critical")
                 badgeTone: Notifs.bellBadgeTone
                 tip: Notifs.bellTip
-                onTapped: {
-                    bellPop.dismissOnAnchorLeave = true;
-                    bellRow.bellPopOpen = false;
-                    Notifs.toggleCenter("notifications", "pointer", hover.bar.screenName);
-                }
-                onQuickPressed: {
-                    bellPop.dismissOnAnchorLeave = false;
-                    bellRow.bellPopOpen = !bellRow.bellPopOpen;
-                }
+                onTapped: Notifs.toggleCenter("notifications", "pointer", hover.bar.screenName)
+                // Right-click / hold: the island grows into the list (NotifsPanel).
+                onQuickPressed: Island.open("notifs", hover.bar.screenName, "pointer", "island")
             }
             HoverHandler { id: bellHover; cursorShape: Qt.PointingHandCursor }
-            MissedNotifPopover {
-                id: bellPop
-                anchorItem: bell
-                belowItem: hover
-                window: hover.bar
-                open: bellRow.bellPopOpen
-                anchorHovered: bellHover.hovered
-                onClosed: { bellRow.bellPopOpen = false; bellPop.dismissOnAnchorLeave = true; }
-            }
         }
         }
         Row {

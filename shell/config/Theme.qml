@@ -257,6 +257,7 @@ Singleton {
     readonly property int hoverMs: 80           // hover tints: answer the pointer at once
     readonly property int artMs: 400            // album-art colour following a new track
     readonly property int spinMs: 1100          // one turn of a working spinner (calm, not busy)
+    readonly property int stepMs: 600           // one step of a working ring (glides, then rests ~2.4 s)
     readonly property int quickMs: 120          // a quick fade in place: tooltips, hints, a caret
     readonly property int microMs: 160          // a small state change in place: an icon's fill, a fade, a press
     readonly property int pulseMs: 520          // half a quick pulse (InOutSine there and back)
