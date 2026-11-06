@@ -128,6 +128,34 @@ Singleton {
         return best;
     }
     readonly property bool markShown: Settings.limitAlerts && backSoon !== null
+    // One entry per account for the hover view's rings: the session window
+    // (the shortest) and the weekly one (the longest), what each has left.
+    // "Claude", "Claude 2"… so two accounts of one agent read apart; Claude
+    // first, then the tightest.
+    readonly property var perAccount: {
+        const by = {}, count = {};
+        for (const x of windows) {
+            const pid = x.provider.driver || x.provider.label;
+            const id = pid + "|" + (x.account.key || x.account.email || x.account.name || "");
+            let e = by[id];
+            if (!e) {
+                count[pid] = (count[pid] || 0) + 1;
+                e = by[id] = { id: id, pid: pid, n: count[pid], brand: brandFor(x.provider), tint: tintFor(x.provider),
+                               name: providerShort(x.provider), session: null, weekly: null };
+            }
+            const d = x.window.durationMins || 0;
+            const w = { left: 1 - x.used, out: x.level === "exhausted", near: x.level === "approaching", window: x.window, label: windowLabel(x.window), d: d };
+            if (!e.session || d < e.session.d) e.session = w;
+            if (!e.weekly || d > e.weekly.d) e.weekly = w;
+        }
+        const list = Object.values(by).map(e => {
+            if (e.session === e.weekly) e.weekly = null;               // one window only
+            e.label = e.name + (count[e.pid] > 1 ? " " + e.n : "");
+            e.worst = Math.min(e.session ? e.session.left : 1, e.weekly ? e.weekly.left : 1);
+            return e;
+        });
+        return list.sort((a, b) => (/claude/i.test(b.pid) - /claude/i.test(a.pid)) || a.worst - b.worst);
+    }
     // One entry per agent for the hover view: its worst window, what's left.
     readonly property var perAgent: {
         const by = {};

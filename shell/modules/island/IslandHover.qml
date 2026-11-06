@@ -406,33 +406,97 @@ Item {
             width: 1; height: 28
             color: Theme.cardEdge
         }
-        Repeater {
-            model: ScriptModel { values: hover.agentsHere ? Limits.perAgent.slice(0, 3) : []; objectProp: "id" }
-            delegate: StatRing {
-                id: ag
-                required property var modelData
-                size: Theme.statRingSize
-                value: Math.max(0, modelData.left)
-                color: modelData.out ? Theme.red : modelData.near ? Theme.orange : modelData.tint
-                text: ""
-                label: modelData.name
-                Image {
-                    x: (ag.width - width) / 2; y: (40 - height) / 2
-                    width: 16; height: 16
-                    source: ag.modelData.brand
-                    sourceSize: Qt.size(32, 32)
-                    asynchronous: true
-                    opacity: ag.modelData.out ? 0.55 : 1
+        // Every account gets a ring pair (outer: the session window, inner:
+        // the weekly one, what's left in the agent's colour, red when out),
+        // three at a time. More than three take turns every 6 s, evenly
+        // (pages of three, Claude first), crossfading; resting the pointer
+        // on them holds the page. Click: that agent's tab in Usage.
+        Item {
+            id: agents
+            visible: hover.agentsHere
+            readonly property var all: Limits.perAccount
+            readonly property int pages: Math.max(1, Math.ceil(all.length / 3))
+            property int page: 0
+            readonly property var shown: all.slice(page * 3, page * 3 + 3)
+            width: 3 * Theme.statRingSize + 2 * 14
+            height: Theme.statRingSize + 18
+            HoverHandler { id: agentsHover }
+            Timer {
+                interval: 6000; repeat: true
+                running: agents.pages > 1 && hover.visible && !agentsHover.hovered && !Theme.reduceMotion
+                onTriggered: turn.start()
+            }
+            onPagesChanged: if (page >= pages) page = 0
+            SequentialAnimation {
+                id: turn
+                NumberAnimation { target: agentsRow; property: "opacity"; to: 0; duration: Theme.exitMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+                ScriptAction { script: agents.page = (agents.page + 1) % agents.pages }
+                NumberAnimation { target: agentsRow; property: "opacity"; to: 1; duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+            }
+            Row {
+                id: agentsRow
+                spacing: 14
+                Repeater {
+                    model: ScriptModel { values: agents.shown; objectProp: "id" }
+                    delegate: Item {
+                        id: ag
+                        required property var modelData
+                        readonly property var e: modelData
+                        width: Theme.statRingSize
+                        height: Theme.statRingSize + 18
+                        function ink(w) { return !w ? Theme.track : w.out ? Theme.red : w.near ? Theme.orange : ag.e.tint; }
+                        // Outer: the session window.
+                        StatRing {
+                            size: Theme.statRingSize; stroke: 3
+                            value: ag.e.session ? Math.max(0, ag.e.session.left) : 0
+                            color: ag.ink(ag.e.session)
+                            text: ""; label: ag.e.label
+                        }
+                        // Inner: the weekly window.
+                        StatRing {
+                            visible: !!ag.e.weekly
+                            x: 6; y: 6
+                            size: Theme.statRingSize - 12; stroke: 2.5
+                            value: ag.e.weekly ? Math.max(0, ag.e.weekly.left) : 0
+                            color: ag.ink(ag.e.weekly)
+                            text: ""; label: ""
+                            opacity: 0.85
+                        }
+                        Image {
+                            x: (Theme.statRingSize - width) / 2; y: (Theme.statRingSize - height) / 2
+                            width: 12; height: 12
+                            source: ag.e.brand
+                            sourceSize: Qt.size(24, 24)
+                            asynchronous: true
+                        }
+                        HoverHandler { id: agHover }
+                        Tip {
+                            function line(w) {
+                                if (!w) return "";
+                                return w.label + ": " + (w.out ? "out · back in " : Math.round(w.left * 100) + "% left · resets in ") + Limits.resetsIn(w.window);
+                            }
+                            text: ag.e.label + " · " + [line(ag.e.session), line(ag.e.weekly)].filter(x => x).join(" · ")
+                            shown: agHover.hovered
+                            below: true
+                        }
+                        TapHandler { onTapped: { Limits.usageTab = ag.e.pid; Island.open("usage", hover.bar.screenName, "pointer", "island"); } }
+                    }
                 }
-                HoverHandler { id: agHover }
-                Tip {
-                    text: ag.modelData.out ? ag.modelData.name + " is out · back in " + Limits.resetsIn(ag.modelData.window)
-                        : Math.round(ag.modelData.left * 100) + "% left" + (ag.modelData.window.resetsAt ? " · resets in " + Limits.resetsIn(ag.modelData.window) : "")
-                    shown: agHover.hovered
-                    below: true        // above, it covered the date under the clock
+            }
+            // Which page, when there's more than one: small dots under the rings.
+            Row {
+                visible: agents.pages > 1
+                anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: -8 }
+                spacing: 4
+                Repeater {
+                    model: agents.pages
+                    Rectangle {
+                        required property int index
+                        width: 4; height: 4; radius: 2
+                        color: index === agents.page ? Theme.textSecondary : Theme.platterDim
+                        Behavior on color { ColorAnimation { duration: Theme.colorMs } }
+                    }
                 }
-                // Its own tab in the Usage panel, not All.
-                TapHandler { onTapped: { Limits.usageTab = ag.modelData.id; Island.open("usage", hover.bar.screenName, "pointer", "island"); } }
             }
         }
     }
