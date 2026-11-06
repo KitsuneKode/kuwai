@@ -29,6 +29,7 @@ ShellRoot {
     readonly property int remindersKept: Reminders.items.length
     readonly property int alarmsKept: Alarms.items.length
     readonly property var crashWatcher: Crashes
+    readonly property var memDiary: MemLog       // ~/.local/state/rice/memlog.tsv every 10 min
     // The stable copy (~/.local/share/kuwai) doesn't hot-reload: each reload
     // left ~25–30 MB behind, and `rice promote` restarts it cleanly anyway.
     // The dev tree keeps live reload for editing.
