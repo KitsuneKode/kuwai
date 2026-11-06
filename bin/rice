@@ -210,7 +210,11 @@ case ${1:-} in
             if ! ( switch_to "$STABLE" ); then
                 echo "rice: the new shell didn't load; stable back to $(git -C "$STABLE" log --oneline -1 "$prev")" >&2
                 # First rice-shell's wait-for-a-save retry (it would fire on the reset's own file changes).
-                pkill -f 'dir=.1 rice=.2' 2>/dev/null
+                # Matched by its exact argv[3] ($0 = rice-shell-watch), never a
+                # pattern anywhere in a command line (that killed a bystander).
+                for w in $(pgrep -x bash); do
+                    [ "$(tr '\0' '\n' < /proc/$w/cmdline 2>/dev/null | sed -n 4p)" = rice-shell-watch ] && kill "$w" 2>/dev/null
+                done
                 git -C "$STABLE" reset --hard --quiet "$prev"
                 ( switch_to "$STABLE" ) && echo "rice: rolled back; fix it in dev and promote again" >&2
                 exit 1
