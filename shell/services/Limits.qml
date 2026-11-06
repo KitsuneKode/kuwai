@@ -108,8 +108,35 @@ Singleton {
         const t = exhausted.map(x => x.window.resetsAt).filter(r => r > now).sort((a, b) => a - b);
         return t.length ? t[0] - now : -1;
     }
-    // What the notch shows: alerts on and something used up.
-    readonly property bool markShown: Settings.limitAlerts && exhausted.length > 0
+    // Stages, so the notch says it only when it's worth a glance:
+    //  fine / near / out: nothing at rest (the moment said it once; hover
+    //    the notch for the stack: perAgent);
+    //  back soon: an out agent resets within 15 min → its logo and a ring
+    //    draining to the reset (backSoon);
+    //  back: the reset moment (scan), the ring sweeps full in green.
+    readonly property int soonMs: 15 * 60000
+    readonly property var backSoon: {
+        let best = null;
+        for (const x of exhausted) {
+            const r = x.window.resetsAt || 0;
+            if (r > now && r - now <= soonMs && (!best || r < best.at))
+                best = { at: r, brand: brandFor(x.provider), tint: tintFor(x.provider), name: providerShort(x.provider) };
+        }
+        return best;
+    }
+    readonly property bool markShown: Settings.limitAlerts && backSoon !== null
+    // One entry per agent for the hover view: its worst window, what's left.
+    readonly property var perAgent: {
+        const by = {};
+        for (const x of windows) {
+            const id = x.provider.driver || x.provider.label;
+            const left = 1 - x.used;
+            if (!by[id] || left < by[id].left)
+                by[id] = { id: id, brand: brandFor(x.provider), tint: tintFor(x.provider), name: providerShort(x.provider),
+                           left: left, out: x.level === "exhausted", near: x.level === "approaching", window: x.window };
+        }
+        return Object.values(by).sort((a, b) => (/claude/i.test(b.id) - /claude/i.test(a.id)) || a.left - b.left);
+    }
 
     IpcHandler {
         target: "limits"
@@ -190,9 +217,12 @@ Singleton {
         if (Notifs.muted) return;
         // The agent's logo leads; its ring fills to how much is used (a reset:
         // a full green ring), the way the island shows any live gauge.
+        // A reset says who's back ("Claude is back · weekly"), not "reset".
         const reset = value === "reset";
-        Moments.show({ kind: "limit:" + x.key, image: brandFor(x.provider), glyph: "\u{f029a}", label: x.name,
-                       value: value, ring: reset ? 1 : x.used, tone: reset ? Theme.green : tone }, ms);
+        Moments.show({ kind: "limit:" + x.key, image: brandFor(x.provider), glyph: "\u{f029a}",
+                       label: reset ? providerShort(x.provider) + " is back" : x.name,
+                       value: reset ? windowLabel(x.window).toLowerCase() : value,
+                       ring: reset ? 1 : x.used, tone: reset ? Theme.green : tone }, ms);
     }
 
     function scan() {

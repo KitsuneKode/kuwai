@@ -21,6 +21,7 @@ import qs.services
 
 Item {
     id: hover
+    readonly property bool agentsHere: Settings.limitAlerts && Limits.perAgent.length > 0
     required property var bar
     readonly property var player: bar.player
     readonly property bool media: bar.showMedia
@@ -343,17 +344,57 @@ Item {
             Tip { text: SystemStats.bytes(SystemStats.memUsed) + " of " + SystemStats.bytes(SystemStats.memTotal) + (SystemStats.swapUsed > 1073741824 ? " · swap " + SystemStats.bytes(SystemStats.swapUsed) : ""); shown: h2.hovered }
         }
         StatRing {
+            visible: !hover.agentsHere
             value: SystemStats.gpu; label: "GPU"; size: 40
             text: SystemStats.gpuState === "suspended" ? "off" : Math.round(SystemStats.gpu * 100) + "%"
             HoverHandler { id: h3 }
             Tip { text: SystemStats.gpuState === "suspended" ? "NVIDIA asleep · Intel drives the screens" : "NVIDIA " + SystemStats.gpuTemp + "° · " + Math.round(SystemStats.gpuPower) + " W · Intel " + SystemStats.igpuMHz + " MHz"; shown: h3.hovered }
         }
         StatRing {
+            visible: !hover.agentsHere
             value: Math.min(1, SystemStats.cpuTemp / 100); label: "Temp"; size: 40
             text: SystemStats.cpuTemp ? SystemStats.cpuTemp + "°" : "–"
             color: SystemStats.cpuTemp >= 90 ? Theme.red : SystemStats.cpuTemp >= 80 ? Theme.orange : Theme.green
             HoverHandler { id: h4 }
             Tip { text: "CPU " + SystemStats.cpuTemp + "° · GPU " + SystemStats.gpuTemp + "°" + (SystemStats.fans.length ? " · fans " + SystemStats.fans.join(" / ") + " rpm" : ""); shown: h4.hovered }
+        }
+        // Your agents beside the machine: what each has LEFT (its worst
+        // window), in its own colour, its logo inside; red when out. Claude
+        // first, then the tightest. The notch at rest stays quiet about usage;
+        // this is where you look (click: the Usage panel).
+        Rectangle {
+            visible: hover.agentsHere
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.verticalCenterOffset: -8
+            width: 1; height: 28
+            color: Theme.cardEdge
+        }
+        Repeater {
+            model: ScriptModel { values: hover.agentsHere ? Limits.perAgent.slice(0, 3) : []; objectProp: "id" }
+            delegate: StatRing {
+                id: ag
+                required property var modelData
+                size: 40
+                value: Math.max(0, modelData.left)
+                color: modelData.out ? Theme.red : modelData.near ? Theme.orange : modelData.tint
+                text: ""
+                label: modelData.name
+                Image {
+                    x: (ag.width - width) / 2; y: (40 - height) / 2
+                    width: 16; height: 16
+                    source: ag.modelData.brand
+                    sourceSize: Qt.size(32, 32)
+                    asynchronous: true
+                    opacity: ag.modelData.out ? 0.55 : 1
+                }
+                HoverHandler { id: agHover }
+                Tip {
+                    text: ag.modelData.out ? ag.modelData.name + " is out · back in " + Limits.resetsIn(ag.modelData.window)
+                        : Math.round(ag.modelData.left * 100) + "% left" + (ag.modelData.window.resetsAt ? " · resets in " + Limits.resetsIn(ag.modelData.window) : "")
+                    shown: agHover.hovered
+                }
+                TapHandler { onTapped: Island.open("usage", hover.bar.screenName, "pointer", "island") }
+            }
         }
         TapHandler { onTapped: Island.open("system", hover.bar.screenName, "pointer", "island") }
     }

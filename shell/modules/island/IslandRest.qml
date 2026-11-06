@@ -213,15 +213,22 @@ Item {
         // soonest reset ("3d") in a solid orange ring, until it resets. Like
         // a warning it stays while a live activity has the stage. Rest on
         // it: the Usage panel.
-        // Which agents are out: their logos, stacked (three at most, then
-        // "+2"), and when the first comes back, in orange. A bare gauge with
-        // "3d" didn't say whose limit it was.
+        // Back soon (Limits.backSoon): an out agent resets within 15 min.
+        // Its logo inside a ring that drains to the reset, and the minutes
+        // left. Out for days says nothing at rest: you can't act on it (the
+        // moment said it once; hover the notch for every agent).
         Item {
             id: lim
             readonly property alias hovered: limArea.containsMouse
-            readonly property var shown: Limits.exhaustedBrands.slice(0, 3)
-            readonly property int more: Math.max(0, Limits.exhaustedBrands.length - 3)
+            readonly property var b: Limits.backSoon
             visible: Limits.markShown
+            // It arrives (fade + a small rise in scale), it doesn't pop.
+            onVisibleChanged: if (visible && !Theme.reduceMotion) limIn.restart()
+            ParallelAnimation {
+                id: limIn
+                NumberAnimation { target: lim; property: "opacity"; from: 0; to: 1; duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+                NumberAnimation { target: limRow; property: "scale"; from: 0.92; to: 1; duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+            }
             anchors.verticalCenter: parent.verticalCenter
             implicitWidth: limRow.implicitWidth + 12
             implicitHeight: 22
@@ -237,45 +244,31 @@ Item {
                 spacing: 5
                 scale: limArea.pressed ? 0.96 : 1
                 Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.OutCubic } }
-                Row {
+                Item {
                     anchors.verticalCenter: parent.verticalCenter
-                    spacing: -6                       // overlapped; each cut out of the next by a black ring
-                    Repeater {
-                        model: ScriptModel { values: lim.shown; objectProp: "brand" }
-                        delegate: Rectangle {
-                            required property var modelData
-                            required property int index
-                            z: 10 - index                    // the soonest on top
-                            // Its own colour, faintly (Claude warm, Antigravity violet), so
-                            // the discs read as different agents, not grey buttons.
-                            readonly property color tint: Theme.brandTint[String(modelData.brand).replace(/^.*\//, "").replace(/\.svg$/, "")] || Theme.textPrimary
-                            width: 20; height: 20; radius: 10
-                            color: Qt.tint(Theme.chip, Qt.alpha(tint, 0.22))
-                            border.width: 2; border.color: "black"
-                            Image {
-                                anchors.centerIn: parent
-                                width: 10; height: 10
-                                source: parent.modelData.brand
-                                sourceSize: Qt.size(22, 22)
-                                asynchronous: true
-                                visible: source != ""
-                            }
-                        }
+                    width: 20; height: 20
+                    StatRing {
+                        anchors.fill: parent
+                        size: 20; stroke: 2
+                        // Drains as the reset nears (full at 15 min, empty at it).
+                        value: lim.b ? Math.max(0, Math.min(1, (lim.b.at - Limits.now) / Limits.soonMs)) : 0
+                        color: lim.b ? lim.b.tint : Theme.orange
+                        text: ""; label: ""
                     }
-                }
-                Label {
-                    visible: lim.more > 0
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: "+" + lim.more
-                    size: Theme.tCaption; weight: Theme.wBold; rounded: true
-                    color: Theme.textSecondary
+                    Image {
+                        anchors.centerIn: parent
+                        width: 10; height: 10
+                        source: lim.b ? lim.b.brand : ""
+                        sourceSize: Qt.size(20, 20)
+                        asynchronous: true
+                    }
                 }
                 Label {
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.verticalCenterOffset: 2      // digits sit optically low, as RestMark's
-                    text: Limits.compact(Limits.soonestReset) || "out"
+                    text: lim.b ? Limits.compact(lim.b.at - Limits.now) : ""
                     size: Theme.tSub; weight: Theme.wSemibold
-                    color: Theme.orange
+                    color: Theme.textSecondary
                     font.features: ({ "tnum": 1 })
                 }
             }
@@ -306,12 +299,11 @@ Item {
          : 0
       spacing: 10
     SysMarks { id: leadSys; bar: rest.bar; updateOffStage: Updates.running && rest.activity !== "update"; visible: rest.mini && any && !rest.helloFocus; anchors.verticalCenter: parent.verticalCenter }
-    // (T3's name used to lead the time with its count trailing it: two
-    // marks for one thing read as clutter. One mark now, "T3 ④", after the
-    // time. Kept, hidden, so the layout's references stay valid.)
+    // Mini notch, T3 at work: its name leads the time and its count trails
+    // it (t3mark), a live activity's two sides with the time between.
     RestMark {
         id: t3word
-        visible: false
+        visible: rest.mini && T3Code.total > 0 && !rest.helloFocus
         anchors.verticalCenter: parent.verticalCenter
         wordmark: "T3"
         tone: T3Code.waiting > 0 ? Theme.orange : Theme.cyan
@@ -624,7 +616,7 @@ Item {
             id: t3mark
             visible: T3Code.total > 0 && !rest.stageTaken
             anchors.verticalCenter: parent.verticalCenter
-            wordmark: "T3"
+            wordmark: rest.mini ? "" : "T3"
             // T3 ③: the count in a ring that turns while threads work, solid
             // orange (with how many) when one needs you. Hover says which.
             value: T3Code.waiting > 0 ? String(T3Code.waiting) : String(T3Code.running)
