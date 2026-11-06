@@ -37,6 +37,15 @@ Open:
       empty state (glyph + tSub line); one button set (PillButton, RestMark).
       Migrate file by file, lowest-traffic first, screenshot before/after.
 - [ ] Long uptime: read ~/.local/state/rice/memlog.tsv after 2+ days; find what grows.
+      Measured 2026-11-06: fresh 288 MB; ~3 MB kept per island panel open
+      (17 → 33 opens: 433 → 480 MB). Find what a closed panel's Loader keeps.
+- [ ] Load gate covers singletons only: offscreen stops at the first
+      PanelWindow, so panel-level errors (UsagePanel's FINAL override) still
+      pass. Next: compile changed panel files through TestHook before switching.
+- [ ] Screensaver clock: confirm both screens move (couldn't watch 75 s live).
+- [ ] Gemini audit, rejected after checking: lock covers every screen
+      (WlSessionLock instantiates its surface per screen); `hyprctl repl`
+      answers its argument (6 ms). Open: external monitor dim on idle (DDC).
 
 ## NOW (2026-11-05 night) — road to 9.5, see docs/design/STATES.md
 Done: live shell runs from `stable` (349 MB, was 652 from dev reloads); shared
