@@ -51,7 +51,7 @@ FocusScope {
             const k = Limits.windowLabel(x.window) + "|" + Math.round((x.window.resetsAt || 0) / 600000);
             const r = g.rows[k];
             if (r) { r.shared += 1; continue; }
-            g.rows[k] = { key: x.key, label: Limits.windowLabel(x.window), window: x.window, used: x.used, level: x.level, shared: 1 };
+            g.rows[k] = { key: x.key, label: Limits.windowLabel(x.window), acct: Limits.label(x.account), window: x.window, used: x.used, level: x.level, shared: 1 };
             const rank = x.level === "exhausted" ? 2 : x.level === "approaching" ? 1 : 0;
             g.rank = Math.max(g.rank, rank);
             g.top = Math.max(g.top, x.used);
@@ -262,7 +262,8 @@ FocusScope {
                                             anchors { left: parent.left; verticalCenter: parent.verticalCenter }
                                             width: parent.width - pc.width - 8
                                             elide: Text.ElideRight
-                                            text: w.r.label + (w.r.shared > 1 ? "  ·  shared" : "")
+                                            // Two accounts: say whose ("Weekly · work"), or that it's one shared quota.
+                                            text: w.r.label + (w.r.shared > 1 ? "  ·  shared" : card.g.accounts > 1 ? "  ·  " + w.r.acct : "")
                                             size: Theme.tSub; color: Theme.textSecondary
                                         }
                                         Label {
