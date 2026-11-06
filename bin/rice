@@ -188,7 +188,8 @@ case ${1:-} in
                 # A property named like one of Item's anchor lines (left, top…) is
                 # a FINAL override: the file won't load, and lint is silent.
                 # The offscreen load test can't reach panels, so check by name.
-                fin=$(grep -nE '^\s*(readonly\s+)?property\s+[A-Za-z_.<>]+\s+(left|right|top|bottom|horizontalCenter|verticalCenter|baseline)\s*[:;]' "$dev/$f")
+                # Only lines this promote adds (a window's own `top` is fine and old).
+                fin=$(git -C "$dev" diff -U0 "$(git -C "$STABLE" rev-parse HEAD)" "$head" -- "$f" | grep -E '^\+\s*(readonly\s+)?property\s+[A-Za-z_.<>]+\s+(left|right|top|bottom|horizontalCenter|verticalCenter|baseline)\s*[:;]')
                 [ -n "$fin" ] && bad="$bad\n$f (a property named like an anchor line, a FINAL override; it won't load — rename it):\n$fin"
             done
             if [ -n "$bad" ]; then
