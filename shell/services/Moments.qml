@@ -74,10 +74,6 @@ Singleton {
     //   quiet: chosen, not connected (an output picked in Sound): no link ring
     //   open: what a click does (Sound in the center if unset)
     property var card: null
-    // The screen it came up on: it stays there while it shows (it jumped
-    // to the other monitor mid-read when focus moved).
-    property string cardOn: ""
-    onCardChanged: cardOn = card ? Screens.focusedName : ""
     property bool cardHeld: false
     function showCard(c, ms) {
         // The same device again (its link, then its sound): fill in, don't replay.
