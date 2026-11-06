@@ -19,6 +19,7 @@ FocusScope {
         if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { T3Code.focus(); Island.close(); e.accepted = true; }
     }
 
+    readonly property var live: T3Code.items.filter(i => i.status !== "completed")
     function agentName(p) {
         const base = String(p || "").replace(/_\d+$/, "");
         return ({ claudeAgent: "Claude", codex: "Codex", cursor: "Cursor", antigravity: "Antigravity", opencode: "OpenCode", gemini: "Gemini" })[base]
@@ -53,7 +54,7 @@ FocusScope {
 
         // ── Empty ────────────────────────────────────────────────────────
         Label {
-            visible: T3Code.items.length === 0
+            visible: t3.live.length === 0 && T3Code.finished === 0
             width: parent.width
             topPadding: 4; bottomPadding: 4
             text: T3Code.alive ? "Nothing running in T3 Code." : "T3 Code isn't open."
@@ -65,7 +66,9 @@ FocusScope {
             width: parent.width
             spacing: 2
             Repeater {
-                model: ScriptModel { values: T3Code.items.slice(0, 6); objectProp: "title" }
+                // Live threads only; finished ones fold into one line below
+                // (three finished rows crowded out the two still working).
+                model: ScriptModel { values: t3.live.slice(0, 6); objectProp: "title" }
                 delegate: Rectangle {
                     id: row
                     required property var modelData
@@ -135,6 +138,18 @@ FocusScope {
                         onClicked: { T3Code.focus(); Island.close(); }
                     }
                 }
+            }
+        }
+
+        Row {
+            visible: T3Code.finished > 0
+            leftPadding: 10
+            spacing: 8
+            Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f012c}"; font.family: Theme.fontGlyph; font.pixelSize: 13; color: Theme.green }
+            Label {
+                anchors.verticalCenter: parent.verticalCenter
+                text: T3Code.finished + " finished in the last 15 min"
+                size: Theme.tFootnote; color: Theme.textTertiary
             }
         }
 

@@ -65,7 +65,12 @@ Item {
             if (peek.swipeY < -Theme.swipeThreshold || (peek.swipeY < -20 && Math.abs(peek.swipeY) / Math.max(1, Date.now() - swipeStart) > Theme.swipeVelocity)) {
                 peek.swipingOut = true;
                 swipeOut.start();
-            } else swipeHome.start();
+            } else {
+                // Pulled down (it rubber-bands): open it to read, the whole
+                // message with Reply (iOS: pull a notification down to expand).
+                if (peek.swipeY > 36 && peek.item && !Notifs.peekExpanded) Notifs.readInIsland(peek.item);
+                swipeHome.start();
+            }
         }
         onTranslationChanged: peek.swipeY = translation.y < 0 ? translation.y : Theme.swipeDamp(translation.y)
     }
@@ -182,7 +187,7 @@ Item {
             Label {
                 visible: !peek.expanded && !!peek.item
                 width: parent.width
-                text: peek.hiddenOpen ? "Swipe up to dismiss" : peek.redacted ? "Tap to read · swipe up to dismiss" : "Tap for more · swipe up to dismiss"
+                text: peek.hiddenOpen ? "Swipe up to dismiss" : "Pull down or tap to read · swipe up to dismiss"
                 size: 10
                 weight: Theme.wMedium
                 color: Theme.textTertiary

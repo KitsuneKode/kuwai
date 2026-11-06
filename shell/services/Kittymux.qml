@@ -55,7 +55,30 @@ Singleton {
     }
     readonly property int needsYou: inbox.needs_you || 0
     readonly property var running: live ? feed.agents.map(fromFeed) : rows.filter(r => r.kind === "running").map(parse)
-    readonly property var recent: rows.filter(r => r.kind === "closed").slice(0, 6).map(parse)
+    // Closed conversations, worth reopening: a title that's just the last
+    // shell command (rm -f …, cc auth login) reads as the agent's session,
+    // repeats fold into one, four at most. (It listed raw commands.)
+    readonly property var recent: {
+        const seen = {}, out = [];
+        for (const r of rows.filter(x => x.kind === "closed").map(parse)) {
+            if (looksLikeCommand(r.title)) r.title = agentLabel(r.agent) + " session";
+            const k = r.agent + "|" + r.title + "|" + r.where;
+            if (seen[k]) continue;
+            seen[k] = true;
+            out.push(r);
+            if (out.length >= 4) break;
+        }
+        return out;
+    }
+    function looksLikeCommand(t) {
+        const x = String(t || "").trim();
+        return x === "" || /^(rm|cd|ls|git|sudo|cat|mv|cp|kill|pkill|cc|cdx|npm|bun|pnpm|yarn|make|python3?|node|ssh|exit|clear|vim|nvim)\b/.test(x)
+            || /(^|\s)(-{1,2}[a-z]|~\/|\/[a-z])/i.test(x);
+    }
+    function agentLabel(a) {
+        const n = String(a || "").replace(/-agent$/, "");
+        return ({ claude: "Claude", codex: "Codex", cursor: "Cursor", agy: "Antigravity", gemini: "Gemini", opencode: "OpenCode" })[n] || (n ? n.charAt(0).toUpperCase() + n.slice(1) : "Agent");
+    }
 
     // OSC 9;4: a fraction from agents.json, or {state, pct} from tabs.json (pct is 0–100).
     function progressPct(p) {
