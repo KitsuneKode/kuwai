@@ -445,7 +445,7 @@ Item {
 
             Label {
                 width: parent.width
-                text: Notifs.bodyRedacted(card.item) && !card.engaged ? Notifs.bodyForDisplay(card.item, false) : card.item.body
+                text: Notifs.bodyRedacted(card.item) && !card.engaged ? Notifs.bodyForDisplay(card.item, false) : Notifs.styledSafe(card.item.body)
                 visible: text !== "" || Notifs.bodyRedacted(card.item)
                 textFormat: Text.StyledText
                 wrapMode: Text.Wrap

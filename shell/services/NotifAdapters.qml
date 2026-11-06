@@ -83,6 +83,7 @@ Singleton {
                     groupKey: h["x-rice-group"] || "",
                     focusClass: "",
                     url: h["x-rice-url"] || "",
+                    feed: true,
                     full: h["x-rice-full"] || "",
                     quiet: h["x-rice-quiet"] === "1",
                     calm: h["x-rice-calm"] === "1",

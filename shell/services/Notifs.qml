@@ -89,6 +89,15 @@ Singleton {
 
     readonly property string stateDir: Quickshell.env("HOME") + "/.local/state/rice"
     property bool loaded: false
+    property var carried: []            // reload-carried notifications waiting for the history
+    onLoadedChanged: if (loaded && carried.length) {
+        const all = items.concat(snoozed);
+        for (const n of carried) {
+            const known = all.find(i => !i.notification && i.nid === n.id);
+            if (known) known.notification = n;
+        }
+        carried = [];
+    }
 
     NotificationServer {
         id: server
@@ -107,7 +116,10 @@ Singleton {
         // history restored from disk, so reattach it there instead of adding
         // (and toasting) it twice.
         if (n.lastGeneration) {
-            const known = items.find(i => !i.notification && i.nid === n.id);
+            // Before the history is read, hold it: it was dropped, and its
+            // row came back dead (Reply, Archive, Mark as Read did nothing).
+            if (!loaded) { carried.push(n); return; }
+            const known = items.concat(snoozed).find(i => !i.notification && i.nid === n.id);
             if (known) known.notification = n;
             return;
         }
@@ -222,6 +234,9 @@ Singleton {
             return v === undefined ? m : v;
         });
     }
+    // A body for StyledText (toasts, rows): apps send <b> and <i>, but an
+    // <img> would make the shell fetch it (a tracking pixel), so it goes.
+    function styledSafe(t) { return String(t || "").replace(/<img\b[^>]*>/gi, "").replace(/<(script|style|iframe|object)\b[\s\S]*?<\/\1>/gi, ""); }
     function readable(t) {
         return decodeEntities(String(t || "")
             .replace(/\r\n?/g, "\n")
@@ -387,6 +402,14 @@ Singleton {
     }
     function invokeDefault(item) {
         const n = item.notification;
+        // A feed card (bin/rice-feeds) with a link: the shell opens the link
+        // itself and asks the feed only to mark it read. Its "Open" lived in
+        // the feed's memory, so after the feed restarted a click opened nothing.
+        if (item.feed && item.url) {
+            const rd = n ? n.actions.find(x => x.identifier === "read") : null;
+            if (rd) rd.invoke();
+            return false;          // → openUrl
+        }
         const act = n ? (n.actions.find(x => x.identifier === "default") || (n.actions.length === 1 ? n.actions[0] : null)) : null;
         if (act) act.invoke();
         return !!act;
@@ -396,7 +419,9 @@ Singleton {
         // Web and mail links only, and never with a newline or NUL smuggled in.
         const u = String(item.url || "");
         if (!/^(https?:\/\/[^\s]+|mailto:[^\s]+)$/.test(u) || /[\0\n\r]/.test(u)) return;
-        const p = jumper.createObject(root, { command: ["xdg-open", u] });
+        // Its own transient unit (as bin/rice-feeds does): a browser started
+        // from the shell's process died with the shell's next restart.
+        const p = jumper.createObject(root, { command: ["systemd-run", "--user", "--collect", "--quiet", "--slice=app.slice", "--", "xdg-open", u] });
         p.running = true;
     }
 

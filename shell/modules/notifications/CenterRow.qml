@@ -242,8 +242,8 @@ Item {
                     id: previewBody
                     width: previewFlick.width
                     wrapMode: Text.Wrap
-                    text: row.reading ? row.it.full
-                        : row.center && row.center.terms.length ? row.center.highlight(row.it.body.replace(/<[^>]*>/g, "")) : row.it.body
+                    text: row.reading ? Notifs.fullForDisplay(row.it)
+                        : row.center && row.center.terms.length ? row.center.highlight(row.it.body.replace(/<[^>]*>/g, "")) : Notifs.styledSafe(row.it.body)
                     // A whole message is plain text (paragraphs kept, nothing parsed).
                     textFormat: row.reading ? Text.PlainText : Text.StyledText
                     size: 13; lineHeight: 1.18; color: Theme.textSecondary

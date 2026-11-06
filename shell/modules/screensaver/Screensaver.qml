@@ -81,14 +81,17 @@ Scope {
         environment: ({ KUWAI_SAVER_FILE: root.film, KUWAI_SAVER_SCREEN: "*" })
         // The shell is the only one that ends it (SIGKILL, filmUp false), so
         // any exit while the film should be up is a failure: Dusk instead.
-        onExited: { if (root.filmUp && root.style === "night") root.clipFailed = true; }
+        // Our own SIGKILL (the screensaver going, a restart) isn't a failure:
+        // counting it latched Night off to Dusk for the rest of the session.
+        onExited: { if (!root.killing && root.filmUp && root.style === "night") root.clipFailed = true; root.killing = false; }
     }
     // SIGKILL, never SIGTERM: Quickshell can crash on a polite exit and its
     // crash handler would relaunch the film (bin/rice-shell has the story).
     onFilmUpChanged: {
         if (filmUp) { if (!filmProc.running) filmProc.running = true; }
-        else if (filmProc.running) filmProc.signal(9);
+        else if (filmProc.running) { killing = true; filmProc.signal(9); }
     }
+    property bool killing: false
     Component.onDestruction: if (filmProc.running) filmProc.signal(9)
     // Backstop: a film left over from an earlier shell (before pdeathsig, or
     // however it happened) goes when this one starts.

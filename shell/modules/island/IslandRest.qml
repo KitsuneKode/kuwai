@@ -165,11 +165,27 @@ Item {
         // While a live activity has the stage only a warning stays; update
         // news waits (it sat beside a timer's countdown).
         property bool quiet: false
+        // An update running while another live activity (a timer, dictation)
+        // holds the stage: it still shows, as a ring with its percent. The
+        // notch said nothing while the panel showed Build / Install.
+        property bool updateOffStage: false
         spacing: 2
         // From the data, not the children's `visible`: a hidden parent makes
         // every child report invisible, so `any` could never turn on.
-        readonly property bool any: (Updates.fresh && !Updates.running && !quiet) || Alerts.active.length > 0 || Limits.markShown
-        readonly property bool hovered: upd.hovered || warn.hovered || lim.hovered
+        readonly property bool any: (Updates.fresh && !Updates.running && !quiet) || Alerts.active.length > 0 || Limits.markShown || updateOffStage
+        readonly property bool hovered: upd.hovered || warn.hovered || lim.hovered || updRun.hovered
+        RestMark {
+            id: updRun
+            visible: sys.updateOffStage
+            anchors.verticalCenter: parent.verticalCenter
+            glyph: "\u{f06b0}"
+            value: String(Math.round(Math.max(0, Math.min(0.99, Updates.progress)) * 100))
+            ring: "spin"
+            tone: Theme.accent
+            previews: true
+            onPreviewRequested: if (Island.panel === "" && sys.bar) Island.preview("updates", sys.bar.screenName)
+            onClicked: Island.open("updates", sys.bar ? sys.bar.screenName : "", "pointer", "island")
+        }
         RestMark {
             id: upd
             // Only while this set is new to you: once you've looked, it steps
@@ -222,7 +238,7 @@ Item {
          : mini ? clock.x - 12 - width
          : 0
       spacing: 10
-    SysMarks { id: leadSys; bar: rest.bar; visible: rest.mini && any && !rest.helloFocus; anchors.verticalCenter: parent.verticalCenter }
+    SysMarks { id: leadSys; bar: rest.bar; updateOffStage: Updates.running && rest.activity !== "update"; visible: rest.mini && any && !rest.helloFocus; anchors.verticalCenter: parent.verticalCenter }
     // Mini notch, T3 at work: its name leads the time and its count (t3mark)
     // trails it, like a live activity's leading and trailing sides, so the
     // time stays the centre.
@@ -582,7 +598,7 @@ Item {
         }
         // System news (updates, a warning): trailing here, leading in the
         // mini notch (leadSys) so the two sides balance.
-        SysMarks { id: trailSys; bar: rest.bar; quiet: rest.stageTaken; visible: !rest.mini && any; anchors.verticalCenter: parent.verticalCenter }
+        SysMarks { id: trailSys; bar: rest.bar; quiet: rest.stageTaken; updateOffStage: Updates.running && rest.activity !== "update"; visible: !rest.mini && any; anchors.verticalCenter: parent.verticalCenter }
         // The camera is on: a green dot (Apple's), with who has it.
         Rectangle {
             visible: Activities.camInUse

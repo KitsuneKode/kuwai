@@ -278,7 +278,38 @@ Singleton {
         command: [root.bin, "status"]
         stdout: StdioCollector {
             onStreamFinished: {
-                try { if (JSON.parse(text).running) { root.plan = { repo: true, aur: [], flatpak: [] }; root.resetRun(); root.running = true; root.jobSeen = true; follower.running = true; } } catch (e) {}
+                let up = false;
+                try { up = JSON.parse(text).running; } catch (e) {}
+                if (up) { root.plan = { repo: true, aur: [], flatpak: [] }; root.resetRun(); root.running = true; root.jobSeen = true; follower.running = true; }
+                else missedDone.running = true;
+            }
+        }
+    }
+    // A run that ended while no shell was watching (a restart in its last
+    // seconds): its "done" is still in the feed. Shown once, if it ended in
+    // the last 15 minutes and isn't the one already shown (updates-shown).
+    readonly property string shownPath: (Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")) + "/rice/updates-shown"
+    FileView { id: shownFile; path: root.shownPath; blockLoading: true; printErrors: false }
+    Process {
+        id: missedDone
+        command: ["sh", "-c", 'f="$1"; [ -f "$f" ] && [ $(( $(date +%s) - $(stat -c %Y "$f") )) -lt 900 ] && tail -n 3 "$f"', "rice-missed",
+                  (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/rice/update.jsonl"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                if (root.running) return;
+                const lines = text.trim().split("\n");
+                for (let i = lines.length - 1; i >= 0; i--) {
+                    let ev = null;
+                    try { ev = JSON.parse(lines[i]); } catch (e) { continue; }
+                    if (ev.e !== "done") continue;
+                    if (ev.cancelled || !ev.log || String(shownFile.text()).trim() === ev.log) return;
+                    root.ownedRun = true;
+                    root.result = ev;
+                    if (ev.error) root.runError = ev.error;
+                    root.running = true;
+                    root.finishRun();
+                    return;
+                }
             }
         }
     }
@@ -379,6 +410,15 @@ Singleton {
         }
         reviews = ({});
         excluded = ({});
+        // The notch says how it went, for a moment (it said nothing: the
+        // run vanished from the stage the turn it ended).
+        if (result && ownedRun) {
+            if (result.log) shownFile.setText(result.log + "\n");
+            const n = (result.installed || []).length;
+            Moments.show(result.unknown || !result.ok
+                ? { kind: "update", glyph: "\u{f0026}", label: result.unknown ? "Update stopped" : "Updated, with things to look at", value: "", ring: -1, tone: Theme.orange }
+                : { kind: "update", glyph: "\u{f012c}", label: "Updated", value: n ? n + (n === 1 ? " package" : " packages") : "", ring: -1, tone: Theme.green }, 4000);
+        }
         Qt.callLater(check);
     }
     // Rough weights for one ring: Arch packages 0.05–0.6, builds 0.6–0.9, install 0.9–0.98.

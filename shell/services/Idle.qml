@@ -89,7 +89,9 @@ Singleton {
                   "setpriv", "--pdeathsig", "KILL", "--", "sh", "-c", 'setpriv --pdeathsig KILL -- gdbus monitor --system --dest org.freedesktop.login1 --object-path /org/freedesktop/login1 | while read -r l; do case $l in *PrepareForSleep*true*) "$1" lock --wait; exit 0;; esac; done', "sh", root.rice]
         onExited: if (root.enabled) rearm.restart()
     }
-    Timer { id: rearm; interval: 3000; onTriggered: if (root.enabled) sleepGuard.running = true }
+    // Soon after waking (a lid closed again right away is still locked first);
+    // not instantly, so a guard that fails at once can't spin.
+    Timer { id: rearm; interval: 500; onTriggered: if (root.enabled) sleepGuard.running = true }
     Process {
         id: lockSignal
         running: root.enabled

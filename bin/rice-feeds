@@ -112,7 +112,8 @@ def clip(s, n):
 def full_text(s, n=6000):
     """The whole readable text for the island's preview: paragraphs kept,
     runs of blank lines folded, each line trimmed, capped at n characters."""
-    lines = [re.sub(r"[ \t\u00a0]+", " ", l).strip() for l in str(s or "").replace("\r", "").split("\n")]
+    # Trailing space goes; leading stays (nested bullets, indented code).
+    lines = [re.sub(r"(?<=\S)[ \t\u00a0]+", " ", l.replace("\t", "  ")).rstrip() for l in str(s or "").replace("\r", "").split("\n")]
     t = re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip()
     return t if len(t) <= n else t[: n - 1].rstrip() + "…"
 
@@ -125,26 +126,28 @@ class Notifier:
         self.bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
         self.by_id = {}       # notification id -> { key, on }
         self.by_key = {}      # key -> notification id
-        self._pending = []    # sent, waiting for their id (replies come in order)
         for sig in ("ActionInvoked", "NotificationReplied", "NotificationClosed"):
             self.bus.signal_subscribe(None, "org.freedesktop.Notifications", sig, "/org/freedesktop/Notifications",
                                       None, 0, self._signal)
 
-    def _call(self, method, args, reply=None):
+    def _call(self, method, args, reply=None, sent=None):
+        # sent: this call's own (key, on), carried with its reply. A shared
+        # queue lost its order when a call failed (a shell restart): every
+        # later card was bound to the previous card's link and actions.
         self.bus.call(
             "org.freedesktop.Notifications", "/org/freedesktop/Notifications", "org.freedesktop.Notifications",
             method, args, reply and self.GLib.VariantType(reply), 0, -1, None,
-            (lambda b, r, _: self._done(b, r, method)), None)
+            (lambda b, r, _: self._done(b, r, method, sent)), None)
 
-    def _done(self, bus, res, method):
+    def _done(self, bus, res, method, sent=None):
         try:
             out = bus.call_finish(res)
         except Exception as e:  # the server is gone (a restart): it comes back
             log("notify:", method, e)
             return
-        if method == "Notify" and self._pending:
+        if method == "Notify" and sent:
             nid = out.unpack()[0]
-            key, on = self._pending.pop(0)
+            key, on = sent
             old = self.by_key.get(key)
             if old and old != nid:
                 self.close_id(old)
@@ -165,8 +168,7 @@ class Notifier:
         def go():
             actions = [x for a in on for x in (a, self.LABELS.get(a, a))]
             h = {k: GLib.Variant("s", str(v)) for k, v in hints.items() if v}
-            self._pending.append((key, on))
-            self._call("Notify", GLib.Variant("(susssasa{sv}i)", (app, 0, icon, title, body, actions, h, expire)), "(u)")
+            self._call("Notify", GLib.Variant("(susssasa{sv}i)", (app, 0, icon, title, body, actions, h, expire)), "(u)", sent=(key, on))
             return False
         GLib.idle_add(go)
 
@@ -361,11 +363,15 @@ def gh_thread(t, fetch=gh_fetch, c=None):
             if who and who.lower() == me() and reason not in ("review_requested", "assign", "mention"):
                 return None
             t["_avatar"] = (who, (got.get("user") or {}).get("avatar_url") or "")
+            # The whole comment for the reading view keeps its Markdown (code,
+            # "a < b"); the shell's readable() cleans it in one place. Only
+            # the one-line preview is stripped hard here.
+            raw = re.sub(r"<!--.*?-->", "", text, flags=re.S).strip()
             text = re.sub(r"<!--.*?-->|<[^>]+>|```.*?```|!\[[^\]]*\]\([^)]*\)", " ", text, flags=re.S)
             text = re.sub(r"[#>*_`|]+", " ", text)
             if who and text.strip() and reason not in ("review_requested", "assign"):
                 body = f"{who}: {clip(text, 160)}"
-                t["_full"] = f"{who}:\n\n{full_text(text, 4000)}"
+                t["_full"] = f"{who}:\n\n{full_text(raw, 4000)}"
             elif who:
                 body = f"{short(repo)} {number} · by {who}".strip()
     if bot and c["bots"] == "hide":

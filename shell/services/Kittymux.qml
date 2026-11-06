@@ -88,9 +88,12 @@ Singleton {
             return Math.max(0, Math.min(100, Math.round(p.pct)));
         return null;
     }
+    // Ages and "resets in" read this, so they move without a new file.
+    property real now: Date.now()
+    Timer { interval: 60000; repeat: true; running: root.live || root.tabsLive; onTriggered: root.now = Date.now() }
     function ageFrom(since) {
         if (!since) return "";
-        const s = Math.max(0, Date.now() / 1000 - since);
+        const s = Math.max(0, root.now / 1000 - since);
         if (s < 45) return "<1m";
         const m = Math.round(s / 60);
         if (m < 60) return m + "m";
@@ -184,7 +187,7 @@ Singleton {
         let status = words[a.state] || a.state || "";
         if (a.state === "error" && a.error) status = a.error;
         if (a.state === "limited" && a.limit_reset) {
-            const mins = Math.max(0, Math.round((a.limit_reset - Date.now() / 1000) / 60));
+            const mins = Math.max(0, Math.round((a.limit_reset - root.now / 1000) / 60));
             const h = Math.floor(mins / 60), m = mins % 60;
             status += " · resets in " + (h ? h + "h" + (m ? " " + m + "m" : "") : m + "m");
         }
