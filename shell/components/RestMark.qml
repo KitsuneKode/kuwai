@@ -9,6 +9,7 @@
 // previews: resting on the mark (Settings.hoverDelay) asks for its panel
 // (previewRequested); the owner opens it with Island.preview.
 //   RestMark { icon: Quickshell.iconPath("t3code"); value: "3"; tone: Theme.orange }
+//   RestMark { glyph: "…"; value: "15h"; ring: "solid" }   a solid ring widens to fit its value
 import QtQuick
 import Quickshell.Widgets
 import qs.config
@@ -77,9 +78,11 @@ Item {
         Item {
             visible: mark.ring !== "" && mark.value !== ""
             anchors.verticalCenter: parent.verticalCenter
-            width: 18; height: 18
+            // A longer value ("15h") stretches a solid ring into a pill.
+            width: mark.ring === "solid" ? Math.max(18, ringValue.implicitWidth + 8) : 18
+            height: 18
             Rectangle {
-                anchors.fill: parent; radius: width / 2
+                anchors.fill: parent; radius: height / 2
                 color: "transparent"
                 border.width: 1.5
                 border.color: mark.ring === "solid" ? mark.tone : Qt.alpha(mark.tone, 0.25)
@@ -112,6 +115,7 @@ Item {
                 }
             }
             Label {
+                id: ringValue
                 anchors.centerIn: parent           // measured: centred (a +1 sat 1 px low)
                 text: mark.value
                 size: Theme.tCaption; weight: Theme.wBold; rounded: true

@@ -142,8 +142,17 @@ FocusScope {
                     }
                 }
                 SettingsRow {
-                    label: "Agent limit alerts"; detail: "When a harness quota crosses 90% or hits the cap, peek once from the island (provider, account, window) — not a badge on the clock"
-                    Toggle { on: Settings.islandAgentUsage; onToggled: Settings.set("islandAgentUsage", !Settings.islandAgentUsage) }
+                    label: "Limit alerts in the notch"; detail: "A moment when an agent's usage window nears its cap; a mark on the notch while one is used up, until it resets"
+                    Toggle { on: Settings.limitAlerts; onToggled: Settings.set("limitAlerts", !Settings.limitAlerts) }
+                }
+                SettingsRow {
+                    visible: Settings.limitAlerts
+                    label: "Alert at"; detail: "How much of a window is used before the notch says so"
+                    Segmented {
+                        options: [70, 80, 90].map(n => ({ id: String(n), label: n + "%" }))
+                        current: String(Settings.limitThreshold)
+                        onPicked: id => Settings.set("limitThreshold", Number(id))
+                    }
                 }
             }
             SettingsGroup {

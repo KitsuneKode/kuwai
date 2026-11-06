@@ -168,8 +168,8 @@ Item {
         spacing: 2
         // From the data, not the children's `visible`: a hidden parent makes
         // every child report invisible, so `any` could never turn on.
-        readonly property bool any: (Updates.fresh && !Updates.running && !quiet) || Alerts.active.length > 0
-        readonly property bool hovered: upd.hovered || warn.hovered
+        readonly property bool any: (Updates.fresh && !Updates.running && !quiet) || Alerts.active.length > 0 || Limits.markShown
+        readonly property bool hovered: upd.hovered || warn.hovered || lim.hovered
         RestMark {
             id: upd
             // Only while this set is new to you: once you've looked, it steps
@@ -192,6 +192,22 @@ Item {
             tone: Alerts.active.length && Alerts.active[0].level === "crit" ? Theme.red : Theme.orange
             tip: Alerts.active.length ? Alerts.active.map(a => a.title).join(" · ") + " · click for System" : ""
             onClicked: Island.open("system", sys.bar ? sys.bar.screenName : "", "pointer", "island")
+        }
+        // An agent's usage window used up (services/Limits): the gauge and the
+        // soonest reset ("3d") in a solid orange ring, until it resets. Like
+        // a warning it stays while a live activity has the stage. Rest on
+        // it: the Usage panel.
+        RestMark {
+            id: lim
+            visible: Limits.markShown
+            anchors.verticalCenter: parent.verticalCenter
+            glyph: "\u{f029a}"
+            value: Limits.compact(Limits.soonestReset) || "0%"
+            ring: "solid"
+            tone: Theme.orange
+            previews: true
+            onPreviewRequested: if (Island.panel === "" && sys.bar) Island.preview("usage", sys.bar.screenName)
+            onClicked: Island.open("usage", sys.bar ? sys.bar.screenName : "", "pointer", "island")
         }
     }
 

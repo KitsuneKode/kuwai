@@ -30,12 +30,6 @@ import qs.services
 Scope {
     id: root
 
-    Binding {
-        target: Limits
-        property: "watching"
-        value: Settings.bar === "island" && Settings.islandAgentUsage
-    }
-
     Variants {
         model: Quickshell.screens
 
@@ -422,6 +416,7 @@ Scope {
             Component { id: t3Panel; T3Panel {} }
             Component { id: bluetoothPanel; BluetoothPanel {} }
             Component { id: notifsPanel; NotifsPanel {} }
+            Component { id: usagePanel; UsagePanel {} }
 
             Elevation {
                 target: frame
@@ -681,7 +676,7 @@ Scope {
                                     Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f0141}"; font.family: Theme.fontGlyph; font.pixelSize: 14; color: Theme.textSecondary }
                                     Label {
                                         anchors.verticalCenter: parent.verticalCenter
-                                        text: Island.innerBackLabel || ({ calendar: "Calendar", power: "Power", launcher: "Search", settings: "Settings", system: "System", theme: "Themes", keys: "Shortcuts", switcher: "Windows", updates: "Software Update" })[Island.history[Island.history.length - 1]] || "Back"
+                                        text: Island.innerBackLabel || ({ calendar: "Calendar", power: "Power", launcher: "Search", settings: "Settings", system: "System", theme: "Themes", keys: "Shortcuts", switcher: "Windows", updates: "Software Update", usage: "Usage" })[Island.history[Island.history.length - 1]] || "Back"
                                         size: 12; weight: Theme.wMedium; color: Theme.textSecondary
                                     }
                                 }
@@ -693,7 +688,7 @@ Scope {
                             y: win.backH
                             active: win.panelHere || pv.value > 0.01
                             focus: true
-                            sourceComponent: ({ calendar: calendarPanel, power: powerPanel, launcher: launcherPanel, settings: settingsPanel, system: systemPanel, theme: themePanel, keys: keysPanel, switcher: switcherPanel, updates: updatesPanel, media: mediaPanel, t3: t3Panel, notifs: notifsPanel, bluetooth: bluetoothPanel })[win.shownPanel] || null
+                            sourceComponent: ({ calendar: calendarPanel, power: powerPanel, launcher: launcherPanel, settings: settingsPanel, system: systemPanel, theme: themePanel, keys: keysPanel, switcher: switcherPanel, updates: updatesPanel, media: mediaPanel, t3: t3Panel, notifs: notifsPanel, bluetooth: bluetoothPanel, usage: usagePanel })[win.shownPanel] || null
                         }
                         // Right click (anywhere a control doesn't take it) or the mouse's back button: back.
                         TapHandler {

@@ -50,7 +50,8 @@ Singleton {
     readonly property alias seenNotifC1Hint: s.seenNotifC1Hint
     readonly property alias assistantOptIn: s.assistantOptIn
     readonly property alias seenAssistantPrompt: s.seenAssistantPrompt
-    readonly property alias islandAgentUsage: s.islandAgentUsage
+    readonly property alias limitAlerts: s.limitAlerts
+    readonly property alias limitThreshold: s.limitThreshold
     readonly property alias idleOwner: s.idleOwner
     readonly property alias idleDimAc: s.idleDimAc
     readonly property alias idleLockAc: s.idleLockAc
@@ -143,8 +144,10 @@ Singleton {
             // Local assistant: off until you opt in (Settings or first shortcut).
             property bool assistantOptIn: false
             property bool seenAssistantPrompt: false
-            // Island: one-time notch peek when agent quotas cross 90% / cap (bin/rice-usage).
-            property bool islandAgentUsage: false
+            // Island: agent usage limits (services/Limits): a Moment when a
+            // window crosses limitThreshold %, a mark on the notch while one is used up.
+            property bool limitAlerts: true
+            property int limitThreshold: 80
             property bool islandProximity: true   // nearing the island 30–60 px out reveals it (off: only the top edge)
             // Tabs & agents: a glass column on the left while kitty is focused
             // on that screen. Off until asked — it reserves a strip of the display.

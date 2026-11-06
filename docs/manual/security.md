@@ -7,7 +7,7 @@ Last reviewed: 2026-11-05.
 | Area | Mitigation |
 |------|------------|
 | **rice-notify** | `-H` keys restricted to `x-rice-*`; values JSON-escaped via `jq`; argv for title/body/app |
-| **Agent limit alerts** | Sanitized strings, bounded length; driver/group charset filter |
+| **Usage limit moments** | Read-only `rice-usage`; labels shown as text in the island, no notifications sent |
 | **Crash alerts** | Brief truncated; uses rice-notify + adapter gate for diagnose action |
 | **Root updater** | Fuzzed in `tests/root` (no shell interpolation in helper) |
 
@@ -30,7 +30,7 @@ Last reviewed: 2026-11-05.
 | F7/F8 do nothing | Binds only existed when `~/Scripts/brightness.sh` present | Now fall back to `brightnessctl` always |
 | No WhatsApp toasts | DND, shell down, ZapZap backend disabled | `rice doctor`; restart ZapZap after shell outage |
 | Double notifications | Hot reload + keepOnReload | By design; dismiss duplicates |
-| Limit alert on every reload | Seeding | First snapshot seeds without alert (`alertSeeded`) |
+| Limit alert on every reload | Restart | What was said is kept in `~/.local/state/rice/limits-told.json` (once per window per reset) |
 | Memory >450 MB after reload | Quickshell hot reload | `rice-check`; restart shell if over budget |
 | `notify-send` broken | libnotify | All kuwai/shell paths use `rice-notify` |
 

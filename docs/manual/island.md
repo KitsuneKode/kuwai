@@ -5,9 +5,16 @@
 - **Waybar** vs **Island**: Settings → Bar & Island, or `rice bar island|waybar`.
 - **Rest**: workspaces, clock, status, activity dots (agents, alerts).
 
-## Agent limit alerts
+## Usage limits in the notch
 
-When **Agent limit alerts** is on, the shell runs `bin/rice-usage --watch`. Crossing **90%** on a session/week window (or hitting the cap) triggers **one island peek** — app name (Claude, Codex, …), window label, account, and how much is left. **Open usage** → notification center **Agents** tab. Nothing sits beside the clock.
+`bin/rice-usage --watch` runs from startup (T3 Code pushes changes; nothing polls). If it dies, the last reading stays and it comes back on its own (2 s, doubling to 5 min).
+
+- **Approaching** (a window ≥ **80 %**, Settings → Bar & Island → *Alert at*): one Moment, e.g. "Claude weekly · 82% · resets Tue". Once per window per reset period, remembered in `~/.local/state/rice/limits-told.json` across restarts. No mark stays.
+- **Used up** (100 %): a Moment "Claude weekly · used up · resets in 3d 15h", then a mark on the notch: the gauge and the soonest reset ("3d") in a solid orange ring. It stays while a live activity has the stage, like a warning.
+- **Reset** (`resetsAt` passes, or `used` drops): the mark goes, with a quiet "Claude weekly · reset".
+- Moments wait their turn in the queue, and none are shown under Focus or while sharing the screen (the mark still is).
+- **Usage panel**: rest on the mark, click it, or `rice usage`. **All** lists every window, used-up first, then by how much is used; one tab per provider after it. **Tab** / **Shift+Tab** change tabs, **Esc** closes. If rice-usage isn't running it says so, with **Retry**.
+- Off: Settings → Bar & Island → *Limit alerts in the notch* (`rice set limitAlerts false`).
 
 ## Hover
 

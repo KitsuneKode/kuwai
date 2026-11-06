@@ -9,7 +9,17 @@ pragma Singleton
 //                note, credits, windows: [{ id, kind, label, used, resetsAt,
 //                durationMins }] }] }]
 //
-// Connected only while the Agents tab is on screen; the last state stays.
+// Always connected (cheap: T3 Code pushes, nothing polls). If rice-usage
+// dies the last state stays and it comes back with a backoff (2 s → 5 min);
+// `down` says it isn't running, for the Usage panel's error and Retry.
+//
+// Limit alerts (Settings.limitAlerts, threshold Settings.limitThreshold):
+//   approaching (≥ threshold)  one Moment per window per reset period
+//   exhausted (100 %)          one Moment, then a mark on the notch
+//                              (IslandRest) until it resets
+//   reset                      a quiet Moment, the mark goes
+// What was said is kept in ~/.local/state/rice/limits-told.json, so a
+// restart doesn't say it again.
 // (The pragma sits above this comment: Quickshell's scanner stops at the
 // first brace, comments included.)
 import QtQuick
@@ -20,43 +30,85 @@ import Quickshell.Io
 Singleton {
     id: root
 
-    property bool watching: false
+    readonly property bool watching: true       // always (callers read it)
     property bool loaded: false                 // the first snapshot has arrived
     property var providers: []
     property string source: ""                 // t3 | kittymux | none
-    property real now: Date.now()               // advanced on each read, not per frame
-
-    readonly property string bin: Paths.bin + "/rice-usage"
-    readonly property string notifyBin: Paths.bin + "/rice-notify"
-
+    property real now: Date.now()               // advanced on each read and each minute tick, not per frame
     property string error: ""                   // why T3 Code isn't the source, if it isn't
 
-    // Last `used` per window; cleared below 80% so the next spike can alert again.
-    property var alertPrev: ({})
-    property var alertSent: ({})              // key+tier → true
-    property bool alertSeeded: false
+    // rice-usage itself: alive, or down (died, waiting to come back).
+    property bool alive: false
+    property int fails: 0
+    readonly property bool down: !alive && fails > 0
 
-    onWatchingChanged: if (!watching) { alertSeeded = false; alertPrev = ({}); alertSent = ({}) }
+    // Something is showing a countdown (the Usage panel, the center's Agents
+    // tab): the minute tick runs for it.
+    property bool panelShown: false
+    property bool centerShown: false
 
-    onProvidersChanged: if (loaded) checkLimitAlerts()
+    readonly property string bin: Paths.bin + "/rice-usage"
+    readonly property string toldPath: (Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")) + "/rice/limits-told.json"
+
+    // Every window, flat: [{ key, provider, account, window, used (0–1),
+    // name ("Claude weekly"), level: "" | "approaching" | "exhausted" }].
+    readonly property real threshold: Math.max(0.5, Math.min(0.99, (Settings.limitThreshold || 80) / 100))
+    readonly property var windows: {
+        const out = [];
+        for (const p of providers)
+            for (const a of p.accounts || [])
+                for (const w of a.windows || []) {
+                    const used = Math.max(0, Math.min(1, (w.used || 0) / 100));
+                    const over = !!w.resetsAt && w.resetsAt <= now;   // its reset passed; the data hasn't caught up
+                    out.push({ key: alertKey(p, a, w), provider: p, account: a, window: w, used: over ? 0 : used,
+                               name: shortName(p, w),
+                               level: over ? "" : used >= 1 ? "exhausted" : used >= threshold ? "approaching" : "" });
+                }
+        return out;
+    }
+    readonly property var exhausted: windows.filter(x => x.level === "exhausted")
+    // The soonest reset among exhausted windows (ms from now, -1 if none known).
+    readonly property real soonestReset: {
+        const t = exhausted.map(x => x.window.resetsAt).filter(r => r > now).sort((a, b) => a - b);
+        return t.length ? t[0] - now : -1;
+    }
+    // What the notch shows: alerts on and something used up.
+    readonly property bool markShown: Settings.limitAlerts && exhausted.length > 0
 
     IpcHandler {
         target: "limits"
-        function state(): string { return JSON.stringify({ watching: root.watching, source: root.source, error: root.error, providers: root.providers.map(p => p.label + ":" + p.accounts.length) }); }
+        function state(): string {
+            return JSON.stringify({ alive: root.alive, fails: root.fails, source: root.source, error: root.error,
+                                    exhausted: root.exhausted.map(x => x.name),
+                                    providers: root.providers.map(p => p.label + ":" + p.accounts.length) });
+        }
+        function retry(): void { root.retry(); }
     }
 
-    // Countdowns move on their own between updates.
+    // Countdowns move once a minute, and only while one is on screen or a
+    // window is used up (its reset has to be noticed); never per second.
     Timer {
-        interval: 30000
+        interval: 60000
         repeat: true
-        running: root.watching
-        onTriggered: root.now = Date.now()
+        running: root.exhausted.length > 0 || root.panelShown || root.centerShown
+        onTriggered: { root.now = Date.now(); root.scan(); }
     }
+    onPanelShownChanged: if (panelShown) now = Date.now()
+    onCenterShownChanged: if (centerShown) now = Date.now()
 
     Process {
         id: reader
-        running: root.watching
         command: [root.bin, "--watch"]
+        property real since: 0
+        onStarted: { root.alive = true; since = Date.now(); }
+        onExited: {
+            root.alive = false;
+            // A run that lasted a while was healthy: start the backoff over.
+            if (Date.now() - since > 120000) root.fails = 0;
+            root.fails += 1;
+            backoff.interval = Math.min(300000, 2000 * Math.pow(2, Math.min(8, root.fails - 1)));
+            backoff.start();
+        }
         stdout: SplitParser {
             onRead: line => {
                 let d;
@@ -66,87 +118,103 @@ Singleton {
                 root.error = d.t3Error || "";
                 root.providers = d.providers || [];
                 root.loaded = true;
-                root.checkLimitAlerts();
+                root.scan();
             }
         }
+    }
+    Timer { id: backoff; onTriggered: reader.running = true }
+    function retry() { backoff.stop(); fails = 0; if (!reader.running) reader.running = true; }
+    Component.onCompleted: reader.running = true
+
+    // ── Alerts ────────────────────────────────────────────────────────────
+    // told: { key: { resetsAt, name, approach, exhausted } }, one entry per
+    // window while its period lasts.
+    property var told: ({})
+    property bool toldLoaded: false
+    FileView {
+        id: toldFile
+        path: root.toldPath
+        printErrors: false
+        onLoaded: { try { root.told = JSON.parse(text()) || {}; } catch (e) { root.told = {}; } root.toldLoaded = true; root.scan(); }
+        onLoadFailed: { root.toldLoaded = true; root.scan(); }
+    }
+    function saveTold() {
+        if (!toldLoaded) return;
+        toldDir.running = true;
+    }
+    Process { id: toldDir; command: ["mkdir", "-p", root.toldPath.replace(/\/[^/]*$/, "")]; onExited: toldFile.setText(JSON.stringify(root.told)) }
+
+    // Moments only once they're armed (a startup snapshot isn't news yet:
+    // it's said a few seconds later), and not under Focus or while sharing
+    // (the mark still shows: it's the memory).
+    Connections { target: Moments; function onArmedChanged() { if (Moments.armed) root.scan(); } }
+    Connections { target: Settings; function onLimitAlertsChanged() { root.scan(); } }
+
+    function say(x, value, tone, ms) {
+        if (Notifs.muted) return;
+        Moments.show({ kind: "limit:" + x.key, glyph: "\u{f029a}", label: x.name, value: value, ring: -1, tone: tone }, ms);
+    }
+
+    function scan() {
+        if (!loaded || !toldLoaded || !Moments.armed || !Settings.limitAlerts) return;
+        const t = Object.assign({}, told);
+        let changed = false;
+        const seen = {};
+        for (const x of windows) {
+            seen[x.key] = true;
+            const prev = t[x.key];
+            const r = x.window.resetsAt || 0;
+            // Reset: used dropped under the line or its reset time passed
+            // (level ""), or it's reporting a later period than the one we
+            // told about (the shell was off across the reset). Small drift in
+            // resetsAt (kittymux recomputes it each read) isn't a new period.
+            const later = prev && prev.resetsAt && r && r - prev.resetsAt > 3600000;
+            if (prev && (x.level === "" || later)) {
+                if (prev.exhausted) say(x, "reset", Theme.textSecondary, 2400);
+                delete t[x.key];
+                changed = true;
+            }
+            if (x.level === "") continue;
+            const cur = t[x.key] || { resetsAt: r, name: x.name, approach: false, exhausted: false };
+            if (x.level === "exhausted" && !cur.exhausted) {
+                say(x, "used up" + (r ? " · resets in " + resetsIn(x.window) : ""), Theme.orange, 6000);
+                cur.exhausted = true; cur.approach = true;
+            } else if (!cur.approach) {
+                say(x, Math.round(x.used * 100) + "%" + (r ? " · resets " + resetDay(r) : ""), Theme.orange, 5000);
+                cur.approach = true;
+            } else continue;
+            cur.resetsAt = r || cur.resetsAt;
+            t[x.key] = cur;
+            changed = true;
+        }
+        // A window no longer reported: forgotten once its reset has passed.
+        for (const k of Object.keys(t)) {
+            if (seen[k] || !t[k].resetsAt || t[k].resetsAt > now) continue;
+            if (t[k].exhausted && !Notifs.muted)
+                Moments.show({ kind: "limit:" + k, glyph: "\u{f029a}", label: t[k].name, value: "reset", ring: -1, tone: Theme.textSecondary }, 2400);
+            delete t[k];
+            changed = true;
+        }
+        if (changed) { told = t; saveTold(); }
     }
 
     function alertKey(p, a, w) {
         return (p.driver || p.label || "p") + ":" + (a.key || a.email || "") + ":" + (w.id || w.label || "");
     }
-
-    function checkLimitAlerts() {
-        if (!Settings.islandAgentUsage || !providers.length) return;
-        const next = Object.assign({}, alertPrev);
-        for (const p of providers) {
-            for (const a of p.accounts || []) {
-                for (const w of a.windows || []) {
-                    const used = Math.round(Math.max(0, Math.min(100, w.used || 0)));
-                    const key = alertKey(p, a, w);
-                    const prev = alertPrev[key] ?? -1;
-                    next[key] = used;
-                    if (used < 80) {
-                        const copy = Object.assign({}, alertSent);
-                        delete copy[key + ":high"];
-                        delete copy[key + ":limit"];
-                        alertSent = copy;
-                    }
-                    if (!alertSeeded) continue;
-                    if (used >= 98 && prev < 98 && !alertSent[key + ":limit"])
-                        pushLimitAlert(p, a, w, "limit", used);
-                    else if (used >= 90 && prev < 90 && used < 98 && !alertSent[key + ":high"])
-                        pushLimitAlert(p, a, w, "high", used);
-                }
-            }
-        }
-        alertPrev = next;
-        if (!alertSeeded) alertSeeded = true;
+    // "Claude Code" + "Weekly" → "Claude weekly"; "5 hour" → "5-hour".
+    function providerShort(p) { return String(p.label || p.driver || "Agent").replace(/\s+(Code|Build)$/, ""); }
+    function windowLabel(w) { return String(w.label || w.kind || "Quota").replace(/^(\d+)\s+hour/i, "$1-hour"); }
+    function shortName(p, w) { return providerShort(p) + " " + windowLabel(w).toLowerCase(); }
+    // "Tue" a day or more away, else the time ("14:30").
+    function resetDay(at) {
+        const d = new Date(at);
+        return at - now >= 86400000 ? Qt.formatDate(d, "ddd") : Qt.formatTime(d, Settings.clock24 ? "HH:mm" : "h:mm ap");
     }
-
-    function pushLimitAlert(p, a, w, tier, used) {
-        const key = alertKey(p, a, w);
-        alertSent = Object.assign({}, alertSent, { [key + ":" + tier]: true });
-        const left = remaining(w);
-        const clean = s => String(s || "").replace(/[\r\n\t]+/g, " ").trim().slice(0, 120);
-        const acct = clean(label(a));
-        const win = clean(w.label || w.kind || "Quota");
-        const app = clean(p.label || p.driver || "Agent");
-        const resets = resetsIn(w);
-        const title = tier === "limit" ? win + " limit reached" : win + " almost full";
-        const body = (acct + " · " + used + "% used"
-            + (left >= 0 && left < 100 ? " · " + left + "% left" : "")
-            + (resets ? " · resets " + resets : "")
-            + (source ? " · " + source : "")).slice(0, 240);
-        const status = tier === "limit" ? "Coding agent quota" : left + "% left";
-        alertProc.app = app;
-        alertProc.title = title;
-        alertProc.body = body;
-        alertProc.status = status;
-        alertProc.severity = tier === "limit" ? "critical" : "warning";
-        alertProc.driver = String(p.driver || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 32);
-        alertProc.group = "agent-limit:" + key.replace(/[^a-zA-Z0-9:_-]/g, "").slice(0, 80);
-        alertProc.running = true;
-    }
-
-    Process {
-        id: alertProc
-        property string app: ""
-        property string title: ""
-        property string body: ""
-        property string status: ""
-        property string severity: "warning"
-        property string driver: ""
-        property string group: ""
-        command: [
-            root.notifyBin, "-a", app, "-u", severity === "critical" ? "critical" : "normal",
-            "-A", "default=Open usage",
-            "-H", "x-rice-agent-limit=1",
-            "-H", "x-rice-group=" + group,
-            "-H", "x-rice-driver=" + driver,
-            "-H", "x-rice-severity=" + severity,
-            "-H", "x-rice-status=" + status,
-            title, body
-        ]
+    // The mark's value: the largest unit only ("3d", "15h", "42m").
+    function compact(ms) {
+        if (ms < 0) return "";
+        const d = Math.floor(ms / 86400000), h = Math.floor(ms / 3600000), m = Math.max(1, Math.ceil(ms / 60000));
+        return d > 0 ? d + "d" : h > 0 ? h + "h" : m + "m";
     }
 
     // ── T3 Code's arithmetic (packages/shared/src/usageLimits.ts) ─────────

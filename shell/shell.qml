@@ -28,6 +28,8 @@ ShellRoot {
     // Reminders fire from the shell, so they load with it (not on first use).
     readonly property int remindersKept: Reminders.items.length
     readonly property int alarmsKept: Alarms.items.length
+    // Usage limits too: connected from the start (push-based, cheap).
+    readonly property bool limitsAlive: Limits.alive
     readonly property var crashWatcher: Crashes
     readonly property var memDiary: MemLog       // ~/.local/state/rice/memlog.tsv every 10 min
     // The stable copy (~/.local/share/kuwai) doesn't hot-reload: each reload
