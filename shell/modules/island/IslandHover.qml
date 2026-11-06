@@ -517,31 +517,57 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 height: 24; radius: 12
                 width: updRow.implicitWidth + 16
-                color: updArea.containsMouse ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.28) : Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.16)
+                Behavior on width { NumberAnimation { duration: Theme.reflowMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+                clip: true
+                scale: updArea.pressed ? 0.96 : 1
+                Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.OutCubic } }
+                readonly property bool hot: updArea.containsMouse
+                color: Qt.alpha(Theme.accent, Updates.running ? 0.12 : hot ? 0.28 : 0.16)
                 Behavior on color { ColorAnimation { duration: Theme.colorMs } }
+                // Installing: the pill is the progress bar, a fill sweeping
+                // across behind the words.
+                Rectangle {
+                    visible: Updates.running
+                    height: parent.height
+                    radius: parent.radius
+                    width: Math.max(parent.height, parent.width * Math.max(0.04, Math.min(1, Updates.progress)))
+                    color: Qt.alpha(Theme.accent, 0.30)
+                    Behavior on width { NumberAnimation { duration: Theme.artMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+                }
                 Row {
                     id: updRow
                     anchors.centerIn: parent
                     spacing: 5
-                    StatRing {
-                        visible: Updates.running
-                        anchors.verticalCenter: parent.verticalCenter
-                        size: 14; stroke: 2; text: ""; label: ""
-                        value: Updates.progress; color: Theme.accent
-                    }
                     Icon {
                         visible: !Updates.running
                         anchors.verticalCenter: parent.verticalCenter
                         name: "arrow-circle-up"; size: 14
                         color: Theme.accent
-                        active: updArea.containsMouse
+                        active: updChip.hot
                     }
                     Label {
+                        visible: Updates.running
                         anchors.verticalCenter: parent.verticalCenter
-                        text: Updates.running ? Math.round(Updates.progress * 100) + "%" : String(Updates.total)
-                        size: 12; weight: Theme.wSemibold; rounded: true
+                        text: "Installing"
+                        size: Theme.tSub; weight: Theme.wMedium
                         color: Theme.accent
-                        font.features: ({ "tnum": 1 })
+                    }
+                    RollingNumber {
+                        anchors.verticalCenter: parent.verticalCenter
+                        value: Updates.running ? Math.round(Updates.progress * 100) : Updates.total
+                        suffix: Updates.running ? "%" : ""
+                        size: Theme.tSub; weight: Theme.wSemibold
+                        color: Theme.accent
+                    }
+                    // Hover reveals what a click does: "update · Install".
+                    Label {
+                        visible: !Updates.running && updChip.hot
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: (Updates.total === 1 ? "update" : "updates") + " · Install"
+                        size: Theme.tSub; weight: Theme.wMedium
+                        color: Theme.accent
+                        opacity: updChip.hot ? 1 : 0
+                        Behavior on opacity { NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                     }
                 }
                 MouseArea {
