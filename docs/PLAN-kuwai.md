@@ -16,6 +16,29 @@ they land. User wants: extremely secure, premium, tasteful, fast, Apple-grade.
 - Hyprland reaps children: no `os.execute` exit codes inside kuwai; no popen in hot paths.
 - Timers in kuwai: create via `K.defer` (verify-config crash otherwise).
 
+## STATUS (2026-11-06 late) — ratings and what gates 9.5
+
+Notch rest 9.3 · hover 9.0 · Usage 9.3 · Bluetooth 9.0 · bell list 8.8 ·
+center 8.8 · screensaver 9.0 · updates 9.0 · clipboard 8.5 · lock/login 6.5 ·
+CPU 9.2 (idle ~3 %) · memory 8.8 (290–380 MB plateau, no per-open leak:
+60 opens of a panel ended lower) · reliability 8.5 (3 load outages today,
+gates now: offscreen load test + anchor-line names) · consistency 8.0
+(tokens: sizes 62, durations 111, hex 70).
+
+Gating 9.5, in order:
+1. Lock/login: user runs the GRUB line, then the seamless greeter → shell handoff.
+2. Panel-level load check before promote (TestHook compile of changed panels
+   in a throwaway shell, or a headless compositor).
+3. Tokens to zero: sizes (62) and the remaining durations (111) by meaning.
+4. Clipboard onto the island's row/header style; one Row/Header component
+   shared by NotifsPanel, T3Panel, BluetoothPanel, UsagePanel.
+5. Notifications: a chat's burst folds into one card with a count; toast →
+   its row in the center as one motion.
+6. Verify by eye: hover pill reveal, GPU/Temp page turn, back-soon mark,
+   "Claude is back" moment, dim restore (test running in background).
+Not possible: one decoder for both screensaver screens (QML can't feed a
+second VideoOutput; a texture can't cross windows). Freed on wake anyway.
+
 ## NOW (2026-11-06) — state, monitors, consistency
 
 Done today: device cards for jack/USB, bell list as island panel "notifs",
