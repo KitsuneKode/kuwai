@@ -167,6 +167,10 @@ layer({ name = "rice-glass", match = { namespace = "^rice-.*$" }, blur = true, i
 -- shape itself. At 0.3 the soft shadow around a panel was blurred too, which
 -- showed as a square halo behind the rounded panel.
 layer({ name = "rice-island-shape", match = { namespace = "^rice-(island|islandbar|osd|auth)$" }, ignore_alpha = 0.75 })
+-- The screensaver and its film are kuwai-screensaver / kuwai-saver-film, on
+-- purpose outside rice-*: rice-glass blurred behind them wherever alpha passed
+-- 0.3, and the vignette crossed that two-thirds down (a hard line, the film
+-- blurred below it). A later blur = false did not undo rice-glass's blur.
 -- The password prompt never appears in a screen share, recording or screenshot.
 layer({ name = "rice-auth-private", match = { namespace = "^rice-auth$" }, no_screen_share = true })
 -- The center's scrim: deliberately outside rice-* so nothing blurs under it.

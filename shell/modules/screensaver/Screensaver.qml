@@ -180,7 +180,7 @@ Scope {
                 anchors { top: true; bottom: true; left: true; right: true }
                 exclusionMode: ExclusionMode.Ignore
                 WlrLayershell.layer: WlrLayer.Overlay
-                WlrLayershell.namespace: "rice-screensaver"
+                WlrLayershell.namespace: "kuwai-screensaver"   // not rice-*: those blur what's behind past 0.3 alpha, and the vignette crossed it (a blurred lower third)
                 WlrLayershell.keyboardFocus: root.showing ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
                 color: "transparent"
 

@@ -28,7 +28,7 @@ ShellRoot {
             anchors { top: true; bottom: true; left: true; right: true }
             exclusionMode: ExclusionMode.Ignore
             WlrLayershell.layer: WlrLayer.Top
-            WlrLayershell.namespace: "rice-saver-film"
+            WlrLayershell.namespace: "kuwai-saver-film"   // outside the rice-* blur rules (see Screensaver.qml)
             WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
             mask: Region {}
             color: "black"
