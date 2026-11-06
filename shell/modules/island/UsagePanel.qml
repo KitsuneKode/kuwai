@@ -297,7 +297,7 @@ FocusScope {
                                     spacing: 5
                                     // T3 Code's reading: what's LEFT, in the agent's colour,
                                     // with a tick where even spending would be.
-                                    readonly property int left: Limits.remaining(w.r.window)
+                                    readonly property int leftPct: Limits.remaining(w.r.window)
                                     readonly property int paceAt: Limits.paceLeft(w.r.window)
                                     readonly property string pace: Limits.pace(w.r.window)
                                     readonly property bool out: w.r.level === "exhausted"
@@ -315,7 +315,7 @@ FocusScope {
                                         Label {
                                             id: pc
                                             anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-                                            text: w.out ? "Out" : w.left + "% left"
+                                            text: w.out ? "Out" : w.leftPct + "% left"
                                             size: Theme.tSub; weight: Theme.wSemibold
                                             color: w.out ? Theme.red : w.r.level === "approaching" ? Theme.orange : Theme.textPrimary
                                             font.features: ({ "tnum": 1 })
@@ -335,7 +335,7 @@ FocusScope {
                                             height: 4; radius: 2
                                             color: w.r.level === "approaching" ? Theme.orange : card.g.tint
                                             property real k: 0
-                                            width: w.left > 0 ? Math.max(4, parent.width * w.left / 100 * k) : 0
+                                            width: w.leftPct > 0 ? Math.max(4, parent.width * w.leftPct / 100 * k) : 0
                                             Component.onCompleted: k = 1
                                             Behavior on k {
                                                 enabled: !Theme.reduceMotion
