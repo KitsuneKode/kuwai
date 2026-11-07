@@ -25,6 +25,25 @@ Settings scrolls and Tab walks controls; promote auto-rollback (4 s);
 Wellbeing (breaks, bedtime) with settings; pomodoro colours and round dots;
 welcome back by time of day after hours; swipe to clear on the lock screen.
 
+## STATUS (2026-11-07 afternoon)
+
+Done since the morning: one Copied with preview; T3/kittymux/assistant
+"done" in the island only (toasts when the island is covered); Gmail
+threads and GitHub conversations in the reader, two-step pull; rim follows
+the ears; Segmented pill (lookup ran before segments existed); filter row
+aligned; Super+Ctrl+N blanks the other screen (curtain + backlight 0);
+jack: one card, mic first, replug not lost; charge-limit only after a seen
+charge; paused music → pause mark, off the notch after 10 min; focus: new
+windows get the keyboard over the assistant/clipboard, hover previews no
+longer take it; assistant turns belong to their chat (no lost answers),
+background ring/unread dot, pull the green notch to open, near-full-screen
+size, notch-shaped frame, offline state; ~/.agents/skills matched per
+request; usage rings centred; usage rows as a 20-segment bucket.
+
+Memory: Process/FileView re-runs ruled out (isolated qs, 1000+ runs flat).
+Measuring JS heap vs Pss_Anon (RICE_SHELL_ENV="QV4_MM_STATS=1
+QT_LOGGING_RULES=qt.qml.gc.*=true") to tell JS from native growth.
+
 ## STATUS (2026-11-07 morning)
 
 Found and fixed: every shell restart orphaned its streaming helpers (pactl
