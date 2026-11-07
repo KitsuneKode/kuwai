@@ -193,8 +193,25 @@ Scope {
     onExternalInsChanged: insSettle.restart()
     Timer { id: insSettle; interval: 500; onTriggered: root.diffIns() }
     property real insChangedAt: 0
+    // The built-in card's input is whatever is on its port: with something in
+    // the 3.5 mm jack (the Boya) that's the jack, and the card ("Built-in
+    // Audio Analog Stereo") is not what you're talking into.
+    readonly property string jackIn: {
+        const j = jackPorts || {};
+        if (j["analog-input-mic"] === "available") return Settings.jackMicName || "Jack microphone";
+        if (Object.keys(j).some(k => /^analog-input-(headset|headphone)-mic/.test(k) && j[k] === "available")) return "Headset microphone";
+        return "";
+    }
+    function onJack(n) {
+        const p = (n && n.properties) || {};
+        return jackIn !== "" && (p["device.bus"] === "pci" || p["device.form-factor"] === "internal") && !/hdmi|displayport/i.test(n.name || "");
+    }
     function inTitle(n) {
         const p = n.properties || {};
+        if (onJack(n)) {
+            const jart = DeviceArt.lookup(jackIn);
+            return { raw: jackIn, title: jart ? jart.label : jackIn, image: jart ? jart.image : "", jack: true };
+        }
         const raw = p["device.description"] || n.description || n.nickname || n.name || "Microphone";
         const art = DeviceArt.lookup(raw);
         if (!art && p["device.form-factor"] === "internal") return { raw: raw, title: "Built-in Microphone", image: "" };
@@ -232,6 +249,18 @@ Scope {
             }));
         }
     }
+    // Picked in the center's Sound tab: the list shows it while it's open, so
+    // nothing is said then. When it closes, if the output or input you
+    // left with isn't the one you came in with, the card says which it is now.
+    readonly property bool soundOpen: quietFor("sound")
+    property string soundOutWas: ""
+    property string soundInWas: ""
+    onSoundOpenChanged: {
+        if (soundOpen) { soundOutWas = sink ? sink.name : ""; soundInWas = source ? source.name : ""; return; }
+        if (!armed) return;
+        if (sink && sink.name !== soundOutWas) showVolume(true);
+        else if (source && source.name !== soundInWas) inSwitch.restart();
+    }
     // Chosen in Sound (not plugged in or out): which input it is now.
     onSourceChanged: if (armed && Settings.bar === "island") inSwitch.restart()
     Timer {
@@ -242,8 +271,8 @@ Scope {
             if (!src || Date.now() - root.insChangedAt < 2500 || root.quietFor("sound")) return;
             const t = root.inTitle(src);
             const ext = (src.properties || {})["device.bus"] === "usb";
-            Moments.inputCard({ key: t.raw.toLowerCase(), glyph: ext ? root.externalMicGlyph : root.micGlyph, image: t.image,
-                                title: t.title, link: ext ? "usb" : "", gone: false, quiet: true, detail: "" });
+            Moments.inputCard({ key: t.raw.toLowerCase(), glyph: ext || t.jack ? root.externalMicGlyph : root.micGlyph, image: t.image,
+                                title: t.title, link: ext ? "usb" : t.jack ? "jack" : "", gone: false, quiet: true, detail: "" });
         }
     }
 
@@ -265,7 +294,7 @@ Scope {
             const raw = t.raw || "";
             const named = /boya|cadenza|kiwi|iem|headset/i.test(raw);
             const ext = bus === "usb" || bus === "bluetooth";
-            const jack = /plugged/i.test(raw) || /plugged/i.test(p["port.name"] || "") || /plugged/i.test(src.description || "");
+            const jack = !!t.jack || /plugged/i.test(raw) || /plugged/i.test(p["port.name"] || "") || /plugged/i.test(src.description || "");
             if (!named && !ext && !jack) return;
             Moments.inputCard({ key: raw.toLowerCase(), glyph: ext ? root.externalMicGlyph : root.micGlyph, image: t.image,
                                 title: t.title, link: ext ? bus : (jack ? "jack" : ""), gone: false, quiet: false, detail: "Microphone" });
@@ -305,7 +334,7 @@ Scope {
                     const was = before[k] === "available", now = ports[k] === "available";
                     if (was === now || before[k] === undefined) continue;
                     const mic = /input/.test(k);
-                    Moments.inputCard({ key: "jack:" + k, glyph: mic ? root.micGlyph : root.typeGlyph.headphones, image: "",
+                    Moments.inputCard({ key: "jack:" + k, glyph: mic ? root.externalMicGlyph : root.typeGlyph.headphones, image: "",
                                         title: mic ? (Settings.jackMicName || "Jack microphone") : "Wired headphones",
                                         link: "jack", gone: !now, detail: mic ? "Microphone" : "" });
                 }
@@ -452,8 +481,11 @@ Scope {
     function showMic() {
         if (quietFor("sound")) return;
         kind = "mic";
-        title = micMuted ? "Microphone Off" : (source ? inTitle(source).title : "Microphone");
-        const ext = !!source && (source.properties || {})["device.bus"] === "usb";
+        // Which mic: "Boya Off", not "Microphone Off" (or the card's name).
+        const t = source ? inTitle(source) : null;
+        const name = t ? t.title : "Microphone";
+        title = micMuted ? name + " Off" : name;
+        const ext = !!source && ((source.properties || {})["device.bus"] === "usb" || !!t.jack);
         glyph = ext ? (micMuted ? "\u{f0371}" : externalMicGlyph) : (micMuted ? "\u{f036d}" : micGlyph);
         muted = micMuted;
         accessoryGlyph = ""; accessory = ""; linkGlyph = ext ? "\u{f0553}" : "";
