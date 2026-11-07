@@ -361,9 +361,15 @@ Singleton {
     property bool toldDone: false
     function holding() { return !!battery && (battery.state === UPowerDeviceState.PendingCharge || battery.state === UPowerDeviceState.FullyCharged); }
     readonly property int powerState: battery ? battery.state : 0
+    // Only a charge you watched finish: it was charging this time on power,
+    // then it held. A shell that started (or restarted) already holding, or a
+    // flicker at the limit (79 ↔ 80 %), isn't news; it said "Charge Limit
+    // Reached" out of nowhere after restarts.
+    property bool sawCharging: false
     onPowerStateChanged: {
-        if (UPower.onBattery) { toldDone = false; return; }
-        if (!armed || toldDone || powerSettle.running || !holding() || !battery.isLaptopBattery) return;
+        if (UPower.onBattery) { toldDone = false; sawCharging = false; return; }
+        if (powerState === UPowerDeviceState.Charging) { sawCharging = true; return; }
+        if (!armed || toldDone || !sawCharging || powerSettle.running || !holding() || !battery.isLaptopBattery) return;
         toldDone = true;
         const full = powerState === UPowerDeviceState.FullyCharged;
         showCard(Object.assign(powerCard(), full ? { title: "Fully Charged", state: "Charged", detail: "Running on power" }

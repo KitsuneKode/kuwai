@@ -2,6 +2,7 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
+import Quickshell.Hyprland
 import Quickshell.Io
 import qs.services
 
@@ -11,6 +12,18 @@ Singleton {
     property bool open: false
     property string targetScreen: ""
     property bool sniping: false
+    // A window opened while the assistant was up (Satty, a link from a
+    // reply, an app): it gets the keyboard, the assistant stays on screen
+    // and takes the keyboard back when you click in it.
+    property bool yielded: false
+    Connections {
+        target: Hyprland
+        function onRawEvent(event) {
+            if (event.name !== "openwindow" || !root.open || root.sniping) return;
+            root.yielded = true;
+            Island.giveFocus(String(event.data || "").split(",")[0]);
+        }
+    }
 
     function toggle() {
         if (open) {
@@ -25,6 +38,7 @@ Singleton {
             targetScreen = Screens.focusedName;
         }
         open = true;
+        yielded = false;
         OllamaService.probe();
     }
 

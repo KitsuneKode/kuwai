@@ -88,7 +88,7 @@ Item {
         easing.bezierCurve: Theme.easeOut
     }
     // A hello already on stage when this row is built (fresh login) starts hidden too.
-    Component.onCompleted: if (helloFocus) chromeReveal = 0
+    Component.onCompleted: { if (helloFocus) chromeReveal = 0; if (!Media.playing) pauseStaleT.restart(); }
     Connections {
         target: Moments
         function onNowChanged() {
@@ -112,7 +112,16 @@ Item {
     readonly property int gap: 22
     // Activities whose value sits beside their icon when the full row shows.
     readonly property bool joined: !compact && ["update", "vox", "auth", "rec", "timer"].indexOf(activity) >= 0
-    readonly property bool restMusic: bar.player && Settings.restMedia && !!Media.active
+    // Paused a while (10 min): the music leaves the notch until it plays
+    // again (a dim cover and a still waveform sat there all afternoon).
+    readonly property bool restMusic: bar.player && Settings.restMedia && !!Media.active && (Media.playing || !pauseStale)
+    property bool pauseStale: false
+    Timer { id: pauseStaleT; interval: 600000; onTriggered: rest.pauseStale = true }
+    Connections {
+        target: Media
+        function onPlayingChanged() { if (Media.playing) { rest.pauseStale = false; pauseStaleT.stop(); } else pauseStaleT.restart(); }
+    }
+
     // Music owns the two sides (art leading, waveform trailing). Then a
     // second activity doesn't split itself around the clock as well: T3
     // folds into one "T3 ②" mark after the time. (Split, it read as
@@ -821,14 +830,26 @@ Item {
                 id: restMediaWave
                 visible: rest.activity === "media" || (rest.restMusic && !Media.playing)
                 anchors.verticalCenter: parent.verticalCenter
-                width: musicBars.implicitWidth
+                width: Media.playing ? musicBars.implicitWidth : pauseMark.implicitWidth
                 height: 16
+                // Paused: the pause mark itself, crisp (the bars, low and faded in
+                // the cover's colour, read as noise).
+                Text {
+                    id: pauseMark
+                    visible: !Media.playing
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "\u{f03e4}"
+                    font.family: Theme.fontGlyph
+                    font.pixelSize: 15
+                    color: Theme.textSecondary
+                }
                 MusicTap {}
                 PwObjectTracker { objects: [Pipewire.defaultAudioSink] }
                 PwNodePeakMonitor { id: restPeak; node: Pipewire.defaultAudioSink; enabled: (rest.activity === "media" || rest.restMusic) && Media.playing }
                 readonly property real level: restPeak.enabled ? (restPeak.peaks && restPeak.peaks.length ? Math.max(...restPeak.peaks) : (restPeak.peak || 0)) : 0
                 Row {
                     id: musicBars
+                    visible: Media.playing
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: 2
                     Repeater {

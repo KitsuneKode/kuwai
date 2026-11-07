@@ -28,18 +28,27 @@ Rectangle {
         let sum = 0;
         for (let k = 0; k < rep.count; k++) { const it = rep.itemAt(k); if (it) sum += it.natural; }
         naturalSum = sum;
+        pickCurrent();
     }
     readonly property real extra: rep.count ? Math.max(0, (width - pad * 2 - naturalSum) / rep.count) : 0
     color: Qt.rgba(1, 1, 1, 0.06)
 
-    readonly property Item currentItem: {
+    // Found, not bound: a binding over itemAt() ran once, before the
+    // segments existed, and stayed null, so the selected pill never showed
+    // (the center's tabs had only a bolder label). Looked up again whenever
+    // the segments or the choice change.
+    property Item currentItem: null
+    function pickCurrent() {
+        let found = null;
         for (let k = 0; k < rep.count; k++) {
             const it = rep.itemAt(k);
-            if (it && it.optionId === current) return it;
+            if (it && it.optionId === current) { found = it; break; }
         }
-        return null;
+        const first = !currentItem;
+        currentItem = found;
+        if (found) place(first);
     }
-    onCurrentItemChanged: place(false)
+    onCurrentChanged: pickCurrent()
     // Deferred: on a reload the item can be gone by the time this runs.
     function placeLater() { Qt.callLater(() => { if (seg && typeof seg.place === "function") seg.place(true); }); }
     onExtraChanged: placeLater()

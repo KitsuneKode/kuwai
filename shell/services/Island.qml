@@ -176,8 +176,15 @@ Singleton {
             // Give the new window the keyboard (the panel held it): Super+Q
             // and typing then go to the window you're looking at.
             const addr = String(event.data || "").split(",")[0];
-            if (/^[0-9a-f]+$/i.test(addr)) { focusNew.addr = addr; focusNew.restart(); }
+            root.giveFocus(addr);
         }
+    }
+    // Give a window that just opened the keyboard, once the surface that held
+    // it has let go (the island, the clipboard, the assistant).
+    function giveFocus(addr) {
+        if (!/^[0-9a-f]+$/i.test(String(addr || ""))) return;
+        focusNew.addr = addr;
+        focusNew.restart();
     }
     function close() { panel = ""; history = []; innerBack = null; innerBackLabel = ""; previewing = false; }
     // Opened by resting the pointer (the music's art): it folds away when the

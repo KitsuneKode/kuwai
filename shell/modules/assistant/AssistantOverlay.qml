@@ -104,18 +104,23 @@ Scope {
 
             WlrLayershell.namespace: "rice-assistant"
             WlrLayershell.layer: WlrLayer.Overlay
-            WlrLayershell.keyboardFocus: (up && !Assistant.sniping) ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+            // Yielded (a window opened over it): on demand, so a click in the
+            // assistant takes the keyboard back.
+            WlrLayershell.keyboardFocus: !up || Assistant.sniping ? WlrKeyboardFocus.None
+                : Assistant.yielded ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.Exclusive
 
             mask: Region { item: win.up ? frame : null }
 
             HyprlandFocusGrab {
                 windows: [win]
-                active: win.up && root.armed && !Assistant.sniping
+                active: win.up && root.armed && !Assistant.sniping && !Assistant.yielded
                 onCleared: Assistant.hide()
             }
 
             Item {
                 anchors.fill: parent
+                // A click in it after a window took the keyboard: it's yours again.
+                PointHandler { onActiveChanged: if (active && Assistant.yielded) Assistant.yielded = false }
                 focus: true
                 Keys.onEscapePressed: {
                     if (OllamaService.pendingRequest) {

@@ -46,6 +46,7 @@ ShellRoot {
     GoodbyeOverlay {}
     LiveWallpaper {}
     Screensaver {}
+    Blank {}
     Overview {}
     VoxtypeHost {}
     AssistantOverlay {}

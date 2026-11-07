@@ -86,7 +86,11 @@ Singleton {
     // screenshot, a dialog, an app you launched) must get it: the shelf steps aside.
     Connections {
         target: typeof Hyprland !== "undefined" ? Hyprland : null
-        function onRawEvent(event) { if (event.name === "openwindow" && (root.open || root.recordSetup)) { root.open = false; root.recordSetup = false; } }
+        function onRawEvent(event) {
+            if (event.name !== "openwindow" || !(root.open || root.recordSetup)) return;
+            root.open = false; root.recordSetup = false;
+            Island.giveFocus(String(event.data || "").split(",")[0]);   // Satty from Quick Look, an app from Open
+        }
     }
     function toggle(filter) {
         if (open && (!filter || filter === startFilter)) { open = false; return; }

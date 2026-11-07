@@ -305,6 +305,7 @@ case ${1:-} in
         esac ;;   # hypridle: darken before the lock (stop: any input)
     set)           [ $# -eq 3 ] || { echo "usage: rice set KEY VALUE" >&2; exit 2; }; set_setting "$2" "$3" ;;
     get)           if [ -n "${2:-}" ]; then get_setting "$2"; else jq . "$SETTINGS" 2>/dev/null || echo '{}'; fi ;;
+    blank)         ipc blank toggle ;;   # the other screen(s) black, again to bring them back
     center)
         # Needs the shell running, not the notification name: start it if
         # it isn't up rather than doing nothing.

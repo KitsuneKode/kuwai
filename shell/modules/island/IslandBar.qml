@@ -95,7 +95,11 @@ Scope {
             color: "transparent"
             WlrLayershell.namespace: "rice-islandbar"
             WlrLayershell.layer: WlrLayer.Top
-            WlrLayershell.keyboardFocus: panelHere ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+            // The keyboard only for a panel you opened: a hover preview (the
+            // music's art, the usage marks) took it exclusively, so just
+            // resting the pointer on the notch stole typing from the window,
+            // and a window that opened then (Satty) came up without focus.
+            WlrLayershell.keyboardFocus: panelHere && !Island.previewing ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
             mask: Region {
                 item: frame.opacity > 0.01 ? frame : null
                 // Minimal island: the strip along the top edge beside it counts too.
@@ -161,7 +165,7 @@ Scope {
             Timer { id: arm; interval: 160; onTriggered: win.armed = true }
             HyprlandFocusGrab {
                 windows: [win]
-                active: win.panelHere && win.armed
+                active: win.panelHere && win.armed && !Island.previewing
                 onCleared: if (win.panelHere) Island.close()
             }
 

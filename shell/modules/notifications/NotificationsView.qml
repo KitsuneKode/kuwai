@@ -232,14 +232,16 @@ Item {
     // Do Not Disturb (Apple's Focus indigo when on) and Clear all.
     Label {
         visible: view.narrowed
-        anchors { right: parent.right; rightMargin: 4; verticalCenter: filterRow.verticalCenter }
+        anchors { right: parent.right; rightMargin: 6; verticalCenter: filterRow.verticalCenter }
         text: view.resultCount === 1 ? "1 result" : view.resultCount + " results"
         size: 12
         color: Theme.textTertiary
     }
     Row {
         visible: !view.narrowed
-        anchors { right: parent.right; verticalCenter: filterRow.verticalCenter }
+        // 2 px in, as the filters are (x: 2): both edges line up with the
+        // search field above (the page is 14 px in, the header 16).
+        anchors { right: parent.right; rightMargin: 2; verticalCenter: filterRow.verticalCenter }
         spacing: 6
         opacity: view.center.revealAt(80)
         PillButton {

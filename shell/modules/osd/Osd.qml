@@ -314,7 +314,10 @@ Scope {
         onExited: cardRetry.restart()
     }
     Timer { id: cardRetry; interval: 5000; onTriggered: cardWatch.running = true }
-    Timer { id: jackCheck; interval: 400; onTriggered: if (!jackList.running) jackList.running = true }
+    // A change while the list is being read is read again after: unplugging
+    // and plugging back in quickly was one read, the second change lost.
+    property bool jackAgain: false
+    Timer { id: jackCheck; interval: 400; onTriggered: { if (jackList.running) root.jackAgain = true; else jackList.running = true; } }
     Process {
         id: jackList
         running: true
@@ -329,15 +332,24 @@ Scope {
                 } catch (e) { return; }
                 const before = root.jackPorts;
                 root.jackPorts = ports;
+                if (root.jackAgain) { root.jackAgain = false; jackCheck.restart(); }
                 if (!before || !root.armed || Settings.bar !== "island") return;
-                for (const k in ports) {
-                    const was = before[k] === "available", now = ports[k] === "available";
-                    if (was === now || before[k] === undefined) continue;
-                    const mic = /input/.test(k);
-                    Moments.inputCard({ key: "jack:" + k, glyph: mic ? root.externalMicGlyph : root.typeGlyph.headphones, image: "",
-                                        title: mic ? (Settings.jackMicName || "Jack microphone") : "Wired headphones",
-                                        link: "jack", gone: !now, detail: mic ? "Microphone" : "" });
-                }
+                // One plug, one card. The combo jack can't tell a mic from
+                // headphones, so a plug lights its mic and headphone ports
+                // together: that said "Wired headphones" and then "Boya".
+                // A mic among the changes is the device (it's named, the
+                // headphone port is the jack's guess); headphones alone are
+                // headphones.
+                const changed = Object.keys(ports).filter(k => before[k] !== undefined
+                    && (before[k] === "available") !== (ports[k] === "available"));
+                if (!changed.length) return;
+                const k = changed.find(x => /input/.test(x)) || changed[0];
+                const now = ports[k] === "available";
+                const mic = /input/.test(k);
+                const headset = /headset|headphone-mic/.test(k);
+                Moments.inputCard({ key: "jack:" + (mic ? "mic" : "headphones"), glyph: mic ? root.externalMicGlyph : root.typeGlyph.headphones, image: "",
+                                    title: mic ? (headset ? "Headset" : (Settings.jackMicName || "Jack microphone")) : "Wired headphones",
+                                    link: "jack", gone: !now, detail: mic ? (now ? "Microphone" : "") : "" });
             }
         }
     }
