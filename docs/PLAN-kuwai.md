@@ -25,6 +25,29 @@ Settings scrolls and Tab walks controls; promote auto-rollback (4 s);
 Wellbeing (breaks, bedtime) with settings; pomodoro colours and round dots;
 welcome back by time of day after hours; swipe to clear on the lock screen.
 
+## STATUS (2026-11-07 morning)
+
+Found and fixed: every shell restart orphaned its streaming helpers (pactl
+subscribe, udevadm monitor, the brightness watch, the Shazam 1 s poll loop):
+127 processes + 78 loops, ~1.1 GB. Now setpriv --pdeathsig, and promote
+refuses a streaming helper without it. Old orphans need one manual kill
+(the session's classifier won't let the agent do it).
+Dim: one service (services/Dim.qml), relative (40 %, at most 15 %), monitors
+too, restore read back and retried. Live-tested 15→6→15 (DDC), 10→4→10.
+Greeter copy synced; greeter.qml load-tested on every promote.
+
+Open, in order:
+1. Shell memory: grows ~70–85 MB/h from 280 MB, levels off ~720–750 MB
+   (RSS 1.17 GB). gc() frees nothing: held, not garbage. Not images (all
+   sized). Next: run with QV4_MM_STATS / bisect services by disabling one
+   at a time in a test session; suspects are periodic JSON parsers (Limits
+   watch, T3Code, Updates) and per-second rebinding.
+2. Reboot once: the GRUB line is in grub.cfg (Nov 5 23:10), the running
+   kernel (booted 18:42) predates it. Then the seamless greeter handoff.
+3. sudo system/install (rice-wake: alarms that wake the laptop) — not done.
+4. Screensaver all night under Caffeine: film decoded 6 h on both screens.
+   Option: after an hour, stop the film (clock on black) or screens off.
+
 ## STATUS (2026-11-06 late) — ratings and what gates 9.5
 
 Notch rest 9.3 · hover 9.0 · Usage 9.3 · Bluetooth 9.0 · bell list 8.8 ·
