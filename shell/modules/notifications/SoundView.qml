@@ -29,7 +29,9 @@ Item {
     readonly property bool shown: hosting && center.open && center.tab === "sound"
 
     function key(event, queryEmpty) { return false; }
-    function reset() { strips.contentX = 0; routeFor = null; }
+    // Back to the top too: it reopened scrolled, the strips' names cut off
+    // under the search field.
+    function reset() { strips.contentX = 0; soundFlick.contentY = 0; routeFor = null; }
     function selectFirst() {}
     function back() { if (!routeFor) return false; routeFor = null; return true; }
 
@@ -95,7 +97,9 @@ Item {
     }
 
     readonly property real naturalHeight: body.implicitHeight + 8
+    ScrollHint { flickable: soundFlick; anchors { right: parent.right; top: parent.top; bottom: parent.bottom; rightMargin: -8 } z: 2 }
     Flickable {
+        id: soundFlick
         anchors.fill: parent
         clip: true
         contentHeight: body.implicitHeight + 8

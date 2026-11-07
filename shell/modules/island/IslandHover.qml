@@ -228,6 +228,7 @@ Item {
             width: 48; height: 48; radius: 11
             color: Qt.rgba(1, 1, 1, 0.08)
             Image { anchors.fill: parent; source: hover.player ? (hover.player.trackArtUrl || "") : ""; sourceSize: Qt.size(96, 96); fillMode: Image.PreserveAspectCrop; asynchronous: true }
+            ImageEdge { radius: 11 }
         }
         // The art and the title open Now Playing (MediaPanel); right-click for
         // the sound panel (outputs, per-app volume).

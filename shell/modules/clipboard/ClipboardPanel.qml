@@ -762,6 +762,7 @@ Scope {
                             fillMode: Image.PreserveAspectCrop
                             asynchronous: true
                         }
+                        ImageEdge { radius: 7; visible: toastRow.e && toastRow.e.kind === "image" }
                         Text {
                             anchors.centerIn: parent
                             visible: !(toastRow.e && (toastRow.e.kind === "image" || toastRow.e.kind === "color"))

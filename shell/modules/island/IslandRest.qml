@@ -486,6 +486,7 @@ Item {
                 width: 20; height: 20; radius: 5
                 color: Theme.pill
                 Image { anchors.fill: parent; source: rest.bar.player ? (rest.bar.player.trackArtUrl || "") : ""; sourceSize: Qt.size(40, 40); fillMode: Image.PreserveAspectCrop; asynchronous: true }
+                ImageEdge { radius: 5 }
                 MusicTap {}
             }
         }

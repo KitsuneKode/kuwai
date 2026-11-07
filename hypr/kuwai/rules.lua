@@ -167,6 +167,11 @@ layer({ name = "rice-glass", match = { namespace = "^rice-.*$" }, blur = true, i
 -- shape itself. At 0.3 the soft shadow around a panel was blurred too, which
 -- showed as a square halo behind the rounded panel.
 layer({ name = "rice-island-shape", match = { namespace = "^rice-(island|islandbar|osd|auth)$" }, ignore_alpha = 0.75 })
+-- Toasts drop from the island in a tall column (rice-notifs, 440×900): at
+-- 0.3 a card fading into the center, or fading out, still had full blur
+-- under it, an empty light slab in the middle of the screen. Cards are 0.84
+-- black: blur only under a card that's really there.
+layer({ name = "rice-toasts", match = { namespace = "^rice-notifs$" }, ignore_alpha = 0.7 })
 -- The screensaver and its film are kuwai-screensaver / kuwai-saver-film, on
 -- purpose outside rice-*: rice-glass blurred behind them wherever alpha passed
 -- 0.3, and the vignette crossed that two-thirds down (a hard line, the film

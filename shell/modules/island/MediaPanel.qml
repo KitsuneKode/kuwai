@@ -110,6 +110,7 @@ FocusScope {
             color: Qt.rgba(1, 1, 1, 0.08)
             Image { anchors.fill: parent; source: Media.art; sourceSize: Qt.size(128, 128); fillMode: Image.PreserveAspectCrop; asynchronous: true }
             Text { visible: !Media.art; anchors.centerIn: parent; text: "\u{f075a}"; font.family: Theme.fontGlyph; font.pixelSize: 26; color: Theme.textTertiary }
+            ImageEdge { radius: 14 }
             scale: artArea.pressed ? 0.96 : 1
             Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
         }

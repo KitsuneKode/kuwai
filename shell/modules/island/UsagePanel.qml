@@ -373,24 +373,40 @@ FocusScope {
                                         }
                                     }
                                     // The bar drains as you spend; it fills to what's left as the card comes in.
+                                    // What's left as a bucket of 20 (5 % each, the last one
+                                    // partly full): a quota reads as how many are left, not
+                                    // a length to judge. One fill front (k) runs across, so
+                                    // the segments light in turn as it passes: a wave, one
+                                    // animation, no per-segment timers.
                                     Item {
+                                        id: bucket
                                         width: parent.width
                                         height: 8
-                                        Rectangle {
-                                            anchors.verticalCenter: parent.verticalCenter
-                                            width: parent.width; height: 4; radius: 2
-                                            color: w.out ? Qt.alpha(Theme.red, 0.22) : Theme.track
+                                        readonly property int n: 20
+                                        readonly property real gap: 2
+                                        readonly property real segW: (width - gap * (n - 1)) / n
+                                        readonly property color ink: w.r.level === "approaching" ? Theme.orange : card.g.tint
+                                        property real k: 0
+                                        Component.onCompleted: k = 1
+                                        Behavior on k {
+                                            enabled: !Theme.reduceMotion
+                                            NumberAnimation { duration: Theme.artMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
                                         }
-                                        Rectangle {
-                                            anchors.verticalCenter: parent.verticalCenter
-                                            height: 4; radius: 2
-                                            color: w.r.level === "approaching" ? Theme.orange : card.g.tint
-                                            property real k: 0
-                                            width: w.leftPct > 0 ? Math.max(4, parent.width * w.leftPct / 100 * k) : 0
-                                            Component.onCompleted: k = 1
-                                            Behavior on k {
-                                                enabled: !Theme.reduceMotion
-                                                NumberAnimation { duration: Theme.artMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+                                        Repeater {
+                                            model: bucket.n
+                                            Rectangle {
+                                                required property int index
+                                                readonly property real f: Math.max(0, Math.min(1, w.leftPct * bucket.k / (100 / bucket.n) - index))
+                                                x: index * (bucket.segW + bucket.gap)
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                width: bucket.segW; height: 6; radius: 1.5
+                                                color: w.out ? Qt.alpha(Theme.red, 0.22) : Theme.track
+                                                Rectangle {
+                                                    width: parent.width * parent.f; height: parent.height
+                                                    radius: parent.radius
+                                                    visible: parent.f > 0
+                                                    color: bucket.ink
+                                                }
                                             }
                                         }
                                         // Pace: where the bar would be if spending were even across the window.

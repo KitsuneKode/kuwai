@@ -80,6 +80,7 @@ FocusScope {
                     fillMode: Image.PreserveAspectCrop
                     asynchronous: true
                 }
+                ImageEdge { radius: 18 }
             }
             Column {
                 anchors { left: av.right; leftMargin: 12; right: openBtn.left; rightMargin: 12; verticalCenter: parent.verticalCenter }
