@@ -35,6 +35,15 @@ Singleton {
     }
     function isLoaded(m) { return runningModels.some(r => r.name === m); }
     property bool streaming: false
+    // A turn belongs to the chat that asked (draftSessionId). Switching chats
+    // or starting a new one leaves it running there: it used to be thrown
+    // away (abandon()), so the answer never came. The views read these:
+    // what's generating *here*, and its live draft.
+    readonly property bool busyHere: streaming && draftSessionId === activeSessionId
+    readonly property var draftHere: busyHere ? draft : null
+    readonly property var pendingHere: busyHere ? pendingRequest : null
+    // Chats with an answer that arrived while you were elsewhere (a dot in the list).
+    property var unread: ({})
 
     // The assistant message being streamed (Turn.newAssistant shape), or null.
     property var draft: null
@@ -76,7 +85,7 @@ Singleton {
     function enqueue(text) {
         const t = (text || "").trim();
         if (!t && !pendingImage) return;
-        root.queue = root.queue.concat([{ id: newId("q-"), text: t, image: root.pendingImage, context: root.pendingContext }]);
+        root.queue = root.queue.concat([{ id: newId("q-"), text: t, image: root.pendingImage, context: root.pendingContext, session: root.activeSessionId }]);
         root.pendingImage = ""; root.pendingContext = null; root.pendingAppTitle = "";
     }
 
@@ -84,7 +93,7 @@ Singleton {
         const t = (text || "").trim();
         if (!t) return;
         // A steer is words only; with a screenshot or context attached it waits its turn.
-        if (!streaming || !chatProc.running || chatProc.sawTurnEnd || pendingImage || pendingContext) { enqueue(t); return; }
+        if (!busyHere || !chatProc.running || chatProc.sawTurnEnd || pendingImage || pendingContext) { enqueue(t); return; }
         const id = newId("s-");
         root.steering = root.steering.concat([{ id: id, text: t }]);
         chatProc.write(JSON.stringify({ type: "turn.steer", id: id, text: t }) + "\n");
@@ -105,17 +114,39 @@ Singleton {
     function sendQueuedNow(id) {
         const q = root.queue.find(x => x.id === id);
         if (!q) return;
-        if (streaming && !q.image && !q.context) { removeQueued(id); steer(q.text); return; }
+        const here = !q.session || q.session === root.activeSessionId;
+        if (busyHere && here && !q.image && !q.context) { removeQueued(id); steer(q.text); return; }
         if (streaming) return;
         removeQueued(id);
-        root.pendingImage = q.image || ""; root.pendingContext = q.context || null;
-        send(q.text || "Look at this.");
+        if (here) {
+            root.pendingImage = q.image || ""; root.pendingContext = q.context || null;
+            send(q.text || "Look at this.");
+        } else sendIn(q);                   // queued in another chat: it runs there, in the background
+    }
+    // A queued message for a chat you've left: its message joins that chat
+    // and the turn runs there; the view stays where you are.
+    function sendIn(q) {
+        const i = root.sessions.findIndex(x => x.id === q.session);
+        if (i < 0) return;
+        const nowMs = Date.now();
+        const sess = Object.assign({}, root.sessions[i]);
+        sess.messages = (sess.messages || []).concat([{ role: "user", text: q.text || "Look at this.", image: q.image || "", context: q.context || null,
+                                                       time: formatTime(nowMs), timestamp: nowMs, model: sess.model || root.model }]);
+        sess.updatedAt = nowMs;
+        const updated = [...root.sessions]; updated[i] = sess; root.sessions = updated;
+        saveDelay.restart();
+        startTurn(q.session);
     }
 
     Timer {
         id: drainTimer
         interval: 350
-        onTriggered: if (!root.streaming && root.queue.length > 0) root.sendQueuedNow(root.queue[0].id)
+        // Next: this chat's queue first, then another chat's.
+        onTriggered: {
+            if (root.streaming || !root.queue.length) return;
+            const q = root.queue.find(x => !x.session || x.session === root.activeSessionId) || root.queue[0];
+            root.sendQueuedNow(q.id);
+        }
     }
 
     // Compaction (bin/rice_agent.py `compact`): a note standing in for
@@ -274,7 +305,7 @@ Singleton {
     }
 
     function newChat() {
-        if (streaming) abandon();
+        syncCurrentSession();
         const newId = Date.now().toString();
         const newSess = {
             id: newId,
@@ -294,7 +325,6 @@ Singleton {
             root.sessions = [newSess, ...root.sessions];
         }
         root.activeSessionId = newId;
-        root.queue = [];
         root.messages = [];
         root.summary = "";
         root.summaryUpTo = 0;
@@ -416,13 +446,12 @@ Singleton {
 
     function switchSession(id) {
         if (id === root.activeSessionId) return;
-        if (streaming) abandon();
-        root.queue = [];
 
         syncCurrentSession();
 
         const found = root.sessions.find(s => s.id === id);
         if (found) {
+            if (root.unread[id]) { const u = Object.assign({}, root.unread); delete u[id]; root.unread = u; }
             root.activeSessionId = id;
             root.messages = found.messages || [];
             root.summary = found.summary || "";
@@ -446,7 +475,7 @@ Singleton {
     }
 
     function deleteSession(id) {
-        if (streaming && root.activeSessionId === id) abandon();
+        if (streaming && root.draftSessionId === id) abandon();
 
         const filtered = root.sessions.filter(s => s.id !== id);
         root.sessions = filtered;
@@ -462,6 +491,15 @@ Singleton {
                 ensureInitialSession();
             }
         }
+        saveDelay.restart();
+    }
+
+    function patchSession(id, fields) {
+        const i = root.sessions.findIndex(x => x.id === id);
+        if (i < 0) return;
+        const updated = [...root.sessions];
+        updated[i] = Object.assign({}, updated[i], fields);
+        root.sessions = updated;
         saveDelay.restart();
     }
 
@@ -670,7 +708,7 @@ function onPanelClosed() {
             const sess = root.sessions.find(s => s.id === root.draftSessionId);
             const title = sess && sess.title && sess.title !== "New Chat" ? sess.title : "Your chat";
             const ok = msg.status !== "failed";
-            root.bgDone = { status: ok ? "done" : "failed", title: title };
+            root.bgDone = { status: ok ? "done" : "failed", title: title, sessionId: root.draftSessionId };
             bgDoneClear.restart();
             root.recentWork = [{ sessionId: root.draftSessionId, title: title, status: ok ? "done" : "failed", at: Date.now() }]
                 .concat(root.recentWork.filter(w => w.sessionId !== root.draftSessionId)).slice(0, 3);
@@ -809,7 +847,10 @@ function onPanelClosed() {
     }
 
     function send(promptText) {
-        if (!promptText || promptText.trim() === "" || streaming) return;
+        if (!promptText || promptText.trim() === "") return;
+        // Another chat is answering: this one waits its turn (it shows as queued).
+        if (streaming && !busyHere) { enqueue(promptText); return; }
+        if (streaming) return;
 
         const trimmedPrompt = promptText.trim();
         // Check for slash commands or direct app launches
@@ -877,33 +918,42 @@ function onPanelClosed() {
     }
 
     // Runs the agent on the current history (the last message is the user's).
-    function startTurn() {
-        errorText = "";
+    function startTurn(sessionId) {
+        const sid = sessionId || root.activeSessionId;
+        const here = sid === root.activeSessionId;
+        const bg = here ? null : root.sessions.find(x => x.id === sid);
+        if (!here && !bg) return;
+        const msgs = here ? root.messages : (bg.messages || []);
+        const summary = here ? root.summary : (bg.summary || "");
+        const upTo = here ? root.summaryUpTo : (bg.summaryUpTo || 0);
+        const model = here ? root.model : (bg.model || root.model);
+        const mode = here ? root.mode : (bg.mode || "chat");
+        if (here) errorText = "";
         root.discardDraft = false;
-        root.draftSessionId = root.activeSessionId;
-        root.draft = Turn.newAssistant(root.model, Date.now());
+        root.draftSessionId = sid;
+        root.draft = Turn.newAssistant(model, Date.now());
         root.streaming = true;
 
-        const sent = Turn.toApiMessagesWithIndex(root.messages.slice(root.summaryUpTo), root.summaryUpTo);
+        const sent = Turn.toApiMessagesWithIndex(msgs.slice(upTo), upTo);
         // Compact when the last turn filled 3/4 of the window, or the history
         // looks that big (≈4 characters a token, plus ~900 for the system prompt and tools).
-        const chars = sent.api.reduce((n, m) => n + (m.content || "").length, root.summary.length);
+        const chars = sent.api.reduce((n, m) => n + (m.content || "").length, summary.length);
         const estimate = chars / 4 + 2600;     // + system prompt, context and 20 tool schemas (measured 2,499)
-        const ctx = root.contextFor(root.model);
-        const compact = root.compactNext || Math.max(root.contextUsed, estimate) >= root.compactAt * ctx;
+        const ctx = root.contextFor(model);
+        const compact = root.compactNext || Math.max(here ? root.contextUsed : 0, estimate) >= root.compactAt * ctx;
         root.compactNext = false;
         chatProc.sentIndex = sent.index;
-        chatProc.sentUpTo = root.summaryUpTo;
+        chatProc.sentUpTo = upTo;
 
         reqFileWriter.setText(JSON.stringify({
-            model: root.model,
+            model: model,
             messages: sent.api,
-            summary: root.summary,
+            summary: summary,
             compact: compact,
-            chat: root.activeSessionId,
-            mode: root.mode,
+            chat: sid,
+            mode: mode,
             keep_alive: "5m",
-            options: { num_ctx: ctx, temperature: root.model.indexOf("hermes") >= 0 ? 0.4 : 0.7 }
+            options: { num_ctx: ctx, temperature: model.indexOf("hermes") >= 0 ? 0.4 : 0.7 }
         }, null, 2));
 
         chatProc.sawTurnEnd = false;
@@ -938,10 +988,13 @@ function onPanelClosed() {
                     root.runningJobs = root.runningJobs.concat([/^Started background job (j[0-9a-f]+)/.exec(ev.output)[1]]);
                 if (ev.type === "item.completed" && ev.status === "completed" && root.draft) {
                     const p = root.draft.parts.find(q => q.id === ev.id);
-                    if (p && p.itemType === "context_compaction" && root.draftSessionId === root.activeSessionId) {
-                        root.summary = ev.output || "";
-                        root.summaryUpTo = Turn.compactedUpTo(chatProc.sentUpTo, chatProc.sentIndex, (p.input || {}).kept || 0);
-                        root.syncCurrentSession();
+                    if (p && p.itemType === "context_compaction") {
+                        const upTo = Turn.compactedUpTo(chatProc.sentUpTo, chatProc.sentIndex, (p.input || {}).kept || 0);
+                        if (root.draftSessionId === root.activeSessionId) {
+                            root.summary = ev.output || "";
+                            root.summaryUpTo = upTo;
+                            root.syncCurrentSession();
+                        } else root.patchSession(root.draftSessionId, { summary: ev.output || "", summaryUpTo: upTo });
                     }
                 }
                 if (ev.type === "turn.steered") root.steering = root.steering.filter(x => x.id !== ev.id);
@@ -954,13 +1007,13 @@ function onPanelClosed() {
                     root.steering = [];
                     root.drainAfterTurn = ev.status === "completed" || ev.status === "max_tool_rounds" || ev.status === "repeating";
                     chatProc.sawTurnEnd = true;
-                    root.lastStats = ev.stats || null;
-                    if (ev.status === "failed") root.errorText = ev.error || "The turn failed.";
+                    if (root.busyHere) root.lastStats = ev.stats || null;
+                    if (ev.status === "failed" && root.busyHere) root.errorText = ev.error || "The turn failed.";
                 }
             }
         }
         onExited: exitCode => {
-            if (!chatProc.sawTurnEnd && !root.discardDraft && root.errorText === "") {
+            if (!chatProc.sawTurnEnd && !root.discardDraft && root.errorText === "" && root.busyHere) {
                 root.errorText = "The assistant stopped unexpectedly (exit " + exitCode + ").";
             }
             root.finishTurn();
@@ -1001,7 +1054,8 @@ function onPanelClosed() {
         root.draft = null;
         if (root.discardDraft) { root.queue = []; root.steering = []; }
         root.discardDraft = false;
-        if (root.drainAfterTurn && root.queue.length > 0) drainTimer.restart();
+        // Queued in another chat: it runs next whatever this turn's end was.
+        if ((root.drainAfterTurn || root.queue.some(q => q.session && q.session !== root.draftSessionId)) && root.queue.length > 0) drainTimer.restart();
         root.drainAfterTurn = false;
         if (!keep) return;
 
@@ -1010,6 +1064,14 @@ function onPanelClosed() {
             const updated = [...root.messages, msg];
             root.messages = updated;
             root.syncCurrentSession();
+        } else {
+            // You moved to another chat meanwhile: the answer lands in its own,
+            // marked unread there.
+            const i = root.sessions.findIndex(x => x.id === root.draftSessionId);
+            if (i >= 0) {
+                root.patchSession(root.draftSessionId, { messages: (root.sessions[i].messages || []).concat([msg]), updatedAt: Date.now() });
+                const u = Object.assign({}, root.unread); u[root.draftSessionId] = true; root.unread = u;
+            }
         }
     }
 

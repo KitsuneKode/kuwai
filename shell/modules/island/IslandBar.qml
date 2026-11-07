@@ -470,6 +470,20 @@ Scope {
                         win.pull = 0;
                     }
                 }
+                // The assistant just finished (its edge green) or is at work:
+                // pull the notch down and it opens on that chat, grown out of here.
+                DragHandler {
+                    enabled: !win.cardHere && win.assistHere && Island.panel === ""
+                    target: null
+                    xAxis.enabled: false
+                    onActiveChanged: {
+                        if (active) return;
+                        const dy = centroid.scenePosition.y - centroid.scenePressPosition.y;
+                        if (dy < 24 && centroid.velocity.y < 600) return;
+                        const d = OllamaService.bgDone;
+                        OllamaService.openSession(d ? d.sessionId : (OllamaService.streaming ? OllamaService.draftSessionId : ""));
+                    }
+                }
                 WheelHandler {
                     enabled: win.cardHere
                     property real sum: 0

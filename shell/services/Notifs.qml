@@ -190,12 +190,18 @@ Singleton {
     // Live (hasFullscreen follows Hyprland's events; lastIpcObject was a stale snapshot).
     readonly property bool fullscreenNow: !!Hyprland.focusedWorkspace && Hyprland.focusedWorkspace.hasFullscreen
     function interrupts(i) { return !i.quiet && !centerOpen && (!muted || i.severity === "critical") && (!fullscreenNow || rank(i) === 0); }
-    function islandFor(i) { return !i.jump && i.app !== "T3 Code" && important(i) && interrupts(i); }
+    // Something covers the island (the assistant, a panel open in it, the
+    // clipboard shelf): a peek there would play unseen behind it, so it's a
+    // toast instead. Nothing lost, nothing drawn where no one can see it.
+    readonly property bool islandCovered: Assistant.open || Island.panel !== "" || Clipboard.open
+    function islandFor(i) { return !i.jump && i.app !== "T3 Code" && important(i) && interrupts(i) && !islandCovered; }
     // Toast? Not for low ones, not for what the island shows (unless "both").
     // Agents (T3 Code, a kittymux pane) are a moment in the island already
     // (Moments.agentNote, kittymux's inbox): with the island as the bar, a
     // toast as well said the same thing twice. They still land in the center.
-    function agentHere(i) { return Settings.bar === "island" && (i.app === "T3 Code" || !!i.jump); }
+    // The assistant's "Done:" too: the notch's edge turns green and a pull
+    // down opens that chat (IslandBar). Failures and "needs you" still toast.
+    function agentHere(i) { return Settings.bar === "island" && !islandCovered && (i.app === "T3 Code" || !!i.jump || (i.app === "Assistant" && /^Done: /.test(i.title || ""))); }
     function toastsFor(i) {
         if (!interrupts(i) || i.severity === "low") return false;
         if (Settings.notifSurface === "both") return true;

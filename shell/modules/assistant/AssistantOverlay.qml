@@ -88,7 +88,7 @@ Scope {
             // Compact grows with the conversation (Spotlight / Raycast): a short chat
             // gets a short panel, not a tall one with dead space; it stops at compactH
             // and scrolls from there. Studio stays full height.
-            readonly property real chatNeed: OllamaService.messages.length === 0 && !OllamaService.streaming
+            readonly property real chatNeed: OllamaService.messages.length === 0 && !OllamaService.busyHere
                                              ? 260 : scroll.contentHeight + 12
             readonly property real fitH: chatNeed + 38 + 1 + 12 + promptInput.implicitHeight + 12 + 32
             readonly property real targetH: root.studioMode ? studioH : Math.max(300, Math.min(compactH, fitH))
@@ -123,11 +123,11 @@ Scope {
                 PointHandler { onActiveChanged: if (active && Assistant.yielded) Assistant.yielded = false }
                 focus: true
                 Keys.onEscapePressed: {
-                    if (OllamaService.pendingRequest) {
-                        OllamaService.resolveRequest(OllamaService.pendingRequest.id, "decline");
+                    if (OllamaService.pendingHere) {
+                        OllamaService.resolveRequest(OllamaService.pendingHere.id, "decline");
                     } else if (root.appLauncherOpen) {
                         root.appLauncherOpen = false;
-                    } else if (OllamaService.streaming) {
+                    } else if (OllamaService.busyHere) {
                         OllamaService.cancel();
                     } else {
                         Assistant.hide();
@@ -346,7 +346,7 @@ Scope {
                                 // Empty state: one question, and a few things it can do right now.
                                 Item {
                                     anchors.fill: parent
-                                    visible: OllamaService.messages.length === 0 && !OllamaService.streaming
+                                    visible: OllamaService.messages.length === 0 && !OllamaService.busyHere
 
                                     Column {
                                         anchors.centerIn: parent
@@ -391,7 +391,7 @@ Scope {
                                 Flickable {
                                     id: scroll
                                     anchors.fill: parent
-                                    visible: OllamaService.messages.length > 0 || OllamaService.streaming
+                                    visible: OllamaService.messages.length > 0 || OllamaService.busyHere
                                     contentWidth: width
                                     contentHeight: msgCol.implicitHeight
                                     clip: true
@@ -424,7 +424,7 @@ Scope {
 
                                     onContentHeightChanged: {
                                         // Auto-follow bottom during stream unless user manually scrolled up
-                                        if (!userScrolledUp || !OllamaService.streaming) {
+                                        if (!userScrolledUp || !OllamaService.busyHere) {
                                             Qt.callLater(() => {
                                                 scroll.contentY = Math.max(0, scroll.contentHeight - scroll.height);
                                             });
@@ -446,7 +446,7 @@ Scope {
                                                 width: msgCol.width
                                                 msgIndex: index
                                                 msg: OllamaService.messages[index] || ({})
-                                                isLast: index === msgRepeater.count - 1 && !OllamaService.streaming
+                                                isLast: index === msgRepeater.count - 1 && !OllamaService.busyHere
                                                 // Only what you just sent animates in; history and finished answers don't.
                                                 animateIn: msg.role === "user" && index === OllamaService.messages.length - 1
                                                            && Date.now() - (msg.timestamp || 0) < 1500
@@ -455,15 +455,15 @@ Scope {
 
                                         // The answer in flight
                                         ChatMessage {
-                                            visible: OllamaService.streaming
+                                            visible: OllamaService.busyHere
                                             width: msgCol.width
-                                            msg: OllamaService.draft || ({ role: "assistant", parts: [] })
+                                            msg: OllamaService.draftHere || ({ role: "assistant", parts: [] })
                                             isStreaming: true
                                         }
 
                                         // A failed turn: one quiet line and a way to try again.
                                         Row {
-                                            visible: OllamaService.errorText !== "" && !OllamaService.streaming
+                                            visible: OllamaService.errorText !== "" && !OllamaService.busyHere
                                             width: parent.width
                                             spacing: 8
                                             Icon { name: "warning-circle"; size: 15; color: Theme.red; anchors.verticalCenter: parent.verticalCenter }
@@ -510,7 +510,7 @@ Scope {
                                     id: toBottom
                                     // Not while it's following the stream (a big block landing would flash it).
                                     readonly property bool show: scroll.visible && scroll.fromEnd > 120
-                                                                 && (scroll.userScrolledUp || !OllamaService.streaming)
+                                                                 && (scroll.userScrolledUp || !OllamaService.busyHere)
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     anchors.bottom: parent.bottom
                                     anchors.bottomMargin: show || Theme.reduceMotion ? 10 : 6
@@ -561,11 +561,11 @@ Scope {
                                 }
                                 onToggleStudioRequested: root.studioMode = !root.studioMode
                                 onEscapeRequested: {
-                                    if (OllamaService.pendingRequest) {
-                                        OllamaService.resolveRequest(OllamaService.pendingRequest.id, "decline");
+                                    if (OllamaService.pendingHere) {
+                                        OllamaService.resolveRequest(OllamaService.pendingHere.id, "decline");
                                     } else if (root.appLauncherOpen) {
                                         root.appLauncherOpen = false;
-                                    } else if (OllamaService.streaming) {
+                                    } else if (OllamaService.busyHere) {
                                         OllamaService.cancel();
                                     } else {
                                         Assistant.hide();

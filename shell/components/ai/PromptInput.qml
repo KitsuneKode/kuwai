@@ -163,14 +163,18 @@ Rectangle {
         // (AI Elements queue.tsx: a ring per item, actions on hover.)
         Column {
             id: queueList
-            readonly property var items: OllamaService.steering.map(x => ({ id: x.id, text: x.text, steering: true }))
-                .concat(OllamaService.queue.map(x => ({ id: x.id, text: x.text || "Screenshot", steering: false, image: !!x.image })))
+            // This chat's: steers only while it's the one answering, its own queue.
+            readonly property var mine: OllamaService.queue.filter(x => !x.session || x.session === OllamaService.activeSessionId)
+            readonly property var items: (OllamaService.busyHere ? OllamaService.steering.map(x => ({ id: x.id, text: x.text, steering: true })) : [])
+                .concat(mine.map(x => ({ id: x.id, text: x.text || "Screenshot", steering: false, image: !!x.image })))
             visible: items.length > 0
             width: parent.width
             spacing: 2
 
             Label {
-                text: OllamaService.queue.length > 0 ? "Queued · sends when this answer is done" : "Steering"
+                text: queueList.mine.length === 0 ? "Steering"
+                    : OllamaService.busyHere ? "Queued · sends when this answer is done"
+                    : OllamaService.streaming ? "Queued · another chat is answering; this one is next" : "Queued"
                 visible: queueList.items.length > 0
                 size: 11
                 weight: Theme.wMedium
@@ -346,9 +350,9 @@ Rectangle {
                     text: root.micState === "recording" ? "Listening… click the mic or ⌃D to stop"
                         : root.micState === "transcribing" ? "Writing it down…"
                         : root.editIndex >= 0 ? "Edit your message"
-                        : OllamaService.pendingRequest && OllamaService.pendingRequest.kind === "question"
-                        ? (OllamaService.pendingRequest.options.length ? "Pick 1–" + OllamaService.pendingRequest.options.length + ", or type your answer" : "Type your answer")
-                        : OllamaService.streaming ? "Enter steers this answer · Tab queues for after"
+                        : OllamaService.pendingHere && OllamaService.pendingHere.kind === "question"
+                        ? (OllamaService.pendingHere.options.length ? "Pick 1–" + OllamaService.pendingHere.options.length + ", or type your answer" : "Type your answer")
+                        : OllamaService.busyHere ? "Enter steers this answer · Tab queues for after"
                         : OllamaService.pendingImage !== "" ? "Ask about the screenshot" : "Ask anything"
                     color: Theme.textDim
                     font.family: Theme.fontText
@@ -359,7 +363,7 @@ Rectangle {
                 // Qt calls these key-specific handlers before onPressed, so each asks the popups first.
                 Keys.onReturnPressed: event => {
                     if (root.routeToPopup(event)) return;
-                    const pend = OllamaService.pendingRequest;
+                    const pend = OllamaService.pendingHere;
                     if (pend && pend.kind === "question" && !(event.modifiers & Qt.ShiftModifier)) {
                         // The composer answers the question.
                         event.accepted = true;
@@ -367,7 +371,7 @@ Rectangle {
                         if (t) { OllamaService.resolveRequest(pend.id, "accept", t); inputArea.text = ""; }
                     } else if ((event.modifiers & Qt.ControlModifier) && pend && pend.kind !== "question") {
                         event.accepted = true;
-                        OllamaService.resolveRequest(OllamaService.pendingRequest.id, "accept");
+                        OllamaService.resolveRequest(OllamaService.pendingHere.id, "accept");
                     } else if (event.modifiers & Qt.ShiftModifier) {
                         event.accepted = false; // allow newline
                     } else {
@@ -378,14 +382,14 @@ Rectangle {
 
                 Keys.onPressed: event => {
                     if (root.routeToPopup(event)) return;
-                    const pend = OllamaService.pendingRequest;
+                    const pend = OllamaService.pendingHere;
                     if (pend && pend.kind === "question" && inputArea.text === "" && !(event.modifiers & Qt.ControlModifier)
                             && event.key >= Qt.Key_1 && event.key <= Qt.Key_9 && event.key - Qt.Key_1 < pend.options.length) {
                         event.accepted = true;     // 1–9 picks an option
                         OllamaService.resolveRequest(pend.id, "accept", pend.options[event.key - Qt.Key_1]);
                         return;
                     }
-                    if (event.key === Qt.Key_Tab && OllamaService.streaming && root.canSend) {
+                    if (event.key === Qt.Key_Tab && OllamaService.busyHere && root.canSend) {
                         event.accepted = true;
                         OllamaService.enqueue(inputArea.text);
                         inputArea.text = "";
@@ -400,7 +404,7 @@ Rectangle {
                         }
                     }
                     // ↑ in an empty composer edits your last message (Codex, ChatGPT).
-                    if (event.key === Qt.Key_Up && inputArea.text === "" && !OllamaService.streaming && root.editIndex < 0) {
+                    if (event.key === Qt.Key_Up && inputArea.text === "" && !OllamaService.busyHere && root.editIndex < 0) {
                         const msgs = OllamaService.messages;
                         for (let i = msgs.length - 1; i >= 0; i--) {
                             if (msgs[i].role === "user") {
@@ -657,7 +661,7 @@ Rectangle {
                 Rectangle {
                     anchors.fill: parent
                     radius: 18
-                    readonly property bool stopping: OllamaService.streaming && !root.canSend
+                    readonly property bool stopping: OllamaService.busyHere && !root.canSend
                     color: stopping
                         ? (btnArea.containsMouse ? Theme.red : Qt.alpha(Theme.red, 0.90))
                         : (root.canSend ? (btnArea.containsMouse ? Theme.accent : Qt.alpha(Theme.accent, 0.92)) : Qt.rgba(1, 1, 1, 0.08))
@@ -687,7 +691,7 @@ Rectangle {
                     MessageAction {
                         anchors.fill: parent
                         color: "transparent"; icon: ""; enabled: false
-                        tip: parent.stopping ? "Stop · Esc" : OllamaService.streaming ? "Steer this answer · ↵" : "Send · ↵"
+                        tip: parent.stopping ? "Stop · Esc" : OllamaService.busyHere ? "Steer this answer · ↵" : OllamaService.streaming ? "Queue · another chat is answering" : "Send · ↵"
                         hoverSource: btnArea
                     }
                 }
@@ -704,14 +708,14 @@ Rectangle {
         if (prompt === "") return;
 
         inputArea.text = "";
-        if (root.editIndex >= 0 && !OllamaService.streaming) {
+        if (root.editIndex >= 0 && !OllamaService.busyHere) {
             const i = root.editIndex;
             root.editIndex = -1;
             root.submitted(prompt);
             OllamaService.editAndResend(i, prompt);
             return;
         }
-        if (OllamaService.streaming) { OllamaService.steer(prompt); return; }   // ↵ mid-answer steers it
+        if (OllamaService.busyHere) { OllamaService.steer(prompt); return; }   // ↵ mid-answer steers it
         root.submitted(prompt);
         OllamaService.send(prompt);
     }

@@ -196,11 +196,11 @@ Item {
             opacity: hover.hovered ? 1 : 0
             Behavior on opacity { NumberAnimation { duration: Theme.colorMs } }
             MessageAction { icon: root.copied ? "check" : "copy"; tip: root.copied ? "Copied" : "Copy"; onClicked: root.copyText() }
-            MessageAction { icon: "git-branch"; tip: "Fork from here"; visible: !OllamaService.streaming; onClicked: OllamaService.forkAt(root.msgIndex) }
+            MessageAction { icon: "git-branch"; tip: "Fork from here"; visible: !OllamaService.busyHere; onClicked: OllamaService.forkAt(root.msgIndex) }
             MessageAction {
                 icon: "pencil-simple"
                 tip: "Edit"
-                visible: !OllamaService.streaming
+                visible: !OllamaService.busyHere
                 onClicked: { editor.text = root.msg.text || ""; root.editing = true; editor.forceActiveFocus(); editor.cursorPosition = editor.text.length; }
             }
         }
@@ -562,8 +562,8 @@ Item {
             Behavior on opacity { NumberAnimation { duration: Theme.colorMs } }
 
             MessageAction { icon: root.copied ? "check" : "copy"; tip: root.copied ? "Copied" : "Copy"; visible: root.plainText !== ""; onClicked: root.copyText() }
-            MessageAction { icon: "arrow-clockwise"; tip: "Retry"; visible: !OllamaService.streaming; onClicked: OllamaService.regenerate(root.msgIndex) }
-            MessageAction { icon: "git-branch"; tip: "Fork from here"; visible: !OllamaService.streaming && root.msgIndex >= 0; onClicked: OllamaService.forkAt(root.msgIndex) }
+            MessageAction { icon: "arrow-clockwise"; tip: "Retry"; visible: !OllamaService.busyHere; onClicked: OllamaService.regenerate(root.msgIndex) }
+            MessageAction { icon: "git-branch"; tip: "Fork from here"; visible: !OllamaService.busyHere && root.msgIndex >= 0; onClicked: OllamaService.forkAt(root.msgIndex) }
             Label {
                 text: [OllamaService.modelLabel(root.msg.model),
                        root.msg.startedAt && root.msg.endedAt > root.msg.startedAt

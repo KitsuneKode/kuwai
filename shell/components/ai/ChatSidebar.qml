@@ -220,9 +220,27 @@ Rectangle {
                         color: Theme.textTertiary
                         elide: Text.ElideRight
                     }
+                    // Answering in the background (you're in another chat), or an
+                    // answer that came while you were away: a ring, then a dot.
+                    readonly property bool working: !!row.chat && OllamaService.streaming && OllamaService.draftSessionId === row.chat.id && !row.selected
+                    readonly property bool fresh: !!row.chat && !!OllamaService.unread[row.chat.id]
+                    Item {
+                        id: chatState
+                        visible: !row.isHeader && !row.asking && !row.renamingThis && (row.working || row.fresh)
+                        anchors { left: parent.left; leftMargin: 8; verticalCenter: parent.verticalCenter; verticalCenterOffset: row.hit ? -8 : 0 }
+                        width: visible ? 8 : 0; height: 8
+                        Rectangle { visible: row.fresh && !row.working; anchors.fill: parent; radius: 4; color: Theme.accent }
+                        Rectangle {
+                            visible: row.working
+                            anchors.fill: parent; radius: 4
+                            color: "transparent"; border.width: 1.5; border.color: Theme.accent
+                            Rectangle { width: 3; height: 3; radius: 1.5; color: Theme.accent; x: 2.5; y: -0.5 }
+                            RotationAnimation on rotation { running: row.working && !Theme.reduceMotion; loops: Animation.Infinite; from: 0; to: 360; duration: Theme.spinMs }
+                        }
+                    }
                     Label {
                         visible: !row.isHeader && !row.asking && !row.renamingThis
-                        anchors { left: parent.left; leftMargin: 8; right: trash.left; rightMargin: 4; verticalCenter: parent.verticalCenter; verticalCenterOffset: row.hit ? -8 : 0 }
+                        anchors { left: chatState.right; leftMargin: chatState.visible ? 7 : 0; right: trash.left; rightMargin: 4; verticalCenter: parent.verticalCenter; verticalCenterOffset: row.hit ? -8 : 0 }
                         text: row.chat ? (row.chat.title && row.chat.title !== "New Chat" ? row.chat.title : "New chat") : ""
                         size: 13
                         weight: row.selected ? Theme.wMedium : Theme.wRegular

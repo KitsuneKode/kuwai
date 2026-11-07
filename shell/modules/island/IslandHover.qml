@@ -418,7 +418,11 @@ Item {
             readonly property int pages: Math.max(1, Math.ceil(all.length / 3))
             property int page: 0
             readonly property var shown: all.slice(page * 3, page * 3 + 3)
-            width: 3 * Theme.statRingSize + 2 * 14
+            // Each column the same width (a ring and its name under it): the name
+            // used to widen its ring's StatRing, centring the outer ring on
+            // "Antigravity 1" while the inner ring and logo stayed put.
+            readonly property int col: Theme.statRingSize + 26
+            width: 3 * col + 2 * 6
             height: Theme.statRingSize + 18
             HoverHandler { id: agentsHover }
             Timer {
@@ -435,35 +439,48 @@ Item {
             }
             Row {
                 id: agentsRow
-                spacing: 14
+                spacing: 6
+                anchors.horizontalCenter: parent.horizontalCenter
                 Repeater {
                     model: ScriptModel { values: agents.shown; objectProp: "id" }
                     delegate: Item {
                         id: ag
                         required property var modelData
                         readonly property var e: modelData
-                        width: Theme.statRingSize
+                        width: agents.col
                         height: Theme.statRingSize + 18
+                        readonly property real rx: (width - Theme.statRingSize) / 2
                         function ink(w) { return !w ? Theme.track : w.out ? Theme.red : w.near ? Theme.orange : ag.e.tint; }
                         // Outer: the session window.
                         StatRing {
+                            x: ag.rx
                             size: Theme.statRingSize; stroke: 3
                             value: ag.e.session ? Math.max(0, ag.e.session.left) : 0
                             color: ag.ink(ag.e.session)
-                            text: ""; label: ag.e.label
+                            text: ""; label: ""
                         }
                         // Inner: the weekly window.
                         StatRing {
                             visible: !!ag.e.weekly
-                            x: 6; y: 6
+                            x: ag.rx + 6; y: 6
                             size: Theme.statRingSize - 12; stroke: 2.5
                             value: ag.e.weekly ? Math.max(0, ag.e.weekly.left) : 0
                             color: ag.ink(ag.e.weekly)
                             text: ""; label: ""
                             opacity: 0.85
                         }
+                        // The name, under its ring, the same type as CPU/Memory's.
+                        Label {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            y: Theme.statRingSize + 4         // StatRing's own spacing: on CPU/Memory's baseline
+                            width: Math.min(implicitWidth, ag.width)
+                            horizontalAlignment: Text.AlignHCenter
+                            elide: Text.ElideRight
+                            text: ag.e.label
+                            size: 11; weight: Theme.wMedium; color: Theme.textSecondary
+                        }
                         Image {
-                            x: (Theme.statRingSize - width) / 2; y: (Theme.statRingSize - height) / 2
+                            x: ag.rx + (Theme.statRingSize - width) / 2; y: (Theme.statRingSize - height) / 2
                             width: 12; height: 12
                             source: ag.e.brand
                             sourceSize: Qt.size(24, 24)
