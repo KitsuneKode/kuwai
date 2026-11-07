@@ -20,7 +20,8 @@ Item {
     Rectangle {
         id: mark
         x: 18
-        y: expanded ? 14 : undefined
+        anchors.top: expanded ? parent.top : undefined
+        anchors.topMargin: 14
         anchors.verticalCenter: expanded ? undefined : parent.verticalCenter
         width: 38; height: 38; radius: 19
         color: Qt.alpha(banner.tone, 0.2)

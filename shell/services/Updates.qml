@@ -433,7 +433,7 @@ Singleton {
     }
     Process {
         id: follower
-        command: ["tail", "-n", "+1", "-F", (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/rice/update.jsonl"]
+        command: ["setpriv", "--pdeathsig", "KILL", "--", "tail", "-n", "+1", "-F", (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/rice/update.jsonl"]
         stdout: SplitParser {
             onRead: line => {
                 let ev = null;

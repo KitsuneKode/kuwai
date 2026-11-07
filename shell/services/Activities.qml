@@ -52,7 +52,7 @@ Singleton {
     property var shazamFound: null            // { title, artist, url } for a moment after a match
     Process {
         running: true
-        command: ["sh", "-c", `f="$1/shazam-now/recognize.pid"; last=
+        command: ["setpriv", "--pdeathsig", "KILL", "--", "sh", "-c", `f="$1/shazam-now/recognize.pid"; last=
             while :; do
                 s=off; if [ -s "$f" ]; then read -r p < "$f"; [ -n "$p" ] && [ -d "/proc/$p" ] && s=on; fi
                 [ "$s" != "$last" ] && echo "$s" && last=$s

@@ -50,7 +50,7 @@ Scope {
     Process {
         id: brightnessFeed
         running: true
-        command: [Quickshell.env("HOME") + "/Scripts/brightness.sh", "watch", "--part", "osd"]
+        command: ["setpriv", "--pdeathsig", "KILL", "--", Quickshell.env("HOME") + "/Scripts/brightness.sh", "watch", "--part", "osd"]
         stdout: SplitParser {
             onRead: line => {
                 let ev;
@@ -280,7 +280,7 @@ Scope {
     Process {
         id: cardWatch
         running: true
-        command: ["pactl", "subscribe"]
+        command: ["setpriv", "--pdeathsig", "KILL", "--", "pactl", "subscribe"]
         stdout: SplitParser { onRead: line => { if (/ on card #/.test(line)) jackCheck.restart(); } }
         onExited: cardRetry.restart()
     }

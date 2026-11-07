@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# rice-loadtest [rev]: does this commit's shell load? Loads it for real in a
+# rice-loadtest [rev] [entry]: does this commit's shell load? (entry: greeter.qml
+# for the login screen; default the shell.) Loads it for real in a
 # throwaway Quickshell (offscreen, its own D-Bus, HOME and runtime dir in a
 # temp folder, so it touches nothing of the session), and reads the error
 # chain. qmllint missed what took the shell down twice (a FINAL property
@@ -10,13 +11,14 @@
 set -u
 dev="$(cd "$(dirname "$0")/.." && pwd)"
 rev="${1:-HEAD}"
+entry="${2:-}"
 command -v qs >/dev/null && command -v dbus-run-session >/dev/null || { echo "rice-loadtest: needs qs and dbus-run-session; skipped" >&2; exit 0; }
 t="$(mktemp -d)"; trap 'rm -rf "$t"' EXIT
 mkdir -p "$t/run" "$t/home" && chmod 700 "$t/run"
 git -C "$dev" archive "$rev" shell | tar -x -C "$t"
 out="$(cd "$t" && env -i PATH=/usr/bin:/bin HOME="$t/home" XDG_RUNTIME_DIR="$t/run" \
-    XDG_STATE_HOME="$t/home/.local/state" XDG_CACHE_HOME="$t/home/.cache" XDG_DATA_HOME="$t/home/.local/share" XDG_CONFIG_HOME="$t/home/.config" \
-    QT_QPA_PLATFORM=offscreen timeout -k 2 15 setsid dbus-run-session -- qs -p "$t/shell" 2>&1)"
+    XDG_STATE_HOME="$t/home/.local/state" XDG_CACHE_HOME="$t/home/.cache" XDG_DATA_HOME="$t/home/.local/share" XDG_CONFIG_HOME="$t/home/.config" KUWAI_GREETER_USER=nobody \
+    QT_QPA_PLATFORM=offscreen timeout -k 2 15 setsid dbus-run-session -- qs -p "$t/shell${entry:+/$entry}" 2>&1)"
 root="$(printf '%s\n' "$out" | grep -E "caused by|ERROR" | tail -1 | sed 's/\x1b\[[0-9;]*m//g')"
 if [ -z "$root" ] || printf '%s' "$root" | grep -q "No PanelWindow backend loaded"; then exit 0; fi
 printf 'rice-loadtest: %s would not load:\n  %s\n' "$(git -C "$dev" log --oneline -1 "$rev")" "$(printf '%s' "$root" | sed 's/^ *ERROR: *//')" >&2

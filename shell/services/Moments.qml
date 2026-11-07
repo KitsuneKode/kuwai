@@ -428,7 +428,7 @@ Singleton {
     property bool drivesKnown: false
     Process {
         running: true
-        command: ["udevadm", "monitor", "--udev", "--subsystem-match=block"]
+        command: ["setpriv", "--pdeathsig", "KILL", "--", "udevadm", "monitor", "--udev", "--subsystem-match=block"]
         stdout: SplitParser { onRead: line => { if (/ (add|remove) /.test(line)) drivesLater.restart(); } }
     }
     Timer { id: drivesLater; interval: 1200; onTriggered: if (!lsblk.running) lsblk.running = true }

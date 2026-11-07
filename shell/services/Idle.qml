@@ -37,14 +37,15 @@ Singleton {
 
     function run(cmd) { Quickshell.execDetached(["sh", "-c", cmd]); }
 
-    // ── Dim: the laptop panel to 40% of where it was, the keyboard light off
+    // ── Dim: every screen (services/Dim: 40 %, at most 15 %, monitors too),
+    // the keyboard light off
     IdleMonitor {
         enabled: root.enabled && !root.held && root.dimAfter > 0
         timeout: root.dimAfter
         respectInhibitors: true
         onIsIdleChanged: {
-            if (isIdle) root.run('brightnessctl -s >/dev/null; c=$(brightnessctl -m | cut -d, -f4 | tr -d %); brightnessctl -q set "$(( c * 4 / 10 > 1 ? c * 4 / 10 : 1 ))%"; brightnessctl -sqd rgb:kbd_backlight set 0 2>/dev/null');
-            else root.run("brightnessctl -qr; brightnessctl -qrd rgb:kbd_backlight 2>/dev/null");
+            if (isIdle) { Dim.down(); root.run("brightnessctl -sqd rgb:kbd_backlight set 0 2>/dev/null"); }
+            else { Dim.up(); root.run("brightnessctl -qrd rgb:kbd_backlight 2>/dev/null"); }
         }
     }
     // ── Fade, 15 s before the lock: any input cancels it (modules/lock)

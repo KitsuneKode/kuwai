@@ -744,6 +744,7 @@ Item {
                 Repeater {
                     model: 4
                     Rectangle {
+                        id: pomoDot
                         required property int index
                         readonly property var p: Timers.next && Timers.next.pomo ? Timers.next.pomo : null
                         readonly property bool done: !!p && (index + 1 < p.round || (index + 1 === p.round && p.phase !== "work"))
@@ -751,7 +752,7 @@ Item {
                         width: 5; height: 5; radius: 2.5
                         color: done ? Theme.red : now ? Theme.red : Theme.platter
                         SequentialAnimation on opacity {
-                            running: parent.now && !Theme.reduceMotion
+                            running: pomoDot.now && !Theme.reduceMotion
                             loops: Animation.Infinite
                             NumberAnimation { to: 0.35; duration: Theme.breatheMs * 2; easing.type: Easing.InOutSine }
                             NumberAnimation { to: 1; duration: Theme.breatheMs * 2; easing.type: Easing.InOutSine }

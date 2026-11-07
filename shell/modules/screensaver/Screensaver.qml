@@ -65,7 +65,7 @@ Scope {
     onShowingChanged: {
         if (showing) mainScreen = Screens.focusedName;
         Saver.showing = showing;
-        if (!showing && dimmed) undim();      // (the file only at startup: its cached text outlives the restore)
+        if (!showing && Dim.wanted) Dim.up();
     }
     readonly property string still: "file://" + Quickshell.env("HOME") + "/.cache/hyde/wall.set"
 
@@ -92,54 +92,12 @@ Scope {
         // counting it latched Night off to Dusk for the rest of the session.
         onExited: { if (!root.killing && root.filmUp && root.style === "night") root.clipFailed = true; root.killing = false; }
     }
-    // ── Dim after a while ────────────────────────────────────────────────
-    // Ten minutes in, every screen goes down to 15 % (never brighter than you
-    // had it); on wake each comes back to exactly where it was. The levels
-    // are kept in a file first, so a shell restart while dimmed still
-    // restores them (on its next start).
-    readonly property string brightCtl: Quickshell.env("HOME") + "/Scripts/brightness.sh"
-    readonly property string dimFile: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/rice/saver-dim.json"
-    readonly property int dimTo: 15
-    property bool dimmed: false
-    // The levels before dimming, in memory: FileView doesn't hand back what
-    // setText() just wrote (text() stayed empty), so wake restored nothing.
-    // The file is only for a restart while dimmed.
-    property var dimWas: null
+    // ── Dim after a while: ten minutes in, every screen down (services/Dim),
+    // back where it was on wake.
     Timer {
-        id: dimLater
         interval: 10 * 60 * 1000
-        running: root.showing && !root.dimmed
-        onTriggered: dimRead.running = true
-    }
-    Process {
-        id: dimRead
-        command: [root.brightCtl, "status"]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                let st = null;
-                try { st = JSON.parse(text); } catch (e) { return; }
-                if (!root.showing || !st || !st.outputs) return;
-                const was = {};
-                for (const name in st.outputs) {
-                    const v = st.outputs[name].value;
-                    if (typeof v === "number" && v > root.dimTo) was[name] = v;
-                }
-                if (!Object.keys(was).length) return;
-                root.dimWas = was;
-                dimSave.setText(JSON.stringify(was));
-                root.dimmed = true;
-                for (const name in was) Quickshell.execDetached([root.brightCtl, "--output", name, "set", String(root.dimTo)]);
-            }
-        }
-    }
-    FileView { id: dimSave; path: root.dimFile; printErrors: false; blockLoading: true }
-    function undim() {
-        let was = dimWas;
-        if (!was) try { was = JSON.parse(dimSave.text() || "null"); } catch (e) {}
-        dimWas = null;
-        if (was) for (const name in was) Quickshell.execDetached([root.brightCtl, "--output", name, "set", String(was[name])]);
-        dimmed = false;
-        if (was) Quickshell.execDetached(["rm", "-f", root.dimFile]);
+        running: root.showing && !Dim.wanted
+        onTriggered: Dim.down()
     }
 
     // SIGKILL, never SIGTERM: Quickshell can crash on a polite exit and its
@@ -154,7 +112,6 @@ Scope {
     // however it happened) goes when this one starts.
     Component.onCompleted: {
         Quickshell.execDetached(["pkill", "-9", "-f", "^qs -p .*/shell-saver$"]);
-        if (dimSave.text() !== "") undim();       // dimmed when the last shell went
     }
 
     function dismiss() { forced = false; }

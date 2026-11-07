@@ -218,7 +218,7 @@ Singleton {
 
     Process {
         id: reader
-        command: [root.bin, "--watch"]
+        command: ["setpriv", "--pdeathsig", "KILL", "--", root.bin, "--watch"]
         property real since: 0
         onStarted: { root.alive = true; since = Date.now(); }
         onExited: {
