@@ -266,7 +266,7 @@ Singleton {
     readonly property int colorMs: 140
     readonly property int hoverMs: 80           // hover tints: answer the pointer at once
     readonly property int artMs: 400            // album-art colour following a new track
-    readonly property int spinMs: 1100          // one turn of a working spinner (calm, not busy)
+    readonly property int spinMs: 750           // one turn of a spinner: brisk (a faster turn reads as faster work; every spinner uses it)
     readonly property int stepMs: 600           // one step of a working ring (glides, then rests ~2.4 s)
     // The one beat every working ring on the notch steps to: T3's and an
     // update's moved on their own timers, so two rings side by side ticked

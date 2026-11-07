@@ -85,6 +85,7 @@ Singleton {
                     url: h["x-rice-url"] || "",
                     feed: true,
                     full: h["x-rice-full"] || "",
+                    thread: h["x-rice-thread"] || "",
                     quiet: h["x-rice-quiet"] === "1",
                     calm: h["x-rice-calm"] === "1",
                     severity: h["x-rice-severity"] || ""

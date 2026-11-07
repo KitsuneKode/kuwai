@@ -194,6 +194,7 @@ Singleton {
     Timer { id: stampSoon; interval: 400; onTriggered: root.refresh() }
     property bool firstList: true
     signal copied(var entry)
+    property real copiedAt: 0
     // Copy times live in times.tsv ("id<TAB>ms" lines), written by
     // `rice-clip stamp` from its own wl-paste watcher at the moment of every
     // copy, whether or not this shell is running. Re-copying something moves
@@ -204,6 +205,7 @@ Singleton {
         const top = list[0].id;
         // The island shows what was just copied (not what was there at start).
         if (lastTop !== "" && top !== lastTop) {
+            copiedAt = Date.now();
             copied(list[0]);
             if (list[0].secret) expireSoon(list[0].id);
         }

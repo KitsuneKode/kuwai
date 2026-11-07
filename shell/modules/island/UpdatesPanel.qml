@@ -227,7 +227,7 @@ FocusScope {
                         text: "\u{f0450}"
                         font.family: Theme.fontGlyph; font.pixelSize: 15
                         color: Theme.textSecondary
-                        RotationAnimation on rotation { running: Updates.checking && !Theme.reduceMotion; loops: Animation.Infinite; from: 0; to: 360; duration: 900 }
+                        RotationAnimation on rotation { running: Updates.checking && !Theme.reduceMotion; loops: Animation.Infinite; from: 0; to: 360; duration: Theme.spinMs }
                     }
                     MouseArea { id: refArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: Updates.check() }
                     Tip { text: "Check again (R)"; shown: refArea.containsMouse; below: true }
@@ -679,7 +679,7 @@ FocusScope {
                     text: Updates.running ? "\u{f06b0}" : runCol.ok ? "\u{f012c}" : "\u{f0026}"
                     font.family: Theme.fontGlyph; font.pixelSize: 20
                     color: Updates.running ? Theme.accent : runCol.ok ? Theme.green : Theme.orange
-                    RotationAnimation on rotation { running: Updates.running && !Theme.reduceMotion; loops: Animation.Infinite; from: 0; to: 360; duration: 1600 }
+                    RotationAnimation on rotation { running: Updates.running && !Theme.reduceMotion; loops: Animation.Infinite; from: 0; to: 360; duration: Theme.spinMs }
                 }
             }
             Column {

@@ -37,7 +37,10 @@ Item {
     transform: Translate { y: swipeY }
 
     onItemChanged: if (item && !Theme.reduceMotion) popIn.restart()
-    NumberAnimation { id: popIn; target: peek; property: "pop"; from: 0.6; to: 1; duration: 460; easing.type: Easing.OutBack; easing.overshoot: 2.2 }
+    // Arrives tens of times a day: quick and settled, no bounce (a 460 ms
+    // overshoot from 0.6 read as slow and toy-like; the notch's own spring
+    // already carries the arrival). Ease-out, from 0.94.
+    NumberAnimation { id: popIn; target: peek; property: "pop"; from: 0.94; to: 1; duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
 
     ParallelAnimation {
         id: swipeHome
@@ -67,13 +70,21 @@ Item {
                 peek.swipingOut = true;
                 swipeOut.start();
             } else {
-                // Pulled down (it rubber-bands): open it to read, the whole
-                // message with Reply (iOS: pull a notification down to expand).
-                if (peek.swipeY > 36 && peek.item && !Notifs.peekExpanded) Notifs.readInIsland(peek.item);
+                // Pulled down (it rubber-bands), in two steps like iOS: the
+                // first opens the preview (more of it, Reply); pulled again,
+                // or one long pull, it's the reader (the whole message, the
+                // conversation).
+                // (By the finger's real travel: the shown pull is damped and
+                // never passed ~20 px, so a 36 px check never fired.)
+                if (rawDown > 40 && peek.item) {
+                    if (Notifs.peekExpanded || rawDown > 140) Notifs.readInIsland(peek.item);
+                    else Notifs.expandPeek();
+                }
                 swipeHome.start();
             }
         }
-        onTranslationChanged: peek.swipeY = translation.y < 0 ? translation.y : Theme.swipeDamp(translation.y)
+        property real rawDown: 0
+        onTranslationChanged: { rawDown = Math.max(0, translation.y); peek.swipeY = translation.y < 0 ? translation.y : Theme.swipeDamp(translation.y); }
     }
 
     HoverHandler { onHoveredChanged: Notifs.peekHeld = hovered }

@@ -212,7 +212,7 @@ Rectangle {
                             visible: qrow.modelData.steering
                             anchors.centerIn: parent
                             name: "circle-notch"; style: "bold"; size: 12; color: Theme.accent
-                            RotationAnimation on rotation { running: qrow.modelData.steering && !Theme.reduceMotion; loops: Animation.Infinite; from: 0; to: 360; duration: 1200 }
+                            RotationAnimation on rotation { running: qrow.modelData.steering && !Theme.reduceMotion; loops: Animation.Infinite; from: 0; to: 360; duration: Theme.spinMs }
                         }
                     }
                     Label {
@@ -513,7 +513,7 @@ Rectangle {
                         color: root.micState === "recording" ? Theme.red : micArea.containsMouse ? Theme.textPrimary : Theme.textTertiary
                         RotationAnimation on rotation {
                             running: root.micState === "transcribing" && !Theme.reduceMotion
-                            loops: Animation.Infinite; from: 0; to: 360; duration: 1000
+                            loops: Animation.Infinite; from: 0; to: 360; duration: Theme.spinMs
                         }
                         onNameChanged: rotation = 0
                     }

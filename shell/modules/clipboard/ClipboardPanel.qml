@@ -780,7 +780,7 @@ Scope {
                     }
                     Label {
                         anchors.verticalCenter: parent.verticalCenter
-                        width: Math.min(implicitWidth, 300)
+                        width: Math.min(implicitWidth, 220)
                         elide: Text.ElideRight
                         text: !toastRow.e ? ""
                             : toastRow.e.kind === "image" ? "Image " + toastRow.e.dims.replace("x", " × ")

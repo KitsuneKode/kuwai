@@ -384,7 +384,35 @@ def gh_thread(t, fetch=gh_fetch, c=None):
         "severity": severity, "peek": peek and not quiet, "quiet": quiet, "url": t.get("_url") or web_url(t),
         "group": t.get("_group") or "gh:" + t["id"], "reply": reply, "who": t.get("_avatar", ("", ""))[0],
         "avatar": t.get("_avatar", ("", ""))[1], "full": t.get("_full", ""),
+        "number": m.group(2) if m and s["type"] in ("Issue", "PullRequest") else "", "repo": repo,
     }
+
+
+def gh_iso_ms(t):
+    try:
+        return int(time.mktime(time.strptime(t, "%Y-%m-%dT%H:%M:%SZ")) - time.timezone) * 1000
+    except (TypeError, ValueError):
+        return 0
+
+
+def gh_conversation(repo, number, fetch=gh_fetch, n=4):
+    """The thread as the reading view shows it: the issue or pull request,
+    then its latest comments (oldest first), whole and in Markdown. [] when
+    there's only one message (the card's own full text says it)."""
+    first = fetch(f"/repos/{repo}/issues/{number}")
+    comments = fetch(f"/repos/{repo}/issues/{number}/comments?per_page=100")
+    if not isinstance(first, dict) or not isinstance(comments, list) or not comments:
+        return []
+    me_ = me()
+    def item(o):
+        who = (o.get("user") or {}).get("login") or "someone"
+        raw = re.sub(r"<!--.*?-->", "", o.get("body") or "", flags=re.S).strip()
+        return {"who": who, "me": who.lower() == me_, "when": gh_iso_ms(o.get("created_at")),
+                "text": full_text(raw, 2500) or "(no description)", "bot": bool(BOTS.search(who))}
+    out = [item(first)] + [item(c) for c in comments[-n:]]
+    if len(comments) > n:
+        out[0]["skipped"] = len(comments) - n           # "3 earlier comments"
+    return out
 
 
 def gh_mark_read(tid):
@@ -469,6 +497,15 @@ def github(notify):
                          "x-rice-severity": c["severity"], "x-rice-quiet": "1" if c["quiet"] else "",
                          "x-rice-calm": "" if c["peek"] else "1", "image-path": avatar(c["who"], c["avatar"]),
                          "x-rice-full": c.get("full") or ""}
+                # The conversation, for the reading view's second pull.
+                if c.get("number") and not c["quiet"]:
+                    try:
+                        conv = gh_conversation(c["repo"], c["number"])
+                    except Exception as e:
+                        log("github: conversation", e)
+                        conv = []
+                    if len(conv) > 1:
+                        hints["x-rice-thread"] = json.dumps(conv)
                 url = c["url"]
                 on = {"default": lambda u=url, i=tid: (open_url(u), gh_mark_read(i)),
                       "read": lambda i=tid: gh_mark_read(i)}
@@ -544,11 +581,67 @@ def mail_card(head_bytes, full_bytes=None, thrid=""):
     thread = format(int(thrid), "x") if thrid else ""
     return {
         "from": name or addr or "Someone", "addr": addr, "replyTo": reply_to, "subject": subject,
-        "snippet": snippet, "full": whole, "thread": thread,
+        "snippet": snippet, "full": whole, "thread": thread, "thrid": thrid,
         "messageId": str(head.get("Message-ID", "")).strip(), "references": str(head.get("References", "")).strip(),
         "noreply": bool(re.search(r"no[-_.]?reply|do[-_.]?not[-_.]?reply|notifications?@|mailer-daemon", reply_to, re.I)),
         "url": f"https://mail.google.com/mail/u/0/#all/{thread}" if thread else "https://mail.google.com/mail/u/0/#inbox",
     }
+
+
+ALL_MAIL = None
+
+
+def all_mail(m):
+    """Gmail's All Mail folder (its name is localised; the \\All flag isn't)."""
+    global ALL_MAIL
+    if ALL_MAIL is None:
+        ALL_MAIL = ""
+        typ, boxes = m.list()
+        for b in boxes or []:
+            line = b.decode(errors="replace") if isinstance(b, bytes) else str(b)
+            if "\\All" in line:
+                ALL_MAIL = line.split(' "/" ', 1)[-1].strip()
+                break
+    return ALL_MAIL
+
+
+def gmail_conversation(m, thrid, address, n=5):
+    """The thread, oldest first, your replies included (All Mail holds both
+    sides), each message without its quoted history. [] for one message.
+    Reads with BODY.PEEK: nothing is marked read. INBOX is selected again after."""
+    box = all_mail(m)
+    if not thrid or not box:
+        return []
+    out = []
+    try:
+        typ, _ = m.select(box, readonly=True)
+        if typ != "OK":
+            return []
+        typ, d = m.uid("SEARCH", None, f"X-GM-THRID {thrid}")
+        uids = d[0].split() if typ == "OK" and d[0] else []
+        if len(uids) < 2:
+            return []
+        for u in uids[-n:]:
+            typ, got = m.uid("FETCH", u, "(RFC822.SIZE)")
+            size = re.search(rb"RFC822.SIZE (\d+)", got[0] if got and isinstance(got[0], bytes) else b"") if typ == "OK" else None
+            if size and int(size.group(1)) > 3_000_000:
+                continue
+            typ, got = m.uid("FETCH", u, "(BODY.PEEK[])")
+            if typ != "OK" or not got or not isinstance(got[0], tuple):
+                continue
+            msg = email.message_from_bytes(got[0][1], policy=email.policy.default)
+            name, addr = email.utils.parseaddr(str(msg.get("From", "")))
+            try:
+                when = int(email.utils.parsedate_to_datetime(str(msg.get("Date", ""))).timestamp() * 1000)
+            except (TypeError, ValueError):
+                when = 0
+            out.append({"who": name or addr or "Someone", "me": addr.lower() == address.lower(),
+                        "when": when, "text": text_of(msg, full=True)[:3000]})
+        if len(uids) > n and out:
+            out[0]["skipped"] = len(uids) - n
+    finally:
+        m.select("INBOX", readonly=True)
+    return out if len(out) > 1 else []
 
 
 def gmail_card(m, uid):
@@ -678,6 +771,14 @@ def gmail_check(m, notify, address, g, shown):
         # the toast); only when there's more than the snippet.
         if c.get("full") and len(c["full"]) > len(c["snippet"]) + 20:
             hints["x-rice-full"] = c["subject"] + "\n\n" + c["full"]
+        # A reply in a conversation: the whole exchange for the reading view.
+        try:
+            conv = gmail_conversation(m, c.get("thrid", ""), address)
+        except Exception as e:
+            log("gmail: conversation", e)
+            conv = []
+        if conv:
+            hints["x-rice-thread"] = json.dumps(conv)
         body = c["subject"] + ("\n" + c["snippet"] if c["snippet"] else "")
         on = {"default": lambda u=c["url"]: open_url(u),
               "archive": lambda i=uid: gmail_archive(notify, address, i),

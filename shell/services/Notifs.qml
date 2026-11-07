@@ -15,6 +15,13 @@ import Quickshell.Services.Notifications
 import qs.config
 
 Singleton {
+    property real copyAskedAt: 0
+    Timer {
+        id: copyFallback
+        interval: 1200
+        onTriggered: if (Clipboard.copiedAt < root.copyAskedAt - 300)
+            Moments.show({ kind: "copied", glyph: "\u{f018f}", label: "Copied", value: "", ring: -1, tone: Theme.textPrimary }, 1400)
+    }
     id: root
 
     property var items: []                    // newest first (NotifItem)
@@ -125,7 +132,11 @@ Singleton {
         }
         const a = NotifAdapters.adapt(n);
         if (a.silent) {
-            if (a.copied) Moments.show({ kind: "copied", glyph: "\u{f018f}", label: "Copied", value: "", ring: -1, tone: Theme.textPrimary }, 1400);
+            // The clipboard pill says it, with what was copied (a thumbnail,
+            // the text): one "Copied", not a bare one here and that one too.
+            // Only if the clipboard didn't change (the same thing again) is
+            // it said here.
+            if (a.copied) { copyAskedAt = Date.now(); copyFallback.restart(); }
             n.dismiss();
             return;
         }
@@ -181,9 +192,14 @@ Singleton {
     function interrupts(i) { return !i.quiet && !centerOpen && (!muted || i.severity === "critical") && (!fullscreenNow || rank(i) === 0); }
     function islandFor(i) { return !i.jump && i.app !== "T3 Code" && important(i) && interrupts(i); }
     // Toast? Not for low ones, not for what the island shows (unless "both").
+    // Agents (T3 Code, a kittymux pane) are a moment in the island already
+    // (Moments.agentNote, kittymux's inbox): with the island as the bar, a
+    // toast as well said the same thing twice. They still land in the center.
+    function agentHere(i) { return Settings.bar === "island" && (i.app === "T3 Code" || !!i.jump); }
     function toastsFor(i) {
         if (!interrupts(i) || i.severity === "low") return false;
-        return !islandFor(i) || Settings.notifSurface === "both";
+        if (Settings.notifSurface === "both") return true;
+        return !islandFor(i) && !agentHere(i);
     }
     function deliver(item, calm) {
         // Agents finishing or waiting are a moment in the island (kittymux's

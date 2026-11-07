@@ -69,7 +69,12 @@ Item {
     readonly property real miniCore: clock.width + (soonText ? soonLabel.implicitWidth + 12 : 0)
     readonly property real miniContent: miniCore + miniLeft + miniRight
     readonly property real miniPad: Math.max(miniLeft, (56 - miniContent) / 2 + miniLeft)
-    readonly property bool momentUnified: activity === "moment" && Moments.now && (Moments.now.kind === "hello" || Moments.now.kind === "focus" || Moments.now.kind === "caffeine")
+    // One piece, centred and hugging it: the hello, Focus, Caffeine, and any
+    // moment with nothing to trail ("Copied", "Reply sent"), which sat at the
+    // left of a 220 px notch with an empty right half.
+    readonly property bool momentBare: activity === "moment" && !!Moments.now && !Moments.now.value
+        && Moments.now.kind !== "battery" && Moments.now.kind !== "device" && String(Moments.now.kind || "").indexOf("limit:") !== 0
+    readonly property bool momentUnified: activity === "moment" && Moments.now && (Moments.now.kind === "hello" || Moments.now.kind === "focus" || Moments.now.kind === "caffeine" || momentBare)
     // Welcome / Good morning: only the hello row, then the rest of the notch eases back in.
     readonly property bool helloFocus: activity === "moment" && Moments.now && Moments.now.kind === "hello"
     property real chromeReveal: 1
@@ -299,7 +304,7 @@ Item {
       // kept stale edges: the right group stayed on the hidden clock and sat
       // on top of the middle mark). Mini notch: the marks hug the time
       // (12 px) and spare room goes outside; hello: centred; else the edge.
-      x: helloFocus ? Math.round((rest.width - width) / 2)
+      x: helloFocus || momentUnified ? Math.round((rest.width - width) / 2)
          : mini ? clock.x - 12 - width
          : 0
       spacing: 10

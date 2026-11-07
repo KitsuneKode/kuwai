@@ -13,6 +13,7 @@ ShaderEffect {
     property point light: Qt.point(width / 2, -40)
     property real strength: 1
     property real full: 0                // 1: a floating card, all four corners
+    property real ear: 0                 // a notch's concave ears (NotchShape.ear): the line curves out with them
     readonly property vector2d size: Qt.vector2d(width, height)
     readonly property bool onBattery: UPower.onBattery
     visible: strength > 0.01 && width > 40 && !onBattery

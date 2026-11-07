@@ -458,7 +458,11 @@ Scope {
                         // Pulled down on a notification: open it to read (the
                         // whole message, Reply). This handler owns the card's
                         // drag, so the peek's own pull never saw it.
-                        if (win.pull < -10 && win.peekHere && Notifs.peek && !Notifs.peekExpanded) Notifs.readInIsland(Notifs.peek);
+                        // Two steps (NotifPeek): the preview, then the reader; a fast pull goes straight there.
+                        if (win.pull < -10 && win.peekHere && Notifs.peek) {
+                            if (Notifs.peekExpanded || centroid.velocity.y > 900) Notifs.readInIsland(Notifs.peek);
+                            else Notifs.expandPeek();
+                        }
                         win.pull = 0;
                     }
                 }
@@ -486,9 +490,9 @@ Scope {
                 }
                 // Liquid glass, expanded only: the rim catches the pointer.
                 LiquidRim {
-                    x: win.notch ? win.ear : 0
-                    width: win.notch ? Math.max(0, sw.value) : frame.width
+                    width: frame.width
                     height: frame.height
+                    ear: win.notch ? win.ear : 0
                     // The notch's corners are continuous (squircle, NotchShape k = 1.28 r):
                     // a circle of ~1.2 r follows them; at 30 the line cut inside the curve.
                     radius: win.notch ? 36 : Math.min(frame.height / 2, 30)
@@ -562,7 +566,7 @@ Scope {
                             x: -width + pos * (parent.width + width)
                             NumberAnimation on pos {
                                 running: assistGlow.visible && !assistGlow.done && !Theme.reduceMotion
-                                from: 0; to: 1; duration: 1800; loops: Animation.Infinite; easing.type: Easing.InOutSine
+                                from: 0; to: 1; duration: 1300; loops: Animation.Infinite; easing.type: Easing.InOutSine
                             }
                             gradient: Gradient {
                                 orientation: Gradient.Horizontal

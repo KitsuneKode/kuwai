@@ -38,7 +38,7 @@ Item {
             NumberAnimation on pos {
                 running: sweep.visible
                 from: 0; to: 1
-                duration: 1800
+                duration: 1300            // a loading sweep: brisk, not drifting
                 loops: Animation.Infinite
                 easing.type: Easing.InOutSine
             }

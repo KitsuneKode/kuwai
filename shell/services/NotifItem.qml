@@ -17,6 +17,7 @@ QtObject {
     // The whole text when the sender gave it (rice-feeds: a mail, a GitHub
     // comment): what the expanded preview reads; body stays the short line.
     property string full
+    property string thread               // a conversation (bin/rice-feeds): JSON [{ who, me, when, text, skipped? }], oldest first
     property string status
     property string statusGlyph
     property string statusTone
@@ -91,6 +92,7 @@ QtObject {
         jump = a.jump || "";
         url = a.url || "";
         full = a.full || "";
+        thread = a.thread || "";
         quiet = !!a.quiet;
         urgency = n.urgency;
         severity = a.severity;
@@ -124,6 +126,6 @@ QtObject {
     }
 
     function toJson() {
-        return { nid, time, app, title, body, status, statusGlyph, statusTone, icon: savedIcon || icon, groupKey, focusClass, jump, url, full, quiet, urgency, severity, count, snoozedUntil, replyable };
+        return { nid, time, app, title, body, status, statusGlyph, statusTone, icon: savedIcon || icon, groupKey, focusClass, jump, url, full, thread, quiet, urgency, severity, count, snoozedUntil, replyable };
     }
 }
