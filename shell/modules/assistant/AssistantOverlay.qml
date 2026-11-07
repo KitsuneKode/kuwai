@@ -20,6 +20,11 @@ Scope {
     readonly property bool open: Assistant.open
     readonly property bool needsOptIn: !Settings.assistantOptIn
     property bool studioMode: false
+    // Almost the whole screen (⌃⇧M, the corners button): for long work, a
+    // big diff, a wide table. Your chats beside it, like studio.
+    property bool fullMode: false
+    onFullModeChanged: if (fullMode) studioMode = true
+    onStudioModeChanged: if (!studioMode) fullMode = false
     property bool sidebarOpen: true
     property bool appLauncherOpen: false
     // ⌃F / "Search chats": the sidebar opens (studio) with its search focused.
@@ -84,21 +89,23 @@ Scope {
             readonly property int studioW: Math.min(1240, Math.round(modelData.width * 0.75))
             readonly property int studioH: Math.min(880, Math.round(modelData.height * 0.82))
 
-            readonly property real targetW: root.studioMode ? studioW : compactW
+            readonly property int fullW: modelData.width - 48
+            readonly property int fullH: modelData.height - 36
+            readonly property real targetW: root.fullMode ? fullW : root.studioMode ? studioW : compactW
             // Compact grows with the conversation (Spotlight / Raycast): a short chat
             // gets a short panel, not a tall one with dead space; it stops at compactH
             // and scrolls from there. Studio stays full height.
             readonly property real chatNeed: OllamaService.messages.length === 0 && !OllamaService.busyHere
                                              ? 260 : scroll.contentHeight + 12
             readonly property real fitH: chatNeed + 38 + 1 + 12 + promptInput.implicitHeight + 12 + 32
-            readonly property real targetH: root.studioMode ? studioH : Math.max(300, Math.min(compactH, fitH))
+            readonly property real targetH: root.fullMode ? fullH : root.studioMode ? studioH : Math.max(300, Math.min(compactH, fitH))
 
             anchors.top: true
             margins.top: inIsland ? (notch ? 0 : 6) : 6
 
             readonly property bool shown: up || melt.value > 0.01
-            implicitWidth: shown ? Math.max(studioW, compactW) + 40 : 1
-            implicitHeight: shown ? Math.max(studioH, compactH) + 60 : 1
+            implicitWidth: shown ? Math.max(studioW, compactW, root.fullMode ? fullW : 0) + 40 : 1
+            implicitHeight: shown ? Math.max(studioH, compactH, root.fullMode ? fullH : 0) + 36 : 1
             exclusionMode: ExclusionMode.Ignore
             color: "transparent"
 
@@ -154,6 +161,9 @@ Scope {
                             event.accepted = true;
                             if (!root.studioMode) root.studioMode = true;
                             root.sidebarOpen = !root.sidebarOpen;
+                        } else if (event.key === Qt.Key_M && (event.modifiers & Qt.ShiftModifier)) {
+                            event.accepted = true;
+                            root.fullMode = !root.fullMode;
                         } else if (event.key === Qt.Key_M || event.key === Qt.Key_E) {
                             event.accepted = true;
                             root.studioMode = !root.studioMode;
@@ -199,6 +209,29 @@ Scope {
                 strength: Math.min(1, win.m)
             }
 
+            // ── The notch, grown: in notch style the assistant IS the notch
+            // (square into the screen edge, the same ears, its rim), not a
+            // rounded card hanging under it. Drawn outside the frame (its ears
+            // reach past it); the frame clips only the content.
+            NotchShape {
+                visible: win.notch && frame.visible
+                x: frame.x - ear; y: 0
+                w: frame.width; h: frame.height
+                ear: 9
+                radius: frame.radius
+                fill: Qt.rgba(0.02, 0.02, 0.03, 0.96)
+                opacity: frame.opacity
+            }
+            LiquidRim {
+                visible: win.notch && frame.visible
+                x: frame.x - 9; y: 0
+                width: frame.width + 18; height: frame.height
+                ear: 9
+                radius: frame.radius * 1.2
+                strength: Math.min(1, win.m) * 0.8
+                light: Qt.point(width * 0.22, height + 90)
+            }
+
             // ── Main Glass Frame (Emerging from Island) ───────────────
             Rectangle {
                 id: frame
@@ -214,6 +247,7 @@ Scope {
                 clip: true
 
                 GlassCard {
+                    visible: !win.notch
                     anchors.fill: parent
                     radius: frame.radius
                     tint: win.inIsland ? Qt.rgba(0.05, 0.05, 0.07, 0.88) : Theme.glassTintElevated
@@ -326,6 +360,7 @@ Scope {
                                     MessageAction { width: 30; height: 30; icon: "note-pencil"; tip: "New chat · ⌃N"; onClicked: { OllamaService.newChat(); promptInput.focusInput(); } }
                                     MessageAction { width: 30; height: 30; icon: "squares-four"; tip: "Open an app · ⌃O"; onClicked: root.appLauncherOpen = !root.appLauncherOpen }
                                     MessageAction { width: 30; height: 30; icon: root.studioMode ? "arrows-in-simple" : "arrows-out-simple"; tip: (root.studioMode ? "Smaller" : "Bigger, with your chats") + " · ⌃M"; onClicked: root.studioMode = !root.studioMode }
+                                    MessageAction { width: 30; height: 30; icon: root.fullMode ? "corners-in" : "corners-out"; tip: (root.fullMode ? "Back to studio" : "Almost full screen") + " · ⌃⇧M"; onClicked: root.fullMode = !root.fullMode }
                                     MessageAction { width: 30; height: 30; icon: "x"; tip: "Close · Esc"; onClicked: Assistant.hide() }
                                 }
                             }
@@ -358,7 +393,7 @@ Scope {
                                             spacing: 6
                                             Label {
                                                 anchors.horizontalCenter: parent.horizontalCenter
-                                                text: OllamaService.status === "ready" ? "What can I help with?" : "Ollama isn't running"
+                                                text: OllamaService.status === "ready" ? "What can I help with?" : OllamaService.status === "loading" ? "Starting up" : "Ollama isn't running"
                                                 size: 22
                                                 weight: Theme.wSemibold
                                                 color: Theme.textPrimary
@@ -366,9 +401,15 @@ Scope {
                                             Label {
                                                 visible: OllamaService.status !== "ready"
                                                 anchors.horizontalCenter: parent.horizontalCenter
-                                                text: "Start it with systemctl --user start ollama"
+                                                text: OllamaService.status === "loading" ? "Waking the model…" : "It runs as a system service: sudo systemctl start ollama"
                                                 size: 13
                                                 color: Theme.textTertiary
+                                            }
+                                            PillButton {
+                                                visible: OllamaService.status === "offline"
+                                                anchors.horizontalCenter: parent.horizontalCenter
+                                                text: "Check again"
+                                                onClicked: OllamaService.probe()
                                             }
                                         }
 

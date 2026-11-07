@@ -1683,7 +1683,9 @@ def run_turn(req):
     offered = route_tools(raw_msgs, any((m.get("context") or {}).get("files") for m in raw_msgs[-2:] if isinstance(m.get("context"), dict)), mode)
     tools = [t["schema"] for n, t in TOOLS.items() if n in offered and (not t.get("sandbox") or sandbox_ready())]
     if os.environ.get("RICE_AGENT_CONTEXT") != "off":
-        system += rice_context.block()        # this computer, your AGENTS.md, memory
+        last = next((m for m in reversed(raw_msgs) if m.get("role") == "user"), {})
+        ask = last.get("content") if isinstance(last.get("content"), str) else last.get("text", "")
+        system += rice_context.block(ask or "")        # this computer, your AGENTS.md, memory, skills that fit
     if mode == "chat":
         system += CHAT_GUIDE
     else:

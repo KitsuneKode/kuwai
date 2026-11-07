@@ -10,6 +10,7 @@
 
 Each is capped, so a big file can't crowd the window.
 """
+import re
 import os
 import shutil
 import subprocess
@@ -139,6 +140,64 @@ SKILLS = CONFIG / "skills"
 
 # Skills shipped with the rice (assistant/skills/) and your own; yours win on a name clash.
 REPO_SKILLS = Path(__file__).resolve().parents[1] / "assistant" / "skills"
+# The skills every agent on this machine shares (~/.agents/skills: 150+). Too
+# many to list for a 16k-context model (~11k tokens), so only the ones that
+# match what was asked go in (relevant_skills).
+AGENT_SKILLS = Path.home() / ".agents" / "skills"
+_SKILL_CACHE = {}
+
+
+def _skill_meta(d):
+    """(name, description, path) from a SKILL.md's front matter, cached by mtime."""
+    f = d / "SKILL.md"
+    try:
+        mt = f.stat().st_mtime
+    except OSError:
+        return None
+    hit = _SKILL_CACHE.get(str(f))
+    if hit and hit[0] == mt:
+        return hit[1]
+    head = f.read_text(encoding="utf-8", errors="replace")[:2000]
+    meta = {}
+    if head.startswith("---"):
+        for line in head.split("---", 2)[1].splitlines():
+            if ":" in line and not line.startswith((" ", "\t")):
+                k, v = line.split(":", 1)
+                meta[k.strip()] = v.strip().strip('"').strip("'")
+    val = None if meta.get("disable-model-invocation") == "true" else \
+        (meta.get("name") or d.name, (meta.get("description") or "")[:300], str(f))
+    _SKILL_CACHE[str(f)] = (mt, val)
+    return val
+
+
+STOP = set("a an the and or of to in on for with is are be it this that you your my me i we can how what do does make use using from as at by into about".split())
+
+
+def _words(t):
+    return {w for w in re.findall(r"[a-z0-9]+", (t or "").lower()) if len(w) > 2 and w not in STOP}
+
+
+def relevant_skills(query, n=6):
+    """The shared skills whose name or description matches the request best
+    (a word in the name counts triple). Nothing when nothing matches."""
+    q = _words(query)
+    if not q:
+        return []
+    scored = []
+    try:
+        dirs = sorted(AGENT_SKILLS.iterdir())
+    except OSError:
+        return []
+    for d in dirs:
+        m = _skill_meta(d) if (d / "SKILL.md").is_file() else None
+        if not m:
+            continue
+        name_w = _words(m[0].replace("-", " "))
+        score = 3 * len(q & name_w) + len(q & _words(m[1]))
+        if score >= 2:
+            scored.append((score, m))
+    scored.sort(key=lambda x: -x[0])
+    return [m for _, m in scored[:n]]
 
 
 def skills():
@@ -169,13 +228,16 @@ def skills():
     return out
 
 
-def block():
-    """The context section of the system prompt."""
+def block(query=""):
+    """The context section of the system prompt. `query`: the latest request,
+    to pick the shared skills that fit it."""
     parts = ["\n\nAbout this computer:\n" + profile()]
     ins = instructions()
     if ins:
         parts.append("\n\nThe user's standing instructions (follow them):\n" + ins)
     sk = skills()
+    names = {n for n, _, _ in sk}
+    sk += [m for m in relevant_skills(query) if m[0] not in names]
     if sk:
         parts.append("\n\nSkills (read the SKILL.md with the read tool when a task matches one, then follow it):\n"
                      + "\n".join(f"- {n}: {d} ({p})" for n, d, p in sk))
