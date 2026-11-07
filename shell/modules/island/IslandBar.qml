@@ -437,6 +437,9 @@ Scope {
             }
             Item {
                 id: frame
+                // Under the screensaver nothing here is seen: hidden, its
+                // spinners and waveforms stop drawing frames.
+                visible: !Saver.showing
                 width: Math.max(0, sw.value) + win.ear * 2
                 height: Math.max(0, sh.value - win.pull)
                 x: Math.round((win.width - width) / 2)

@@ -85,7 +85,8 @@ Scope {
         // Every screen: one screen with the film and the other black read as
         // "the screensaver only came up on one monitor". It's a separate
         // process, killed on wake, so the second decoder costs nothing after.
-        environment: ({ KUWAI_SAVER_FILE: root.film, KUWAI_SAVER_SCREEN: "*" })
+        // Basic render loop: the threaded one leaks per frame on NVIDIA (bin/rice-shell).
+        environment: ({ KUWAI_SAVER_FILE: root.film, KUWAI_SAVER_SCREEN: "*", QSG_RENDER_LOOP: "basic" })
         // The shell is the only one that ends it (SIGKILL, filmUp false), so
         // any exit while the film should be up is a failure: Dusk instead.
         // Our own SIGKILL (the screensaver going, a restart) isn't a failure:

@@ -18,6 +18,7 @@ HOME="$ROOT/home" \
 	XDG_CACHE_HOME="$run/cache" \
 	KUWAI_GREETER_USER="$(cat "$ROOT/user" 2>/dev/null)" \
 	KUWAI_GREETER_FACE="$([ -f "$ROOT/face" ] && echo "$ROOT/face")" \
+	QSG_RENDER_LOOP=basic \
 	qs -p "$ROOT/shell/greeter.qml" >"$run/qs.log" 2>&1
 
 hyprctl dispatch 'hl.dsp.exit()'

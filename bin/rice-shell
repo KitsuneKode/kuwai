@@ -113,6 +113,12 @@ for attempt in 1 2 3; do
     # own freed memory), and freed memory goes back to the system sooner.
     # Same speed for a shell; a smaller idle footprint after panels close.
     ENV="GLIBC_TUNABLES=glibc.malloc.arena_max=2:glibc.malloc.trim_threshold=8388608"
+    # Qt's basic render loop, not the threaded one: on NVIDIA's GL the
+    # threaded loop leaked ~750 bytes a frame (a test window animating
+    # nonstop grew 2.7 MB a minute; basic stayed flat and starts ~10 MB
+    # smaller, Vulkan flat but +40 MB). That was the shell's 70-180 MB/h
+    # (2026-11-07). One thread instead of one per window, too.
+    ENV="$ENV QSG_RENDER_LOOP=basic"
     # Diagnostics for one run: RICE_SHELL_ENV="QV4_MM_STATS=1" rice-shell
     # (the JS heap after every collection, in the shell's log).
     [ -n "${RICE_SHELL_ENV:-}" ] && ENV="$ENV $RICE_SHELL_ENV"
