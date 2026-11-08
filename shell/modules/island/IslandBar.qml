@@ -622,6 +622,8 @@ Scope {
                         height: win.hoverSize.height
                         readonly property real k: Math.max(0, Math.min(1, (m.value - 0.25) / 0.5))
                         opacity: k * Math.max(0, 1 - pv.value * 3)
+                        // Reduce motion: the shape jumps, the content fades (fades only).
+                        Behavior on opacity { enabled: Theme.reduceMotion; NumberAnimation { duration: Theme.microMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                         scale: 0.97 + 0.03 * k
                         transformOrigin: Item.Top
                         visible: opacity > 0.01
@@ -635,6 +637,8 @@ Scope {
                         x: Math.round((body.width - 440) / 2)
                         readonly property real k: Math.max(0, Math.min(1, (bv.value - 0.3) / 0.5))
                         opacity: k * Math.max(0, 1 - Math.max(m.value, pv.value) * 3)
+                        // Reduce motion: the shape jumps, the content fades (fades only).
+                        Behavior on opacity { enabled: Theme.reduceMotion; NumberAnimation { duration: Theme.microMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                         visible: opacity > 0.01
                         property var keep: null
                         // Keeps the last alert on screen while the island folds back.
@@ -652,6 +656,8 @@ Scope {
                         readonly property real k: Math.max(0, Math.min(1, (nv.value - 0.3) / 0.5))
                         readonly property real fit: Math.min(1, body.width / 460)
                         opacity: k * fit * Math.max(0, 1 - Math.max(m.value, pv.value, bv.value) * 3)
+                        // Reduce motion: the shape jumps, the content fades (fades only).
+                        Behavior on opacity { enabled: Theme.reduceMotion; NumberAnimation { duration: Theme.microMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                         scale: 0.85 + 0.15 * fit
                         transformOrigin: Item.Top
                         visible: opacity > 0.01 && body.width > 120
@@ -667,6 +673,8 @@ Scope {
                         x: Math.round((body.width - 420) / 2)
                         readonly property real k: Math.max(0, Math.min(1, (dv.value - 0.3) / 0.5))
                         opacity: k * Math.max(0, 1 - Math.max(m.value, pv.value, bv.value, nv.value) * 3)
+                        // Reduce motion: the shape jumps, the content fades (fades only).
+                        Behavior on opacity { enabled: Theme.reduceMotion; NumberAnimation { duration: Theme.microMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                         visible: opacity > 0.01
                         property var keep: null
                         sourceComponent: DeviceCard { item: Moments.card || deviceLoader.keep; bar: win }
@@ -682,6 +690,8 @@ Scope {
                         focus: win.panelHere
                         readonly property real k: Math.max(0, Math.min(1, (pv.value - 0.5) / 0.4))
                         opacity: k
+                        // Reduce motion: the shape jumps, the content fades (fades only).
+                        Behavior on opacity { enabled: Theme.reduceMotion; NumberAnimation { duration: Theme.microMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                         scale: 0.97 + 0.03 * k
                         transformOrigin: Item.Top
                         visible: opacity > 0.01 || win.panelHere
@@ -690,7 +700,10 @@ Scope {
                         // way. The blur layer exists only mid-transition (never at
                         // rest, so no offscreen texture while you use the panel).
                         transform: Translate { y: Theme.reduceMotion ? 0 : -8 * (1 - panelScope.k) }
-                        layer.enabled: !Theme.reduceMotion && panelScope.k > 0.001 && panelScope.k < 0.995
+                        // Not from the keyboard: the launcher, settings and the switcher open
+                        // dozens of times a day there, and a full-panel blur pass each time
+                        // buys nothing at the keyed spring's speed (fade and drop remain).
+                        layer.enabled: !Theme.reduceMotion && !win.keyed && panelScope.k > 0.001 && panelScope.k < 0.995
                         layer.smooth: true
                         layer.effect: MultiEffect {
                             blurEnabled: true

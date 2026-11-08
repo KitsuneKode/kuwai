@@ -360,7 +360,7 @@ Item {
                                     id: fadeIn
                                     running: false
                                     from: 0; to: 1
-                                    duration: 450
+                                    duration: Theme.enterMs
                                     easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut
                                 }
                                 Component.onCompleted: { if (html) shown = html; if (root.isStreaming && !Theme.reduceMotion) fadeIn.start(); }

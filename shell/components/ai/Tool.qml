@@ -105,7 +105,7 @@ Item {
                             running: root.running && !root.pending && !Theme.reduceMotion
                             loops: Animation.Infinite
                             from: 0; to: 360
-                            duration: 1200
+                            duration: Theme.spinMs
                         }
                         onNameChanged: rotation = 0
                     }

@@ -41,7 +41,7 @@ Item {
         id: plate
         anchors.fill: parent
         scale: b.pressed ? 0.97 : 1
-        Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+        Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
 
         // Weight: stacked shadows, gone while pressed.
         Repeater {

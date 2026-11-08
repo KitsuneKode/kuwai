@@ -122,7 +122,7 @@ Column {
                 font.family: Theme.fontGlyph; font.pixelSize: 16
                 color: entry.lock.password ? entry.onAccent : "white"
                 Behavior on color { ColorAnimation { duration: Theme.colorMs } }
-                RotationAnimation on rotation { running: entry.lock.checking && !Theme.reduceMotion; loops: Animation.Infinite; from: 0; to: 360; duration: 900 }
+                RotationAnimation on rotation { running: entry.lock.checking && !Theme.reduceMotion; loops: Animation.Infinite; from: 0; to: 360; duration: Theme.spinMs }
                 onTextChanged: rotation = 0
             }
             MouseArea { id: goPress; anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: entry.lock.submit() }

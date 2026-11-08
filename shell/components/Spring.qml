@@ -20,7 +20,13 @@ QtObject {
     property real epsilon: 0.0005       // rest threshold, in the value's own units
     property bool settled: true
 
-    onTargetChanged: settled = false
+    // Reduce motion: no spring moves anything. A new target is simply where
+    // the value is (STATES.md: fades only; the surfaces that grow fade
+    // instead, see IslandBar's panel), and an impulse settles at once.
+    onTargetChanged: {
+        if (Theme.reduceMotion) settle();
+        else settled = false;
+    }
 
     // Jump to the current target without motion (keeps a bound target bound).
     function settle() {
@@ -37,6 +43,7 @@ QtObject {
     }
 
     function step(dt) {
+        if (Theme.reduceMotion) { settle(); return; }
         const k = tier.stiffness, c = tier.damping;
         let t = Math.min(dt, 0.05);
         let x = value, v = velocity;

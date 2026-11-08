@@ -62,7 +62,7 @@ Item {
         scale: tips.shown || Theme.reduceMotion ? 1 : 0.97
         visible: opacity > 0.01
         Behavior on opacity { enabled: !tips.instant; NumberAnimation { duration: tips.shown ? 125 : 90; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
-        Behavior on scale { enabled: !tips.instant; NumberAnimation { duration: 125; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+        Behavior on scale { enabled: !tips.instant; NumberAnimation { duration: Theme.quickMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
 
         Row {
             id: row

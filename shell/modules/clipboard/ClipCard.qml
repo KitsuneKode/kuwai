@@ -72,7 +72,7 @@ Item {
         anchors.topMargin: 4
         anchors.bottomMargin: 4
         scale: card.selected || Theme.reduceMotion ? 1 : (hover.hovered ? 0.985 : 0.965)
-        Behavior on scale { NumberAnimation { duration: 140; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+        Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
 
         Rectangle {
             id: plate

@@ -87,14 +87,19 @@ Column {
         interactive: false
         spacing: 8
         model: model
+        // One moment, one timing family: the arriving card (the lead) and the
+        // cards it pushes down move together, same curve, same length. No
+        // overshoot: a notification arriving isn't a flick or a plug-in
+        // (STATES.md), and the lock screen should read calm.
         add: Transition {
             ParallelAnimation {
-                NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 260; easing.type: Easing.OutCubic }
-                NumberAnimation { property: "scale"; from: 1 - 0.08 * stack.move; to: 1; duration: Theme.pulseMs; easing.type: Easing.OutBack; easing.overshoot: 1.4 }
+                NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+                NumberAnimation { property: "scale"; from: 1 - 0.04 * stack.move; to: 1; duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
             }
         }
         displaced: Transition {
-            NumberAnimation { property: "y"; duration: 420; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+            enabled: !Theme.reduceMotion
+            NumberAnimation { property: "y"; duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
         }
         remove: Transition {
             NumberAnimation { property: "opacity"; to: 0; duration: Theme.microMs }
