@@ -174,14 +174,19 @@ Singleton {
         out.copied = isCopyConfirmation(n);
         // kittymux sends its own art (the agent's mark with its mascot); show
         // the agent's real brand mark instead.
+        // Its hints say which agent (x-kittymux-agent / -brand); the icon's
+        // file name is the fallback for an older kittymux. The row then reads
+        // as the agent ("Codex"), not the transport.
+        const h = n.hints || {};
         if (/^kittymux$/i.test(n.appName || "")) {
             const m = String(n.appIcon || n.image || "").match(/notify\/([\w-]+)\.png$/);
-            const b = m ? Kittymux.brand(m[1]) : "";
+            const agent = String(h["x-kittymux-agent"] || "").replace(/[^\w-]/g, "");
+            const b = Kittymux.brand(String(h["x-kittymux-brand"] || "")) || Kittymux.brand(agent) || (m ? Kittymux.brand(m[1]) : "");
             if (b) out.icon = b;
+            if (agent) out.app = agent.charAt(0).toUpperCase() + agent.slice(1);
         }
         // kittymux names the agent pane it's about (bin/mux-notify hints):
         // a click jumps there through kittymux, even from history later.
-        const h = n.hints || {};
         const kpid = h["x-kittymux-pid"], kwin = h["x-kittymux-window"];
         out.jump = /^\d+$/.test(String(kpid || "")) && /^\d+$/.test(String(kwin || "")) ? kpid + ":" + kwin : "";
         if (!out.icon) out.icon = imageOrIcon(n);

@@ -55,7 +55,7 @@ brightnessctl:brightnessctl pw-play:pipewire-audio wpctl:wireplumber notify-send
 setpriv:util-linux gdbus:glib2 python3:python luac:lua playerctl:playerctl git:git"
 OPTIONAL="satty:satty(screenshot-editing) tesseract:tesseract(copy-text-from-images) mpv:mpv(live-wallpapers)
 magick:imagemagick(thumbnails) pdftoppm:poppler(PDF-previews) kitty:kitty(terminal) secret-tool:libsecret(Gmail-password-in-keyring)
-gh:github-cli(GitHub-notifications) wtype:wtype(typing-emoji-into-windows) ydotool:ydotool(tests)"
+gh:github-cli(GitHub-notifications) wtype:wtype(typing-emoji-into-windows) ydotool:ydotool(tests) ddcutil:ddcutil(external-monitor-brightness)"
 FONTS="SF Pro Text:apple-fonts|Symbols Nerd Font:ttf-nerd-fonts-symbols-mono"
 
 check_deps() {
