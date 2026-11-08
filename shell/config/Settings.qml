@@ -44,6 +44,7 @@ Singleton {
     readonly property alias islandProximity: s.islandProximity
     readonly property alias kittyTabs: s.kittyTabs
     readonly property alias notifSurface: s.notifSurface
+    readonly property alias notifFullscreen: s.notifFullscreen
     readonly property alias notifToastInstantOpen: s.notifToastInstantOpen
     readonly property alias notifEngageReply: s.notifEngageReply
     readonly property alias notifRedactSensitive: s.notifRedactSensitive
@@ -138,6 +139,9 @@ Singleton {
             property int idleSleepBattery: 900
             property bool idleNoSleepWhilePlaying: true
             property string notifSurface: "one"   // one (island or toast) · both
+            // In a fullscreen app (a game, a film): important = critical, warnings and
+            // people you can reply to get a slim banner · critical = only those · off.
+            property string notifFullscreen: "important"
             // Toasts: off = tap to preview, then Open; on = one tap runs the default action.
             property bool notifToastInstantOpen: false
             property bool seenNotifC1Hint: false

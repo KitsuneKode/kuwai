@@ -194,7 +194,32 @@ Singleton {
     // clipboard shelf): a peek there would play unseen behind it, so it's a
     // toast instead. Nothing lost, nothing drawn where no one can see it.
     readonly property bool islandCovered: Assistant.open || Island.panel !== "" || Clipboard.open
-    function islandFor(i) { return !i.jump && i.app !== "T3 Code" && important(i) && interrupts(i) && !islandCovered; }
+    // Fullscreen: the island and the toasts sit under a fullscreen window
+    // (Hyprland draws it over the top layer), so a critical one peeked there
+    // was never seen. A slim banner on the overlay layer instead
+    // (modules/notifications/FullscreenBanner): critical always, warnings and
+    // people you can reply to unless Focus or sharing holds them
+    // (Settings.notifFullscreen: important · critical · off). The rest wait in
+    // the center with the missed dot, as before.
+    function bannerFor(i) {
+        if (!fullscreenNow || i.quiet || centerOpen) return false;
+        const mode = Settings.notifFullscreen || "important", r = rank(i);
+        if (mode === "off") return false;
+        if (r === 0) return true;
+        return mode === "important" && r <= 2 && !muted;
+    }
+    property var banner: null
+    Timer { id: bannerFor_; interval: 4000; onTriggered: root.banner = null }
+    function showBanner(item) {
+        // A more urgent one isn't replaced by a lesser one while it shows.
+        if (banner && !banner.discard && rank(banner) < rank(item)) return;
+        banner = item;
+        bannerFor_.interval = rank(item) === 0 ? 8000 : 4000;
+        bannerFor_.restart();
+    }
+    function dropBanner() { bannerFor_.stop(); banner = null; }
+    function holdBanner(on) { if (on) bannerFor_.stop(); else if (banner) bannerFor_.restart(); }
+    function islandFor(i) { return !fullscreenNow && !i.jump && i.app !== "T3 Code" && important(i) && interrupts(i) && !islandCovered; }
     // Toast? Not for low ones, not for what the island shows (unless "both").
     // Agents (T3 Code, a kittymux pane) are a moment in the island already
     // (Moments.agentNote, kittymux's inbox): with the island as the bar, a
@@ -203,11 +228,13 @@ Singleton {
     // down opens that chat (IslandBar). Failures and "needs you" still toast.
     function agentHere(i) { return Settings.bar === "island" && !islandCovered && (i.app === "T3 Code" || !!i.jump || (i.app === "Assistant" && /^Done: /.test(i.title || ""))); }
     function toastsFor(i) {
+        if (fullscreenNow) return false;           // the banner speaks for it (bannerFor), or it waits
         if (!interrupts(i) || i.severity === "low") return false;
         if (Settings.notifSurface === "both") return true;
         return !islandFor(i) && !agentHere(i);
     }
     function deliver(item, calm) {
+        if (!calm && bannerFor(item)) { showBanner(item); return; }
         // Agents finishing or waiting are a moment in the island (kittymux's
         // own panes already are, from its inbox).
         if (item.app === "T3 Code") Moments.agentNote(item);
