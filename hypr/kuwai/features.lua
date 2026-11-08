@@ -35,6 +35,7 @@ local F = {
 		session_restore = true, -- snapshot open apps; offer to restore at login
 	},
 	describe = {
+		input_method = "Start fcitx5 (or ibus) for typing other scripts: Japanese, Chinese, Korean, Indic…",
 		launch_focus = "App keys focus an open window first (press again for the next)",
 		quake = "Super+` drop-down console",
 		minimize = "Super+O hide window, Super+Shift+O bring back",
@@ -60,6 +61,8 @@ local F = {
 		session_restore = "Reopen your apps on their workspaces after a crash or reboot",
 	},
 }
+-- Off by default: an input method changes how every app takes text.
+F.defaults.input_method = false
 
 K.features = K.features or {}
 

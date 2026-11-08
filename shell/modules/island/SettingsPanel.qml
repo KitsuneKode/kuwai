@@ -10,6 +10,7 @@
 //   ▣ About            └──────────────────────────────────────────┘
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import qs.config
 import qs.components
 import qs.components.ui
@@ -135,7 +136,7 @@ FocusScope {
             Loader {
                 id: page
                 width: parent.width
-                sourceComponent: [barPage, clockPage, notifPage, assistantPage, motionPage, islandRestPage, workspacesPage, powerPage, saverPage, timePage, clipboardPage, updatesPage, aboutPage][settings.current]
+                sourceComponent: [barPage, clockPage, notifPage, assistantPage, motionPage, keyboardPage, islandRestPage, workspacesPage, powerPage, saverPage, timePage, clipboardPage, updatesPage, aboutPage][settings.current]
             }
         }
         ScrollHint { flickable: pageFlick; anchors { right: parent.right; top: pageFlick.top; bottom: pageFlick.bottom; rightMargin: 10 } }
@@ -379,6 +380,77 @@ FocusScope {
                         options: [{ id: "1", label: "100 %" }, { id: "1.1", label: "110 %" }, { id: "1.2", label: "120 %" }]
                         current: String(Settings.textScale)
                         onPicked: id => Settings.set("textScale", Number(id))
+                    }
+                }
+            }
+        }
+    }
+    // Keyboard: layouts (kuwai keyboard), the key that switches between them,
+    // and an input method for other scripts (kuwai feature input_method).
+    // Read back from kuwai's state file, so the CLI and this page agree.
+    Component {
+        id: keyboardPage
+        Column {
+            id: kbPage
+            spacing: 18
+            readonly property string kuwai: Paths.bin + "/kuwai"
+            property var kv: ({})
+            FileView {
+                path: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/kuwai/state"
+                watchChanges: true
+                printErrors: false
+                onFileChanged: reload()
+                onLoaded: {
+                    const o = {};
+                    for (const l of text().split("\n")) { const i = l.indexOf("="); if (i > 0) o[l.slice(0, i)] = l.slice(i + 1); }
+                    kbPage.kv = o;
+                }
+            }
+            readonly property var layouts: String(kv.kb_layout || "us").split(",").filter(x => x)
+            readonly property var choices: [
+                { id: "us", label: "English (US)" }, { id: "gb", label: "English (UK)" }, { id: "de", label: "German" },
+                { id: "fr", label: "French" }, { id: "es", label: "Spanish" }, { id: "it", label: "Italian" },
+                { id: "pt", label: "Portuguese" }, { id: "ru", label: "Russian" }, { id: "ua", label: "Ukrainian" },
+                { id: "pl", label: "Polish" }, { id: "in", label: "Hindi" }, { id: "jp", label: "Japanese" }]
+            function toggle(id) {
+                let l = layouts.includes(id) ? layouts.filter(x => x !== id) : layouts.concat([id]);
+                if (!l.length) l = ["us"];
+                Quickshell.execDetached([kuwai, "keyboard", l.join(",")]);
+            }
+            SettingsGroup {
+                SettingsRow {
+                    label: "Layouts"
+                    detail: kbPage.layouts.length > 1 ? kbPage.layouts.join(" · ") + " (the first is the default)" : "One layout; pick more to switch between them"
+                }
+                Flow {
+                    width: parent.width
+                    spacing: 6
+                    Repeater {
+                        model: kbPage.choices
+                        PillButton {
+                            required property var modelData
+                            text: modelData.label
+                            tint: kbPage.layouts.includes(modelData.id) ? Qt.alpha(Theme.accent, 0.35) : "transparent"
+                            onClicked: kbPage.toggle(modelData.id)
+                        }
+                    }
+                }
+                SettingsRow {
+                    label: "Switch layouts with"; detail: "Or any other: kuwai keyboard us,de --switch …"
+                    Segmented {
+                        options: [{ id: "none", label: "Off" }, { id: "alt-shift", label: "Alt+Shift" }, { id: "win-space", label: "Super+Space" }, { id: "caps", label: "Caps Lock" }]
+                        current: kbPage.kv.kb_switch || "none"
+                        onPicked: id => Quickshell.execDetached([kbPage.kuwai, "keyboard", "--switch", id])
+                    }
+                }
+            }
+            SettingsGroup {
+                SettingsRow {
+                    label: "Input method"
+                    detail: "fcitx5 (or ibus) for Japanese, Chinese, Korean, Indic scripts; applies after a reload"
+                    Toggle {
+                        on: kbPage.kv["feature.input_method"] === "on"
+                        onToggled: Quickshell.execDetached([kbPage.kuwai, "feature", "input_method", kbPage.kv["feature.input_method"] === "on" ? "off" : "on"])
                     }
                 }
             }
