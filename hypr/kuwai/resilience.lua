@@ -116,7 +116,7 @@ local function cmdline(pid)
 	return table.concat(parts, " ")
 end
 
-function R.save()
+function R.save(keep_if_empty)
 	local lines, seen = {}, {}
 	for _, w in ipairs(hl.get_windows() or {}) do
 		local cls = (w.class or ""):lower()
@@ -138,6 +138,12 @@ function R.save()
 		end
 	end
 	if #lines == 0 then
+		-- Nothing to restore any more: an old snapshot would offer apps you
+		-- closed on purpose. At shutdown, though, windows may already be going
+		-- (a logout closes them), so the last good snapshot stays.
+		if not keep_if_empty then
+			os.remove(SNAP)
+		end
 		return 0
 	end
 	local f = io.open(SNAP, "w")
@@ -208,7 +214,7 @@ if K.feature("session_restore") then
 		end, { timeout = 300000, type = "repeat" })
 	end)
 	hl.on("hyprland.shutdown", function()
-		R.save()
+		R.save(true)
 	end)
 	hl.on("hyprland.start", function()
 		-- Offer once the shell (notifications) is up, only if little is open yet.
