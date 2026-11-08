@@ -55,17 +55,30 @@ if K.feature("screenshare_privacy") then
 	-- short, but one always in flight 2.5 s later) isn't taken for a share:
 	-- only a capture that never stopped since the timer started counts.
 	local run = 0
+	-- The check repeats while the capture lasts: one that falls inside a
+	-- Mission Control / switcher hold (or its grace) is postponed, not lost,
+	-- so a share that began meanwhile is still caught once the hold ends.
+	local function check(mine)
+		if shares == 0 or run ~= mine or engaged then
+			return
+		end
+		if held > 0 or os.time() < grace then
+			hl.timer(function()
+				check(mine)
+			end, { timeout = 1000, type = "oneshot" })
+			return
+		end
+		engaged = true
+		privacy(true)
+		hl.exec_cmd(K.bin .. "/rice notifs mute-on")
+		K.notify("Sharing your screen — notifications muted, private apps hidden", 3000, "info")
+	end
 	hl.on("screenshare.state", function(active)
 		if active then
 			shares = shares + 1
 			local mine = run
 			hl.timer(function()
-				if shares > 0 and run == mine and not engaged and held == 0 and os.time() >= grace then
-					engaged = true
-					privacy(true)
-					hl.exec_cmd(K.bin .. "/rice notifs mute-on")
-					K.notify("Sharing your screen — notifications muted, private apps hidden", 3000, "info")
-				end
+				check(mine)
 			end, { timeout = 2500, type = "oneshot" })
 		else
 			shares = math.max(0, shares - 1)

@@ -186,6 +186,14 @@ if K.feature("focus_sessions") then
 			return "stopped"
 		end
 		minutes = tonumber(minutes) or 25
+		-- A new length replaces a running session: its timer goes first, or
+		-- the old deadline would end the new session early.
+		if t then
+			pcall(function()
+				t:set_enabled(false)
+			end)
+			t = nil
+		end
 		local until_ts = os.time() + minutes * 60
 		K.set_state("focus_until", until_ts)
 		hl.exec_cmd(K.bin .. "/rice notifs dnd-on")

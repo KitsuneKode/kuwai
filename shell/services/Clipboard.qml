@@ -214,6 +214,11 @@ Singleton {
             if (list[0].secret) expireSoon(list[0].id);
         }
         lastTop = top;
+        // Secrets already in the history (from before a restart, or copied
+        // while the shell was down) get their deadline too: from when they
+        // were copied (times.tsv outlives the shell), else from now.
+        for (const e of list)
+            if (e.secret && !isPinned(e)) expireSoon(e.id, times[e.id]);
     }
     FileView {
         path: root.dataDir + "/times.tsv"
@@ -239,9 +244,10 @@ Singleton {
     readonly property int secretSecs: 60
     property string pendingSecret: ""         // Notifs.copyCode: the next copy is a code
     property var expiring: []                 // [{ id, at }]
-    function expireSoon(id) {
+    function expireSoon(id, copiedMs) {
         if (expiring.some(x => x.id === id)) return;
-        expiring = [...expiring, { id: id, at: Date.now() + secretSecs * 1000 }];
+        const from = copiedMs > 0 ? Math.min(copiedMs, Date.now()) : Date.now();
+        expiring = [...expiring, { id: id, at: from + secretSecs * 1000 }];
     }
     Timer {
         interval: 5000; repeat: true

@@ -405,9 +405,12 @@ Singleton {
         if (!peekHeld) peekFor.restart();
     }
 
+    // Focus (dnd) and sharing (dndMute) are separate reasons to hold
+    // notifications, each with its own owner: ending Focus must not lift the
+    // mute and redaction a screen share put on. Only the share's end does
+    // (automation.lua → `rice notifs mute-off`).
     function toggleUserDnd() {
         dnd = !dnd;
-        if (!dnd) dndMute = false;
     }
 
     // Island peek → notification center: select the row; Reply opens the inline field.
@@ -794,7 +797,6 @@ Singleton {
         }
         function setDnd(on: bool): void {
             root.dnd = on;
-            if (!on) root.dndMute = false;
         }
         function setDndMute(on: bool): void {
             root.dndMute = on;
