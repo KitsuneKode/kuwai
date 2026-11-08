@@ -119,6 +119,11 @@ function kuwai.mode(name)
 	end
 	if name ~= "gaming" then
 		K.set_state("mode_before_gaming", nil)
+		-- Leaving the gaming look leaves the gaming display preset too.
+		if K.state["display"] == "gaming" then
+			K.set_state("display", nil)
+			K.set_state("mode_before_display_gaming", nil)
+		end
 	end
 	K.set_state("mode", name)
 	K.notify("Mode: " .. name .. " — " .. (M.describe[name] or ""), 2000)

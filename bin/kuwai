@@ -4,6 +4,7 @@
 #   kuwai info                      version, mode, GPU, theme
 #   kuwai doctor                    check config, session, scripts; exit 1 on problems
 #   kuwai mode [NAME|--pick|list]   focus · default · glass · gaming · battery
+#   kuwai display [NAME|list]       everyday · accurate · movie · gaming · battery (what the screens are for)
 #   kuwai motion [full|reduced|off]
 #   kuwai gpu [auto|nvidia|intel]   renderer for the next login
 #   kuwai rescue                    password prompt, clipboard, island, idle: back to working
@@ -61,6 +62,23 @@ cmd_mode() {
     case " $MODES " in *" $m "*) ;; *) echo "kuwai: no mode '$m' (try: $MODES)" >&2; return 2 ;; esac
     if live; then hyprctl eval "kuwai.mode('$m')" >/dev/null; else state_set mode "$m"; fi
     echo "mode: $m — $(describe "$m")"
+}
+
+cmd_display() {
+    # Display presets (hypr/kuwai/display.lua): what the screens are for right now.
+    local all="everyday accurate movie gaming battery" m=${1:-}
+    case $m in
+        "") if live; then lua 'return kuwai.display()'; echo; else c=$(state_get display); echo "${c:-everyday}"; fi; return ;;
+        list) printf '%s\n' \
+            "everyday  configured refresh rates, Night Shift on its schedule" \
+            "accurate  Night Shift held off, strict colour management" \
+            "movie     external screens at 120 Hz for even film cadence" \
+            "gaming    the gaming look: no effects, tearing allowed" \
+            "battery   built-in panel at 60 Hz"; return ;;
+    esac
+    case " $all " in *" $m "*) ;; *) echo "kuwai: no display preset '$m' (try: $all)" >&2; return 2 ;; esac
+    if live; then hyprctl eval "kuwai.display('$m')" >/dev/null; else state_set display "$([ "$m" = everyday ] || echo "$m")"; fi
+    echo "display: $m"
 }
 
 cmd_motion() {
@@ -286,6 +304,7 @@ case ${1:-info} in
     auth) shift; cmd_auth "$@" ;;
     rescue) cmd_rescue ;;
     mode) shift; cmd_mode "$@" ;;
+    display) shift; cmd_display "$@" ;;
     motion) shift; cmd_motion "$@" ;;
     gpu) shift; cmd_gpu "$@" ;;
     binds) shift; cmd_binds "$@" ;;

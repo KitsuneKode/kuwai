@@ -43,6 +43,8 @@ K.load("kuwai.startup")
 
 -- Monitors: a sane default for anything unknown, then the machine's own file.
 pcall(hl.monitor, { output = "", mode = "preferred", position = "auto", scale = "auto" })
+-- Display presets remember monitors.lua's rules as they are made (kuwai.display).
+K.display = K.load("kuwai.display")
 K.load_user("monitors.lua")
 
 -- Personal layer: apps, launchers, per-app rules, autostart.
@@ -51,6 +53,10 @@ K.load_user("user.lua")
 K.modes = K.load("kuwai.modes")
 if K.modes then
 	K.modes.apply()
+end
+-- After the look mode: a display preset can lower a refresh rate or hold Night Shift off.
+if K.display then
+	K.display.apply()
 end
 
 -- Report -----------------------------------------------------------------------

@@ -558,7 +558,13 @@ Item {
                     { id: "focus", glyph: "\u{f0594}", on: Notifs.dnd, alert: Notifs.dnd, tone: Theme.focus,
                       tip: Notifs.dnd ? "Focus on: notifications held" : "Focus (Do Not Disturb)", toggle: () => { Notifs.toggleUserDnd(); } },
                     { id: "night", glyph: "\u{f0599}", on: Display.nightOn, alert: false, tone: Theme.orange,
-                      tip: Display.nightOn ? "Night Shift on" : "Night Shift", toggle: () => Display.toggleNight() },
+                      tip: Display.nightHeld ? "Night Shift paused while Accurate" : Display.nightOn ? "Night Shift on" : "Night Shift", toggle: () => Display.toggleNight() },
+                    // Display preset: scroll through them here; click opens Controls.
+                    { id: "display", glyph: "\u{f0379}", on: Display.preset !== "everyday", alert: false, tone: Theme.cyan,
+                      tip: "Display: " + Display.presetInfo(Display.preset).label
+                          + (Display.auto !== "" && Display.choice === "everyday" ? " (automatic)" : "") + " · scroll to change",
+                      toggle: () => Notifs.toggleCenter("controls", "pointer", hover.bar.screenName),
+                      wheel: steps => Display.cyclePreset(steps > 0 ? 1 : -1) },
                     // The AI assistant: lit while it works, a dot when it needs you; click opens it.
                     { id: "assistant", glyph: "\u{f0674}", on: OllamaService.streaming, alert: !!OllamaService.pendingRequest, tone: Theme.accent,
                       tip: OllamaService.pendingRequest ? "Assistant: needs you" : OllamaService.streaming ? "Assistant: " + (OllamaService.bgLabel || "working") : "Assistant · Super+Ctrl+Shift+A",

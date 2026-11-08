@@ -114,6 +114,14 @@ for _, name in ipairs({ "ACAD", "AC", "AC0", "ADP0", "ADP1", "ACAD0" }) do
 	end
 end
 
+-- nil when there's no AC adapter to read (a desktop).
+function K.ac_online()
+	if not AC then
+		return nil
+	end
+	return K.read_line(AC) == "1"
+end
+
 if K.feature("auto_battery") and AC then
 	local function check()
 		local online = K.read_line(AC) == "1"
@@ -123,6 +131,17 @@ if K.feature("auto_battery") and AC then
 			return
 		end
 		K.set_state("ac_last", now)
+		-- The display preset's battery layer (kuwai.display) changes with it;
+		-- an open colour app (accurate) stays on top.
+		local display_changed = false
+		if K.feature("auto_display") and K.state["display_auto"] ~= "accurate" then
+			local want = (not online) and "battery" or nil
+			if K.state["display_auto"] ~= want then
+				K.set_state("display_auto", want)
+				K.set_state("display_why", want and "On battery" or nil)
+				display_changed = true
+			end
+		end
 		local mode = K.state["mode"] or "focus"
 		if not online and mode ~= "battery" and mode ~= "gaming" then
 			K.set_state("mode_before_battery", mode)
@@ -131,6 +150,8 @@ if K.feature("auto_battery") and AC then
 			local back = K.state["mode_before_battery"]
 			K.set_state("mode_before_battery", nil)
 			kuwai.mode(back)
+		elseif display_changed then
+			hl.dispatch(dsp.reload_config())
 		end
 	end
 	K.defer(function()
@@ -232,11 +253,18 @@ if K.feature("night_light") then
 		return (h >= set or h < rise) and "night" or "day"
 	end
 	local function apply(p)
-		if p == "night" then
+		-- The accurate display preset holds Night Shift off (kuwai.display).
+		if p == "night" and not (K.display and K.display.current() == "accurate") then
 			hl.exec_cmd("hyprctl hyprsunset temperature " .. K.night.warm)
 		else
 			hl.exec_cmd("hyprctl hyprsunset identity")
 		end
+	end
+	-- Leaving the accurate preset: warm again if it's night now.
+	function K.night_sync()
+		local p = phase()
+		K.set_state("night_phase", p)
+		apply(p)
 	end
 	hl.on("hyprland.start", function()
 		hl.exec_cmd("systemctl --user start hyprsunset.service")

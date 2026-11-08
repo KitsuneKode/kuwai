@@ -144,7 +144,7 @@ Item {
                 Tile {
                     glyph: Display.nightOn ? "\u{f0594}" : "\u{f05a8}"
                     title: "Night Shift"
-                    subtitle: Display.nightOn ? Display.temperature + " K" : "Off"
+                    subtitle: Display.nightHeld ? "Paused · Accurate" : Display.nightOn ? Display.temperature + " K" : "Off"
                     on: Display.nightOn
                     tone: Theme.orange
                     onToggled: Display.toggleNight()
@@ -327,6 +327,57 @@ Item {
                     valueText: Display.nightOn ? Display.temperature + " K" : "Off"
                     fillColor: Qt.alpha(Theme.orange, 0.28 + 0.4 * Math.max(0, (6500 - Display.temperature) / 4000))
                     onMoved: v => Display.setTemperature(v)
+                }
+            }
+
+            // ── Display preset (kuwai.display) ───────────────────────────
+            // What the screens are for right now. The line under it says what
+            // the preset does, and the rows are Hyprland's own readback.
+            Column {
+                width: parent.width
+                spacing: 8
+                opacity: view.center.revealAt(160)
+
+                Label { x: 4; text: "Display"; size: 14; weight: Theme.wSemibold; color: Theme.textSecondary }
+                Segmented {
+                    width: parent.width
+                    options: Display.presets.map(p => ({ id: p.id, label: p.label }))
+                    current: Display.preset
+                    onPicked: id => Display.setPreset(id)
+                }
+                Label {
+                    x: 4
+                    width: parent.width - 8
+                    wrapMode: Text.WordWrap
+                    text: Display.presetInfo(Display.preset).about
+                        + (Display.auto !== "" && Display.choice === "everyday"
+                           ? "\nAutomatic" + (Display.autoWhy ? " · " + Display.autoWhy + (Display.auto === "accurate" ? " is open" : "") : "")
+                             + " · Everyday to override"
+                           : "")
+                    size: 12
+                    color: Theme.textTertiary
+                }
+                Repeater {
+                    model: Display.outputs
+                    Row {
+                        id: sig
+                        required property var modelData
+                        readonly property var s: Display.screens[modelData.name]
+                        visible: !!s
+                        x: 4
+                        spacing: 6
+                        Label {
+                            text: sig.modelData.internal ? "Built-in" : (view.modelOf(sig.modelData.name) || sig.modelData.name)
+                            size: 12; weight: Theme.wMedium
+                            color: Theme.textSecondary
+                        }
+                        Label {
+                            text: sig.s ? [sig.s.hz + " Hz", sig.s.depth + "-bit", sig.s.hdr ? "HDR" : "SDR"].concat(sig.s.vrr ? ["VRR"] : []).join(" · ") : ""
+                            size: 12
+                            font.features: ({ "tnum": 1 })
+                            color: Theme.textTertiary
+                        }
+                    }
                 }
             }
 
