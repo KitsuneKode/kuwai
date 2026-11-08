@@ -141,9 +141,9 @@ bind("CTRL + ALT + A", "Swap column left", dsp.layout("swapcol l"))
 bind("CTRL + ALT + F", "Fit column", dsp.layout("fit active"))
 bind("CTRL + ALT + E", "Fit all visible", dsp.layout("fit visible"))
 bind("CTRL + ALT + Return", "Centre column", dsp.layout("center"))
-if K.exists(K.home .. "/Scripts/tile-two.sh") then
-	bind(S .. " + ALT + F", "Tile two side by side", K.home .. "/Scripts/tile-two.sh r")
-	bind(S .. " + ALT + SHIFT + F", "Tile two (left)", K.home .. "/Scripts/tile-two.sh l")
+if K.exists(K.bin .. "/rice-tile-two") then
+	bind(S .. " + ALT + F", "Tile two side by side", K.bin .. "/rice-tile-two r")
+	bind(S .. " + ALT + SHIFT + F", "Tile two (left)", K.bin .. "/rice-tile-two l")
 end
 
 ---------------------------------------------------------------------------

@@ -12,6 +12,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Pipewire
+import qs.config
 
 Singleton {
     id: root
@@ -82,7 +83,7 @@ Singleton {
         }
     }
     Timer { id: foundFor; interval: 12000; onTriggered: root.shazamFound = null }
-    function shazamToggle() { Quickshell.execDetached([scripts + "/shazam-now.sh", "toggle"]); }
+    function shazamToggle() { Quickshell.execDetached([Paths.bin + "/rice-shazam", "toggle"]); }
     function shazamOpen() {
         if (shazamFound && shazamFound.id) Quickshell.execDetached(["xdg-open", "music://play/s/" + shazamFound.id]);
         shazamFound = null;

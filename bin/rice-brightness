@@ -2,9 +2,6 @@
 # rice-brightness: every screen's brightness (laptop panel through
 # brightnessctl, external monitors through DDC/CI), one session-local daemon.
 #   rice-brightness status | set N | up | down | watch --part osd | …
-# Your own ~/Scripts/brightness.sh wins when it exists (the copy you edit);
-# otherwise the one bundled in lib/brightness. Both use the same socket, so
-# they reach one daemon either way.
-own="$HOME/Scripts/brightness.sh"
-[ -x "$own" ] && exec "$own" "$@"
+# The rice owns it: lib/brightness is the copy to edit (~/Scripts/brightness.sh
+# only forwards here). One daemon, one socket in $XDG_RUNTIME_DIR.
 exec /usr/bin/python3 "$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)/lib/brightness/brightness-client.py" "$@"

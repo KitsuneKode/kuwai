@@ -17,7 +17,7 @@
 set -u
 unset LD_LIBRARY_PATH   # some app terminals ship an older libnotify (T3 Code)
 LIB="$HOME/Pictures/live-wallpapers"
-SCRIPT="$HOME/Scripts/live-wallpaper.sh"
+SCRIPT="$(dirname "$(readlink -f "$0")")/rice-livewall"
 mkdir -p "$LIB"
 
 next_number() {

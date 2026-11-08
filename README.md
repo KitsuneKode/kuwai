@@ -129,24 +129,29 @@ refs/                       shallow clones of other shells to read (gitignored)
 - dunst stays installed as the fallback. Its drop-ins in
   `~/.config/dunst/dunstrc.d/` (T3 Code, Ghostty) keep it presentable.
 - Brightness (the OSD, dimming, the keys, Display) goes through
-  `bin/rice-brightness watch --part osd` and friends. See below: there are two copies.
+  `bin/rice-brightness` (see "What the rice owns" below).
 
-### Brightness: two copies, yours wins
+### What the rice owns, what stays yours
 
-`bin/rice-brightness` runs **`~/Scripts/brightness.sh` when it exists** and
-only otherwise the copy bundled in `lib/brightness/` (`brightness-client.py`
-and the daemon `brightness.py`, both talking to one socket in
-`$XDG_RUNTIME_DIR/waybar-brightness-*`).
+Everything the desktop calls lives in this repo and runs from the copy you're
+on (stable or dev), so a fresh install has it and a fix lands once:
 
-- On a machine that has `~/Scripts/brightness.sh` (the author's), edits to
-  `lib/brightness/` **do nothing**; only `~/Scripts` edits run.
-- `lib/brightness/` is a snapshot of `~/Scripts` from 2026-11-08. A new machine
-  gets that snapshot, not later `~/Scripts` changes.
-- Keep them in step: after changing `~/Scripts/brightness*.py`, copy them over
-  (`cp ~/Scripts/brightness.py ~/Scripts/brightness-client.py lib/brightness/`)
-  and commit, or move your edits into the repo and delete the `~/Scripts` copy
-  so the bundled one is the only one.
-- Check which one runs: `readlink -f ~/Scripts/brightness.sh` exists → yours.
+| Was | Now | For |
+| --- | --- | --- |
+| `~/Scripts/brightness.sh` (+ `brightness.py`, `brightness-client.py`) | `bin/rice-brightness`, `lib/brightness/` | brightness of every screen, the OSD, dimming |
+| `~/Scripts/live-wallpaper.sh` | `bin/rice-livewall` | live wallpapers (`rice wall`) |
+| `~/Scripts/tile-two.sh` + `lib-dispatch.sh` | `bin/rice-tile-two`, `lib/dispatch.sh` | Super+Alt+F tile two |
+| `~/Scripts/shazam-now.sh` | `bin/rice-shazam` | “what's playing” recognition |
+
+Edit the repo's copies. The old `~/Scripts` names are one-line forwarders to
+these (so Waybar, HyDE binds and `user.lua` keep working); the originals were
+moved to `~/Scripts/.moved-to-rice-2026-11-08/`.
+
+`~/Scripts` is for what belongs to this machine and not to the desktop: your
+voxtype dictation scripts (the rice binds them when they exist; `user.lua` can
+point `K.voxtype_scripts` elsewhere), game and app helpers. HyDE's helpers
+(`~/.local/lib/hyde`) and kittymux (`~/.local/bin/kittymux`) are their own
+projects; the rice uses them when present.
 
 ## Usage limits (Agents tab)
 
@@ -319,3 +324,8 @@ per app that rewrites the D-Bus notification into what the card should say
 
 Everything else gets the generic rule, with icons resolved from the
 notification image → app icon → desktop entry.
+
+## License
+
+GPL-3.0-or-later ([LICENSE](LICENSE)); third-party icons, logos and design
+references keep their own terms ([NOTICE.md](NOTICE.md)).

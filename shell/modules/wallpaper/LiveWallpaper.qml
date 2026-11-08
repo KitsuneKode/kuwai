@@ -1,5 +1,5 @@
 // Live wallpaper: the shell plays the video on the background layer itself
-// (Omarchy's way; no mpvpaper). ~/Scripts/live-wallpaper.sh picks it:
+// (Omarchy's way; no mpvpaper). bin/rice-livewall picks it:
 // Super+Ctrl+W on/off, Super+Ctrl+Shift+W the next one. It writes the path to
 // ~/.local/state/live-wallpaper/last (empty: off) and keeps `enabled` there.
 //

@@ -1,0 +1,142 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# Fit the focused column and one horizontal neighbor into a 50/50 view.
+# Rule:
+# - If exactly two tiled windows exist on the workspace, pair those directly.
+# - Otherwise prefer the right neighbor by default, falling back to the left.
+
+DEFAULT_DIRECTION="${1:-r}"
+
+require_cmd() {
+  command -v "$1" >/dev/null 2>&1 || {
+    printf 'Missing required command: %s\n' "$1" >&2
+    exit 1
+  }
+}
+
+require_cmd hyprctl
+require_cmd jq
+
+source "$(dirname "$(readlink -f "$0")")/../lib/dispatch.sh"
+
+ACTIVE_JSON="$(hyprctl activewindow -j)"
+CLIENTS_JSON="$(hyprctl clients -j)"
+
+ACTIVE_ADDR="$(jq -r '.address // empty' <<<"$ACTIVE_JSON")"
+# Use the active window's workspace ID, not hyprctl activeworkspace.
+# activeworkspace returns the normal workspace even when a special workspace is focused.
+ACTIVE_WS_ID="$(jq -r '.workspace.id // empty' <<<"$ACTIVE_JSON")"
+
+if [ -z "$ACTIVE_ADDR" ] || [ "$ACTIVE_ADDR" = "null" ] || [ -z "$ACTIVE_WS_ID" ]; then
+  exit 0
+fi
+
+WORKSPACE_CLIENTS="$(
+  jq --arg ws "$ACTIVE_WS_ID" '
+    map(
+      select(
+        (.workspace.id | tostring) == $ws and
+        (.floating | not) and
+        (.pinned | not) and
+        ((.fullscreen // 0) == 0)
+      )
+    )
+    | sort_by(.at[0], .at[1])
+  ' <<<"$CLIENTS_JSON"
+)"
+
+CLIENT_COUNT="$(jq 'length' <<<"$WORKSPACE_CLIENTS")"
+
+if [ "$CLIENT_COUNT" -lt 2 ]; then
+  exit 0
+fi
+
+NEIGHBOR_ADDR=""
+STEP_DIRECTION="$DEFAULT_DIRECTION"
+RETURN_DIRECTION=""
+if [ "$CLIENT_COUNT" -eq 2 ]; then
+  NEIGHBOR_ADDR="$(
+    jq -r --arg active "$ACTIVE_ADDR" '
+      map(select(.address != $active)) | .[0].address // empty
+    ' <<<"$WORKSPACE_CLIENTS"
+  )"
+
+  ACTIVE_INDEX="$(jq -r --arg active "$ACTIVE_ADDR" 'map(.address) | index($active)' <<<"$WORKSPACE_CLIENTS")"
+  NEIGHBOR_INDEX="$(jq -r --arg addr "$NEIGHBOR_ADDR" 'map(.address) | index($addr)' <<<"$WORKSPACE_CLIENTS")"
+
+  if [ "$NEIGHBOR_INDEX" -gt "$ACTIVE_INDEX" ]; then
+    STEP_DIRECTION="r"
+    RETURN_DIRECTION="l"
+  else
+    STEP_DIRECTION="l"
+    RETURN_DIRECTION="r"
+  fi
+else
+  if [ "$DEFAULT_DIRECTION" = "l" ]; then
+    STEP_DIRECTION="l"
+    RETURN_DIRECTION="r"
+  else
+    STEP_DIRECTION="r"
+    RETURN_DIRECTION="l"
+  fi
+
+  if [ "$DEFAULT_DIRECTION" = "l" ]; then
+    NEIGHBOR_ADDR="$(
+      jq -r --arg active "$ACTIVE_ADDR" '
+        map(select(.address == $active))[0] as $activeClient
+        | [ .[] | select(.at[0] < $activeClient.at[0]) ]
+        | last
+        | .address // empty
+      ' <<<"$WORKSPACE_CLIENTS"
+    )"
+
+    if [ -z "$NEIGHBOR_ADDR" ]; then
+      NEIGHBOR_ADDR="$(
+        jq -r --arg active "$ACTIVE_ADDR" '
+          map(select(.address == $active))[0] as $activeClient
+          | [ .[] | select(.at[0] > $activeClient.at[0]) ]
+          | first
+          | .address // empty
+        ' <<<"$WORKSPACE_CLIENTS"
+      )"
+    fi
+  else
+    NEIGHBOR_ADDR="$(
+      jq -r --arg active "$ACTIVE_ADDR" '
+        map(select(.address == $active))[0] as $activeClient
+        | [ .[] | select(.at[0] > $activeClient.at[0]) ]
+        | first
+        | .address // empty
+      ' <<<"$WORKSPACE_CLIENTS"
+    )"
+
+    if [ -z "$NEIGHBOR_ADDR" ]; then
+      NEIGHBOR_ADDR="$(
+        jq -r --arg active "$ACTIVE_ADDR" '
+          map(select(.address == $active))[0] as $activeClient
+          | [ .[] | select(.at[0] < $activeClient.at[0]) ]
+          | last
+          | .address // empty
+        ' <<<"$WORKSPACE_CLIENTS"
+      )"
+    fi
+  fi
+fi
+
+if [ -z "$NEIGHBOR_ADDR" ] || [ "$NEIGHBOR_ADDR" = "null" ]; then
+  exit 0
+fi
+
+ACTIVE_INDEX="$(jq -r --arg active "$ACTIVE_ADDR" 'map(.address) | index($active)' <<<"$WORKSPACE_CLIENTS")"
+NEIGHBOR_INDEX="$(jq -r --arg addr "$NEIGHBOR_ADDR" 'map(.address) | index($addr)' <<<"$WORKSPACE_CLIENTS")"
+
+# First: resize both windows, end focused on neighbor so viewport snaps to show both
+d_layoutmsg "colresize 0.49999"
+d_focus "$NEIGHBOR_ADDR"
+d_layoutmsg "colresize 0.49999"
+
+# Second: now that viewport has settled with neighbor visible (and active visible beside it),
+# refocus active — since active is already in view, no scroll occurs
+d_focus "$ACTIVE_ADDR"

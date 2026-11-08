@@ -22,9 +22,14 @@ if not K.has("voxtype") and not K.exists(K.home .. "/.local/lib/voxtype-fork/vox
 end
 
 local bind, group = K.bind, K.group
-local SCRIPTS = K.home .. "/Scripts/"
+-- The dictation scripts belong to your voxtype setup, not the rice: they live
+-- with it (~/Scripts by default; user.lua can set K.voxtype_scripts).
+local SCRIPTS = K.voxtype_scripts or (K.home .. "/Scripts/")
 local TOGGLE = SCRIPTS .. "voxtype-toggle.sh"
 local CANCEL = SCRIPTS .. "voxtype-cancel.sh"
+if not K.exists(TOGGLE) then
+	return
+end
 local STATE = K.runtime .. "/voxtype/state"
 
 local function dictating()

@@ -7,6 +7,7 @@
 | `hypr/` | The Hyprland half, in Lua (`hypr/init.lua`, `hypr/kuwai/*.lua`) |
 | `shell/` | The Quickshell shell: `config/` (Theme, Paths), `components/`, `services/`, `modules/` |
 | `bin/` | Commands (`rice`, `kuwai`, `rice-check`, …) and the assistant's Python |
+| `lib/` | What commands share: `brightness/` (the DDC/backlight daemon), `dispatch.sh` |
 | `tests/` | Python tests (`pytest`); `shell/services/ai/turn.test.mjs` (`bun test`) |
 | `docs/` | Design notes, the manual, research |
 

@@ -1,0 +1,1441 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# =============================================================================
+# rice-shazam (was ~/Scripts/shazam-now.sh) — Hyprland / Waybar / Kitty one-shot SongRec helper
+#
+# Uses:
+#   songrec recognize
+#   xdg-open "music://play/s/<id>"
+# =============================================================================
+
+PROG="${0##*/}"
+SELF="$(readlink -f "$0" 2>/dev/null || printf '%s' "$0")"
+
+# -----------------------------------------------------------------------------
+# Early helpers
+# -----------------------------------------------------------------------------
+
+have() {
+  command -v "$1" >/dev/null 2>&1
+}
+
+detect_default_monitor() {
+  if have pactl; then
+    local sink
+    sink="$(pactl get-default-sink 2>/dev/null || true)"
+
+    if [ -n "$sink" ]; then
+      printf '%s.monitor' "$sink"
+      return 0
+    fi
+  fi
+
+  printf '%s' "alsa_output.usb-TTGK_Technology_Co._Ltd_Audiocular_D07-00.analog-stereo.monitor"
+}
+
+# -----------------------------------------------------------------------------
+# Config
+# -----------------------------------------------------------------------------
+
+DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/shazam-now"
+RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp}/shazam-now"
+
+HISTORY_FILE="${SONGREC_HISTORY:-$DATA_DIR/history.jsonl}"
+DEVICE="${SONGREC_DEVICE:-$(detect_default_monitor)}"
+
+ICON="${SHAZAM_ICON:-audio-headphones}"
+
+# SongRec recognize timeout.
+RECOGNIZE_TIMEOUT="${SHAZAM_TIMEOUT:-45}"
+
+# Avoid saving same song again inside this many seconds.
+# 0 = save every detection.
+DUP_WINDOW="${SHAZAM_DUP_WINDOW:-600}"
+
+# Show the last detected song in Waybar for 5 minutes.
+WAYBAR_RECENT_WINDOW="${SHAZAM_WAYBAR_RECENT_WINDOW:-300}"
+
+# Must match Waybar "signal": 8.
+WAYBAR_SIGNAL="${SHAZAM_WAYBAR_SIGNAL:-8}"
+
+# Cider protocol.
+# All six schemes are interchangeable (cider://, music://, musics://,
+# itms://, itmss://, ame://).  Cider's LinkHandler splits on /play/
+# so the scheme prefix does not matter for playback.
+# Default: music (xdg-mime registered to Cider).
+CIDER_PROTOCOL="${CIDER_PROTOCOL:-music}"
+
+# Cider action segment inside the URI.
+# Cider LinkHandler expects /play/s/<id> — "open" is equivalent
+# but may fall through to the generic router in older versions.
+CIDER_ACTION="${CIDER_ACTION:-play}"
+
+PID_FILE="$RUNTIME_DIR/recognize.pid"
+LOCK_FILE="$RUNTIME_DIR/recognize.lock"
+LOG_FILE="$DATA_DIR/shazam-now.log"
+
+mkdir -p "$DATA_DIR" "$RUNTIME_DIR"
+touch "$HISTORY_FILE" "$LOG_FILE"
+
+# -----------------------------------------------------------------------------
+# General helpers
+# -----------------------------------------------------------------------------
+
+log() {
+  printf '[%s] %s\n' "$(date '+%F %T')" "$*" >>"$LOG_FILE"
+}
+
+notify() {
+  local title="$1"
+  local body="$2"
+  local urgency="${3:-normal}"
+
+  if have notify-send; then
+    notify-send -u "$urgency" -i "$ICON" -t 5000 "$title" "$body" || true
+  fi
+
+  if [ "${SHZ_QUIET:-0}" != "1" ]; then
+    printf '[%s] %s\n' "$title" "$body"
+  fi
+}
+
+die() {
+  notify "Shazam Error" "$1" "critical"
+  log "ERROR: $1"
+  exit 1
+}
+
+check_core_deps() {
+  local missing=()
+
+  for dep in songrec jq flock timeout sha256sum; do
+    have "$dep" || missing+=("$dep")
+  done
+
+  if [ "${#missing[@]}" -gt 0 ]; then
+    die "Missing dependencies: ${missing[*]}"
+  fi
+}
+
+refresh_waybar() {
+  pkill -RTMIN+"$WAYBAR_SIGNAL" waybar >/dev/null 2>&1 || true
+}
+
+json_out() {
+  local text="$1"
+  local tooltip="${2:-}"
+  local class="${3:-idle}"
+  local alt="${4:-$class}"
+
+  jq -cn \
+    --arg text "$text" \
+    --arg tooltip "$tooltip" \
+    --arg class "$class" \
+    --arg alt "$alt" \
+    '{text:$text, tooltip:$tooltip, class:$class, alt:$alt}'
+}
+
+truncate_text() {
+  local text="$1"
+  local max="${2:-48}"
+
+  if [ "${#text}" -gt "$max" ]; then
+    printf '%s…' "${text:0:max-1}"
+  else
+    printf '%s' "$text"
+  fi
+}
+
+urlencode() {
+  jq -rn --arg v "$1" '$v | @uri'
+}
+
+hash_key() {
+  printf '%s' "$1" | sha256sum | awk '{print $1}'
+}
+
+# -----------------------------------------------------------------------------
+# Runtime state / toggle
+# -----------------------------------------------------------------------------
+
+read_state() {
+  if [ ! -s "$PID_FILE" ]; then
+    return 1
+  fi
+
+  RECOGNIZER_PID="$(cat "$PID_FILE" 2>/dev/null || true)"
+  [ -n "${RECOGNIZER_PID:-}" ] || return 1
+}
+
+is_recognizing() {
+  read_state || return 1
+  kill -0 "$RECOGNIZER_PID" 2>/dev/null
+}
+
+process_pgid() {
+  local pid="${1:-}"
+  [ -n "$pid" ] || return 1
+
+  ps -o pgid= -p "$pid" 2>/dev/null | tr -d ' '
+}
+
+kill_pid_soft_hard() {
+  local pid="${1:-}"
+  [ -n "$pid" ] || return 0
+
+  if kill -0 "$pid" 2>/dev/null; then
+    kill "$pid" >/dev/null 2>&1 || true
+    sleep 0.15
+    kill -9 "$pid" >/dev/null 2>&1 || true
+  fi
+}
+
+kill_process_group_soft_hard() {
+  local pgid="${1:-}"
+  [ -n "$pgid" ] || return 0
+
+  local current_pgid
+  current_pgid="$(ps -o pgid= -p "$$" 2>/dev/null | tr -d ' ')"
+
+  if [ "$pgid" = "$current_pgid" ]; then
+    return 0
+  fi
+
+  kill -- "-$pgid" >/dev/null 2>&1 || true
+  sleep 0.15
+  kill -9 -- "-$pgid" >/dev/null 2>&1 || true
+}
+
+cleanup_stale_state() {
+  if [ ! -s "$PID_FILE" ]; then
+    return 0
+  fi
+
+  if ! read_state; then
+    rm -f "$PID_FILE"
+    refresh_waybar
+    return 0
+  fi
+
+  if ! kill -0 "$RECOGNIZER_PID" 2>/dev/null; then
+    rm -f "$PID_FILE"
+    refresh_waybar
+  fi
+}
+
+cmd_stop() {
+  cleanup_stale_state
+
+  if ! is_recognizing; then
+    rm -f "$PID_FILE"
+    refresh_waybar
+    notify "Shazam" "Not recognizing." "low"
+    return 0
+  fi
+
+  read_state || true
+
+  local pgid=""
+  pgid="$(process_pgid "${RECOGNIZER_PID:-}" || true)"
+
+  kill_process_group_soft_hard "$pgid"
+  kill_pid_soft_hard "${RECOGNIZER_PID:-}"
+
+  rm -f "$PID_FILE"
+  refresh_waybar
+
+  notify "Shazam" "Stopped recognition" "normal"
+  log "Stopped recognizer=${RECOGNIZER_PID:-?} pgid=${pgid:-?}"
+}
+
+cmd_toggle() {
+  cleanup_stale_state
+
+  if is_recognizing; then
+    cmd_stop
+    return
+  fi
+
+  if have setsid; then
+    setsid "$SELF" recognize >>"$LOG_FILE" 2>&1 &
+  else
+    nohup "$SELF" recognize >>"$LOG_FILE" 2>&1 &
+  fi
+
+  sleep 0.15
+  refresh_waybar
+}
+
+# -----------------------------------------------------------------------------
+# Apple Music / Cider URI helpers
+# -----------------------------------------------------------------------------
+
+extract_apple_id_from_url() {
+  local url="${1:-}"
+  local id=""
+
+  # Apple Music album URLs often carry the song id as ?i=<id>
+  id="$(
+    printf '%s\n' "$url" |
+      sed -nE 's/.*[?&]i=([0-9]+).*/\1/p' |
+      head -n 1
+  )"
+
+  if [ -n "$id" ]; then
+    printf '%s\n' "$id"
+    return 0
+  fi
+
+  # Direct song URLs often end with /song/<slug>/<id>
+  id="$(
+    printf '%s\n' "$url" |
+      sed -nE 's|.*/song/[^/?#]+/([0-9]+).*|\1|p' |
+      head -n 1
+  )"
+
+  if [ -n "$id" ]; then
+    printf '%s\n' "$id"
+    return 0
+  fi
+
+  return 1
+}
+
+to_cider_uri() {
+  local url="${1:-}"
+  local apple_id="${2:-}"
+  local protocol="$CIDER_PROTOCOL"
+  local action="$CIDER_ACTION"
+
+  # Cider LinkHandler expects:
+  #   {scheme}://play/s/{store-id}
+  # All 6 schemes are handled identically.
+
+  if [ -n "$apple_id" ] && [ "$apple_id" != "null" ]; then
+    printf '%s://%s/s/%s\n' "$protocol" "$action" "$apple_id"
+    return 0
+  fi
+
+  if [ -n "$url" ] && [ "$url" != "null" ]; then
+    case "$url" in
+    music://* | musics://* | cider://* | itms://* | itmss://* | ame://*)
+      printf '%s\n' "$url"
+      return 0
+      ;;
+
+    https://music.apple.com/*)
+      printf '%s://%s\n' "$protocol" "${url#https://}"
+      return 0
+      ;;
+
+    http://music.apple.com/*)
+      printf '%s://%s\n' "$protocol" "${url#http://}"
+      return 0
+      ;;
+
+    https://itunes.apple.com/*)
+      printf '%s://%s\n' "$protocol" "${url#https://}"
+      return 0
+      ;;
+
+    http://itunes.apple.com/*)
+      printf '%s://%s\n' "$protocol" "${url#http://}"
+      return 0
+      ;;
+    esac
+  fi
+
+  return 1
+}
+
+# -------------------------------------------------------------------------
+# Wait for Cider to be ready before sending protocol URIs.
+# Cider's LinkHandler only processes protocol URLs via the
+# `second-instance` event, which requires Cider to already be running.
+# On cold start (first instance) the URL passed by xdg-open is silently
+# lost because Cider never reads process.argv for protocol URLs.
+# -------------------------------------------------------------------------
+
+wait_for_cider() {
+  local timeout="${1:-12}"
+
+  if pgrep -x cider >/dev/null 2>&1; then
+    return 0
+  fi
+
+  log "Cider not running; starting..."
+  notify "Cider" "Starting Cider…" "low"
+
+  cider >/dev/null 2>&1 &
+
+  if have ss; then
+    local waited=0
+    while [ "$waited" -lt "$timeout" ]; do
+      if ss -tlnp 2>/dev/null | grep -qi "cider" 2>/dev/null; then
+        log "Cider ready after ~${waited}s"
+        sleep 0.3
+        return 0
+      fi
+      sleep 0.5
+      waited=$((waited + 1))
+    done
+  else
+    sleep 5
+    if pgrep -x cider >/dev/null 2>&1; then
+      return 0
+    fi
+  fi
+
+  log "Cider did not become ready within ${timeout}s"
+  notify "Cider" "Timed out waiting for Cider to start" "critical"
+  return 1
+}
+
+open_music_uri() {
+  local uri="${1:-}"
+
+  [ -n "$uri" ] || return 1
+
+  if ! have xdg-open; then
+    notify "Cider" "xdg-open is missing" "critical"
+    return 1
+  fi
+
+  log "xdg-open: $uri"
+  setsid xdg-open "$uri" >/dev/null 2>&1 &
+}
+
+open_music_link() {
+  local url="${1:-}"
+  local apple_id="${2:-}"
+  local uri=""
+
+  if [ -z "$apple_id" ] && [ -n "$url" ]; then
+    apple_id="$(extract_apple_id_from_url "$url" 2>/dev/null || true)"
+  fi
+
+  if ! uri="$(to_cider_uri "$url" "$apple_id")"; then
+    return 1
+  fi
+
+  open_music_uri "$uri"
+  notify "Cider" "Opening in Cider…" "low"
+}
+
+lookup_apple_song() {
+  local artist="${1:-}"
+  local title="${2:-}"
+  local query="$artist $title"
+
+  curl -fsSLG 'https://itunes.apple.com/search' \
+    --data-urlencode "term=$query" \
+    -d 'media=music' \
+    -d 'entity=song' \
+    -d 'limit=1'
+}
+
+open_music_search() {
+  local artist="${1:-}"
+  local title="${2:-}"
+  local action="$CIDER_ACTION"
+  local json track_id track_url track_name artist_name uri
+
+  json="$(lookup_apple_song "$artist" "$title" 2>/dev/null || true)"
+
+  if [ -z "$json" ] || ! jq -e '.resultCount > 0' <<<"$json" >/dev/null 2>&1; then
+    notify "Cider" "No Apple Music result for: $artist - $title" "normal"
+    return 1
+  fi
+
+  track_id="$(jq -r '.results[0].trackId // empty' <<<"$json")"
+  track_url="$(jq -r '.results[0].trackViewUrl // empty' <<<"$json")"
+  track_name="$(jq -r '.results[0].trackName // empty' <<<"$json")"
+  artist_name="$(jq -r '.results[0].artistName // empty' <<<"$json")"
+
+  # Cider LinkHandler format: {scheme}://play/s/{store-id}
+  if [ -n "$track_id" ] && [ "$track_id" != "null" ]; then
+    uri="${CIDER_PROTOCOL:-music}://${action}/s/${track_id}"
+  elif [ -n "$track_url" ] && [ "$track_url" != "null" ]; then
+    uri="${CIDER_PROTOCOL:-music}://${track_url#https://}"
+  else
+    notify "Cider" "Apple lookup returned no playable URL" "normal"
+    return 1
+  fi
+
+  log "Apple lookup: $artist - $title => $artist_name - $track_name"
+  log "Opening Cider URI: $uri"
+
+  setsid xdg-open "$uri" >/dev/null 2>&1 &
+  notify "Cider" "Opening: $artist_name - $track_name" "low"
+}
+
+# -----------------------------------------------------------------------------
+# Detection parsing
+# -----------------------------------------------------------------------------
+
+extract_music_url_from_json() {
+  local json="$1"
+
+  jq -r '
+    [
+      .. | objects
+      | (.uri? // .url? // .href? // empty)
+      | strings
+    ]
+    | map(select(test("music\\.apple\\.com|itunes\\.apple\\.com"; "i")))
+    | first // ""
+  ' <<<"$json" 2>/dev/null || true
+}
+
+extract_shazam_url_from_json() {
+  local json="$1"
+
+  jq -r '
+    [
+      .. | objects
+      | (.uri? // .url? // .href? // empty)
+      | strings
+    ]
+    | map(select(test("shazam\\.com"; "i")))
+    | first // ""
+  ' <<<"$json" 2>/dev/null || true
+}
+
+extract_apple_id_from_json() {
+  local json="$1"
+
+  jq -r '
+    [
+      .. | objects
+      | select((.type? // "") == "applemusicplay")
+      | .id?
+      | strings
+    ]
+    | first // ""
+  ' <<<"$json" 2>/dev/null || true
+}
+
+normalize_plain_detection() {
+  local raw="$1"
+  local artist title key
+
+  if [[ "$raw" == *" - "* ]]; then
+    artist="${raw%% - *}"
+    title="${raw#* - }"
+  else
+    artist="Unknown"
+    title="$raw"
+  fi
+
+  key="$(hash_key "$raw")"
+
+  jq -cn \
+    --arg artist "$artist" \
+    --arg title "$title" \
+    --arg key "$key" \
+    --arg raw "$raw" \
+    '{
+      source: "songrec-recognize-plain",
+      track: {
+        subtitle: $artist,
+        title: $title,
+        key: $key,
+        url: "",
+        apple_id: "",
+        shazam_url: "",
+        raw: $raw
+      }
+    }'
+}
+
+normalize_json_detection() {
+  local json="$1"
+  local title artist music_url shazam_url apple_id key raw
+
+  title="$(
+    jq -r '
+      [
+        .track.title?,
+        .title?,
+        .metadata.title?,
+        (.. | objects | .title?)
+      ]
+      | map(select(type == "string" and length > 0))
+      | first // ""
+    ' <<<"$json" 2>/dev/null || true
+  )"
+
+  artist="$(
+    jq -r '
+      [
+        .track.subtitle?,
+        .track.artist?,
+        .subtitle?,
+        .artist?,
+        .metadata.artist?,
+        (.. | objects | .subtitle?),
+        (.. | objects | .artist?)
+      ]
+      | map(select(type == "string" and length > 0))
+      | first // ""
+    ' <<<"$json" 2>/dev/null || true
+  )"
+
+  [ -n "$title" ] || title="Unknown"
+  [ -n "$artist" ] || artist="Unknown"
+
+  music_url="$(extract_music_url_from_json "$json")"
+  shazam_url="$(extract_shazam_url_from_json "$json")"
+  apple_id="$(extract_apple_id_from_json "$json")"
+
+  if [ -z "$apple_id" ] && [ -n "$music_url" ]; then
+    apple_id="$(extract_apple_id_from_url "$music_url" 2>/dev/null || true)"
+  fi
+
+  key="$(
+    jq -r '
+      [
+        .track.key?,
+        .key?,
+        .metadata.key?
+      ]
+      | map(select(type == "string" and length > 0))
+      | first // ""
+    ' <<<"$json" 2>/dev/null || true
+  )"
+
+  raw="$artist - $title"
+
+  if [ -z "$key" ] || [ "$key" = "null" ]; then
+    key="$(hash_key "$raw")"
+  fi
+
+  jq -cn \
+    --arg artist "$artist" \
+    --arg title "$title" \
+    --arg url "$music_url" \
+    --arg shazam_url "$shazam_url" \
+    --arg apple_id "$apple_id" \
+    --arg key "$key" \
+    --arg raw "$raw" \
+    --argjson original "$json" \
+    '{
+      source: "songrec-recognize-json",
+      track: {
+        subtitle: $artist,
+        title: $title,
+        key: $key,
+        url: $url,
+        apple_id: $apple_id,
+        shazam_url: $shazam_url,
+        raw: $raw
+      },
+      original: $original
+    }'
+}
+
+parse_detection_output() {
+  local out_file="$1"
+  local content line
+
+  [ -s "$out_file" ] || return 1
+
+  content="$(cat "$out_file")"
+
+  if jq -e 'type == "object"' <<<"$content" >/dev/null 2>&1; then
+    normalize_json_detection "$content"
+    return 0
+  fi
+
+  while IFS= read -r line; do
+    line="${line//$'\r'/}"
+
+    [ -n "$line" ] || continue
+    [[ "$line" == \[*INFO* ]] && continue
+    [[ "$line" == \[*WARN* ]] && continue
+    [[ "$line" == \[*ERROR* ]] && continue
+
+    if jq -e 'type == "object"' <<<"$line" >/dev/null 2>&1; then
+      normalize_json_detection "$line"
+      return 0
+    fi
+
+    normalize_plain_detection "$line"
+    return 0
+  done <"$out_file"
+
+  return 1
+}
+
+run_songrec_recognize() {
+  local out_file="$1"
+  local err_file="$2"
+  local status=0
+
+  : >"$out_file"
+  : >"$err_file"
+
+  set +e
+  timeout "${RECOGNIZE_TIMEOUT}s" songrec recognize -d "$DEVICE" --json >"$out_file" 2>"$err_file"
+  status=$?
+  set -e
+
+  if [ -s "$out_file" ] && parse_detection_output "$out_file" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  if [ "$status" = "124" ]; then
+    return 124
+  fi
+
+  log "JSON recognize failed or unsupported; falling back to plain recognize."
+  log "json stderr: $(tr '\n' ' ' <"$err_file")"
+
+  : >"$out_file"
+  : >"$err_file"
+
+  set +e
+  timeout "${RECOGNIZE_TIMEOUT}s" songrec recognize -d "$DEVICE" >"$out_file" 2>"$err_file"
+  status=$?
+  set -e
+
+  return "$status"
+}
+
+# -----------------------------------------------------------------------------
+# History saving — generates a stable `id` for every entry
+# -----------------------------------------------------------------------------
+
+save_detection() {
+  local json_output="$1"
+  local now track_key artist title id
+
+  now="$(date +%s)"
+  track_key="$(jq -r '.track.key // empty' <<<"$json_output")"
+  artist="$(jq -r '.track.subtitle // "Unknown"' <<<"$json_output")"
+  title="$(jq -r '.track.title // "Unknown"' <<<"$json_output")"
+
+  [ -n "$track_key" ] || return 1
+
+  if [ "$DUP_WINDOW" != "0" ]; then
+    local recent_duplicate
+    recent_duplicate="$(
+      jq -r --arg key "$track_key" --argjson now "$now" --argjson win "$DUP_WINDOW" '
+        select((.track.key // "") == $key)
+        | select((($now - (.timestamp // 0)) <= $win))
+        | .track.key
+      ' "$HISTORY_FILE" 2>/dev/null | tail -n 1
+    )"
+
+    if [ -n "$recent_duplicate" ]; then
+      return 2
+    fi
+  fi
+
+  id="$(hash_key "${now}:${track_key}:${artist}:${title}")"
+
+  jq -c \
+    --argjson ts "$now" \
+    --arg device "$DEVICE" \
+    --arg id "$id" \
+    '. + {timestamp:$ts, device:$device, id:$id}' <<<"$json_output" >>"$HISTORY_FILE"
+
+  return 0
+}
+
+cmd_recognize() {
+  check_core_deps
+
+  exec 9>"$LOCK_FILE"
+
+  if ! flock -n 9; then
+    notify "Shazam" "Already recognizing. Press toggle again to stop." "normal"
+    exit 0
+  fi
+
+  echo "$$" >"$PID_FILE"
+  refresh_waybar
+
+  local out_file err_file status json_output track_name track_key
+  out_file="$(mktemp)"
+  err_file="$(mktemp)"
+
+  cleanup() {
+    rm -f "$PID_FILE" "$out_file" "$err_file"
+    refresh_waybar
+  }
+
+  trap cleanup EXIT
+  trap 'cleanup; exit 0' INT TERM
+
+  notify "Shazam" "Recognizing…" "normal"
+  log "Recognition started. device=$DEVICE timeout=${RECOGNIZE_TIMEOUT}s"
+
+  set +e
+  run_songrec_recognize "$out_file" "$err_file"
+  status=$?
+  set -e
+
+  log "songrec status=$status"
+  log "songrec stdout=$(tr '\n' ' ' <"$out_file")"
+  log "songrec stderr=$(tr '\n' ' ' <"$err_file")"
+
+  if ! json_output="$(parse_detection_output "$out_file" 2>/dev/null)"; then
+    if [ "$status" = "124" ]; then
+      notify "Shazam" "No song recognized in ${RECOGNIZE_TIMEOUT}s." "normal"
+      log "Recognition timed out."
+    else
+      notify "Shazam" "No song recognized." "normal"
+      log "No detection parsed."
+    fi
+    exit 1
+  fi
+
+  track_name="$(jq -r '(.track.subtitle // "Unknown") + " - " + (.track.title // "Unknown")' <<<"$json_output")"
+  track_key="$(jq -r '.track.key // empty' <<<"$json_output")"
+
+  notify "Shazam" "Found: $track_name" "normal"
+  log "Detected: $track_name key=$track_key"
+
+  if save_detection "$json_output"; then
+    notify "Shazam" "Saved to history" "low"
+  else
+    case "$?" in
+    2) notify "Shazam" "Recently saved already, skipped duplicate" "low" ;;
+    *) notify "Shazam" "Could not save detection" "critical" ;;
+    esac
+  fi
+
+  # Important:
+  # Do not auto-open Cider here. Recognition should not hijack current playback.
+  # Use history Enter / open-last to play/search in Cider.
+  log "Auto-open disabled after detection: $track_name"
+
+  refresh_waybar
+}
+
+# -----------------------------------------------------------------------------
+# History helpers
+# -----------------------------------------------------------------------------
+
+get_entry_by_key_ts() {
+  local key="${1:-}"
+  local ts="${2:-}"
+
+  [ -n "$key" ] && [ -n "$ts" ] || return 1
+
+  jq -c --arg key "$key" --arg ts "$ts" '
+    select(
+      ((.track.key // "") == $key)
+      and (((.timestamp // 0) | tostring) == $ts)
+    )
+  ' "$HISTORY_FILE" 2>/dev/null | tail -n 1
+}
+
+# -------------------------------------------------------------------------
+# Stable-ID lookup — handles both new entries (with .id) and old (compute)
+# -------------------------------------------------------------------------
+
+get_entry_by_id() {
+  local id="${1:-}"
+  [ -n "$id" ] || return 1
+
+  # Fast path: entries that already have a stored .id field.
+  local entry
+  entry="$(jq -c --arg id "$id" 'select(.id == $id)' "$HISTORY_FILE" 2>/dev/null | tail -n 1)"
+  if [ -n "$entry" ]; then
+    printf '%s\n' "$entry"
+    return 0
+  fi
+
+  # Slow path: entries without .id — compute id on the fly.
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    local ts key artist title computed
+    ts="$(jq -r '.timestamp // 0' <<<"$line")"
+    key="$(jq -r '.track.key // ""' <<<"$line")"
+    artist="$(jq -r '.track.subtitle // "Unknown"' <<<"$line")"
+    title="$(jq -r '.track.title // "Unknown"' <<<"$line")"
+    computed="$(hash_key "${ts}:${key}:${artist}:${title}")"
+    if [ "$computed" = "$id" ]; then
+      printf '%s\n' "$line"
+      return 0
+    fi
+  done <"$HISTORY_FILE"
+
+  return 1
+}
+
+open_entry_json() {
+  local entry="$1"
+  local url apple_id artist title
+
+  url="$(jq -r '.track.url // empty' <<<"$entry")"
+  apple_id="$(jq -r '.track.apple_id // empty' <<<"$entry")"
+  artist="$(jq -r '.track.subtitle // "Unknown"' <<<"$entry")"
+  title="$(jq -r '.track.title // "Unknown"' <<<"$entry")"
+
+  # Ensure Cider is running before any open attempt.
+  # Cold start loses protocol URLs — Cider only handles them
+  # via second-instance (requires an already-running process).
+  wait_for_cider || return 1
+
+  if open_music_link "$url" "$apple_id"; then
+    return 0
+  fi
+
+  open_music_search "$artist" "$title"
+}
+
+# -------------------------------------------------------------------------
+# id-based fzf helpers
+# -------------------------------------------------------------------------
+
+cmd___preview_id() {
+  local id="${1:-}"
+  local entry title artist url apple_id shazam_url ts d cider_uri
+
+  entry="$(get_entry_by_id "$id")"
+
+  if [ -z "$entry" ]; then
+    printf 'Could not find entry id=%s\n' "$id"
+    return 0
+  fi
+
+  title="$(jq -r '.track.title // "Unknown"' <<<"$entry")"
+  artist="$(jq -r '.track.subtitle // "Unknown"' <<<"$entry")"
+  url="$(jq -r '.track.url // empty' <<<"$entry")"
+  apple_id="$(jq -r '.track.apple_id // empty' <<<"$entry")"
+  shazam_url="$(jq -r '.track.shazam_url // empty' <<<"$entry")"
+  ts="$(jq -r '.timestamp // 0' <<<"$entry")"
+  d="$(date -d "@$ts" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || printf '%s' "$ts")"
+
+  printf 'Title:    %s\n' "$title"
+  printf 'Artist:   %s\n' "$artist"
+  printf 'Time:     %s\n' "$d"
+  printf 'ID:       %s\n' "$id"
+
+  if [ -n "$apple_id" ] && [ "$apple_id" != "null" ]; then
+    printf 'Apple ID: %s\n' "$apple_id"
+  fi
+
+  if [ -n "$url" ] && [ "$url" != "null" ]; then
+    printf 'URL:      %s\n' "$url"
+  fi
+
+  if [ -n "$shazam_url" ] && [ "$shazam_url" != "null" ]; then
+    printf 'Shazam:   %s\n' "$shazam_url"
+  fi
+
+  if cider_uri="$(to_cider_uri "$url" "$apple_id" 2>/dev/null)"; then
+    printf 'Cider:    %s\n' "$cider_uri"
+    printf '\nEnter: open/play in Cider\n'
+  else
+    printf '\nEnter: search in Cider\n'
+  fi
+}
+
+cmd___play_id() {
+  local id="${1:-}"
+  local entry
+
+  entry="$(get_entry_by_id "$id")"
+
+  if [ -z "$entry" ]; then
+    notify "Shazam" "Could not find history entry" "critical"
+    return 1
+  fi
+
+  open_entry_json "$entry"
+}
+
+cmd___copy_id() {
+  local id="${1:-}"
+  local entry text url apple_id cider_uri
+
+  entry="$(get_entry_by_id "$id")"
+
+  if [ -z "$entry" ]; then
+    notify "Shazam" "Could not find history entry" "critical"
+    return 1
+  fi
+
+  text="$(jq -r '(.track.subtitle // "Unknown") + " - " + (.track.title // "Unknown")' <<<"$entry")"
+  url="$(jq -r '.track.url // empty' <<<"$entry")"
+  apple_id="$(jq -r '.track.apple_id // empty' <<<"$entry")"
+
+  if cider_uri="$(to_cider_uri "$url" "$apple_id" 2>/dev/null)"; then
+    text="$text
+$cider_uri"
+  elif [ -n "$url" ] && [ "$url" != "null" ]; then
+    text="$text
+$url"
+  fi
+
+  if have wl-copy; then
+    printf '%s' "$text" | wl-copy
+  elif have xclip; then
+    printf '%s' "$text" | xclip -selection clipboard
+  else
+    notify "Shazam" "Install wl-clipboard or xclip for copy support" "critical"
+    return 1
+  fi
+
+  notify "Shazam" "Copied song info" "low"
+}
+
+cmd___delete_id() {
+  local id="${1:-}"
+  [ -n "$id" ] || return 1
+
+  local tmp before after
+  tmp="$(mktemp)"
+
+  # Try direct .id match (new entries)
+  jq -c --arg id "$id" 'select((.id // "") != $id)' "$HISTORY_FILE" >"$tmp" 2>/dev/null
+
+  before="$(wc -l <"$HISTORY_FILE" | tr -d ' ')"
+  after="$(wc -l <"$tmp" | tr -d ' ')"
+
+  if [ "$after" -lt "$before" ]; then
+    mv "$tmp" "$HISTORY_FILE"
+    refresh_waybar
+    notify "Shazam" "Deleted history entry" "low"
+    return 0
+  fi
+
+  # Fallback: entries without .id — compute id for each
+  : >"$tmp"
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    local ts key artist title computed
+    ts="$(jq -r '.timestamp // 0' <<<"$line")"
+    key="$(jq -r '.track.key // ""' <<<"$line")"
+    artist="$(jq -r '.track.subtitle // "Unknown"' <<<"$line")"
+    title="$(jq -r '.track.title // "Unknown"' <<<"$line")"
+    computed="$(hash_key "${ts}:${key}:${artist}:${title}")"
+    if [ "$computed" != "$id" ]; then
+      printf '%s\n' "$line" >>"$tmp"
+    fi
+  done <"$HISTORY_FILE"
+
+  mv "$tmp" "$HISTORY_FILE"
+  refresh_waybar
+  notify "Shazam" "Deleted history entry" "low"
+}
+
+# -------------------------------------------------------------------------
+# fzf source — outputs tab-separated lines with stable id as field 2
+# -------------------------------------------------------------------------
+
+cmd___source() {
+  [ -s "$HISTORY_FILE" ] || return 0
+
+  # Use placeholders for empty fields so that read's IFS splitting
+  # does not collapse consecutive tabs.
+  jq -r '
+    select(.track? and .track.key?)
+    | [
+        ((.timestamp // 0) | tostring),
+        (.track.subtitle // "Unknown"),
+        (.track.title // "Unknown"),
+        (.track.url // "") // "-",
+        (.track.apple_id // "") // "-",
+        (.track.key // "") // "-",
+        (.id // "") // "-"
+      ]
+    | @tsv
+  ' "$HISTORY_FILE" 2>/dev/null |
+    tac |
+    while IFS=$'\t' read -r ts artist title url apple_id key id; do
+      local d link_mark
+      d="$(date -d "@$ts" '+%Y-%m-%d %H:%M' 2>/dev/null || printf '%s' "$ts")"
+
+      # Restore placeholders to real empty strings
+      [ "$url" = "-" ] && url=""
+      [ "$apple_id" = "-" ] && apple_id=""
+      [ "$key" = "-" ] && key=""
+      [ "$id" = "-" ] && id=""
+
+      if [ -n "$apple_id" ] && [ "$apple_id" != "null" ]; then
+        link_mark="▶"
+      elif [ -n "$url" ] && [ "$url" != "null" ]; then
+        link_mark="🔗"
+      else
+        link_mark="⌕"
+      fi
+
+      # Stable id for backward-compat entries that lack .id
+      if [ -z "$id" ] || [ "$id" = "null" ]; then
+        id="$(hash_key "${ts}:${key}:${artist}:${title}")"
+      fi
+
+      # visible_text<TAB>id<TAB>key<TAB>timestamp
+      printf "%s %s  %s - %s\t%s\t%s\t%s\n" "$link_mark" "$d" "$artist" "$title" "$id" "$key" "$ts"
+    done
+}
+
+cmd_history_tui() {
+  if [ ! -s "$HISTORY_FILE" ]; then
+    notify "Shazam" "History is empty" "normal"
+    printf 'History is empty. Run: %s toggle\n' "$PROG"
+    return 0
+  fi
+
+  if ! have fzf; then
+    die "fzf is required for history"
+  fi
+
+  local count qself
+  count="$(wc -l <"$HISTORY_FILE" | tr -d ' ')"
+  qself="$(printf '%q' "$SELF")"
+
+  cmd___source | fzf \
+    --delimiter=$'\t' \
+    --with-nth=1 \
+    --layout=reverse \
+    --border \
+    --border-label=" Shazam History " \
+    --prompt='Song > ' \
+    --header="${count} detection(s) | Enter: Cider | Ctrl-Y: Copy | Ctrl-D: Delete | Esc: Close" \
+    --preview="$qself __preview_id {2}" \
+    --preview-window='down:8:wrap' \
+    --bind="enter:execute-silent($qself __play_id {2})+abort" \
+    --bind="ctrl-y:execute-silent($qself __copy_id {2})" \
+    --bind="ctrl-d:execute-silent($qself __delete_id {2})+reload($qself __source)" \
+    >/dev/null || true
+}
+
+cmd_history() {
+  if [ -t 1 ]; then
+    cmd_history_tui
+    return
+  fi
+
+  if have kitty; then
+    kitty \
+      --class shazam-history \
+      --title "Shazam History" \
+      -o window_padding_width=8 \
+      -e "$SELF" __history_tui >/dev/null 2>&1 &
+  else
+    die "kitty is not installed. Run '$PROG __history_tui' from a terminal."
+  fi
+}
+
+cmd_open_last() {
+  if [ ! -s "$HISTORY_FILE" ]; then
+    notify "Shazam" "History is empty" "normal"
+    return 1
+  fi
+
+  local entry
+  entry="$(tail -n 1 "$HISTORY_FILE")"
+  open_entry_json "$entry"
+}
+
+# -----------------------------------------------------------------------------
+# Waybar / display
+# -----------------------------------------------------------------------------
+
+last_short() {
+  [ -s "$HISTORY_FILE" ] || return 1
+
+  tail -n 1 "$HISTORY_FILE" | jq -r '
+    [(.track.subtitle // "Unknown"), (.track.title // "Unknown")]
+    | map(select(. != "" and . != "null"))
+    | join(" - ")
+  ' 2>/dev/null | sed 's/^ - //;s/ - $//'
+}
+
+last_timestamp() {
+  [ -s "$HISTORY_FILE" ] || return 1
+  tail -n 1 "$HISTORY_FILE" | jq -r '.timestamp // empty' 2>/dev/null
+}
+
+is_last_recent_for_waybar() {
+  local ts now age
+
+  ts="$(last_timestamp 2>/dev/null || true)"
+  [ -n "$ts" ] || return 1
+
+  now="$(date +%s)"
+  age=$((now - ts))
+
+  [ "$age" -le "$WAYBAR_RECENT_WINDOW" ]
+}
+
+last_tooltip() {
+  if [ ! -s "$HISTORY_FILE" ]; then
+    printf 'No songs detected yet.'
+    return
+  fi
+
+  local ts title artist url apple_id d cider_uri
+
+  IFS=$'\t' read -r ts title artist url apple_id < <(
+    tail -n 1 "$HISTORY_FILE" | jq -r '
+      [
+        ((.timestamp // 0) | tostring),
+        (.track.title // "Unknown"),
+        (.track.subtitle // "Unknown"),
+        (.track.url // ""),
+        (.track.apple_id // "")
+      ] | @tsv
+    ' 2>/dev/null
+  )
+
+  d="$(date -d "@$ts" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || printf '%s' "$ts")"
+
+  printf 'Last found:\n'
+  printf '  Song: %s\n' "$title"
+  printf '  Artist: %s\n' "$artist"
+  printf '  Time: %s\n' "$d"
+
+  if cider_uri="$(to_cider_uri "$url" "$apple_id" 2>/dev/null)"; then
+    printf '  Cider: %s\n' "$cider_uri"
+  else
+    printf '  Cider: search fallback\n'
+  fi
+}
+
+cmd_waybar() {
+  SHZ_QUIET=1
+  cleanup_stale_state
+
+  local last tooltip text
+  last="$(last_short 2>/dev/null || true)"
+
+  if is_recognizing; then
+    text="󰑊 Recognizing…"
+    tooltip=$'Recognizing current audio.\n\nLeft click: stop\nRight click: history'
+
+    if [ -n "$last" ]; then
+      tooltip="$(printf '%s\n\n%s' "$tooltip" "$(last_tooltip)")"
+    fi
+
+    json_out "$text" "$tooltip" "listening" "recognizing"
+    return
+  fi
+
+  if [ -z "$last" ]; then
+    tooltip=$'No songs detected yet.\n\nLeft click: detect song\nRight click: history'
+    json_out " Shazam" "$tooltip" "empty" "empty"
+    return
+  fi
+
+  if is_last_recent_for_waybar; then
+    text=" $(truncate_text "$last" 48)"
+    tooltip="$(printf '%s\n\n%s' "$(last_tooltip)" $'Left click: detect song\nRight click: history')"
+    json_out "$text" "$tooltip" "recent" "recent"
+    return
+  fi
+
+  tooltip="$(printf '%s\n\n%s' "$(last_tooltip)" $'Hidden from bar because it is older than 5 minutes.\n\nLeft click: detect song\nRight click: history')"
+  json_out " Shazam" "$tooltip" "idle" "idle"
+}
+
+# -----------------------------------------------------------------------------
+# Utility commands
+# -----------------------------------------------------------------------------
+
+cmd_last() {
+  if [ ! -s "$HISTORY_FILE" ]; then
+    printf 'No history.\n'
+    return 0
+  fi
+
+  local entry ts title artist url apple_id d cider_uri
+  entry="$(tail -n 1 "$HISTORY_FILE")"
+
+  ts="$(jq -r '.timestamp // 0' <<<"$entry")"
+  title="$(jq -r '.track.title // "Unknown"' <<<"$entry")"
+  artist="$(jq -r '.track.subtitle // "Unknown"' <<<"$entry")"
+  url="$(jq -r '.track.url // empty' <<<"$entry")"
+  apple_id="$(jq -r '.track.apple_id // empty' <<<"$entry")"
+  d="$(date -d "@$ts" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || printf '%s' "$ts")"
+
+  printf 'Song:   %s\n' "$title"
+  printf 'Artist: %s\n' "$artist"
+  printf 'Time:   %s\n' "$d"
+
+  if cider_uri="$(to_cider_uri "$url" "$apple_id" 2>/dev/null)"; then
+    printf 'Cider:  %s\n' "$cider_uri"
+  else
+    printf 'Cider:  search fallback only\n'
+  fi
+}
+
+cmd_list() {
+  if [ ! -s "$HISTORY_FILE" ]; then
+    printf 'Empty history.\n'
+    return 0
+  fi
+
+  printf '\033[1m%-20s %-28s %-32s %-8s\033[0m\n' "DATE" "ARTIST" "TITLE" "CIDER"
+  printf '%s\n' "--------------------------------------------------------------------------------"
+
+  jq -r '
+    [((.timestamp // 0) | tostring), (.track.subtitle // "Unknown"), (.track.title // "Unknown"), (.track.url // ""), (.track.apple_id // "")]
+    | @tsv
+  ' "$HISTORY_FILE" | tac | while IFS=$'\t' read -r ts artist title url apple_id; do
+    local d status
+    d="$(date -d "@$ts" '+%Y-%m-%d %H:%M' 2>/dev/null || printf '?')"
+
+    if [ -n "$apple_id" ] && [ "$apple_id" != "null" ]; then
+      status="play"
+    elif [ -n "$url" ] && [ "$url" != "null" ]; then
+      status="link"
+    else
+      status="search"
+    fi
+
+    printf '%-20s %-28s %-32s %-8s\n' "$d" "${artist:0:27}" "${title:0:31}" "$status"
+  done
+}
+
+cmd_stats() {
+  if [ ! -s "$HISTORY_FILE" ]; then
+    printf 'Empty history.\n'
+    return 0
+  fi
+
+  jq -s -r '
+    {
+      total: length,
+      unique: (map(.track.key // empty) | unique | length),
+      with_links: (map(select((.track.url // "") != "" and (.track.url // "") != "null")) | length),
+      with_apple_ids: (map(select((.track.apple_id // "") != "" and (.track.apple_id // "") != "null")) | length),
+      top_artists: (
+        map(.track.subtitle // "Unknown")
+        | group_by(.)
+        | map({artist: .[0], count: length})
+        | sort_by(-.count)
+        | .[:8]
+      )
+    }
+    | "Shazam Stats",
+      "============",
+      "Total detections: \(.total)",
+      "Unique songs:     \(.unique)",
+      "With links:       \(.with_links)",
+      "With Apple IDs:   \(.with_apple_ids)",
+      "",
+      "Top Artists:",
+      (.top_artists[] | "  * \(.artist): \(.count)")
+  ' "$HISTORY_FILE"
+}
+
+cmd_prune() {
+  if [ ! -s "$HISTORY_FILE" ]; then
+    printf 'Nothing to prune.\n'
+    return 0
+  fi
+
+  local before after tmp
+  before="$(wc -l <"$HISTORY_FILE" | tr -d ' ')"
+  tmp="$(mktemp)"
+
+  jq -s -c '
+    group_by(.track.key // "")
+    | map(max_by(.timestamp // 0))
+    | sort_by(.timestamp // 0)
+    | .[]
+  ' "$HISTORY_FILE" >"$tmp"
+
+  mv "$tmp" "$HISTORY_FILE"
+  after="$(wc -l <"$HISTORY_FILE" | tr -d ' ')"
+
+  refresh_waybar
+  notify "Shazam" "Pruned: $before -> $after" "normal"
+  printf 'Pruned history: %s -> %s entries\n' "$before" "$after"
+}
+
+cmd_export() {
+  local fmt="${1:-json}"
+
+  [ -s "$HISTORY_FILE" ] || die "History is empty."
+
+  case "$fmt" in
+  json)
+    jq -s '.' "$HISTORY_FILE"
+    ;;
+  jsonl)
+    cat "$HISTORY_FILE"
+    ;;
+  csv)
+    jq -r '
+        ["timestamp","artist","title","apple_id","url","shazam_url","key"],
+        [.timestamp, .track.subtitle, .track.title, .track.apple_id, .track.url, .track.shazam_url, .track.key]
+        | @csv
+      ' "$HISTORY_FILE"
+    ;;
+  *)
+    die "Unknown export format '$fmt'. Use: json, jsonl, csv"
+    ;;
+  esac
+}
+
+cmd_help() {
+  cat <<EOF
+Usage: $PROG <command>
+
+Commands:
+  toggle, t        True toggle: start recognition, or stop if active
+  recognize, r     Run one-shot song recognition
+  stop, s          Stop active recognition
+  history, h       Open Kitty/fzf history picker
+  open-last        Open/search the most recent song in Cider via xdg-open
+  last             Show most recent detection
+  list             Print history table
+  stats            Show history stats
+  prune            Deduplicate history, keeping newest per song
+  export [fmt]     Export history: json | jsonl | csv
+  waybar           Print Waybar JSON status
+  help             Show help
+
+History picker:
+  Enter            Open/play/search in Cider via xdg-open
+  Ctrl-Y           Copy song info / Cider URI
+  Ctrl-D           Delete selected history entry
+
+Environment:
+  SONGREC_DEVICE                  Audio monitor source
+  SONGREC_HISTORY                 History JSONL path
+  CIDER_PROTOCOL                  music | cider | itms | itmss | itunes
+  CIDER_ACTION                    play (default) — ignored by Cider LinkHandler
+  SHAZAM_TIMEOUT                  Recognition timeout; default: 45
+  SHAZAM_DUP_WINDOW               Duplicate skip window; default: 600; 0 = save all
+  SHAZAM_WAYBAR_RECENT_WINDOW     Waybar song visibility seconds; default: 300
+  SHAZAM_WAYBAR_SIGNAL            Waybar refresh signal; default: 8
+EOF
+}
+
+main() {
+  local cmd="${1:-toggle}"
+
+  case "$cmd" in
+  toggle | t) cmd_toggle ;;
+  recognize | r) cmd_recognize ;;
+  stop | s) cmd_stop ;;
+  history | h) cmd_history ;;
+  open-last) cmd_open_last ;;
+  __history_tui) cmd_history_tui ;;
+  __source) cmd___source ;;
+  __preview_id) cmd___preview_id "${2:-}" ;;
+  __play_id) cmd___play_id "${2:-}" ;;
+  __copy_id) cmd___copy_id "${2:-}" ;;
+  __delete_id) cmd___delete_id "${2:-}" ;;
+  waybar) cmd_waybar ;;
+  last) cmd_last ;;
+  list) cmd_list ;;
+  stats) cmd_stats ;;
+  prune) cmd_prune ;;
+  export) cmd_export "${2:-json}" ;;
+  help | --help | -h) cmd_help ;;
+  *) die "Unknown command: $cmd" ;;
+  esac
+}
+
+main "$@"
