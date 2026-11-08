@@ -79,11 +79,20 @@ Scope {
             }
             // A panel left alone folds back by itself once the pointer has gone:
             // glance panels quickly, the ones you work in after a while.
+            // Keyboard use counts as being there: moving focus (Tab, arrows
+            // into another control) starts the wait again, and a text field
+            // with the focus (a search, a reply) holds the panel open.
             Timer {
                 id: idle
                 interval: ["calendar", "system", "power"].includes(win.shownPanel) ? 12000 : 30000
-                running: win.panelHere && !win.hovered
+                running: win.panelHere && !win.hovered && !keyUse.typing
                 onTriggered: Island.close()
+            }
+            Item {
+                id: keyUse
+                readonly property var item: Window.activeFocusItem
+                readonly property bool typing: !!item && item.cursorPosition !== undefined && item.readOnly !== true
+                onItemChanged: if (idle.running) idle.restart()
             }
 
             anchors.top: true

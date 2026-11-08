@@ -24,6 +24,24 @@ Rectangle {
 
     implicitWidth: 200
     implicitHeight: 56
+    // Keyboard, like Tile: Space toggles; Return toggles, or on an
+    // expandable tile opens more (so does →). The expandable split is a
+    // pointer idea, so the keys name both halves instead.
+    activeFocusOnTab: true
+    Accessible.role: Accessible.CheckBox
+    Accessible.checkable: true
+    Accessible.checked: tile.on
+    Accessible.name: tile.title
+    Accessible.description: tile.expandable ? tile.subtitle + ". Space: turn " + (tile.on ? "off" : "on") + ". Return: " + tile.moreText : tile.subtitle
+    Accessible.onPressAction: tile.toggled()
+    Accessible.onToggleAction: tile.toggled()
+    Keys.onPressed: e => {
+        if (e.key === Qt.Key_Space) { tile.toggled(); e.accepted = true; }
+        else if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { if (tile.expandable) tile.opened(); else tile.toggled(); e.accepted = true; }
+        else if (e.key === Qt.Key_Right && tile.expandable) { tile.opened(); e.accepted = true; }
+    }
+    onActiveFocusChanged: if (tile.expandable) tile.tip(activeFocus, "Space: turn " + tile.title + (tile.on ? " off" : " on") + " · Return: " + tile.moreText)
+    FocusRing {}
     radius: Theme.r3
     color: area.containsMouse ? Qt.rgba(1, 1, 1, 0.11) : Qt.rgba(1, 1, 1, 0.075)
     border.width: 1
