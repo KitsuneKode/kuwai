@@ -322,7 +322,6 @@ def file_text(path):
 def files_block(files):
     """Attached files: their text inline (the budget split between them), and a
     copy in the chat's sandbox folder (files/) so code can work on the whole thing."""
-    import shutil
     if not isinstance(files, list) or not files:
         return ""
     files = [f for f in files if isinstance(f, dict) and f.get("path")][:6]
@@ -333,12 +332,11 @@ def files_block(files):
         name = os.path.basename(path)
         where = ""
         try:
-            if os.path.getsize(path) <= 50_000_000:
-                dest = rice_sandbox.workspace(CHAT) / "files"
-                dest.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(path, dest / name)
+            if os.path.getsize(path) <= 50_000_000 and name not in ("", ".", ".."):
+                rice_sandbox.workspace(CHAT)
+                rice_sandbox.copy_in(CHAT, ["files", name], path)
                 where = f" (also in your sandbox at files/{name})"
-        except OSError:
+        except (OSError, rice_sandbox.SandboxError):
             pass
         try:
             text = file_text(path)
@@ -929,7 +927,7 @@ import rice_files  # noqa: E402
 def _path(args, key="path", default=""):
     try:
         return rice_files.resolve(args.get(key) or default or ".", rice_sandbox.workspace(CHAT))
-    except rice_files.FileError as e:
+    except (rice_files.FileError, rice_sandbox.SandboxError) as e:
         raise ToolError(str(e))
 
 
@@ -957,10 +955,33 @@ def _write_request(args):
     return "write", ("Overwrite " if old else "Create ") + rice_files.show(full), detail
 
 
+def _sandbox_parts(full):
+    """The sandbox-relative parts of a path inside the chat's folder."""
+    return list(full.relative_to(rice_sandbox.workspace(CHAT).resolve()).parts)
+
+
+def _write_text(full, inside, text):
+    """Your files: written as usual (after approval). The sandbox's: written
+    without following links, since the container may have just made one."""
+    if not inside:
+        full.parent.mkdir(parents=True, exist_ok=True)
+        full.write_text(text, encoding="utf-8")
+        return
+    parts = _sandbox_parts(full)
+    if not parts:
+        raise ToolError("That's the sandbox folder itself, not a file")
+    try:
+        rice_sandbox.write_file(CHAT, parts, text)
+    except rice_sandbox.SandboxError as e:
+        raise ToolError(str(e))
+
+
 def tool_write(args):
-    full, _ = _path(args)
-    return _files(rice_files.write, full, str(args.get("content") or ""),
-                  rice_files.label(full, rice_sandbox.workspace(CHAT)))
+    full, inside = _path(args)
+    content = str(args.get("content") or "")
+    _files(_write_text, full, inside, content)
+    n = content.count("\n") + (1 if content and not content.endswith("\n") else 0)
+    return f"Wrote {rice_files.label(full, rice_sandbox.workspace(CHAT))} ({n} lines)"
 
 
 def _edits(args):
@@ -986,10 +1007,11 @@ def _edit_request(args):
 
 
 def tool_edit(args):
-    full, _ = _path(args)
+    full, inside = _path(args)
     edits = _edits(args)
     _, new = _files(rice_files.plan_edit, full, edits)
-    return _files(rice_files.apply_edit, full, new, len(edits), rice_files.label(full, rice_sandbox.workspace(CHAT)))
+    _files(_write_text, full, inside, new)
+    return f"Successfully replaced {len(edits)} block(s) in {rice_files.label(full, rice_sandbox.workspace(CHAT))}."
 
 
 def tool_ls(args):

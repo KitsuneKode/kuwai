@@ -60,6 +60,21 @@ def check_readable(full):
         raise FileError(f"{full.name} looks like a key or secrets file; it isn't read")
 
 
+def is_secret(path, root):
+    """A descendant `path` found under `root` (the folder already checked):
+    secret if it, or any folder between root and it, is a secrets place or
+    has a secrets name. Followed links are judged by where they land too."""
+    path = Path(path)
+    for p in {path, path.resolve()}:
+        if any(p == s or s in p.parents for s in SECRET):
+            return True
+    try:
+        parts = path.relative_to(root).parts
+    except ValueError:
+        parts = path.parts[-1:]
+    return any(SECRET_NAME.search(x) for x in parts) or bool(SECRET_NAME.search(path.resolve().name))
+
+
 def show(full):
     s = str(full)
     h = str(HOME)
@@ -214,6 +229,7 @@ def find(pattern, full, limit=200):
         hits = [l for l in p.stdout.splitlines() if l]
     else:
         hits = [str(x) for x in list(full.rglob(pattern))[:limit + 1]]
+    hits = [h for h in hits if not is_secret(h, full)]
     more = len(hits) > limit
     hits = [show(Path(h)) for h in hits[:limit]]
     if not hits:
@@ -226,7 +242,10 @@ def grep(pattern, full, glob=None, ignore_case=False, literal=False, limit=60):
     rg = shutil.which("rg")
     if not rg:
         raise FileError("ripgrep (rg) isn't installed")
-    argv = [rg, "--line-number", "--no-heading", "--color", "never", "--max-columns", str(LINE_CAP),
+    # --null: the path ends at a NUL, so each hit can be checked against the
+    # secrets policy below; the globs only save work, a caller's glob can't
+    # re-admit what the check refuses.
+    argv = [rg, "--null", "--line-number", "--no-heading", "--color", "never", "--max-columns", str(LINE_CAP),
             "--max-columns-preview", "--glob", "!.git"]
     for s in SECRET:
         argv += ["--glob", f"!{s.name}/**"]
@@ -240,9 +259,19 @@ def grep(pattern, full, glob=None, ignore_case=False, literal=False, limit=60):
     p = subprocess.run(argv, capture_output=True, text=True, timeout=20)
     if p.returncode == 2:
         raise FileError(p.stderr.strip()[:300] or "grep failed")
-    lines = p.stdout.splitlines()
     h = str(HOME)
-    lines = [("~" + l[len(h):]) if l.startswith(h) else l for l in lines]
+    lines, cache = [], {}
+    single = full.is_file()
+    for raw in p.stdout.splitlines():
+        path, sep, rest = raw.partition("\0")
+        if not sep:                     # one file searched: rg prints no path
+            path, rest = str(full), raw
+        if path not in cache:
+            cache[path] = not single and is_secret(path, full)
+        if cache[path]:
+            continue
+        line = path + ":" + rest if not single else rest
+        lines.append(("~" + line[len(h):]) if line.startswith(h) else line)
     more = len(lines) > limit
     out = "\n".join(lines[:limit]) or "No matches"
     if more:

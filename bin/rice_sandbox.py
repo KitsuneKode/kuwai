@@ -11,6 +11,7 @@ can't reach anything of yours.
 """
 import os
 import re
+import stat
 import subprocess
 from pathlib import Path
 
@@ -30,15 +31,127 @@ def host_root():
 
 
 def chat_slug(chat):
-    return re.sub(r"[^A-Za-z0-9_.-]", "", str(chat or ""))[:64] or "scratch"
+    # No leading dots: "..", "." and ".home" would name the parent, the root
+    # or the sandbox's $HOME instead of a chat folder.
+    return re.sub(r"[^A-Za-z0-9_.-]", "", str(chat or "")).lstrip(".")[:64] or "scratch"
+
+
+JOB_ID = re.compile(r"j[0-9a-f]{6}")
+JOB_LOG_MAX = 256_000      # the tail of a job's log the host reads
 
 
 def workspace(chat):
-    """The chat's folder on the host (created)."""
-    d = host_root() / chat_slug(chat)
-    d.mkdir(parents=True, exist_ok=True)
-    (host_root() / ".home").mkdir(parents=True, exist_ok=True)
-    return d
+    """The chat's folder on the host (created). Everything under the sandbox
+    root is writable from inside the container, so the folder must still be a
+    real folder: a link put in its place would aim host-side writes elsewhere."""
+    root = host_root()
+    root.mkdir(parents=True, exist_ok=True)
+    for d in (root / chat_slug(chat), root / ".home"):
+        try:
+            d.mkdir(exist_ok=True)
+        except FileExistsError:
+            pass
+        if d.is_symlink() or not d.is_dir():
+            raise SandboxError(f"{d} isn't a plain folder any more (a link or file replaced it); refusing to use it")
+    return root / chat_slug(chat)
+
+
+# ── Host-side access to container-writable files ────────────────────────
+# The container can turn any name under /work into a link, a FIFO or a hard
+# link, so the host never opens those paths by name: it walks down from the
+# sandbox root one descriptor at a time, refusing links at every step.
+
+_DIR = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC
+
+
+def _walk(chat, parts, create=False):
+    """A descriptor for <root>/<chat>/<parts...> (a folder), no links followed."""
+    fd = os.open(host_root(), os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC)
+    try:
+        for part in (chat_slug(chat), *parts):
+            if part in ("", ".", "..") or "/" in part:
+                raise SandboxError(f"Bad path part {part!r}")
+            if create:
+                try:
+                    os.mkdir(part, 0o755, dir_fd=fd)
+                except FileExistsError:
+                    pass
+            try:
+                nfd = os.open(part, _DIR, dir_fd=fd)
+            except OSError as e:
+                raise SandboxError(f"{part} isn't a plain folder in the sandbox ({e.strerror})")
+            os.close(fd)
+            fd = nfd
+        return fd
+    except BaseException:
+        os.close(fd)
+        raise
+
+
+def _open_file(dir_fd, name, flags, mode=0o644):
+    try:
+        f = os.open(name, flags | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC, mode, dir_fd=dir_fd)
+    except OSError as e:
+        raise SandboxError(f"Can't open {name} in the sandbox ({e.strerror})")
+    st = os.fstat(f)
+    if not stat.S_ISREG(st.st_mode) or st.st_nlink != 1:
+        os.close(f)
+        raise SandboxError(f"{name} in the sandbox isn't a plain file; refusing it")
+    return f
+
+
+def read_file(chat, parts, limit=None):
+    """Text of a sandbox file (its last `limit` bytes), or None if it's absent."""
+    d = _walk(chat, parts[:-1])
+    try:
+        try:
+            f = _open_file(d, parts[-1], os.O_RDONLY)
+        except SandboxError:
+            if not _exists(d, parts[-1]):
+                return None
+            raise
+        with os.fdopen(f, "rb") as fh:
+            if limit:
+                size = os.fstat(fh.fileno()).st_size
+                if size > limit:
+                    fh.seek(size - limit)
+            data = fh.read(limit or -1)
+        return data.decode("utf-8", errors="replace")
+    finally:
+        os.close(d)
+
+
+def write_file(chat, parts, data):
+    """Write (replace) a sandbox file, creating folders, never through a link."""
+    d = _walk(chat, parts[:-1], create=True)
+    try:
+        f = _open_file(d, parts[-1], os.O_WRONLY | os.O_CREAT)
+        with os.fdopen(f, "wb") as fh:
+            fh.truncate(0)
+            fh.write(data if isinstance(data, bytes) else data.encode("utf-8"))
+    finally:
+        os.close(d)
+
+
+def copy_in(chat, parts, src):
+    """Copy a host file into the sandbox (an attachment); the source is the user's."""
+    with open(src, "rb") as fh:
+        write_file(chat, parts, fh.read())
+
+
+def _exists(dir_fd, name):
+    try:
+        os.stat(name, dir_fd=dir_fd, follow_symlinks=False)
+        return True
+    except FileNotFoundError:
+        return False
+
+
+def _job(jid):
+    jid = str(jid or "").strip()
+    if not JOB_ID.fullmatch(jid):
+        raise SandboxError(f"No job {jid}" if jid else "No job id given")
+    return jid
 
 
 def resolve(chat, path):
@@ -134,19 +247,12 @@ def run(chat, command, timeout=120):
 # <id>.notified once the desktop said so. The folder is mounted, so the host
 # reads them directly.
 
-def jobs_dir(chat):
-    d = workspace(chat) / ".jobs"
-    d.mkdir(exist_ok=True)
-    return d
-
-
 def start_job(chat, command):
     import secrets
     ensure()
     jid = "j" + secrets.token_hex(3)
-    d = jobs_dir(chat)
-    (d / f"{jid}.cmd").write_text(command, encoding="utf-8")
     ws = workspace(chat)
+    write_file(chat, [".jobs", f"{jid}.cmd"], command)
     script = f"( {command} ) > .jobs/{jid}.log 2>&1; echo $? > .jobs/{jid}.status"
     p = _docker("exec", "-d", "-w", f"/work/{ws.name}", "-e", "TERM=dumb", NAME, "bash", "-lc", script)
     if p.returncode != 0:
@@ -156,38 +262,58 @@ def start_job(chat, command):
 
 def job_state(chat, jid):
     """(state 'running'|'done', exit code or None, output, command)."""
-    d = jobs_dir(chat)
-    if not (d / f"{jid}.cmd").is_file():
+    jid = _job(jid)
+    workspace(chat)
+    cmd = read_file(chat, [".jobs", f"{jid}.cmd"], limit=64_000)
+    if cmd is None:
         raise SandboxError(f"No job {jid}")
-    status = d / f"{jid}.status"
-    log = d / f"{jid}.log"
-    out = log.read_text(encoding="utf-8", errors="replace") if log.is_file() else ""
-    cmd = (d / f"{jid}.cmd").read_text(encoding="utf-8")
-    if status.is_file():
-        code = status.read_text().strip()
+    out = read_file(chat, [".jobs", f"{jid}.log"], limit=JOB_LOG_MAX) or ""
+    code = read_file(chat, [".jobs", f"{jid}.status"], limit=64)
+    if code is not None:
+        code = code.strip()
         return "done", int(code) if code.lstrip("-").isdigit() else None, out, cmd
     return "running", None, out, cmd
 
 
 def stop_job(chat, jid):
+    jid = _job(jid)
+    workspace(chat)
+    if read_file(chat, [".jobs", f"{jid}.cmd"], limit=1) is None:
+        raise SandboxError(f"No job {jid}")
     ensure()
     _docker("exec", NAME, "pkill", "-f", f".jobs/{jid}.log", timeout=10)
-    (jobs_dir(chat) / f"{jid}.status").write_text("143")
+    write_file(chat, [".jobs", f"{jid}.status"], "143")
 
 
 def finished_unnotified():
     """Every chat's jobs that finished and haven't been announced; marks them announced."""
     out = []
     root = host_root()
-    for st in root.glob("*/.jobs/*.status"):
-        jid, d = st.stem, st.parent
-        mark = d / f"{jid}.notified"
-        if mark.exists():
+    try:
+        chats = [e.name for e in os.scandir(root) if e.is_dir(follow_symlinks=False)
+                 and not e.name.startswith(".") and chat_slug(e.name) == e.name]
+    except FileNotFoundError:
+        return out
+    for chat in chats:
+        try:
+            d = _walk(chat, [".jobs"])
+        except SandboxError:
             continue
-        mark.write_text("")
-        cmd = (d / f"{jid}.cmd").read_text(encoding="utf-8", errors="replace") if (d / f"{jid}.cmd").exists() else ""
-        code = st.read_text().strip()
-        out.append({"chat": d.parent.name, "id": jid, "command": cmd[:120], "exit": code})
+        try:
+            names = os.listdir(d)
+        finally:
+            os.close(d)
+        for name in names:
+            jid, ext = os.path.splitext(name)
+            if ext != ".status" or not JOB_ID.fullmatch(jid) or f"{jid}.notified" in names:
+                continue
+            try:
+                code = read_file(chat, [".jobs", name], limit=64)
+                write_file(chat, [".jobs", f"{jid}.notified"], "")
+                cmd = read_file(chat, [".jobs", f"{jid}.cmd"], limit=64_000) or ""
+            except SandboxError:
+                continue
+            out.append({"chat": chat, "id": jid, "command": cmd[:120], "exit": (code or "").strip()})
     return out
 
 
