@@ -13,6 +13,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Hyprland
 import qs.config
 
 Singleton {
@@ -147,6 +148,50 @@ Singleton {
     Component {
         id: runner
         Process { onExited: destroy() }
+    }
+
+    // ── HDR notice ───────────────────────────────────────────────────────
+    // Hyprland switches a screen to HDR by itself when an HDR video or game
+    // goes fullscreen (render.cm_auto_hdr) and says nothing about it. So just
+    // after a fullscreen change, look three times (the switch lands a moment
+    // later): a screen newly in HDR gets a moment in the notch.
+    property var hdrOn: ({})                  // screen name → true while in HDR
+    Connections {
+        target: Hyprland
+        function onRawEvent(event) {
+            if (event.name !== "fullscreen") return;
+            root.hdrLooks = 0;
+            hdrLook.restart();
+        }
+    }
+    property int hdrLooks: 0
+    Timer {
+        id: hdrLook
+        interval: 1200
+        repeat: true
+        onTriggered: {
+            if (++root.hdrLooks >= 3) stop();
+            if (!hdrProbe.running) hdrProbe.running = true;
+        }
+    }
+    Process {
+        id: hdrProbe
+        command: ["hyprctl", "-j", "monitors"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let d;
+                try { d = JSON.parse(text); } catch (e) { return; }
+                const on = {};
+                for (const m of d) {
+                    if (!/hdr/i.test(m.colorManagementPreset || "")) continue;
+                    on[m.name] = true;
+                    if (!root.hdrOn[m.name])
+                        Moments.show({ kind: "hdr", glyph: "\u{f0379}", label: "HDR",
+                                       value: m.model || m.name, ring: -1, tone: Theme.yellow }, 2200);
+                }
+                root.hdrOn = on;
+            }
+        }
     }
 
     // ── Reading ──────────────────────────────────────────────────────────

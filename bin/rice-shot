@@ -61,9 +61,31 @@ if [ "$mode" = area ] || [ "$mode" = quick ] || [ "$mode" = freeze ]; then
     args=()
 fi
 
+# window: the focused window with its own corners. grimblast's rectangle kept
+# whatever was behind the rounded corners; this cuts them to the window's
+# rounding (its rule's, else the config's) and rounding_power, transparent.
+if [ "$mode" = window ]; then
+    win=$(hyprctl -j activewindow 2>/dev/null)
+    addr=$(jq -r '.address // empty' <<<"$win")
+    [ -n "$addr" ] || exit 0
+    geo=$(jq -r '"\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])"' <<<"$win")
+    if ! grim -g "$geo" "$out" 2>/dev/null || [ ! -s "$out" ]; then
+        rm -f -- "$out"; notify -a "Screenshot" "Screenshot failed" "grim couldn't capture the window"; exit 0
+    fi
+    # Fullscreen windows have square corners on screen too.
+    if [ "$(jq -r '.fullscreen' <<<"$win")" = 0 ]; then
+        r=$(hyprctl getprop "address:$addr" rounding 2>/dev/null)
+        pw=$(hyprctl getprop "address:$addr" rounding_power 2>/dev/null)
+        case "$r" in ''|*[!0-9.]*) r=$(hyprctl -j getoption decoration:rounding | jq -r '.int') ;; esac
+        case "$pw" in ''|*[!0-9.]*) pw=$(hyprctl -j getoption decoration:rounding_power | jq -r '.float') ;; esac
+        "$(dirname "$(readlink -f "$0")")/rice-shot-round" "$out" "$(jq -r '.size[0]' <<<"$win")" "$r" "$pw" 2>/dev/null
+    fi
+    wl-copy --type image/png < "$out"
+    exit 0
+fi
+
 case "$mode" in
     area|quick|freeze) ;;
-    window)  args=(copysave active) ;;
     delay)   args=(--wait 3 copysave output) ;;
     ocr)
         tmp=$(mktemp --suffix=.png)

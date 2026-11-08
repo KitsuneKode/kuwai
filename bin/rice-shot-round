@@ -1,0 +1,58 @@
+#!/usr/bin/env python3
+"""Give a window screenshot the window's own corners (transparent outside).
+
+    rice-shot-round FILE LOGICAL_WIDTH RADIUS POWER
+
+RADIUS and LOGICAL_WIDTH are in logical px (Hyprland's units); the image is in
+physical px (grim captures at the screen's scale), so the radius is scaled by
+image width / logical width. POWER is Hyprland's decoration:rounding_power:
+corners are the superellipse |x|^p + |y|^p <= r^p (2 = a circle, 4 = the
+default squircle), the same curve Hyprland's shader draws. The mask is built
+at 4x and box-filtered down, so the edge is antialiased like on screen.
+"""
+import sys
+
+from PIL import Image, ImageChops
+
+SUPERSAMPLE = 4
+
+
+def corner_mask(size: int, power: float) -> Image.Image:
+    """Top-left corner: opaque inside the curve, clear outside."""
+    n = size * SUPERSAMPLE
+    big = Image.new("L", (n, n), 0)
+    px = big.load()
+    for y in range(n):
+        dy = (n - y - 0.5) / n
+        for x in range(n):
+            dx = (n - x - 0.5) / n
+            if dx**power + dy**power <= 1.0:
+                px[x, y] = 255
+    return big.resize((size, size), Image.BOX)
+
+
+def main() -> int:
+    if len(sys.argv) != 5:
+        print(__doc__.strip(), file=sys.stderr)
+        return 2
+    path = sys.argv[1]
+    logical_w, radius, power = (float(a) for a in sys.argv[2:5])
+    im = Image.open(path).convert("RGBA")
+    w, h = im.size
+    r = round(radius * (w / logical_w if logical_w > 0 else 1.0))
+    r = min(r, w // 2, h // 2)
+    if r < 1 or power <= 0:
+        return 0
+    tl = corner_mask(r, power)
+    mask = Image.new("L", (w, h), 255)
+    mask.paste(tl, (0, 0))
+    mask.paste(tl.transpose(Image.FLIP_LEFT_RIGHT), (w - r, 0))
+    mask.paste(tl.transpose(Image.FLIP_TOP_BOTTOM), (0, h - r))
+    mask.paste(tl.transpose(Image.ROTATE_180), (w - r, h - r))
+    im.putalpha(ImageChops.multiply(im.getchannel("A"), mask))
+    im.save(path, optimize=False)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
