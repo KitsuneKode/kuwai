@@ -164,6 +164,13 @@ Singleton {
         return t.length < 140 && (rx.test(t) || rx.test(b) || rx.test(s));
     }
 
+    // kittymux's x-kittymux-state → the chip (bin/mux-notify; _TEXT in kittymux_scan).
+    readonly property var kittymuxStates: ({
+        waiting: { suffix: "needs you", label: "Needs you", glyph: "\u{f0026}", tone: "caution", plain: "Waiting for your input" },
+        limited: { suffix: "hit a limit", label: "Hit a limit", glyph: "\u{f029a}", tone: "caution", plain: "Usage limit reached" },
+        done: { suffix: "finished", label: "Done", glyph: "\u{f012c}", tone: "positive", plain: "Ready for your next prompt" },
+        error: { suffix: "reported an error", label: "Error", glyph: "\u{f0159}", tone: "critical", plain: "Reported an error" }
+    })
     function adapt(n) {
         const rule = rules.find(r => r.match(n));
         const out = rule ? rule.adapt(n) : generic(n);
@@ -184,6 +191,22 @@ Singleton {
             const b = Kittymux.brand(String(h["x-kittymux-brand"] || "")) || Kittymux.brand(agent) || (m ? Kittymux.brand(m[1]) : "");
             if (b) out.icon = b;
             if (agent) out.app = agent.charAt(0).toUpperCase() + agent.slice(1);
+            // Hierarchy: the app is the agent, the title which session (its
+            // tab), the chip the state, the body what it asks. kittymux's
+            // title is a sentence ("<tab> needs you") for any daemon; here
+            // the state moves to the chip. Older ones without the hint keep
+            // their title.
+            const st = kittymuxStates[String(h["x-kittymux-state"] || "")];
+            if (st) {
+                const t = String(n.summary || "");
+                if (t.endsWith(" " + st.suffix)) out.title = t.slice(0, -st.suffix.length - 1);
+                out.status = st.label;
+                out.statusGlyph = st.glyph;
+                out.statusTone = st.tone;
+                // A menu's own footer read as the question (kittymux before
+                // affd54f): the plain wording instead.
+                if (/enter to (select|confirm)|to navigate|esc to cancel/i.test(String(n.body || ""))) out.body = st.plain;
+            }
         }
         // kittymux names the agent pane it's about (bin/mux-notify hints):
         // a click jumps there through kittymux, even from history later.
