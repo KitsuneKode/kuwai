@@ -524,9 +524,14 @@ Singleton {
                 root.show({ kind: "agent", glyph: "\u{f0306}", label: "Password", value: name.toLowerCase() + " in kitty", ring: -1, tone: Theme.orange }, 6000);
                 return;
             }
+            // Which one: two Codex panes otherwise look the same. The tab's
+            // title (its project, usually), kept short for the notch.
+            let tab = String(e.tab || "").replace(/\s+/g, " ").trim();
+            if (tab.length > 22) tab = tab.slice(0, 21) + "…";
+            const who = name.charAt(0).toUpperCase() + name.slice(1);
             root.show({
                 kind: "agent", image: Kittymux.brand(e.agent), glyph: "\u{f06a9}",
-                label: name.charAt(0).toUpperCase() + name.slice(1),
+                label: tab && tab.toLowerCase() !== name.toLowerCase() ? who + " · " + tab : who,
                 value: needs ? (e.kind === "permission" ? "Needs you" : "Waiting") : e.kind === "limit" ? "Hit a limit" : "Done",
                 ring: -1, tone: needs || e.kind === "limit" ? Theme.orange : Theme.green
             }, needs ? 6000 : 3000);
