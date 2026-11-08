@@ -5,12 +5,13 @@
 #   ./install.sh               install (or update the install) for this user
 #   ./install.sh --dry-run     say what it would do; change nothing
 #   ./install.sh --deps        also install missing packages (sudo pacman / an AUR helper)
-#   ./install.sh --uninstall   put back what it replaced (from the newest backup)
+#   ./install.sh --uninstall   put back what was there before the first install
 #   ./install.sh --doctor      only check (kuwai doctor + rice-check)
 #
 # What it does:
 #   1. checks the packages the desktop needs (and the optional ones)
-#   2. backs up every file it would replace to ~/.local/state/kuwai/backup/<time>/
+#   2. remembers, the first time only, how each path it replaces was (absent, a
+#      file, or a link) and whether each service was enabled: ~/.local/state/kuwai/original/
 #   3. ~/.config/hypr/hyprland.lua ← hypr/templates/hyprland.lua (your monitors.lua
 #      and user.lua beside it are created empty if missing, never overwritten)
 #   4. the stable channel: a checkout of the `stable` branch in ~/.local/share/kuwai
@@ -91,15 +92,27 @@ check_deps() {
     return 0
 }
 
-# ── Backup ───────────────────────────────────────────────────────────────
-BACKUP=""
-backup() {   # $1 = a file we're about to replace (a real file or a link)
-    [ -e "$1" ] || [ -L "$1" ] || return 0
-    if [ -z "$BACKUP" ]; then BACKUP=$STATE/backup/$(date +%Y%m%d-%H%M%S); do_ mkdir -p "$BACKUP"; fi
-    local rel=${1#"$HOME"/}
-    do_ mkdir -p "$BACKUP/$(dirname "$rel")"
-    do_ cp -a "$1" "$BACKUP/$rel"
-    [ $DRY = 1 ] || printf '%s\n' "$rel" >>"$BACKUP/MANIFEST"
+# ── The original state ───────────────────────────────────────────────────
+# bin/rice_install.py keeps it: how each path was before the first install
+# (later installs don't overwrite that), and what kuwai put there, so
+# uninstall can tell your later edits from its own files.
+ORIG() { python3 "$REPO/bin/rice_install.py" --state "$STATE" "$@"; }
+remember()  { [ $DRY = 1 ] || ORIG remember "$1"; }
+installed() { [ $DRY = 1 ] || ORIG installed "$1"; }
+
+# Replace $2 with a copy of $1 (or, with -s, a link to $1) in one rename:
+# if $2 is a link, the link is replaced, never the file it points at.
+place() {
+    local link=0; [ "$1" = -s ] && { link=1; shift; }
+    local src=$1 dst=$2 tmp
+    if [ $DRY = 1 ]; then printf '  would: %s %s → %s\n' "$([ $link = 1 ] && echo link || echo copy)" "$src" "$dst"; return; fi
+    remember "$dst"
+    mkdir -p "$(dirname "$dst")"
+    tmp=$(dirname "$dst")/.$(basename "$dst").kuwai-new
+    rm -f "$tmp"
+    if [ $link = 1 ]; then ln -s "$src" "$tmp"; else cp "$src" "$tmp"; fi
+    mv -fT "$tmp" "$dst"
+    installed "$dst"
 }
 
 install_all() {
@@ -118,14 +131,13 @@ install_all() {
     local entry=$CFG/hypr/hyprland.lua
     if [ -f "$entry" ] && cmp -s "$entry" "$REPO/hypr/templates/hyprland.lua"; then ok "$entry is current"
     else
-        backup "$entry"
-        do_ mkdir -p "$CFG/hypr"
-        do_ cp "$REPO/hypr/templates/hyprland.lua" "$entry"
+        place "$REPO/hypr/templates/hyprland.lua" "$entry"
         ok "$entry ← hypr/templates/hyprland.lua"
     fi
     for f in monitors.lua user.lua; do
         if [ -e "$CFG/hypr/$f" ]; then ok "$f: yours, kept"
-        else [ $DRY = 1 ] && say "  would: create an empty $CFG/hypr/$f" || printf -- '-- %s: yours (kuwai never overwrites it)\n' "$f" >"$CFG/hypr/$f"; fi
+        elif [ $DRY = 1 ]; then say "  would: create an empty $CFG/hypr/$f"
+        else mkdir -p "$CFG/hypr"; printf -- '-- %s: yours (kuwai never overwrites it)\n' "$f" >"$CFG/hypr/$f"; fi
     done
 
     step "User services"
@@ -134,12 +146,15 @@ install_all() {
         local dst=$CFG/systemd/user/$u src=$STABLE/systemd/$u
         [ -f "$src" ] || src=$REPO/systemd/$u
         if [ "$(readlink -f "$dst" 2>/dev/null)" = "$(readlink -f "$src")" ]; then ok "$u linked"
-        else backup "$dst"; do_ ln -sfn "$src" "$dst"; ok "$u → $src"; fi
+        else place -s "$src" "$dst"; ok "$u → $src"; fi
     done
     do_ systemctl --user daemon-reload
-    for u in "${UNITS[@]}"; do do_ systemctl --user enable "$u" >/dev/null 2>&1 || warn "couldn't enable $u"; done
+    for u in "${UNITS[@]}"; do
+        [ $DRY = 1 ] || ORIG unit "$u"
+        do_ systemctl --user enable "$u" >/dev/null 2>&1 || warn "couldn't enable $u"
+    done
 
-    [ -n "$BACKUP" ] && { step "Backup"; ok "replaced files saved in $BACKUP (./install.sh --uninstall puts them back)"; }
+    [ $DRY = 1 ] || { step "Original state"; ok "kept in $STATE/original (./install.sh --uninstall puts it back)"; }
 
     step "Optional, with sudo"
     say "  sudo $REPO/greeter/install    the login screen (greetd; --undo for SDDM)"
@@ -153,21 +168,8 @@ install_all() {
 
 uninstall_all() {
     step "Uninstall"
-    local last; last=$(ls -1d "$STATE"/backup/*/ 2>/dev/null | tail -1 || true)
-    for u in "${UNITS[@]}"; do
-        do_ systemctl --user disable --now "$u" 2>/dev/null || true
-        [ -L "$CFG/systemd/user/$u" ] && do_ rm -f "$CFG/systemd/user/$u"
-    done
-    if [ -n "$last" ] && [ -f "$last/MANIFEST" ]; then
-        while read -r rel; do
-            [ -n "$rel" ] || continue
-            do_ mkdir -p "$HOME/$(dirname "$rel")"
-            do_ cp -a "$last/$rel" "$HOME/$rel"
-            ok "restored ~/$rel"
-        done <"$last/MANIFEST"
-    else
-        warn "no backup with a manifest in $STATE/backup: ~/.config/hypr/hyprland.lua left as it is"
-    fi
+    for u in "${UNITS[@]}"; do do_ systemctl --user disable --now "$u" >/dev/null 2>&1 || true; done
+    if [ $DRY = 1 ]; then ORIG restore --dry-run; else ORIG restore; fi
     do_ systemctl --user daemon-reload
     say "  The stable checkout ($STABLE), your settings (~/.config/rice) and notes stay."
     say "  Remove the checkout too:  git -C $REPO worktree remove $STABLE"
