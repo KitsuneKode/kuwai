@@ -834,15 +834,18 @@ Item {
                 width: Media.playing ? musicBars.implicitWidth : pauseMark.implicitWidth
                 height: 16
                 // Paused: the pause mark itself, crisp (the bars, low and faded in
-                // the cover's colour, read as noise).
-                Text {
+                // the cover's colour, read as noise). Drawn, not a glyph: the
+                // font's pause sits in a box twice its width, and that empty
+                // half read as extra padding at the notch's right edge.
+                Row {
                     id: pauseMark
                     visible: !Media.playing
                     anchors.verticalCenter: parent.verticalCenter
-                    text: "\u{f03e4}"
-                    font.family: Theme.fontGlyph
-                    font.pixelSize: 15
-                    color: Theme.textSecondary
+                    spacing: 3
+                    Repeater {
+                        model: 2
+                        Rectangle { width: 3; height: 11; radius: 1.5; color: Theme.textSecondary }
+                    }
                 }
                 MusicTap {}
                 PwObjectTracker { objects: [Pipewire.defaultAudioSink] }

@@ -270,7 +270,7 @@ if K.feature("night_light") then
 		if p == "night" and not (K.display and K.display.current() == "accurate") then
 			hl.exec_cmd("hyprctl hyprsunset temperature " .. K.night.warm)
 		else
-			hl.exec_cmd("hyprctl hyprsunset identity")
+			hl.exec_cmd(K.night_off)
 		end
 	end
 	-- Leaving the accurate preset: warm again if it's night now.

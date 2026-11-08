@@ -1,0 +1,28 @@
+#!/bin/sh
+# The login screen's brightness keys: every screen, not just the laptop.
+#   keys brightness up|down
+# The panel's backlight goes through brightnessctl (logind); external
+# monitors through DDC/CI (ddcutil's udev rule gives the active seat's user,
+# here the greeter, /dev/i2c-*). DDC writes take ~0.3 s, so a key held down
+# doesn't queue them: one at a time, the rest dropped. The new value goes to
+# $run/brightness for the HUD (LockOsd) when there's no backlight to watch.
+set -u
+run="${XDG_RUNTIME_DIR:-/tmp}/kuwai-greeter"
+mkdir -p "$run"
+case "${1:-} ${2:-}" in
+    "brightness up") sign=+ ;;
+    "brightness down") sign=- ;;
+    *) echo "usage: keys brightness up|down" >&2; exit 2 ;;
+esac
+brightnessctl -e4 -n2 set "5%$sign" >/dev/null 2>&1
+command -v ddcutil >/dev/null || exit 0
+exec 9>"$run/ddc.lock"
+flock -n 9 || exit 0
+# The DDC buses, found once per boot (detect takes a second or two).
+[ -s "$run/ddc-buses" ] || ddcutil detect --terse 2>/dev/null \
+    | awk '/^Display/{f=1} /^Invalid/{f=0} f && /I2C bus/ {sub(/.*i2c-/, ""); print}' >"$run/ddc-buses"
+for bus in $(cat "$run/ddc-buses"); do
+    ddcutil --bus "$bus" --noverify setvcp 10 "$sign" 5 >/dev/null 2>&1
+    v=$(ddcutil --bus "$bus" getvcp 10 --terse 2>/dev/null | awk '{print $4}')
+    [ -n "$v" ] && echo "$v" >"$run/brightness"
+done

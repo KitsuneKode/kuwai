@@ -52,6 +52,13 @@ Item {
         onLoaded: { const v = Number(text().trim()); if (hud.maxB > 0 && v !== hud.curB) { const first = hud.curB < 0; hud.curB = v; if (!first && hud.armed) hud.show("brightness", v / hud.maxB, false); } } }
     Timer { interval: 300; repeat: true; running: hud.active && hud.backlight !== ""; onTriggered: bl.reload() }
 
+    // The login screen's external monitors: greeter/keys writes the value DDC
+    // set (sysfs has nothing to watch for them). Empty elsewhere.
+    property string ddcFile: ""
+    FileView { path: hud.ddcFile; watchChanges: true; printErrors: false
+        onFileChanged: reload()
+        onLoaded: { const v = parseInt(text()); if (hud.armed && v >= 0) hud.show("brightness", v / 100, false); } }
+
     // ── The pill ─────────────────────────────────────────────────────────
     opacity: shown ? 1 : 0
     visible: opacity > 0.01

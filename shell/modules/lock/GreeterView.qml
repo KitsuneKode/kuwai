@@ -387,6 +387,7 @@ Item {
 
     // Volume and brightness keys: their HUD (the session's own is under the lock).
     LockOsd {
+        ddcFile: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/kuwai-greeter/brightness"
         anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 72 }
         z: 50
     }

@@ -18,7 +18,14 @@ local function hyde(script)
 end
 
 hl.on("hyprland.start", function()
-	hl.exec_cmd(hyde("wallpaper.sh") .. " --start --global") -- awww + wallbash recolouring
+	-- The wallpaper first, straight from awww's own cache: the login screen
+	-- has just opened onto it, so it should simply be there. wallpaper.sh
+	-- (HyDE's environment loads slowly) started the daemon a second later and
+	-- then grew the same picture in again from the pointer.
+	if K.has("awww-daemon") then
+		hl.exec_cmd("awww-daemon --format xrgb")
+	end
+	hl.exec_cmd("WALLPAPER_AWWW_TRANSITION_DEFAULT=none " .. hyde("wallpaper.sh") .. " --start --global") -- wallbash recolouring
 	-- (HyDE's batterynotify.sh is replaced by kuwai's battery_guard.)
 	hl.exec_cmd("systemctl --user start hyde-config.service") -- config.toml → HyDE scripts
 end)

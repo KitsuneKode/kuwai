@@ -13,6 +13,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.config
 
 Singleton {
     id: root
@@ -52,7 +53,8 @@ Singleton {
     Timer {
         id: tempLater
         interval: 60
-        onTriggered: root.run(root.temperature >= 6400 ? ["hyprctl", "hyprsunset", "identity"]
+        // Off: 6500 K first (identity alone keeps reporting the old warm value).
+        onTriggered: root.run(root.temperature >= 6400 ? ["sh", "-c", "hyprctl hyprsunset temperature 6500; hyprctl hyprsunset identity"]
                                                         : ["hyprctl", "hyprsunset", "temperature", String(root.temperature)])
     }
     // The accurate preset holds Night Shift off; the switch says so instead.
@@ -73,6 +75,14 @@ Singleton {
     property string auto: ""
     property string autoWhy: ""
     readonly property string preset: choice === "everyday" && auto !== "" ? auto : choice
+    // A change shows in the notch for a moment (not the one read at start).
+    property bool presetKnown: false
+    onPresetChanged: {
+        if (!presetKnown) return;
+        const automatic = auto !== "" && choice === "everyday";
+        Moments.show({ kind: "display", glyph: "\u{f0379}", label: "Display",
+                       value: presetInfo(preset).label + (automatic ? " · auto" : ""), ring: -1, tone: Theme.cyan }, 1800);
+    }
     function presetInfo(id) { return presets.find(p => p.id === id) || presets[0]; }
     function setPreset(id) {
         if (!presets.some(p => p.id === id)) return;
@@ -103,6 +113,7 @@ Singleton {
             root.auto = get("display_auto");
             const why = t.match(/^display_why=(.*)$/m);
             root.autoWhy = why ? why[1] : "";
+            root.presetKnown = true;
         }
     }
 

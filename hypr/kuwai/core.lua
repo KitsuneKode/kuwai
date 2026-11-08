@@ -174,6 +174,10 @@ function K.run(d)
 	end
 end
 
+-- Night Shift off: neutral, then identity. `identity` alone leaves the
+-- reported temperature at the old warm value, so the center showed it on.
+K.night_off = "hyprctl hyprsunset temperature 6500; hyprctl hyprsunset identity"
+
 function K.notify(text, ms, icon)
 	pcall(hl.notification.create, { text = text, timeout = ms or 2500, icon = icon or "ok" })
 end

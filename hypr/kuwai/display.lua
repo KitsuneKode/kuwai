@@ -157,7 +157,7 @@ function D.apply()
 		apply_screens(p)
 		if p == "accurate" then
 			K.config({ render = { non_shader_cm = 0, direct_scanout = 0 } })
-			hl.exec_cmd("hyprctl hyprsunset identity")
+			hl.exec_cmd(K.night_off)
 		end
 	end)
 	if not ok then
@@ -183,15 +183,11 @@ local function switch(from, to)
 		end
 	end
 	if to == "accurate" then
-		hl.exec_cmd("hyprctl hyprsunset identity")
+		hl.exec_cmd(K.night_off)
 	elseif from == "accurate" and K.night_sync then
 		K.night_sync(true) -- back to what the schedule says now
 	end
 	hl.dispatch(hl.dsp.reload_config())
-end
-
-local function label(p)
-	return p:sub(1, 1):upper() .. p:sub(2)
 end
 
 ---------------------------------------------------------------------------
@@ -212,7 +208,6 @@ function kuwai.display(name)
 	-- Choosing hands-off: a manual choice clears what automation picked.
 	K.set_state("display_auto", nil)
 	K.set_state("display_why", nil)
-	K.notify("Display: " .. label(name) .. " — " .. D.describe[name], 2000)
 	switch(from, D.current())
 	return name
 end

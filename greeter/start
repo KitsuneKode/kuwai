@@ -10,6 +10,7 @@ ROOT=/var/lib/kuwai-greeter
 export LANG="${LANG:-C.UTF-8}"
 run="${XDG_RUNTIME_DIR:-/tmp}/kuwai-greeter"
 mkdir -p "$run/state/rice" "$run/cache"
+: >"$run/brightness"   # greeter/keys writes the DDC value here; the HUD watches it
 cp -f "$ROOT/home/.local/state/rice/prefs.json" "$run/state/rice/" 2>/dev/null
 
 HOME="$ROOT/home" \

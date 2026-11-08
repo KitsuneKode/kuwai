@@ -74,8 +74,8 @@ end)
 -- shell/modules/lock/LockOsd). Brightness: the greeter user is in `video`.
 -- Volume: only if a sound server runs for it (usually none; harmless).
 for _, k in ipairs({
-	{ "XF86MonBrightnessUp", "brightnessctl -e4 -n2 set 5%+" },
-	{ "XF86MonBrightnessDown", "brightnessctl -e4 -n2 set 5%-" },
+	{ "XF86MonBrightnessUp", ROOT .. "/keys brightness up" },
+	{ "XF86MonBrightnessDown", ROOT .. "/keys brightness down" },
 	{ "XF86AudioRaiseVolume", "wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+" },
 	{ "XF86AudioLowerVolume", "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-" },
 	{ "XF86AudioMute", "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle" },

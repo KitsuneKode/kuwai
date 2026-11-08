@@ -13,6 +13,7 @@ H="$DEST/home"
 
 rsync -a --delete "$RICE/shell/" "$DEST/shell/"
 install -m755 "$RICE/greeter/start" "$DEST/start"
+install -m755 "$RICE/greeter/keys" "$DEST/keys"
 install -m644 "$RICE/greeter/hyprland.lua" "$DEST/hyprland.lua"
 id -un >"$DEST/user"
 if [ -f "$HOME/.face" ]; then cp -fL "$HOME/.face" "$DEST/face"; else rm -f "$DEST/face"; fi
