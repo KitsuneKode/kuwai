@@ -138,6 +138,16 @@ dev_root() { for d in "$HOME/Projects/kuwai" "$HOME/Projects/rice"; do [ -e "$d/
 switch_to() {   # $1 = the root to run from
     hyprctl reload >/dev/null 2>&1
     sleep 0.5
+    # During a promote: the compositor must take the new config too. Errors
+    # it didn't have before are a failed load (promote rolls back); a working
+    # shell over a broken Hyprland config would hide them until next login.
+    if [ -n "${RICE_ERRS_BEFORE+x}" ]; then
+        local errs; errs=$(hyprctl configerrors 2>/dev/null)
+        if [ -n "$(printf '%s' "$errs" | tr -d '[:space:]')" ] && [ "$errs" != "$RICE_ERRS_BEFORE" ]; then
+            printf 'rice: Hyprland reports config errors with the new stable:\n%s\n' "$errs" | sed '/^\s*$/d' >&2
+            return 1
+        fi
+    fi
     # The old copy's shell: stopped by its own rice-shell's rule (kill -9).
     for pid in $(pgrep -f '^qs -p .*/shell -d$'); do
         case "$(tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null)" in
@@ -206,6 +216,16 @@ case ${1:-} in
             printf "rice: these helpers would outlive a restart (start them with setpriv --pdeathsig KILL --); stable left as it is:\n%s\n" "$leak" >&2
             exit 1
         fi
+        # Hyprland's side: every Lua file of the candidate must parse. (The
+        # offline `Hyprland --verify-config` crashes on 0.57 and runs exec
+        # lines; the live reload below is checked instead.)
+        if command -v luac >/dev/null; then
+            bad=""
+            for f in $(git -C "$dev" ls-tree -r --name-only "$head" -- hypr | grep '\.lua$'); do
+                out=$(git -C "$dev" show "$head:$f" | luac -p - 2>&1) || bad="$bad\n$f: $out"
+            done
+            [ -z "$bad" ] || { printf "rice: this Lua wouldn't parse; stable left as it is:%b\n" "$bad" >&2; exit 1; }
+        fi
         # And it must load: a throwaway offscreen shell (bin/rice-loadtest)
         # reports what lint can't (a handler set twice, a singleton that fails).
         # The login screen too: it runs this same shell from greeter.qml.
@@ -218,7 +238,9 @@ case ${1:-} in
         # see), straight back to the commit that did: a few seconds, not a
         # shell that stays down until someone notices.
         if [ "$(cat "$STATE_DIR/channel" 2>/dev/null)" = stable ]; then
+            RICE_ERRS_BEFORE=$(hyprctl configerrors 2>/dev/null)
             if ! ( switch_to "$STABLE" ); then
+                unset RICE_ERRS_BEFORE
                 echo "rice: the new shell didn't load; stable back to $(git -C "$STABLE" log --oneline -1 "$prev")" >&2
                 # First rice-shell's wait-for-a-save retry (it would fire on the reset's own file changes).
                 # Matched by its exact argv[3] ($0 = rice-shell-watch), never a

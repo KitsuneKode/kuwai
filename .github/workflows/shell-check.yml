@@ -1,34 +1,49 @@
-name: Shell check
+name: Checks
+
+# Every check here fails the run when it fails: no step is allowed to skip
+# itself or swallow an error. What hosted runners can't do (load the shell,
+# which needs a Wayland session; Hyprland --verify-config) stays with
+# `rice-check` and `kuwai doctor`, which `rice promote` runs first.
 
 on:
   push:
-    paths:
-      - "shell/**"
-      - "bin/rice-check"
-      - "bin/rice-shell"
   pull_request:
-    paths:
-      - "shell/**"
-      - "bin/rice-check"
 
 jobs:
-  compile:
+  static:
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - name: Tools
+        run: pacman -Syu --noconfirm --needed python python-pytest ripgrep lua qt6-declarative bash git
+      - uses: actions/checkout@v4
+      - name: QML syntax (every file)
+        run: |
+          fail=0
+          while IFS= read -r -d '' f; do
+            /usr/lib/qt6/bin/qmllint --bare -W 0 --max-warnings -1 --syntax error "$f" || { echo "::error file=$f::QML syntax"; fail=1; }
+          done < <(find shell greeter -name '*.qml' -print0 2>/dev/null)
+          exit $fail
+      - name: Lua syntax
+        run: |
+          fail=0
+          while IFS= read -r -d '' f; do luac -p "$f" || fail=1; done < <(find hypr -name '*.lua' -print0)
+          exit $fail
+      - name: Bash syntax
+        run: |
+          fail=0
+          for f in install.sh $(grep -lE '^#!.*\b(ba)?sh\b' bin/* greeter/install system/install 2>/dev/null); do
+            bash -n "$f" || fail=1
+          done
+          exit $fail
+      - name: Python tests
+        run: PYTHONDONTWRITEBYTECODE=1 python -m pytest -q -p no:cacheprovider tests
+      - name: Design tokens only go down
+        run: bin/rice-tokens --check
+
+  chat-state:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install Quickshell (if available)
-        continue-on-error: true
-        run: |
-          if command -v pacman >/dev/null; then
-            sudo pacman -Sy --noconfirm quickshell 2>/dev/null || true
-          fi
-      - name: QML compile (headless)
-        run: |
-          if command -v qs >/dev/null; then
-            cd shell/modules && for d in */; do
-              qs --compile "$d" 2>/dev/null || true
-            done
-            qs --compile components 2>/dev/null || true
-          else
-            echo "qs not on runner; compile step skipped (run rice-check locally)"
-          fi
+      - uses: oven-sh/setup-bun@v2
+      - run: bun test shell/services/ai/turn.test.mjs
