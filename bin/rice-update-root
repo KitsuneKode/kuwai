@@ -104,6 +104,9 @@ def files(req, home, uid):
     return out
 
 
+ETC = "/etc/"   # a constant so the tests can aim the same checks at a temp folder
+
+
 def pacnew(req):
     """Keep yours or take the new default, for each X with an X.pacnew."""
     items = req.get("items") or []
@@ -112,7 +115,7 @@ def pacnew(req):
     rc = 0
     for it in items:
         path, action = (it or {}).get("path"), (it or {}).get("action")
-        if action not in ("keep", "take") or not isinstance(path, str) or not path.startswith("/etc/") \
+        if action not in ("keep", "take") or not isinstance(path, str) or not path.startswith(ETC) \
                 or "\0" in path or any(part in ("", ".", "..") for part in path[1:].split("/")):
             raise ValueError(f"not a config file: {path!r}")
         new = path + ".pacnew"

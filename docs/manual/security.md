@@ -9,7 +9,9 @@ Last reviewed: 2026-11-05.
 | **rice-notify** | `-H` keys restricted to `x-rice-*`; values JSON-escaped via `jq`; argv for title/body/app |
 | **Usage limit moments** | Read-only `rice-usage`; labels shown as text in the island, no notifications sent |
 | **Crash alerts** | Brief truncated; uses rice-notify + adapter gate for diagnose action |
-| **Root updater** | Fuzzed in `tests/root` (no shell interpolation in helper) |
+| **Root updater** | Hostile requests refused before anything is touched (`tests/root`: bad paths and names, and real symlinks in a stand-in /etc); no shell interpolation. Not fuzzed, and no privileged transaction is run in tests |
+| **Assistant files** | Searches follow the same secrets rule as reads; sandbox job and attachment files are opened without following links (`tests/agent/test_file_policy.py`, `test_sandbox_boundary.py`) |
+| **Installer** | Uninstall restores the state before the first install; replacements never write through a link (`tests/install`) |
 
 ## Known gaps (Phase 6 — do before assistant default-on)
 
