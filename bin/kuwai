@@ -16,7 +16,7 @@
 #   kuwai reload
 set -uo pipefail
 
-ROOT=${KUWAI_ROOT:-$HOME/Projects/rice}
+ROOT=${KUWAI_ROOT:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}   # else the copy this script is in
 ENTRY=${XDG_CONFIG_HOME:-$HOME/.config}/hypr/hyprland.lua
 STATE_DIR=${XDG_STATE_HOME:-$HOME/.local/state}/kuwai
 STATE=$STATE_DIR/state

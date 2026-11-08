@@ -15,7 +15,7 @@ import "ai/turn.mjs" as Turn
 Singleton {
     id: root
 
-    readonly property string bin: Quickshell.env("HOME") + "/Projects/rice/bin/rice-ollama"
+    readonly property string bin: Paths.bin + "/rice-ollama"     // the running channel's copy, not the dev checkout
     readonly property string runtimeDir: (Quickshell.env("XDG_RUNTIME_DIR") || ("/run/user/" + Quickshell.env("UID"))) + "/rice/ai"
     readonly property string reqPath: runtimeDir + "/request.json"
 
@@ -1107,7 +1107,7 @@ function onPanelClosed() {
 
     Process {
         id: renderProc
-        command: [Quickshell.env("HOME") + "/Projects/rice/bin/rice-render", "--serve"]
+        command: [Paths.bin + "/rice-render", "--serve"]
         stdinEnabled: true
         running: true
         stdout: SplitParser {

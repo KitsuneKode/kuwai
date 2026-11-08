@@ -401,7 +401,7 @@ def cmd_render(input_file=None):
     else:
         raw_text = sys.stdin.read()
 
-    render_bin = os.path.expanduser("~/Projects/rice/bin/rice-render")
+    render_bin = os.path.join(os.path.dirname(os.path.realpath(__file__)), "rice-render")  # beside this copy (stable or dev)
     if os.path.isfile(render_bin) and os.access(render_bin, os.X_OK):
         proc = subprocess.run([render_bin], input=raw_text, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         sys.stdout.write(proc.stdout)
