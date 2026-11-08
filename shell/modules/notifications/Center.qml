@@ -117,8 +117,10 @@ Scope {
     }
     readonly property var cardRect: {
         const sw = shownScreen ? shownScreen.width : 1920;
-        const island = Settings.bar === "island";
-        const ox = island ? (sw - cardW) / 2 - padX : sw - (cardW + 12 + padX);
+        // Always the right edge: the card's window is anchored top-right in
+        // every bar style. (Centring it under the island here left the scrim's
+        // hole mid-screen, an undimmed slab, while the card itself was dimmed.)
+        const ox = sw - (cardW + 12 + padX);
         const oy = reservedTop + Theme.barGap;
         const dh = fitH(shownScreen);
         if (mode === "morph")
@@ -126,7 +128,7 @@ Scope {
         return { x: ox + padX, y: oy + padY, w: cardW, h: dh, r: 22 };
     }
     onOpenChanged: {
-        if (open) { warm = true; coolDown.stop(); } else coolDown.restart();
+        if (open) { warm = true; coolDown.stop(); } else { coolDown.restart(); peeking = false; }
         if (open) {
             const reopening = foldAnim.running;
             if (!reopening) shownScreen = (Notifs.centerScreen ? Screens.screenNamed(Notifs.centerScreen) : Screens.focused) || shownScreen;
@@ -218,6 +220,9 @@ Scope {
     // the pointer and keyboard: then the center stays, hands the keyboard
     // over, and takes it back once the picker has gone.
     property bool capturing: false
+    // Shown for a screenshot or visual check (centerdebug.peek): no keyboard
+    // grab and no focus grab, so whoever is typing keeps typing.
+    property bool peeking: false
     readonly property var captureTools: ["pgrep", "-x", "slurp|hyprpicker|grim|grimblast|hyprshot|wayfreeze|satty|swappy|wf-recorder|wl-screenrec|gpu-screen-reco"]
     function grabCleared() {
         console.info("center: focus grab cleared (open=" + open + ", armed=" + armed + ")");
@@ -252,6 +257,13 @@ Scope {
     // Diagnostics (read-only): where the header and the views sit.
     IpcHandler {
         target: "centerdebug"
+        // Open on a tab without taking the keyboard (for screenshots); unpeek closes.
+        function peek(tab: string): void {
+            root.peeking = true;
+            Notifs.centerTab = ["agents", "sound", "controls"].includes(tab) ? tab : "notifications";
+            Notifs.setCenter(true, "key");
+        }
+        function unpeek(): void { Notifs.setCenter(false, "key"); root.peeking = false; }
         function dump(): string {
             const kids = it => { const o = []; if (!it) return o; for (let k = 0; k < it.children.length; k++) { const c = it.children[k]; o.push([Math.round(c.x), Math.round(c.width), c.visible]); } return o; };
             const tabsRow = root.ui ? root.ui.tabs.children[1] : null;
@@ -352,13 +364,13 @@ Scope {
             WlrLayershell.layer: WlrLayer.Overlay
             // Keyboard goes to the center while it's open: it was opened on
             // purpose, and Esc or any click elsewhere hands it straight back.
-            WlrLayershell.keyboardFocus: up && root.open && !root.capturing ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+            WlrLayershell.keyboardFocus: up && root.open && !root.capturing && !root.peeking ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
             mask: Region { item: win.up ? frame : null }
 
             HyprlandFocusGrab {
                 windows: [win]
-                active: win.up && root.open && root.armed && !root.capturing
+                active: win.up && root.open && root.armed && !root.capturing && !root.peeking
                 onCleared: root.grabCleared()
             }
 
