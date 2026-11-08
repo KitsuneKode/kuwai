@@ -73,7 +73,10 @@ end
 -- scale, VRR and bit depth stay what you wrote).
 ---------------------------------------------------------------------------
 local rules = {} -- { ref = the table passed in, base = a copy as written }
-local raw_monitor = hl.monitor
+-- The original, kept once: if the Lua state outlives a reload, wrapping the
+-- previous load's wrapper would stack one more layer per reload.
+_G.__kuwai_raw_monitor = _G.__kuwai_raw_monitor or hl.monitor
+local raw_monitor = _G.__kuwai_raw_monitor
 hl.monitor = function(spec, ...)
 	if type(spec) == "table" and spec.output and spec.output ~= "" and not spec.disabled then
 		local known
