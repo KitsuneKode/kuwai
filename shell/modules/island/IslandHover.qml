@@ -572,6 +572,19 @@ Item {
                 ]
             }
             }
+        // Vitals: the GPU, the machine and the agents' usage in one panel. A dot
+        // when an agent is out of its limit.
+        QuickIcon {
+            anchors.verticalCenter: parent.verticalCenter
+            glyph: "\u{f029a}"
+            on: Island.panel === "vitals"
+            tone: Theme.accent
+            badge: Limits.exhausted.length > 0
+            badgeTone: Theme.orange
+            tip: "Vitals: GPU, machine and agent usage"
+                + (Limits.exhausted.length ? " · " + Limits.exhausted.length + " agent" + (Limits.exhausted.length === 1 ? "" : "s") + " out" : "")
+            onClicked: Island.open("vitals", hover.bar.screenName, "pointer", "island")
+        }
         Item {
             id: bellRow
             anchors.verticalCenter: parent.verticalCenter

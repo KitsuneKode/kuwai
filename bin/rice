@@ -17,6 +17,7 @@
 #   rice remind in 20m tea    a reminder ("at 5 call mum", "tomorrow 9am x"; list · clear)
 #   rice settings [page]      open Settings (power, saver, time, notifs, island, …)
 #   rice usage                agent usage limits in the island (Claude, Codex, … windows and resets)
+#   rice vitals               GPU, CPU, memory and agent usage together (the gauge in the hover view)
 #   rice alarm 7:30 [label]   an alarm (wakes the laptop with system/install; list · clear · stop · snooze)
 #   rice note buy milk        a line in ~/Notes/inbox.md (no text: open it)
 #   rice screensaver          show the screensaver now (it also comes on idle while Caffeine is on)
@@ -312,6 +313,7 @@ case ${1:-} in
         esac ;;
     settings)      ipc island settings "${2:-}" ;;   # open Settings (on a page: power, saver, time, notifs, …)
     usage)         ipc island open usage ;;          # the Usage panel (services/Limits)
+    vitals)        ipc island open vitals ;;         # GPU, CPU, memory and agent usage in one panel
     alarm)
         case "${2:-list}" in
             list|clear|stop|snooze) ipc alarm "${2:-list}" ;;
