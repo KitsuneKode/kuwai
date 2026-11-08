@@ -1,6 +1,6 @@
 // Brightness per monitor and night light, for the center's Display tab.
 //
-//   brightness   ~/Scripts/brightness.sh: `status` (JSON of every output)
+//   brightness   bin/rice-brightness: `status` (JSON of every output)
 //                and `set N --output NAME`; the controller coalesces
 //                requests and handles DDC/CI for external monitors
 //   night light  Hyprland's hyprsunset over hyprctl: `hyprsunset temperature`
@@ -19,7 +19,7 @@ Singleton {
     id: root
 
     property bool watching: false
-    readonly property string script: Quickshell.env("HOME") + "/Scripts/brightness.sh"
+    readonly property string script: Paths.bin + "/rice-brightness"
 
     property var outputs: []                  // [{ name, value, internal, error }]
     property int temperature: 6500            // K; 6500 = off (identity)

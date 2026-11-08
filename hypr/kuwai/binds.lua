@@ -284,9 +284,9 @@ bind(S .. " + F7", "Play / pause", "playerctl play-pause", l)
 bind(S .. " + F8", "Next track", "playerctl next", l)
 
 group("Hardware|Brightness")
--- ~/Scripts/brightness.sh routes to the screen under focus (DDC for the
+-- bin/rice-brightness routes to the screen under focus (DDC for the
 -- external) and feeds the HUD; plain brightnessctl otherwise.
-local BR = K.exists(K.home .. "/Scripts/brightness.sh") and (K.home .. "/Scripts/brightness.sh ") or nil
+local BR = K.exists(K.bin .. "/rice-brightness") and (K.bin .. "/rice-brightness ") or nil
 bind("XF86MonBrightnessUp", "Brighter", BR and (BR .. "i") or "brightnessctl -e4 -n2 set 5%+", lr)
 bind("XF86MonBrightnessDown", "Dimmer", BR and (BR .. "d") or "brightnessctl -e4 -n2 set 5%-", lr)
 bind("F8", "Brighter", BR and (BR .. "i") or "brightnessctl -e4 -n2 set 5%+", lr)

@@ -1,7 +1,7 @@
 // Glass HUD for brightness, volume and microphone (ported from
 // ~/.config/quickshell/glass-osd, now one module of the rice).
 //
-// Brightness arrives as events from ~/Scripts/brightness.py (`watch --part
+// Brightness arrives as events from bin/rice-brightness (`watch --part
 // osd`), so the HUD shows the requested value on the screen being changed
 // before the slow DDC/CI write finishes. Volume and mic are read straight
 // from PipeWire, so any change (keys, Waybar scroll, pavucontrol) shows up,
@@ -50,7 +50,7 @@ Scope {
     Process {
         id: brightnessFeed
         running: true
-        command: ["setpriv", "--pdeathsig", "KILL", "--", Quickshell.env("HOME") + "/Scripts/brightness.sh", "watch", "--part", "osd"]
+        command: ["setpriv", "--pdeathsig", "KILL", "--", Paths.bin + "/rice-brightness", "watch", "--part", "osd"]
         stdout: SplitParser {
             onRead: line => {
                 let ev;

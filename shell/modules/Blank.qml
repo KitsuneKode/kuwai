@@ -22,7 +22,7 @@ Scope {
 
     property var blanked: []          // screen names under a curtain
     property var levels: ({})         // name → brightness before
-    readonly property string ctl: Quickshell.env("HOME") + "/Scripts/brightness.sh"
+    readonly property string ctl: Paths.bin + "/rice-brightness"
 
     function toggle() {
         if (blanked.length) { restore(); return; }

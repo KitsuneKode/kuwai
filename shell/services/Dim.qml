@@ -6,7 +6,7 @@ pragma Singleton
 //
 // Down is 40 % of where you had it, at most 15 % (100 → 15, 30 → 12, 10 → 4):
 // a flat 15 % did nothing at night, when you already sit at 15 or below. It
-// goes through ~/Scripts/brightness.sh, so external monitors (DDC) dim too
+// goes through bin/rice-brightness, so external monitors (DDC) dim too
 // and the brightness controller keeps knowing the real level (brightnessctl
 // behind its back left the laptop panel only, and the controller stale).
 //
@@ -18,11 +18,12 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.config
 
 Singleton {
     id: root
 
-    readonly property string ctl: Quickshell.env("HOME") + "/Scripts/brightness.sh"
+    readonly property string ctl: Paths.bin + "/rice-brightness"
     readonly property string file: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/rice/saver-dim.json"
     readonly property int most: 15
     function of(v) { return Math.max(1, Math.min(most, Math.round(v * 0.4))); }

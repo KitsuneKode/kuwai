@@ -64,7 +64,7 @@ local function cmd(c)
 end
 
 local VOL = "wpctl set-volume -l 1.5 @DEFAULT_AUDIO_SINK@ "
-local BRIGHT = K.home .. "/Scripts/brightness.sh "
+local BRIGHT = K.bin .. "/rice-brightness "
 
 -- Three fingers: workspaces sideways (1:1), volume up/down, pinch float/tile.
 gesture({ fingers = 3, direction = "horizontal", action = "workspace" })
@@ -75,7 +75,7 @@ gesture({ fingers = 3, direction = "pinchout", action = "float", mode = "float" 
 
 -- Four fingers: scroll the column tape 1:1 (scrolling layout), brightness.
 gesture({ fingers = 4, direction = "horizontal", action = "scroll_move" })
-if K.exists(K.home .. "/Scripts/brightness.sh") then
+if K.exists(K.bin .. "/rice-brightness") then
 	gesture({ fingers = 4, direction = "up", action = cmd(BRIGHT .. "i") })
 	gesture({ fingers = 4, direction = "down", action = cmd(BRIGHT .. "d") })
 end
