@@ -98,8 +98,10 @@ Scope {
             anchors.top: true
             // Wide enough for the widest panel (themes, 980) plus its shadow;
             // the mask keeps the empty sides click-through.
-            implicitWidth: 1120
-            implicitHeight: 640
+            // Never wider or taller than the screen itself (a small, portrait or
+            // high-scale output); panels then fit inside it (panelSize).
+            implicitWidth: Math.min(1120, modelData ? modelData.width : 1120)
+            implicitHeight: Math.min(640, modelData ? modelData.height - 24 : 640)
             exclusiveZone: showBar && !tucked ? restH + top + (notch ? 2 : 6) : 0
             color: "transparent"
             WlrLayershell.namespace: "rice-islandbar"
@@ -243,7 +245,11 @@ Scope {
             Spring { id: pv; tier: win.panelHere ? win.grow : win.shrink; epsilon: 0.001; target: win.panelHere ? 1 : 0 }
 
             readonly property real backH: Island.canBack ? 34 : 0
-            readonly property size panelSize: panelLoader.item ? Qt.size(panelLoader.item.implicitWidth, panelLoader.item.implicitHeight + backH) : Qt.size(420, 300)
+            // A panel's own size, but never past the window (room for the shadow):
+            // on a normal screen nothing changes, on a small one it fits.
+            readonly property size panelSize: panelLoader.item
+                ? Qt.size(Math.min(panelLoader.item.implicitWidth, implicitWidth - 40), Math.min(panelLoader.item.implicitHeight + backH, implicitHeight - 40))
+                : Qt.size(420, 300)
             // Expanded, recent background work from the assistant gets a row at the bottom.
             readonly property size hoverSize: Qt.size(720, 148 + (OllamaService.recentWork.length || OllamaService.bgWorking ? 38 : 0))
             // A warning grows the island too (below panels and hover in priority).
@@ -723,6 +729,8 @@ Scope {
                         Loader {
                             id: panelLoader
                             y: win.backH
+                            width: panelScope.width
+                            height: panelScope.height - win.backH
                             active: win.panelHere || pv.value > 0.01
                             focus: true
                             sourceComponent: ({ calendar: calendarPanel, power: powerPanel, launcher: launcherPanel, settings: settingsPanel, system: systemPanel, theme: themePanel, keys: keysPanel, switcher: switcherPanel, updates: updatesPanel, media: mediaPanel, t3: t3Panel, notifs: notifsPanel, bluetooth: bluetoothPanel, usage: usagePanel, read: readPanel })[win.shownPanel] || null
