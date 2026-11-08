@@ -147,8 +147,9 @@ Column {
                             Text {
                                 id: paceGlyph
                                 anchors { right: resets.visible ? resets.left : parent.right; rightMargin: resets.visible ? 8 : 0; verticalCenter: parent.verticalCenter }
+                                // No width trick: the label anchors around it only while it shows
+                                // (width: visible ? implicitWidth : 0 was a binding loop).
                                 visible: win.r.pace !== ""
-                                width: visible ? implicitWidth : 0
                                 // trending up / gauge / trending down
                                 text: ({ ahead: "\u{f0535}", on: "\u{f029a}", under: "\u{f0533}" })[win.r.pace] || ""
                                 font.family: Theme.fontGlyph

@@ -65,7 +65,7 @@ Singleton {
     // choice = what you picked; auto = what kuwai put on top of everyday
     // (an open colour app → accurate, unplugged → battery); preset = in effect.
     readonly property var presets: [
-        { id: "everyday", label: "Everyday",  about: "Configured refresh rates · Night Shift on its schedule" },
+        { id: "everyday", label: "Everyday",  about: "Each screen at its configured refresh rate" },
         { id: "accurate", label: "Accurate",  about: "Night Shift held off · strict colour pipeline, for judging colour" },
         { id: "movie",    label: "Movie",     about: "Monitor at 120 Hz: 24, 30 and 60 fps play without judder" },
         { id: "gaming",   label: "Game",      about: "Game look: no blur, shadows or animation · tearing allowed" },
