@@ -53,7 +53,8 @@ blind replace (`size:` also means icon size).
 - **State swaps inside a control:** every state stays mounted in one cell and
   crossfades (no pop-in, no width jump).
 - **Overshoot** only after a flick or for a moment you plugged in.
-  `Easing.OutBack` in NotifPeek/LockNotifs is the exception list to review.
+  The lock stack's arrival no longer overshoots (2026-11-08); OutBack remains
+  only on the lock's swipe snap-back (a flick) and its padlock shackle.
 - **Reduce motion:** fades only.
 
 ## Quickshell practices (from bugs we actually hit)
