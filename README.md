@@ -128,7 +128,25 @@ refs/                       shallow clones of other shells to read (gitignored)
   keeps HyDE's bell working against the rice (or dunst, as fallback).
 - dunst stays installed as the fallback. Its drop-ins in
   `~/.config/dunst/dunstrc.d/` (T3 Code, Ghostty) keep it presentable.
-- Brightness events come from `~/Scripts/brightness.sh watch --part osd`.
+- Brightness (the OSD, dimming, the keys, Display) goes through
+  `bin/rice-brightness watch --part osd` and friends. See below: there are two copies.
+
+### Brightness: two copies, yours wins
+
+`bin/rice-brightness` runs **`~/Scripts/brightness.sh` when it exists** and
+only otherwise the copy bundled in `lib/brightness/` (`brightness-client.py`
+and the daemon `brightness.py`, both talking to one socket in
+`$XDG_RUNTIME_DIR/waybar-brightness-*`).
+
+- On a machine that has `~/Scripts/brightness.sh` (the author's), edits to
+  `lib/brightness/` **do nothing**; only `~/Scripts` edits run.
+- `lib/brightness/` is a snapshot of `~/Scripts` from 2026-11-08. A new machine
+  gets that snapshot, not later `~/Scripts` changes.
+- Keep them in step: after changing `~/Scripts/brightness*.py`, copy them over
+  (`cp ~/Scripts/brightness.py ~/Scripts/brightness-client.py lib/brightness/`)
+  and commit, or move your edits into the repo and delete the `~/Scripts` copy
+  so the bundled one is the only one.
+- Check which one runs: `readlink -f ~/Scripts/brightness.sh` exists → yours.
 
 ## Usage limits (Agents tab)
 
