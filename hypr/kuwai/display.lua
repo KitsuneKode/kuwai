@@ -133,18 +133,36 @@ local function mode_for(m, base_mode, preset)
 	end
 end
 
+-- A measured profile for this screen (from a colorimeter; see `kuwai display
+-- profile`): ~/.local/share/kuwai/icc/<screen>.icc, <screen> being its
+-- description in lowercase with dashes (no serial number). Used only by the
+-- accurate preset: an ICC replaces the screen's colour preset (so no automatic
+-- HDR there), and the other presets are for watching and playing.
+function D.icc_name(m)
+	local d = (m.description or m.name or ""):gsub("%s+%x+$", "") -- drop a trailing serial
+	return (d:lower():gsub("[^%w]+", "-"):gsub("^-+", ""):gsub("-+$", ""))
+end
+function D.icc_for(m)
+	local path = K.home .. "/.local/share/kuwai/icc/" .. D.icc_name(m) .. ".icc"
+	return K.exists(path) and path or nil
+end
+
 local function apply_screens(preset)
 	for _, m in ipairs(hl.get_monitors() or {}) do
 		local r = rule_for(m)
 		if r then
 			local mode = mode_for(m, r.base.mode, preset) or r.base.mode
 			r.ref.mode = mode -- the lid switch re-issues K.panel: keep the preset's rate
-			if mode ~= r.base.mode then
+			local icc = preset == "accurate" and D.icc_for(m) or nil
+			if mode ~= r.base.mode or icc then
 				local spec = {}
 				for k, v in pairs(r.base) do
 					spec[k] = v
 				end
 				spec.mode = mode
+				if icc then
+					spec.icc = icc
+				end
 				pcall(raw_monitor, spec)
 			end
 		end
@@ -226,6 +244,16 @@ function D.auto(preset, why)
 	if D.choice() == "everyday" then
 		switch(from, D.current())
 	end
+end
+
+-- For `kuwai display profile`: each screen, its profile file, and whether it exists.
+function kuwai.display_profiles()
+	local out = {}
+	for _, m in ipairs(hl.get_monitors() or {}) do
+		local path = K.home .. "/.local/share/kuwai/icc/" .. D.icc_name(m) .. ".icc"
+		out[#out + 1] = m.name .. "\t" .. (m.description or "") .. "\t" .. path .. "\t" .. (K.exists(path) and "yes" or "no")
+	end
+	return table.concat(out, "\n")
 end
 
 function kuwai.displays()

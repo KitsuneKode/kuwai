@@ -1,0 +1,191 @@
+#!/usr/bin/env python3
+"""Test patterns for adjusting a screen by eye (kuwai display calibrate).
+
+    kuwai-calibrate DIR WIDTH HEIGHT     write the patterns for that size; prints their paths
+
+Each pattern is a full-screen PNG at the screen's physical size (so 1 px lines
+stay 1 px), sRGB, with one line saying what to look for and what to change in
+the monitor's own menu. Shown by `kuwai display calibrate` in mpv, one after
+another (→ next, ← back, q done).
+"""
+import os
+import subprocess
+import sys
+
+from PIL import Image, ImageDraw, ImageFont
+
+
+def font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont:
+    pattern = "Inter:semibold" if bold else "Inter"
+    try:
+        path = subprocess.run(["fc-match", "-f", "%{file}", pattern], capture_output=True, text=True, timeout=5).stdout.strip()
+        f = ImageFont.truetype(path, size)
+        try:
+            f.set_variation_by_axes([size, 600 if bold else 450])  # Inter's opsz, wght
+        except Exception:
+            pass
+        return f
+    except Exception:
+        return ImageFont.load_default(size)
+
+
+class Sheet:
+    def __init__(self, w: int, h: int, bg, ink):
+        self.w, self.h, self.ink = w, h, ink
+        self.im = Image.new("RGB", (w, h), bg)
+        self.d = ImageDraw.Draw(self.im)
+        self.u = h / 1440  # layout unit: 1 at 1440p
+
+    def caption(self, title: str, lines: list[str], step: int, total: int):
+        u, d = self.u, self.d
+        y = int(70 * u)
+        d.text((self.w // 2, y), title, font=font(int(40 * u), True), fill=self.ink, anchor="mt")
+        y += int(66 * u)
+        for line in lines:
+            d.text((self.w // 2, y), line, font=font(int(25 * u)), fill=self.ink, anchor="mt")
+            y += int(38 * u)
+        d.text((self.w // 2, self.h - int(56 * u)), f"{step} / {total}   ·   → next   ← back   q done",
+               font=font(int(21 * u)), fill=self.ink, anchor="mb")
+
+    def save(self, path: str):
+        self.im.save(path)
+
+
+def grid_squares(s: Sheet, values, color, label_ink):
+    """A row of 16 squares, each with its value under it."""
+    u, n = s.u, len(values)
+    size, gap = int(110 * u), int(26 * u)
+    total = n * size + (n - 1) * gap
+    x0, y0 = (s.w - total) // 2, (s.h - size) // 2
+    for i, v in enumerate(values):
+        x = x0 + i * (size + gap)
+        s.d.rectangle([x, y0, x + size - 1, y0 + size - 1], fill=color(v))
+        s.d.text((x + size // 2, y0 + size + int(16 * u)), str(v), font=font(int(20 * u)), fill=label_ink, anchor="mt")
+
+
+def build(out: str, w: int, h: int) -> list[str]:
+    os.makedirs(out, exist_ok=True)
+    paths, total = [], 8
+
+    def path(n, name):
+        p = os.path.join(out, f"{n:02d}-{name}.png")
+        paths.append(p)
+        return p
+
+    # 1. Black level
+    s = Sheet(w, h, (0, 0, 0), (150, 150, 150))
+    grid_squares(s, list(range(1, 17)), lambda v: (v, v, v), (110, 110, 110))
+    s.caption("Black level", [
+        "Squares 1–16 on pure black. Aim: you can see them from about 3 or 4 up, and the background stays black.",
+        "Low squares invisible: raise Black Boost one step.  Background looks grey: set Black Boost to 0 (off).",
+    ], 1, total)
+    s.save(path(1, "black-level"))
+
+    # 2. White level
+    s = Sheet(w, h, (255, 255, 255), (60, 60, 60))
+    grid_squares(s, list(range(239, 255)), lambda v: (v, v, v), (90, 90, 90))
+    s.caption("White level", [
+        "Squares 239–254 on pure white. Aim: every square stays visible, right up to 254.",
+        "The last squares vanish into the white: lower Contrast a few steps (50 is the usual neutral point).",
+    ], 2, total)
+    s.save(path(2, "white-level"))
+
+    # 3. Gamma: 1 px black/white lines average to 50 % light; the solid patch
+    # that matches them from a step back is the screen's gamma.
+    s = Sheet(w, h, (128, 128, 128), (20, 20, 20))
+    u = s.u
+    pw, ph = int(300 * u), int(300 * u)
+    gammas = [(1.8, 0), (2.0, 0), (2.2, 0), (2.4, 0), (2.6, 0)]
+    gap = int(40 * u)
+    total_w = len(gammas) * pw + (len(gammas) - 1) * gap
+    x0, y0 = (w - total_w) // 2, (h - ph) // 2
+    for i, (g, _) in enumerate(gammas):
+        x = x0 + i * (pw + gap)
+        for yy in range(y0, y0 + ph):
+            v = 255 if (yy - y0) % 2 == 0 else 0
+            s.d.line([(x, yy), (x + pw - 1, yy)], fill=(v, v, v))
+        inner = round(255 * 0.5 ** (1 / g))
+        m = int(80 * u)
+        s.d.rectangle([x + m, y0 + m, x + pw - 1 - m, y0 + ph - 1 - m], fill=(inner, inner, inner))
+        s.d.text((x + pw // 2, y0 + ph + int(18 * u)), f"{g}", font=font(int(24 * u), True), fill=(20, 20, 20), anchor="mt")
+    s.caption("Gamma", [
+        "Step back or squint until the stripes blur. The square whose middle disappears into its stripes is your gamma.",
+        "Aim: 2.2 (sRGB, the web's target). Off by a step: try the menu's Gamma setting if it has one; don't use Black Boost for this.",
+    ], 3, total)
+    s.save(path(3, "gamma"))
+
+    # 4. Gradients: grey at 16 bits (smooth at 10-bit output), then R, G, B.
+    s = Sheet(w, h, (0, 0, 0), (170, 170, 170))
+    band = int(150 * u)
+    top = (h - 4 * band - 3 * int(30 * u)) // 2
+    grey = Image.new("I;16", (w, 1))
+    grey.putdata([round(65535 * x / (w - 1)) for x in range(w)])
+    grey = grey.resize((w, band)).convert("I").point(lambda v: v / 257).convert("L").convert("RGB")
+    # (16-bit source kept smooth up to 8-bit rounding; mpv dithers to the output's depth)
+    s.im.paste(grey, (0, top))
+    for i, ch in enumerate([(1, 0, 0), (0, 1, 0), (0, 0, 1)]):
+        y = top + (i + 1) * (band + int(30 * u))
+        row = Image.new("RGB", (w, 1))
+        row.putdata([tuple(round(255 * x / (w - 1)) * c for c in ch) for x in range(w)])
+        s.im.paste(row.resize((w, band)), (0, y))
+    s.caption("Gradients", [
+        "Aim: smooth ramps with no visible steps, and the grey stays grey all the way (no pink or green patches).",
+        "Steps in every ramp: check that 10-bit is on (Controls → Display shows the depth).  A tint: see the white point pattern.",
+    ], 4, total)
+    s.save(path(4, "gradients"))
+
+    # 5. Sharpness: 1 px lines and small text.
+    s = Sheet(w, h, (255, 255, 255), (30, 30, 30))
+    bx, by, bw, bh = w // 2 - int(500 * u), h // 2 - int(220 * u), int(1000 * u), int(440 * u)
+    for x in range(bx, bx + bw // 2, 2):
+        s.d.line([(x, by), (x, by + bh)], fill=(0, 0, 0))
+    for y in range(by, by + bh, 2):
+        s.d.line([(bx + bw // 2 + 20, y), (bx + bw, y)], fill=(0, 0, 0))
+    for i, size in enumerate([11, 13, 15, 18]):
+        s.d.text((w // 2, by + bh + int(40 * u) + i * int(34 * u)), "The quick brown fox jumps over the lazy dog  0123456789",
+                 font=font(size), fill=(0, 0, 0), anchor="mt")
+    s.caption("Sharpness", [
+        "Aim: even fine lines with no bright or dark halos at their edges, and small text that looks clean, not crunchy.",
+        "Halos or crunchy text: lower Sharpness (the neutral point is often 0 or the middle; use whichever shows no halos).",
+    ], 5, total)
+    s.save(path(5, "sharpness"))
+
+    # 6. Uniformity: mid grey.
+    s = Sheet(w, h, (128, 128, 128), (40, 40, 40))
+    s.caption("Uniformity (mid grey)", [
+        "Aim: an even grey edge to edge. Slightly darker corners are normal for IPS panels.",
+        "Nothing to adjust here: it tells you about the panel. Note tinted or blotchy areas if you see them.",
+    ], 6, total)
+    s.save(path(6, "uniformity-grey"))
+
+    # 7. Glow: near black.
+    s = Sheet(w, h, (18, 18, 18), (120, 120, 120))
+    s.caption("Dark uniformity (glow)", [
+        "Best seen in a dim room. Some glow in the corners is normal for IPS (it changes as you move your head).",
+        "Nothing to adjust: this is the panel. Black Boost makes it worse, so keep that at 0.",
+    ], 7, total)
+    s.save(path(7, "dark-glow"))
+
+    # 8. White point.
+    s = Sheet(w, h, (235, 235, 235), (40, 40, 40))
+    s.d.rectangle([w // 2 - int(400 * u), h // 2 - int(160 * u), w // 2 + int(400 * u), h // 2 + int(160 * u)], fill=(128, 128, 128))
+    s.caption("White point", [
+        "Aim: white and grey look neutral, like paper, not pink, green or blue. Compare with your phone or the laptop screen.",
+        "A tint: keep Colour Temp at 6500 K (Warm); if it stays tinted, use User and nudge the R/G/B gains one step at a time.",
+    ], 8, total)
+    s.save(path(8, "white-point"))
+    return paths
+
+
+def main() -> int:
+    if len(sys.argv) != 4:
+        print(__doc__.strip(), file=sys.stderr)
+        return 2
+    out, w, h = sys.argv[1], int(sys.argv[2]), int(sys.argv[3])
+    for p in build(out, w, h):
+        print(p)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

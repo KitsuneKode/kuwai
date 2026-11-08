@@ -5,6 +5,8 @@
 #   kuwai doctor                    check config, session, scripts; exit 1 on problems
 #   kuwai mode [NAME|--pick|list]   focus · default · glass · gaming · battery
 #   kuwai display [NAME|list]       everyday · accurate · movie · gaming · battery (what the screens are for)
+#   kuwai display calibrate [SCREEN] adjust a screen by eye with test patterns (→ next, q done)
+#   kuwai display profile           measured (colorimeter) profiles: where they go, which are loaded
 #   kuwai motion [full|reduced|off]
 #   kuwai gpu [auto|nvidia|intel]   renderer for the next login
 #   kuwai rescue                    password prompt, clipboard, island, idle: back to working
@@ -64,11 +66,63 @@ cmd_mode() {
     echo "mode: $m — $(describe "$m")"
 }
 
+# Measured profiles: where each screen's ICC goes and whether it's there. The
+# measuring itself needs a colorimeter and ArgyllCMS; this says how.
+display_profile() {
+    live || { echo "kuwai: needs the running desktop" >&2; return 1; }
+    echo "Measured colour profiles (used by the accurate preset):"
+    lua 'return kuwai.display_profiles()' | while IFS=$'\t' read -r name desc path have; do
+        printf '  %-7s %s\n          %s  [%s]\n' "$name" "$desc" "$path" "$([ "$have" = yes ] && echo loaded in Accurate || echo none yet)"
+    done
+    echo
+    if command -v dispcal >/dev/null; then
+        echo "ArgyllCMS is installed. With the colorimeter plugged in, on the screen to measure:"
+    else
+        echo "To make one: a colorimeter (e.g. Calibrite Display Plus HL, Datacolor SpyderX) and ArgyllCMS (sudo pacman -S argyllcms). Then:"
+    fi
+    cat <<'STEPS'
+  1. Monitor menu as you'll use it: 6500 K, contrast 50, brightness where you work, Black Boost 0.
+  2. kuwai display accurate            (Night Shift off, strict colour)
+  3. dispcal -v -d1 -t6500 -g2.2 -qm screen     (-d: display number from `dispcal -?`; follow its prompts)
+  4. targen -v -d3 -f250 screen && dispread -v -d1 -k screen.cal screen && colprof -v -qm -aS screen
+  5. cp screen.icc to the path shown above, then: kuwai display accurate
+STEPS
+}
+
+# Adjust a screen by eye: full-screen test patterns (bin/kuwai-calibrate) in
+# mpv at 1:1 pixels, nothing altering them (no deband, scripts or scaling),
+# under the accurate display preset; the preset you had comes back after.
+display_calibrate() {
+    live || { echo "kuwai: calibrate needs the running desktop" >&2; return 1; }
+    local mon w h cache prev conf
+    mon=${1:-$(hyprctl -j monitors | jq -r '.[] | select(.focused) | .name')}
+    read -r w h <<<"$(hyprctl -j monitors | jq -r --arg n "$mon" '.[] | select(.name == $n) | "\(.width) \(.height)"')"
+    [ -n "${w:-}" ] || { echo "kuwai: no screen '$mon' (try: $(hyprctl -j monitors | jq -r '[.[].name] | join(" ")'))" >&2; return 2; }
+    cache="${XDG_CACHE_HOME:-$HOME/.cache}/kuwai/calibration/${w}x${h}"
+    [ -s "$cache/08-white-point.png" ] || "$ROOT/bin/kuwai-calibrate" "$cache" "$w" "$h" >/dev/null || return 1
+    prev=$(lua 'return kuwai.display()')
+    [ "$prev" = accurate ] || hyprctl eval "kuwai.display('accurate')" >/dev/null
+    conf=$(mktemp --suffix=.conf)
+    printf '%s\n' 'RIGHT playlist-next' 'SPACE playlist-next' 'ENTER playlist-next' 'LEFT playlist-prev' \
+        'BS playlist-prev' 'q quit' 'ESC quit' >"$conf"
+    echo "Calibrating $mon (${w}x${h}): → next, ← back, q done. Adjust the monitor's own menu as each pattern says."
+    mpv --no-config --vo=gpu-next --target-colorspace-hint=auto --target-colorspace-hint-mode=source \
+        --load-scripts=no --osc=no --osd-level=0 --no-input-default-bindings --input-conf="$conf" \
+        --image-display-duration=inf --loop-playlist=inf --video-unscaled=yes --deband=no \
+        --fs --fs-screen-name="$mon" --screen-name="$mon" --title=kuwai-calibrate \
+        "$cache"/*.png >/dev/null 2>&1
+    rm -f -- "$conf"
+    [ "$prev" = accurate ] || hyprctl eval "kuwai.display('$prev')" >/dev/null
+    echo "Done; display preset back to $prev."
+}
+
 cmd_display() {
     # Display presets (hypr/kuwai/display.lua): what the screens are for right now.
     local all="everyday accurate movie gaming battery" m=${1:-}
     case $m in
         "") if live; then lua 'return kuwai.display()'; echo; else c=$(state_get display); echo "${c:-everyday}"; fi; return ;;
+        calibrate) shift; display_calibrate "$@"; return ;;
+        profile) display_profile; return ;;
         list) printf '%s\n' \
             "everyday  configured refresh rates, Night Shift on its schedule" \
             "accurate  Night Shift held off, strict colour management" \
