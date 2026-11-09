@@ -63,7 +63,10 @@ Item {
     // notch hugs "time · marks" (a reserved empty side read as uneven).
     readonly property real miniL: miniLead > 0 ? miniLead + 12 : 0
     readonly property real miniR: rightGroup.implicitWidth > 0 ? rightGroup.implicitWidth + 12 : 0
-    readonly property bool miniBoth: miniL > 0 && miniR > 0
+    // Paused music puts a small cover on the left and T3 plus the pause
+    // mark on the right. Mirroring the wider side reserved that width as
+    // empty black before the cover. The two sides keep their own widths.
+    readonly property bool miniBoth: miniL > 0 && miniR > 0 && !musicSides
     readonly property real miniLeft: miniBoth ? Math.max(miniL, miniR) : miniL
     readonly property real miniRight: miniBoth ? Math.max(miniL, miniR) : miniR
     readonly property real miniCore: clock.width + (soonText ? soonLabel.implicitWidth + 12 : 0)

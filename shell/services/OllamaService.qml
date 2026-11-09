@@ -771,11 +771,14 @@ function onPanelClosed() {
         }
     }
 
-    // The chat's sandbox folder on this machine (bin/rice_sandbox.py: workspace()).
+    // The chat's sandbox folder. Same root and slug as bin/rice_sandbox.py
+    // (host_root, chat_slug): RICE_SANDBOX_DIR overrides the root, and leading
+    // dots are stripped so an id cannot land on ".", ".." or ".home".
     function sandboxDir(chatId) {
-        const base = (Quickshell.env("XDG_DATA_HOME") || Quickshell.env("HOME") + "/.local/share") + "/rice/sandbox/";
-        const slug = String(chatId || root.activeSessionId || "").replace(/[^A-Za-z0-9_.-]/g, "").slice(0, 64) || "scratch";
-        return base + slug;
+        const xdg = Quickshell.env("XDG_DATA_HOME") || (Quickshell.env("HOME") + "/.local/share");
+        const base = (Quickshell.env("RICE_SANDBOX_DIR") || (xdg + "/rice/sandbox")).replace(/\/+$/, "");
+        const slug = String(chatId || root.activeSessionId || "").replace(/[^A-Za-z0-9_.-]/g, "").replace(/^\.+/, "").slice(0, 64) || "scratch";
+        return base + "/" + slug;
     }
 
 // ── Attachments: files (text, code, PDF) and images ───────────────
@@ -1107,7 +1110,8 @@ function onPanelClosed() {
 
     Process {
         id: renderProc
-        command: [Paths.bin + "/rice-render", "--serve"]
+        // Dies with the shell. A kill -9 otherwise leaves the renderer behind.
+        command: ["setpriv", "--pdeathsig", "KILL", "--", Paths.bin + "/rice-render", "--serve"]
         stdinEnabled: true
         running: true
         stdout: SplitParser {

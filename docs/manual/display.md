@@ -28,9 +28,12 @@ blank the screen each time.
 
 ## HDR
 
-Leave the monitor's own HDR setting on **Auto**. Hyprland (`render.cm_auto_hdr`)
-switches a screen to HDR when HDR video or a game goes fullscreen and back
-after; ordinary video stays SDR. The notch says **HDR** when it happens.
+Leave the monitor's own HDR setting on **Auto**. Everyday, accurate and
+battery keep the screen on the sRGB picture from `monitors.lua`: a browser
+fullscreen that advertises HDR must not modeset the panel (that flash is
+what made colours and typing jump). Movie and gaming turn
+`render.cm_auto_hdr` on, so a real HDR film or game can switch the screen
+and switch it back. The notch says **HDR** when it happens.
 
 mpv must tag its output with the source's colours, not the screen's:
 `target-colorspace-hint-mode=source` in `mpv.conf`. Without it (mpv > 0.40's

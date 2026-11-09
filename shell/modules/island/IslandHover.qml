@@ -407,43 +407,25 @@ Item {
             width: 1; height: 28
             color: Theme.cardEdge
         }
-        // Every account gets a ring pair (outer: the session window, inner:
-        // the weekly one, what's left in the agent's colour, red when out),
-        // three at a time. More than three take turns every 6 s, evenly
-        // (pages of three, Claude first), crossfading; resting the pointer
-        // on them holds the page. Click: that agent's tab in Usage.
+        // Every account, all at once (outer ring: the session window, inner:
+        // the weekly one). Paging hid whichever three were not on the current
+        // page; the Usage panel already lists every one, and so does this row.
+        // Click: that agent's tab in Usage.
         Item {
             id: agents
             visible: hover.agentsHere
             readonly property var all: Limits.perAccount
-            readonly property int pages: Math.max(1, Math.ceil(all.length / 3))
-            property int page: 0
-            readonly property var shown: all.slice(page * 3, page * 3 + 3)
             // Each column the same width (a ring and its name under it): the name
             // used to widen its ring's StatRing, centring the outer ring on
             // "Antigravity 1" while the inner ring and logo stayed put.
             readonly property int col: Theme.statRingSize + 26
-            width: 3 * col + 2 * 6
+            width: Math.max(col, all.length * col + Math.max(0, all.length - 1) * 6)
             height: Theme.statRingSize + 18
-            HoverHandler { id: agentsHover }
-            Timer {
-                interval: 6000; repeat: true
-                running: agents.pages > 1 && hover.visible && !agentsHover.hovered && !Theme.reduceMotion
-                onTriggered: turn.start()
-            }
-            onPagesChanged: if (page >= pages) page = 0
-            SequentialAnimation {
-                id: turn
-                NumberAnimation { target: agentsRow; property: "opacity"; to: 0; duration: Theme.exitMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
-                ScriptAction { script: agents.page = (agents.page + 1) % agents.pages }
-                NumberAnimation { target: agentsRow; property: "opacity"; to: 1; duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
-            }
             Row {
                 id: agentsRow
                 spacing: 6
-                anchors.horizontalCenter: parent.horizontalCenter
                 Repeater {
-                    model: ScriptModel { values: agents.shown; objectProp: "id" }
+                    model: ScriptModel { values: agents.all; objectProp: "id" }
                     delegate: Item {
                         id: ag
                         required property var modelData
@@ -498,21 +480,6 @@ Item {
                             below: true
                         }
                         TapHandler { onTapped: { Limits.usageTab = ag.e.pid; Island.open("usage", hover.bar.screenName, "pointer", "island"); } }
-                    }
-                }
-            }
-            // Which page, when there's more than one: small dots under the rings.
-            Row {
-                visible: agents.pages > 1
-                anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: -8 }
-                spacing: 4
-                Repeater {
-                    model: agents.pages
-                    Rectangle {
-                        required property int index
-                        width: 4; height: 4; radius: 2
-                        color: index === agents.page ? Theme.textSecondary : Theme.platterDim
-                        Behavior on color { ColorAnimation { duration: Theme.colorMs } }
                     }
                 }
             }

@@ -100,9 +100,15 @@ print(("[kuwai] gpu: mode=%s primary=%s nvidia_outputs=%s"):format(
 -- Hardware cursors: Hyprland's auto (2) already avoids them while tearing and
 -- uses a CPU buffer on NVIDIA. The old forced-off setting cost a software
 -- cursor on every frame and isn't needed on the open 5xx/6xx drivers.
+--
+-- Anti-flicker is the other pre-explicit-sync workaround. On 555+ it drops
+-- frames: a commit that lands while a page-flip is in flight is discarded,
+-- and the new pixels stay invisible until something else redraws the whole
+-- window. Typed text in Electron shows up when the window is unfocused,
+-- because that redraw is the something else.
 K.config({
 	cursor = { no_hardware_cursors = 2 },
-	opengl = { nvidia_anti_flicker = true },
+	opengl = { nvidia_anti_flicker = false },
 })
 
 return G

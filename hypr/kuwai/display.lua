@@ -176,9 +176,15 @@ function D.apply()
 	local p = D.current()
 	local ok, err = pcall(function()
 		apply_screens(p)
+		-- Movie and gaming are the presets where a modeset is the point
+		-- (film cadence, a game's own HDR). Everyday, accurate and battery
+		-- stay on the picture monitors.lua asked for.
+		local auto_hdr = (p == "movie" or p == "gaming") and 1 or 0
 		if p == "accurate" then
-			K.config({ render = { non_shader_cm = 0, direct_scanout = 0 } })
+			K.config({ render = { non_shader_cm = 0, direct_scanout = 0, cm_auto_hdr = 0 } })
 			hl.exec_cmd(K.night_off)
+		else
+			K.config({ render = { cm_auto_hdr = auto_hdr } })
 		end
 	end)
 	if not ok then

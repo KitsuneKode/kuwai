@@ -78,6 +78,10 @@ Item {
         Item {
             visible: mark.ring !== "" && mark.value !== ""
             anchors.verticalCenter: parent.verticalCenter
+            // Same optical drop as the wordmark beside it. The ring used to
+            // stay on the row's centre while "T3" sat 1 px lower, so the
+            // digit read high.
+            anchors.verticalCenterOffset: 1
             // A longer value ("15h") stretches a solid ring into a pill.
             width: mark.ring === "solid" ? Math.max(18, ringValue.implicitWidth + 8) : 18
             height: 18

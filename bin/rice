@@ -209,10 +209,10 @@ case ${1:-} in
             fi
         fi
         # A helper that streams for the shell's whole life (subscribe, monitor,
-        # watch, tail -F, a while-loop) must die with it: without pdeathsig
-        # every restart left one behind (127 of them and 78 polling loops,
-        # 1.1 GB, found 2026-11-07).
-        leak=$(git -C "$dev" grep -nE 'command: *\[.*("subscribe"|"monitor"|"--watch"|"watch"|"-F"|while :)' "$head" -- 'shell/*.qml' | grep -v pdeathsig | grep -v '"hyprctl", "monitors"')
+        # watch, tail -F, a while-loop, rice-render --serve) must die with it:
+        # without pdeathsig every restart left one behind (127 of them and 78
+        # polling loops, 1.1 GB, found 2026-11-07).
+        leak=$(git -C "$dev" grep -nE 'command: *\[.*("subscribe"|"monitor"|"--watch"|"watch"|"-F"|"--serve"|while :)' "$head" -- 'shell/*.qml' | grep -v pdeathsig | grep -v '"hyprctl", "monitors"')
         if [ -n "$leak" ]; then
             printf "rice: these helpers would outlive a restart (start them with setpriv --pdeathsig KILL --); stable left as it is:\n%s\n" "$leak" >&2
             exit 1

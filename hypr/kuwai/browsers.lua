@@ -91,9 +91,14 @@ pcall(hl.window_rule, {
 	center = true,
 	size = "960 600",
 })
+-- The glide spring resizes a window on every frame of a fullscreen toggle.
+-- A browser lays the page out again at each size, and it is already playing
+-- its own toolbar animation, so the two run together and the transition
+-- stutters. Snap the compositor's geometry. The browser's animation is the
+-- one that should be seen. Popups above already opt out on their own.
 pcall(hl.window_rule, {
-	name = "browser-float-noanim",
-	match = { class = "^(zen|google-chrome|brave-browser|chromium)$", float = true },
+	name = "browser-no-geometry-anim",
+	match = { class = "^(zen|google-chrome|brave-browser|chromium|firefox|floorp)$" },
 	no_anim = true,
 })
 

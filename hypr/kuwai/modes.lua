@@ -28,9 +28,17 @@ M.describe = {
 
 local apply = {}
 
+-- `opaque` only tells the renderer to ignore per-pixel alpha. user.lua's
+-- opacity rules (Chrome at 0.8, Zen at 0.9, …) still multiply the whole
+-- window, so a windowed browser stays a translucent pane: page animations,
+-- text and video blend with whatever is behind them. Fullscreen uses
+-- fullscreen_opacity and looks solid. The override is what makes this mode
+-- actually solid. A reload drops the rule when you leave the mode.
+local SOLID = "1 override 1 override 1 override"
+
 function apply.focus()
 	K.config({ decoration = { active_opacity = 1, inactive_opacity = 1, fullscreen_opacity = 1 } })
-	pcall(hl.window_rule, { name = "mode-focus-opaque", match = { class = ".*" }, opaque = true })
+	pcall(hl.window_rule, { name = "mode-focus-opaque", match = { class = ".*" }, opaque = true, opacity = SOLID })
 end
 
 function apply.default() end
@@ -78,7 +86,7 @@ function apply.gaming()
 		},
 		misc = { vrr = 2 },
 	})
-	pcall(hl.window_rule, { name = "mode-gaming-opaque", match = { class = ".*" }, opaque = true })
+	pcall(hl.window_rule, { name = "mode-gaming-opaque", match = { class = ".*" }, opaque = true, opacity = SOLID })
 end
 
 function apply.battery()
@@ -91,7 +99,7 @@ function apply.battery()
 		},
 		misc = { render_unfocused_fps = 5 },
 	})
-	pcall(hl.window_rule, { name = "mode-battery-opaque", match = { class = ".*" }, opaque = true })
+	pcall(hl.window_rule, { name = "mode-battery-opaque", match = { class = ".*" }, opaque = true, opacity = SOLID })
 end
 
 M.current = K.state["mode"] or "focus"

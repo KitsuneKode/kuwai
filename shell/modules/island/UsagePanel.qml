@@ -461,11 +461,5 @@ FocusScope {
         ScrollHint { flickable: flick; anchors { right: parent.right; top: parent.top; bottom: parent.bottom; rightMargin: -10 } }
         }
 
-        // The way on: every agent and account, in the center's Agents tab.
-        PillButton {
-            width: parent.width
-            text: "All agents"
-            onClicked: { Island.close(); Notifs.toggleCenter("agents", "pointer", Island.screen); }
-        }
     }
 }

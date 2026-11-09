@@ -47,7 +47,12 @@ K.config({
 	render = {
 		direct_scanout = 2, -- auto: zero-copy fullscreen games/video
 		cm_enabled = true,
-		cm_auto_hdr = 1, -- fullscreen HDR content switches HDR-capable screens
+		-- Off until a display preset opts in (kuwai.display). A fullscreen
+		-- surface that merely advertises HDR otherwise modesets the Acer
+		-- into wide gamut and back: a black flash, wrong greens, and a
+		-- stalled frame for every window on that screen. On NVIDIA that
+		-- switch also lands while 10-bit is not the mode Hyprland trusts.
+		cm_auto_hdr = 0,
 		send_content_type = true,
 	},
 
