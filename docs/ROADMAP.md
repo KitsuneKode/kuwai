@@ -95,9 +95,9 @@ Order matters: each slice should pass `rice doctor` and `rice-check` before the 
   like macOS System Settings: Appearance · Island · Notifications ·
   Displays · Sound · Power & Idle · Wallpaper & Screensaver · Keyboard ·
   Privacy & Security · Updates · About.
-- [x] Search across settings (from the launcher, Spotlight-style); [ ] "Reset to default" per row; changes apply
+- [x] Search across settings (from the launcher, Spotlight-style); [x] "Reset to default" per row; changes apply
   live.
-- [ ] Theme switching in the shell (wallbash colours, GTK/Qt/kitty
+- [x] Theme switching in the shell (ThemePanel, Super+Shift+T/W; HyDE's engine still does the applying) (wallbash colours, GTK/Qt/kitty
   themes) so HyDE's rofi menus and scripts can go.
 
 ## Phase 4: performance and memory (target: Performance 8)
@@ -109,7 +109,7 @@ Order matters: each slice should pass `rice doctor` and `rice-check` before the 
 - [ ] **AI model offload** (*ai*): unload `llama-server` after N idle
   minutes, load on first use; never run it on battery unless asked. The
   single biggest RAM/heat win (14 GB, ~3 cores).
-- [ ] Screensaver: 10 start/stop cycles with no growth; Dusk under 5 %
+- [~] Screensaver (`rice-check --soak`, run it as you step away): 10 start/stop cycles with no growth; Dusk under 5 %
   CPU.
 - [x] Kittymux `agents.json` (kittymux plan 014) replaces the 20 s poll.
 
@@ -157,9 +157,16 @@ Order matters: each slice should pass `rice doctor` and `rice-check` before the 
   `$HOME/Projects`); a VM test.
 - [ ] A name and a mascot-free identity: the island is the hook.
 
+## Since (2026-11-10)
+
+- [x] Alarms, reminders and finished timers grow out of the island (AlarmCard,
+  docs/DESIGN.md has the recording); locked, the lock island answers them.
+- [x] `rice backup`: daily and before every promote, diff and restore.
+- [x] ↺ reset-to-default on every setting row; Increase contrast; Text size.
+
 ## Areas not to forget
 
-- **Accessibility**: high-contrast theme, large text, every control
+- **Accessibility**: high-contrast theme and large text (done),  every control
   reachable by keyboard and named for screen readers, reduced transparency.
 - **Multi-monitor**: per-screen island style, which screen gets toasts,
   hot-plug while locked/asleep, mixed scales.

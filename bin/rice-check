@@ -3,6 +3,9 @@
 #
 #   rice-check            check the shell running from this copy (or stable)
 #   rice-check --quiet    only failures
+#   rice-check --soak     the screensaver 10 times (start, 10 s, stop): memory must not
+#                         grow more than 25 MB, and it must stay under 5 % CPU while it
+#                         plays. It takes the screen and keyboard: run it as you step away.
 #   rice-check --shots    also put the island through its states (test hook) and save
 #                         the notch of every screen to ~/.cache/rice/shots/<commit>/
 #                         (no keyboard-grabbing panel is ever opened)
@@ -21,8 +24,8 @@
 #              (bin/rice-tokens; the baseline only goes down)
 # Exit 0 = all good, 1 = something failed (listed).
 set -u
-QUIET=0; SHOTS=0
-for a in "$@"; do case $a in --quiet) QUIET=1 ;; --shots) SHOTS=1 ;; esac; done
+QUIET=0; SHOTS=0; SOAK=0
+for a in "$@"; do case $a in --quiet) QUIET=1 ;; --shots) SHOTS=1 ;; --soak) SOAK=1 ;; esac; done
 BUDGET=${RICE_MEM_BUDGET_MB:-450}
 fail=0
 ok()   { [ $QUIET = 1 ] || printf '  ✓ %s\n' "$1"; }
@@ -87,6 +90,26 @@ for f in $(cd "$root/shell" && find modules components -name '*.qml' | sort); do
       $f: $(printf '%s' "$r" | head -1 | cut -c1-160)"
 done
 if [ -z "$broken" ]; then ok "compile: every module and component"; else bad "compile:$broken"; fi
+
+# soak (the screensaver, ten times)
+if [ $SOAK = 1 ]; then
+    [ $QUIET = 1 ] || echo "  soak: the screensaver 10 × (start, 10 s, stop), ~2.5 min; any key ends it early"
+    pss() { awk '/Pss_Anon/ {print int($2/1024)}' /proc/$pid/smaps_rollup; }
+    before=$(pss); worst=0; ended=0
+    for i in $(seq 1 10); do
+        "$root/bin/rice" screensaver start >/dev/null 2>&1
+        sleep 2
+        t0=$(awk '{print $14+$15}' /proc/$pid/stat); sleep 6; t1=$(awk '{print $14+$15}' /proc/$pid/stat)
+        c=$(( (t1 - t0) * 100 / $(getconf CLK_TCK) / 6 )); [ "$c" -gt "$worst" ] && worst=$c
+        sleep 2
+        "$root/bin/rice" screensaver stop >/dev/null 2>&1
+        sleep 3
+    done
+    sleep 10   # let it settle and free what it let go of
+    after=$(pss); grew=$((after - before))
+    [ "$grew" -le 25 ] && ok "soak: memory ${before} → ${after} MB over 10 runs" || bad "soak: memory grew ${grew} MB over 10 runs (${before} → ${after})"
+    [ "$worst" -lt 5 ] && ok "soak: the shell at ${worst}% CPU at most while it played" || bad "soak: the shell at ${worst}% CPU while it played (want < 5; the decoder is mpv's own)"
+fi
 
 # shots
 # tokens: hand-typed sizes, durations and colours may only go down (bin/rice-tokens)
