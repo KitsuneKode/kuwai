@@ -243,14 +243,17 @@ Column {
                     id: swipe
                     target: face
                     yAxis.enabled: false
-                    property real t0: 0
+                    // The flick is the pointer's speed at release (components/Fling),
+                    // not averaged over the drag, and only counts the way it's going.
                     onActiveChanged: {
-                        if (active) { t0 = Date.now(); return; }
-                        const v = Math.abs(face.x) / Math.max(1, Date.now() - t0);
-                        if (Math.abs(face.x) > 100 || v > 0.6) { flingTo.to = face.x < 0 ? -card.width : card.width; fling.start(); }
+                        if (active) { back.stop(); speed.reset(); return; }
+                        const v = speed.vx(), side = face.x < 0 ? -1 : 1;
+                        if (Math.abs(face.x) > 100 && v * side > -Theme.swipeFlick || v * side > Theme.swipeFlick) { flingTo.to = side * card.width; fling.start(); }
                         else back.start();
                     }
+                    onTranslationChanged: speed.add(translation.x, 0)
                 }
+                Fling { id: speed }
                 NumberAnimation { id: back; target: face; property: "x"; to: 0; duration: Theme.enterMs; easing.type: Easing.OutBack; easing.overshoot: 1.2 }
                 SequentialAnimation {
                     id: fling

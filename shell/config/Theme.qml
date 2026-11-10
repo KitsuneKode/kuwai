@@ -361,7 +361,8 @@ Singleton {
     readonly property var easeCss: [0.25, 0.1, 0.25, 1, 1, 1]     // CSS `ease`
     readonly property var easeOutCss: [0, 0, 0.58, 1, 1, 1]       // CSS `ease-out`
     readonly property int swipeThreshold: 45     // px, or…
-    readonly property real swipeVelocity: 0.11   // px/ms averaged over the gesture
+    readonly property real swipeVelocity: 0.11   // px/ms averaged over the gesture (Sonner's; the lock screen's own check)
+    readonly property real swipeFlick: 0.5       // px/ms at release (components/Fling): a flick dismisses on its own
     readonly property int swipeOutMs: 200
     readonly property int unmountMs: 200         // TIME_BEFORE_UNMOUNT
     // Movement the wrong way is damped, not blocked, so it feels elastic.

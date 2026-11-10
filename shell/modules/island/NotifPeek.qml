@@ -29,10 +29,18 @@ Item {
         : item.statusTone === "critical" ? Theme.red : Theme.textSecondary
 
     property real pop: 1
-    property real swipeY: 0
-    property real swipeFade: 1
+    // The pointer drives it 1:1 while down (snap per move); on release a
+    // spring seeded with the pointer's speed (Fling) takes it home or up and
+    // out, and can be caught again mid-flight. The fade is the way out.
+    Spring { id: sy; tier: Theme.springModerate; epsilon: 0.5; onSettledChanged: peek.landed() }
+    Fling { id: fling }
+    readonly property real swipeY: sy.value
     property bool swiping: false
     property bool swipingOut: false
+    property real outFrom: 0
+    readonly property real outTo: -height - 40
+    readonly property real swipeFade: !swipingOut ? 1 : Math.max(0, Math.min(1, 1 - (outFrom - swipeY) / Math.max(1, outFrom - outTo)))
+    function landed() { if (swipingOut && sy.settled) Notifs.dismissPeekItem(peek.item); }
 
     transform: Translate { y: swipeY }
 
@@ -42,33 +50,27 @@ Item {
     // already carries the arrival). Ease-out, from 0.94.
     NumberAnimation { id: popIn; target: peek; property: "pop"; from: 0.94; to: 1; duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
 
-    ParallelAnimation {
-        id: swipeHome
-        NumberAnimation { target: peek; property: "swipeY"; to: 0; duration: Theme.stackMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeCss }
-        NumberAnimation { target: peek; property: "swipeFade"; to: 1; duration: Theme.stackMs }
-    }
-    ParallelAnimation {
-        id: swipeOut
-        NumberAnimation { target: peek; property: "swipeY"; to: -peek.height - 40; duration: Theme.swipeOutMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOutCss }
-        NumberAnimation { target: peek; property: "swipeFade"; to: 0; duration: Theme.swipeOutMs }
-        onFinished: Notifs.dismissPeekItem(peek.item)
-    }
-
     DragHandler {
         target: null
         dragThreshold: 4
-        property real swipeStart: 0
+        property real grab: 0
         onActiveChanged: {
             if (active) {
-                swipeHome.stop();
+                peek.swipingOut = false;        // caught on its way out: it stays
+                grab = sy.value;
+                sy.snap(sy.value);
+                fling.reset();
                 peek.swiping = true;
-                swipeStart = Date.now();
                 return;
             }
             peek.swiping = false;
-            if (peek.swipeY < -Theme.swipeThreshold || (peek.swipeY < -20 && Math.abs(peek.swipeY) / Math.max(1, Date.now() - swipeStart) > Theme.swipeVelocity)) {
+            const up = -fling.vy();             // px/ms, + is up (out)
+            if (peek.swipeY < 0 && up > -Theme.swipeFlick && (peek.swipeY < -Theme.swipeThreshold || up > Theme.swipeFlick)) {
                 peek.swipingOut = true;
-                swipeOut.start();
+                peek.outFrom = sy.value;
+                sy.velocity = -Math.max(0, up) * 1000;
+                sy.target = peek.outTo;
+                peek.landed();                  // reduced motion: already there
             } else {
                 // Pulled down (it rubber-bands), in two steps like iOS: the
                 // first opens the preview (more of it, Reply); pulled again,
@@ -80,11 +82,17 @@ Item {
                     if (Notifs.peekExpanded || rawDown > 140) Notifs.readInIsland(peek.item);
                     else Notifs.expandPeek();
                 }
-                swipeHome.start();
+                sy.velocity = peek.swipeY < 0 ? fling.vy() * 1000 : 0;   // keeps the pointer's speed; the damped pull gets no throw
+                sy.target = 0;
             }
         }
         property real rawDown: 0
-        onTranslationChanged: { rawDown = Math.max(0, translation.y); peek.swipeY = translation.y < 0 ? translation.y : Theme.swipeDamp(translation.y); }
+        onTranslationChanged: {
+            fling.add(translation.x, translation.y);
+            const v = grab + translation.y;
+            rawDown = Math.max(0, translation.y);
+            sy.snap(v < 0 ? v : Theme.swipeDamp(v));
+        }
     }
 
     HoverHandler { onHoveredChanged: Notifs.peekHeld = hovered }

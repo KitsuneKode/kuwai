@@ -143,13 +143,28 @@ Item {
     }
 
     // ── Swipe ────────────────────────────────────────────────────────────
-    property real swipeX: 0
-    property real swipeY: 0
-    property real swipeFade: 1
+    // While the pointer is down the card is the pointer (each move snaps the
+    // springs: no easing, no lag). Let go and a spring finishes it, seeded
+    // with the pointer's speed (Fling), home or out; grabbing it again
+    // mid-flight catches it where it is. The fade is the way out itself, so
+    // a caught exit is never left half-faded.
+    Spring { id: sx; tier: Theme.springModerate; epsilon: 0.5; onSettledChanged: card.swipeLanded() }
+    Spring { id: sy; tier: Theme.springModerate; epsilon: 0.5; onSettledChanged: card.swipeLanded() }
+    Fling { id: fling }
+    readonly property real swipeX: sx.value
+    readonly property real swipeY: sy.value
     property bool swiping: false
     property bool swipingOut: false
     property string swipeAxis: ""
-    property real swipeStart: 0
+    property real grabX: 0
+    property real grabY: 0
+    property real outFrom: 0
+    property real outTo: 0
+    readonly property real swipeFade: !swipingOut ? 1
+        : Math.max(0, Math.min(1, 1 - Math.abs((swipeAxis === "x" ? swipeX : swipeY) - outFrom) / Math.max(1, Math.abs(outTo - outFrom))))
+    function swipeLanded() {
+        if (swipingOut && sx.settled && sy.settled) Notifs.drop(card.item);
+    }
 
     transform: [
         Translate { x: card.swipeX; y: card.swipeY },
@@ -163,57 +178,51 @@ Item {
         }
     ]
 
-    ParallelAnimation {
-        id: swipeHome
-        NumberAnimation { target: card; property: "swipeX"; to: 0; duration: Theme.stackMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeCss }
-        NumberAnimation { target: card; property: "swipeY"; to: 0; duration: Theme.stackMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeCss }
-    }
-    ParallelAnimation {
-        id: swipeOut
-        property real toX: 0
-        property real toY: 0
-        NumberAnimation { target: card; property: "swipeX"; to: swipeOut.toX; duration: Theme.swipeOutMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOutCss }
-        NumberAnimation { target: card; property: "swipeY"; to: swipeOut.toY; duration: Theme.swipeOutMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOutCss }
-        NumberAnimation { target: card; property: "swipeFade"; to: 0; duration: Theme.swipeOutMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOutCss }
-        onFinished: Notifs.drop(card.item)
-    }
-
     DragHandler {
         id: drag
         target: null
         dragThreshold: 2
         onActiveChanged: {
             if (active) {
-                swipeHome.stop();
+                // Caught mid-flight (going home, or on its way out): it stays
+                // where it is and follows the pointer from there.
+                card.swipingOut = false;
+                card.grabX = sx.value; card.grabY = sy.value;
+                sx.snap(sx.value); sy.snap(sy.value);
+                fling.reset();
                 card.swiping = true;
-                card.swipeAxis = "";
-                card.swipeStart = Date.now();
+                card.swipeAxis = card.grabX !== 0 ? "x" : card.grabY !== 0 ? "y" : "";
                 card.stack.interacting = true;
                 return;
             }
             card.stack.interacting = false;
             card.swiping = false;
             const x = card.swipeAxis === "x";
-            const amount = x ? card.swipeX : card.swipeY;
-            const velocity = Math.abs(amount) / Math.max(1, Date.now() - card.swipeStart);
-            // Damped directions can still be flicked past the velocity check;
-            // only the allowed ones (right, up: away from the corner) dismiss.
-            const allowed = x ? card.swipeX > 0 : card.swipeY < 0;
-            if (card.swipeAxis && allowed && (Math.abs(amount) >= Theme.swipeThreshold || velocity > Theme.swipeVelocity)) {
+            const s = x ? sx : sy;
+            const away = x ? 1 : -1;                         // right, up: away from the corner
+            const amount = s.value * away;                   // how far out
+            const flick = (x ? fling.vx() : fling.vy()) * away;   // px/ms, + is outward
+            // Out past the distance, or flicked outward; a flick back home
+            // keeps it even past the distance (it changed its mind).
+            if (card.swipeAxis && amount > 0 && flick > -Theme.swipeFlick && (amount >= Theme.swipeThreshold || flick > Theme.swipeFlick)) {
                 card.swipingOut = true;
-                swipeOut.toX = x ? card.swipeX + card.width : 0;
-                swipeOut.toY = x ? 0 : card.swipeY - card.height;
-                swipeOut.start();
+                card.outFrom = s.value;
+                card.outTo = s.value + away * (x ? card.width : card.height);
+                s.velocity = Math.max(0, flick) * away * 1000;
+                s.target = card.outTo;
             } else {
-                swipeHome.start();
+                s.velocity = amount > 0 ? flick * away * 1000 : 0;   // the damped side gets no throw
+                s.target = 0;
             }
+            card.swipeLanded();                              // reduced motion: already there
         }
         onTranslationChanged: {
             const dx = translation.x, dy = translation.y;
+            fling.add(dx, dy);
             if (!card.swipeAxis && (Math.abs(dx) > 1 || Math.abs(dy) > 1))
                 card.swipeAxis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
-            if (card.swipeAxis === "x") card.swipeX = dx > 0 ? dx : Theme.swipeDamp(dx);
-            else if (card.swipeAxis === "y") card.swipeY = dy < 0 ? dy : Theme.swipeDamp(dy);
+            if (card.swipeAxis === "x") { const v = card.grabX + dx; sx.snap(v > 0 ? v : Theme.swipeDamp(v)); }
+            else if (card.swipeAxis === "y") { const v = card.grabY + dy; sy.snap(v < 0 ? v : Theme.swipeDamp(v)); }
         }
     }
 
