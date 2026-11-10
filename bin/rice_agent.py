@@ -1002,8 +1002,36 @@ def _files(fn, *a, **kw):
         raise ToolError(f"{e.__class__.__name__}: {e}")
 
 
+def _jail_target(args, key="path", default=""):
+    """Sandbox paths for reading/listing, classified like writes (never by following links):
+    (full, inside, parts). A sandbox path whose folders include a link is refused, so a link
+    the container planted can't point a read at your files (red-team finding 4)."""
+    a = dict(args)
+    a["path"] = args.get(key) or default or "."
+    if a["path"] in (".", "./"):
+        ws = rice_sandbox.workspace(CHAT).resolve()
+        return ws, True, []
+    full, inside, parts = _classify(a)
+    if inside:
+        cur = rice_sandbox.workspace(CHAT)
+        for part in parts:
+            cur = cur / part
+            if cur.is_symlink():
+                raise ToolError(f"{'/'.join(parts)} goes through a link in the sandbox; it isn't followed")
+    return full, inside, parts
+
+
 def tool_read(args):
-    full, _ = _path(args)
+    full, inside, parts = _jail_target(args)
+    if inside:
+        try:
+            text = rice_sandbox.read_file(CHAT, parts, limit=4_000_000)
+        except rice_sandbox.SandboxError as e:
+            raise ToolError(str(e))
+        if text is None:
+            raise ToolError(f"No such file in the sandbox: {'/'.join(parts)}")
+        return _files(rice_files.read, full, args.get("offset"), args.get("limit"),
+                      raw=text.encode("utf-8"), name="/".join(parts))
     return _files(rice_files.read, full, args.get("offset"), args.get("limit"))
 
 
@@ -1118,17 +1146,17 @@ def tool_edit(args):
 
 
 def tool_ls(args):
-    full, _ = _path(args)
+    full, _, _ = _jail_target(args)
     return _files(rice_files.ls, full)
 
 
 def tool_find(args):
-    full, _ = _path(args, default=str(rice_files.HOME))
+    full, _, _ = _jail_target(args, default=str(rice_files.HOME))
     return _files(rice_files.find, str(args.get("pattern") or "*"), full)
 
 
 def tool_grep(args):
-    full, _ = _path(args, default=str(rice_files.HOME))
+    full, _, _ = _jail_target(args, default=str(rice_files.HOME))
     return _files(rice_files.grep, str(args.get("pattern") or ""), full, args.get("glob"),
                   bool(args.get("ignoreCase")), False)
 
@@ -1430,7 +1458,9 @@ TOOLS = {
                    {"command": {"type": "string", "description": "The bash command"},
                     "cwd": {"type": "string", "description": "Folder to run in (default ~)"}}, ["command"]),
         item="command_execution", title=lambda a: str(a.get("command", ""))[:80],
-        approve=lambda a: ("command", "Run a command", str(a.get("command", ""))), run=tool_run_command),
+        # The folder is part of what you approve: `cat id_ed25519` in ~/.ssh isn't harmless (red-team 10).
+        approve=lambda a: ("command", "Run a command" + (f" in {a.get('cwd')}" if a.get("cwd") else ""),
+                           str(a.get("command", ""))), run=tool_run_command),
     "launch_app": dict(
         schema=_fn("launch_app", "Open a desktop app by name.",
                    {"name": {"type": "string", "description": "App name, e.g. Firefox"}}, ["name"]),
@@ -1480,7 +1510,8 @@ ROUTES = [
 # memory; it reads but never changes anything. Agent mode: everything, files and the
 # sandbox always on hand.
 CHAT_SAFE = {"web_search", "web_fetch", "shop_search", "active_window", "system_info", "read_clipboard",
-             "read_selection", "remember", "ask_user", "read", "ls", "find", "grep", "system_audit"}
+             "read_selection", "ask_user", "read", "ls", "find", "grep", "system_audit"}
+# (remember isn't here: in Chat a page saying "remember this" could plant an instruction for later chats.)
 
 
 def route_tools(convo, attachments=False, mode="agent"):

@@ -93,16 +93,19 @@ def show(full):
 
 # ── read ─────────────────────────────────────────────────────────────────
 
-def read(full, offset=None, limit=None):
-    check_readable(full)
-    if full.is_dir():
-        raise FileError(f"{show(full)} is a folder; use ls")
-    if not full.is_file():
-        raise FileError(f"No such file: {show(full)}")
-    with open(full, "rb") as f:
-        raw = f.read(4_000_000)
+def read(full, offset=None, limit=None, raw=None, name=None):
+    """A file's lines with pi's notes. `raw` is given when the caller already read the bytes
+    safely (sandbox files: through the no-follow walker)."""
+    if raw is None:
+        check_readable(full)
+        if full.is_dir():
+            raise FileError(f"{show(full)} is a folder; use ls")
+        if not full.is_file():
+            raise FileError(f"No such file: {show(full)}")
+        with open(full, "rb") as f:
+            raw = f.read(4_000_000)
     if b"\0" in raw[:8192]:
-        raise FileError(f"{show(full)} is a binary file")
+        raise FileError(f"{name or show(full)} is a binary file")
     lines = raw.decode("utf-8", errors="replace").split("\n")
     total = len(lines)
     start = max(1, int(offset or 1))
@@ -231,10 +234,13 @@ def ls(full, limit=200):
 
 
 def find(pattern, full, limit=200):
+    if str(pattern).startswith("-"):
+        raise FileError("A file pattern can't start with '-'")
     check_readable(full)
     fd = shutil.which("fd") or shutil.which("fdfind")
     if fd:
-        p = subprocess.run([fd, "--glob", "--color", "never", "--max-results", str(limit + 1), pattern, str(full)],
+        # "--" first: a pattern like --follow or --exec must stay a pattern (red-team finding 7).
+        p = subprocess.run([fd, "--glob", "--color", "never", "--max-results", str(limit + 1), "--", pattern, str(full)],
                            capture_output=True, text=True, timeout=15)
         hits = [l for l in p.stdout.splitlines() if l]
     else:

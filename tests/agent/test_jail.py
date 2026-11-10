@@ -71,3 +71,36 @@ def test_symlinked_file_in_sandbox_not_followed_on_write(agent):
     with pytest.raises(a.ToolError):
         a.tool_write(args)
     assert target.read_text() == "original"
+
+
+def test_read_through_a_planted_link_is_refused(agent):
+    a, tmp = agent
+    ws = a.rice_sandbox.workspace("c1")
+    secret = tmp / "home" / ".bash_history"
+    secret.write_text("ssh-pass hunter2")
+    os.symlink(secret, ws / "notes.txt")
+    with pytest.raises(a.ToolError):
+        a.tool_read({"path": "notes.txt"})
+    os.symlink(tmp / "home", ws / "h")
+    with pytest.raises(a.ToolError):
+        a.tool_ls({"path": "h"})
+    with pytest.raises(a.ToolError):
+        a.tool_grep({"path": "h", "pattern": "hunter2"})
+
+
+def test_read_of_a_real_sandbox_file_works(agent):
+    a, _ = agent
+    ws = a.rice_sandbox.workspace("c1")
+    (ws / "ok.txt").write_text("line one\nline two\n")
+    assert a.tool_read({"path": "ok.txt"}).startswith("line one")
+
+
+def test_find_pattern_cannot_be_a_flag(agent):
+    a, _ = agent
+    with pytest.raises(a.ToolError):
+        a.tool_find({"pattern": "--follow", "path": "."})
+
+
+def test_remember_isnt_in_chat_mode():
+    import rice_agent as a
+    assert "remember" not in a.CHAT_SAFE
