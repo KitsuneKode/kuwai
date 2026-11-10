@@ -17,6 +17,11 @@ FocusScope {
     focus: true
     implicitWidth: 440
     implicitHeight: col.implicitHeight + 40
+    // The list scrolls past this height. Beside the machine (VitalsPanel)
+    // it is that column's height, so the panel ends where both do instead
+    // of the machine column standing over an empty well.
+    property real listMax: 470
+    readonly property real listTop: listWrap.y
 
     // Countdowns tick (once a minute) while this is open.
     Binding { target: Limits; property: "panelShown"; value: usage.visible }
@@ -218,12 +223,13 @@ FocusScope {
 
         // ── One card per agent ───────────────────────────────────────────
         Item {
+          id: listWrap
           width: parent.width
           height: flick.height
         Flickable {
             id: flick
             width: parent.width
-            height: Math.min(cards.implicitHeight, 470)
+            height: Math.min(cards.implicitHeight, usage.listMax)
             contentHeight: cards.implicitHeight
             clip: true
             boundsBehavior: Flickable.StopAtBounds
@@ -373,18 +379,12 @@ FocusScope {
                                         }
                                     }
                                     // The bar drains as you spend; it fills to what's left as the card comes in.
-                                    // What's left as a bucket of 20 (5 % each, the last one
-                                    // partly full): a quota reads as how many are left, not
-                                    // a length to judge. One fill front (k) runs across, so
-                                    // the segments light in turn as it passes: a wave, one
-                                    // animation, no per-segment timers.
+                                    // What's left, as one bar (it was 20 segments: a dashed row
+                                    // in every window read as noise down the whole list).
                                     Item {
                                         id: bucket
                                         width: parent.width
                                         height: 8
-                                        readonly property int n: 20
-                                        readonly property real gap: 2
-                                        readonly property real segW: (width - gap * (n - 1)) / n
                                         readonly property color ink: w.r.level === "approaching" ? Theme.orange : card.g.tint
                                         property real k: 0
                                         Component.onCompleted: k = 1
@@ -392,21 +392,15 @@ FocusScope {
                                             enabled: !Theme.reduceMotion
                                             NumberAnimation { duration: Theme.artMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
                                         }
-                                        Repeater {
-                                            model: bucket.n
+                                        Rectangle {
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            width: parent.width; height: 5; radius: 2.5
+                                            color: w.out ? Qt.alpha(Theme.red, 0.22) : Theme.track
                                             Rectangle {
-                                                required property int index
-                                                readonly property real f: Math.max(0, Math.min(1, w.leftPct * bucket.k / (100 / bucket.n) - index))
-                                                x: index * (bucket.segW + bucket.gap)
-                                                anchors.verticalCenter: parent.verticalCenter
-                                                width: bucket.segW; height: 6; radius: 1.5
-                                                color: w.out ? Qt.alpha(Theme.red, 0.22) : Theme.track
-                                                Rectangle {
-                                                    width: parent.width * parent.f; height: parent.height
-                                                    radius: parent.radius
-                                                    visible: parent.f > 0
-                                                    color: bucket.ink
-                                                }
+                                                visible: width > 0.5
+                                                width: parent.width * Math.max(0, Math.min(1, w.leftPct / 100)) * bucket.k
+                                                height: parent.height; radius: parent.radius
+                                                color: bucket.ink
                                             }
                                         }
                                         // Pace: where the bar would be if spending were even across the window.

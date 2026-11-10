@@ -28,13 +28,23 @@ Singleton {
     property var active: null
     readonly property bool playing: !!active && active.playbackState === MprisPlaybackState.Playing
 
+    // A browser's player (a tab: YouTube, a course video) often keeps saying
+    // Playing in the background; a music app playing at the same time is the
+    // one you hear, so it wins (Cider lost to a Zen tab).
+    function isBrowser(p) {
+        const id = String((p && (p.desktopEntry || p.dbusName || p.identity)) || "").toLowerCase();
+        return /firefox|zen|chrom|brave|vivaldi|opera|edge|librewolf|floorp|epiphany|qutebrowser/.test(id);
+    }
     function pick() {
         const ps = players;
         const alive = active && ps.indexOf(active) >= 0;
-        const now = ps.find(p => p.playbackState === MprisPlaybackState.Playing);
+        const playing = ps.filter(p => p.playbackState === MprisPlaybackState.Playing);
+        const now = playing.find(p => !isBrowser(p)) || playing[0];
         if (!alive) active = now || ps[0] || null;
         // Another one started while yours is paused or stopped: follow it.
         else if (now && now !== active && active.playbackState !== MprisPlaybackState.Playing) active = now;
+        // Both playing: the music app over a browser tab.
+        else if (now && now !== active && isBrowser(active) && !isBrowser(now)) active = now;
     }
     onPlayersChanged: pick()
     // Playback states change without the list changing; a cheap look each second.

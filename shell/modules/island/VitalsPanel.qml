@@ -94,5 +94,7 @@ FocusScope {
         width: implicitWidth
         height: implicitHeight
         focus: true
+        // The list ends where the machine column does (it scrolls for more).
+        listMax: Math.max(260, machine.implicitHeight - listTop)
     }
 }

@@ -17,7 +17,8 @@
 #   idle       exactly one "lock before sleeping" guard while the shell owns idle,
 #              and hypridle not running beside it
 #   memory     the shell's anonymous memory (Pss_Anon) under RICE_MEM_BUDGET_MB (450)
-#   cpu        the shell under 5 % CPU over 3 s at rest
+#   cpu        the shell under 5 % CPU over 3 s at rest (8 % while music plays: the
+#              notch's waveform), measured once it has run 15 s
 #   compile    every file in modules/ and components/ compiles (panels load on first
 #              open, so a broken one would otherwise hide until you open it)
 #   tokens     literal font sizes, durations and hex colours never increase
@@ -77,10 +78,16 @@ fi
 anon=$(awk '/Pss_Anon/ {print int($2/1024)}' /proc/$pid/smaps_rollup 2>/dev/null)
 if [ -n "$anon" ] && [ "$anon" -le "$BUDGET" ]; then ok "memory: ${anon} MB (budget $BUDGET)"; else bad "memory: ${anon:-?} MB over the $BUDGET MB budget"; fi
 
-# cpu (3 s)
+# cpu (3 s). A shell that just started is still loading: let it settle
+# first (every check right after a promote read 8–12 %). Music playing is
+# not rest: the notch's live waveform redraws 30 times a second (~3–5 %).
+age=$(ps -o etimes= -p "$pid" 2>/dev/null | tr -d ' ')
+[ -n "$age" ] && [ "$age" -lt 15 ] && sleep $((15 - age))
+cpu_budget=5; cpu_why="at rest"
+if command -v playerctl >/dev/null && playerctl -a status 2>/dev/null | grep -qx Playing; then cpu_budget=8; cpu_why="with music playing"; fi
 t0=$(awk '{print $14+$15}' /proc/$pid/stat); sleep 3; t1=$(awk '{print $14+$15}' /proc/$pid/stat)
 cpu=$(( (t1 - t0) * 100 / $(getconf CLK_TCK) / 3 ))
-[ "$cpu" -lt 5 ] && ok "cpu: ${cpu}% at rest" || bad "cpu: ${cpu}% at rest (want < 5)"
+[ "$cpu" -lt "$cpu_budget" ] && ok "cpu: ${cpu}% $cpu_why" || bad "cpu: ${cpu}% $cpu_why (want < $cpu_budget)"
 
 # compile (after memory and cpu: compiling caches types)
 broken=""
