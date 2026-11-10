@@ -213,7 +213,12 @@ Scope {
                 if (bannerHere || !h) Alerts.held = h && bannerHere;
                 if (peekHere || !h) Notifs.peekHeld = h && peekHere;
                 if (deviceHere || !h) Moments.cardHeld = h && deviceHere;
+                if (agentMoment || !h) Moments.held = h && agentMoment;
             }
+            // An agent's moment ("Claude · rice  Needs you") is something to act
+            // on: under the pointer it holds (Moments.held) and the island doesn't
+            // grow over it, or it vanished as you reached it (IslandRest acts on it).
+            readonly property bool agentMoment: restRow.activity === "moment" && !!Moments.now && !!Moments.now.go
             onOverPillsChanged: if (!overPills && hovered && !grown) intent.restart()
             // A banner on show stays a banner under the pointer (so its button
             // can be clicked): hovering only grows the island when there's none.
@@ -221,8 +226,11 @@ Scope {
                 id: intent; interval: Settings.hoverDelay
                 onTriggered: {
                     if (win.hovered && win.edgeOnly && !win.grown) { restart(); return; }
-                    if (win.hovered && win.holdCompact && restRow.activity === "media" && !win.panelHere && !win.pushed) { Island.preview("media", win.screenName); return; }
-                    win.grown = win.hovered && !win.panelHere && !win.overPills && !win.bannerHere && !win.peekHere && !win.deviceHere && !win.pushed;
+                    // Now Playing only from the music's own parts (its art and
+                    // waveform, MusicTap); resting on T3 or a dot in between
+                    // opened the music too.
+                    if (win.hovered && win.holdCompact && restRow.activity === "media" && restRow.musicHovered && !win.panelHere && !win.pushed) { Island.preview("media", win.screenName); return; }
+                    win.grown = win.hovered && !win.panelHere && !win.overPills && !win.bannerHere && !win.peekHere && !win.deviceHere && !win.agentMoment && !win.pushed;
                 }
             }
             // Open tray menus (TrayRow): the pointer is on the menu, not the

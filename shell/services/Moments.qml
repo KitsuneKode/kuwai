@@ -46,8 +46,21 @@ Singleton {
         hide.interval = nowMs;
         hide.restart();
     }
-    // The island closes between two, so the next reads as new.
-    Timer { id: hide; onTriggered: { root.now = null; if (root.queue.length) gap.start(); } }
+    // The island closes between two, so the next reads as new. A moment
+    // under the pointer (held, IslandBar) waits: an agent's "needs you" no
+    // longer timed out just as you reached it; let go and it stays 2 s more.
+    property bool held: false
+    onHeldChanged: if (!held && now) { hide.interval = Math.min(hide.interval, 2000); hide.restart(); }
+    Timer { id: hide; onTriggered: { if (root.held) { restart(); return; } root.now = null; if (root.queue.length) gap.start(); } }
+    // The center's Agents tab: every one waiting, each a jump (opens it, never closes it).
+    function openAgents() { if (!Notifs.centerOpen || Notifs.centerTab !== "agents") Notifs.toggleCenter("agents", "pointer", ""); }
+    // Gone now (it was acted on: tapped, pulled down, swiped up).
+    function dismissNow() {
+        hide.stop();
+        held = false;
+        now = null;
+        if (queue.length) gap.start();
+    }
     Timer {
         id: gap
         interval: 450
@@ -532,11 +545,20 @@ Singleton {
             let tab = String(e.tab || "").replace(/\s+/g, " ").trim();
             if (tab.length > 22) tab = tab.slice(0, 21) + "…";
             const who = name.charAt(0).toUpperCase() + name.slice(1);
+            // Others still waiting on you: said as "+N" (pull down for the list).
+            const more = (Kittymux.attention || []).filter(x => x.id !== e.id && x.severity === "needs-you").length;
+            const id = e.id;
             root.show({
                 kind: "agent", image: Kittymux.brand(e.agent), glyph: "\u{f06a9}",
                 label: tab && tab.toLowerCase() !== name.toLowerCase() ? who + " · " + tab : who,
-                value: needs ? (e.kind === "permission" ? "Needs you" : "Waiting") : e.kind === "limit" ? "Hit a limit" : "Done",
-                ring: -1, tone: needs || e.kind === "limit" ? Theme.orange : Theme.green
+                value: (needs ? (e.kind === "permission" ? "Needs you" : "Waiting") : e.kind === "limit" ? "Hit a limit" : "Done")
+                       + (more > 0 ? "  +" + more : ""),
+                ring: -1, tone: needs || e.kind === "limit" ? Theme.orange : Theme.green,
+                // What the notch does with it (IslandRest): tap goes to that
+                // pane, pull down lists every one, swipe up marks it read.
+                go: () => Kittymux.jumpEvent(id),
+                dismiss: () => Kittymux.ack(id),
+                list: root.openAgents
             }, needs ? 6000 : 3000);
         }
     }
@@ -553,7 +575,9 @@ Singleton {
             kind: "agent", image: item.icon, glyph: "\u{f06a9}",
             label: t.length > 28 ? t.slice(0, 27).trim() + "…" : t,
             value: value, ring: -1,
-            tone: tone === "critical" ? Theme.red : tone === "caution" ? Theme.orange : Theme.green
+            tone: tone === "critical" ? Theme.red : tone === "caution" ? Theme.orange : Theme.green,
+            go: () => T3Code.focus(),
+            list: root.openAgents
         }, tone === "caution" || tone === "critical" ? 6000 : 3200);
     }
 

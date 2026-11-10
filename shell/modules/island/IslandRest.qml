@@ -45,7 +45,11 @@ Item {
     readonly property bool compact: (Settings.islandRest === "minimal" || Settings.islandTucked || (Settings.islandRest === "auto" && takeover))
                                     && !Island.peek && !bar.near && (!bar.hovered || bar.holdCompact)
     // On the small marks (agents, the dots): their tips and clicks, not a grown island.
-    readonly property bool marksHovered: agents.hovered || agents.open || leadSys.hovered || trailSys.hovered || t3mark.hovered || missedHover.hovered || micHover.hovered || camHover.hovered
+    // Each of these answers for itself (its own tip, preview or click), so the
+    // island holds still over them. T3 in the middle (t3centre, while music
+    // has the stage) and its mini wordmark were missing: resting on them
+    // opened Now Playing.
+    readonly property bool marksHovered: agents.hovered || agents.open || leadSys.hovered || trailSys.hovered || t3mark.hovered || t3centre.hovered || t3word.hovered || missedHover.hovered || micHover.hovered || camHover.hovered
     // The mini notch: compact with nothing alive shows the time, and only
     // the time (plus a privacy dot when one is lit). Anything alive (music,
     // a moment, a password, dictation, a recording) takes its place.
@@ -705,7 +709,7 @@ Item {
         }
         IslandStatus { visible: !rest.compact; anchors.verticalCenter: parent.verticalCenter; bar: rest.bar }
         HoverHandler { cursorShape: Qt.PointingHandCursor }
-        TapHandler { onTapped: if (!agents.hovered) Notifs.toggleCenter("controls", "pointer", rest.bar.screenName) }
+        TapHandler { onTapped: if (!agents.hovered && !rest.agentMoment) Notifs.toggleCenter("controls", "pointer", rest.bar.screenName) }
     }
 
     // ── Trailing ─────────────────────────────────────────────────────────
@@ -913,6 +917,38 @@ Item {
         }
     }
 
+    }
+
+    // ── An agent's moment ("Claude · rice  Needs you  +2") ───────────────
+    // Something to act on, so it answers like a notification: tap goes there
+    // (that kitty pane, or the T3 thread); pull down lists every one waiting
+    // (the center's Agents tab); swipe up marks it read and it goes. The
+    // notch follows the pointer while it's down (damped: it's attached to the
+    // edge) and springs back; the release decides on distance or speed
+    // (components/Fling). IslandBar holds it under the pointer.
+    readonly property bool agentMoment: activity === "moment" && !!Moments.now && !!Moments.now.go
+    Spring { id: pull; tier: Theme.springFast; epsilon: 0.3 }
+    Fling { id: pullFling }
+    transform: Translate { y: pull.value }
+    HoverHandler { enabled: rest.agentMoment; cursorShape: Qt.PointingHandCursor }
+    TapHandler {
+        enabled: rest.agentMoment
+        onTapped: { const m = Moments.now; Moments.dismissNow(); if (m && m.go) m.go(); }
+    }
+    DragHandler {
+        enabled: rest.agentMoment
+        target: null
+        xAxis.enabled: false
+        dragThreshold: 4
+        onActiveChanged: {
+            if (active) { pullFling.reset(); pull.snap(pull.value); return; }
+            const m = Moments.now, d = translation.y, v = pullFling.vy();
+            if (m && (d > 28 || v > Theme.swipeFlick)) { Moments.dismissNow(); if (m.list) m.list(); }
+            else if (m && (d < -22 || v < -Theme.swipeFlick)) { if (m.dismiss) m.dismiss(); Moments.dismissNow(); }
+            pull.velocity = v * 1000;
+            pull.target = 0;
+        }
+        onTranslationChanged: { pullFling.add(0, translation.y); pull.snap(Theme.swipeDamp(translation.y)); }
     }
 
     // A click on an activity acts on it: stop dictation, open the song.
