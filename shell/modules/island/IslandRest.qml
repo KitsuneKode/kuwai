@@ -854,6 +854,12 @@ Item {
                 PwObjectTracker { objects: [Pipewire.defaultAudioSink] }
                 PwNodePeakMonitor { id: restPeak; node: Pipewire.defaultAudioSink; enabled: (rest.activity === "media" || rest.restMusic) && Media.playing }
                 readonly property real level: restPeak.enabled ? (restPeak.peaks && restPeak.peaks.length ? Math.max(...restPeak.peaks) : (restPeak.peak || 0)) : 0
+                // The bars move 30 times a second, set straight (no Behavior).
+                // Following every peak, each one restarting a 90 ms animation,
+                // redrew the notch on every frame while music played (200 a
+                // second on the Acer, 165 on the panel): ~10 % of a core at rest.
+                property real shown: 0
+                Timer { running: restPeak.enabled; interval: 33; repeat: true; onTriggered: restMediaWave.shown = restMediaWave.level }
                 Row {
                     id: musicBars
                     visible: Media.playing
@@ -867,12 +873,13 @@ Item {
                             property real jitter: 1
                             anchors.verticalCenter: parent.verticalCenter
                             width: 3; radius: 1.5
-                            readonly property real liveH: Math.max(3, 15 * Math.min(1, restMediaWave.level * shape * jitter * 1.9))
+                            readonly property real liveH: Math.round(Math.max(3, 15 * Math.min(1, restMediaWave.shown * shape * jitter * 1.9)))
                             readonly property real pauseH: Math.max(4, 13 * shape * 0.48)
                             height: Media.playing ? liveH : pauseH
                             color: Media.artColor
                             opacity: Media.playing ? 1 : 0.55
-                            Behavior on height { NumberAnimation { duration: Media.playing ? 90 : 380; easing.type: Easing.OutCubic } }
+                            // Settling to the pause silhouette still eases; live bars don't.
+                            Behavior on height { enabled: !Media.playing; NumberAnimation { duration: 380; easing.type: Easing.OutCubic } }
                             Behavior on opacity { NumberAnimation { duration: Theme.colorMs } }
                             Behavior on color { ColorAnimation { duration: Theme.artMs } }
                             Timer { running: restPeak.enabled && !Theme.reduceMotion; interval: 120 + (index % 3) * 45; repeat: true; onTriggered: parent.jitter = 0.7 + Math.random() * 0.5 }
