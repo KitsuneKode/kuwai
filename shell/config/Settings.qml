@@ -67,6 +67,8 @@ Singleton {
     readonly property alias idleOffBattery: s.idleOffBattery
     readonly property alias idleSleepBattery: s.idleSleepBattery
     readonly property alias idleNoSleepWhilePlaying: s.idleNoSleepWhilePlaying
+    readonly property alias highContrast: s.highContrast
+    readonly property alias textScale: s.textScale
 
     function set(key, value) { s[key] = value; }
 
@@ -159,6 +161,10 @@ Singleton {
             property int idleOffBattery: 210
             property int idleSleepBattery: 900
             property bool idleNoSleepWhilePlaying: true
+            // Accessibility: brighter secondary text, stronger edges, glass near opaque;
+            // and text larger by this much (1.0, 1.1, 1.2).
+            property bool highContrast: false
+            property real textScale: 1.0
             property string notifSurface: "one"   // one (island or toast) · both
             // In a fullscreen app (a game, a film): important = critical, warnings and
             // people you can reply to get a slim banner · critical = only those · off.

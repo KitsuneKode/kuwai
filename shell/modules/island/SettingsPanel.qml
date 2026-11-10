@@ -61,7 +61,7 @@ FocusScope {
     // ── Sidebar ──────────────────────────────────────────────────────────
     Rectangle {
         id: side
-        width: 212
+        width: Math.round(212 * Theme.textScale)   // grows with Text size
         height: parent.height
         color: Qt.rgba(1, 1, 1, 0.03)
         Label { x: 22; y: 22; text: "Settings"; size: 13; weight: Theme.wSemibold; color: Theme.textTertiary }
@@ -363,6 +363,23 @@ FocusScope {
                 SettingsRow {
                     label: "Reduce motion"; detail: "Fades instead of slides and springs; digits change without rolling"
                     Toggle { on: Theme.reduceMotion; enabled: !Theme.envReduce; onToggled: Theme.setReduceMotion(!Theme.reduceMotion) }
+                }
+            }
+            SettingsGroup {
+                title: "Seeing"
+                SettingsRow {
+                    key: "highContrast"
+                    label: "Increase contrast"; detail: "Secondary text brighter, edges stronger, the glass nearly opaque (less of what's behind shows through)"
+                    Toggle { on: Settings.highContrast; label: "Increase contrast"; onToggled: Settings.set("highContrast", !Settings.highContrast) }
+                }
+                SettingsRow {
+                    key: "textScale"
+                    label: "Text size"; detail: "Every label in the shell; rows grow with it"
+                    Segmented {
+                        options: [{ id: "1", label: "100 %" }, { id: "1.1", label: "110 %" }, { id: "1.2", label: "120 %" }]
+                        current: String(Settings.textScale)
+                        onPicked: id => Settings.set("textScale", Number(id))
+                    }
                 }
             }
         }

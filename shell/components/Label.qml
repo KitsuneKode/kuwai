@@ -19,7 +19,9 @@ Text {
     // Display from 20 px, static weights. (The variable SF Pro was mapped
     // once per weight × size combination: ~300 MB of the shell's memory.)
     font.family: rounded ? Theme.fontRounded : (size >= 20 ? Theme.fontDisplay : Theme.fontText)
-    font.pixelSize: size
+    // Settings → Accessibility → Text size scales every label (the layout
+    // grows with it: rows size to their text).
+    font.pixelSize: Math.round(size * Theme.textScale)
     font.weight: weight
     font.letterSpacing: Theme.tracking(size, rounded) + extraTracking
     // FreeType, not Qt's distance-field glyph atlas: with a variable font at

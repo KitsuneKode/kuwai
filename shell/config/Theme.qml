@@ -12,20 +12,23 @@ import Quickshell.Io
 
 Singleton {
     id: root
+    // Accessibility (Settings → Accessibility): more contrast, less glass.
+    readonly property bool contrast: Settings.highContrast
+    readonly property real textScale: Math.max(1, Math.min(1.3, Settings.textScale || 1))
     // ── Material ─────────────────────────────────────────────────────────
     // One glass, the voxtype HUD's: near-black #111114 over the compositor's
     // blur (components/GlassCard draws the ring, sheen and hairline).
-    readonly property color glassTint: Qt.rgba(0.067, 0.067, 0.078, 0.58)
+    readonly property color glassTint: Qt.rgba(0.067, 0.067, 0.078, contrast ? 0.94 : 0.58)
     // Text-heavy cards (toasts) sit over anything: a little denser, so body
     // copy stays readable over busy windows.
-    readonly property color glassTintThick: Qt.rgba(0.067, 0.067, 0.078, 0.68)
+    readonly property color glassTintThick: Qt.rgba(0.067, 0.067, 0.078, contrast ? 0.96 : 0.68)
     // Floating menus (the center, the island): the same glass, denser still,
     // with a deep shadow under it; it reads as raised, not as a lighter grey.
-    readonly property color glassTintElevated: Qt.rgba(0.067, 0.067, 0.078, 0.74)
+    readonly property color glassTintElevated: Qt.rgba(0.067, 0.067, 0.078, contrast ? 0.97 : 0.74)
     // The island's material, for the surfaces that belong with it (the
     // notification center, toasts): near-black, a little see-through so the
     // blur behind still reads on a large surface. One object, one material.
-    readonly property color glassIsland: Qt.rgba(0.02, 0.02, 0.027, 0.84)
+    readonly property color glassIsland: Qt.rgba(0.02, 0.02, 0.027, contrast ? 0.98 : 0.84)
     readonly property color platter: Qt.rgba(1, 1, 1, 0.15)
     readonly property color platterDim: Qt.rgba(1, 1, 1, 0.08)
     readonly property color track: Qt.rgba(1, 1, 1, 0.18)
@@ -36,7 +39,7 @@ Singleton {
     // Grouped content inside a panel (components/ui/Card): a whisper of a
     // surface and a hairline, so cards separate without boxes everywhere.
     readonly property color card: Qt.rgba(1, 1, 1, 0.05)
-    readonly property color cardEdge: Qt.rgba(1, 1, 1, 0.05)
+    readonly property color cardEdge: Qt.rgba(1, 1, 1, contrast ? 0.22 : 0.05)
     readonly property color chip: Qt.rgba(0.11, 0.11, 0.12, 1)   // an opaque disc on black (stacked logos)
     readonly property int statRingSize: 40   // the hover view's rings (machine and agents)
     // Agents' own colours (T3 Code's usage palette), for their bars and discs.
@@ -73,9 +76,9 @@ Singleton {
     // Over blur, flat grey washes out: keep secondary/tertiary brighter than
     // on a solid surface (vibrancy), and lean on weight for hierarchy.
     readonly property color textPrimary: Qt.rgba(1, 1, 1, 0.96)
-    readonly property color textSecondary: Qt.rgba(1, 1, 1, 0.72)
-    readonly property color textTertiary: Qt.rgba(1, 1, 1, 0.50)
-    readonly property color textDim: Qt.rgba(1, 1, 1, 0.55)
+    readonly property color textSecondary: Qt.rgba(1, 1, 1, contrast ? 0.88 : 0.72)
+    readonly property color textTertiary: Qt.rgba(1, 1, 1, contrast ? 0.74 : 0.50)
+    readonly property color textDim: Qt.rgba(1, 1, 1, contrast ? 0.76 : 0.55)
 
     // Apple's dark-mode system colours: tuned to read on dark material.
     readonly property color red: "#ff453a"
