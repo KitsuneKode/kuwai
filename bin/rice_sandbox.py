@@ -26,8 +26,51 @@ class SandboxError(Exception):
 
 
 def host_root():
+    """The jail on the host: ~/Depot/rice-sandbox when ~/Depot exists (where you can see and
+    browse everything the assistant does), else ~/.local/share/rice/sandbox."""
+    if os.environ.get("RICE_SANDBOX_DIR"):
+        return Path(os.environ["RICE_SANDBOX_DIR"])
+    depot = Path(os.path.expanduser("~/Depot"))
+    if depot.is_dir():
+        return depot / "rice-sandbox"
     base = os.environ.get("XDG_DATA_HOME") or os.path.expanduser("~/.local/share")
-    return Path(os.environ.get("RICE_SANDBOX_DIR") or Path(base) / "rice" / "sandbox")
+    return Path(base) / "rice" / "sandbox"
+
+
+def audit_log_path():
+    """Beside the jail, not in it: the container can't edit or erase its own record."""
+    root = host_root()
+    return root.parent / (root.name + ".log")
+
+
+def audit(chat, what, detail, result=""):
+    """One line per thing the assistant did in the jail: time, chat, what, detail, result."""
+    import time
+    line = "\t".join([time.strftime("%Y-%m-%d %H:%M:%S"), chat_slug(chat), what,
+                      " ".join(str(detail).split())[:300], str(result)[:40]])
+    try:
+        with open(audit_log_path(), "a", encoding="utf-8") as f:
+            f.write(line + "\n")
+    except OSError:
+        pass
+
+
+JAIL_README = """This is the AI assistant's jail (the rice's sandbox).
+
+Everything the assistant writes or runs without asking you happens here, inside a
+Docker container that sees only this folder (as /work). It runs as you, with no
+extra privileges, a read-only system, capped memory/CPU/processes, and it can't
+see your home, your other folders or this machine's services.
+
+  <chat id>/        one folder per chat: the files it wrote, .jobs/ for background jobs
+  .home/            the container's $HOME (pip --user / npm packages persist here)
+  ../rice-sandbox.log   every command, job and write, one line each (outside the jail,
+                        so nothing in here can change it)
+
+Check it holds:  rice-ollama sandbox check
+Stop it:         rice-ollama sandbox stop
+Safe to delete any chat folder here; the assistant makes them again when needed.
+"""
 
 
 def chat_slug(chat):
@@ -210,6 +253,12 @@ def ensure():
         _docker("rm", "-f", NAME)
     root = host_root()
     (root / ".home").mkdir(parents=True, exist_ok=True)
+    readme = root / "README.txt"
+    if not readme.exists():
+        try:
+            readme.write_text(JAIL_README, encoding="utf-8")
+        except OSError:
+            pass
     net = os.environ.get("RICE_SANDBOX_NET") or "bridge"
     p = _docker(
         "run", "-d", "--name", NAME, "--init",
@@ -318,6 +367,50 @@ def finished_unnotified():
                 continue
             out.append({"chat": chat, "id": jid, "command": cmd[:120], "exit": (code or "").strip()})
     return out
+
+
+# What a check run inside the container tries; each must fail (or, for the network
+# lines, is reported so you know what it can reach).
+ESCAPES = r"""
+t() { if eval "$2" >/dev/null 2>&1; then echo "FAIL  $1"; else echo "ok    $1"; fi; }
+w() { if eval "$2" >/dev/null 2>&1; then echo "warn  $1"; else echo "ok    $1"; fi; }
+t "write the system (/etc)"                 "touch /etc/rice-escape"
+t "write the system (/usr)"                 "touch /usr/rice-escape"
+t "see your home folder"                    "ls /home/*/ | grep -q ."
+t "see the host's root"                     "ls /host /mnt/host /rootfs 2>/dev/null | grep -q ."
+t "reach the Docker socket"                 "test -S /var/run/docker.sock || test -S /run/docker.sock"
+t "become root (sudo/su)"                   "sudo -n true || su -c true root </dev/null"
+t "mount a filesystem"                      "mount -t tmpfs none /tmp/x 2>/dev/null || (mkdir -p /tmp/x && mount -t tmpfs none /tmp/x)"
+t "load kernel modules"                     "modprobe dummy"
+t "see host processes"                      "ps -e | grep -Eq 'Hyprland|systemd-logind|ollama'"
+t "change the clock"                        "date -s '2000-01-01'"
+t "raw network sockets"                     "python3 -c 'import socket; socket.socket(socket.AF_INET, socket.SOCK_RAW, 1)'"
+t "write outside /work and /tmp"            "touch /opt/x || touch /root/x || touch /var/x"
+t "reach the host's Ollama (gateway:11434)" "curl -s -m 3 http://172.17.0.1:11434/api/tags | grep -q models"
+t "reach the host's SearXNG (gateway:8888)" "curl -s -m 3 http://172.17.0.1:8888/ | grep -q ."
+w "reach your local network (router $LAN_GW)" "test -n \"$LAN_GW\" && curl -s -m 3 -o /dev/null http://$LAN_GW/"
+echo "info  can reach the internet: $(curl -s -m 5 -o /dev/null -w '%{http_code}' https://example.com)"
+echo "info  runs as: $(id -u):$(id -g), caps: $(grep CapEff /proc/self/status | awk '{print $2}')"
+"""
+
+
+def check():
+    """Run the escape attempts inside the real container; lines of 'ok/FAIL/warn/info  what'."""
+    ensure()
+    # Your real router, from the host's routing table (the container's own gateway is Docker's).
+    import socket
+    import struct
+    gw = ""
+    try:
+        for line in open("/proc/net/route"):
+            f = line.split()
+            if len(f) > 2 and f[1] == "00000000":
+                gw = socket.inet_ntoa(struct.pack("<L", int(f[2], 16)))
+                break
+    except (OSError, ValueError):
+        pass
+    p = _docker("exec", "-e", f"LAN_GW={gw}", NAME, "bash", "-c", ESCAPES, timeout=90)
+    return (p.stdout or "") + (p.stderr or "")
 
 
 def stop():

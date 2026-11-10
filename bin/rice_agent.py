@@ -955,6 +955,7 @@ def tool_sandbox_run(args):
             jid = rice_sandbox.start_job(CHAT, cmd)
         except rice_sandbox.SandboxError as e:
             raise ToolError(str(e))
+        rice_sandbox.audit(CHAT, "job " + jid, cmd, "started")
         time.sleep(2)
         state, code, out, _ = rice_sandbox.job_state(CHAT, jid)
         head = rice_files.head_tail(strip_ansi(out), 2000)
@@ -968,6 +969,7 @@ def tool_sandbox_run(args):
         timeout = 120
     try:
         code, out = rice_sandbox.run(CHAT, cmd, timeout=timeout)
+        rice_sandbox.audit(CHAT, "run", cmd, f"exit {code}")
     except rice_sandbox.SandboxError as e:
         raise ToolError(str(e))
     out = rice_files.head_tail(strip_ansi(out), 8000)
@@ -1061,6 +1063,7 @@ def _write_text(full, inside, text, parts=None):
         full.write_text(text, encoding="utf-8")
         return
     parts = parts or _sandbox_parts(full)
+    rice_sandbox.audit(CHAT, "write", "/".join(parts), f"{len(text)} chars")
     if not parts:
         raise ToolError("That's the sandbox folder itself, not a file")
     try:

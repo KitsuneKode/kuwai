@@ -427,7 +427,7 @@ def cmd_search(args):
         print(json.dumps({"state": p.stdout.strip() or "missing", "url": "http://127.0.0.1:8888"}))
 
 def cmd_sandbox(args):
-    """rice-ollama sandbox <status|build|stop|jobs|path [chat]>"""
+    """rice-ollama sandbox <status|build|stop|check|log|jobs|path [chat]>"""
     sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
     import rice_sandbox as sb
     sub = args[0] if args else "status"
@@ -438,13 +438,20 @@ def cmd_sandbox(args):
             sys.exit(sb.build(stream=sys.stdout))
         elif sub == "stop":
             sb.stop()
+        elif sub == "check":
+            out = sb.check()
+            print(out.rstrip())
+            sys.exit(1 if "FAIL" in out else 0)
+        elif sub == "log":
+            p = sb.audit_log_path()
+            print(open(p).read()[-8000:] if os.path.exists(p) else "(nothing yet)")
         elif sub == "jobs":
             # Finished background jobs not yet announced (the shell polls this while jobs run).
             print(json.dumps(sb.finished_unnotified()))
         elif sub == "path":
             print(sb.workspace(args[1] if len(args) > 1 else ""))
         else:
-            sys.stderr.write("Usage: rice-ollama sandbox <status|build|stop|jobs|path [chat]>\n")
+            sys.stderr.write("Usage: rice-ollama sandbox <status|build|stop|check|log|jobs|path [chat]>\n")
             sys.exit(1)
     except sb.SandboxError as e:
         sys.stderr.write(f"{e}\n")

@@ -775,8 +775,8 @@ function onPanelClosed() {
     // (host_root, chat_slug): RICE_SANDBOX_DIR overrides the root, and leading
     // dots are stripped so an id cannot land on ".", ".." or ".home".
     function sandboxDir(chatId) {
-        const xdg = Quickshell.env("XDG_DATA_HOME") || (Quickshell.env("HOME") + "/.local/share");
-        const base = (Quickshell.env("RICE_SANDBOX_DIR") || (xdg + "/rice/sandbox")).replace(/\/+$/, "");
+        // The jail (bin/rice_sandbox.py host_root): ~/Depot/rice-sandbox, where you can watch it.
+        const base = (Quickshell.env("RICE_SANDBOX_DIR") || (Quickshell.env("HOME") + "/Depot/rice-sandbox")).replace(/\/+$/, "");
         const slug = String(chatId || root.activeSessionId || "").replace(/[^A-Za-z0-9_.-]/g, "").replace(/^\.+/, "").slice(0, 64) || "scratch";
         return base + "/" + slug;
     }
