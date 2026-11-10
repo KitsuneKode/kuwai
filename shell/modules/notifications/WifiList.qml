@@ -83,6 +83,12 @@ Column {
                 size: Theme.tFootnote; weight: Theme.wSemibold
                 color: rescanArea.containsMouse ? Theme.textPrimary : Theme.accent
                 MouseArea { id: rescanArea; anchors.fill: parent; anchors.margins: -6; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: wifi.rescan() }
+                activeFocusOnTab: true
+                Keys.onPressed: e => { if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter || e.key === Qt.Key_Space) { wifi.rescan(); e.accepted = true; } }
+                Accessible.role: Accessible.Button
+                Accessible.name: "Rescan for networks"
+                Accessible.onPressAction: wifi.rescan()
+                FocusRing { cornerRadius: 6 }
             }
         }
     }
@@ -120,6 +126,23 @@ Column {
             }
             HoverHandler { id: hover; cursorShape: row.net.connected ? Qt.ArrowCursor : Qt.PointingHandCursor }
             TapHandler { enabled: !row.net.connected; onTapped: wifi.join(row.net) }
+            // The keyboard reaches all of it (review 2026-11-10, finding 18):
+            // Tab to a network, Return/Space joins, Delete disconnects the one
+            // you're on or forgets a saved one, R rescans. Focus shows the
+            // same Disconnect/Forget pill hover does.
+            readonly property bool lit: hover.hovered || activeFocus
+            activeFocusOnTab: true
+            function secondary() { if (row.busy) return; if (row.net.connected) row.net.disconnect(); else if (row.net.known) row.net.forget(); }
+            Keys.onPressed: e => {
+                if ((e.key === Qt.Key_Return || e.key === Qt.Key_Enter || e.key === Qt.Key_Space) && !row.net.connected) { wifi.join(row.net); e.accepted = true; }
+                else if (e.key === Qt.Key_Delete || e.key === Qt.Key_Backspace) { row.secondary(); e.accepted = true; }
+                else if (e.key === Qt.Key_R && !(e.modifiers & Qt.ControlModifier)) { wifi.rescan(); e.accepted = true; }
+            }
+            Accessible.role: Accessible.Button
+            Accessible.name: row.net.name + (row.net.connected ? ", connected" : row.net.known ? ", saved" : "") + (wifi.secured(row.net) ? ", secured" : "")
+            Accessible.description: row.net.connected ? "Delete: disconnect" : (row.net.known ? "Return: join. Delete: forget" : "Return: join")
+            Accessible.onPressAction: if (!row.net.connected) wifi.join(row.net)
+            FocusRing { cornerRadius: 12; gap: 0 }    // the row clips: drawn on its edge, not 3 px out
 
             Text {
                 id: strength
@@ -147,15 +170,15 @@ Column {
                 Label {
                     anchors.verticalCenter: parent.verticalCenter
                     text: row.busy ? "Joining…"
-                        : row.net.connected ? (hover.hovered ? "" : "Connected")
-                        : row.net.known && !hover.hovered ? "Saved" : ""
+                        : row.net.connected ? (row.lit ? "" : "Connected")
+                        : row.net.known && !row.lit ? "Saved" : ""
                     visible: text !== ""
                     size: 11
                     color: Theme.textTertiary
                 }
                 // Hover actions: leave the one you're on; forget a saved one.
                 Rectangle {
-                    visible: hover.hovered && !row.busy && (row.net.connected || row.net.known)
+                    visible: row.lit && !row.busy && (row.net.connected || row.net.known)
                     anchors.verticalCenter: parent.verticalCenter
                     height: 20; radius: 10
                     width: actLabel.implicitWidth + 14
@@ -166,7 +189,7 @@ Column {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: row.net.connected ? row.net.disconnect() : row.net.forget()
+                        onClicked: row.secondary()
                     }
                 }
                 Text {
@@ -211,7 +234,7 @@ Column {
                     Label { visible: psk.text === ""; anchors.verticalCenter: parent.verticalCenter; text: "Password"; size: 13; color: Theme.textTertiary }
                     Keys.onReturnPressed: joinBtn.join()
                     Keys.onEnterPressed: joinBtn.join()
-                    Keys.onEscapePressed: { wifi.asking = null; wifi.center.ui.search.forceActiveFocus(); }
+                    Keys.onEscapePressed: { wifi.asking = null; row.forceActiveFocus(); }    // back where you were
                 }
                 Rectangle {
                     id: joinBtn

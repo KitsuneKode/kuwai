@@ -475,17 +475,22 @@ def github(notify):
                     if key not in shown.values():
                         notify.close_key(key)
             fresh = [t for t in threads if seen.get(t["id"]) != t["updated_at"]]
-            for t in fresh:
-                seen[t["id"]] = t["updated_at"]
             if first:
+                for t in fresh:
+                    seen[t["id"]] = t["updated_at"]
                 log(f"github: {len(threads)} unread now; telling you about new ones from here")
                 fresh, first = [], False
+            # Seen once handled (or deliberately skipped: older than the 12, or
+            # folded into a card), not before: a thread whose details failed is
+            # tried again on the next update (review 2026-11-10, finding 14).
+            failed = set()
             cards = {}                       # newest per card: a burst of runs is one
             for t in sorted(fresh, key=lambda t: t["updated_at"])[-12:]:
                 try:
                     c = gh_thread(t)
                 except Exception as e:
                     log("github: thread", t.get("id"), e)
+                    failed.add(t["id"])
                     continue
                 if c:
                     cards.pop(c["group"], None)
@@ -515,6 +520,9 @@ def github(notify):
                     hints["x-kde-reply-placeholder-text"] = f"Comment on {short(rp)} #{num}"
                 notify.send("GitHub", "github", c["title"], c["body"], hints, key, on)
                 shown[tid] = key
+            for t in fresh:
+                if t["id"] not in failed:
+                    seen[t["id"]] = t["updated_at"]
             # Forget what's long gone, so the state stays small.
             if len(seen) > 600:
                 for k in sorted(seen, key=seen.get)[:-400]:
@@ -756,13 +764,25 @@ def gmail_check(m, notify, address, g, shown):
     new = [u for u in new if u > g["last"]]
     if not new:
         return
-    g["last"] = max(new)
-    save()
+    # The watermark moves past a message only once it was handled (shown, or
+    # deliberately not: outside the query, older than the last five), never
+    # before: a failed query or card left it to be tried again on the next
+    # check instead of losing it (review 2026-11-10, finding 14). It stops
+    # just before a failure, so nothing already shown is shown twice.
     query = conf()["gmailQuery"].replace('"', "")
     typ, d = m.uid("SEARCH", None, f'UID {min(new)}:{max(new)} X-GM-RAW "{query}"')
-    picks = [x.decode() for x in d[0].split()] if typ == "OK" and d[0] else []
+    if typ != "OK":
+        log("gmail: search", typ)
+        return
+    picks = [x.decode() for x in d[0].split()] if d and d[0] else []
+    done_to = max(new)
     for uid in picks[-5:]:
-        c = gmail_card(m, uid)
+        try:
+            c = gmail_card(m, uid)
+        except Exception as e:
+            log("gmail: card", uid, e)
+            done_to = int(uid) - 1
+            break
         if not c:
             continue
         key = "gmail:" + (c["thread"] or uid)
@@ -789,6 +809,9 @@ def gmail_check(m, notify, address, g, shown):
             hints["x-kde-reply-placeholder-text"] = f"Reply to {c['from']}"
         notify.send("Gmail", "gmail", c["from"], body, hints, key, on)
         shown[uid] = key
+    if done_to > g["last"]:
+        g["last"] = done_to
+        save()
 
 
 # ── Commands ────────────────────────────────────────────────────────────────

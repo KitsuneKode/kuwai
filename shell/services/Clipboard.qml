@@ -165,9 +165,14 @@ Singleton {
         else if (/^(#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})|rgba?\([\d\s.,%]+\)|hsla?\([\d\s.,%deg]+\))$/i.test(t)) e.kind = "color";
         else if (/^(file:\/\/|~\/|\/)[^\s]*$/.test(t)) e.kind = "path";
         else if (/[{};]\s|=>|\bfunction\b|\bconst\b|\bimport\b|\bdef\b|\breturn\b|^\s*(\$|#!)|<\/?\w+>/.test(t)) e.kind = "code";
-        // A one-time code just copied from a notification is a secret too.
-        e.secret = looksSecret(t) || (root.pendingSecret !== "" && t.trim() === root.pendingSecret);
-        if (root.pendingSecret !== "" && t.trim() === root.pendingSecret) root.pendingSecret = "";
+        // A one-time code just copied from a notification is a secret too, and
+        // stays one across a restart (secretIds: the entry's id, never the code).
+        const fromNotif = root.pendingSecret !== "" && t.trim() === root.pendingSecret;
+        e.secret = looksSecret(t) || (id !== "" && !!root.secretIds[id]) || fromNotif;
+        if (fromNotif) {
+            root.pendingSecret = "";
+            if (id !== "") root.markSecret(id);
+        }
         return e;
     }
 
@@ -219,6 +224,16 @@ Singleton {
         // were copied (times.tsv outlives the shell), else from now.
         for (const e of list)
             if (e.secret && !isPinned(e)) expireSoon(e.id, times[e.id]);
+        // A marked id no longer in the history (deleted, cleared) is forgotten.
+        const live = {};
+        for (const e of list) live[e.id] = true;
+        const gone = Object.keys(secretIds).filter(k => !live[k]);
+        if (gone.length) {
+            const s = Object.assign({}, secretIds);
+            for (const k of gone) delete s[k];
+            secretIds = s;
+            saveState();
+        }
     }
     FileView {
         path: root.dataDir + "/times.tsv"
@@ -243,6 +258,24 @@ Singleton {
     // a pin: pinning one is saying "keep it").
     readonly property int secretSecs: 60
     property string pendingSecret: ""         // Notifs.copyCode: the next copy is a code
+    // Entries that are secrets because of where they came from (a code copied
+    // from a notification), which the text alone wouldn't show after a
+    // restart: their ids, kept in the state file with the pins. The deadline
+    // is still from when it was copied (times.tsv), so a restart neither
+    // forgets a code nor gives it a fresh minute (review 2026-11-10, finding 11).
+    property var secretIds: ({})
+    function markSecret(id) {
+        if (secretIds[id]) return;
+        secretIds = Object.assign({}, secretIds, { [id]: true });
+        saveState();
+    }
+    function forgetSecret(id) {
+        if (!secretIds[id]) return;
+        const s = Object.assign({}, secretIds);
+        delete s[id];
+        secretIds = s;
+        saveState();
+    }
     property var expiring: []                 // [{ id, at }]
     function expireSoon(id, copiedMs) {
         if (expiring.some(x => x.id === id)) return;
@@ -262,6 +295,7 @@ Singleton {
                 if (e && root.isPinned(e)) continue;
                 root.items = root.items.filter(i => i.id !== x.id);
                 root.run(["delete", x.id]);
+                root.forgetSecret(x.id);
             }
         }
     }
@@ -360,9 +394,12 @@ Singleton {
     function remove(e) {
         if (e.pin !== "") { togglePin(e); return; }
         items = items.filter(x => x.id !== e.id);
+        // Its decoded image goes with it (rice-clip delete removes the file).
+        if (thumbs[e.id]) { const t = Object.assign({}, thumbs); delete t[e.id]; thumbs = t; }
+        forgetSecret(e.id);
         run(["delete", e.id]);
     }
-    function wipe() { items = []; run(["wipe"]); }
+    function wipe() { items = []; thumbs = ({}); renders = ({}); run(["wipe"]); }
     // Edited or transformed text: copy it, or paste it where you were.
     function copyText(t) { open = false; run(["copy-text", t]); }
     function pasteText(t) { const cls = target.cls || ""; const addr = target.address || ""; open = false; run(["paste-text", t, cls, addr]); }
@@ -475,16 +512,28 @@ Singleton {
         id: state
         path: root.stateFile
         printErrors: false
+        onLoadFailed: root.stateLoaded = true          // no file yet: nothing to lose by writing one
         onLoaded: {
+            root.stateLoaded = true;
             try {
                 const d = JSON.parse(text());
+                root.secretIds = (d.secrets && typeof d.secrets === "object") ? d.secrets : ({});
                 root.pins = (d.pins || []).map(p => Object.assign(root.parse("", p.preview || "", { pin: p.pin, source: p.source || "" }), { pinnedAt: p.pinnedAt || 0, time: p.time || 0 }));
+                // The history may have been read first: mark (and start the
+                // deadline of) what the saved ids say is a secret.
+                root.items = root.items.map(e => root.secretIds[e.id] && !e.secret ? Object.assign({}, e, { secret: true }) : e);
+                for (const e of root.items)
+                    if (root.secretIds[e.id] && !root.isPinned(e)) root.expireSoon(e.id, root.times[e.id]);
             } catch (e) {}
         }
     }
+    // Never before the file was read: a save then would write empty pins over yours.
+    property bool stateLoaded: false
     function saveState() {
+        if (!stateLoaded) return;
         state.setText(JSON.stringify({
-            pins: pins.map(p => ({ pin: p.pin, source: p.source, preview: p.preview, pinnedAt: p.pinnedAt, time: p.time }))
+            pins: pins.map(p => ({ pin: p.pin, source: p.source, preview: p.preview, pinnedAt: p.pinnedAt, time: p.time })),
+            secrets: secretIds
         }));
     }
     Component.onCompleted: refresh()

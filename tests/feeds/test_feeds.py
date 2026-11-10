@@ -151,3 +151,61 @@ def test_reply_threads_with_the_original(rf):
     assert msg.get_content().strip() == "Thanks, will do."
     again = rf.reply_message("me@gmail.com", dict(c, subject="RE: Offer"), "ok")
     assert again["Subject"] == "RE: Offer"
+
+
+# ── Ingestion progress (review 2026-11-10, finding 14) ──────────────────────
+class FakeImap:
+    """UID SEARCH only: new UIDs 11, 12, 13; the query matches all of them unless `query_ok` is False."""
+    def __init__(self, query_ok=True):
+        self.query_ok = query_ok
+
+    def uid(self, cmd, _charset, crit):
+        if "X-GM-RAW" in crit:
+            return ("NO", [b""]) if not self.query_ok else ("OK", [b"11 12 13"])
+        return ("OK", [b"11 12 13"])
+
+
+class FakeNotify:
+    def __init__(self):
+        self.sent = []
+
+    def send(self, *a):
+        self.sent.append(a)
+
+    def close_key(self, key):
+        pass
+
+
+def card(uid):
+    return {"thread": uid, "url": "u", "full": "", "snippet": "", "subject": "s", "from": "f", "noreply": True, "thrid": ""}
+
+
+def run_gmail(rf, monkeypatch, imap, card_fn):
+    g = {"last": 10}
+    monkeypatch.setattr(rf, "save", lambda: None)
+    monkeypatch.setattr(rf, "conf", lambda: conf())
+    monkeypatch.setattr(rf, "gmail_card", card_fn)
+    monkeypatch.setattr(rf, "gmail_conversation", lambda *a, **k: [])
+    n = FakeNotify()
+    rf.gmail_check(imap, n, "me@example.com", g, {})
+    return g, n
+
+
+def test_gmail_a_failed_query_leaves_the_watermark(rf, monkeypatch):
+    g, n = run_gmail(rf, monkeypatch, FakeImap(query_ok=False), lambda m, uid: card(uid))
+    assert g["last"] == 10 and not n.sent
+
+
+def test_gmail_a_failed_card_is_tried_again_and_nothing_twice(rf, monkeypatch):
+    def flaky(m, uid):
+        if uid == "12":
+            raise OSError("connection reset")
+        return card(uid)
+    g, n = run_gmail(rf, monkeypatch, FakeImap(), flaky)
+    assert g["last"] == 11                     # 11 shown; 12 failed, so the next check starts at 12
+    assert len(n.sent) == 1
+
+
+def test_gmail_all_handled_moves_past_the_newest(rf, monkeypatch):
+    g, n = run_gmail(rf, monkeypatch, FakeImap(), lambda m, uid: card(uid))
+    assert g["last"] == 13 and len(n.sent) == 3

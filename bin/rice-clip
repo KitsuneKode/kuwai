@@ -33,6 +33,10 @@ set -euo pipefail
 cache="${XDG_CACHE_HOME:-$HOME/.cache}/rice/clip"
 pins="${XDG_DATA_HOME:-$HOME/.local/share}/rice/clipboard/pins"
 mkdir -p "$cache/thumbs" "$cache/open" "$pins"
+# Copies made for a moment (opened, edited) leave after a day, decoded images
+# after a week: kept bounded without anyone clearing history.
+find "$cache/open" "$cache/edit" -type f -mmin +1440 -delete 2>/dev/null
+find "$cache/thumbs" -type f -mtime +7 -delete 2>/dev/null
 
 # An entry's bytes on stdout: a cliphist id, or pin:FILE.
 emit() {
@@ -204,8 +208,17 @@ print(json.dumps(out))
         while [ -e "$out" ]; do out="$dir/$name-$n.$ext"; n=$((n + 1)); done
         mv -- "$tmp" "$out"
         printf '%s\n' "$out" ;;
-    delete) printf '%s\t\n' "$2" | cliphist delete ;;
-    wipe)   cliphist wipe ;;
+    # Deleting an entry or clearing history also removes what this script made
+    # from it: the decoded image (a full copy, not a small preview), and on a
+    # wipe the opened and edited copies and the render cache (review
+    # 2026-11-10, finding 12). Pins and files you saved (Pictures) stay.
+    delete)
+        printf '%s\t\n' "$2" | cliphist delete
+        [[ "$2" =~ ^[0-9]+$ ]] && rm -f -- "$cache/thumbs/$2".* ;;
+    wipe)
+        cliphist wipe
+        rm -f -- "$cache"/thumbs/* "$cache"/open/* "$cache"/open/.[!.]* "$cache"/edit/* "$cache"/edit/.[!.]* 2>/dev/null
+        rm -f -- "$cache"/render/mermaid-* 2>/dev/null ;;
     pin)
         tmp=$(mktemp "$pins/.new.XXXXXX")
         emit "$2" > "$tmp"

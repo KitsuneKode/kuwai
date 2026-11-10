@@ -25,10 +25,14 @@ HELPER_SRC = os.path.join(os.path.dirname(os.path.realpath(__file__)), "rice-upd
 KEEP = {"/etc/pacman.d/mirrorlist": "reflector keeps your mirror list fresh"}
 
 
-def active(path):
+def active_lines(text):
     """The lines that do something: not blank, not comments."""
+    return [l.strip() for l in text.splitlines() if l.strip() and not l.lstrip().startswith(("#", ";", "//"))]
+
+
+def active(path):
     with open(path, errors="replace") as f:
-        return [l.strip() for l in f if l.strip() and not l.lstrip().startswith(("#", ";", "//"))]
+        return active_lines(f.read())
 
 
 def find():
@@ -128,11 +132,23 @@ def describe(path):
     key = lambda l: re.split(r"\s*[=:]\s*", l, maxsplit=1)[0].strip().strip('"') if re.search(r"[=:]", l) else None
     gone_keys = {key(l) for l in gone if key(l)}
     really_added = [l for l in added if key(l) not in gone_keys]
+    # What you removed or commented out of the old default (three-way, when
+    # it is cached): a line the new default still has is your choice coming
+    # back, not a new setting (review 2026-11-10, finding 13).
+    removed = {norm(l) for l in active_lines(orig)} - nm if orig is not None else set()
+    turned_back = [l for l in added if norm(l) in removed]
     item.update(gone=short(gone), added=short(added), lines=len(gone) + len(added))
     if not gone and not added:
         item.update(rec="keep", why="Only the comments changed")
+    elif turned_back:
+        item.update(rec="keep", gone=short(turned_back),
+                    why="You turned these off; the new default would turn them back on")
+    elif not gone and orig is None:
+        # Without the old default nobody can tell a setting you removed from
+        # one the package added: don't claim the file was never changed.
+        item.update(rec="review", why="The new default adds settings: check none of them is one you removed on purpose")
     elif not gone:
-        item.update(rec="take", why="You never changed it; the new default adds settings")
+        item.update(rec="take", why="Everything you have is in the new default, which adds settings")
     elif not really_added and yours_evident(gone, new):
         item.update(rec="keep", why="You switched these on or filled them in; the new default would undo that")
     elif not really_added and orig is None:
