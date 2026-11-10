@@ -536,6 +536,57 @@ def check_public(url):
             raise BlockedURL(f"{u.hostname} is on this computer or the local network; it isn't read")
 
 
+def _public_ip(ip):
+    import ipaddress
+    a = ipaddress.ip_address(ip)
+    return not (a.is_private or a.is_loopback or a.is_link_local or a.is_reserved or a.is_multicast or a.is_unspecified)
+
+
+def _pinned_socket(host, port, timeout):
+    """Connect to `host` and refuse if the address actually connected to is local or private.
+    The check and the connection are the same lookup (review finding 03: a rebinding DNS
+    answer could pass the check and then point the connection at 127.0.0.1)."""
+    import socket
+    err = None
+    for family, kind, proto, _, addr in socket.getaddrinfo(host, port, type=socket.SOCK_STREAM):
+        if not _public_ip(addr[0]) and os.environ.get("RICE_FETCH_ALLOW_LOCAL") != "1":
+            raise BlockedURL(f"{host} is on this computer or the local network; it isn't read")
+        sock = socket.socket(family, kind, proto)
+        sock.settimeout(timeout)
+        try:
+            sock.connect(addr)
+            if not _public_ip(sock.getpeername()[0]) and os.environ.get("RICE_FETCH_ALLOW_LOCAL") != "1":
+                sock.close()
+                raise BlockedURL(f"{host} is on this computer or the local network; it isn't read")
+            return sock
+        except OSError as e:
+            sock.close()
+            err = e
+    raise err or OSError(f"Can't connect to {host}")
+
+
+import http.client  # noqa: E402
+
+
+class _PinnedHTTP(http.client.HTTPConnection):
+    def connect(self):
+        self.sock = _pinned_socket(self.host, self.port, self.timeout)
+
+
+class _PinnedHTTPS(http.client.HTTPSConnection):
+    def connect(self):
+        sock = _pinned_socket(self.host, self.port, self.timeout)
+        self.sock = self._context.wrap_socket(sock, server_hostname=self.host)
+
+
+class _PinnedHandler(urllib.request.HTTPHandler, urllib.request.HTTPSHandler):
+    def http_open(self, req):
+        return self.do_open(_PinnedHTTP, req)
+
+    def https_open(self, req):
+        return self.do_open(_PinnedHTTPS, req, context=self._context)
+
+
 class _SafeRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         check_public(newurl)
@@ -548,7 +599,7 @@ def _http(url, data=None, headers=None, timeout=8, limit=2_000_000, local=False)
     if not local:
         check_public(url)
     req = urllib.request.Request(url, data=data, headers={"User-Agent": BROWSER_UA, **(headers or {})})
-    opener = urllib.request.build_opener() if local else urllib.request.build_opener(_SafeRedirect)
+    opener = urllib.request.build_opener() if local else urllib.request.build_opener(_PinnedHandler(), _SafeRedirect)
     with opener.open(req, timeout=timeout) as resp:
         raw = resp.read(limit)
         charset = resp.headers.get_content_charset() or "utf-8"
