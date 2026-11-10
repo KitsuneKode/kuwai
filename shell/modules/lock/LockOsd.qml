@@ -52,6 +52,24 @@ Item {
         onLoaded: { const v = Number(text().trim()); if (hud.maxB > 0 && v !== hud.curB) { const first = hud.curB < 0; hud.curB = v; if (!first && hud.armed) hud.show("brightness", v / hud.maxB, false); } } }
     Timer { interval: 300; repeat: true; running: hud.active && hud.backlight !== ""; onTriggered: bl.reload() }
 
+    // The session's lock screen: the brightness controller's own events
+    // (bin/rice-brightness, the same feed as the session HUD), so a change on
+    // any screen shows, the Acer over DDC included. The keys follow the
+    // focused screen, usually the external one, whose change sysfs above
+    // never sees: brightness worked there but showed nothing. The login
+    // screen has no controller (greeter/keys and ddcFile instead).
+    property bool brightnessFeed: false
+    Process {
+        running: hud.active && hud.brightnessFeed
+        command: ["setpriv", "--pdeathsig", "KILL", "--", Paths.bin + "/rice-brightness", "watch", "--part", "osd"]
+        stdout: SplitParser {
+            onRead: line => {
+                let ev;
+                try { ev = JSON.parse(line); } catch (e) { return; }
+                if (ev.kind === "brightness" && typeof ev.value === "number" && hud.armed) hud.show("brightness", ev.value / 100, false);
+            }
+        }
+    }
     // The login screen's external monitors: greeter/keys writes the value DDC
     // set (sysfs has nothing to watch for them). Empty elsewhere.
     property string ddcFile: ""

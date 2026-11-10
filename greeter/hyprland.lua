@@ -51,7 +51,9 @@ end
 
 -- The screens, as in ~/.config/hypr/monitors.lua.
 hl.monitor({ output = "desc:California Institute of Technology 0x1509", mode = "2560x1440@165", position = "0x360", scale = 4 / 3 })
-hl.monitor({ output = "desc:Acer Technologies XV272U X1", mode = "2560x1440@200", position = "1920x0", scale = 1, bitdepth = 8 })
+-- The Acer as the session has it (10-bit, sRGB): the same format at login
+-- and after it, so the handoff doesn't also change the colour depth.
+hl.monitor({ output = "desc:Acer Technologies XV272U X1", mode = "2560x1440@200", position = "1920x0", scale = 1, bitdepth = 10, cm = "srgb" })
 hl.monitor({ output = "", mode = "preferred", position = "auto", scale = 1 })
 
 hl.config({
@@ -79,6 +81,11 @@ for _, k in ipairs({
 	{ "XF86AudioRaiseVolume", "wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+" },
 	{ "XF86AudioLowerVolume", "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-" },
 	{ "XF86AudioMute", "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle" },
+	-- The plain F-keys too, as in the session (hypr/kuwai/binds.lua): this
+	-- keyboard's top row sends F7/F8/F10, not the XF86 keys, unless Fn is held.
+	{ "F8", ROOT .. "/keys brightness up" },
+	{ "F7", ROOT .. "/keys brightness down" },
+	{ "F10", "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle" },
 }) do
 	pcall(hl.bind, k[1], hl.dsp.exec_cmd(k[2]), { locked = true, repeating = true })
 end
