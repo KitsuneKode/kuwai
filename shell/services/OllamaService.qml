@@ -366,11 +366,12 @@ Singleton {
         const timeStr = formatTime(nowMs);
         const nameToLaunch = found ? found.name : appQuery;
 
-        if (found) {
-            found.execute();
-        } else {
-            Quickshell.execDetached([appQuery]);
+        // Only real apps (desktop entries) open; a typed string is never run as a program (red-team 9).
+        if (!found) {
+            root.errorText = "No app called " + appQuery;
+            return;
         }
+        found.execute();
 
         const userMsg = {
             role: "user",
@@ -1160,8 +1161,9 @@ function onPanelClosed() {
         function queue(): string { return JSON.stringify(root.queue.map(q => q.text)); }
         function summary(): string { return JSON.stringify({ summary: root.summary, upTo: root.summaryUpTo, count: root.messages.length }); }
         function clearPending() { root.pendingImage = ""; root.pendingContext = null; root.pendingAppTitle = ""; }
-        function resolveRequest(id: string, decision: string) { root.resolveRequest(id, decision, ""); }
-        function answer(text: string) { if (root.pendingRequest) root.resolveRequest(root.pendingRequest.id, "accept", text); }
+        // No resolveRequest / answer here: any program running as you can call IPC, and approvals
+        // (ids are q1, q2, …) must come from you in the panel (red-team 9). Declining stays possible.
+        function decline() { if (root.pendingRequest) root.resolveRequest(root.pendingRequest.id, "decline", ""); }
         function draft(): string { return root.draft ? JSON.stringify(root.draft) : ""; }
         function switchSession(id: string) { root.switchSession(id); }
         function deleteSession(id: string) { root.deleteSession(id); }

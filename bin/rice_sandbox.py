@@ -10,6 +10,7 @@ can't reach anything of yours.
 - Built from sandbox/Dockerfile: `rice-ollama sandbox build`.
 """
 import os
+import shlex
 import re
 import stat
 import subprocess
@@ -177,9 +178,13 @@ def write_file(chat, parts, data):
 
 
 def copy_in(chat, parts, src):
-    """Copy a host file into the sandbox (an attachment); the source is the user's."""
-    with open(src, "rb") as fh:
-        write_file(chat, parts, fh.read())
+    """Copy a host file into the sandbox (an attachment). The source gets the same secrets rule
+    as reading, and is opened without following a final link (red-team 9)."""
+    import rice_files
+    rice_files.check_readable(Path(src))
+    fd = os.open(src, os.O_RDONLY | os.O_NOFOLLOW)
+    with os.fdopen(fd, "rb") as fh:
+        write_file(chat, parts, fh.read(50_000_000))
 
 
 def _exists(dir_fd, name):
@@ -253,12 +258,13 @@ def ensure():
         _docker("rm", "-f", NAME)
     root = host_root()
     (root / ".home").mkdir(parents=True, exist_ok=True)
-    readme = root / "README.txt"
-    if not readme.exists():
-        try:
-            readme.write_text(JAIL_README, encoding="utf-8")
-        except OSError:
-            pass
+    # Created only if nothing (not even a dangling link) is there, never through a link (red-team 8).
+    try:
+        fd = os.open(root / "README.txt", os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o644)
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(JAIL_README)
+    except OSError:
+        pass
     net = os.environ.get("RICE_SANDBOX_NET") or "bridge"
     p = _docker(
         "run", "-d", "--name", NAME, "--init",
@@ -283,6 +289,7 @@ def run(chat, command, timeout=120):
     ws = workspace(chat)
     cwd = f"/work/{ws.name}"
     import rice_files
+    check_space()
     # Bounded: the host keeps ~64 KB of whatever it prints (review finding 16).
     code, out, _total = rice_files.run_bounded(
         [DOCKER, "exec", "-w", cwd, "-e", "TERM=dumb", NAME, "timeout", "-k", "5", str(int(timeout)), "bash", "-lc", command],
@@ -299,13 +306,36 @@ def run(chat, command, timeout=120):
 # <id>.notified once the desktop said so. The folder is mounted, so the host
 # reads them directly.
 
+JOB_HOURS = float(os.environ.get("RICE_SANDBOX_JOB_HOURS") or 2)
+JAIL_MAX_GB = float(os.environ.get("RICE_SANDBOX_MAX_GB") or 10)
+
+
+def check_space():
+    """The jail is a folder on your disk: past JAIL_MAX_GB it takes no new work (no root, so
+    no real quota; this keeps a runaway from filling Depot)."""
+    total = 0
+    for dirpath, _dirs, files in os.walk(host_root(), followlinks=False):
+        for f in files:
+            try:
+                total += os.lstat(os.path.join(dirpath, f)).st_size
+            except OSError:
+                pass
+        if total > JAIL_MAX_GB * 1e9:
+            raise SandboxError(f"The sandbox folder is over {JAIL_MAX_GB:g} GB; clear some chats in "
+                               f"{host_root()} first")
+
+
 def start_job(chat, command):
     import secrets
     ensure()
+    check_space()
     jid = "j" + secrets.token_hex(3)
     ws = workspace(chat)
     write_file(chat, [".jobs", f"{jid}.cmd"], command)
-    script = f"( {command} ) > .jobs/{jid}.log 2>&1; echo $? > .jobs/{jid}.status"
+    # A job ends after JOB_HOURS and its log stops at 20 MB (red-team 5: a job could write the
+    # host's disk full through an endless log). `head -c` cuts the log; the exit code is the job's.
+    script = (f"set -o pipefail; timeout -k 10 {int(JOB_HOURS * 3600)} bash -lc {shlex.quote(command)} 2>&1 "
+              f"| head -c 20000000 > .jobs/{jid}.log; echo ${{PIPESTATUS[0]}} > .jobs/{jid}.status")
     p = _docker("exec", "-d", "-w", f"/work/{ws.name}", "-e", "TERM=dumb", NAME, "bash", "-lc", script)
     if p.returncode != 0:
         raise SandboxError(f"Couldn't start it: {p.stderr.strip()[:200]}")
@@ -419,11 +449,17 @@ def stop():
 
 def render_page(url, timeout=25):
     """A page's DOM after its JavaScript ran (headless Chromium in the sandbox)."""
+    import rice_files
     ensure()
-    p = _docker("exec", NAME, "timeout", str(timeout), "chromium-headless-shell",
-                "--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage", "--hide-scrollbars",
-                "--virtual-time-budget=8000", "--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-                "(KHTML, like Gecko) Chrome/141.0 Safari/537.36", "--dump-dom", url, timeout=timeout + 10)
-    if p.returncode != 0 or not p.stdout.strip():
-        raise SandboxError(f"The browser couldn't load it ({(p.stderr or '').strip()[-200:]})")
-    return p.stdout
+    # The DOM is read bounded (red-team 2: unbounded capture). The caller checks the URL is public
+    # first; a page that then redirects Chromium to a private address is stopped by the jail's
+    # network (rice-ollama sandbox firewall), since Chromium does its own lookups.
+    code, out, _n = rice_files.run_bounded(
+        [DOCKER, "exec", NAME, "timeout", str(timeout), "chromium-headless-shell",
+         "--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage", "--hide-scrollbars",
+         "--virtual-time-budget=8000", "--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+         "(KHTML, like Gecko) Chrome/141.0 Safari/537.36", "--dump-dom", url],
+        timeout=timeout + 10, keep=1_500_000)
+    if code != 0 or not out.strip():
+        raise SandboxError("The browser couldn't load it")
+    return out

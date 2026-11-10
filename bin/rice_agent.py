@@ -340,12 +340,18 @@ def files_block(files):
         path = os.path.expanduser(str(f["path"]))
         name = os.path.basename(path)
         where = ""
+        # Attachments get the same secrets rule as reading (red-team 9: any path could be attached).
+        try:
+            rice_files.check_readable(Path(path))
+        except rice_files.FileError as e:
+            out.append(f"<file name=\"{name}\">Not attached: {e}</file>")
+            continue
         try:
             if os.path.getsize(path) <= 50_000_000 and name not in ("", ".", ".."):
                 rice_sandbox.workspace(CHAT)
                 rice_sandbox.copy_in(CHAT, ["files", name], path)
                 where = f" (also in your sandbox at files/{name})"
-        except (OSError, rice_sandbox.SandboxError):
+        except (OSError, rice_sandbox.SandboxError, rice_files.FileError):
             pass
         try:
             text = file_text(path)
@@ -892,6 +898,14 @@ def page_text(html_text):
     return (title + "\n\n" if title else "") + text
 
 
+def _render_allowed(url):
+    try:
+        check_public(url)
+        return True
+    except BlockedURL:
+        return False
+
+
 def tool_web_fetch(args):
     url = str(args.get("url") or "").strip()
     if not (url.startswith("https://") or url.startswith("http://")):
@@ -905,7 +919,8 @@ def tool_web_fetch(args):
     looks_html = "html" in (ctype or "") or page.lstrip()[:200].lower().startswith(("<!doctype html", "<html"))
     text = page_text(page) if looks_html else page
     # Shops and apps fill the page with JavaScript: little text, or "enable JavaScript".
-    if looks_html and (len(text) < 800 or "enable javascript" in text.lower()) and sandbox_ready():
+    if looks_html and (len(text) < 800 or "enable javascript" in text.lower()) and sandbox_ready() \
+            and _render_allowed(url):
         try:
             rendered = page_text(rice_sandbox.render_page(url))
             if len(rendered) > len(text):

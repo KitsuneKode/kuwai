@@ -147,3 +147,15 @@ def test_background_job_and_check(run_agent, tmp_path):
     out = completion(events, started(events, "command_execution")[0]["id"])["output"]
     assert "hi" in out
     assert list(ws.glob("*.cmd"))
+
+
+def test_secret_attachment_is_not_sent_or_copied(run_agent, tmp_path):
+    (tmp_path / ".ssh").mkdir()
+    key = tmp_path / ".ssh" / "id_ed25519"
+    key.write_text("PRIVATE KEY")
+    req = {"chat": "c42", "messages": [{"role": "user", "content": "what is this?",
+                                        "context": {"files": [{"path": str(key)}]}}]}
+    _, fake = run_agent(req, [answer()], caps=CAPS)
+    sent = fake.requests[0]["messages"][-1]["content"]
+    assert "PRIVATE KEY" not in sent and "Not attached" in sent
+    assert not (tmp_path / "sandbox" / "c42" / "files" / "id_ed25519").exists()
