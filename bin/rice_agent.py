@@ -36,6 +36,7 @@ OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 UA = {"User-Agent": "rice-ollama/1.0"}
 MAX_TOOL_ROUNDS = 10
 CHAT = ""            # the chat's id: its sandbox folder
+MODE = "agent"       # this turn's mode; Chat can't run changing tools even if the model names one
 # Ollama's num_predict is unlimited by default; a small model that falls into
 # a loop then writes forever. 2048 tokens is ~8k characters, plenty for an answer.
 NUM_PREDICT = 2048
@@ -1519,6 +1520,10 @@ def run_tool(ids, name, raw_args):
         args, bad = {}, str(e)
     else:
         bad = ""
+    # Chat mode's contract is enforced here, not only by which schemas were offered (review finding 10):
+    # a model that names a changing tool anyway gets an error, never the tool.
+    if tool and MODE == "chat" and name not in CHAT_SAFE:
+        bad = f"{name} isn't available in Chat mode (it only reads). Tell the user to switch this chat to Agent mode."
     item_type = tool["item"] if tool else "dynamic_tool_call"
     title = tool["title"](args) if tool else name
     item_id = ids.next("t")
@@ -1681,7 +1686,7 @@ def apply_steers(messages):
 
 
 def run_turn(req):
-    global CHAT, FILE_BUDGET
+    global CHAT, FILE_BUDGET, MODE
     CHAT = str(req.get("chat") or "")
     # Files may fill about 40% of the window (≈3.5 characters a token).
     FILE_BUDGET = int(int((req.get("options") or {}).get("num_ctx", 4096)) * 1.4)
@@ -1702,6 +1707,7 @@ def run_turn(req):
         " When you answer from a tool result or a page, copy dates, numbers and names exactly as written there.")
     raw_msgs = req.get("messages") or []
     mode = "chat" if req.get("mode") == "chat" else "agent"
+    MODE = mode
     offered = route_tools(raw_msgs, any((m.get("context") or {}).get("files") for m in raw_msgs[-2:] if isinstance(m.get("context"), dict)), mode)
     tools = [t["schema"] for n, t in TOOLS.items() if n in offered and (not t.get("sandbox") or sandbox_ready())]
     if os.environ.get("RICE_AGENT_CONTEXT") != "off":
@@ -1721,6 +1727,7 @@ def run_turn(req):
     stream = Stream(ids)
     status, error = "completed", ""
     rounds = 0
+    plan_streak = 0
     malformed = 0
     nudged = False
     planned = False
@@ -1737,7 +1744,10 @@ def run_turn(req):
         vision_hop(ids, messages, stats)
         while True:
             # A task with a plan is long work: it gets three times the rounds.
-            capped = rounds >= (6 if mode == "chat" else MAX_TOOL_ROUNDS * 3 if planned else MAX_TOOL_ROUNDS)
+            limit = 6 if mode == "chat" else MAX_TOOL_ROUNDS * 3 if planned else MAX_TOOL_ROUNDS
+            # Plan-only rounds don't count as work, but a model that only re-plans is stuck: 4 in a row ends it
+            # (review finding 15).
+            capped = rounds >= limit or plan_streak >= 4
             payload = {"model": model, "messages": messages, "stream": True,
                        "keep_alive": req.get("keep_alive", "5m"), "options": options}
             if use_tools and not capped:
@@ -1777,6 +1787,8 @@ def run_turn(req):
                 status = "max_tool_rounds"
                 break
             if calls:
+                only_plan = all((c.get("function") or {}).get("name") == "update_plan" for c in calls)
+                plan_streak = plan_streak + 1 if only_plan else 0
                 if any((c.get("function") or {}).get("name") == "update_plan" for c in calls):
                     planned = True
                 # Keeping the plan current isn't work: it doesn't use up a round.

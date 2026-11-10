@@ -136,3 +136,17 @@ def test_chat_mode_offers_no_changing_tools(run_agent):
     names = {t["function"]["name"] for t in fake.requests[0]["tools"]}
     assert not names & {"write", "edit", "run_command", "launch_app", "sandbox_run"}
     assert "Mode: chat." in fake.requests[0]["messages"][0]["content"]
+
+
+def test_chat_mode_refuses_a_changing_tool_even_when_named(run_agent, tmp_path):
+    script = [[call("write", {"path": "~/owned.txt", "content": "x"}), {"done": True}], answer()]
+    events, fake = run_agent({"mode": "chat", "messages": [{"role": "user", "content": "hi"}]}, script, caps=TOOLS_CAPS)
+    done = completion(events, tool_items(events)[0]["id"])
+    assert done["status"] == "failed" and "Chat mode" in done["output"]
+    assert not (tmp_path / "owned.txt").exists() and not [e for e in events if e["type"] == "request.opened"]
+
+
+def test_plan_only_rounds_are_capped(run_agent):
+    plan = [call("update_plan", {"steps": [{"step": "x", "status": "pending"}]}), {"done": True}]
+    events, fake = run_agent(USER, [plan] * 30 + [answer()], caps=TOOLS_CAPS)
+    assert len(fake.requests) <= 6 and events[-1]["status"] == "max_tool_rounds"
