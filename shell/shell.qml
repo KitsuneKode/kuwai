@@ -39,7 +39,6 @@ ShellRoot {
     Component.onCompleted: Quickshell.watchFiles = !Quickshell.shellDir.includes("/.local/share/kuwai/")
     Osd {}
     Popups {}
-    FullscreenBanner {}
     Center {}
     ClipboardPanel {}
     IslandBar {}

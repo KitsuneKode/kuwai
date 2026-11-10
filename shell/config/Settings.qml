@@ -167,7 +167,7 @@ Singleton {
             property real textScale: 1.0
             property string notifSurface: "one"   // one (island or toast) · both
             // In a fullscreen app (a game, a film): important = critical, warnings and
-            // people you can reply to get a slim banner · critical = only those · off.
+            // people you can reply to grow the notch · critical = only those · off.
             property string notifFullscreen: "important"
             // Toasts: off = tap to preview, then Open; on = one tap runs the default action.
             property bool notifToastInstantOpen: false

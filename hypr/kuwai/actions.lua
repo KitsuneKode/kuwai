@@ -44,8 +44,11 @@ local function unmaximize(w)
 end
 
 -- Float at one predictable size (62% × 66% of the usable area, centred),
--- tile back on the second press. Plain float toggling did nothing on
--- maximized windows and kept the tiled size the first time.
+-- tile back on the second press. The window is floating at that box before
+-- fullscreen ends. Leaving fullscreen while it is still tiled restores the
+-- column and configures that size first; a browser lays the page out there,
+-- then again at the floating size. Exiting once it is already floating
+-- recenters onto the floating box (one configure).
 function A.float_toggle()
 	local w = hl.get_active_window()
 	if not w then
@@ -55,12 +58,16 @@ function A.float_toggle()
 		dsp(hl.dsp.window.float({ window = sel(w), action = "disable" }))
 		return
 	end
-	unmaximize(w)
+	local was_fs = (w.fullscreen or 0) ~= 0
 	local u = A.usable(w.monitor or hl.get_active_monitor())
 	local ww, wh = math.floor(u.w * 0.62), math.floor(u.h * 0.66)
-	dsp(hl.dsp.window.float({ window = sel(w), action = "enable" }))
-	dsp(hl.dsp.window.resize({ window = sel(w), x = ww, y = wh }))
-	dsp(hl.dsp.window.move({ window = sel(w), x = u.x + math.floor((u.w - ww) / 2), y = u.y + math.floor((u.h - wh) / 2) }))
+	local addr = sel(w)
+	dsp(hl.dsp.window.float({ window = addr, action = "enable" }))
+	dsp(hl.dsp.window.resize({ window = addr, x = ww, y = wh }))
+	dsp(hl.dsp.window.move({ window = addr, x = u.x + math.floor((u.w - ww) / 2), y = u.y + math.floor((u.h - wh) / 2) }))
+	if was_fs then
+		unmaximize(w)
+	end
 end
 
 -- Pin = float + show on every workspace; unpinning tiles it back.

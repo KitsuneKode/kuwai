@@ -278,8 +278,8 @@ FocusScope {
                     key: "notifFullscreen"
                     label: "In fullscreen"
                     detail: Settings.notifFullscreen === "off" ? "Nothing interrupts a fullscreen app; it all waits in the center"
-                          : Settings.notifFullscreen === "critical" ? "Only critical ones, as a slim banner over the game or film"
-                          : "A slim banner for critical ones, warnings and people you can reply to; the rest wait"
+                          : Settings.notifFullscreen === "critical" ? "Only critical ones grow the notch over the game or film"
+                          : "The notch grows for critical ones, warnings and people you can reply to; the rest wait"
                     Segmented {
                         options: [{ id: "important", label: "Important" }, { id: "critical", label: "Critical" }, { id: "off", label: "Off" }]
                         current: Settings.notifFullscreen

@@ -185,9 +185,18 @@ Singleton {
                 for (const m of d) {
                     if (!/hdr/i.test(m.colorManagementPreset || "")) continue;
                     on[m.name] = true;
-                    if (!root.hdrOn[m.name])
-                        Moments.show({ kind: "hdr", glyph: "\u{f0379}", label: "HDR",
-                                       value: m.model || m.name, ring: -1, tone: Theme.yellow }, 2200);
+                    if (!root.hdrOn[m.name]) {
+                        // The resting notch is under a fullscreen window, so
+                        // the line grows out of it (the same card as a device)
+                        // and IslandBar lifts that card onto the overlay.
+                        const fs = !!(Hyprland.focusedWorkspace && Hyprland.focusedWorkspace.hasFullscreen);
+                        if (fs)
+                            Moments.showCard({ key: "hdr:" + m.name, glyph: "\u{f0379}", title: "HDR",
+                                               state: m.model || m.name, tone: Theme.yellow, battery: -1, quiet: true }, 2200);
+                        else
+                            Moments.show({ kind: "hdr", glyph: "\u{f0379}", label: "HDR",
+                                           value: m.model || m.name, ring: -1, tone: Theme.yellow }, 2200);
+                    }
                 }
                 root.hdrOn = on;
             }

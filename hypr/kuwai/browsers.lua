@@ -90,17 +90,11 @@ pcall(hl.window_rule, {
 	float = true,
 	center = true,
 	size = "960 600",
-})
--- The glide spring resizes a window on every frame of a fullscreen toggle.
--- A browser lays the page out again at each size, and it is already playing
--- its own toolbar animation, so the two run together and the transition
--- stutters. Snap the compositor's geometry. The browser's animation is the
--- one that should be seen. Popups above already opt out on their own.
-pcall(hl.window_rule, {
-	name = "browser-no-geometry-anim",
-	match = { class = "^(zen|google-chrome|brave-browser|chromium|firefox|floorp)$" },
 	no_anim = true,
 })
+-- The main window keeps the glide (Super+W, fullscreen). Only a second window
+-- — a Google sign-in, a wallet, DevTools — maps floating and snaps to its size.
+-- A spring on that popup resizes it every frame while the page is still loading.
 
 -- Dynamic part ----------------------------------------------------------------
 local pending = {} -- address -> true while we wait for a meaningful title
