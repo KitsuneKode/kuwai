@@ -15,6 +15,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Hyprland
+import Quickshell.Io
 import Quickshell.Services.Mpris
 import qs.config
 
@@ -64,9 +65,32 @@ Singleton {
 
     // ── The art's colour ─────────────────────────────────────────────────
     readonly property string art: active ? (active.trackArtUrl || "") : ""
+    // ColorQuantizer only reads local files: a player that gives a web URL
+    // (Cider, Spotify, YouTube Music) got no colours, so the waveform fell
+    // back to white. Those are fetched once into ~/.cache/rice/art (https
+    // only, 6 MB and 6 s at most, a week kept) and quantized from there.
+    readonly property bool artRemote: /^https:\/\//.test(art)
+    readonly property string artCache: (Quickshell.env("XDG_CACHE_HOME") || Quickshell.env("HOME") + "/.cache") + "/rice/art"
+    property string artLocal: ""
+    onArtChanged: {
+        artLocal = "";
+        if (!artRemote) return;
+        artFetch.want = art;
+        artFetch.file = artCache + "/" + Qt.md5(art);
+        artFetch.running = false;
+        Qt.callLater(() => { artFetch.running = true; });
+    }
+    Process {
+        id: artFetch
+        property string want: ""
+        property string file: ""
+        command: ["sh", "-c", 'mkdir -p "$1" || exit 1; if [ ! -s "$2" ]; then curl -fsS --proto =https --max-time 6 --max-filesize 6000000 -o "$2.tmp" "$3" && mv -f "$2.tmp" "$2" || { rm -f "$2.tmp"; exit 1; }; fi; find "$1" -type f -mtime +7 -delete 2>/dev/null; exit 0',
+                  "sh", root.artCache, file, want]
+        onExited: code => { if (code === 0 && want === root.art) root.artLocal = "file://" + file; }
+    }
     ColorQuantizer {
         id: quant
-        source: root.art
+        source: root.artRemote ? root.artLocal : root.art
         depth: 3
         rescaleSize: 64
     }

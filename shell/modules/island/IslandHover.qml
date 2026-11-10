@@ -44,7 +44,9 @@ Item {
     readonly property real gap: 16
     readonly property real sideW: Math.max(28 + caps.width, 28 + rightCol.width)
     readonly property real maxW: Math.max(720, bar.implicitWidth - 40)
-    readonly property real needW: hover.media ? 720 : Math.ceil(2 * (sideW + gap) + centreRow.width)
+    readonly property real needW: hover.media
+        ? (agentsHere ? Math.ceil(2 * (sideW + gap) + card.width + 29 + mediaAgents.width) : 720)
+        : Math.ceil(2 * (sideW + gap) + centreRow.width)
     implicitWidth: Math.min(maxW, Math.max(720, needW))
     implicitHeight: 148 + (OllamaService.recentWork.length || OllamaService.bgWorking ? 38 : 0)
 
@@ -225,6 +227,8 @@ Item {
         id: card
         visible: hover.media
         anchors.horizontalCenter: parent.horizontalCenter
+        // With your agents beside it, the two are centred together.
+        anchors.horizontalCenterOffset: hover.agentsHere ? -(mediaAgents.width + 29) / 2 : 0
         y: 62
         width: 380; height: 66; radius: 18
         color: Qt.rgba(1, 1, 1, cardHover.hovered ? 0.07 : 0.045)
@@ -334,6 +338,74 @@ Item {
             }
             Component.onCompleted: Media.watch()
             Component.onDestruction: Media.unwatch()
+        }
+    }
+
+    // Music playing: your agents stay in view, compact beside the card. One
+    // ring per account you can use (outer: session, inner: weekly), its logo
+    // inside and no name; the line under the island names the one under the
+    // pointer. Click: that agent in Usage. Music used to hide them entirely.
+    Rectangle {
+        visible: hover.media && hover.agentsHere
+        x: card.x + card.width + 14
+        y: card.y + (card.height - height) / 2
+        width: 1; height: 28
+        color: Theme.cardEdge
+    }
+    Row {
+        id: mediaAgents
+        visible: hover.media && hover.agentsHere
+        x: card.x + card.width + 29
+        y: card.y + (card.height - height) / 2
+        spacing: 8
+        readonly property int ring: 30
+        readonly property int room: Math.max(1, Math.floor((hover.maxW - 2 * (hover.sideW + hover.gap) - card.width - 29 + 8) / (ring + 8)))
+        readonly property var shown: Limits.usable.length <= room ? Limits.usable : Limits.usable.slice(0, room - 1)
+        readonly property int more: Limits.usable.length - shown.length
+        Repeater {
+            model: ScriptModel { values: mediaAgents.shown; objectProp: "id" }
+            delegate: Item {
+                id: mag
+                required property var modelData
+                readonly property var e: modelData
+                width: mediaAgents.ring; height: mediaAgents.ring
+                function ink(w) { return !w ? Theme.track : w.out ? Theme.red : w.near ? Theme.orange : mag.e.tint; }
+                StatRing {
+                    size: mediaAgents.ring; stroke: 2.5
+                    value: mag.e.session ? Math.max(0, mag.e.session.left) : 0
+                    color: mag.ink(mag.e.session)
+                    text: ""; label: ""
+                }
+                StatRing {
+                    visible: !!mag.e.weekly
+                    x: 5; y: 5
+                    size: mediaAgents.ring - 10; stroke: 2
+                    value: mag.e.weekly ? Math.max(0, mag.e.weekly.left) : 0
+                    color: mag.ink(mag.e.weekly)
+                    text: ""; label: ""
+                    opacity: 0.85
+                }
+                Image {
+                    anchors.centerIn: parent
+                    width: 10; height: 10
+                    source: mag.e.brand
+                    sourceSize: Qt.size(20, 20)
+                    asynchronous: true
+                }
+                HoverHandler {
+                    cursorShape: Qt.PointingHandCursor
+                    onHoveredChanged: agents.hot = hovered ? mag.e : (agents.hot === mag.e ? null : agents.hot)
+                }
+                TapHandler { onTapped: { Limits.usageTab = mag.e.pid; Island.open("usage", hover.bar.screenName, "pointer", "island"); } }
+            }
+        }
+        Item {
+            visible: mediaAgents.more > 0
+            width: mediaAgents.ring; height: mediaAgents.ring
+            Rectangle { anchors.fill: parent; radius: width / 2; color: "transparent"; border.width: 2.5; border.color: Theme.track }
+            Label { anchors.centerIn: parent; text: "+" + mediaAgents.more; size: 11; weight: Theme.wSemibold; color: Theme.textSecondary }
+            HoverHandler { cursorShape: Qt.PointingHandCursor }
+            TapHandler { onTapped: Island.open("usage", hover.bar.screenName, "pointer", "island") }
         }
     }
 
@@ -526,7 +598,7 @@ Item {
     Label {
         visible: agents.hot !== null
         anchors.horizontalCenter: parent.horizontalCenter
-        y: 126
+        y: hover.media ? 131 : 126          // under the card, not on its edge
         width: Math.min(implicitWidth, 460)
         horizontalAlignment: Text.AlignHCenter
         elide: Text.ElideRight

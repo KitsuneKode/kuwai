@@ -692,6 +692,17 @@ Item {
             HoverHandler { id: camHover; margin: 6 }
             Tip { text: "Camera in use" + (Activities.camUsers.length ? " · " + Activities.camUsers.join(", ") : ""); shown: camHover.hovered; below: true }
         }
+        // This screen is in HDR right now (an HDR film or game switched it):
+        // a small label, so you can see it engaged; gone when it switches back.
+        Label {
+            visible: !!Display.hdrOn[rest.bar.screenName]
+            anchors.verticalCenter: parent.verticalCenter
+            text: "HDR"
+            size: 10; weight: Theme.wSemibold
+            color: Theme.yellow
+            HoverHandler { id: hdrHover; margin: 6 }
+            Tip { text: "This screen is showing HDR"; shown: hdrHover.hovered; below: true }
+        }
         IslandStatus { visible: !rest.compact; anchors.verticalCenter: parent.verticalCenter; bar: rest.bar }
         HoverHandler { cursorShape: Qt.PointingHandCursor }
         TapHandler { onTapped: if (!agents.hovered) Notifs.toggleCenter("controls", "pointer", rest.bar.screenName) }
