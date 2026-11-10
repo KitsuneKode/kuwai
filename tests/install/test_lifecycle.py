@@ -130,8 +130,12 @@ def test_original_unit_enablement_survives_reinstall(install_env):
     i.run()
     i.run()
     i.run('--uninstall')
-    assert json.loads(i.services.read_text()) == {
-        UNITS[0]: 'enabled', UNITS[1]: 'disabled', UNITS[2]: 'enabled'}
+    recorded = json.loads(i.services.read_text())
+    # What you had survives both installs exactly...
+    assert {u: recorded.get(u) for u in UNITS[:3]} == {UNITS[0]: 'enabled', UNITS[1]: 'disabled', UNITS[2]: 'enabled'}
+    # ...and a unit the record hadn't seen (rice-backup.* came later) is kept
+    # as it was before installing: not there, so disabled.
+    assert all(v == 'disabled' for u, v in recorded.items() if u not in UNITS[:3]), recorded
 
 
 def test_custom_xdg_paths_restore_originals(install_env):
