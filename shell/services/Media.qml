@@ -72,7 +72,9 @@ Singleton {
     readonly property bool artRemote: /^https:\/\//.test(art)
     readonly property string artCache: (Quickshell.env("XDG_CACHE_HOME") || Quickshell.env("HOME") + "/.cache") + "/rice/art"
     property string artLocal: ""
-    onArtChanged: {
+    onArtChanged: fetchArt()
+    Component.onCompleted: fetchArt()        // a song already playing when the shell starts
+    function fetchArt() {
         artLocal = "";
         if (!artRemote) return;
         artFetch.want = art;
