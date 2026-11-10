@@ -10,6 +10,8 @@ can't reach anything of yours.
 - Built from sandbox/Dockerfile: `rice-ollama sandbox build`.
 """
 import os
+import time
+import json
 import shlex
 import re
 import stat
@@ -238,26 +240,99 @@ def build(stream=None):
     return p.returncode
 
 
+# ── Containers: one per chat (red-team 3) ────────────────────────────────
+# Each chat's container mounts only its own folder (at /work/<chat>) and keeps its
+# $HOME inside it, so one chat can't read another's files or plant a program on a
+# PATH the next chat runs. They share one Docker network, rice-jail, so firewall
+# rules can target the jail exactly (rice-ollama sandbox firewall). Containers idle
+# for 30 minutes with no job running are stopped.
+
+JAIL_NET = os.environ.get("RICE_SANDBOX_NET") or "rice-jail"
+JAIL_SUBNET = "172.30.97.0/24"
+IDLE_S = 1800
+
+
+def container(chat):
+    return f"{NAME}-{chat_slug(chat)}"
+
+
 def state():
-    """'running', 'stopped', 'missing' (no container) or 'no-image'."""
-    p = _docker("inspect", "-f", "{{.State.Running}}", NAME, timeout=10)
-    if p.returncode != 0:
-        return "missing" if image_exists() else "no-image"
-    return "running" if p.stdout.strip() == "true" else "stopped"
+    """'no-image', or 'running' / 'missing' for the containers."""
+    if not image_exists():
+        return "no-image"
+    p = _docker("ps", "-q", "--filter", "label=rice.sandbox=1", timeout=10)
+    return "running" if (p.stdout or "").strip() else "missing"
 
 
-def ensure():
-    s = state()
-    if s == "running":
-        return
-    if s == "no-image":
+def _network():
+    if JAIL_NET in ("none", "bridge"):
+        return JAIL_NET
+    if _docker("network", "inspect", JAIL_NET, timeout=10).returncode != 0:
+        _docker("network", "create", "--driver", "bridge", "--subnet", JAIL_SUBNET,
+                "--label", "rice.sandbox=1", JAIL_NET, timeout=30)
+    return JAIL_NET
+
+
+def _matches(name, src, dest, net):
+    """Is the container `name` really the jail we'd make (red-team 6: any container could
+    take the name, with the Docker socket or your root mounted)?"""
+    p = _docker("inspect", name, timeout=10)
+    try:
+        data = json.loads(p.stdout or "[]")
+        info = data[0] if isinstance(data, list) and data and isinstance(data[0], dict) else None
+    except ValueError:
+        info = None
+    if info is None:
+        return False
+    hc, cfg = info.get("HostConfig") or {}, info.get("Config") or {}
+    mounts = [(m.get("Source"), m.get("Destination"), m.get("RW")) for m in info.get("Mounts") or []]
+    want_mounts = [(str(src), dest, True)] if src else []
+    return (cfg.get("Image") == IMAGE
+            and (cfg.get("User") or "") == f"{os.getuid()}:{os.getgid()}"
+            and "ALL" in (hc.get("CapDrop") or [])
+            and not hc.get("CapAdd")
+            and hc.get("ReadonlyRootfs") is True
+            and hc.get("Privileged") is False
+            and any("no-new-privileges" in o for o in hc.get("SecurityOpt") or [])
+            and (hc.get("NetworkMode") or "") == net
+            and sorted(mounts) == sorted(want_mounts)
+            and (cfg.get("Labels") or {}).get("rice.sandbox") == "1")
+
+
+def _touch(slug):
+    path = Path(os.path.expanduser("~/.cache/rice/assistant/sandbox-used.json"))
+    try:
+        used = json.loads(path.read_text())
+    except (OSError, ValueError):
+        used = {}
+    used[slug] = time.time()
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(used))
+    except OSError:
+        pass
+    return used
+
+
+def _reap(used, keep):
+    """Stop chat containers idle for IDLE_S with no background job still running."""
+    p = _docker("ps", "--filter", "label=rice.sandbox=1", "--format", "{{.Names}}", timeout=10)
+    for name in (p.stdout or "").split():
+        slug = name[len(NAME) + 1:]
+        if name == keep or not slug or slug == "web" or time.time() - used.get(slug, 0) < IDLE_S:
+            continue
+        jobs = host_root() / slug / ".jobs"
+        running = jobs.is_dir() and any(not (jobs / (c.stem + ".status")).exists() for c in jobs.glob("*.cmd"))
+        if not running:
+            _docker("stop", "-t", "2", name, timeout=20)
+
+
+def ensure(chat=None, web=False):
+    """The container for `chat` (or the mount-less one for the web renderer), checked and running."""
+    if not image_exists():
         raise SandboxError("The sandbox image isn't built yet: run `rice-ollama sandbox build`")
-    if s == "stopped":
-        if _docker("start", NAME).returncode == 0:
-            return
-        _docker("rm", "-f", NAME)
     root = host_root()
-    (root / ".home").mkdir(parents=True, exist_ok=True)
+    root.mkdir(parents=True, exist_ok=True)
     # Created only if nothing (not even a dangling link) is there, never through a link (red-team 8).
     try:
         fd = os.open(root / "README.txt", os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o644)
@@ -265,9 +340,24 @@ def ensure():
             fh.write(JAIL_README)
     except OSError:
         pass
-    net = os.environ.get("RICE_SANDBOX_NET") or "bridge"
+    _docker("rm", "-f", NAME, timeout=30)          # the old shared container, if it's still there
+    net = _network()
+    if web:
+        name, src, dest, env = f"{NAME}-web", None, None, []
+    else:
+        slug = workspace(chat).name
+        name, src, dest = container(chat), root / slug, f"/work/{slug}"
+        home = f"{dest}/.home"
+        env = ["-e", f"HOME={home}", "-e", f"NPM_CONFIG_PREFIX={home}/.npm-global",
+               "-e", f"PATH={home}/.local/bin:{home}/.npm-global/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"]
+        _reap(_touch(slug), name)
+    running = _docker("inspect", "-f", "{{.State.Running}}", name, timeout=10)
+    if running.returncode == 0 and _matches(name, src, dest, net):
+        if running.stdout.strip() == "true" or _docker("start", name).returncode == 0:
+            return name
+    _docker("rm", "-f", name, timeout=30)
     p = _docker(
-        "run", "-d", "--name", NAME, "--init",
+        "run", "-d", "--name", name, "--init",
         "--user", f"{os.getuid()}:{os.getgid()}",
         "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
         "--read-only", "--tmpfs", "/tmp:rw,exec,size=512m",
@@ -275,24 +365,26 @@ def ensure():
         "--cpus", os.environ.get("RICE_SANDBOX_CPUS", "4"),
         "--pids-limit", "512",
         "--network", net,
-        "-v", f"{root}:/work",
-        "--label", "rice.sandbox=1",
+        *(["-v", f"{src}:{dest}"] if src else []),
+        *env,
+        "--label", "rice.sandbox=1", "--label", f"rice.chat={'web' if web else src.name}",
         IMAGE, "sleep", "infinity", timeout=60)
     if p.returncode != 0:
         raise SandboxError(f"Couldn't start the sandbox: {p.stderr.strip()[:300]}")
+    return name
 
 
 def run(chat, command, timeout=120):
     """Run a bash command in the chat's folder. Returns (exit code, output).
     The command is killed after `timeout` seconds (inside the container)."""
-    ensure()
+    name = ensure(chat)
     ws = workspace(chat)
     cwd = f"/work/{ws.name}"
     import rice_files
     check_space()
     # Bounded: the host keeps ~64 KB of whatever it prints (review finding 16).
     code, out, _total = rice_files.run_bounded(
-        [DOCKER, "exec", "-w", cwd, "-e", "TERM=dumb", NAME, "timeout", "-k", "5", str(int(timeout)), "bash", "-lc", command],
+        [DOCKER, "exec", "-w", cwd, "-e", "TERM=dumb", name, "timeout", "-k", "5", str(int(timeout)), "bash", "-lc", command],
         timeout=timeout + 15)
     if code is None:
         code = 124
@@ -327,7 +419,7 @@ def check_space():
 
 def start_job(chat, command):
     import secrets
-    ensure()
+    name = ensure(chat)
     check_space()
     jid = "j" + secrets.token_hex(3)
     ws = workspace(chat)
@@ -336,7 +428,7 @@ def start_job(chat, command):
     # host's disk full through an endless log). `head -c` cuts the log; the exit code is the job's.
     script = (f"set -o pipefail; timeout -k 10 {int(JOB_HOURS * 3600)} bash -lc {shlex.quote(command)} 2>&1 "
               f"| head -c 20000000 > .jobs/{jid}.log; echo ${{PIPESTATUS[0]}} > .jobs/{jid}.status")
-    p = _docker("exec", "-d", "-w", f"/work/{ws.name}", "-e", "TERM=dumb", NAME, "bash", "-lc", script)
+    p = _docker("exec", "-d", "-w", f"/work/{ws.name}", "-e", "TERM=dumb", name, "bash", "-lc", script)
     if p.returncode != 0:
         raise SandboxError(f"Couldn't start it: {p.stderr.strip()[:200]}")
     return jid
@@ -362,8 +454,7 @@ def stop_job(chat, jid):
     workspace(chat)
     if read_file(chat, [".jobs", f"{jid}.cmd"], limit=1) is None:
         raise SandboxError(f"No job {jid}")
-    ensure()
-    _docker("exec", NAME, "pkill", "-f", f".jobs/{jid}.log", timeout=10)
+    _docker("exec", ensure(chat), "pkill", "-f", f".jobs/{jid}.log", timeout=10)
     write_file(chat, [".jobs", f"{jid}.status"], "143")
 
 
@@ -416,8 +507,11 @@ t "see host processes"                      "ps -e | grep -Eq 'Hyprland|systemd-
 t "change the clock"                        "date -s '2000-01-01'"
 t "raw network sockets"                     "python3 -c 'import socket; socket.socket(socket.AF_INET, socket.SOCK_RAW, 1)'"
 t "write outside /work and /tmp"            "touch /opt/x || touch /root/x || touch /var/x"
-t "reach the host's Ollama (gateway:11434)" "curl -s -m 3 http://172.17.0.1:11434/api/tags | grep -q models"
-t "reach the host's SearXNG (gateway:8888)" "curl -s -m 3 http://172.17.0.1:8888/ | grep -q ."
+t "see other chats' folders"                "ls /work | grep -vx jailcheck | grep -q ."
+t "write a shared home other chats use"     "touch /work/.home/x"
+t "reach the host's Ollama ($HOST_GW:11434)" "curl -s -m 3 http://$HOST_GW:11434/api/tags | grep -q models"
+t "reach the host's SearXNG ($HOST_GW:8888)" "curl -s -m 3 http://$HOST_GW:8888/ | grep -q ."
+t "reach any port on the host ($HOST_GW)"     "( for p in 22 80 443 631 3000 3210 3773 5000 8000 8080; do curl -s -m 1 -o /dev/null http://$HOST_GW:\$p/ && exit 0; done; exit 1 )"
 w "reach your local network (router $LAN_GW)" "test -n \"$LAN_GW\" && curl -s -m 3 -o /dev/null http://$LAN_GW/"
 echo "info  can reach the internet: $(curl -s -m 5 -o /dev/null -w '%{http_code}' https://example.com)"
 echo "info  runs as: $(id -u):$(id -g), caps: $(grep CapEff /proc/self/status | awk '{print $2}')"
@@ -426,7 +520,6 @@ echo "info  runs as: $(id -u):$(id -g), caps: $(grep CapEff /proc/self/status | 
 
 def check():
     """Run the escape attempts inside the real container; lines of 'ok/FAIL/warn/info  what'."""
-    ensure()
     # Your real router, from the host's routing table (the container's own gateway is Docker's).
     import socket
     import struct
@@ -439,23 +532,28 @@ def check():
                 break
     except (OSError, ValueError):
         pass
-    p = _docker("exec", "-e", f"LAN_GW={gw}", NAME, "bash", "-c", ESCAPES, timeout=90)
+    host_gw = JAIL_SUBNET.rsplit(".", 1)[0] + ".1" if JAIL_NET not in ("bridge", "none") else "172.17.0.1"
+    p = _docker("exec", "-e", f"LAN_GW={gw}", "-e", f"HOST_GW={host_gw}", ensure("jailcheck"), "bash", "-c", ESCAPES,
+                timeout=120)
     return (p.stdout or "") + (p.stderr or "")
 
 
 def stop():
+    p = _docker("ps", "-aq", "--filter", "label=rice.sandbox=1", timeout=10)
+    ids = (p.stdout or "").split()
+    if ids:
+        _docker("rm", "-f", *ids, timeout=60)
     _docker("rm", "-f", NAME, timeout=30)
 
 
 def render_page(url, timeout=25):
     """A page's DOM after its JavaScript ran (headless Chromium in the sandbox)."""
     import rice_files
-    ensure()
     # The DOM is read bounded (red-team 2: unbounded capture). The caller checks the URL is public
     # first; a page that then redirects Chromium to a private address is stopped by the jail's
     # network (rice-ollama sandbox firewall), since Chromium does its own lookups.
     code, out, _n = rice_files.run_bounded(
-        [DOCKER, "exec", NAME, "timeout", str(timeout), "chromium-headless-shell",
+        [DOCKER, "exec", ensure(web=True), "timeout", str(timeout), "chromium-headless-shell",
          "--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage", "--hide-scrollbars",
          "--virtual-time-budget=8000", "--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
          "(KHTML, like Gecko) Chrome/141.0 Safari/537.36", "--dump-dom", url],

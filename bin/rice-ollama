@@ -476,7 +476,7 @@ def cmd_search(args):
         print(json.dumps({"state": p.stdout.strip() or "missing", "url": "http://127.0.0.1:8888"}))
 
 def cmd_sandbox(args):
-    """rice-ollama sandbox <status|build|stop|check|log|jobs|path [chat]>"""
+    """rice-ollama sandbox <status|build|stop|check|firewall|log|jobs|path [chat]>"""
     sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
     import rice_sandbox as sb
     sub = args[0] if args else "status"
@@ -491,6 +491,23 @@ def cmd_sandbox(args):
             out = sb.check()
             print(out.rstrip())
             sys.exit(1 if "FAIL" in out else 0)
+        elif sub == "firewall":
+            # Root's job, so this only prints it. Docker's DOCKER-USER chain runs before its own
+            # rules (ufw route rules don't see container traffic); the ufw after.rules block keeps
+            # it across reboots.
+            net = sb.JAIL_SUBNET
+            drops = ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "169.254.0.0/16", "100.64.0.0/10"]
+            print("# Keep the AI sandbox off your LAN and this machine; the internet stays open.")
+            print("# Now:")
+            for d in drops:
+                print(f"sudo iptables -I DOCKER-USER -s {net} -d {d} -m conntrack ! --ctstate ESTABLISHED,RELATED -j DROP")
+            print(f"sudo iptables -I INPUT -s {net} -m conntrack ! --ctstate ESTABLISHED,RELATED -j DROP")
+            print("# Across reboots (ufw is active here): append to /etc/ufw/after.rules, then sudo ufw reload")
+            print("*filter\n:DOCKER-USER - [0:0]")
+            for d in drops:
+                print(f"-A DOCKER-USER -s {net} -d {d} -m conntrack ! --ctstate ESTABLISHED,RELATED -j DROP")
+            print("-A DOCKER-USER -j RETURN\nCOMMIT")
+            print("# Then check: rice-ollama sandbox check  (every line should say ok)")
         elif sub == "log":
             p = sb.audit_log_path()
             print(open(p).read()[-8000:] if os.path.exists(p) else "(nothing yet)")
@@ -500,7 +517,7 @@ def cmd_sandbox(args):
         elif sub == "path":
             print(sb.workspace(args[1] if len(args) > 1 else ""))
         else:
-            sys.stderr.write("Usage: rice-ollama sandbox <status|build|stop|check|log|jobs|path [chat]>\n")
+            sys.stderr.write("Usage: rice-ollama sandbox <status|build|stop|check|firewall|log|jobs|path [chat]>\n")
             sys.exit(1)
     except sb.SandboxError as e:
         sys.stderr.write(f"{e}\n")

@@ -20,7 +20,7 @@ def env(tmp_path, monkeypatch):
     secret = host / "secret.txt"
     secret.write_text("HOST SECRET\n")
     monkeypatch.setenv("RICE_SANDBOX_DIR", str(root))
-    monkeypatch.setattr(sb, "ensure", lambda: None)
+    monkeypatch.setattr(sb, "ensure", lambda *a, **k: "rice-sandbox-test")
     monkeypatch.setattr(sb, "_docker", lambda *a, **k: None)
     jobs = sb.workspace("c1") / ".jobs"
     jobs.mkdir()
