@@ -7,8 +7,12 @@
 //              read-only bearer token kept in ~/.local/state/rice/t3-token
 //              (issue one with: t3 auth session issue --scope orchestration:read
 //              --label rice-usage --ttl 365d --token-only)
+//   T3 Code's last snapshot  ~/.local/state/rice/usage-t3.json: every
+//              account T3 Code last reported, kept (up to a week) for while
+//              it's closed, so the rings don't collapse to kittymux's view
 //   kittymux   ~/.local/state/kittymux/agent-usage.json: one account per
-//              provider; used when T3 Code isn't running or has no token
+//              provider (Claude usually "idle", so dropped); used only when
+//              there's no recent T3 Code snapshot
 //
 //   rice-usage           prints one snapshot and exits
 //   rice-usage --watch   stays connected and prints a line on every change:
@@ -24,7 +28,7 @@
 //       accounts: [{ key, name, email, plan, note, windows: [{ id, kind, label,
 //         used, resetsAt, durationMins }] }] }] }
 // Times are epoch milliseconds; `used` is 0–100.
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync, renameSync, mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 
 const HOME = homedir();
@@ -264,7 +268,27 @@ function group(accounts, source) {
 // The reader (the shell) going away ends us quietly.
 process.stdout.on("error", () => process.exit(0));
 const print = (o) => process.stdout.write(JSON.stringify(o) + "\n");
-const fallback = (t3Error) => ({ ...(fromKittymux() || group([], "none")), t3Error });
+// T3 Code's last full view, saved on every update (it holds account emails,
+// so owner-only). Read back while T3 Code is closed: "t3-cached", with the
+// time it was taken. Windows whose reset has passed read as reset in the
+// shell (Limits.windows), so an old snapshot doesn't claim a spent limit.
+const CACHE = `${STATE}/rice/usage-t3.json`;
+const CACHE_MAX_MS = 7 * 24 * 3600 * 1000;
+function saveT3(o) {
+  if (!o || !o.providers || !o.providers.length) return;
+  try {
+    mkdirSync(`${STATE}/rice`, { recursive: true, mode: 0o700 });
+    writeFileSync(`${CACHE}.tmp`, JSON.stringify({ ...o, cachedAt: Date.now() }), { mode: 0o600 });
+    renameSync(`${CACHE}.tmp`, CACHE);
+  } catch {}
+}
+function fromCache() {
+  const d = readJson(CACHE);
+  if (!d || !Array.isArray(d.providers) || !d.providers.length) return null;
+  if (!(Date.now() - (d.cachedAt || 0) < CACHE_MAX_MS)) return null;
+  return { ...d, source: "t3-cached" };
+}
+const fallback = (t3Error) => ({ ...(fromCache() || fromKittymux() || group([], "none")), t3Error });
 
 if (process.argv.includes("--watch")) {
   let last = "";
@@ -273,7 +297,7 @@ if (process.argv.includes("--watch")) {
     const ep = t3Endpoint();
     if (ep) {
       let live = false;
-      const why = await watchT3(ep, (state) => { live = true; wait = 2000; emit(state); });
+      const why = await watchT3(ep, (state) => { live = true; wait = 2000; saveT3(state); emit(state); });
       if (!live) emit(fallback(why));
     } else emit(fallback(null));
     // Reconnect (T3 Code restarts, sleeps) with backoff; kittymux meanwhile.
@@ -285,6 +309,7 @@ if (process.argv.includes("--watch")) {
 let out = null;
 let t3Error = null;
 try { out = await fromT3(); } catch (e) { t3Error = e.message; }
-if (!out || !out.providers.length) out = fallback(t3Error);
+if (out && out.providers.length) saveT3(out);
+else out = fallback(t3Error);
 print(out);
 process.exit(0);

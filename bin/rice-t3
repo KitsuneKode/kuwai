@@ -17,13 +17,21 @@ pid=$(jq -r '.pid // empty' "$DIR/server-runtime.json" 2>/dev/null) || none
 [[ "$pid" =~ ^[0-9]+$ ]] && kill -0 "$pid" 2>/dev/null || none
 [ -r "$DB" ] || none
 
+# One row per thread, not per run: a message queued while a thread works is
+# its own run ("starting"), so the same thread was listed twice and counted
+# as two active. Its most telling state wins: waiting, then running, then the
+# newest of the rest.
 rows=$(timeout 3 sqlite3 -readonly -json "file:$DB?mode=ro" "
-  select r.status as status, r.provider as provider, coalesce(t.title, '') as title
-  from orchestration_v2_projection_runs r
-  left join orchestration_v2_projection_threads t on t.thread_id = r.thread_id
-  where r.status in ('queued','preparing','starting','running','waiting')
-    and t.deleted_at is null and t.archived_at is null
-  order by (r.status = 'waiting') desc, r.requested_at desc
+  select status, provider, title from (
+    select r.status as status, r.provider as provider, coalesce(t.title, '') as title, r.requested_at as at,
+           row_number() over (partition by r.thread_id
+                              order by (r.status = 'waiting') desc, (r.status = 'running') desc, r.requested_at desc) as n
+    from orchestration_v2_projection_runs r
+    left join orchestration_v2_projection_threads t on t.thread_id = r.thread_id
+    where r.status in ('queued','preparing','starting','running','waiting')
+      and t.deleted_at is null and t.archived_at is null)
+  where n = 1
+  order by (status = 'waiting') desc, at desc
   limit 12;" 2>/dev/null) || none
 [ -n "$rows" ] || rows="[]"
 # Finished in the last 15 minutes (and not running again): the panel shows

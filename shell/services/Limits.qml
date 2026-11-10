@@ -33,7 +33,7 @@ Singleton {
     readonly property bool watching: true       // always (callers read it)
     property bool loaded: false                 // the first snapshot has arrived
     property var providers: []
-    property string source: ""                 // t3 | kittymux | none
+    property string source: ""                 // t3 | t3-cached (T3 Code closed: its last view) | kittymux | none
     property real now: Date.now()               // advanced on each read and each minute tick, not per frame
     property string error: ""                   // why T3 Code isn't the source, if it isn't
 
@@ -182,6 +182,10 @@ Singleton {
         });
         return list.sort((a, b) => (/claude/i.test(b.pid) - /claude/i.test(a.pid)) || a.worst - b.worst);
     }
+    // The hover view's rings: only accounts you can use right now. One whose
+    // session or weekly limit is spent ("Limited") is left out; the Usage
+    // panel still lists it, with when it's back.
+    readonly property var usable: perAccount.filter(e => !(e.session && e.session.out) && !(e.weekly && e.weekly.out))
     // One entry per agent for the hover view: its worst window, what's left.
     readonly property var perAgent: {
         const by = {};

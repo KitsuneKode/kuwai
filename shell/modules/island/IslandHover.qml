@@ -21,7 +21,7 @@ import qs.services
 
 Item {
     id: hover
-    readonly property bool agentsHere: Settings.limitAlerts && Limits.perAgent.length > 0
+    readonly property bool agentsHere: Settings.limitAlerts && Limits.usable.length > 0
     required property var bar
     readonly property var player: bar.player
     readonly property bool media: bar.showMedia
@@ -36,7 +36,16 @@ Item {
     readonly property string winClass: topInfo.class || (focusWin && focusWin.wayland ? (focusWin.wayland.appId || "") : "")
     readonly property var app: winClass ? DesktopEntries.heuristicLookup(winClass) : null
 
-    implicitWidth: 780   // room for the quick switches beside the bell
+    // Wide enough that the centre row (the machine's rings and your agents'),
+    // centred, never runs under the workspaces on the left or the status rows
+    // on the right: 720 normally, wider with many accounts, never past the
+    // window (IslandBar takes this as the grown shape's width). Past that the
+    // agents strip shows what fits and a "+N" (agents.room).
+    readonly property real gap: 16
+    readonly property real sideW: Math.max(28 + caps.width, 28 + rightCol.width)
+    readonly property real maxW: Math.max(720, bar.implicitWidth - 40)
+    readonly property real needW: hover.media ? 720 : Math.ceil(2 * (sideW + gap) + centreRow.width)
+    implicitWidth: Math.min(maxW, Math.max(720, needW))
     implicitHeight: 148 + (OllamaService.recentWork.length || OllamaService.bgWorking ? 38 : 0)
 
     // Recent background work from the assistant (done or failed while its panel
@@ -85,7 +94,7 @@ Item {
             MouseArea { id: nowArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: OllamaService.openSession(OllamaService.draftSessionId) }
         }
         Repeater {
-            model: OllamaService.recentWork.slice(0, OllamaService.bgWorking ? 1 : 2)   // fits the 780 px island
+            model: OllamaService.recentWork.slice(0, OllamaService.bgWorking ? 1 : 2)   // two fit on the row
             Rectangle {
                 id: workChip
                 required property var modelData
@@ -149,7 +158,7 @@ Item {
             HoverHandler { id: appHover; cursorShape: Qt.PointingHandCursor }
             TapHandler { onTapped: Island.open("launcher", hover.bar.screenName, "pointer", "island") }
         }
-        Capsules { bar: hover.bar; scale: 1.1 }
+        Capsules { id: caps; bar: hover.bar; scale: 1.1 }
     }
     Item {
         x: 28; y: 24; width: 200; height: 18
@@ -330,11 +339,11 @@ Item {
 
     // Nothing playing: how hard the machine works.
     Row {
+        id: centreRow
         visible: !hover.media
         anchors.horizontalCenter: parent.horizontalCenter
-        // With agents beside the machine: tighter, and nudged left of the
-        // status column (Antigravity's ring ran into the update chip).
-        anchors.horizontalCenterOffset: hover.agentsHere ? -36 : 0
+        // With agents beside the machine: tighter. No offset: the island's
+        // width (needW) keeps both sides clear.
         y: 64
         spacing: hover.agentsHere ? 14 : 22
         // The machine. With your agents beside it there's room for two rings:
@@ -407,19 +416,24 @@ Item {
             width: 1; height: 28
             color: Theme.cardEdge
         }
-        // Every account, all at once (outer ring: the session window, inner:
-        // the weekly one). Paging hid whichever three were not on the current
-        // page; the Usage panel already lists every one, and so does this row.
-        // Click: that agent's tab in Usage.
+        // Every account you can use now (outer ring: the session window,
+        // inner: the weekly one); spent ones are left out (Limits.usable), the
+        // Usage panel lists every one. Click: that agent's tab in Usage.
         Item {
             id: agents
             visible: hover.agentsHere
-            readonly property var all: Limits.perAccount
+            readonly property var all: Limits.usable
             // Each column the same width (a ring and its name under it): the name
             // used to widen its ring's StatRing, centring the outer ring on
             // "Antigravity 1" while the inner ring and logo stayed put.
             readonly property int col: Theme.statRingSize + 26
-            width: Math.max(col, all.length * col + Math.max(0, all.length - 1) * 6)
+            // Columns that fit at the island's widest (14 + divider + 14 before
+            // the strip). More accounts than that: the last column is "+N".
+            readonly property int room: Math.max(1, Math.floor((hover.maxW - 2 * (hover.sideW + hover.gap) - machine.width - 29 + 6) / (col + 6)))
+            readonly property var shown: all.length <= room ? all : all.slice(0, room - 1)
+            readonly property int more: all.length - shown.length
+            readonly property int cols: shown.length + (more > 0 ? 1 : 0)
+            width: Math.max(col, cols * col + Math.max(0, cols - 1) * 6)
             height: Theme.statRingSize + 18
             // The account under the pointer. Its windows stay in the island:
             // a popup below the ring drew on the window underneath, with no pill.
@@ -432,7 +446,7 @@ Item {
                 id: agentsRow
                 spacing: 6
                 Repeater {
-                    model: ScriptModel { values: agents.all; objectProp: "id" }
+                    model: ScriptModel { values: agents.shown; objectProp: "id" }
                     delegate: Item {
                         id: ag
                         required property var modelData
@@ -482,6 +496,28 @@ Item {
                         TapHandler { onTapped: { Limits.usageTab = ag.e.pid; Island.open("usage", hover.bar.screenName, "pointer", "island"); } }
                     }
                 }
+                // The accounts that didn't fit: a count in a quiet ring; the
+                // Usage panel lists every one.
+                Item {
+                    visible: agents.more > 0
+                    width: agents.col
+                    height: Theme.statRingSize + 18
+                    Rectangle {
+                        x: (parent.width - Theme.statRingSize) / 2
+                        width: Theme.statRingSize; height: Theme.statRingSize; radius: width / 2
+                        color: "transparent"
+                        border.width: 3; border.color: Theme.track
+                        Label { anchors.centerIn: parent; text: "+" + agents.more; size: 12; weight: Theme.wSemibold; color: Theme.textSecondary }
+                    }
+                    Label {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        y: Theme.statRingSize + 4
+                        text: "More"
+                        size: 11; weight: Theme.wMedium; color: Theme.textSecondary
+                    }
+                    HoverHandler { cursorShape: Qt.PointingHandCursor }
+                    TapHandler { onTapped: Island.open("usage", hover.bar.screenName, "pointer", "island") }
+                }
             }
         }
     }
@@ -506,6 +542,7 @@ Item {
 
     // ── Right: news and status ───────────────────────────────────────────
     Column {
+        id: rightCol
         anchors { right: parent.right; rightMargin: 28 }
         y: 22
         spacing: 16
