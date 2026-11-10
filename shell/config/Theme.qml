@@ -40,6 +40,9 @@ Singleton {
     // surface and a hairline, so cards separate without boxes everywhere.
     readonly property color card: Qt.rgba(1, 1, 1, 0.05)
     readonly property color cardEdge: Qt.rgba(1, 1, 1, contrast ? 0.22 : 0.05)
+    // A round grey button on black (iOS's stop ✕): rest and hover.
+    readonly property color knob: "#3a3a3c"
+    readonly property color knobHover: "#4a4a4e"
     readonly property color chip: Qt.rgba(0.11, 0.11, 0.12, 1)   // an opaque disc on black (stacked logos)
     readonly property int statRingSize: 40   // the hover view's rings (machine and agents)
     // Agents' own colours (T3 Code's usage palette), for their bars and discs.
@@ -290,6 +293,12 @@ Singleton {
     readonly property int hudInMs: 180          // the HUD answers a keypress: fast, 6px, no scale bounce
     readonly property int hudOutMs: 150
     readonly property int revealStepMs: 40      // stagger between groups of content (30–80ms)
+    // Cards that grow out of the island (DeviceCard, AlarmCard).
+    readonly property int cardInMs: 300         // the mark coming up
+    readonly property int cardRiseMs: 260       // each line rising 4 px into place
+    readonly property int ringDrawMs: 480       // a ring drawing itself closed
+    readonly property int swingMs: 700          // a bell's damped swing, all of it
+    readonly property int breathOutMs: 1100     // light breathing out of a ringing alarm
 
     // Reduced motion: fewer and gentler: fades and colour stay, travel,
     // scale and stagger go. On when you switch it on (Controls → Reduce

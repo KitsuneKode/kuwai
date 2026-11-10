@@ -57,36 +57,36 @@ Item {
         id: entering
         SequentialAnimation {
             PauseAnimation { duration: Theme.hoverMs }
-            NumberAnimation { target: card; property: "enter"; to: 1; duration: 300; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
+            NumberAnimation { target: card; property: "enter"; to: 1; duration: Theme.cardInMs; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
         }
         SequentialAnimation {
-            PauseAnimation { duration: 140 }
-            NumberAnimation { target: card; property: "line1"; to: 1; duration: 260; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
+            PauseAnimation { duration: Theme.pressMs }
+            NumberAnimation { target: card; property: "line1"; to: 1; duration: Theme.cardRiseMs; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
         }
         SequentialAnimation {
-            PauseAnimation { duration: 190 }
-            NumberAnimation { target: card; property: "line2"; to: 1; duration: 260; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
+            PauseAnimation { duration: Theme.pressMs + Theme.revealStepMs + 10 }
+            NumberAnimation { target: card; property: "line2"; to: 1; duration: Theme.cardRiseMs; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
         }
         SequentialAnimation {
-            PauseAnimation { duration: 260 }
-            NumberAnimation { target: card; property: "actsIn"; to: 1; duration: 260; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
+            PauseAnimation { duration: Theme.cardRiseMs }
+            NumberAnimation { target: card; property: "actsIn"; to: 1; duration: Theme.cardRiseMs; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
         }
     }
     // A reminder or a timer: the ring fills, the bell swings once.
     SequentialAnimation {
         id: ringOnce
         PauseAnimation { duration: Theme.enterMs }
-        NumberAnimation { target: card; property: "fill"; to: 1; duration: 480; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
+        NumberAnimation { target: card; property: "fill"; to: 1; duration: Theme.ringDrawMs; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
         ScriptAction { script: if (card.kind === "reminder") swingOnce.restart() }
     }
     // One swing: out, back past the middle, settling (a damped pendulum).
     SequentialAnimation {
         id: swingOnce
-        NumberAnimation { target: card; property: "swing"; to: 16; duration: 90; easing.type: Easing.OutQuad }
-        NumberAnimation { target: card; property: "swing"; to: -12; duration: 150; easing.type: Easing.InOutQuad }
-        NumberAnimation { target: card; property: "swing"; to: 8; duration: 140; easing.type: Easing.InOutQuad }
-        NumberAnimation { target: card; property: "swing"; to: -4; duration: 130; easing.type: Easing.InOutQuad }
-        NumberAnimation { target: card; property: "swing"; to: 0; duration: 190; easing.type: Easing.OutQuad }
+        NumberAnimation { target: card; property: "swing"; to: 16; duration: Theme.swingMs * 0.13; easing.type: Easing.OutQuad }
+        NumberAnimation { target: card; property: "swing"; to: -12; duration: Theme.swingMs * 0.21; easing.type: Easing.InOutQuad }
+        NumberAnimation { target: card; property: "swing"; to: 8; duration: Theme.swingMs * 0.2; easing.type: Easing.InOutQuad }
+        NumberAnimation { target: card; property: "swing"; to: -4; duration: Theme.swingMs * 0.19; easing.type: Easing.InOutQuad }
+        NumberAnimation { target: card; property: "swing"; to: 0; duration: Theme.swingMs * 0.27; easing.type: Easing.OutQuad }
     }
     // An alarm: swing and breathe, again, while it rings and the card shows.
     Timer {
@@ -94,7 +94,7 @@ Item {
         running: card.ringing && !card.calm && card.visible
         onTriggered: { swingOnce.restart(); breath.restart(); }
     }
-    NumberAnimation { id: breath; target: card; property: "breathe"; from: 0; to: 1; duration: 1100; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
+    NumberAnimation { id: breath; target: card; property: "breathe"; from: 0; to: 1; duration: Theme.breathOutMs; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
 
     HoverHandler { onHoveredChanged: Moments.cardHeld = hovered }
 
@@ -123,7 +123,7 @@ Item {
         StatRing {
             anchors.centerIn: parent
             visible: !card.ringing
-            size: 52; stroke: 2.5
+            size: mark.width; stroke: 2.5
             value: card.fill
             color: card.tone
             text: ""; label: ""
@@ -131,7 +131,7 @@ Item {
         Text {
             anchors.centerIn: parent
             text: card.kind === "timer" ? "\u{f012c}" : card.kind === "reminder" ? "\u{f009a}" : "\u{f0020}"
-            font.family: Theme.fontGlyph; font.pixelSize: 26
+            font.family: Theme.fontGlyph; font.pixelSize: 24
             color: card.tone
             // The bell swings from its top, where it would hang.
             transform: Rotation { origin.x: 13; origin.y: 4; angle: card.swing }
@@ -188,7 +188,7 @@ Item {
             visible: !!acts.a.primary
             anchors.verticalCenter: parent.verticalCenter
             width: 40; height: 40; radius: 20
-            color: priArea.containsMouse ? "#4a4a4e" : "#3a3a3c"
+            color: priArea.containsMouse ? Theme.knobHover : Theme.knob
             scale: priArea.pressed ? 0.96 : 1
             Behavior on color { ColorAnimation { duration: Theme.colorMs } }
             Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
