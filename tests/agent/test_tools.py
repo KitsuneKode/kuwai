@@ -150,3 +150,12 @@ def test_plan_only_rounds_are_capped(run_agent):
     plan = [call("update_plan", {"steps": [{"step": "x", "status": "pending"}]}), {"done": True}]
     events, fake = run_agent(USER, [plan] * 30 + [answer()], caps=TOOLS_CAPS)
     assert len(fake.requests) <= 6 and events[-1]["status"] == "max_tool_rounds"
+
+
+def test_read_refuses_a_file_under_a_secret_named_folder(run_agent, tmp_path):
+    (tmp_path / "work" / "credentials").mkdir(parents=True)
+    (tmp_path / "work" / "credentials" / "notes.txt").write_text("hunter2")
+    events, _ = run_agent(USER, [[call("read", {"path": "~/work/credentials/notes.txt"}), {"done": True}], answer()],
+                          caps=TOOLS_CAPS)
+    done = completion(events, tool_items(events)[0]["id"])
+    assert done["status"] == "failed" and "hunter2" not in done["output"]

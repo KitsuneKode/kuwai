@@ -53,11 +53,21 @@ def resolve(path, sandbox_dir):
 
 
 def check_readable(full):
-    for s in SECRET:
-        if full == s or s in full.parents:
-            raise FileError(f"{full} holds secrets; it isn't read")
-    if SECRET_NAME.search(full.name):
-        raise FileError(f"{full.name} looks like a key or secrets file; it isn't read")
+    """Refuse secrets places and secret-named files, and any file under a secret-named folder
+    (review finding 02: ~/x/credentials/notes.txt was refused by grep but readable by path).
+    Judged on the path as given and where it really leads."""
+    full = Path(full)
+    for p in {full, full.resolve()}:
+        for s in SECRET:
+            if p == s or s in p.parents:
+                raise FileError(f"{p} holds secrets; it isn't read")
+        try:
+            parts = p.relative_to(HOME).parts
+        except ValueError:
+            parts = p.parts[1:]
+        for part in parts:
+            if SECRET_NAME.search(part):
+                raise FileError(f"{part} looks like a key or secrets place; it isn't read")
 
 
 def is_secret(path, root):
@@ -256,7 +266,20 @@ def grep(pattern, full, glob=None, ignore_case=False, literal=False, limit=60):
     if glob:
         argv += ["--glob", glob]
     argv += ["--", pattern, str(full)]
-    p = subprocess.run(argv, capture_output=True, text=True, timeout=20)
+    # Read lines as rg writes them and stop once there are plenty (it could list millions).
+    p = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    got = []
+    try:
+        for raw in p.stdout:
+            got.append(raw.rstrip("\n"))
+            if len(got) > max(limit * 5, 500):
+                break
+    finally:
+        if p.poll() is None:
+            p.kill()
+        p.wait()
+    p.stdout = "\n".join(got)
+    p.stderr = p.stderr.read() if p.stderr and not p.stderr.closed else ""
     if p.returncode == 2:
         raise FileError(p.stderr.strip()[:300] or "grep failed")
     h = str(HOME)
@@ -277,6 +300,64 @@ def grep(pattern, full, glob=None, ignore_case=False, literal=False, limit=60):
     if more:
         out += f"\n[{len(lines)} matches, showing {limit}. Use limit={min(len(lines), 300)} for more, or refine the pattern.]"
     return out
+
+
+# ── Bounded process output (review finding 16) ───────────────────────────
+# Read a process's output keeping only the start and the end, so a command that
+# prints gigabytes costs the host ~64 KB, not its memory.
+
+def run_bounded(argv, timeout, keep=65536, stdin_text=None):
+    """(exit code or None on timeout, text, total bytes). stdout and stderr merged."""
+    import collections
+    import select
+    import time as _t
+    p = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                         stdin=subprocess.PIPE if stdin_text is not None else subprocess.DEVNULL)
+    if stdin_text is not None:
+        try:
+            p.stdin.write(stdin_text.encode())
+            p.stdin.close()
+        except OSError:
+            pass
+    head, tail, total = bytearray(), collections.deque(), 0
+    tail_size, half = 0, keep // 2
+    deadline = _t.monotonic() + timeout
+    fd = p.stdout.fileno()
+    while True:
+        left = deadline - _t.monotonic()
+        if left <= 0:
+            p.kill()
+            p.wait()
+            return None, _join(head, tail, total, keep), total
+        r, _, _ = select.select([fd], [], [], min(left, 0.5))
+        if not r:
+            if p.poll() is not None:
+                break
+            continue
+        chunk = os.read(fd, 65536)
+        if not chunk:
+            break
+        total += len(chunk)
+        if len(head) < half:
+            take = half - len(head)
+            head += chunk[:take]
+            chunk = chunk[take:]
+        if chunk:
+            tail.append(chunk)
+            tail_size += len(chunk)
+            while tail and tail_size - len(tail[0]) >= half:
+                tail_size -= len(tail.popleft())
+    return p.wait(), _join(head, tail, total, keep), total
+
+
+def _join(head, tail, total, keep):
+    t = b"".join(tail)
+    if total <= keep:
+        return (bytes(head) + t).decode("utf-8", errors="replace")
+    t = t[-(keep // 2):]
+    cut = total - len(head) - len(t)
+    return (bytes(head).decode("utf-8", errors="replace") + f"\n… {cut:,} bytes cut …\n"
+            + t.decode("utf-8", errors="replace"))
 
 
 # ── command output (Codex's head + tail) ─────────────────────────────────

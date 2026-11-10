@@ -233,10 +233,13 @@ def run(chat, command, timeout=120):
     ensure()
     ws = workspace(chat)
     cwd = f"/work/{ws.name}"
-    p = _docker("exec", "-w", cwd, "-e", "TERM=dumb", NAME,
-                "timeout", "-k", "5", str(int(timeout)), "bash", "-lc", command, timeout=timeout + 15)
-    out = (p.stdout or "") + (("\n" + p.stderr) if p.stderr.strip() else "")
-    code = p.returncode
+    import rice_files
+    # Bounded: the host keeps ~64 KB of whatever it prints (review finding 16).
+    code, out, _total = rice_files.run_bounded(
+        [DOCKER, "exec", "-w", cwd, "-e", "TERM=dumb", NAME, "timeout", "-k", "5", str(int(timeout)), "bash", "-lc", command],
+        timeout=timeout + 15)
+    if code is None:
+        code = 124
     if code == 124:
         out = (out + "\n" if out else "") + f"(stopped after {int(timeout)} s)"
     return code, out.strip()
