@@ -70,15 +70,60 @@ Singleton {
                 root.checking = false;
                 try {
                     const d = JSON.parse(text);
-                    if (d.error) { root.checkError = d.error; return; }
+                    if (d.error) { root.checkError = d.error; root.afterCheck(false); return; }
                     root.data = d;
+                    root.afterCheck(!d.repoError);
                     // Approvals written by an earlier session still count.
                     const a = Object.assign({}, root.approvedSha);
                     for (const p of d.aur) if (p.approved) a[p.name] = p.approved;
                     root.approvedSha = a;
                     root.trusted = d.aur.filter(p => p.trusted).map(p => p.name).concat(root.trusted.filter(n => !d.aur.some(p => p.name === n)));
-                } catch (e) { root.checkError = "Couldn't read the update check"; }
+                } catch (e) { root.checkError = "Couldn't read the update check"; root.afterCheck(false); }
             }
+        }
+    }
+    // A check that failed (offline just after login, a mirror down) is tried
+    // again soon (1, 2, 5, then every 15 minutes) instead of waiting for the
+    // next scheduled one hours later with an empty or stale list.
+    property int retries: 0
+    Timer {
+        id: retry
+        interval: [60, 120, 300, 900][Math.min(3, root.retries)] * 1000
+        onTriggered: { root.retries++; root.check(); }
+    }
+    function afterCheck(ok) {
+        if (ok) { retries = 0; retry.stop(); } else retry.restart();
+        pacQuiet = true;          // what's installed now is what this check saw
+        if (!pacStat.running) pacStat.running = true;
+    }
+    // Packages changed outside the panel (sysup or paru in a terminal, pacman
+    // by hand): check again, so the list isn't the one from before. pacman's
+    // local and sync folders change on every transaction and sync; a stat
+    // every 2 minutes is the whole cost (skipped while pacman holds its lock).
+    // The same tick catches a check that's overdue after sleep: a Timer's
+    // interval doesn't count suspended time, Date.now() does.
+    property string pacStamp: ""
+    property bool pacQuiet: false
+    Process {
+        id: pacStat
+        command: ["sh", "-c", "[ -e /var/lib/pacman/db.lck ] && echo busy || stat -c %Y /var/lib/pacman/local /var/lib/pacman/sync"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const st = text.trim().replace(/\s+/g, " ");
+                const quiet = root.pacQuiet;
+                root.pacQuiet = false;
+                if (!st || st === "busy") return;
+                const changed = root.pacStamp !== "" && st !== root.pacStamp;
+                root.pacStamp = st;
+                if (changed && !quiet && !root.running) root.check();
+            }
+        }
+    }
+    Timer {
+        interval: 120 * 1000; running: true; repeat: true
+        onTriggered: {
+            if (!pacStat.running) pacStat.running = true;
+            if (Settings.updatesCheckHours > 0 && root.checkedAt > 0 && Date.now() - root.checkedAt > Settings.updatesCheckHours * 3600 * 1000) root.check();
         }
     }
     // The last answer, at once on start (the check itself takes seconds).
