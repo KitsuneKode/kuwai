@@ -31,6 +31,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from pathlib import Path
 
 OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 UA = {"User-Agent": "rice-ollama/1.0"}
@@ -997,8 +998,48 @@ def tool_read(args):
     return _files(rice_files.read, full, args.get("offset"), args.get("limit"))
 
 
+# Where a write goes is decided ONCE, from the path as written (never by following links), and
+# that decision is what the approval and the write both use (review finding 01: the path was
+# resolved twice, so a link the container made in between could turn an approval-free sandbox
+# write into a host write).
+_DECIDED = {}
+
+
+def _classify(args):
+    """(full path, in the sandbox?, sandbox-relative parts). Relative and /work/… paths are
+    always the sandbox's; ~/ and / paths are yours unless they sit lexically in its folder."""
+    raw = str(args.get("path") or "").strip()
+    if not raw:
+        raise ToolError("No path given")
+    ws = rice_sandbox.workspace(CHAT).resolve()
+    if raw.startswith("/work/") or not raw.startswith(("/", "~")):
+        rel = raw
+        if raw.startswith("/work/"):
+            bits = raw.split("/", 3)          # /work/<chat>/rest or /work/rest
+            rel = bits[3] if len(bits) > 3 and bits[2] == ws.name else "/".join(bits[2:])
+        parts = [p for p in Path(rel).parts if p not in ("", ".", "/")]
+        if not parts or any(p == ".." for p in parts):
+            raise ToolError("Sandbox paths can't be empty or use ..")
+        return ws.joinpath(*parts), True, parts
+    full = Path(os.path.normpath(os.path.expanduser(raw)))
+    try:
+        parts = list(full.relative_to(ws).parts)
+        if parts:
+            return full, True, parts
+    except ValueError:
+        pass
+    return full.resolve(), False, None
+
+
+def _decide(args):
+    key = id(args)
+    if key not in _DECIDED:
+        _DECIDED[key] = _classify(args)
+    return _DECIDED[key]
+
+
 def _write_request(args):
-    full, inside = _path(args)
+    full, inside, _parts = _decide(args)
     if inside:
         return None                        # its own folder: no need to ask
     content = str(args.get("content") or "")
@@ -1012,14 +1053,14 @@ def _sandbox_parts(full):
     return list(full.relative_to(rice_sandbox.workspace(CHAT).resolve()).parts)
 
 
-def _write_text(full, inside, text):
+def _write_text(full, inside, text, parts=None):
     """Your files: written as usual (after approval). The sandbox's: written
     without following links, since the container may have just made one."""
     if not inside:
         full.parent.mkdir(parents=True, exist_ok=True)
         full.write_text(text, encoding="utf-8")
         return
-    parts = _sandbox_parts(full)
+    parts = parts or _sandbox_parts(full)
     if not parts:
         raise ToolError("That's the sandbox folder itself, not a file")
     try:
@@ -1029,9 +1070,9 @@ def _write_text(full, inside, text):
 
 
 def tool_write(args):
-    full, inside = _path(args)
+    full, inside, parts = _DECIDED.pop(id(args), None) or _classify(args)
     content = str(args.get("content") or "")
-    _files(_write_text, full, inside, content)
+    _files(_write_text, full, inside, content, parts)
     n = content.count("\n") + (1 if content and not content.endswith("\n") else 0)
     return f"Wrote {rice_files.label(full, rice_sandbox.workspace(CHAT))} ({n} lines)"
 
@@ -1051,7 +1092,7 @@ def _edits(args):
 
 
 def _edit_request(args):
-    full, inside = _path(args)
+    full, inside, _parts = _decide(args)
     old, new = _files(rice_files.plan_edit, full, _edits(args))
     if inside:
         return None
@@ -1059,10 +1100,10 @@ def _edit_request(args):
 
 
 def tool_edit(args):
-    full, inside = _path(args)
+    full, inside, parts = _DECIDED.pop(id(args), None) or _classify(args)
     edits = _edits(args)
     _, new = _files(rice_files.plan_edit, full, edits)
-    _files(_write_text, full, inside, new)
+    _files(_write_text, full, inside, new, parts)
     return f"Successfully replaced {len(edits)} block(s) in {rice_files.label(full, rice_sandbox.workspace(CHAT))}."
 
 
@@ -1564,6 +1605,7 @@ def missing(tool, args):
 
 def run_tool(ids, name, raw_args):
     """Run one tool call as an item. Returns (status, output) for the model."""
+    _DECIDED.clear()        # one call at a time: no decision outlives its call
     tool = TOOLS.get(name)
     try:
         args = parse_args(raw_args)
