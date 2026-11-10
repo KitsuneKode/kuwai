@@ -759,7 +759,7 @@ function onPanelClosed() {
                         root.pendingImage = data.path;
                         root.pendingContext = {
                             app: data.app || "", title: data.title || "", workspace: data.workspace || "",
-                            cwd: data.cwd || "", git: data.git || null,
+                            cwd: data.cwd || "", git: data.git || null, terminal: data.terminal || null,
                             selection: data.selection || "", clipboard: data.clipboard || ""
                         };
                         root.pendingAppTitle = (data.app || "App") + (data.title ? ": " + data.title : "");

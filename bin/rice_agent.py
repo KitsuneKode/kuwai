@@ -295,6 +295,13 @@ def context_block(ctx):
         if git.get("dirty_files"):
             g += "; changed: " + ", ".join(git["dirty_files"][:5])
         lines.append(g)
+    term = ctx.get("terminal")
+    if isinstance(term, dict):
+        if term.get("running"):
+            lines.append(f"Terminal is running: {term['running']}")
+        if term.get("last_command"):
+            out = _cap(str(term.get("last_output") or ""), 3000)
+            lines.append(f"Last terminal command: {term['last_command']}" + (f"\nIts output:\n```\n{out}\n```" if out else ""))
     for key, label in (("selection", "Selected text"), ("clipboard", "Clipboard")):
         if ctx.get(key):
             lines.append(f"{label}:\n```\n{_cap(str(ctx[key]), 4096)}\n```")

@@ -159,3 +159,12 @@ def test_read_refuses_a_file_under_a_secret_named_folder(run_agent, tmp_path):
                           caps=TOOLS_CAPS)
     done = completion(events, tool_items(events)[0]["id"])
     assert done["status"] == "failed" and "hunter2" not in done["output"]
+
+
+def test_terminal_context_goes_to_the_model(run_agent):
+    ctx = {"app": "kitty", "terminal": {"cwd": "/home/u/proj", "running": "", "last_command": "pytest -q",
+                                        "last_output": "1 failed, 4 passed", "at_prompt": True}}
+    _, fake = run_agent({"messages": [{"role": "user", "content": "why did that fail?", "context": ctx}]}, [answer()],
+                        caps=TOOLS_CAPS)
+    sent = fake.requests[0]["messages"][-1]["content"]
+    assert "Last terminal command: pytest -q" in sent and "1 failed, 4 passed" in sent

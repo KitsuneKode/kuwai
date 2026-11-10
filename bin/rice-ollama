@@ -18,6 +18,7 @@ import json
 import base64
 import time
 import subprocess
+import shutil
 import signal
 import urllib.request
 import urllib.parse
@@ -206,6 +207,52 @@ def fresh_text(kind, text):
     return "" if seen else text
 
 
+def kitty_context(pid):
+    """The focused kitty pane, over kitty's remote-control socket (unix:$XDG_RUNTIME_DIR/mykitty-<pid>,
+    allow_remote_control socket-only): its folder, what's running, the last command and its output
+    (shell integration's last_cmd_output). kitty's own /proc cwd is always ~, so this is the only
+    right answer for a terminal. None when the socket isn't there. ~40 ms."""
+    run_dir = os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}"
+    sock = os.path.join(run_dir, f"mykitty-{pid}")
+    if not os.path.exists(sock) or not shutil.which("kitty"):
+        return None
+    to = ["kitty", "@", "--to", f"unix:{sock}"]
+    try:
+        p = subprocess.run(to + ["ls"], capture_output=True, text=True, timeout=2)
+        tree = json.loads(p.stdout or "[]")
+    except (subprocess.SubprocessError, ValueError, OSError):
+        return None
+    win = None
+    for osw in tree:
+        for tab in osw.get("tabs", []):
+            for w in tab.get("windows", []):
+                if w.get("is_focused") or (win is None and osw.get("is_focused") and tab.get("is_focused") and w.get("is_active")):
+                    win = w
+        if win is None and osw.get("is_active"):
+            for tab in osw.get("tabs", []):
+                if tab.get("is_active"):
+                    win = next((w for w in tab.get("windows", []) if w.get("is_active")), win)
+    if not win:
+        return None
+    fg = [" ".join(fp.get("cmdline") or [])[:120] for fp in win.get("foreground_processes", [])]
+    out = ""
+    try:
+        p = subprocess.run(to + ["get-text", "--match", f"id:{win['id']}", "--extent", "last_cmd_output"],
+                           capture_output=True, text=True, timeout=2)
+        out = "\n".join((p.stdout or "").rstrip().splitlines()[-60:])[-4000:]
+    except (subprocess.SubprocessError, OSError):
+        pass
+    if out and SECRETY.search(out):
+        out = "(left out: it looked like it contained a secret)"
+    return {
+        "cwd": win.get("cwd") or "",
+        "running": fg[0] if fg and not win.get("at_prompt") else "",
+        "last_command": (win.get("last_reported_cmdline") or "")[:300],
+        "last_output": out,
+        "at_prompt": bool(win.get("at_prompt")),
+    }
+
+
 def cmd_snapshot(mode="window"):
     """T3 Code-style window & screen snapshotting with rich context."""
     _, shots_dir = get_runtime_dir()
@@ -263,7 +310,8 @@ def cmd_snapshot(mode="window"):
         bounds = {"x": at[0], "y": at[1], "width": size[0], "height": size[1]}
 
         # Deep context extraction: CWD, Git state, highlighted text, clipboard
-        cwd = get_process_cwd(pid)
+        term = kitty_context(pid) if wm_class.lower() == "kitty" else None
+        cwd = term["cwd"] if term and term.get("cwd") else get_process_cwd(pid)
         # A folder only means something for terminals and editors (T3 Code's "cwd" is just ~).
         if wm_class.lower() not in TERMINALS and (not cwd or os.path.realpath(cwd) == os.path.realpath(os.path.expanduser("~"))):
             cwd = ""
@@ -301,6 +349,7 @@ def cmd_snapshot(mode="window"):
             "workspace": ws_name,
             "cwd": cwd,
             "git": git_info,
+            "terminal": term,
             "has_selection": bool(selected_text),
             "selection": selected_text[:4096] if selected_text else "",
             "clipboard": clipboard_text[:4096] if clipboard_text else "",

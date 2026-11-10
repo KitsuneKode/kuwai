@@ -64,6 +64,8 @@ Rectangle {
             out.push({ key: "image", thumb: OllamaService.pendingImage, label: c.app ? [c.app, c.title].filter(x => !!x).join(" · ") : "Screenshot" });
         if (c.cwd)
             out.push({ key: "cwd", icon: "folder-simple", label: c.cwd.replace(home, "~") + (c.git && c.git.branch ? " · " + c.git.branch : "") });
+        if (c.terminal && c.terminal.last_command)
+            out.push({ key: "terminal", icon: "terminal-window", label: "$ " + firstLine(c.terminal.last_command) + (c.terminal.last_output ? " · output" : "") });
         if (c.selection) out.push({ key: "selection", icon: "cursor-text", label: firstLine(c.selection) });
         if (c.clipboard && c.clipboard !== c.selection) out.push({ key: "clipboard", icon: "clipboard-text", label: firstLine(c.clipboard) });
         (c.files || []).forEach((f, i) => out.push({ key: "file:" + i, label: f.name,
