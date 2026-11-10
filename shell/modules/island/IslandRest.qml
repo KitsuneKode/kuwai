@@ -858,8 +858,21 @@ Item {
                 // Following every peak, each one restarting a 90 ms animation,
                 // redrew the notch on every frame while music played (200 a
                 // second on the Acer, 165 on the panel): ~10 % of a core at rest.
+                // The bars' small randomness rides the same tick (every 4th: ~8 a
+                // second), so the notch redraws 30 times a second in all, not once
+                // more per bar on five unsynchronised timers.
                 property real shown: 0
-                Timer { running: restPeak.enabled; interval: 33; repeat: true; onTriggered: restMediaWave.shown = restMediaWave.level }
+                property var jitter: [1, 1, 1, 1, 1]
+                property int tick: 0
+                Timer {
+                    running: restPeak.enabled; interval: 33; repeat: true
+                    onTriggered: {
+                        restMediaWave.tick++;
+                        if (!Theme.reduceMotion && restMediaWave.tick % 4 === 0)
+                            restMediaWave.jitter = restMediaWave.jitter.map(() => 0.7 + Math.random() * 0.5);
+                        restMediaWave.shown = restMediaWave.level;
+                    }
+                }
                 Row {
                     id: musicBars
                     visible: Media.playing
@@ -870,7 +883,7 @@ Item {
                         Rectangle {
                             required property int index
                             readonly property real shape: [0.5, 0.85, 1, 0.75, 0.55][index]
-                            property real jitter: 1
+                            readonly property real jitter: restMediaWave.jitter[index]
                             anchors.verticalCenter: parent.verticalCenter
                             width: 3; radius: 1.5
                             readonly property real liveH: Math.round(Math.max(3, 15 * Math.min(1, restMediaWave.shown * shape * jitter * 1.9)))
@@ -882,7 +895,6 @@ Item {
                             Behavior on height { enabled: !Media.playing; NumberAnimation { duration: 380; easing.type: Easing.OutCubic } }
                             Behavior on opacity { NumberAnimation { duration: Theme.colorMs } }
                             Behavior on color { ColorAnimation { duration: Theme.artMs } }
-                            Timer { running: restPeak.enabled && !Theme.reduceMotion; interval: 120 + (index % 3) * 45; repeat: true; onTriggered: parent.jitter = 0.7 + Math.random() * 0.5 }
                         }
                     }
                 }
