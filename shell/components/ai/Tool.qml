@@ -117,13 +117,15 @@ Item {
                     weight: root.running ? Theme.wMedium : Theme.wRegular
                     color: root.running ? Theme.textPrimary : Theme.textSecondary
                     elide: Text.ElideRight
-                    width: Math.min(implicitWidth, row.width - 120)
+                    // Room left by what's on the right (answer, exit chip, Sandbox, duration), not a guess.
+                    width: Math.min(implicitWidth, Math.max(80, row.width - rightRow.width - 40))
                     anchors.verticalCenter: parent.verticalCenter
                     Behavior on color { ColorAnimation { duration: Theme.colorMs } }
                 }
             }
 
             Row {
+                id: rightRow
                 anchors.right: parent.right
                 anchors.rightMargin: 6
                 anchors.verticalCenter: parent.verticalCenter

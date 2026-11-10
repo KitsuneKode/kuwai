@@ -9,6 +9,7 @@ Rectangle {
     property string icon
     property string tip: ""          // a label above it after a moment's hover (AI Elements MessageAction tooltip)
     property var hoverSource: abArea  // whose hover shows the tip (another MouseArea can lend its own)
+    property int tipAlign: 0          // 0 centred over it; 1 right edges flush (at a panel's right edge); -1 left
     signal clicked()
     width: 28; height: 28
     radius: 8
@@ -20,7 +21,7 @@ Rectangle {
     MouseArea { id: abArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: ab.clicked() }
 
     property bool tipShown: false
-    Timer { id: tipDelay; interval: 450; onTriggered: ab.tipShown = true }
+    Timer { id: tipDelay; interval: Theme.tipMs; onTriggered: ab.tipShown = true }
     Connections {
         target: ab.hoverSource
         function onContainsMouseChanged() {
@@ -32,10 +33,12 @@ Rectangle {
         readonly property bool show: ab.tipShown
         visible: opacity > 0.01
         opacity: show ? 1 : 0
-        Behavior on opacity { NumberAnimation { duration: parent.show ? Theme.enterMs : Theme.exitMs } }
+        Behavior on opacity { NumberAnimation { duration: ab.tipShown ? Theme.enterMs : Theme.exitMs } }
         anchors.bottom: parent.top
         anchors.bottomMargin: 6
-        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.horizontalCenter: ab.tipAlign === 0 ? parent.horizontalCenter : undefined
+        anchors.right: ab.tipAlign === 1 ? parent.right : undefined
+        anchors.left: ab.tipAlign === -1 ? parent.left : undefined
         width: tipLabel.implicitWidth + 14
         height: 22
         radius: 6

@@ -491,7 +491,8 @@ Item {
                         anchors.centerIn: parent
                         spacing: 6
                         Icon { name: "file-code"; size: 13; color: Theme.textTertiary; anchors.verticalCenter: parent.verticalCenter }
-                        Label { text: fileChip.modelData; size: 12; color: Theme.textSecondary; anchors.verticalCenter: parent.verticalCenter }
+                        Label { text: fileChip.modelData; size: 12; color: Theme.textSecondary; anchors.verticalCenter: parent.verticalCenter
+                                elide: Text.ElideMiddle; width: Math.min(implicitWidth, Math.max(80, col.width - 64)) }
                     }
                     MouseArea {
                         id: fileArea

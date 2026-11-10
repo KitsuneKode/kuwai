@@ -290,6 +290,8 @@ Singleton {
     // (slower than panels on purpose: no flashing as you cross the island).
     readonly property int hoverLeaveMs: 300
     readonly property int tipMs: 450
+    // One loading sweep everywhere (Shimmer, the reasoning label, the notch's edge light): brisk, not drifting.
+    readonly property int shimmerMs: 1300
     readonly property int hudInMs: 180          // the HUD answers a keypress: fast, 6px, no scale bounce
     readonly property int hudOutMs: 150
     readonly property int revealStepMs: 40      // stagger between groups of content (30–80ms)

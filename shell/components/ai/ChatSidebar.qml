@@ -138,7 +138,7 @@ Rectangle {
             ListView {
                 id: list
                 width: parent.width
-                height: parent.height - 30 - 32 - 20
+                height: parent.height - 30 - 32 - 20 - 24     // header, search, two gaps, the column's margins
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
                 model: root.rows
@@ -282,6 +282,8 @@ Rectangle {
                         visible: row.asking
                         anchors.fill: parent
                         focus: row.asking
+                        // focus: alone doesn't take it from the search field: Esc never reached here.
+                        onVisibleChanged: if (visible) forceActiveFocus()
                         Keys.onEscapePressed: root.confirming = ""
                         Label {
                             x: 8

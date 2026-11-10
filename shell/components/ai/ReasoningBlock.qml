@@ -84,7 +84,7 @@ Item {
                             NumberAnimation on sweepX {
                                 running: sweep.visible
                                 from: 0; to: 1
-                                duration: 1400
+                                duration: Theme.shimmerMs
                                 loops: Animation.Infinite
                             }
                             gradient: Gradient {

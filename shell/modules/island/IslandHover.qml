@@ -85,7 +85,7 @@ Item {
             MouseArea { id: nowArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: OllamaService.openSession(OllamaService.draftSessionId) }
         }
         Repeater {
-            model: OllamaService.recentWork
+            model: OllamaService.recentWork.slice(0, OllamaService.bgWorking ? 1 : 2)   // fits the 780 px island
             Rectangle {
                 id: workChip
                 required property var modelData
@@ -421,6 +421,13 @@ Item {
             readonly property int col: Theme.statRingSize + 26
             width: Math.max(col, all.length * col + Math.max(0, all.length - 1) * 6)
             height: Theme.statRingSize + 18
+            // The account under the pointer. Its windows stay in the island:
+            // a popup below the ring drew on the window underneath, with no pill.
+            property var hot: null
+            function line(w) {
+                if (!w) return "";
+                return w.label + ": " + (w.out ? "out · back in " : Math.round(w.left * 100) + "% left · resets in ") + Limits.resetsIn(w.window);
+            }
             Row {
                 id: agentsRow
                 spacing: 6
@@ -469,21 +476,32 @@ Item {
                             sourceSize: Qt.size(24, 24)
                             asynchronous: true
                         }
-                        HoverHandler { id: agHover }
-                        Tip {
-                            function line(w) {
-                                if (!w) return "";
-                                return w.label + ": " + (w.out ? "out · back in " : Math.round(w.left * 100) + "% left · resets in ") + Limits.resetsIn(w.window);
-                            }
-                            text: ag.e.label + " · " + [line(ag.e.session), line(ag.e.weekly)].filter(x => x).join(" · ")
-                            shown: agHover.hovered
-                            below: true
+                        HoverHandler {
+                            onHoveredChanged: agents.hot = hovered ? ag.e : (agents.hot === ag.e ? null : agents.hot)
                         }
                         TapHandler { onTapped: { Limits.usageTab = ag.e.pid; Island.open("usage", hover.bar.screenName, "pointer", "island"); } }
                     }
                 }
             }
         }
+    }
+    // The account under the pointer. Inside the island: a popup under the
+    // ring sat on the window below, and the line had no pill.
+    Label {
+        visible: agents.hot !== null
+        anchors.horizontalCenter: parent.horizontalCenter
+        y: 126
+        width: Math.min(implicitWidth, 460)
+        horizontalAlignment: Text.AlignHCenter
+        elide: Text.ElideRight
+        text: {
+            const e = agents.hot;
+            if (!e) return "";
+            return e.label + " · " + [agents.line(e.session), agents.line(e.weekly)].filter(x => x).join(" · ");
+        }
+        size: 11
+        weight: Theme.wMedium
+        color: Theme.textSecondary
     }
 
     // ── Right: news and status ───────────────────────────────────────────

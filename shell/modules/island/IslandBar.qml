@@ -39,6 +39,10 @@ Scope {
             screen: modelData
 
             readonly property var monitor: Hyprland.monitorFor(modelData)
+            readonly property var screenWs: monitor ? monitor.activeWorkspace : null
+            // This screen, not the focused one: a film on the Acer must not
+            // reserve a strip, and must not lift the laptop's notch.
+            readonly property bool screenFullscreen: !!screenWs && screenWs.hasFullscreen
             readonly property string screenName: modelData ? modelData.name : screen ? screen.name : (Quickshell.screens[0] ? Quickshell.screens[0].name : "")
             // The dynamic island floats below the edge (the reference); the
             // notch hangs from it (Settings → Bar & Island → Shape).
@@ -109,10 +113,12 @@ Scope {
             // high-scale output); panels then fit inside it (panelSize).
             implicitWidth: Math.min(1120, modelData ? modelData.width : 1120)
             implicitHeight: Math.min(640, modelData ? modelData.height - 24 : 640)
-            exclusiveZone: showBar && !tucked ? restH + top + (notch ? 2 : 6) : 0
+            exclusiveZone: showBar && !tucked && !screenFullscreen ? restH + top + (notch ? 2 : 6) : 0
             color: "transparent"
             WlrLayershell.namespace: "rice-islandbar"
-            WlrLayershell.layer: WlrLayer.Top
+            // The resting notch stays under a fullscreen window. A peek, a
+            // warning or a moment lifts this window for that card only.
+            WlrLayershell.layer: overFilm ? WlrLayer.Overlay : WlrLayer.Top
             // The keyboard only for a panel you opened: a hover preview (the
             // music's art, the usage marks) took it exclusively, so just
             // resting the pointer on the notch stole typing from the window,
@@ -277,6 +283,9 @@ Scope {
             // release past 18 px or a flick), scroll on it, or right-click.
             // The island then stays at rest until the pointer leaves.
             readonly property bool cardHere: bannerHere || peekHere || deviceHere
+            // Springs included, so the card can finish folding before the
+            // window drops back under the film.
+            readonly property bool overFilm: screenFullscreen && (cardHere || nv.value > 0.01 || bv.value > 0.01 || dv.value > 0.01)
             property real pull: 0
             property bool committing: false
             property bool pushed: false
@@ -612,7 +621,7 @@ Scope {
                             x: -width + pos * (parent.width + width)
                             NumberAnimation on pos {
                                 running: assistGlow.visible && !assistGlow.done && !Theme.reduceMotion
-                                from: 0; to: 1; duration: 1300; loops: Animation.Infinite; easing.type: Easing.InOutSine
+                                from: 0; to: 1; duration: Theme.shimmerMs; loops: Animation.Infinite; easing.type: Easing.InOutSine
                             }
                             gradient: Gradient {
                                 orientation: Gradient.Horizontal

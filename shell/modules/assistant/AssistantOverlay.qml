@@ -341,7 +341,7 @@ Scope {
                                             weight: Theme.wSemibold
                                             color: Theme.textPrimary
                                             elide: Text.ElideRight
-                                            width: Math.min(implicitWidth, 420)
+                                            width: Math.min(implicitWidth, Math.max(120, parent.parent.parent.width - 240))   // the header, not the Row (that would loop)
                                         }
                                         Row {
                                             visible: OllamaService.status !== "ready"
@@ -361,7 +361,7 @@ Scope {
                                     MessageAction { width: 30; height: 30; icon: "squares-four"; tip: "Open an app · ⌃O"; onClicked: root.appLauncherOpen = !root.appLauncherOpen }
                                     MessageAction { width: 30; height: 30; icon: root.studioMode ? "arrows-in-simple" : "arrows-out-simple"; tip: (root.studioMode ? "Smaller" : "Bigger, with your chats") + " · ⌃M"; onClicked: root.studioMode = !root.studioMode }
                                     MessageAction { width: 30; height: 30; icon: root.fullMode ? "corners-in" : "corners-out"; tip: (root.fullMode ? "Back to studio" : "Almost full screen") + " · ⌃⇧M"; onClicked: root.fullMode = !root.fullMode }
-                                    MessageAction { width: 30; height: 30; icon: "x"; tip: "Close · Esc"; onClicked: Assistant.hide() }
+                                    MessageAction { width: 30; height: 30; icon: "x"; tip: "Close · Esc"; tipAlign: 1; onClicked: Assistant.hide() }
                                 }
                             }
 

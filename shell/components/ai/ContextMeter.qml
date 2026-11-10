@@ -65,7 +65,7 @@ Item {
         Behavior on opacity { NumberAnimation { duration: hover.hovered ? Theme.enterMs : Theme.exitMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
         anchors.bottom: parent.top
         anchors.bottomMargin: 8
-        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.right: parent.right           // flush right: centred, it ran past the panel's edge
         width: tip.implicitWidth + 24
         height: tip.implicitHeight + 16
         radius: 10

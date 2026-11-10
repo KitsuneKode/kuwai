@@ -615,6 +615,8 @@ Rectangle {
                             size: 13
                             weight: Theme.wMedium
                             color: Theme.textPrimary
+                            elide: Text.ElideRight
+                            width: Math.min(implicitWidth, 130)   // a long model name can't push into Send
                             anchors.verticalCenter: parent.verticalCenter
                         }
                         Icon {
@@ -695,6 +697,7 @@ Rectangle {
                         color: "transparent"; icon: ""; enabled: false
                         tip: parent.stopping ? "Stop · Esc" : OllamaService.busyHere ? "Steer this answer · ↵" : OllamaService.streaming ? "Queue · another chat is answering" : "Send · ↵"
                         hoverSource: btnArea
+                        tipAlign: 1
                     }
                 }
             }

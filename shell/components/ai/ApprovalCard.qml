@@ -87,10 +87,15 @@ Rectangle {
                 visible: root.kind === "command" || root.kind === "write"
                 size: 12
                 color: Theme.textTertiary
+                anchors.left: parent.left
+                anchors.right: btnRow.left
+                anchors.rightMargin: 12
+                elide: Text.ElideRight
                 anchors.verticalCenter: parent.verticalCenter
             }
 
             Row {
+                id: btnRow
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 8
