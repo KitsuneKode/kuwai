@@ -23,7 +23,7 @@ Hyprland or the shell fails to load, it rolls back.
 
 ```sh
 PYTHONDONTWRITEBYTECODE=1 python -m pytest -q -p no:cacheprovider tests
-bun test shell/services/ai/turn.test.mjs
+bun test shell/services/ai/turn.test.mjs tests/shell/privacy.test.mjs
 bin/rice-loadtest HEAD && bin/rice-loadtest HEAD greeter.qml
 bin/rice-tokens --check
 ```

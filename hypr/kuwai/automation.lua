@@ -19,6 +19,14 @@ K.privacy = K.privacy
 		layers = "^(rice-notifs|rice-center|notifications|swaync-notification-window|swaync-control-center)$",
 	}
 
+-- A shell that starts while a share runs (a restart, a promote) asks with
+-- `kuwai.privacy_resync()`: the compositor's `engaged` is the truth, so the
+-- new shell is muted again instead of showing private bodies in the share
+-- (review 2026-11-10, finding 05). Nothing to do when the feature is off.
+function kuwai.privacy_resync()
+	return hl.dsp.no_op()
+end
+
 if K.feature("screenshare_privacy") then
 	-- no_screen_share blacks a surface out of *every* capture, screenshots
 	-- included, so these exist only while a real share is running.
@@ -72,6 +80,12 @@ if K.feature("screenshare_privacy") then
 		privacy(true)
 		hl.exec_cmd(K.bin .. "/rice notifs mute-on")
 		K.notify("Sharing your screen — notifications muted, private apps hidden", 3000, "info")
+	end
+	function kuwai.privacy_resync()
+		if engaged then
+			hl.exec_cmd(K.bin .. "/rice notifs mute-on")
+		end
+		return hl.dsp.no_op()
 	end
 	hl.on("screenshare.state", function(active)
 		if active then

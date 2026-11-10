@@ -43,11 +43,14 @@ Column {
 
     // A code can sit in the title as well as the body ("123456 is your
     // code"), and the title is drawn on its own line: both are checked, both hidden.
-    readonly property var codeWords: /(code|otp|verif|passcode|one[- ]time|2fa|sign[- ]?in|log[- ]?in)/i
-    readonly property var codeShape: /\b\d{4,8}\b|\b[A-Z0-9]{6,8}\b/
+    // At least as careful as the rest of the shell (review 2026-11-10, finding
+    // 06): anything Notifs.otpOf calls a code (grouped "123 456", a Security
+    // PIN) is one here too, as well as this looser check.
+    readonly property var codeWords: /(code|otp|verif|passcode|one[- ]time|2fa|sign[- ]?in|log[- ]?in|security|\bpin\b)/i
+    readonly property var codeShape: /\b\d{3}[- ]\d{3}\b|\b\d{4,8}\b|\b[A-Z0-9]{6,8}\b/
     function isCode(i) {
         const t = (i.title || "") + " " + (i.body || "");
-        return codeWords.test(t) && codeShape.test(t);
+        return Notifs.otpOf(i) !== "" || (codeWords.test(t) && codeShape.test(t));
     }
     function heading(i) {
         if (isCode(i) && codeShape.test(i.title || "")) return (i.app || "Verification") + " · code";

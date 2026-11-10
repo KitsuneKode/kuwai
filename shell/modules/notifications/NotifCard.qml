@@ -454,7 +454,8 @@ Item {
 
             Label {
                 width: parent.width
-                text: Notifs.bodyRedacted(card.item) && !card.engaged ? Notifs.bodyForDisplay(card.item, false) : Notifs.styledSafe(card.item.body)
+                // Opened (engaged) shows a chat's body, never while sharing (bodyHidden).
+                text: Notifs.bodyHidden(card.item, card.engaged) ? Notifs.bodyForDisplay(card.item, card.engaged) : Notifs.styledSafe(card.item.body)
                 visible: text !== "" || Notifs.bodyRedacted(card.item)
                 textFormat: Text.StyledText
                 wrapMode: Text.Wrap

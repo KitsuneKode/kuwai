@@ -216,7 +216,8 @@ Item {
             visible: (row.it.body !== "" || Notifs.bodyRedacted(row.it)) && !(row.selected && row.previewScroll)
             text: {
                 const raw = row.it.body.replace(/<[^>]*>/g, "");
-                const show = Notifs.bodyRedacted(row.it) && !row.selected ? Notifs.bodyForDisplay(row.it, false) : raw;
+                // Selected shows a chat's body, never while sharing (bodyHidden).
+                const show = Notifs.bodyHidden(row.it, row.selected) ? Notifs.bodyForDisplay(row.it, row.selected) : raw;
                 return row.center && row.center.terms.length ? row.center.highlight(show) : show;
             }
             textFormat: Text.StyledText

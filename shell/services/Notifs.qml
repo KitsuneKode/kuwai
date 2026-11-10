@@ -236,10 +236,13 @@ Singleton {
     readonly property var sensitiveApps: /\b(zapzap|whatsapp|telegram|signal|discord|slack|element|messenger|beeper)\b/i
     // Sharing the screen: every body is private, even when opened.
     readonly property bool sharing: dndMute
+    // Sharing comes before urgency (review 2026-11-10, finding 04): a critical
+    // message still arrives (its title, the island grows for it), but its body
+    // is not in the capture. Outside a share, warnings and critical ones show.
     function bodyRedacted(item) {
         if (!item) return false;
-        if (item.severity === "critical" || item.severity === "warning") return false;
         if (sharing) return true;
+        if (item.severity === "critical" || item.severity === "warning") return false;
         return Settings.notifRedactSensitive && sensitiveApps.test(String(item.app || ""));
     }
     // reveal: the person opened it on purpose (expanded, selected, the bell
@@ -752,6 +755,9 @@ Singleton {
     // ── Persistence ──────────────────────────────────────────────────────
     Component.onCompleted: {
         mkdir.running = true;
+        // A share may already be running (this shell restarted mid-share): the
+        // compositor knows, and mutes us again (hypr/kuwai/automation.lua).
+        Hyprland.dispatch("kuwai.privacy_resync()");
         // Desktop entries are scanned lazily on first access; start the scan
         // now so the first notification can already find its app's icon.
         void DesktopEntries.applications.values.length;

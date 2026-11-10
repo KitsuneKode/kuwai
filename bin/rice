@@ -282,7 +282,17 @@ case ${1:-} in
         # unlocked after a resume). The shell not running: hyprlock, so
         # locking never fails.
         if ! ipc lock lock 2>/dev/null; then
-            pidof hyprlock >/dev/null || { setsid -f hyprlock >/dev/null 2>&1 </dev/null; sleep 0.5; }
+            # The shell isn't answering: hyprlock. Say "locked" only when one
+            # is (review 2026-11-10, finding 07: this exited 0 even when nothing
+            # started, and before_sleep_cmd trusted it). hyprlock tells nobody
+            # outside itself (no logind LockedHint), so locked means: running,
+            # and with --wait still running a second later (one that can't take
+            # the session lock exits at once).
+            command -v hyprlock >/dev/null || { echo "rice: the shell isn't answering and hyprlock isn't installed: not locked" >&2; exit 1; }
+            pidof hyprlock >/dev/null || setsid -f hyprlock >/dev/null 2>&1 </dev/null
+            for _ in $(seq 20); do pidof hyprlock >/dev/null && break; sleep 0.05; done
+            pidof hyprlock >/dev/null || { echo "rice: hyprlock didn't start: not locked" >&2; exit 1; }
+            [ "${2:-}" = --wait ] && { sleep 1; pidof hyprlock >/dev/null || { echo "rice: hyprlock exited: not locked" >&2; exit 1; }; }
             exit 0
         fi
         if [ "${2:-}" = --wait ]; then
