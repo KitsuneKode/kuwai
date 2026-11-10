@@ -9,6 +9,9 @@ Item {
     id: row
     property string label
     property string detail
+    // The setting this row changes (config/Settings): a ↺ beside the control
+    // when it isn't the default, to put the default back.
+    property string key: ""
     default property alias control: slot.data
     width: parent ? parent.width : 480
     // The detail wraps (up to three lines) and the row grows with it.
@@ -21,10 +24,29 @@ Item {
     }
     Column {
         id: text
-        anchors { left: parent.left; leftMargin: 14; right: slot.left; rightMargin: 16; verticalCenter: parent.verticalCenter }
+        anchors { left: parent.left; leftMargin: 14; right: resetMark.visible ? resetMark.left : slot.left; rightMargin: 16; verticalCenter: parent.verticalCenter }
         spacing: 2
         Label { width: parent.width; elide: Text.ElideRight; text: row.label; size: 13 }
         Label { visible: row.detail !== ""; width: parent.width; wrapMode: Text.Wrap; maximumLineCount: 3; elide: Text.ElideRight; text: row.detail; size: 11; color: Theme.textTertiary }
+    }
+    Text {
+        id: resetMark
+        readonly property bool changed: row.key !== "" && !Settings.isDefault(row.key)
+        visible: changed
+        anchors { right: slot.left; rightMargin: 10; verticalCenter: parent.verticalCenter }
+        text: "\u{f0453}"                                   // restore
+        font.family: Theme.fontGlyph; font.pixelSize: 15
+        color: resetArea.containsMouse ? Theme.textPrimary : Theme.textTertiary
+        Behavior on color { ColorAnimation { duration: Theme.colorMs } }
+        MouseArea {
+            id: resetArea
+            anchors.fill: parent; anchors.margins: -6
+            hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+            onClicked: Settings.reset(row.key)
+        }
+        Tip { text: "Back to the default (" + JSON.stringify(Settings.defaultOf(row.key)) + ")"; shown: resetArea.containsMouse; below: true }
+        Accessible.role: Accessible.Button
+        Accessible.name: "Reset " + row.label + " to the default"
     }
     Item {
         id: slot

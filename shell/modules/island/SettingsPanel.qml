@@ -156,6 +156,7 @@ FocusScope {
                     }
                 }
                 SettingsRow {
+                    key: "islandStyle"
                     label: "Shape"; detail: "A floating island, or a notch hanging from the top edge"
                     Segmented {
                         options: [{ id: "floating", label: "Island" }, { id: "notch", label: "Notch" }]
@@ -164,14 +165,17 @@ FocusScope {
                     }
                 }
                 SettingsRow {
+                    key: "restWorkspaces"
                     label: "Workspaces at rest"; detail: "Capsules beside the clock"
                     Toggle { on: Settings.restWorkspaces; onToggled: Settings.set("restWorkspaces", !Settings.restWorkspaces) }
                 }
                 SettingsRow {
+                    key: "restStatus"
                     label: "Signal and battery at rest"
                     Toggle { on: Settings.restStatus; onToggled: Settings.set("restStatus", !Settings.restStatus) }
                 }
                 SettingsRow {
+                    key: "workspaceCount"
                     label: "Workspaces shown"; detail: "At least this many; more appear as they fill"
                     Segmented {
                         options: [3, 5, 7, 10].map(n => ({ id: String(n), label: String(n) }))
@@ -180,10 +184,12 @@ FocusScope {
                     }
                 }
                 SettingsRow {
+                    key: "limitAlerts"
                     label: "Limit alerts in the notch"; detail: "A moment when an agent's usage window nears its cap; a mark on the notch while one is used up, until it resets"
                     Toggle { on: Settings.limitAlerts; onToggled: Settings.set("limitAlerts", !Settings.limitAlerts) }
                 }
                 SettingsRow {
+                    key: "limitThreshold"
                     visible: Settings.limitAlerts
                     label: "Alert at"; detail: "How much of a window is used before the notch says so"
                     Segmented {
@@ -196,18 +202,22 @@ FocusScope {
             SettingsGroup {
                 title: "On hover"
                 SettingsRow {
+                    key: "restMedia"
                     label: "Music at rest"; detail: "Tiny art and bars beside the island while something plays"
                     Toggle { on: Settings.restMedia; onToggled: Settings.set("restMedia", !Settings.restMedia) }
                 }
                 SettingsRow {
+                    key: "restWeather"
                     label: "Weather"; detail: "In the island, for " + (Settings.weatherLocation || "where you are") + "  ·  rice set weatherLocation \"City\""
                     Toggle { on: Settings.restWeather; onToggled: Settings.set("restWeather", !Settings.restWeather) }
                 }
                 SettingsRow {
+                    key: "hoverMedia"
                     label: "Now playing"; detail: "The media card under the clock"
                     Toggle { on: Settings.hoverMedia; onToggled: Settings.set("hoverMedia", !Settings.hoverMedia) }
                 }
                 SettingsRow {
+                    key: "hoverDelay"
                     label: "Hover delay"; detail: "How long the pointer rests before the island grows"
                     Segmented {
                         options: [0, 120, 220, 400].map(n => ({ id: String(n), label: n ? n + " ms" : "None" }))
@@ -219,6 +229,7 @@ FocusScope {
             SettingsGroup {
                 title: "Kitty"
                 SettingsRow {
+                    key: "kittyTabs"
                     label: "Tabs beside kitty"
                     detail: "A glass column of this window's tabs, on the left, while kitty is focused. Off until you turn it on."
                     Toggle { on: Settings.kittyTabs; onToggled: Settings.set("kittyTabs", !Settings.kittyTabs) }
@@ -232,10 +243,12 @@ FocusScope {
             spacing: 18
             SettingsGroup {
                 SettingsRow {
+                    key: "clock24"
                     label: "24-hour time"
                     Toggle { on: Settings.clock24; onToggled: Settings.set("clock24", !Settings.clock24) }
                 }
                 SettingsRow {
+                    key: "showSeconds"
                     label: "Show seconds"; detail: "The clock wakes every second instead of every five"
                     Toggle { on: Settings.showSeconds; onToggled: Settings.set("showSeconds", !Settings.showSeconds) }
                 }
@@ -252,6 +265,7 @@ FocusScope {
                     Toggle { on: Notifs.dnd; onToggled: Notifs.toggleUserDnd() }
                 }
                 SettingsRow {
+                    key: "notifSurface"
                     label: "Where they appear"
                     detail: Settings.notifSurface === "both" ? "In the island and as a toast" : "One place each: urgent, warnings and replies in the island; the rest as a toast; low ones only in the center"
                     Segmented {
@@ -261,6 +275,7 @@ FocusScope {
                     }
                 }
                 SettingsRow {
+                    key: "notifFullscreen"
                     label: "In fullscreen"
                     detail: Settings.notifFullscreen === "off" ? "Nothing interrupts a fullscreen app; it all waits in the center"
                           : Settings.notifFullscreen === "critical" ? "Only critical ones, as a slim banner over the game or film"
@@ -272,6 +287,7 @@ FocusScope {
                     }
                 }
                 SettingsRow {
+                    key: "notifRedactSensitive"
                     label: "Hide sensitive message text"
                     detail: Settings.notifRedactSensitive ? "Chat/mail: show who, not the body, until you Open" : "Full text on peek, toasts and center"
                     Toggle {
@@ -280,6 +296,7 @@ FocusScope {
                     }
                 }
                 SettingsRow {
+                    key: "notifToastInstantOpen"
                     label: "Toast opens on first click"
                     detail: Settings.notifToastInstantOpen ? "Tap a toast to open or run its default action" : "Tap to preview, then Open (center and island peek stay explicit)"
                     Toggle {
@@ -288,6 +305,7 @@ FocusScope {
                     }
                 }
                 SettingsRow {
+                    key: "notifEngageReply"
                     label: "Reply when toast opens"
                     detail: Settings.notifEngageReply ? "Engaging a replyable toast focuses the reply field" : "Show Open and Reply chips first"
                     Toggle {
@@ -296,6 +314,7 @@ FocusScope {
                     }
                 }
                 SettingsRow {
+                    key: "notifKeepSeenHours"
                     label: "Keep seen notifications"
                     detail: "How long dismissed-but-unread rows stay in the center"
                     Segmented {
@@ -376,6 +395,7 @@ FocusScope {
                     }
                 }
                 SettingsRow {
+                    key: "islandProximity"
                     label: "Reveal on approach"; detail: Settings.islandProximity ? "The pointer coming within 30–60 px of the island shows it" : "Only touching the top edge shows it"
                     Toggle { on: Settings.islandProximity; onToggled: Settings.set("islandProximity", !Settings.islandProximity) }
                 }
@@ -393,10 +413,12 @@ FocusScope {
             SettingsGroup {
                 title: "Wellbeing"
                 SettingsRow {
+                    key: "breakReminders"
                     label: "Break reminders"; detail: "A moment after a long stretch at the screen; five idle minutes or a lock counts as a break"
                     Toggle { on: Settings.breakReminders; label: "Break reminders"; onToggled: Settings.set("breakReminders", !Settings.breakReminders) }
                 }
                 SettingsRow {
+                    key: "breakMins"
                     visible: Settings.breakReminders
                     label: "Every"
                     Segmented {
@@ -406,10 +428,12 @@ FocusScope {
                     }
                 }
                 SettingsRow {
+                    key: "sleepReminder"
                     label: "Bedtime nudge"; detail: "Past this time, a calm reminder to wind down (three at most, 45 min apart)"
                     Toggle { on: Settings.sleepReminder; label: "Bedtime nudge"; onToggled: Settings.set("sleepReminder", !Settings.sleepReminder) }
                 }
                 SettingsRow {
+                    key: "sleepAt"
                     visible: Settings.sleepReminder
                     label: "After"
                     Segmented {
@@ -421,6 +445,7 @@ FocusScope {
             }
             SettingsGroup {
                 SettingsRow {
+                    key: "idleOwner"
                     label: "Who handles idle"; detail: Settings.idleOwner === "shell" ? "The shell: dims, fades, locks and sleeps, aware of Caffeine and of music playing" : "hypridle (~/.config/hypr/hypridle.conf); the rows below don't apply"
                     Segmented {
                         options: [{ id: "shell", label: "Shell" }, { id: "hypridle", label: "hypridle" }]
@@ -429,6 +454,7 @@ FocusScope {
                     }
                 }
                 SettingsRow {
+                    key: "idleNoSleepWhilePlaying"
                     label: "Don't sleep while music plays"
                     Toggle { on: Settings.idleNoSleepWhilePlaying; onToggled: Settings.set("idleNoSleepWhilePlaying", !Settings.idleNoSleepWhilePlaying) }
                 }
@@ -436,18 +462,18 @@ FocusScope {
             SettingsGroup {
                 title: "On power"
                 opacity: Settings.idleOwner === "shell" ? 1 : 0.45
-                SettingsRow { label: "Dim the screen"; SecondsChoice { key: "idleDimAc"; values: [120, 240, 600, 0] } }
-                SettingsRow { label: "Lock"; SecondsChoice { key: "idleLockAc"; values: [180, 300, 900, 0] } }
-                SettingsRow { label: "Screen off"; SecondsChoice { key: "idleOffAc"; values: [330, 600, 1800, 0] } }
-                SettingsRow { label: "Sleep"; SecondsChoice { key: "idleSleepAc"; values: [1800, 3600, 0] } }
+                SettingsRow { key: "idleDimAc"; label: "Dim the screen"; SecondsChoice { key: "idleDimAc"; values: [120, 240, 600, 0] } }
+                SettingsRow { key: "idleLockAc"; label: "Lock"; SecondsChoice { key: "idleLockAc"; values: [180, 300, 900, 0] } }
+                SettingsRow { key: "idleOffAc"; label: "Screen off"; SecondsChoice { key: "idleOffAc"; values: [330, 600, 1800, 0] } }
+                SettingsRow { key: "idleSleepAc"; label: "Sleep"; SecondsChoice { key: "idleSleepAc"; values: [1800, 3600, 0] } }
             }
             SettingsGroup {
                 title: "On battery"
                 opacity: Settings.idleOwner === "shell" ? 1 : 0.45
-                SettingsRow { label: "Dim the screen"; SecondsChoice { key: "idleDimBattery"; values: [60, 120, 300, 0] } }
-                SettingsRow { label: "Lock"; SecondsChoice { key: "idleLockBattery"; values: [120, 180, 600, 0] } }
-                SettingsRow { label: "Screen off"; SecondsChoice { key: "idleOffBattery"; values: [210, 300, 900, 0] } }
-                SettingsRow { label: "Sleep"; SecondsChoice { key: "idleSleepBattery"; values: [600, 900, 1800, 0] } }
+                SettingsRow { key: "idleDimBattery"; label: "Dim the screen"; SecondsChoice { key: "idleDimBattery"; values: [60, 120, 300, 0] } }
+                SettingsRow { key: "idleLockBattery"; label: "Lock"; SecondsChoice { key: "idleLockBattery"; values: [120, 180, 600, 0] } }
+                SettingsRow { key: "idleOffBattery"; label: "Screen off"; SecondsChoice { key: "idleOffBattery"; values: [210, 300, 900, 0] } }
+                SettingsRow { key: "idleSleepBattery"; label: "Sleep"; SecondsChoice { key: "idleSleepBattery"; values: [600, 900, 1800, 0] } }
             }
             Label {
                 width: parent.width; wrapMode: Text.WordWrap; size: 12; color: Theme.textTertiary
@@ -461,6 +487,7 @@ FocusScope {
             spacing: 18
             SettingsGroup {
                 SettingsRow {
+                    key: "screensaverWhen"
                     label: "Show the screensaver"
                     detail: Settings.screensaverWhen === "caffeine" ? "While Caffeine keeps the screen on, after a while of no input" : Settings.screensaverWhen === "always" ? "Whenever you're away, before the lock" : "Never"
                     Segmented {
@@ -470,6 +497,7 @@ FocusScope {
                     }
                 }
                 SettingsRow {
+                    key: "screensaverMins"
                     label: "After"
                     Segmented {
                         options: [1, 3, 5, 10].map(n => ({ id: String(n), label: n + " min" }))
@@ -478,6 +506,7 @@ FocusScope {
                     }
                 }
                 SettingsRow {
+                    key: "screensaverStyle"
                     label: "Look"; detail: Settings.screensaverStyle === "dusk" ? "A slow dusk sky with drifting petals"
                         : Settings.screensaverStyle === "night" ? "A dark film on the screen you were using; black on the others"
                         : Settings.screensaverStyle === "live" ? "Your live wallpaper, full screen" : "Your wallpaper, still, with the time"
@@ -488,6 +517,7 @@ FocusScope {
                     }
                 }
                 SettingsRow {
+                    key: "screensaverClip"
                     visible: Settings.screensaverStyle === "night"
                     label: "Film"; detail: "Files in ~/.local/share/rice/screensavers"
                     Segmented {
@@ -504,6 +534,7 @@ FocusScope {
             SettingsGroup {
                 title: "Live wallpaper"
                 SettingsRow {
+                    key: "liveOnBattery"
                     label: "Keep playing on battery"; detail: "Off: it pauses on battery to save power"
                     Toggle { on: Settings.liveOnBattery; onToggled: Settings.set("liveOnBattery", !Settings.liveOnBattery) }
                 }
@@ -575,6 +606,7 @@ FocusScope {
                     }
                 }
                 SettingsRow {
+                    key: "workspaceCount"
                     label: "Pills shown at least"; detail: "More appear as you use them"
                     Segmented {
                         options: [{ id: "3", label: "3" }, { id: "5", label: "5" }, { id: "7", label: "7" }, { id: "10", label: "10" }]
@@ -600,6 +632,7 @@ FocusScope {
             SettingsGroup {
                 title: "Order"
                 SettingsRow {
+                    key: "clipPinsFirst"
                     label: "Pinned first"; detail: "Off: pins sit in their place by time, with a pin. Type @pin to see only them."
                     Toggle { on: Settings.clipPinsFirst; onToggled: Settings.set("clipPinsFirst", !Settings.clipPinsFirst) }
                 }
@@ -619,6 +652,7 @@ FocusScope {
             SettingsGroup {
                 title: "Checking"
                 SettingsRow {
+                    key: "updatesCheckHours"
                     label: "Check every"; detail: Settings.updatesCheckHours > 0 ? Settings.updatesCheckHours + (Settings.updatesCheckHours === 1 ? " hour" : " hours") + " (needs no password)" : "Only when you open Software Update"
                     Segmented {
                         options: [{ id: "0", label: "Never" }, { id: "1", label: "1 h" }, { id: "3", label: "3 h" }, { id: "12", label: "12 h" }]
@@ -627,10 +661,12 @@ FocusScope {
                     }
                 }
                 SettingsRow {
+                    key: "updatesAnnounce"
                     label: "Say when updates appear"; detail: "A short note from the island when there are new ones"
                     Toggle { on: Settings.updatesAnnounce; onToggled: Settings.set("updatesAnnounce", !Settings.updatesAnnounce) }
                 }
                 SettingsRow {
+                    key: "updatesFlatpak"
                     label: "Include Flatpak apps"; detail: "Sandboxed and signed; your own installs need no password"
                     Toggle { on: Settings.updatesFlatpak; onToggled: Settings.set("updatesFlatpak", !Settings.updatesFlatpak) }
                 }
@@ -638,6 +674,7 @@ FocusScope {
             SettingsGroup {
                 title: "AUR"
                 SettingsRow {
+                    key: "updatesAutoRoutine"
                     label: "Approve version bumps by themselves"
                     detail: "Only when the build script moved nothing but versions and checksums, nothing is flagged, and the package is established in the AUR (100+ votes or popular, maintained, a year old). The program inside a -bin package is never reviewed: trust its author, not the label."
                     Toggle { on: Settings.updatesAutoRoutine; onToggled: Settings.set("updatesAutoRoutine", !Settings.updatesAutoRoutine) }

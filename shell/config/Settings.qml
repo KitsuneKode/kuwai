@@ -70,6 +70,27 @@ Singleton {
 
     function set(key, value) { s[key] = value; }
 
+    // Defaults, read from this file's own declarations below (nothing kept
+    // twice): Settings → a row's ↺ puts one back.
+    property var defaults: ({})
+    function defaultOf(key) { return defaults[key]; }
+    function isDefault(key) { return !(key in defaults) || JSON.stringify(s[key]) === JSON.stringify(defaults[key]); }
+    function reset(key) { if (key in defaults) s[key] = defaults[key]; }
+    FileView {
+        path: Quickshell.shellDir + "/config/Settings.qml"
+        printErrors: false
+        onLoaded: {
+            const d = {};
+            const re = /^ {12}property \w+ (\w+): (.+?)\s*(\/\/.*)?$/gm;
+            const t = text();
+            for (let m = re.exec(t); m; m = re.exec(t)) {
+                const v = m[2].trim();
+                try { d[m[1]] = v === "({})" ? {} : JSON.parse(v); } catch (e) {}
+            }
+            root.defaults = d;
+        }
+    }
+
     FileView {
         id: file
         path: (Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config") + "/rice/settings.json"
