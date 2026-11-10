@@ -657,6 +657,10 @@ FocusScope {
                 SettingsRow { label: "Shell"; Label { text: "Quickshell " + (Quickshell.version || ""); size: 13; color: Theme.textSecondary } }
                 SettingsRow { label: "Settings file"; Label { text: "~/.config/rice/settings.json"; size: 13; color: Theme.textSecondary; font.family: Theme.fontMono } }
                 SettingsRow {
+                    label: "Backups"; detail: "Your settings, Hyprland files, reminders, alarms, notes and pins: daily and before every update of the desktop, the newest 30. Put one back: rice backup restore NAME"
+                    PillButton { text: "Back up now"; onClicked: Quickshell.execDetached([settings.rice, "backup"]) }
+                }
+                SettingsRow {
                     label: "Restart the shell"; detail: "Reloads everything; notifications stay"
                     PillButton { text: "Restart"; onClicked: Quickshell.execDetached([settings.rice, "restart"]) }
                 }

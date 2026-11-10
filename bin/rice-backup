@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+# rice-backup: your desktop's own files, snapshotted and put back.
+#
+#   rice backup                 a snapshot now (prints its path)
+#   rice backup list            the snapshots, newest first, with what's in them
+#   rice backup diff [NAME]     what changed since a snapshot (the newest by default)
+#   rice backup restore NAME    put a snapshot back (a snapshot of now is taken first)
+#   rice backup auto            what the daily timer and `rice promote` run: a snapshot
+#                               only if something changed since the last one
+#
+# What: settings (~/.config/rice), Hyprland's files that are yours
+# (~/.config/hypr: hyprland.lua, monitors.lua, user.lua, hypridle.conf),
+# reminders, alarms, clipboard pins, quick notes, screen profiles (icc), the
+# kuwai state (mode, channel). Not: clipboard history, caches, the repo.
+# Where: ~/.local/state/kuwai/backups/<time>.tar.gz, readable by you only
+# (settings can hold keys); the newest 30 kept. (searxng: its container's, not ours.)
+set -euo pipefail
+umask 077
+
+STATE=${XDG_STATE_HOME:-$HOME/.local/state}
+CFG=${XDG_CONFIG_HOME:-$HOME/.config}
+DATA=${XDG_DATA_HOME:-$HOME/.local/share}
+DIR=$STATE/kuwai/backups
+KEEP=${RICE_BACKUP_KEEP:-30}
+mkdir -p "$DIR"
+
+# Paths relative to $HOME (only those that exist are taken).
+paths() {
+    local p
+    for p in \
+        "$CFG/rice" \
+        "$CFG/hypr/hyprland.lua" "$CFG/hypr/monitors.lua" "$CFG/hypr/user.lua" "$CFG/hypr/hypridle.conf" \
+        "$DATA/rice/reminders.json" "$DATA/rice/alarms.json" "$DATA/rice/clipboard/pins" \
+        "${RICE_NOTES:-$HOME/Notes}/inbox.md" \
+        "$DATA/kuwai/icc" \
+        "$STATE/kuwai/state" "$STATE/kuwai/channel"; do
+        [ -e "$p" ] && printf '%s\n' "${p#"$HOME"/}"
+    done
+}
+
+# One number for "what's there now": changes when any file's content does.
+fingerprint() {
+    (cd "$HOME" && paths | while read -r p; do find "$p" -type f -print0 2>/dev/null; done | sort -z | xargs -0r sha256sum) | sha256sum | cut -c1-16
+}
+
+snap() {   # $1 = why (shown in list)
+    local name; name=$(date +%Y%m%d-%H%M%S)
+    local out=$DIR/$name.tar.gz
+    (cd "$HOME" && paths | tar --exclude='*.bak-*' --exclude='*.bak' --exclude='.config/rice/searxng' -czf "$out" --files-from=-)
+    printf '%s\t%s\n' "$(fingerprint)" "${1:-by hand}" >"$DIR/$name.info"
+    # Keep the newest $KEEP.
+    ls -1t "$DIR"/*.tar.gz 2>/dev/null | tail -n +$((KEEP + 1)) | while read -r old; do rm -f "$old" "${old%.tar.gz}.info"; done
+    printf '%s\n' "$out"
+}
+
+newest() { ls -1t "$DIR"/*.tar.gz 2>/dev/null | head -1; }
+resolve() {   # NAME (with or without .tar.gz), or the newest
+    local n=${1:-}
+    [ -z "$n" ] && { newest; return; }
+    n=${n%.tar.gz}; n=${n##*/}
+    [[ $n =~ ^[0-9]{8}-[0-9]{6}$ ]] || { echo "not a snapshot name: $1" >&2; exit 2; }
+    [ -f "$DIR/$n.tar.gz" ] || { echo "no snapshot $n (rice backup list)" >&2; exit 1; }
+    printf '%s\n' "$DIR/$n.tar.gz"
+}
+
+case ${1:-now} in
+    now|"") snap "by hand" ;;
+    auto)
+        last=$(newest)
+        if [ -n "$last" ] && [ "$(cut -f1 "${last%.tar.gz}.info" 2>/dev/null)" = "$(fingerprint)" ]; then
+            echo "no change since $(basename "${last%.tar.gz}")"
+        else
+            snap "${2:-automatic}"
+        fi ;;
+    list)
+        found=0
+        for f in $(ls -1t "$DIR"/*.tar.gz 2>/dev/null); do
+            found=1
+            n=$(basename "${f%.tar.gz}")
+            why=$(cut -f2 "${f%.tar.gz}.info" 2>/dev/null || echo "")
+            printf '%s  %6s  %s\n' "$n" "$(du -h "$f" | cut -f1)" "$why"
+        done
+        [ $found = 1 ] || echo "no snapshots yet (rice backup)" ;;
+    diff)
+        f=$(resolve "${2:-}"); [ -n "$f" ] || { echo "no snapshots yet" >&2; exit 1; }
+        tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
+        tar -xzf "$f" -C "$tmp"
+        (cd "$HOME" && paths) | while read -r p; do
+            if [ -e "$tmp/$p" ]; then diff -ru -x '*.bak*' -x searxng --label "$(basename "${f%.tar.gz}")/$p" --label "now/$p" "$tmp/$p" "$HOME/$p" || true
+            else echo "new since then: ~/$p"; fi
+        done ;;
+    restore)
+        f=$(resolve "${2:?which one? rice backup list}")
+        before=$(snap "before restoring $(basename "${f%.tar.gz}")")
+        # Only paths the snapshot holds, only under $HOME, no links or ..
+        if tar -tzf "$f" | grep -qE '(^/|(^|/)\.\.(/|$))'; then echo "refusing: the snapshot has paths outside your home" >&2; exit 1; fi
+        tar -xzf "$f" -C "$HOME" --no-same-owner --overwrite --exclude=".config/rice/searxng"
+        echo "restored $(basename "${f%.tar.gz}") (what was there is in $before)"
+        echo "reload: hyprctl reload  (settings apply by themselves)" ;;
+    -h|--help|help) sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//' ;;
+    *) echo "rice backup [now|list|diff [NAME]|restore NAME|auto]" >&2; exit 2 ;;
+esac

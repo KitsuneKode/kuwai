@@ -15,6 +15,7 @@
 #   rice timer 10m [label]    a timer in the island (cancel · list)
 #   rice pomodoro             start/stop 25/5 focus cycles
 #   rice remind in 20m tea    a reminder ("at 5 call mum", "tomorrow 9am x"; list · clear)
+#   rice backup [list|diff|restore NAME]   snapshots of your settings, hypr files, reminders, pins
 #   rice settings [page]      open Settings (power, saver, time, notifs, island, …)
 #   rice usage                agent usage limits in the island (Claude, Codex, … windows and resets)
 #   rice vitals               GPU, CPU, memory and agent usage together (the gauge in the hover view)
@@ -185,6 +186,8 @@ case ${1:-} in
             echo "rice: rice-check failed (above); fix it, or rice promote --force" >&2
             exit 1
         fi
+        # Your files as they are, before the desktop under them changes.
+        "$dev/bin/rice-backup" auto "before promote" >/dev/null 2>&1 || true
         head=$(git -C "$dev" rev-parse HEAD) || exit 1
         # The QML that would go live must load: rice-check above only sees the
         # running shell, so a broken import in the new code took the island
@@ -311,6 +314,7 @@ case ${1:-} in
             clear) ipc remind clear ;;
             *) ipc remind add "${*:2}" ;;
         esac ;;
+    backup)        shift; exec "$RICE/bin/rice-backup" "$@" ;;   # now · list · diff · restore NAME
     settings)      ipc island settings "${2:-}" ;;   # open Settings (on a page: power, saver, time, notifs, …)
     usage)         ipc island open usage ;;          # the Usage panel (services/Limits)
     vitals)        ipc island open vitals ;;         # GPU, CPU, memory and agent usage in one panel

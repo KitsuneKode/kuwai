@@ -16,7 +16,8 @@
 #      and user.lua beside it are created empty if missing, never overwritten)
 #   4. the stable channel: a checkout of the `stable` branch in ~/.local/share/kuwai
 #      (your session runs from it; `rice promote` moves it forward)
-#   5. user services (password prompt, clipboard history, GitHub/Gmail feeds),
+#   5. user services (password prompt, clipboard history, GitHub/Gmail feeds,
+#      a daily snapshot of your own files: rice backup),
 #      linked from the stable checkout and enabled
 #   6. the checks
 # Never: root, autologin, or your settings. The login screen and alarms that
@@ -28,7 +29,7 @@ CFG=${XDG_CONFIG_HOME:-$HOME/.config}
 DATA=${XDG_DATA_HOME:-$HOME/.local/share}
 STATE=${XDG_STATE_HOME:-$HOME/.local/state}/kuwai
 STABLE=$DATA/kuwai
-UNITS=(rice-auth.service rice-clipboard.service rice-feeds.service)
+UNITS=(rice-auth.service rice-clipboard.service rice-feeds.service rice-backup.service rice-backup.timer)
 
 DRY=0; DEPS=0; MODE=install
 for a in "$@"; do

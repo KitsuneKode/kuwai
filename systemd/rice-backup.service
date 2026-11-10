@@ -1,0 +1,8 @@
+[Unit]
+Description=Rice: snapshot your desktop's own files (settings, hypr files, reminders, pins) if they changed
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c 'exec "${KUWAI_ROOT:-%h/.local/share/kuwai}/bin/rice-backup" auto daily'
+Nice=10
+IOSchedulingClass=idle

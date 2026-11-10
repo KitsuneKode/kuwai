@@ -1,0 +1,10 @@
+[Unit]
+Description=Rice: a daily snapshot of your desktop's own files
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+RandomizedDelaySec=20min
+
+[Install]
+WantedBy=timers.target
