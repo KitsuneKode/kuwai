@@ -18,6 +18,7 @@ Singleton {
     property int waiting: 0
     property int finished: 0             // completed in the last 15 min (shown in the panel)
     property var items: []
+    property string env: ""              // T3 Code's environment id (its thread links need it)
     property string lastText: ""
     readonly property int total: running + waiting
 
@@ -36,6 +37,7 @@ Singleton {
                     root.running = d.running || 0;
                     root.waiting = d.waiting || 0;
                     root.finished = d.finished || 0;
+                    root.env = d.env || "";
                     // Only replace the list when it changed: an identical array
                     // still re-creates every delegate bound to it.
                     const next = d.items || [];
@@ -51,6 +53,14 @@ Singleton {
         onTriggered: if (!poll.running) poll.running = true
     }
 
+    // One thread, in T3 Code: its own link (t3code://threads/ENV/THREAD; the
+    // desktop app routes a second launch's link to that thread). Without the
+    // ids it falls back to bringing the window forward.
+    function openThread(thread) {
+        if (!thread || !env) { focus(); return; }
+        Quickshell.execDetached(["xdg-open", "t3code://threads/" + encodeURIComponent(env) + "/" + encodeURIComponent(thread)]);
+        focus();
+    }
     function focus() {
         // A Lua long string, as Notifs does: no quote/escape juggling.
         Hyprland.dispatch("hl.dsp.focus({window = [[class:^(com\\.t3tools\\.T3Code|t3code)$]]})");

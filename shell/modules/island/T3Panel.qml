@@ -135,7 +135,8 @@ FocusScope {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: { T3Code.focus(); Island.close(); }
+                        // That thread, not just the window (T3 Code's own link).
+                        onClicked: { T3Code.openThread(row.modelData.thread); Island.close(); }
                     }
                 }
             }

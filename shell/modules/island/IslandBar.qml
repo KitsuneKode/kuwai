@@ -274,7 +274,8 @@ Scope {
             // Expanded, recent background work from the assistant gets a row at the bottom.
             // Its width is IslandHover's own (wider with many agent accounts,
             // so the rings clear both sides); 720 until it's loaded.
-            readonly property size hoverSize: Qt.size(hoverLoader.item ? Math.min(hoverLoader.item.implicitWidth, implicitWidth - 40) : 720, 148 + (OllamaService.recentWork.length || OllamaService.bgWorking ? 38 : 0))
+            readonly property size hoverSize: Qt.size(hoverLoader.item ? Math.min(hoverLoader.item.implicitWidth, implicitWidth - 40) : 720,
+                                                       hoverLoader.item ? hoverLoader.item.implicitHeight : 148 + (OllamaService.recentWork.length || OllamaService.bgWorking ? 38 : 0))
             // A warning grows the island too (below panels and hover in priority).
             readonly property bool bannerHere: Alerts.banner !== null && screenName === (Screens.present(Alerts.bannerOn) ? Alerts.bannerOn : Screens.focusedName) && !panelHere && !grown
             Spring { id: bv; tier: win.bannerHere ? win.grow : win.shrink; epsilon: 0.001; target: win.bannerHere ? 1 : 0 }

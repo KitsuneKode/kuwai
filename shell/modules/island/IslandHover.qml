@@ -44,18 +44,25 @@ Item {
     readonly property real gap: 16
     readonly property real sideW: Math.max(28 + caps.width, 28 + rightCol.width)
     readonly property real maxW: Math.max(720, bar.implicitWidth - 40)
-    readonly property real needW: hover.media
-        ? (agentsHere ? Math.ceil(2 * (sideW + gap) + card.width + 29 + mediaAgents.width) : 720)
-        : Math.ceil(2 * (sideW + gap) + centreRow.width)
-    implicitWidth: Math.min(maxW, Math.max(720, needW))
-    implicitHeight: 148 + (OllamaService.recentWork.length || OllamaService.bgWorking ? 38 : 0)
+    readonly property real needW: hover.media ? 720 : Math.ceil(2 * (sideW + gap) + centreRow.width)
+    // While open it may grow (an account arrives) but never shrinks back: a
+    // chip or the quick shelf changing size under the pointer would otherwise
+    // resize the island and slide everything centred in it. Each opening
+    // starts over (the view is loaded fresh).
+    property real heldW: 720
+    onNeedWChanged: if (needW > heldW) heldW = needW
+    implicitWidth: Math.min(maxW, Math.max(720, heldW))
+    // Music playing: a second row under Now Playing for the machine and your
+    // agents (they used to vanish, then to widen the island beside the card).
+    readonly property real mediaRowH: hover.media ? 42 : 0
+    implicitHeight: 148 + mediaRowH + (OllamaService.recentWork.length || OllamaService.bgWorking ? 38 : 0)
 
     // Recent background work from the assistant (done or failed while its panel
     // was closed): click one to open that chat.
     Row {
         visible: OllamaService.recentWork.length > 0 || OllamaService.bgWorking
         x: 18
-        y: 148
+        y: 148 + hover.mediaRowH
         height: 30
         spacing: 8
         Label {
@@ -130,7 +137,7 @@ Item {
         }
     }
 
-    Component.onCompleted: SystemStats.watch()
+    Component.onCompleted: { SystemStats.watch(); heldW = Math.max(720, needW); }
     Component.onDestruction: SystemStats.unwatch()
 
     // ── Left: where ──────────────────────────────────────────────────────
@@ -227,8 +234,6 @@ Item {
         id: card
         visible: hover.media
         anchors.horizontalCenter: parent.horizontalCenter
-        // With your agents beside it, the two are centred together.
-        anchors.horizontalCenterOffset: hover.agentsHere ? -(mediaAgents.width + 29) / 2 : 0
         y: 62
         width: 380; height: 66; radius: 18
         color: Qt.rgba(1, 1, 1, cardHover.hovered ? 0.07 : 0.045)
@@ -341,37 +346,60 @@ Item {
         }
     }
 
-    // Music playing: your agents stay in view, compact beside the card. One
-    // ring per account you can use (outer: session, inner: weekly), its logo
-    // inside and no name; the line under the island names the one under the
-    // pointer. Click: that agent in Usage. Music used to hide them entirely.
-    Rectangle {
-        visible: hover.media && hover.agentsHere
-        x: card.x + card.width + 14
-        y: card.y + (card.height - height) / 2
-        width: 1; height: 28
-        color: Theme.cardEdge
-    }
+    // ── Music playing: the machine and your agents, a row under the card ──
+    // Small rings without names (the line under them names the one under the
+    // pointer): CPU, Memory, GPU, Temp, then each account you can use (outer:
+    // session, inner: weekly, its logo inside). Click: System, or that agent
+    // in Usage. The island keeps its width; the row fits under the card.
+    property string hotText: ""
     Row {
-        id: mediaAgents
-        visible: hover.media && hover.agentsHere
-        x: card.x + card.width + 29
-        y: card.y + (card.height - height) / 2
+        id: mediaRow
+        visible: hover.media
+        anchors.horizontalCenter: parent.horizontalCenter
+        y: card.y + card.height + 10
+        height: 28
         spacing: 8
-        readonly property int ring: 30
-        readonly property int room: Math.max(1, Math.floor((hover.maxW - 2 * (hover.sideW + hover.gap) - card.width - 29 + 8) / (ring + 8)))
+        readonly property int ring: 28
+        // Room across the island (the side columns end above this row).
+        readonly property int room: Math.max(1, Math.floor((hover.width - 56 - 4 * (ring + 8) - 17 + 8) / (ring + 8)))
         readonly property var shown: Limits.usable.length <= room ? Limits.usable : Limits.usable.slice(0, room - 1)
         readonly property int more: Limits.usable.length - shown.length
         Repeater {
-            model: ScriptModel { values: mediaAgents.shown; objectProp: "id" }
+            model: [
+                { k: "CPU", v: () => SystemStats.cpu, line: () => "CPU " + Math.round(SystemStats.cpu * 100) + "% · " + SystemStats.cores.length + " threads" },
+                { k: "Memory", v: () => SystemStats.mem, line: () => "Memory " + Math.round(SystemStats.mem * 100) + "% · " + SystemStats.bytes(SystemStats.memUsed) + " of " + SystemStats.bytes(SystemStats.memTotal) },
+                { k: "GPU", v: () => SystemStats.gpuState === "suspended" ? 0 : SystemStats.gpu, line: () => SystemStats.gpuState === "suspended" ? "NVIDIA asleep · Intel drives the screens" : "GPU " + Math.round(SystemStats.gpu * 100) + "% · " + SystemStats.gpuTemp + "°" },
+                { k: "Temp", v: () => Math.min(1, SystemStats.cpuTemp / 100), line: () => "CPU " + SystemStats.cpuTemp + "° · GPU " + SystemStats.gpuTemp + "°", temp: true }
+            ]
+            delegate: StatRing {
+                required property var modelData
+                size: mediaRow.ring; stroke: 2.5
+                value: modelData.v()
+                text: ""; label: ""
+                color: !modelData.temp ? Theme.accent : SystemStats.cpuTemp >= 90 ? Theme.red : SystemStats.cpuTemp >= 80 ? Theme.orange : Theme.green
+                HoverHandler {
+                    cursorShape: Qt.PointingHandCursor
+                    onHoveredChanged: hover.hotText = hovered ? parent.modelData.line() : (hover.hotText === parent.modelData.line() ? "" : hover.hotText)
+                }
+                TapHandler { onTapped: Island.open("system", hover.bar.screenName, "pointer", "island") }
+            }
+        }
+        Rectangle {
+            visible: hover.agentsHere
+            anchors.verticalCenter: parent.verticalCenter
+            width: 1; height: 20
+            color: Theme.cardEdge
+        }
+        Repeater {
+            model: ScriptModel { values: hover.agentsHere ? mediaRow.shown : []; objectProp: "id" }
             delegate: Item {
                 id: mag
                 required property var modelData
                 readonly property var e: modelData
-                width: mediaAgents.ring; height: mediaAgents.ring
+                width: mediaRow.ring; height: mediaRow.ring
                 function ink(w) { return !w ? Theme.track : w.out ? Theme.red : w.near ? Theme.orange : mag.e.tint; }
                 StatRing {
-                    size: mediaAgents.ring; stroke: 2.5
+                    size: mediaRow.ring; stroke: 2.5
                     value: mag.e.session ? Math.max(0, mag.e.session.left) : 0
                     color: mag.ink(mag.e.session)
                     text: ""; label: ""
@@ -379,7 +407,7 @@ Item {
                 StatRing {
                     visible: !!mag.e.weekly
                     x: 5; y: 5
-                    size: mediaAgents.ring - 10; stroke: 2
+                    size: mediaRow.ring - 10; stroke: 2
                     value: mag.e.weekly ? Math.max(0, mag.e.weekly.left) : 0
                     color: mag.ink(mag.e.weekly)
                     text: ""; label: ""
@@ -400,10 +428,10 @@ Item {
             }
         }
         Item {
-            visible: mediaAgents.more > 0
-            width: mediaAgents.ring; height: mediaAgents.ring
+            visible: hover.agentsHere && mediaRow.more > 0
+            width: mediaRow.ring; height: mediaRow.ring
             Rectangle { anchors.fill: parent; radius: width / 2; color: "transparent"; border.width: 2.5; border.color: Theme.track }
-            Label { anchors.centerIn: parent; text: "+" + mediaAgents.more; size: 11; weight: Theme.wSemibold; color: Theme.textSecondary }
+            Label { anchors.centerIn: parent; text: "+" + mediaRow.more; size: 10; weight: Theme.wSemibold; color: Theme.textSecondary }
             HoverHandler { cursorShape: Qt.PointingHandCursor }
             TapHandler { onTapped: Island.open("usage", hover.bar.screenName, "pointer", "island") }
         }
@@ -596,15 +624,15 @@ Item {
     // The account under the pointer. Inside the island: a popup under the
     // ring sat on the window below, and the line had no pill.
     Label {
-        visible: agents.hot !== null
+        visible: text !== ""
         anchors.horizontalCenter: parent.horizontalCenter
-        y: hover.media ? 131 : 126          // under the card, not on its edge
+        y: hover.media ? mediaRow.y + mediaRow.height + 3 : 126
         width: Math.min(implicitWidth, 460)
         horizontalAlignment: Text.AlignHCenter
         elide: Text.ElideRight
         text: {
             const e = agents.hot;
-            if (!e) return "";
+            if (!e) return hover.media ? hover.hotText : "";
             return e.label + " · " + [agents.line(e.session), agents.line(e.weekly)].filter(x => x).join(" · ");
         }
         size: 11
@@ -754,15 +782,15 @@ Item {
                         size: Theme.tSub; weight: Theme.wSemibold
                         color: Theme.accent
                     }
-                    // Hover reveals what a click does: "update · Install".
+                    // "4 updates", always: hover only tints it and the tip says
+                    // what a click does. Revealing "· Install" widened the
+                    // chip, which resized the island and slid everything in it.
                     Label {
-                        visible: !Updates.running && updChip.hot
+                        visible: !Updates.running
                         anchors.verticalCenter: parent.verticalCenter
-                        text: (Updates.total === 1 ? "update" : "updates") + " · Install"
+                        text: Updates.total === 1 ? "update" : "updates"
                         size: Theme.tSub; weight: Theme.wMedium
                         color: Theme.accent
-                        opacity: updChip.hot ? 1 : 0
-                        Behavior on opacity { NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                     }
                 }
                 MouseArea {
@@ -801,7 +829,7 @@ Item {
                 }
                 Tip {
                     text: Updates.running ? "Updating · " + Updates.phaseLabel
-                        : Updates.repo.length + " Arch · " + Updates.aur.length + " AUR" + (Updates.waitingReview ? " · " + Updates.waitingReview + " to review" : "")
+                        : Updates.repo.length + " Arch · " + Updates.aur.length + " AUR" + (Updates.waitingReview ? " · " + Updates.waitingReview + " to review" : "") + " · click to install"
                     shown: updArea.containsMouse
                     below: true
                 }

@@ -901,7 +901,8 @@ Item {
                             readonly property real jitter: restMediaWave.jitter[index]
                             anchors.verticalCenter: parent.verticalCenter
                             width: 3; radius: 1.5
-                            readonly property real liveH: Math.round(Math.max(3, 15 * Math.min(1, restMediaWave.shown * shape * jitter * 1.9)))
+                            // sqrt, as on the lock screen: quiet parts move, loud ones don't pin every bar
+                            readonly property real liveH: Math.round(Math.max(3, 3 + 12 * Math.min(1, Math.sqrt(restMediaWave.shown) * shape * jitter * 0.95)))
                             readonly property real pauseH: Math.max(4, 13 * shape * 0.48)
                             height: Media.playing ? liveH : pauseH
                             color: Media.artColor
@@ -935,16 +936,20 @@ Item {
         enabled: rest.agentMoment
         onTapped: { const m = Moments.now; Moments.dismissNow(); if (m && m.go) m.go(); }
     }
+    // Pulled down with nothing to act on, the notch opens your notifications
+    // (the phone's pull from the top): the same gesture, the center instead.
     DragHandler {
-        enabled: rest.agentMoment
         target: null
         xAxis.enabled: false
         dragThreshold: 4
         onActiveChanged: {
             if (active) { pullFling.reset(); pull.snap(pull.value); return; }
-            const m = Moments.now, d = translation.y, v = pullFling.vy();
-            if (m && (d > 28 || v > Theme.swipeFlick)) { Moments.dismissNow(); if (m.list) m.list(); }
-            else if (m && (d < -22 || v < -Theme.swipeFlick)) { if (m.dismiss) m.dismiss(); Moments.dismissNow(); }
+            const m = rest.agentMoment ? Moments.now : null, d = translation.y, v = pullFling.vy();
+            const down = d > 28 || v > Theme.swipeFlick, up = d < -22 || v < -Theme.swipeFlick;
+            if (m && down) { Moments.dismissNow(); if (m.list) m.list(); }
+            else if (m && up) { if (m.dismiss) m.dismiss(); Moments.dismissNow(); }
+            else if (!m && down && !(Notifs.centerOpen && Notifs.centerTab === "notifications"))
+                Notifs.toggleCenter("notifications", "pointer", rest.bar.screenName);
             pull.velocity = v * 1000;
             pull.target = 0;
         }

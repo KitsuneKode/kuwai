@@ -23,6 +23,21 @@ Item {
         enabled: media.visible && media.player && media.player.isPlaying
     }
     readonly property real level: peak.peaks && peak.peaks.length ? Math.max(...peak.peaks) : (peak.peak || 0)
+    // The bars, 30 times a second and set straight, with their small
+    // randomness on the same tick (as the notch's, IslandRest). They followed
+    // every peak at 1.8× gain, so ordinary music held all four at full height
+    // and they looked frozen; and each peak restarted an animation.
+    property real shown: 0
+    property var jitter: [1, 1, 1, 1]
+    property int tick: 0
+    Timer {
+        running: peak.enabled; interval: 33; repeat: true
+        onTriggered: {
+            media.tick++;
+            if (!Theme.reduceMotion && media.tick % 4 === 0) media.jitter = media.jitter.map(() => 0.6 + Math.random() * 0.6);
+            media.shown = media.level;
+        }
+    }
     HoverHandler { id: over }
 
     // Glass: a light frost over the blurred wallpaper, a hairline edge.
@@ -62,13 +77,13 @@ Item {
                 model: 4
                 Rectangle {
                     required property int index
-                    property real jitter: 1
+                    readonly property real shape: [0.6, 1, 0.8, 0.5][index]
                     anchors.bottom: parent.bottom
                     width: 4; radius: 1.5
-                    height: Math.max(4, 18 * Math.min(1, media.level * jitter * 1.8))
+                    // sqrt: quiet passages still move, loud ones don't pin every bar at the top
+                    height: Math.round(Math.max(4, 4 + 14 * Math.min(1, Math.sqrt(media.shown) * shape * media.jitter[index] * 0.95)))
                     color: Theme.accent
-                    Behavior on height { NumberAnimation { duration: 100 } }
-                    Timer { running: peak.enabled && !Theme.reduceMotion; interval: 120 + index * 40; repeat: true; onTriggered: parent.jitter = 0.55 + Math.random() * 0.7 }
+                    Behavior on height { enabled: !peak.enabled; NumberAnimation { duration: 380; easing.type: Easing.OutCubic } }
                 }
             }
         }

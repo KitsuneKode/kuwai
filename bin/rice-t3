@@ -22,8 +22,8 @@ pid=$(jq -r '.pid // empty' "$DIR/server-runtime.json" 2>/dev/null) || none
 # as two active. Its most telling state wins: waiting, then running, then the
 # newest of the rest.
 rows=$(timeout 3 sqlite3 -readonly -json "file:$DB?mode=ro" "
-  select status, provider, title from (
-    select r.status as status, r.provider as provider, coalesce(t.title, '') as title, r.requested_at as at,
+  select status, provider, title, thread from (
+    select r.status as status, r.provider as provider, coalesce(t.title, '') as title, r.thread_id as thread, r.requested_at as at,
            row_number() over (partition by r.thread_id
                               order by (r.status = 'waiting') desc, (r.status = 'running') desc, r.requested_at desc) as n
     from orchestration_v2_projection_runs r
@@ -37,7 +37,7 @@ rows=$(timeout 3 sqlite3 -readonly -json "file:$DB?mode=ro" "
 # Finished in the last 15 minutes (and not running again): the panel shows
 # them as done, so a thread that just completed is one glance away.
 done_rows=$(timeout 3 sqlite3 -readonly -json "file:$DB?mode=ro" "
-  select 'completed' as status, r.provider as provider, coalesce(t.title, '') as title, max(r.completed_at) as at
+  select 'completed' as status, r.provider as provider, coalesce(t.title, '') as title, r.thread_id as thread, max(r.completed_at) as at
   from orchestration_v2_projection_runs r
   left join orchestration_v2_projection_threads t on t.thread_id = r.thread_id
   where r.status = 'completed' and r.completed_at >= strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-15 minutes')
@@ -46,9 +46,13 @@ done_rows=$(timeout 3 sqlite3 -readonly -json "file:$DB?mode=ro" "
                     and a.status in ('queued','preparing','starting','running','waiting'))
   group by r.thread_id order by at desc limit 4;" 2>/dev/null)
 [ -n "$done_rows" ] || done_rows="[]"
-jq -cn --argjson live "$rows" --argjson done "$done_rows" '{alive: true,
+# The thread and the environment make T3 Code's own link to it
+# (t3code://threads/ENV/THREAD, its desktop app opens it), so a row opens
+# that thread instead of only raising the window.
+env_id=$(tr -cd 'A-Za-z0-9-' < "$DIR/environment-id" 2>/dev/null)
+jq -cn --argjson live "$rows" --argjson done "$done_rows" --arg env "$env_id" '{alive: true, env: $env,
     running: ([$live[] | select(.status != "waiting")] | length),
     waiting: ([$live[] | select(.status == "waiting")] | length),
     finished: ($done | length),
-    items: ([$live[] | {status, provider, title: (.title | .[0:80])}]
-          + [$done[] | {status, provider, title: (.title | .[0:80])}])}' 2>/dev/null || none
+    items: ([$live[] | {status, provider, title: (.title | .[0:80]), thread}]
+          + [$done[] | {status, provider, title: (.title | .[0:80]), thread}])}' 2>/dev/null || none
