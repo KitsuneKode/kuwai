@@ -47,14 +47,27 @@ Singleton {
     // ── Ringing ──────────────────────────────────────────────────────────
     function ring(a) {
         ringing = a;
-        Moments.show({ kind: "alarm", glyph: "\u{f0020}", label: a.label, value: Qt.formatTime(new Date(a.at), Settings.clock24 ? "HH:mm" : "h:mm"), ring: -1, tone: Theme.orange }, 15000);
-        asker.createObject(root, { alarm: a });
+        // The island grows the alarm (AlarmCard): Snooze and Stop, until answered.
+        // Locked, the lock island has the same two (LockIsland).
+        Moments.showCard({ key: "alarm", kind: "alarm", sticky: true, id: a.id, title: a.label,
+                           sub: Qt.formatTime(new Date(a.at), Settings.clock24 ? "HH:mm" : "h:mm AP") + " · Alarm",
+                           act: { secondary: ["Snooze", () => root.snooze(9)], primary: ["Stop", () => root.stop()] } }, 5 * 60000);
     }
-    function stop() { ringing = null; }
+    // The card folded some other way (Escape, a click away): that's Stop too,
+    // so it never rings with nothing on screen to answer.
+    Connections {
+        target: Moments
+        function onCardChanged() { if (root.ringing && !(Moments.card && Moments.card.key === "alarm")) root.stop(); }
+    }
+    function stop() {
+        ringing = null;
+        if (Moments.card && Moments.card.key === "alarm") Moments.dropCard();
+    }
     function snooze(mins) {
         if (!ringing) return;
         const a = ringing;
         ringing = null;
+        if (Moments.card && Moments.card.key === "alarm") Moments.dropCard();
         items = [...items, { id: Date.now(), label: a.label, at: Date.now() + mins * 60000 }].sort((x, y) => x.at - y.at);
         save();
     }
@@ -63,25 +76,23 @@ Singleton {
         interval: 2600; repeat: true; triggeredOnStart: true
         running: root.ringing !== null
         onTriggered: {
-            if (Date.now() - root.ringing.at > 5 * 60000) { root.stop(); return; }
+            if (Date.now() - root.ringing.at > 5 * 60000) {
+                // Unanswered for 5 minutes: quiet, and said in the center.
+                missed.createObject(root, { alarm: root.ringing });
+                root.stop();
+                return;
+            }
             bell.running = true;
         }
     }
     Process { id: bell; command: ["pw-play", "--volume", "1.0", "/usr/share/sounds/freedesktop/stereo/alarm-clock-elapsed.oga"] }
     Component {
-        id: asker
+        id: missed
         Process {
             property var alarm
             running: true
-            command: [Paths.bin + "/rice-notify", "-w", "-a", "Alarm", "-i", "alarm-symbolic", "-u", "critical",
-                      "-A", "stop=Stop", "-A", "snooze=Snooze 9 min", alarm.label, Qt.formatTime(new Date(alarm.at), Settings.clock24 ? "HH:mm" : "h:mm AP")]
-            stdout: StdioCollector { id: said }
-            onExited: {
-                if (root.ringing && root.ringing.id === alarm.id) {
-                    if (said.text.trim() === "snooze") root.snooze(9); else root.stop();
-                }
-                destroy();
-            }
+            command: [Paths.bin + "/rice-notify", "-a", "Alarm", "-i", "alarm-symbolic", "Alarm went unanswered", alarm.label + " · " + Qt.formatTime(new Date(alarm.at), Settings.clock24 ? "HH:mm" : "h:mm AP")]
+            onExited: destroy()
         }
     }
     Timer {

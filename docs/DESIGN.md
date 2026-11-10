@@ -162,3 +162,17 @@ States every pressable primitive has: hover (a wash, `colorMs`), press
 (scale 0.97, `pressMs`), disabled (tertiary ink, no press), keyboard focus
 (`FocusRing`, Tab reaches it, Space/Enter presses), a screen-reader role and
 name.
+
+## Cards that grow out of the island
+
+Things that ask for an answer grow out of the island the way an iPhone's
+alarm does (`modules/island/AlarmCard.qml`): an alarm ringing (Snooze ·
+Stop ✕, until answered, 5 min at most), a reminder due (Later · Done ✓, 30 s,
+then the center), a timer done (Repeat · Done). The mark is in its tone
+(orange asks, green is done); the bell swings like a hung bell and a ring of
+light breathes out of it while an alarm rings; a reminder's ring fills once.
+The text rises 4 px in order, the answers last. Reduced motion: none of it
+moves. A device connecting never pushes one aside. Locked, the lock island
+has the same answers.
+
+![Alarm, reminder and timer cards](media/island-alarm-cards.gif)

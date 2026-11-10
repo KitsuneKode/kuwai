@@ -84,12 +84,38 @@ Singleton {
         Process {
             property var reminder
             running: true
-            command: [Paths.bin + "/rice-notify", "-w", "-a", "Reminders", "-i", "appointment-soon", "-u", "critical",
+            command: [Paths.bin + "/rice-notify", "-w", "-a", "Reminders", "-i", "appointment-soon",
                       "-A", "snooze=Snooze 10 min", "-A", "done=Done", "Reminder", reminder.text]
             stdout: StdioCollector { id: said }
             onExited: { if (said.text.trim() === "snooze") root.snooze(reminder, 10); destroy(); }
         }
     }
+
+    // ── Due: the island first, the center if it went unanswered ──────────
+    // A card grows out of the island (AlarmCard) with Later and Done, for
+    // 30 s (held while the pointer is on it). Unanswered, it goes to the
+    // notification center, still with Snooze and Done: one place at a time.
+    property var asking: null
+    function present(r) {
+        if (asking) asker.createObject(root, { reminder: asking });   // two at once: the first goes to the center
+        asking = r;
+        const late = Date.now() - r.at > 120000;
+        Moments.showCard({ key: "reminder", kind: "reminder", sticky: true, id: r.id, title: r.text,
+                           sub: late ? "Reminder · due " + Qt.formatTime(new Date(r.at), Settings.clock24 ? "HH:mm" : "h:mm AP") : "Reminder · now",
+                           act: { secondary: ["Later", () => { root.asking = null; root.snooze(r, 10); }],
+                                  primary: ["Done", () => { root.asking = null; }] } }, 30000);
+        chime.running = true;
+    }
+    Connections {
+        target: Moments
+        function onCardChanged() {
+            if (root.asking && !(Moments.card && Moments.card.key === "reminder" && Moments.card.id === root.asking.id)) {
+                asker.createObject(root, { reminder: root.asking });
+                root.asking = null;
+            }
+        }
+    }
+    Process { id: chime; command: ["pw-play", "--volume", "0.7", "/usr/share/sounds/freedesktop/stereo/bell.oga"] }
 
     // ── Due ──────────────────────────────────────────────────────────────
     signal due(var r)
@@ -102,11 +128,7 @@ Singleton {
             if (!done.length) return;
             root.items = root.items.filter(i => i.at > now);
             root.save();
-            for (const r of done) {
-                root.due(r);
-                Moments.show({ kind: "reminder", glyph: "\u{f009a}", label: r.text, value: "Now", ring: -1, tone: Theme.orange }, 8000);
-                asker.createObject(root, { reminder: r });
-            }
+            for (const r of done) { root.due(r); root.present(r); }
         }
     }
 

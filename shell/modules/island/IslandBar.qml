@@ -267,6 +267,8 @@ Scope {
             Spring { id: nv; tier: win.peekHere ? win.grow : win.shrink; epsilon: 0.001; target: win.peekHere ? 1 : 0 }
             // A device connecting or going (Moments.card), below both.
             readonly property bool deviceHere: Moments.card !== null && screenName === (Screens.present(Moments.cardOn) ? Moments.cardOn : Screens.focusedName) && !panelHere && !grown && !bannerHere && !peekHere
+            // An alarm, a reminder or a timer done (AlarmCard) rides the device card's place.
+            readonly property bool alarmCard: !!Moments.card && ["alarm", "reminder", "timer"].indexOf(Moments.card.kind || "") >= 0
             Spring { id: dv; tier: win.deviceHere ? win.grow : win.shrink; epsilon: 0.001; target: win.deviceHere ? 1 : 0 }
 
             // ── Pushing a card back ──────────────────────────────────────
@@ -298,7 +300,7 @@ Scope {
             // Expanded with a whole message (a mail, a comment): room to read it.
             readonly property real peekH: Notifs.peekExpanded ? (Notifs.peek && Notifs.peek.full ? 340 : 172) : 76
             readonly property real bannerH: bannerHere && alertLoader.item ? alertLoader.item.implicitHeight : 72
-            readonly property real targetW: panelHere ? panelSize.width : grown ? hoverSize.width : bannerHere ? 440 : peekHere ? 460 : deviceHere ? 420 : restRow.implicitWidth + 32
+            readonly property real targetW: panelHere ? panelSize.width : grown ? hoverSize.width : bannerHere ? 440 : peekHere ? 460 : deviceHere ? (win.alarmCard ? 440 : 420) : restRow.implicitWidth + 32
             readonly property real targetH: panelHere ? panelSize.height : grown ? hoverSize.height : bannerHere ? bannerH : peekHere ? peekH : deviceHere ? 84 : restH
             // Published so surfaces that grow out of the island (the HUD, the
             // clipboard) start from the shape actually on screen: rest, banner,
@@ -678,14 +680,17 @@ Scope {
                     Loader {
                         id: deviceLoader
                         active: win.deviceHere || dv.value > 0.01
-                        x: Math.round((body.width - 420) / 2)
+                        x: Math.round((body.width - (win.alarmCard ? 440 : 420)) / 2)
                         readonly property real k: Math.max(0, Math.min(1, (dv.value - 0.3) / 0.5))
                         opacity: k * Math.max(0, 1 - Math.max(m.value, pv.value, bv.value, nv.value) * 3)
                         // Reduce motion: the shape jumps, the content fades (fades only).
                         Behavior on opacity { enabled: Theme.reduceMotion; NumberAnimation { duration: Theme.microMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                         visible: opacity > 0.01
                         property var keep: null
-                        sourceComponent: DeviceCard { item: Moments.card || deviceLoader.keep; bar: win }
+                        readonly property bool alarmKind: { const c = Moments.card || keep; return !!c && ["alarm", "reminder", "timer"].indexOf(c.kind || "") >= 0; }
+                        sourceComponent: alarmKind ? alarmComp : deviceComp
+                        Component { id: deviceComp; DeviceCard { item: Moments.card || deviceLoader.keep; bar: win } }
+                        Component { id: alarmComp; AlarmCard { item: Moments.card || deviceLoader.keep; bar: win } }
                         Connections { target: Moments; function onCardChanged() { if (Moments.card) deviceLoader.keep = Moments.card; } }
                     }
 

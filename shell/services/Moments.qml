@@ -80,6 +80,9 @@ Singleton {
     onCardChanged: cardOn = card ? Screens.focusedName : ""
     property bool cardHeld: false
     function showCard(c, ms) {
+        // Something asking for an answer (an alarm ringing, a reminder) isn't
+        // pushed aside by a device coming and going.
+        if (card && card.sticky && !c.sticky && cardFor.running) return;
         // The same device again (its link, then its sound): fill in, don't replay.
         if (card && card.key === c.key && cardFor.running)
             card = Object.assign({}, card, c, { battery: c.battery >= 0 ? c.battery : card.battery, detail: c.detail || card.detail });
@@ -557,7 +560,13 @@ Singleton {
     // ── Timers (services/Timers) ending ─────────────────────────────────
     Connections {
         target: Timers
-        function onFinished(t) { root.show({ kind: "timer", glyph: "\u{f13ab}", label: t.label, value: "Done", ring: -1, tone: Theme.green }, 6000); }
+        // Done: a card with Repeat and Done (AlarmCard); a pomodoro moves on by itself.
+        function onFinished(t) {
+            if (t.pomo) { root.show({ kind: "timer", glyph: "\u{f13ab}", label: t.label, value: "Done", ring: -1, tone: Theme.green }, 4000); return; }
+            const secs = Math.round((t.end - t.start) / 1000);
+            root.showCard({ key: "timer", kind: "timer", id: t.id, title: t.label, sub: "Timer · " + Timers.label(secs) + " done",
+                            act: { secondary: ["Repeat", () => Timers.start(secs, t.label)], primary: ["Done", () => {}] } }, 8000);
+        }
     }
 
     // ── Low battery (20 %, on battery; 10 % is the Alerts banner) ────────

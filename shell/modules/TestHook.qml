@@ -5,6 +5,7 @@
 //   qs ipc -p <shell> call test alert    warn|crit TITLE    (a warning, until clear)
 //   qs ipc -p <shell> call test agents   N WAITING          (N agents working, WAITING of them waiting)
 //   qs ipc -p <shell> call test timer    SECONDS LABEL
+//   qs ipc -p <shell> call test card     alarm|reminder|timer TITLE   (the island's card, silent)
 //   qs ipc -p <shell> call test clear                       (back to the real state)
 //   qs ipc -p <shell> call test collect                     (run the JS garbage collector)
 //   qs ipc -p <shell> call test gallery  [on|off]           (the design system on one sheet; no keyboard)
@@ -57,12 +58,21 @@ Scope {
         }
         function gallery(state: string): void { galleryLoader.active = state !== "off"; }
         function settings(page: int): void { hook.settingsPage = page; settingsLoader.active = page >= 0; }
+        // An alarm / reminder / timer card (AlarmCard), silent; its buttons only close it.
+        function card(kind: string, title: string): void {
+            const sub = { alarm: "07:30 · Alarm", reminder: "Reminder · now", timer: "Timer · 10 min done" }[kind] || "";
+            const act = kind === "alarm" ? { secondary: ["Snooze", () => {}], primary: ["Stop", () => {}] }
+                      : kind === "reminder" ? { secondary: ["Later", () => {}], primary: ["Done", () => {}] }
+                      : { secondary: ["Repeat", () => {}], primary: ["Done", () => {}] };
+            Moments.showCard({ key: "test-" + kind, kind: kind, id: Date.now(), title: title, sub: sub, act: act }, 12000);
+        }
         function timer(seconds: int, label: string): void { Timers.start(seconds, label); }
         // Memory: run the JS garbage collector now (for measuring what it frees).
         function collect(): void { gc(); }
         function clear(): void {
             Alerts.active = [];
             Moments.now = null;
+            if (Moments.card && String(Moments.card.key).indexOf("test-") === 0) Moments.dropCard();
             if (hook.testing) { Kittymux.feed = hook.realFeed; hook.testing = false; }
             for (const t of Timers.timers.slice()) if (/^test/i.test(t.label)) Timers.cancel(t.id);
         }
