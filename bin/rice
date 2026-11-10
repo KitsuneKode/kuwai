@@ -235,6 +235,14 @@ case ${1:-} in
         # The login screen too: it runs this same shell from greeter.qml.
         "$dev/bin/rice-loadtest" "$head" || { echo "rice: stable left as it is" >&2; exit 1; }
         "$dev/bin/rice-loadtest" "$head" greeter.qml || { echo "rice: the login screen wouldn't load; stable left as it is" >&2; exit 1; }
+        # Stable must be clean: a failed start below resets it hard, which would
+        # erase any edit made in it directly (it did, 2026-11-10). Refuse instead
+        # of stashing or resetting someone's work (review finding 08).
+        dirty=$(git -C "$STABLE" status --porcelain 2>/dev/null)
+        if [ -n "$dirty" ]; then
+            printf "rice: stable (%s) has changes that aren't committed; stable left as it is:\n%s\nMake them in the repo instead (or: git -C %s stash), then promote again.\n" "$STABLE" "$dirty" "$STABLE" >&2
+            exit 1
+        fi
         prev=$(git -C "$STABLE" rev-parse HEAD)
         git -C "$STABLE" merge --ff-only --quiet "$head" || { echo "rice: stable can't fast-forward to $(git -C "$dev" log --oneline -1)" >&2; exit 1; }
         echo "stable is now $(git -C "$STABLE" log --oneline -1)"

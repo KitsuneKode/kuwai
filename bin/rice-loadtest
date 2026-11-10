@@ -7,19 +7,28 @@
 # overridden, one handler set twice); only a load reports those.
 # Offscreen has no layer-shell, so "No PanelWindow backend loaded" is the
 # expected stop: anything else at the root of the chain is a real failure.
-# Exit 0: loads (as far as offscreen goes). 1: it wouldn't, the cause printed.
-set -u
+# Exit 0: loads (as far as offscreen goes): the chain ended at exactly that
+# expected stop. 1: it wouldn't, or nothing proved it did (no unpack, no
+# output, a timeout): the cause printed. 2: can't check here (qs or
+# dbus-run-session missing). Fails closed: only the positive stop passes
+# (review 2026-11-10, finding 09).
+set -u -o pipefail
 dev="$(cd "$(dirname "$0")/.." && pwd)"
 rev="${1:-HEAD}"
 entry="${2:-}"
-command -v qs >/dev/null && command -v dbus-run-session >/dev/null || { echo "rice-loadtest: needs qs and dbus-run-session; skipped" >&2; exit 0; }
+command -v qs >/dev/null && command -v dbus-run-session >/dev/null || { echo "rice-loadtest: needs qs and dbus-run-session; can't check" >&2; exit 2; }
 t="$(mktemp -d)"; trap 'rm -rf "$t"' EXIT
 mkdir -p "$t/run" "$t/home" && chmod 700 "$t/run"
-git -C "$dev" archive "$rev" shell | tar -x -C "$t"
+git -C "$dev" archive "$rev" shell | tar -x -C "$t" || { echo "rice-loadtest: couldn't unpack shell/ at $rev" >&2; exit 1; }
+[ -f "$t/shell/${entry:-shell.qml}" ] || { echo "rice-loadtest: $rev has no shell/${entry:-shell.qml}" >&2; exit 1; }
 out="$(cd "$t" && env -i PATH=/usr/bin:/bin HOME="$t/home" XDG_RUNTIME_DIR="$t/run" \
     XDG_STATE_HOME="$t/home/.local/state" XDG_CACHE_HOME="$t/home/.cache" XDG_DATA_HOME="$t/home/.local/share" XDG_CONFIG_HOME="$t/home/.config" KUWAI_GREETER_USER=nobody \
     QT_QPA_PLATFORM=offscreen timeout -k 2 15 setsid dbus-run-session -- qs -p "$t/shell${entry:+/$entry}" 2>&1)"
 root="$(printf '%s\n' "$out" | grep -E "caused by|ERROR" | tail -1 | sed 's/\x1b\[[0-9;]*m//g')"
-if [ -z "$root" ] || printf '%s' "$root" | grep -q "No PanelWindow backend loaded"; then exit 0; fi
+if printf '%s' "$root" | grep -q "No PanelWindow backend loaded"; then exit 0; fi
+if [ -z "$root" ]; then
+    printf 'rice-loadtest: %s: no load result (expected the offscreen stop, got nothing recognisable):\n%s\n' "$(git -C "$dev" log --oneline -1 "$rev")" "$(printf '%s\n' "$out" | tail -5)" >&2
+    exit 1
+fi
 printf 'rice-loadtest: %s would not load:\n  %s\n' "$(git -C "$dev" log --oneline -1 "$rev")" "$(printf '%s' "$root" | sed 's/^ *ERROR: *//')" >&2
 exit 1
