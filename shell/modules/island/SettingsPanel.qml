@@ -226,15 +226,6 @@ FocusScope {
                     }
                 }
             }
-            SettingsGroup {
-                title: "Kitty"
-                SettingsRow {
-                    key: "kittyTabs"
-                    label: "Tabs beside kitty"
-                    detail: "A glass column of this window's tabs, on the left, while kitty is focused. Off until you turn it on."
-                    Toggle { on: Settings.kittyTabs; onToggled: Settings.set("kittyTabs", !Settings.kittyTabs) }
-                }
-            }
         }
     }
     Component {

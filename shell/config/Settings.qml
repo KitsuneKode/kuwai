@@ -42,7 +42,6 @@ Singleton {
     readonly property alias screensaverClip: s.screensaverClip
     readonly property alias jackMicName: s.jackMicName
     readonly property alias islandProximity: s.islandProximity
-    readonly property alias kittyTabs: s.kittyTabs
     readonly property alias notifSurface: s.notifSurface
     readonly property alias notifFullscreen: s.notifFullscreen
     readonly property alias notifToastInstantOpen: s.notifToastInstantOpen
@@ -190,9 +189,6 @@ Singleton {
             property string sleepAt: "00:30"
             property int limitThreshold: 80
             property bool islandProximity: true   // nearing the island 30–60 px out reveals it (off: only the top edge)
-            // Tabs & agents: a glass column on the left while kitty is focused
-            // on that screen. Off until asked — it reserves a strip of the display.
-            property bool kittyTabs: false
             property string quickPrimary: "caffeine"   // the quick switch shown in the hover view
             property bool liveOnBattery: false   // live wallpaper keeps playing on battery
         }
