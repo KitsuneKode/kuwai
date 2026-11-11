@@ -29,22 +29,31 @@ rows=$(timeout 3 sqlite3 -readonly -json "file:$DB?mode=ro" "
     from orchestration_v2_projection_runs r
     left join orchestration_v2_projection_threads t on t.thread_id = r.thread_id
     where r.status in ('queued','preparing','starting','running','waiting')
+      and r.thread_id not like 'thread:%'
       and t.deleted_at is null and t.archived_at is null)
   where n = 1
   order by (status = 'waiting') desc, at desc
   limit 12;" 2>/dev/null) || none
 [ -n "$rows" ] || rows="[]"
-# Finished in the last 15 minutes (and not running again): the panel shows
-# them as done, so a thread that just completed is one glance away.
+# Finished and not looked at yet: the thread's last run completed (or failed)
+# after you last visited it in T3 Code (its own lastVisitedAt), in the last 3
+# days, and isn't running again. Seen ones drop out by themselves when you open
+# them. Subagent sub-threads (ids starting thread:) belong to their parent.
 done_rows=$(timeout 3 sqlite3 -readonly -json "file:$DB?mode=ro" "
-  select 'completed' as status, r.provider as provider, coalesce(t.title, '') as title, r.thread_id as thread, max(r.completed_at) as at
-  from orchestration_v2_projection_runs r
-  left join orchestration_v2_projection_threads t on t.thread_id = r.thread_id
-  where r.status = 'completed' and r.completed_at >= strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-15 minutes')
-    and t.deleted_at is null and t.archived_at is null
-    and not exists (select 1 from orchestration_v2_projection_runs a where a.thread_id = r.thread_id
-                    and a.status in ('queued','preparing','starting','running','waiting'))
-  group by r.thread_id order by at desc limit 4;" 2>/dev/null)
+  select status, provider, title, thread from (
+    select r.status as status, r.provider as provider, coalesce(t.title, '') as title, r.thread_id as thread,
+           r.completed_at as at, json_extract(t.payload_json, '$.lastVisitedAt') as visited,
+           row_number() over (partition by r.thread_id order by r.completed_at desc) as n
+    from orchestration_v2_projection_runs r
+    join orchestration_v2_projection_threads t on t.thread_id = r.thread_id
+    where r.status in ('completed','failed','cancelled','interrupted')
+      and r.completed_at >= strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-3 days')
+      and r.thread_id not like 'thread:%'
+      and t.deleted_at is null and t.archived_at is null
+      and not exists (select 1 from orchestration_v2_projection_runs a where a.thread_id = r.thread_id
+                      and a.status in ('queued','preparing','starting','running','waiting')))
+  where n = 1 and status in ('completed','failed') and (visited is null or at > visited)
+  order by at desc limit 8;" 2>/dev/null)
 [ -n "$done_rows" ] || done_rows="[]"
 # The thread and the environment make T3 Code's own link to it
 # (t3code://threads/ENV/THREAD, its desktop app opens it), so a row opens

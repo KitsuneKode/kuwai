@@ -92,7 +92,7 @@ Item {
     }
 
     function open(x) {
-        if (x.type === "t3") { T3Code.focus(); Notifs.setCenter(false); return; }
+        if (x.type === "t3") { T3Code.openThread(x.t.thread); Notifs.setCenter(false); return; }
         if (x.type === "event") Kittymux.jumpEvent(x.e.id);
         else Kittymux.act(x.r.action);
         Notifs.setCenter(false);

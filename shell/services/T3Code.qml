@@ -61,6 +61,13 @@ Singleton {
         Quickshell.execDetached(["xdg-open", "t3code://threads/" + encodeURIComponent(env) + "/" + encodeURIComponent(thread)]);
         focus();
     }
+    // The thread that matters most: the one that needs you, else the newest
+    // working or unseen-finished one (items come in that order). Nothing
+    // listed: just the window.
+    function openBest() {
+        const it = items.find(i => i.thread);
+        if (it) openThread(it.thread); else focus();
+    }
     function focus() {
         // A Lua long string, as Notifs does: no quote/escape juggling.
         Hyprland.dispatch("hl.dsp.focus({window = [[class:^(com\\.t3tools\\.T3Code|t3code)$]]})");

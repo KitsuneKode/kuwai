@@ -335,7 +335,7 @@ Item {
         tone: T3Code.waiting > 0 ? Theme.orange : Theme.cyan
         previews: true
         onPreviewRequested: if (Island.panel === "") Island.preview("t3", rest.bar.screenName)
-        onClicked: T3Code.focus()
+        onClicked: T3Code.openBest()
     }
     // ── Leading ──────────────────────────────────────────────────────────
     // A moment (services/Moments): earbuds connecting, Focus, low battery.
@@ -590,7 +590,7 @@ Item {
         tone: T3Code.waiting > 0 ? Theme.orange : Theme.cyan
         previews: true
         onPreviewRequested: if (Island.panel === "") Island.preview("t3", rest.bar.screenName)
-        onClicked: T3Code.focus()
+        onClicked: T3Code.openBest()
     }
 
     IslandClock {
@@ -653,7 +653,7 @@ Item {
             tone: T3Code.waiting > 0 ? Theme.orange : Theme.cyan
             previews: true
             onPreviewRequested: if (Island.panel === "") Island.preview("t3", rest.bar.screenName)
-            onClicked: T3Code.focus()
+            onClicked: T3Code.openBest()
         }
         // Something you missed that wants you (Notifs.missed): a white dot,
         // red if urgent. Hover the island's bell for them.

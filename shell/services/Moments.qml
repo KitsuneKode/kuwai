@@ -576,7 +576,9 @@ Singleton {
             label: t.length > 28 ? t.slice(0, 27).trim() + "…" : t,
             value: value, ring: -1,
             tone: tone === "critical" ? Theme.red : tone === "caution" ? Theme.orange : Theme.green,
-            go: () => T3Code.focus(),
+            // T3 Code's own notification action opens that thread; once it's
+            // gone, the thread that matters most.
+            go: () => { if (!(item.notification && Notifs.invokeDefault(item))) T3Code.openBest(); else T3Code.focus(); },
             list: root.openAgents
         }, tone === "caution" || tone === "critical" ? 6000 : 3200);
     }

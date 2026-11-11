@@ -16,10 +16,10 @@ FocusScope {
     implicitHeight: col.implicitHeight + 40
 
     Keys.onPressed: e => {
-        if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { T3Code.focus(); Island.close(); e.accepted = true; }
+        if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { T3Code.openBest(); Island.close(); e.accepted = true; }
     }
 
-    readonly property var live: T3Code.items.filter(i => i.status !== "completed")
+    readonly property var live: T3Code.items.filter(i => i.status !== "completed" && i.status !== "failed")
     function agentName(p) {
         const base = String(p || "").replace(/_\d+$/, "");
         return ({ claudeAgent: "Claude", codex: "Codex", cursor: "Cursor", antigravity: "Antigravity", opencode: "OpenCode", gemini: "Gemini" })[base]
@@ -73,7 +73,8 @@ FocusScope {
                     id: row
                     required property var modelData
                     readonly property bool waits: modelData.status === "waiting"
-                    readonly property bool done: modelData.status === "completed"
+                    readonly property bool failed: modelData.status === "failed"
+                    readonly property bool done: modelData.status === "completed" || failed
                     width: parent.width
                     height: 46
                     radius: 12
@@ -124,7 +125,7 @@ FocusScope {
                         }
                         Label {
                             width: parent.width; elide: Text.ElideRight
-                            text: (row.waits ? "Needs you" : row.done ? "Finished" : row.modelData.status === "running" ? "Working" : "Starting")
+                            text: (row.waits ? "Needs you" : row.failed ? "Failed" : row.done ? "Finished" : row.modelData.status === "running" ? "Working" : "Starting")
                                 + (t3.agentName(row.modelData.provider) ? " · " + t3.agentName(row.modelData.provider) : "")
                             size: Theme.tFootnote
                             color: row.waits ? Theme.orange : Theme.textTertiary
