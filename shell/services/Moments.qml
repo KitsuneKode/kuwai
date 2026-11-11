@@ -52,6 +52,13 @@ Singleton {
     property bool held: false
     onHeldChanged: if (!held && now) { hide.interval = Math.min(hide.interval, 2000); hide.restart(); }
     Timer { id: hide; onTriggered: { if (root.held) { restart(); return; } root.now = null; if (root.queue.length) gap.start(); } }
+    // The notch's own list of waiting agents (AgentStack registers itself).
+    property var agentLists: []
+    function openAgentList(screen) {
+        const s = agentLists.find(x => x && x.bar && x.bar.screenName === screen);
+        if (s && s.many) { s.open = true; return true; }
+        return false;
+    }
     // The center's Agents tab: every one waiting, each a jump (opens it, never closes it).
     function openAgents() { if (!Notifs.centerOpen || Notifs.centerTab !== "agents") Notifs.toggleCenter("agents", "pointer", ""); }
     // Gone now (it was acted on: tapped, pulled down, swiped up).
@@ -558,7 +565,10 @@ Singleton {
                 // pane, pull down lists every one, swipe up marks it read.
                 go: () => Kittymux.jumpEvent(id),
                 dismiss: () => Kittymux.ack(id),
-                list: root.openAgents
+                // Pulled down: the island's own list of waiting agents (the
+                // AgentStack), opening where you pulled; the center only if
+                // that list can't show (one agent, or none waiting).
+                list: screen => { if (!root.openAgentList(screen)) root.openAgents(); }
             }, needs ? 6000 : 3000);
         }
     }
@@ -579,7 +589,8 @@ Singleton {
             // T3 Code's own notification action opens that thread; once it's
             // gone, the thread that matters most.
             go: () => { if (!(item.notification && Notifs.invokeDefault(item))) T3Code.openBest(); else T3Code.focus(); },
-            list: root.openAgents
+            // Pulled down: T3's own list, grown out of the notch.
+            list: screen => Island.open("t3", screen || "", "pointer", "island")
         }, tone === "caution" || tone === "critical" ? 6000 : 3200);
     }
 

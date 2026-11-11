@@ -35,6 +35,8 @@ Item {
     readonly property bool many: list.length > 1
     readonly property bool hovered: hover.hovered
     property bool open: false
+    // So a pulled-down agent alert can open this list (Moments.openAgentList).
+    Component.onCompleted: Moments.agentLists = Moments.agentLists.concat([stack])
     onManyChanged: if (!many) open = false
 
     property real step: hover.hovered && many && !open ? 10 : 8
@@ -115,7 +117,10 @@ Item {
         if (open && !counted) { counted = true; bar.menus++; }
         else if (!open && counted) { counted = false; bar.menus = Math.max(0, bar.menus - 1); }
     }
-    Component.onDestruction: if (counted) bar.menus = Math.max(0, bar.menus - 1)
+    Component.onDestruction: {
+        if (counted) bar.menus = Math.max(0, bar.menus - 1);
+        Moments.agentLists = Moments.agentLists.filter(x => x !== stack);
+    }
     Spring { id: k; tier: stack.open ? Theme.surfaceIn : Theme.surfaceOut; epsilon: 0.002 }
     function go(a) { if (!a) return; if (a.event) Kittymux.jumpEvent(a.event); else Kittymux.act(a.action); }
     function pick(a) { open = false; go(a); }

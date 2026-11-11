@@ -946,10 +946,13 @@ Item {
             if (active) { pullFling.reset(); pull.snap(pull.value); return; }
             const m = rest.agentMoment ? Moments.now : null, d = translation.y, v = pullFling.vy();
             const down = d > 28 || v > Theme.swipeFlick, up = d < -22 || v < -Theme.swipeFlick;
-            if (m && down) { Moments.dismissNow(); if (m.list) m.list(); }
+            if (m && down) { Moments.dismissNow(); if (m.list) m.list(rest.bar.screenName); }
             else if (m && up) { if (m.dismiss) m.dismiss(); Moments.dismissNow(); }
-            else if (!m && down && !(Notifs.centerOpen && Notifs.centerTab === "notifications"))
-                Notifs.toggleCenter("notifications", "pointer", rest.bar.screenName);
+            // Nothing to act on: the island itself opens into its notifications
+            // panel, from where you pulled (one container growing, not the
+            // center sliding in at the screen's edge).
+            else if (!m && down && Island.panel !== "notifs")
+                Island.open("notifs", rest.bar.screenName, "pointer", "island");
             pull.velocity = v * 1000;
             pull.target = 0;
         }

@@ -68,6 +68,12 @@ Singleton {
         const it = items.find(i => i.thread);
         if (it) openThread(it.thread); else focus();
     }
+    // qs ipc -p <shell> call t3 best | open THREAD  (keybinds, tests)
+    IpcHandler {
+        target: "t3"
+        function best(): void { root.openBest(); }
+        function open(thread: string): void { root.openThread(thread); }
+    }
     function focus() {
         // A Lua long string, as Notifs does: no quote/escape juggling.
         Hyprland.dispatch("hl.dsp.focus({window = [[class:^(com\\.t3tools\\.T3Code|t3code)$]]})");
