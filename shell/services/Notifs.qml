@@ -81,7 +81,14 @@ Singleton {
         const out = [];
         const seen = new Set();
         const key = i => String(i.nid || "") + "|" + i.time + "|" + i.app + "|" + i.title;
-        const add = i => { const k = key(i); if (seen.has(k)) return; seen.add(k); out.push(i); };
+        // One row per kittymux pane: its newest (finished after it asked, the
+        // ask is over); "Zen loader" five times read as five things.
+        const panes = new Set();
+        const add = i => {
+            const k = key(i);
+            if (seen.has(k) || (i.jump && panes.has(i.jump))) return;
+            seen.add(k); if (i.jump) panes.add(i.jump); out.push(i);
+        };
         for (const i of missed) { add(i); if (out.length >= cap) return out; }
         const unreadItems = items.filter(i => i.time > lastSeen && !i.discard);
         const pri = unreadItems.filter(i => {

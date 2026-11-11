@@ -514,7 +514,43 @@ kuwai.workspaces = W
 -- fold into the same-numbered workspace on a remaining screen (its 3 joins
 -- your 3), each remembered; when that screen comes back they go home. No
 -- "guest" workspaces from another screen ever sit in your row.
+--
+-- A screen that loses power flaps (off, on, off within a second or two), and
+-- a config reload can land while it's dark, so:
+--   · only windows whose own screen is really gone move (a pass that ran
+--     after the screen was already back moved the wrong windows);
+--   · where each came from is kept in kuwai's state, not in memory;
+--   · coming back is quick (250 ms, the screen's first frame), each window to
+--     its own workspace, and that screen shows what it showed; if you were on
+--     it, you are again.
+local function key_of(m)
+	return ident(m):gsub("[^%w]", "_")
+end
+local function owned(id, mons)
+	for _, m in ipairs(mons) do
+		local base = W.base(m)
+		if id > base and id <= base + 10 then
+			return m
+		end
+	end
+end
 local homes = {} -- window address → the workspace id it came from
+for addr, id in (K.state["wshomes"] or ""):gmatch("([%w]+)=(%d+)") do
+	homes[addr] = tonumber(id)
+end
+hl.on("hyprland.start", function()
+	homes = {} -- a new session: last login's window addresses mean nothing
+	if K.state["wshomes"] then
+		K.set_state("wshomes", nil)
+	end
+end)
+local function save_homes()
+	local parts = {}
+	for addr, id in pairs(homes) do
+		parts[#parts + 1] = addr .. "=" .. id
+	end
+	K.set_state("wshomes", #parts > 0 and table.concat(parts, ";") or nil)
+end
 local function wsid(w)
 	local ws = w and w.workspace
 	if not ws then
@@ -522,39 +558,103 @@ local function wsid(w)
 	end
 	return ws.id or tonumber(tostring(ws):match("%((%-?%d+):"))
 end
+-- What each screen shows and which one you're on, kept as it changes (once a
+-- screen is gone there's no asking it).
+local focused_key
+local function remember_shown()
+	local here = hl.get_active_monitor()
+	local mons = hl.get_monitors() or {}
+	if #mons < 2 then
+		return -- one screen left: the moment of loss, keep what was known
+	end
+	focused_key = here and key_of(here) or focused_key
+	for _, m in ipairs(mons) do
+		local id = showing(m)
+		local k = "wsshown." .. key_of(m)
+		if id and id > 0 and K.state[k] ~= tostring(id) then
+			K.set_state(k, id)
+		end
+	end
+	if focused_key and K.state["wsfocus"] ~= focused_key then
+		K.set_state("wsfocus", focused_key)
+	end
+end
+hl.on("workspace.active", remember_shown)
 hl.on("monitor.removed", function()
 	if not K.feature("per_monitor_ws") then
 		return
 	end
 	hl.timer(function()
+		local mons = hl.get_monitors() or {}
 		local here = hl.get_active_monitor()
 		local base = here and W.base(here) or 0
+		local moved = false
 		for _, w in ipairs(hl.get_windows() or {}) do
 			local id = wsid(w)
-			if id and id > 0 and (id <= base or id > base + 10) then
+			if id and id > 0 and not owned(id, mons) then
 				local n = (id - 1) % 10 + 1
-				homes[tostring(w.address)] = id
+				homes[tostring(w.address)] = homes[tostring(w.address)] or id
 				hl.dispatch(dsp.window.move({ window = "address:" .. tostring(w.address), workspace = base + n, follow = false }))
+				moved = true
 			end
+		end
+		if moved then
+			save_homes()
 		end
 	end, { timeout = 700, type = "oneshot" })
 end)
-hl.on("monitor.added", function()
-	if not K.feature("per_monitor_ws") or next(homes) == nil then
+hl.on("monitor.added", function(m)
+	if not K.feature("per_monitor_ws") then
 		return
 	end
 	hl.timer(function()
+		local mons = hl.get_monitors() or {}
+		local live = {}
 		for _, w in ipairs(hl.get_windows() or {}) do
-			local home = homes[tostring(w.address)]
-			if home then
-				hl.dispatch(dsp.window.move({ window = "address:" .. tostring(w.address), workspace = home, follow = false }))
+			live[tostring(w.address)] = w
+		end
+		local back = false
+		for addr, home in pairs(homes) do
+			local w = live[addr]
+			if not w then
+				homes[addr] = nil -- closed while its screen was dark
+			elseif owned(home, mons) then
+				if wsid(w) ~= home then
+					hl.dispatch(dsp.window.move({ window = "address:" .. addr, workspace = home, follow = false }))
+				end
+				homes[addr] = nil
+				back = true
 			end
 		end
-		homes = {}
+		save_homes()
 		if desktops() then
-			W.go(W.current())
+			if back then
+				W.go(W.current())
+			end
+			return
 		end
-	end, { timeout = 700, type = "oneshot" })
+		-- That screen shows what it showed; focus goes back only if you were there.
+		local mon
+		for _, x in ipairs(mons) do
+			if m and x.name == m.name then
+				mon = x
+			end
+		end
+		local was = mon and tonumber(K.state["wsshown." .. key_of(mon)])
+		if mon and was and owned(was, { mon }) then
+			local here = hl.get_active_monitor()
+			local stay = here and here.name ~= mon.name and K.state["wsfocus"] ~= key_of(mon)
+			K.config({ cursor = { no_warps = true } })
+			show(mon, was)
+			if stay then
+				local cur = here.active_workspace and here.active_workspace.id
+				if cur then
+					hl.dispatch(dsp.focus({ workspace = cur }))
+				end
+			end
+			K.config({ cursor = { no_warps = false } })
+		end
+	end, { timeout = 250, type = "oneshot" })
 end)
 
 ---------------------------------------------------------------------------

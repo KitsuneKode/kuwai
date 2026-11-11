@@ -22,6 +22,10 @@ FocusScope {
     readonly property var quick: Notifs.bellQuickList(10)
     property int sel: 0
     property bool keyboard: false            // the ring shows for keys, not the pointer
+    // Seen once it's been up past a glance: the notch's "missed" dot and the
+    // Unread label retire (it stayed until the center was opened).
+    readonly property real openedAt: Date.now()
+    Component.onDestruction: if (Date.now() - openedAt > 600) Notifs.markSeen()
     onQuickChanged: sel = Math.min(sel, Math.max(0, quick.length - 1))
     function ago(t) {
         const m = Math.max(0, Math.round((Date.now() - t) / 60000));
@@ -35,7 +39,7 @@ FocusScope {
     }
 
     Keys.onPressed: e => {
-        keyboard = true;
+        if ([Qt.Key_Down, Qt.Key_Up, Qt.Key_Return, Qt.Key_Enter, Qt.Key_Delete, Qt.Key_Backspace].indexOf(e.key) >= 0) keyboard = true;
         if (e.key === Qt.Key_Down) sel = Math.min(quick.length - 1, sel + 1);
         else if (e.key === Qt.Key_Up) sel = Math.max(0, sel - 1);
         else if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) read(quick[sel]);
@@ -127,7 +131,10 @@ FocusScope {
                 readonly property bool hot: modelData.severity === "critical" || modelData.severity === "warning"
                 readonly property color dot: modelData.severity === "critical" ? Theme.red : hot ? Theme.orange : Theme.accent
                 // Waiting on your input (an agent's question): said, and its question gets room.
-                readonly property bool asks: modelData.statusTone === "caution" || /needs you|waiting|permission/i.test(String(modelData.status || ""))
+                // kittymux says which state (and the inbox whether it was answered);
+                // older rows go by their chip, a usage limit isn't a question.
+                readonly property bool asks: modelData.agentState ? modelData.agentState === "waiting" && !Kittymux.answered(modelData.event)
+                    : (modelData.statusTone === "caution" || /needs you|waiting|permission/i.test(String(modelData.status || ""))) && !/limit/i.test(String(modelData.status || ""))
                 readonly property alias swipe: swipe
                 readonly property bool shown: rowHover.hovered || (np.keyboard && np.sel === index)
                 width: list.width
@@ -146,9 +153,8 @@ FocusScope {
                 // The keyboard's place: the shared ring look, keys only.
                 Rectangle {
                     visible: np.keyboard && np.sel === row.index
-                    anchors.fill: parent
-                    anchors.margins: -2
-                    radius: parent.radius + 2
+                    anchors.fill: parent             // inside the row: the list clips its edges
+                    radius: parent.radius
                     color: "transparent"
                     border.width: 2
                     border.color: Qt.rgba(1, 1, 1, 0.6)

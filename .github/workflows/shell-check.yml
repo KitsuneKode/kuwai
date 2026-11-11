@@ -38,6 +38,8 @@ jobs:
           exit $fail
       - name: Python tests
         run: PYTHONDONTWRITEBYTECODE=1 python -m pytest -q -p no:cacheprovider tests
+      - name: Hyprland config tests
+        run: for t in tests/hypr/test_*.lua; do lua "$t" || exit 1; done
       - name: Design tokens only go down
         run: bin/rice-tokens --check
 
