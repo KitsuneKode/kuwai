@@ -1,7 +1,8 @@
 // One notification inside the center: a lighter plate on the panel's glass.
 // Click selects (read the snippet, Reply, or Open); Enter or Open runs the
-// app's default action; the hover close button removes it, collapsing the
-// space it took so the rows below glide up.
+// app's default action. Swipe it sideways, or the hover ×, right-click or
+// Delete, and it slides out while the space it took closes (the rows below
+// glide up at the same time, not after).
 import QtQuick
 import qs.config
 import qs.components
@@ -51,7 +52,8 @@ Item {
 
     width: parent ? parent.width : 0
     height: (body.implicitHeight + 24) * reveal
-    opacity: reveal
+    opacity: reveal * swipe.fade
+    transform: Translate { x: swipe.offset }
     clip: reveal < 1
 
     Component.onCompleted: {
@@ -60,17 +62,28 @@ Item {
     }
     // Reused for another notification (the top of a folded stack after its
     // first one was removed): show the new one whole.
-    onItemChanged: if (removing) { shrink.stop(); removing = false; grow.start(); }
+    onItemChanged: if (removing) { shrink.stop(); removing = false; swipe.reset(); grow.start(); }
     NumberAnimation { id: grow; target: row; property: "reveal"; to: 1; duration: Theme.reduceMotion ? 0 : Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
     NumberAnimation {
         id: shrink; target: row; property: "reveal"; to: 0; duration: Theme.exitMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut
-        onFinished: row.it.popup ? Notifs.dismiss(row.item) : Notifs.remove(row.item)
+        onFinished: Notifs.discard(row.item)
     }
+    // Out to the right (the way a swipe goes most), then collapse with it.
     function remove() {
+        if (!swipe.gone) swipe.away(1);
+        else collapse();
+    }
+    function collapse() {
         if (removing) return;
         removing = true;
         grow.stop();
         shrink.start();
+    }
+    SwipeAway {
+        id: swipe
+        span: row.width
+        enabled: !row.replying
+        onLeaving: row.collapse()
     }
 
     HoverHandler {

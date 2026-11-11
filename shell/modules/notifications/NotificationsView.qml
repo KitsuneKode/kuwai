@@ -154,10 +154,11 @@ Item {
 
     function removeSelected() {
         if (!selected) return;
-        const gone = selected;
+        const gone = selected, r = selectedRow;
         selected = visibleItems[selectedIndex + 1] || visibleItems[selectedIndex - 1] || null;
-        if (gone.popup) Notifs.dismiss(gone);
-        else Notifs.remove(gone);
+        // Its row slides out and closes up, like a swipe; without one, at once.
+        if (r && r.item === gone) r.remove();
+        else Notifs.discard(gone);
     }
 
     function clearAll() { clearOut.start(); }

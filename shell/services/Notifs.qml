@@ -607,6 +607,15 @@ Singleton {
     }
 
     // Already off screen (flung away): no exit animation, just forget it.
+    // Swiped or ×'d from a list (the notch's, the center's): gone from the
+    // center; one on screen leaves too. A kittymux pane's "needs you" is
+    // answered with it, so the notch and kittymux's inbox agree.
+    function discard(item) {
+        if (!item) return;
+        if (item.event && !Kittymux.answered(item.event)) Kittymux.ack(item.event);
+        if (item.popup) dismiss(item);
+        else remove(item);
+    }
     function drop(item) {
         item.discard = true;
         if (item.notification) item.notification.dismiss();
