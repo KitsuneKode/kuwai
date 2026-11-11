@@ -54,6 +54,11 @@ Singleton {
             .sort((a, b) => (rank[a.severity] ?? 3) - (rank[b.severity] ?? 3) || b.t - a.t);
     }
     readonly property int needsYou: inbox.needs_you || 0
+    function eventById(id) { return id ? (inbox.events || []).find(e => e.id === id) || null : null; }
+    // Dealt with: kittymux knows the event and it's no longer unread (you went
+    // there, or swiped it away). An event the snapshot doesn't have yet (the
+    // popup can beat the file) is not answered.
+    function answered(id) { const e = eventById(id); return !!e && e.status !== "unread"; }
     readonly property var running: live ? feed.agents.map(fromFeed) : rows.filter(r => r.kind === "running").map(parse)
     // Closed conversations, worth reopening: a title that's just the last
     // shell command (rm -f …, cc auth login) reads as the agent's session,

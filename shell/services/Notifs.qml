@@ -64,6 +64,7 @@ Singleton {
     // The island keeps a dot for them and lists them, with their buttons, when
     // you hover its bell. Newest first.
     readonly property var missed: items.filter(i => i.time > lastSeen && !i.popup && !i.discard && !i.quiet
+        && !(i.event && Kittymux.answered(i.event))          // a kittymux pane you've already been to
         && (i.severity === "critical" || i.severity === "warning" || i.urgency === NotificationUrgency.Critical || i.hasDefault || (i.actions && i.actions.length)))
         .sort((a, b) => b.time - a.time)
 
@@ -226,6 +227,10 @@ Singleton {
         // Agents finishing or waiting are a moment in the island (kittymux's
         // own panes already are, from its inbox).
         if (item.app === "T3 Code") Moments.agentNote(item);
+        // A kittymux pane: its popup is kittymux's decision (not for an idle
+        // notice, a repeat, a short run, or the pane you're looking at), so
+        // the notch says it then, once.
+        else if (item.jump) Moments.kittyNote(item);
         else if (!calm && islandFor(item)) showPeek(item);
         if (item.popup) arrived();
     }

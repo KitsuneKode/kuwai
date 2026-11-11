@@ -31,7 +31,7 @@ Singleton {
     property var queue: []            // [{ m, ms }]
     function show(m, ms) {
         // Answered while it waited in the queue: not shown again.
-        if (m.sticky && m.event && !(Kittymux.inbox.events || []).some(e => e.id === m.event && e.status === "unread")) return;
+        if (m.sticky && m.event && Kittymux.answered(m.event)) return;
         if (m.sticky && m.t3 && T3Code.waiting === 0) return;
         // A sticky one (an agent waiting on you) steps aside for anything else
         // and comes back after it, instead of holding the rest in the queue.
@@ -545,51 +545,59 @@ Singleton {
     }
     Timer { interval: 20000; running: true; repeat: true; triggeredOnStart: true; onTriggered: if (!netCheck.running) netCheck.running = true }
 
-    // ── Agents (kittymux's inbox): one needs you, or finished ───────────
-    // Each event once, newest only; the brand mark, the agent and its tab.
-    property real agentSeen: Date.now() / 1000
+    // ── Agents (kittymux panes): one needs you, or finished ─────────────
+    // From kittymux's own popup (Notifs.deliver), not its inbox: kittymux
+    // already chose what deserves one (no idle notice after a finish, no
+    // second report of the same question, no short run, nothing in the pane
+    // you're looking at). Reading the inbox instead showed all of those, and
+    // a merged repeat (its time moves on) twice. The inbox says when it's
+    // answered.
+    function kittyNote(item) {
+        const st = item.agentState || (/needs you|asks|permission/i.test(item.status + " " + item.title) ? "waiting" : "done");
+        const ev = Kittymux.eventById(item.event);
+        const pane = { jump: item.jump };          // not the item: the center may drop it before you tap
+        if (item.event && Kittymux.answered(item.event)) return;     // went there before the popup came
+        const name = String((ev && ev.agent) || item.app || "Agent");
+        // A tool asking for a password in a pane (sudo, ssh, git, pacman…)
+        // isn't an agent: say what it is, with a key, not a robot.
+        if (item.agentTool || (ev && ev.source === "tool")) {
+            root.show({ kind: "agent", glyph: "\u{f0306}", label: "Password", value: name.toLowerCase() + " in kitty", ring: -1, tone: Theme.orange,
+                        go: () => Notifs.jumpTo(pane), list: root.openRecent }, 6000);
+            return;
+        }
+        const needs = st === "waiting";
+        // Which one: two Codex panes otherwise look the same. The tab's title
+        // (the adapter moved the state out of it), kept short for the notch.
+        let tab = String((ev && ev.tab) || item.title || "").replace(/\s+/g, " ").trim();
+        if (tab.length > 22) tab = tab.slice(0, 21) + "…";
+        const who = name.charAt(0).toUpperCase() + name.slice(1);
+        // Others still waiting on you: said as "+N" (pull down for the list).
+        const more = (Kittymux.attention || []).filter(x => x.id !== item.event && x.severity === "needs-you").length;
+        const id = item.event;
+        root.show({
+            kind: "agent", image: Kittymux.brand(name) || item.icon, glyph: "\u{f06a9}",
+            label: tab && tab.toLowerCase() !== name.toLowerCase() ? who + " · " + tab : who,
+            value: (needs ? (ev && ev.kind === "question" ? "Waiting" : "Needs you")
+                    : st === "limited" ? "Hit a limit" : st === "error" ? "Error" : "Done")
+                   + (more > 0 ? "  +" + more : ""),
+            ring: -1, tone: st === "error" ? Theme.red : needs || st === "limited" ? Theme.orange : Theme.green,
+            // What the notch does with it (IslandRest): tap goes to that pane,
+            // pull down lists the recent ones, swipe up marks it read.
+            go: () => id ? Kittymux.jumpEvent(id) : Notifs.jumpTo(pane),
+            dismiss: () => { if (id) Kittymux.ack(id); },
+            list: root.openRecent,
+            // Waiting on you: it stays until it's answered (you went there, or
+            // swiped it away), ten minutes at most.
+            sticky: needs && !!id, event: id
+        }, needs ? 600000 : st === "error" ? 8000 : 5000);
+    }
     Connections {
         target: Kittymux
         function onInboxChanged() {
-            // A waiting one that's been read (you went there) goes.
-            if (root.now && root.now.sticky && root.now.event
-                && !(Kittymux.inbox.events || []).some(e => e.id === root.now.event && e.status === "unread")) root.dismissNow();
-            const fresh = (Kittymux.inbox.events || []).filter(e => e.status === "unread" && e.t > root.agentSeen).sort((a, b) => b.t - a.t);
-            if (!fresh.length) return;
-            root.agentSeen = fresh[0].t;
-            if (!root.armed) return;
-            const e = fresh[0];
-            const needs = e.severity === "needs-you";
-            const name = String(e.agent || "Agent");
-            // A tool asking for a password in a pane (sudo, ssh, git, pacman…)
-            // isn't an agent: say what it is, with a key, not a robot.
-            if (e.source === "tool" || /^(sudo|su|ssh|scp|git|pacman|paru|yay|gpg|doas|pkexec)$/i.test(name)) {
-                root.show({ kind: "agent", glyph: "\u{f0306}", label: "Password", value: name.toLowerCase() + " in kitty", ring: -1, tone: Theme.orange }, 6000);
-                return;
-            }
-            // Which one: two Codex panes otherwise look the same. The tab's
-            // title (its project, usually), kept short for the notch.
-            let tab = String(e.tab || "").replace(/\s+/g, " ").trim();
-            if (tab.length > 22) tab = tab.slice(0, 21) + "…";
-            const who = name.charAt(0).toUpperCase() + name.slice(1);
-            // Others still waiting on you: said as "+N" (pull down for the list).
-            const more = (Kittymux.attention || []).filter(x => x.id !== e.id && x.severity === "needs-you").length;
-            const id = e.id;
-            root.show({
-                kind: "agent", image: Kittymux.brand(e.agent), glyph: "\u{f06a9}",
-                label: tab && tab.toLowerCase() !== name.toLowerCase() ? who + " · " + tab : who,
-                value: (needs ? (e.kind === "permission" ? "Needs you" : "Waiting") : e.kind === "limit" ? "Hit a limit" : "Done")
-                       + (more > 0 ? "  +" + more : ""),
-                ring: -1, tone: needs || e.kind === "limit" ? Theme.orange : Theme.green,
-                // What the notch does with it (IslandRest): tap goes to that
-                // pane, pull down lists every one, swipe up marks it read.
-                go: () => Kittymux.jumpEvent(id),
-                dismiss: () => Kittymux.ack(id),
-                list: root.openRecent,
-                // Waiting on you: it stays until it's read (you went there, or
-                // swiped it away), ten minutes at most.
-                sticky: needs, event: id
-            }, needs ? 600000 : 5000);
+            // A waiting one that's been answered goes, showing or queued.
+            if (root.now && root.now.sticky && root.now.event && Kittymux.answered(root.now.event)) root.dismissNow();
+            if (root.queue.some(q => q.m.sticky && q.m.event && Kittymux.answered(q.m.event)))
+                root.queue = root.queue.filter(q => !(q.m.sticky && q.m.event && Kittymux.answered(q.m.event)));
         }
     }
 

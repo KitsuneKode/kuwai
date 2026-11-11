@@ -212,6 +212,13 @@ Singleton {
         // a click jumps there through kittymux, even from history later.
         const kpid = h["x-kittymux-pid"], kwin = h["x-kittymux-window"];
         out.jump = /^\d+$/.test(String(kpid || "")) && /^\d+$/.test(String(kwin || "")) ? kpid + ":" + kwin : "";
+        // Which inbox event it is and what state: the notch's moment follows
+        // this popup (kittymux already chose what deserves one), and the
+        // inbox says when it was answered.
+        const kev = String(h["x-kittymux-event"] || ""), kst = String(h["x-kittymux-state"] || "");
+        out.event = out.jump && /^[\w.-]{1,80}$/.test(kev) ? kev : "";
+        out.agentState = out.jump && kittymuxStates[kst] ? kst : "";
+        out.agentTool = out.jump && h["x-kittymux-source"] === "tool";
         if (!out.icon) out.icon = imageOrIcon(n);
         out.severity = severityOf(n, out.severity);
         return out;

@@ -26,6 +26,9 @@ QtObject {
     property string groupKey
     property string focusClass
     property string jump                 // "pid:window" of a kittymux agent pane (works after the sender is gone)
+    property string event                // its kittymux inbox event id (answered once that's read)
+    property string agentState           // kittymux's x-kittymux-state: waiting | limited | done | error
+    property bool agentTool: false       // a tool in the pane (sudo, ssh) asked, not the agent
     property string url                  // what a click opens once the sender is gone (bin/rice-feeds)
     property bool quiet: false           // straight to the center: no toast, no peek, not "missed"
     property int urgency: NotificationUrgency.Normal
@@ -90,6 +93,9 @@ QtObject {
         groupKey = a.groupKey;
         focusClass = a.focusClass;
         jump = a.jump || "";
+        event = a.event || "";
+        agentState = a.agentState || "";
+        agentTool = !!a.agentTool;
         url = a.url || "";
         full = a.full || "";
         thread = a.thread || "";
@@ -126,6 +132,6 @@ QtObject {
     }
 
     function toJson() {
-        return { nid, time, app, title, body, status, statusGlyph, statusTone, icon: savedIcon || icon, groupKey, focusClass, jump, url, full, thread, quiet, urgency, severity, count, snoozedUntil, replyable };
+        return { nid, time, app, title, body, status, statusGlyph, statusTone, icon: savedIcon || icon, groupKey, focusClass, jump, event, agentState, url, full, thread, quiet, urgency, severity, count, snoozedUntil, replyable };
     }
 }
