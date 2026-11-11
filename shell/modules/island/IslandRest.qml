@@ -869,21 +869,21 @@ Item {
                 PwObjectTracker { objects: [Pipewire.defaultAudioSink] }
                 PwNodePeakMonitor { id: restPeak; node: Pipewire.defaultAudioSink; enabled: (rest.activity === "media" || rest.restMusic) && Media.playing }
                 readonly property real level: restPeak.enabled ? (restPeak.peaks && restPeak.peaks.length ? Math.max(...restPeak.peaks) : (restPeak.peak || 0)) : 0
-                // The bars move 30 times a second, set straight (no Behavior).
+                // The bars move 20 times a second, set straight (no Behavior).
                 // Following every peak, each one restarting a 90 ms animation,
                 // redrew the notch on every frame while music played (200 a
                 // second on the Acer, 165 on the panel): ~10 % of a core at rest.
-                // The bars' small randomness rides the same tick (every 4th: ~8 a
-                // second), so the notch redraws 30 times a second in all, not once
+                // The bars' small randomness rides the same tick (every 3rd: ~7 a
+                // second), so the notch redraws 20 times a second in all, not once
                 // more per bar on five unsynchronised timers.
                 property real shown: 0
                 property var jitter: [1, 1, 1, 1, 1]
                 property int tick: 0
                 Timer {
-                    running: restPeak.enabled; interval: 33; repeat: true
+                    running: restPeak.enabled; interval: 50; repeat: true
                     onTriggered: {
                         restMediaWave.tick++;
-                        if (!Theme.reduceMotion && restMediaWave.tick % 4 === 0)
+                        if (!Theme.reduceMotion && restMediaWave.tick % 3 === 0)
                             restMediaWave.jitter = restMediaWave.jitter.map(() => 0.7 + Math.random() * 0.5);
                         restMediaWave.shown = restMediaWave.level;
                     }

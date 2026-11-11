@@ -23,7 +23,7 @@ Item {
         enabled: media.visible && media.player && media.player.isPlaying
     }
     readonly property real level: peak.peaks && peak.peaks.length ? Math.max(...peak.peaks) : (peak.peak || 0)
-    // The bars, 30 times a second and set straight, with their small
+    // The bars, 20 times a second and set straight, with their small
     // randomness on the same tick (as the notch's, IslandRest). They followed
     // every peak at 1.8× gain, so ordinary music held all four at full height
     // and they looked frozen; and each peak restarted an animation.
@@ -31,10 +31,10 @@ Item {
     property var jitter: [1, 1, 1, 1]
     property int tick: 0
     Timer {
-        running: peak.enabled; interval: 33; repeat: true
+        running: peak.enabled; interval: 50; repeat: true
         onTriggered: {
             media.tick++;
-            if (!Theme.reduceMotion && media.tick % 4 === 0) media.jitter = media.jitter.map(() => 0.6 + Math.random() * 0.6);
+            if (!Theme.reduceMotion && media.tick % 3 === 0) media.jitter = media.jitter.map(() => 0.6 + Math.random() * 0.6);
             media.shown = media.level;
         }
     }
