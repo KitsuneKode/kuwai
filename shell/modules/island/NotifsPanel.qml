@@ -135,6 +135,8 @@ FocusScope {
                 // older rows go by their chip, a usage limit isn't a question.
                 readonly property bool asks: modelData.agentState ? modelData.agentState === "waiting" && !Kittymux.answered(modelData.event)
                     : (modelData.statusTone === "caution" || /needs you|waiting|permission/i.test(String(modelData.status || ""))) && !/limit/i.test(String(modelData.status || ""))
+                // Agents say "Needs you"; anything else says what it wants in its own words (GitHub: "Review requested").
+                readonly property string askText: modelData.agentState || modelData.app === "T3 Code" || !modelData.status ? "Needs you" : String(modelData.status)
                 readonly property alias swipe: swipe
                 readonly property bool shown: rowHover.hovered || (np.keyboard && np.sel === index)
                 width: list.width
@@ -218,7 +220,7 @@ FocusScope {
                             color: row.hot ? row.dot : Theme.textTertiary
                         }
                         Label { id: stamp; text: "· " + np.ago(row.modelData.time); size: Theme.tFootnote; color: Theme.textTertiary }
-                        Label { visible: row.asks; text: "· Needs you"; size: Theme.tFootnote; weight: Theme.wSemibold; color: Theme.orange }
+                        Label { visible: row.asks; text: "· " + row.askText; size: Theme.tFootnote; weight: Theme.wSemibold; color: Theme.orange }
                     }
                     Label {
                         width: parent.width
