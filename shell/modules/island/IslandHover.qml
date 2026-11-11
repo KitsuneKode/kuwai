@@ -366,10 +366,10 @@ Item {
         readonly property int more: Limits.usable.length - shown.length
         Repeater {
             model: [
-                { k: "CPU", v: () => SystemStats.cpu, line: () => "CPU " + Math.round(SystemStats.cpu * 100) + "% · " + SystemStats.cores.length + " threads" },
-                { k: "Memory", v: () => SystemStats.mem, line: () => "Memory " + Math.round(SystemStats.mem * 100) + "% · " + SystemStats.bytes(SystemStats.memUsed) + " of " + SystemStats.bytes(SystemStats.memTotal) },
-                { k: "GPU", v: () => SystemStats.gpuState === "suspended" ? 0 : SystemStats.gpu, line: () => SystemStats.gpuState === "suspended" ? "NVIDIA asleep · Intel drives the screens" : "GPU " + Math.round(SystemStats.gpu * 100) + "% · " + SystemStats.gpuTemp + "°" },
-                { k: "Temp", v: () => Math.min(1, SystemStats.cpuTemp / 100), line: () => "CPU " + SystemStats.cpuTemp + "° · GPU " + SystemStats.gpuTemp + "°", temp: true }
+                { k: "CPU", g: "\u{f061a}", v: () => SystemStats.cpu, line: () => "CPU " + Math.round(SystemStats.cpu * 100) + "% · " + SystemStats.cores.length + " threads" },
+                { k: "Memory", g: "\u{f035b}", v: () => SystemStats.mem, line: () => "Memory " + Math.round(SystemStats.mem * 100) + "% · " + SystemStats.bytes(SystemStats.memUsed) + " of " + SystemStats.bytes(SystemStats.memTotal) },
+                { k: "GPU", g: "\u{f08ae}", v: () => SystemStats.gpuState === "suspended" ? 0 : SystemStats.gpu, line: () => SystemStats.gpuState === "suspended" ? "NVIDIA asleep · Intel drives the screens" : "GPU " + Math.round(SystemStats.gpu * 100) + "% · " + SystemStats.gpuTemp + "°" },
+                { k: "Temp", g: "\u{f050f}", v: () => Math.min(1, SystemStats.cpuTemp / 100), line: () => "CPU " + SystemStats.cpuTemp + "° · GPU " + SystemStats.gpuTemp + "°", temp: true }
             ]
             delegate: StatRing {
                 required property var modelData
@@ -377,6 +377,15 @@ Item {
                 value: modelData.v()
                 text: ""; label: ""
                 color: !modelData.temp ? Theme.accent : SystemStats.cpuTemp >= 90 ? Theme.red : SystemStats.cpuTemp >= 80 ? Theme.orange : Theme.green
+                // What it measures, inside the ring (chip, memory, card, thermometer):
+                // four bare rings beside the agents' logos read as four more agents.
+                Text {
+                    anchors.centerIn: parent
+                    text: parent.modelData.g
+                    font.family: Theme.fontGlyph
+                    font.pixelSize: 12
+                    color: Theme.textSecondary
+                }
                 HoverHandler {
                     cursorShape: Qt.PointingHandCursor
                     onHoveredChanged: hover.hotText = hovered ? parent.modelData.line() : (hover.hotText === parent.modelData.line() ? "" : hover.hotText)
