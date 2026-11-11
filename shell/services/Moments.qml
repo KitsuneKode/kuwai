@@ -30,6 +30,15 @@ Singleton {
     property int nowMs: 0
     property var queue: []            // [{ m, ms }]
     function show(m, ms) {
+        // Answered while it waited in the queue: not shown again.
+        if (m.sticky && m.event && !(Kittymux.inbox.events || []).some(e => e.id === m.event && e.status === "unread")) return;
+        if (m.sticky && m.t3 && T3Code.waiting === 0) return;
+        // A sticky one (an agent waiting on you) steps aside for anything else
+        // and comes back after it, instead of holding the rest in the queue.
+        if (now && now.sticky && now !== m && !(m.sticky && m.event && m.event === now.event)) {
+            queue = [{ m: now, ms: nowMs }].concat(queue.filter(q => q.m !== now));
+            now = null;
+        }
         if (now && now.kind !== m.kind && (m.kind === "copied" || m.kind === "hello")) {
             queue = [{ m: now, ms: nowMs }].concat(queue);
             now = null;
@@ -52,6 +61,14 @@ Singleton {
     property bool held: false
     onHeldChanged: if (!held && now) { hide.interval = Math.min(hide.interval, 2000); hide.restart(); }
     Timer { id: hide; onTriggered: { if (root.held) { restart(); return; } root.now = null; if (root.queue.length) gap.start(); } }
+    // Pulled down: the notch opens into its list of recent important ones
+    // (NotifsPanel: what needs you first; its button leads to the center).
+    function openRecent(screen) { Island.open("notifs", screen || "", "pointer", "island"); }
+    // A T3 thread that waited is answered: its sticky moment goes.
+    Connections {
+        target: T3Code
+        function onWaitingChanged() { if (T3Code.waiting === 0 && root.now && root.now.sticky && root.now.t3) root.dismissNow(); }
+    }
     // The notch's own list of waiting agents (AgentStack registers itself).
     property var agentLists: []
     function openAgentList(screen) {
@@ -534,6 +551,9 @@ Singleton {
     Connections {
         target: Kittymux
         function onInboxChanged() {
+            // A waiting one that's been read (you went there) goes.
+            if (root.now && root.now.sticky && root.now.event
+                && !(Kittymux.inbox.events || []).some(e => e.id === root.now.event && e.status === "unread")) root.dismissNow();
             const fresh = (Kittymux.inbox.events || []).filter(e => e.status === "unread" && e.t > root.agentSeen).sort((a, b) => b.t - a.t);
             if (!fresh.length) return;
             root.agentSeen = fresh[0].t;
@@ -565,11 +585,11 @@ Singleton {
                 // pane, pull down lists every one, swipe up marks it read.
                 go: () => Kittymux.jumpEvent(id),
                 dismiss: () => Kittymux.ack(id),
-                // Pulled down: the island's own list of waiting agents (the
-                // AgentStack), opening where you pulled; the center only if
-                // that list can't show (one agent, or none waiting).
-                list: screen => { if (!root.openAgentList(screen)) root.openAgents(); }
-            }, needs ? 6000 : 3000);
+                list: root.openRecent,
+                // Waiting on you: it stays until it's read (you went there, or
+                // swiped it away), ten minutes at most.
+                sticky: needs, event: id
+            }, needs ? 600000 : 5000);
         }
     }
 
@@ -589,9 +609,9 @@ Singleton {
             // T3 Code's own notification action opens that thread; once it's
             // gone, the thread that matters most.
             go: () => { if (!(item.notification && Notifs.invokeDefault(item))) T3Code.openBest(); else T3Code.focus(); },
-            // Pulled down: T3's own list, grown out of the notch.
-            list: screen => Island.open("t3", screen || "", "pointer", "island")
-        }, tone === "caution" || tone === "critical" ? 6000 : 3200);
+            list: root.openRecent,
+            sticky: tone === "caution", t3: true
+        }, tone === "caution" ? 600000 : tone === "critical" ? 8000 : 5000);
     }
 
     // ── Timers (services/Timers) ending ─────────────────────────────────
