@@ -48,7 +48,10 @@ Singleton {
         dimmed = false;
         if (!w) return;
         for (const name in w) set(name, w[name]);
-        Quickshell.execDetached(["rm", "-f", file]);
+        // The file stays until the read-back confirms the levels are back
+        // (check): deleted at once, a dim that came before the restore landed
+        // took the dimmed level as yours, and restarts compounded it (30 → 12
+        // → 5 → 2 → 1 %).
         check.want = w;
         check.tries = 0;
         checkLater.restart();
@@ -63,16 +66,24 @@ Singleton {
                 let st = null;
                 try { st = JSON.parse(text); } catch (e) { return; }
                 if (!root.wanted || root.dimmed || !st || !st.outputs) return;   // back already
+                // A dim not yet undone (a restart while dimmed, its restore
+                // still landing): those saved levels are yours, not what the
+                // screen shows now. Never dim from a dimmed level.
+                let prior = null;
+                saved.reload();
+                try { prior = JSON.parse(saved.text() || "null"); } catch (e) {}
                 const w = {};
                 for (const name in st.outputs) {
-                    const v = st.outputs[name].value;
-                    if (typeof v === "number" && root.of(v) < v) w[name] = v;
+                    const now = st.outputs[name].value;
+                    if (typeof now !== "number") continue;
+                    const v = prior && typeof prior[name] === "number" && prior[name] > now ? prior[name] : now;
+                    if (root.of(v) < now) w[name] = v;
                 }
                 if (!Object.keys(w).length) return;
                 root.was = w;
                 saved.setText(JSON.stringify(w));
                 root.dimmed = true;
-                for (const name in w) root.set(name, root.of(w[name]));
+                for (const name in w) root.set(name, root.of(w[name]));   // 40 % of yours, not of what shows
             }
         }
     }
@@ -99,7 +110,10 @@ Singleton {
                     else if (o.value !== want[name]) { off++; root.set(name, want[name]); }
                 }
                 if (off && ++check.tries < 2) checkLater.restart();
-                else check.want = null;
+                else {
+                    check.want = null;
+                    if (!root.dimmed) Quickshell.execDetached(["rm", "-f", root.file]);   // back: the saved levels are done
+                }
             }
         }
     }
