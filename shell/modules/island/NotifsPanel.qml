@@ -102,7 +102,10 @@ FocusScope {
                         Image {
                             id: rowIcon
                             anchors.fill: parent
-                            source: row.modelData.icon || ""
+                            // The notification's own image, else the app's launcher icon
+                            // (ZapZap and others send none).
+                            readonly property var entry: row.modelData.icon ? null : DesktopEntries.heuristicLookup(String(row.modelData.app || ""))
+                            source: row.modelData.icon || (entry && entry.icon ? Quickshell.iconPath(entry.icon, true) : "")
                             sourceSize: Qt.size(64, 64)
                             fillMode: Image.PreserveAspectCrop
                             asynchronous: true; smooth: true; mipmap: true
