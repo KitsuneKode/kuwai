@@ -32,11 +32,13 @@ set -euo pipefail
 
 cache="${XDG_CACHE_HOME:-$HOME/.cache}/rice/clip"
 pins="${XDG_DATA_HOME:-$HOME/.local/share}/rice/clipboard/pins"
-mkdir -p "$cache/thumbs" "$cache/open" "$pins"
+mkdir -p "$cache/thumbs" "$cache/open" "$cache/edit" "$pins"
 # Copies made for a moment (opened, edited) leave after a day, decoded images
-# after a week: kept bounded without anyone clearing history.
-find "$cache/open" "$cache/edit" -type f -mmin +1440 -delete 2>/dev/null
-find "$cache/thumbs" -type f -mtime +7 -delete 2>/dev/null
+# after a week: kept bounded without anyone clearing history. Never fatal: under
+# set -e a failed find (a folder not made yet) ended the script before `list`,
+# and the clipboard panel showed nothing (2026-11-11).
+find "$cache/open" "$cache/edit" -type f -mmin +1440 -delete 2>/dev/null || true
+find "$cache/thumbs" -type f -mtime +7 -delete 2>/dev/null || true
 
 # An entry's bytes on stdout: a cliphist id, or pin:FILE.
 emit() {
