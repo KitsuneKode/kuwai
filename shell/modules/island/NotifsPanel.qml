@@ -6,6 +6,7 @@
 //   ↑ ↓ choose · ↵ read · Esc back
 import QtQuick
 import Quickshell
+import Quickshell.Widgets
 import qs.config
 import qs.components
 import qs.services
@@ -50,7 +51,7 @@ FocusScope {
             }
             Label {
                 anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-                text: Notifs.inbox > 0 ? (Notifs.inbox > 9 ? "9+" : String(Notifs.inbox)) + " in the center" : ""
+                text: ""      // the count is on the button below (it said the same thing twice)
                 size: Theme.tFootnote; color: Theme.textTertiary
                 font.features: ({ "tnum": 1 })
             }
@@ -82,21 +83,51 @@ FocusScope {
                 readonly property bool fresh: modelData.time > Notifs.lastSeen && !modelData.discard
                 readonly property bool hot: modelData.severity === "critical" || modelData.severity === "warning"
                 readonly property color dot: modelData.severity === "critical" ? Theme.red : hot ? Theme.orange : Theme.accent
+                // Waiting on your input (an agent's question): said, and its question gets room.
+                readonly property bool asks: modelData.statusTone === "caution" || /needs you|waiting|permission/i.test(String(modelData.status || ""))
                 width: list.width
-                height: inner.implicitHeight + 20
+                height: Math.max(inner.implicitHeight, 34) + 20
                 radius: Theme.r2
                 color: rowArea.containsMouse || np.sel === index ? Qt.rgba(1, 1, 1, 0.07) : "transparent"
                 Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
-                Rectangle {
-                    visible: row.fresh || row.hot
-                    x: 10; y: 16
-                    width: 6; height: 6; radius: 3
-                    color: row.dot
+                // Who it's from, at a glance: the app's mark or the sender's picture
+                // (a glyph when there's none); the unread dot sits on its corner.
+                Item {
+                    x: 10; y: 12
+                    width: 32; height: 32
+                    ClippingRectangle {
+                        anchors.fill: parent
+                        radius: 9
+                        color: Qt.rgba(1, 1, 1, 0.06)
+                        Image {
+                            id: rowIcon
+                            anchors.fill: parent
+                            source: row.modelData.icon || ""
+                            sourceSize: Qt.size(64, 64)
+                            fillMode: Image.PreserveAspectCrop
+                            asynchronous: true; smooth: true; mipmap: true
+                        }
+                        Text {
+                            visible: rowIcon.status !== Image.Ready
+                            anchors.centerIn: parent
+                            text: "\u{f009a}"      // a bell: no mark from the app
+                            font.family: Theme.fontGlyph; font.pixelSize: 15
+                            color: Theme.textSecondary
+                        }
+                    }
+                    ImageEdge { radius: 9 }
+                    Rectangle {
+                        visible: row.fresh || row.hot || row.asks
+                        x: parent.width - 7; y: -2
+                        width: 9; height: 9; radius: 4.5
+                        color: row.asks ? Theme.orange : row.dot
+                        border.width: 2; border.color: "#000000"
+                    }
                 }
                 Column {
                     id: inner
-                    x: 24; y: 10
-                    width: parent.width - 36
+                    x: 54; y: 10
+                    width: parent.width - 66
                     spacing: 3
                     Row {
                         width: parent.width
@@ -109,6 +140,7 @@ FocusScope {
                             color: row.hot ? row.dot : Theme.textTertiary
                         }
                         Label { id: stamp; text: "· " + np.ago(row.modelData.time); size: Theme.tFootnote; color: Theme.textTertiary }
+                        Label { visible: row.asks; text: "· Needs you"; size: Theme.tFootnote; weight: Theme.wSemibold; color: Theme.orange }
                     }
                     Label {
                         width: parent.width
@@ -120,7 +152,7 @@ FocusScope {
                     Label {
                         width: parent.width
                         visible: text !== ""
-                        wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight
+                        wrapMode: Text.Wrap; maximumLineCount: row.asks ? 3 : 2; elide: Text.ElideRight
                         text: Notifs.readable(Notifs.bodyForDisplay(row.modelData, true))
                         size: Theme.tSub; lineHeight: 1.3; color: Theme.textSecondary
                     }
@@ -137,7 +169,7 @@ FocusScope {
 
         PillButton {
             width: parent.width
-            text: "Open notification center"
+            text: "Open notification center" + (Notifs.inbox > 0 ? " · " + (Notifs.inbox > 9 ? "9+" : String(Notifs.inbox)) : "")
             onClicked: { Island.close(); Notifs.toggleCenter("notifications", "pointer", Island.screen); }
         }
     }
