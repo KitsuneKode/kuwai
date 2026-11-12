@@ -88,6 +88,27 @@ Item {
             }
             MultiEffect { anchors.fill: parent; source: wall; blurEnabled: true; blur: 1; blurMax: 48; saturation: 0.25 }
         }
+        // While music plays, its cover over the wallpaper: blurred a long way
+        // and darkened, so it's the room's colour, not a picture to read. One
+        // still layer (blurred once, cached); it only redraws while it fades,
+        // when the track changes. It goes with the blur on unlock.
+        Item {
+            anchors.fill: parent
+            layer.enabled: true
+            opacity: (Media.playing && lockArt.status === Image.Ready ? 1 : 0) * (1 - view.u)
+            visible: opacity > 0.01
+            Behavior on opacity { NumberAnimation { duration: Theme.artMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeInOut } }
+            Image {
+                id: lockArt
+                anchors.fill: parent
+                source: Media.playing ? (Media.artRemote ? Media.artLocal : Media.art) : ""
+                sourceSize: Qt.size(256, 256)
+                fillMode: Image.PreserveAspectCrop
+                asynchronous: true
+                visible: false
+            }
+            MultiEffect { anchors.fill: parent; source: lockArt; blurEnabled: true; blur: 1; blurMax: 64; saturation: 0.55; brightness: -0.18 }
+        }
         // The same picture sharp, decoded only for the unlock.
         Image {
             anchors.fill: parent
