@@ -94,46 +94,139 @@ if K.feature("remember_place") then
 end
 
 ---------------------------------------------------------------------------
--- Smart PiP: when the pointer comes near a picture-in-picture window, it slides
--- to the other bottom corner. Hold Shift to reach it (pause, drag, close).
--- The 150 ms check runs only while a PiP window exists.
+-- Picture-in-picture that knows when you want it (feature pip_dodge)
 ---------------------------------------------------------------------------
+-- It steps aside for a pointer passing by, never for one going to it:
+--   · a pointer moving fast past it: it slides to the other bottom corner;
+--   · a pointer arriving slowly, resting near it, or already on it: it stays
+--     (you're reaching for it: seek, pause, close);
+--   · just moved and you came after it: it stays (you're chasing it);
+--   · Shift held: it stays, as before.
+-- Drag it (Super+drag) and let go: it settles in the corner it was heading
+-- for, on whichever screen that is, so a throw up sends it to a top corner
+-- and a throw across sends it to the other screen.
+-- Keys: Super+Alt+W next corner · Super+Alt+Shift+W the other screen ·
+-- Super+Alt+E bigger / smaller. The 150 ms look runs only while one exists.
+local PIP_TICK = 0.15                                  -- seconds
+local PIP_FAST = 1100                                  -- px/s: faster than this is passing by
+local PIP_CHASE = 27                                   -- ticks (~4 s) a dodge makes it stay put
+local PIP_MARGIN = 16
+local function is_pip(w)
+	return w and (w.title or ""):lower():find("picture.?in.?picture") and w.floating
+end
+local function pips()
+	local out = {}
+	for _, w in ipairs(hl.get_windows() or {}) do
+		if is_pip(w) then
+			out[#out + 1] = w
+		end
+	end
+	return out
+end
+local function mon_at(x, y)
+	local best, bd
+	for _, m in ipairs(hl.get_monitors() or {}) do
+		local u = A.usable(m)
+		local cx = math.max(u.x, math.min(x, u.x + u.w))
+		local cy = math.max(u.y, math.min(y, u.y + u.h))
+		local d = (cx - x) ^ 2 + (cy - y) ^ 2
+		if not bd or d < bd then
+			best, bd = m, d
+		end
+	end
+	return best
+end
+-- The four corners of a screen for a window of size sz: top-left, top-right,
+-- bottom-right, bottom-left (clockwise, the order Super+Alt+W walks).
+local function corners(m, sz)
+	local u = A.usable(m)
+	local l, r = u.x + PIP_MARGIN, u.x + u.w - sz.x - PIP_MARGIN
+	local t, b = u.y + PIP_MARGIN, u.y + u.h - sz.y - PIP_MARGIN
+	return { { l, t }, { r, t }, { r, b }, { l, b } }
+end
+local function nearest(m, sz, x, y)
+	local best, bd, bi
+	for i, c in ipairs(corners(m, sz)) do
+		local d = (c[1] - x) ^ 2 + (c[2] - y) ^ 2
+		if not bd or d < bd then
+			best, bd, bi = c, d, i
+		end
+	end
+	return best, bi
+end
+local pip = { tick = 0, cur = nil, dodged = -1000, reaching = false, seen = {}, ours = {} }
+local function place(w, x, y)
+	pip.ours[tostring(w.address)] = { math.floor(x), math.floor(y) }
+	hl.dispatch(dsp.window.move({ window = "address:" .. w.address, x = math.floor(x), y = math.floor(y) }))
+end
 if K.feature("pip_dodge") then
 	local timer
-	local function pips()
-		local out = {}
-		for _, w in ipairs(hl.get_windows() or {}) do
-			if (w.title or ""):lower():find("picture.?in.?picture") and w.floating then
-				out[#out + 1] = w
-			end
-		end
-		return out
-	end
 	local function tick()
 		local list = pips()
 		if #list == 0 then
 			if timer then
 				timer:set_enabled(false)
 			end
+			pip.seen, pip.ours, pip.reaching = {}, {}, false
 			return
 		end
-		if hl.is_key_down("Shift_L") or hl.is_key_down("Shift_R") then
-			return
-		end
+		pip.tick = pip.tick + 1
 		local c = hl.get_cursor_pos()
-		if not c then
-			return
+		local speed = 0
+		if c and pip.cur then
+			speed = math.sqrt((c.x - pip.cur.x) ^ 2 + (c.y - pip.cur.y) ^ 2) / PIP_TICK
 		end
+		pip.cur = c and { x = c.x, y = c.y } or nil
+		local shift = hl.is_key_down("Shift_L") or hl.is_key_down("Shift_R")
 		for _, w in ipairs(list) do
-			local at, sz, m = w.at or {}, w.size or {}, w.monitor
-			local pad = 24
-			if m and at.x and sz.x and c.x > at.x - pad and c.x < at.x + sz.x + pad and c.y > at.y - pad and c.y < at.y + sz.y + pad then
-				local u = A.usable(m)
-				local margin = 16
-				local left = u.x + margin
-				local right = u.x + u.w - sz.x - margin
-				local x = (at.x - u.x > u.w / 2 - sz.x / 2) and left or right
-				hl.dispatch(dsp.window.move({ window = "address:" .. w.address, x = x, y = at.y }))
+			local at, sz = w.at or {}, w.size or {}
+			if at.x and sz.x then
+				local key = tostring(w.address)
+				local inside = c and c.x >= at.x and c.x <= at.x + sz.x and c.y >= at.y and c.y <= at.y + sz.y
+				local pad = 24
+				local near = c and c.x > at.x - pad and c.x < at.x + sz.x + pad and c.y > at.y - pad and c.y < at.y + sz.y + pad
+				-- Reaching: on it, or slowly near it; it holds until the pointer has gone.
+				if inside or (near and speed < PIP_FAST) then
+					pip.reaching = true
+				elseif not near then
+					pip.reaching = false
+				end
+				-- Moved by you (a drag), not by us: when it stops, it settles in the
+				-- corner it was heading for, on the screen that corner is on.
+				local s = pip.seen[key]
+				local mine = pip.ours[key]
+				if mine and math.abs(mine[1] - at.x) < 4 and math.abs(mine[2] - at.y) < 4 then
+					pip.ours[key] = nil
+					s = nil
+				end
+				if s and (s.x ~= at.x or s.y ~= at.y) and not mine then
+					s.vx, s.vy = at.x - s.x, at.y - s.y
+					s.x, s.y, s.still, s.moving = at.x, at.y, 0, true
+				elseif s then
+					s.still = s.still + 1
+					if s.moving and s.still >= 2 and not inside then
+						s.moving = false
+						local gx = at.x + sz.x / 2 + (s.vx or 0) * 3
+						local gy = at.y + sz.y / 2 + (s.vy or 0) * 3
+						local m = mon_at(gx, gy)
+						if m then
+							local cpos = nearest(m, sz, gx - sz.x / 2, gy - sz.y / 2)
+							place(w, cpos[1], cpos[2])
+						end
+					end
+				end
+				if not pip.seen[key] or not s then
+					pip.seen[key] = { x = at.x, y = at.y, still = 0, moving = false }
+				end
+				-- Passing by, fast, and not chased: step aside.
+				if near and not inside and not pip.reaching and not shift and speed >= PIP_FAST
+						and pip.tick - pip.dodged > PIP_CHASE and not (s and s.moving) then
+					local m = w.monitor or mon_at(at.x, at.y)
+					local u = A.usable(m)
+					local x = (at.x - u.x > u.w / 2 - sz.x / 2) and (u.x + PIP_MARGIN) or (u.x + u.w - sz.x - PIP_MARGIN)
+					pip.dodged = pip.tick
+					place(w, x, at.y)
+				end
 			end
 		end
 	end
@@ -142,11 +235,51 @@ if K.feature("pip_dodge") then
 			if timer then
 				timer:set_enabled(true)
 			else
-				timer = hl.timer(tick, { timeout = 150, type = "repeat" })
+				timer = hl.timer(tick, { timeout = math.floor(PIP_TICK * 1000), type = "repeat" })
 			end
 		end
 	end)
 end
+-- Keys, with or without the dodging.
+local function the_pip()
+	return pips()[1]
+end
+local function kuwai_pip_corner()
+	local w = the_pip()
+	if not w or not w.at or not w.size then
+		return
+	end
+	local m = w.monitor or mon_at(w.at.x, w.at.y)
+	local _, i = nearest(m, w.size, w.at.x, w.at.y)
+	local c = corners(m, w.size)[(i % 4) + 1]
+	pip.dodged = pip.tick
+	place(w, c[1], c[2])
+end
+local function kuwai_pip_screen()
+	local w = the_pip()
+	if not w or not w.at or not w.size then
+		return
+	end
+	local here = w.monitor or mon_at(w.at.x, w.at.y)
+	local mons = hl.get_monitors() or {}
+	if #mons < 2 then
+		return
+	end
+	local idx = 1
+	for i, m in ipairs(mons) do
+		if m.name == here.name then
+			idx = i
+		end
+	end
+	local there = mons[(idx % #mons) + 1]
+	local _, i = nearest(here, w.size, w.at.x, w.at.y)
+	local c = corners(there, w.size)[i]
+	pip.dodged = pip.tick
+	place(w, c[1], c[2])
+end
+bind("SUPER + ALT + W", "Picture-in-picture: next corner", kuwai_pip_corner)
+bind("SUPER + ALT + SHIFT + W", "Picture-in-picture: the other screen", kuwai_pip_screen)
+bind("SUPER + ALT + E", "Picture-in-picture: bigger / smaller", A.pip_toggle("pip"))
 
 ---------------------------------------------------------------------------
 -- Focus sessions: Super+Ctrl+G starts 25 minutes (again: stop). Do Not
