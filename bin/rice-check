@@ -86,9 +86,18 @@ age=$(ps -o etimes= -p "$pid" 2>/dev/null | tr -d ' ')
 [ -n "$age" ] && [ "$age" -lt 15 ] && sleep $((15 - age))
 cpu_budget=5; cpu_why="at rest"
 if command -v playerctl >/dev/null && playerctl -a status 2>/dev/null | grep -qx Playing; then cpu_budget=8; cpu_why="with music playing"; fi
-t0=$(awk '{print $14+$15}' /proc/$pid/stat); sleep 3; t1=$(awk '{print $14+$15}' /proc/$pid/stat)
-cpu=$(( (t1 - t0) * 100 / $(getconf CLK_TCK) / 3 ))
-[ "$cpu" -lt "$cpu_budget" ] && ok "cpu: ${cpu}% $cpu_why" || bad "cpu: ${cpu}% $cpu_why (want < $cpu_budget)"
+# Five one-second samples, the median: one busy second (a notification
+# arriving, a reload's tail, T3's poll) read as 6–14 % in a single 3 s window
+# and failed promote about once in four; a shell that is really busy is busy
+# in most seconds, so the median still catches it. The worst is said too.
+tck=$(getconf CLK_TCK); samples=""
+t0=$(awk '{print $14+$15}' /proc/$pid/stat)
+for _ in 1 2 3 4 5; do
+    sleep 1; t1=$(awk '{print $14+$15}' /proc/$pid/stat)
+    samples="$samples $(( (t1 - t0) * 100 / tck ))"; t0=$t1
+done
+set -- $(printf '%s\n' $samples | sort -n); cpu=$3; worst=$5
+[ "$cpu" -lt "$cpu_budget" ] && ok "cpu: ${cpu}% $cpu_why (median of 5 s; worst second ${worst}%)" || bad "cpu: ${cpu}% $cpu_why, median of 5 s (want < $cpu_budget; seconds:$samples)"
 
 # compile (after memory and cpu: compiling caches types)
 broken=""
