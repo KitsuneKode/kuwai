@@ -26,6 +26,7 @@ import Quickshell.Services.Mpris
 import qs.config
 import qs.components
 import qs.services
+import "../../services/proximity.js" as Proximity
 
 Scope {
     id: root
@@ -147,17 +148,22 @@ Scope {
                 id: nearStrip
                 width: Math.max(win.restW + 160, 360); height: 4
                 x: Math.round((win.width - width) / 2); y: 0
-                HoverHandler { id: nearHover; onHoveredChanged: { if (hovered) { nearOff.stop(); nearDwell.restart(); } else { nearDwell.stop(); if (win.near) nearOff.restart(); } } }
+                HoverHandler { id: nearHover; onHoveredChanged: { if (hovered) { nearOff.stop(); nearDwell.restart(); } else { nearDwell.stop(); if (win.near) win.fold(450); } } }
             }
-            Timer { id: nearDwell; interval: 90; onTriggered: win.near = true }
+            // Along the edge itself, still moving fast is passing by (to a tab
+            // beside it): look again rather than open (services/proximity.js).
+            Timer { id: nearDwell; interval: 90; onTriggered: { if (Proximity.edgeSettled(Pointer, Date.now())) win.near = true; else restart(); } }
             Timer { id: nearOff; interval: 450; onTriggered: if (!win.hovered && !nearHover.hovered && !win.inZone(20)) win.near = false }
+            // A fast exit folds it almost at once; a drift away gets the grace.
+            function fold(ms) { nearOff.interval = ms; nearOff.restart(); }
             // Nearing from below or the sides too, 30–60 px out (services/
             // Pointer asks Hyprland where the pointer is; no input region, so
             // the windows under this zone keep every click). The zone: 56 px
             // either side of the resting island, 48 px below it. Not a false
-            // positive: two samples in a row inside it (≈160 ms) and not
-            // flying past (> 2500 px/s). Out: 20 px of slack, then the same
-            // 450 ms fold.
+            // positive: two samples in a row inside it (≈160 ms), each one
+            // reaching (resting, or heading up at it) rather than passing by
+            // (services/proximity.js). Out: 20 px of slack, then the fold
+            // (150 ms when leaving fast, 450 ms drifting away).
             readonly property bool wantsProximity: showBar && Settings.islandProximity && (Settings.islandRest === "minimal" || tucked || (Settings.islandRest === "auto" && restRow.compact)) && !hovered
             onWantsProximityChanged: wantsProximity ? Pointer.want() : Pointer.unwant()
             // (A helper: this window already has its own onCompleted.)
@@ -177,13 +183,15 @@ Scope {
                 target: Pointer
                 function onTChanged() {
                     if (!win.wantsProximity) { win.zoneHits = 0; return; }
-                    if (win.inZone(win.near ? 20 : 0) && (win.near || Pointer.speed < 2500)) {
+                    // Reaching (resting near it, or heading up at it under
+                    // 1100 px/s), not passing by: services/proximity.js.
+                    if (win.inZone(win.near ? 20 : 0) && (win.near || Proximity.reaching(Pointer))) {
                         win.zoneHits++;
                         if (win.near) nearOff.stop();
                         else if (win.zoneHits >= 2) { nearOff.stop(); win.near = true; }
                     } else {
                         win.zoneHits = 0;
-                        if (win.near && !win.hovered && !nearHover.hovered && !nearOff.running) nearOff.restart();
+                        if (win.near && !win.hovered && !nearHover.hovered && !nearOff.running) win.fold(Proximity.foldDelay(Pointer));
                     }
                 }
             }
@@ -247,7 +255,7 @@ Scope {
             onHoveredChanged: {
                 hovered ? intent.restart() : leave.restart();
                 if (hovered) previewOut.stop(); else if (panelHere && Island.previewing) previewOut.restart();
-                if (!hovered && near) nearOff.restart();
+                if (!hovered && near) fold(450);
             }
             // A previewed panel (Now Playing from the music's art) folds when you leave.
             Timer { id: previewOut; interval: Theme.hoverLeaveMs; onTriggered: if (!win.hovered && win.panelHere && Island.previewing && win.menus === 0) Island.close() }

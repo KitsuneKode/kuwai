@@ -22,6 +22,8 @@ Singleton {
     property real y: -1e6
     property real t: 0                 // when sampled (ms)
     property real speed: 0             // px/s between the last two samples
+    property real vx: 0                // its direction, px/s (y grows downward)
+    property real vy: 0
     property int wanted: 0
     function want() { wanted++; }
     function unwant() { wanted = Math.max(0, wanted - 1); }
@@ -46,7 +48,12 @@ Singleton {
                     const p = JSON.parse(data.trim() + "}");
                     const now = Date.now();
                     const dt = Math.max(1, now - root.t);
-                    root.speed = Math.hypot(p.x - root.x, p.y - root.y) / dt * 1000;
+                    // After a pause (nobody wanted it) the last sample is old:
+                    // that's not movement, so it reads as still.
+                    const fresh = dt < 600;
+                    root.vx = fresh ? (p.x - root.x) / dt * 1000 : 0;
+                    root.vy = fresh ? (p.y - root.y) / dt * 1000 : 0;
+                    root.speed = Math.hypot(root.vx, root.vy);
                     root.x = p.x; root.y = p.y; root.t = now;
                 } catch (e) {}
                 sock.connected = false;
