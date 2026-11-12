@@ -268,7 +268,16 @@ case ${1:-} in
             # files, so restart just the shell; Hyprland and its environment
             # stay as they are. (Skipped before: promotes never reached the screen.)
             echo "rice: channel is dev; restarting stable's shell only"
-            "$STABLE/bin/rice-shell" || { echo "rice: stable's shell didn't start; it's on $(git -C "$STABLE" log --oneline -1)" >&2; exit 1; }
+            # The same safety as the stable channel: a shell that won't load
+            # goes straight back to the commit that did (2026-11-12: a dangling
+            # alias in the center, past the load test's first PanelWindow, left
+            # the shell down until it was noticed).
+            if ! "$STABLE/bin/rice-shell"; then
+                echo "rice: the new shell didn't load; stable back to $(git -C "$STABLE" log --oneline -1 "$prev")" >&2
+                git -C "$STABLE" reset --hard --quiet "$prev"
+                "$STABLE/bin/rice-shell" && echo "rice: rolled back; fix it in dev and promote again" >&2
+                exit 1
+            fi
         fi ;;
     check)         exec "$RICE/bin/rice-check" "$@" ;;
     doctor)        exec "$RICE/bin/rice-doctor" "$@" ;;
