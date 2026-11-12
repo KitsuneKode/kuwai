@@ -72,7 +72,7 @@ Rules: `kuwai.K.rules.rule({ name = …, match = { class = "^(app)$" }, float = 
 | `overview` | Mission Control: every space of this screen, its windows live; drag a window onto a space to move it | Super+Tab, 4-finger pinch in |
 | `resize_mode` | arrows resize until Enter/Esc (Shift = faster, −/= column width) | Super+Ctrl+S |
 | `remember_place` | floating apps reopen where you left them on the screen | — |
-| `pip_dodge` | picture-in-picture steps aside for a pointer passing fast, stays for one reaching for it or chasing it; a Super+drag settles in the corner (and screen) it was thrown to. Super+Alt+W next corner, +Shift other screen, Super+Alt+E size | — |
+| `pip_dodge` | picture-in-picture steps aside for a pointer passing fast, stays for one reaching for it or chasing it; a Super+drag settles in the corner (and screen) it was thrown to. Super+Alt+W next corner, +Shift other screen | — |
 | `focus_sessions` | 25 min of Do Not Disturb, then a nudge (`kuwai focus 50`) | Super+Ctrl+G |
 
 Overrides that must apply before kuwai loads go in an optional

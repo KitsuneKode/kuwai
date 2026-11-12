@@ -106,7 +106,7 @@ end
 -- for, on whichever screen that is, so a throw up sends it to a top corner
 -- and a throw across sends it to the other screen.
 -- Keys: Super+Alt+W next corner · Super+Alt+Shift+W the other screen ·
--- Super+Alt+E bigger / smaller. The 150 ms look runs only while one exists.
+-- (bigger / smaller: your user.lua binds A.pip_toggle). The 150 ms look runs only while one exists.
 local PIP_TICK = 0.15                                  -- seconds
 local PIP_FAST = 1100                                  -- px/s: faster than this is passing by
 local PIP_CHASE = 27                                   -- ticks (~4 s) a dodge makes it stay put
@@ -279,7 +279,6 @@ local function kuwai_pip_screen()
 end
 bind("SUPER + ALT + W", "Picture-in-picture: next corner", kuwai_pip_corner)
 bind("SUPER + ALT + SHIFT + W", "Picture-in-picture: the other screen", kuwai_pip_screen)
-bind("SUPER + ALT + E", "Picture-in-picture: bigger / smaller", A.pip_toggle("pip"))
 
 ---------------------------------------------------------------------------
 -- Focus sessions: Super+Ctrl+G starts 25 minutes (again: stop). Do Not
