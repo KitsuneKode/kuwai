@@ -31,7 +31,13 @@ FocusScope {
     // ── Files (fd over your home), a moment after you stop typing ────────
     readonly property string home: Quickshell.env("HOME") || ""
     property var fileHits: []
-    onQueryChanged: { fileHits = []; if (query.trim().length >= 3 && !/^[:;]/.test(query)) fileSoon.restart(); else fileSoon.stop(); }
+    onQueryChanged: {
+        fileHits = [];
+        if (query.trim().length >= 3 && !/^[:;=>]/.test(query)) fileSoon.restart(); else fileSoon.stop();
+        // Math the calculator can't read goes to qalc, a moment after you stop typing.
+        if (hasQalc && !calcHit && Calc.looksLikeMath(query)) qalcSoon.restart();
+        else { qalcSoon.stop(); qalcOut = ""; qalcFor = ""; }
+    }
     Timer { id: fileSoon; interval: 160; onTriggered: { files.running = false; files.running = true; } }
     Process {
         id: files
@@ -123,10 +129,6 @@ FocusScope {
     property string qalcFor: ""
     property string qalcOut: ""
     readonly property bool calcMode: query.trimStart().startsWith("=")
-    onQueryChanged: {
-        if (hasQalc && !calcHit && Calc.looksLikeMath(query)) qalcSoon.restart();
-        else { qalcSoon.stop(); qalcOut = ""; qalcFor = ""; }
-    }
     Timer { id: qalcSoon; interval: 140; onTriggered: { qalc.running = false; launcher.qalcFor = launcher.query; qalc.running = true; } }
     Process {
         id: qalc
