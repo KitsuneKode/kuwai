@@ -30,6 +30,7 @@ the repo while you work).
 | | |
 |---|---|
 | Launcher (Super+A) | apps, windows, files, maths, conversions, and words: `timer 10m pizza`, `pomodoro`, `remind me at 5 to call mum`, `in 20m stretch`, `alarm 7:30`, `note buy milk`, a setting's name (`idle`, `screensaver`) |
+| Processes and ports | `!` in the launcher: what's using the most right now, `! zen` what matches, `! 3000` what listens there; ↵ twice ends one, ⌃↵ forces it (your own only) |
 | Quick note · remind me | Super+Ctrl+J · Super+Ctrl+Shift+J |
 | Settings | Super+Ctrl+I or `rice settings [power\|saver\|time\|notifs\|island…]`: every setting, applied at once |
 | Software Update | the island's update chip: packages, AUR reviews, config files an update left (`.pacnew`) with a recommendation each |
@@ -39,13 +40,41 @@ The design system (one primitive per job, Theme tokens) is in
 [docs/DESIGN.md](docs/DESIGN.md); where it's going, in
 [docs/ROADMAP.md](docs/ROADMAP.md).
 
+## The island
+
+The notch is the desktop's one status surface. At rest it holds the time and
+what's live (a recording, dictation, a timer, music). Work going on in the
+background floats beside it in its own capsules, shared out evenly left and
+right so the time stays centred: your agents in kitty, T3 Code's threads,
+system news (updates, a warning, a used-up limit) and minimized windows
+(Super+O). A capsule's edge says its state, and a click (or pulling it down)
+opens the panel where you act on it.
+
+![Capsule states: working, needs you, hit a limit, error](docs/media/island/capsule-states.png)
+
+- **Hover** shows a one-row glance (the app, the time, the song or how many
+  notifications); a click opens everything. The time opens the calendar and
+  the clock flies into it.
+- **Agents** live in one place: the notch's Agents panel (Super+Shift+N, or a
+  click on the agents capsule) lists every kitty pane and T3 thread, the one
+  waiting on you first with its question. Finished ones swipe away; closed
+  conversations can be reopened.
+- **Who may interrupt.** An agent asking you (an approval, a question, a
+  password) reaches you everywhere, over a fullscreen film or game too. Under
+  Focus, Do Not Disturb or screen sharing nothing grows the notch: the
+  capsule's light and the Agents panel still say it. Over a fullscreen window
+  only important notifications peek (Settings → fullscreen notifications);
+  the rest wait in the center with the missed dot.
+- **HDR** reads the signal on the wire (`bin/rice-hdr`), not the preset name:
+  the notch says HDR when the screen is really receiving PQ or HLG.
+
 ## What's in it
 
 | Piece | Replaces | Where |
 |---|---|---|
 | Glass HUD: brightness, volume, mic | HyDE volume popups, dunst brightness OSD | `shell/modules/osd/` |
 | Notification server + Sonner-style toast stack; important ones (critical, a reply, an action) also peek out of the notch, and an agent finishing or needing you is a notch moment. Devices too: earbuds, a speaker, your IEMs behind a DAC, a mouse or a pad connecting or going grow a card out of the notch with the device, what happened and its battery (and once at login, what's already connected) | dunst | `shell/services/Notifs.qml`, `shell/modules/notifications/Popups.qml` |
-| The center (Super+N): Notifications · Agents (kittymux, usage limits per account as in T3 Code) · Sound (coloured mixer, per-app output, device lists) · Controls (Wi‑Fi picker, Bluetooth, DND, Night Shift, Caffeine, Mic, Reduce Motion, battery, brightness) | dunst history, pavucontrol, nm-applet, brightness/hyprsunset scripts | `shell/modules/notifications/Center.qml` + `CenterContent.qml` + `*View.qml` |
+| The center (Super+N): Notifications · Sound (coloured mixer, per-app output, device lists) · Controls (Wi‑Fi picker, Bluetooth, DND, Night Shift, Caffeine, Mic, Reduce Motion, battery, brightness) | dunst history, pavucontrol, nm-applet, brightness/hyprsunset scripts | `shell/modules/notifications/Center.qml` + `CenterContent.qml` + `*View.qml` |
 | The clipboard island (Super+V): a pill at the top centre that shows each copy, and melts into a shelf of cards: fzf search, Quick Look, ⌃K actions, OCR, pins, rendered Markdown/code/Mermaid, secrets masked | HyDE's rofi cliphist menus | `shell/modules/clipboard/`, `shell/services/Clipboard.qml`, `bin/rice-clip`, `bin/rice-render` |
 
 | The login screen and the lock screen: one design, the same password pill, status and motion | SDDM (astronaut theme), hyprlock | `greeter/`, `shell/greeter.qml`, `shell/modules/lock/` |
@@ -153,11 +182,11 @@ point `K.voxtype_scripts` elsewhere), game and app helpers. HyDE's helpers
 (`~/.local/lib/hyde`) and kittymux (`~/.local/bin/kittymux`) are their own
 projects; the rice uses them when present.
 
-## Usage limits (Agents tab)
+## Usage limits (Usage panel)
 
 `bin/rice-usage` reads T3 Code's own usage data: every provider and every
 signed-in account (two Claude logins show as two segments), pushed live over
-T3 Code's config subscription while the Agents tab is open. It only reads.
+T3 Code's config subscription while the Usage panel is open. It only reads.
 Give it a read-only token once:
 
 ```sh
