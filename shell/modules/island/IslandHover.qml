@@ -193,7 +193,7 @@ Item {
             spacing: 10
             IslandClock {
                 id: hoverClock
-                visible: !hover.clockHidden
+                opacity: hover.clockHidden ? 0 : 1   // not visible: the Row would close up under the flying clock
                 now: hover.bar.now; size: Theme.tClock
                 rounded: false; weight: Theme.wMedium
                 color: Qt.rgba(1, 0.98, 0.95, 0.95)

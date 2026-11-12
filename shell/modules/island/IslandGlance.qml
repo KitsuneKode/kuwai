@@ -73,7 +73,7 @@ Item {
         spacing: 9
         IslandClock {
             id: glanceClock
-            visible: !glance.clockHidden
+            opacity: glance.clockHidden ? 0 : 1   // not visible: the Row would close up under the flying clock
             now: glance.bar.now; size: Theme.tTitle2
             rounded: false; weight: Theme.wMedium
             color: Qt.rgba(1, 0.98, 0.95, 0.95)
