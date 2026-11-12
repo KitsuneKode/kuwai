@@ -195,8 +195,18 @@ case ${1:-} in
             bad=""
             for f in $(git -C "$dev" diff --name-only "$(git -C "$STABLE" rev-parse HEAD)" "$head" -- '*.qml'); do
                 [ -f "$dev/$f" ] || continue
-                out=$(/usr/lib/qt6/bin/qmllint --bare -I /usr/lib/qt6/qml "$dev/$f" 2>&1 | grep -E "unknown attached property scope|\[syntax\]|^Error")
+                out=$(/usr/lib/qt6/bin/qmllint --bare -I /usr/lib/qt6/qml "$dev/$f" 2>&1 | grep -E "unknown attached property scope|\[syntax\]|\[unresolved-alias\]|^Error")
                 [ -n "$out" ] && bad="$bad\n$f:\n$out"
+                # An id this promote removes that the file still uses (an alias,
+                # a call, a map entry): "Cannot resolve alias" stops the load, a
+                # bare use throws whenever that code runs (2026-11-12: removing
+                # the center's Agents view left all three; the load test, past
+                # its first PanelWindow, saw none of them).
+                for id in $(git -C "$dev" diff -U0 "$(git -C "$STABLE" rev-parse HEAD)" "$head" -- "$f" | sed -nE 's/^-\s*id:\s*([A-Za-z_][A-Za-z0-9_]*)\s*$/\1/p' | sort -u); do
+                    git -C "$dev" show "$head:$f" | grep -qE "^\s*id:\s*$id\s*$" && continue     # still declared (moved)
+                    left=$(git -C "$dev" show "$head:$f" | grep -nE "(^|[^A-Za-z0-9_.\"])$id(\.|\s*[,;)}]|$)" | grep -vE '^\s*[0-9]+:\s*//' | head -3)
+                    [ -n "$left" ] && bad="$bad\n$f (uses id '$id', which this promote removes):\n$left"
+                done
                 # A property named like one of Item's anchor lines (left, top…) is
                 # a FINAL override: the file won't load, and lint is silent.
                 # The offscreen load test can't reach panels, so check by name.
