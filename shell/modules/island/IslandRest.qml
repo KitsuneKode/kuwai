@@ -751,7 +751,10 @@ Item {
                 }
                 MusicTap {}
                 PwObjectTracker { objects: [Pipewire.defaultAudioSink] }
-                PwNodePeakMonitor { id: restPeak; node: Pipewire.defaultAudioSink; enabled: (rest.activity === "media" || rest.restMusic) && Media.playing }
+                // Live only on the screen you're on: every notch drew the bars 20 times a
+                // second while music played; the others rest at their still shape (the
+                // same notch, drawn once), and pick it up as you move there.
+                PwNodePeakMonitor { id: restPeak; node: Pipewire.defaultAudioSink; enabled: (rest.activity === "media" || rest.restMusic) && Media.playing && (!rest.bar || rest.bar.screenName === Screens.focusedName) }
                 readonly property real level: restPeak.enabled ? (restPeak.peaks && restPeak.peaks.length ? Math.max(...restPeak.peaks) : (restPeak.peak || 0)) : 0
                 // The bars move 20 times a second, set straight (no Behavior).
                 // Following every peak, each one restarting a 90 ms animation,
@@ -789,7 +792,7 @@ Item {
                             readonly property real liveH: Math.round(Math.max(3, 3 + 12 * Math.min(1, Math.sqrt(restMediaWave.shown) * shape * jitter * 0.95)))
                             readonly property real pauseH: Math.max(4, 13 * shape * 0.48)
                             height: Media.playing ? liveH : pauseH
-                            color: Media.artColor
+                            color: Media.artAt(index / 4)       // the cover's two colours, across the bars
                             opacity: Media.playing ? 1 : 0.55
                             // Settling to the pause silhouette still eases; live bars don't.
                             Behavior on height { enabled: !Media.playing; NumberAnimation { duration: 380; easing.type: Easing.OutCubic } }

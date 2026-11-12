@@ -123,6 +123,34 @@ Singleton {
         return c;
     }
 
+    // The waveform's other end: the art's most vivid colour of a clearly
+    // different hue (a gradient across the bars, from artColor to this),
+    // lifted the same way. Art with one colour: artColor, a little lighter,
+    // so the bars still read as one colour, not two. Set once per track.
+    readonly property color artColor2: {
+        const a = artColor;
+        const cs = quant.colors || [];
+        let best = null, score = -1;
+        for (const c of cs) {
+            const max = Math.max(c.r, c.g, c.b), min = Math.min(c.r, c.g, c.b);
+            const sat = max > 0 ? (max - min) / max : 0;
+            if (sat < 0.25) continue;
+            let dh = Math.abs(c.hsvHue - a.hsvHue); dh = Math.min(dh, 1 - dh);
+            if (dh < 0.08) continue;
+            const s = sat * 0.7 + max * 0.3;
+            if (s > score) { score = s; best = c; }
+        }
+        if (!best) return Qt.lighter(a, 1.18);
+        let c = best;
+        for (let i = 0; i < 4 && Math.max(c.r, c.g, c.b) < 0.75; i++) c = Qt.lighter(c, 1.25);
+        return c;
+    }
+    // A colour between the two (t: 0 → artColor, 1 → artColor2).
+    function artAt(t) {
+        const a = artColor, b = artColor2;
+        return Qt.rgba(a.r + (b.r - a.r) * t, a.g + (b.g - a.g) * t, a.b + (b.b - a.b) * t, 1);
+    }
+
     // Take you to what's playing: the window showing this track (a browser
     // tab: "ADDICTED - YouTube"), else the player app's window, else ask the
     // player to raise itself (MPRIS Raise).

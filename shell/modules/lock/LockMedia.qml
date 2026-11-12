@@ -85,7 +85,7 @@ Item {
                     width: 4; radius: 1.5
                     // sqrt: quiet passages still move, loud ones don't pin every bar at the top
                     height: Math.round(Math.max(4, 4 + 14 * Math.min(1, Math.sqrt(media.shown) * shape * media.jitter[index] * 0.95)))
-                    color: Theme.accent
+                    color: Media.artAt(index / 3)            // the cover's colours, as the notch's bars
                     Behavior on height { enabled: !peak.enabled; NumberAnimation { duration: 380; easing.type: Easing.OutCubic } }
                 }
             }
