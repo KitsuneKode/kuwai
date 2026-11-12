@@ -581,7 +581,7 @@ FocusScope {
         }
 
         Label {
-            visible: launcher.selectable === 0 && launcher.query.trim() !== ""
+            visible: launcher.selectable === 0 && launcher.query.trim() !== "" && !launcher.calcMode
             anchors.centerIn: parent
             text: "No results for “" + launcher.query.trim() + "”"
             size: 13
