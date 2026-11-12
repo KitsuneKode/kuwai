@@ -164,3 +164,18 @@ function looksLikeMath(text) {
     var q = String(text || "").trim().replace(/^=\s*/, "");
     return /\d/.test(q) && (/[+\-*/^%×÷()]/.test(q) || /\b(to|in|of|as)\b/i.test(q) || /\d\s*[a-z]{1,10}\b/i.test(q)) && q.length < 120;
 }
+
+// qalc's answer (`qalc -t`), or "" when it isn't one: qalc reads anything,
+// so "x+1" or "1/0" come back as the question re-spaced, and words it takes
+// for units ("days until 2027-01-01") come back as unit soup
+// ("3.36591269i yL·d·g² − 2"). Dates come back quoted.
+function qalcAnswer(asked, out) {
+    var q = String(asked || "").trim().replace(/^=\s*/, "");
+    var t = String(out || "").trim().replace(/^"(.*)"$/, "$1");
+    var norm = function (s) { return s.replace(/\s+/g, "").replace(/[\u2212\u2013]/g, "-").toLowerCase(); };
+    if (!t || t.length >= 80 || /error|warning/i.test(t)) return "";
+    if (norm(t) === norm(q)) return "";
+    if (/\u00b7/.test(t) && !/[\u00b7*]/.test(q)) return "";        // units multiplied that you never wrote
+    if (/\di\b/.test(t) && !/\bi\b|sqrt\s*\(\s*-|\^\s*0?\.5/.test(q)) return "";  // imaginary from nowhere
+    return t;
+}

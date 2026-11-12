@@ -142,9 +142,7 @@ FocusScope {
         command: ["sh", "-c", "timeout 1.5 qalc -t -- \"$1\" 2>/dev/null", "sh", launcher.query.trim().replace(/^=\s*/, "")]
         stdout: StdioCollector {
             onStreamFinished: {
-                const t = text.trim();
-                const asked = launcher.qalcFor.trim().replace(/^=\s*/, "");
-                launcher.qalcOut = t && t !== asked && !/error|warning/i.test(t) && t.length < 80 ? t : "";
+                launcher.qalcOut = Calc.qalcAnswer(launcher.qalcFor, text);
             }
         }
     }

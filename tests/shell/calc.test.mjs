@@ -4,7 +4,7 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 
 const src = readFileSync(new URL("../../shell/services/calc.js", import.meta.url), "utf8").replace(/^\.pragma library\s*$/m, "");
-const { evaluate, looksLikeMath } = new Function(src + "\nreturn { evaluate, looksLikeMath };")();
+const { evaluate, looksLikeMath, qalcAnswer } = new Function(src + "\nreturn { evaluate, looksLikeMath, qalcAnswer };")();
 const fx = { time: 0, rates: { USD: 1, JPY: 158.18, EUR: 0.92, INR: 83.1, GBP: 0.79 } };
 const v = (q) => (evaluate(q, fx) || {}).value;
 
@@ -47,4 +47,16 @@ describe("not math", () => {
       expect(looksLikeMath(q)).toBe(false);
     });
   test("asks qalc for sqrt(2)", () => expect(looksLikeMath("sqrt(2) * 3")).toBe(true));
+});
+
+describe("qalc's answers (libqalculate installed)", () => {
+  test("a real answer", () => expect(qalcAnswer("sqrt(2)", "1.414213562\n")).toBe("1.414213562"));
+  test("= prefix", () => expect(qalcAnswer("= 5 ft to cm", "152.4 cm")).toBe("152.4 cm"));
+  test("a date loses its quotes", () => expect(qalcAnswer("today + 30 days", '"2026-12-12"')).toBe("2026-12-12"));
+  test("the question re-spaced is no answer", () => expect(qalcAnswer("x+1", "x + 1")).toBe(""));
+  test("1/0 re-spaced", () => expect(qalcAnswer("1/0", "1 / 0")).toBe(""));
+  test("unit soup", () => expect(qalcAnswer("days until 2027-01-01", "3.36591269i yL\u00b7d\u00b7g\u00b2 \u2212 2")).toBe(""));
+  test("an imaginary you asked for", () => expect(qalcAnswer("sqrt(-4)", "2i")).toBe("2i"));
+  test("an error", () => expect(qalcAnswer("2+", "error: ...")).toBe(""));
+  test("units you multiplied", () => expect(qalcAnswer("3 m * 2 m", "6 m\u00b2")).toBe("6 m\u00b2"));
 });
