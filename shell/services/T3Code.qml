@@ -16,8 +16,30 @@ Singleton {
     property bool alive: false
     property int running: 0
     property int waiting: 0
-    property int finished: 0             // completed in the last 15 min (shown in the panel)
-    property var items: []
+    // Completed in the last 15 min and not dismissed here (shown in the panel,
+    // the ✓ on the capsule).
+    readonly property int finished: Math.max(0, rawFinished - rawItems.filter(i => (i.status === "completed" || i.status === "failed") && isDismissed(i)).length)
+    property int rawFinished: 0
+    property var rawItems: []
+    // What T3 lists, minus the finished threads you swiped away or closed
+    // with × (a finished thread you've dealt with, without opening it).
+    readonly property var items: rawItems.filter(i => !isDismissed(i))
+    // Keyed by thread and when it finished, so the same thread finishing again
+    // comes back. Kept across restarts, the 200 newest; nothing else is stored.
+    property var dismissed: []
+    function keyOf(i) { return String(i.thread) + "@" + String(i.at || ""); }
+    function isDismissed(i) { return (i.status === "completed" || i.status === "failed") && dismissed.indexOf(keyOf(i)) >= 0; }
+    function dismiss(i) {
+        if (!i || dismissed.indexOf(keyOf(i)) >= 0) return;
+        dismissed = dismissed.concat([keyOf(i)]).slice(-200);
+        dismissedFile.setText(JSON.stringify(dismissed));
+    }
+    FileView {
+        id: dismissedFile
+        path: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/rice/t3-dismissed.json"
+        printErrors: false
+        onLoaded: { try { const d = JSON.parse(text()); if (Array.isArray(d)) root.dismissed = d; } catch (e) {} }
+    }
     property string env: ""              // T3 Code's environment id (its thread links need it)
     property string lastText: ""
     readonly property int total: running + waiting
@@ -36,12 +58,12 @@ Singleton {
                     root.alive = !!d.alive;
                     root.running = d.running || 0;
                     root.waiting = d.waiting || 0;
-                    root.finished = d.finished || 0;
+                    root.rawFinished = d.finished || 0;
                     root.env = d.env || "";
                     // Only replace the list when it changed: an identical array
                     // still re-creates every delegate bound to it.
                     const next = d.items || [];
-                    if (JSON.stringify(next) !== JSON.stringify(root.items)) root.items = next;
+                    if (JSON.stringify(next) !== JSON.stringify(root.rawItems)) root.rawItems = next;
                 } catch (e) {}
             }
         }

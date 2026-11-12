@@ -87,8 +87,20 @@ FocusScope {
                     width: parent.width
                     height: 46
                     radius: 12
-                    color: rowArea.containsMouse ? Qt.rgba(1, 1, 1, 0.07) : "transparent"
+                    color: rowHover.hovered ? Qt.rgba(1, 1, 1, 0.07) : "transparent"
                     Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
+                    // A finished thread you've dealt with: swipe it away sideways
+                    // (1:1, a flick or past 40 %), or its × — gone from here and
+                    // from the capsule's ✓ (T3Code.dismiss); it slides out first.
+                    opacity: swipe.fade
+                    transform: Translate { x: swipe.offset }
+                    SwipeAway {
+                        id: swipe
+                        enabled: row.done
+                        span: row.width
+                        onLeaving: dismissLater.start()
+                    }
+                    Timer { id: dismissLater; interval: Theme.reduceMotion ? 0 : Theme.swipeOutMs; onTriggered: T3Code.dismiss(row.modelData) }
 
                     // State: an orange dot when it needs you, a turning arc while it works.
                     Item {
@@ -125,7 +137,7 @@ FocusScope {
                         }
                     }
                     Column {
-                        anchors { left: state.right; leftMargin: 12; right: parent.right; rightMargin: 12; verticalCenter: parent.verticalCenter }
+                        anchors { left: state.right; leftMargin: 12; right: parent.right; rightMargin: row.done ? 40 : 12; verticalCenter: parent.verticalCenter }
                         spacing: 2
                         Label {
                             width: parent.width; elide: Text.ElideRight
@@ -137,18 +149,28 @@ FocusScope {
                             text: (row.waits ? "Needs you" : row.failed ? "Failed" : row.done ? "Finished" : row.modelData.status === "running" ? "Working" : "Starting")
                                 + (t3.agentName(row.modelData.provider) ? " · " + t3.agentName(row.modelData.provider) : "")
                                 + (row.done && row.modelData.at ? " · " + t3.ago(row.modelData.at) : "")
-                                + (row.modelData.project ? " · " + row.modelData.project : "")
+                                + (row.modelData.project && row.modelData.project !== "No project" ? " · " + row.modelData.project : "")
                             size: Theme.tFootnote
                             color: row.waits ? Theme.orange : Theme.textTertiary
                         }
                     }
-                    MouseArea {
-                        id: rowArea
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        // That thread, not just the window (T3 Code's own link).
-                        onClicked: { T3Code.openThread(row.modelData.thread); Island.close(); }
+                    HoverHandler { id: rowHover; cursorShape: Qt.PointingHandCursor }
+                    // That thread, not just the window (T3 Code's own link).
+                    TapHandler { onTapped: if (!xHover.hovered) { T3Code.openThread(row.modelData.thread); Island.close(); } }
+                    // ×: on hover (or with the keyboard focus on the panel), finished rows only.
+                    Rectangle {
+                        visible: row.done
+                        opacity: rowHover.hovered ? 1 : 0
+                        Behavior on opacity { NumberAnimation { duration: Theme.hoverMs } }
+                        anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
+                        width: 24; height: 24; radius: 12
+                        color: xHover.hovered ? Theme.pillHover : Theme.pill
+                        Text { anchors.centerIn: parent; text: "\u{f0156}"; font.family: Theme.fontGlyph; font.pixelSize: Theme.tSub; color: Theme.textSecondary }
+                        HoverHandler { id: xHover; margin: 8 }
+                        TapHandler { gesturePolicy: TapHandler.ReleaseWithinBounds; onTapped: swipe.away(1) }
+                        Accessible.role: Accessible.Button
+                        Accessible.name: "Dismiss " + (row.modelData.title || "thread")
+                        Accessible.onPressAction: swipe.away(1)
                     }
                 }
             }
