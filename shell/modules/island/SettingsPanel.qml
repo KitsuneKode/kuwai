@@ -375,6 +375,11 @@ FocusScope {
                     }
                 }
                 SettingsRow {
+                    key: "islandSplit"
+                    label: "Separate pills"; detail: "Agents and T3 at work sit in their own pills to the right; music steps into one on the left while something else has the island"
+                    Toggle { on: Settings.islandSplit; onToggled: Settings.set("islandSplit", !Settings.islandSplit) }
+                }
+                SettingsRow {
                     key: "restWorkspaces"
                     label: "Workspaces at rest"; detail: "Capsules beside the clock"
                     Toggle { on: Settings.restWorkspaces; onToggled: Settings.set("restWorkspaces", !Settings.restWorkspaces) }

@@ -21,6 +21,7 @@ Singleton {
     readonly property alias hoverMedia: s.hoverMedia
     readonly property alias hoverDelay: s.hoverDelay
     readonly property alias hoverView: s.hoverView
+    readonly property alias islandSplit: s.islandSplit
     readonly property alias workspaceCount: s.workspaceCount
     readonly property alias notifKeepSeenHours: s.notifKeepSeenHours
     readonly property alias islandStyle: s.islandStyle
@@ -116,6 +117,9 @@ Singleton {
             property int hoverDelay: 220
             // Hover shows a glance (one row; a click opens everything) or everything at once.
             property string hoverView: "glance"
+            // Work in the background (agents, T3) and music stepped aside get
+            // their own small pills beside the island (Apple's split island).
+            property bool islandSplit: true
             // Capsules shown at least (more appear as workspaces fill).
             property int workspaceCount: 5
             // Notifications: seen ones nobody acted on clear after this many hours (0 keeps them).

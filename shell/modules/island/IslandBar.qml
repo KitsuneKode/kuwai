@@ -141,6 +141,10 @@ Scope {
                 // Minimal island: the strip along the top edge beside it counts too.
                 Region { item: Settings.islandRest === "minimal" || win.tucked ? nearStrip : null }
                 Region { item: win.hovered ? slop : null }
+                // The split island's pills (IslandSplit), while out.
+                Region { item: split.pills[0].visible ? split.pills[0] : null }
+                Region { item: split.pills[1].visible ? split.pills[1] : null }
+                Region { item: split.pills[2].visible ? split.pills[2] : null }
             }
             // Nearing the island: the pointer resting on the top edge over it
             // (its resting width and 80 px either side, not the grown one, so
@@ -653,6 +657,22 @@ Scope {
                 width: frame.width + 16; height: frame.y + frame.height + 8
                 HoverHandler { id: slopHover; onHoveredChanged: win.syncHover() }
                 PointHandler { acceptedButtons: Qt.AllButtons; onActiveChanged: if (active && !frameHover.hovered) { win.hovered = false; win.syncHover(); } }
+            }
+            // The split island: work in the background and music stepped aside,
+            // in their own pills beside the island at rest (under it, so they bud
+            // out from beneath its edges).
+            IslandSplit {
+                id: split
+                anchors.fill: parent
+                bar: win
+                leftEdge: frame.x + win.ear
+                rightEdge: frame.x + frame.width - win.ear
+                top: win.top
+                h: win.restH
+                notch: win.notch
+                ear: win.ear
+                activity: restRow.activity
+                atRest: win.showBar && win.outNow && !Saver.showing && restRow.opacity > 0.5
             }
             Item {
                 id: frame

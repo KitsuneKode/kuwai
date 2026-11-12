@@ -329,7 +329,7 @@ Item {
     // it (t3mark), a live activity's two sides with the time between.
     RestMark {
         id: t3word
-        visible: rest.mini && T3Code.total > 0 && !rest.helloFocus && !rest.musicSides
+        visible: rest.mini && T3Code.total > 0 && !rest.helloFocus && !rest.musicSides && !Settings.islandSplit
         anchors.verticalCenter: parent.verticalCenter
         wordmark: "T3"
         tone: T3Code.waiting > 0 ? Theme.orange : Theme.cyan
@@ -580,7 +580,8 @@ Item {
     RestMark {
         id: t3centre
         // Not during a moment: its words run through the middle (they overlapped).
-        visible: rest.stageTaken && T3Code.total > 0 && !rest.momentUnified && !rest.helloFocus && rest.activity !== "moment"
+        // (Split island: T3 has its own pill beside the island instead.)
+        visible: rest.stageTaken && T3Code.total > 0 && !rest.momentUnified && !rest.helloFocus && rest.activity !== "moment" && !Settings.islandSplit
         x: Math.round((rest.width - width) / 2)
         Behavior on x { NumberAnimation { duration: Theme.reflowMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
         anchors.verticalCenter: parent.verticalCenter
@@ -648,7 +649,7 @@ Item {
         // Rest on it: the T3 panel (threads, who's waiting). Click: T3 Code.
         RestMark {
             id: t3mark
-            visible: T3Code.total > 0 && !rest.stageTaken
+            visible: T3Code.total > 0 && !rest.stageTaken && !Settings.islandSplit
             anchors.verticalCenter: parent.verticalCenter
             wordmark: rest.mini && !rest.musicSides ? "" : "T3"
             // T3 ③: the count in a ring that turns while threads work, solid
@@ -685,7 +686,7 @@ Item {
         // Agents at work (kittymux): their marks, stacked (AgentStack).
         AgentStack {
             id: agents
-            visible: list.length > 0 && !rest.stageTaken
+            visible: list.length > 0 && !rest.stageTaken && !Settings.islandSplit
             anchors.verticalCenter: parent.verticalCenter
             bar: rest.bar
         }
