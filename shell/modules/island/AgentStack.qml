@@ -17,7 +17,13 @@ Item {
     property var bar
     readonly property var waiting: Kittymux.attention.filter(e => e.severity === "needs-you")
         .map(e => ({ agent: e.agent, title: Kittymux.clean(e.tab || e.title), where: "", status: "needs you", needs: true, event: e.id }))
-    readonly property var list: waiting.concat(Kittymux.working)
+    // An agent kittymux reads as waiting (agents.json state) with no unread
+    // event for its pane (it asked before the inbox caught it, or the event was
+    // read): it's still asking, so it leads too. It was left out of the stack.
+    readonly property var waitingPanes: Kittymux.running.filter(r => r.needs
+        && !Kittymux.attention.some(e => e.severity === "needs-you" && String(e.pid) === String(r.pid) && String(e.w) === r.w))
+    readonly property var list: waiting.concat(waitingPanes, Kittymux.working)
+    readonly property int needN: waiting.length + waitingPanes.length
     readonly property int shown: Math.min(3, list.length)
     readonly property bool many: list.length > 1
     readonly property bool hovered: hover.hovered
@@ -88,7 +94,7 @@ Item {
         shown: hover.hovered && !stack.open
         below: true
         text: !stack.list.length ? ""
-            : (stack.many ? (stack.waiting.length ? stack.waiting.length + " need you · " : "") + Kittymux.working.length + " working"
+            : (stack.many ? (stack.needN ? stack.needN + " need you · " : "") + Kittymux.working.length + " working"
                           : stack.list[0].agent + " · " + stack.list[0].title + " · " + stack.list[0].status)
               + "\nClick: every agent · right-click: go to " + (stack.many ? "the first" : "it")
     }

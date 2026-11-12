@@ -118,7 +118,7 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             width: 22; height: 22; radius: 6
             color: Qt.rgba(1, 1, 1, 0.08)
-            Image { anchors.fill: parent; source: glance.playing ? (glance.player.trackArtUrl || "") : ""; sourceSize: Qt.size(44, 44); fillMode: Image.PreserveAspectCrop; asynchronous: true }
+            ArtImage { anchors.fill: parent; source: glance.playing ? (glance.player.trackArtUrl || "") : ""; px: 44 }
         }
     }
 

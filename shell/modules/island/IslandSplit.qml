@@ -318,7 +318,7 @@ Item {
         ClippingRectangle {
             width: 18; height: 18; radius: 5
             color: Qt.rgba(1, 1, 1, 0.08)
-            Image { anchors.fill: parent; source: split.player ? (split.player.trackArtUrl || "") : ""; sourceSize: Qt.size(36, 36); fillMode: Image.PreserveAspectCrop; asynchronous: true }
+            ArtImage { anchors.fill: parent; source: split.player ? (split.player.trackArtUrl || "") : ""; px: 36 }
             HoverHandler { id: musicHover; cursorShape: Qt.PointingHandCursor }
             TapHandler { onTapped: Island.open("media", split.bar.screenName, "pointer", "island") }
             Tip { text: (split.player ? (split.player.trackTitle || split.player.identity || "Playing") : "") + " · click for Now Playing"; shown: musicHover.hovered; below: true }

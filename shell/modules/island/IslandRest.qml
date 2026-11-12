@@ -365,8 +365,9 @@ Item {
                 anchors.centerIn: parent
                 width: 20; height: 20; radius: 5
                 color: Theme.pill
-                Image { anchors.fill: parent; source: rest.bar.player ? (rest.bar.player.trackArtUrl || "") : ""; sourceSize: Qt.size(40, 40); fillMode: Image.PreserveAspectCrop; asynchronous: true }
-                ImageEdge { radius: 5 }
+                // No cover (a browser tab often sends none): a note, not an empty grey square.
+                ArtImage { id: restArt; anchors.fill: parent; source: rest.bar.player ? (rest.bar.player.trackArtUrl || "") : ""; px: 40 }
+                ImageEdge { visible: restArt.ready; radius: 5 }
                 MusicTap {}
             }
         }
