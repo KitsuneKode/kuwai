@@ -68,7 +68,13 @@ Item {
     function accountOf(r) { return String(r.account || ""); }
     readonly property bool manyAccounts: new Set(agentRows.map(r => accountOf(r))).size > 1
     function accountName(r) { return accountOf(r) || "main"; }
-    readonly property string limWho: manyAccounts && agentsLim.length ? accountName(agentsLim[0]) : ""
+    // Whose limit: the capsule's logos are the agents at work, not the one
+    // that's out, so with more than one kind of agent out the ⏳ names it
+    // ("Claude · 41m"). Without it, a working agy's logo beside Claude's
+    // limit read as "agy hit a limit". Two accounts add which one.
+    readonly property bool manyKinds: new Set(agentRows.map(r => r.agent)).size > 1
+    readonly property string limWho: !agentsLim.length ? ""
+        : (manyKinds ? Kittymux.agentLabel(agentsLim[0].agent) : "") + (manyKinds && manyAccounts ? " " : "") + (manyAccounts ? accountName(agentsLim[0]) : "")
     readonly property string limTip: agentsLim.map(r => Kittymux.agentLabel(r.agent) + (manyAccounts ? " (" + accountName(r) + ")" : "") + " " + (r.status || "hit a limit")).join(" · ")
         + (manyAccounts ? "\n" + [...new Set(agentRows.filter(r => r.state !== "limited").map(r => accountName(r)))].map(a => a + " can carry on").join(" · ") : "")
     // Finished and not yet seen (kittymux's unread `done` events, newest first).
