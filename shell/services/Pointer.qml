@@ -29,15 +29,18 @@ Singleton {
     function unwant() { wanted = Math.max(0, wanted - 1); }
     // Near the top edge of any screen (where the island is): look more often.
     property real hotBand: 140
-    // A plain loop: before Hyprland's first answer `values` isn't an array
-    // yet, `.some` threw, and the binding gave undefined to a bool.
+    // Guarded: while the singleton is first built Hyprland's monitor list
+    // can throw, and a binding that throws gives undefined to a bool (a
+    // warning at every load). False until it reads.
     readonly property bool hot: {
-        const ms = Hyprland.monitors ? Hyprland.monitors.values : null;
-        for (let i = 0; ms && i < ms.length; i++) {
-            const o = ms[i].lastIpcObject || {};
-            const w = (o.width || 0) / (o.scale || 1);
-            if (x >= (o.x || 0) && x < (o.x || 0) + w && y >= (o.y || 0) && y < (o.y || 0) + hotBand) return true;
-        }
+        try {
+            const ms = Hyprland.monitors.values;
+            for (let i = 0; i < ms.length; i++) {
+                const o = ms[i].lastIpcObject || {};
+                const w = (o.width || 0) / (o.scale || 1);
+                if (x >= (o.x || 0) && x < (o.x || 0) + w && y >= (o.y || 0) && y < (o.y || 0) + hotBand) return true;
+            }
+        } catch (e) {}
         return false;
     }
 
