@@ -29,7 +29,25 @@ Singleton {
     property var now: null
     property int nowMs: 0
     property var queue: []            // [{ m, ms }]
+    // Who may grow the notch, in one place (owner, 11-12: approvals must reach
+    // you, nothing else may interrupt focus or a film):
+    //   an agent asking you (sticky, or a password in kitty)
+    //       everywhere; over a fullscreen window too (IslandBar lifts it onto
+    //       the overlay for that moment). Under Focus / DND it doesn't grow:
+    //       its capsule's orange light says it, and the Agents panel has it.
+    //   an agent finished, failed or out of its limit; updates; a break; hello
+    //       not under Focus / DND, not over a fullscreen window (the capsule's
+    //       ✓ and the Agents panel keep them).
+    //   what you just did (copied, a timer you set, a toggle) always.
+    readonly property var ambient: ["agent", "update", "break", "hello"]
+    function allowed(m) {
+        const asks = !!m.sticky || !!m.asks;
+        if (Notifs.muted) return !(m.kind === "agent" || ambient.indexOf(m.kind) >= 0);
+        if (Notifs.fullscreenNow && !asks && ambient.indexOf(m.kind) >= 0) return false;
+        return true;
+    }
     function show(m, ms) {
+        if (!allowed(m)) return;
         // Answered while it waited in the queue: not shown again.
         if (m.sticky && m.event && Kittymux.answered(m.event)) return;
         if (m.sticky && m.t3 && T3Code.waiting === 0) return;
@@ -555,7 +573,7 @@ Singleton {
         // isn't an agent: say what it is, with a key, not a robot.
         if (item.agentTool || (ev && ev.source === "tool")) {
             root.show({ kind: "agent", glyph: "\u{f0306}", label: "Password", value: name.toLowerCase() + " in kitty", ring: -1, tone: Theme.orange,
-                        go: () => Notifs.jumpTo(pane), list: root.openRecent }, 6000);
+                        asks: true, go: () => Notifs.jumpTo(pane), list: root.openRecent }, 6000);
             return;
         }
         const needs = st === "waiting";

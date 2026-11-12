@@ -400,7 +400,11 @@ Scope {
             readonly property bool cardHere: bannerHere || peekHere || deviceHere
             // Springs included, so the card can finish folding before the
             // window drops back under the film.
-            readonly property bool overFilm: screenFullscreen && (cardHere || nv.value > 0.01 || bv.value > 0.01 || dv.value > 0.01)
+            // Over a fullscreen window only for that moment: a card, a peek, a
+            // warning, a device — and an agent asking you (Moments.allowed), unless
+            // Settings → fullscreen notifications is off.
+            readonly property bool askingMoment: agentMoment && !!Moments.now && (!!Moments.now.sticky || !!Moments.now.asks) && (Settings.notifFullscreen || "important") !== "off"
+            readonly property bool overFilm: screenFullscreen && (cardHere || askingMoment || nv.value > 0.01 || bv.value > 0.01 || dv.value > 0.01)
             property real pull: 0
             property bool committing: false
             property bool pushed: false
@@ -674,7 +678,8 @@ Scope {
                 topY: win.top
                 h: win.restH
                 activity: restRow.activity
-                atRest: win.showBar && win.outNow && !Saver.showing && restRow.opacity > 0.5
+                // Not over a film: lifted for a moment, the island alone comes up.
+                atRest: win.showBar && win.outNow && !Saver.showing && restRow.opacity > 0.5 && !win.screenFullscreen
             }
             Item {
                 id: frame
