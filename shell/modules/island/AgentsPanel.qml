@@ -32,6 +32,7 @@ FocusScope {
 
     property int sel: 0
     property bool keyboard: false
+    property Item hoverRow: null          // the row under the pointer (the highlight goes there)
 
     // ── What runs where, on what ────────────────────────────────────────
     // The model a kitty pane runs is in its agent's own session log
@@ -203,6 +204,20 @@ FocusScope {
             spacing: 2
             boundsBehavior: Flickable.StopAtBounds
             model: ScriptModel { values: ap.rows; objectProp: "key" }
+            // One move (choreograph): a swiped row's spring carries it out while
+            // the rows below rise into its place, together, not one after the other.
+            remove: Transition { PauseAnimation { duration: Theme.reduceMotion ? 0 : Theme.swipeOutMs } }
+            displaced: Transition {
+                NumberAnimation { property: "y"; duration: Theme.reduceMotion ? 0 : Theme.reflowMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeInOut }
+            }
+            // One highlight for the list (fluid hover): it glides from row to row
+            // under the pointer on the fast spring, and is the keyboard's ring.
+            FluidHighlight {
+                parent: list.contentItem
+                radius: Theme.r2
+                target: ap.keyboard ? list.itemAtIndex(ap.sel) : ap.hoverRow
+                ring: ap.keyboard
+            }
             delegate: Rectangle {
                 id: row
                 required property var modelData
@@ -211,15 +226,13 @@ FocusScope {
                 width: list.width
                 height: inner.implicitHeight + 20
                 radius: Theme.r2
-                color: rowHover.hovered || ap.sel === index ? Qt.rgba(1, 1, 1, 0.07) : "transparent"
-                Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
+                color: "transparent"              // the list's one highlight lights it
                 // Swipe away sideways (or ×, or ⌫ on the selected row): it slides
                 // out, then goes; the rest close the gap.
                 readonly property bool dismissable: ap.canDismiss(modelData)
                 opacity: swipe.fade
                 transform: Translate { x: swipe.offset }
-                SwipeAway { id: swipe; enabled: row.dismissable; span: row.width; onLeaving: goLater.start() }
-                Timer { id: goLater; interval: Theme.reduceMotion ? 0 : Theme.swipeOutMs; onTriggered: ap.dismiss(row.modelData) }
+                SwipeAway { id: swipe; enabled: row.dismissable; span: row.width; onLeaving: ap.dismiss(row.modelData) }
                 Accessible.role: Accessible.ListItem
                 Accessible.name: modelData.title + ", " + ap.word(modelData.state) + (modelData.where ? ", " + modelData.where : "") + (modelData.model ? ", " + modelData.model : "")
                 Accessible.description: modelData.question || ""
@@ -308,7 +321,10 @@ FocusScope {
                 HoverHandler {
                     id: rowHover
                     cursorShape: Qt.PointingHandCursor
-                    onHoveredChanged: if (hovered) { ap.keyboard = false; ap.sel = row.index; }
+                    onHoveredChanged: {
+                        if (hovered) { ap.keyboard = false; ap.sel = row.index; ap.hoverRow = row; }
+                        else if (ap.hoverRow === row) ap.hoverRow = null;
+                    }
                 }
                 TapHandler { onTapped: if (!xHover.hovered) ap.go(row.modelData) }
                 Rectangle {

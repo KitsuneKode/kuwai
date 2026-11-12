@@ -19,6 +19,7 @@ FocusScope {
         if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { T3Code.openBest(); Island.close(); e.accepted = true; }
     }
 
+    property Item hoverRow: null
     readonly property var live: T3Code.items.filter(i => i.status !== "completed" && i.status !== "failed")
     // Finished ones are rows too, each a way to that thread: "2 finished"
     // said how many but not which, and nothing could be done with it. Live
@@ -71,24 +72,33 @@ FocusScope {
         }
 
         // ── Threads ──────────────────────────────────────────────────────
-        Column {
+        ListView {
+            id: threads
             width: parent.width
+            height: contentHeight
+            interactive: false
             spacing: 2
-            Repeater {
-                // Live threads first (at most six, so finished ones can't crowd
-                // them out), then the finished ones, each one that thread.
-                model: ScriptModel { values: t3.shownRows; objectProp: "thread" }
-                delegate: Rectangle {
+            // Live threads first (at most six, so finished ones can't crowd
+            // them out), then the finished ones, each one that thread.
+            model: ScriptModel { values: t3.shownRows; objectProp: "thread" }
+            // One move (choreograph): a swiped row leaves on its spring while the
+            // rows below rise into its place, together.
+            remove: Transition { PauseAnimation { duration: Theme.reduceMotion ? 0 : Theme.swipeOutMs } }
+            displaced: Transition {
+                NumberAnimation { property: "y"; duration: Theme.reduceMotion ? 0 : Theme.reflowMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeInOut }
+            }
+            // One highlight for the list, gliding row to row (fluid hover).
+            FluidHighlight { parent: threads.contentItem; radius: 12; target: t3.hoverRow }
+            delegate: Rectangle {
                     id: row
                     required property var modelData
                     readonly property bool waits: modelData.status === "waiting"
                     readonly property bool failed: modelData.status === "failed"
                     readonly property bool done: modelData.status === "completed" || failed
-                    width: parent.width
+                    width: threads.width
                     height: 46
                     radius: 12
-                    color: rowHover.hovered ? Qt.rgba(1, 1, 1, 0.07) : "transparent"
-                    Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
+                    color: "transparent"
                     // A finished thread you've dealt with: swipe it away sideways
                     // (1:1, a flick or past 40 %), or its × — gone from here and
                     // from the capsule's ✓ (T3Code.dismiss); it slides out first.
@@ -98,9 +108,8 @@ FocusScope {
                         id: swipe
                         enabled: row.done
                         span: row.width
-                        onLeaving: dismissLater.start()
+                        onLeaving: T3Code.dismiss(row.modelData)
                     }
-                    Timer { id: dismissLater; interval: Theme.reduceMotion ? 0 : Theme.swipeOutMs; onTriggered: T3Code.dismiss(row.modelData) }
 
                     // State: an orange dot when it needs you, a turning arc while it works.
                     Item {
@@ -154,7 +163,11 @@ FocusScope {
                             color: row.waits ? Theme.orange : Theme.textTertiary
                         }
                     }
-                    HoverHandler { id: rowHover; cursorShape: Qt.PointingHandCursor }
+                    HoverHandler {
+                        id: rowHover
+                        cursorShape: Qt.PointingHandCursor
+                        onHoveredChanged: if (hovered) t3.hoverRow = row; else if (t3.hoverRow === row) t3.hoverRow = null
+                    }
                     // That thread, not just the window (T3 Code's own link).
                     TapHandler { onTapped: if (!xHover.hovered) { T3Code.openThread(row.modelData.thread); Island.close(); } }
                     // ×: on hover (or with the keyboard focus on the panel), finished rows only.
@@ -173,7 +186,6 @@ FocusScope {
                         Accessible.onPressAction: swipe.away(1)
                     }
                 }
-            }
         }
 
         Label {
