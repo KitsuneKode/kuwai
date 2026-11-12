@@ -70,7 +70,7 @@ Singleton {
         function onWaitingChanged() { if (T3Code.waiting === 0 && root.now && root.now.sticky && root.now.t3) root.dismissNow(); }
     }
     // The center's Agents tab: every one waiting, each a jump (opens it, never closes it).
-    function openAgents() { if (!Notifs.centerOpen || Notifs.centerTab !== "agents") Notifs.toggleCenter("agents", "pointer", ""); }
+    function openAgents() { if (Island.panel !== "agents") Island.open("agents", "", "pointer"); }
     // Gone now (it was acted on: tapped, pulled down, swiped up).
     function dismissNow() {
         hide.stop();

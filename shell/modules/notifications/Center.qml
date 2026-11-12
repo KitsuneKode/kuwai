@@ -260,7 +260,7 @@ Scope {
         // Open on a tab without taking the keyboard (for screenshots); unpeek closes.
         function peek(tab: string): void {
             root.peeking = true;
-            Notifs.centerTab = ["agents", "sound", "controls"].includes(tab) ? tab : "notifications";
+            Notifs.centerTab = ["sound", "controls"].includes(tab) ? tab : "notifications";
             Notifs.setCenter(true, "key");
         }
         function unpeek(): void { Notifs.setCenter(false, "key"); root.peeking = false; }

@@ -13,7 +13,7 @@
 //     Working · kittymux · Opus 5.5 high
 //   ◇ Monitor sharpness                                  12m
 //     Done · T3 · Grok 4.7 high
-//   [ Usage ]  [ All agents ]
+//   [ Usage ]  [ Mark all read ]           closed conversations last, to reopen
 //
 //   ↑ ↓ choose · ↵ go · U usage · A all agents · Esc back (shown when opened by key)
 import QtQuick
@@ -100,7 +100,16 @@ FocusScope {
                 t: i.at ? Date.parse(i.at) : 0, thread: i.thread
             });
         }
-        const rank = { needs: 0, error: 1, limited: 2, working: 3, done: 4, idle: 5 };
+        // Closed conversations to reopen (kittymux asks before resuming one),
+        // last: what the center's Agents tab had that this list didn't.
+        for (const r of Kittymux.recent) {
+            out.push({
+                key: "r" + r.hideKey, src: "recent", agent: r.agent, title: r.title,
+                where: r.project || String(r.where || "").replace(/^.*\//, ""),
+                model: "", state: "recent", status: r.status || "", question: "", t: 0, action: r.action, hideKey: r.hideKey, raw: r
+            });
+        }
+        const rank = { needs: 0, error: 1, limited: 2, working: 3, done: 4, idle: 5, recent: 6 };
         return out.sort((a, b) => (rank[a.state] - rank[b.state]) || (b.t - a.t));
     }
     onRowsChanged: sel = Math.min(sel, Math.max(0, rows.length - 1))
@@ -115,7 +124,7 @@ FocusScope {
         else Kittymux.act(r.action);
     }
     function word(s) {
-        return ({ needs: "Needs you", working: "Working", error: "Error", limited: "Hit a limit", done: "Done", idle: "Idle" })[s] || "";
+        return ({ needs: "Needs you", working: "Working", error: "Error", limited: "Hit a limit", done: "Done", idle: "Idle", recent: "Closed · reopen" })[s] || "";
     }
     function tone(s) {
         return s === "needs" || s === "limited" ? Theme.orange : s === "error" ? Theme.red : s === "done" ? Theme.green : s === "working" ? Theme.cyan : Theme.textTertiary;
@@ -127,7 +136,11 @@ FocusScope {
         else if (e.key === Qt.Key_Up) sel = Math.max(0, sel - 1);
         else if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) go(rows[sel]);
         else if (e.key === Qt.Key_U) { Island.open("usage", Island.screen, "key"); }
-        else if (e.key === Qt.Key_A) { Island.close(); Notifs.toggleCenter("agents", "key", Island.screen); }
+        else if (e.key === Qt.Key_A) Kittymux.ackAll();
+        else if ((e.key === Qt.Key_Delete || e.key === Qt.Key_Backspace) && rows[sel]) {
+            if (rows[sel].src === "recent") Kittymux.hideRecent(rows[sel].raw);
+            else if (rows[sel].event) Kittymux.ack(rows[sel].event);
+        }
         else return;
         list.positionViewAtIndex(sel, ListView.Contain);
         e.accepted = true;
@@ -284,7 +297,7 @@ FocusScope {
         // Opened from the keyboard: the keys, quietly (the pointer has the buttons).
         KeyHints {
             visible: Island.via === "key"
-            hints: [["↑↓", "Choose"], ["↩", "Go"], ["U", "Usage"], ["A", "All agents"], ["esc", "Back"]]
+            hints: [["↑↓", "Choose"], ["↩", "Go"], ["⌫", "Mark read / forget"], ["A", "All read"], ["U", "Usage"], ["esc", "Back"]]
         }
         // The way on: how much they've got left, or the full list with recent ones to resume.
         Row {
@@ -297,8 +310,10 @@ FocusScope {
             }
             PillButton {
                 width: (parent.width - 8) / 2
-                text: "All agents"
-                onClicked: { Island.close(); Notifs.toggleCenter("agents", "pointer", Island.screen); }
+                enabled: (Kittymux.attention || []).length > 0
+                opacity: enabled ? 1 : 0.5
+                text: (Kittymux.attention || []).length ? "Mark all read (" + Kittymux.attention.length + ")" : "All read"
+                onClicked: Kittymux.ackAll()
             }
         }
     }

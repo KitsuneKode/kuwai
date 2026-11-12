@@ -22,7 +22,7 @@ Item {
     readonly property alias sound: sound
     readonly property alias display: display
     readonly property alias tips: tipLayer
-    readonly property var order: ["notifications", "agents", "sound", "controls"]
+    readonly property var order: ["notifications", "sound", "controls"]   // agents live in the notch (Agents panel)
 
     function currentView() {
         return ({ notifications: notifications, agents: agents, sound: sound, controls: display })[center.tab] || notifications;
@@ -56,7 +56,6 @@ Item {
             current: content.center.tab
             options: [
                 { id: "notifications", label: "Notifications", badge: Notifs.inbox },
-                { id: "agents", label: "Agents", badge: Kittymux.attention.length, alert: Kittymux.needsYou > 0 },
                 { id: "sound", label: "Sound" },
                 { id: "controls", label: "Controls" }
             ]
@@ -132,8 +131,7 @@ Item {
                 } else if (ctrl && k === Qt.Key_D) {
                     Notifs.toggleUserDnd();
                 } else if (ctrl && shift && (k === Qt.Key_Backspace || k === Qt.Key_Delete)) {
-                    if (content.center.tab === "agents") Kittymux.ackAll();
-                    else notifications.clearAll();
+                    notifications.clearAll();
                 } else if (k === Qt.Key_Escape) {
                     if (search.text !== "") search.text = "";
                     else if (!content.currentView().back || !content.currentView().back())
@@ -141,7 +139,7 @@ Item {
                 } else if (ctrl && (k === Qt.Key_Tab || k === Qt.Key_Backtab)) {
                     const i = content.order.indexOf(content.center.tab);
                     Notifs.centerTab = content.order[(i + (k === Qt.Key_Backtab ? 3 : 1)) % 4];
-                } else if (alt && k >= Qt.Key_1 && k <= Qt.Key_4) {
+                } else if (alt && k >= Qt.Key_1 && k <= Qt.Key_3) {
                     Notifs.centerTab = content.order[k - Qt.Key_1];
                 } else if (!content.currentView().key(event, search.text === "")) {
                     return;
@@ -198,23 +196,14 @@ Item {
             opacity: pages.vis(0)
             transform: Translate { x: pages.drift(0) }
         }
-        AgentsView {
-            hosting: content.hosting
-            id: agents
-            center: content.center
-            anchors.fill: parent
-            visible: opacity > 0.01
-            opacity: pages.vis(1)
-            transform: Translate { x: pages.drift(1) }
-        }
         SoundView {
             hosting: content.hosting
             id: sound
             center: content.center
             anchors.fill: parent
             visible: opacity > 0.01
-            opacity: pages.vis(2)
-            transform: Translate { x: pages.drift(2) }
+            opacity: pages.vis(1)
+            transform: Translate { x: pages.drift(1) }
         }
         DisplayView {
             hosting: content.hosting
@@ -222,8 +211,8 @@ Item {
             center: content.center
             anchors.fill: parent
             visible: opacity > 0.01
-            opacity: pages.vis(3)
-            transform: Translate { x: pages.drift(3) }
+            opacity: pages.vis(2)
+            transform: Translate { x: pages.drift(2) }
         }
     }
 
@@ -249,11 +238,9 @@ Item {
             visible: opacity > 0.01
             Behavior on opacity { NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
             Repeater {
-                model: content.center.tab === "agents"
-                    ? [{ k: ["↑", "↓"], t: "Select" }, { k: ["↩"], t: "Jump" }, { k: ["⌫"], t: "Mark read" }]
-                    : content.center.tab === "notifications"
+                model: content.center.tab === "notifications"
                     ? [{ k: ["↑", "↓"], t: "Select" }, { k: ["↩"], t: "Open" }, { k: ["r"], t: "Reply" }, { k: ["⌫"], t: "Dismiss" }]
-                    : [{ k: ["⌥", "1–4"], t: "Tabs" }, { k: ["⎋"], t: "Close" }]
+                    : [{ k: ["⌥", "1–3"], t: "Tabs" }, { k: ["⎋"], t: "Close" }]
                 Row {
                     id: hint
                     required property var modelData

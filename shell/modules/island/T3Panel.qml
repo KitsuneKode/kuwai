@@ -20,6 +20,15 @@ FocusScope {
     }
 
     readonly property var live: T3Code.items.filter(i => i.status !== "completed" && i.status !== "failed")
+    // Finished ones are rows too, each a way to that thread: "2 finished"
+    // said how many but not which, and nothing could be done with it. Live
+    // first; finished fill what's left of eight rows.
+    readonly property var ended: T3Code.items.filter(i => i.status === "completed" || i.status === "failed")
+    readonly property var shownRows: live.slice(0, 6).concat(ended.slice(0, Math.max(2, 8 - Math.min(6, live.length))))
+    function ago(iso) {
+        const m = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 60000));
+        return m < 1 ? "just now" : m < 60 ? m + " min ago" : Math.round(m / 60) + " h ago";
+    }
     function agentName(p) {
         const base = String(p || "").replace(/_\d+$/, "");
         return ({ claudeAgent: "Claude", codex: "Codex", cursor: "Cursor", antigravity: "Antigravity", opencode: "OpenCode", gemini: "Gemini" })[base]
@@ -66,9 +75,9 @@ FocusScope {
             width: parent.width
             spacing: 2
             Repeater {
-                // Live threads only; finished ones fold into one line below
-                // (three finished rows crowded out the two still working).
-                model: ScriptModel { values: t3.live.slice(0, 6); objectProp: "title" }
+                // Live threads first (at most six, so finished ones can't crowd
+                // them out), then the finished ones, each one that thread.
+                model: ScriptModel { values: t3.shownRows; objectProp: "thread" }
                 delegate: Rectangle {
                     id: row
                     required property var modelData
@@ -127,6 +136,8 @@ FocusScope {
                             width: parent.width; elide: Text.ElideRight
                             text: (row.waits ? "Needs you" : row.failed ? "Failed" : row.done ? "Finished" : row.modelData.status === "running" ? "Working" : "Starting")
                                 + (t3.agentName(row.modelData.provider) ? " · " + t3.agentName(row.modelData.provider) : "")
+                                + (row.done && row.modelData.at ? " · " + t3.ago(row.modelData.at) : "")
+                                + (row.modelData.project ? " · " + row.modelData.project : "")
                             size: Theme.tFootnote
                             color: row.waits ? Theme.orange : Theme.textTertiary
                         }
@@ -143,20 +154,15 @@ FocusScope {
             }
         }
 
-        Row {
-            visible: T3Code.finished > 0
+        Label {
+            visible: t3.ended.length + t3.live.length > t3.shownRows.length
             leftPadding: 10
-            spacing: 8
-            Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f012c}"; font.family: Theme.fontGlyph; font.pixelSize: 13; color: Theme.green }
-            Label {
-                anchors.verticalCenter: parent.verticalCenter
-                text: T3Code.finished + " finished in the last 15 min"
-                size: Theme.tFootnote; color: Theme.textTertiary
-            }
+            text: "+" + (t3.ended.length + t3.live.length - t3.shownRows.length) + " more in T3 Code"
+            size: Theme.tFootnote; color: Theme.textTertiary
         }
 
         // The way on: T3 itself, or every agent you run (kittymux's too) in
-        // the center's Agents tab.
+        // the notch's Agents panel.
         Row {
             width: parent.width
             spacing: 8
@@ -168,7 +174,7 @@ FocusScope {
             PillButton {
                 width: (parent.width - 8) / 2
                 text: "All agents"
-                onClicked: { Island.close(); Notifs.toggleCenter("agents", "pointer", Island.screen); }
+                onClicked: Island.open("agents", Island.screen, "pointer", "island")
             }
         }
     }

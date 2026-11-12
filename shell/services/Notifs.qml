@@ -551,7 +551,7 @@ Singleton {
             item.discard = true;
             if (item.popup) item.leaving = true;
             else forget.later(item);
-            if (id === "default") root.toggleCenter("agents", "pointer", Screens.focusedName);
+            if (id === "default") Island.open("agents", Screens.focusedName, "pointer");
             return;
         }
         item.discard = true;
@@ -682,8 +682,10 @@ Singleton {
     // without it (a shortcut) Hyprland is asked which screen has focus.
     property string centerScreen: ""
     function toggleCenter(tab, via, screenName) {
+        // Agents moved to the notch's Agents panel (one place to act on them).
+        if (tab === "agents") { Island.toggle("agents", screenName || "", via || "key"); return; }
         const go = s => {
-            const t = ["agents", "sound", "controls"].includes(tab) ? tab : "notifications";
+            const t = ["sound", "controls"].includes(tab) ? tab : "notifications";
             if (centerOpen && centerTab !== t && s === centerScreen) { centerTab = t; return; }
             if (centerOpen && s !== centerScreen) {           // open elsewhere: bring it here
                 // (closedAt cleared: the reopen fell inside the click guard and was
@@ -900,7 +902,8 @@ Singleton {
     IpcHandler {
         target: "center"
 
-        // toggle/open take a tab: "notifications" (default) or "agents".
+        // toggle/open take a tab: "notifications" (default), "sound" or "controls";
+        // "agents" opens the notch's Agents panel instead.
         // Toggling to the other tab while open switches instead of closing.
         // via: "key" (shortcuts) or "pointer" (the bell). The center morphs
         // for the pointer and appears instantly for keys.
@@ -908,7 +911,8 @@ Singleton {
             root.toggleCenter(tab, via);
         }
         function open(tab: string, via: string): void {
-            root.centerTab = ["agents", "sound", "controls"].includes(tab) ? tab : "notifications";
+            if (tab === "agents") { Island.open("agents", "", via || "key"); return; }
+            root.centerTab = ["sound", "controls"].includes(tab) ? tab : "notifications";
             root.setCenter(true, via);
         }
         function close(): void {

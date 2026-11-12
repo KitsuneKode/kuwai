@@ -20,7 +20,7 @@ Scope {
     GlobalShortcut {
         appid: "rice"
         name: "agents"
-        description: "Agents: every kitty pane and T3 thread, grown out of the island (its All agents opens the center's tab)"
+        description: "Agents: every kitty pane and T3 thread, grown out of the island (the one place agents live)"
         onPressed: Island.toggle("agents", "", "key")
     }
     GlobalShortcut {
