@@ -68,12 +68,28 @@ Singleton {
         for (const r of rows.filter(x => x.kind === "closed").map(parse)) {
             if (looksLikeCommand(r.title)) r.title = agentLabel(r.agent) + " session";
             const k = r.agent + "|" + r.title + "|" + r.where;
-            if (seen[k]) continue;
+            if (seen[k] || hiddenRecent.indexOf(k) >= 0) continue;
+            r.hideKey = k;
             seen[k] = true;
             out.push(r);
             if (out.length >= 4) break;
         }
         return out;
+    }
+    // Suggestions you said no to (× or a swipe in the Agents tab): kept
+    // across restarts, the 200 newest; nothing else is stored.
+    property var hiddenRecent: []
+    readonly property string hiddenPath: (Quickshell.env("XDG_STATE_HOME") || home + "/.local/state") + "/rice/agents-hidden.json"
+    FileView {
+        id: hiddenFile
+        path: root.hiddenPath
+        printErrors: false
+        onLoaded: { try { const d = JSON.parse(text()); if (Array.isArray(d)) root.hiddenRecent = d; } catch (e) {} }
+    }
+    function hideRecent(r) {
+        if (!r || !r.hideKey || hiddenRecent.indexOf(r.hideKey) >= 0) return;
+        hiddenRecent = hiddenRecent.concat([r.hideKey]).slice(-200);
+        hiddenFile.setText(JSON.stringify(hiddenRecent));
     }
     function looksLikeCommand(t) {
         const x = String(t || "").trim();
@@ -207,6 +223,10 @@ Singleton {
             question: a.question || "",
             progress: a.progress,
             working: a.state === "working",
+            needs: a.state === "waiting",
+            since: a.since || 0,                 // unix s: when it entered this state
+            project: a.project || "",
+            pid: a.kitty_pid, w: String(a.window_id || ""),
             action: a.action
         };
     }

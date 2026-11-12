@@ -462,6 +462,7 @@ Scope {
             Component { id: updatesPanel; UpdatesPanel {} }
             Component { id: mediaPanel; MediaPanel {} }
             Component { id: t3Panel; T3Panel {} }
+            Component { id: agentsPanel; AgentsPanel {} }
             Component { id: bluetoothPanel; BluetoothPanel {} }
             Component { id: notifsPanel; NotifsPanel {} }
             Component { id: usagePanel; UsagePanel {} }
@@ -779,7 +780,7 @@ Scope {
                             height: panelScope.height - win.backH
                             active: win.panelHere || pv.value > 0.01
                             focus: true
-                            sourceComponent: ({ calendar: calendarPanel, power: powerPanel, launcher: launcherPanel, settings: settingsPanel, system: systemPanel, theme: themePanel, keys: keysPanel, switcher: switcherPanel, updates: updatesPanel, media: mediaPanel, t3: t3Panel, notifs: notifsPanel, bluetooth: bluetoothPanel, usage: usagePanel, vitals: vitalsPanel, read: readPanel })[win.shownPanel] || null
+                            sourceComponent: ({ calendar: calendarPanel, power: powerPanel, launcher: launcherPanel, settings: settingsPanel, system: systemPanel, theme: themePanel, keys: keysPanel, switcher: switcherPanel, updates: updatesPanel, media: mediaPanel, t3: t3Panel, agents: agentsPanel, notifs: notifsPanel, bluetooth: bluetoothPanel, usage: usagePanel, vitals: vitalsPanel, read: readPanel })[win.shownPanel] || null
                         }
                         // Right click (anywhere a control doesn't take it) or the mouse's back button: back.
                         TapHandler {

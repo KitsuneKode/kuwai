@@ -19,7 +19,7 @@ import Quickshell.Io
 Singleton {
     id: root
 
-    readonly property var panels: ["calendar", "power", "launcher", "settings", "system", "theme", "keys", "switcher", "updates", "media", "t3", "notifs", "bluetooth", "usage", "vitals", "read"]
+    readonly property var panels: ["calendar", "power", "launcher", "settings", "system", "theme", "keys", "switcher", "updates", "media", "t3", "agents", "notifs", "bluetooth", "usage", "vitals", "read"]
     property string panel: ""
     // Each screen's island width at rest, so other surfaces (the clipboard,
     // toasts) can grow out of exactly its shape. Set by IslandBar.

@@ -1,0 +1,79 @@
+#!/usr/bin/env python3
+"""rice-agent-models AGENT:CWD … — which model an agent pane runs, for the island's Agents panel.
+
+Prints one JSON object: {"AGENT:CWD": {"model": "claude-opus-5-5", "effort": "high"}, …}.
+Claude: the newest session log for that folder (~/.claude*/projects/<folder with / as ->/*.jsonl),
+its last real model (not "<synthetic>") and effort. Codex: the newest rollout in
+~/.codex/sessions whose cwd is that folder. Reads at most the last 256 KiB of one file per pane,
+never sends anything anywhere, and prints {} entries it can't answer as absent.
+"""
+import glob
+import json
+import os
+import re
+import sys
+
+HOME = os.path.expanduser("~")
+TAIL = 256 * 1024
+MODEL = re.compile(rb'"model"\s*:\s*"(?!codex-auto-review)([^"<][^"]{1,60})"')
+EFFORT = re.compile(rb'"(?:effort|reasoning_effort|model_reasoning_effort)"\s*:\s*"([a-z]{2,12})"')
+
+
+def tail(path):
+    try:
+        with open(path, "rb") as f:
+            f.seek(0, os.SEEK_END)
+            n = f.tell()
+            f.seek(max(0, n - TAIL))
+            return f.read()
+    except OSError:
+        return b""
+
+
+def last(rx, data):
+    m = rx.findall(data)
+    return m[-1].decode("utf-8", "replace") if m else ""
+
+
+def claude(cwd):
+    enc = re.sub(r"[^A-Za-z0-9]", "-", cwd)
+    files = []
+    for root in glob.glob(os.path.join(HOME, ".claude*", "projects")):
+        files += glob.glob(os.path.join(root, enc, "*.jsonl"))
+    if not files:
+        return None
+    data = tail(max(files, key=lambda p: os.path.getmtime(p)))
+    model = last(MODEL, data)
+    return {"model": model, "effort": last(EFFORT, data)} if model else None
+
+
+def codex(cwd):
+    files = sorted(glob.glob(os.path.join(HOME, ".codex", "sessions", "*", "*", "*", "*.jsonl")),
+                   key=lambda p: os.path.getmtime(p), reverse=True)[:30]
+    for p in files:
+        data = tail(p)
+        if (b'"cwd":"' + cwd.encode() + b'"') in data or (b'"cwd": "' + cwd.encode() + b'"') in data:
+            model = last(MODEL, data)
+            if model:
+                return {"model": model, "effort": last(EFFORT, data)}
+    return None
+
+
+def main(args):
+    out = {}
+    for arg in args[:24]:
+        agent, _, cwd = arg.partition(":")
+        if not cwd:
+            continue
+        full = HOME + cwd[1:] if cwd.startswith("~") else cwd
+        try:
+            hit = codex(full) if agent.startswith("codex") else claude(full) if agent.startswith("claude") else None
+        except Exception:
+            hit = None
+        if hit:
+            out[arg] = hit
+    print(json.dumps(out, separators=(",", ":")))
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

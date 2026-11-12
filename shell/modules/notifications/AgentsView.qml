@@ -103,9 +103,10 @@ Item {
         if (k === Qt.Key_Down) move(1);
         else if (k === Qt.Key_Up) move(-1);
         else if (k === Qt.Key_Return || k === Qt.Key_Enter) { if (x) open(x); }
-        else if ((k === Qt.Key_Delete || (k === Qt.Key_Backspace && queryEmpty)) && x && x.type === "event") {
+        else if ((k === Qt.Key_Delete || (k === Qt.Key_Backspace && queryEmpty)) && x && (x.type === "event" || x.type === "recent")) {
             move(1);
-            Kittymux.ack(x.e.id);
+            if (x.type === "event") Kittymux.ack(x.e.id);
+            else Kittymux.hideRecent(x.r);
         } else return false;
         return true;
     }
@@ -282,6 +283,9 @@ Item {
                         subtitle: [modelData.r.where, modelData.r.status].filter(s => s).join("  ·  ")
                         trailingGlyph: "\u{f0453}"           // restore
                         dim: true
+                        // Not one you'd go back to: × or a swipe, and it stays gone.
+                        dismissable: true
+                        onDismissed: Kittymux.hideRecent(modelData.r)
                     }
                 }
             }
@@ -386,6 +390,10 @@ Item {
 
         width: parent ? parent.width : 0
         height: 60
+        // Dismissable ones swipe away sideways too (SwipeAway, as notifications).
+        SwipeAway { id: swipe; span: row.width; enabled: row.dismissable; onLeaving: row.dismissed() }
+        transform: Translate { x: swipe.offset }
+        opacity: swipe.fade
 
         HoverHandler {
             id: hover
@@ -503,7 +511,7 @@ Item {
             Text {
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
-                visible: row.trailingGlyph !== "" && row.meta === ""
+                visible: row.trailingGlyph !== "" && row.meta === "" && !(row.dismissable && hover.hovered)
                 text: row.trailingGlyph
                 font.family: Theme.fontGlyph
                 font.pixelSize: 15

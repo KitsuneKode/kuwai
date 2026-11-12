@@ -69,13 +69,6 @@ Singleton {
         target: T3Code
         function onWaitingChanged() { if (T3Code.waiting === 0 && root.now && root.now.sticky && root.now.t3) root.dismissNow(); }
     }
-    // The notch's own list of waiting agents (AgentStack registers itself).
-    property var agentLists: []
-    function openAgentList(screen) {
-        const s = agentLists.find(x => x && x.bar && x.bar.screenName === screen);
-        if (s && s.many) { s.open = true; return true; }
-        return false;
-    }
     // The center's Agents tab: every one waiting, each a jump (opens it, never closes it).
     function openAgents() { if (!Notifs.centerOpen || Notifs.centerTab !== "agents") Notifs.toggleCenter("agents", "pointer", ""); }
     // Gone now (it was acted on: tapped, pulled down, swiped up).

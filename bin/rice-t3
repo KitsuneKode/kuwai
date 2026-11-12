@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # T3 Code's live work, for the island (services/T3Code.qml): one JSON line.
 #
-#   {"alive":true,"running":2,"waiting":0,"finished":1,"items":[{"status":"running"|"waiting"|"completed","title":"…","provider":"…"}]}
+#   {"alive":true,"running":2,"waiting":0,"finished":1,"items":[{"status":"running"|"waiting"|"completed","title":"…","provider":"…",
+#    "thread":"…","at":"ISO time","model":"grok-4.7","effort":"high","project":"rice"}]}
 #
 # Read-only and local: T3 Code's own state database (statev2.sqlite, opened
 # with mode=ro) through an indexed query (~3 ms), only while its server is up
@@ -22,8 +23,12 @@ pid=$(jq -r '.pid // empty' "$DIR/server-runtime.json" 2>/dev/null) || none
 # as two active. Its most telling state wins: waiting, then running, then the
 # newest of the rest.
 rows=$(timeout 3 sqlite3 -readonly -json "file:$DB?mode=ro" "
-  select status, provider, title, thread from (
+  select status, provider, title, thread, at, model, effort, project from (
     select r.status as status, r.provider as provider, coalesce(t.title, '') as title, r.thread_id as thread, r.requested_at as at,
+           json_extract(t.payload_json, '$.modelSelection.model') as model,
+           (select json_extract(o.value, '$.value') from json_each(t.payload_json, '$.modelSelection.options') o
+             where json_extract(o.value, '$.id') = 'reasoningEffort') as effort,
+           (select pp.title from projection_projects pp where pp.project_id = json_extract(t.payload_json, '$.projectId')) as project,
            row_number() over (partition by r.thread_id
                               order by (r.status = 'waiting') desc, (r.status = 'running') desc, r.requested_at desc) as n
     from orchestration_v2_projection_runs r
@@ -40,9 +45,13 @@ rows=$(timeout 3 sqlite3 -readonly -json "file:$DB?mode=ro" "
 # days, and isn't running again. Seen ones drop out by themselves when you open
 # them. Subagent sub-threads (ids starting thread:) belong to their parent.
 done_rows=$(timeout 3 sqlite3 -readonly -json "file:$DB?mode=ro" "
-  select status, provider, title, thread from (
+  select status, provider, title, thread, at, model, effort, project from (
     select r.status as status, r.provider as provider, coalesce(t.title, '') as title, r.thread_id as thread,
            r.completed_at as at, json_extract(t.payload_json, '$.lastVisitedAt') as visited,
+           json_extract(t.payload_json, '$.modelSelection.model') as model,
+           (select json_extract(o.value, '$.value') from json_each(t.payload_json, '$.modelSelection.options') o
+             where json_extract(o.value, '$.id') = 'reasoningEffort') as effort,
+           (select pp.title from projection_projects pp where pp.project_id = json_extract(t.payload_json, '$.projectId')) as project,
            row_number() over (partition by r.thread_id order by r.completed_at desc) as n
     from orchestration_v2_projection_runs r
     join orchestration_v2_projection_threads t on t.thread_id = r.thread_id
@@ -63,5 +72,5 @@ jq -cn --argjson live "$rows" --argjson done "$done_rows" --arg env "$env_id" '{
     running: ([$live[] | select(.status != "waiting")] | length),
     waiting: ([$live[] | select(.status == "waiting")] | length),
     finished: ($done | length),
-    items: ([$live[] | {status, provider, title: (.title | .[0:80]), thread}]
-          + [$done[] | {status, provider, title: (.title | .[0:80]), thread}])}' 2>/dev/null || none
+    items: ([$live[] | {status, provider, title: (.title | .[0:80]), thread, at, model, effort, project}]
+          + [$done[] | {status, provider, title: (.title | .[0:80]), thread, at, model, effort, project}])}' 2>/dev/null || none
