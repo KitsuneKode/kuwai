@@ -91,6 +91,18 @@ Item {
     readonly property string profileLabel: (profiles.find(p => p.id === PowerProfiles.profile) || profiles[1]).label
 
     readonly property real naturalHeight: column.implicitHeight + 8
+    // More below (the card stops at its cap, 780 px): a soft fade at the
+    // bottom says so; the last row looked cut, not scrollable. Gone at the end.
+    Rectangle {
+        z: 2
+        anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
+        height: 36
+        visible: flick.contentY + flick.height < flick.contentHeight - 2
+        gradient: Gradient {
+            GradientStop { position: 0; color: "transparent" }
+            GradientStop { position: 1; color: Qt.rgba(0.08, 0.085, 0.1, 0.9) }
+        }
+    }
     Flickable {
         id: flick
         anchors.fill: parent
