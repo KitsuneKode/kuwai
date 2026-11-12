@@ -9,7 +9,8 @@
 //   = 1.5 × 4  → 6        Copy
 //
 // Modes, by their first character: = calculator (math, units, currencies),
-// : emoji, ; glyphs, > every mode and action by name ("run").
+// : emoji, ; glyphs, ! processes and ports (vicinae's Kill Process / Kill
+// Port: what's using the most, end one, free a port), > every mode and action.
 // Keys: type to search, ↑↓ (or ⌃J ⌃K, ⌃N ⌃P, Tab) choose, ↵ open, Esc close.
 // Uses: ~/.local/state/rice/launcher.json (counts and times, nothing else).
 import QtQuick
@@ -33,7 +34,7 @@ FocusScope {
     property var fileHits: []
     onQueryChanged: {
         fileHits = [];
-        if (query.trim().length >= 3 && !/^[:;=>]/.test(query)) fileSoon.restart(); else fileSoon.stop();
+        if (query.trim().length >= 3 && !/^[:;=>!]/.test(query)) fileSoon.restart(); else fileSoon.stop();
         // Math the calculator can't read goes to qalc, a moment after you stop typing.
         if (hasQalc && !calcHit && Calc.looksLikeMath(query)) qalcSoon.restart();
         else { qalcSoon.stop(); qalcOut = ""; qalcFor = ""; }
@@ -154,8 +155,73 @@ FocusScope {
     readonly property var modes: [
         { name: "Calculator", sub: "Math, units, currencies", prefix: "= ", glyph: "=" },
         { name: "Emoji", sub: "Search by name, type it", prefix: ":", glyph: "\u{f0785}" },
-        { name: "Glyphs", sub: "Nerd Font symbols", prefix: ";", glyph: "\u{f0f3c}" }
+        { name: "Glyphs", sub: "Nerd Font symbols", prefix: ";", glyph: "\u{f0f3c}" },
+        { name: "Processes", sub: "What's using the most · end one · free a port (! 3000)", prefix: "!", glyph: "\u{f0675}" }
     ]
+
+    // ── `!`: processes and ports (bin/rice-procs) ──
+    // Empty: who's using the most right now. A name: what matches. A number
+    // (3000, :5173): what listens there. ↵ arms a row ("↵ again to end it"),
+    // ↵ again ends it (SIGTERM); ⌃↵ forces it (SIGKILL), armed the same way.
+    // Only your own processes; anything else says why not.
+    readonly property bool procMode: /^\s*!/.test(query)
+    readonly property string procQuery: procMode ? query.replace(/^\s*!\s*/, "") : ""
+    property var procHits: []
+    property bool procLoaded: false
+    property int armedPid: 0
+    property bool armedForce: false
+    property string procNote: ""          // the last end's outcome, said in the list
+    onProcQueryChanged: { armedPid = 0; procNote = ""; if (procMode) procSoon.restart(); }
+    onProcModeChanged: if (procMode) { procLoaded = false; procSoon.restart(); }
+    Timer { id: procSoon; interval: 180; onTriggered: { procs.running = false; procs.running = true; } }
+    // While it's open on the empty list, the numbers stay current (only then).
+    Timer { interval: 2500; repeat: true; running: launcher.procMode && launcher.armedPid === 0; onTriggered: if (!procs.running) procs.running = true }
+    Process {
+        id: procs
+        command: [Paths.bin + "/rice-procs", launcher.procQuery]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try { launcher.procHits = JSON.parse(text) || []; } catch (e) { launcher.procHits = []; }
+                launcher.procLoaded = true;
+            }
+        }
+    }
+    Process {
+        id: procEnd
+        property string who: ""
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let r = {};
+                try { r = JSON.parse(text); } catch (e) {}
+                launcher.procNote = r.ok ? "Ended " + procEnd.who + (r.why ? " (" + r.why + ")" : "") : "Couldn't end " + procEnd.who + ": " + (r.why || "unknown");
+                launcher.armedPid = 0;
+                procSoon.restart();
+            }
+        }
+    }
+    function procLabel(p) { return (p.app && p.app.toLowerCase() !== p.name.toLowerCase() ? p.app + " · " : "") + p.name; }
+    function endProc(r, force) {
+        if (!r || r.kind !== "proc") return;
+        const p = r.proc;
+        if (!p.mine || !p.pid) { procNote = p.pid ? procLabel(p) + " belongs to " + p.user + " (needs sudo)" : "Owned by another user (needs sudo): " + (p.addr || ""); return; }
+        if (armedPid !== p.pid || armedForce !== force) { armedPid = p.pid; armedForce = force; return; }
+        procEnd.who = procLabel(p) + " (" + p.pid + ")";
+        procEnd.command = [Paths.bin + "/rice-procs", "--end", String(p.pid)].concat(force ? ["--force"] : []);
+        procEnd.running = true;
+    }
+    function procRows() {
+        const mb = n => n >= 1024 ? (n / 1024).toFixed(1) + " GB" : n + " MB";
+        return procHits.map(p => ({
+            kind: "proc", proc: p, name: procLabel(p),
+            sub: (armedPid === p.pid ? (armedForce ? "⌃↵ again to force it to quit" : "↵ again to end it · ⌃↵ to force") + " · "
+                                     : "")
+                 + (p.pid ? (p.cpu >= 1 ? Math.round(p.cpu) + "% CPU · " : "") + mb(p.memMB) + " · pid " + p.pid : (p.proto || "") + " " + (p.addr || ""))
+                 + (p.ports && p.ports.length ? " · :" + p.ports.slice(0, 3).join(" :") : "")
+                 + (p.mine ? "" : " · " + p.user),
+            glyph: p.ports && p.ports.length ? "\u{f0318}" : p.cpu >= 25 ? "\u{f061a}" : "\u{f0614}",
+            armed: armedPid === p.pid
+        }));
+    }
 
     // "timer 10m pizza", "25m", "1h30m tea": a timer row (services/Timers).
     readonly property var timerRow: {
@@ -229,6 +295,15 @@ FocusScope {
             section("Run", actions.filter(hit).map(a => ({ kind: "action", action: a, name: a.name, sub: a.sub, glyph: a.glyph })));
             return out;
         }
+        if (procMode) {
+            const n = procQuery.trim();
+            const port = /^:?\d{1,5}$/.test(n);
+            if (procNote) out.push({ kind: "tips", name: "", sub: procNote, tips: [] });
+            if (!procLoaded) out.push({ kind: "tips", name: "", sub: "Reading what's running…", tips: [] });
+            else if (!procHits.length) out.push({ kind: "tips", name: "", prefix: "! ", sub: port ? "Nothing listens on " + n.replace(/^:/, "") : n ? "Nothing running matches “" + n + "”" : "Nothing found", tips: ["! zen", "! 3000", "! node"] });
+            else section(port ? "Listening on " + n.replace(/^:/, "") : n ? "Processes" : "Using the most right now", procRows());
+            return out;
+        }
         // `:` emoji, `;` Nerd-font glyphs (HyDE's databases, services/Glyphs).
         if (query.startsWith(":") || query.startsWith(";")) {
             const emo = query.startsWith(":");
@@ -292,12 +367,25 @@ FocusScope {
     // keystrokes (DESIGN.md: searching snaps, no choreography between keys) —
     // each row draws its own selection, like Spotlight.
     onResultsChanged: {
+        // Processes refresh under you: the selection stays on the same process
+        // (by pid), never slides to another one you might then end.
+        if (procMode && selPid) {
+            const at = results.findIndex(r => r.kind === "proc" && r.proc.pid === selPid);
+            if (at >= 0) { current = at; return; }
+        }
         current = results.findIndex(r => launcher.isRow(r));
         list.positionViewAtBeginning();
+    }
+    property int selPid: 0
+    onCurrentChanged: {
+        const r = results[current];
+        selPid = procMode && r && r.kind === "proc" ? r.proc.pid : 0;
+        if (armedPid && selPid !== armedPid) armedPid = 0;     // moving away disarms
     }
 
     function run(r) {
         if (!r) return;
+        if (r.kind === "proc") { endProc(r, false); return; }
         if (r.kind === "emoji" || r.kind === "glyph") {
             // Typed into the window you came from once the island lets go of
             // the keyboard, and left on the clipboard too.
@@ -392,6 +480,10 @@ FocusScope {
                 const k = event.key, ctrl = event.modifiers & Qt.ControlModifier;
                 if (k === Qt.Key_Down || k === Qt.Key_Tab || (ctrl && (k === Qt.Key_J || k === Qt.Key_N))) launcher.move(1);
                 else if (k === Qt.Key_Up || k === Qt.Key_Backtab || (ctrl && (k === Qt.Key_K || k === Qt.Key_P))) launcher.move(-1);
+                else if ((k === Qt.Key_Return || k === Qt.Key_Enter) && ctrl && launcher.results[launcher.current] && launcher.results[launcher.current].kind === "proc") {
+                    launcher.endProc(launcher.results[launcher.current], true);
+                    event.accepted = true;
+                }
                 else if ((k === Qt.Key_Return || k === Qt.Key_Enter) && launcher.results[launcher.current] && launcher.results[launcher.current].kind === "file" && (ctrl || (event.modifiers & Qt.AltModifier))) {
                     // A file: Ctrl+↩ its folder, Alt+↩ copy its path.
                     const r = launcher.results[launcher.current];
@@ -497,7 +589,7 @@ FocusScope {
                 Flow {
                     width: parent.width
                     spacing: 6
-                    Label { text: "Try"; size: Theme.tSub; weight: Theme.wSemibold; color: Theme.textTertiary; topPadding: 4 }
+                    Label { visible: row.tips && row.modelData.tips.length > 0; text: "Try"; size: Theme.tSub; weight: Theme.wSemibold; color: Theme.textTertiary; topPadding: 4 }
                     Repeater {
                         model: row.tips ? row.modelData.tips : []
                         Rectangle {
@@ -510,7 +602,7 @@ FocusScope {
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: { field.text = "= " + parent.modelData.replace("×", "*"); field.cursorPosition = field.text.length; field.forceActiveFocus(); }
+                                onClicked: { field.text = (row.modelData.prefix !== undefined ? row.modelData.prefix : "= ") + parent.modelData.replace(/^! /, "").replace("×", "*"); field.cursorPosition = field.text.length; field.forceActiveFocus(); }
                             }
                         }
                     }
@@ -558,7 +650,8 @@ FocusScope {
                 opacity: row.on && !row.header ? 1 : 0
                 Label {
                     anchors.verticalCenter: parent.verticalCenter
-                    text: ({ app: "Open", window: "Switch to", action: "Run", calc: "Copy", mode: "Use", emoji: "Type", glyph: "Type", file: "Open", web: "Search", timer: "Start" })[row.modelData.kind] || ""
+                    text: row.modelData.kind === "proc" ? (row.modelData.armed ? (launcher.armedForce ? "Force quit" : "End") : row.modelData.proc.mine ? "End…" : "")
+                        : ({ app: "Open", window: "Switch to", action: "Run", calc: "Copy", mode: "Use", emoji: "Type", glyph: "Type", file: "Open", web: "Search", timer: "Start" })[row.modelData.kind] || ""
                     size: 12
                     color: Theme.textSecondary
                 }

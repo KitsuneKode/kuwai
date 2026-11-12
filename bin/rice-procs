@@ -1,0 +1,158 @@
+#!/usr/bin/env python3
+# rice-procs — what's running, for the launcher's `!` mode (vicinae's "Kill
+# Process" / "Kill Port", which went with it on 11-05).
+#
+#   rice-procs                 the 12 processes using the most (CPU, then memory)
+#   rice-procs zen             processes whose name or command line matches
+#   rice-procs :3000 | 3000    what listens on that port (TCP or UDP)
+#   rice-procs --end PID [--force]
+#                              SIGTERM (or SIGKILL), only for your own processes;
+#                              prints {"ok": true} or {"ok": false, "why": "…"}
+#
+# One JSON line: [{pid, name, cmd, user, mine, cpu, memMB, ports, app}].
+# cpu is %, sampled over 0.4 s from /proc, so a busy process shows as busy now,
+# not on average since it started. Read-only except --end.
+import json, os, pwd, re, signal, subprocess, sys, time
+
+ME = os.getuid()
+TICK = os.sysconf("SC_CLK_TCK")
+PAGE = os.sysconf("SC_PAGE_SIZE")
+# Names a person knows, for the processes browsers and Electron apps split into.
+FRIENDLY = [(r"zen-bin", "Zen"), (r"firefox", "Firefox"), (r"chrome|chromium", "Chrome"),
+            (r"t3code", "T3 Code"), (r"QtWebEngineProcess", "Qt web view"), (r"electron", "Electron app"),
+            (r"\bcode\b|/code/", "VS Code"), (r"discord", "Discord"), (r"qs\b|quickshell", "kuwai shell")]
+
+
+def procs():
+    out = {}
+    for d in os.listdir("/proc"):
+        if not d.isdigit():
+            continue
+        p = "/proc/" + d
+        try:
+            with open(p + "/stat") as f:
+                st = f.read()
+            name = st[st.index("(") + 1:st.rindex(")")]
+            rest = st[st.rindex(")") + 2:].split()
+            ticks = int(rest[11]) + int(rest[12])
+            rss = int(rest[21]) * PAGE
+            uid = os.stat(p).st_uid
+            with open(p + "/cmdline", "rb") as f:
+                cmd = f.read().replace(b"\0", b" ").decode(errors="replace").strip()
+        except (OSError, ValueError, IndexError):
+            continue
+        if not cmd:      # kernel threads
+            continue
+        out[int(d)] = {"pid": int(d), "name": name, "cmd": cmd[:300], "uid": uid, "ticks": ticks, "rss": rss}
+    return out
+
+
+def user_of(uid):
+    try:
+        return pwd.getpwuid(uid).pw_name
+    except KeyError:
+        return str(uid)
+
+
+def ports():
+    """pid → sorted ports it listens on (ss sees only your own pids without root)."""
+    m = {}
+    try:
+        txt = subprocess.run(["ss", "-Hlntup"], capture_output=True, text=True, timeout=2).stdout
+    except (OSError, subprocess.TimeoutExpired):
+        return m, []
+    listeners = []
+    for line in txt.splitlines():
+        f = line.split()
+        if len(f) < 5:
+            continue
+        local = f[4]
+        port = local.rsplit(":", 1)[-1]
+        if not port.isdigit():
+            continue
+        pids = [int(x) for x in re.findall(r"pid=(\d+)", line)]
+        listeners.append({"port": int(port), "proto": f[0], "addr": local, "pids": pids})
+        for pid in pids:
+            m.setdefault(pid, set()).add(int(port))
+    return {k: sorted(v) for k, v in m.items()}, listeners
+
+
+def friendly(r):
+    for pat, nm in FRIENDLY:
+        if re.search(pat, r["cmd"]) or re.search(pat, r["name"]):
+            return nm
+    return ""
+
+
+def row(r, cpu, pm):
+    return {"pid": r["pid"], "name": r["name"], "cmd": r["cmd"], "user": user_of(r["uid"]),
+            "mine": r["uid"] == ME, "cpu": round(cpu, 1), "memMB": round(r["rss"] / 1048576),
+            "ports": pm.get(r["pid"], []), "app": friendly(r)}
+
+
+def end(pid, force):
+    try:
+        if os.stat("/proc/%d" % pid).st_uid != ME:
+            return {"ok": False, "why": "not yours (another user's process needs sudo)"}
+        if pid in (os.getpid(), os.getppid(), 1):
+            return {"ok": False, "why": "that's the launcher itself"}
+        os.kill(pid, signal.SIGKILL if force else signal.SIGTERM)
+        return {"ok": True}
+    except ProcessLookupError:
+        return {"ok": True, "why": "already gone"}
+    except PermissionError:
+        return {"ok": False, "why": "not allowed"}
+    except OSError as e:
+        return {"ok": False, "why": str(e)}
+
+
+def main(argv):
+    if argv[:1] == ["--end"]:
+        try:
+            pid = int(argv[1])
+        except (IndexError, ValueError):
+            print(json.dumps({"ok": False, "why": "no pid"}))
+            return
+        print(json.dumps(end(pid, "--force" in argv)))
+        return
+    q = " ".join(argv).strip()
+    a = procs()
+    time.sleep(0.4)
+    b = procs()
+    span = 0.4 * TICK
+    pm, listeners = ports()
+    cpu = {pid: max(0.0, (b[pid]["ticks"] - a[pid]["ticks"]) * 100 / span) for pid in b if pid in a}
+    port_q = re.fullmatch(r":?(\d{1,5})", q)
+    if port_q:
+        want = int(port_q.group(1))
+        rows, seen, shown = [], set(), set()
+        for l in listeners:
+            if l["port"] != want:
+                continue
+            if not l["pids"] and (l["proto"], l["addr"]) not in shown:
+                shown.add((l["proto"], l["addr"]))      # someone else's (root's) listener: ss hides the pid
+                rows.append({"pid": 0, "name": "?", "cmd": "", "user": "another user", "mine": False, "cpu": 0,
+                             "memMB": 0, "ports": [want], "app": "", "proto": l["proto"], "addr": l["addr"]})
+            for pid in l["pids"]:
+                if pid in b and pid not in seen:
+                    seen.add(pid)
+                    r = row(b[pid], cpu.get(pid, 0), pm)
+                    r["proto"], r["addr"] = l["proto"], l["addr"]
+                    rows.append(r)
+        print(json.dumps(rows))
+        return
+    if q:
+        ql = q.lower()
+        hits = [p for p in b.values() if ql in p["name"].lower() or ql in p["cmd"].lower() or ql in friendly(p).lower()]
+        hits.sort(key=lambda p: (-(p["uid"] == ME), -cpu.get(p["pid"], 0), -p["rss"]))
+        print(json.dumps([row(p, cpu.get(p["pid"], 0), pm) for p in hits[:30]]))
+        return
+    # Nothing typed: who is using the most right now. Busy first (≥ 5 % CPU),
+    # then by memory, so a runaway tab or a spinning helper is on top.
+    allp = list(b.values())
+    allp.sort(key=lambda p: (-(cpu.get(p["pid"], 0) >= 5), -(cpu.get(p["pid"], 0) if cpu.get(p["pid"], 0) >= 5 else 0), -p["rss"]))
+    print(json.dumps([row(p, cpu.get(p["pid"], 0), pm) for p in allp[:12]]))
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
