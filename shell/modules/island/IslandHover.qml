@@ -44,7 +44,9 @@ Item {
     readonly property real gap: 16
     readonly property real sideW: Math.max(28 + caps.width, 28 + rightCol.width)
     readonly property real maxW: Math.max(720, bar.implicitWidth - 40)
-    readonly property real needW: hover.media ? 720 : Math.ceil(2 * (sideW + gap) + centreRow.width)
+    // With music the card is the centre: the right column (the updates chip,
+    // the status icons) ran under it at a fixed 720.
+    readonly property real needW: Math.ceil(2 * (sideW + gap) + (hover.media ? card.width : centreRow.width))
     // While open it may grow (an account arrives) but never shrinks back: a
     // chip or the quick shelf changing size under the pointer would otherwise
     // resize the island and slide everything centred in it. Each opening
@@ -794,8 +796,10 @@ Item {
                     // "4 updates", always: hover only tints it and the tip says
                     // what a click does. Revealing "· Install" widened the
                     // chip, which resized the island and slid everything in it.
+                    // With music the chip is just the arrow and the count: the
+                    // word made the right column run under the card.
                     Label {
-                        visible: !Updates.running
+                        visible: !Updates.running && !hover.media
                         anchors.verticalCenter: parent.verticalCenter
                         text: Updates.total === 1 ? "update" : "updates"
                         size: Theme.tSub; weight: Theme.wMedium
