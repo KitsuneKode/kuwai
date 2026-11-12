@@ -16,7 +16,13 @@ layout(std140, binding = 0) uniform buf {
     float strength; // 0..1
     float full;     // 1: a floating card (all four corners); 0: hangs from the top edge
     float ear;      // px: the notch's concave ears (NotchShape), each side; 0 for none
+    vec4 tint;      // the "needs you" light's colour
+    float glow;     // 0..1+: something waits on you — the rim lit in tint, inside and out
+    float spread;   // px the item reaches past the shape (left, right, below) for the halo
 };
+
+// The shape's own box: the item less the halo's room.
+vec2 box() { return size - vec2(2.0 * spread, spread); }
 
 // A rounded box (centre p, half size b).
 float sdBox(vec2 p, vec2 b, float r) {
@@ -30,6 +36,7 @@ float sdBox(vec2 p, vec2 b, float r) {
 // end (NotchShape's PathArcs). So the hairline climbs the side and curves out
 // into the edge with the black, instead of running straight up past it.
 float shape(vec2 px) {
+    vec2 size = box();
     float lift = radius * (1.0 - full);                 // the top edge runs off the item
     vec2 c = vec2(size.x * 0.5, size.y * 0.5 - lift);
     vec2 b = vec2(size.x * 0.5 - ear, size.y * 0.5 + lift);
@@ -43,9 +50,25 @@ float shape(vec2 px) {
 }
 
 void main() {
-    vec2 px = qt_TexCoord0 * size;
+    vec2 px = qt_TexCoord0 * size - vec2(spread, 0.0);
+    vec2 bs = box();
     float d = shape(px);                                // < 0 inside
-    if (d > 0.5) { fragColor = vec4(0.0); return; }
+
+    // Something waits on you: the edge lit in tint, bleeding a little inward
+    // (light in the glass) and a soft halo outward, strongest below, gone
+    // toward the screen edge (the notch hangs from it; nothing glows there).
+    vec3 lit = vec3(0.0); float la = 0.0;
+    if (glow > 0.001) {
+        float edge = smoothstep(1.8, 0.0, abs(d + 0.9));
+        float inner = exp(d / 9.0) * step(d, 0.0);
+        float halo = exp(-max(d, 0.0) / max(spread * 0.42, 1.0)) * step(0.0, d);
+        float down = smoothstep(0.0, bs.y * 0.7, px.y);
+        float g = (edge * 0.9 + inner * 0.22 + halo * 0.5 * down) * glow;
+        g *= mix(1.0, smoothstep(0.0, 2.5, px.y), step(0.5, ear));
+        la = clamp(g * tint.a, 0.0, 1.0);
+        lit = tint.rgb * la;
+    }
+    if (d > 0.5) { fragColor = vec4(lit, la) * qt_Opacity; return; }
 
     // Edge normal from the SDF's gradient.
     vec2 e = vec2(0.75, 0.0);
@@ -53,11 +76,11 @@ void main() {
                             shape(px + e.yx) - shape(px - e.yx)) + 1e-5);
     vec2 toL = normalize(light - px + 1e-5);
     float facing = clamp(dot(n, toL) * 0.5 + 0.5, 0.0, 1.0);
-    float near = exp(-length(light - px) / max(size.x, 1.0) * 2.2);
+    float near = exp(-length(light - px) / max(bs.x, 1.0) * 2.2);
 
     float hair = smoothstep(1.6, 0.0, abs(d + 0.8));            // ~1.5 px line
     float bevel = exp(d / 7.0) * step(d, 0.0);                  // inner, fades in ~7 px
-    float sheen = smoothstep(size.y * 0.35, 0.0, px.y) * 0.035;
+    float sheen = smoothstep(bs.y * 0.35, 0.0, px.y) * 0.035;
 
     // An even hairline all round (it follows the corners, not just the flat
     // bottom), brighter where it faces the light.
@@ -66,5 +89,6 @@ void main() {
             + sheen;
     a *= strength * smoothstep(0.5, -0.5, d);
     a *= mix(1.0, smoothstep(0.0, 2.5, px.y), step(0.5, ear));   // the ears' line dissolves into the edge
-    fragColor = vec4(vec3(1.0) * a, a) * qt_Opacity;           // premultiplied
+    float oa = clamp(a + la * (1.0 - a), 0.0, 1.0);
+    fragColor = vec4(vec3(1.0) * a + lit * (1.0 - a), oa) * qt_Opacity;   // premultiplied
 }

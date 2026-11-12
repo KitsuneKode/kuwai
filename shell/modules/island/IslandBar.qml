@@ -402,6 +402,56 @@ Scope {
             // The assistant working with its panel closed (or just finished): the edge light below.
             readonly property bool assistHere: (OllamaService.bgWorking || !!OllamaService.bgDone)
                 && !panelHere && !grown && !bannerHere && !peekHere && !deviceHere
+            // The notch's corners round out as it grows: 14 at rest, 30 from
+            // ~24 px taller. (They switched at the first pixel of growth, so
+            // the corners jumped as a hover began.)
+            readonly property real shapeRadius: 14 + 16 * Math.max(0, Math.min(1, (frame.height - restH) / 24))
+            // ── Something waits on you ───────────────────────────────────
+            // An agent asking (permission, a question): Claude, Codex, agy,
+            // Cursor in kitty (kittymux), a T3 thread, the assistant's own
+            // approval. The notch's rim is lit for as long as it waits (a
+            // still light, so no frames; it blooms once as it starts and again
+            // when one more joins). The glance says who, and takes you there.
+            readonly property var waitingAgents: Kittymux.running.filter(r => r.needs)
+            readonly property int waitingCount: waitingAgents.length + T3Code.waiting + (OllamaService.pendingRequest ? 1 : 0)
+            readonly property string waitingWho: {
+                if (waitingCount > 1) return waitingCount + " need you";
+                const a = waitingAgents[0];
+                if (a) return Kittymux.agentLabel(a.agent) + " needs you";
+                if (T3Code.waiting) return "T3 needs you";
+                return OllamaService.pendingRequest ? "Assistant asks" : "";
+            }
+            function goWaiting() {
+                const a = waitingAgents[0];
+                if (a && a.action) Kittymux.act(a.action);
+                else if (T3Code.waiting) T3Code.openBest();
+                else if (OllamaService.pendingRequest) OllamaService.openSession(OllamaService.draftSessionId);
+            }
+            // Lit at rest, glancing and in the hover view; a panel over it says enough.
+            readonly property real needTarget: waitingCount > 0 && !panelHere ? 1 : 0
+            property real needGlow: 0
+            property int lastWaiting: 0
+            onNeedTargetChanged: needIn.go(needTarget > 0 && needGlow < 0.05)
+            onWaitingCountChanged: {
+                if (waitingCount > lastWaiting && needTarget > 0) needIn.go(true);
+                lastWaiting = waitingCount;
+            }
+            // Arriving: a flare, then it settles to a steady light (one bloom,
+            // not a pulse that runs as long as it waits). Going: a fade.
+            SequentialAnimation {
+                id: needIn
+                function go(bloom) {
+                    stop();
+                    const lit = win.needTarget > 0;
+                    flare.to = lit && bloom && !Theme.reduceMotion ? 1.7 : win.needGlow;
+                    flare.duration = flare.to === win.needGlow ? 0 : Theme.pulseMs;
+                    settle.to = win.needTarget;
+                    settle.duration = !lit ? Theme.exitMs * 2 : Theme.reduceMotion ? Theme.microMs : Theme.breatheMs * 2;
+                    start();
+                }
+                NumberAnimation { id: flare; target: win; property: "needGlow"; easing.type: Easing.OutCubic }
+                NumberAnimation { id: settle; target: win; property: "needGlow"; easing.type: Easing.InOutSine }
+            }
             // Expanded with a whole message (a mail, a comment): room to read it.
             readonly property real peekH: Notifs.peekExpanded ? (peekLoader.item ? Math.min(peekLoader.item.wantH, implicitHeight - 40) : 172) : 76
             readonly property real bannerH: bannerHere && alertLoader.item ? alertLoader.item.implicitHeight : 72
@@ -411,7 +461,7 @@ Scope {
             // clipboard) start from the shape actually on screen: rest, banner,
             // hover or panel. Changes with the state, not per frame.
             onTargetWChanged: Island.setRestWidth(screenName, targetW)
-            Component.onCompleted: Island.setRestWidth(screenName, targetW)
+            Component.onCompleted: { Island.setRestWidth(screenName, targetW); needGlow = needTarget; lastWaiting = waitingCount; }
             readonly property var restShape: [restW, restH, top, notch]
             onRestShapeChanged: Island.setRestShape(screenName, restW, restH, top, notch)
             Spring { id: sw; tier: win.targetW >= sw.value ? win.grow : win.shrink; epsilon: 0.3; target: win.targetW; Component.onCompleted: settle() }
@@ -637,7 +687,7 @@ Scope {
                     w: Math.max(0, sw.value)
                     h: frame.height
                     ear: win.ear
-                    radius: frame.height <= win.restH + 1 ? 14 : 30
+                    radius: win.shapeRadius
                     fill: Qt.rgba(0, 0, 0, 0.94)
                 }
                 // Liquid glass, expanded only: the rim catches the pointer.
@@ -647,11 +697,25 @@ Scope {
                     ear: win.notch ? win.ear : 0
                     // The notch's corners are continuous (squircle, NotchShape k = 1.28 r):
                     // a circle of ~1.2 r follows them; at 30 the line cut inside the curve.
-                    radius: win.notch ? 36 : Math.min(frame.height / 2, 30)
+                    radius: win.notch ? win.shapeRadius * 1.2 : Math.min(frame.height / 2, 30)
                     strength: Math.max(pv.value, m.value * 0.8)
                     light: frameHover.hovered && !Theme.reduceMotion
                         ? Qt.point(frameHover.point.position.x - x, frameHover.point.position.y)
                         : Qt.point(width * 0.22, height + 90)
+                }
+                // Something waits on you (win.waitingCount): the rim lit in
+                // the needs-you colour, with a soft halo below and beside.
+                LiquidRim {
+                    readonly property real reach: 16
+                    x: -reach
+                    width: frame.width + reach * 2
+                    height: frame.height + reach
+                    spread: reach
+                    ear: win.notch ? win.ear : 0
+                    radius: win.notch ? win.shapeRadius * 1.2 : Math.min(frame.height / 2, 30)
+                    strength: 0
+                    glow: win.needGlow
+                    tint: Theme.orange
                 }
                 GlassCard {
                     visible: !win.notch

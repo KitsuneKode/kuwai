@@ -7,7 +7,7 @@
 //
 // Where you are, when (in the same place as the full view's time chip, so the
 // clock holds still while the island grows around it), and what's playing or
-// waiting. Three doors: the time opens the calendar (as everywhere), what's
+// waiting (an agent asking you comes first, and goes to it). Three doors: the time opens the calendar (as everywhere), what's
 // playing or waiting opens Now Playing or the notifications list, and the
 // rest of the row opens everything.
 import QtQuick
@@ -23,7 +23,9 @@ Item {
     readonly property Item clockItem: glanceClock
     property bool clockHidden: false
     readonly property var player: bar.player
-    readonly property bool playing: !!player && player.isPlaying && Settings.hoverMedia
+    readonly property bool playing: !!player && player.isPlaying && Settings.hoverMedia && !waiting
+    // An agent waiting on you outranks a song: who, in the needs-you colour.
+    readonly property bool waiting: bar.waitingCount > 0
     readonly property var focusWin: bar.screenWin
     readonly property var topInfo: focusWin && focusWin.lastIpcObject ? focusWin.lastIpcObject : ({})
     readonly property string winClass: topInfo.class || (focusWin && focusWin.wayland ? (focusWin.wayland.appId || "") : "")
@@ -101,13 +103,14 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             width: Math.min(implicitWidth, glance.sideW - (art.visible ? 30 : 0))
             elide: Text.ElideRight
-            text: glance.playing ? (glance.player.trackTitle || glance.player.identity || "Playing")
+            text: glance.waiting ? glance.bar.waitingWho
+                : glance.playing ? (glance.player.trackTitle || glance.player.identity || "Playing")
                 : Notifs.dnd ? "Focus on"
                 : Notifs.missed.length ? (Notifs.missed.length === 1 ? "1 missed" : Notifs.missed.length + " missed")
                 : Notifs.inbox ? (Notifs.inbox === 1 ? "1 notification" : Notifs.inbox + " notifications")
                 : "All caught up"
-            size: Theme.tSub; weight: glance.playing ? Theme.wMedium : Theme.wRegular
-            color: glance.playing ? Theme.textSecondary : Notifs.missed.length ? Theme.textPrimary : Theme.textTertiary
+            size: Theme.tSub; weight: glance.playing || glance.waiting ? Theme.wMedium : Theme.wRegular
+            color: glance.waiting ? Theme.orange : glance.playing ? Theme.textSecondary : Notifs.missed.length ? Theme.textPrimary : Theme.textTertiary
         }
         ClippingRectangle {
             id: art
@@ -133,7 +136,9 @@ Item {
                 // What's playing or waiting is its own door too: Now Playing,
                 // or the notifications list (C there opens the center).
                 const r = right.mapFromItem(glance, eventPoint.position.x, eventPoint.position.y);
-                if (r.x >= -6 && r.x <= right.width + 6 && r.y >= -8 && r.y <= right.height + 8)
+                if (r.x >= -6 && r.x <= right.width + 6 && r.y >= -8 && r.y <= right.height + 8 && glance.waiting)
+                    glance.bar.goWaiting();
+                else if (r.x >= -6 && r.x <= right.width + 6 && r.y >= -8 && r.y <= right.height + 8)
                     Island.open(glance.playing ? "media" : "notifs", glance.bar.screenName, "pointer", "island");
                 else glance.bar.full = true;
             }

@@ -14,9 +14,17 @@ ShaderEffect {
     property real strength: 1
     property real full: 0                // 1: a floating card, all four corners
     property real ear: 0                 // a notch's concave ears (NotchShape.ear): the line curves out with them
+    // "Something waits on you": the rim lit in tint, inside and out. The item
+    // then reaches `spread` px past the shape (left, right, below) for the
+    // halo: place it at x: -spread and size it shape + (2·spread, spread).
+    // Information, not decoration: shown on battery too (it's still — it
+    // redraws only while glow changes).
+    property color tint: "transparent"
+    property real glow: 0
+    property real spread: 0
     readonly property vector2d size: Qt.vector2d(width, height)
     readonly property bool onBattery: UPower.onBattery
-    visible: strength > 0.01 && width > 40 && !onBattery
+    visible: width > 40 && ((strength > 0.01 && !onBattery) || glow > 0.01)
     blending: true
     fragmentShader: Qt.resolvedUrl("../shaders/liquidrim.frag.qsb")
 }
