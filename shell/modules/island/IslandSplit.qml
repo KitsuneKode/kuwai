@@ -103,6 +103,11 @@ Item {
     }
     Component.onCompleted: { t3NowChanged(); assign(); }
 
+    // What waits on you, by capsule: the light goes on what's asking
+    // (IslandBar keeps its own rim for what's still in the island).
+    readonly property bool agentsNeed: agentStack.list.some(a => a.needs) || Kittymux.running.some(r => r.needs)
+    readonly property bool agentsHold: agentsPill.shown
+    readonly property bool t3Hold: t3Pill.shown
     // For the window's input mask (IslandBar): what's out takes clicks.
     readonly property var pills: [musicPill, agentsPill, t3Pill, sysPill]
 
@@ -111,6 +116,7 @@ Item {
     component Pill: Item {
         id: pill
         property string name
+        property bool needs: false        // something here waits on you: an orange glass edge
         readonly property int side: split.sideOf[name] || 1
         readonly property bool shown: !!split.wants[name] && !!split.sideOf[name]
         readonly property real from: split.fromOf(name)
@@ -132,13 +138,26 @@ Item {
         scale: 0.86 + 0.14 * sv.value
         transformOrigin: side > 0 ? Item.Left : Item.Right
 
+        // Waiting on you: a soft orange halo outside, the edge lit inside
+        // (the island's own needs-you light, at capsule size).
+        Rectangle {
+            anchors { fill: parent; margins: -3 }
+            radius: height / 2
+            color: "transparent"
+            border.width: 3
+            border.color: Qt.alpha(Theme.orange, 0.22)
+            opacity: pill.needs ? 1 : 0
+            visible: opacity > 0.01
+            Behavior on opacity { NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+        }
         Rectangle {
             anchors.fill: parent
             radius: height / 2
             color: Qt.rgba(0, 0, 0, 0.94)
             // A hairline of light at the edge: glass, not a hole in the screen.
-            border.width: 1
-            border.color: Qt.rgba(1, 1, 1, 0.07)
+            border.width: pill.needs ? 1.5 : 1
+            border.color: pill.needs ? Qt.alpha(Theme.orange, 0.9) : Qt.rgba(1, 1, 1, 0.07)
+            Behavior on border.color { ColorAnimation { duration: Theme.colorMs } }
         }
         Item {
             id: slot
@@ -171,6 +190,7 @@ Item {
     Pill {
         id: agentsPill
         name: "agents"
+        needs: split.agentsNeed
         AgentStack { id: agentStack; bar: split.bar }
     }
 
@@ -178,6 +198,7 @@ Item {
     Pill {
         id: t3Pill
         name: "t3"
+        needs: split.t3Waiting
         RestMark {
             wordmark: "T3"
             value: split.t3Value
