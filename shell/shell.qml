@@ -53,7 +53,8 @@ ShellRoot {
     Center {}
     ClipboardPanel {}
     IslandBar {}
-    Lock {}
+    Lock { id: lockMod }
+    Binding { target: MemLog; property: "locked"; value: lockMod.locked }
     GoodbyeOverlay {}
     LiveWallpaper {}
     Screensaver {}
