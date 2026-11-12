@@ -28,7 +28,8 @@ Scope {
     property var realFeed: null
     LazyLoader { id: galleryLoader; active: false; Gallery {} }
     property int settingsPage: 0
-    LazyLoader { id: settingsLoader; active: false; SettingsPreview { page: hook.settingsPage } }
+    property string settingsQuery: ""
+    LazyLoader { id: settingsLoader; active: false; SettingsPreview { page: hook.settingsPage; query: hook.settingsQuery } }
     IpcHandler {
         target: "test"
         function moment(kind: string, label: string, value: string): void {
@@ -60,6 +61,8 @@ Scope {
         }
         function gallery(state: string): void { galleryLoader.active = state !== "off"; }
         function settings(page: int): void { hook.settingsPage = page; settingsLoader.active = page >= 0; }
+        // The same, with words in its search: `test settingsSearch "hover delay"`.
+        function settingsSearch(q: string): void { hook.settingsQuery = q; settingsLoader.active = true; }
         // An alarm / reminder / timer card (AlarmCard), silent; its buttons only close it.
         function card(kind: string, title: string): void {
             const sub = { alarm: "07:30 · Alarm", reminder: "Reminder · now", timer: "Timer · 10 min done" }[kind] || "";

@@ -9,6 +9,9 @@ import qs.modules.island
 PanelWindow {
     id: w
     property int page: 0
+    property string query: ""
+    // The laptop's screen when there is one: a test picture, not over your work.
+    screen: Quickshell.screens.find(s => s.name === "eDP-1") || null
     anchors { top: true; left: true }
     margins { top: 80; left: 80 }
     implicitWidth: 780
@@ -20,5 +23,5 @@ PanelWindow {
     WlrLayershell.namespace: "rice-gallery"
     mask: Region {}                      // click-through: it is only a picture
     Rectangle { anchors.fill: parent; radius: Theme.r4; color: "#1c1c1f" }
-    SettingsPanel { id: sp; anchors.fill: parent; current: w.page }
+    SettingsPanel { id: sp; anchors.fill: parent; current: w.page; searchText: w.query }
 }

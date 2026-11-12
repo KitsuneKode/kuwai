@@ -6,9 +6,12 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import qs.config
+import "settingsSearch.js" as Find
 
 Singleton {
+    id: root
     readonly property var sections: [
         { id: "bar", keys: "top bar waybar notch shape workspaces at rest battery signal music weather hover delay now playing", label: "Bar & Island", glyph: "\u{f0d6f}", tint: "#0a84ff" },
         { id: "clock", keys: "clock 24-hour time seconds date", label: "Clock & Date", glyph: "\u{f0954}", tint: "#ff9f0a" },
@@ -25,6 +28,18 @@ Singleton {
         { id: "updates", keys: "software update aur flatpak check packages", label: "Software Update", glyph: "\u{f06b0}", tint: "#30d158" },
         { id: "about", keys: "about restart version shell", label: "About", glyph: "\u{f02fd}", tint: "#8e8e93" }
     ]
+    // The panel's page Components, in sections' order (SettingsPanel's Loader).
+    readonly property var pages: ({ barPage: "bar", clockPage: "clock", notifPage: "notifs", assistantPage: "assistant", motionPage: "motion", keyboardPage: "keyboard", islandRestPage: "island", workspacesPage: "workspaces", powerPage: "power", saverPage: "saver", timePage: "time", clipboardPage: "clipboard", updatesPage: "updates", aboutPage: "about" })
+    // Every row of every page, read from the panel's own source (no page is
+    // built to be searched): [{ page, label, detail, group, words }].
+    property var rows: []
+    FileView {
+        path: Quickshell.shellDir + "/modules/island/SettingsPanel.qml"
+        onLoaded: root.rows = Find.parseRows(text(), root.pages)
+    }
+    // Rows and pages matching every word of q, best first:
+    // [{ section, row: { label, detail, group } | null }] (the Settings search).
+    function find(q, limit) { return Find.search(sections, rows, q, limit); }
     // Pages whose label or words match every word of q, best first.
     function search(q) {
         const words = String(q || "").toLowerCase().trim().split(/\s+/).filter(w => w.length > 1);

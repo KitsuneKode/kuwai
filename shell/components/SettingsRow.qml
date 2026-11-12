@@ -17,6 +17,30 @@ Item {
     // The detail wraps (up to three lines) and the row grows with it.
     height: Math.max(detail ? 60 : 46, text.implicitHeight + 24)
 
+    // Found by the Settings search (SettingsPanel.markFound): a soft accent
+    // wash while the search points here, and one pulse when you go to it
+    // (it says "this one" where the page scrolled to). Inset 4 px in the
+    // group's 12 px corners, so 8 px: concentric.
+    property bool found: false
+    property real pulseK: 0
+    function pulse() { if (!Theme.reduceMotion) pulseIn.restart(); }
+    NumberAnimation { id: pulseIn; target: row; property: "pulseK"; from: 1; to: 0; duration: Theme.breathOutMs; easing.type: Easing.OutCubic }
+    Rectangle {
+        anchors { fill: parent; margins: 4 }
+        radius: 8
+        color: Qt.alpha(Theme.accent, 0.14)
+        opacity: row.found ? 1 : 0
+        visible: opacity > 0.01
+        Behavior on opacity { NumberAnimation { duration: Theme.colorMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+    }
+    Rectangle {
+        anchors { fill: parent; margins: 4 }
+        radius: 8
+        color: Qt.alpha(Theme.accent, 0.24)
+        opacity: row.pulseK
+        visible: opacity > 0.01
+    }
+
     Rectangle {
         visible: !row.Positioner.isFirstItem
         x: 14; width: parent.width - 14; height: 1

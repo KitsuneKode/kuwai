@@ -1,7 +1,8 @@
 // Settings, grown out of the island (Super+, or the launcher's "Settings"):
 // a sidebar of sections and grouped rows, like System Settings. Every row is
 // a real setting (config/Settings, ~/.config/rice/settings.json); changes
-// apply at once, nothing to save. Keys: ↑↓ section, Esc closes.
+// apply at once, nothing to save. Keys: ↑↓ section, type (or / or Ctrl+F)
+// to search every row of every page, Esc clears the search, then closes.
 //
 //   ▣ Bar & Island     Bar & Island
 //   ▣ Clock & Date     ┌──────────────────────────────────────────┐
@@ -26,6 +27,57 @@ FocusScope {
     readonly property string rice: Paths.bin + "/rice"
     readonly property var sections: SettingsIndex.sections   // services/SettingsIndex (the launcher searches it too)
     property int current: 0
+    property alias searchText: search.text       // for the screenshot preview (TestHook)
+
+    // ── Search ── every row of every page (SettingsIndex.find): the sidebar
+    // lists what matches; ↑↓ and Enter (or a click) go there, the page
+    // scrolls to the row and it lights once. The search stays until cleared,
+    // so the next result is one key away.
+    readonly property string query: search.text.trim()
+    readonly property var results: query ? SettingsIndex.find(query, 14) : []
+    property int pick: 0
+    property string target: ""            // the row the search points at
+    onResultsChanged: { pick = 0; if (results.length) show(0, false); else target = ""; }
+    onQueryChanged: if (!query) { target = ""; markLater.restart(); }
+    property bool goPending: false
+    function show(i, go) {
+        const r = results[i];
+        if (!r) return;
+        pick = i;
+        target = r.row ? r.row.label : "";
+        goPending = go;
+        sideFlick.revealAt(i * 46, 44);
+        const si = sections.findIndex(x => x.id === r.section.id);
+        if (si >= 0 && si !== current) current = si;     // onCurrentChanged marks once the page is in
+        else markLater.restart();
+    }
+    // Once the page is built and laid out (a frame or two after it loads).
+    Timer { id: markLater; interval: 32; onTriggered: settings.markFound() }
+    // The page's rows: the target one found (a wash), scrolled to, pulsed when gone to.
+    function markFound() {
+        const go = goPending;
+        goPending = false;
+        if (!page.item) return;
+        let hit = null;
+        const walk = it => {
+            for (const c of it.children) {
+                if (c.hasOwnProperty("found") && c.hasOwnProperty("detail")) {
+                    const on = settings.target !== "" && c.label === settings.target;
+                    c.found = on;
+                    if (on && !hit) hit = c;
+                }
+                walk(c);
+            }
+        };
+        walk(page.item);
+        if (!hit) return;
+        const y = hit.mapToItem(page, 0, 0).y;
+        const to = Math.max(0, Math.min(pageFlick.contentHeight - pageFlick.height, y - pageFlick.height * 0.3));
+        if (Theme.reduceMotion) pageFlick.contentY = to;
+        else { scrollTo.to = to; scrollTo.restart(); }
+        if (go) hit.pulse();
+    }
+    NumberAnimation { id: scrollTo; target: pageFlick; property: "contentY"; duration: Theme.reflowMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
     function goTo(page) {
         const i = sections.findIndex(x => x.id === page);
         if (i >= 0) current = i;
@@ -38,6 +90,15 @@ FocusScope {
     // sections, so no control was reachable without a mouse) · PgUp / PgDn
     // scroll the page · Esc back (IslandBar).
     Keys.onPressed: event => {
+        // Typing anywhere in Settings searches (not Space: it presses the
+        // focused control). / and Ctrl+F go to the field too.
+        const mods = event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier);
+        if (!search.activeFocus && ((event.key === Qt.Key_F && (event.modifiers & Qt.ControlModifier)) || (event.text === "/" && !mods))) {
+            search.forceActiveFocus(); search.selectAll(); event.accepted = true; return;
+        }
+        if (!search.activeFocus && !mods && event.text.length === 1 && event.text > " " && event.text !== "\u007f") {
+            search.forceActiveFocus(); search.insert(search.cursorPosition, event.text); event.accepted = true; return;
+        }
         if (event.key === Qt.Key_Down) current = (current + 1) % sections.length;
         else if (event.key === Qt.Key_Up) current = (current + sections.length - 1) % sections.length;
         else if (event.key === Qt.Key_PageDown) pageFlick.contentY = Math.min(Math.max(0, pageFlick.contentHeight - pageFlick.height), pageFlick.contentY + pageFlick.height * 0.85);
@@ -45,7 +106,7 @@ FocusScope {
         else return;
         event.accepted = true;
     }
-    onCurrentChanged: { pageFlick.contentY = 0; sideFlick.reveal(current); }
+    onCurrentChanged: { scrollTo.stop(); pageFlick.contentY = 0; if (!query) sideFlick.reveal(current); markLater.restart(); }
     // A control reached with Tab scrolls into view.
     readonly property Item focusedItem: Window.activeFocusItem
     onFocusedItemChanged: {
@@ -65,27 +126,109 @@ FocusScope {
         width: Math.round(212 * Theme.textScale)   // grows with Text size
         height: parent.height
         color: Qt.rgba(1, 1, 1, 0.03)
-        Label { x: 22; y: 22; text: "Settings"; size: 13; weight: Theme.wSemibold; color: Theme.textTertiary }
+        // The search sits where the title was (System Settings): the panel
+        // says "Settings" in its own header row (Accessible name below).
+        Rectangle {
+            id: searchBox
+            x: 10; y: 12
+            width: parent.width - 20
+            height: 32
+            radius: 9
+            color: Qt.rgba(1, 1, 1, search.activeFocus ? 0.10 : 0.06)
+            border.width: 1
+            border.color: search.activeFocus ? Qt.rgba(1, 1, 1, 0.22) : Qt.rgba(1, 1, 1, 0.06)
+            Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
+            Behavior on border.color { ColorAnimation { duration: Theme.hoverMs } }
+            Text {
+                id: searchGlyph
+                anchors { left: parent.left; leftMargin: 10; verticalCenter: parent.verticalCenter }
+                text: "\u{f0349}"                                   // magnify
+                font.family: Theme.fontGlyph; font.pixelSize: 14
+                color: Theme.textTertiary
+            }
+            TextInput {
+                id: search
+                anchors { left: searchGlyph.right; right: clearSearch.visible ? clearSearch.left : parent.right; leftMargin: 7; rightMargin: 8; verticalCenter: parent.verticalCenter }
+                color: Theme.textPrimary
+                selectionColor: Qt.alpha(Theme.blue, 0.5)
+                selectedTextColor: Theme.textPrimary
+                font.family: Theme.fontText
+                font.pixelSize: 13
+                font.variableAxes: ({ "opsz": Theme.opszFor(13), "wght": Theme.wRegular })
+                font.letterSpacing: Theme.tracking(13, false)
+                renderType: Text.NativeRendering
+                cursorDelegate: SpringCaret {}
+                clip: true
+                // ↑↓ walk the results (or the pages, with nothing typed);
+                // Enter goes; Esc clears first, a second Esc closes.
+                Keys.onPressed: event => {
+                    if (settings.query && (event.key === Qt.Key_Down || event.key === Qt.Key_Up)) {
+                        const n = settings.results.length;
+                        if (n) settings.show((settings.pick + (event.key === Qt.Key_Down ? 1 : n - 1)) % n, false);
+                        event.accepted = true;
+                    } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                        if (settings.results.length) settings.show(settings.pick, true);
+                        event.accepted = true;
+                    } else if (event.key === Qt.Key_Escape && search.text !== "") {
+                        search.text = "";
+                        event.accepted = true;
+                    }
+                }
+                Label {
+                    visible: search.text === ""
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "Search"
+                    size: 13
+                    color: Theme.textTertiary
+                }
+                Accessible.role: Accessible.EditableText
+                Accessible.name: "Search settings"
+                Accessible.description: !settings.query ? "Type to find any setting"
+                    : settings.results.length === 1 ? "1 result" : settings.results.length + " results"
+            }
+            Text {
+                id: clearSearch
+                visible: search.text !== ""
+                anchors { right: parent.right; rightMargin: 9; verticalCenter: parent.verticalCenter }
+                text: "\u{f0159}"                                   // close-circle
+                font.family: Theme.fontGlyph; font.pixelSize: 14
+                color: clearArea.containsMouse ? Theme.textSecondary : Theme.textTertiary
+                Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
+                MouseArea {
+                    id: clearArea
+                    anchors { fill: parent; margins: -8 }
+                    hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                    onClicked: { search.text = ""; search.forceActiveFocus(); }
+                }
+                Accessible.role: Accessible.Button
+                Accessible.name: "Clear search"
+                Accessible.onPressAction: { search.text = ""; search.forceActiveFocus(); }
+            }
+        }
         // Scrolls (13 sections didn't fit: About was out of reach), and keeps
         // the current one in view as ↑ ↓ move.
         Flickable {
           id: sideFlick
-          x: 10; y: 52
+          x: 10; y: 54
           width: parent.width - 20
           height: parent.height - y - 10
-          contentHeight: sideCol.implicitHeight
+          contentHeight: settings.query ? resCol.implicitHeight : sideCol.implicitHeight
           clip: true
           boundsBehavior: Flickable.StopAtBounds
           interactive: contentHeight > height
-          function reveal(i) {
-              const y = i * 38, h = 36;
+          function reveal(i) { revealAt(i * 38, 36); }
+          function revealAt(y, h) {
               if (y < contentY) contentY = y;
               else if (y + h > contentY + height) contentY = y + h - height;
           }
         Column {
             id: sideCol
+            visible: !settings.query
             width: parent.width
             spacing: 2
+            Accessible.role: Accessible.PageTabList
+            Accessible.name: "Settings"
+
             Repeater {
                 model: settings.sections
                 Rectangle {
@@ -108,7 +251,69 @@ FocusScope {
                     Label { anchors { left: chip.right; leftMargin: 10; verticalCenter: parent.verticalCenter }
                     text: item.modelData.label; size: 13; weight: item.on ? Theme.wMedium : Theme.wRegular }
                     MouseArea { id: itemArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: settings.current = item.index }
+                    Accessible.role: Accessible.PageTab
+                    Accessible.name: item.modelData.label
+                    Accessible.selected: item.on
+                    Accessible.onPressAction: settings.current = item.index
                 }
+            }
+        }
+        // What the search found: the row's name, and where it lives.
+        Column {
+            id: resCol
+            visible: !!settings.query
+            width: parent.width
+            spacing: 2
+            Accessible.role: Accessible.List
+            Accessible.name: "Search results"
+            Repeater {
+                model: settings.results
+                Rectangle {
+                    id: res
+                    required property var modelData
+                    required property int index
+                    readonly property bool on: settings.pick === index
+                    width: parent.width
+                    height: 44
+                    radius: 9
+                    color: on ? Qt.rgba(1, 1, 1, 0.12) : resArea.containsMouse ? Qt.rgba(1, 1, 1, 0.05) : "transparent"
+                    Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
+                    Rectangle {
+                        id: resChip
+                        x: 8; anchors.verticalCenter: parent.verticalCenter
+                        width: 22; height: 22; radius: 6
+                        color: res.modelData.section.tint
+                        Text { anchors.centerIn: parent; text: res.modelData.section.glyph; font.family: Theme.fontGlyph; font.pixelSize: 13; color: "white" }
+                    }
+                    Column {
+                        anchors { left: resChip.right; leftMargin: 10; right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter }
+                        spacing: 1
+                        Label {
+                            width: parent.width; elide: Text.ElideRight
+                            text: res.modelData.row ? res.modelData.row.label : res.modelData.section.label
+                            size: 13; weight: res.on ? Theme.wMedium : Theme.wRegular
+                        }
+                        Label {
+                            width: parent.width; elide: Text.ElideRight
+                            text: res.modelData.row ? res.modelData.section.label + (res.modelData.row.group ? " · " + res.modelData.row.group : "") : "Page"
+                            size: 11; color: Theme.textTertiary
+                        }
+                    }
+                    MouseArea { id: resArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: settings.show(res.index, true) }
+                    Accessible.role: Accessible.ListItem
+                    Accessible.name: (res.modelData.row ? res.modelData.row.label + ", in " : "") + res.modelData.section.label
+                    Accessible.selected: res.on
+                    Accessible.onPressAction: settings.show(res.index, true)
+                }
+            }
+            // Nothing: say so, and what to try.
+            Column {
+                visible: settings.results.length === 0
+                x: 12; topPadding: 14
+                width: parent.width - 24
+                spacing: 4
+                Label { text: "No Results"; size: 13; weight: Theme.wMedium; color: Theme.textSecondary }
+                Label { width: parent.width; wrapMode: Text.Wrap; text: "Nothing in Settings matches “" + settings.query + "”. Try a shorter word."; size: 11; color: Theme.textTertiary }
             }
         }
         }
