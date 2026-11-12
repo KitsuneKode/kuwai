@@ -20,8 +20,8 @@ Scope {
     GlobalShortcut {
         appid: "rice"
         name: "agents"
-        description: "Agents (kittymux): open the center on the Agents tab"
-        onPressed: Notifs.toggleCenter("agents", "key")
+        description: "Agents: every kitty pane and T3 thread, grown out of the island (its All agents opens the center's tab)"
+        onPressed: Island.toggle("agents", "", "key")
     }
     GlobalShortcut {
         appid: "rice"

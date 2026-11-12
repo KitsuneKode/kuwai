@@ -5,7 +5,7 @@
 // styled apart. A row reads it in the island (the whole message, Reply).
 // Swipe a row sideways (or its ×, or Delete) and it's gone; the rows below
 // close up as it slides.
-//   ↑ ↓ choose · ↵ read · ⌫ / Delete dismiss · Esc back
+//   ↑ ↓ choose · ↵ read · ⌫ / Delete dismiss · C the center · Esc back
 import QtQuick
 import Quickshell
 import Quickshell.Widgets
@@ -44,6 +44,7 @@ FocusScope {
         else if (e.key === Qt.Key_Up) sel = Math.max(0, sel - 1);
         else if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) read(quick[sel]);
         else if (e.key === Qt.Key_Delete || e.key === Qt.Key_Backspace) dismissAt(sel);
+        else if (e.key === Qt.Key_C) { Island.close(); Notifs.toggleCenter("notifications", "key", Island.screen); }
         else return;
         list.positionViewAtIndex(sel, ListView.Contain);
         e.accepted = true;
@@ -261,6 +262,10 @@ FocusScope {
             }
         }
 
+        KeyHints {
+            visible: Island.via === "key"
+            hints: [["↑↓", "Choose"], ["↩", "Read"], ["⌫", "Dismiss"], ["C", "Center"], ["esc", "Back"]]
+        }
         PillButton {
             width: parent.width
             text: "Open notification center" + (Notifs.inbox > 0 ? " · " + (Notifs.inbox > 9 ? "9+" : String(Notifs.inbox)) : "")

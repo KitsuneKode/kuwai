@@ -15,7 +15,7 @@
 //     Done · T3 · Grok 4.7 high
 //   [ Usage ]  [ All agents ]
 //
-//   ↑ ↓ choose · ↵ go · Esc back
+//   ↑ ↓ choose · ↵ go · U usage · A all agents · Esc back (shown when opened by key)
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -126,6 +126,8 @@ FocusScope {
         if (e.key === Qt.Key_Down) sel = Math.min(rows.length - 1, sel + 1);
         else if (e.key === Qt.Key_Up) sel = Math.max(0, sel - 1);
         else if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) go(rows[sel]);
+        else if (e.key === Qt.Key_U) { Island.open("usage", Island.screen, "key"); }
+        else if (e.key === Qt.Key_A) { Island.close(); Notifs.toggleCenter("agents", "key", Island.screen); }
         else return;
         list.positionViewAtIndex(sel, ListView.Contain);
         e.accepted = true;
@@ -279,6 +281,11 @@ FocusScope {
             }
         }
 
+        // Opened from the keyboard: the keys, quietly (the pointer has the buttons).
+        KeyHints {
+            visible: Island.via === "key"
+            hints: [["↑↓", "Choose"], ["↩", "Go"], ["U", "Usage"], ["A", "All agents"], ["esc", "Back"]]
+        }
         // The way on: how much they've got left, or the full list with recent ones to resume.
         Row {
             width: parent.width
