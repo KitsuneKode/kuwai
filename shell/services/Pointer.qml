@@ -29,11 +29,17 @@ Singleton {
     function unwant() { wanted = Math.max(0, wanted - 1); }
     // Near the top edge of any screen (where the island is): look more often.
     property real hotBand: 140
-    readonly property bool hot: !!(Hyprland.monitors && Hyprland.monitors.values || []).some(m => {
-        const o = m.lastIpcObject || {};
-        const w = (o.width || 0) / (o.scale || 1);
-        return x >= (o.x || 0) && x < (o.x || 0) + w && y >= (o.y || 0) && y < (o.y || 0) + hotBand;
-    })
+    // A plain loop: before Hyprland's first answer `values` isn't an array
+    // yet, `.some` threw, and the binding gave undefined to a bool.
+    readonly property bool hot: {
+        const ms = Hyprland.monitors ? Hyprland.monitors.values : null;
+        for (let i = 0; ms && i < ms.length; i++) {
+            const o = ms[i].lastIpcObject || {};
+            const w = (o.width || 0) / (o.scale || 1);
+            if (x >= (o.x || 0) && x < (o.x || 0) + w && y >= (o.y || 0) && y < (o.y || 0) + hotBand) return true;
+        }
+        return false;
+    }
 
     readonly property string sockPath: (Quickshell.env("XDG_RUNTIME_DIR") || "") + "/hypr/" + (Quickshell.env("HYPRLAND_INSTANCE_SIGNATURE") || "") + "/.socket.sock"
 

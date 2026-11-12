@@ -33,21 +33,26 @@ Item {
 
     readonly property real pad: 22
     readonly property real gap: 20
-    // The time centred, the two sides the same width so it stays centred.
-    // From the labels' own text widths: the rows' widths depend on sideW, and
-    // sizing from them settled on almost nothing (the name ran under the clock).
-    readonly property real leftNeed: 26 + appName.implicitWidth
-    readonly property real rightNeed: rightText.implicitWidth + (glance.playing ? 30 : 0)
-    readonly property real sideW: Math.min(170, Math.max(96, leftNeed, rightNeed))
-    implicitWidth: Math.round(2 * (pad + sideW + gap) + when.implicitWidth)
+    // One line of type: pad · where · gap · when · gap · what · pad, the gaps
+    // equal, every label on the clock's baseline. Each side is as wide as
+    // its own text, so the time sits a little off centre when the sides
+    // differ. With both sides the width of the longer one (as before) a
+    // short app name left a wide hole on one side of the time and the other
+    // side crowded it.
+    // From the labels' own text widths: the rows' widths depend on these,
+    // and sizing from them settled on almost nothing (the name ran under the clock).
+    readonly property real leftW: Math.min(170, 26 + appName.implicitWidth)
+    readonly property real rightW: Math.min(170, rightText.implicitWidth + (glance.playing ? 30 : 0))
+    implicitWidth: Math.round(2 * (pad + gap) + leftW + rightW + when.implicitWidth)
     implicitHeight: 52
 
     // ── Where ──
     Row {
         id: left
         x: glance.pad
-        anchors.verticalCenter: parent.verticalCenter
-        width: glance.sideW
+        anchors.baseline: when.baseline
+        baselineOffset: appName.y + appName.baselineOffset
+        width: glance.leftW
         spacing: 8
         opacity: glance.bar.focusedHere ? 1 : 0.55
         Item {
@@ -61,7 +66,7 @@ Item {
         Label {
             id: appName
             anchors.verticalCenter: parent.verticalCenter
-            width: Math.min(implicitWidth, glance.sideW - 26)
+            width: Math.min(implicitWidth, glance.leftW - 26)
             elide: Text.ElideRight
             text: glance.app ? glance.app.name : glance.winClass ? glance.winClass.charAt(0).toUpperCase() + glance.winClass.slice(1) : "Desktop"
             size: Theme.tCallout; weight: Theme.wMedium
@@ -71,8 +76,12 @@ Item {
     // ── When ──
     Row {
         id: when
+        // Centred between the sides (from the middle, so it holds while the
+        // island's width springs).
         anchors.horizontalCenter: parent.horizontalCenter
+        anchors.horizontalCenterOffset: (glance.leftW - glance.rightW) / 2
         anchors.verticalCenter: parent.verticalCenter
+        baselineOffset: glanceClock.y + glanceClock.baselineOffset
         spacing: 9
         IslandClock {
             id: glanceClock
@@ -83,7 +92,7 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
         }
         Label {
-            anchors.verticalCenter: parent.verticalCenter
+            anchors.baseline: glanceClock.baseline
             text: Qt.formatDate(glance.bar.now, "ddd, MMM d")
             size: Theme.tCallout; weight: Theme.wMedium
             color: Theme.textTertiary
@@ -95,13 +104,14 @@ Item {
         id: right
         anchors.right: parent.right
         anchors.rightMargin: glance.pad
-        anchors.verticalCenter: parent.verticalCenter
+        anchors.baseline: when.baseline
+        baselineOffset: rightText.y + rightText.baselineOffset
         spacing: 8
         layoutDirection: Qt.RightToLeft
         Label {
             id: rightText
             anchors.verticalCenter: parent.verticalCenter
-            width: Math.min(implicitWidth, glance.sideW - (art.visible ? 30 : 0))
+            width: Math.min(implicitWidth, glance.rightW - (art.visible ? 30 : 0))
             elide: Text.ElideRight
             text: glance.waiting ? glance.bar.waitingWho
                 : glance.playing ? (glance.player.trackTitle || glance.player.identity || "Playing")

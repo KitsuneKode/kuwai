@@ -19,6 +19,9 @@ Row {
     property bool rounded: true
     property int duration: 560          // per character
     property int stagger: 45
+    // The cells are the digits' cap height, their baseline the cell's bottom:
+    // `anchors.baseline` lines other text up with the digits.
+    baselineOffset: height
 
     Repeater {
         model: morph.text.length
