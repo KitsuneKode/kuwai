@@ -440,14 +440,8 @@ Item {
                 color: row.working ? Theme.green : Qt.rgba(0.55, 0.55, 0.6, 1)
                 border.width: 2
                 border.color: Qt.rgba(0.09, 0.09, 0.11, 1)
-                // Working: a soft, steady pulse (about once a second).
-                SequentialAnimation on opacity {
-                    running: row.working && view.shown
-                    loops: Animation.Infinite
-                    alwaysRunToEnd: true
-                    NumberAnimation { to: 0.45; duration: 560; easing.type: Easing.InOutSine }
-                    NumberAnimation { to: 1; duration: 560; easing.type: Easing.InOutSine }
-                }
+                // Working: green, still (the words say it too; a pulse here redrew
+                // the center every frame while it was open).
             }
         }
 

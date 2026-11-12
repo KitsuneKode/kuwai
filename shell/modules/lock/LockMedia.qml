@@ -20,8 +20,11 @@ Item {
     PwNodePeakMonitor {
         id: peak
         node: Pipewire.defaultAudioSink
-        enabled: media.visible && media.player && media.player.isPlaying
+        enabled: media.visible && media.live && media.player && media.player.isPlaying
     }
+    // Someone's at the lock screen (LockView.awake): without them the bars
+    // rest at a still shape instead of redrawing 20 times a second all night.
+    property bool live: true
     readonly property real level: peak.peaks && peak.peaks.length ? Math.max(...peak.peaks) : (peak.peak || 0)
     // The bars, 20 times a second and set straight, with their small
     // randomness on the same tick (as the notch's, IslandRest). They followed

@@ -437,8 +437,7 @@ FocusScope {
             // grow already carries it in (one entrance per container).
 
             // Selection: drawn by the row itself, so it can't travel or flicker
-            // when the results change under it. Keyboard/pointer moves fade it
-            // across in 90ms; a new result list shows it already in place.
+            // when the results change under it; it moves instantly.
             Rectangle {
                 anchors.fill: parent
                 anchors.leftMargin: 2; anchors.rightMargin: 2
@@ -447,8 +446,8 @@ FocusScope {
                 color: Qt.rgba(1, 1, 1, 0.10)
                 border.width: 1
                 border.color: Qt.rgba(1, 1, 1, 0.06)
+                // Instant: arrow keys move it hundreds of times a day.
                 opacity: row.on ? 1 : 0
-                Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 0 : 90; easing.type: Easing.OutCubic } }
             }
 
             Label {

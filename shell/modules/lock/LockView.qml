@@ -7,7 +7,10 @@
 // the bottom. A key or a click turns that line into the password
 // pill (it rises out of the hint on a spring) and the clock shrinks a little
 // to make room; left empty for 12 s it settles back. The wallpaper is
-// blurred once and drifts slowly. A wrong password shakes the pill
+// blurred once and holds still (it drifted all night: a redraw every frame,
+// ~120 MB/h of the NVIDIA per-frame leak while locked). Nobody there for
+// 30 s and nothing moves: the music's bars rest, the clock wakes once a
+// minute; a key, a click or the pointer brings them back. A wrong password shakes the pill
 // (PasswordPill) and keeps the keyboard; the right one clears the blur and
 // lifts everything off the wallpaper before the lock goes.
 //
@@ -28,15 +31,26 @@ Item {
 
     readonly property string home: Quickshell.env("HOME")
     property date now: new Date()
-    Timer { interval: 1000; running: true; repeat: true; onTriggered: view.now = new Date() }
+    // The clock wakes on the minute, not every second (it shows minutes).
+    Timer {
+        id: minute
+        running: true
+        interval: 60000 - (Date.now() % 60000) + 50
+        onTriggered: { view.now = new Date(); interval = 60000 - (Date.now() % 60000) + 50; restart(); }
+    }
+    // Someone's there: for 30 s after the last key, click or pointer move.
+    // Without them the lock draws nothing new (LockMedia rests its bars).
+    property bool awake: true
+    function stir() { awake = true; idleFor.restart(); }
+    Timer { id: idleFor; interval: 30000; running: true; onTriggered: view.awake = false }
     // The clock's tint: the theme's accent, lifted towards white so it reads on any wallpaper.
     readonly property color tint: Qt.tint(Qt.rgba(1, 1, 1, 0.9), Qt.alpha(Theme.accent, 0.35))
 
     // Asking for the password, or just showing the time.
     property bool asking: false
-    function ask() { asking = true; settle.restart(); entry.focusField(); }
+    function ask() { asking = true; settle.restart(); entry.focusField(); stir(); }
     Timer { id: settle; interval: 12000; onTriggered: if (view.lock.password === "" && !view.lock.checking) view.asking = false }
-    Connections { target: view.lock; function onPasswordChanged() { if (view.lock.password !== "") { view.asking = true; settle.restart(); } } }
+    Connections { target: view.lock; function onPasswordChanged() { view.stir(); if (view.lock.password !== "") { view.asking = true; settle.restart(); } } }
 
     // Unlocking: the blur clears and the wallpaper settles to the desktop's
     // own size while everything on it lifts away; then the lock goes, onto
@@ -58,10 +72,8 @@ Item {
     Item {
         anchors.fill: parent
         scale: 1.08 - 0.08 * view.u * view.move
-        property real drift: 0
-        x: drift * (1 - view.u)
         // The wallpaper, decoded small and blurred once: the layer caches the
-        // result, so the drift only moves a texture.
+        // result.
         Item {
             anchors.fill: parent
             layer.enabled: true
@@ -84,12 +96,6 @@ Item {
             source: visible ? wall.source : ""
             sourceSize: Qt.size(view.width, view.height)
             fillMode: Image.PreserveAspectCrop
-        }
-        SequentialAnimation on drift {
-            running: !Theme.reduceMotion
-            loops: Animation.Infinite
-            NumberAnimation { from: -30; to: 30; duration: 45000; easing.type: Easing.InOutSine }
-            NumberAnimation { from: 30; to: -30; duration: 45000; easing.type: Easing.InOutSine }
         }
     }
     Rectangle { anchors.fill: parent; color: Qt.rgba(0, 0, 0, 0.22 * (1 - view.u)) }
@@ -158,7 +164,7 @@ Item {
             anchors.horizontalCenter: parent.horizontalCenter
             y: Math.round(parent.height * 0.46)
             spacing: 12
-            LockMedia { anchors.horizontalCenter: parent.horizontalCenter }
+            LockMedia { anchors.horizontalCenter: parent.horizontalCenter; live: view.awake || view.preview }
             LockNotifs { anchors.horizontalCenter: parent.horizontalCenter; onTapped: item => { view.lock.openAfter = item; view.ask(); } }
         }
 
@@ -200,6 +206,8 @@ Item {
 
     // Any click wakes the password pill too.
     TapHandler { onTapped: view.ask() }
+    // The pointer moving counts as someone there (it doesn't open the pill).
+    HoverHandler { onPointChanged: view.stir() }
 
     // Volume and brightness keys: their HUD (the session's own is under the lock).
     LockOsd {
