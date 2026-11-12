@@ -943,7 +943,7 @@ Scope {
                         height: win.panelSize.height
                         x: Math.round((body.width - width) / 2)
                         focus: win.panelHere
-                        readonly property real k: Math.max(0, Math.min(1, (pv.value - 0.5) / 0.4))
+                        readonly property real k: win.panelHere ? Math.max(0, Math.min(1, (pv.value - 0.5) / 0.4)) : win.reveal(pv.value, false)
                         // Also from one panel to another (pv stays 1): the next
                         // one appears as the shape makes room for it, not clipped.
                         opacity: k * win.fitIn(width, height).shown
