@@ -207,26 +207,38 @@ Item {
         // From 60 % tucked behind the edge to a gap clear of it.
         readonly property real off: -bodyW * 0.6 + (bodyW * 0.6 + split.gap) * sv.value
         x: side > 0 ? from + off : from - off - bodyW
-        y: split.topY + Math.round((split.h - split.ph) / 2) + pull.value
-        // Pulled down, it follows the pointer (rubber-banded); let go past
-        // the line, or flicked, it opens its panel and springs home.
+        // Pulled down (gestures skill): its bottom edge is the pointer, 1:1 up
+        // to the line, the capsule stretching like a drop (top 60 %, length
+        // 40 % of the travel); past the line it resists, and its edge lights:
+        // let go now and it opens. Released, a spring seeded with the
+        // pointer's speed takes it home (catchable: a press reads where it is).
+        readonly property real pullLine: Theme.swipeThreshold * 0.8
+        readonly property real pullP: Math.max(0, Math.min(1, pull.value / pullLine))
+        readonly property bool pullArmed: pullDrag.active && pull.value >= pullLine
+        y: split.topY + Math.round((split.h - split.ph) / 2) + Math.max(0, pull.value) * 0.6 + Math.min(0, pull.value)
         Spring { id: pull; tier: Theme.springFast; target: 0; epsilon: 0.2 }
         DragHandler {
             id: pullDrag
             enabled: pill.panel !== ""
             target: null
             xAxis.enabled: false
+            property real grab: 0
             onActiveChanged: {
-                if (active) { pull.snap(pull.value); return; }
-                const dy = translation.y;
-                if (dy > Theme.swipeThreshold * 0.6 || centroid.velocity.y / 1000 > Theme.swipeFlick) pill.openPanel();
-                pull.velocity = centroid.velocity.y;
+                if (active) { grab = pull.value; pull.snap(pull.value); return; }
+                // Opens on distance past the line, or a flick down.
+                if (pull.value >= pill.pullLine || centroid.velocity.y / 1000 > Theme.swipeFlick) pill.openPanel();
+                pull.velocity = Theme.reduceMotion ? 0 : centroid.velocity.y;
                 pull.target = 0;
             }
-            onTranslationChanged: if (active) pull.snap(translation.y > 0 ? translation.y * 40 * 0.55 / (40 + 0.55 * translation.y) : -Theme.swipeDamp(-translation.y) * 0.2)
+            onTranslationChanged: {
+                if (!active) return;
+                const d = grab + translation.y, L = pill.pullLine;
+                // 1:1 to the line, then rubber-banded; upward only a hint.
+                pull.snap(d <= 0 ? -Theme.swipeDamp(-d) * 0.25 : d <= L ? d : L + (d - L) * L * 0.55 / (L + 0.55 * (d - L)));
+            }
         }
         width: bodyW
-        height: split.ph
+        height: split.ph + Math.max(0, pull.value) * 0.4
         visible: out
         opacity: Math.min(1, sv.value * 2)
         scale: 0.86 + 0.14 * sv.value
@@ -237,7 +249,7 @@ Item {
         // same in green, fading.
         Rectangle {
             anchors { fill: parent; margins: -3 }
-            radius: height / 2
+            radius: split.ph / 2 + 3
             color: "transparent"
             border.width: 3
             border.color: Qt.alpha(pill.toned ? pill.tone : Theme.green, 0.22)
@@ -247,11 +259,13 @@ Item {
         }
         Rectangle {
             anchors.fill: parent
-            radius: height / 2
+            radius: split.ph / 2         // stays a capsule as it stretches
             color: Qt.rgba(0, 0, 0, 0.94)
             // A hairline of light at the edge: glass, not a hole in the screen.
-            border.width: pill.toned ? 1.5 : 1
-            border.color: pill.toned ? Qt.alpha(pill.tone, pill.attention ? 0.9 : 0.6) : Qt.rgba(1, 1, 1, 0.07)
+            border.width: pill.toned || pill.pullArmed ? 1.5 : 1
+            // Pulled, the glass edge brightens with the pull; at the line it's lit.
+            border.color: pill.pullArmed ? Qt.rgba(1, 1, 1, 0.55)
+                : pill.toned ? Qt.alpha(pill.tone, pill.attention ? 0.9 : 0.6) : Qt.rgba(1, 1, 1, 0.07 + 0.2 * pill.pullP)
             Behavior on border.color { ColorAnimation { duration: Theme.colorMs } }
         }
         Item {
