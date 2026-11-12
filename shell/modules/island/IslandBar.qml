@@ -145,6 +145,7 @@ Scope {
                 Region { item: split.pills[0].visible ? split.pills[0] : null }
                 Region { item: split.pills[1].visible ? split.pills[1] : null }
                 Region { item: split.pills[2].visible ? split.pills[2] : null }
+                Region { item: split.pills[3].visible ? split.pills[3] : null }
             }
             // Nearing the island: the pointer resting on the top edge over it
             // (its resting width and 80 px either side, not the grown one, so
@@ -658,9 +659,9 @@ Scope {
                 HoverHandler { id: slopHover; onHoveredChanged: win.syncHover() }
                 PointHandler { acceptedButtons: Qt.AllButtons; onActiveChanged: if (active && !frameHover.hovered) { win.hovered = false; win.syncHover(); } }
             }
-            // The split island: work in the background and music stepped aside,
-            // in their own pills beside the island at rest (under it, so they bud
-            // out from beneath its edges).
+            // The split island: what else is going on, in floating capsules
+            // either side of the island at rest (under it, so they bud out
+            // from beneath its edges).
             IslandSplit {
                 id: split
                 anchors.fill: parent
@@ -669,8 +670,6 @@ Scope {
                 rightEdge: frame.x + frame.width - win.ear
                 topY: win.top
                 h: win.restH
-                notch: win.notch
-                ear: win.ear
                 activity: restRow.activity
                 atRest: win.showBar && win.outNow && !Saver.showing && restRow.opacity > 0.5
             }

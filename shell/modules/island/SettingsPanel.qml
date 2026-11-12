@@ -376,7 +376,7 @@ FocusScope {
                 }
                 SettingsRow {
                     key: "islandSplit"
-                    label: "Separate pills"; detail: "Agents and T3 at work sit in their own pills to the right; music steps into one on the left while something else has the island"
+                    label: "Separate pills"; detail: "Agents, T3 and system news float in small capsules either side of the island, and music steps into one while something else has it"
                     Toggle { on: Settings.islandSplit; onToggled: Settings.set("islandSplit", !Settings.islandSplit) }
                 }
                 SettingsRow {
