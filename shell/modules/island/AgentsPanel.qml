@@ -15,7 +15,7 @@
 //     Done · T3 · Grok 4.7 high
 //   [ Usage ]  [ Mark all read ]           closed conversations last, to reopen
 //
-//   ↑ ↓ choose · ↵ go · U usage · A all agents · Esc back (shown when opened by key)
+//   ↑ ↓ choose · ↵ go · ⌫ remove (finished, closed) · A all read · U usage · Esc back
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -97,7 +97,7 @@ FocusScope {
                 key: "t" + i.thread, src: "t3", agent: ap.t3Agent(i.provider), title: i.title || "Untitled thread",
                 where: "T3" + (i.project && i.project !== "No project" ? " · " + i.project : ""),
                 model: ap.on(i.model, i.effort), state: st, status: "", question: "",
-                t: i.at ? Date.parse(i.at) : 0, thread: i.thread
+                t: i.at ? Date.parse(i.at) : 0, thread: i.thread, item: i
             });
         }
         // Closed conversations to reopen (kittymux asks before resuming one),
@@ -116,6 +116,16 @@ FocusScope {
     readonly property int needN: rows.filter(r => r.state === "needs").length
     readonly property int workN: rows.filter(r => r.state === "working").length
 
+    // What can be put away from here: a finished T3 thread, a finished kitty
+    // agent's unread event, a closed conversation. Working and waiting ones
+    // can't: they're live, and swiping one away would hide something still on.
+    function canDismiss(r) { return !!r && ((r.src === "t3" && (r.state === "done" || r.state === "error")) || r.src === "recent" || (r.src === "kitty" && r.event && r.state !== "needs")); }
+    function dismiss(r) {
+        if (!canDismiss(r)) return;
+        if (r.src === "t3") T3Code.dismiss(r.item);
+        else if (r.src === "recent") Kittymux.hideRecent(r.raw);
+        else Kittymux.ack(r.event);
+    }
     function go(r) {
         if (!r) return;
         Island.close();
@@ -138,8 +148,8 @@ FocusScope {
         else if (e.key === Qt.Key_U) { Island.open("usage", Island.screen, "key"); }
         else if (e.key === Qt.Key_A) Kittymux.ackAll();
         else if ((e.key === Qt.Key_Delete || e.key === Qt.Key_Backspace) && rows[sel]) {
-            if (rows[sel].src === "recent") Kittymux.hideRecent(rows[sel].raw);
-            else if (rows[sel].event) Kittymux.ack(rows[sel].event);
+            if (canDismiss(rows[sel])) dismiss(rows[sel]);
+            else if (rows[sel].event) Kittymux.ack(rows[sel].event);     // a waiting one: marked read, still listed
         }
         else return;
         list.positionViewAtIndex(sel, ListView.Contain);
@@ -203,6 +213,13 @@ FocusScope {
                 radius: Theme.r2
                 color: rowHover.hovered || ap.sel === index ? Qt.rgba(1, 1, 1, 0.07) : "transparent"
                 Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
+                // Swipe away sideways (or ×, or ⌫ on the selected row): it slides
+                // out, then goes; the rest close the gap.
+                readonly property bool dismissable: ap.canDismiss(modelData)
+                opacity: swipe.fade
+                transform: Translate { x: swipe.offset }
+                SwipeAway { id: swipe; enabled: row.dismissable; span: row.width; onLeaving: goLater.start() }
+                Timer { id: goLater; interval: Theme.reduceMotion ? 0 : Theme.swipeOutMs; onTriggered: ap.dismiss(row.modelData) }
                 Accessible.role: Accessible.ListItem
                 Accessible.name: modelData.title + ", " + ap.word(modelData.state) + (modelData.where ? ", " + modelData.where : "") + (modelData.model ? ", " + modelData.model : "")
                 Accessible.description: modelData.question || ""
@@ -263,6 +280,9 @@ FocusScope {
                             id: age
                             anchors { right: parent.right; baseline: title.baseline }
                             text: ap.ago(row.modelData.t)
+                            // The × takes its place on hover (a removable row).
+                            opacity: row.dismissable && rowHover.hovered ? 0 : 1
+                            Behavior on opacity { NumberAnimation { duration: Theme.hoverMs } }
                             size: Theme.tFootnote; color: Theme.textTertiary
                             font.features: ({ "tnum": 1 })
                         }
@@ -290,7 +310,21 @@ FocusScope {
                     cursorShape: Qt.PointingHandCursor
                     onHoveredChanged: if (hovered) { ap.keyboard = false; ap.sel = row.index; }
                 }
-                TapHandler { onTapped: ap.go(row.modelData) }
+                TapHandler { onTapped: if (!xHover.hovered) ap.go(row.modelData) }
+                Rectangle {
+                    visible: row.dismissable
+                    opacity: rowHover.hovered ? 1 : 0
+                    Behavior on opacity { NumberAnimation { duration: Theme.hoverMs } }
+                    anchors { right: parent.right; rightMargin: 8; top: parent.top; topMargin: 8 }
+                    width: 22; height: 22; radius: 11
+                    color: xHover.hovered ? Theme.pillHover : Theme.pill
+                    Text { anchors.centerIn: parent; text: "\u{f0156}"; font.family: Theme.fontGlyph; font.pixelSize: Theme.tSub; color: Theme.textSecondary }
+                    HoverHandler { id: xHover; margin: 8 }
+                    TapHandler { gesturePolicy: TapHandler.ReleaseWithinBounds; onTapped: swipe.away(1) }
+                    Accessible.role: Accessible.Button
+                    Accessible.name: "Remove " + row.modelData.title
+                    Accessible.onPressAction: swipe.away(1)
+                }
             }
         }
 

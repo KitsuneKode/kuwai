@@ -66,13 +66,16 @@ Singleton {
     readonly property var recent: {
         const seen = {}, out = [];
         for (const r of rows.filter(x => x.kind === "closed").map(parse)) {
-            if (looksLikeCommand(r.title)) r.title = agentLabel(r.agent) + " session";
+            // No real title (a command, a bare shell or agent name): nothing to
+            // tell it apart from the others, so it isn't offered (it listed
+            // "zsh", "zsh", "claude · resume" side by side).
+            if (looksLikeCommand(r.title)) continue;
             const k = r.agent + "|" + r.title + "|" + r.where;
             if (seen[k] || hiddenRecent.indexOf(k) >= 0) continue;
             r.hideKey = k;
             seen[k] = true;
             out.push(r);
-            if (out.length >= 4) break;
+            if (out.length >= 3) break;
         }
         return out;
     }
@@ -93,6 +96,8 @@ Singleton {
     }
     function looksLikeCommand(t) {
         const x = String(t || "").trim();
+        // A bare shell or agent name ("zsh", "claude · resume") says nothing either.
+        if (/^(zsh|bash|fish|sh|nu|kitty|claude|codex|agy|cursor|opencode|gemini|grok)(\s*[·:-]\s*(resume|continue|new))?$/i.test(x)) return true;
         return x === "" || /^(rm|cd|ls|git|sudo|cat|mv|cp|kill|pkill|cc|cdx|npm|bun|pnpm|yarn|make|python3?|node|ssh|exit|clear|vim|nvim)\b/.test(x)
             || /(^|\s)(-{1,2}[a-z]|~\/|\/[a-z])/i.test(x);
     }
