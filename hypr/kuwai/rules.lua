@@ -110,7 +110,14 @@ rule({ name = "pip-look", match = { tag = "pip" }, opacity = "1.0 override 1.0 o
 ---------------------------------------------------------------------------
 rule({ name = "idle-media", match = { class = "^(.*celluloid.*|.*mpv.*|.*vlc.*|.*[Ss]potify.*|.*[Cc]ider.*)$" }, idle_inhibit = "fullscreen" })
 rule({ name = "idle-browsers", match = { class = "^(.*LibreWolf.*|.*floorp.*|.*brave-browser.*|.*firefox.*|.*chromium.*|.*zen.*|google-chrome.*|.*vivaldi.*)$" }, idle_inhibit = "fullscreen" })
-rule({ name = "video-content", match = { class = "^(mpv|vlc|io\\.github\\.celluloid_player\\.Celluloid)$" }, content = "video" })
+rule({ name = "video-content", match = { class = "^(mpv|vlc|io\\.github\\.celluloid_player\\.Celluloid|haruna|clapper)$" }, content = "video" })
+-- A fullscreen terminal or editor must not modeset the panel just because
+-- Movie (or a game) has auto-HDR armed. The wiki's case is foot.
+rule({
+	name = "no-auto-hdr-work",
+	match = { class = "^(kitty|com\\.mitchellh\\.ghostty|foot|footclient|Alacritty|org\\.wezfurlong\\.wezterm|code|Code|neovide|emacs|zeditor)$" },
+	no_auto_hdr = true,
+})
 
 -- VRR only where it helps. On 0.57 a fullscreen window turns adaptive sync on
 -- whatever the monitor's vrr mode says (even 0), and an LCD whose refresh

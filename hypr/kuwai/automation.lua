@@ -161,7 +161,12 @@ if K.feature("auto_battery") and AC then
 		-- The display preset's battery layer (kuwai.display) changes with it;
 		-- an open colour app (accurate) stays on top.
 		local display_changed = false
-		if K.feature("auto_display") and K.state["display_auto"] ~= "accurate" then
+		-- display.lua owns the stack (accurate, then a focused player, then
+		-- battery). It is loaded after this file; by the time power changes,
+		-- K.display is there. Fall back to the battery bit if it isn't.
+		if K.feature("auto_display") and K.display and K.display.reconcile then
+			K.display.reconcile()
+		elseif K.feature("auto_display") and K.state["display_auto"] ~= "accurate" then
 			local want = (not online) and "battery" or nil
 			if K.state["display_auto"] ~= want then
 				K.set_state("display_auto", want)

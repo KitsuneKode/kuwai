@@ -21,19 +21,25 @@ icon: scroll to change, click for Controls), or `kuwai display NAME`
 
 **Automatic** (feature `auto_display`, only while you're on Everyday): an open
 colour app (Krita, GIMP, Inkscape, Darktable, Kdenlive, Blender, Figma…;
-`K.colour_apps` in `user.lua` extends it) → Accurate until the last one closes;
-unplugged → Battery. Choosing a preset yourself wins until the next trigger.
-Movie is never automatic: changing the rate as a video goes fullscreen would
-blank the screen each time.
+`K.colour_apps` in `user.lua` extends it) → Accurate until the last one closes.
+A video player (mpv, VLC, Celluloid, Haruna, Clapper) focused, and not
+fullscreen, for a little over a second → Movie, so the external screen is
+already at 120 Hz before you go fullscreen. The rate is not changed while
+that picture is fullscreen. A fullscreen game arms HDR without taking the
+Gaming preset. Unplugged → Battery, unless a colour app or a player is in
+front. Choosing a preset yourself wins until you return to Everyday.
 
 ## HDR
 
 Leave the monitor's own HDR setting on **Auto**. Everyday, accurate and
-battery keep the screen on the sRGB picture from `monitors.lua`: a browser
-fullscreen that advertises HDR must not modeset the panel (that flash is
-what made colours and typing jump). Movie and gaming turn
-`render.cm_auto_hdr` on, so a real HDR film or game can switch the screen
-and switch it back. The notch says **HDR** when it happens.
+battery keep the screen on the sRGB picture from `monitors.lua`. A browser
+stays on that picture: it is not treated as a player, because a fullscreen
+page that advertises HDR modesets the panel. Movie, gaming, a settled
+player, and a fullscreen game turn `render.cm_auto_hdr` on, so a real HDR
+film or game can switch the screen and switch it back. Terminals and
+editors are marked `no_auto_hdr`, so a fullscreen shell cannot. The notch's HDR label follows the preset name. An automatic switch keeps
+that name at `srgb`, so the label stays off until the shell can read the
+live infoframe.
 
 mpv must tag its output with the source's colours, not the screen's:
 `target-colorspace-hint-mode=source` in `mpv.conf`. Without it (mpv > 0.40's

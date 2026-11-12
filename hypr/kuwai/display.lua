@@ -18,8 +18,12 @@
 -- Automatic (feature auto_display), only while you've chosen everyday:
 --   a colour app is open (Krita, GIMP, Inkscape, Darktable…) → accurate,
 --   until the last one closes; unplugged → battery (with auto_battery).
---   Movie is never automatic: changing the rate as a video goes fullscreen
---   would blank the screen each time.
+--   A video player focused, and not fullscreen, for a little over a second
+--   → movie (120 Hz, HDR ready). The rate is not touched while that picture
+--   is fullscreen: a modeset there blanks the panel. Fullscreen HDR on the
+--   current rate still arms (cm_auto_hdr 2). A fullscreen game arms HDR the
+--   same way and does not take the gaming preset — that preset reloads, and
+--   auto_game already drops the effects.
 --
 -- `kuwai.display("movie")`, `kuwai.display()` → the preset in effect.
 -- State (~/.local/state/kuwai/state): display = your choice, display_auto =
@@ -270,7 +274,9 @@ function kuwai.displays()
 end
 
 ---------------------------------------------------------------------------
--- Automatic: colour apps → accurate
+-- Automatic, only on top of everyday.
+-- Colour work wins. A player you have settled on takes Movie, but never by
+-- modesetting under a fullscreen picture. A fullscreen game only arms HDR.
 ---------------------------------------------------------------------------
 local function colour_app(w)
 	local c = (w and (w.class or w.initial_class) or ""):lower()
@@ -284,20 +290,51 @@ local function colour_app(w)
 	end
 end
 
-local function sync_colour(gone)
-	if not K.feature("auto_display") then
-		return
-	end
+local function find_colour(gone)
 	local why
 	for _, w in ipairs(hl.get_windows() or {}) do
 		if w ~= gone and (not gone or w.address ~= gone.address) then
 			why = why or colour_app(w)
 		end
 	end
-	if why then
-		D.auto("accurate", why)
-	elseif K.state["display_auto"] == "accurate" then
-		D.auto(D.battery_auto())
+	return why
+end
+
+local function is_video(w)
+	if not w then
+		return false
+	end
+	if w.content_type == "video" then
+		return true
+	end
+	local c = (w.class or w.initial_class or ""):lower()
+	return c:find("mpv", 1, true) ~= nil
+		or c == "vlc"
+		or c:find("celluloid", 1, true) ~= nil
+		or c:find("haruna", 1, true) ~= nil
+		or c:find("clapper", 1, true) ~= nil
+end
+
+local function is_game(w)
+	if not w then
+		return false
+	end
+	if w.content_type == "game" then
+		return true
+	end
+	local c = (w.class or w.initial_class or ""):lower()
+	return c:match("^steam_app_") ~= nil or c == "gamescope" or c:match("%.exe$") ~= nil or c == "cs2"
+end
+
+local function fullscreen(w)
+	return w and (w.fullscreen or 0) > 0
+end
+
+local function any_such(pred)
+	for _, w in ipairs(hl.get_windows() or {}) do
+		if pred(w) then
+			return w
+		end
 	end
 end
 
@@ -308,18 +345,171 @@ function D.battery_auto()
 	end
 end
 
+-- cm_auto_hdr armed without a preset change. The preset's own apply() owns
+-- the flag while Movie, Gaming or Accurate is in effect. Kept local so a
+-- later "off" cannot run while one of those still wants it on.
+local hdr_forced = false
+local function preset_wants_hdr()
+	local p = D.current()
+	return p == "movie" or p == "gaming"
+end
+local function hdr_arm(on)
+	if preset_wants_hdr() then
+		return
+	end
+	if on == hdr_forced then
+		return
+	end
+	hdr_forced = on
+	K.config({ render = { cm_auto_hdr = on and 2 or 0 } })
+end
+
+-- One outstanding settle. A new reason cancels the previous timer.
+local ticket, pending = 0, nil
+local function cancel()
+	pending = nil
+	ticket = ticket + 1
+end
+local function schedule(kind, ms, fn)
+	if pending == kind then
+		return
+	end
+	pending = kind
+	ticket = ticket + 1
+	local mine = ticket
+	hl.timer(function()
+		if mine ~= ticket then
+			return
+		end
+		pending = nil
+		fn()
+	end, { timeout = ms, type = "oneshot" })
+end
+
+local function go(preset, why)
+	hdr_forced = false -- apply() sets the flag for the preset we land on
+	D.auto(preset, why)
+end
+
+-- The window an event just handed us, when it is the one in front.
+-- window.open runs before get_active_window() sees the new player, and a
+-- fullscreen callback can run while the active window is still the one behind.
+local function front(hint)
+	local active = hl.get_active_window()
+	if hint and (is_video(hint) or is_game(hint)) then
+		if fullscreen(hint) or not active or active.address == hint.address then
+			return hint
+		end
+	end
+	return active
+end
+
+-- What everyday should be showing right now.
+function D.reconcile(gone, hint)
+	if not K.feature("auto_display") or D.choice() ~= "everyday" then
+		return
+	end
+	local colour = find_colour(gone)
+	local video_fs = any_such(function(w)
+		return is_video(w) and fullscreen(w)
+	end)
+	local active = front(hint)
+	local watching = is_video(active) or video_fs
+	-- A colour app wins, except under a fullscreen picture: leaving Movie
+	-- for Accurate there reloads sRGB while the PQ signal is still up and
+	-- the panel keeps the wide primaries.
+	if colour and not video_fs then
+		cancel()
+		go("accurate", colour)
+		return
+	end
+	if watching then
+		if pending == "idle" then
+			cancel()
+		end
+		if video_fs and D.current() ~= "movie" then
+			-- Same rate. Hyprland flips to PQ only if this frame is HDR.
+			hdr_arm(true)
+			return
+		end
+		if not video_fs and K.state["display_auto"] ~= "movie" and not colour then
+			local why = (active and (active.class or active.initial_class)) or "video"
+			schedule("movie", 1200, function()
+				if D.choice() ~= "everyday" or find_colour() then
+					return
+				end
+				local fs = any_such(function(w)
+					return is_video(w) and fullscreen(w)
+				end)
+				if fs or not is_video(hl.get_active_window()) then
+					return
+				end
+				go("movie", why)
+			end)
+		end
+		return
+	end
+	if any_such(function(w)
+		return is_game(w) and fullscreen(w)
+	end) then
+		cancel()
+		hdr_arm(true)
+		return
+	end
+	-- Focus has left the player and nothing is fullscreen. Wait, so a glance
+	-- at another window does not modeset the Acer back to 200 Hz. Nothing to
+	-- undo: don't arm a timer at all.
+	local back = D.battery_auto()
+	if not hdr_forced and K.state["display_auto"] == back then
+		return
+	end
+	schedule("idle", 2500, function()
+		if find_colour() then
+			go("accurate", find_colour())
+			return
+		end
+		if is_video(hl.get_active_window()) or any_such(function(w)
+			return (is_video(w) or is_game(w)) and fullscreen(w)
+		end) then
+			return
+		end
+		hdr_arm(false)
+		local preset, why = D.battery_auto()
+		if K.state["display_auto"] ~= preset then
+			go(preset, why)
+		end
+	end)
+end
+
 hl.on("window.open", function(w)
-	if colour_app(w) then
-		sync_colour()
+	D.reconcile(nil, w)
+	-- Focus often lands a moment after open. A raw timer, so this retry
+	-- cannot cancel a Movie settle that reconcile just armed.
+	if is_video(w) then
+		hl.timer(function()
+			D.reconcile()
+		end, { timeout = 500, type = "oneshot" })
+	end
+end)
+hl.on("window.active", function(w)
+	D.reconcile(nil, w)
+end)
+hl.on("window.class", function(w)
+	D.reconcile(nil, w)
+end)
+hl.on("window.fullscreen", function(w)
+	D.reconcile(nil, w)
+end)
+hl.on("window.update_rules", function(w)
+	if is_video(w) or is_game(w) then
+		D.reconcile(nil, w)
 	end
 end)
 hl.on("window.destroy", function(w)
-	if K.state["display_auto"] == "accurate" and colour_app(w) then
-		sync_colour(w)
-	end
+	D.reconcile(w)
 end)
 K.defer(function()
-	sync_colour() -- e.g. Krita already open across a reload or restart
+	D.reconcile() -- a colour app or a player already open across a reload
 end)
 
 kuwai.display_module = D
