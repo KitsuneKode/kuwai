@@ -25,7 +25,7 @@ Item {
     // of the rest state shows (0 while it's grown, hidden or tucked).
     property real leftEdge: 0
     property real rightEdge: 0
-    property real top: 0
+    property real topY: 0
     property real h: 34
     property bool notch: true
     property real ear: 9
@@ -59,7 +59,7 @@ Item {
         // Out from under the edge: from 60 % tucked behind it to a gap clear of it.
         readonly property real off: -bodyW * 0.6 + (bodyW * 0.6 + split.gap) * sv.value
         x: side > 0 ? from + off - split.ear : from - off - bodyW - split.ear
-        y: split.top
+        y: split.topY
         width: bodyW + split.ear * 2
         height: split.h
         visible: out

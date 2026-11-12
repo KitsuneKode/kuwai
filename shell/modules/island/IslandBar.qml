@@ -667,7 +667,7 @@ Scope {
                 bar: win
                 leftEdge: frame.x + win.ear
                 rightEdge: frame.x + frame.width - win.ear
-                top: win.top
+                topY: win.top
                 h: win.restH
                 notch: win.notch
                 ear: win.ear
