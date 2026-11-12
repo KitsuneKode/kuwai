@@ -38,8 +38,22 @@ Item {
     // (not a moment: a 3-second "Copied" would pop it out and back).
     readonly property bool musicAside: on && atRest && !!player && player.isPlaying && Settings.restMedia
         && ["vox", "rec", "timer", "update"].indexOf(activity) >= 0
-    readonly property bool agentsOut: on && atRest && agentStack.list.length > 0
-    readonly property bool t3Out: on && atRest && T3Code.total > 0
+    // A pill folds only after its work has been gone a few seconds: T3's
+    // count blinks to 0 between two runs of a thread, and a pill popping in
+    // and out on that is noise. (Meanwhile it shows its last value.)
+    readonly property bool agentsLive: agentStack.list.length > 0
+    readonly property bool t3Live: T3Code.total > 0
+    onAgentsLiveChanged: if (!agentsLive) agentsLinger.restart()
+    onT3LiveChanged: if (!t3Live) t3Linger.restart()
+    Timer { id: agentsLinger; interval: 3000 }
+    Timer { id: t3Linger; interval: 4000 }
+    property string t3Value: ""
+    property bool t3Waiting: false
+    readonly property var t3Now: [T3Code.running, T3Code.waiting]
+    onT3NowChanged: if (t3Live) { t3Value = String(T3Code.waiting > 0 ? T3Code.waiting : T3Code.running); t3Waiting = T3Code.waiting > 0; }
+    Component.onCompleted: t3NowChanged()
+    readonly property bool agentsOut: on && atRest && (agentsLive || agentsLinger.running)
+    readonly property bool t3Out: on && atRest && (t3Live || t3Linger.running)
     // For the window's input mask (IslandBar): what's out takes clicks.
     readonly property var pills: [musicPill, agentsPill, t3Pill]
 
@@ -125,9 +139,9 @@ Item {
         shown: split.t3Out
         RestMark {
             wordmark: "T3"
-            value: T3Code.waiting > 0 ? String(T3Code.waiting) : String(T3Code.running)
-            ring: T3Code.waiting > 0 ? "solid" : "spin"
-            tone: T3Code.waiting > 0 ? Theme.orange : Theme.cyan
+            value: split.t3Value
+            ring: split.t3Waiting ? "solid" : "spin"
+            tone: split.t3Waiting ? Theme.orange : Theme.cyan
             previews: true
             onPreviewRequested: if (Island.panel === "") Island.preview("t3", split.bar.screenName)
             onClicked: T3Code.openBest()

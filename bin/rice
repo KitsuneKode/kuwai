@@ -71,7 +71,7 @@ set_setting() {
     mkdir -p "$(dirname "$SETTINGS")"
     [ -s "$SETTINGS" ] || echo '{}' > "$SETTINGS"
     tmp=$(mktemp "$SETTINGS.XXXXXX")
-    if jq -e . >/dev/null 2>&1 <<<"$value"; then
+    if jq . >/dev/null 2>&1 <<<"$value"; then  # (not -e: that fails on false and null)
         jq --arg k "$key" --argjson v "$value" '.[$k] = $v' "$SETTINGS" > "$tmp"
     else
         jq --arg k "$key" --arg v "$value" '.[$k] = $v' "$SETTINGS" > "$tmp"
