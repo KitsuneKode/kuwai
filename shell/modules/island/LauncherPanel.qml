@@ -128,7 +128,7 @@ FocusScope {
     Process { running: true; command: ["sh", "-c", "command -v qalc >/dev/null"]; onExited: code => launcher.hasQalc = code === 0 }
     property string qalcFor: ""
     property string qalcOut: ""
-    readonly property bool calcMode: query.trimStart().startsWith("=")
+    readonly property bool calcMode: /^\s*=/.test(query)
     Timer { id: qalcSoon; interval: 140; onTriggered: { qalc.running = false; launcher.qalcFor = launcher.query; qalc.running = true; } }
     Process {
         id: qalc
