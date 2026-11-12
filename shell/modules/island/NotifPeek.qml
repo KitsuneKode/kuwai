@@ -115,8 +115,10 @@ Item {
     Item {
         id: mark
         x: peek.pad
-        y: peek.expanded ? peek.pad : undefined
-        anchors.verticalCenter: peek.expanded ? undefined : parent.verticalCenter
+        // Plain y, no anchor switched on and off: `y: … : undefined` under an
+        // anchor that comes and goes kept a stale y (Qt can't assign
+        // undefined), so the expanded mark sat ~17 px high, cut by the top.
+        y: peek.expanded ? peek.pad : Math.round((peek.height - height) / 2)
         width: 42; height: 42
         scale: peek.pop
         ClippingRectangle {
@@ -146,9 +148,8 @@ Item {
             left: mark.right; leftMargin: 12
             right: peek.expanded ? parent.right : go.left
             rightMargin: peek.expanded ? peek.pad : 36
-            top: peek.expanded ? mark.top : undefined
-            verticalCenter: peek.expanded ? undefined : parent.verticalCenter
         }
+        y: peek.expanded ? mark.y : Math.round((peek.height - height) / 2)
         height: copyCol.implicitHeight   // centred on the mark, not hanging from its middle
         TapHandler {
             onTapped: {
