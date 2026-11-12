@@ -328,7 +328,7 @@ FocusScope {
         width: parent.width - x
         height: parent.height
 
-        Label { id: heading; x: 28; y: 20; text: settings.sections[settings.current].label; size: 20; weight: Theme.wSemibold }
+        Label { id: heading; x: 28; y: 20; text: (settings.sections[settings.current] || {}).label || ""; size: 20; weight: Theme.wSemibold }
 
         Flickable {
             id: pageFlick
