@@ -19,11 +19,18 @@ function parseRows(src, pages) {
     for (let i = 0; i < marks.length; i++) {
         const chunk = text.slice(marks[i].at, i + 1 < marks.length ? marks[i + 1].at : text.length);
         const page = pages[marks[i].id];
-        // Group titles in order, so a row knows the group it sits under.
-        const titles = [];
-        const tre = /(?:^|[;\n])\s*title:\s*"([^"]+)"/g;
-        let t;
-        while ((t = tre.exec(chunk))) titles.push({ at: t.index, title: t[1] });
+        // Each SettingsGroup and its own title ("" when it has none: an
+        // untitled group doesn't inherit the one above it).
+        const groups = [];
+        const gre = /\bSettingsGroup\s*\{/g;
+        let g;
+        while ((g = gre.exec(chunk))) groups.push({ at: g.index, title: "" });
+        for (let k = 0; k < groups.length; k++) {
+            const end = k + 1 < groups.length ? groups[k + 1].at : chunk.length;
+            const head = chunk.slice(groups[k].at, end).split(/\bSettingsRow\s*\{/)[0];
+            const t = /(?:^|[;\n{])\s*title:\s*"([^"]+)"/.exec(head);
+            if (t) groups[k].title = t[1];
+        }
         const starts = [];
         const rre = /\bSettingsRow\s*\{/g;
         let r;
@@ -42,7 +49,7 @@ function parseRows(src, pages) {
             let o;
             while ((o = ore.exec(body))) opts.push(o[1]);
             let group = "";
-            for (const g of titles) if (g.at < at) group = g.title;
+            for (const gr of groups) if (gr.at < at) group = gr.title;
             rows.push({ page, label: lab[1], detail: det ? det[1] : "", group,
                         words: [lab[1], det ? det[1] : "", opts.join(" "), group].join(" ").toLowerCase() });
         }
@@ -77,6 +84,7 @@ function search(sections, rows, q, limit) {
             else { ok = false; break; }
         }
         if (!ok || !own) continue;
+        if (lab.includes(words[0])) score += 1;          // what you typed first is what you mean most
         out.push({ section: s, row: { label: r.label, detail: r.detail, group: r.group }, score });
     }
     // The page itself too, when its name or keywords hold every word; first

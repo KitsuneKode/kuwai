@@ -37,6 +37,7 @@ FocusScope {
     readonly property var results: query ? SettingsIndex.find(query, 14) : []
     property int pick: 0
     property string target: ""            // the row the search points at
+    property string targetGroup: ""       // and its group (Lock is in On power and On battery)
     onResultsChanged: { pick = 0; if (results.length) show(0, false); else target = ""; }
     onQueryChanged: if (!query) { target = ""; markLater.restart(); }
     property bool goPending: false
@@ -45,6 +46,7 @@ FocusScope {
         if (!r) return;
         pick = i;
         target = r.row ? r.row.label : "";
+        targetGroup = r.row ? r.row.group : "";
         goPending = go;
         sideFlick.revealAt(i * 46, 44);
         const si = sections.findIndex(x => x.id === r.section.id);
@@ -59,17 +61,19 @@ FocusScope {
         goPending = false;
         if (!page.item) return;
         let hit = null;
-        const walk = it => {
+        const walk = (it, group) => {
             for (const c of it.children) {
+                const g = c.hasOwnProperty("title") && typeof c.title === "string" ? c.title : group;
                 if (c.hasOwnProperty("found") && c.hasOwnProperty("detail")) {
-                    const on = settings.target !== "" && c.label === settings.target;
+                    const on = settings.target !== "" && c.label === settings.target
+                        && (settings.targetGroup === "" || g === settings.targetGroup);
                     c.found = on;
                     if (on && !hit) hit = c;
                 }
-                walk(c);
+                walk(c, g);
             }
         };
-        walk(page.item);
+        walk(page.item, "");
         if (!hit) return;
         const y = hit.mapToItem(page, 0, 0).y;
         const to = Math.max(0, Math.min(pageFlick.contentHeight - pageFlick.height, y - pageFlick.height * 0.3));

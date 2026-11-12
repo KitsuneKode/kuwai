@@ -23,6 +23,7 @@ describe("the index", () => {
   test("reads most of the panel's rows", () => expect(rows.length).toBeGreaterThan(55));
   test("an option's label isn't taken for the row's", () => expect(rows.some(r => r.label === "Waybar")).toBe(false));
   test("a row knows its group", () => expect(rows.find(r => r.label === "Hover delay").group).toBe("On hover"));
+  test("an untitled group doesn't inherit the title above", () => expect(rows.find(r => r.label === "Who handles idle").group).toBe(""));
   test("a row knows its page", () => expect(rows.find(r => r.label === "Hover delay").page).toBe("bar"));
 });
 
