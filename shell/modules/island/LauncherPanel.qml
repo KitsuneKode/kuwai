@@ -34,7 +34,8 @@ FocusScope {
     property var fileHits: []
     onQueryChanged: {
         fileHits = [];
-        if (query.trim().length >= 3 && !/^[:;=>!]/.test(query)) fileSoon.restart(); else fileSoon.stop();
+        // Not for a mode, nor "kill …" / "port …" (the process list).
+        if (query.trim().length >= 3 && !/^[:;=>!]/.test(query) && !/^\s*(?:kill(?:all)?|pkill|force[ -]?quit|(?:free\s+)?port)\s+\S/i.test(query)) fileSoon.restart(); else fileSoon.stop();
         // Math the calculator can't read goes to qalc, a moment after you stop typing.
         if (hasQalc && !calcHit && Calc.looksLikeMath(query)) qalcSoon.restart();
         else { qalcSoon.stop(); qalcOut = ""; qalcFor = ""; }
@@ -102,7 +103,10 @@ FocusScope {
         { name: "Update everything now", sub: "Arch, AUR without review, Flatpak: in the background", glyph: "\u{f0e4f}", run: () => Updates.runAll() },
         { name: "Update in a terminal", sub: "sysup", glyph: "\u{f018d}", run: () => Updates.terminal() },
         { name: "Do Not Disturb", sub: Notifs.muted ? "On: turn off" : "Off: turn on", glyph: "\u{f0594}", run: () => { Notifs.toggleUserDnd(); } },
-        { name: "Sound", sub: "Outputs, inputs, the microphone", glyph: "\u{f057e}", run: () => Notifs.toggleCenter("sound", "key") }
+        { name: "Sound", sub: "Outputs, inputs, the microphone", glyph: "\u{f057e}", run: () => Notifs.toggleCenter("sound", "key") },
+        // vicinae's names for them (it went on 11-05), so the habit still works.
+        { name: "Kill Process", sub: "End an app or a process · or type kill zen", glyph: "\u{f0675}", run: () => launcher.enterMode("! "), keep: true },
+        { name: "Kill Port", sub: "Free a port: what listens on it · or type kill 3000", glyph: "\u{f0675}", run: () => launcher.enterMode("! :"), keep: true }
     ]
 
     // ── Conversions: "5 km to mi", "72 f in c", "100 usd to inr" ────────
@@ -164,8 +168,14 @@ FocusScope {
     // (3000, :5173): what listens there. ↵ arms a row ("↵ again to end it"),
     // ↵ again ends it (SIGTERM); ⌃↵ forces it (SIGKILL), armed the same way.
     // Only your own processes; anything else says why not.
-    readonly property bool procMode: /^\s*!/.test(query)
-    readonly property string procQuery: procMode ? query.replace(/^\s*!\s*/, "") : ""
+    // Also in words, as vicinae had them: "kill zen", "pkill node", "force
+    // quit zen", "kill port 3000", "kill 3000", "port 3000", "free port 3000".
+    // ("port" only before a number: "port forwarding" stays a search.)
+    readonly property var procWords: /^\s*(?:kill(?:all)?|pkill|force[ -]?quit)\s+(?:port\s+)?(\S.*)$/i.exec(query)
+        || /^\s*(?:free\s+)?port\s+(:?\d{1,5})\s*$/i.exec(query)
+    readonly property bool procMode: /^\s*!/.test(query) || !!procWords
+    readonly property string procQuery: /^\s*!/.test(query) ? query.replace(/^\s*!\s*/, "") : procWords ? procWords[1] : ""
+    function enterMode(prefix) { field.text = prefix; field.cursorPosition = prefix.length; }
     property var procHits: []
     property bool procLoaded: false
     property int armedPid: 0
@@ -205,16 +215,19 @@ FocusScope {
         const p = r.proc;
         if (!p.mine || !p.pid) { procNote = p.pid ? procLabel(p) + " belongs to " + p.user + " (needs sudo)" : "Owned by another user (needs sudo): " + (p.addr || ""); return; }
         if (armedPid !== p.pid || armedForce !== force) { armedPid = p.pid; armedForce = force; return; }
-        procEnd.who = procLabel(p) + " (" + p.pid + ")";
+        procEnd.who = (p.group ? p.app : procLabel(p)) + " (" + p.pid + ")";
         procEnd.command = [Paths.bin + "/rice-procs", "--end", String(p.pid)].concat(force ? ["--force"] : []);
         procEnd.running = true;
     }
     function procRows() {
         const mb = n => n >= 1024 ? (n / 1024).toFixed(1) + " GB" : n + " MB";
+        // An app of many processes comes first as one row ({group: N}): its
+        // main process, so ending it closes the app with every tab and helper.
         return procHits.map(p => ({
-            kind: "proc", proc: p, name: procLabel(p),
+            kind: "proc", proc: p, name: p.group ? p.app : procLabel(p),
             sub: (armedPid === p.pid ? (armedForce ? "⌃↵ again to force it to quit" : "↵ again to end it · ⌃↵ to force") + " · "
                                      : "")
+                 + (p.group ? "The whole app · " + p.group + " processes · " : "")
                  + (p.pid ? (p.cpu >= 1 ? Math.round(p.cpu) + "% CPU · " : "") + mb(p.memMB) + " · pid " + p.pid : (p.proto || "") + " " + (p.addr || ""))
                  + (p.ports && p.ports.length ? " · :" + p.ports.slice(0, 3).join(" :") : "")
                  + (p.mine ? "" : " · " + p.user),

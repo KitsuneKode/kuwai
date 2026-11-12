@@ -89,7 +89,7 @@ FocusScope {
                 where: r.project || String(r.where || "").replace(/^.*\//, ""),
                 model: ap.on(m.model, m.effort), state: state, status: r.status,
                 question: r.question || (ev && ev.severity === "needs-you" ? Notifs.readable(ev.body || "") : ""),
-                t: (r.since || 0) * 1000, event: ev ? ev.id : "", action: r.action
+                t: (r.since || 0) * 1000, event: ev ? ev.id : "", action: r.action, raw: r
             });
         }
         for (const i of T3Code.items) {
@@ -118,14 +118,21 @@ FocusScope {
     readonly property int workN: rows.filter(r => r.state === "working").length
 
     // What can be put away from here: a finished T3 thread, a finished kitty
-    // agent's unread event, a closed conversation. Working and waiting ones
-    // can't: they're live, and swiping one away would hide something still on.
-    function canDismiss(r) { return !!r && ((r.src === "t3" && (r.state === "done" || r.state === "error")) || r.src === "recent" || (r.src === "kitty" && r.event && r.state !== "needs")); }
+    // agent's unread event, a kitty agent's limit or error (until its state
+    // changes), a closed conversation. Working and waiting ones can't:
+    // they're live, and swiping one away would hide something still on.
+    function canDismiss(r) {
+        return !!r && ((r.src === "t3" && (r.state === "done" || r.state === "error")) || r.src === "recent"
+            || (r.src === "kitty" && (r.state === "limited" || r.state === "error" || (r.event && r.state !== "needs"))));
+    }
     function dismiss(r) {
         if (!canDismiss(r)) return;
         if (r.src === "t3") T3Code.dismiss(r.item);
         else if (r.src === "recent") Kittymux.hideRecent(r.raw);
-        else Kittymux.ack(r.event);
+        else {
+            if (r.event) Kittymux.ack(r.event);
+            if (r.state === "limited" || r.state === "error") Kittymux.quiet(r.raw);
+        }
     }
     function go(r) {
         if (!r) return;

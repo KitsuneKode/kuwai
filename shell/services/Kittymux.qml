@@ -59,7 +59,20 @@ Singleton {
     // there, or swiped it away). An event the snapshot doesn't have yet (the
     // popup can beat the file) is not answered.
     function answered(id) { const e = eventById(id); return !!e && e.status !== "unread"; }
-    readonly property var running: live ? feed.agents.map(fromFeed) : rows.filter(r => r.kind === "running").map(parse)
+    readonly property var running: (live ? feed.agents.map(fromFeed) : rows.filter(r => r.kind === "running").map(parse))
+        .filter(r => !isQuiet(r))
+    // A limit or an error you put away (× or a swipe in the Agents panel, a
+    // right-click on the capsule's ⏳ or ⚠): gone until that pane's state
+    // changes (a new `since`), so it never comes back for the same news.
+    // An agent closed while limited could stay in the feed saying "resets in
+    // 41m" with nothing to do about it. Kept with hiddenRecent.
+    function quietKey(r) { return "q:" + r.key + "@" + (r.since || 0); }
+    function isQuiet(r) { return (r.state === "limited" || r.state === "error") && hiddenRecent.indexOf(quietKey(r)) >= 0; }
+    function quiet(r) {
+        if (!r || !r.key || isQuiet(r)) return;
+        hiddenRecent = hiddenRecent.concat([quietKey(r)]).slice(-200);
+        hiddenFile.setText(JSON.stringify(hiddenRecent));
+    }
     // Closed conversations, worth reopening: a title that's just the last
     // shell command (rm -f …, cc auth login) reads as the agent's session,
     // repeats fold into one, four at most. (It listed raw commands.)

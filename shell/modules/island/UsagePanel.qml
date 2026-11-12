@@ -44,8 +44,7 @@ FocusScope {
     }
 
     // ── The model: one group per provider ────────────────────────────────
-    // rank: 2 out, 1 near the line, 0 fine. Windows deduped by name and
-    // reset (a shared quota reported by each account), most used first.
+    // rank: 2 out, 1 near the line, 0 fine. One section per account.
     readonly property var groups: {
         const by = {};
         for (const x of Limits.windows) {
@@ -53,11 +52,14 @@ FocusScope {
             const g = by[id] || (by[id] = { id: id, p: x.provider, name: Limits.providerShort(x.provider),
                                             brand: Limits.brandFor(x.provider), tint: Limits.tintFor(x.provider), claude: isClaude(x.provider),
                                             accounts: {}, rows: {}, rank: 0, back: Infinity, top: 0 });
-            g.accounts[Limits.label(x.account)] = true;
-            const k = Limits.windowLabel(x.window) + "|" + Math.round((x.window.resetsAt || 0) / 600000);
-            const r = g.rows[k];
-            if (r) { r.shared += 1; continue; }
-            g.rows[k] = { key: x.key, label: Limits.windowLabel(x.window), acct: Limits.label(x.account), window: x.window, used: x.used, level: x.level, shared: 1 };
+            // Per account (its key), each account's windows once: keyed by
+            // the account's name, T3's two "Cursor" accounts were one
+            // section with every row twice.
+            const acct = Limits.accountLabel(x.provider, x.account);
+            g.accounts[acct] = true;
+            const k = acct + "|" + (x.window.id || Limits.windowLabel(x.window));
+            if (g.rows[k]) continue;
+            g.rows[k] = { key: x.key, label: Limits.windowLabel(x.window), acct: acct, window: x.window, used: x.used, level: x.level };
             const rank = x.level === "exhausted" ? 2 : x.level === "approaching" ? 1 : 0;
             g.rank = Math.max(g.rank, rank);
             g.top = Math.max(g.top, x.used);
@@ -366,7 +368,7 @@ FocusScope {
                                             width: parent.width - pc.width - 8
                                             elide: Text.ElideRight
                                             // Two accounts: say whose ("Weekly · work"), or that it's one shared quota.
-                                            text: w.r.label + (w.r.shared > 1 ? "  ·  shared" : "")
+                                            text: w.r.label
                                             size: Theme.tSub; color: Theme.textSecondary
                                         }
                                         Label {

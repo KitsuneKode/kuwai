@@ -163,7 +163,7 @@ Singleton {
             if (!e) {
                 count[pid] = (count[pid] || 0) + 1;
                 e = by[id] = { id: id, pid: pid, n: count[pid], brand: brandFor(x.provider), tint: tintFor(x.provider),
-                               name: providerShort(x.provider), session: null, weekly: null };
+                               name: providerShort(x.provider), p: x.provider, a: x.account, session: null, weekly: null };
             }
             const d = x.window.durationMins || 0;
             const w = { left: 1 - x.used, out: x.level === "exhausted", near: x.level === "approaching", window: x.window, label: windowLabel(x.window), d: d,
@@ -176,7 +176,7 @@ Singleton {
         }
         const list = Object.values(by).map(e => {
             if (e.session === e.weekly) e.weekly = null;               // one window only
-            e.label = e.name + (count[e.pid] > 1 ? " " + e.n : "");
+            e.label = count[e.pid] > 1 ? accountLabel(e.p, e.a) : e.name;
             e.worst = Math.min(e.session ? e.session.left : 1, e.weekly ? e.weekly.left : 1);
             return e;
         });
@@ -419,5 +419,14 @@ Singleton {
     }
     function label(a) {
         return a.name || (a.email ? a.email.split("@")[0] : "") || "Account";
+    }
+    // An account's name among its provider's, made unique the way T3 Code
+    // names a second Claude ("Claude-2"): T3 names both Cursor accounts
+    // "Cursor", and keyed by name the two read as one account with every
+    // row twice. Never the email.
+    function accountLabel(p, a) {
+        const name = label(a);
+        const same = (p.accounts || []).filter(b => label(b) === name);
+        return same.length < 2 ? name : same.indexOf(a) < 1 ? name : name + "-" + (same.indexOf(a) + 1);
     }
 }

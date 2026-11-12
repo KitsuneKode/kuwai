@@ -345,16 +345,18 @@ Item {
                 visible: split.agentsErr.length > 0
                 glyph: "\u{f0028}"                       // alert-circle
                 tint: Theme.red
-                tip: split.agentsErr.map(r => Kittymux.agentLabel(r.agent) + ": " + (r.status || "error")).join(" · ") + "\nClick: every agent"
+                tip: split.agentsErr.map(r => Kittymux.agentLabel(r.agent) + ": " + (r.status || "error")).join(" · ") + "\nClick: every agent · right-click: put it away"
                 onClicked: agentsPill.openPanel()
+                onAltClicked: split.agentsErr.forEach(r => Kittymux.quiet(r))
             }
             Badge {
                 visible: split.agentsLim.length > 0 && split.agentsErr.length === 0
                 glyph: "\u{f051f}"                       // timer-sand
                 text: (split.limWho ? split.limWho + " · " : "") + split.limReset
                 tint: Theme.yellow
-                tip: split.limTip + "\nClick: usage, every account"
+                tip: split.limTip + "\nClick: usage, every account · right-click: put it away"
                 onClicked: Island.toggle("usage", split.bar.screenName, "pointer")
+                onAltClicked: split.agentsLim.forEach(r => Kittymux.quiet(r))
             }
             Badge {
                 visible: split.agentsDone.length > 0

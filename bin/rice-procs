@@ -9,8 +9,10 @@
 #                              SIGTERM (or SIGKILL), only for your own processes;
 #                              prints {"ok": true} or {"ok": false, "why": "…"}
 #
-# One JSON line: [{pid, name, cmd, user, mine, cpu, memMB, ports, app}].
-# cpu is %, sampled over 0.4 s from /proc, so a busy process shows as busy now,
+# One JSON line: [{pid, name, cmd, user, mine, cpu, memMB, ports, app}]; a
+# name search starts with each matching app as a whole ({…, group: N}: its
+# main process, N processes' memory and CPU), then the processes one by one.
+# cpu is %, sampled over 0.6 s from /proc, so a busy process shows as busy now,
 # not on average since it started. Read-only except --end.
 import json, os, pwd, re, signal, subprocess, sys, time
 
@@ -20,7 +22,7 @@ PAGE = os.sysconf("SC_PAGE_SIZE")
 # Names a person knows, for the processes browsers and Electron apps split into.
 FRIENDLY = [(r"zen-bin", "Zen"), (r"firefox", "Firefox"), (r"chrome|chromium", "Chrome"),
             (r"t3code", "T3 Code"), (r"QtWebEngineProcess", "Qt web view"), (r"electron", "Electron app"),
-            (r"\bcode\b|/code/", "VS Code"), (r"discord", "Discord"), (r"qs\b|quickshell", "kuwai shell")]
+            (r"\bcode\b|/code/", "VS Code"), (r"next-server", "Next.js server"), (r"\bvite\b", "Vite"), (r"discord", "Discord"), (r"qs\b|quickshell", "kuwai shell")]
 
 
 def procs():
@@ -34,6 +36,7 @@ def procs():
                 st = f.read()
             name = st[st.index("(") + 1:st.rindex(")")]
             rest = st[st.rindex(")") + 2:].split()
+            ppid = int(rest[1])
             ticks = int(rest[11]) + int(rest[12])
             rss = int(rest[21]) * PAGE
             uid = os.stat(p).st_uid
@@ -43,7 +46,11 @@ def procs():
             continue
         if not cmd:      # kernel threads
             continue
-        out[int(d)] = {"pid": int(d), "name": name, "cmd": cmd[:300], "uid": uid, "ticks": ticks, "rss": rss}
+        if len(name) == 15:   # the kernel cuts comm at 15: "next-server (v1"
+            first = os.path.basename(cmd.split()[0]) if cmd.split() else ""
+            if first.startswith(name.split()[0]):
+                name = first
+        out[int(d)] = {"pid": int(d), "ppid": ppid, "name": name, "cmd": cmd[:300], "uid": uid, "ticks": ticks, "rss": rss}
     return out
 
 
@@ -90,6 +97,45 @@ def row(r, cpu, pm):
             "ports": pm.get(r["pid"], []), "app": friendly(r)}
 
 
+def apps(hits, allp, cpu, pm):
+    """An app made of many processes (Zen, T3 Code, VS Code…) first as one row:
+    its main process (the one whose parent isn't the same app), with the whole
+    app's memory and CPU. Ending it closes the app, children and all; ending
+    one of its rows below ends only that tab or helper."""
+    groups = {}
+    for p in allp.values():
+        a = friendly(p)
+        if a and p["uid"] == ME:
+            groups.setdefault(a, []).append(p)
+    out = []
+    for a in dict.fromkeys(friendly(p) for p in hits if friendly(p)):
+        g = groups.get(a, [])
+        if len(g) < 2:
+            continue
+        pids = {p["pid"] for p in g}
+        kids = {}
+        for p in g:
+            kids.setdefault(p["ppid"], []).append(p)
+        def tree(p):
+            out, todo = [], [p]
+            while todo:
+                x = todo.pop()
+                out.append(x)
+                todo.extend(kids.get(x["pid"], []))
+            return out
+        # The main instance: the root with the most under it (a helper that
+        # another program started, T3's server under grok, is its own root).
+        roots = sorted((tree(p) for p in g if p["ppid"] not in pids), key=len, reverse=True)
+        if not roots or len(roots[0]) < 2 or len(roots[0]) * 2 < len(g):
+            continue
+        t = roots[0]
+        r = row(t[0], sum(cpu.get(p["pid"], 0) for p in t), pm)
+        r["memMB"] = round(sum(p["rss"] for p in t) / 1048576)
+        r["group"] = len(t)
+        out.append(r)
+    return out
+
+
 def end(pid, force):
     try:
         if os.stat("/proc/%d" % pid).st_uid != ME:
@@ -117,9 +163,9 @@ def main(argv):
         return
     q = " ".join(argv).strip()
     a = procs()
-    time.sleep(0.4)
+    time.sleep(0.6)
     b = procs()
-    span = 0.4 * TICK
+    span = 0.6 * TICK
     pm, listeners = ports()
     cpu = {pid: max(0.0, (b[pid]["ticks"] - a[pid]["ticks"]) * 100 / span) for pid in b if pid in a}
     port_q = re.fullmatch(r":?(\d{1,5})", q)
@@ -143,14 +189,25 @@ def main(argv):
         return
     if q:
         ql = q.lower()
-        hits = [p for p in b.values() if ql in p["name"].lower() or ql in p["cmd"].lower() or ql in friendly(p).lower()]
-        hits.sort(key=lambda p: (-(p["uid"] == ME), -cpu.get(p["pid"], 0), -p["rss"]))
-        print(json.dumps([row(p, cpu.get(p["pid"], 0), pm) for p in hits[:30]]))
+        # The name, the app's name, the program; the whole command line only
+        # for 4+ letters ("t3" found Zen by a t3code link in its arguments).
+        def named(p):
+            exe = os.path.basename(p["cmd"].split()[0]).lower() if p["cmd"].split() else ""
+            return ql in p["name"].lower() or ql in friendly(p).lower() or ql in exe
+        hits = [p for p in b.values() if named(p) or (len(ql) >= 4 and ql in p["cmd"].lower())]
+        # By name first, then a match somewhere in the arguments.
+        hits.sort(key=lambda p: (-named(p), -(p["uid"] == ME), -cpu.get(p["pid"], 0), -p["rss"]))
+        whole = apps([p for p in hits if named(p)], b, cpu, pm)
+        once = {r["pid"] for r in whole}          # its main process is that row
+        print(json.dumps(whole + [row(p, cpu.get(p["pid"], 0), pm) for p in hits if p["pid"] not in once][:30]))
         return
-    # Nothing typed: who is using the most right now. Busy first (≥ 5 % CPU),
-    # then by memory, so a runaway tab or a spinning helper is on top.
+    # Nothing typed: who is using the most right now. Busy first (≥ 10 % CPU:
+    # a 0.6 s sample counts in steps of ~1.7 %, and at 5 % idle helpers
+    # blinked to the top), then by memory, so a runaway tab or a spinning
+    # helper is on top.
+    BUSY = 10
     allp = list(b.values())
-    allp.sort(key=lambda p: (-(cpu.get(p["pid"], 0) >= 5), -(cpu.get(p["pid"], 0) if cpu.get(p["pid"], 0) >= 5 else 0), -p["rss"]))
+    allp.sort(key=lambda p: (-(cpu.get(p["pid"], 0) >= BUSY), -(cpu.get(p["pid"], 0) if cpu.get(p["pid"], 0) >= BUSY else 0), -p["rss"]))
     print(json.dumps([row(p, cpu.get(p["pid"], 0), pm) for p in allp[:12]]))
 
 
