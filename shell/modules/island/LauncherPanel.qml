@@ -467,20 +467,20 @@ FocusScope {
                     width: parent.width - cardNote.implicitWidth - 12
                     elide: Text.ElideRight
                     text: row.modelData.sub || ""
-                    size: 12; color: Theme.textTertiary
+                    size: Theme.tSub; color: Theme.textTertiary
                     font.features: ({ "tnum": 1 })
                 }
                 Label {
                     id: cardNote
                     anchors { right: parent.right; baseline: cardSub.baseline }
                     text: row.modelData.note || ""
-                    size: 11; color: Theme.textTertiary
+                    size: Theme.tFootnote; color: Theme.textTertiary
                 }
                 Label {
                     anchors { left: parent.left; right: parent.right; rightMargin: 90; top: cardSub.bottom; topMargin: 2 }
                     elide: Text.ElideRight
                     text: row.card ? row.modelData.name : ""
-                    size: 28; weight: Theme.wSemibold; rounded: true
+                    size: Theme.tTitle1; weight: Theme.wSemibold; rounded: true
                     font.features: ({ "tnum": 1 })
                 }
             }
@@ -492,14 +492,14 @@ FocusScope {
                 Flow {
                     width: parent.width
                     spacing: 6
-                    Label { text: "Try"; size: 12; weight: Theme.wSemibold; color: Theme.textTertiary; topPadding: 4 }
+                    Label { text: "Try"; size: Theme.tSub; weight: Theme.wSemibold; color: Theme.textTertiary; topPadding: 4 }
                     Repeater {
                         model: row.tips ? row.modelData.tips : []
                         Rectangle {
                             required property string modelData
                             width: tipText.implicitWidth + 16; height: 24; radius: 12
                             color: tipArea.containsMouse ? Theme.pillHover : Theme.pill
-                            Label { id: tipText; anchors.centerIn: parent; text: parent.modelData; size: 12; color: Theme.textSecondary; font.features: ({ "tnum": 1 }) }
+                            Label { id: tipText; anchors.centerIn: parent; text: parent.modelData; size: Theme.tSub; color: Theme.textSecondary; font.features: ({ "tnum": 1 }) }
                             MouseArea {
                                 id: tipArea
                                 anchors.fill: parent
@@ -510,7 +510,7 @@ FocusScope {
                         }
                     }
                 }
-                Label { visible: text !== ""; width: parent.width; elide: Text.ElideRight; text: row.modelData.sub || ""; size: 11; color: Theme.textTertiary }
+                Label { visible: text !== ""; width: parent.width; elide: Text.ElideRight; text: row.modelData.sub || ""; size: Theme.tFootnote; color: Theme.textTertiary }
             }
 
             Item {
