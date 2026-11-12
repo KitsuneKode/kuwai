@@ -236,7 +236,8 @@ Scope {
                         wantsProximity: win.wantsProximity, nearHover: nearHover.hovered, frameHover: frameHover.hovered, slopHover: slopHover.hovered,
                         overPills: win.overPills, compact: restRow.compact, menus: win.menus, nearOff: nearOff.running, zoneHits: win.zoneHits,
                         pointer: [Pointer.x, Pointer.y, Math.round(Pointer.speed), Pointer.wanted], inZone: win.inZone(20),
-                        peekGeom: peekLoader.item ? peekLoader.item.geom() : null, frameH: frame.height, bodyH: body.height });
+                        peekGeom: peekLoader.item ? peekLoader.item.geom() : null, frameH: frame.height, bodyH: body.height,
+                        springs: { m: m.value, fv: fv.value, pv: pv.value, sw: sw.value, sh: sh.value, need: win.needGlow }, reduceMotion: Theme.reduceMotion });
                 }
             }
             readonly property bool hoverFull: Settings.hoverView === "full" || full || peeked
