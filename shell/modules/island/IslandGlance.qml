@@ -7,8 +7,9 @@
 //
 // Where you are, when (in the same place as the full view's time chip, so the
 // clock holds still while the island grows around it), and what's playing or
-// waiting. Two doors: the time opens the calendar (as everywhere), the rest
-// of the row opens everything.
+// waiting. Three doors: the time opens the calendar (as everywhere), what's
+// playing or waiting opens Now Playing or the notifications list, and the
+// rest of the row opens everything.
 import QtQuick
 import Quickshell
 import Quickshell.Widgets
@@ -128,7 +129,14 @@ Item {
             if (p.x >= -6 && p.x <= when.width + 6 && p.y >= -8 && p.y <= when.height + 8) {
                 glance.bar.clockFrom(glanceClock);
                 Island.open("calendar", glance.bar.screenName, "pointer", "island");
-            } else glance.bar.full = true;
+            } else {
+                // What's playing or waiting is its own door too: Now Playing,
+                // or the notifications list (C there opens the center).
+                const r = right.mapFromItem(glance, eventPoint.position.x, eventPoint.position.y);
+                if (r.x >= -6 && r.x <= right.width + 6 && r.y >= -8 && r.y <= right.height + 8)
+                    Island.open(glance.playing ? "media" : "notifs", glance.bar.screenName, "pointer", "island");
+                else glance.bar.full = true;
+            }
         }
     }
     Accessible.role: Accessible.Button
