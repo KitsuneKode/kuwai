@@ -11,6 +11,8 @@
 //   qs ipc -p <shell> call test gallery  [on|off]           (the design system on one sheet; no keyboard)
 //   qs ipc -p <shell> call test settings N                  (the Settings panel on page N, no keyboard; -1 closes)
 //   qs ipc -p <shell> call test compile  modules/x/Y.qml    (compiles it, makes nothing: "ok" or the error)
+//   qs ipc -p <shell> call test peek     SCREEN short|long [expanded]   (a sample notification in that
+//                                                          screen's notch; no pointer, no keyboard, no D-Bus)
 // (Notification bursts: bin/rice-fixture, through the real D-Bus path.)
 //
 // Same reach as every other `qs ipc` call: your own user only.
@@ -69,8 +71,20 @@ Scope {
         function timer(seconds: int, label: string): void { Timers.start(seconds, label); }
         // Memory: run the JS garbage collector now (for measuring what it frees).
         function collect(): void { gc(); }
+        function peek(screen: string, size: string, expanded: string): void {
+            const long = size === "long";
+            const body = long
+                ? "Summary by CodeRabbit\n\n• New Features\n  • An optional pixel tab bar for vertical layouts, with project-grouped tabs, status, hover highlights and close controls.\n  • Groups fold and expand; the bar scrolls when tabs don't fit.\n  • Busy tabs ask before closing.\n\n• Documentation\n  • Setup and customisation for the pixel bar.\n  • HiDPI, glass and several kitty windows.\n  • One more line, so it runs past the cap and scrolls."
+                : "Your build finished in 3 m 12 s. 1,801 tests passed.";
+            Notifs.peekHeld = true;
+            Notifs.peek = { app: "Test", status: "Mentioned you", title: long ? "Pixel tab bar (opt-in): the bar drawn as a picture, Rex-style" : "Build finished",
+                            body: body, full: long ? body : "", time: Date.now(), test: true, actions: [] };
+            Notifs.peekOn = screen;
+            if (expanded === "expanded") Notifs.expandPeek();
+        }
         function clear(): void {
             Alerts.active = [];
+            if (Notifs.peek && Notifs.peek.test) { Notifs.peekHeld = false; Notifs.peek = null; }
             Moments.now = null;
             if (Moments.card && String(Moments.card.key).indexOf("test-") === 0) Moments.dropCard();
             if (hook.testing) { Kittymux.feed = hook.realFeed; hook.testing = false; }
