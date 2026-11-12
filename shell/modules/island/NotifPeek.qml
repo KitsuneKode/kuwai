@@ -103,6 +103,9 @@ Item {
 
     HoverHandler { onHoveredChanged: Notifs.peekHeld = hovered }
 
+    // For `qs ipc call islandbar-SCREEN dump`: where its parts sit.
+    function geom() { return { h: height, want: wantH, swipeY: swipeY, markY: mark.y, copyY: copy.y, copyH: copy.height, expanded: expanded }; }
+
     function openItem() {
         const i = peek.item;
         Notifs.dropPeek();

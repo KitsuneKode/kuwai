@@ -229,7 +229,8 @@ Scope {
                         peek: Island.peek && Island.peekScreen === win.screenName, activity: restRow.activity, missedUrgent: Notifs.missedUrgent,
                         wantsProximity: win.wantsProximity, nearHover: nearHover.hovered, frameHover: frameHover.hovered, slopHover: slopHover.hovered,
                         overPills: win.overPills, compact: restRow.compact, menus: win.menus, nearOff: nearOff.running, zoneHits: win.zoneHits,
-                        pointer: [Pointer.x, Pointer.y, Math.round(Pointer.speed), Pointer.wanted], inZone: win.inZone(20) });
+                        pointer: [Pointer.x, Pointer.y, Math.round(Pointer.speed), Pointer.wanted], inZone: win.inZone(20),
+                        peekGeom: peekLoader.item ? peekLoader.item.geom() : null, frameH: frame.height, bodyH: body.height });
                 }
             }
             readonly property bool hoverFull: Settings.hoverView === "full" || full || peeked
