@@ -96,6 +96,7 @@ Singleton {
     // Fixed state colours (Apple's dark palette), named once so no file types the hex.
     readonly property color focus: "#bf5af2"     // Focus / Do Not Disturb (purple)
     readonly property color indigo: "#5e5ce6"    // secondary actions, sliders
+    readonly property color gray: "#8e8e93"      // Apple's system grey: neutral tiles (Settings → Keyboard)
     readonly property color cyan: "#64d2ff"      // info, links on dark
 
     // The theme's own colour, the way HyDE's colour mode says (Themes panel →
