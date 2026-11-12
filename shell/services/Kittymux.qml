@@ -205,9 +205,13 @@ Singleton {
     function fromFeed(a) {
         const words = { working: "working", waiting: "needs you", done: "done", idle: "idle",
                         limited: "hit a limit", error: "error" };
-        let status = words[a.state] || a.state || "";
+        // A limit whose reset has passed is over, whatever the file still says
+        // (kittymux rewrites it on its next scan): it reads ready, not "resets
+        // in 0m", and nothing lights amber for it.
+        const state = a.state === "limited" && a.limit_reset && a.limit_reset * 1000 <= root.now ? "idle" : a.state;
+        let status = state !== a.state ? "limit reset · ready" : words[a.state] || a.state || "";
         if (a.state === "error" && a.error) status = a.error;
-        if (a.state === "limited" && a.limit_reset) {
+        if (state === "limited" && a.limit_reset) {
             const mins = Math.max(0, Math.round((a.limit_reset - root.now / 1000) / 60));
             const h = Math.floor(mins / 60), m = mins % 60;
             status += " · resets in " + (h ? h + "h" + (m ? " " + m + "m" : "") : m + "m");
@@ -219,7 +223,9 @@ Singleton {
             title: clean(a.title) || a.tab_title || a.agent,
             where: a.cwd || "",
             status: status,
-            state: a.state,
+            state: state,
+            account: a.account || "",            // "" = the default config dir (kittymux)
+            limitReset: a.limit_reset || 0,
             question: a.question || "",
             progress: a.progress,
             working: a.state === "working",
