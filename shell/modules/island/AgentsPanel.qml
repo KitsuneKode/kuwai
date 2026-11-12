@@ -60,6 +60,7 @@ FocusScope {
         if (c) return "GPT-" + c[1] + (c[2] ? " " + c[2].charAt(0).toUpperCase() + c[2].slice(1) : "");
         return s.split("-").map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(" ");
     }
+    function esc(t) { return String(t || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
     function on(model, effort) { const n = modelName(model); return n ? n + (effort ? " " + effort : "") : ""; }
     function ago(ms) {
         if (!ms) return "";
@@ -257,7 +258,7 @@ FocusScope {
                         // State first, in its colour; then where and on what, quieter.
                         textFormat: Text.StyledText
                         text: "<font color='" + ap.tone(row.modelData.state) + "'>" + ap.word(row.modelData.state) + "</font>"
-                            + [row.modelData.where, row.modelData.model].filter(x => x).map(x => " · " + Notifs.styledSafe(x)).join("")
+                            + [row.modelData.where, row.modelData.model].filter(x => x).map(x => " · " + ap.esc(x)).join("")
                         size: Theme.tFootnote; color: Theme.textSecondary
                     }
                     Label {

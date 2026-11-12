@@ -210,8 +210,11 @@ Singleton {
         }
         // kittymux names the agent pane it's about (bin/mux-notify hints):
         // a click jumps there through kittymux, even from history later.
+        // Only kittymux itself: any app can set hints, and one claiming to be
+        // a waiting agent would get the notch's sticky "needs you".
+        const fromMux = /^kittymux$/i.test(n.appName || "");
         const kpid = h["x-kittymux-pid"], kwin = h["x-kittymux-window"];
-        out.jump = /^\d+$/.test(String(kpid || "")) && /^\d+$/.test(String(kwin || "")) ? kpid + ":" + kwin : "";
+        out.jump = fromMux && /^\d+$/.test(String(kpid || "")) && /^\d+$/.test(String(kwin || "")) ? kpid + ":" + kwin : "";
         // Which inbox event it is and what state: the notch's moment follows
         // this popup (kittymux already chose what deserves one), and the
         // inbox says when it was answered.

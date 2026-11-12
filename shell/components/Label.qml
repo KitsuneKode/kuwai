@@ -9,6 +9,10 @@ import QtQuick
 import qs.config
 
 Text {
+    // Plain unless a caller asks for markup (and escapes what it puts in):
+    // the default, AutoText, treated a title like `<img src="https://…">`
+    // from any app, tab or thread as rich text and fetched the image.
+    textFormat: Text.PlainText
     property int size: 13
     property int weight: Theme.wRegular
     property bool rounded: false
