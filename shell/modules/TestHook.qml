@@ -51,6 +51,16 @@ Scope {
             }
             Kittymux.feed = { version: 1, agents: list };
         }
+        // Agents in given states, comma-separated (working, waiting, done,
+        // limited, error): `test agentStates "working,limited,error"`.
+        function agentStates(states: string): void {
+            if (!hook.testing) { hook.realFeed = Kittymux.feed; hook.testing = true; }
+            const names = ["claude", "codex", "agy", "cursor", "gemini"];
+            Kittymux.feed = { version: 1, agents: states.split(",").map((st, i) => ({
+                key: "test" + i, agent: names[i % names.length], brand: names[i % names.length], title: "Test task " + (i + 1),
+                tab_title: "test", cwd: "~/Projects/test", state: st.trim(),
+                limit_reset: st.trim() === "limited" ? Math.round(Date.now() / 1000) + 5400 : undefined, error: st.trim() === "error" ? "crashed" : undefined })) };
+        }
         // Panels load on first open, so a broken one hides until then; this
         // compiles a file (types, imports, syntax) without creating it.
         function compile(file: string): string {
