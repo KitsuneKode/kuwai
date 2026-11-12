@@ -181,7 +181,9 @@ Item {
             NumberAnimation { target: pill; property: "flash"; to: 0; duration: Theme.breathOutMs; easing.type: Easing.InOutSine }
         }
         readonly property int side: split.sideOf[name] || 1
-        readonly property bool shown: !!split.wants[name] && !!split.sideOf[name]
+        // Never an empty capsule: what it holds decides too (a linger, or a
+        // state its marks don't draw, left a black pill with nothing in it).
+        readonly property bool shown: !!split.wants[name] && !!split.sideOf[name] && slot.childrenRect.width > 0.5
         readonly property real from: split.fromOf(name)
         default property alias content: slot.data
         readonly property real bodyW: Math.max(split.ph, Math.round(slot.childrenRect.width) + 20)
@@ -350,7 +352,7 @@ Item {
         Row {
           spacing: 6
           RestMark {
-            visible: T3Code.total > 0
+            visible: T3Code.total > 0 || (t3Linger.running && T3Code.finished === 0)   // its last value while it lingers
             wordmark: "T3"
             value: split.t3Value
             ring: split.t3Waiting ? "solid" : "spin"
