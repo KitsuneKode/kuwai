@@ -562,12 +562,16 @@ Singleton {
 
     Timer {
         id: probeTimer
-        interval: 12000
+        // Only the assistant's own window shows the status and the models: a
+        // Python start every 12 s all day was for nobody. Closed, once a minute.
+        interval: Assistant.open || root.streaming ? 12000 : 60000
         running: true
         repeat: true
         triggeredOnStart: true
         onTriggered: root.probe()
     }
+    // Opened: fresh status at once, not up to a minute late.
+    Connections { target: Assistant; function onOpenChanged() { if (Assistant.open) root.probe(); } }
 
     Process {
         id: probeProc
