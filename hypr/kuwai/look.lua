@@ -151,9 +151,16 @@ function L.apply_identity()
 			-- difference you can't see; a slightly wider radius makes up for it.
 			blur = { noise = 0.02, vibrancy = 0.3, vibrancy_darkness = 0.35, special = true, passes = 3, size = 6 },
 		},
-		-- Triple buffering when a frame runs late (hybrid laptops: the iGPU's
-		-- panel is fed across from the NVIDIA renderer): smoother, not slower.
-		render = { new_render_scheduling = true },
+		-- No triple buffering (new_render_scheduling). With it on, a frame
+		-- rendered ahead was committed while the screen's last page flip was
+		-- still pending, and aquamarine refused it ("Cannot commit when a
+		-- page-flip is awaiting": 2246 in 49 h, ~46/h, in bursts as an app made
+		-- new buffers). The frame was lost and nothing drew again until new
+		-- damage, so T3 Code / Electron / GPU apps (and typed text) looked stuck
+		-- until a mouse move or a workspace switch. It was on for the hybrid
+		-- laptop's panel (fed across from the NVIDIA renderer); off costs that
+		-- panel a little smoothness when a frame runs late, never a lost one.
+		render = { new_render_scheduling = false },
 		group = { groupbar = { rounding_power = 4, gradient_rounding_power = 4, font_family = "SF Pro Text" } },
 	})
 	-- Hyprland's own notifications and error bar, in the rice's face.
