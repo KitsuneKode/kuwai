@@ -7,8 +7,8 @@
 //
 // Where you are, when (in the same place as the full view's time chip, so the
 // clock holds still while the island grows around it), and what's playing or
-// waiting. Nothing here is a separate door: the whole row is one, and the
-// full view behind it has a door per part.
+// waiting. Two doors: the time opens the calendar (as everywhere), the rest
+// of the row opens everything.
 import QtQuick
 import Quickshell
 import Quickshell.Widgets
@@ -118,9 +118,19 @@ Item {
         }
     }
 
-    // The whole row is one door: everything.
+    // The time is the calendar's door wherever it shows (at rest, here, in
+    // the full view), and the clock travels into it; the rest of the row
+    // opens everything.
     HoverHandler { cursorShape: Qt.PointingHandCursor }
-    TapHandler { onTapped: glance.bar.full = true }
+    TapHandler {
+        onTapped: eventPoint => {
+            const p = when.mapFromItem(glance, eventPoint.position.x, eventPoint.position.y);
+            if (p.x >= -6 && p.x <= when.width + 6 && p.y >= -8 && p.y <= when.height + 8) {
+                glance.bar.clockFrom(glanceClock);
+                Island.open("calendar", glance.bar.screenName, "pointer", "island");
+            } else glance.bar.full = true;
+        }
+    }
     Accessible.role: Accessible.Button
     Accessible.name: "Island: " + (glance.app ? glance.app.name : "Desktop") + ", " + Qt.formatTime(glance.bar.now, "hh:mm") + ". Click for everything."
 }
