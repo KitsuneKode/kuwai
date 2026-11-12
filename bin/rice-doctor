@@ -88,7 +88,7 @@ fi
 
 # ── Shell ─────────────────────────────────────────────────────────────────
 [ "$QUIET" = 1 ] || echo "Shell"
-if pgrep -f '^qs -p .*/shell -d$' >/dev/null; then
+if qs list --all --json 2>/dev/null | jq -e 'any(.[]; .config_path | endswith("/shell/shell.qml"))' >/dev/null; then
     if ! "$RICE/bin/rice-check" --quiet; then
         "$RICE/bin/rice-check" || fail=1
     else

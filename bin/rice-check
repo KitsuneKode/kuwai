@@ -32,9 +32,10 @@ fail=0
 ok()   { [ $QUIET = 1 ] || printf '  ✓ %s\n' "$1"; }
 bad()  { printf '  ✗ %s\n' "$1"; fail=1; }
 
-pid=$(pgrep -f '^qs -p .*/shell -d$' | head -1)
-[ -n "$pid" ] || { bad "no shell running"; exit 1; }
-root=$(tr '\0' ' ' < /proc/$pid/cmdline | sed -n 's#^qs -p \(.*\)/shell -d.*#\1#p')
+# By config path, not command line: after a crash Quickshell relaunches the
+# shell as a bare `/usr/bin/quickshell`, which a `qs -p … -d` match missed.
+read -r pid root < <(qs list --all --json 2>/dev/null | jq -r '.[] | select(.config_path | endswith("/shell/shell.qml")) | "\(.pid) \(.config_path | sub("/shell/shell.qml$"; ""))"' | head -1)
+[ -n "${pid:-}" ] || { bad "no shell running"; exit 1; }
 [ $QUIET = 1 ] || echo "rice-check: shell $pid from $root"
 
 # load

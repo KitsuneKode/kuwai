@@ -63,7 +63,7 @@ files() {   # theme library + global library merged (theme vids surface first by
 is_running() { pgrep -f 'mpvpaper' >/dev/null; }
 # The shell that plays video itself: the rice (its process is `qs`), or a
 # standalone Quickshell.
-shell_up() { pgrep -f '^qs -p .*/shell -d$' >/dev/null || pgrep -x quickshell >/dev/null; }
+shell_up() { qs list --all --json 2>/dev/null | jq -e 'any(.[]; .config_path | endswith("/shell/shell.qml"))' >/dev/null; }
 
 mpv_pause() {   # $1 = true|false — sent to every mpvpaper ipc socket (multi-monitor safe)
     for s in "$SOCK_PREFIX"*.sock; do
