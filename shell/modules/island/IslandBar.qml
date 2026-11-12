@@ -241,7 +241,13 @@ Scope {
                 }
             }
             readonly property bool hoverFull: Settings.hoverView === "full" || full || peeked
-            onGrownChanged: if (!grown) full = false
+            // Back to a glance next time, but only once the island has folded:
+            // reset at once, the full view took the glance's size on its way
+            // out and its sides squashed over the middle.
+            Connections {
+                target: m
+                function onSettledChanged() { if (m.settled && !win.grown) win.full = false; }
+            }
             // Over the workspace pills the island stays put: they're for clicking.
             readonly property bool overPills: restRow.pillsHovered || restRow.musicHovered || restRow.marksHovered
             // Minimal, reached on the island itself (not by the edge): the
@@ -850,7 +856,8 @@ Scope {
                         // way: it grows with the shape (92 % → 100 %) and
                         // appears once ~80 % of it fits (IslandBar.fitIn).
                         readonly property real fitW: win.fitIn(width, height).w
-                        opacity: k * win.fitIn(width, height).shown * Math.max(0, 1 - fv.value * 2.5) * Math.max(0, 1 - pv.value * 3)
+                        // Leaving the full view, the glance doesn't flash on the way down.
+                        opacity: (win.grown || !win.hoverFull ? 1 : 0) * k * win.fitIn(width, height).shown * Math.max(0, 1 - fv.value * 2.5) * Math.max(0, 1 - pv.value * 3)
                         Behavior on opacity { enabled: Theme.reduceMotion; NumberAnimation { duration: Theme.microMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                         scale: 0.92 + 0.08 * fitW
                         transformOrigin: Item.Top
@@ -860,9 +867,11 @@ Scope {
                     Loader {
                         id: hoverLoader
                         active: (win.grown && win.hoverFull) || (m.value > 0.01 && fv.value > 0.01)
-                        x: Math.round((body.width - win.hoverSize.width) / 2)
-                        width: win.hoverSize.width
-                        height: win.hoverSize.height
+                        // Its own size, always (hoverSize is the glance's while
+                        // a glance shows; the full view mustn't take it).
+                        width: item ? Math.min(item.implicitWidth, win.implicitWidth - 40) : 720
+                        height: item ? item.implicitHeight : 148
+                        x: Math.round((body.width - width) / 2)
                         readonly property real k: win.reveal(Math.min(m.value, fv.value), win.grown && win.hoverFull)
                         opacity: k * win.fitIn(width, height).shown * Math.max(0, 1 - pv.value * 3)
                         // Reduce motion: the shape jumps, the content fades (fades only).
