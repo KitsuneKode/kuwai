@@ -156,6 +156,7 @@ Singleton {
     // after a fullscreen change, look three times (the switch lands a moment
     // later): a screen newly in HDR gets a moment in the notch.
     property var hdrOn: ({})                  // screen name → true while in HDR
+    property var hdrWire: ({})                // rice-hdr's last reading: name → { hdr, eotf, maxNits, colorspace }
     Connections {
         target: Hyprland
         function onRawEvent(event) {
@@ -176,14 +177,21 @@ Singleton {
     }
     Process {
         id: hdrProbe
-        command: ["hyprctl", "-j", "monitors"]
+        // The preset's name, and the signal really on the wire (rice-hdr reads
+        // each connector's HDR infoframe): an automatic switch sends PQ while
+        // the preset still says "srgb", which is when the label matters most.
+        command: ["sh", "-c", 'hyprctl -j monitors; echo; echo "#wire"; "$1" 2>/dev/null || echo "{}"', "hdr", Paths.bin + "/rice-hdr"]
         stdout: StdioCollector {
             onStreamFinished: {
-                let d;
-                try { d = JSON.parse(text); } catch (e) { return; }
+                let d, wire = {};
+                const cut = text.indexOf("#wire");
+                try { d = JSON.parse(cut >= 0 ? text.slice(0, cut) : text); } catch (e) { return; }
+                try { wire = JSON.parse(cut >= 0 ? text.slice(cut + 5) : "{}") || {}; } catch (e) { wire = {}; }
+                root.hdrWire = wire;
                 const on = {};
                 for (const m of d) {
-                    if (!/hdr/i.test(m.colorManagementPreset || "")) continue;
+                    const w = wire[m.name];
+                    if (!(w && w.hdr) && !/hdr/i.test(m.colorManagementPreset || "")) continue;
                     on[m.name] = true;
                     if (!root.hdrOn[m.name]) {
                         // The resting notch is under a fullscreen window, so
@@ -192,10 +200,10 @@ Singleton {
                         const fs = !!(Hyprland.focusedWorkspace && Hyprland.focusedWorkspace.hasFullscreen);
                         if (fs)
                             Moments.showCard({ key: "hdr:" + m.name, glyph: "\u{f0379}", title: "HDR",
-                                               state: m.model || m.name, tone: Theme.yellow, battery: -1, quiet: true }, 2200);
+                                               state: (w && w.hdr ? w.eotf + (w.maxNits ? " · " + w.maxNits + " nits" : "") + " · " : "") + (m.model || m.name), tone: Theme.yellow, battery: -1, quiet: true }, 2200);
                         else
                             Moments.show({ kind: "hdr", glyph: "\u{f0379}", label: "HDR",
-                                           value: m.model || m.name, ring: -1, tone: Theme.yellow }, 2200);
+                                           value: (w && w.hdr ? w.eotf + " · " : "") + (m.model || m.name), ring: -1, tone: Theme.yellow }, 2200);
                     }
                 }
                 root.hdrOn = on;

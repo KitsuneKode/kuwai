@@ -584,7 +584,12 @@ Item {
             size: 10; weight: Theme.wSemibold
             color: Theme.yellow
             HoverHandler { id: hdrHover; margin: 6 }
-            Tip { text: "This screen is showing HDR"; shown: hdrHover.hovered; below: true }
+            Tip {
+                readonly property var w: Display.hdrWire[rest.bar.screenName]
+                text: w && w.hdr ? "HDR on the wire: " + w.eotf + (w.maxNits ? ", mastered at " + w.maxNits + " nits" : "") + "\nThe screen is receiving a real HDR picture"
+                                 : "HDR preset on · the picture switches to HDR when an HDR video or game is fullscreen"
+                shown: hdrHover.hovered; below: true
+            }
         }
         IslandStatus { visible: !rest.compact; anchors.verticalCenter: parent.verticalCenter; bar: rest.bar }
         HoverHandler { cursorShape: Qt.PointingHandCursor }

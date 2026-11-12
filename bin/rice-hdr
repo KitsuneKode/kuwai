@@ -1,0 +1,126 @@
+#!/usr/bin/env python3
+# rice-hdr — what each screen is really being sent: the HDR signal on the wire,
+# not the preset's name.
+#
+# Hyprland's colorManagementPreset says "srgb" while an automatic switch
+# (render.cm_auto_hdr) sends a real PQ picture, so the notch can't use it.
+# This reads each connected connector's HDR_OUTPUT_METADATA (the infoframe
+# the kernel sends) and Colorspace through libdrm, read-only and without DRM
+# master, and prints one JSON object:
+#
+#   {"DP-3": {"hdr": true, "eotf": "PQ", "maxNits": 400, "colorspace": 9}}
+#
+# hdr is true only for a PQ or HLG infoframe. A screen without either
+# property (most laptop panels) is left out. Exit 0 with {} if nothing reads.
+# Used by shell/services/Display.qml after a fullscreen change.
+import ctypes, ctypes.util, glob, json, os
+
+lib = ctypes.CDLL(ctypes.util.find_library("drm") or "libdrm.so.2")
+
+class Res(ctypes.Structure):
+    _fields_ = [("count_fbs", ctypes.c_int), ("fbs", ctypes.POINTER(ctypes.c_uint32)),
+                ("count_crtcs", ctypes.c_int), ("crtcs", ctypes.POINTER(ctypes.c_uint32)),
+                ("count_connectors", ctypes.c_int), ("connectors", ctypes.POINTER(ctypes.c_uint32)),
+                ("count_encoders", ctypes.c_int), ("encoders", ctypes.POINTER(ctypes.c_uint32)),
+                ("min_width", ctypes.c_uint32), ("max_width", ctypes.c_uint32),
+                ("min_height", ctypes.c_uint32), ("max_height", ctypes.c_uint32)]
+
+class Conn(ctypes.Structure):   # the prefix of drmModeConnector we read
+    _fields_ = [("connector_id", ctypes.c_uint32), ("encoder_id", ctypes.c_uint32),
+                ("connector_type", ctypes.c_uint32), ("connector_type_id", ctypes.c_uint32),
+                ("connection", ctypes.c_int)]
+
+class Props(ctypes.Structure):
+    _fields_ = [("count_props", ctypes.c_uint32), ("props", ctypes.POINTER(ctypes.c_uint32)),
+                ("prop_values", ctypes.POINTER(ctypes.c_uint64))]
+
+class Prop(ctypes.Structure):   # prefix of drmModePropertyRes
+    _fields_ = [("prop_id", ctypes.c_uint32), ("flags", ctypes.c_uint32), ("name", ctypes.c_char * 32)]
+
+class Blob(ctypes.Structure):
+    _fields_ = [("id", ctypes.c_uint32), ("length", ctypes.c_uint32), ("data", ctypes.c_void_p)]
+
+lib.drmModeGetResources.restype = ctypes.POINTER(Res)
+lib.drmModeGetConnectorCurrent.restype = ctypes.POINTER(Conn)
+lib.drmModeObjectGetProperties.restype = ctypes.POINTER(Props)
+lib.drmModeObjectGetProperties.argtypes = [ctypes.c_int, ctypes.c_uint32, ctypes.c_uint32]
+lib.drmModeGetProperty.restype = ctypes.POINTER(Prop)
+lib.drmModeGetPropertyBlob.restype = ctypes.POINTER(Blob)
+for f in ("drmModeFreeResources", "drmModeFreeConnector", "drmModeFreeObjectProperties",
+          "drmModeFreeProperty", "drmModeFreePropertyBlob"):
+    getattr(lib, f).argtypes = [ctypes.c_void_p]
+
+OBJ_CONNECTOR = 0xc0c0c0c0
+CONNECTED = 1
+TYPES = {1: "VGA", 2: "DVI-I", 3: "DVI-D", 4: "DVI-A", 5: "Composite", 6: "SVIDEO", 7: "LVDS",
+         8: "Component", 9: "DIN", 10: "DP", 11: "HDMI-A", 12: "HDMI-B", 13: "TV", 14: "eDP",
+         15: "Virtual", 16: "DSI", 17: "DPI", 18: "Writeback", 19: "SPI", 20: "USB"}
+EOTF = {0: "SDR", 1: "HDR-gamma", 2: "PQ", 3: "HLG"}
+
+
+def read_card(path, out):
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_CLOEXEC)
+    except OSError:
+        return
+    try:
+        res = lib.drmModeGetResources(fd)
+        if not res:
+            return
+        for i in range(res.contents.count_connectors):
+            cid = res.contents.connectors[i]
+            c = lib.drmModeGetConnectorCurrent(fd, cid)
+            if not c:
+                continue
+            name = "%s-%d" % (TYPES.get(c.contents.connector_type, "Unknown"), c.contents.connector_type_id)
+            connected = c.contents.connection == CONNECTED
+            lib.drmModeFreeConnector(c)
+            if not connected:
+                continue
+            props = lib.drmModeObjectGetProperties(fd, cid, OBJ_CONNECTOR)
+            if not props:
+                continue
+            info, cs, has = {}, None, False
+            for j in range(props.contents.count_props):
+                p = lib.drmModeGetProperty(fd, props.contents.props[j])
+                if not p:
+                    continue
+                pname = p.contents.name.decode(errors="replace")
+                val = props.contents.prop_values[j]
+                lib.drmModeFreeProperty(p)
+                if pname == "Colorspace":
+                    cs, has = int(val), True
+                elif pname == "HDR_OUTPUT_METADATA":
+                    has = True
+                    if val:
+                        b = lib.drmModeGetPropertyBlob(fd, ctypes.c_uint32(val))
+                        if b and b.contents.length >= 6:
+                            raw = ctypes.string_at(b.contents.data, b.contents.length)
+                            # struct hdr_output_metadata: u32 type, then the infoframe:
+                            # u8 eotf, u8 type, 3×(u16 x, u16 y), (u16 x, u16 y), u16 max_lum, …
+                            eotf = raw[4]
+                            info["eotf"] = EOTF.get(eotf, str(eotf))
+                            if len(raw) >= 4 + 2 + 16 + 2:
+                                info["maxNits"] = int.from_bytes(raw[22:24], "little")
+                        if b:
+                            lib.drmModeFreePropertyBlob(b)
+            lib.drmModeFreeObjectProperties(props)
+            if not has:
+                continue
+            eotf = info.get("eotf", "SDR")
+            out[name] = {"hdr": eotf in ("PQ", "HLG"), "eotf": eotf,
+                         "maxNits": info.get("maxNits", 0), "colorspace": cs}
+        lib.drmModeFreeResources(res)
+    finally:
+        os.close(fd)
+
+
+def main():
+    out = {}
+    for card in sorted(glob.glob("/dev/dri/card[0-9]*")):
+        read_card(card, out)
+    print(json.dumps(out))
+
+
+if __name__ == "__main__":
+    main()
