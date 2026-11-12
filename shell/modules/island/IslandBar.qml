@@ -478,6 +478,15 @@ Scope {
             // share, for its scale) and shown (0 below ~80 % either way, 1 when
             // it all fits, for its opacity). Shared by everything that grows
             // out of the island, so it all arrives the same way.
+            // Content of something that grows out of the island, from its
+            // spring v (0..1): arriving, it fades in over the middle of the
+            // growth; leaving, it's gone by the time the spring is 40 % of the
+            // way home — content goes first, then the shape (it lingered at
+            // full strength while the shape shrank under it).
+            function reveal(v, arriving) {
+                return arriving ? Math.max(0, Math.min(1, (v - 0.25) / 0.5))
+                                : Math.max(0, Math.min(1, (v - 0.6) / 0.35));
+            }
             function fitIn(cw, ch) {
                 const fw = Math.min(1, shapeW / Math.max(1, cw));
                 const fh = Math.min(1, frame.height / Math.max(1, ch));
@@ -835,7 +844,7 @@ Scope {
                         x: Math.round((body.width - width) / 2)
                         width: item ? item.implicitWidth : 460
                         height: item ? item.implicitHeight : 52
-                        readonly property real k: Math.max(0, Math.min(1, (m.value - 0.25) / 0.5))
+                        readonly property real k: win.reveal(m.value, win.grown)
                         // Content never shows clipped by a shape still on its
                         // way: it grows with the shape (92 % → 100 %) and
                         // appears once ~80 % of it fits (IslandBar.fitIn).
@@ -853,7 +862,7 @@ Scope {
                         x: Math.round((body.width - win.hoverSize.width) / 2)
                         width: win.hoverSize.width
                         height: win.hoverSize.height
-                        readonly property real k: Math.max(0, Math.min(1, (Math.min(m.value, fv.value) - 0.25) / 0.5))
+                        readonly property real k: win.reveal(Math.min(m.value, fv.value), win.grown && win.hoverFull)
                         opacity: k * win.fitIn(width, height).shown * Math.max(0, 1 - pv.value * 3)
                         // Reduce motion: the shape jumps, the content fades (fades only).
                         Behavior on opacity { enabled: Theme.reduceMotion; NumberAnimation { duration: Theme.microMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
@@ -868,7 +877,7 @@ Scope {
                         id: alertLoader
                         active: win.bannerHere || bv.value > 0.01
                         x: Math.round((body.width - 440) / 2)
-                        readonly property real k: Math.max(0, Math.min(1, (bv.value - 0.3) / 0.5))
+                        readonly property real k: win.reveal(bv.value, win.bannerHere)
                         opacity: k * win.fitIn(440, win.bannerH).shown * Math.max(0, 1 - Math.max(m.value, pv.value) * 3)
                         // Reduce motion: the shape jumps, the content fades (fades only).
                         Behavior on opacity { enabled: Theme.reduceMotion; NumberAnimation { duration: Theme.microMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
@@ -886,7 +895,7 @@ Scope {
                         x: Math.round((body.width - Math.min(460, body.width)) / 2)
                         width: Math.min(460, Math.max(body.width, 1))
                         height: body.height
-                        readonly property real k: Math.max(0, Math.min(1, (nv.value - 0.3) / 0.5))
+                        readonly property real k: win.reveal(nv.value, win.peekHere)
                         readonly property real fit: Math.min(1, body.width / 460)
                         opacity: k * win.fitIn(460, win.peekH).shown * Math.max(0, 1 - Math.max(m.value, pv.value, bv.value) * 3)
                         // Reduce motion: the shape jumps, the content fades (fades only).
@@ -904,7 +913,7 @@ Scope {
                         id: deviceLoader
                         active: win.deviceHere || dv.value > 0.01
                         x: Math.round((body.width - (win.alarmCard ? 440 : 420)) / 2)
-                        readonly property real k: Math.max(0, Math.min(1, (dv.value - 0.3) / 0.5))
+                        readonly property real k: win.reveal(dv.value, win.deviceHere)
                         opacity: k * win.fitIn(win.alarmCard ? 440 : 420, 84).shown * Math.max(0, 1 - Math.max(m.value, pv.value, bv.value, nv.value) * 3)
                         // Reduce motion: the shape jumps, the content fades (fades only).
                         Behavior on opacity { enabled: Theme.reduceMotion; NumberAnimation { duration: Theme.microMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
