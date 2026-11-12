@@ -24,7 +24,7 @@ Item {
     readonly property var order: ["notifications", "sound", "controls"]   // agents live in the notch (Agents panel)
 
     function currentView() {
-        return ({ notifications: notifications, agents: agents, sound: sound, controls: display })[center.tab] || notifications;
+        return ({ notifications: notifications, sound: sound, controls: display })[center.tab] || notifications;
     }
     // The card's height for the tab showing: the chrome above and below the
     // pages, plus what the page wants (Center clamps it to the screen).
@@ -37,7 +37,6 @@ Item {
         search.text = "";
         sheet.open = false;
         notifications.reset();
-        agents.reset();
         sound.reset();
         display.reset();
     }
@@ -108,7 +107,7 @@ Item {
             Label {
                 visible: search.text === ""
                 anchors.verticalCenter: parent.verticalCenter
-                text: ({ agents: "Search agents", notifications: "Search notifications", sound: "Search apps and devices", controls: "Search networks and devices" })[content.center.tab] || "Search"
+                text: ({ notifications: "Search notifications", sound: "Search apps and devices", controls: "Search networks and devices" })[content.center.tab] || "Search"
                 size: 14
                 color: Theme.textTertiary
             }
