@@ -24,6 +24,7 @@ import Quickshell.Widgets
 import qs.config
 import qs.components
 import qs.services
+import Quickshell.Hyprland
 
 Item {
     id: split
@@ -106,6 +107,7 @@ Item {
     onT3NowChanged: if (t3Live) { t3Value = String(T3Code.waiting > 0 ? T3Code.waiting : T3Code.running); t3Waiting = T3Code.waiting > 0; }
     readonly property var wants: ({
         music: on && atRest && musicLive,
+        min: on && atRest && minimized.length > 0,
         agents: on && atRest && (agentsLive || agentsLinger.running),
         t3: on && atRest && (t3Live || t3Linger.running),
         sys: on && atRest && (sysLive || sysLinger.running)
@@ -115,10 +117,20 @@ Item {
     // Nearest the notch first. Music always left; the rest to the side with
     // fewer out (a tie: the first of a pair left, the next right). A side,
     // once given, holds until that capsule has folded away.
-    readonly property var order: ["music", "agents", "t3", "sys"]
+    readonly property var order: ["music", "agents", "t3", "sys", "min"]
+    // Windows tucked away with Super+O (special:minimized): a capsule of their
+    // icons, each one a way back. Without it they were nowhere to be seen.
+    readonly property var minimized: Hyprland.toplevels.values.filter(t => t.workspace && t.workspace.name === "special:minimized")
+    // Onto the workspace you're on, focused (what Super+Shift+O does for the last one).
+    function bringBack(t) {
+        if (!t) return;
+        const ws = Hyprland.focusedWorkspace ? Hyprland.focusedWorkspace.id : 1;
+        Hyprland.dispatch("hl.dsp.window.move({ window = 'address:0x" + t.address + "', workspace = " + ws + " })");
+        Hyprland.dispatch("hl.dsp.focus({ window = 'address:0x" + t.address + "' })");
+    }
     property var sideOf: ({})
     onWantsChanged: assign()
-    function pillOf(k) { return ({ music: musicPill, agents: agentsPill, t3: t3Pill, sys: sysPill })[k]; }
+    function pillOf(k) { return ({ music: musicPill, agents: agentsPill, t3: t3Pill, sys: sysPill, min: minPill })[k]; }
     function assign() {
         const next = {};
         let left = 0, right = 0;
@@ -153,7 +165,7 @@ Item {
     readonly property bool agentsHold: agentsPill.shown
     readonly property bool t3Hold: t3Pill.shown
     // For the window's input mask (IslandBar): what's out takes clicks.
-    readonly property var pills: [musicPill, agentsPill, t3Pill, sysPill]
+    readonly property var pills: [musicPill, agentsPill, t3Pill, sysPill, minPill]
 
     // One capsule: black glass like the island, sized to `content` (a
     // circle at least), budding from `from` toward `side`.
@@ -389,6 +401,58 @@ Item {
             bar: split.bar
             quiet: split.activity !== "" && split.activity !== "media"
             updateOffStage: Updates.running && split.activity !== "update"
+        }
+    }
+
+    // ── Minimized windows (Super+O) ──
+    Pill {
+        id: minPill
+        name: "min"
+        Row {
+            spacing: 6
+            Repeater {
+                model: split.minimized.slice(0, 3)
+                delegate: Item {
+                    id: mw
+                    required property var modelData
+                    readonly property string cls: modelData.lastIpcObject ? (modelData.lastIpcObject.class || "") : ""
+                    width: 18; height: 18
+                    anchors.verticalCenter: parent ? parent.verticalCenter : undefined
+                    Text {
+                        // No icon found (or not loaded yet): a window, so the slot isn't blank.
+                        visible: mwImg.status !== Image.Ready
+                        anchors.centerIn: parent
+                        text: "\u{f05b6}"                   // window-maximize
+                        font.family: Theme.fontGlyph; font.pixelSize: Theme.tCallout
+                        color: Theme.textSecondary
+                    }
+                    Image {
+                        id: mwImg
+                        anchors.fill: parent
+                        source: mw.cls ? NotifAdapters.iconForApp(mw.cls) : ""
+                        sourceSize: Qt.size(36, 36)
+                        asynchronous: true
+                        opacity: mwHover.hovered ? 1 : 0.85
+                    }
+                    HoverHandler { id: mwHover; margin: 3; cursorShape: Qt.PointingHandCursor }
+                    TapHandler { onTapped: split.bringBack(mw.modelData) }
+                    Tip { text: (mw.modelData.title || mw.cls) + "\nClick to bring it back"; shown: mwHover.hovered; below: true }
+                    Accessible.role: Accessible.Button
+                    Accessible.name: "Bring back " + (mw.modelData.title || mw.cls)
+                    Accessible.onPressAction: split.bringBack(mw.modelData)
+                }
+            }
+            Label {
+                visible: split.minimized.length > 3
+                anchors.verticalCenter: parent.verticalCenter
+                text: "+" + (split.minimized.length - 3)
+                size: Theme.tSub; weight: Theme.wSemibold
+                color: Theme.textSecondary
+                font.features: ({ "tnum": 1 })
+                HoverHandler { id: moreHover; cursorShape: Qt.PointingHandCursor }
+                TapHandler { onTapped: split.bringBack(split.minimized[split.minimized.length - 1]) }
+                Tip { text: split.minimized.slice(3).map(t => t.title).join(" · ") + "\nClick: bring one back (or Super+Shift+O)"; shown: moreHover.hovered; below: true }
+            }
         }
     }
 }

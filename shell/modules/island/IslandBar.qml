@@ -146,6 +146,7 @@ Scope {
                 Region { item: split.pills[1].visible ? split.pills[1] : null }
                 Region { item: split.pills[2].visible ? split.pills[2] : null }
                 Region { item: split.pills[3].visible ? split.pills[3] : null }
+                Region { item: split.pills[4].visible ? split.pills[4] : null }
             }
             // Nearing the island: the pointer resting on the top edge over it
             // (its resting width and 80 px either side, not the grown one, so
