@@ -262,6 +262,13 @@ case ${1:-} in
                 ( switch_to "$STABLE" ) && echo "rice: rolled back; fix it in dev and promote again" >&2
                 exit 1
             fi
+        elif qs list --all --json 2>/dev/null | jq -e --arg d "$STABLE/shell/shell.qml" 'any(.[]; .config_path == $d)' >/dev/null; then
+            # Channel dev (Hyprland reads the repo, someone's testing its
+            # config) but the shell on screen is stable's: it doesn't watch its
+            # files, so restart just the shell; Hyprland and its environment
+            # stay as they are. (Skipped before: promotes never reached the screen.)
+            echo "rice: channel is dev; restarting stable's shell only"
+            "$STABLE/bin/rice-shell" || { echo "rice: stable's shell didn't start; it's on $(git -C "$STABLE" log --oneline -1)" >&2; exit 1; }
         fi ;;
     check)         exec "$RICE/bin/rice-check" "$@" ;;
     doctor)        exec "$RICE/bin/rice-doctor" "$@" ;;

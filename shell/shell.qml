@@ -8,6 +8,8 @@
 // services/ data and state (singletons) · modules/ the surfaces.
 import QtQuick
 import Quickshell
+import Quickshell.Io
+import qs.config
 import qs.modules.osd
 import qs.modules.notifications
 import qs.modules.clipboard
@@ -35,7 +37,17 @@ ShellRoot {
     // The stable copy (~/.local/share/kuwai) doesn't hot-reload: each reload
     // left ~25–30 MB behind, and `rice promote` restarts it cleanly anyway.
     // The dev tree keeps live reload for editing.
-    Component.onCompleted: Quickshell.watchFiles = !Quickshell.shellDir.includes("/.local/share/kuwai/")
+    // And after a crash Quickshell re-execs in place (same PID): the run
+    // before it left its helpers running as our children. Stop those once.
+    Component.onCompleted: {
+        Quickshell.watchFiles = !Quickshell.shellDir.includes("/.local/share/kuwai/");
+        reaper.running = true;
+    }
+    Process {
+        id: reaper
+        command: [Paths.bin + "/rice-reap"]
+        stdout: SplitParser { onRead: line => console.log(line) }
+    }
     Osd {}
     Popups {}
     Center {}

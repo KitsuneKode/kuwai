@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# Stop helpers an earlier run of this same shell process left behind.
+#
+# When Quickshell crashes, its crash handler re-execs the shell in place: the
+# same PID, a new program. The helpers the old run started (the sleep guard,
+# `pactl subscribe`, udevadm, the brightness watcher, polling loops) are still
+# its children and keep running beside the new run's copies: two sleep guards,
+# two sound watchers, doubled CPU. (2026-11-12 20:55: six of them.)
+#
+# The shell runs this once at startup, as its own child, so $PPID is the shell.
+# A child of the shell older than the shell's current run is from the old run:
+# it and everything under it are killed. On a normal start there are none.
+#   rice-reap [--dry-run]
+set -u
+DRY=0; [ "${1:-}" = --dry-run ] && DRY=1
+shell=$PPID
+self=$$
+
+# When this run of the shell began (qs list's launch_time is the new run's).
+# (RICE_REAP_STARTED, epoch s: for tests, which aren't a Quickshell instance.)
+if [ -n "${RICE_REAP_STARTED:-}" ]; then started=$RICE_REAP_STARTED; else
+launch=$(qs list --all --json 2>/dev/null | jq -r --argjson p "$shell" '.[] | select(.pid == $p) | .launch_time' | head -1)
+[ -n "$launch" ] || exit 0
+started=$(date -d "$launch" +%s 2>/dev/null) || exit 0
+fi
+now=$(date +%s)
+age=$(( now - started ))
+
+tree() {   # $1 and its descendants, deepest first
+    local c
+    for c in $(ps -o pid= --ppid "$1" 2>/dev/null); do tree "$c"; done
+    echo "$1"
+}
+
+n=0
+for c in $(ps -o pid= --ppid "$shell" 2>/dev/null); do
+    [ "$c" = "$self" ] && continue
+    st=$(ps -o stat= -p "$c" 2>/dev/null | tr -d ' ')
+    case $st in Z*|"") continue ;; esac
+    et=$(ps -o etimes= -p "$c" 2>/dev/null | tr -d ' ')
+    [ -n "$et" ] || continue
+    # Started more than 2 s before this run: the old run's.
+    [ "$et" -gt $(( age + 2 )) ] || continue
+    for p in $(tree "$c"); do
+        if [ $DRY = 1 ]; then
+            printf 'would stop %s %s\n' "$p" "$(ps -o args= -p "$p" 2>/dev/null | cut -c1-80)"
+        else
+            kill -KILL "$p" 2>/dev/null && n=$((n + 1))
+        fi
+    done
+done
+[ $DRY = 1 ] || [ $n = 0 ] || echo "rice-reap: stopped $n helper(s) left by the shell's run before a crash"
