@@ -22,6 +22,7 @@ import QtQuick.Effects
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Hyprland
+import Quickshell.Io
 import Quickshell.Services.Mpris
 import qs.config
 import qs.components
@@ -214,6 +215,19 @@ Scope {
             // Super+Alt+I, opens everything (IslandHover). "Everything" in
             // Settings skips the glance. Folding away starts over at the glance.
             property bool full: false
+            // Why this screen's island is out (read-only):
+            //   qs ipc -p ~/.local/share/kuwai/shell call islandbar-eDP-1 dump
+            IpcHandler {
+                target: "islandbar-" + win.screenName
+                function dump(): string {
+                    return JSON.stringify({ tucked: win.tucked, outNow: win.outNow, near: win.near, hovered: win.hovered, grown: win.grown, full: win.full,
+                        panelHere: win.panelHere, bannerHere: win.bannerHere, peekHere: win.peekHere, deviceHere: win.deviceHere,
+                        peek: Island.peek && Island.peekScreen === win.screenName, activity: restRow.activity, missedUrgent: Notifs.missedUrgent,
+                        wantsProximity: win.wantsProximity, nearHover: nearHover.hovered, frameHover: frameHover.hovered, slopHover: slopHover.hovered,
+                        overPills: win.overPills, compact: restRow.compact, menus: win.menus, nearOff: nearOff.running, zoneHits: win.zoneHits,
+                        pointer: [Pointer.x, Pointer.y, Math.round(Pointer.speed), Pointer.wanted], inZone: win.inZone(20) });
+                }
+            }
             readonly property bool hoverFull: Settings.hoverView === "full" || full || peeked
             onGrownChanged: if (!grown) full = false
             // Over the workspace pills the island stays put: they're for clicking.

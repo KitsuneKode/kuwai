@@ -29,7 +29,11 @@ Item {
     readonly property real pad: 22
     readonly property real gap: 20
     // The time centred, the two sides the same width so it stays centred.
-    readonly property real sideW: Math.min(150, Math.max(left.implicitWidth, right.implicitWidth))
+    // From the labels' own text widths: the rows' widths depend on sideW, and
+    // sizing from them settled on almost nothing (the name ran under the clock).
+    readonly property real leftNeed: 26 + appName.implicitWidth
+    readonly property real rightNeed: rightText.implicitWidth + (glance.playing ? 30 : 0)
+    readonly property real sideW: Math.min(170, Math.max(96, leftNeed, rightNeed))
     implicitWidth: Math.round(2 * (pad + sideW + gap) + when.implicitWidth)
     implicitHeight: 52
 
@@ -50,6 +54,7 @@ Item {
             Text { visible: appIcon.path === ""; anchors.centerIn: parent; text: "\u{f05b5}"; font.family: Theme.fontGlyph; font.pixelSize: Theme.tCallout; color: Theme.textSecondary }
         }
         Label {
+            id: appName
             anchors.verticalCenter: parent.verticalCenter
             width: Math.min(implicitWidth, glance.sideW - 26)
             elide: Text.ElideRight
@@ -87,6 +92,7 @@ Item {
         spacing: 8
         layoutDirection: Qt.RightToLeft
         Label {
+            id: rightText
             anchors.verticalCenter: parent.verticalCenter
             width: Math.min(implicitWidth, glance.sideW - (art.visible ? 30 : 0))
             elide: Text.ElideRight
