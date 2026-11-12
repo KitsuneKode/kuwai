@@ -67,6 +67,8 @@ Singleton {
         && !(i.event && Kittymux.answered(i.event))          // a kittymux pane you've already been to
         && (i.severity === "critical" || i.severity === "warning" || i.urgency === NotificationUrgency.Critical || i.hasDefault || (i.actions && i.actions.length)))
         .sort((a, b) => b.time - a.time)
+    // Of those, the ones a hidden island stays out for (IslandBar.outNow).
+    readonly property bool missedUrgent: missed.some(i => i.severity === "critical" || i.urgency === NotificationUrgency.Critical)
 
     readonly property string bellBadge: inbox <= 0 ? "" : (inbox > 9 ? "9+" : String(inbox))
     readonly property color bellBadgeTone: missed.some(i => i.severity === "critical") ? Theme.critical

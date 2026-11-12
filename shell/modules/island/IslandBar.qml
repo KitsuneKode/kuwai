@@ -58,7 +58,13 @@ Scope {
             readonly property bool tucked: showBar && Settings.islandTucked
             readonly property bool outNow: !tucked || panelHere || bannerHere || peekHere || deviceHere || grown || near || hovered
                                            || (Island.peek && Island.peekScreen === screenName) || restRow.activity !== ""
-                                           || Notifs.missed.length > 0
+                                           || Notifs.missedUrgent
+            // Anything missed used to hold a hidden island out until you opened
+            // the center: nearly every notification has an action, so Hidden
+            // stopped hiding (Ctrl+Alt+W seemed not to work until a restart or a
+            // visit to the list). It already showed as a toast or a moment; now
+            // only an urgent one keeps the island out, and the dot waits there
+            // for when you near it.
             readonly property bool panelHere: Island.panel !== "" && Island.screen === screenName
             property string shownPanel: ""
             onPanelHereChanged: {
