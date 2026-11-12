@@ -9,6 +9,7 @@ import Quickshell.Services.Pipewire
 import Quickshell.Widgets
 import qs.config
 import qs.components
+import qs.services
 
 Item {
     id: media
