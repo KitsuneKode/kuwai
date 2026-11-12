@@ -70,6 +70,10 @@ Scope {
             readonly property bool panelHere: Island.panel !== "" && Island.screen === screenName
             property string shownPanel: ""
             onPanelHereChanged: {
+                // The calendar opened from a clock you clicked: that clock flies
+                // up into it. Closing, it flies back to the island's clock on show.
+                clockOpening = panelHere && Island.panel === "calendar" && !!clockStart && Date.now() - clockStartAt < 800;
+                if (!panelHere) clockClosing = shownPanel === "calendar" && (hovered || restRow.clockShown);
                 if (panelHere) {
                     shownPanel = Island.panel;
                     grown = false;
@@ -300,6 +304,48 @@ Scope {
             // Glance → everything: the content crossfades as the shape grows.
             Spring { id: fv; tier: win.hoverFull ? win.grow : win.shrink; epsilon: 0.001; target: win.grown && win.hoverFull ? 1 : 0 }
             Spring { id: pv; tier: win.panelHere ? win.grow : win.shrink; epsilon: 0.001; target: win.panelHere ? 1 : 0 }
+
+            // ── One clock, two places ────────────────────────────────────
+            // Clicking the time (at rest or in the hover view) opens the
+            // calendar, and the clock you clicked travels into the calendar's
+            // header instead of fading: one object, two places (the Dynamite
+            // video's best idea). Its travel is the panel's own spring (pv), so
+            // the clock and the shape can't drift apart, and catching it
+            // mid-way works. The targets move while the shape springs, so it
+            // follows them every frame, only while it flies.
+            property Item clockStart: null
+            property real clockStartAt: 0
+            function clockFrom(item) { clockStart = item; clockStartAt = Date.now(); }
+            property bool clockOpening: false
+            property bool clockClosing: false
+            readonly property Item calClock: shownPanel === "calendar" && panelLoader.item ? (panelLoader.item.clockItem || null) : null
+            readonly property bool clockFlying: !!calClock && !Theme.reduceMotion && pv.value > 0.002 && pv.value < 0.995
+                && (panelHere ? clockOpening : clockClosing)
+            // Where the island's clock is now: the glance's, the hover view's,
+            // or the one at rest (whichever shows).
+            function islandClock() {
+                if (grown) { const L = hoverFull ? hoverLoader : glanceLoader; return L.item ? L.item.clockItem : null; }
+                return restRow.clockShown ? restRow.clockItem : null;
+            }
+            property point flyFrom: Qt.point(0, 0)
+            property real flySize: 15
+            function placeFlyer() {
+                if (!calClock) return;
+                const isl = panelHere ? clockStart : islandClock();
+                if (isl && isl.width > 0) { flyFrom = isl.mapToItem(body, 0, 0); flySize = isl.size || 15; }
+                const a = calClock.mapToItem(body, 0, 0);
+                const k = Math.max(0, Math.min(1, pv.value));
+                flyer.x = flyFrom.x + (a.x - flyFrom.x) * k;
+                flyer.y = flyFrom.y + (a.y - flyFrom.y) * k;
+                const s0 = flySize / flyer.size;
+                flyer.scale = s0 + (1 - s0) * k;
+            }
+            onClockFlyingChanged: if (clockFlying) placeFlyer(); else if (pv.value >= 0.995 || pv.value <= 0.002) { clockOpening = false; clockClosing = false; }
+            FrameAnimation { running: win.clockFlying; onTriggered: win.placeFlyer() }
+            Binding { target: win.calClock ? panelLoader.item : null; property: "clockHidden"; value: win.clockFlying; when: !!win.calClock }
+            Binding { target: panelLoader.item; property: "now"; value: win.now; when: win.shownPanel === "calendar" && !!panelLoader.item }
+            Binding { target: glanceLoader.item; property: "clockHidden"; value: win.clockFlying; when: !!glanceLoader.item }
+            Binding { target: hoverLoader.item; property: "clockHidden"; value: win.clockFlying; when: !!hoverLoader.item }
 
             readonly property real backH: Island.canBack ? 34 : 0
             // A panel's own size, but never past the window (room for the shadow):
@@ -621,6 +667,18 @@ Scope {
                     clip: true
                     opacity: 1 - 0.7 * Math.min(1, Math.max(0, win.pull) / 45)
 
+                    // The clock in flight (see "One clock, two places"): above
+                    // everything in the island, placed every frame while it flies.
+                    IslandClock {
+                        id: flyer
+                        z: 50
+                        visible: win.clockFlying
+                        now: win.now; size: 26
+                        rounded: false; weight: Theme.wMedium
+                        color: Qt.rgba(1, 0.98, 0.95, 0.95)
+                        transformOrigin: Item.TopLeft
+                    }
+
                     // ── At rest ──────────────────────────────────────────
                     // The row's width follows a spring of the same tier as
                     // the shape: its edges (and what's anchored to them) move
@@ -631,6 +689,7 @@ Scope {
                     IslandRest {
                         id: restRow
                         bar: win
+                        clockHidden: win.clockFlying
                         width: Math.max(0, rw.value)
                         anchors.horizontalCenter: parent.horizontalCenter
                         y: Math.round((win.restH - height) / 2)

@@ -19,6 +19,8 @@ import qs.services
 Item {
     id: glance
     required property var bar
+    readonly property Item clockItem: glanceClock
+    property bool clockHidden: false
     readonly property var player: bar.player
     readonly property bool playing: !!player && player.isPlaying && Settings.hoverMedia
     readonly property var focusWin: bar.screenWin
@@ -70,9 +72,11 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         spacing: 9
         IslandClock {
+            id: glanceClock
+            visible: !glance.clockHidden
             now: glance.bar.now; size: Theme.tTitle2
             rounded: false; weight: Theme.wMedium
-            color: Theme.textPrimary
+            color: Qt.rgba(1, 0.98, 0.95, 0.95)
             anchors.verticalCenter: parent.verticalCenter
         }
         Label {

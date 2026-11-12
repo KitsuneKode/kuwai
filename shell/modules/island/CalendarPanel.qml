@@ -17,6 +17,10 @@ FocusScope {
     focus: true
 
     property date today: new Date()
+    // The island's clock lands here (IslandBar's flyer); IslandBar keeps it ticking.
+    property date now: new Date()
+    readonly property Item clockItem: calClock
+    property bool clockHidden: false
     property date selected: today
     // The month shown: its first day.
     property date month: new Date(today.getFullYear(), today.getMonth(), 1)
@@ -71,6 +75,24 @@ FocusScope {
         id: col
         x: 22; y: 20
         spacing: 10
+
+        Row {
+            spacing: 10
+            IslandClock {
+                id: calClock
+                visible: !cal.clockHidden
+                now: cal.now; size: 26
+                rounded: false; weight: Theme.wMedium
+                color: Qt.rgba(1, 0.98, 0.95, 0.95)
+                anchors.verticalCenter: parent.verticalCenter
+            }
+            Label {
+                anchors.verticalCenter: parent.verticalCenter
+                text: Qt.formatDate(cal.now, "dddd, MMMM d")
+                size: Theme.tHeadline; weight: Theme.wMedium
+                color: Theme.textTertiary
+            }
+        }
 
         Item {
             width: cal.cell * 7

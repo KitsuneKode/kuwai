@@ -593,9 +593,14 @@ Item {
         onClicked: T3Code.openBest()
     }
 
+    // One clock, two places (IslandBar's flyer): the calendar opened from it
+    // takes this clock up into its header, and closing brings it back here.
+    readonly property Item clockItem: clock
+    readonly property bool clockShown: (!rest.compact || rest.mini) && !rest.helloFocus && rest.chromeReveal > 0.01
+    property bool clockHidden: false
     IslandClock {
         id: clock
-        visible: (!rest.compact || rest.mini) && !rest.helloFocus && rest.chromeReveal > 0.01
+        visible: rest.clockShown && !rest.clockHidden
         opacity: (1 - rest.hintOn) * rest.chromeReveal
         Behavior on opacity { NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
         now: rest.bar.now; size: 15
@@ -607,7 +612,7 @@ Item {
         Behavior on x { NumberAnimation { duration: Theme.reflowMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
         anchors.verticalCenter: parent.verticalCenter
         HoverHandler { cursorShape: Qt.PointingHandCursor }
-        TapHandler { onTapped: Island.toggle("calendar", rest.bar.screenName, "pointer", "island") }
+        TapHandler { onTapped: { rest.bar.clockFrom(clock); Island.toggle("calendar", rest.bar.screenName, "pointer", "island"); } }
     }
     // Mini notch, an event soon: "19:35 · Standup · 25m".
     Label {

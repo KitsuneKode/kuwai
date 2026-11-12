@@ -23,6 +23,8 @@ Item {
     id: hover
     readonly property bool agentsHere: Settings.limitAlerts && Limits.usable.length > 0
     required property var bar
+    readonly property Item clockItem: hoverClock
+    property bool clockHidden: false
     readonly property var player: bar.player
     readonly property bool media: bar.showMedia
     // Go to the window that's playing: the one whose title carries the track
@@ -190,6 +192,8 @@ Item {
             anchors.centerIn: parent
             spacing: 10
             IslandClock {
+                id: hoverClock
+                visible: !hover.clockHidden
                 now: hover.bar.now; size: 26
                 rounded: false; weight: Theme.wMedium
                 color: Qt.rgba(1, 0.98, 0.95, 0.95)
@@ -228,7 +232,7 @@ Item {
             }
         }
         HoverHandler { id: chipHover; cursorShape: Qt.PointingHandCursor }
-        TapHandler { onTapped: Island.open("calendar", hover.bar.screenName, "pointer", "island") }
+        TapHandler { onTapped: { hover.bar.clockFrom(hoverClock); Island.open("calendar", hover.bar.screenName, "pointer", "island"); } }
     }
 
     // Now playing
