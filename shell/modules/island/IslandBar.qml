@@ -210,6 +210,12 @@ Scope {
             // ── Hover, with intent ───────────────────────────────────────
             property bool hovered: false
             property bool grown: false
+            // Hover shows a glance (IslandGlance, one row); a click on it, or
+            // Super+Alt+I, opens everything (IslandHover). "Everything" in
+            // Settings skips the glance. Folding away starts over at the glance.
+            property bool full: false
+            readonly property bool hoverFull: Settings.hoverView === "full" || full || peeked
+            onGrownChanged: if (!grown) full = false
             // Over the workspace pills the island stays put: they're for clicking.
             readonly property bool overPills: restRow.pillsHovered || restRow.musicHovered || restRow.marksHovered
             // Minimal, reached on the island itself (not by the edge): the
@@ -277,6 +283,8 @@ Scope {
             readonly property var grow: keyed ? Theme.surfaceKeyIn : Theme.surfaceIn
             readonly property var shrink: keyed ? Theme.surfaceKeyOut : Theme.surfaceOut
             Spring { id: m; tier: win.grown ? win.grow : win.shrink; epsilon: 0.001; target: win.grown && !win.panelHere ? 1 : 0 }
+            // Glance → everything: the content crossfades as the shape grows.
+            Spring { id: fv; tier: win.hoverFull ? win.grow : win.shrink; epsilon: 0.001; target: win.grown && win.hoverFull ? 1 : 0 }
             Spring { id: pv; tier: win.panelHere ? win.grow : win.shrink; epsilon: 0.001; target: win.panelHere ? 1 : 0 }
 
             readonly property real backH: Island.canBack ? 34 : 0
@@ -288,8 +296,10 @@ Scope {
             // Expanded, recent background work from the assistant gets a row at the bottom.
             // Its width is IslandHover's own (wider with many agent accounts,
             // so the rings clear both sides); 720 until it's loaded.
-            readonly property size hoverSize: Qt.size(hoverLoader.item ? Math.min(hoverLoader.item.implicitWidth, implicitWidth - 40) : 720,
-                                                       hoverLoader.item ? hoverLoader.item.implicitHeight : 148 + (OllamaService.recentWork.length || OllamaService.bgWorking ? 38 : 0))
+            readonly property size hoverSize: !hoverFull
+                ? Qt.size(glanceLoader.item ? Math.min(glanceLoader.item.implicitWidth, implicitWidth - 40) : 460, glanceLoader.item ? glanceLoader.item.implicitHeight : 52)
+                : Qt.size(hoverLoader.item ? Math.min(hoverLoader.item.implicitWidth, implicitWidth - 40) : 720,
+                          hoverLoader.item ? hoverLoader.item.implicitHeight : 148 + (OllamaService.recentWork.length || OllamaService.bgWorking ? 38 : 0))
             // A warning grows the island too (below panels and hover in priority).
             readonly property bool bannerHere: Alerts.banner !== null && screenName === (Screens.present(Alerts.bannerOn) ? Alerts.bannerOn : Screens.focusedName) && !panelHere && !grown
             Spring { id: bv; tier: win.bannerHere ? win.grow : win.shrink; epsilon: 0.001; target: win.bannerHere ? 1 : 0 }
@@ -660,12 +670,24 @@ Scope {
 
                     // ── Hovered ──────────────────────────────────────────
                     Loader {
+                        id: glanceLoader
+                        active: (win.grown && !win.hoverFull) || (m.value > 0.01 && fv.value < 0.99 && Settings.hoverView !== "full")
+                        x: Math.round((body.width - width) / 2)
+                        width: item ? item.implicitWidth : 460
+                        height: item ? item.implicitHeight : 52
+                        readonly property real k: Math.max(0, Math.min(1, (m.value - 0.25) / 0.5))
+                        opacity: k * Math.max(0, 1 - fv.value * 2.5) * Math.max(0, 1 - pv.value * 3)
+                        Behavior on opacity { enabled: Theme.reduceMotion; NumberAnimation { duration: Theme.microMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+                        visible: opacity > 0.01
+                        sourceComponent: IslandGlance { bar: win }
+                    }
+                    Loader {
                         id: hoverLoader
-                        active: win.grown || m.value > 0.01
+                        active: (win.grown && win.hoverFull) || (m.value > 0.01 && fv.value > 0.01)
                         x: Math.round((body.width - win.hoverSize.width) / 2)
                         width: win.hoverSize.width
                         height: win.hoverSize.height
-                        readonly property real k: Math.max(0, Math.min(1, (m.value - 0.25) / 0.5))
+                        readonly property real k: Math.max(0, Math.min(1, (Math.min(m.value, fv.value) - 0.25) / 0.5))
                         opacity: k * Math.max(0, 1 - pv.value * 3)
                         // Reduce motion: the shape jumps, the content fades (fades only).
                         Behavior on opacity { enabled: Theme.reduceMotion; NumberAnimation { duration: Theme.microMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }

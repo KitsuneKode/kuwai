@@ -20,6 +20,7 @@ Singleton {
     readonly property alias restStatus: s.restStatus
     readonly property alias hoverMedia: s.hoverMedia
     readonly property alias hoverDelay: s.hoverDelay
+    readonly property alias hoverView: s.hoverView
     readonly property alias workspaceCount: s.workspaceCount
     readonly property alias notifKeepSeenHours: s.notifKeepSeenHours
     readonly property alias islandStyle: s.islandStyle
@@ -113,6 +114,8 @@ Singleton {
             // Island on hover: the media card under the clock; how long to rest the pointer first (ms).
             property bool hoverMedia: true
             property int hoverDelay: 220
+            // Hover shows a glance (one row; a click opens everything) or everything at once.
+            property string hoverView: "glance"
             // Capsules shown at least (more appear as workspaces fill).
             property int workspaceCount: 5
             // Notifications: seen ones nobody acted on clear after this many hours (0 keeps them).

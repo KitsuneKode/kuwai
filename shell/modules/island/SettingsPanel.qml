@@ -217,6 +217,15 @@ FocusScope {
                     Toggle { on: Settings.hoverMedia; onToggled: Settings.set("hoverMedia", !Settings.hoverMedia) }
                 }
                 SettingsRow {
+                    key: "hoverView"
+                    label: "Hover shows"; detail: Settings.hoverView === "full" ? "Everything at once: the app, workspaces, time, music, machine and status" : "A glance (app, time, music); click it for everything. Super+Alt+I opens everything too"
+                    Segmented {
+                        options: [{ id: "glance", label: "A glance" }, { id: "full", label: "Everything" }]
+                        current: Settings.hoverView
+                        onPicked: id => Settings.set("hoverView", id)
+                    }
+                }
+                SettingsRow {
                     key: "hoverDelay"
                     label: "Hover delay"; detail: "How long the pointer rests before the island grows"
                     Segmented {
