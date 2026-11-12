@@ -63,22 +63,30 @@ function search(sections, rows, q, limit) {
     for (const r of rows) {
         const s = bySection[r.page];
         if (!s) continue;
-        const hay = r.words + " " + s.label.toLowerCase();
-        if (!words.every(w => hay.includes(w))) continue;
+        // Each word in the row itself, or in its page's name and keywords
+        // ("lock screen": Lock is a row of the page about the screen), but
+        // at least one in the row, so one word never lists a whole page.
+        const page = (s.label + " " + (s.keys || "")).toLowerCase();
         const lab = r.label.toLowerCase();
-        let score = 0;
-        for (const w of words) score += lab.startsWith(w) ? 6 : lab.includes(w) ? 4 : r.words.includes(w) ? 1 : 0.5;
+        let score = 0, own = 0, ok = true;
+        for (const w of words) {
+            if (lab.startsWith(w)) { score += 6; own++; }
+            else if (lab.includes(w)) { score += 4; own++; }
+            else if (r.words.includes(w)) { score += 1; own++; }
+            else if (page.includes(w)) score += 0.3;
+            else { ok = false; break; }
+        }
+        if (!ok || !own) continue;
         out.push({ section: s, row: { label: r.label, detail: r.detail, group: r.group }, score });
     }
-    const answered = {};
-    for (const r of out) answered[r.section.id] = true;
+    // The page itself too, when its name or keywords hold every word; first
+    // when its name is what you typed.
     for (const s of sections) {
         const hay = (s.label + " " + (s.keys || "")).toLowerCase();
         if (!words.every(w => hay.includes(w))) continue;
-        const score = words.reduce((n, w) => n + (s.label.toLowerCase().includes(w) ? 5 : 1.5), 0);
-        // The page itself, above its rows when its name is what you typed.
-        if (!answered[s.id] || s.label.toLowerCase().includes(words.join(" ")))
-            out.push({ section: s, row: null, score: score + (answered[s.id] ? 1 : 0) });
+        const name = s.label.toLowerCase();
+        const score = words.reduce((n, w) => n + (name.includes(w) ? 5 : 1.5), 0) + (name.startsWith(words[0]) ? 4 : 0);
+        out.push({ section: s, row: null, score });
     }
     out.sort((a, b) => b.score - a.score);
     return out.slice(0, limit || 12).map(r => ({ section: r.section, row: r.row }));

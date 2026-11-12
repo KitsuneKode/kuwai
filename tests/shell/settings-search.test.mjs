@@ -39,5 +39,7 @@ describe("searching", () => {
   test("every word must match", () => expect(search(sections, rows, "hover zzzz")).toEqual([]));
   test("one letter isn't a search", () => expect(search(sections, rows, "a")).toEqual([]));
   test("case doesn't matter", () => expect(first("HOVER DELAY").row.label).toBe("Hover delay"));
+  test("words across the row and its page: lock screen → Lock", () => expect(first("lock screen").row.label).toBe("Lock"));
+  test("one word never lists a whole page", () => expect(search(sections, rows, "hover").every(r => !r.row || /hover/i.test(r.row.label + r.row.detail + r.row.group))).toBe(true));
   test("capped", () => expect(search(sections, rows, "the", 5).length).toBeLessThanOrEqual(5));
 });
