@@ -249,6 +249,8 @@ Singleton {
         target: "island"
         function toggle(panel: string): void { root.toggle(panel, "", "key"); }
         function open(panel: string): void { root.open(panel, "", "key"); }
+        // The launcher with text already in it: launch "= 20 usd to yen", launch ">set".
+        function launch(text: string): void { root.openWith(text); }
         function close(): void { root.close(); }
         function back(): void { root.back(); }
         function settings(page: string): void { root.openSettings(page); }

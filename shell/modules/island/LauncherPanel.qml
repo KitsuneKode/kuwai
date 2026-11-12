@@ -8,6 +8,8 @@
 //   ▣ Kitty — ~/Projects  Window
 //   = 1.5 × 4  → 6        Copy
 //
+// Modes, by their first character: = calculator (math, units, currencies),
+// : emoji, ; glyphs, > every mode and action by name ("run").
 // Keys: type to search, ↑↓ (or ⌃J ⌃K, ⌃N ⌃P, Tab) choose, ↵ open, Esc close.
 // Uses: ~/.local/state/rice/launcher.json (counts and times, nothing else).
 import QtQuick
@@ -18,6 +20,7 @@ import Quickshell.Widgets
 import qs.config
 import qs.components
 import qs.services
+import "../../services/calc.js" as Calc
 
 FocusScope {
     id: launcher
@@ -51,8 +54,6 @@ FocusScope {
         Island.close();
         Quickshell.execDetached([Paths.bin + "/kuwai-agent", name, pid]);
     }
-    // When this panel appeared: rows cascade in only during the first moment.
-    readonly property real born: Date.now()
     property int current: 0
     property var lastPointer: null
     readonly property int rowH: 50
@@ -92,22 +93,11 @@ FocusScope {
     ]
 
     // ── Conversions: "5 km to mi", "72 f in c", "100 usd to inr" ────────
-    // Units are offline; currencies use open.er-api.com's daily rates (no
-    // key, nothing about you is sent), cached 12 h in ~/.cache/rice/fx.json.
-    readonly property var units: ({
-        // length (m)
-        mm: ["len", 0.001], cm: ["len", 0.01], m: ["len", 1], km: ["len", 1000], in: ["len", 0.0254], inch: ["len", 0.0254], ft: ["len", 0.3048], feet: ["len", 0.3048], yd: ["len", 0.9144], mi: ["len", 1609.344], mile: ["len", 1609.344], miles: ["len", 1609.344],
-        // mass (g)
-        mg: ["mass", 0.001], g: ["mass", 1], kg: ["mass", 1000], lb: ["mass", 453.59237], lbs: ["mass", 453.59237], oz: ["mass", 28.349523125], t: ["mass", 1e6],
-        // data (bytes)
-        b: ["data", 1], kb: ["data", 1e3], mb: ["data", 1e6], gb: ["data", 1e9], tb: ["data", 1e12], kib: ["data", 1024], mib: ["data", 1048576], gib: ["data", 1073741824], tib: ["data", 1099511627776],
-        // time (s)
-        ms: ["time", 0.001], s: ["time", 1], sec: ["time", 1], min: ["time", 60], h: ["time", 3600], hr: ["time", 3600], d: ["time", 86400], day: ["time", 86400], days: ["time", 86400], wk: ["time", 604800], week: ["time", 604800],
-        // volume (l)
-        ml: ["vol", 0.001], l: ["vol", 1], gal: ["vol", 3.785411784], cup: ["vol", 0.2365882365], floz: ["vol", 0.0295735295625],
-        // speed (m/s)
-        kmh: ["speed", 1 / 3.6], mph: ["speed", 0.44704], mps: ["speed", 1], knot: ["speed", 0.514444], knots: ["speed", 0.514444]
-    })
+    // ── The calculator (services/calc.js): math, "100 + 10%", units, mixed
+    // units, currencies by code, name or sign. Units are offline; currencies
+    // use open.er-api.com's daily rates (no key, nothing about you is sent),
+    // cached 12 h in ~/.cache/rice/fx.json. With qalc installed (libqalculate,
+    // what rofi-calc uses), anything else that looks like math goes to it.
     readonly property string fxPath: (Quickshell.env("XDG_CACHE_HOME") || Quickshell.env("HOME") + "/.cache") + "/rice/fx.json"
     property var fx: null                 // { base: "USD", time, rates: { INR: 83.1, … } }
     FileView {
@@ -122,29 +112,44 @@ FocusScope {
         id: fxFetch
         command: ["sh", "-c", "mkdir -p \"$(dirname \"$1\")\" && curl -sf --max-time 6 --max-filesize 512K --proto =https https://open.er-api.com/v6/latest/USD -o \"$1.tmp\" && mv -f \"$1.tmp\" \"$1\"", "sh", launcher.fxPath]
     }
-    readonly property var convert: {
-        const m = /^(-?[\d.,]+)\s*([a-z°]+)\s*(?:to|in|->|=|as)\s*([a-z°]+)$/i.exec(query.trim());
-        if (!m) return null;
-        const v = Number(m[1].replace(/,/g, ""));
-        if (!isFinite(v)) return null;
-        const a = m[2].toLowerCase().replace("°", ""), b = m[3].toLowerCase().replace("°", "");
-        const fmt = x => { const r = Math.abs(x) >= 100 ? Math.round(x * 100) / 100 : Math.round(x * 1e4) / 1e4; return r.toLocaleString(Qt.locale(), "f", Math.abs(r) >= 100 ? 2 : 4).replace(/\.?0+$/, ""); };
-        // Temperature isn't a ratio.
-        const tc = { c: x => x, f: x => (x - 32) * 5 / 9, k: x => x - 273.15 }, fc = { c: x => x, f: x => x * 9 / 5 + 32, k: x => x + 273.15 };
-        if (tc[a] && fc[b]) return { value: fmt(fc[b](tc[a](v))) + " °" + b.toUpperCase().replace("K", "K"), sub: m[1] + " °" + a.toUpperCase() + " =" };
-        const ua = units[a], ub = units[b];
-        if (ua && ub && ua[0] === ub[0]) return { value: fmt(v * ua[1] / ub[1]) + " " + m[3], sub: m[1] + " " + m[2] + " =" };
-        // Currencies: three-letter codes.
-        if (/^[a-z]{3}$/.test(a) && /^[a-z]{3}$/.test(b)) {
-            const stale = !fx || Date.now() - fx.time > 12 * 3600 * 1000;
-            if (stale && !fxFetch.running) Qt.callLater(() => { fxFetch.running = true; });
-            if (!fx) return { value: "…", sub: "Fetching today's rates", pending: true };
-            const A = a.toUpperCase(), B = b.toUpperCase(), ra = fx.rates[A], rb = fx.rates[B];
-            if (!ra || !rb) return null;
-            return { value: fmt(v / ra * rb) + " " + B, sub: m[1] + " " + A + " = · rates of " + Qt.formatDate(new Date(fx.time), "MMM d") };
-        }
-        return null;
+    readonly property var calcHit: {
+        const h = Calc.evaluate(query, fx);
+        if (h && (h.pending || h.rates) && (!fx || Date.now() - fx.time > 12 * 3600 * 1000) && !fxFetch.running)
+            Qt.callLater(() => { fxFetch.running = true; });
+        return h;
     }
+    property bool hasQalc: false
+    Process { running: true; command: ["sh", "-c", "command -v qalc >/dev/null"]; onExited: code => launcher.hasQalc = code === 0 }
+    property string qalcFor: ""
+    property string qalcOut: ""
+    readonly property bool calcMode: query.trimStart().startsWith("=")
+    onQueryChanged: {
+        if (hasQalc && !calcHit && Calc.looksLikeMath(query)) qalcSoon.restart();
+        else { qalcSoon.stop(); qalcOut = ""; qalcFor = ""; }
+    }
+    Timer { id: qalcSoon; interval: 140; onTriggered: { qalc.running = false; launcher.qalcFor = launcher.query; qalc.running = true; } }
+    Process {
+        id: qalc
+        // The text is an argument ("$1"), never part of the command.
+        command: ["sh", "-c", "timeout 1.5 qalc -t -- \"$1\" 2>/dev/null", "sh", launcher.query.trim().replace(/^=\s*/, "")]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const t = text.trim();
+                const asked = launcher.qalcFor.trim().replace(/^=\s*/, "");
+                launcher.qalcOut = t && t !== asked && !/error|warning/i.test(t) && t.length < 80 ? t : "";
+            }
+        }
+    }
+    readonly property var calcRow: calcHit && !calcHit.pending
+        ? { kind: "calc", card: true, name: calcHit.value, sub: calcHit.expr + " =", note: calcHit.note || "" }
+        : calcHit && calcHit.pending ? { kind: "calc", card: true, name: "…", sub: calcHit.expr + " =", note: calcHit.note }
+        : qalcOut && qalcFor === query ? { kind: "calc", card: true, name: qalcOut, sub: query.trim().replace(/^=\s*/, "") + " =", note: "qalc" }
+        : null
+    readonly property var modes: [
+        { name: "Calculator", sub: "Math, units, currencies", prefix: "= ", glyph: "=" },
+        { name: "Emoji", sub: "Search by name, type it", prefix: ":", glyph: "\u{f0785}" },
+        { name: "Glyphs", sub: "Nerd Font symbols", prefix: ";", glyph: "\u{f0f3c}" }
+    ]
 
     // "timer 10m pizza", "25m", "1h30m tea": a timer row (services/Timers).
     readonly property var timerRow: {
@@ -203,6 +208,21 @@ FocusScope {
         const q = query.trim().toLowerCase();
         const out = [];
         const section = (title, rows) => { if (rows.length) out.push({ kind: "header", name: title }, ...rows); };
+        // `=`: the calculator alone, with what to try when it's empty.
+        if (calcMode) {
+            if (calcRow) section("Calculator", [calcRow]);
+            else out.push({ kind: "tips", name: "Try", tips: ["12 × 7", "100 + 10%", "10 km to miles", "20 usd to yen", "6 mi + 376 yd to m"],
+                            sub: launcher.hasQalc ? "" : "Install libqalculate for anything else (sqrt, dates, any unit)" });
+            return out;
+        }
+        // `>`: every mode and action by name (Settings, Themes… without the keys).
+        if (query.startsWith(">")) {
+            const n = query.slice(1).trim().toLowerCase();
+            const hit = x => !n || x.name.toLowerCase().indexOf(n) >= 0 || x.sub.toLowerCase().indexOf(n) >= 0;
+            section("Modes", modes.filter(hit).map(m => ({ kind: "mode", name: m.name, sub: m.sub + "  ·  " + m.prefix.trim(), glyph: m.glyph, prefix: m.prefix })));
+            section("Run", actions.filter(hit).map(a => ({ kind: "action", action: a, name: a.name, sub: a.sub, glyph: a.glyph })));
+            return out;
+        }
         // `:` emoji, `;` Nerd-font glyphs (HyDE's databases, services/Glyphs).
         if (query.startsWith(":") || query.startsWith(";")) {
             const emo = query.startsWith(":");
@@ -241,13 +261,12 @@ FocusScope {
         const bestRank = all.reduce((b, r) => Math.max(b, r.rank), 0);
         const keep = r => r.rank >= bestRank * 0.35;
         const by = rows => rows.filter(keep).sort((a, b) => b.rank - a.rank);
-        if (calc) section("Calculator", [{ kind: "calc", name: String(calc.value), sub: calc.expr + " =", glyph: "=" }]);
+        if (calcRow) section("Calculator", [calcRow]);
         if (timerRow) section("Timer", [{ kind: "timer", name: "Start a " + Timers.label(timerRow.secs) + " timer" + (timerRow.name ? " · " + timerRow.name : ""), sub: "In the island, with a ring", glyph: "\u{f13ab}", secs: timerRow.secs, label: timerRow.name }]);
         if (remindRow) section("Reminder", [{ kind: "remind", name: "Remind me " + Reminders.when(remindRow.at) + " · " + remindRow.text, sub: "In the island and as a notification", glyph: "\u{f009a}" }]);
         if (alarmRow) section("Alarm", [{ kind: "alarm", name: "Alarm " + Qt.formatDateTime(new Date(alarmRow.at), new Date(alarmRow.at).getDate() === new Date().getDate() ? "HH:mm" : "ddd HH:mm") + (alarmRow.label !== "Alarm" ? " · " + alarmRow.label : ""), sub: Alarms.canWake ? "Wakes the laptop if it's asleep" : "Rings when the laptop is awake (Settings → Reminders & Alarms to wake it)", glyph: "\u{f0020}" }]);
         if (noteText) section("Note", [{ kind: "note", name: "Note “" + noteText + "”", sub: "Added to " + Notes.file.replace(Quickshell.env("HOME"), "~"), glyph: "\u{f0219}", text: noteText }]);
         if (pomoRow) section("Focus", [{ kind: "pomo", name: Timers.pomo ? "Stop the pomodoro" : "Start a pomodoro", sub: "25 min work · 5 min break · ×4, then 15", glyph: "\u{f13ab}" }]);
-        if (convert) section("Convert", [{ kind: "calc", name: convert.value, sub: convert.sub, glyph: "\u{f0a12}" }]);
         const top = all.filter(keep).sort((a, b) => b.rank - a.rank)[0];
         if (top) section("Top Hit", [top]);
         section("Applications", by(appsHit).filter(r => r !== top).slice(0, 8));
@@ -257,16 +276,17 @@ FocusScope {
         if (q.length >= 3) section("Settings", SettingsIndex.search(q).slice(0, 2).map(x => ({ kind: "setting", name: x.label, sub: "Settings", glyph: x.glyph, page: x.id })));
         section("Files", fileHits);
         // Last: the web, for anything the machine doesn't have.
-        if (!calc && !convert && !timerRow && !remindRow && !alarmRow && !noteText && !pomoRow) section("Web", [{ kind: "web", name: "Search the web for “" + query.trim() + "”", sub: "DuckDuckGo", glyph: "\u{f059f}" }]);
+        if (!calcRow && !timerRow && !remindRow && !alarmRow && !noteText && !pomoRow) section("Web", [{ kind: "web", name: "Search the web for “" + query.trim() + "”", sub: "DuckDuckGo", glyph: "\u{f059f}" }]);
         return out;
     }
-    readonly property int selectable: results.filter(r => r.kind !== "header").length
+    function isRow(r) { return !!r && r.kind !== "header" && r.kind !== "tips"; }
+    readonly property int selectable: results.filter(r => launcher.isRow(r)).length
     // New results snap: the selection lands on the first real row and the list
     // is back at the top on the same frame. No highlight travels between
     // keystrokes (DESIGN.md: searching snaps, no choreography between keys) —
     // each row draws its own selection, like Spotlight.
     onResultsChanged: {
-        current = results.findIndex(r => r.kind !== "header");
+        current = results.findIndex(r => launcher.isRow(r));
         list.positionViewAtBeginning();
     }
 
@@ -277,8 +297,13 @@ FocusScope {
             // the keyboard, and left on the clipboard too.
             Quickshell.execDetached(["wl-copy", "--", r.ch]);
             Quickshell.execDetached(["sh", "-c", "sleep 0.18; wtype -- \"$1\"", "sh", r.ch]);
+        } else if (r.kind === "mode") {
+            field.text = r.prefix;
+            field.cursorPosition = field.text.length;
+            return;
         } else if (r.kind === "calc") {
-            Quickshell.execDetached(["wl-copy", r.name]);
+            if (r.name === "…") return;
+            Quickshell.execDetached(["wl-copy", "--", r.name.replace(/,(?=\d{3})/g, "")]);
         } else if (r.kind === "app") {
             used(r.entry.id);
             r.entry.execute();
@@ -320,7 +345,7 @@ FocusScope {
     function move(d) {
         if (!selectable) return;
         let i = current;
-        do { i = (i + d + results.length) % results.length; } while (results[i].kind === "header");
+        do { i = (i + d + results.length) % results.length; } while (!isRow(results[i]));
         current = i;
         list.positionViewAtIndex(current, ListView.Contain);
         if (current <= 1) list.positionViewAtBeginning();
@@ -375,7 +400,7 @@ FocusScope {
             Label {
                 visible: !field.text
                 anchors.verticalCenter: parent.verticalCenter
-                text: "Search apps, windows, actions   :emoji   ;glyphs"
+                text: "Search apps, windows, actions    = math   > modes"
                 size: Theme.tTitle3
                 color: Theme.textTertiary
             }
@@ -400,22 +425,14 @@ FocusScope {
             required property var modelData
             required property int index
             readonly property bool on: index === launcher.current
-            readonly property bool header: modelData.kind === "header"
+            readonly property bool header: modelData.kind === "header" || modelData.kind === "tips"
+            readonly property bool card: !!modelData.card
+            readonly property bool tips: modelData.kind === "tips"
             width: list.width
-            height: header ? 30 : launcher.rowH
+            height: tips ? 84 : header ? 30 : card ? 78 : launcher.rowH
 
-            // First paint after opening: rows cascade in (20 ms apart, the
-            // first nine), rising 6 px. Afterwards results just appear —
-            // typing must never replay this.
-            property real enter: 1
-            opacity: enter
-            transform: Translate { y: 6 * (1 - row.enter) }
-            Component.onCompleted: if (!Theme.reduceMotion && Date.now() - launcher.born < 260 && index < 9) { enter = 0; cascade.start(); }
-            SequentialAnimation {
-                id: cascade
-                PauseAnimation { duration: 40 + row.index * 20 }
-                NumberAnimation { target: row; property: "enter"; to: 1; duration: 240; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
-            }
+            // No cascade: the launcher opens many times a day and the island's
+            // grow already carries it in (one entrance per container).
 
             // Selection: drawn by the row itself, so it can't travel or flicker
             // when the results change under it. Keyboard/pointer moves fade it
@@ -433,16 +450,72 @@ FocusScope {
             }
 
             Label {
-                visible: row.header
+                visible: row.header && !row.tips
                 x: 14; anchors.bottom: parent.bottom; anchors.bottomMargin: 6
                 text: row.modelData.name
                 size: 11; weight: Theme.wSemibold; color: Theme.textTertiary
                 extraTracking: 0.4
             }
 
+            // The calculator's answer: what it read, small; the answer, large.
+            Item {
+                visible: row.card
+                anchors { fill: parent; leftMargin: 16; rightMargin: 16 }
+                Label {
+                    id: cardSub
+                    y: 12
+                    width: parent.width - cardNote.implicitWidth - 12
+                    elide: Text.ElideRight
+                    text: row.modelData.sub || ""
+                    size: 12; color: Theme.textTertiary
+                    font.features: ({ "tnum": 1 })
+                }
+                Label {
+                    id: cardNote
+                    anchors { right: parent.right; baseline: cardSub.baseline }
+                    text: row.modelData.note || ""
+                    size: 11; color: Theme.textTertiary
+                }
+                Label {
+                    anchors { left: parent.left; right: parent.right; rightMargin: 90; top: cardSub.bottom; topMargin: 2 }
+                    elide: Text.ElideRight
+                    text: row.card ? row.modelData.name : ""
+                    size: 28; weight: Theme.wSemibold; rounded: true
+                    font.features: ({ "tnum": 1 })
+                }
+            }
+            // `=` with nothing yet: what it understands, each one a tap away.
+            Column {
+                visible: row.tips
+                anchors { left: parent.left; leftMargin: 14; right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
+                spacing: 8
+                Flow {
+                    width: parent.width
+                    spacing: 6
+                    Label { text: "Try"; size: 12; weight: Theme.wSemibold; color: Theme.textTertiary; topPadding: 4 }
+                    Repeater {
+                        model: row.tips ? row.modelData.tips : []
+                        Rectangle {
+                            required property string modelData
+                            width: tipText.implicitWidth + 16; height: 24; radius: 12
+                            color: tipArea.containsMouse ? Theme.pillHover : Theme.pill
+                            Label { id: tipText; anchors.centerIn: parent; text: parent.modelData; size: 12; color: Theme.textSecondary; font.features: ({ "tnum": 1 }) }
+                            MouseArea {
+                                id: tipArea
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: { field.text = "= " + parent.modelData.replace("×", "*"); field.cursorPosition = field.text.length; field.forceActiveFocus(); }
+                            }
+                        }
+                    }
+                }
+                Label { visible: text !== ""; width: parent.width; elide: Text.ElideRight; text: row.modelData.sub || ""; size: 11; color: Theme.textTertiary }
+            }
+
             Item {
                 id: iconBox
-                visible: !row.header
+                visible: !row.header && !row.card
                 x: 12; anchors.verticalCenter: parent.verticalCenter
                 width: 32; height: 32
                 readonly property string path: row.modelData.icon ? Quickshell.iconPath(row.modelData.icon, true) : ""
@@ -461,7 +534,7 @@ FocusScope {
                 }
             }
             Column {
-                visible: !row.header
+                visible: !row.header && !row.card
                 anchors { left: iconBox.right; leftMargin: 12; right: hint.left; rightMargin: 12; verticalCenter: parent.verticalCenter }
                 spacing: 1
                 // The letters you typed, in the accent.
@@ -480,7 +553,7 @@ FocusScope {
                 opacity: row.on && !row.header ? 1 : 0
                 Label {
                     anchors.verticalCenter: parent.verticalCenter
-                    text: ({ app: "Open", window: "Switch to", action: "Run", calc: "Copy", emoji: "Type", glyph: "Type", file: "Open", web: "Search", timer: "Start" })[row.modelData.kind] || ""
+                    text: ({ app: "Open", window: "Switch to", action: "Run", calc: "Copy", mode: "Use", emoji: "Type", glyph: "Type", file: "Open", web: "Search", timer: "Start" })[row.modelData.kind] || ""
                     size: 12
                     color: Theme.textSecondary
                 }
