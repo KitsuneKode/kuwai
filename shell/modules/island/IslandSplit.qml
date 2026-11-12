@@ -61,6 +61,15 @@ Item {
         const m = agentsLim.map(r => (String(r.status || "").match(/resets in (.+)$/) || [])[1]).filter(x => x);
         return m.length ? m[0] : "";
     }
+    // More than one account in use (kittymux's `account`: "" for the default
+    // config, else its label, e.g. "personal"): the limit says whose it is,
+    // since the other account can carry on. One account says nothing extra.
+    function accountOf(r) { return String(r.account || ""); }
+    readonly property bool manyAccounts: new Set(agentRows.map(r => accountOf(r))).size > 1
+    function accountName(r) { return accountOf(r) || "main"; }
+    readonly property string limWho: manyAccounts && agentsLim.length ? accountName(agentsLim[0]) : ""
+    readonly property string limTip: agentsLim.map(r => Kittymux.agentLabel(r.agent) + (manyAccounts ? " (" + accountName(r) + ")" : "") + " " + (r.status || "hit a limit")).join(" · ")
+        + (manyAccounts ? "\n" + [...new Set(agentRows.filter(r => r.state !== "limited").map(r => accountName(r)))].map(a => a + " can carry on").join(" · ") : "")
     // Finished and not yet seen (kittymux's unread `done` events, newest first).
     readonly property var agentsDone: Kittymux.attention.filter(e => e.kind === "done")
     property int agentsDoneWas: -1
@@ -151,6 +160,11 @@ Item {
     component Pill: Item {
         id: pill
         property string name
+        // Where a click on it, or pulling it down, takes you: the panel that
+        // lists what it holds, to act on from there (not straight to one of
+        // them; right-click does that where there's one to go to).
+        property string panel: ""
+        function openPanel() { if (panel) Island.toggle(panel, split.bar.screenName, "pointer"); }
         property bool needs: false        // something here waits on you: an orange glass edge
         // Its state's light (see "What state each is in"): a colour, and
         // whether it asks for you (a halo) or only says so (the edge).
@@ -179,7 +193,24 @@ Item {
         // From 60 % tucked behind the edge to a gap clear of it.
         readonly property real off: -bodyW * 0.6 + (bodyW * 0.6 + split.gap) * sv.value
         x: side > 0 ? from + off : from - off - bodyW
-        y: split.topY + Math.round((split.h - split.ph) / 2)
+        y: split.topY + Math.round((split.h - split.ph) / 2) + pull.value
+        // Pulled down, it follows the pointer (rubber-banded); let go past
+        // the line, or flicked, it opens its panel and springs home.
+        Spring { id: pull; tier: Theme.springFast; target: 0; epsilon: 0.2 }
+        DragHandler {
+            id: pullDrag
+            enabled: pill.panel !== ""
+            target: null
+            xAxis.enabled: false
+            onActiveChanged: {
+                if (active) { pull.snap(pull.value); return; }
+                const dy = translation.y;
+                if (dy > Theme.swipeThreshold * 0.6 || centroid.velocity.y / 1000 > Theme.swipeFlick) pill.openPanel();
+                pull.velocity = centroid.velocity.y;
+                pull.target = 0;
+            }
+            onTranslationChanged: if (active) pull.snap(translation.y > 0 ? translation.y * 40 * 0.55 / (40 + 0.55 * translation.y) : -Theme.swipeDamp(-translation.y) * 0.2)
+        }
         width: bodyW
         height: split.ph
         visible: out
@@ -227,6 +258,7 @@ Item {
         property color tint: Theme.textSecondary
         property string tip: ""
         signal clicked()
+        signal altClicked()
         spacing: 4
         anchors.verticalCenter: parent.verticalCenter
         Text {
@@ -244,7 +276,7 @@ Item {
             font.features: ({ "tnum": 1 })
         }
         HoverHandler { id: badgeHover; cursorShape: Qt.PointingHandCursor }
-        TapHandler { onTapped: badge.clicked() }
+        TapHandler { acceptedButtons: Qt.LeftButton | Qt.RightButton; onTapped: (point, button) => button === Qt.RightButton ? badge.altClicked() : badge.clicked() }
         Tip { text: badge.tip; shown: badgeHover.hovered && badge.tip !== ""; below: true }
         Accessible.role: Accessible.StaticText
         Accessible.name: badge.tip || badge.text
@@ -254,6 +286,7 @@ Item {
     Pill {
         id: musicPill
         name: "music"
+        panel: "media"
         ClippingRectangle {
             width: 18; height: 18; radius: 5
             color: Qt.rgba(1, 1, 1, 0.08)
@@ -271,6 +304,7 @@ Item {
     Pill {
         id: agentsPill
         name: "agents"
+        panel: "agents"
         needs: split.agentsNeed
         // An error outranks a question; a limit only says so.
         tone: split.agentsErr.length ? Theme.red : split.agentsNeed ? Theme.orange : split.agentsLim.length ? Theme.yellow
@@ -283,22 +317,25 @@ Item {
                 visible: split.agentsErr.length > 0
                 glyph: "\u{f0028}"                       // alert-circle
                 tint: Theme.red
-                tip: split.agentsErr.map(r => Kittymux.agentLabel(r.agent) + ": " + (r.status || "error")).join(" · ")
+                tip: split.agentsErr.map(r => Kittymux.agentLabel(r.agent) + ": " + (r.status || "error")).join(" · ") + "\nClick: every agent"
+                onClicked: agentsPill.openPanel()
             }
             Badge {
                 visible: split.agentsLim.length > 0 && split.agentsErr.length === 0
                 glyph: "\u{f051f}"                       // timer-sand
-                text: split.limReset
+                text: (split.limWho ? split.limWho + " · " : "") + split.limReset
                 tint: Theme.yellow
-                tip: split.agentsLim.map(r => Kittymux.agentLabel(r.agent) + " " + (r.status || "hit a limit")).join(" · ")
+                tip: split.limTip + "\nClick: usage, every account"
+                onClicked: Island.toggle("usage", split.bar.screenName, "pointer")
             }
             Badge {
                 visible: split.agentsDone.length > 0
                 glyph: "\u{f05e0}"                       // check-circle
                 text: split.agentsDone.length > 1 ? String(split.agentsDone.length) : ""
                 tint: Theme.green
-                tip: split.agentsDone.slice(0, 3).map(e => Kittymux.agentLabel(e.agent) + " finished" + (e.tab ? " · " + Kittymux.clean(e.tab) : "")).join(" · ") + " · click to go there"
-                onClicked: split.goDone()
+                tip: split.agentsDone.slice(0, 3).map(e => Kittymux.agentLabel(e.agent) + " finished" + (e.tab ? " · " + Kittymux.clean(e.tab) : "")).join(" · ") + "\nClick: every agent · right-click: go to the newest"
+                onClicked: agentsPill.openPanel()
+                onAltClicked: split.goDone()
             }
         }
     }
@@ -307,6 +344,7 @@ Item {
     Pill {
         id: t3Pill
         name: "t3"
+        panel: "t3"
         needs: split.t3Waiting && T3Code.total > 0
         tone: needs ? Theme.orange : T3Code.finished > 0 ? Theme.green : "transparent"
         Row {
@@ -319,7 +357,7 @@ Item {
             tone: split.t3Waiting ? Theme.orange : Theme.cyan
             previews: true
             onPreviewRequested: if (Island.panel === "") Island.preview("t3", split.bar.screenName)
-            onClicked: T3Code.openBest()
+            onClicked: t3Pill.openPanel()
           }
           // Finished since you last looked: T3's own "seen" (each thread's
           // last visit), so it clears as you open them there.
@@ -328,8 +366,9 @@ Item {
             glyph: "\u{f05e0}"                         // check-circle
             text: (T3Code.total > 0 ? "" : "T3 ") + T3Code.finished
             tint: Theme.green
-            tip: T3Code.items.filter(i => i.status === "completed").slice(0, 3).map(i => i.title).join(" · ") + " · finished · click to open"
-            onClicked: T3Code.openBest()
+            tip: T3Code.items.filter(i => i.status === "completed").slice(0, 3).map(i => i.title).join(" · ") + " · finished\nClick: the threads · right-click: open the newest"
+            onClicked: t3Pill.openPanel()
+            onAltClicked: T3Code.openBest()
           }
         }
     }
@@ -338,6 +377,8 @@ Item {
     Pill {
         id: sysPill
         name: "sys"
+        // Pulled: what it's saying most loudly (a warning, else updates, else a used-up limit).
+        panel: Alerts.active.length ? "system" : Limits.markShown && !Updates.fresh && !Updates.running ? "usage" : "updates"
         // A warning in its level's colour (asking: a halo); a used-up limit amber (only saying so).
         tone: Alerts.active.length ? (Alerts.active[0].level === "crit" ? Theme.red : Theme.orange) : Limits.markShown ? Theme.yellow : "transparent"
         attention: Alerts.active.length > 0
