@@ -63,7 +63,7 @@ void main() {
         float inner = exp(d / 9.0) * step(d, 0.0);
         float halo = exp(-max(d, 0.0) / max(spread * 0.42, 1.0)) * step(0.0, d);
         float down = smoothstep(0.0, bs.y * 0.7, px.y);
-        float g = (edge * 0.9 + inner * 0.22 + halo * 0.5 * down) * glow;
+        float g = (edge * 0.62 + inner * 0.26 + halo * 0.42 * down) * glow;
         g *= mix(1.0, smoothstep(0.0, 2.5, px.y), step(0.5, ear));
         la = clamp(g * tint.a, 0.0, 1.0);
         lit = tint.rgb * la;

@@ -223,6 +223,12 @@ Scope {
             //   qs ipc -p ~/.local/share/kuwai/shell call islandbar-eDP-1 dump
             IpcHandler {
                 target: "islandbar-" + win.screenName
+                // Grow as if hovered, for recordings and screenshots (no
+                // pointer): glance | full | off.
+                function hover(mode: string): void {
+                    win.full = mode === "full";
+                    win.grown = mode === "glance" || mode === "full";
+                }
                 function dump(): string {
                     return JSON.stringify({ tucked: win.tucked, outNow: win.outNow, near: win.near, hovered: win.hovered, grown: win.grown, full: win.full,
                         panelHere: win.panelHere, bannerHere: win.bannerHere, peekHere: win.peekHere, deviceHere: win.deviceHere,
@@ -443,14 +449,14 @@ Scope {
                 function go(bloom) {
                     stop();
                     const lit = win.needTarget > 0;
-                    flare.to = lit && bloom && !Theme.reduceMotion ? 1.7 : win.needGlow;
-                    flare.duration = flare.to === win.needGlow ? 0 : Theme.pulseMs;
-                    settle.to = win.needTarget;
-                    settle.duration = !lit ? Theme.exitMs * 2 : Theme.reduceMotion ? Theme.microMs : Theme.breatheMs * 2;
+                    needFlare.to = lit && bloom && !Theme.reduceMotion ? 1.7 : win.needGlow;
+                    needFlare.duration = needFlare.to === win.needGlow ? 0 : Theme.pulseMs;
+                    needSettle.to = win.needTarget;
+                    needSettle.duration = !lit ? Theme.exitMs * 2 : Theme.reduceMotion ? Theme.microMs : Theme.breatheMs * 2;
                     start();
                 }
-                NumberAnimation { id: flare; target: win; property: "needGlow"; easing.type: Easing.OutCubic }
-                NumberAnimation { id: settle; target: win; property: "needGlow"; easing.type: Easing.InOutSine }
+                NumberAnimation { id: needFlare; target: win; property: "needGlow"; easing.type: Easing.OutCubic }
+                NumberAnimation { id: needSettle; target: win; property: "needGlow"; easing.type: Easing.InOutSine }
             }
             // Expanded with a whole message (a mail, a comment): room to read it.
             readonly property real peekH: Notifs.peekExpanded ? (peekLoader.item ? Math.min(peekLoader.item.wantH, implicitHeight - 40) : 172) : 76
@@ -464,6 +470,11 @@ Scope {
             Component.onCompleted: { Island.setRestWidth(screenName, targetW); needGlow = needTarget; lastWaiting = waitingCount; }
             readonly property var restShape: [restW, restH, top, notch]
             onRestShapeChanged: Island.setRestShape(screenName, restW, restH, top, notch)
+            // Drawn at an even whole width, so it grows a pixel each side at
+            // once: centred with a rounded x but a fractional width, the left
+            // edge stepped while the right glided, and centred content
+            // re-rounded against both — the island shimmied ±1 px as it grew.
+            readonly property real shapeW: 2 * Math.round(Math.max(0, sw.value) / 2)
             Spring { id: sw; tier: win.targetW >= sw.value ? win.grow : win.shrink; epsilon: 0.3; target: win.targetW; Component.onCompleted: settle() }
             Spring { id: sh; tier: win.targetH >= sh.value ? win.grow : win.shrink; epsilon: 0.3; target: win.targetH; Component.onCompleted: settle() }
 
@@ -621,7 +632,7 @@ Scope {
                 // Under the screensaver nothing here is seen: hidden, its
                 // spinners and waveforms stop drawing frames.
                 visible: !Saver.showing
-                width: Math.max(0, sw.value) + win.ear * 2
+                width: win.shapeW + win.ear * 2
                 height: Math.max(0, sh.value - win.pull)
                 x: Math.round((win.width - width) / 2)
                 y: win.top
@@ -684,7 +695,7 @@ Scope {
                 // The island itself: a notch, or a floating black-glass pill.
                 NotchShape {
                     visible: win.notch
-                    w: Math.max(0, sw.value)
+                    w: win.shapeW
                     h: frame.height
                     ear: win.ear
                     radius: win.shapeRadius
@@ -727,7 +738,7 @@ Scope {
                 Item {
                     id: body
                     x: win.ear
-                    width: Math.max(0, sw.value)
+                    width: win.shapeW
                     height: frame.height
                     clip: true
                     opacity: 1 - 0.7 * Math.min(1, Math.max(0, win.pull) / 45)
