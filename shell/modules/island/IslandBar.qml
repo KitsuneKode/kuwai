@@ -673,7 +673,7 @@ Scope {
                         id: flyer
                         z: 50
                         visible: win.clockFlying
-                        now: win.now; size: 26
+                        now: win.now; size: Theme.tClock
                         rounded: false; weight: Theme.wMedium
                         color: Qt.rgba(1, 0.98, 0.95, 0.95)
                         transformOrigin: Item.TopLeft

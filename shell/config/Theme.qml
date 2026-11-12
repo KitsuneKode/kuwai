@@ -65,6 +65,7 @@ Singleton {
     readonly property int tTitle3: 18      // panel titles
     readonly property int tTitle2: 20      // big values (volume %, battery)
     readonly property int tTitle1: 24      // hero numbers; displays scale from screen size
+    readonly property int tClock: 26       // the island's big clock: the hover view, the calendar, the clock in flight
     readonly property int r1: 8          // small controls, thumbnails
     readonly property int r2: 12         // tiles, switches
     readonly property int r3: 16         // cards, notices
