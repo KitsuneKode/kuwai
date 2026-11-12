@@ -40,6 +40,11 @@ Singleton {
                                     detail: gb(memT - memA) + " of " + gb(memT) + " used" + (v.top ? " · most: " + v.top : "") });
         const swT = v.SwapTotal || 0, swF = v.SwapFree || 0;
         if (swT > 0 && 1 - swF / swT >= 0.9) out.push({ id: "swap", level: "warn", glyph: "\u{f04c4}", title: "Swap almost full", detail: gb(swT - swF) + " of " + gb(swT) + " in use" });
+        // One app holding a fifth of memory or more (a runaway browser tab is the
+        // usual one): say which, since "memory at 70 %" alone gives you nothing to do.
+        if (v.hog && v.hog.kb >= memT * 0.2) out.push({ id: "hog:" + v.hog.name, level: "warn", glyph: "\u{f035b}",
+            title: v.hog.name + " is holding " + gb(v.hog.kb),
+            detail: (v.hog.tab ? "One browser tab: find it in about:processes and reload or close it" : "Quit or restart it to give the memory back") + " · " + Math.round(v.hog.kb / memT * 100) + "% of memory" });
         for (const d of v.disks || []) if (d.use >= 92) out.push({ id: "disk:" + d.mount, level: d.use >= 97 ? "crit" : "warn", glyph: "\u{f02ca}", title: "Disk " + d.mount + " at " + d.use + "%", detail: d.free + " free" });
         hot = (v.cpuTemp || 0) >= 95 ? hot + 1 : 0;
         if (hot >= 3) out.push({ id: "temp", level: "crit", glyph: "\u{f050f}", title: "CPU at " + v.cpuTemp + "°", detail: "Running hot for 30 seconds" });
@@ -104,6 +109,7 @@ Singleton {
                 echo @
                 grep -E '^(MemTotal|MemAvailable|SwapTotal|SwapFree):' /proc/meminfo
                 [ -n "$hw" ] && { read -r t < "$hw/temp1_input"; echo "cpu $t"; }
+                if [ $((n % 6)) = 0 ]; then ps -eo rss=,args= --sort=-rss | head -1 | awk '{a=$2; t=0; if ($0 ~ /zen-bin -contentproc|firefox -contentproc|--type=renderer/) t=1; n=a; sub(/.*\//, "", n); printf "hog %d %d %s\n", $1, t, n}'; fi
                 if [ $((n % 6)) = 0 ]; then df -P -B1 / /home 2>/dev/null | awk 'NR>1 && !seen[$1]++ {print "disk", $6, $5, $4}'; fi
                 read -r a < /proc/meminfo; set -- $(grep -E '^(MemTotal|MemAvailable):' /proc/meminfo | awk '{print $2}')
                 if [ "$1" -gt 0 ] && [ $(( (100 * ($1 - $2)) / $1 )) -ge 82 ]; then ps -eo rss=,comm= --sort=-rss | head -1 | awk '{printf "top %s %.1f GB\\n", $2, $1/1048576}'; fi
@@ -113,7 +119,7 @@ Singleton {
             done`]
         stdout: SplitParser {
             onRead: line => {
-                if (line === "@") { root.frame = { disks: (root.last.disks || []) }; return; }
+                if (line === "@") { root.frame = { disks: (root.last.disks || []), hog: root.last.hog }; return; }
                 if (line === "#") { root.last = root.frame; root.commit(root.frame); return; }
                 const f = line.trim().split(/\s+/);
                 if (f[0].endsWith(":")) root.frame[f[0].slice(0, -1)] = Number(f[1]);
@@ -122,6 +128,11 @@ Singleton {
                     if (!root.frame._disksFresh) { root.frame.disks = []; root.frame._disksFresh = true; }
                     const free = Number(f[3]);
                     root.frame.disks.push({ mount: f[1], use: parseInt(f[2]), free: free >= 1073741824 ? Math.round(free / 1073741824) + " GB" : Math.round(free / 1048576) + " MB" });
+                }
+                else if (f[0] === "hog") {
+                    const bin = f.slice(3).join(" ");
+                    const nm = /zen/.test(bin) ? "Zen" : /firefox/.test(bin) ? "Firefox" : /chrom/.test(bin) ? "Chrome" : /t3code/.test(bin) ? "T3 Code" : bin;
+                    root.frame.hog = { kb: Number(f[1]), tab: f[2] === "1", name: f[2] === "1" ? nm + " tab" : nm };
                 }
                 else if (f[0] === "top") root.frame.top = f[1] + " " + f.slice(2).join(" ");
             }
