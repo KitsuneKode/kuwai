@@ -59,7 +59,15 @@ Singleton {
     // there, or swiped it away). An event the snapshot doesn't have yet (the
     // popup can beat the file) is not answered.
     function answered(id) { const e = eventById(id); return !!e && e.status !== "unread"; }
-    readonly property var running: (live ? feed.agents.map(fromFeed) : rows.filter(r => r.kind === "running").map(parse))
+    // A row whose kitty stopped publishing is gone (kittymux PR #32: each
+    // row's `published_at`, its kitty's last write, at least every 10 s).
+    // Older than 30 s means that kitty's scanner is stuck or it went away:
+    // its PID alive kept an agy from a closed window "working" for good. No
+    // `published_at` is an older kittymux: kept, as it always was.
+    readonly property real staleS: 30
+    function fresh(a) { return !a.published_at || Math.max(root.now, Date.now()) / 1000 - a.published_at <= staleS; }
+    readonly property bool heartbeats: live && feed.agents.some(a => !!a.published_at)
+    readonly property var running: (live ? feed.agents.filter(fresh).map(fromFeed) : rows.filter(r => r.kind === "running").map(parse))
         .filter(r => !isQuiet(r))
     // A limit or an error you put away (× or a swipe in the Agents panel, a
     // right-click on the capsule's ⏳ or ⚠): gone until that pane's state
@@ -129,7 +137,9 @@ Singleton {
     }
     // Ages and "resets in" read this, so they move without a new file.
     property real now: Date.now()
-    Timer { interval: 60000; repeat: true; running: root.live || root.tabsLive; onTriggered: root.now = Date.now() }
+    // Every 15 s while rows carry heartbeats, so a stale kitty's rows go
+    // within ~45 s even when no other kitty rewrites the file.
+    Timer { interval: root.heartbeats ? 15000 : 60000; repeat: true; running: root.live || root.tabsLive; onTriggered: root.now = Date.now() }
     function ageFrom(since) {
         if (!since) return "";
         const s = Math.max(0, root.now / 1000 - since);
