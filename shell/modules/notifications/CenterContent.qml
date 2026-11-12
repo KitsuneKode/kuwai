@@ -18,7 +18,6 @@ Item {
     readonly property alias sheet: sheet
     readonly property alias tabs: tabs
     readonly property alias notifications: notifications
-    readonly property alias agents: agents
     readonly property alias sound: sound
     readonly property alias display: display
     readonly property alias tips: tipLayer
