@@ -17,6 +17,12 @@ Item {
     height: parent ? parent.height : 76
     opacity: reveal * swipeFade
     readonly property bool expanded: Notifs.peekExpanded
+    // Expanded, its own height (IslandBar.peekH): padding, the header, the
+    // body (scrolling past maxBody), a gap, the buttons, padding. A fixed 340
+    // let a long message run under Open and Reply.
+    readonly property int pad: 16
+    readonly property real maxBody: peek.item && peek.item.full ? 260 : 96
+    readonly property real wantH: pad + copyCol.implicitHeight + 12 + 28 + pad
     readonly property bool redacted: !!item && Notifs.bodyRedacted(item)
     // Opened on purpose: the body shows (a chat's too), unless sharing the screen.
     readonly property bool hiddenOpen: !!item && Notifs.bodyHidden(item, true)
@@ -105,8 +111,8 @@ Item {
 
     Item {
         id: mark
-        x: 16
-        y: peek.expanded ? 14 : undefined
+        x: peek.pad
+        y: peek.expanded ? peek.pad : undefined
         anchors.verticalCenter: peek.expanded ? undefined : parent.verticalCenter
         width: 42; height: 42
         scale: peek.pop
@@ -136,7 +142,7 @@ Item {
         anchors {
             left: mark.right; leftMargin: 12
             right: peek.expanded ? parent.right : go.left
-            rightMargin: peek.expanded ? 16 : 36
+            rightMargin: peek.expanded ? peek.pad : 36
             top: peek.expanded ? mark.top : undefined
             verticalCenter: peek.expanded ? undefined : parent.verticalCenter
         }
@@ -178,12 +184,12 @@ Item {
                 color: peek.otp !== "" ? Theme.textPrimary : peek.redacted ? Theme.textTertiary : Theme.textSecondary
                 font.italic: peek.redacted && peek.otp === ""
             }
-            Label {
+            Item {
                 visible: !!peek.item && (!!peek.item.body || peek.redacted) && peek.expanded && !peek.hiddenOpen
                 width: parent.width
-                // The whole message scrolls here (240 px when the sender sent
-                // it all; the short body needs 72).
-                height: Math.min(bodyScroll.contentHeight, peek.item && peek.item.full ? 240 : 72)
+                // The whole message scrolls here past maxBody; a fade at the
+                // bottom says there's more (and goes once you've reached the end).
+                height: Math.min(bodyScroll.contentHeight, peek.maxBody)
                 clip: true
                 Flickable {
                     id: bodyScroll
@@ -197,7 +203,17 @@ Item {
                         wrapMode: Text.Wrap
                         text: Notifs.fullForDisplay(peek.item)
                         textFormat: Text.PlainText
-                        size: 12; color: Theme.textSecondary
+                        size: Theme.tBody; color: Theme.textSecondary
+                        lineHeight: 1.12
+                    }
+                }
+                Rectangle {
+                    anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
+                    height: 28
+                    visible: bodyScroll.contentY + bodyScroll.height < bodyScroll.contentHeight - 2
+                    gradient: Gradient {
+                        GradientStop { position: 0; color: "transparent" }
+                        GradientStop { position: 1; color: Qt.rgba(0, 0, 0, 0.94) }
                     }
                 }
             }
@@ -252,7 +268,7 @@ Item {
 
     Row {
         visible: peek.expanded
-        anchors { left: mark.left; right: parent.right; rightMargin: 16; bottom: parent.bottom; bottomMargin: 12 }
+        anchors { left: copy.left; right: parent.right; rightMargin: peek.pad; bottom: parent.bottom; bottomMargin: peek.pad }
         spacing: 6
         Rectangle {
             height: 28; radius: 14

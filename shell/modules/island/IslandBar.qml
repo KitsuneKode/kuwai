@@ -402,7 +402,7 @@ Scope {
             readonly property bool assistHere: (OllamaService.bgWorking || !!OllamaService.bgDone)
                 && !panelHere && !grown && !bannerHere && !peekHere && !deviceHere
             // Expanded with a whole message (a mail, a comment): room to read it.
-            readonly property real peekH: Notifs.peekExpanded ? (Notifs.peek && Notifs.peek.full ? 340 : 172) : 76
+            readonly property real peekH: Notifs.peekExpanded ? (peekLoader.item ? Math.min(peekLoader.item.wantH, implicitHeight - 40) : 172) : 76
             readonly property real bannerH: bannerHere && alertLoader.item ? alertLoader.item.implicitHeight : 72
             readonly property real targetW: panelHere ? panelSize.width : grown ? hoverSize.width : bannerHere ? 440 : peekHere ? 460 : deviceHere ? (win.alarmCard ? 440 : 420) : restRow.implicitWidth + 32
             readonly property real targetH: panelHere ? panelSize.height : grown ? hoverSize.height : bannerHere ? bannerH : peekHere ? peekH : deviceHere ? 84 : restH
