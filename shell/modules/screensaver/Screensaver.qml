@@ -36,7 +36,9 @@ Scope {
 
     IdleMonitor {
         id: idle
-        enabled: root.allowed
+        // Not while you're dictating: speaking is no input, and the saver
+        // came up mid-sentence.
+        enabled: root.allowed && !Activities.voxBusy
         timeout: Math.max(1, Settings.screensaverMins || 3) * 60
         // Caffeine is an inhibitor of our own: idle still counts here.
         respectInhibitors: false

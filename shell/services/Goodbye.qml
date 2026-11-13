@@ -20,15 +20,33 @@ Singleton {
         if (kind) return;
         cmd = c;
         kind = k;
+        backstop.restart();
     }
+    // The command runs when an overlay has faded to black. A screen that is
+    // off (or not drawing) never says so, and Sleep did nothing: after 4 s
+    // it runs anyway.
+    Timer { id: backstop; interval: 4000; onTriggered: root.black() }
     // Every screen's overlay calls this when it's black; the first one counts.
     function black() {
         if (!kind || after.running) return;
+        backstop.stop();
         if (Quickshell.env("RICE_DRYRUN") === "1") console.warn("goodbye (dry run): " + cmd.join(" "));
         else { launch.command = cmd; launch.running = true; }
         after.restart();
     }
-    Process { id: launch }
+    // Refused (an inhibitor that blocks, polkit said no): say why, and the
+    // screen comes back now instead of staying black for 20 s.
+    Process {
+        id: launch
+        stderr: StdioCollector { id: launchErr }
+        onExited: (code) => {
+            if (code === 0) return;
+            const why = (launchErr.text || "").trim().split("\n").pop() || ("exit " + code);
+            Quickshell.execDetached(["notify-send", "-u", "critical", "-a", "kuwai", "Couldn't " + ({ suspend: "sleep", reboot: "restart", poweroff: "shut down", logout: "log out" }[root.kind] || "do that"), why]);
+            after.stop();
+            root.kind = "";
+        }
+    }
     // Timers stand still while suspended, so after sleep this fires just
     // after the wake; if a restart or shut down was refused, the screen
     // comes back after a while instead of staying black.

@@ -558,6 +558,25 @@ def helper_ok():
         return False
 
 
+
+def agent_missing():
+    """No polkit agent in this session: pkexec fails at once and looks like a
+    cancel. Start one (kuwai's, else KDE's) and say so."""
+    def up(u):
+        return subprocess.run(["systemctl", "--user", "-q", "is-active", u]).returncode == 0
+    if up("rice-auth.service") or up("plasma-polkit-agent.service"):
+        return False
+    for u in ("rice-auth.service", "plasma-polkit-agent.service"):
+        if subprocess.run(["systemctl", "--user", "start", u]).returncode == 0:
+            break
+    return True
+
+
+def cancelled_msg(tail="Nothing was changed."):
+    if agent_missing():
+        return "No password prompt was running (started it now). Try again. " + tail
+    return "Cancelled at the password prompt. " + tail
+
 class Root:
     """Root's part of a run. With rice-update-root installed: one pkexec (one password) for the
     whole run, opened up front so the prompt comes before the builds, not after them. Without
@@ -735,7 +754,7 @@ def run(args):
     if root.helper and (want_repo or extra_repo_deps or plan):
         rc = root.open()
         if rc:
-            R.emit(e="error", msg="Cancelled at the password prompt. Nothing was changed.")
+            R.emit(e="error", msg=cancelled_msg())
             R.emit(e="done", **{**result, "ok": False, "cancelled": True})
             return 1
 
@@ -744,7 +763,7 @@ def run(args):
         R.emit(e="phase", id="repo", label="Updating Arch packages" if want_repo else "Installing build dependencies")
         rc = root.run("upgrade" if want_repo else "deps", progress="repo", deps=extra_repo_deps)
         if rc in AUTH_FAIL:
-            R.emit(e="error", msg="Cancelled at the password prompt. Nothing was changed.")
+            R.emit(e="error", msg=cancelled_msg())
             R.emit(e="done", **{**result, "ok": False, "cancelled": True})
             return 1
         if rc != 0:
@@ -779,7 +798,7 @@ def run(args):
         files = [f for b in built for f in b[3]]
         rc = root.run("install", progress="install", files=files)
         if rc in AUTH_FAIL:
-            R.emit(e="error", msg="Cancelled at the password prompt; the AUR packages are built but not installed.")
+            R.emit(e="error", msg=cancelled_msg("The AUR packages are built but not installed."))
             result["ok"] = False
         elif rc != 0:
             R.emit(e="error", msg="Installing the AUR packages failed (see the log).")

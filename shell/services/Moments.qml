@@ -128,6 +128,7 @@ Singleton {
     onCardChanged: cardOn = card ? Screens.focusedName : ""
     property bool cardHeld: false
     function showCard(c, ms) {
+        console.info("[moments] card", c.key, c.state, c.detail || "");
         // Something asking for an answer (an alarm ringing, a reminder) isn't
         // pushed aside by a device coming and going.
         if (card && card.sticky && !c.sticky && cardFor.running) return;
@@ -140,6 +141,35 @@ Singleton {
     }
     function dropCard() { cardFor.stop(); card = null; }
     Timer { id: cardFor; onTriggered: if (root.cardHeld) restart(); else root.card = null }
+
+    // ── What's been said about each device ──────────────────────────────
+    // A card says a device came or went, once. The same device "Connected"
+    // again (voxtype opening the mic, the screens waking from power-off, a
+    // shell restart, a lock and back) is not news: nothing changed. While
+    // nobody is looking (locked, screens off, the seconds after: Saver.away)
+    // changes are only noted, so coming back replays nothing. Kept in the
+    // runtime dir: a shell restart remembers, a new login starts over.
+    //   told: { key: "on" | "off" }
+    property var told: ({})
+    FileView {
+        id: toldFile
+        path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/rice/devices-told.json"
+        printErrors: false
+        onLoaded: { try { root.told = JSON.parse(text()) || {}; } catch (e) { root.told = {}; } }
+    }
+    Timer { id: toldSave; interval: 1000; onTriggered: toldFile.setText(JSON.stringify(root.told) + "\n") }
+    // on: it's here now. chosen: picked in Sound (an answer to you, said
+    // unless nobody's looking). Returns whether to show the card.
+    function deviceNews(key, on, chosen) {
+        if (!key) return !Saver.away;
+        const now = on ? "on" : "off";
+        const was = told[key];
+        if (was !== now) { const t = Object.assign({}, told); t[key] = now; told = t; toldSave.restart(); }
+        if (Saver.away) return false;
+        return chosen ? true : was !== now;
+    }
+    // What's here at login, said once: noted so it isn't said again.
+    function noteDevice(key, on) { deviceNews(key, on, true); }
 
     readonly property var kindGlyph: ({
         earbuds: "\u{f184f}", iem: "\u{f184f}", headphones: "\u{f02cb}", speaker: "\u{f04c3}", car: "\u{f010b}",
@@ -188,7 +218,7 @@ Singleton {
         id: settle
         interval: 1500
         onTriggered: {
-            const ds = root.pending.filter(d => d.connected);
+            const ds = root.pending.filter(d => d.connected && root.deviceNews((d.name || d.deviceName || "Device").toLowerCase(), true));
             root.pending = [];
             if (!ds.length) return;
             const c = root.btCard(ds[ds.length - 1]);
@@ -212,6 +242,7 @@ Singleton {
     // Osd: the output sound is on now ({ key, title, wired, bt, … }).
     property var output: null
     function deviceGone(g) {
+        if (!deviceNews(g.name.toLowerCase(), false)) return;
         const art = DeviceArt.lookup(g.name);
         lastGone = { key: g.name.toLowerCase(), at: Date.now(), output: true };
         showCard({ key: lastGone.key, glyph: kindGlyph[g.kind], image: art ? art.image : "", title: art ? art.label : g.name,
@@ -220,6 +251,7 @@ Singleton {
     // Osd, when wired gear (a DAC, the IEMs behind it) is unplugged:
     // { key, glyph, image, title }. Then outputSwitched says where sound went.
     function wiredGone(o) {
+        if (!deviceNews(o.key, false)) return;
         lastGone = { key: o.key, at: Date.now(), output: true };
         showCard({ key: o.key, glyph: o.glyph, image: o.image, title: o.title,
                    state: "Disconnected", tone: Theme.textSecondary, detail: "", battery: -1, gone: true, link: "usb" }, 3400);
@@ -235,6 +267,9 @@ Singleton {
         // Plugged in or just connected: "Connected". Already there, picked
         // in Sound: which output it is now, quietly.
         const linked = o.live && o.fresh;
+        // Login's look at what's here (boot) is said once; then only changes.
+        if (o.boot) noteDevice(o.key, true);
+        else if (!deviceNews(o.key, true, !linked)) return;
         showCard({ key: o.key, glyph: o.glyph, image: o.image, title: o.title,
                    state: linked ? "Connected" : "Sound output", tone: linked ? Theme.green : Theme.textSecondary,
                    detail: o.via ? "via " + o.via : "", battery: o.battery, gone: false, link: o.link || "", quiet: !linked,
@@ -253,6 +288,8 @@ Singleton {
         return t;
     }
     function inputCard(c) {
+        if (c.login) noteDevice(c.key, !c.gone);
+        else if (!deviceNews(c.key, !c.gone, !!c.quiet)) return;
         if (c.gone) lastGone = { key: c.key, at: Date.now() };
         showCard({ key: c.key, glyph: c.glyph, image: c.image, title: c.title, link: c.link, gone: c.gone, quiet: !!c.quiet,
                    state: c.gone ? "Disconnected" : c.quiet ? "Sound input" : "Connected",
@@ -273,6 +310,7 @@ Singleton {
             // are connected too); then Bluetooth, sound gear first.
             const out = root.output;
             if (!ds.length || (out && (out.wired || out.bt))) { root.askOutput(); return; }
+            for (const d of ds) root.noteDevice((d.name || d.deviceName || "Device").toLowerCase(), true);
             const c = root.btCard(ds[0]);
             if (ds.length > 1) c.detail = "and " + ds.slice(1).map(d => d.name || "a device").join(", ");
             root.showCard(c, 4200);

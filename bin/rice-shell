@@ -97,6 +97,11 @@ stop_dunst() {
 # standalone glass HUD it replaces.
 stop_rice
 pkill -f 'qs -p .*/quickshell/glass-osd' 2>/dev/null
+# A password prompt, always: without one every pkexec (updates, mounts) fails
+# at once and reads as "cancelled" (2026-11-13: none ran for 17 h).
+if ! systemctl --user -q is-active rice-auth.service plasma-polkit-agent.service 2>/dev/null; then
+    systemctl --user start rice-auth.service 2>/dev/null || systemctl --user start plasma-polkit-agent.service 2>/dev/null
+fi
 # A watcher from an earlier failed start: this run replaces it.
 for p in $(pgrep -f "rice-shell-watch $SHELL_DIR $RICE\$"); do [ "$p" != "$$" ] && kill "$p" 2>/dev/null; done
 

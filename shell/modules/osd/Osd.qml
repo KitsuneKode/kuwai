@@ -94,12 +94,17 @@ Scope {
     // ── Volume / mic: PipeWire ───────────────────────────────────────────
     readonly property var sink: Pipewire.defaultAudioSink
     readonly property var source: Pipewire.defaultAudioSource
-    PwObjectTracker { objects: [root.sink, root.source] }
+    // The device that plays (AudioRoute): the DAC behind EasyEffects, not
+    // "Easy Effects Sink". Volume is still the default's (the keys change it).
+    readonly property var outNode: AudioRoute.output
+    PwObjectTracker { objects: [root.sink, root.source, root.outNode].filter(n => n) }
 
     // Ignore the burst of property changes while PipeWire binds at startup,
     // and right after the default sink switches (handled as "connected").
     property bool armed: false
-    Timer { running: Pipewire.ready; interval: 1500; onTriggered: { root.armed = true; root.remember(); } }
+    // 3 s: on a cold start (a crash, the lock's restart) nodes bind their
+    // properties over a second or two; a USB device read late was "plugged in".
+    Timer { running: Pipewire.ready; interval: 3000; onTriggered: { root.armed = true; root.remember(); } }
     property real sinkSwitchedAt: 0
 
     readonly property real sinkVolume: sink && sink.audio ? sink.audio.volume : -1
@@ -116,7 +121,13 @@ Scope {
     Timer { id: zeroHold; interval: 400; onTriggered: if (Date.now() - root.sinkSwitchedAt > 400 && root.sinkVolume === 0) root.showVolume(false) }
     onSinkMutedChanged: if (armed && Date.now() - sinkSwitchedAt > 600) showVolume(false)
     onMicMutedChanged: if (armed) showMic()
-    onSinkChanged: {
+    onSinkChanged: sinkSwitchedAt = Date.now()
+    // The sound moved to another device: the default changed, or EasyEffects
+    // was pointed at the other DAC. The default changing to EasyEffects in
+    // front of the same DAC is no move.
+    readonly property string outName: outNode ? outNode.name : ""
+    onOutNameChanged: {
+        if (!outName) return;
         sinkSwitchedAt = Date.now();
         leftOut = lastOut;
         if (armed) { sinkTries = 0; sinkConnected.restart(); }
@@ -126,8 +137,8 @@ Scope {
     property var lastOut: null        // { name, key, title, glyph, image, wired }
     property var leftOut: null
     function remember() {
-        if (!sink || !sink.audio) return;
-        lastOut = outInfo(sink);
+        if (!outNode || !sink || !sink.audio) return;
+        lastOut = outInfo(outNode);
         Moments.output = lastOut;
     }
     function outInfo(node) {
@@ -138,14 +149,14 @@ Scope {
         const type = deviceType(rawLabel, props, bt, dev ? (dev.icon || "") : "");
         const art = DeviceArt.lookup(rawLabel) || DeviceArt.lookup(props["device.description"] || "");
         const shownType = art && art.kind && typeGlyph[art.kind] ? art.kind : type;
-        return { name: node.name, key: rawLabel.toLowerCase(), title: art ? art.label : sinkLabel(type, props, dev),
+        return { name: node.name, key: rawLabel.toLowerCase(), title: art ? art.label : sinkLabel(type, props, dev, node),
                  glyph: typeGlyph[shownType], image: art ? art.image : "",
                  // By its bus too: a DAC named like headphones (Audiocular) was
                  // "not wired", so unplugging it said nothing.
                  wired: !bt && (type === "usb" || props["device.bus"] === "usb" || !!art), bt: bt };
     }
     function unplugged(o) {
-        return !!o && o.wired && (!sink || o.name !== sink.name)
+        return !!o && o.wired && (!outNode || o.name !== outNode.name)
             && !Pipewire.nodes.values.some(n => n.name === o.name);
     }
     // Wait for the new node to bind its properties before naming it. A
@@ -156,15 +167,15 @@ Scope {
         id: sinkConnected
         interval: 350; repeat: true
         onTriggered: {
-            if (root.sink && root.sink.ready && root.sink.audio) {
+            if (root.sink && root.sink.ready && root.sink.audio && root.outNode && root.outNode.ready) {
                 stop();
                 root.sinkSwitchedAt = Date.now();
                 if (Settings.bar === "island" && root.unplugged(root.leftOut)) Moments.wiredGone(root.leftOut);
                 root.leftOut = null;
                 // Just plugged in and it took the sound (WirePlumber moves to a
                 // new DAC): say it connected, not only the volume.
-                const o = root.outInfo(root.sink);
-                if (Settings.bar === "island" && o.wired && root.fresh(root.sink.name) && !root.quietFor("sound"))
+                const o = root.outInfo(root.outNode);
+                if (Settings.bar === "island" && o.wired && root.fresh(root.outNode.name) && !root.quietFor("sound"))
                     Moments.inputCard({ key: o.key, glyph: o.glyph, image: o.image, title: o.title, link: "usb", gone: false, detail: "Sound is on it" });
                 else root.showVolume(true);
             }
@@ -225,7 +236,9 @@ Scope {
         const added = now.filter(x => !knownIns.some(k => k.name === x.name));
         const gone = knownIns.filter(k => !now.some(x => x.name === k.name));
         knownIns = now;
-        if (!armed || Settings.bar !== "island" || (!added.length && !gone.length)) return;
+        // At start (a restart, a lock's restart): what's here is the baseline, not news.
+        if (!armed) { for (const x of now) Moments.noteDevice(x.key, true); return; }
+        if (Settings.bar !== "island" || (!added.length && !gone.length)) return;
         insChangedAt = Date.now();
         const card = x => ({ key: x.key, glyph: externalMicGlyph, image: x.image, title: x.title, link: "usb" });
         if (added.length) inCard.pending = Object.assign(card(added[added.length - 1]), { gone: false });
@@ -256,19 +269,24 @@ Scope {
     property string soundOutWas: ""
     property string soundInWas: ""
     onSoundOpenChanged: {
-        if (soundOpen) { soundOutWas = sink ? sink.name : ""; soundInWas = source ? source.name : ""; return; }
+        if (soundOpen) { soundOutWas = outName; soundInWas = source ? source.name : ""; return; }
         if (!armed) return;
-        if (sink && sink.name !== soundOutWas) showVolume(true);
+        if (outName && outName !== soundOutWas) showVolume(true);
         else if (source && source.name !== soundInWas) inSwitch.restart();
     }
     // Chosen in Sound (not plugged in or out): which input it is now.
-    onSourceChanged: if (armed && Settings.bar === "island") inSwitch.restart()
+    property string inWas: ""
+    onSourceChanged: { if (!armed && source) inWas = source.name; else if (armed && Settings.bar === "island") inSwitch.restart(); }
     Timer {
         id: inSwitch
         interval: 900
         onTriggered: {
             const src = root.source;
             if (!src || Date.now() - root.insChangedAt < 2500 || root.quietFor("sound")) return;
+            // The same input again (its node came back, PipeWire re-announced
+            // it): nothing was chosen.
+            if (src.name === root.inWas) return;
+            root.inWas = src.name;
             const t = root.inTitle(src);
             const ext = (src.properties || {})["device.bus"] === "usb";
             Moments.inputCard({ key: t.raw.toLowerCase(), glyph: ext || t.jack ? root.externalMicGlyph : root.micGlyph, image: t.image,
@@ -333,7 +351,12 @@ Scope {
                 const before = root.jackPorts;
                 root.jackPorts = ports;
                 if (root.jackAgain) { root.jackAgain = false; jackCheck.restart(); }
-                if (!before || !root.armed || Settings.bar !== "island") return;
+                if (!before || !root.armed) {
+                    Moments.noteDevice("jack:mic", ports["analog-input-mic"] === "available");
+                    Moments.noteDevice("jack:headphones", ports["analog-output-headphones"] === "available");
+                    return;
+                }
+                if (Settings.bar !== "island") return;
                 // One plug, one card. The combo jack can't tell a mic from
                 // headphones, so a plug lights its mic and headphone ports
                 // together: that said "Wired headphones" and then "Boya".
@@ -366,7 +389,8 @@ Scope {
         const added = now.filter(x => !knownOuts.some(k => k.name === x.name));
         const gone = knownOuts.filter(k => !now.some(x => x.name === k.name));
         knownOuts = now;
-        if (!armed || Settings.bar !== "island" || (!added.length && !gone.length)) return;
+        if (!armed) { for (const x of now) Moments.noteDevice(x.key, true); return; }
+        if (Settings.bar !== "island" || (!added.length && !gone.length)) return;
         outCard.pending = added.length ? Object.assign({}, added[added.length - 1], { gone: false })
                                        : Object.assign({}, gone[gone.length - 1], { gone: true });
         outCard.restart();
@@ -377,7 +401,7 @@ Scope {
         interval: 1500
         onTriggered: {
             const c = pending; pending = null;
-            if (!c || !root.sink || root.sink.name === c.name || (root.lastOut && root.lastOut.name === c.name)) return;
+            if (!c || !root.outNode || root.outNode.name === c.name || (root.lastOut && root.lastOut.name === c.name)) return;
             const on = root.lastOut ? Moments.short(root.lastOut.title) : "";
             Moments.inputCard({ key: c.key, glyph: c.glyph, image: c.image, title: c.title, link: "usb", gone: c.gone,
                                 detail: on ? (c.gone ? "Sound on " : "Sound stays on ") + on : "" });
@@ -425,11 +449,12 @@ Scope {
         return o.model || "";
     }
 
-    function sinkLabel(type, props, dev) {
+    function sinkLabel(type, props, dev, node) {
+        const n = node || outNode || sink;
         if (dev && dev.name) return dev.name;
         if (type === "display") return externalMonitorName() || "Display Audio";
         if (type === "laptop") return "Built-in Speakers";
-        return props["device.description"] || sink.nickname || sink.description || "Output";
+        return props["device.description"] || (n ? n.nickname || n.description : "") || "Output";
     }
 
     function batteryGlyph(b) {
@@ -445,10 +470,11 @@ Scope {
     }
     function showVolume(connected, boot) {
         if (!sink || !sink.audio || (quietFor("sound") && !boot)) return;
-        const props = sink.properties || {};
+        const out = outNode || sink;
+        const props = out.properties || {};
         const dev = bluetoothDevice(props);
         const bt = props["device.api"] === "bluez5" || !!props["api.bluez5.address"];
-        const rawLabel = (dev && dev.name) || props["device.description"] || sink.description || "";
+        const rawLabel = (dev && dev.name) || props["device.description"] || out.description || "";
         const type = deviceType(rawLabel, props, bt, dev ? (dev.icon || "") : "");
         const v = Math.round(sink.audio.volume * 100);
 
@@ -468,7 +494,7 @@ Scope {
                 key: rawLabel.toLowerCase(), glyph: typeGlyph[shownType], image: art ? art.image : "",
                 title: art ? art.label : sinkLabel(type, props, dev), via: art ? art.via : "",
                 battery: dev && dev.batteryAvailable ? dev.battery : -1, live: live, boot: !!boot,
-                link: bt ? "bluetooth" : wired ? "usb" : "", fresh: !!boot || fresh(sink.name),
+                link: bt ? "bluetooth" : wired ? "usb" : "", fresh: !!boot || fresh(out.name),
                 level: live ? Math.min(1, v / 100) : -1, muted: sink.audio.muted
             });
             return;

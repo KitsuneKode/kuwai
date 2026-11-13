@@ -32,7 +32,10 @@ Singleton {
     readonly property int lockAfter: battery ? Settings.idleLockBattery : Settings.idleLockAc
     readonly property int offAfter: battery ? Settings.idleOffBattery : Settings.idleOffAc
     readonly property int sleepAfter: battery ? Settings.idleSleepBattery : Settings.idleSleepAc
-    readonly property bool held: Caffeine.on
+    // Caffeine, or you're dictating: talking to voxtype is no key or pointer
+    // input, and the screen dimmed and locked mid-sentence. (voxtype's own
+    // systemd-inhibit only spoke to hypridle; these monitors don't read it.)
+    readonly property bool held: Caffeine.on || Activities.voxBusy
     readonly property string rice: Paths.bin + "/rice"
 
     function run(cmd) { Quickshell.execDetached(["sh", "-c", cmd]); }
@@ -67,7 +70,12 @@ Singleton {
         enabled: root.enabled && !root.held && root.offAfter > 0
         timeout: root.offAfter
         respectInhibitors: true
-        onIsIdleChanged: root.run(`hyprctl dispatch 'hl.dsp.dpms({ action = "${isIdle ? "disable" : "enable"}" })'`)
+        onIsIdleChanged: {
+            Saver.screensOff = isIdle;
+            root.run(`hyprctl dispatch 'hl.dsp.dpms({ action = "${isIdle ? "disable" : "enable"}" })'`);
+        }
+        // Disabled while off (Caffeine, a dictation): the screens come back.
+        onEnabledChanged: if (!enabled && Saver.screensOff) Saver.screensOff = false
     }
     // ── Sleep (never while music plays)
     IdleMonitor {
