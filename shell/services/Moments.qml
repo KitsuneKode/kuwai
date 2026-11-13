@@ -616,6 +616,8 @@ Singleton {
             return;
         }
         const needs = st === "waiting";
+        const [kpid, kw] = String(item.jump || "").split(":");
+        const answerable = needs && Kittymux.canAnswer(Kittymux.running.find(r => r.key === "w" + kpid + "." + kw));
         // Which one: two Codex panes otherwise look the same. The tab's title
         // (the adapter moved the state out of it), kept short for the notch.
         let tab = String((ev && ev.tab) || item.title || "").replace(/\s+/g, " ").trim();
@@ -635,7 +637,9 @@ Singleton {
             // pull down lists the recent ones, swipe up marks it read.
             go: () => id ? Kittymux.jumpEvent(id) : Notifs.jumpTo(pane),
             dismiss: () => { if (id) Kittymux.ack(id); },
-            list: root.openRecent,
+            // A prompt you can answer from here (Claude Code, Codex): pulled
+            // down, the Agents panel with its Allow / Deny; else the list.
+            list: needs && answerable ? (scr => Island.open("agents", scr || "", "pointer", "island")) : root.openRecent,
             // Waiting on you: it stays until it's answered (you went there, or
             // swiped it away), ten minutes at most.
             sticky: needs && !!id, event: id

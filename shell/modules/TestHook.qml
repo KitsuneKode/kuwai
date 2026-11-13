@@ -47,10 +47,14 @@ Scope {
             for (let i = 0; i < n; i++) {
                 const name = names[i % names.length];
                 list.push({ key: "test" + i, agent: name, brand: name, title: "Test task " + (i + 1),
-                            tab_title: "test", cwd: "~/Projects/test", state: i < waiting ? "waiting" : "working" });
+                            tab_title: "test", cwd: "~/Projects/test", state: i < waiting ? "waiting" : "working",
+                            question: i < waiting ? "Allow Bash: npm run build -- --watch in ~/Projects/test?" : "" });
             }
             Kittymux.feed = { version: 1, agents: list };
         }
+        // A panel as a preview (no keyboard focus, so typing stays where it
+        // is): `test preview agents DP-3`. `island close` puts it away.
+        function preview(panel: string, screen: string): void { Island.preview(panel, screen); }
         // Agents in given states, comma-separated (working, waiting, done,
         // limited, error): `test agentStates "working,limited,error"`.
         function agentStates(states: string): void {

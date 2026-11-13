@@ -334,6 +334,49 @@ Singleton {
         run([bin, "panel", "toggle"]);
     }
 
+    // ── Answer a permission prompt from the notch (owner said yes, 2026-11-13)
+    // `kittymux answer KEY allow|deny --expect Q`: kittymux re-reads the pane
+    // and types only if that exact prompt is still on screen; otherwise it
+    // refuses (exit 3, why on stderr) and nothing is typed. Claude Code and
+    // Codex only (their menus are known); a row waiting, with its question.
+    // KUWAI_ANSWER_DRYRUN=1 adds --dry-run: every check, nothing typed.
+    //   answers: { key: { busy, done: "allow"|"deny"|"", why } }
+    property var answers: ({})
+    readonly property bool answerDry: Quickshell.env("KUWAI_ANSWER_DRYRUN") === "1"
+    function canAnswer(r) {
+        return !!r && !!r.key && r.needs === true && /^(claude|codex)$/.test(String(r.agent || "").toLowerCase()) && String(r.question || "").trim() !== "";
+    }
+    function setAnswer(key, v) { const a = Object.assign({}, answers); if (v) a[key] = v; else delete a[key]; answers = a; }
+    function answer(r, choice) {
+        if (!canAnswer(r) || (choice !== "allow" && choice !== "deny")) return;
+        if (answers[r.key] && answers[r.key].busy) return;
+        setAnswer(r.key, { busy: true, done: "", why: "" });
+        const cmd = [bin, "answer", r.key, choice, "--expect", r.question];
+        if (answerDry) cmd.push("--dry-run");
+        answerer.createObject(root, { command: cmd, key: r.key, choice: choice }).running = true;
+    }
+    Component {
+        id: answerer
+        Process {
+            property string key
+            property string choice
+            stdout: StdioCollector { id: aOut }
+            stderr: StdioCollector { id: aErr }
+            onExited: code => {
+                const why = (aErr.text || "").trim().split("\n").pop();
+                // 0 typed (or would have, dry run) · 3 refused · 1 pane gone · 2 bad args
+                if (code === 0) root.setAnswer(key, { busy: false, done: choice, why: root.answerDry ? (aOut.text || "").trim() : "" });
+                else root.setAnswer(key, { busy: false, done: "", why: code === 1 ? "That pane is gone" : why || "kittymux didn't answer (exit " + code + ")" });
+                if (code !== 0) console.warn("kittymux answer " + key + " " + choice + ": exit " + code + " " + why);
+                answerClear.restart();
+                destroy();
+                refresh.restart();
+            }
+        }
+    }
+    // A refusal's reason is read, then goes; a done answer goes with the row.
+    Timer { id: answerClear; interval: 6000; onTriggered: { const a = {}; for (const k in root.answers) if (root.answers[k].busy) a[k] = root.answers[k]; root.answers = a; } }
+
     function run(cmd) {
         const p = runner.createObject(root, { command: cmd });
         p.running = true;
