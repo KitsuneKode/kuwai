@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# rice-freeze-snap — press it (Super+Ctrl+Alt+F) the moment a window stops
+# repainting (T3 Code on the Acer, typed text not showing until the pointer
+# moves). Keys don't unfreeze it, so the state is still the frozen one.
+#
+# Saves to ~/.local/state/rice/freezes/<time>/: what the compositor's log said
+# just before, the page-flip drop count, CPU and GPU load, the focused window,
+# T3's processes (state and what they wait on), and a capture of the screen as
+# the compositor has it. Nothing leaves the machine. Read with:
+#   rice-freeze-snap --last        the newest one, summarized
+set -u
+ROOT="${XDG_STATE_HOME:-$HOME/.local/state}/rice/freezes"
+
+if [ "${1:-}" = --last ]; then
+    d=$(ls -1d "$ROOT"/*/ 2>/dev/null | tail -1)
+    [ -n "$d" ] || { echo "no freezes noted yet"; exit 1; }
+    echo "$d"; cat "$d/summary.txt"; exit 0
+fi
+
+T=$(date +%Y%m%d-%H%M%S)
+D="$ROOT/$T"
+mkdir -p "$D"
+LOG=$(ls -t "${XDG_RUNTIME_DIR:-/run/user/$UID}"/hypr/*/hyprland.log 2>/dev/null | head -1)
+
+{
+    echo "time: $(date '+%F %T.%N')"
+    echo "focused: $(hyprctl activewindow -j 2>/dev/null | jq -c '{class, title: .title[0:60], monitor, fullscreen, xwayland}')"
+    echo "monitor: $(hyprctl monitors -j 2>/dev/null | jq -c '.[] | select(.focused) | {name, refreshRate, vrr, currentFormat, activelyTearing, directScanoutTo, solitary}')"
+    [ -n "$LOG" ] && echo "page-flip drops (all session): $(grep -c 'page-flip is awaiting' "$LOG")"
+    [ -n "$LOG" ] && echo "input lag warnings (all session): $(grep -c 'lagging behind' "$LOG")"
+    echo "load: $(cut -d' ' -f1-3 /proc/loadavg)"
+    echo "gpu: $(nvidia-smi --query-gpu=pstate,utilization.gpu,clocks.gr,power.draw --format=csv,noheader 2>/dev/null)"
+    echo "cursor hidden by typing: $(hyprctl getoption cursor:hide_on_key_press 2>/dev/null | head -1)"
+} > "$D/summary.txt"
+
+[ -n "$LOG" ] && tail -n 400 "$LOG" > "$D/hyprland-tail.log"
+top -b -n 1 -o %CPU | head -30 > "$D/top.txt"
+for p in $(pgrep -f '/opt/t3code' 2>/dev/null); do
+    printf '%s %s wchan=%s %s\n' "$p" "$(awk '{print $3}' /proc/$p/stat 2>/dev/null)" "$(cat /proc/$p/wchan 2>/dev/null)" \
+        "$(tr '\0' ' ' < /proc/$p/cmdline 2>/dev/null | grep -o -- '--type=[a-z-]*' || echo main)"
+done > "$D/t3-procs.txt"
+hyprctl clients -j > "$D/clients.json" 2>/dev/null
+mon=$(hyprctl monitors -j 2>/dev/null | jq -r '.[] | select(.focused) | .name')
+[ -n "$mon" ] && grim -o "$mon" "$D/screen.png" 2>/dev/null
+
+notify-send -a kuwai -u low "Freeze noted" "Saved to $D — move the pointer to unfreeze." 2>/dev/null
+echo "$D"
