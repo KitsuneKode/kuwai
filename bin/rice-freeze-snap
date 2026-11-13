@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# rice-freeze-snap — press it (Super+Ctrl+Alt+F) the moment a window stops
+# rice-freeze-snap — press it (Super+Ctrl+Alt+Z: F is mpv's size) the moment a window stops
 # repainting (T3 Code on the Acer, typed text not showing until the pointer
 # moves). Keys don't unfreeze it, so the state is still the frozen one.
 #
