@@ -1,5 +1,6 @@
 // The island on hover, before you ask for more: one row, a little bigger
-// than the notch at rest. A click (anywhere on it) opens the whole hover view
+// than the notch at rest. Pulled down (anywhere on it), or clicked away from
+// the time and what's playing, it opens the whole hover view
 // (IslandHover); hovering alone never does — big things answer a click
 // (Settings → Bar & Island → Hover shows: a glance or everything).
 //
@@ -136,6 +137,19 @@ Item {
     // the full view), and the clock travels into it; the rest of the row
     // opens everything.
     HoverHandler { cursorShape: Qt.PointingHandCursor }
+    // Pull it down for everything (or up to put it away): the island follows
+    // the pointer and the release decides on distance or speed (IslandBar).
+    Fling { id: pullFling }
+    DragHandler {
+        target: null
+        xAxis.enabled: false
+        dragThreshold: 4
+        onActiveChanged: {
+            if (active) { pullFling.reset(); return; }
+            glance.bar.glanceRelease(translation.y, pullFling.vy());
+        }
+        onTranslationChanged: if (active) { pullFling.add(0, translation.y); glance.bar.glancePull(translation.y); }
+    }
     TapHandler {
         onTapped: eventPoint => {
             const p = when.mapFromItem(glance, eventPoint.position.x, eventPoint.position.y);
@@ -155,5 +169,5 @@ Item {
         }
     }
     Accessible.role: Accessible.Button
-    Accessible.name: "Island: " + (glance.app ? glance.app.name : "Desktop") + ", " + Qt.formatTime(glance.bar.now, "hh:mm") + ". Click for everything."
+    Accessible.name: "Island: " + (glance.app ? glance.app.name : "Desktop") + ", " + Qt.formatTime(glance.bar.now, "hh:mm") + ". Click or pull down for everything."
 }

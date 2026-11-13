@@ -295,7 +295,7 @@ Scope {
             // island, but the island must stay grown or the menu loses its anchor.
             property int menus: 0
             onMenusChanged: if (menus === 0 && !hovered) leave.restart()
-            Timer { id: leave; interval: Theme.hoverLeaveMs; onTriggered: if (!win.hovered && win.menus === 0) win.grown = false }
+            Timer { id: leave; interval: Theme.hoverLeaveMs; onTriggered: if (win.glanceDragging) restart(); else if (!win.hovered && win.menus === 0) win.grown = false }
             onHoveredChanged: {
                 hovered ? intent.restart() : leave.restart();
                 if (hovered) previewOut.stop(); else if (panelHere && Island.previewing) previewOut.restart();
@@ -408,7 +408,7 @@ Scope {
             property real pull: 0
             property bool committing: false
             property bool pushed: false
-            Behavior on pull { enabled: !pushDrag.active && !win.committing; NumberAnimation { duration: 260; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+            Behavior on pull { enabled: !pushDrag.active && !win.committing && !win.glanceDragging; NumberAnimation { duration: 260; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
             function rubber(d, dim) { return d * dim * 0.55 / (dim + 0.55 * d); }
             function pushBack(v) {
                 committing = true;
@@ -421,6 +421,32 @@ Scope {
                 if (bannerHere) Alerts.dismiss();
                 else if (peekHere) Notifs.dropPeek();
                 else if (deviceHere) Moments.dropCard();
+            }
+            // Pulled down on the glance (IslandGlance): the shape stretches with
+            // the pointer, damped (it hangs from the edge). Let go far or fast
+            // enough and it opens into everything from where it is, at the
+            // pointer's speed (the stretch handed to the height spring, as
+            // pushBack does); short of that it springs back. Up folds it away,
+            // the way it came.
+            property bool glanceDragging: false
+            function glancePull(dy) {
+                glanceDragging = true;
+                pull = dy > 0 ? -rubber(dy, 90) : rubber(-dy, 40);
+            }
+            function glanceRelease(dy, v) {
+                glanceDragging = false;
+                if (dy > 28 || v > Theme.swipeFlick) {
+                    committing = true;
+                    sh.value = sh.value - pull;
+                    sh.velocity = Math.max(0, v * 1000);
+                    pull = 0;
+                    committing = false;
+                    full = true;
+                } else if (dy < -18 || v < -Theme.swipeFlick) {
+                    pull = 0;
+                    pushed = true;
+                    grown = false;
+                } else pull = 0;
             }
             // The assistant working with its panel closed (or just finished): the edge light below.
             readonly property bool assistHere: (OllamaService.bgWorking || !!OllamaService.bgDone)
