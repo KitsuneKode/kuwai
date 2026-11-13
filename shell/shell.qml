@@ -61,6 +61,7 @@ ShellRoot {
     Blank {}
     Overview {}
     VoxtypeHost {}
+    VoxTarget {}
     AssistantOverlay {}
     Shortcuts {}
     TestHook {}

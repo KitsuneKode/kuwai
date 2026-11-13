@@ -606,6 +606,7 @@ Singleton {
         const ev = Kittymux.eventById(item.event);
         const pane = { jump: item.jump };          // not the item: the center may drop it before you tap
         if (item.event && Kittymux.answered(item.event)) return;     // went there before the popup came
+        if (Kittymux.onScreen(item.jump)) return;                     // you're looking at it
         const name = String((ev && ev.agent) || item.app || "Agent");
         // A tool asking for a password in a pane (sudo, ssh, git, pacman…)
         // isn't an agent: say what it is, with a key, not a robot.

@@ -23,6 +23,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Hyprland
 
 Singleton {
     id: root
@@ -223,6 +224,23 @@ Singleton {
         }));
     }
     readonly property var tabs: tabsLive ? tabsDoc.windows.map(normalizeWindow) : fallbackTabs()
+
+    // On screen: the pane ("pid:w") is in the tab kitty shows, in the kitty
+    // window that has the keyboard, and you're here (not locked, screens
+    // on). A sudo asking for its password in the terminal you're typing in,
+    // or an agent finishing in front of you, is no news for the notch; it
+    // still lands in the list. Hyprland must agree that kitty is focused
+    // (kitty's own flag can lag a focus change).
+    function onScreen(jump) {
+        if (!jump || !tabsLive || Saver.away) return false;
+        const [pid, w] = String(jump).split(":");
+        const win = tabsDoc.windows.find(x => String(x.kitty_pid) === pid && x.focused);
+        if (!win) return false;
+        const top = Hyprland.activeToplevel;
+        const cls = top && top.wayland ? String(top.wayland.appId || "") : "";
+        if (cls !== String(win.wm_class || "kitty")) return false;
+        return (win.tabs || []).some(t => t.active && (String((t.action || {}).w) === w || String(t.agent_window) === w));
+    }
 
     // Tab titles carry the agent's status glyph (✳ ◐ ◑ …): drop it.
     function clean(t) {

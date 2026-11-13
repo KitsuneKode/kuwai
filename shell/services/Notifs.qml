@@ -158,6 +158,9 @@ Singleton {
         }
         const item = itemComp.createObject(root, { notification: n });
         item.apply(n, a);
+        // A kitty pane in front of you (its sudo prompt, an agent done there):
+        // into the list, no toast, no notch, no missed dot.
+        if (item.jump && Kittymux.onScreen(item.jump)) item.quiet = true;
         // While the center is open the new one just lands in its list; so
         // does a quiet one (a bot's pull request, say).
         item.popup = toastsFor(item);
