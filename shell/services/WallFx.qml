@@ -105,7 +105,7 @@ Singleton {
     NumberAnimation {
         id: reveal
         target: root; property: "t"; from: 0; to: 1
-        duration: 900
+        duration: Theme.wallRevealMs
         easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeInOut
         onFinished: { root.phase = "settling"; settleLimit.restart(); check.running = true; }
     }
