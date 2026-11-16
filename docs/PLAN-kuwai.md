@@ -3,6 +3,8 @@
 Written 2026-11-01 so the plan survives context compaction. Tick items here as
 they land. User wants: extremely secure, premium, tasteful, fast, Apple-grade.
 
+**2026-11-16: the order of work toward a public launch is in [PLAN-launch.md](PLAN-launch.md)** (in-flight worktrees, the 12 reported issues, references, pstack verification, clips).
+
 ## Skills the user asked to be used (load with the Skill tool when working on the matching area)
 /animate · /emil-design-eng · /apple-design · /interaction-design · /interface-design ·
 /improve-animations · /find-animation-opportunities · /review-animations · /ask-sonner ·
