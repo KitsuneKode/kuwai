@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# kuwai-theme install [kuwai-night]: put a kuwai theme where HyDE (and the
+# island's Themes panel) find it, ~/.config/hyde/themes/<Name>.
+#
+# A kuwai theme is colour only: window borders, the terminal palette. Your
+# GTK theme, icons and font are taken from the theme you use now, so switching
+# changes nothing else. Its wallpapers are public-domain paintings (CC0, Art
+# Institute of Chicago open access): fetched here, not shipped in the repo,
+# at the largest public size (1686 px) and upscaled to 2560 (Lanczos, a light
+# sharpen). Credits: themes/<theme>/CREDITS.txt, copied beside them.
+#   kuwai-theme install            Kuwai Night
+#   kuwai-theme install --apply    …and switch to it
+set -euo pipefail
+ROOT="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+[ "${1:-}" = install ] || { sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
+shift
+apply=0; slug=kuwai-night
+for a in "$@"; do case "$a" in --apply) apply=1 ;; *) slug=$a ;; esac; done
+src="$ROOT/themes/$slug"
+[ -d "$src" ] || { echo "no theme $slug in $ROOT/themes" >&2; exit 1; }
+name=$(printf '%s' "$slug" | sed -E 's/(^|-)([a-z])/\1\u\2/g; s/-/ /g')     # kuwai-night → Kuwai Night
+themes="${XDG_CONFIG_HOME:-$HOME/.config}/hyde/themes"
+dest="$themes/$name"
+cur=$(sed -n 's/^HYDE_THEME="\{0,1\}\([^"]*\)"\{0,1\}$/\1/p' "${XDG_STATE_HOME:-$HOME/.local/state}/hyde/staterc" 2>/dev/null | head -n1)
+mkdir -p "$dest/wallpapers"
+cp "$src/kitty.theme" "$src/ghostty.theme" "$dest/"
+# Borders and palette ours; GTK, icons, colour scheme and font yours (from the current theme).
+if [ -n "$cur" ] && [ -f "$themes/$cur/hypr.theme" ] && [ "$cur" != "$name" ]; then
+    awk -v cur="$themes/$cur/hypr.theme" 'BEGIN { while ((getline l < cur) > 0) if (l ~ /^\$(GTK_THEME|ICON_THEME|COLOR_SCHEME|FONT)/) keep[substr(l, 1, index(l, "=") - 1)] = l }
+        /^\$(GTK_THEME|ICON_THEME|COLOR_SCHEME|FONT)/ { k = substr($0, 1, index($0, "=") - 1); if (k in keep) { print keep[k]; next } } { print }' "$src/hypr.theme" > "$dest/hypr.theme"
+    for f in rofi.theme waybar.theme; do [ -f "$themes/$cur/$f" ] && cp "$themes/$cur/$f" "$dest/"; done
+    [ -d "$themes/$cur/kvantum" ] && cp -r "$themes/$cur/kvantum" "$dest/"
+else
+    cp "$src/hypr.theme" "$dest/"
+fi
+cp "$src/CREDITS.txt" "$dest/wallpapers/"
+UA=(-H "AIC-User-Agent: kuwai-theme (open-source desktop theme)" -A "kuwai-theme/1.0")
+while IFS=$'\t' read -r file img id; do
+    out="$dest/wallpapers/$file.jpg"
+    [ -s "$out" ] && continue
+    tmp=$(mktemp --suffix=.jpg)
+    if curl -fsSL --max-time 90 "${UA[@]}" -o "$tmp" "https://www.artic.edu/iiif/2/$img/full/1686,/0/default.jpg"; then
+        if command -v magick >/dev/null; then magick "$tmp" -filter Lanczos -resize 2560x -unsharp 0x0.6+0.4+0.02 -quality 92 "$out"; else mv "$tmp" "$out"; fi
+        echo "  $file"
+    else
+        echo "  couldn't fetch $file (artic.edu/artworks/$id)" >&2
+    fi
+    rm -f "$tmp"
+done < "$src/paintings.tsv"
+echo "installed: $dest"
+[ $apply = 1 ] && exec "$ROOT/bin/rice-themes" theme "$name" --wait
+exit 0

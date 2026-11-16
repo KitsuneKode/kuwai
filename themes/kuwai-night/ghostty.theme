@@ -1,0 +1,23 @@
+$HOME/.config/ghostty/themes/hyde-active
+# Kuwai Night (the kuwai shell's palette)
+background = 111114
+foreground = e5e5e7
+cursor-color = e5e5e7
+selection-background = 2c2c34
+selection-foreground = ffffff
+palette = 0=#1c1c21
+palette = 1=#ff453a
+palette = 2=#30d158
+palette = 3=#ffd60a
+palette = 4=#0a84ff
+palette = 5=#bf5af2
+palette = 6=#64d2ff
+palette = 7=#c7c7cc
+palette = 8=#48484f
+palette = 9=#ff6961
+palette = 10=#4ade80
+palette = 11=#ffe066
+palette = 12=#409cff
+palette = 13=#da8fff
+palette = 14=#8fdcff
+palette = 15=#ffffff

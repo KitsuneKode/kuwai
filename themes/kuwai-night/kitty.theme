@@ -1,0 +1,36 @@
+$HOME/.config/kitty/theme.conf|killall -SIGUSR1 kitty
+# vim:ft=kitty
+## name: Kuwai Night
+## The kuwai shell's own palette (Apple's dark system colours) on the island's near-black.
+
+background                      #111114
+foreground                      #e5e5e7
+selection_background            #2c2c34
+selection_foreground            #ffffff
+cursor                          #e5e5e7
+url_color                       #64d2ff
+active_tab_foreground           #e5e5e7
+active_tab_background           #2c2c34
+inactive_tab_foreground         #8e8e93
+inactive_tab_background         #111114
+tab_bar_background              #0b0b0d
+active_border_color             #48484f
+inactive_border_color           #1c1c21
+mark1_foreground #111114
+mark1_background #0a84ff
+color0                          #1c1c21
+color1                          #ff453a
+color2                          #30d158
+color3                          #ffd60a
+color4                          #0a84ff
+color5                          #bf5af2
+color6                          #64d2ff
+color7                          #c7c7cc
+color8                          #48484f
+color9                          #ff6961
+color10                         #4ade80
+color11                         #ffe066
+color12                         #409cff
+color13                         #da8fff
+color14                         #8fdcff
+color15                         #ffffff
