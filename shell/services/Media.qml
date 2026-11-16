@@ -164,6 +164,15 @@ Singleton {
     function goTo(p) {
         p = p || active;
         if (!p) return;
+        const t = windowOf(p);
+        if (t) Hyprland.dispatch(`hl.dsp.focus({window = 'address:0x${t.address}'})`);
+        else if (p.canRaise) p.raise();
+    }
+    // The window showing this player's track (a browser tab: "ADDICTED - YouTube"),
+    // else the player app's window, else null. ArtImage frames it when the
+    // player sends no cover (a film in a browser).
+    function windowOf(p) {
+        if (!p) return null;
         const norm = x => String(x || "").toLowerCase();
         const keys = [norm(p.desktopEntry), norm(p.identity).split(" ").pop(), norm(p.dbusName).replace(/^org\.mpris\.mediaplayer2\./, "").split(".")[0]].filter(k => k.length > 1);
         const wins = Hyprland.toplevels.values.filter(t => t.lastIpcObject);
@@ -171,8 +180,14 @@ Singleton {
         const ofApp = wins.filter(t => keys.some(k => cls(t).includes(k)));
         const title = norm(p.trackTitle);
         const byTitle = title.length > 2 ? (ofApp.length ? ofApp : wins).find(t => norm(t.title).includes(title)) : null;
-        const t = byTitle || ofApp[0] || null;
-        if (t) Hyprland.dispatch(`hl.dsp.focus({window = 'address:0x${t.address}'})`);
-        else if (p.canRaise) p.raise();
+        return byTitle || ofApp[0] || null;
+    }
+    // Only the window whose title is this track (the film's tab is the one
+    // showing): ArtImage frames this one. The app's other window, or the same
+    // browser on another tab, would frame the wrong thing.
+    function windowShowing(p) {
+        const t = windowOf(p);
+        const want = String(p && p.trackTitle || "").toLowerCase();
+        return t && want.length > 2 && String(t.title || "").toLowerCase().includes(want) ? t : null;
     }
 }

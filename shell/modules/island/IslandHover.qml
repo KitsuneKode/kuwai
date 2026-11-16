@@ -251,7 +251,7 @@ Item {
             x: 9; anchors.verticalCenter: parent.verticalCenter
             width: 48; height: 48; radius: 11
             color: Qt.rgba(1, 1, 1, 0.08)
-            ArtImage { anchors.fill: parent; source: hover.player ? (hover.player.trackArtUrl || "") : ""; px: 96 }
+            ArtImage { anchors.fill: parent; source: hover.player ? (hover.player.trackArtUrl || "") : ""; px: 96; player: hover.player }
             ImageEdge { radius: 11 }
         }
         // The art and the title open Now Playing (MediaPanel); right-click for
