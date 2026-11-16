@@ -41,7 +41,7 @@ Scope {
         }
         function agents(n: int, waiting: int): void {
             // The agents.json shape (kittymux plan 014); the real feed comes back on clear.
-            if (!hook.testing) { hook.realFeed = Kittymux.feed; hook.testing = true; }
+            if (!hook.testing) { hook.realFeed = Kittymux.feed; hook.testing = true; Kittymux.feedPinned = true; }
             const names = ["claude", "codex", "agy", "opencode", "gemini"];
             const list = [];
             for (let i = 0; i < n; i++) {
@@ -58,7 +58,7 @@ Scope {
         // Agents in given states, comma-separated (working, waiting, done,
         // limited, error): `test agentStates "working,limited,error"`.
         function agentStates(states: string): void {
-            if (!hook.testing) { hook.realFeed = Kittymux.feed; hook.testing = true; }
+            if (!hook.testing) { hook.realFeed = Kittymux.feed; hook.testing = true; Kittymux.feedPinned = true; }
             const names = ["claude", "codex", "agy", "cursor", "gemini"];
             Kittymux.feed = { version: 1, agents: states.split(",").map((st, i) => ({
                 key: "test" + i, agent: names[i % names.length], brand: names[i % names.length], title: "Test task " + (i + 1),
@@ -104,7 +104,7 @@ Scope {
             if (Notifs.peek && Notifs.peek.test) { Notifs.peekHeld = false; Notifs.peek = null; }
             Moments.now = null;
             if (Moments.card && String(Moments.card.key).indexOf("test-") === 0) Moments.dropCard();
-            if (hook.testing) { Kittymux.feed = hook.realFeed; hook.testing = false; }
+            if (hook.testing) { Kittymux.feedPinned = false; Kittymux.feed = hook.realFeed; hook.testing = false; }
             for (const t of Timers.timers.slice()) if (/^test/i.test(t.label)) Timers.cancel(t.id);
         }
     }

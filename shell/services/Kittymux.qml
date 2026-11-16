@@ -43,6 +43,7 @@ Singleton {
     property var rows: []                      // kittymux pick --json
     property var feed: null                    // agents.json, when this kittymux publishes it
     readonly property bool live: !!feed && feed.version === 1 && Array.isArray(feed.agents)
+    property bool feedPinned: false            // TestHook: fake agent states, the file's updates ignored
     property var tabsDoc: null                 // tabs.json, when this kittymux publishes it
     readonly property bool tabsLive: !!tabsDoc && tabsDoc.version === 1 && Array.isArray(tabsDoc.windows)
     property bool loaded: false                // first pick has answered
@@ -415,9 +416,10 @@ Singleton {
         printErrors: false
         onFileChanged: reload()
         onLoaded: {
+            if (root.feedPinned) return;       // a test's fake states hold (kittymux heartbeats every ~1 s)
             try { root.feed = JSON.parse(text()); root.loaded = true; } catch (e) {}
         }
-        onLoadFailed: root.feed = null           // no file: an older kittymux, so pick stays the source
+        onLoadFailed: if (!root.feedPinned) root.feed = null           // no file: an older kittymux, so pick stays the source
     }
 
     FileView {
