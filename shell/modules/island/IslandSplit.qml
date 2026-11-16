@@ -238,7 +238,7 @@ Item {
                 // Overlapping, so the capsule is never empty between them.
                 NumberAnimation { target: ghost; property: "opacity"; to: 0; duration: Theme.quickMs - 10; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
                 SequentialAnimation {
-                    PauseAnimation { duration: 30 }
+                    PauseAnimation { duration: Theme.handoffMs }
                     NumberAnimation { target: pill; property: "reveal"; to: 1; duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
                 }
             }
