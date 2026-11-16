@@ -53,8 +53,21 @@ opens the panel where you act on it.
 ![Capsule states: working, needs you, hit a limit, error](docs/media/island/capsule-states.png)
 
 - **Hover** shows a one-row glance (the app, the time, the song or how many
-  notifications); a click opens everything. The time opens the calendar and
-  the clock flies into it.
+  notifications); a click anywhere on it, the time included, opens everything.
+  There, the time chip opens the calendar and the clock flies into it.
+- **It moves like the Dynamic Island.** The notch's shoulders are continuous
+  flares that grow with it, so a panel pours out of the screen's edge; growing
+  settles with a touch of give, folding back lands clean. A capsule changing
+  state (working → needs you → done) swaps its content: the old leaves, the
+  new arrives from 97 % through a blur that clears, the capsule springs once to
+  its new width. A capsule's icon arrives after the capsule has opened.
+- **Sections.** Agents, Usage, System and Cleanup are views of one place: a
+  strip in the panel's top row (or ⌥1–4) switches between them in place.
+- **Privacy dots** beside the status: the mic in use (orange), the camera
+  (green), your screen shared or recorded (purple), each saying who on hover.
+- **What's playing** is named for people: a browser's "Watch … - JioHotstar"
+  reads as the film and the site, and a film with no cover shows a frame of
+  the window playing it (that window only, never on the lock screen).
 - **Agents** live in one place: the notch's Agents panel (Super+Shift+N, or a
   click on the agents capsule) lists every kitty pane and T3 thread, the one
   waiting on you first with its question. Finished ones swipe away; closed
@@ -65,6 +78,21 @@ opens the panel where you act on it.
   capsule's light and the Agents panel still say it. Over a fullscreen window
   only important notifications peek (Settings → fullscreen notifications);
   the rest wait in the center with the missed dot.
+- **Cleanup** (launcher: Cleanup, or ⌥4 in a section): the tokens every agent
+  session spends listing skills nobody called in 30/90/180 days, the skills to
+  mark, duplicate copies, and leftovers on disk; everything goes to the Trash,
+  Put back restores skills and their links (`bin/rice-cleanup`).
+- **Memory by app** (System): one number, a field of dots by app, a legend that
+  lights with them; proportional memory, so a browser's processes count once.
+- **Allow / Deny from the notch, through the agent's own hook.** kittymux's
+  `mux-ask` (a PermissionRequest hook for Claude Code and Codex) publishes the
+  exact command or file; the Agents panel answers it and the agent gets the
+  decision, nothing typed into the pane. Only for a request you can read whole
+  (one line, 240 characters at most, or a file edit), never when that pane is
+  focused, falling back to the agent's own prompt after 45 s. Install it
+  (backs up your settings first; `--remove` takes it out):
+  `kittymux hooks --install` (and `--settings ~/.claude_personal/settings.json`
+  for a second account), `kittymux hooks --codex --install`.
 - **HDR** reads the signal on the wire (`bin/rice-hdr`), not the preset name:
   the notch says HDR when the screen is really receiving PQ or HLG.
 
@@ -80,6 +108,19 @@ opens the panel where you act on it.
 | The login screen and the lock screen: one design, the same password pill, status and motion | SDDM (astronaut theme), hyprlock | `greeter/`, `shell/greeter.qml`, `shell/modules/lock/` |
 | The assistant (Super+Ctrl+Shift+A): a local agent on Ollama that uses tools (the focused window, system load, clipboard, selection, files in ~, web search) and asks before it runs a command, opens an app or a link; reasoning folds away; screenshots go to a vision model first when the chosen model can't see | — | `shell/modules/assistant/`, `shell/components/ai/`, `shell/services/OllamaService.qml`, `bin/rice_agent.py` |
 
+
+## Look
+
+- **Kuwai Night** (`bin/kuwai-theme install --apply`): colour only — hairline
+  window borders like the island's rim, the shell's palette in kitty and
+  ghostty — your GTK theme, icons and font kept. Its wallpapers are
+  public-domain paintings (Whistler, Inness, Turner, Diaz; Art Institute of
+  Chicago, CC0), fetched and upscaled on install; credits beside them.
+- **Wallpaper changes grow out of the island** (`services/WallFx.qml`,
+  `shaders/wallreveal.frag`): the new picture spreads from the notch with a
+  liquid-glass front, on a layer that exists only while it plays.
+- **`kuwai-fetch`**: fastfetch with an animated GIF beside it in kitty (any GIF
+  in `~/.config/rice/fetch`; `kuwai-fetch --get-pokemon 25` fetches one).
 
 ## Run / control
 
