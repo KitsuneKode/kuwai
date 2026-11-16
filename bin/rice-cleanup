@@ -81,6 +81,13 @@ def skills():
                 s["links"].append(str(entry))
             if agent != "store" and agent not in s["agents"]:
                 s["agents"].append(agent)
+    # The same skill in two real folders (a copy, not a link): both are listed
+    # to the agents that read them; say so, and trash moves both.
+    names = {}
+    for s in found.values():
+        names.setdefault(s["name"], []).append(s["path"])
+    for s in found.values():
+        s["copies"] = len(names[s["name"]])
     for s in found.values():
         # What it costs every session: its name and description in the skill list
         # (≈ 4 characters a token, plus the list's own markup).
@@ -166,7 +173,13 @@ def report(days, fresh):
         s["lastUsed"] = int(t) if t else 0
         s["idleDays"] = int((now - t) / 86400) if t else None
         rows.append(s)
-    unused = sorted([s for s in rows if not s["lastUsed"]], key=lambda s: -s["tokens"])
+    seen, unused = set(), []
+    for s in sorted([s for s in rows if not s["lastUsed"]], key=lambda s: -s["tokens"]):
+        if s["name"] in seen:
+            continue
+        seen.add(s["name"])
+        s["tokens"] *= s["copies"]
+        unused.append(s)
     out = {"days": days, "at": int(now), "skills": len(rows), "used": len(rows) - len(unused),
            "unused": unused, "unusedTokens": sum(s["tokens"] for s in unused),
            "listTokens": sum(s["tokens"] for s in rows), "leftovers": leftovers()}
@@ -182,22 +195,24 @@ def gio_trash(path):
 
 
 def trash_skills(names):
-    by = {s["name"]: s for s in skills()}
+    by = {}
+    for s in skills():
+        by.setdefault(s["name"], []).append(s)
     moved = []
     for n in names:
-        s = by.get(n)
-        if not s:
+        if n not in by:
             print(f"no skill {n}", file=sys.stderr)
             continue
-        if not gio_trash(s["path"]):
-            print(f"couldn't trash {s['path']}", file=sys.stderr)
-            continue
-        for link in s["links"]:
-            try:
-                os.unlink(link)
-            except OSError:
-                pass
-        moved.append({"path": s["path"], "links": s["links"]})
+        for s in by[n]:                      # every copy
+            if not gio_trash(s["path"]):
+                print(f"couldn't trash {s['path']}", file=sys.stderr)
+                continue
+            for link in s["links"]:
+                try:
+                    os.unlink(link)
+                except OSError:
+                    pass
+            moved.append({"path": s["path"], "links": s["links"]})
     record(moved)
     for c in CACHE.glob("cleanup-*.json"):
         c.unlink(missing_ok=True)

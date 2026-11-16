@@ -98,6 +98,7 @@ FocusScope {
         { name: "Vitals", sub: "CPU, memory, GPU, temperatures", glyph: "\u{f0ee0}", run: () => Qt.callLater(() => Island.open("vitals", Island.screen, "key")), keep: true },
         { name: "T3 Code", sub: "Its threads: working, waiting, finished", glyph: "\u{f0a1e}", run: () => Qt.callLater(() => Island.open("t3", Island.screen, "key")), keep: true },
         { name: "Bluetooth", sub: "Devices, connect and disconnect", glyph: "\u{f00af}", run: () => Qt.callLater(() => Island.open("bluetooth", Island.screen, "key")), keep: true },
+        { name: "Cleanup", sub: "Skills your agents never use, what they cost each session · leftovers on disk", glyph: "\u{f00e2}", run: () => Qt.callLater(() => Island.open("cleanup", Island.screen, "key")), keep: true },
         { name: "Notifications list", sub: "The notch's recent ones (the center: Notifications)", glyph: "\u{f009a}", run: () => Qt.callLater(() => Island.open("notifs", Island.screen, "key")), keep: true },
         { name: "Software Update", sub: "Review and install updates", glyph: "\u{f06b0}", run: () => Qt.callLater(() => Island.open("updates", Island.screen, "key")), keep: true },
         { name: "Update everything now", sub: "Arch, AUR without review, Flatpak: in the background", glyph: "\u{f0e4f}", run: () => Updates.runAll() },

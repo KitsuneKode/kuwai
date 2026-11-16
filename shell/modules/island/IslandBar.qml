@@ -673,6 +673,7 @@ Scope {
             Component { id: updatesPanel; UpdatesPanel {} }
             Component { id: mediaPanel; MediaPanel {} }
             Component { id: t3Panel; T3Panel {} }
+            Component { id: cleanupPanel; CleanupPanel {} }
             Component { id: agentsPanel; AgentsPanel {} }
             Component { id: bluetoothPanel; BluetoothPanel {} }
             Component { id: notifsPanel; NotifsPanel {} }
@@ -1042,7 +1043,7 @@ Scope {
                                     Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f0141}"; font.family: Theme.fontGlyph; font.pixelSize: 14; color: Theme.textSecondary }
                                     Label {
                                         anchors.verticalCenter: parent.verticalCenter
-                                        text: Island.innerBackLabel || ({ calendar: "Calendar", power: "Power", launcher: "Search", settings: "Settings", system: "System", theme: "Themes", keys: "Shortcuts", switcher: "Windows", updates: "Software Update", usage: "Usage" })[Island.history[Island.history.length - 1]] || "Back"
+                                        text: Island.innerBackLabel || ({ calendar: "Calendar", power: "Power", launcher: "Search", settings: "Settings", system: "System", theme: "Themes", keys: "Shortcuts", switcher: "Windows", updates: "Software Update", usage: "Usage", cleanup: "Cleanup" })[Island.history[Island.history.length - 1]] || "Back"
                                         size: 12; weight: Theme.wMedium; color: Theme.textSecondary
                                     }
                                 }
@@ -1056,7 +1057,7 @@ Scope {
                             height: panelScope.height - win.backH
                             active: win.panelHere || pv.value > 0.01
                             focus: true
-                            sourceComponent: ({ calendar: calendarPanel, power: powerPanel, launcher: launcherPanel, settings: settingsPanel, system: systemPanel, theme: themePanel, keys: keysPanel, switcher: switcherPanel, updates: updatesPanel, media: mediaPanel, t3: t3Panel, agents: agentsPanel, notifs: notifsPanel, bluetooth: bluetoothPanel, usage: usagePanel, vitals: vitalsPanel, read: readPanel })[win.shownPanel] || null
+                            sourceComponent: ({ calendar: calendarPanel, power: powerPanel, launcher: launcherPanel, settings: settingsPanel, system: systemPanel, theme: themePanel, keys: keysPanel, switcher: switcherPanel, updates: updatesPanel, media: mediaPanel, t3: t3Panel, agents: agentsPanel, notifs: notifsPanel, bluetooth: bluetoothPanel, usage: usagePanel, vitals: vitalsPanel, read: readPanel, cleanup: cleanupPanel })[win.shownPanel] || null
                         }
                         // Right click (anywhere a control doesn't take it) or the mouse's back button: back.
                         TapHandler {
