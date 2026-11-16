@@ -257,7 +257,9 @@ Column {
                     onTranslationChanged: speed.add(translation.x, 0)
                 }
                 Fling { id: speed }
-                NumberAnimation { id: back; target: face; property: "x"; to: 0; duration: Theme.enterMs; easing.type: Easing.OutBack; easing.overshoot: 1.2 }
+                // Not far enough: home on the strong ease-out (no overshoot past home; the
+                // shell is critically damped).
+                NumberAnimation { id: back; target: face; property: "x"; to: 0; duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
                 SequentialAnimation {
                     id: fling
                     ParallelAnimation {

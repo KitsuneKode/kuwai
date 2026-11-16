@@ -1,11 +1,16 @@
 #!/bin/sh
-# The login screen's brightness keys: every screen, not just the laptop.
+# The login screen's brightness keys: the screen you're on, like the session
+# (bin/rice-brightness changes the focused screen; it used to change every
+# screen here, each on its own curve, and they drifted apart).
 #   keys brightness up|down
-# The panel's backlight goes through brightnessctl (logind); external
-# monitors through DDC/CI (ddcutil's udev rule gives the active seat's user,
-# here the greeter, /dev/i2c-*). DDC writes take ~0.3 s, so a key held down
-# doesn't queue them: one at a time, the rest dropped. The new value goes to
-# $run/brightness for the HUD (LockOsd) when there's no backlight to watch.
+# The focused output comes from the greeter's Hyprland. The laptop panel goes
+# through brightnessctl (logind; same -e4 curve as the session's fallback);
+# an external monitor through DDC/CI on the bus wired to that connector
+# (ddcutil's udev rule gives the active seat's user, here the greeter,
+# /dev/i2c-*). A DDC write takes ~0.3 s, so a held key doesn't queue them:
+# one at a time, the rest dropped (only that screen's, so nothing drifts).
+# The new DDC level goes to $run/brightness (percent) for the HUD (LockOsd);
+# the panel's HUD reads the backlight itself.
 set -u
 run="${XDG_RUNTIME_DIR:-/tmp}/kuwai-greeter"
 mkdir -p "$run"
@@ -14,15 +19,35 @@ case "${1:-} ${2:-}" in
     "brightness down") sign=- ;;
     *) echo "usage: keys brightness up|down" >&2; exit 2 ;;
 esac
-brightnessctl -e4 -n2 set "5%$sign" >/dev/null 2>&1
+
+# "Monitor DP-3 (ID 0):" … "focused: yes" in hyprctl's plain output.
+out=$(hyprctl monitors 2>/dev/null | awk '/^Monitor /{ m = $2 } /^[[:space:]]*focused: yes/{ print m; exit }')
+
+panel() { brightnessctl -e4 -n2 set "5%$sign" >/dev/null 2>&1; }
+case "$out" in
+    ""|eDP*|LVDS*|DSI*) panel; exit 0 ;;
+esac
+
 command -v ddcutil >/dev/null || exit 0
 exec 9>"$run/ddc.lock"
 flock -n 9 || exit 0
-# The DDC buses, found once per boot (detect takes a second or two).
-[ -s "$run/ddc-buses" ] || ddcutil detect --terse 2>/dev/null \
-    | awk '/^Display/{f=1} /^Invalid/{f=0} f && /I2C bus/ {sub(/.*i2c-/, ""); print}' >"$run/ddc-buses"
-for bus in $(cat "$run/ddc-buses"); do
-    ddcutil --bus "$bus" --noverify setvcp 10 "$sign" 5 >/dev/null 2>&1
-    v=$(ddcutil --bus "$bus" getvcp 10 --terse 2>/dev/null | awk '{print $4}')
-    [ -n "$v" ] && echo "$v" >"$run/brightness"
-done
+# connector → bus, found once per boot (detect takes a second or two):
+# "DP-3 15" per line, from "I2C bus: /dev/i2c-15" + "DRM connector: card0-DP-3".
+[ -s "$run/ddc-map" ] || ddcutil detect --terse 2>/dev/null | awk '
+    /^Display/ { ok = 1; bus = "" } /^Invalid/ { ok = 0 }
+    ok && /I2C bus:/ { sub(/.*i2c-/, ""); bus = $0 }
+    ok && /DRM.connector:/ { c = $NF; sub(/^card[0-9]+-/, "", c); if (bus != "") print c, bus }
+' >"$run/ddc-map"
+bus=$(awk -v o="$out" '$1 == o { print $2; exit }' "$run/ddc-map")
+[ -n "$bus" ] || exit 0
+# Percent steps of the monitor's own range ("VCP 10 C cur max").
+set -- $(ddcutil --bus "$bus" getvcp 10 --terse 2>/dev/null)
+cur=${4:-}; max=${5:-}
+case "$cur$max" in ""|*[!0-9]*) exit 0 ;; esac
+[ "$max" -gt 0 ] || exit 0
+step=$(( (max * 5 + 50) / 100 )); [ "$step" -ge 1 ] || step=1
+if [ "$sign" = + ]; then new=$((cur + step)); else new=$((cur - step)); fi
+[ "$new" -gt "$max" ] && new=$max
+[ "$new" -lt 0 ] && new=0
+ddcutil --bus "$bus" --noverify setvcp 10 "$new" >/dev/null 2>&1 \
+    && echo $(( new * 100 / max )) >"$run/brightness"
