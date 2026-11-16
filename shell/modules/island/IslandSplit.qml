@@ -315,8 +315,12 @@ Item {
             y: Math.round((split.ph - childrenRect.height) / 2)
             width: childrenRect.width; height: childrenRect.height
             // The content arrives once the capsule is mostly out, leaves first.
-            opacity: Math.max(0, Math.min(1, (sv.value - (pill.shown ? 0.45 : 0.6)) / 0.35)) * pill.reveal
-            scale: 0.97 + 0.03 * pill.reveal
+            readonly property real arrive: Math.max(0, Math.min(1, (sv.value - (pill.shown ? 0.45 : 0.6)) / 0.35))
+            opacity: arrive * pill.reveal
+            // Clove's live ears: the icon comes once its capsule has opened,
+            // growing from 70 % on the capsule's own spring (its give included).
+            readonly property real grown: Math.max(0, Math.min(1.05, (sv.value - 0.45) / 0.55))   // past 1 with the spring's give
+            scale: (0.7 + 0.3 * grown) * (0.97 + 0.03 * pill.reveal)
             layer.enabled: pill.reveal < 0.999
             layer.effect: MultiEffect { blurEnabled: true; blurMax: 12; blur: (1 - pill.reveal) * 0.25; autoPaddingEnabled: true }
         }
