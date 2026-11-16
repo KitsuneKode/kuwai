@@ -87,23 +87,45 @@ Singleton {
     function presetInfo(id) { return presets.find(p => p.id === id) || presets[0]; }
     function setPreset(id) {
         if (!presets.some(p => p.id === id)) return;
-        choice = id; auto = ""; autoWhy = "";            // optimistic; the state file confirms
-        run(["hyprctl", "eval", `kuwai.display("${id}")`]);
+        presetDeadline.stop();
+        requestedPreset = id;
+        presetError = "";
+        if (presetApply.running) return;
+        presetApply.goal = id;
+        presetApply.command = ["timeout", "--kill-after=2", "10", "hyprctl", "eval", `kuwai.display("${id}")`];
+        presetApply.running = true;
+    }
+    property string requestedPreset: ""
+    property string presetError: ""
+    Process {
+        id: presetApply
+        property string goal: ""
+        onExited: (code, status) => {
+            if (root.requestedPreset && root.requestedPreset !== goal) { Qt.callLater(() => root.setPreset(root.requestedPreset)); return; }
+            if (code !== 0) { root.presetError = "Display change failed. Try again."; root.requestedPreset = ""; }
+            else if (root.requestedPreset) { presetState.reload(); presetDeadline.goal = goal; presetDeadline.restart(); }
+        }
+    }
+    Timer {
+        id: presetDeadline; interval: 5000
+        property string goal: ""
+        onTriggered: if (root.requestedPreset && root.requestedPreset === goal) { root.presetError = "Display change was not confirmed. Try again."; root.requestedPreset = ""; }
     }
     // Scrolling through presets: the label follows at once, but only the one
     // you stop on is applied (each apply is a reload, a rate change blanks).
     function cyclePreset(step) {
-        const i = presets.findIndex(p => p.id === preset);
-        choice = presets[(i + step + presets.length) % presets.length].id;
-        auto = ""; autoWhy = "";
+        presetDeadline.stop();
+        const i = presets.findIndex(p => p.id === (requestedPreset || preset));
+        requestedPreset = presets[(i + step + presets.length) % presets.length].id;
         commitLater.restart();
     }
     Timer {
         id: commitLater
         interval: 700
-        onTriggered: root.setPreset(root.choice)
+        onTriggered: root.setPreset(root.requestedPreset)
     }
     FileView {
+        id: presetState
         path: Quickshell.env("HOME") + "/.local/state/kuwai/state"
         watchChanges: true; printErrors: false
         onFileChanged: reload()
@@ -115,6 +137,7 @@ Singleton {
             const why = t.match(/^display_why=(.*)$/m);
             root.autoWhy = why ? why[1] : "";
             root.presetKnown = true;
+            if (root.requestedPreset === root.choice) { root.requestedPreset = ""; presetDeadline.stop(); }
         }
     }
 

@@ -13,6 +13,8 @@ H="$DEST/home"
 
 rsync -a --delete "$RICE/shell/" "$DEST/shell/"
 install -m755 "$RICE/greeter/start" "$DEST/start"
+install -m755 "$RICE/greeter/session-start" "$DEST/session-start"
+install -m755 "$RICE/greeter/compositor-start" "$DEST/compositor-start"
 install -m755 "$RICE/greeter/keys" "$DEST/keys"
 install -m644 "$RICE/greeter/hyprland.lua" "$DEST/hyprland.lua"
 id -un >"$DEST/user"

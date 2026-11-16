@@ -45,14 +45,14 @@ Item {
     readonly property bool solid: enabled && kind !== "secondary"
     readonly property color ink: !enabled ? Theme.textTertiary
         : kind === "secondary" ? Theme.textPrimary
-        : kind === "danger" ? "#ffffff"
+        : kind === "danger" ? Theme.onDanger
         : Theme.onAccent
 
     // The plate (everything that moves on press).
     Item {
         id: plate
         anchors.fill: parent
-        scale: b.pressed ? 0.97 : 1
+        scale: b.pressed && !Theme.reduceMotion ? 0.97 : 1
         Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
 
         // Weight: stacked shadows, gone while pressed.

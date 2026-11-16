@@ -22,8 +22,10 @@ K.privacy = K.privacy
 -- A shell that starts while a share runs (a restart, a promote) asks with
 -- `kuwai.privacy_resync()`: the compositor's `engaged` is the truth, so the
 -- new shell is muted again instead of showing private bodies in the share
--- (review 2026-11-10, finding 05). Nothing to do when the feature is off.
+-- (review 2026-11-10, finding 05). Always acknowledge, including the
+-- deliberate feature-off case; the shell holds private bodies until this reply.
 function kuwai.privacy_resync()
+	hl.exec_cmd(K.bin .. "/rice notifs mute-off")
 	return hl.dsp.no_op()
 end
 
@@ -82,9 +84,7 @@ if K.feature("screenshare_privacy") then
 		K.notify("Sharing your screen — notifications muted, private apps hidden", 3000, "info")
 	end
 	function kuwai.privacy_resync()
-		if engaged then
-			hl.exec_cmd(K.bin .. "/rice notifs mute-on")
-		end
+		hl.exec_cmd(K.bin .. "/rice notifs " .. (engaged and "mute-on" or "mute-off"))
 		return hl.dsp.no_op()
 	end
 	hl.on("screenshare.state", function(active)

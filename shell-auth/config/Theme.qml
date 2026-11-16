@@ -31,7 +31,16 @@ Singleton {
     // ── The theme's accent (files only) ──────────────────────────────────
     property color accent: blue
     Behavior on accent { ColorAnimation { duration: 400; easing.type: Easing.OutCubic } }
-    readonly property color onAccent: (0.2126 * accent.r + 0.7152 * accent.g + 0.0722 * accent.b) > 0.55 ? "#111114" : "#ffffff"
+    function luminance(c) {
+        function linear(v) { return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }
+        return 0.2126 * linear(c.r) + 0.7152 * linear(c.g) + 0.0722 * linear(c.b);
+    }
+    function contrastInk(c) {
+        const y = luminance(c);
+        return (y + 0.05) / 0.05 >= 1.05 / (y + 0.05) ? "#000000" : "#ffffff";
+    }
+    readonly property color onAccent: contrastInk(accent)
+    readonly property color onDanger: contrastInk(red)
     property int colorMode: 0
     property string themeName: ""
     readonly property string home: Quickshell.env("HOME")

@@ -1,0 +1,7 @@
+#!/bin/sh
+ROOT=${KUWAI_GREETER_DIR:-/var/lib/kuwai-greeter}
+printf '\033[2J\033[3J\033[H\033[?25l'
+if command -v systemd-cat >/dev/null 2>&1 && [ -S /run/systemd/journal/stdout ]; then
+    exec systemd-cat -t kuwai-greeter start-hyprland -- --config "$ROOT/hyprland.lua"
+fi
+exec start-hyprland -- --config "$ROOT/hyprland.lua"

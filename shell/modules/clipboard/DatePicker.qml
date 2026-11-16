@@ -31,15 +31,30 @@ Item {
             src = anchorItem ? anchorItem.mapToItem(dp, 0, 0, anchorItem.width, anchorItem.height) : Qt.rect(width - 40, 20, 40, 30);
             const base = from ? new Date(from) : new Date();
             month = new Date(base.getFullYear(), base.getMonth(), 1);
+            focusedDay = base;
         }
         t.target = open ? 1 : 0;
         if (Theme.reduceMotion) t.settle();
     }
+    property date focusedDay: new Date()
     function key(event) {
         if (!open) return false;
-        if (event.key === Qt.Key_Escape) open = false;
-        else if (event.key === Qt.Key_Left) shift(-1);
-        else if (event.key === Qt.Key_Right) shift(1);
+        const k = event.key;
+        if (k === Qt.Key_Escape) open = false;
+        else if (k === Qt.Key_PageUp || k === Qt.Key_PageDown) shift(k === Qt.Key_PageUp ? -1 : 1);
+        else if (k === Qt.Key_Return || k === Qt.Key_Enter || k === Qt.Key_Space) pickDay(focusedDay, event.modifiers & Qt.ShiftModifier);
+        else {
+            let offset;
+            if (k === Qt.Key_Left) offset = -1;
+            else if (k === Qt.Key_Right) offset = 1;
+            else if (k === Qt.Key_Up) offset = -7;
+            else if (k === Qt.Key_Down) offset = 7;
+            else if (k === Qt.Key_Home) offset = -((focusedDay.getDay() + 6) % 7);
+            else if (k === Qt.Key_End) offset = 6 - ((focusedDay.getDay() + 6) % 7);
+            else return false;
+            focusedDay = new Date(focusedDay.getFullYear(), focusedDay.getMonth(), focusedDay.getDate() + offset);
+            month = new Date(focusedDay.getFullYear(), focusedDay.getMonth(), 1);
+        }
         return true;
     }
 
@@ -48,7 +63,11 @@ Item {
     function startOf(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime(); }
     readonly property real day: 86400000
     property date month: new Date()
-    function shift(n) { month = new Date(month.getFullYear(), month.getMonth() + n, 1); }
+    function shift(n) {
+        month = new Date(month.getFullYear(), month.getMonth() + n, 1);
+        const last = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+        focusedDay = new Date(month.getFullYear(), month.getMonth(), Math.min(focusedDay.getDate(), last));
+    }
     readonly property var cells: {
         const first = new Date(month.getFullYear(), month.getMonth(), 1);
         const lead = (first.getDay() + 6) % 7;                  // weeks start on Monday
@@ -62,26 +81,29 @@ Item {
     readonly property int maxCount: Math.max(1, ...Object.values(counts))
     property real anchorDay: 0
     function pickDay(d, extend) {
+        focusedDay = d;
         const s = startOf(d);
         if (extend && anchorDay) {
-            const a = Math.min(anchorDay, s), b = Math.max(anchorDay, s) + day;
-            picked(a, b, fmt(a) + " – " + fmt(b - day));
+            const a = Math.min(anchorDay, s), end = new Date(Math.max(anchorDay, s));
+            const b = new Date(end.getFullYear(), end.getMonth(), end.getDate() + 1).getTime();
+            picked(a, b, fmt(a) + " – " + fmt(end.getTime()));
         } else {
             anchorDay = s;
-            picked(s, s + day, fmt(s));
+            picked(s, new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).getTime(), fmt(s));
         }
     }
     function fmt(ms) { return new Date(ms).toLocaleDateString(Qt.locale(), "d MMM"); }
     function quick(id) {
         const now = new Date(), today = startOf(now);
-        if (id === "today") picked(today, today + day, "Today");
-        else if (id === "yesterday") picked(today - day, today, "Yesterday");
+        const at = n => new Date(now.getFullYear(), now.getMonth(), now.getDate() + n).getTime();
+        if (id === "today") picked(today, at(1), "Today");
+        else if (id === "yesterday") picked(at(-1), today, "Yesterday");
         else if (id.startsWith("ago:")) {
-            const n = Number(id.slice(4)), s = today - n * day;
-            picked(s, s + day, new Date(s).toLocaleDateString(Qt.locale(), "ddd d MMM"));
+            const n = Number(id.slice(4)), s = at(-n);
+            picked(s, at(1 - n), new Date(s).toLocaleDateString(Qt.locale(), "ddd d MMM"));
         }
-        else if (id === "week") picked(today - 6 * day, today + day, "Last 7 days");
-        else if (id === "month") picked(new Date(now.getFullYear(), now.getMonth(), 1).getTime(), today + day, "This month");
+        else if (id === "week") picked(at(-6), at(1), "Last 7 days");
+        else if (id === "month") picked(new Date(now.getFullYear(), now.getMonth(), 1).getTime(), at(1), "This month");
         else picked(0, 0, "");
         open = false;
     }
@@ -139,7 +161,14 @@ Item {
                         width: quickCol.width
                         height: 28
                         radius: 8
-                        color: qa.containsMouse ? Qt.alpha(Theme.blue, 0.85) : "transparent"
+                        activeFocusOnTab: dp.open
+                        Accessible.role: Accessible.Button
+                        Accessible.name: modelData.t
+                        Accessible.onPressAction: dp.quick(modelData.id)
+                        Keys.onReturnPressed: dp.quick(modelData.id)
+                        Keys.onSpacePressed: dp.quick(modelData.id)
+                        FocusRing { cornerRadius: Theme.r1 }
+                        color: qa.containsMouse || activeFocus ? Qt.alpha(Theme.blue, 0.85) : "transparent"
                         Label { x: 10; anchors.verticalCenter: parent.verticalCenter; text: q.modelData.t; size: 13; color: qa.containsMouse ? "white" : Theme.textPrimary }
                         Label {
                             readonly property int n: q.modelData.ms ? (dp.counts[dp.dayKey(new Date(q.modelData.ms))] || 0) : 0
@@ -183,7 +212,14 @@ Item {
                             id: nav
                             required property var modelData
                             width: 26; height: 26; radius: 8
-                            color: na.containsMouse ? Theme.pillHover : "transparent"
+                            activeFocusOnTab: dp.open
+                            Accessible.role: Accessible.Button
+                            Accessible.name: modelData.n < 0 ? "Previous month" : "Next month"
+                            Accessible.onPressAction: dp.shift(modelData.n)
+                            Keys.onReturnPressed: dp.shift(modelData.n)
+                            Keys.onSpacePressed: dp.shift(modelData.n)
+                            FocusRing { cornerRadius: Theme.r1 }
+                            color: na.containsMouse || activeFocus ? Theme.pillHover : "transparent"
                             Text { anchors.centerIn: parent; text: nav.modelData.g; font.family: Theme.fontGlyph; font.pixelSize: 15; color: Theme.textSecondary }
                             MouseArea { id: na; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: dp.shift(nav.modelData.n) }
                         }
@@ -198,6 +234,10 @@ Item {
                     }
                 }
                 Grid {
+                    activeFocusOnTab: dp.open
+                    Accessible.role: Accessible.Table
+                    Accessible.name: "Calendar. Arrow keys move days; Enter selects; Shift extends the range."
+                    Keys.onPressed: e => { if (dp.key(e)) e.accepted = true; }
                     y: 52
                     columns: 7
                     Repeater {
@@ -215,7 +255,7 @@ Item {
                                 anchors.centerIn: parent
                                 width: 30; height: 30; radius: 15
                                 color: cell.inRange ? Theme.blue : ca.containsMouse ? Theme.pillHover : "transparent"
-                                border.width: cell.today && !cell.inRange ? 1 : 0
+                                border.width: cell.today || dp.dayKey(dp.focusedDay) === cell.modelData.key ? 1 : 0
                                 border.color: Theme.blue
                             }
                             Label {

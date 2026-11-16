@@ -66,30 +66,26 @@ SETTINGS="${XDG_CONFIG_HOME:-$HOME/.config}/rice/settings.json"
 
 # Settings are JSON the shell watches: write the file, the shell follows.
 # Values parse as JSON when they can (true, 220, "x"), else as a string.
-set_setting() {
-    local key=$1 value=$2 tmp
-    mkdir -p "$(dirname "$SETTINGS")"
-    [ -s "$SETTINGS" ] || echo '{}' > "$SETTINGS"
-    tmp=$(mktemp "$SETTINGS.XXXXXX")
-    if jq . >/dev/null 2>&1 <<<"$value"; then  # (not -e: that fails on false and null)
-        jq --arg k "$key" --argjson v "$value" '.[$k] = $v' "$SETTINGS" > "$tmp"
-    else
-        jq --arg k "$key" --arg v "$value" '.[$k] = $v' "$SETTINGS" > "$tmp"
-    fi && mv -- "$tmp" "$SETTINGS" || { rm -f -- "$tmp"; return 1; }
-}
+set_setting() { "$RICE/bin/rice-settings" set "$1" "$2" >/dev/null; }
 
-get_setting() { jq -r --arg k "$1" '.[$k] // empty' "$SETTINGS" 2>/dev/null; }
+get_setting() {
+    local value
+    value=$("$RICE/bin/rice-settings" get "$1") || return
+    jq -r '.' <<<"$value"
+}
 
 # The island bar replaces Waybar: one of the two runs. `apply` makes the
 # processes match the setting (rice-shell calls it after starting).
 bar() {
     case ${1:-} in
-        island|waybar) set_setting bar "\"$1\"" ;;
+        island|waybar) set_setting bar "\"$1\"" || return ;;
         apply|"") ;;
         *) echo "usage: rice bar [island|waybar|apply]" >&2; return 2 ;;
     esac
-    [ -z "${1:-}" ] && { get_setting bar || echo waybar; return; }
-    if [ "$(get_setting bar)" = island ]; then
+    local chosen
+    chosen=$(get_setting bar) || return
+    [ -z "${1:-}" ] && { printf '%s\n' "$chosen"; return; }
+    if [ "$chosen" = island ]; then
         pkill -x waybar 2>/dev/null
     elif ! pgrep -x waybar >/dev/null; then
         setsid -f hyde-shell waybar >/dev/null 2>&1 </dev/null
@@ -303,20 +299,19 @@ case ${1:-} in
     lock)
         # The shell's lock screen. --wait: return only once the compositor
         # confirms the lock (before_sleep_cmd uses it, so nothing shows
-        # unlocked after a resume). The shell not running: hyprlock, so
-        # locking never fails.
+        # unlocked after a resume). If the shell is unavailable, start hyprlock.
         if ! ipc lock lock 2>/dev/null; then
-            # The shell isn't answering: hyprlock. Say "locked" only when one
-            # is (review 2026-11-10, finding 07: this exited 0 even when nothing
-            # started, and before_sleep_cmd trusted it). hyprlock tells nobody
-            # outside itself (no logind LockedHint), so locked means: running,
-            # and with --wait still running a second later (one that can't take
-            # the session lock exits at once).
+            # A living process does not prove ext-session-lock readiness. We
+            # can request the fallback, but --wait must fail without a trusted
+            # readiness acknowledgement; before-sleep callers must see failure.
             command -v hyprlock >/dev/null || { echo "rice: the shell isn't answering and hyprlock isn't installed: not locked" >&2; exit 1; }
             pidof hyprlock >/dev/null || setsid -f hyprlock >/dev/null 2>&1 </dev/null
             for _ in $(seq 20); do pidof hyprlock >/dev/null && break; sleep 0.05; done
             pidof hyprlock >/dev/null || { echo "rice: hyprlock didn't start: not locked" >&2; exit 1; }
-            [ "${2:-}" = --wait ] && { sleep 1; pidof hyprlock >/dev/null || { echo "rice: hyprlock exited: not locked" >&2; exit 1; }; }
+            if [ "${2:-}" = --wait ]; then
+                echo "rice: fallback lock requested, but lock readiness cannot be confirmed; refusing success" >&2
+                exit 1
+            fi
             exit 0
         fi
         if [ "${2:-}" = --wait ]; then

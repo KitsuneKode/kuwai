@@ -14,7 +14,7 @@ Singleton {
     id: root
     // Accessibility (Settings → Accessibility): more contrast, less glass.
     readonly property bool contrast: Settings.highContrast
-    readonly property real textScale: Math.max(1, Math.min(1.3, Settings.textScale || 1))
+    readonly property real textScale: Math.max(1, Math.min(2, Settings.textScale || 1))
     // ── Material ─────────────────────────────────────────────────────────
     // One glass, the voxtype HUD's: near-black #111114 over the compositor's
     // blur (components/GlassCard draws the ring, sheen and hairline).
@@ -112,7 +112,16 @@ Singleton {
     Behavior on accent { ColorAnimation { duration: 400; easing.type: Easing.OutCubic } }
     property color accentSoft: Qt.rgba(0.04, 0.52, 1, 0.5)
     // Text and glyphs that sit *on* the accent: dark on light accents, white on dark.
-    readonly property color onAccent: (0.2126 * accent.r + 0.7152 * accent.g + 0.0722 * accent.b) > 0.55 ? "#111114" : "#ffffff"
+    function luminance(c) {
+        function linear(v) { return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }
+        return 0.2126 * linear(c.r) + 0.7152 * linear(c.g) + 0.0722 * linear(c.b);
+    }
+    function contrastInk(c) {
+        const y = luminance(c);
+        return (y + 0.05) / 0.05 >= 1.05 / (y + 0.05) ? "#000000" : "#ffffff";
+    }
+    readonly property color onAccent: contrastInk(accent)
+    readonly property color onDanger: contrastInk(red)
     property color themeBg: "#16161d"         // the palette's own background
     property color themeFg: "#ffffff"
     property var palette: []                   // a few swatches, for pickers

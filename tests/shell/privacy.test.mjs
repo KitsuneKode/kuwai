@@ -61,3 +61,17 @@ describe("sharing before urgency", () => {
   });
   test("a private chat is hidden outside a share", () => expect(make(false)({ app: "Signal", severity: "", body: "x" })).toBe(true));
 });
+
+describe('restart privacy handshake',()=>{
+  const knownDefault=()=>/property bool shareKnown:\s*(true|false)/.exec(notifs)?.[1];
+  function state(shareKnown,dndMute){
+    const expression=/readonly property bool sharing:\s*([^\n]+)/.exec(notifs)[1];
+    return new Function('shareKnown','dndMute','return '+expression)(shareKnown,dndMute);
+  }
+  test('startup is unconfirmed and redacts until the compositor acknowledges',()=>{
+    expect(knownDefault()).toBe('false');
+    expect(state(false,false)).toBe(true);
+    expect(state(true,true)).toBe(true);
+    expect(state(true,false)).toBe(false);
+  });
+});

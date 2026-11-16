@@ -14,15 +14,39 @@ Item {
     required property string verb      // "restart": "Hold to restart"
     property color accent: Theme.accent
     signal fired()
+    function fireHeld() {
+        if (!btn.holding) return;
+        btn.held = 0;
+        btn.fired();
+    }
 
     width: 64; height: 70
     property real held: 0
-    readonly property bool holding: press.pressed
+    property bool keyboardHolding: false
+    readonly property bool holding: press.pressed || keyboardHolding
+    activeFocusOnTab: true
+    Accessible.role: Accessible.Button
+    Accessible.name: label
+    Accessible.description: "Hold Space or Enter to " + verb
+    Keys.onPressed: e => {
+        if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) {
+            if (!e.isAutoRepeat) keyboardHolding = true;
+            e.accepted = true;
+        }
+    }
+    Keys.onReleased: e => {
+        if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) {
+            if (!e.isAutoRepeat) keyboardHolding = false;
+            e.accepted = true;
+        }
+    }
+    onActiveFocusChanged: if (!activeFocus) keyboardHolding = false
+    FocusRing { cornerRadius: Theme.r2 }
 
     NumberAnimation {
         id: fill
         target: btn; property: "held"; to: 1
-        onFinished: if (btn.holding) btn.fired()
+        onFinished: btn.fireHeld()
     }
     NumberAnimation { id: drain; target: btn; property: "held"; to: 0; duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
     onHoldingChanged: {

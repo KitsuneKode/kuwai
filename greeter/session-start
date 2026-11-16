@@ -1,0 +1,10 @@
+#!/bin/sh
+# Run as the authenticated user. Journald supplies monotonic timestamps/retention.
+# Authentication responses and passwords never pass through this wrapper.
+printf '\033[2J\033[3J\033[H\033[?25l'
+if command -v systemd-cat >/dev/null 2>&1 && [ -S /run/systemd/journal/stdout ]; then
+    printf 'kuwai-handoff %s user-session-exec\n' "${KUWAI_HANDOFF_ID:-unknown}" | systemd-cat -t kuwai-session
+    exec systemd-cat -t kuwai-session start-hyprland
+fi
+# Recovery: a missing journal must not prevent login or discard diagnostics.
+exec start-hyprland

@@ -185,9 +185,9 @@ Scope {
             readonly property var monGeo: monitor && monitor.lastIpcObject ? monitor.lastIpcObject : ({})
             readonly property real localX: Pointer.x - (monGeo.x || 0)
             readonly property real localY: Pointer.y - (monGeo.y || 0)
-            readonly property bool onThisScreen: localX >= 0 && localX < width && localY >= 0 && localY < height
+            readonly property bool onThisScreen: localX >= 0 && localX < screen.width && localY >= 0 && localY < screen.height
             function inZone(slack) {
-                return onThisScreen && Math.abs(localX - width / 2) <= restW / 2 + 56 + slack && localY <= restH + top + 48 + slack;
+                return onThisScreen && Math.abs(localX - screen.width / 2) <= restW / 2 + 56 + slack && localY <= restH + top + 48 + slack;
             }
             property int zoneHits: 0
             Connections {
