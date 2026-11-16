@@ -269,3 +269,36 @@ and enforced:
 - voxtype: int8, GPU, or load on first use.
 - Click model in §3: OK to make the centre open the hub instead of the calendar?
 - Poster lookup for videos (sends titles to a service): on or off by default?
+
+## 13. Shipped 2026-11-16 (night), all live on feat/assistant-agent
+
+Merged: the quality worktree (plans 001–010 slices), `polish/fluid-motion`, the
+stale main-checkout edits (as their own commits). Fixed on merge: the new
+ConfirmationDialog broke the shell's load (Qt 6.12 read-only implicitWidth); the
+offscreen load test does NOT catch that class (it passed the broken commit) —
+the live `test compile` sweep does. Gate gap to close.
+Then: centre click opens everything (calendar = its time chip); Keep awake modes
+(Manual / At login / While work runs); media titles + site ("JioHotstar"); a film's
+frame as its cover (only the window showing it; never on the lock); one ring per
+agent provider, machine rings only when high; launcher dock row (⌥1–8); kuwai-fetch
+(animated GIF + fastfetch in kitty); wallpaper changes grow out of the island
+(WallFx + wallreveal shader; 1.35–1.41 s end to end, measured).
+
+## 14. From pocket-dots' credits and Impasto (read 2026-11-16)
+
+| Repo | ★ | Licence | Take |
+|---|---|---|---|
+| andreumassanet/impasto | 470 | GPL | Closest peer (island + liquid glass). Ideas: material per layer (classic/glass/liquid), mic/camera/screen marks beside the time, widgets on the wallpaper (right-click to arrange), a "servers you have running" panel, palette reaching Zen/Spotify/Nautilus, public-domain paintings as the bundled wallpapers |
+| 43PR/dotfiles | 2 027 | MIT | Installer with automatic backups, preset themes + wallpaper-based colour |
+| snes19xx/surface-dots | 831 | none | Screen shaders bound to keys (look only; no licence = no code) |
+| VirtCode/hypr-dynamic-cursors | 766 | MIT | Cursor tilt/stretch + shake-to-find: a cheap "alive" moment (plugin; optional) |
+| CluelessCatBurger/wl_shimeji | 206 | GPL-2 | Desktop pets — not our taste |
+| fdeox/termspot | 14 | MIT | CRT Spotify theme — not our taste |
+Default wallpapers: public-domain paintings (The Met open access, CC0) in the
+blue-hour / fog / near-black set — solves licensing and taste at once.
+
+## 15. The theme to build first ("kuwai Night")
+Near-black glass (#111114 tint as today), one vivid accent taken from the
+picture, neutral ink solved against the actual crop, the same painting on lock
+and greeter, a kuwai theme format (palette + wallpaper set + accent rule) that
+doesn't need HyDE; HyDE themes import into it.
