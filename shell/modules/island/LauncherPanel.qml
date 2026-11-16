@@ -326,8 +326,14 @@ FocusScope {
             return out;
         }
         if (!q) {
-            const top = apps.map(e => ({ e: e, f: frecency(e.id) })).filter(x => x.f > 0).sort((a, b) => b.f - a.f).slice(0, 5);
-            section("Frequent", top.map(x => ({ kind: "app", entry: x.e, name: x.e.name, sub: x.e.genericName || x.e.comment || "", icon: x.e.icon })));
+            // What you use most as one row of icons (a dock): icons are found
+            // faster than names, and one row leaves the list for actions.
+            // ←/→ walk it, ↩ opens, ⌥1…⌥8 open one directly. Fewer than
+            // three used apps yet: plain rows.
+            const top = apps.map(e => ({ e: e, f: frecency(e.id) })).filter(x => x.f > 0).sort((a, b) => b.f - a.f).slice(0, 8)
+                            .map(x => ({ kind: "app", entry: x.e, name: x.e.name, sub: x.e.genericName || x.e.comment || "", icon: x.e.icon }));
+            if (top.length >= 3) section("Frequent", [{ kind: "dock", name: "Frequent", items: top }]);
+            else section("Frequent", top);
             section("Actions", actions.slice().sort((a, b) => frecency("action:" + b.name) - frecency("action:" + a.name)).slice(0, 4)
                                       .map(a => ({ kind: "action", action: a, name: a.name, sub: a.sub, glyph: a.glyph })));
             // Every app, A to Z, to browse instead of search (scroll or ↓).
@@ -374,6 +380,11 @@ FocusScope {
         return out;
     }
     function isRow(r) { return !!r && r.kind !== "header" && r.kind !== "tips"; }
+    // The dock row's chosen tile (←/→ while the dock row is selected).
+    property int dockSel: 0
+    readonly property var dockRow: results.find(r => r.kind === "dock") || null
+    readonly property bool onDock: !!results[current] && results[current].kind === "dock"
+    onDockRowChanged: dockSel = 0
     readonly property int selectable: results.filter(r => launcher.isRow(r)).length
     // New results snap: the selection lands on the first real row and the list
     // is back at the top on the same frame. No highlight travels between
@@ -411,6 +422,9 @@ FocusScope {
         } else if (r.kind === "calc") {
             if (r.name === "…") return;
             Quickshell.execDetached(["wl-copy", "--", r.name.replace(/,(?=\d{3})/g, "")]);
+        } else if (r.kind === "dock") {
+            run(r.items[Math.max(0, Math.min(dockSel, r.items.length - 1))]);
+            return;
         } else if (r.kind === "app") {
             used(r.entry.id);
             r.entry.execute();
@@ -491,6 +505,19 @@ FocusScope {
             }
             Keys.onPressed: event => {
                 const k = event.key, ctrl = event.modifiers & Qt.ControlModifier;
+                const alt = event.modifiers & Qt.AltModifier;
+                // The dock row: ←/→ choose a tile (the field is empty there, so
+                // the caret has nowhere to go); ⌥1…⌥8 open one from anywhere.
+                if (launcher.onDock && field.text === "" && (k === Qt.Key_Left || k === Qt.Key_Right)) {
+                    const n = launcher.results[launcher.current].items.length;
+                    launcher.dockSel = Math.max(0, Math.min(n - 1, launcher.dockSel + (k === Qt.Key_Right ? 1 : -1)));
+                    event.accepted = true;
+                    return;
+                }
+                if (alt && launcher.dockRow && field.text === "" && k >= Qt.Key_1 && k <= Qt.Key_8) {
+                    const it = launcher.dockRow.items[k - Qt.Key_1];
+                    if (it) { launcher.run(it); event.accepted = true; return; }
+                }
                 if (k === Qt.Key_Down || k === Qt.Key_Tab || (ctrl && (k === Qt.Key_J || k === Qt.Key_N))) launcher.move(1);
                 else if (k === Qt.Key_Up || k === Qt.Key_Backtab || (ctrl && (k === Qt.Key_K || k === Qt.Key_P))) launcher.move(-1);
                 else if ((k === Qt.Key_Return || k === Qt.Key_Enter) && ctrl && launcher.results[launcher.current] && launcher.results[launcher.current].kind === "proc") {
@@ -539,8 +566,9 @@ FocusScope {
             readonly property bool header: modelData.kind === "header" || modelData.kind === "tips"
             readonly property bool card: !!modelData.card
             readonly property bool tips: modelData.kind === "tips"
+            readonly property bool dock: modelData.kind === "dock"
             width: list.width
-            height: tips ? 84 : header ? 30 : card ? 78 : launcher.rowH
+            height: tips ? 84 : header ? 30 : card ? 78 : dock ? 88 : launcher.rowH
 
             // No cascade: the launcher opens many times a day and the island's
             // grow already carries it in (one entrance per container).
@@ -551,7 +579,7 @@ FocusScope {
                 anchors.fill: parent
                 anchors.leftMargin: 2; anchors.rightMargin: 2
                 radius: 12
-                visible: !row.header
+                visible: !row.header && !row.dock
                 color: Qt.rgba(1, 1, 1, 0.10)
                 border.width: 1
                 border.color: Qt.rgba(1, 1, 1, 0.06)
@@ -625,7 +653,7 @@ FocusScope {
 
             Item {
                 id: iconBox
-                visible: !row.header && !row.card
+                visible: !row.header && !row.card && !row.dock
                 x: 12; anchors.verticalCenter: parent.verticalCenter
                 width: 32; height: 32
                 readonly property string path: row.modelData.icon ? Quickshell.iconPath(row.modelData.icon, true) : ""
@@ -644,7 +672,7 @@ FocusScope {
                 }
             }
             Column {
-                visible: !row.header && !row.card
+                visible: !row.header && !row.card && !row.dock
                 anchors { left: iconBox.right; leftMargin: 12; right: hint.left; rightMargin: 12; verticalCenter: parent.verticalCenter }
                 spacing: 1
                 // The letters you typed, in the accent.
@@ -660,7 +688,7 @@ FocusScope {
                 id: hint
                 anchors { right: parent.right; rightMargin: 12; verticalCenter: parent.verticalCenter }
                 spacing: 8
-                opacity: row.on && !row.header ? 1 : 0
+                opacity: row.on && !row.header && !row.dock ? 1 : 0
                 Label {
                     anchors.verticalCenter: parent.verticalCenter
                     text: row.modelData.kind === "proc" ? (row.modelData.armed ? (launcher.armedForce ? "Force quit" : "End") : row.modelData.proc.mine ? "End…" : "")
@@ -670,9 +698,64 @@ FocusScope {
                 }
                 KeyCap { anchors.verticalCenter: parent.verticalCenter; text: "↩" }
             }
+            // The dock: tiles of icon + name; the chosen one lit like a row.
+            Row {
+                visible: row.dock
+                anchors { left: parent.left; leftMargin: 6; verticalCenter: parent.verticalCenter }
+                spacing: 4
+                Repeater {
+                    model: row.dock ? row.modelData.items : []
+                    delegate: Item {
+                        id: tile
+                        required property var modelData
+                        required property int index
+                        readonly property bool chosen: row.on && launcher.dockSel === index
+                        width: Math.floor((list.width - 12 - 7 * 4) / 8); height: 80
+                        Accessible.role: Accessible.Button
+                        Accessible.name: modelData.name + " (Alt+" + (index + 1) + ")"
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: 12
+                            color: Qt.rgba(1, 1, 1, 0.10)
+                            border.width: 1
+                            border.color: Qt.rgba(1, 1, 1, 0.06)
+                            opacity: tile.chosen ? 1 : tileArea.containsMouse ? 0.6 : 0     // instant, like the rows
+                        }
+                        Item {
+                            id: tileIcon
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            y: 10; width: 36; height: 36
+                            readonly property string path: tile.modelData.icon ? Quickshell.iconPath(tile.modelData.icon, true) : ""
+                            IconImage { anchors.fill: parent; visible: tileIcon.path !== ""; source: tileIcon.path; asynchronous: true }
+                            Label { visible: tileIcon.path === ""; anchors.centerIn: parent; text: (tile.modelData.name || "?").charAt(0); size: 18; weight: Theme.wSemibold; color: Theme.textSecondary }
+                        }
+                        Label {
+                            anchors { left: parent.left; right: parent.right; leftMargin: 4; rightMargin: 4; top: tileIcon.bottom; topMargin: 7 }
+                            horizontalAlignment: Text.AlignHCenter
+                            elide: Text.ElideRight
+                            text: tile.modelData.name
+                            size: 11
+                            color: tile.chosen ? Theme.textPrimary : Theme.textSecondary
+                        }
+                        MouseArea {
+                            id: tileArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onPositionChanged: mouse => {
+                                const g = mapToGlobal(mouse.x, mouse.y);
+                                const was = launcher.lastPointer;
+                                launcher.lastPointer = g;
+                                if (was && (g.x !== was.x || g.y !== was.y)) { launcher.current = row.index; launcher.dockSel = tile.index; }
+                            }
+                            onClicked: launcher.run(tile.modelData)
+                        }
+                    }
+                }
+            }
             MouseArea {
                 anchors.fill: parent
-                enabled: !row.header
+                enabled: !row.header && !row.dock
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 // Only a pointer that moves picks: one resting where the list
@@ -706,6 +789,7 @@ FocusScope {
         Repeater {
             model: launcher.results[launcher.current] && launcher.results[launcher.current].kind === "file"
                 ? [["↩", "Open"], ["⌃↩", "Folder"], ["⌥↩", "Copy path"], ["esc", "Close"]]
+                : launcher.onDock ? [["←→", "App"], ["↩", "Open"], ["⌥1–8", "Open one"], ["esc", "Close"]]
                 : [["↑↓", "Choose"], ["↩", "Open"], ["esc", "Close"]]
             Row {
                 required property var modelData
