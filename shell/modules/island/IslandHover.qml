@@ -354,9 +354,12 @@ Item {
 
     // ── Music playing: the machine and your agents, a row under the card ──
     // Small rings without names (the line under them names the one under the
-    // pointer): CPU, Memory, GPU, Temp, then each account you can use (outer:
-    // session, inner: weekly, its logo inside). Click: System, or that agent
-    // in Usage. The island keeps its width; the row fits under the card.
+    // pointer). Only what's worth a look (2026-11-16: twelve identical rings,
+    // four of them a calm machine, read as noise): the machine's rings show
+    // while one runs high (CPU/GPU > 70 %, memory > 85 %, ≥ 80°; they go again
+    // a little lower, so they don't flicker at the line); then one ring per
+    // agent, its tightest account (outer: session, inner: weekly, its logo
+    // inside). Click: System, or that agent in Usage.
     property string hotText: ""
     Row {
         id: mediaRow
@@ -368,19 +371,40 @@ Item {
         readonly property int ring: 28
         // Room across the island (the side columns end above this row).
         readonly property int room: Math.max(1, Math.floor((hover.width - 56 - 4 * (ring + 8) - 17 + 8) / (ring + 8)))
-        readonly property var shown: Limits.usable.length <= room ? Limits.usable : Limits.usable.slice(0, room - 1)
-        readonly property int more: Limits.usable.length - shown.length
+        // One per provider: the account with the least session left.
+        readonly property var tight: {
+            const by = {}, order = [];
+            for (const e of Limits.usable) {
+                const left = e.session ? e.session.left : e.weekly ? e.weekly.left : 1;
+                if (!by[e.pid]) { order.push(e.pid); by[e.pid] = e; }
+                else {
+                    const b = by[e.pid], bl = b.session ? b.session.left : b.weekly ? b.weekly.left : 1;
+                    if (left < bl) by[e.pid] = e;
+                }
+            }
+            return order.map(k => by[k]);
+        }
+        readonly property var shown: tight.length <= room ? tight : tight.slice(0, room - 1)
+        readonly property int more: tight.length - shown.length
+        property int machineLit: 0
         Repeater {
             model: [
-                { k: "CPU", g: "\u{f061a}", v: () => SystemStats.cpu, line: () => "CPU " + Math.round(SystemStats.cpu * 100) + "% · " + SystemStats.cores.length + " threads" },
-                { k: "Memory", g: "\u{f035b}", v: () => SystemStats.mem, line: () => "Memory " + Math.round(SystemStats.mem * 100) + "% · " + SystemStats.bytes(SystemStats.memUsed) + " of " + SystemStats.bytes(SystemStats.memTotal) },
-                { k: "GPU", g: "\u{f08ae}", v: () => SystemStats.gpuState === "suspended" ? 0 : SystemStats.gpu, line: () => SystemStats.gpuState === "suspended" ? "NVIDIA asleep · Intel drives the screens" : "GPU " + Math.round(SystemStats.gpu * 100) + "% · " + SystemStats.gpuTemp + "°" },
-                { k: "Temp", g: "\u{f050f}", v: () => Math.min(1, SystemStats.cpuTemp / 100), line: () => "CPU " + SystemStats.cpuTemp + "° · GPU " + SystemStats.gpuTemp + "°", temp: true }
+                { k: "CPU", g: "\u{f061a}", on: 0.70, off: 0.55, v: () => SystemStats.cpu, line: () => "CPU " + Math.round(SystemStats.cpu * 100) + "% · " + SystemStats.cores.length + " threads" },
+                { k: "Memory", g: "\u{f035b}", on: 0.85, off: 0.78, v: () => SystemStats.mem, line: () => "Memory " + Math.round(SystemStats.mem * 100) + "% · " + SystemStats.bytes(SystemStats.memUsed) + " of " + SystemStats.bytes(SystemStats.memTotal) },
+                { k: "GPU", g: "\u{f08ae}", on: 0.70, off: 0.55, v: () => SystemStats.gpuState === "suspended" ? 0 : SystemStats.gpu, line: () => SystemStats.gpuState === "suspended" ? "NVIDIA asleep · Intel drives the screens" : "GPU " + Math.round(SystemStats.gpu * 100) + "% · " + SystemStats.gpuTemp + "°" },
+                { k: "Temp", g: "\u{f050f}", on: 0.80, off: 0.72, v: () => Math.min(1, SystemStats.cpuTemp / 100), line: () => "CPU " + SystemStats.cpuTemp + "° · GPU " + SystemStats.gpuTemp + "°", temp: true }
             ]
             delegate: StatRing {
                 required property var modelData
+                // Shown while high, with a lower line to go again (no flicker).
+                property bool lit: false
+                readonly property real reading: modelData.v()
+                onReadingChanged: lit = lit ? reading > modelData.off : reading > modelData.on
+                onLitChanged: mediaRow.machineLit += lit ? 1 : -1
+                Component.onDestruction: if (lit) mediaRow.machineLit -= 1
+                visible: lit
                 size: mediaRow.ring; stroke: 2.5
-                value: modelData.v()
+                value: reading
                 text: ""; label: ""
                 color: !modelData.temp ? Theme.accent : SystemStats.cpuTemp >= 90 ? Theme.red : SystemStats.cpuTemp >= 80 ? Theme.orange : Theme.green
                 // What it measures, inside the ring (chip, memory, card, thermometer):
@@ -400,7 +424,7 @@ Item {
             }
         }
         Rectangle {
-            visible: hover.agentsHere
+            visible: hover.agentsHere && mediaRow.machineLit > 0
             anchors.verticalCenter: parent.verticalCenter
             width: 1; height: 20
             color: Theme.cardEdge
@@ -648,7 +672,10 @@ Item {
         text: {
             const e = agents.hot;
             if (!e) return hover.media ? hover.hotText : "";
-            return e.label + " · " + [agents.line(e.session), agents.line(e.weekly)].filter(x => x).join(" · ");
+            // Under the music card a ring is a provider: say when it stands for
+            // several accounts (it shows the tightest one).
+            const many = hover.media && e.n > 1 ? " (tightest of " + e.n + ")" : "";
+            return e.label + many + " · " + [agents.line(e.session), agents.line(e.weekly)].filter(x => x).join(" · ");
         }
         size: 11
         weight: Theme.wMedium
