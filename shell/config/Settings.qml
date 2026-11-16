@@ -80,6 +80,8 @@ Singleton {
     readonly property string sleepAt: value("sleepAt")
     readonly property int limitThreshold: value("limitThreshold")
     readonly property bool islandProximity: value("islandProximity")
+    readonly property bool sweepMark: value("sweepMark")
+    readonly property int sweepMinGB: value("sweepMinGB")
     readonly property string quickPrimary: value("quickPrimary")
     readonly property bool liveOnBattery: value("liveOnBattery")
 

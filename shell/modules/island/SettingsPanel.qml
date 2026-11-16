@@ -718,6 +718,26 @@ FocusScope {
                     label: "Quick switch"; detail: "Shown first in the hover shelf: " + (Settings.quickPrimary || "caffeine") + ". Hold another one in the shelf to make it first."
                 }
             }
+            // services/Sweep: sweep's own scan, cached; the mark appears only
+            // when the number is worth acting on.
+            SettingsGroup {
+                title: "Idle projects"
+                SettingsRow {
+                    key: "sweepMark"
+                    label: "Idle projects mark"; detail: "A small mark when sweep finds old projects holding space; rest on it to see which. Needs sweep installed"
+                    Toggle { on: Settings.sweepMark; label: "Idle projects mark"; onToggled: Settings.set("sweepMark", !Settings.sweepMark) }
+                }
+                SettingsRow {
+                    key: "sweepMinGB"
+                    visible: Settings.sweepMark
+                    label: "Show it from"; detail: "How much idle space is worth a mark"
+                    Segmented {
+                        options: [5, 10, 20, 50].map(n => ({ id: String(n), label: n + " GB" }))
+                        current: String(Settings.sweepMinGB)
+                        onPicked: id => Settings.set("sweepMinGB", Number(id))
+                    }
+                }
+            }
         }
     }
     Component {

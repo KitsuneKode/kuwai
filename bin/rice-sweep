@@ -1,0 +1,230 @@
+#!/usr/bin/env python3
+"""What sweep could free, for the island (services/Sweep.qml): one JSON line.
+
+  {"alive":true,"checkedAt":1763300000,"stale":false,"root":"/home/me/Projects",
+   "reclaimable":5.6e10,"safe":1e9,"caution":5.5e10,"protected":22,
+   "idle":{"days":30,"projects":6,"bytes":3.1e10},
+   "kinds":[{"kind":"node_modules","bytes":2e10,"count":210}],
+   "projects":[{"name":"old-app","bytes":4e9,"idleDays":212}]}
+
+Never blocks the shell: it prints the last answer at once. When that answer is
+older than the TTL (30 min, like the notch apps it follows) it starts one
+refresh in the background and exits. The refresh is `sweep scan --json` run at
+idle CPU and I/O priority under a lock, written to the cache atomically.
+`reclaimable` counts only safe and caution items; dangerous and blocked are
+shown as `protected`, never as space you can have. A project whose last
+activity sweep could not read is not called idle (unknown is not idle).
+Read-only: nothing is deleted or changed outside the cache file (0600; it holds
+project names, kept on this machine).
+
+  rice-sweep                  the last answer (+ a background refresh if stale)
+  rice-sweep --refresh        refresh now, wait for it, print the new answer
+  rice-sweep --root DIR       what to scan (default $RICE_SWEEP_ROOT or ~/Projects)
+"""
+import fcntl
+import json
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+import time
+from pathlib import Path
+
+TTL_S = int(os.environ.get("RICE_SWEEP_TTL", "1800"))
+IDLE_DAYS = 30
+SCAN_TIMEOUT_S = 180
+DAY_MS = 86_400_000
+
+
+def find_sweep() -> str | None:
+    """The sweep command. The shell session's PATH often lacks ~/.bun/bin."""
+    found = shutil.which("sweep")
+    if found:
+        return found
+    for d in (Path.home() / ".bun" / "bin", Path.home() / ".local" / "bin", Path("/usr/local/bin"), Path("/usr/bin")):
+        c = d / "sweep"
+        if c.is_file() and os.access(c, os.X_OK):
+            return str(c)
+    return None
+
+
+def state_dir() -> Path:
+    base = os.environ.get("XDG_STATE_HOME") or str(Path.home() / ".local" / "state")
+    return Path(base) / "rice"
+
+
+def summarize(plan: dict, now_ms: float, idle_days: int = IDLE_DAYS, top_kinds: int = 4, top_projects: int = 5) -> dict:
+    """A scan plan reduced to what the island shows. Pure."""
+    safe = caution = prot = 0
+    kinds: dict[str, dict] = {}
+    projects: dict[str, dict] = {}
+    for c in plan.get("candidates", []):
+        tier = c.get("riskTier")
+        size = c.get("estimatedBytes") or 0
+        if tier in ("dangerous", "blocked"):
+            prot += 1
+            continue
+        if tier not in ("safe", "caution"):
+            continue
+        if tier == "safe":
+            safe += size
+        else:
+            caution += size
+        k = kinds.setdefault(c.get("kind") or c.get("name") or "other", {"bytes": 0, "count": 0})
+        k["bytes"] += size
+        k["count"] += 1
+        root, active = c.get("projectRoot"), c.get("projectActiveMs")
+        if root and isinstance(active, (int, float)) and active > 0:
+            p = projects.setdefault(root, {"bytes": 0, "active": active})
+            p["bytes"] += size
+    idle = []
+    for root, p in projects.items():
+        days = int((now_ms - p["active"]) // DAY_MS)
+        if days >= idle_days:
+            idle.append({"name": os.path.basename(root.rstrip("/")) or root, "bytes": p["bytes"], "idleDays": days})
+    idle.sort(key=lambda p: p["bytes"], reverse=True)
+    top = sorted(({"kind": n, **v} for n, v in kinds.items()), key=lambda k: k["bytes"], reverse=True)
+    return {
+        "reclaimable": safe + caution, "safe": safe, "caution": caution, "protected": prot,
+        "idle": {"days": idle_days, "projects": len(idle), "bytes": sum(p["bytes"] for p in idle)},
+        "kinds": top[:top_kinds], "projects": idle[:top_projects],
+    }
+
+
+def read_cache(path: Path) -> dict | None:
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, ValueError):
+        return None
+    return data if isinstance(data, dict) and isinstance(data.get("checkedAt"), (int, float)) else None
+
+
+def write_cache(path: Path, data: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".sweep-status.")
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump(data, f, separators=(",", ":"))
+        os.chmod(tmp, 0o600)
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+
+def _run(args: list[str]) -> bytes | None:
+    """sweep's stdout for `args` at idle priority; None if it can't run or fails."""
+    exe = find_sweep()
+    if not exe:
+        return None
+    cmd = [exe, *args]
+    if shutil.which("ionice"):
+        cmd = ["ionice", "-c3", *cmd]
+    try:
+        return subprocess.run(cmd, capture_output=True, timeout=SCAN_TIMEOUT_S, check=True,
+                              preexec_fn=lambda: os.nice(19)).stdout
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
+def scan(root: str) -> dict | None:
+    """sweep's plan for `root` (older sweep: no `status`); None if it can't."""
+    if not os.path.isdir(root):
+        return None
+    out = _run(["scan", root, "--json", "--quiet"])
+    try:
+        plan = json.loads(out) if out else None
+    except ValueError:
+        return None
+    return plan if isinstance(plan, dict) else None
+
+
+def from_status(st: dict) -> dict:
+    """sweep's own StatusSummary in the shape this script keeps."""
+    return {
+        "reclaimable": st["reclaimableBytes"], "safe": st["safeBytes"], "caution": st["cautionBytes"],
+        "protected": st["protectedCount"], "idle": st["idle"],
+        "kinds": st.get("kinds", [])[:4],
+        "projects": [{"name": p["name"], "bytes": p["bytes"], "idleDays": p["idleDays"]}
+                     for p in st.get("projects", [])[:5]],
+    }
+
+
+def status(root: str) -> dict | None:
+    """`sweep status --json` (sweep keeps the definition of reclaimable and
+    idle); None when this sweep is older than the command."""
+    if not os.path.isdir(root):
+        return None
+    out = _run(["status", root, "--json", "--quiet"])
+    try:
+        st = json.loads(out) if out else None
+    except ValueError:
+        return None
+    if not isinstance(st, dict) or not isinstance(st.get("reclaimableBytes"), (int, float)):
+        return None
+    try:
+        return from_status(st)
+    except (KeyError, TypeError):
+        return None
+
+
+def refresh(root: str, cache: Path, now: float | None = None) -> dict | None:
+    """Scan and cache, unless a refresh is already running (then None)."""
+    cache.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    with open(cache.parent / "sweep-status.lock", "w") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            return None
+        now = time.time() if now is None else now
+        summary = status(root)
+        if summary is None:
+            plan = scan(root)
+            if plan is None:
+                return None
+            summary = summarize(plan, now * 1000)
+        data = {"alive": True, "checkedAt": int(now), "root": root, **summary}
+        write_cache(cache, data)
+        return data
+
+
+def answer(cache: Path, root: str, now: float, ttl: int = TTL_S) -> tuple[dict, bool]:
+    """(what to print, whether a background refresh should start)."""
+    if not find_sweep():
+        return {"alive": False}, False
+    data = read_cache(cache)
+    if data is None or data.get("root") != root:
+        return {"alive": True, "pending": True, "root": root}, True
+    stale = now - data["checkedAt"] > ttl
+    return {**data, "alive": True, "stale": stale}, stale
+
+
+def main(argv: list[str]) -> int:
+    root = os.environ.get("RICE_SWEEP_ROOT") or str(Path.home() / "Projects")
+    args = list(argv)
+    if "--root" in args:
+        i = args.index("--root")
+        root = args[i + 1] if i + 1 < len(args) else root
+        del args[i:i + 2]
+    root = os.path.realpath(os.path.expanduser(root))
+    cache = state_dir() / "sweep-status.json"
+    if "--refresh" in args:
+        data = refresh(root, cache) or read_cache(cache) or {"alive": find_sweep() is not None, "pending": True}
+        print(json.dumps(data, separators=(",", ":")))
+        return 0
+    out, needs_refresh = answer(cache, root, time.time())
+    print(json.dumps(out, separators=(",", ":")))
+    sys.stdout.flush()
+    if needs_refresh:
+        subprocess.Popen([sys.executable, os.path.abspath(__file__), "--refresh", "--root", root],
+                         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                         start_new_session=True)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

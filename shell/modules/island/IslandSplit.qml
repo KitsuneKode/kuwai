@@ -413,8 +413,8 @@ Item {
     Pill {
         id: sysPill
         name: "sys"
-        // Pulled: what it's saying most loudly (a warning, else updates, else a used-up limit).
-        panel: Alerts.active.length ? "system" : Limits.markShown && !Updates.fresh && !Updates.running ? "usage" : "updates"
+        // Pulled: what it's saying most loudly (a warning, else updates, else idle projects, else a used-up limit).
+        panel: Alerts.active.length ? "system" : Updates.fresh || Updates.running ? "updates" : Sweep.fresh ? "sweep" : Limits.markShown ? "usage" : "updates"
         // A warning in its level's colour (asking: a halo); a used-up limit amber (only saying so).
         tone: Alerts.active.length ? (Alerts.active[0].level === "crit" ? Theme.red : Theme.orange) : Limits.markShown ? Theme.yellow : "transparent"
         attention: Alerts.active.length > 0
