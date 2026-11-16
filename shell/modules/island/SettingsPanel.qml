@@ -773,6 +773,18 @@ FocusScope {
                     label: "Don't sleep while music plays"
                     Toggle { on: Settings.idleNoSleepWhilePlaying; onToggled: Settings.set("idleNoSleepWhilePlaying", !Settings.idleNoSleepWhilePlaying) }
                 }
+                SettingsRow {
+                    key: "caffeineMode"
+                    label: "Keep awake"
+                    detail: Settings.caffeineMode === "login" ? "Caffeine comes on with each login (it still ends with the session)"
+                          : Settings.caffeineMode === "work" ? "No sleep from idle while an agent, a T3 thread or an update is working, on power. Screens still dim and lock."
+                          : "Only when you turn Caffeine on"
+                    Segmented {
+                        options: [{ id: "manual", label: "Manual" }, { id: "login", label: "At login" }, { id: "work", label: "While work runs" }]
+                        current: Settings.caffeineMode
+                        onPicked: id => Settings.set("caffeineMode", id)
+                    }
+                }
             }
             SettingsGroup {
                 title: "On power"

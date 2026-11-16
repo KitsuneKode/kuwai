@@ -529,6 +529,24 @@
       "restartScope": "live"
     },
     {
+      "key": "caffeineMode",
+      "type": "string",
+      "default": "manual",
+      "enum": [
+        "manual",
+        "login",
+        "work"
+      ],
+      "maxLength": 512,
+      "section": "power",
+      "label": "Keep awake",
+      "detail": "",
+      "group": "",
+      "searchTerms": "keep awake caffeine at login startup while work runs agents updates manual",
+      "requires": [],
+      "restartScope": "live"
+    },
+    {
       "key": "highContrast",
       "type": "boolean",
       "default": false,

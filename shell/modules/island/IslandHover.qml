@@ -680,7 +680,7 @@ Item {
                 readonly property int vol: sink && sink.audio ? Math.round(sink.audio.volume * 100) : 0
                 items: [
                     { id: "caffeine", glyph: "\u{f0176}", on: Caffeine.on, tone: Theme.yellow, alert: Caffeine.on,
-                      tip: Caffeine.on ? "Caffeine on: no dim, lock or sleep" : "Caffeine: keep awake", toggle: () => Caffeine.toggle() },
+                      tip: Caffeine.on ? "Caffeine on: no dim, lock or sleep" : Caffeine.working ? Caffeine.why + " (no sleep; screens still lock)" : "Caffeine: keep awake", toggle: () => Caffeine.toggle() },
                     { id: "mic", glyph: "\u{f036c}", glyphOff: "\u{f036d}", on: !micMuted, alert: micMuted,
                       tone: Activities.micInUse ? Theme.orange : Theme.textPrimary, offTone: Theme.red,
                       tip: (micMuted ? "Microphone muted" : "Microphone on")

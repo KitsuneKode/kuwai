@@ -124,9 +124,9 @@ Singleton {
             root.run(`hyprctl dispatch 'hl.dsp.dpms({ action = "enable" })'`);
         }
     }
-    // ── Sleep (never while music plays)
+    // ── Sleep (never while music plays, nor while work runs: Caffeine.working)
     IdleMonitor {
-        enabled: root.enabled && !root.held && root.sleepAfter > 0
+        enabled: root.enabled && !root.held && !Caffeine.working && root.sleepAfter > 0
         timeout: root.sleepAfter
         respectInhibitors: true
         onIsIdleChanged: if (isIdle && !(Settings.idleNoSleepWhilePlaying && Media.playing)) Quickshell.execDetached(["systemctl", "suspend"])
