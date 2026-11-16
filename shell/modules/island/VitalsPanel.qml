@@ -14,6 +14,7 @@
 // included (Tab / Shift+Tab: the next agent). Esc closes (IslandBar).
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import qs.config
 import qs.components
 import qs.components.ui
@@ -28,6 +29,13 @@ FocusScope {
 
     Component.onCompleted: SystemStats.watch()
     Component.onDestruction: SystemStats.unwatch()
+    property var memApps: []
+    Process {
+        id: memProbe
+        command: [Paths.bin + "/rice-procs", "--by-app"]
+        stdout: StdioCollector { onStreamFinished: { try { vitals.memApps = JSON.parse(text); } catch (e) {} } }
+    }
+    Timer { interval: 5000; repeat: true; running: true; triggeredOnStart: true; onTriggered: memProbe.running = true }
 
     Flickable {
         anchors.fill: parent
@@ -71,11 +79,26 @@ FocusScope {
                 detail: SystemStats.cores.length + " threads" + (SystemStats.fans.length ? "  ·  fans " + SystemStats.fans.join(" · ") + " rpm" : "")
             }
         }
+        // Memory, by what holds it (Clove's storage bar): one big number,
+        // the dots by app, a legend that lights with the dots. PSS, so a
+        // browser's twenty processes count once (rice-procs --by-app, every
+        // 5 s while this is open).
         Card {
-            Meter {
+            LinkedBar {
+                width: parent.width
                 title: "Memory"
-                value: SystemStats.mem
-                detail: SystemStats.bytes(SystemStats.memUsed) + " of " + SystemStats.bytes(SystemStats.memTotal)
+                big: SystemStats.bytes(SystemStats.memUsed)
+                caption: "of " + SystemStats.bytes(SystemStats.memTotal) + " in use" + (vitals.memApps.length ? " · point at the dots" : "")
+                total: SystemStats.memTotal / 1073741824
+                unit: " GB"
+                parts: {
+                    const pal = [Theme.orange, Theme.blue, Theme.green, Theme.indigo, Theme.cyan, Theme.yellow, Theme.red];
+                    const used = SystemStats.memUsed / 1073741824;
+                    const top = vitals.memApps.slice(0, 6).map((a, i) => ({ label: a.app, value: a.mb / 1024, color: pal[i],
+                        detail: a.count + (a.count === 1 ? " process" : " processes") }));
+                    const rest = Math.max(0, used - top.reduce((n, p) => n + p.value, 0));
+                    return rest > 0.05 ? top.concat([{ label: "Everything else", value: rest, color: Theme.gray, detail: "the system, caches the kernel can't drop, the rest" }]) : top;
+                }
             }
         }
 
