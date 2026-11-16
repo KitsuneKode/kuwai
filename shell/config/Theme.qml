@@ -95,6 +95,7 @@ Singleton {
     readonly property color critical: red
     // Fixed state colours (Apple's dark palette), named once so no file types the hex.
     readonly property color focus: "#bf5af2"     // Focus / Do Not Disturb (purple)
+    readonly property color purple: focus       // Apple's purple: the screen-shared/recorded dot
     readonly property color indigo: "#5e5ce6"    // secondary actions, sliders
     readonly property color gray: "#8e8e93"      // Apple's system grey: neutral tiles (Settings → Keyboard)
     readonly property color cyan: "#64d2ff"      // info, links on dark
