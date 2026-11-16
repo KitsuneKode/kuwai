@@ -7,6 +7,7 @@
 //   ◉ mic  ● ▮ ● ●  23:29  ▂▄▆ ▭  0:07        dictating
 //   ♫ art  ● ▮ ● ●  23:29  ▂▄▆ ▭  ▂▅▃▆        music playing
 import QtQuick
+import QtQuick.Effects
 import Quickshell
 import Quickshell.Widgets
 import Quickshell.Services.Pipewire
@@ -179,6 +180,13 @@ Item {
         // nothing between, and hid the clock.
         : ""
 
+    // A live activity arriving (or changing: dictating → writing, a timer
+    // taking over from a recording) arrives like the capsules' content: from
+    // 0.97, a blur clearing, while the notch springs to its new width.
+    property real actReveal: 1
+    onActivityChanged: if (activity !== "" && activity !== "moment" && !Theme.reduceMotion) { actReveal = 0; actIn.restart(); }
+    NumberAnimation { id: actIn; target: rest; property: "actReveal"; to: 1; duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+
     property real voxSecs: 0
     Timer {
         running: Activities.voxListening
@@ -256,7 +264,10 @@ Item {
         id: actChip
         visible: ((rest.activity !== "" && rest.activity !== "moment")
                  || (rest.restMusic && !Media.playing && rest.activity === "")) && !rest.helloFocus
-        opacity: rest.chromeReveal
+        opacity: rest.chromeReveal * rest.actReveal
+        scale: 0.97 + 0.03 * rest.actReveal
+        layer.enabled: rest.actReveal < 0.999
+        layer.effect: MultiEffect { blurEnabled: true; blurMax: 12; blur: (1 - rest.actReveal) * 0.25; autoPaddingEnabled: true }
         anchors.verticalCenter: parent.verticalCenter
         spacing: 7
         Item {
@@ -650,7 +661,9 @@ Item {
     Item {
         visible: (rest.activity !== "" && rest.activity !== "moment" && !rest.joined)
                  || (rest.restMusic && !Media.playing && rest.activity === "")
-        opacity: rest.chromeReveal
+        // Arrives with the activity's glyph (actReveal), a beat behind it.
+        opacity: rest.chromeReveal * Math.max(0, Math.min(1, rest.actReveal * 1.25 - 0.25))
+        scale: 0.97 + 0.03 * rest.actReveal
         width: trailing.implicitWidth
         height: 20
         anchors.verticalCenter: parent.verticalCenter
