@@ -35,7 +35,7 @@ FocusScope {
         command: [Paths.bin + "/rice-procs", "--by-app"]
         stdout: StdioCollector { onStreamFinished: { try { vitals.memApps = JSON.parse(text); } catch (e) {} } }
     }
-    Timer { interval: 5000; repeat: true; running: true; triggeredOnStart: true; onTriggered: memProbe.running = true }
+    Timer { interval: Theme.panelPollMs; repeat: true; running: true; triggeredOnStart: true; onTriggered: memProbe.running = true }
 
     Flickable {
         anchors.fill: parent

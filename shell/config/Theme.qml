@@ -313,7 +313,8 @@ Singleton {
     readonly property int ringDrawMs: 480       // a ring drawing itself closed
     readonly property int swingMs: 700          // a bell's damped swing, all of it
     readonly property int breathOutMs: 1100
-    readonly property int wallRevealMs: 900     // a wallpaper change growing out of the island (WallFx): rare, so it may take its time     // light breathing out of a ringing alarm
+    readonly property int wallRevealMs: 900
+    readonly property int panelPollMs: 5000     // live numbers that need a process, only while their panel is open     // a wallpaper change growing out of the island (WallFx): rare, so it may take its time     // light breathing out of a ringing alarm
 
     // Reduced motion: fewer and gentler: fades and colour stay, travel,
     // scale and stagger go. On when you switch it on (Controls → Reduce
