@@ -19,6 +19,17 @@ Rectangle {
     border.width: 1
     border.color: Theme.cardEdge
 
+    // A 1px drop, darker than the panel, so the card reads as sitting on it.
+    Rectangle {
+        z: -1
+        x: 0
+        y: 1
+        width: card.width
+        height: card.height
+        radius: card.radius
+        color: "#80000000"
+    }
+
     Column {
         id: col
         x: card.padding; y: card.padding - 2

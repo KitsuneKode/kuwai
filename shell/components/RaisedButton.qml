@@ -1,10 +1,7 @@
-// A raised button, after Kobra's (the plate under the label): the surface is
-// its own layer, so a press sinks and flattens the plate while the words stay
-// exactly where the eye is. Light catches the top edge (a 1 px lip and a soft
-// inner glow), a darker ring in the fill's own hue draws the edge, and a few
-// stacked shadows give it weight. Hover lights it a little; press takes the
-// lift away. Plain rectangles only: it renders the same in the shell and in
-// the password prompt's software renderer (shell-auth vendors this file).
+// A raised button. The plate is its own layer, so a press squeezes the plate
+// to 97% while the words stay put. One outline and one 1px drop. No lit edge,
+// no stacked blur. Plain rectangles only: it renders the same in the shell
+// and in the password prompt's software renderer (shell-auth vendors this file).
 //
 //   RaisedButton { text: "Update 31"; onClicked: … }                  primary, the theme's accent
 //   RaisedButton { text: "Terminal"; glyph: "\u{f018d}"; kind: "secondary" }
@@ -43,41 +40,25 @@ Item {
         scale: b.pressed ? 0.97 : 1
         Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
 
-        // Weight: stacked shadows, gone while pressed.
-        Repeater {
-            model: b.solid ? 3 : 1
-            Rectangle {
-                required property int index
-                readonly property real s: index * 2
-                x: -s; y: -s + 1 + index * 2
-                width: plate.width + s * 2; height: plate.height + s * 2
-                radius: height / 2
-                color: Qt.rgba(0, 0, 0, (b.pressed ? 0.04 : 0.12) / (index + 1))
-                Behavior on color { ColorAnimation { duration: Theme.colorMs } }
-            }
+        // One tight drop under the plate. It thins while the plate is pressed.
+        Rectangle {
+            y: 1
+            width: plate.width
+            height: plate.height
+            radius: height / 2
+            visible: b.enabled
+            color: Qt.rgba(0, 0, 0, b.pressed ? 0.2 : 0.5)
+            Behavior on color { ColorAnimation { duration: Theme.colorMs } }
         }
-        // Fill + the edge ring (a darker step of the fill itself).
+        // Fill plus one outline, the same colour all round. No lit top edge.
         Rectangle {
             id: face
             anchors.fill: parent
             radius: height / 2
-            color: b.lit && b.solid ? Qt.lighter(b.fill, 1.08) : b.lit ? Qt.rgba(1, 1, 1, 0.18) : b.fill
+            color: b.lit && b.solid ? Qt.lighter(b.fill, 1.07) : b.lit ? Qt.rgba(1, 1, 1, 0.18) : b.fill
             Behavior on color { ColorAnimation { duration: Theme.colorMs } }
             border.width: 1
-            border.color: b.solid ? Qt.darker(b.fill, 1.45) : Qt.rgba(1, 1, 1, 0.1)
-        }
-        // Light from above: a soft glow in the top half, a 1 px lip.
-        Rectangle {
-            anchors.fill: parent
-            anchors.margins: 1
-            radius: height / 2
-            opacity: b.pressed ? 0.4 : 1
-            gradient: Gradient {
-                GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, b.solid ? 0.22 : 0.10) }
-                GradientStop { position: 0.08; color: Qt.rgba(1, 1, 1, b.solid ? 0.10 : 0.04) }
-                GradientStop { position: 0.5; color: Qt.rgba(1, 1, 1, 0.0) }
-                GradientStop { position: 1.0; color: Qt.rgba(0, 0, 0, b.solid ? 0.08 : 0.04) }
-            }
+            border.color: b.solid ? Qt.darker(b.fill, 1.2) : Qt.rgba(1, 1, 1, 0.28)
         }
     }
 
