@@ -226,7 +226,6 @@ Item {
         property real reveal: 1
         onStateKeyChanged: {
             if (!out || Theme.reduceMotion) return;
-            ghost.live = false;              // keeps the last frame: the old content
             ghost.x = slot.x;
             ghost.opacity = 1;
             pill.reveal = 0;                 // now, not on the animation's first tick (one frame of the new at full)
@@ -242,7 +241,6 @@ Item {
                     NumberAnimation { target: pill; property: "reveal"; to: 1; duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
                 }
             }
-            ScriptAction { script: ghost.live = true }
         }
         Spring { id: sv; tier: pill.shown ? Theme.surfaceIn : Theme.surfaceOut; epsilon: 0.002; target: pill.shown ? 1 : 0; Component.onCompleted: settle() }
         // From 60 % tucked behind the edge to a gap clear of it.
@@ -324,16 +322,24 @@ Item {
             layer.enabled: pill.reveal < 0.999
             layer.effect: MultiEffect { blurEnabled: true; blurMax: 12; blur: (1 - pill.reveal) * 0.25; autoPaddingEnabled: true }
         }
-        // The old content, frozen for the swap (live otherwise: a tiny texture).
+        // The old content, for the swap: a snapshot refreshed twice a second
+        // while the capsule is out (live, an animating capsule — T3's spinner
+        // — rendered twice every frame: +3 % CPU at rest). Half a second old
+        // is still the old state: states change rarely.
         ShaderEffectSource {
             id: ghost
             y: slot.y
             width: slot.width; height: slot.height
             sourceItem: slot
-            live: true
+            live: false
             hideSource: false
             opacity: 0
             visible: opacity > 0.01
+        }
+        Timer {
+            interval: Theme.hoverLeaveMs + 200; repeat: true; triggeredOnStart: true
+            running: pill.out && !swap.running
+            onTriggered: ghost.scheduleUpdate()
         }
     }
 
