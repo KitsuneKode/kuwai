@@ -244,14 +244,7 @@ FocusScope {
                 Accessible.name: modelData.title + ", " + ap.word(modelData.state) + (modelData.where ? ", " + modelData.where : "") + (modelData.model ? ", " + modelData.model : "")
                 Accessible.description: modelData.question || ""
                 Accessible.selected: ap.sel === index
-                Rectangle {
-                    visible: ap.keyboard && ap.sel === row.index
-                    anchors.fill: parent
-                    radius: parent.radius
-                    color: "transparent"
-                    border.width: 2; border.color: Qt.rgba(1, 1, 1, 0.6)
-                    z: 100
-                }
+                // The keyboard's ring is the list's FluidHighlight (ring: keyboard).
 
                 // Who: the agent's mark, its state on the corner (the words say it too).
                 Item {

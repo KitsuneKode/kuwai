@@ -360,6 +360,24 @@ Scope {
         a.push({ id: "wipe", label: "Clear history (pins stay)", glyph: "\u{f0a7a}", keys: ["⌃", "⇧", "⌫"], danger: true, section: "Manage" });
         return a;
     }
+    // Quick Look's edit, kept (⌃S): copied as the newest entry (the original
+    // stays in history), editing ends, Quick Look closes, and the shelf lands
+    // on the new copy when the history reports it.
+    property bool landOnNewest: false
+    function keepEdited(t) {
+        if (!t) return;
+        quickLook.editing = false;
+        quickLook.open = false;
+        reading = false;
+        landOnNewest = true;
+        Clipboard.run(["copy-text", t]);
+        say("Kept as a new copy");
+        focusSearch();
+    }
+    Connections {
+        target: Clipboard
+        function onItemsChanged() { if (root.landOnNewest) { root.landOnNewest = false; root.first(); } }
+    }
     function run(id) {
         if (markedCount && runMarked(id)) return;
         const e = entry;

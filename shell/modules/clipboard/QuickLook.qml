@@ -201,9 +201,20 @@ Item {
                 font.pixelSize: ql.entry && (ql.entry.kind === "code" || ql.rendered.kind === "code") ? 14 : 17
                 renderType: Text.NativeRendering
                 cursorDelegate: SpringCaret {}
+                // Double-click the text to edit it in place (⌃E does the same).
+                TapHandler {
+                    enabled: !ql.editing && !ql.masked
+                    onDoubleTapped: ql.editing = true
+                }
                 Keys.onPressed: event => {
                     if (!ql.editing) return;
                     if (event.key === Qt.Key_Escape) { ql.editing = false; ql.panel.focusSearch(); event.accepted = true; }
+                    // Keep the edit without leaving: it lands as the newest copy
+                    // (the original stays in history), the panel stays open.
+                    else if (event.key === Qt.Key_S && (event.modifiers & Qt.ControlModifier)) {
+                        ql.panel.keepEdited(editor.text);
+                        event.accepted = true;
+                    }
                     else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && (event.modifiers & Qt.ControlModifier)) {
                         Clipboard.pasteText(editor.text);
                         event.accepted = true;
@@ -217,12 +228,12 @@ Item {
         anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 12 }
         opacity: Math.max(0, Math.min(1, (t.value - 0.6) / 0.4))
         text: !ql.entry ? ""
-            : ql.editing ? "Editing  ·  ⌃↵ paste this  ·  Esc cancel"
+            : ql.editing ? "Editing  ·  ⌃S keep as a new copy  ·  ⌃↵ paste this  ·  Esc cancel"
             : [({ markdown: "Markdown", code: "Code", mermaid: "Mermaid diagram" })[ql.rendered.kind] || "",
                ql.rendered.kind === "code" ? ql.rendered.lang : "",
                ql.panel.detailOf(ql.entry, ql.full),
                ql.rendered.kind !== "text" ? (ql.raw ? "⌃R rendered" : "⌃R raw") : "",
-               "⌃E edit", "Space close"].filter(x => x).join("    ")
+               ql.masked ? "" : "⌃E or double-click to edit", "Space close"].filter(x => x).join("    ")
         size: 11
         color: Theme.textTertiary
     }

@@ -49,7 +49,8 @@ Item {
         NumberAnimation { target: bye; property: "tIn"; to: 1; duration: Theme.pulseMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
         NumberAnimation { target: bye; property: "tMark"; to: 1; duration: 900; easing.type: Easing.InOutCubic }
         PauseAnimation { duration: 250 }
-        NumberAnimation { target: bye; property: "tOut"; to: 1; duration: 420; easing.type: Easing.InCubic }
+        // Into black: gathers pace, then lands softly (ease-in would hit black at full speed).
+        NumberAnimation { target: bye; property: "tOut"; to: 1; duration: 420; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeInOut }
         ScriptAction { script: bye.done() }
     }
     // Back from sleep: the screen returns without a show.

@@ -2,7 +2,12 @@
 // item to item on the fast spring instead of every row blinking its own.
 // Leaving into empty space puts it out; the next item lit fades it in fresh
 // where it lands (it doesn't slide over from wherever it last was). With
-// `ring`, it doubles as the keyboard focus ring (the accent, +10% fill).
+// `ring`, it doubles as the keyboard focus ring (FocusRing's one look: 2px
+// soft white; +10% fill).
+// Keys don't glide: a ring driven by arrow keys jumps to the next row (a key
+// repeats too often to animate, and the eye is already there); only the
+// pointer gets the spring. It also takes the lit item's opacity, so a row
+// swiped away fades with its light instead of leaving it behind.
 //
 // Put it inside the coordinate space the items live in (a list's
 // contentItem) and point `target` at the item to light.
@@ -14,6 +19,7 @@ Item {
 
     property Item target: null
     property bool ring: false
+    property bool glideKeys: false      // true only for a list that wants the ring to travel
     property real radius: 18
 
     z: 50
@@ -44,8 +50,8 @@ Item {
     function follow() {
         if (!target || !parent) return;
         const p = target.mapToItem(parent, 0, 0);
-        // Reduced motion: no glide, just the fade at the new item.
-        if (fresh || Theme.reduceMotion) {
+        // Reduced motion: no glide, just the fade at the new item. Keys: no glide.
+        if (fresh || Theme.reduceMotion || (ring && !glideKeys)) {
             sx.snap(p.x); sy.snap(p.y); sw.snap(target.width); sh.snap(target.height);
             fresh = false;
         } else {
@@ -55,11 +61,12 @@ Item {
 
     Rectangle {
         anchors.fill: parent
+        opacity: h.target ? h.target.opacity : 1
         radius: h.radius
         // Surface-relative overlays: hover +6% white, selected +10%.
         color: Qt.rgba(1, 1, 1, h.ring ? 0.10 : 0.06)
         border.width: h.ring ? 2 : 0
-        border.color: Qt.alpha(Theme.blue, 0.9)
+        border.color: Qt.rgba(1, 1, 1, 0.6)          // = components/FocusRing
         Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
     }
 }

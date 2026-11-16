@@ -150,6 +150,12 @@ Item {
                     NumberAnimation { target: drift; property: "x"; from: 14; to: 0; duration: 180; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
                 }
 
+                // One highlight for the menu (fluid hover): it glides from row to
+                // row under the pointer, neutral like ActionMenu's (no accent
+                // flood on every row passed over); disabled rows don't light.
+                property Item hoverRow: null
+                FluidHighlight { parent: list.contentItem; radius: 8; target: list.hoverRow }
+
                 delegate: Item {
                     id: row
                     required property var modelData
@@ -163,13 +169,6 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         x: 8; width: parent.width - 16; height: 1
                         color: Qt.rgba(1, 1, 1, 0.08)
-                    }
-                    Rectangle {
-                        visible: !row.e.isSeparator
-                        anchors.fill: parent
-                        radius: 8
-                        color: rowArea.containsMouse && row.e.enabled ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.22) : "transparent"
-                        Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
                     }
                     // Check / radio mark, the app's icon, the label, a submenu chevron.
                     Item {
@@ -224,6 +223,10 @@ Item {
                         enabled: !row.e.isSeparator
                         hoverEnabled: true
                         cursorShape: row.e.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                        onContainsMouseChanged: {
+                            if (containsMouse && row.e.enabled) list.hoverRow = row;
+                            else if (list.hoverRow === row) list.hoverRow = null;
+                        }
                         onClicked: tm.trigger(row.e)
                     }
                 }
