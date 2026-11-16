@@ -158,6 +158,19 @@ Singleton {
         via = how === "key" ? "key" : "pointer";
         panel = name;
     }
+    // Sections: panels that are views of one thing (what your agents and the
+    // machine are doing) switch in place, like Clove's tabs: no Back step.
+    readonly property var sections: [
+        { id: "agents", label: "Agents", glyph: "\u{f0e7b}" },
+        { id: "usage", label: "Usage", glyph: "\u{f029a}" },
+        { id: "vitals", label: "System", glyph: "\u{f0ee0}" },
+        { id: "cleanup", label: "Cleanup", glyph: "\u{f00e2}" }
+    ]
+    function isSection(name) { return sections.some(s => s.id === name); }
+    function switchTo(name) {
+        if (!panel || panel === name || panels.indexOf(name) < 0) return;
+        panel = name;                 // same screen, same history
+    }
     function back() {
         if (innerBack) { innerBack(); return; }
         if (!history.length) { close(); return; }

@@ -370,7 +370,8 @@ Scope {
             Binding { target: glanceLoader.item; property: "clockHidden"; value: win.clockFlying; when: !!glanceLoader.item }
             Binding { target: hoverLoader.item; property: "clockHidden"; value: win.clockFlying; when: !!hoverLoader.item }
 
-            readonly property real backH: Island.canBack ? 34 : 0
+            readonly property bool sectioned: Island.isSection(shownPanel)
+            readonly property real backH: Island.canBack || sectioned ? 34 : 0
             // A panel's own size, but never past the window (room for the shadow):
             // on a normal screen nothing changes, on a small one it fits.
             readonly property size panelSize: panelLoader.item
@@ -1026,14 +1027,58 @@ Scope {
                             autoPaddingEnabled: false
                         }
                         Keys.onEscapePressed: Island.back()
-                        Keys.onPressed: event => { idle.restart(); event.accepted = false; }
+
+                        Keys.onPressed: event => {
+                            idle.restart();
+                            // ⌥1–4: the sections (keys the panel didn't take bubble here).
+                            if (win.sectioned && (event.modifiers & Qt.AltModifier) && event.key >= Qt.Key_1 && event.key <= Qt.Key_4) {
+                                const s = Island.sections[event.key - Qt.Key_1];
+                                if (s) { Island.switchTo(s.id); event.accepted = true; return; }
+                            }
+                            event.accepted = false;
+                        }
 
                         // Back strip: where you came from, one click away.
                         Item {
                             id: backStrip
-                            visible: Island.canBack
+                            visible: Island.canBack || win.sectioned
                             width: parent.width; height: win.backH
+                            // Sections (Island.sections): the views of the same
+                            // place, on the right; the one you're on lit (14 %),
+                            // the one under the pointer 7 %, ⌥1–4 from the keys.
+                            // A click switches in place (Clove's tab strip):
+                            // hover would switch under a pointer passing by.
+                            Row {
+                                visible: win.sectioned
+                                anchors { right: parent.right; rightMargin: 14 }
+                                y: 10
+                                spacing: 2
+                                Repeater {
+                                    model: Island.sections
+                                    delegate: Rectangle {
+                                        id: sec
+                                        required property var modelData
+                                        required property int index
+                                        readonly property bool picked: win.shownPanel === modelData.id
+                                        width: 30; height: 24; radius: 12
+                                        color: Qt.rgba(1, 1, 1, picked ? 0.14 : secArea.containsMouse ? 0.07 : 0)
+                                        Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
+                                        Accessible.role: Accessible.PageTab
+                                        Accessible.name: modelData.label
+                                        Accessible.selected: picked
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: sec.modelData.glyph
+                                            font.family: Theme.fontGlyph; font.pixelSize: 13
+                                            color: sec.picked ? Theme.textPrimary : secArea.containsMouse ? Theme.textSecondary : Theme.textTertiary
+                                        }
+                                        MouseArea { id: secArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: Island.switchTo(sec.modelData.id) }
+                                        Tip { text: sec.modelData.label + "  ⌥" + (sec.index + 1); shown: secArea.containsMouse; below: true }
+                                    }
+                                }
+                            }
                             Rectangle {
+                                visible: Island.canBack
                                 x: 14; y: 10
                                 height: 24; radius: 12
                                 width: backRow.implicitWidth + 18

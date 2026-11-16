@@ -93,7 +93,7 @@ FocusScope {
         { name: "Claude here", sub: "Claude Code in this folder, as a kittymux tab", glyph: "\u{f06a9}", run: () => launcher.agentHere("claude") },
         { name: "Codex here", sub: "Codex in this folder, as a kittymux tab", glyph: "\u{f06a9}", run: () => launcher.agentHere("codex") },
         { name: "Agents", sub: "Every kitty pane and T3 thread, the model each runs", glyph: "\u{f0e7b}", run: () => Qt.callLater(() => Island.open("agents", Island.screen, "key")), keep: true },
-        { name: "Agent Usage", sub: "What each account has left, and when it resets", glyph: "\u{f0e7b}", run: () => Qt.callLater(() => Island.open("usage", Island.screen, "key")), keep: true },
+        { name: "Agent Usage", sub: "What each account has left, and when it resets", glyph: "\u{f029a}", run: () => Qt.callLater(() => Island.open("usage", Island.screen, "key")), keep: true },
         { name: "Now Playing", sub: "The player, its queue and the output", glyph: "\u{f075a}", run: () => Qt.callLater(() => Island.open("media", Island.screen, "key")), keep: true },
         { name: "Vitals", sub: "CPU, memory, GPU, temperatures", glyph: "\u{f0ee0}", run: () => Qt.callLater(() => Island.open("vitals", Island.screen, "key")), keep: true },
         { name: "T3 Code", sub: "Its threads: working, waiting, finished", glyph: "\u{f0a1e}", run: () => Qt.callLater(() => Island.open("t3", Island.screen, "key")), keep: true },
