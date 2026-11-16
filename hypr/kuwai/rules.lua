@@ -184,6 +184,9 @@ layer({ name = "rice-toasts", match = { namespace = "^rice-notifs$" }, ignore_al
 -- 0.3, and the vignette crossed that two-thirds down (a hard line, the film
 -- blurred below it). A later blur = false did not undo rice-glass's blur.
 layer({ name = "kuwai-saver", match = { namespace = "^kuwai-(screensaver|saver-film)$" }, no_anim = true })
+-- Live video. Outside rice-* so the glass blur rule cannot catch a
+-- full-screen frame. A later blur = false does not undo rice-glass.
+layer({ name = "kuwai-wallpaper", match = { namespace = "^kuwai-wallpaper$" }, no_anim = true })
 -- The password prompt never appears in a screen share, recording or screenshot.
 layer({ name = "rice-auth-private", match = { namespace = "^rice-auth$" }, no_screen_share = true })
 -- The center's scrim: deliberately outside rice-* so nothing blurs under it.

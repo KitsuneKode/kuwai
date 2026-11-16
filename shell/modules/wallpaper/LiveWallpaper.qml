@@ -61,7 +61,10 @@ Scope {
                 anchors { top: true; bottom: true; left: true; right: true }
                 exclusionMode: ExclusionMode.Ignore
                 WlrLayershell.layer: WlrLayer.Background
-                WlrLayershell.namespace: "rice-wallpaper"
+                // Outside rice-*: that rule blurs every rice-* surface, and a later
+                // blur=false does not undo it. A full-screen video would pay
+                // for a blur nobody can see. Same split as the screensaver.
+                WlrLayershell.namespace: "kuwai-wallpaper"
                 WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
                 mask: Region {}
                 color: "transparent"
@@ -72,19 +75,48 @@ Scope {
                 // Mostly behind windows: decoding a video for the gaps between
                 // them costs a core for nothing. Plays on an empty or sparse
                 // desktop; pauses (the frame stays) once windows cover ~85%.
+                // Union of the visible rectangles. Adding each window's area
+                // counted overlaps twice, so two stacked windows could pause
+                // the video while most of the desktop was still showing.
+                function unionArea(rects) {
+                    if (!rects.length) return 0;
+                    const xs = [];
+                    for (let i = 0; i < rects.length; i++) xs.push(rects[i].x0, rects[i].x1);
+                    xs.sort((a, b) => a - b);
+                    let area = 0;
+                    for (let i = 0; i < xs.length - 1; i++) {
+                        const xL = xs[i], xR = xs[i + 1];
+                        if (xR <= xL) continue;
+                        const spans = [];
+                        for (let j = 0; j < rects.length; j++) {
+                            const r = rects[j];
+                            if (r.x0 < xR && r.x1 > xL) spans.push(r);
+                        }
+                        spans.sort((a, b) => a.y0 - b.y0 || a.y1 - b.y1);
+                        let yCursor = -Infinity;
+                        for (let j = 0; j < spans.length; j++) {
+                            const y0 = Math.max(spans[j].y0, yCursor);
+                            if (spans[j].y1 > y0) {
+                                area += (xR - xL) * (spans[j].y1 - y0);
+                                yCursor = spans[j].y1;
+                            }
+                        }
+                    }
+                    return area;
+                }
                 readonly property real coverage: {
                     if (!ws) return 0;
                     const W = bg.width, H = bg.height, mx = mon && mon.lastIpcObject ? mon.lastIpcObject.x : 0, my = mon && mon.lastIpcObject ? mon.lastIpcObject.y : 0;
-                    let area = 0;
+                    const rects = [];
                     for (const t of Hyprland.toplevels.values) {
                         if (!t.workspace || t.workspace !== ws || !t.lastIpcObject) continue;
                         const o = t.lastIpcObject;
                         if (!o.size || !o.at || o.hidden) continue;
                         const x0 = Math.max(0, o.at[0] - mx), y0 = Math.max(0, o.at[1] - my);
                         const x1 = Math.min(W, o.at[0] - mx + o.size[0]), y1 = Math.min(H, o.at[1] - my + o.size[1]);
-                        if (x1 > x0 && y1 > y0) area += (x1 - x0) * (y1 - y0);
+                        if (x1 > x0 && y1 > y0) rects.push({ x0: x0, y0: y0, x1: x1, y1: y1 });
                     }
-                    return W > 0 && H > 0 ? Math.min(1, area / (W * H)) : 0;
+                    return W > 0 && H > 0 ? Math.min(1, bg.unionArea(rects) / (W * H)) : 0;
                 }
                 readonly property bool covered: fullscreen || coverage >= 0.85
                 readonly property bool shouldPlay: root.video !== "" && !covered && !root.locked && root.batteryOk && !Saver.showing   // under the screensaver: nobody sees it

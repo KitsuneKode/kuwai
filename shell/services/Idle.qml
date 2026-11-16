@@ -74,8 +74,13 @@ Singleton {
             Saver.screensOff = isIdle;
             root.run(`hyprctl dispatch 'hl.dsp.dpms({ action = "${isIdle ? "disable" : "enable"}" })'`);
         }
-        // Disabled while off (Caffeine, a dictation): the screens come back.
-        onEnabledChanged: if (!enabled && Saver.screensOff) Saver.screensOff = false
+        // Disabled while held (Caffeine, a dictation): the screens come back.
+        // Clearing the flag is not DPMS. A click in the shell is not a key,
+        // so key_press_enables_dpms does not run for it.
+        onEnabledChanged: if (!enabled && Saver.screensOff) {
+            Saver.screensOff = false;
+            root.run(`hyprctl dispatch 'hl.dsp.dpms({ action = "enable" })'`);
+        }
     }
     // ── Sleep (never while music plays)
     IdleMonitor {

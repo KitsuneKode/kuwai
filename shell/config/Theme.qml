@@ -1,9 +1,9 @@
 // Design tokens for every surface in the rice. The look is the glass HUD's:
 // Hyprland blurs what is behind a layer, a dark translucent tint sits on top,
-// text is Inter (variable, optical size + exact weight) with SF Pro Display
-// for display sizes, glyphs come from Symbols Nerd Font. Motion is critically
-// damped (no bounce): surfaces arrive fast and settle, and leave the way they
-// came, a little quicker. See docs/DESIGN.md.
+// text is SF Pro (variable, optical size + exact weight): Text for UI,
+// Display for large sizes, Rounded for numerals. Glyphs come from Symbols
+// Nerd Font. Motion is critically damped (no bounce): surfaces arrive fast
+// and settle, and leave the way they came, a little quicker. See docs/DESIGN.md.
 pragma Singleton
 
 import QtQuick
