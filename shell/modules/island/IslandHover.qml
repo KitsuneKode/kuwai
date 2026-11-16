@@ -561,7 +561,9 @@ Item {
         Item {
             id: agents
             visible: hover.agentsHere
-            readonly property var all: Limits.usable
+            // One per agent (its tightest account), like the row under the music
+            // card: nine rings named "Claude-2", "Grok-2"… read as nine agents.
+            readonly property var all: mediaRow.tight
             // Each column the same width (a ring and its name under it): the name
             // used to widen its ring's StatRing, centring the outer ring on
             // "Antigravity 1" while the inner ring and logo stayed put.
@@ -619,7 +621,7 @@ Item {
                             width: Math.min(implicitWidth, ag.width)
                             horizontalAlignment: Text.AlignHCenter
                             elide: Text.ElideRight
-                            text: ag.e.label
+                            text: ag.e.n > 1 ? ag.e.name : ag.e.label      // a provider ring says the provider
                             size: 11; weight: Theme.wMedium; color: Theme.textSecondary
                         }
                         Image {
@@ -674,7 +676,7 @@ Item {
             if (!e) return hover.media ? hover.hotText : "";
             // Under the music card a ring is a provider: say when it stands for
             // several accounts (it shows the tightest one).
-            const many = hover.media && e.n > 1 ? " (tightest of " + e.n + ")" : "";
+            const many = e.n > 1 ? " (tightest of " + e.n + ")" : "";
             return e.label + many + " · " + [agents.line(e.session), agents.line(e.weekly)].filter(x => x).join(" · ");
         }
         size: 11
