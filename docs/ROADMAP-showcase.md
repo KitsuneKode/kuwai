@@ -302,3 +302,60 @@ Near-black glass (#111114 tint as today), one vivid accent taken from the
 picture, neutral ink solved against the actual crop, the same painting on lock
 and greeter, a kuwai theme format (palette + wallpaper set + accent rule) that
 doesn't need HyDE; HyDE themes import into it.
+
+## 16. Audit, 2026-11-16 late: remove, fix, leaks
+
+**Removed tonight:** components/Popover, notifications/UsageCard, waybar/custom-dunst.jsonc
+(nothing referenced them). Every bin/ script is referenced somewhere.
+
+**Remove or move next (your call):**
+- `plugins/kitty-sidebar/` (C++ plugin spike + evidence) → kittymux's repo or delete.
+- `refs/` (1.5 GB of reference clones, untracked) → move to Depot.
+- Running leftovers: `caffeine-mode.service` (fails every boot), `nm-applet`,
+  `hyde-config`; Docker + searxng at boot (~0.3 GB) → socket/on demand.
+- Two superseded worktrees (`t3/notch-usage-limits`, `fix/security-recovery`).
+- `~/.cache/rice/aur` build leftovers (8.5 GB; the merged updater now prunes new ones).
+
+**Memory:**
+- No object leaks found: every dynamically created Process/Timer/notification
+  destroys itself (Clipboard, Display, Kittymux answerer/runner, Notifs jumper,
+  Ollama notifier, Alarms, Reminders, VoxtypeHost checked); growing lists are
+  capped (Updates log 400, Switcher MRU 200) or rebuilt per read (Alerts).
+- No helper pile-up: 11 helpers under the shell, all from the last reload.
+- The measurable growth is the dev channel: memlog Pss_Anon 269 → 418 MB in an
+  hour with ~20 hot reloads tonight (known dev-reload leak). Run the live shell
+  from stable (`~/.local/share/kuwai`, watchFiles off) and soak 8 h before
+  calling anything a leak.
+- New code tonight frees what it uses: WallFx's layer and images exist only during
+  a change (`cache: false`), the film frame captures only while its card shows,
+  FluidHighlight's per-frame follow runs only while something is lit.
+
+**Gate gap:** the offscreen load test passed a commit that failed to load live
+(a type error in a lazily compiled file). `rice promote` must run the live
+`test compile` sweep over changed files (rice-check already has the loop).
+
+## 17. From Clove (keshav-exe/clove, MIT, a macOS notch app for coding agents)
+Read its site and its 14.6 s demo video (frames at 2 fps).
+1. **Sections switched by hover**: section icons sit in the panel's top edge; the
+   pointer passing over one switches it, content crossfades (with a little blur).
+   → the hub's pages (Now, Agents, Usage, System) as hover tabs in the notch's ears.
+2. **Linked hover between a chart and its legend**: a dot-matrix storage bar;
+   hovering a block lights its legend row and rewrites the header line ("Photos
+   20.5 GB · your library takes…"). → disk/memory/usage bars in Vitals and Usage,
+   and kuwai's ring "hot line" generalised to every chart.
+3. **One big number + short list + one action** ("5,994 tokens every session
+   spends on skills nobody called") → Usage and Cleanup headers.
+4. **AI hygiene ("Cleanup")**: skills/commands/subagents no agent called in 30/90
+   days and the tokens they cost every session; agent leftovers on disk; move to
+   Trash with undo. → a kuwai Cleanup page: unused skills (you have many), stale
+   worktrees, rice/bun/agent caches, old sessions.
+5. **Skills search from the notch**: search every SKILL.md; ↩ inserts `/name`
+   into the prompt you came from, ⌥↩ copies. → launcher `/` mode, typed into the
+   focused pane like emoji mode.
+6. **Now**: running agent sessions and dev servers with memory and Stop. → the
+   Agents panel + the Activity search (ports → the pane that started them).
+7. **Keys**: API keys exported in plain text in shell profiles moved to the keyring,
+   the line rewritten to read from it. → `kuwai keys` (Secret Service), a security
+   win that demos well.
+8. **Quiet when closed**: a closed notch scans, polls and animates nothing.
+   kuwai mostly does this; the Usage watcher and some per-second probes don't.
