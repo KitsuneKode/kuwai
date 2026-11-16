@@ -5,6 +5,8 @@
 //
 //   Segmented { options: [{ id: "a", label: "Notifications", badge: 3 }, …]; current: "a"; onPicked: id => … }
 import QtQuick
+import QtQuick.Layouts
+import QtQuick.Controls as Controls
 import qs.config
 
 Rectangle {
@@ -15,7 +17,11 @@ Rectangle {
     signal picked(string id)
 
     readonly property int pad: 4
-    height: 36
+    implicitHeight: Math.max(36, Math.ceil(Theme.tBody * Theme.textScale) + 16)
+    height: implicitHeight
+    Layout.fillWidth: true
+    Layout.minimumWidth: 0
+    Layout.preferredWidth: implicitWidth
     radius: 12
     // Given a width, the segments share the spare room evenly on top of
     // their natural widths (so a long label never squeezes a short one).
@@ -23,6 +29,18 @@ Rectangle {
     // Summed when segments come and go or change size (itemAt() isn't
     // something a binding can watch: built in the background, the segments
     // arrive after a binding would have run).
+    readonly property bool compact: width < naturalSum + pad * 2
+    Controls.ComboBox {
+        anchors.fill: parent
+        visible: seg.compact
+        model: seg.options
+        textRole: "label"
+        valueRole: "id"
+        currentIndex: seg.options.findIndex(o => o.id === seg.current)
+        font.pixelSize: Math.round(Theme.tBody * Theme.textScale)
+        Accessible.name: "Choose section"
+        onActivated: seg.picked(currentValue)
+    }
     property real naturalSum: 0
     function measure() {
         let sum = 0;
@@ -62,10 +80,11 @@ Rectangle {
     Spring { id: pw; tier: Theme.springModerate; epsilon: 0.25 }
 
     Rectangle {
+        visible: !seg.compact
         x: seg.pad + px.value
         y: seg.pad
         width: pw.value
-        height: 28
+        height: seg.height - seg.pad * 2
         radius: seg.radius - seg.pad
         color: Qt.rgba(1, 1, 1, 0.14)
         border.width: 1
@@ -74,6 +93,7 @@ Rectangle {
 
     Row {
         id: row
+        visible: !seg.compact
         x: seg.pad
         y: seg.pad
         Repeater {
@@ -89,8 +109,8 @@ Rectangle {
                 readonly property real natural: inner.implicitWidth + 20
                 onNaturalChanged: Qt.callLater(seg.measure)
                 width: natural + seg.extra
-                height: 28
-                scale: optArea.pressed ? 0.97 : 1
+                height: seg.height - seg.pad * 2
+                scale: optArea.pressed && !Theme.reduceMotion ? 0.97 : 1
                 Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
 
                 Row {

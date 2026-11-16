@@ -18,6 +18,7 @@ local function unit(name)
 end
 
 hl.on("hyprland.start", function()
+    print("[kuwai-handoff " .. (os.getenv("KUWAI_HANDOFF_ID") or "unknown") .. "] hyprland-start-hook")
 	hl.exec_cmd("dbus-update-activation-environment --systemd " .. EXPORT)
 	hl.exec_cmd("hyprctl setcursor " .. K.cursor.theme .. " " .. K.cursor.size)
 

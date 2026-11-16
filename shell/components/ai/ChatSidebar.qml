@@ -165,6 +165,20 @@ Rectangle {
                     readonly property bool isHeader: !!modelData.header
                     readonly property var chat: modelData.chat || null
                     readonly property bool selected: !!chat && chat.id === OllamaService.activeSessionId
+                    activeFocusOnTab: !isHeader && !asking && !renamingThis
+                    Accessible.role: Accessible.ListItem
+                    Accessible.name: chat ? chat.title || "New chat" : ""
+                    Accessible.selected: selected
+                    Accessible.onPressAction: { if (chat) { OllamaService.switchSession(chat.id); root.sessionSelected(chat.id); } }
+                    Keys.onPressed: e => {
+                        if (!chat || e.isAutoRepeat) return;
+                        if (e.key === Qt.Key_Return || e.key === Qt.Key_Space) { OllamaService.switchSession(chat.id); root.sessionSelected(chat.id); }
+                        else if (e.key === Qt.Key_F2) root.renaming = chat.id;
+                        else if (e.key === Qt.Key_Delete) root.confirming = chat.id;
+                        else return;
+                        e.accepted = true;
+                    }
+                    FocusRing { cornerRadius: Theme.r1 }
                     readonly property bool asking: !!chat && root.confirming === chat.id
                     readonly property bool renamingThis: !!chat && root.renaming === chat.id
                     width: ListView.view.width

@@ -13,6 +13,25 @@ import qs.services
 
 FocusScope {
     id: bp
+
+    property var forgetTarget: null
+    function requestForget(target) {
+        if (!target || !target.paired) return;
+        forgetTarget = target;
+        forgetDialog.open();
+    }
+    function confirmForget() {
+        const target = forgetTarget;
+        forgetTarget = null;
+        if (target && all.indexOf(target) >= 0 && target.paired) target.forget();
+    }
+    ConfirmationDialog {
+        id: forgetDialog
+        title: "Forget saved configuration?"
+        message: bp.forgetTarget ? "Forget " + (bp.forgetTarget.name || "this device") + "? Connecting again will require its credentials or pairing." : ""
+        onConfirmed: bp.confirmForget()
+        onRejected: bp.forgetTarget = null
+    }
     focus: true
     implicitWidth: 420
     implicitHeight: col.implicitHeight + 36
@@ -52,7 +71,7 @@ FocusScope {
         if (e.key === Qt.Key_Down) sel = Math.min(all.length - 1, sel + 1);
         else if (e.key === Qt.Key_Up) sel = Math.max(0, sel - 1);
         else if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) act(all[sel]);
-        else if (e.key === Qt.Key_Delete && all[sel] && all[sel].paired) all[sel].forget();
+        else if (e.key === Qt.Key_Delete && all[sel] && all[sel].paired) bp.requestForget(all[sel]);
         else return;
         e.accepted = true;
     }
@@ -134,7 +153,7 @@ FocusScope {
                     id: forget
                     glyph: "\u{f0a7a}"
                     tip: "Forget this device"
-                    onClicked: row.dev.forget()
+                    onClicked: bp.requestForget(row.dev)
                 }
             }
         }

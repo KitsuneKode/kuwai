@@ -13,6 +13,7 @@ mkdir -p "$run/state/rice" "$run/cache"
 : >"$run/brightness"   # greeter/keys writes the DDC value here; the HUD watches it
 cp -f "$ROOT/home/.local/state/rice/prefs.json" "$run/state/rice/" 2>/dev/null
 
+run_face() {
 HOME="$ROOT/home" \
 	XDG_CONFIG_HOME="$ROOT/home/.config" \
 	XDG_STATE_HOME="$run/state" \
@@ -20,6 +21,13 @@ HOME="$ROOT/home" \
 	KUWAI_GREETER_USER="$(cat "$ROOT/user" 2>/dev/null)" \
 	KUWAI_GREETER_FACE="$([ -f "$ROOT/face" ] && echo "$ROOT/face")" \
 	QSG_RENDER_LOOP=basic \
-	qs -p "$ROOT/shell/greeter.qml" >"$run/qs.log" 2>&1
+	qs -p "$ROOT/shell/greeter.qml"
+}
+if command -v systemd-cat >/dev/null 2>&1 && [ -S /run/systemd/journal/stdout ]; then
+    run_face 2>&1 | systemd-cat -t kuwai-greeter-ui
+else
+    # No journal: retain a bounded tail without preventing a login.
+    run_face 2>&1 | tail -c 1048576 >"$run/qs.log"
+fi
 
 hyprctl dispatch 'hl.dsp.exit()'

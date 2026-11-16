@@ -278,7 +278,7 @@ ShellRoot {
     }
     function mmss(s) { return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); }
     // Text on the accent: dark on light accents, white on dark ones.
-    function onAccent(c) { return (0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b) > 0.55 ? "#111114" : "#ffffff"; }
+    function onAccent(c) { return Theme.contrastInk(c); }
 
     Variants {
         model: Quickshell.screens

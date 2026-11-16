@@ -128,6 +128,7 @@ for attempt in 1 2 3; do
     # smaller, Vulkan flat but +40 MB). That was the shell's 70-180 MB/h
     # (2026-11-07). One thread instead of one per window, too.
     envs+=("QSG_RENDER_LOOP=basic")
+    envs+=("KUWAI_REVISION=$(git -C "$RICE" describe --always --dirty 2>/dev/null || printf unknown)")
     # Diagnostics for one run: RICE_SHELL_ENV="QV4_MM_STATS=1" rice-shell
     # (the JS heap after every collection, in the shell's log).
     if [ -n "${RICE_SHELL_ENV:-}" ]; then read -ra extra <<<"$RICE_SHELL_ENV"; envs+=("${extra[@]}"); fi
@@ -150,7 +151,6 @@ for attempt in 1 2 3; do
         # The new rice has the name: done.
         if [ -n "$pid" ] && rice_pids | grep -qx "$pid"; then
             "$RICE/bin/rice" bar apply      # one top bar: the island or Waybar
-            systemctl --user stop hypridle.service 2>/dev/null   # idle is the shell's (services/Idle)
             exit 0
         fi
         sleep 0.1
@@ -163,7 +163,6 @@ for attempt in 1 2 3; do
         owner=$(owner_pid)
         echo "rice-shell: running; notifications stay with pid ${owner:-?} ($(tr '\0' ' ' </proc/"${owner:-0}"/cmdline 2>/dev/null | cut -c1-80)) until it exits" >&2
         "$RICE/bin/rice" bar apply
-        systemctl --user stop hypridle.service 2>/dev/null
         exit 0
     fi
     echo "rice-shell: the shell didn't come up (attempt $attempt), retrying" >&2

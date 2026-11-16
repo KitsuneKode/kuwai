@@ -40,6 +40,7 @@ ShellRoot {
     // And after a crash Quickshell re-execs in place (same PID): the run
     // before it left its helpers running as our children. Stop those once.
     Component.onCompleted: {
+        console.info("kuwai-handoff", Quickshell.env("KUWAI_HANDOFF_ID") || "unknown", "shell-config-loaded");
         Quickshell.watchFiles = !Quickshell.shellDir.includes("/.local/share/kuwai/");
         reaper.running = true;
     }

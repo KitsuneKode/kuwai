@@ -318,7 +318,14 @@ Item {
     Connections {
         target: view.lock
         function onLeavingChanged() {
-            if (!view.lock.leaving) return;
+            if (!view.lock.leaving) {
+                outro.stop();
+                reveal.stop();
+                view.leave = 0;
+                view.tReveal = 0;
+                view.ask();
+                return;
+            }
             view.revealAt = avatar.mapToItem(view, avatar.width / 2, avatar.height / 2);
             outro.start();
             if (desk.status === Image.Ready) reveal.start();

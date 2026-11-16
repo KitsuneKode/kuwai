@@ -377,12 +377,8 @@ cmd_rescue() {
     systemctl --user restart rice-feeds.service && echo "  ✓ GitHub and Gmail notifications restarted"
     : > "$rt/auth-pending" 2>/dev/null
     "$ROOT/bin/rice-shell" >/dev/null 2>&1 && echo "  ✓ island shell restarted"
-    # Idle: the shell's own (services/Idle) unless settings hand it to hypridle.
-    if [ "$(jq -r '.idleOwner // "shell"' "${XDG_CONFIG_HOME:-$HOME/.config}/rice/settings.json" 2>/dev/null)" = hypridle ]; then
-        systemctl --user is-active --quiet hypridle.service || { systemctl --user start hypridle.service && echo "  ✓ idle (hypridle) started"; }
-    else
-        systemctl --user stop hypridle.service 2>/dev/null; echo "  ✓ idle is the shell's (lock, dim, sleep)"
-    fi
+    # services/Idle reconciles the requested owner after readiness; do not race it.
+    echo "  • idle ownership is reconciled by the shell (see Power & Idle for errors)"
     if [ "$(faillock --user "$USER" 2>/dev/null | grep -c ' V$')" -gt 0 ]; then echo "  • failed password tries recorded: kuwai auth reset-tries clears them"; fi
     echo "  then: kuwai doctor"
 }

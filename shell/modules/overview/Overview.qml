@@ -145,7 +145,7 @@ Scope {
                 return (ipc.make || m.name).split(" ")[0];
             }
             function windowsOf(wsId) {
-                return Hyprland.toplevels.values.filter(t => t.workspace && t.workspace.id === wsId && t.wayland);
+                return Hyprland.toplevels.values.filter(t => t.workspace && t.workspace.id === wsId);
             }
             // Typed: matching windows from every space on every screen.
             property string filter: ""
@@ -154,19 +154,33 @@ Scope {
                 if (!f) return windowsOf(viewWs);
                 const terms = f.split(/\s+/);
                 return Hyprland.toplevels.values.filter(t => {
-                    if (!t.wayland || !t.workspace || t.workspace.id <= 0) return false;
+                    if (!t.workspace || t.workspace.id <= 0) return false;
                     const ipc = t.lastIpcObject || {};
                     const hay = ((t.title || "") + " " + (ipc["class"] || "") + " " + (ipc.initialTitle || "")).toLowerCase();
                     return terms.every(x => hay.includes(x));
                 });
             }
             onFilterChanged: picked = 0
+            function addressOf(t) {
+                const raw = t && String(t.address || "").replace(/^0x/, "");
+                return raw && /^[0-9a-fA-F]+$/.test(raw) ? "0x" + raw : "";
+            }
+            function moveWindow(t, workspace) {
+                const address = addressOf(t);
+                if (!address || !Number.isInteger(workspace) || workspace < 1) return;
+                Hyprland.dispatch(`hl.dsp.window.move({window = 'address:${address}', workspace = ${workspace}, follow = false})`);
+                Qt.callLater(Hyprland.refreshToplevels);
+            }
             function focusWindow(t) {
+                const address = addressOf(t);
+                if (!address) return;
                 root.open = false;
-                Hyprland.dispatch(`hl.dsp.focus({window = 'address:0x${t.address}'})`);
+                Hyprland.dispatch(`hl.dsp.focus({window = 'address:${address}'})`);
             }
             function closeWindow(t) {
-                Hyprland.dispatch(`hl.dsp.window.close({window = 'address:0x${t.address}'})`);
+                const address = addressOf(t);
+                if (!address) return;
+                Hyprland.dispatch(`hl.dsp.window.close({window = 'address:${address}'})`);
                 Qt.callLater(Hyprland.refreshToplevels);
             }
             // Look at a space's windows here; nothing switches behind.
@@ -243,6 +257,7 @@ Scope {
                     else if (k === Qt.Key_Tab || k === Qt.Key_Backtab) win.cycle(k === Qt.Key_Backtab || (event.modifiers & Qt.ShiftModifier) ? -1 : 1);
                     else if (k === Qt.Key_PageDown || (ctrl && k === Qt.Key_Right)) win.stepSpace(1);
                     else if (k === Qt.Key_PageUp || (ctrl && k === Qt.Key_Left)) win.stepSpace(-1);
+                    else if (ctrl && (event.modifiers & Qt.ShiftModifier) && k >= Qt.Key_1 && k <= Qt.Key_9 && n > 0) { win.moveWindow(win.shown[win.picked], win.base + k - Qt.Key_0); }
                     else if (k >= Qt.Key_1 && k <= Qt.Key_9) { win.browse(win.base + (k - Qt.Key_0)); win.zone = "windows"; }
                     else if (k === Qt.Key_0) { win.browse(win.base + 10); win.zone = "windows"; }
                     else if (win.zone === "spaces") {
@@ -356,7 +371,7 @@ Scope {
                                 keys: ["kuwai-window"]
                                 onDropped: drop => {
                                     const t = drop.source && drop.source.toplevel;
-                                    if (t) Hyprland.dispatch(`hl.dsp.window.move({window = 'address:0x${t.address}', workspace = ${tile.modelData.id}, follow = false})`);
+                                    if (t) win.moveWindow(t, tile.modelData.id);
                                     Qt.callLater(Hyprland.refreshToplevels);
                                 }
                             }
@@ -380,7 +395,7 @@ Scope {
                             keys: ["kuwai-window"]
                             onDropped: drop => {
                                 const t = drop.source && drop.source.toplevel;
-                                if (t) Hyprland.dispatch(`hl.dsp.window.move({window = 'address:0x${t.address}', workspace = ${win.nextFree()}, follow = false})`);
+                                if (t) win.moveWindow(t, win.nextFree());
                             }
                         }
                     }

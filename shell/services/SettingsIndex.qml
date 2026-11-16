@@ -9,6 +9,7 @@ import Quickshell
 import Quickshell.Io
 import qs.config
 import "settingsSearch.js" as Find
+import "../config/settingsSchema.js" as Contract
 
 Singleton {
     id: root
@@ -30,13 +31,7 @@ Singleton {
     ]
     // The panel's page Components, in sections' order (SettingsPanel's Loader).
     readonly property var pages: ({ barPage: "bar", clockPage: "clock", notifPage: "notifs", assistantPage: "assistant", motionPage: "motion", keyboardPage: "keyboard", islandRestPage: "island", workspacesPage: "workspaces", powerPage: "power", saverPage: "saver", timePage: "time", clipboardPage: "clipboard", updatesPage: "updates", aboutPage: "about" })
-    // Every row of every page, read from the panel's own source (no page is
-    // built to be searched): [{ page, label, detail, group, words }].
-    property var rows: []
-    FileView {
-        path: Quickshell.shellDir + "/modules/island/SettingsPanel.qml"
-        onLoaded: root.rows = Find.parseRows(text(), root.pages)
-    }
+    readonly property var rows: Contract.rows(Settings.schema)
     // Rows and pages matching every word of q, best first:
     // [{ section, row: { label, detail, group } | null }] (the Settings search).
     function find(q, limit) { return Find.search(sections, rows, q, limit); }

@@ -33,7 +33,14 @@ Singleton {
     property bool dnd: false
     // Screen share / automation: mutes toasts without persisting Focus (saved dnd).
     property bool dndMute: false
-    readonly property bool muted: root.dnd || root.dndMute
+    property bool shareKnown: false
+    property int shareSyncTries: 0
+    readonly property bool muted: root.dnd || root.dndMute || !root.shareKnown
+    function requestShareState() {
+        root.shareSyncTries++;
+        Hyprland.dispatch("kuwai.privacy_resync()");
+    }
+    Timer { interval: 1000; repeat: true; running: !root.shareKnown && root.shareSyncTries < 5; onTriggered: root.requestShareState() }
     // Toasts beyond the visible three wait (hidden) behind the stack, as in
     // Sonner; this only bounds how many can pile up.
     readonly property int maxPopups: 8
@@ -73,7 +80,8 @@ Singleton {
     readonly property string bellBadge: inbox <= 0 ? "" : (inbox > 9 ? "9+" : String(inbox))
     readonly property color bellBadgeTone: missed.some(i => i.severity === "critical") ? Theme.critical
         : missed.length ? Theme.orange : Theme.accent
-    readonly property string bellTip: dnd ? "Focus on · notifications held"
+    readonly property string bellTip: !shareKnown ? "Screen-sharing state unconfirmed · previews held"
+        : dnd ? "Focus on · notifications held"
         : dndMute ? "Held while sharing"
         : inbox === 0 ? "Notifications · click · right-click list"
         : (inbox > 9 ? "9+ in center" : inbox === 1 ? "1 in center" : inbox + " in center") + " · click · right-click list"
@@ -252,7 +260,7 @@ Singleton {
     // "mail" is not a chat). Gmail and GitHub are previews you asked for.
     readonly property var sensitiveApps: /\b(zapzap|whatsapp|telegram|signal|discord|slack|element|messenger|beeper)\b/i
     // Sharing the screen: every body is private, even when opened.
-    readonly property bool sharing: dndMute
+    readonly property bool sharing: !shareKnown || dndMute
     // Sharing comes before urgency (review 2026-11-10, finding 04): a critical
     // message still arrives (its title, the island grows for it), but its body
     // is not in the capture. Outside a share, warnings and critical ones show.
@@ -785,7 +793,7 @@ Singleton {
         mkdir.running = true;
         // A share may already be running (this shell restarted mid-share): the
         // compositor knows, and mutes us again (hypr/kuwai/automation.lua).
-        Hyprland.dispatch("kuwai.privacy_resync()");
+        root.requestShareState();
         // Desktop entries are scanned lazily on first access; start the scan
         // now so the first notification can already find its app's icon.
         void DesktopEntries.applications.values.length;
@@ -849,6 +857,7 @@ Singleton {
         }
         function setDndMute(on: bool): void {
             root.dndMute = on;
+            root.shareKnown = true;
         }
         function isDnd(): bool {
             return root.muted;

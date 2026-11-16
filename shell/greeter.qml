@@ -34,9 +34,11 @@ ShellRoot {
     // What your session will show first: its wallpaper (greeter/sync copies it).
     readonly property string desktopWall: Quickshell.env("HOME") + "/.cache/hyde/wall.set"
     // The session, without the terminal in between: clear tty1 and hide its
-    // cursor, and send start-hyprland's own lines nowhere (they used to flash
-    // up as a raw terminal between the login screen and the desktop).
-    readonly property string session: Quickshell.env("KUWAI_SESSION") || "printf '\\033[2J\\033[3J\\033[H\\033[?25l'; exec start-hyprland >/dev/null 2>&1"
+    // cursor, and preserve startup diagnostics in the journal without
+    // flashing compositor output between the login screen and desktop.
+    readonly property string session: Quickshell.env("KUWAI_SESSION") || "exec '" + (Quickshell.shellDir + "/../session-start").replace(/'/g, "'\\''") + "'"
+    readonly property string handoffId: Date.now().toString(36) + "-" + Math.random().toString(36).slice(2)
+    function trace(phase) { console.info("kuwai-handoff", root.handoffId, phase); }
     readonly property string shot: Quickshell.env("KUWAI_GREETER_SHOT") || ""
     readonly property bool film: shot.indexOf("%d") >= 0
     readonly property string demo: Quickshell.env("KUWAI_GREETER_DEMO") || ""
@@ -55,9 +57,14 @@ ShellRoot {
         if (!Greetd.available) { fail("greetd isn't running"); return; }
         error = "";
         checking = true;
+        trace("auth-request");
         Greetd.createSession(user);
     }
     function fail(message) {
+        trace("failure");
+        handoff.stop();
+        locked = true;
+        leaving = false;
         checking = false;
         password = "";
         error = message;
@@ -89,6 +96,7 @@ ShellRoot {
         function onError(error) { root.fail("Couldn't log in (" + error + ")"); }
         function onReadyToLaunch() {
             root.password = "";
+            root.trace("authenticated");
             root.leaving = true;      // the views play their outro, into your wallpaper
             handoff.start();
         }
@@ -99,12 +107,13 @@ ShellRoot {
         id: handoff
         interval: 1100
         onTriggered: {
+            root.trace("launch-request");
             root.locked = false;
             // greetd joins these with spaces into `sh -c "…profile…; exec <them>"`,
             // so they're one shell line, quoted for that: separate argv words
             // (sh -c 'script' sh arg) fall apart into `sh -c exec`, which
             // ends the session at once, and greetd shows the login again.
-            Greetd.launch(['"${SHELL:-/bin/sh}"', "-l", "-c", "'" + root.session.replace(/'/g, "'\\''") + "'"], [], true);
+            Greetd.launch(['"${SHELL:-/bin/sh}"', "-l", "-c", "'" + root.session.replace(/'/g, "'\\''") + "'"], ["KUWAI_HANDOFF_ID=" + root.handoffId], true);
         }
     }
 

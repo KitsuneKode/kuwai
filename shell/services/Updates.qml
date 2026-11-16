@@ -147,7 +147,13 @@ Singleton {
     function setFlatpakOff(id, off) { const e = Object.assign({}, flatpakOff); if (off) e[id] = true; else delete e[id]; flatpakOff = e; }
     // Review in the background as soon as a check finds AUR changes, so the
     // panel (and the auto-approve setting) has answers before you open it.
-    onDataChanged: { for (const p of aur) if (aurState(p.name) === "review") review(p.name); }
+    property int reviewEpoch: 0
+    onDataChanged: {
+        root.reviewEpoch++;
+        root.reviews = ({});
+        root.reviewQueue = aur.filter(p => root.trusted.indexOf(p.name) < 0).map(p => p.name);
+        root.nextReview();
+    }
 
     function reviewOf(name) { return reviews[name] || null; }
     // Your saved approvals and trusted packages, at once on start (the
@@ -167,10 +173,11 @@ Singleton {
     }
     // "trusted" · "approved" · "routine" (looked at: only versions changed) · "review" · "loading"
     function aurState(name) {
+        if ((root.mutationCurrent && root.mutationCurrent.name === name) || root.mutationQueue.some(j => j.name === name)) return "loading";
         if (trusted.indexOf(name) >= 0) return "trusted";
         const r = reviews[name];
         if (r && approvedSha[name] && approvedSha[name] === r.head) return "approved";
-        if (!r && approvedSha[name]) return "approved";      // approved earlier; rice-update re-checks the commit
+        if (!r && approvedSha[name]) return "review";      // a fresh check must resolve this recipe again
         if (reviewing === name) return "loading";
         return "review";
     }
@@ -179,55 +186,90 @@ Singleton {
     function setExcluded(name, off) { const e = Object.assign({}, excluded); if (off) e[name] = true; else delete e[name]; excluded = e; }
 
     property var reviewQueue: []
-    function review(name) {
-        if (reviews[name] || reviewing === name || reviewQueue.indexOf(name) >= 0) return;
+    function review(name, refresh) {
+        if (reviewing === name || reviewQueue.indexOf(name) >= 0) return;
+        if (reviews[name] && !reviews[name].error && !refresh) return;
+        const remaining = Object.assign({}, reviews); delete remaining[name]; root.reviews = remaining;
         reviewQueue = [...reviewQueue, name];
         nextReview();
     }
     function nextReview() {
-        if (reviewing || !reviewQueue.length) return;
+        if (reviewing || reviewer.running || !reviewQueue.length) return;
         reviewing = reviewQueue[0];
         reviewQueue = reviewQueue.slice(1);
+        reviewer.epoch = root.reviewEpoch;
         reviewer.command = [bin, "review", reviewing];
         reviewer.running = true;
     }
-    Process {
-        id: reviewer
-        stdout: StdioCollector {
-            onStreamFinished: {
-                const name = root.reviewing;
-                const r = Object.assign({}, root.reviews);
-                try { r[name] = JSON.parse(text); } catch (e) { r[name] = { error: "Couldn't read the review" }; }
-                root.reviews = r;
-                // Settings → Updates: a change that only moves versions and
-                // checksums (nothing flagged, not new to you) is approved as read.
-                const rv = r[name];
-                // …and only for packages the AUR community has established
-                // (≥ 100 votes or popular, maintained, not flagged, a year old).
-                if (Settings.updatesAutoRoutine && rv && !rv.error && rv.routine && !rv.firstTime && !(rv.flags && rv.flags.length) && rv.head
-                        && rv.community && rv.community.established) {
-                    root.approve(name);
-                    root.autoApproved = [...root.autoApproved.filter(n => n !== name), name];
-                }
-                root.reviewing = "";
-                root.nextReview();
-            }
+    function acceptReview(payload, epoch) {
+        if (epoch !== root.reviewEpoch) return;
+        const name = root.reviewing;
+        const r = Object.assign({}, root.reviews);
+        try { r[name] = JSON.parse(payload); } catch (e) { r[name] = { error: "Couldn't read the review" }; }
+        root.reviews = r;
+        // Settings → Updates: a change that only moves versions and
+        // checksums (nothing flagged, not new to you) is approved as read.
+        const rv = r[name];
+        // …and only for packages the AUR community has established
+        // (≥ 100 votes or popular, maintained, not flagged, a year old).
+        if (Settings.updatesAutoRoutine && rv && !rv.error && rv.routine && !rv.firstTime && !(rv.flags && rv.flags.length) && rv.head
+                && rv.community && rv.community.established) {
+            root.approve(name, true);
         }
     }
-    function approve(name) {
+    Process {
+        id: reviewer
+        property int epoch: 0
+        stdout: StdioCollector { id: reviewOutput }
+        onExited: (code, status) => {
+            root.acceptReview(code === 0 ? reviewOutput.text : JSON.stringify({ error: "Review failed; retry when the package source is available." }), reviewer.epoch);
+            root.reviewing = "";
+            Qt.callLater(root.nextReview);
+        }
+    }
+    property var mutationQueue: []
+    property var mutationCurrent: null
+    property string mutationError: ""
+    function enqueueMutation(job) {
+        root.mutationQueue = [...root.mutationQueue, job];
+        nextMutation();
+    }
+    function nextMutation() {
+        if (mutator.running || root.mutationCurrent || !root.mutationQueue.length) return;
+        root.mutationCurrent = root.mutationQueue[0];
+        root.mutationQueue = root.mutationQueue.slice(1);
+        root.mutationError = "";
+        mutator.command = [bin, ...root.mutationCurrent.args];
+        mutator.running = true;
+    }
+    function finishMutation(code) {
+        const job = root.mutationCurrent;
+        if (!job) return;
+        if (code !== 0) root.mutationError = "Couldn't save " + job.name + ". Try again.";
+        else if (job.op === "approve") {
+            if (root.reviews[job.name] && root.reviews[job.name].head === job.sha) {
+                const a = Object.assign({}, root.approvedSha); a[job.name] = job.sha; root.approvedSha = a;
+                root.setExcluded(job.name, false);
+                if (job.automatic) root.autoApproved = [...root.autoApproved.filter(n => n !== job.name), job.name];
+            }
+        } else if (job.op === "unapprove") {
+            const a = Object.assign({}, root.approvedSha); delete a[job.name]; root.approvedSha = a;
+        } else if (job.op === "trust") {
+            root.trusted = job.on ? [...root.trusted.filter(n => n !== job.name), job.name] : root.trusted.filter(n => n !== job.name);
+        }
+        root.mutationCurrent = null;
+    }
+    Process {
+        id: mutator
+        onExited: (code, status) => { root.finishMutation(code); Qt.callLater(root.nextMutation); }
+    }
+    function approve(name, automatic) {
         const r = reviews[name];
-        if (!r || !r.head) return;
-        Quickshell.execDetached([bin, "approve", name, r.head]);
-        const a = Object.assign({}, approvedSha); a[name] = r.head; approvedSha = a;
-        setExcluded(name, false);
+        if (!r || !r.head || r.error) return;
+        enqueueMutation({ op: "approve", name: name, sha: r.head, automatic: !!automatic, args: ["approve", name, r.head] });
     }
-    function unapprove(name) {
-        const a = Object.assign({}, approvedSha); delete a[name]; approvedSha = a;
-    }
-    function setTrusted(name, on) {
-        Quickshell.execDetached([bin, "trust", name, on ? "on" : "off"]);
-        trusted = on ? [...trusted.filter(n => n !== name), name] : trusted.filter(n => n !== name);
-    }
+    function unapprove(name) { enqueueMutation({ op: "unapprove", name: name, args: ["unapprove", name] }); }
+    function setTrusted(name, on) { enqueueMutation({ op: "trust", name: name, on: on, args: ["trust", name, on ? "on" : "off"] }); }
 
     // ── The run ──────────────────────────────────────────────────────────
     readonly property var chosenAur: aur.filter(p => selected(p.name)).map(p => p.name)

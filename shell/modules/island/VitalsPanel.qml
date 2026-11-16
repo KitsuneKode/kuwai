@@ -22,16 +22,22 @@ import qs.services
 FocusScope {
     id: vitals
     focus: true
-    implicitWidth: machine.x + machine.width + agents.implicitWidth
-    implicitHeight: Math.max(machine.implicitHeight + 40, agents.implicitHeight)
+    readonly property bool compact: width < 760
+    implicitWidth: 762
+    implicitHeight: 540
 
     Component.onCompleted: SystemStats.watch()
     Component.onDestruction: SystemStats.unwatch()
 
+    Flickable {
+        anchors.fill: parent
+        clip: true
+        contentWidth: width
+        contentHeight: vitals.compact ? agents.y + agents.implicitHeight + 20 : Math.max(machine.y + machine.implicitHeight + 20, agents.implicitHeight)
     Column {
         id: machine
         x: 22; y: 20
-        width: 300
+        width: vitals.compact ? Math.max(0, vitals.width - 44) : 300
         spacing: 10
 
         Item {
@@ -90,11 +96,13 @@ FocusScope {
 
     UsagePanel {
         id: agents
-        x: machine.x + machine.width
-        width: implicitWidth
+        x: vitals.compact ? 22 : machine.x + machine.width
+        y: vitals.compact ? machine.y + machine.implicitHeight + 20 : 0
+        width: vitals.compact ? Math.max(0, vitals.width - 44) : Math.max(0, vitals.width - x - 22)
         height: implicitHeight
         focus: true
         // The list ends where the machine column does (it scrolls for more).
-        listMax: Math.max(260, machine.implicitHeight - listTop)
+        listMax: Math.max(80, vitals.height - listTop - 40)
+    }
     }
 }
