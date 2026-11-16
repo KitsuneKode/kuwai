@@ -152,8 +152,20 @@ FocusScope {
             relive.restart();
             return;
         }
-        applicator.command = mode === "themes" ? [bin, "theme", it.name, "--wait"] : [bin, "wallpaper", it.path, "--wait"];
-        applicator.running = true;
+        if (mode === "themes") {
+            applicator.environment = ({});
+            applicator.command = [bin, "theme", it.name, "--wait"];
+            applicator.running = true;
+            return;
+        }
+        // A wallpaper: the shell plays the change (services/WallFx: the new
+        // picture grows out of the island); awww's own transition is off.
+        const path = it.path;
+        WallFx.play(path, () => {
+            applicator.environment = ({ WALLPAPER_AWWW_TRANSITION_DEFAULT: "none" });
+            applicator.command = [bin, "wallpaper", path, "--wait"];
+            applicator.running = true;
+        });
     }
     property string applyError: ""
     Process {

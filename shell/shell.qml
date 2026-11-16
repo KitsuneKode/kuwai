@@ -34,6 +34,7 @@ ShellRoot {
     readonly property var crashWatcher: Crashes
     readonly property var wellbeing: Wellbeing   // breaks and bedtime (services/Wellbeing)
     readonly property var memDiary: MemLog       // ~/.local/state/rice/memlog.tsv every 10 min
+    readonly property var wallFx: WallFx         // wallpaper changes out of the island (its IPC: wallfx play PATH)
     // The stable copy (~/.local/share/kuwai) doesn't hot-reload: each reload
     // left ~25–30 MB behind, and `rice promote` restarts it cleanly anyway.
     // The dev tree keeps live reload for editing.

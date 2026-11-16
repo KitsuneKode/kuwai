@@ -187,6 +187,9 @@ layer({ name = "kuwai-saver", match = { namespace = "^kuwai-(screensaver|saver-f
 -- Live video. Outside rice-* so the glass blur rule cannot catch a
 -- full-screen frame. A later blur = false does not undo rice-glass.
 layer({ name = "kuwai-wallpaper", match = { namespace = "^kuwai-wallpaper$" }, no_anim = true })
+-- A wallpaper change (services/WallFx): the shell plays it on its own short
+-- layer; a compositor fade would show the hand-off. Outside rice-*: no blur.
+layer({ name = "kuwai-wallfx", match = { namespace = "^kuwai-wallfx$" }, no_anim = true })
 -- The password prompt never appears in a screen share, recording or screenshot.
 layer({ name = "rice-auth-private", match = { namespace = "^rice-auth$" }, no_screen_share = true })
 -- The center's scrim: deliberately outside rice-* so nothing blurs under it.
