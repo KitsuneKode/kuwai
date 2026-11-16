@@ -115,7 +115,7 @@ Item {
             width: Math.min(implicitWidth, glance.rightW - (art.visible ? 30 : 0))
             elide: Text.ElideRight
             text: glance.waiting ? glance.bar.waitingWho
-                : glance.playing ? (glance.player.trackTitle || glance.player.identity || "Playing")
+                : glance.playing ? (Media.title(glance.player) || glance.player.identity || "Playing")
                 : Notifs.dnd ? "Focus on"
                 : Notifs.missed.length ? (Notifs.missed.length === 1 ? "1 missed" : Notifs.missed.length + " missed")
                 : Notifs.inbox ? (Notifs.inbox === 1 ? "1 notification" : Notifs.inbox + " notifications")

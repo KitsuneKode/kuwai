@@ -269,8 +269,8 @@ Item {
         Column {
             anchors { left: art.right; leftMargin: 12; right: trail.left; rightMargin: 10; verticalCenter: parent.verticalCenter }
             spacing: 2
-            Label { width: parent.width; elide: Text.ElideRight; text: hover.player ? (hover.player.trackTitle || "Unknown") : ""; size: 14; weight: Theme.wSemibold }
-            Label { width: parent.width; elide: Text.ElideRight; text: hover.player ? (hover.player.trackArtist || hover.player.identity || "") : ""; size: 12; color: Theme.textTertiary }
+            Label { width: parent.width; elide: Text.ElideRight; text: hover.player ? (Media.title(hover.player) || "Unknown") : ""; size: 14; weight: Theme.wSemibold }
+            Label { width: parent.width; elide: Text.ElideRight; text: Media.byline(hover.player); size: 12; color: Theme.textTertiary }
         }
 
         // The waveform at rest; the controls once the pointer is on the card.

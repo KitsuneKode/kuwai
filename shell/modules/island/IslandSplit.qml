@@ -327,9 +327,9 @@ Item {
             ArtImage { anchors.fill: parent; source: split.player ? (split.player.trackArtUrl || "") : ""; px: 36 }
             HoverHandler { id: musicHover; cursorShape: Qt.PointingHandCursor }
             TapHandler { onTapped: Island.open("media", split.bar.screenName, "pointer", "island") }
-            Tip { text: (split.player ? (split.player.trackTitle || split.player.identity || "Playing") : "") + " · click for Now Playing"; shown: musicHover.hovered; below: true }
+            Tip { text: (split.player ? (Media.title(split.player) || split.player.identity || "Playing") : "") + " · click for Now Playing"; shown: musicHover.hovered; below: true }
             Accessible.role: Accessible.Button
-            Accessible.name: "Now playing: " + (split.player ? (split.player.trackTitle || split.player.identity || "music") : "music")
+            Accessible.name: "Now playing: " + (split.player ? (Media.title(split.player) || split.player.identity || "music") : "music")
             Accessible.onPressAction: Island.open("media", split.bar.screenName, "pointer", "island")
         }
     }

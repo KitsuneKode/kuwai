@@ -253,8 +253,8 @@ Item {
         Column {
             anchors { left: art.right; leftMargin: 12; right: controls.left; rightMargin: 8; top: art.top; topMargin: 6 }
             spacing: 3
-            Label { width: parent.width; elide: Text.ElideRight; text: np.player ? (np.player.trackTitle || "Unknown track") : ""; size: 14; weight: Theme.wSemibold }
-            Label { width: parent.width; elide: Text.ElideRight; text: np.player ? (np.player.trackArtist || np.player.identity || "") : ""; size: 12; color: Theme.textSecondary }
+            Label { width: parent.width; elide: Text.ElideRight; text: np.player ? (Media.title(np.player) || "Unknown track") : ""; size: 14; weight: Theme.wSemibold }
+            Label { width: parent.width; elide: Text.ElideRight; text: Media.byline(np.player); size: 12; color: Theme.textSecondary }
             Label { width: parent.width; elide: Text.ElideRight; text: np.player ? (np.player.identity || "") : ""; size: 11; color: Theme.textTertiary }
         }
         Row {

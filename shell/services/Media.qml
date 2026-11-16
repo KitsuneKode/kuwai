@@ -18,6 +18,7 @@ import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Services.Mpris
 import qs.config
+import "mediaText.js" as MediaText
 
 Singleton {
     id: root
@@ -26,6 +27,12 @@ Singleton {
     // like T3 Code register an empty player that read "Unknown".)
     readonly property var players: Mpris.players.values.filter(p => (p.trackTitle || "").trim() !== "" || p.playbackState === MprisPlaybackState.Playing)
     property var active: null
+    // What a track is called and where it plays, for people (mediaText.js):
+    // browsers hand over page titles ("Watch … - JioHotstar") and their own
+    // name ("Mozilla zen"); the site is the useful second line.
+    function pageUrl(p) { const m = p && p.metadata ? p.metadata : null; const u = m ? String(m["xesam:url"] || "") : ""; return /^https?:\/\//.test(u) ? u : ""; }
+    function title(p) { return p ? MediaText.cleanTitle(p.trackTitle, pageUrl(p)) : ""; }
+    function byline(p) { return p ? MediaText.subtitle(p.trackArtist, pageUrl(p), p.identity) : ""; }
     readonly property bool playing: !!active && active.playbackState === MprisPlaybackState.Playing
 
     // A browser's player (a tab: YouTube, a course video) often keeps saying

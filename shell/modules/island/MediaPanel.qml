@@ -118,10 +118,10 @@ FocusScope {
             id: titles
             anchors { left: art.right; leftMargin: 14; right: ctx.visible ? ctx.left : wave.left; rightMargin: 12; verticalCenter: art.verticalCenter }
             spacing: 3
-            Label { width: parent.width; elide: Text.ElideRight; text: np.p ? (np.p.trackTitle || "Unknown") : ""; size: Theme.tHeadline; weight: Theme.wSemibold }
+            Label { width: parent.width; elide: Text.ElideRight; text: np.p ? (Media.title(np.p) || "Unknown") : ""; size: Theme.tHeadline; weight: Theme.wSemibold }
             Label {
                 width: parent.width; elide: Text.ElideRight
-                text: np.note !== "" ? np.note : np.p ? [np.p.trackArtist, np.p.identity].filter(x => x).join(" · ") : ""
+                text: np.note !== "" ? np.note : np.p ? [np.p.trackArtist || Media.byline(np.p), np.p.trackArtist ? np.p.identity : ""].filter(x => x).join(" · ") : ""
                 size: 13; color: np.note !== "" ? np.tint : Theme.textSecondary
                 Behavior on color { ColorAnimation { duration: Theme.colorMs } }
             }
