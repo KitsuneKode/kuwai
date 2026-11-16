@@ -360,7 +360,12 @@ Singleton {
     // Quick Look, Mission Control): one motion everywhere, critically damped
     // (no wobble), ~0.33 s to grow, a touch firmer to fold back. From the
     // keyboard the same curve, a little quicker (~0.24 s), never a snap.
-    readonly property var surfaceIn: ({ stiffness: 300, damping: 34.6 })
+    // 2026-11-17: growing has a touch of give (ζ 0.8, ~1.5 % past the target,
+    // then settles), the way the Dynamic Island lands (Apple; Clove: response
+    // 0.42 / damping 0.78 to grow, critically damped to shrink; Emil: springs
+    // for "alive" elements, bounce ≤ 0.3). Folding back, and anything the
+    // keyboard opened, stays critically damped: it's getting out of the way.
+    readonly property var surfaceIn: ({ stiffness: 300, damping: 27.7 })
     readonly property var surfaceOut: ({ stiffness: 380, damping: 39 })
     readonly property var surfaceKeyIn: ({ stiffness: 560, damping: 47.3 })
     readonly property var surfaceKeyOut: ({ stiffness: 640, damping: 50.6 })

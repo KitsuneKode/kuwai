@@ -52,7 +52,10 @@ Scope {
             readonly property int restH: 34
             readonly property real restW: restRow.implicitWidth + 32
             readonly property int top: notch ? 0 : 6
-            readonly property real ear: notch ? 9 : 0
+            // The ears grow with the island (9 at rest → 14 open, on the
+            // corners' own ramp), so a big panel flares out of the edge instead
+            // of hanging from two small hooks. (Clove: shoulders 6 → open.)
+            readonly property real ear: notch ? 9 + 5 * Math.max(0, Math.min(1, (frame.height - restH) / 24)) : 0
 
             readonly property bool showBar: Settings.bar === "island"
             // Tucked (Settings.islandTucked): no reserved strip; out only while
