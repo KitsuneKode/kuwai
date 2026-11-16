@@ -381,3 +381,16 @@ animations.dev island lesson: idle/ring/timer/record/music/airdrop states).
    0.7 → 1, bounce 0.2, 80 ms late) — kuwai's split capsules, tightened to that rule.
 7. **Linked chart ↔ legend hover** in System and Usage; one big number on top.
 8. Then theme (kuwai Night), kittymux ask-mode hooks, install/docs.
+
+### 18 — status, 2026-11-17 01:00 (all on feat/assistant-agent, stable = 8636ccd)
+1–3 done (shape, spring, sections). 4 done: capsule swap (snapshot out 110 ms,
+new in from 0.97 through a blur, width springs) and the notch's own activities
+reveal the same way. 5: Skiper's set already existed (dictation, recording,
+timer, update, song, music; an alarm ringing is a card); "sent to phone" needs
+kdeconnect-cli (not installed). 6 done (icons arrive after their capsule
+opens, from 70 %). 7 done for memory (LinkedBar in System). 8: Kuwai Night
+built and applied; Allow/Deny through mux-ask built and tested end to end
+(installing the hooks into ~/.claude*, ~/.codex is the owner's step: the
+session's permission check refused to edit agent settings); README updated;
+stable promoted after every gate passed. Not done: a clean-VM install, the
+font question (kept SF Pro), "sent to phone".
