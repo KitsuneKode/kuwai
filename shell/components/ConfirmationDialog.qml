@@ -11,7 +11,8 @@ Dialog {
     modal: true
     focus: true
     standardButtons: Dialog.Cancel | Dialog.Ok
-    contentItem: Label { text: dialog.message; wrapMode: Text.WordWrap; implicitWidth: 300 }
+    width: 340                         // Text's implicitWidth is read-only on Qt 6.12: size the dialog, the label wraps to it
+    contentItem: Label { text: dialog.message; wrapMode: Text.WordWrap }
     onOpened: {
         standardButton(Dialog.Ok).text = confirmLabel;
         standardButton(Dialog.Cancel).forceActiveFocus();
