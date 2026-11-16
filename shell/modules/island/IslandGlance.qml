@@ -8,9 +8,9 @@
 //
 // Where you are, when (in the same place as the full view's time chip, so the
 // clock holds still while the island grows around it), and what's playing or
-// waiting (an agent asking you comes first, and goes to it). Three doors: the time opens the calendar (as everywhere), what's
-// playing or waiting opens Now Playing or the notifications list, and the
-// rest of the row opens everything.
+// waiting (an agent asking you comes first, and goes to it). Two doors: what's
+// playing or waiting opens Now Playing or the notifications list; the rest of
+// the row, the time included, opens everything.
 import QtQuick
 import Quickshell
 import Quickshell.Widgets
@@ -133,9 +133,11 @@ Item {
         }
     }
 
-    // The time is the calendar's door wherever it shows (at rest, here, in
-    // the full view), and the clock travels into it; the rest of the row
-    // opens everything.
+    // The centre is the biggest target, so it does the most common thing: the
+    // time (and the rest of the row) opens everything. The calendar is the
+    // full view's time chip, one click on, and the clock still travels into it
+    // (2026-11-16: the centre used to open the calendar, and everything else
+    // meant a trip to the sides). What's playing or waiting stays its own door.
     HoverHandler { cursorShape: Qt.PointingHandCursor }
     // Pull it down for everything (or up to put it away): the island follows
     // the pointer and the release decides on distance or speed (IslandBar).
@@ -154,8 +156,7 @@ Item {
         onTapped: eventPoint => {
             const p = when.mapFromItem(glance, eventPoint.position.x, eventPoint.position.y);
             if (p.x >= -6 && p.x <= when.width + 6 && p.y >= -8 && p.y <= when.height + 8) {
-                glance.bar.clockFrom(glanceClock);
-                Island.open("calendar", glance.bar.screenName, "pointer", "island");
+                glance.bar.full = true;
             } else {
                 // What's playing or waiting is its own door too: Now Playing,
                 // or the notifications list (C there opens the center).

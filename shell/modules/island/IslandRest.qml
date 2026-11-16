@@ -487,7 +487,9 @@ Item {
         Behavior on x { NumberAnimation { duration: Theme.reflowMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
         anchors.verticalCenter: parent.verticalCenter
         HoverHandler { cursorShape: Qt.PointingHandCursor }
-        TapHandler { onTapped: { rest.bar.clockFrom(clock); Island.toggle("calendar", rest.bar.screenName, "pointer", "island"); } }
+        // The centre opens everything (the calendar is its time chip); a click
+        // that beats the hover delay lands here, so it does the same as the glance.
+        TapHandler { onTapped: { rest.bar.full = true; rest.bar.grown = true; } }
     }
     // Mini notch, an event soon: "19:35 · Standup · 25m".
     Label {
