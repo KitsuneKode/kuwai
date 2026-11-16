@@ -359,3 +359,25 @@ Read its site and its 14.6 s demo video (frames at 2 fps).
    win that demos well.
 8. **Quiet when closed**: a closed notch scans, polls and animates nothing.
    kuwai mostly does this; the Usage watcher and some per-second probes don't.
+
+## 18. Notch shape, motion and pills — order (2026-11-17)
+Sources: Clove's NotchShape/NotchView/NotchModel (MIT, read in full), its demo
+video; Skiper's "Dynamic island" (Pro-gated: no code read; it follows Emil's
+animations.dev island lesson: idle/ring/timer/record/music/airdrop states).
+1. **Shape** (done): continuous ear flares that grow 9 → 14 px with the island;
+   bottom corners already continuous 14 → 30 (Clove 12 → 26).
+2. **Spring** (done): grow ζ 0.8 (~1.5 % give), shrink and keyboard critically damped.
+3. **Sections** (done): Agents / Usage / System / Cleanup switch in place, ⌥1–4.
+4. **Content swap inside a pill** (next): when a live pill changes state (timer →
+   done, dictation → writing, agent working → waiting), the old content leaves
+   in 80 ms (opacity) and the new arrives 60 ms later with opacity + scale 0.97 from
+   the top and a 2 px blur that clears — one container, the shape springs once
+   (Clove's contentReveal; Emil's popLayout + blur). Today they cross-fade in place.
+5. **Pill states** (Skiper's set, kuwai's way): ring (call/alarm), timer counting
+   on the side, recording (red dot + time), dictation (exists), music (exists),
+   AirDrop-like send = KDE Connect "sent to phone" with a progress ring.
+6. **Ears as live slots** (Clove's LiveEars): the resting notch shows one icon per
+   side only while something works, the icon arriving after the ear opens (scale
+   0.7 → 1, bounce 0.2, 80 ms late) — kuwai's split capsules, tightened to that rule.
+7. **Linked chart ↔ legend hover** in System and Usage; one big number on top.
+8. Then theme (kuwai Night), kittymux ask-mode hooks, install/docs.
