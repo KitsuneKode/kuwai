@@ -21,9 +21,11 @@
 pragma Singleton
 
 import QtQuick
+import Qt.labs.folderlistmodel
 import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
+import qs.config
 
 Singleton {
     id: root
@@ -345,16 +347,78 @@ Singleton {
     property var answers: ({})
     readonly property bool answerDry: Quickshell.env("KUWAI_ANSWER_DRYRUN") === "1"
     function canAnswer(r) {
+        if (r && r.key && asks[r.key]) return true;             // the agent asked us itself (kittymux's mux-ask hook)
         return !!r && !!r.key && r.needs === true && /^(claude|codex)$/.test(String(r.agent || "").toLowerCase()) && String(r.question || "").trim() !== "";
     }
+
+    // ── Asked through the hook (kittymux bin/mux-ask) ───────────────────
+    // Claude Code / Codex run a PermissionRequest hook before they show their
+    // prompt; kittymux's publishes asks/<pane key>.json and waits for
+    // asks/<pane key>.answer. Answering writes that file: the agent gets the
+    // decision from its own hook, nothing is typed, nothing is read off the
+    // screen. Without a request file, Allow/Deny falls back to `kittymux answer`.
+    readonly property string asksDir: (Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")) + "/kittymux/asks"
+    property var asks: ({})                     // pane key → { what, tool, agent, until }
+    // The folder is watched only if it exists when the watch starts: make it
+    // first (private: the requests name commands), then watch.
+    property bool asksReady: false
+    Process {
+        running: true
+        command: ["sh", "-c", "mkdir -p \"$1\" && chmod 700 \"$1\"", "sh", root.asksDir]
+        onExited: root.asksReady = true
+    }
+    // And while an agent waits, look again now and then (a watch can miss).
+    Timer {
+        interval: Theme.panelPollMs / 3; repeat: true
+        running: root.running.some(r => r.needs)
+        onTriggered: askRead.running = true
+    }
+    FolderListModel {
+        folder: root.asksReady ? "file://" + root.asksDir : ""
+        nameFilters: ["*.json"]
+        showDirs: false
+        onCountChanged: askRead.running = true
+        onStatusChanged: if (status === FolderListModel.Ready) askRead.running = true
+    }
+    Process {
+        id: askRead
+        command: ["sh", "-c", "set -- \"$1\"/*.json; [ -e \"$1\" ] && jq -cs . \"$@\" 2>/dev/null || echo []", "sh", root.asksDir]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const m = {};
+                try { for (const a of JSON.parse(text)) if (a && a.key && (!a.until || a.until * 1000 > Date.now())) m[a.key] = a; } catch (e) {}
+                root.asks = m;
+            }
+        }
+    }
+    function askFor(r) { return r && r.key ? asks[r.key] || null : null; }
     function setAnswer(key, v) { const a = Object.assign({}, answers); if (v) a[key] = v; else delete a[key]; answers = a; }
     function answer(r, choice) {
         if (!canAnswer(r) || (choice !== "allow" && choice !== "deny")) return;
         if (answers[r.key] && answers[r.key].busy) return;
         setAnswer(r.key, { busy: true, done: "", why: "" });
+        if (asks[r.key] && !answerDry) {
+            // The hook waits for this file; written atomically, readable only by you.
+            replier.createObject(root, { key: r.key, choice: choice, command: ["sh", "-c",
+                "umask 077; printf %s \"$2\" > \"$1.tmp\" && mv -f \"$1.tmp\" \"$1\"", "sh", asksDir + "/" + r.key + ".answer", choice] }).running = true;
+            return;
+        }
         const cmd = [bin, "answer", r.key, choice, "--expect", r.question];
         if (answerDry) cmd.push("--dry-run");
         answerer.createObject(root, { command: cmd, key: r.key, choice: choice }).running = true;
+    }
+    Component {
+        id: replier
+        Process {
+            property string key
+            property string choice
+            onExited: code => {
+                root.setAnswer(key, code === 0 ? { busy: false, done: choice, why: "" } : { busy: false, done: "", why: "Couldn't hand the answer to the hook" });
+                answerClear.restart();
+                destroy();
+                refresh.restart();
+            }
+        }
     }
     Component {
         id: answerer
