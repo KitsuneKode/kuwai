@@ -222,7 +222,11 @@ Singleton {
 
     Process {
         id: reader
-        command: ["setpriv", "--pdeathsig", "KILL", "--", root.bin, "--watch"]
+        // Under bun when it's there (~4 MB of its own against node's 11–29 MB,
+        // measured; the same script, the token still read from its 0600 file
+        // and sent only as a header), node otherwise.
+        command: ["setpriv", "--pdeathsig", "KILL", "--", "sh", "-c",
+                  'command -v bun >/dev/null 2>&1 && exec bun "$1" --watch; exec node "$1" --watch', "rice-usage", root.bin]
         property real since: 0
         onStarted: { root.alive = true; since = Date.now(); }
         onExited: {

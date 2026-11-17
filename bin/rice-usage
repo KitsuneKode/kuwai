@@ -21,7 +21,11 @@
 //                        T3 Code it rereads kittymux's file once a minute
 //
 // Read-only throughout: the token can only read (orchestration:read), and
-// nothing here writes to T3 Code or kittymux.
+// nothing here writes to T3 Code or kittymux. The token is read from its
+// 0600 file and sent only as the socket's Authorization header (never in
+// the URL, argv or the environment). The shell runs this under bun when it's
+// installed (services/Limits.qml: ~4 MB private against node's 11–29 MB);
+// it runs unchanged under node.
 //
 // Each line is one JSON object:
 //   { source, checkedAt, providers: [{ driver, label, color,
