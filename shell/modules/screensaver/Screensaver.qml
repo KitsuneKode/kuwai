@@ -32,7 +32,12 @@ Scope {
     // "true", and the screensaver never came again (nor `kuwai screensaver`).
     readonly property bool fullscreenAnywhere: Hyprland.workspaces.values.some(w => w.hasFullscreen
         && Hyprland.monitors.values.some(m => m.activeWorkspace === w))
-    readonly property bool showing: (forced || (allowed && idle.isIdle)) && !fullscreenAnywhere
+    // Put away by hand (`kuwai screensaver stop`, a key or the pointer on it)
+    // while the session is still idle: it stays away until you have been back.
+    // Without this, stop only ended a saver that start had forced; one that
+    // idleness brought up came straight back, because nothing had been typed.
+    property bool dismissed: false
+    readonly property bool showing: (forced || (allowed && idle.isIdle && !dismissed)) && !fullscreenAnywhere
 
     IdleMonitor {
         id: idle
@@ -42,7 +47,7 @@ Scope {
         timeout: Math.max(1, Settings.screensaverMins || 3) * 60
         // Caffeine is an inhibitor of our own: idle still counts here.
         respectInhibitors: false
-        onIsIdleChanged: if (!isIdle) root.forced = false
+        onIsIdleChanged: if (!isIdle) { root.forced = false; root.dismissed = false; }
     }
 
     // What to play: the live wallpaper's pick, else the still wallpaper.
@@ -128,12 +133,12 @@ Scope {
         Quickshell.execDetached(["pkill", "-9", "-f", "^qs -p .*/shell-saver$"]);
     }
 
-    function dismiss() { forced = false; }
+    function dismiss() { forced = false; dismissed = true; }
     IpcHandler {
         target: "screensaver"
         // (Not show/hide: `qs ipc … show` is the CLI's own "list functions".)
         function start(): void { root.forced = true; }
-        function stop(): void { root.forced = false; }
+        function stop(): void { root.dismiss(); }
     }
 
     property real level: showing ? 1 : 0
@@ -172,10 +177,36 @@ Scope {
                     readonly property bool stillHere: root.style === "still"
                     // Night and Live: the film on every screen (the saver process).
                     readonly property bool night: root.style === "night" && !root.clipFailed
+                    // The drawn scenes are ambient: clouds that cross the sky in
+                    // minutes, stars, petals. Drawn at the screen's own rate they
+                    // cost a third of a core for as long as you were away (33–36 %
+                    // measured on a 200 Hz and a 165 Hz screen, all night under
+                    // Caffeine). So the scene itself is never put on screen: a
+                    // picture of it is, taken fifteen times a second. Its
+                    // animations run as before; only how often they are drawn
+                    // changes. Reduced motion: one picture, then nothing.
                     Loader {
+                        id: sceneLoader
                         anchors.fill: parent
                         active: !stage.filmHere && !stage.stillHere && !stage.night
                         sourceComponent: root.style === "borealis" ? borealisC : duskC
+                        onLoaded: sceneFrame.scheduleUpdate()
+                        onWidthChanged: sceneFrame.scheduleUpdate()
+                        onHeightChanged: sceneFrame.scheduleUpdate()
+                    }
+                    ShaderEffectSource {
+                        id: sceneFrame
+                        anchors.fill: parent
+                        visible: sceneLoader.active
+                        sourceItem: sceneLoader
+                        hideSource: true
+                        live: false
+                        readonly property int frameMs: 66
+                        Timer {
+                            interval: sceneFrame.frameMs; repeat: true
+                            running: root.showing && sceneLoader.active && !Theme.reduceMotion
+                            onTriggered: sceneFrame.scheduleUpdate()
+                        }
                     }
                     Component { id: duskC; DuskScene { running: root.showing } }
                     Component { id: borealisC; BorealisScene { running: root.showing } }
