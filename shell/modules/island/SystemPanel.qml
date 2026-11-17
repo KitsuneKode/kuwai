@@ -69,9 +69,11 @@ FocusScope {
     // 640, the screen less 24), less its 40 of margin and the 34 of the
     // section strip above the panel. What's left after the header, the CPU
     // card and the switches is the readings' room.
+    readonly property bool hasNvidia: SystemStats.gpuState !== ""
+    readonly property bool hasIntel: SystemStats.igpuMax > 0
     readonly property real ceiling: Math.min(640, (Screen.height > 0 ? Screen.height : 1080) - 24) - 40 - 34
     readonly property real room: Math.max(120, ceiling - 40 - head.height - cpuCard.height - tiles.height
-        - (upd.visible ? upd.height + col.spacing : 0) - col.spacing * 3)
+        - (SystemStats.updates > 0 ? upd.height + col.spacing : 0) - col.spacing * 3)
 
     Column {
         id: col
@@ -193,11 +195,14 @@ FocusScope {
         Row {
             width: parent.width
             spacing: col.spacing
-            visible: nvidia.visible || intel.visible
+            // From the readings, not from the cards' own `visible`: an item
+            // inside a hidden row reports false, so the row asking its cards
+            // never showed (both GPU cards vanished, seen 2026-11-17).
+            visible: sys.hasNvidia || sys.hasIntel
         Card {
             id: nvidia
-            width: intel.visible ? (parent.width - parent.spacing) / 2 : parent.width
-            visible: SystemStats.gpuState !== ""
+            width: sys.hasIntel ? (parent.width - parent.spacing) / 2 : parent.width
+            visible: sys.hasNvidia
             Meter {
                 title: "NVIDIA GPU" + (SystemStats.gpuTemp ? "  ·  " + SystemStats.gpuTemp + "°" : "") + (SystemStats.gpuPower ? "  ·  " + Math.round(SystemStats.gpuPower) + " W" : "")
                 value: SystemStats.gpuState === "suspended" ? 0 : SystemStats.gpu
@@ -210,8 +215,8 @@ FocusScope {
         // The Intel GPU (it drives the laptop screen; no busy % is exposed, so its clock stands in).
         Card {
             id: intel
-            width: nvidia.visible ? (parent.width - parent.spacing) / 2 : parent.width
-            visible: SystemStats.igpuMax > 0
+            width: sys.hasNvidia ? (parent.width - parent.spacing) / 2 : parent.width
+            visible: sys.hasIntel
             Meter {
                 title: "Intel GPU (integrated)"
                 value: SystemStats.igpuMax ? SystemStats.igpuMHz / SystemStats.igpuMax : 0
