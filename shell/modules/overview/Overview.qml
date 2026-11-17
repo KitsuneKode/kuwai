@@ -387,7 +387,7 @@ Scope {
                             width: parent.width
                             height: strip.tileH
                             radius: 10
-                            Label { anchors.centerIn: parent; text: "+"; size: 22; color: Theme.textSecondary }
+                            Label { anchors.centerIn: parent; text: "+"; size: Theme.glyphL; color: Theme.textSecondary }
                         }
                         MouseArea { anchors.fill: plus; onClicked: win.goSpace(win.nextFree()) }
                         DropArea {

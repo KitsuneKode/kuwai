@@ -782,7 +782,7 @@ Scope {
                     visible: !artPic.visible
                     text: root.glyph
                     font.family: Theme.fontGlyph
-                    font.pixelSize: 22
+                    font.pixelSize: Theme.glyphL
                     color: root.muted ? Theme.textDim : Theme.textPrimary
                 }
             }
@@ -956,7 +956,7 @@ Scope {
         // Rubber band at the boundary: "responsive, but there's nothing more".
         SequentialAnimation {
             id: rubber
-            NumberAnimation { target: trackScale; property: "xScale"; to: 1.035; duration: 90; easing.type: Easing.OutQuad }
+            NumberAnimation { target: trackScale; property: "xScale"; to: 1.035; duration: Theme.kickMs; easing.type: Easing.OutQuad }
             NumberAnimation { target: trackScale; property: "xScale"; to: 1.0; duration: Theme.enterMs; easing.type: Easing.OutCubic }
         }
     }

@@ -126,7 +126,7 @@ Scope {
                     anchors.fill: parent
                     fillMode: VideoOutput.PreserveAspectCrop
                     opacity: root.video !== "" && player.hasVideo && player.playbackState !== MediaPlayer.StoppedState ? 1 : 0
-                    Behavior on opacity { NumberAnimation { duration: 600; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+                    Behavior on opacity { NumberAnimation { duration: Theme.ambientFadeMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                 }
                 MediaPlayer {
                     id: player

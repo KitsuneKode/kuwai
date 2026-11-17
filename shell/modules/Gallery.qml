@@ -24,7 +24,7 @@ PanelWindow {
     Rectangle {
         anchors.fill: parent
         radius: Theme.r4
-        color: "#1c1c1f"
+        color: Theme.glassSolid
         border.width: 1; border.color: Theme.cardEdge
     }
     Column {

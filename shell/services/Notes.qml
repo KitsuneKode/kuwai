@@ -8,6 +8,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.config
 
 Singleton {
     id: root
@@ -23,7 +24,7 @@ Singleton {
         const stamp = Qt.formatDateTime(new Date(), "yyyy-MM-dd HH:mm");
         Quickshell.execDetached(["sh", "-c", 'mkdir -p "$(dirname "$1")" && printf -- "- %s · %s\\n" "$3" "$2" >> "$1"', "sh", root.file, t, stamp]);
         added++;
-        Moments.show({ kind: "note", glyph: "\u{f0219}", label: "Noted", value: "", ring: -1, tone: "#ffffff" }, 1400);
+        Moments.show({ kind: "note", glyph: "\u{f0219}", label: "Noted", value: "", ring: -1, tone: Theme.textPrimary }, 1400);
         return true;
     }
     function open() { Quickshell.execDetached(["sh", "-c", 'mkdir -p "$(dirname "$1")" && touch "$1" && xdg-open "$1"', "sh", root.file]); }
