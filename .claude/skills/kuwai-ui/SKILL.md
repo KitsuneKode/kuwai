@@ -140,3 +140,26 @@ reserve space during fullscreen (the film would reflow).
    module and component".
 3. Look at it: `grim -g "x,y wxh"` of the notch; the hover view needs a real pointer.
 4. Say what you could not see.
+
+## 9. Traps learned 2026-11-17 (each one shipped or nearly shipped)
+- **Never name a property `data`** on an Item/FocusScope: it is every Item's children list; assigning
+  JSON to it emptied a whole panel (CleanupPanel). Use `report`, `model`, `info`.
+- **`implicitWidth` on a Text/Label is read-only on Qt 6.12**: assigning it is a load error. Size the
+  container instead.
+- **`MultiEffect` needs `import QtQuick.Effects`**; `Process` needs `import Quickshell.Io`. A missing
+  import fails the *reload*; Quickshell keeps the old shell running, so the bug can look like "nothing
+  changed". Read `qs log -p ~/Projects/rice/shell | grep -E "Failed to load|caused by"` after every save.
+- **`bin/rice-loadtest` does not catch lazily compiled type errors** (it passed a commit that failed to
+  load live). `rice-check`'s compile sweep (`qs ipc … call test compile FILE` per file) does; rely on it.
+  A file outside the running shell's tree can't be compiled that way (same-folder types don't resolve).
+- **A live `ShaderEffectSource` re-renders its source every frame the source changes**: over an
+  animating capsule (a spinner) it doubled the rendering and took idle CPU to 7 %. Snapshot with
+  `live: false` + `scheduleUpdate()` on a slow timer, or only at the moment you need it.
+- **Springs:** `Theme.surfaceIn` now has a touch of give (ζ 0.8, ~1.5 % past 1). Anything multiplying a
+  spring's value into opacity or scale must tolerate > 1 (clamp opacity; scale 1.015 is fine).
+- **A state swap shows one frame of the new content** if the reset happens in an animation's first tick:
+  set the start value synchronously in the change handler, then start the animation.
+- **Theme switches go through HyDE**, which restarts Waybar afterwards; `rice-themes` re-applies the bar
+  (`rice bar apply`) after 3 s and 10 s. Any new path that switches a theme must do the same.
+- **The user's session state is theirs**: no pointer moves, no typed text, no keyboard-taking panels, and
+  no media control (`playerctl`) to reach a test state. Use the test hooks (verify-kuwai skill).
