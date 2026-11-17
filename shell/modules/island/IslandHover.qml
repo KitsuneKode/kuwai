@@ -219,7 +219,7 @@ Item {
                 Text {
                     textFormat: Text.PlainText
                     anchors.verticalCenter: parent.verticalCenter
-                    text: Weather.glyph; font.family: Theme.fontGlyph; font.pixelSize: 17
+                    text: Weather.glyph; font.family: Theme.fontGlyph; font.pixelSize: Theme.glyphS
                     color: Theme.textSecondary
                 }
                 Label {
@@ -509,12 +509,12 @@ Item {
                 Behavior on opacity { NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                 Behavior on y { NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                 StatRing {
-                    value: SystemStats.cpu; label: "CPU"; size: 40
+                    value: SystemStats.cpu; label: "CPU"; size: Theme.statRingSize
                     HoverHandler { id: h1 }
                     Tip { text: SystemStats.cores.length + " threads · load " + (SystemStats.load.split(" ")[0] || "–"); shown: h1.hovered }
                 }
                 StatRing {
-                    value: SystemStats.mem; label: "Memory"; size: 40
+                    value: SystemStats.mem; label: "Memory"; size: Theme.statRingSize
                     HoverHandler { id: h2 }
                     Tip { text: SystemStats.bytes(SystemStats.memUsed) + " of " + SystemStats.bytes(SystemStats.memTotal) + (SystemStats.swapUsed > 1073741824 ? " · swap " + SystemStats.bytes(SystemStats.swapUsed) : ""); shown: h2.hovered }
                 }
@@ -529,13 +529,13 @@ Item {
                 Behavior on opacity { NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                 Behavior on y { NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                 StatRing {
-                    value: SystemStats.gpu; label: "GPU"; size: 40
+                    value: SystemStats.gpu; label: "GPU"; size: Theme.statRingSize
                     text: SystemStats.gpuState === "suspended" ? "off" : Math.round(SystemStats.gpu * 100) + "%"
                     HoverHandler { id: h3 }
                     Tip { text: SystemStats.gpuState === "suspended" ? "NVIDIA asleep · Intel drives the screens" : "NVIDIA " + SystemStats.gpuTemp + "° · " + Math.round(SystemStats.gpuPower) + " W · Intel " + SystemStats.igpuMHz + " MHz"; shown: h3.hovered }
                 }
                 StatRing {
-                    value: Math.min(1, SystemStats.cpuTemp / 100); label: "Temp"; size: 40
+                    value: Math.min(1, SystemStats.cpuTemp / 100); label: "Temp"; size: Theme.statRingSize
                     text: SystemStats.cpuTemp ? SystemStats.cpuTemp + "°" : "–"
                     color: SystemStats.cpuTemp >= 90 ? Theme.red : SystemStats.cpuTemp >= 80 ? Theme.orange : Theme.green
                     HoverHandler { id: h4 }

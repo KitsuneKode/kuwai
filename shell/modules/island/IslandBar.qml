@@ -412,7 +412,7 @@ Scope {
             property real pull: 0
             property bool committing: false
             property bool pushed: false
-            Behavior on pull { enabled: !pushDrag.active && !win.committing && !win.glanceDragging; NumberAnimation { duration: 260; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+            Behavior on pull { enabled: !pushDrag.active && !win.committing && !win.glanceDragging; NumberAnimation { duration: Theme.settleMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
             function rubber(d, dim) { return d * dim * 0.55 / (dim + 0.55 * d); }
             function pushBack(v) {
                 committing = true;

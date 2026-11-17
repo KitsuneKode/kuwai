@@ -238,7 +238,7 @@ Item {
                 visible: momentPic.status === Image.Ready
                 Image { id: momentPic; anchors.fill: parent; source: momentLead.m.image || ""; sourceSize: Qt.size(44, 44); fillMode: momentLead.m.round ? Image.PreserveAspectCrop : Image.PreserveAspectFit; asynchronous: true; mipmap: true }
             }
-            Text { textFormat: Text.PlainText; visible: !momentPic.visible; anchors.centerIn: parent; text: parent.parent.m.glyph || ""; font.family: Theme.fontGlyph; font.pixelSize: 17; color: parent.parent.m.kind !== "device" && parent.parent.m.tone ? parent.parent.m.tone : Theme.textPrimary }
+            Text { textFormat: Text.PlainText; visible: !momentPic.visible; anchors.centerIn: parent; text: parent.parent.m.glyph || ""; font.family: Theme.fontGlyph; font.pixelSize: Theme.glyphM; color: parent.parent.m.kind !== "device" && parent.parent.m.tone ? parent.parent.m.tone : Theme.textPrimary }
         }
         Label {
             visible: !!parent.m.label && parent.m.kind !== "device"
@@ -278,7 +278,7 @@ Item {
             Icon {
                 visible: rest.activity === "auth"
                 anchors.centerIn: parent
-                name: "lock-key"; size: 16
+                name: "lock-key"; size: Theme.glyphS
                 active: true
                 color: Theme.accent
                 SequentialAnimation on opacity {
@@ -363,7 +363,7 @@ Item {
                 anchors.centerIn: parent
                 text: "\u{f0388}"
                 font.family: Theme.fontGlyph
-                font.pixelSize: 16
+                font.pixelSize: Theme.glyphS
                 color: Theme.accent
                 SequentialAnimation on scale {
                     running: rest.activity === "shazam" && Activities.shazamListening && !Theme.reduceMotion
@@ -825,7 +825,7 @@ Item {
                             color: Media.artAt(index / 4)       // the cover's two colours, across the bars
                             opacity: Media.playing ? 1 : 0.55
                             // Settling to the pause silhouette still eases; live bars don't.
-                            Behavior on height { enabled: !Media.playing; NumberAnimation { duration: 380; easing.type: Easing.OutCubic } }
+                            Behavior on height { enabled: !Media.playing; NumberAnimation { duration: Theme.waveSettleMs; easing.type: Easing.OutCubic } }
                             Behavior on opacity { NumberAnimation { duration: Theme.colorMs } }
                             Behavior on color { ColorAnimation { duration: Theme.artMs } }
                         }

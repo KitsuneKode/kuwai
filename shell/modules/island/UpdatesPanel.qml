@@ -71,7 +71,7 @@ FocusScope {
 
     // Drill-in: the new view drifts 14 px in from the side it came from.
     property real enter: 1
-    NumberAnimation { id: swap; target: up; property: "enter"; from: 0; to: 1; duration: 220; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+    NumberAnimation { id: swap; target: up; property: "enter"; from: 0; to: 1; duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
 
     // ── Small building blocks ────────────────────────────────────────────
     // Chip, Button, Card, Notice: components/ui (one primitive per job).
@@ -95,7 +95,7 @@ FocusScope {
         Row {
             width: parent.width
             spacing: 8
-            Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f0219}"; font.family: Theme.fontGlyph; font.pixelSize: 16; color: Theme.textSecondary }
+            Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f0219}"; font.family: Theme.fontGlyph; font.pixelSize: Theme.glyphS; color: Theme.textSecondary }
             Column {
                 width: parent.width - 30
                 spacing: 2
@@ -159,7 +159,7 @@ FocusScope {
                             width: chLabel.implicitWidth + 20
                             color: on ? Qt.rgba(1, 1, 1, 0.9) : chArea.containsMouse ? Theme.pillHover : Theme.pill
                             Behavior on color { ColorAnimation { duration: Theme.colorMs } }
-                            Label { id: chLabel; anchors.centerIn: parent; text: parent.modelData.label; size: 11; weight: Theme.wMedium; color: parent.on ? "#111114" : Theme.textPrimary }
+                            Label { id: chLabel; anchors.centerIn: parent; text: parent.modelData.label; size: 11; weight: Theme.wMedium; color: parent.on ? Theme.inkOnLight : Theme.textPrimary }
                             MouseArea { id: chArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: Updates.choosePacnew(row.modelData.path, parent.modelData.id) }
                         }
                     }
@@ -314,7 +314,7 @@ FocusScope {
                     columnSpacing: 18
                     rowSpacing: 6
                     opacity: Updates.includeRepo ? 1 : 0.45
-                    Behavior on opacity { NumberAnimation { duration: 140 } }
+                    Behavior on opacity { NumberAnimation { duration: Theme.colorMs } }
                     Repeater {
                         model: up.showAllRepo ? Updates.repo : Updates.repo.slice(0, 8)
                         Item {
@@ -339,7 +339,7 @@ FocusScope {
                 visible: Updates.aur.length > 0
                 Item {
                     width: parent.width; height: 34
-                    Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f0393}"; font.family: Theme.fontGlyph; font.pixelSize: 19; color: Theme.accent }
+                    Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f0393}"; font.family: Theme.fontGlyph; font.pixelSize: Theme.glyphM; color: Theme.accent }
                     Column {
                         x: 32; anchors.verticalCenter: parent.verticalCenter
                         spacing: 1
@@ -413,7 +413,7 @@ FocusScope {
                 visible: Updates.flatpak.length > 0
                 Item {
                     width: parent.width; height: 34
-                    Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f08c4}"; font.family: Theme.fontGlyph; font.pixelSize: 19; color: Theme.accent }
+                    Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f08c4}"; font.family: Theme.fontGlyph; font.pixelSize: Theme.glyphM; color: Theme.accent }
                     Column {
                         x: 32; anchors.verticalCenter: parent.verticalCenter
                         spacing: 1

@@ -302,7 +302,7 @@ FocusScope {
                 asynchronous: true
                 // A quick crossfade as the selection moves (not a slide: you're comparing).
                 opacity: status === Image.Ready ? 1 : 0
-                Behavior on opacity { NumberAnimation { duration: 140 } }
+                Behavior on opacity { NumberAnimation { duration: Theme.quickMs } }
             }
             // Live: the selected one plays here, muted (the panel's only decoder;
             // the cards are stills). A short wait so arrowing past doesn't decode each.
@@ -350,7 +350,7 @@ FocusScope {
             visible: !previewSkeleton.visible
             anchors { top: big.bottom; topMargin: 14; left: parent.left; right: parent.right }
             spacing: 6
-            Label { width: parent.width; elide: Text.ElideRight; text: preview.it ? preview.it.name.replace(/-/g, " ") : ""; size: 17; weight: Theme.wSemibold }
+            Label { width: parent.width; elide: Text.ElideRight; text: preview.it ? preview.it.name.replace(/-/g, " ") : ""; size: Theme.tTitle3; weight: Theme.wSemibold }
             // The palette, as one strip: the theme's own colours (its terminal
             // palette), or the wallpaper's wallbash colours.
             Item {
@@ -481,7 +481,7 @@ FocusScope {
                 Text {
                     visible: !!card.modelData.off
                     anchors.centerIn: parent
-                    text: "\u{f0e09}"; font.family: Theme.fontGlyph; font.pixelSize: 22
+                    text: "\u{f0e09}"; font.family: Theme.fontGlyph; font.pixelSize: Theme.glyphL
                     color: Theme.textTertiary
                 }
                 Image {
@@ -519,7 +519,7 @@ FocusScope {
                 anchors { right: shot.right; top: shot.top; margins: 8 }
                 width: 22; height: 22; radius: 11
                 color: Theme.accent
-                Text { anchors.centerIn: parent; text: "\u{f012c}"; font.family: Theme.fontGlyph; font.pixelSize: 13; color: "#111114" }
+                Text { anchors.centerIn: parent; text: "\u{f012c}"; font.family: Theme.fontGlyph; font.pixelSize: 13; color: Theme.inkOnLight }
             }
             Row {
                 anchors { left: shot.left; leftMargin: 2; top: shot.bottom; topMargin: 8 }

@@ -271,7 +271,7 @@ FocusScope {
                         x: parent.width - 7; y: -2
                         width: 9; height: 9; radius: 4.5
                         color: ap.tone(row.modelData.state)
-                        border.width: 2; border.color: "#000000"
+                        border.width: 2; border.color: Theme.cutout
                     }
                 }
                 Column {

@@ -492,8 +492,8 @@ FocusScope {
             anchors { left: lens.right; leftMargin: 12; right: parent.right; verticalCenter: parent.verticalCenter }
             focus: true
             font.family: Theme.fontText
-            font.pixelSize: 19
-            font.variableAxes: ({ "opsz": Theme.opszFor(19), "wght": Theme.wRegular })
+            font.pixelSize: Theme.tTitle3
+            font.variableAxes: ({ "opsz": Theme.opszFor(Theme.tTitle3), "wght": Theme.wRegular })
             color: Theme.textPrimary
             selectionColor: Qt.rgba(1, 1, 1, 0.25)
             selectedTextColor: Theme.textPrimary

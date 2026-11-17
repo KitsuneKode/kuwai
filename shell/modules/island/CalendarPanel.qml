@@ -126,7 +126,7 @@ FocusScope {
                         scale: navArea.pressed ? 0.94 : 1
                         Behavior on color { ColorAnimation { duration: Theme.colorMs } }
                         Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
-                        Text { textFormat: Text.PlainText; anchors.centerIn: parent; text: nav.modelData.g; font.family: Theme.fontGlyph; font.pixelSize: 16; color: Theme.textSecondary }
+                        Text { textFormat: Text.PlainText; anchors.centerIn: parent; text: nav.modelData.g; font.family: Theme.fontGlyph; font.pixelSize: Theme.glyphS; color: Theme.textSecondary }
                         MouseArea { id: navArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: cal.shiftMonth(nav.modelData.d) }
                     }
                 }
@@ -174,7 +174,7 @@ FocusScope {
                         rounded: true
                         size: 14
                         weight: day.isToday ? Theme.wSemibold : Theme.wRegular
-                        color: day.isToday ? "#111114" : !day.inMonth ? Qt.rgba(1, 1, 1, 0.25) : Theme.textPrimary
+                        color: day.isToday ? Theme.inkOnLight : !day.inMonth ? Qt.rgba(1, 1, 1, 0.25) : Theme.textPrimary
                         font.features: ({ "tnum": 1 })
                     }
                     // Something on that day: a small dot under the number.

@@ -25,7 +25,7 @@ Item {
         anchors.verticalCenter: expanded ? undefined : parent.verticalCenter
         width: 38; height: 38; radius: 19
         color: Qt.alpha(banner.tone, 0.2)
-        Text { textFormat: Text.PlainText; anchors.centerIn: parent; text: banner.alert ? banner.alert.glyph : ""; font.family: Theme.fontGlyph; font.pixelSize: 19; color: banner.tone }
+        Text { textFormat: Text.PlainText; anchors.centerIn: parent; text: banner.alert ? banner.alert.glyph : ""; font.family: Theme.fontGlyph; font.pixelSize: Theme.glyphM; color: banner.tone }
     }
     Item {
         id: copy

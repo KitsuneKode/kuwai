@@ -68,24 +68,24 @@ Item {
         id: entering
         SequentialAnimation {
             PauseAnimation { duration: Theme.hoverMs }
-            NumberAnimation { target: card; property: "enter"; to: 1; duration: 300; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
+            NumberAnimation { target: card; property: "enter"; to: 1; duration: Theme.cardInMs; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
         }
         SequentialAnimation {
-            PauseAnimation { duration: 140 }
-            NumberAnimation { target: card; property: "line1"; to: 1; duration: 260; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
+            PauseAnimation { duration: Theme.pressMs }
+            NumberAnimation { target: card; property: "line1"; to: 1; duration: Theme.cardRiseMs; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
         }
         SequentialAnimation {
-            PauseAnimation { duration: 190 }
-            NumberAnimation { target: card; property: "line2"; to: 1; duration: 260; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
+            PauseAnimation { duration: Theme.pressMs + Theme.revealStepMs + 10 }
+            NumberAnimation { target: card; property: "line2"; to: 1; duration: Theme.cardRiseMs; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
         }
     }
     SequentialAnimation {
         id: connecting
         PauseAnimation { duration: Theme.enterMs }
-        NumberAnimation { target: card; property: "link"; to: 1; duration: 480; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
+        NumberAnimation { target: card; property: "link"; to: 1; duration: Theme.ringDrawMs; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
         ParallelAnimation {
-            NumberAnimation { target: card; property: "ping"; to: 1; duration: 450; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
-            NumberAnimation { target: card; property: "settle"; to: 1; duration: 320; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
+            NumberAnimation { target: card; property: "ping"; to: 1; duration: Theme.cardPingMs; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
+            NumberAnimation { target: card; property: "settle"; to: 1; duration: Theme.cardSettleMs; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
             NumberAnimation { target: card; property: "ripple"; to: 1; duration: Theme.pulseMs; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
             PropertyAction { target: card; property: "fill"; value: 1 }      // StatRing glides there itself
         }
@@ -95,13 +95,13 @@ Item {
         id: toLevel
         PauseAnimation { duration: Theme.breatheMs }
         PropertyAction { target: card; property: "levelFill"; value: 0 }
-        NumberAnimation { target: card; property: "swap"; to: 1; duration: 220; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
-        NumberAnimation { target: card; property: "levelFill"; to: 1; duration: 600; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
+        NumberAnimation { target: card; property: "swap"; to: 1; duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
+        NumberAnimation { target: card; property: "levelFill"; to: 1; duration: Theme.cardLevelMs; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
     }
     SequentialAnimation {
         id: going
-        PauseAnimation { duration: 260 }
-        NumberAnimation { target: card; property: "link"; to: 0; duration: 420; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeInOut }
+        PauseAnimation { duration: Theme.cardGoWaitMs }
+        NumberAnimation { target: card; property: "link"; to: 0; duration: Theme.cardUnlinkMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeInOut }
     }
 
     HoverHandler { onHoveredChanged: Moments.cardHeld = hovered }
@@ -141,7 +141,7 @@ Item {
                 textFormat: Text.PlainText
                 anchors.centerIn: parent
                 text: card.item ? card.item.glyph || "\u{f00af}" : ""
-                font.family: Theme.fontGlyph; font.pixelSize: 27
+                font.family: Theme.fontGlyph; font.pixelSize: Theme.glyphXL
                 color: Theme.textPrimary
             }
         }
@@ -272,7 +272,7 @@ Item {
         StatRing {
             anchors.centerIn: parent
             visible: card.battery >= 0
-            size: 44; stroke: 4
+            size: Theme.cardRingSize; stroke: 4
             value: Math.max(0, card.battery) * card.fill
             text: Math.round(Math.max(0, card.battery) * 100) + ""
             color: card.gone ? Theme.textTertiary : card.battery >= 0 && card.battery <= 0.2 ? Theme.red : Theme.green
@@ -288,7 +288,7 @@ Item {
             Text {
                 anchors.centerIn: parent
                 text: "\u{f012c}"
-                font.family: Theme.fontGlyph; font.pixelSize: 17
+                font.family: Theme.fontGlyph; font.pixelSize: Theme.glyphM
                 color: Theme.green
             }
         }

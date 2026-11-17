@@ -103,7 +103,7 @@ FocusScope {
             width: parent.width
             topPadding: 10; bottomPadding: 10
             spacing: 6
-            Icon { anchors.horizontalCenter: parent.horizontalCenter; name: "bell"; size: 22; color: Theme.textTertiary }
+            Icon { anchors.horizontalCenter: parent.horizontalCenter; name: "bell"; size: Theme.glyphL; color: Theme.textTertiary }
             Label { anchors.horizontalCenter: parent.horizontalCenter; text: "You’re all caught up"; size: Theme.tSub; color: Theme.textSecondary }
             Label {
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -205,7 +205,7 @@ FocusScope {
                         x: parent.width - 7; y: -2
                         width: 9; height: 9; radius: 4.5
                         color: row.asks ? Theme.orange : row.dot
-                        border.width: 2; border.color: "#000000"
+                        border.width: 2; border.color: Theme.cutout
                     }
                 }
                 Column {

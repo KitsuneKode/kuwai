@@ -131,7 +131,7 @@ Row {
             anchors.centerIn: parent
             anchors.horizontalCenterOffset: -1
             text: Math.round(status.drawnPct)
-            size: 9; weight: Theme.wBold
+            size: Theme.tCaption; weight: Theme.wBold
             font.features: ({ "tnum": 1 })
             color: status.drawnPct > 38 ? Qt.rgba(0.08, 0.08, 0.1, 0.92) : status.tint
         }

@@ -207,8 +207,8 @@ FocusScope {
             Component.onCompleted: if (!Theme.reduceMotion && Date.now() - pal.born < 260 && index < 9) { enter = 0; cascade.start(); }
             SequentialAnimation {
                 id: cascade
-                PauseAnimation { duration: 40 + row.index * 20 }
-                NumberAnimation { target: row; property: "enter"; to: 1; duration: 240; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+                PauseAnimation { duration: Theme.revealStepMs + row.index * 20 }
+                NumberAnimation { target: row; property: "enter"; to: 1; duration: Theme.cardRiseMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
             }
 
             Rectangle {

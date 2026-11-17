@@ -279,7 +279,7 @@ Item {
             height: 28; radius: 14
             width: openLbl.implicitWidth + 22
             color: openArea.containsMouse ? Qt.rgba(1, 1, 1, 0.92) : Qt.rgba(1, 1, 1, 0.88)
-            Label { id: openLbl; anchors.centerIn: parent; text: "Open"; size: 12; weight: Theme.wMedium; color: "#111111" }
+            Label { id: openLbl; anchors.centerIn: parent; text: "Open"; size: 12; weight: Theme.wMedium; color: Theme.inkOnLight }
             MouseArea {
                 id: openArea
                 anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor

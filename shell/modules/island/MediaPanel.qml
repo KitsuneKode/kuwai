@@ -151,7 +151,7 @@ FocusScope {
                 textFormat: Text.PlainText
                 anchors.centerIn: parent
                 text: np.kind === "cider" ? (np.isLoved ? "\u{f02d1}" : "\u{f02d5}") : "\u{f0337}"
-                font.family: Theme.fontGlyph; font.pixelSize: 17
+                font.family: Theme.fontGlyph; font.pixelSize: Theme.glyphS
                 color: np.kind === "cider" && np.isLoved ? np.tint : Theme.textPrimary
                 opacity: act.running ? 0.5 : 1
                 scale: ctxArea.pressed ? 0.86 : 1
@@ -267,7 +267,7 @@ FocusScope {
                 model: [
                     { g: "\u{f049d}", tip: "Shuffle", show: !!np.p && np.p.shuffleSupported, on: !!np.p && np.p.shuffle, act: () => np.p.shuffle = !np.p.shuffle, ok: !!np.p && np.p.canControl },
                     { g: "\u{f04ae}", tip: "Previous", show: true, act: () => np.p.previous(), ok: !!np.p && np.p.canGoPrevious, size: 24 },
-                    { g: np.p && np.p.isPlaying ? "\u{f03e4}" : "\u{f040a}", tip: np.p && np.p.isPlaying ? "Pause" : "Play", show: true, act: () => np.p.togglePlaying(), ok: !!np.p && np.p.canTogglePlaying, size: 32, big: true },
+                    { g: np.p && np.p.isPlaying ? "\u{f03e4}" : "\u{f040a}", tip: np.p && np.p.isPlaying ? "Pause" : "Play", show: true, act: () => np.p.togglePlaying(), ok: !!np.p && np.p.canTogglePlaying, size: Theme.glyphPlay, big: true },
                     { g: "\u{f04ad}", tip: "Next", show: true, act: () => np.p.next(), ok: !!np.p && np.p.canGoNext, size: 24 },
                     { g: np.p && np.p.loopState === MprisLoopState.Track ? "\u{f0458}" : "\u{f0456}", tip: np.p && np.p.loopState === MprisLoopState.Track ? "Repeat one" : "Repeat", show: !!np.p && np.p.loopSupported,
                       on: !!np.p && np.p.loopState !== MprisLoopState.None, act: () => np.cycleLoop(), ok: !!np.p && np.p.canControl },

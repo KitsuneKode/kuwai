@@ -167,7 +167,7 @@ FocusScope {
                         anchors.horizontalCenter: parent.horizontalCenter
                         text: tile.modelData.glyph
                         font.family: Theme.fontGlyph
-                        font.pixelSize: 28
+                        font.pixelSize: Theme.glyphXL
                         color: tile.modelData.danger && tile.on ? Theme.red : Theme.textPrimary
                     }
                     Label {
