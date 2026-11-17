@@ -4,14 +4,15 @@ pragma Singleton
 // activities): voxtype dictation, a Shazam listen and what it found, and
 // apps using the microphone (the privacy dot, as on iOS). Recording and
 // copying stay with the Clipboard service; media comes from MPRIS.
-// Event-driven: voxtype's state file is watched, Shazam's pid file is
-// checked by a shell builtin loop (no process per tick).
+// Event-driven: voxtype's state file and Shazam's pid file are watched
+// (inotify); nothing runs at rest but the camera's sysfs read (below).
 // (No braces before the pragma: Quickshell's scanner stops at the first.)
 
 import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Pipewire
+import Quickshell.Hyprland
 import qs.config
 
 Singleton {
@@ -54,16 +55,38 @@ Singleton {
     // ── Shazam ───────────────────────────────────────────────────────────
     property bool shazamListening: false
     property var shazamFound: null            // { title, artist, url } for a moment after a match
+    // rice-shazam writes its pid to recognize.pid while it listens and
+    // removes it when it ends. The file is watched (its folder has to exist
+    // for that, so it's made once); /proc/<pid> says the listener is alive,
+    // re-read every 5 s only while listening, for one killed with -9 that
+    // left its file behind (a listen lasts 45 s at most).
+    property bool shazamDirReady: false
+    property string shazamPid: ""
     Process {
         running: true
-        command: ["setpriv", "--pdeathsig", "KILL", "--", "sh", "-c", `f="$1/shazam-now/recognize.pid"; last=
-            while :; do
-                s=off; if [ -s "$f" ]; then read -r p < "$f"; [ -n "$p" ] && [ -d "/proc/$p" ] && s=on; fi
-                [ "$s" != "$last" ] && echo "$s" && last=$s
-                sleep 1
-            done`, "sh", root.runtime]
-        stdout: SplitParser { onRead: line => root.shazamListening = line === "on" }
+        command: ["mkdir", "-p", root.runtime + "/shazam-now"]
+        onExited: root.shazamDirReady = true
     }
+    FileView {
+        path: root.shazamDirReady ? root.runtime + "/shazam-now/recognize.pid" : ""
+        watchChanges: true
+        printErrors: false
+        onFileChanged: reload()
+        onLoaded: {
+            const p = text().trim();
+            root.shazamPid = /^[0-9]+$/.test(p) ? p : "";
+            if (root.shazamPid) shazamAlive.reload(); else root.shazamListening = false;
+        }
+        onLoadFailed: { root.shazamPid = ""; root.shazamListening = false; }
+    }
+    FileView {
+        id: shazamAlive
+        path: root.shazamPid ? "/proc/" + root.shazamPid + "/stat" : ""
+        printErrors: false
+        onLoaded: root.shazamListening = root.shazamPid !== ""
+        onLoadFailed: root.shazamListening = false
+    }
+    Timer { interval: 5000; repeat: true; running: root.shazamListening; onTriggered: shazamAlive.reload() }
     property string lastKey: ""
     property bool historyRead: false
     FileView {
@@ -160,14 +183,20 @@ Singleton {
 
     // ── Privacy: who is using the camera ─────────────────────────────────
     // The UVC driver's use count goes up while anything has the camera open
-    // (an app, or PipeWire for one): a tiny sysfs read every 2 s, no
-    // process. Who it is gets looked up once, when it turns on.
+    // (an app, or PipeWire for one). sysfs can't be watched (no inotify), so
+    // it's read when something that comes with a camera turning on happens
+    // (a window opening, closing or taking focus; a PipeWire video stream),
+    // and every 5 s besides, for an app that opens it with no window: the
+    // dot is for use you didn't start. One read of a tiny file, no process;
+    // not while locked or the screens are off (read again on the way back).
+    // Who it is gets looked up once, when it turns on.
     property bool camInUse: false
     property var camHolders: []
     readonly property var camStreams: Pipewire.nodes.values.filter(n => ((n.properties || {})["media.class"] || "") === "Stream/Input/Video")
         .map(n => (n.properties || {})["application.name"] || n.name || "An app")
     readonly property var camUsers: [...new Set(camHolders.concat(camStreams))]
     property bool camKnown: false
+    readonly property bool camAwake: !Saver.locked && !Saver.screensOff
     FileView {
         id: camRef
         path: "/sys/module/uvcvideo/refcnt"
@@ -181,7 +210,19 @@ Singleton {
             else root.camHolders = [];
         }
     }
-    Timer { interval: 2000; repeat: true; running: true; onTriggered: camRef.reload() }
+    function camCheck() { camSoon.restart(); }
+    // Events come in bursts (a window opening is several): one read after.
+    Timer { id: camSoon; interval: 250; onTriggered: camRef.reload() }
+    Timer { interval: 5000; repeat: true; running: root.camAwake; onTriggered: camRef.reload() }
+    onCamAwakeChanged: if (camAwake) camCheck()
+    onCamStreamsChanged: camCheck()
+    Connections {
+        target: Hyprland
+        function onRawEvent(event) {
+            const n = event.name;
+            if (n === "openwindow" || n === "closewindow" || n === "activewindowv2") root.camCheck();
+        }
+    }
     Process {
         id: camWho
         command: ["sh", "-c", "for p in $(fuser /dev/video* 2>/dev/null); do cat /proc/$p/comm; done | sort -u"]
