@@ -171,6 +171,9 @@ Item {
                 cursorShape: Qt.PointingHandCursor
                 onClicked: { search.text = ""; search.forceActiveFocus(); }
             }
+            Accessible.role: Accessible.Button
+            Accessible.name: "Clear search"
+            Accessible.onPressAction: { search.text = ""; search.forceActiveFocus(); }
         }
     }
 
@@ -287,6 +290,10 @@ Item {
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
             onClicked: { sheet.open = !sheet.open; search.forceActiveFocus(); }
+            Accessible.role: Accessible.Button
+            Accessible.name: "Shortcuts"
+            Accessible.description: "Question mark or F1"
+            Accessible.onPressAction: { sheet.open = !sheet.open; search.forceActiveFocus(); }
         }
     }
 

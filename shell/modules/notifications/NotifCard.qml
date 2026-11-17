@@ -244,6 +244,15 @@ Item {
             }
         }
     }
+    // Screen readers: the toast is one item; press does what a click does
+    // (open, or show its actions); its Dismiss button is the right-click.
+    Accessible.role: Accessible.Button
+    Accessible.name: card.item ? (card.item.app || "Notification") + ": " + (card.item.title || "") : ""
+    Accessible.description: card.item ? Notifs.readable(Notifs.bodyForDisplay(card.item, card.engaged)) : ""
+    Accessible.onPressAction: {
+        if (Settings.notifToastInstantOpen) Notifs.activate(card.item);
+        else if (card.stack.engaged !== card.item) { card.stack.engaged = card.item; card.stack.interacting = true; }
+    }
 
     // ── Material ─────────────────────────────────────────────────────────
     RectangularShadow {
@@ -511,6 +520,9 @@ Item {
                         anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                         onClicked: { card.stack.engaged = null; Notifs.activate(card.item) }
                     }
+                    Accessible.role: Accessible.Button
+                    Accessible.name: "Open"
+                    Accessible.onPressAction: { card.stack.engaged = null; Notifs.activate(card.item) }
                 }
                 Rectangle {
                     visible: card.canReply && !card.replying
@@ -523,6 +535,9 @@ Item {
                         anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                         onClicked: { card.replying = true; card.stack.interacting = true; }
                     }
+                    Accessible.role: Accessible.Button
+                    Accessible.name: "Reply"
+                    Accessible.onPressAction: { card.replying = true; card.stack.interacting = true; }
                 }
                 Repeater {
                     model: card.item.actions
@@ -555,6 +570,9 @@ Item {
                             cursorShape: Qt.PointingHandCursor
                             onClicked: Notifs.invokeAction(card.item, pillRect.modelData.id)
                         }
+                        Accessible.role: Accessible.Button
+                        Accessible.name: pillRect.modelData.text
+                        Accessible.onPressAction: Notifs.invokeAction(card.item, pillRect.modelData.id)
                     }
                 }
             }
@@ -631,6 +649,9 @@ Item {
             cursorShape: Qt.PointingHandCursor
             onClicked: { card.stack.engaged = null; Notifs.dismiss(card.item) }
         }
+        Accessible.role: Accessible.Button
+        Accessible.name: "Dismiss"
+        Accessible.onPressAction: { card.stack.engaged = null; Notifs.dismiss(card.item) }
     }
 
     // "now", "3m", "2h": refreshed while on screen.

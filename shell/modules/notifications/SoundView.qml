@@ -295,6 +295,15 @@ Item {
                             else if (btn.modelData.act === "prev" && p.canGoPrevious) p.previous();
                         }
                     }
+                    Accessible.role: Accessible.Button
+                    Accessible.name: btn.modelData.act === "toggle" ? (np.player && np.player.isPlaying ? "Pause" : "Play") : btn.modelData.act === "next" ? "Next track" : "Previous track"
+                    Accessible.onPressAction: {
+                        const p = np.player;
+                        if (!p) return;
+                        if (btn.modelData.act === "toggle" && p.canTogglePlaying) p.togglePlaying();
+                        else if (btn.modelData.act === "next" && p.canGoNext) p.next();
+                        else if (btn.modelData.act === "prev" && p.canGoPrevious) p.previous();
+                    }
                 }
             }
         }
@@ -401,6 +410,9 @@ Item {
                         view.routeCurrent = strip.target;
                         view.routeFor = view.routeFor === strip.node ? null : strip.node;
                     }
+                    Accessible.role: strip.routable ? Accessible.ButtonMenu : Accessible.StaticText
+                    Accessible.name: strip.routable ? strip.title + " plays on " + view.deviceName(strip.target || view.sink) : strip.caption
+                    Accessible.onPressAction: if (strip.routable) { view.routeAnchor = routeChip; view.routeCurrent = strip.target; view.routeFor = view.routeFor === strip.node ? null : strip.node; }
                 }
             }
 
@@ -472,6 +484,12 @@ Item {
                     onContainsMouseChanged: view.center.tip(parent, containsMouse, strip.muted ? "Unmute " + strip.title : "Mute " + strip.title + "  (or right-click the fader)")
                     onClicked: if (strip.audio) strip.audio.muted = !strip.audio.muted
                 }
+                Accessible.role: Accessible.CheckBox
+                Accessible.name: "Mute " + strip.title
+                Accessible.checkable: true
+                Accessible.checked: strip.muted
+                Accessible.onPressAction: if (strip.audio) strip.audio.muted = !strip.audio.muted
+                Accessible.onToggleAction: if (strip.audio) strip.audio.muted = !strip.audio.muted
             }
         }
     }
@@ -482,6 +500,9 @@ Item {
         visible: view.routeFor !== null
         onClicked: view.routeFor = null
     }
+    // The Sound tab; the click-outside above closes the output picker (Esc does too).
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Sound"
     Rectangle {
         id: routeMenu
         readonly property var stream: view.routeFor
@@ -541,6 +562,11 @@ Item {
                         cursorShape: Qt.PointingHandCursor
                         onClicked: view.route(view.routeFor, opt.modelData)
                     }
+                    Accessible.role: Accessible.MenuItem
+                    Accessible.name: view.deviceName(opt.modelData)
+                    Accessible.checkable: true
+                    Accessible.checked: opt.on
+                    Accessible.onPressAction: view.route(view.routeFor, opt.modelData)
                 }
             }
         }

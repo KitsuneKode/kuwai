@@ -211,6 +211,9 @@ Column {
                         cursorShape: Qt.PointingHandCursor
                         onClicked: row.secondary()
                     }
+                    Accessible.role: Accessible.Button
+                    Accessible.name: (row.net.connected ? "Disconnect from " : "Forget ") + row.net.name
+                    Accessible.onPressAction: row.secondary()
                 }
                 Text {
                     textFormat: Text.PlainText
@@ -271,6 +274,10 @@ Column {
                     }
                     Label { id: joinLabel; anchors.centerIn: parent; text: "Join"; size: 12; weight: Theme.wSemibold }
                     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: joinBtn.join() }
+                    Accessible.role: Accessible.Button
+                    Accessible.name: "Join " + row.net.name
+                    Accessible.description: psk.text.length >= 8 ? "" : "The password needs 8 characters or more"
+                    Accessible.onPressAction: joinBtn.join()
                 }
             }
         }

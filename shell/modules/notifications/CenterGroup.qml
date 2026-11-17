@@ -127,6 +127,9 @@ Item {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: group.toggled()
                 }
+                Accessible.role: Accessible.Button
+                Accessible.name: "Show less from " + group.modelData.app
+                Accessible.onPressAction: group.toggled()
             }
             Rectangle {
                 width: 22; height: 22; radius: 11
@@ -145,6 +148,9 @@ Item {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: Notifs.removeApp(group.modelData.app, "center")
                 }
+                Accessible.role: Accessible.Button
+                Accessible.name: "Clear all from " + group.modelData.app
+                Accessible.onPressAction: Notifs.removeApp(group.modelData.app, "center")
             }
         }
     }
@@ -153,6 +159,12 @@ Item {
     Item {
         id: stackView
         visible: !group.expanded
+        // Folded: one button that opens the stack (its top row reads itself).
+        Accessible.role: group.stacked ? Accessible.Button : Accessible.Grouping
+        Accessible.name: group.stacked ? group.modelData.app + ", " + group.count + " notifications" : group.modelData.app
+        Accessible.expandable: group.stacked
+        Accessible.expanded: group.expanded
+        Accessible.onPressAction: if (group.stacked && group.center) { group.center.setExpanded(group.modelData.key, true); group.center.selected = group.items[0]; group.center.keyboard = false; }
         anchors.top: header.bottom
         anchors.topMargin: 8
         width: parent.width

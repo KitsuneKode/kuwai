@@ -89,6 +89,11 @@ Column {
                         hoverEnabled: true
                         cursorShape: dev.on ? Qt.ArrowCursor : Qt.PointingHandCursor
                         onClicked: if (!dev.on) devList.picked(dev.modelData)
+                        Accessible.role: Accessible.RadioButton
+                        Accessible.name: devList.view.deviceName(dev.modelData)
+                        Accessible.checkable: true
+                        Accessible.checked: dev.on
+                        Accessible.onPressAction: if (!dev.on) devList.picked(dev.modelData)
                     }
                     Rectangle {
                         id: muteBtn
@@ -112,6 +117,12 @@ Column {
                             cursorShape: Qt.PointingHandCursor
                             onClicked: if (dev.audio) dev.audio.muted = !dev.audio.muted
                         }
+                        Accessible.role: Accessible.CheckBox
+                        Accessible.name: "Mute " + devList.view.deviceName(dev.modelData)
+                        Accessible.checkable: true
+                        Accessible.checked: muteBtn.muted
+                        Accessible.onPressAction: if (dev.audio) dev.audio.muted = !dev.audio.muted
+                        Accessible.onToggleAction: if (dev.audio) dev.audio.muted = !dev.audio.muted
                     }
                     // Live level, pavucontrol-style: one slim bar per channel under the
                     // slider (green, yellow from -12 dB, red from -3 dB), only while

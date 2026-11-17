@@ -42,6 +42,10 @@ Item {
         anchors.fill: parent
         color: Qt.rgba(0, 0, 0, 0.35 * sheet.p)
         MouseArea { anchors.fill: parent; enabled: sheet.open; onClicked: sheet.open = false }
+        Accessible.role: Accessible.Button
+        Accessible.name: "Close shortcuts"
+        Accessible.description: "Escape or question mark"
+        Accessible.onPressAction: sheet.open = false
     }
 
     Rectangle {

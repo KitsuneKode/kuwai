@@ -228,6 +228,11 @@ Item {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: view.filter = chip.modelData.id
                 }
+                Accessible.role: Accessible.PageTab
+                Accessible.name: chip.modelData.label + (chip.modelData.n > 0 ? ", " + chip.modelData.n : "")
+                Accessible.description: "Tab cycles the filters"
+                Accessible.selected: chip.on
+                Accessible.onPressAction: view.filter = chip.modelData.id
             }
         }
     }

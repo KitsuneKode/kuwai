@@ -91,6 +91,12 @@ Item {
         onHoveredChanged: if (row.center) row.center.setHover(row, hovered)
         cursorShape: Qt.ArrowCursor
     }
+    // Screen readers: one notification; press selects it (↵ opens), its buttons dismiss and snooze.
+    Accessible.role: Accessible.ListItem
+    Accessible.name: (row.it.app || "Notification") + ": " + (row.it.title || "") + (row.unread ? ", new" : "")
+    Accessible.description: Notifs.readable(Notifs.bodyForDisplay(row.it, row.selected))
+    Accessible.selected: row.selected
+    Accessible.onPressAction: row.selectRow()
     // Press feedback, kept tiny: rows are hit often.
     scale: tapH.pressed ? 0.985 : 1
     Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
@@ -195,6 +201,7 @@ Item {
                     color: snoozeArea.containsMouse || row.snoozing ? Theme.pillHover : Theme.pill
                     Accessible.role: Accessible.Button
                     Accessible.name: "Snooze"
+                    Accessible.onPressAction: { row.snoozing = !row.snoozing; row.replying = false; }
                     Text { anchors.centerIn: parent; text: "\u{f051b}"; font.family: Theme.fontGlyph; font.pixelSize: 11; color: Theme.textPrimary }
                     MouseArea { id: snoozeArea; anchors.fill: parent; anchors.margins: -4; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { row.snoozing = !row.snoozing; row.replying = false; } }
                 }
@@ -202,6 +209,7 @@ Item {
                 Rectangle {
                     Accessible.role: Accessible.Button
                     Accessible.name: "Dismiss"
+                    Accessible.onPressAction: row.remove()
                     visible: hover.hovered
                     width: 20; height: 20; radius: 10
                     color: closeArea.containsMouse ? Theme.pillHover : Theme.pill

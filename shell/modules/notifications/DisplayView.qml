@@ -474,6 +474,10 @@ Item {
                             cursorShape: Qt.PointingHandCursor
                             onClicked: dev.modelData.connected ? dev.modelData.disconnect() : dev.modelData.connect()
                         }
+                        Accessible.role: Accessible.ListItem
+                        Accessible.name: dev.modelData.name + (dev.modelData.batteryAvailable ? ", " + Math.round(dev.modelData.battery * 100) + "%" : "")
+                        Accessible.description: dev.busy ? (dev.modelData.connected ? "Disconnecting" : "Connecting") : dev.modelData.connected ? "Connected. Press to disconnect" : "Not connected. Press to connect"
+                        Accessible.onPressAction: dev.modelData.connected ? dev.modelData.disconnect() : dev.modelData.connect()
                     }
                 }
             }
