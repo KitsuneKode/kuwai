@@ -47,20 +47,44 @@ Scope {
     property string output: ""            // the brightness event's output
 
     // ── Brightness: event stream from the controller ─────────────────────
+    // The shell holds the controller's socket itself (it was a Python relay,
+    // `rice-brightness watch --part osd`, 13 MB for the shell's life):
+    // `rice-brightness socket` checks the private directory, starts the
+    // controller if needed and says where its socket is; then one line asks
+    // for the HUD's events and each event is a line. Held for good: with no
+    // HUD subscribed the controller falls back to a notification.
+    property string brightnessSock: ""
     Process {
-        id: brightnessFeed
+        id: brightnessFind
         running: true
-        command: ["setpriv", "--pdeathsig", "KILL", "--", Paths.bin + "/rice-brightness", "watch", "--part", "osd"]
-        stdout: SplitParser {
+        command: [Paths.bin + "/rice-brightness", "socket"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const p = text.trim();
+                if (!p.startsWith("/")) return;
+                root.brightnessSock = p;
+                brightnessFeed.connected = true;
+            }
+        }
+        onExited: code => { if (code !== 0) feedRestart.start(); }
+    }
+    Socket {
+        id: brightnessFeed
+        path: root.brightnessSock
+        onConnectedChanged: {
+            if (connected) { write('{"action":"watch","part":"osd"}\n'); flush(); }
+            else feedRestart.start();               // the controller restarted or went away
+        }
+        onError: feedRestart.start()
+        parser: SplitParser {
             onRead: line => {
                 let ev;
                 try { ev = JSON.parse(line); } catch (e) { return; }
                 if (ev.kind === "brightness") root.showBrightness(ev);
             }
         }
-        onExited: feedRestart.start()
     }
-    Timer { id: feedRestart; interval: 2000; onTriggered: brightnessFeed.running = true }
+    Timer { id: feedRestart; interval: 2000; onTriggered: if (!brightnessFeed.connected && !brightnessFind.running) brightnessFind.running = true }
 
     function brightnessGlyph(v) {
         return v === null || v < 34 ? "\u{f00de}" : v < 67 ? "\u{f00df}" : "\u{f00e0}";

@@ -95,7 +95,7 @@ def preset(runtime,output=None,at_cursor=False):
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action',nargs='?',default='which',choices=['i','d','up','down','set','which','view','toggle','watch','refresh','status','preset'])
+    parser.add_argument('action',nargs='?',default='which',choices=['i','d','up','down','set','which','view','toggle','watch','refresh','status','preset','socket'])
     parser.add_argument('value',nargs='?',type=int)
     parser.add_argument('--output')
     parser.add_argument('--part')
@@ -105,6 +105,14 @@ def main():
         runtime=runtime_dir()
         if args.action=='preset':
             preset(runtime,args.output,args.at_cursor)
+            return 0
+        if args.action=='socket':
+            # The controller's socket, for a client that holds the stream itself
+            # (the shell's HUD): the private directory is checked above and the
+            # controller started if it wasn't running.
+            with connect(runtime):
+                pass
+            print(runtime/'control.sock')
             return 0
         message={'action':args.action}
         if args.output:message['output']=args.output
