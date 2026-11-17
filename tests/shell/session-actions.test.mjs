@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { functions } from '../helpers/qml.mjs';
+import * as ChatStore from '../../shell/services/ai/chatstore.mjs';
 
 function chat(active = 'B') {
   let abandons = 0, drains = 0;
@@ -10,7 +11,7 @@ function chat(active = 'B') {
     pendingContext:{},pendingAppTitle:'old', draft:{parts:[{text:'partial'}],status:'streaming'},
     syncCurrentSession(){}, flushDeltas(){}, notifyDone(){},
     abandon(){abandons++; scope.discardDraft = true;}, drainAfterTurn:false,
-    drainTimer:{restart(){drains++;}}, saveDelay:{restart(){}},
+    drainTimer:{restart(){drains++;}}, saveDelay:{restart(){}}, release(){},
   });
   return {scope,abandons:()=>abandons,drains:()=>drains};
 }
@@ -41,6 +42,6 @@ test('discarded turns cannot accept an obsolete question answer',()=>{
 });
 
 test('forking a stopped conversation preserves queued work owned by existing chats',()=>{
- const s=functions('shell/services/OllamaService.qml',['forkAt'],{streaming:false,activeSessionId:'A',sessions:[{id:'A',title:'Original'}],messages:[{role:'user',text:'hi'}],summaryUpTo:0,model:'fixture',mode:'chat',queue:[{id:'keep',session:'A'}],syncCurrentSession(){},saveDelay:{restart(){}}});
+ const s=functions('shell/services/OllamaService.qml',['forkAt'],{streaming:false,activeSessionId:'A',sessions:[{id:'A',title:'Original'}],messages:[{role:'user',text:'hi'}],summaryUpTo:0,model:'fixture',mode:'chat',queue:[{id:'keep',session:'A'}],syncCurrentSession(){},saveDelay:{restart(){}},ChatStore,leave(){},markDirty(){}});
  s.forkAt(-1);expect(s.queue.map(q=>q.id)).toEqual(['keep']);
 });
