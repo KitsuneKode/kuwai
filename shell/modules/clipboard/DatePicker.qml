@@ -15,7 +15,11 @@ Item {
     id: dp
 
     property Item anchorItem
+    // Shown while its owner says so (the clipboard panel: mode "date"); it
+    // never closes itself, it asks: `dismissed` on Esc, a click outside or a
+    // quick range picked.
     property bool open: false
+    signal dismissed()
     property var counts: ({})                 // "YYYY-MM-DD" → entries copied that day
     property real from: 0                     // ms, inclusive; 0 = no lower bound
     property real to: 0                       // ms, exclusive; 0 = no upper bound
@@ -25,7 +29,6 @@ Item {
     visible: t.value > 0.002 || open
     z: 30
 
-    function toggle() { open = !open; }
     onOpenChanged: {
         if (open) {
             src = anchorItem ? anchorItem.mapToItem(dp, 0, 0, anchorItem.width, anchorItem.height) : Qt.rect(width - 40, 20, 40, 30);
@@ -40,7 +43,7 @@ Item {
     function key(event) {
         if (!open) return false;
         const k = event.key;
-        if (k === Qt.Key_Escape) open = false;
+        if (k === Qt.Key_Escape) dismissed();
         else if (k === Qt.Key_PageUp || k === Qt.Key_PageDown) shift(k === Qt.Key_PageUp ? -1 : 1);
         else if (k === Qt.Key_Return || k === Qt.Key_Enter || k === Qt.Key_Space) pickDay(focusedDay, event.modifiers & Qt.ShiftModifier);
         else {
@@ -105,7 +108,7 @@ Item {
         else if (id === "week") picked(at(-6), at(1), "Last 7 days");
         else if (id === "month") picked(new Date(now.getFullYear(), now.getMonth(), 1).getTime(), at(1), "This month");
         else picked(0, 0, "");
-        open = false;
+        dismissed();
     }
 
     // ── Geometry: grows out of its button, downward ──────────────────────
@@ -117,7 +120,7 @@ Item {
     Spring { id: t; tier: Theme.springModerate; epsilon: 0.001 }
     function lerp(a, b, k) { return a + (b - a) * k; }
 
-    MouseArea { anchors.fill: parent; enabled: dp.open; onClicked: dp.open = false }
+    MouseArea { anchors.fill: parent; enabled: dp.open; onClicked: dp.dismissed() }
 
     Rectangle {
         id: frame

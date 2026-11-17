@@ -450,8 +450,6 @@ Singleton {
         setRaw(raw);
         saveState();
     }
-    // Delete now, no way back (TEMP: the panel moves to hold() in the next commit).
-    function remove(e) { hold([e]); commitHeld(); }
     function wipe() { commitHeld(); setRaw([]); thumbs = ({}); renders = ({}); run(["wipe"]); }
     // Edited or transformed text: copy it, or paste it where you were.
     function copyText(t) { open = false; run(["copy-text", t]); }

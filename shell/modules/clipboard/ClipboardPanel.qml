@@ -23,9 +23,18 @@
 // Keys: ←→ (or ↑↓) move · ↵ paste into the window you came from (named in
 // the footer) · ⇧↵ copy · ⌃↵ open with its app · Space/⌃Y Quick Look ·
 // ⌃K every action · ⌃E edit then paste · ⌃P pin · ⌃O text from an image ·
-// ⌃S save image · ⇧⌦/⌃X delete · ⌃H show secret · ⌃R raw/rendered (Quick
-// Look) · ⇥ filter · ⌥1–9 paste the nth (hold ⌥ to see) · ⌃⇧⌫ twice clears
-// history · Esc: menu, Quick Look, search, filter, then closes.
+// ⌃S save image · ⇧⌦/⌃X delete (⌃Z brings it back for a few seconds) ·
+// ⌃H show secret · ⌃R raw/rendered (Quick Look) · ⇥ filter · ⌥1–9 paste the
+// nth (hold ⌥ to see) · ⌃⇧⌫ twice clears history (no undo) · F1, ⌃/ or ?
+// every key.
+//
+// What's over the shelf is one `mode` (services/clipstate.mjs, tested in
+// tests/shell/clipstate.test.mjs): browse, quicklook (→ edit), naming,
+// actions, filter, date, keys, confirmWipe. Every overlay reads its `open`
+// from it, so at most one shows; opening one closes the one before. Esc
+// steps back one level: edit → Quick Look → the shelf, any other overlay →
+// the shelf; on the shelf it clears the marks, the search, the type filter,
+// the date, then closes the panel.
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -35,6 +44,9 @@ import Quickshell.Widgets
 import qs.config
 import qs.components
 import qs.services
+// Quickshell reloads on QML changes, not on the JS modules they import: after
+// changing clipstate.mjs, save this file too (or restart).
+import "../../services/clipstate.mjs" as ClipState
 
 Scope {
     id: root
@@ -91,9 +103,27 @@ Scope {
         for (const p of Clipboard.pins) add(p.pinnedAt);
         return c;
     }
+    // ── What's over the shelf: one mode, one overlay at most ─────────────
+    property string mode: "browse"
+    readonly property var surf: ClipState.surfaces(mode)
+    readonly property bool qlOpen: surf.quickLook
+    readonly property bool naming: mode === "naming"
+    readonly property bool confirmWipe: mode === "confirmWipe"
+    function setMode(m) {
+        if (!ClipState.isMode(m) || m === mode) return;
+        const was = mode;
+        mode = m;
+        if (!ClipState.surfaces(m).quickLook) reading = false;
+        if (was === "confirmWipe") { wipeWindow.stop(); if (status === wipeAsk) status = ""; }
+        // Back to the search for anything that isn't a field of its own (an edit focuses its editor).
+        if (m === "browse" || was === "edit" || was === "naming") focusSearch();
+    }
+    function toggleMode(m) { setMode(ClipState.toggle(mode, m)); }
+    // A surface closed itself (a click outside, a pick, its own Esc).
+    function leave(m) { setMode(ClipState.leave(mode, m)); }
     // Reading: Quick Look grows past the shelf into a large reading view.
     property bool reading: false
-    onReadingChanged: if (reading && quickLook && !quickLook.open) toggleQuickLook()
+    onReadingChanged: if (reading && !qlOpen && !openQuickLook()) reading = false
     function tip(item, on, text, keys) { if (!tips) return; if (on) tips.show(item, text, keys); else tips.hide(item); }
 
     readonly property var filters: [
@@ -260,8 +290,7 @@ Scope {
         }
         case "delete":
             anchorAround(rs.map(r => r.key));
-            for (const r of rs) Clipboard.remove(r.e);
-            say("Removed " + rs.length);
+            deleted(Clipboard.hold(rs.map(r => r.e)));
             break;
         case "copy": joinedText(t => { if (t) { Clipboard.run(["copy-text", t]); say("Copied " + rs.length + " as one"); } }); break;
         case "paste": joinedText(t => { if (t) Clipboard.pasteText(t); }); break;
@@ -366,9 +395,7 @@ Scope {
     property bool landOnNewest: false
     function keepEdited(t) {
         if (!t) return;
-        quickLook.editing = false;
-        quickLook.open = false;
-        reading = false;
+        setMode("browse");
         landOnNewest = true;
         Clipboard.run(["copy-text", t]);
         say("Kept as a new copy");
@@ -391,12 +418,13 @@ Scope {
         case "read": reading = !reading; break;
         case "nvim": Clipboard.editIn(e); break;
         case "edit":
+            if (e.kind === "image" || e.kind === "file") break;      // text only (the menu offers it for text only)
             if (e.secret) revealed = true;
-            if (!quickLook.open) toggleQuickLook();
-            quickLook.editing = true;
+            if (!qlOpen && !openQuickLook()) break;
+            setMode("edit");
             break;
         case "reveal": revealed = !revealed; break;
-        case "delete": anchorAround([selKey]); move(1); if (entry === e) move(-1); Clipboard.remove(e); break;
+        case "delete": anchorAround([selKey]); move(1); if (entry === e) move(-1); deleted(Clipboard.hold([e])); break;
         case "ocr":
             say("Reading text…", true);
             Clipboard.ocr(e, txt => {
@@ -407,7 +435,7 @@ Scope {
             break;
         case "save":
             // Images get a name first (prefilled; Enter keeps it), then go to ~/Pictures/Screenshots.
-            if (e.kind === "image") { naming = true; nameField.text = "Screenshot_" + new Date().toISOString().replace(/[-:]/g, "").replace("T", "_").slice(0, 15); nameField.selectAll(); nameField.forceActiveFocus(); }
+            if (e.kind === "image") { setMode("naming"); nameField.text = "Screenshot_" + new Date().toISOString().replace(/[-:]/g, "").replace("T", "_").slice(0, 15); nameField.selectAll(); nameField.forceActiveFocus(); }
             else Clipboard.save(e, path => say(path ? "Saved " + path.replace(Quickshell.env("HOME"), "~") : "Couldn't save"));
             break;
         case "trim": withText(e, t => Clipboard.pasteText(t.replace(/\s+/g, " ").trim())); break;
@@ -419,8 +447,8 @@ Scope {
         case "b64": withText(e, t => { const d = b64decode(t); if (d) Clipboard.pasteText(d); else say("Not valid Base64 text"); }); break;
         case "secrets": Clipboard.forgetSecrets(); say("Forgot everything that looked like a secret"); break;
         case "wipe":
-            if (confirmWipe) { confirmWipe = false; Clipboard.wipe(); say("History cleared; pins kept"); }
-            else { confirmWipe = true; wipeWindow.restart(); say("Press ⌃⇧⌫ again to clear all history", true); }
+            if (mode === "confirmWipe") { setMode("browse"); Clipboard.wipe(); say("History cleared; pins kept"); }
+            else { setMode("confirmWipe"); wipeWindow.restart(); say(wipeAsk); }
             break;
         }
     }
@@ -448,7 +476,8 @@ Scope {
         { title: "Keep and tidy", items: [
             { k: ["⌃", "P"], t: "Pin or unpin" },
             { k: ["⇧", "⌦"], t: "Delete the card (or ⌃X)" },
-            { k: ["⌃", "⇧", "⌫"], t: "Clear history, twice (pins stay)" } ] },
+            { k: ["⌃", "Z"], t: "Bring back what you just deleted" },
+            { k: ["⌃", "⇧", "⌫"], t: "Clear history, twice (pins stay; no undo)" } ] },
         { title: "Images", items: [
             { k: ["⌃", "O"], t: "Copy the text in it (OCR)" },
             { k: ["⌃", "S"], t: "Save to Screenshots, named" } ] },
@@ -461,43 +490,58 @@ Scope {
             { k: ["word$"], t: "Ends with" },
             { k: ["!word"], t: "Leave out" },
             { k: ["⌃", "K"], t: "Every action for the card" },
-            { k: ["Esc"], t: "Back out, step by step" },
+            { k: ["Esc"], t: "Back out, one step at a time" },
             { k: ["Alt", "←"], t: "Back to where you were last time" } ] }
     ]
 
-    // Naming a screenshot before it's saved (⌃S on an image).
-    property bool naming: false
+    // Naming a screenshot before it's saved (⌃S on an image): mode "naming".
     property Item nameField: null
     function finishNaming(save) {
         const e = entry;
-        naming = false;
-        focusSearch();
+        setMode("browse");
         if (!save || !e) return;
         Clipboard.capture(["save-as", Clipboard.ref(e), nameField.text.trim()],
                           path => say(path ? "Saved " + path.replace(Quickshell.env("HOME"), "~") : "Couldn't save"));
     }
 
-    property bool confirmWipe: false
-    Timer { id: wipeWindow; interval: 3000; onTriggered: root.confirmWipe = false }
+    // Clear history asks first (mode "confirmWipe"): a second ⌃⇧⌫ within the
+    // window clears it; any other key, Esc or the window ending calls it off.
+    readonly property string wipeAsk: "Press ⌃⇧⌫ again to clear all history · it can't be undone"
+    Timer { id: wipeWindow; interval: 3000; onTriggered: root.leave("confirmWipe") }
 
-    // A short line of feedback over the footer.
+    // A short line of feedback over the footer; `ms` keeps it up longer.
     property string status: ""
-    function say(msg) { status = msg; statusTimer.restart(); }
-    Timer { id: statusTimer; interval: 2600; onTriggered: root.status = "" }
+    readonly property int statusMs: 2600
+    function say(msg, ms) { status = msg; statusTimer.interval = typeof ms === "number" && ms > 0 ? ms : statusMs; statusTimer.restart(); }
+    Timer { id: statusTimer; interval: root.statusMs; onTriggered: root.status = "" }
 
-    function toggleQuickLook() {
-        if (!quickLook) return;
-        if (quickLook.open) { quickLook.open = false; reading = false; return; }
-        if (!entry) return;
+    // Deleting is held for Theme.undoMs (Clipboard.hold): ⌃Z brings the
+    // latest delete back where it was, a multi-selection all together.
+    function deleted(n) { if (n > 0) say((n > 1 ? "Deleted " + n : "Deleted") + " · ⌃Z to undo", Theme.undoMs); }
+    function undoDelete() {
+        const keys = Clipboard.undo();
+        if (!keys) return false;
+        anchorKey = "";
+        const back = keys.filter(k => entries.some(r => r.key === k));
+        if (back.length) selKey = back[0];
+        if (back.length > 1) { const m = {}; for (const k of back) m[k] = true; marked = m; }
+        say(keys.length > 1 ? "Restored " + keys.length : "Restored");
+        return true;
+    }
+
+    function toggleQuickLook() { if (qlOpen) setMode("browse"); else openQuickLook(); }
+    function openQuickLook() {
+        if (!quickLook || !entry) return false;
         quickLook.entry = entry;
         quickLook.from = selRow ? selRow.markItem.mapToItem(quickLook, 0, 0, selRow.markItem.width, selRow.markItem.height)
                                 : Qt.rect(quickLook.width / 2 - 16, quickLook.height / 2 - 16, 32, 32);
-        quickLook.open = true;
+        setMode("quicklook");
         // An image or a file preview opens big: the island grows to the reading size with it (a tall screenshot
         // fitted into the shelf's height came out a few hundred pixels wide).
         if (["image", "files"].includes(entry.kind) || entry.kind === "path") reading = true;
+        return true;
     }
-    onEntryChanged: if (quickLook && quickLook.open && entry) {
+    onEntryChanged: if (quickLook && qlOpen && entry) {
         quickLook.entry = entry;
         if (selRow) quickLook.from = selRow.markItem.mapToItem(quickLook, 0, 0, selRow.markItem.width, selRow.markItem.height);
     }
@@ -631,13 +675,8 @@ Scope {
             if (searchField) searchField.text = "";
             filter = Clipboard.startFilter;
             first();
-            confirmWipe = false;
+            setMode("browse");
             status = "";
-            if (actionMenu) actionMenu.open = false;
-            if (filterMenu) filterMenu.open = false;
-            if (quickLook) quickLook.open = false;
-            if (keySheet) keySheet.open = false;
-            if (datePicker) datePicker.open = false;
             setDate(0, 0, "");
             reading = false;
             clock = 0;
@@ -646,14 +685,14 @@ Scope {
             if (Theme.reduceMotion) { pill.settle(); melt.settle(); }
         } else {
             if (selKey) lastKey = selKey;          // ⌥← brings you back here next time
+            setMode("browse");                     // (held deletes are done for real now: Clipboard.commitHeld)
             if (Theme.reduceMotion) { pill.settle(); melt.settle(); }
         }
     }
     // Left alone, it puts itself away: 45s without a key or the pointer on
     // it (never while you're reading, editing or in a menu).
     property bool pointerIn: false
-    readonly property bool busy: pointerIn || reading || naming || (quickLook && quickLook.editing) || (actionMenu && actionMenu.open)
-                                 || (datePicker && datePicker.open) || (keySheet && keySheet.open)
+    readonly property bool busy: pointerIn || reading || ClipState.holdsOpen(mode)
     function touched() { if (open) idle.restart(); }
     onBusyChanged: touched()
     Timer {
@@ -1007,7 +1046,7 @@ Scope {
                     anchors { right: typeBtn.left; rightMargin: 6; verticalCenter: parent.verticalCenter }
                     height: 30; radius: 10
                     width: dateRow.implicitWidth + 20
-                    color: dateArea.containsMouse || (root.datePicker && root.datePicker.open) ? Theme.pillHover : Theme.pill
+                    color: dateArea.containsMouse || root.mode === "date" ? Theme.pillHover : Theme.pill
                     Row {
                         id: dateRow
                         anchors.centerIn: parent
@@ -1020,8 +1059,8 @@ Scope {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onContainsMouseChanged: root.tip(dateBtn, containsMouse && !(root.datePicker && root.datePicker.open), "When it was copied", ["⌃", "D"])
-                        onClicked: { root.tip(dateBtn, false); if (root.datePicker) root.datePicker.toggle(); root.focusSearch(); }
+                        onContainsMouseChanged: root.tip(dateBtn, containsMouse && root.mode !== "date", "When it was copied", ["⌃", "D"])
+                        onClicked: { root.tip(dateBtn, false); root.toggleMode("date"); root.focusSearch(); }
                     }
                 }
                 // Close by mouse (Esc, a click outside, or the idle timeout too).
@@ -1048,7 +1087,7 @@ Scope {
                     anchors { right: closeBtn.left; rightMargin: 6; verticalCenter: parent.verticalCenter }
                     height: 30; radius: 10
                     width: typeRow.implicitWidth + 20
-                    color: typeArea.containsMouse || (root.filterMenu && root.filterMenu.open) ? Theme.pillHover : Theme.pill
+                    color: typeArea.containsMouse || root.mode === "filter" ? Theme.pillHover : Theme.pill
                     Row {
                         id: typeRow
                         anchors.centerIn: parent
@@ -1061,8 +1100,8 @@ Scope {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onContainsMouseChanged: root.tip(typeBtn, containsMouse && !(root.filterMenu && root.filterMenu.open), "Filter by type", ["⇥"])
-                        onClicked: { root.tip(typeBtn, false); if (root.filterMenu) root.filterMenu.toggle(); root.focusSearch(); }
+                        onContainsMouseChanged: root.tip(typeBtn, containsMouse && root.mode !== "filter", "Filter by type", ["⇥"])
+                        onClicked: { root.tip(typeBtn, false); root.toggleMode("filter"); root.focusSearch(); }
                     }
                 }
             }
@@ -1319,7 +1358,7 @@ Scope {
                     anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
                     height: 30; radius: 10
                     width: actRow.implicitWidth + 20
-                    color: actArea.containsMouse || (root.actionMenu && root.actionMenu.open) ? Theme.pillHover : "transparent"
+                    color: actArea.containsMouse || root.mode === "actions" ? Theme.pillHover : "transparent"
                     scale: actArea.pressed ? 0.97 : 1
                     Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                     Row {
@@ -1335,28 +1374,40 @@ Scope {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onContainsMouseChanged: root.tip(actionsBtn, containsMouse && !(root.actionMenu && root.actionMenu.open), "Every action for this card")
-                        onClicked: { root.tip(actionsBtn, false); if (root.actionMenu) root.actionMenu.toggle(); root.focusSearch(); }
+                        onContainsMouseChanged: root.tip(actionsBtn, containsMouse && root.mode !== "actions", "Every action for this card")
+                        onClicked: { root.tip(actionsBtn, false); root.toggleMode("actions"); root.focusSearch(); }
                     }
                 }
             }
 
-            // ── Overlays ─────────────────────────────────────────────────
+            // ── Overlays: each one's `open` comes from root.mode ───────────
             DatePicker {
                 id: dates
                 Component.onCompleted: root.datePicker = dates
+                open: root.surf.datePicker
+                onDismissed: root.leave("date")
                 anchorItem: dateBtn
                 counts: root.dayCounts
                 from: root.fromMs
                 to: root.toMs
                 onPicked: (from, to, label) => { root.setDate(from, to, label); if (searchField) root.focusSearch(); }
             }
+            // KeySheet and ActionMenu are shared with the assistant and close
+            // themselves (any key, a click outside, a pick): a Binding writes
+            // their `open` from the mode, and when one closes itself the mode
+            // steps back, so the two never disagree.
             KeySheet {
                 id: sheet
                 Component.onCompleted: root.keySheet = sheet
                 title: "Clipboard shortcuts"
                 sections: root.keySections
             }
+            Binding { target: sheet; property: "open"; value: root.surf.keySheet }
+            Connections { target: sheet; function onOpenChanged() { if (!sheet.open) root.leave("keys"); } }
+            Binding { target: actions; property: "open"; value: root.surf.actionMenu }
+            Connections { target: actions; function onOpenChanged() { if (!actions.open) root.leave("actions"); } }
+            Binding { target: types; property: "open"; value: root.surf.filterMenu }
+            Connections { target: types; function onOpenChanged() { if (!types.open) root.leave("filter"); } }
             ActionMenu {
                 id: actions
                 Component.onCompleted: root.actionMenu = actions
@@ -1383,6 +1434,23 @@ Scope {
     }
 
     // ── Keys ─────────────────────────────────────────────────────────────
+    // A key's name for routing (ClipState.route decides where it goes in the
+    // current mode; the shelf's own keys are below).
+    function chordOf(event) {
+        const k = event.key, m = event.modifiers;
+        const ctrl = m & Qt.ControlModifier, shift = m & Qt.ShiftModifier;
+        const empty = !searchField || searchField.text === "";
+        if ([Qt.Key_Control, Qt.Key_Shift, Qt.Key_Meta, Qt.Key_Super_L, Qt.Key_Super_R, Qt.Key_AltGr, Qt.Key_CapsLock].includes(k)) return "modifier";
+        if (k === Qt.Key_Escape) return "escape";
+        if (k === Qt.Key_F1 || (ctrl && k === Qt.Key_Slash)) return "help";
+        if (k === Qt.Key_Question && !ctrl && empty) return "question";
+        if (ctrl && k === Qt.Key_K) return "actions";
+        if (ctrl && k === Qt.Key_D) return "date";
+        if (ctrl && shift && k === Qt.Key_Backspace) return "wipe";
+        if (k === Qt.Key_Space && shift && !ctrl && (empty || qlOpen)) return "read";
+        if ((k === Qt.Key_Space && !ctrl && (empty || qlOpen)) || (ctrl && k === Qt.Key_Y)) return "look";
+        return "other";
+    }
     function key(event) {
         const k = event.key, m = event.modifiers;
         const ctrl = m & Qt.ControlModifier, shift = m & Qt.ShiftModifier, alt = m & Qt.AltModifier;
@@ -1396,28 +1464,36 @@ Scope {
             event.accepted = true;
             return;
         }
-        if (keySheet && keySheet.open && keySheet.key(event)) { event.accepted = true; return; }
-        if (k === Qt.Key_F1 || (ctrl && k === Qt.Key_Slash) || (k === Qt.Key_Question && field && field.text === "")) {
-            if (keySheet) keySheet.open = true;
-            event.accepted = true;
-            return;
+        const c = chordOf(event);
+        const r = ClipState.route(mode, c);
+        if (r.mode !== undefined) setMode(r.mode);
+        if (r.next === "ignore") return;
+        if (r.next === "done") { event.accepted = true; return; }
+        if (r.next === "overlay") {
+            const o = mode === "actions" ? actionMenu : mode === "filter" ? filterMenu : mode === "date" ? datePicker : null;
+            if (o && o.key(event)) { event.accepted = true; return; }
         }
-        if (filterMenu && filterMenu.open && filterMenu.key(event)) { event.accepted = true; return; }
-        if (datePicker && datePicker.open && datePicker.key(event)) { event.accepted = true; return; }
-        if (ctrl && k === Qt.Key_D) { if (datePicker) datePicker.toggle(); event.accepted = true; return; }
-        if (alt && k === Qt.Key_Left) { backToLast(); event.accepted = true; return; }
-        if (actionMenu && actionMenu.open && actionMenu.key(event)) { event.accepted = true; return; }
-        const ql = quickLook && quickLook.open;
-        if (ql && k === Qt.Key_Space && shift) { reading = !reading; event.accepted = true; return; }
-        if (ql && (k === Qt.Key_Escape || k === Qt.Key_Space || (ctrl && k === Qt.Key_Y))) { quickLook.open = false; reading = false; event.accepted = true; return; }
-        if (ctrl && k === Qt.Key_K) { if (actionMenu) actionMenu.toggle(); }
+        // The shelf's own keys (Quick Look keeps them: ←→ browse inside it).
+        if (c === "read") reading = !reading;           // on the shelf: opens Quick Look large
+        else if (c === "look") run("quicklook");         // Quick Look open: closes it
+        else if (c === "wipe") run("wipe");              // asks first; again within the window: clears
+        else if (c === "escape") {
+            const step = ClipState.escapeStep({ marks: markedCount, query: field ? field.text : "", filter: filter, date: !!(dateFrom || dateTo) });
+            if (step === "marks") clearMarks();
+            else if (step === "query") field.text = "";
+            else if (step === "filter") filter = "all";
+            else if (step === "date") setDate(0, 0, "");
+            else Clipboard.open = false;
+        }
+        // ⌃Z: the last delete comes back; with nothing to undo, the search field's own undo.
+        else if (ctrl && !shift && k === Qt.Key_Z) { if (!undoDelete()) return; }
+        else if (alt && k === Qt.Key_Left) backToLast();
         else if (shift && (k === Qt.Key_Right || k === Qt.Key_Left) && !ctrl) {
             const i = entries.findIndex(r => r.key === selKey);
             const j = Math.max(0, Math.min(entries.length - 1, i + (k === Qt.Key_Right ? 1 : -1)));
             if (i >= 0 && entries[j]) { mark(selKey, true); markRange(entries[j].key); }
         }
         else if (ctrl && k === Qt.Key_A && field && field.text === "") markAll();
-        else if (k === Qt.Key_Escape && markedCount) clearMarks();
         // One rule, whatever is typed: ← → move between cards (the shelf is
         // horizontal, as in macOS's Paste). The search keeps its editing keys:
         // Backspace, Home / End, and Ctrl+← → to jump by word. (Switching ← →
@@ -1433,8 +1509,6 @@ Scope {
         else if ((k === Qt.Key_Return || k === Qt.Key_Enter) && ctrl) run("open");
         else if ((k === Qt.Key_Return || k === Qt.Key_Enter) && shift) run("copy");
         else if (k === Qt.Key_Return || k === Qt.Key_Enter) run("paste");
-        else if (k === Qt.Key_Space && shift && field && field.text === "") reading = true;
-        else if ((k === Qt.Key_Space && field && field.text === "") || (ctrl && k === Qt.Key_Y)) run("quicklook");
         else if (ctrl && shift && k === Qt.Key_E) run("nvim");
         else if (ctrl && k === Qt.Key_P) run("pin");
         else if (ctrl && k === Qt.Key_E) run("edit");
@@ -1442,7 +1516,6 @@ Scope {
         else if (ctrl && k === Qt.Key_S) run("save");
         else if (ctrl && k === Qt.Key_H) run("reveal");
         else if (ctrl && k === Qt.Key_R) { if (quickLook) quickLook.raw = !quickLook.raw; }
-        else if (ctrl && shift && k === Qt.Key_Backspace) run("wipe");
         else if ((shift && k === Qt.Key_Delete) || (ctrl && k === Qt.Key_X && field && !field.selectedText)) run("delete");
         else if (k === Qt.Key_Backspace && field && field.text === "" && filter !== "all") filter = "all";
         else if (k === Qt.Key_Tab || k === Qt.Key_Backtab) {
@@ -1452,12 +1525,6 @@ Scope {
         else if (alt && k >= Qt.Key_1 && k <= Qt.Key_9) {
             const r = entries[k - Qt.Key_1];
             if (r) { selKey = r.key; run("paste"); }
-        }
-        else if (k === Qt.Key_Escape) {
-            if (field && field.text !== "") field.text = "";
-            else if (filter !== "all") filter = "all";
-            else if (dateFrom || dateTo) setDate(0, 0, "");
-            else Clipboard.open = false;
         }
         else return;
         event.accepted = true;

@@ -20,8 +20,10 @@ Item {
 
     property var panel
     property var entry: null
-    property bool open: false
-    property bool editing: false
+    // Both come from the panel's one mode (quicklook, edit); Quick Look asks
+    // the panel to change it and never sets them itself.
+    readonly property bool open: !!panel && panel.qlOpen
+    readonly property bool editing: !!panel && panel.mode === "edit"
     property bool raw: false
     property rect from: Qt.rect(width / 2, height / 2, 32, 32)
     property string full: ""
@@ -33,7 +35,6 @@ Item {
 
     Spring { id: t; tier: Theme.surfaceIn; epsilon: 0.001 }
     onOpenChanged: {
-        if (!open) editing = false;
         t.target = open ? 1 : 0;
         if (Theme.reduceMotion) t.settle();
     }
@@ -61,7 +62,7 @@ Item {
     onEntryChanged: {
         full = "";
         raw = false;
-        editing = false;
+        if (editing) panel.setMode("quicklook");    // an edit belongs to the copy it started on
         rendered = { kind: "text" };
         // Read the entry's own kind here: `isImage` is a binding on `entry` and may not have re-run yet when this
         // handler does (an image then went through the text renderer, its PNG bytes shown as "code").
@@ -80,7 +81,7 @@ Item {
         anchors.fill: parent
         radius: 24
         color: Qt.rgba(0.05, 0.05, 0.07, 0.78 * Math.min(1, t.value))
-        MouseArea { anchors.fill: parent; enabled: ql.open; onClicked: ql.open = false }
+        MouseArea { anchors.fill: parent; enabled: ql.open; onClicked: ql.panel.setMode("browse") }
     }
 
     ClippingRectangle {
@@ -204,11 +205,11 @@ Item {
                 // Double-click the text to edit it in place (⌃E does the same).
                 TapHandler {
                     enabled: !ql.editing && !ql.masked
-                    onDoubleTapped: ql.editing = true
+                    onDoubleTapped: ql.panel.run("edit")
                 }
                 Keys.onPressed: event => {
                     if (!ql.editing) return;
-                    if (event.key === Qt.Key_Escape) { ql.editing = false; ql.panel.focusSearch(); event.accepted = true; }
+                    if (event.key === Qt.Key_Escape) { ql.panel.setMode("quicklook"); event.accepted = true; }   // one level: back to Quick Look
                     // Keep the edit without leaving: it lands as the newest copy
                     // (the original stays in history), the panel stays open.
                     else if (event.key === Qt.Key_S && (event.modifiers & Qt.ControlModifier)) {
