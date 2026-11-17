@@ -678,7 +678,7 @@ Rectangle {
                         anchors.centerIn: parent
                         name: parent.stopping ? "stop" : "arrow-up"
                         style: parent.stopping ? "fill" : "bold"
-                        size: 16
+                        size: Theme.glyphS
                         color: parent.stopping || root.canSend ? Theme.onAccent : Theme.textDim
                     }
 

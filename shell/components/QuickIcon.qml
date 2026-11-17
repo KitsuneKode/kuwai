@@ -26,8 +26,8 @@ Item {
     // The hold's progress: a ring fills while you hold (slow and linear,
     // you're deciding), snaps back the moment you let go.
     property real holdT: 0
-    NumberAnimation { id: holdFill; target: q; property: "holdT"; from: 0; to: 1; duration: 350; easing.type: Easing.Linear }
-    NumberAnimation { id: holdBack; target: q; property: "holdT"; to: 0; duration: 140; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+    NumberAnimation { id: holdFill; target: q; property: "holdT"; from: 0; to: 1; duration: Theme.holdShortMs; easing.type: Easing.Linear }
+    NumberAnimation { id: holdBack; target: q; property: "holdT"; to: 0; duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
 
     width: 26; height: 26
     activeFocusOnTab: true

@@ -15,7 +15,7 @@ Item {
     property color color: value > 0.9 ? Theme.red : value > 0.7 ? Theme.orange : Theme.accent
     // Load changes colour gradually, not in jumps.
     Behavior on color { ColorAnimation { duration: Theme.artMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
-    property int size: 44
+    property int size: Theme.cardRingSize
     property real stroke: 4              // a thinner ring for small sizes (the island's 18 px)
     implicitWidth: col.implicitWidth
     implicitHeight: col.implicitHeight
@@ -43,7 +43,7 @@ Item {
             }
         }
         // The number morphs digit by digit when it changes (TextMorph, quick).
-        TextMorph { visible: ring.text !== ""; anchors.centerIn: parent; text: ring.text; size: 11; weight: Theme.wSemibold; rounded: true; duration: 320; stagger: 25 }
+        TextMorph { visible: ring.text !== ""; anchors.centerIn: parent; text: ring.text; size: 11; weight: Theme.wSemibold; rounded: true; duration: Theme.morphSmallMs; stagger: 25 }
     }
     Label { visible: ring.label !== ""; anchors.horizontalCenter: parent.horizontalCenter; text: ring.label; size: 11; weight: Theme.wMedium; color: Theme.textSecondary }
   }

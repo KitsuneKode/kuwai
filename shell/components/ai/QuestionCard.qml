@@ -120,10 +120,10 @@ Rectangle {
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 4
-                KeyCap { text: "↵"; size: 9 }
+                KeyCap { text: "↵"; size: Theme.tCaption }
                 Label { text: "answer"; size: 11; color: Theme.textTertiary; anchors.verticalCenter: parent.verticalCenter }
                 Item { width: 8; height: 1 }
-                KeyCap { text: "Esc"; size: 9 }
+                KeyCap { text: "Esc"; size: Theme.tCaption }
                 Label {
                     text: "skip"
                     size: 11

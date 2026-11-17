@@ -17,7 +17,7 @@ Row {
     property int weight: Theme.wSemibold
     property color color: Theme.textPrimary
     property bool rounded: true
-    property int duration: 560          // per character
+    property int duration: Theme.morphMs         // per character
     property int stagger: 45
     // The cells are the digits' cap height, their baseline the cell's bottom:
     // `anchors.baseline` lines other text up with the digits.
@@ -72,7 +72,7 @@ Row {
             SequentialAnimation {
                 id: run
                 PropertyAction { target: cell; property: "t"; value: 0 }
-                PauseAnimation { id: delay; duration: 0 }
+                PauseAnimation { id: delay; duration: cell.index * morph.stagger }
                 NumberAnimation { target: cell; property: "t"; from: 0; to: 1; duration: morph.duration; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
                 ScriptAction { script: cell.was = cell.ch }
             }

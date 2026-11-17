@@ -27,8 +27,8 @@ Rectangle {
         loops: Animation.Infinite
         onStopped: caret.opacity = 1
         NumberAnimation { to: 0; duration: Theme.quickMs; easing.type: Easing.OutQuad }
-        PauseAnimation { duration: 410 }
+        PauseAnimation { duration: Theme.caretBlinkMs - Theme.quickMs }
         NumberAnimation { to: 1; duration: Theme.quickMs; easing.type: Easing.OutQuad }
-        PauseAnimation { duration: 410 }
+        PauseAnimation { duration: Theme.caretBlinkMs - Theme.quickMs }
     }
 }

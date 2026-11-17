@@ -62,8 +62,8 @@ Rectangle {
             anchors.centerIn: parent
             text: tile.glyph
             font.family: Theme.fontGlyph
-            font.pixelSize: 16
-            color: tile.on && tile.tone === Theme.yellow ? "#1c1c1e" : Theme.textPrimary
+            font.pixelSize: Theme.glyphS
+            color: tile.on && tile.tone === Theme.yellow ? Theme.inkOnLight : Theme.textPrimary
         }
     }
     Column {
@@ -80,7 +80,7 @@ Rectangle {
         visible: tile.expandable
         text: "\u{f0142}"                                     // chevron-right
         font.family: Theme.fontGlyph
-        font.pixelSize: 16
+        font.pixelSize: Theme.glyphS
         color: Theme.textTertiary
         rotation: tile.expanded ? 90 : 0
         Behavior on rotation { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }

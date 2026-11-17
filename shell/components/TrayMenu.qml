@@ -147,7 +147,7 @@ Item {
                 transform: Translate { id: drift; x: 0 }
                 SequentialAnimation {
                     id: slide
-                    NumberAnimation { target: drift; property: "x"; from: 14; to: 0; duration: 180; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+                    NumberAnimation { target: drift; property: "x"; from: 14; to: 0; duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
                 }
 
                 // One highlight for the menu (fluid hover): it glides from row to

@@ -41,15 +41,29 @@ Singleton {
     // surface and a hairline, so cards separate without boxes everywhere.
     readonly property color card: Qt.rgba(1, 1, 1, 0.05)
     readonly property color cardEdge: Qt.rgba(1, 1, 1, contrast ? 0.22 : 0.05)
+    readonly property color cardDrop: Qt.rgba(0, 0, 0, 0.5)    // the 1 px drop under a Card: it reads as sitting on the panel
+    // The glass's own near-black (glassTint's colour, opaque): dark ink on a
+    // light fill, and the base an opaque tag mixes its tone into.
+    readonly property color glassBlack: "#111114"
+    // The glass made opaque, where nothing is behind to blur (the gallery,
+    // a settings preview rendered as a picture).
+    readonly property color glassSolid: "#1c1c1f"
+    // The island's black, for the ring that cuts a badge out of what it
+    // overlaps (a status dot on an app icon).
+    readonly property color cutout: "#000000"
     // A round grey button on black (iOS's stop ✕): rest and hover.
     readonly property color knob: "#3a3a3c"
     readonly property color knobHover: "#4a4a4e"
     readonly property color chip: Qt.rgba(0.11, 0.11, 0.12, 1)   // an opaque disc on black (stacked logos)
     readonly property int statRingSize: 40   // the hover view's rings (machine and agents)
+    readonly property int cardRingSize: 44   // a ring with its number in a card (a device's battery); StatRing's default
     // Agents' own colours (T3 Code's usage palette), for their bars and discs.
     readonly property var brandTint: ({ claude: "#d97757", antigravity: "#8c7bd1", opencode: "#5b9bbd",
                                         cursor: "#8b8b8b", openai: "#e8e8ea", grok: "#b8b8bc", googlegemini: "#7aa2f7",
                                         kimi: "#6d8cff", qwen: "#7f6cf0" })
+    // The login screen's accent when the greeter is given none
+    // (KUWAI_GREETER_ACCENT): kuwai's pink.
+    readonly property color loginAccent: "#fc2e64"
     // Tinted surfaces (Chip, Notice): the tone at these strengths.
     readonly property real tintChip: 0.16
     readonly property real tintNotice: 0.12
@@ -67,6 +81,22 @@ Singleton {
     readonly property int tTitle2: 20      // big values (volume %, battery)
     readonly property int tTitle1: 24      // hero numbers; displays scale from screen size
     readonly property int tClock: 26       // the island's big clock: the hover view, the calendar, the clock in flight
+    // Full-screen moments (lock, login, farewell) are read from across the
+    // desk, off the panel scale on purpose.
+    readonly property int tLockClock: 150      // the lock and login screens' clock
+    readonly property int tLockDate: 26        // the date above it
+    readonly property int tLockHeadline: 34    // the login's "Welcome back"
+    readonly property int tFarewellTitle: 30   // the farewell's title ("Shutting Down", "Sleeping")
+    readonly property int tLockInitial: 36     // the initial that stands in for a missing picture (login)
+    readonly property int tLockName: 21        // your name under your picture (login)
+    readonly property int tLockBody: 17        // a line on these screens: the unlock hint, the track playing, the farewell's line
+    // Glyph sizes (Symbols Nerd Font, Icon): a glyph is sized by its place.
+    readonly property int glyphS: 16       // on a control or inline with a line: buttons, chevrons, nav arrows, a status mark (Icon's default)
+    readonly property int glyphM: 18       // the mark that leads a row, a notice or a card, or sits in a status disc
+    readonly property int glyphL: 22       // standing in for a picture: a cover with no art, a theme with no preview, a tile's "+", an empty list's mark
+    readonly property int glyphXL: 28      // the mark of a large tile, an empty panel or a device card (in place of its photo)
+    readonly property int glyphFarewell: 54   // the farewell's mark (moon, door)
+    readonly property int glyphPlay: 32       // play/pause between the skip buttons (Now Playing; the skips take tTitle1)
     readonly property int r1: 8          // small controls, thumbnails
     readonly property int r2: 12         // tiles, switches
     readonly property int r3: 16         // cards, notices
@@ -107,6 +137,13 @@ Singleton {
     readonly property color indigo: "#5e5ce6"    // secondary actions, sliders
     readonly property color gray: "#8e8e93"      // Apple's system grey: neutral tiles (Settings → Keyboard)
     readonly property color cyan: "#64d2ff"      // info, links on dark
+    readonly property color pink: "#ff375f"      // Apple's pink: music (a player's sound source)
+    readonly property color brown: "#ac8e68"     // Apple's brown: one more categorical hue
+    readonly property color mint: "#66d4cf"      // Apple's mint: one more categorical hue
+    // Red as words (a critical label): Apple's accessible red, lighter than
+    // red so it reads as text on glass.
+    readonly property color redText: "#ff6961"
+    readonly property color inkOnLight: glassBlack   // text and glyphs on a light fill: a selected chip, today, a white badge or button
 
     // The theme's own colour, the way HyDE's colour mode says (Themes panel →
     // Colours, or HyDE's wallbash toggle; enableWallDcol in its staterc):
@@ -118,7 +155,7 @@ Singleton {
     // island it's modelled on; light themes tint it, never whiten it.
     property color accent: blue
     // A theme change recolours the island as a 400 ms blend, not a cut.
-    Behavior on accent { ColorAnimation { duration: 400; easing.type: Easing.OutCubic } }
+    Behavior on accent { ColorAnimation { duration: root.artMs; easing.type: Easing.OutCubic } }
     property color accentSoft: Qt.rgba(0.04, 0.52, 1, 0.5)
     // Text and glyphs that sit *on* the accent: dark on light accents, white on dark.
     function luminance(c) {
@@ -342,7 +379,7 @@ Singleton {
     readonly property int reflowMs: 200         // neighbours closing a gap
     readonly property int colorMs: 140
     readonly property int hoverMs: 80           // hover tints: answer the pointer at once
-    readonly property int artMs: 400            // album-art colour following a new track
+    readonly property int artMs: 400            // a colour following its new source: album art after a new track, the accent after a theme change
     readonly property int spinMs: 750           // one turn of a spinner: brisk (a faster turn reads as faster work; every spinner uses it)
     readonly property int stepMs: 600           // one step of a working ring (glides, then rests ~2.4 s)
     // The one beat every working ring on the notch steps to: T3's and an
@@ -374,6 +411,65 @@ Singleton {
     readonly property int breathOutMs: 1100
     readonly property int wallRevealMs: 900
     readonly property int handoffMs: 30          // one swap's new content waits this long for the old to start leaving
+    readonly property int settleMs: 260          // settling into a new place or size, not arriving: a surface resizing to fit, a pulled one let go, a farewell undone
+    readonly property int kickMs: 90             // the quick first half of a there-and-back: a rubber band's stretch, a typed dot's pop, a bump, a miss
+    readonly property int bumpBackMs: 300        // an update in place settling back from its 1.02 bump (NotifCard)
+    readonly property int flashFadeMs: 900       // a one-time flash fading out: a critical toast's arrival ring, a wrong password's red ring
+    readonly property int morphMs: 560           // one character morphing (TextMorph's default)
+    readonly property int morphSmallMs: 320      // a number morphing inside a small ring (StatRing)
+    readonly property int holdMs: 800            // a deliberate hold (the login's power buttons): slow, you're deciding
+    readonly property int holdShortMs: 350       // a status icon's press-and-hold (QuickIcon)
+    readonly property int caretBlinkMs: 530      // a resting caret's blink, the platform rate
+    readonly property int peakFollowMs: 60       // a live level following its peaks: just enough to smooth the steps
+    readonly property int peakFallMs: 1600       // a meter's peak-hold line falling back
+    readonly property int waveSettleMs: 380      // the now-playing bars settling to their pause shape
+    readonly property int revealClockMs: 600     // a panel's reveal clock: long enough for its last staged step to land
+    readonly property int ambientFadeMs: 600     // something behind everything fading by itself (a live wallpaper's video)
+    // A device card's own beats (DeviceCard; it enters like AlarmCard).
+    readonly property int cardPingMs: 450        // the link closing sends one ping out
+    readonly property int cardSettleMs: 320      // what lands as the link closes (the badge, the battery) settling in
+    readonly property int cardLevelMs: 600       // a sound device's level filling in once it's connected
+    readonly property int cardGoWaitMs: 260      // a device leaving: the ring waits this long…
+    readonly property int cardUnlinkMs: 420      // …then undoes itself
+    // Lock, login and farewell (full-screen moments: slower, they are rare).
+    readonly property int unlockMs: 440          // the lock lifting away, after the shackle opens
+    readonly property int shackleWaitMs: 380     // the padlock waits for the island to land before it clicks shut
+    readonly property int shackleShutMs: 260     // the shackle clicking shut
+    readonly property int shackleOpenWaitMs: 90  // a beat before the shackle springs open
+    readonly property int shackleOpenMs: 300     // the shackle springing open
+    readonly property int idleDimMs: 14000       // the screen dimming before it sleeps (any movement lifts it)
+    readonly property int greetStepMs: 420       // one part of the login's intro rising in
+    readonly property int greetWallMs: 1400      // the login's wallpaper coming up out of black
+    readonly property int greetClockMs: 560      // the login's clock arriving
+    readonly property int greetOutMs: 380        // the login stepping aside as you log in
+    readonly property int loginRevealMs: 720     // your picture opening into your desktop
+    readonly property int farewellMarkMs: 900    // the farewell's mark doing its one motion
+    readonly property int farewellHoldMs: 250    // a beat on the finished mark before black
+    readonly property int farewellOutMs: 420     // into black
+    readonly property int chargeFillMs: 900      // plugged in on the lock screen: the battery fills from empty to its level…
+    readonly property int chargeHoldMs: 500      // …holds there, then shows the live value
+    readonly property int chargeRingDelayMs: 120 // its two rings ping out this long after the fill starts…
+    readonly property int chargeRingGapMs: 220   // …this far apart
+    // Screensaver: ambient, minutes not milliseconds.
+    readonly property int saverZoomMs: 40000     // the still's slow zoom, each way
+    readonly property int saverMoveMs: 6000      // the clock gliding to its new place each minute
+    readonly property int duskMeteorWaitMs: 14000  // Dusk: quiet sky before a shooting star…
+    readonly property int duskMeteorInMs: 180      // …it flashes on…
+    readonly property int duskMeteorMs: 900        // …crosses (fading over the second half)…
+    readonly property int duskMeteorRestMs: 9000   // …and the sky rests again
+    readonly property int duskLightWaitMs: 2000    // Dusk: the first town window lights after this (the rest follow)
+    readonly property int duskLightOnMs: 600       // a window lighting up
+    readonly property int duskLightStayMs: 12000   // the least a window stays lit
+    readonly property int duskLightOffMs: 900      // a window going dark
+    readonly property int duskStarSize: 5          // Dusk: a star's size (px; ±4)
+    // Dusk's palette (an original evening): the sky top to horizon, then the
+    // scene from far to near.
+    readonly property var duskPalette: ({
+        sky: ["#0b1030", "#202862", "#4a3a7a", "#a35a82", "#f0937a", "#ffc98c"],
+        star: "#fff6e8", halo: "#fff0d8", moonTop: "#fffaf0", moonBottom: "#f6dcc0",
+        clouds: ["#e9b8c8", "#d9a0b8", "#c8b8e8"], meteor: "#fffbe8",
+        farHills: "#6a4a7e", midHills: "#3d2c5a", town: "#2a1f42", ground: "#160f26", window: "#ffd38a"
+    })
     // One undo window for everything that can be taken back: "Cleared N ·
     // Undo" after clearing notifications, "Deleted · ⌃Z to undo" after
     // deleting a copy. Long enough to notice and reach (Material's snackbar:

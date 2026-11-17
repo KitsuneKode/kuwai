@@ -169,7 +169,7 @@ Item {
                 anchors { right: parent.right; rightMargin: list.contentWidth - list.contentX - list.width + 8; verticalCenter: parent.verticalCenter }
                 height: dv.rowH - 4; radius: height / 2
                 width: tag.implicitWidth + 14
-                color: "#3a2a0c"
+                color: Qt.tint(Theme.glassBlack, Qt.alpha(Theme.orange, 0.18))
                 border.width: 1
                 border.color: Qt.rgba(1, 0.62, 0.04, 0.5)
                 z: 3

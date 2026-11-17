@@ -13,7 +13,7 @@ Item {
     id: icon
     property string name
     property string style: "duotone"
-    property int size: 16
+    property int size: Theme.glyphS
     property color color: Theme.textPrimary
     property bool active: false
 

@@ -46,7 +46,7 @@ Item {
             size: 10
             weight: Theme.wSemibold
             rounded: true
-            color: "#111111"
+            color: Theme.inkOnLight
             font.features: ({ "tnum": 1 })
         }
     }

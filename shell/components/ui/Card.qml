@@ -27,7 +27,7 @@ Rectangle {
         width: card.width
         height: card.height
         radius: card.radius
-        color: "#80000000"
+        color: Theme.cardDrop
     }
 
     Column {

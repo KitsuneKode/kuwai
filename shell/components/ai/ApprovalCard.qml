@@ -116,11 +116,11 @@ Rectangle {
         Row {
             anchors.right: parent.right
             spacing: 4
-            KeyCap { text: "Esc"; size: 9 }
+            KeyCap { text: "Esc"; size: Theme.tCaption }
             Label { text: "don't"; size: 11; color: Theme.textTertiary; anchors.verticalCenter: parent.verticalCenter }
             Item { width: 8; height: 1 }
-            KeyCap { text: "⌃"; size: 9 }
-            KeyCap { text: "↵"; size: 9 }
+            KeyCap { text: "⌃"; size: Theme.tCaption }
+            KeyCap { text: "↵"; size: Theme.tCaption }
             Label { text: root.verb.toLowerCase(); size: 11; color: Theme.textTertiary; anchors.verticalCenter: parent.verticalCenter }
         }
     }
