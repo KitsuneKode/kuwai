@@ -144,6 +144,10 @@ FocusScope {
                 onEntered: Switcher.index = card.index
                 onClicked: { Switcher.index = card.index; Switcher.commit(); }
             }
+            Accessible.role: Accessible.ListItem
+            Accessible.name: sw.appName(card.modelData) + (card.modelData.title ? ": " + card.modelData.title : "")
+            Accessible.selected: card.on
+            Accessible.onPressAction: { Switcher.index = card.index; Switcher.commit(); }
         }
     }
 

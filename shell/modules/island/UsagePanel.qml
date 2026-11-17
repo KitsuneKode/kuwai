@@ -188,6 +188,11 @@ FocusScope {
                         cursorShape: Qt.PointingHandCursor
                         onClicked: usage.tab = tb.modelData.id
                     }
+                    Accessible.role: Accessible.PageTab
+                    Accessible.name: tb.modelData.label
+                    Accessible.description: tb.modelData.rank === 2 ? "Out" : tb.modelData.rank >= 1.5 ? "Near its limit" : ""
+                    Accessible.selected: tb.on
+                    Accessible.onPressAction: usage.tab = tb.modelData.id
                 }
             }
         }

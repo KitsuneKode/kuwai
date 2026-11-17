@@ -133,6 +133,9 @@ FocusScope {
             anchors { left: art.left; right: titles.right; top: art.top; bottom: art.bottom }
             cursorShape: Qt.PointingHandCursor
             onClicked: { Media.goTo(); Island.close(); }
+            Accessible.role: Accessible.Button
+            Accessible.name: "Go to " + (np.p ? np.p.identity : "the player") + ": " + (np.p ? (Media.title(np.p) || "Unknown") : "")
+            Accessible.onPressAction: { Media.goTo(); Island.close(); }
         }
         Tip { anchors.horizontalCenter: undefined; x: 0; text: "Go to " + (np.p ? np.p.identity : "the player"); shown: artArea.containsMouse; below: true }
 
@@ -158,6 +161,12 @@ FocusScope {
                 Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
             }
             MouseArea { id: ctxArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: np.contextAct() }
+            Accessible.role: np.kind === "cider" ? Accessible.CheckBox : Accessible.Button
+            Accessible.name: np.kind === "cider" ? "Love this song" : np.youtube ? "Copy link at " + Media.clock(Media.position) : "Copy link"
+            Accessible.checkable: np.kind === "cider"
+            Accessible.checked: np.kind === "cider" && np.isLoved
+            Accessible.onPressAction: np.contextAct()
+            Accessible.onToggleAction: np.contextAct()
             Tip {
                 text: np.kind === "cider" ? (np.isLoved ? "Loved · click to undo" : "Love this song (Apple Music)")
                     : np.youtube ? "Copy link at " + Media.clock(Media.position) : "Copy link"
@@ -227,6 +236,14 @@ FocusScope {
                 id: track
                 anchors { left: elapsed.right; right: remain.left; leftMargin: 6; rightMargin: 6; verticalCenter: parent.verticalCenter }
                 height: 18
+                // Screen readers: a slider (value 0–1, the item's own from/to/value), a twentieth a step.
+                readonly property real value: scrub.f
+                readonly property real from: 0
+                readonly property real to: 1
+                Accessible.role: Accessible.Slider
+                Accessible.name: "Position, " + Media.clock(scrub.f * Media.length) + " of " + Media.clock(Media.length)
+                Accessible.onIncreaseAction: if (scrub.can) Media.seekTo(Math.min(1, Media.fraction + 0.05))
+                Accessible.onDecreaseAction: if (scrub.can) Media.seekTo(Math.max(0, Media.fraction - 0.05))
                 readonly property bool active: trackArea.containsMouse || trackArea.pressed
                 Rectangle {
                     anchors.verticalCenter: parent.verticalCenter
@@ -303,6 +320,10 @@ FocusScope {
                         color: np.tint
                     }
                     MouseArea { id: btnArea; anchors.fill: parent; enabled: btn.modelData.ok; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: btn.modelData.act() }
+                    Accessible.role: Accessible.Button
+                    Accessible.name: btn.modelData.tip
+                    Accessible.description: btn.modelData.on ? "On" : ""
+                    Accessible.onPressAction: if (btn.modelData.ok) btn.modelData.act()
                     Tip { text: btn.modelData.tip; shown: btnArea.containsMouse; below: true }
                 }
             }

@@ -184,6 +184,7 @@ Item {
             MouseArea { id: secArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { const f = acts.a.secondary[1]; Moments.dropCard(); f(); } }
             Accessible.role: Accessible.Button
             Accessible.name: acts.a.secondary ? acts.a.secondary[0] : ""
+            Accessible.onPressAction: if (acts.a.secondary) { const f = acts.a.secondary[1]; Moments.dropCard(); f(); }
         }
         Rectangle {
             visible: !!acts.a.primary
@@ -203,6 +204,7 @@ Item {
             MouseArea { id: priArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { const f = acts.a.primary[1]; Moments.dropCard(); f(); } }
             Accessible.role: Accessible.Button
             Accessible.name: acts.a.primary ? acts.a.primary[0] : ""
+            Accessible.onPressAction: if (acts.a.primary) { const f = acts.a.primary[1]; Moments.dropCard(); f(); }
         }
     }
 }

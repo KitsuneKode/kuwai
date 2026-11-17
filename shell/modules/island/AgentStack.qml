@@ -82,6 +82,11 @@ Item {
     }
 
     HoverHandler { id: hover; margin: 6; cursorShape: Qt.PointingHandCursor }
+    Accessible.role: Accessible.Button
+    Accessible.name: !stack.list.length ? "" : stack.many ? "Agents: " + (stack.needN ? stack.needN + " need you, " : "") + Kittymux.working.length + " working"
+        : stack.list[0].agent + ", " + stack.list[0].title + ", " + stack.list[0].status
+    Accessible.description: "Opens every agent"
+    Accessible.onPressAction: if (stack.list.length) Island.toggle("agents", stack.bar.screenName, "pointer")
     TapHandler {
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         onTapped: (point, button) => {

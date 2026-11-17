@@ -126,6 +126,10 @@ Row {
             cursorShape: Qt.PointingHandCursor
             onClicked: Island.open("usage", sys.bar ? sys.bar.screenName : "", "pointer", "island")
         }
+        Accessible.role: Accessible.Button
+        Accessible.name: lim.b ? lim.b.name + " is back in " + Limits.compact(lim.b.at - Limits.now) : "Usage"
+        Accessible.description: "Opens Usage"
+        Accessible.onPressAction: Island.open("usage", sys.bar ? sys.bar.screenName : "", "pointer", "island")
         Timer {
             interval: Settings.hoverDelay
             running: limArea.containsMouse

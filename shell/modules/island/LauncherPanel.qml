@@ -646,6 +646,9 @@ FocusScope {
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: { field.text = (row.modelData.prefix !== undefined ? row.modelData.prefix : "= ") + parent.modelData.replace(/^! /, "").replace("×", "*"); field.cursorPosition = field.text.length; field.forceActiveFocus(); }
                             }
+                            Accessible.role: Accessible.Button
+                            Accessible.name: "Try " + modelData
+                            Accessible.onPressAction: { field.text = (row.modelData.prefix !== undefined ? row.modelData.prefix : "= ") + modelData.replace(/^! /, "").replace("×", "*"); field.cursorPosition = field.text.length; field.forceActiveFocus(); }
                         }
                     }
                 }
@@ -756,6 +759,8 @@ FocusScope {
                             }
                             onClicked: launcher.run(tile.modelData)
                         }
+                        Accessible.selected: tile.chosen
+                        Accessible.onPressAction: launcher.run(tile.modelData)
                     }
                 }
             }
@@ -776,6 +781,12 @@ FocusScope {
                 }
                 onClicked: launcher.run(row.modelData)
             }
+            // A result as a screen reader reads it (the dock's tiles name themselves).
+            Accessible.role: row.header || row.dock ? Accessible.Grouping : Accessible.ListItem
+            Accessible.name: row.modelData.kind === "header" ? (row.modelData.name || "") : row.tips ? "Try" : row.dock ? "Apps" : (row.modelData.name || "")
+            Accessible.description: row.header || row.dock ? "" : (row.modelData.sub || row.modelData.note || "")
+            Accessible.selected: row.on && !row.header && !row.dock
+            Accessible.onPressAction: if (!row.header && !row.dock) launcher.run(row.modelData)
         }
 
         Label {

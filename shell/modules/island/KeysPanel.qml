@@ -289,6 +289,12 @@ FocusScope {
                 }
                 onClicked: pal.run(row.modelData)
             }
+            Accessible.role: row.header ? Accessible.StaticText : Accessible.ListItem
+            Accessible.name: row.header ? row.modelData.header : (row.modelData.text || "")
+                + (row.modelData.kind === "feature" ? (row.modelData.on ? ", on" : ", off") : row.modelData.kind === "mode" && row.modelData.on ? ", current" : "")
+            Accessible.description: [row.modelData.sub || "", row.modelData.kind === "bind" ? (row.modelData.caps || []).join(" ") : ""].filter(x => x).join(". ")
+            Accessible.selected: row.on
+            Accessible.onPressAction: if (!row.header) pal.run(row.modelData)
         }
 
         Label {

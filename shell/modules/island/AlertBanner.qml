@@ -44,6 +44,12 @@ Item {
                 banner.expanded = !banner.expanded;
             }
         }
+        Accessible.role: Accessible.Button
+        Accessible.name: banner.alert ? banner.alert.title : ""
+        Accessible.description: banner.alert ? banner.alert.detail || "" : ""
+        Accessible.expandable: !!banner.alert && !!banner.alert.detail && (detailLine.truncated || banner.expanded)
+        Accessible.expanded: banner.expanded
+        Accessible.onPressAction: if (banner.alert && banner.alert.detail && (detailLine.truncated || banner.expanded)) banner.expanded = !banner.expanded
         Column {
             id: copyCol
             width: parent.width
@@ -98,5 +104,8 @@ Item {
                 Island.open(banner.alert && banner.alert.panel ? banner.alert.panel : "system", banner.bar.screenName, "pointer", "island");
             }
         }
+        Accessible.role: Accessible.Button
+        Accessible.name: banner.alert && banner.alert.action ? banner.alert.action : "Details"
+        Accessible.onPressAction: { Alerts.dismiss(); Island.open(banner.alert && banner.alert.panel ? banner.alert.panel : "system", banner.bar.screenName, "pointer", "island"); }
     }
 }

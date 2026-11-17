@@ -188,6 +188,12 @@ FocusScope {
                     onReleased: power.letGo()
                     onCanceled: power.letGo()
                 }
+                // A screen reader's press is one deliberate act: it does what a completed hold does.
+                Accessible.role: Accessible.Button
+                Accessible.name: tile.modelData.label
+                Accessible.description: tile.modelData.hold ? "Hold to confirm" : ""
+                Accessible.selected: tile.on
+                Accessible.onPressAction: { power.current = tile.index; power.run(tile.index); }
             }
         }
     }

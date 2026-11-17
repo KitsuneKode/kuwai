@@ -105,6 +105,10 @@ Item {
     }
 
     HoverHandler { onHoveredChanged: Moments.cardHeld = hovered }
+    Accessible.role: Accessible.Button
+    Accessible.name: card.item ? [card.item.title, card.item.state].filter(x => x).join(", ") : ""
+    Accessible.description: card.item ? card.item.detail || "" : ""
+    Accessible.onPressAction: { const open = card.item ? card.item.open : null; Moments.dropCard(); if (open) open(); else Notifs.toggleCenter("sound", "click", card.bar.screenName); }
     TapHandler {
         onTapped: {
             const open = card.item ? card.item.open : null;

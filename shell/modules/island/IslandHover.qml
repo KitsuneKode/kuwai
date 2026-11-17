@@ -105,6 +105,9 @@ Item {
                 }
             }
             MouseArea { id: nowArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: OllamaService.openSession(OllamaService.draftSessionId) }
+            Accessible.role: Accessible.Button
+            Accessible.name: "Assistant: " + (OllamaService.pendingRequest ? "needs you" : (OllamaService.bgLabel || "thinking"))
+            Accessible.onPressAction: OllamaService.openSession(OllamaService.draftSessionId)
         }
         Repeater {
             model: OllamaService.recentWork.slice(0, OllamaService.bgWorking ? 1 : 2)   // two fit on the row
@@ -137,6 +140,9 @@ Item {
                     }
                 }
                 MouseArea { id: workArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: OllamaService.openSession(workChip.modelData.sessionId) }
+                Accessible.role: Accessible.Button
+                Accessible.name: workChip.modelData.title + (workChip.modelData.status === "done" ? ", done" : ", failed")
+                Accessible.onPressAction: OllamaService.openSession(workChip.modelData.sessionId)
             }
         }
     }
@@ -170,6 +176,10 @@ Item {
             }
             HoverHandler { id: appHover; cursorShape: Qt.PointingHandCursor }
             TapHandler { onTapped: Island.open("launcher", hover.bar.screenName, "pointer", "island") }
+            Accessible.role: Accessible.Button
+            Accessible.name: (hover.app ? hover.app.name : hover.winClass ? hover.winClass.charAt(0).toUpperCase() + hover.winClass.slice(1) : "Desktop") + ", open the launcher"
+            Accessible.description: hover.focusWin ? (hover.focusWin.title || "") : ""
+            Accessible.onPressAction: Island.open("launcher", hover.bar.screenName, "pointer", "island")
         }
         Capsules { id: caps; bar: hover.bar; scale: 1.1 }
     }
@@ -234,6 +244,10 @@ Item {
         }
         HoverHandler { id: chipHover; cursorShape: Qt.PointingHandCursor }
         TapHandler { onTapped: { hover.bar.clockFrom(hoverClock); Island.open("calendar", hover.bar.screenName, "pointer", "island"); } }
+        Accessible.role: Accessible.Button
+        Accessible.name: Dates.clock(hover.bar.now) + ", " + Dates.longDate(hover.bar.now) + ", open the calendar"
+        Accessible.description: Settings.restWeather && Weather.ok ? Weather.temp + "°, " + Weather.desc : ""
+        Accessible.onPressAction: { hover.bar.clockFrom(hoverClock); Island.open("calendar", hover.bar.screenName, "pointer", "island"); }
     }
 
     // Now playing
@@ -266,6 +280,9 @@ Item {
                 if (mouse.button === Qt.RightButton) Notifs.toggleCenter("sound", "pointer", hover.bar.screenName);
                 else Island.open("media", hover.bar.screenName, "pointer", "island");
             }
+            Accessible.role: Accessible.Button
+            Accessible.name: "Now playing: " + (hover.player ? (Media.title(hover.player) || "Unknown") : "") + (Media.byline(hover.player) ? ", " + Media.byline(hover.player) : "")
+            Accessible.onPressAction: Island.open("media", hover.bar.screenName, "pointer", "island")
         }
         Column {
             anchors { left: art.right; leftMargin: 12; right: trail.left; rightMargin: 10; verticalCenter: parent.verticalCenter }
@@ -334,6 +351,9 @@ Item {
                         Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                         Text { textFormat: Text.PlainText; anchors.centerIn: parent; text: tb.modelData.g; font.family: Theme.fontGlyph; font.pixelSize: tb.modelData.big ? 19 : 15; color: Theme.textPrimary }
                         MouseArea { id: tbArea; anchors.fill: parent; enabled: tb.modelData.ok; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: tb.modelData.on() }
+                        Accessible.role: Accessible.Button
+                        Accessible.name: tb.modelData.big ? (hover.player && hover.player.isPlaying ? "Pause" : "Play") : tb.modelData.g === "\u{f04ae}" ? "Previous track" : "Next track"
+                        Accessible.onPressAction: if (tb.modelData.ok) tb.modelData.on()
                     }
                 }
             }
@@ -423,6 +443,10 @@ Item {
                     onHoveredChanged: hover.hotText = hovered ? parent.modelData.line() : (hover.hotText === parent.modelData.line() ? "" : hover.hotText)
                 }
                 TapHandler { onTapped: Island.open("system", hover.bar.screenName, "pointer", "island") }
+                Accessible.role: Accessible.Button
+                Accessible.name: modelData.line()
+                Accessible.description: "Opens System"
+                Accessible.onPressAction: Island.open("system", hover.bar.screenName, "pointer", "island")
             }
         }
         Rectangle {
@@ -466,6 +490,10 @@ Item {
                     onHoveredChanged: agents.hot = hovered ? mag.e : (agents.hot === mag.e ? null : agents.hot)
                 }
                 TapHandler { onTapped: { Limits.usageTab = mag.e.pid; Island.open("usage", hover.bar.screenName, "pointer", "island"); } }
+                Accessible.role: Accessible.Button
+                Accessible.name: (mag.e.n > 1 ? mag.e.name : mag.e.label) + (mag.e.session ? ", " + agents.line(mag.e.session) : "")
+                Accessible.description: mag.e.weekly ? agents.line(mag.e.weekly) : ""
+                Accessible.onPressAction: { Limits.usageTab = mag.e.pid; Island.open("usage", hover.bar.screenName, "pointer", "island"); }
             }
         }
         Item {
@@ -475,6 +503,9 @@ Item {
             Label { anchors.centerIn: parent; text: "+" + mediaRow.more; size: 10; weight: Theme.wSemibold; color: Theme.textSecondary }
             HoverHandler { cursorShape: Qt.PointingHandCursor }
             TapHandler { onTapped: Island.open("usage", hover.bar.screenName, "pointer", "island") }
+            Accessible.role: Accessible.Button
+            Accessible.name: mediaRow.more + " more accounts, open Usage"
+            Accessible.onPressAction: Island.open("usage", hover.bar.screenName, "pointer", "island")
         }
     }
 
@@ -545,6 +576,10 @@ Item {
             // Its own click (System); the agents' rings have theirs (Usage), so a
             // click on Claude no longer falls through to System.
             TapHandler { onTapped: Island.open("system", hover.bar.screenName, "pointer", "island") }
+            Accessible.role: Accessible.Button
+            Accessible.name: "CPU " + Math.round(SystemStats.cpu * 100) + "%, memory " + Math.round(SystemStats.mem * 100) + "%, GPU " + (SystemStats.gpuState === "suspended" ? "off" : Math.round(SystemStats.gpu * 100) + "%") + (SystemStats.cpuTemp ? ", " + SystemStats.cpuTemp + "°" : "")
+            Accessible.description: "Opens System"
+            Accessible.onPressAction: Island.open("system", hover.bar.screenName, "pointer", "island")
         }
         // Your agents beside the machine: what each has LEFT (its worst
         // window), in its own colour, its logo inside; red when out. Claude
@@ -637,6 +672,10 @@ Item {
                             onHoveredChanged: agents.hot = hovered ? ag.e : (agents.hot === ag.e ? null : agents.hot)
                         }
                         TapHandler { onTapped: { Limits.usageTab = ag.e.pid; Island.open("usage", hover.bar.screenName, "pointer", "island"); } }
+                        Accessible.role: Accessible.Button
+                        Accessible.name: (ag.e.n > 1 ? ag.e.name : ag.e.label) + (ag.e.session ? ", " + agents.line(ag.e.session) : "")
+                        Accessible.description: ag.e.weekly ? agents.line(ag.e.weekly) : ""
+                        Accessible.onPressAction: { Limits.usageTab = ag.e.pid; Island.open("usage", hover.bar.screenName, "pointer", "island"); }
                     }
                 }
                 // The accounts that didn't fit: a count in a quiet ring; the
@@ -660,6 +699,9 @@ Item {
                     }
                     HoverHandler { cursorShape: Qt.PointingHandCursor }
                     TapHandler { onTapped: Island.open("usage", hover.bar.screenName, "pointer", "island") }
+                    Accessible.role: Accessible.Button
+                    Accessible.name: agents.more + " more accounts, open Usage"
+                    Accessible.onPressAction: Island.open("usage", hover.bar.screenName, "pointer", "island")
                 }
             }
         }
@@ -853,6 +895,9 @@ Item {
                         else Island.open("updates", hover.bar.screenName, "pointer", "island");
                     }
                 }
+                Accessible.role: Accessible.Button
+                Accessible.name: Updates.running ? "Installing updates, " + Math.round(Updates.progress * 100) + "%" : Updates.total + (Updates.total === 1 ? " update" : " updates")
+                Accessible.onPressAction: Island.open("updates", hover.bar.screenName, "pointer", "island")
                 // Right-click: the quick routes (same menu as the tray's).
                 TrayMenu {
                     id: updMenu

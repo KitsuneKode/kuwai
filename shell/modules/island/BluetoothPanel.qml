@@ -145,6 +145,11 @@ FocusScope {
                 cursorShape: bp.busy(row.dev) ? Qt.BusyCursor : Qt.PointingHandCursor
                 onClicked: { bp.sel = row.at; bp.act(row.dev); }
             }
+            Accessible.role: Accessible.ListItem
+            Accessible.name: bp.label(row.dev)
+            Accessible.description: bp.status(row.dev)
+            Accessible.selected: bp.sel === row.at
+            Accessible.onPressAction: { bp.sel = row.at; bp.act(row.dev); }
             // Forget: only on hover or selection, so the list reads calm.
             Row {
                 id: acts

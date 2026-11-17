@@ -165,6 +165,31 @@ Item {
         return "";
     }
 
+    // Screen readers: the resting notch is one button. Its name is what it
+    // shows; pressing it does what a click there does (the clock: open it all).
+    Accessible.role: Accessible.Button
+    Accessible.name: activity === "moment" && Moments.now ? [Moments.now.label, Moments.now.value].filter(x => x).join(", ")
+        : activity === "auth" ? "A password is needed"
+        : activity === "vox" ? "Dictation"
+        : activity === "rec" ? "Screen recording"
+        : activity === "timer" && Timers.next ? Timers.next.label + ", " + timerLeft + " left"
+        : activity === "update" ? "Updating"
+        : activity === "shazam" ? "Shazam"
+        : activity === "media" && bar.player ? "Now playing: " + (Media.title(bar.player) || "Unknown")
+        : Dates.clock(bar.now) + (soonText ? ", " + soonText : "")
+    Accessible.description: activityDetail
+    Accessible.onPressAction: rest.press()
+    function press() {
+        if (agentMoment) { const m = Moments.now; Moments.dismissNow(); if (m && m.go) m.go(); return; }
+        if (activity === "auth") { Island.summonAuth(bar.screenName); return; }
+        if (activity === "update") { Island.open("updates", bar.screenName, "pointer", "island"); return; }
+        if (activity === "rec") { Clipboard.recordKey(); return; }
+        if (activity === "vox") { Activities.voxToggle(); return; }
+        if (activity === "shazam" && Activities.shazamFound) { Activities.shazamOpen(); return; }
+        if (activity === "media") { Island.open("media", bar.screenName, "pointer", "island"); return; }
+        bar.full = true; bar.grown = true;
+    }
+
     // Which live activity, if any.
     readonly property string activity: Island.authPending ? "auth"
         : Moments.now ? "moment"
@@ -356,6 +381,10 @@ Item {
                 HoverHandler { id: alertHover; cursorShape: Qt.PointingHandCursor }
                 TapHandler { onTapped: Island.open("system", rest.bar.screenName, "pointer", "island") }
                 Tip { text: Alerts.active.length ? Alerts.active.map(a => a.title).join(" · ") : ""; shown: alertHover.hovered; below: true }
+                Accessible.role: Accessible.Button
+                Accessible.name: Alerts.active.length ? Alerts.active.map(a => a.title).join(", ") : "Warning"
+                Accessible.description: "Opens System"
+                Accessible.onPressAction: Island.open("system", rest.bar.screenName, "pointer", "island")
             }
             // Shazam: its mark, pulsing while it listens.
             Text {
@@ -504,6 +533,10 @@ Item {
         // The centre opens everything (the calendar is its time chip); a click
         // that beats the hover delay lands here, so it does the same as the glance.
         TapHandler { onTapped: { rest.bar.full = true; rest.bar.grown = true; } }
+        Accessible.role: Accessible.Button
+        Accessible.name: Dates.clock(rest.bar.now)
+        Accessible.description: "Opens the island"
+        Accessible.onPressAction: { rest.bar.full = true; rest.bar.grown = true; }
     }
     // Mini notch, an event soon: "19:35 · Standup · 25m".
     Label {
@@ -622,6 +655,9 @@ Item {
         IslandStatus { visible: !rest.compact; anchors.verticalCenter: parent.verticalCenter; bar: rest.bar }
         HoverHandler { cursorShape: Qt.PointingHandCursor }
         TapHandler { onTapped: if (!agents.hovered && !rest.agentMoment) Notifs.toggleCenter("controls", "pointer", rest.bar.screenName) }
+        Accessible.role: Accessible.Button
+        Accessible.name: "Status, open Control Center"
+        Accessible.onPressAction: Notifs.toggleCenter("controls", "pointer", rest.bar.screenName)
     }
 
     // ── Trailing ─────────────────────────────────────────────────────────
@@ -897,6 +933,9 @@ Item {
     component MusicTap: MouseArea {
         anchors.fill: parent
         anchors.margins: -4
+        Accessible.role: Accessible.Button
+        Accessible.name: "Now playing: " + (Media.active ? (Media.title(Media.active) || "Unknown") : "")
+        Accessible.onPressAction: Island.open("media", rest.bar.screenName, "pointer", "island")
         hoverEnabled: true
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         cursorShape: Qt.PointingHandCursor

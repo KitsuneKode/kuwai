@@ -158,6 +158,13 @@ Item {
                 Notifs.expandPeek();
             }
         }
+        // The body as the shell shows it (redacted while sharing, the code spaced).
+        Accessible.role: Accessible.Button
+        Accessible.name: !peek.item ? "" : (peek.item.app || "Notification") + ": " + (peek.item.title || peek.item.app || "")
+        Accessible.description: !peek.item ? "" : peek.otp !== "" ? "Code " + Notifs.spacedCode(peek.otp) : Notifs.bodyForDisplay(peek.item, false)
+        Accessible.expandable: true
+        Accessible.expanded: peek.expanded
+        Accessible.onPressAction: if (!peek.expanded) Notifs.expandPeek()
         Column {
             id: copyCol
             width: parent.width
@@ -252,6 +259,9 @@ Item {
             anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
             onClicked: Notifs.dismissPeekItem(peek.item)
         }
+        Accessible.role: Accessible.Button
+        Accessible.name: "Dismiss"
+        Accessible.onPressAction: Notifs.dismissPeekItem(peek.item)
     }
 
     Rectangle {
@@ -269,6 +279,9 @@ Item {
             anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
             onClicked: peek.openItem()
         }
+        Accessible.role: Accessible.Button
+        Accessible.name: "Open"
+        Accessible.onPressAction: peek.openItem()
     }
 
     Row {
@@ -285,6 +298,9 @@ Item {
                 anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                 onClicked: peek.openItem()
             }
+            Accessible.role: Accessible.Button
+            Accessible.name: "Open"
+            Accessible.onPressAction: peek.openItem()
         }
         Rectangle {
             visible: peek.otp !== ""
@@ -297,6 +313,9 @@ Item {
                 anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                 onClicked: Notifs.copyCode(peek.item)
             }
+            Accessible.role: Accessible.Button
+            Accessible.name: "Copy code"
+            Accessible.onPressAction: Notifs.copyCode(peek.item)
         }
         Rectangle {
             visible: peek.canReply
@@ -313,6 +332,9 @@ Item {
                     Notifs.readInIsland(i);     // read it and answer, in the island
                 }
             }
+            Accessible.role: Accessible.Button
+            Accessible.name: "Reply"
+            Accessible.onPressAction: if (peek.item) Notifs.readInIsland(peek.item)
         }
     }
 }

@@ -542,6 +542,12 @@ FocusScope {
                     font.family: Theme.fontGlyph; font.pixelSize: 13
                     color: picker.favs.includes(card.modelData.name) ? Theme.yellow : (card.on ? Theme.textTertiary : "transparent")
                     MouseArea { anchors.fill: parent; anchors.margins: -4; cursorShape: Qt.PointingHandCursor; onClicked: picker.toggleFav(card.index) }
+                    Accessible.role: Accessible.CheckBox
+                    Accessible.name: "Favourite " + card.modelData.name.replace(/-/g, " ")
+                    Accessible.checkable: true
+                    Accessible.checked: picker.favs.includes(card.modelData.name)
+                    Accessible.onPressAction: picker.toggleFav(card.index)
+                    Accessible.onToggleAction: picker.toggleFav(card.index)
                 }
             }
             MouseArea {
@@ -551,6 +557,10 @@ FocusScope {
                 cursorShape: Qt.PointingHandCursor
                 onPositionChanged: { picker.touched = true; picker.current = card.index; }
                 onClicked: picker.apply(card.index)
+                Accessible.role: Accessible.ListItem
+                Accessible.name: card.modelData.name.replace(/-/g, " ")
+                Accessible.selected: card.on
+                Accessible.onPressAction: picker.apply(card.index)
             }
         }
     }
@@ -624,6 +634,10 @@ FocusScope {
                     color: Theme.textPrimary
                 }
                 MouseArea { id: cmdArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: picker.copyCmd(picker.guideNow.cmd) }
+                Accessible.role: Accessible.Button
+                Accessible.name: picker.copied === picker.guideNow.cmd ? "Copied" : "Copy the command"
+                Accessible.description: picker.guideNow.cmd
+                Accessible.onPressAction: picker.copyCmd(picker.guideNow.cmd)
             }
             Label {
                 text: picker.copied === picker.guideNow.cmd ? "Copied: paste it in a terminal" : "Click the command to copy it"

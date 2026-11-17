@@ -545,6 +545,10 @@ Item {
                 font.features: ({ "tnum": 1 })
                 HoverHandler { id: moreHover; cursorShape: Qt.PointingHandCursor }
                 TapHandler { onTapped: split.bringBack(split.minimized[split.minimized.length - 1]) }
+                Accessible.role: Accessible.Button
+                Accessible.name: (split.minimized.length - 3) + " more minimized, bring one back"
+                Accessible.description: split.minimized.slice(3).map(t => t.title).join(", ")
+                Accessible.onPressAction: split.bringBack(split.minimized[split.minimized.length - 1])
                 Tip { text: split.minimized.slice(3).map(t => t.title).join(" · ") + "\nClick: bring one back (or Super+Shift+O)"; shown: moreHover.hovered; below: true }
             }
         }

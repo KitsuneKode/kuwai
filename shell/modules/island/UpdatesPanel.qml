@@ -161,6 +161,11 @@ FocusScope {
                             Behavior on color { ColorAnimation { duration: Theme.colorMs } }
                             Label { id: chLabel; anchors.centerIn: parent; text: parent.modelData.label; size: 11; weight: Theme.wMedium; color: parent.on ? Theme.inkOnLight : Theme.textPrimary }
                             MouseArea { id: chArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: Updates.choosePacnew(row.modelData.path, parent.modelData.id) }
+                            Accessible.role: Accessible.RadioButton
+                            Accessible.name: modelData.label + ", " + row.modelData.name
+                            Accessible.checkable: true
+                            Accessible.checked: on
+                            Accessible.onPressAction: Updates.choosePacnew(row.modelData.path, modelData.id)
                         }
                     }
                 }
@@ -230,6 +235,10 @@ FocusScope {
                         RotationAnimation on rotation { running: Updates.checking && !Theme.reduceMotion; loops: Animation.Infinite; from: 0; to: 360; duration: Theme.spinMs }
                     }
                     MouseArea { id: refArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: Updates.check() }
+                    Accessible.role: Accessible.Button
+                    Accessible.name: Updates.checking ? "Checking for updates" : "Check again"
+                    Accessible.description: "R"
+                    Accessible.onPressAction: Updates.check()
                     Tip { text: "Check again (R)"; shown: refArea.containsMouse; below: true }
                 }
             }
@@ -331,6 +340,9 @@ FocusScope {
                     text: up.showAllRepo ? "Show fewer" : "Show all " + Updates.repo.length + " ›"
                     size: 12; weight: Theme.wMedium; color: Theme.accent
                     MouseArea { anchors.fill: parent; anchors.margins: -6; cursorShape: Qt.PointingHandCursor; onClicked: up.showAllRepo = !up.showAllRepo }
+                    Accessible.role: Accessible.Button
+                    Accessible.name: up.showAllRepo ? "Show fewer" : "Show all " + Updates.repo.length
+                    Accessible.onPressAction: up.showAllRepo = !up.showAllRepo
                 }
             }
 
@@ -373,6 +385,10 @@ FocusScope {
                             color: rowArea.containsMouse ? Qt.rgba(1, 1, 1, 0.05) : "transparent"
                         }
                         MouseArea { id: rowArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: up.openReview(aurRow.modelData.name) }
+                        Accessible.role: Accessible.ListItem
+                        Accessible.name: aurRow.modelData.name
+                        Accessible.description: "Review the changes"
+                        Accessible.onPressAction: up.openReview(aurRow.modelData.name)
                         Toggle {
                             anchors.verticalCenter: parent.verticalCenter
                             enabled: Updates.selectable(aurRow.modelData.name)
@@ -583,6 +599,9 @@ FocusScope {
                                 Qt.callLater(() => diff.scrollToLine(modelData.line));
                             }
                         }
+                        Accessible.role: Accessible.Button
+                        Accessible.name: modelData.why + ", " + modelData.path + " line " + modelData.line
+                        Accessible.onPressAction: { const i = reviewView.r.files.findIndex(f => f.path === modelData.path); if (i >= 0) up.fileIx = i; Qt.callLater(() => diff.scrollToLine(modelData.line)); }
                     }
                 }
             }

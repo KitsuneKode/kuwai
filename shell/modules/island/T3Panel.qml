@@ -170,6 +170,12 @@ FocusScope {
                     }
                     // That thread, not just the window (T3 Code's own link).
                     TapHandler { onTapped: if (!xHover.hovered) { T3Code.openThread(row.modelData.thread); Island.close(); } }
+                    Accessible.role: Accessible.ListItem
+                    Accessible.name: row.modelData.title || "Untitled thread"
+                    Accessible.description: (row.waits ? "Needs you" : row.failed ? "Failed" : row.done ? "Finished" : row.modelData.status === "running" ? "Working" : "Starting")
+                        + (t3.agentName(row.modelData.provider) ? ", " + t3.agentName(row.modelData.provider) : "")
+                        + (row.modelData.project && row.modelData.project !== "No project" ? ", " + row.modelData.project : "")
+                    Accessible.onPressAction: { T3Code.openThread(row.modelData.thread); Island.close(); }
                     // ×: on hover (or with the keyboard focus on the panel), finished rows only.
                     Rectangle {
                         visible: row.done

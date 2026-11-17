@@ -725,6 +725,10 @@ Scope {
                 Behavior on opacity { enabled: win.tucked || !win.outNow; NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
 
                 HoverHandler { id: frameHover; onHoveredChanged: win.syncHover() }
+                // The island holds the notch, its cards and panels; each names itself
+                // (a card's right-click push-back is its own Dismiss there).
+                Accessible.role: Accessible.Grouping
+                Accessible.name: "Island"
                 DragHandler {
                     id: pushDrag
                     enabled: win.cardHere
@@ -1000,6 +1004,9 @@ Scope {
                         height: win.panelSize.height
                         x: Math.round((body.width - width) / 2)
                         focus: win.panelHere
+                        // The open panel, by name; its right-click "back" is the Back button above it.
+                        Accessible.role: Accessible.Pane
+                        Accessible.name: ({ calendar: "Calendar", power: "Power", launcher: "Search", settings: "Settings", system: "System", theme: "Themes", keys: "Shortcuts", switcher: "Windows", updates: "Software Update", media: "Now Playing", t3: "T3 Code", agents: "Agents", notifs: "Notifications", bluetooth: "Bluetooth", usage: "Usage", read: "Read", cleanup: "Cleanup" })[win.shownPanel] || ""
                         readonly property real k: win.panelHere ? Math.max(0, Math.min(1, (pv.value - 0.5) / 0.4)) : win.reveal(pv.value, false)
                         // Also from one panel to another (pv stays 1): the next
                         // one appears as the shape makes room for it, not clipped.
@@ -1096,6 +1103,9 @@ Scope {
                                     }
                                 }
                                 MouseArea { id: backArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: Island.back() }
+                                Accessible.role: Accessible.Button
+                                Accessible.name: "Back to " + (Island.innerBackLabel || ({ calendar: "Calendar", power: "Power", launcher: "Search", settings: "Settings", system: "System", theme: "Themes", keys: "Shortcuts", switcher: "Windows", updates: "Software Update", usage: "Usage", cleanup: "Cleanup" })[Island.history[Island.history.length - 1]] || "the last panel")
+                                Accessible.onPressAction: Island.back()
                             }
                         }
                         Loader {

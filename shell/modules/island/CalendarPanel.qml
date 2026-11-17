@@ -128,6 +128,9 @@ FocusScope {
                         Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                         Text { textFormat: Text.PlainText; anchors.centerIn: parent; text: nav.modelData.g; font.family: Theme.fontGlyph; font.pixelSize: Theme.glyphS; color: Theme.textSecondary }
                         MouseArea { id: navArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: cal.shiftMonth(nav.modelData.d) }
+                        Accessible.role: Accessible.Button
+                        Accessible.name: nav.modelData.d < 0 ? "Previous month" : "Next month"
+                        Accessible.onPressAction: cal.shiftMonth(nav.modelData.d)
                     }
                 }
             }
@@ -185,6 +188,11 @@ FocusScope {
                         color: day.inMonth ? Theme.textSecondary : Qt.rgba(1, 1, 1, 0.25)
                     }
                     MouseArea { id: dayArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: cal.select(day.modelData) }
+                    Accessible.role: Accessible.Cell
+                    Accessible.name: Dates.longDate(day.modelData) + (day.isToday ? ", today" : "")
+                    Accessible.description: Calendar.events.length > 0 && Calendar.eventsOn(day.modelData).length > 0 ? Calendar.eventsOn(day.modelData).length + (Calendar.eventsOn(day.modelData).length === 1 ? " event" : " events") : ""
+                    Accessible.selected: day.isSel
+                    Accessible.onPressAction: cal.select(day.modelData)
                 }
             }
         }

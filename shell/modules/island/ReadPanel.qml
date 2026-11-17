@@ -166,6 +166,12 @@ FocusScope {
                                 // The newest stays open: it's the one you came to read.
                                 onClicked: if (mcard.index !== rp.convo.length - 1) rp.toggle(mcard.index)
                             }
+                            Accessible.role: Accessible.ListItem
+                            Accessible.name: mcard.who
+                            Accessible.description: mcard.text
+                            Accessible.expandable: mcard.index !== rp.convo.length - 1
+                            Accessible.expanded: mcard.open
+                            Accessible.onPressAction: if (mcard.index !== rp.convo.length - 1) rp.toggle(mcard.index)
                             Item {
                                 id: mhead
                                 x: 12; y: 10

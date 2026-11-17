@@ -60,6 +60,11 @@ Row {
                 }
                 onWheel: wheel => it.modelData.scroll(wheel.angleDelta.y / 120, false)
             }
+            // The app's tray icon: its title (from the app), pressing does what a click does.
+            Accessible.role: it.modelData.onlyMenu ? Accessible.ButtonMenu : Accessible.Button
+            Accessible.name: it.modelData.tooltipTitle || it.modelData.title || it.modelData.id || "Tray item"
+            Accessible.description: it.modelData.hasMenu && !it.modelData.onlyMenu ? "Has a menu (right-click)" : ""
+            Accessible.onPressAction: { if (it.modelData.onlyMenu) { if (it.modelData.hasMenu) menu.open = !menu.open; } else it.modelData.activate(); }
         }
     }
 }

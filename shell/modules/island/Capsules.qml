@@ -173,6 +173,11 @@ Row {
                 // Desktops: every screen switches together (kuwai.desktop).
                 onClicked: Hyprland.dispatch(cap.modelData.desktop ? "kuwai.desktop(" + cap.modelData.desktop + ")" : "kuwai.show_ws(" + JSON.stringify(caps.bar.screenName) + ", " + cap.ws + ")")
             }
+            Accessible.role: Accessible.PageTab
+            Accessible.name: (cap.modelData.desktop ? "Desktop " : "Workspace ") + cap.label + (cap.guest ? ", from another screen" : "")
+            Accessible.description: caps.apps(cap.ws)
+            Accessible.selected: cap.on
+            Accessible.onPressAction: Hyprland.dispatch(cap.modelData.desktop ? "kuwai.desktop(" + cap.modelData.desktop + ")" : "kuwai.show_ws(" + JSON.stringify(caps.bar.screenName) + ", " + cap.ws + ")")
             Tip {
                 text: (cap.modelData.desktop ? "Desktop " : "Workspace ") + cap.label + (cap.guest ? " (from another screen)" : "") + " · " + caps.apps(cap.ws)
                 shown: caps.tips && capArea.containsMouse
@@ -236,6 +241,9 @@ Row {
             cursorShape: Qt.PointingHandCursor
             onClicked: Hyprland.dispatch("hl.dsp.workspace.toggle_special('" + (sp.shown || "special").replace(/[^A-Za-z0-9_-]/g, "") + "')")
         }
+        Accessible.role: Accessible.Button
+        Accessible.name: "Hide " + (({ special: "the scratchpad", notes: "notes", console: "the console", minimized: "minimized windows" })[sp.shown] || sp.shown)
+        Accessible.onPressAction: Hyprland.dispatch("hl.dsp.workspace.toggle_special('" + (sp.shown || "special").replace(/[^A-Za-z0-9_-]/g, "") + "')")
         Tip {
             text: ({ special: "Scratchpad", notes: "Notes", console: "Console", minimized: "Minimized windows" })[sp.shown] || ("Special: " + sp.shown)
             shown: spArea.containsMouse
@@ -289,6 +297,10 @@ Row {
                     onContainsMouseChanged: caps.hover(dot.modelData.id, dots.group.label, containsMouse)
                     onClicked: Hyprland.dispatch("kuwai.go_ws(" + JSON.stringify(dots.group.screen) + ", " + dot.modelData.id + ")")
                 }
+                Accessible.role: Accessible.Button
+                Accessible.name: dots.group.label + ", workspace " + caps.num(dot.modelData.id) + ", showing"
+                Accessible.description: caps.apps(dot.modelData.id)
+                Accessible.onPressAction: Hyprland.dispatch("kuwai.go_ws(" + JSON.stringify(dots.group.screen) + ", " + dot.modelData.id + ")")
                 Tip {
                     text: dots.group.label + " · workspace " + caps.num(dot.modelData.id) + " (showing) · " + caps.apps(dot.modelData.id)
                     shown: caps.tips && dotArea.containsMouse
