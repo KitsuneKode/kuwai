@@ -205,7 +205,9 @@ FocusScope {
             Label {
                 anchors { left: review.right; leftMargin: 12; right: parent.right; verticalCenter: parent.verticalCenter }
                 horizontalAlignment: Text.AlignRight
-                text: (Sweep.protectedCount > 0 ? Sweep.protectedCount + " protected · " : "") + "counted " + Model.agoText(Sweep.checkedAt, Date.now())
+                // While the first count is still being made there is no time to give.
+                readonly property string ago: Sweep.pending ? "" : Model.agoText(Sweep.checkedAt, Date.now())
+                text: [Sweep.protectedCount > 0 ? Sweep.protectedCount + " protected" : "", ago ? "counted " + ago : ""].filter(x => x).join(" · ")
                 size: Theme.tCaption
                 color: Theme.textTertiary
                 elide: Text.ElideLeft

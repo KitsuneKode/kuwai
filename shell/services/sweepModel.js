@@ -6,7 +6,7 @@
 //   segments(kinds, total, tones)       → [{ kind, bytes, count, share, tone }] (top kinds + "other")
 //   worthMark(idleBytes, minBytes)      → bool
 //   seenKey(idleBytes)                  → "3": the 5 GB step this size is in
-//   idleText(days) / agoText(sec, now)  → "7 months" / "12 min ago"
+//   idleText(days) / agoText(sec, now)  → "7 months" / "12 min ago" ("" before the first count)
 
 const GB = 1e9;
 
@@ -59,7 +59,10 @@ function idleText(days) {
     return d + " days";
 }
 
+// "" while nothing has been counted yet (checkedAt 0: pending, or every try
+// failed): never "counted 20410 d ago".
 function agoText(checkedAtSec, nowMs) {
+    if (!(Number(checkedAtSec) > 0)) return "";
     const m = Math.max(0, Math.round((nowMs - checkedAtSec * 1000) / 60000));
     return m < 1 ? "just now" : m < 60 ? m + " min ago" : m < 1440 ? Math.round(m / 60) + " h ago" : Math.round(m / 1440) + " d ago";
 }

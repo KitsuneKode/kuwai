@@ -72,4 +72,10 @@ describe("words", () => {
         expect(agoText(now / 1000 - 3 * 3600, now)).toBe("3 h ago");
         expect(agoText(now / 1000 - 3 * 86400, now)).toBe("3 d ago");
     });
+    test("nothing counted yet says nothing, not decades ago", () => {
+        const now = 1_800_000_000_000;
+        expect(agoText(0, now)).toBe("");
+        expect(agoText(undefined, now)).toBe("");
+        expect(agoText(null, now)).toBe("");
+    });
 });
