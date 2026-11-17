@@ -1,0 +1,194 @@
+#!/usr/bin/env python3
+"""The shell's translation catalogues (docs/design/TRANSLATION.md).
+
+  kuwai-i18n                 coverage per language (translated / keys)
+  kuwai-i18n --keys          every key the shell asks for, as JSON (for translators)
+  kuwai-i18n --missing LANG  the keys LANG lacks, as a JSON catalogue to fill in
+  kuwai-i18n --check         exit 1 on a broken catalogue (below)
+  kuwai-i18n --count         hand-written English left, by area (a heuristic)
+
+Keys are the English literals in Tr.t("…") and Tr.n(count, "…", "…") under
+shell/. --check fails when a catalogue isn't a JSON object, isn't listed in
+shell/i18n/languages.json (or is listed and missing), holds a key no source
+asks for, gives a plural entry where a plain string belongs or the reverse,
+or changes a text's placeholders ({n}, {name}): a translation may not drop or
+invent one. A missing key is not an error: it reads English.
+"""
+import json
+import os
+import re
+import sys
+
+ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+SHELL = os.environ.get("KUWAI_I18N_SHELL") or os.path.join(ROOT, "shell")   # a test points it at a copy
+I18N = os.path.join(SHELL, "i18n")
+CATEGORIES = {"zero", "one", "two", "few", "many", "other"}
+
+STR = r'"((?:[^"\\\n]|\\.)*)"'
+T_CALL = re.compile(r"\bTr\.t\(\s*" + STR)
+N_CALL = re.compile(r"\bTr\.n\(")
+LITERAL = re.compile(STR)
+PLACEHOLDER = re.compile(r"\{([A-Za-z_][A-Za-z0-9_]*)\}")
+
+
+def unquote(s):
+    try:
+        return json.loads('"' + s + '"')
+    except ValueError:
+        return s
+
+
+def sources():
+    for d, dirs, files in os.walk(SHELL):
+        dirs[:] = [x for x in dirs if x not in ("i18n", "assets")]
+        for f in sorted(files):
+            if f.endswith((".qml", ".js", ".mjs")) and not f.endswith((".test.mjs", ".test.js")):
+                yield os.path.join(d, f)
+
+
+def keys():
+    """{key: "t" | "n"} for every Tr.t / Tr.n literal under shell/."""
+    out = {}
+    for p in sources():
+        # Comment lines are documentation, not requests.
+        text = "\n".join("" if re.match(r"^\s*(?://|\*)", l) else l
+                         for l in open(p, encoding="utf-8", errors="replace").read().split("\n"))
+        for m in T_CALL.finditer(text):
+            out.setdefault(unquote(m.group(1)), "t")
+        for m in N_CALL.finditer(text):
+            # Tr.n(count, "one", "other"): the first two literals after the call.
+            lits = LITERAL.findall(text[m.end():m.end() + 400])
+            if len(lits) >= 2:
+                out[unquote(lits[0])] = "n"
+    return out
+
+
+def placeholders(s):
+    return sorted(set(PLACEHOLDER.findall(s)))
+
+
+def catalogues():
+    if not os.path.isdir(I18N):
+        return {}
+    return {f[:-5]: os.path.join(I18N, f) for f in sorted(os.listdir(I18N))
+            if f.endswith(".json") and f != "languages.json"}
+
+
+def check():
+    errors = []
+    want = keys()
+    cats = catalogues()
+    try:
+        listed = json.load(open(os.path.join(I18N, "languages.json"), encoding="utf-8")).get("languages", [])
+    except (OSError, ValueError, AttributeError) as e:
+        listed = []
+        errors.append(f"languages.json: {e}")
+    for lang in sorted(set(cats) - set(listed)):
+        errors.append(f"{lang}.json is not listed in languages.json (the shell won't load it)")
+    for lang in sorted(set(listed) - set(cats)):
+        errors.append(f"languages.json lists {lang}, which has no {lang}.json")
+    for lang, path in cats.items():
+        try:
+            cat = json.load(open(path, encoding="utf-8"))
+        except ValueError as e:
+            errors.append(f"{lang}.json: not JSON: {e}")
+            continue
+        if not isinstance(cat, dict):
+            errors.append(f"{lang}.json: not an object")
+            continue
+        for k, v in cat.items():
+            kind = want.get(k)
+            if kind is None:
+                errors.append(f"{lang}.json: {k!r} is not asked for anywhere (stale)")
+            elif kind == "t":
+                if not isinstance(v, str):
+                    errors.append(f"{lang}.json: {k!r} wants a string")
+                elif placeholders(v) != placeholders(k):
+                    errors.append(f"{lang}.json: {k!r} has placeholders {placeholders(v)}, the English {placeholders(k)}")
+            else:
+                forms = {"other": v} if isinstance(v, str) else v
+                if not isinstance(forms, dict) or "other" not in forms or set(forms) - CATEGORIES:
+                    errors.append(f"{lang}.json: {k!r} wants plural forms (one … other), with other")
+                    continue
+                allowed = set(placeholders(k)) | {"n"}
+                for c, form in forms.items():
+                    if not isinstance(form, str) or set(placeholders(form)) - allowed:
+                        errors.append(f"{lang}.json: {k!r} [{c}] is not a string or invents a placeholder")
+    return errors
+
+
+# A string a person reads: a letter, then a space or a lowercase run (not an id,
+# a path, a command word, a colour or a property name).
+WORDS = re.compile(r"^(?=.*[A-Za-z])(?=.*(?:\s|[a-z]{3})).*$")
+NOT_UI = re.compile(r"^(?:[a-z][A-Za-z0-9]*|[a-z0-9_.:/-]+|#[0-9a-fA-F]+|\\u.*|[A-Z_]+|qs\..*|Qt.*|.*\$[({A-Za-z].*|.*/[A-Za-z0-9_.-]+/.*|.*\.qml|return .*)$")
+UI_PROP = re.compile(r"\b(?:text|label|title|placeholderText|hint|tip|subtitle|description|body|empty|caption|summary|note|t)\s*:\s*\"")
+SKIP_LINE = re.compile(r"^\s*(?://|import\b|\*|console\.|pragma\b)")
+
+
+def count():
+    """Literals that look like UI text and aren't in Tr.t/Tr.n, by area."""
+    areas = {}
+    for p in sources():
+        rel = os.path.relpath(p, SHELL)
+        parts = rel.split(os.sep)
+        area = "/".join(parts[:2]) if parts[0] == "modules" and len(parts) > 2 else parts[0]
+        strict = broad = 0
+        for line in open(p, encoding="utf-8", errors="replace"):
+            if SKIP_LINE.match(line):
+                continue
+            code = line.split(" // ")[0]
+            code = T_CALL.sub("", code)
+            code = re.sub(r"\bTr\.n\([^)]*\)", "", code)
+            strict += len(UI_PROP.findall(code))
+            for m in LITERAL.finditer(code):
+                s = unquote(m.group(1))
+                if WORDS.match(s) and not NOT_UI.match(s):
+                    broad += 1
+        a = areas.setdefault(area, [0, 0, 0])
+        a[0] += strict
+        a[1] += broad
+        a[2] += 1
+    return areas
+
+
+def main(argv):
+    if "--check" in argv:
+        errs = check()
+        for e in errs:
+            print("kuwai-i18n: " + e, file=sys.stderr)
+        if errs:
+            return 1
+        print(f"i18n ok: {len(keys())} keys, {len(catalogues())} catalogue(s)")
+        return 0
+    if "--keys" in argv:
+        print(json.dumps(keys(), ensure_ascii=False, indent=2, sort_keys=True))
+        return 0
+    if "--missing" in argv:
+        i = argv.index("--missing")
+        lang = argv[i + 1] if i + 1 < len(argv) else ""
+        if not re.match(r"^[a-z]{2,3}(_[A-Z]{2})?$", lang):
+            print("kuwai-i18n: --missing wants a language like de or pt_BR", file=sys.stderr)
+            return 2
+        path = os.path.join(I18N, lang + ".json")
+        have = json.load(open(path, encoding="utf-8")) if os.path.exists(path) else {}
+        todo = {k: ({"one": "", "other": ""} if kind == "n" else "") for k, kind in sorted(keys().items()) if k not in have}
+        print(json.dumps(todo, ensure_ascii=False, indent=2))
+        return 0
+    if "--count" in argv:
+        areas = count()
+        print(f"{'area':28} {'ui props':>8} {'literals':>8} {'files':>6}")
+        for a, (s, b, n) in sorted(areas.items(), key=lambda kv: -kv[1][1]):
+            print(f"{a:28} {s:8} {b:8} {n:6}")
+        tot = [sum(v[i] for v in areas.values()) for i in range(3)]
+        print(f"{'total':28} {tot[0]:8} {tot[1]:8} {tot[2]:6}")
+        return 0
+    want = keys()
+    for lang, path in catalogues().items():
+        cat = json.load(open(path, encoding="utf-8"))
+        done = sum(1 for k in want if k in cat)
+        print(f"{lang}: {done}/{len(want)} translated")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

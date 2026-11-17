@@ -1,0 +1,23 @@
+{
+  "Today": "Heute",
+  "Yesterday": "Gestern",
+  "Tomorrow": "Morgen",
+  "Lock": "Sperren",
+  "Sleep": "Bereitschaft",
+  "Log Out": "Abmelden",
+  "Restart": "Neu starten",
+  "Firmware": "Firmware",
+  "Shut Down": "Herunterfahren",
+  "Hold to sleep": "Für Bereitschaft gedrückt halten",
+  "Hold to log out": "Zum Abmelden gedrückt halten",
+  "Hold to restart": "Zum Neustarten gedrückt halten",
+  "Hold to restart into the firmware setup": "Zum Neustart in die Firmware-Einstellungen gedrückt halten",
+  "Hold to shut down": "Zum Herunterfahren gedrückt halten",
+  "Click or press ↵ to lock": "Klicken oder ↵ drücken zum Sperren",
+  "up {time}": "seit {time} an",
+  "{n}d": "{n} T.",
+  "{n}h": "{n} Std.",
+  "{n}m": "{n} Min.",
+  "charging": "lädt",
+  "plugged in": "am Netz"
+}

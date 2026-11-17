@@ -238,11 +238,18 @@ export function dayOffset(d, now) {
     return Math.round((ua - ub) / 86400000);
 }
 
-/** "Today", "Yesterday", "Tomorrow", or "" for any other day.
- *  @param {Date|number} d @param {Date|number} now @returns {string} */
-export function relativeDay(d, now) {
+/** The words for the days next to today, in the user's language (Dates.qml
+ *  passes Tr's; English when none are given).
+ *  @typedef {{ today: string, yesterday: string, tomorrow: string }} DayWords */
+/** @type {DayWords} */
+export const ENGLISH_DAYS = { today: "Today", yesterday: "Yesterday", tomorrow: "Tomorrow" };
+
+/** "Today", "Yesterday", "Tomorrow" (or the given words), or "" for any other day.
+ *  @param {Date|number} d @param {Date|number} now @param {DayWords=} words @returns {string} */
+export function relativeDay(d, now, words) {
+    const w = words || ENGLISH_DAYS;
     const n = dayOffset(d, now);
-    return n === 0 ? "Today" : n === -1 ? "Yesterday" : n === 1 ? "Tomorrow" : "";
+    return n === 0 ? w.today : n === -1 ? w.yesterday : n === 1 ? w.tomorrow : "";
 }
 
 /** What the shell needs from a Qt Locale.
@@ -275,11 +282,13 @@ export function resolve(pattern, d, h24, standaloneMonth) {
 
 /** A formatter bound to one locale and hour cycle. `render(date, pattern)`
  *  formats with that locale (in Qt: date.toLocaleString(locale, pattern));
- *  `formats` are Qt's Locale.LongFormat/ShortFormat/NarrowFormat values.
+ *  `formats` are Qt's Locale.LongFormat/ShortFormat/NarrowFormat values;
+ *  `words` the relative days in the user's language (English if omitted).
  *  @param {LocaleLike} locale @param {boolean} h24
  *  @param {(d: Date, pattern: string) => string} render
- *  @param {{ long: number, short: number, narrow: number }} formats */
-export function formatter(locale, h24, render, formats) {
+ *  @param {{ long: number, short: number, narrow: number }} formats
+ *  @param {DayWords=} words */
+export function formatter(locale, h24, render, formats, words) {
     const ds = dateShapes(locale.dateFormat(formats.long));
     const ts = timeShapes(locale.timeFormat(formats.short), h24);
     const first = Number(locale.firstDayOfWeek) || 0;
@@ -304,7 +313,7 @@ export function formatter(locale, h24, render, formats) {
         /** Within the coming week: "Tue 21:05". */
         weekdayTime: (/** @type {Date|number} */ d) => f(d, "ddd") + " " + f(d, ts.time),
         /** A day in a list: "Today", "Yesterday", "Tomorrow", else the short date. */
-        day: (/** @type {Date|number} */ d, /** @type {Date|number} */ now) => relativeDay(d, now) || f(d, ds.short),
+        day: (/** @type {Date|number} */ d, /** @type {Date|number} */ now) => relativeDay(d, now, words) || f(d, ds.short),
         /** A row's stamp: the time today, the day and month this year, else with the year. */
         stamp: (/** @type {Date|number} */ d, /** @type {Date|number} */ now) =>
             dayOffset(d, now) === 0 ? f(d, ts.time)

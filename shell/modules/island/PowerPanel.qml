@@ -28,12 +28,12 @@ FocusScope {
     focus: true
 
     readonly property var actions: [
-        { id: "lock", label: "Lock", glyph: "\u{f033e}", hold: false, cmd: [Quickshell.shellDir + "/../bin/kuwai", "lock"] },
-        { id: "sleep", label: "Sleep", glyph: "\u{f0594}", hold: true, bye: "suspend", cmd: ["systemctl", "suspend"] },
-        { id: "logout", label: "Log Out", glyph: "\u{f0343}", hold: true, bye: "logout", cmd: ["hyprctl", "dispatch", "hl.dsp.exit()"] },
-        { id: "reboot", label: "Restart", glyph: "\u{f0709}", hold: true, bye: "reboot", cmd: ["systemctl", "reboot"] },
-        { id: "firmware", label: "Firmware", glyph: "\u{f061a}", hold: true, bye: "reboot", cmd: ["systemctl", "reboot", "--firmware-setup"] },
-        { id: "off", label: "Shut Down", glyph: "\u{f0425}", hold: true, danger: true, bye: "poweroff", cmd: ["systemctl", "poweroff"] }
+        { id: "lock", label: Tr.t("Lock"), hint: Tr.t("Click or press ↵ to lock"), glyph: "\u{f033e}", hold: false, cmd: [Quickshell.shellDir + "/../bin/kuwai", "lock"] },
+        { id: "sleep", label: Tr.t("Sleep"), hint: Tr.t("Hold to sleep"), glyph: "\u{f0594}", hold: true, bye: "suspend", cmd: ["systemctl", "suspend"] },
+        { id: "logout", label: Tr.t("Log Out"), hint: Tr.t("Hold to log out"), glyph: "\u{f0343}", hold: true, bye: "logout", cmd: ["hyprctl", "dispatch", "hl.dsp.exit()"] },
+        { id: "reboot", label: Tr.t("Restart"), hint: Tr.t("Hold to restart"), glyph: "\u{f0709}", hold: true, bye: "reboot", cmd: ["systemctl", "reboot"] },
+        { id: "firmware", label: Tr.t("Firmware"), hint: Tr.t("Hold to restart into the firmware setup"), glyph: "\u{f061a}", hold: true, bye: "reboot", cmd: ["systemctl", "reboot", "--firmware-setup"] },
+        { id: "off", label: Tr.t("Shut Down"), hint: Tr.t("Hold to shut down"), glyph: "\u{f0425}", hold: true, danger: true, bye: "poweroff", cmd: ["systemctl", "poweroff"] }
     ]
     property int current: 0
     property int holding: -1
@@ -104,7 +104,7 @@ FocusScope {
         onLoaded: {
             const s = Math.floor(parseFloat(text()));
             const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60);
-            power.uptime = "up " + (d ? d + "d " : "") + (d || h ? h + "h " : "") + m + "m";
+            power.uptime = Tr.t("up {time}", { time: (d ? Tr.t("{n}d", { n: d }) + " " : "") + (d || h ? Tr.t("{n}h", { n: h }) + " " : "") + Tr.t("{n}m", { n: m }) });
         }
     }
 
@@ -122,7 +122,7 @@ FocusScope {
         Column {
             anchors { left: face.right; leftMargin: 12; verticalCenter: parent.verticalCenter }
             Label { text: power.user; size: 15; weight: Theme.wSemibold }
-            Label { text: power.uptime + (power.hasBattery ? "  ·  " + power.pct + "%" + (power.charging ? " charging" : !UPower.onBattery ? " plugged in" : "") : ""); size: 12; color: Theme.textTertiary }
+            Label { text: power.uptime + (power.hasBattery ? "  ·  " + power.pct + "%" + (power.charging ? " " + Tr.t("charging") : !UPower.onBattery ? " " + Tr.t("plugged in") : "") : ""); size: 12; color: Theme.textTertiary }
         }
     }
 
@@ -201,7 +201,7 @@ FocusScope {
     Label {
         anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 18 }
         readonly property var a: power.actions[power.current]
-        text: a.hold ? "Hold to " + (a.id === "firmware" ? "restart into the firmware setup" : a.label.toLowerCase()) : a.id === "lock" ? "Click or press ↵ to lock" : "Click or press ↵ to sleep"
+        text: a.hint
         size: 12
         color: power.holding >= 0 ? Theme.textPrimary : Theme.textTertiary
     }
