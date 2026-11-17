@@ -2,10 +2,12 @@
 # kuwai-migrate: move what kuwai kept under its old name (rice) to kuwai. Safe to
 # run any number of times; kuwai-shell runs it before it starts the shell.
 #
-#   folders  ~/.local/state/rice, ~/.cache/rice, ~/.config/rice, ~/.local/share/rice
-#            (the screensaver films, clipboard pins, alarms, reminders, AUR
-#            recipes; ~/.local/share/kuwai is also the stable copy of the repo): each entry moves
-#            into the kuwai folder beside it (one that is already there wins and
+#   folders  ~/.local/state/rice, ~/.cache/rice, ~/.config/rice → …/kuwai, and
+#            ~/.local/share/rice → ~/.local/share/kuwai-data (the screensaver films,
+#            clipboard pins, alarms, reminders, AUR recipes, the sandbox, colour
+#            profiles, the cut-out model: not ~/.local/share/kuwai, which is the
+#            stable copy of the repo): each entry moves
+#            into the new folder (one that is already there wins and
 #            the old copy stays, said once), then the old folder becomes a link to
 #            the new one, so anything still reading the old path finds the data.
 #   runtime  $XDG_RUNTIME_DIR/rice → kuwai (a link, every login: it is a tmpfs),
@@ -21,7 +23,7 @@ ROOT=${KUWAI_ROOT:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}
 said() { printf 'kuwai-migrate: %s\n' "$*" >&2; }
 
 merge() {   # OLD NEW: every entry of OLD goes into NEW, folders on both sides merge all the way down
-    local old="$1" new="$2" e n c
+    local old="$1" new="$2" e n
     for e in "$old"/* "$old"/.[!.]*; do
         [ -e "$e" ] || [ -L "$e" ] || continue
         n="$new/${e##*/}"
@@ -42,20 +44,40 @@ merge() {   # OLD NEW: every entry of OLD goes into NEW, folders on both sides m
     done
 }
 
-folder() {   # base
-    local old="$1/rice" new="$1/kuwai"
+folder() {   # base [new name, default kuwai]
+    local old="$1/rice" new="$1/${2:-kuwai}"
     [ -d "$old" ] && [ ! -L "$old" ] || return 0
     mkdir -p "$new" || return 1
     merge "$old" "$new"
     if rmdir -- "$old" 2>/dev/null; then
-        ln -s kuwai "$old" && said "moved $old to $new"
+        ln -s "${2:-kuwai}" "$old" && said "moved $old to $new"
     fi
     return 0
+}
+
+# 2026-11-18: an earlier version moved ~/.local/share/rice into
+# ~/.local/share/kuwai, the stable copy of the repo, so your data sat in a git
+# checkout as untracked files (and the next promote refused to run). What it
+# put there goes to kuwai-data: only these names, only if git doesn't track them.
+data_rescue() {   # data home
+    local stable="$1/kuwai" data="$1/kuwai-data" e
+    [ -e "$stable/.git" ] || return 0
+    mkdir -p "$data" || return 1
+    for e in screensavers alarms.json reminders.json clipboard aur sandbox icc cutout; do
+        [ -e "$stable/$e" ] || continue
+        [ -z "$(git -C "$stable" ls-files -- "$e" 2>/dev/null | head -n 1)" ] || continue
+        if [ -e "$data/$e" ]; then merge "$stable/$e" "$data/$e"; rmdir -- "$stable/$e" 2>/dev/null
+        else mv -- "$stable/$e" "$data/" && said "moved $e out of the stable copy into $data"; fi
+    done
+    if [ -L "$1/rice" ] && [ "$(readlink -- "$1/rice")" = kuwai ]; then
+        ln -sfn kuwai-data "$1/rice"
+    fi
 }
 folder "${XDG_STATE_HOME:-$HOME/.local/state}"
 folder "${XDG_CACHE_HOME:-$HOME/.cache}"
 folder "${XDG_CONFIG_HOME:-$HOME/.config}"
-folder "${XDG_DATA_HOME:-$HOME/.local/share}"
+folder "${XDG_DATA_HOME:-$HOME/.local/share}" kuwai-data
+data_rescue "${XDG_DATA_HOME:-$HOME/.local/share}"
 
 if [ -n "${XDG_RUNTIME_DIR:-}" ]; then
     rt="$XDG_RUNTIME_DIR"

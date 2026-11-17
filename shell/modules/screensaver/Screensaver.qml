@@ -56,9 +56,9 @@ Scope {
     }
     readonly property bool useVideo: video !== "" && (!UPower.onBattery || Settings.liveOnBattery)
     readonly property string style: Settings.screensaverStyle || "dusk"   // dusk · borealis · night · live · still
-    // Night: a dark film from ~/.local/share/kuwai/screensavers (seamless
+    // Night: a dark film from ~/.local/share/kuwai-data/screensavers (seamless
     // half-speed loops, ~3–7 Mbit/s: cheap to decode, made by kuwai's setup).
-    readonly property string clipDir: Quickshell.env("HOME") + "/.local/share/kuwai/screensavers"
+    readonly property string clipDir: Quickshell.env("HOME") + "/.local/share/kuwai-data/screensavers"
     readonly property string clip: clipDir + "/" + (Settings.screensaverClip || "smoke-soft") + ".mp4"
     // The film didn't start (the file is missing, or the player died): Dusk instead, for this
     // showing only. It was for the whole session: one failure (a film folder that wasn't

@@ -30,7 +30,7 @@ How it updates (no terminal, no stored passwords, no sudo rules):
     Never per-package: Arch doesn't support partial upgrades. Build dependencies the AUR packages
     need come after, marked as dependencies (`--asdeps`), so they can be cleaned up as orphans.
   · AUR packages are built as you with makepkg, from the exact commit you approved (or the newest
-    one for packages you trust), in a recipe checkout under ~/.local/share/kuwai/aur/PKG, never as root; then all of them install
+    one for packages you trust), in a recipe checkout under ~/.local/share/kuwai-data/aur/PKG, never as root; then all of them install
     with one `pacman -U`. A package that changed after you reviewed it is not built.
   · Tests (checkdepends) run when their dependencies come from Arch's repos; when one is only in
     the AUR, the build skips the tests (`--nocheck`) instead of the whole package.
@@ -54,7 +54,7 @@ import xml.etree.ElementTree as ET
 HOME = os.path.expanduser("~")
 STATE = os.path.join(os.environ.get("XDG_STATE_HOME", os.path.join(HOME, ".local/state")), "kuwai")
 CACHE = os.path.join(os.environ.get("XDG_CACHE_HOME", os.path.join(HOME, ".cache")), "kuwai")
-DATA = os.path.join(os.environ.get("XDG_DATA_HOME", os.path.join(HOME, ".local/share")), "kuwai")
+DATA = os.path.join(os.environ.get("XDG_DATA_HOME", os.path.join(HOME, ".local/share")), "kuwai-data")
 AUR_DIR = os.path.join(DATA, "aur")
 INSTALLED = os.path.join(STATE, "aur-installed.json")
 APPROVED = os.path.join(STATE, "aur-approved.json")

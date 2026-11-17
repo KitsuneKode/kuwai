@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def test_first_map_on_a_fresh_cache(tmp_path):
     data, cache = tmp_path / "data", tmp_path / "cache"
-    venv_bin = data / "kuwai/cutout/venv/bin"
+    venv_bin = data / "kuwai-data/cutout/venv/bin"
     venv_bin.mkdir(parents=True)
     # A stand-in for the model's python: argv = -I -c SCRIPT PICTURE OUT; it writes a mask to OUT
     # (a centred white block) the way the real one does, and fails if OUT's folder isn't there.

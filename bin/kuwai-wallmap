@@ -18,7 +18,7 @@ No subject found (the model missing, or a cut-out under 1 % or over 85 % of the
 picture): exit 1, and the change uses the shards instead.
 
 The cut-out is BiRefNet (general-lite) through rembg, in its own venv under
-~/.local/share/kuwai/cutout: nothing is installed into the system, and nothing
+~/.local/share/kuwai-data/cutout: nothing is installed into the system, and nothing
 runs unless you ran --install. Maps are cached in ~/.cache/kuwai/wallmaps,
 keyed by the picture's path, size and time, so an edited picture gets a new one.
 """
@@ -30,7 +30,7 @@ from pathlib import Path
 
 HOME = Path.home()
 CACHE = Path(os.environ.get("XDG_CACHE_HOME", HOME / ".cache")) / "kuwai" / "wallmaps"
-VENV = Path(os.environ.get("XDG_DATA_HOME", HOME / ".local/share")) / "kuwai" / "cutout" / "venv"
+VENV = Path(os.environ.get("XDG_DATA_HOME", HOME / ".local/share")) / "kuwai-data" / "cutout" / "venv"
 MODEL = "birefnet-general-lite"
 WIDTH = 640
 PICTURES = (".jpg", ".jpeg", ".png", ".webp")

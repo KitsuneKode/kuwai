@@ -345,11 +345,11 @@ case ${1:-} in
     fade)          ipc fade "${2:-start}" >/dev/null 2>&1 ;;   # (hypridle)
     screensaver)   ipc screensaver "${2:-start}" ;;   # start it now (any input dismisses) · stop
     saver)
-        # Screensaver films: ~/.local/share/kuwai/screensavers/NAME.mp4 (+ .jpg).
+        # Screensaver films: ~/.local/share/kuwai-data/screensavers/NAME.mp4 (+ .jpg).
         # Themes → Screensaver lists every film there; this makes one well:
         # half speed, then reversed, so the loop has no seam; a little darker;
         # 24 fps, ~3–7 Mbit/s (cheap to decode); a thumbnail beside it.
-        dir="${XDG_DATA_HOME:-$HOME/.local/share}/kuwai/screensavers"
+        dir="${XDG_DATA_HOME:-$HOME/.local/share}/kuwai-data/screensavers"
         case ${2:-} in
             add)
                 src=${3:-}; [ -f "$src" ] || { echo "usage: kuwai saver add FILE [name]" >&2; exit 2; }

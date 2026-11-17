@@ -382,9 +382,9 @@
       "maxLength": 512,
       "section": "saver",
       "label": "Film",
-      "detail": "Files in ~/.local/share/kuwai/screensavers",
+      "detail": "Files in ~/.local/share/kuwai-data/screensavers",
       "group": "",
-      "searchTerms": "film files in ~/.local/share/kuwai/screensavers smoke aurora stars ",
+      "searchTerms": "film files in ~/.local/share/kuwai-data/screensavers smoke aurora stars ",
       "requires": [],
       "restartScope": "live"
     },

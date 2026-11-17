@@ -849,7 +849,7 @@ FocusScope {
                 SettingsRow {
                     key: "screensaverClip"
                     visible: Settings.screensaverStyle === "night"
-                    label: "Film"; detail: "Files in ~/.local/share/kuwai/screensavers"
+                    label: "Film"; detail: "Files in ~/.local/share/kuwai-data/screensavers"
                     Segmented {
                         options: [{ id: "smoke-soft", label: "Smoke" }, { id: "aurora", label: "Aurora" }, { id: "stars-lake", label: "Stars" }]
                         current: Settings.screensaverClip

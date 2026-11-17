@@ -31,7 +31,7 @@
 set -euo pipefail
 
 cache="${XDG_CACHE_HOME:-$HOME/.cache}/kuwai/clip"
-pins="${XDG_DATA_HOME:-$HOME/.local/share}/kuwai/clipboard/pins"
+pins="${XDG_DATA_HOME:-$HOME/.local/share}/kuwai-data/clipboard/pins"
 mkdir -p "$cache/thumbs" "$cache/open" "$cache/edit" "$pins"
 # Copies made for a moment (opened, edited) leave after a day, decoded images
 # after a week: kept bounded without anyone clearing history. Never fatal: under

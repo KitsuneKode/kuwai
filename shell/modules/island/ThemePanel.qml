@@ -45,7 +45,7 @@ FocusScope {
     // Screensavers: Dusk and Borealis (drawn live), every film in the folder (drop an .mp4
     // in, it's listed), your live wallpaper, or the still one. ↵ uses it,
     // P shows it now. Settings → Screensaver has when and after how long.
-    readonly property string saverDir: Quickshell.env("HOME") + "/.local/share/kuwai/screensavers"
+    readonly property string saverDir: Quickshell.env("HOME") + "/.local/share/kuwai-data/screensavers"
     property var clips: []
     Process {
         id: saverLister
@@ -97,7 +97,7 @@ FocusScope {
         saver: { title: "Add a screensaver",
             steps: ["Any video: smoke, stars, aurora, ink in water.", "kuwai saver plays it at half speed, forward then back (no seam).", "Pick it here as “Night · Name”; P shows it now."],
             cmd: "kuwai saver add ~/Videos/clip.mp4 name",
-            folder: home + "/.local/share/kuwai/screensavers",
+            folder: home + "/.local/share/kuwai-data/screensavers",
             worth: "Mostly black with slow movement: kind to OLED, never distracting." }
     })
     readonly property var guideNow: guides[mode] || guides.themes

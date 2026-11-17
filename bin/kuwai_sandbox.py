@@ -4,7 +4,7 @@ can't reach anything of yours.
 
 - Runs as your uid, `--cap-drop ALL`, `no-new-privileges`, read-only root,
   /tmp as tmpfs, memory / CPU / process caps.
-- Only ~/.local/share/kuwai/sandbox is mounted, at /work. Each chat works in
+- Only ~/.local/share/kuwai-data/sandbox is mounted, at /work. Each chat works in
   /work/<chat>; /work/.home is $HOME (pip --user and npm packages persist).
 - Network is on (pip, curl); KUWAI_SANDBOX_NET=none turns it off.
 - Built from sandbox/Dockerfile: `kuwai-ollama sandbox build`.
@@ -30,14 +30,14 @@ class SandboxError(Exception):
 
 def host_root():
     """The jail on the host: ~/Depot/kuwai-sandbox when ~/Depot exists (where you can see and
-    browse everything the assistant does), else ~/.local/share/kuwai/sandbox."""
+    browse everything the assistant does), else ~/.local/share/kuwai-data/sandbox."""
     if os.environ.get("KUWAI_SANDBOX_DIR"):
         return Path(os.environ["KUWAI_SANDBOX_DIR"])
     depot = Path(os.path.expanduser("~/Depot"))
     if depot.is_dir():
         return depot / "kuwai-sandbox"
     base = os.environ.get("XDG_DATA_HOME") or os.path.expanduser("~/.local/share")
-    return Path(base) / "kuwai" / "sandbox"
+    return Path(base) / "kuwai-data" / "sandbox"
 
 
 def audit_log_path():

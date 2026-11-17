@@ -30,9 +30,9 @@ paths() {
     for p in \
         "$CFG/kuwai" \
         "$CFG/hypr/hyprland.lua" "$CFG/hypr/monitors.lua" "$CFG/hypr/user.lua" "$CFG/hypr/hypridle.conf" \
-        "$DATA/kuwai/reminders.json" "$DATA/kuwai/alarms.json" "$DATA/kuwai/clipboard/pins" \
+        "$DATA/kuwai-data/reminders.json" "$DATA/kuwai-data/alarms.json" "$DATA/kuwai-data/clipboard/pins" \
         "${KUWAI_NOTES:-$HOME/Notes}/inbox.md" \
-        "$DATA/kuwai/icc" \
+        "$DATA/kuwai-data/icc" \
         "$STATE/kuwai/state" "$STATE/kuwai/channel"; do
         [ -e "$p" ] && printf '%s\n' "${p#"$HOME"/}"
     done

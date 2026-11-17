@@ -138,7 +138,7 @@ local function mode_for(m, base_mode, preset)
 end
 
 -- A measured profile for this screen (from a colorimeter; see `kuwai display
--- profile`): ~/.local/share/kuwai/icc/<screen>.icc, <screen> being its
+-- profile`): ~/.local/share/kuwai-data/icc/<screen>.icc, <screen> being its
 -- description in lowercase with dashes (no serial number). Used only by the
 -- accurate preset: an ICC replaces the screen's colour preset (so no automatic
 -- HDR there), and the other presets are for watching and playing.
@@ -147,7 +147,7 @@ function D.icc_name(m)
 	return (d:lower():gsub("[^%w]+", "-"):gsub("^-+", ""):gsub("-+$", ""))
 end
 function D.icc_for(m)
-	local path = K.home .. "/.local/share/kuwai/icc/" .. D.icc_name(m) .. ".icc"
+	local path = K.home .. "/.local/share/kuwai-data/icc/" .. D.icc_name(m) .. ".icc"
 	return K.exists(path) and path or nil
 end
 
@@ -263,7 +263,7 @@ end
 function kuwai.display_profiles()
 	local out = {}
 	for _, m in ipairs(hl.get_monitors() or {}) do
-		local path = K.home .. "/.local/share/kuwai/icc/" .. D.icc_name(m) .. ".icc"
+		local path = K.home .. "/.local/share/kuwai-data/icc/" .. D.icc_name(m) .. ".icc"
 		out[#out + 1] = m.name .. "\t" .. (m.description or "") .. "\t" .. path .. "\t" .. (K.exists(path) and "yes" or "no")
 	end
 	return table.concat(out, "\n")

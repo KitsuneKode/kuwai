@@ -2,7 +2,7 @@ pragma Singleton
 
 // Alarms: a time of day that rings until you stop it, through the lock
 // screen too. "alarm 7:30", "alarm 6am gym" in the launcher, or
-// `kuwai alarm 7:30 gym`. Kept in ~/.local/share/kuwai/alarms.json.
+// `kuwai alarm 7:30 gym`. Kept in ~/.local/share/kuwai-data/alarms.json.
 // Asleep: with system/install's kuwai-wake, the next alarm is written to
 // /var/lib/kuwai-wake/at and the RTC wakes the laptop for it (without it,
 // alarms ring when the laptop is next awake, and the island says so).
@@ -113,7 +113,7 @@ Singleton {
     }
 
     // ── Kept, and the wake time for the RTC ──────────────────────────────
-    readonly property string file: (Quickshell.env("XDG_DATA_HOME") || Quickshell.env("HOME") + "/.local/share") + "/kuwai/alarms.json"
+    readonly property string file: (Quickshell.env("XDG_DATA_HOME") || Quickshell.env("HOME") + "/.local/share") + "/kuwai-data/alarms.json"
     // kuwai-wake once system/install has been run again after the rename;
     // until then the installed rice-wake (same helper, its old name).
     readonly property var wakeFiles: ["/var/lib/kuwai-wake/at", "/var/lib/rice-wake/at"]

@@ -5,7 +5,7 @@ pragma Singleton
 //   "in 20m stretch" · "in 1h30m tea"    from now
 //   "at 17:30 standup" · "5pm review"    today, or tomorrow if that time has passed
 //   "tomorrow 9am dentist"               tomorrow
-// Kept in ~/.local/share/kuwai/reminders.json (across restarts and sleep: a
+// Kept in ~/.local/share/kuwai-data/reminders.json (across restarts and sleep: a
 // reminder due while asleep fires on waking). When one is due: a moment in
 // the island and a notification you can snooze from the center.
 // (No braces before the pragma: Quickshell's scanner stops at the first.)
@@ -133,7 +133,7 @@ Singleton {
     }
 
     // ── Kept ─────────────────────────────────────────────────────────────
-    readonly property string file: (Quickshell.env("XDG_DATA_HOME") || Quickshell.env("HOME") + "/.local/share") + "/kuwai/reminders.json"
+    readonly property string file: (Quickshell.env("XDG_DATA_HOME") || Quickshell.env("HOME") + "/.local/share") + "/kuwai-data/reminders.json"
     property bool loaded: false
     FileView {
         id: store
