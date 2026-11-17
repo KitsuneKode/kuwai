@@ -34,12 +34,12 @@ hints="{\"urgency\": <byte $urgency>"
 if command -v jq >/dev/null 2>&1; then
     for k in "${!xhints[@]}"; do
         esc=$(jq -Rn --arg v "${xhints[$k]}" '$v')
-        hints+=", \"$k\": $esc"
+        hints+=", \"$k\": <$esc>"     # a{sv}: each value is a variant
     done
 else
     for k in "${!xhints[@]}"; do
         v=${xhints[$k]//\\/\\\\}; v=${v//\"/\\\"}
-        hints+=", \"$k\": \"$v\""
+        hints+=", \"$k\": <\"$v\">"
     done
 fi
 hints+="}"
@@ -55,13 +55,20 @@ if [ ${#actions[@]} -gt 0 ]; then
     done
     arr+="]"
 else
-    arr="'[]'"
+    arr="[]"
 fi
 
-reply=$(gdbus call --session --dest org.freedesktop.Notifications \
+# gdbus's own error is kept for the one line saying what failed (no server on
+# the bus, a malformed hint); its reply is the line "(uint32 ID,)".
+if ! out=$(gdbus call --session --dest org.freedesktop.Notifications \
     --object-path /org/freedesktop/Notifications \
     --method org.freedesktop.Notifications.Notify \
-    "$app" 0 "$icon" "$title" "$body" "$arr" "$hints" 0 2>/dev/null) || exit 1
+    "$app" 0 "$icon" "$title" "$body" "$arr" "$hints" 0 2>&1); then
+    why=$(printf '%s\n' "$out" | sed -n '/./{s/^Error: //;p;q}')
+    printf 'rice-notify: the notification server did not take "%s": %s\n' "$title" "${why:-gdbus failed with no message}" >&2
+    exit 1
+fi
+reply=$(printf '%s\n' "$out" | grep -m1 '^(uint32' || true)
 if [ "$wait" = 1 ] && [ ${#actions[@]} -gt 0 ]; then
     nid=$(echo "$reply" | awk '{print $2}' | tr -d '(),')
     gdbus monitor --session --dest org.freedesktop.Notifications 2>/dev/null | while read -r line; do
