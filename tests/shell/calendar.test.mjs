@@ -3,12 +3,12 @@ import { functions } from '../helpers/qml.mjs';
 const Qt={Key_Escape:1,Key_Left:2,Key_Right:3,Key_Up:4,Key_Down:5,Key_PageUp:6,Key_PageDown:7,Key_Home:8,Key_End:9,Key_Return:10,Key_Enter:11,Key_Space:12,ShiftModifier:1};
 test('calendar Enter selects the focused day and unrelated keys are not consumed',()=>{
  let chosen;
- const s=functions('shell/modules/clipboard/DatePicker.qml',['key','shift'],{Qt,open:true,focusedDay:new Date(2026,10,15),month:new Date(2026,10,1),pickDay(d,extend){chosen=[d.getDate(),!!extend];}});
+ const s=functions('shell/modules/clipboard/DatePicker.qml',['key','shift'],{Qt,Dates:{lead:d=>(d.getDay()+6)%7},open:true,focusedDay:new Date(2026,10,15),month:new Date(2026,10,1),pickDay(d,extend){chosen=[d.getDate(),!!extend];}});
  expect(s.key({key:Qt.Key_Return,modifiers:Qt.ShiftModifier})).toBe(true);
  expect(chosen).toEqual([15,true]);expect(s.key({key:99,modifiers:0})).toBe(false);
 });
 test('calendar arrows move by days, including month boundaries',()=>{
- const s=functions('shell/modules/clipboard/DatePicker.qml',['key','shift'],{Qt,open:true,focusedDay:new Date(2026,10,1),month:new Date(2026,10,1)});
+ const s=functions('shell/modules/clipboard/DatePicker.qml',['key','shift'],{Qt,Dates:{lead:d=>(d.getDay()+6)%7},open:true,focusedDay:new Date(2026,10,1),month:new Date(2026,10,1)});
  s.key({key:Qt.Key_Left,modifiers:0});expect([s.focusedDay.getMonth(),s.focusedDay.getDate()]).toEqual([9,31]);
 });
 test('local-day selection ends at next midnight across daylight saving',()=>{

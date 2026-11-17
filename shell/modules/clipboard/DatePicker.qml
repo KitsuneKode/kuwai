@@ -52,8 +52,8 @@ Item {
             else if (k === Qt.Key_Right) offset = 1;
             else if (k === Qt.Key_Up) offset = -7;
             else if (k === Qt.Key_Down) offset = 7;
-            else if (k === Qt.Key_Home) offset = -((focusedDay.getDay() + 6) % 7);
-            else if (k === Qt.Key_End) offset = 6 - ((focusedDay.getDay() + 6) % 7);
+            else if (k === Qt.Key_Home) offset = -Dates.lead(focusedDay);
+            else if (k === Qt.Key_End) offset = 6 - Dates.lead(focusedDay);
             else return false;
             focusedDay = new Date(focusedDay.getFullYear(), focusedDay.getMonth(), focusedDay.getDate() + offset);
             month = new Date(focusedDay.getFullYear(), focusedDay.getMonth(), 1);
@@ -73,7 +73,7 @@ Item {
     }
     readonly property var cells: {
         const first = new Date(month.getFullYear(), month.getMonth(), 1);
-        const lead = (first.getDay() + 6) % 7;                  // weeks start on Monday
+        const lead = Dates.lead(first);                         // the locale's first day of the week
         const out = [];
         for (let i = 0; i < 42; i++) {
             const d = new Date(first.getFullYear(), first.getMonth(), 1 - lead + i);
@@ -95,7 +95,7 @@ Item {
             picked(s, new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).getTime(), fmt(s));
         }
     }
-    function fmt(ms) { return new Date(ms).toLocaleDateString(Qt.locale(), "d MMM"); }
+    function fmt(ms) { return Dates.dayMonth(ms); }
     function quick(id) {
         const now = new Date(), today = startOf(now);
         const at = n => new Date(now.getFullYear(), now.getMonth(), now.getDate() + n).getTime();
@@ -103,7 +103,7 @@ Item {
         else if (id === "yesterday") picked(at(-1), today, "Yesterday");
         else if (id.startsWith("ago:")) {
             const n = Number(id.slice(4)), s = at(-n);
-            picked(s, at(1 - n), new Date(s).toLocaleDateString(Qt.locale(), "ddd d MMM"));
+            picked(s, at(1 - n), Dates.shortDate(s));
         }
         else if (id === "week") picked(at(-6), at(1), "Last 7 days");
         else if (id === "month") picked(new Date(now.getFullYear(), now.getMonth(), 1).getTime(), at(1), "This month");
@@ -154,7 +154,7 @@ Item {
                     model: {
                         const day = 86400000, now = new Date(), today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
                         const out = [{ id: "today", t: "Today", ms: today }, { id: "yesterday", t: "Yesterday", ms: today - day }];
-                        for (let n = 2; n <= 5; n++) out.push({ id: "ago:" + n, t: new Date(today - n * day).toLocaleDateString(Qt.locale(), "ddd d"), ms: today - n * day });
+                        for (let n = 2; n <= 5; n++) out.push({ id: "ago:" + n, t: Dates.shortDate(today - n * day), ms: today - n * day });
                         out.push({ id: "week", t: "Last 7 days" }, { id: "month", t: "This month" }, { id: "any", t: "Any time" });
                         return out;
                     }
@@ -202,7 +202,7 @@ Item {
                     x: 4
                     height: 28
                     verticalAlignment: Text.AlignVCenter
-                    text: dp.month.toLocaleDateString(Qt.locale(), "MMMM yyyy")
+                    text: Dates.monthYear(dp.month)
                     size: 14
                     weight: Theme.wSemibold
                 }
@@ -232,7 +232,7 @@ Item {
                     id: weekdays
                     y: 32
                     Repeater {
-                        model: ["M", "T", "W", "T", "F", "S", "S"]
+                        model: Dates.weekdayNames(true)
                         Label { required property string modelData; width: cal.cellW; horizontalAlignment: Text.AlignHCenter; text: modelData; size: 11; color: Theme.textTertiary }
                     }
                 }
