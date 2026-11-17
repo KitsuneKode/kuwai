@@ -85,10 +85,22 @@ bar() {
     local chosen
     chosen=$(get_setting bar) || return
     [ -z "${1:-}" ] && { printf '%s\n' "$chosen"; return; }
+    # HyDE runs Waybar as a transient unit and restarts it from its theme
+    # switch, its wallpaper change and wallbash (20:19, 2026-11-17: a dozen
+    # restarts in a minute of wallpaper changes, each killed again after).
+    # Masking the unit for this login makes systemd refuse every start, from
+    # whoever asks; --runtime, so it is gone at logout and never outlives kuwai.
+    local units="hyde-${XDG_SESSION_DESKTOP:-Hyprland}-bar.service hyde-${XDG_SESSION_DESKTOP:-Hyprland}-waybar-watcher.service"
     if [ "$chosen" = island ]; then
+        # shellcheck disable=SC2086
+        systemctl --user stop $units 2>/dev/null
+        # shellcheck disable=SC2086
+        systemctl --user mask --runtime $units >/dev/null 2>&1
         pkill -x waybar 2>/dev/null
-    elif ! pgrep -x waybar >/dev/null; then
-        setsid -f hyde-shell waybar >/dev/null 2>&1 </dev/null
+    else
+        # shellcheck disable=SC2086
+        systemctl --user unmask --runtime $units >/dev/null 2>&1
+        pgrep -x waybar >/dev/null || setsid -f hyde-shell waybar >/dev/null 2>&1 </dev/null
     fi
     return 0
 }
