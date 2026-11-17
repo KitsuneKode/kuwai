@@ -28,6 +28,8 @@ Item {
     Accessible.role: Accessible.Button
     Accessible.name: label
     Accessible.description: "Hold Space or Enter to " + verb
+    // A screen reader's press is one deliberate act: it does what a completed hold does.
+    Accessible.onPressAction: { btn.held = 0; btn.fired(); }
     Keys.onPressed: e => {
         if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) {
             if (!e.isAutoRepeat) keyboardHolding = true;

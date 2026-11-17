@@ -114,6 +114,9 @@ Item {
                     Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                     Text { textFormat: Text.PlainText; anchors.centerIn: parent; text: b.modelData.g; font.family: Theme.fontGlyph; font.pixelSize: b.modelData.big ? 22 : 17; color: "white" }
                     MouseArea { id: bArea; anchors.fill: parent; enabled: b.modelData.ok; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: b.modelData.on() }
+                    Accessible.role: Accessible.Button
+                    Accessible.name: b.modelData.big ? (media.player && media.player.isPlaying ? "Pause" : "Play") : b.modelData.g === "\u{f04ae}" ? "Previous track" : "Next track"
+                    Accessible.onPressAction: if (b.modelData.ok) b.modelData.on()
                 }
             }
         }

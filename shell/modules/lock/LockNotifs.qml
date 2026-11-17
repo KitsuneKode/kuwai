@@ -239,6 +239,11 @@ Column {
                 }
                 HoverHandler { id: over; cursorShape: Qt.PointingHandCursor }
                 TapHandler { onTapped: stack.tapped(card.item) }
+                // Only what the lock screen already shows (its heading and line, never more).
+                Accessible.role: Accessible.Button
+                Accessible.name: (card.item.app || "Notification") + ": " + stack.heading(card.item)
+                Accessible.description: card.line + (card.item.status ? ". " + card.item.status : "")
+                Accessible.onPressAction: stack.tapped(card.item)
                 // Swipe it away, either way: past 100 px or a quick flick, the
                 // conversation clears (it only clears; nothing opens while locked).
                 DragHandler {

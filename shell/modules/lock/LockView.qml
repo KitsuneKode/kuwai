@@ -227,6 +227,9 @@ Item {
 
     // Any click wakes the password pill too.
     TapHandler { onTapped: view.ask() }
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Locked"
+    Accessible.onPressAction: view.ask()
     // The pointer moving counts as someone there (it doesn't open the pill).
     HoverHandler { onPointChanged: view.stir() }
 

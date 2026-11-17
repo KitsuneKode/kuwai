@@ -155,6 +155,9 @@ Item {
                     Label { id: actLabel; anchors.centerIn: parent; text: parent.modelData.text; size: 12; weight: Theme.wSemibold; color: parent.modelData.id === "stop" ? Theme.inkOnLight : Theme.textPrimary }
                     MouseArea { id: actArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                         onClicked: parent.modelData.id === "stop" ? Alarms.stop() : Alarms.snooze(9) }
+                    Accessible.role: Accessible.Button
+                    Accessible.name: modelData.text + " the alarm"
+                    Accessible.onPressAction: modelData.id === "stop" ? Alarms.stop() : Alarms.snooze(9)
                 }
             }
 

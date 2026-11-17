@@ -61,6 +61,11 @@ Column {
             // Never disabled (a disabled field drops the keyboard): read-only while PAM checks.
             readOnly: entry.lock.checking
             echoMode: TextInput.NoEcho
+            // A password field to assistive tech: named by its prompt, never by what's typed.
+            Accessible.role: Accessible.EditableText
+            Accessible.passwordEdit: true
+            Accessible.name: entry.placeholder
+            Accessible.description: entry.lock.checking ? "Checking" : entry.lock.error || (entry.capsLock ? "Caps Lock is on" : "")
             onTextChanged: { if (text !== entry.lock.password) entry.lock.password = text; if (text.length && !Theme.reduceMotion) for (const w of lockDots.waves) w.restart(); }
             Row {
                 id: lockDots
@@ -127,6 +132,9 @@ Column {
                 onTextChanged: rotation = 0
             }
             MouseArea { id: goPress; anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: entry.lock.submit() }
+            Accessible.role: Accessible.Button
+            Accessible.name: entry.lock.checking ? "Checking" : "Submit password"
+            Accessible.onPressAction: entry.lock.submit()
         }
     }
     Label {

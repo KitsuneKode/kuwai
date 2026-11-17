@@ -493,6 +493,11 @@ ShellRoot {
                             // length): no echo at all, like a terminal; the
                             // dots below only pulse once per keystroke.
                             echoMode: root.echo ? TextInput.Normal : TextInput.NoEcho
+                            // A password field to assistive tech (unless the prompt asks to echo):
+                            // named by the prompt, never by what's typed.
+                            Accessible.role: Accessible.EditableText
+                            Accessible.passwordEdit: !root.echo
+                            Accessible.name: root.promptText || "Password"
                             inputMethodHints: Qt.ImhSensitiveData | Qt.ImhNoPredictiveText | Qt.ImhHiddenText | Qt.ImhNoAutoUppercase
                             font.family: Theme.fontText
                             font.pixelSize: 15

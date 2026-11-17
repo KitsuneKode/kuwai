@@ -121,4 +121,8 @@ Item {
         cursorShape: b.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
         onClicked: if (b.enabled) b.clicked()
     }
+    // Screen readers: what it is and does (the password prompt's own copy keeps its own keys).
+    Accessible.role: Accessible.Button
+    Accessible.name: b.text
+    Accessible.onPressAction: if (b.enabled) b.clicked()
 }

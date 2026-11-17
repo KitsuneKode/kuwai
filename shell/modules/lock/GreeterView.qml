@@ -302,6 +302,9 @@ Item {
 
     // A click anywhere asks (and puts the keyboard back in the field).
     TapHandler { onTapped: view.ask() }
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Log in as " + view.lock.name
+    Accessible.onPressAction: view.ask()
 
     // ── Logging in: your picture opens into your desktop ─────────────────
     property real tReveal: 0
