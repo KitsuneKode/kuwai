@@ -2,6 +2,8 @@
 --
 --   Super+Ctrl+D / Super+Shift+F23 (Copilot key)  toggle, app-aware profile
 --   F9 (hold)                                     push-to-talk
+--   F9 (tap)                                      hands-free, F9 again to stop
+--   Super+Ctrl+E                                  edit the selection by voice
 --   Super+Shift+D                                 cancel now
 --   Esc Esc (while dictating)                     cancel (first press arms)
 --   Super+Ctrl+Shift+D                            teach a correction
@@ -42,7 +44,10 @@ bind("SUPER + CTRL + D", "Dictate (again to stop)", TOGGLE)
 bind("SUPER + SHIFT + F23", "Dictate (again to stop)", TOGGLE)
 bind("SUPER + SHIFT + D", "Cancel dictation", CANCEL .. " now")
 bind("SUPER + CTRL + SHIFT + D", "Teach a dictation fix", SCRIPTS .. "voxtype_learn.py fix")
-K.bind_hold("F9", "Dictate while held", "voxtype record start", "voxtype record stop")
+-- Through the toggle script, like every start: it records which window the
+-- take is for (the cleanup reads it) and picks that app's profile.
+K.bind_hold("F9", "Dictate while held (tap: hands-free)", TOGGLE .. " hold", TOGGLE .. " release")
+bind("SUPER + CTRL + E", "Edit the selection by voice", TOGGLE .. " command")
 
 bind("Escape", "", function()
 	if dictating() then
@@ -60,6 +65,7 @@ K.submap("voxtype_suppress", function()
 	end
 	bind("SUPER + CTRL + D", "", TOGGLE)
 	bind("SUPER + SHIFT + F23", "", TOGGLE)
+	bind("SUPER + CTRL + E", "", TOGGLE .. " command")
 	bind("SUPER + SHIFT + D", "", function()
 		hl.exec_cmd(CANCEL .. " now")
 		hl.dispatch(hl.dsp.submap("reset"))

@@ -15,6 +15,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Hyprland
 import qs.config
 import qs.services
 
@@ -75,19 +76,37 @@ Scope {
         const audio = make("voxtype-shared/AudioBridge.qml");
         const style = make("voxtype-shared/StyleLoader.qml", { styleFile: styleFile });
         if (!state || !audio || !style) { for (const p of [state, audio, style]) if (p) p.destroy(); return; }
-        const osd = make("OsdSurface.qml", { audio: audio, style: style });
-        if (osd) {
+        // One surface per output, shown on the focused one, as voxtype's own
+        // shell.qml does since 1.2 (the HUD follows you between monitors;
+        // hidden surfaces skip their per-frame work). Older files have one
+        // surface and no session/outcome: set only what the file declares.
+        const osds = [];
+        for (const scr of Quickshell.screens) {
+            const osd = make("OsdSurface.qml", { audio: audio, style: style, screen: scr });
+            if (!osd) continue;
             osd.daemonState = Qt.binding(() => state.state);
             osd.osdSuppressed = Qt.binding(() => state.osdSuppressed);
+            if ("session" in osd && "session" in state) osd.session = Qt.binding(() => state.session);
+            if ("outcome" in osd && "outcome" in state) osd.outcome = Qt.binding(() => state.outcome);
+            if ("activeOutput" in osd) {
+                const name = scr.name;
+                osd.activeOutput = Qt.binding(() => !Hyprland.focusedMonitor || Hyprland.focusedMonitor.name === name);
+            }
+            osds.push(osd);
         }
         const picker = make("EnginePicker.qml");
         const meeting = make("MeetingControls.qml");
         // Their panels take the keyboard; an island panel holding it would
         // leave them unfocused, so the island steps aside when one opens.
         for (const p of [picker, meeting]) if (p) p.openChanged.connect(() => { if (p.open && Island.panel) Island.close(); });
-        parts = [state, audio, style, osd, picker, meeting].filter(p => p);
+        parts = [state, audio, style, picker, meeting].concat(osds).filter(p => p);
         hosting = true;
         console.info("voxtype host: drawing voxtype's UI in this shell");
+    }
+    // A monitor plugged in or out: surfaces are per output, so build again.
+    Connections {
+        target: Quickshell
+        function onScreensChanged() { if (host.hosting) { host.teardown(); host.build(); } }
     }
     function teardown() {
         for (const p of parts) p.destroy();
