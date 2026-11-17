@@ -1,11 +1,14 @@
 // Idle projects, grown out of the island (rest on the broom mark, or the
 // launcher's "Idle Projects"). What the idle projects hold in one bar (the
 // header's number; a sweep that can't split them shows all it found, and
-// says so): each kind of leftover (node_modules, target, .next…) is a part. Rest on a part and
-// the others step back while the caption names it (as in sweep's own project
-// view); below, the old projects holding the most. Look, then decide: nothing
-// is deleted from here. Enter (or the button) opens sweep's review.
-//   Enter / click a row or the button: sweep, in a terminal. Esc closes.
+// says so): each kind of leftover (node_modules, target, .next…) is a part.
+// Rest on a part and the others step back while the caption names it (as in
+// sweep's own project view); below, the old projects holding the most. Look,
+// then decide: nothing is deleted from here.
+//   ↑ ↓ a project (the keyboard's ring) · ← → a part of the bar
+//   Enter: sweep's review of the chosen project, or of the folder · a click on
+//   a row: that project · the button: the folder. Esc closes.
+// Keys move at once (no glide, no fade): they repeat too often to animate.
 import QtQuick
 import Quickshell
 import qs.config
@@ -19,8 +22,30 @@ FocusScope {
     implicitWidth: 420
     implicitHeight: col.implicitHeight + 40
 
+    // The chosen project (-1: none, Enter opens the folder), and whether the
+    // keys chose it (then the list's highlight is the focus ring).
+    property int sel: -1
+    property bool keyboard: false
+    // The keys are naming the bar's parts: no fade between them.
+    property bool barKeys: false
+    onSegsChanged: focused = Math.min(focused, segs.length - 1)
+    Connections {
+        target: Sweep
+        function onProjectsChanged() { panel.sel = Math.min(panel.sel, Sweep.projects.length - 1); }
+    }
     Keys.onPressed: e => {
-        if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { Sweep.openUi(); Island.close(); e.accepted = true; }
+        if (e.key === Qt.Key_Down) { keyboard = true; sel = Math.min(Sweep.projects.length - 1, sel + 1); }
+        else if (e.key === Qt.Key_Up) { keyboard = true; sel = Math.max(-1, sel - 1); }
+        else if (e.key === Qt.Key_Right) { barKeys = true; focused = Math.min(segs.length - 1, focused + 1); }
+        else if (e.key === Qt.Key_Left) { barKeys = true; focused = Math.max(-1, focused - 1); }
+        else if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) {
+            const p = sel >= 0 ? Sweep.projects[sel] : null;
+            Sweep.openUi(p ? p.path : "");
+            Island.close();
+        }
+        else return;
+        Sweep.markViewed();          // a key is looking on purpose
+        e.accepted = true;
     }
     // Looking is what the mark was asking for. Opened on purpose (a click, a
     // key, the launcher): looked at once. Grown by a rest of the pointer
@@ -116,13 +141,18 @@ FocusScope {
                             radius: 3
                             color: panel.toneOf(modelData)
                             opacity: panel.focused < 0 || panel.focused === index ? 1 : panel.dimTo
-                            Behavior on opacity { NumberAnimation { duration: Theme.hoverMs } }
+                            // The pointer gets a short fade; keys and reduced motion, at once.
+                            Behavior on opacity {
+                                enabled: !panel.barKeys && !Theme.reduceMotion
+                                NumberAnimation { duration: Theme.hoverMs }
+                            }
                             // The hover zone is taller than the part: ten pixels is
                             // a small target.
                             MouseArea {
                                 anchors { fill: parent; topMargin: -6; bottomMargin: -6 }
                                 hoverEnabled: true
                                 onContainsMouseChanged: {
+                                    panel.barKeys = false;
                                     if (containsMouse) panel.focused = seg.index;
                                     else if (panel.focused === seg.index) panel.focused = -1;
                                 }
@@ -159,8 +189,15 @@ FocusScope {
             width: parent.width
             readonly property int rowH: 34
             height: Sweep.projects.length * rowH
-            FluidHighlight { radius: Theme.r2; target: panel.hoverRow }
+            // One highlight (fluid hover); with the keys it is the focus ring,
+            // and it jumps (FluidHighlight doesn't glide a keyboard ring).
+            FluidHighlight {
+                radius: Theme.r2
+                target: panel.keyboard ? (panel.sel >= 0 ? rowsRep.itemAt(panel.sel) : null) : panel.hoverRow
+                ring: panel.keyboard
+            }
             Repeater {
+                id: rowsRep
                 model: Sweep.projects
                 Item {
                     id: row
@@ -200,11 +237,20 @@ FocusScope {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onContainsMouseChanged: { if (containsMouse) panel.hoverRow = row; else if (panel.hoverRow === row) panel.hoverRow = null; }
+                        onContainsMouseChanged: {
+                            if (containsMouse) { panel.keyboard = false; panel.sel = row.index; panel.hoverRow = row; }
+                            else if (panel.hoverRow === row) panel.hoverRow = null;
+                        }
                         onClicked: { Sweep.openUi(row.modelData.path); Island.close(); }
                     }
                 }
             }
+        }
+
+        // Opened from the keyboard: the keys, quietly (the pointer has the button).
+        KeyHints {
+            visible: Island.via === "key" && Sweep.alive
+            hints: [["↑↓", "Project"], ["←→", "Part"], ["↩", "Review in sweep"], ["esc", "Back"]]
         }
 
         // ── Look, then decide ────────────────────────────────────────────
