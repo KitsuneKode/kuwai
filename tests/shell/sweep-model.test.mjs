@@ -4,8 +4,8 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 
 const lib = readFileSync(new URL("../../shell/services/sweepModel.js", import.meta.url), "utf8").replace(/^\.pragma library\s*$/m, "");
-const { compact, long, segments, worthMark, seenKey, idleText, agoText } =
-    new Function(lib + "\nreturn { compact, long, segments, worthMark, seenKey, idleText, agoText };")();
+const { compact, long, segments, worthMark, parseViewed, viewedText, isFresh, reconcileViewed, viewedAfterLook, idleText, agoText } =
+    new Function(lib + "\nreturn { compact, long, segments, worthMark, parseViewed, viewedText, isFresh, reconcileViewed, viewedAfterLook, idleText, agoText };")();
 const GB = 1e9;
 
 describe("sizes", () => {
@@ -52,9 +52,51 @@ describe("worth a mark", () => {
         expect(worthMark(10 * GB, 10 * GB)).toBe(true);
         expect(worthMark(0, 0)).toBe(false);
     });
-    test("seen until it grows by another 5 GB", () => {
-        expect(seenKey(16.2 * GB)).toBe(seenKey(19.9 * GB));
-        expect(seenKey(20 * GB)).not.toBe(seenKey(19.9 * GB));
+});
+
+describe("looked at", () => {
+    const MIN = 10 * GB;
+    // What the shell does: a count arrives (reconcile), you look (viewedAfterLook).
+    const look = (idle, v) => viewedAfterLook(idle, v, MIN);
+    const count = (idle, v) => reconcileViewed(idle, v, MIN);
+    test("unseen and worth it: the mark shows", () => {
+        expect(isFresh(12 * GB, null, MIN)).toBe(true);
+        expect(isFresh(9 * GB, null, MIN)).toBe(false);
+    });
+    test("14.9 GB looked at, then 15.0 GB: still seen (no 5 GB step boundary)", () => {
+        const v = look(14.9 * GB, null);
+        expect(v).toBe(14.9 * GB);
+        expect(isFresh(15.0 * GB, count(15.0 * GB, v), MIN)).toBe(false);
+    });
+    test("16 GB looked at, cleaned down to 12 GB: stays quiet", () => {
+        const v = count(12 * GB, look(16 * GB, null));
+        expect(v).toBe(12 * GB);                 // follows the number down
+        expect(isFresh(12 * GB, v, MIN)).toBe(false);
+    });
+    test("5 GB of growth past what you saw brings it back", () => {
+        const v = look(16 * GB, null);
+        expect(isFresh(20.9 * GB, count(20.9 * GB, v), MIN)).toBe(false);
+        expect(isFresh(21 * GB, count(21 * GB, v), MIN)).toBe(true);
+        // …and after a clean-up, 5 GB past what is left.
+        const after = count(12 * GB, v);
+        expect(isFresh(17 * GB, count(17 * GB, after), MIN)).toBe(true);
+    });
+    test("dropping under the threshold forgets the look", () => {
+        expect(count(9 * GB, 16 * GB)).toBe(null);
+        expect(isFresh(10 * GB, count(10 * GB, null), MIN)).toBe(true);
+    });
+    test("looking again keeps the larger size; under the threshold keeps nothing new", () => {
+        expect(look(19 * GB, 16 * GB)).toBe(19 * GB);
+        expect(look(8 * GB, null)).toBe(null);
+    });
+    test("the file: bytes now, the old step key still read, junk is unseen", () => {
+        expect(parseViewed(viewedText(16.2 * GB))).toBe(16.2 * GB);
+        expect(viewedText(null)).toBe("");
+        expect(parseViewed("3\n")).toBe(15 * GB);              // old: looked at in 15–20 GB
+        expect(isFresh(19.9 * GB, parseViewed("3"), MIN)).toBe(false);
+        expect(isFresh(20 * GB, parseViewed("3"), MIN)).toBe(true);   // where the old key came back
+        for (const junk of ["", "  ", "nope", "{}", '{"bytes":"x"}', '{"bytes":-1}', "[]", "null", undefined, null])
+            expect(parseViewed(junk)).toBe(null);
     });
 });
 

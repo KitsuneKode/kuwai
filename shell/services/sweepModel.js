@@ -5,7 +5,9 @@
 //   compact(bytes)                      → "16G" / "9.5G" / "640M"
 //   segments(kinds, total, tones)       → [{ kind, bytes, count, share, tone }] (top kinds + "other")
 //   worthMark(idleBytes, minBytes)      → bool
-//   seenKey(idleBytes)                  → "3": the 5 GB step this size is in
+//   parseViewed(text) / viewedText(b)   ↔ the sweep-viewed file: the size you looked at, in bytes
+//   isFresh(idle, viewed, min)          → bool: worth a mark and new, or 5 GB past what you saw
+//   reconcileViewed / viewedAfterLook   → what that stored size becomes
 //   idleText(days) / agoText(sec, now)  → "7 months" / "12 min ago" ("" before the first count)
 
 const GB = 1e9;
@@ -47,9 +49,52 @@ function worthMark(idleBytes, minBytes) {
     return (Number(idleBytes) || 0) >= Math.max(1, Number(minBytes) || 0);
 }
 
-// Looking at it is enough until the number grows by another 5 GB.
-function seenKey(idleBytes) {
-    return String(Math.floor((Number(idleBytes) || 0) / (5 * GB)));
+// Looking at it is enough until the number grows by another 5 GB past what
+// you looked at. The size is kept in bytes (a 5 GB *step* key resurfaced the
+// mark going from 14.9 to 15.0 GB).
+const STEP = 5 * GB;
+
+// The sweep-viewed file → the idle size last looked at, in bytes, or null
+// (unseen). Today's form is {"bytes":N}; the older one was the step key ("3":
+// looked at somewhere in 15–20 GB), read as that step's floor so it comes back
+// where it used to. Anything else is unseen.
+function parseViewed(text) {
+    const t = String(text === undefined || text === null ? "" : text).trim();
+    if (!t) return null;
+    if (/^\d{1,6}$/.test(t)) return Number(t) * STEP;
+    try {
+        const o = JSON.parse(t);
+        if (o && typeof o === "object" && typeof o.bytes === "number" && isFinite(o.bytes) && o.bytes >= 0) return o.bytes;
+    } catch (e) {}
+    return null;
+}
+function viewedText(bytes) {
+    return bytes === null || bytes === undefined ? "" : JSON.stringify({ bytes: Math.round(Number(bytes) || 0) }) + "\n";
+}
+
+// The mark shows when the number is worth acting on and either new to you or
+// 5 GB past what you looked at.
+function isFresh(idleBytes, viewedBytes, minBytes) {
+    if (!worthMark(idleBytes, minBytes)) return false;
+    return viewedBytes === null || viewedBytes === undefined || Number(idleBytes) >= Number(viewedBytes) + STEP;
+}
+
+// What the stored size becomes as the number moves (no one looking): under the
+// threshold it is forgotten (the next time it's worth a mark, it's new);
+// after a clean-up it follows the number down, so "another 5 GB" counts from
+// what is left, not from before.
+function reconcileViewed(idleBytes, viewedBytes, minBytes) {
+    if (viewedBytes === null || viewedBytes === undefined) return null;
+    const idle = Number(idleBytes) || 0;
+    if (!worthMark(idle, minBytes)) return null;
+    return idle < viewedBytes ? idle : viewedBytes;
+}
+
+// Looking now: the size to keep (null: nothing to keep, below the threshold).
+function viewedAfterLook(idleBytes, viewedBytes, minBytes) {
+    const idle = Number(idleBytes) || 0;
+    if (!worthMark(idle, minBytes)) return viewedBytes === undefined ? null : viewedBytes;
+    return viewedBytes === null || viewedBytes === undefined ? idle : Math.max(idle, Number(viewedBytes));
 }
 
 function idleText(days) {

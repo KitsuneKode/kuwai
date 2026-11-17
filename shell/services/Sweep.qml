@@ -7,8 +7,8 @@ pragma Singleton
 // So this only ever reads a cache (a few ms) and never waits on a scan.
 //
 //   Sweep.fresh        the mark shows: enabled, sweep found, the number is worth
-//                      acting on (Settings.sweepMinGB) and new to you (opening
-//                      the panel marks it seen until it grows another 5 GB)
+//                      acting on (Settings.sweepMinGB) and new to you (looking
+//                      keeps the size you saw; it returns 5 GB past that)
 //   Sweep.compact      "16G", the mark's value
 //   Sweep.openUi()     sweep's own review, in a terminal. Nothing is deleted
 //                      from the island: removal stays behind sweep's confirm.
@@ -40,9 +40,13 @@ Singleton {
     readonly property real checkedAt: alive && data.checkedAt ? data.checkedAt : 0
     readonly property string scanRoot: alive && data.root ? data.root : ""
 
-    readonly property bool worth: enabled && alive && !pending && Model.worthMark(idleBytes, Settings.sweepMinGB * 1e9)
-    property string viewedKey: ""
-    readonly property bool fresh: worth && Model.seenKey(idleBytes) !== viewedKey
+    readonly property real minBytes: Settings.sweepMinGB * 1e9
+    readonly property bool worth: enabled && alive && !pending && Model.worthMark(idleBytes, minBytes)
+    // The idle size you last looked at, in bytes (null: unseen). The mark
+    // comes back once the number is 5 GB past it (sweepModel.isFresh).
+    property var viewedBytes: null
+    property bool viewedRead: false
+    readonly property bool fresh: worth && viewedRead && Model.isFresh(idleBytes, viewedBytes, minBytes)
     readonly property string compact: Model.compact(idleBytes)
     readonly property string tip: Model.long(idleBytes) + " in " + idleProjects + (idleProjects === 1 ? " idle project" : " idle projects")
         + "\nRest on it for which · click to review in sweep"
@@ -51,14 +55,25 @@ Singleton {
         id: viewedFile
         path: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/rice/sweep-viewed"
         printErrors: false
-        onLoaded: root.viewedKey = text().trim()
+        onLoaded: { root.viewedBytes = Model.parseViewed(text()); root.viewedRead = true; root.reconcile(); }
+        onLoadFailed: root.viewedRead = true          // no file yet: unseen
     }
-    // Looking is enough, until the number grows by another 5 GB.
+    function keepViewed(v) {
+        if (v === viewedBytes) return;
+        viewedBytes = v;
+        viewedFile.setText(Model.viewedText(v));
+    }
+    // A real count moved the number: below the threshold the look is
+    // forgotten; after a clean-up it follows the number down.
+    readonly property bool counted: alive && !pending && checkedAt > 0
+    function reconcile() {
+        if (viewedRead && counted) keepViewed(Model.reconcileViewed(idleBytes, viewedBytes, minBytes));
+    }
+    onIdleBytesChanged: reconcile()
+    onMinBytesChanged: reconcile()
+    // You looked (the panel held for a moment, a click, a key, sweep opened).
     function markViewed() {
-        const k = Model.seenKey(idleBytes);
-        if (!worth || k === viewedKey) return;
-        viewedKey = k;
-        viewedFile.setText(k + "\n");
+        if (viewedRead && counted) keepViewed(Model.viewedAfterLook(idleBytes, viewedBytes, minBytes));
     }
 
     property int retries: 0
@@ -88,6 +103,7 @@ Singleton {
     // sweep's review, in a terminal on the folder it counted. PATH gets the
     // places sweep is usually installed, which a desktop session often lacks.
     function openUi() {
+        markViewed();
         const dir = scanRoot || Quickshell.env("HOME") + "/Projects";
         Quickshell.execDetached(["kitty", "--single-instance", "--instance-group=local", "--title", "sweep", "--directory", dir,
             "sh", "-c", "PATH=\"$HOME/.bun/bin:$HOME/.local/bin:$PATH\" exec sweep ui \"$1\"", "sh", dir]);

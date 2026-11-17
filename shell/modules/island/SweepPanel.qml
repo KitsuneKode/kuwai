@@ -21,8 +21,13 @@ FocusScope {
     Keys.onPressed: e => {
         if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { Sweep.openUi(); Island.close(); e.accepted = true; }
     }
-    // Looking (a rest on the mark counts) is what the mark was asking for.
-    Component.onCompleted: { Sweep.check(); Sweep.markViewed(); }
+    // Looking is what the mark was asking for. Opened on purpose (a click, a
+    // key, the launcher): looked at once. Grown by a rest of the pointer
+    // (a preview, ~220 ms): only after it has stayed open a moment, so the
+    // pointer passing over the mark doesn't count.
+    readonly property int dwellMs: 1500
+    Component.onCompleted: { Sweep.check(); if (!Island.previewing) Sweep.markViewed(); }
+    Timer { interval: panel.dwellMs; running: Island.previewing && panel.visible; onTriggered: Sweep.markViewed() }
 
     readonly property var tones: [Theme.green, Theme.cyan, Theme.orange, Theme.indigo]
     readonly property var segs: Model.segments(Sweep.kinds, Sweep.reclaimable, tones, 4)

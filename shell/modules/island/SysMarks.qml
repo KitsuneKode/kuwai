@@ -57,7 +57,7 @@ Row {
         tip: Sweep.tip
         previews: true
         onPreviewRequested: if (Island.panel === "" && sys.bar) Island.preview("sweep", sys.bar.screenName)
-        onClicked: Island.open("sweep", sys.bar ? sys.bar.screenName : "", "pointer", "island")
+        onClicked: { Sweep.markViewed(); Island.open("sweep", sys.bar ? sys.bar.screenName : "", "pointer", "island"); }
     }
     RestMark {
         id: warn
