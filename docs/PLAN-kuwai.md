@@ -5,7 +5,34 @@ they land. User wants: extremely secure, premium, tasteful, fast, Apple-grade.
 
 **2026-11-16: the order of work toward a public launch is in [PLAN-launch.md](PLAN-launch.md)** (in-flight worktrees, the 12 reported issues, references, pstack verification, clips).
 
-## STATUS (2026-11-17) — audit pass 1, uncommitted in the main checkout
+## STATUS (2026-11-17, night) — audit pass 2, promoted (stable d47301e)
+
+Landed and live: one-time codes by rule (services/otp.mjs: the origin-bound
+"@host #code" line first, then a code phrase beside the number; 8 of 54 false
+positives → 0) and feed severity from the feed; clipboard as one overlay mode
+with ⌃Z after a delete (clipstate.mjs); "Cleared N · Undo" for notifications
+(notifUndo.mjs; one Theme.undoMs for both); one System panel ("vitals" is an
+alias; switches always in the panel, GPUs side by side); theme picker opens on
+a kept listing; at rest 7 helpers instead of 11 (render server on demand,
+brightness OSD on the controller's socket, Shazam/T3/crash/network by events,
+rice-usage under bun) and rice-notify delivers again (it had failed on every
+call without -A since 11-05); dates through config/Dates (locale order, week
+start, 12-hour clocks read 9:05); Inter as the face anyone can install, SF Pro
+when present; the login screen reads monitors and keyboard from validated data
+(home/.config/kuwai-greeter.conf); JSDoc types checked by tsc in CI.
+
+Not seen by a person yet: Super+V (mode, undo), Clear → Undo in the centre,
+the login screen with the new config (next login; `sudo greeter/install --code`
+still pending), Inter on a machine without SF Pro.
+
+Next: Accessible names on the other ~100 pointer targets; strings through
+qsTr ("Today/Yesterday" are still English); exact-shape blur
+(BackgroundEffect); tokens to zero and the rice → kuwai rename; HyDE optional
++ clean-VM install + migrations; Hyprland profile (needs perf); memory:
+Clipboard.renders, OllamaService.htmlCache/sessions bounds, and whether the
+overnight creep changed with the polls gone (read memlog tomorrow).
+
+## STATUS (2026-11-17) — audit pass 1, committed a27e6e2 · 7af2916 · 2797cb9
 
 Done and checked (246 py / 159 bun / Lua pass, rice-check green, panels seen):
 plain text on every outside string (103 `Text`, lint in tests/security);
