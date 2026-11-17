@@ -577,15 +577,18 @@ Singleton {
 
     Timer {
         id: probeTimer
-        // Only the assistant's own window shows the status and the models: a
-        // Python start every 12 s all day was for nobody. Closed, once a minute.
-        interval: Assistant.open || root.streaming ? 12000 : 60000
-        running: true
+        // Only the assistant's own window shows the status and the models
+        // (AssistantOverlay, its model picker): probed while it's open or an
+        // answer streams, never while closed (it was once a minute, a Python
+        // start for nobody). Once at start, so the window opens on the last
+        // known status rather than "offline" for a moment.
+        interval: 12000
+        running: Assistant.open || root.streaming
         repeat: true
-        triggeredOnStart: true
         onTriggered: root.probe()
     }
-    // Opened: fresh status at once, not up to a minute late.
+    Component.onCompleted: root.probe()
+    // Opened: fresh status at once.
     Connections { target: Assistant; function onOpenChanged() { if (Assistant.open) root.probe(); } }
 
     Process {
@@ -1102,10 +1105,16 @@ function onPanelClosed() {
     }
 
     // ── Block rendering (rice-render --serve) ─────────────────────────
-    // Answers render block by block (Turn.splitBlocks): one long-running
-    // rice-render turns each block into Qt rich text in ~1 ms, cached by its
-    // text. A finished block never changes, so it renders once; the block
-    // being written re-renders as it grows. Messages store no HTML.
+    // Answers render block by block (Turn.splitBlocks): one rice-render turns
+    // each block into Qt rich text in ~1 ms, cached by its text. A finished
+    // block never changes, so it renders once; the block being written
+    // re-renders as it grows. Messages store no HTML.
+    // It runs only around the chat: started when the assistant opens (warm
+    // before the first block: a cold start is 50–65 ms to the first reply,
+    // 340 ms once on a loaded machine), or by the first block asked for, and
+    // stopped once the assistant is closed and nothing has been rendered for
+    // 3 minutes (reopening to read the answer again stays warm). The HTML
+    // already made stays here, so a stop costs nothing on screen.
     property var htmlCache: ({})
     property var htmlOrder: []
     property var renderWaiting: ({})     // key → true while in flight
@@ -1126,6 +1135,7 @@ function onPanelClosed() {
             const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
             renderKeys[id] = k;
             if (!renderProc.running) renderProc.running = true;
+            renderIdle.restart();
             renderProc.write(JSON.stringify({ id: id, kind: b.kind, lang: b.lang || "", text: b.text, live: !!b.live }) + "\n");
         }
         return "";
@@ -1136,7 +1146,7 @@ function onPanelClosed() {
         // Dies with the shell. A kill -9 otherwise leaves the renderer behind.
         command: ["setpriv", "--pdeathsig", "KILL", "--", Paths.bin + "/rice-render", "--serve"]
         stdinEnabled: true
-        running: true
+        running: false
         stdout: SplitParser {
             splitMarker: "\n"
             onRead: line => {
@@ -1155,6 +1165,20 @@ function onPanelClosed() {
         }
         // It restarts on the next request if it ever dies; anything in flight asks again.
         onExited: { root.renderWaiting = ({}); root.renderKeys = ({}); root.renderTick++; }
+    }
+    Timer {
+        id: renderIdle
+        interval: 180000
+        onTriggered: {
+            if (Assistant.open || Object.keys(root.renderKeys).length > 0) restart();
+            else renderProc.running = false;
+        }
+    }
+    Connections {
+        target: Assistant
+        function onOpenChanged() {
+            if (Assistant.open) { if (!renderProc.running) renderProc.running = true; renderIdle.restart(); }
+        }
     }
 
     // ── Copy chat as Markdown ─────────────────────────────────────────
