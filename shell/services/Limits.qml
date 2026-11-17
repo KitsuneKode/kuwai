@@ -36,6 +36,7 @@ Singleton {
     property string source: ""                 // t3 | t3-cached (T3 Code closed: its last view) | kittymux | none
     property real now: Date.now()               // advanced on each read and each minute tick, not per frame
     property string error: ""                   // why T3 Code isn't the source, if it isn't
+    property real checkedAt: 0                  // when the source last read the providers (ms); 0: not said
 
     // kuwai-usage itself: alive, or down (died, waiting to come back).
     property bool alive: false
@@ -244,6 +245,7 @@ Singleton {
                 root.now = Date.now();
                 root.source = d.source || "";
                 root.error = d.t3Error || "";
+                root.checkedAt = d.checkedAt || d.cachedAt || 0;
                 root.providers = d.providers || [];
                 root.loaded = true;
                 root.scan();
