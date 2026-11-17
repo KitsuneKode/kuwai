@@ -16,6 +16,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Bluetooth
 import Quickshell.Hyprland
+import Quickshell.Networking
 import Quickshell.Services.UPower
 import qs.config
 
@@ -514,6 +515,7 @@ Singleton {
         const d = {};
         for (const m of Hyprland.monitors.values) d[m.name] = displayTitle(m.name).title;
         displays = d;
+        netSeen();
     }
 
     // ── Drives: a USB stick or disk plugged in or out ───────────────────
@@ -575,24 +577,24 @@ Singleton {
     }
 
     // ── Network: the connection coming and going ─────────────────────────
-    // Online is a quick NetworkManager check, every 20 s and on any change.
+    // NetworkManager's own connectivity (the property `nmcli general` reads),
+    // pushed over D-Bus through Quickshell.Networking: nothing polls (this
+    // was nmcli every 20 s). Unknown (NetworkManager not there yet) says
+    // nothing either way.
     property bool online: true
     property bool onlineKnown: false
-    Process {
-        id: netCheck
-        command: ["nmcli", "-t", "-f", "CONNECTIVITY", "general"]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                const now = /full|limited|portal/.test(text);
-                if (root.onlineKnown && now !== root.online && root.armed)
-                    root.show(now ? { kind: "net", glyph: "\u{f05a9}", label: "Back online", value: "", ring: -1, tone: Theme.green }
-                                  : { kind: "net", glyph: "\u{f05aa}", label: "Offline", value: "", ring: -1, tone: Theme.red }, now ? 2200 : 4000);
-                root.online = now;
-                root.onlineKnown = true;
-            }
-        }
+    readonly property int connectivity: Networking.connectivity
+    onConnectivityChanged: netSeen()     // and once at start (Component.onCompleted above)
+    function netSeen() {
+        const c = Networking.connectivity;
+        if (c === NetworkConnectivity.Unknown) return;
+        const now = c === NetworkConnectivity.Full || c === NetworkConnectivity.Limited || c === NetworkConnectivity.Portal;
+        if (root.onlineKnown && now !== root.online && root.armed)
+            root.show(now ? { kind: "net", glyph: "\u{f05a9}", label: "Back online", value: "", ring: -1, tone: Theme.green }
+                          : { kind: "net", glyph: "\u{f05aa}", label: "Offline", value: "", ring: -1, tone: Theme.red }, now ? 2200 : 4000);
+        root.online = now;
+        root.onlineKnown = true;
     }
-    Timer { interval: 20000; running: true; repeat: true; triggeredOnStart: true; onTriggered: if (!netCheck.running) netCheck.running = true }
 
     // ── Agents (kittymux panes): one needs you, or finished ─────────────
     // From kittymux's own popup (Notifs.deliver), not its inbox: kittymux
