@@ -29,18 +29,18 @@ Singleton {
     function unwant() { wanted = Math.max(0, wanted - 1); }
     // Near the top edge of any screen (where the island is): look more often.
     property real hotBand: 140
-    // Guarded: while the singleton is first built Hyprland's monitor list
-    // can throw, and a binding that throws gives undefined to a bool (a
-    // warning at every load). False until it reads.
-    readonly property bool hot: {
-        try {
-            const ms = Hyprland.monitors.values;
-            for (let i = 0; i < ms.length; i++) {
-                const o = ms[i].lastIpcObject || {};
-                const w = (o.width || 0) / (o.scale || 1);
-                if (x >= (o.x || 0) && x < (o.x || 0) + w && y >= (o.y || 0) && y < (o.y || 0) + hotBand) return true;
-            }
-        } catch (e) {}
+    // Set where the position is read, not bound: a binding over Hyprland's
+    // monitor list was re-evaluated while a reload tore the old shell down,
+    // got undefined (the function never ran, so its try/catch couldn't help)
+    // and Qt warned "Unable to assign [undefined] to bool" at every reload.
+    property bool hot: false
+    function inHotBand(px, py) {
+        const ms = Hyprland.monitors.values;
+        for (let i = 0; i < ms.length; i++) {
+            const o = ms[i].lastIpcObject || {};
+            const w = (o.width || 0) / (o.scale || 1);
+            if (px >= (o.x || 0) && px < (o.x || 0) + w && py >= (o.y || 0) && py < (o.y || 0) + hotBand) return true;
+        }
         return false;
     }
 
@@ -64,6 +64,7 @@ Singleton {
                     root.vy = fresh ? (p.y - root.y) / dt * 1000 : 0;
                     root.speed = Math.hypot(root.vx, root.vy);
                     root.x = p.x; root.y = p.y; root.t = now;
+                    root.hot = root.inHotBand(p.x, p.y);
                 } catch (e) {}
                 sock.connected = false;
             }
