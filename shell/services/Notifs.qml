@@ -13,6 +13,7 @@ import Quickshell.Io
 import Quickshell.Hyprland
 import Quickshell.Services.Notifications
 import qs.config
+import "otp.mjs" as Otp
 
 Singleton {
     property real copyAskedAt: 0
@@ -399,22 +400,15 @@ Singleton {
     // to expand the floating peek, which can't take typing.)
     property var reading: null
 
-    // A one-time code in a notification (Gmail sign-in mail, a bank, 2FA
-    // texts): the code itself, so the card can show it big with Copy. ""
-    // when there's none. Prefers a code right after "code / OTP / PIN";
-    // never a year.
-    function otpOf(item) {
-        if (!item) return "";
-        const t = [item.title, item.body, item.full].filter(x => x).join("\n");
-        if (!/(code|otp|verif|passcode|one[- ]?time|2fa|two[- ]factor|sign[- ]?in|log[- ]?in|security|confirm|\bpin\b)/i.test(t)) return "";
-        const near = t.match(/(?:code|otp|passcode|pin|is|use|enter)\W{0,3}[:\s]\s*([0-9]{3}[- ][0-9]{3}|[0-9]{4,8})\b/i);
-        const any = t.match(/\b([0-9]{3}[- ][0-9]{3}|[0-9]{6,8})\b/);
-        const alnum = t.match(/\b(?=[A-Z0-9]*[0-9])(?=[A-Z0-9]*[A-Z])([A-Z0-9]{6,8})\b/);
-        const m = near || any || alnum;
-        if (!m) return "";
-        const c = m[1].replace(/[- ]/g, "");
-        return /^(19|20)\d\d$/.test(c) ? "" : c;
-    }
+    // A one-time code in a notification (a sign-in mail, a bank, 2FA texts):
+    // the code itself, so the card can show it big with Copy; "" when there
+    // is none. The rule lives in otp.mjs with its tests (tests/shell/
+    // otp.test.mjs): a number is a code only when the words beside it say so.
+    function otpOf(item) { return Otp.otpOf(item); }
+    // The lock screen's wider question: could this hold a code at all?
+    function otpLikely(item) { return Otp.otpLikely(item); }
+    // A line that itself shows something code-shaped.
+    function codeShaped(text) { return Otp.codeShaped(text); }
     // "482913" → "482 913"; "12345678" → "1234 5678".
     function spacedCode(c) {
         if (c.length === 6) return c.slice(0, 3) + " " + c.slice(3);

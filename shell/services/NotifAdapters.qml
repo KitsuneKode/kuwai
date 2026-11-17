@@ -88,7 +88,13 @@ Singleton {
                     thread: h["x-rice-thread"] || "",
                     quiet: h["x-rice-quiet"] === "1",
                     calm: h["x-rice-calm"] === "1",
-                    severity: h["x-rice-severity"] || ""
+                    // The feed knows what this is (a failed run is its
+                    // "warning"); with nothing from it the answer is
+                    // "normal", not "let the wording decide": the body of a
+                    // feed item is someone else's words. A bot's review
+                    // comment quoting "[!WARNING] Review limit reached" was
+                    // a warning nine times in one day's history.
+                    severity: h["x-rice-severity"] || "normal"
                 };
             }
         },

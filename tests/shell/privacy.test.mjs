@@ -4,6 +4,7 @@
 //   bun test tests/shell/privacy.test.mjs
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
+import * as Otp from "../../shell/services/otp.mjs";
 
 const root = new URL("../../shell/", import.meta.url);
 const src = (p) => readFileSync(new URL(p, root), "utf8");
@@ -19,9 +20,10 @@ const grab = (s, name) => {
 };
 const regexProp = (s, name) => eval(s.match(new RegExp("property var " + name + ": (/.*/[a-z]*)"))[1]);
 
-const otpOf = eval("(" + grab(notifs, "otpOf") + ")");
-const Notifs = { otpOf };
-const codeWords = regexProp(lock, "codeWords"), codeShape = regexProp(lock, "codeShape");
+// The code rule itself is services/otp.mjs (tests/shell/otp.test.mjs); the
+// lock's use of it is QML, read from the source.
+const { otpOf, otpLikely, codeShaped } = Otp;
+const Notifs = { otpOf, otpLikely, codeShaped };
 const isCode = eval("(" + grab(lock, "isCode") + ")");
 const heading = eval("(" + grab(lock, "heading") + ")");
 const preview = eval("(" + grab(lock, "preview") + ")");

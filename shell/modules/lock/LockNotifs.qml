@@ -45,15 +45,12 @@ Column {
     // code"), and the title is drawn on its own line: both are checked, both hidden.
     // At least as careful as the rest of the shell (review 2026-11-10, finding
     // 06): anything Notifs.otpOf calls a code (grouped "123 456", a Security
-    // PIN) is one here too, as well as this looser check.
-    readonly property var codeWords: /(code|otp|verif|passcode|one[- ]time|2fa|sign[- ]?in|log[- ]?in|security|\bpin\b)/i
-    readonly property var codeShape: /\b\d{3}[- ]\d{3}\b|\b\d{4,8}\b|\b[A-Z0-9]{6,8}\b/
-    function isCode(i) {
-        const t = (i.title || "") + " " + (i.body || "");
-        return Notifs.otpOf(i) !== "" || (codeWords.test(t) && codeShape.test(t));
-    }
+    // PIN) is one here too, and so is a text that talks about a code and has
+    // a number that could be one (Notifs.otpLikely). Not a link, a date or a
+    // branch name: "Code hidden" on every GitHub notification taught nothing.
+    function isCode(i) { return Notifs.otpOf(i) !== "" || Notifs.otpLikely(i); }
     function heading(i) {
-        if (isCode(i) && codeShape.test(i.title || "")) return (i.app || "Verification") + " · code";
+        if (isCode(i) && Notifs.codeShaped(i.title || "")) return (i.app || "Verification") + " · code";
         return i.title || i.app || "";
     }
     function preview(i) {
