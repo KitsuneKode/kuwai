@@ -28,6 +28,7 @@
 #   kuwai channel [stable|dev] run from the stable copy (~/.local/share/kuwai) or the repo
 #   kuwai promote [--force]    move stable up to the repo's latest commit (and reload it), after kuwai-check
 #   kuwai check                is the running shell healthy (load, orphans, idle, memory, cpu)
+#   kuwai migrations [--list|--dry-run]   change what an earlier kuwai left (settings, state) once; promote runs it
 #   kuwai doctor               kuwai + notifications + shell + feeds (before promote)
 #
 # `notifs` falls back to dunstctl when kuwai isn't the notification server,
@@ -274,6 +275,19 @@ case ${1:-} in
         prev=$(git -C "$STABLE" rev-parse HEAD)
         git -C "$STABLE" merge --ff-only --quiet "$head" || { echo "kuwai: stable can't fast-forward to $(git -C "$dev" log --oneline -1)" >&2; exit 1; }
         echo "stable is now $(git -C "$STABLE" log --oneline -1)"
+        # What the new code expects of your settings and state, before it runs
+        # (bin/kuwai-migrations: each once per machine, in order). One that
+        # fails or is refused puts stable back: the new code would meet state it
+        # wasn't written for, the old code still reads it (each migration must
+        # leave it readable to the release before: migrations/README.md). The
+        # ones that ran stay done; the failed one and those after it stay
+        # pending for the next promote. Your files as they were before are in
+        # the backup taken above (kuwai backup list).
+        if ! "$STABLE/bin/kuwai-migrations"; then
+            git -C "$STABLE" reset --hard --quiet "$prev"
+            echo "kuwai: a migration didn't run (above); stable back to $(git -C "$STABLE" log --oneline -1); fix it in dev and promote again" >&2
+            exit 1
+        fi
         # Live, and if it doesn't load after all (what no check before could
         # see), straight back to the commit that did: a few seconds, not a
         # shell that stays down until someone notices.
@@ -310,6 +324,7 @@ case ${1:-} in
             fi
         fi ;;
     check)         exec "$KUWAI/bin/kuwai-check" "$@" ;;
+    migrations)    shift; exec "$KUWAI/bin/kuwai-migrations" "$@" ;;
     doctor)        exec "$KUWAI/bin/kuwai-doctor" "$@" ;;
     start|restart) exec "$KUWAI/bin/kuwai-shell" ;;
     stop)          for pid in $(qs list -p "$SHELL_DIR" --json 2>/dev/null | jq -r ".[].pid"); do kill -9 "$pid"; done ;;

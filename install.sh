@@ -133,6 +133,23 @@ install_all() {
     [ -f "$STATE/channel" ] || { [ $DRY = 1 ] && say "  would: write stable to $STATE/channel" || echo stable >"$STATE/channel"; }
     ok "channel: $(cat "$STATE/channel" 2>/dev/null || echo stable)"
 
+    # What this kuwai expects of the settings and state an earlier one left
+    # (bin/kuwai-migrations, migrations/): once per machine, before the
+    # services below start the new code. A fresh install runs them all as
+    # no-ops and records them. One that fails stops the install here.
+    step "Migrations"
+    local mig=$STABLE/bin/kuwai-migrations
+    [ -x "$mig" ] || mig=$REPO/bin/kuwai-migrations
+    if [ ! -x "$mig" ]; then warn "no migrations runner in this copy; nothing to migrate"
+    elif [ $DRY = 1 ]; then "$mig" --dry-run | sed 's/^/  /' || warn "the migrations can't run here (above)"
+    elif out=$("$mig" 2>&1); then printf '%s\n' "$out" | sed 's/^/  /'; ok "settings and state are current"
+    else
+        printf '%s\n' "$out" | sed 's/^/  /'
+        say "  Stopped here: the services below would start code your state isn't ready for."
+        say "  Fix what it says, then run ./install.sh again (what ran is kept; it continues from there)."
+        exit 1
+    fi
+
     step "Hyprland entry point"
     local entry=$CFG/hypr/hyprland.lua
     if [ -f "$entry" ] && cmp -s "$entry" "$REPO/hypr/templates/hyprland.lua"; then ok "$entry is current"
