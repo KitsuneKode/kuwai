@@ -97,7 +97,11 @@ bar() {
         # shellcheck disable=SC2086
         systemctl --user mask --runtime $units >/dev/null 2>&1
         pkill -x waybar 2>/dev/null
+        # And no theme or wallpaper change regenerates it: HyDE's own switch
+        # ([wallbash] skip_template), which survives a logout (kuwai-hyde-waybar).
+        "$KUWAI/bin/kuwai-hyde-waybar" off 2>/dev/null
     else
+        "$KUWAI/bin/kuwai-hyde-waybar" on 2>/dev/null
         # shellcheck disable=SC2086
         systemctl --user unmask --runtime $units >/dev/null 2>&1
         pgrep -x waybar >/dev/null || setsid -f hyde-shell waybar >/dev/null 2>&1 </dev/null

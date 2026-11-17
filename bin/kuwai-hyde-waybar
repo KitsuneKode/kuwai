@@ -1,0 +1,69 @@
+#!/usr/bin/env python3
+"""kuwai-hyde-waybar off|on|status: HyDE's Waybar template, out of every theme or back.
+
+HyDE applies a theme (and a wallpaper's colours) by running each template's
+command; its Waybar template (waybar.theme / waybar.dcol, first line
+`…|wbarconfgen.sh`) regenerates Waybar's config and restarts it. With the island
+as the bar that is a Waybar coming back on every theme or wallpaper change.
+HyDE's own switch for this is `[wallbash] skip_template` in
+~/.config/hyde/config.toml (hyde-config turns it into WALLBASH_SKIP_TEMPLATE,
+which color.set.sh honours): `off` adds "waybar" to it, `on` takes it out. The
+rest of the file, comments included, is left exactly as it was.
+"""
+import os
+import re
+import sys
+import tomllib
+from pathlib import Path
+
+CONF = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "hyde" / "config.toml"
+NAME = "waybar"
+
+
+def current(text: str) -> list[str]:
+    try:
+        return [s for s in (tomllib.loads(text).get("wallbash", {}).get("skip_template") or []) if s]
+    except tomllib.TOMLDecodeError:
+        return []
+
+
+def write(text: str, skips: list[str]) -> str:
+    line = "skip_template = [" + ", ".join(f'"{s}"' for s in skips) + "]  # kuwai: the island is the bar (kuwai bar)"
+    sec = re.search(r"(?m)^\[wallbash\][ \t]*$", text)
+    if not sec:
+        return text.rstrip("\n") + "\n\n[wallbash]\n" + line + "\n"
+    end = re.search(r"(?m)^\[", text[sec.end():])
+    body_end = sec.end() + (end.start() if end else len(text) - sec.end())
+    body = text[sec.end():body_end]
+    if re.search(r"(?m)^[ \t]*skip_template[ \t]*=", body):
+        body = re.sub(r"(?m)^[ \t]*skip_template[ \t]*=.*$", line, body, count=1)
+    else:
+        body = "\n" + line + body
+    return text[:sec.end()] + body + text[body_end:]
+
+
+def main(argv: list[str]) -> int:
+    cmd = argv[0] if argv else "status"
+    text = CONF.read_text() if CONF.is_file() else ""
+    skips = current(text)
+    if cmd == "status":
+        print("off" if NAME in skips else "on")
+        return 0
+    if cmd not in ("off", "on"):
+        print(__doc__.strip(), file=sys.stderr)
+        return 2
+    want = (skips + [NAME]) if cmd == "off" and NAME not in skips else [s for s in skips if s != NAME] if cmd == "on" else skips
+    if want == skips and CONF.is_file():
+        return 0
+    if not CONF.parent.is_dir():
+        return 0                                 # no HyDE here: nothing to keep out
+    new = write(text, want)
+    tomllib.loads(new)                           # never write a file HyDE can't read
+    tmp = CONF.with_suffix(".toml.kuwai-tmp")
+    tmp.write_text(new)
+    tmp.replace(CONF)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

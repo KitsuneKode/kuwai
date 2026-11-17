@@ -29,7 +29,8 @@ mkdir -p "$dest/wallpapers"
 if [ -n "$cur" ] && [ -f "$themes/$cur/hypr.theme" ] && [ "$cur" != "$name" ]; then
     awk -v cur="$themes/$cur/hypr.theme" 'BEGIN { while ((getline l < cur) > 0) if (l ~ /^\$(GTK_THEME|ICON_THEME|COLOR_SCHEME|FONT)/) keep[substr(l, 1, index(l, "=") - 1)] = l }
         /^\$(GTK_THEME|ICON_THEME|COLOR_SCHEME|FONT)/ { k = substr($0, 1, index($0, "=") - 1); if (k in keep) { print keep[k]; next } } { print }' "$src/hypr.theme" > "$dest/hypr.theme"
-    for f in rofi.theme waybar.theme kitty.theme ghostty.theme; do
+    # No waybar.theme: a kuwai theme has no Waybar (the island is the bar).
+    for f in rofi.theme kitty.theme ghostty.theme; do
         if [ -f "$src/$f" ]; then cp "$src/$f" "$dest/"; elif [ -f "$themes/$cur/$f" ]; then cp "$themes/$cur/$f" "$dest/"; fi
     done
     [ -d "$themes/$cur/kvantum" ] && cp -r "$themes/$cur/kvantum" "$dest/"
