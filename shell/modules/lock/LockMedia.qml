@@ -112,7 +112,7 @@ Item {
                     color: bArea.containsMouse ? Qt.rgba(1, 1, 1, 0.18) : "transparent"
                     scale: bArea.pressed ? 0.9 : 1
                     Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
-                    Text { anchors.centerIn: parent; text: b.modelData.g; font.family: Theme.fontGlyph; font.pixelSize: b.modelData.big ? 22 : 17; color: "white" }
+                    Text { textFormat: Text.PlainText; anchors.centerIn: parent; text: b.modelData.g; font.family: Theme.fontGlyph; font.pixelSize: b.modelData.big ? 22 : 17; color: "white" }
                     MouseArea { id: bArea; anchors.fill: parent; enabled: b.modelData.ok; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: b.modelData.on() }
                 }
             }

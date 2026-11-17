@@ -689,6 +689,7 @@ FocusScope {
                 color: Updates.running ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.18)
                      : runCol.ok ? Qt.rgba(0.19, 0.82, 0.35, 0.18) : Qt.rgba(1, 0.62, 0.04, 0.18)
                 Text {
+                    textFormat: Text.PlainText
                     anchors.centerIn: parent
                     text: Updates.running ? "\u{f06b0}" : runCol.ok ? "\u{f012c}" : "\u{f0026}"
                     font.family: Theme.fontGlyph; font.pixelSize: 20
@@ -752,6 +753,7 @@ FocusScope {
                     readonly property bool skipped: !Updates.running && !!runCol.res && !runCol.res.unknown && !seen
                     spacing: 10
                     Text {
+                        textFormat: Text.PlainText
                         width: 16
                         anchors.verticalCenter: parent.verticalCenter
                         text: parent.now ? "\u{f0997}" : parent.seen ? "\u{f012c}" : parent.skipped ? "\u{f0374}" : "\u{f0766}"

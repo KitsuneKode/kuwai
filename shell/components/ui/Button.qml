@@ -44,7 +44,7 @@ Item {
             id: qrow
             anchors.centerIn: parent
             spacing: 6
-            Text { visible: b.glyph !== ""; anchors.verticalCenter: parent.verticalCenter; text: b.glyph; font.family: Theme.fontGlyph; font.pixelSize: b.size; color: b.enabled ? Theme.textSecondary : Theme.textTertiary }
+            Text { textFormat: Text.PlainText; visible: b.glyph !== ""; anchors.verticalCenter: parent.verticalCenter; text: b.glyph; font.family: Theme.fontGlyph; font.pixelSize: b.size; color: b.enabled ? Theme.textSecondary : Theme.textTertiary }
             Label { anchors.verticalCenter: parent.verticalCenter; text: b.text; size: b.size; weight: Theme.wMedium; color: b.enabled ? Theme.textSecondary : Theme.textTertiary }
         }
         MouseArea { id: qArea; anchors.fill: parent; hoverEnabled: true; enabled: b.enabled; cursorShape: Qt.PointingHandCursor; onClicked: b.clicked() }

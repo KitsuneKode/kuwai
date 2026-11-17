@@ -78,6 +78,7 @@ Item {
             }
         }
         Text {
+            textFormat: Text.PlainText
             anchors.centerIn: parent
             text: btn.glyph
             font.family: Theme.fontGlyph; font.pixelSize: 18

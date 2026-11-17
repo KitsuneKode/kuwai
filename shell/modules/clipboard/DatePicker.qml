@@ -220,7 +220,7 @@ Item {
                             Keys.onSpacePressed: dp.shift(modelData.n)
                             FocusRing { cornerRadius: Theme.r1 }
                             color: na.containsMouse || activeFocus ? Theme.pillHover : "transparent"
-                            Text { anchors.centerIn: parent; text: nav.modelData.g; font.family: Theme.fontGlyph; font.pixelSize: 15; color: Theme.textSecondary }
+                            Text { textFormat: Text.PlainText; anchors.centerIn: parent; text: nav.modelData.g; font.family: Theme.fontGlyph; font.pixelSize: 15; color: Theme.textSecondary }
                             MouseArea { id: na; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: dp.shift(nav.modelData.n) }
                         }
                     }

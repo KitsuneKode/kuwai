@@ -51,6 +51,7 @@ Item {
         onTriggered: shot.captureFrame()
     }
     Text {
+        textFormat: Text.PlainText
         visible: !art.ready && !art.framed
         anchors.centerIn: parent
         text: "\u{f0387}"                         // music-note

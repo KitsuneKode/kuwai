@@ -60,6 +60,7 @@ Row {
         width: 14; height: 14
         anchors.verticalCenter: parent.verticalCenter
         Text {
+            textFormat: Text.PlainText
             anchors.centerIn: parent
             // On with something connected / on / off.
             text: !status.bt || !status.bt.enabled ? "\u{f00b2}" : status.btConnected.length ? "\u{f00b1}" : "\u{f00af}"

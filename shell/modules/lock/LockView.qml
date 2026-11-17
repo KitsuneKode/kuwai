@@ -168,7 +168,7 @@ Item {
                 Row {
                     visible: SystemStats.weatherTemp !== ""
                     spacing: 7
-                    Text { anchors.verticalCenter: parent.verticalCenter; text: SystemStats.weatherGlyph; font.family: Theme.fontGlyph; font.pixelSize: 18; color: view.tint }
+                    Text { textFormat: Text.PlainText; anchors.verticalCenter: parent.verticalCenter; text: SystemStats.weatherGlyph; font.family: Theme.fontGlyph; font.pixelSize: 18; color: view.tint }
                     Label { anchors.verticalCenter: parent.verticalCenter; text: SystemStats.weatherTemp; size: 18; weight: Theme.wMedium; color: view.tint }
                 }
                 Row {

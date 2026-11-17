@@ -99,6 +99,7 @@ Item {
         anchors.centerIn: parent
         spacing: 6
         Text {
+            textFormat: Text.PlainText
             visible: b.glyph !== ""
             anchors.verticalCenter: parent.verticalCenter
             text: b.glyph

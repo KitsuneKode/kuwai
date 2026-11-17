@@ -44,6 +44,7 @@ Item {
         Behavior on color { ColorAnimation { duration: Theme.colorMs } }
     }
     Text {
+        textFormat: Text.PlainText
         anchors.centerIn: parent
         text: !q.on && q.glyphOff !== "" ? q.glyphOff : q.glyph
         font.family: Theme.fontGlyph

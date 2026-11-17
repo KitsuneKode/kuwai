@@ -146,6 +146,7 @@ FocusScope {
                 Behavior on color { ColorAnimation { duration: Theme.colorMs } }
             }
             Text {
+                textFormat: Text.PlainText
                 anchors.centerIn: parent
                 text: np.kind === "cider" ? (np.isLoved ? "\u{f02d1}" : "\u{f02d5}") : "\u{f0337}"
                 font.family: Theme.fontGlyph; font.pixelSize: 17
@@ -283,6 +284,7 @@ FocusScope {
                         Behavior on color { ColorAnimation { duration: Theme.colorMs } }
                     }
                     Text {
+                        textFormat: Text.PlainText
                         anchors.centerIn: parent
                         text: btn.modelData.g
                         font.family: Theme.fontGlyph

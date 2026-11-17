@@ -94,6 +94,7 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             spacing: 7
             Text {
+                textFormat: Text.PlainText
                 visible: s.glyph !== ""
                 anchors.verticalCenter: parent.verticalCenter
                 text: s.glyph

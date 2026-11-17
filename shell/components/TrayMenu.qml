@@ -176,6 +176,7 @@ Item {
                         anchors.fill: parent
                         opacity: row.e.enabled ? 1 : 0.38
                         Text {
+                            textFormat: Text.PlainText
                             id: mark
                             x: 8; anchors.verticalCenter: parent.verticalCenter
                             width: 14
@@ -186,6 +187,7 @@ Item {
                             color: Theme.accent
                         }
                         Text {
+                            textFormat: Text.PlainText
                             visible: !!row.e.glyph
                             x: 26; anchors.verticalCenter: parent.verticalCenter
                             text: row.e.glyph || ""

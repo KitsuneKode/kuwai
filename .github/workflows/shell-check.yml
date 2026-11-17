@@ -48,4 +48,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
-      - run: bun test shell/services/ai/turn.test.mjs tests/shell/privacy.test.mjs tests/shell/calc.test.mjs tests/shell/proximity.test.mjs tests/shell/settings-search.test.mjs
+      # Every suite, by folder: a new test file is in CI the day it is written
+      # (five of thirteen were listed by name, the rest never ran here).
+      - run: bun test ./tests ./shell

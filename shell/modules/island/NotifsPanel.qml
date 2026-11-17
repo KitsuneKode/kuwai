@@ -189,6 +189,7 @@ FocusScope {
                             asynchronous: true; smooth: true; mipmap: true
                         }
                         Text {
+                            textFormat: Text.PlainText
                             visible: rowIcon.status !== Image.Ready
                             anchors.centerIn: parent
                             text: "\u{f009a}"      // a bell: no mark from the app

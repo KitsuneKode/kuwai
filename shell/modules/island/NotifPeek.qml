@@ -134,6 +134,7 @@ Item {
             radius: 21
             color: peek.loud ? Qt.alpha(peek.tone, 0.22) : Theme.platter
             Text {
+                textFormat: Text.PlainText
                 anchors.centerIn: parent
                 text: !peek.item ? "" : peek.item.severity === "critical" ? "\u{f0026}" : peek.item.severity === "warning" ? "\u{f0029}" : "\u{f009a}"
                 font.family: Theme.fontGlyph; font.pixelSize: 20

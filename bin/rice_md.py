@@ -15,6 +15,7 @@ import html
 import re
 
 _URL = re.compile(r"(?<![\"'=(\[/])\b(https?://[^\s<>()\[\]`]+[^\s<>()\[\]`.,;:!?'\"*_])")
+_SAFE_HREF = re.compile(r"^(https?://|mailto:)", re.I)
 _BULLET = re.compile(r"^(\s*)([-*+])\s+(.*)$")
 _NUMBER = re.compile(r"^(\s*)(\d{1,3})[.)]\s+(.*)$")
 _HEAD = re.compile(r"^(#{1,6})\s+(.*?)\s*#*\s*$")
@@ -68,8 +69,15 @@ def inline(s):
     s = re.sub(r"(?<![\w*])\*(?=\S)(.+?)(?<=\S)\*(?![\w*])", r"<i>\1</i>", s)
     s = re.sub(r"(?<![\w])_(?=\S)(.+?)(?<=\S)_(?![\w])", r"<i>\1</i>", s)
     s = re.sub(r"~~(?=\S)(.+?)(?<=\S)~~", r"<s>\1</s>", s)
-    s = re.sub(r"\x01(\d+)\x01", lambda m: '<a href="{1}">{0}</a>'.format(
-        inline(links[int(m.group(1))][0]), html.escape(links[int(m.group(1))][1], quote=True)), s)
+    def link(m):
+        label, href = links[int(m.group(1))]
+        # The web and mail only: any other scheme (file:, smb:, an app's own)
+        # is shown as its label, never made clickable.
+        if not _SAFE_HREF.match(href.strip()):
+            return inline(label)
+        return '<a href="{1}">{0}</a>'.format(inline(label), html.escape(href.strip(), quote=True))
+
+    s = re.sub(r"\x01(\d+)\x01", link, s)
     s = re.sub(r"\x00(\d+)\x00", lambda m: "<code>" + html.escape(codes[int(m.group(1))], quote=False) + "</code>", s)
     return s
 

@@ -365,6 +365,7 @@ Item {
             width: 56; height: 56; radius: 28
             color: Theme.platterDim
             Text {
+                textFormat: Text.PlainText
                 anchors.centerIn: parent
                 text: view.narrowed ? "\u{f0349}" : "\u{f009b}"   // magnify / bell-outline
                 font.family: Theme.fontGlyph

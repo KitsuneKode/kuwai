@@ -7,11 +7,11 @@ Commands stay `bin/rice …` (control plane); the product name is **kuwai**.
 ## Install
 
 ```sh
-git clone git@github.com:KitsuneKode/kuwai.git ~/Projects/kuwai && cd ~/Projects/kuwai
+git clone https://github.com/KitsuneKode/kuwai.git ~/Projects/kuwai && cd ~/Projects/kuwai
 # legacy path ~/Projects/rice works if KUWAI_ROOT points at the clone
 ./install.sh --dry-run     # what it would change (nothing yet)
 ./install.sh --deps        # install: packages, the stable channel, Hyprland's entry point, user services
-sudo greeter/install       # optional: the login screen (greetd; --undo puts SDDM back)
+sudo greeter/install       # optional: the login screen (greetd; --undo puts back what was there; --code refreshes it after an update)
 sudo system/install        # optional: alarms that wake the laptop from sleep
 ```
 

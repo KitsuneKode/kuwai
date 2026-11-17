@@ -129,6 +129,7 @@ Item {
             text: ""; label: ""
         }
         Text {
+            textFormat: Text.PlainText
             anchors.centerIn: parent
             text: card.kind === "timer" ? "\u{f012c}" : card.kind === "reminder" ? "\u{f009a}" : "\u{f0020}"
             font.family: Theme.fontGlyph; font.pixelSize: 24
@@ -193,6 +194,7 @@ Item {
             Behavior on color { ColorAnimation { duration: Theme.colorMs } }
             Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
             Text {
+                textFormat: Text.PlainText
                 anchors.centerIn: parent
                 text: acts.a.primary && acts.a.primary[0] === "Done" ? "\u{f012c}" : "\u{f0156}"
                 font.family: Theme.fontGlyph; font.pixelSize: 20

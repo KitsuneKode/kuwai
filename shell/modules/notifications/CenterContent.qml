@@ -76,6 +76,7 @@ Item {
         Behavior on border.color { ColorAnimation { duration: Theme.hoverMs } }
 
         Text {
+            textFormat: Text.PlainText
             id: searchGlyph
             anchors.left: parent.left
             anchors.leftMargin: 12

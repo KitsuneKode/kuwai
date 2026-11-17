@@ -145,6 +145,7 @@ Item {
             }
 
             Text {
+                textFormat: Text.PlainText
                 id: body
                 x: 30
                 width: parent.width - 36

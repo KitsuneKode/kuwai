@@ -54,3 +54,16 @@ def test_heal_closes_open_markup():
 def test_math_star_is_not_emphasis():
     assert md.render("5 * 3 = 15") == "<p>5 * 3 = 15</p>"
     assert md.heal("5 * 3") == "5 * 3"
+
+
+def test_only_web_and_mail_links_are_clickable():
+    h = md.render("[a](file:///etc/passwd) [b](smb://host/x) [c](javascript:alert(1)) [d](vscode://open) "
+                  "[e](mailto:a@b.c) [f](HTTPS://ok.example)")
+    assert "file:" not in h and "smb:" not in h and "javascript" not in h and "vscode:" not in h
+    assert '<a href="mailto:a@b.c">e</a>' in h and '<a href="HTTPS://ok.example">f</a>' in h
+    assert ">a<" not in h and "a " in h      # the label stays as text
+
+
+def test_images_and_raw_html_never_become_tags():
+    h = md.render('![x](https://evil.example/p.png) <img src="https://evil.example/q.png"> <script>1</script>')
+    assert "<img" not in h and "<script" not in h

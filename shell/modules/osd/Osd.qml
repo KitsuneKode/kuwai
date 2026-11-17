@@ -753,6 +753,7 @@ Scope {
                     smooth: true; mipmap: true
                 }
                 Text {
+                    textFormat: Text.PlainText
                     anchors.centerIn: parent
                     visible: !artPic.visible
                     text: root.glyph
@@ -776,6 +777,7 @@ Scope {
                     height: titleText.implicitHeight
 
                     Text {
+                        textFormat: Text.PlainText
                         id: titleText
                         anchors.left: parent.left
                         anchors.right: accessoryRow.left
@@ -811,6 +813,7 @@ Scope {
                         anchors.verticalCenter: titleText.verticalCenter
                         spacing: 4
                         Text {
+                            textFormat: Text.PlainText
                             visible: root.linkGlyph !== ""
                             text: root.linkGlyph
                             font.family: Theme.fontGlyph
@@ -818,6 +821,7 @@ Scope {
                             color: Theme.textSecondary
                         }
                         Text {
+                            textFormat: Text.PlainText
                             visible: root.accessoryGlyph !== ""
                             text: root.accessoryGlyph
                             font.family: Theme.fontGlyph
@@ -825,6 +829,7 @@ Scope {
                             color: Theme.textSecondary
                         }
                         Text {
+                            textFormat: Text.PlainText
                             visible: root.accessory !== ""
                             text: root.accessory
                             // Numerals in SF Pro Rounded, as Control Center sets them
@@ -840,6 +845,7 @@ Scope {
                 }
 
                 Text {
+                    textFormat: Text.PlainText
                     visible: !root.showTrack
                     width: parent.width
                     text: root.subtitle
@@ -901,6 +907,7 @@ Scope {
                     }
 
                     Text {
+                        textFormat: Text.PlainText
                         id: valueLabel
                         anchors.right: parent.right
                         anchors.verticalCenter: parent.verticalCenter

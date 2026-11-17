@@ -250,6 +250,7 @@ Item {
                     spacing: 6
 
                     Text {
+                        textFormat: Text.PlainText
                         id: bodyLabel
                         width: parent.width
                         text: root.bodyText

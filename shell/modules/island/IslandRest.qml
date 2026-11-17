@@ -238,7 +238,7 @@ Item {
                 visible: momentPic.status === Image.Ready
                 Image { id: momentPic; anchors.fill: parent; source: momentLead.m.image || ""; sourceSize: Qt.size(44, 44); fillMode: momentLead.m.round ? Image.PreserveAspectCrop : Image.PreserveAspectFit; asynchronous: true; mipmap: true }
             }
-            Text { visible: !momentPic.visible; anchors.centerIn: parent; text: parent.parent.m.glyph || ""; font.family: Theme.fontGlyph; font.pixelSize: 17; color: parent.parent.m.kind !== "device" && parent.parent.m.tone ? parent.parent.m.tone : Theme.textPrimary }
+            Text { textFormat: Text.PlainText; visible: !momentPic.visible; anchors.centerIn: parent; text: parent.parent.m.glyph || ""; font.family: Theme.fontGlyph; font.pixelSize: 17; color: parent.parent.m.kind !== "device" && parent.parent.m.tone ? parent.parent.m.tone : Theme.textPrimary }
         }
         Label {
             visible: !!parent.m.label && parent.m.kind !== "device"
@@ -326,6 +326,7 @@ Item {
             }
             // Dictation: a mic that breathes while it listens, a spinner while it writes.
             Text {
+                textFormat: Text.PlainText
                 visible: rest.activity === "vox"
                 anchors.centerIn: parent
                 text: Activities.voxListening ? "\u{f036c}" : "\u{f0772}"
@@ -345,6 +346,7 @@ Item {
             }
             // A warning that hasn't cleared: its mark, in its colour.
             Text {
+                textFormat: Text.PlainText
                 visible: rest.activity === "alert"
                 anchors.centerIn: parent
                 text: Alerts.active.length ? Alerts.active[0].glyph : ""
@@ -426,6 +428,7 @@ Item {
             spacing: 6
             // Another screen's: a small mark of which one.
             Text {
+                textFormat: Text.PlainText
                 visible: !!rest.shownHint && rest.shownHint.screen !== ""
                 anchors.verticalCenter: parent.verticalCenter
                 text: rest.shownHint && rest.shownHint.screen === "Laptop" ? "\u{f0322}" : "\u{f0379}"

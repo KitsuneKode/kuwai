@@ -13,13 +13,20 @@ mkdir -p "$run/state/rice" "$run/cache"
 : >"$run/brightness"   # greeter/keys writes the DDC value here; the HUD watches it
 cp -f "$ROOT/home/.local/state/rice/prefs.json" "$run/state/rice/" 2>/dev/null
 
+# Your name and picture: data greeter/sync keeps in home/ (the only part of
+# this directory you can write); the old places for an install not yet
+# re-run.
+who=$(cat "$ROOT/home/.kuwai-user" 2>/dev/null || cat "$ROOT/user" 2>/dev/null)
+face=
+for f in "$ROOT/home/.face" "$ROOT/face"; do [ -f "$f" ] && { face=$f; break; }; done
+
 run_face() {
 HOME="$ROOT/home" \
 	XDG_CONFIG_HOME="$ROOT/home/.config" \
 	XDG_STATE_HOME="$run/state" \
 	XDG_CACHE_HOME="$run/cache" \
-	KUWAI_GREETER_USER="$(cat "$ROOT/user" 2>/dev/null)" \
-	KUWAI_GREETER_FACE="$([ -f "$ROOT/face" ] && echo "$ROOT/face")" \
+	KUWAI_GREETER_USER="$who" \
+	KUWAI_GREETER_FACE="$face" \
 	QSG_RENDER_LOOP=basic \
 	qs -p "$ROOT/shell/greeter.qml"
 }

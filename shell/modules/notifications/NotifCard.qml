@@ -340,6 +340,7 @@ Item {
                 radius: 21
                 color: card.critical || card.warning ? Qt.alpha(card.accent, 0.22) : Theme.platter
                 Text {
+                    textFormat: Text.PlainText
                     anchors.centerIn: parent
                     text: card.critical ? "\u{f0026}" : card.warning ? "\u{f0029}" : "\u{f009a}"   // alert / alert-outline / bell
                     font.family: Theme.fontGlyph
@@ -474,6 +475,7 @@ Item {
                 spacing: 6
                 topPadding: 3
                 Text {
+                    textFormat: Text.PlainText
                     visible: card.item.statusGlyph !== ""
                     anchors.verticalCenter: parent.verticalCenter
                     text: card.item.statusGlyph
@@ -614,6 +616,7 @@ Item {
         border.width: 1
         border.color: Qt.rgba(1, 1, 1, 0.18)
         Text {
+            textFormat: Text.PlainText
             anchors.centerIn: parent
             text: "\u{f0156}"                   // close
             font.family: Theme.fontGlyph

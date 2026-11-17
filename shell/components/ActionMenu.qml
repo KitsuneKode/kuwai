@@ -160,6 +160,7 @@ Item {
                         color: menu.sel === row.index ? Qt.rgba(1, 1, 1, 0.14)
                              : rowArea.containsMouse ? (row.modelData.danger ? Qt.alpha(Theme.red, 0.16) : Qt.rgba(1, 1, 1, 0.07)) : "transparent"
                         Text {
+                            textFormat: Text.PlainText
                             id: g
                             x: 10
                             anchors.verticalCenter: parent.verticalCenter

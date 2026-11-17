@@ -155,6 +155,7 @@ Item {
                 anchors.centerIn: parent
                 spacing: 6
                 Text {
+                    textFormat: Text.PlainText
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: card.file0 && card.file0.dir ? "\u{f024b}" : "\u{f0214}"
                     font.family: Theme.fontGlyph
@@ -261,6 +262,7 @@ Item {
                         scale: qa.pressed ? 0.92 : 1
                         Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                         Text {
+                            textFormat: Text.PlainText
                             anchors.centerIn: parent
                             text: q.modelData.g
                             font.family: Theme.fontGlyph

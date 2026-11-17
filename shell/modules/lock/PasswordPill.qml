@@ -117,6 +117,7 @@ Column {
             scale: goPress.pressed ? 0.9 : 1
             Behavior on scale { NumberAnimation { duration: Theme.quickMs; easing.type: Easing.OutCubic } }
             Text {
+                textFormat: Text.PlainText
                 anchors.centerIn: parent
                 text: entry.lock.checking ? "\u{f0772}" : "\u{f0054}"
                 font.family: Theme.fontGlyph; font.pixelSize: 16

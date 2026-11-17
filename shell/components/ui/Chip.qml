@@ -21,6 +21,7 @@ Rectangle {
         anchors.centerIn: parent
         spacing: Theme.s1
         Text {
+            textFormat: Text.PlainText
             visible: chip.glyph !== ""
             anchors.verticalCenter: parent.verticalCenter
             text: chip.glyph

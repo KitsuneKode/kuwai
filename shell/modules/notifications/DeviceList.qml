@@ -98,6 +98,7 @@ Column {
                         color: muted ? Qt.alpha(Theme.red, 0.85) : muteDevArea.containsMouse ? Theme.pillHover : Theme.pill
                         Behavior on color { ColorAnimation { duration: Theme.colorMs } }
                         Text {
+                            textFormat: Text.PlainText
                             anchors.centerIn: parent
                             text: muteBtn.muted ? "\u{f075f}" : "\u{f057e}"
                             font.family: Theme.fontGlyph

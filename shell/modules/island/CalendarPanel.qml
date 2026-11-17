@@ -116,7 +116,7 @@ FocusScope {
                         scale: navArea.pressed ? 0.94 : 1
                         Behavior on color { ColorAnimation { duration: Theme.colorMs } }
                         Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
-                        Text { anchors.centerIn: parent; text: nav.modelData.g; font.family: Theme.fontGlyph; font.pixelSize: 16; color: Theme.textSecondary }
+                        Text { textFormat: Text.PlainText; anchors.centerIn: parent; text: nav.modelData.g; font.family: Theme.fontGlyph; font.pixelSize: 16; color: Theme.textSecondary }
                         MouseArea { id: navArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: cal.shiftMonth(nav.modelData.d) }
                     }
                 }

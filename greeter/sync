@@ -1,24 +1,42 @@
 #!/usr/bin/env bash
-# Copy what the login screen needs into /var/lib/kuwai-greeter: the shell, the
-# greeter's Hyprland config, and your current wallpaper and theme files
-# (greetd's `greeter` user can't read your home). Runs as you, at every login
+# Give the login screen your picture: the wallpaper, theme colours, settings,
+# your name and face, copied into /var/lib/kuwai-greeter/home (greetd's
+# `greeter` user can't read your home). Runs as you, at every login
 # (hypr/kuwai/startup.lua), so the login screen follows theme changes.
 # Does nothing until greeter/install has made the directory.
+#
+# It copies data only. The login screen's code (the shell, its Hyprland
+# config, the start scripts) is root's, put there by `sudo greeter/install`
+# and refreshed with `sudo greeter/install --code`: the program that takes
+# your login password must not be something a program running as you can
+# rewrite.
 set -eu
 DEST=${KUWAI_GREETER_DIR:-/var/lib/kuwai-greeter}
-[ -w "$DEST" ] || exit 0
-
 RICE="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
 H="$DEST/home"
 
-rsync -a --delete "$RICE/shell/" "$DEST/shell/"
-install -m755 "$RICE/greeter/start" "$DEST/start"
-install -m755 "$RICE/greeter/session-start" "$DEST/session-start"
-install -m755 "$RICE/greeter/compositor-start" "$DEST/compositor-start"
-install -m755 "$RICE/greeter/keys" "$DEST/keys"
-install -m644 "$RICE/greeter/hyprland.lua" "$DEST/hyprland.lua"
-id -un >"$DEST/user"
-if [ -f "$HOME/.face" ]; then cp -fL "$HOME/.face" "$DEST/face"; else rm -f "$DEST/face"; fi
+# An install from before 2026-11-17 made the whole directory yours. Keep that
+# login screen working exactly as it did (code included) and say what closes it.
+legacy=0
+if [ -O "$DEST" ] && [ -w "$DEST" ]; then
+    legacy=1
+    echo "kuwai greeter: the login screen's code is still writable by you; run: sudo $RICE/greeter/install --code" >&2
+    rsync -a --delete "$RICE/shell/" "$DEST/shell/"
+    install -m755 "$RICE/greeter/start" "$DEST/start"
+    install -m755 "$RICE/greeter/session-start" "$DEST/session-start"
+    install -m755 "$RICE/greeter/compositor-start" "$DEST/compositor-start"
+    install -m755 "$RICE/greeter/keys" "$DEST/keys"
+    install -m644 "$RICE/greeter/hyprland.lua" "$DEST/hyprland.lua"
+    mkdir -p "$H"
+fi
+[ -d "$H" ] && [ -w "$H" ] || exit 0
+
+id -un >"$H/.kuwai-user"
+if [ -f "$HOME/.face" ]; then cp -fL "$HOME/.face" "$H/.face"; else rm -f "$H/.face"; fi
+if [ $legacy = 1 ]; then        # where the old start script looks
+    cp -f "$H/.kuwai-user" "$DEST/user"
+    if [ -f "$H/.face" ]; then cp -f "$H/.face" "$DEST/face"; else rm -f "$DEST/face"; fi
+fi
 
 copy() {   # $1 = path under $HOME
     [ -e "$HOME/$1" ] || return 0
@@ -35,4 +53,4 @@ if [ -n "$theme" ]; then
     copy ".config/hyde/themes/$theme/theme.dcol"
     copy ".config/hyde/themes/$theme/kitty.theme"
 fi
-chmod -R a+rX "$DEST"
+if [ $legacy = 1 ]; then chmod -R a+rX "$DEST"; else chmod -R a+rX "$H"; fi

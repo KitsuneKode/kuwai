@@ -89,6 +89,7 @@ Item {
                 anchors.topMargin: row.index === 0 ? 0 : 4
                 color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.08)
                 Text {
+                    textFormat: Text.PlainText
                     x: list.contentX + 12
                     anchors.verticalCenter: parent.verticalCenter
                     text: "⋯  " + (row.r.text || "")
@@ -123,6 +124,7 @@ Item {
                     opacity: 0.92
                 }
                 Text {
+                    textFormat: Text.PlainText
                     x: 8; width: (dv.gutterW - 26) / 2
                     anchors.verticalCenter: parent.verticalCenter
                     horizontalAlignment: Text.AlignRight
@@ -131,6 +133,7 @@ Item {
                     color: Qt.rgba(1, 1, 1, 0.28)
                 }
                 Text {
+                    textFormat: Text.PlainText
                     x: 8 + (dv.gutterW - 26) / 2 + 4; width: (dv.gutterW - 26) / 2
                     anchors.verticalCenter: parent.verticalCenter
                     horizontalAlignment: Text.AlignRight
@@ -139,6 +142,7 @@ Item {
                     color: Qt.rgba(1, 1, 1, 0.28)
                 }
                 Text {
+                    textFormat: Text.PlainText
                     x: dv.gutterW - 12
                     anchors.verticalCenter: parent.verticalCenter
                     text: row.r.t === " " ? "" : row.r.t
@@ -170,6 +174,7 @@ Item {
                 border.color: Qt.rgba(1, 0.62, 0.04, 0.5)
                 z: 3
                 Text {
+                    textFormat: Text.PlainText
                     id: tag
                     anchors.centerIn: parent
                     text: row.why

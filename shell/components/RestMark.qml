@@ -63,6 +63,7 @@ Item {
             color: mark.tone
         }
         Text {
+            textFormat: Text.PlainText
             visible: mark.glyph !== "" && mark.icon === "" && mark.wordmark === ""
             anchors.verticalCenter: parent.verticalCenter
             text: mark.glyph

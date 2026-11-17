@@ -217,6 +217,7 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 5
                 Text {
+                    textFormat: Text.PlainText
                     anchors.verticalCenter: parent.verticalCenter
                     text: Weather.glyph; font.family: Theme.fontGlyph; font.pixelSize: 17
                     color: Theme.textSecondary
@@ -331,7 +332,7 @@ Item {
                         color: tbArea.containsMouse ? Theme.pillHover : "transparent"
                         scale: tbArea.pressed ? 0.9 : 1
                         Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
-                        Text { anchors.centerIn: parent; text: tb.modelData.g; font.family: Theme.fontGlyph; font.pixelSize: tb.modelData.big ? 19 : 15; color: Theme.textPrimary }
+                        Text { textFormat: Text.PlainText; anchors.centerIn: parent; text: tb.modelData.g; font.family: Theme.fontGlyph; font.pixelSize: tb.modelData.big ? 19 : 15; color: Theme.textPrimary }
                         MouseArea { id: tbArea; anchors.fill: parent; enabled: tb.modelData.ok; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: tb.modelData.on() }
                     }
                 }
@@ -410,6 +411,7 @@ Item {
                 // What it measures, inside the ring (chip, memory, card, thermometer):
                 // four bare rings beside the agents' logos read as four more agents.
                 Text {
+                    textFormat: Text.PlainText
                     anchors.centerIn: parent
                     text: parent.modelData.g
                     font.family: Theme.fontGlyph

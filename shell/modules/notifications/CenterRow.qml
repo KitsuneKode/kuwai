@@ -280,6 +280,7 @@ Item {
             spacing: 6
             topPadding: 2
             Text {
+                textFormat: Text.PlainText
                 visible: row.it.statusGlyph !== ""
                 anchors.verticalCenter: parent.verticalCenter
                 text: row.it.statusGlyph

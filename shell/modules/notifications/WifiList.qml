@@ -164,6 +164,7 @@ Column {
             FocusRing { cornerRadius: 12; gap: 0 }    // the row clips: drawn on its edge, not 3 px out
 
             Text {
+                textFormat: Text.PlainText
                 id: strength
                 x: 10; y: 9
                 text: wifi.bars(row.net.signalStrength)
@@ -212,6 +213,7 @@ Column {
                     }
                 }
                 Text {
+                    textFormat: Text.PlainText
                     visible: wifi.secured(row.net)
                     anchors.verticalCenter: parent.verticalCenter
                     text: "\u{f033e}"                                  // lock

@@ -239,6 +239,21 @@ export function healTail(text) {
     return t;
 }
 
+// What the live (still streaming) block hands to Qt's Markdown reader. That
+// reader fetches any image it is given and takes raw HTML as HTML, so an
+// answer carrying `![x](https://host/?what-it-read)` or `<img src=…>` made
+// the shell call that host the moment the text arrived. Outside inline code:
+// an image becomes a plain link (nothing is fetched until you click it) and
+// a tag's `<` is escaped, so it shows as the text it is.
+export function liveMarkdown(text) {
+    return healTail(text).split(/(`[^`\n]*`)/).map((part, i) => i % 2 ? part
+        : part.replace(/!\[/g, "[").replace(/<(?=[A-Za-z\/!?])/g, "\\<")).join("");
+}
+
+// Links the shell opens for you: the web and mail only. A `file:`, `smb:` or
+// an app's own scheme in an answer or a copied text is shown, never opened.
+export function safeLink(url) { return /^(https?:\/\/|mailto:)/i.test(String(url || "").trim()); }
+
 // A group of tool calls in one line (T3 Code's work-log summaries):
 // "Searched 2 times, read 3 pages and ran a command".
 export function toolSummary(parts) {

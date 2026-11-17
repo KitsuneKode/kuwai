@@ -421,6 +421,7 @@ FocusScope {
                     color: card.on ? Theme.textPrimary : Theme.textSecondary
                 }
                 Text {
+                    textFormat: Text.PlainText
                     visible: picker.mode === "themes"
                     anchors.verticalCenter: parent.verticalCenter
                     text: picker.favs.includes(card.modelData.name) ? "\u{f04ce}" : "\u{f04d2}"
@@ -499,6 +500,7 @@ FocusScope {
                 color: cmdArea.containsMouse ? Qt.rgba(1, 1, 1, 0.09) : Qt.rgba(1, 1, 1, 0.05)
                 Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
                 Text {
+                    textFormat: Text.PlainText
                     id: cmdText
                     x: 12; y: 10
                     width: parent.width - 24

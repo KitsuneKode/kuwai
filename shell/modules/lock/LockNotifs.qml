@@ -161,6 +161,7 @@ Column {
                         radius: 19
                         color: card.loud ? Qt.alpha(card.tone, 0.25) : Qt.rgba(1, 1, 1, 0.14)
                         Text {
+                            textFormat: Text.PlainText
                             anchors.centerIn: parent
                             text: card.item.severity === "critical" ? "\u{f0026}" : card.item.severity === "warning" ? "\u{f0029}" : "\u{f009a}"
                             font.family: Theme.fontGlyph; font.pixelSize: 18
@@ -224,6 +225,7 @@ Column {
                         topPadding: 2
                         spacing: 5
                         Text {
+                            textFormat: Text.PlainText
                             visible: !!card.item.statusGlyph
                             anchors.verticalCenter: parent.verticalCenter
                             text: card.item.statusGlyph || ""

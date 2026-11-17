@@ -275,6 +275,7 @@ Item {
                     scale: btnArea.pressed ? 0.92 : 1
                     Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                     Text {
+                        textFormat: Text.PlainText
                         anchors.centerIn: parent
                         text: btn.modelData.g
                         font.family: Theme.fontGlyph
@@ -354,6 +355,7 @@ Item {
                     Image { id: appImg; anchors.fill: parent; source: strip.icon; sourceSize: Qt.size(48, 48); smooth: true; mipmap: true }
                 }
                 Text {
+                    textFormat: Text.PlainText
                     anchors.centerIn: parent
                     visible: !(strip.icon !== "" && appImg.status === Image.Ready)
                     text: strip.glyph
@@ -515,6 +517,7 @@ Item {
                     radius: 9
                     color: optArea.containsMouse ? Qt.alpha(Theme.blue, 0.85) : "transparent"
                     Text {
+                        textFormat: Text.PlainText
                         id: tick
                         x: 8
                         anchors.verticalCenter: parent.verticalCenter

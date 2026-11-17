@@ -1,0 +1,5 @@
+# `bun test` runs kuwai's own suites: without a root, it also collected the
+# reference clones in refs/ (hundreds of unrelated failures).
+[test]
+root = "."
+pathIgnorePatterns = ["refs/**", ".worktrees/**", "plugins/**", "node_modules/**"]

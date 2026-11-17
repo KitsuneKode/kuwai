@@ -299,6 +299,7 @@ Item {
                             radius: 16
                             color: Qt.rgba(1, 1, 1, 0.09)
                             Text {
+                                textFormat: Text.PlainText
                                 id: steerText
                                 x: 15; y: 10
                                 width: Math.min(implicitWidth, blockLoader.width * 0.8 - 30)
@@ -370,7 +371,7 @@ Item {
                                     TextEdit {
                                         width: seg.width
                                         textFormat: seg.shown ? TextEdit.RichText : TextEdit.MarkdownText
-                                        text: seg.shown ? seg.shown : Turn.healTail(seg.text)
+                                        text: seg.shown ? seg.shown : Turn.liveMarkdown(seg.text)
                                         topPadding: /^#{1,3}\s/.test(seg.text) && seg.index > 0 ? 6 : 0
                                         readOnly: true
                                         selectByMouse: true
@@ -379,7 +380,7 @@ Item {
                                         color: Theme.textPrimary
                                         font.family: Theme.fontText
                                         font.pixelSize: 15
-                                        onLinkActivated: link => Qt.openUrlExternally(link)
+                                        onLinkActivated: link => { if (Turn.safeLink(link)) Qt.openUrlExternally(link); }
                                         HoverHandler { cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.IBeamCursor }
                                     }
                                 }
@@ -551,7 +552,7 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                         }
                     }
-                    MouseArea { id: srcArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: Qt.openUrlExternally(src.modelData.url) }
+                    MouseArea { id: srcArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { if (Turn.safeLink(src.modelData.url)) Qt.openUrlExternally(src.modelData.url); } }
                 }
             }
         }

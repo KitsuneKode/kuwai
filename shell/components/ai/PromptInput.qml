@@ -348,6 +348,7 @@ Rectangle {
 
                 // Placeholder Text
                 Text {
+                    textFormat: Text.PlainText
                     anchors.fill: parent
                     text: root.micState === "recording" ? "Listening… click the mic or ⌃D to stop"
                         : root.micState === "transcribing" ? "Writing it down…"

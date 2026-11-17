@@ -135,6 +135,7 @@ Item {
 
             // Log out: the door, swinging shut.
             Text {
+                textFormat: Text.PlainText
                 visible: bye.kind === "logout"
                 anchors.centerIn: parent
                 text: bye.tMark < 0.5 ? "\u{f081c}" : "\u{f081a}"

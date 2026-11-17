@@ -64,6 +64,7 @@ Item {
         Label { visible: row.provenance !== ""; width: parent.width; wrapMode: Text.Wrap; text: row.provenance; size: 11; color: Theme.textTertiary }
     }
     Text {
+        textFormat: Text.PlainText
         id: resetMark
         readonly property bool changed: row.key !== "" && !Settings.isDefault(row.key)
         visible: changed

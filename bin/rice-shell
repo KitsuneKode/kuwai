@@ -105,6 +105,14 @@ fi
 # A watcher from an earlier failed start: this run replaces it.
 for p in $(pgrep -f "rice-shell-watch $SHELL_DIR $RICE\$"); do [ "$p" != "$$" ] && kill "$p" 2>/dev/null; done
 
+# What the shell keeps is yours alone: notification bodies, chats, clipboard
+# thumbnails, tokens. The folders are closed to other accounts whatever mode a
+# file inside was written with (a default umask writes 0644), and whatever
+# mode your home or ~/.local/state has on this machine.
+for d in "${XDG_STATE_HOME:-$HOME/.local/state}/rice" "${XDG_CACHE_HOME:-$HOME/.cache}/rice" "${XDG_CONFIG_HOME:-$HOME/.config}/rice"; do
+    mkdir -p "$d" 2>/dev/null && chmod 700 "$d" 2>/dev/null
+done
+
 loaded() { [ -n "$1" ] && strings "$1" 2>/dev/null | grep -q 'Configuration Loaded'; }
 
 MARK=$(mktemp "${XDG_RUNTIME_DIR:-/tmp}/rice/launch.XXXXXX")

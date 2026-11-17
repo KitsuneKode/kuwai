@@ -144,6 +144,7 @@ FocusScope {
             Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
             Behavior on border.color { ColorAnimation { duration: Theme.hoverMs } }
             Text {
+                textFormat: Text.PlainText
                 id: searchGlyph
                 anchors { left: parent.left; leftMargin: 10; verticalCenter: parent.verticalCenter }
                 text: "\u{f0349}"                                   // magnify
@@ -191,6 +192,7 @@ FocusScope {
                     : settings.results.length === 1 ? "1 result" : settings.results.length + " results"
             }
             Text {
+                textFormat: Text.PlainText
                 id: clearSearch
                 visible: search.text !== ""
                 anchors { right: parent.right; rightMargin: 9; verticalCenter: parent.verticalCenter }
@@ -250,7 +252,7 @@ FocusScope {
                         x: 8; anchors.verticalCenter: parent.verticalCenter
                         width: 24; height: 24; radius: 7
                         color: item.modelData.tint
-                        Text { anchors.centerIn: parent; text: item.modelData.glyph; font.family: Theme.fontGlyph; font.pixelSize: 14; color: "white" }
+                        Text { textFormat: Text.PlainText; anchors.centerIn: parent; text: item.modelData.glyph; font.family: Theme.fontGlyph; font.pixelSize: 14; color: "white" }
                     }
                     Label { anchors { left: chip.right; leftMargin: 10; verticalCenter: parent.verticalCenter }
                     text: item.modelData.label; size: 13; weight: item.on ? Theme.wMedium : Theme.wRegular }
@@ -287,7 +289,7 @@ FocusScope {
                         x: 8; anchors.verticalCenter: parent.verticalCenter
                         width: 22; height: 22; radius: 6
                         color: res.modelData.section.tint
-                        Text { anchors.centerIn: parent; text: res.modelData.section.glyph; font.family: Theme.fontGlyph; font.pixelSize: 13; color: "white" }
+                        Text { textFormat: Text.PlainText; anchors.centerIn: parent; text: res.modelData.section.glyph; font.family: Theme.fontGlyph; font.pixelSize: 13; color: "white" }
                     }
                     Column {
                         anchors { left: resChip.right; leftMargin: 10; right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter }

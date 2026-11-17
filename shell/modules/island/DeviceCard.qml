@@ -138,6 +138,7 @@ Item {
             radius: width / 2
             color: Theme.platter
             Text {
+                textFormat: Text.PlainText
                 anchors.centerIn: parent
                 text: card.item ? card.item.glyph || "\u{f00af}" : ""
                 font.family: Theme.fontGlyph; font.pixelSize: 27
@@ -162,6 +163,7 @@ Item {
         scale: 0.8 + 0.2 * card.settle
         opacity: card.enter * card.settle * (card.gone ? 0.6 : 1)
         Text {
+            textFormat: Text.PlainText
             anchors.centerIn: parent
             text: parent.linkGlyph
             font.family: Theme.fontGlyph; font.pixelSize: 12

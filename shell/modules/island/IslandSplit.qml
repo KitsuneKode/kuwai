@@ -358,6 +358,7 @@ Item {
         spacing: 4
         anchors.verticalCenter: parent.verticalCenter
         Text {
+            textFormat: Text.PlainText
             anchors.verticalCenter: parent.verticalCenter
             text: badge.glyph
             font.family: Theme.fontGlyph; font.pixelSize: Theme.tCallout
@@ -507,6 +508,7 @@ Item {
                     width: 18; height: 18
                     anchors.verticalCenter: parent ? parent.verticalCenter : undefined
                     Text {
+                        textFormat: Text.PlainText
                         // No icon found (or not loaded yet): a window, so the slot isn't blank.
                         visible: mwImg.status !== Image.Ready
                         anchors.centerIn: parent

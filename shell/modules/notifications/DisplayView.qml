@@ -433,6 +433,7 @@ Item {
                             color: dev.modelData.connected ? Theme.blue : Theme.platter
                             Behavior on color { ColorAnimation { duration: Theme.colorMs } }
                             Text {
+                                textFormat: Text.PlainText
                                 anchors.centerIn: parent
                                 text: /headset|headphone|audio/.test(dev.modelData.icon) ? "\u{f02cb}"
                                     : /phone/.test(dev.modelData.icon) ? "\u{f011c}"

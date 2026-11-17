@@ -664,6 +664,7 @@ FocusScope {
                     anchors.fill: parent; radius: 9
                     color: Theme.pill
                     Text {
+                        textFormat: Text.PlainText
                         anchors.centerIn: parent
                         text: row.modelData.glyph || "\u{f0b2a}"
                         font.family: row.modelData.kind === "calc" ? Theme.fontRounded : row.modelData.kind === "emoji" ? "Noto Color Emoji" : Theme.fontGlyph

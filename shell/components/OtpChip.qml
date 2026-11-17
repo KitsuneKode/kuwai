@@ -22,6 +22,7 @@ Rectangle {
         anchors { left: parent.left; leftMargin: 14; verticalCenter: parent.verticalCenter }
         spacing: 0
         Text {
+            textFormat: Text.PlainText
             text: Notifs.spacedCode(chip.code)
             font.family: Theme.fontRounded
             font.pixelSize: Theme.tTitle1

@@ -58,6 +58,7 @@ Rectangle {
         color: tile.on ? tile.tone : Qt.rgba(1, 1, 1, 0.12)
         Behavior on color { ColorAnimation { duration: Theme.colorMs } }
         Text {
+            textFormat: Text.PlainText
             anchors.centerIn: parent
             text: tile.glyph
             font.family: Theme.fontGlyph
@@ -72,6 +73,7 @@ Rectangle {
         Label { width: parent.width; elide: Text.ElideRight; text: tile.subtitle; size: 11; color: Theme.textTertiary }
     }
     Text {
+        textFormat: Text.PlainText
         id: chevron
         anchors { right: parent.right; rightMargin: tile.expandable ? 10 : 0; verticalCenter: parent.verticalCenter }
         width: tile.expandable ? implicitWidth : 0

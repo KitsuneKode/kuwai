@@ -28,6 +28,7 @@ Rectangle {
         anchors.centerIn: parent
         spacing: 6
         Text {
+            textFormat: Text.PlainText
             visible: pill.glyph !== ""
             anchors.verticalCenter: parent.verticalCenter
             text: pill.glyph

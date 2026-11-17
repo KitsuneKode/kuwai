@@ -221,6 +221,7 @@ Row {
             border.width: 1
             border.color: Qt.rgba(1, 1, 1, 0.25)
             Text {
+                textFormat: Text.PlainText
                 anchors.centerIn: parent
                 text: sp.glyphs[sp.shown] || sp.glyphs.special
                 font.family: Theme.fontGlyph

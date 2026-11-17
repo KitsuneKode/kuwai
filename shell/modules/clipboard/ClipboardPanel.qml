@@ -782,6 +782,7 @@ Scope {
                         }
                         ImageEdge { radius: 7; visible: toastRow.e && toastRow.e.kind === "image" }
                         Text {
+                            textFormat: Text.PlainText
                             anchors.centerIn: parent
                             visible: !(toastRow.e && (toastRow.e.kind === "image" || toastRow.e.kind === "color"))
                             text: toastRow.e ? root.glyphOf(toastRow.e) : "\u{f014c}"
@@ -1177,6 +1178,7 @@ Scope {
                 anchors.centerIn: shelf
                 spacing: 6
                 Text {
+                    textFormat: Text.PlainText
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: root.query ? "\u{f0349}" : "\u{f014c}"
                     font.family: Theme.fontGlyph

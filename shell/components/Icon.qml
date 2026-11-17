@@ -26,6 +26,7 @@ Item {
 
     // Duotone: the fill layer (20% → full when active) and the outline.
     Text {
+        textFormat: Text.PlainText
         visible: icon.duo
         anchors.centerIn: parent
         text: Icons.glyph(icon.name, "db")
@@ -34,6 +35,7 @@ Item {
         opacity: 0.2 + 0.8 * icon.k
     }
     Text {
+        textFormat: Text.PlainText
         visible: icon.duo
         anchors.centerIn: parent
         text: Icons.glyph(icon.name, "df")
@@ -43,6 +45,7 @@ Item {
     }
     // Single weight: the outline, crossfading to the filled glyph when active.
     Text {
+        textFormat: Text.PlainText
         visible: !icon.duo
         anchors.centerIn: parent
         text: Icons.glyph(icon.name, "r")
@@ -51,6 +54,7 @@ Item {
         opacity: icon.style === "fill" ? 1 : 1 - icon.k
     }
     Text {
+        textFormat: Text.PlainText
         visible: !icon.duo && icon.style !== "fill"
         anchors.centerIn: parent
         text: Icons.glyph(icon.name, "r")

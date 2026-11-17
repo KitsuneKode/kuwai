@@ -1067,6 +1067,7 @@ Scope {
                                         Accessible.name: modelData.label
                                         Accessible.selected: picked
                                         Text {
+                                            textFormat: Text.PlainText
                                             anchors.centerIn: parent
                                             text: sec.modelData.glyph
                                             font.family: Theme.fontGlyph; font.pixelSize: 13

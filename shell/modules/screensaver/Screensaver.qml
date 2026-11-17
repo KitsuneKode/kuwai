@@ -200,6 +200,7 @@ Scope {
                         property date now: new Date()
                         Timer { interval: 1000; repeat: true; running: root.showing; onTriggered: face.now = new Date() }
                         Text {
+                            textFormat: Text.PlainText
                             text: Qt.formatTime(face.now, Settings.clock24 ? "HH:mm" : "h:mm")
                             font.family: Theme.fontRounded || Theme.fontText
                             font.pixelSize: Math.round(win.height * 0.13)
@@ -208,6 +209,7 @@ Scope {
                             color: Qt.rgba(1, 1, 1, 0.92)
                         }
                         Text {
+                            textFormat: Text.PlainText
                             text: Qt.formatDate(face.now, "dddd, d MMMM")
                             font.family: Theme.fontText
                             font.pixelSize: Math.round(win.height * 0.022)
@@ -215,6 +217,7 @@ Scope {
                             leftPadding: 6
                         }
                         Text {
+                            textFormat: Text.PlainText
                             visible: Media.playing && !!Media.active
                             text: Media.active ? "\u{f075a}  " + (Media.title(Media.active)) + (Media.active.trackArtist ? " · " + Media.active.trackArtist : "") : ""
                             font.family: Theme.fontText

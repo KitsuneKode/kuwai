@@ -163,6 +163,7 @@ FocusScope {
                     anchors.centerIn: parent
                     spacing: 8
                     Text {
+                        textFormat: Text.PlainText
                         anchors.horizontalCenter: parent.horizontalCenter
                         text: tile.modelData.glyph
                         font.family: Theme.fontGlyph

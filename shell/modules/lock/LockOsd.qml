@@ -90,6 +90,7 @@ Item {
         border.width: 1; border.color: Qt.rgba(1, 1, 1, 0.1)
     }
     Text {
+        textFormat: Text.PlainText
         id: glyph
         x: 18; anchors.verticalCenter: parent.verticalCenter
         font.family: Theme.fontGlyph; font.pixelSize: 18
@@ -109,6 +110,7 @@ Item {
         }
     }
     Text {
+        textFormat: Text.PlainText
         id: pct
         anchors { right: parent.right; rightMargin: 18; verticalCenter: parent.verticalCenter }
         width: 40; horizontalAlignment: Text.AlignRight

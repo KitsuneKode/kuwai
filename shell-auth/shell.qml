@@ -412,6 +412,7 @@ ShellRoot {
                                     cache: false
                                 }
                                 Text {
+                                    textFormat: Text.PlainText
                                     visible: face.status !== Image.Ready
                                     anchors.centerIn: parent
                                     text: (root.who || "?").charAt(0).toUpperCase()
@@ -430,6 +431,7 @@ ShellRoot {
                                     color: root.succeeded ? Theme.green : Theme.accent
                                     Behavior on color { ColorAnimation { duration: 160 } }
                                     Text {
+                                        textFormat: Text.PlainText
                                         anchors.centerIn: parent
                                         text: root.succeeded ? "\u{f012c}" : "\u{f033e}"
                                         font.family: Theme.fontGlyph; font.pixelSize: 10
