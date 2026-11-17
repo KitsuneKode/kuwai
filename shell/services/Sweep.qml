@@ -39,6 +39,13 @@ Singleton {
     readonly property var projects: alive && data.projects ? data.projects : []
     readonly property real checkedAt: alive && data.checkedAt ? data.checkedAt : 0
     readonly property string scanRoot: alive && data.root ? data.root : ""
+    // An answer has come back (before it, the panel says it's looking).
+    readonly property bool loaded: data !== null
+    // A refresh is running behind the answer shown (first run, or stale).
+    readonly property bool refreshing: alive && data.refreshing === true
+    // The last refresh failed ("folder missing", "scan failed (exit 2)"); the
+    // last good answer, if any, is still shown.
+    readonly property string error: alive && data.error ? String(data.error) : ""
 
     readonly property real minBytes: Settings.sweepMinGB * 1e9
     readonly property bool worth: enabled && alive && !pending && Model.worthMark(idleBytes, minBytes)
@@ -77,6 +84,7 @@ Singleton {
     }
 
     property int retries: 0
+    readonly property int maxRetries: 6
     function check() { if (enabled && !poll.running) poll.running = true; }
     Process {
         id: poll
@@ -87,9 +95,12 @@ Singleton {
                     const d = JSON.parse(text);
                     if (JSON.stringify(d) !== JSON.stringify(root.data)) root.data = d;
                     // A refresh runs behind this answer (first run, or a stale
-                    // cache): look again soon, a few times, then settle to the beat.
-                    if (d.alive && (d.pending || d.stale) && root.retries < 6) { root.retries++; again.restart(); }
-                    else root.retries = 0;
+                    // cache): look again soon, a few times, then settle to the
+                    // beat. The count of tries is kept until it's done, so a slow
+                    // scan gets one look per beat after the cap, not a new burst.
+                    if (d.alive && (d.pending || d.refreshing)) {
+                        if (root.retries < root.maxRetries) { root.retries++; again.restart(); }
+                    } else root.retries = 0;
                 } catch (e) {}
             }
         }

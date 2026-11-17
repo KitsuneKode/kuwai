@@ -52,6 +52,8 @@ FocusScope {
         return (s.kind === "other" ? "Everything else" : s.kind) + " · " + Model.long(s.bytes)
             + (s.count ? " · " + s.count + (s.count === 1 ? " folder" : " folders") : "");
     }
+    readonly property string empty: Model.emptyText({ loaded: Sweep.loaded, alive: Sweep.alive, pending: Sweep.pending, error: Sweep.error,
+        counted: Sweep.counted, root: Sweep.scanRoot, home: Quickshell.env("HOME"), hasBar: segs.length > 0 })
     function toneOf(s) { return s.kind === "other" ? Theme.textTertiary : s.tone; }
 
     Column {
@@ -82,14 +84,12 @@ FocusScope {
 
         // ── Nothing to say ───────────────────────────────────────────────
         Label {
-            visible: !Sweep.alive || Sweep.pending || panel.segs.length === 0
+            visible: panel.empty !== ""
             width: parent.width
             topPadding: 4; bottomPadding: 4
             wrapMode: Text.WordWrap
-            text: !Sweep.alive ? "sweep isn't installed, or hasn't counted anything yet."
-                : Sweep.pending ? "Counting…  the first scan takes a few seconds."
-                : "Nothing to free here."
-            size: Theme.tBody; color: Theme.textTertiary
+            text: panel.empty
+            size: Theme.tBody; color: Sweep.error && !Sweep.counted ? Theme.orange : Theme.textTertiary
         }
 
         // ── The bar ──────────────────────────────────────────────────────
@@ -210,11 +210,12 @@ FocusScope {
             Label {
                 anchors { left: review.right; leftMargin: 12; right: parent.right; verticalCenter: parent.verticalCenter }
                 horizontalAlignment: Text.AlignRight
-                // While the first count is still being made there is no time to give.
-                readonly property string ago: Sweep.pending ? "" : Model.agoText(Sweep.checkedAt, Date.now())
-                text: [Sweep.protectedCount > 0 ? Sweep.protectedCount + " protected" : "", ago ? "counted " + ago : ""].filter(x => x).join(" · ")
+                // No time before the first count; "counting again…" while a
+                // refresh runs behind what's shown, the failure if it didn't.
+                text: Model.footText({ protectedCount: Sweep.protectedCount, checkedAt: Sweep.checkedAt, pending: Sweep.pending,
+                    refreshing: Sweep.refreshing, error: Sweep.error, counted: Sweep.counted }, Date.now())
                 size: Theme.tCaption
-                color: Theme.textTertiary
+                color: Sweep.error && !Sweep.refreshing ? Theme.orange : Theme.textTertiary
                 elide: Text.ElideLeft
             }
         }

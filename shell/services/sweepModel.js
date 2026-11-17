@@ -8,6 +8,7 @@
 //   parseViewed(text) / viewedText(b)   ↔ the sweep-viewed file: the size you looked at, in bytes
 //   isFresh(idle, viewed, min)          → bool: worth a mark and new, or 5 GB past what you saw
 //   reconcileViewed / viewedAfterLook   → what that stored size becomes
+//   tilde / emptyText(state) / footText(state, now)  → the panel's words for its states
 //   idleText(days) / agoText(sec, now)  → "7 months" / "12 min ago" ("" before the first count)
 
 const GB = 1e9;
@@ -95,6 +96,34 @@ function viewedAfterLook(idleBytes, viewedBytes, minBytes) {
     const idle = Number(idleBytes) || 0;
     if (!worthMark(idle, minBytes)) return viewedBytes === undefined ? null : viewedBytes;
     return viewedBytes === null || viewedBytes === undefined ? idle : Math.max(idle, Number(viewedBytes));
+}
+
+// "~/Projects" for a path under home.
+function tilde(path, home) {
+    const p = String(path || ""), h = String(home || "").replace(/\/+$/, "");
+    return h && (p === h || p.startsWith(h + "/")) ? "~" + p.slice(h.length) : p;
+}
+
+// What the panel says when it has no bar to show (""), from Sweep's state:
+//   { loaded, alive, pending, error, counted, root, home, hasBar }
+function emptyText(s) {
+    if (!s.loaded) return "Looking for sweep…";
+    if (!s.alive) return "sweep isn't installed, or hasn't counted anything yet.";
+    if (s.error && !s.counted) return "Couldn't count " + tilde(s.root, s.home) + ": " + s.error + ".";
+    if (s.pending) return "Counting " + tilde(s.root, s.home) + "…  the first scan can take a minute.";
+    if (!s.hasBar) return "Nothing to free here.";
+    return "";
+}
+
+// The footer: protected items, when it was counted, and what the count is
+// doing now: { protectedCount, checkedAt, pending, refreshing, error, counted }.
+function footText(s, nowMs) {
+    const ago = s.counted && !s.pending ? agoText(s.checkedAt, nowMs) : "";
+    return [
+        s.protectedCount > 0 ? s.protectedCount + " protected" : "",
+        ago ? "counted " + ago : "",
+        s.counted && s.refreshing ? "counting again…" : s.counted && s.error ? "couldn't count again: " + s.error : "",
+    ].filter(x => x).join(" · ");
 }
 
 function idleText(days) {

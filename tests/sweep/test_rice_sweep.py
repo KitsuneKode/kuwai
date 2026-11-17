@@ -78,22 +78,29 @@ def test_cache_round_trips_privately_and_ignores_junk(rs, tmp_path):
     assert rs.read_cache(p) is None
 
 
-def test_answer_serves_the_cache_and_asks_for_a_refresh_only_when_stale(rs, tmp_path, monkeypatch):
-    monkeypatch.setattr(rs, "find_sweep", lambda: "/usr/bin/sweep")
-    p = tmp_path / "c.json"
-    rs.write_cache(p, {"alive": True, "checkedAt": int(NOW) - 60, "root": "/p", "reclaimable": 7})
-    out, again = rs.answer(p, "/p", NOW)
-    assert (out["stale"], again, out["reclaimable"]) == (False, False, 7)
-    out, again = rs.answer(p, "/p", NOW + 3600)
-    assert (out["stale"], again, out["reclaimable"]) == (True, True, 7)    # stale answer still shown
+@pytest.fixture
+def proj(tmp_path):
+    d = tmp_path / "Projects"
+    d.mkdir()
+    return str(d)
 
 
-def test_a_new_root_or_no_cache_is_pending_not_stale_data(rs, tmp_path, monkeypatch):
+def test_answer_serves_the_cache_and_asks_for_a_refresh_only_when_stale(rs, tmp_path, proj, monkeypatch):
     monkeypatch.setattr(rs, "find_sweep", lambda: "/usr/bin/sweep")
     p = tmp_path / "c.json"
-    assert rs.answer(p, "/p", NOW) == ({"alive": True, "pending": True, "root": "/p"}, True)
+    rs.write_cache(p, {"alive": True, "checkedAt": int(NOW) - 60, "root": proj, "reclaimable": 7})
+    out, again = rs.answer(p, proj, NOW)
+    assert (out["stale"], out["refreshing"], again, out["reclaimable"]) == (False, False, False, 7)
+    out, again = rs.answer(p, proj, NOW + 3600)
+    assert (out["stale"], out["refreshing"], again, out["reclaimable"]) == (True, True, True, 7)   # stale still shown
+
+
+def test_a_new_root_or_no_cache_is_pending_not_stale_data(rs, tmp_path, proj, monkeypatch):
+    monkeypatch.setattr(rs, "find_sweep", lambda: "/usr/bin/sweep")
+    p = tmp_path / "c.json"
+    assert rs.answer(p, proj, NOW) == ({"alive": True, "pending": True, "root": proj, "refreshing": True}, True)
     rs.write_cache(p, {"alive": True, "checkedAt": int(NOW), "root": "/elsewhere"})
-    assert rs.answer(p, "/p", NOW)[0]["pending"] is True
+    assert rs.answer(p, proj, NOW)[0]["pending"] is True
 
 
 def test_without_sweep_the_capsule_has_nothing_to_show(rs, tmp_path, monkeypatch):
@@ -113,17 +120,80 @@ def test_find_sweep_looks_in_bun_bin_when_path_lacks_it(rs, tmp_path, monkeypatc
     assert rs.find_sweep() == str(exe)
 
 
-def test_refresh_scans_once_under_the_lock_and_caches(rs, tmp_path, monkeypatch):
+def test_refresh_scans_once_under_the_lock_and_caches(rs, tmp_path, proj, monkeypatch):
     calls = []
+    monkeypatch.setattr(rs, "find_sweep", lambda: "/usr/bin/sweep")
     monkeypatch.setattr(rs, "status", lambda root: None)       # an older sweep: no `status`
     monkeypatch.setattr(rs, "scan", lambda root: calls.append(root) or {"candidates": [cand("target", GB)]})
     p = tmp_path / "state" / "sweep-status.json"
-    data = rs.refresh("/p", p, now=NOW)
-    assert calls == ["/p"] and data["reclaimable"] == GB and rs.read_cache(p)["root"] == "/p"
-    # A failed scan leaves the last answer alone.
+    data = rs.refresh(proj, p, now=NOW)
+    assert calls == [proj] and data["reclaimable"] == GB and rs.read_cache(p)["root"] == proj
+    assert "error" not in data
+    # A failed scan leaves the last answer alone, with a note of what failed.
     monkeypatch.setattr(rs, "scan", lambda root: None)
-    assert rs.refresh("/p", p, now=NOW + 1) is None
-    assert rs.read_cache(p)["checkedAt"] == int(NOW)
+    assert rs.refresh(proj, p, now=NOW + 1) is None
+    c = rs.read_cache(p)
+    assert (c["checkedAt"], c["reclaimable"], c["failedAt"]) == (int(NOW), GB, int(NOW) + 1)
+    assert c["error"].startswith("scan failed")
+    # Served with the note; no new try until the back-off is over.
+    out, again = rs.answer(p, proj, NOW + 1000, ttl=600)
+    assert (out["reclaimable"], out["error"][:11], out["stale"], again) == (GB, "scan failed", True, False)
+    out, again = rs.answer(p, proj, NOW + 1 + rs.FAIL_RETRY_S + 1)
+    assert again is True
+    # The next good count clears the note.
+    monkeypatch.setattr(rs, "scan", lambda root: {"candidates": [cand("target", 2 * GB)]})
+    data = rs.refresh(proj, p, now=NOW + 7200)
+    assert "error" not in rs.read_cache(p) and data["reclaimable"] == 2 * GB
+
+
+def test_a_missing_folder_says_so_instead_of_counting_forever(rs, tmp_path, monkeypatch):
+    monkeypatch.setattr(rs, "find_sweep", lambda: "/usr/bin/sweep")
+    gone = str(tmp_path / "nope")
+    p = tmp_path / "state" / "sweep-status.json"
+    out, again = rs.answer(p, gone, NOW)
+    assert (out["error"], out["checkedAt"], again) == ("folder missing", 0, False)
+    assert "pending" not in out
+    assert rs.refresh(gone, p, now=NOW) is None
+    c = rs.read_cache(p)
+    assert (c["error"], c["checkedAt"], c["root"], c["failedAt"]) == ("folder missing", 0, gone, int(NOW))
+
+
+def test_a_failing_sweep_is_recorded_not_retried_in_a_loop(rs, tmp_path, proj, monkeypatch):
+    # A real `sweep` on PATH that fails every command (status and scan alike).
+    bindir = tmp_path / "bin"
+    bindir.mkdir()
+    shim = bindir / "sweep"
+    shim.write_text("#!/bin/sh\necho 'boom' >&2\nexit 3\n")
+    shim.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{bindir}:/usr/bin:/bin")
+    monkeypatch.setattr(rs.Path, "home", lambda: tmp_path)
+    assert rs.find_sweep() == str(shim)
+    p = tmp_path / "state" / "sweep-status.json"
+    assert rs.refresh(proj, p, now=NOW) is None
+    c = rs.read_cache(p)
+    assert (c["error"], c["checkedAt"], c["failedAt"]) == ("scan failed (exit 3)", 0, int(NOW))
+    out, again = rs.answer(p, proj, NOW + 60)
+    assert (out["error"], out.get("pending"), out["refreshing"], again) == ("scan failed (exit 3)", None, False, False)
+
+
+def test_while_the_lock_is_held_it_says_refreshing_and_starts_no_second(rs, tmp_path, proj, monkeypatch):
+    import fcntl
+    monkeypatch.setattr(rs, "find_sweep", lambda: "/usr/bin/sweep")
+    monkeypatch.setattr(rs, "scan", lambda root: pytest.fail("a refresh is already running"))
+    monkeypatch.setattr(rs, "status", lambda root: pytest.fail("a refresh is already running"))
+    p = tmp_path / "state" / "sweep-status.json"
+    rs.write_cache(p, {"alive": True, "checkedAt": int(NOW) - 7200, "root": proj, "reclaimable": 7})
+    with open(rs.lock_path(p), "a") as held:
+        fcntl.flock(held, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        assert rs.is_refreshing(p) is True
+        out, again = rs.answer(p, proj, NOW)
+        assert (out["refreshing"], out["stale"], out["reclaimable"], again) == (True, True, 7, False)
+        assert rs.refresh(proj, p, now=NOW) is None
+        assert rs.read_cache(p)["checkedAt"] == int(NOW) - 7200          # untouched
+        # First run under a held lock: pending, and no second refresh.
+        p.unlink()
+        assert rs.answer(p, proj, NOW) == ({"alive": True, "pending": True, "root": proj, "refreshing": True}, False)
+    assert rs.is_refreshing(p) is False
 
 
 STATUS = {
@@ -135,6 +205,7 @@ STATUS = {
 
 
 def test_sweeps_own_status_is_used_when_it_has_one(rs, tmp_path, monkeypatch):
+    monkeypatch.setattr(rs, "find_sweep", lambda: "/usr/bin/sweep")
     monkeypatch.setattr(rs, "_run", lambda args: json.dumps(STATUS).encode() if args[0] == "status" else None)
     monkeypatch.setattr(rs, "scan", lambda root: pytest.fail("status answered; no scan needed"))
     p = tmp_path / "state" / "sweep-status.json"
@@ -146,6 +217,7 @@ def test_sweeps_own_status_is_used_when_it_has_one(rs, tmp_path, monkeypatch):
 
 
 def test_an_older_sweep_without_status_falls_back_to_the_scan(rs, tmp_path, monkeypatch):
+    monkeypatch.setattr(rs, "find_sweep", lambda: "/usr/bin/sweep")
     monkeypatch.setattr(rs, "_run", lambda args: None if args[0] == "status" else
                         json.dumps({"candidates": [cand("target", GB)]}).encode())
     p = tmp_path / "state" / "sweep-status.json"

@@ -4,8 +4,10 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 
 const lib = readFileSync(new URL("../../shell/services/sweepModel.js", import.meta.url), "utf8").replace(/^\.pragma library\s*$/m, "");
-const { compact, long, segments, worthMark, parseViewed, viewedText, isFresh, reconcileViewed, viewedAfterLook, idleText, agoText } =
-    new Function(lib + "\nreturn { compact, long, segments, worthMark, parseViewed, viewedText, isFresh, reconcileViewed, viewedAfterLook, idleText, agoText };")();
+const names = ["compact", "long", "segments", "worthMark", "parseViewed", "viewedText", "isFresh", "reconcileViewed", "viewedAfterLook",
+    "tilde", "emptyText", "footText", "idleText", "agoText"];
+const { compact, long, segments, worthMark, parseViewed, viewedText, isFresh, reconcileViewed, viewedAfterLook, tilde, emptyText, footText, idleText, agoText } =
+    new Function(lib + "\nreturn { " + names.join(", ") + " };")();
 const GB = 1e9;
 
 describe("sizes", () => {
@@ -97,6 +99,30 @@ describe("looked at", () => {
         expect(isFresh(20 * GB, parseViewed("3"), MIN)).toBe(true);   // where the old key came back
         for (const junk of ["", "  ", "nope", "{}", '{"bytes":"x"}', '{"bytes":-1}', "[]", "null", undefined, null])
             expect(parseViewed(junk)).toBe(null);
+    });
+});
+
+describe("states", () => {
+    const now = 1_800_000_000_000;
+    const base = { loaded: true, alive: true, pending: false, error: "", counted: true, root: "/home/me/Projects", home: "/home/me", hasBar: true };
+    test("a path under home is shown with ~", () => {
+        expect(tilde("/home/me/Projects", "/home/me")).toBe("~/Projects");
+        expect(tilde("/home/meow/x", "/home/me")).toBe("/home/meow/x");
+        expect(tilde("/srv/x", "")).toBe("/srv/x");
+    });
+    test("a failed first count says what failed, not Counting… forever", () => {
+        expect(emptyText({ ...base, counted: false, error: "folder missing", hasBar: false })).toBe("Couldn't count ~/Projects: folder missing.");
+        expect(emptyText({ ...base, counted: false, pending: true, hasBar: false })).toBe("Counting ~/Projects…  the first scan can take a minute.");
+        expect(emptyText({ ...base, loaded: false })).toBe("Looking for sweep…");
+        expect(emptyText({ ...base, hasBar: false })).toBe("Nothing to free here.");
+        expect(emptyText(base)).toBe("");
+    });
+    test("the footer: when, and what the count is doing now", () => {
+        const s = { protectedCount: 2, checkedAt: now / 1000 - 3 * 3600, pending: false, refreshing: false, error: "", counted: true };
+        expect(footText(s, now)).toBe("2 protected · counted 3 h ago");
+        expect(footText({ ...s, refreshing: true }, now)).toBe("2 protected · counted 3 h ago · counting again…");
+        expect(footText({ ...s, error: "scan failed (exit 3)" }, now)).toBe("2 protected · counted 3 h ago · couldn't count again: scan failed (exit 3)");
+        expect(footText({ ...s, protectedCount: 0, checkedAt: 0, counted: false, pending: true, refreshing: true }, now)).toBe("");
     });
 });
 
