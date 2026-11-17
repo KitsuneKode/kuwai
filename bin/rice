@@ -232,6 +232,14 @@ case ${1:-} in
         # without pdeathsig every restart left one behind (127 of them and 78
         # polling loops, 1.1 GB, found 2026-11-07).
         leak=$(git -C "$dev" grep -nE 'command: *\[.*("subscribe"|"monitor"|"--watch"|"watch"|"-F"|"--serve"|while :)' "$head" -- 'shell/*.qml' | grep -v pdeathsig | grep -v '"hyprctl", "monitors"')
+        # A loop written on a later line than its `command:` (a sh -c script in
+        # backquotes) slipped past that: Alerts' and SystemStats' did.
+        for f in $(git -C "$dev" grep -lE 'while :|while true;' "$head" -- 'shell/*.qml' | sed "s|^$head:||"); do
+            late=$(git -C "$dev" show "$head:$f" | awk -v f="$f" '/command: *\[/ { cmd = $0; at = NR }
+                /while :|while true;/ && at && NR - at < 15 && cmd !~ /pdeathsig/ { print f ":" NR ":" $0 }')
+            [ -n "$late" ] && leak="${leak:+$leak
+}$late"
+        done
         if [ -n "$leak" ]; then
             printf "rice: these helpers would outlive a restart (start them with setpriv --pdeathsig KILL --); stable left as it is:\n%s\n" "$leak" >&2
             exit 1
