@@ -157,6 +157,9 @@ reserve space during fullscreen (the film would reflow).
   `live: false` + `scheduleUpdate()` on a slow timer, or only at the moment you need it.
 - **Springs:** `Theme.surfaceIn` now has a touch of give (ζ 0.8, ~1.5 % past 1). Anything multiplying a
   spring's value into opacity or scale must tolerate > 1 (clamp opacity; scale 1.015 is fine).
+- **`Spring.snap(v)` assigns the target and breaks a binding on it**; to start a spring at a bound
+  target without motion use `settle()`. A capsule's width spring started with `snap()` froze at its
+  first width and its content spilled out when it grew (T3's "✓ 4").
 - **A state swap shows one frame of the new content** if the reset happens in an animation's first tick:
   set the start value synchronously in the change handler, then start the animation.
 - **Theme switches go through HyDE**, which restarts Waybar afterwards; `rice-themes` re-applies the bar

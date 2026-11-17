@@ -53,6 +53,8 @@ recorder you started (`pkill -INT -x gpu-screen-reco`, never by a broader patter
 changed for the test (a wallpaper: play the original back).
 
 ## Feature map (what to prove per surface)
+- **Capsules:** their content always sits inside the outline, after a count or badge changes too
+  (grim the capsule row at 2×).
 - **Island rest/glance/full:** centre click opens full; capsules bud from the edge, icon arrives after;
   state change swaps content without a blank frame or a full-strength first frame.
 - **Sections:** Agents/Usage/System/Cleanup strip lit on the current one; ⌥1–4 switch in place.

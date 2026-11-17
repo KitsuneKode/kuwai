@@ -209,8 +209,11 @@ Item {
         // The capsule's drawn width springs to its content's (it snapped to
         // each new width): wider with the island's give, narrower clean.
         readonly property real w: wv.value
-        Spring { id: wv; tier: pill.bodyW > wv.value ? Theme.surfaceIn : Theme.surfaceOut; epsilon: 0.25; target: pill.bodyW; Component.onCompleted: snap(pill.bodyW) }
-        onShownChanged: if (shown && !out) wv.snap(bodyW)
+        // settle(), not snap(): snap assigns the target and breaks its binding
+        // to bodyW, and the capsule froze at its first width (T3's ✓ 4 spilled
+        // out of it, 2026-11-17).
+        Spring { id: wv; tier: pill.bodyW > wv.value ? Theme.surfaceIn : Theme.surfaceOut; epsilon: 0.25; target: pill.bodyW; Component.onCompleted: settle() }
+        onShownChanged: if (shown && !out) wv.settle()
         readonly property bool out: sv.value > 0.02
         onOutChanged: if (!out) split.assign()
         // The room it takes along its side (for the capsules beyond it).
