@@ -65,6 +65,14 @@ FocusScope {
         }
     }
 
+    // The tallest a panel may be: the island's surface (IslandBar: at most
+    // 640, the screen less 24), less its 40 of margin and the 34 of the
+    // section strip above the panel. What's left after the header, the CPU
+    // card and the switches is the readings' room.
+    readonly property real ceiling: Math.min(640, (Screen.height > 0 ? Screen.height : 1080) - 24) - 40 - 34
+    readonly property real room: Math.max(120, ceiling - 40 - head.height - cpuCard.height - tiles.height
+        - (upd.visible ? upd.height + col.spacing : 0) - col.spacing * 3)
+
     Column {
         id: col
         x: 22; y: 20
@@ -72,6 +80,7 @@ FocusScope {
         spacing: 14
 
         Item {
+            id: head
             width: parent.width; height: 26
             Label { anchors.verticalCenter: parent.verticalCenter; text: "System"; size: 20; weight: Theme.wSemibold }
             Label {
@@ -83,6 +92,7 @@ FocusScope {
 
         // ── CPU ──────────────────────────────────────────────────────────
         Card {
+            id: cpuCard
             Row {
                 spacing: 18
                 Column {
@@ -135,6 +145,26 @@ FocusScope {
             }
         }
 
+        // The readings below the CPU scroll when they would not fit; the
+        // switches under them never leave the panel. (Memory by app made the
+        // column taller than the island's ceiling: on a 1080-high screen the
+        // four switches were cut off at the bottom edge, seen 2026-11-17.)
+        Item {
+          width: parent.width
+          height: readings.height
+        Flickable {
+            id: readings
+            width: parent.width
+            height: Math.min(readCol.implicitHeight, sys.room)
+            contentHeight: readCol.implicitHeight
+            clip: contentHeight > height
+            boundsBehavior: Flickable.StopAtBounds
+            interactive: contentHeight > height
+        Column {
+            id: readCol
+            width: readings.width
+            spacing: col.spacing
+
         // ── Memory, by what holds it (Clove's storage bar) ───────────────
         // One big number, the dots by app, a legend that lights with them.
         Card {
@@ -159,7 +189,14 @@ FocusScope {
         }
 
         // ── GPU ──────────────────────────────────────────────────────────
+        // Two GPUs sit side by side: one row instead of two cards' height.
+        Row {
+            width: parent.width
+            spacing: col.spacing
+            visible: nvidia.visible || intel.visible
         Card {
+            id: nvidia
+            width: intel.visible ? (parent.width - parent.spacing) / 2 : parent.width
             visible: SystemStats.gpuState !== ""
             Meter {
                 title: "NVIDIA GPU" + (SystemStats.gpuTemp ? "  ·  " + SystemStats.gpuTemp + "°" : "") + (SystemStats.gpuPower ? "  ·  " + Math.round(SystemStats.gpuPower) + " W" : "")
@@ -172,6 +209,8 @@ FocusScope {
 
         // The Intel GPU (it drives the laptop screen; no busy % is exposed, so its clock stands in).
         Card {
+            id: intel
+            width: nvidia.visible ? (parent.width - parent.spacing) / 2 : parent.width
             visible: SystemStats.igpuMax > 0
             Meter {
                 title: "Intel GPU (integrated)"
@@ -181,8 +220,15 @@ FocusScope {
             }
         }
 
+        }   // the GPU row
+        }   // readCol
+        }   // readings
+        ScrollHint { flickable: readings; anchors { right: parent.right; top: parent.top; bottom: parent.bottom; rightMargin: -10 } }
+        }
+
         // ── Quick switches and updates ───────────────────────────────────
         Row {
+            id: tiles
             spacing: 8
             Tile { glyph: "\u{f0eb5}"; label: "Game mode"; on: sys.gameMode; onClicked: sys.toggleGame() }
             Tile { glyph: "\u{f0594}"; label: "Night light"; on: Display.nightOn; onClicked: Display.toggleNight() }
