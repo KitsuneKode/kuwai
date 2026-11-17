@@ -861,6 +861,21 @@ FocusScope {
                 }
             }
             SettingsGroup {
+                title: "Wallpaper"
+                SettingsRow {
+                    key: "wallTransition"
+                    label: "Wallpaper change"
+                    detail: Settings.wallTransition === "shards" ? "The new picture arrives in cut pieces, spreading from the island"
+                          : Settings.wallTransition === "glass" ? "The new picture grows from the island behind a lens of glass"
+                          : "Its subject first when it has been cut out (rice-wallmap --install), otherwise pieces or glass in turn"
+                    Segmented {
+                        options: [{ id: "auto", label: "Auto" }, { id: "shards", label: "Pieces" }, { id: "glass", label: "Glass" }]
+                        current: Settings.wallTransition
+                        onPicked: id => Settings.set("wallTransition", id)
+                    }
+                }
+            }
+            SettingsGroup {
                 title: "Live wallpaper"
                 SettingsRow {
                     key: "liveOnBattery"

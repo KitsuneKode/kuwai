@@ -1,0 +1,172 @@
+#!/usr/bin/env python3
+"""rice-wallmap: the map that lets a wallpaper change draw its subject first.
+
+  rice-wallmap PICTURE                 print the map's path (made once, cached), or exit 1
+  rice-wallmap PICTURE --mask MASK     use MASK (white = subject) instead of the model
+  rice-wallmap --cached PICTURE        print the map's path only if it is already made (instant)
+  rice-wallmap --warm DIR              make the maps for every picture in DIR, in the background
+  rice-wallmap --install               set up the cut-out model (opt-in, ~1 GB, once)
+  rice-wallmap --status                is the model there; how many maps are cached
+
+The map is a small RGB picture (640 px wide) the shader reads
+(shell/shaders/wallcut.frag, mode 1):
+  R  when each pixel turns: the subject's outline at 0.06, its inside filling in
+     toward 0.28, then the rest of the picture spreading outward from the
+     outline, 0.30 at the edge to 1.0 at the farthest corner;
+  G  closeness to the outline (1 on it), for the line drawn first.
+No subject found (the model missing, or a cut-out under 1 % or over 85 % of the
+picture): exit 1, and the change uses the shards instead.
+
+The cut-out is BiRefNet (general-lite) through rembg, in its own venv under
+~/.local/share/kuwai/cutout: nothing is installed into the system, and nothing
+runs unless you ran --install. Maps are cached in ~/.cache/kuwai/wallmaps,
+keyed by the picture's path, size and time, so an edited picture gets a new one.
+"""
+import hashlib
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+HOME = Path.home()
+CACHE = Path(os.environ.get("XDG_CACHE_HOME", HOME / ".cache")) / "kuwai" / "wallmaps"
+VENV = Path(os.environ.get("XDG_DATA_HOME", HOME / ".local/share")) / "kuwai" / "cutout" / "venv"
+MODEL = "birefnet-general-lite"
+WIDTH = 640
+PICTURES = (".jpg", ".jpeg", ".png", ".webp")
+
+
+def key(picture: Path) -> Path:
+    st = picture.stat()
+    h = hashlib.sha1(f"{picture.resolve()}|{st.st_size}|{int(st.st_mtime)}".encode()).hexdigest()[:20]
+    return CACHE / f"{h}.png"
+
+
+def cutout(picture: Path):
+    """The subject as a float mask in [0, 1], at WIDTH, or None."""
+    py = VENV / "bin" / "python"
+    if not py.exists():
+        return None
+    out = CACHE / (key(picture).stem + ".mask.png")
+    if not out.exists():
+        script = (
+            "import sys; from rembg import new_session, remove; from PIL import Image;"
+            f"s = new_session('{MODEL}');"
+            "im = Image.open(sys.argv[1]).convert('RGB'); im.thumbnail((1024, 1024));"
+            "remove(im, session=s, only_mask=True).save(sys.argv[2])"
+        )
+        r = subprocess.run([str(py), "-I", "-c", script, str(picture), str(out)],
+                           capture_output=True, timeout=180)
+        if r.returncode != 0 or not out.exists():
+            return None
+    return load_mask(out)
+
+
+def load_mask(path: Path):
+    from PIL import Image
+    import numpy as np
+    im = Image.open(path).convert("L")
+    h = round(im.height * WIDTH / im.width)
+    return np.asarray(im.resize((WIDTH, h), Image.BILINEAR), dtype=np.float32) / 255.0
+
+
+def build(mask, size):
+    """R and G as described above, from a subject mask, at the picture's aspect."""
+    import numpy as np
+    from scipy import ndimage
+    from PIL import Image
+    w, h = size
+    mh = round(h * WIDTH / w)
+    m = np.asarray(Image.fromarray((mask * 255).astype("uint8")).resize((WIDTH, mh), Image.BILINEAR),
+                   dtype=np.float32) / 255.0
+    sub = m > 0.5
+    # Small specks are not a subject; keep the pieces that are at least 2 % of the largest.
+    lab, n = ndimage.label(sub)
+    if n:
+        sizes = ndimage.sum(sub, lab, range(1, n + 1))
+        keep = [i + 1 for i, s in enumerate(sizes) if s >= 0.02 * sizes.max()]
+        sub = np.isin(lab, keep)
+    share = sub.mean()
+    if share < 0.01 or share > 0.85:
+        return None
+    inside = ndimage.distance_transform_edt(sub)
+    outside = ndimage.distance_transform_edt(~sub)
+    r = np.where(sub,
+                 0.06 + 0.22 * inside / max(inside.max(), 1.0),
+                 0.30 + 0.70 * outside / max(outside.max(), 1.0))
+    edge = np.minimum(np.where(sub, inside, outside), 4.0)
+    g = np.clip(1.0 - (edge - 1.0) / 3.0, 0.0, 1.0)
+    rgb = np.stack([r, g, np.zeros_like(r)], axis=-1)
+    return Image.fromarray((np.clip(rgb, 0, 1) * 255 + 0.5).astype("uint8"), "RGB")
+
+
+def make(picture: Path, mask_path: Path | None = None) -> Path | None:
+    from PIL import Image
+    out = key(picture)
+    if out.exists() and mask_path is None:
+        return out
+    with Image.open(picture) as im:
+        size = im.size
+    mask = load_mask(mask_path) if mask_path else cutout(picture)
+    if mask is None:
+        return None
+    img = build(mask, size)
+    if img is None:
+        return None
+    CACHE.mkdir(parents=True, exist_ok=True)
+    tmp = out.with_suffix(".tmp.png")
+    img.save(tmp)
+    tmp.replace(out)
+    return out
+
+
+def install() -> int:
+    VENV.parent.mkdir(parents=True, exist_ok=True)
+    steps = [
+        [sys.executable, "-m", "venv", str(VENV)],
+        [str(VENV / "bin" / "pip"), "install", "--quiet", "rembg[cpu]", "pillow"],
+        [str(VENV / "bin" / "python"), "-c", f"from rembg import new_session; new_session('{MODEL}')"],
+    ]
+    for s in steps:
+        print("·", " ".join(s[:3]), "…", flush=True)
+        if subprocess.run(s).returncode != 0:
+            print("rice-wallmap: install failed", file=sys.stderr)
+            return 1
+    print("The cut-out is ready. Wallpaper changes draw the subject first from now on.")
+    return 0
+
+
+def main(argv: list[str]) -> int:
+    if not argv or argv[0] in ("-h", "--help"):
+        print(__doc__.strip())
+        return 0
+    if argv[0] == "--install":
+        return install()
+    if argv[0] == "--status":
+        n = len(list(CACHE.glob("*.png"))) if CACHE.is_dir() else 0
+        print(f"model: {'ready' if (VENV / 'bin' / 'python').exists() else 'not installed (rice-wallmap --install)'}; maps cached: {n}")
+        return 0
+    if argv[0] == "--cached" and len(argv) == 2:
+        p = Path(argv[1]).expanduser()
+        if p.is_file() and key(p).exists():
+            print(key(p))
+            return 0
+        return 1
+    if argv[0] == "--warm" and len(argv) == 2:
+        for p in sorted(Path(argv[1]).expanduser().iterdir()):
+            if p.suffix.lower() in PICTURES:
+                make(p)
+        return 0
+    picture = Path(argv[0]).expanduser()
+    if not picture.is_file():
+        return 1
+    mask = Path(argv[argv.index("--mask") + 1]) if "--mask" in argv else None
+    out = make(picture, mask)
+    if out is None:
+        return 1
+    print(out)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

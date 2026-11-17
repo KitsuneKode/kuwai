@@ -82,6 +82,7 @@ Singleton {
     readonly property bool islandProximity: value("islandProximity")
     readonly property string quickPrimary: value("quickPrimary")
     readonly property bool liveOnBattery: value("liveOnBattery")
+    readonly property string wallTransition: value("wallTransition")   // auto | shards | glass (services/WallFx)
 
     function value(key) {
         if (root.values && Object.prototype.hasOwnProperty.call(root.values, key)) return root.values[key];

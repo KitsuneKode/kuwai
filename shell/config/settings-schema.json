@@ -793,6 +793,24 @@
       "searchTerms": "keep playing on battery off: it pauses on battery to save power  live wallpaper",
       "requires": [],
       "restartScope": "live"
+    },
+    {
+      "key": "wallTransition",
+      "type": "string",
+      "default": "auto",
+      "enum": [
+        "auto",
+        "shards",
+        "glass"
+      ],
+      "maxLength": 512,
+      "section": "saver",
+      "label": "Wallpaper change",
+      "detail": "",
+      "group": "Wallpaper",
+      "searchTerms": "wallpaper change transition animation pieces shards cuts glass subject cut out",
+      "requires": [],
+      "restartScope": "live"
     }
   ],
   "additionalRows": [

@@ -1,6 +1,15 @@
-// A wallpaper change, played by the shell: the new picture grows out of the
-// island over the old one (shaders/wallreveal.frag), on a layer that exists
-// only while it plays.
+// A wallpaper change, played by the shell, on a layer that exists only while
+// it plays. Three ways (Settings.wallTransition):
+//   glass    the new picture grows out of the island behind a lens of glass
+//            (shaders/wallreveal.frag)
+//   shards   it arrives in cut pieces spreading from the island
+//            (shaders/wallcut.frag, mode 0)
+//   subject  its subject's outline is traced, the subject fills in, the rest
+//            spreads from it (wallcut.frag mode 1; needs the picture's map
+//            from bin/rice-wallmap, made once with the optional cut-out model)
+//   auto     subject when its map is already made, else pieces and glass in
+//            turn. The map is never waited for: a picture without one gets
+//            pieces now and its map is made in the background for next time.
 //
 //   WallFx.play(path, start)   start() is what actually sets the wallpaper
 //                              (rice-themes → HyDE's wallpaper.sh → awww),
@@ -39,14 +48,21 @@ Singleton {
     property var startFn: null
     property double startedAt: 0
     property string lastRun: ""          // stats: "revealed 1.42 s" / "fallback: …"
+    property string mode: "glass"        // what this change plays: glass | shards | subject
+    property string mapPath: ""          // the picture's subject map, when already made
+    property int turn: 0                 // auto alternates pieces and glass
+    property real seed: 0
 
     function play(path, start) {
         if (!path) return;
         if (phase !== "" || Theme.reduceMotion) { start(); return; }
         next = path; startFn = start; ready = 0; t = 0; before = ({}); known = false;
         startedAt = Date.now();
+        mapPath = ""; seed = Math.random() * 100;
         phase = "loading";
         query.running = true;
+        mapLookup.command = [Paths.bin + "/rice-wallmap", "--cached", path];
+        mapLookup.running = true;
         loadLimit.restart();
         watchdog.restart();
     }
@@ -81,6 +97,21 @@ Singleton {
         onExited: code => { if (code !== 0 && root.phase === "loading") root.bail("awww query failed"); }
     }
 
+    // The subject map, only if it is already made (instant); a picture without
+    // one starts its map in the background, for the next time it is chosen.
+    Process {
+        id: mapLookup
+        stdout: StdioCollector { onStreamFinished: root.mapPath = text.trim() }
+        onExited: code => { if (code !== 0) Quickshell.execDetached(["setpriv", "--pdeathsig", "KILL", "--", "nice", "-n", "19", Paths.bin + "/rice-wallmap", root.next]); }
+    }
+    function pick() {
+        const want = Settings.wallTransition;
+        if (want === "glass" || want === "shards") return want;
+        if (mapPath !== "") return "subject";
+        turn += 1;
+        return turn % 2 ? "shards" : "glass";
+    }
+
     onReadyChanged: if (phase === "loading" && ready >= Quickshell.screens.length) cover()
     Timer { id: loadLimit; interval: 1500; onTriggered: if (root.phase === "loading") root.bail("decode took too long") }
 
@@ -101,7 +132,7 @@ Singleton {
     }
     // HyDE recolours before awww switches; the reveal waits for neither (the
     // cover holds), it just shouldn't start before the command has.
-    Timer { id: beginReveal; interval: 250; onTriggered: { root.phase = "revealing"; reveal.restart(); } }
+    Timer { id: beginReveal; interval: 250; onTriggered: { root.mode = root.pick(); root.phase = "revealing"; reveal.restart(); } }
     NumberAnimation {
         id: reveal
         target: root; property: "t"; from: 0; to: 1
@@ -134,7 +165,7 @@ Singleton {
     }
     Timer { id: after; interval: 300; onTriggered: { root.phase = ""; root.watchdog.stop(); } }
     function finish(how) {
-        lastRun = how + " " + ((Date.now() - startedAt) / 1000).toFixed(2) + " s";
+        lastRun = how + " (" + mode + ") " + ((Date.now() - startedAt) / 1000).toFixed(2) + " s";
         phase = ""; watchdog.stop(); settleLimit.stop();
     }
     Timer { id: watchdog; interval: 8000; onTriggered: if (root.phase !== "") { if (root.startFn) root.bail("stuck before the hand-off"); else root.force("stuck"); } }
@@ -197,14 +228,40 @@ Singleton {
                     cache: false
                     onStatusChanged: w.check()
                 }
+                // The subject map (mode subject): small, read at the screen's size.
+                Image {
+                    id: om
+                    anchors.fill: parent
+                    visible: false
+                    source: root.mapPath ? "file://" + root.mapPath : ""
+                    fillMode: Image.PreserveAspectCrop
+                    smooth: true
+                    asynchronous: true
+                    cache: false
+                }
                 ShaderEffect {
                     anchors.fill: parent
+                    visible: root.mode === "glass" || root.phase === "covered" || root.phase === "loading"
                     property variant before: a
                     property variant after: b
                     property vector2d size: Qt.vector2d(width, height)
                     property vector2d origin: Qt.vector2d(width / 2, -12)     // the notch
-                    property real t: root.t
+                    property real t: root.mode === "glass" ? root.t : 0
                     fragmentShader: Qt.resolvedUrl("../shaders/wallreveal.frag.qsb")
+                }
+                ShaderEffect {
+                    anchors.fill: parent
+                    visible: root.mode !== "glass" && (root.phase === "revealing" || root.phase === "settling")
+                    property variant before: a
+                    property variant after: b
+                    property variant order: om
+                    property vector2d size: Qt.vector2d(width, height)
+                    property vector2d origin: Qt.vector2d(width / 2, -12)
+                    property real t: root.t
+                    // A map that hasn't loaded on this screen: pieces instead.
+                    property real mode: root.mode === "subject" && om.status === Image.Ready ? 1 : 0
+                    property real seed: root.seed
+                    fragmentShader: Qt.resolvedUrl("../shaders/wallcut.frag.qsb")
                 }
             }
         }
