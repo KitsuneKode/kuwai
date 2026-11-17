@@ -28,6 +28,8 @@ Item {
     anchors.fill: parent
     visible: t.value > 0.002 || open
     z: 30
+    Accessible.role: Accessible.PopupMenu
+    Accessible.name: menu.title
 
     function toggle() { open = !open; }
     onOpenChanged: {
@@ -191,6 +193,10 @@ Item {
                             onEntered: menu.sel = row.index
                             onClicked: { menu.open = false; menu.picked(row.modelData.id); }
                         }
+                        Accessible.role: Accessible.MenuItem
+                        Accessible.name: row.modelData.label
+                        Accessible.selected: menu.sel === row.index
+                        Accessible.onPressAction: { menu.open = false; menu.picked(row.modelData.id); }
                     }
                 }
             }

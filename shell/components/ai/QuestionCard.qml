@@ -102,6 +102,10 @@ Rectangle {
                             }
                             onClicked: root.answered(opt.modelData)
                         }
+                        Accessible.role: Accessible.Button
+                        Accessible.name: opt.modelData
+                        Accessible.description: "Key " + (opt.index + 1)
+                        Accessible.onPressAction: root.answered(opt.modelData)
                     }
                 }
             }
@@ -130,6 +134,9 @@ Rectangle {
                     color: Theme.textTertiary
                     anchors.verticalCenter: parent.verticalCenter
                     MouseArea { anchors.fill: parent; anchors.margins: -4; cursorShape: Qt.PointingHandCursor; onClicked: root.skipped() }
+                    Accessible.role: Accessible.Button
+                    Accessible.name: "Skip the question"
+                    Accessible.onPressAction: root.skipped()
                 }
             }
         }

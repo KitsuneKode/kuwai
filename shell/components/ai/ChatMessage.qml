@@ -422,6 +422,12 @@ Item {
                                                 width: 80; height: parent.height
                                                 cursorShape: Qt.PointingHandCursor
                                                 onClicked: { Clipboard.copyText(seg.text); codeBox.copied = true; codeCopied.restart(); }
+                                                activeFocusOnTab: true
+                                                Accessible.role: Accessible.Button
+                                                Accessible.name: codeBox.copied ? "Copied" : "Copy " + (seg.lang || "code")
+                                                Accessible.onPressAction: { Clipboard.copyText(seg.text); codeBox.copied = true; codeCopied.restart(); }
+                                                Keys.onPressed: e => { if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { Clipboard.copyText(seg.text); codeBox.copied = true; codeCopied.restart(); e.accepted = true; } }
+                                                FocusRing { cornerRadius: Theme.r1 }
                                             }
                                             Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Qt.rgba(1, 1, 1, 0.06) }
                                         }
@@ -502,6 +508,12 @@ Item {
                         cursorShape: Qt.PointingHandCursor
                         onClicked: Qt.openUrlExternally("file://" + OllamaService.sandboxDir() + "/" + fileChip.modelData.replace(/^\/?(work\/[^\/]+\/)?/, ""))
                     }
+                    activeFocusOnTab: true
+                    Accessible.role: Accessible.Link
+                    Accessible.name: "Open " + fileChip.modelData
+                    Accessible.onPressAction: Qt.openUrlExternally("file://" + OllamaService.sandboxDir() + "/" + fileChip.modelData.replace(/^\/?(work\/[^\/]+\/)?/, ""))
+                    Keys.onPressed: e => { if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { Qt.openUrlExternally("file://" + OllamaService.sandboxDir() + "/" + fileChip.modelData.replace(/^\/?(work\/[^\/]+\/)?/, "")); e.accepted = true; } }
+                    FocusRing {}
                 }
             }
             Rectangle {
@@ -518,6 +530,12 @@ Item {
                     Label { text: "Sandbox folder"; size: 12; color: Theme.textTertiary; anchors.verticalCenter: parent.verticalCenter }
                 }
                 MouseArea { id: folderArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: Qt.openUrlExternally("file://" + OllamaService.sandboxDir()) }
+                activeFocusOnTab: true
+                Accessible.role: Accessible.Link
+                Accessible.name: "Open the sandbox folder"
+                Accessible.onPressAction: Qt.openUrlExternally("file://" + OllamaService.sandboxDir())
+                Keys.onPressed: e => { if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { Qt.openUrlExternally("file://" + OllamaService.sandboxDir()); e.accepted = true; } }
+                FocusRing {}
             }
         }
 
@@ -553,6 +571,13 @@ Item {
                         }
                     }
                     MouseArea { id: srcArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { if (Turn.safeLink(src.modelData.url)) Qt.openUrlExternally(src.modelData.url); } }
+                    activeFocusOnTab: true
+                    Accessible.role: Accessible.Link
+                    Accessible.name: src.modelData.domain
+                    Accessible.description: src.modelData.read ? "A page it read" : "A search result it saw"
+                    Accessible.onPressAction: { if (Turn.safeLink(src.modelData.url)) Qt.openUrlExternally(src.modelData.url); }
+                    Keys.onPressed: e => { if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { if (Turn.safeLink(src.modelData.url)) Qt.openUrlExternally(src.modelData.url); e.accepted = true; } }
+                    FocusRing {}
                 }
             }
         }

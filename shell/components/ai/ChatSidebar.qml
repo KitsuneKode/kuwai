@@ -316,6 +316,12 @@ Rectangle {
                                 size: 12
                                 color: Theme.textTertiary
                                 MouseArea { anchors.fill: parent; anchors.margins: -4; cursorShape: Qt.PointingHandCursor; onClicked: root.confirming = "" }
+                                activeFocusOnTab: true
+                                Accessible.role: Accessible.Button
+                                Accessible.name: "Cancel"
+                                Accessible.onPressAction: root.confirming = ""
+                                Keys.onPressed: e => { if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { root.confirming = ""; e.accepted = true; } }
+                                FocusRing { cornerRadius: Theme.r1 }
                             }
                             Label {
                                 text: "Delete"
@@ -328,6 +334,13 @@ Rectangle {
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: { const id = row.chat.id; root.confirming = ""; root.hoverRow = null; OllamaService.deleteSession(id); }
                                 }
+                                activeFocusOnTab: true
+                                Accessible.role: Accessible.Button
+                                Accessible.name: "Delete chat"
+                                Accessible.description: row.chat ? row.chat.title || "" : ""
+                                Accessible.onPressAction: { const id = row.chat.id; root.confirming = ""; root.hoverRow = null; OllamaService.deleteSession(id); }
+                                Keys.onPressed: e => { if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { const id = row.chat.id; root.confirming = ""; root.hoverRow = null; OllamaService.deleteSession(id); e.accepted = true; } }
+                                FocusRing { cornerRadius: Theme.r1 }
                             }
                         }
                     }

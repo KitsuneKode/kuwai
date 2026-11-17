@@ -19,6 +19,14 @@ Rectangle {
     Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
     Icon { anchors.centerIn: parent; name: ab.icon; size: 15; color: abArea.containsMouse ? Theme.textPrimary : Theme.textTertiary }
     MouseArea { id: abArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: ab.clicked() }
+    // One with no icon only lends its tooltip to the control under it, which has the name.
+    activeFocusOnTab: ab.enabled && ab.icon !== ""
+    Accessible.ignored: ab.icon === ""
+    Accessible.role: Accessible.Button
+    Accessible.name: ab.tip || ab.icon
+    Accessible.onPressAction: ab.clicked()
+    Keys.onPressed: e => { if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { ab.clicked(); e.accepted = true; } }
+    FocusRing {}
 
     property bool tipShown: false
     Timer { id: tipDelay; interval: Theme.tipMs; onTriggered: ab.tipShown = true }

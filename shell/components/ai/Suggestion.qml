@@ -53,4 +53,10 @@ Rectangle {
         cursorShape: Qt.PointingHandCursor
         onClicked: root.clicked()
     }
+    activeFocusOnTab: true
+    Accessible.role: Accessible.Button
+    Accessible.name: root.text
+    Accessible.onPressAction: root.clicked()
+    Keys.onPressed: e => { if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { root.clicked(); e.accepted = true; } }
+    FocusRing {}
 }

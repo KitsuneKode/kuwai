@@ -130,6 +130,14 @@ Item {
                 cursorShape: Qt.PointingHandCursor
                 onClicked: { closeTimer.stop(); root.expanded = !root.expanded; }
             }
+            activeFocusOnTab: root.text !== ""
+            Accessible.role: Accessible.Button
+            Accessible.name: root.label
+            Accessible.expandable: root.text !== ""
+            Accessible.expanded: root.expanded
+            Accessible.onPressAction: if (root.text !== "") { closeTimer.stop(); root.expanded = !root.expanded; }
+            Keys.onPressed: e => { if (root.text !== "" && (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter)) { closeTimer.stop(); root.expanded = !root.expanded; e.accepted = true; } }
+            FocusRing { cornerRadius: Theme.r1 }
         }
 
         // While thinking: the newest lines, pinned to the bottom. Done: all of it.

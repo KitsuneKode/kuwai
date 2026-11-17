@@ -74,6 +74,14 @@ Item {
                 cursorShape: Qt.PointingHandCursor
                 onClicked: root.userOpen = !root.userOpen
             }
+            activeFocusOnTab: true
+            Accessible.role: Accessible.Button
+            Accessible.name: (Turn.toolSummary(root.parts) || ("Used " + root.parts.length + " tools")) + (root.anyFailed ? ", one failed" : "")
+            Accessible.expandable: true
+            Accessible.expanded: root.userOpen
+            Accessible.onPressAction: root.userOpen = !root.userOpen
+            Keys.onPressed: e => { if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { root.userOpen = !root.userOpen; e.accepted = true; } }
+            FocusRing { cornerRadius: Theme.r1 }
         }
 
         Item {

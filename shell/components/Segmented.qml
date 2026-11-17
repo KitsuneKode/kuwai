@@ -147,6 +147,11 @@ Rectangle {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: seg.picked(opt.modelData.id)
                 }
+                Accessible.role: Accessible.PageTab
+                Accessible.name: opt.modelData.label
+                Accessible.description: (opt.modelData.badge || 0) > 0 ? String(opt.modelData.badge) : ""
+                Accessible.selected: opt.on
+                Accessible.onPressAction: seg.picked(opt.modelData.id)
             }
         }
     }

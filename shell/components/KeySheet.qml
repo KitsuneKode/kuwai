@@ -20,6 +20,8 @@ Item {
     anchors.fill: parent
     z: 40
     visible: opacity > 0.01
+    Accessible.role: Accessible.Dialog
+    Accessible.name: sheet.title
     opacity: open ? 1 : 0
     Behavior on opacity { NumberAnimation { duration: sheet.open ? 140 : 90; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
 
@@ -35,6 +37,9 @@ Item {
         radius: 24
         color: Qt.rgba(0.05, 0.05, 0.07, 0.86)
         MouseArea { anchors.fill: parent; onClicked: sheet.open = false }
+        Accessible.role: Accessible.Button
+        Accessible.name: "Close " + sheet.title.toLowerCase()
+        Accessible.onPressAction: sheet.open = false
     }
 
     Item {

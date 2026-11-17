@@ -91,5 +91,9 @@ Item {
         shown: area.containsMouse && !bell.suppressTip
         below: true
     }
+    Accessible.role: Accessible.Button
+    Accessible.name: muted ? "Notifications, muted" : count > 0 ? "Notifications, " + count + " new" : "Notifications"
+    Accessible.description: bell.tip
+    Accessible.onPressAction: bell.tapped()
     FocusRing { cornerRadius: 13; gap: 2 }
 }

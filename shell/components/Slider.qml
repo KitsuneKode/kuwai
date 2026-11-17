@@ -184,6 +184,12 @@ Item {
     activeFocusOnTab: true
     Accessible.role: Accessible.Slider
     Accessible.name: s.label + (s.valueText ? ", " + s.valueText : "")
+    Accessible.onIncreaseAction: s.nudge(1)
+    Accessible.onDecreaseAction: s.nudge(-1)
+    function nudge(dir) {
+        const span = s.to - s.from, step = Math.max(Math.abs(s.stepSize), Math.abs(span) / 20) * (span < 0 ? -1 : 1);
+        s.moved(Math.max(Math.min(s.from, s.to), Math.min(Math.max(s.from, s.to), s.value + dir * step)));
+    }
     Keys.onPressed: e => {
         const span = s.to - s.from, big = e.modifiers & Qt.ShiftModifier;
         const step = Math.max(Math.abs(s.stepSize), Math.abs(span) / (big ? 5 : 20)) * (span < 0 ? -1 : 1);

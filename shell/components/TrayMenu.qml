@@ -132,6 +132,10 @@ Item {
                     Label { anchors.verticalCenter: parent.verticalCenter; text: tm.stack.length ? (tm.stack[tm.stack.length - 1].title || "Back").replace(/_/g, "") : ""; size: 13; weight: Theme.wSemibold }
                 }
                 MouseArea { id: backArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: tm.back() }
+                Accessible.role: Accessible.Button
+                Accessible.name: "Back"
+                Accessible.description: tm.stack.length ? (tm.stack[tm.stack.length - 1].title || "").replace(/_/g, "") : ""
+                Accessible.onPressAction: tm.back()
             }
 
             ListView {
@@ -231,6 +235,12 @@ Item {
                         }
                         onClicked: tm.trigger(row.e)
                     }
+                    // The app's own menu, as a screen reader would read it.
+                    Accessible.role: row.e.isSeparator ? Accessible.Separator : Accessible.MenuItem
+                    Accessible.name: (row.e.text || "").replace(/_(?!_)/g, "") + (row.e.hasChildren ? ", submenu" : "")
+                    Accessible.checkable: !row.e.isSeparator && row.e.buttonType !== QsMenuButtonType.None
+                    Accessible.checked: row.e.checkState === Qt.Checked
+                    Accessible.onPressAction: if (!row.e.isSeparator && row.e.enabled) tm.trigger(row.e)
                 }
             }
         }

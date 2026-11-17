@@ -17,6 +17,8 @@ Item {
     property Item anchorItem
     property bool open: false
     readonly property real menuW: 340
+    Accessible.role: Accessible.PopupMenu
+    Accessible.name: "Models"
     signal closed()
 
     anchors.fill: parent
@@ -274,6 +276,13 @@ Item {
                         onEntered: { menu.keyboard = false; menu.sel = row.index; }
                         onClicked: menu.pick(row.modelData)
                     }
+                    Accessible.role: Accessible.MenuItem
+                    Accessible.name: row.modelData.label + (row.modelData.role ? ", " + row.modelData.role : "")
+                    Accessible.description: (row.modelData.detail || "") + (row.modelData.loaded ? ". Loaded" : "")
+                    Accessible.checkable: true
+                    Accessible.checked: row.current
+                    Accessible.selected: menu.sel === row.index
+                    Accessible.onPressAction: menu.pick(row.modelData)
                 }
             }
         }

@@ -319,6 +319,9 @@ Rectangle {
                             Behavior on color { ColorAnimation { duration: Theme.colorMs } }
                             Icon { anchors.centerIn: parent; name: "x"; style: "bold"; size: 10; color: Theme.textTertiary }
                             MouseArea { id: xArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.removeChip(chip.modelData.key) }
+                            Accessible.role: Accessible.Button
+                            Accessible.name: "Remove " + chip.modelData.label
+                            Accessible.onPressAction: root.removeChip(chip.modelData.key)
                         }
                     }
                 }
@@ -524,6 +527,10 @@ Rectangle {
                         onNameChanged: rotation = 0
                     }
                     MouseArea { id: micArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.toggleMic() }
+                    Accessible.role: Accessible.Button
+                    Accessible.name: root.micState === "recording" ? "Stop dictating" : root.micState === "transcribing" ? "Writing it down" : "Dictate"
+                    Accessible.description: "Control D"
+                    Accessible.onPressAction: root.toggleMic()
                     MessageAction {
                         // Only for its tooltip: sits under the mic, never takes the click.
                         anchors.fill: parent
@@ -569,6 +576,12 @@ Rectangle {
                                     color: !modeSwitch.agent ? Theme.textPrimary : Theme.textTertiary }
                             MouseArea { id: chatSegArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                                         onClicked: { OllamaService.mode = "chat"; OllamaService.syncCurrentSession(); } }
+                            Accessible.role: Accessible.RadioButton
+                            Accessible.name: "Chat"
+                            Accessible.description: "Answers, search, prices, your screen; reads, never changes. Control period switches"
+                            Accessible.checkable: true
+                            Accessible.checked: !modeSwitch.agent
+                            Accessible.onPressAction: { OllamaService.mode = "chat"; OllamaService.syncCurrentSession(); }
                         }
                         Item {
                             id: agentSeg
@@ -584,6 +597,12 @@ Rectangle {
                             }
                             MouseArea { id: agentSegArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                                         onClicked: { OllamaService.mode = "agent"; OllamaService.syncCurrentSession(); } }
+                            Accessible.role: Accessible.RadioButton
+                            Accessible.name: "Agent"
+                            Accessible.description: "Files, sandbox, plans, your machine (asks first). Control period switches"
+                            Accessible.checkable: true
+                            Accessible.checked: modeSwitch.agent
+                            Accessible.onPressAction: { OllamaService.mode = "agent"; OllamaService.syncCurrentSession(); }
                         }
                     }
                     MessageAction { x: 0; width: chatSeg.width; height: 30; color: "transparent"; icon: ""; enabled: false; hoverSource: chatSegArea
@@ -640,6 +659,10 @@ Rectangle {
                         cursorShape: Qt.PointingHandCursor
                         onClicked: root.modelPickerRequested()
                     }
+                    Accessible.role: Accessible.ButtonMenu
+                    Accessible.name: "Model, " + OllamaService.modelLabel(OllamaService.model)
+                    Accessible.description: "Control K"
+                    Accessible.onPressAction: root.modelPickerRequested()
                     MessageAction {
                         anchors.fill: parent
                         color: "transparent"; icon: ""; enabled: false
@@ -692,6 +715,9 @@ Rectangle {
                             else if (root.canSend) root.submit();          // mid-answer this steers
                         }
                     }
+                    Accessible.role: Accessible.Button
+                    Accessible.name: stopping ? "Stop" : OllamaService.busyHere ? "Steer this answer" : "Send"
+                    Accessible.onPressAction: { if (stopping) OllamaService.cancel(); else if (root.canSend) root.submit(); }
                     MessageAction {
                         anchors.fill: parent
                         color: "transparent"; icon: ""; enabled: false

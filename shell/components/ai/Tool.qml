@@ -207,6 +207,14 @@ Item {
                 cursorShape: Qt.PointingHandCursor
                 onClicked: root.expanded = !root.expanded
             }
+            activeFocusOnTab: root.hasBody
+            Accessible.role: Accessible.Button
+            Accessible.name: (root.part.title || "Tool") + (root.statusText ? ", " + root.statusText : "")
+            Accessible.expandable: root.hasBody
+            Accessible.expanded: root.expanded
+            Accessible.onPressAction: if (root.hasBody) root.expanded = !root.expanded
+            Keys.onPressed: e => { if (root.hasBody && (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter)) { root.expanded = !root.expanded; e.accepted = true; } }
+            FocusRing { cornerRadius: Theme.r1 }
         }
 
         QuestionCard {
@@ -275,6 +283,12 @@ Item {
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: root.showAll = !root.showAll
                             }
+                            activeFocusOnTab: visible
+                            Accessible.role: Accessible.Button
+                            Accessible.name: root.showAll ? "Show less" : "Show all"
+                            Accessible.onPressAction: root.showAll = !root.showAll
+                            Keys.onPressed: e => { if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { root.showAll = !root.showAll; e.accepted = true; } }
+                            FocusRing { cornerRadius: Theme.r1 }
                         }
                         Label {
                             id: copyLabel
@@ -289,6 +303,12 @@ Item {
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: { Clipboard.copyText(root.bodyText); copyLabel.copied = true; copiedTimer.restart(); }
                             }
+                            activeFocusOnTab: true
+                            Accessible.role: Accessible.Button
+                            Accessible.name: copyLabel.copied ? "Copied" : "Copy the output"
+                            Accessible.onPressAction: { Clipboard.copyText(root.bodyText); copyLabel.copied = true; copiedTimer.restart(); }
+                            Keys.onPressed: e => { if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { Clipboard.copyText(root.bodyText); copyLabel.copied = true; copiedTimer.restart(); e.accepted = true; } }
+                            FocusRing { cornerRadius: Theme.r1 }
                         }
                     }
                 }
