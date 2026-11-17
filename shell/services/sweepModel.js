@@ -4,6 +4,7 @@
 // mark. Pure, so tests/shell/sweep-model.test.mjs can hold it to account.
 //   compact(bytes)                      → "16G" / "9.5G" / "640M"
 //   segments(kinds, total, tones)       → [{ kind, bytes, count, share, tone }] (top kinds + "other")
+//   where(path, name)                   → { repo, name }: a worktree names its repo
 //   headline(bytes, projects, days)     → "16.2 GB · 38 projects idle 30+ days"
 //   caption(seg, idleSplit, allBytes)   → the words under the bar
 //   worthMark(idleBytes, minBytes)      → bool
@@ -45,6 +46,16 @@ function segments(kinds, total, tones, max) {
     }
     if (rest > sum * 0.005) keep.push({ kind: "other", bytes: rest, count: 0, share: rest / sum });
     return keep.map((s, i) => Object.assign(s, { tone: tones[i % tones.length] }));
+}
+
+// A row's names: a worktree says whose it is. ".../rice/.worktrees/sweep-ui"
+// (or ".../rice/.claude/worktrees/x") → { repo: "rice", name: "sweep-ui" };
+// anything else → { repo: "", name }.
+function where(path, name) {
+    const p = String(path || "").replace(/\/+$/, "");
+    const m = /\/([^/]+)\/(?:\.worktrees|\.claude\/worktrees)\/([^/]+)$/.exec(p);
+    if (m) return { repo: m[1], name: m[2] };
+    return { repo: "", name: String(name || p.slice(p.lastIndexOf("/") + 1) || p) };
 }
 
 // The header's line: "16.2 GB · 38 projects idle 30+ days".

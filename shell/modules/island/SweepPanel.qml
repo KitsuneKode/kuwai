@@ -169,11 +169,24 @@ FocusScope {
                     y: index * list.rowH
                     width: list.width
                     height: list.rowH
-                    Label {
+                    // A worktree says whose it is: "rice › sweep-ui", the repo quieter.
+                    readonly property var at: Model.where(modelData.path, modelData.name)
+                    Row {
                         anchors { left: parent.left; leftMargin: 10; right: meta.left; rightMargin: 12; verticalCenter: parent.verticalCenter }
-                        text: row.modelData.name
-                        size: Theme.tBody; weight: Theme.wMedium
-                        elide: Text.ElideRight
+                        spacing: 0
+                        Label {
+                            id: repoName
+                            visible: row.at.repo !== ""
+                            text: row.at.repo + " › "
+                            size: Theme.tBody
+                            color: Theme.textTertiary
+                        }
+                        Label {
+                            width: parent.width - (repoName.visible ? repoName.width : 0)
+                            text: row.at.name
+                            size: Theme.tBody; weight: Theme.wMedium
+                            elide: Text.ElideRight
+                        }
                     }
                     Label {
                         id: meta
@@ -188,7 +201,7 @@ FocusScope {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onContainsMouseChanged: { if (containsMouse) panel.hoverRow = row; else if (panel.hoverRow === row) panel.hoverRow = null; }
-                        onClicked: { Sweep.openUi(); Island.close(); }
+                        onClicked: { Sweep.openUi(row.modelData.path); Island.close(); }
                     }
                 }
             }

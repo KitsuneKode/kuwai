@@ -6,7 +6,7 @@
    "idle":{"days":30,"projects":6,"bytes":3.1e10,
            "kinds":[{"kind":"node_modules","bytes":2.2e10,"count":9}]},
    "kinds":[{"kind":"node_modules","bytes":2e10,"count":210}],
-   "projects":[{"name":"old-app","bytes":4e9,"idleDays":212}]}
+   "projects":[{"name":"old-app","path":"/home/me/Projects/old-app","bytes":4e9,"idleDays":212}]}
 
 Never blocks the shell: it prints the last answer at once. When that answer is
 older than the TTL (30 min, like the notch apps it follows) it starts one
@@ -20,7 +20,7 @@ is held), `pending` that nothing has been counted for this folder yet.
 shown as `protected`, never as space you can have. A project whose last
 activity sweep could not read is not called idle (unknown is not idle).
 Read-only: nothing is deleted or changed outside the cache file (0600; it holds
-project names, kept on this machine).
+project names and paths, kept on this machine).
 
   rice-sweep                  the last answer (+ a background refresh if stale)
   rice-sweep --refresh        refresh now, wait for it, print the new answer
@@ -93,7 +93,8 @@ def summarize(plan: dict, now_ms: float, idle_days: int = IDLE_DAYS, top_kinds: 
     for root, p in projects.items():
         days = int((now_ms - p["active"]) // DAY_MS)
         if days >= idle_days:
-            idle.append({"name": os.path.basename(root.rstrip("/")) or root, "bytes": p["bytes"], "idleDays": days})
+            idle.append({"name": os.path.basename(root.rstrip("/")) or root, "path": root,
+                         "bytes": p["bytes"], "idleDays": days})
             for name, v in p["kinds"].items():
                 ik = idle_kinds.setdefault(name, {"bytes": 0, "count": 0})
                 ik["bytes"] += v["bytes"]
@@ -187,7 +188,9 @@ def from_status(st: dict) -> dict:
         "reclaimable": st["reclaimableBytes"], "safe": st["safeBytes"], "caution": st["cautionBytes"],
         "protected": st["protectedCount"], "idle": idle,
         "kinds": st.get("kinds", [])[:4],
-        "projects": [{"name": p["name"], "bytes": p["bytes"], "idleDays": p["idleDays"]}
+        # The path, so a row opens the project it names.
+        "projects": [{"name": p["name"], "bytes": p["bytes"], "idleDays": p["idleDays"],
+                      **({"path": p["path"]} if isinstance(p.get("path"), str) else {})}
                      for p in st.get("projects", [])[:5]],
     }
 

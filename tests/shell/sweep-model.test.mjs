@@ -5,8 +5,8 @@ import { readFileSync } from "node:fs";
 
 const lib = readFileSync(new URL("../../shell/services/sweepModel.js", import.meta.url), "utf8").replace(/^\.pragma library\s*$/m, "");
 const names = ["compact", "long", "segments", "worthMark", "parseViewed", "viewedText", "isFresh", "reconcileViewed", "viewedAfterLook",
-    "headline", "caption", "tilde", "emptyText", "footText", "idleText", "agoText"];
-const { headline, caption, compact, long, segments, worthMark, parseViewed, viewedText, isFresh, reconcileViewed, viewedAfterLook, tilde, emptyText, footText, idleText, agoText } =
+    "where", "headline", "caption", "tilde", "emptyText", "footText", "idleText", "agoText"];
+const { where, headline, caption, compact, long, segments, worthMark, parseViewed, viewedText, isFresh, reconcileViewed, viewedAfterLook, tilde, emptyText, footText, idleText, agoText } =
     new Function(lib + "\nreturn { " + names.join(", ") + " };")();
 const GB = 1e9;
 
@@ -112,6 +112,15 @@ describe("looked at", () => {
         expect(isFresh(20 * GB, parseViewed("3"), MIN)).toBe(true);   // where the old key came back
         for (const junk of ["", "  ", "nope", "{}", '{"bytes":"x"}', '{"bytes":-1}', "[]", "null", undefined, null])
             expect(parseViewed(junk)).toBe(null);
+    });
+});
+
+describe("rows", () => {
+    test("a worktree names the repo it belongs to", () => {
+        expect(where("/home/me/Projects/rice/.worktrees/sweep-capsule", "sweep-capsule")).toEqual({ repo: "rice", name: "sweep-capsule" });
+        expect(where("/home/me/Projects/app/.claude/worktrees/fix-x/", "fix-x")).toEqual({ repo: "app", name: "fix-x" });
+        expect(where("/home/me/Projects/old-app", "old-app")).toEqual({ repo: "", name: "old-app" });
+        expect(where(undefined, "old-app")).toEqual({ repo: "", name: "old-app" });
     });
 });
 

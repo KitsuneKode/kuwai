@@ -59,7 +59,7 @@ def test_idle_means_known_and_old_never_unknown(rs):
     ]}
     s = rs.summarize(plan, NOW * 1000)
     assert {k: v for k, v in s["idle"].items() if k != "kinds"} == {"days": 30, "projects": 1, "bytes": 6 * GB}
-    assert s["projects"] == [{"name": "old", "bytes": 6 * GB, "idleDays": 212}]
+    assert s["projects"] == [{"name": "old", "path": "/p/old", "bytes": 6 * GB, "idleDays": 212}]
 
 
 def test_idle_kinds_split_only_the_idle_projects_and_add_up_to_the_headline(rs):
@@ -229,7 +229,10 @@ def test_sweeps_own_status_is_used_when_it_has_one(rs, tmp_path, monkeypatch):
     assert (data["reclaimable"], data["safe"], data["caution"], data["protected"]) == (7 * GB, 2 * GB, 5 * GB, 3)
     assert data["idle"] == {"days": 30, "projects": 1, "bytes": 4 * GB}          # no idle.kinds: left out
     assert len(data["kinds"]) == 4                                   # the island shows four
-    assert data["projects"] == [{"name": "old", "bytes": 4 * GB, "idleDays": 212}]   # paths stay in sweep
+    # The path comes along: a row opens the project it names.
+    assert data["projects"] == [{"name": "old", "path": "/p/old", "bytes": 4 * GB, "idleDays": 212}]
+    no_path = {**STATUS, "projects": [{"name": "old", "bytes": 4 * GB, "idleDays": 212}]}
+    assert rs.from_status(no_path)["projects"] == [{"name": "old", "bytes": 4 * GB, "idleDays": 212}]
 
 
 def test_status_idle_kinds_are_kept_when_sweep_gives_them(rs):
