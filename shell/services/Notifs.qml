@@ -13,6 +13,9 @@ import Quickshell.Io
 import Quickshell.Hyprland
 import Quickshell.Services.Notifications
 import qs.config
+// Quickshell watches QML files, not the JS modules they import: after
+// changing otp.mjs, save a QML file too (or restart) or the old rule keeps
+// running. Found 2026-11-17: two edits to otp.mjs, no reload.
 import "otp.mjs" as Otp
 
 Singleton {
