@@ -258,6 +258,15 @@ export function commit(h) {
     return { holds: { batches: [], until: 0, gone: gone }, ids: ids, pins: pins, secrets: secrets };
 }
 
+/** Ids being deleted outside a window (a purge at start): hidden until the list stops showing them.
+ * @param {Holds} h @param {string[]} ids @returns {Holds} */
+export function markGone(h, ids) {
+    if (!ids.length) return h;
+    const gone = copyMap(h.gone);
+    for (const id of ids) gone[id] = true;
+    return { batches: h.batches, until: h.until, gone: gone };
+}
+
 /** Forget deleted ids the list no longer has (cliphist never reuses an id).
  * @param {Holds} h @param {Array<{ id: string }>} items @returns {Holds} */
 export function prune(h, items) {

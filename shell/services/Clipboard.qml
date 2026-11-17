@@ -20,6 +20,9 @@ import Quickshell
 import Quickshell.Hyprland
 import qs.config
 import Quickshell.Io
+// Quickshell reloads on QML changes, not on the JS modules they import: after
+// changing clipstate.mjs, save a QML file too (or restart).
+import "clipstate.mjs" as ClipState
 
 Singleton {
     id: root
@@ -72,7 +75,9 @@ Singleton {
     property var screen: null
     property string startFilter: "all"
 
-    property var items: []          // history, newest first: entry objects (see parse)
+    property var items: []          // history, newest first: entry objects (see parse), without held deletes
+    property var raw: []            // the same as cliphist lists it, held deletes included
+    function setRaw(list) { raw = list; items = ClipState.visible(list, holds); }
     property var pins: []           // pinned entries, newest pin first
     property var times: ({})        // cliphist id → when it was copied (ms)
     property bool loaded: false
@@ -136,7 +141,8 @@ Singleton {
                     out.push(root.parse(line.slice(0, tab), line.slice(tab + 1)));
                 }
                 root.stampNew(out);
-                root.items = out;
+                root.holds = ClipState.prune(root.holds, out);
+                root.setRaw(out);
                 root.loaded = true;
             }
         }
@@ -291,9 +297,9 @@ Singleton {
             if (!due.length) return;
             root.expiring = root.expiring.filter(x => x.at > now);
             for (const x of due) {
-                const e = root.items.find(i => i.id === x.id);
+                const e = root.raw.find(i => i.id === x.id);
                 if (e && root.isPinned(e)) continue;
-                root.items = root.items.filter(i => i.id !== x.id);
+                root.setRaw(root.raw.filter(i => i.id !== x.id));
                 root.run(["delete", x.id]);
                 root.forgetSecret(x.id);
             }
@@ -391,15 +397,62 @@ Singleton {
         }
         return e.kind === "image" ? "Open in image viewer" : e.kind === "path" ? "Open the file" : "Open with default app";
     }
-    function remove(e) {
-        if (e.pin !== "") { togglePin(e); return; }
-        items = items.filter(x => x.id !== e.id);
-        // Its decoded image goes with it (rice-clip delete removes the file).
-        if (thumbs[e.id]) { const t = Object.assign({}, thumbs); delete t[e.id]; thumbs = t; }
-        forgetSecret(e.id);
-        run(["delete", e.id]);
+    // ── Deleting, with a way back (⌃Z for Theme.undoMs) ───────────────────
+    // cliphist can't put a copy back where it was, so a delete is held: the
+    // entry is hidden (a pin leaves the pin list, its place remembered) and
+    // deleted for real when the window ends, when the panel closes, or, after
+    // a restart in between, at the next start (the held ids are in the state
+    // file). The bookkeeping is services/clipstate.mjs (tests/shell).
+    property var holds: ClipState.empty()
+    readonly property bool canUndo: holds.batches.length > 0
+    // Hold a delete of these entries; returns how many it holds.
+    function hold(entries) {
+        const h = ClipState.hold(holds, entries, pins, Date.now(), Theme.undoMs);
+        if (h === holds) return 0;
+        const b = h.batches[h.batches.length - 1];
+        holds = h;
+        if (b.pins.length) pins = ClipState.withoutPins(pins, b);
+        items = ClipState.visible(raw, holds);
+        saveState();
+        holdWindow.restart();
+        return b.ids.length + b.pins.length;
     }
-    function wipe() { items = []; thumbs = ({}); renders = ({}); run(["wipe"]); }
+    // Bring the latest delete back; returns its cards' keys ("i:id", "p:pin"),
+    // or null when there's nothing left to undo (or the window has ended).
+    function undo() {
+        const r = ClipState.undo(holds, Date.now());
+        if (!r.batch) return null;
+        holds = r.holds;
+        if (r.batch.pins.length) pins = ClipState.withPins(pins, r.batch);
+        items = ClipState.visible(raw, holds);
+        saveState();
+        if (!holds.batches.length) holdWindow.stop();
+        return ClipState.keysOf(r.batch);
+    }
+    // The window ends: what's held is deleted for real, secrets included.
+    function commitHeld() {
+        holdWindow.stop();
+        if (!holds.batches.length) return;
+        const c = ClipState.commit(holds);
+        holds = c.holds;
+        purge(c.ids, c.pins);
+    }
+    Timer { id: holdWindow; interval: Theme.undoMs; onTriggered: root.commitHeld() }
+    onOpenChanged: if (!open) commitHeld()
+    function purge(ids, pinFiles) {
+        // The copy on top going isn't a new copy: no "Copied" pill for the one under it.
+        if (ids.indexOf(lastTop) >= 0) lastTop = "";
+        // Its decoded image goes with it (rice-clip delete removes the file).
+        if (ids.some(id => thumbs[id])) { const t = Object.assign({}, thumbs); for (const id of ids) delete t[id]; thumbs = t; }
+        expiring = expiring.filter(x => ids.indexOf(x.id) < 0);
+        for (const id of ids) { forgetSecret(id); run(["delete", id]); }
+        for (const p of pinFiles) run(["unpin", p]);
+        setRaw(raw);
+        saveState();
+    }
+    // Delete now, no way back (TEMP: the panel moves to hold() in the next commit).
+    function remove(e) { hold([e]); commitHeld(); }
+    function wipe() { commitHeld(); setRaw([]); thumbs = ({}); renders = ({}); run(["wipe"]); }
     // Edited or transformed text: copy it, or paste it where you were.
     function copyText(t) { open = false; run(["copy-text", t]); }
     function pasteText(t) { const cls = target.cls || ""; const addr = target.address || ""; open = false; run(["paste-text", t, cls, addr]); }
@@ -447,8 +500,8 @@ Singleton {
     }
     // Forget everything that looks like a secret, in one go.
     function forgetSecrets() {
-        const s = items.filter(e => e.secret);
-        items = items.filter(e => !e.secret);
+        const s = raw.filter(e => e.secret);
+        setRaw(raw.filter(e => !e.secret));
         for (const e of s) run(["delete", e.id]);
     }
 
@@ -521,9 +574,17 @@ Singleton {
                 root.pins = (d.pins || []).map(p => Object.assign(root.parse("", p.preview || "", { pin: p.pin, source: p.source || "" }), { pinnedAt: p.pinnedAt || 0, time: p.time || 0 }));
                 // The history may have been read first: mark (and start the
                 // deadline of) what the saved ids say is a secret.
-                root.items = root.items.map(e => root.secretIds[e.id] && !e.secret ? Object.assign({}, e, { secret: true }) : e);
-                for (const e of root.items)
+                root.setRaw(root.raw.map(e => root.secretIds[e.id] && !e.secret ? Object.assign({}, e, { secret: true }) : e));
+                for (const e of root.raw)
                     if (root.secretIds[e.id] && !root.isPinned(e)) root.expireSoon(e.id, root.times[e.id]);
+                // Deletes still held when the shell last stopped: purged now, never shown again.
+                const left = ClipState.fromState(d.held);
+                if (left.ids.length || left.pins.length) {
+                    root.pins = root.pins.filter(p => left.pins.indexOf(p.pin) < 0);
+                    root.holds = ClipState.markGone(root.holds, left.ids);
+                    root.setRaw(root.raw);
+                    Qt.callLater(() => root.purge(left.ids, left.pins));   // not from inside the file's own load
+                }
             } catch (e) {}
         }
     }
@@ -533,7 +594,8 @@ Singleton {
         if (!stateLoaded) return;
         state.setText(JSON.stringify({
             pins: pins.map(p => ({ pin: p.pin, source: p.source, preview: p.preview, pinnedAt: p.pinnedAt, time: p.time })),
-            secrets: secretIds
+            secrets: secretIds,
+            held: ClipState.toState(holds)
         }));
     }
     Component.onCompleted: refresh()

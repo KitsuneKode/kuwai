@@ -3,7 +3,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   MODES, OVERLAYS, parentOf, toggle, leave, surfaces, overlayCount, holdsOpen, route, escapeStep,
-  empty, hold, held, visible, withoutPins, withPins, canUndo, undo, commit, prune, toState, fromState, keysOf,
+  empty, hold, held, visible, withoutPins, withPins, canUndo, undo, commit, markGone, prune, toState, fromState, keysOf,
 } from "../../shell/services/clipstate.mjs";
 
 const UNDO = 5000;
@@ -248,6 +248,10 @@ describe("undo for delete", () => {
     const h = hold(empty(), [secret, pins[0]], pins, 0, UNDO);
     const saved = JSON.parse(JSON.stringify({ held: toState(h) }));
     expect(fromState(saved.held)).toEqual({ ids: ["4"], pins: ["p1"] });
+    // At the next start: hidden from the first list read, then deleted for real.
+    const start = markGone(empty(), fromState(saved.held).ids);
+    expect(ids(visible([...history, secret], start))).toEqual(ids(history));
+    expect(canUndo(start, 0)).toBe(false);
     expect(fromState(undefined)).toEqual({ ids: [], pins: [] });
     expect(fromState({ ids: "4", pins: [3, "", "ok"] })).toEqual({ ids: [], pins: ["ok"] });
   });
