@@ -228,6 +228,41 @@ def test_the_background_beat_is_6h_and_the_panel_asks_for_30_min(rs, tmp_path, p
     assert rs.main(["--max-age", "soon"]) == 2
 
 
+def test_the_review_opens_in_your_terminal(rs):
+    run = ["sh", "-c", rs.REVIEW_SH, "sh", "/x/sweep", "/p/app"]
+    assert rs.open_cmd("", "/x/sweep", "/p/app") == [
+        "kitty", "--single-instance", "--instance-group=local", "--title", "sweep", "--directory", "/p/app", *run]
+    assert rs.open_cmd("/usr/bin/kitty", "/x/sweep", "/p/app")[0] == "kitty"
+    assert rs.open_cmd("ghostty", "/x/sweep", "/p/app") == [
+        "ghostty", "--working-directory=/p/app", "--title=sweep", "-e", *run]
+    assert rs.open_cmd("foot", "/x/sweep", "/p/app") == ["foot", "--working-directory=/p/app", "--title=sweep", *run]
+    assert rs.open_cmd("alacritty --class x", "/x/sweep", "/p/app") == ["alacritty", "--class", "x", "-e", *run]
+
+
+@pytest.mark.parametrize("code,kept", [(0, False), (3, True)])
+def test_the_window_stays_only_when_sweep_failed(rs, tmp_path, code, kept):
+    import subprocess
+    fake = tmp_path / "sweep"
+    fake.write_text(f"#!/bin/sh\n[ \"$1\" = ui ] && [ \"$2\" = /p/app ] || exit 99\nexit {code}\n")
+    fake.chmod(0o755)
+    r = subprocess.run(["sh", "-c", rs.REVIEW_SH, "sh", str(fake), "/p/app"], input="\n",
+                       capture_output=True, text=True, timeout=10)
+    assert r.returncode == code
+    assert ("Press Enter to close" in r.stdout) is kept
+
+
+def test_open_needs_sweep_and_a_folder(rs, tmp_path, monkeypatch):
+    spawned = []
+    monkeypatch.setattr(rs.subprocess, "Popen", lambda cmd, **kw: spawned.append((cmd, kw["cwd"])))
+    monkeypatch.setattr(rs, "find_sweep", lambda: None)
+    assert rs.open_review(str(tmp_path)) == 1 and spawned == []
+    monkeypatch.setattr(rs, "find_sweep", lambda: "/x/sweep")
+    assert rs.open_review(str(tmp_path / "gone")) == 1 and spawned == []
+    monkeypatch.setenv("KUWAI_TERMINAL", "foot")
+    assert rs.main(["--open", str(tmp_path)]) == 0
+    assert spawned[0][0][0] == "foot" and spawned[0][1] == str(tmp_path)
+
+
 STATUS = {
     "reclaimableBytes": 7 * GB, "safeBytes": 2 * GB, "cautionBytes": 5 * GB, "protectedCount": 3,
     "idle": {"days": 30, "projects": 1, "bytes": 4 * GB},

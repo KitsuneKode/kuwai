@@ -11,8 +11,9 @@ pragma Singleton
 //                      acting on (Settings.sweepMinGB) and new to you (looking
 //                      keeps the size you saw; it returns 5 GB past that)
 //   Sweep.compact      "16G", the mark's value
-//   Sweep.openUi(path) sweep's own review (of one project, or the folder), in a terminal. Nothing is deleted
-//                      from the island: removal stays behind sweep's confirm.
+//   Sweep.openUi(path) sweep's own review of one project (or the folder), in
+//                      your terminal. Nothing is deleted from the island:
+//                      removal stays behind sweep's confirm.
 //
 // Without sweep installed, `alive` is false and nothing here shows.
 import QtQuick
@@ -138,14 +139,14 @@ Singleton {
     }
     Timer { id: cacheMoved; interval: 250; onTriggered: if (root.data !== null) root.check(true) }
 
-    // sweep's review, in a terminal on the folder it counted. PATH gets the
-    // places sweep is usually installed, which a desktop session often lacks.
+    // sweep's review, in your terminal ($KUWAI_TERMINAL, as bin/kuwai-term
+    // picks it): rice-sweep --open finds sweep where a desktop session's PATH
+    // often doesn't look (~/.bun/bin), and keeps the window only on an error.
     // `path`: one project (a row); none: the folder it counted.
     function openUi(path) {
         markViewed();
         const dir = path || scanRoot || Quickshell.env("HOME") + "/Projects";
-        Quickshell.execDetached(["kitty", "--single-instance", "--instance-group=local", "--title", "sweep", "--directory", dir,
-            "sh", "-c", "PATH=\"$HOME/.bun/bin:$HOME/.local/bin:$PATH\" exec sweep ui \"$1\"", "sh", dir]);
+        Quickshell.execDetached([bin, "--open", dir]);
     }
     // qs ipc -p <shell> call sweep open | refresh  (keybinds, tests)
     IpcHandler {
