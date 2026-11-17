@@ -52,7 +52,9 @@ FocusScope {
     // (a preview, ~220 ms): only after it has stayed open a moment, so the
     // pointer passing over the mark doesn't count.
     readonly property int dwellMs: 1500
-    Component.onCompleted: { Sweep.check(true); if (!Island.previewing) Sweep.markViewed(); }
+    // Opening it asks for a count no older than 30 min (the mark's own is 6 h).
+    readonly property int freshS: 1800
+    Component.onCompleted: { Sweep.check(true, panel.freshS); if (!Island.previewing) Sweep.markViewed(); }
     Timer { interval: panel.dwellMs; running: Island.previewing && panel.visible; onTriggered: Sweep.markViewed() }
 
     readonly property var tones: [Theme.green, Theme.cyan, Theme.orange, Theme.indigo]

@@ -3,8 +3,9 @@ pragma Singleton
 // Idle projects, for the island: how much space sweep could give back, and
 // which old projects hold it (the island's mark, SweepPanel, the launcher).
 // The work is bin/rice-sweep's: it prints its last answer at once and, when
-// that is older than 30 minutes, refreshes in the background at idle priority.
-// So this only ever reads a cache (a few ms) and never waits on a scan.
+// that is older than 6 h (30 min when you open the panel), refreshes in the
+// background at idle priority. So this only ever reads a cache (a few ms) and
+// never waits on a scan; a finished refresh is noticed by watching the cache.
 //
 //   Sweep.fresh        the mark shows: enabled, sweep found, the number is worth
 //                      acting on (Settings.sweepMinGB) and new to you (looking
@@ -23,7 +24,8 @@ import "sweepModel.js" as Model
 Singleton {
     id: root
 
-    readonly property string bin: Quickshell.shellDir + "/../bin/rice-sweep"
+    readonly property string bin: Paths.bin + "/rice-sweep"
+    readonly property string stateDir: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/rice"
     readonly property bool enabled: Settings.sweepMark
 
     property var data: null
@@ -62,7 +64,7 @@ Singleton {
 
     FileView {
         id: viewedFile
-        path: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/rice/sweep-viewed"
+        path: root.stateDir + "/sweep-viewed"
         printErrors: false
         onLoaded: { root.viewedBytes = Model.parseViewed(text()); root.viewedRead = true; root.reconcile(); }
         onLoadFailed: root.viewedRead = true          // no file yet: unseen
@@ -90,10 +92,20 @@ Singleton {
     // The mark's own beat runs only while it's enabled; `force` is someone
     // asking (the panel open, `rice sweep`, the IPC), which works with the
     // mark off too: the off switch is for the mark, not for the panel.
-    function check(force) { if ((enabled || force) && !poll.running) poll.running = true; }
+    // `maxAge` (seconds): refresh if the answer is older (the panel: 30 min);
+    // none: rice-sweep's own 6 h. Asked while a poll runs: asked again after.
+    property int askAge: 0
+    property int queuedAge: -1
+    function check(force, maxAge) {
+        if (!enabled && !force) return;
+        if (poll.running) { queuedAge = Math.max(queuedAge, maxAge || 0); return; }
+        askAge = maxAge || 0;
+        poll.running = true;
+    }
     Process {
         id: poll
-        command: [root.bin]
+        command: root.askAge > 0 ? [root.bin, "--max-age", String(root.askAge)] : [root.bin]
+        onExited: if (root.queuedAge >= 0) { const a = root.queuedAge; root.queuedAge = -1; root.check(true, a); }
         stdout: StdioCollector {
             onStreamFinished: {
                 try {
@@ -115,6 +127,16 @@ Singleton {
     // a little after, then every few minutes. Each call reads the cache.
     Timer { interval: 45000; running: root.enabled; onTriggered: root.check() }
     Timer { interval: 300000; running: root.enabled; repeat: true; onTriggered: root.check() }
+    // A refresh finishing rewrites the cache (atomically: a new file in its
+    // place, which FileView's watch does notice, checked on Quickshell 0.3.2):
+    // read the new answer then, instead of waiting for the next look.
+    FileView {
+        path: root.stateDir + "/sweep-status.json"
+        watchChanges: true
+        printErrors: false
+        onFileChanged: { reload(); cacheMoved.restart(); }
+    }
+    Timer { id: cacheMoved; interval: 250; onTriggered: if (root.data !== null) root.check(true) }
 
     // sweep's review, in a terminal on the folder it counted. PATH gets the
     // places sweep is usually installed, which a desktop session often lacks.

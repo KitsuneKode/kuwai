@@ -9,8 +9,9 @@
    "projects":[{"name":"old-app","path":"/home/me/Projects/old-app","bytes":4e9,"idleDays":212}]}
 
 Never blocks the shell: it prints the last answer at once. When that answer is
-older than the TTL (30 min, like the notch apps it follows) it starts one
-refresh in the background and exits. The refresh is `sweep scan --json` run at
+older than the TTL (6 h: idle projects change slowly; the panel, when you open
+it, asks with --max-age 1800) it starts one refresh in the background and
+exits. The refresh is `sweep scan --json` run at
 idle CPU and I/O priority under a lock, written to the cache atomically.
 A failed refresh (the folder missing, sweep gone, the scan failing) is noted in
 the cache as `error` + `failedAt` beside the last good answer, which is still
@@ -24,6 +25,7 @@ project names and paths, kept on this machine).
 
   rice-sweep                  the last answer (+ a background refresh if stale)
   rice-sweep --refresh        refresh now, wait for it, print the new answer
+  rice-sweep --max-age S      refresh in the background if the answer is older than S seconds
   rice-sweep --root DIR       what to scan (default $RICE_SWEEP_ROOT or ~/Projects)
 """
 import fcntl
@@ -36,7 +38,7 @@ import tempfile
 import time
 from pathlib import Path
 
-TTL_S = int(os.environ.get("RICE_SWEEP_TTL", "1800"))
+TTL_S = int(os.environ.get("RICE_SWEEP_TTL", str(6 * 3600)))
 FAIL_RETRY_S = 1800          # after a failed refresh, wait this long before the next try
 IDLE_DAYS = 30
 SCAN_TIMEOUT_S = 180
@@ -300,13 +302,22 @@ def main(argv: list[str]) -> int:
         i = args.index("--root")
         root = args[i + 1] if i + 1 < len(args) else root
         del args[i:i + 2]
+    ttl = TTL_S
+    if "--max-age" in args:
+        i = args.index("--max-age")
+        try:
+            ttl = max(0, int(args[i + 1]))
+        except (IndexError, ValueError):
+            print("rice-sweep: --max-age takes seconds", file=sys.stderr)
+            return 2
+        del args[i:i + 2]
     root = os.path.realpath(os.path.expanduser(root))
     cache = state_dir() / "sweep-status.json"
     if "--refresh" in args:
         data = refresh(root, cache) or read_cache(cache) or {"alive": find_sweep() is not None, "pending": True}
         print(json.dumps(data, separators=(",", ":")))
         return 0
-    out, needs_refresh = answer(cache, root, time.time())
+    out, needs_refresh = answer(cache, root, time.time(), ttl)
     print(json.dumps(out, separators=(",", ":")))
     sys.stdout.flush()
     if needs_refresh:

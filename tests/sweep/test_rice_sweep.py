@@ -107,7 +107,7 @@ def test_answer_serves_the_cache_and_asks_for_a_refresh_only_when_stale(rs, tmp_
     rs.write_cache(p, {"alive": True, "checkedAt": int(NOW) - 60, "root": proj, "reclaimable": 7})
     out, again = rs.answer(p, proj, NOW)
     assert (out["stale"], out["refreshing"], again, out["reclaimable"]) == (False, False, False, 7)
-    out, again = rs.answer(p, proj, NOW + 3600)
+    out, again = rs.answer(p, proj, NOW + 3600, ttl=1800)
     assert (out["stale"], out["refreshing"], again, out["reclaimable"]) == (True, True, True, 7)   # stale still shown
 
 
@@ -154,7 +154,7 @@ def test_refresh_scans_once_under_the_lock_and_caches(rs, tmp_path, proj, monkey
     # Served with the note; no new try until the back-off is over.
     out, again = rs.answer(p, proj, NOW + 1000, ttl=600)
     assert (out["reclaimable"], out["error"][:11], out["stale"], again) == (GB, "scan failed", True, False)
-    out, again = rs.answer(p, proj, NOW + 1 + rs.FAIL_RETRY_S + 1)
+    out, again = rs.answer(p, proj, NOW + 1 + rs.FAIL_RETRY_S + 1, ttl=1800)
     assert again is True
     # The next good count clears the note.
     monkeypatch.setattr(rs, "scan", lambda root: {"candidates": [cand("target", 2 * GB)]})
@@ -202,7 +202,7 @@ def test_while_the_lock_is_held_it_says_refreshing_and_starts_no_second(rs, tmp_
     with open(rs.lock_path(p), "a") as held:
         fcntl.flock(held, fcntl.LOCK_EX | fcntl.LOCK_NB)
         assert rs.is_refreshing(p) is True
-        out, again = rs.answer(p, proj, NOW)
+        out, again = rs.answer(p, proj, NOW, ttl=1800)
         assert (out["refreshing"], out["stale"], out["reclaimable"], again) == (True, True, 7, False)
         assert rs.refresh(proj, p, now=NOW) is None
         assert rs.read_cache(p)["checkedAt"] == int(NOW) - 7200          # untouched
@@ -210,6 +210,22 @@ def test_while_the_lock_is_held_it_says_refreshing_and_starts_no_second(rs, tmp_
         p.unlink()
         assert rs.answer(p, proj, NOW) == ({"alive": True, "pending": True, "root": proj, "refreshing": True}, False)
     assert rs.is_refreshing(p) is False
+
+
+def test_the_background_beat_is_6h_and_the_panel_asks_for_30_min(rs, tmp_path, proj, monkeypatch, capsys):
+    monkeypatch.setattr(rs, "find_sweep", lambda: "/usr/bin/sweep")
+    monkeypatch.setattr(rs, "state_dir", lambda: tmp_path / "state")
+    monkeypatch.setattr(rs.time, "time", lambda: NOW)
+    spawned = []
+    monkeypatch.setattr(rs.subprocess, "Popen", lambda cmd, **kw: spawned.append(cmd))
+    rs.write_cache(tmp_path / "state" / "sweep-status.json", {"alive": True, "checkedAt": int(NOW) - 2 * 3600, "root": proj})
+    assert rs.TTL_S == 6 * 3600
+    assert rs.main(["--root", proj]) == 0 and spawned == []                       # 2 h old: fine for the mark
+    assert json.loads(capsys.readouterr().out)["stale"] is False
+    assert rs.main(["--max-age", "1800", "--root", proj]) == 0                    # the panel: older than 30 min
+    assert len(spawned) == 1 and spawned[0][-3:] == ["--refresh", "--root", proj]
+    assert json.loads(capsys.readouterr().out)["refreshing"] is True
+    assert rs.main(["--max-age", "soon"]) == 2
 
 
 STATUS = {
