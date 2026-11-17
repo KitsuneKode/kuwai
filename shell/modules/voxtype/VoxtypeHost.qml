@@ -60,8 +60,20 @@ Scope {
     Process { id: tidy; command: ["sh", "-c", host.sweep] }
     Timer { id: reprobe; interval: 3000; onTriggered: probe.running = true }
     Timer { interval: 1500; running: true; onTriggered: { probe.running = true; tidy.running = true; } }
-    // A slow safety net (voxtype's own launcher also checks us at its start).
-    Timer { interval: 30000; running: true; repeat: true; onTriggered: probe.running = true }
+    // Quickshell makes $XDG_RUNTIME_DIR/quickshell/by-pid/<pid> for every
+    // instance it starts: that folder is watched, so voxtype's own shell
+    // starting is seen at once (it was a pgrep every 30 s for the shell's
+    // life). While it's the one drawing (not hosting here), its end leaves no
+    // mark there, so that wait is the only time the 30 s check runs.
+    FileView {
+        path: host.runtime + "/quickshell/by-pid"
+        preload: false
+        watchChanges: true
+        printErrors: false
+        onFileChanged: instanceSeen.restart()
+    }
+    Timer { id: instanceSeen; interval: 1000; onTriggered: if (!probe.running) probe.running = true }
+    Timer { interval: 30000; running: !host.hosting; repeat: true; onTriggered: probe.running = true }
 
     function make(file, props) {
         const c = Qt.createComponent("file://" + dir + "/" + file);
