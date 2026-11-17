@@ -70,6 +70,13 @@ Singleton {
     readonly property int r2: 12         // tiles, switches
     readonly property int r3: 16         // cards, notices
     readonly property int r4: 22         // panels
+    // Island panels come in four widths, not one per panel (there were
+    // eleven: 400, 420, 440, 560, 620, 640, 720, 760, 762, 780, 980). A panel
+    // you switch to at the same size doesn't re-morph the island sideways.
+    readonly property int panelS: 440    // a list or a card: Agents, Usage, T3, Notifications, Bluetooth, Now Playing
+    readonly property int panelM: 620    // a list with detail: Launcher, System, Power, Cleanup
+    readonly property int panelL: 780    // two columns: Settings, Updates, Shortcuts, Vitals
+    readonly property int panelXL: 980   // a gallery: Themes
     readonly property int s1: 4
     readonly property int s2: 8
     readonly property int s3: 12

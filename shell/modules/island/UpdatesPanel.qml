@@ -25,7 +25,7 @@ import qs.services
 FocusScope {
     id: up
     focus: true
-    implicitWidth: 720
+    implicitWidth: Theme.panelL
     implicitHeight: Math.min(560, (view === "review" ? 540 : view === "run" ? runCol.implicitHeight + 44 : listCol.y + listCol.implicitHeight + listFoot.height + 30))
     Behavior on implicitHeight { NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
 

@@ -33,7 +33,7 @@ FocusScope {
         onRejected: bp.forgetTarget = null
     }
     focus: true
-    implicitWidth: 420
+    implicitWidth: Theme.panelS
     implicitHeight: col.implicitHeight + 36
 
     readonly property var adapter: Bluetooth.defaultAdapter
@@ -46,7 +46,8 @@ FocusScope {
     readonly property var mine: on ? Bluetooth.devices.values.filter(d => d.paired || d.connected)
         .sort((x, y) => (y.connected - x.connected) || label(x).localeCompare(label(y))) : []
     // Nearby: named only (a list of MAC addresses helps nobody).
-    readonly property var nearby: on ? Bluetooth.devices.values.filter(d => !d.paired && !d.connected && (d.name || d.deviceName))
+    function named(d) { const n = d.name || d.deviceName || ""; return n !== "" && !/^([0-9A-F]{2}[-:_]){5}[0-9A-F]{2}$/i.test(n); }
+    readonly property var nearby: on ? Bluetooth.devices.values.filter(d => !d.paired && !d.connected && named(d))
         .sort((x, y) => label(x).localeCompare(label(y))).slice(0, 8) : []
     readonly property var all: mine.concat(nearby)
     property int sel: 0

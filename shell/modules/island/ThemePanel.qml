@@ -20,7 +20,7 @@ import qs.services
 FocusScope {
     id: picker
     focus: true
-    implicitWidth: 980
+    implicitWidth: Theme.panelXL
     // Exactly three rows of cards between the header and the key hints.
     implicitHeight: 66 + 3 * (Math.round(Math.floor((980 - 32 - 330) / 4) * 0.5625) + 40) + 40
 

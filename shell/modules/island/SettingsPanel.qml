@@ -21,7 +21,7 @@ FocusScope {
     id: settings
     focus: true
 
-    implicitWidth: 780
+    implicitWidth: Theme.panelL
     implicitHeight: 520
 
     readonly property string rice: Paths.bin + "/rice"

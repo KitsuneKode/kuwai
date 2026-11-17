@@ -19,7 +19,7 @@ import qs.services
 FocusScope {
     id: sys
     focus: true
-    implicitWidth: 620
+    implicitWidth: Theme.panelM
     implicitHeight: col.implicitHeight + 40
 
     Component.onCompleted: { SystemStats.watch(); gameProbe.running = true; }

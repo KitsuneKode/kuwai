@@ -19,7 +19,7 @@ import qs.services
 FocusScope {
     id: pal
     focus: true
-    implicitWidth: 760
+    implicitWidth: Theme.panelL
     implicitHeight: 580
 
     property var items: []

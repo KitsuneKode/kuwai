@@ -24,7 +24,7 @@ FocusScope {
     id: vitals
     focus: true
     readonly property bool compact: width < 760
-    implicitWidth: 762
+    implicitWidth: Theme.panelL
     implicitHeight: 540
 
     Component.onCompleted: SystemStats.watch()

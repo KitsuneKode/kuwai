@@ -12,7 +12,7 @@ import qs.services
 FocusScope {
     id: t3
     focus: true
-    implicitWidth: 400
+    implicitWidth: Theme.panelS
     implicitHeight: col.implicitHeight + 40
 
     Keys.onPressed: e => {

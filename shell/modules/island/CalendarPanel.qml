@@ -8,6 +8,7 @@
 //   …
 //   Thursday, 29 October · week 44
 import QtQuick
+import Quickshell
 import qs.config
 import qs.components
 import qs.services
@@ -186,7 +187,7 @@ FocusScope {
             height: 22
             Label {
                 anchors.verticalCenter: parent.verticalCenter
-                text: Qt.formatDate(cal.selected, "dddd, d MMMM")
+                text: Qt.formatDate(cal.selected, "dddd, MMMM d")     // the header's order
                 size: 14
                 weight: Theme.wMedium
             }
@@ -207,9 +208,21 @@ FocusScope {
                 visible: !Calendar.configured || parent.dayEvents.length === 0
                 width: parent.width
                 wrapMode: Text.Wrap
-                text: Calendar.configured ? "No events" : "Add your calendars (iCal links or .ics files) to ~/.config/rice/calendars.txt"
+                // Not set up: one click opens the list to paste a link into,
+                // instead of a path to go and find.
+                text: Calendar.configured ? "No events" : "No calendars yet. Add one: paste an iCal link or the path of an .ics file, one per line."
                 size: 12
-                color: Theme.textTertiary
+                color: !Calendar.configured && addCal.containsMouse ? Theme.textSecondary : Theme.textTertiary
+                Accessible.role: Calendar.configured ? Accessible.StaticText : Accessible.Button
+                Accessible.name: text
+                MouseArea {
+                    id: addCal
+                    anchors.fill: parent
+                    enabled: !Calendar.configured
+                    hoverEnabled: true
+                    cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                    onClicked: { Quickshell.execDetached(["sh", "-c", 'mkdir -p "$(dirname "$1")" && touch "$1" && xdg-open "$1"', "sh", Calendar.listPath]); Island.close(); }
+                }
             }
             Repeater {
                 model: parent.dayEvents.slice(0, 5)

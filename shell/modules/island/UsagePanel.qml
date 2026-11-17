@@ -15,7 +15,7 @@ import qs.services
 FocusScope {
     id: usage
     focus: true
-    implicitWidth: 440
+    implicitWidth: Theme.panelS
     implicitHeight: col.implicitHeight + 40
     // The list scrolls past this height. Beside the machine (VitalsPanel)
     // it is that column's height, so the panel ends where both do instead

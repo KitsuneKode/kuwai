@@ -45,7 +45,7 @@ FocusScope {
     readonly property int pct: hasBattery ? Math.round(battery.percentage > 1 ? battery.percentage : battery.percentage * 100) : 0
     readonly property bool charging: hasBattery && battery.state === UPowerDeviceState.Charging
 
-    implicitWidth: 620
+    implicitWidth: Theme.panelM
     implicitHeight: 236
 
     function run(i) {

@@ -367,6 +367,10 @@ Item {
         Label {
             visible: badge.text !== ""
             anchors.verticalCenter: parent.verticalCenter
+            // On the wordmark's baseline: "T3" is a size larger and already
+            // sits 1 px low (RestMark), so a centred count read 1.5 px higher
+            // than the "T3 ③" beside it (measured on both screens).
+            anchors.verticalCenterOffset: 2
             text: badge.text
             size: Theme.tSub; weight: Theme.wSemibold
             color: badge.tint

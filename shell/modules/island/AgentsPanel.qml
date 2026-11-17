@@ -27,7 +27,7 @@ import qs.services
 FocusScope {
     id: ap
     focus: true
-    implicitWidth: 440
+    implicitWidth: Theme.panelS
     implicitHeight: col.implicitHeight + 36
 
     property int sel: 0

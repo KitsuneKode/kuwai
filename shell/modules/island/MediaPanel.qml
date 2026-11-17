@@ -24,7 +24,7 @@ import qs.services
 FocusScope {
     id: np
     focus: true
-    implicitWidth: 440
+    implicitWidth: Theme.panelS
     implicitHeight: 212
 
     readonly property var p: Media.active
@@ -92,11 +92,13 @@ FocusScope {
     }
 
     // Nothing to play.
-    Label {
+    Column {
         visible: !np.p
         anchors.centerIn: parent
-        text: "Nothing playing"
-        size: 14; color: Theme.textTertiary
+        spacing: 6
+        Icon { anchors.horizontalCenter: parent.horizontalCenter; name: "music-notes"; size: Theme.tTitle2; color: Theme.textTertiary }
+        Label { anchors.horizontalCenter: parent.horizontalCenter; text: "Nothing playing"; size: Theme.tSub; color: Theme.textSecondary }
+        Label { anchors.horizontalCenter: parent.horizontalCenter; text: "Start something in any player and it shows here."; size: Theme.tFootnote; color: Theme.textTertiary }
     }
 
     Item {

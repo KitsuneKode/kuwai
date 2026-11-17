@@ -13,7 +13,8 @@ Item {
     // The setting this row changes (config/Settings): a ↺ beside the control
     // when it isn't the default, to put the default back.
     property string key: ""
-    readonly property string provenance: key ? Settings.sourceOf(key) + " · Applies immediately" : ""
+    // For a screen reader only: sighted, the ↺ beside the control says it.
+    readonly property string provenance: key && !Settings.isDefault(key) ? "Changed from the default" : ""
     Accessible.role: Accessible.Grouping
     Accessible.name: label
     Accessible.description: detail + (provenance ? ". " + provenance : "")
@@ -61,7 +62,6 @@ Item {
         spacing: 2
         Label { width: parent.width; elide: Text.ElideRight; text: row.label; size: 13 }
         Label { visible: row.detail !== ""; width: parent.width; wrapMode: Text.Wrap; text: row.detail; size: 11; color: Theme.textTertiary }
-        Label { visible: row.provenance !== ""; width: parent.width; wrapMode: Text.Wrap; text: row.provenance; size: 11; color: Theme.textTertiary }
     }
     Text {
         textFormat: Text.PlainText

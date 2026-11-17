@@ -23,7 +23,7 @@ import qs.services
 FocusScope {
     id: cp
     focus: true
-    implicitWidth: 560
+    implicitWidth: Theme.panelM
     implicitHeight: col.implicitHeight + 40
 
     property int days: 30

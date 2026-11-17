@@ -16,7 +16,7 @@ import qs.services
 FocusScope {
     id: np
     focus: true
-    implicitWidth: 420
+    implicitWidth: Theme.panelS
     implicitHeight: col.implicitHeight + 36
 
     readonly property var quick: Notifs.bellQuickList(10)

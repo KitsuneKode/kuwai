@@ -1389,6 +1389,13 @@ Scope {
         const field = searchField;
         touched();
         if (k === Qt.Key_Alt) { altHeld = true; return; }
+        // A held key is one press for anything that destroys: ⌃⇧⌫ asks to be
+        // pressed again to clear the history, and the key's own repeat
+        // (250 ms) answered for you; a held ⇧⌦ or ⌃X deleted a run of copies.
+        if (event.isAutoRepeat && ((ctrl && shift && k === Qt.Key_Backspace) || (shift && k === Qt.Key_Delete) || (ctrl && k === Qt.Key_X))) {
+            event.accepted = true;
+            return;
+        }
         if (keySheet && keySheet.open && keySheet.key(event)) { event.accepted = true; return; }
         if (k === Qt.Key_F1 || (ctrl && k === Qt.Key_Slash) || (k === Qt.Key_Question && field && field.text === "")) {
             if (keySheet) keySheet.open = true;

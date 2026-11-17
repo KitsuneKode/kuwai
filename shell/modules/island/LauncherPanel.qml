@@ -69,7 +69,7 @@ FocusScope {
 
     // A fixed height: a launcher is used a hundred times a day, so it never
     // resizes under your typing (Raycast doesn't either).
-    implicitWidth: 640
+    implicitWidth: Theme.panelM
     implicitHeight: 64 + maxRows * rowH + 46
 
     // ── Frecency (kept by the Island service, which outlives this panel) ─
@@ -569,7 +569,7 @@ FocusScope {
             readonly property bool tips: modelData.kind === "tips"
             readonly property bool dock: modelData.kind === "dock"
             width: list.width
-            height: tips ? 84 : header ? 30 : card ? 78 : dock ? 88 : launcher.rowH
+            height: tips ? 84 : header ? 30 : card ? 78 : dock ? 100 : launcher.rowH
 
             // No cascade: the launcher opens many times a day and the island's
             // grow already carries it in (one entrance per container).
@@ -712,7 +712,7 @@ FocusScope {
                         required property var modelData
                         required property int index
                         readonly property bool chosen: row.on && launcher.dockSel === index
-                        width: Math.floor((list.width - 12 - 7 * 4) / 8); height: 80
+                        width: Math.floor((list.width - 12 - 7 * 4) / 8); height: 92
                         Accessible.role: Accessible.Button
                         Accessible.name: modelData.name + " (Alt+" + (index + 1) + ")"
                         Rectangle {
@@ -734,6 +734,10 @@ FocusScope {
                         Label {
                             anchors { left: parent.left; right: parent.right; leftMargin: 4; rightMargin: 4; top: tileIcon.bottom; topMargin: 7 }
                             horizontalAlignment: Text.AlignHCenter
+                            // Two lines before a name is cut ("T3 Code Nightly" was "T3 Code N…").
+                            wrapMode: Text.WordWrap
+                            maximumLineCount: 2
+                            lineHeight: 0.95
                             elide: Text.ElideRight
                             text: tile.modelData.name
                             size: 11

@@ -5,6 +5,35 @@ they land. User wants: extremely secure, premium, tasteful, fast, Apple-grade.
 
 **2026-11-16: the order of work toward a public launch is in [PLAN-launch.md](PLAN-launch.md)** (in-flight worktrees, the 12 reported issues, references, pstack verification, clips).
 
+## STATUS (2026-11-17) — audit pass 1, uncommitted in the main checkout
+
+Done and checked (246 py / 159 bun / Lua pass, rice-check green, panels seen):
+plain text on every outside string (103 `Text`, lint in tests/security);
+streaming answers can't fetch (Turn.liveMarkdown); links are web/mail only;
+login screen code is root's (greeter/install, `--code`, a real `--undo`);
+state folders 0700; CI runs every Bun suite, bunfig scopes `bun test`;
+clipboard ⌃⇧⌫ / ⇧⌦ / ⌃X ignore key repeat; capsule count on the wordmark's
+baseline; one date order; settings rows without the provenance line; dock
+names on two lines; no MAC-named Bluetooth rows; Media empty state; calendar
+hint is an action; four panel widths (Theme.panelS/M/L/XL); night_light off by
+default; rice-check knows dictation; AGENTS.md.
+
+Needs the owner: `sudo greeter/install --code` + one logout; SSH key
+passphrases and `chmod 700 ~/.ssh ~/.codex`; voxtype fork (its OSD repaints a
+whole screen while dictating: 25 % of a core; a playback stream held open at
+44.1 kHz; the model held in 3.4 GB of VRAM); delete /etc/pipewire/pipewire.conf;
+zram ~12 GB; encrypted swap; disable caffeine-mode.service.
+
+Next, in order: (1) clipboard as one `mode` + undo for delete; undo for
+notifications Clear all; (2) one System panel (system + vitals); (3) memory
+drift + helpers (node usage watcher, render server on demand, shazam loop);
+(4) profile Hyprland (14–30 % of a core while agents stream); (5) Accessible
+names on the other ~100 pointer targets; (6) dates through the locale, strings
+through qsTr; (7) exact-shape blur (BackgroundEffect); (8) HyDE optional,
+greeter monitors/keyboard from the user's config, clean-VM install, migrations;
+(9) tokens to zero and the rice → kuwai rename; (10) a font that can be shipped
+(Inter/Geist) with SF Pro optional.
+
 ## Skills the user asked to be used (load with the Skill tool when working on the matching area)
 /animate · /emil-design-eng · /apple-design · /interaction-design · /interface-design ·
 /improve-animations · /find-animation-opportunities · /review-animations · /ask-sonner ·

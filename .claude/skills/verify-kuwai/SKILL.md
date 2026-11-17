@@ -17,6 +17,11 @@ reloads it. Stable (`~/.local/share/kuwai`) moves only with `bin/rice promote` (
 Ready = the log's last reload line is `Configuration Loaded`:
 `qs log -p ~/Projects/rice/shell | grep -nE "Reloading|Failed to load|caused by|Configuration Loaded" | tail -3`
 A failed reload keeps the previous shell running: the log is the only sign. Touch the file to retry.
+Bringing many files in at once (`git apply`, a merge, a checkout) races **both** watchers. The shell's reload can start
+while a folder is half-written and fail with `module "qs.modules.<x>" is not installed`; Hyprland reloads `hypr/` the
+same way and can stop half-configured (2026-11-17: 74 of 270 binds until a clean reload; bd218bb guards a missing
+module now). Change `hypr/` one file at a time and check `hyprctl binds -j | jq length` and `hyprctl configerrors`
+after; for `shell/`, `touch shell/shell.qml` once the write is done and read the log again.
 
 ## Doctor (before driving, and after anything surprising)
 - `bin/rice check` — load, orphans, idle owner, memory budget, CPU at rest (median of 5 s, want < 5 %),
