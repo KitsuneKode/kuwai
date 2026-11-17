@@ -9,7 +9,9 @@
 
 A theme: name, its wallpaper's thumbnail (HyDE's own cache, ~/.cache/hyde/thumbs/<sha1>.thmb, made on demand
 when missing), background and accent (from its kitty.theme), and whether it's the current one. Hashes are cached
-by path+mtime+size in ~/.cache/rice/themes.json, so a listing after the first is instant.
+by path+mtime+size in ~/.cache/rice/themes.json, so a listing after the first is instant; the ones it doesn't
+know yet (a new theme, its wallpapers) are hashed several at once. The last listing is kept in
+~/.cache/rice/themes-list.json: the panel shows it the moment it opens, then this listing replaces it.
 """
 import hashlib
 import json
@@ -22,6 +24,7 @@ HOME = os.path.expanduser("~")
 THEMES = os.path.join(HOME, ".config/hyde/themes")
 THUMBS = os.path.join(HOME, ".cache/hyde/thumbs")
 CACHE = os.path.join(HOME, ".cache/rice/themes.json")
+LAST = os.path.join(HOME, ".cache/rice/themes-list.json")
 LIB = os.path.join(HOME, ".local/lib/hyde")
 IMG = (".png", ".jpg", ".jpeg", ".webp", ".gif")
 
@@ -53,6 +56,32 @@ def sha1(path: str, cache: dict) -> str:
                 h.update(chunk)
         cache[key] = h.hexdigest()
     return cache[key]
+
+
+def warm(paths: list, cache: dict) -> None:
+    """Hash what the cache doesn't know yet, several at once: a cold listing read 167 MB of
+    wallpapers one after another on one core (hashlib lets go of the GIL while it hashes)."""
+    todo = []
+    for p in paths:
+        try:
+            st = os.stat(p)
+        except OSError:
+            continue
+        if f"{p}|{st.st_mtime_ns}|{st.st_size}" not in cache:
+            todo.append(p)
+    if len(todo) < 2:
+        return
+
+    def one(p):
+        try:
+            sha1(p, cache)
+        except OSError:
+            pass
+
+    from concurrent.futures import ThreadPoolExecutor   # here: its import alone cost a warm listing ~20 ms
+
+    with ThreadPoolExecutor(max_workers=min(8, os.cpu_count() or 2)) as ex:
+        list(ex.map(one, todo))
 
 
 def thumb(path: str, cache: dict) -> str:
@@ -123,27 +152,38 @@ def color_mode() -> int:
 
 def listing() -> dict:
     cache = load_cache()
+    known = len(cache)
     cur = current()
     themes, walls = [], []
-    for name in sorted(os.listdir(THEMES), key=str.lower):
+    wd = os.path.join(THEMES, cur, "wallpapers")
+    names = sorted(os.listdir(THEMES), key=str.lower)
+    own = sorted(os.listdir(wd)) if os.path.isdir(wd) else []
+    warm([os.path.realpath(os.path.join(THEMES, n, "wall.set")) for n in names]
+         + [os.path.join(wd, f) for f in own if f.lower().endswith(IMG)], cache)
+    for name in names:
         d = os.path.join(THEMES, name)
         wall = os.path.realpath(os.path.join(d, "wall.set"))
         if not os.path.isdir(d) or not os.path.isfile(wall):
             continue
         themes.append({"name": name, "thumb": thumb(wall, cache), "current": name == cur, **colors(d)})
-    wd = os.path.join(THEMES, cur, "wallpapers")
     active = os.path.realpath(os.path.join(HOME, ".cache/hyde/wall.set"))
-    if os.path.isdir(wd):
-        for f in sorted(os.listdir(wd)):
+    if own:
+        for f in own:
             p = os.path.join(wd, f)
             if f.lower().endswith(IMG):
                 walls.append({"path": p, "name": os.path.splitext(f)[0], "thumb": thumb(p, cache),
                               "current": os.path.realpath(p) == active, "palette": wall_palette(p, cache)})
-    os.makedirs(os.path.dirname(CACHE), exist_ok=True)
-    tmp = CACHE + ".tmp"
-    json.dump(cache, open(tmp, "w"))
-    os.replace(tmp, CACHE)
+    if len(cache) != known:                       # only when something new was hashed
+        save(CACHE, json.dumps(cache))
     return {"current": cur, "themes": themes, "wallpapers": walls, "mode": color_mode(), "modes": MODES}
+
+
+def save(path: str, text: str) -> None:
+    os.makedirs(os.path.dirname(path), mode=0o700, exist_ok=True)
+    tmp = path + ".tmp"
+    with open(tmp, "w") as f:
+        f.write(text)
+    os.replace(tmp, path)
 
 
 def launch(command, wait=False):
@@ -182,7 +222,12 @@ def main(argv):
     argv = [a for a in argv if a != "--wait"]
     cmd = argv[0] if argv else "list"
     if cmd == "list":
-        print(json.dumps(listing()))
+        out = json.dumps(listing())
+        print(out, flush=True)
+        try:
+            save(LAST, out)
+        except OSError:
+            pass
     elif cmd == "theme" and len(argv) == 2 and os.path.isdir(os.path.join(THEMES, argv[1])):
         return bar_after(launch([os.path.join(LIB, "theme.switch.sh"), "-s", argv[1]], wait), wait)
     elif cmd == "wallpaper" and len(argv) == 2 and os.path.isfile(argv[1]):

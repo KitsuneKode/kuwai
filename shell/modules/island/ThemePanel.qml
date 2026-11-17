@@ -22,7 +22,7 @@ FocusScope {
     focus: true
     implicitWidth: Theme.panelXL
     // Exactly three rows of cards between the header and the key hints.
-    implicitHeight: 66 + 3 * (Math.round(Math.floor((980 - 32 - 330) / 4) * 0.5625) + 40) + 40
+    implicitHeight: 66 + 3 * (Math.round(Math.floor((Theme.panelXL - 32 - 330) / 4) * 0.5625) + 40) + 40
 
     property bool previewPlaying: false
     onCurrentChanged: previewPlaying = false
@@ -121,20 +121,59 @@ FocusScope {
         relist.restart();
     }
 
+    // Opening shows the last listing at once (rice-themes keeps it in
+    // ~/.cache/rice/themes-list.json; this panel is destroyed on close, so it
+    // used to start from nothing every time), then the fresh one replaces it.
+    // Only the very first open, with no listing kept yet, shows the skeleton.
+    // Read now (blockLoading), once the panel is built: an async read
+    // finishing after a quick close could land in a destroyed panel.
+    FileView {
+        id: kept
+        path: Quickshell.env("HOME") + "/.cache/rice/themes-list.json"
+        blockLoading: true
+        printErrors: false
+    }
+    Component.onCompleted: {
+        try { const t = kept.text(); if (t && loading) took(JSON.parse(t)); } catch (e) {}
+        Qt.callLater(() => picker.settled = true);
+    }
+    // Built: from here a change fades (the skeleton giving way to the cards);
+    // an open that had the kept listing from the start shows it, no fade.
+    property bool settled: false
+    // The selection moved by hand: a fresh listing keeps it (by name), not
+    // the one in use.
+    property bool touched: false
+    function took(listing) {
+        const was = items[current];
+        info = listing;
+        loading = false;
+        let i = touched && was ? items.findIndex(x => x.name === was.name) : -1;
+        if (i < 0) i = items.findIndex(x => x.current);
+        current = Math.max(0, i);
+        Qt.callLater(() => grid.positionViewAtIndex(picker.current, GridView.Center));
+    }
     Process {
         id: lister
         running: true
         command: [picker.bin, "list"]
         stdout: StdioCollector {
             onStreamFinished: {
-                try { picker.info = JSON.parse(text); } catch (e) {}
-                picker.loading = false;
-                const i = picker.items.findIndex(x => x.current);
-                picker.current = Math.max(0, i);
-                grid.positionViewAtIndex(picker.current, GridView.Center);
+                let listing = null;
+                try { listing = JSON.parse(text); } catch (e) {}
+                if (listing) picker.took(listing);
+                else picker.loading = false;      // nothing to show: the empty state says so
             }
         }
     }
+    // One sweep for every placeholder (Skeleton.phase), only while loading.
+    property real sheen: 0
+    NumberAnimation on sheen {
+        running: picker.loading && picker.visible && !Theme.reduceMotion
+        from: 0; to: 1
+        duration: Theme.shimmerMs
+        loops: Animation.Infinite
+    }
+    readonly property bool listed: mode === "themes" || mode === "wallpapers"     // what rice-themes lists
     onModeChanged: { previewPlaying = false; current = Math.max(0, items.findIndex(x => x.current)); grid.positionViewAtIndex(current, GridView.Center); }
 
     function apply(i) {
@@ -194,6 +233,7 @@ FocusScope {
 
     Keys.onPressed: event => {
         const k = event.key, cols = 4;
+        if ([Qt.Key_Right, Qt.Key_Left, Qt.Key_Down, Qt.Key_Up].indexOf(k) >= 0) touched = true;
         if (k === Qt.Key_Right) current = Math.min(items.length - 1, current + 1);
         else if (k === Qt.Key_Left) current = Math.max(0, current - 1);
         else if (k === Qt.Key_Down) current = Math.min(items.length - 1, current + cols);
@@ -229,8 +269,15 @@ FocusScope {
             anchors { right: guideBtn.left; rightMargin: 14; verticalCenter: parent.verticalCenter }
             text: picker.mode === "saver" ? (Settings.screensaverWhen === "off" ? "Off · Settings → Screensaver"
                     : (Settings.screensaverWhen === "always" ? "When idle" : "With Caffeine on") + " · after " + (Settings.screensaverMins || 3) + " min · P to see it")
-                : picker.mode === "live" ? "Plays behind your windows; pauses when they cover it" : picker.loading ? "Reading themes…" : (picker.info.current || "").replace(/-/g, " ")
+                : picker.mode === "live" ? "Plays behind your windows; pauses when they cover it" : (picker.info.current || "").replace(/-/g, " ")
             size: 13; weight: Theme.wMedium; color: Theme.textSecondary
+        }
+        // Loading: the theme's name, in its own shape.
+        Skeleton {
+            visible: picker.loading && picker.listed
+            anchors { right: guideBtn.left; rightMargin: 14; verticalCenter: parent.verticalCenter }
+            width: 120; height: 12
+            phase: picker.sheen
         }
     }
 
@@ -290,7 +337,17 @@ FocusScope {
                 color: Theme.textSecondary
             }
         }
+        // Loading: the picture, the name and the palette strip, where they'll be.
+        Item {
+            id: previewSkeleton
+            visible: picker.loading && picker.listed
+            width: parent.width
+            Skeleton { width: big.width; height: big.height; radius: big.radius; phase: picker.sheen }
+            Skeleton { y: big.height + 14 + 3; width: 170; height: 16; phase: picker.sheen }
+            Skeleton { y: big.height + 14 + 22 + 6 + 4; width: parent.width; height: 14; radius: 7; phase: picker.sheen }
+        }
         Column {
+            visible: !previewSkeleton.visible
             anchors { top: big.bottom; topMargin: 14; left: parent.left; right: parent.right }
             spacing: 6
             Label { width: parent.width; elide: Text.ElideRight; text: preview.it ? preview.it.name.replace(/-/g, " ") : ""; size: 17; weight: Theme.wSemibold }
@@ -338,6 +395,60 @@ FocusScope {
         }
     }
 
+    // Loading (only the first open ever, or with no listing kept): cards in
+    // the real ones' cells, so nothing moves when they arrive; the field
+    // fades out as they come in. Gone (not hidden) once loaded: nothing of
+    // it runs after.
+    Item {
+        id: cardsSkeleton
+        x: grid.x; y: grid.y
+        width: grid.width; height: grid.height
+        clip: true
+        opacity: picker.loading && picker.listed ? 1 : 0
+        visible: opacity > 0
+        Behavior on opacity { enabled: picker.settled; NumberAnimation { duration: Theme.microMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+        Accessible.role: Accessible.Animation
+        Accessible.name: picker.mode === "wallpapers" ? "Loading wallpapers" : "Loading themes"
+        Loader {
+            active: cardsSkeleton.visible
+            sourceComponent: Grid {
+                columns: 4
+                Repeater {
+                    model: 4 * Math.ceil(grid.height / Math.max(1, grid.cellHeight))
+                    Item {
+                        width: grid.cellWidth; height: grid.cellHeight
+                        Skeleton {
+                            id: shotSk
+                            x: 6; y: 6
+                            width: parent.width - 12
+                            height: Math.round(width * 0.5625)
+                            radius: 12
+                            phase: picker.sheen
+                        }
+                        Skeleton { x: 8; y: shotSk.y + shotSk.height + 8 + 3; width: Math.round(shotSk.width * 0.55); height: 10; phase: picker.sheen }
+                    }
+                }
+            }
+        }
+    }
+    // Empty: listed, and nothing there.
+    Column {
+        visible: !picker.loading && picker.listed && picker.items.length === 0
+        anchors.centerIn: grid
+        width: grid.width - 40
+        spacing: 6
+        Label {
+            width: parent.width; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.Wrap
+            text: picker.mode === "themes" ? "No themes found" : "This theme has no wallpapers of its own"
+            size: Theme.tSub; weight: Theme.wSemibold; color: Theme.textSecondary
+        }
+        Label {
+            width: parent.width; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.Wrap
+            text: "How to add (top right, or ?) shows where they go."
+            size: Theme.tFootnote; color: Theme.textTertiary
+        }
+    }
+
     GridView {
         id: grid
         x: 16; y: 66
@@ -345,6 +456,8 @@ FocusScope {
         height: parent.height - y - 40
         cellWidth: Math.floor(width / 4)
         cellHeight: Math.round(cellWidth * 0.5625) + 40
+        opacity: picker.loading && picker.listed ? 0 : 1
+        Behavior on opacity { enabled: picker.settled; NumberAnimation { duration: Theme.microMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
         clip: true
         boundsBehavior: Flickable.StopAtBounds
         model: picker.items
@@ -435,7 +548,7 @@ FocusScope {
                 anchors.fill: shot
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
-                onPositionChanged: picker.current = card.index
+                onPositionChanged: { picker.touched = true; picker.current = card.index; }
                 onClicked: picker.apply(card.index)
             }
         }
