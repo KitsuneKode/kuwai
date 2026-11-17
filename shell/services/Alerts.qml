@@ -3,9 +3,11 @@ pragma Singleton
 // Warnings worth interrupting for, shown by the island like a notification
 // that grows out of it (then a coloured mark at rest until it clears):
 // memory past 82 %, swap almost full, a disk past 92 %, the CPU above 95 °C
-// for half a minute, the battery at 10 % and not charging. One cheap shell
-// loop every 10 s (disks every minute); each alert shows once when it
-// starts or gets worse, not on every check.
+// for half a minute, the battery at 10 % and not charging. Every 10 s two
+// small reads with no process (/proc/meminfo, the CPU sensor); the biggest
+// app and the disks once a minute (ps, df), or at once when memory is high;
+// nothing while locked or the screens are off. Each alert shows once when
+// it starts or gets worse, not on every check.
 // (No braces before the pragma: Quickshell's scanner stops at the first.)
 
 import QtQuick
@@ -98,43 +100,61 @@ Singleton {
     Connections { target: Moments; function onSettledChanged() { root.tellUpdates(); } }
     function dismiss() { banner = null; }
 
-    property var frame: ({})
     property int tick: 0
+    property int cpuTemp: 0
+    property string tempPath: ""         // the Legion's CPU sensor, if there is one
     Process {
         running: true
+        command: ["sh", "-c", 'for h in /sys/class/hwmon/*; do [ "$(cat "$h/name" 2>/dev/null)" = legion_hwmon ] && echo "$h/temp1_input"; done']
+        stdout: StdioCollector { onStreamFinished: root.tempPath = text.trim().split("\n")[0] || "" }
+    }
+    FileView { id: meminfo; path: "/proc/meminfo"; printErrors: false; onLoaded: root.sample(text()) }
+    FileView { id: tempFile; path: root.tempPath; printErrors: false; onLoaded: root.cpuTemp = Math.round(Number(text().trim()) / 1000) }
+    Timer {
+        interval: 10000
+        repeat: true
+        triggeredOnStart: true
+        running: !Saver.locked && !Saver.screensOff
+        onTriggered: { if (root.tempPath) tempFile.reload(); meminfo.reload(); }
+    }
+    function sample(text) {
+        const v = {};
+        for (const l of text.split("\n")) {
+            const m = /^(MemTotal|MemAvailable|SwapTotal|SwapFree):\s+(\d+)/.exec(l);
+            if (m) v[m[1]] = Number(m[2]);
+        }
+        if (!v.MemTotal) return;
+        v.cpuTemp = cpuTemp;
+        v.disks = last.disks || [];
+        v.hog = last.hog;
+        v.top = last.top;
+        const high = 1 - (v.MemAvailable || 0) / v.MemTotal >= 0.82;
+        if ((tick % 6 === 0 || high) && !heavy.running) heavy.running = true;   // lands in `last` for the next sample
+        tick++;
+        commit(v);
+    }
+    // The biggest app (a runaway browser tab says so) and the disks.
+    Process {
+        id: heavy
         command: ["sh", "-c", `
-            hw=; for h in /sys/class/hwmon/*; do [ "$(cat "$h/name" 2>/dev/null)" = legion_hwmon ] && hw=$h; done
-            n=0
-            while :; do
-                echo @
-                grep -E '^(MemTotal|MemAvailable|SwapTotal|SwapFree):' /proc/meminfo
-                [ -n "$hw" ] && { read -r t < "$hw/temp1_input"; echo "cpu $t"; }
-                if [ $((n % 6)) = 0 ]; then ps -eo rss=,args= --sort=-rss | head -1 | awk '{a=$2; t=0; if ($0 ~ /zen-bin -contentproc|firefox -contentproc|--type=renderer/) t=1; n=a; sub(/.*\//, "", n); printf "hog %d %d %s\n", $1, t, n}'; fi
-                if [ $((n % 6)) = 0 ]; then df -P -B1 / /home 2>/dev/null | awk 'NR>1 && !seen[$1]++ {print "disk", $6, $5, $4}'; fi
-                read -r a < /proc/meminfo; set -- $(grep -E '^(MemTotal|MemAvailable):' /proc/meminfo | awk '{print $2}')
-                if [ "$1" -gt 0 ] && [ $(( (100 * ($1 - $2)) / $1 )) -ge 82 ]; then ps -eo rss=,comm= --sort=-rss | head -1 | awk '{printf "top %s %.1f GB\\n", $2, $1/1048576}'; fi
-                echo '#'
-                n=$((n + 1))
-                sleep 10
-            done`]
-        stdout: SplitParser {
-            onRead: line => {
-                if (line === "@") { root.frame = { disks: (root.last.disks || []), hog: root.last.hog }; return; }
-                if (line === "#") { root.last = root.frame; root.commit(root.frame); return; }
-                const f = line.trim().split(/\s+/);
-                if (f[0].endsWith(":")) root.frame[f[0].slice(0, -1)] = Number(f[1]);
-                else if (f[0] === "cpu") root.frame.cpuTemp = Math.round(Number(f[1]) / 1000);
-                else if (f[0] === "disk") {
-                    if (!root.frame._disksFresh) { root.frame.disks = []; root.frame._disksFresh = true; }
-                    const free = Number(f[3]);
-                    root.frame.disks.push({ mount: f[1], use: parseInt(f[2]), free: free >= 1073741824 ? Math.round(free / 1073741824) + " GB" : Math.round(free / 1048576) + " MB" });
+            ps -eo rss=,args= --sort=-rss | head -1 | awk '{a=$2; t=0; if ($0 ~ /zen-bin -contentproc|firefox -contentproc|--type=renderer/) t=1; n=a; sub(/.*\\//, "", n); printf "hog %d %d %s\\n", $1, t, n}'
+            ps -eo rss=,comm= --sort=-rss | head -1 | awk '{r=$1; $1=""; sub(/^ /, ""); printf "top %s %.1f GB\\n", $0, r/1048576}'
+            df -P -B1 / /home 2>/dev/null | awk 'NR>1 && !seen[$1]++ {print "disk", $6, $5, $4}'`]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const out = { disks: [] };
+                for (const line of text.split("\n")) {
+                    const f = line.trim().split(/\s+/);
+                    if (f[0] === "disk") {
+                        const free = Number(f[3]);
+                        out.disks.push({ mount: f[1], use: parseInt(f[2]), free: free >= 1073741824 ? Math.round(free / 1073741824) + " GB" : Math.round(free / 1048576) + " MB" });
+                    } else if (f[0] === "hog") {
+                        const bin = f.slice(3).join(" ");
+                        const nm = /zen/.test(bin) ? "Zen" : /firefox/.test(bin) ? "Firefox" : /chrom/.test(bin) ? "Chrome" : /t3code/.test(bin) ? "T3 Code" : bin;
+                        out.hog = { kb: Number(f[1]), tab: f[2] === "1", name: f[2] === "1" ? nm + " tab" : nm };
+                    } else if (f[0] === "top") out.top = f[1] + " " + f.slice(2).join(" ");
                 }
-                else if (f[0] === "hog") {
-                    const bin = f.slice(3).join(" ");
-                    const nm = /zen/.test(bin) ? "Zen" : /firefox/.test(bin) ? "Firefox" : /chrom/.test(bin) ? "Chrome" : /t3code/.test(bin) ? "T3 Code" : bin;
-                    root.frame.hog = { kb: Number(f[1]), tab: f[2] === "1", name: f[2] === "1" ? nm + " tab" : nm };
-                }
-                else if (f[0] === "top") root.frame.top = f[1] + " " + f.slice(2).join(" ");
+                root.last = out;
             }
         }
     }
