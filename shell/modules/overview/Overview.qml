@@ -232,6 +232,10 @@ Scope {
                 anchors.fill: parent
                 color: Qt.rgba(0.02, 0.02, 0.03, 0.42 * show.value)
                 MouseArea { anchors.fill: parent; onClicked: root.open = false }
+                Accessible.role: Accessible.Button
+                Accessible.name: "Close the overview"
+                Accessible.description: "Escape"
+                Accessible.onPressAction: root.open = false
             }
 
             Item {
@@ -365,6 +369,10 @@ Scope {
                             }
                             HoverHandler { id: tileHover; cursorShape: Qt.PointingHandCursor }
                             MouseArea { anchors.fill: frame; onClicked: win.goSpace(tile.modelData.id) }
+                            Accessible.role: Accessible.PageTab
+                            Accessible.name: "Workspace " + String(((tile.modelData.id - 1) % 10) + 1) + (tile.other ? ", " + win.screenLabel(tile.modelData.monitor) : "")
+                            Accessible.selected: tile.current
+                            Accessible.onPressAction: win.goSpace(tile.modelData.id)
                             DropArea {
                                 id: drop
                                 anchors.fill: frame
@@ -390,6 +398,9 @@ Scope {
                             Label { anchors.centerIn: parent; text: "+"; size: Theme.glyphL; color: Theme.textSecondary }
                         }
                         MouseArea { anchors.fill: plus; onClicked: win.goSpace(win.nextFree()) }
+                        Accessible.role: Accessible.Button
+                        Accessible.name: "New workspace"
+                        Accessible.onPressAction: win.goSpace(win.nextFree())
                         DropArea {
                             anchors.fill: plus
                             keys: ["kuwai-window"]
@@ -504,6 +515,12 @@ Scope {
                                 color: card.chosen ? Theme.textPrimary : Theme.textSecondary
                             }
 
+                            // A window: press focuses it. Dragging it onto a space has no key or screen-reader way yet.
+                            Accessible.role: Accessible.ListItem
+                            Accessible.name: card.toplevel.title || (card.ipc["class"] || "Window")
+                            Accessible.description: card.ipc["class"] || ""
+                            Accessible.selected: card.chosen
+                            Accessible.onPressAction: win.focusWindow(card.toplevel)
                             MouseArea {
                                 id: mouse
                                 anchors.fill: shot
@@ -530,6 +547,9 @@ Scope {
                                 border.width: 1; border.color: Qt.rgba(1, 1, 1, 0.18)
                                 Text { anchors.centerIn: parent; text: "\u{f0156}"; font.family: Theme.fontGlyph; font.pixelSize: 13; color: Theme.textPrimary }
                                 MouseArea { id: closeArea; anchors.fill: parent; anchors.margins: -4; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: win.closeWindow(card.toplevel) }
+                                Accessible.role: Accessible.Button
+                                Accessible.name: "Close " + (card.toplevel.title || (card.ipc["class"] || "the window"))
+                                Accessible.onPressAction: win.closeWindow(card.toplevel)
                             }
                             // The pointer moves the same selection the keys do.
                             HoverHandler {

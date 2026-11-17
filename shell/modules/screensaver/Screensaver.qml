@@ -273,6 +273,11 @@ Scope {
                         onWheel: root.dismiss()
                         cursorShape: Qt.BlankCursor
                     }
+                    // Any key dismisses it too; for a screen reader it is one button.
+                    Accessible.role: Accessible.Button
+                    Accessible.name: "Screen saver"
+                    Accessible.description: "Press to wake"
+                    Accessible.onPressAction: root.dismiss()
                 }
             }
         }

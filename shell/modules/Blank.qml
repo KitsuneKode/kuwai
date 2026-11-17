@@ -82,7 +82,8 @@ Scope {
                 WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
                 color: "black"
                 // The pointer wandered over and clicked: you want it back.
-                MouseArea { anchors.fill: parent; cursorShape: Qt.BlankCursor; onClicked: root.restore() }
+                MouseArea { anchors.fill: parent; cursorShape: Qt.BlankCursor; onClicked: root.restore()
+                    Accessible.role: Accessible.Button; Accessible.name: "Blanked screen"; Accessible.description: "Press to bring it back"; Accessible.onPressAction: root.restore() }
             }
         }
     }

@@ -523,6 +523,12 @@ Scope {
                                                 color: Theme.accent
                                                 anchors.verticalCenter: parent.verticalCenter
                                                 MouseArea { anchors.fill: parent; anchors.margins: -4; cursorShape: Qt.PointingHandCursor; onClicked: OllamaService.retry() }
+                                                activeFocusOnTab: true
+                                                Accessible.role: Accessible.Button
+                                                Accessible.name: "Try again"
+                                                Accessible.onPressAction: OllamaService.retry()
+                                                Keys.onPressed: e => { if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { OllamaService.retry(); e.accepted = true; } }
+                                                FocusRing { cornerRadius: Theme.r1 }
                                             }
                                         }
                                     }
@@ -583,6 +589,9 @@ Scope {
                                             glideDown.restart();
                                         }
                                     }
+                                    Accessible.role: Accessible.Button
+                                    Accessible.name: "Scroll to the newest"
+                                    Accessible.onPressAction: { scroll.userScrolledUp = false; glideDown.to = Math.max(0, scroll.contentHeight - scroll.height); glideDown.restart(); }
                                 }
                             }
 
@@ -686,6 +695,9 @@ Scope {
                         enabled: root.appLauncherOpen
                         onClicked: root.appLauncherOpen = false
                     }
+                    // The app picker; a click on the dim outside it closes it (Esc too).
+                    Accessible.role: Accessible.Dialog
+                    Accessible.name: "Open an app"
 
                     Rectangle {
                         scale: Theme.reduceMotion ? 1 : 0.96 + 0.04 * appT.value
@@ -886,6 +898,11 @@ Scope {
                                         cursorShape: Qt.PointingHandCursor
                                         onClicked: appItem.launch()
                                     }
+                                    Accessible.role: Accessible.ListItem
+                                    Accessible.name: modelData.name || "Application"
+                                    Accessible.description: modelData.comment || ""
+                                    Accessible.selected: appListView.currentIndex === index
+                                    Accessible.onPressAction: appItem.launch()
                                 }
                             }
                         }

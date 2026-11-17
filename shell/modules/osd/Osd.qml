@@ -733,6 +733,11 @@ Scope {
                     if (mouse.button === Qt.RightButton) hud.dismiss();
                     else root.openPage();
                 }
+                // Screen readers: the card says the level; press opens the full page.
+                Accessible.role: Accessible.Button
+                Accessible.name: root.title + (root.valueText ? ", " + root.valueText : "") + (root.muted ? ", muted" : "")
+                Accessible.description: "Opens the full page"
+                Accessible.onPressAction: root.openPage()
                 onWheel: wheel => {
                     const d = wheel.angleDelta.y !== 0 ? wheel.angleDelta.y : -wheel.angleDelta.x;
                     wheelAcc += d;
@@ -763,6 +768,12 @@ Scope {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: root.toggleMute()
                 }
+                Accessible.role: root.kind !== "brightness" ? Accessible.CheckBox : Accessible.Graphic
+                Accessible.name: root.kind !== "brightness" ? "Mute " + root.title : root.title
+                Accessible.checkable: root.kind !== "brightness"
+                Accessible.checked: root.muted
+                Accessible.onPressAction: if (root.kind !== "brightness") root.toggleMute()
+                Accessible.onToggleAction: if (root.kind !== "brightness") root.toggleMute()
 
                 // The device's photo when there is one (DeviceArt).
                 Image {
@@ -889,6 +900,14 @@ Scope {
 
                     Item {
                         id: track
+                        // A slider for screen readers (value/from/to are what Qt reads), a step per press.
+                        readonly property real value: root.level
+                        readonly property real from: 0
+                        readonly property real to: 1
+                        Accessible.role: Accessible.Slider
+                        Accessible.name: root.title + (root.valueText ? ", " + root.valueText : "")
+                        Accessible.onIncreaseAction: root.nudge(1)
+                        Accessible.onDecreaseAction: root.nudge(-1)
                         anchors.left: parent.left
                         anchors.right: valueLabel.left
                         anchors.rightMargin: 10
