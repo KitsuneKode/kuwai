@@ -163,6 +163,19 @@ def launch(command, wait=False):
         return 124
 
 
+def bar_after(code, waited):
+    """HyDE's theme switch restarts Waybar; kuwai's bar is the island. Put back
+    the bar you chose (`rice bar apply`: kills Waybar when it's the island), now
+    if we waited for the switch, else once it has had time to finish."""
+    rice = os.path.join(os.path.dirname(os.path.realpath(__file__)), "rice")
+    if waited:
+        subprocess.run([rice, "bar", "apply"], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    else:
+        subprocess.Popen(["sh", "-c", 'sleep 10; exec "$0" bar apply', rice], start_new_session=True,
+                         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return code
+
+
 def main(argv):
     wait = "--wait" in argv
     argv = [a for a in argv if a != "--wait"]
@@ -170,12 +183,12 @@ def main(argv):
     if cmd == "list":
         print(json.dumps(listing()))
     elif cmd == "theme" and len(argv) == 2 and os.path.isdir(os.path.join(THEMES, argv[1])):
-        return launch([os.path.join(LIB, "theme.switch.sh"), "-s", argv[1]], wait)
+        return bar_after(launch([os.path.join(LIB, "theme.switch.sh"), "-s", argv[1]], wait), wait)
     elif cmd == "wallpaper" and len(argv) == 2 and os.path.isfile(argv[1]):
         return launch([os.path.join(LIB, "wallpaper.sh"), "-s", argv[1], "--global"], wait)
     elif cmd == "colormode" and len(argv) == 2 and argv[1] in MODES:
         script = 'eval "$(hyde-shell init)"; set_conf enableWallDcol "$1"; "$LIB_DIR/hyde/theme.switch.sh"'
-        return launch(["bash", "-c", script, "rice-themes", str(MODES.index(argv[1]))], wait)
+        return bar_after(launch(["bash", "-c", script, "rice-themes", str(MODES.index(argv[1]))], wait), wait)
     else:
         print(__doc__.strip(), file=sys.stderr)
         return 2
