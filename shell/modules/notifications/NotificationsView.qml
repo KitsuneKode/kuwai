@@ -4,7 +4,8 @@
 //
 // Search and filters narrow the list and fan every group out. Keyboard (sent
 // here by Center): ↑↓ select, ↵ open selected, ⌦ (or ⌫ on an empty query) dismiss,
-// →← expand or fold the selected group, ⇥ next filter.
+// →← expand or fold the selected group, ⇥ next filter, ⌃Z undo a clear while
+// "Cleared N · Undo" shows (Notifs.undoClear).
 import QtQuick
 import QtQuick.Effects
 import Quickshell
@@ -143,6 +144,7 @@ Item {
         else if (k === Qt.Key_R && queryEmpty && selected && selectedRow && selectedRow.canReply && !selectedRow.replying) {
             selectedRow.beginReply();
         }
+        else if (k === Qt.Key_Z && (event.modifiers & Qt.ControlModifier) && Notifs.undoSurface === "center") Notifs.undoClear();
         else if (k === Qt.Key_Delete || (k === Qt.Key_Backspace && queryEmpty)) removeSelected();
         else if (k === Qt.Key_Right && queryEmpty && selected) setExpanded(selected.app, true);
         else if (k === Qt.Key_Left && queryEmpty && selected) setExpanded(selected.app, false);
@@ -158,7 +160,7 @@ Item {
         selected = visibleItems[selectedIndex + 1] || visibleItems[selectedIndex - 1] || null;
         // Its row slides out and closes up, like a swipe; without one, at once.
         if (r && r.item === gone) r.remove();
-        else Notifs.discard(gone);
+        else Notifs.discard(gone, "center");
     }
 
     function clearAll() { clearOut.start(); }
@@ -230,9 +232,11 @@ Item {
         }
     }
     // Right of the filters: the result count while narrowed, otherwise
-    // Do Not Disturb (Apple's Focus indigo when on) and Clear all.
+    // Do Not Disturb (Apple's Focus indigo when on) and Clear all. Just after
+    // a clear, "Cleared N · Undo" takes Clear's place (or the count's).
+    readonly property bool undoing: Notifs.undoSurface === "center"
     Label {
-        visible: view.narrowed
+        visible: view.narrowed && !view.undoing
         anchors { right: parent.right; rightMargin: 6; verticalCenter: filterRow.verticalCenter }
         text: view.resultCount === 1 ? "1 result" : view.resultCount + " results"
         size: 12
@@ -254,11 +258,16 @@ Item {
             onClicked: Notifs.toggleUserDnd()
         }
         PillButton {
-            visible: Notifs.items.length > 0
+            visible: Notifs.items.length > 0 && !view.undoing
             height: 28
             text: "Clear"
             onClicked: view.clearAll()
         }
+    }
+    UndoPill {
+        surface: "center"
+        anchors { right: parent.right; rightMargin: view.narrowed ? 2 : 36; verticalCenter: filterRow.verticalCenter }
+        opacity: live ? view.center.revealAt(80) : 0
     }
 
     Label {
@@ -279,7 +288,7 @@ Item {
             NumberAnimation { target: list; property: "opacity"; to: 0; duration: Theme.springSlow.exitMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
             NumberAnimation { target: listShift; property: "y"; to: Theme.reduceMotion ? 0 : 12; duration: Theme.springSlow.exitMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
         }
-        ScriptAction { script: { Notifs.clearAll(); list.opacity = 1; listShift.y = 0; } }
+        ScriptAction { script: { Notifs.clearAll("center"); list.opacity = 1; listShift.y = 0; } }
     }
 
     // The fade's shape: opaque, then the bottom 28 px going to nothing.

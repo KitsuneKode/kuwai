@@ -322,8 +322,12 @@ Singleton {
     readonly property int breathOutMs: 1100
     readonly property int wallRevealMs: 900
     readonly property int handoffMs: 30          // one swap's new content waits this long for the old to start leaving
+    // One undo window for everything that can be taken back: "Cleared N ·
+    // Undo" after clearing notifications, "Deleted · ⌃Z to undo" after
+    // deleting a copy. Long enough to notice and reach (Material's snackbar:
+    // 4–10 s), short enough that it is soon final.
+    readonly property int undoMs: 6000
     readonly property int panelPollMs: 5000     // live numbers that need a process, only while their panel is open     // a wallpaper change growing out of the island (WallFx): rare, so it may take its time     // light breathing out of a ringing alarm
-    readonly property int undoMs: 5000          // a deleted copy can still come back (⌃Z) this long, its "Deleted · ⌃Z to undo" on screen as long
 
     // Reduced motion: fewer and gentler: fades and colour stay, travel,
     // scale and stagger go. On when you switch it on (Controls → Reduce

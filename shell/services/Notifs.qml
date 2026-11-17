@@ -17,6 +17,7 @@ import qs.config
 // changing otp.mjs, save a QML file too (or restart) or the old rule keeps
 // running. Found 2026-11-17: two edits to otp.mjs, no reload.
 import "otp.mjs" as Otp
+import "notifUndo.mjs" as Undo
 
 Singleton {
     property real copyAskedAt: 0
@@ -623,16 +624,16 @@ Singleton {
         if (item.notification) item.notification.dismiss();
     }
 
-    // Already off screen (flung away): no exit animation, just forget it.
     // Swiped or ×'d from a list (the notch's, the center's): gone from the
     // center; one on screen leaves too. A kittymux pane's "needs you" is
-    // answered with it, so the notch and kittymux's inbox agree.
-    function discard(item) {
+    // answered with it, so the notch and kittymux's inbox agree. `surface`
+    // ("center" | "island"): that list offers Undo (see clear()).
+    function discard(item, surface) {
         if (!item) return;
         if (item.event && !Kittymux.answered(item.event)) Kittymux.ack(item.event);
-        if (item.popup) dismiss(item);
-        else remove(item);
+        clear([item], surface);
     }
+    // Already off screen (flung away): no exit animation, just forget it.
     function drop(item) {
         item.discard = true;
         if (item.notification) item.notification.dismiss();
@@ -648,18 +649,75 @@ Singleton {
     }
 
     // Every notification from one app (the center's group "clear").
-    function removeApp(app) {
-        for (const i of items.filter(x => x.app === app)) {
-            if (i.popup) dismiss(i);
-            else remove(i);
-        }
-    }
+    function removeApp(app, surface) { clear(items.filter(x => x.app === app), surface); }
+    function clearAll(surface) { clear(items.slice(), surface); }
 
-    function clearAll() {
-        for (const i of items.slice()) {
-            if (i.popup) dismiss(i);
-            else remove(i);
-        }
+    // ── Undo for clears (notifUndo.mjs, tests/shell/notif-undo.test.mjs) ──
+    // A clear from a surface ("center", "island") is held for Theme.undoMs:
+    // out of the list and out of the history file at once (a restart in the
+    // window keeps the clear), but alive, its sender not yet told, so that
+    // surface can say "Cleared N · Undo" (⌃Z there). Undo puts each back
+    // where it stood, a toast only as its row; read/unread follows its time,
+    // which is untouched. One-time codes are never held: a secret the person
+    // just cleared isn't kept or shown again. Without a surface (scripts,
+    // `rice notifs clear`) a clear ends at once, as before.
+    property var undo: null
+    readonly property string undoSurface: undo ? undo.surface : ""
+    readonly property string undoLabel: Undo.label(undo)
+    readonly property int undoCount: undo ? undo.held.length : 0
+    function isCode(item) { return otpOf(item) !== "" || otpLikely(item); }
+    function clear(gone, surface) {
+        const r = surface ? Undo.take(undo, surface, items, gone, i => !i.discard && !isCode(i))
+                          : { batch: undo, end: gone };
+        const held = r.batch ? r.batch.held.filter(i => gone.includes(i)) : [];
+        undo = r.batch;
+        if (!undo) undoClock.stop();
+        else if (surface) undoClock.restart();
+        for (const i of r.end) endNow(i);
+        if (!held.length) return;
+        if (peek && held.includes(peek)) nextPeek();
+        peekQueue = peekQueue.filter(i => !held.includes(i));
+        // A toast leaves the screen as it always did (left() then parks it);
+        // a row leaves the list now.
+        for (const i of held) if (i.popup) { i.discard = true; i.leaving = true; }
+        items = items.filter(i => i.popup || !held.includes(i));
+        save();
+    }
+    function undoClear() {
+        const b = undo;
+        if (!b) return 0;
+        undo = null;
+        undoClock.stop();
+        for (const i of b.held) { i.discard = false; i.leaving = false; i.popup = false; i.hovered = false; }
+        items = Undo.restore(b, items);
+        save();
+        return b.held.length;
+    }
+    // The window passed: each one ends the way a clear always ended it.
+    function commitUndo() {
+        const b = undo;
+        undo = null;
+        undoClock.stop();
+        if (!b) return;
+        for (const i of b.held) if (!items.includes(i)) release(i);    // a toast still leaving: left() ends it
+    }
+    // Its app took it back during the window: it can't come back.
+    function unhold(item) {
+        undo = Undo.forget(undo, item);
+        if (!undo) undoClock.stop();
+    }
+    Timer { id: undoClock; interval: Theme.undoMs; onTriggered: root.commitUndo() }
+    // A reload ends the window: its senders are told now, not never.
+    Component.onDestruction: commitUndo()
+    // End one for good: off the screen first if it's on it.
+    function endNow(item) {
+        if (!items.includes(item)) release(item);
+        else if (item.popup) dismiss(item);
+        else remove(item);
+    }
+    function release(item) {
+        if (item.notification) item.notification.dismiss();
+        item.destroy();
     }
 
     function markSeen() {
@@ -733,8 +791,7 @@ Singleton {
 
     function remove(item) {
         items = items.filter(i => i !== item);
-        if (item.notification) item.notification.dismiss();
-        item.destroy();
+        if (!Undo.isHeld(undo, item)) release(item);        // held for Undo: parked, not ended
         save();
     }
 
@@ -832,7 +889,7 @@ Singleton {
         onTriggered: store.setText(JSON.stringify({
             dnd: root.dnd,
             lastSeen: root.lastSeen,
-            history: [...root.items, ...root.snoozed].filter(i => !i.discard).map(i => i.toJson())
+            history: Undo.persisted(root.items, root.snoozed, root.undo).map(i => i.toJson())
         }))
     }
 
@@ -876,6 +933,10 @@ Singleton {
         }
         function clear(): void {
             root.clearAll();
+        }
+        // Undo the last clear while its line shows; how many came back.
+        function undo(): int {
+            return root.undoClear();
         }
         // Act on the newest toast on screen, as if it were clicked.
         function openLatest(): void {

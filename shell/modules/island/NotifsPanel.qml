@@ -5,7 +5,8 @@
 // styled apart. A row reads it in the island (the whole message, Reply).
 // Swipe a row sideways (or its ×, or Delete) and it's gone; the rows below
 // close up as it slides.
-//   ↑ ↓ choose · ↵ read · ⌫ / Delete dismiss · C the center · Esc back
+// Just after one goes, "Cleared N · Undo" sits in the header (⌃Z too).
+//   ↑ ↓ choose · ↵ read · ⌫ / Delete dismiss · ⌃Z undo · C the center · Esc back
 import QtQuick
 import Quickshell
 import Quickshell.Widgets
@@ -36,7 +37,7 @@ FocusScope {
     function dismissAt(i) {
         const r = list.itemAtIndex(i);
         if (r) r.swipe.away(1);
-        else if (quick[i]) Notifs.discard(quick[i]);
+        else if (quick[i]) Notifs.discard(quick[i], "island");
     }
 
     Keys.onPressed: e => {
@@ -45,6 +46,7 @@ FocusScope {
         else if (e.key === Qt.Key_Up) sel = Math.max(0, sel - 1);
         else if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) read(quick[sel]);
         else if (e.key === Qt.Key_Delete || e.key === Qt.Key_Backspace) dismissAt(sel);
+        else if (e.key === Qt.Key_Z && (e.modifiers & Qt.ControlModifier)) { if (Notifs.undoSurface === "island") Notifs.undoClear(); }
         else if (e.key === Qt.Key_C) { Island.close(); Notifs.toggleCenter("notifications", "key", Island.screen); }
         else return;
         list.positionViewAtIndex(sel, ListView.Contain);
@@ -65,11 +67,11 @@ FocusScope {
                 text: Notifs.missed.length ? "Need you" : Notifs.unread ? "Unread" : "Recent"
                 size: Theme.tTitle3; weight: Theme.wSemibold
             }
-            Label {
+            // (The count is on the button below; this corner is the way
+            // back from a dismiss, while it lasts.)
+            UndoPill {
+                surface: "island"
                 anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-                text: ""      // the count is on the button below (it said the same thing twice)
-                size: Theme.tFootnote; color: Theme.textTertiary
-                font.features: ({ "tnum": 1 })
             }
         }
 
@@ -166,7 +168,7 @@ FocusScope {
                 SwipeAway {
                     id: swipe
                     span: row.width
-                    onLeaving: Notifs.discard(row.modelData)
+                    onLeaving: Notifs.discard(row.modelData, "island")
                 }
                 // Who it's from, at a glance: the app's mark or the sender's picture
                 // (a glyph when there's none); the unread dot sits on its corner.
@@ -268,7 +270,9 @@ FocusScope {
 
         KeyHints {
             visible: Island.via === "key"
-            hints: [["↑↓", "Choose"], ["↩", "Read"], ["⌫", "Dismiss"], ["C", "Center"], ["esc", "Back"]]
+            hints: Notifs.undoSurface === "island"
+                ? [["↑↓", "Choose"], ["↩", "Read"], ["⌫", "Dismiss"], ["⌃Z", "Undo"], ["esc", "Back"]]
+                : [["↑↓", "Choose"], ["↩", "Read"], ["⌫", "Dismiss"], ["C", "Center"], ["esc", "Back"]]
         }
         PillButton {
             width: parent.width

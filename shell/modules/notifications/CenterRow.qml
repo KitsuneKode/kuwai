@@ -66,7 +66,7 @@ Item {
     NumberAnimation { id: grow; target: row; property: "reveal"; to: 1; duration: Theme.reduceMotion ? 0 : Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
     NumberAnimation {
         id: shrink; target: row; property: "reveal"; to: 0; duration: Theme.exitMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut
-        onFinished: Notifs.discard(row.item)
+        onFinished: Notifs.discard(row.item, "center")
     }
     // Out to the right (the way a swipe goes most), then collapse with it.
     function remove() {

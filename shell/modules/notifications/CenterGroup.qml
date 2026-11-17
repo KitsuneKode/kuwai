@@ -143,7 +143,7 @@ Item {
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: Notifs.removeApp(group.modelData.app)
+                    onClicked: Notifs.removeApp(group.modelData.app, "center")
                 }
             }
         }

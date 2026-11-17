@@ -73,6 +73,7 @@ QtObject {
             // The app took it back: it was read or answered there, so it
             // leaves the center as well as the screen.
             if (reason === NotificationCloseReason.CloseRequested) {
+                Notifs.unhold(item);           // cleared and waiting on Undo: not any more
                 item.discard = true;
                 if (item.popup) item.leaving = true;
                 else Qt.callLater(() => Notifs.remove(item));
