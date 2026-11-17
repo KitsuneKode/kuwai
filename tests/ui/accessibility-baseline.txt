@@ -1,0 +1,5 @@
+# Pointer handlers in kuwai's shell/ and shell-auth/ whose item is not yet
+# named for assistive tech (tests/ui/test_accessibility.py). One per line:
+#   <path>#<nearest id>:<MouseArea|TapHandler>:<n>  # <why it is still unnamed>
+# A new unnamed handler fails the test; a line here that no longer matches
+# fails too, so this list only shrinks. Empty since 2026-11-18.
