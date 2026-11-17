@@ -1,7 +1,14 @@
 pragma Singleton
 // T3 Code's live work for the island: how many threads are running and how
 // many wait for you (bin/rice-t3 reads T3's own state database read-only).
-// Polled every 5 s while T3 Code's server is up; nothing when it isn't.
+// Read when T3 writes: its database's write-ahead log and its
+// server-runtime.json are watched (inotify; reading never triggers it), a
+// window closing reads too (T3 quitting). The log changes ~100 times a
+// second while agents work, so after a change the watch rests: rice-t3
+// runs, again 5 s later while its answer keeps changing, and the watch comes
+// back once two answers agree. Busy: one read per 5 s, as before. Quiet:
+// nothing (it was every 5 s while T3 ran, every 30 s while it didn't).
+// Nothing while locked or the screens are off; one read on the way back.
 //
 //   T3Code.running / waiting / items [{ status, title, provider }]
 //   T3Code.focus()        bring the T3 Code window forward
@@ -45,13 +52,56 @@ Singleton {
     readonly property int total: running + waiting
 
     readonly property string bin: Quickshell.shellDir + "/../bin/rice-t3"
+    readonly property string userdata: Quickshell.env("T3_USERDATA") || Quickshell.env("HOME") + "/.t3/userdata"
+    readonly property bool away: Saver.locked || Saver.screensOff
+    property bool settling: false        // the log changed: reading until two answers agree
+    property bool lastChanged: false
+    FileView {
+        path: root.userdata + "/statev2.sqlite-wal"
+        preload: false
+        printErrors: false
+        watchChanges: !root.settling && !root.away
+        onFileChanged: root.changed()
+    }
+    FileView {
+        path: root.userdata + "/server-runtime.json"
+        preload: false
+        printErrors: false
+        watchChanges: true
+        onFileChanged: root.changed()
+    }
+    Connections {
+        target: Hyprland
+        function onRawEvent(event) { if (event.name === "closewindow" && root.alive) root.changed(); }
+    }
+    function changed() {
+        if (away || settling) return;
+        settling = true;
+        read();
+    }
+    function read() { if (!poll.running) poll.running = true; }
+    // Back from the lock or dark screens: what changed meanwhile wasn't
+    // watched, so read once.
+    onAwayChanged: if (!away) { settling = true; read(); }
+    Timer {
+        id: again
+        interval: 5000
+        onTriggered: {
+            if (root.away) return;               // settling stays; read on the way back
+            if (root.lastChanged) root.read();
+            else root.settling = false;          // two answers agree: watch again
+        }
+    }
     Process {
         id: poll
         command: [root.bin]
+        onExited: if (!again.running) again.restart()   // no output at all: still rest, then watch
         stdout: StdioCollector {
             onStreamFinished: {
-                // Unchanged output (most polls): nothing to parse or compare.
-                if (text === root.lastText) return;
+                root.lastChanged = text !== root.lastText;
+                again.restart();
+                // Unchanged output: nothing to parse or compare.
+                if (!root.lastChanged) return;
                 root.lastText = text;
                 try {
                     const d = JSON.parse(text);
@@ -68,12 +118,7 @@ Singleton {
             }
         }
     }
-    // A slower beat when T3 isn't running (it may start any time).
-    Timer {
-        interval: root.alive ? 5000 : 30000
-        running: true; repeat: true; triggeredOnStart: true
-        onTriggered: if (!poll.running) poll.running = true
-    }
+    Component.onCompleted: { settling = true; read(); }
 
     // One thread, in T3 Code: its own link (t3code://threads/ENV/THREAD; the
     // desktop app routes a second launch's link to that thread). Without the
