@@ -85,7 +85,10 @@ Singleton {
 
     property int retries: 0
     readonly property int maxRetries: 6
-    function check() { if (enabled && !poll.running) poll.running = true; }
+    // The mark's own beat runs only while it's enabled; `force` is someone
+    // asking (the panel open, `rice sweep`, the IPC), which works with the
+    // mark off too: the off switch is for the mark, not for the panel.
+    function check(force) { if ((enabled || force) && !poll.running) poll.running = true; }
     Process {
         id: poll
         command: [root.bin]
@@ -105,7 +108,7 @@ Singleton {
             }
         }
     }
-    Timer { id: again; interval: 20000; onTriggered: root.check() }
+    Timer { id: again; interval: 20000; onTriggered: root.check(true) }
     // Not at login (the first scan would compete with everything starting):
     // a little after, then every few minutes. Each call reads the cache.
     Timer { interval: 45000; running: root.enabled; onTriggered: root.check() }
@@ -123,6 +126,6 @@ Singleton {
     IpcHandler {
         target: "sweep"
         function open(): void { root.openUi(); }
-        function refresh(): void { root.check(); }
+        function refresh(): void { root.check(true); }
     }
 }

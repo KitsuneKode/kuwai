@@ -26,7 +26,7 @@ FocusScope {
     // (a preview, ~220 ms): only after it has stayed open a moment, so the
     // pointer passing over the mark doesn't count.
     readonly property int dwellMs: 1500
-    Component.onCompleted: { Sweep.check(); if (!Island.previewing) Sweep.markViewed(); }
+    Component.onCompleted: { Sweep.check(true); if (!Island.previewing) Sweep.markViewed(); }
     Timer { interval: panel.dwellMs; running: Island.previewing && panel.visible; onTriggered: Sweep.markViewed() }
 
     readonly property var tones: [Theme.green, Theme.cyan, Theme.orange, Theme.indigo]
@@ -223,6 +223,7 @@ FocusScope {
             visible: Sweep.alive
             width: parent.width
             text: "Nothing is deleted from here. sweep asks before it removes anything."
+                + (Settings.sweepMark ? "" : " The idle projects mark is off in Settings → Island.")
             size: Theme.tCaption
             color: Theme.textTertiary
             wrapMode: Text.WordWrap

@@ -114,6 +114,7 @@ describe("states", () => {
         expect(emptyText({ ...base, counted: false, error: "folder missing", hasBar: false })).toBe("Couldn't count ~/Projects: folder missing.");
         expect(emptyText({ ...base, counted: false, pending: true, hasBar: false })).toBe("Counting ~/Projects…  the first scan can take a minute.");
         expect(emptyText({ ...base, loaded: false })).toBe("Looking for sweep…");
+        expect(emptyText({ ...base, alive: false })).toBe("sweep isn't installed — bun add -g @kitsunekode/sweep @opentui/core");
         expect(emptyText({ ...base, hasBar: false })).toBe("Nothing to free here.");
         expect(emptyText(base)).toBe("");
     });
