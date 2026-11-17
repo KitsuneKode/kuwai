@@ -6,6 +6,7 @@
 //   segments(kinds, total, tones)       → [{ kind, bytes, count, share, tone }] (top kinds + "other")
 //   where(path, name)                   → { repo, name }: a worktree names its repo
 //   headline(bytes, projects, days)     → "16.2 GB · 38 projects idle 30+ days"
+//   widths(segs, w, gap) / partAt(x, ws, gap) → the bar's parts, and the one under x
 //   caption(seg, idleSplit, allBytes)   → the words under the bar
 //   worthMark(idleBytes, minBytes)      → bool
 //   parseViewed(text) / viewedText(b)   ↔ the sweep-viewed file: the size you looked at, in bytes
@@ -62,6 +63,28 @@ function where(path, name) {
 function headline(idleBytes, projects, days) {
     const n = Math.max(0, Math.round(Number(projects) || 0));
     return long(idleBytes) + " · " + n + (n === 1 ? " project" : " projects") + " idle " + (Math.round(Number(days) || 30)) + "+ days";
+}
+
+// Each part's width in a bar `width` wide with `gap` between parts (at
+// least 4 px, so a small part stays visible).
+function widths(segs, width, gap) {
+    if (!Array.isArray(segs) || !segs.length) return [];
+    const room = Math.max(0, (Number(width) || 0) - (segs.length - 1) * gap);
+    return segs.map(s => Math.max(4, Math.round(s.share * room)));
+}
+
+// Which part is under x (one hover area for the whole bar). A gap belongs
+// half to each neighbour, and past either end is the end part, so crossing
+// the bar never passes through "none" (the caption used to flicker there).
+function partAt(x, ws, gap) {
+    if (!Array.isArray(ws) || !ws.length) return -1;
+    let end = 0;
+    for (let i = 0; i < ws.length; i++) {
+        end += ws[i];
+        if (x < end + gap / 2) return i;
+        end += gap;
+    }
+    return ws.length - 1;
 }
 
 // The bar's caption. `idleSplit`: the bar is the idle projects alone, so its

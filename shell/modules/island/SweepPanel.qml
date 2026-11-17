@@ -66,13 +66,23 @@ FocusScope {
     property int focused: -1
     readonly property real dimTo: 0.38
     property Item hoverRow: null
-    // The bar draws itself in once, left to right, as it opens. Reduced
-    // motion: already there.
+    // The bar draws itself in once, left to right, as it opens: a small
+    // surface arriving (enterMs). Opened by a key, or reduced motion: there.
     property real reveal: 1
     NumberAnimation on reveal {
         from: 0; to: 1
-        duration: Theme.reduceMotion ? 0 : Theme.ringDrawMs
+        duration: Theme.reduceMotion || Island.via === "key" ? 0 : Theme.enterMs
         easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut
+    }
+    readonly property int segGap: 2
+    readonly property var segWidths: Model.widths(segs, bar.width, segGap)
+    // The caption fades in only when a part is first named from none, under
+    // the pointer: moving between parts, or by keys, it changes at once.
+    property int lastFocused: -1
+    onFocusedChanged: {
+        if (focused >= 0 && lastFocused < 0 && !barKeys && !Theme.reduceMotion) capIn.restart();
+        else if (barKeys) { capIn.stop(); cap.opacity = 1; }
+        lastFocused = focused;
     }
     function caption() { return Model.caption(focused >= 0 ? segs[focused] : null, idleSplit, Sweep.reclaimable); }
     readonly property string empty: Model.emptyText({ loaded: Sweep.loaded, alive: Sweep.alive, pending: Sweep.pending, error: Sweep.error,
@@ -127,7 +137,7 @@ FocusScope {
                 height: bar.height
                 clip: true
                 Row {
-                    spacing: 2
+                    spacing: panel.segGap
                     anchors.verticalCenter: parent.verticalCenter
                     Repeater {
                         model: panel.segs
@@ -135,8 +145,7 @@ FocusScope {
                             id: seg
                             required property int index
                             required property var modelData
-                            readonly property real room: bar.width - (panel.segs.length - 1) * 2
-                            width: Math.max(4, Math.round(modelData.share * room))
+                            width: panel.segWidths[index] || 4
                             height: 10
                             radius: 3
                             color: panel.toneOf(modelData)
@@ -146,20 +155,20 @@ FocusScope {
                                 enabled: !panel.barKeys && !Theme.reduceMotion
                                 NumberAnimation { duration: Theme.hoverMs }
                             }
-                            // The hover zone is taller than the part: ten pixels is
-                            // a small target.
-                            MouseArea {
-                                anchors { fill: parent; topMargin: -6; bottomMargin: -6 }
-                                hoverEnabled: true
-                                onContainsMouseChanged: {
-                                    panel.barKeys = false;
-                                    if (containsMouse) panel.focused = seg.index;
-                                    else if (panel.focused === seg.index) panel.focused = -1;
-                                }
-                            }
                         }
                     }
                 }
+            }
+            // One hover area for the whole bar, taller than the parts (ten
+            // pixels is a small target): x names a part, gaps included, so
+            // crossing from one part to the next never passes through none.
+            MouseArea {
+                anchors { fill: parent; topMargin: -4; bottomMargin: -4 }
+                hoverEnabled: true
+                function name(x) { panel.barKeys = false; panel.focused = Model.partAt(x, panel.segWidths, panel.segGap); }
+                onEntered: name(mouseX)
+                onPositionChanged: mouse => name(mouse.x)
+                onExited: if (!panel.barKeys) panel.focused = -1
             }
         }
         Label {
@@ -171,8 +180,6 @@ FocusScope {
             color: panel.focused >= 0 ? Theme.textPrimary : Theme.textSecondary
             elide: Text.ElideRight
             font.features: ({ "tnum": 1 })
-            // Naming a different part: the caption answers with a short fade.
-            onTextChanged: if (!Theme.reduceMotion) capIn.restart()
             NumberAnimation { id: capIn; target: cap; property: "opacity"; from: 0.35; to: 1; duration: Theme.quickMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
         }
 

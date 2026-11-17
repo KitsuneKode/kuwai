@@ -5,8 +5,8 @@ import { readFileSync } from "node:fs";
 
 const lib = readFileSync(new URL("../../shell/services/sweepModel.js", import.meta.url), "utf8").replace(/^\.pragma library\s*$/m, "");
 const names = ["compact", "long", "segments", "worthMark", "parseViewed", "viewedText", "isFresh", "reconcileViewed", "viewedAfterLook",
-    "where", "headline", "caption", "tilde", "emptyText", "footText", "idleText", "agoText"];
-const { where, headline, caption, compact, long, segments, worthMark, parseViewed, viewedText, isFresh, reconcileViewed, viewedAfterLook, tilde, emptyText, footText, idleText, agoText } =
+    "widths", "partAt", "where", "headline", "caption", "tilde", "emptyText", "footText", "idleText", "agoText"];
+const { widths, partAt, where, headline, caption, compact, long, segments, worthMark, parseViewed, viewedText, isFresh, reconcileViewed, viewedAfterLook, tilde, emptyText, footText, idleText, agoText } =
     new Function(lib + "\nreturn { " + names.join(", ") + " };")();
 const GB = 1e9;
 
@@ -53,6 +53,19 @@ describe("the bar", () => {
         expect(caption(s[0], true, 56 * GB)).toBe("node_modules · 5 GB · 2 folders");
         expect(caption(null, false, 56 * GB)).toBe("All projects, idle or not: 56 GB · rest on a part");
         expect(caption({ kind: "other", bytes: GB, count: 0 }, false, 56 * GB)).toBe("Everything else · 1 GB · all projects");
+    });
+    test("one hover area: every x on the bar names a part, gaps included", () => {
+        const ws = widths([{ share: 0.5 }, { share: 0.3 }, { share: 0.2 }], 104, 2);
+        expect(ws).toEqual([50, 30, 20]);
+        expect(partAt(-3, ws, 2)).toBe(0);
+        expect(partAt(49.9, ws, 2)).toBe(0);
+        expect(partAt(50.5, ws, 2)).toBe(0);       // first half of the gap
+        expect(partAt(51.5, ws, 2)).toBe(1);       // second half
+        expect(partAt(83, ws, 2)).toBe(2);
+        expect(partAt(500, ws, 2)).toBe(2);
+        for (let x = 0; x <= 104; x += 0.25) expect(partAt(x, ws, 2)).toBeGreaterThanOrEqual(0);
+        expect(partAt(10, [], 2)).toBe(-1);
+        expect(widths([{ share: 0.001 }, { share: 0.999 }], 100, 2)[0]).toBe(4);
     });
     test("nothing to show is no bar", () => {
         expect(segments([], 0, tones)).toEqual([]);
