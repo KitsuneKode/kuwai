@@ -61,7 +61,7 @@ def blank(src):
     return "".join(out)
 
 
-OBJECT_HEAD = re.compile(r"(?:^|[\s;{}:])((?:[a-z]\w*\.)*[A-Z]\w*)(?:\s+on\s+[\w.]+)?\s*$")
+OBJECT_HEAD = re.compile(r"(?:^|[\s;{}:])((?:\w+\.)*[A-Z]\w*)(?:\s+on\s+[\w.]+)?\s*$")
 
 
 class Obj:
@@ -219,6 +219,7 @@ def test_parser_finds_the_known_patterns():
     MouseArea { id: hover; anchors.fill: parent; hoverEnabled: true }
     MouseArea { anchors.fill: parent; onClicked: {} }
     Behavior on x { NumberAnimation {} }
+    Controls.ComboBox { Accessible.name: "pick" }
 }
 """)
     hs = [o for o in objs if o.type in HANDLERS]
@@ -226,7 +227,8 @@ def test_parser_finds_the_known_patterns():
     assert declared(target(hs[0])) and target(hs[0]).id == "card"
     assert acts(hs[0]) and acts(hs[1]) and not acts(hs[2]) and not acts(hs[3])
     assert target(hs[1]).type == "Rectangle" and not declared(target(hs[1]))
-    assert {o.type for o in objs} >= {"Behavior", "NumberAnimation"}
+    assert {o.type for o in objs} >= {"Behavior", "NumberAnimation", "ComboBox"}
+    assert objs[0].text().count("Accessible.name") == 1   # a qualified type is its own object
 
 
 # --- every Accessible.* the shell uses exists in this Qt --------------------
