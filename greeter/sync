@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Give the login screen your picture: the wallpaper, theme colours, settings,
-# your name and face, copied into /var/lib/kuwai-greeter/home (greetd's
-# `greeter` user can't read your home). Runs as you, at every login
+# your name and face, your screens and keyboard layout, copied into
+# /var/lib/kuwai-greeter/home (greetd's `greeter` user can't read your home). Runs as you, at every login
 # (hypr/kuwai/startup.lua), so the login screen follows theme changes.
 # Does nothing until greeter/install has made the directory.
 #
@@ -53,4 +53,47 @@ if [ -n "$theme" ]; then
     copy ".config/hyde/themes/$theme/theme.dcol"
     copy ".config/hyde/themes/$theme/kitty.theme"
 fi
+# Your screens and keyboard for the login screen, as data (key=value) that
+# greeter/hyprland.lua checks line by line and ignores whole if anything is
+# off: it is never run. Only lines that pass the same rules are written.
+# From the running session (hyprctl), else kuwai's saved keyboard choice.
+conf="$H/.config/kuwai-greeter.conf"
+mkdir -p "$H/.config"
+tmp=$(mktemp "$H/.config/.kuwai-greeter.XXXXXX")
+hyprctl_() { [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && command -v hyprctl >/dev/null && timeout 3 hyprctl -j "$@" 2>/dev/null; }
+opt() { hyprctl_ getoption "$1" | jq -r '.str // empty' 2>/dev/null || true; }
+state() { sed -n "s/^$1=//p" "${XDG_STATE_HOME:-$HOME/.local/state}/kuwai/state" 2>/dev/null | head -n 1; }
+layout=$(opt input:kb_layout); variant=$(opt input:kb_variant); options=$(opt input:kb_options)
+if [ -z "$layout" ]; then
+    layout=$(state kb_layout); variant=$(state kb_variant)
+    case $(state kb_switch) in          # hypr/kuwai/input.lua's KB_SWITCH
+        alt-shift) options=grp:alt_shift_toggle ;; caps) options=grp:caps_toggle ;;
+        win-space) options=grp:win_space_toggle ;; ctrl-shift) options=grp:ctrl_shift_toggle ;;
+        *) options= ;;
+    esac
+fi
+{
+    echo "# Written by greeter/sync at your login; read (never run) by greeter/hyprland.lua."
+    if [ ${#layout} -le 64 ] && printf '%s' "$layout" | grep -Eqx '[a-z0-9_,-]+'; then
+        echo "kb_layout=$layout"
+        [ ${#variant} -le 64 ] && printf '%s' "$variant" | grep -Eqx '[a-z0-9_,-]+' && echo "kb_variant=$variant"
+        [ ${#options} -le 64 ] && printf '%s' "$options" | grep -Eqx '[a-z0-9_,:-]+' && echo "kb_options=$options"
+    fi
+    # Enabled, unmirrored screens; the description is the selector (Hyprland
+    # matches it as a prefix), so the login screen finds them on any port.
+    hyprctl_ monitors | jq -r '
+        .[]? | select((.disabled // false) | not) | select((.mirrorOf // "none") == "none")
+        | ((.description // "") | sub("\\s+$"; "")) as $d
+        | select($d | test("^[A-Za-z0-9][A-Za-z0-9 ._()/+&#:-]{0,119}$"))
+        | select(all(.width, .height, .refreshRate, .x, .y, .scale, (.transform // 0); type == "number"))
+        | select(.width >= 320 and .width <= 16384 and .height >= 200 and .height <= 16384
+                 and .refreshRate >= 1 and .refreshRate <= 1000 and (.x | fabs) <= 65536 and (.y | fabs) <= 65536
+                 and .scale >= 0.25 and .scale <= 4 and (.transform // 0) >= 0 and (.transform // 0) <= 7)
+        | .width |= floor | .height |= floor | .x |= floor | .y |= floor
+        | "monitor=\(.width)x\(.height)@\(.refreshRate * 1000 | round / 1000);\(.x);\(.y);\(.scale * 1000000 | round / 1000000);\(.transform // 0);\(if ((.currentFormat // "") | test("2101010")) then 10 else 8 end);\((.colorManagementPreset // "") | if test("^(auto|srgb|wide|edid|dcip3|dp3|adobe)$") then . else "" end);\($d)"
+    ' 2>/dev/null | head -n 8
+} >"$tmp"
+chmod 644 "$tmp"
+mv -f "$tmp" "$conf"
+
 if [ $legacy = 1 ]; then chmod -R a+rX "$DEST"; else chmod -R a+rX "$H"; fi

@@ -105,9 +105,9 @@ hyde-config; fold `rice-usage` into the shell (QtWebSockets) or run it under bun
   `kuwai-*` (`kuwai-update`, `kuwai-wallpaper`, KUWAI_ROOT) — the one-pass rename
   is overdue. Token ratchet still sizes 61 / durations 89 / hex 69. Row/header
   styles still not one component (NotifsPanel/T3Panel/BluetoothPanel/clipboard).
-  Live shell on dev while docs say stable. Greeter config hardcodes your monitors
-  (`desc:California Institute…`, `desc:Acer XV272U`) instead of reading the
-  user's `monitors.lua`.
+  Live shell on dev while docs say stable. ~~Greeter config hardcodes your monitors~~ (done
+  2026-11-17: greeter/sync writes the session's screens and keyboard as
+  validated data, `kuwai-greeter.conf`).
 
 ### 5. Reimplementations to retire
 | Hand-rolled | Use instead |

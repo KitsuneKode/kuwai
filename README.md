@@ -257,10 +257,15 @@ critically damped spring for window moves (`kuwai motion reduced|off`).
 
 ![The login screen coming up at boot](docs/media/login/login-intro.gif)
 
-The login screen replaces SDDM and shows on every monitor, the Acer
-included. greetd runs a bare Hyprland (`greeter/hyprland.lua`, same monitor
-layout as the desktop) with the rice's own Quickshell login on it
-(`shell/greeter.qml`). The lock screen (`rice lock`) is its sibling: the
+The login screen replaces SDDM and shows on every monitor. greetd runs a
+bare Hyprland (`greeter/hyprland.lua`) with the rice's own Quickshell login
+on it (`shell/greeter.qml`). It comes up with your screens and keyboard
+layout as your session last had them: at each login `greeter/sync` writes
+them as plain data (`kuwai-greeter.conf`: modes, positions, scale, 10-bit
+where you use it, the layout, variant and switch), and the login screen
+checks every line and ignores the whole file if anything in it is off,
+falling back to each screen's preferred mode and a US keyboard. It never
+runs anything from your files: its code is root's. The lock screen (`rice lock`) is its sibling: the
 same password pill, the same corner status, the same motion.
 
 - **One axis, as on a Mac.** The art stays sharp at rest. The date, the
