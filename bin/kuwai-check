@@ -77,7 +77,21 @@ fi
 
 # memory
 anon=$(awk '/Pss_Anon/ {print int($2/1024)}' /proc/$pid/smaps_rollup 2>/dev/null)
-if [ -n "$anon" ] && [ "$anon" -le "$BUDGET" ]; then ok "memory: ${anon} MB (budget $BUDGET)"; else bad "memory: ${anon:-?} MB over the $BUDGET MB budget"; fi
+# A live wallpaper that is playing is two video players inside the shell (one
+# per screen), and they hold about 700 MB between them for as long as they
+# play: measured 2026-11-18 with one 1440p loop, 910–935 MB playing (1110 MB
+# before its 4:2:0 copy), 204 MB the moment the screensaver paused it. So with
+# a live wallpaper set, every check made while you were at the desk failed the
+# 450 MB gate. That cost is named here, with the layer as the sign (mapped and
+# not under the screensaver), so the budget still catches a shell that grows
+# for another reason. The fix it stands in for: the player out of the shell
+# (as the screensaver's film is), or mpv, which gives the memory back.
+mem_why=""
+if command -v hyprctl >/dev/null; then
+    lw=$(hyprctl layers -j 2>/dev/null | jq -r '[.. | objects | select(.namespace? and .w > 1) | .namespace] | (if index("kuwai.wallpaper") and (index("kuwai.screensaver") | not) then "playing" else "" end)' 2>/dev/null)
+    if [ "$lw" = playing ]; then BUDGET=$((BUDGET + 750)); mem_why=", a live wallpaper is playing in the shell: about 700 MB of this is its players'"; fi
+fi
+if [ -n "$anon" ] && [ "$anon" -le "$BUDGET" ]; then ok "memory: ${anon} MB (budget $BUDGET$mem_why)"; else bad "memory: ${anon:-?} MB over the $BUDGET MB budget$mem_why"; fi
 
 # cpu (3 s). A shell that just started is still loading: let it settle
 # first (every check right after a promote read 8–12 %). Music playing is
