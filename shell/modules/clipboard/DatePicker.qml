@@ -20,6 +20,8 @@ Item {
     // quick range picked.
     property bool open: false
     signal dismissed()
+    Accessible.role: Accessible.Dialog
+    Accessible.name: "When it was copied"
     property var counts: ({})                 // "YYYY-MM-DD" → entries copied that day
     property real from: 0                     // ms, inclusive; 0 = no lower bound
     property real to: 0                       // ms, exclusive; 0 = no upper bound
@@ -285,6 +287,11 @@ Item {
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: mouse => dp.pickDay(cell.modelData.d, mouse.modifiers & Qt.ShiftModifier)
                             }
+                            Accessible.role: Accessible.Cell
+                            Accessible.name: Dates.longDate(cell.modelData.d) + (cell.today ? ", today" : "")
+                            Accessible.description: cell.n === 0 ? "Nothing copied" : cell.n === 1 ? "1 copied" : cell.n + " copied"
+                            Accessible.selected: cell.inRange
+                            Accessible.onPressAction: dp.pickDay(cell.modelData.d, false)
                         }
                     }
                 }

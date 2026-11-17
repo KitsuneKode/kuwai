@@ -82,6 +82,10 @@ Item {
         radius: 24
         color: Qt.rgba(0.05, 0.05, 0.07, 0.78 * Math.min(1, t.value))
         MouseArea { anchors.fill: parent; enabled: ql.open; onClicked: ql.panel.setMode("browse") }
+        Accessible.role: Accessible.Button
+        Accessible.name: "Close Quick Look"
+        Accessible.description: "Escape"
+        Accessible.onPressAction: if (ql.open) ql.panel.setMode("browse")
     }
 
     ClippingRectangle {
@@ -207,6 +211,13 @@ Item {
                     enabled: !ql.editing && !ql.masked
                     onDoubleTapped: ql.panel.run("edit")
                 }
+                // The text itself never goes in the name (it may be a secret); the field reads it.
+                Accessible.role: Accessible.EditableText
+                Accessible.name: ql.editing ? "Editing the copied text" : "Copied text"
+                Accessible.description: ql.masked ? "Hidden: it looks like a secret" : ql.editing ? "Control S keeps it, Escape goes back" : "Control E edits it in place"
+                Accessible.readOnly: !ql.editing
+                Accessible.multiLine: true
+                Accessible.onPressAction: if (!ql.editing && !ql.masked) ql.panel.run("edit")
                 Keys.onPressed: event => {
                     if (!ql.editing) return;
                     if (event.key === Qt.Key_Escape) { ql.panel.setMode("quicklook"); event.accepted = true; }   // one level: back to Quick Look

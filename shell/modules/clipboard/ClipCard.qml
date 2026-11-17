@@ -84,6 +84,16 @@ Item {
             Behavior on color { ColorAnimation { duration: Theme.colorMs } }
         }
         HoverHandler { id: hover }
+        // Screen readers: one entry of the list; pressing it pastes, as a double click does.
+        Accessible.role: Accessible.ListItem
+        Accessible.name: !card.e ? ""
+            : card.masked ? "Hidden secret"
+            : card.e.kind === "image" ? "Image" + (card.e.dims ? " " + card.e.dims.replace("x", " by ") : "")
+            : card.isFiles && card.file0 ? card.file0.name + (card.fileList.length > 1 ? " and " + (card.fileList.length - 1) + " more" : "")
+            : card.e.preview.replace(/\s+/g, " ").slice(0, 120)
+        Accessible.description: (card.e ? card.panel.metaOf(card.e) : "") + (card.pinned ? ", pinned" : "") + (card.marked ? ", marked" : "")
+        Accessible.selected: card.selected
+        Accessible.onPressAction: { card.panel.select(card.r.key); card.panel.run("paste"); }
         TapHandler {
             acceptedModifiers: Qt.NoModifier
             onTapped: { card.panel.clearMarks(); card.panel.select(card.r.key); }
@@ -277,6 +287,9 @@ Item {
                             onContainsMouseChanged: card.panel.tip(q, containsMouse, q.modelData.t, q.modelData.k)
                             onClicked: { card.panel.tip(q, false); card.panel.select(card.r.key); card.panel.run(q.modelData.a); }
                         }
+                        Accessible.role: Accessible.Button
+                        Accessible.name: q.modelData.t
+                        Accessible.onPressAction: { card.panel.select(card.r.key); card.panel.run(q.modelData.a); }
                     }
                 }
             }

@@ -59,6 +59,9 @@ FocusScope {
         color: closeArea.containsMouse ? Qt.alpha(Theme.red, 0.85) : Theme.pill
         Text { anchors.centerIn: parent; text: "\u{f0156}"; font.family: Theme.fontGlyph; font.pixelSize: 12; color: closeArea.containsMouse ? "white" : Theme.textSecondary }
         MouseArea { id: closeArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: Clipboard.recordSetup = false }
+        Accessible.role: Accessible.Button
+        Accessible.name: "Close"
+        Accessible.onPressAction: Clipboard.recordSetup = false
     }
 
     // ── Choices ──────────────────────────────────────────────────────────
@@ -97,6 +100,12 @@ FocusScope {
                             Label { visible: !!chip.modelData.sub; anchors.verticalCenter: parent.verticalCenter; text: chip.modelData.sub || ""; size: 11; color: chip.on ? Qt.alpha(Theme.inkOnLight, 0.7) : Theme.textTertiary }
                         }
                         MouseArea { id: chipArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: setup[line.modelData.key] = chip.modelData.id }
+                        Accessible.role: Accessible.RadioButton
+                        Accessible.name: line.modelData.label + ": " + chip.modelData.label + (chip.modelData.sub ? ", " + chip.modelData.sub : "")
+                        Accessible.description: "Key " + line.modelData.hint
+                        Accessible.checkable: true
+                        Accessible.checked: chip.on
+                        Accessible.onPressAction: setup[line.modelData.key] = chip.modelData.id
                     }
                 }
                 KeyCap { anchors.verticalCenter: parent.verticalCenter; text: line.modelData.hint }
@@ -122,6 +131,10 @@ FocusScope {
             KeyCap { anchors.verticalCenter: parent.verticalCenter; text: "↵" }
         }
         MouseArea { id: recArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: setup.record() }
+        Accessible.role: Accessible.Button
+        Accessible.name: "Record"
+        Accessible.description: "Return. Saved to the Videos Recordings folder"
+        Accessible.onPressAction: setup.record()
     }
     Label {
         anchors { left: parent.left; leftMargin: 22; verticalCenter: rec.verticalCenter }

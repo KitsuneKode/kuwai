@@ -914,6 +914,14 @@ Scope {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: root.pillClicked()
                 }
+                // Screen readers: the shelf is the clipboard; the pill is the button it is.
+                Accessible.role: root.expanded ? Accessible.Pane : Accessible.Button
+                Accessible.name: root.expanded ? "Clipboard"
+                    : root.recording ? "Stop screen recording"
+                    : root.saved ? "Recording saved, open it"
+                    : root.toastEntry && root.toastEntry.kind === "image" ? "Copied image, annotate it"
+                    : "Copied, open the clipboard"
+                Accessible.onPressAction: if (!root.expanded) root.pillClicked()
 
                 // ── Shelf ────────────────────────────────────────────────
                 Loader {
@@ -990,6 +998,9 @@ Scope {
                         onContainsMouseChanged: root.tip(scope, containsMouse, "Show everything", ["⌫"])
                         onClicked: { root.tip(scope, false); root.filter = "all"; root.focusSearch(); }
                     }
+                    Accessible.role: Accessible.Button
+                    Accessible.name: "Clear the filter " + root.filterLabel(root.filter) + ", show everything"
+                    Accessible.onPressAction: { root.filter = "all"; root.focusSearch(); }
                 }
                 Rectangle {
                     id: whenTag
@@ -1015,6 +1026,9 @@ Scope {
                         onContainsMouseChanged: root.tip(whenTag, containsMouse, "Any time")
                         onClicked: { root.tip(whenTag, false); root.setDate(0, 0, ""); root.focusSearch(); }
                     }
+                    Accessible.role: Accessible.Button
+                    Accessible.name: "Clear the date " + root.whenLabel + ", any time"
+                    Accessible.onPressAction: { root.setDate(0, 0, ""); root.focusSearch(); }
                 }
                 TextInput {
                     id: search
@@ -1062,6 +1076,12 @@ Scope {
                         onContainsMouseChanged: root.tip(dateBtn, containsMouse && root.mode !== "date", "When it was copied", ["⌃", "D"])
                         onClicked: { root.tip(dateBtn, false); root.toggleMode("date"); root.focusSearch(); }
                     }
+                    Accessible.role: Accessible.ButtonDropDown
+                    Accessible.name: "When it was copied, " + (root.whenLabel || "any time")
+                    Accessible.description: "Control D"
+                    Accessible.expandable: true
+                    Accessible.expanded: root.mode === "date"
+                    Accessible.onPressAction: { root.toggleMode("date"); root.focusSearch(); }
                 }
                 // Close by mouse (Esc, a click outside, or the idle timeout too).
                 Rectangle {
@@ -1081,6 +1101,10 @@ Scope {
                         onContainsMouseChanged: root.tip(closeBtn, containsMouse, "Close", ["Esc"])
                         onClicked: { root.tip(closeBtn, false); Clipboard.open = false; }
                     }
+                    Accessible.role: Accessible.Button
+                    Accessible.name: "Close"
+                    Accessible.description: "Escape"
+                    Accessible.onPressAction: Clipboard.open = false
                 }
                 Rectangle {
                     id: typeBtn
@@ -1103,6 +1127,12 @@ Scope {
                         onContainsMouseChanged: root.tip(typeBtn, containsMouse && root.mode !== "filter", "Filter by type", ["⇥"])
                         onClicked: { root.tip(typeBtn, false); root.toggleMode("filter"); root.focusSearch(); }
                     }
+                    Accessible.role: Accessible.ButtonDropDown
+                    Accessible.name: "Filter by type, " + root.filterLabel(root.filter)
+                    Accessible.description: "Tab cycles the types"
+                    Accessible.expandable: true
+                    Accessible.expanded: root.mode === "filter"
+                    Accessible.onPressAction: { root.toggleMode("filter"); root.focusSearch(); }
                 }
             }
 
@@ -1377,6 +1407,12 @@ Scope {
                         onContainsMouseChanged: root.tip(actionsBtn, containsMouse && root.mode !== "actions", "Every action for this card")
                         onClicked: { root.tip(actionsBtn, false); root.toggleMode("actions"); root.focusSearch(); }
                     }
+                    Accessible.role: Accessible.ButtonMenu
+                    Accessible.name: "Actions"
+                    Accessible.description: "Every action for this card. Control K"
+                    Accessible.expandable: true
+                    Accessible.expanded: root.mode === "actions"
+                    Accessible.onPressAction: { root.toggleMode("actions"); root.focusSearch(); }
                 }
             }
 
