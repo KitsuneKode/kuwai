@@ -17,11 +17,8 @@ FocusScope {
     focus: true
     implicitWidth: Theme.panelS
     implicitHeight: col.implicitHeight + 40
-    // The list scrolls past this height. Beside the machine (VitalsPanel)
-    // it is that column's height, so the panel ends where both do instead
-    // of the machine column standing over an empty well.
-    property real listMax: 470
-    readonly property real listTop: listWrap.y
+    // The list scrolls past this height.
+    readonly property real listMax: 470
 
     // Countdowns tick (once a minute) while this is open.
     Binding { target: Limits; property: "panelShown"; value: usage.visible }

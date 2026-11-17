@@ -740,18 +740,19 @@ Item {
                 ]
             }
             }
-        // Vitals: the GPU, the machine and the agents' usage in one panel. A dot
-        // when an agent is out of its limit.
+        // The machine (the System section), with Usage one step along its
+        // strip. A dot when an agent is out of its limit; then it opens Usage,
+        // where that is.
         QuickIcon {
             anchors.verticalCenter: parent.verticalCenter
             glyph: "\u{f029a}"
-            on: Island.panel === "vitals"
+            on: Island.panel === "system" || Island.panel === "usage"
             tone: Theme.accent
             badge: Limits.exhausted.length > 0
             badgeTone: Theme.orange
-            tip: "Vitals: GPU, machine and agent usage"
-                + (Limits.exhausted.length ? " · " + Limits.exhausted.length + " agent" + (Limits.exhausted.length === 1 ? "" : "s") + " out" : "")
-            onClicked: Island.open("vitals", hover.bar.screenName, "pointer", "island")
+            tip: Limits.exhausted.length ? "Usage: " + Limits.exhausted.length + " agent" + (Limits.exhausted.length === 1 ? "" : "s") + " out"
+                : "System: CPU, memory, GPU, modes"
+            onClicked: Island.open(Limits.exhausted.length ? "usage" : "system", hover.bar.screenName, "pointer", "island")
         }
         Item {
             id: bellRow

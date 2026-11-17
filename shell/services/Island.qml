@@ -19,7 +19,12 @@ import Quickshell.Io
 Singleton {
     id: root
 
-    readonly property var panels: ["calendar", "power", "launcher", "settings", "system", "theme", "keys", "switcher", "updates", "media", "t3", "agents", "notifs", "bluetooth", "usage", "vitals", "read", "cleanup"]
+    readonly property var panels: ["calendar", "power", "launcher", "settings", "system", "theme", "keys", "switcher", "updates", "media", "t3", "agents", "notifs", "bluetooth", "usage", "read", "cleanup"]
+    // Old names that still open their panel: "vitals" (machine + agents'
+    // usage side by side) became the System section, usage its own section.
+    // Anything that still says vitals (a bind, a script, `rice vitals`) works.
+    readonly property var aliases: ({ vitals: "system" })
+    function canon(name) { return aliases[name] || name; }
     property string panel: ""
     // Each screen's island width at rest, so other surfaces (the clipboard,
     // toasts) can grow out of exactly its shape. Set by IslandBar.
@@ -145,12 +150,14 @@ Singleton {
     // `from` "island": opened from the island itself (its clock, rings…);
     // going back returns to it, expanded while the pointer is still there.
     function open(name, screenName, how, from) {
+        name = canon(name);
         if (panels.indexOf(name) < 0) return;
         // From a key (no screen given): ask Hyprland where you are first.
         if (!screenName) { Screens.refresh(n => root.openOn(name, n, how, from)); return; }
         openOn(name, screenName, how, from);
     }
     function openOn(name, screenName, how, from) {
+        name = canon(name);
         previewing = false;
         const s = screenName || Screens.focusedName;
         history = panel && panel !== name && s === screen ? [...history, panel] : from === "island" ? ["island"] : [];
@@ -163,11 +170,12 @@ Singleton {
     readonly property var sections: [
         { id: "agents", label: "Agents", glyph: "\u{f0e7b}" },
         { id: "usage", label: "Usage", glyph: "\u{f029a}" },
-        { id: "vitals", label: "System", glyph: "\u{f0ee0}" },
+        { id: "system", label: "System", glyph: "\u{f0ee0}" },
         { id: "cleanup", label: "Cleanup", glyph: "\u{f00e2}" }
     ]
     function isSection(name) { return sections.some(s => s.id === name); }
     function switchTo(name) {
+        name = canon(name);
         if (!panel || panel === name || panels.indexOf(name) < 0) return;
         panel = name;                 // same screen, same history
     }
@@ -225,6 +233,7 @@ Singleton {
         });
     }
     function toggle(name, screenName, how) {
+        name = canon(name);
         const go = s => {
             if (root.panel === name && root.screen === s) root.close();
             else root.openOn(name, s, how);

@@ -83,7 +83,7 @@ FocusScope {
         { name: "Power", sub: "Sleep, restart, shut down", glyph: "\u{f0425}", run: () => Qt.callLater(() => Island.open("power", Island.screen, "key")), keep: true },
         { name: "Settings", sub: "Bar, clock, notifications, motion", glyph: "\u{f0493}", run: () => Qt.callLater(() => Island.open("settings", Island.screen, "key")), keep: true },
         { name: "Themes", sub: "Switch the theme or the wallpaper", glyph: "\u{f03d8}", run: () => Qt.callLater(() => { Island.themeMode = "themes"; Island.open("theme", Island.screen, "key"); }), keep: true },
-        { name: "System", sub: "CPU, memory, GPU, updates", glyph: "\u{f0ee0}", run: () => Qt.callLater(() => Island.open("system", Island.screen, "key")), keep: true },
+        { name: "System", sub: "CPU, memory by app, GPU, game mode, caffeine", also: "vitals", glyph: "\u{f0ee0}", run: () => Qt.callLater(() => Island.open("system", Island.screen, "key")), keep: true },
         { name: "Keyboard Shortcuts", sub: "Every Hyprland and rice shortcut", glyph: "\u{f030c}", run: () => Qt.callLater(() => Island.open("keys", Island.screen, "key")), keep: true },
         { name: "Calendar", sub: "This month", glyph: "\u{f00ed}", run: () => Qt.callLater(() => Island.open("calendar", Island.screen, "key")), keep: true },
         { name: "Clipboard", sub: "History and pins", glyph: "\u{f014c}", run: () => Clipboard.toggle("all") },
@@ -95,7 +95,6 @@ FocusScope {
         { name: "Agents", sub: "Every kitty pane and T3 thread, the model each runs", glyph: "\u{f0e7b}", run: () => Qt.callLater(() => Island.open("agents", Island.screen, "key")), keep: true },
         { name: "Agent Usage", sub: "What each account has left, and when it resets", glyph: "\u{f029a}", run: () => Qt.callLater(() => Island.open("usage", Island.screen, "key")), keep: true },
         { name: "Now Playing", sub: "The player, its queue and the output", glyph: "\u{f075a}", run: () => Qt.callLater(() => Island.open("media", Island.screen, "key")), keep: true },
-        { name: "Vitals", sub: "CPU, memory, GPU, temperatures", glyph: "\u{f0ee0}", run: () => Qt.callLater(() => Island.open("vitals", Island.screen, "key")), keep: true },
         { name: "T3 Code", sub: "Its threads: working, waiting, finished", glyph: "\u{f0a1e}", run: () => Qt.callLater(() => Island.open("t3", Island.screen, "key")), keep: true },
         { name: "Bluetooth", sub: "Devices, connect and disconnect", glyph: "\u{f00af}", run: () => Qt.callLater(() => Island.open("bluetooth", Island.screen, "key")), keep: true },
         { name: "Cleanup", sub: "Skills your agents never use, what they cost each session · leftovers on disk", glyph: "\u{f00e2}", run: () => Qt.callLater(() => Island.open("cleanup", Island.screen, "key")), keep: true },
@@ -304,7 +303,8 @@ FocusScope {
         // `>`: every mode and action by name (Settings, Themes… without the keys).
         if (query.startsWith(">")) {
             const n = query.slice(1).trim().toLowerCase();
-            const hit = x => !n || x.name.toLowerCase().indexOf(n) >= 0 || x.sub.toLowerCase().indexOf(n) >= 0;
+            // `also`: an old name it still answers to ("vitals" → System).
+            const hit = x => !n || x.name.toLowerCase().indexOf(n) >= 0 || x.sub.toLowerCase().indexOf(n) >= 0 || (x.also || "").indexOf(n) >= 0;
             section("Modes", modes.filter(hit).map(m => ({ kind: "mode", name: m.name, sub: m.sub + "  ·  " + m.prefix.trim(), glyph: m.glyph, prefix: m.prefix })));
             section("Run", actions.filter(hit).map(a => ({ kind: "action", action: a, name: a.name, sub: a.sub, glyph: a.glyph })));
             return out;
@@ -354,7 +354,7 @@ FocusScope {
             if (m) winHit.push({ kind: "window", toplevel: t, name: t.title || cls, pos: m.pos, sub: (app ? app.name : cls) + (t.workspace && t.workspace.id > 0 ? " · workspace " + ((t.workspace.id - 1) % 10 + 1) : ""), icon: app ? app.icon : cls.toLowerCase(), rank: m.score * 0.85 });
         }
         for (const a of actions) {
-            const m = score(q, a.name, [a.sub]);
+            const m = score(q, a.name, [a.sub, a.also || ""]);
             if (m) actHit.push({ kind: "action", action: a, name: a.name, pos: m.pos, sub: a.sub, glyph: a.glyph, rank: m.score * 0.9 + Math.min(20, frecency("action:" + a.name) * 4) });
         }
         // Weak matches go when a strong one exists (fuzzy noise).

@@ -75,7 +75,7 @@ Singleton {
     // you switch to at the same size doesn't re-morph the island sideways.
     readonly property int panelS: 440    // a list or a card: Agents, Usage, T3, Notifications, Bluetooth, Now Playing
     readonly property int panelM: 620    // a list with detail: Launcher, System, Power, Cleanup
-    readonly property int panelL: 780    // two columns: Settings, Updates, Shortcuts, Vitals
+    readonly property int panelL: 780    // two columns: Settings, Updates, Shortcuts
     readonly property int panelXL: 980   // a gallery: Themes
     readonly property int s1: 4
     readonly property int s2: 8

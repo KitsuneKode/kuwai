@@ -1,13 +1,21 @@
-// System, grown out of the island (the rings in the expanded island, or the
-// launcher): what Waybar's cpu, memory, gpuinfo, sensorsinfo and updates
-// modules showed, laid out to be read at a glance, plus the quick switches
-// that lived beside them (game mode, night light, caffeine, do not disturb).
+// System, grown out of the island: one of the island's sections (Agents ·
+// Usage · System · Cleanup, the strip at its top right; ⌥3). The machine at a
+// glance (what Waybar's cpu, memory, gpuinfo, sensorsinfo and updates modules
+// showed) and the quick switches that lived beside them. Opened by the rings
+// in the expanded island, the hover view's gauge, the launcher, its shortcut,
+// `rice system`. "vitals" (the old machine + usage panel) is an alias for it
+// (Island.aliases); what that panel added is here (memory by app), and the
+// agents' usage is the Usage section beside it.
 //
 //   System                                       up 1d 11h · load 2.1
 //   CPU  23%  85°      ▁▃▂▅▁▁▂▇▃▁▂▁▄▂▁▃   (16 threads)    Fans 3700 · 4000 rpm
-//   Memory  6.1 / 15.4 GB  ━━━━━━━━──────────   Swap 0 MB
-//   GPU  RTX 4050  33%  72°  28 W  ━━━━────  VRAM 1.2 / 6 GB
-//   [ Game mode ] [ Night light ] [ Caffeine ] [ Do not disturb ]    12 updates ⟶
+//   Memory  9.1 GB of 16 GB in use   ●●●●●●●○○○ (by app: point at the dots)
+//   NVIDIA GPU · 72° · 28 W  33%  ━━━━────  VRAM 1.2 of 6 GB
+//   [ Game mode ] [ Night light ] [ Caffeine ] [ Focus ]
+//   12 updates available                                 Review and update ›
+//
+// Numbers that need a process (rice-procs, hyprctl) are read only while this
+// is open: the poll lives in the panel and goes with it (Theme.panelPollMs).
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -24,6 +32,15 @@ FocusScope {
 
     Component.onCompleted: { SystemStats.watch(); gameProbe.running = true; }
     Component.onDestruction: SystemStats.unwatch()
+
+    // Memory by what holds it: PSS, so a browser's twenty processes count once.
+    property var memApps: []
+    Process {
+        id: memProbe
+        command: [Paths.bin + "/rice-procs", "--by-app"]
+        stdout: StdioCollector { onStreamFinished: { try { sys.memApps = JSON.parse(text); } catch (e) {} } }
+    }
+    Timer { interval: Theme.panelPollMs; repeat: true; running: true; triggeredOnStart: true; onTriggered: memProbe.running = true }
 
     // Game mode is HyDE's (animations and blur off); read it from Hyprland.
     property bool gameMode: false
@@ -85,16 +102,20 @@ FocusScope {
                     }
                     Label { text: SystemStats.fans.length ? "Fans " + SystemStats.fans.join(" · ") + " rpm" : ""; size: 11; color: Theme.textTertiary }
                 }
-                // One bar per thread.
+                // One bar per thread, narrower when there are many (32
+                // threads at 14 px ran out of the card).
                 Row {
+                    id: bars
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: 4
+                    readonly property real room: col.width - 28 - 128 - 18
+                    readonly property real barW: Math.max(3, Math.min(14, (room + spacing) / Math.max(1, SystemStats.cores.length) - spacing))
                     Repeater {
                         model: SystemStats.cores.length
                         Item {
                             required property int index
                             readonly property real v: SystemStats.cores[index] || 0
-                            width: 14; height: 48
+                            width: bars.barW; height: 48
                             HoverHandler { id: coreHover }
                             Tip {
                                 text: "Thread " + parent.index + " · " + SystemStats.coreKind(parent.index) + " · " + Math.round(parent.v * 100) + "%" + (SystemStats.coreMHz[parent.index] ? " · " + (SystemStats.coreMHz[parent.index] / 1000).toFixed(1) + " GHz" : "")
@@ -114,12 +135,26 @@ FocusScope {
             }
         }
 
-        // ── Memory ───────────────────────────────────────────────────────
+        // ── Memory, by what holds it (Clove's storage bar) ───────────────
+        // One big number, the dots by app, a legend that lights with them.
         Card {
-            Meter {
+            LinkedBar {
+                width: parent.width
                 title: "Memory"
-                value: SystemStats.mem
-                detail: SystemStats.bytes(SystemStats.memUsed) + " of " + SystemStats.bytes(SystemStats.memTotal) + (SystemStats.swapUsed > 1048576 ? "  ·  swap " + SystemStats.bytes(SystemStats.swapUsed) : "")
+                big: SystemStats.bytes(SystemStats.memUsed)
+                caption: "of " + SystemStats.bytes(SystemStats.memTotal) + " in use"
+                    + (SystemStats.swapUsed > 1048576 ? " · swap " + SystemStats.bytes(SystemStats.swapUsed) : "")
+                    + (sys.memApps.length ? " · point at the dots" : "")
+                total: SystemStats.memTotal / 1073741824
+                unit: " GB"
+                parts: {
+                    const pal = [Theme.orange, Theme.blue, Theme.green, Theme.indigo, Theme.cyan, Theme.yellow, Theme.red];
+                    const used = SystemStats.memUsed / 1073741824;
+                    const top = sys.memApps.slice(0, 6).map((a, i) => ({ label: a.app, value: a.mb / 1024, color: pal[i],
+                        detail: a.count + (a.count === 1 ? " process" : " processes") }));
+                    const rest = Math.max(0, used - top.reduce((n, p) => n + p.value, 0));
+                    return rest > 0.05 ? top.concat([{ label: "Everything else", value: rest, color: Theme.gray, detail: "the system, caches the kernel can't drop, the rest" }]) : top;
+                }
             }
         }
 
@@ -128,9 +163,9 @@ FocusScope {
             visible: SystemStats.gpuState !== ""
             Meter {
                 title: "NVIDIA GPU" + (SystemStats.gpuTemp ? "  ·  " + SystemStats.gpuTemp + "°" : "") + (SystemStats.gpuPower ? "  ·  " + Math.round(SystemStats.gpuPower) + " W" : "")
-                value: SystemStats.gpu
+                value: SystemStats.gpuState === "suspended" ? 0 : SystemStats.gpu
                 big: SystemStats.gpuState === "suspended" ? "Asleep" : Math.round(SystemStats.gpu * 100) + "%"
-                detail: SystemStats.gpuState === "suspended" ? "The NVIDIA GPU is powered down (nothing is using it)"
+                detail: SystemStats.gpuState === "suspended" ? "Powered down: nothing is using it"
                       : "VRAM " + (SystemStats.gpuMemUsed / 1024).toFixed(1) + " of " + (SystemStats.gpuMemTotal / 1024).toFixed(0) + " GB"
             }
         }
@@ -155,8 +190,17 @@ FocusScope {
             Tile { glyph: "\u{f009b}"; label: "Focus"; on: Notifs.dnd; onClicked: Notifs.toggleUserDnd() }
         }
         Item {
+            id: upd
             width: parent.width; height: 34
             visible: SystemStats.updates > 0
+            readonly property real radius: 12           // FocusRing follows it
+            function go() { Island.open("updates", Island.screen, updArea.containsMouse ? "pointer" : "key", "island"); }
+            activeFocusOnTab: true
+            Accessible.role: Accessible.Button
+            Accessible.name: SystemStats.updates + (SystemStats.updates === 1 ? " update" : " updates") + " available: review and update"
+            Accessible.onPressAction: upd.go()
+            Keys.onPressed: e => { if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { upd.go(); e.accepted = true; } }
+            FocusRing {}
             Rectangle {
                 anchors.fill: parent; radius: 12
                 color: updArea.containsMouse ? Qt.alpha(Theme.accent, 0.22) : Qt.alpha(Theme.accent, 0.12)
@@ -170,8 +214,8 @@ FocusScope {
             }
             Label { anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
                 text: "Review and update ›"; size: 12; color: Theme.textSecondary }
-            MouseArea { id: updArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: Island.open("updates", Island.screen, "pointer", "island") }
+            MouseArea { id: updArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: upd.go() }
         }
     }
-    // Card, Meter, Tile: components/ui.
+    // Card, Meter, Tile: components/ui. LinkedBar, FocusRing: components.
 }
