@@ -77,7 +77,18 @@ fi
 
 # memory
 anon=$(awk '/Pss_Anon/ {print int($2/1024)}' /proc/$pid/smaps_rollup 2>/dev/null)
-if [ -n "$anon" ] && [ "$anon" -le "$BUDGET" ]; then ok "memory: ${anon} MB (budget $BUDGET)"; else bad "memory: ${anon:-?} MB over the $BUDGET MB budget"; fi
+# A shell that has just started is not at its resting size yet: measured
+# 2026-11-18 on one start, 852 MB five minutes in, 494 MB a minute later,
+# 343 MB at nine minutes (two screens, a live wallpaper set). A promote made
+# within minutes of the last one failed the 450 MB gate on that alone. For its
+# first ten minutes the budget is doubled and the line says why; after that it
+# is the plain budget, which is what catches a shell that keeps what it took.
+mem_why=""
+mem_age=$(ps -o etimes= -p "$pid" 2>/dev/null | tr -d ' ')
+if [ -n "$mem_age" ] && [ "$mem_age" -lt 600 ]; then
+    BUDGET=$((BUDGET * 2)); mem_why=", still settling: started ${mem_age} s ago"
+fi
+if [ -n "$anon" ] && [ "$anon" -le "$BUDGET" ]; then ok "memory: ${anon} MB (budget $BUDGET$mem_why)"; else bad "memory: ${anon:-?} MB over the $BUDGET MB budget$mem_why"; fi
 
 # cpu (3 s). A shell that just started is still loading: let it settle
 # first (every check right after a promote read 8–12 %). Music playing is
