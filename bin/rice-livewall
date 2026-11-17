@@ -1,27 +1,36 @@
 #!/usr/bin/env bash
-# rice-livewall (was ~/Scripts/live-wallpaper.sh) — mpvpaper live wallpapers, Omarchy-style
+# rice-livewall (was ~/Scripts/live-wallpaper.sh) — picks the live wallpaper
 #
-# How Omarchy Quattro does it: the wallpaper is a shell layer that plays
-# video natively. Here mpvpaper plays that same role — mpv renders video
-# onto the layer below your windows, above the awww static wallpaper, so
-# stopping is instant (no restore needed).
+# The shell plays it: shell/modules/wallpaper/LiveWallpaper.qml watches
+# $XDG_STATE_HOME/live-wallpaper/last and plays that video on the background
+# layer itself (one muted, looping player per screen, paused under a
+# fullscreen window, the lock and, unless allowed, on battery). This script
+# only chooses and records:
 #
-# Library resolution (Omarchy per-theme convention):
-#   1. ~/.config/hyde/themes/<ACTIVE THEME>/wallpapers/live/   (if it has videos)
-#   2. ~/Pictures/live-wallpapers/                             (global fallback)
+#   toggle | next | play FILE   write the pick to `last`, set `enabled`
+#   stop                        empty `last` (the shell fades the video out)
+#   first                       the remembered pick, else the library's first
+#   resume                      at login / theme apply; does nothing while the
+#                               shell is up (it already plays `last`)
+#
+# Without the shell (it isn't running), mpvpaper is the fallback player:
+# spawn() starts it with its IPC socket under $XDG_RUNTIME_DIR/rice/ and a
+# `watch` loop that pauses it while any window is fullscreen.
+#
+# Library (Omarchy's per-theme convention), merged, sorted by name:
+#   1. ~/.config/hyde/themes/<ACTIVE THEME>/wallpapers/live/
+#   2. ~/Pictures/live-wallpapers/
 # Prefix filenames 1-, 2-, 3- ... to define cycle order.
 #
-# Boot/apply restore: 'resume' replays the last video only if the enabled
-# flag is set — toggle on once and it comes back every login; stop clears it.
-#
-# Requires: mpvpaper (yay -S mpvpaper), mpv, socat, jq
-# Zero-install alternative: awww animates GIFs natively — `awww img loop.gif`
+# State: $XDG_STATE_HOME/live-wallpaper/{last,enabled,index}.
+# The fallback needs mpvpaper, socat and jq.
 
 set -u
 
 GLOBAL_LIB="$HOME/Pictures/live-wallpapers"
-SOCK_PREFIX="/tmp/mpvpaper-ipc"
-STATE_DIR="$HOME/.local/state/live-wallpaper"
+SOCK_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/rice"   # private (0700), not a guessable /tmp path
+SOCK_PREFIX="$SOCK_DIR/mpvpaper-ipc"
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/live-wallpaper"   # where LiveWallpaper.qml reads it
 IDX="$STATE_DIR/index"       # cycle position within current library
 LAST="$STATE_DIR/last"       # last played file
 ENABLED="$STATE_DIR/enabled" # flag: live walls wanted across boots/themes
@@ -60,7 +69,7 @@ files() {   # theme library + global library merged (theme vids surface first by
     } | sort -V
 }
 
-is_running() { pgrep -f 'mpvpaper' >/dev/null; }
+is_running() { pgrep -x mpvpaper >/dev/null; }   # the player, not a command line naming it
 # The shell that plays video itself: the rice (its process is `qs`), or a
 # standalone Quickshell.
 shell_up() { qs list --all --json 2>/dev/null | jq -e 'any(.[]; .config_path | endswith("/shell/shell.qml"))' >/dev/null; }
@@ -87,6 +96,7 @@ watch() {
 
 spawn() {   # shared start: video layer + fullscreen watcher + persist
     local file="$1"
+    (umask 077; mkdir -p "$SOCK_DIR")
     setsid mpvpaper -o "$MPV_OPTS" '*' "$file" >/dev/null 2>&1 &
     setsid "$0" watch >/dev/null 2>&1 &
     mkdir -p "$STATE_DIR"
@@ -124,7 +134,7 @@ resume() {   # login / theme-apply entry point — no-op unless user opted in
 stop_sleep() { stop; sleep 0.4; }
 
 stop() {
-    pkill -f 'mpvpaper' 2>/dev/null
+    pkill -x mpvpaper 2>/dev/null
     pkill -f 'rice-livewall watch' 2>/dev/null
     pkill -f 'live-wallpaper.sh watch' 2>/dev/null   # a watcher from before the move
     : > "$LAST"   # empty LAST = Quickshell fades video out, poster shows
@@ -154,9 +164,9 @@ case "${1:-toggle}" in
     stop)    stop ;;
     watch)   watch ;;
     first)   # Quickshell seed — remembered pick wins, else first of merged library
-        f=$(cat "$LAST" 2>/dev/null || true)
-        if [ -n "$f" ] && [ -f "$f" ] && is_video "$f"; then
-            printf '%s\n' "$f"
+        pick=$(cat "$LAST" 2>/dev/null || true)
+        if [ -n "$pick" ] && [ -f "$pick" ] && is_video "$pick"; then
+            printf '%s\n' "$pick"
         else
             files | head -1
         fi ;;
