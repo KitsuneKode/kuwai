@@ -120,6 +120,8 @@ bind(S .. " + CTRL + ALT + left", "Window to the screen on the left", dsp.window
 bind(S .. " + CTRL + ALT + right", "Window to the screen on the right", dsp.window.move({ monitor = "right" }))
 bind(S .. " + CTRL + ALT + SHIFT + left", "This workspace's windows to the screen on the left", W.windows_to_screen(-1))
 bind(S .. " + CTRL + ALT + SHIFT + right", "This workspace's windows to the screen on the right", W.windows_to_screen(1))
+-- A window stopped repainting (T3 on the Acer): note the moment for diagnosis.
+bind(S .. " + CTRL + ALT + Z", "Note a frozen window (for diagnosis)", RICE .. "/rice-freeze-snap")
 
 ---------------------------------------------------------------------------
 group("Columns")

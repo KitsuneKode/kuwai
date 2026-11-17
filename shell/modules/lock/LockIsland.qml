@@ -49,7 +49,7 @@ Item {
     SequentialAnimation {
         id: bump
         NumberAnimation { target: pill; property: "swell"; to: 1; duration: Theme.microMs; easing.type: Easing.OutCubic }
-        NumberAnimation { target: pill; property: "swell"; to: 0; duration: Theme.pulseMs; easing.type: Easing.OutBack; easing.overshoot: 2 }
+        NumberAnimation { target: pill; property: "swell"; to: 0; duration: Theme.pulseMs; easing.type: Easing.OutBack; easing.overshoot: 1.2 }   // a small swell back (critical damping elsewhere; rare moment)
     }
 
     // ── The padlock: drawn, so the shackle can move ──────────────────────
@@ -59,13 +59,13 @@ Item {
         id: shackleDown
         PropertyAction { target: island; property: "shackle"; value: 1 }
         PauseAnimation { duration: 380 }
-        NumberAnimation { target: island; property: "shackle"; to: 0; duration: 260; easing.type: Easing.OutBack; easing.overshoot: 2.4 }
+        NumberAnimation { target: island; property: "shackle"; to: 0; duration: 260; easing.type: Easing.OutBack; easing.overshoot: 1.4 }   // the click shut: ~7%, not a rubber band
     }
     SequentialAnimation {
         id: shackleUp
         PropertyAction { target: island; property: "shackle"; value: 0 }
         PauseAnimation { duration: 90 }
-        NumberAnimation { target: island; property: "shackle"; to: 1; duration: 300; easing.type: Easing.OutBack; easing.overshoot: 1.8 }
+        NumberAnimation { target: island; property: "shackle"; to: 1; duration: 300; easing.type: Easing.OutBack; easing.overshoot: 1.2 }
     }
     component Padlock: Item {
         id: pad

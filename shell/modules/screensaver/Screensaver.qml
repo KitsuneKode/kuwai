@@ -36,7 +36,9 @@ Scope {
 
     IdleMonitor {
         id: idle
-        enabled: root.allowed
+        // Not while you're dictating: speaking is no input, and the saver
+        // came up mid-sentence.
+        enabled: root.allowed && !Activities.voxBusy
         timeout: Math.max(1, Settings.screensaverMins || 3) * 60
         // Caffeine is an inhibitor of our own: idle still counts here.
         respectInhibitors: false
@@ -214,7 +216,7 @@ Scope {
                         }
                         Text {
                             visible: Media.playing && !!Media.active
-                            text: Media.active ? "\u{f075a}  " + (Media.active.trackTitle || "") + (Media.active.trackArtist ? " · " + Media.active.trackArtist : "") : ""
+                            text: Media.active ? "\u{f075a}  " + (Media.title(Media.active)) + (Media.active.trackArtist ? " · " + Media.active.trackArtist : "") : ""
                             font.family: Theme.fontText
                             font.pixelSize: Math.round(win.height * 0.017)
                             color: Qt.rgba(1, 1, 1, 0.6)

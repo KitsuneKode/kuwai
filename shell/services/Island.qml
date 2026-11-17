@@ -19,7 +19,7 @@ import Quickshell.Io
 Singleton {
     id: root
 
-    readonly property var panels: ["calendar", "power", "launcher", "settings", "system", "theme", "keys", "switcher", "updates", "media", "t3", "agents", "notifs", "bluetooth", "usage", "vitals", "read"]
+    readonly property var panels: ["calendar", "power", "launcher", "settings", "system", "theme", "keys", "switcher", "updates", "media", "t3", "agents", "notifs", "bluetooth", "usage", "vitals", "read", "cleanup"]
     property string panel: ""
     // Each screen's island width at rest, so other surfaces (the clipboard,
     // toasts) can grow out of exactly its shape. Set by IslandBar.
@@ -157,6 +157,19 @@ Singleton {
         screen = s;
         via = how === "key" ? "key" : "pointer";
         panel = name;
+    }
+    // Sections: panels that are views of one thing (what your agents and the
+    // machine are doing) switch in place, like Clove's tabs: no Back step.
+    readonly property var sections: [
+        { id: "agents", label: "Agents", glyph: "\u{f0e7b}" },
+        { id: "usage", label: "Usage", glyph: "\u{f029a}" },
+        { id: "vitals", label: "System", glyph: "\u{f0ee0}" },
+        { id: "cleanup", label: "Cleanup", glyph: "\u{f00e2}" }
+    ]
+    function isSection(name) { return sections.some(s => s.id === name); }
+    function switchTo(name) {
+        if (!panel || panel === name || panels.indexOf(name) < 0) return;
+        panel = name;                 // same screen, same history
     }
     function back() {
         if (innerBack) { innerBack(); return; }

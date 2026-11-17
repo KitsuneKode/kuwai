@@ -27,6 +27,9 @@ Singleton {
     property real voxSince: 0
     readonly property bool voxActive: voxState !== "idle" && voxState !== ""
     readonly property bool voxListening: voxState === "recording" || voxState === "streaming"
+    // Taking or writing out a dictation: what holds the idle dim, lock and
+    // screensaver (a state left behind, "review" say, never holds them).
+    readonly property bool voxBusy: voxListening || voxState === "transcribing"
     FileView {
         path: root.runtime + "/voxtype/state"
         watchChanges: true

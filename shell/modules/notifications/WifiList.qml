@@ -18,6 +18,25 @@ import qs.components
 Column {
     id: wifi
 
+    property var forgetTarget: null
+    function requestForget(target) {
+        if (!target || !target.known) return;
+        forgetTarget = target;
+        forgetDialog.open();
+    }
+    function confirmForget() {
+        const target = forgetTarget;
+        forgetTarget = null;
+        if (target && networks.indexOf(target) >= 0 && target.known) target.forget();
+    }
+    ConfirmationDialog {
+        id: forgetDialog
+        title: "Forget saved configuration?"
+        message: wifi.forgetTarget ? "Forget " + (wifi.forgetTarget.name || "this device") + "? Connecting again will require its credentials or pairing." : ""
+        onConfirmed: wifi.confirmForget()
+        onRejected: wifi.forgetTarget = null
+    }
+
     required property var center
     property var device: null
     property bool open: false
@@ -132,7 +151,7 @@ Column {
             // same Disconnect/Forget pill hover does.
             readonly property bool lit: hover.hovered || activeFocus
             activeFocusOnTab: true
-            function secondary() { if (row.busy) return; if (row.net.connected) row.net.disconnect(); else if (row.net.known) row.net.forget(); }
+            function secondary() { if (row.busy) return; if (row.net.connected) row.net.disconnect(); else if (row.net.known) wifi.requestForget(row.net); }
             Keys.onPressed: e => {
                 if ((e.key === Qt.Key_Return || e.key === Qt.Key_Enter || e.key === Qt.Key_Space) && !row.net.connected) { wifi.join(row.net); e.accepted = true; }
                 else if (e.key === Qt.Key_Delete || e.key === Qt.Key_Backspace) { row.secondary(); e.accepted = true; }

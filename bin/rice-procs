@@ -5,6 +5,7 @@
 #   rice-procs                 the 12 processes using the most (CPU, then memory)
 #   rice-procs zen             processes whose name or command line matches
 #   rice-procs :3000 | 3000    what listens on that port (TCP or UDP)
+#   rice-procs --by-app        memory by app (PSS: shared pages split), the 7 biggest
 #   rice-procs --end PID [--force]
 #                              SIGTERM (or SIGKILL), only for your own processes;
 #                              prints {"ok": true} or {"ok": false, "why": "…"}
@@ -152,7 +153,35 @@ def end(pid, force):
         return {"ok": False, "why": str(e)}
 
 
+def pss(pid):
+    """Proportional memory (shared pages split between their users), bytes."""
+    try:
+        with open(f"/proc/{pid}/smaps_rollup") as f:
+            for line in f:
+                if line.startswith("Pss:"):
+                    return int(line.split()[1]) * 1024
+    except OSError:
+        pass
+    return None
+
+
+def by_app(limit=7):
+    """Memory by app (PSS where readable, else RSS): [{app, mb, count}], biggest first."""
+    groups = {}
+    for r in procs().values():
+        key = friendly(r) or r["name"]
+        m = pss(r["pid"]) if r["uid"] == ME else None
+        g = groups.setdefault(key, {"app": key, "bytes": 0, "count": 0})
+        g["bytes"] += m if m is not None else r["rss"]
+        g["count"] += 1
+    rows = sorted(groups.values(), key=lambda g: -g["bytes"])
+    return [{"app": g["app"], "mb": round(g["bytes"] / 1048576), "count": g["count"]} for g in rows[:limit]]
+
+
 def main(argv):
+    if argv[:1] == ["--by-app"]:
+        print(json.dumps(by_app()))
+        return
     if argv[:1] == ["--end"]:
         try:
             pid = int(argv[1])

@@ -63,8 +63,8 @@ Item {
     Column {
         anchors { left: art.right; leftMargin: 14; right: trail.left; rightMargin: 12; verticalCenter: parent.verticalCenter }
         spacing: 2
-        Label { width: parent.width; elide: Text.ElideRight; text: media.player ? (media.player.trackTitle || "Unknown") : ""; size: 16; weight: Theme.wSemibold }
-        Label { width: parent.width; elide: Text.ElideRight; text: media.player ? (media.player.trackArtist || media.player.identity || "") : ""; size: 13; color: Qt.rgba(1, 1, 1, 0.72) }
+        Label { width: parent.width; elide: Text.ElideRight; text: media.player ? (Media.title(media.player) || "Unknown") : ""; size: 16; weight: Theme.wSemibold }
+        Label { width: parent.width; elide: Text.ElideRight; text: Media.byline(media.player); size: 13; color: Qt.rgba(1, 1, 1, 0.72) }
     }
     Item {
         id: trail

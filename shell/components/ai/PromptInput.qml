@@ -449,8 +449,7 @@ Rectangle {
                             root.modelPickerRequested();
                         } else if (event.key === Qt.Key_L) {
                             event.accepted = true;
-                            inputArea.text = "";
-                            OllamaService.clear();
+                            OllamaService.requestClear();
                         } else if (event.key === Qt.Key_B) {
                             event.accepted = true;
                             root.toggleSidebarRequested();

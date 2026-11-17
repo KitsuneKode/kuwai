@@ -3,6 +3,7 @@
 //
 //   SettingsRow { label: "24-hour time"; Toggle { … } }
 import QtQuick
+import QtQuick.Layouts
 import qs.config
 
 Item {
@@ -12,10 +13,15 @@ Item {
     // The setting this row changes (config/Settings): a ↺ beside the control
     // when it isn't the default, to put the default back.
     property string key: ""
+    readonly property string provenance: key ? Settings.sourceOf(key) + " · Applies immediately" : ""
+    Accessible.role: Accessible.Grouping
+    Accessible.name: label
+    Accessible.description: detail + (provenance ? ". " + provenance : "")
     default property alias control: slot.data
     width: parent ? parent.width : 480
-    // The detail wraps (up to three lines) and the row grows with it.
-    height: Math.max(detail ? 60 : 46, text.implicitHeight + 24)
+    // Full help wraps. Constrained controls move below it without conflicting anchors.
+    readonly property bool stacked: slot.implicitWidth > width * 0.48
+    height: Math.max(detail ? 60 : 46, stacked ? text.implicitHeight + slot.implicitHeight + 32 : Math.max(text.implicitHeight, slot.implicitHeight) + 24)
 
     // Found by the Settings search (SettingsPanel.markFound): a soft accent
     // wash while the search points here, and one pulse when you go to it
@@ -48,16 +54,21 @@ Item {
     }
     Column {
         id: text
-        anchors { left: parent.left; leftMargin: 14; right: resetMark.visible ? resetMark.left : slot.left; rightMargin: 16; verticalCenter: parent.verticalCenter }
+        height: implicitHeight
+        x: 14
+        width: Math.max(0, row.stacked ? row.width - (resetMark.visible ? 54 : 28) : (resetMark.visible ? resetMark.x : slot.x) - x - 16)
+        y: row.stacked ? 12 : (row.height - height) / 2
         spacing: 2
         Label { width: parent.width; elide: Text.ElideRight; text: row.label; size: 13 }
-        Label { visible: row.detail !== ""; width: parent.width; wrapMode: Text.Wrap; maximumLineCount: 3; elide: Text.ElideRight; text: row.detail; size: 11; color: Theme.textTertiary }
+        Label { visible: row.detail !== ""; width: parent.width; wrapMode: Text.Wrap; text: row.detail; size: 11; color: Theme.textTertiary }
+        Label { visible: row.provenance !== ""; width: parent.width; wrapMode: Text.Wrap; text: row.provenance; size: 11; color: Theme.textTertiary }
     }
     Text {
         id: resetMark
         readonly property bool changed: row.key !== "" && !Settings.isDefault(row.key)
         visible: changed
-        anchors { right: slot.left; rightMargin: 10; verticalCenter: parent.verticalCenter }
+        x: row.stacked ? row.width - width - 14 : slot.x - width - 10
+        y: row.stacked ? text.y : (row.height - height) / 2
         text: "\u{f0453}"                                   // restore
         font.family: Theme.fontGlyph; font.pixelSize: 15
         color: resetArea.containsMouse ? Theme.textPrimary : Theme.textTertiary
@@ -71,11 +82,17 @@ Item {
         Tip { text: "Back to the default (" + JSON.stringify(Settings.defaultOf(row.key)) + ")"; shown: resetArea.containsMouse; below: true }
         Accessible.role: Accessible.Button
         Accessible.name: "Reset " + row.label + " to the default"
+        activeFocusOnTab: changed
+        Accessible.onPressAction: Settings.reset(row.key)
+        Keys.onReturnPressed: Settings.reset(row.key)
+        Keys.onSpacePressed: Settings.reset(row.key)
+        FocusRing { cornerRadius: Theme.r1 }
     }
-    Item {
+    RowLayout {
         id: slot
-        anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
-        width: childrenRect.width
-        height: childrenRect.height
+        x: row.width - width - 14
+        y: row.stacked ? text.y + text.height + 8 : (row.height - height) / 2
+        width: Math.min(implicitWidth, Math.max(0, row.width - 28))
+        height: implicitHeight
     }
 }

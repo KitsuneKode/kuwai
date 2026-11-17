@@ -21,8 +21,11 @@
 pragma Singleton
 
 import QtQuick
+import Qt.labs.folderlistmodel
 import Quickshell
 import Quickshell.Io
+import Quickshell.Hyprland
+import qs.config
 
 Singleton {
     id: root
@@ -42,6 +45,7 @@ Singleton {
     property var rows: []                      // kittymux pick --json
     property var feed: null                    // agents.json, when this kittymux publishes it
     readonly property bool live: !!feed && feed.version === 1 && Array.isArray(feed.agents)
+    property bool feedPinned: false            // TestHook: fake agent states, the file's updates ignored
     property var tabsDoc: null                 // tabs.json, when this kittymux publishes it
     readonly property bool tabsLive: !!tabsDoc && tabsDoc.version === 1 && Array.isArray(tabsDoc.windows)
     property bool loaded: false                // first pick has answered
@@ -224,6 +228,23 @@ Singleton {
     }
     readonly property var tabs: tabsLive ? tabsDoc.windows.map(normalizeWindow) : fallbackTabs()
 
+    // On screen: the pane ("pid:w") is in the tab kitty shows, in the kitty
+    // window that has the keyboard, and you're here (not locked, screens
+    // on). A sudo asking for its password in the terminal you're typing in,
+    // or an agent finishing in front of you, is no news for the notch; it
+    // still lands in the list. Hyprland must agree that kitty is focused
+    // (kitty's own flag can lag a focus change).
+    function onScreen(jump) {
+        if (!jump || !tabsLive || Saver.away) return false;
+        const [pid, w] = String(jump).split(":");
+        const win = tabsDoc.windows.find(x => String(x.kitty_pid) === pid && x.focused);
+        if (!win) return false;
+        const top = Hyprland.activeToplevel;
+        const cls = top && top.wayland ? String(top.wayland.appId || "") : "";
+        if (cls !== String(win.wm_class || "kitty")) return false;
+        return (win.tabs || []).some(t => t.active && (String((t.action || {}).w) === w || String(t.agent_window) === w));
+    }
+
     // Tab titles carry the agent's status glyph (✳ ◐ ◑ …): drop it.
     function clean(t) {
         return (t || "").replace(/^[^A-Za-z0-9~/.\u00C0-\u024F\u0400-\u04FF\u0900-\u097F]+\s*/, "");
@@ -316,6 +337,111 @@ Singleton {
         run([bin, "panel", "toggle"]);
     }
 
+    // ── Answer a permission prompt from the notch (owner said yes, 2026-11-13)
+    // `kittymux answer KEY allow|deny --expect Q`: kittymux re-reads the pane
+    // and types only if that exact prompt is still on screen; otherwise it
+    // refuses (exit 3, why on stderr) and nothing is typed. Claude Code and
+    // Codex only (their menus are known); a row waiting, with its question.
+    // KUWAI_ANSWER_DRYRUN=1 adds --dry-run: every check, nothing typed.
+    //   answers: { key: { busy, done: "allow"|"deny"|"", why } }
+    property var answers: ({})
+    readonly property bool answerDry: Quickshell.env("KUWAI_ANSWER_DRYRUN") === "1"
+    function canAnswer(r) {
+        if (r && r.key && asks[r.key]) return true;             // the agent asked us itself (kittymux's mux-ask hook)
+        return !!r && !!r.key && r.needs === true && /^(claude|codex)$/.test(String(r.agent || "").toLowerCase()) && String(r.question || "").trim() !== "";
+    }
+
+    // ── Asked through the hook (kittymux bin/mux-ask) ───────────────────
+    // Claude Code / Codex run a PermissionRequest hook before they show their
+    // prompt; kittymux's publishes asks/<pane key>.json and waits for
+    // asks/<pane key>.answer. Answering writes that file: the agent gets the
+    // decision from its own hook, nothing is typed, nothing is read off the
+    // screen. Without a request file, Allow/Deny falls back to `kittymux answer`.
+    readonly property string asksDir: (Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")) + "/kittymux/asks"
+    property var asks: ({})                     // pane key → { what, tool, agent, until }
+    // The folder is watched only if it exists when the watch starts: make it
+    // first (private: the requests name commands), then watch.
+    property bool asksReady: false
+    Process {
+        running: true
+        command: ["sh", "-c", "mkdir -p \"$1\" && chmod 700 \"$1\"", "sh", root.asksDir]
+        onExited: root.asksReady = true
+    }
+    // And while an agent waits, look again now and then (a watch can miss).
+    Timer {
+        interval: Theme.panelPollMs / 3; repeat: true
+        running: root.running.some(r => r.needs)
+        onTriggered: askRead.running = true
+    }
+    FolderListModel {
+        folder: root.asksReady ? "file://" + root.asksDir : ""
+        nameFilters: ["*.json"]
+        showDirs: false
+        onCountChanged: askRead.running = true
+        onStatusChanged: if (status === FolderListModel.Ready) askRead.running = true
+    }
+    Process {
+        id: askRead
+        command: ["sh", "-c", "set -- \"$1\"/*.json; [ -e \"$1\" ] && jq -cs . \"$@\" 2>/dev/null || echo []", "sh", root.asksDir]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const m = {};
+                try { for (const a of JSON.parse(text)) if (a && a.key && (!a.until || a.until * 1000 > Date.now())) m[a.key] = a; } catch (e) {}
+                root.asks = m;
+            }
+        }
+    }
+    function askFor(r) { return r && r.key ? asks[r.key] || null : null; }
+    function setAnswer(key, v) { const a = Object.assign({}, answers); if (v) a[key] = v; else delete a[key]; answers = a; }
+    function answer(r, choice) {
+        if (!canAnswer(r) || (choice !== "allow" && choice !== "deny")) return;
+        if (answers[r.key] && answers[r.key].busy) return;
+        setAnswer(r.key, { busy: true, done: "", why: "" });
+        if (asks[r.key] && !answerDry) {
+            // The hook waits for this file; written atomically, readable only by you.
+            replier.createObject(root, { key: r.key, choice: choice, command: ["sh", "-c",
+                "umask 077; printf %s \"$2\" > \"$1.tmp\" && mv -f \"$1.tmp\" \"$1\"", "sh", asksDir + "/" + r.key + ".answer", choice] }).running = true;
+            return;
+        }
+        const cmd = [bin, "answer", r.key, choice, "--expect", r.question];
+        if (answerDry) cmd.push("--dry-run");
+        answerer.createObject(root, { command: cmd, key: r.key, choice: choice }).running = true;
+    }
+    Component {
+        id: replier
+        Process {
+            property string key
+            property string choice
+            onExited: code => {
+                root.setAnswer(key, code === 0 ? { busy: false, done: choice, why: "" } : { busy: false, done: "", why: "Couldn't hand the answer to the hook" });
+                answerClear.restart();
+                destroy();
+                refresh.restart();
+            }
+        }
+    }
+    Component {
+        id: answerer
+        Process {
+            property string key
+            property string choice
+            stdout: StdioCollector { id: aOut }
+            stderr: StdioCollector { id: aErr }
+            onExited: code => {
+                const why = (aErr.text || "").trim().split("\n").pop();
+                // 0 typed (or would have, dry run) · 3 refused · 1 pane gone · 2 bad args
+                if (code === 0) root.setAnswer(key, { busy: false, done: choice, why: root.answerDry ? (aOut.text || "").trim() : "" });
+                else root.setAnswer(key, { busy: false, done: "", why: code === 1 ? "That pane is gone" : why || "kittymux didn't answer (exit " + code + ")" });
+                if (code !== 0) console.warn("kittymux answer " + key + " " + choice + ": exit " + code + " " + why);
+                answerClear.restart();
+                destroy();
+                refresh.restart();
+            }
+        }
+    }
+    // A refusal's reason is read, then goes; a done answer goes with the row.
+    Timer { id: answerClear; interval: 6000; onTriggered: { const a = {}; for (const k in root.answers) if (root.answers[k].busy) a[k] = root.answers[k]; root.answers = a; } }
+
     function run(cmd) {
         const p = runner.createObject(root, { command: cmd });
         p.running = true;
@@ -354,9 +480,10 @@ Singleton {
         printErrors: false
         onFileChanged: reload()
         onLoaded: {
+            if (root.feedPinned) return;       // a test's fake states hold (kittymux heartbeats every ~1 s)
             try { root.feed = JSON.parse(text()); root.loaded = true; } catch (e) {}
         }
-        onLoadFailed: root.feed = null           // no file: an older kittymux, so pick stays the source
+        onLoadFailed: if (!root.feedPinned) root.feed = null           // no file: an older kittymux, so pick stays the source
     }
 
     FileView {

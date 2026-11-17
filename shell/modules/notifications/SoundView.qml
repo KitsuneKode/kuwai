@@ -68,7 +68,10 @@ Item {
     // properties come only once bound, and only listed nodes get bound: the
     // old media.class filter left most outputs and every app out for good.)
     readonly property var apps: all.filter(n => n.type === PwNodeType.AudioOutStream && center.matchesText(appName(n)))
-    readonly property var allSinks: all.filter(n => n.type === PwNodeType.AudioSink)
+    // EasyEffects' own sink isn't a place to send sound: it follows the
+    // default (a real DAC). Picked as the default it fell back to the last
+    // device it remembered (the Audiocular while the Cadenza was in the FiiO).
+    readonly property var allSinks: all.filter(n => n.type === PwNodeType.AudioSink && !/^easyeffects_/.test(n.name || ""))
     readonly property var sinks: allSinks.filter(n => center.matchesText(deviceName(n)))
     readonly property var sources: all.filter(n => n.type === PwNodeType.AudioSource && center.matchesText(deviceName(n)))
 
@@ -250,8 +253,8 @@ Item {
         Column {
             anchors { left: art.right; leftMargin: 12; right: controls.left; rightMargin: 8; top: art.top; topMargin: 6 }
             spacing: 3
-            Label { width: parent.width; elide: Text.ElideRight; text: np.player ? (np.player.trackTitle || "Unknown track") : ""; size: 14; weight: Theme.wSemibold }
-            Label { width: parent.width; elide: Text.ElideRight; text: np.player ? (np.player.trackArtist || np.player.identity || "") : ""; size: 12; color: Theme.textSecondary }
+            Label { width: parent.width; elide: Text.ElideRight; text: np.player ? (Media.title(np.player) || "Unknown track") : ""; size: 14; weight: Theme.wSemibold }
+            Label { width: parent.width; elide: Text.ElideRight; text: Media.byline(np.player); size: 12; color: Theme.textSecondary }
             Label { width: parent.width; elide: Text.ElideRight; text: np.player ? (np.player.identity || "") : ""; size: 11; color: Theme.textTertiary }
         }
         Row {

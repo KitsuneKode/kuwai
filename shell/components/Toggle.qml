@@ -34,7 +34,7 @@ Item {
     }
     Rectangle {
         id: knob
-        property real stretch: area.pressed ? 22 * (19 / 16 - 1) : 0
+        property real stretch: area.pressed && !Theme.reduceMotion ? 22 * (19 / 16 - 1) : 0
         Behavior on stretch { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
         width: 22 + stretch
         height: 22

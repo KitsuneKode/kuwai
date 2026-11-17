@@ -39,7 +39,7 @@ Singleton {
     // or starting a new one leaves it running there: it used to be thrown
     // away (abandon()), so the answer never came. The views read these:
     // what's generating *here*, and its live draft.
-    readonly property bool busyHere: streaming && draftSessionId === activeSessionId
+    readonly property bool busyHere: streaming && !discardDraft && draftSessionId === activeSessionId
     readonly property var draftHere: busyHere ? draft : null
     readonly property var pendingHere: busyHere ? pendingRequest : null
     // Chats with an answer that arrived while you were elsewhere (a dot in the list).
@@ -51,7 +51,7 @@ Singleton {
     property bool discardDraft: false
     property string draftSessionId: ""
 
-    readonly property var pendingRequest: Turn.pendingRequest(draft)
+    readonly property var pendingRequest: discardDraft ? null : Turn.pendingRequest(draft)
 
     // Snapshot context the next message carries: {app, title, workspace, cwd, git, selection, clipboard} or null.
     property var pendingContext: null
@@ -440,7 +440,6 @@ Singleton {
         root.summary = sess.summary;
         root.summaryUpTo = sess.summaryUpTo;
         root.model = sess.model;
-        root.queue = [];
         root.errorText = "";
         saveDelay.restart();
     }
@@ -521,13 +520,24 @@ Singleton {
         }
     }
 
+    property string clearPendingSession: ""
+    function requestClear() { root.clearPendingSession = root.activeSessionId; }
+    function cancelClear() { root.clearPendingSession = ""; }
+    function confirmClear() {
+        const id = root.clearPendingSession;
+        root.clearPendingSession = "";
+        if (id && id === root.activeSessionId) clear();
+    }
+
     function clear() {
-        if (streaming) abandon();
-        root.queue = [];
+        if (streaming && root.draftSessionId === root.activeSessionId) abandon();
+        root.queue = root.queue.filter(q => q.session !== root.activeSessionId);
         root.messages = [];
         root.summary = "";
         root.summaryUpTo = 0;
         root.pendingImage = "";
+        root.pendingContext = null;
+        root.pendingAppTitle = "";
         root.errorText = "";
         syncCurrentSession();
     }
@@ -541,13 +551,18 @@ Singleton {
 
     // Stop and throw the partial answer away (leaving this chat).
     function abandon() {
+        // Invalidate only work that exists now. New prompts may queue while exit is delayed.
+        root.queue = root.queue.filter(q => q.session !== root.draftSessionId);
+        root.steering = [];
+        root.pendingDeltas = [];
+        deltaTimer.stop();
         discardDraft = true;
         cancel();
     }
 
     // An approval (accept / decline) or a question's answer (accept + answer text).
     function resolveRequest(id, decision, answer) {
-        if (!chatProc.running) return;
+        if (!chatProc.running || root.discardDraft || !root.pendingRequest || root.pendingRequest.id !== id) return;
         const msg = { type: "request.resolve", id: id, decision: decision };
         if (answer) msg.answer = answer;
         chatProc.write(JSON.stringify(msg) + "\n");
@@ -867,7 +882,7 @@ function onPanelClosed() {
             launchApp(appQuery);
             return;
         } else if (trimmedPrompt === "/clear") {
-            clear();
+            requestClear();
             return;
         } else if (trimmedPrompt === "/new") {
             newChat();
@@ -982,6 +997,8 @@ function onPanelClosed() {
                 if (!line || line.trim() === "") return;
                 let ev;
                 try { ev = JSON.parse(line); } catch (e) { return; }
+                // Cleared/deleted turns cannot restore compaction, steers or deltas on exit.
+                if (root.discardDraft) { if (ev.type === "turn.completed") chatProc.sawTurnEnd = true; return; }
                 // Text arrives a token at a time; fold the tokens into one update a frame
                 // (T3 Code merges per 50 ms on its server). Anything else lands at once, in order.
                 if (ev.type === "item.delta") {
@@ -1010,7 +1027,7 @@ function onPanelClosed() {
                     // Steers it couldn't take (and any still in flight) wait at the front of the queue.
                     const back = (ev.unapplied || []).concat(root.steering)
                         .filter((x, i, a) => a.findIndex(y => y.id === x.id) === i)
-                        .map(x => ({ id: x.id, text: x.text, image: "", context: null }));
+                        .map(x => ({ id: x.id, text: x.text, image: "", context: null, session: root.draftSessionId }));
                     if (back.length) root.queue = back.concat(root.queue);
                     root.steering = [];
                     root.drainAfterTurn = ev.status === "completed" || ev.status === "max_tool_rounds" || ev.status === "repeating";
@@ -1060,10 +1077,11 @@ function onPanelClosed() {
         if (keep && d.status !== "interrupted") root.notifyDone(d);
         root.streaming = false;
         root.draft = null;
-        if (root.discardDraft) { root.queue = []; root.steering = []; }
+        const discarded = root.discardDraft;
+        if (discarded) root.steering = [];
         root.discardDraft = false;
         // Queued in another chat: it runs next whatever this turn's end was.
-        if ((root.drainAfterTurn || root.queue.some(q => q.session && q.session !== root.draftSessionId)) && root.queue.length > 0) drainTimer.restart();
+        if ((discarded || root.drainAfterTurn || root.queue.some(q => q.session && q.session !== root.draftSessionId)) && root.queue.length > 0) drainTimer.restart();
         root.drainAfterTurn = false;
         if (!keep) return;
 

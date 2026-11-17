@@ -31,13 +31,18 @@ Shape {
         strokeColor: notch.edge
         strokeWidth: 1
         startX: 0; startY: 0
-        PathArc { x: notch.e; y: notch.e; radiusX: notch.e; radiusY: notch.e; direction: PathArc.Clockwise }
+        // The ear (shoulder): a continuous flare, not a quarter circle: it
+        // leaves the screen edge flat and meets the side straight, with the
+        // curvature easing in at both ends (the bottom corners' rule), so the
+        // island reads as poured out of the edge. (After Clove's NotchShape,
+        // MIT: its shoulders are quad curves with the control at the corner.)
+        PathCubic { x: notch.e; y: notch.e; control1X: notch.e * 0.62; control1Y: 0; control2X: notch.e; control2Y: notch.e * 0.38 }
         PathLine { x: notch.e; y: notch.h - notch.k }
         PathCubic { x: notch.e + notch.k; y: notch.h; control1X: notch.e; control1Y: notch.h - notch.k * 0.3; control2X: notch.e + notch.k * 0.3; control2Y: notch.h }
         PathLine { x: notch.e + notch.w - notch.k; y: notch.h }
         PathCubic { x: notch.e + notch.w; y: notch.h - notch.k; control1X: notch.e + notch.w - notch.k * 0.3; control1Y: notch.h; control2X: notch.e + notch.w; control2Y: notch.h - notch.k * 0.3 }
         PathLine { x: notch.e + notch.w; y: notch.e }
-        PathArc { x: notch.w + notch.e * 2; y: 0; radiusX: notch.e; radiusY: notch.e; direction: PathArc.Clockwise }
+        PathCubic { x: notch.w + notch.e * 2; y: 0; control1X: notch.e + notch.w; control1Y: notch.e * 0.38; control2X: notch.e + notch.w + notch.e * 0.38; control2Y: 0 }
         PathLine { x: 0; y: 0 }
     }
 }

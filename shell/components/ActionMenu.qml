@@ -155,8 +155,10 @@ Item {
                         anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
                         height: 34
                         radius: 9
-                        color: menu.sel === row.index ? (row.modelData.danger ? Qt.alpha(Theme.red, 0.85) : Qt.alpha(Theme.blue, 0.85))
-                             : rowArea.containsMouse ? Qt.rgba(1, 1, 1, 0.06) : "transparent"
+                        scale: rowArea.pressed ? 0.97 : 1
+                        Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+                        color: menu.sel === row.index ? Qt.rgba(1, 1, 1, 0.14)
+                             : rowArea.containsMouse ? (row.modelData.danger ? Qt.alpha(Theme.red, 0.16) : Qt.rgba(1, 1, 1, 0.07)) : "transparent"
                         Text {
                             id: g
                             x: 10
@@ -165,14 +167,14 @@ Item {
                             width: 18
                             font.family: Theme.fontGlyph
                             font.pixelSize: 14
-                            color: menu.sel === row.index ? "white" : row.modelData.danger ? Theme.red : Theme.textSecondary
+                            color: row.modelData.danger ? Theme.red : Theme.textSecondary
                         }
                         Label {
                             anchors { left: g.right; leftMargin: 8; right: keys.left; rightMargin: 8; verticalCenter: parent.verticalCenter }
                             elide: Text.ElideRight
                             text: row.modelData.label
                             size: 13
-                            color: menu.sel === row.index ? "white" : row.modelData.danger ? Theme.red : Theme.textPrimary
+                            color: row.modelData.danger ? Theme.red : Theme.textPrimary
                         }
                         Row {
                             id: keys

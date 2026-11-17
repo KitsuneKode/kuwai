@@ -27,6 +27,13 @@ Item {
     property color tone: Theme.textSecondary
     property string tip: ""
     readonly property alias hovered: area.containsMouse
+    activeFocusOnTab: true
+    Accessible.role: Accessible.Button
+    Accessible.name: tip || (wordmark + " " + value).trim() || "Open details"
+    Accessible.onPressAction: mark.clicked()
+    Keys.onReturnPressed: mark.clicked()
+    Keys.onSpacePressed: mark.clicked()
+    FocusRing { cornerRadius: Theme.r2 }
     signal clicked()
     signal previewRequested()
 
@@ -153,5 +160,5 @@ Item {
         onTriggered: mark.previewRequested()
     }
     // A tip only when there's no panel to preview (the panel says more).
-    Tip { text: mark.tip; shown: area.containsMouse && mark.tip !== "" && !mark.previews; below: true }
+    Tip { text: mark.tip; shown: (area.containsMouse || mark.activeFocus) && mark.tip !== "" && !mark.previews; below: true }
 }

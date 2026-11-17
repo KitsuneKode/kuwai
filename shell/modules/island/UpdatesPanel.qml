@@ -616,10 +616,24 @@ FocusScope {
             size: 12; color: Theme.red
         }
 
+        PillButton {
+            visible: !!(reviewView.r && reviewView.r.error)
+            anchors { top: diff.top; topMargin: 10; horizontalCenter: diff.horizontalCenter }
+            text: "Retry review"
+            onClicked: Updates.review(up.pkg, true)
+        }
+
         Item {
             id: rvFoot
             anchors { left: parent.left; right: parent.right; bottom: parent.bottom; leftMargin: 22; rightMargin: 22; bottomMargin: 18 }
             height: 34
+            Label {
+                visible: Updates.mutationError !== ""
+                text: Updates.mutationError
+                color: Theme.orange
+                anchors { bottom: parent.top; bottomMargin: 8 }
+                size: Theme.tSub
+            }
             Row {
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 10

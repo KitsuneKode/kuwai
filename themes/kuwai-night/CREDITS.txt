@@ -1,0 +1,4 @@
+Kuwai Night wallpapers: photographs collected in Panacea (github.com/EnsixD/Panacea,
+wallpapers/, pinned to 45ddf2e), which credits ilyamiro/shell-wallpapers and the
+photographers named in each file name. Each belongs to its author. kuwai does not
+ship them: `kuwai-theme install` downloads them to your machine for personal use.

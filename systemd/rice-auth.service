@@ -21,7 +21,11 @@ Environment=QS_DISABLE_FILE_WATCHER=1
 # skips loading the GPU drivers (~370 MB → ~140 MB).
 Environment=QT_QUICK_BACKEND=software
 ExecStart=/bin/sh -c 'exec /usr/bin/qs -p "${KUWAI_ROOT:-%h/Projects/rice}/shell-auth"'
-Restart=on-failure
+# Always: a plain SIGTERM (a stray `pkill qs`, 2026-11-13 00:03) is a clean
+# exit, and on-failure left the session with no password prompt for 17 h:
+# every update "cancelled at the password prompt" at once. `systemctl stop`
+# (kuwai auth fallback) still stops it for good.
+Restart=always
 RestartSec=1
 # 3 = another agent already owns the session: not a crash, don't retry.
 RestartPreventExitStatus=3

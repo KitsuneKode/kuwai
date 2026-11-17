@@ -1,15 +1,10 @@
 pragma Singleton
-// A slow memory diary, to find what grows over a long day (the shell sat at
-// ~550 MB after 6 h, flat at idle, so held rather than leaking).
-// Every 10 min one line to ~/.local/state/rice/memlog.tsv:
-//   epoch  pss_anon_kb  notifications  panels_opened  center_opened  t3_items
-//   locked (0/1)  screensaver_starts
-// Garbage is collected first, so a rise is what's held, not what's waiting
-// for the collector (an idle, locked night allocates little and collects late).
-// Read it with: column -t ~/.local/state/rice/memlog.tsv
+// Run-attributed natural-settle memory samples. See bin/rice-memlog.
+// No forced GC, shared rotation temp, content, account identity or title capture.
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.config
 
 Singleton {
     id: root
@@ -17,21 +12,19 @@ Singleton {
     property int centerOpened: 0
     property bool locked: false                 // set by shell.qml from Lock
     property int saverStarts: 0
-    readonly property string path: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/rice/memlog.tsv"
-
-    FileView { id: smaps; path: "/proc/self/smaps_rollup"; blockLoading: false; printErrors: false }
+    readonly property string runId: String(Date.now()) + "-" + Math.random().toString(36).slice(2)
+    property int skipped: 0
     Process {
         id: append
-        property string line: ""
-        command: ["sh", "-c", 'printf "%s\\n" "$1" >> "$2"; tail -n 2000 "$2" > "$2.tmp" && mv "$2.tmp" "$2"', "memlog", line, root.path]
+        onExited: (code, status) => { if (code !== 0) console.warn("Memory sample could not be persisted"); }
     }
     function sample() {
-        gc();
-        smaps.reload();
-        smaps.waitForJob();
-        const m = /Pss_Anon:\s+(\d+)/.exec(smaps.text() || "");
-        append.line = [Math.round(Date.now() / 1000), m ? m[1] : "?", Notifs.items.length, panelsOpened, centerOpened, T3Code.items.length, root.locked ? 1 : 0, saverStarts].join("\t");
-        if (!append.running) append.running = true;
+        if (append.running) { root.skipped++; return; }
+        append.command = [Paths.bin + "/rice-memlog", "--config", Quickshell.shellDir, "--run", root.runId,
+                          "--render-loop", Quickshell.env("QSG_RENDER_LOOP") || "default", "--outputs", String(Quickshell.screens.length),
+                          String(Notifs.items.length), String(panelsOpened), String(centerOpened), String(T3Code.items.length),
+                          root.locked ? "1" : "0", String(saverStarts), String(root.skipped)];
+        append.running = true;
     }
     Connections { target: Island; function onPanelChanged() { if (Island.panel !== "") root.panelsOpened++; } }
     Connections { target: Notifs; function onCenterOpenChanged() { if (Notifs.centerOpen) root.centerOpened++; } }

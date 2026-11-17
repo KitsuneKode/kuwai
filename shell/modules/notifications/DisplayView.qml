@@ -358,6 +358,15 @@ Item {
                     onPicked: id => Display.setPreset(id)
                 }
                 Label {
+                    visible: Display.requestedPreset !== "" || Display.presetError !== ""
+                    width: parent.width - 8
+                    x: 4
+                    wrapMode: Text.WordWrap
+                    text: Display.presetError || "Applying " + Display.presetInfo(Display.requestedPreset).label + "…"
+                    color: Display.presetError ? Theme.orange : Theme.textSecondary
+                    size: Theme.tSub
+                }
+                Label {
                     x: 4
                     width: parent.width - 8
                     wrapMode: Text.WordWrap

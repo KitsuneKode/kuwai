@@ -156,7 +156,7 @@ Scope {
                             root.searchChats();
                         } else if (event.key === Qt.Key_L) {
                             event.accepted = true;
-                            OllamaService.clear();
+                            OllamaService.requestClear();
                         } else if (event.key === Qt.Key_B) {
                             event.accepted = true;
                             if (!root.studioMode) root.studioMode = true;
@@ -657,7 +657,7 @@ Scope {
                         else if (id === "paste") OllamaService.pasteClipboardImage();
                         else if (id === "model") modelPicker.open = true;
                         else if (id === "new") OllamaService.newChat();
-                        else if (id === "clear") OllamaService.clear();
+                        else if (id === "clear") OllamaService.requestClear();
                         else if (id === "copychat") OllamaService.copyChat();
                         else if (id === "compact") OllamaService.compactNext = true;
                         else if (id === "fork") OllamaService.forkAt(-1);
@@ -897,6 +897,28 @@ Scope {
                     Qt.callLater(() => {
                         promptInput.focusInput();
                     });
+                }
+            }
+
+            Dialog {
+                id: clearDialog
+                parent: frame
+                anchors.centerIn: parent
+                modal: true
+                focus: true
+                title: "Clear this chat?"
+                standardButtons: Dialog.Cancel | Dialog.Ok
+                contentItem: Label { text: "Remove this chat's messages and queued work? Other chats keep running."; wrapMode: Text.WordWrap; width: 300 }
+                onOpened: standardButton(Dialog.Cancel).forceActiveFocus()
+                onAccepted: OllamaService.confirmClear()
+                onRejected: OllamaService.cancelClear()
+                Keys.onPressed: e => { if (e.isAutoRepeat && (e.key === Qt.Key_Return || e.key === Qt.Key_Enter || e.key === Qt.Key_Space)) e.accepted = true; }
+            }
+            Connections {
+                target: OllamaService
+                function onClearPendingSessionChanged() {
+                    if (OllamaService.clearPendingSession && win.visible) clearDialog.open();
+                    else clearDialog.close();
                 }
             }
 

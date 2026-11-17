@@ -14,6 +14,7 @@
 // included (Tab / Shift+Tab: the next agent). Esc closes (IslandBar).
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import qs.config
 import qs.components
 import qs.components.ui
@@ -22,16 +23,29 @@ import qs.services
 FocusScope {
     id: vitals
     focus: true
-    implicitWidth: machine.x + machine.width + agents.implicitWidth
-    implicitHeight: Math.max(machine.implicitHeight + 40, agents.implicitHeight)
+    readonly property bool compact: width < 760
+    implicitWidth: 762
+    implicitHeight: 540
 
     Component.onCompleted: SystemStats.watch()
     Component.onDestruction: SystemStats.unwatch()
+    property var memApps: []
+    Process {
+        id: memProbe
+        command: [Paths.bin + "/rice-procs", "--by-app"]
+        stdout: StdioCollector { onStreamFinished: { try { vitals.memApps = JSON.parse(text); } catch (e) {} } }
+    }
+    Timer { interval: Theme.panelPollMs; repeat: true; running: true; triggeredOnStart: true; onTriggered: memProbe.running = true }
 
+    Flickable {
+        anchors.fill: parent
+        clip: true
+        contentWidth: width
+        contentHeight: vitals.compact ? agents.y + agents.implicitHeight + 20 : Math.max(machine.y + machine.implicitHeight + 20, agents.implicitHeight)
     Column {
         id: machine
         x: 22; y: 20
-        width: 300
+        width: vitals.compact ? Math.max(0, vitals.width - 44) : 300
         spacing: 10
 
         Item {
@@ -65,11 +79,26 @@ FocusScope {
                 detail: SystemStats.cores.length + " threads" + (SystemStats.fans.length ? "  ·  fans " + SystemStats.fans.join(" · ") + " rpm" : "")
             }
         }
+        // Memory, by what holds it (Clove's storage bar): one big number,
+        // the dots by app, a legend that lights with the dots. PSS, so a
+        // browser's twenty processes count once (rice-procs --by-app, every
+        // 5 s while this is open).
         Card {
-            Meter {
+            LinkedBar {
+                width: parent.width
                 title: "Memory"
-                value: SystemStats.mem
-                detail: SystemStats.bytes(SystemStats.memUsed) + " of " + SystemStats.bytes(SystemStats.memTotal)
+                big: SystemStats.bytes(SystemStats.memUsed)
+                caption: "of " + SystemStats.bytes(SystemStats.memTotal) + " in use" + (vitals.memApps.length ? " · point at the dots" : "")
+                total: SystemStats.memTotal / 1073741824
+                unit: " GB"
+                parts: {
+                    const pal = [Theme.orange, Theme.blue, Theme.green, Theme.indigo, Theme.cyan, Theme.yellow, Theme.red];
+                    const used = SystemStats.memUsed / 1073741824;
+                    const top = vitals.memApps.slice(0, 6).map((a, i) => ({ label: a.app, value: a.mb / 1024, color: pal[i],
+                        detail: a.count + (a.count === 1 ? " process" : " processes") }));
+                    const rest = Math.max(0, used - top.reduce((n, p) => n + p.value, 0));
+                    return rest > 0.05 ? top.concat([{ label: "Everything else", value: rest, color: Theme.gray, detail: "the system, caches the kernel can't drop, the rest" }]) : top;
+                }
             }
         }
 
@@ -90,11 +119,13 @@ FocusScope {
 
     UsagePanel {
         id: agents
-        x: machine.x + machine.width
-        width: implicitWidth
+        x: vitals.compact ? 22 : machine.x + machine.width
+        y: vitals.compact ? machine.y + machine.implicitHeight + 20 : 0
+        width: vitals.compact ? Math.max(0, vitals.width - 44) : Math.max(0, vitals.width - x - 22)
         height: implicitHeight
         focus: true
         // The list ends where the machine column does (it scrolls for more).
-        listMax: Math.max(260, machine.implicitHeight - listTop)
+        listMax: Math.max(80, vitals.height - listTop - 40)
+    }
     }
 }

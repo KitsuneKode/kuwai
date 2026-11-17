@@ -25,14 +25,59 @@ import qs.config
 Singleton {
     id: root
 
-    readonly property bool enabled: Settings.idleOwner !== "hypridle"
+    // Preference is not readiness. Keep protection until the replacement acknowledges.
+    property string confirmedOwner: "shell"
+    property string ownerError: ""
+    property string attemptOwner: ""
+    readonly property bool enabled: root.confirmedOwner !== "hypridle"
+    function reconcileOwner() {
+        if (Settings.idleOwner !== "hypridle") root.confirmedOwner = "shell";
+        if (ownerCommand.running || ownerCheck.running) return;
+        root.attemptOwner = Settings.idleOwner === "hypridle" ? "hypridle" : "shell";
+        ownerCommand.command = ["timeout", "10", "systemctl", "--user", root.attemptOwner === "hypridle" ? "start" : "stop", "hypridle.service"];
+        ownerCommand.running = true;
+    }
+    function ownerStarted(code) {
+        if (root.attemptOwner !== (Settings.idleOwner === "hypridle" ? "hypridle" : "shell")) { reconcileOwner(); return; }
+        if (code !== 0) {
+            root.ownerError = "Idle handoff failed; shell protection remains active. Retry or check hypridle.service.";
+            root.confirmedOwner = "shell";
+            return;
+        }
+        if (root.attemptOwner === "hypridle") ownerCheck.running = true;
+        else root.ownerError = "";
+    }
+    function ownerChecked(code) {
+        if (Settings.idleOwner !== "hypridle") { root.confirmedOwner = "shell"; reconcileOwner(); return; }
+        if (code === 0) { root.confirmedOwner = "hypridle"; root.ownerError = ""; }
+        else { root.confirmedOwner = "shell"; root.ownerError = "hypridle is unavailable; shell protection is active. Retry or check its service."; }
+    }
+    Process { id: ownerCommand; onExited: (code, status) => root.ownerStarted(code) }
+    Process {
+        id: ownerCheck
+        command: ["timeout", "10", "systemctl", "--user", "is-active", "--quiet", "hypridle.service"]
+        onExited: (code, status) => root.ownerChecked(code)
+    }
+    Connections { target: Settings; function onIdleOwnerChanged() { root.reconcileOwner(); } }
+    Component.onCompleted: Qt.callLater(root.reconcileOwner)
+    Timer {
+        interval: 5000; repeat: true; running: Settings.idleOwner === "hypridle"
+        onTriggered: {
+            if (ownerCommand.running || ownerCheck.running) return;
+            if (root.confirmedOwner === "hypridle") ownerCheck.running = true;
+            else root.reconcileOwner();
+        }
+    }
     readonly property bool battery: UPower.onBattery
     // Seconds; 0 turns a step off.
     readonly property int dimAfter: battery ? Settings.idleDimBattery : Settings.idleDimAc
     readonly property int lockAfter: battery ? Settings.idleLockBattery : Settings.idleLockAc
     readonly property int offAfter: battery ? Settings.idleOffBattery : Settings.idleOffAc
     readonly property int sleepAfter: battery ? Settings.idleSleepBattery : Settings.idleSleepAc
-    readonly property bool held: Caffeine.on
+    // Caffeine, or you're dictating: talking to voxtype is no key or pointer
+    // input, and the screen dimmed and locked mid-sentence. (voxtype's own
+    // systemd-inhibit only spoke to hypridle; these monitors don't read it.)
+    readonly property bool held: Caffeine.on || Activities.voxBusy
     readonly property string rice: Paths.bin + "/rice"
 
     function run(cmd) { Quickshell.execDetached(["sh", "-c", cmd]); }
@@ -67,11 +112,21 @@ Singleton {
         enabled: root.enabled && !root.held && root.offAfter > 0
         timeout: root.offAfter
         respectInhibitors: true
-        onIsIdleChanged: root.run(`hyprctl dispatch 'hl.dsp.dpms({ action = "${isIdle ? "disable" : "enable"}" })'`)
+        onIsIdleChanged: {
+            Saver.screensOff = isIdle;
+            root.run(`hyprctl dispatch 'hl.dsp.dpms({ action = "${isIdle ? "disable" : "enable"}" })'`);
+        }
+        // Disabled while held (Caffeine, a dictation): the screens come back.
+        // Clearing the flag is not DPMS. A click in the shell is not a key,
+        // so key_press_enables_dpms does not run for it.
+        onEnabledChanged: if (!enabled && Saver.screensOff) {
+            Saver.screensOff = false;
+            root.run(`hyprctl dispatch 'hl.dsp.dpms({ action = "enable" })'`);
+        }
     }
-    // ── Sleep (never while music plays)
+    // ── Sleep (never while music plays, nor while work runs: Caffeine.working)
     IdleMonitor {
-        enabled: root.enabled && !root.held && root.sleepAfter > 0
+        enabled: root.enabled && !root.held && !Caffeine.working && root.sleepAfter > 0
         timeout: root.sleepAfter
         respectInhibitors: true
         onIsIdleChanged: if (isIdle && !(Settings.idleNoSleepWhilePlaying && Media.playing)) Quickshell.execDetached(["systemctl", "suspend"])

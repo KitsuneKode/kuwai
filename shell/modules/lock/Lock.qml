@@ -28,6 +28,7 @@ Scope {
     id: root
 
     property bool locked: false
+    onLockedChanged: Saver.locked = locked
     property string password: ""
     property bool checking: false
     property string error: ""

@@ -1,9 +1,9 @@
 // Design tokens for every surface in the rice. The look is the glass HUD's:
 // Hyprland blurs what is behind a layer, a dark translucent tint sits on top,
-// text is Inter (variable, optical size + exact weight) with SF Pro Display
-// for display sizes, glyphs come from Symbols Nerd Font. Motion is critically
-// damped (no bounce): surfaces arrive fast and settle, and leave the way they
-// came, a little quicker. See docs/DESIGN.md.
+// text is SF Pro (variable, optical size + exact weight): Text for UI,
+// Display for large sizes, Rounded for numerals. Glyphs come from Symbols
+// Nerd Font. Motion is critically damped (no bounce): surfaces arrive fast
+// and settle, and leave the way they came, a little quicker. See docs/DESIGN.md.
 pragma Singleton
 
 import QtQuick
@@ -14,7 +14,7 @@ Singleton {
     id: root
     // Accessibility (Settings → Accessibility): more contrast, less glass.
     readonly property bool contrast: Settings.highContrast
-    readonly property real textScale: Math.max(1, Math.min(1.3, Settings.textScale || 1))
+    readonly property real textScale: Math.max(1, Math.min(2, Settings.textScale || 1))
     // ── Material ─────────────────────────────────────────────────────────
     // One glass, the voxtype HUD's: near-black #111114 over the compositor's
     // blur (components/GlassCard draws the ring, sheen and hairline).
@@ -95,6 +95,7 @@ Singleton {
     readonly property color critical: red
     // Fixed state colours (Apple's dark palette), named once so no file types the hex.
     readonly property color focus: "#bf5af2"     // Focus / Do Not Disturb (purple)
+    readonly property color purple: focus       // Apple's purple: the screen-shared/recorded dot
     readonly property color indigo: "#5e5ce6"    // secondary actions, sliders
     readonly property color gray: "#8e8e93"      // Apple's system grey: neutral tiles (Settings → Keyboard)
     readonly property color cyan: "#64d2ff"      // info, links on dark
@@ -112,7 +113,16 @@ Singleton {
     Behavior on accent { ColorAnimation { duration: 400; easing.type: Easing.OutCubic } }
     property color accentSoft: Qt.rgba(0.04, 0.52, 1, 0.5)
     // Text and glyphs that sit *on* the accent: dark on light accents, white on dark.
-    readonly property color onAccent: (0.2126 * accent.r + 0.7152 * accent.g + 0.0722 * accent.b) > 0.55 ? "#111114" : "#ffffff"
+    function luminance(c) {
+        function linear(v) { return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }
+        return 0.2126 * linear(c.r) + 0.7152 * linear(c.g) + 0.0722 * linear(c.b);
+    }
+    function contrastInk(c) {
+        const y = luminance(c);
+        return (y + 0.05) / 0.05 >= 1.05 / (y + 0.05) ? "#000000" : "#ffffff";
+    }
+    readonly property color onAccent: contrastInk(accent)
+    readonly property color onDanger: contrastInk(red)
     property color themeBg: "#16161d"         // the palette's own background
     property color themeFg: "#ffffff"
     property var palette: []                   // a few swatches, for pickers
@@ -302,7 +312,10 @@ Singleton {
     readonly property int cardRiseMs: 260       // each line rising 4 px into place
     readonly property int ringDrawMs: 480       // a ring drawing itself closed
     readonly property int swingMs: 700          // a bell's damped swing, all of it
-    readonly property int breathOutMs: 1100     // light breathing out of a ringing alarm
+    readonly property int breathOutMs: 1100
+    readonly property int wallRevealMs: 900
+    readonly property int handoffMs: 30          // one swap's new content waits this long for the old to start leaving
+    readonly property int panelPollMs: 5000     // live numbers that need a process, only while their panel is open     // a wallpaper change growing out of the island (WallFx): rare, so it may take its time     // light breathing out of a ringing alarm
 
     // Reduced motion: fewer and gentler: fades and colour stay, travel,
     // scale and stagger go. On when you switch it on (Controls → Reduce
@@ -349,7 +362,12 @@ Singleton {
     // Quick Look, Mission Control): one motion everywhere, critically damped
     // (no wobble), ~0.33 s to grow, a touch firmer to fold back. From the
     // keyboard the same curve, a little quicker (~0.24 s), never a snap.
-    readonly property var surfaceIn: ({ stiffness: 300, damping: 34.6 })
+    // 2026-11-17: growing has a touch of give (ζ 0.8, ~1.5 % past the target,
+    // then settles), the way the Dynamic Island lands (Apple; Clove: response
+    // 0.42 / damping 0.78 to grow, critically damped to shrink; Emil: springs
+    // for "alive" elements, bounce ≤ 0.3). Folding back, and anything the
+    // keyboard opened, stays critically damped: it's getting out of the way.
+    readonly property var surfaceIn: ({ stiffness: 300, damping: 27.7 })
     readonly property var surfaceOut: ({ stiffness: 380, damping: 39 })
     readonly property var surfaceKeyIn: ({ stiffness: 560, damping: 47.3 })
     readonly property var surfaceKeyOut: ({ stiffness: 640, damping: 50.6 })

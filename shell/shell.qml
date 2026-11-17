@@ -34,12 +34,14 @@ ShellRoot {
     readonly property var crashWatcher: Crashes
     readonly property var wellbeing: Wellbeing   // breaks and bedtime (services/Wellbeing)
     readonly property var memDiary: MemLog       // ~/.local/state/rice/memlog.tsv every 10 min
+    readonly property var wallFx: WallFx         // wallpaper changes out of the island (its IPC: wallfx play PATH)
     // The stable copy (~/.local/share/kuwai) doesn't hot-reload: each reload
     // left ~25–30 MB behind, and `rice promote` restarts it cleanly anyway.
     // The dev tree keeps live reload for editing.
     // And after a crash Quickshell re-execs in place (same PID): the run
     // before it left its helpers running as our children. Stop those once.
     Component.onCompleted: {
+        console.info("kuwai-handoff", Quickshell.env("KUWAI_HANDOFF_ID") || "unknown", "shell-config-loaded");
         Quickshell.watchFiles = !Quickshell.shellDir.includes("/.local/share/kuwai/");
         reaper.running = true;
     }
@@ -61,6 +63,7 @@ ShellRoot {
     Blank {}
     Overview {}
     VoxtypeHost {}
+    VoxTarget {}
     AssistantOverlay {}
     Shortcuts {}
     TestHook {}

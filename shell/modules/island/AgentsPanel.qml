@@ -244,14 +244,7 @@ FocusScope {
                 Accessible.name: modelData.title + ", " + ap.word(modelData.state) + (modelData.where ? ", " + modelData.where : "") + (modelData.model ? ", " + modelData.model : "")
                 Accessible.description: modelData.question || ""
                 Accessible.selected: ap.sel === index
-                Rectangle {
-                    visible: ap.keyboard && ap.sel === row.index
-                    anchors.fill: parent
-                    radius: parent.radius
-                    color: "transparent"
-                    border.width: 2; border.color: Qt.rgba(1, 1, 1, 0.6)
-                    z: 100
-                }
+                // The keyboard's ring is the list's FluidHighlight (ring: keyboard).
 
                 // Who: the agent's mark, its state on the corner (the words say it too).
                 Item {
@@ -324,6 +317,46 @@ FocusScope {
                         text: row.modelData.question
                         size: Theme.tSub; lineHeight: 1.3; color: Theme.textPrimary
                     }
+                    // Answer it from here (Claude Code, Codex): kittymux types the
+                    // key only if this exact question is still on screen. Deny
+                    // first, Allow last; Enter on the row goes there, never Allow.
+                    Item {
+                        id: answerRow
+                        readonly property var r: row.modelData.raw
+                        readonly property var st: r ? (Kittymux.answers[r.key] || null) : null
+                        visible: row.modelData.src === "kitty" && Kittymux.canAnswer(r)
+                        width: parent.width
+                        height: visible ? answerBtns.height + 6 + (answerWhy.visible ? answerWhy.implicitHeight + 4 : 0) : 0
+                        HoverHandler { id: answerHover }
+                        Row {
+                            id: answerBtns
+                            y: 6
+                            spacing: 8
+                            enabled: !(answerRow.st && answerRow.st.busy)
+                            opacity: enabled ? 1 : 0.6
+                            PillButton {
+                                text: answerRow.st && answerRow.st.done === "deny" ? "Denied" : "Deny"
+                                onClicked: Kittymux.answer(answerRow.r, "deny")
+                                Accessible.name: "Deny " + row.modelData.title + ": " + row.modelData.question
+                            }
+                            PillButton {
+                                text: answerRow.st && answerRow.st.done === "allow" ? "Allowed" : "Allow"
+                                tint: Qt.alpha(Theme.green, 0.28)
+                                onClicked: Kittymux.answer(answerRow.r, "allow")
+                                Accessible.name: "Allow " + row.modelData.title + ": " + row.modelData.question
+                            }
+                        }
+                        // Refused (the prompt changed, or it's gone): why, and the row still jumps there.
+                        Label {
+                            id: answerWhy
+                            visible: !!answerRow.st && !answerRow.st.busy && answerRow.st.why !== ""
+                            anchors { top: answerBtns.bottom; topMargin: 4 }
+                            width: parent.width
+                            wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight
+                            text: answerRow.st ? answerRow.st.why + (answerRow.st.done ? "" : " · open it to answer") : ""
+                            size: Theme.tFootnote; color: answerRow.st && answerRow.st.done ? Theme.textTertiary : Theme.orange
+                        }
+                    }
                 }
                 HoverHandler {
                     id: rowHover
@@ -333,7 +366,7 @@ FocusScope {
                         else if (ap.hoverRow === row) ap.hoverRow = null;
                     }
                 }
-                TapHandler { onTapped: if (!xHover.hovered) ap.go(row.modelData) }
+                TapHandler { onTapped: if (!xHover.hovered && !answerHover.hovered) ap.go(row.modelData) }
                 Rectangle {
                     visible: row.dismissable
                     opacity: rowHover.hovered ? 1 : 0

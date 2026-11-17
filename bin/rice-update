@@ -30,7 +30,7 @@ How it updates (no terminal, no stored passwords, no sudo rules):
     Never per-package: Arch doesn't support partial upgrades. Build dependencies the AUR packages
     need come after, marked as dependencies (`--asdeps`), so they can be cleaned up as orphans.
   · AUR packages are built as you with makepkg, from the exact commit you approved (or the newest
-    one for packages you trust), in ~/.cache/rice/aur/PKG, never as root; then all of them install
+    one for packages you trust), in a recipe checkout under ~/.local/share/rice/aur/PKG, never as root; then all of them install
     with one `pacman -U`. A package that changed after you reviewed it is not built.
   · Tests (checkdepends) run when their dependencies come from Arch's repos; when one is only in
     the AUR, the build skips the tests (`--nocheck`) instead of the whole package.
@@ -38,6 +38,8 @@ How it updates (no terminal, no stored passwords, no sudo rules):
     terminal (paru) and says so; nothing is half-done silently.
 """
 import fcntl
+import hashlib
+import tempfile
 import json
 import os
 import signal
@@ -52,7 +54,9 @@ import xml.etree.ElementTree as ET
 HOME = os.path.expanduser("~")
 STATE = os.path.join(os.environ.get("XDG_STATE_HOME", os.path.join(HOME, ".local/state")), "rice")
 CACHE = os.path.join(os.environ.get("XDG_CACHE_HOME", os.path.join(HOME, ".cache")), "rice")
-AUR_DIR = os.path.join(CACHE, "aur")
+DATA = os.path.join(os.environ.get("XDG_DATA_HOME", os.path.join(HOME, ".local/share")), "rice")
+AUR_DIR = os.path.join(DATA, "aur")
+INSTALLED = os.path.join(STATE, "aur-installed.json")
 APPROVED = os.path.join(STATE, "aur-approved.json")
 TRUSTED = os.path.join(STATE, "aur-trusted.json")
 LOG_DIR = os.path.join(STATE, "updates")
@@ -84,10 +88,16 @@ def load(path, default):
 
 def save(path, data):
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    tmp = path + ".tmp"
-    with open(tmp, "w") as f:
-        json.dump(data, f, indent=1)
-    os.replace(tmp, path)
+    fd, tmp = tempfile.mkstemp(prefix=".rice-", dir=os.path.dirname(path))
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump(data, f, indent=1)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, path)
+    finally:
+        if os.path.exists(tmp):
+            os.unlink(tmp)
 
 
 def valid_name(p):
@@ -97,7 +107,7 @@ def valid_name(p):
 
 
 def git(d, *args, check=False):
-    r = sh(["git", "-C", d, *args])
+    r = sh(["git", "-c", "core.hooksPath=/dev/null", "-C", d, *args])
     if check and r.returncode != 0:
         raise RuntimeError(r.stderr.strip() or f"git {' '.join(args)} failed")
     return r
@@ -282,6 +292,7 @@ def aur_info(names):
         info = {
             "votes": votes, "popularity": round(pop, 2), "maintainer": p.get("Maintainer"),
             "firstSubmitted": first, "lastModified": p.get("LastModified"), "outOfDate": p.get("OutOfDate"),
+            "packageBase": p.get("PackageBase") or p.get("Name"),
             "url": p.get("URL") or "", "binary": p.get("PackageBase", p.get("Name", "")).endswith("-bin"),
         }
         info["established"] = bool((votes >= 100 or pop >= 2) and info["maintainer"] and not info["outOfDate"]
@@ -292,10 +303,14 @@ def aur_info(names):
 
 # ── AUR review ───────────────────────────────────────────────────────────────
 def clone(pkg):
-    d = os.path.join(AUR_DIR, pkg)
+    info = aur_info([pkg]).get(pkg, {})
+    base = info.get("packageBase")
+    if not isinstance(base, str) or not NAME_OK.fullmatch(base):
+        raise RuntimeError(f"{pkg}: AUR recipe base unavailable; retry when metadata is available")
+    d = os.path.join(AUR_DIR, base)
     if not os.path.isdir(os.path.join(d, ".git")):
         os.makedirs(AUR_DIR, exist_ok=True)
-        r = sh(["git", "clone", "-q", "--no-checkout", AUR_GIT.format(pkg), d], timeout=90)
+        r = sh(["git", "clone", "-q", "--no-checkout", AUR_GIT.format(base), d], timeout=90)
         if r.returncode != 0:
             raise RuntimeError(r.stderr.strip() or "clone failed")
     else:
@@ -311,22 +326,63 @@ def installed_version(pkg):
     return r.stdout.split()[1] if r.returncode == 0 and len(r.stdout.split()) == 2 else ""
 
 
+def installed_fingerprint(pkg):
+    """Identify this pacman installation, including same-version reinstalls.
+
+    Missing/inaccessible local metadata means provenance is unknown, never guessed
+    from a matching recipe version. No package code is executed here.
+    """
+    version = installed_version(pkg)
+    if not version or "/" in version:
+        return None
+    path = os.path.join("/var/lib/pacman/local", f"{pkg}-{version}", "desc")
+    try:
+        with open(path, "rb") as f:
+            st = os.fstat(f.fileno())
+            content = f.read(1024 * 1024)
+            after = os.fstat(f.fileno())
+        if (st.st_ino, st.st_mtime_ns, st.st_ctime_ns) != (after.st_ino, after.st_mtime_ns, after.st_ctime_ns):
+            return None
+        identity = hashlib.sha256(content).hexdigest()
+        return {"version": version, "identity": identity, "inode": st.st_ino,
+                "mtimeNs": st.st_mtime_ns, "ctimeNs": st.st_ctime_ns}
+    except OSError:
+        return None
+
+
+def record_install(pkg, head, files):
+    fingerprint = installed_fingerprint(pkg)
+    if not fingerprint:
+        raise RuntimeError(f"{pkg}: installed package identity unavailable; provenance not recorded")
+    receipts = load(INSTALLED, {})
+    artifacts = []
+    for path in files:
+        h = hashlib.sha256()
+        with open(path, "rb") as f:
+            for block in iter(lambda: f.read(1024 * 1024), b""):
+                h.update(block)
+        artifacts.append({"file": os.path.basename(path), "sha256": h.hexdigest()})
+    receipts[pkg] = {"schema": 1, "recipe": head, "installed": fingerprint,
+                     "artifacts": artifacts, "at": time.time_ns()}
+    save(INSTALLED, receipts)
+
+
 def baseline(d, pkg, head):
-    """The commit that built what you have installed: the newest one whose .SRCINFO has your
-    version (pkgver-pkgrel, epoch-aware). Falls back to the last commit we installed."""
-    mark = git(d, "rev-parse", "-q", "--verify", "refs/rice/installed").stdout.strip()
-    have = installed_version(pkg)
-    if have:
-        epoch, _, rest = have.rpartition(":")
-        ver, _, rel = rest.rpartition("-")
-        commits = git(d, "log", "--format=%H", "-n", "80", head, "--", ".SRCINFO").stdout.split()
-        for c in commits:
-            si = git(d, "show", f"{c}:.SRCINFO").stdout
-            if (re.search(rf"^\s*pkgver = {re.escape(ver)}\s*$", si, re.M)
-                    and re.search(rf"^\s*pkgrel = {re.escape(rel)}\s*$", si, re.M)
-                    and (not epoch or re.search(rf"^\s*epoch = {re.escape(epoch)}\s*$", si, re.M))):
-                return c
-    return mark if SHA_OK.match(mark) else ""
+    """Only a verified install receipt can identify the installed recipe.
+
+    Legacy cached refs and version matches are insufficient: a newer recipe may
+    carry the same version, or pacman/paru may have reinstalled it externally.
+    """
+    receipt = load(INSTALLED, {}).get(pkg, {})
+    mark = receipt.get("recipe", "") if isinstance(receipt, dict) else ""
+    if not SHA_OK.fullmatch(mark) or receipt.get("schema") != 1:
+        return ""
+    fingerprint = installed_fingerprint(pkg)
+    if not fingerprint or receipt.get("installed") != fingerprint:
+        return ""
+    if git(d, "cat-file", "-e", mark + "^{commit}").returncode != 0:
+        return ""
+    return mark
 
 
 FLAGS = [
@@ -443,6 +499,7 @@ def review(pkg):
     commits = [dict(zip(("sha", "author", "when", "subject"), c.split("\t", 3))) for c in log.splitlines() if c.count("\t") >= 3]
     return {
         "pkg": pkg,
+        "packageBase": os.path.basename(d),
         "base": base,
         "head": head,
         "firstTime": not base,
@@ -558,6 +615,25 @@ def helper_ok():
         return False
 
 
+
+def agent_missing():
+    """No polkit agent in this session: pkexec fails at once and looks like a
+    cancel. Start one (kuwai's, else KDE's) and say so."""
+    def up(u):
+        return subprocess.run(["systemctl", "--user", "-q", "is-active", u]).returncode == 0
+    if up("rice-auth.service") or up("plasma-polkit-agent.service"):
+        return False
+    for u in ("rice-auth.service", "plasma-polkit-agent.service"):
+        if subprocess.run(["systemctl", "--user", "start", u]).returncode == 0:
+            break
+    return True
+
+
+def cancelled_msg(tail="Nothing was changed."):
+    if agent_missing():
+        return "No password prompt was running (started it now). Try again. " + tail
+    return "Cancelled at the password prompt. " + tail
+
 class Root:
     """Root's part of a run. With rice-update-root installed: one pkexec (one password) for the
     whole run, opened up front so the prompt comes before the builds, not after them. Without
@@ -636,6 +712,106 @@ class Root:
             self.p = None
 
 
+def prepare_recipe(repository, pkg, head):
+    """A unique build tree: durable recipe history never holds build products."""
+    builds = os.path.join(CACHE, "builds")
+    os.makedirs(builds, mode=0o700, exist_ok=True)
+    stage = tempfile.mkdtemp(prefix=f"{valid_name(pkg)}-{head[:12]}-", dir=builds)
+    try:
+        git(repository, "worktree", "add", "--detach", stage, head, check=True)
+        git(stage, "checkout", "-q", "--force", "--detach", head, check=True)
+        git(stage, "clean", "-qfdx", check=True)
+        actual = git(stage, "rev-parse", "HEAD", check=True).stdout.strip()
+        dirty = git(stage, "status", "--porcelain", "--untracked-files=no", check=True).stdout.strip()
+        if actual != head or dirty:
+            raise RuntimeError("prepared recipe does not match the reviewed commit")
+        save(os.path.join(stage, ".rice-workspace.json"), {"schema": 1, "repository": os.path.realpath(repository), "created": time.time_ns()})
+        return stage
+    except Exception:
+        # No recipe has executed; an empty failed preparation is disposable.
+        git(repository, "worktree", "remove", "--force", stage)
+        if os.path.isdir(stage) and not os.listdir(stage): os.rmdir(stage)
+        raise
+
+
+def workspace_repository(stage):
+    real = os.path.realpath(stage)
+    builds = os.path.realpath(os.path.join(CACHE, "builds"))
+    if os.path.islink(stage) or os.path.dirname(real) != builds:
+        raise RuntimeError("not an owned build workspace")
+    meta = load(os.path.join(real, ".rice-workspace.json"), {})
+    repository = os.path.realpath(meta.get("repository", ""))
+    if meta.get("schema") != 1 or os.path.dirname(repository) != os.path.realpath(AUR_DIR):
+        raise RuntimeError("unknown workspace ownership")
+    return repository
+
+
+def finish_workspace(stage, files):
+    """Retain three successful artifact sets per recipe; release build sources."""
+    repository = workspace_repository(stage)
+    archives = os.path.join(CACHE, "artifacts", os.path.basename(repository))
+    os.makedirs(archives, mode=0o700, exist_ok=True)
+    batch = tempfile.mkdtemp(prefix="installed-", dir=archives)
+    kept = []
+    for source in files:
+        if os.path.dirname(os.path.realpath(source)) != os.path.realpath(stage) or os.path.islink(source):
+            raise RuntimeError("artifact not inside its build workspace")
+        target = os.path.join(batch, os.path.basename(source))
+        shutil.move(source, target)
+        kept.append(target)
+    git(repository, "worktree", "remove", "--force", stage, check=True)
+    batches = sorted((os.path.join(archives, n) for n in os.listdir(archives) if n.startswith("installed-")
+                      and os.path.isdir(os.path.join(archives, n)) and not os.path.islink(os.path.join(archives, n))),
+                     key=os.path.getmtime)
+    for old in batches[:-3]: shutil.rmtree(old)
+    return kept
+
+
+def prune_failed_workspaces():
+    """Only our new workspaces; legacy AUR caches and unknown directories stay intact.
+
+    Called while holding the global updater lock, after builds/install have ended.
+    Two failed workspaces per recipe remain available for diagnosis.
+    """
+    builds = os.path.join(CACHE, "builds")
+    if not os.path.isdir(builds): return
+    groups = {}
+    for name in os.listdir(builds):
+        stage = os.path.join(builds, name)
+        try:
+            repository = workspace_repository(stage)
+        except (RuntimeError, OSError):
+            continue
+        groups.setdefault(repository, []).append(stage)
+    for repository, stages in groups.items():
+        for old in sorted(stages, key=os.path.getmtime)[:-2]:
+            git(repository, "worktree", "remove", "--force", old, check=True)
+
+
+def package_files(directory, wanted):
+    """Select split outputs by pacman metadata, never by filename guesses."""
+    listed = sh(["makepkg", "--packagelist"], cwd=directory)
+    if listed.returncode != 0:
+        raise RuntimeError("could not enumerate built package files")
+    selected = {}
+    for path in listed.stdout.splitlines():
+        if not os.path.isfile(path):
+            continue
+        query = sh(["pacman", "-Qp", "--", path])
+        fields = query.stdout.split()
+        if query.returncode != 0 or len(fields) != 2 or not NAME_OK.fullmatch(fields[0]):
+            raise RuntimeError("could not verify built package metadata")
+        name = fields[0]
+        if name in wanted:
+            if name in selected:
+                raise RuntimeError(f"ambiguous built output: {name}")
+            selected[name] = path
+    missing = set(wanted) - selected.keys()
+    if missing:
+        raise RuntimeError("missing selected outputs: " + ", ".join(sorted(missing)))
+    return [selected[name] for name in wanted]
+
+
 def missing_deps(d):
     """What a build still needs, split by where it comes from: (from Arch's repos, only in the
     AUR, run tests). The package's own names (a split package's parts depend on each other)
@@ -674,6 +850,17 @@ def run(args):
         # one runs (what's left to do is checked afresh below).
         print(json.dumps({"e": "status", "line": "Waiting for the update that's already running…"}), flush=True)
         fcntl.flock(lock, fcntl.LOCK_EX)
+    try:
+        return run_locked(args)
+    finally:
+        try:
+            prune_failed_workspaces()
+        except Exception:
+            print("rice-update: inactive build workspace cleanup failed", file=sys.stderr)
+        lock.close()
+
+
+def run_locked(args):
     want_repo = "--repo" in args
     unreviewed = "--unreviewed" in args
     def after(flag):
@@ -699,14 +886,19 @@ def run(args):
     R.emit(e="plan", repo=want_repo, aur=aur, flatpak=flatpaks)
     # Pre-flight
     R.emit(e="phase", id="check", label="Checking space and power")
-    st = os.statvfs("/")
-    if st.f_bavail * st.f_frsize < 3 * 1024 ** 3:
-        R.emit(e="error", msg="Less than 3 GB free on /. Free some space first.")
-        R.emit(e="done", **{**result, "ok": False})
-        return 1
+    for destination in ("/", CACHE, AUR_DIR):
+        probe = os.path.abspath(destination)
+        while not os.path.exists(probe):
+            probe = os.path.dirname(probe)
+        st = os.statvfs(probe)
+        if st.f_bavail * st.f_frsize < 3 * 1024 ** 3:
+            R.emit(e="error", msg=f"Less than 3 GB free at {destination}. Free some space first.")
+            R.emit(e="done", **{**result, "ok": False})
+            return 1
 
     # Prepare AUR packages first (no root): fetch, verify the reviewed commit, find deps.
     plan = []
+    prepared = {}
     extra_repo_deps = []
     for pkg in aur:
         try:
@@ -719,78 +911,100 @@ def run(args):
         if want != head:
             result["skipped"].append({"pkg": pkg, "why": "it changed after you reviewed it: review it again" if want else "not reviewed"})
             continue
-        git(d, "checkout", "-q", "--force", "--detach", head)
-        git(d, "clean", "-qfdx", "-e", "src", "-e", "pkg")
-        in_repo, aur_only, tests = missing_deps(d)
+        recipe = (d, head)
+        if recipe in prepared:
+            if pkg not in prepared[recipe]: prepared[recipe].append(pkg)
+            continue
+        try:
+            d = prepare_recipe(d, pkg, head)
+            in_repo, aur_only, tests = missing_deps(d)
+        except Exception as ex:
+            result["skipped"].append({"pkg": pkg, "why": f"recipe preparation failed: {ex}"})
+            continue
         if aur_only:
             result["skipped"].append({"pkg": pkg, "why": "needs AUR packages first (" + ", ".join(aur_only) + "): update it in the terminal with paru"})
             continue
         extra_repo_deps += in_repo
-        plan.append((pkg, d, head, tests))
+        outputs = [pkg]
+        prepared[recipe] = outputs
+        plan.append((pkg, d, head, tests, outputs))
     extra_repo_deps = sorted(set(extra_repo_deps))
 
     # Root, once (rice-update-root installed): the password now, before the builds.
     root = Root(R)
-    result["oneprompt"] = root.helper
-    if root.helper and (want_repo or extra_repo_deps or plan):
-        rc = root.open()
-        if rc:
-            R.emit(e="error", msg="Cancelled at the password prompt. Nothing was changed.")
-            R.emit(e="done", **{**result, "ok": False, "cancelled": True})
-            return 1
+    try:
+        result["oneprompt"] = root.helper
+        if root.helper and (want_repo or extra_repo_deps or plan):
+            rc = root.open()
+            if rc:
+                R.emit(e="error", msg=cancelled_msg())
+                R.emit(e="done", **{**result, "ok": False, "cancelled": True})
+                return 1
 
-    # 1. Arch's packages, together; then the repo deps the AUR builds need, as deps.
-    if want_repo or extra_repo_deps:
-        R.emit(e="phase", id="repo", label="Updating Arch packages" if want_repo else "Installing build dependencies")
-        rc = root.run("upgrade" if want_repo else "deps", progress="repo", deps=extra_repo_deps)
-        if rc in AUTH_FAIL:
-            R.emit(e="error", msg="Cancelled at the password prompt. Nothing was changed.")
-            R.emit(e="done", **{**result, "ok": False, "cancelled": True})
-            return 1
-        if rc != 0:
-            R.emit(e="error", msg="pacman stopped (see the log). Nothing was half-installed: pacman applies a transaction whole or not at all.")
-            R.emit(e="done", **{**result, "ok": False, "repo": False})
-            return 1
-        result["repo"] = True
+        # 1. Arch's packages, together; then the repo deps the AUR builds need, as deps.
+        if want_repo or extra_repo_deps:
+            R.emit(e="phase", id="repo", label="Updating Arch packages" if want_repo else "Installing build dependencies")
+            rc = root.run("upgrade" if want_repo else "deps", progress="repo", deps=extra_repo_deps)
+            if rc in AUTH_FAIL:
+                R.emit(e="error", msg=cancelled_msg())
+                R.emit(e="done", **{**result, "ok": False, "cancelled": True})
+                return 1
+            if rc != 0:
+                R.emit(e="error", msg="pacman stopped (see the log). Nothing was half-installed: pacman applies a transaction whole or not at all.")
+                R.emit(e="done", **{**result, "ok": False, "repo": False})
+                return 1
+            result["repo"] = True
 
-    # 2. AUR builds, as you.
-    built = []
-    for i, (pkg, d, head, tests) in enumerate(plan, 1):
-        R.emit(e="phase", id="build", label=f"Building {pkg}", k=i, n=len(plan))
-        if not tests:
-            R.emit(e="log", line=f"{pkg}: its tests need AUR packages; building without them (--nocheck)")
-        rc = R.stream(["makepkg", "-f", "--noconfirm", "--noprogressbar", *([] if tests else ["--nocheck"])], cwd=d)
-        if rc != 0:
-            why = "build failed (see the log)"
-            if rc == 13:
-                why = "already built"
-            result["skipped"].append({"pkg": pkg, "why": why})
-            continue
-        files = [f for f in sh(["makepkg", "--packagelist"], cwd=d).stdout.split() if os.path.exists(f)]
-        if not files:
-            result["skipped"].append({"pkg": pkg, "why": "no package came out of the build"})
-            continue
-        built.append((pkg, d, head, files))
-        result["built"].append(pkg)
+        # 2. AUR builds, as you.
+        built = []
+        for i, (pkg, d, head, tests, outputs) in enumerate(plan, 1):
+            R.emit(e="phase", id="build", label=f"Building {pkg}", k=i, n=len(plan))
+            if not tests:
+                R.emit(e="log", line=f"{pkg}: its tests need AUR packages; building without them (--nocheck)")
+            rc = R.stream(["makepkg", "-f", "--noconfirm", "--noprogressbar", *([] if tests else ["--nocheck"])], cwd=d)
+            if rc != 0:
+                why = "build failed (see the log)"
+                if rc == 13:
+                    why = "already built"
+                result["skipped"].append({"pkg": pkg, "why": why})
+                continue
+            try:
+                files = package_files(d, outputs)
+            except RuntimeError as ex:
+                result["skipped"].extend({"pkg": name, "why": str(ex)} for name in outputs)
+                continue
+            built.append((outputs, d, head, files))
+            result["built"].extend(outputs)
 
-    # 3. Install them all with one prompt.
-    if built:
-        R.emit(e="phase", id="install", label=f"Installing {len(built)} AUR package" + ("s" if len(built) > 1 else ""))
-        files = [f for b in built for f in b[3]]
-        rc = root.run("install", progress="install", files=files)
-        if rc in AUTH_FAIL:
-            R.emit(e="error", msg="Cancelled at the password prompt; the AUR packages are built but not installed.")
-            result["ok"] = False
-        elif rc != 0:
-            R.emit(e="error", msg="Installing the AUR packages failed (see the log).")
-            result["ok"] = False
-        else:
-            for pkg, d, head, _ in built:
-                git(d, "update-ref", "refs/rice/installed", head)
-                result["installed"].append(pkg)
-                approved.pop(pkg, None)
-            save(APPROVED, approved)
-    root.close()
+        # 3. Install them all with one prompt.
+        if built:
+            R.emit(e="phase", id="install", label=f"Installing {len(built)} AUR package" + ("s" if len(built) > 1 else ""))
+            files = [f for b in built for f in b[3]]
+            rc = root.run("install", progress="install", files=files)
+            if rc in AUTH_FAIL:
+                R.emit(e="error", msg=cancelled_msg("The AUR packages are built but not installed."))
+                result["ok"] = False
+            elif rc != 0:
+                R.emit(e="error", msg="Installing the AUR packages failed (see the log).")
+                result["ok"] = False
+            else:
+                for outputs, d, head, files in built:
+                    for pkg in outputs:
+                        result["installed"].append(pkg)
+                        try:
+                            record_install(pkg, head, files)
+                            git(d, "update-ref", "refs/rice/installed", head, check=True)
+                            approved.pop(pkg, None)
+                        except Exception as ex:
+                            R.emit(e="error", msg=f"{pkg}: installed, but provenance could not be recorded: {ex}")
+                            result["ok"] = False
+                    try:
+                        finish_workspace(d, files)
+                    except Exception as ex:
+                        R.emit(e="log", line=f"Build files retained for diagnosis: {ex}")
+                save(APPROVED, approved)
+    finally:
+        root.close()
     result["prompts"] = root.prompts
 
     # 4. Flatpak (yours: no password; system-wide ones ask through polkit), one
@@ -836,6 +1050,10 @@ def main(argv):
         elif cmd == "approve" and len(argv) == 3 and SHA_OK.match(argv[2]):
             a = load(APPROVED, {})
             a[valid_name(argv[1])] = argv[2]
+            save(APPROVED, a)
+        elif cmd == "unapprove" and len(argv) == 2:
+            a = load(APPROVED, {})
+            a.pop(valid_name(argv[1]), None)
             save(APPROVED, a)
         elif cmd == "trust" and len(argv) == 3 and argv[2] in ("on", "off"):
             t = set(load(TRUSTED, []))

@@ -22,6 +22,7 @@ FocusScope {
     readonly property var quick: Notifs.bellQuickList(10)
     property int sel: 0
     property bool keyboard: false            // the ring shows for keys, not the pointer
+    property Item hoverRow: null             // the row under the pointer (the highlight goes there)
     // Seen once it's been up past a glance: the notch's "missed" dot and the
     // Unread label retire (it stayed until the center was opened).
     readonly property real openedAt: Date.now()
@@ -124,6 +125,16 @@ FocusScope {
             displaced: Transition {
                 NumberAnimation { property: "y"; duration: Theme.reduceMotion ? 0 : Theme.reflowMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeInOut }
             }
+            // One highlight for the list (fluid hover): it glides from row to
+            // row under the pointer and is the keyboard's ring. Nothing is lit
+            // until you point or press a key (row 0 used to sit lit on open, and
+            // the last row pointed at stayed lit after the pointer left).
+            FluidHighlight {
+                parent: list.contentItem
+                radius: Theme.r2
+                target: np.keyboard ? list.itemAtIndex(np.sel) : np.hoverRow
+                ring: np.keyboard
+            }
             delegate: Rectangle {
                 id: row
                 required property var modelData
@@ -143,8 +154,7 @@ FocusScope {
                 width: list.width
                 height: Math.max(inner.implicitHeight, 34) + 20
                 radius: Theme.r2
-                color: rowHover.hovered || np.sel === index ? Qt.rgba(1, 1, 1, 0.07) : "transparent"
-                Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
+                color: "transparent"              // the list's one highlight lights it
                 opacity: swipe.fade
                 transform: Translate { x: swipe.offset }
                 // Screen readers: who, what, and whether it waits on you; the
@@ -153,16 +163,6 @@ FocusScope {
                 Accessible.name: (modelData.app || "Notification") + ": " + (modelData.title || "") + (asks ? ", needs you" : "")
                 Accessible.description: Notifs.readable(Notifs.bodyForDisplay(modelData, true))
                 Accessible.selected: np.sel === index
-                // The keyboard's place: the shared ring look, keys only.
-                Rectangle {
-                    visible: np.keyboard && np.sel === row.index
-                    anchors.fill: parent             // inside the row: the list clips its edges
-                    radius: parent.radius
-                    color: "transparent"
-                    border.width: 2
-                    border.color: Qt.rgba(1, 1, 1, 0.6)
-                    z: 100
-                }
                 SwipeAway {
                     id: swipe
                     span: row.width
@@ -241,7 +241,10 @@ FocusScope {
                 HoverHandler {
                     id: rowHover
                     cursorShape: Qt.PointingHandCursor
-                    onHoveredChanged: if (hovered) { np.keyboard = false; np.sel = row.index; }
+                    onHoveredChanged: {
+                        if (hovered) { np.keyboard = false; np.sel = row.index; np.hoverRow = row; }
+                        else if (np.hoverRow === row) np.hoverRow = null;
+                    }
                 }
                 TapHandler {
                     acceptedButtons: Qt.LeftButton | Qt.RightButton

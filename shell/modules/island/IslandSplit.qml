@@ -20,6 +20,7 @@
 // thread) waits a few seconds before it goes. Settings → Bar & Island →
 // Separate pills.
 import QtQuick
+import QtQuick.Effects
 import Quickshell.Widgets
 import qs.config
 import qs.components
@@ -205,14 +206,49 @@ Item {
         readonly property real from: split.fromOf(name)
         default property alias content: slot.data
         readonly property real bodyW: Math.max(split.ph, Math.round(slot.childrenRect.width) + 20)
+        // The capsule's drawn width springs to its content's (it snapped to
+        // each new width): wider with the island's give, narrower clean.
+        readonly property real w: wv.value
+        // settle(), not snap(): snap assigns the target and breaks its binding
+        // to bodyW, and the capsule froze at its first width (T3's ✓ 4 spilled
+        // out of it, 2026-11-17).
+        Spring { id: wv; tier: pill.bodyW > wv.value ? Theme.surfaceIn : Theme.surfaceOut; epsilon: 0.25; target: pill.bodyW; Component.onCompleted: settle() }
+        onShownChanged: if (shown && !out) wv.settle()
         readonly property bool out: sv.value > 0.02
         onOutChanged: if (!out) split.assign()
         // The room it takes along its side (for the capsules beyond it).
-        readonly property real room: (bodyW + split.gap) * sv.value
+        readonly property real room: (w + split.gap) * sv.value
+
+        // ── A state change inside the capsule (Clove's contentReveal, Emil's
+        // island lesson): what it showed leaves in 110 ms (a snapshot, frozen
+        // the moment the key changed), what it shows now arrives 30 ms later:
+        // opacity, 0.97 → 1 from its centre, a 3 px blur clearing. One shape,
+        // springing once to the new width. `stateKey` changes on a state, not
+        // on every count (a new track, working → waiting → done).
+        property string stateKey: ""
+        property real reveal: 1
+        onStateKeyChanged: {
+            if (!out || Theme.reduceMotion) return;
+            ghost.x = slot.x;
+            ghost.opacity = 1;
+            pill.reveal = 0;                 // now, not on the animation's first tick (one frame of the new at full)
+            swap.restart();
+        }
+        SequentialAnimation {
+            id: swap
+            ParallelAnimation {
+                // Overlapping, so the capsule is never empty between them.
+                NumberAnimation { target: ghost; property: "opacity"; to: 0; duration: Theme.quickMs - 10; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+                SequentialAnimation {
+                    PauseAnimation { duration: Theme.handoffMs }
+                    NumberAnimation { target: pill; property: "reveal"; to: 1; duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+                }
+            }
+        }
         Spring { id: sv; tier: pill.shown ? Theme.surfaceIn : Theme.surfaceOut; epsilon: 0.002; target: pill.shown ? 1 : 0; Component.onCompleted: settle() }
         // From 60 % tucked behind the edge to a gap clear of it.
-        readonly property real off: -bodyW * 0.6 + (bodyW * 0.6 + split.gap) * sv.value
-        x: side > 0 ? from + off : from - off - bodyW
+        readonly property real off: -w * 0.6 + (w * 0.6 + split.gap) * sv.value
+        x: side > 0 ? from + off : from - off - w
         // Pulled down (gestures skill): its bottom edge is the pointer, 1:1 up
         // to the line, the capsule stretching like a drop (top 60 %, length
         // 40 % of the travel); past the line it resists, and its edge lights:
@@ -243,7 +279,7 @@ Item {
                 pull.snap(d <= 0 ? -Theme.swipeDamp(-d) * 0.25 : d <= L ? d : L + (d - L) * L * 0.55 / (L + 0.55 * (d - L)));
             }
         }
-        width: bodyW
+        width: w
         height: split.ph + Math.max(0, pull.value) * 0.4
         visible: out
         opacity: Math.min(1, sv.value * 2)
@@ -276,11 +312,37 @@ Item {
         }
         Item {
             id: slot
-            x: Math.round((pill.bodyW - childrenRect.width) / 2)
+            x: Math.round((pill.w - childrenRect.width) / 2)
             y: Math.round((split.ph - childrenRect.height) / 2)
             width: childrenRect.width; height: childrenRect.height
             // The content arrives once the capsule is mostly out, leaves first.
-            opacity: Math.max(0, Math.min(1, (sv.value - (pill.shown ? 0.45 : 0.6)) / 0.35))
+            readonly property real arrive: Math.max(0, Math.min(1, (sv.value - (pill.shown ? 0.45 : 0.6)) / 0.35))
+            opacity: arrive * pill.reveal
+            // Clove's live ears: the icon comes once its capsule has opened,
+            // growing from 70 % on the capsule's own spring (its give included).
+            readonly property real grown: Math.max(0, Math.min(1.05, (sv.value - 0.45) / 0.55))   // past 1 with the spring's give
+            scale: (0.7 + 0.3 * grown) * (0.97 + 0.03 * pill.reveal)
+            layer.enabled: pill.reveal < 0.999
+            layer.effect: MultiEffect { blurEnabled: true; blurMax: 12; blur: (1 - pill.reveal) * 0.25; autoPaddingEnabled: true }
+        }
+        // The old content, for the swap: a snapshot refreshed twice a second
+        // while the capsule is out (live, an animating capsule — T3's spinner
+        // — rendered twice every frame: +3 % CPU at rest). Half a second old
+        // is still the old state: states change rarely.
+        ShaderEffectSource {
+            id: ghost
+            y: slot.y
+            width: slot.width; height: slot.height
+            sourceItem: slot
+            live: false
+            hideSource: false
+            opacity: 0
+            visible: opacity > 0.01
+        }
+        Timer {
+            interval: Theme.hoverLeaveMs + 200; repeat: true; triggeredOnStart: true
+            running: pill.out && !swap.running
+            onTriggered: ghost.scheduleUpdate()
         }
     }
 
@@ -321,15 +383,16 @@ Item {
         id: musicPill
         name: "music"
         panel: "media"
+        stateKey: split.player ? (split.player.trackTitle || "") : ""
         ClippingRectangle {
             width: 18; height: 18; radius: 5
             color: Qt.rgba(1, 1, 1, 0.08)
             ArtImage { anchors.fill: parent; source: split.player ? (split.player.trackArtUrl || "") : ""; px: 36 }
             HoverHandler { id: musicHover; cursorShape: Qt.PointingHandCursor }
             TapHandler { onTapped: Island.open("media", split.bar.screenName, "pointer", "island") }
-            Tip { text: (split.player ? (split.player.trackTitle || split.player.identity || "Playing") : "") + " · click for Now Playing"; shown: musicHover.hovered; below: true }
+            Tip { text: (split.player ? (Media.title(split.player) || split.player.identity || "Playing") : "") + " · click for Now Playing"; shown: musicHover.hovered; below: true }
             Accessible.role: Accessible.Button
-            Accessible.name: "Now playing: " + (split.player ? (split.player.trackTitle || split.player.identity || "music") : "music")
+            Accessible.name: "Now playing: " + (split.player ? (Media.title(split.player) || split.player.identity || "music") : "music")
             Accessible.onPressAction: Island.open("media", split.bar.screenName, "pointer", "island")
         }
     }
@@ -340,6 +403,7 @@ Item {
         name: "agents"
         panel: "agents"
         needs: split.agentsNeed
+        stateKey: [split.agentsErr.length > 0, split.agentsNeed, split.agentsLim.length > 0, split.agentsDone.length > 0].join()
         // An error outranks a question; a limit only says so.
         tone: split.agentsErr.length ? Theme.red : split.agentsNeed ? Theme.orange : split.agentsLim.length ? Theme.yellow
             : split.agentsDone.length ? Theme.green : "transparent"
@@ -382,6 +446,7 @@ Item {
         name: "t3"
         panel: "t3"
         needs: split.t3Waiting && T3Code.total > 0
+        stateKey: [split.t3Waiting, T3Code.total > 0, T3Code.finished > 0].join()
         tone: needs ? Theme.orange : T3Code.finished > 0 ? Theme.green : "transparent"
         Row {
           spacing: 6
@@ -413,6 +478,7 @@ Item {
     Pill {
         id: sysPill
         name: "sys"
+        stateKey: Alerts.active.length ? Alerts.active[0].level + Alerts.active[0].id : Limits.markShown ? "limit" : Updates.fresh ? "updates" : ""
         // Pulled: what it's saying most loudly (a warning, else updates, else a used-up limit).
         panel: Alerts.active.length ? "system" : Limits.markShown && !Updates.fresh && !Updates.running ? "usage" : "updates"
         // A warning in its level's colour (asking: a halo); a used-up limit amber (only saying so).

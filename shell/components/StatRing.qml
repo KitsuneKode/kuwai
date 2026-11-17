@@ -21,7 +21,8 @@ Item {
     implicitHeight: col.implicitHeight
 
     property real shown: value
-    Behavior on shown { NumberAnimation { duration: 400; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+    // A reading, not an event: it chases the value like the shell's meters.
+    Behavior on shown { NumberAnimation { duration: Theme.glideMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
 
   Column {
     id: col

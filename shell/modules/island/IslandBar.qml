@@ -52,7 +52,10 @@ Scope {
             readonly property int restH: 34
             readonly property real restW: restRow.implicitWidth + 32
             readonly property int top: notch ? 0 : 6
-            readonly property real ear: notch ? 9 : 0
+            // The ears grow with the island (9 at rest → 14 open, on the
+            // corners' own ramp), so a big panel flares out of the edge instead
+            // of hanging from two small hooks. (Clove: shoulders 6 → open.)
+            readonly property real ear: notch ? 9 + 5 * Math.max(0, Math.min(1, (frame.height - restH) / 24)) : 0
 
             readonly property bool showBar: Settings.bar === "island"
             // Tucked (Settings.islandTucked): no reserved strip; out only while
@@ -185,9 +188,9 @@ Scope {
             readonly property var monGeo: monitor && monitor.lastIpcObject ? monitor.lastIpcObject : ({})
             readonly property real localX: Pointer.x - (monGeo.x || 0)
             readonly property real localY: Pointer.y - (monGeo.y || 0)
-            readonly property bool onThisScreen: localX >= 0 && localX < width && localY >= 0 && localY < height
+            readonly property bool onThisScreen: localX >= 0 && localX < screen.width && localY >= 0 && localY < screen.height
             function inZone(slack) {
-                return onThisScreen && Math.abs(localX - width / 2) <= restW / 2 + 56 + slack && localY <= restH + top + 48 + slack;
+                return onThisScreen && Math.abs(localX - screen.width / 2) <= restW / 2 + 56 + slack && localY <= restH + top + 48 + slack;
             }
             property int zoneHits: 0
             Connections {
@@ -295,7 +298,7 @@ Scope {
             // island, but the island must stay grown or the menu loses its anchor.
             property int menus: 0
             onMenusChanged: if (menus === 0 && !hovered) leave.restart()
-            Timer { id: leave; interval: Theme.hoverLeaveMs; onTriggered: if (!win.hovered && win.menus === 0) win.grown = false }
+            Timer { id: leave; interval: Theme.hoverLeaveMs; onTriggered: if (win.glanceDragging) restart(); else if (!win.hovered && win.menus === 0) win.grown = false }
             onHoveredChanged: {
                 hovered ? intent.restart() : leave.restart();
                 if (hovered) previewOut.stop(); else if (panelHere && Island.previewing) previewOut.restart();
@@ -367,7 +370,8 @@ Scope {
             Binding { target: glanceLoader.item; property: "clockHidden"; value: win.clockFlying; when: !!glanceLoader.item }
             Binding { target: hoverLoader.item; property: "clockHidden"; value: win.clockFlying; when: !!hoverLoader.item }
 
-            readonly property real backH: Island.canBack ? 34 : 0
+            readonly property bool sectioned: Island.isSection(shownPanel)
+            readonly property real backH: Island.canBack || sectioned ? 34 : 0
             // A panel's own size, but never past the window (room for the shadow):
             // on a normal screen nothing changes, on a small one it fits.
             readonly property size panelSize: panelLoader.item
@@ -408,7 +412,7 @@ Scope {
             property real pull: 0
             property bool committing: false
             property bool pushed: false
-            Behavior on pull { enabled: !pushDrag.active && !win.committing; NumberAnimation { duration: 260; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+            Behavior on pull { enabled: !pushDrag.active && !win.committing && !win.glanceDragging; NumberAnimation { duration: 260; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
             function rubber(d, dim) { return d * dim * 0.55 / (dim + 0.55 * d); }
             function pushBack(v) {
                 committing = true;
@@ -421,6 +425,32 @@ Scope {
                 if (bannerHere) Alerts.dismiss();
                 else if (peekHere) Notifs.dropPeek();
                 else if (deviceHere) Moments.dropCard();
+            }
+            // Pulled down on the glance (IslandGlance): the shape stretches with
+            // the pointer, damped (it hangs from the edge). Let go far or fast
+            // enough and it opens into everything from where it is, at the
+            // pointer's speed (the stretch handed to the height spring, as
+            // pushBack does); short of that it springs back. Up folds it away,
+            // the way it came.
+            property bool glanceDragging: false
+            function glancePull(dy) {
+                glanceDragging = true;
+                pull = dy > 0 ? -rubber(dy, 90) : rubber(-dy, 40);
+            }
+            function glanceRelease(dy, v) {
+                glanceDragging = false;
+                if (dy > 28 || v > Theme.swipeFlick) {
+                    committing = true;
+                    sh.value = sh.value - pull;
+                    sh.velocity = Math.max(0, v * 1000);
+                    pull = 0;
+                    committing = false;
+                    full = true;
+                } else if (dy < -18 || v < -Theme.swipeFlick) {
+                    pull = 0;
+                    pushed = true;
+                    grown = false;
+                } else pull = 0;
             }
             // The assistant working with its panel closed (or just finished): the edge light below.
             readonly property bool assistHere: (OllamaService.bgWorking || !!OllamaService.bgDone)
@@ -647,6 +677,7 @@ Scope {
             Component { id: updatesPanel; UpdatesPanel {} }
             Component { id: mediaPanel; MediaPanel {} }
             Component { id: t3Panel; T3Panel {} }
+            Component { id: cleanupPanel; CleanupPanel {} }
             Component { id: agentsPanel; AgentsPanel {} }
             Component { id: bluetoothPanel; BluetoothPanel {} }
             Component { id: notifsPanel; NotifsPanel {} }
@@ -996,14 +1027,58 @@ Scope {
                             autoPaddingEnabled: false
                         }
                         Keys.onEscapePressed: Island.back()
-                        Keys.onPressed: event => { idle.restart(); event.accepted = false; }
+
+                        Keys.onPressed: event => {
+                            idle.restart();
+                            // ⌥1–4: the sections (keys the panel didn't take bubble here).
+                            if (win.sectioned && (event.modifiers & Qt.AltModifier) && event.key >= Qt.Key_1 && event.key <= Qt.Key_4) {
+                                const s = Island.sections[event.key - Qt.Key_1];
+                                if (s) { Island.switchTo(s.id); event.accepted = true; return; }
+                            }
+                            event.accepted = false;
+                        }
 
                         // Back strip: where you came from, one click away.
                         Item {
                             id: backStrip
-                            visible: Island.canBack
+                            visible: Island.canBack || win.sectioned
                             width: parent.width; height: win.backH
+                            // Sections (Island.sections): the views of the same
+                            // place, on the right; the one you're on lit (14 %),
+                            // the one under the pointer 7 %, ⌥1–4 from the keys.
+                            // A click switches in place (Clove's tab strip):
+                            // hover would switch under a pointer passing by.
+                            Row {
+                                visible: win.sectioned
+                                anchors { right: parent.right; rightMargin: 14 }
+                                y: 10
+                                spacing: 2
+                                Repeater {
+                                    model: Island.sections
+                                    delegate: Rectangle {
+                                        id: sec
+                                        required property var modelData
+                                        required property int index
+                                        readonly property bool picked: win.shownPanel === modelData.id
+                                        width: 30; height: 24; radius: 12
+                                        color: Qt.rgba(1, 1, 1, picked ? 0.14 : secArea.containsMouse ? 0.07 : 0)
+                                        Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
+                                        Accessible.role: Accessible.PageTab
+                                        Accessible.name: modelData.label
+                                        Accessible.selected: picked
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: sec.modelData.glyph
+                                            font.family: Theme.fontGlyph; font.pixelSize: 13
+                                            color: sec.picked ? Theme.textPrimary : secArea.containsMouse ? Theme.textSecondary : Theme.textTertiary
+                                        }
+                                        MouseArea { id: secArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: Island.switchTo(sec.modelData.id) }
+                                        Tip { text: sec.modelData.label + "  ⌥" + (sec.index + 1); shown: secArea.containsMouse; below: true }
+                                    }
+                                }
+                            }
                             Rectangle {
+                                visible: Island.canBack
                                 x: 14; y: 10
                                 height: 24; radius: 12
                                 width: backRow.implicitWidth + 18
@@ -1016,7 +1091,7 @@ Scope {
                                     Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f0141}"; font.family: Theme.fontGlyph; font.pixelSize: 14; color: Theme.textSecondary }
                                     Label {
                                         anchors.verticalCenter: parent.verticalCenter
-                                        text: Island.innerBackLabel || ({ calendar: "Calendar", power: "Power", launcher: "Search", settings: "Settings", system: "System", theme: "Themes", keys: "Shortcuts", switcher: "Windows", updates: "Software Update", usage: "Usage" })[Island.history[Island.history.length - 1]] || "Back"
+                                        text: Island.innerBackLabel || ({ calendar: "Calendar", power: "Power", launcher: "Search", settings: "Settings", system: "System", theme: "Themes", keys: "Shortcuts", switcher: "Windows", updates: "Software Update", usage: "Usage", cleanup: "Cleanup" })[Island.history[Island.history.length - 1]] || "Back"
                                         size: 12; weight: Theme.wMedium; color: Theme.textSecondary
                                     }
                                 }
@@ -1030,7 +1105,7 @@ Scope {
                             height: panelScope.height - win.backH
                             active: win.panelHere || pv.value > 0.01
                             focus: true
-                            sourceComponent: ({ calendar: calendarPanel, power: powerPanel, launcher: launcherPanel, settings: settingsPanel, system: systemPanel, theme: themePanel, keys: keysPanel, switcher: switcherPanel, updates: updatesPanel, media: mediaPanel, t3: t3Panel, agents: agentsPanel, notifs: notifsPanel, bluetooth: bluetoothPanel, usage: usagePanel, vitals: vitalsPanel, read: readPanel })[win.shownPanel] || null
+                            sourceComponent: ({ calendar: calendarPanel, power: powerPanel, launcher: launcherPanel, settings: settingsPanel, system: systemPanel, theme: themePanel, keys: keysPanel, switcher: switcherPanel, updates: updatesPanel, media: mediaPanel, t3: t3Panel, agents: agentsPanel, notifs: notifsPanel, bluetooth: bluetoothPanel, usage: usagePanel, vitals: vitalsPanel, read: readPanel, cleanup: cleanupPanel })[win.shownPanel] || null
                         }
                         // Right click (anywhere a control doesn't take it) or the mouse's back button: back.
                         TapHandler {

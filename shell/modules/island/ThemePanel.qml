@@ -24,6 +24,8 @@ FocusScope {
     // Exactly three rows of cards between the header and the key hints.
     implicitHeight: 66 + 3 * (Math.round(Math.floor((980 - 32 - 330) / 4) * 0.5625) + 40) + 40
 
+    property bool previewPlaying: false
+    onCurrentChanged: previewPlaying = false
     property string mode: Island.themeMode || "themes"      // themes | wallpapers | live | saver
     readonly property var modes: ["themes", "wallpapers", "live", "saver"]
     // Live wallpapers (bin/rice-wall json), with "Off" first: back to the still one.
@@ -112,11 +114,12 @@ FocusScope {
     property string colorMode: (info.modes || ["theme", "auto", "dark", "light"])[info.mode || 0]
     function setColorMode(id) {
         if (id === colorMode) return;
-        info = Object.assign({}, info, { mode: ["theme", "auto", "dark", "light"].indexOf(id) });
-        Quickshell.execDetached([bin, "colormode", id]);
+        if (applicator.running) return;
+        applyError = "";
+        applicator.command = [bin, "colormode", id, "--wait"];
+        applicator.running = true;
         relist.restart();
     }
-    property string applied: ""        // what was just applied (shown until the listing catches up)
 
     Process {
         id: lister
@@ -132,12 +135,13 @@ FocusScope {
             }
         }
     }
-    onModeChanged: { current = Math.max(0, items.findIndex(x => x.current)); grid.positionViewAtIndex(current, GridView.Center); }
+    onModeChanged: { previewPlaying = false; current = Math.max(0, items.findIndex(x => x.current)); grid.positionViewAtIndex(current, GridView.Center); }
 
     function apply(i) {
         const it = items[i];
         if (!it) return;
-        applied = it.name;
+        if (applicator.running) return;
+        applyError = "";
         if (mode === "saver") {
             Settings.set("screensaverStyle", it.style);
             if (it.clip) Settings.set("screensaverClip", it.clip);
@@ -148,9 +152,34 @@ FocusScope {
             relive.restart();
             return;
         }
-        if (mode === "themes") Quickshell.execDetached([bin, "theme", it.name]);
-        else Quickshell.execDetached([bin, "wallpaper", it.path]);
-        relist.restart();
+        if (mode === "themes") {
+            applicator.environment = ({});
+            applicator.command = [bin, "theme", it.name, "--wait"];
+            applicator.running = true;
+            return;
+        }
+        // A wallpaper: the shell plays the change (services/WallFx: the new
+        // picture grows out of the island); awww's own transition is off.
+        const path = it.path;
+        WallFx.play(path, () => {
+            applicator.environment = ({ WALLPAPER_AWWW_TRANSITION_DEFAULT: "none" });
+            applicator.command = [bin, "wallpaper", path, "--wait"];
+            applicator.running = true;
+        });
+    }
+    property string applyError: ""
+    Process {
+        id: applicator
+        onExited: (code, status) => {
+            picker.applyError = code === 0 ? "" : "Couldn't apply the selection. Try again.";
+            lister.running = true;
+        }
+    }
+    Label {
+        visible: picker.applyError !== "" || applicator.running
+        anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom }
+        text: applicator.running ? "Applying…" : picker.applyError
+        color: picker.applyError ? Theme.orange : Theme.textSecondary
     }
     Timer { id: relist; interval: 2500; onTriggered: lister.running = true }
     Timer { id: relive; interval: 600; onTriggered: { liveLister.running = false; liveLister.running = true; } }
@@ -232,7 +261,7 @@ FocusScope {
             // the cards are stills). A short wait so arrowing past doesn't decode each.
             Loader {
                 anchors.fill: parent
-                active: picker.mode === "live" && !!preview.it && !!preview.it.path && previewDwell.ready
+                active: picker.visible && picker.mode === "live" && !!preview.it && !!preview.it.path && previewDwell.ready && picker.previewPlaying
                 sourceComponent: Item {
                     VideoOutput { id: pv; anchors.fill: parent; fillMode: VideoOutput.PreserveAspectCrop }
                     MediaPlayer {
@@ -241,8 +270,15 @@ FocusScope {
                         audioOutput: AudioOutput { muted: true }
                         loops: MediaPlayer.Infinite
                         Component.onCompleted: play()
+                        Component.onDestruction: stop()
                     }
                 }
+            }
+            PillButton {
+                visible: picker.mode === "live" && !!preview.it && !!preview.it.path
+                anchors { right: parent.right; bottom: parent.bottom; margins: 10 }
+                text: picker.previewPlaying ? "Pause preview" : "Play preview"
+                onClicked: picker.previewPlaying = !picker.previewPlaying
             }
             Timer { id: previewDwell; property bool ready: false; interval: 250; onTriggered: ready = true }
             Connections { target: picker; function onCurrentChanged() { previewDwell.ready = false; previewDwell.restart(); } function onModeChanged() { previewDwell.ready = false; previewDwell.restart(); } }
@@ -319,7 +355,7 @@ FocusScope {
             required property var modelData
             required property int index
             readonly property bool on: index === picker.current
-            readonly property bool isCurrent: modelData.current || picker.applied === modelData.name
+            readonly property bool isCurrent: modelData.current
             width: grid.cellWidth; height: grid.cellHeight
 
             ClippingRectangle {

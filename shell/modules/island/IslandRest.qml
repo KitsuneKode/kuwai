@@ -7,6 +7,7 @@
 //   ◉ mic  ● ▮ ● ●  23:29  ▂▄▆ ▭  0:07        dictating
 //   ♫ art  ● ▮ ● ●  23:29  ▂▄▆ ▭  ▂▅▃▆        music playing
 import QtQuick
+import QtQuick.Effects
 import Quickshell
 import Quickshell.Widgets
 import Quickshell.Services.Pipewire
@@ -179,6 +180,13 @@ Item {
         // nothing between, and hid the clock.
         : ""
 
+    // A live activity arriving (or changing: dictating → writing, a timer
+    // taking over from a recording) arrives like the capsules' content: from
+    // 0.97, a blur clearing, while the notch springs to its new width.
+    property real actReveal: 1
+    onActivityChanged: if (activity !== "" && activity !== "moment" && !Theme.reduceMotion) { actReveal = 0; actIn.restart(); }
+    NumberAnimation { id: actIn; target: rest; property: "actReveal"; to: 1; duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+
     property real voxSecs: 0
     Timer {
         running: Activities.voxListening
@@ -256,7 +264,10 @@ Item {
         id: actChip
         visible: ((rest.activity !== "" && rest.activity !== "moment")
                  || (rest.restMusic && !Media.playing && rest.activity === "")) && !rest.helloFocus
-        opacity: rest.chromeReveal
+        opacity: rest.chromeReveal * rest.actReveal
+        scale: 0.97 + 0.03 * rest.actReveal
+        layer.enabled: rest.actReveal < 0.999
+        layer.effect: MultiEffect { blurEnabled: true; blurMax: 12; blur: (1 - rest.actReveal) * 0.25; autoPaddingEnabled: true }
         anchors.verticalCenter: parent.verticalCenter
         spacing: 7
         Item {
@@ -487,7 +498,9 @@ Item {
         Behavior on x { NumberAnimation { duration: Theme.reflowMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
         anchors.verticalCenter: parent.verticalCenter
         HoverHandler { cursorShape: Qt.PointingHandCursor }
-        TapHandler { onTapped: { rest.bar.clockFrom(clock); Island.toggle("calendar", rest.bar.screenName, "pointer", "island"); } }
+        // The centre opens everything (the calendar is its time chip); a click
+        // that beats the hover delay lands here, so it does the same as the glance.
+        TapHandler { onTapped: { rest.bar.full = true; rest.bar.grown = true; } }
     }
     // Mini notch, an event soon: "19:35 · Standup · 25m".
     Label {
@@ -557,6 +570,26 @@ Item {
             HoverHandler { id: micHover; margin: 6 }
             Tip { text: "Microphone in use" + (Activities.micUseSummary ? " · " + Activities.micUseSummary : Activities.micName ? " · " + Activities.micName : ""); shown: micHover.hovered; below: true }
         }
+        // Privacy, together (Apple's colours): mic orange (above), camera
+        // green, the screen shared or recorded purple. Each says who on hover.
+        Rectangle {
+            visible: Activities.camInUse
+            anchors.verticalCenter: parent.verticalCenter
+            width: 6; height: 6; radius: 3
+            color: Theme.green
+            HoverHandler { id: camHover; margin: 6 }
+            Tip { text: "Camera in use" + (Activities.camUsers.length ? " · " + Activities.camUsers.join(", ") : ""); shown: camHover.hovered; below: true }
+        }
+        Rectangle {
+            // Hyprland tells the shell when a capture starts (kuwai.privacy →
+            // Notifs.setDndMute): toasts are already held while it runs.
+            visible: Notifs.shareKnown && Notifs.dndMute
+            anchors.verticalCenter: parent.verticalCenter
+            width: 6; height: 6; radius: 3
+            color: Theme.purple
+            HoverHandler { id: shareHover; margin: 6 }
+            Tip { text: "Your screen is being shared or recorded · notifications are held"; shown: shareHover.hovered; below: true }
+        }
         // Agents at work (kittymux): their marks, stacked (AgentStack).
         AgentStack {
             id: agents
@@ -567,15 +600,6 @@ Item {
         // System news (updates, a warning): trailing here, leading in the
         // mini notch (leadSys) so the two sides balance.
         SysMarks { id: trailSys; bar: rest.bar; quiet: rest.stageTaken; updateOffStage: Updates.running && rest.activity !== "update"; visible: !rest.mini && any && !Settings.islandSplit; anchors.verticalCenter: parent.verticalCenter }
-        // The camera is on: a green dot (Apple's), with who has it.
-        Rectangle {
-            visible: Activities.camInUse
-            anchors.verticalCenter: parent.verticalCenter
-            width: 6; height: 6; radius: 3
-            color: Theme.green
-            HoverHandler { id: camHover; margin: 6 }
-            Tip { text: "Camera in use" + (Activities.camUsers.length ? " · " + Activities.camUsers.join(", ") : ""); shown: camHover.hovered; below: true }
-        }
         // This screen is in HDR right now (an HDR film or game switched it):
         // a small label, so you can see it engaged; gone when it switches back.
         Label {
@@ -637,7 +661,9 @@ Item {
     Item {
         visible: (rest.activity !== "" && rest.activity !== "moment" && !rest.joined)
                  || (rest.restMusic && !Media.playing && rest.activity === "")
-        opacity: rest.chromeReveal
+        // Arrives with the activity's glyph (actReveal), a beat behind it.
+        opacity: rest.chromeReveal * Math.max(0, Math.min(1, rest.actReveal * 1.25 - 0.25))
+        scale: 0.97 + 0.03 * rest.actReveal
         width: trailing.implicitWidth
         height: 20
         anchors.verticalCenter: parent.verticalCenter

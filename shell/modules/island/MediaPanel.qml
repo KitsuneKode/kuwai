@@ -108,8 +108,8 @@ FocusScope {
             id: art
             width: 64; height: 64; radius: 14
             color: Qt.rgba(1, 1, 1, 0.08)
-            Image { anchors.fill: parent; source: Media.art; sourceSize: Qt.size(128, 128); fillMode: Image.PreserveAspectCrop; asynchronous: true }
-            Text { visible: !Media.art; anchors.centerIn: parent; text: "\u{f075a}"; font.family: Theme.fontGlyph; font.pixelSize: 26; color: Theme.textTertiary }
+            // The shared cover: art, else a frame of the playing window (a film), else the note.
+            ArtImage { anchors.fill: parent; source: Media.art; px: 128; player: np.p }
             ImageEdge { radius: 14 }
             scale: artArea.pressed ? 0.96 : 1
             Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
@@ -118,10 +118,10 @@ FocusScope {
             id: titles
             anchors { left: art.right; leftMargin: 14; right: ctx.visible ? ctx.left : wave.left; rightMargin: 12; verticalCenter: art.verticalCenter }
             spacing: 3
-            Label { width: parent.width; elide: Text.ElideRight; text: np.p ? (np.p.trackTitle || "Unknown") : ""; size: Theme.tHeadline; weight: Theme.wSemibold }
+            Label { width: parent.width; elide: Text.ElideRight; text: np.p ? (Media.title(np.p) || "Unknown") : ""; size: Theme.tHeadline; weight: Theme.wSemibold }
             Label {
                 width: parent.width; elide: Text.ElideRight
-                text: np.note !== "" ? np.note : np.p ? [np.p.trackArtist, np.p.identity].filter(x => x).join(" · ") : ""
+                text: np.note !== "" ? np.note : np.p ? [np.p.trackArtist || Media.byline(np.p), np.p.trackArtist ? np.p.identity : ""].filter(x => x).join(" · ") : ""
                 size: 13; color: np.note !== "" ? np.tint : Theme.textSecondary
                 Behavior on color { ColorAnimation { duration: Theme.colorMs } }
             }

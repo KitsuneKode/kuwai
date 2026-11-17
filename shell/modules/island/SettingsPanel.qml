@@ -334,9 +334,21 @@ FocusScope {
 
         Label { id: heading; x: 28; y: 20; text: (settings.sections[settings.current] || {}).label || ""; size: 20; weight: Theme.wSemibold }
 
+        Label {
+            id: saveStatus
+            x: 28; y: heading.y + heading.height + 8
+            width: parent.width - 56
+            visible: text !== ""
+            text: Settings.error || (Settings.pending ? "Saving changes…" : "")
+            wrapMode: Text.Wrap
+            size: 11
+            color: Settings.error ? Theme.red : Theme.textSecondary
+            Accessible.role: Accessible.StaticText
+            Accessible.name: text
+        }
         Flickable {
             id: pageFlick
-            x: 28; y: 62
+            x: 28; y: saveStatus.visible ? saveStatus.y + saveStatus.height + 12 : Math.max(62, heading.y + heading.height + 16)
             width: parent.width - 56
             height: parent.height - y - 16
             contentHeight: page.implicitHeight
@@ -591,7 +603,7 @@ FocusScope {
                     key: "textScale"
                     label: "Text size"; detail: "Every label in the shell; rows grow with it"
                     Segmented {
-                        options: [{ id: "1", label: "100 %" }, { id: "1.1", label: "110 %" }, { id: "1.2", label: "120 %" }]
+                        options: [{ id: "1", label: "100 %" }, { id: "1.1", label: "110 %" }, { id: "1.2", label: "120 %" }, { id: "1.5", label: "150 %" }, { id: "2", label: "200 %" }]
                         current: String(Settings.textScale)
                         onPicked: id => Settings.set("textScale", Number(id))
                     }
@@ -749,7 +761,7 @@ FocusScope {
             SettingsGroup {
                 SettingsRow {
                     key: "idleOwner"
-                    label: "Who handles idle"; detail: Settings.idleOwner === "shell" ? "The shell: dims, fades, locks and sleeps, aware of Caffeine and of music playing" : "hypridle (~/.config/hypr/hypridle.conf); the rows below don't apply"
+                    label: "Who handles idle"; detail: Idle.ownerError || (Idle.confirmedOwner === "shell" ? "Active: shell — dims, locks and sleeps. A requested handoff waits for readiness." : "Active: hypridle (~/.config/hypr/hypridle.conf); the rows below don't apply")
                     Segmented {
                         options: [{ id: "shell", label: "Shell" }, { id: "hypridle", label: "hypridle" }]
                         current: Settings.idleOwner
@@ -760,6 +772,18 @@ FocusScope {
                     key: "idleNoSleepWhilePlaying"
                     label: "Don't sleep while music plays"
                     Toggle { on: Settings.idleNoSleepWhilePlaying; onToggled: Settings.set("idleNoSleepWhilePlaying", !Settings.idleNoSleepWhilePlaying) }
+                }
+                SettingsRow {
+                    key: "caffeineMode"
+                    label: "Keep awake"
+                    detail: Settings.caffeineMode === "login" ? "Caffeine comes on with each login (it still ends with the session)"
+                          : Settings.caffeineMode === "work" ? "No sleep from idle while an agent, a T3 thread or an update is working, on power. Screens still dim and lock."
+                          : "Only when you turn Caffeine on"
+                    Segmented {
+                        options: [{ id: "manual", label: "Manual" }, { id: "login", label: "At login" }, { id: "work", label: "While work runs" }]
+                        current: Settings.caffeineMode
+                        onPicked: id => Settings.set("caffeineMode", id)
+                    }
                 }
             }
             SettingsGroup {

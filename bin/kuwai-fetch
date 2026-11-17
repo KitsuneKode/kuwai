@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+# kuwai-fetch: fastfetch with a moving picture beside it.
+#
+#   kuwai-fetch              an animated GIF on the left (kitty), the system on the right
+#   kuwai-fetch NAME         that one (a file name in the folder, without .gif)
+#   kuwai-fetch --list       what's in the folder
+#   kuwai-fetch --get-pokemon N [N…]
+#                            fetch Pokémon N's animated sprite (gen 5, from the
+#                            PokeAPI sprites repo on GitHub) into the folder. Your
+#                            download, for your machine: nothing like it ships here.
+#
+# Pictures: ~/.config/rice/fetch/*.gif (or .png / .webp). Put any GIF there.
+# Each is scaled once (nearest neighbour for pixel art, transparent background,
+# full frames so kitty draws no trails) into ~/.cache/rice/fetch/.
+# Outside kitty, or with no pictures: a still picture in blocks (chafa), else
+# plain fastfetch. Never fails the shell it's greeting: every error is quiet.
+#
+# The layout technique (info printed indented first, the cursor sent back, the
+# image placed with `kitten icat`, then below the info) is the one pocket-dots
+# uses for its pokéfetch; written again here, not copied.
+set -u
+DIR="${XDG_CONFIG_HOME:-$HOME/.config}/rice/fetch"
+CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/rice/fetch"
+W=${KUWAI_FETCH_W:-200}       # picture box, pixels
+H=${KUWAI_FETCH_H:-168}
+INDENT=${KUWAI_FETCH_INDENT:-30}
+
+pics() { find "$DIR" -maxdepth 1 -type f \( -iname '*.gif' -o -iname '*.png' -o -iname '*.webp' \) 2>/dev/null | sort; }
+
+case "${1:-}" in
+    --list) pics | sed "s|$DIR/||"; exit 0 ;;
+    --get-pokemon)
+        shift
+        mkdir -p "$DIR"
+        for n in "$@"; do
+            case "$n" in *[!0-9]*|"") echo "not a number: $n" >&2; continue ;; esac
+            url="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/$n.gif"
+            if curl -fsSL --max-time 20 -o "$DIR/pokemon-$n.gif.part" "$url"; then
+                mv "$DIR/pokemon-$n.gif.part" "$DIR/pokemon-$n.gif"; echo "pokemon-$n"
+            else
+                rm -f "$DIR/pokemon-$n.gif.part"; echo "couldn't fetch $n (only 1–649 have animated sprites)" >&2
+            fi
+        done
+        exit 0 ;;
+    -h|--help) sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+esac
+
+command -v fastfetch >/dev/null || exit 0
+mapfile -t all < <(pics)
+pick=""
+if [ -n "${1:-}" ]; then
+    for p in "${all[@]}"; do case "$(basename "${p%.*}")" in "$1") pick=$p ;; esac; done
+elif [ ${#all[@]} -gt 0 ]; then
+    pick=${all[RANDOM % ${#all[@]}]}
+fi
+[ -n "$pick" ] || exec fastfetch
+
+in_kitty() { [ -n "${KITTY_WINDOW_ID:-}" ] && command -v kitten >/dev/null; }
+
+if ! in_kitty; then
+    if command -v chafa >/dev/null; then
+        logo=$(chafa -f symbols --symbols block+sextant+half+quad+space --dither none --size 36x18 "$pick" 2>/dev/null | head -n 18)
+        [ -n "$logo" ] && exec fastfetch --logo-type data-raw --logo "$logo" --logo-padding-top 1
+    fi
+    exec fastfetch
+fi
+
+# Scaled once, kept by its content's hash (a replaced file is redone).
+mkdir -p "$CACHE"
+key=$( { cksum < "$pick"; echo "$W $H"; } | cksum | cut -d' ' -f1)
+box="$CACHE/$key.gif"
+if [ ! -s "$box" ]; then
+    if command -v ffmpeg >/dev/null; then
+        ffmpeg -y -loglevel error -i "$pick" -filter_complex \
+            "fps=15,scale=w=$W:h=$H:force_original_aspect_ratio=decrease:flags=neighbor,format=rgba,pad=$W:ih:($W-iw)/2:0:color=#00000000,split[a][b];[a]palettegen=reserve_transparent=1[p];[b][p]paletteuse=alpha_threshold=128:diff_mode=none" \
+            -gifflags -offsetting "$box.tmp.gif" 2>/dev/null && mv "$box.tmp.gif" "$box"
+    elif command -v magick >/dev/null; then
+        magick "$pick" -coalesce -filter point -resize "${W}x${H}" "$box" 2>/dev/null
+    fi
+    [ -s "$box" ] || cp -f "$pick" "$box" 2>/dev/null
+fi
+
+# The system, without the long tails that wouldn't fit beside the picture.
+mapfile -t info < <(fastfetch --logo none --pipe false 2>/dev/null \
+    | sed -E 's/ \([0-9]+\) @ [0-9.]+ GHz//; s/ @ [0-9.]+ GHz//; s/ \[(Integrated|Discrete)\]//')
+n=${#info[@]}
+printf '\0337'                     # remember where we are
+printf '\033[?7l'                  # no wrapping: a long line is cut, not folded under the picture
+for l in "${info[@]}"; do printf '%*s%s\n' "$INDENT" '' "$l"; done
+printf '\033[?7h'
+printf '\0338\033[1B'              # back to the top (one line down: centred against the text)
+kitten icat --align left --loop -1 "$box" 2>/dev/null
+printf '\0338'
+rows=$(( (H / 18) + 2 )); [ "$n" -gt "$rows" ] && rows=$n
+printf '\033[%dB\n' "$rows"        # below whichever is taller

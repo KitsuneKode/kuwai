@@ -14,6 +14,8 @@ import QtQuick
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Io
+import Quickshell.Services.UPower
+import qs.config
 
 Singleton {
     id: root
@@ -24,13 +26,40 @@ Singleton {
     property bool on: false
     property bool loaded: false
     function toggle() { on = !on; }
+
+    // Settings → Idle → Keep awake (caffeineMode):
+    //   manual   the cup only (default)
+    //   login    the cup comes on with each session (still ends with it: the
+    //            state is in the runtime dir, so a reboot starts from the setting)
+    //   work     while something you started is working — a kittymux agent,
+    //            a T3 Code thread, a software update — on AC power, the laptop
+    //            doesn't fall asleep from idle. Screens still dim, lock and
+    //            turn off (you're away; your work isn't), and the lid and the
+    //            power menu still sleep: only the idle timer waits.
+    readonly property var reasons: {
+        if (Settings.caffeineMode !== "work" || UPower.onBattery) return [];
+        const r = [];
+        const k = Kittymux.working ? Kittymux.working.length : 0;
+        if (k > 0) r.push(k === 1 ? "an agent is working" : k + " agents are working");
+        if (T3Code.running > 0) r.push(T3Code.running === 1 ? "a T3 thread is running" : T3Code.running + " T3 threads are running");
+        if (Updates.running) r.push("an update is running");
+        return r;
+    }
+    readonly property bool working: reasons.length > 0
+    readonly property string why: working ? "Staying up: " + reasons.join(", ") : ""
+    property bool fresh: false            // no state file: a new session
+    function startOn() { if (fresh && Settings.caffeineMode === "login") on = true; fresh = false; }
+    Connections {
+        target: Settings
+        function onLoadedChanged() { if (Settings.loaded) root.startOn(); }
+    }
     onOnChanged: if (loaded) state.setText(on ? "on\n" : "off\n")
     FileView {
         id: state
         path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/rice/caffeine"
         printErrors: false
         onLoaded: { root.on = text().trim() === "on"; root.loaded = true; adopt.running = true; }
-        onLoadFailed: { root.loaded = true; adopt.running = true; }
+        onLoadFailed: { root.loaded = true; adopt.running = true; root.fresh = true; if (Settings.loaded) root.startOn(); }
     }
 
     // The old Caffeine (idle-inhibitor-toggle.sh → caffeine-mode.service, a

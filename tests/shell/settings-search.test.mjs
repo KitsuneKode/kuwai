@@ -1,18 +1,21 @@
 // Finding a setting (shell/services/settingsSearch.js), against the real
-// Settings panel's source, so a renamed row shows up here.
+// Explicit schema, independent of source formatting.
 //   bun test tests/shell/settings-search.test.mjs
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 
 const lib = readFileSync(new URL("../../shell/services/settingsSearch.js", import.meta.url), "utf8").replace(/^\.pragma library\s*$/m, "");
-const { parseRows, search } = new Function(lib + "\nreturn { parseRows, search };")();
+const { search } = new Function(lib + "\nreturn { search };")();
+const schema = JSON.parse(readFileSync(new URL("../../shell/config/settings-schema.json", import.meta.url), "utf8"));
+const contractLib = readFileSync(new URL("../../shell/config/settingsSchema.js",import.meta.url), "utf8").replace(/^\.pragma library\s*$/m, "");
+const { rows: schemaRows } = new Function(contractLib + "\nreturn {rows};")();
 const panel = readFileSync(new URL("../../shell/modules/island/SettingsPanel.qml", import.meta.url), "utf8");
 const indexSrc = readFileSync(new URL("../../shell/services/SettingsIndex.qml", import.meta.url), "utf8");
 
 // The page map and sections, as SettingsIndex declares them.
 const pages = Function("return " + /readonly property var pages:\s*\((\{[^}]*\})\)/.exec(indexSrc)[1])();
 const sections = [...indexSrc.matchAll(/\{ id: "(\w+)", keys: "([^"]*)", label: "([^"]+)"/g)].map(m => ({ id: m[1], keys: m[2], label: m[3] }));
-const rows = parseRows(panel, pages);
+const rows = schemaRows(schema);
 const first = q => search(sections, rows, q)[0];
 
 describe("the index", () => {
@@ -20,7 +23,7 @@ describe("the index", () => {
     const ids = [...panel.matchAll(/\bid:\s*(\w+Page)\b/g)].map(m => m[1]).filter(id => id !== "kbPage");
     for (const id of ids) expect(pages[id]).toBeTruthy();
   });
-  test("reads most of the panel's rows", () => expect(rows.length).toBeGreaterThan(55));
+  test("indexes most of the panel's rows", () => expect(rows.length).toBeGreaterThan(55));
   test("an option's label isn't taken for the row's", () => expect(rows.some(r => r.label === "Waybar")).toBe(false));
   test("a row knows its group", () => expect(rows.find(r => r.label === "Hover delay").group).toBe("On hover"));
   test("an untitled group doesn't inherit the title above", () => expect(rows.find(r => r.label === "Who handles idle").group).toBe(""));
