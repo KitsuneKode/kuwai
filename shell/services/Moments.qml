@@ -19,6 +19,7 @@ import Quickshell.Hyprland
 import Quickshell.Networking
 import Quickshell.Services.UPower
 import qs.config
+import "moments.mjs" as MomentsLogic
 
 Singleton {
     id: root
@@ -381,12 +382,15 @@ Singleton {
     }
 
     // ── An event soon (services/Calendar): "Standup · in 10 min" ─────────
-    // Ten minutes before, and again as it starts. Each once.
+    // Ten minutes before, and again as it starts. Each once. What was said
+    // is forgotten an hour after the event started (it grew by two keys per
+    // event for the shell's life).
     property var announced: ({})
     Timer {
         interval: 30000; repeat: true; running: Calendar.events.length > 0; triggeredOnStart: true
         onTriggered: {
             const now = Date.now();
+            root.announced = MomentsLogic.forgetAnnounced(root.announced, now);
             for (const e of Calendar.events) {
                 if (e.allDay) continue;
                 const left = e.start - now;

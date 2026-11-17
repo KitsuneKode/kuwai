@@ -7,5 +7,5 @@
     "noEmit": true, "allowJs": true, "checkJs": true, "strict": true,
     "target": "es2022", "module": "nodenext", "moduleResolution": "nodenext", "skipLibCheck": true
   },
-  "files": ["shell/services/otp.mjs", "shell/services/clipstate.mjs", "shell/services/notifUndo.mjs"]
+  "files": ["shell/services/otp.mjs", "shell/services/clipstate.mjs", "shell/services/notifUndo.mjs", "shell/services/moments.mjs"]
 }
