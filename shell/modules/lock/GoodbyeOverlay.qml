@@ -18,7 +18,7 @@ Variants {
             exclusionMode: ExclusionMode.Ignore
             WlrLayershell.layer: WlrLayer.Overlay
             // Not kuwai-*: that layer rule blurs past 30 % alpha, a pop mid-fade.
-            WlrLayershell.namespace: "kuwai-goodbye"
+            WlrLayershell.namespace: "kuwai.goodbye"
             WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
             color: "transparent"
             Farewell {

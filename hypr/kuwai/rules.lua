@@ -179,17 +179,17 @@ layer({ name = "kuwai-island-shape", match = { namespace = "^kuwai-(island|islan
 -- under it, an empty light slab in the middle of the screen. Cards are 0.84
 -- black: blur only under a card that's really there.
 layer({ name = "kuwai-toasts", match = { namespace = "^kuwai-notifs$" }, ignore_alpha = 0.7 })
--- The screensaver and its film are kuwai-screensaver / kuwai-saver-film, on
--- purpose outside kuwai-*: kuwai-glass blurred behind them wherever alpha passed
+-- The screensaver and its film are kuwai.screensaver / kuwai.saver-film: a dot,
+-- on purpose, so ^kuwai-.* (kuwai-glass) cannot match them: kuwai-glass blurred behind them wherever alpha passed
 -- 0.3, and the vignette crossed that two-thirds down (a hard line, the film
 -- blurred below it). A later blur = false did not undo kuwai-glass's blur.
-layer({ name = "kuwai-saver", match = { namespace = "^kuwai-(screensaver|saver-film)$" }, no_anim = true })
--- Live video. Outside kuwai-* so the glass blur rule cannot catch a
+layer({ name = "kuwai-saver", match = { namespace = "^kuwai\\.(screensaver|saver-film)$" }, no_anim = true })
+-- Live video, kuwai.wallpaper: a dot, outside ^kuwai-.*, so the glass blur rule cannot catch a
 -- full-screen frame. A later blur = false does not undo kuwai-glass.
-layer({ name = "kuwai-wallpaper", match = { namespace = "^kuwai-wallpaper$" }, no_anim = true })
+layer({ name = "kuwai-wallpaper", match = { namespace = "^kuwai\\.wallpaper$" }, no_anim = true })
 -- A wallpaper change (services/WallFx): the shell plays it on its own short
 -- layer; a compositor fade would show the hand-off. Outside kuwai-*: no blur.
-layer({ name = "kuwai-wallfx", match = { namespace = "^kuwai-wallfx$" }, no_anim = true })
+layer({ name = "kuwai-wallfx", match = { namespace = "^kuwai\\.wallfx$" }, no_anim = true })
 -- The password prompt never appears in a screen share, recording or screenshot.
 layer({ name = "kuwai-auth-private", match = { namespace = "^kuwai-auth$" }, no_screen_share = true })
 -- The center's scrim: deliberately outside kuwai-* so nothing blurs under it.

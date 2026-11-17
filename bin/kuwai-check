@@ -90,6 +90,12 @@ if command -v playerctl >/dev/null && playerctl -a status 2>/dev/null | grep -qx
 # you speak (25 % measured, 2026-11-17), and a promote must not fail because
 # you were talking. Its cost is voxtype's to fix; here it is named, not hidden.
 if command -v voxtype >/dev/null && ! voxtype status 2>/dev/null | head -n 1 | grep -qx idle; then cpu_budget=35; cpu_why="while dictating"; fi
+# A film on screen (the screensaver, or a live wallpaper the shell plays) is
+# video being decoded and drawn, not rest: 2026-11-18 a promote failed at 36 %
+# with the screensaver playing (and blurred by mistake: kuwai.* layers since).
+if command -v hyprctl >/dev/null && hyprctl layers -j 2>/dev/null | jq -e '[.. | objects | select(.namespace? and (.namespace | test("^kuwai\\.(screensaver|saver-film|wallpaper)$")) and .w > 1)] | length > 0' >/dev/null 2>&1; then
+    cpu_budget=40; cpu_why="with a film on screen (screensaver or live wallpaper)"
+fi
 # Five one-second samples, the median: one busy second (a notification
 # arriving, a reload's tail, T3's poll) read as 6–14 % in a single 3 s window
 # and failed promote about once in four; a shell that is really busy is busy

@@ -193,7 +193,7 @@ Singleton {
                 exclusionMode: ExclusionMode.Ignore
                 color: "black"
                 mask: Region {}
-                WlrLayershell.namespace: "kuwai-wallfx"
+                WlrLayershell.namespace: "kuwai.wallfx"
                 WlrLayershell.layer: WlrLayer.Bottom
                 WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
                 // Nothing on screen until both pictures are decoded (the cover

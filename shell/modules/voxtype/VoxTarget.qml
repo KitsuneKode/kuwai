@@ -83,7 +83,7 @@ Scope {
                 anchors { top: true; bottom: true; left: true; right: true }
                 exclusionMode: ExclusionMode.Ignore
                 WlrLayershell.layer: WlrLayer.Overlay
-                WlrLayershell.namespace: "kuwai-voxtarget"
+                WlrLayershell.namespace: "kuwai.voxtarget"
                 WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
                 mask: Region {}
                 color: "transparent"

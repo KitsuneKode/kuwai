@@ -64,7 +64,7 @@ Scope {
                 // Outside kuwai-*: that rule blurs every kuwai-* surface, and a later
                 // blur=false does not undo it. A full-screen video would pay
                 // for a blur nobody can see. Same split as the screensaver.
-                WlrLayershell.namespace: "kuwai-wallpaper"
+                WlrLayershell.namespace: "kuwai.wallpaper"
                 WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
                 mask: Region {}
                 color: "transparent"

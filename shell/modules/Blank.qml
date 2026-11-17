@@ -78,7 +78,7 @@ Scope {
                 anchors { top: true; bottom: true; left: true; right: true }
                 exclusionMode: ExclusionMode.Ignore
                 WlrLayershell.layer: WlrLayer.Overlay
-                WlrLayershell.namespace: "kuwai-blank"
+                WlrLayershell.namespace: "kuwai.blank"
                 WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
                 color: "black"
                 // The pointer wandered over and clicked: you want it back.
