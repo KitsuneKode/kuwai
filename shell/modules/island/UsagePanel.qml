@@ -1,5 +1,5 @@
 // Agent usage limits, grown out of the island (rest on the stacked logos, or
-// `rice usage`). One card per agent, Claude first, then by urgency: its logo,
+// `kuwai usage`). One card per agent, Claude first, then by urgency: its logo,
 // its name and one status ("Out · back in 2h 24m", "82%", "OK"); inside,
 // each window as a thin bar that fills on open, with its percent and reset.
 // A window shared by two accounts (Antigravity's "Claude & GPT") shows once.
@@ -189,7 +189,7 @@ FocusScope {
             Label {
                 anchors { left: parent.left; leftMargin: 14; right: retry.left; rightMargin: 10; verticalCenter: parent.verticalCenter }
                 elide: Text.ElideRight
-                text: "rice-usage isn't running" + (Limits.loaded ? " · showing the last reading" : "")
+                text: "kuwai-usage isn't running" + (Limits.loaded ? " · showing the last reading" : "")
                 size: Theme.tBody; weight: Theme.wMedium
                 color: Theme.orange
             }

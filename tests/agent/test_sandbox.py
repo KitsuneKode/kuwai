@@ -5,7 +5,7 @@ from test_tools import answer, call, completion
 
 USER = {"chat": "c42", "messages": [{"role": "user", "content": "do it"}]}
 CAPS = {"hermes3:8b": ["completion", "tools"]}
-ON = {"RICE_SANDBOX": "on"}
+ON = {"KUWAI_SANDBOX": "on"}
 
 
 def names(req):
@@ -127,7 +127,7 @@ def test_update_plan_cleans_steps(run_agent):
 
 
 def test_context_profile_memory_and_instructions(run_agent, tmp_path):
-    cfg = tmp_path / "config" / "rice" / "assistant"
+    cfg = tmp_path / "config" / "kuwai" / "assistant"
     cfg.mkdir(parents=True)
     (cfg / "AGENTS.md").write_text("Answer in British English.")
     events, fake = run_agent(USER, [[call("remember", {"fact": "Prefers Rust over Go"}), {"done": True}], answer()],

@@ -1,4 +1,4 @@
--- kuwai — the Hyprland half of the rice.
+-- kuwai — the Hyprland half of kuwai.
 --
 -- Loaded by ~/.config/hypr/hyprland.lua (see hypr/templates/hyprland.lua).
 -- Order is deliberate; each module is isolated, so one failing shows an error

@@ -1,0 +1,175 @@
+#!/usr/bin/env bash
+# kuwai-livewall (was ~/Scripts/live-wallpaper.sh) — picks the live wallpaper
+#
+# The shell plays it: shell/modules/wallpaper/LiveWallpaper.qml watches
+# $XDG_STATE_HOME/live-wallpaper/last and plays that video on the background
+# layer itself (one muted, looping player per screen, paused under a
+# fullscreen window, the lock and, unless allowed, on battery). This script
+# only chooses and records:
+#
+#   toggle | next | play FILE   write the pick to `last`, set `enabled`
+#   stop                        empty `last` (the shell fades the video out)
+#   first                       the remembered pick, else the library's first
+#   resume                      at login / theme apply; does nothing while the
+#                               shell is up (it already plays `last`)
+#
+# Without the shell (it isn't running), mpvpaper is the fallback player:
+# spawn() starts it with its IPC socket under $XDG_RUNTIME_DIR/kuwai/ and a
+# `watch` loop that pauses it while any window is fullscreen.
+#
+# Library (Omarchy's per-theme convention), merged, sorted by name:
+#   1. ~/.config/hyde/themes/<ACTIVE THEME>/wallpapers/live/
+#   2. ~/Pictures/live-wallpapers/
+# Prefix filenames 1-, 2-, 3- ... to define cycle order.
+#
+# State: $XDG_STATE_HOME/live-wallpaper/{last,enabled,index}.
+# The fallback needs mpvpaper, socat and jq.
+
+set -u
+
+GLOBAL_LIB="$HOME/Pictures/live-wallpapers"
+SOCK_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/kuwai"   # private (0700), not a guessable /tmp path
+SOCK_PREFIX="$SOCK_DIR/mpvpaper-ipc"
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/live-wallpaper"   # where LiveWallpaper.qml reads it
+IDX="$STATE_DIR/index"       # cycle position within current library
+LAST="$STATE_DIR/last"       # last played file
+ENABLED="$STATE_DIR/enabled" # flag: live walls wanted across boots/themes
+MPV_OPTS="no-audio loop hwdec=auto panscan=1.0 input-ipc-server=$SOCK_PREFIX.sock"
+
+notify() { command -v notify-send >/dev/null && notify-send -a "󰸉 Live Wallpaper" "$1" || true; }
+
+is_video() { case "$1" in *.mp4|*.MP4|*.webm|*.mkv|*.mov) return 0;; *) return 1;; esac; }
+
+theme_live_dir() {
+    local t; t=$(sed -n 's/^HYDE_THEME="\(.*\)"/\1/p' "$HOME/.local/state/hyde/staterc" 2>/dev/null)
+    [ -n "$t" ] && printf '%s' "$HOME/.config/hyde/themes/$t/wallpapers/live"
+}
+
+library() {
+    local td; td=$(theme_live_dir)
+    if [ -n "$td" ] && find "$td" -maxdepth 1 -type f -print0 2>/dev/null \
+        | while IFS= read -r -d '' f; do is_video "$f" && printf 'x'; done | grep -q x; then
+        printf '%s' "$td"
+    else
+        printf '%s' "$GLOBAL_LIB"
+    fi
+}
+
+files() {   # theme library + global library merged (theme vids surface first by name)
+    local td; td=$(theme_live_dir)
+    {
+        if [ -n "$td" ]; then
+            find "$td" -maxdepth 1 -type f \
+                \( -iname '*.mp4' -o -iname '*.webm' -o -iname '*.mkv' -o -iname '*.mov' \) \
+                2>/dev/null
+        fi
+        find "$GLOBAL_LIB" -maxdepth 1 -type f \
+            \( -iname '*.mp4' -o -iname '*.webm' -o -iname '*.mkv' -o -iname '*.mov' \) \
+            2>/dev/null
+    } | sort -V
+}
+
+is_running() { pgrep -x mpvpaper >/dev/null; }   # the player, not a command line naming it
+# The shell that plays video itself: kuwai (its process is `qs`), or a
+# standalone Quickshell.
+shell_up() { qs list --all --json 2>/dev/null | jq -e 'any(.[]; .config_path | endswith("/shell/shell.qml"))' >/dev/null; }
+
+mpv_pause() {   # $1 = true|false — sent to every mpvpaper ipc socket (multi-monitor safe)
+    for s in "$SOCK_PREFIX"*.sock; do
+        [ -S "$s" ] && printf '{ "command": ["set_property", "pause", %s] }\n' "$1" \
+            | socat - "$s" >/dev/null 2>&1
+    done
+}
+
+# Pause whenever any fullscreen window exists anywhere (battery + focus)
+watch() {
+    local sock="$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock"
+    socat -u "UNIX-CONNECT:$sock" - 2>/dev/null | while read -r _line; do
+        sleep 0.15
+        if hyprctl -j clients | jq -e '[.[] | select(.fullscreen > 0)] | length > 0' >/dev/null 2>&1; then
+            mpv_pause true
+        else
+            mpv_pause false
+        fi
+    done
+}
+
+spawn() {   # shared start: video layer + fullscreen watcher + persist
+    local file="$1"
+    (umask 077; mkdir -p "$SOCK_DIR")
+    setsid mpvpaper -o "$MPV_OPTS" '*' "$file" >/dev/null 2>&1 &
+    setsid "$0" watch >/dev/null 2>&1 &
+    mkdir -p "$STATE_DIR"
+    printf '%s' "$file" > "$LAST"
+}
+
+start() {
+    # Always record the pick — Quickshell's background watches $LAST live.
+    mkdir -p "$STATE_DIR"
+    printf '%s' "$1" > "$LAST"
+    touch "$ENABLED"
+    # mpvpaper is the fallback backend — only when Quickshell isn't running
+    if ! shell_up; then
+        command -v mpvpaper >/dev/null || { notify "mpvpaper not installed — yay -S mpvpaper"; exit 1; }
+        is_running && stop_sleep
+        spawn "$1"
+    fi
+    notify "▶ $(basename "$1")"
+}
+
+resume() {   # login / theme-apply entry point — no-op unless user opted in
+    [ -f "$ENABLED" ] || exit 0
+    command -v mpvpaper >/dev/null || exit 0
+    # Quickshell's background layer renders video natively — never double-decode
+    shell_up && exit 0
+    is_running && exit 0
+    local f lib; f=$(cat "$LAST" 2>/dev/null || true); lib=$(library)
+    [ -n "$f" ] && [ -f "$f" ] && case "$f" in "$lib"/*) ;; *) f="";; esac
+    if [ -z "${f:-}" ]; then
+        mapfile -t fl < <(files); f="${fl[0]:-}"
+    fi
+    [ -n "$f" ] && spawn "$f" || exit 0
+}
+
+stop_sleep() { stop; sleep 0.4; }
+
+stop() {
+    pkill -x mpvpaper 2>/dev/null
+    pkill -f 'kuwai-livewall watch' 2>/dev/null
+    pkill -f 'live-wallpaper.sh watch' 2>/dev/null   # a watcher from before the move
+    : > "$LAST"   # empty LAST = Quickshell fades video out, poster shows
+    rm -f "$ENABLED" "$IDX" "$SOCK_PREFIX"*.sock
+    notify "⏹ back to static wallpaper"
+}
+
+next() {
+    mapfile -t f < <(files)
+    [ ${#f[@]} -eq 0 ] && { notify "no videos in $(library)"; exit 1; }
+    local i; i=$(cat "$IDX" 2>/dev/null || echo 0)
+    i=$(( i % ${#f[@]} ))
+    start "${f[$i]}"
+    echo $(( i + 1 )) > "$IDX"
+}
+
+case "${1:-toggle}" in
+    toggle)
+        if shell_up; then
+            [ -f "$ENABLED" ] && stop || next
+        else
+            is_running && stop || next
+        fi ;;
+    next)    next ;;
+    play)    start "${2:?usage: $0 play <file>}" ;;
+    resume)  resume ;;
+    stop)    stop ;;
+    watch)   watch ;;
+    first)   # Quickshell seed — remembered pick wins, else first of merged library
+        pick=$(cat "$LAST" 2>/dev/null || true)
+        if [ -n "$pick" ] && [ -f "$pick" ] && is_video "$pick"; then
+            printf '%s\n' "$pick"
+        else
+            files | head -1
+        fi ;;
+    status)  is_running && echo "playing in: $(library)" || echo "off" ;;
+    *)       echo "usage: $0 {toggle|next|play <file>|resume|stop|status}" ;;
+esac

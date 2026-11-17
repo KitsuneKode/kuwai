@@ -107,7 +107,7 @@ Singleton {
     // Suggestions you said no to (× or a swipe in the Agents tab): kept
     // across restarts, the 200 newest; nothing else is stored.
     property var hiddenRecent: []
-    readonly property string hiddenPath: (Quickshell.env("XDG_STATE_HOME") || home + "/.local/state") + "/rice/agents-hidden.json"
+    readonly property string hiddenPath: (Quickshell.env("XDG_STATE_HOME") || home + "/.local/state") + "/kuwai/agents-hidden.json"
     FileView {
         id: hiddenFile
         path: root.hiddenPath

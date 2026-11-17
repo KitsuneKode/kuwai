@@ -16,7 +16,7 @@ local dsp = hl.dsp
 K.privacy = K.privacy
 	or {
 		windows = "^(Bitwarden|bitwarden|org\\.keepassxc\\.KeePassXC|1Password|pinentry-.*|gcr-prompter|org\\.telegram\\.desktop|vesktop|discord|com\\.rtosta\\.zapzap|signal|Signal)$",
-		layers = "^(rice-notifs|rice-center|notifications|swaync-notification-window|swaync-control-center)$",
+		layers = "^(kuwai-notifs|kuwai-center|notifications|swaync-notification-window|swaync-control-center)$",
 	}
 
 -- A shell that starts while a share runs (a restart, a promote) asks with
@@ -25,7 +25,7 @@ K.privacy = K.privacy
 -- (review 2026-11-10, finding 05). Always acknowledge, including the
 -- deliberate feature-off case; the shell holds private bodies until this reply.
 function kuwai.privacy_resync()
-	hl.exec_cmd(K.bin .. "/rice notifs mute-off")
+	hl.exec_cmd(K.bin .. "/kuwai notifs mute-off")
 	return hl.dsp.no_op()
 end
 
@@ -80,11 +80,11 @@ if K.feature("screenshare_privacy") then
 		end
 		engaged = true
 		privacy(true)
-		hl.exec_cmd(K.bin .. "/rice notifs mute-on")
+		hl.exec_cmd(K.bin .. "/kuwai notifs mute-on")
 		K.notify("Sharing your screen — notifications muted, private apps hidden", 3000, "info")
 	end
 	function kuwai.privacy_resync()
-		hl.exec_cmd(K.bin .. "/rice notifs " .. (engaged and "mute-on" or "mute-off"))
+		hl.exec_cmd(K.bin .. "/kuwai notifs " .. (engaged and "mute-on" or "mute-off"))
 		return hl.dsp.no_op()
 	end
 	hl.on("screenshare.state", function(active)
@@ -102,7 +102,7 @@ if K.feature("screenshare_privacy") then
 			if shares == 0 and engaged then
 				engaged = false
 				privacy(false)
-				hl.exec_cmd(K.bin .. "/rice notifs mute-off")
+				hl.exec_cmd(K.bin .. "/kuwai notifs mute-off")
 			end
 		end
 	end)
@@ -368,7 +368,7 @@ if K.feature("hold_super") then
 					local still = pos and p and math.abs(p.x - pos.x) + math.abs(p.y - pos.y) < 8
 					if mine == token and held and still then
 						opened = true
-						hl.dispatch(dsp.global("rice:keys-open"))
+						hl.dispatch(dsp.global("kuwai:keys-open"))
 					end
 				end, { timeout = 650, type = "oneshot" })
 			elseif state == 0 then
@@ -379,7 +379,7 @@ if K.feature("hold_super") then
 			token = token + 1 -- any other key: a shortcut, not a hold
 			if held and opened then
 				opened = false
-				hl.dispatch(dsp.global("rice:keys-close"))
+				hl.dispatch(dsp.global("kuwai:keys-close"))
 			end
 		end
 	end)
@@ -393,7 +393,7 @@ if K.feature("island_switcher") then
 	hl.on("input.keyboard.key", function(code, _, state)
 		if state == 0 and ALT[code] and K.alt_switch then
 			K.alt_switch = false
-			hl.dispatch(dsp.global("rice:switch-commit"))
+			hl.dispatch(dsp.global("kuwai:switch-commit"))
 		end
 	end)
 end

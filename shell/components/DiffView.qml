@@ -7,7 +7,7 @@
 //
 //   DiffView { file: review.files[0]; flags: review.flags }
 //
-// `file` is one entry of rice-update's review JSON: { path, status, add, del,
+// `file` is one entry of kuwai-update's review JSON: { path, status, add, del,
 // binary, hunks: [{ header, context, lines: [{ t: "+"|"-"|" ", o, n, s, routine }] }] }.
 // Scrolls both ways; long lines aren't wrapped (code reads by columns).
 import QtQuick

@@ -1,4 +1,4 @@
-// The rice's one button. Primary (accent) · secondary · danger are the raised
+// Kuwai's one button. Primary (accent) · secondary · danger are the raised
 // plate (components/RaisedButton); quiet is text on a hover wash, for the
 // third action in a row ("Later", "Details").
 //

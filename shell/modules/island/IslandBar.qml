@@ -1,6 +1,6 @@
-// The island bar (docs/ISLAND.md): the rice's top bar as one island at the top
+// The island bar (docs/ISLAND.md): kuwai's top bar as one island at the top
 // centre of each monitor, a notch hanging from the top edge (or a floating
-// pill: Settings.islandStyle). On with Settings.bar === "island" (`rice bar
+// pill: Settings.islandStyle). On with Settings.bar === "island" (`kuwai bar
 // island`); otherwise it only appears to hold a panel, under Waybar.
 //
 //   rest     ◉  ● ▮ ● ●  23:29  ▂▄▆ ▭  0:07         (IslandRest: + live activities)
@@ -130,7 +130,7 @@ Scope {
             implicitHeight: Math.min(640, modelData ? modelData.height - 24 : 640)
             exclusiveZone: showBar && !tucked && !screenFullscreen ? restH + top + (notch ? 2 : 6) : 0
             color: "transparent"
-            WlrLayershell.namespace: "rice-islandbar"
+            WlrLayershell.namespace: "kuwai-islandbar"
             // The resting notch stays under a fullscreen window. A peek, a
             // warning or a moment lifts this window for that card only.
             WlrLayershell.layer: overFilm ? WlrLayer.Overlay : WlrLayer.Top
@@ -276,7 +276,7 @@ Scope {
                 if (deviceHere || !h) Moments.cardHeld = h && deviceHere;
                 if (agentMoment || !h) Moments.held = h && agentMoment;
             }
-            // An agent's moment ("Claude · rice  Needs you") is something to act
+            // An agent's moment ("Claude · kuwai  Needs you") is something to act
             // on: under the pointer it holds (Moments.held) and the island doesn't
             // grow over it, or it vanished as you reached it (IslandRest acts on it).
             readonly property bool agentMoment: restRow.activity === "moment" && !!Moments.now && !!Moments.now.go

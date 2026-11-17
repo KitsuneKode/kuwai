@@ -3,7 +3,7 @@
 // glance (what Waybar's cpu, memory, gpuinfo, sensorsinfo and updates modules
 // showed) and the quick switches that lived beside them. Opened by the rings
 // in the expanded island, the hover view's gauge, the launcher, its shortcut,
-// `rice system`. "vitals" (the old machine + usage panel) is an alias for it
+// `kuwai system`. "vitals" (the old machine + usage panel) is an alias for it
 // (Island.aliases); what that panel added is here (memory by app), and the
 // agents' usage is the Usage section beside it.
 //
@@ -14,7 +14,7 @@
 //   [ Game mode ] [ Night light ] [ Caffeine ] [ Focus ]
 //   12 updates available                                 Review and update ›
 //
-// Numbers that need a process (rice-procs, hyprctl) are read only while this
+// Numbers that need a process (kuwai-procs, hyprctl) are read only while this
 // is open: the poll lives in the panel and goes with it (Theme.panelPollMs).
 import QtQuick
 import Quickshell
@@ -37,7 +37,7 @@ FocusScope {
     property var memApps: []
     Process {
         id: memProbe
-        command: [Paths.bin + "/rice-procs", "--by-app"]
+        command: [Paths.bin + "/kuwai-procs", "--by-app"]
         stdout: StdioCollector { onStreamFinished: { try { sys.memApps = JSON.parse(text); } catch (e) {} } }
     }
     Timer { interval: Theme.panelPollMs; repeat: true; running: true; triggeredOnStart: true; onTriggered: memProbe.running = true }

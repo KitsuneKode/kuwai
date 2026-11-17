@@ -11,8 +11,8 @@ import qs.services
 Singleton {
     id: root
 
-    readonly property string pollBin: Paths.bin + "/rice-crash-poll"
-    readonly property string alertBin: Paths.bin + "/rice-crash-alert"
+    readonly property string pollBin: Paths.bin + "/kuwai-crash-poll"
+    readonly property string alertBin: Paths.bin + "/kuwai-crash-alert"
 
     function runDiagnose(brief) {
         if (!Settings.assistantOptIn) {

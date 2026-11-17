@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "bin"))
-import rice_files  # noqa: E402
+import kuwai_files  # noqa: E402
 
 needs_rg = pytest.mark.skipif(not shutil.which("rg"), reason="ripgrep missing")
 
@@ -26,13 +26,13 @@ def tree(tmp_path):
 
 
 def test_direct_read_refuses(tree):
-    with pytest.raises(rice_files.FileError):
-        rice_files.read(tree / "credentials.json")
+    with pytest.raises(kuwai_files.FileError):
+        kuwai_files.read(tree / "credentials.json")
 
 
 @needs_rg
 def test_recursive_grep_skips_secret_files(tree):
-    out = rice_files.grep("NEEDLE", tree)
+    out = kuwai_files.grep("NEEDLE", tree)
     assert "app.py:1:NEEDLE = 1" in out
     assert "synthetic-secret" not in out and "pem" not in out and "secret-named" not in out
 
@@ -40,23 +40,23 @@ def test_recursive_grep_skips_secret_files(tree):
 @needs_rg
 @pytest.mark.parametrize("glob", ["credentials.json", "*.json", "**/*.pem", "*", "token_store/**"])
 def test_caller_glob_cannot_readmit_secrets(tree, glob):
-    out = rice_files.grep("NEEDLE", tree, glob=glob)
+    out = kuwai_files.grep("NEEDLE", tree, glob=glob)
     assert "synthetic-secret" not in out and "pem" not in out and "secret-named" not in out
 
 
 @needs_rg
 def test_grep_through_a_link_to_a_secret(tree, tmp_path):
     (tree / "src/innocent.txt").symlink_to(tree / "credentials.json")
-    out = rice_files.grep("synthetic", tree)
+    out = kuwai_files.grep("synthetic", tree)
     assert "synthetic-secret" not in out
 
 
 @needs_rg
 def test_single_file_grep_keeps_plain_format(tree):
-    assert rice_files.grep("NEEDLE", tree / "src/app.py") == "1:NEEDLE = 1"
+    assert kuwai_files.grep("NEEDLE", tree / "src/app.py") == "1:NEEDLE = 1"
 
 
 def test_find_hides_secret_names(tree):
-    out = rice_files.find("*", tree)
+    out = kuwai_files.find("*", tree)
     assert "app.py" in out
     assert "credentials.json" not in out and "server.pem" not in out and "plain.txt" not in out

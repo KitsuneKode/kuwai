@@ -1,10 +1,10 @@
 pragma Singleton
 // T3 Code's live work for the island: how many threads are running and how
-// many wait for you (bin/rice-t3 reads T3's own state database read-only).
+// many wait for you (bin/kuwai-t3 reads T3's own state database read-only).
 // Read when T3 writes: its database's write-ahead log and its
 // server-runtime.json are watched (inotify; reading never triggers it), a
 // window closing reads too (T3 quitting). The log changes ~100 times a
-// second while agents work, so after a change the watch rests: rice-t3
+// second while agents work, so after a change the watch rests: kuwai-t3
 // runs, again 5 s later while its answer keeps changing, and the watch comes
 // back once two answers agree. Busy: one read per 5 s, as before. Quiet:
 // nothing (it was every 5 s while T3 ran, every 30 s while it didn't).
@@ -43,7 +43,7 @@ Singleton {
     }
     FileView {
         id: dismissedFile
-        path: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/rice/t3-dismissed.json"
+        path: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/kuwai/t3-dismissed.json"
         printErrors: false
         onLoaded: { try { const d = JSON.parse(text()); if (Array.isArray(d)) root.dismissed = d; } catch (e) {} }
     }
@@ -51,7 +51,7 @@ Singleton {
     property string lastText: ""
     readonly property int total: running + waiting
 
-    readonly property string bin: Quickshell.shellDir + "/../bin/rice-t3"
+    readonly property string bin: Quickshell.shellDir + "/../bin/kuwai-t3"
     readonly property string userdata: Quickshell.env("T3_USERDATA") || Quickshell.env("HOME") + "/.t3/userdata"
     readonly property bool away: Saver.locked || Saver.screensOff
     property bool settling: false        // the log changed: reading until two answers agree

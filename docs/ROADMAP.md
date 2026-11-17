@@ -32,13 +32,13 @@ session), *you* (needs the user).
    polling where a file watch, socket event or signal exists.
 5. **Children die with the shell.** Every long-lived Process is wrapped in
    `setpriv --pdeathsig KILL` (inhibitors, monitors, listeners).
-6. **Root does one narrow thing.** Only `rice-update-root`, only installed
+6. **Root does one narrow thing.** Only `kuwai-update-root`, only installed
    root-owned, only validated requests. No shell strings built from data;
    arguments are argv.
 7. **The lock is never weaker than the session.** No content leaks on the
    lock or login screen; a crash while locked stays locked.
 8. **Every change lands on stable through `rice promote`**, after
-   `rice-check` passes (Phase 1).
+   `kuwai-check` passes (Phase 1).
 
 ---
 
@@ -48,26 +48,26 @@ session), *you* (needs the user).
   a device connect/disconnect, a charger state, an agent list (working /
   waiting / done), a timer, an alert, a notification burst. **Done when**
   every island state in `docs/ISLAND.md` can be shown without real hardware.
-- [x] **`rice-check`**: the shell loaded with no "caused by"; no orphaned
+- [x] **`kuwai-check`**: the shell loaded with no "caused by"; no orphaned
   helpers (inhibitors, gdbus, systemd-inhibit) outside the running shell;
   memory under budget (Pss_Anon < 450 MB idle); one sleep guard; hypridle
   off while the shell owns idle. **Done when** `rice promote` runs it and
   refuses on failure (`--force` to override).
-- [x] **State screenshots**: `rice-check --shots` drives the test hook
-  and saves island / toast / center states to `~/.cache/rice/shots/<commit>/`
+- [x] **State screenshots**: `kuwai-check --shots` drives the test hook
+  and saves island / toast / center states to `~/.cache/kuwai/shots/<commit>/`
   (never opening keyboard-grabbing panels unless `--interactive`).
 - [ ] **Split the branch** (*you* + all): island moments · proximity ·
   agents · idle · updater · AI into separate PRs.
 
 ## Phase 1.5: ship the assistant-agent track (target: Reliability 8 + daily driver)
 
-Order matters: each slice should pass `rice doctor` and `rice-check` before the next.
+Order matters: each slice should pass `rice doctor` and `kuwai-check` before the next.
 
 | Slice | What | Done when |
 |-------|------|-----------|
-| **A. Notify reliability** | `rice-notify` everywhere shell/kuwai/scripts need it; DND/share-mute; crash poll | Alarms, reminders, battery, assistant, screenshots, recordings work with broken libnotify; README/manual say so |
-| **B. Doctor** | `bin/rice doctor` (kuwai + owner + DND + feeds + ZapZap hint) | One command explains a dead notify session and what to run |
-| **C. Agent limits** | `rice-usage --watch`; peek at 90%/cap with provider + account; **no** clock badge | Opt-in setting; manual updated |
+| **A. Notify reliability** | `kuwai-notify` everywhere shell/kuwai/scripts need it; DND/share-mute; crash poll | Alarms, reminders, battery, assistant, screenshots, recordings work with broken libnotify; README/manual say so |
+| **B. Doctor** | `bin/kuwai doctor` (kuwai + owner + DND + feeds + ZapZap hint) | One command explains a dead notify session and what to run |
+| **C. Agent limits** | `kuwai-usage --watch`; peek at 90%/cap with provider + account; **no** clock badge | Opt-in setting; manual updated |
 | **D. Assistant opt-in** | Overlay gate, crash→diagnose, lazy stubs, CI compile | Default off; promote only after sandbox plan (Phase 6) for “on by default” |
 | **E. Manual + CI** | `docs/manual/*`, shell-check workflow | New user can fix notifications without reading the whole repo |
 
@@ -103,13 +103,13 @@ Order matters: each slice should pass `rice doctor` and `rice-check` before the 
 ## Phase 4: performance and memory (target: Performance 8)
 
 - [~] **Budget** (fresh start 207 MB; hot reloads grow it, so the gate stays 450): shell idle ≤ 350 MB Pss_Anon, ≤ 2 % CPU idle, no
-  per-second timers while hidden (checked by `rice-check`).
+  per-second timers while hidden (checked by `kuwai-check`).
 - [ ] Lazy: the assistant overlay (*ai*), clipboard thumbnails (release
   on cool-down), the Notification Center's Sound/Controls tabs.
 - [ ] **AI model offload** (*ai*): unload `llama-server` after N idle
   minutes, load on first use; never run it on battery unless asked. The
   single biggest RAM/heat win (14 GB, ~3 cores).
-- [~] Screensaver (`rice-check --soak`, run it as you step away): 10 start/stop cycles with no growth; Dusk under 5 %
+- [~] Screensaver (`kuwai-check --soak`, run it as you step away): 10 start/stop cycles with no growth; Dusk under 5 %
   CPU.
 - [x] Kittymux `agents.json` (kittymux plan 014) replaces the 20 s poll.
 
@@ -119,11 +119,11 @@ Order matters: each slice should pass `rice doctor` and `rice-check` before the 
   sheet that saves to `~/Notes/inbox.md` (Markdown, timestamped); search
   in the launcher.
 - [x] **Reminders**: "remind me at 5 to call mum" / "in 20m stretch" in
-  the launcher; kept in `~/.local/share/rice/reminders.json`; an island
+  the launcher; kept in `~/.local/share/kuwai/reminders.json`; an island
   moment and a toast with Snooze/Done; survive restarts and sleep.
 - [x] **Pomodoro**: the timer with cycles (25/5 ×4, 15 long), a ring in
   the notch, Focus on during work blocks (optional).
-- [x] **Alarm** (services/Alarms, `system/install` for rice-wake; Stop on the lock screen itself still open): a time of day that wakes the laptop (`rtcwake`/systemd
+- [x] **Alarm** (services/Alarms, `system/install` for kuwai-wake; Stop on the lock screen itself still open): a time of day that wakes the laptop (`rtcwake`/systemd
   timer with WakeSystem through the root helper or a user timer), plays
   through the lock screen.
 - [x] **Clipboard**: password-manager copies never stored (cliphist reads

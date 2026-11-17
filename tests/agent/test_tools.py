@@ -132,7 +132,7 @@ def test_broken_tool_call_is_retried_not_fatal(run_agent):
 
 def test_chat_mode_offers_no_changing_tools(run_agent):
     _, fake = run_agent({"mode": "chat", "messages": [{"role": "user", "content": "open firefox and edit ~/x"}]},
-                        [answer()], caps=TOOLS_CAPS, env={"RICE_AGENT_TOOLS": ""})
+                        [answer()], caps=TOOLS_CAPS, env={"KUWAI_AGENT_TOOLS": ""})
     names = {t["function"]["name"] for t in fake.requests[0]["tools"]}
     assert not names & {"write", "edit", "run_command", "launch_app", "sandbox_run"}
     assert "Mode: chat." in fake.requests[0]["messages"][0]["content"]

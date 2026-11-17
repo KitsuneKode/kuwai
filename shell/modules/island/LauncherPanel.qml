@@ -1,5 +1,5 @@
 // The launcher, grown out of the island (Super+A; replaces rofi's app
-// finder). One field, one list: apps, open windows, the rice's own actions
+// finder). One field, one list: apps, open windows, kuwai's own actions
 // and a calculator, ranked by the clipboard's fuzzy matcher and by how often
 // and how lately you used each (frecency). Empty, it shows what you use most.
 //
@@ -12,7 +12,7 @@
 // : emoji, ; glyphs, ! processes and ports (vicinae's Kill Process / Kill
 // Port: what's using the most, end one, free a port), > every mode and action.
 // Keys: type to search, ↑↓ (or ⌃J ⌃K, ⌃N ⌃P, Tab) choose, ↵ open, Esc close.
-// Uses: ~/.local/state/rice/launcher.json (counts and times, nothing else).
+// Uses: ~/.local/state/kuwai/launcher.json (counts and times, nothing else).
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -84,11 +84,11 @@ FocusScope {
         { name: "Settings", sub: "Bar, clock, notifications, motion", glyph: "\u{f0493}", run: () => Qt.callLater(() => Island.open("settings", Island.screen, "key")), keep: true },
         { name: "Themes", sub: "Switch the theme or the wallpaper", glyph: "\u{f03d8}", run: () => Qt.callLater(() => { Island.themeMode = "themes"; Island.open("theme", Island.screen, "key"); }), keep: true },
         { name: "System", sub: "CPU, memory by app, GPU, game mode, caffeine", also: "vitals", glyph: "\u{f0ee0}", run: () => Qt.callLater(() => Island.open("system", Island.screen, "key")), keep: true },
-        { name: "Keyboard Shortcuts", sub: "Every Hyprland and rice shortcut", glyph: "\u{f030c}", run: () => Qt.callLater(() => Island.open("keys", Island.screen, "key")), keep: true },
+        { name: "Keyboard Shortcuts", sub: "Every Hyprland and kuwai shortcut", glyph: "\u{f030c}", run: () => Qt.callLater(() => Island.open("keys", Island.screen, "key")), keep: true },
         { name: "Calendar", sub: "This month", glyph: "\u{f00ed}", run: () => Qt.callLater(() => Island.open("calendar", Island.screen, "key")), keep: true },
         { name: "Clipboard", sub: "History and pins", glyph: "\u{f014c}", run: () => Clipboard.toggle("all") },
         { name: "Screen Recording", sub: "Choose a screen, audio and frame rate", glyph: "\u{f044a}", run: () => Clipboard.recordKey() },
-        { name: "Screenshot", sub: "Pick an area or a window, then annotate", glyph: "\u{f0104}", run: () => Quickshell.execDetached([Paths.bin + "/rice-shot", "area"]) },
+        { name: "Screenshot", sub: "Pick an area or a window, then annotate", glyph: "\u{f0104}", run: () => Quickshell.execDetached([Paths.bin + "/kuwai-shot", "area"]) },
         { name: "Notifications", sub: "The center", glyph: "\u{f009a}", run: () => Notifs.toggleCenter("notifications", "key") },
         { name: "Claude here", sub: "Claude Code in this folder, as a kittymux tab", glyph: "\u{f06a9}", run: () => launcher.agentHere("claude") },
         { name: "Codex here", sub: "Codex in this folder, as a kittymux tab", glyph: "\u{f06a9}", run: () => launcher.agentHere("codex") },
@@ -113,9 +113,9 @@ FocusScope {
     // ── The calculator (services/calc.js): math, "100 + 10%", units, mixed
     // units, currencies by code, name or sign. Units are offline; currencies
     // use open.er-api.com's daily rates (no key, nothing about you is sent),
-    // cached 12 h in ~/.cache/rice/fx.json. With qalc installed (libqalculate,
+    // cached 12 h in ~/.cache/kuwai/fx.json. With qalc installed (libqalculate,
     // what rofi-calc uses), anything else that looks like math goes to it.
-    readonly property string fxPath: (Quickshell.env("XDG_CACHE_HOME") || Quickshell.env("HOME") + "/.cache") + "/rice/fx.json"
+    readonly property string fxPath: (Quickshell.env("XDG_CACHE_HOME") || Quickshell.env("HOME") + "/.cache") + "/kuwai/fx.json"
     property var fx: null                 // { base: "USD", time, rates: { INR: 83.1, … } }
     FileView {
         id: fxFile
@@ -163,7 +163,7 @@ FocusScope {
         { name: "Processes", sub: "What's using the most · end one · free a port (! 3000)", prefix: "!", glyph: "\u{f0675}" }
     ]
 
-    // ── `!`: processes and ports (bin/rice-procs) ──
+    // ── `!`: processes and ports (bin/kuwai-procs) ──
     // Empty: who's using the most right now. A name: what matches. A number
     // (3000, :5173): what listens there. ↵ arms a row ("↵ again to end it"),
     // ↵ again ends it (SIGTERM); ⌃↵ forces it (SIGKILL), armed the same way.
@@ -188,7 +188,7 @@ FocusScope {
     Timer { interval: 2500; repeat: true; running: launcher.procMode && launcher.armedPid === 0; onTriggered: if (!procs.running) procs.running = true }
     Process {
         id: procs
-        command: [Paths.bin + "/rice-procs", launcher.procQuery]
+        command: [Paths.bin + "/kuwai-procs", launcher.procQuery]
         stdout: StdioCollector {
             onStreamFinished: {
                 try { launcher.procHits = JSON.parse(text) || []; } catch (e) { launcher.procHits = []; }
@@ -216,7 +216,7 @@ FocusScope {
         if (!p.mine || !p.pid) { procNote = p.pid ? procLabel(p) + " belongs to " + p.user + " (needs sudo)" : "Owned by another user (needs sudo): " + (p.addr || ""); return; }
         if (armedPid !== p.pid || armedForce !== force) { armedPid = p.pid; armedForce = force; return; }
         procEnd.who = (p.group ? p.app : procLabel(p)) + " (" + p.pid + ")";
-        procEnd.command = [Paths.bin + "/rice-procs", "--end", String(p.pid)].concat(force ? ["--force"] : []);
+        procEnd.command = [Paths.bin + "/kuwai-procs", "--end", String(p.pid)].concat(force ? ["--force"] : []);
         procEnd.running = true;
     }
     function procRows() {
@@ -287,7 +287,7 @@ FocusScope {
     }
 
     // One list, in sections: the best match first (Top Hit), then by kind.
-    // Empty: what you open most, then the rice's actions. Section headers are
+    // Empty: what you open most, then kuwai's actions. Section headers are
     // rows the selection skips.
     readonly property var results: {
         const q = query.trim().toLowerCase();

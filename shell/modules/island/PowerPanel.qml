@@ -13,7 +13,7 @@
 //                         Hold ↵ to restart
 //
 // Keys: ←→ (or 1–6) choose, ↵ / Space (held for the held ones), Esc.
-// RICE_DRYRUN=1 logs the command instead of running it (the off-screen test).
+// KUWAI_DRYRUN=1 logs the command instead of running it (the off-screen test).
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -28,7 +28,7 @@ FocusScope {
     focus: true
 
     readonly property var actions: [
-        { id: "lock", label: "Lock", glyph: "\u{f033e}", hold: false, cmd: [Quickshell.shellDir + "/../bin/rice", "lock"] },
+        { id: "lock", label: "Lock", glyph: "\u{f033e}", hold: false, cmd: [Quickshell.shellDir + "/../bin/kuwai", "lock"] },
         { id: "sleep", label: "Sleep", glyph: "\u{f0594}", hold: true, bye: "suspend", cmd: ["systemctl", "suspend"] },
         { id: "logout", label: "Log Out", glyph: "\u{f0343}", hold: true, bye: "logout", cmd: ["hyprctl", "dispatch", "hl.dsp.exit()"] },
         { id: "reboot", label: "Restart", glyph: "\u{f0709}", hold: true, bye: "reboot", cmd: ["systemctl", "reboot"] },
@@ -53,7 +53,7 @@ FocusScope {
         Island.close();
         // The rest say goodbye first (services/Goodbye runs the command).
         if (a.bye) { Goodbye.run(a.bye, a.cmd); return; }
-        if (Quickshell.env("RICE_DRYRUN") === "1") { console.warn("power (dry run): " + a.cmd.join(" ")); return; }
+        if (Quickshell.env("KUWAI_DRYRUN") === "1") { console.warn("power (dry run): " + a.cmd.join(" ")); return; }
         // Let the island fold away first, so a lock screen doesn't catch it half-open.
         launch.command = a.cmd;
         later.restart();

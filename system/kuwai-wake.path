@@ -1,0 +1,9 @@
+[Unit]
+Description=Rice alarms: watch the next wake time
+
+[Path]
+PathChanged=/var/lib/kuwai-wake/at
+Unit=kuwai-wake.service
+
+[Install]
+WantedBy=multi-user.target

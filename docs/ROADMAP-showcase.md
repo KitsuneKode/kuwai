@@ -144,7 +144,7 @@ Split it into two labelled groups and show exceptions only:
 - Details: description, size, dependencies it would pull in, last update, AUR
   standing (votes, maintainer, age, out-of-date — Updates already computes this).
 - AUR installs go through the same review as updates (PKGBUILD shown, approve once,
-  "established" badge), then one job via `rice-update` with the rice-auth prompt;
+  "established" badge), then one job via `kuwai-update` with the kuwai-auth prompt;
   progress lives in the notch.
 - Remove: "also remove what it pulled in" (`pacman -Rns`), with the list shown first.
 
@@ -157,7 +157,7 @@ Split it into two labelled groups and show exceptions only:
 
 ### Rollback
 - Root here is ext4: no filesystem snapshots. What's possible today:
-  - **Undo last update**: `rice-update` logs exactly which packages changed; keep
+  - **Undo last update**: `kuwai-update` logs exactly which packages changed; keep
     the previous versions in the package cache and offer "Undo" (pacman -U of
     those versions) in Software Update.
   - **Settings history**: keep the last 10 versions of kuwai settings and your Hyprland
@@ -211,7 +211,7 @@ and enforced:
 | 4 Surfaces | the panels and modules | 0–3 + services |
 | Services | data and processes, no UI | other services |
 
-- **Enforced by a check** (`bin/rice-layers`): a component that imports services, or a
+- **Enforced by a check** (`bin/kuwai-layers`): a component that imports services, or a
   surface with a raw size/duration/colour, fails promote (the token ratchet already
   does the second half).
 - **The gallery is the docs**: `test gallery` renders every component in every state;
@@ -314,7 +314,7 @@ doesn't need HyDE; HyDE themes import into it.
 - Running leftovers: `caffeine-mode.service` (fails every boot), `nm-applet`,
   `hyde-config`; Docker + searxng at boot (~0.3 GB) → socket/on demand.
 - Two superseded worktrees (`t3/notch-usage-limits`, `fix/security-recovery`).
-- `~/.cache/rice/aur` build leftovers (8.5 GB; the merged updater now prunes new ones).
+- `~/.cache/kuwai/aur` build leftovers (8.5 GB; the merged updater now prunes new ones).
 
 **Memory:**
 - No object leaks found: every dynamically created Process/Timer/notification
@@ -332,7 +332,7 @@ doesn't need HyDE; HyDE themes import into it.
 
 **Gate gap:** the offscreen load test passed a commit that failed to load live
 (a type error in a lazily compiled file). `rice promote` must run the live
-`test compile` sweep over changed files (rice-check already has the loop).
+`test compile` sweep over changed files (kuwai-check already has the loop).
 
 ## 17. From Clove (keshav-exe/clove, MIT, a macOS notch app for coding agents)
 Read its site and its 14.6 s demo video (frames at 2 fps).

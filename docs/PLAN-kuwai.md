@@ -15,7 +15,7 @@ with ⌃Z after a delete (clipstate.mjs); "Cleared N · Undo" for notifications
 alias; switches always in the panel, GPUs side by side); theme picker opens on
 a kept listing; at rest 7 helpers instead of 11 (render server on demand,
 brightness OSD on the controller's socket, Shazam/T3/crash/network by events,
-rice-usage under bun) and rice-notify delivers again (it had failed on every
+kuwai-usage under bun) and kuwai-notify delivers again (it had failed on every
 call without -A since 11-05); dates through config/Dates (locale order, week
 start, 12-hour clocks read 9:05); Inter as the face anyone can install, SF Pro
 when present; the login screen reads monitors and keyboard from validated data
@@ -34,7 +34,7 @@ overnight creep changed with the polls gone (read memlog tomorrow).
 
 ## STATUS (2026-11-17) — audit pass 1, committed a27e6e2 · 7af2916 · 2797cb9
 
-Done and checked (246 py / 159 bun / Lua pass, rice-check green, panels seen):
+Done and checked (246 py / 159 bun / Lua pass, kuwai-check green, panels seen):
 plain text on every outside string (103 `Text`, lint in tests/security);
 streaming answers can't fetch (Turn.liveMarkdown); links are web/mail only;
 login screen code is root's (greeter/install, `--code`, a real `--undo`);
@@ -43,7 +43,7 @@ clipboard ⌃⇧⌫ / ⇧⌦ / ⌃X ignore key repeat; capsule count on the word
 baseline; one date order; settings rows without the provenance line; dock
 names on two lines; no MAC-named Bluetooth rows; Media empty state; calendar
 hint is an action; four panel widths (Theme.panelS/M/L/XL); night_light off by
-default; rice-check knows dictation; AGENTS.md.
+default; kuwai-check knows dictation; AGENTS.md.
 
 Needs the owner: `sudo greeter/install --code` + one logout; SSH key
 passphrases and `chmod 700 ~/.ssh ~/.codex`; voxtype fork (its OSD repaints a
@@ -99,7 +99,7 @@ size, notch-shaped frame, offline state; ~/.agents/skills matched per
 request; usage rings centred; usage rows as a 20-segment bucket.
 
 Memory: Process/FileView re-runs ruled out (isolated qs, 1000+ runs flat).
-Measuring JS heap vs Pss_Anon (RICE_SHELL_ENV="QV4_MM_STATS=1
+Measuring JS heap vs Pss_Anon (KUWAI_SHELL_ENV="QV4_MM_STATS=1
 QT_LOGGING_RULES=qt.qml.gc.*=true") to tell JS from native growth.
 
 ## STATUS (2026-11-07 morning)
@@ -121,7 +121,7 @@ Open, in order:
    watch, T3Code, Updates) and per-second rebinding.
 2. Reboot once: the GRUB line is in grub.cfg (Nov 5 23:10), the running
    kernel (booted 18:42) predates it. Then the seamless greeter handoff.
-3. sudo system/install (rice-wake: alarms that wake the laptop) — not done.
+3. sudo system/install (kuwai-wake: alarms that wake the laptop) — not done.
 4. Screensaver all night under Caffeine: film decoded 6 h on both screens.
    Option: after an hour, stop the film (clock on black) or screens off.
 
@@ -162,13 +162,13 @@ Open:
 - [ ] Usage limits in the notch: review the delegate's worktree branch, merge.
 - [ ] Login/lock: user runs the GRUB line (docs/manual), then a seamless greeter→shell handoff.
 - [ ] **Design consistency (token migration):** every raw size/duration/hex
-      onto Theme tokens (bin/rice-tokens ratchet: sizes 62, durations 131,
+      onto Theme tokens (bin/kuwai-tokens ratchet: sizes 62, durations 131,
       hex 70 → 0); one row style (NotifsPanel/T3Panel/BluetoothPanel: 46 px,
       Theme.r2, 0.07 hover) used by the center, launcher, clipboard; one
       header style (tTitle3 semibold + right meta in tFootnote tertiary); one
       empty state (glyph + tSub line); one button set (PillButton, RestMark).
       Migrate file by file, lowest-traffic first, screenshot before/after.
-- [ ] Long uptime: read ~/.local/state/rice/memlog.tsv after 2+ days; find what grows.
+- [ ] Long uptime: read ~/.local/state/kuwai/memlog.tsv after 2+ days; find what grows.
       Measured 2026-11-06: fresh 288 MB; ~3 MB kept per island panel open
       (17 → 33 opens: 433 → 480 MB). Find what a closed panel's Loader keeps.
 - [ ] Load gate covers singletons only: offscreen stops at the first
@@ -187,7 +187,7 @@ Next (2026-11-06):
 1. Memory over a long session: ~550 MB after 6 h even with glibc arena_max=2
    (flat at idle, so held, not leaking). Find what holds it: image caches
    (notification icons/avatars, art), Notifs history objects, the JS heap;
-   sample Pss_Anon per surface opened. rice-check's memory gate blocks
+   sample Pss_Anon per surface opened. kuwai-check's memory gate blocks
    promote after long sessions until then (promote --force restarts).
 2. kittymux premium pass: running in its own thread (wave3-premium on top
    of PR #12/wave2); review its PR when it lands.
@@ -207,9 +207,9 @@ Status (2026-11-05, late):
 3. States: Updates skeleton, Wi-Fi (off/scanning/none found+Rescan/no match),
    launcher and clipboard empty states, bell quick list empty state. Left:
    Bluetooth pairing screen (blueman until then).
-4. Tokens: bin/rice-tokens ratchet in rice-check (baseline in
+4. Tokens: bin/kuwai-tokens ratchet in kuwai-check (baseline in
    docs/design/tokens-baseline.json, only goes down). sizes 62, durations 165,
-   hex 70. Keep migrating module by module; run `rice-tokens --update` after.
+   hex 70. Keep migrating module by module; run `kuwai-tokens --update` after.
 5. Popovers: bell on components/Popover; status menus on TrayMenu;
    AgentStack keeps its own popup on purpose (marks fly into rows).
 6. Super+N: already island = quick switch, Center = deep list (+ passwords).
@@ -220,7 +220,7 @@ Status (2026-11-05, late):
    licence-clean sources); meters baseline-align.
 
 ## Earlier — in progress
-1. **Polkit agent (rice-auth)** — BUILT 2026-11-01: shell-auth/shell.qml + systemd/rice-auth.service
+1. **Polkit agent (kuwai-auth)** — BUILT 2026-11-01: shell-auth/shell.qml + systemd/kuwai-auth.service
    (linked into ~/.config/systemd/user, started by startup.lua; hardened: no crash handler/dumps,
    LimitCORE=0, NoNewPrivileges, no file watcher, software renderer ~140 MB, exit 3 = another agent
    → OnFailure KDE agent). Picks *your* identity when polkit offers several; submits only when PAM
@@ -230,11 +230,11 @@ Status (2026-11-05, late):
    (PolkitAgent/AuthFlow → polkit-agent-helper-1; never handle the password ourselves; clear
    field on close; no logging; show action id + requesting program + user; Overlay layer,
    exclusive keyboard, dim backdrop; queue while locked; fallback: start
-   plasma-polkit-agent if rice-auth fails to register). Replace plasma-polkit-agent in
+   plasma-polkit-agent if kuwai-auth fails to register). Replace plasma-polkit-agent in
    kuwai startup. Test with harmless `pkexec true` / dry runs before going live.
 2. **Updates panel in the island** (no kitty/sysup spawn; sysup stays for terminal):
    list repo + AUR updates (checkupdates, paru -Qua), per-package toggles, release notes,
-   Update selected/all; repo via pkexec pacman (prompt = rice-auth), AUR builds as user,
+   Update selected/all; repo via pkexec pacman (prompt = kuwai-auth), AUR builds as user,
    install step via `paru --sudo pkexec`-style; inline progress + "show log"; no NOPASSWD,
    no stored passwords, no blanket polkit rules. Replace the "Details → System → terminal" flow.
 
@@ -256,8 +256,8 @@ Status (2026-11-05, late):
      tuning (deny=10/unlock 120 vs Arch default 3/600) — user's call, needs root, propose only.
 
 ## Done 2026-11-02 (night)
-- rice-auth v2: grows out of the island's exact rest shape (shell publishes
-  $XDG_RUNTIME_DIR/rice/island.json), island springs, Theme tokens (config/ components/
+- kuwai-auth v2: grows out of the island's exact rest shape (shell publishes
+  $XDG_RUNTIME_DIR/kuwai/island.json), island springs, Theme tokens (config/ components/
   assets symlinked), avatar (~/.face rounded via magick), tries left + lockout countdown from
   faillock, Caps Lock tag, success check, accent buttons. Software renderer (no MultiEffect /
   ClippingRectangle there). Tested with pkcheck (pkexec can't run in Claude's sandbox).
@@ -267,7 +267,7 @@ Status (2026-11-05, late):
   monitor holding exclusive keyboard = "launcher stuck" / likely the vicinae Super+Space issue.
   Now tracked from raw events + hyprctl probe before every keyboard open.
 - Theme picker: palettes on cards + preview strip; Colours mode (theme/wallpaper/dark/light =
-  HyDE enableWallDcol via `rice-themes colormode`); stable fav sort; island surface 1120 wide.
+  HyDE enableWallDcol via `kuwai-themes colormode`); stable fav sort; island surface 1120 wide.
 - Theme.qml: accent follows HyDE mode (theme.dcol → kitty.theme → wall.dcol), 400 ms blend,
   Theme.onAccent. Island rest: no padding hole beside the time (balanced only within 10 px).
 - Pills: current = numbered capsule (iOS page control); guests hollow after a gap.
@@ -276,7 +276,7 @@ Status (2026-11-05, late):
   right-click → sound panel.
 - Tray menus: components/TrayMenu.qml (QsMenuOpener, drill-down submenus, theme glass).
   NOT yet seen by eye — ask user.
-- config/Paths.qml: no hardcoded ~/Projects/rice in QML. doctor checks rice-auth + faillock.
+- config/Paths.qml: no hardcoded ~/Projects/rice in QML. doctor checks kuwai-auth + faillock.
 
 ## Decisions / answers given
 - AUR in Updates panel: review ON by default and never silently skipped: per-package PKGBUILD
@@ -287,15 +287,15 @@ Status (2026-11-05, late):
   approach) so login → lock look identical; SDDM (astronaut theme now) stays until tested.
 
 ## Done 2026-11-02 (morning)
-- Software Update: bin/rice-update (+ detached systemd job kuwai-update: survives shell restarts,
+- Software Update: bin/kuwai-update (+ detached systemd job kuwai-update: survives shell restarts,
   pacman writes to a file not a pipe, single-instance lock, inhibits sleep/shutdown), Updates
   service (follows update.jsonl, rejoins after restart, watchdog), UpdatesPanel (list / review /
   run), DiffView, island ring + %, hover chip, alert "Review", System row. Routine version bumps
   detected (versions/hashes normalised). Review = diff since the commit that built the
   installed version. One island Back row (Island.innerBack) for panel levels.
-- rice-auth: vendored tokens (no links), `kuwai auth diff|status`, doctor audit (no IPC/process
+- kuwai-auth: vendored tokens (no links), `kuwai auth diff|status`, doctor audit (no IPC/process
   in config/components, 4 known commands), pacman prompts named "Install system/AUR updates".
-- Shell started via Hyprland (rice-shell), not as a child of whatever terminal ran it.
+- Shell started via Hyprland (kuwai-shell), not as a child of whatever terminal ran it.
 - Fonts: static SF Pro Text/Display (948 → 741 MB RSS; variable SF-Pro.ttf no longer mapped ×15).
 - Accent: Theme.vivid() keeps the theme hue, S ≥ 0.6, L 0.62–0.74 (voxtype HUD band).
 - Pills back to the reference (taller lit pill, no numbers; hover tips; Super+Tab for all);
@@ -372,7 +372,7 @@ Status (2026-11-05, late):
 ## Audit 2026-11-02 (memory, leaks, primitives)
 Measured (PSS): shell ~400 MB at start → ~530 MB after opening heavy panels, then flat
 (6 samples over 3 min: 529–536 MB) = caches, not a leak. Anon 442 MB, file 107 MB.
-rice-auth 127 MB, brightness daemon 20 MB, voxtype launcher 3 MB, watchers <1 MB each.
+kuwai-auth 127 MB, brightness daemon 20 MB, voxtype launcher 3 MB, watchers <1 MB each.
 Leak scan: every dynamic Process (Clipboard pinner/runner/capturer/thumber/texter,
 Display, Kittymux, SoundView, Notifs jumper) destroys itself on exit; notification items
 destroyed on removal; Switcher MRU capped 200; Updates log capped 400. OK.
@@ -403,7 +403,7 @@ Primitives to consolidate (no duplication):
 - Move voxtype's MeetingControls/EnginePicker into the island, then `[osd] enabled = false`
   (its own qs is ~400 MB); user's call (voxtype is their project).
 - Main shell anon memory ~255 MB: profile images/thumb caches, Loader-unload heavy panels.
-- Rename rice → kuwai (units rice-auth/kuwai-update, bins, layers) in one pass.
+- Rename rice → kuwai (units kuwai-auth/kuwai-update, bins, layers) in one pass.
 
 ## NEXT
 3. One switcher UI for Super+Tab and Alt+Tab (Mission Control = zoomed-out view of the same
@@ -424,7 +424,7 @@ Primitives to consolidate (no duplication):
    QApplication pragma, done) — verify.
 9. Island alert banner: Details clickable while hovered (done) — verify.
 10. Rename rice → kuwai in one pass with aliases (layers rice-*, global shortcuts rice:*,
-    bin/rice*, ~/.local/state/rice); entry already finds ~/Projects/kuwai.
+    bin/kuwai*, ~/.local/state/kuwai); entry already finds ~/Projects/kuwai.
 11. Undecided by user: 10-bit on the Acer after relog; colour-accurate vs vivid; drop
     voxtype's separate pill (island already shows dictation, saves ~150 MB); make rice lock
     the default lock.

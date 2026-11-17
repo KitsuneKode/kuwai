@@ -4,11 +4,11 @@ import sys
 from pathlib import Path
 import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]/'bin'))
-import rice_agent as agent
+import kuwai_agent as agent
 
 @pytest.fixture
 def transport(monkeypatch):
-    monkeypatch.delenv('RICE_FETCH_ALLOW_LOCAL', raising=False)
+    monkeypatch.delenv('KUWAI_FETCH_ALLOW_LOCAL', raising=False)
     class FakeSocket:
         peer = '8.8.8.8'
         def __init__(self, *args): self.connected=[]; self.closed=False

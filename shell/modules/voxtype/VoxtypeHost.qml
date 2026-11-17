@@ -6,7 +6,7 @@
 // exactly as they do in voxtype's own shell.
 //
 // The handshake (voxtype fork, voxtype-osd-quickshell): with
-// VOXTYPE_OSD_HOST=$XDG_RUNTIME_DIR/rice/voxtype-host.pid in voxtype's
+// VOXTYPE_OSD_HOST=$XDG_RUNTIME_DIR/kuwai/voxtype-host.pid in voxtype's
 // environment, its OSD launcher writes the style file and then waits while
 // the process in that pid file (this shell) is alive. If this shell is gone
 // for a few seconds it launches voxtype's own Quickshell again, so the
@@ -29,10 +29,10 @@ Scope {
     property var parts: []
 
     // Announce this shell as the host (its pid; voxtype checks it's a qs).
-    FileView { id: pidFile; path: host.runtime + "/rice/voxtype-host.pid"; printErrors: false }
+    FileView { id: pidFile; path: host.runtime + "/kuwai/voxtype-host.pid"; printErrors: false }
     Process {
         running: true
-        command: ["sh", "-c", "mkdir -p \"$XDG_RUNTIME_DIR/rice\"; echo $PPID"]
+        command: ["sh", "-c", "mkdir -p \"$XDG_RUNTIME_DIR/kuwai\"; echo $PPID"]
         stdout: StdioCollector { onStreamFinished: { pidFile.setText(text.trim() + "\n"); host.announced = true; } }
     }
 

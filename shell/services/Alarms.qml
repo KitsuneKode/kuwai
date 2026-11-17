@@ -2,9 +2,9 @@ pragma Singleton
 
 // Alarms: a time of day that rings until you stop it, through the lock
 // screen too. "alarm 7:30", "alarm 6am gym" in the launcher, or
-// `rice alarm 7:30 gym`. Kept in ~/.local/share/rice/alarms.json.
-// Asleep: with system/install's rice-wake, the next alarm is written to
-// /var/lib/rice-wake/at and the RTC wakes the laptop for it (without it,
+// `kuwai alarm 7:30 gym`. Kept in ~/.local/share/kuwai/alarms.json.
+// Asleep: with system/install's kuwai-wake, the next alarm is written to
+// /var/lib/kuwai-wake/at and the RTC wakes the laptop for it (without it,
 // alarms ring when the laptop is next awake, and the island says so).
 // (No braces before the pragma: Quickshell's scanner stops at the first.)
 
@@ -19,7 +19,7 @@ Singleton {
     property var items: []                    // [{ id, label, at: ms }], soonest first
     readonly property var next: items.length ? items[0] : null
     property var ringing: null                // the alarm ringing now
-    property bool canWake: false              // rice-wake installed (the file is ours to write)
+    property bool canWake: false              // kuwai-wake installed (the file is ours to write)
 
     // "7:30", "6am", "18:05 tea" → { at, label } (the next time it comes round).
     function parse(input) {
@@ -91,7 +91,7 @@ Singleton {
         Process {
             property var alarm
             running: true
-            command: [Paths.bin + "/rice-notify", "-a", "Alarm", "-i", "alarm-symbolic", "Alarm went unanswered", alarm.label + " · " + Dates.time(alarm.at)]
+            command: [Paths.bin + "/kuwai-notify", "-a", "Alarm", "-i", "alarm-symbolic", "Alarm went unanswered", alarm.label + " · " + Dates.time(alarm.at)]
             onExited: destroy()
         }
     }
@@ -107,14 +107,16 @@ Singleton {
             // Missed by more than an hour (the laptop was off): say so, don't ring.
             const fresh = due.filter(a => now - a.at < 3600000);
             for (const a of due) if (now - a.at >= 3600000)
-                Quickshell.execDetached([Paths.bin + "/rice-notify", "-a", "Alarm", "-i", "alarm-symbolic", "Missed alarm", a.label + " · " + Dates.time(a.at)]);
+                Quickshell.execDetached([Paths.bin + "/kuwai-notify", "-a", "Alarm", "-i", "alarm-symbolic", "Missed alarm", a.label + " · " + Dates.time(a.at)]);
             if (fresh.length) root.ring(fresh[fresh.length - 1]);
         }
     }
 
     // ── Kept, and the wake time for the RTC ──────────────────────────────
-    readonly property string file: (Quickshell.env("XDG_DATA_HOME") || Quickshell.env("HOME") + "/.local/share") + "/rice/alarms.json"
-    readonly property string wakeFile: "/var/lib/rice-wake/at"
+    readonly property string file: (Quickshell.env("XDG_DATA_HOME") || Quickshell.env("HOME") + "/.local/share") + "/kuwai/alarms.json"
+    // kuwai-wake once system/install has been run again after the rename;
+    // until then the installed rice-wake (same helper, its old name).
+    readonly property var wakeFiles: ["/var/lib/kuwai-wake/at", "/var/lib/rice-wake/at"]
     property bool loaded: false
     FileView {
         id: store
@@ -132,7 +134,8 @@ Singleton {
     // One number: the next alarm a minute early (time to resume), or 0.
     function armWake() {
         const t = next ? Math.floor(next.at / 1000) - 60 : 0;
-        wake.command = ["sh", "-c", '[ -w "$1" ] || exit 3; printf %s "$2" > "$1"', "sh", wakeFile, String(t > Date.now() / 1000 + 30 ? t : 0)];
+        wake.command = ["sh", "-c", 'for f in "$2" "$3"; do [ -w "$f" ] && { printf %s "$1" > "$f"; exit 0; }; done; exit 3', "sh",
+                        String(t > Date.now() / 1000 + 30 ? t : 0), wakeFiles[0], wakeFiles[1]];
         wake.running = true;
     }
     Process { id: wake; onExited: code => root.canWake = code === 0 }

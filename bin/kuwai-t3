@@ -1,0 +1,126 @@
+#!/usr/bin/env bash
+# T3 Code's live work, for the island (services/T3Code.qml): one JSON line.
+#
+#   {"alive":true,"running":2,"waiting":0,"finished":1,"items":[{"status":"running"|"waiting"|"completed","title":"…","provider":"…",
+#    "thread":"…","at":"ISO time","model":"grok-4.7","effort":"high","project":"kuwai"}]}
+#
+# Read-only and local: T3 Code's own state database (statev2.sqlite, opened
+# with mode=ro) through an indexed query (~3 ms), only while its server is up
+# (server-runtime.json's pid). Nothing is written, nothing leaves the machine.
+# An unofficial interface: if T3 changes its schema this prints alive:false
+# rather than anything wrong.
+set -u
+DIR="${T3_USERDATA:-$HOME/.t3/userdata}"
+DB="$DIR/statev2.sqlite"
+none() { printf '{"alive":false,"running":0,"waiting":0,"finished":0,"items":[]}\n'; exit 0; }
+
+pid=$(jq -r '.pid // empty' "$DIR/server-runtime.json" 2>/dev/null) || none
+[[ "$pid" =~ ^[0-9]+$ ]] && kill -0 "$pid" 2>/dev/null || none
+[ -r "$DB" ] || none
+
+# What each thread is doing, decided the way T3 Code's own sidebar does
+# (rules as in eliophan/t3code-bar, MIT: desktop/crates/bar-threads):
+#  - only the sidebar's threads: not settled, snoozed, delegated, side chats
+#    or subagent threads (ids starting thread:), and not deleted or archived;
+#  - runs T3 starts in the background (payload.silent: titles and the like)
+#    and queued runs are not work: the capsule said "2 running" over threads
+#    that were doing nothing;
+#  - a pending request is attention: an approval to run something, a question
+#    (user_input) or a guest's message, whatever the run says;
+#  - a run blocked only on another thread (t3_thread_wait, delegate_task in
+#    wait mode) is waiting, not working;
+#  - finished = the last run completed or failed after you last opened the
+#    thread (lastVisitedAt), in the last 3 days.
+# One row per thread; the classification is in jq below.
+rows=$(timeout 3 sqlite3 -readonly -json "file:$DB?mode=ro" "
+  with th as (
+    select t.thread_id as thread, coalesce(t.title, '') as title, t.payload_json as pj
+    from orchestration_v2_projection_threads t
+    where t.thread_id not like 'thread:%' and t.deleted_at is null and t.archived_at is null
+      and json_extract(t.payload_json, '\$.settledAt') is null
+      and coalesce(json_extract(t.payload_json, '\$.settledOverride'), '') != 'settled'
+      and json_extract(t.payload_json, '\$.delegatedFrom') is null
+      and coalesce(json_extract(t.payload_json, '\$.lineage.sideChat'), 0) != 1
+      and coalesce(json_extract(t.payload_json, '\$.lineage.relationshipToParent'), '') != 'subagent'
+      and coalesce(json_extract(t.payload_json, '\$.snoozedUntil'), '') <= strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  active as (
+    select r.thread_id as thread, r.run_id as run, r.status as status, r.provider as provider,
+           coalesce(json_extract(r.payload_json, '\$.workStartedAt'), json_extract(r.payload_json, '\$.startedAt'), r.requested_at) as at,
+           row_number() over (partition by r.thread_id order by r.ordinal desc, r.run_id desc) as n
+    from orchestration_v2_projection_runs r
+    where r.status in ('preparing','starting','running','waiting')
+      and coalesce(json_extract(r.payload_json, '\$.silent'), 0) != 1),
+  latest as (
+    select r.thread_id as thread, r.run_id as run, r.status as status, r.provider as provider, r.completed_at as at,
+           row_number() over (partition by r.thread_id
+                              order by r.completed_at is null desc, r.completed_at desc, r.ordinal desc) as n
+    from orchestration_v2_projection_runs r
+    where r.status != 'queued'
+      and not (r.status = 'cancelled' and json_extract(r.payload_json, '\$.startedAt') is null)
+      and coalesce(json_extract(r.payload_json, '\$.silent'), 0) != 1)
+  select th.thread, th.title,
+         a.status as active, a.at as active_at, coalesce(a.provider, l.provider) as provider,
+         l.status as latest, l.at as latest_at,
+         json_extract(th.pj, '\$.lastVisitedAt') as visited,
+         (select count(*) from orchestration_v2_projection_runtime_requests q
+           where q.thread_id = th.thread and q.status = 'pending') as asks,
+         (select count(*) from json_each(th.pj, '\$.guestShare.messages') g
+           where json_extract(g.value, '\$.status') = 'pending') as guests,
+         case when a.status = 'running'
+           and exists (select 1 from orchestration_v2_projection_turn_items ti
+                        where ti.thread_id = a.thread and ti.run_id = a.run and ti.status in ('running','waiting')
+                          and ti.type = 'dynamic_tool'
+                          and (json_extract(ti.payload_json, '\$.toolName') glob '*t3_thread_wait'
+                               or (json_extract(ti.payload_json, '\$.toolName') glob '*delegate_task'
+                                   and json_extract(ti.payload_json, '\$.input.mode') = 'wait')))
+           and not exists (select 1 from orchestration_v2_projection_turn_items ti
+                        where ti.thread_id = a.thread and ti.run_id = a.run and ti.status in ('running','waiting')
+                          and ti.type in ('command_execution','dynamic_tool','subagent','file_change','file_search','web_search','compaction')
+                          and not (ti.type = 'subagent' and json_extract(ti.payload_json, '\$.origin') = 'app_owned')
+                          and not (ti.type = 'dynamic_tool'
+                                   and (json_extract(ti.payload_json, '\$.toolName') glob '*t3_thread_wait'
+                                        or (json_extract(ti.payload_json, '\$.toolName') glob '*delegate_task'
+                                            and json_extract(ti.payload_json, '\$.input.mode') = 'wait'))))
+           then 1 else 0 end as blocked,
+         (select json_extract(ti.payload_json, '\$.failure.class') from orchestration_v2_projection_turn_items ti
+           where l.status = 'failed' and ti.thread_id = l.thread and ti.run_id = l.run
+             and ti.type = 'error' and ti.status = 'failed'
+           order by ti.updated_at desc limit 1) as failure,
+         json_extract(th.pj, '\$.modelSelection.model') as model,
+         (select json_extract(o.value, '\$.value') from json_each(th.pj, '\$.modelSelection.options') o
+           where json_extract(o.value, '\$.id') = 'reasoningEffort') as effort,
+         (select pp.title from projection_projects pp where pp.project_id = json_extract(th.pj, '\$.projectId')) as project
+  from th
+  left join active a on a.thread = th.thread and a.n = 1
+  left join latest l on l.thread = th.thread and l.n = 1
+  where a.status is not null
+     or exists (select 1 from orchestration_v2_projection_runtime_requests q
+                 where q.thread_id = th.thread and q.status = 'pending')
+     or (l.status in ('completed','failed') and l.at >= strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-3 days'));" 2>/dev/null) || none
+[ -n "$rows" ] || rows="[]"
+# The thread and the environment make T3 Code's own link to it
+# (t3code://threads/ENV/THREAD, its desktop app opens it), so a row opens
+# that thread instead of only raising the window.
+env_id=$(tr -cd 'A-Za-z0-9-' < "$DIR/environment-id" 2>/dev/null)
+jq -cn --argjson rows "$rows" --arg env "$env_id" '
+  def state:
+    if (.asks // 0) > 0 or (.guests // 0) > 0 then "waiting"
+    elif .active == "running" and .blocked == 1 then "blocked"
+    elif .active != null then "running"
+    elif .latest == "failed" and ((.visited == null) or (.latest_at > .visited)) then
+      (if .failure == "usage_limit" then "limited" else "failed" end)
+    elif .latest == "completed" and ((.visited == null) or (.latest_at > .visited)) then "completed"
+    else null end;
+  [$rows[] | . + {s: state} | select(.s != null)] as $all
+  | ($all | map(select(.s == "waiting"))) as $wait
+  | ($all | map(select(.s == "running" or .s == "blocked"))) as $run
+  | ($all | map(select(.s == "completed" or .s == "failed" or .s == "limited")) | sort_by(.latest_at) | reverse | .[0:8]) as $done
+  | {alive: true, env: $env,
+     running: ($run | map(select(.s == "running")) | length),
+     waiting: ($wait | length),
+     finished: ($done | length),
+     items: ([($wait + ($run | sort_by(.active_at) | reverse))[0:12][]
+              | {status: (if .s == "blocked" then "running" else .s end), blocked: (.s == "blocked"),
+                 provider, title: (.title | .[0:80]), thread, at: .active_at, model, effort, project}]
+            + [$done[] | {status: (if .s == "limited" then "failed" else .s end), limited: (.s == "limited"),
+                 provider, title: (.title | .[0:80]), thread, at: .latest_at, model, effort, project}])}' 2>/dev/null || none

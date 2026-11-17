@@ -1,10 +1,10 @@
 pragma Singleton
 
 // Your calendars' events, for the calendar panel and the island's "in 10
-// min" moment. Sources: ~/.config/rice/calendars.txt, one per line, each an
+// min" moment. Sources: ~/.config/kuwai/calendars.txt, one per line, each an
 // iCal link (Google Calendar's "Secret address in iCal format", Outlook,
 // iCloud, Fastmail…) or a local .ics path; # starts a comment. Links are
-// fetched every 30 minutes into ~/.cache/rice/calendars/ (only the link
+// fetched every 30 minutes into ~/.cache/kuwai/calendars/ (only the link
 // itself is requested; nothing else leaves the machine).
 //
 // Parsing is the small useful part of iCalendar: VEVENTs with DTSTART/DTEND
@@ -22,8 +22,8 @@ Singleton {
     id: root
 
     readonly property string home: Quickshell.env("HOME") || ""
-    readonly property string listPath: (Quickshell.env("XDG_CONFIG_HOME") || home + "/.config") + "/rice/calendars.txt"
-    readonly property string cacheDir: (Quickshell.env("XDG_CACHE_HOME") || home + "/.cache") + "/rice/calendars"
+    readonly property string listPath: (Quickshell.env("XDG_CONFIG_HOME") || home + "/.config") + "/kuwai/calendars.txt"
+    readonly property string cacheDir: (Quickshell.env("XDG_CACHE_HOME") || home + "/.cache") + "/kuwai/calendars"
 
     property var events: []          // [{ start: ms, end: ms, title, location, allDay }], sorted
     property bool configured: false

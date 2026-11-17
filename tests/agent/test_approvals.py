@@ -41,7 +41,7 @@ def test_decline_never_runs(run_agent, tmp_path):
 def test_timeout_declines(run_agent, tmp_path):
     events, _ = run_agent(
         USER, [[call("run_command", {"command": f"touch {tmp_path}/flag"}), {"done": True}], answer()],
-        caps=CAPS, env={"RICE_AGENT_APPROVAL_TIMEOUT": "1"})
+        caps=CAPS, env={"KUWAI_AGENT_APPROVAL_TIMEOUT": "1"})
     assert of_type(events, "request.resolved")[0]["decision"] == "timeout"
     assert completion(events, started(events, "command_execution")[0]["id"])["status"] == "declined"
     assert not (tmp_path / "flag").exists()

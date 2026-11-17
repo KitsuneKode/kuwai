@@ -80,11 +80,11 @@ Verification commands:
 PYTHONDONTWRITEBYTECODE=1 python -m pytest -q -p no:cacheprovider tests
 bun test ./tests/shell/*.test.mjs ./shell/services/ai/turn.test.mjs
 for t in tests/hypr/test_*.lua; do lua "$t" || exit 1; done
-bin/rice-tokens --check
+bin/kuwai-tokens --check
 git diff --check
-bin/rice-ui-test --case primitives --text-scale 1 --output /tmp/kuwai-ui-1x
-bin/rice-ui-test --case primitives --text-scale 2 --output /tmp/kuwai-ui-2x
-bin/rice-ui-test --case settings-store --output /tmp/kuwai-settings
+bin/kuwai-ui-test --case primitives --text-scale 1 --output /tmp/kuwai-ui-1x
+bin/kuwai-ui-test --case primitives --text-scale 2 --output /tmp/kuwai-ui-2x
+bin/kuwai-ui-test --case settings-store --output /tmp/kuwai-settings
 ```
 
 The Python fake-provider suite needs permission for localhost fixture servers.

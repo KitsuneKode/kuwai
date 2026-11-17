@@ -2,7 +2,7 @@
 // glass card hanging from the bar at the right edge of the focused monitor.
 //
 // Open: Super+N (Notifications), Super+Shift+N (Agents), the Waybar bell,
-// `bin/rice center [tab]`. Esc clears the search, then closes; so does a
+// `bin/kuwai center [tab]`. Esc clears the search, then closes; so does a
 // click anywhere else.
 //
 // It's a menu, not a column: a floating card on lighter glass than the
@@ -280,7 +280,7 @@ Scope {
 
     // ── Scrim: everything else steps back while the card is up ────────────
     // Its own surface on the layer under the card's, click-through (the focus
-    // grab handles a click out), named outside rice-* so Hyprland doesn't blur
+    // grab handles a click out), named outside kuwai-* so Hyprland doesn't blur
     // under it. Like the card it stays mapped, 1×1 while closed, so opening
     // never waits for a new surface.
     Variants {
@@ -296,7 +296,7 @@ Scope {
             exclusionMode: ExclusionMode.Ignore
             color: "transparent"
             mask: Region {}
-            WlrLayershell.namespace: "rice.scrim"
+            WlrLayershell.namespace: "kuwai.scrim"
             WlrLayershell.layer: WlrLayer.Top
             WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
             // A spotlight from the bell: darkest far away, lighter toward the
@@ -360,7 +360,7 @@ Scope {
             exclusionMode: ExclusionMode.Normal
             color: "transparent"
 
-            WlrLayershell.namespace: "rice-center"
+            WlrLayershell.namespace: "kuwai-center"
             WlrLayershell.layer: WlrLayer.Overlay
             // Keyboard goes to the center while it's open: it was opened on
             // purpose, and Esc or any click elsewhere hands it straight back.

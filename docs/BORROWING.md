@@ -90,7 +90,7 @@ rewrite in our own style and tokens. Don't copy whole files in.
   the whole config fails); they work under `modules/`. Put small shared pieces in their own file.
 - Qt 6.12's ES module loader (`import "x.mjs" as X`) rejects object spread `{...a}`; array spread, `?.`, `??`
   are fine. Use `Object.assign`.
-- From an agent/tool shell, `bin/rice start` must reach Hyprland's exec (HYPRLAND_INSTANCE_SIGNATURE set),
+- From an agent/tool shell, `bin/kuwai start` must reach Hyprland's exec (HYPRLAND_INSTANCE_SIGNATURE set),
   or the shell lives in that shell's process group and dies with it.
 - With `~/.config/quickshell/shell.qml` present, `qs -c <name>` finds nothing:
   run by path.

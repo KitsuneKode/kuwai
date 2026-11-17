@@ -1,6 +1,6 @@
 -- The login screen's compositor. greetd runs it as its `greeter` user
 -- (greeter/install), from the copy greeter/sync keeps in /var/lib/kuwai-greeter.
--- It only lights the screens and runs one client, the rice's login face
+-- It only lights the screens and runs one client, kuwai's login face
 -- (shell/greeter.qml); when that exits (a login went through, or it couldn't
 -- start), Hyprland exits too and greetd moves on.
 --

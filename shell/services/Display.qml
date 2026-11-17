@@ -1,6 +1,6 @@
 // Brightness per monitor and night light, for the center's Display tab.
 //
-//   brightness   bin/rice-brightness: `status` (JSON of every output)
+//   brightness   bin/kuwai-brightness: `status` (JSON of every output)
 //                and `set N --output NAME`; the controller coalesces
 //                requests and handles DDC/CI for external monitors
 //   night light  Hyprland's hyprsunset over hyprctl: `hyprsunset temperature`
@@ -20,7 +20,7 @@ Singleton {
     id: root
 
     property bool watching: false
-    readonly property string script: Paths.bin + "/rice-brightness"
+    readonly property string script: Paths.bin + "/kuwai-brightness"
 
     property var outputs: []                  // [{ name, value, internal, error }]
     property int temperature: 6500            // K; 6500 = off (identity)
@@ -179,7 +179,7 @@ Singleton {
     // after a fullscreen change, look three times (the switch lands a moment
     // later): a screen newly in HDR gets a moment in the notch.
     property var hdrOn: ({})                  // screen name → true while in HDR
-    property var hdrWire: ({})                // rice-hdr's last reading: name → { hdr, eotf, maxNits, colorspace }
+    property var hdrWire: ({})                // kuwai-hdr's last reading: name → { hdr, eotf, maxNits, colorspace }
     Connections {
         target: Hyprland
         function onRawEvent(event) {
@@ -200,10 +200,10 @@ Singleton {
     }
     Process {
         id: hdrProbe
-        // The preset's name, and the signal really on the wire (rice-hdr reads
+        // The preset's name, and the signal really on the wire (kuwai-hdr reads
         // each connector's HDR infoframe): an automatic switch sends PQ while
         // the preset still says "srgb", which is when the label matters most.
-        command: ["sh", "-c", 'hyprctl -j monitors; echo; echo "#wire"; "$1" 2>/dev/null || echo "{}"', "hdr", Paths.bin + "/rice-hdr"]
+        command: ["sh", "-c", 'hyprctl -j monitors; echo; echo "#wire"; "$1" 2>/dev/null || echo "{}"', "hdr", Paths.bin + "/kuwai-hdr"]
         stdout: StdioCollector {
             onStreamFinished: {
                 let d, wire = {};

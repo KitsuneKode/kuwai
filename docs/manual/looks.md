@@ -9,8 +9,8 @@ your home folder; nothing needs root.
 |---|---|---|---|
 | Theme | `~/.config/hyde/themes/<Name>/` | HyDE's installer (below) | Themes tab, with its palette |
 | Wallpaper | `~/.config/hyde/themes/<Theme>/wallpapers/` | copy an image in | Wallpapers tab (current theme's) |
-| Live wallpaper | `~/Pictures/live-wallpapers/` (or a theme's `wallpapers/live/`) | `rice-wall add FILE.mp4 "name"` | Live tab; Super+Ctrl+Shift+W steps through |
-| Screensaver film | `~/.local/share/rice/screensavers/` | `rice saver add FILE.mp4 [name]` | Screensaver tab, as "Night · Name" |
+| Live wallpaper | `~/Pictures/live-wallpapers/` (or a theme's `wallpapers/live/`) | `kuwai-wall add FILE.mp4 "name"` | Live tab; Super+Ctrl+Shift+W steps through |
+| Screensaver film | `~/.local/share/kuwai/screensavers/` | `kuwai saver add FILE.mp4 [name]` | Screensaver tab, as "Night · Name" |
 
 ## Themes
 
@@ -43,9 +43,9 @@ text sit there.
 ## Live wallpapers
 
 ```sh
-rice-wall add ~/Videos/rain.mp4 "rain"      # 30 fps, ≤1440p, GPU-encoded, seamless loop
-rice-wall import ~/.local/share/Steam/steamapps/workshop/content/431960   # Wallpaper Engine's *video* wallpapers
-rice-wall list                              # the library, in play order
+kuwai-wall add ~/Videos/rain.mp4 "rain"      # 30 fps, ≤1440p, GPU-encoded, seamless loop
+kuwai-wall import ~/.local/share/Steam/steamapps/workshop/content/431960   # Wallpaper Engine's *video* wallpapers
+kuwai-wall list                              # the library, in play order
 ```
 
 `add` makes the loop seamless (the last 1.5 s fade into the first) unless the
@@ -60,10 +60,10 @@ Workshop items you subscribed to with your own Wallpaper Engine.
 ## Screensavers
 
 ```sh
-rice saver add ~/Videos/ink.mp4 "ink"   # half speed, played forward then back (no seam), slightly darker, + thumbnail
-rice saver list
-rice saver remove ink
-rice screensaver                        # show it now (any key or move ends it)
+kuwai saver add ~/Videos/ink.mp4 "ink"   # half speed, played forward then back (no seam), slightly darker, + thumbnail
+kuwai saver list
+kuwai saver remove ink
+kuwai screensaver                        # show it now (any key or move ends it)
 ```
 
 Pick it in **Themes → Screensaver** (or Settings → Screensaver, which also

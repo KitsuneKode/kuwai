@@ -1,6 +1,6 @@
 // Settings, grown out of the island (Super+, or the launcher's "Settings"):
 // a sidebar of sections and grouped rows, like System Settings. Every row is
-// a real setting (config/Settings, ~/.config/rice/settings.json); changes
+// a real setting (config/Settings, ~/.config/kuwai/settings.json); changes
 // apply at once, nothing to save. Keys: ↑↓ section, type (or / or Ctrl+F)
 // to search every row of every page, Esc clears the search, then closes.
 //
@@ -24,7 +24,7 @@ FocusScope {
     implicitWidth: Theme.panelL
     implicitHeight: 520
 
-    readonly property string rice: Paths.bin + "/rice"
+    readonly property string kuwai: Paths.bin + "/kuwai"
     readonly property var sections: SettingsIndex.sections   // services/SettingsIndex (the launcher searches it too)
     property int current: 0
     property alias searchText: search.text       // for the screenshot preview (TestHook)
@@ -376,7 +376,7 @@ FocusScope {
                     Segmented {
                         options: [{ id: "waybar", label: "Waybar" }, { id: "island", label: "Island" }]
                         current: Settings.bar
-                        onPicked: id => Quickshell.execDetached([settings.rice, "bar", id])
+                        onPicked: id => Quickshell.execDetached([settings.kuwai, "bar", id])
                     }
                 }
                 SettingsRow {
@@ -437,7 +437,7 @@ FocusScope {
                 }
                 SettingsRow {
                     key: "restWeather"
-                    label: "Weather"; detail: "In the island, for " + (Settings.weatherLocation || "where you are") + "  ·  rice set weatherLocation \"City\""
+                    label: "Weather"; detail: "In the island, for " + (Settings.weatherLocation || "where you are") + "  ·  kuwai set weatherLocation \"City\""
                     Toggle { on: Settings.restWeather; onToggled: Settings.set("restWeather", !Settings.restWeather) }
                 }
                 SettingsRow {
@@ -848,7 +848,7 @@ FocusScope {
                 SettingsRow {
                     key: "screensaverClip"
                     visible: Settings.screensaverStyle === "night"
-                    label: "Film"; detail: "Files in ~/.local/share/rice/screensavers"
+                    label: "Film"; detail: "Files in ~/.local/share/kuwai/screensavers"
                     Segmented {
                         options: [{ id: "smoke-soft", label: "Smoke" }, { id: "aurora", label: "Aurora" }, { id: "stars-lake", label: "Stars" }]
                         current: Settings.screensaverClip
@@ -857,7 +857,7 @@ FocusScope {
                 }
                 SettingsRow {
                     label: "Preview"; detail: "Any input ends it"
-                    PillButton { text: "Start now"; onClicked: Quickshell.execDetached([settings.rice, "screensaver", "start"]) }
+                    PillButton { text: "Start now"; onClicked: Quickshell.execDetached([settings.kuwai, "screensaver", "start"]) }
                 }
             }
             SettingsGroup {
@@ -867,7 +867,7 @@ FocusScope {
                     label: "Wallpaper change"
                     detail: Settings.wallTransition === "shards" ? "The new picture arrives in cut pieces, spreading from the island"
                           : Settings.wallTransition === "glass" ? "The new picture grows from the island behind a lens of glass"
-                          : "Its subject first when it has been cut out (rice-wallmap --install), otherwise pieces or glass in turn"
+                          : "Its subject first when it has been cut out (kuwai-wallmap --install), otherwise pieces or glass in turn"
                     Segmented {
                         options: [{ id: "auto", label: "Auto" }, { id: "shards", label: "Pieces" }, { id: "glass", label: "Glass" }]
                         current: Settings.wallTransition
@@ -1036,14 +1036,14 @@ FocusScope {
             spacing: 18
             SettingsGroup {
                 SettingsRow { label: "Shell"; Label { text: "Quickshell " + (Quickshell.version || ""); size: 13; color: Theme.textSecondary } }
-                SettingsRow { label: "Settings file"; Label { text: "~/.config/rice/settings.json"; size: 13; color: Theme.textSecondary; font.family: Theme.fontMono } }
+                SettingsRow { label: "Settings file"; Label { text: "~/.config/kuwai/settings.json"; size: 13; color: Theme.textSecondary; font.family: Theme.fontMono } }
                 SettingsRow {
-                    label: "Backups"; detail: "Your settings, Hyprland files, reminders, alarms, notes and pins: daily and before every update of the desktop, the newest 30. Put one back: rice backup restore NAME"
-                    PillButton { text: "Back up now"; onClicked: Quickshell.execDetached([settings.rice, "backup"]) }
+                    label: "Backups"; detail: "Your settings, Hyprland files, reminders, alarms, notes and pins: daily and before every update of the desktop, the newest 30. Put one back: kuwai backup restore NAME"
+                    PillButton { text: "Back up now"; onClicked: Quickshell.execDetached([settings.kuwai, "backup"]) }
                 }
                 SettingsRow {
                     label: "Restart the shell"; detail: "Reloads everything; notifications stay"
-                    PillButton { text: "Restart"; onClicked: Quickshell.execDetached([settings.rice, "restart"]) }
+                    PillButton { text: "Restart"; onClicked: Quickshell.execDetached([settings.kuwai, "restart"]) }
                 }
             }
         }

@@ -146,7 +146,7 @@ Singleton {
         root.activeWrite = root.queue[0];
         root.queue = root.queue.slice(1);
         const p = root.activeWrite;
-        writer.command = ["timeout", "--kill-after=1", "8", Paths.bin + "/rice-settings", p.reset ? "reset" : "set", p.key];
+        writer.command = ["timeout", "--kill-after=1", "8", Paths.bin + "/kuwai-settings", p.reset ? "reset" : "set", p.key];
         if (!p.reset) writer.command = writer.command.concat([JSON.stringify(p.value)]);
         writer.running = true;
     }
@@ -167,7 +167,7 @@ Singleton {
     }
     FileView {
         id: file
-        path: (Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config") + "/rice/settings.json"
+        path: (Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config") + "/kuwai/settings.json"
         watchChanges: true
         blockLoading: true
         printErrors: false

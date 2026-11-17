@@ -11,23 +11,23 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "bin"))
 
 @pytest.fixture
 def agent(tmp_path, monkeypatch):
-    monkeypatch.setenv("RICE_SANDBOX_DIR", str(tmp_path / "sandbox"))
+    monkeypatch.setenv("KUWAI_SANDBOX_DIR", str(tmp_path / "sandbox"))
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
     (tmp_path / "home").mkdir()
     import importlib
-    import rice_sandbox
-    import rice_files
-    import rice_agent
-    importlib.reload(rice_sandbox)
-    importlib.reload(rice_files)
-    a = importlib.reload(rice_agent)
+    import kuwai_sandbox
+    import kuwai_files
+    import kuwai_agent
+    importlib.reload(kuwai_sandbox)
+    importlib.reload(kuwai_files)
+    a = importlib.reload(kuwai_agent)
     a.CHAT = "c1"
     return a, tmp_path
 
 
 def test_link_swapped_in_after_the_decision_doesnt_write_to_the_host(agent):
     a, tmp = agent
-    ws = a.rice_sandbox.workspace("c1")
+    ws = a.kuwai_sandbox.workspace("c1")
     (ws / "d").mkdir()
     host = tmp / "home" / "victim"
     host.mkdir()
@@ -62,7 +62,7 @@ def test_home_path_is_a_host_write_that_needs_approval(agent):
 
 def test_symlinked_file_in_sandbox_not_followed_on_write(agent):
     a, tmp = agent
-    ws = a.rice_sandbox.workspace("c1")
+    ws = a.kuwai_sandbox.workspace("c1")
     target = tmp / "home" / ".bashrc"
     target.write_text("original")
     os.symlink(target, ws / "rc")
@@ -75,7 +75,7 @@ def test_symlinked_file_in_sandbox_not_followed_on_write(agent):
 
 def test_read_through_a_planted_link_is_refused(agent):
     a, tmp = agent
-    ws = a.rice_sandbox.workspace("c1")
+    ws = a.kuwai_sandbox.workspace("c1")
     secret = tmp / "home" / ".bash_history"
     secret.write_text("ssh-pass hunter2")
     os.symlink(secret, ws / "notes.txt")
@@ -90,7 +90,7 @@ def test_read_through_a_planted_link_is_refused(agent):
 
 def test_read_of_a_real_sandbox_file_works(agent):
     a, _ = agent
-    ws = a.rice_sandbox.workspace("c1")
+    ws = a.kuwai_sandbox.workspace("c1")
     (ws / "ok.txt").write_text("line one\nline two\n")
     assert a.tool_read({"path": "ok.txt"}).startswith("line one")
 
@@ -102,5 +102,5 @@ def test_find_pattern_cannot_be_a_flag(agent):
 
 
 def test_remember_isnt_in_chat_mode():
-    import rice_agent as a
+    import kuwai_agent as a
     assert "remember" not in a.CHAT_SAFE

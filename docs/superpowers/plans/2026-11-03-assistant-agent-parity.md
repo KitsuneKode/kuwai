@@ -6,7 +6,7 @@
 features that matter: real tool calls (shown live, approved when they act), reasoning, vision, message actions, a
 real model picker, and motion that follows the rice's tokens everywhere.
 
-**Architecture:** The Python helper `bin/rice-ollama` becomes the agent: it owns the Ollama tool loop and prints one
+**Architecture:** The Python helper `bin/kuwai-ollama` becomes the agent: it owns the Ollama tool loop and prints one
 JSON event per line, using T3 Code's runtime vocabulary (`item.started` / `item.delta` / `item.completed` /
 `request.opened` / `turn.completed`). QML stops parsing Ollama: a pure reducer (`shell/services/ai/turn.mjs`) folds
 events into a message made of ordered `parts`, and the components render parts. Approvals go back to the helper on
@@ -29,7 +29,7 @@ longer-term provider plan this stays compatible with).
 - Opens on a spring or `enterMs`; closes one tier quicker (`springModerate.exitMs 120`, `springSlow.exitMs 160`), no
   overshoot on a close, never a delay on a close.
 - Press feedback: scale `0.97` (rows `0.985`), `Theme.pressMs`, `Theme.easeOut`.
-- Helper stays Python stdlib only (no pip deps); runs as `bin/rice-ollama <cmd>`.
+- Helper stays Python stdlib only (no pip deps); runs as `bin/kuwai-ollama <cmd>`.
 - `.mjs` files: Qt 6.12's module loader rejects object spread `{...a}` (probed 2026-11-03; array spread, `?.`, `??`, arrows work). Use `Object.assign`.
 - Tools that only read run without asking. Tools that execute, launch or open (run_command, launch_app, open_url)
   emit `request.opened` and wait; no answer in 120 s = `timeout` = declined.
@@ -84,8 +84,8 @@ Already cloned (shallow, gitignored) into `refs/` on 2026-11-03: `vercel_ai-elem
 ### Task 1: Event protocol and the `agent` command (no tools yet)
 
 **Files:**
-- Create: `bin/rice_agent.py` (the agent: loop, tools, events; stdlib only)
-- Modify: `bin/rice-ollama` (dispatch `agent` → `rice_agent.main(req_file)`)
+- Create: `bin/kuwai_agent.py` (the agent: loop, tools, events; stdlib only)
+- Modify: `bin/kuwai-ollama` (dispatch `agent` → `kuwai_agent.main(req_file)`)
 - Create: `tests/agent/fake_ollama.py`, `tests/agent/conftest.py`, `tests/agent/test_agent.py`
 
 **Interfaces:**
@@ -104,7 +104,7 @@ Already cloned (shallow, gitignored) into `refs/` on 2026-11-03: `vercel_ai-elem
 - [ ] **Step 1: Fake server.** `fake_ollama.py`: `FakeOllama(script: list[list[dict]])` — a `ThreadingHTTPServer`
   on port 0; each POST `/api/chat` pops the next list and streams it as NDJSON; records request bodies in `.requests`;
   POST `/api/show` returns `{"capabilities": caps[model]}`. `conftest.py` fixture `run_agent(req, script, caps,
-  stdin_lines=[]) -> list[dict]` runs `bin/rice-ollama agent <file>` with `OLLAMA_HOST` set and parses stdout.
+  stdin_lines=[]) -> list[dict]` runs `bin/kuwai-ollama agent <file>` with `OLLAMA_HOST` set and parses stdout.
 - [ ] **Step 2: Failing tests.**
   - `test_plain_answer_streams_one_message`: script `[{"message":{"content":"Hel"}},{"message":{"content":"lo"}},
     {"done":true,"eval_count":20,"eval_duration":1e9,"prompt_eval_count":232}]` → event types exactly
@@ -123,7 +123,7 @@ Already cloned (shallow, gitignored) into `refs/` on 2026-11-03: `vercel_ai-elem
 
 ### Task 2: Tool registry, read-only tools, the loop
 
-**Files:** Modify `bin/rice_agent.py`; Test `tests/agent/test_tools.py`; Create `tests/agent/stubs/` (fake `hyprctl`,
+**Files:** Modify `bin/kuwai_agent.py`; Test `tests/agent/test_tools.py`; Create `tests/agent/stubs/` (fake `hyprctl`,
 `wl-paste`, `gtk-launch`, `xdg-open` scripts that print fixed output; prepended to `PATH` by the fixture).
 
 **Interfaces:**
@@ -155,7 +155,7 @@ Already cloned (shallow, gitignored) into `refs/` on 2026-11-03: `vercel_ai-elem
 
 ### Task 3: Approval-gated tools and cancel
 
-**Files:** Modify `bin/rice_agent.py`; Test `tests/agent/test_approvals.py`.
+**Files:** Modify `bin/kuwai_agent.py`; Test `tests/agent/test_approvals.py`.
 
 **Interfaces:**
 - New events: `{"type":"request.opened","id":"q1","itemId":"t1","kind":"command"|"launch"|"open_url",
@@ -172,25 +172,25 @@ Already cloned (shallow, gitignored) into `refs/` on 2026-11-03: `vercel_ai-elem
     `request.resolved(accept)`, `item.completed(completed)`; stub-free command `echo hi` output contains `hi`.
   - `test_decline_never_runs`: command `touch $TMP/flag`, stdin `decline` → flag file absent, item `declined`, the
     model receives `"The user declined this command."`.
-  - `test_timeout_declines`: env `RICE_AGENT_APPROVAL_TIMEOUT=1`, no stdin → `request.resolved(timeout)`, item
+  - `test_timeout_declines`: env `KUWAI_AGENT_APPROVAL_TIMEOUT=1`, no stdin → `request.resolved(timeout)`, item
     `declined`.
   - `test_cancel_while_pending_declines`: send SIGTERM after `request.opened` is read → flag absent,
     `turn.completed.status == "interrupted"`.
   - `test_open_url_rejects_file_scheme`: `file:///etc/passwd` → item `failed` before any request opens.
 - [ ] **Step 2–4:** run (fail) → implement (stdin reader thread + `queue.Queue`, timeout from
-  `RICE_AGENT_APPROVAL_TIMEOUT` default 120) → run (pass).
+  `KUWAI_AGENT_APPROVAL_TIMEOUT` default 120) → run (pass).
 - [ ] **Step 5: Commit** `feat(ai): approval-gated tools, cancel`.
 
 ### Task 4: Vision hop ("the snapshot that matters")
 
-**Files:** Modify `bin/rice_agent.py`, `bin/rice-ollama` (`cmd_snapshot`); Test `tests/agent/test_vision.py`.
+**Files:** Modify `bin/kuwai_agent.py`, `bin/kuwai-ollama` (`cmd_snapshot`); Test `tests/agent/test_vision.py`.
 
 **Interfaces:**
 - If the last user message has `image` and the chosen model lacks `vision`: emit an `image_view` item ("Looking at
   the screenshot"), ask the first installed vision model (caps include `vision`) for a factual description with
   `keep_alive: 0`, then send the tool model the user text plus `"[Screenshot: <description>]"` and no image.
 - If the chosen model has `vision`, send the image directly (current behaviour), no hop.
-- `rice-ollama snapshot window` additionally returns `selection` (primary selection, 4 KB cap) and `clipboard`
+- `kuwai-ollama snapshot window` additionally returns `selection` (primary selection, 4 KB cap) and `clipboard`
   (text, 4 KB cap) next to `app`, `title`, `path`; the request `messages[-1]` may carry `context: {app,title,
   selection,clipboard}`, which the helper turns into a short "Context" block in the user turn.
 
@@ -235,9 +235,9 @@ Already cloned (shallow, gitignored) into `refs/` on 2026-11-03: `vercel_ai-elem
 - [ ] **Step 5: Wire the service.** `OllamaService` exposes `property var draft` (the streaming `Msg`),
   `function resolveRequest(id: string, decision: string)` (writes the stdin line), keeps `send`, `cancel`
   (`chatProc.signal(15)`), `newChat`, sessions. On load, `messages = messages.map(Turn.migrateMessage)`.
-- [ ] **Step 6: Verify live.** `qmllint shell/services/OllamaService.qml` clean; `bin/rice start`;
+- [ ] **Step 6: Verify live.** `qmllint shell/services/OllamaService.qml` clean; `bin/kuwai start`;
   `qs ipc call ollama send "what window is focused?"`; after it finishes `qs ipc call ollama lastMessage` names the
-  focused window; `bin/rice logs` shows no new `TypeError`/`ReferenceError`.
+  focused window; `bin/kuwai logs` shows no new `TypeError`/`ReferenceError`.
 - [ ] **Step 7: Commit** `feat(ai): parts reducer, service on the agent protocol`.
 
 ### Task 6: Message actions
@@ -270,7 +270,7 @@ reference if wanted later).
 **Decisions:**
 - Parts render in order: reasoning → `ReasoningBlock`; consecutive tool parts → one `ToolGroup` ("Used 3 tools",
   collapsed when the turn is done, open while running; T3 `TimelineAssistantRows.tsx` work-log idea); text → the
-  existing rendered text (`rice-render`).
+  existing rendered text (`kuwai-render`).
 - `Tool.qml` reads a Part: icon by `itemType` (command_execution `terminal`, web_search `globe`, image_view `image`,
   dynamic_tool_call `wrench`), title, mono input, output collapsed after 6 lines with "Show all".
 - `ListView` with `cacheBuffer` 2 screens; sticks to bottom while the user hasn't scrolled up (prompt-kit
@@ -298,7 +298,7 @@ row (no separate entrance). References: AI Elements `confirmation.tsx`, T3 `Time
 
 - [ ] **Step 1:** implement. **Step 2:** qmllint. **Step 3:** live: "create a file ~/approval-test.txt" → card shows
   the exact command; "Don't run" → file absent, row reads Declined; repeat, ⌃⏎ → file exists. Open a request, hide
-  the overlay → `bin/rice logs` shows the turn interrupted, file absent.
+  the overlay → `bin/kuwai logs` shows the turn interrupted, file absent.
 - [ ] **Step 4: Commit** `feat(ai): approval card`.
 
 ### Task 9: Model picker
@@ -306,7 +306,7 @@ row (no separate entrance). References: AI Elements `confirmation.tsx`, T3 `Time
 **Files:** Modify `components/ai/ModelPickerMenu.qml`, `components/ai/PromptInput.qml` (pill opens it; Ctrl+K opens
 it), `modules/assistant/AssistantOverlay.qml` (mount it; Ctrl+K handler), `services/OllamaService.qml`
 (`property var modelInfo: ({})` — `{[name]: {capabilities: string[], sizeGb: number}}` filled from `/api/show` +
-`/api/tags` in `probe()`), `bin/rice-ollama` `cmd_status` (include capabilities).
+`/api/tags` in `probe()`), `bin/kuwai-ollama` `cmd_status` (include capabilities).
 
 **Decisions:**
 - A popover anchored above the pill, not a centred modal. Opens on `Spring { tier: Theme.springModerate }`: scale

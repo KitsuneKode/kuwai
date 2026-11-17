@@ -47,10 +47,10 @@ def test_no_vision_model_installed(run_agent, tmp_path):
 
 
 def test_context_block(run_agent):
-    ctx = {"app": "kitty", "title": "zsh — ~/rice", "workspace": "", "selection": "error: x", "clipboard": ""}
+    ctx = {"app": "kitty", "title": "zsh — ~/kuwai", "workspace": "", "selection": "error: x", "clipboard": ""}
     req = {"messages": [{"role": "user", "content": "fix this", "context": ctx}]}
     _, fake = run_agent(req, [answer()], caps=CAPS)
     text = fake.requests[0]["messages"][-1]["content"]
-    assert text.index("App: kitty") < text.index("Window: zsh — ~/rice") < text.index("error: x") < text.index("fix this")
+    assert text.index("App: kitty") < text.index("Window: zsh — ~/kuwai") < text.index("error: x") < text.index("fix this")
     assert "Clipboard" not in text
     assert "Workspace" not in text

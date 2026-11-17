@@ -1,6 +1,6 @@
 # kuwai
 
-The rice's name. One desktop, made by one hand: Hyprland underneath (Lua,
+Kuwai's name. One desktop, made by one hand: Hyprland underneath (Lua,
 `hypr/`), a Quickshell shell on top (`shell/`), one design language across
 both (`docs/DESIGN.md`).
 
@@ -30,15 +30,15 @@ both (`docs/DESIGN.md`).
 
 ## Toward a release people install
 
-What makes a rice travel (r/unixporn, Hyprland showcase) is a strong first
+What makes a kuwai travel (r/unixporn, Hyprland showcase) is a strong first
 screenshot, a video, and a one-command install that doesn't break the
 person's machine. In order:
 
-1. **Rename through.** Shell identifiers still say `rice` (layers `rice-*`,
-   shortcuts `rice:*`, `bin/rice*`, `~/.local/state/rice`). Move them to
+1. **Rename through.** Shell identifiers still say `kuwai` (layers `kuwai-*`,
+   shortcuts `kuwai:*`, `bin/kuwai*`, `~/.local/state/kuwai`). Move them to
    `kuwai` in one pass with aliases for a release, so nothing user-facing
    breaks mid-way.
-2. **Island bar by default** (`rice bar island`), Waybar only as the fallback.
+2. **Island bar by default** (`kuwai bar island`), Waybar only as the fallback.
 3. **Glass mode as the hero shot** (`kuwai mode glass`): acrylic lens blur on
    windows and the shell. Tune it per wallpaper brightness; measure GPU cost on
    the iGPU.

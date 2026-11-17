@@ -1,8 +1,8 @@
 # kuwai
 
-**kuwai** is my Hyprland desktop: the **kuwai** session (Hyprland + Lua) and the **rice** shell (Quickshell — island, notifications, lock, center). One look: dark liquid glass, Inter (or SF Pro, where you have it), calm motion ([docs/DESIGN.md](docs/DESIGN.md), [docs/brandkit/README.md](docs/brandkit/README.md)).
+**kuwai** is my Hyprland desktop: the **kuwai** session (Hyprland + Lua) and the **kuwai** shell (Quickshell — island, notifications, lock, center). One look: dark liquid glass, Inter (or SF Pro, where you have it), calm motion ([docs/DESIGN.md](docs/DESIGN.md), [docs/brandkit/README.md](docs/brandkit/README.md)).
 
-Commands stay `bin/rice …` (control plane); the product name is **kuwai**.
+Commands stay `bin/kuwai …` (control plane); the product name is **kuwai**.
 
 ## Install
 
@@ -18,7 +18,7 @@ sudo system/install        # optional: alarms that wake the laptop from sleep
 Everything it replaces is backed up first (`./install.sh --uninstall` puts it
 back). It never touches your `monitors.lua`, `user.lua` or settings, never
 needs root for itself, and never sets up autologin. Check a running desktop
-any time with `./install.sh --doctor` or `bin/rice doctor` (kuwai + notifications + shell).
+any time with `./install.sh --doctor` or `bin/kuwai doctor` (kuwai + notifications + shell).
 
 **The font.** The shell is set in [Inter](https://rsms.me/inter/) (OFL,
 `inter-font` from Arch's official repos; `--deps` installs it), with its
@@ -28,8 +28,8 @@ install SF Pro: Apple's licence limits it to Apple platforms. To pick one
 yourself, set `KUWAI_FONT=inter`, `sf` or `system` in the shell's environment.
 
 Your session runs from the **stable channel** (`~/.local/share/kuwai`, the
-`stable` branch). Changes in the repo reach it with `rice promote`, which
-refuses unless `rice-check` passes (`rice channel dev` runs straight from
+`stable` branch). Changes in the repo reach it with `kuwai promote`, which
+refuses unless `kuwai-check` passes (`kuwai channel dev` runs straight from
 the repo while you work).
 
 ## Every day
@@ -39,9 +39,9 @@ the repo while you work).
 | Launcher (Super+A) | apps, windows, files, maths, conversions, and words: `timer 10m pizza`, `pomodoro`, `remind me at 5 to call mum`, `in 20m stretch`, `alarm 7:30`, `note buy milk`, a setting's name (`idle`, `screensaver`) |
 | Processes and ports | `!` in the launcher: what's using the most right now, `! zen` what matches, `! 3000` what listens there; ↵ twice ends one, ⌃↵ forces it (your own only) |
 | Quick note · remind me | Super+Ctrl+J · Super+Ctrl+Shift+J |
-| Settings | Super+Ctrl+I or `rice settings [power\|saver\|time\|notifs\|island…]`: every setting, applied at once |
+| Settings | Super+Ctrl+I or `kuwai settings [power\|saver\|time\|notifs\|island…]`: every setting, applied at once |
 | Software Update | the island's update chip: packages, AUR reviews, config files an update left (`.pacnew`) with a recommendation each |
-| From a terminal | `rice remind …`, `rice alarm …`, `rice note …`, `rice pomodoro`, `rice timer 10m` |
+| From a terminal | `kuwai remind …`, `kuwai alarm …`, `kuwai note …`, `kuwai pomodoro`, `kuwai timer 10m` |
 
 The design system (one primitive per job, Theme tokens) is in
 [docs/DESIGN.md](docs/DESIGN.md); where it's going, in
@@ -88,7 +88,7 @@ opens the panel where you act on it.
 - **Cleanup** (launcher: Cleanup, or ⌥4 in a section): the tokens every agent
   session spends listing skills nobody called in 30/90/180 days, the skills to
   mark, duplicate copies, and leftovers on disk; everything goes to the Trash,
-  Put back restores skills and their links (`bin/rice-cleanup`).
+  Put back restores skills and their links (`bin/kuwai-cleanup`).
 - **Memory by app** (System): one number, a field of dots by app, a legend that
   lights with them; proportional memory, so a browser's processes count once.
 - **Allow / Deny from the notch, through the agent's own hook.** kittymux's
@@ -100,7 +100,7 @@ opens the panel where you act on it.
   (backs up your settings first; `--remove` takes it out):
   `kittymux hooks --install` (and `--settings ~/.claude_personal/settings.json`
   for a second account), `kittymux hooks --codex --install`.
-- **HDR** reads the signal on the wire (`bin/rice-hdr`), not the preset name:
+- **HDR** reads the signal on the wire (`bin/kuwai-hdr`), not the preset name:
   the notch says HDR when the screen is really receiving PQ or HLG.
 
 ## What's in it
@@ -110,10 +110,10 @@ opens the panel where you act on it.
 | Glass HUD: brightness, volume, mic | HyDE volume popups, dunst brightness OSD | `shell/modules/osd/` |
 | Notification server + Sonner-style toast stack; important ones (critical, a reply, an action) also peek out of the notch, and an agent finishing or needing you is a notch moment. Devices too: earbuds, a speaker, your IEMs behind a DAC, a mouse or a pad connecting or going grow a card out of the notch with the device, what happened and its battery (and once at login, what's already connected) | dunst | `shell/services/Notifs.qml`, `shell/modules/notifications/Popups.qml` |
 | The center (Super+N): Notifications · Sound (coloured mixer, per-app output, device lists) · Controls (Wi‑Fi picker, Bluetooth, DND, Night Shift, Caffeine, Mic, Reduce Motion, battery, brightness) | dunst history, pavucontrol, nm-applet, brightness/hyprsunset scripts | `shell/modules/notifications/Center.qml` + `CenterContent.qml` + `*View.qml` |
-| The clipboard island (Super+V): a pill at the top centre that shows each copy, and melts into a shelf of cards: fzf search, Quick Look, ⌃K actions, OCR, pins, rendered Markdown/code/Mermaid, secrets masked | HyDE's rofi cliphist menus | `shell/modules/clipboard/`, `shell/services/Clipboard.qml`, `bin/rice-clip`, `bin/rice-render` |
+| The clipboard island (Super+V): a pill at the top centre that shows each copy, and melts into a shelf of cards: fzf search, Quick Look, ⌃K actions, OCR, pins, rendered Markdown/code/Mermaid, secrets masked | HyDE's rofi cliphist menus | `shell/modules/clipboard/`, `shell/services/Clipboard.qml`, `bin/kuwai-clip`, `bin/kuwai-render` |
 
 | The login screen and the lock screen: one design, the same password pill, status and motion | SDDM (astronaut theme), hyprlock | `greeter/`, `shell/greeter.qml`, `shell/modules/lock/` |
-| The assistant (Super+Ctrl+Shift+A): a local agent on Ollama that uses tools (the focused window, system load, clipboard, selection, files in ~, web search) and asks before it runs a command, opens an app or a link; reasoning folds away; screenshots go to a vision model first when the chosen model can't see | — | `shell/modules/assistant/`, `shell/components/ai/`, `shell/services/OllamaService.qml`, `bin/rice_agent.py` |
+| The assistant (Super+Ctrl+Shift+A): a local agent on Ollama that uses tools (the focused window, system load, clipboard, selection, files in ~, web search) and asks before it runs a command, opens an app or a link; reasoning folds away; screenshots go to a vision model first when the chosen model can't see | — | `shell/modules/assistant/`, `shell/components/ai/`, `shell/services/OllamaService.qml`, `bin/kuwai_agent.py` |
 
 
 ## Look
@@ -127,26 +127,26 @@ opens the panel where you act on it.
   `shaders/wallreveal.frag`): the new picture spreads from the notch with a
   liquid-glass front, on a layer that exists only while it plays.
 - **`kuwai-fetch`**: fastfetch with an animated GIF beside it in kitty (any GIF
-  in `~/.config/rice/fetch`; `kuwai-fetch --get-pokemon 25` fetches one).
+  in `~/.config/kuwai/fetch`; `kuwai-fetch --get-pokemon 25` fetches one).
 
 ## Run / control
 
 ```sh
-bin/rice start        # (re)start; stops dunst and takes org.freedesktop.Notifications
-bin/rice stop         # dunst comes back by itself on the next notification
-bin/rice logs         # follow the shell's log
-bin/rice notifs dnd   # also: dnd-on dnd-off mute-on mute-off clear hide open last count waybar
-bin/rice center [agents]   # toggle the center; starts the shell if it isn't running
+bin/kuwai start        # (re)start; stops dunst and takes org.freedesktop.Notifications
+bin/kuwai stop         # dunst comes back by itself on the next notification
+bin/kuwai logs         # follow the shell's log
+bin/kuwai notifs dnd   # also: dnd-on dnd-off mute-on mute-off clear hide open last count waybar
+bin/kuwai center [agents]   # toggle the center; starts the shell if it isn't running
 ```
 
 ### Notifications not showing (ZapZap, toasts, peek)
 
-0. **`bin/rice doctor`** — one report: notification owner, DND, `rice-notify`, shell health, feeds, ZapZap hint.
+0. **`bin/kuwai doctor`** — one report: notification owner, DND, `kuwai-notify`, shell health, feeds, ZapZap hint.
 1. **Who owns the bus?** `busctl --user get-property org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus GetNameOwner s org.freedesktop.Notifications` — should be **qs**, not empty and not dunst alone while you use the island.
-2. **Focus / DND** — `rice notifs dnd-off` (clears Focus and screen-share mute). Island hover: purple **Focus** chip or **bell-slash** = normal alerts suppressed (WhatsApp included). Center moon button too.
-3. **Shell failed to load** — `rice restart`; if QML broke, nothing owns notifications until fixed. **`rice-check`** must pass. Restart **ZapZap** after a long outage (it disables the backend for the session).
+2. **Focus / DND** — `kuwai notifs dnd-off` (clears Focus and screen-share mute). Island hover: purple **Focus** chip or **bell-slash** = normal alerts suppressed (WhatsApp included). Center moon button too.
+3. **Shell failed to load** — `kuwai restart`; if QML broke, nothing owns notifications until fixed. **`kuwai-check`** must pass. Restart **ZapZap** after a long outage (it disables the backend for the session).
 4. **ZapZap** — Settings → Notifications on; message with the app **in the background** (WhatsApp often skips notify for the focused chat).
-5. **Stress test** — `bin/rice-fixture notifs one` · `bin/rice-notify -a test Title Body` (D-Bus, no libnotify); worst case: `bin/rice-fixture notifs worst`.
+5. **Stress test** — `bin/kuwai-fixture notifs one` · `bin/kuwai-notify -a test Title Body` (D-Bus, no libnotify); worst case: `bin/kuwai-fixture notifs worst`.
 
 Quickshell hot-reloads on save, so editing a `.qml` file updates the running
 shell. The shell runs by path (`qs -p ~/Projects/rice/shell`), not `qs -c`,
@@ -174,7 +174,7 @@ Inside the assistant: ↵ send · ⇧↵ newline · ⌃K model · / commands · 
 ⌃N new chat · ⌃O apps · ⌃M studio · ⌃B sidebar · ⌃↵ run (when it asks) · Esc don't run,
 then stop, then close · ⌫ on an empty prompt removes the last attachment.
 
-The Super shortcuts are Hyprland global shortcuts (`global, rice:center` …)
+The Super shortcuts are Hyprland global shortcuts (`global, kuwai:center` …)
 that call straight into the running shell (`shell/modules/Shortcuts.qml`):
 no process per keypress. `hyprctl globalshortcuts` lists them.
 
@@ -187,7 +187,7 @@ shell/
   components/               shared visuals (GlassCard, …)
   services/                 data + state singletons (Notifs, NotifAdapters, …)
   modules/                  surfaces (osd/, notifications/, …)
-bin/                        rice (control CLI), rice-shell (launcher), rice-usage (usage limits, read-only)
+bin/                        kuwai (control CLI), kuwai-shell (launcher), kuwai-usage (usage limits, read-only)
 hypr/                       kuwai: the Hyprland side (Lua) — see hypr/README.md
 greeter/                    the login screen: install, sync, preview, its Hyprland config
 waybar/                     Waybar module overrides (symlinked into ~/.config/waybar/modules)
@@ -198,48 +198,48 @@ refs/                       shallow clones of other shells to read (gitignored)
 ## How it hooks into the system
 
 - `~/.config/hypr/hyprland.lua` loads kuwai (`hypr/init.lua`), which autostarts
-  `bin/rice-shell`, binds the shell's global shortcuts and gives every `rice-*`
+  `bin/kuwai-shell`, binds the shell's global shortcuts and gives every `kuwai-*`
   layer blur without animation, exempt from xray so the glass blurs real
   windows, not just the wallpaper. Details: [hypr/README.md](hypr/README.md).
 - `~/.config/waybar/modules/custom-dunst.jsonc` → `waybar/custom-dunst.jsonc`
-  keeps HyDE's bell working against the rice (or dunst, as fallback).
+  keeps HyDE's bell working against kuwai (or dunst, as fallback).
 - dunst stays installed as the fallback. Its drop-ins in
   `~/.config/dunst/dunstrc.d/` (T3 Code, Ghostty) keep it presentable.
 - Brightness (the OSD, dimming, the keys, Display) goes through
-  `bin/rice-brightness` (see "What the rice owns" below).
+  `bin/kuwai-brightness` (see "What kuwai owns" below).
 
-### What the rice owns, what stays yours
+### What kuwai owns, what stays yours
 
 Everything the desktop calls lives in this repo and runs from the copy you're
 on (stable or dev), so a fresh install has it and a fix lands once:
 
 | Was | Now | For |
 | --- | --- | --- |
-| `~/Scripts/brightness.sh` (+ `brightness.py`, `brightness-client.py`) | `bin/rice-brightness`, `lib/brightness/` | brightness of every screen, the OSD, dimming |
-| `~/Scripts/live-wallpaper.sh` | `bin/rice-livewall` | live wallpapers (`rice wall`) |
-| `~/Scripts/tile-two.sh` + `lib-dispatch.sh` | `bin/rice-tile-two`, `lib/dispatch.sh` | Super+Alt+F tile two |
-| `~/Scripts/shazam-now.sh` | `bin/rice-shazam` | “what's playing” recognition |
+| `~/Scripts/brightness.sh` (+ `brightness.py`, `brightness-client.py`) | `bin/kuwai-brightness`, `lib/brightness/` | brightness of every screen, the OSD, dimming |
+| `~/Scripts/live-wallpaper.sh` | `bin/kuwai-livewall` | live wallpapers (`kuwai wall`) |
+| `~/Scripts/tile-two.sh` + `lib-dispatch.sh` | `bin/kuwai-tile-two`, `lib/dispatch.sh` | Super+Alt+F tile two |
+| `~/Scripts/shazam-now.sh` | `bin/kuwai-shazam` | “what's playing” recognition |
 
 Edit the repo's copies. The old `~/Scripts` names are one-line forwarders to
 these (so Waybar, HyDE binds and `user.lua` keep working); the originals were
-moved to `~/Scripts/.moved-to-rice-2026-11-08/`.
+moved to `~/Scripts/.moved-to-kuwai-2026-11-08/`.
 
 `~/Scripts` is for what belongs to this machine and not to the desktop: your
-voxtype dictation scripts (the rice binds them when they exist; `user.lua` can
+voxtype dictation scripts (kuwai binds them when they exist; `user.lua` can
 point `K.voxtype_scripts` elsewhere), game and app helpers. HyDE's helpers
 (`~/.local/lib/hyde`) and kittymux (`~/.local/bin/kittymux`) are their own
-projects; the rice uses them when present.
+projects; kuwai uses them when present.
 
 ## Usage limits (Usage panel)
 
-`bin/rice-usage` reads T3 Code's own usage data: every provider and every
+`bin/kuwai-usage` reads T3 Code's own usage data: every provider and every
 signed-in account (two Claude logins show as two segments), pushed live over
 T3 Code's config subscription while the Usage panel is open. It only reads.
 Give it a read-only token once:
 
 ```sh
-umask 077; mkdir -p ~/.local/state/rice
-t3 auth session issue --scope orchestration:read --label rice-usage --ttl 365d --token-only > ~/.local/state/rice/t3-token
+umask 077; mkdir -p ~/.local/state/kuwai
+t3 auth session issue --scope orchestration:read --label kuwai-usage --ttl 365d --token-only > ~/.local/state/kuwai/t3-token
 ```
 
 Without a token, or with T3 Code closed, it falls back to kittymux's
@@ -248,8 +248,8 @@ Without a token, or with T3 Code closed, it falls back to kittymux's
 ## Motion
 
 Reduce Motion (Controls tab) turns travel, scale and stagger into plain
-fades; it's remembered in `~/.local/state/rice/prefs.json`, and it's also on
-when `RICE_REDUCE_MOTION=1` or Hyprland's animations are off. `hypr/kuwai/motion.lua`
+fades; it's remembered in `~/.local/state/kuwai/prefs.json`, and it's also on
+when `KUWAI_REDUCE_MOTION=1` or Hyprland's animations are off. `hypr/kuwai/motion.lua`
 gives Hyprland the same language: one ease-out, ~250ms in, ~160ms out, and a
 critically damped spring for window moves (`kuwai motion reduced|off`).
 
@@ -258,14 +258,14 @@ critically damped spring for window moves (`kuwai motion reduced|off`).
 ![The login screen coming up at boot](docs/media/login/login-intro.gif)
 
 The login screen replaces SDDM and shows on every monitor. greetd runs a
-bare Hyprland (`greeter/hyprland.lua`) with the rice's own Quickshell login
+bare Hyprland (`greeter/hyprland.lua`) with kuwai's own Quickshell login
 on it (`shell/greeter.qml`). It comes up with your screens and keyboard
 layout as your session last had them: at each login `greeter/sync` writes
 them as plain data (`kuwai-greeter.conf`: modes, positions, scale, 10-bit
 where you use it, the layout, variant and switch), and the login screen
 checks every line and ignores the whole file if anything in it is off,
 falling back to each screen's preferred mode and a US keyboard. It never
-runs anything from your files: its code is root's. The lock screen (`rice lock`) is its sibling: the
+runs anything from your files: its code is root's. The lock screen (`kuwai lock`) is its sibling: the
 same password pill, the same corner status, the same motion.
 
 - **One axis, as on a Mac.** The art stays sharp at rest. The date, the
@@ -336,7 +336,7 @@ so the GIFs play at real speed. It needs ffmpeg and ImageMagick.
 ## Clipboard island
 
 Super+V opens it (Super+Shift+V / Super+Alt+V on your pins). cliphist stays
-the store; the rice adds copy times, pins (files that outlive the 750-entry
+the store; kuwai adds copy times, pins (files that outlive the 750-entry
 cap) and the island. ↵ pastes into the window you came from, ⌃K lists every
 action. Mermaid diagrams draw if mermaid-cli is installed
 (`npm i -g @mermaid-js/mermaid-cli`); without it their source shows
@@ -350,7 +350,7 @@ after they exit.
 
 ## GitHub and Gmail
 
-`bin/rice-feeds` (a user service, `systemd/rice-feeds.service`) turns both
+`bin/kuwai-feeds` (a user service, `systemd/kuwai-feeds.service`) turns both
 into ordinary notifications, without their apps:
 
 - **GitHub**, through `gh` and its login. It asks once a minute, sending
@@ -361,7 +361,7 @@ into ordinary notifications, without their apps:
   go quietly into the center, and your own activity isn't news.
 - **Gmail**, over IMAP IDLE: Gmail pushes new mail, so nothing polls. Only
   mail Gmail marks important, in Primary, unread. It needs an app password
-  (2-Step Verification on), kept in the keyring: `rice feeds gmail-setup`.
+  (2-Step Verification on), kept in the keyring: `kuwai feeds gmail-setup`.
 
 Every card has Open and Mark as Read (mail has Archive too), and goes away
 by itself once you've read it on github.com or in Gmail. GitHub cards show
@@ -369,9 +369,9 @@ the person's avatar. Where there's someone to answer, Reply in the center
 answers without a browser: a comment on the issue or pull request, or an
 email Gmail threads with the original (sent through smtp.gmail.com with the
 same app password; no-reply senders get no reply field). Anything longer,
-Open. `rice feeds` shows the status, `rice feeds logs` follows it.
+Open. `kuwai feeds` shows the status, `kuwai feeds logs` follows it.
 
-Settings live in `~/.config/rice/feeds.json`, read each time, so changes need
+Settings live in `~/.config/kuwai/feeds.json`, read each time, so changes need
 no restart (the address is the exception; `gmail-setup` sets it and restarts):
 
 ```json

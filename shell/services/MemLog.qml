@@ -1,5 +1,5 @@
 pragma Singleton
-// Run-attributed natural-settle memory samples. See bin/rice-memlog.
+// Run-attributed natural-settle memory samples. See bin/kuwai-memlog.
 // No forced GC, shared rotation temp, content, account identity or title capture.
 import QtQuick
 import Quickshell
@@ -20,7 +20,7 @@ Singleton {
     }
     function sample() {
         if (append.running) { root.skipped++; return; }
-        append.command = [Paths.bin + "/rice-memlog", "--config", Quickshell.shellDir, "--run", root.runId,
+        append.command = [Paths.bin + "/kuwai-memlog", "--config", Quickshell.shellDir, "--run", root.runId,
                           "--render-loop", Quickshell.env("QSG_RENDER_LOOP") || "default", "--outputs", String(Quickshell.screens.length),
                           String(Notifs.items.length), String(panelsOpened), String(centerOpened), String(T3Code.items.length),
                           root.locked ? "1" : "0", String(saverStarts), String(root.skipped)];

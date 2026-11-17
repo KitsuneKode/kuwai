@@ -1,9 +1,9 @@
 -- kuwai.hyde — the HyDE bridge. kuwai doesn't need HyDE; when it's installed,
--- this keeps the HyDE pieces the rice hasn't replaced yet working: wallpaper
+-- this keeps the HyDE pieces kuwai hasn't replaced yet working: wallpaper
 -- daemon and wallbash, Waybar, rofi pickers, battery alerts, config.toml.
 -- Themes come through kuwai.theme (HyDE's theme.conf + wallbash colours).
 --
--- As the shell grows (island bar, wallpapers, themes are already the rice's),
+-- As the shell grows (island bar, wallpapers, themes are already kuwai's),
 -- lines here simply get deleted.
 
 local K = require("kuwai.core")
@@ -40,9 +40,9 @@ group("Pickers")
 -- launcher (Super+A) is for apps and open windows.
 local vic = K.has("vicinae")
 -- Emoji and glyphs: the island launcher's `:` / `;` modes (HyDE's databases,
--- the rice's UI).
-bind("SUPER + comma", "Emoji", hl.dsp.global("rice:emoji"))
-bind("SUPER + period", "Glyphs", hl.dsp.global("rice:glyphs"))
+-- kuwai's UI).
+bind("SUPER + comma", "Emoji", hl.dsp.global("kuwai:emoji"))
+bind("SUPER + period", "Glyphs", hl.dsp.global("kuwai:glyphs"))
 bind("SUPER + SHIFT + E", "Find a file", vic and "vicinae cmd launch files:search" or rofi(hyde("rofilaunch.sh") .. " f"))
 bind("SUPER + SHIFT + A", "Rofi style", rofi(hyde("rofiselect.sh")))
 
@@ -56,8 +56,8 @@ bind("SUPER + SHIFT + U", "Lock screen layout", rofi(hyde("hyprlock.sh") .. " --
 -- Straight to the shell (it knows which bar runs: the island tucks, Waybar
 -- toggles). The old route, a shell command calling `hyprctl eval` back into
 -- Hyprland, silently did nothing.
-bind("CTRL + ALT + W", "Top bar: tuck the island (Minimal ⇄ Hidden) / Waybar on/off", hl.dsp.global("rice:island-tuck"), { locked = true })
-bind("CTRL + ALT + SHIFT + W", "Island: minimal ⇄ everything (workspaces, time, status)", hl.dsp.global("rice:island-style"), { locked = true })
+bind("CTRL + ALT + W", "Top bar: tuck the island (Minimal ⇄ Hidden) / Waybar on/off", hl.dsp.global("kuwai:island-tuck"), { locked = true })
+bind("CTRL + ALT + SHIFT + W", "Island: minimal ⇄ everything (workspaces, time, status)", hl.dsp.global("kuwai:island-style"), { locked = true })
 
 group("Utilities")
 bind("SUPER + SHIFT + G", "Game launcher", hyde("gamelauncher.sh"))

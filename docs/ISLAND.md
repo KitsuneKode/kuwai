@@ -1,16 +1,16 @@
-# The rice as one island
+# Kuwai as one island
 
-Status: roadmap, 2026-10-29. Built so far: the island bar at rest and on hover (`rice bar island`, step 1), the clipboard island (copy pill, shelf, Quick Look), the recording island
+Status: roadmap, 2026-10-29. Built so far: the island bar at rest and on hover (`kuwai bar island`, step 1), the clipboard island (copy pill, shelf, Quick Look), the recording island
 (setup, pill, saved), the center (notifications, agents, sound, controls), the OSD. This page is the plan for making
 the island the whole shell, replacing Waybar, rofi, hyprlock's look and the scattered popups.
 
 ## The idea
 
 One black-glass island at the top centre of each monitor (Apple's Dynamic Island, macOS notch apps, the references in
-the conversation: "insane hyprland", Skiper's island, the island rice video). At rest it is a small pill with the
+the conversation: "insane hyprland", Skiper's island, the island kuwai video). At rest it is a small pill with the
 essentials; it grows, never jumps, into whatever is needed, and shrinks back. Everything else (control center,
 calendar, power menu, launcher, settings, auth prompts, the lock screen) is the same material and the same motion,
-growing out of the island or from it, so the rice reads as one object, not a bar plus windows.
+growing out of the island or from it, so kuwai reads as one object, not a bar plus windows.
 
 ## States of the island
 
@@ -40,12 +40,12 @@ center; media → player; capsules → workspace overview.
    clipboard's matcher), frecency.
 8. **Settings app**: sidebar (Bar & Island, Media, Clock & Date, Appearance, Motion, Launcher, Dock, Notifications,
    Control Center, Lock Screen, System), search, back/forward, rows of toggles/sliders/segmented controls, live preview;
-   writes `~/.config/rice/settings.json`, which every module reads (one `Settings` singleton).
+   writes `~/.config/kuwai/settings.json`, which every module reads (one `Settings` singleton).
 9. **Lock screen** (`WlSessionLock`): big rounded-numeral clock (SF Pro Rounded, animated digits), date, avatar, user,
    "press any key"; blurred, slowly moving wallpaper (a cheap shader, paused when idle/on battery); PAM via
    `Quickshell.Services.Pam`.
 10. **Wallpaper & theme**: picker grown from the island (thumbnails, ←→, Enter), matugen/wallbash colours, applied to
-    the rice, kitty, Hyprland borders; theme presets.
+    kuwai, kitty, Hyprland borders; theme presets.
 11. **Dock** (optional, off by default).
 12. **Toasts** become island activities or stack under it (Sonner mechanics stay).
 
@@ -72,7 +72,7 @@ shell/
     control/     ControlCenter, pages/*
     calendar/  media/  power/  polkit/  launcher/  settings/  lock/  wallpaper/  dock/
     notifications/  clipboard/  osd/   (existing; folded into the island over time)
-bin/             rice, rice-shell, rice-clip, rice-shot, rice-rec, rice-usage, rice-render
+bin/             kuwai, kuwai-shell, kuwai-clip, kuwai-shot, kuwai-rec, kuwai-usage, kuwai-render
 install/         installer: packages, fonts, symlinks, Hyprland include, migration from HyDE
 ```
 

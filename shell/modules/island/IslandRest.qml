@@ -837,7 +837,7 @@ Item {
 
     }
 
-    // ── An agent's moment ("Claude · rice  Needs you  +2") ───────────────
+    // ── An agent's moment ("Claude · kuwai  Needs you  +2") ───────────────
     // Something to act on, so it answers like a notification: tap goes there
     // (that kitty pane, or the T3 thread); pull down lists every one waiting
     // (the center's Agents tab); swipe up marks it read and it goes. The

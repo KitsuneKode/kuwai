@@ -2,7 +2,7 @@
 
 ## Flow
 
-`rice update` runs `rice-update` (jsonl in `$XDG_RUNTIME_DIR/rice/update.jsonl`). Island **Software Update** panel shows phases.
+`kuwai update` runs `kuwai-update` (jsonl in `$XDG_RUNTIME_DIR/kuwai/update.jsonl`). Island **Software Update** panel shows phases.
 
 ## Orange “stopped before finishing”
 
@@ -10,4 +10,4 @@ Usually the job died before a `done` line (password cancel, crash, shell reload)
 
 ## Root
 
-Only `rice-update-root` (narrow argv, tested in `tests/root`).
+Only `kuwai-update-root` (narrow argv, tested in `tests/root`).

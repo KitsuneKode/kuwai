@@ -25,8 +25,8 @@ def run(dest, home):
 
 def home_with_data(tmp_path):
     home = tmp_path / "home"
-    (home / ".config/rice").mkdir(parents=True)
-    (home / ".config/rice/settings.json").write_text('{"clock24": true}')
+    (home / ".config/kuwai").mkdir(parents=True)
+    (home / ".config/kuwai/settings.json").write_text('{"clock24": true}')
     (home / ".face").write_bytes(b"png")
     return home
 
@@ -48,7 +48,7 @@ def test_locked_layout_gets_data_only(tmp_path):
         assert not (dest / "user").exists() and not (dest / "face").exists()
         assert (dest / "home/.kuwai-user").read_text().strip()
         assert (dest / "home/.face").read_bytes() == b"png"
-        assert (dest / "home/.config/rice/settings.json").read_text() == '{"clock24": true}'
+        assert (dest / "home/.config/kuwai/settings.json").read_text() == '{"clock24": true}'
         assert "still writable" not in r.stderr
     finally:
         os.chmod(dest, 0o755)

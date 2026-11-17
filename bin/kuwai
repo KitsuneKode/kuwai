@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# kuwai — the Hyprland half of the rice, from the command line.
+# kuwai — the desktop from the command line. This file is the Hyprland half; any other
+# command goes to the shell half, bin/kuwai-ctl (channel, promote, bar, notifs, timers, …).
 #
 #   kuwai info                      version, mode, GPU, theme
 #   kuwai doctor                    check config, session, scripts; exit 1 on problems
@@ -21,6 +22,7 @@
 set -uo pipefail
 
 ROOT=${KUWAI_ROOT:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}   # else the copy this script is in
+HERE=$(dirname "$(readlink -f "$0")")   # the shell half shipped with this copy (not KUWAI_ROOT's, which may be the other channel)
 ENTRY=${XDG_CONFIG_HOME:-$HOME/.config}/hypr/hyprland.lua
 STATE_DIR=${XDG_STATE_HOME:-$HOME/.local/state}/kuwai
 STATE=$STATE_DIR/state
@@ -139,7 +141,7 @@ cmd_display() {
 
 cmd_motion() {
     case ${1:-} in
-        "") echo "${RICE_REDUCE_MOTION:+reduced (RICE_REDUCE_MOTION)}$(state_get motion)"; [ -z "$(state_get motion)" ] && echo full; return ;;
+        "") echo "${KUWAI_REDUCE_MOTION:+reduced (KUWAI_REDUCE_MOTION)}$(state_get motion)"; [ -z "$(state_get motion)" ] && echo full; return ;;
         full) state_set motion "" ;;
         reduced|off) state_set motion "$1" ;;
         *) echo "usage: kuwai motion [full|reduced|off]" >&2; return 2 ;;
@@ -284,17 +286,17 @@ cmd_doctor() {
         note "not inside Hyprland — session checks skipped"
     fi
     # hypridle only when settings hand idle to it (else the shell's services/Idle does it).
-    idle_owner=$(jq -r '.idleOwner // "shell"' "${XDG_CONFIG_HOME:-$HOME/.config}/rice/settings.json" 2>/dev/null || echo shell)
+    idle_owner=$(jq -r '.idleOwner // "shell"' "${XDG_CONFIG_HOME:-$HOME/.config}/kuwai/settings.json" 2>/dev/null || echo shell)
     if [ "$idle_owner" = hypridle ]; then units="hypridle.service"; else units=""
         systemctl --user is-active --quiet hypridle.service && bad "hypridle runs beside the shell's idle: systemctl --user stop hypridle" || ok "idle: the shell's (hypridle off)"
     fi
-    for u in $units voxtype.service gcr-ssh-agent.socket rice-clipboard.service rice-feeds.service; do
+    for u in $units voxtype.service gcr-ssh-agent.socket kuwai-clipboard.service kuwai-feeds.service; do
         st=$(systemctl --user is-active "$u" 2>/dev/null); [ "$st" = active ] && ok "$u" || note "$u: $st"
     done
-    # Password prompts: kuwai's (rice-auth), or KDE's as the fallback; never none.
-    if [ "$(systemctl --user is-active rice-auth.service 2>/dev/null)" = active ]; then ok "password prompt: kuwai (rice-auth)"
-    elif [ "$(systemctl --user is-active plasma-polkit-agent.service 2>/dev/null)" = active ]; then note "password prompt: KDE's fallback (rice-auth not running)"
-    else bad "no password prompt (polkit agent) running: systemctl --user start rice-auth"; fi
+    # Password prompts: kuwai's (kuwai-auth), or KDE's as the fallback; never none.
+    if [ "$(systemctl --user is-active kuwai-auth.service 2>/dev/null)" = active ]; then ok "password prompt: kuwai (kuwai-auth)"
+    elif [ "$(systemctl --user is-active plasma-polkit-agent.service 2>/dev/null)" = active ]; then note "password prompt: KDE's fallback (kuwai-auth not running)"
+    else bad "no password prompt (polkit agent) running: systemctl --user start kuwai-auth"; fi
     auth_audit
     n=$(faillock --user "$USER" 2>/dev/null | grep -c ' V$'); deny=$(sed -nE 's/^\s*deny\s*=\s*([0-9]+).*/\1/p' /etc/security/faillock.conf); deny=${deny:-3}
     [ "${n:-0}" -ge "$deny" ] && bad "account locked by faillock ($n/$deny failed tries): faillock --user $USER --reset" || ok "faillock: ${n:-0}/$deny recent failed tries"
@@ -342,23 +344,23 @@ cmd_auth() {
                     --label "shell/components/$f.qml" --label "shell-auth/components/$f.qml" || true
             done ;;
         status)
-            systemctl --user --no-pager status rice-auth.service | head -5
-            local rt="${XDG_RUNTIME_DIR:-/run/user/$UID}/rice"
+            systemctl --user --no-pager status kuwai-auth.service | head -5
+            local rt="${XDG_RUNTIME_DIR:-/run/user/$UID}/kuwai"
             [ -s "$rt/auth-pending" ] && echo "  waiting: $(head -1 "$rt/auth-pending") (on $(sed -n 2p "$rt/auth-pending"))" || echo "  no password request waiting"
             pgrep -a pkexec | sed 's/^/  pkexec: /'
             n=$(faillock --user "$USER" 2>/dev/null | grep -c ' V$'); echo "  failed tries: ${n:-0}"
             auth_audit ;;
         here|summon)   # bring a waiting prompt to the screen you're on (or NAME)
-            local rt="${XDG_RUNTIME_DIR:-/run/user/$UID}/rice" s=${2:-}
+            local rt="${XDG_RUNTIME_DIR:-/run/user/$UID}/kuwai" s=${2:-}
             [ -n "$s" ] || s=$(hyprctl repl 'return kuwai.where()' 2>/dev/null | tail -1 | jq -r '.looking // empty' 2>/dev/null)
             [ -n "$s" ] || s=$(hyprctl monitors -j | jq -r '.[]|select(.focused).name')
             mkdir -p "$rt" && echo "$s" > "$rt/auth-summon" && echo "prompt → $s" ;;
         restart)   # a stuck prompt: restart it (a request it held is dismissed; the app can ask again)
-            systemctl --user restart rice-auth.service && echo "password prompt restarted" ;;
+            systemctl --user restart kuwai-auth.service && echo "password prompt restarted" ;;
         fallback)  # kuwai's prompt misbehaves: use KDE's agent until `kuwai auth restore`
-            systemctl --user stop rice-auth.service; systemctl --user start plasma-polkit-agent.service && echo "KDE's password prompt is in charge (kuwai auth restore to go back)" ;;
+            systemctl --user stop kuwai-auth.service; systemctl --user start plasma-polkit-agent.service && echo "KDE's password prompt is in charge (kuwai auth restore to go back)" ;;
         restore)
-            systemctl --user stop plasma-polkit-agent.service; systemctl --user start rice-auth.service && echo "kuwai's password prompt is back" ;;
+            systemctl --user stop plasma-polkit-agent.service; systemctl --user start kuwai-auth.service && echo "kuwai's password prompt is back" ;;
         reset-tries)  # after cancels or wrong passwords locked you out (your own record; no root)
             faillock --user "$USER" --reset && echo "failed tries cleared" ;;
         *) echo "kuwai auth [status|here [SCREEN]|restart|fallback|restore|reset-tries|diff]" >&2; return 2 ;;
@@ -370,13 +372,13 @@ cmd_auth() {
 # and the app can ask again).
 cmd_rescue() {
     echo "kuwai rescue"
-    local rt="${XDG_RUNTIME_DIR:-/run/user/$UID}/rice"
-    systemctl --user reset-failed rice-auth.service rice-clipboard.service rice-feeds.service 2>/dev/null
-    systemctl --user restart rice-auth.service && echo "  ✓ password prompt restarted"
-    systemctl --user restart rice-clipboard.service && echo "  ✓ clipboard history watchers restarted"
-    systemctl --user restart rice-feeds.service && echo "  ✓ GitHub and Gmail notifications restarted"
+    local rt="${XDG_RUNTIME_DIR:-/run/user/$UID}/kuwai"
+    systemctl --user reset-failed kuwai-auth.service kuwai-clipboard.service kuwai-feeds.service 2>/dev/null
+    systemctl --user restart kuwai-auth.service && echo "  ✓ password prompt restarted"
+    systemctl --user restart kuwai-clipboard.service && echo "  ✓ clipboard history watchers restarted"
+    systemctl --user restart kuwai-feeds.service && echo "  ✓ GitHub and Gmail notifications restarted"
     : > "$rt/auth-pending" 2>/dev/null
-    "$ROOT/bin/rice-shell" >/dev/null 2>&1 && echo "  ✓ island shell restarted"
+    "$ROOT/bin/kuwai-shell" >/dev/null 2>&1 && echo "  ✓ island shell restarted"
     # services/Idle reconciles the requested owner after readiness; do not race it.
     echo "  • idle ownership is reconciled by the shell (see Power & Idle for errors)"
     if [ "$(faillock --user "$USER" 2>/dev/null | grep -c ' V$')" -gt 0 ]; then echo "  • failed password tries recorded: kuwai auth reset-tries clears them"; fi
@@ -385,7 +387,7 @@ cmd_rescue() {
 
 case ${1:-info} in
     info) live && lua 'return kuwai.info()' && echo || echo "kuwai (not running) · mode $(state_get mode || echo focus)" ;;
-    doctor) cmd_doctor ;;
+    doctor) cmd_doctor; rc=$?; "$HERE/kuwai-doctor" || rc=1; exit $rc ;;   # the session, then the shell
     auth) shift; cmd_auth "$@" ;;
     rescue) cmd_rescue ;;
     mode) shift; cmd_mode "$@" ;;
@@ -402,7 +404,7 @@ case ${1:-info} in
             offer)  # asked at login (kuwai.resilience): one notification, one button
                 [ -s "$snap" ] || exit 0
                 n=$(grep -vc '^#' "$snap"); when=$(head -1 "$snap" | sed 's/^# kuwai session //')
-                RN="$ROOT/bin/rice-notify"
+                RN="$ROOT/bin/kuwai-notify"
                 a=$([ -x "$RN" ] && "$RN" -w -a kuwai -i view-restore -A restore="Restore" -A no="Not now" \
                     "Restore your last session?" "$n apps on their workspaces, saved $when" \
                     || notify-send -a kuwai -i view-restore -t 30000 -A restore="Restore" -A no="Not now" \
@@ -415,6 +417,8 @@ case ${1:-info} in
                *) lua "return kuwai.focus and kuwai.focus(${1:-25}) or 'focus_sessions is off'" ;;
            esac; echo ;;
     reload) hyprctl reload ;;
-    -h|--help|help) sed -n '2,/^set/p' "$0" | grep '^#' | sed 's/^# \{0,1\}//' ;;
-    *) echo "kuwai: unknown command '$1' (kuwai help)" >&2; exit 2 ;;
+    -h|--help|help) sed -n '2,/^set/p' "$0" | grep '^#' | sed 's/^# \{0,1\}//'
+                    echo; "$HERE/kuwai-ctl" help 2>/dev/null ;;
+    # The shell half (kuwai-ctl): channel, promote, bar, notifs, timers, lock, settings, …
+    *) exec "$HERE/kuwai-ctl" "$@" ;;
 esac

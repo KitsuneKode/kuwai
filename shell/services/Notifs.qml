@@ -1,10 +1,10 @@
-// The rice's notification server (org.freedesktop.Notifications). Replaces
-// dunst while the rice runs; bin/rice-shell hands the bus name over, and if
+// Kuwai's notification server (org.freedesktop.Notifications). Replaces
+// dunst while kuwai runs; bin/kuwai-shell hands the bus name over, and if
 // this process dies D-Bus activation brings dunst back as the fallback.
 //
 // History, do-not-disturb and what's been seen persist in
-// ~/.local/state/rice/notifications.json. Control it with `bin/rice notifs …`
-// and `bin/rice center` (IPC targets "notifs" and "center").
+// ~/.local/state/kuwai/notifications.json. Control it with `bin/kuwai notifs …`
+// and `bin/kuwai center` (IPC targets "notifs" and "center").
 pragma Singleton
 
 import QtQuick
@@ -117,7 +117,7 @@ Singleton {
         return out;
     }
 
-    readonly property string stateDir: Quickshell.env("HOME") + "/.local/state/rice"
+    readonly property string stateDir: Quickshell.env("HOME") + "/.local/state/kuwai"
     property bool loaded: false
     property var carried: []            // reload-carried notifications waiting for the history
     onLoadedChanged: if (loaded && carried.length) {
@@ -449,7 +449,7 @@ Singleton {
     // Focus (dnd) and sharing (dndMute) are separate reasons to hold
     // notifications, each with its own owner: ending Focus must not lift the
     // mute and redaction a screen share put on. Only the share's end does
-    // (automation.lua → `rice notifs mute-off`).
+    // (automation.lua → `kuwai notifs mute-off`).
     function toggleUserDnd() {
         dnd = !dnd;
     }
@@ -513,7 +513,7 @@ Singleton {
     }
     function invokeDefault(item) {
         const n = item.notification;
-        // A feed card (bin/rice-feeds) with a link: the shell opens the link
+        // A feed card (bin/kuwai-feeds) with a link: the shell opens the link
         // itself and asks the feed only to mark it read. Its "Open" lived in
         // the feed's memory, so after the feed restarted a click opened nothing.
         if (item.feed && item.url) {
@@ -525,12 +525,12 @@ Singleton {
         if (act) act.invoke();
         return !!act;
     }
-    // Its sender gone (a restart since), a link still opens (bin/rice-feeds).
+    // Its sender gone (a restart since), a link still opens (bin/kuwai-feeds).
     function openUrl(item) {
         // Web and mail links only, and never with a newline or NUL smuggled in.
         const u = String(item.url || "");
         if (!/^(https?:\/\/[^\s]+|mailto:[^\s]+)$/.test(u) || /[\0\n\r]/.test(u)) return;
-        // Its own transient unit (as bin/rice-feeds does): a browser started
+        // Its own transient unit (as bin/kuwai-feeds does): a browser started
         // from the shell's process died with the shell's next restart.
         const p = jumper.createObject(root, { command: ["systemd-run", "--user", "--collect", "--quiet", "--slice=app.slice", "--", "xdg-open", u] });
         p.running = true;
@@ -549,14 +549,14 @@ Singleton {
 
     function invokeAction(item, id) {
         const n = item.notification;
-        if (n && n.hints && n.hints["x-rice-crash"] === "1") {
+        if (n && n.hints && n.hints["x-kuwai-crash"] === "1") {
             item.discard = true;
             if (item.popup) item.leaving = true;
             else forget.later(item);
             if (id === "default") Crashes.runDiagnose(item.body);
             return;
         }
-        if (n && n.hints && n.hints["x-rice-agent-limit"] === "1") {
+        if (n && n.hints && n.hints["x-kuwai-agent-limit"] === "1") {
             item.discard = true;
             if (item.popup) item.leaving = true;
             else forget.later(item);
@@ -660,7 +660,7 @@ Singleton {
     // where it stood, a toast only as its row; read/unread follows its time,
     // which is untouched. One-time codes are never held: a secret the person
     // just cleared isn't kept or shown again. Without a surface (scripts,
-    // `rice notifs clear`) a clear ends at once, as before.
+    // `kuwai notifs clear`) a clear ends at once, as before.
     property var undo: null
     readonly property string undoSurface: undo ? undo.surface : ""
     readonly property string undoLabel: Undo.label(undo)
@@ -898,7 +898,7 @@ Singleton {
         NotifItem {}
     }
 
-    // ── IPC: `qs ipc -p <shell> call notifs <fn>` (wrapped by bin/rice) ──
+    // ── IPC: `qs ipc -p <shell> call notifs <fn>` (wrapped by bin/kuwai) ──
     IpcHandler {
         target: "notifs"
 

@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 @pytest.fixture
 def updater(tmp_path, monkeypatch):
-    loader = importlib.machinery.SourceFileLoader('recipe_updater', str(ROOT / 'bin/rice-update'))
+    loader = importlib.machinery.SourceFileLoader('recipe_updater', str(ROOT / 'bin/kuwai-update'))
     spec = importlib.util.spec_from_loader('recipe_updater', loader)
     m = importlib.util.module_from_spec(spec)
     loader.exec_module(m)
@@ -66,7 +66,7 @@ def test_verified_installed_recipe_precedes_same_version_guess(updater, monkeypa
         git('-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-qm', 'fixture')
         if text == 'old recipe':
             installed = git('rev-parse', 'HEAD')
-            git('update-ref', 'refs/rice/installed', installed)
+            git('update-ref', 'refs/kuwai/installed', installed)
     newest = git('rev-parse', 'HEAD')
     monkeypatch.setattr(m, 'installed_version', lambda p: '1.0-1')
     # No durable receipt means we cannot prove which matching-version recipe was installed.

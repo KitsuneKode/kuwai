@@ -12,9 +12,9 @@
 # Needs quickshell, ffmpeg, ImageMagick and python3.
 set -euo pipefail
 
-RICE="$(cd "$(dirname "$0")/.." && pwd)"
-SHELL_DIR="$RICE/shell"
-OUT="$RICE/docs/media/login"
+KUWAI="$(cd "$(dirname "$0")/.." && pwd)"
+SHELL_DIR="$KUWAI/shell"
+OUT="$KUWAI/docs/media/login"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 mkdir -p "$OUT"
@@ -27,7 +27,7 @@ mkdir -p "$SB/home/.cache" "$SB/home/.config" "$SB/home/.local/state" "$SB/run"
 chmod 700 "$SB/run"
 ln -s "$HOME/.face" "$SB/home/.face"
 ln -s "$HOME/.cache/hyde" "$SB/home/.cache/hyde"
-for d in hyde rice; do [ -e "$HOME/.config/$d" ] && ln -s "$HOME/.config/$d" "$SB/home/.config/$d"; done
+for d in hyde kuwai; do [ -e "$HOME/.config/$d" ] && ln -s "$HOME/.config/$d" "$SB/home/.config/$d"; done
 sandboxed() {
     env HOME="$SB/home" XDG_RUNTIME_DIR="$SB/run" XDG_STATE_HOME="$SB/home/.local/state" \
         WAYLAND_DISPLAY="$XDG_RUNTIME_DIR/${WAYLAND_DISPLAY:-wayland-0}" "$@"

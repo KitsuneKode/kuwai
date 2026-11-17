@@ -4,7 +4,7 @@
 // a dot sized by how much was copied that day. Click a day for that day;
 // ⇧-click another for the range between. ←→ change month, Esc closes.
 //
-// Days come from copy times the rice recorded (and when pins were made):
+// Days come from copy times kuwai recorded (and when pins were made):
 // cliphist doesn't keep times, so history from before then has no day.
 import QtQuick
 import qs.config

@@ -145,10 +145,10 @@ rule({ name = "jb-tooltips", match = { class = "^(jetbrains-.*)$", title = "^(wi
 rule({ name = "jb-mouse", match = { class = "^(jetbrains-.*)$" }, no_follow_mouse = true })
 
 ---------------------------------------------------------------------------
--- The rice's own windows and kuwai's terminal variants
+-- Kuwai's own windows and kuwai's terminal variants
 ---------------------------------------------------------------------------
 rule({ name = "satty", match = { class = "^(com\\.gabm\\.satty)$" }, float = true, center = true, size = "monitor_w*0.82 monitor_h*0.82" })
-rule({ name = "rice-edit", match = { class = "^(rice-edit)$" }, float = true, center = true, size = "1100 760" })
+rule({ name = "kuwai-edit", match = { class = "^(kuwai-edit)$" }, float = true, center = true, size = "1100 760" })
 rule({ name = "recorder-picker", match = { initial_class = "^(recorder-picker)$" }, float = true, center = true, size = "500 250", stay_focused = true })
 rule({ name = "kittymux-hud", match = { class = "^(kittymux-hud)$" }, float = true, center = true, fullscreen_state = "0 0", size = "700 420" })
 -- --class float-term / drop-term (Super+Alt+T / Super+Ctrl+T): anchored, local
@@ -163,37 +163,37 @@ rule({ name = "pypr-noanim", match = { tag = "pypr_noanim" }, no_anim = true })
 -- Layers
 ---------------------------------------------------------------------------
 -- Bars and panels blur only the wallpaper (xray): cheap, and steady while
--- windows move under them. The rice's glass (rice-*, glass-osd) is excluded:
+-- windows move under them. Kuwai's glass (kuwai-*, glass-osd) is excluded:
 -- its glass must show the real windows behind it.
-layer({ name = "xray-default", match = { namespace = "negative:^(glass-osd|rice-.*|voxtype-osd)$" }, xray = true })
+layer({ name = "xray-default", match = { namespace = "negative:^(glass-osd|kuwai-.*|voxtype-osd)$" }, xray = true })
 
--- The rice: every surface is a layer named rice-*, draws its own glass and its
+-- Kuwai: every surface is a layer named kuwai-*, draws its own glass and its
 -- own motion. Blur only under the card (alpha > 0.3), real windows behind it.
-layer({ name = "rice-glass", match = { namespace = "^rice-.*$" }, blur = true, ignore_alpha = 0.3, xray = false, no_anim = true })
+layer({ name = "kuwai-glass", match = { namespace = "^kuwai-.*$" }, blur = true, ignore_alpha = 0.3, xray = false, no_anim = true })
 -- The island and what grows out of it (near-opaque black): blur only the
 -- shape itself. At 0.3 the soft shadow around a panel was blurred too, which
 -- showed as a square halo behind the rounded panel.
-layer({ name = "rice-island-shape", match = { namespace = "^rice-(island|islandbar|osd|auth)$" }, ignore_alpha = 0.75 })
--- Toasts drop from the island in a tall column (rice-notifs, 440×900): at
+layer({ name = "kuwai-island-shape", match = { namespace = "^kuwai-(island|islandbar|osd|auth)$" }, ignore_alpha = 0.75 })
+-- Toasts drop from the island in a tall column (kuwai-notifs, 440×900): at
 -- 0.3 a card fading into the center, or fading out, still had full blur
 -- under it, an empty light slab in the middle of the screen. Cards are 0.84
 -- black: blur only under a card that's really there.
-layer({ name = "rice-toasts", match = { namespace = "^rice-notifs$" }, ignore_alpha = 0.7 })
+layer({ name = "kuwai-toasts", match = { namespace = "^kuwai-notifs$" }, ignore_alpha = 0.7 })
 -- The screensaver and its film are kuwai-screensaver / kuwai-saver-film, on
--- purpose outside rice-*: rice-glass blurred behind them wherever alpha passed
+-- purpose outside kuwai-*: kuwai-glass blurred behind them wherever alpha passed
 -- 0.3, and the vignette crossed that two-thirds down (a hard line, the film
--- blurred below it). A later blur = false did not undo rice-glass's blur.
+-- blurred below it). A later blur = false did not undo kuwai-glass's blur.
 layer({ name = "kuwai-saver", match = { namespace = "^kuwai-(screensaver|saver-film)$" }, no_anim = true })
--- Live video. Outside rice-* so the glass blur rule cannot catch a
--- full-screen frame. A later blur = false does not undo rice-glass.
+-- Live video. Outside kuwai-* so the glass blur rule cannot catch a
+-- full-screen frame. A later blur = false does not undo kuwai-glass.
 layer({ name = "kuwai-wallpaper", match = { namespace = "^kuwai-wallpaper$" }, no_anim = true })
 -- A wallpaper change (services/WallFx): the shell plays it on its own short
--- layer; a compositor fade would show the hand-off. Outside rice-*: no blur.
+-- layer; a compositor fade would show the hand-off. Outside kuwai-*: no blur.
 layer({ name = "kuwai-wallfx", match = { namespace = "^kuwai-wallfx$" }, no_anim = true })
 -- The password prompt never appears in a screen share, recording or screenshot.
-layer({ name = "rice-auth-private", match = { namespace = "^rice-auth$" }, no_screen_share = true })
--- The center's scrim: deliberately outside rice-* so nothing blurs under it.
-layer({ name = "rice-scrim", match = { namespace = "^rice\\.scrim$" }, no_anim = true })
+layer({ name = "kuwai-auth-private", match = { namespace = "^kuwai-auth$" }, no_screen_share = true })
+-- The center's scrim: deliberately outside kuwai-* so nothing blurs under it.
+layer({ name = "kuwai-scrim", match = { namespace = "^kuwai\\.scrim$" }, no_anim = true })
 layer({ name = "glass-osd", match = { namespace = "^glass-osd$" }, blur = true, ignore_alpha = 0.3, xray = false, no_anim = true })
 layer({ name = "voxtype-osd", match = { namespace = "^voxtype-osd$" }, blur = true, ignore_alpha = 0.5 })
 layer({ name = "quickshell", match = { namespace = "^quickshell.*$" }, blur = true, ignore_alpha = 0 })

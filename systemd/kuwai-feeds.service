@@ -1,0 +1,22 @@
+# GitHub and Gmail as notifications (bin/kuwai-feeds): GitHub's inbox through
+# gh, Gmail's important mail over IMAP IDLE. A service so it outlives shell
+# reloads (its notifications keep their buttons) and comes back if it dies.
+# Installed like the others (a link into ~/.config/systemd/user), started by
+# startup.lua.
+[Unit]
+Description=kuwai feeds (GitHub and Gmail notifications)
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+ExecStart=/bin/sh -c 'exec "${KUWAI_ROOT:-%h/Projects/rice}/bin/kuwai-feeds"'
+Restart=always
+RestartSec=10
+Slice=background.slice
+# The script needs ~45 MB plus a gh run at a time; links open in their own
+# units (open_url), so anything near these limits is a leak, not a browser.
+MemoryHigh=200M
+MemoryMax=400M
+
+[Install]
+WantedBy=graphical-session.target

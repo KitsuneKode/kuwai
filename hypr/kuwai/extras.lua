@@ -296,9 +296,9 @@ if K.feature("focus_sessions") then
 			t = nil
 		end
 		K.set_state("focus_until", nil)
-		hl.exec_cmd(K.bin .. "/rice notifs dnd-off")
+		hl.exec_cmd(K.bin .. "/kuwai notifs dnd-off")
 		if not quiet then
-			hl.exec_cmd(K.bin .. "/rice-notify -a kuwai -i alarm-symbolic 'Focus session done' 'Notifications are back. Take a break.'")
+			hl.exec_cmd(K.bin .. "/kuwai-notify -a kuwai -i alarm-symbolic 'Focus session done' 'Notifications are back. Take a break.'")
 		end
 	end
 	local function arm(until_ts)
@@ -328,7 +328,7 @@ if K.feature("focus_sessions") then
 		end
 		local until_ts = os.time() + minutes * 60
 		K.set_state("focus_until", until_ts)
-		hl.exec_cmd(K.bin .. "/rice notifs dnd-on")
+		hl.exec_cmd(K.bin .. "/kuwai notifs dnd-on")
 		K.notify(("Focus for %d minutes — notifications held until %s"):format(minutes, os.date("%H:%M", until_ts)), 3000)
 		arm(until_ts)
 		return "until " .. os.date("%H:%M", until_ts)

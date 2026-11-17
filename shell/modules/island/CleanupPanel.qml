@@ -1,5 +1,5 @@
 // Cleanup: what your agents carry and don't use, and the leftovers on disk
-// (bin/rice-cleanup). One big number first (Clove's pattern: the cost you
+// (bin/kuwai-cleanup). One big number first (Clove's pattern: the cost you
 // didn't know you were paying), then the list, then one action.
 //
 //   Cleanup                                          30 days · 90 · 180
@@ -43,7 +43,7 @@ FocusScope {
     function load(fresh) {
         loading = true;
         error = "";
-        reader.command = [Paths.bin + "/rice-cleanup", "--days", String(days)].concat(fresh ? ["--fresh"] : []);
+        reader.command = [Paths.bin + "/kuwai-cleanup", "--days", String(days)].concat(fresh ? ["--fresh"] : []);
         reader.running = true;
     }
     Component.onCompleted: load(false)
@@ -58,7 +58,7 @@ FocusScope {
                 cp.loading = false;
             }
         }
-        onExited: code => { if (code !== 0) { cp.error = "rice-cleanup failed (exit " + code + ")"; cp.loading = false; } }
+        onExited: code => { if (code !== 0) { cp.error = "kuwai-cleanup failed (exit " + code + ")"; cp.loading = false; } }
     }
     Process {
         id: actor
@@ -73,7 +73,7 @@ FocusScope {
             cp.load(true);
         }
     }
-    function act(args, what) { actor.what = what; actor.command = [Paths.bin + "/rice-cleanup"].concat(args); actor.running = true; }
+    function act(args, what) { actor.what = what; actor.command = [Paths.bin + "/kuwai-cleanup"].concat(args); actor.running = true; }
     function toggle(name) {
         const m = Object.assign({}, marked);
         if (m[name]) delete m[name]; else m[name] = true;

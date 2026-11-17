@@ -7,7 +7,7 @@ import pytest
 
 BIN = Path(__file__).resolve().parents[2] / "bin"
 sys.path.insert(0, str(BIN))
-import rice_sandbox as sb  # noqa: E402
+import kuwai_sandbox as sb  # noqa: E402
 
 JID = "jabc123"
 
@@ -19,8 +19,8 @@ def env(tmp_path, monkeypatch):
     host.mkdir()
     secret = host / "secret.txt"
     secret.write_text("HOST SECRET\n")
-    monkeypatch.setenv("RICE_SANDBOX_DIR", str(root))
-    monkeypatch.setattr(sb, "ensure", lambda *a, **k: "rice-sandbox-test")
+    monkeypatch.setenv("KUWAI_SANDBOX_DIR", str(root))
+    monkeypatch.setattr(sb, "ensure", lambda *a, **k: "kuwai-sandbox-test")
     monkeypatch.setattr(sb, "_docker", lambda *a, **k: None)
     jobs = sb.workspace("c1") / ".jobs"
     jobs.mkdir()

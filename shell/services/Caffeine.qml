@@ -56,7 +56,7 @@ Singleton {
     onOnChanged: if (loaded) state.setText(on ? "on\n" : "off\n")
     FileView {
         id: state
-        path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/rice/caffeine"
+        path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/kuwai/caffeine"
         printErrors: false
         onLoaded: { root.on = text().trim() === "on"; root.loaded = true; adopt.running = true; }
         onLoadFailed: { root.loaded = true; adopt.running = true; root.fresh = true; if (Settings.loaded) root.startOn(); }
@@ -75,21 +75,21 @@ Singleton {
     }
 
     // What hypridle actually obeys. Released when On goes false or the shell
-    // exits, including a kill -9 (rice-shell restarts that way): both the
+    // exits, including a kill -9 (kuwai-shell restarts that way): both the
     // inhibitor and the `sleep` holding its lock die with their parent
     // (setpriv --pdeathsig). Without that every restart left one behind,
     // still blocking idle: eight of them had piled up.
     Process {
         id: hold
         running: root.loaded && root.on && root.swept
-        command: ["setpriv", "--pdeathsig", "KILL", "--", "systemd-inhibit", "--what=idle", "--who=rice", "--why=Caffeine", "--mode=block",
+        command: ["setpriv", "--pdeathsig", "KILL", "--", "systemd-inhibit", "--what=idle", "--who=kuwai", "--why=Caffeine", "--mode=block",
                   "setpriv", "--pdeathsig", "KILL", "--", "sleep", "infinity"]
     }
     // Leftovers from an older shell (before the above), swept once at start.
     property bool swept: false
     Process {
         running: true
-        command: ["sh", "-c", "for p in $(pgrep -f '^systemd-inhibit --what=idle --who=rice --why=Caffeine'); do pkill -KILL -P \"$p\"; kill -KILL \"$p\"; done 2>/dev/null; true"]
+        command: ["sh", "-c", "for p in $(pgrep -f '^systemd-inhibit --what=idle --who=kuwai --why=Caffeine'); do pkill -KILL -P \"$p\"; kill -KILL \"$p\"; done 2>/dev/null; true"]
         onExited: root.swept = true
     }
 
@@ -104,7 +104,7 @@ Singleton {
             color: "transparent"
             exclusionMode: ExclusionMode.Ignore
             mask: Region {}
-            WlrLayershell.namespace: "rice-caffeine"
+            WlrLayershell.namespace: "kuwai-caffeine"
             WlrLayershell.layer: WlrLayer.Background
             WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
             IdleInhibitor {

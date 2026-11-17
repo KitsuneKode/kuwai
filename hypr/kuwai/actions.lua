@@ -212,7 +212,7 @@ function A.focus_screen(delta)
 	end
 end
 
--- Exit: let the rice (or hyprshutdown) close apps gracefully when available.
+-- Exit: let kuwai (or hyprshutdown) close apps gracefully when available.
 function A.exit()
 	if K.has("hyprshutdown") then
 		hl.exec_cmd("hyprshutdown")

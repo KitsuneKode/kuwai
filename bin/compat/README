@@ -1,0 +1,4 @@
+The names kuwai had before the rename (rice, rice-*), for a release: each is a
+link to its kuwai name, so scripts, units and habits that still call the old
+name keep working. On PATH after kuwai's own bin (hypr/kuwai/env.lua). Removed
+in the release after next; nothing in kuwai itself calls these.

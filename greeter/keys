@@ -1,6 +1,6 @@
 #!/bin/sh
 # The login screen's brightness keys: the screen you're on, like the session
-# (bin/rice-brightness changes the focused screen; it used to change every
+# (bin/kuwai-brightness changes the focused screen; it used to change every
 # screen here, each on its own curve, and they drifted apart).
 #   keys brightness up|down
 # The focused output comes from the greeter's Hyprland. The laptop panel goes

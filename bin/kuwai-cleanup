@@ -1,0 +1,291 @@
+#!/usr/bin/env python3
+"""kuwai-cleanup: what your agents carry that they don't use, and the leftovers.
+
+  kuwai-cleanup [--days 30|90|180] [--fresh]   JSON: skills + leftovers (cached 30 min)
+  kuwai-cleanup trash SKILL…                   move skills to the Trash (and their links)
+  kuwai-cleanup trash-path PATH…               move a listed leftover to the Trash
+  kuwai-cleanup restore                        put back what the last `trash` moved
+
+Skills: every SKILL.md under ~/.agents/skills (the store) and the agents' own
+folders (~/.claude*/skills, ~/.cursor/skills, ~/.codex/skills). Each one is
+listed to the agent in every session (its name and description: the tokens it
+costs before you type anything). Used = a Claude Code Skill call
+("skill":"name"), a slash command (<command-name>/name), or an agent reading
+skills/name/SKILL.md, in any transcript of the window (Claude Code both
+accounts, Codex sessions). Plugin skills are never listed (they come and go
+with their plugin).
+
+Nothing is deleted: `trash` uses the freedesktop Trash (gio), records what it
+moved and which links pointed at it, and `restore` puts both back.
+Read-only otherwise; one ripgrep pass over the transcripts, results cached in
+~/.cache/kuwai/cleanup-<days>.json for 30 minutes.
+"""
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+HOME = Path.home()
+CACHE = Path(os.environ.get("XDG_CACHE_HOME", HOME / ".cache")) / "kuwai"
+STATE = Path(os.environ.get("XDG_STATE_HOME", HOME / ".local/state")) / "kuwai"
+STORE = HOME / ".agents/skills"
+AGENT_DIRS = [HOME / ".claude/skills", HOME / ".claude_personal/skills", HOME / ".cursor/skills",
+              HOME / ".codex/skills", STORE]
+TRANSCRIPTS = [HOME / ".claude/projects", HOME / ".claude_personal/projects", HOME / ".codex/sessions"]
+TTL = 1800
+
+
+def frontmatter(md):
+    try:
+        text = md.read_text(errors="replace")[:6000]
+    except OSError:
+        return {}
+    m = re.match(r"^---\s*\n(.*?)\n---", text, re.S)
+    out = {}
+    if not m:
+        return out
+    key = None
+    for line in m.group(1).splitlines():
+        kv = re.match(r"^([A-Za-z_-]+):\s*(.*)$", line)
+        if kv:
+            key = kv.group(1)
+            out[key] = kv.group(2).strip().strip('"').strip("'")
+        elif key and line.startswith((" ", "\t")):
+            out[key] += " " + line.strip()
+    return out
+
+
+def skills():
+    """name → {name, path (real dir), links [symlinks], tokens, agents}"""
+    found = {}
+    for d in AGENT_DIRS:
+        if not d.is_dir():
+            continue
+        agent = {".claude": "Claude", ".claude_personal": "Claude (personal)", ".cursor": "Cursor",
+                 ".codex": "Codex", ".agents": "store"}.get(d.parent.name, d.parent.name)
+        for entry in sorted(d.iterdir()):
+            md = entry / "SKILL.md"
+            if not md.is_file():
+                continue
+            real = entry.resolve()
+            fm = frontmatter(md)
+            name = fm.get("name") or entry.name
+            desc = fm.get("description", "")
+            s = found.setdefault(str(real), {"name": name, "path": str(real), "links": [], "agents": [],
+                                             "description": desc[:300], "chars": len(name) + len(desc)})
+            if entry.is_symlink():
+                s["links"].append(str(entry))
+            if agent != "store" and agent not in s["agents"]:
+                s["agents"].append(agent)
+    # The same skill in two real folders (a copy, not a link): both are listed
+    # to the agents that read them; say so, and trash moves both.
+    names = {}
+    for s in found.values():
+        names.setdefault(s["name"], []).append(s["path"])
+    for s in found.values():
+        s["copies"] = len(names[s["name"]])
+    for s in found.values():
+        # What it costs every session: its name and description in the skill list
+        # (≈ 4 characters a token, plus the list's own markup).
+        s["tokens"] = max(8, (s.pop("chars") + 24) // 4)
+    return list(found.values())
+
+
+def usage(days):
+    """skill name → last use (unix seconds) within the window."""
+    since = time.time() - days * 86400
+    files = []
+    for root in TRANSCRIPTS:
+        if root.is_dir():
+            for p in root.rglob("*.jsonl"):
+                try:
+                    if p.stat().st_mtime >= since:
+                        files.append(p)
+                except OSError:
+                    pass
+    last = {}
+    if not files or not shutil.which("rg"):
+        return last
+    pat = r'"skill":"([A-Za-z0-9:._-]+)"|<command-name>/?([A-Za-z0-9:._-]+)</command-name>|skills/([A-Za-z0-9._-]+)/SKILL\.md'
+    for i in range(0, len(files), 400):
+        chunk = files[i:i + 400]
+        r = subprocess.run(["rg", "--no-messages", "-o", "--with-filename", "-r", "$1$2$3", pat, *map(str, chunk)],
+                           capture_output=True, text=True)
+        mt = {}
+        for line in r.stdout.splitlines():
+            f, _, name = line.rpartition(":")
+            if not name:
+                continue
+            name = name.split(":")[-1]          # plugin:skill → skill
+            t = mt.get(f)
+            if t is None:
+                try:
+                    t = mt[f] = os.path.getmtime(f)
+                except OSError:
+                    t = mt[f] = 0
+            if t > last.get(name, 0):
+                last[name] = t
+    return last
+
+
+def du(path):
+    try:
+        out = subprocess.run(["du", "-sb", str(path)], capture_output=True, text=True, timeout=60).stdout
+        return int(out.split()[0]) if out else 0
+    except (subprocess.SubprocessError, ValueError, IndexError):
+        return 0
+
+
+def leftovers():
+    """Disk that only exists because something was built or cloned once."""
+    out = []
+    aur = CACHE / "aur"
+    if aur.is_dir():
+        # makepkg's scratch (src/, pkg/): rebuilt from the recipe every time.
+        scratch = [p for d in aur.iterdir() if d.is_dir() for p in (d / "src", d / "pkg") if p.is_dir()]
+        size = sum(du(p) for p in scratch)
+        if size:
+            out.append({"id": "aur-scratch", "label": "AUR build scratch", "detail": f"src/ and pkg/ of {len(scratch) // 2 or 1} recipes · rebuilt on the next update",
+                        "bytes": size, "paths": [str(p) for p in scratch], "safe": True})
+    for p, label, detail in [
+        (HOME / "Projects/rice/refs", "Reference clones", "other dotfiles kept to study · re-clonable"),
+        (HOME / ".cache/.bun/install/cache", "bun's second cache", "bun also keeps ~/.bun/install/cache; one is enough"),
+    ]:
+        if p.is_dir():
+            out.append({"id": str(p), "label": label, "detail": detail, "bytes": du(p), "paths": [str(p)],
+                        "safe": False})
+    return sorted(out, key=lambda x: -x["bytes"])
+
+
+def report(days, fresh):
+    cache = CACHE / f"cleanup-{days}.json"
+    if not fresh and cache.is_file() and time.time() - cache.stat().st_mtime < TTL:
+        return json.loads(cache.read_text())
+    used = usage(days)
+    now = time.time()
+    rows = []
+    for s in skills():
+        t = used.get(s["name"]) or used.get(Path(s["path"]).name)
+        s["lastUsed"] = int(t) if t else 0
+        s["idleDays"] = int((now - t) / 86400) if t else None
+        rows.append(s)
+    seen, unused = set(), []
+    for s in sorted([s for s in rows if not s["lastUsed"]], key=lambda s: -s["tokens"]):
+        if s["name"] in seen:
+            continue
+        seen.add(s["name"])
+        s["tokens"] *= s["copies"]
+        unused.append(s)
+    out = {"days": days, "at": int(now), "skills": len(rows), "used": len(rows) - len(unused),
+           "unused": unused, "unusedTokens": sum(s["tokens"] for s in unused),
+           "listTokens": sum(s["tokens"] for s in rows), "leftovers": leftovers()}
+    CACHE.mkdir(parents=True, exist_ok=True)
+    tmp = cache.with_suffix(".tmp")
+    tmp.write_text(json.dumps(out))
+    tmp.replace(cache)
+    return out
+
+
+def gio_trash(path):
+    return subprocess.run(["gio", "trash", "--", path], capture_output=True).returncode == 0
+
+
+def trash_skills(names):
+    by = {}
+    for s in skills():
+        by.setdefault(s["name"], []).append(s)
+    moved = []
+    for n in names:
+        if n not in by:
+            print(f"no skill {n}", file=sys.stderr)
+            continue
+        for s in by[n]:                      # every copy
+            if not gio_trash(s["path"]):
+                print(f"couldn't trash {s['path']}", file=sys.stderr)
+                continue
+            for link in s["links"]:
+                try:
+                    os.unlink(link)
+                except OSError:
+                    pass
+            moved.append({"path": s["path"], "links": s["links"]})
+    record(moved)
+    for c in CACHE.glob("cleanup-*.json"):
+        c.unlink(missing_ok=True)
+    print(json.dumps({"moved": [m["path"] for m in moved]}))
+    return 0 if moved else 1
+
+
+def trash_paths(paths):
+    allowed = {p for l in leftovers() if l["safe"] for p in l["paths"]}
+    moved = []
+    for p in paths:
+        if p not in allowed:
+            print(f"not a listed leftover: {p}", file=sys.stderr)
+            continue
+        if gio_trash(p):
+            moved.append({"path": p, "links": []})
+    record(moved)
+    for c in CACHE.glob("cleanup-*.json"):
+        c.unlink(missing_ok=True)
+    print(json.dumps({"moved": [m["path"] for m in moved]}))
+    return 0 if moved else 1
+
+
+def record(moved):
+    if not moved:
+        return
+    STATE.mkdir(parents=True, exist_ok=True)
+    (STATE / "cleanup-last.json").write_text(json.dumps({"at": int(time.time()), "moved": moved}))
+
+
+def restore():
+    f = STATE / "cleanup-last.json"
+    if not f.is_file():
+        print("nothing to put back", file=sys.stderr)
+        return 1
+    last = json.loads(f.read_text())
+    listing = subprocess.run(["gio", "trash", "--list"], capture_output=True, text=True).stdout
+    back = []
+    for m in last["moved"]:
+        uri = next((l.split("\t")[0] for l in listing.splitlines() if l.split("\t")[-1] == m["path"]), None)
+        if uri and subprocess.run(["gio", "trash", "--restore", uri], capture_output=True).returncode == 0:
+            for link in m["links"]:
+                try:
+                    os.symlink(m["path"], link)
+                except OSError:
+                    pass
+            back.append(m["path"])
+    f.unlink(missing_ok=True)
+    for c in CACHE.glob("cleanup-*.json"):
+        c.unlink(missing_ok=True)
+    print(json.dumps({"restored": back}))
+    return 0 if back else 1
+
+
+def main(argv):
+    if argv and argv[0] == "trash":
+        return trash_skills(argv[1:])
+    if argv and argv[0] == "trash-path":
+        return trash_paths(argv[1:])
+    if argv and argv[0] == "restore":
+        return restore()
+    if argv and argv[0] in ("-h", "--help"):
+        print(__doc__.strip())
+        return 0
+    days = 30
+    if "--days" in argv:
+        try:
+            days = max(1, min(365, int(argv[argv.index("--days") + 1])))
+        except (IndexError, ValueError):
+            pass
+    print(json.dumps(report(days, "--fresh" in argv)))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

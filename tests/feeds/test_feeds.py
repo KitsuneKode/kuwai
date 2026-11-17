@@ -1,4 +1,4 @@
-"""bin/rice-feeds: what each GitHub thread and Gmail message becomes, offline.
+"""bin/kuwai-feeds: what each GitHub thread and Gmail message becomes, offline.
 
 Threads are shaped like GET /notifications; the comment / pull request a
 thread points at comes from a stub instead of gh.
@@ -14,8 +14,8 @@ ROOT = Path(__file__).resolve().parents[2]
 
 @pytest.fixture(scope="module")
 def rf():
-    loader = importlib.machinery.SourceFileLoader("rice_feeds", str(ROOT / "bin" / "rice-feeds"))
-    spec = importlib.util.spec_from_loader("rice_feeds", loader)
+    loader = importlib.machinery.SourceFileLoader("kuwai_feeds", str(ROOT / "bin" / "kuwai-feeds"))
+    spec = importlib.util.spec_from_loader("kuwai_feeds", loader)
     mod = importlib.util.module_from_spec(spec)
     loader.exec_module(mod)
     mod._me[:] = ["kitsunekode"]

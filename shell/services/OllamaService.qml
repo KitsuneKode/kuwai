@@ -8,15 +8,15 @@ import qs.config
 import qs.services
 import "ai/turn.mjs" as Turn
 
-// The assistant's state. Turns run in bin/rice_agent.py (`rice-ollama agent`),
+// The assistant's state. Turns run in bin/kuwai_agent.py (`kuwai-ollama agent`),
 // which prints events; Turn.applyEvent folds them into `draft`, an assistant
 // message made of parts (reasoning, tools, text). See
 // docs/superpowers/plans/2026-11-03-assistant-agent-parity.md.
 Singleton {
     id: root
 
-    readonly property string bin: Paths.bin + "/rice-ollama"     // the running channel's copy, not the dev checkout
-    readonly property string runtimeDir: (Quickshell.env("XDG_RUNTIME_DIR") || ("/run/user/" + Quickshell.env("UID"))) + "/rice/ai"
+    readonly property string bin: Paths.bin + "/kuwai-ollama"     // the running channel's copy, not the dev checkout
+    readonly property string runtimeDir: (Quickshell.env("XDG_RUNTIME_DIR") || ("/run/user/" + Quickshell.env("UID"))) + "/kuwai/ai"
     readonly property string reqPath: runtimeDir + "/request.json"
 
     property string status: "offline" // "ready" | "loading" | "offline"
@@ -26,7 +26,7 @@ Singleton {
     property string mode: "chat"
     property var availableModels: ["qwen3.5:4b"]
     property var runningModels: []
-    // From `rice-ollama status`: { name: { capabilities: [...], sizeGb, params } }.
+    // From `kuwai-ollama status`: { name: { capabilities: [...], sizeGb, params } }.
     property var modelInfo: ({})
 
     function hasCap(m, cap) {
@@ -149,7 +149,7 @@ Singleton {
         }
     }
 
-    // Compaction (bin/rice_agent.py `compact`): a note standing in for
+    // Compaction (bin/kuwai_agent.py `compact`): a note standing in for
     // messages[0 .. summaryUpTo), kept with the chat.
     property string summary: ""
     property int summaryUpTo: 0
@@ -239,7 +239,7 @@ Singleton {
     // ── Persistent Sessions Store ─────────────────────────────────────
     FileView {
         id: sessionStore
-        path: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/rice/ai-sessions.json"
+        path: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/kuwai/ai-sessions.json"
         printErrors: false
         onLoaded: {
             try {
@@ -648,12 +648,12 @@ function onPanelClosed() {
     // ── Background work and notifications ─────────────────────────────
     // A turn keeps running with the overlay closed; when it ends (or needs you),
     // a notification says so and its Open button brings the assistant back.
-    readonly property string riceBin: Quickshell.shellDir + "/../bin/rice"
-    readonly property string notifyBin: Quickshell.shellDir + "/../bin/rice-notify"
+    readonly property string kuwaiBin: Quickshell.shellDir + "/../bin/kuwai"
+    readonly property string notifyBin: Quickshell.shellDir + "/../bin/kuwai-notify"
     function notify(title, body, urgency) {
         const p = notifyComponent.createObject(root, { command: ["sh", "-c",
             'r=$("$6" -a Assistant -i chat-bubbles -u "$3" -w -A open=Open -- "$1" "$2"); [ "$r" = open ] && "$5" assistant open',
-            "sh", title, body, urgency || "normal", root.riceBin, root.notifyBin] });
+            "sh", title, body, urgency || "normal", root.kuwaiBin, root.notifyBin] });
         p.running = true;
     }
     Component {
@@ -793,12 +793,12 @@ function onPanelClosed() {
         }
     }
 
-    // The chat's sandbox folder. Same root and slug as bin/rice_sandbox.py
-    // (host_root, chat_slug): RICE_SANDBOX_DIR overrides the root, and leading
+    // The chat's sandbox folder. Same root and slug as bin/kuwai_sandbox.py
+    // (host_root, chat_slug): KUWAI_SANDBOX_DIR overrides the root, and leading
     // dots are stripped so an id cannot land on ".", ".." or ".home".
     function sandboxDir(chatId) {
-        // The jail (bin/rice_sandbox.py host_root): ~/Depot/rice-sandbox, where you can watch it.
-        const base = (Quickshell.env("RICE_SANDBOX_DIR") || (Quickshell.env("HOME") + "/Depot/rice-sandbox")).replace(/\/+$/, "");
+        // The jail (bin/kuwai_sandbox.py host_root): ~/Depot/kuwai-sandbox, where you can watch it.
+        const base = (Quickshell.env("KUWAI_SANDBOX_DIR") || (Quickshell.env("HOME") + "/Depot/kuwai-sandbox")).replace(/\/+$/, "");
         const slug = String(chatId || root.activeSessionId || "").replace(/[^A-Za-z0-9_.-]/g, "").replace(/^\.+/, "").slice(0, 64) || "scratch";
         return base + "/" + slug;
     }
@@ -1103,8 +1103,8 @@ function onPanelClosed() {
         }
     }
 
-    // ── Block rendering (rice-render --serve) ─────────────────────────
-    // Answers render block by block (Turn.splitBlocks): one rice-render turns
+    // ── Block rendering (kuwai-render --serve) ─────────────────────────
+    // Answers render block by block (Turn.splitBlocks): one kuwai-render turns
     // each block into Qt rich text in ~1 ms, cached by its text. A finished
     // block never changes, so it renders once; the block being written
     // re-renders as it grows. Messages store no HTML.
@@ -1143,7 +1143,7 @@ function onPanelClosed() {
     Process {
         id: renderProc
         // Dies with the shell. A kill -9 otherwise leaves the renderer behind.
-        command: ["setpriv", "--pdeathsig", "KILL", "--", Paths.bin + "/rice-render", "--serve"]
+        command: ["setpriv", "--pdeathsig", "KILL", "--", Paths.bin + "/kuwai-render", "--serve"]
         stdinEnabled: true
         running: false
         stdout: SplitParser {

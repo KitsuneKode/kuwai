@@ -6,7 +6,7 @@ import pytest
 
 @pytest.mark.parametrize('line', ['TypeError: missing function', 'ReferenceError: missing binding', 'Unable to assign [undefined] to bool', 'UI_SMOKE_FAILED: overlap'])
 def test_native_errors_fail_even_after_capture(line):
-    path = Path(__file__).resolve().parents[2]/'bin/rice-ui-test'
+    path = Path(__file__).resolve().parents[2]/'bin/kuwai-ui-test'
     loader = importlib.machinery.SourceFileLoader('ui_fixture',str(path))
     spec = importlib.util.spec_from_loader('ui_fixture',loader)
     mod = importlib.util.module_from_spec(spec);loader.exec_module(mod)

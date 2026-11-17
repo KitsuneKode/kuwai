@@ -1,4 +1,4 @@
-// Design tokens for every surface in the rice. The look is the glass HUD's:
+// Design tokens for every surface in kuwai. The look is the glass HUD's:
 // Hyprland blurs what is behind a layer, a dark translucent tint sits on top,
 // text is SF Pro where installed (Text for UI, Display for large sizes,
 // Rounded for numerals), else Inter, kuwai's shippable default (see Type
@@ -383,10 +383,10 @@ Singleton {
 
     // Reduced motion: fewer and gentler: fades and colour stay, travel,
     // scale and stagger go. On when you switch it on (Controls → Reduce
-    // Motion, remembered in ~/.local/state/rice/prefs.json), when
-    // RICE_REDUCE_MOTION=1, or when Hyprland's own animations are off.
+    // Motion, remembered in ~/.local/state/kuwai/prefs.json), when
+    // KUWAI_REDUCE_MOTION=1, or when Hyprland's own animations are off.
     readonly property bool reduceMotion: prefs.reduceMotion || envReduce || hyprStill
-    readonly property bool envReduce: Quickshell.env("RICE_REDUCE_MOTION") === "1"
+    readonly property bool envReduce: Quickshell.env("KUWAI_REDUCE_MOTION") === "1"
     property bool hyprStill: false
     function setReduceMotion(on) { prefs.reduceMotion = on; }
     Process {
@@ -399,7 +399,7 @@ Singleton {
         }
     }
     FileView {
-        path: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/rice/prefs.json"
+        path: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/kuwai/prefs.json"
         watchChanges: true
         printErrors: false
         onFileChanged: reload()

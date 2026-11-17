@@ -12,10 +12,10 @@ Hyprland does the blur, the surface draws the material (`components/GlassCard.qm
 - **Sheen:** vertical light, bright at the top, clear in the middle, a faint
   refracted band at the bottom.
 - **Rim:** a 1px specular edge, brightest top-left, a weaker bounce bottom-right.
-- **Hyprland side:** every surface is a layer named `rice-*`, with blur,
+- **Hyprland side:** every surface is a layer named `kuwai-*`, with blur,
   `ignore_alpha 0.3` (blur only under the card, not the clear margins),
   `xray 0` (blur real windows), and `no_anim` (the surface animates itself).
-  This is all in `hypr/kuwai/rules.lua` already; just name new layers `rice-<thing>`.
+  This is all in `hypr/kuwai/rules.lua` already; just name new layers `kuwai-<thing>`.
 
 ## Type
 
@@ -106,7 +106,7 @@ as the keyboard ring.
 
 **Press feedback**: scale 0.97 (rows 0.985), 140ms ease-out, on pointer-down.
 
-**Reduced motion**: `RICE_REDUCE_MOTION=1`, or automatically when Hyprland's
+**Reduced motion**: `KUWAI_REDUCE_MOTION=1`, or automatically when Hyprland's
 animations are off. Fades and colour stay; travel, scale, glides and the
 morph go.
 
@@ -155,7 +155,7 @@ never kept for it (`services/notifUndo.mjs`).
 - Feedback surfaces (HUD) are click-through.
 - Toasts: click acts (default action, then focus the app's window), right
   click, the hover close button or a swipe right dismisses.
-- Every surface gets an IPC entry (`bin/rice …`) so it can be bound to keys.
+- Every surface gets an IPC entry (`bin/kuwai …`) so it can be bound to keys.
 
 ## Primitives (`components/ui`)
 

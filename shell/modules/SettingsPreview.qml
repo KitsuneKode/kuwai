@@ -20,7 +20,7 @@ PanelWindow {
     exclusionMode: ExclusionMode.Ignore
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
-    WlrLayershell.namespace: "rice-gallery"
+    WlrLayershell.namespace: "kuwai-gallery"
     mask: Region {}                      // click-through: it is only a picture
     Rectangle { anchors.fill: parent; radius: Theme.r4; color: "#1c1c1f" }
     SettingsPanel { id: sp; anchors.fill: parent; current: w.page; searchText: w.query }

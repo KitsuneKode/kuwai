@@ -2,8 +2,8 @@ pragma Singleton
 
 // Timers for the island: "Pizza · 4:12" with a ring, then a moment and a
 // sound when one ends. Started from the launcher ("timer 10m pizza", "25m")
-// or `rice timer 10m pizza`. Kept across shell restarts in
-// $XDG_RUNTIME_DIR/rice/timers.json (not across a logout).
+// or `kuwai timer 10m pizza`. Kept across shell restarts in
+// $XDG_RUNTIME_DIR/kuwai/timers.json (not across a logout).
 // (No braces before the pragma: Quickshell's scanner stops at the first.)
 
 import QtQuick
@@ -88,7 +88,7 @@ Singleton {
     Process { id: ding; command: ["pw-play", "--volume", "0.8", "/usr/share/sounds/freedesktop/stereo/complete.oga"] }
 
     // ── Kept across shell restarts ───────────────────────────────────────
-    readonly property string file: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/rice/timers.json"
+    readonly property string file: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/kuwai/timers.json"
     property bool loaded: false
     FileView {
         id: store
@@ -101,7 +101,7 @@ Singleton {
 
     IpcHandler {
         target: "timer"
-        // `rice timer 10m pizza` · `rice timer cancel`
+        // `kuwai timer 10m pizza` · `kuwai timer cancel`
         function start(spec: string, name: string): string {
             const s = root.parse(spec);
             if (!s) return "can't read " + spec;

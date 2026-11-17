@@ -9,7 +9,7 @@
 //           closer it is to the notch, so the change spreads from the island
 //           in cuts. A piece slides the last few pixels into place and its
 //           light settles; the cuts catch a hairline of light while they move.
-//   mode 1  SUBJECT, when bin/rice-wallmap has cut the subject out (an
+//   mode 1  SUBJECT, when bin/kuwai-wallmap has cut the subject out (an
 //           optional model, cached per wallpaper). A thin line traces the
 //           subject's outline, the subject fills in from it, and the rest of
 //           the picture spreads outward from the subject's edge.

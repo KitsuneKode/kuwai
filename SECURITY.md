@@ -3,7 +3,7 @@
 kuwai runs as your user session: a Hyprland config, a Quickshell shell, user
 services, and an optional local assistant. Some parts touch sensitive things:
 the lock screen, notification bodies, clipboard history, screen-share privacy,
-the assistant's file and sandbox tools, and one root helper (`bin/rice-update-root`,
+the assistant's file and sandbox tools, and one root helper (`bin/kuwai-update-root`,
 reached through pkexec for system updates).
 
 ## Reporting

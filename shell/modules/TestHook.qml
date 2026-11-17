@@ -13,7 +13,7 @@
 //   qs ipc -p <shell> call test compile  modules/x/Y.qml    (compiles it, makes nothing: "ok" or the error)
 //   qs ipc -p <shell> call test peek     SCREEN short|long [expanded]   (a sample notification in that
 //                                                          screen's notch; no pointer, no keyboard, no D-Bus)
-// (Notification bursts: bin/rice-fixture, through the real D-Bus path.)
+// (Notification bursts: bin/kuwai-fixture, through the real D-Bus path.)
 //
 // Same reach as every other `qs ipc` call: your own user only.
 import QtQuick

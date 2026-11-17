@@ -7,7 +7,7 @@
 --   * one module failing must not take the session down: kuwai.init loads each
 --     module through K.load, which records the error and carries on;
 --   * everything user-visible goes through K.bind so it shows up, grouped, in
---     the rice's Shortcuts panel (Super+/), which parses "[Group|Sub] text".
+--     kuwai's Shortcuts panel (Super+/), which parses "[Group|Sub] text".
 
 local K = {}
 

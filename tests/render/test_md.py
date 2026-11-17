@@ -1,9 +1,9 @@
-"""bin/rice_md.py: chat Markdown → Qt rich text, Streamdown-style."""
+"""bin/kuwai_md.py: chat Markdown → Qt rich text, Streamdown-style."""
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "bin"))
-import rice_md as md  # noqa: E402
+import kuwai_md as md  # noqa: E402
 
 
 def test_bold_line_and_list_right_under_it():

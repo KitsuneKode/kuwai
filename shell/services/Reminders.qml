@@ -1,11 +1,11 @@
 pragma Singleton
 
-// Reminders, said the way you'd say them (the launcher, `rice remind …`):
+// Reminders, said the way you'd say them (the launcher, `kuwai remind …`):
 //   "remind me at 5 to call mum"        today 17:00 (or 05:00 if it's before 5 am now)
 //   "in 20m stretch" · "in 1h30m tea"    from now
 //   "at 17:30 standup" · "5pm review"    today, or tomorrow if that time has passed
 //   "tomorrow 9am dentist"               tomorrow
-// Kept in ~/.local/share/rice/reminders.json (across restarts and sleep: a
+// Kept in ~/.local/share/kuwai/reminders.json (across restarts and sleep: a
 // reminder due while asleep fires on waking). When one is due: a moment in
 // the island and a notification you can snooze from the center.
 // (No braces before the pragma: Quickshell's scanner stops at the first.)
@@ -78,13 +78,13 @@ Singleton {
     }
 
     // The notification, with Snooze (10 min) and Done; it waits for the
-    // answer (rice-notify -w prints the action's key) and then goes.
+    // answer (kuwai-notify -w prints the action's key) and then goes.
     Component {
         id: asker
         Process {
             property var reminder
             running: true
-            command: [Paths.bin + "/rice-notify", "-w", "-a", "Reminders", "-i", "appointment-soon",
+            command: [Paths.bin + "/kuwai-notify", "-w", "-a", "Reminders", "-i", "appointment-soon",
                       "-A", "snooze=Snooze 10 min", "-A", "done=Done", "Reminder", reminder.text]
             stdout: StdioCollector { id: said }
             onExited: { if (said.text.trim() === "snooze") root.snooze(reminder, 10); destroy(); }
@@ -133,7 +133,7 @@ Singleton {
     }
 
     // ── Kept ─────────────────────────────────────────────────────────────
-    readonly property string file: (Quickshell.env("XDG_DATA_HOME") || Quickshell.env("HOME") + "/.local/share") + "/rice/reminders.json"
+    readonly property string file: (Quickshell.env("XDG_DATA_HOME") || Quickshell.env("HOME") + "/.local/share") + "/kuwai/reminders.json"
     property bool loaded: false
     FileView {
         id: store

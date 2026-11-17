@@ -8,7 +8,7 @@ from contextlib import redirect_stdout
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "bin"))
-import rice_agent as a  # noqa: E402
+import kuwai_agent as a  # noqa: E402
 
 PROMPT = "Search the web for the Hyprland 0.57 release date."
 

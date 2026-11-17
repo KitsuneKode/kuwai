@@ -30,11 +30,11 @@ is empty. Save it so it can follow you to any DAC:
 3. Zen is on EasyEffects' blocklist (Settings → Output → Blocklist), so the browser
    skips the EQ. Remove it there if you want the EQ for YouTube/Spotify-in-Zen too.
 
-Backups of every EasyEffects file: `~/.local/state/rice/easyeffects-backup-*`.
+Backups of every EasyEffects file: `~/.local/state/kuwai/easyeffects-backup-*`.
 
 ## New IEMs or a new DAC
 
-The island shows what's behind a DAC from `~/.config/rice/devices.json`
+The island shows what's behind a DAC from `~/.config/kuwai/devices.json`
 (no restart needed):
 
 ```json
@@ -47,7 +47,7 @@ The island shows what's behind a DAC from `~/.config/rice/devices.json`
 - `match`: a piece of the device's name as PipeWire says it (`wpctl status` → Sinks).
 - `label`: what you're listening on (the IEMs). `via`: the DAC. `kind`: `iem`,
   `headphones`, `earbuds`, `speaker`.
-- `image`: a picture in `~/.config/rice/devices/` (square PNG, transparent).
+- `image`: a picture in `~/.config/kuwai/devices/` (square PNG, transparent).
 - New IEMs on the same DAC: change `label` and `image` on that DAC's line.
 - New IEMs, new sound: in EasyEffects make a preset for them (e.g. AutoEQ's parametric
   EQ for the model → Equalizer → Import), then point that DAC's Autoload at it.
@@ -56,5 +56,5 @@ The island shows what's behind a DAC from `~/.config/rice/devices.json`
 
 A card shows when a device actually comes or goes, once. Nothing shows while the
 screen is locked or off, or in the 8 s after you come back. What was told lives in
-`$XDG_RUNTIME_DIR/rice/devices-told.json` (a new login starts fresh, and greets you with
+`$XDG_RUNTIME_DIR/kuwai/devices-told.json` (a new login starts fresh, and greets you with
 what's connected).

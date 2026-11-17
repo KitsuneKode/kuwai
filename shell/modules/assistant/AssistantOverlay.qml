@@ -83,7 +83,7 @@ Scope {
             readonly property real islandW: (typeof Island !== "undefined" && Island.restWidths && Island.restWidths[modelData.name]) || 220
             readonly property real pillH: inIsland ? 34 : 38
 
-            // Dimensions: Spacious HUD matching desktop rice scale with proportional expansion
+            // Dimensions: Spacious HUD matching desktop kuwai scale with proportional expansion
             readonly property int compactW: Math.min(920, Math.round(modelData.width * 0.52))
             readonly property int compactH: Math.min(640, Math.round(modelData.height * 0.60))
             readonly property int studioW: Math.min(1240, Math.round(modelData.width * 0.75))
@@ -109,7 +109,7 @@ Scope {
             exclusionMode: ExclusionMode.Ignore
             color: "transparent"
 
-            WlrLayershell.namespace: "rice-assistant"
+            WlrLayershell.namespace: "kuwai-assistant"
             WlrLayershell.layer: WlrLayer.Overlay
             // Yielded (a window opened over it): on demand, so a click in the
             // assistant takes the keyboard back.

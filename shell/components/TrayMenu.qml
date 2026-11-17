@@ -1,4 +1,4 @@
-// A tray icon's menu, drawn by the rice instead of Qt's native QMenu (which
+// A tray icon's menu, drawn by kuwai instead of Qt's native QMenu (which
 // ignored the theme: grey Fusion rows, square corners). The entries come from
 // the app over D-Bus (QsMenuOpener); this only draws and triggers them.
 //

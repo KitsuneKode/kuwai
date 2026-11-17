@@ -9,7 +9,7 @@ import sys
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
-UNITS = ('rice-auth.service', 'rice-clipboard.service', 'rice-feeds.service')
+UNITS = ('kuwai-auth.service', 'kuwai-clipboard.service', 'kuwai-feeds.service')
 
 
 @pytest.fixture
@@ -18,9 +18,9 @@ def install_env(tmp_path):
     repo.mkdir()
     shutil.copy2(ROOT / 'install.sh', repo / 'install.sh')
     (repo / 'bin').mkdir()
-    helper = ROOT / 'bin/rice_install.py'
+    helper = ROOT / 'bin/kuwai_install.py'
     if helper.exists():
-        shutil.copy2(helper, repo / 'bin/rice_install.py')
+        shutil.copy2(helper, repo / 'bin/kuwai_install.py')
     (repo / 'hypr/templates').mkdir(parents=True)
     (repo / 'hypr/templates/hyprland.lua').write_text('-- installed entry\n')
     (repo / 'systemd').mkdir()
@@ -39,7 +39,7 @@ def install_env(tmp_path):
         p = tools / name
         p.write_text('#!/bin/sh\nexit 0\n')
         p.chmod(0o755)
-    for name in ('kuwai', 'rice-doctor'):
+    for name in ('kuwai', 'kuwai-doctor'):
         p = repo / 'bin' / name
         p.write_text('#!/bin/sh\nexit 0\n')
         p.chmod(0o755)
@@ -133,7 +133,7 @@ def test_original_unit_enablement_survives_reinstall(install_env):
     recorded = json.loads(i.services.read_text())
     # What you had survives both installs exactly...
     assert {u: recorded.get(u) for u in UNITS[:3]} == {UNITS[0]: 'enabled', UNITS[1]: 'disabled', UNITS[2]: 'enabled'}
-    # ...and a unit the record hadn't seen (rice-backup.* came later) is kept
+    # ...and a unit the record hadn't seen (kuwai-backup.* came later) is kept
     # as it was before installing: not there, so disabled.
     assert all(v == 'disabled' for u, v in recorded.items() if u not in UNITS[:3]), recorded
 

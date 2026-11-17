@@ -84,10 +84,10 @@ Singleton {
     readonly property string art: active ? (active.trackArtUrl || "") : ""
     // ColorQuantizer only reads local files: a player that gives a web URL
     // (Cider, Spotify, YouTube Music) got no colours, so the waveform fell
-    // back to white. Those are fetched once into ~/.cache/rice/art (https
+    // back to white. Those are fetched once into ~/.cache/kuwai/art (https
     // only, 6 MB and 6 s at most, a week kept) and quantized from there.
     readonly property bool artRemote: /^https:\/\//.test(art)
-    readonly property string artCache: (Quickshell.env("XDG_CACHE_HOME") || Quickshell.env("HOME") + "/.cache") + "/rice/art"
+    readonly property string artCache: (Quickshell.env("XDG_CACHE_HOME") || Quickshell.env("HOME") + "/.cache") + "/kuwai/art"
     property string artLocal: ""
     onArtChanged: fetchArt()
     Component.onCompleted: fetchArt()        // a song already playing when the shell starts

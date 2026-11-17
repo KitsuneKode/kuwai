@@ -3,7 +3,7 @@ name: Checks
 # Every check here fails the run when it fails: no step is allowed to skip
 # itself or swallow an error. What hosted runners can't do (load the shell,
 # which needs a Wayland session; Hyprland --verify-config) stays with
-# `rice-check` and `kuwai doctor`, which `rice promote` runs first.
+# `kuwai-check` and `kuwai doctor`, which `kuwai promote` runs first.
 
 on:
   push:
@@ -41,7 +41,7 @@ jobs:
       - name: Hyprland config tests
         run: for t in tests/hypr/test_*.lua; do lua "$t" || exit 1; done
       - name: Design tokens only go down
-        run: bin/rice-tokens --check
+        run: bin/kuwai-tokens --check
 
   chat-state:
     runs-on: ubuntu-latest

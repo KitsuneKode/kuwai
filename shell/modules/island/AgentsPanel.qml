@@ -7,7 +7,7 @@
 //
 //   Agents                               1 needs you · 2 working
 //   ✳ Fix notch alerts                                   3m
-//     Needs you · rice · Opus 5.5 high
+//     Needs you · kuwai · Opus 5.5 high
 //     Allow edit to Notifs.qml?
 //   ✳ Handoff sidebar rebuild plan                       1m
 //     Working · kittymux · Opus 5.5 high
@@ -36,13 +36,13 @@ FocusScope {
 
     // ── What runs where, on what ────────────────────────────────────────
     // The model a kitty pane runs is in its agent's own session log
-    // (bin/rice-agent-models); asked when this opens and every 30 s while
+    // (bin/kuwai-agent-models); asked when this opens and every 30 s while
     // it's open, never while it's closed.
     property var models: ({})
     readonly property var modelArgs: Kittymux.running.filter(r => r.where).map(r => r.agent + ":" + r.where)
     Process {
         id: modelsProc
-        command: [Paths.bin + "/rice-agent-models"].concat(ap.modelArgs)
+        command: [Paths.bin + "/kuwai-agent-models"].concat(ap.modelArgs)
         stdout: StdioCollector {
             onStreamFinished: { try { ap.models = JSON.parse(text) || {}; } catch (e) {} }
         }

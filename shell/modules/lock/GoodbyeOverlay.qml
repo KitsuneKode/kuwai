@@ -17,7 +17,7 @@ Variants {
             anchors { top: true; bottom: true; left: true; right: true }
             exclusionMode: ExclusionMode.Ignore
             WlrLayershell.layer: WlrLayer.Overlay
-            // Not rice-*: that layer rule blurs past 30 % alpha, a pop mid-fade.
+            // Not kuwai-*: that layer rule blurs past 30 % alpha, a pop mid-fade.
             WlrLayershell.namespace: "kuwai-goodbye"
             WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
             color: "transparent"

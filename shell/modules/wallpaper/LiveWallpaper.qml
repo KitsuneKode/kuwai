@@ -1,5 +1,5 @@
 // Live wallpaper: the shell plays the video on the background layer itself
-// (Omarchy's way; no mpvpaper). bin/rice-livewall picks it:
+// (Omarchy's way; no mpvpaper). bin/kuwai-livewall picks it:
 // Super+Ctrl+W on/off, Super+Ctrl+Shift+W the next one. It writes the path to
 // ~/.local/state/live-wallpaper/last (empty: off) and keeps `enabled` there.
 //
@@ -61,7 +61,7 @@ Scope {
                 anchors { top: true; bottom: true; left: true; right: true }
                 exclusionMode: ExclusionMode.Ignore
                 WlrLayershell.layer: WlrLayer.Background
-                // Outside rice-*: that rule blurs every rice-* surface, and a later
+                // Outside kuwai-*: that rule blurs every kuwai-* surface, and a later
                 // blur=false does not undo it. A full-screen video would pay
                 // for a blur nobody can see. Same split as the screensaver.
                 WlrLayershell.namespace: "kuwai-wallpaper"

@@ -26,29 +26,29 @@ hl.on("hyprland.start", function()
 	hl.exec_cmd(unit("gcr-ssh-agent.socket"))
 	-- Password prompts: kuwai's own (shell-auth/, a separate small process);
 	-- its unit falls back to KDE's agent if it can't run.
-	local f = os.getenv("HOME") and io.open(os.getenv("HOME") .. "/.config/systemd/user/rice-auth.service", "r")
+	local f = os.getenv("HOME") and io.open(os.getenv("HOME") .. "/.config/systemd/user/kuwai-auth.service", "r")
 	if f then
 		f:close()
-		hl.exec_cmd(unit("rice-auth.service"))
+		hl.exec_cmd(unit("kuwai-auth.service"))
 	else
 		hl.exec_cmd(unit("plasma-polkit-agent.service"))
 	end
 	-- Idle (dim, lock, screens off, sleep) is the shell's (services/Idle);
-	-- rice-shell starts hypridle only as the fallback when the shell can't run.
+	-- kuwai-shell starts hypridle only as the fallback when the shell can't run.
 
-	-- The rice: shell (island, HUD, notifications, lock) — it also decides
-	-- whether Waybar or the island is the bar (`rice bar apply`).
-	hl.exec_cmd(K.bin .. "/rice-shell")
+	-- Kuwai: shell (island, HUD, notifications, lock) — it also decides
+	-- whether Waybar or the island is the bar (`kuwai bar apply`).
+	hl.exec_cmd(K.bin .. "/kuwai-shell")
 	-- The login screen's copy of the shell and your picture (greeter/sync;
 	-- does nothing until greeter/install has run).
 	hl.exec_cmd(KUWAI_ROOT .. "/greeter/sync")
 
-	-- Clipboard history (cliphist is the store) and the rice's copy times.
-	-- A user service (systemd/rice-clipboard.service): restarted if it dies,
+	-- Clipboard history (cliphist is the store) and kuwai's copy times.
+	-- A user service (systemd/kuwai-clipboard.service): restarted if it dies,
 	-- instead of bare watchers that silently stopped history when they did.
-	hl.exec_cmd(unit("rice-clipboard.service"))
-	-- GitHub and Gmail as notifications (systemd/rice-feeds.service).
-	hl.exec_cmd(unit("rice-feeds.service"))
+	hl.exec_cmd(unit("kuwai-clipboard.service"))
+	-- GitHub and Gmail as notifications (systemd/kuwai-feeds.service).
+	hl.exec_cmd(unit("kuwai-feeds.service"))
 
 	-- Copies outlive the window they came from. On Wayland the copying app
 	-- serves the text at paste time, so closing it (the drop-down terminal is

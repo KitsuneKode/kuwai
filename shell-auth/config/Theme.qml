@@ -150,10 +150,10 @@ Singleton {
     readonly property var springSlow: ({ stiffness: 1069, damping: 57.5, exitMs: 160 })
 
     // Reduced motion: the shell's switch (read-only here) or the env var.
-    readonly property bool reduceMotion: prefsReduce || Quickshell.env("RICE_REDUCE_MOTION") === "1"
+    readonly property bool reduceMotion: prefsReduce || Quickshell.env("KUWAI_REDUCE_MOTION") === "1"
     property bool prefsReduce: false
     FileView {
-        path: (Quickshell.env("XDG_STATE_HOME") || root.home + "/.local/state") + "/rice/prefs.json"
+        path: (Quickshell.env("XDG_STATE_HOME") || root.home + "/.local/state") + "/kuwai/prefs.json"
         watchChanges: true
         printErrors: false
         onFileChanged: reload()

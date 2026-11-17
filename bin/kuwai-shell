@@ -1,0 +1,184 @@
+#!/usr/bin/env bash
+# Start (or restart) kuwai and make it the notification server.
+#
+# Only one process can own org.freedesktop.Notifications. HyDE starts dunst at
+# login, so stop it, start Quickshell, and check Quickshell really got the
+# name (a notification arriving in between can D-Bus-activate dunst again).
+# If kuwai ever dies, the next notification activates dunst on its own:
+# that is the fallback, nothing to do here.
+#
+# Stopping uses SIGKILL, not `qs kill`: Quickshell 0.3.2 can segfault while
+# tearing down on a polite exit (Wayland objects destroyed after the
+# connection), and its crash handler then relaunches the very instance we
+# stopped, leaving two rices running (two HUDs, two toast stacks, doubled
+# global shortcuts). A killed process tears nothing down and isn't relaunched.
+set -u
+mkdir -p "${XDG_RUNTIME_DIR:-/tmp}/kuwai"   # shared shapes for shell-auth (island.json)
+
+KUWAI="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+SHELL_DIR="$KUWAI/shell"
+NAME=org.freedesktop.Notifications
+
+owner_pid() {
+    busctl --user call org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus \
+        GetConnectionUnixProcessID s "$NAME" 2>/dev/null | awk '{print $2}'
+}
+
+shell_pids() {
+    qs list -p "$SHELL_DIR" --json 2>/dev/null | jq -r '.[].pid' 2>/dev/null
+}
+
+stop_shells() {
+    for pid in $(shell_pids); do kill -9 "$pid" 2>/dev/null; done
+    for _ in $(seq 20); do
+        [ -z "$(shell_pids)" ] && return
+        sleep 0.1
+    done
+}
+
+# The log of the newest kuwai instance (Quickshell keeps one per run).
+# (Not `qs list`: an instance whose config failed to load isn't listed.)
+# Only ones started after $MARK, the moment this launch began.
+newest_log() {
+    local d
+    for d in $(find "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/quickshell/by-id" -mindepth 1 -maxdepth 1 -type d -newer "$MARK" 2>/dev/null); do
+        if strings "$d/log.qslog" 2>/dev/null | grep -qF "Launching config: \"$SHELL_DIR/shell.qml\""; then
+            echo "$d/log.qslog"
+            return
+        fi
+    done
+}
+
+# The config didn't load (a typo, a half-saved file mid-edit): say so, keep a
+# bar on screen, and come back by itself. Quickshell exits when its config
+# fails at startup, so a watcher waits for the next save to any of the
+# shell's files and tries again (one watcher: it becomes the next attempt).
+notify_critical() {
+    local title=$1 body=$2
+    gdbus call --session --dest org.freedesktop.Notifications \
+        --object-path /org/freedesktop/Notifications \
+        --method org.freedesktop.Notifications.Notify \
+        'Shell' 0 'dialog-error' "$title" "$body" '[]' '{"urgency": <byte 2>}' 15000 \
+        >/dev/null 2>&1 || true
+}
+broken() {
+    local log=$1 why
+    why=$(strings "$log" 2>/dev/null | grep -m3 'caused by' | sed 's/^[^c]*caused by //' | paste -sd ' ' | cut -c1-220)
+    echo "kuwai-shell: the shell didn't load: $why" >&2
+    pgrep -x waybar >/dev/null || setsid -f hyde-shell waybar >/dev/null 2>&1 </dev/null
+    # Idle and locking fall back to hypridle (its config locks with `kuwai
+    # lock`, which uses hyprlock while the shell is down).
+    systemctl --user start hypridle.service 2>/dev/null
+    notify_critical "The island didn't load" "${why:-see the Quickshell log} · Waybar is up meanwhile; saving a fixed QML file reloads the island"
+    setsid -f bash -c '
+        dir=$1 kuwai=$2
+        stamp() { find "$dir" \( -name "*.qml" -o -name "*.js" -o -name "*.mjs" -o -name qmldir \) -printf "%T@\n" 2>/dev/null | sort -n | tail -1; }
+        was=$(stamp)
+        for _ in $(seq 3600); do       # two hours, then give up quietly
+            sleep 2
+            now=$(stamp)
+            if [ "$now" != "$was" ]; then
+                sleep 1                # let a burst of saves finish
+                exec "$kuwai/bin/kuwai-shell"
+            fi
+        done' kuwai-shell-watch "$SHELL_DIR" "$KUWAI" >/dev/null 2>&1 </dev/null
+    exit 1
+}
+
+stop_dunst() {
+    pkill -x dunst 2>/dev/null
+    for _ in $(seq 20); do
+        [ -z "$(owner_pid)" ] && return
+        sleep 0.1
+    done
+}
+
+# Retire any running kuwai (all of them, if a crash ever left two), and the
+# standalone glass HUD it replaces.
+stop_shells
+pkill -f 'qs -p .*/quickshell/glass-osd' 2>/dev/null
+# What kuwai kept under its old name (rice): folders, the runtime link, user
+# units. Once, then a no-op (bin/kuwai-migrate). Before the units are used below.
+"$KUWAI/bin/kuwai-migrate"
+# A password prompt, always: without one every pkexec (updates, mounts) fails
+# at once and reads as "cancelled" (2026-11-13: none ran for 17 h).
+if ! systemctl --user -q is-active kuwai-auth.service plasma-polkit-agent.service 2>/dev/null; then
+    systemctl --user start kuwai-auth.service 2>/dev/null || systemctl --user start plasma-polkit-agent.service 2>/dev/null
+fi
+# A watcher from an earlier failed start: this run replaces it.
+for p in $(pgrep -f "kuwai-shell-watch $SHELL_DIR $KUWAI\$"); do [ "$p" != "$$" ] && kill "$p" 2>/dev/null; done
+
+# What the shell keeps is yours alone: notification bodies, chats, clipboard
+# thumbnails, tokens. The folders are closed to other accounts whatever mode a
+# file inside was written with (a default umask writes 0644), and whatever
+# mode your home or ~/.local/state has on this machine.
+for d in "${XDG_STATE_HOME:-$HOME/.local/state}/kuwai" "${XDG_CACHE_HOME:-$HOME/.cache}/kuwai" "${XDG_CONFIG_HOME:-$HOME/.config}/kuwai"; do
+    mkdir -p "$d" 2>/dev/null && chmod 700 "$d" 2>/dev/null
+done
+
+loaded() { [ -n "$1" ] && strings "$1" 2>/dev/null | grep -q 'Configuration Loaded'; }
+
+MARK=$(mktemp "${XDG_RUNTIME_DIR:-/tmp}/kuwai/launch.XXXXXX")
+trap 'rm -f -- "$MARK"' EXIT
+for attempt in 1 2 3; do
+    stop_dunst
+    touch "$MARK"
+    # Started by Hyprland, as at login: run from a terminal it would otherwise
+    # live (and die) in that terminal's process group and cgroup.
+    # The allocator: 2 arenas, not 8 per core (each thread's arena kept its
+    # own freed memory), and freed memory goes back to the system sooner.
+    # Same speed for a shell; a smaller idle footprint after panels close.
+    # One assignment per argv entry (review 2026-11-10, finding 17: one string
+    # with spaces made `env` set GLIBC_TUNABLES to all of it in the fallback,
+    # so the render loop below was lost). The dispatcher gets the same list
+    # quoted (%q) inside a Lua long string, where nothing is an escape.
+    envs=("GLIBC_TUNABLES=glibc.malloc.arena_max=2:glibc.malloc.trim_threshold=8388608")
+    # Qt's basic render loop, not the threaded one: on NVIDIA's GL the
+    # threaded loop leaked ~750 bytes a frame (a test window animating
+    # nonstop grew 2.7 MB a minute; basic stayed flat and starts ~10 MB
+    # smaller, Vulkan flat but +40 MB). That was the shell's 70-180 MB/h
+    # (2026-11-07). One thread instead of one per window, too.
+    envs+=("QSG_RENDER_LOOP=basic")
+    envs+=("KUWAI_REVISION=$(git -C "$KUWAI" describe --always --dirty 2>/dev/null || printf unknown)")
+    # Diagnostics for one run: KUWAI_SHELL_ENV="QV4_MM_STATS=1" kuwai-shell
+    # (the JS heap after every collection, in the shell's log).
+    if [ -n "${KUWAI_SHELL_ENV:-}" ]; then read -ra extra <<<"$KUWAI_SHELL_ENV"; envs+=("${extra[@]}"); fi
+    cmd=$(printf '%q ' env "${envs[@]}" qs -p "$SHELL_DIR" -d)
+    if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && hyprctl dispatch "hl.dsp.exec_cmd([==[$cmd]==])" >/dev/null 2>&1; then :
+    else env "${envs[@]}" qs -p "$SHELL_DIR" -d >/dev/null 2>&1; fi
+    log=
+    for i in $(seq 60); do
+        # Every half second: did the config fail to load?
+        if [ $((i % 5)) -eq 0 ]; then
+            log=$(newest_log)
+            if [ -n "$log" ] && strings "$log" 2>/dev/null | grep -q 'Failed to load configuration' \
+               && ! loaded "$log"; then
+                broken "$log"
+            fi
+        fi
+        pid=$(owner_pid)
+        # Dunst, D-Bus-activated by a notification in between: again.
+        [ -n "$pid" ] && [ "$(cat /proc/"$pid"/comm 2>/dev/null)" = "dunst" ] && pkill -x dunst
+        # The new kuwai has the name: done.
+        if [ -n "$pid" ] && shell_pids | grep -qx "$pid"; then
+            "$KUWAI/bin/kuwai" bar apply      # one top bar: the island or Waybar
+            exit 0
+        fi
+        sleep 0.1
+    done
+    # Loaded but without the name: someone else has it, most likely kuwai
+    # of another session on another tty (one D-Bus for both). Keep this one;
+    # Quickshell takes the name by itself once that one lets go. Killing it
+    # would also drop a lock it may already hold.
+    if loaded "$log" && [ -n "$(shell_pids)" ]; then
+        owner=$(owner_pid)
+        echo "kuwai-shell: running; notifications stay with pid ${owner:-?} ($(tr '\0' ' ' </proc/"${owner:-0}"/cmdline 2>/dev/null | cut -c1-80)) until it exits" >&2
+        "$KUWAI/bin/kuwai" bar apply
+        exit 0
+    fi
+    echo "kuwai-shell: the shell didn't come up (attempt $attempt), retrying" >&2
+    stop_shells
+done
+
+echo "kuwai-shell: gave up; dunst stays the notification server" >&2
+exit 1

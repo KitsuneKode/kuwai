@@ -1,6 +1,6 @@
 ---
 name: verify-kuwai
-description: Drive and prove the kuwai shell (the island/notch, its panels, capsules, the launcher, wallpaper changes, agents) on the live Hyprland session without touching the user's pointer, keyboard, focus or media. Use after changing anything under shell/, bin/rice-*, greeter/ or hypr/kuwai, before promote, and whenever a claim "it works" needs evidence (screenshots, 60 fps frames, logs, state dumps).
+description: Drive and prove the kuwai shell (the island/notch, its panels, capsules, the launcher, wallpaper changes, agents) on the live Hyprland session without touching the user's pointer, keyboard, focus or media. Use after changing anything under shell/, bin/kuwai-*, greeter/ or hypr/kuwai, before promote, and whenever a claim "it works" needs evidence (screenshots, 60 fps frames, logs, state dumps).
 ---
 
 # Verify kuwai (live session, the user is at the machine)
@@ -13,7 +13,7 @@ test hooks. `q` below is `qs ipc -p ~/Projects/rice/shell call` (zsh: write a fu
 
 ## Launch
 The live shell runs from the dev checkout (`~/Projects/rice/shell`, file watching on): saving a file
-reloads it. Stable (`~/.local/share/kuwai`) moves only with `bin/rice promote` (runs `rice-check`).
+reloads it. Stable (`~/.local/share/kuwai`) moves only with `bin/kuwai promote` (runs `kuwai-check`).
 Ready = the log's last reload line is `Configuration Loaded`:
 `qs log -p ~/Projects/rice/shell | grep -nE "Reloading|Failed to load|caused by|Configuration Loaded" | tail -3`
 A failed reload keeps the previous shell running: the log is the only sign. Touch the file to retry.
@@ -24,7 +24,7 @@ module now). Change `hypr/` one file at a time and check `hyprctl binds -j | jq 
 after; for `shell/`, `touch shell/shell.qml` once the write is done and read the log again.
 
 ## Doctor (before driving, and after anything surprising)
-- `bin/rice check` — load, orphans, idle owner, memory budget, CPU at rest (median of 5 s, want < 5 %),
+- `bin/kuwai check` — load, orphans, idle owner, memory budget, CPU at rest (median of 5 s, want < 5 %),
   compile of every module and component, token ratchet.
 - `q island state` (which panel is open where), `q islandbar-<SCREEN> dump` (why an island is in a state).
 - `q lock state` must be `unlocked` before promote.

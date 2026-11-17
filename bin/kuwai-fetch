@@ -9,9 +9,9 @@
 #                            PokeAPI sprites repo on GitHub) into the folder. Your
 #                            download, for your machine: nothing like it ships here.
 #
-# Pictures: ~/.config/rice/fetch/*.gif (or .png / .webp). Put any GIF there.
+# Pictures: ~/.config/kuwai/fetch/*.gif (or .png / .webp). Put any GIF there.
 # Each is scaled once (nearest neighbour for pixel art, transparent background,
-# full frames so kitty draws no trails) into ~/.cache/rice/fetch/.
+# full frames so kitty draws no trails) into ~/.cache/kuwai/fetch/.
 # Outside kitty, or with no pictures: a still picture in blocks (chafa), else
 # plain fastfetch. Never fails the shell it's greeting: every error is quiet.
 #
@@ -19,8 +19,8 @@
 # image placed with `kitten icat`, then below the info) is the one pocket-dots
 # uses for its pokéfetch; written again here, not copied.
 set -u
-DIR="${XDG_CONFIG_HOME:-$HOME/.config}/rice/fetch"
-CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/rice/fetch"
+DIR="${XDG_CONFIG_HOME:-$HOME/.config}/kuwai/fetch"
+CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/kuwai/fetch"
 W=${KUWAI_FETCH_W:-200}       # picture box, pixels
 H=${KUWAI_FETCH_H:-168}
 INDENT=${KUWAI_FETCH_INDENT:-30}

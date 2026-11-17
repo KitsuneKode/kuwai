@@ -6,7 +6,7 @@ import sys
 from contextlib import redirect_stdout
 
 sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[3] / "bin"))
-import rice_agent as a  # noqa: E402
+import kuwai_agent as a  # noqa: E402
 
 SUMMARY = "- The user's name is Kitsune.\n- They have an RTX 4050 GPU.\n- The user prefers Lua configs over hyprlang."
 MSGS = [

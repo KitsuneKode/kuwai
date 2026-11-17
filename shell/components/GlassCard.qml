@@ -1,6 +1,6 @@
 // Liquid-glass card, on the voxtype HUD's definitions (~/.config/voxtype/
 // osd/kitsune-hud/KitsuneHud.qml), the material that reads best on this
-// desktop. Hyprland blurs what's behind the surface (each rice layer
+// desktop. Hyprland blurs what's behind the surface (each kuwai layer
 // namespace has a blur + ignore_alpha rule, see hypr/kuwai/rules.lua); this
 // draws the glass on top of that blur:
 //

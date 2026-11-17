@@ -160,7 +160,7 @@ Scope {
             color: "transparent"
             readonly property real islandW: root.islandWidth(modelData ? modelData.name : "")
 
-            WlrLayershell.namespace: "rice-notifs"
+            WlrLayershell.namespace: "kuwai-notifs"
             WlrLayershell.layer: WlrLayer.Overlay
             WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 

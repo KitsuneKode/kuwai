@@ -2,7 +2,7 @@ pragma Singleton
 
 // System updates: the one place that knows about them (the island's Updates
 // panel, the alert, the System panel's row and the live activity all read
-// this). The work is bin/rice-update's; this keeps its answers and runs it.
+// this). The work is bin/kuwai-update's; this keeps its answers and runs it.
 //
 //   Arch packages   one group, updated together (Arch doesn't do partial
 //                   upgrades): include or leave out, never pick and choose
@@ -23,7 +23,7 @@ import qs.config
 Singleton {
     id: root
 
-    readonly property string bin: Paths.bin + "/rice-update"
+    readonly property string bin: Paths.bin + "/kuwai-update"
 
     // ── What's pending ───────────────────────────────────────────────────
     property var data: null
@@ -44,7 +44,7 @@ Singleton {
     readonly property bool fresh: total > 0 && setKey !== viewedKey
     FileView {
         id: viewedFile
-        path: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/rice/updates-viewed"
+        path: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/kuwai/updates-viewed"
         printErrors: false
         onLoaded: root.viewedKey = text().trim()
     }
@@ -128,7 +128,7 @@ Singleton {
     }
     // The last answer, at once on start (the check itself takes seconds).
     FileView {
-        path: (Quickshell.env("XDG_CACHE_HOME") || Quickshell.env("HOME") + "/.cache") + "/rice/updates.json"
+        path: (Quickshell.env("XDG_CACHE_HOME") || Quickshell.env("HOME") + "/.cache") + "/kuwai/updates.json"
         printErrors: false
         onLoaded: { if (!root.data) { try { root.data = JSON.parse(text()); } catch (e) {} } }
     }
@@ -136,7 +136,7 @@ Singleton {
     Timer { interval: Math.max(1, Settings.updatesCheckHours) * 3600 * 1000; running: Settings.updatesCheckHours > 0; repeat: true; onTriggered: root.check() }
 
     // ── AUR review ───────────────────────────────────────────────────────
-    property var reviews: ({})          // name → rice-update review JSON
+    property var reviews: ({})          // name → kuwai-update review JSON
     property string reviewing: ""
     property var approvedSha: ({})      // name → the commit you approved
     property var trusted: []
@@ -375,12 +375,12 @@ Singleton {
     // A run that ended while no shell was watching (a restart in its last
     // seconds): its "done" is still in the feed. Shown once, if it ended in
     // the last 15 minutes and isn't the one already shown (updates-shown).
-    readonly property string shownPath: (Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")) + "/rice/updates-shown"
+    readonly property string shownPath: (Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")) + "/kuwai/updates-shown"
     FileView { id: shownFile; path: root.shownPath; blockLoading: true; printErrors: false }
     Process {
         id: missedDone
-        command: ["sh", "-c", 'f="$1"; [ -f "$f" ] && [ $(( $(date +%s) - $(stat -c %Y "$f") )) -lt 900 ] && tail -n 3 "$f"', "rice-missed",
-                  (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/rice/update.jsonl"]
+        command: ["sh", "-c", 'f="$1"; [ -f "$f" ] && [ $(( $(date +%s) - $(stat -c %Y "$f") )) -lt 900 ] && tail -n 3 "$f"', "kuwai-missed",
+                  (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/kuwai/update.jsonl"]
         stdout: StdioCollector {
             onStreamFinished: {
                 if (root.running) return;
@@ -448,7 +448,7 @@ Singleton {
     }
     Process {
         id: recoverLastEvent
-        command: ["tail", "-n", "20", (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/rice/update.jsonl"]
+        command: ["tail", "-n", "20", (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/kuwai/update.jsonl"]
         stdout: StdioCollector {
             onStreamFinished: {
                 if (!root.running) return;
@@ -520,7 +520,7 @@ Singleton {
     }
     Process {
         id: follower
-        command: ["setpriv", "--pdeathsig", "KILL", "--", "tail", "-n", "+1", "-F", (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/rice/update.jsonl"]
+        command: ["setpriv", "--pdeathsig", "KILL", "--", "tail", "-n", "+1", "-F", (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/kuwai/update.jsonl"]
         stdout: SplitParser {
             onRead: line => {
                 let ev = null;
@@ -540,7 +540,7 @@ Singleton {
                     root.phaseLabel = ev.label;
                     if (root.phasesSeen.indexOf(ev.id) < 0) root.phasesSeen = [...root.phasesSeen, ev.id];
                 } else if (ev.e === "plan") {
-                    // What this run will do (rice-update writes it first), so
+                    // What this run will do (kuwai-update writes it first), so
                     // the ring is scaled right when joining mid-run.
                     root.plan = { repo: !!ev.repo, aur: ev.aur || [], flatpak: ev.flatpak || [] };
                 } else if (ev.e === "error") {
@@ -564,7 +564,7 @@ Singleton {
     }
     function restart() { Quickshell.execDetached(["systemctl", "reboot"]); }
 
-    // One password per update: `rice-update install-helper` puts rice-update-root
+    // One password per update: `kuwai-update install-helper` puts kuwai-update-root
     // in place (root-owned; asks for the password this once).
     property string helperState: ""     // "", "working", "done", "failed"
     function setupOnePrompt() {
@@ -602,7 +602,7 @@ Singleton {
     }
 
     // ── Config files an update left beside yours (X.pacnew) ─────────────
-    // bin/rice-pacnew says what each new default would change and what it
+    // bin/kuwai-pacnew says what each new default would change and what it
     // recommends: keep yours (it would undo your settings), take the new one
     // (you never changed it), or review. Your choices apply behind one
     // password, through the root helper. Nothing happens until you press Apply.
@@ -622,13 +622,13 @@ Singleton {
         if (!items.length || pacnewBusy) return;
         pacnewBusy = true;
         pacnewResult = "";
-        pacnewApplier.command = [root.bin.replace(/rice-update$/, "rice-pacnew"), "apply", JSON.stringify(items)];
+        pacnewApplier.command = [root.bin.replace(/kuwai-update$/, "kuwai-pacnew"), "apply", JSON.stringify(items)];
         pacnewApplier.running = true;
     }
     Process {
         id: pacnewLister
         running: true
-        command: [root.bin.replace(/rice-update$/, "rice-pacnew"), "list"]
+        command: [root.bin.replace(/kuwai-update$/, "kuwai-pacnew"), "list"]
         stdout: StdioCollector {
             onStreamFinished: {
                 let l = [];

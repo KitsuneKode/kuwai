@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Make the rice's login screen the system login (replaces SDDM):
+# Make kuwai's login screen the system login (replaces SDDM):
 #
 #   sudo greeter/install            greetd + the login face, from the next boot
 #   sudo greeter/install --code     only refresh the login screen's code (after an update)
@@ -16,21 +16,21 @@
 set -eu
 [ "$(id -u)" = 0 ] || { echo "run with sudo" >&2; exit 1; }
 USER_NAME=${SUDO_USER:?run with sudo from your account}
-RICE="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+KUWAI="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
 DEST=/var/lib/kuwai-greeter
 KEEP=$DEST/original        # what this script replaced, for --undo (root's)
 
 install_code() {
     install -d -m755 -o root -g root "$DEST"
     chown root:root "$DEST"; chmod 755 "$DEST"
-    rsync -a --delete --chown=root:root --chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r "$RICE/shell/" "$DEST/shell/"
+    rsync -a --delete --chown=root:root --chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r "$KUWAI/shell/" "$DEST/shell/"
     chown -R root:root "$DEST/shell"      # files rsync found unchanged keep their old owner otherwise
     for f in start session-start compositor-start keys; do
-        install -m755 -o root -g root "$RICE/greeter/$f" "$DEST/$f"
+        install -m755 -o root -g root "$KUWAI/greeter/$f" "$DEST/$f"
     done
-    install -m644 -o root -g root "$RICE/greeter/hyprland.lua" "$DEST/hyprland.lua"
+    install -m644 -o root -g root "$KUWAI/greeter/hyprland.lua" "$DEST/hyprland.lua"
     # Which code this is, for `kuwai doctor` ("the login screen is behind").
-    { git -C "$RICE" rev-parse HEAD 2>/dev/null || echo unknown; } >"$DEST/code-revision"
+    { git -C "$KUWAI" rev-parse HEAD 2>/dev/null || echo unknown; } >"$DEST/code-revision"
     chmod 644 "$DEST/code-revision"
     # The one part that stays yours.
     install -d -m755 -o "$USER_NAME" "$DEST/home"
@@ -46,9 +46,9 @@ install_code() {
 }
 
 if [ "${1:-}" = --code ]; then
-    [ -d "$DEST" ] || { echo "the login screen isn't installed: sudo $RICE/greeter/install" >&2; exit 1; }
+    [ -d "$DEST" ] || { echo "the login screen isn't installed: sudo $KUWAI/greeter/install" >&2; exit 1; }
     install_code
-    sudo -u "$USER_NAME" -H "$RICE/greeter/sync"
+    sudo -u "$USER_NAME" -H "$KUWAI/greeter/sync"
     echo "The login screen's code is current, and root's."
     exit 0
 fi
@@ -112,7 +112,7 @@ session     include     system-login
 EOF
 
 install_code
-sudo -u "$USER_NAME" -H "$RICE/greeter/sync"
+sudo -u "$USER_NAME" -H "$KUWAI/greeter/sync"
 
 install -d /etc/greetd
 cat >/etc/greetd/config.toml <<EOF
@@ -133,4 +133,4 @@ systemctl daemon-reload
 was=$(cat "$KEEP/display-manager" 2>/dev/null || true)
 [ -n "$was" ] && systemctl disable "$was" 2>/dev/null || true
 systemctl enable greetd.service
-echo "Done. Reboot to get the login screen. Undo: sudo $RICE/greeter/install --undo"
+echo "Done. Reboot to get the login screen. Undo: sudo $KUWAI/greeter/install --undo"

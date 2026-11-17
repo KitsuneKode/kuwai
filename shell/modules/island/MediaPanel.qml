@@ -9,7 +9,7 @@
 // button is where it plays (the Sound tab: outputs, per-app). The art and
 // title take you to the player. Keys: Space play/pause, ← → ±10 s (⇧ ±30 s),
 // N / P next / previous, S shuffle, R repeat, L the player's own action
-// (♥ in Cider, copy link in a web player: bin/rice-player), Esc closes.
+// (♥ in Cider, copy link in a web player: bin/kuwai-player), Esc closes.
 import QtQuick
 import QtQuick.Effects
 import Quickshell
@@ -47,7 +47,7 @@ FocusScope {
         else return;
         event.accepted = true;
     }
-    // ── What this player can do beyond MPRIS (bin/rice-player) ──────────
+    // ── What this player can do beyond MPRIS (bin/kuwai-player) ──────────
     // Cider: Love (Apple Music rating). A web player that tells us its page
     // (Chromium-family browsers do; Firefox/Zen don't): copy the link, at
     // this second for YouTube. Anything else: no extra button.
@@ -73,7 +73,7 @@ FocusScope {
             else np.say((actErr.text || "Didn't work").trim().split("\n").pop());
         }
     }
-    function run(args, ok) { if (act.running) return; act.onOk = ok; act.command = [Quickshell.shellDir + "/../bin/rice-player", ...args]; act.running = true; }
+    function run(args, ok) { if (act.running) return; act.onOk = ok; act.command = [Quickshell.shellDir + "/../bin/kuwai-player", ...args]; act.running = true; }
     function contextAct() {
         if (kind === "cider") {
             const key = trackKey, was = isLoved;

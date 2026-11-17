@@ -1,12 +1,12 @@
 # Chat: a native ask-anything window for the rice
 
 Status: the local half is built (2026-11-03): the assistant runs a local agent on Ollama
-(`bin/rice_agent.py`, tools and approvals, events below) with this window's UI. The subscription
+(`bin/kuwai_agent.py`, tools and approvals, events below) with this window's UI. The subscription
 backends (Codex, Claude) below are still to do; they plug in by printing the same events.
 
 ## The agent protocol (built)
 
-`rice-ollama agent <request.json>` prints one JSON event per line, in T3 Code's vocabulary
+`kuwai-ollama agent <request.json>` prints one JSON event per line, in T3 Code's vocabulary
 (`refs/pingdotgg_t3code/packages/contracts/src/providerRuntime.ts`), each with `ts`:
 `turn.started` · `item.started {id, itemType, title, input}` · `item.delta {id, text}` ·
 `item.completed {id, status, output}` · `request.opened {id, itemId, kind, summary, detail}` ·
@@ -27,7 +27,7 @@ press its key.
 
 - **UI: Quickshell, the rice's own primitives**, not a webview. A floating glass window (GlassCard, Elevation, the
   island's motion vocabulary): a sidebar of chats with search, the conversation, a prompt bar with attachments.
-  Messages render with the clipboard's renderer (`bin/rice-render`: Markdown, highlighted code, Mermaid). Reasoning
+  Messages render with the clipboard's renderer (`bin/kuwai-render`: Markdown, highlighted code, Mermaid). Reasoning
   folds away; sources show as citation chips and a list (the ideas of AI Elements' Reasoning, Sources, Inline
   Citation and Message, drawn in QML).
 - **Backend: a local Bun process** (`chat/`), started on first use and kept warm while the window is in use, idle-
@@ -38,7 +38,7 @@ press its key.
   - Claude: the Claude Agent SDK (`@anthropic-ai/claude-agent-sdk`), signed in with your Claude login. Tools limited to
     web search and fetch; no shell, no file writes.
   - Gemini (later): the Gemini CLI in its non-interactive JSON mode.
-- **History**: its own SQLite file in `~/.local/share/rice/chat/` (chats, messages, attachments), searchable (FTS5).
+- **History**: its own SQLite file in `~/.local/share/kuwai/chat/` (chats, messages, attachments), searchable (FTS5).
   Nothing goes into the Codex or Claude CLI histories beyond what their harnesses keep for the session itself.
 - **Attachments**: images (paste from the clipboard island, drop, or pick) and files (PDFs, text) go to the provider
   the way its harness accepts them.
@@ -58,7 +58,7 @@ with voxtype) for instant offline answers, semantic search over chat history, an
 
 ## Steps
 
-1. Bun backend: Codex via app-server, one streamed chat, stored in SQLite. A CLI check (`rice-chat ask "…"`).
+1. Bun backend: Codex via app-server, one streamed chat, stored in SQLite. A CLI check (`kuwai-chat ask "…"`).
 2. Claude via the Agent SDK, same protocol.
 3. The window: sidebar, conversation, prompt bar, streaming, stop, rendered Markdown/code.
 4. Attachments (images first), sources and citations, reasoning folds.

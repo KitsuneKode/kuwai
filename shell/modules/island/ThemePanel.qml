@@ -1,6 +1,6 @@
 // Themes and wallpapers, grown out of the island (Super+Shift+T, Super+Shift+W;
 // replaces HyDE's rofi selectors). HyDE still does the switching (GTK, kitty,
-// Hyprland, wallbash); the rice follows on its own, because its accent is
+// Hyprland, wallbash); kuwai follows on its own, because its accent is
 // read from the wallpaper's palette. Favourites (★, or F) sort first.
 //
 //   Themes   Wallpapers                                   Abyssal Wave
@@ -28,13 +28,13 @@ FocusScope {
     onCurrentChanged: previewPlaying = false
     property string mode: Island.themeMode || "themes"      // themes | wallpapers | live | saver
     readonly property var modes: ["themes", "wallpapers", "live", "saver"]
-    // Live wallpapers (bin/rice-wall json), with "Off" first: back to the still one.
+    // Live wallpapers (bin/kuwai-wall json), with "Off" first: back to the still one.
     property var live: []
     readonly property var liveItems: [{ name: "Off", path: "", thumb: "", off: true, current: !live.some(x => x.current) }].concat(live)
     Process {
         id: liveLister
         running: picker.mode === "live"
-        command: [Paths.bin + "/rice-wall", "json"]
+        command: [Paths.bin + "/kuwai-wall", "json"]
         stdout: StdioCollector {
             onStreamFinished: {
                 try { picker.live = JSON.parse(text); } catch (e) {}
@@ -45,7 +45,7 @@ FocusScope {
     // Screensavers: Dusk (drawn live), every film in the folder (drop an .mp4
     // in, it's listed), your live wallpaper, or the still one. ↵ uses it,
     // P shows it now. Settings → Screensaver has when and after how long.
-    readonly property string saverDir: Quickshell.env("HOME") + "/.local/share/rice/screensavers"
+    readonly property string saverDir: Quickshell.env("HOME") + "/.local/share/kuwai/screensavers"
     property var clips: []
     Process {
         id: saverLister
@@ -68,7 +68,7 @@ FocusScope {
                      { name: "Still wallpaper", style: "still", thumb: Quickshell.env("HOME") + "/.cache/hyde/wall.set", current: st === "still" }]);
     }
     function previewSaver() { Island.close(); saverGo.restart(); }
-    Timer { id: saverGo; interval: 350; onTriggered: Quickshell.execDetached([Paths.bin + "/rice", "screensaver", "start"]) }
+    Timer { id: saverGo; interval: 350; onTriggered: Quickshell.execDetached([Paths.bin + "/kuwai", "screensaver", "start"]) }
 
     // ── How to add your own (? or the header button): per tab, the steps,
     // the command (click: copied), the folder (Open), and what's worth adding.
@@ -89,21 +89,21 @@ FocusScope {
             folder: home + "/.config/hyde/themes/" + (info.current || "") + "/wallpapers",
             worth: "A calm, dark top edge: the island and its text sit there." },
         live: { title: "Add a live wallpaper",
-            steps: ["Any video works (MP4/WebM); slow and dark looks best.", "rice-wall makes it loop without a seam and sizes it for your screens.", "Wallpaper Engine videos: rice-wall import <workshop folder>."],
-            cmd: "rice-wall add ~/Videos/clip.mp4 \"name\"",
+            steps: ["Any video works (MP4/WebM); slow and dark looks best.", "kuwai-wall makes it loop without a seam and sizes it for your screens.", "Wallpaper Engine videos: kuwai-wall import <workshop folder>."],
+            cmd: "kuwai-wall add ~/Videos/clip.mp4 \"name\"",
             folder: home + "/Pictures/live-wallpapers",
             worth: "Slow motion, dark tones; it pauses when windows cover it." },
         saver: { title: "Add a screensaver",
-            steps: ["Any video: smoke, stars, aurora, ink in water.", "rice saver plays it at half speed, forward then back (no seam).", "Pick it here as “Night · Name”; P shows it now."],
-            cmd: "rice saver add ~/Videos/clip.mp4 name",
-            folder: home + "/.local/share/rice/screensavers",
+            steps: ["Any video: smoke, stars, aurora, ink in water.", "kuwai saver plays it at half speed, forward then back (no seam).", "Pick it here as “Night · Name”; P shows it now."],
+            cmd: "kuwai saver add ~/Videos/clip.mp4 name",
+            folder: home + "/.local/share/kuwai/screensavers",
             worth: "Mostly black with slow movement: kind to OLED, never distracting." }
     })
     readonly property var guideNow: guides[mode] || guides.themes
 
     property var info: ({ current: "", themes: [], wallpapers: [] })
     property bool loading: true
-    readonly property string bin: Paths.bin + "/rice-themes"
+    readonly property string bin: Paths.bin + "/kuwai-themes"
     readonly property var favs: Settings.favoriteThemes || []
     readonly property var items: mode === "saver" ? saverItems
         : mode === "live" ? liveItems
@@ -121,15 +121,15 @@ FocusScope {
         relist.restart();
     }
 
-    // Opening shows the last listing at once (rice-themes keeps it in
-    // ~/.cache/rice/themes-list.json; this panel is destroyed on close, so it
+    // Opening shows the last listing at once (kuwai-themes keeps it in
+    // ~/.cache/kuwai/themes-list.json; this panel is destroyed on close, so it
     // used to start from nothing every time), then the fresh one replaces it.
     // Only the very first open, with no listing kept yet, shows the skeleton.
     // Read now (blockLoading), once the panel is built: an async read
     // finishing after a quick close could land in a destroyed panel.
     FileView {
         id: kept
-        path: Quickshell.env("HOME") + "/.cache/rice/themes-list.json"
+        path: Quickshell.env("HOME") + "/.cache/kuwai/themes-list.json"
         blockLoading: true
         printErrors: false
     }
@@ -173,7 +173,7 @@ FocusScope {
         duration: Theme.shimmerMs
         loops: Animation.Infinite
     }
-    readonly property bool listed: mode === "themes" || mode === "wallpapers"     // what rice-themes lists
+    readonly property bool listed: mode === "themes" || mode === "wallpapers"     // what kuwai-themes lists
     onModeChanged: { previewPlaying = false; current = Math.max(0, items.findIndex(x => x.current)); grid.positionViewAtIndex(current, GridView.Center); }
 
     function apply(i) {
@@ -187,7 +187,7 @@ FocusScope {
             return;
         }
         if (mode === "live") {
-            Quickshell.execDetached(it.off ? [Paths.bin + "/rice-wall", "off"] : [Paths.bin + "/rice-wall", "play", it.path]);
+            Quickshell.execDetached(it.off ? [Paths.bin + "/kuwai-wall", "off"] : [Paths.bin + "/kuwai-wall", "play", it.path]);
             relive.restart();
             return;
         }
@@ -375,8 +375,8 @@ FocusScope {
                 Label { y: 22; text: picker.mode === "themes" ? "Theme palette" : "Wallpaper colours"; size: 11; color: Theme.textTertiary }
             }
             Label { text: preview.it && preview.it.current ? "In use now" : picker.mode === "live" && preview.it && preview.it.off ? "Press ↵ to turn the live wallpaper off" : "Press ↵ or click to apply"; size: 12; color: Theme.textSecondary }
-            Label { visible: picker.mode === "live"; width: parent.width; wrapMode: Text.Wrap; text: "Add your own: rice-wall add FILE.mp4 \"name\" · guide: docs/manual/looks.md"; size: 11; color: Theme.textTertiary }
-            Label { visible: picker.mode === "saver"; width: parent.width; wrapMode: Text.Wrap; text: "Add your own: rice saver add FILE.mp4 · guide: docs/manual/looks.md"; size: 11; color: Theme.textTertiary }
+            Label { visible: picker.mode === "live"; width: parent.width; wrapMode: Text.Wrap; text: "Add your own: kuwai-wall add FILE.mp4 \"name\" · guide: docs/manual/looks.md"; size: 11; color: Theme.textTertiary }
+            Label { visible: picker.mode === "saver"; width: parent.width; wrapMode: Text.Wrap; text: "Add your own: kuwai saver add FILE.mp4 · guide: docs/manual/looks.md"; size: 11; color: Theme.textTertiary }
         }
     }
 

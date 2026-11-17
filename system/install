@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# The rice's one-time system pieces (needs sudo):
+# Kuwai's one-time system pieces (needs sudo):
 #
-#   sudo system/install          alarms that wake the laptop (rice-wake)
+#   sudo system/install          alarms that wake the laptop (kuwai-wake)
 #   sudo system/install --undo   remove them
 #
-# rice-wake: you own /var/lib/rice-wake/at (one number: when to wake);
+# kuwai-wake: you own /var/lib/kuwai-wake/at (one number: when to wake);
 # a root-owned helper reads only that number and sets the RTC. Nothing else.
 set -eu
 [ "$(id -u)" = 0 ] || { echo "run with sudo" >&2; exit 1; }
@@ -12,21 +12,21 @@ USER_NAME=${SUDO_USER:?run with sudo from your account}
 HERE="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
 
 if [ "${1:-}" = --undo ]; then
-    systemctl disable --now rice-wake.path 2>/dev/null || true
-    rm -f /etc/systemd/system/rice-wake.path /etc/systemd/system/rice-wake.service /usr/local/libexec/rice-wake-root
-    rm -rf /var/lib/rice-wake
+    systemctl disable --now kuwai-wake.path 2>/dev/null || true
+    rm -f /etc/systemd/system/kuwai-wake.path /etc/systemd/system/kuwai-wake.service /usr/local/libexec/kuwai-wake-root
+    rm -rf /var/lib/kuwai-wake
     echo 0 > /sys/class/rtc/rtc0/wakealarm 2>/dev/null || true
     systemctl daemon-reload
-    echo "rice-wake removed."
+    echo "kuwai-wake removed."
     exit 0
 fi
 
-install -D -o root -g root -m 0755 "$HERE/rice-wake-root" /usr/local/libexec/rice-wake-root
-install -o root -g root -m 0644 "$HERE/rice-wake.path" "$HERE/rice-wake.service" /etc/systemd/system/
-install -d -o root -g root -m 0755 /var/lib/rice-wake
-[ -f /var/lib/rice-wake/at ] || echo 0 > /var/lib/rice-wake/at
-chown "$USER_NAME:" /var/lib/rice-wake/at
-chmod 0644 /var/lib/rice-wake/at
+install -D -o root -g root -m 0755 "$HERE/kuwai-wake-root" /usr/local/libexec/kuwai-wake-root
+install -o root -g root -m 0644 "$HERE/kuwai-wake.path" "$HERE/kuwai-wake.service" /etc/systemd/system/
+install -d -o root -g root -m 0755 /var/lib/kuwai-wake
+[ -f /var/lib/kuwai-wake/at ] || echo 0 > /var/lib/kuwai-wake/at
+chown "$USER_NAME:" /var/lib/kuwai-wake/at
+chmod 0644 /var/lib/kuwai-wake/at
 systemctl daemon-reload
-systemctl enable --now rice-wake.path
-echo "rice-wake installed: alarms now wake the laptop from sleep."
+systemctl enable --now kuwai-wake.path
+echo "kuwai-wake installed: alarms now wake the laptop from sleep."

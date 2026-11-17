@@ -1,0 +1,413 @@
+#!/usr/bin/env bash
+# Control the running kuwai.
+#
+#   kuwai start|restart        (re)start the shell, take over notifications
+#   kuwai stop                 stop it (dunst takes notifications back)
+#   kuwai logs                 follow the shell's log
+#   kuwai notifs <cmd>         dnd | dnd-on | dnd-off | mute-on | mute-off | clear | hide | open | last | count | waybar
+#   kuwai feeds [status|gmail-setup|gmail-forget|logs]   GitHub and Gmail notifications (bin/kuwai-feeds)
+#   kuwai center [agents] [pointer]   toggle the center (Notifications or Agents);
+#                             `pointer` (the bell) morphs it, keys open it instantly
+#   kuwai assistant [here|open] toggle the AI assistant; `here` opens it about the focused window
+#   kuwai bar [island|waybar]  which top bar: kuwai's island or HyDE's Waybar
+#   kuwai lock [--wait]        lock with kuwai's lock screen (--wait: until it is locked; hyprlock if the shell is down)
+#   kuwai fade [start|stop]    darken the screens before the idle lock
+#   kuwai timer 10m [label]    a timer in the island (cancel · list)
+#   kuwai pomodoro             start/stop 25/5 focus cycles
+#   kuwai remind in 20m tea    a reminder ("at 5 call mum", "tomorrow 9am x"; list · clear)
+#   kuwai backup [list|diff|restore NAME]   snapshots of your settings, hypr files, reminders, pins
+#   kuwai settings [page]      open Settings (power, saver, time, notifs, island, …)
+#   kuwai usage                agent usage limits in the island (Claude, Codex, … windows and resets)
+#   kuwai system               the machine: CPU, memory by app, GPU, modes (alias: kuwai vitals)
+#   kuwai alarm 7:30 [label]   an alarm (wakes the laptop with system/install; list · clear · stop · snooze)
+#   kuwai note buy milk        a line in ~/Notes/inbox.md (no text: open it)
+#   kuwai screensaver          show the screensaver now (it also comes on idle while Caffeine is on)
+#   kuwai saver add FILE [name]  make a video a screensaver film (seamless loop + thumbnail); list · remove
+#   kuwai set KEY VALUE        change a setting (~/.config/kuwai/settings.json)
+#   kuwai get [KEY]            print one setting, or all of them
+#   kuwai channel [stable|dev] run from the stable copy (~/.local/share/kuwai) or the repo
+#   kuwai promote [--force]    move stable up to the repo's latest commit (and reload it), after kuwai-check
+#   kuwai check                is the running shell healthy (load, orphans, idle, memory, cpu)
+#   kuwai doctor               kuwai + notifications + shell + feeds (before promote)
+#
+# `notifs` falls back to dunstctl when kuwai isn't the notification server,
+# so Waybar and keybinds keep working either way.
+set -u
+
+KUWAI="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+SHELL_DIR="$KUWAI/shell"
+
+ipc() { qs ipc -p "$SHELL_DIR" call "$@" 2>/dev/null; }
+
+kuwai_owns_notifications() {
+    local pid
+    pid=$(busctl --user call org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus \
+        GetConnectionUnixProcessID s org.freedesktop.Notifications 2>/dev/null | awk '{print $2}')
+    [ -n "$pid" ] && [ "$(cat /proc/"$pid"/comm 2>/dev/null)" != "dunst" ]
+}
+
+dunst_waybar() {
+    # Same JSON shape as kuwai's, from dunst's history and pause state.
+    # Only if dunst is already running: dunstctl would otherwise make D-Bus
+    # launch it, racing kuwai for the notification name during a restart.
+    if ! pgrep -x dunst >/dev/null; then
+        printf '{"text":"","alt":"none","class":"none","tooltip":"Notifications starting…"}\n'
+        return
+    fi
+    local count paused alt
+    count=$(dunstctl count history 2>/dev/null || echo 0)
+    paused=$(dunstctl is-paused 2>/dev/null || echo false)
+    if [ "$paused" = true ]; then alt=dnd; [ "$count" -gt 0 ] && alt=dnd-notification
+    else alt=none; [ "$count" -gt 0 ] && alt=notification; fi
+    printf '{"text":"%s","alt":"%s","class":"%s","tooltip":"󰎟 Notifications (dunst fallback)"}\n' "$count" "$alt" "$alt"
+}
+
+SETTINGS="${XDG_CONFIG_HOME:-$HOME/.config}/kuwai/settings.json"
+
+# Settings are JSON the shell watches: write the file, the shell follows.
+# Values parse as JSON when they can (true, 220, "x"), else as a string.
+set_setting() { "$KUWAI/bin/kuwai-settings" set "$1" "$2" >/dev/null; }
+
+get_setting() {
+    local value
+    value=$("$KUWAI/bin/kuwai-settings" get "$1") || return
+    jq -r '.' <<<"$value"
+}
+
+# The island bar replaces Waybar: one of the two runs. `apply` makes the
+# processes match the setting (kuwai-shell calls it after starting).
+bar() {
+    case ${1:-} in
+        island|waybar) set_setting bar "\"$1\"" || return ;;
+        apply|"") ;;
+        *) echo "usage: kuwai bar [island|waybar|apply]" >&2; return 2 ;;
+    esac
+    local chosen
+    chosen=$(get_setting bar) || return
+    [ -z "${1:-}" ] && { printf '%s\n' "$chosen"; return; }
+    # HyDE runs Waybar as a transient unit and restarts it from its theme
+    # switch, its wallpaper change and wallbash (20:19, 2026-11-17: a dozen
+    # restarts in a minute of wallpaper changes, each killed again after).
+    # Masking the unit for this login makes systemd refuse every start, from
+    # whoever asks; --runtime, so it is gone at logout and never outlives kuwai.
+    local units="hyde-${XDG_SESSION_DESKTOP:-Hyprland}-bar.service hyde-${XDG_SESSION_DESKTOP:-Hyprland}-waybar-watcher.service"
+    if [ "$chosen" = island ]; then
+        # shellcheck disable=SC2086
+        systemctl --user stop $units 2>/dev/null
+        # shellcheck disable=SC2086
+        systemctl --user mask --runtime $units >/dev/null 2>&1
+        pkill -x waybar 2>/dev/null
+    else
+        # shellcheck disable=SC2086
+        systemctl --user unmask --runtime $units >/dev/null 2>&1
+        pgrep -x waybar >/dev/null || setsid -f hyde-shell waybar >/dev/null 2>&1 </dev/null
+    fi
+    return 0
+}
+
+notifs() {
+    local cmd=${1:-}
+    if kuwai_owns_notifications; then
+        case $cmd in
+            dnd)     ipc notifs toggleDnd >/dev/null ;;
+            dnd-on)  ipc notifs setDnd true ;;
+            dnd-off) ipc notifs setDnd false ;;
+            mute-on) ipc notifs setDndMute true ;;
+            mute-off) ipc notifs setDndMute false ;;
+            clear)   ipc notifs clear ;;
+            hide)    ipc notifs dismissPopups ;;
+            open)    ipc notifs openLatest ;;
+            last)    ipc notifs showLast ;;
+            count)   ipc notifs count ;;
+            waybar)  ipc notifs waybar ;;
+            *) echo "usage: kuwai notifs dnd|dnd-on|dnd-off|clear|hide|open|last|count|waybar" >&2; return 2 ;;
+        esac
+    else
+        case $cmd in
+            dnd)     dunstctl set-paused toggle ;;
+            dnd-on)  dunstctl set-paused true ;;
+            dnd-off) dunstctl set-paused false ;;
+            clear)   dunstctl history-clear ;;
+            hide)    dunstctl close-all ;;
+            open)    dunstctl action 0 ;;
+            last)    dunstctl history-pop ;;
+            count)   dunstctl count history ;;
+            waybar)  dunst_waybar ;;
+            *) echo "usage: kuwai notifs dnd|dnd-on|dnd-off|clear|hide|open|last|count|waybar" >&2; return 2 ;;
+        esac
+    fi
+}
+
+# Stable and dev (hypr/templates/hyprland.lua reads the channel): stable is
+# ~/.local/share/kuwai, a worktree on the repo's `stable` branch; dev is the
+# repo you edit. Switching reloads Hyprland and restarts the shell from the
+# other copy, so keys, PATH and the shell all move together.
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/kuwai"
+STABLE="${XDG_DATA_HOME:-$HOME/.local/share}/kuwai"
+dev_root() { for d in "$HOME/Projects/kuwai" "$HOME/Projects/rice"; do [ -e "$d/hypr/init.lua" ] && { echo "$d"; return; }; done; }
+switch_to() {   # $1 = the root to run from
+    hyprctl reload >/dev/null 2>&1
+    sleep 0.5
+    # During a promote: the compositor must take the new config too. Errors
+    # it didn't have before are a failed load (promote rolls back); a working
+    # shell over a broken Hyprland config would hide them until next login.
+    if [ -n "${KUWAI_ERRS_BEFORE+x}" ]; then
+        local errs; errs=$(hyprctl configerrors 2>/dev/null)
+        if [ -n "$(printf '%s' "$errs" | tr -d '[:space:]')" ] && [ "$errs" != "$KUWAI_ERRS_BEFORE" ]; then
+            printf 'kuwai: Hyprland reports config errors with the new stable:\n%s\n' "$errs" | sed '/^\s*$/d' >&2
+            return 1
+        fi
+    fi
+    # The old copy's shell: stopped by its own kuwai-shell's rule (kill -9).
+    # (By config path: a crash-relaunched shell's command line is a bare `quickshell`.)
+    qs list --all --json 2>/dev/null | jq -r '.[] | select(.config_path | endswith("/shell/shell.qml")) | "\(.pid) \(.config_path | sub("/shell/shell.qml$"; ""))"' | while read -r pid root; do
+        [ "$root" = "$1" ] || kill -9 "$pid" 2>/dev/null
+    done
+    # systemd's copy (hypridle and the units run `kuwai` from it): Hyprland's
+    # environment, which the reload just updated, exported again.
+    systemctl --user set-environment KUWAI_ROOT="$1" 2>/dev/null
+    hyprctl dispatch "hl.dsp.exec_cmd('dbus-update-activation-environment --systemd PATH KUWAI_ROOT')" >/dev/null 2>&1
+    sleep 0.3
+    exec "$1/bin/kuwai-shell"
+}
+
+case ${1:-} in
+    channel)
+        mkdir -p "$STATE_DIR"
+        case ${2:-} in
+            stable)
+                [ -d "$STABLE/.git" ] || [ -f "$STABLE/.git" ] || { echo "kuwai: no stable copy at $STABLE (git worktree add $STABLE stable)" >&2; exit 1; }
+                echo stable > "$STATE_DIR/channel"; switch_to "$STABLE" ;;
+            dev)
+                echo dev > "$STATE_DIR/channel"; switch_to "$(dev_root)" ;;
+            "") cat "$STATE_DIR/channel" 2>/dev/null || echo "dev (no channel set)" ;;
+            *) echo "usage: kuwai channel [stable|dev]" >&2; exit 2 ;;
+        esac ;;
+    promote)
+        # Stable moves up to the repo's latest commit (fast-forward only:
+        # nothing on stable is ever rewritten). Uncommitted work stays behind.
+        dev=$(dev_root)
+        # The running shell must be healthy first (bin/kuwai-check); --force skips it.
+        if [ "${2:-}" != --force ] && ! "$dev/bin/kuwai-check" --quiet; then
+            echo "kuwai: kuwai-check failed (above); fix it, or kuwai promote --force" >&2
+            exit 1
+        fi
+        # Your files as they are, before the desktop under them changes.
+        "$dev/bin/kuwai-backup" auto "before promote" >/dev/null 2>&1 || true
+        head=$(git -C "$dev" rev-parse HEAD) || exit 1
+        # The QML that would go live must load: kuwai-check above only sees the
+        # running shell, so a broken import in the new code took the island
+        # down once. Lint just the changed files, for the fatal classes.
+        # Always, even with --force (that only skips the running shell's health).
+        if command -v /usr/lib/qt6/bin/qmllint >/dev/null; then
+            bad=""
+            for f in $(git -C "$dev" diff --name-only "$(git -C "$STABLE" rev-parse HEAD)" "$head" -- '*.qml'); do
+                [ -f "$dev/$f" ] || continue
+                out=$(/usr/lib/qt6/bin/qmllint --bare -I /usr/lib/qt6/qml "$dev/$f" 2>&1 | grep -E "unknown attached property scope|\[syntax\]|\[unresolved-alias\]|^Error")
+                [ -n "$out" ] && bad="$bad\n$f:\n$out"
+                # An id this promote removes that the file still uses (an alias,
+                # a call, a map entry): "Cannot resolve alias" stops the load, a
+                # bare use throws whenever that code runs (2026-11-12: removing
+                # the center's Agents view left all three; the load test, past
+                # its first PanelWindow, saw none of them).
+                for id in $(git -C "$dev" diff -U0 "$(git -C "$STABLE" rev-parse HEAD)" "$head" -- "$f" | sed -nE 's/^-\s*id:\s*([A-Za-z_][A-Za-z0-9_]*)\s*$/\1/p' | sort -u); do
+                    git -C "$dev" show "$head:$f" | grep -qE "^\s*id:\s*$id\s*$" && continue     # still declared (moved)
+                    left=$(git -C "$dev" show "$head:$f" | grep -nE "(^|[^A-Za-z0-9_.\"])$id(\.|\s*[,;)}]|$)" | grep -vE '^\s*[0-9]+:\s*//' | head -3)
+                    [ -n "$left" ] && bad="$bad\n$f (uses id '$id', which this promote removes):\n$left"
+                done
+                # A property named like one of Item's anchor lines (left, top…) is
+                # a FINAL override: the file won't load, and lint is silent.
+                # The offscreen load test can't reach panels, so check by name.
+                # Only lines this promote adds (a window's own `top` is fine and old).
+                fin=$(git -C "$dev" diff -U0 "$(git -C "$STABLE" rev-parse HEAD)" "$head" -- "$f" | grep -E '^\+\s*(readonly\s+)?property\s+[A-Za-z_.<>]+\s+(left|right|top|bottom|horizontalCenter|verticalCenter|baseline)\s*[:;]')
+                [ -n "$fin" ] && bad="$bad\n$f (a property named like an anchor line, a FINAL override; it won't load — rename it):\n$fin"
+            done
+            if [ -n "$bad" ]; then
+                printf "kuwai: this QML wouldn't load; stable left as it is:%b\n" "$bad" >&2
+                exit 1
+            fi
+        fi
+        # A helper that streams for the shell's whole life (subscribe, monitor,
+        # watch, tail -F, a while-loop, kuwai-render --serve) must die with it:
+        # without pdeathsig every restart left one behind (127 of them and 78
+        # polling loops, 1.1 GB, found 2026-11-07).
+        leak=$(git -C "$dev" grep -nE 'command: *\[.*("subscribe"|"monitor"|"--watch"|"watch"|"-F"|"--serve"|while :)' "$head" -- 'shell/*.qml' | grep -v pdeathsig | grep -v '"hyprctl", "monitors"')
+        # A loop written on a later line than its `command:` (a sh -c script in
+        # backquotes) slipped past that: Alerts' and SystemStats' did.
+        for f in $(git -C "$dev" grep -lE 'while :|while true;' "$head" -- 'shell/*.qml' | sed "s|^$head:||"); do
+            late=$(git -C "$dev" show "$head:$f" | awk -v f="$f" '/command: *\[/ { cmd = $0; at = NR }
+                /while :|while true;/ && at && NR - at < 15 && cmd !~ /pdeathsig/ { print f ":" NR ":" $0 }')
+            [ -n "$late" ] && leak="${leak:+$leak
+}$late"
+        done
+        if [ -n "$leak" ]; then
+            printf "kuwai: these helpers would outlive a restart (start them with setpriv --pdeathsig KILL --); stable left as it is:\n%s\n" "$leak" >&2
+            exit 1
+        fi
+        # Hyprland's side: every Lua file of the candidate must parse. (The
+        # offline `Hyprland --verify-config` crashes on 0.57 and runs exec
+        # lines; the live reload below is checked instead.)
+        if command -v luac >/dev/null; then
+            bad=""
+            for f in $(git -C "$dev" ls-tree -r --name-only "$head" -- hypr | grep '\.lua$'); do
+                out=$(git -C "$dev" show "$head:$f" | luac -p - 2>&1) || bad="$bad\n$f: $out"
+            done
+            [ -z "$bad" ] || { printf "kuwai: this Lua wouldn't parse; stable left as it is:%b\n" "$bad" >&2; exit 1; }
+        fi
+        # And it must load: a throwaway offscreen shell (bin/kuwai-loadtest)
+        # reports what lint can't (a handler set twice, a singleton that fails).
+        # The login screen too: it runs this same shell from greeter.qml.
+        "$dev/bin/kuwai-loadtest" "$head" || { echo "kuwai: stable left as it is" >&2; exit 1; }
+        "$dev/bin/kuwai-loadtest" "$head" greeter.qml || { echo "kuwai: the login screen wouldn't load; stable left as it is" >&2; exit 1; }
+        # Stable must be clean: a failed start below resets it hard, which would
+        # erase any edit made in it directly (it did, 2026-11-10). Refuse instead
+        # of stashing or resetting someone's work (review finding 08).
+        dirty=$(git -C "$STABLE" status --porcelain 2>/dev/null)
+        if [ -n "$dirty" ]; then
+            printf "kuwai: stable (%s) has changes that aren't committed; stable left as it is:\n%s\nMake them in the repo instead (or: git -C %s stash), then promote again.\n" "$STABLE" "$dirty" "$STABLE" >&2
+            exit 1
+        fi
+        prev=$(git -C "$STABLE" rev-parse HEAD)
+        git -C "$STABLE" merge --ff-only --quiet "$head" || { echo "kuwai: stable can't fast-forward to $(git -C "$dev" log --oneline -1)" >&2; exit 1; }
+        echo "stable is now $(git -C "$STABLE" log --oneline -1)"
+        # Live, and if it doesn't load after all (what no check before could
+        # see), straight back to the commit that did: a few seconds, not a
+        # shell that stays down until someone notices.
+        if [ "$(cat "$STATE_DIR/channel" 2>/dev/null)" = stable ]; then
+            KUWAI_ERRS_BEFORE=$(hyprctl configerrors 2>/dev/null)
+            if ! ( switch_to "$STABLE" ); then
+                unset KUWAI_ERRS_BEFORE
+                echo "kuwai: the new shell didn't load; stable back to $(git -C "$STABLE" log --oneline -1 "$prev")" >&2
+                # First kuwai-shell's wait-for-a-save retry (it would fire on the reset's own file changes).
+                # Matched by its exact argv[3] ($0 = kuwai-shell-watch), never a
+                # pattern anywhere in a command line (that killed a bystander).
+                for w in $(pgrep -x bash); do
+                    [ "$(tr '\0' '\n' < /proc/$w/cmdline 2>/dev/null | sed -n 4p)" = kuwai-shell-watch ] && kill "$w" 2>/dev/null
+                done
+                git -C "$STABLE" reset --hard --quiet "$prev"
+                ( switch_to "$STABLE" ) && echo "kuwai: rolled back; fix it in dev and promote again" >&2
+                exit 1
+            fi
+        elif qs list --all --json 2>/dev/null | jq -e --arg d "$STABLE/shell/shell.qml" 'any(.[]; .config_path == $d)' >/dev/null; then
+            # Channel dev (Hyprland reads the repo, someone's testing its
+            # config) but the shell on screen is stable's: it doesn't watch its
+            # files, so restart just the shell; Hyprland and its environment
+            # stay as they are. (Skipped before: promotes never reached the screen.)
+            echo "kuwai: channel is dev; restarting stable's shell only"
+            # The same safety as the stable channel: a shell that won't load
+            # goes straight back to the commit that did (2026-11-12: a dangling
+            # alias in the center, past the load test's first PanelWindow, left
+            # the shell down until it was noticed).
+            if ! "$STABLE/bin/kuwai-shell"; then
+                echo "kuwai: the new shell didn't load; stable back to $(git -C "$STABLE" log --oneline -1 "$prev")" >&2
+                git -C "$STABLE" reset --hard --quiet "$prev"
+                "$STABLE/bin/kuwai-shell" && echo "kuwai: rolled back; fix it in dev and promote again" >&2
+                exit 1
+            fi
+        fi ;;
+    check)         exec "$KUWAI/bin/kuwai-check" "$@" ;;
+    doctor)        exec "$KUWAI/bin/kuwai-doctor" "$@" ;;
+    start|restart) exec "$KUWAI/bin/kuwai-shell" ;;
+    stop)          for pid in $(qs list -p "$SHELL_DIR" --json 2>/dev/null | jq -r ".[].pid"); do kill -9 "$pid"; done ;;
+    logs)          exec qs log -p "$SHELL_DIR" -f ;;
+    notifs)        shift; notifs "$@" ;;
+    feeds)         case ${2:-status} in
+                       logs) exec journalctl --user -u kuwai-feeds.service -f ;;
+                       *) exec "$KUWAI/bin/kuwai-feeds" "${2:-status}" ;;
+                   esac ;;
+    bar)           shift; bar "$@" ;;
+    lock)
+        # The shell's lock screen. --wait: return only once the compositor
+        # confirms the lock (before_sleep_cmd uses it, so nothing shows
+        # unlocked after a resume). If the shell is unavailable, start hyprlock.
+        if ! ipc lock lock 2>/dev/null; then
+            # A living process does not prove ext-session-lock readiness. We
+            # can request the fallback, but --wait must fail without a trusted
+            # readiness acknowledgement; before-sleep callers must see failure.
+            command -v hyprlock >/dev/null || { echo "kuwai: the shell isn't answering and hyprlock isn't installed: not locked" >&2; exit 1; }
+            pidof hyprlock >/dev/null || setsid -f hyprlock >/dev/null 2>&1 </dev/null
+            for _ in $(seq 20); do pidof hyprlock >/dev/null && break; sleep 0.05; done
+            pidof hyprlock >/dev/null || { echo "kuwai: hyprlock didn't start: not locked" >&2; exit 1; }
+            if [ "${2:-}" = --wait ]; then
+                echo "kuwai: fallback lock requested, but lock readiness cannot be confirmed; refusing success" >&2
+                exit 1
+            fi
+            exit 0
+        fi
+        if [ "${2:-}" = --wait ]; then
+            for _ in $(seq 60); do [ "$(ipc lock state)" = locked ] && exit 0; sleep 0.05; done
+            exit 1
+        fi ;;
+    fade)          ipc fade "${2:-start}" >/dev/null 2>&1 ;;   # (hypridle)
+    screensaver)   ipc screensaver "${2:-start}" ;;   # start it now (any input dismisses) · stop
+    saver)
+        # Screensaver films: ~/.local/share/kuwai/screensavers/NAME.mp4 (+ .jpg).
+        # Themes → Screensaver lists every film there; this makes one well:
+        # half speed, then reversed, so the loop has no seam; a little darker;
+        # 24 fps, ~3–7 Mbit/s (cheap to decode); a thumbnail beside it.
+        dir="${XDG_DATA_HOME:-$HOME/.local/share}/kuwai/screensavers"
+        case ${2:-} in
+            add)
+                src=${3:-}; [ -f "$src" ] || { echo "usage: kuwai saver add FILE [name]" >&2; exit 2; }
+                name=${4:-$(basename "${src%.*}")}; name=$(printf '%s' "$name" | tr 'A-Z ' 'a-z-' | tr -cd 'a-z0-9-')
+                [ -n "$name" ] || { echo "kuwai: give it a name (letters, digits, -)" >&2; exit 2; }
+                mkdir -p "$dir"
+                echo "making $dir/$name.mp4 (a seamless half-speed loop)…"
+                ffmpeg -nostdin -v error -y -i "$src" -filter_complex \
+                    "[0:v]scale='min(2560,iw)':-2,setpts=2.0*PTS,fps=24,split[a][b];[b]reverse[r];[a][r]concat=n=2:v=1,eq=brightness=-0.03:saturation=0.9,format=yuv420p[v]" \
+                    -map "[v]" -an -c:v libx264 -preset slow -crf 23 -maxrate 7M -bufsize 14M -g 48 -movflags +faststart "$dir/$name.mp4" \
+                    && ffmpeg -nostdin -v error -y -ss 4 -i "$dir/$name.mp4" -frames:v 1 -vf scale=480:-2 -q:v 3 "$dir/$name.jpg" \
+                    && echo "✓ $name: pick it in Themes → Screensaver (or: kuwai set screensaverClip $name; kuwai set screensaverStyle night)" ;;
+            remove)
+                [ -n "${3:-}" ] && rm -i -- "$dir/${3}.mp4" "$dir/${3}.jpg" ;;
+            ""|list)
+                for f in "$dir"/*.mp4; do [ -e "$f" ] && basename "${f%.mp4}"; done ;;
+            *) echo "usage: kuwai saver [list|add FILE [name]|remove NAME]" >&2; exit 2 ;;
+        esac ;;
+    pomodoro|pomo) ipc timer pomodoro ;;
+    remind)
+        case "${2:-list}" in
+            list) ipc remind list ;;
+            clear) ipc remind clear ;;
+            *) ipc remind add "${*:2}" ;;
+        esac ;;
+    backup)        shift; exec "$KUWAI/bin/kuwai-backup" "$@" ;;   # now · list · diff · restore NAME
+    settings)      ipc island settings "${2:-}" ;;   # open Settings (on a page: power, saver, time, notifs, …)
+    usage)         ipc island open usage ;;          # the Usage panel (services/Limits)
+    system|vitals) ipc island open system ;;         # the System section (vitals: its old name)
+    alarm)
+        case "${2:-list}" in
+            list|clear|stop|snooze) ipc alarm "${2:-list}" ;;
+            *) ipc alarm add "${*:2}" ;;
+        esac ;;
+    note)
+        if [ $# -lt 2 ]; then ipc note open; else ipc note add "${*:2}"; fi ;;
+    timer)         # kuwai timer 10m pizza · kuwai timer cancel · kuwai timer list
+        case ${2:-} in
+            cancel) ipc timer cancel ;;
+            list|"") ipc timer list ;;
+            *) ipc timer start "$2" "${*:3}" ;;
+        esac ;;   # hypridle: darken before the lock (stop: any input)
+    set)           [ $# -eq 3 ] || { echo "usage: kuwai set KEY VALUE" >&2; exit 2; }; set_setting "$2" "$3" ;;
+    get)           if [ -n "${2:-}" ]; then get_setting "$2"; else jq . "$SETTINGS" 2>/dev/null || echo '{}'; fi ;;
+    blank)         ipc blank toggle ;;   # the other screen(s) black, again to bring them back
+    center)
+        # Needs the shell running, not the notification name: start it if
+        # it isn't up rather than doing nothing.
+        if ! qs ipc -p "$SHELL_DIR" show >/dev/null 2>&1; then
+            "$KUWAI/bin/kuwai-shell" >/dev/null 2>&1
+            for _ in $(seq 20); do qs ipc -p "$SHELL_DIR" show >/dev/null 2>&1 && break; sleep 0.1; done
+        fi
+        ipc center toggle "${2:-notifications}" "${3:-key}" ;;
+    assistant)
+        if ! qs ipc -p "$SHELL_DIR" show >/dev/null 2>&1; then
+            "$KUWAI/bin/kuwai-shell" >/dev/null 2>&1
+            for _ in $(seq 20); do qs ipc -p "$SHELL_DIR" show >/dev/null 2>&1 && break; sleep 0.1; done
+        fi
+        case "${2:-}" in
+            here) ipc assistant here ;;      # with the focused window's screenshot, selection, folder
+            open) ipc assistant open ;;
+            *)    ipc assistant toggle ;;
+        esac ;;
+    *) sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+esac

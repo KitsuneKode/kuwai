@@ -11,7 +11,7 @@ import time
 from contextlib import redirect_stdout
 
 sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[3] / "bin"))
-import rice_agent as a  # noqa: E402
+import kuwai_agent as a  # noqa: E402
 
 VARIANTS = {
     "current": None,

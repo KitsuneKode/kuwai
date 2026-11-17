@@ -55,7 +55,7 @@ Singleton {
     // ── Shazam ───────────────────────────────────────────────────────────
     property bool shazamListening: false
     property var shazamFound: null            // { title, artist, url } for a moment after a match
-    // rice-shazam writes its pid to recognize.pid while it listens and
+    // kuwai-shazam writes its pid to recognize.pid while it listens and
     // removes it when it ends. The file is watched (its folder has to exist
     // for that, so it's made once); /proc/<pid> says the listener is alive,
     // re-read every 5 s only while listening, for one killed with -9 that
@@ -109,7 +109,7 @@ Singleton {
         }
     }
     Timer { id: foundFor; interval: 12000; onTriggered: root.shazamFound = null }
-    function shazamToggle() { Quickshell.execDetached([Paths.bin + "/rice-shazam", "toggle"]); }
+    function shazamToggle() { Quickshell.execDetached([Paths.bin + "/kuwai-shazam", "toggle"]); }
     function shazamOpen() {
         if (shazamFound && shazamFound.id) Quickshell.execDetached(["xdg-open", "music://play/s/" + shazamFound.id]);
         shazamFound = null;

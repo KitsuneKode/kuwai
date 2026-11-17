@@ -1,6 +1,6 @@
 -- ~/.config/hypr/hyprland.lua — Hyprland's entry point.
 --
--- The desktop itself is kuwai, in the rice repo (KUWAI_ROOT/hypr). This file
+-- The desktop itself is kuwai, in kuwai repo (KUWAI_ROOT/hypr). This file
 -- only finds it. Your own settings go next to this file:
 --   monitors.lua   screens (names, modes, scale, VRR, 10-bit)
 --   user.lua       apps, launchers, per-app rules, autostart
@@ -12,9 +12,9 @@ do
 	local home = os.getenv("HOME") or ""
 	local data = os.getenv("XDG_DATA_HOME") or (home .. "/.local/share")
 	local tries = { home .. "/Projects/kuwai", home .. "/Projects/rice", data .. "/kuwai" }
-	-- The channel (`rice channel stable|dev`): stable is a checkout of the
+	-- The channel (`kuwai channel stable|dev`): stable is a checkout of the
 	-- repo's `stable` branch in ~/.local/share/kuwai (moved forward with
-	-- `rice promote`), so a half-saved edit in the repo never reaches your
+	-- `kuwai promote`), so a half-saved edit in the repo never reaches your
 	-- session; dev runs straight from the repo. It wins over $KUWAI_ROOT,
 	-- which the live Hyprland keeps from its last load.
 	local state = (os.getenv("XDG_STATE_HOME") or (home .. "/.local/state")) .. "/kuwai/channel"

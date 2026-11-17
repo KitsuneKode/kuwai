@@ -1,4 +1,4 @@
-// The clipboard island: the rice's dynamic island, at the top centre under
+// The clipboard island: kuwai's dynamic island, at the top centre under
 // the bar, doing its first job.
 //
 //   copy anything →      ╭──────────────────────────────╮
@@ -608,7 +608,7 @@ Scope {
     }
     Timer { id: toastTimer; interval: 1900; onTriggered: root.toasting = false }
 
-    // Recording (bin/rice-rec, state in the Clipboard service): the pill holds
+    // Recording (bin/kuwai-rec, state in the Clipboard service): the pill holds
     // a red dot, the time and a stop button while it lasts; after a stop it
     // shows "Recording saved" with a frame of it for a few seconds.
     readonly property bool recording: Clipboard.recSince > 0
@@ -745,7 +745,7 @@ Scope {
             // island's reserved strip.
             exclusionMode: inIsland ? ExclusionMode.Ignore : ExclusionMode.Normal
             color: "transparent"
-            WlrLayershell.namespace: "rice-island"
+            WlrLayershell.namespace: "kuwai-island"
             WlrLayershell.layer: WlrLayer.Overlay
             WlrLayershell.keyboardFocus: up && root.expanded ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
             mask: Region { item: win.up && (root.expanded || root.toasting || root.recording || root.saved) ? frame : null }
@@ -779,7 +779,7 @@ Scope {
                 // its height; the notch's 14) to the shelf's.
                 radius: win.lerp(win.notch ? 14 : win.pillH / 2, 26, Math.min(1, win.m))
                 // The same liquid glass (and grain) as the center and the
-                // toasts: one material across the rice. The pill is the
+                // toasts: one material across kuwai. The pill is the
                 // glass's elevated tint, a touch denser so words read on it.
                 color: "transparent"
                 opacity: Math.min(1, win.pv * 2.5)

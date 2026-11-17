@@ -1,7 +1,7 @@
 -- kuwai.look — the material: geometry, corners, depth, glass.
 --
 -- Order matters and mirrors how the old hyprlang stack layered:
---   1. kuwai base           sane geometry + glass tuned for the rice
+--   1. kuwai base           sane geometry + glass tuned for kuwai
 --   2. wallbash groupbar    colours from the wallpaper palette
 --   3. HyDE theme           ~/.config/hypr/themes/theme.conf (borders, glow…)
 --   4. kuwai identity       the bits that make it kuwai, whatever the theme
@@ -167,7 +167,7 @@ function L.apply_identity()
 		render = { new_render_scheduling = false },
 		group = { groupbar = { rounding_power = 4, gradient_rounding_power = 4, font_family = UI_FONT } },
 	})
-	-- Hyprland's own notifications and error bar, in the rice's face.
+	-- Hyprland's own notifications and error bar, in kuwai's face.
 	K.config({ misc = { font_family = UI_FONT } })
 end
 

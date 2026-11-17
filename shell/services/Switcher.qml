@@ -9,8 +9,8 @@ pragma Singleton
 //   in the panel   ←→ step · ↵ switch · Esc cancel · Q close the selected
 //                  window · W only this workspace · hover picks, click switches
 //
-// kuwai (hypr/kuwai/binds.lua) sends rice:switch-next / -prev / -app on the
-// keys and rice:switch-commit when Alt comes up; the global shortcuts live in
+// kuwai (hypr/kuwai/binds.lua) sends kuwai:switch-next / -prev / -app on the
+// keys and kuwai:switch-commit when Alt comes up; the global shortcuts live in
 // modules/Shortcuts.qml. Most-recently-used order is kept here from Hyprland's
 // focus events as they happen, so opening needs no IPC round trip.
 //

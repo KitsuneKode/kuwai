@@ -1,2 +1,2 @@
 #!/bin/sh
-echo "xdg-open $*" >> "$RICE_TEST_TMP/launched"
+echo "xdg-open $*" >> "$KUWAI_TEST_TMP/launched"

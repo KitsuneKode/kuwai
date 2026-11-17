@@ -1,4 +1,4 @@
-"""bin/rice-update-root: hostile requests are refused before anything is touched.
+"""bin/kuwai-update-root: hostile requests are refused before anything is touched.
 
 Runs without root: every case here must raise ValueError in validation, so
 no file is read, changed or removed.
@@ -15,8 +15,8 @@ ROOT = Path(__file__).resolve().parents[2]
 
 @pytest.fixture(scope="module")
 def ur():
-    loader = importlib.machinery.SourceFileLoader("rice_update_root", str(ROOT / "bin" / "rice-update-root"))
-    spec = importlib.util.spec_from_loader("rice_update_root", loader)
+    loader = importlib.machinery.SourceFileLoader("kuwai_update_root", str(ROOT / "bin" / "kuwai-update-root"))
+    spec = importlib.util.spec_from_loader("kuwai_update_root", loader)
     mod = importlib.util.module_from_spec(spec)
     loader.exec_module(mod)
     return mod
@@ -33,7 +33,7 @@ def ur():
     {"path": "/etc/pacman.conf\0x", "action": "take"},
     {"path": ["/etc/pacman.conf"], "action": "take"},          # not a string
     {"path": 42, "action": "keep"},
-    {"path": "/etc/rice-no-such-file-for-tests", "action": "keep"},   # no .pacnew
+    {"path": "/etc/kuwai-no-such-file-for-tests", "action": "keep"},   # no .pacnew
 ])
 def test_pacnew_refuses(ur, item):
     with pytest.raises((ValueError, FileNotFoundError)):

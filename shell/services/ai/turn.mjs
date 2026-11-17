@@ -1,4 +1,4 @@
-// Folds the agent's events (bin/rice_agent.py) into one assistant message
+// Folds the agent's events (bin/kuwai_agent.py) into one assistant message
 // made of ordered parts. Pure functions; every change returns new objects,
 // because QML only notices a `var` property change by reference.
 //

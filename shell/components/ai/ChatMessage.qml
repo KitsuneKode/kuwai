@@ -314,7 +314,7 @@ Item {
                 }
                 // Text, block by block (Turn.splitBlocks; T3 Code's idea): a finished
                 // paragraph, list, table or code block never changes, so it renders once
-                // (rice-render, cached by text) and stays put; only the block being
+                // (kuwai-render, cached by text) and stays put; only the block being
                 // written re-renders as it grows, and new blocks fade in. The same HTML
                 // shows while streaming and after, so nothing swaps at the end.
                 // Code gets a block with its language and Copy, highlighted once its

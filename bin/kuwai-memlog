@@ -1,0 +1,86 @@
+#!/usr/bin/env python3
+"""Bounded, run-attributed shell memory samples. Never stores window/account content."""
+import argparse
+from collections import deque
+import fcntl
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import tempfile
+import time
+
+
+def collect(pid, proc_root=Path('/proc')):
+    sample={'schema':1,'pid':pid,'atNs':time.time_ns(),'monotonicNs':time.monotonic_ns()}
+    try:
+        root=Path(proc_root)/str(pid)
+        stat=(root/'stat').read_text()
+        sample['startTicks']=int(stat.rsplit(')',1)[1].split()[19])
+        text=(root/'smaps_rollup').read_text()
+        for name,key in [('Pss_Anon','pssAnonKb'),('Pss','pssKb'),('Rss','rssKb')]:
+            match=re.search(r'^'+name+r':\s+(\d+)',text,re.M)
+            sample[key]=int(match[1]) if match else None
+        sample['status']='ok'
+    except (OSError,ValueError,IndexError):
+        sample.update(status='unavailable',error='process sample unavailable')
+    return sample
+
+
+def append_sample(directory,run,sample,limit=2000):
+    if not re.fullmatch(r'[A-Za-z0-9_-]{1,100}',run):
+        raise ValueError('invalid run identity')
+    directory=Path(directory);directory.mkdir(mode=0o700,parents=True,exist_ok=True)
+    lock=os.open(directory/(run+'.lock'),os.O_CREAT|os.O_RDWR|os.O_NOFOLLOW,0o600)
+    try:
+        fcntl.flock(lock,fcntl.LOCK_EX)
+        path=directory/(run+'.jsonl')
+        rows=deque(maxlen=max(0,limit-1))
+        if path.exists():
+            fd=os.open(path,os.O_RDONLY|os.O_NOFOLLOW)
+            with os.fdopen(fd) as old:
+                if os.fstat(old.fileno()).st_size>8*1024*1024:
+                    raise ValueError('sample log exceeds size limit')
+                rows.extend(old)
+        records=[*rows,json.dumps(sample,separators=(',',':'))+'\n']
+        fd,temporary=tempfile.mkstemp(prefix='.sample-',dir=directory)
+        try:
+            with os.fdopen(fd,'w') as out:
+                out.writelines(records);out.flush();os.fsync(out.fileno())
+            os.replace(temporary,path)
+        finally:
+            if os.path.exists(temporary): os.unlink(temporary)
+    finally:
+        os.close(lock)
+
+
+def main():
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--config',required=True)
+    parser.add_argument('--run',required=True)
+    parser.add_argument('--render-loop',default='unknown')
+    parser.add_argument('--outputs',type=int,default=0)
+    parser.add_argument('counters',nargs=7,type=int)
+    args=parser.parse_args()
+    sample=collect(os.getppid())
+    sample['configId']=hashlib.sha256(args.config.encode()).hexdigest()[:12]
+    sample['renderLoop']=args.render_loop
+    sample['outputs']=args.outputs
+    sample['counters']=dict(zip(('notifications','panels','centers','t3Items','locked','savers','skipped'),args.counters))
+    sample['revision']=os.environ.get('KUWAI_REVISION','unknown')
+    run=hashlib.sha256((sample['configId']+str(sample['pid'])+str(sample.get('startTicks'))+args.run).encode()).hexdigest()[:32]
+    state=Path(os.environ.get('XDG_STATE_HOME') or Path.home()/'.local/state')/'kuwai/memlog'
+    append_sample(state,run,sample)
+    # Seven days of inactive diagnostic logs; never touches the legacy diary.
+    for path in state.glob('*.jsonl'):
+        if path.stat().st_mtime < time.time()-7*86400:
+            path.unlink(missing_ok=True)
+            path.with_suffix('.lock').unlink(missing_ok=True)
+    return 0
+
+if __name__=='__main__':
+    try: raise SystemExit(main())
+    except (OSError,ValueError):
+        print('memory sample could not be persisted',file=__import__('sys').stderr)
+        raise SystemExit(1)

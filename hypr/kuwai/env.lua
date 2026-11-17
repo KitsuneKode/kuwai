@@ -57,9 +57,13 @@ local function add(dir, front)
 		end
 	end
 end
--- The other kuwai copy's bin (stable ↔ dev) drops out: one `rice` on PATH,
+-- The other kuwai copy's bin (stable ↔ dev) drops out: one `kuwai` on PATH,
 -- the one this session runs.
-local others = { [K.home .. "/Projects/rice/bin"] = true, [K.home .. "/Projects/kuwai/bin"] = true, [(os.getenv("XDG_DATA_HOME") or (K.home .. "/.local/share")) .. "/kuwai/bin"] = true }
+local others = {}
+for _, root in ipairs({ K.home .. "/Projects/rice", K.home .. "/Projects/kuwai", (os.getenv("XDG_DATA_HOME") or (K.home .. "/.local/share")) .. "/kuwai" }) do
+	others[root .. "/bin"] = true
+	others[root .. "/bin/compat"] = true
+end
 for dir in path:gmatch("[^:]+") do
 	if not (others[dir] and dir ~= K.bin) then
 		add(dir)
@@ -67,6 +71,8 @@ for dir in path:gmatch("[^:]+") do
 end
 add(K.home .. "/.local/bin", true)
 add(K.bin, true)
+-- The old names (rice, rice-*) for a release, after everything else: bin/compat/README.
+add(K.bin .. "/compat")
 if K.exists(K.home .. "/.local/lib/hyde/globalcontrol.sh") then
 	add(K.home .. "/.local/lib/hyde")
 end

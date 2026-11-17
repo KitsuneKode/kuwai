@@ -5,7 +5,7 @@
 // ←→ keep browsing inside it.
 //
 // What it shows: an image at full resolution, sized to its own aspect; text
-// as what it is (bin/rice-render: Markdown rendered with highlighted code
+// as what it is (bin/kuwai-render: Markdown rendered with highlighted code
 // blocks, code highlighted, a Mermaid diagram drawn), ⌃R for the raw text;
 // a colour with its hex, rgb and hsl. ⌃E edits the text in place, ⌃↵ pastes
 // the edit, Esc drops it.

@@ -1,7 +1,7 @@
 // Mission Control: every workspace of a screen at a glance, and every window
 // of the one you're looking at laid out live (Exposé).
 //
-//   Super+Tab / four-finger pinch in   open (rice:overview)
+//   Super+Tab / four-finger pinch in   open (kuwai:overview)
 //   Super+Tab again, Tab / Shift+Tab   next / previous window, on through the
 //                                      spaces; let go of Super to go there
 //   ←→↑↓                               pick a window; ↑ past the top row is
@@ -21,7 +21,7 @@
 //                                      (Backspace edits; the first Esc clears)
 //   Esc, or click the background       back
 //
-// One layer per screen (rice-overview: glass via the rice-* layer rule). Only
+// One layer per screen (kuwai-overview: glass via kuwai-* layer rule). Only
 // the screen you invoke it on shows; the previews are live only while open.
 import QtQuick
 import Quickshell
@@ -66,7 +66,7 @@ Scope {
     }
 
     GlobalShortcut {
-        appid: "rice"
+        appid: "kuwai"
         name: "overview"
         description: "Mission Control: every workspace and window"
         // Open, it moves on to the next window (Super held: let go to go).
@@ -108,7 +108,7 @@ Scope {
             exclusionMode: ExclusionMode.Ignore
             anchors { top: true; bottom: true; left: true; right: true }
             WlrLayershell.layer: WlrLayer.Overlay
-            WlrLayershell.namespace: "rice-overview"
+            WlrLayershell.namespace: "kuwai-overview"
             WlrLayershell.keyboardFocus: here ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
             onHereChanged: if (here) start()

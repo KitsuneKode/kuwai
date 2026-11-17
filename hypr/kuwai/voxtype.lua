@@ -24,7 +24,7 @@ if not K.has("voxtype") and not K.exists(K.home .. "/.local/lib/voxtype-fork/vox
 end
 
 local bind, group = K.bind, K.group
--- The dictation scripts belong to your voxtype setup, not the rice: they live
+-- The dictation scripts belong to your voxtype setup, not kuwai: they live
 -- with it (~/Scripts by default; user.lua can set K.voxtype_scripts).
 local SCRIPTS = K.voxtype_scripts or (K.home .. "/Scripts/")
 local TOGGLE = SCRIPTS .. "voxtype-toggle.sh"

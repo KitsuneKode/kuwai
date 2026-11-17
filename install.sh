@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# kuwai + rice: install, check, or remove, without touching anything it can't
+# kuwai + kuwai: install, check, or remove, without touching anything it can't
 # put back. Run from the repo (wherever you cloned it).
 #
 #   ./install.sh               install (or update the install) for this user
 #   ./install.sh --dry-run     say what it would do; change nothing
 #   ./install.sh --deps        also install missing packages (sudo pacman; all in the official repos)
 #   ./install.sh --uninstall   put back what was there before the first install
-#   ./install.sh --doctor      only check (kuwai doctor + rice-check)
+#   ./install.sh --doctor      only check (kuwai doctor + kuwai-check)
 #
 # What it does:
 #   1. checks the packages the desktop needs (and the optional ones)
@@ -15,9 +15,9 @@
 #   3. ~/.config/hypr/hyprland.lua ← hypr/templates/hyprland.lua (your monitors.lua
 #      and user.lua beside it are created empty if missing, never overwritten)
 #   4. the stable channel: a checkout of the `stable` branch in ~/.local/share/kuwai
-#      (your session runs from it; `rice promote` moves it forward)
+#      (your session runs from it; `kuwai promote` moves it forward)
 #   5. user services (password prompt, clipboard history, GitHub/Gmail feeds,
-#      a daily snapshot of your own files: rice backup),
+#      a daily snapshot of your own files: kuwai backup),
 #      linked from the stable checkout and enabled
 #   6. the checks
 # Never: root, autologin, or your settings. The login screen and alarms that
@@ -29,7 +29,7 @@ CFG=${XDG_CONFIG_HOME:-$HOME/.config}
 DATA=${XDG_DATA_HOME:-$HOME/.local/share}
 STATE=${XDG_STATE_HOME:-$HOME/.local/state}/kuwai
 STABLE=$DATA/kuwai
-UNITS=(rice-auth.service rice-clipboard.service rice-feeds.service rice-backup.service rice-backup.timer)
+UNITS=(kuwai-auth.service kuwai-clipboard.service kuwai-feeds.service kuwai-backup.service kuwai-backup.timer)
 
 DRY=0; DEPS=0; MODE=install
 for a in "$@"; do
@@ -99,10 +99,10 @@ check_deps() {
 }
 
 # ── The original state ───────────────────────────────────────────────────
-# bin/rice_install.py keeps it: how each path was before the first install
+# bin/kuwai_install.py keeps it: how each path was before the first install
 # (later installs don't overwrite that), and what kuwai put there, so
 # uninstall can tell your later edits from its own files.
-ORIG() { python3 "$REPO/bin/rice_install.py" --state "$STATE" "$@"; }
+ORIG() { python3 "$REPO/bin/kuwai_install.py" --state "$STATE" "$@"; }
 remember()  { [ $DRY = 1 ] || ORIG remember "$1"; }
 installed() { [ $DRY = 1 ] || ORIG installed "$1"; }
 
@@ -165,11 +165,11 @@ install_all() {
     step "Optional, with sudo"
     say "  sudo $REPO/greeter/install    the login screen (greetd; --undo for SDDM)"
     say "  sudo $REPO/system/install     alarms that wake the laptop from sleep"
-    say "  rice feeds gmail-setup        Gmail notifications (the app password goes to your keyring)"
+    say "  kuwai feeds gmail-setup        Gmail notifications (the app password goes to your keyring)"
 
     [ $DRY = 1 ] || doctor
     say ""
-    say "Done. Log out and pick Hyprland, or: hyprctl reload && rice restart"
+    say "Done. Log out and pick Hyprland, or: hyprctl reload && kuwai restart"
 }
 
 uninstall_all() {
@@ -177,7 +177,7 @@ uninstall_all() {
     for u in "${UNITS[@]}"; do do_ systemctl --user disable --now "$u" >/dev/null 2>&1 || true; done
     if [ $DRY = 1 ]; then ORIG restore --dry-run; else ORIG restore; fi
     do_ systemctl --user daemon-reload
-    say "  The stable checkout ($STABLE), your settings (~/.config/rice) and notes stay."
+    say "  The stable checkout ($STABLE), your settings (~/.config/kuwai) and notes stay."
     say "  Remove the checkout too:  git -C $REPO worktree remove $STABLE"
     say "  The login screen / alarms: sudo greeter/install --undo · sudo system/install --undo"
 }
@@ -188,13 +188,13 @@ doctor() {
     if [ -x "$STABLE/bin/kuwai" ] || [ -x "$REPO/bin/kuwai" ]; then
         KUWAI_ROOT=$STABLE "${STABLE}/bin/kuwai" doctor 2>/dev/null || KUWAI_ROOT=$REPO "$REPO/bin/kuwai" doctor || rc=1
     fi
-    if [ -x "$REPO/bin/rice-doctor" ]; then
-        KUWAI_ROOT=$REPO "$REPO/bin/rice-doctor" --quiet || rc=1
-        [ $rc -eq 0 ] || "$REPO/bin/rice-doctor" || true
+    if [ -x "$REPO/bin/kuwai-doctor" ]; then
+        KUWAI_ROOT=$REPO "$REPO/bin/kuwai-doctor" --quiet || rc=1
+        [ $rc -eq 0 ] || "$REPO/bin/kuwai-doctor" || true
     elif pgrep -f '^qs -p .*/shell -d$' >/dev/null; then
-        "$REPO/bin/rice-check" || rc=1
+        "$REPO/bin/kuwai-check" || rc=1
     else
-        warn "the shell isn't running (it starts with Hyprland); rice-check skipped"
+        warn "the shell isn't running (it starts with Hyprland); kuwai-check skipped"
     fi
     return $rc
 }

@@ -2,7 +2,7 @@
 
 Research date: 2026-11-05. Status: **feasible API; compiled prototype; no runtime
 plugin qualification**. All new work is inside `plugins/kitty-sidebar/`. The shared
-rice branch and other sessions' changes were left in place. No push, live plugin
+kuwai branch and other sessions' changes were left in place. No push, live plugin
 load, enable, reload, Hyprland configuration change, shell restart, or kitty action
 was performed.
 

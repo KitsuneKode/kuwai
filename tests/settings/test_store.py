@@ -12,12 +12,12 @@ ROOT = Path(__file__).resolve().parents[2]
 @pytest.fixture
 def store(tmp_path):
     cfg = tmp_path / 'config'
-    path = cfg / 'rice/settings.json'
+    path = cfg / 'kuwai/settings.json'
     path.parent.mkdir(parents=True)
     path.write_text('{"clock24":false,"hoverDelay":0,"future":{"kept":[null,[]]}}\n')
     env = dict(os.environ, HOME=str(tmp_path), XDG_CONFIG_HOME=str(cfg))
     def run(*args, cli=False):
-        return subprocess.run([str(ROOT/'bin'/('rice' if cli else 'rice-settings')), *args], env=env, text=True, capture_output=True)
+        return subprocess.run([str(ROOT/'bin'/('kuwai' if cli else 'kuwai-settings')), *args], env=env, text=True, capture_output=True)
     return path, env, run
 
 @pytest.mark.parametrize('key,value', [('unknownSetting','true'),('idleOwner','typo'),('clock24','0'),('textScale','9'),('hoverDelay','-1'),('favoriteThemes','null'),('sleepAt','25:90')])
@@ -44,7 +44,7 @@ def test_roundtrip_false_zero_arrays_unknown_and_reset(store):
 
 def test_cooperative_writers_merge_distinct_fields(store):
     path, env, _ = store
-    procs = [subprocess.Popen([str(ROOT/'bin/rice-settings'),'set',key,value], env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE) for key,value in [('showSeconds','true'),('workspaceCount','7')]]
+    procs = [subprocess.Popen([str(ROOT/'bin/kuwai-settings'),'set',key,value], env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE) for key,value in [('showSeconds','true'),('workspaceCount','7')]]
     for p in procs:
         _, err = p.communicate(timeout=8)
         assert p.returncode == 0, err
@@ -78,7 +78,7 @@ def test_migration_dry_run_and_backup_are_lossless(store):
 
 def test_interrupted_replace_keeps_original(store,monkeypatch):
     path, _, _ = store
-    loader = importlib.machinery.SourceFileLoader('settings_fixture',str(ROOT/'bin/rice-settings'))
+    loader = importlib.machinery.SourceFileLoader('settings_fixture',str(ROOT/'bin/kuwai-settings'))
     spec = importlib.util.spec_from_loader('settings_fixture',loader)
     mod = importlib.util.module_from_spec(spec); loader.exec_module(mod)
     before = path.read_bytes()
@@ -93,7 +93,7 @@ def test_interrupted_replace_keeps_original(store,monkeypatch):
 
 def test_compare_before_replace_rejects_an_external_editor(store):
     path, _, _ = store
-    loader = importlib.machinery.SourceFileLoader('settings_external_fixture',str(ROOT/'bin/rice-settings'))
+    loader = importlib.machinery.SourceFileLoader('settings_external_fixture',str(ROOT/'bin/kuwai-settings'))
     spec = importlib.util.spec_from_loader('settings_external_fixture',loader)
     mod = importlib.util.module_from_spec(spec); loader.exec_module(mod)
     before = path.read_bytes()
@@ -132,14 +132,14 @@ def test_future_large_integer_and_exact_decimal_survive(store):
 
 def test_empty_xdg_config_home_matches_reader_fallback(tmp_path):
     env=dict(os.environ,HOME=str(tmp_path/'home'),XDG_CONFIG_HOME='')
-    result=subprocess.run([str(ROOT/'bin/rice'),'set','clock24','false'],env=env,cwd=tmp_path,capture_output=True,text=True)
+    result=subprocess.run([str(ROOT/'bin/kuwai'),'set','clock24','false'],env=env,cwd=tmp_path,capture_output=True,text=True)
     assert result.returncode==0,result.stderr
-    target=tmp_path/'home/.config/rice/settings.json'
+    target=tmp_path/'home/.config/kuwai/settings.json'
     assert target.exists() and json.loads(target.read_text())['clock24'] is False
-    assert not (tmp_path/'rice/settings.json').exists()
+    assert not (tmp_path/'kuwai/settings.json').exists()
 
 
-def test_rice_get_and_bar_apply_propagate_invalid_read(store,tmp_path):
+def test_kuwai_get_and_bar_apply_propagate_invalid_read(store,tmp_path):
     path,env,run=store
     path.write_text('{broken')
     assert run('get','clock24',cli=True).returncode!=0

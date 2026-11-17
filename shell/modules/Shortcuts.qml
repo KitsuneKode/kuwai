@@ -1,6 +1,6 @@
 // Global shortcuts, registered with Hyprland by the shell itself
 // (hyprland-global-shortcuts). A bind like
-//   bind = SUPER, N, global, rice:center
+//   bind = SUPER, N, global, kuwai:center
 // calls straight into this process: nothing is spawned per keypress, so the
 // center answers on the same frame instead of after a shell + IPC round trip.
 // The binds live in hypr/kuwai/binds.lua; `hyprctl globalshortcuts` lists these.
@@ -12,19 +12,19 @@ import qs.services
 
 Scope {
     GlobalShortcut {
-        appid: "rice"
+        appid: "kuwai"
         name: "center"
         description: "Notifications: open or close the center"
         onPressed: Notifs.toggleCenter("notifications", "key")
     }
     GlobalShortcut {
-        appid: "rice"
+        appid: "kuwai"
         name: "agents"
         description: "Agents: every kitty pane and T3 thread, grown out of the island (the one place agents live)"
         onPressed: Island.toggle("agents", "", "key")
     }
     GlobalShortcut {
-        appid: "rice"
+        appid: "kuwai"
         name: "assistant"
         description: "AI Assistant: local LLM chat and multimodal vision"
         onPressed: {
@@ -36,13 +36,13 @@ Scope {
         }
     }
     GlobalShortcut {
-        appid: "rice"
+        appid: "kuwai"
         name: "dnd"
         description: "Do Not Disturb on/off"
         onPressed: Notifs.toggleUserDnd()
     }
     GlobalShortcut {
-        appid: "rice"
+        appid: "kuwai"
         name: "open-latest"
         description: "Open the newest notification on screen"
         onPressed: {
@@ -51,77 +51,77 @@ Scope {
         }
     }
     GlobalShortcut {
-        appid: "rice"
+        appid: "kuwai"
         name: "clipboard"
         description: "Clipboard history"
         onPressed: Clipboard.toggle("all")
     }
     GlobalShortcut {
-        appid: "rice"
+        appid: "kuwai"
         name: "clipboard-pins"
         description: "Clipboard: pinned entries"
         onPressed: Clipboard.toggle("pinned")
     }
     GlobalShortcut {
-        appid: "rice"
+        appid: "kuwai"
         name: "record"
         description: "Screen recording: set up, or stop"
         onPressed: Clipboard.recordKey()
     }
     GlobalShortcut {
-        appid: "rice"
+        appid: "kuwai"
         name: "power"
         description: "Power menu: lock, sleep, log out, restart, shut down"
         onPressed: Island.toggle("power", "", "key")
     }
     GlobalShortcut {
-        appid: "rice"
+        appid: "kuwai"
         name: "launcher"
         description: "Launcher: apps, windows, actions, a calculator"
         onPressed: Island.toggle("launcher", "", "key")
     }
     GlobalShortcut {
-        appid: "rice"
+        appid: "kuwai"
         name: "settings"
         description: "Settings"
         onPressed: Island.toggle("settings", "", "key")
     }
     GlobalShortcut {
-        appid: "rice"
+        appid: "kuwai"
         name: "themes"
         description: "Themes"
         onPressed: Island.themes("themes")
     }
     GlobalShortcut {
-        appid: "rice"
+        appid: "kuwai"
         name: "wallpapers"
         description: "Wallpapers"
         onPressed: Island.themes("wallpapers")
     }
     GlobalShortcut {
-        appid: "rice"
+        appid: "kuwai"
         name: "system"
         description: "System: CPU, memory, GPU, updates"
         onPressed: Island.toggle("system", "", "key")
     }
-    GlobalShortcut { appid: "rice"; name: "island-peek"; description: "Show the island's details (minimal island)"; onPressed: Island.peekFor(2500) }
+    GlobalShortcut { appid: "kuwai"; name: "island-peek"; description: "Show the island's details (minimal island)"; onPressed: Island.peekFor(2500) }
     // Ctrl+Alt+Shift+W: the mini notch ⇄ everything (workspaces, time, status).
-    GlobalShortcut { appid: "rice"; name: "island-style"; description: "Island: minimal ⇄ everything"; onPressed: { Settings.set("islandTucked", false); Settings.set("islandRest", Settings.islandRest === "full" ? "minimal" : "full"); } }
-    GlobalShortcut { appid: "rice"; name: "island-tuck"; description: "Tuck the island away / bring it back"
+    GlobalShortcut { appid: "kuwai"; name: "island-style"; description: "Island: minimal ⇄ everything"; onPressed: { Settings.set("islandTucked", false); Settings.set("islandRest", Settings.islandRest === "full" ? "minimal" : "full"); } }
+    GlobalShortcut { appid: "kuwai"; name: "island-tuck"; description: "Tuck the island away / bring it back"
         onPressed: {
             if (Settings.bar === "island") Settings.set("islandTucked", !Settings.islandTucked);
             else Quickshell.execDetached(["sh", "-c", "pkill -x waybar || hyde-shell waybar"]);   // Waybar users: on/off
         }
     }
-    GlobalShortcut { appid: "rice"; name: "caffeine"; description: "Caffeine: keep awake (no dim, lock or sleep)"; onPressed: Caffeine.toggle() }
+    GlobalShortcut { appid: "kuwai"; name: "caffeine"; description: "Caffeine: keep awake (no dim, lock or sleep)"; onPressed: Caffeine.toggle() }
     GlobalShortcut {
-        appid: "rice"
+        appid: "kuwai"
         name: "updates"
         description: "Software Update: review and install"
         onPressed: Island.toggle("updates", "", "key")
     }
     GlobalShortcut {
-        appid: "rice"
+        appid: "kuwai"
         name: "keys"
         description: "Keyboard shortcuts"
         onPressed: Island.toggle("keys", "", "key")
@@ -130,30 +130,30 @@ Scope {
     // it was this hold that opened it and a real shortcut followed.
     // The switcher (services/Switcher): kuwai sends these from Alt+Tab,
     // Alt+Shift+Tab, Alt+` and the moment Alt comes back up.
-    GlobalShortcut { appid: "rice"; name: "emoji"; description: "Emoji (the launcher's : mode)"; onPressed: Island.openWith(":") }
-    GlobalShortcut { appid: "rice"; name: "glyphs"; description: "Nerd Font glyphs (the launcher's ; mode)"; onPressed: Island.openWith(";") }
-    GlobalShortcut { appid: "rice"; name: "note"; description: "Quick note (a line in ~/Notes/inbox.md)"; onPressed: Island.openWith("note ") }
-    GlobalShortcut { appid: "rice"; name: "remind"; description: "Remind me (\"in 20m tea\", \"at 5 call mum\")"; onPressed: Island.openWith("remind me ") }
-    GlobalShortcut { appid: "rice"; name: "switch-next"; description: "Windows: next (hold Alt)"; onPressed: Switcher.begin(1, false) }
-    GlobalShortcut { appid: "rice"; name: "switch-prev"; description: "Windows: previous"; onPressed: Switcher.begin(-1, false) }
-    GlobalShortcut { appid: "rice"; name: "switch-app"; description: "Windows of this app"; onPressed: Switcher.begin(1, true) }
-    GlobalShortcut { appid: "rice"; name: "switch-ws"; description: "Windows on this workspace"; onPressed: Switcher.begin(1, false, true) }
-    GlobalShortcut { appid: "rice"; name: "switch-commit"; description: "Windows: switch (Alt released)"; onPressed: Switcher.commit() }
-    GlobalShortcut { appid: "rice"; name: "switch-cancel"; description: "Windows: cancel"; onPressed: Switcher.cancel() }
+    GlobalShortcut { appid: "kuwai"; name: "emoji"; description: "Emoji (the launcher's : mode)"; onPressed: Island.openWith(":") }
+    GlobalShortcut { appid: "kuwai"; name: "glyphs"; description: "Nerd Font glyphs (the launcher's ; mode)"; onPressed: Island.openWith(";") }
+    GlobalShortcut { appid: "kuwai"; name: "note"; description: "Quick note (a line in ~/Notes/inbox.md)"; onPressed: Island.openWith("note ") }
+    GlobalShortcut { appid: "kuwai"; name: "remind"; description: "Remind me (\"in 20m tea\", \"at 5 call mum\")"; onPressed: Island.openWith("remind me ") }
+    GlobalShortcut { appid: "kuwai"; name: "switch-next"; description: "Windows: next (hold Alt)"; onPressed: Switcher.begin(1, false) }
+    GlobalShortcut { appid: "kuwai"; name: "switch-prev"; description: "Windows: previous"; onPressed: Switcher.begin(-1, false) }
+    GlobalShortcut { appid: "kuwai"; name: "switch-app"; description: "Windows of this app"; onPressed: Switcher.begin(1, true) }
+    GlobalShortcut { appid: "kuwai"; name: "switch-ws"; description: "Windows on this workspace"; onPressed: Switcher.begin(1, false, true) }
+    GlobalShortcut { appid: "kuwai"; name: "switch-commit"; description: "Windows: switch (Alt released)"; onPressed: Switcher.commit() }
+    GlobalShortcut { appid: "kuwai"; name: "switch-cancel"; description: "Windows: cancel"; onPressed: Switcher.cancel() }
     GlobalShortcut {
-        appid: "rice"
+        appid: "kuwai"
         name: "keys-open"
         description: "Shortcuts palette: open (hold Super)"
         onPressed: Island.open("keys", "", "key")
     }
     GlobalShortcut {
-        appid: "rice"
+        appid: "kuwai"
         name: "keys-close"
         description: "Shortcuts palette: close"
         onPressed: if (Island.panel === "keys") Island.close()
     }
     GlobalShortcut {
-        appid: "rice"
+        appid: "kuwai"
         name: "calendar"
         description: "Calendar"
         onPressed: Island.toggle("calendar", "", "key")

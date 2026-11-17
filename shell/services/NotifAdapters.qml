@@ -30,29 +30,29 @@ Singleton {
 
     readonly property var rules: [
         {
-            match: n => !!(n.hints && n.hints["x-rice-agent-limit"]),
+            match: n => !!(n.hints && n.hints["x-kuwai-agent-limit"]),
             adapt: n => {
                 const h = n.hints;
-                const driver = h["x-rice-driver"] || "";
+                const driver = h["x-kuwai-driver"] || "";
                 const icon = driver === "codex" ? root.entryIcon("com.openai.chatgpt")
                            : driver === "claude" ? root.entryIcon("com.anthropic.claude") || root.entryIcon("t3code")
                            : root.entryIcon("t3code") || root.entryIcon("com.t3tools.T3Code");
-                const sev = h["x-rice-severity"] || "warning";
+                const sev = h["x-kuwai-severity"] || "warning";
                 return {
                     app: n.appName || "Agent",
                     title: n.summary,
                     body: n.body,
-                    status: h["x-rice-status"] || "",
+                    status: h["x-kuwai-status"] || "",
                     statusGlyph: sev === "critical" ? "\u{f04c5}" : "\u{f04c5}",
                     statusTone: sev === "critical" ? "critical" : "caution",
                     icon: icon,
-                    groupKey: h["x-rice-group"] || "agent-limit",
+                    groupKey: h["x-kuwai-group"] || "agent-limit",
                     severity: sev === "critical" ? "critical" : "warning"
                 };
             }
         },
         {
-            match: n => !!(n.hints && n.hints["x-rice-crash"]),
+            match: n => !!(n.hints && n.hints["x-kuwai-crash"]),
             adapt: n => ({
                 app: "System",
                 title: n.summary,
@@ -69,32 +69,32 @@ Singleton {
             // hints: the status, the thread to group by, the link, and
             // whether it's quiet (a bot's: the center only) or calm (a toast,
             // no peek).
-            match: n => !!(n.hints && n.hints["x-rice-feed"]),
+            match: n => !!(n.hints && n.hints["x-kuwai-feed"]),
             adapt: n => {
                 const h = n.hints;
                 return {
                     app: n.appName,
                     title: n.summary,
                     body: n.body,
-                    status: h["x-rice-status"] || "",
-                    statusGlyph: h["x-rice-glyph"] || "",
-                    statusTone: h["x-rice-tone"] || "",
+                    status: h["x-kuwai-status"] || "",
+                    statusGlyph: h["x-kuwai-glyph"] || "",
+                    statusTone: h["x-kuwai-tone"] || "",
                     icon: root.imageOrIcon(n),
-                    groupKey: h["x-rice-group"] || "",
+                    groupKey: h["x-kuwai-group"] || "",
                     focusClass: "",
-                    url: h["x-rice-url"] || "",
+                    url: h["x-kuwai-url"] || "",
                     feed: true,
-                    full: h["x-rice-full"] || "",
-                    thread: h["x-rice-thread"] || "",
-                    quiet: h["x-rice-quiet"] === "1",
-                    calm: h["x-rice-calm"] === "1",
+                    full: h["x-kuwai-full"] || "",
+                    thread: h["x-kuwai-thread"] || "",
+                    quiet: h["x-kuwai-quiet"] === "1",
+                    calm: h["x-kuwai-calm"] === "1",
                     // The feed knows what this is (a failed run is its
                     // "warning"); with nothing from it the answer is
                     // "normal", not "let the wording decide": the body of a
                     // feed item is someone else's words. A bot's review
                     // comment quoting "[!WARNING] Review limit reached" was
                     // a warning nine times in one day's history.
-                    severity: h["x-rice-severity"] || "normal"
+                    severity: h["x-kuwai-severity"] || "normal"
                 };
             }
         },

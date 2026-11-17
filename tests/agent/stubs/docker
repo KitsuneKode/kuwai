@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Fake docker for the sandbox tests: the container is a folder. `exec -w /work/X`
-runs the command locally in $RICE_SANDBOX_DIR/X; inspect says it's running."""
+runs the command locally in $KUWAI_SANDBOX_DIR/X; inspect says it's running."""
 import os, subprocess, sys
 a = sys.argv[1:]
-root = os.environ["RICE_SANDBOX_DIR"]
+root = os.environ["KUWAI_SANDBOX_DIR"]
 if a[:2] == ["image", "inspect"]:
     sys.exit(0)
 if a[0] == "inspect":

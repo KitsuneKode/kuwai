@@ -1,7 +1,7 @@
-# kuwai — the Hyprland half of the rice
+# kuwai — the Hyprland half of kuwai
 
 Hyprland 0.57 configures itself in Lua; hyprlang (`*.conf`) is gone. kuwai is
-this rice's Hyprland config: a small set of Lua modules in this repo, plus two
+this kuwai's Hyprland config: a small set of Lua modules in this repo, plus two
 personal files in `~/.config/hypr`. It works without HyDE, and keeps HyDE's
 themes, wallpapers and pickers working while HyDE is still installed.
 

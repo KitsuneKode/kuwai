@@ -1,0 +1,147 @@
+#!/usr/bin/env bash
+# Session doctor for kuwai + kuwai: config, notifications, shell, feeds.
+#   kuwai doctor           human-readable report (exit 1 if anything failed)
+#   kuwai doctor --quiet   failures only
+#
+# Run after odd notification behaviour, before `kuwai promote`, or when ZapZap
+# "stopped working" after a shell crash.
+set -u
+KUWAI="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+QUIET=0
+for a in "$@"; do [ "$a" = --quiet ] && QUIET=1; done
+fail=0
+ok()   { [ "$QUIET" = 1 ] || printf '  \033[32m✓\033[0m %s\n' "$*"; }
+bad()  { printf '  \033[31m✗\033[0m %s\n' "$*"; fail=1; }
+note() { [ "$QUIET" = 1 ] || printf '  \033[33m•\033[0m %s\n' "$*"; }
+fix()  { [ "$QUIET" = 1 ] || printf '      → %s\n' "$*"; }
+
+notif_owner() {
+    busctl --user call org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus \
+        GetConnectionUnixProcessID s org.freedesktop.Notifications 2>/dev/null | awk '{print $2}'
+}
+
+notify_send_broken() {
+    command -v notify-send >/dev/null 2>&1 || return 1
+    notify-send --version >/dev/null 2>&1
+}
+
+[ "$QUIET" = 1 ] || echo "Kuwai doctor · session checks (kuwai + Hyprland + shell)"
+
+# ── Kuwai (Hyprland, units, binds) ───────────────────────────────────────
+if [ -x "$KUWAI/bin/kuwai" ]; then
+    [ "$QUIET" = 1 ] || echo "Hyprland & kuwai"
+    KUWAI_ROOT="$KUWAI" "$KUWAI/bin/kuwai" doctor || fail=1
+    [ "$QUIET" = 1 ] || echo
+fi
+
+# ── Notifications ─────────────────────────────────────────────────────────
+[ "$QUIET" = 1 ] || echo "Notifications"
+npid=$(notif_owner)
+if [ -z "$npid" ]; then
+    bad "no org.freedesktop.Notifications owner (start the shell: kuwai restart)"
+    fix "kuwai restart · or systemctl --user start dunst if you use dunst alone"
+elif [ "$(cat /proc/"$npid"/comm 2>/dev/null)" = dunst ]; then
+    note "notification server: dunst (pid $npid) — kuwai shell is not owning the bus"
+    fix "kuwai restart while logged in to hand notifications to the shell"
+else
+    ok "notification server: kuwai shell (pid $npid, $(cat /proc/"$npid"/comm 2>/dev/null))"
+fi
+
+if notify_send_broken; then
+    ok "notify-send works (libnotify)"
+else
+    if command -v notify-send >/dev/null 2>&1; then
+        note "notify-send broken (libnotify) — use bin/kuwai-notify in scripts (expected on some installs)"
+    else
+        note "notify-send not installed (fine if everything uses kuwai-notify)"
+    fi
+fi
+
+if [ -x "$KUWAI/bin/kuwai-notify" ]; then
+    if [ -n "$npid" ] && [ "$(cat /proc/"$npid"/comm 2>/dev/null)" != dunst ]; then
+        if "$KUWAI/bin/kuwai-notify" -u low "Doctor" "Smoke test (ignore)" >/dev/null 2>&1; then
+            ok "kuwai-notify → D-Bus Notify"
+        else
+            bad "kuwai-notify could not reach the notification server"
+            fix "kuwai restart · confirm org.freedesktop.Notifications is owned by qs (not dunst)"
+        fi
+    else
+        note "kuwai-notify smoke skipped (no kuwai shell on D-Bus yet)"
+    fi
+else
+    bad "missing $KUWAI/bin/kuwai-notify"
+    fail=1
+fi
+
+STATE="${XDG_STATE_HOME:-$HOME/.local/state}/kuwai/notifications.json"
+if [ -f "$STATE" ]; then
+    dnd=$(jq -r '.dnd // false' "$STATE" 2>/dev/null)
+    if [ "$dnd" = true ]; then
+        note "Focus / DND is ON (saved in notifications.json) — normal toasts are suppressed"
+        fix "kuwai notifs dnd-off · or toggle Focus in the island"
+    else
+        ok "Focus / DND: off"
+    fi
+else
+    note "no notification history file yet ($STATE)"
+fi
+
+# ── Shell ─────────────────────────────────────────────────────────────────
+[ "$QUIET" = 1 ] || echo "Shell"
+if qs list --all --json 2>/dev/null | jq -e 'any(.[]; .config_path | endswith("/shell/shell.qml"))' >/dev/null; then
+    if ! "$KUWAI/bin/kuwai-check" --quiet; then
+        "$KUWAI/bin/kuwai-check" || fail=1
+    else
+        ok "kuwai-check passed"
+    fi
+    if command -v qs >/dev/null 2>&1; then
+        lim=$(qs ipc -p "$KUWAI/shell" call limits state 2>/dev/null || true)
+        [ -n "$lim" ] && note "agent limits: $lim"
+    fi
+else
+    bad "Quickshell kuwai shell is not running"
+    fix "kuwai restart · or log in again (Hyprland starts kuwai-shell)"
+    if command -v qs >/dev/null 2>&1 && qs -p "$KUWAI/shell" --compile >/dev/null 2>&1; then
+        ok "shell compiles offline (qs --compile)"
+    else
+        bad "shell compile check failed or qs missing"
+    fi
+fi
+
+# ── Feeds & sidecars ──────────────────────────────────────────────────────
+[ "$QUIET" = 1 ] || echo "Services"
+for u in kuwai-feeds.service kuwai-clipboard.service; do
+    st=$(systemctl --user is-active "$u" 2>/dev/null)
+    case $st in
+        active) ok "$u" ;;
+        inactive|failed) note "$u: $st (optional unless you use GitHub/Gmail feeds)" ;;
+        *) note "$u: $st" ;;
+    esac
+done
+if pgrep -x zapzap >/dev/null 2>&1; then
+    if [ -n "$npid" ] && [ "$(cat /proc/"$npid"/comm 2>/dev/null)" != dunst ]; then
+        ok "ZapZap running · WhatsApp → D-Bus → kuwai"
+    else
+        bad "ZapZap running but notifications are not owned by kuwai shell"
+        fix "kuwai restart · then restart ZapZap if it disabled its backend after a shell outage"
+    fi
+else
+    note "ZapZap not running (WhatsApp notifications need it)"
+fi
+
+# ── Channel ───────────────────────────────────────────────────────────────
+CH="${XDG_STATE_HOME:-$HOME/.local/state}/kuwai/channel"
+[ "$QUIET" = 1 ] || echo "Channel"
+if [ -f "$CH" ]; then
+    ok "kuwai channel $(cat "$CH")"
+else
+    note "no channel file (defaults to dev checkout)"
+fi
+
+[ "$QUIET" = 1 ] || echo
+if [ "$fail" -eq 0 ]; then
+    [ "$QUIET" = 1 ] || echo "kuwai: all good"
+else
+    echo "Session: fix notifications/shell above, then kuwai doctor again"
+fi
+exit "$fail"

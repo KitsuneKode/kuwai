@@ -20,7 +20,7 @@ For chat/mail apps (WhatsApp/ZapZap, Telegram, Signal, Discord, Gmail, …):
 - **Body** is hidden on passive surfaces (toast, the peek at rest) for **chat apps only**, matched by the app's name: ZapZap/WhatsApp, Telegram, Signal, Discord, Slack, Element, Messenger, Beeper.
 - **Opening it on purpose** shows the body: tap the peek, the bell's quick list, or select the row in the center.
 - **Sharing your screen**: every non-critical body stays hidden everywhere, even when opened ("Hidden while sharing your screen").
-- **Gmail and GitHub** (rice-feeds) are never redacted: previewing and replying in the island is the point.
+- **Gmail and GitHub** (kuwai-feeds) are never redacted: previewing and replying in the island is the point.
 - Critical/warning alerts are never redacted.
 
 ## Island bell (expanded hover)
@@ -33,7 +33,7 @@ For chat/mail apps (WhatsApp/ZapZap, Telegram, Signal, Discord, Gmail, …):
 ## Do Not Disturb (most common “nothing shows”)
 
 - **Focus** (purple chip, Super+Alt+N, center moon): blocks normal toasts; only **critical** breaks through.
-- **Screen share**: `mute-on` while sharing (not saved to disk); `rice notifs dnd-off` clears Focus **and** share mute.
+- **Screen share**: `mute-on` while sharing (not saved to disk); `kuwai notifs dnd-off` clears Focus **and** share mute.
 - Check: island bell **slash** or purple tint when Focus is on.
 
 ## Music / media (not in the notification card)
@@ -47,15 +47,15 @@ Notifications are for **alerts**, not playback control. Media lives in the **isl
 
 ## ZapZap / WhatsApp
 
-- Not from `rice-feeds` (that is GitHub + Gmail only).
-- Needs **org.freedesktop.Notifications** owned by **qs** (`rice restart`).
+- Not from `kuwai-feeds` (that is GitHub + Gmail only).
+- Needs **org.freedesktop.Notifications** owned by **qs** (`kuwai restart`).
 - After a **shell load failure**, restart **ZapZap** (it may disable the backend for the session).
 - WhatsApp often **won’t notify** for the chat/window you’re already in.
 
-## rice-feeds
+## kuwai-feeds
 
-`systemctl --user status rice-feeds` · `rice feeds status` · hints in `NotifAdapters` (`x-rice-feed`).
+`systemctl --user status kuwai-feeds` · `kuwai feeds status` · hints in `NotifAdapters` (`x-kuwai-feed`).
 
 ## Stress test
 
-`bin/rice-fixture notifs worst` · `bin/rice-notify` (D-Bus, when `notify-send` is broken).
+`bin/kuwai-fixture notifs worst` · `bin/kuwai-notify` (D-Bus, when `notify-send` is broken).

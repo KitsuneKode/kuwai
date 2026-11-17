@@ -9,7 +9,7 @@ reading only: never edit, never copy code from a GPL one.
 ## Read first
 
 - `docs/DESIGN.md` and `shell/config/Theme.qml`: the design system. Never type a
-  size, duration or colour Theme already names (`bin/rice-tokens --check`).
+  size, duration or colour Theme already names (`bin/kuwai-tokens --check`).
 - `.claude/skills/kuwai-ui/SKILL.md`: how every surface is built (motion,
   gestures, type, states, cost).
 - `.claude/skills/verify-kuwai/SKILL.md`: how to prove a change on the live
@@ -33,8 +33,8 @@ there, then bring the change over in one go.
 python -m pytest -q -p no:cacheprovider tests      # helpers, updater, installer, greeter, security lints
 bun test                                           # shell logic (bunfig.toml scopes it to this repo)
 for t in tests/hypr/test_*.lua; do lua "$t"; done  # Hyprland config logic
-bin/rice-tokens --check                            # literals never go up
-bin/rice-check                                     # the running shell: load, orphans, idle, memory, CPU, compile
+bin/kuwai-tokens --check                            # literals never go up
+bin/kuwai-check                                     # the running shell: load, orphans, idle, memory, CPU, compile
 ```
 
 ## Rules that came from real failures
@@ -49,4 +49,4 @@ bin/rice-check                                     # the running shell: load, or
   `setpriv --pdeathsig`.
 - Nothing under `greeter/` or `system/` runs as root what a user-writable file
   can change.
-- Commit only when asked; the stable channel moves only with `bin/rice promote`.
+- Commit only when asked; the stable channel moves only with `bin/kuwai promote`.

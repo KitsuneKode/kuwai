@@ -22,7 +22,7 @@ Singleton {
     readonly property var panels: ["calendar", "power", "launcher", "settings", "system", "theme", "keys", "switcher", "updates", "media", "t3", "agents", "notifs", "bluetooth", "usage", "read", "cleanup"]
     // Old names that still open their panel: "vitals" (machine + agents'
     // usage side by side) became the System section, usage its own section.
-    // Anything that still says vitals (a bind, a script, `rice vitals`) works.
+    // Anything that still says vitals (a bind, a script, `kuwai vitals`) works.
     readonly property var aliases: ({ vitals: "system" })
     function canon(name) { return aliases[name] || name; }
     property string panel: ""
@@ -37,7 +37,7 @@ Singleton {
     }
     // The island's resting shape per screen, published for kuwai's password
     // prompt (shell-auth/, its own process) so it can grow out of exactly this
-    // shape: $XDG_RUNTIME_DIR/rice/island.json (tmpfs, this user only).
+    // shape: $XDG_RUNTIME_DIR/kuwai/island.json (tmpfs, this user only).
     property var restShapes: ({})
     function setRestShape(screenName, w, h, top, notch) {
         if (!screenName) return;
@@ -55,7 +55,7 @@ Singleton {
     }
     FileView {
         id: shapeFile
-        path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/rice/island.json"
+        path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/kuwai/island.json"
         printErrors: false
         atomicWrites: true
     }
@@ -88,7 +88,7 @@ Singleton {
     readonly property string authPending: authLive ? authWant : ""
     property string authScreen: ""
     FileView {
-        path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/rice/auth-pending"
+        path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/kuwai/auth-pending"
         watchChanges: true; printErrors: false
         onFileChanged: reload()
         onLoaded: {
@@ -113,7 +113,7 @@ Singleton {
     }
     Timer { interval: 4000; repeat: true; running: root.authWant !== ""; onTriggered: procFile.reload() }
     readonly property bool authLive: authWant !== "" && authAlive
-    FileView { id: summonFile; path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/rice/auth-summon"; printErrors: false }
+    FileView { id: summonFile; path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/kuwai/auth-summon"; printErrors: false }
     function summonAuth(screenName) { summonFile.setText(screenName + "\n"); }
     // Minimal island: reveal the resting details for a moment (Super+Alt+I, or
     // the pointer nearing the top edge by the island).
@@ -249,7 +249,7 @@ Singleton {
     property var uses: ({})
     FileView {
         id: usesFile
-        path: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/rice/launcher.json"
+        path: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/kuwai/launcher.json"
         printErrors: false
         onLoaded: { try { const d = JSON.parse(text()); root.uses = d.counts || d || {}; } catch (e) { root.uses = {}; } }
     }

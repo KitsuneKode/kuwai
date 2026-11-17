@@ -53,7 +53,7 @@ Item {
     Timer { interval: 300; repeat: true; running: hud.active && hud.backlight !== ""; onTriggered: bl.reload() }
 
     // The session's lock screen: the brightness controller's own events
-    // (bin/rice-brightness, the same feed as the session HUD), so a change on
+    // (bin/kuwai-brightness, the same feed as the session HUD), so a change on
     // any screen shows, the Acer over DDC included. The keys follow the
     // focused screen, usually the external one, whose change sysfs above
     // never sees: brightness worked there but showed nothing. The login
@@ -61,7 +61,7 @@ Item {
     property bool brightnessFeed: false
     Process {
         running: hud.active && hud.brightnessFeed
-        command: ["setpriv", "--pdeathsig", "KILL", "--", Paths.bin + "/rice-brightness", "watch", "--part", "osd"]
+        command: ["setpriv", "--pdeathsig", "KILL", "--", Paths.bin + "/kuwai-brightness", "watch", "--part", "osd"]
         stdout: SplitParser {
             onRead: line => {
                 let ev;

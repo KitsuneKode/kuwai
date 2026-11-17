@@ -2,14 +2,14 @@ pragma Singleton
 
 // Usage limits, the way T3 Code shows them: providers, each with every
 // signed-in account, each with its windows. Read-only, from T3 Code itself
-// (bin/rice-usage --watch holds its config subscription: T3 Code pushes
+// (bin/kuwai-usage --watch holds its config subscription: T3 Code pushes
 // changes, nothing polls), or from kittymux when T3 Code isn't there.
 //
 //   providers: [{ driver, label, color, accounts: [{ key, name, email, plan,
 //                note, credits, windows: [{ id, kind, label, used, resetsAt,
 //                durationMins }] }] }]
 //
-// Always connected (cheap: T3 Code pushes, nothing polls). If rice-usage
+// Always connected (cheap: T3 Code pushes, nothing polls). If kuwai-usage
 // dies the last state stays and it comes back with a backoff (2 s → 5 min);
 // `down` says it isn't running, for the Usage panel's error and Retry.
 //
@@ -18,7 +18,7 @@ pragma Singleton
 //   exhausted (100 %)          one Moment, then a mark on the notch
 //                              (IslandRest) until it resets
 //   reset                      a quiet Moment, the mark goes
-// What was said is kept in ~/.local/state/rice/limits-told.json, so a
+// What was said is kept in ~/.local/state/kuwai/limits-told.json, so a
 // restart doesn't say it again.
 // (The pragma sits above this comment: Quickshell's scanner stops at the
 // first brace, comments included.)
@@ -37,7 +37,7 @@ Singleton {
     property real now: Date.now()               // advanced on each read and each minute tick, not per frame
     property string error: ""                   // why T3 Code isn't the source, if it isn't
 
-    // rice-usage itself: alive, or down (died, waiting to come back).
+    // kuwai-usage itself: alive, or down (died, waiting to come back).
     property bool alive: false
     property int fails: 0
     readonly property bool down: !alive && fails > 0
@@ -47,8 +47,8 @@ Singleton {
     property bool panelShown: false
     property bool centerShown: false
 
-    readonly property string bin: Paths.bin + "/rice-usage"
-    readonly property string toldPath: (Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")) + "/rice/limits-told.json"
+    readonly property string bin: Paths.bin + "/kuwai-usage"
+    readonly property string toldPath: (Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")) + "/kuwai/limits-told.json"
 
     // Every window, flat: [{ key, provider, account, window, used (0–1),
     // name ("Claude weekly"), level: "" | "approaching" | "exhausted" }].
@@ -226,7 +226,7 @@ Singleton {
         // measured; the same script, the token still read from its 0600 file
         // and sent only as a header), node otherwise.
         command: ["setpriv", "--pdeathsig", "KILL", "--", "sh", "-c",
-                  'command -v bun >/dev/null 2>&1 && exec bun "$1" --watch; exec node "$1" --watch', "rice-usage", root.bin]
+                  'command -v bun >/dev/null 2>&1 && exec bun "$1" --watch; exec node "$1" --watch', "kuwai-usage", root.bin]
         property real since: 0
         onStarted: { root.alive = true; since = Date.now(); }
         onExited: {

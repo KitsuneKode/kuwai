@@ -2,7 +2,7 @@ pragma Singleton
 
 // What an audio output really is, for the HUD: a USB DAC can't tell which
 // IEMs are plugged into it, and BlueZ calls every earbud "audio-headset", so
-// you say it once in ~/.config/rice/devices.json and the island shows the
+// you say it once in ~/.config/kuwai/devices.json and the island shows the
 // thing that matters (your IEMs, "via" the DAC), with its photo:
 //
 //   [ { "match": "Audiocular D07", "label": "Kiwi Ears Cadenza",
@@ -10,7 +10,7 @@ pragma Singleton
 //     { "match": "WF-C510", "label": "Sony WF-C510", "image": "wf-c510.png", "kind": "earbuds" } ]
 //
 // `match` is a case-insensitive pattern tested against the device's name.
-// Images live in ~/.config/rice/devices/ (a transparent PNG, ~256 px, looks
+// Images live in ~/.config/kuwai/devices/ (a transparent PNG, ~256 px, looks
 // best); a missing one falls back to the kind's glyph.
 // (No braces before the pragma: Quickshell's scanner stops at the first.)
 
@@ -21,7 +21,7 @@ import Quickshell.Io
 Singleton {
     id: root
 
-    readonly property string dir: Quickshell.env("HOME") + "/.config/rice/devices"
+    readonly property string dir: Quickshell.env("HOME") + "/.config/kuwai/devices"
     property var entries: []
     property bool parsed: false
     function parse() {
@@ -30,7 +30,7 @@ Singleton {
     }
     FileView {
         id: file
-        path: Quickshell.env("HOME") + "/.config/rice/devices.json"
+        path: Quickshell.env("HOME") + "/.config/kuwai/devices.json"
         // This singleton is made on first use (the device at login), before
         // `loaded` arrives: the first lookup reads the file itself.
         blockLoading: true

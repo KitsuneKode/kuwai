@@ -9,7 +9,7 @@
 //                             "always"   (also before the idle lock)
 //                             "off"
 // Never over a fullscreen window (a film with Caffeine on stays a film).
-// `rice screensaver` shows it now.
+// `kuwai screensaver` shows it now.
 import QtQuick
 import QtQuick.Effects
 import Quickshell
@@ -29,7 +29,7 @@ Scope {
     property bool forced: false
     // hasFullscreen is live (Hyprland events). lastIpcObject was a snapshot
     // that only refreshed on request: one fullscreen video earlier kept it
-    // "true", and the screensaver never came again (nor `rice screensaver`).
+    // "true", and the screensaver never came again (nor `kuwai screensaver`).
     readonly property bool fullscreenAnywhere: Hyprland.workspaces.values.some(w => w.hasFullscreen
         && Hyprland.monitors.values.some(m => m.activeWorkspace === w))
     readonly property bool showing: (forced || (allowed && idle.isIdle)) && !fullscreenAnywhere
@@ -56,9 +56,9 @@ Scope {
     }
     readonly property bool useVideo: video !== "" && (!UPower.onBattery || Settings.liveOnBattery)
     readonly property string style: Settings.screensaverStyle || "dusk"   // dusk · night · live · still
-    // Night: a dark film from ~/.local/share/rice/screensavers (seamless
+    // Night: a dark film from ~/.local/share/kuwai/screensavers (seamless
     // half-speed loops, ~3–7 Mbit/s: cheap to decode, made by kuwai's setup).
-    readonly property string clipDir: Quickshell.env("HOME") + "/.local/share/rice/screensavers"
+    readonly property string clipDir: Quickshell.env("HOME") + "/.local/share/kuwai/screensavers"
     readonly property string clip: clipDir + "/" + (Settings.screensaverClip || "smoke-soft") + ".mp4"
     property bool clipFailed: false      // this session only: Dusk instead
     onClipChanged: clipFailed = false
@@ -81,13 +81,13 @@ Scope {
         id: filmProc
         // A missing file never starts it (test -r).
         // pdeathsig: the film dies with the shell. Without it, a shell killed
-        // while the screensaver showed (a restart, `rice promote`) left the
+        // while the screensaver showed (a restart, `kuwai promote`) left the
         // film orphaned, covering a monitor for hours; input couldn't reach it.
-        command: ["sh", "-c", 'test -r "$KUWAI_SAVER_FILE" && exec setpriv --pdeathsig KILL qs -p "$1"', "rice-saver", Quickshell.shellDir + "/../shell-saver"]
+        command: ["sh", "-c", 'test -r "$KUWAI_SAVER_FILE" && exec setpriv --pdeathsig KILL qs -p "$1"', "kuwai-saver", Quickshell.shellDir + "/../shell-saver"]
         // Every screen: one screen with the film and the other black read as
         // "the screensaver only came up on one monitor". It's a separate
         // process, killed on wake, so the second decoder costs nothing after.
-        // Basic render loop: the threaded one leaks per frame on NVIDIA (bin/rice-shell).
+        // Basic render loop: the threaded one leaks per frame on NVIDIA (bin/kuwai-shell).
         environment: ({ KUWAI_SAVER_FILE: root.film, KUWAI_SAVER_SCREEN: "*", QSG_RENDER_LOOP: "basic" })
         // The shell is the only one that ends it (SIGKILL, filmUp false), so
         // any exit while the film should be up is a failure: Dusk instead.
@@ -104,7 +104,7 @@ Scope {
     }
 
     // SIGKILL, never SIGTERM: Quickshell can crash on a polite exit and its
-    // crash handler would relaunch the film (bin/rice-shell has the story).
+    // crash handler would relaunch the film (bin/kuwai-shell has the story).
     onFilmUpChanged: {
         if (filmUp) { if (!filmProc.running) filmProc.running = true; }
         else if (filmProc.running) { killing = true; filmProc.signal(9); }
@@ -140,7 +140,7 @@ Scope {
                 anchors { top: true; bottom: true; left: true; right: true }
                 exclusionMode: ExclusionMode.Ignore
                 WlrLayershell.layer: WlrLayer.Overlay
-                WlrLayershell.namespace: "kuwai-screensaver"   // not rice-*: those blur what's behind past 0.3 alpha, and the vignette crossed it (a blurred lower third)
+                WlrLayershell.namespace: "kuwai-screensaver"   // not kuwai-*: those blur what's behind past 0.3 alpha, and the vignette crossed it (a blurred lower third)
                 WlrLayershell.keyboardFocus: root.showing ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
                 color: "transparent"
 

@@ -1,7 +1,7 @@
 // Glass HUD for brightness, volume and microphone (ported from
-// ~/.config/quickshell/glass-osd, now one module of the rice).
+// ~/.config/quickshell/glass-osd, now one module of kuwai).
 //
-// Brightness arrives as events from bin/rice-brightness (`watch --part
+// Brightness arrives as events from bin/kuwai-brightness (`watch --part
 // osd`), so the HUD shows the requested value on the screen being changed
 // before the slow DDC/CI write finishes. Volume and mic are read straight
 // from PipeWire, so any change (keys, Waybar scroll, pavucontrol) shows up,
@@ -48,8 +48,8 @@ Scope {
 
     // ── Brightness: event stream from the controller ─────────────────────
     // The shell holds the controller's socket itself (it was a Python relay,
-    // `rice-brightness watch --part osd`, 13 MB for the shell's life):
-    // `rice-brightness socket` checks the private directory, starts the
+    // `kuwai-brightness watch --part osd`, 13 MB for the shell's life):
+    // `kuwai-brightness socket` checks the private directory, starts the
     // controller if needed and says where its socket is; then one line asks
     // for the HUD's events and each event is a line. Held for good: with no
     // HUD subscribed the controller falls back to a notification.
@@ -57,7 +57,7 @@ Scope {
     Process {
         id: brightnessFind
         running: true
-        command: [Paths.bin + "/rice-brightness", "socket"]
+        command: [Paths.bin + "/kuwai-brightness", "socket"]
         stdout: StdioCollector {
             onStreamFinished: {
                 const p = text.trim();
@@ -643,7 +643,7 @@ Scope {
         exclusionMode: inIsland ? ExclusionMode.Ignore : ExclusionMode.Normal
         color: "transparent"
 
-        WlrLayershell.namespace: "rice-osd"
+        WlrLayershell.namespace: "kuwai-osd"
         WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 

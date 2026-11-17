@@ -1,2 +1,2 @@
 #!/bin/sh
-echo "gtk-launch $*" >> "$RICE_TEST_TMP/launched"
+echo "gtk-launch $*" >> "$KUWAI_TEST_TMP/launched"

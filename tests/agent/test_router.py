@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "bin"))
-import rice_agent as a  # noqa: E402
+import kuwai_agent as a  # noqa: E402
 
 
 def route(*texts):
@@ -35,11 +35,11 @@ def test_follow_up_keeps_the_previous_group():
 
 def test_all_switch():
     import os
-    os.environ["RICE_AGENT_TOOLS"] = "all"
+    os.environ["KUWAI_AGENT_TOOLS"] = "all"
     try:
         assert route("hi") == set(a.TOOLS)
     finally:
-        del os.environ["RICE_AGENT_TOOLS"]
+        del os.environ["KUWAI_AGENT_TOOLS"]
 
 
 def test_running_code_doesnt_offer_your_machine():

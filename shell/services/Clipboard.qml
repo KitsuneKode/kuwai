@@ -3,10 +3,10 @@ pragma Singleton
 // Clipboard history for the Super+V panel (modules/clipboard).
 //
 // History is cliphist's: HyDE's two wl-paste watchers store every copy,
-// text and images. The rice adds what cliphist doesn't keep: when each
+// text and images. Kuwai adds what cliphist doesn't keep: when each
 // entry was copied (a wl-paste watcher of our own stamps new ones), and
 // pins, saved as files of their own so they outlive the 750-entry cap.
-// bin/rice-clip does the decoding, pasting and opening.
+// bin/kuwai-clip does the decoding, pasting and opening.
 //
 // Search is fzf's: letters in order, scored for runs and word starts, with
 // its extended syntax: 'exact  ^prefix  suffix$  !not.
@@ -29,14 +29,14 @@ Singleton {
 
     property bool open: false
 
-    // ── Screen recording (bin/rice-rec), shown by the island ─────────────
+    // ── Screen recording (bin/kuwai-rec), shown by the island ─────────────
     // recordSetup: the island's setup panel (source, audio, frame rate).
     property bool recordSetup: false
     property real recSince: 0                  // epoch seconds while recording, else 0
     property string recTarget: ""
     property var recSaved: null                // { at, duration, path, thumb } just after a stop
-    readonly property string recBin: Paths.bin + "/rice-rec"
-    readonly property string recState: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/rice/recording"
+    readonly property string recBin: Paths.bin + "/kuwai-rec"
+    readonly property string recState: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/kuwai/recording"
     function recordKey() {
         if (recSince > 0) { recCmd.command = [recBin, "stop"]; recCmd.running = true; return; }
         if (!recordSetup) { open = false; screen = Screens.screenNamed(Screens.focusedName); }
@@ -82,10 +82,10 @@ Singleton {
     property var times: ({})        // cliphist id → when it was copied (ms)
     property bool loaded: false
 
-    readonly property string bin: Paths.bin + "/rice-clip"
-    readonly property string dataDir: (Quickshell.env("XDG_DATA_HOME") || Quickshell.env("HOME") + "/.local/share") + "/rice/clipboard"
-    readonly property string stateFile: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/rice/clipboard.json"
-    readonly property string thumbDir: (Quickshell.env("XDG_CACHE_HOME") || Quickshell.env("HOME") + "/.cache") + "/rice/clip/thumbs"
+    readonly property string bin: Paths.bin + "/kuwai-clip"
+    readonly property string dataDir: (Quickshell.env("XDG_DATA_HOME") || Quickshell.env("HOME") + "/.local/share") + "/kuwai/clipboard"
+    readonly property string stateFile: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/kuwai/clipboard.json"
+    readonly property string thumbDir: (Quickshell.env("XDG_CACHE_HOME") || Quickshell.env("HOME") + "/.cache") + "/kuwai/clip/thumbs"
 
     // A window that opens while the shelf holds the keyboard (Satty after a
     // screenshot, a dialog, an app you launched) must get it: the shelf steps aside.
@@ -164,7 +164,7 @@ Singleton {
         if (/^\[\[ binary data/.test(preview)) { e.kind = "file"; return e; }
         const t = preview.trim();
         // Copied files: a list of file:// URIs (what a file manager puts on
-        // the clipboard). They paste back as files (rice-clip copy).
+        // the clipboard). They paste back as files (kuwai-clip copy).
         if (/^file:\/\//.test(t)) { e.kind = "files"; return e; }
         if (/^(https?|ftp):\/\/\S+$/i.test(t)) e.kind = "link";
         else if (/^mailto:\S+$|^[\w.+-]+@[\w-]+\.[\w.-]+$/.test(t)) e.kind = "email";
@@ -203,7 +203,7 @@ Singleton {
     // ── When things were copied ──────────────────────────────────────────
     // wl-paste prints a line on every clipboard change; the next list says
     // which id that was. Entries from before the shell started have no time.
-    // A copy appends a line to times.tsv (rice-clip stamp): that's our cue
+    // A copy appends a line to times.tsv (kuwai-clip stamp): that's our cue
     // to re-read the list (no clipboard watcher of the shell's own: one per
     // reload was being left behind).
     Timer { id: stampSoon; interval: 400; onTriggered: root.refresh() }
@@ -211,7 +211,7 @@ Singleton {
     signal copied(var entry)
     property real copiedAt: 0
     // Copy times live in times.tsv ("id<TAB>ms" lines), written by
-    // `rice-clip stamp` from its own wl-paste watcher at the moment of every
+    // `kuwai-clip stamp` from its own wl-paste watcher at the moment of every
     // copy, whether or not this shell is running. Re-copying something moves
     // it to the top under the same id; its latest time wins.
     property string lastTop: ""
@@ -442,7 +442,7 @@ Singleton {
     function purge(ids, pinFiles) {
         // The copy on top going isn't a new copy: no "Copied" pill for the one under it.
         if (ids.indexOf(lastTop) >= 0) lastTop = "";
-        // Its decoded image goes with it (rice-clip delete removes the file).
+        // Its decoded image goes with it (kuwai-clip delete removes the file).
         if (ids.some(id => thumbs[id])) { const t = Object.assign({}, thumbs); for (const id of ids) delete t[id]; thumbs = t; }
         expiring = expiring.filter(x => ids.indexOf(x.id) < 0);
         for (const id of ids) { forgetSecret(id); run(["delete", id]); }

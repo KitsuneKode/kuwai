@@ -1,6 +1,6 @@
 pragma Singleton
 
-// Quick notes: one line from the launcher ("note buy milk") or `rice note …`,
+// Quick notes: one line from the launcher ("note buy milk") or `kuwai note …`,
 // appended to ~/Notes/inbox.md as a timestamped Markdown list item. Plain
 // text you own: open it in any editor, sync it however you like.
 // (No braces before the pragma: Quickshell's scanner stops at the first.)
@@ -12,7 +12,7 @@ import Quickshell.Io
 Singleton {
     id: root
 
-    readonly property string file: (Quickshell.env("RICE_NOTES") || Quickshell.env("HOME") + "/Notes") + "/inbox.md"
+    readonly property string file: (Quickshell.env("KUWAI_NOTES") || Quickshell.env("HOME") + "/Notes") + "/inbox.md"
     property int added: 0
 
     // The line goes in as an argument ("$2"), never into the command.

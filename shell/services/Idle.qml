@@ -12,7 +12,7 @@ pragma Singleton
 // Before any sleep (lid, power menu, `systemctl suspend`) the screen locks
 // first: a logind "delay" inhibitor is held and let go only once the lock is
 // confirmed. `loginctl lock-session` locks too. If the shell can't run,
-// rice-shell starts hypridle as the fallback (bin/rice-shell: broken()).
+// kuwai-shell starts hypridle as the fallback (bin/kuwai-shell: broken()).
 // (No braces before the pragma: Quickshell's scanner stops at the first.)
 
 import QtQuick
@@ -78,7 +78,7 @@ Singleton {
     // input, and the screen dimmed and locked mid-sentence. (voxtype's own
     // systemd-inhibit only spoke to hypridle; these monitors don't read it.)
     readonly property bool held: Caffeine.on || Activities.voxBusy
-    readonly property string rice: Paths.bin + "/rice"
+    readonly property string kuwai: Paths.bin + "/kuwai"
 
     function run(cmd) { Quickshell.execDetached(["sh", "-c", cmd]); }
 
@@ -98,14 +98,14 @@ Singleton {
         enabled: root.enabled && !root.held && root.lockAfter > 20
         timeout: root.lockAfter - 15
         respectInhibitors: true
-        onIsIdleChanged: Quickshell.execDetached([root.rice, "fade", isIdle ? "start" : "stop"])
+        onIsIdleChanged: Quickshell.execDetached([root.kuwai, "fade", isIdle ? "start" : "stop"])
     }
     // ── Lock
     IdleMonitor {
         enabled: root.enabled && !root.held && root.lockAfter > 0
         timeout: root.lockAfter
         respectInhibitors: true
-        onIsIdleChanged: if (isIdle) Quickshell.execDetached([root.rice, "lock"])
+        onIsIdleChanged: if (isIdle) Quickshell.execDetached([root.kuwai, "lock"])
     }
     // ── Screens off
     IdleMonitor {
@@ -141,8 +141,8 @@ Singleton {
         running: root.enabled
         // setpriv --pdeathsig: these die with the shell, even a kill -9 (a
         // left-over guard would delay every sleep; a listener, lock twice).
-        command: ["setpriv", "--pdeathsig", "KILL", "--", "systemd-inhibit", "--what=sleep", "--mode=delay", "--who=rice", "--why=Lock the screen before sleeping",
-                  "setpriv", "--pdeathsig", "KILL", "--", "sh", "-c", 'setpriv --pdeathsig KILL -- gdbus monitor --system --dest org.freedesktop.login1 --object-path /org/freedesktop/login1 | while read -r l; do case $l in *PrepareForSleep*true*) "$1" lock --wait; exit 0;; esac; done', "sh", root.rice]
+        command: ["setpriv", "--pdeathsig", "KILL", "--", "systemd-inhibit", "--what=sleep", "--mode=delay", "--who=kuwai", "--why=Lock the screen before sleeping",
+                  "setpriv", "--pdeathsig", "KILL", "--", "sh", "-c", 'setpriv --pdeathsig KILL -- gdbus monitor --system --dest org.freedesktop.login1 --object-path /org/freedesktop/login1 | while read -r l; do case $l in *PrepareForSleep*true*) "$1" lock --wait; exit 0;; esac; done', "sh", root.kuwai]
         onExited: if (root.enabled) rearm.restart()
     }
     // Soon after waking (a lid closed again right away is still locked first);
@@ -152,7 +152,7 @@ Singleton {
         id: lockSignal
         running: root.enabled
         command: ["setpriv", "--pdeathsig", "KILL", "--", "sh", "-c", 'setpriv --pdeathsig KILL -- gdbus monitor --system --dest org.freedesktop.login1 | grep --line-buffered -E "Session\\.Lock \\(\\)"']
-        stdout: SplitParser { onRead: Quickshell.execDetached([root.rice, "lock"]) }
+        stdout: SplitParser { onRead: Quickshell.execDetached([root.kuwai, "lock"]) }
         onExited: if (root.enabled) relisten.restart()
     }
     Timer { id: relisten; interval: 3000; onTriggered: if (root.enabled) lockSignal.running = true }

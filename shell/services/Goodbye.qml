@@ -4,7 +4,7 @@ pragma Singleton
 // GoodbyeOverlay draws it on every screen, the login screen has its own):
 // `run(kind, cmd)` shows it, and the command runs once it has gone to
 // black. Sleep comes back: the overlay clears just after the wake.
-// RICE_DRYRUN=1 shows it and logs the command instead.
+// KUWAI_DRYRUN=1 shows it and logs the command instead.
 // (No braces before the pragma: Quickshell's scanner stops at the first.)
 
 import QtQuick
@@ -30,7 +30,7 @@ Singleton {
     function black() {
         if (!kind || after.running) return;
         backstop.stop();
-        if (Quickshell.env("RICE_DRYRUN") === "1") console.warn("goodbye (dry run): " + cmd.join(" "));
+        if (Quickshell.env("KUWAI_DRYRUN") === "1") console.warn("goodbye (dry run): " + cmd.join(" "));
         else { launch.command = cmd; launch.running = true; }
         after.restart();
     }
@@ -50,5 +50,5 @@ Singleton {
     // Timers stand still while suspended, so after sleep this fires just
     // after the wake; if a restart or shut down was refused, the screen
     // comes back after a while instead of staying black.
-    Timer { id: after; interval: root.kind === "suspend" || Quickshell.env("RICE_DRYRUN") === "1" ? 1500 : 20000; onTriggered: root.kind = "" }
+    Timer { id: after; interval: root.kind === "suspend" || Quickshell.env("KUWAI_DRYRUN") === "1" ? 1500 : 20000; onTriggered: root.kind = "" }
 }

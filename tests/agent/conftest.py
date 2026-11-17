@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from fake_ollama import FakeOllama  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
-HELPER = ROOT / "bin" / "rice-ollama"
+HELPER = ROOT / "bin" / "kuwai-ollama"
 STUBS = Path(__file__).parent / "stubs"
 
 
@@ -30,21 +30,21 @@ def run_agent(tmp_path):
             e = {
                 **os.environ,
                 "OLLAMA_HOST": host or fake.url,
-                "RICE_SEARCH_DDG_URL": fake.url + "/ddg",
-                "RICE_SEARCH_BING_URL": fake.url + "/bing",
-                "RICE_SEARCH_WIKI_URL": fake.url + "/wiki",
-                "RICE_SHOP_AMAZON_URL": fake.url + "/amz",
-                "RICE_SEARXNG_URL": "",
+                "KUWAI_SEARCH_DDG_URL": fake.url + "/ddg",
+                "KUWAI_SEARCH_BING_URL": fake.url + "/bing",
+                "KUWAI_SEARCH_WIKI_URL": fake.url + "/wiki",
+                "KUWAI_SHOP_AMAZON_URL": fake.url + "/amz",
+                "KUWAI_SEARXNG_URL": "",
                 "OLLAMA_API_KEY": "",
                 "PATH": f"{STUBS}:{os.environ['PATH']}",
                 "HOME": str(tmp_path),
-                "RICE_TEST_TMP": str(tmp_path),
-                "RICE_SANDBOX": "off",
-                "RICE_AGENT_TOOLS": "all",
-                "RICE_FETCH_ALLOW_LOCAL": "1",      # the fake web lives on 127.0.0.1
+                "KUWAI_TEST_TMP": str(tmp_path),
+                "KUWAI_SANDBOX": "off",
+                "KUWAI_AGENT_TOOLS": "all",
+                "KUWAI_FETCH_ALLOW_LOCAL": "1",      # the fake web lives on 127.0.0.1
                 "XDG_CONFIG_HOME": str(tmp_path / "config"),
                 "XDG_CACHE_HOME": str(tmp_path / "cache"),
-                "RICE_SANDBOX_DIR": str(tmp_path / "sandbox"),
+                "KUWAI_SANDBOX_DIR": str(tmp_path / "sandbox"),
                 **(env or {}),
             }
             stdin = "".join(json.dumps(l) + "\n" for l in stdin_lines)
@@ -70,7 +70,7 @@ def start_agent(tmp_path):
         req_file.write_text(json.dumps(req))
         with FakeOllama(script, caps) as fake:
             e = {**os.environ, "OLLAMA_HOST": fake.url, "PATH": f"{STUBS}:{os.environ['PATH']}",
-                 "HOME": str(tmp_path), "RICE_TEST_TMP": str(tmp_path)}
+                 "HOME": str(tmp_path), "KUWAI_TEST_TMP": str(tmp_path)}
             proc = subprocess.Popen([str(HELPER), "agent", str(req_file)], stdin=subprocess.PIPE,
                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=e)
             try:

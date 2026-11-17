@@ -47,5 +47,5 @@ while IFS=$'\t' read -r file url; do
     rm -f "$tmp"
 done < "$src/wallpapers.tsv"
 echo "installed: $dest"
-[ $apply = 1 ] && exec "$ROOT/bin/rice-themes" theme "$name" --wait
+[ $apply = 1 ] && exec "$ROOT/bin/kuwai-themes" theme "$name" --wait
 exit 0

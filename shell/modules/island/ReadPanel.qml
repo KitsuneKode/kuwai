@@ -7,7 +7,7 @@
 // A message whose sender can't take a reply (or is gone, after a restart)
 // offers the way to it instead: Open.
 // A conversation (a Gmail thread, a GitHub issue and its comments: the
-// item's `thread`, from bin/rice-feeds) reads like a mail app: earlier
+// item's `thread`, from bin/kuwai-feeds) reads like a mail app: earlier
 // messages folded to one line each (who, when, the first words), the newest
 // open; click one to open or fold it. Your own say "You".
 import QtQuick

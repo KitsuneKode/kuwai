@@ -29,9 +29,9 @@ notch is the clip that makes people want it.
 
 | Where | What | State |
 |---|---|---|
-| `~/Depot/.t3/worktrees/rice/fix-quality-and-lifecyc-…` (`fix/quality-and-lifecycle`) | Codex's implementation of plans 001–010 slices: updater fail-closed + provenance + cache retention, greeter retry, idle-owner ack, session-scoped Clear, settings schema + atomic writer, privacy redaction until share-state known, fail-closed fallback lock, island geometry, DatePicker keys, Forget confirm, 200 % text, contrast, native test runner `bin/rice-ui-test` | **75 files, uncommitted, inactive.** 238 py / 148 bun / 196 QML / 3 Lua pass. Report: `docs/QUALITY-FIXES-2026-11-15.md` in that tree |
+| `~/Depot/.t3/worktrees/kuwai/fix-quality-and-lifecyc-…` (`fix/quality-and-lifecycle`) | Codex's implementation of plans 001–010 slices: updater fail-closed + provenance + cache retention, greeter retry, idle-owner ack, session-scoped Clear, settings schema + atomic writer, privacy redaction until share-state known, fail-closed fallback lock, island geometry, DatePicker keys, Forget confirm, 200 % text, contrast, native test runner `bin/kuwai-ui-test` | **75 files, uncommitted, inactive.** 238 py / 148 bun / 196 QML / 3 Lua pass. Report: `docs/QUALITY-FIXES-2026-11-15.md` in that tree |
 | main checkout, dirty | `rules.lua`, `LiveWallpaper.qml`, `Idle.qml` (live video out of the blur rule, coverage as a union, caffeine DPMS wake) + `ActionMenu/RaisedButton/Card/Theme` styling | uncommitted; overlaps the worktree on `Idle.qml`, `Theme.qml` |
-| `~/Depot/.t3/worktrees/rice/t3-a463d3bc` (`t3/notch-usage-limits`) | old usage-limits branch | superseded (TODO says owner to remove) |
+| `~/Depot/.t3/worktrees/kuwai/t3-a463d3bc` (`t3/notch-usage-limits`) | old usage-limits branch | superseded (TODO says owner to remove) |
 | `.worktrees/security-recovery` (`fix/security-recovery`) | old security branch | superseded; unexecuted tasks saved in `plans/2026-11-08-security-recovery-plan.md` |
 | `~/Projects/kittymux` | sidebar rebuild (plan 015), `kittymux answer` | main clean at 83a1bd6 |
 | live session | shell runs from the **dev checkout** (`KUWAI_ROOT=~/Projects/rice`), not `~/.local/share/kuwai` (stable) | the reload-leak notes say dev is the leaky channel |
@@ -43,7 +43,7 @@ No other Claude session is reachable right now; nothing else is running.
 ### 1. Greeter brightness works "the wrong way" — root cause found
 `greeter/keys` is a second, simpler brightness implementation:
 - every key changes **every** screen (backlight + every DDC bus); the session's
-  `bin/rice-brightness` changes only the focused screen (Super+Alt+F7 toggles all);
+  `bin/kuwai-brightness` changes only the focused screen (Super+Alt+F7 toggles all);
 - DDC steps are `setvcp 10 +5` raw units, linear; the panel is `brightnessctl -e4`
   (exponential), so the two screens drift apart;
 - `flock -n` drops DDC presses while a write is in flight, but the backlight never
@@ -88,17 +88,17 @@ cheapest set that makes the gap read as one intended motion either way.
 | easyeffects | 125–194 | |
 | docker + containerd + searxng container | ~300 | all at boot |
 | shell-auth (`qs`) | 94 | |
-| `rice-usage --watch` (node) | 85 | one websocket listener |
+| `kuwai-usage --watch` (node) | 85 | one websocket listener |
 | nm-applet, hyde-config, kdeconnect portal | ~70 | HyDE leftovers |
 
-No zombies, no orphaned rice helpers this boot (the pdeathsig + `rice-reap` work
+No zombies, no orphaned rice helpers this boot (the pdeathsig + `kuwai-reap` work
 held). `caffeine-mode.service` still fails every boot (needs interactive polkit;
 kuwai owns caffeine itself) → disable it.
 Biggest win by far: voxtype. Options in your fork, in order: int8 model (~4× less),
 CUDA execution provider (moves it to VRAM), or load on first key-down and unload
 after N idle minutes (voxtype already has an idle-unload knob for secondary
 models). Then: docker/searxng socket-activated or on demand; drop nm-applet and
-hyde-config; fold `rice-usage` into the shell (QtWebSockets) or run it under bun.
+hyde-config; fold `kuwai-usage` into the shell (QtWebSockets) or run it under bun.
 
 ### 4. Inconsistencies (measured)
 - Two brightness stacks (above). Two names: `rice-*` layers/bins/units vs
@@ -115,7 +115,7 @@ hyde-config; fold `rice-usage` into the shell (QtWebSockets) or run it under bun
 | `greeter/keys` brightness | `lib/brightness` (same as session) |
 | `b64decode()` in ClipboardPanel | `Qt.atob()` |
 | settings search by parsing `SettingsPanel.qml` | the worktree's settings schema (already done there) |
-| `rice-update` keeping `src/ pkg/` forever (8.5 GB) | paru's `CleanAfter` policy; worktree implements retention |
+| `kuwai-update` keeping `src/ pkg/` forever (8.5 GB) | paru's `CleanAfter` policy; worktree implements retention |
 | HyDE `wallpaper.sh` + HyDE colour modes (34 files) | a kuwai wallpaper/palette pipeline (awww + one colour tool), HyDE as an optional adapter |
 | 5 services each with their own runner `Process` | one `services/Run` (already in the plan) |
 | screen-scraped agent "waiting" for Claude/Codex | the agents' own hooks (see 7) |
@@ -219,7 +219,7 @@ pstack ships the loop we need: `create-verification-skill`,
 For kuwai:
 
 1. **`verify-kuwai` skill** in `.claude/skills/` (symlinked to `.cursor/skills/`):
-   - *Launch:* private harness first (`bin/rice-ui-test`, from the worktree: own
+   - *Launch:* private harness first (`bin/kuwai-ui-test`, from the worktree: own
      namespace, offscreen, private HOME/D-Bus); live session only through
      `qs ipc … call test …` hooks.
    - *Doctor:* `rice doctor`, `islandbar-<screen> dump`, lock state `unlocked`.
@@ -227,7 +227,7 @@ For kuwai:
      `test agentStates`, `test preview PANEL SCREEN`, `test settings N` — never
      pointer moves or typed text (your standing rules).
    - *Evidence:* grim per output + 60 fps clips + dump JSON into
-     `~/.local/state/rice/verify/<run>/`, kept after cleanup.
+     `~/.local/state/kuwai/verify/<run>/`, kept after cleanup.
    - *Feature map:* one file per surface — island, glance, capsules, agents panel,
      answer, clipboard, launcher, notifications, OSD/brightness, lock, greeter,
      updates, settings, wallpaper/saver.

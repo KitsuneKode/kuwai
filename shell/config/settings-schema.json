@@ -381,9 +381,9 @@
       "maxLength": 512,
       "section": "saver",
       "label": "Film",
-      "detail": "Files in ~/.local/share/rice/screensavers",
+      "detail": "Files in ~/.local/share/kuwai/screensavers",
       "group": "",
-      "searchTerms": "film files in ~/.local/share/rice/screensavers smoke aurora stars ",
+      "searchTerms": "film files in ~/.local/share/kuwai/screensavers smoke aurora stars ",
       "requires": [],
       "restartScope": "live"
     },
@@ -943,9 +943,9 @@
     {
       "page": "about",
       "label": "Backups",
-      "detail": "Your settings, Hyprland files, reminders, alarms, notes and pins: daily and before every update of the desktop, the newest 30. Put one back: rice backup restore NAME",
+      "detail": "Your settings, Hyprland files, reminders, alarms, notes and pins: daily and before every update of the desktop, the newest 30. Put one back: kuwai backup restore NAME",
       "group": "",
-      "words": "backups your settings, hyprland files, reminders, alarms, notes and pins: daily and before every update of the desktop, the newest 30. put one back: rice backup restore name  "
+      "words": "backups your settings, hyprland files, reminders, alarms, notes and pins: daily and before every update of the desktop, the newest 30. put one back: kuwai backup restore name  "
     },
     {
       "page": "about",

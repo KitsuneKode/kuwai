@@ -66,7 +66,7 @@ function M.apply()
 	anim("fadeShadow", 1.8, "kuwaiOut")
 	anim("fadeDim", 2.5, "kuwaiOut")
 
-	-- Layers (bars, menus, launchers): a short rise; the rice's own rice-*
+	-- Layers (bars, menus, launchers): a short rise; kuwai's own kuwai-*
 	-- surfaces opt out (layer rule no_anim) because they animate themselves.
 	anim("layersIn", 2.2, "kuwaiOut", "popin 93%")
 	anim("layersOut", 1.5, "kuwaiOut", "popin 94%")
@@ -87,7 +87,7 @@ function M.apply()
 	anim("monitorAdded", 2.5, "kuwaiOut")
 end
 
--- Reduce Motion (the center's toggle / RICE_REDUCE_MOTION / `kuwai motion off`):
+-- Reduce Motion (the center's toggle / KUWAI_REDUCE_MOTION / `kuwai motion off`):
 -- fades stay, travel and scale go.
 function M.reduce()
 	off("windowsIn")
@@ -102,7 +102,7 @@ function M.reduce()
 end
 
 M.apply()
-if os.getenv("RICE_REDUCE_MOTION") == "1" or K.state["motion"] == "reduced" then
+if os.getenv("KUWAI_REDUCE_MOTION") == "1" or K.state["motion"] == "reduced" then
 	M.reduce()
 elseif K.state["motion"] == "off" then
 	K.config({ animations = { enabled = false } })

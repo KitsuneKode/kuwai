@@ -79,14 +79,14 @@ blind replace (`size:` also means icon size).
 
 ## Road to 9.5 (in order; each is a finishable step)
 
-1. **Reliability (6.5 → 9):** live shell from `stable`; commit; `rice-check`
+1. **Reliability (6.5 → 9):** live shell from `stable`; commit; `kuwai-check`
    gates promote; a reload-leak test (10 reloads, Δ < 20 MB).
 2. **Memory (6.5 → 9):** panel unloading; find the reload leak (Pointer/
    Process/FileView singletons are the first suspects).
 3. **States (→ 9):** apply the table above to Updates, Notifications,
    Clipboard, Wi-Fi/Bluetooth, Launcher; one `StateView` component.
 4. **Type & colour (→ 9):** migrate modules onto `Theme.t*` and colour
-   tokens, island first; `rice-check` fails on new literals.
+   tokens, island first; `kuwai-check` fails on new literals.
 5. **Login (6 → 9):** trace the greeter → Hyprland black gap; one handover,
    monitors on together.
 6. **Island quick list / popovers (→ 9.5):** one Popover component with the

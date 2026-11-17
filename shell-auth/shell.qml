@@ -1,12 +1,12 @@
 // kuwai's password prompt (the polkit authentication agent), grown out of the
 // island.
 //
-// It runs as its own small process (rice-auth.service), not inside the main
+// It runs as its own small process (kuwai-auth.service), not inside the main
 // shell: nothing untrusted (notifications, clipboard previews, web content)
 // shares memory with what you type, and a reload or crash of the shell never
 // cancels an authentication. To still *be* the island, it starts exactly
 // where the island rests on your screen (the shell publishes that shape to
-// $XDG_RUNTIME_DIR/rice/island.json), in the same glass and the same springs,
+// $XDG_RUNTIME_DIR/kuwai/island.json), in the same glass and the same springs,
 // grows into the card, and folds back into the island when it's done. Tokens,
 // type and the theme's accent come from the shell's own config/ and
 // components/ (symlinked; they read files only, no services).
@@ -22,7 +22,7 @@
 //     record, read-only); a cancel counts as a try there, so it says so
 //   · Overlay layer, exclusive keyboard, dimmed screen: nothing sits above it
 //     or takes the keyboard while it's up; the lock screen still covers it
-//   · no crash handler or core dumps (see systemd/rice-auth.service); exits 3
+//   · no crash handler or core dumps (see systemd/kuwai-auth.service); exits 3
 //     if another agent owns the session, and systemd falls back to KDE's
 //
 // Keys: ↵ authenticate · Esc cancel.
@@ -85,7 +85,7 @@ ShellRoot {
     // "A password is needed" for the island (every screen shows a lock chip
     // until it's answered; clicking it brings this prompt to that screen).
     // Only what is asking goes in this file, never anything typed.
-    FileView { id: pendingFile; path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/rice/auth-pending"; printErrors: false }
+    FileView { id: pendingFile; path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/kuwai/auth-pending"; printErrors: false }
     // Line 3: this process's pid, so the island can tell a live prompt from a
     // leftover (a crash mid-request). Cleared whenever the prompt starts.
     property string myPid: ""
@@ -97,7 +97,7 @@ ShellRoot {
     onOpenChanged: if (open) pendingFile.setText(describe(actionId) + "\n" + screenName + "\n" + myPid + "\n")
     // The island asks for the prompt on another screen: move it there.
     FileView {
-        path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/rice/auth-summon"
+        path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/kuwai/auth-summon"
         watchChanges: true; printErrors: false
         onFileChanged: reload()
         onLoaded: {
@@ -169,7 +169,7 @@ ShellRoot {
     // Never without an agent: exit 3 lets systemd start KDE's instead.
     Timer {
         interval: 6000; running: true
-        onTriggered: if (!agent.isRegistered) { console.warn("rice-auth: another polkit agent owns this session"); Qt.exit(3); }
+        onTriggered: if (!agent.isRegistered) { console.warn("kuwai-auth: another polkit agent owns this session"); Qt.exit(3); }
     }
 
     // ── Which screen (Hyprland's word; Quickshell's can be stale) ────────
@@ -243,7 +243,7 @@ ShellRoot {
     // ── The island's resting shape, per screen (published by the shell) ──
     property var shapes: ({})
     FileView {
-        path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/rice/island.json"
+        path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/kuwai/island.json"
         watchChanges: true
         printErrors: false
         onFileChanged: reload()
@@ -270,7 +270,7 @@ ShellRoot {
     }
     // Your picture (~/.face), as a round PNG in the runtime dir.
     property string facePng: ""
-    readonly property string faceOut: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/rice/face.png"
+    readonly property string faceOut: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/kuwai/face.png"
     Process {
         running: true
         command: ["sh", "-c", 'f="$HOME/.face"; o="$1"; [ -r "$f" ] || exit 1; [ "$o" -nt "$f" ] && { echo ok; exit; }; m="$o.mask.png"; magick -size 132x132 xc:none -fill white -draw "circle 66,66 66,0" "png:$m" && magick "$f[0]" -resize 132x132^ -gravity center -extent 132x132 "$m" -compose DstIn -composite "png:$o"; rm -f "$m"; [ -s "$o" ] && echo ok', "face", root.faceOut]
@@ -293,7 +293,7 @@ ShellRoot {
             anchors { top: true; bottom: true; left: true; right: true }
             exclusionMode: ExclusionMode.Ignore
             WlrLayershell.layer: WlrLayer.Overlay
-            WlrLayershell.namespace: "rice-auth"
+            WlrLayershell.namespace: "kuwai-auth"
             WlrLayershell.keyboardFocus: here ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
             onHereChanged: {

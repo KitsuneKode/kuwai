@@ -116,7 +116,7 @@ local function cmd(c)
 end
 
 local VOL = "wpctl set-volume -l 1.5 @DEFAULT_AUDIO_SINK@ "
-local BRIGHT = K.bin .. "/rice-brightness "
+local BRIGHT = K.bin .. "/kuwai-brightness "
 
 -- Three fingers: workspaces sideways (1:1), volume up/down, pinch float/tile.
 gesture({ fingers = 3, direction = "horizontal", action = "workspace" })
@@ -127,7 +127,7 @@ gesture({ fingers = 3, direction = "pinchout", action = "float", mode = "float" 
 
 -- Four fingers: scroll the column tape 1:1 (scrolling layout), brightness.
 gesture({ fingers = 4, direction = "horizontal", action = "scroll_move" })
-if K.exists(K.bin .. "/rice-brightness") then
+if K.exists(K.bin .. "/kuwai-brightness") then
 	gesture({ fingers = 4, direction = "up", action = cmd(BRIGHT .. "i") })
 	gesture({ fingers = 4, direction = "down", action = cmd(BRIGHT .. "d") })
 end
@@ -137,6 +137,6 @@ gesture({ fingers = 4, direction = "up", mods = "SUPER", scale = 1.5, action = "
 gesture({ fingers = 4, direction = "down", mods = "SUPER", action = "fullscreen", mode = "maximize" })
 gesture({ fingers = 4, direction = "pinch", mods = "ALT", action = "special", workspace_name = "special" })
 if K.feature("overview") then -- pinch in with four fingers, like Mission Control
-	gesture({ fingers = 4, direction = "pinchin", action = function() hl.dispatch(hl.dsp.global("rice:overview")) end })
+	gesture({ fingers = 4, direction = "pinchin", action = function() hl.dispatch(hl.dsp.global("kuwai:overview")) end })
 end
 gesture({ fingers = 4, direction = "pinch", mods = "SUPER", action = "cursor_zoom", mode = "live", zoom_level = 2 })

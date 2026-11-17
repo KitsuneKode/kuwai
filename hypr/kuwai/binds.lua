@@ -1,7 +1,7 @@
 -- kuwai.binds — the core keyboard. Personal app launchers live in user.lua.
 --
 -- Super is the main modifier. Groups (the [..] in each description) are what
--- the rice's Shortcuts panel (Super+/) shows as sections.
+-- kuwai's Shortcuts panel (Super+/) shows as sections.
 --
 -- Apps are looked up when the key is pressed (K.apps.<name>), so user.lua can
 -- change the terminal/browser/editor without rebinding anything.
@@ -14,8 +14,8 @@ local bind, group = K.bind, K.group
 local dsp = hl.dsp
 local S = "SUPER"
 
-local function rice(name)
-	return dsp.global("rice:" .. name)
+local function kuwai(name)
+	return dsp.global("kuwai:" .. name)
 end
 
 local function app(name)
@@ -27,7 +27,7 @@ local function app(name)
 	end
 end
 
-local RICE = K.bin
+local BIN = K.bin
 
 ---------------------------------------------------------------------------
 group("Windows")
@@ -48,7 +48,7 @@ bind(S .. " + J", "Rearrange (split / column / next)", W.arrange, { locked = tru
 bind(S .. " + Escape", "Jump to the window that needs you, or back", dsp.focus({ urgent_or_last = true }))
 bind(S .. " + CTRL + K", "Click a window to kill it", "hyprctl kill")
 bind(S .. " + DELETE", "Quit Hyprland", A.exit)
-bind(S .. " + L", "Lock", "rice lock")
+bind(S .. " + L", "Lock", "kuwai lock")
 
 group("Windows|Focus")
 bind(S .. " + left", "Focus left", dsp.focus({ direction = "left" }))
@@ -58,12 +58,12 @@ bind(S .. " + down", "Focus down", dsp.focus({ direction = "down" }))
 
 -- Alt+Tab: the island's switcher (hold Alt, tap Tab, let go to switch; a
 -- quick flick switches with no UI). Alt coming up is caught in
--- kuwai.automation and sent as rice:switch-commit. Feature off: snappy-switcher.
+-- kuwai.automation and sent as kuwai:switch-commit. Feature off: snappy-switcher.
 if K.feature("island_switcher") then
 	local function sw(which)
 		return function()
 			K.alt_switch = true
-			hl.dispatch(dsp.global("rice:switch-" .. which))
+			hl.dispatch(dsp.global("kuwai:switch-" .. which))
 		end
 	end
 	bind("ALT + Tab", "Switch windows (hold Alt)", sw("next"))
@@ -83,9 +83,9 @@ else
 	end)
 end
 if K.feature("overview") then
-	bind(S .. " + Tab", "Mission Control: every workspace and window", rice("overview"))
-	bind(S .. " + ALT + I", "Show the island's details (minimal island)", rice("island-peek"))
-	bind(S .. " + SHIFT + C", "Caffeine: keep awake (no dim, lock or sleep)", rice("caffeine"))
+	bind(S .. " + Tab", "Mission Control: every workspace and window", kuwai("overview"))
+	bind(S .. " + ALT + I", "Show the island's details (minimal island)", kuwai("island-peek"))
+	bind(S .. " + SHIFT + C", "Caffeine: keep awake (no dim, lock or sleep)", kuwai("caffeine"))
 else
 	bind(S .. " + Tab", "Previous workspace", dsp.focus({ workspace = "previous_per_monitor" }))
 end
@@ -121,7 +121,7 @@ bind(S .. " + CTRL + ALT + right", "Window to the screen on the right", dsp.wind
 bind(S .. " + CTRL + ALT + SHIFT + left", "This workspace's windows to the screen on the left", W.windows_to_screen(-1))
 bind(S .. " + CTRL + ALT + SHIFT + right", "This workspace's windows to the screen on the right", W.windows_to_screen(1))
 -- A window stopped repainting (T3 on the Acer): note the moment for diagnosis.
-bind(S .. " + CTRL + ALT + Z", "Note a frozen window (for diagnosis)", RICE .. "/rice-freeze-snap")
+bind(S .. " + CTRL + ALT + Z", "Note a frozen window (for diagnosis)", BIN .. "/kuwai-freeze-snap")
 
 ---------------------------------------------------------------------------
 group("Columns")
@@ -143,9 +143,9 @@ bind("CTRL + ALT + A", "Swap column left", dsp.layout("swapcol l"))
 bind("CTRL + ALT + F", "Fit column", dsp.layout("fit active"))
 bind("CTRL + ALT + E", "Fit all visible", dsp.layout("fit visible"))
 bind("CTRL + ALT + Return", "Centre column", dsp.layout("center"))
-if K.exists(K.bin .. "/rice-tile-two") then
-	bind(S .. " + ALT + F", "Tile two side by side", K.bin .. "/rice-tile-two r")
-	bind(S .. " + ALT + SHIFT + F", "Tile two (left)", K.bin .. "/rice-tile-two l")
+if K.exists(K.bin .. "/kuwai-tile-two") then
+	bind(S .. " + ALT + F", "Tile two side by side", K.bin .. "/kuwai-tile-two r")
+	bind(S .. " + ALT + SHIFT + F", "Tile two (left)", K.bin .. "/kuwai-tile-two l")
 end
 
 ---------------------------------------------------------------------------
@@ -164,7 +164,7 @@ end
 bind(S .. " + CTRL + right", "Next workspace", W.step(1))
 bind(S .. " + CTRL + left", "Previous workspace", W.step(-1))
 bind(S .. " + CTRL + down", "First empty workspace on this screen", W.empty())
-bind(S .. " + CTRL + up", "Mission Control", function() hl.dispatch(dsp.global("rice:overview")) end)
+bind(S .. " + CTRL + up", "Mission Control", function() hl.dispatch(dsp.global("kuwai:overview")) end)
 bind(S .. " + ALT + SHIFT + L", "Next busy workspace", W.busy(1))
 bind(S .. " + ALT + SHIFT + H", "Previous busy workspace", W.busy(-1))
 bind(S .. " + mouse_down", "Next busy workspace", W.busy(1))
@@ -223,25 +223,25 @@ group("Shell")
 ---------------------------------------------------------------------------
 -- Global shortcuts go straight into the running Quickshell (GlobalShortcut in
 -- shell/modules/Shortcuts.qml): no process per keypress, same-frame response.
-bind(S .. " + A", "Launcher", rice("launcher"))
-bind(S .. " + CTRL + SHIFT + A", "AI Assistant", rice("assistant"))
-bind(S .. " + N", "Notifications", rice("center"))
-bind(S .. " + SHIFT + N", "Agents: every pane and thread", rice("agents"))
-bind(S .. " + ALT + N", "Do not disturb", rice("dnd"))
-bind(S .. " + SHIFT + ALT + N", "Open the newest notification", rice("open-latest"))
-bind(S .. " + CTRL + J", "Quick note (jot)", rice("note"))
-bind(S .. " + CTRL + SHIFT + J", "Remind me", rice("remind"))
-bind(S .. " + V", "Clipboard", rice("clipboard"))
-bind(S .. " + SHIFT + V", "Clipboard pins", rice("clipboard-pins"))
-bind(S .. " + ALT + V", "Clipboard pins", rice("clipboard-pins"))
-bind(S .. " + BACKSPACE", "Power menu", rice("power"))
-bind(S .. " + ALT + C", "Calendar", rice("calendar"))
-bind(S .. " + CTRL + I", "Settings", rice("settings"))
-bind(S .. " + SHIFT + T", "Themes", rice("themes"))
-bind(S .. " + SHIFT + W", "Wallpapers", rice("wallpapers"))
-bind(S .. " + slash", "Keyboard shortcuts", rice("keys"))
-bind(S .. " + CTRL + SHIFT + U", "Software Update", rice("updates"))
-bind(S .. " + SHIFT + slash", "Desktop mode (focus, glass, gaming…)", RICE .. "/kuwai mode --pick")
+bind(S .. " + A", "Launcher", kuwai("launcher"))
+bind(S .. " + CTRL + SHIFT + A", "AI Assistant", kuwai("assistant"))
+bind(S .. " + N", "Notifications", kuwai("center"))
+bind(S .. " + SHIFT + N", "Agents: every pane and thread", kuwai("agents"))
+bind(S .. " + ALT + N", "Do not disturb", kuwai("dnd"))
+bind(S .. " + SHIFT + ALT + N", "Open the newest notification", kuwai("open-latest"))
+bind(S .. " + CTRL + J", "Quick note (jot)", kuwai("note"))
+bind(S .. " + CTRL + SHIFT + J", "Remind me", kuwai("remind"))
+bind(S .. " + V", "Clipboard", kuwai("clipboard"))
+bind(S .. " + SHIFT + V", "Clipboard pins", kuwai("clipboard-pins"))
+bind(S .. " + ALT + V", "Clipboard pins", kuwai("clipboard-pins"))
+bind(S .. " + BACKSPACE", "Power menu", kuwai("power"))
+bind(S .. " + ALT + C", "Calendar", kuwai("calendar"))
+bind(S .. " + CTRL + I", "Settings", kuwai("settings"))
+bind(S .. " + SHIFT + T", "Themes", kuwai("themes"))
+bind(S .. " + SHIFT + W", "Wallpapers", kuwai("wallpapers"))
+bind(S .. " + slash", "Keyboard shortcuts", kuwai("keys"))
+bind(S .. " + CTRL + SHIFT + U", "Software Update", kuwai("updates"))
+bind(S .. " + SHIFT + slash", "Desktop mode (focus, glass, gaming…)", BIN .. "/kuwai mode --pick")
 bind(S .. " + ALT + G", "Game mode on/off", function()
 	kuwai.mode_toggle("gaming")
 end)
@@ -249,7 +249,7 @@ end)
 ---------------------------------------------------------------------------
 group("Capture")
 ---------------------------------------------------------------------------
-local shot = RICE .. "/rice-shot "
+local shot = BIN .. "/kuwai-shot "
 bind(S .. " + P", "Screenshot a region and annotate", shot .. "area")
 bind(S .. " + ALT + P", "Screenshot a region (no editor)", shot .. "quick")
 bind(S .. " + CTRL + P", "Freeze, then screenshot a region", shot .. "freeze")
@@ -259,8 +259,8 @@ bind(S .. " + CTRL + SHIFT + P", "Screenshot this monitor", shot .. "monitor", {
 bind("Print", "Screenshot every monitor", shot .. "all", { locked = true })
 bind("SHIFT + Print", "Screenshot this monitor in 3 seconds", shot .. "delay")
 bind(S .. " + SHIFT + P", "Pick a colour", "hyprpicker -an")
-bind(S .. " + SHIFT + ALT + R", "Screen recording: set up or stop", rice("record"))
-bind(S .. " + CTRL + ALT + R", "Record a region (again to stop)", RICE .. "/rice-rec toggle region")
+bind(S .. " + SHIFT + ALT + R", "Screen recording: set up or stop", kuwai("record"))
+bind(S .. " + CTRL + ALT + R", "Record a region (again to stop)", BIN .. "/kuwai-rec toggle region")
 
 ---------------------------------------------------------------------------
 group("Hardware|Audio")
@@ -286,9 +286,9 @@ bind(S .. " + F7", "Play / pause", "playerctl play-pause", l)
 bind(S .. " + F8", "Next track", "playerctl next", l)
 
 group("Hardware|Brightness")
--- bin/rice-brightness routes to the screen under focus (DDC for the
+-- bin/kuwai-brightness routes to the screen under focus (DDC for the
 -- external) and feeds the HUD; plain brightnessctl otherwise.
-local BR = K.exists(K.bin .. "/rice-brightness") and (K.bin .. "/rice-brightness ") or nil
+local BR = K.exists(K.bin .. "/kuwai-brightness") and (K.bin .. "/kuwai-brightness ") or nil
 bind("XF86MonBrightnessUp", "Brighter", BR and (BR .. "i") or "brightnessctl -e4 -n2 set 5%+", lr)
 bind("XF86MonBrightnessDown", "Dimmer", BR and (BR .. "d") or "brightnessctl -e4 -n2 set 5%-", lr)
 bind("F8", "Brighter", BR and (BR .. "i") or "brightnessctl -e4 -n2 set 5%+", lr)

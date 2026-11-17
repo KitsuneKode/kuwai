@@ -37,7 +37,7 @@ end
 -- Lid / clamshell
 ---------------------------------------------------------------------------
 -- The shell's lock (it falls back to hyprlock when the shell is down).
-local LOCK = K.bin .. "/rice lock"
+local LOCK = K.bin .. "/kuwai lock"
 
 if K.feature("clamshell") then
 	K.bind("switch:on:Lid Switch", "", function()
@@ -91,7 +91,7 @@ end)
 ---------------------------------------------------------------------------
 local SNAP = K.state_dir .. "/session"
 local SKIP = {
-	"^xdg%-desktop%-portal", "polkit", "pinentry", "gcr%-prompter", "^hyprland%-", "^rice%-", "^kuwai%-",
+	"^xdg%-desktop%-portal", "polkit", "pinentry", "gcr%-prompter", "^hyprland%-", "^kuwai%-", "^kuwai%-",
 	"^steam_app_", "^gamescope", "xwaylandvideobridge", "^org%.kde%.polkit", "^$",
 }
 
@@ -254,7 +254,7 @@ if K.feature("battery_guard") and BAT then
 		if cap <= K.battery.critical and not pending then
 			pending = true
 			R.save()
-			hl.exec_cmd(K.bin .. "/rice-notify -u critical -a kuwai -i battery-empty 'Battery " .. cap .. "% — saving your session' 'Plug in within 30 seconds, or the laptop will " .. K.battery.critical_action .. ".'")
+			hl.exec_cmd(K.bin .. "/kuwai-notify -u critical -a kuwai -i battery-empty 'Battery " .. cap .. "% — saving your session' 'Plug in within 30 seconds, or the laptop will " .. K.battery.critical_action .. ".'")
 			hl.timer(function()
 				pending = false
 				if K.read_line(BAT .. "/status") == "Discharging" then
@@ -263,7 +263,7 @@ if K.feature("battery_guard") and BAT then
 			end, { timeout = 30000, type = "oneshot" })
 		elseif cap <= K.battery.low and not warned then
 			warned = true
-			hl.exec_cmd(K.bin .. "/rice-notify -u critical -a kuwai -i battery-caution 'Battery " .. cap .. "%' 'Plug in soon. At " .. K.battery.critical .. "% kuwai saves your session and suspends.'")
+			hl.exec_cmd(K.bin .. "/kuwai-notify -u critical -a kuwai -i battery-caution 'Battery " .. cap .. "%' 'Plug in soon. At " .. K.battery.critical .. "% kuwai saves your session and suspends.'")
 		end
 	end
 	K.defer(function()

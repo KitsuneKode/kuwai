@@ -2,10 +2,10 @@
 // shows or takes input until PAM says yes. One surface per monitor, one
 // password shared between them.
 //
-//   rice lock                     lock now (qs ipc call lock lock)
+//   kuwai lock                     lock now (qs ipc call lock lock)
 //
 // The default: the shell's idle (services/Idle) and sleep guard lock here;
-// hyprlock is only the fallback when the shell isn't up (bin/rice lock).
+// hyprlock is only the fallback when the shell isn't up (bin/kuwai lock).
 //
 // Fail-safe: while locked, Paths.lockFlag exists (this session's, in the
 // runtime dir, so it goes at a reboot or logout). If the shell
@@ -13,7 +13,7 @@
 // promise: nothing is ever exposed) and, with misc:allow_session_lock_restore
 // (hypr/kuwai/system.lua), lets a new locker take over: Quickshell's crash handler
 // restarts the shell, which sees the file and locks again at once. From a
-// TTY, `hyprlock` (or `rice restart`) does the same. Nothing you were doing
+// TTY, `hyprlock` (or `kuwai restart`) does the same. Nothing you were doing
 // is closed: the lock only covers the screen.
 import QtQuick
 import Quickshell
@@ -125,7 +125,7 @@ Scope {
     function resurface() {
         if (!locked || !secure) return;
         console.warn("lock: a monitor came back while locked; restarting the shell to cover it");
-        Quickshell.execDetached([Paths.bin + "/rice-shell"]);
+        Quickshell.execDetached([Paths.bin + "/kuwai-shell"]);
     }
     Timer { id: relockWait; interval: 800; onTriggered: root.resurface() }
     Connections {
@@ -166,7 +166,7 @@ Scope {
                 anchors { top: true; bottom: true; left: true; right: true }
                 exclusionMode: ExclusionMode.Ignore
                 WlrLayershell.layer: WlrLayer.Overlay
-                WlrLayershell.namespace: "rice-fade"
+                WlrLayershell.namespace: "kuwai-fade"
                 WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
                 mask: Region {}
                 color: "transparent"
@@ -192,7 +192,7 @@ Scope {
         target: "lock"
         function lock(): void { root.lock(); }
         // "locked" only once the compositor confirms the lock (secure):
-        // what `rice lock --wait` waits for before the machine may sleep.
+        // what `kuwai lock --wait` waits for before the machine may sleep.
         function state(): string { return root.secure ? "locked" : root.locked ? "locking" : "unlocked"; }
     }
 }

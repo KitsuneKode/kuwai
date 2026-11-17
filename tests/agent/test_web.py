@@ -131,6 +131,6 @@ def test_duckduckgo_ads_are_skipped(run_agent):
 def test_fetch_refuses_this_machine_and_the_lan(run_agent):
     for url in ["http://127.0.0.1:11434/api/tags", "http://192.168.1.1/", "http://localhost:8888/"]:
         events, _ = run_agent(USER, [[call("web_fetch", {"url": url}), {"done": True}], answer()], caps=CAPS,
-                              env={"RICE_FETCH_ALLOW_LOCAL": ""})
+                              env={"KUWAI_FETCH_ALLOW_LOCAL": ""})
         done = completion(events, started(events, "dynamic_tool_call")[0]["id"])
         assert done["status"] == "failed" and "isn't read" in done["output"], url

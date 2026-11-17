@@ -1,8 +1,8 @@
 # Settings contract
 
-The shell and `rice set KEY VALUE` use [settings-schema.json](../shell/config/settings-schema.json).
+The shell and `kuwai set KEY VALUE` use [settings-schema.json](../shell/config/settings-schema.json).
 It declares defaults, types, allowed values, ranges, search metadata and application scope.
-The existing flat `$XDG_CONFIG_HOME/rice/settings.json` path is unchanged.
+The existing flat `$XDG_CONFIG_HOME/kuwai/settings.json` path is unchanged.
 No second authored configuration file is introduced: schema defaults are overlaid
 by keys present in this file. `false`, `0` and empty arrays are real values.
 
@@ -12,14 +12,14 @@ A saved value equal to its default is still an override. Changes apply immediate
 the top-bar command also switches its running bar. Existing compositor/input
 settings and Reduce motion retain their existing separate owners.
 
-`bin/rice-settings` is the narrow storage adapter used by both entry points:
+`bin/kuwai-settings` is the narrow storage adapter used by both entry points:
 
 ```sh
-rice set clock24 false
-rice set textScale 1.5
-rice-settings get clock24
-rice-settings reset clock24
-rice-settings migrate --dry-run
+kuwai set clock24 false
+kuwai set textScale 1.5
+kuwai-settings get clock24
+kuwai-settings reset clock24
+kuwai-settings migrate --dry-run
 ```
 
 Writes validate the requested key and existing known values. Unknown keys are
@@ -50,7 +50,7 @@ When adding a setting, update the schema and its actual row together and run:
 ```sh
 bun test tests/shell/settings-schema.test.mjs tests/shell/settings-search.test.mjs
 PYTHONDONTWRITEBYTECODE=1 python -m pytest -q -p no:cacheprovider tests/settings
-bin/rice-ui-test --case settings-store --output /tmp/kuwai-settings-test
+bin/kuwai-ui-test --case settings-store --output /tmp/kuwai-settings-test
 ```
 
 The native fixture is offscreen inside a private namespace/home/bus with inert

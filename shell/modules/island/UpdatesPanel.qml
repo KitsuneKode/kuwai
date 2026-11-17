@@ -11,7 +11,7 @@
 //   run      the update as it happens: steps, progress, the live log; then
 //            what's left for you (restart, .pacnew files, failed services)
 //
-// The work is bin/rice-update's (services/Updates). Passwords go to kuwai's
+// The work is bin/kuwai-update's (services/Updates). Passwords go to kuwai's
 // prompt (shell-auth): one for Arch packages, one for the AUR installs.
 //
 // Keys: ↵ update (list) / approve (review) · Esc back · R check again.
@@ -179,7 +179,7 @@ FocusScope {
             Label {
                 anchors.verticalCenter: parent.verticalCenter
                 width: parent.width - 180; wrapMode: Text.Wrap
-                text: Updates.pacnewResult || "Use new keeps yours as X.rice-bak. sudoers is checked with visudo first."
+                text: Updates.pacnewResult || "Use new keeps yours as X.kuwai-bak. sudoers is checked with visudo first."
                 size: 11; color: Updates.pacnewResult ? Theme.textSecondary : Theme.textTertiary
             }
         }

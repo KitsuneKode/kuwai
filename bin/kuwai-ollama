@@ -1,0 +1,560 @@
+#!/usr/bin/env -S python3 -u
+"""Helper backend for Quickshell AI Assistant (shell/services/OllamaService.qml).
+Owns HTTP calls to Ollama, status probes, clipboard image pasting, screenshot captures,
+web search, system inspection tools, and VRAM lifetime.
+
+Commands:
+    kuwai-ollama status           -> probe /api/tags and /api/ps, prints JSON status
+    kuwai-ollama snip             -> slurp + grim screenshot to private runtime dir
+    kuwai-ollama paste            -> save clipboard image to private runtime dir if present
+    kuwai-ollama agent <file>     -> run one agent turn (tools, approvals), JSON events on stdout
+    kuwai-ollama unload [model]   -> unload model(s) to free VRAM (keep_alive: 0)
+    kuwai-ollama render [file]    -> pass stdin or file to kuwai-render for rich text
+"""
+
+import sys
+import os
+import json
+import base64
+import time
+import subprocess
+import shutil
+import signal
+import urllib.request
+import urllib.parse
+import urllib.error
+import re
+
+OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
+
+def get_runtime_dir():
+    base = os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
+    path = os.path.join(base, "kuwai", "ai")
+    os.makedirs(path, mode=0o700, exist_ok=True)
+    shots = os.path.join(path, "screenshots")
+    os.makedirs(shots, mode=0o700, exist_ok=True)
+    return path, shots
+
+def cmd_status():
+    status = {"status": "offline", "models": [], "running": []}
+    try:
+        req = urllib.request.Request(f"{OLLAMA_HOST}/api/tags", headers={"User-Agent": "kuwai-ollama/1.0"})
+        with urllib.request.urlopen(req, timeout=1.5) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            listed = [m for m in data.get("models", []) if m.get("name")]
+            status["models"] = [m["name"] for m in listed]
+            status["status"] = "ready"
+            # What each model can do (tools / thinking / vision), for the picker.
+            status["info"] = {}
+            for m in listed:
+                caps = []
+                try:
+                    body = json.dumps({"model": m["name"]}).encode("utf-8")
+                    show = urllib.request.Request(f"{OLLAMA_HOST}/api/show", data=body,
+                                                  headers={"Content-Type": "application/json", "User-Agent": "kuwai-ollama/1.0"})
+                    with urllib.request.urlopen(show, timeout=1.5) as r:
+                        caps = json.loads(r.read().decode("utf-8")).get("capabilities", []) or []
+                except Exception:
+                    pass
+                status["info"][m["name"]] = {
+                    "capabilities": caps,
+                    "sizeGb": round((m.get("size") or 0) / 1e9, 1),
+                    "params": (m.get("details") or {}).get("parameter_size", ""),
+                }
+    except Exception:
+        print(json.dumps(status))
+        return
+
+    try:
+        req_ps = urllib.request.Request(f"{OLLAMA_HOST}/api/ps", headers={"User-Agent": "kuwai-ollama/1.0"})
+        with urllib.request.urlopen(req_ps, timeout=1.0) as resp:
+            data_ps = json.loads(resp.read().decode("utf-8"))
+            status["running"] = [
+                {
+                    "name": m.get("name", ""),
+                    "size_vram": m.get("size_vram", 0),
+                    "expires_at": m.get("expires_at", "")
+                }
+                for m in data_ps.get("models", [])
+            ]
+    except Exception:
+        pass
+
+    print(json.dumps(status))
+
+def get_process_cwd(pid):
+    try:
+        children_file = f"/proc/{pid}/task/{pid}/children"
+        if os.path.isfile(children_file):
+            with open(children_file, "r") as f:
+                c_pids = f.read().strip().split()
+                if c_pids:
+                    deepest = c_pids[-1]
+                    try:
+                        c_cwd = os.readlink(f"/proc/{deepest}/cwd")
+                        if c_cwd and os.path.isdir(c_cwd):
+                            return c_cwd
+                    except Exception:
+                        pass
+        return os.readlink(f"/proc/{pid}/cwd")
+    except Exception:
+        return ""
+
+def get_git_info(cwd):
+    if not cwd or not os.path.isdir(cwd):
+        return None
+    try:
+        res = subprocess.run(["git", "-C", cwd, "rev-parse", "--show-toplevel"], capture_output=True, text=True, timeout=1)
+        if res.returncode != 0:
+            return None
+        repo_root = res.stdout.strip()
+        repo_name = os.path.basename(repo_root)
+        
+        branch_res = subprocess.run(["git", "-C", cwd, "branch", "--show-current"], capture_output=True, text=True, timeout=1)
+        branch = branch_res.stdout.strip() or "detached"
+        
+        status_res = subprocess.run(["git", "-C", cwd, "status", "--short"], capture_output=True, text=True, timeout=1)
+        status_lines = [l.strip() for l in status_res.stdout.splitlines() if l.strip()][:8]
+        
+        log_res = subprocess.run(["git", "-C", cwd, "log", "-1", "--oneline"], capture_output=True, text=True, timeout=1)
+        last_commit = log_res.stdout.strip()
+        
+        return {
+            "root": repo_root,
+            "name": repo_name,
+            "branch": branch,
+            "dirty_files": status_lines,
+            "commit": last_commit
+        }
+    except Exception:
+        return None
+
+def get_wayland_selection():
+    try:
+        res = subprocess.run(["wl-paste", "--primary"], capture_output=True, text=True, timeout=1)
+        t = res.stdout.strip()
+        if t and len(t) <= 3000 and "Nothing is copied" not in t:
+            return t
+    except Exception:
+        pass
+    return ""
+
+def get_wayland_clipboard():
+    try:
+        res = subprocess.run(["wl-paste", "-t", "text/plain"], capture_output=True, text=True, timeout=1)
+        t = res.stdout.strip()
+        if t and len(t) <= 2000 and "Nothing is copied" not in t:
+            return t
+    except Exception:
+        pass
+    return ""
+
+# ── Making the snapshot's context mean something ─────────────────────────
+TERMINALS = {"kitty", "foot", "alacritty", "wezterm", "org.wezfurlong.wezterm", "ghostty", "com.mitchellh.ghostty",
+             "konsole", "org.kde.konsole", "gnome-terminal", "xterm", "code", "code-oss", "codium", "zed", "dev.zed.zed",
+             "cursor", "neovide", "jetbrains-idea", "jetbrains-pycharm"}
+SECRETY = re.compile(r"(-----BEGIN [A-Z ]*PRIVATE KEY-----|\bgh[pousr]_[A-Za-z0-9]{20,}|\bsk-[A-Za-z0-9_-]{20,}"
+                     r"|\bAKIA[0-9A-Z]{16}\b|\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.|\bxox[baprs]-[A-Za-z0-9-]{10,}"
+                     r"|\b[A-Za-z0-9+/]{40,}={0,2}\b)")
+
+
+def app_display_name(wm_class):
+    """com.t3tools.T3Code → "T3 Code", from its desktop entry (StartupWMClass or file name)."""
+    if not wm_class:
+        return "Window"
+    dirs = [os.path.expanduser("~/.local/share/applications"), "/usr/local/share/applications", "/usr/share/applications",
+            os.path.expanduser("~/.local/share/flatpak/exports/share/applications"), "/var/lib/flatpak/exports/share/applications"]
+    want = wm_class.lower()
+    for d in dirs:
+        if not os.path.isdir(d):
+            continue
+        for f in os.listdir(d):
+            if not f.endswith(".desktop"):
+                continue
+            try:
+                text = open(os.path.join(d, f), encoding="utf-8", errors="replace").read(8000)
+            except OSError:
+                continue
+            klass = re.search(r"^StartupWMClass=(.+)$", text, re.M)
+            if f[:-8].lower() == want or (klass and klass.group(1).strip().lower() == want):
+                name = re.search(r"^Name=(.+)$", text, re.M)
+                if name:
+                    return name.group(1).strip()
+    return wm_class.split(".")[-1]
+
+
+def fresh_text(kind, text):
+    """Selection / clipboard only when they changed since the last snapshot: what you copied an hour
+    ago isn't what you're asking about. Secrets are never passed on."""
+    import hashlib
+    if not text:
+        return ""
+    if SECRETY.search(text):
+        return ""
+    state_file = os.path.expanduser("~/.cache/kuwai/assistant/last-context.json")
+    try:
+        state = json.load(open(state_file))
+    except (OSError, ValueError):
+        state = {}
+    h = hashlib.sha256(text.encode()).hexdigest()[:16]
+    seen = state.get(kind) == h
+    state[kind] = h
+    try:
+        os.makedirs(os.path.dirname(state_file), exist_ok=True)
+        json.dump(state, open(state_file, "w"))
+    except OSError:
+        pass
+    return "" if seen else text
+
+
+def kitty_context(pid):
+    """The focused kitty pane, over kitty's remote-control socket (unix:$XDG_RUNTIME_DIR/mykitty-<pid>,
+    allow_remote_control socket-only): its folder, what's running, the last command and its output
+    (shell integration's last_cmd_output). kitty's own /proc cwd is always ~, so this is the only
+    right answer for a terminal. None when the socket isn't there. ~40 ms."""
+    run_dir = os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}"
+    sock = os.path.join(run_dir, f"mykitty-{pid}")
+    if not os.path.exists(sock) or not shutil.which("kitty"):
+        return None
+    to = ["kitty", "@", "--to", f"unix:{sock}"]
+    try:
+        p = subprocess.run(to + ["ls"], capture_output=True, text=True, timeout=2)
+        tree = json.loads(p.stdout or "[]")
+    except (subprocess.SubprocessError, ValueError, OSError):
+        return None
+    win = None
+    for osw in tree:
+        for tab in osw.get("tabs", []):
+            for w in tab.get("windows", []):
+                if w.get("is_focused") or (win is None and osw.get("is_focused") and tab.get("is_focused") and w.get("is_active")):
+                    win = w
+        if win is None and osw.get("is_active"):
+            for tab in osw.get("tabs", []):
+                if tab.get("is_active"):
+                    win = next((w for w in tab.get("windows", []) if w.get("is_active")), win)
+    if not win:
+        return None
+    fg = [" ".join(fp.get("cmdline") or [])[:120] for fp in win.get("foreground_processes", [])]
+    out = ""
+    try:
+        p = subprocess.run(to + ["get-text", "--match", f"id:{win['id']}", "--extent", "last_cmd_output"],
+                           capture_output=True, text=True, timeout=2)
+        out = "\n".join((p.stdout or "").rstrip().splitlines()[-60:])[-4000:]
+    except (subprocess.SubprocessError, OSError):
+        pass
+    if out and SECRETY.search(out):
+        out = "(left out: it looked like it contained a secret)"
+    return {
+        "cwd": win.get("cwd") or "",
+        "running": fg[0] if fg and not win.get("at_prompt") else "",
+        "last_command": (win.get("last_reported_cmdline") or "")[:300],
+        "last_output": out,
+        "at_prompt": bool(win.get("at_prompt")),
+    }
+
+
+def cmd_snapshot(mode="window"):
+    """T3 Code-style window & screen snapshotting with rich context."""
+    _, shots_dir = get_runtime_dir()
+    stamp = int(time.time() * 1000)
+    out_file = os.path.join(shots_dir, f"snap_{stamp}.png")
+
+    if mode == "screen":
+        try:
+            subprocess.run(["grim", out_file], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            os.chmod(out_file, 0o600)
+            print(json.dumps({"status": "ok", "path": out_file, "type": "screen"}))
+            return
+        except Exception as e:
+            print(json.dumps({"status": "error", "message": str(e)}))
+            sys.exit(1)
+
+    if mode == "region":
+        # Interactive region pick with grab release buffer
+        try:
+            time.sleep(0.18)  # Let Wayland exclusive seat grab release
+            slurp = subprocess.run(["slurp", "-d"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, check=True)
+            geometry = slurp.stdout.strip()
+            if not geometry:
+                sys.exit(1)
+            subprocess.run(["grim", "-g", geometry, out_file], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            os.chmod(out_file, 0o600)
+            print(json.dumps({"status": "ok", "path": out_file, "type": "region"}))
+            return
+        except Exception as e:
+            print(json.dumps({"status": "error", "message": str(e)}))
+            sys.exit(1)
+
+    # Default: mode == "window" (T3 Code pattern: snap active foreground app directly)
+    try:
+        res = subprocess.run(["hyprctl", "activewindow", "-j"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+        w = json.loads(res.stdout) if res.stdout.strip() else {}
+        if not w or not w.get("mapped") or w.get("hidden"):
+            subprocess.run(["grim", out_file], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            os.chmod(out_file, 0o600)
+            print(json.dumps({"status": "ok", "path": out_file, "type": "screen"}))
+            return
+
+        at = w.get("at", [0, 0])
+        size = w.get("size", [1920, 1080])
+        geom = f"{at[0]},{at[1]} {size[0]}x{size[1]}"
+        subprocess.run(["grim", "-g", geom, out_file], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        os.chmod(out_file, 0o600)
+
+        wm_class = w.get("class", "")
+        app_name = app_display_name(wm_class)
+        title = w.get("title", "")
+        pid = w.get("pid", 0)
+        ws_info = w.get("workspace", {})
+        ws_name = ws_info.get("name", "") if isinstance(ws_info, dict) else str(ws_info)
+        bounds = {"x": at[0], "y": at[1], "width": size[0], "height": size[1]}
+
+        # Deep context extraction: CWD, Git state, highlighted text, clipboard
+        term = kitty_context(pid) if wm_class.lower() == "kitty" else None
+        cwd = term["cwd"] if term and term.get("cwd") else get_process_cwd(pid)
+        # A folder only means something for terminals and editors (T3 Code's "cwd" is just ~).
+        if wm_class.lower() not in TERMINALS and (not cwd or os.path.realpath(cwd) == os.path.realpath(os.path.expanduser("~"))):
+            cwd = ""
+        git_info = get_git_info(cwd) if cwd else None
+        selected_text = fresh_text("selection", get_wayland_selection())
+        clipboard_text = fresh_text("clipboard", get_wayland_clipboard())
+
+        lines = [
+            f'### Active Foreground Window Context:',
+            f'- **Application**: {app_name} (PID: {pid})',
+            f'- **Title**: "{title}"'
+        ]
+        if ws_name:
+            lines.append(f'- **Workspace**: {ws_name}')
+        if cwd:
+            lines.append(f'- **Working Directory**: `{cwd}`')
+        if git_info:
+            lines.append(f'- **Git Repository**: `{git_info["name"]}` on `{git_info["branch"]}` (Latest commit: `{git_info["commit"]}`)')
+            if git_info["dirty_files"]:
+                lines.append(f'  - Uncommitted changes: {", ".join(git_info["dirty_files"][:5])}')
+        if selected_text:
+            lines.append(f'\n### Selected On-Screen Text (Exact Selection):\n```\n{selected_text}\n```')
+        elif clipboard_text:
+            lines.append(f'\n### Clipboard Content:\n```\n{clipboard_text[:600]}\n```')
+
+        context_str = "\n".join(lines)
+
+        print(json.dumps({
+            "status": "ok",
+            "path": out_file,
+            "type": "window",
+            "app": app_name,
+            "title": title,
+            "pid": pid,
+            "workspace": ws_name,
+            "cwd": cwd,
+            "git": git_info,
+            "terminal": term,
+            "has_selection": bool(selected_text),
+            "selection": selected_text[:4096] if selected_text else "",
+            "clipboard": clipboard_text[:4096] if clipboard_text else "",
+            "bounds": bounds,
+            "context": context_str
+        }))
+    except Exception as e:
+        print(json.dumps({"status": "error", "message": str(e)}))
+        sys.exit(1)
+
+def cmd_snip():
+    _, shots_dir = get_runtime_dir()
+    stamp = int(time.time() * 1000)
+    out_file = os.path.join(shots_dir, f"shot_{stamp}.png")
+
+    try:
+        slurp = subprocess.run(["slurp", "-d"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, check=True)
+        geometry = slurp.stdout.strip()
+        if not geometry:
+            sys.exit(1)
+
+        subprocess.run(["grim", "-g", geometry, out_file], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        os.chmod(out_file, 0o600)
+        print(out_file)
+    except subprocess.CalledProcessError:
+        sys.exit(1)
+    except Exception as e:
+        sys.stderr.write(f"Snip failed: {e}\n")
+        sys.exit(1)
+
+def cmd_paste():
+    """Extract image directly from Wayland clipboard if present."""
+    _, shots_dir = get_runtime_dir()
+    stamp = int(time.time() * 1000)
+    out_file = os.path.join(shots_dir, f"paste_{stamp}.png")
+
+    try:
+        res = subprocess.run(["wl-paste", "--list-types"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+        if res.returncode != 0:
+            sys.exit(1)
+        types = res.stdout.splitlines()
+        target_mime = None
+        for t in ["image/png", "image/jpeg", "image/webp"]:
+            if t in types:
+                target_mime = t
+                break
+
+        if not target_mime:
+            sys.exit(1)
+
+        with open(out_file, "wb") as f:
+            proc = subprocess.run(["wl-paste", "-t", target_mime], stdout=f, stderr=subprocess.DEVNULL, check=True)
+
+        if os.path.isfile(out_file) and os.path.getsize(out_file) > 0:
+            os.chmod(out_file, 0o600)
+            print(out_file)
+            sys.exit(0)
+    except Exception:
+        pass
+    sys.exit(1)
+
+def cmd_unload(target_model=None):
+    models_to_unload = []
+    if target_model:
+        models_to_unload = [target_model]
+    else:
+        try:
+            req = urllib.request.Request(f"{OLLAMA_HOST}/api/ps", headers={"User-Agent": "kuwai-ollama/1.0"})
+            with urllib.request.urlopen(req, timeout=1.5) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                models_to_unload = [m.get("name") for m in data.get("models", []) if m.get("name")]
+        except Exception:
+            pass
+
+    for m in models_to_unload:
+        try:
+            req_data = json.dumps({"model": m, "keep_alive": 0}).encode("utf-8")
+            req = urllib.request.Request(
+                f"{OLLAMA_HOST}/api/generate",
+                data=req_data,
+                headers={"Content-Type": "application/json"}
+            )
+            with urllib.request.urlopen(req, timeout=2.0) as resp:
+                resp.read()
+        except Exception:
+            pass
+
+    print(json.dumps({"unloaded": models_to_unload}))
+
+def cmd_render(input_file=None):
+    raw_text = ""
+    if input_file and os.path.isfile(input_file):
+        try:
+            with open(input_file, "r", encoding="utf-8") as f:
+                raw_text = f.read()
+        except Exception:
+            raw_text = ""
+    else:
+        raw_text = sys.stdin.read()
+
+    render_bin = os.path.join(os.path.dirname(os.path.realpath(__file__)), "kuwai-render")  # beside this copy (stable or dev)
+    if os.path.isfile(render_bin) and os.access(render_bin, os.X_OK):
+        proc = subprocess.run([render_bin], input=raw_text, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        sys.stdout.write(proc.stdout)
+    else:
+        out = {"kind": "text", "html": raw_text}
+        print(json.dumps(out))
+
+def cmd_search(args):
+    """kuwai-ollama search <start|stop|status>: the local SearXNG the assistant searches first."""
+    sub = args[0] if args else "status"
+    conf = os.path.expanduser("~/.config/kuwai/searxng")
+    if sub == "start":
+        subprocess.run(["docker", "rm", "-f", "kuwai-searxng"], capture_output=True)
+        p = subprocess.run(["docker", "run", "-d", "--name", "kuwai-searxng", "--restart", "unless-stopped",
+                            "-p", "127.0.0.1:8888:8080", "-v", f"{conf}:/etc/searxng:rw", "--cap-drop", "ALL",
+                            "--cap-add", "CHOWN", "--cap-add", "SETGID", "--cap-add", "SETUID", "--memory", "512m",
+                            "searxng/searxng:latest"], capture_output=True, text=True)
+        sys.exit(p.returncode)
+    elif sub == "stop":
+        subprocess.run(["docker", "rm", "-f", "kuwai-searxng"], capture_output=True)
+    else:
+        p = subprocess.run(["docker", "inspect", "-f", "{{.State.Status}}", "kuwai-searxng"], capture_output=True, text=True)
+        print(json.dumps({"state": p.stdout.strip() or "missing", "url": "http://127.0.0.1:8888"}))
+
+def cmd_sandbox(args):
+    """kuwai-ollama sandbox <status|build|stop|check|firewall|log|jobs|path [chat]>"""
+    sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+    import kuwai_sandbox as sb
+    sub = args[0] if args else "status"
+    try:
+        if sub == "status":
+            print(json.dumps({"state": sb.state(), "dir": str(sb.host_root()), "image": sb.IMAGE}))
+        elif sub == "build":
+            sys.exit(sb.build(stream=sys.stdout))
+        elif sub == "stop":
+            sb.stop()
+        elif sub == "check":
+            out = sb.check()
+            print(out.rstrip())
+            sys.exit(1 if "FAIL" in out else 0)
+        elif sub == "firewall":
+            # Root's job, so this only prints it. Docker's DOCKER-USER chain runs before its own
+            # rules (ufw route rules don't see container traffic); the ufw after.rules block keeps
+            # it across reboots.
+            net = sb.JAIL_SUBNET
+            drops = ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "169.254.0.0/16", "100.64.0.0/10"]
+            print("# Keep the AI sandbox off your LAN and this machine; the internet stays open.")
+            print("# Now:")
+            for d in drops:
+                print(f"sudo iptables -I DOCKER-USER -s {net} -d {d} -m conntrack ! --ctstate ESTABLISHED,RELATED -j DROP")
+            print(f"sudo iptables -I INPUT -s {net} -m conntrack ! --ctstate ESTABLISHED,RELATED -j DROP")
+            print("# Across reboots (ufw is active here): append to /etc/ufw/after.rules, then sudo ufw reload")
+            print("*filter\n:DOCKER-USER - [0:0]")
+            for d in drops:
+                print(f"-A DOCKER-USER -s {net} -d {d} -m conntrack ! --ctstate ESTABLISHED,RELATED -j DROP")
+            print("-A DOCKER-USER -j RETURN\nCOMMIT")
+            print("# Then check: kuwai-ollama sandbox check  (every line should say ok)")
+        elif sub == "log":
+            p = sb.audit_log_path()
+            print(open(p).read()[-8000:] if os.path.exists(p) else "(nothing yet)")
+        elif sub == "jobs":
+            # Finished background jobs not yet announced (the shell polls this while jobs run).
+            print(json.dumps(sb.finished_unnotified()))
+        elif sub == "path":
+            print(sb.workspace(args[1] if len(args) > 1 else ""))
+        else:
+            sys.stderr.write("Usage: kuwai-ollama sandbox <status|build|stop|check|firewall|log|jobs|path [chat]>\n")
+            sys.exit(1)
+    except sb.SandboxError as e:
+        sys.stderr.write(f"{e}\n")
+        sys.exit(1)
+
+def main():
+    if len(sys.argv) < 2:
+        print("Usage: kuwai-ollama <status|snapshot|snip|paste|agent|unload|render|sandbox> [args...]")
+        sys.exit(1)
+
+    cmd = sys.argv[1]
+    if cmd == "status":
+        cmd_status()
+    elif cmd == "snapshot":
+        mode = sys.argv[2] if len(sys.argv) > 2 else "window"
+        cmd_snapshot(mode)
+    elif cmd == "snip":
+        cmd_snapshot("region")
+    elif cmd == "paste":
+        cmd_paste()
+    elif cmd == "agent":
+        sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+        import kuwai_agent
+        kuwai_agent.main(sys.argv[2] if len(sys.argv) > 2 else "")
+    elif cmd == "unload":
+        target = sys.argv[2] if len(sys.argv) > 2 else None
+        cmd_unload(target)
+    elif cmd == "search":
+        cmd_search(sys.argv[2:])
+    elif cmd == "sandbox":
+        cmd_sandbox(sys.argv[2:])
+    elif cmd == "render":
+        target = sys.argv[2] if len(sys.argv) > 2 else None
+        cmd_render(target)
+    else:
+        sys.stderr.write(f"Unknown command: {cmd}\n")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()

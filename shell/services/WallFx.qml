@@ -6,13 +6,13 @@
 //            (shaders/wallcut.frag, mode 0)
 //   subject  its subject's outline is traced, the subject fills in, the rest
 //            spreads from it (wallcut.frag mode 1; needs the picture's map
-//            from bin/rice-wallmap, made once with the optional cut-out model)
+//            from bin/kuwai-wallmap, made once with the optional cut-out model)
 //   auto     subject when its map is already made, else pieces and glass in
 //            turn. The map is never waited for: a picture without one gets
 //            pieces now and its map is made in the background for next time.
 //
 //   WallFx.play(path, start)   start() is what actually sets the wallpaper
-//                              (rice-themes → HyDE's wallpaper.sh → awww),
+//                              (kuwai-themes → HyDE's wallpaper.sh → awww),
 //                              run with awww's own transition off
 //
 // The order is the trick (after pocket-dots' wallfx; this code is kuwai's):
@@ -61,7 +61,7 @@ Singleton {
         mapPath = ""; seed = Math.random() * 100;
         phase = "loading";
         query.running = true;
-        mapLookup.command = [Paths.bin + "/rice-wallmap", "--cached", path];
+        mapLookup.command = [Paths.bin + "/kuwai-wallmap", "--cached", path];
         mapLookup.running = true;
         loadLimit.restart();
         watchdog.restart();
@@ -102,7 +102,7 @@ Singleton {
     Process {
         id: mapLookup
         stdout: StdioCollector { onStreamFinished: root.mapPath = text.trim() }
-        onExited: code => { if (code !== 0) Quickshell.execDetached(["setpriv", "--pdeathsig", "KILL", "--", "nice", "-n", "19", Paths.bin + "/rice-wallmap", root.next]); }
+        onExited: code => { if (code !== 0) Quickshell.execDetached(["setpriv", "--pdeathsig", "KILL", "--", "nice", "-n", "19", Paths.bin + "/kuwai-wallmap", root.next]); }
     }
     function pick() {
         const want = Settings.wallTransition;
@@ -173,7 +173,7 @@ Singleton {
     IpcHandler {
         target: "wallfx"
         function play(path: string): void {
-            root.play(path, () => Quickshell.execDetached(["env", "WALLPAPER_AWWW_TRANSITION_DEFAULT=none", Paths.bin + "/rice-themes", "wallpaper", path]));
+            root.play(path, () => Quickshell.execDetached(["env", "WALLPAPER_AWWW_TRANSITION_DEFAULT=none", Paths.bin + "/kuwai-themes", "wallpaper", path]));
         }
         function stats(): string { return JSON.stringify({ phase: root.phase, lastRun: root.lastRun }); }
     }

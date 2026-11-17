@@ -1,4 +1,4 @@
-"""rice-pacnew's advice: three-way, with what you removed counting as a change (review 2026-11-10, finding 13)."""
+"""kuwai-pacnew's advice: three-way, with what you removed counting as a change (review 2026-11-10, finding 13)."""
 import importlib.machinery
 import importlib.util
 import os
@@ -8,8 +8,8 @@ from pathlib import Path
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
-loader = importlib.machinery.SourceFileLoader("rice_pacnew", str(ROOT / "bin" / "rice-pacnew"))
-spec = importlib.util.spec_from_loader("rice_pacnew", loader)
+loader = importlib.machinery.SourceFileLoader("kuwai_pacnew", str(ROOT / "bin" / "kuwai-pacnew"))
+spec = importlib.util.spec_from_loader("kuwai_pacnew", loader)
 P = importlib.util.module_from_spec(spec)
 loader.exec_module(P)
 

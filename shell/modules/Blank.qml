@@ -1,4 +1,4 @@
-// Blank a screen (Super+Ctrl+N, `rice blank`): again to bring it back.
+// Blank a screen (Super+Ctrl+N, `kuwai blank`): again to bring it back.
 //
 // Two screens or more: the ones you're NOT on go black (working on the
 // monitor, the laptop panel goes dark; on the laptop, the monitor does).
@@ -22,7 +22,7 @@ Scope {
 
     property var blanked: []          // screen names under a curtain
     property var levels: ({})         // name → brightness before
-    readonly property string ctl: Paths.bin + "/rice-brightness"
+    readonly property string ctl: Paths.bin + "/kuwai-brightness"
 
     function toggle() {
         if (blanked.length) { restore(); return; }
@@ -88,7 +88,7 @@ Scope {
     }
 
     GlobalShortcut {
-        appid: "rice"
+        appid: "kuwai"
         name: "blank"
         description: "Blank the other screen (again to bring it back)"
         onPressed: root.toggle()

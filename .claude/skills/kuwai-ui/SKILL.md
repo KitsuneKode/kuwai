@@ -10,7 +10,7 @@ The web skills this distils (`emil-design-eng`, `animate`, `choreograph`, `apple
 React. Their rules hold; their syntax doesn't. This is the QML side. The design system itself is
 `docs/DESIGN.md` (material, type, colour, motion, primitives) and `shell/config/Theme.qml` (every
 token). Read DESIGN.md's section for the surface you touch first. Never introduce a value Theme
-already names: `bin/rice-tokens` ratchets raw sizes, durations and hex down, and promote fails on a
+already names: `bin/kuwai-tokens` ratchets raw sizes, durations and hex down, and promote fails on a
 rise.
 
 ## Order of work (aiforui's)
@@ -99,18 +99,18 @@ rise.
 - Privacy dots follow Apple: **orange = microphone, green = camera** (IslandRest), with who holds
   it in the tip.
 - Art-derived colour (Media.artColor) needs a local file: `ColorQuantizer` doesn't read `https://`
-  (Media fetches remote art into `~/.cache/rice/art`).
+  (Media fetches remote art into `~/.cache/kuwai/art`).
 
 ## 6. States every surface has
 
 Loading (the surface's own shape, a `Shimmer` at `Theme.shimmerMs`), empty (one sentence, what to
 do), stale (say the age: "as of 21:52"), unavailable ("not connected", once, not rows of dashes),
 error (what happened, what to try). Each is designed, not an afterthought. Check them all with the
-test hook: `qs ipc -p <shell> call test …` (modules/TestHook.qml) and `bin/rice-fixture`.
+test hook: `qs ipc -p <shell> call test …` (modules/TestHook.qml) and `bin/kuwai-fixture`.
 
 ## 7. Cost: render only what changes
 
-The shell's budget is 0 % CPU at rest (`bin/rice-check`). What broke it before:
+The shell's budget is 0 % CPU at rest (`bin/kuwai-check`). What broke it before:
 
 - **A Behavior on a value fed by a high-rate source** (PipeWire peaks, positions) restarts every
   update and redraws every frame: 200/s on the Acer. Sample on a Timer (≤30 Hz) and set the value
@@ -125,8 +125,8 @@ The shell's budget is 0 % CPU at rest (`bin/rice-check`). What broke it before:
   refuses otherwise). One-shot processes from `createObject` end with `onExited: destroy()`.
 - **Poll less:** prefer FileView `watchChanges`, D-Bus signals or event streams over a Timer that
   spawns a process; when you must poll, the interval says why.
-- **Measure, don't guess:** `top -H -p <qs pid>` (Wayland+ threads busy = frames), `rice-check`,
-  `rice-check --soak` for leaks; compare playing vs paused when media is involved.
+- **Measure, don't guess:** `top -H -p <qs pid>` (Wayland+ threads busy = frames), `kuwai-check`,
+  `kuwai-check --soak` for leaks; compare playing vs paused when media is involved.
 
 ## 8. Fullscreen and the notch
 
@@ -139,7 +139,7 @@ reserve space during fullscreen (the film would reflow).
 
 1. `qmllint --bare` on changed files (promote does it; it misses missing imports: a `Process` needs
    `import Quickshell.Io`).
-2. `bin/rice-loadtest HEAD` (fails closed) and, after `rice promote`, `rice-check` "compile: every
+2. `bin/kuwai-loadtest HEAD` (fails closed) and, after `kuwai promote`, `kuwai-check` "compile: every
    module and component".
 3. Look at it: `grim -g "x,y wxh"` of the notch; the hover view needs a real pointer.
 4. Say what you could not see.
@@ -152,8 +152,8 @@ reserve space during fullscreen (the film would reflow).
 - **`MultiEffect` needs `import QtQuick.Effects`**; `Process` needs `import Quickshell.Io`. A missing
   import fails the *reload*; Quickshell keeps the old shell running, so the bug can look like "nothing
   changed". Read `qs log -p ~/Projects/rice/shell | grep -E "Failed to load|caused by"` after every save.
-- **`bin/rice-loadtest` does not catch lazily compiled type errors** (it passed a commit that failed to
-  load live). `rice-check`'s compile sweep (`qs ipc … call test compile FILE` per file) does; rely on it.
+- **`bin/kuwai-loadtest` does not catch lazily compiled type errors** (it passed a commit that failed to
+  load live). `kuwai-check`'s compile sweep (`qs ipc … call test compile FILE` per file) does; rely on it.
   A file outside the running shell's tree can't be compiled that way (same-folder types don't resolve).
 - **A live `ShaderEffectSource` re-renders its source every frame the source changes**: over an
   animating capsule (a spinner) it doubled the rendering and took idle CPU to 7 %. Snapshot with
@@ -165,7 +165,7 @@ reserve space during fullscreen (the film would reflow).
   first width and its content spilled out when it grew (T3's "✓ 4").
 - **A state swap shows one frame of the new content** if the reset happens in an animation's first tick:
   set the start value synchronously in the change handler, then start the animation.
-- **Theme switches go through HyDE**, which restarts Waybar afterwards; `rice-themes` re-applies the bar
-  (`rice bar apply`) after 3 s and 10 s. Any new path that switches a theme must do the same.
+- **Theme switches go through HyDE**, which restarts Waybar afterwards; `kuwai-themes` re-applies the bar
+  (`kuwai bar apply`) after 3 s and 10 s. Any new path that switches a theme must do the same.
 - **The user's session state is theirs**: no pointer moves, no typed text, no keyboard-taking panels, and
   no media control (`playerctl`) to reach a test state. Use the test hooks (verify-kuwai skill).

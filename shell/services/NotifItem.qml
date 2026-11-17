@@ -1,4 +1,4 @@
-// One notification as the rice sees it: the adapted text (see NotifAdapters)
+// One notification as kuwai sees it: the adapted text (see NotifAdapters)
 // plus popup state. Live items hold the D-Bus Notification so actions can be
 // invoked; items restored from history have none.
 import QtQuick
@@ -14,10 +14,10 @@ QtObject {
     property string app
     property string title
     property string body
-    // The whole text when the sender gave it (rice-feeds: a mail, a GitHub
+    // The whole text when the sender gave it (kuwai-feeds: a mail, a GitHub
     // comment): what the expanded preview reads; body stays the short line.
     property string full
-    property string thread               // a conversation (bin/rice-feeds): JSON [{ who, me, when, text, skipped? }], oldest first
+    property string thread               // a conversation (bin/kuwai-feeds): JSON [{ who, me, when, text, skipped? }], oldest first
     property string status
     property string statusGlyph
     property string statusTone
@@ -29,7 +29,7 @@ QtObject {
     property string event                // its kittymux inbox event id (answered once that's read)
     property string agentState           // kittymux's x-kittymux-state: waiting | limited | done | error
     property bool agentTool: false       // a tool in the pane (sudo, ssh) asked, not the agent
-    property string url                  // what a click opens once the sender is gone (bin/rice-feeds)
+    property string url                  // what a click opens once the sender is gone (bin/kuwai-feeds)
     property bool quiet: false           // straight to the center: no toast, no peek, not "missed"
     property int urgency: NotificationUrgency.Normal
     property string severity: "normal"   // critical | warning | normal | low

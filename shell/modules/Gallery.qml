@@ -18,7 +18,7 @@ PanelWindow {
     exclusionMode: ExclusionMode.Ignore
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
-    WlrLayershell.namespace: "rice-gallery"
+    WlrLayershell.namespace: "kuwai-gallery"
     mask: Region {}                      // click-through: it is only a picture
 
     Rectangle {

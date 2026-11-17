@@ -12,7 +12,7 @@ ShellRoot {
         return ok;
     }
     function edit(body) {
-        editor.command = ["python", "-c", "import os,json,pathlib; p=pathlib.Path(os.environ['XDG_CONFIG_HOME'])/'rice/settings.json'; " + body];
+        editor.command = ["python", "-c", "import os,json,pathlib; p=pathlib.Path(os.environ['XDG_CONFIG_HOME'])/'kuwai/settings.json'; " + body];
         editor.running = true;
     }
     Process { id: editor }

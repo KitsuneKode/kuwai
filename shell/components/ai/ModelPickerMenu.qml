@@ -1,4 +1,4 @@
-// The model picker: grows out of the model pill, the rice's ActionMenu motion
+// The model picker: grows out of the model pill, kuwai's ActionMenu motion
 // (one surface: the pill's rectangle and radius become the card's on the
 // moderate spring, rows fade in once it's mostly there, and it folds back into
 // the pill on close). Each row says what the model can really do, from Ollama
