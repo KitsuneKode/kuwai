@@ -3,7 +3,8 @@
 
   {"alive":true,"checkedAt":1763300000,"stale":false,"root":"/home/me/Projects",
    "reclaimable":5.6e10,"safe":1e9,"caution":5.5e10,"protected":22,
-   "idle":{"days":30,"projects":6,"bytes":3.1e10},
+   "idle":{"days":30,"projects":6,"bytes":3.1e10,
+           "kinds":[{"kind":"node_modules","bytes":2.2e10,"count":9}]},
    "kinds":[{"kind":"node_modules","bytes":2e10,"count":210}],
    "projects":[{"name":"old-app","bytes":4e9,"idleDays":212}]}
 
@@ -76,24 +77,38 @@ def summarize(plan: dict, now_ms: float, idle_days: int = IDLE_DAYS, top_kinds: 
             safe += size
         else:
             caution += size
-        k = kinds.setdefault(c.get("kind") or c.get("name") or "other", {"bytes": 0, "count": 0})
+        name = c.get("kind") or c.get("name") or "other"
+        k = kinds.setdefault(name, {"bytes": 0, "count": 0})
         k["bytes"] += size
         k["count"] += 1
         root, active = c.get("projectRoot"), c.get("projectActiveMs")
         if root and isinstance(active, (int, float)) and active > 0:
-            p = projects.setdefault(root, {"bytes": 0, "active": active})
+            p = projects.setdefault(root, {"bytes": 0, "active": active, "kinds": {}})
             p["bytes"] += size
+            pk = p["kinds"].setdefault(name, {"bytes": 0, "count": 0})
+            pk["bytes"] += size
+            pk["count"] += 1
     idle = []
+    idle_kinds: dict[str, dict] = {}
     for root, p in projects.items():
         days = int((now_ms - p["active"]) // DAY_MS)
         if days >= idle_days:
             idle.append({"name": os.path.basename(root.rstrip("/")) or root, "bytes": p["bytes"], "idleDays": days})
+            for name, v in p["kinds"].items():
+                ik = idle_kinds.setdefault(name, {"bytes": 0, "count": 0})
+                ik["bytes"] += v["bytes"]
+                ik["count"] += v["count"]
     idle.sort(key=lambda p: p["bytes"], reverse=True)
-    top = sorted(({"kind": n, **v} for n, v in kinds.items()), key=lambda k: k["bytes"], reverse=True)
+
+    def ranked(d: dict) -> list[dict]:
+        return sorted(({"kind": n, **v} for n, v in d.items()), key=lambda k: k["bytes"], reverse=True)[:top_kinds]
     return {
         "reclaimable": safe + caution, "safe": safe, "caution": caution, "protected": prot,
-        "idle": {"days": idle_days, "projects": len(idle), "bytes": sum(p["bytes"] for p in idle)},
-        "kinds": top[:top_kinds], "projects": idle[:top_projects],
+        # `idle.kinds`: what the idle projects alone hold, so the bar adds up
+        # to the number the mark and the header say.
+        "idle": {"days": idle_days, "projects": len(idle), "bytes": sum(p["bytes"] for p in idle),
+                 "kinds": ranked(idle_kinds)},
+        "kinds": ranked(kinds), "projects": idle[:top_projects],
     }
 
 
@@ -162,10 +177,15 @@ def scan(root: str) -> dict | None:
 
 
 def from_status(st: dict) -> dict:
-    """sweep's own StatusSummary in the shape this script keeps."""
+    """sweep's own StatusSummary in the shape this script keeps. `idle.kinds`
+    only when sweep gives it (the panel then splits all of what sweep found)."""
+    si = st["idle"]
+    idle = {"days": si["days"], "projects": si["projects"], "bytes": si["bytes"]}
+    if isinstance(si.get("kinds"), list):
+        idle["kinds"] = [{"kind": k["kind"], "bytes": k["bytes"], "count": k.get("count", 0)} for k in si["kinds"][:4]]
     return {
         "reclaimable": st["reclaimableBytes"], "safe": st["safeBytes"], "caution": st["cautionBytes"],
-        "protected": st["protectedCount"], "idle": st["idle"],
+        "protected": st["protectedCount"], "idle": idle,
         "kinds": st.get("kinds", [])[:4],
         "projects": [{"name": p["name"], "bytes": p["bytes"], "idleDays": p["idleDays"]}
                      for p in st.get("projects", [])[:5]],

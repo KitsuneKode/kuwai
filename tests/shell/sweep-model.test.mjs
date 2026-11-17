@@ -5,8 +5,8 @@ import { readFileSync } from "node:fs";
 
 const lib = readFileSync(new URL("../../shell/services/sweepModel.js", import.meta.url), "utf8").replace(/^\.pragma library\s*$/m, "");
 const names = ["compact", "long", "segments", "worthMark", "parseViewed", "viewedText", "isFresh", "reconcileViewed", "viewedAfterLook",
-    "tilde", "emptyText", "footText", "idleText", "agoText"];
-const { compact, long, segments, worthMark, parseViewed, viewedText, isFresh, reconcileViewed, viewedAfterLook, tilde, emptyText, footText, idleText, agoText } =
+    "caption", "tilde", "emptyText", "footText", "idleText", "agoText"];
+const { caption, compact, long, segments, worthMark, parseViewed, viewedText, isFresh, reconcileViewed, viewedAfterLook, tilde, emptyText, footText, idleText, agoText } =
     new Function(lib + "\nreturn { " + names.join(", ") + " };")();
 const GB = 1e9;
 
@@ -40,6 +40,15 @@ describe("the bar", () => {
         const s = segments(many, 96, tones, 3);
         expect(s.length).toBe(4);
         expect(s[3].kind).toBe("other");
+    });
+    test("the bar from the idle kinds adds up to the headline; the fallback says it's everything", () => {
+        const idle = [{ kind: "node_modules", bytes: 5 * GB, count: 2 }, { kind: "target", bytes: 2 * GB, count: 1 }];
+        const s = segments(idle, 7 * GB, tones);
+        expect(s.reduce((a, x) => a + x.bytes, 0)).toBe(7 * GB);
+        expect(caption(null, true, 56 * GB)).toBe("What the idle projects hold · rest on a part");
+        expect(caption(s[0], true, 56 * GB)).toBe("node_modules · 5 GB · 2 folders");
+        expect(caption(null, false, 56 * GB)).toBe("All projects, idle or not: 56 GB · rest on a part");
+        expect(caption({ kind: "other", bytes: GB, count: 0 }, false, 56 * GB)).toBe("Everything else · 1 GB · all projects");
     });
     test("nothing to show is no bar", () => {
         expect(segments([], 0, tones)).toEqual([]);

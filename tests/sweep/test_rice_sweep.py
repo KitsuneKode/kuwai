@@ -58,8 +58,24 @@ def test_idle_means_known_and_old_never_unknown(rs):
         cand("node_modules", 7 * GB, tier="dangerous", root="/p/guarded", idle_days=400),
     ]}
     s = rs.summarize(plan, NOW * 1000)
-    assert s["idle"] == {"days": 30, "projects": 1, "bytes": 6 * GB}
+    assert {k: v for k, v in s["idle"].items() if k != "kinds"} == {"days": 30, "projects": 1, "bytes": 6 * GB}
     assert s["projects"] == [{"name": "old", "bytes": 6 * GB, "idleDays": 212}]
+
+
+def test_idle_kinds_split_only_the_idle_projects_and_add_up_to_the_headline(rs):
+    plan = {"candidates": [
+        cand("node_modules", 4 * GB, root="/p/old", idle_days=212),
+        cand("target", 2 * GB, root="/p/old", idle_days=212),
+        cand("node_modules", 1 * GB, root="/p/older", idle_days=400),
+        cand("node_modules", 30 * GB, root="/p/fresh", idle_days=3),     # busy: not in the idle split
+        cand(".next", 9 * GB, root="/p/unknown"),                        # unknown is not idle
+        cand("target", 7 * GB, tier="dangerous", root="/p/old", idle_days=212),
+    ]}
+    s = rs.summarize(plan, NOW * 1000)
+    assert s["idle"]["kinds"] == [{"kind": "node_modules", "bytes": 5 * GB, "count": 2},
+                                  {"kind": "target", "bytes": 2 * GB, "count": 1}]
+    assert sum(k["bytes"] for k in s["idle"]["kinds"]) == s["idle"]["bytes"] == 7 * GB
+    assert s["kinds"][0] == {"kind": "node_modules", "bytes": 35 * GB, "count": 3}     # all of it, still there
 
 
 def test_empty_plan_is_all_zeros(rs):
@@ -211,9 +227,16 @@ def test_sweeps_own_status_is_used_when_it_has_one(rs, tmp_path, monkeypatch):
     p = tmp_path / "state" / "sweep-status.json"
     data = rs.refresh(str(tmp_path), p, now=NOW)
     assert (data["reclaimable"], data["safe"], data["caution"], data["protected"]) == (7 * GB, 2 * GB, 5 * GB, 3)
-    assert data["idle"] == {"days": 30, "projects": 1, "bytes": 4 * GB}
+    assert data["idle"] == {"days": 30, "projects": 1, "bytes": 4 * GB}          # no idle.kinds: left out
     assert len(data["kinds"]) == 4                                   # the island shows four
     assert data["projects"] == [{"name": "old", "bytes": 4 * GB, "idleDays": 212}]   # paths stay in sweep
+
+
+def test_status_idle_kinds_are_kept_when_sweep_gives_them(rs):
+    st = {**STATUS, "idle": {**STATUS["idle"], "kinds": [{"kind": f"k{i}", "bytes": GB, "count": 2} for i in range(6)]}}
+    out = rs.from_status(st)
+    assert len(out["idle"]["kinds"]) == 4 and out["idle"]["kinds"][0] == {"kind": "k0", "bytes": GB, "count": 2}
+    assert "kinds" not in rs.from_status(STATUS)["idle"]
 
 
 def test_an_older_sweep_without_status_falls_back_to_the_scan(rs, tmp_path, monkeypatch):

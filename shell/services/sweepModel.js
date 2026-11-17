@@ -4,6 +4,7 @@
 // mark. Pure, so tests/shell/sweep-model.test.mjs can hold it to account.
 //   compact(bytes)                      → "16G" / "9.5G" / "640M"
 //   segments(kinds, total, tones)       → [{ kind, bytes, count, share, tone }] (top kinds + "other")
+//   caption(seg, idleSplit, allBytes)   → the words under the bar
 //   worthMark(idleBytes, minBytes)      → bool
 //   parseViewed(text) / viewedText(b)   ↔ the sweep-viewed file: the size you looked at, in bytes
 //   isFresh(idle, viewed, min)          → bool: worth a mark and new, or 5 GB past what you saw
@@ -43,6 +44,17 @@ function segments(kinds, total, tones, max) {
     }
     if (rest > sum * 0.005) keep.push({ kind: "other", bytes: rest, count: 0, share: rest / sum });
     return keep.map((s, i) => Object.assign(s, { tone: tones[i % tones.length] }));
+}
+
+// The bar's caption. `idleSplit`: the bar is the idle projects alone, so its
+// total is the header's number. Without it (a sweep whose status has no
+// idle split) the bar is everything sweep found, and the words say so.
+function caption(seg, idleSplit, allBytes) {
+    if (!seg) return idleSplit ? "What the idle projects hold · rest on a part"
+        : "All projects, idle or not: " + long(allBytes) + " · rest on a part";
+    return (seg.kind === "other" ? "Everything else" : seg.kind) + " · " + long(seg.bytes)
+        + (seg.count ? " · " + seg.count + (seg.count === 1 ? " folder" : " folders") : "")
+        + (idleSplit ? "" : " · all projects");
 }
 
 // A mark only when there is something worth saying: a number you would act on.

@@ -1,6 +1,7 @@
 // Idle projects, grown out of the island (rest on the broom mark, or the
-// launcher's "Idle Projects"). What sweep could free in one bar: each kind of
-// leftover (node_modules, target, .next…) is a part of it. Rest on a part and
+// launcher's "Idle Projects"). What the idle projects hold in one bar (the
+// header's number; a sweep that can't split them shows all it found, and
+// says so): each kind of leftover (node_modules, target, .next…) is a part. Rest on a part and
 // the others step back while the caption names it (as in sweep's own project
 // view); below, the old projects holding the most. Look, then decide: nothing
 // is deleted from here. Enter (or the button) opens sweep's review.
@@ -30,7 +31,11 @@ FocusScope {
     Timer { interval: panel.dwellMs; running: Island.previewing && panel.visible; onTriggered: Sweep.markViewed() }
 
     readonly property var tones: [Theme.green, Theme.cyan, Theme.orange, Theme.indigo]
-    readonly property var segs: Model.segments(Sweep.kinds, Sweep.reclaimable, tones, 4)
+    // The bar splits the idle projects' space, so it adds up to the header's
+    // number. A sweep without that split: all it found, labelled as such.
+    readonly property bool idleSplit: Sweep.idleKinds.length > 0 && Sweep.idleBytes > 0
+    readonly property var segs: idleSplit ? Model.segments(Sweep.idleKinds, Sweep.idleBytes, tones, 4)
+        : Model.segments(Sweep.kinds, Sweep.reclaimable, tones, 4)
     // The part under the pointer; -1 when none. The others recede to
     // `dimTo`, the same share sweep's own bar leaves them.
     property int focused: -1
@@ -44,14 +49,7 @@ FocusScope {
         duration: Theme.reduceMotion ? 0 : Theme.ringDrawMs
         easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut
     }
-    function caption() {
-        const s = focused >= 0 ? segs[focused] : null;
-        // The header counts the idle projects (what the mark said); the bar is
-        // everything sweep found, so say so before a part is named.
-        if (!s) return Model.long(Sweep.reclaimable) + " found in all · rest on a part";
-        return (s.kind === "other" ? "Everything else" : s.kind) + " · " + Model.long(s.bytes)
-            + (s.count ? " · " + s.count + (s.count === 1 ? " folder" : " folders") : "");
-    }
+    function caption() { return Model.caption(focused >= 0 ? segs[focused] : null, idleSplit, Sweep.reclaimable); }
     readonly property string empty: Model.emptyText({ loaded: Sweep.loaded, alive: Sweep.alive, pending: Sweep.pending, error: Sweep.error,
         counted: Sweep.counted, root: Sweep.scanRoot, home: Quickshell.env("HOME"), hasBar: segs.length > 0 })
     function toneOf(s) { return s.kind === "other" ? Theme.textTertiary : s.tone; }

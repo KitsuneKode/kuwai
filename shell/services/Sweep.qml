@@ -36,6 +36,8 @@ Singleton {
     readonly property real reclaimable: alive ? data.reclaimable || 0 : 0
     readonly property int protectedCount: alive ? data.protected || 0 : 0
     readonly property var kinds: alive && data.kinds ? data.kinds : []
+    // What the idle projects alone hold (empty: this sweep doesn't split them).
+    readonly property var idleKinds: alive && data.idle && Array.isArray(data.idle.kinds) ? data.idle.kinds : []
     readonly property var projects: alive && data.projects ? data.projects : []
     readonly property real checkedAt: alive && data.checkedAt ? data.checkedAt : 0
     readonly property string scanRoot: alive && data.root ? data.root : ""
