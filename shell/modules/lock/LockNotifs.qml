@@ -171,7 +171,7 @@ Column {
                         anchors { right: parent.right; top: parent.top; rightMargin: -6; topMargin: -6 }
                         width: Math.max(18, countLabel.implicitWidth + 10); height: 18; radius: 9
                         color: "white"
-                        Label { id: countLabel; anchors.centerIn: parent; text: card.group.count; size: 11; weight: Theme.wBold; rounded: true; color: "#111114" }
+                        Label { id: countLabel; anchors.centerIn: parent; text: card.group.count; size: 11; weight: Theme.wBold; rounded: true; color: Theme.inkOnLight }
                     }
                 }
                 Column {

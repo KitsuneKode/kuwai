@@ -179,8 +179,8 @@ Scope {
                         SequentialAnimation on scale {
                             running: stage.stillHere && root.showing && !Theme.reduceMotion
                             loops: Animation.Infinite
-                            NumberAnimation { to: 1.12; duration: 40000; easing.type: Easing.InOutSine }
-                            NumberAnimation { to: 1.06; duration: 40000; easing.type: Easing.InOutSine }
+                            NumberAnimation { to: 1.12; duration: Theme.saverZoomMs; easing.type: Easing.InOutSine }
+                            NumberAnimation { to: 1.06; duration: Theme.saverZoomMs; easing.type: Easing.InOutSine }
                         }
                     }
                     // A soft vignette so the clock reads on any wallpaper.
@@ -227,8 +227,8 @@ Scope {
                         }
                         // Bottom-left third at first, then a new place each minute.
                         x: win.width * 0.07; y: win.height * 0.62
-                        Behavior on x { NumberAnimation { duration: 6000; easing.type: Easing.InOutSine } }
-                        Behavior on y { NumberAnimation { duration: 6000; easing.type: Easing.InOutSine } }
+                        Behavior on x { NumberAnimation { duration: Theme.saverMoveMs; easing.type: Easing.InOutSine } }
+                        Behavior on y { NumberAnimation { duration: Theme.saverMoveMs; easing.type: Easing.InOutSine } }
                         // Each screen on its own rhythm (45–75 s, new each time), so
                         // two monitors don't move in lockstep; always fully inside a
                         // 6 % margin (it could be placed with its date past the edge).

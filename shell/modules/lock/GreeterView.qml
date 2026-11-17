@@ -68,7 +68,7 @@ Item {
         property alias target: anim.target
         property alias property: anim.property
         property int delay: 0
-        property int duration: 420
+        property int duration: Theme.greetStepMs
         PauseAnimation { duration: step.delay }
         NumberAnimation {
             id: anim
@@ -80,8 +80,8 @@ Item {
     }
     ParallelAnimation {
         id: intro
-        Step { target: view; property: "tWall"; duration: 1400 }
-        Step { target: view; property: "tClock"; delay: 260; duration: 560 }
+        Step { target: view; property: "tWall"; duration: Theme.greetWallMs }
+        Step { target: view; property: "tClock"; delay: 260; duration: Theme.greetClockMs }
         Step { target: view; property: "tHint"; delay: 520 }
         Step { target: view; property: "tPower"; delay: 600 }
         Step { target: view; property: "tCorner"; delay: 660; duration: Theme.pulseMs }
@@ -89,7 +89,7 @@ Item {
     NumberAnimation {
         id: outro
         target: view; property: "leave"; to: 1
-        duration: 380
+        duration: Theme.greetOutMs
         easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut
     }
     Component.onCompleted: {
@@ -178,7 +178,7 @@ Item {
         TextMorph {
             anchors.horizontalCenter: parent.horizontalCenter
             text: Dates.clock(view.now)
-            size: 150; weight: Theme.wBold; rounded: true
+            size: Theme.tLockClock; weight: Theme.wBold; rounded: true
             color: view.tint
             duration: Theme.breatheMs; stagger: 60
         }
@@ -210,8 +210,8 @@ Item {
             property real miss: 0
             SequentialAnimation {
                 id: missFlash
-                NumberAnimation { target: avatar; property: "miss"; to: 1; duration: 90; easing.type: Easing.OutQuad }
-                NumberAnimation { target: avatar; property: "miss"; to: 0; duration: 900; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+                NumberAnimation { target: avatar; property: "miss"; to: 1; duration: Theme.kickMs; easing.type: Easing.OutQuad }
+                NumberAnimation { target: avatar; property: "miss"; to: 0; duration: Theme.flashFadeMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
             }
             Connections { target: view.lock; function onFailuresChanged() { missFlash.restart(); } }
             Rectangle {
@@ -238,7 +238,7 @@ Item {
                     anchors.centerIn: parent
                     visible: face.status !== Image.Ready
                     text: view.lock.name.charAt(0).toUpperCase()
-                    size: 36; weight: Theme.wSemibold
+                    size: Theme.tLockInitial; weight: Theme.wSemibold
                     color: "white"
                 }
                 Image {
@@ -255,7 +255,7 @@ Item {
         Label {
             anchors.horizontalCenter: parent.horizontalCenter
             text: view.lock.name
-            size: 21; weight: Theme.wSemibold
+            size: Theme.tLockName; weight: Theme.wSemibold
             color: "white"
         }
         Item { width: 1; height: 16 }
@@ -311,7 +311,7 @@ Item {
         id: reveal
         NumberAnimation {
             target: view; property: "tReveal"; to: 1
-            duration: 720
+            duration: Theme.loginRevealMs
             easing.type: Easing.BezierSpline; easing.bezierCurve: [0.32, 0.72, 0, 1, 1, 1]
         }
     }
@@ -368,7 +368,7 @@ Item {
         Label {
             anchors.horizontalCenter: parent.horizontalCenter
             text: "Welcome back"
-            size: 34; weight: Theme.wSemibold
+            size: Theme.tLockHeadline; weight: Theme.wSemibold
             color: "white"
             layer.enabled: true
             layer.effect: MultiEffect { shadowEnabled: true; shadowBlur: 0.8; shadowOpacity: 0.5 }

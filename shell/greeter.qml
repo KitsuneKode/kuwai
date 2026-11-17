@@ -21,6 +21,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Services.Greetd
+import qs.config
 import qs.modules.lock
 
 ShellRoot {
@@ -30,7 +31,7 @@ ShellRoot {
     readonly property string name: user
     readonly property string face: Quickshell.env("KUWAI_GREETER_FACE") || ""
     readonly property string wallpaper: Quickshell.env("KUWAI_GREETER_WALL") || "/usr/share/sddm/themes/sddm-astronaut-theme/Backgrounds/post-apocalyptic_hacker.png"
-    readonly property color accent: Quickshell.env("KUWAI_GREETER_ACCENT") || "#fc2e64"
+    readonly property color accent: Quickshell.env("KUWAI_GREETER_ACCENT") || Theme.loginAccent
     // What your session will show first: its wallpaper (greeter/sync copies it).
     readonly property string desktopWall: Quickshell.env("HOME") + "/.cache/hyde/wall.set"
     // The session, without the terminal in between: clear tty1 and hide its

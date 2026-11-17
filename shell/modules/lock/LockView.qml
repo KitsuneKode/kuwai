@@ -62,7 +62,7 @@ Item {
         id: unlockAnim
         PauseAnimation { duration: Theme.reduceMotion ? 0 : 300 }
         NumberAnimation {
-            target: view; property: "u"; to: 1; duration: 440
+            target: view; property: "u"; to: 1; duration: Theme.unlockMs
             easing.type: Easing.BezierSpline; easing.bezierCurve: [0.32, 0.72, 0, 1, 1, 1]
         }
     }
@@ -151,13 +151,13 @@ Item {
             Label {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: Dates.shortDate(view.now)
-                size: 26; weight: Theme.wSemibold
+                size: Theme.tLockDate; weight: Theme.wSemibold
                 color: view.tint
             }
             TextMorph {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: Dates.clock(view.now)
-                size: 150; weight: Theme.wBold; rounded: true
+                size: Theme.tLockClock; weight: Theme.wBold; rounded: true
                 color: view.tint
                 duration: Theme.breatheMs; stagger: 60
             }
@@ -203,7 +203,7 @@ Item {
                 opacity: Math.max(0, 1 - ask.value * 2)
                 visible: opacity > 0.01
                 text: "Press any key to unlock"
-                size: 17; weight: Theme.wMedium
+                size: Theme.tLockBody; weight: Theme.wMedium
                 color: Qt.alpha(view.tint, 0.85)
             }
 

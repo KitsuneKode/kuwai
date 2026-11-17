@@ -58,14 +58,14 @@ Item {
     SequentialAnimation {
         id: shackleDown
         PropertyAction { target: island; property: "shackle"; value: 1 }
-        PauseAnimation { duration: 380 }
-        NumberAnimation { target: island; property: "shackle"; to: 0; duration: 260; easing.type: Easing.OutBack; easing.overshoot: 1.4 }   // the click shut: ~7%, not a rubber band
+        PauseAnimation { duration: Theme.shackleWaitMs }
+        NumberAnimation { target: island; property: "shackle"; to: 0; duration: Theme.shackleShutMs; easing.type: Easing.OutBack; easing.overshoot: 1.4 }   // the click shut: ~7%, not a rubber band
     }
     SequentialAnimation {
         id: shackleUp
         PropertyAction { target: island; property: "shackle"; value: 0 }
-        PauseAnimation { duration: 90 }
-        NumberAnimation { target: island; property: "shackle"; to: 1; duration: 300; easing.type: Easing.OutBack; easing.overshoot: 1.2 }
+        PauseAnimation { duration: Theme.shackleOpenWaitMs }
+        NumberAnimation { target: island; property: "shackle"; to: 1; duration: Theme.shackleOpenMs; easing.type: Easing.OutBack; easing.overshoot: 1.2 }
     }
     component Padlock: Item {
         id: pad
@@ -134,7 +134,7 @@ Item {
                 visible: island.drawn === "alarm"
                 anchors.verticalCenter: parent.verticalCenter
                 text: "\u{f0020}"
-                font.family: Theme.fontGlyph; font.pixelSize: 16
+                font.family: Theme.fontGlyph; font.pixelSize: Theme.glyphS
                 color: Theme.orange
             }
             Label {
@@ -152,7 +152,7 @@ Item {
                     color: modelData.id === "stop" ? Qt.alpha(Theme.orange, actArea.containsMouse ? 0.95 : 0.85) : actArea.containsMouse ? Theme.pillHover : Theme.pill
                     scale: actArea.pressed ? 0.97 : 1
                     Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
-                    Label { id: actLabel; anchors.centerIn: parent; text: parent.modelData.text; size: 12; weight: Theme.wSemibold; color: parent.modelData.id === "stop" ? "#1c1c1e" : Theme.textPrimary }
+                    Label { id: actLabel; anchors.centerIn: parent; text: parent.modelData.text; size: 12; weight: Theme.wSemibold; color: parent.modelData.id === "stop" ? Theme.inkOnLight : Theme.textPrimary }
                     MouseArea { id: actArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                         onClicked: parent.modelData.id === "stop" ? Alarms.stop() : Alarms.snooze(9) }
                 }

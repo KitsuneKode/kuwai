@@ -179,8 +179,8 @@ Scope {
         }
     }
     property real fadeLevel: 0
-    NumberAnimation { id: fadeIn; target: root; property: "fadeLevel"; to: 0.85; duration: 14000; easing.type: Easing.InQuad }
-    NumberAnimation { id: fadeOut; target: root; property: "fadeLevel"; to: 0; duration: 220; easing.type: Easing.OutQuad }
+    NumberAnimation { id: fadeIn; target: root; property: "fadeLevel"; to: 0.85; duration: Theme.idleDimMs; easing.type: Easing.InQuad }
+    NumberAnimation { id: fadeOut; target: root; property: "fadeLevel"; to: 0; duration: Theme.enterMs; easing.type: Easing.OutQuad }
     onFadingChanged: { if (fading) { fadeOut.stop(); fadeIn.restart(); } else { fadeIn.stop(); fadeOut.restart(); } }
     IpcHandler {
         target: "fade"

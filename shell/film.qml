@@ -37,7 +37,7 @@ ShellRoot {
     readonly property string face: Quickshell.env("HOME") + "/.face"
     readonly property string wallpaper: "/usr/share/sddm/themes/sddm-astronaut-theme/Backgrounds/post-apocalyptic_hacker.png"
     readonly property string desktopWall: Quickshell.env("HOME") + "/.cache/hyde/wall.set"
-    readonly property color accent: "#fc2e64"
+    readonly property color accent: Theme.loginAccent
     function submit() {}
     function power(a) { farewell = a; }
     function powered() {}
@@ -134,7 +134,7 @@ ShellRoot {
         if (s === "login-handoff") { at(100, () => find(look.item, "ask").ask()); at(1000, () => { password = ""; leaving = true; }); }
         if (s === "login-hold") at(300, () => {
             const btn = findAll(look.item, "fired")[1];
-            const a = Qt.createQmlObject("import QtQuick; NumberAnimation { property: 'held'; from: 0; to: 1; duration: 800 }", root);
+            const a = Qt.createQmlObject("import QtQuick; NumberAnimation { property: 'held'; from: 0; to: 1; duration: " + Theme.holdMs + " }", root);
             a.target = btn;
             a.finished.connect(() => farewell = "reboot");
             a.start();

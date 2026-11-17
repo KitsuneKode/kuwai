@@ -63,7 +63,7 @@ Item {
     Column {
         anchors { left: art.right; leftMargin: 14; right: trail.left; rightMargin: 12; verticalCenter: parent.verticalCenter }
         spacing: 2
-        Label { width: parent.width; elide: Text.ElideRight; text: media.player ? (Media.title(media.player) || "Unknown") : ""; size: 16; weight: Theme.wSemibold }
+        Label { width: parent.width; elide: Text.ElideRight; text: media.player ? (Media.title(media.player) || "Unknown") : ""; size: Theme.tLockBody; weight: Theme.wSemibold }
         Label { width: parent.width; elide: Text.ElideRight; text: Media.byline(media.player); size: 13; color: Qt.rgba(1, 1, 1, 0.72) }
     }
     Item {
@@ -87,7 +87,7 @@ Item {
                     // sqrt: quiet passages still move, loud ones don't pin every bar at the top
                     height: Math.round(Math.max(4, 4 + 14 * Math.min(1, Math.sqrt(media.shown) * shape * media.jitter[index] * 0.95)))
                     color: Media.artAt(index / 3)            // the cover's colours, as the notch's bars
-                    Behavior on height { enabled: !peak.enabled; NumberAnimation { duration: 380; easing.type: Easing.OutCubic } }
+                    Behavior on height { enabled: !peak.enabled; NumberAnimation { duration: Theme.waveSettleMs; easing.type: Easing.OutCubic } }
                 }
             }
         }

@@ -35,8 +35,8 @@ Item {
     }
     SequentialAnimation {
         id: sweep
-        NumberAnimation { target: status; property: "shownPct"; from: 0; to: status.pct; duration: 900; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
-        PauseAnimation { duration: 500 }
+        NumberAnimation { target: status; property: "shownPct"; from: 0; to: status.pct; duration: Theme.chargeFillMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+        PauseAnimation { duration: Theme.chargeHoldMs }
         PropertyAction { target: status; property: "shownPct"; value: -1 }
     }
     Repeater {
@@ -54,7 +54,7 @@ Item {
             opacity: 0
             SequentialAnimation {
                 running: sweep.running
-                PauseAnimation { duration: 120 + ping.index * 220 }
+                PauseAnimation { duration: Theme.chargeRingDelayMs + ping.index * Theme.chargeRingGapMs }
                 ParallelAnimation {
                     NumberAnimation { target: ping; property: "scale"; from: 1; to: 1.9; duration: Theme.breatheMs; easing.type: Easing.OutCubic }
                     NumberAnimation { target: ping; property: "opacity"; from: 0.9; to: 0; duration: Theme.breatheMs; easing.type: Easing.OutCubic }

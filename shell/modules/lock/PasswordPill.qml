@@ -20,7 +20,7 @@ Column {
     property bool preview: false
     property string placeholder: "Enter Password"
     property color accent: Theme.accent
-    readonly property color onAccent: (0.2126 * accent.r + 0.7152 * accent.g + 0.0722 * accent.b) > 0.55 ? "#111114" : "#ffffff"
+    readonly property color onAccent: (0.2126 * accent.r + 0.7152 * accent.g + 0.0722 * accent.b) > 0.55 ? Theme.inkOnLight : "white"
     property bool capsLock: false
     Process {
         id: caps
@@ -79,12 +79,12 @@ Column {
                             id: ldWave
                             PauseAnimation { duration: ld.index * 28 }
                             ParallelAnimation {
-                                NumberAnimation { target: ld; property: "opacity"; to: 1; duration: 90; easing.type: Easing.OutQuad }
-                                NumberAnimation { target: ld; property: "scale"; to: 1.25; duration: 90; easing.type: Easing.OutQuad }
+                                NumberAnimation { target: ld; property: "opacity"; to: 1; duration: Theme.kickMs; easing.type: Easing.OutQuad }
+                                NumberAnimation { target: ld; property: "scale"; to: 1.25; duration: Theme.kickMs; easing.type: Easing.OutQuad }
                             }
                             ParallelAnimation {
-                                NumberAnimation { target: ld; property: "opacity"; to: 0.6; duration: 220; easing.type: Easing.OutCubic }
-                                NumberAnimation { target: ld; property: "scale"; to: 1; duration: 220; easing.type: Easing.OutCubic }
+                                NumberAnimation { target: ld; property: "opacity"; to: 0.6; duration: Theme.enterMs; easing.type: Easing.OutCubic }
+                                NumberAnimation { target: ld; property: "scale"; to: 1; duration: Theme.enterMs; easing.type: Easing.OutCubic }
                             }
                         }
                         Component.onCompleted: lockDots.waves = [...lockDots.waves, ldWave]
@@ -120,7 +120,7 @@ Column {
                 textFormat: Text.PlainText
                 anchors.centerIn: parent
                 text: entry.lock.checking ? "\u{f0772}" : "\u{f0054}"
-                font.family: Theme.fontGlyph; font.pixelSize: 16
+                font.family: Theme.fontGlyph; font.pixelSize: Theme.glyphS
                 color: entry.lock.password ? entry.onAccent : "white"
                 Behavior on color { ColorAnimation { duration: Theme.colorMs } }
                 RotationAnimation on rotation { running: entry.lock.checking && !Theme.reduceMotion; loops: Animation.Infinite; from: 0; to: 360; duration: Theme.spinMs }

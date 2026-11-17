@@ -47,14 +47,14 @@ Item {
     SequentialAnimation {
         id: play
         NumberAnimation { target: bye; property: "tIn"; to: 1; duration: Theme.pulseMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
-        NumberAnimation { target: bye; property: "tMark"; to: 1; duration: 900; easing.type: Easing.InOutCubic }
-        PauseAnimation { duration: 250 }
+        NumberAnimation { target: bye; property: "tMark"; to: 1; duration: Theme.farewellMarkMs; easing.type: Easing.InOutCubic }
+        PauseAnimation { duration: Theme.farewellHoldMs }
         // Into black: gathers pace, then lands softly (ease-in would hit black at full speed).
-        NumberAnimation { target: bye; property: "tOut"; to: 1; duration: 420; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeInOut }
+        NumberAnimation { target: bye; property: "tOut"; to: 1; duration: Theme.farewellOutMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeInOut }
         ScriptAction { script: bye.done() }
     }
     // Back from sleep: the screen returns without a show.
-    NumberAnimation { id: back; target: bye; properties: "tIn,tMark,tOut"; to: 0; duration: 260; easing.type: Easing.OutCubic }
+    NumberAnimation { id: back; target: bye; properties: "tIn,tMark,tOut"; to: 0; duration: Theme.settleMs; easing.type: Easing.OutCubic }
 
     // The room going dark.
     Rectangle { anchors.fill: parent; color: "black"; opacity: Math.max(bye.tIn * 0.82, bye.tOut) }
@@ -127,7 +127,7 @@ Item {
                 visible: bye.kind === "suspend"
                 anchors.centerIn: parent
                 text: "\u{f0594}"
-                font.family: Theme.fontGlyph; font.pixelSize: 54
+                font.family: Theme.fontGlyph; font.pixelSize: Theme.glyphFarewell
                 color: mark.ink
                 scale: 0.9 + 0.1 * bye.tIn - 0.06 * Math.sin(bye.tMark * Math.PI) * bye.move
                 opacity: 1 - 0.35 * Math.sin(bye.tMark * Math.PI)
@@ -139,7 +139,7 @@ Item {
                 visible: bye.kind === "logout"
                 anchors.centerIn: parent
                 text: bye.tMark < 0.5 ? "\u{f081c}" : "\u{f081a}"
-                font.family: Theme.fontGlyph; font.pixelSize: 54
+                font.family: Theme.fontGlyph; font.pixelSize: Theme.glyphFarewell
                 color: mark.ink
             }
         }
@@ -151,13 +151,13 @@ Item {
             Label {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: bye.c.title
-                size: 30; weight: Theme.wSemibold
+                size: Theme.tFarewellTitle; weight: Theme.wSemibold
                 color: "white"
             }
             Label {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: bye.c.line
-                size: 16
+                size: Theme.tLockBody
                 color: Qt.rgba(1, 1, 1, 0.66)
             }
         }
