@@ -23,6 +23,7 @@ import Quickshell.Io
 // Quickshell reloads on QML changes, not on the JS modules they import: after
 // changing clipstate.mjs, save a QML file too (or restart).
 import "clipstate.mjs" as ClipState
+import "caches.mjs" as Caches
 
 Singleton {
     id: root
@@ -86,7 +87,7 @@ Singleton {
 
     property var items: []          // history, newest first: entry objects (see parse), without held deletes
     property var raw: []            // the same as cliphist lists it, held deletes included
-    function setRaw(list) { raw = list; items = ClipState.visible(list, holds); }
+    function setRaw(list) { raw = list; items = ClipState.visible(list, holds); pruneCaches(); }
     property var pins: []           // pinned entries, newest pin first
     readonly property var previewRefs: new Set(raw.concat(pins).map(e => ref(e)))
     property var previewOwners: ({})
@@ -502,8 +503,11 @@ Singleton {
     }
 
     // Rich rendering of text (markdown, highlighted code, mermaid), cached
-    // per entry: cb({ kind, lang, html, image }).
+    // per entry: cb({ kind, lang, html, image }). A render goes when its entry
+    // leaves the history (deleted, expired, past cliphist's cap), and at most
+    // renderCap are kept (the newest entries'): Caches.pruneKeyed.
     property var renders: ({})
+    readonly property int renderCap: 100
     function render(e, cb) {
         const r = ref(e), owner = previewOwners[r];
         if (renders[r]) { cb(renders[r]); return; }
@@ -512,9 +516,27 @@ Singleton {
             let d = { kind: "text" };
             try { d = JSON.parse(out); } catch (err) {}
             root.renders[r] = d;
+            if (Object.keys(root.renders).length > root.renderCap) root.pruneCaches();
             cb(d);
         });
     }
+    // What's cached per entry (renders, decoded images, file details) only for
+    // entries still in the history or pinned. Held deletes count as there (⌃Z).
+    function liveRefs() {
+        const live = raw.map(e => e.id);
+        for (const p of pins) live.push("pin:" + p.pin);
+        return live;
+    }
+    function pruneCaches() {
+        const live = liveRefs();
+        renders = Caches.pruneKeyed(renders, live, renderCap);
+        const t = Caches.pruneKeyed(thumbs, live, live.length);
+        if (t !== thumbs) thumbs = t;
+        pending = Caches.pruneKeyed(pending, live, live.length);
+        const f = Caches.pruneKeyed(fileInfo, live, live.length);
+        if (f !== fileInfo) fileInfo = f;
+    }
+    onPinsChanged: pruneCaches()
     // Text out of an image; an image saved as a file. cb(output).
     function ocr(e, cb) { capture(["ocr", ref(e)], cb); }
     function save(e, cb) { capture(["save", ref(e)], cb); }

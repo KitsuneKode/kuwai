@@ -35,15 +35,9 @@ Rectangle {
 
     function focusSearch() { search.forceActiveFocus(); search.selectAll(); }
     // Where a search hit in a chat's messages (not its title): ~70 characters around it.
-    function snippet(s, q) {
-        if (!q || (s.title || "").toLowerCase().indexOf(q) >= 0) return "";
-        for (const m of (s.messages || [])) {
-            const t = (m.text || "").replace(/\s+/g, " ");
-            const i = t.toLowerCase().indexOf(q);
-            if (i >= 0) return (i > 24 ? "…" : "") + t.slice(Math.max(0, i - 24), i + 46) + (i + 46 < t.length ? "…" : "");
-        }
-        return "";
-    }
+    // Only the open chat's messages are in memory; the service searches the rest's files.
+    function snippet(s, q) { return OllamaService.chatSnippet(s, q); }
+    onQueryChanged: OllamaService.searchChats(query)
 
     function dayStart(t) { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); }
     readonly property var rows: {
@@ -51,12 +45,8 @@ Rectangle {
         const today = dayStart(Date.now()), day = 86400000;
         const groups = [["Today", []], ["Yesterday", []], ["Previous 7 days", []], ["Older", []]];
         (OllamaService.sessions || []).forEach(s => {
-            const msgs = s.messages || [];
-            if (msgs.length === 0 && s.id !== OllamaService.activeSessionId) return;
-            if (q) {
-                const hay = ((s.title || "") + " " + msgs.map(m => m.text || "").join(" ")).toLowerCase();
-                if (hay.indexOf(q) < 0) return;
-            }
+            if ((s.count || 0) === 0 && s.id !== OllamaService.activeSessionId) return;
+            if (q && !OllamaService.chatMatches(s, q)) return;
             const t = s.updatedAt || 0;
             const g = t >= today ? 0 : t >= today - day ? 1 : t >= today - 7 * day ? 2 : 3;
             groups[g][1].push(s);

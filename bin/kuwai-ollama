@@ -10,6 +10,7 @@ Commands:
     kuwai-ollama agent <file>     -> run one agent turn (tools, approvals), JSON events on stdout
     kuwai-ollama unload [model]   -> unload model(s) to free VRAM (keep_alive: 0)
     kuwai-ollama render [file]    -> pass stdin or file to kuwai-render for rich text
+    kuwai-ollama find <dir> <q>   -> chats in <dir>/*.json whose messages contain q: {id: snippet}
 """
 
 import sys
@@ -475,6 +476,53 @@ def cmd_search(args):
         p = subprocess.run(["docker", "inspect", "-f", "{{.State.Status}}", "kuwai-searxng"], capture_output=True, text=True)
         print(json.dumps({"state": p.stdout.strip() or "missing", "url": "http://127.0.0.1:8888"}))
 
+_CHAT_ID = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+
+def chat_snippet(messages, q):
+    """The sidebar's snippet (ChatStore.searchMessages): ~70 characters around the
+    first hit in a message's text, or None. q is lower-case and trimmed."""
+    for m in messages:
+        if not isinstance(m, dict):
+            continue
+        t = re.sub(r"\s+", " ", str(m.get("text") or ""))
+        i = t.lower().find(q)
+        if i >= 0:
+            return ("…" if i > 24 else "") + t[max(0, i - 24):i + 46] + ("…" if i + 46 < len(t) else "")
+    return None
+
+def cmd_find(args):
+    """kuwai-ollama find <dir> <query>: search the assistant's chat files (ai-chats/<id>.json)
+    so the shell needn't hold every chat in memory. Prints {id: snippet}."""
+    if len(args) < 2:
+        sys.stderr.write("Usage: kuwai-ollama find <dir> <query>\n")
+        sys.exit(1)
+    folder, q = args[0], args[1].lower().strip()
+    hits = {}
+    if q and os.path.isdir(folder):
+        # A cheap pre-check on the raw file, unless the query has what JSON escapes
+        # (quotes, backslashes, control characters, and anything not ASCII, which a
+        # writer may escape as \uXXXX) or whitespace (runs of it are
+        # matched as one space, and a newline is "\n" in the file).
+        raw_ok = q.isascii() and not any(c in q for c in '"\\') and not any(c.isspace() or ord(c) < 0x20 for c in q)
+        for name in sorted(os.listdir(folder)):
+            cid = name[:-5] if name.endswith(".json") else ""
+            if not _CHAT_ID.match(cid):
+                continue
+            try:
+                with open(os.path.join(folder, name), encoding="utf-8") as f:
+                    text = f.read()
+                if raw_ok and q not in text.lower():
+                    continue
+                doc = json.loads(text)
+            except (OSError, ValueError):
+                continue
+            if not isinstance(doc, dict) or not isinstance(doc.get("messages"), list):
+                continue
+            snip = chat_snippet(doc["messages"], q)
+            if snip is not None:
+                hits[cid] = snip
+    print(json.dumps(hits, ensure_ascii=False))
+
 def cmd_sandbox(args):
     """kuwai-ollama sandbox <status|build|stop|check|firewall|log|jobs|path [chat]>"""
     sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
@@ -552,6 +600,8 @@ def main():
     elif cmd == "render":
         target = sys.argv[2] if len(sys.argv) > 2 else None
         cmd_render(target)
+    elif cmd == "find":
+        cmd_find(sys.argv[2:])
     else:
         sys.stderr.write(f"Unknown command: {cmd}\n")
         sys.exit(1)

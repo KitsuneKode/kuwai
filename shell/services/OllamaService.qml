@@ -7,6 +7,10 @@ import Quickshell.Widgets
 import qs.config
 import qs.services
 import "ai/turn.mjs" as Turn
+// Quickshell reloads on QML changes, not on the modules they import: after
+// changing chatstore.mjs or caches.mjs, save this file too (or restart).
+import "ai/chatstore.mjs" as ChatStore
+import "caches.mjs" as Caches
 
 // The assistant's state. Turns run in bin/kuwai_agent.py (`kuwai-ollama agent`),
 // which prints events; Turn.applyEvent folds them into `draft`, an assistant
@@ -64,9 +68,18 @@ Singleton {
     // Assistant: Turn's Msg ({ role, model, timestamp, status, parts, stats, error }) plus the
     // older flat fields (text, html, reasoning, tools, time, tokensPerSec) the renderer still reads.
     property var messages: []
-    // Sessions: [{ id: string, title: string, model: string, messages: array, updatedAt: number }]
+    // The chat list, metadata only (ChatStore's Meta): [{ id, title, renamed, model, mode,
+    // updatedAt, count }]. Messages live one chat to a file (ai-chats/<id>.json) and only
+    // the open chat's are in memory (`messages`, `summary`), plus a chat a turn is still
+    // answering in after you left it (`held`). Everything else is read when it's opened.
     property var sessions: []
     property string activeSessionId: ""
+    // id → { messages, summary, summaryUpTo }: chats other than the open one that a turn
+    // needs (it's answering there, or a queued message started it). Released when it ends.
+    property var held: ({})
+    // Chats whose file is behind what's in memory (id → true), and whether the list is.
+    property var dirty: ({})
+    property bool indexDirty: false
 
     property bool storeLoaded: false
 
@@ -126,15 +139,15 @@ Singleton {
     // A queued message for a chat you've left: its message joins that chat
     // and the turn runs there; the view stays where you are.
     function sendIn(q) {
-        const i = root.sessions.findIndex(x => x.id === q.session);
-        if (i < 0) return;
+        const meta = root.sessions.find(x => x.id === q.session);
+        if (!meta) return;
         const nowMs = Date.now();
-        const sess = Object.assign({}, root.sessions[i]);
-        sess.messages = (sess.messages || []).concat([{ role: "user", text: q.text || "Look at this.", image: q.image || "", context: q.context || null,
-                                                       time: formatTime(nowMs), timestamp: nowMs, model: sess.model || root.model }]);
-        sess.updatedAt = nowMs;
-        const updated = [...root.sessions]; updated[i] = sess; root.sessions = updated;
-        saveDelay.restart();
+        const c = root.hold(q.session);
+        const msgs = c.messages.concat([{ role: "user", text: q.text || "Look at this.", image: q.image || "", context: q.context || null,
+                                         time: formatTime(nowMs), timestamp: nowMs, model: meta.model || root.model }]);
+        root.held = Object.assign({}, root.held, { [q.session]: { messages: msgs, summary: c.summary, summaryUpTo: c.summaryUpTo } });
+        root.patchSession(q.session, { count: msgs.length, updatedAt: nowMs });
+        root.markDirty(q.session);
         startTurn(q.session);
     }
 
@@ -237,33 +250,16 @@ Singleton {
     }
 
     // ── Persistent Sessions Store ─────────────────────────────────────
+    // The list (ai-sessions.json) and one file per chat (ai-chats/<id>.json);
+    // the rules are ChatStore's (services/ai/chatstore.mjs, tests/shell).
+    readonly property string stateDir: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/kuwai"
+    readonly property string chatDir: stateDir + "/ai-chats"
     FileView {
         id: sessionStore
-        path: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/kuwai/ai-sessions.json"
+        path: root.stateDir + "/ai-sessions.json"
         printErrors: false
-        onLoaded: {
-            try {
-                const parsed = JSON.parse(text());
-                if (Array.isArray(parsed) && parsed.length > 0) {
-                    // What was on disk at start, kept aside: a bad save can't take the chats with it.
-                    sessionBackup.setText(text());
-                    parsed.forEach(s => { s.messages = (s.messages || []).map(root.withParts); });
-                    root.sessions = parsed;
-                    const first = parsed[0];
-                    root.activeSessionId = first.id;
-                    root.messages = first.messages || [];
-                    root.summary = first.summary || "";
-                    root.summaryUpTo = first.summaryUpTo || 0;
-                    if (first.model) root.model = first.model;
-                }
-            } catch (e) {}
-            root.ensureInitialSession();
-            root.storeLoaded = true;
-        }
-        onLoadFailed: {
-            root.ensureInitialSession();
-            root.storeLoaded = true;
-        }
+        onLoaded: root.openStore(text())
+        onLoadFailed: root.openStore("")
     }
 
     FileView {
@@ -273,14 +269,179 @@ Singleton {
         printErrors: false
     }
 
+    // One chat file at a time, read or written now (blocking): a chat is
+    // read when it's opened and written before it's let go.
+    Component { id: chatReader; FileView { blockAllReads: true; printErrors: false } }
+    Component {
+        id: chatWriter
+        FileView { property int ok: 0; blockWrites: true; atomicWrites: true; printErrors: false; onSaved: ok = 1; onSaveFailed: ok = -1 }
+    }
+    function readFile(path) {
+        if (!path) return "";
+        const r = chatReader.createObject(root, { path: path });
+        const t = r.text();
+        r.destroy();
+        return t || "";
+    }
+    function writeFile(path, text) {
+        if (!path) return false;
+        const w = chatWriter.createObject(root, { path: path });
+        w.setText(text);
+        const ok = w.ok === 1;
+        w.destroy();
+        return ok;
+    }
+    Component { id: remover; Process { onExited: destroy() } }
+    function removeChatFile(id) {
+        const p = ChatStore.chatPath(root.chatDir, id);
+        if (!p) return;
+        const r = remover.createObject(root, { command: ["rm", "-f", "--", p] });
+        r.running = true;
+    }
+
+    // A chat's content: the open one's, a held one's, else read from its file.
+    function loadChat(id) {
+        const d = ChatStore.parseChat(root.readFile(ChatStore.chatPath(root.chatDir, id)))
+            || (root.legacyDocs ? root.legacyDocs[id] : null);
+        if (!d) return { messages: [], summary: "", summaryUpTo: 0 };
+        return { messages: d.messages.map(root.withParts), summary: d.summary || "", summaryUpTo: d.summaryUpTo || 0 };
+    }
+    function contentOf(id) {
+        if (id === root.activeSessionId) return { messages: root.messages, summary: root.summary, summaryUpTo: root.summaryUpTo };
+        return root.held[id] || root.loadChat(id);
+    }
+    // Keep a chat other than the open one in memory while a turn uses it.
+    function hold(id) {
+        if (id === root.activeSessionId) return root.contentOf(id);
+        if (!root.held[id]) root.held = Object.assign({}, root.held, { [id]: root.loadChat(id) });
+        return root.held[id];
+    }
+    // Let a held chat go, once its file has what's in memory. Not while its
+    // turn runs; a chat whose write failed stays held and is retried by flush.
+    function release(id) {
+        if (!root.held[id] || id === root.activeSessionId) return;
+        if (root.streaming && root.draftSessionId === id) return;
+        if (root.dirty[id] && !root.writeChat(id)) return;
+        const h = Object.assign({}, root.held); delete h[id]; root.held = h;
+    }
+    // Leaving the open chat: its file catches up. A turn still answering there,
+    // or a write that failed, keeps it held (in memory) instead of dropped.
+    function leave(id) {
+        if (!id) return;
+        const saved = !root.dirty[id] || root.writeChat(id);
+        if (!saved || (root.streaming && root.draftSessionId === id && !root.discardDraft))
+            root.held = Object.assign({}, root.held, { [id]: { messages: root.messages, summary: root.summary, summaryUpTo: root.summaryUpTo } });
+    }
+    function markDirty(id) {
+        if (id) root.dirty = Object.assign({}, root.dirty, { [id]: true });
+        root.indexDirty = true;
+        saveDelay.restart();
+    }
+    // Write one chat's file from memory (nothing to write if it isn't there).
+    function writeChat(id) {
+        if (!root.storeLoaded) return false;
+        const meta = root.sessions.find(s => s.id === id);
+        const inMem = id === root.activeSessionId || !!root.held[id];
+        if (!meta || !inMem) { const d = Object.assign({}, root.dirty); delete d[id]; root.dirty = d; return true; }
+        const c = root.contentOf(id);
+        const ok = root.writeFile(ChatStore.chatPath(root.chatDir, id), ChatStore.chatText(ChatStore.chatDoc(meta, c.messages, c.summary, c.summaryUpTo)));
+        if (ok) { const d = Object.assign({}, root.dirty); delete d[id]; root.dirty = d; }
+        else console.warn("OllamaService: couldn't save chat " + id + " (kept in memory, retried on the next save)");
+        return ok;
+    }
+    // Chats first, then the list, so the list never names a file that isn't written.
+    function flush() {
+        if (!root.storeLoaded) return;
+        for (const id of Object.keys(root.dirty)) root.writeChat(id);
+        // Held chats no turn needs any more leave memory once written.
+        for (const id of Object.keys(root.held)) if (!root.dirty[id]) root.release(id);
+        if (root.indexDirty) {
+            sessionStore.setText(ChatStore.indexText(root.sessions));
+            root.indexDirty = false;
+        }
+    }
     Timer {
         id: saveDelay
         interval: 400
-        onTriggered: {
-            if (root.storeLoaded) {
-                sessionStore.setText(JSON.stringify(root.sessions, null, 2));
+        onTriggered: root.flush()
+    }
+
+    // Start: read the list; an old one (whole chats in one file) is split
+    // into chat files once, and chat files the list lost are put back.
+    property var legacyDocs: null         // only if the split couldn't write: chats read from the old file
+    function openStore(text) {
+        const idx = ChatStore.readIndex(text);
+        if (idx.kind === "newer") {
+            // A later kuwai's list: read it as nothing and never write over it.
+            console.warn("OllamaService: ai-sessions.json is from a newer version; chats are not saved this session");
+            root.ensureInitialSession();
+            return;
+        }
+        if (idx.kind === "bad") {
+            // Not a list: keep it aside; the chat files rebuild the list (orphans below).
+            root.writeFile(root.stateDir + "/ai-sessions.bad.json", text);
+        }
+        if (idx.kind === "v2" || idx.kind === "legacy") sessionBackup.setText(text);   // a bad save can't take the list with it
+        let wrote = true;
+        if (idx.kind === "legacy") wrote = root.splitLegacy(text, idx.docs);
+        root.sessions = idx.chats;
+        if (idx.chats.length > 0) {
+            const first = idx.chats[0];
+            const c = root.loadChat(first.id);
+            root.activeSessionId = first.id;
+            root.messages = c.messages;
+            root.summary = c.summary;
+            root.summaryUpTo = c.summaryUpTo;
+            if (first.model) root.model = first.model;
+            root.mode = first.mode || "chat";
+        }
+        root.ensureInitialSession();
+        if (!wrote) return;                // storeLoaded stays false: nothing overwrites the old file
+        root.storeLoaded = true;
+        if (idx.kind === "legacy" || idx.kind === "bad") { root.indexDirty = true; root.flush(); }
+        orphanScan.running = true;
+    }
+    // The one-time split. Returns false (and writes no list) if a chat file couldn't be written.
+    function splitLegacy(text, docs) {
+        const keep = root.stateDir + "/ai-sessions.legacy.json";
+        if (!root.readFile(keep) && !root.writeFile(keep, text)) {
+            console.warn("OllamaService: couldn't copy ai-sessions.json aside; chats stay in the old file this session");
+            root.legacyDocs = root.docsById(docs);
+            return false;
+        }
+        for (const d of docs) {
+            const p = ChatStore.chatPath(root.chatDir, d.id);
+            if (!ChatStore.shouldWriteLegacy(root.readFile(p), d)) continue;
+            if (!root.writeFile(p, ChatStore.chatText(d))) {
+                console.warn("OllamaService: couldn't write " + p + "; chats stay in the old file this session");
+                root.legacyDocs = root.docsById(docs);
+                return false;
             }
         }
+        return true;
+    }
+    function docsById(docs) { const m = {}; for (const d of docs) m[d.id] = d; return m; }
+    Process {
+        id: orphanScan
+        command: ["find", root.chatDir, "-maxdepth", "1", "-type", "f", "-name", "*.json", "-printf", "%f\\n"]
+        stdout: StdioCollector { onStreamFinished: root.adoptOrphans(text) }
+    }
+    // `names`: the chat folder's file names, one a line.
+    function adoptOrphans(names) {
+        const listed = {};
+        for (const s of root.sessions) listed[s.id] = true;
+        const docs = [];
+        for (const name of names.split("\n")) {
+            const id = name.replace(/\.json$/, "");
+            if (!ChatStore.validId(id) || listed[id]) continue;
+            const d = ChatStore.parseChat(root.readFile(ChatStore.chatPath(root.chatDir, id)));
+            if (d) docs.push(d);
+        }
+        const back = ChatStore.orphansToMetas(root.sessions, docs);
+        if (!back.length) return;
+        root.sessions = root.sessions.concat(back);
+        root.indexDirty = true;
+        saveDelay.restart();
     }
 
     function formatTime(timestamp) {
@@ -291,36 +452,29 @@ Singleton {
     function ensureInitialSession() {
         if (root.sessions.length === 0) {
             const initId = Date.now().toString();
-            root.sessions = [{
-                id: initId,
-                title: "New Chat",
-                model: root.model,
-                messages: [],
-                updatedAt: Date.now()
-            }];
+            root.sessions = [ChatStore.metaOf({ id: initId, title: "New Chat", model: root.model, mode: root.mode, updatedAt: Date.now() }, 0)];
             root.activeSessionId = initId;
             root.messages = [];
+            root.indexDirty = true;
         }
     }
 
     function newChat() {
         syncCurrentSession();
         const newId = Date.now().toString();
-        const newSess = {
-            id: newId,
-            title: "New Chat",
-            model: root.model,
-            messages: [],
-            updatedAt: Date.now()
-        };
+        const newSess = ChatStore.metaOf({ id: newId, title: "New Chat", model: root.model, mode: root.mode, updatedAt: Date.now() }, 0);
         // Reuse the current chat only if it's the empty one; never overwrite another
         // (this used to replace sessions[0], which could be a real chat).
         const cur = root.sessions.findIndex(x => x.id === root.activeSessionId);
-        if (cur >= 0 && root.messages.length === 0 && (root.sessions[cur].messages || []).length === 0) {
+        if (cur >= 0 && root.messages.length === 0 && !(root.streaming && root.draftSessionId === root.activeSessionId)) {
+            const gone = root.activeSessionId;
             const updated = [...root.sessions];
             updated[cur] = newSess;
             root.sessions = updated;
+            const d = Object.assign({}, root.dirty); delete d[gone]; root.dirty = d;
+            root.removeChatFile(gone);
         } else {
+            root.leave(root.activeSessionId);
             root.sessions = [newSess, ...root.sessions];
         }
         root.activeSessionId = newId;
@@ -332,6 +486,7 @@ Singleton {
         root.pendingContext = null;
         root.pendingAppTitle = "";
         root.errorText = "";
+        root.indexDirty = true;
         saveDelay.restart();
     }
 
@@ -407,7 +562,6 @@ Singleton {
 
         root.messages = [...root.messages, userMsg, root.withParts(assistMsg)];
         root.syncCurrentSession();
-        saveDelay.restart();
         return true;
     }
 
@@ -427,34 +581,37 @@ Singleton {
         if (msgs.length === 0) { if (model) root.model = model; return; }
         const keep = root.summaryUpTo > 0 && root.summaryUpTo <= msgs.length;
         const now = Date.now();
-        const sess = {
+        const sess = ChatStore.metaOf({
             id: now.toString(),
             title: ((src && src.title && src.title !== "New Chat") ? src.title : "Chat").replace(/ \(fork\)$/, "") + " (fork)",
-            renamed: true, model: model || root.model, mode: root.mode, messages: msgs,
-            summary: keep ? root.summary : "", summaryUpTo: keep ? root.summaryUpTo : 0, updatedAt: now
-        };
+            renamed: true, model: model || root.model, mode: root.mode, updatedAt: now
+        }, msgs.length);
+        root.leave(root.activeSessionId);
         root.sessions = [sess, ...root.sessions];
         root.activeSessionId = sess.id;
-        root.messages = sess.messages;
-        root.summary = sess.summary;
-        root.summaryUpTo = sess.summaryUpTo;
+        root.messages = msgs;
+        root.summary = keep ? root.summary : "";
+        root.summaryUpTo = keep ? root.summaryUpTo : 0;
         root.model = sess.model;
         root.errorText = "";
-        saveDelay.restart();
+        root.markDirty(sess.id);
     }
 
     function switchSession(id) {
         if (id === root.activeSessionId) return;
 
-        syncCurrentSession();
-
         const found = root.sessions.find(s => s.id === id);
         if (found) {
+            syncCurrentSession();
+            root.leave(root.activeSessionId);
+            // Held (a turn is answering there): take it as it is in memory; else read its file.
+            const c = root.held[id] || root.loadChat(id);
+            if (root.held[id]) { const h = Object.assign({}, root.held); delete h[id]; root.held = h; }
             if (root.unread[id]) { const u = Object.assign({}, root.unread); delete u[id]; root.unread = u; }
             root.activeSessionId = id;
-            root.messages = found.messages || [];
-            root.summary = found.summary || "";
-            root.summaryUpTo = found.summaryUpTo || 0;
+            root.messages = c.messages;
+            root.summary = c.summary;
+            root.summaryUpTo = c.summaryUpTo;
             root.lastStats = null;
             if (found.model) root.model = found.model;
             root.mode = found.mode || "chat";
@@ -470,6 +627,7 @@ Singleton {
         const updated = [...root.sessions];
         updated[i] = Object.assign({}, updated[i], { title: t, renamed: true });
         root.sessions = updated;
+        root.indexDirty = true;
         saveDelay.restart();
     }
 
@@ -478,44 +636,51 @@ Singleton {
 
         const filtered = root.sessions.filter(s => s.id !== id);
         root.sessions = filtered;
+        if (root.held[id]) { const h = Object.assign({}, root.held); delete h[id]; root.held = h; }
+        if (root.dirty[id]) { const d = Object.assign({}, root.dirty); delete d[id]; root.dirty = d; }
+        root.removeChatFile(id);
 
         if (root.activeSessionId === id) {
             if (filtered.length > 0) {
+                const c = root.held[filtered[0].id] || root.loadChat(filtered[0].id);
+                if (root.held[filtered[0].id]) { const h = Object.assign({}, root.held); delete h[filtered[0].id]; root.held = h; }
                 root.activeSessionId = filtered[0].id;
-                root.messages = filtered[0].messages || [];
-                root.summary = filtered[0].summary || "";
-                root.summaryUpTo = filtered[0].summaryUpTo || 0;
+                root.messages = c.messages;
+                root.summary = c.summary;
+                root.summaryUpTo = c.summaryUpTo;
                 if (filtered[0].model) root.model = filtered[0].model;
             } else {
                 ensureInitialSession();
             }
         }
+        root.indexDirty = true;
         saveDelay.restart();
     }
 
+    // List fields only (title, count, updatedAt…); messages go through markDirty.
     function patchSession(id, fields) {
         const i = root.sessions.findIndex(x => x.id === id);
         if (i < 0) return;
         const updated = [...root.sessions];
         updated[i] = Object.assign({}, updated[i], fields);
         root.sessions = updated;
+        root.indexDirty = true;
         saveDelay.restart();
     }
 
+    // The open chat's list entry follows what's in memory; its file is written on the next save.
     function syncCurrentSession() {
         const idx = root.sessions.findIndex(s => s.id === root.activeSessionId);
         if (idx >= 0) {
             const curr = Object.assign({}, root.sessions[idx]);
-            curr.messages = root.messages;
-            curr.summary = root.summary;
-            curr.summaryUpTo = root.summaryUpTo;
+            curr.count = root.messages.length;
             curr.model = root.model;
             curr.mode = root.mode;
             curr.updatedAt = Date.now();
             const updated = [...root.sessions];
             updated[idx] = curr;
             root.sessions = updated;
-            saveDelay.restart();
+            root.markDirty(root.activeSessionId);
         }
     }
 
@@ -948,9 +1113,10 @@ function onPanelClosed() {
         const here = sid === root.activeSessionId;
         const bg = here ? null : root.sessions.find(x => x.id === sid);
         if (!here && !bg) return;
-        const msgs = here ? root.messages : (bg.messages || []);
-        const summary = here ? root.summary : (bg.summary || "");
-        const upTo = here ? root.summaryUpTo : (bg.summaryUpTo || 0);
+        const held = here ? null : root.hold(sid);          // in memory until its turn ends
+        const msgs = here ? root.messages : held.messages;
+        const summary = here ? root.summary : (held.summary || "");
+        const upTo = here ? root.summaryUpTo : (held.summaryUpTo || 0);
         const model = here ? root.model : (bg.model || root.model);
         const mode = here ? root.mode : (bg.mode || "chat");
         if (here) errorText = "";
@@ -1021,7 +1187,13 @@ function onPanelClosed() {
                             root.summary = ev.output || "";
                             root.summaryUpTo = upTo;
                             root.syncCurrentSession();
-                        } else root.patchSession(root.draftSessionId, { summary: ev.output || "", summaryUpTo: upTo });
+                        } else {
+                            // The chat it's answering in is held while the turn runs.
+                            const sid = root.draftSessionId;
+                            const c = root.hold(sid);
+                            root.held = Object.assign({}, root.held, { [sid]: { messages: c.messages, summary: ev.output || "", summaryUpTo: upTo } });
+                            root.markDirty(sid);
+                        }
                     }
                 }
                 if (ev.type === "turn.steered") root.steering = root.steering.filter(x => x.id !== ev.id);
@@ -1085,20 +1257,25 @@ function onPanelClosed() {
         // Queued in another chat: it runs next whatever this turn's end was.
         if ((discarded || root.drainAfterTurn || root.queue.some(q => q.session && q.session !== root.draftSessionId)) && root.queue.length > 0) drainTimer.restart();
         root.drainAfterTurn = false;
-        if (!keep) return;
+        const sid = root.draftSessionId;
+        if (!keep) { root.release(sid); return; }
 
         const msg = root.withParts(Object.assign({}, d, { time: formatTime(Date.now()) }));
-        if (root.draftSessionId === root.activeSessionId) {
+        if (sid === root.activeSessionId) {
             const updated = [...root.messages, msg];
             root.messages = updated;
             root.syncCurrentSession();
         } else {
             // You moved to another chat meanwhile: the answer lands in its own,
-            // marked unread there.
-            const i = root.sessions.findIndex(x => x.id === root.draftSessionId);
-            if (i >= 0) {
-                root.patchSession(root.draftSessionId, { messages: (root.sessions[i].messages || []).concat([msg]), updatedAt: Date.now() });
-                const u = Object.assign({}, root.unread); u[root.draftSessionId] = true; root.unread = u;
+            // marked unread there, and that chat leaves memory once it's written.
+            if (root.sessions.some(x => x.id === sid)) {
+                const c = root.hold(sid);
+                const msgs = c.messages.concat([msg]);
+                root.held = Object.assign({}, root.held, { [sid]: { messages: msgs, summary: c.summary, summaryUpTo: c.summaryUpTo } });
+                root.patchSession(sid, { count: msgs.length, updatedAt: Date.now() });
+                root.markDirty(sid);
+                root.release(sid);
+                const u = Object.assign({}, root.unread); u[sid] = true; root.unread = u;
             }
         }
     }
@@ -1114,25 +1291,27 @@ function onPanelClosed() {
     // stopped once the assistant is closed and nothing has been rendered for
     // 3 minutes (reopening to read the answer again stays warm). The HTML
     // already made stays here, so a stop costs nothing on screen.
-    property var htmlCache: ({})
-    property var htmlOrder: []
+    // The HTML is bounded (Caches.htmlPut): a block's half-written versions go
+    // as soon as a longer one or the finished block arrives, and the rest is
+    // capped at ~4 MB of text and 1,500 blocks, oldest first.
+    property var htmlCache: Caches.htmlCache()
     property var renderWaiting: ({})     // key → true while in flight
-    property var renderKeys: ({})        // request id → key
+    property var renderKeys: ({})        // request id → block
     property int renderTick: 0           // bumps when a block's HTML arrives
 
-    function blockKey(b) { return b.kind + (b.live ? "~" : "") + "\u0001" + (b.lang || "") + "\u0001" + b.text; }
+    function blockKey(b) { return Caches.blockKey(b); }
     // The block's HTML, or "" while it's being rendered (it asks for it).
     function blockHtml(b) {
         if (!b || !b.text) return "";
         const k = blockKey(b);
-        const h = htmlCache[k];
+        const h = Caches.htmlGet(htmlCache, b);
         if (h !== undefined) return h;
         if (!renderWaiting[k]) {
             renderWaiting[k] = true;
             // Not ++renderSeq: blockHtml runs inside the chat's bindings, and writing a
             // property a binding just read loops it (Qt warned: binding loop on "html").
             const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
-            renderKeys[id] = k;
+            renderKeys[id] = { kind: b.kind, lang: b.lang || "", text: b.text, live: !!b.live };
             if (!renderProc.running) renderProc.running = true;
             renderIdle.restart();
             renderProc.write(JSON.stringify({ id: id, kind: b.kind, lang: b.lang || "", text: b.text, live: !!b.live }) + "\n");
@@ -1151,14 +1330,11 @@ function onPanelClosed() {
             onRead: line => {
                 let r;
                 try { r = JSON.parse(line); } catch (e) { return; }
-                const k = root.renderKeys[r.id];
+                const b = root.renderKeys[r.id];
                 delete root.renderKeys[r.id];
-                if (k === undefined) return;
-                delete root.renderWaiting[k];
-                root.htmlCache[k] = r.html || "";
-                root.htmlOrder.push(k);
-                // Streaming leaves a trail of half-written versions: keep the last 1500.
-                while (root.htmlOrder.length > 1500) delete root.htmlCache[root.htmlOrder.shift()];
+                if (b === undefined) return;
+                delete root.renderWaiting[Caches.blockKey(b)];
+                Caches.htmlPut(root.htmlCache, b, r.html || "", Date.now());
                 root.renderTick++;
             }
         }
@@ -1178,6 +1354,61 @@ function onPanelClosed() {
         function onOpenChanged() {
             if (Assistant.open) { if (!renderProc.running) renderProc.running = true; renderIdle.restart(); }
         }
+    }
+
+    // ── Searching the chats (the sidebar) ─────────────────────────────
+    // Titles, the open chat and held ones are searched in memory; the rest in
+    // their files by `kuwai-ollama find` (after a pause in typing), so their
+    // messages needn't be loaded. `q` is lower-case and trimmed.
+    property string searchQuery: ""
+    property string searchFor: ""          // the query searchHits answer
+    property var searchHits: ({})          // id → snippet, for chats not in memory
+    function searchChats(q) {
+        const t = String(q || "").toLowerCase().trim();
+        root.searchQuery = t;
+        if (!t) { searchDelay.stop(); root.searchHits = ({}); root.searchFor = ""; return; }
+        searchDelay.restart();
+    }
+    Timer {
+        id: searchDelay
+        interval: 150
+        onTriggered: {
+            root.flush();                  // what's in memory is on disk before the files are read
+            finder.q = root.searchQuery;
+            finder.command = [root.bin, "find", root.chatDir, root.searchQuery];
+            finder.running = false;
+            finder.running = true;
+        }
+    }
+    Process {
+        id: finder
+        property string q: ""
+        stdout: StdioCollector {
+            onStreamFinished: {
+                if (finder.q !== root.searchQuery) return;
+                let hits = {};
+                try { const d = JSON.parse(text); if (d && typeof d === "object" && !Array.isArray(d)) hits = d; } catch (e) {}
+                root.searchHits = hits;
+                root.searchFor = finder.q;
+            }
+        }
+    }
+    function chatInMemory(id) {
+        return id === root.activeSessionId ? root.messages : (root.held[id] ? root.held[id].messages : null);
+    }
+    function chatMatches(s, q) {
+        if (!q) return true;
+        if ((s.title || "").toLowerCase().indexOf(q) >= 0) return true;
+        const mem = root.chatInMemory(s.id);
+        if (mem) return ChatStore.searchMessages(mem, q).found;
+        return root.searchFor === q && root.searchHits[s.id] !== undefined;
+    }
+    // Where the search hit in a chat's messages (not its title): ~70 characters around it.
+    function chatSnippet(s, q) {
+        if (!q || (s.title || "").toLowerCase().indexOf(q) >= 0) return "";
+        const mem = root.chatInMemory(s.id);
+        if (mem) return ChatStore.searchMessages(mem, q).snippet;
+        return root.searchFor === q ? String(root.searchHits[s.id] || "") : "";
     }
 
     // ── Copy chat as Markdown ─────────────────────────────────────────
@@ -1212,6 +1443,8 @@ function onPanelClosed() {
         function draft(): string { return root.draft ? JSON.stringify(root.draft) : ""; }
         function switchSession(id: string) { root.switchSession(id); }
         function deleteSession(id: string) { root.deleteSession(id); }
+        // Which chats' messages are in memory (the open one, and any a turn is answering in).
+        function inMemory(): string { return JSON.stringify([root.activeSessionId].concat(Object.keys(root.held))); }
         function lastMessage(): string {
             if (root.messages.length === 0) return "";
             return JSON.stringify(root.messages[root.messages.length - 1]);
