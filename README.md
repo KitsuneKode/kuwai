@@ -1,6 +1,6 @@
 # kuwai
 
-**kuwai** is my Hyprland desktop: the **kuwai** session (Hyprland + Lua) and the **rice** shell (Quickshell — island, notifications, lock, center). One look: dark liquid glass, SF Pro, calm motion ([docs/DESIGN.md](docs/DESIGN.md), [docs/brandkit/README.md](docs/brandkit/README.md)).
+**kuwai** is my Hyprland desktop: the **kuwai** session (Hyprland + Lua) and the **rice** shell (Quickshell — island, notifications, lock, center). One look: dark liquid glass, Inter (or SF Pro, where you have it), calm motion ([docs/DESIGN.md](docs/DESIGN.md), [docs/brandkit/README.md](docs/brandkit/README.md)).
 
 Commands stay `bin/rice …` (control plane); the product name is **kuwai**.
 
@@ -19,6 +19,13 @@ Everything it replaces is backed up first (`./install.sh --uninstall` puts it
 back). It never touches your `monitors.lua`, `user.lua` or settings, never
 needs root for itself, and never sets up autologin. Check a running desktop
 any time with `./install.sh --doctor` or `bin/rice doctor` (kuwai + notifications + shell).
+
+**The font.** The shell is set in [Inter](https://rsms.me/inter/) (OFL,
+`inter-font` from Arch's official repos; `--deps` installs it), with its
+optical sizes. If Apple's SF Pro is installed, the shell uses it instead,
+with Apple's tracking and SF Pro Rounded numerals. kuwai doesn't ship or
+install SF Pro: Apple's licence limits it to Apple platforms. To pick one
+yourself, set `KUWAI_FONT=inter`, `sf` or `system` in the shell's environment.
 
 Your session runs from the **stable channel** (`~/.local/share/kuwai`, the
 `stable` branch). Changes in the repo reach it with `rice promote`, which

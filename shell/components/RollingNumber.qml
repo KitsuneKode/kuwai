@@ -30,8 +30,8 @@ Row {
         text: "0"
         font.family: num.rounded ? Theme.fontRounded : Theme.fontText
         font.pixelSize: num.size
-        font.features: ({ "tnum": 1 })
-        font.variableAxes: ({ "wght": num.weight })
+        font.features: Theme.numeralFeatures(num.rounded, true)
+        font.variableAxes: Theme.axesWeight(num.size, num.weight)
     }
 
     Repeater {
@@ -71,7 +71,7 @@ Row {
                     weight: num.weight
                     rounded: num.rounded
                     color: num.color
-                    font.features: ({ "tnum": 1 })
+                    font.features: Theme.numeralFeatures(num.rounded, true)
                 }
             }
         }

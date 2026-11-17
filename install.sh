@@ -4,7 +4,7 @@
 #
 #   ./install.sh               install (or update the install) for this user
 #   ./install.sh --dry-run     say what it would do; change nothing
-#   ./install.sh --deps        also install missing packages (sudo pacman / an AUR helper)
+#   ./install.sh --deps        also install missing packages (sudo pacman; all in the official repos)
 #   ./install.sh --uninstall   put back what was there before the first install
 #   ./install.sh --doctor      only check (kuwai doctor + rice-check)
 #
@@ -57,11 +57,14 @@ setpriv:util-linux gdbus:glib2 python3:python luac:lua playerctl:playerctl git:g
 OPTIONAL="satty:satty(screenshot-editing) tesseract:tesseract(copy-text-from-images) mpv:mpv(live-wallpapers)
 magick:imagemagick(thumbnails) pdftoppm:poppler(PDF-previews) kitty:kitty(terminal) secret-tool:libsecret(Gmail-password-in-keyring)
 gh:github-cli(GitHub-notifications) wtype:wtype(typing-emoji-into-windows) ydotool:ydotool(tests) ddcutil:ddcutil(external-monitor-brightness)"
-FONTS="SF Pro Text:apple-fonts|Symbols Nerd Font:ttf-nerd-fonts-symbols-mono"
+# family:package, from the official repos. The UI face is Inter (OFL); SF Pro
+# is used instead when it is installed, but kuwai never installs it (Apple's
+# licence limits it to Apple platforms: that's the owner's call, not ours).
+FONTS="Inter:inter-font|Symbols Nerd Font:ttf-nerd-fonts-symbols-mono"
 
 check_deps() {
     step "Packages"
-    local missing=() aur=()
+    local missing=() fonts=()
     for pair in $NEED; do
         b=${pair%%:*}; p=${pair#*:}
         if command -v "$b" >/dev/null; then ok "$b"; else warn "missing: $b (package $p)"; missing+=("$p"); fi
@@ -70,22 +73,24 @@ check_deps() {
         b=${pair%%:*}; rest=${pair#*:}; p=${rest%%(*}; why=${rest#*(}; why=${why%)}
         command -v "$b" >/dev/null || warn "optional, not installed: $p — for ${why//-/ }"
     done
-    local have; have=$(fc-list : family 2>/dev/null || true)
+    local have; have=$(fc-list : family 2>/dev/null | tr ',' '\n' || true)
+    local sf=0; grep -qx -- "SF Pro Text" <<<"$have" && grep -qx -- "SF Pro Display" <<<"$have" && sf=1
     IFS='|' read -ra fl <<<"$FONTS"
     for f in "${fl[@]}"; do
         name=${f%%:*}; p=${f#*:}
-        if grep -qi -- "$name" <<<"$have"; then ok "font: $name"; else warn "missing font: $name (package $p, AUR)"; aur+=("$p"); fi
+        if grep -qx -- "$name\( Variable\)\?" <<<"$have"; then ok "font: $name"
+        elif [ "$name" = Inter ] && [ $sf = 1 ]; then :     # SF Pro stands in (said below)
+        else warn "missing font: $name (package $p; the shell falls back to sans-serif)"; fonts+=("$p"); fi
     done
-    if [ ${#missing[@]} -gt 0 ] || [ ${#aur[@]} -gt 0 ]; then
+    [ $sf = 1 ] && ok "font: SF Pro (found: the shell uses it instead of Inter)" \
+        || say "  (SF Pro is used instead of Inter if you install it yourself; Apple's licence limits it to Apple platforms)"
+    # Everything needed is in the official repos (no AUR helper). A missing
+    # font doesn't stop the install: the shell falls back to sans-serif.
+    if [ ${#missing[@]} -gt 0 ] || [ ${#fonts[@]} -gt 0 ]; then
         if [ $DEPS = 1 ] && [ $DRY = 0 ]; then
-            [ ${#missing[@]} -gt 0 ] && sudo pacman -S --needed "${missing[@]}"
-            if [ ${#aur[@]} -gt 0 ]; then
-                h=$(command -v paru || command -v yay || true)
-                if [ -n "$h" ]; then "$h" -S --needed "${aur[@]}"; else warn "no AUR helper (paru/yay) for: ${aur[*]}"; fi
-            fi
+            sudo pacman -S --needed "${missing[@]}" "${fonts[@]}"
         else
-            [ ${#missing[@]} -gt 0 ] && say "  install: sudo pacman -S --needed ${missing[*]}"
-            [ ${#aur[@]} -gt 0 ] && say "  from the AUR: paru -S ${aur[*]}"
+            say "  install: sudo pacman -S --needed ${missing[*]} ${fonts[*]}"
             say "  (or rerun with --deps)"
             [ ${#missing[@]} -gt 0 ] && [ $DRY = 0 ] && { say "  (the needed ones first; stopping here)"; exit 1; }
         fi

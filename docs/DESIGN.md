@@ -19,23 +19,39 @@ Hyprland does the blur, the surface draws the material (`components/GlassCard.qm
 
 ## Type
 
-Apple's own faces, from `/usr/share/fonts/apple-fonts`, all through `components/Label.qml`:
+One face, resolved once when the shell starts (`Theme.fontKind`, from
+`Qt.fontFamilies()`), always through `components/Label.qml`:
 
-- **SF Pro (variable)** for all UI text. Its `opsz` axis runs 17 (the Text cut) to
-  28 (the Display cut); `Theme.opszFor(px)` sets it from the pixel size like
-  macOS does, so captions get Text's open spacing and titles Display's tighter one.
-  Weights are Apple's: 400 / 510 / 590 / 700.
-- **Tracking is Apple's**, read from the fonts' `trak` tables (`Theme.tracking(px, rounded)`):
-  e.g. 11px +0.06, 13px −0.08, 14px −0.15, 15px −0.23, 20px −0.45, 28px +0.38.
-  macOS applies it automatically; Qt doesn't, so we do.
-- **SF Pro Rounded** for numerals (`Label { rounded: true }`): count badges, the
-  HUD's level and battery. Apple's widget / Control Center habit.
+- **Inter** is the default: OFL, `inter-font` in Arch's official repos, so
+  anyone can install it (`install.sh --deps` does). It has optical sizes like
+  SF Pro: the static `Inter` + `Inter Display` pair (Text below 20 px,
+  Display from 20 px), or the variable font's `opsz` axis (14–32), which
+  `Theme.axesFor(px)` sets at three steps (14 · 22 · 32) when there is no
+  Display cut. Its spacing is designed into each optical size, so **no
+  tracking table** is applied. It has no rounded cut: numerals that SF Pro
+  sets in Rounded take Inter's open digits (`ss01`) instead.
+- **SF Pro**, when installed, is used instead (an upgrade, never shipped:
+  Apple's licence limits it to Apple platforms). Static Text below 20 px,
+  Display from 20 px. Weights are Apple's: 400 / 510 / 590 / 700 (Inter
+  takes its nearest instances).
+- **Tracking is Apple's, for SF Pro only**, read from its `trak` tables
+  (`Theme.tracking(px, rounded)`): e.g. 11px +0.06, 13px −0.08, 14px −0.15,
+  15px −0.23, 20px −0.45, 28px +0.38. macOS applies it automatically; Qt
+  doesn't, so we do. Measured for SF Pro, so never applied to another face.
+- **SF Pro Rounded** for numerals beside SF Pro (`Label { rounded: true }`):
+  count badges, the HUD's level and battery. Apple's widget / Control
+  Center habit.
+- Neither installed: fontconfig's sans-serif, with no tracking and no
+  features. `KUWAI_FONT=inter|sf|system` picks one of the installed three.
+- Changing numbers use tabular figures (`Theme.numeralFeatures(rounded,
+  true)` keeps Inter's open digits too) and a fixed width.
 - Not used: SF Compact (watchOS), New York (serif).
 - No uppercase or letter-spaced labels; hierarchy from size and weight.
-  Changing numbers use tabular figures and a fixed width.
 - Over glass, text is brighter than on a solid surface: .96 / .72 / .50.
-- The voxtype HUD style (`~/.config/voxtype/osd/kitsune-hud`) follows the same
-  rule: variable SF Pro pinned to the Text cut with Apple's tracking.
+- Hyprland's own text (group bars, its error bar) asks Pango for
+  "SF Pro Text, Inter, sans-serif" (`hypr/kuwai/look.lua`).
+- The voxtype HUD style (`~/.config/voxtype/osd/kitsune-hud`) is the
+  author's own and is set in SF Pro.
 
 ## Colour and severity
 

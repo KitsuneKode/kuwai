@@ -12,6 +12,10 @@ local T = require("kuwai.theme")
 
 local L = {}
 
+-- The shell's face, as Pango reads a family list: SF Pro where installed
+-- (not shipped: Apple's licence), else Inter (inter-font), else sans-serif.
+local UI_FONT = "SF Pro Text, Inter, sans-serif"
+
 -- 1. Base ------------------------------------------------------------------
 K.config({
 	general = {
@@ -85,7 +89,7 @@ K.config({
 		auto_group = false,
 		groupbar = {
 			enabled = true,
-			font_family = "SF Pro Text",
+			font_family = UI_FONT,
 			font_size = 11,
 			font_weight_active = "semibold",
 			font_weight_inactive = "normal",
@@ -106,7 +110,7 @@ K.config({
 	},
 
 	misc = {
-		font_family = "SF Pro",
+		font_family = UI_FONT,
 		disable_hyprland_logo = true,
 		disable_splash_rendering = true,
 		force_default_wallpaper = 0,
@@ -161,10 +165,10 @@ function L.apply_identity()
 		-- laptop's panel (fed across from the NVIDIA renderer); off costs that
 		-- panel a little smoothness when a frame runs late, never a lost one.
 		render = { new_render_scheduling = false },
-		group = { groupbar = { rounding_power = 4, gradient_rounding_power = 4, font_family = "SF Pro Text" } },
+		group = { groupbar = { rounding_power = 4, gradient_rounding_power = 4, font_family = UI_FONT } },
 	})
 	-- Hyprland's own notifications and error bar, in the rice's face.
-	K.config({ misc = { font_family = "SF Pro Text" } })
+	K.config({ misc = { font_family = UI_FONT } })
 end
 
 L.apply_theme()

@@ -194,3 +194,30 @@ def test_uninstall_with_only_legacy_backups(install_env):
     i.entry.write_text('-- whatever kuwai left\n')
     i.run('--uninstall')
     assert i.entry.read_text() == '-- the real original\n'
+
+
+def _fonts(install_env, families):
+    tools = Path(install_env.env['PATH'].split(':')[0])
+    stub = tools / 'fc-list'
+    stub.write_text('#!/bin/sh\ncat <<"EOF"\n' + '\n'.join(families) + '\nEOF\n')
+    stub.chmod(0o755)
+    return install_env.run('--dry-run')
+
+
+def test_fonts_inter_is_the_face_and_needs_no_aur(install_env):
+    out = _fonts(install_env, ['Inter', 'Inter Display', 'Symbols Nerd Font Mono,Symbols Nerd Font'])
+    assert '✓ font: Inter' in out and '✓ font: Symbols Nerd Font' in out
+    assert 'AUR' not in out and 'apple-fonts' not in out
+    assert 'used instead of Inter if you install it yourself' in out
+
+
+def test_fonts_missing_inter_is_offered_from_the_repos_without_stopping(install_env):
+    out = _fonts(install_env, ['DejaVu Sans'])
+    assert 'missing font: Inter (package inter-font' in out
+    assert 'sudo pacman -S --needed' in out and 'inter-font' in out
+
+
+def test_fonts_sf_pro_stands_in_for_inter_when_installed(install_env):
+    out = _fonts(install_env, ['SF Pro Text', 'SF Pro Display', 'SF Pro Rounded', 'Symbols Nerd Font'])
+    assert 'missing font: Inter' not in out
+    assert 'SF Pro (found: the shell uses it instead of Inter)' in out

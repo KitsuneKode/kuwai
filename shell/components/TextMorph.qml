@@ -43,14 +43,14 @@ Row {
                 text: "0"
                 font.family: morph.rounded ? Theme.fontRounded : Theme.fontText
                 font.pixelSize: morph.size
-                font.variableAxes: ({ "wght": morph.weight })
+                font.variableAxes: Theme.axesWeight(morph.size, morph.weight)
             }
             clip: false
             FontMetrics {
                 id: caps
                 font.family: morph.rounded ? Theme.fontRounded : Theme.fontText
                 font.pixelSize: morph.size
-                font.variableAxes: ({ "wght": morph.weight })
+                font.variableAxes: Theme.axesWeight(morph.size, morph.weight)
             }
             readonly property real lift: -Math.round(caps.ascent - capH)
 
@@ -59,8 +59,8 @@ Row {
                 text: /\d/.test(cell.ch) ? "0" : cell.ch
                 font.family: morph.rounded ? Theme.fontRounded : Theme.fontText
                 font.pixelSize: morph.size
-                font.features: ({ "tnum": 1 })
-                font.variableAxes: ({ "wght": morph.weight })
+                font.features: Theme.numeralFeatures(morph.rounded, true)
+                font.variableAxes: Theme.axesWeight(morph.size, morph.weight)
             }
 
             onChChanged: {
@@ -86,7 +86,7 @@ Row {
                 opacity: 1 - cell.t
                 text: cell.was
                 size: morph.size; weight: morph.weight; rounded: morph.rounded; color: morph.color
-                font.features: ({ "tnum": 1 })
+                font.features: Theme.numeralFeatures(morph.rounded, true)
                 layer.enabled: visible
                 layer.effect: MultiEffect { blurEnabled: true; blurMax: 16; blur: Math.min(1, cell.t * 1.4) }
             }
@@ -98,7 +98,7 @@ Row {
                 opacity: Math.min(1, cell.t * 1.6)
                 text: cell.ch
                 size: morph.size; weight: morph.weight; rounded: morph.rounded; color: morph.color
-                font.features: ({ "tnum": 1 })
+                font.features: Theme.numeralFeatures(morph.rounded, true)
                 layer.enabled: cell.t < 1
                 layer.effect: MultiEffect { blurEnabled: true; blurMax: 16; blur: Math.max(0, 1 - cell.t * 1.5) }
             }

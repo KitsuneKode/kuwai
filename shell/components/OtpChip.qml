@@ -28,7 +28,7 @@ Rectangle {
             font.pixelSize: Theme.tTitle1
             font.weight: Font.DemiBold
             font.letterSpacing: 2
-            font.features: ({ "tnum": 1 })
+            font.features: Theme.numeralFeatures(true, true)
             color: chip.stale ? Theme.textTertiary : Theme.textPrimary
         }
         Label {

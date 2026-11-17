@@ -856,13 +856,13 @@ Scope {
                             textFormat: Text.PlainText
                             visible: root.accessory !== ""
                             text: root.accessory
-                            // Numerals in SF Pro Rounded, as Control Center sets them
+                            // Numerals in SF Pro Rounded, as Control Center sets them (Inter: open digits)
                             font.family: Theme.fontRounded
                             font.weight: Theme.wMedium
                             font.pixelSize: 13
                             font.letterSpacing: Theme.tracking(13, true)
                             renderType: Text.NativeRendering
-                            font.features: { "tnum": 1 }
+                            font.features: Theme.numeralFeatures(true, true)
                             color: Theme.textSecondary
                         }
                     }
@@ -946,7 +946,7 @@ Scope {
                         font.pixelSize: 13
                         font.letterSpacing: Theme.tracking(13, true)
                         renderType: Text.NativeRendering
-                        font.features: { "tnum": 1 }
+                        font.features: Theme.numeralFeatures(true, true)
                         color: Theme.textSecondary
                     }
                 }

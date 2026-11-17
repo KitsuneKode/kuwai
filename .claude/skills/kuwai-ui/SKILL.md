@@ -78,9 +78,12 @@ rise.
 
 ## 4. Type (better-typography, in QML)
 
-- Always `Label` (components/Label.qml), never a bare `Text`: it picks SF Pro Text/Display by
-  size, Apple's tracking, `Theme.textScale` (Settings → Text size) and native rendering.
-- **Numbers that change** carry `font.features: ({ "tnum": 1 })`; animated digits use
+- Always `Label` (components/Label.qml), never a bare `Text`: it picks the face Theme resolved
+  (SF Pro where installed, else Inter, else sans-serif) at the optical size for its pixel size,
+  that face's tracking (Apple's table for SF Pro only), `Theme.textScale` (Settings → Text size)
+  and native rendering. Never type a family name: `Theme.fontText/fontDisplay/fontRounded/fontMono`.
+- **Numbers that change** carry `font.features: Theme.numeralFeatures(rounded, true)` (tabular;
+  keeps Inter's open digits for rounded numerals); animated digits use
   `TextMorph`/`RollingNumber`. Clocks, %, countdowns, counts.
 - Weight carries hierarchy, a few sizes only: title `wSemibold`, value `wSemibold` rounded, meta
   `textSecondary`/`textTertiary`. Never below 11 px, never weight under 400 below 18 px.

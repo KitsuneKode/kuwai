@@ -1,7 +1,8 @@
 // Design tokens for every surface in the rice. The look is the glass HUD's:
 // Hyprland blurs what is behind a layer, a dark translucent tint sits on top,
-// text is SF Pro (variable, optical size + exact weight): Text for UI,
-// Display for large sizes, Rounded for numerals. Glyphs come from Symbols
+// text is SF Pro where installed (Text for UI, Display for large sizes,
+// Rounded for numerals), else Inter, kuwai's shippable default (see Type
+// below for how it is chosen). Glyphs come from Symbols
 // Nerd Font. Motion is critically damped (no bounce): surfaces arrive fast
 // and settle, and leave the way they came, a little quicker. See docs/DESIGN.md.
 pragma Singleton
@@ -228,35 +229,65 @@ Singleton {
     }
 
     // ── Type ─────────────────────────────────────────────────────────────
-    // Apple's own faces (/usr/share/fonts/apple-fonts):
-    //   fontText     variable "SF Pro": opsz 17 (Text cut) → 28 (Display cut),
-    //                set from the pixel size the way macOS does, so small UI
-    //                text gets the Text design and titles the Display one
-    //   fontRounded  "SF Pro Rounded" for numerals: counts, badges, the HUD
-    //                value (Apple's widget and Control Center habit)
+    // The UI face is resolved once, at start, from what is installed
+    // (Qt.fontFamilies), in this order:
+    //   sf      Apple's SF Pro (Text below 20 px, Display from 20, Rounded for
+    //           numerals) with Apple's own tracking. Used when it's installed;
+    //           kuwai doesn't ship it (Apple's licence limits it to Apple
+    //           platforms), so it is an upgrade, never a requirement.
+    //   inter   Inter (OFL, Arch's `inter-font` in [extra]): the default
+    //           anyone can install. Inter 4 has optical sizes too: the static
+    //           "Inter" + "Inter Display" pair, or the variable font's opsz
+    //           axis (14–32). Its spacing is built into each optical size, so
+    //           no tracking table; no rounded cut, so numerals take its open
+    //           digits (ss01) instead.
+    //   system  whatever fontconfig calls sans-serif: no tracking, no features.
+    // KUWAI_FONT=sf|inter|system picks one of those that is installed.
     //   fontGlyph    Symbols Nerd Font, never mixed into text runs
-    // SF Compact (watchOS) and New York (serif) are installed but don't
-    // belong in a desktop UI.
-    readonly property string fontText: "SF Pro Text"          // static faces: see Label
-    readonly property string fontDisplay: "SF Pro Display"
-    readonly property string fontRounded: "SF Pro Rounded"
+    // SF Compact (watchOS) and New York (serif) don't belong in a desktop UI.
+    readonly property var installedFonts: Qt.fontFamilies()
+    function hasFont(name) { return installedFonts.indexOf(name) >= 0; }
+    readonly property bool hasSf: hasFont("SF Pro Text") && hasFont("SF Pro Display")
+    readonly property string interFamily: hasFont("Inter") && hasFont("Inter Display") ? "Inter"
+                                        : hasFont("Inter Variable") ? "Inter Variable"
+                                        : hasFont("Inter") ? "Inter" : ""
+    readonly property string fontKind: {
+        const want = (Quickshell.env("KUWAI_FONT") || "").toLowerCase();
+        if (want === "system") return "system";
+        if (want === "inter" && interFamily) return "inter";
+        if (want === "sf" && hasSf) return "sf";
+        return hasSf ? "sf" : interFamily ? "inter" : "system";
+    }
+    readonly property string systemFamily: Qt.application.font.family || "sans-serif"
+    readonly property string fontText: fontKind === "sf" ? "SF Pro Text" : fontKind === "inter" ? interFamily : systemFamily
+    readonly property string fontDisplay: fontKind === "sf" ? "SF Pro Display"
+                                        : fontKind === "inter" && interFamily === "Inter" && hasFont("Inter Display") ? "Inter Display"
+                                        : fontText
+    // SF Pro Rounded only beside SF Pro; elsewhere numerals are the text face.
+    readonly property bool roundedFace: fontKind === "sf" && hasFont("SF Pro Rounded")
+    readonly property string fontRounded: roundedFace ? "SF Pro Rounded" : fontText
     readonly property string fontUi: fontText          // older name, same face
     readonly property string fontGlyph: "Symbols Nerd Font"
-    readonly property string fontMono: "SF Mono"           // code and raw text
+    readonly property string fontMono: hasFont("SF Mono") ? "SF Mono" : "monospace"   // code and raw text
+    // A variable Inter without its static Display cut: optical size goes
+    // through the opsz axis (Label sets it).
+    readonly property bool fontOpszAxis: fontKind === "inter" && fontDisplay === fontText
 
-    // Apple's SF weights
+    // Apple's SF weights (Inter's nearest instances are 400/500/600/700)
     readonly property int wRegular: 400
     readonly property int wMedium: 510
     readonly property int wSemibold: 590
     readonly property int wBold: 700
 
-    // Tracking (px) by size, from the fonts' own `trak` tables (track 0,
-    // 1/2048 em per point size), which macOS applies and Qt doesn't.
+    // Tracking (px) by size, from SF Pro's own `trak` tables (track 0,
+    // 1/2048 em per point size), which macOS applies and Qt doesn't. Only for
+    // SF Pro: they were measured for it, and Inter's spacing is per optical size.
     readonly property var trakSizes:   [6, 9, 10, 11, 12, 13, 14, 15, 16, 17, 20, 22, 24, 28, 32, 36, 50, 64, 80]
     readonly property var trakPro:     [82, 38, 24, 12, 0, -12, -22, -32, -40, -52, -46, -24, 6, 28, 26, 21, 14, 7, 0]
     readonly property var trakRounded: [174, 130, 116, 104, 92, 80, 70, 60, 52, 45, 37, 32, 29, 26, 24, 22, 14, 6, 0]
     function tracking(px, rounded) {
-        const xs = trakSizes, ys = rounded ? trakRounded : trakPro;
+        if (fontKind !== "sf") return 0;
+        const xs = trakSizes, ys = rounded && roundedFace ? trakRounded : trakPro;
         let v = ys[ys.length - 1];
         if (px <= xs[0]) v = ys[0];
         else for (let k = 1; k < xs.length; k++) {
@@ -269,9 +300,30 @@ Singleton {
         return v / 2048 * px;
     }
     // Three optical sizes, not one per pixel size: every distinct value is its
-    // own font face with its own glyph cache (and its own mapping of the 20 MB
-    // variable font). Text 17 up to 19 px, a middle cut, Display from 25 px.
-    function opszFor(px) { return px < 20 ? 17 : px < 25 ? 22 : 28; }
+    // own font face with its own glyph cache (and its own mapping of the
+    // variable font). SF Pro: Text 17 up to 19 px, a middle cut, Display from
+    // 25 px. Inter (opsz 14–32): text 14, the same middle, display 32.
+    function opszFor(px) {
+        if (fontKind === "inter") return px < 20 ? 14 : px < 25 ? 22 : 32;
+        return px < 20 ? 17 : px < 25 ? 22 : 28;
+    }
+    readonly property var noAxes: ({})
+    // What Label sets on font.variableAxes: the optical size where only the
+    // axis can give it (a variable Inter), nothing otherwise.
+    function axesFor(px) { return fontOpszAxis ? { "opsz": opszFor(px) } : noAxes; }
+    // The same with a weight, for text that sets its own (TextMorph, RollingNumber).
+    function axesWeight(px, w) { return fontOpszAxis ? { "opsz": opszFor(px), "wght": w } : { "wght": w }; }
+    // Numerals' OpenType features. Rounded: SF Pro Rounded is its own face;
+    // Inter's nearest is its open digits (ss01: 6, 9, 4 open). Tabular for
+    // anything that changes in place (clocks, levels, counts).
+    readonly property var featTabular: ({ "tnum": 1 })
+    readonly property var featOpen: ({ "ss01": 1 })
+    readonly property var featOpenTabular: ({ "ss01": 1, "tnum": 1 })
+    readonly property var noFeatures: ({})
+    function numeralFeatures(rounded, tabular) {
+        if (rounded && fontKind === "inter") return tabular ? featOpenTabular : featOpen;
+        return tabular ? featTabular : noFeatures;
+    }
 
     // ── Motion ───────────────────────────────────────────────────────────
     // Curves (Emil Kowalski's strong curves; Qt's built-ins are too weak):

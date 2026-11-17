@@ -202,10 +202,10 @@ Scope {
                         Text {
                             textFormat: Text.PlainText
                             text: Dates.clock(face.now)
-                            font.family: Theme.fontRounded || Theme.fontText
+                            font.family: Theme.fontRounded
                             font.pixelSize: Math.round(win.height * 0.13)
                             font.weight: Font.Light
-                            font.features: ({ "tnum": 1 })
+                            font.features: Theme.numeralFeatures(true, true)
                             color: Qt.rgba(1, 1, 1, 0.92)
                         }
                         Text {
