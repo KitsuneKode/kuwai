@@ -111,11 +111,11 @@ opens the panel where you act on it.
 
 ## Look
 
-- **Kuwai Night** (`bin/kuwai-theme install --apply`): colour only — hairline
-  window borders like the island's rim, the shell's palette in kitty and
-  ghostty — your GTK theme, icons and font kept. Its wallpapers are
-  public-domain paintings (Whistler, Inness, Turner, Diaz; Art Institute of
-  Chicago, CC0), fetched and upscaled on install; credits beside them.
+- **Kuwai Night** (`bin/kuwai-theme install --apply`): sixteen dark and dim
+  photographs (night ridges, blue dunes, fog, mono peaks) and hairline window
+  borders like the island's rim; your GTK theme, icons, font and terminal
+  colours are kept. The photos are downloaded from Panacea's collection (each
+  belongs to its photographer; see the theme's CREDITS.txt), not shipped here.
 - **Wallpaper changes grow out of the island** (`services/WallFx.qml`,
   `shaders/wallreveal.frag`): the new picture spreads from the notch with a
   liquid-glass front, on a layer that exists only while it plays.
