@@ -131,7 +131,7 @@ Item {
             spacing: 6
             opacity: Math.max(0, Math.min(1, (t.value - 0.5) / 0.4))
             readonly property color c: ql.isColor && ql.entry ? ql.panel.colorOf(ql.entry.preview) : "black"
-            readonly property color ink: (0.299 * c.r + 0.587 * c.g + 0.114 * c.b) > 0.6 ? "#111114" : "white"
+            readonly property color ink: (0.299 * c.r + 0.587 * c.g + 0.114 * c.b) > 0.6 ? Theme.inkOnLight : "white"
             Repeater {
                 model: ql.isColor ? ql.panel.colorValues(parent.c) : []
                 Label {

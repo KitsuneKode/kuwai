@@ -133,7 +133,7 @@ Item {
                 smooth: true
                 mipmap: true
                 opacity: status === Image.Ready ? 1 : 0
-                Behavior on opacity { NumberAnimation { duration: 140 } }
+                Behavior on opacity { NumberAnimation { duration: Theme.quickMs } }
             }
             Skeleton { anchors.fill: parent; radius: 13; visible: card.e && card.e.kind === "image" && img.status !== Image.Ready }
 
@@ -196,7 +196,7 @@ Item {
                 size: 13
                 weight: Theme.wSemibold
                 font.family: Theme.fontMono
-                color: (0.299 * c.r + 0.587 * c.g + 0.114 * c.b) > 0.6 ? "#111114" : "white"
+                color: (0.299 * c.r + 0.587 * c.g + 0.114 * c.b) > 0.6 ? Theme.inkOnLight : "white"
             }
 
             // Link: domain big, path small.

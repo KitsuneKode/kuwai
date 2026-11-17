@@ -93,8 +93,8 @@ FocusScope {
                             id: chipRow
                             anchors.centerIn: parent
                             spacing: 6
-                            Label { anchors.verticalCenter: parent.verticalCenter; text: chip.modelData.label; size: 12; weight: chip.on ? Theme.wSemibold : Theme.wMedium; color: chip.on ? "#111114" : Theme.textPrimary }
-                            Label { visible: !!chip.modelData.sub; anchors.verticalCenter: parent.verticalCenter; text: chip.modelData.sub || ""; size: 11; color: chip.on ? "#55555c" : Theme.textTertiary }
+                            Label { anchors.verticalCenter: parent.verticalCenter; text: chip.modelData.label; size: 12; weight: chip.on ? Theme.wSemibold : Theme.wMedium; color: chip.on ? Theme.inkOnLight : Theme.textPrimary }
+                            Label { visible: !!chip.modelData.sub; anchors.verticalCenter: parent.verticalCenter; text: chip.modelData.sub || ""; size: 11; color: chip.on ? Qt.alpha(Theme.inkOnLight, 0.7) : Theme.textTertiary }
                         }
                         MouseArea { id: chipArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: setup[line.modelData.key] = chip.modelData.id }
                     }

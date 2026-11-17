@@ -327,7 +327,7 @@ Scope {
         const to = listView.contentX;
         if (Math.abs(to - from) > 1 && !Theme.reduceMotion) { listView.contentX = from; shelfGlide.to = to; shelfGlide.restart(); }
     }
-    NumberAnimation { id: shelfGlide; target: root.listView; property: "contentX"; duration: 140; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+    NumberAnimation { id: shelfGlide; target: root.listView; property: "contentX"; duration: Theme.glideMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
     // Where you were last time (the item selected when it closed): ⌥← returns there.
     property string lastKey: ""
     function backToLast() { if (lastKey && entries.some(r => r.key === lastKey)) selKey = lastKey; }
@@ -647,7 +647,7 @@ Scope {
 
     // Reveal clock for the cards' rise.
     property real clock: 1000
-    NumberAnimation { id: clockRun; target: root; property: "clock"; from: 0; to: 500; duration: 500 }
+    NumberAnimation { id: clockRun; target: root; property: "clock"; from: 0; to: Theme.revealClockMs; duration: Theme.revealClockMs }
     function reveal(ms) {
         if (Theme.reduceMotion) return 1;
         const k = Math.max(0, Math.min(1, (clock - ms - 90) / 160));
@@ -882,7 +882,7 @@ Scope {
                             onFChanged: requestPaint()
                             onPaint: {
                                 const c = getContext("2d"); c.reset();
-                                c.strokeStyle = "#ff453a"; c.lineWidth = 2; c.lineCap = "round";
+                                c.strokeStyle = Theme.red; c.lineWidth = 2; c.lineCap = "round";
                                 c.beginPath(); c.arc(13, 13, 12, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0.02, f)); c.stroke();
                             }
                         }
@@ -1221,7 +1221,7 @@ Scope {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: root.query ? "\u{f0349}" : "\u{f014c}"
                     font.family: Theme.fontGlyph
-                    font.pixelSize: 28
+                    font.pixelSize: Theme.glyphXL
                     color: Theme.textTertiary
                 }
                 Label {
@@ -1312,7 +1312,7 @@ Scope {
                 scale: root.status || Theme.reduceMotion ? 1 : 0.96
                 z: 20
                 Behavior on opacity { NumberAnimation { duration: root.status ? 140 : 100; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
-                Behavior on scale { NumberAnimation { duration: 140; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+                Behavior on scale { NumberAnimation { duration: Theme.microMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                 Label { id: statusLabel; anchors.centerIn: parent; text: root.status; size: 12; weight: Theme.wMedium; color: root.confirmWipe ? Theme.red : Theme.textPrimary }
             }
 
