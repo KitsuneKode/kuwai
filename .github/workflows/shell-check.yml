@@ -15,7 +15,7 @@ jobs:
     container: archlinux:latest
     steps:
       - name: Tools
-        run: pacman -Syu --noconfirm --needed python python-pytest ripgrep lua qt6-declarative bash git jq
+        run: pacman -Syu --noconfirm --needed python python-pytest ripgrep lua qt6-declarative bash git jq ffmpeg
       - uses: actions/checkout@v4
       - name: QML syntax (every file)
         run: |

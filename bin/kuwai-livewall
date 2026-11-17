@@ -36,6 +36,55 @@ LAST="$STATE_DIR/last"       # last played file
 ENABLED="$STATE_DIR/enabled" # flag: live walls wanted across boots/themes
 MPV_OPTS="no-audio loop hwdec=auto panscan=1.0 input-ipc-server=$SOCK_PREFIX.sock"
 
+# ── A copy the GPU can decode ───────────────────────────────────────────────
+# `playable FILE` prints the file the shell should play. Many loops from the
+# web are H.264 in 4:4:4 colour (yuv444p): no GPU decodes that, so the shell's
+# two players (one per screen) decoded in software and held the frames
+# themselves: 739–1111 MB in the shell with one 1440p loop, measured
+# 2026-11-18 (24 of the owner's 30 loops were 4:4:4). For such a file a 4:2:0
+# copy is made once, in the background, in the cache; the original plays until
+# it is ready, then `last` is written again so the shell switches to the copy.
+# A file that is already fine is printed as it is, and nothing is made.
+LIVE_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/kuwai/live"
+playable() {
+    local f=$1 fmt codec key out
+    [ -f "$f" ] || { printf '%s\n' "$f"; return 0; }
+    command -v ffprobe >/dev/null && command -v ffmpeg >/dev/null || { printf '%s\n' "$f"; return 0; }
+    fmt=$(ffprobe -v error -select_streams v:0 -show_entries stream=pix_fmt -of csv=p=0 -- "$f" 2>/dev/null | head -n 1)
+    codec=$(ffprobe -v error -select_streams v:0 -show_entries stream=codec_name -of csv=p=0 -- "$f" 2>/dev/null | head -n 1)
+    case "$codec:$fmt" in
+        h264:yuv420p|h264:yuvj420p|hevc:yuv420p|hevc:yuvj420p|hevc:yuv420p10le|av1:yuv420p|av1:yuv420p10le|vp9:yuv420p) printf '%s\n' "$f"; return 0 ;;
+        :*|*:) printf '%s\n' "$f"; return 0 ;;            # couldn't read it: play it as it is
+    esac
+    # The copy's name follows the file's path, size and date: a changed file gets a new copy.
+    key=$(printf '%s|%s' "$f" "$(stat -c '%s|%Y' -- "$f" 2>/dev/null)" | sha1sum | cut -c1-20)
+    out="$LIVE_CACHE/$key.mp4"
+    if [ -s "$out" ]; then printf '%s\n' "$out"; return 0; fi
+    printf '%s\n' "$f"
+    mkdir -p "$LIVE_CACHE" || return 0
+    # One at a time per file; the lock is held by the job, gone when it ends.
+    (
+        exec 9>"$out.lock"
+        flock -n 9 || exit 0
+        [ -s "$out" ] && exit 0
+        enc="-c:v libx264 -preset veryfast -crf 20"
+        ffmpeg -hide_banner -encoders 2>/dev/null | grep -q ' h264_nvenc ' && enc="-c:v h264_nvenc -preset p5 -rc vbr -cq 23 -b:v 0"
+        # At most 1440 lines (what a wallpaper is shown at here), even sizes, no sound, starts fast.
+        # shellcheck disable=SC2086  # $enc is a fixed list of options from the two lines above
+        if nice -n 19 ffmpeg -nostdin -hide_banner -loglevel error -y -i "$f" -an $enc -pix_fmt yuv420p \
+                -vf "scale=-2:'min(1440,ih)'" -movflags +faststart -f mp4 "$out.part" 2>/dev/null \
+           && [ -s "$out.part" ]; then
+            mv -f -- "$out.part" "$out"
+            # Still the pick: say so again, and the shell (which watches `last`) asks once more.
+            [ "$(cat "$LAST" 2>/dev/null)" = "$f" ] && printf '%s' "$f" > "$LAST"
+        else
+            rm -f -- "$out.part"
+        fi
+        rm -f -- "$out.lock"
+    ) </dev/null >/dev/null 2>&1 &
+    disown 2>/dev/null || true
+}
+
 notify() { command -v notify-send >/dev/null && notify-send -a "󰸉 Live Wallpaper" "$1" || true; }
 
 is_video() { case "$1" in *.mp4|*.MP4|*.webm|*.mkv|*.mov) return 0;; *) return 1;; esac; }
@@ -163,6 +212,7 @@ case "${1:-toggle}" in
     resume)  resume ;;
     stop)    stop ;;
     watch)   watch ;;
+    playable) playable "${2:?usage: $0 playable <file>}" ;;
     first)   # Quickshell seed — remembered pick wins, else first of merged library
         pick=$(cat "$LAST" 2>/dev/null || true)
         if [ -n "$pick" ] && [ -f "$pick" ] && is_video "$pick"; then
@@ -171,5 +221,5 @@ case "${1:-toggle}" in
             files | head -1
         fi ;;
     status)  is_running && echo "playing in: $(library)" || echo "off" ;;
-    *)       echo "usage: $0 {toggle|next|play <file>|resume|stop|status}" ;;
+    *)       echo "usage: $0 {toggle|next|play <file>|resume|stop|status|playable <file>}" ;;
 esac

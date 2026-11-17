@@ -27,13 +27,44 @@ Scope {
     property string video: ""
     property bool locked: false
 
+    // `last` names the loop you picked; what plays is what kuwai-livewall
+    // says is playable: the loop itself, or its 4:2:0 copy once one exists (a
+    // 4:4:4 loop can't be decoded by the GPU: two players decoding it in
+    // software held 739–1111 MB inside the shell). The script writes `last`
+    // again when a copy is ready, so this asks once more and switches to it.
+    property string picked: ""
+    onPickedChanged: resolve()
+    function resolve() {
+        if (picked === "") { video = ""; return; }
+        if (playable.running) { playable.again = true; return; }
+        playable.asked = picked;
+        playable.command = [Paths.bin + "/kuwai-livewall", "playable", picked];
+        playable.running = true;
+    }
+    Process {
+        id: playable
+        property string asked: ""
+        property bool again: false
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const p = text.trim();
+                // Only for the pick it was asked about (a newer pick asks again below).
+                if (playable.asked === root.picked) root.video = p !== "" ? p : root.picked;
+            }
+        }
+        onExited: (code, status) => {
+            if (code !== 0 && asked === root.picked) root.video = root.picked;   // the script failed: play the loop as it is
+            if (again || asked !== root.picked) { again = false; root.resolve(); }
+        }
+    }
     FileView {
         path: root.stateDir + "/live-wallpaper/last"
         watchChanges: true
         printErrors: false
         onFileChanged: reload()
-        onLoaded: root.video = text().trim()
-        onLoadFailed: root.video = ""
+        // The same pick written again (a copy became ready) asks again too.
+        onLoaded: { const f = text().trim(); if (f === root.picked) root.resolve(); else root.picked = f; }
+        onLoadFailed: root.picked = ""
     }
     // The lock screen's flag (modules/lock): present while locked.
     FileView {
