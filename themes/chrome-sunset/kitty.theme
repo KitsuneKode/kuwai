@@ -1,0 +1,51 @@
+$HOME/.config/kitty/theme.conf|killall -SIGUSR1 kitty
+# vim:ft=kitty
+
+## name: Chrome Sunset
+## author: kuwai
+## license: GPL-3.0-or-later
+## blurb: Hot pink and chrome over a purple dusk: synthwave, city pop and retro cars.
+
+foreground                      #f0e4f2
+background                      #120a1c
+selection_foreground            #f0e4f2
+selection_background            #4a1f55
+cursor                          #ff3fb0
+cursor_text_color               #120a1c
+url_color                       #ff3fb0
+active_tab_foreground           #120a1c
+active_tab_background           #ff3fb0
+inactive_tab_foreground         #7d6a95
+inactive_tab_background         #120a1c
+
+#: black
+color0  #1d1230
+color8  #7d6a95
+
+#: red
+color1  #ff5c70
+color9  #ff8794
+
+#: green
+color2  #7be0b0
+color10  #a2f0cc
+
+#: yellow
+color3  #ffc857
+color11  #ffdc88
+
+#: blue
+color4  #ff3fb0
+color12  #ff7acb
+
+#: magenta
+color5  #b98cff
+color13  #d0b0ff
+
+#: cyan
+color6  #4dd8f0
+color14  #8fe8f8
+
+#: white
+color7  #d9c9e0
+color15  #faf0fc

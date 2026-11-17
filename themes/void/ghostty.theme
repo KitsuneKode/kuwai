@@ -1,0 +1,31 @@
+$HOME/.config/ghostty/themes/hyde-active
+# Generated from the kitty palette beside it.
+
+## name: Void
+## author: kuwai
+## license: GPL-3.0-or-later
+## blurb: Near-black and nothing else, one ice-blue accent. For the dark minimal wallpapers.
+
+foreground = #e4e4e7
+background = #0a0a0c
+selection-foreground = #e4e4e7
+selection-background = #26324d
+cursor-color = #8ab4ff
+cursor-text = #0a0a0c
+
+palette = 0=#131316
+palette = 1=#f27c7c
+palette = 2=#8fd19e
+palette = 3=#e5c27a
+palette = 4=#8ab4ff
+palette = 5=#b79bf0
+palette = 6=#7fd3d9
+palette = 7=#c4c4ca
+palette = 8=#5f5f68
+palette = 9=#ff9a9a
+palette = 10=#aee6ba
+palette = 11=#f3d89b
+palette = 12=#adc9ff
+palette = 13=#cdb8f7
+palette = 14=#a2e6ea
+palette = 15=#f5f5f7

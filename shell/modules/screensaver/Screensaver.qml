@@ -55,17 +55,22 @@ Scope {
         onLoaded: root.video = text().trim()
     }
     readonly property bool useVideo: video !== "" && (!UPower.onBattery || Settings.liveOnBattery)
-    readonly property string style: Settings.screensaverStyle || "dusk"   // dusk · night · live · still
+    readonly property string style: Settings.screensaverStyle || "dusk"   // dusk · borealis · night · live · still
     // Night: a dark film from ~/.local/share/kuwai/screensavers (seamless
     // half-speed loops, ~3–7 Mbit/s: cheap to decode, made by kuwai's setup).
     readonly property string clipDir: Quickshell.env("HOME") + "/.local/share/kuwai/screensavers"
     readonly property string clip: clipDir + "/" + (Settings.screensaverClip || "smoke-soft") + ".mp4"
-    property bool clipFailed: false      // this session only: Dusk instead
+    // The film didn't start (the file is missing, or the player died): Dusk instead, for this
+    // showing only. It was for the whole session: one failure (a film folder that wasn't
+    // there yet) kept Dusk on screen after the film was back and the setting had been
+    // changed to it again, which looked like the setting doing nothing.
+    property bool clipFailed: false
     onClipChanged: clipFailed = false
+    onStyleChanged: clipFailed = false
     // The screen you were on when it came up: the one Live plays on.
     property string mainScreen: ""
     onShowingChanged: {
-        if (showing) mainScreen = Screens.focusedName;
+        if (showing) { mainScreen = Screens.focusedName; clipFailed = false; }
         Saver.showing = showing;
         if (!showing && Dim.wanted) Dim.up();
     }
@@ -93,7 +98,13 @@ Scope {
         // any exit while the film should be up is a failure: Dusk instead.
         // Our own SIGKILL (the screensaver going, a restart) isn't a failure:
         // counting it latched Night off to Dusk for the rest of the session.
-        onExited: { if (!root.killing && root.filmUp && root.style === "night") root.clipFailed = true; root.killing = false; }
+        onExited: {
+            if (!root.killing && root.filmUp && root.style === "night") {
+                console.warn("screensaver: the film", root.clip, "didn't start; Dusk instead");
+                root.clipFailed = true;
+            }
+            root.killing = false;
+        }
     }
     // ── Dim after a while: ten minutes in, every screen down (services/Dim),
     // back where it was on wake.
@@ -164,8 +175,10 @@ Scope {
                     Loader {
                         anchors.fill: parent
                         active: !stage.filmHere && !stage.stillHere && !stage.night
-                        sourceComponent: DuskScene { running: root.showing }
+                        sourceComponent: root.style === "borealis" ? borealisC : duskC
                     }
+                    Component { id: duskC; DuskScene { running: root.showing } }
+                    Component { id: borealisC; BorealisScene { running: root.showing } }
                     Image {
                         visible: stage.stillHere
                         anchors.fill: parent

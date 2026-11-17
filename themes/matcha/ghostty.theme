@@ -1,0 +1,31 @@
+$HOME/.config/ghostty/themes/hyde-active
+# Generated from the kitty palette beside it.
+
+## name: Matcha
+## author: kuwai
+## license: GPL-3.0-or-later
+## blurb: Soft green on a deep forest night. For cosy, cute and Ghibli-style scenes.
+
+foreground = #e3eee3
+background = #0c130f
+selection-foreground = #e3eee3
+selection-background = #24442e
+cursor-color = #8fe3a2
+cursor-text = #0c130f
+
+palette = 0=#131c16
+palette = 1=#f07f7f
+palette = 2=#b4e06a
+palette = 3=#ecd48a
+palette = 4=#8fe3a2
+palette = 5=#c9a0e8
+palette = 6=#72d6d0
+palette = 7=#c9d6c9
+palette = 8=#637a6b
+palette = 9=#ff9a9a
+palette = 10=#cdf08a
+palette = 11=#f6e5a8
+palette = 12=#aef0bd
+palette = 13=#dcbdf2
+palette = 14=#9ae8e2
+palette = 15=#f1faf1

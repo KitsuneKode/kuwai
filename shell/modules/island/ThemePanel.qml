@@ -42,7 +42,7 @@ FocusScope {
             }
         }
     }
-    // Screensavers: Dusk (drawn live), every film in the folder (drop an .mp4
+    // Screensavers: Dusk and Borealis (drawn live), every film in the folder (drop an .mp4
     // in, it's listed), your live wallpaper, or the still one. ↵ uses it,
     // P shows it now. Settings → Screensaver has when and after how long.
     readonly property string saverDir: Quickshell.env("HOME") + "/.local/share/kuwai/screensavers"
@@ -62,7 +62,8 @@ FocusScope {
     readonly property var saverItems: {
         const st = Settings.screensaverStyle || "dusk", clip = Settings.screensaverClip || "smoke-soft";
         const liveThumb = (live.find(x => x.current) || {}).thumb || "";
-        return [{ name: "Dusk", style: "dusk", thumb: saverDir + "/dusk.jpg", current: st === "dusk" }]
+        return [{ name: "Dusk", style: "dusk", thumb: saverDir + "/dusk.jpg", current: st === "dusk" },
+                { name: "Borealis", style: "borealis", thumb: Quickshell.shellDir + "/assets/screensaver/borealis.jpg", current: st === "borealis" }]
             .concat(clips.map(c => ({ name: "Night · " + clipName(c), style: "night", clip: c, thumb: saverDir + "/" + c + ".jpg", current: st === "night" && clip === c })))
             .concat([{ name: "Live wallpaper", style: "live", thumb: liveThumb, current: st === "live" },
                      { name: "Still wallpaper", style: "still", thumb: Quickshell.env("HOME") + "/.cache/hyde/wall.set", current: st === "still" }]);

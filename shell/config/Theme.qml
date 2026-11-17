@@ -470,6 +470,19 @@ Singleton {
         clouds: ["#e9b8c8", "#d9a0b8", "#c8b8e8"], meteor: "#fffbe8",
         farHills: "#6a4a7e", midHills: "#3d2c5a", town: "#2a1f42", ground: "#160f26", window: "#ffd38a"
     })
+    // Borealis (the second drawn screensaver, modules/screensaver/BorealisScene): curtains of
+    // light in the theme's own accent over a near-black sky and a ridge. The sky and ridge are
+    // fixed; the curtains take Theme.accent and a hue either side of it.
+    readonly property int borealisSwayMs: 26000    // a curtain drifting one way (it eases back the same time)
+    readonly property int borealisPulseMs: 15000   // a curtain's brightness breathing, each way
+    readonly property int borealisRays: 110        // rays per curtain (a curtain is drawn once, then only moved)
+    readonly property int borealisStarSize: 4      // a star's size (px; ±3)
+    readonly property real borealisFallbackHue: 0.45   // a grey accent has no hue: a green-teal one
+    readonly property real borealisMinSat: 0.62    // …and a pale accent is made vivid enough to read as light
+    readonly property var borealisPalette: ({
+        sky: ["#02050a", "#05101a", "#0a1f2a"], star: "#e8f4ff",
+        farRidge: "#07141c", ridge: "#030a0f", rim: "#10303c"
+    })
     // One undo window for everything that can be taken back: "Cleared N ·
     // Undo" after clearing notifications, "Deleted · ⌃Z to undo" after
     // deleting a copy. Long enough to notice and reach (Material's snackbar:

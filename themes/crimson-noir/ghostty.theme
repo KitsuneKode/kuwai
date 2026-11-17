@@ -1,0 +1,31 @@
+$HOME/.config/ghostty/themes/hyde-active
+# Generated from the kitty palette beside it.
+
+## name: Crimson Noir
+## author: kuwai
+## license: GPL-3.0-or-later
+## blurb: Crimson on near-black, a gothic noir. For dark anime and manhwa art.
+
+foreground = #ece2e4
+background = #120a0d
+selection-foreground = #ece2e4
+selection-background = #4a1f2b
+cursor-color = #ff4d6a
+cursor-text = #120a0d
+
+palette = 0=#1c1115
+palette = 1=#e5484d
+palette = 2=#8fcf9a
+palette = 3=#e8b86a
+palette = 4=#ff4d6a
+palette = 5=#c792ea
+palette = 6=#6fc7c0
+palette = 7=#d6c9cc
+palette = 8=#7a646b
+palette = 9=#ff7a8c
+palette = 10=#b0e3b8
+palette = 11=#f5d08e
+palette = 12=#ff8095
+palette = 13=#dcb0f2
+palette = 14=#96ddd7
+palette = 15=#f8f0f1

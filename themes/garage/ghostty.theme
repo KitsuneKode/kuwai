@@ -1,0 +1,31 @@
+$HOME/.config/ghostty/themes/hyde-active
+# Generated from the kitty palette beside it.
+
+## name: Garage
+## author: kuwai
+## license: GPL-3.0-or-later
+## blurb: Tail-light orange on graphite. For the cars.
+
+foreground = #e6e1da
+background = #121212
+selection-foreground = #e6e1da
+selection-background = #3a2a24
+cursor-color = #ff5a3c
+cursor-text = #121212
+
+palette = 0=#1a1a1a
+palette = 1=#e8485a
+palette = 2=#9bbf6a
+palette = 3=#f0b24a
+palette = 4=#ff5a3c
+palette = 5=#c58fc9
+palette = 6=#6ec1b3
+palette = 7=#cfc9c0
+palette = 8=#6a655f
+palette = 9=#ff6577
+palette = 10=#b9d98a
+palette = 11=#ffcb6e
+palette = 12=#ff8466
+palette = 13=#dcaee0
+palette = 14=#93d9cc
+palette = 15=#f5f1ea

@@ -837,10 +837,11 @@ FocusScope {
                 SettingsRow {
                     key: "screensaverStyle"
                     label: "Look"; detail: Settings.screensaverStyle === "dusk" ? "A slow dusk sky with drifting petals"
+                        : Settings.screensaverStyle === "borealis" ? "Northern lights in your theme's colour over a night sky"
                         : Settings.screensaverStyle === "night" ? "A dark film on the screen you were using; black on the others"
                         : Settings.screensaverStyle === "live" ? "Your live wallpaper, full screen" : "Your wallpaper, still, with the time"
                     Segmented {
-                        options: [{ id: "dusk", label: "Dusk" }, { id: "night", label: "Night" }, { id: "live", label: "Live" }, { id: "still", label: "Still" }]
+                        options: [{ id: "dusk", label: "Dusk" }, { id: "borealis", label: "Borealis" }, { id: "night", label: "Night" }, { id: "live", label: "Live" }, { id: "still", label: "Still" }]
                         current: Settings.screensaverStyle
                         onPicked: id => Settings.set("screensaverStyle", id)
                     }

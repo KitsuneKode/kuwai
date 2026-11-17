@@ -1,0 +1,51 @@
+$HOME/.config/kitty/theme.conf|killall -SIGUSR1 kitty
+# vim:ft=kitty
+
+## name: Neon District
+## author: kuwai
+## license: GPL-3.0-or-later
+## blurb: Cyan and magenta neon over an ink-blue night street. For cyberpunk and anime cities.
+
+foreground                      #dfe6f5
+background                      #0a0c16
+selection_foreground            #dfe6f5
+selection_background            #1f2a55
+cursor                          #3ee6ff
+cursor_text_color               #0a0c16
+url_color                       #3ee6ff
+active_tab_foreground           #0a0c16
+active_tab_background           #3ee6ff
+inactive_tab_foreground         #5a6590
+inactive_tab_background         #0a0c16
+
+#: black
+color0  #12152a
+color8  #5a6590
+
+#: red
+color1  #ff5c8a
+color9  #ff86a8
+
+#: green
+color2  #5af2a6
+color10  #8dffc4
+
+#: yellow
+color3  #ffd86b
+color11  #ffe89a
+
+#: blue
+color4  #3ee6ff
+color12  #8af0ff
+
+#: magenta
+color5  #ff4fd8
+color13  #ff86e6
+
+#: cyan
+color6  #7ad0ff
+color14  #a8dcff
+
+#: white
+color7  #c8d1e8
+color15  #f4f7ff

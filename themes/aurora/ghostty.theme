@@ -1,0 +1,31 @@
+$HOME/.config/ghostty/themes/hyde-active
+# Generated from the kitty palette beside it.
+
+## name: Aurora
+## author: kuwai
+## license: GPL-3.0-or-later
+## blurb: Northern-lights teal on a deep green-black. For mountains and space.
+
+foreground = #dcebe8
+background = #0a1214
+selection-foreground = #dcebe8
+selection-background = #1c4046
+cursor-color = #5eead4
+cursor-text = #0a1214
+
+palette = 0=#101b1e
+palette = 1=#f27f8a
+palette = 2=#7ee09f
+palette = 3=#e6d27a
+palette = 4=#5eead4
+palette = 5=#b496ee
+palette = 6=#6cc4f0
+palette = 7=#bcd2ce
+palette = 8=#58737a
+palette = 9=#ff9aa3
+palette = 10=#a0f0bc
+palette = 11=#f3e59c
+palette = 12=#8ff5e4
+palette = 13=#cdb8f5
+palette = 14=#96d4f7
+palette = 15=#f0fbf9

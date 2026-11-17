@@ -1,0 +1,51 @@
+$HOME/.config/kitty/theme.conf|killall -SIGUSR1 kitty
+# vim:ft=kitty
+
+## name: Pixel Dusk
+## author: kuwai
+## license: GPL-3.0-or-later
+## blurb: Amber and plum, like a pixel-art sunset. For pixel art and lofi.
+
+foreground                      #ece4d9
+background                      #16131f
+selection_foreground            #ece4d9
+selection_background            #40304d
+cursor                          #ffb86b
+cursor_text_color               #16131f
+url_color                       #ffb86b
+active_tab_foreground           #16131f
+active_tab_background           #ffb86b
+inactive_tab_foreground         #6d6480
+inactive_tab_background         #16131f
+
+#: black
+color0  #1f1a2b
+color8  #6d6480
+
+#: red
+color1  #ff6b81
+color9  #ff90a0
+
+#: green
+color2  #9ad98a
+color10  #b8ecab
+
+#: yellow
+color3  #f2e08a
+color11  #fbf0ae
+
+#: blue
+color4  #ffb86b
+color12  #ffcf93
+
+#: magenta
+color5  #c79bea
+color13  #dcbbf5
+
+#: cyan
+color6  #7fd0d6
+color14  #a3e4e8
+
+#: white
+color7  #d4cabd
+color15  #f7f0e6

@@ -1,0 +1,31 @@
+$HOME/.config/ghostty/themes/hyde-active
+# Generated from the kitty palette beside it.
+
+## name: Violet Hour
+## author: kuwai
+## license: GPL-3.0-or-later
+## blurb: Moonlit violet over a deep indigo night. For elegant manhwa and moon-lit art.
+
+foreground = #e6e0f2
+background = #0e0b18
+selection-foreground = #e6e0f2
+selection-background = #33284f
+cursor-color = #b48cff
+cursor-text = #0e0b18
+
+palette = 0=#171226
+palette = 1=#f07a96
+palette = 2=#9ad9a8
+palette = 3=#ecd08e
+palette = 4=#b48cff
+palette = 5=#e59be8
+palette = 6=#7fcfe0
+palette = 7=#cdc6dc
+palette = 8=#716990
+palette = 9=#ff9ab2
+palette = 10=#b8ecc2
+palette = 11=#f7e2ac
+palette = 12=#cdb0ff
+palette = 13=#f2b8f2
+palette = 14=#a4e2ee
+palette = 15=#f5f1fb

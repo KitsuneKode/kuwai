@@ -3,7 +3,9 @@
 # island's Themes panel) find it, ~/.config/hyde/themes/<Name>.
 #
 # A kuwai theme is a wallpaper set and window borders (hairlines, like the
-# island's rim). Your GTK theme, icons, font and terminal colours are taken
+# island's rim), and, when themes/<theme>/ has them, its own terminal palette
+# (kitty.theme, ghostty.theme: the blue slot is the island's accent). Your GTK
+# theme, icons and font, and the palette of a theme without its own, are taken
 # from the theme you use now, so switching changes nothing else. The
 # wallpapers are downloaded (themes/<theme>/wallpapers.tsv: name, URL), not
 # shipped in the repo, and scaled to at most 3840 wide. Credits:
@@ -21,16 +23,19 @@ src="$ROOT/themes/$slug"
 name=$(printf '%s' "$slug" | sed -E 's/(^|-)([a-z])/\1\u\2/g; s/-/ /g')     # kuwai-night → Kuwai Night
 themes="${XDG_CONFIG_HOME:-$HOME/.config}/hyde/themes"
 dest="$themes/$name"
-cur=$(sed -n 's/^HYDE_THEME="\{0,1\}\([^"]*\)"\{0,1\}$/\1/p' "${XDG_STATE_HOME:-$HOME/.local/state}/hyde/staterc" 2>/dev/null | head -n1)
+cur=$(sed -n 's/^HYDE_THEME="\{0,1\}\([^"]*\)"\{0,1\}$/\1/p' "${XDG_STATE_HOME:-$HOME/.local/state}/hyde/staterc" 2>/dev/null | head -n1 || true)   # no HyDE state yet: no current theme
 mkdir -p "$dest/wallpapers"
 # Borders and palette ours; GTK, icons, colour scheme and font yours (from the current theme).
 if [ -n "$cur" ] && [ -f "$themes/$cur/hypr.theme" ] && [ "$cur" != "$name" ]; then
     awk -v cur="$themes/$cur/hypr.theme" 'BEGIN { while ((getline l < cur) > 0) if (l ~ /^\$(GTK_THEME|ICON_THEME|COLOR_SCHEME|FONT)/) keep[substr(l, 1, index(l, "=") - 1)] = l }
         /^\$(GTK_THEME|ICON_THEME|COLOR_SCHEME|FONT)/ { k = substr($0, 1, index($0, "=") - 1); if (k in keep) { print keep[k]; next } } { print }' "$src/hypr.theme" > "$dest/hypr.theme"
-    for f in rofi.theme waybar.theme kitty.theme ghostty.theme; do [ -f "$themes/$cur/$f" ] && cp "$themes/$cur/$f" "$dest/"; done
+    for f in rofi.theme waybar.theme kitty.theme ghostty.theme; do
+        if [ -f "$src/$f" ]; then cp "$src/$f" "$dest/"; elif [ -f "$themes/$cur/$f" ]; then cp "$themes/$cur/$f" "$dest/"; fi
+    done
     [ -d "$themes/$cur/kvantum" ] && cp -r "$themes/$cur/kvantum" "$dest/"
 else
     cp "$src/hypr.theme" "$dest/"
+    for f in kitty.theme ghostty.theme; do [ -f "$src/$f" ] && cp "$src/$f" "$dest/"; done
 fi
 cp "$src/CREDITS.txt" "$dest/wallpapers/"
 while IFS=$'\t' read -r file url; do
@@ -46,6 +51,11 @@ while IFS=$'\t' read -r file url; do
     fi
     rm -f "$tmp"
 done < "$src/wallpapers.tsv"
+# The Themes panel lists a theme once it has a wall.set (HyDE's link to the theme's wallpaper).
+if [ ! -e "$dest/wall.set" ]; then
+    first=$(find "$dest/wallpapers" -maxdepth 1 -type f \( -name '*.jpg' -o -name '*.png' \) | sort | head -n1)
+    [ -n "$first" ] && ln -s "$first" "$dest/wall.set"
+fi
 echo "installed: $dest"
 [ $apply = 1 ] && exec "$ROOT/bin/kuwai-themes" theme "$name" --wait
 exit 0

@@ -1,0 +1,25 @@
+Garage wallpapers: cars, picked from wallhaven.cc's most-favourited safe-for-work
+wallpapers (2560x1440 or larger, a calm dark strip along the top for the island), checked by eye.
+Each belongs to its author; the page for each is below. kuwai does not ship them:
+`kuwai-theme install` downloads them to your machine for personal use.
+
+  https://wallhaven.cc/w/wekp5x   3500x1961   ★449
+  https://wallhaven.cc/w/39em6d   3840x2160   ★415
+  https://wallhaven.cc/w/j5pr65   3840x2160   ★345
+  https://wallhaven.cc/w/ly93ry   3840x2160   ★318
+  https://wallhaven.cc/w/o5ov3l   3840x2160   ★308
+  https://wallhaven.cc/w/6o19el   3648x2052   ★289
+  https://wallhaven.cc/w/73kvg3   3840x2160   ★182
+  https://wallhaven.cc/w/zmelwg   3840x2160   ★129
+  https://wallhaven.cc/w/ey6xpo   3840x2160   ★82
+  https://wallhaven.cc/w/j3p8l5   2560x1440   ★69
+  https://wallhaven.cc/w/x8vg1d   2560x1440   ★65
+  https://wallhaven.cc/w/rrgomq   5120x2880   ★62
+  https://wallhaven.cc/w/2y1wy9   3840x2159   ★59
+  https://wallhaven.cc/w/lydd6r   5120x2880   ★191
+  https://wallhaven.cc/w/8x95oy   3840x2160   ★116
+  https://wallhaven.cc/w/g751v7   2560x1440   ★74
+  https://wallhaven.cc/w/ml3121   3840x2160   ★64
+  https://wallhaven.cc/w/ymg5gx   2560x1440   ★45
+  https://wallhaven.cc/w/yqeoqk   3840x2160   ★7
+  https://wallhaven.cc/w/rrk921   3840x2160   ★6

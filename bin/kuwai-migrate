@@ -2,7 +2,9 @@
 # kuwai-migrate: move what kuwai kept under its old name (rice) to kuwai. Safe to
 # run any number of times; kuwai-shell runs it before it starts the shell.
 #
-#   folders  ~/.local/state/rice, ~/.cache/rice, ~/.config/rice: each entry moves
+#   folders  ~/.local/state/rice, ~/.cache/rice, ~/.config/rice, ~/.local/share/rice
+#            (the screensaver films, clipboard pins, alarms, reminders, AUR
+#            recipes; ~/.local/share/kuwai is also the stable copy of the repo): each entry moves
 #            into the kuwai folder beside it (one that is already there wins and
 #            the old copy stays, said once), then the old folder becomes a link to
 #            the new one, so anything still reading the old path finds the data.
@@ -18,19 +20,14 @@ set -u
 ROOT=${KUWAI_ROOT:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}
 said() { printf 'kuwai-migrate: %s\n' "$*" >&2; }
 
-folder() {   # base
-    local old="$1/rice" new="$1/kuwai" e
-    [ -d "$old" ] && [ ! -L "$old" ] || return 0
-    mkdir -p "$new" || return 1
+merge() {   # OLD NEW: every entry of OLD goes into NEW, folders on both sides merge all the way down
+    local old="$1" new="$2" e n c
     for e in "$old"/* "$old"/.[!.]*; do
         [ -e "$e" ] || [ -L "$e" ] || continue
-        local n="$new/${e##*/}" c
+        n="$new/${e##*/}"
         if [ -d "$e" ] && [ ! -L "$e" ] && [ -d "$n" ] && [ ! -L "$n" ]; then
-            # The same folder on both sides: its entries that aren't there yet go over.
-            for c in "$e"/* "$e"/.[!.]*; do
-                [ -e "$c" ] || [ -L "$c" ] || continue
-                [ -e "$n/${c##*/}" ] || [ -L "$n/${c##*/}" ] || mv -- "$c" "$n/" 2>/dev/null
-            done
+            # The same folder on both sides: what isn't there yet goes over.
+            merge "$e" "$n"
             rmdir -- "$e" 2>/dev/null || said "kept $e: some of it is already in $n"
         elif [ "$(readlink -- "$n")" = "$e" ]; then
             :   # linked on an earlier run (not movable without root): nothing to say
@@ -43,6 +40,13 @@ folder() {   # base
             ln -s -- "$e" "$n" && said "linked $n to $e (not movable without root)"
         fi
     done
+}
+
+folder() {   # base
+    local old="$1/rice" new="$1/kuwai"
+    [ -d "$old" ] && [ ! -L "$old" ] || return 0
+    mkdir -p "$new" || return 1
+    merge "$old" "$new"
     if rmdir -- "$old" 2>/dev/null; then
         ln -s kuwai "$old" && said "moved $old to $new"
     fi
@@ -51,6 +55,7 @@ folder() {   # base
 folder "${XDG_STATE_HOME:-$HOME/.local/state}"
 folder "${XDG_CACHE_HOME:-$HOME/.cache}"
 folder "${XDG_CONFIG_HOME:-$HOME/.config}"
+folder "${XDG_DATA_HOME:-$HOME/.local/share}"
 
 if [ -n "${XDG_RUNTIME_DIR:-}" ]; then
     rt="$XDG_RUNTIME_DIR"

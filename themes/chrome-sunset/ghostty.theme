@@ -1,0 +1,31 @@
+$HOME/.config/ghostty/themes/hyde-active
+# Generated from the kitty palette beside it.
+
+## name: Chrome Sunset
+## author: kuwai
+## license: GPL-3.0-or-later
+## blurb: Hot pink and chrome over a purple dusk: synthwave, city pop and retro cars.
+
+foreground = #f0e4f2
+background = #120a1c
+selection-foreground = #f0e4f2
+selection-background = #4a1f55
+cursor-color = #ff3fb0
+cursor-text = #120a1c
+
+palette = 0=#1d1230
+palette = 1=#ff5c70
+palette = 2=#7be0b0
+palette = 3=#ffc857
+palette = 4=#ff3fb0
+palette = 5=#b98cff
+palette = 6=#4dd8f0
+palette = 7=#d9c9e0
+palette = 8=#7d6a95
+palette = 9=#ff8794
+palette = 10=#a2f0cc
+palette = 11=#ffdc88
+palette = 12=#ff7acb
+palette = 13=#d0b0ff
+palette = 14=#8fe8f8
+palette = 15=#faf0fc

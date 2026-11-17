@@ -1,0 +1,51 @@
+$HOME/.config/kitty/theme.conf|killall -SIGUSR1 kitty
+# vim:ft=kitty
+
+## name: Sakura Night
+## author: kuwai
+## license: GPL-3.0-or-later
+## blurb: Soft sakura pink on a violet-black night. For the anime wallpapers.
+
+foreground                      #e9e2ee
+background                      #15121b
+selection_foreground            #e9e2ee
+selection_background            #3a2d4a
+cursor                          #f5a9c8
+cursor_text_color               #15121b
+url_color                       #f5a9c8
+active_tab_foreground           #15121b
+active_tab_background           #f5a9c8
+inactive_tab_foreground         #6b6378
+inactive_tab_background         #15121b
+
+#: black
+color0  #1d1926
+color8  #6b6378
+
+#: red
+color1  #e8647f
+color9  #ff8ea5
+
+#: green
+color2  #a6d8a8
+color10  #c2ebc3
+
+#: yellow
+color3  #f1d59a
+color11  #fbe6b5
+
+#: blue
+color4  #f5a9c8
+color12  #ffc4dc
+
+#: magenta
+color5  #b99be8
+color13  #d3bdf5
+
+#: cyan
+color6  #86d3d6
+color14  #a7e6e6
+
+#: white
+color7  #cfc6d8
+color15  #f6f1f9

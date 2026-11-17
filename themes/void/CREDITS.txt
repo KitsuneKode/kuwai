@@ -1,0 +1,20 @@
+Void wallpapers: dark minimal and abstract art, picked from wallhaven.cc's most-favourited safe-for-work
+wallpapers (2560x1440 or larger, a calm dark strip along the top for the island), checked by eye.
+Each belongs to its author; the page for each is below. kuwai does not ship them:
+`kuwai-theme install` downloads them to your machine for personal use.
+
+  https://wallhaven.cc/w/mdjrqy   5120x2880   ★1061
+  https://wallhaven.cc/w/34xkv0   2560x1440   ★1012
+  https://wallhaven.cc/w/g8dm6e   3840x2160   ★832
+  https://wallhaven.cc/w/839zjk   3840x2160   ★812
+  https://wallhaven.cc/w/rrl1kj   5152x2898   ★317
+  https://wallhaven.cc/w/28xgd6   3840x2160   ★284
+  https://wallhaven.cc/w/o5j7v7   3840x2160   ★263
+  https://wallhaven.cc/w/28vzrg   3840x2160   ★255
+  https://wallhaven.cc/w/4ddzl4   2560x1440   ★224
+  https://wallhaven.cc/w/y8ov2k   3840x2160   ★223
+  https://wallhaven.cc/w/mlg7qm   3840x2160   ★222
+  https://wallhaven.cc/w/p8j56e   3840x2160   ★211
+  https://wallhaven.cc/w/73w26e   2560x1440   ★208
+  https://wallhaven.cc/w/n67rkq   2560x1600   ★206
+  https://wallhaven.cc/w/polllj   3840x2160   ★197

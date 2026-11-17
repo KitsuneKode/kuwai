@@ -1,0 +1,31 @@
+$HOME/.config/ghostty/themes/hyde-active
+# Generated from the kitty palette beside it.
+
+## name: Sakura Night
+## author: kuwai
+## license: GPL-3.0-or-later
+## blurb: Soft sakura pink on a violet-black night. For the anime wallpapers.
+
+foreground = #e9e2ee
+background = #15121b
+selection-foreground = #e9e2ee
+selection-background = #3a2d4a
+cursor-color = #f5a9c8
+cursor-text = #15121b
+
+palette = 0=#1d1926
+palette = 1=#e8647f
+palette = 2=#a6d8a8
+palette = 3=#f1d59a
+palette = 4=#f5a9c8
+palette = 5=#b99be8
+palette = 6=#86d3d6
+palette = 7=#cfc6d8
+palette = 8=#6b6378
+palette = 9=#ff8ea5
+palette = 10=#c2ebc3
+palette = 11=#fbe6b5
+palette = 12=#ffc4dc
+palette = 13=#d3bdf5
+palette = 14=#a7e6e6
+palette = 15=#f6f1f9

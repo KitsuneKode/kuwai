@@ -1,0 +1,51 @@
+$HOME/.config/kitty/theme.conf|killall -SIGUSR1 kitty
+# vim:ft=kitty
+
+## name: Aurora
+## author: kuwai
+## license: GPL-3.0-or-later
+## blurb: Northern-lights teal on a deep green-black. For mountains and space.
+
+foreground                      #dcebe8
+background                      #0a1214
+selection_foreground            #dcebe8
+selection_background            #1c4046
+cursor                          #5eead4
+cursor_text_color               #0a1214
+url_color                       #5eead4
+active_tab_foreground           #0a1214
+active_tab_background           #5eead4
+inactive_tab_foreground         #58737a
+inactive_tab_background         #0a1214
+
+#: black
+color0  #101b1e
+color8  #58737a
+
+#: red
+color1  #f27f8a
+color9  #ff9aa3
+
+#: green
+color2  #7ee09f
+color10  #a0f0bc
+
+#: yellow
+color3  #e6d27a
+color11  #f3e59c
+
+#: blue
+color4  #5eead4
+color12  #8ff5e4
+
+#: magenta
+color5  #b496ee
+color13  #cdb8f5
+
+#: cyan
+color6  #6cc4f0
+color14  #96d4f7
+
+#: white
+color7  #bcd2ce
+color15  #f0fbf9

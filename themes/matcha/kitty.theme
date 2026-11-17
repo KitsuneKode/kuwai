@@ -1,0 +1,51 @@
+$HOME/.config/kitty/theme.conf|killall -SIGUSR1 kitty
+# vim:ft=kitty
+
+## name: Matcha
+## author: kuwai
+## license: GPL-3.0-or-later
+## blurb: Soft green on a deep forest night. For cosy, cute and Ghibli-style scenes.
+
+foreground                      #e3eee3
+background                      #0c130f
+selection_foreground            #e3eee3
+selection_background            #24442e
+cursor                          #8fe3a2
+cursor_text_color               #0c130f
+url_color                       #8fe3a2
+active_tab_foreground           #0c130f
+active_tab_background           #8fe3a2
+inactive_tab_foreground         #637a6b
+inactive_tab_background         #0c130f
+
+#: black
+color0  #131c16
+color8  #637a6b
+
+#: red
+color1  #f07f7f
+color9  #ff9a9a
+
+#: green
+color2  #b4e06a
+color10  #cdf08a
+
+#: yellow
+color3  #ecd48a
+color11  #f6e5a8
+
+#: blue
+color4  #8fe3a2
+color12  #aef0bd
+
+#: magenta
+color5  #c9a0e8
+color13  #dcbdf2
+
+#: cyan
+color6  #72d6d0
+color14  #9ae8e2
+
+#: white
+color7  #c9d6c9
+color15  #f1faf1

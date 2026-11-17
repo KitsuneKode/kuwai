@@ -1,0 +1,51 @@
+$HOME/.config/kitty/theme.conf|killall -SIGUSR1 kitty
+# vim:ft=kitty
+
+## name: Crimson Noir
+## author: kuwai
+## license: GPL-3.0-or-later
+## blurb: Crimson on near-black, a gothic noir. For dark anime and manhwa art.
+
+foreground                      #ece2e4
+background                      #120a0d
+selection_foreground            #ece2e4
+selection_background            #4a1f2b
+cursor                          #ff4d6a
+cursor_text_color               #120a0d
+url_color                       #ff4d6a
+active_tab_foreground           #120a0d
+active_tab_background           #ff4d6a
+inactive_tab_foreground         #7a646b
+inactive_tab_background         #120a0d
+
+#: black
+color0  #1c1115
+color8  #7a646b
+
+#: red
+color1  #e5484d
+color9  #ff7a8c
+
+#: green
+color2  #8fcf9a
+color10  #b0e3b8
+
+#: yellow
+color3  #e8b86a
+color11  #f5d08e
+
+#: blue
+color4  #ff4d6a
+color12  #ff8095
+
+#: magenta
+color5  #c792ea
+color13  #dcb0f2
+
+#: cyan
+color6  #6fc7c0
+color14  #96ddd7
+
+#: white
+color7  #d6c9cc
+color15  #f8f0f1

@@ -348,6 +348,7 @@
       "default": "dusk",
       "enum": [
         "dusk",
+        "borealis",
         "night",
         "live",
         "still"
@@ -357,7 +358,7 @@
       "label": "Look",
       "detail": "",
       "group": "",
-      "searchTerms": "look  dusk night live still ",
+      "searchTerms": "look  dusk borealis aurora northern lights night live still ",
       "requires": [],
       "restartScope": "live"
     },

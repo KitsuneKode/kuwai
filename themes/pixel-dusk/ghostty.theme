@@ -1,0 +1,31 @@
+$HOME/.config/ghostty/themes/hyde-active
+# Generated from the kitty palette beside it.
+
+## name: Pixel Dusk
+## author: kuwai
+## license: GPL-3.0-or-later
+## blurb: Amber and plum, like a pixel-art sunset. For pixel art and lofi.
+
+foreground = #ece4d9
+background = #16131f
+selection-foreground = #ece4d9
+selection-background = #40304d
+cursor-color = #ffb86b
+cursor-text = #16131f
+
+palette = 0=#1f1a2b
+palette = 1=#ff6b81
+palette = 2=#9ad98a
+palette = 3=#f2e08a
+palette = 4=#ffb86b
+palette = 5=#c79bea
+palette = 6=#7fd0d6
+palette = 7=#d4cabd
+palette = 8=#6d6480
+palette = 9=#ff90a0
+palette = 10=#b8ecab
+palette = 11=#fbf0ae
+palette = 12=#ffcf93
+palette = 13=#dcbbf5
+palette = 14=#a3e4e8
+palette = 15=#f7f0e6

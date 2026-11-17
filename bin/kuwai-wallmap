@@ -47,6 +47,7 @@ def cutout(picture: Path):
     py = VENV / "bin" / "python"
     if not py.exists():
         return None
+    CACHE.mkdir(parents=True, exist_ok=True)   # the model saves into it before make() would have created it
     out = CACHE / (key(picture).stem + ".mask.png")
     if not out.exists():
         script = (

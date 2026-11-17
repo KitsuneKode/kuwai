@@ -1,0 +1,20 @@
+Aurora wallpapers: mountains, night skies and nebulae, picked from wallhaven.cc's most-favourited safe-for-work
+wallpapers (2560x1440 or larger, a calm dark strip along the top for the island), checked by eye.
+Each belongs to its author; the page for each is below. kuwai does not ship them:
+`kuwai-theme install` downloads them to your machine for personal use.
+
+  https://wallhaven.cc/w/5g22q5   3840x2160   ★1246
+  https://wallhaven.cc/w/nmmvvk   3840x2400   ★1136
+  https://wallhaven.cc/w/x8z9yo   5120x2880   ★1025
+  https://wallhaven.cc/w/4lgz32   3840x2400   ★903
+  https://wallhaven.cc/w/2yoo1m   3840x2160   ★843
+  https://wallhaven.cc/w/9mel2k   5120x3200   ★819
+  https://wallhaven.cc/w/4yxpl7   2560x1600   ★726
+  https://wallhaven.cc/w/zm6qmw   3840x2400   ★717
+  https://wallhaven.cc/w/2ero7g   2560x1440   ★572
+  https://wallhaven.cc/w/g83qpe   3840x2400   ★566
+  https://wallhaven.cc/w/4dz9ln   2560x1440   ★443
+  https://wallhaven.cc/w/28dqwx   5120x3200   ★402
+  https://wallhaven.cc/w/573kd1   3840x2160   ★386
+  https://wallhaven.cc/w/2eqpzm   3840x2400   ★380
+  https://wallhaven.cc/w/4ddk8g   5120x2880   ★295

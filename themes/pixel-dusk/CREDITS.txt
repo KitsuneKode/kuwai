@@ -1,0 +1,16 @@
+Pixel Dusk wallpapers: pixel art and lofi night scenes, picked from wallhaven.cc's most-favourited safe-for-work
+wallpapers (2560x1440 or larger, a calm dark strip along the top for the island), checked by eye.
+Each belongs to its author; the page for each is below. kuwai does not ship them:
+`kuwai-theme install` downloads them to your machine for personal use.
+
+  https://wallhaven.cc/w/wq37kp   2560x1440   ★675
+  https://wallhaven.cc/w/7jgyre   3840x2160   ★527
+  https://wallhaven.cc/w/ymgkyl   3840x2160   ★500
+  https://wallhaven.cc/w/7pzkqv   3840x2160   ★311
+  https://wallhaven.cc/w/o3x38m   2730x1536   ★259
+  https://wallhaven.cc/w/m9wol9   2880x1620   ★238
+  https://wallhaven.cc/w/rrjvyq   3840x2160   ★232
+  https://wallhaven.cc/w/1kx67v   3840x2160   ★211
+  https://wallhaven.cc/w/vqv3p8   3840x2160   ★208
+  https://wallhaven.cc/w/x6ry2v   3840x2160   ★206
+  https://wallhaven.cc/w/lq7vor   3840x2160   ★119

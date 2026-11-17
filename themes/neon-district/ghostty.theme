@@ -1,0 +1,31 @@
+$HOME/.config/ghostty/themes/hyde-active
+# Generated from the kitty palette beside it.
+
+## name: Neon District
+## author: kuwai
+## license: GPL-3.0-or-later
+## blurb: Cyan and magenta neon over an ink-blue night street. For cyberpunk and anime cities.
+
+foreground = #dfe6f5
+background = #0a0c16
+selection-foreground = #dfe6f5
+selection-background = #1f2a55
+cursor-color = #3ee6ff
+cursor-text = #0a0c16
+
+palette = 0=#12152a
+palette = 1=#ff5c8a
+palette = 2=#5af2a6
+palette = 3=#ffd86b
+palette = 4=#3ee6ff
+palette = 5=#ff4fd8
+palette = 6=#7ad0ff
+palette = 7=#c8d1e8
+palette = 8=#5a6590
+palette = 9=#ff86a8
+palette = 10=#8dffc4
+palette = 11=#ffe89a
+palette = 12=#8af0ff
+palette = 13=#ff86e6
+palette = 14=#a8dcff
+palette = 15=#f4f7ff
