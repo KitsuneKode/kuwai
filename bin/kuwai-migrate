@@ -24,15 +24,29 @@ folder() {   # base
     mkdir -p "$new" || return 1
     for e in "$old"/* "$old"/.[!.]*; do
         [ -e "$e" ] || [ -L "$e" ] || continue
-        if [ -e "$new/${e##*/}" ] || [ -L "$new/${e##*/}" ]; then
-            said "kept $e: $new/${e##*/} is already there"
-        else
-            mv -- "$e" "$new/" || said "couldn't move $e"
+        local n="$new/${e##*/}" c
+        if [ -d "$e" ] && [ ! -L "$e" ] && [ -d "$n" ] && [ ! -L "$n" ]; then
+            # The same folder on both sides: its entries that aren't there yet go over.
+            for c in "$e"/* "$e"/.[!.]*; do
+                [ -e "$c" ] || [ -L "$c" ] || continue
+                [ -e "$n/${c##*/}" ] || [ -L "$n/${c##*/}" ] || mv -- "$c" "$n/" 2>/dev/null
+            done
+            rmdir -- "$e" 2>/dev/null || said "kept $e: some of it is already in $n"
+        elif [ "$(readlink -- "$n")" = "$e" ]; then
+            :   # linked on an earlier run (not movable without root): nothing to say
+        elif [ -e "$n" ] || [ -L "$n" ]; then
+            # A lock or a file the new shell already made: the old one is stale.
+            case "${e##*/}" in *.lock) rm -f -- "$e" ;; *) said "kept $e: $n is already there" ;; esac
+        elif ! mv -- "$e" "$new/" 2>/dev/null; then
+            # Not ours to move (a container's volume, owned by its user): it stays,
+            # and the new name points at it.
+            ln -s -- "$e" "$n" && said "linked $n to $e (not movable without root)"
         fi
     done
     if rmdir -- "$old" 2>/dev/null; then
         ln -s kuwai "$old" && said "moved $old to $new"
     fi
+    return 0
 }
 folder "${XDG_STATE_HOME:-$HOME/.local/state}"
 folder "${XDG_CACHE_HOME:-$HOME/.cache}"
