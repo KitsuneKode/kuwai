@@ -90,9 +90,37 @@ function K.load(name)
 	local ok, res = pcall(require, name)
 	if not ok then
 		K.err(name .. ": " .. tostring(res))
+		K.reload_again()
 		return nil
 	end
 	return res
+end
+
+-- A module saved by renaming a new copy into place (sed -i, most editors,
+-- the settings writers) is missing for an instant, and the config watcher can
+-- reload in that instant: the module fails, and so does everything that
+-- needs it (2026-11-17: features.lua; 74 of 270 binds loaded). Reload once
+-- more, half a second later. At most once every 10 s, so a module that is
+-- really broken is reported, not reloaded forever.
+local again_mark = K.runtime .. "/kuwai-reload-again"
+function K.reload_again()
+	if K.reloading_again then
+		return
+	end
+	K.reloading_again = true
+	K.defer(function()
+		if os.time() - (tonumber(K.read_line(again_mark) or "") or 0) < 10 then
+			return
+		end
+		local f = io.open(again_mark, "w")
+		if f then
+			f:write(tostring(os.time()))
+			f:close()
+		end
+		hl.timer(function()
+			hl.exec_cmd("hyprctl reload")
+		end, { timeout = 500, type = "oneshot" })
+	end)
 end
 
 -- Load an optional user file from ~/.config/hypr (monitors.lua, user.lua, ...).
