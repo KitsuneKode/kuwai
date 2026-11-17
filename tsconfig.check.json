@@ -1,0 +1,11 @@
+{
+  // Types for the shell's plain-JS logic, checked, never compiled (Quickshell
+  // loads .mjs as written). Add a module here once it passes:
+  //   bunx -p typescript tsc -p tsconfig.check.json
+  // To do: shell/services/ai/turn.mjs (83 untyped parameters, 2026-11-17).
+  "compilerOptions": {
+    "noEmit": true, "allowJs": true, "checkJs": true, "strict": true,
+    "target": "es2022", "module": "nodenext", "moduleResolution": "nodenext", "skipLibCheck": true
+  },
+  "files": ["shell/services/otp.mjs"]
+}

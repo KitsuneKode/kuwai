@@ -25,6 +25,12 @@
 // plain notification it is (safe: nothing is hidden wrongly, nothing copied).
 //
 // Plain ES for Qt's engine: no lookbehind, no spread, no named groups.
+// Typed with JSDoc and checked by tsc (tsconfig.check.json, CI): Quickshell
+// loads .mjs as it is, so types live in comments and nothing is compiled.
+// @ts-check
+
+/** What a notification says. @typedef {{ title?: string, body?: string, full?: string }} Notice */
+/** A token shaped like a code. @typedef {{ code: string, at: number, end: number, alnum: boolean }} Candidate */
 
 const STRONG = "(?:otp|one[- ]?time (?:pass(?:word|code)|code|pin)|pass ?code|"
     + "(?:verification|security|log[- ]?in|sign[- ]?in|authentication|auth|authori[sz]ation|confirmation|access|"
@@ -48,6 +54,7 @@ const PURPOSE_AFTER = /^[^\d!?]{0,45}?\b(?:code|otp|pin|passcode|verify|verifica
 
 // What a notification says, without what can't hold a code to type: link
 // targets (the label stays), bare links, addresses. One line, single spaces.
+/** @param {unknown} text @returns {string} */
 export function clean(text) {
     return String(text || "")
         .replace(/\[([^\]]*)\]\(<?[^)\s>]*>?\)/g, "$1")
@@ -57,6 +64,7 @@ export function clean(text) {
         .trim();
 }
 
+/** @param {string} d */
 function isDate(d) {            // 20261117
     if (d.length !== 8) return false;
     const y = +d.slice(0, 4), m = +d.slice(4, 6), day = +d.slice(6);
@@ -66,8 +74,11 @@ function isDate(d) {            // 20261117
 // Every token shaped like a code, standing on its own: 4–8 digits (also as
 // "123 456" / "1234-5678", or behind a sender's "G-"), or 6–8 capitals and
 // digits mixed. { code, at, end, alnum } in reading order.
+/** @param {unknown} text @returns {Candidate[]} */
 export function candidates(text) {
-    const t = String(text || ""), out = [];
+    const t = String(text || "");
+    /** @type {Candidate[]} */
+    const out = [];
     // Order matters: a mixed token before a run of digits ("1234ABCD" is one
     // token, not "1234" with letters stuck to it).
     const shape = /[A-Z]{1,3}-\d{4,8}|[A-Z0-9]{6,8}|\d{3}[- ]\d{3}|\d{4}[- ]\d{4}|\d{4,8}/g;
@@ -94,13 +105,30 @@ export function candidates(text) {
     return out;
 }
 
+/** @param {Notice | null | undefined} item */
 function textOf(item) {
     if (!item) return "";
     return clean([item.title, item.body, item.full].filter(x => x).join("\n"));
 }
 
-// The code, or "": the first candidate whose own neighbours call it one.
+// The one published format (WICG "Origin-bound one-time codes delivered via
+// SMS", by Apple and Google; what Chrome's WebOTP and Safari's autofill
+// read): the message's last line is "@example.com #123456". A sender that
+// writes it has said in so many words which token is the code and whose it
+// is, so it is read before any phrase. { host, code } or null.
+/** @param {unknown} text @returns {{ host: string, code: string } | null} */
+export function originBound(text) {
+    const m = /(?:^|\n)[ \t]*@([a-z0-9-]+(?:\.[a-z0-9-]+)+)[ \t]+#([A-Za-z0-9]{4,10})(?:[ \t]+@\S+)?\s*$/i.exec(String(text || ""));
+    return m ? { host: m[1].toLowerCase(), code: m[2] } : null;
+}
+
+// The code, or "": the sender's own marking first, else the first candidate
+// whose neighbours call it one.
+/** @param {Notice | string | null | undefined} item @returns {string} */
 export function otpOf(item) {
+    const raw = typeof item === "string" ? item : !item ? "" : [item.body, item.full].filter(x => x).join("\n");
+    const bound = originBound(raw);
+    if (bound) return bound.code;
     const t = typeof item === "string" ? clean(item) : textOf(item);
     if (t === "") return "";
     const list = candidates(t);
@@ -129,6 +157,7 @@ export function otpOf(item) {
 
 // Does the text talk about a code at all (and not about exit codes, zip codes
 // or an app called Code)?
+/** @param {unknown} text @returns {boolean} */
 export function mentionsCode(text) {
     const t = clean(text);
     if (STRONG_ANY.test(t)) return true;
@@ -142,6 +171,7 @@ export function mentionsCode(text) {
 // a code? It hides on "talks about a code and has a number that could be
 // one", without asking that they sit together. Still never a link, a date, a
 // branch name or a version.
+/** @param {Notice | string | null | undefined} item @returns {boolean} */
 export function otpLikely(item) {
     const t = typeof item === "string" ? clean(item) : textOf(item);
     if (t === "" || !mentionsCode(t)) return false;
@@ -149,4 +179,5 @@ export function otpLikely(item) {
 }
 
 // A line that itself shows something code-shaped (the lock hides such a title).
+/** @param {unknown} text @returns {boolean} */
 export function codeShaped(text) { return candidates(clean(text)).length > 0; }

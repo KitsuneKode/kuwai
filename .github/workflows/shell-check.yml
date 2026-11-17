@@ -51,3 +51,5 @@ jobs:
       # Every suite, by folder: a new test file is in CI the day it is written
       # (five of thirteen were listed by name, the rest never ran here).
       - run: bun test ./tests ./shell
+      - name: Types of the shell's JS logic (JSDoc, nothing compiled)
+        run: bunx -p typescript tsc -p tsconfig.check.json

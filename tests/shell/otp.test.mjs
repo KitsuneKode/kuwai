@@ -1,7 +1,7 @@
 // One-time codes: what the notch may show big with a Copy button, and what
 // the lock screen hides. `bun test tests/shell/otp.test.mjs`
 import { describe, expect, test } from "bun:test";
-import { otpOf, otpLikely, candidates, clean, mentionsCode, codeShaped } from "../../shell/services/otp.mjs";
+import { otpOf, otpLikely, candidates, clean, mentionsCode, codeShaped, originBound } from "../../shell/services/otp.mjs";
 
 const n = (title, body = "", full = "") => ({ title, body, full });
 
@@ -105,5 +105,19 @@ describe("the lock screen is more careful, not careless", () => {
   test("codeShaped: a title that shows a code", () => {
     expect(codeShaped("482913 is your code")).toBe(true);
     expect(codeShaped("Sign in")).toBe(false);
+  });
+});
+
+describe("the sender's own marking (origin-bound codes, WICG)", () => {
+  test("the last line says which token is the code and whose", () => {
+    expect(originBound("747723 is your ExampleCo authentication code.\n\n@example.com #747723")).toEqual({ host: "example.com", code: "747723" });
+    expect(otpOf(n("ExampleCo", "Hello.\n@login.example.co.in #A1B2C3"))).toBe("A1B2C3");
+    expect(otpOf(n("Bank", "Welcome back\n@bank.example #9981 @pay.example"))).toBe("9981");
+  });
+  test("only as the last line, with a host and a code", () => {
+    expect(originBound("@example.com #747723\nthanks")).toBe(null);
+    expect(originBound("mail me @anna #lunch")).toBe(null);
+    expect(originBound("see @example.com #1")).toBe(null);
+    expect(otpOf(n("Slack", "@channel #general 20261117"))).toBe("");
   });
 });
