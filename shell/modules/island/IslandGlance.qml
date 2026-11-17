@@ -94,7 +94,7 @@ Item {
         }
         Label {
             anchors.baseline: glanceClock.baseline
-            text: Qt.formatDate(glance.bar.now, "ddd, MMM d")
+            text: Dates.shortDate(glance.bar.now)
             size: Theme.tCallout; weight: Theme.wMedium
             color: Theme.textTertiary
         }
@@ -170,5 +170,5 @@ Item {
         }
     }
     Accessible.role: Accessible.Button
-    Accessible.name: "Island: " + (glance.app ? glance.app.name : "Desktop") + ", " + Qt.formatTime(glance.bar.now, "hh:mm") + ". Click or pull down for everything."
+    Accessible.name: "Island: " + (glance.app ? glance.app.name : "Desktop") + ", " + Dates.clock(glance.bar.now) + ". Click or pull down for everything."
 }

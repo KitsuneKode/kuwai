@@ -4,7 +4,7 @@
 // stay still, so 23:27 → 23:28 moves one digit. Digits are tabular, so the
 // width never jumps. Reduced motion: characters just change.
 //
-//   TextMorph { text: Qt.formatTime(now, "HH:mm"); size: 40; weight: Theme.wSemibold }
+//   TextMorph { text: Dates.clock(now); size: 40; weight: Theme.wSemibold }
 import QtQuick
 import QtQuick.Effects
 import qs.config

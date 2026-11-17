@@ -60,13 +60,13 @@ Singleton {
         const at = minutesOf(Settings.sleepAt);
         // The night runs from sleepAt to 05:00.
         const night = at <= 300 ? (now >= at && now < 300) : (now >= at || now < 300);
-        const day = Qt.formatDate(new Date(d.getTime() - 5 * 3600000), "yyyy-MM-dd");
+        const day = Qt.formatDate(new Date(d.getTime() - 5 * 3600000), "yyyy-MM-dd");   // a key, ISO on purpose
         if (day !== sleepDay) { sleepDay = day; sleepSaid = 0; }
         if (!night || sleepSaid >= 3 || holdOff || here.isIdle || Date.now() - sleepLast < 45 * 60000) return;
         sleepSaid++;
         sleepLast = Date.now();
         Moments.show({ kind: "sleep", glyph: "\u{f0594}", label: sleepSaid === 1 ? "It's late" : "Still up",
-                       value: sleepSaid === 1 ? "time to wind down" : Qt.formatTime(d, Settings.clock24 ? "HH:mm" : "h:mm ap"),
+                       value: sleepSaid === 1 ? "time to wind down" : Dates.time(d),
                        ring: -1, tone: Theme.indigo }, sleepSaid === 1 ? 5000 : 3600);
     }
 }

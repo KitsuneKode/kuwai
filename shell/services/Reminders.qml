@@ -61,8 +61,8 @@ Singleton {
         const d = new Date(ms), now = new Date();
         const same = d.toDateString() === now.toDateString();
         const tmr = new Date(now); tmr.setDate(now.getDate() + 1);
-        const day = same ? "today" : d.toDateString() === tmr.toDateString() ? "tomorrow" : Qt.formatDate(d, "ddd d MMM");
-        return day + " at " + Qt.formatTime(d, Settings.clock24 ? "HH:mm" : "h:mm AP");
+        const day = same ? "today" : d.toDateString() === tmr.toDateString() ? "tomorrow" : Dates.shortDate(d);
+        return day + " at " + Dates.time(d);
     }
     function add(input) {
         const r = parse(input);
@@ -101,7 +101,7 @@ Singleton {
         asking = r;
         const late = Date.now() - r.at > 120000;
         Moments.showCard({ key: "reminder", kind: "reminder", sticky: true, id: r.id, title: r.text,
-                           sub: late ? "Reminder · due " + Qt.formatTime(new Date(r.at), Settings.clock24 ? "HH:mm" : "h:mm AP") : "Reminder · now",
+                           sub: late ? "Reminder · due " + Dates.time(r.at) : "Reminder · now",
                            act: { secondary: ["Later", () => { root.asking = null; root.snooze(r, 10); }],
                                   primary: ["Done", () => { root.asking = null; }] } }, 30000);
         chime.running = true;

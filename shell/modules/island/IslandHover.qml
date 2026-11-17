@@ -201,7 +201,7 @@ Item {
             }
             Label {
                 anchors.verticalCenter: parent.verticalCenter
-                text: Qt.formatDate(hover.bar.now, "ddd, MMM d")
+                text: Dates.shortDate(hover.bar.now)
                 size: 15; weight: Theme.wMedium
                 color: Theme.textTertiary
             }

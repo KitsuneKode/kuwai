@@ -50,7 +50,7 @@ Singleton {
         // The island grows the alarm (AlarmCard): Snooze and Stop, until answered.
         // Locked, the lock island has the same two (LockIsland).
         Moments.showCard({ key: "alarm", kind: "alarm", sticky: true, id: a.id, title: a.label,
-                           sub: Qt.formatTime(new Date(a.at), Settings.clock24 ? "HH:mm" : "h:mm AP") + " · Alarm",
+                           sub: Dates.time(a.at) + " · Alarm",
                            act: { secondary: ["Snooze", () => root.snooze(9)], primary: ["Stop", () => root.stop()] } }, 5 * 60000);
     }
     // The card folded some other way (Escape, a click away): that's Stop too,
@@ -91,7 +91,7 @@ Singleton {
         Process {
             property var alarm
             running: true
-            command: [Paths.bin + "/rice-notify", "-a", "Alarm", "-i", "alarm-symbolic", "Alarm went unanswered", alarm.label + " · " + Qt.formatTime(new Date(alarm.at), Settings.clock24 ? "HH:mm" : "h:mm AP")]
+            command: [Paths.bin + "/rice-notify", "-a", "Alarm", "-i", "alarm-symbolic", "Alarm went unanswered", alarm.label + " · " + Dates.time(alarm.at)]
             onExited: destroy()
         }
     }
@@ -107,7 +107,7 @@ Singleton {
             // Missed by more than an hour (the laptop was off): say so, don't ring.
             const fresh = due.filter(a => now - a.at < 3600000);
             for (const a of due) if (now - a.at >= 3600000)
-                Quickshell.execDetached([Paths.bin + "/rice-notify", "-a", "Alarm", "-i", "alarm-symbolic", "Missed alarm", a.label + " · " + Qt.formatTime(new Date(a.at), "HH:mm")]);
+                Quickshell.execDetached([Paths.bin + "/rice-notify", "-a", "Alarm", "-i", "alarm-symbolic", "Missed alarm", a.label + " · " + Dates.time(a.at)]);
             if (fresh.length) root.ring(fresh[fresh.length - 1]);
         }
     }
@@ -139,7 +139,7 @@ Singleton {
 
     IpcHandler {
         target: "alarm"
-        function add(text: string): string { const a = root.add(text); return a ? a.label + " · " + Qt.formatDateTime(new Date(a.at), "ddd HH:mm") + (root.canWake ? "" : " (install system/install to wake from sleep)") : "can't read a time in: " + text; }
+        function add(text: string): string { const a = root.add(text); return a ? a.label + " · " + Dates.weekdayTime(a.at) + (root.canWake ? "" : " (install system/install to wake from sleep)") : "can't read a time in: " + text; }
         function list(): string { return JSON.stringify(root.items); }
         function clear(): void { root.items = []; root.save(); }
         function stop(): void { root.stop(); }

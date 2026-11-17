@@ -201,7 +201,7 @@ Scope {
                         Timer { interval: 1000; repeat: true; running: root.showing; onTriggered: face.now = new Date() }
                         Text {
                             textFormat: Text.PlainText
-                            text: Qt.formatTime(face.now, Settings.clock24 ? "HH:mm" : "h:mm")
+                            text: Dates.clock(face.now)
                             font.family: Theme.fontRounded || Theme.fontText
                             font.pixelSize: Math.round(win.height * 0.13)
                             font.weight: Font.Light
@@ -210,7 +210,7 @@ Scope {
                         }
                         Text {
                             textFormat: Text.PlainText
-                            text: Qt.formatDate(face.now, "dddd, d MMMM")
+                            text: Dates.longDate(face.now)
                             font.family: Theme.fontText
                             font.pixelSize: Math.round(win.height * 0.022)
                             color: Qt.rgba(1, 1, 1, 0.7)

@@ -351,7 +351,7 @@ Singleton {
     // "Tue" a day or more away, else the time ("14:30").
     function resetDay(at) {
         const d = new Date(at);
-        return at - now >= 86400000 ? Qt.formatDate(d, "ddd") : Qt.formatTime(d, Settings.clock24 ? "HH:mm" : "h:mm ap");
+        return at - now >= 86400000 ? Dates.weekday(d) : Dates.time(d);
     }
     // The mark's value: the largest unit only ("3d", "15h", "42m").
     function compact(ms) {

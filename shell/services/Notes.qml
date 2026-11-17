@@ -19,6 +19,7 @@ Singleton {
     function add(text) {
         const t = String(text || "").trim();
         if (!t) return false;
+        // ISO, not the locale (config/Dates): a stamp in a text file sorts and greps.
         const stamp = Qt.formatDateTime(new Date(), "yyyy-MM-dd HH:mm");
         Quickshell.execDetached(["sh", "-c", 'mkdir -p "$(dirname "$1")" && printf -- "- %s · %s\\n" "$3" "$2" >> "$1"', "sh", root.file, t, stamp]);
         added++;

@@ -3,10 +3,10 @@
 // PgUp/PgDn (or [ ]) month, T today, Esc closes.
 //
 //   October 2026                          ‹  ›
-//   Mon Tue Wed Thu Fri Sat Sun
+//   Mon Tue Wed Thu Fri Sat Sun        (the locale's order and first day)
 //    28  29  30   1   2   3   4
 //   …
-//   Thursday, 29 October · week 44
+//   Thursday, October 29 · Week 44     (dates through config/Dates)
 import QtQuick
 import Quickshell
 import qs.config
@@ -50,9 +50,9 @@ FocusScope {
         const y0 = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
         return Math.ceil(((t - y0) / 86400000 + 1) / 7);
     }
-    // The 42 days on the grid: Monday first.
+    // The 42 days on the grid, from the locale's first day of the week.
     readonly property var days: {
-        const lead = (month.getDay() + 6) % 7;
+        const lead = Dates.lead(month);
         const start = addDays(month, -lead);
         const out = [];
         for (let i = 0; i < 42; i++) out.push(addDays(start, i));
@@ -89,7 +89,7 @@ FocusScope {
             }
             Label {
                 anchors.verticalCenter: parent.verticalCenter
-                text: Qt.formatDate(cal.now, "dddd, MMMM d")
+                text: Dates.longDate(cal.now)
                 size: Theme.tHeadline; weight: Theme.wMedium
                 color: Theme.textTertiary
             }
@@ -101,8 +101,17 @@ FocusScope {
             Row {
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 7
-                Label { text: Qt.formatDate(cal.month, "MMMM"); size: 20; weight: Theme.wSemibold }
-                Label { anchors.baseline: parent.children[0].baseline; text: Qt.formatDate(cal.month, "yyyy"); size: 20; color: Theme.textTertiary }
+                // Month and year in the locale's order (2026年 11月 in Japanese);
+                // the month carries the weight, the year recedes.
+                Repeater {
+                    model: Dates.monthYearParts(cal.month)
+                    Label {
+                        required property var modelData
+                        text: modelData.text; size: 20
+                        weight: modelData.year ? Theme.wRegular : Theme.wSemibold
+                        color: modelData.year ? Theme.textTertiary : Theme.textPrimary
+                    }
+                }
             }
             Row {
                 anchors { right: parent.right; verticalCenter: parent.verticalCenter }
@@ -126,16 +135,16 @@ FocusScope {
 
         Row {
             Repeater {
-                model: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+                model: Dates.weekOrder()
                 Label {
-                    required property string modelData
+                    required property int modelData
                     required property int index
                     width: cal.cell
                     horizontalAlignment: Text.AlignHCenter
-                    text: modelData
+                    text: Dates.weekdayNames()[index]
                     size: 11
                     weight: Theme.wMedium
-                    color: index >= 5 ? Theme.textTertiary : Theme.textSecondary
+                    color: Dates.isWeekend(modelData) ? Theme.textTertiary : Theme.textSecondary
                 }
             }
         }
@@ -187,7 +196,7 @@ FocusScope {
             height: 22
             Label {
                 anchors.verticalCenter: parent.verticalCenter
-                text: Qt.formatDate(cal.selected, "dddd, MMMM d")     // the header's order
+                text: Dates.longDate(cal.selected)     // the header's shape
                 size: 14
                 weight: Theme.wMedium
             }

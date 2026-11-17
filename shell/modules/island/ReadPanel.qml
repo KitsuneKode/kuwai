@@ -36,12 +36,7 @@ FocusScope {
     onItemChanged: opened = ({})
     function isOpen(i) { return opened[i] !== undefined ? opened[i] : i === convo.length - 1; }
     function toggle(i) { const o = Object.assign({}, opened); o[i] = !isOpen(i); opened = o; }
-    function when(t) {
-        if (!t) return "";
-        const d = new Date(t), now = new Date();
-        if (d.toDateString() === now.toDateString()) return Qt.formatTime(d, Settings.clock24 ? "HH:mm" : "h:mm ap");
-        return Qt.formatDate(d, now.getFullYear() === d.getFullYear() ? "d MMM" : "d MMM yyyy");
-    }
+    function when(t) { return t ? Dates.stamp(t, new Date()) : ""; }
 
     function ago(t) {
         const m = Math.max(0, Math.round((Date.now() - t) / 60000));

@@ -95,7 +95,7 @@ FocusScope {
     readonly property real firstBack: Math.min(...groups.filter(g => g.rank === 2).map(g => g.back), Infinity)
 
     // "Tue 21:00" a day or more away, else "21:00".
-    function at(t) { return !t ? "" : t - Limits.now >= 86400000 ? Qt.formatDateTime(new Date(t), Settings.clock24 ? "ddd HH:mm" : "ddd h:mm ap") : Qt.formatTime(new Date(t), Settings.clock24 ? "HH:mm" : "h:mm ap"); }
+    function at(t) { return !t ? "" : t - Limits.now >= 86400000 ? Dates.weekdayTime(t) : Dates.time(t); }
     function backIn(at) { return at === Infinity || !at ? "" : at <= Limits.now ? "now" : Limits.duration(at - Limits.now); }
     function tone(level) { return level === "exhausted" ? Theme.red : level === "approaching" ? Theme.orange : Theme.green; }
 

@@ -150,13 +150,13 @@ Item {
             spacing: 4
             Label {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: Qt.formatDate(view.now, "ddd, MMM d")
+                text: Dates.shortDate(view.now)
                 size: 26; weight: Theme.wSemibold
                 color: view.tint
             }
             TextMorph {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: Settings.clock24 ? Qt.formatTime(view.now, "HH:mm") : Qt.formatTime(view.now, "h:mm")
+                text: Dates.clock(view.now)
                 size: 150; weight: Theme.wBold; rounded: true
                 color: view.tint
                 duration: Theme.breatheMs; stagger: 60

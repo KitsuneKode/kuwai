@@ -916,7 +916,7 @@ FocusScope {
                     SettingsRow {
                         id: alRow
                         required property var modelData
-                        label: modelData.label; detail: Qt.formatDateTime(new Date(modelData.at), "ddd " + (Settings.clock24 ? "HH:mm" : "h:mm AP"))
+                        label: modelData.label; detail: Dates.weekdayTime(modelData.at)
                         PillButton { text: "Remove"; onClicked: Alarms.cancel(alRow.modelData.id) }
                     }
                 }

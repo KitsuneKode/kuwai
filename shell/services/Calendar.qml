@@ -16,6 +16,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.config
 
 Singleton {
     id: root
@@ -146,7 +147,6 @@ Singleton {
     }
     function timeOf(e) {
         if (e.allDay) return "All day";
-        const f = t => Qt.formatTime(new Date(t), Qt.locale().timeFormat(Locale.ShortFormat).indexOf("AP") >= 0 ? "h:mm AP" : "HH:mm");
-        return f(e.start) + " – " + f(e.end);
+        return Dates.time(e.start) + " – " + Dates.time(e.end);
     }
 }
