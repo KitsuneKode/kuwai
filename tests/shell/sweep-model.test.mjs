@@ -5,8 +5,8 @@ import { readFileSync } from "node:fs";
 
 const lib = readFileSync(new URL("../../shell/services/sweepModel.js", import.meta.url), "utf8").replace(/^\.pragma library\s*$/m, "");
 const names = ["compact", "long", "segments", "worthMark", "parseViewed", "viewedText", "isFresh", "reconcileViewed", "viewedAfterLook",
-    "caption", "tilde", "emptyText", "footText", "idleText", "agoText"];
-const { caption, compact, long, segments, worthMark, parseViewed, viewedText, isFresh, reconcileViewed, viewedAfterLook, tilde, emptyText, footText, idleText, agoText } =
+    "headline", "caption", "tilde", "emptyText", "footText", "idleText", "agoText"];
+const { headline, caption, compact, long, segments, worthMark, parseViewed, viewedText, isFresh, reconcileViewed, viewedAfterLook, tilde, emptyText, footText, idleText, agoText } =
     new Function(lib + "\nreturn { " + names.join(", ") + " };")();
 const GB = 1e9;
 
@@ -17,6 +17,10 @@ describe("sizes", () => {
         expect(compact(640e6)).toBe("640M");
         expect(compact(0)).toBe("1M");
         expect(compact(undefined)).toBe("1M");
+    });
+    test("the header's line", () => {
+        expect(headline(16.24 * GB, 38, 30)).toBe("16.2 GB · 38 projects idle 30+ days");
+        expect(headline(12 * GB, 1, 30)).toBe("12 GB · 1 project idle 30+ days");
     });
     test("the panel has room for the unit", () => {
         expect(long(16.24 * GB)).toBe("16.2 GB");

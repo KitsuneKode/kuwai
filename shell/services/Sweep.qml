@@ -58,7 +58,7 @@ Singleton {
     readonly property bool fresh: worth && viewedRead && Model.isFresh(idleBytes, viewedBytes, minBytes)
     readonly property string compact: Model.compact(idleBytes)
     readonly property string tip: Model.long(idleBytes) + " in " + idleProjects + (idleProjects === 1 ? " idle project" : " idle projects")
-        + "\nRest on it for which · click to review in sweep"
+        + "\nRest on it or click for which · review them in sweep from there"
 
     FileView {
         id: viewedFile

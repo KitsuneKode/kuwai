@@ -47,7 +47,8 @@ Row {
     }
     // Old projects holding space (services/Sweep, from sweep's own scan): only
     // when the number is worth acting on and new to you, like the updates
-    // above. Rest on it for which; click to review them in sweep.
+    // above. Rest on it for which; a click keeps that open, and its button
+    // (or Enter) opens sweep's review.
     RestMark {
         id: swp
         visible: Sweep.fresh && !sys.quiet

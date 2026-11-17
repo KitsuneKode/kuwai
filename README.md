@@ -69,7 +69,8 @@ opens the panel where you act on it.
   projects hold space worth getting back (10 GB by default; Settings → Island),
   a small broom mark joins the system news with the size. Rest on it for the
   bar of what's taking it (node_modules, target, .next…) with the old projects
-  below; click to review them in sweep. Nothing is deleted from the island, and
+  below; a click keeps it open, and Review in sweep (or Enter) opens sweep's own
+  review, in your terminal. Nothing is deleted from the island, and
   the mark steps back once you've looked until the number grows by 5 GB. It
   reads sweep's own scan, cached for 30 minutes and refreshed at idle priority
   (`bin/rice-sweep`); also in the launcher as Idle Projects.

@@ -4,6 +4,7 @@
 // mark. Pure, so tests/shell/sweep-model.test.mjs can hold it to account.
 //   compact(bytes)                      → "16G" / "9.5G" / "640M"
 //   segments(kinds, total, tones)       → [{ kind, bytes, count, share, tone }] (top kinds + "other")
+//   headline(bytes, projects, days)     → "16.2 GB · 38 projects idle 30+ days"
 //   caption(seg, idleSplit, allBytes)   → the words under the bar
 //   worthMark(idleBytes, minBytes)      → bool
 //   parseViewed(text) / viewedText(b)   ↔ the sweep-viewed file: the size you looked at, in bytes
@@ -44,6 +45,12 @@ function segments(kinds, total, tones, max) {
     }
     if (rest > sum * 0.005) keep.push({ kind: "other", bytes: rest, count: 0, share: rest / sum });
     return keep.map((s, i) => Object.assign(s, { tone: tones[i % tones.length] }));
+}
+
+// The header's line: "16.2 GB · 38 projects idle 30+ days".
+function headline(idleBytes, projects, days) {
+    const n = Math.max(0, Math.round(Number(projects) || 0));
+    return long(idleBytes) + " · " + n + (n === 1 ? " project" : " projects") + " idle " + (Math.round(Number(days) || 30)) + "+ days";
 }
 
 // The bar's caption. `idleSplit`: the bar is the idle projects alone, so its

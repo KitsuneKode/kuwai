@@ -60,22 +60,22 @@ FocusScope {
         width: panel.width - 40
         spacing: 14
 
-        // ── Identity leads, the number trails ────────────────────────────
+        // ── Title: what it is, then the number (as Usage, Agents) ────────
         Item {
             width: parent.width
             height: 26
             Label {
                 anchors { left: parent.left; verticalCenter: parent.verticalCenter }
                 text: "Sweep"
-                size: Theme.tTitle2; weight: Theme.wBold; rounded: true
-                color: Theme.green
+                size: Theme.tTitle3; weight: Theme.wSemibold   // the panels' one title style
             }
+            // Neutral: a size isn't a state. Orange only when the last count failed.
             Label {
                 visible: Sweep.idleBytes > 0
                 anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-                text: Model.long(Sweep.idleBytes) + " idle · " + Sweep.idleProjects + (Sweep.idleProjects === 1 ? " project" : " projects")
-                size: Theme.tCallout; weight: Theme.wSemibold
-                color: Theme.green
+                text: Model.headline(Sweep.idleBytes, Sweep.idleProjects, Sweep.idleDays)
+                size: Theme.tFootnote; weight: Theme.wSemibold
+                color: Sweep.error && !Sweep.refreshing ? Theme.orange : Theme.textTertiary
                 font.features: ({ "tnum": 1 })
             }
         }
@@ -149,7 +149,7 @@ FocusScope {
         // ── The old projects holding the most ────────────────────────────
         Label {
             visible: Sweep.projects.length > 0
-            text: "Idle " + Sweep.idleDays + "+ days"
+            text: "Holding the most"
             size: Theme.tCaption; weight: Theme.wSemibold
             color: Theme.textTertiary
         }
