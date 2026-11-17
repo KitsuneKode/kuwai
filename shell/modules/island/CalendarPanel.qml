@@ -232,6 +232,7 @@ FocusScope {
                 color: !Calendar.configured && addCal.containsMouse ? Theme.textSecondary : Theme.textTertiary
                 Accessible.role: Calendar.configured ? Accessible.StaticText : Accessible.Button
                 Accessible.name: text
+                Accessible.onPressAction: if (!Calendar.configured) { Quickshell.execDetached(["sh", "-c", 'mkdir -p "$(dirname "$1")" && touch "$1" && xdg-open "$1"', "sh", Calendar.listPath]); Island.close(); }
                 MouseArea {
                     id: addCal
                     anchors.fill: parent

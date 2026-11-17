@@ -367,6 +367,7 @@ FocusScope {
                     }
                 }
                 TapHandler { onTapped: if (!xHover.hovered && !answerHover.hovered) ap.go(row.modelData) }
+                Accessible.onPressAction: ap.go(row.modelData)
                 Rectangle {
                     visible: row.dismissable
                     opacity: rowHover.hovered ? 1 : 0

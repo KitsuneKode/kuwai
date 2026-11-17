@@ -215,6 +215,8 @@ FocusScope {
                     }
                 }
                 TapHandler { onTapped: cp.toggle(row.modelData.name) }
+                Accessible.onPressAction: cp.toggle(row.modelData.name)
+                Accessible.onToggleAction: cp.toggle(row.modelData.name)
             }
         }
 

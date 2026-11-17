@@ -170,5 +170,6 @@ Item {
         }
     }
     Accessible.role: Accessible.Button
+    Accessible.onPressAction: glance.bar.full = true
     Accessible.name: "Island: " + (glance.app ? glance.app.name : "Desktop") + ", " + Dates.clock(glance.bar.now) + ". Click or pull down for everything."
 }

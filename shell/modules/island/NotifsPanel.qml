@@ -253,6 +253,7 @@ FocusScope {
                     acceptedButtons: Qt.LeftButton | Qt.RightButton
                     onTapped: (point, button) => button === Qt.RightButton ? row.swipe.away(1) : np.read(row.modelData)
                 }
+                Accessible.onPressAction: np.read(row.modelData)
                 // Dismiss, for the pointer: on hover (and for the keyboard's row).
                 Rectangle {
                     visible: row.shown
@@ -264,6 +265,7 @@ FocusScope {
                     Text { anchors.centerIn: parent; text: "\u{f0156}"; font.family: Theme.fontGlyph; font.pixelSize: 11; color: Theme.textPrimary }
                     HoverHandler { id: closeHover; margin: 10; cursorShape: Qt.PointingHandCursor }
                     TapHandler { margin: 10; gesturePolicy: TapHandler.ReleaseWithinBounds; onTapped: row.swipe.away(1) }
+                    Accessible.onPressAction: row.swipe.away(1)
                 }
             }
         }

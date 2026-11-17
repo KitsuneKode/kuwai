@@ -378,8 +378,9 @@ Item {
         }
         HoverHandler { id: badgeHover; cursorShape: Qt.PointingHandCursor }
         TapHandler { acceptedButtons: Qt.LeftButton | Qt.RightButton; onTapped: (point, button) => button === Qt.RightButton ? badge.altClicked() : badge.clicked() }
+        Accessible.onPressAction: badge.clicked()
         Tip { text: badge.tip; shown: badgeHover.hovered && badge.tip !== ""; below: true }
-        Accessible.role: Accessible.StaticText
+        Accessible.role: Accessible.Button
         Accessible.name: badge.tip || badge.text
     }
 
