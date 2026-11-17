@@ -211,7 +211,7 @@ Item {
                         text: chip.modelData.label
                         size: 12
                         weight: chip.on ? Theme.wSemibold : Theme.wMedium
-                        color: chip.on ? "#111114" : Theme.textPrimary
+                        color: chip.on ? Theme.inkOnLight : Theme.textPrimary
                     }
                     Label {
                         visible: chip.modelData.n > 0

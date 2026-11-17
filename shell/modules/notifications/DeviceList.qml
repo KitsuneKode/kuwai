@@ -142,7 +142,7 @@ Column {
                                     radius: 1
                                     width: parent.width * parent.v
                                     color: parent.v > 0.95 ? Theme.red : parent.v > 0.8 ? Theme.yellow : Theme.green
-                                    Behavior on width { NumberAnimation { duration: 60 } }
+                                    Behavior on width { NumberAnimation { duration: Theme.peakFollowMs } }
                                 }
                             }
                         }

@@ -50,12 +50,12 @@ Item {
     // games purple, system sounds teal; anything else a stable pick.
     function tintFor(n, title) {
         const s = ((n && n.properties ? (n.properties["application.process.binary"] || "") + " " + (n.properties["application.name"] || "") + " " + (n.properties["media.role"] || "") : "") + " " + (title || "")).toLowerCase();
-        if (/spotify|music|mpv|vlc|rhythmbox|amberol|cider|tidal|youtube music|elisa|lollypop|mpd/.test(s)) return "#ff375f";
+        if (/spotify|music|mpv|vlc|rhythmbox|amberol|cider|tidal|youtube music|elisa|lollypop|mpd/.test(s)) return Theme.pink;
         if (/firefox|zen|chrom|brave|vivaldi|edge|librewolf|epiphany|browser/.test(s)) return Theme.blue;
         if (/discord|vesktop|slack|zoom|teams|telegram|signal|whatsapp|webcord|phone|communication/.test(s)) return Theme.indigo;
         if (/steam|game|wine|proton|lutris|heroic|minecraft/.test(s)) return Theme.focus;
         if (/notif|event|speech|canberra|alert|voxtype|dunst|sound/.test(s)) return Theme.cyan;
-        const palette = [Theme.cyan, "#30d158", "#ff9f0a", "#ffd60a", "#ac8e68", "#66d4cf"];
+        const palette = [Theme.cyan, Theme.green, Theme.orange, Theme.yellow, Theme.brown, Theme.mint];
         let h = 0;
         for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
         return palette[Math.abs(h) % palette.length];

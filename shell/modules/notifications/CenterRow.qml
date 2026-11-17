@@ -153,7 +153,7 @@ Item {
                         text: row.critical ? "Critical" : "Warning"
                         size: 11
                         weight: Theme.wSemibold
-                        color: row.critical ? "#ff6961" : Theme.orange
+                        color: row.critical ? Theme.redText : Theme.orange
                     }
                 }
                 Label {

@@ -64,7 +64,7 @@ Scope {
 
     // ── Reveal clock: content fades in a step apart after the card ───────
     property real clock: 0
-    NumberAnimation { id: clockRun; target: root; property: "clock"; from: 0; to: 600; duration: 600 }
+    NumberAnimation { id: clockRun; target: root; property: "clock"; from: 0; to: Theme.revealClockMs; duration: Theme.revealClockMs }
     // Steps are half the nominal delay and 90ms long: the whole card is in
     // by ~190ms, so it reads instant, but still lands in order. Reduced
     // motion: everything at once.
@@ -383,7 +383,7 @@ Scope {
             property real dh: root.fitH(modelData)
             Behavior on dh {
                 enabled: root.open && root.p > 0.98 && !Theme.reduceMotion
-                NumberAnimation { duration: 260; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+                NumberAnimation { duration: Theme.settleMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
             }
 
             // The morphing surface: rectangle and radius between source and

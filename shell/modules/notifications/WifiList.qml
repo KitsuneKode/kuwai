@@ -169,7 +169,7 @@ Column {
                 x: 10; y: 9
                 text: wifi.bars(row.net.signalStrength)
                 font.family: Theme.fontGlyph
-                font.pixelSize: 17
+                font.pixelSize: Theme.glyphM
                 color: row.net.connected ? Theme.blue : Theme.textSecondary
             }
             Label {

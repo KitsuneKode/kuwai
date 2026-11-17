@@ -138,8 +138,8 @@ Item {
     }
     SequentialAnimation {
         id: bump
-        NumberAnimation { target: pulse; properties: "xScale,yScale"; to: 1.02; duration: 110; easing.type: Easing.OutQuad }
-        NumberAnimation { target: pulse; properties: "xScale,yScale"; to: 1.0; duration: 300; easing.type: Easing.OutCubic }
+        NumberAnimation { target: pulse; properties: "xScale,yScale"; to: 1.02; duration: Theme.kickMs; easing.type: Easing.OutQuad }
+        NumberAnimation { target: pulse; properties: "xScale,yScale"; to: 1.0; duration: Theme.bumpBackMs; easing.type: Easing.OutCubic }
     }
 
     // ── Swipe ────────────────────────────────────────────────────────────
@@ -300,8 +300,8 @@ Item {
     }
     ParallelAnimation {
         id: arrival
-        NumberAnimation { target: ring; property: "opacity"; from: 0.9; to: 0; duration: 900; easing.type: Easing.OutCubic }
-        NumberAnimation { target: ringScale; properties: "xScale,yScale"; from: 1; to: 1.07; duration: 900; easing.type: Easing.OutCubic }
+        NumberAnimation { target: ring; property: "opacity"; from: 0.9; to: 0; duration: Theme.flashFadeMs; easing.type: Easing.OutCubic }
+        NumberAnimation { target: ringScale; properties: "xScale,yScale"; from: 1; to: 1.07; duration: Theme.flashFadeMs; easing.type: Easing.OutCubic }
     }
 
     // ── Content ──────────────────────────────────────────────────────────
@@ -395,7 +395,7 @@ Item {
                             text: card.critical ? "Critical" : "Warning"
                             size: 11
                             weight: Theme.wSemibold
-                            color: card.critical ? "#ff6961" : Theme.orange
+                            color: card.critical ? Theme.redText : Theme.orange
                         }
                     }
                     Label {
@@ -505,7 +505,7 @@ Item {
                     height: 28; radius: 14
                     width: openAct.implicitWidth + 26
                     color: openArea.containsMouse ? Qt.rgba(1, 1, 1, 0.92) : Qt.rgba(1, 1, 1, 0.88)
-                    Label { id: openAct; anchors.centerIn: parent; text: "Open"; size: 12; weight: Theme.wSemibold; color: "#111111" }
+                    Label { id: openAct; anchors.centerIn: parent; text: "Open"; size: 12; weight: Theme.wSemibold; color: Theme.inkOnLight }
                     MouseArea {
                         id: openArea
                         anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
@@ -610,7 +610,7 @@ Item {
         opacity: hover.hovered && !card.behind ? 1 : 0
         visible: opacity > 0
         scale: closeArea.pressed ? 0.94 : 1
-        Behavior on opacity { NumberAnimation { duration: 100 } }
+        Behavior on opacity { NumberAnimation { duration: Theme.hoverMs } }
         Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
         color: closeArea.containsMouse ? Qt.rgba(0.30, 0.30, 0.33, 0.97) : Qt.rgba(0.18, 0.18, 0.20, 0.95)
         border.width: 1
