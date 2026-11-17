@@ -1,7 +1,8 @@
 pragma Singleton
 
 // Emoji and Nerd-font glyphs for the launcher's `:` and `;` modes, from HyDE's
-// own databases (~/.local/share/hyde/{emoji,glyph}.db). Read and parsed once,
+// own databases (~/.local/share/hyde/{emoji,glyph}.db; without HyDE, missing:
+// the launcher says so instead of an empty list). Read and parsed once,
 // the first time either mode is used, then kept: the launcher itself is
 // rebuilt on every open and must not re-parse 12k lines each time.
 import QtQuick
@@ -10,7 +11,9 @@ import Quickshell.Io
 
 Singleton {
     id: root
-    readonly property string dir: (Quickshell.env("XDG_DATA_HOME") || Quickshell.env("HOME") + "/.local/share") + "/hyde"
+    readonly property string dir: Hyde.data
+    property bool emojiMissing: false      // its list isn't there (no HyDE)
+    property bool glyphsMissing: false
     property var emoji: []          // [{ ch, name, hay }]
     property var glyphs: []
     property bool wantEmoji: false
@@ -31,6 +34,7 @@ Singleton {
     FileView {
         path: root.wantEmoji ? root.dir + "/emoji.db" : ""
         printErrors: false
+        onLoadFailed: root.emojiMissing = true
         onLoaded: {
             const out = [];
             for (const line of text().split("\n")) {
@@ -45,6 +49,7 @@ Singleton {
     FileView {
         path: root.wantGlyphs ? root.dir + "/glyph.db" : ""
         printErrors: false
+        onLoadFailed: root.glyphsMissing = true
         onLoaded: {
             const out = [];
             for (const line of text().split("\n")) {

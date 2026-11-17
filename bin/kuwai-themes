@@ -29,6 +29,12 @@ LIB = os.path.join(HOME, ".local/lib/hyde")
 IMG = (".png", ".jpg", ".jpeg", ".webp", ".gif")
 
 
+def hyde_here() -> bool:
+    """HyDE is installed: its scripts are (the same test as hypr/kuwai/core.lua's
+    K.hyde, lib/hyde.sh and shell/services/Hyde.qml)."""
+    return os.path.isfile(os.path.join(LIB, "globalcontrol.sh"))
+
+
 def current() -> str:
     try:
         for line in open(os.path.join(HOME, ".local/state/hyde/staterc")):
@@ -151,6 +157,9 @@ def color_mode() -> int:
 
 
 def listing() -> dict:
+    if not os.path.isdir(THEMES):
+        # No HyDE (or no themes yet): an empty listing the panel can explain, not a traceback.
+        return {"current": "", "themes": [], "wallpapers": [], "mode": 0, "modes": MODES, "hyde": hyde_here()}
     cache = load_cache()
     known = len(cache)
     cur = current()
@@ -175,7 +184,7 @@ def listing() -> dict:
                               "current": os.path.realpath(p) == active, "palette": wall_palette(p, cache)})
     if len(cache) != known:                       # only when something new was hashed
         save(CACHE, json.dumps(cache))
-    return {"current": cur, "themes": themes, "wallpapers": walls, "mode": color_mode(), "modes": MODES}
+    return {"current": cur, "themes": themes, "wallpapers": walls, "mode": color_mode(), "modes": MODES, "hyde": hyde_here()}
 
 
 def save(path: str, text: str) -> None:
@@ -221,6 +230,13 @@ def main(argv):
     wait = "--wait" in argv
     argv = [a for a in argv if a != "--wait"]
     cmd = argv[0] if argv else "list"
+    # The switches run HyDE's own scripts: without the one they need, say so
+    # instead of a traceback (wallpaper) or a silent failure (colormode).
+    needs = {"theme": "theme.switch.sh", "wallpaper": "wallpaper.sh", "colormode": "theme.switch.sh"}.get(cmd)
+    if needs and not os.path.isfile(os.path.join(LIB, needs)):
+        print(f"kuwai-themes: {cmd} switches through HyDE's {needs} ({LIB}), and HyDE isn't installed; nothing changed",
+              file=sys.stderr)
+        return 3
     if cmd == "list":
         out = json.dumps(listing())
         print(out, flush=True)

@@ -82,7 +82,7 @@ Scope {
         Saver.showing = showing;
         if (!showing && Dim.wanted) Dim.up();
     }
-    readonly property string still: "file://" + Quickshell.env("HOME") + "/.cache/hyde/wall.set"
+    readonly property string still: Hyde.wallpaper ? "file://" + Hyde.wallpaper : ""   // none: black
 
     // ── The film (Night, Live) plays in its own process: shell-saver/ ─────
     // A player inside the shell kept ~110 MB for good after it stopped

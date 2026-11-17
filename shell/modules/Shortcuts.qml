@@ -110,7 +110,7 @@ Scope {
     GlobalShortcut { appid: "kuwai"; name: "island-tuck"; description: "Tuck the island away / bring it back"
         onPressed: {
             if (Settings.bar === "island") Settings.set("islandTucked", !Settings.islandTucked);
-            else Quickshell.execDetached(["sh", "-c", "pkill -x waybar || hyde-shell waybar"]);   // Waybar users: on/off
+            else Quickshell.execDetached(["sh", "-c", "pkill -x waybar || exec " + (Hyde.hasShell ? "hyde-shell waybar" : "waybar")]);   // Waybar users: on/off (HyDE's, else plain)
         }
     }
     GlobalShortcut { appid: "kuwai"; name: "caffeine"; description: "Caffeine: keep awake (no dim, lock or sleep)"; onPressed: Caffeine.toggle() }

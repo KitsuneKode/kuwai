@@ -22,6 +22,7 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Services.Greetd
 import qs.config
+import qs.services
 import qs.modules.lock
 
 ShellRoot {
@@ -33,7 +34,7 @@ ShellRoot {
     readonly property string wallpaper: Quickshell.env("KUWAI_GREETER_WALL") || "/usr/share/sddm/themes/sddm-astronaut-theme/Backgrounds/post-apocalyptic_hacker.png"
     readonly property color accent: Quickshell.env("KUWAI_GREETER_ACCENT") || Theme.loginAccent
     // What your session will show first: its wallpaper (greeter/sync copies it).
-    readonly property string desktopWall: Quickshell.env("HOME") + "/.cache/hyde/wall.set"
+    readonly property string desktopWall: Hyde.wallpaper     // "" without one: GreeterView shows black
     // The session, without the terminal in between: clear tty1 and hide its
     // cursor, and preserve startup diagnostics in the journal without
     // flashing compositor output between the login screen and desktop.

@@ -69,7 +69,7 @@ FocusScope {
                 { name: "Borealis", style: "borealis", thumb: Quickshell.shellDir + "/assets/screensaver/borealis.jpg", current: st === "borealis" }]
             .concat(clips.map(c => ({ name: "Night · " + clipName(c), style: "night", clip: c, thumb: saverDir + "/" + c + ".jpg", current: st === "night" && clip === c })))
             .concat([{ name: "Live wallpaper", style: "live", thumb: liveThumb, current: st === "live" },
-                     { name: "Still wallpaper", style: "still", thumb: Quickshell.env("HOME") + "/.cache/hyde/wall.set", current: st === "still" }]);
+                     { name: "Still wallpaper", style: "still", thumb: Hyde.wallpaper, current: st === "still" }]);
     }
     // What the preview pane can play for the one you're on: a live wallpaper's
     // loop, a screensaver's film, or a drawn scene (Dusk, Borealis) run small.
@@ -515,12 +515,14 @@ FocusScope {
         spacing: 6
         Label {
             width: parent.width; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.Wrap
-            text: picker.mode === "themes" ? "No themes found" : "This theme has no wallpapers of its own"
+            // Themes and their wallpapers are HyDE's (kuwai-themes says when it isn't installed).
+            text: picker.info.hyde === false ? "Themes and wallpapers come from HyDE, which isn't installed"
+                : picker.mode === "themes" ? "No themes found" : "This theme has no wallpapers of its own"
             size: Theme.tSub; weight: Theme.wSemibold; color: Theme.textSecondary
         }
         Label {
             width: parent.width; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.Wrap
-            text: "How to add (top right, or ?) shows where they go."
+            text: picker.info.hyde === false ? "Live wallpapers and screensavers (their tabs) work without it." : "How to add (top right, or ?) shows where they go."
             size: Theme.tFootnote; color: Theme.textTertiary
         }
     }

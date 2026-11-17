@@ -73,8 +73,8 @@ add(K.home .. "/.local/bin", true)
 add(K.bin, true)
 -- The old names (rice, rice-*) for a release, after everything else: bin/compat/README.
 add(K.bin .. "/compat")
-if K.exists(K.home .. "/.local/lib/hyde/globalcontrol.sh") then
-	add(K.home .. "/.local/lib/hyde")
+if K.hyde then
+	add(K.hyde_lib)
 end
 set("PATH", table.concat(parts, ":"))
 

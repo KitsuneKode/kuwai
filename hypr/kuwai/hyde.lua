@@ -8,8 +8,8 @@
 
 local K = require("kuwai.core")
 
-local LIB = K.home .. "/.local/lib/hyde"
-if not K.exists(LIB .. "/globalcontrol.sh") then
+local LIB = K.hyde_lib
+if not K.hyde then
 	return
 end
 

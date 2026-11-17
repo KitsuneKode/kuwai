@@ -42,7 +42,8 @@ FocusScope {
     }
     Timer { interval: Theme.panelPollMs; repeat: true; running: true; triggeredOnStart: true; onTriggered: memProbe.running = true }
 
-    // Game mode is HyDE's (animations and blur off); read it from Hyprland.
+    // Game mode: HyDE's when it's installed, else kuwai's own gaming mode (the
+    // same as Super+Alt+G); both turn animations off, which is what's read.
     property bool gameMode: false
     Process {
         id: gameProbe
@@ -50,7 +51,8 @@ FocusScope {
         stdout: StdioCollector { onStreamFinished: { try { sys.gameMode = JSON.parse(text).int === 0; } catch (e) {} } }
     }
     function toggleGame() {
-        Quickshell.execDetached(["hyde-shell", "gamemode"]);
+        if (Hyde.hasShell) Quickshell.execDetached(["hyde-shell", "gamemode"]);
+        else Quickshell.execDetached(["hyprctl", "eval", "kuwai.mode_toggle('gaming')"]);
         gameMode = !gameMode;
     }
 

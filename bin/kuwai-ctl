@@ -37,6 +37,8 @@ set -u
 
 KUWAI="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
 SHELL_DIR="$KUWAI/shell"
+# shellcheck source=lib/hyde.sh
+. "$KUWAI/lib/hyde.sh"
 
 ipc() { qs ipc -p "$SHELL_DIR" call "$@" 2>/dev/null; }
 
@@ -105,7 +107,12 @@ bar() {
         "$KUWAI/bin/kuwai-hyde-waybar" on 2>/dev/null
         # shellcheck disable=SC2086
         systemctl --user unmask --runtime $units >/dev/null 2>&1
-        pgrep -x waybar >/dev/null || setsid -f hyde-shell waybar >/dev/null 2>&1 </dev/null
+        # Without HyDE, plain waybar; with no Waybar at all there would be no
+        # bar: the island is, and the setting says so.
+        if ! waybar_start; then
+            echo "kuwai: no Waybar here (neither HyDE's nor waybar is installed); the island is the bar" >&2
+            set_setting bar '"island"' || return
+        fi
     fi
     return 0
 }

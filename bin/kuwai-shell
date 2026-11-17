@@ -16,6 +16,8 @@ set -u
 mkdir -p "${XDG_RUNTIME_DIR:-/tmp}/kuwai"   # shared shapes for shell-auth (island.json)
 
 KUWAI="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+# shellcheck source=lib/hyde.sh
+. "$KUWAI/lib/hyde.sh"
 SHELL_DIR="$KUWAI/shell"
 NAME=org.freedesktop.Notifications
 
@@ -65,11 +67,12 @@ broken() {
     local log=$1 why
     why=$(strings "$log" 2>/dev/null | grep -m3 'caused by' | sed 's/^[^c]*caused by //' | paste -sd ' ' | cut -c1-220)
     echo "kuwai-shell: the shell didn't load: $why" >&2
-    pgrep -x waybar >/dev/null || setsid -f hyde-shell waybar >/dev/null 2>&1 </dev/null
+    local bar="Waybar is up meanwhile; "
+    waybar_start || bar=""
     # Idle and locking fall back to hypridle (its config locks with `kuwai
     # lock`, which uses hyprlock while the shell is down).
     systemctl --user start hypridle.service 2>/dev/null
-    notify_critical "The island didn't load" "${why:-see the Quickshell log} · Waybar is up meanwhile; saving a fixed QML file reloads the island"
+    notify_critical "The island didn't load" "${why:-see the Quickshell log} · ${bar}saving a fixed QML file reloads the island"
     setsid -f bash -c '
         dir=$1 kuwai=$2
         stamp() { find "$dir" \( -name "*.qml" -o -name "*.js" -o -name "*.mjs" -o -name qmldir \) -printf "%T@\n" 2>/dev/null | sort -n | tail -1; }

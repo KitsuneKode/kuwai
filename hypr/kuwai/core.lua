@@ -58,6 +58,12 @@ function K.exists(path)
 	return false
 end
 
+-- Is HyDE here? Its scripts are installed. The one test kuwai makes, the same
+-- in the shell (services/Hyde.qml), the scripts (lib/hyde.sh) and kuwai-themes;
+-- docs/design/WITHOUT-HYDE.md says what each HyDE piece falls back to.
+K.hyde_lib = K.home .. "/.local/lib/hyde"
+K.hyde = K.exists(K.hyde_lib .. "/globalcontrol.sh")
+
 -- Is `cmd` on PATH (or an existing absolute path)? Pure file probes, no fork.
 function K.has(cmd)
 	if cmd:find("/", 1, true) then

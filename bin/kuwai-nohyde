@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+# kuwai-nohyde [--strict] [rev]: what the shell does on a machine without HyDE.
+# Starts every singleton in shell/config and shell/services of `rev` (default
+# HEAD) offscreen, with an empty HOME, its own D-Bus, no network, its own PID
+# namespace (nothing it runs can see or signal the session's processes) and no
+# Hyprland, lets them run a few seconds, and prints what each one logged about
+# HyDE's files or commands (~/.cache/hyde, ~/.config/hyde, ~/.local/state/hyde,
+# ~/.local/lib/hyde, ~/.local/share/hyde, hyde-shell, wallbash), and the
+# warnings and errors it logged at all, by file.
+#
+# Offscreen has no layer-shell, so a service that makes a window (PanelWindow)
+# can't start here: those are named and left out (read them instead).
+# The panels and lock/greeter views aren't started either: bin/kuwai-loadtest
+# loads those as far as offscreen goes.
+#
+# KUWAI_NOHYDE_LOG=FILE keeps the whole log there.
+# --strict: exit 1 if any line mentions a HyDE path or command (the state
+# docs/design/WITHOUT-HYDE.md promises: no HyDE, no noise about it).
+# Exit 2: can't check here (qs, dbus-run-session or unshare missing).
+set -u -o pipefail
+dev="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+strict=0
+[ "${1:-}" = --strict ] && { strict=1; shift; }
+rev="${1:-HEAD}"
+for c in qs dbus-run-session unshare; do command -v "$c" >/dev/null || { echo "kuwai-nohyde: needs $c; can't check" >&2; exit 2; }; done
+unshare --map-current-user -n -p -f -m --mount-proc true 2>/dev/null || { echo "kuwai-nohyde: no user namespaces here; can't isolate the run" >&2; exit 2; }
+
+t="$(mktemp -d)"; trap 'rm -rf "$t"' EXIT
+mkdir -p "$t/run" "$t/home" && chmod 700 "$t/run"
+git -C "$dev" archive "$rev" shell bin lib | tar -x -C "$t" || { echo "kuwai-nohyde: couldn't unpack $rev" >&2; exit 1; }
+
+windowed=()
+for f in "$t"/shell/services/*.qml; do
+    grep -q 'PanelWindow' "$f" && { windowed+=("$(basename "$f" .qml)"); rm -f "$f"; }
+done
+singletons=()
+for f in "$t"/shell/config/*.qml "$t"/shell/services/*.qml; do
+    grep -q '^pragma Singleton' "$f" && singletons+=("$(basename "$f" .qml)")
+done
+{
+    echo 'import QtQuick'
+    echo 'import Quickshell'
+    echo 'import qs.config'
+    echo 'import qs.services'
+    echo 'ShellRoot {'
+    echo '    Component.onCompleted: {'
+    for s in "${singletons[@]}"; do
+        printf '        try { console.log("nohyde: start %s " + (typeof %s)); } catch (e) { console.warn("nohyde: %s threw " + e); }\n' "$s" "$s" "$s"
+    done
+    echo '    }'
+    # What the shell decided (where those exist at this rev), once things settled.
+    echo '    Timer { interval: 4000; running: true; onTriggered: {'
+    echo '        try { console.log("nohyde: decided Hyde.present=" + Hyde.present + " Hyde.hasShell=" + Hyde.hasShell + " Hyde.wallpaper=\"" + Hyde.wallpaper + "\""); } catch (e) {}'
+    echo '        try { console.log("nohyde: decided Theme.accent=" + Theme.accent + " Theme.themeName=\"" + Theme.themeName + "\""); } catch (e) {}'
+    echo '        try { Glyphs.wantEmoji = true; } catch (e) {}'
+    echo '    } }'
+    echo '    Timer { interval: 5500; running: true; onTriggered: { try { console.log("nohyde: decided Glyphs.emojiMissing=" + Glyphs.emojiMissing + " emoji=" + Glyphs.emoji.length); } catch (e) {} } }'
+    echo '    Timer { interval: 6500; running: true; onTriggered: Qt.quit() }'
+    echo '}'
+} >"$t/shell/nohyde-probe.qml"
+
+log="$(cd "$t" && env -i PATH=/usr/bin:/bin HOME="$t/home" XDG_RUNTIME_DIR="$t/run" \
+    XDG_STATE_HOME="$t/home/.local/state" XDG_CACHE_HOME="$t/home/.cache" XDG_DATA_HOME="$t/home/.local/share" XDG_CONFIG_HOME="$t/home/.config" \
+    KUWAI_ROOT="$t" QT_QPA_PLATFORM=offscreen \
+    timeout -k 2 20 unshare --map-current-user -n -p -f -m --mount-proc dbus-run-session -- qs -p "$t/shell/nohyde-probe.qml" 2>&1 | sed 's/\x1b\[[0-9;]*m//g')"
+
+[ -n "${KUWAI_NOHYDE_LOG:-}" ] && printf '%s\n' "$log" | sed "s|$t|…|g" >"$KUWAI_NOHYDE_LOG"   # the whole log, to read
+started=$(printf '%s\n' "$log" | grep -c 'nohyde: start ')
+if [ "$started" -eq 0 ]; then
+    printf 'kuwai-nohyde: the probe never ran:\n%s\n' "$(printf '%s\n' "$log" | grep -E 'caused by|ERROR' | tail -5)" >&2
+    exit 1
+fi
+hyde_re='hyde|wallbash|wall\.set|wall\.dcol|staterc'
+echo "kuwai-nohyde: $(git -C "$dev" log --oneline -1 "$rev" | cut -c1-72)"
+echo "  started ${started} singletons; left out (they make a window): ${windowed[*]:-none}"
+echo "  what it decided:"
+printf '%s\n' "$log" | sed -n 's/.*nohyde: decided /    /p'
+echo "  about HyDE (its files or commands):"
+h=$(printf '%s\n' "$log" | grep -vE 'nohyde: (decided|start)' | sed 's/nohyde//g' | grep -iE "$hyde_re" | sed "s|$t|…|g" | sort | uniq -c | sort -rn)
+if [ -n "$h" ]; then printf '%s\n' "$h" | sed 's/^/    /'; else echo "    nothing"; fi
+echo "  other warnings and errors, by file:"
+o=$(printf '%s\n' "$log" | grep -E '^\s*(WARN|ERROR)' | grep -viE "$hyde_re" | grep -v 'quickshell.ipc' \
+    | sed -nE 's/.*@(services|config)\/([A-Za-z]+)\.qml.*/\1\/\2.qml/p' | sort | uniq -c | sort -rn)
+if [ -n "$o" ]; then printf '%s\n' "$o" | sed 's/^/    /'; else echo "    none"; fi
+[ $strict = 1 ] && [ -n "$h" ] && exit 1
+exit 0

@@ -80,7 +80,7 @@ Item {
             Image {
                 id: wall
                 anchors.fill: parent
-                source: "file://" + view.home + "/.cache/hyde/wall.set"
+                source: Hyde.wallpaper ? "file://" + Hyde.wallpaper : ""      // none: the black below
                 sourceSize: Qt.size(640, 360)
                 fillMode: Image.PreserveAspectCrop
                 asynchronous: true

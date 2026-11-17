@@ -95,7 +95,31 @@ check_deps() {
             [ ${#missing[@]} -gt 0 ] && [ $DRY = 0 ] && { say "  (the needed ones first; stopping here)"; exit 1; }
         fi
     fi
+    hyde_report
     return 0
+}
+
+# ── HyDE ─────────────────────────────────────────────────────────────────
+# kuwai grew on HyDE (another Hyprland dotfiles project) and still uses some
+# of it when it's there; it never installs it. Say which features need it
+# (docs/design/WITHOUT-HYDE.md has what each falls back to).
+# shellcheck source=lib/hyde.sh
+. "$REPO/lib/hyde.sh" 2>/dev/null || hyde_here() { return 1; }
+hyde_report() {
+    step "HyDE (optional)"
+    if hyde_here; then
+        ok "HyDE is installed: kuwai uses its wallpaper, themes and theme colours, emoji lists, Waybar and a few pickers"
+        return 0
+    fi
+    say "  HyDE isn't installed. kuwai works without it; these features need it, and without it:"
+    say "    • the desktop wallpaper: Hyprland's near-black background; the lock and login screens show black"
+    say "    • the Themes panel's themes, wallpapers and Colours: it says HyDE isn't there"
+    say "    • the island's theme colour: kuwai's own blue"
+    say "    • emoji and glyph search in the launcher (: and ;): it says the lists aren't there"
+    say "    • Waybar: plain waybar if it's installed, else the island is the bar"
+    say "    • Game mode: kuwai's gaming mode (Super+Alt+G) instead of HyDE's"
+    say "    • HyDE's pickers (Super+Shift+E, A, R, U, G) and 'update in a terminal': not bound / says so"
+    say "  Live wallpapers, screensavers, the island, notifications, the lock and login screens don't need it."
 }
 
 # ── The original state ───────────────────────────────────────────────────

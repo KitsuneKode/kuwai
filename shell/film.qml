@@ -36,7 +36,7 @@ ShellRoot {
     readonly property string name: "kitsunekode"
     readonly property string face: Quickshell.env("HOME") + "/.face"
     readonly property string wallpaper: "/usr/share/sddm/themes/sddm-astronaut-theme/Backgrounds/post-apocalyptic_hacker.png"
-    readonly property string desktopWall: Quickshell.env("HOME") + "/.cache/hyde/wall.set"
+    readonly property string desktopWall: Hyde.wallpaper
     readonly property color accent: Theme.loginAccent
     function submit() {}
     function power(a) { farewell = a; }

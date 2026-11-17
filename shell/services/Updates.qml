@@ -560,7 +560,7 @@ Singleton {
     }
     function terminal() {
         // sysup in a terminal, for anything the panel leaves to paru.
-        Quickshell.execDetached(["hyde-shell", "app", "system.update.sh", "up"]);
+        Hyde.run(["app", "system.update.sh", "up"], "Updating in a terminal");
     }
     function restart() { Quickshell.execDetached(["systemctl", "reboot"]); }
 
