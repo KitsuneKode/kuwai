@@ -72,9 +72,9 @@ function film() {
     wantedFilm:'', activeFilm:'', filmStopping:false, clipFailed:false, filmOnCpu:false,
     filmProc:{running:false, signal(n){kills.push(n);}}, Qt:{callLater(cb){queue.push(cb);}}, console:{warn(){}},
   });
-  function exit() {
+  function exit(code = 1) {
     movie.filmProc.running = false;
-    movie.filmExited();
+    movie.filmExited(code);
     for (const cb of queue.splice(0)) cb();
   }
   return {movie, kills, exit};
@@ -193,5 +193,29 @@ test('a film the GPU decoder refuses plays again decoded on the CPU, once', () =
 test('the CPU retry is asked for in the film process environment', () => {
   const src = source('shell/modules/screensaver/Screensaver.qml');
   expect(src).toMatch(/root\.filmOnCpu\s*\?\s*\(\{[^}]*QT_FFMPEG_DECODING_HW_DEVICE_TYPES: "none"/);
-  expect(src).toMatch(/function filmFresh\(\) \{ clipFailed = false; filmOnCpu = false; \}/);
+  // A showing forgets a failure, not what the decoder taught: retrying the GPU each showing
+  // cut every film at its first loop (the extra allocation is asked for there).
+  expect(src).toMatch(/function filmFresh\(\) \{ clipFailed = false; \}/);
+  expect(src).toMatch(/test -r "\$KUWAI_SAVER_FILE" \|\| exit 66/);
+  expect(src).toMatch(/onExited: \(exitCode, exitStatus\) => root\.filmExited\(exitCode\)/);
+});
+
+test('once the CPU decodes films, a later failure goes to Dusk without asking the GPU again', () => {
+  const {movie, exit} = film();
+  movie.wantedFilm = '/night.mp4'; movie.syncFilm();
+  exit();                                   // stopped on the GPU at its first loop
+  expect(movie.filmOnCpu).toBe(true);
+  exit();                                   // and on the CPU
+  expect(movie.filmOnCpu).toBe(true);
+  expect(movie.clipFailed).toBe(true);
+});
+
+test('a missing film goes straight to Dusk, with no CPU retry', () => {
+  const {movie, exit} = film();
+  Object.defineProperty(movie, 'wantedFilm', {get:()=>movie.clipFailed ? '' : '/gone.mp4'});
+  movie.syncFilm();
+  exit(66);
+  expect(movie.filmOnCpu).toBe(false);
+  expect(movie.clipFailed).toBe(true);
+  expect(movie.filmProc.running).toBe(false);
 });

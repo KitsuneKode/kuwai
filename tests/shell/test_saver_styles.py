@@ -33,7 +33,7 @@ class SaverStyles(unittest.TestCase):
         self.assertTrue((SHELL / "assets/screensaver/borealis.jpg").exists())
 
     def test_a_failed_film_is_retried_not_remembered(self):
-        self.assertRegex(SAVER, r"function filmFresh\(\) \{ clipFailed = false; filmOnCpu = false; \}")
+        self.assertRegex(SAVER, r"function filmFresh\(\) \{ clipFailed = false; \}")   # filmOnCpu stays learnt
         for on in ("onStyleChanged", "onClipChanged", "onVideoChanged"):
             self.assertRegex(SAVER, on + r":\s*filmFresh\(\)")
         self.assertRegex(SAVER, r"if \(showing\) \{[^}]*filmFresh\(\)")
@@ -45,9 +45,6 @@ class SaverStyles(unittest.TestCase):
         for name in set(re.findall(r"Theme\.(borealis\w+)", scene)):
             self.assertRegex(theme, rf"property \w+ {name}\b", name)
 
-
-if __name__ == "__main__":
-    unittest.main()
 
 
 def test_every_picker_tab_names_where_tab_goes_and_no_empty_picture():
@@ -61,3 +58,9 @@ def test_every_picker_tab_names_where_tab_goes_and_no_empty_picture():
         label = {"themes": "Themes", "wallpapers": "Wallpapers", "live": "Live", "saver": "Screensaver"}[modes[(i + 1) % len(modes)]]
         assert nxt[m] == label, (m, nxt[m])
     assert '"file://" + (preview.it.thumb || preview.it.path || "")' not in qml
+    # A spinner bound to `parent.visible` warned 81 times a close: parent is null while cards go.
+    assert "running: parent.visible" not in qml
+
+
+if __name__ == "__main__":
+    unittest.main()

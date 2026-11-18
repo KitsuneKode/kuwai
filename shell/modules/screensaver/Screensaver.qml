@@ -72,13 +72,15 @@ Scope {
     // there yet) kept Dusk on screen after the film was back and the setting had been
     // changed to it again, which looked like the setting doing nothing.
     property bool clipFailed: false
-    // Before that, one more try decoded on the CPU. The film's two players (one per screen)
-    // take ~290 MB of video memory each on the GPU's decoder; with a dictation model or a
-    // game holding most of a 6 GB card the decoder can't get it ("Cannot allocate memory",
-    // the setting looked like it did nothing). On the CPU it costs a little more of a core
-    // and no video memory at all (measured, a 1440p film: 290 MB → 0, 9 % → 18 % CPU).
+    // Before that, one more try decoded on the CPU, and the CPU from then on (until the shell
+    // restarts). The GPU's decoder takes ~226 MB per player (one per screen) and asks for more
+    // when the film first loops: with a dictation model or a game holding most of a 6 GB card
+    // that ask failed ("Cannot allocate memory") at exactly the film's length, 7 of 9 failures
+    // here, so the film stopped mid-show and Dusk came instead. Learnt once, not per showing:
+    // retrying the GPU each time cut every showing at its first loop. On the CPU: no video
+    // memory, about twice the CPU (measured, a 1440p film: 9 % → 18 % of a core).
     property bool filmOnCpu: false
-    function filmFresh() { clipFailed = false; filmOnCpu = false; }
+    function filmFresh() { clipFailed = false; }
     onClipChanged: filmFresh()
     onStyleChanged: filmFresh()
     onVideoChanged: filmFresh()
@@ -110,12 +112,13 @@ Scope {
             filmProc.running = true;
         }
     }
-    function filmExited() {
+    function filmExited(code) {
         const failed = !filmStopping && activeFilm !== "" && wantedFilm === activeFilm;
+        const missing = code === 66;   // no such file: the CPU won't find it either
         filmStopping = true;
         activeFilm = "";
-        if (failed && !filmOnCpu) {
-            console.warn("screensaver: the film didn't start on the GPU's decoder; trying the CPU");
+        if (failed && !filmOnCpu && !missing) {
+            console.warn("screensaver: the film stopped on the GPU's decoder; the CPU decodes films from now on");
             filmOnCpu = true;
         } else if (failed) {
             console.warn("screensaver: the selected film didn't start or stopped; showing Dusk");
@@ -126,11 +129,11 @@ Scope {
     }
     Process {
         id: filmProc
-        // A missing file never starts it (test -r).
+        // A missing file never starts it (test -r; exit 66 goes straight to Dusk).
         // pdeathsig: the film dies with the shell. Without it, a shell killed
         // while the screensaver showed (a restart, `kuwai promote`) left the
         // film orphaned, covering a monitor for hours; input couldn't reach it.
-        command: ["sh", "-c", 'test -r "$KUWAI_SAVER_FILE" && exec setpriv --pdeathsig KILL qs -p "$1"', "kuwai-saver", Quickshell.shellDir + "/../shell-saver"]
+        command: ["sh", "-c", 'test -r "$KUWAI_SAVER_FILE" || exit 66; exec setpriv --pdeathsig KILL qs -p "$1"', "kuwai-saver", Quickshell.shellDir + "/../shell-saver"]
         // Every screen: one screen with the film and the other black read as
         // "the screensaver only came up on one monitor". It's a separate
         // process, killed on wake, so the second decoder costs nothing after.
@@ -139,7 +142,7 @@ Scope {
         environment: root.filmOnCpu
             ? ({ KUWAI_SAVER_FILE: root.activeFilm, KUWAI_SAVER_SCREEN: "*", QSG_RENDER_LOOP: "basic", QT_FFMPEG_DECODING_HW_DEVICE_TYPES: "none" })
             : ({ KUWAI_SAVER_FILE: root.activeFilm, KUWAI_SAVER_SCREEN: "*", QSG_RENDER_LOOP: "basic" })
-        onExited: root.filmExited()
+        onExited: (exitCode, exitStatus) => root.filmExited(exitCode)
     }
     // ── Dim after a while: ten minutes in, every screen down (services/Dim),
     // back where it was on wake.

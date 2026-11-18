@@ -598,9 +598,11 @@ FocusScope {
                 width: 22; height: 22; radius: 11
                 color: Theme.chip
                 Text {
+                    id: spinGlyph
                     textFormat: Text.PlainText
                     anchors.centerIn: parent; text: "\u{f0772}"; font.family: Theme.fontGlyph; font.pixelSize: Theme.tBody; color: Theme.textPrimary
-                    RotationAnimation on rotation { running: parent.visible && !Theme.reduceMotion; loops: Animation.Infinite; from: 0; to: 360; duration: Theme.spinMs }
+                    // By id: `parent` went null while a closing panel tore the cards down (81 warnings a close).
+                    RotationAnimation on rotation { running: spinGlyph.visible && !Theme.reduceMotion; loops: Animation.Infinite; from: 0; to: 360; duration: Theme.spinMs }
                 }
             }
             Rectangle {
