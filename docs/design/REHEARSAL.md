@@ -74,6 +74,28 @@ Each rule has a frame it must fault and the same frame put right in
 `tests/test_rehearse_gate.py`. A rule that needs an exception gets it from
 what the frame says about itself, never from a list of panel names.
 
+## Gestures
+
+A whole run also drives the swipe with a real pointer in the same sandbox
+(`tests/ui/gestures.qml`; alone: `bin/kuwai-ui-test --case gestures --backend
+x11 --motion full --output DIR`). Each rule of a gesture is a check:
+
+- while the pointer is down the row is the pointer: 20 px of pointer is 20 px
+  of row, and the fade is the distance travelled;
+- let go short and stopped, it comes home; past 40 % of its width, it leaves;
+- a flick leaves from anywhere, and a flick back home keeps it even past the line;
+- caught on its way home it is taken from where it was, and stays put while held;
+- sent away by a button it leaves from rest: no throw without a hand;
+- with reduced motion nothing is left half-way.
+
+Every swipe in the shell is `components/SwipeAway` (the notch's list, the
+center, agents, T3, the lock screen's cards), so these checks cover them all.
+The checks were proven by breaking the swipe eight ways and watching each one
+fail; when you add a check, break the thing it guards and see it fail first.
+A new drag is built on `Spring` (interruptible, keeps its velocity), `Fling`
+(the pointer's speed over the last 100 ms) and `Theme.swipeDamp` (resistance
+past an edge), never on a fixed-length animation.
+
 ## The known list
 
 `tests/ui/rehearsal-known.txt` holds faults that exist and are not fixed yet.

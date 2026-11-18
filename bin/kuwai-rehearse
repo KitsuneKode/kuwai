@@ -9,6 +9,10 @@
   kuwai-rehearse --accept                write today's faults as the known ones
   kuwai-rehearse --out DIR               where the frames and the sheet go
 
+A whole run also drives the gestures with a real pointer, with motion and
+without (tests/ui/gestures.qml): the row follows the pointer 1:1, a flick or
+40 % of its width sends it away, it can be caught on its way home.
+
 It stages each scene of tests/ui/scenes.json in a private window (bwrap, its
 own Xvfb, inert helpers: bin/kuwai-ui-test --case rehearse), never in the
 session. Out come one picture per scene, a contact sheet with each fault
@@ -170,11 +174,25 @@ def main():
         if staged_fail and not any(f.rule == "not-staged" for f in faults):
             faults.append(gate.Fault(f"all @{tag}", "runtime", "fail", f"the stage reported: {verdict.get('reason')} ({out / tag / 'runtime.log'})", None))
 
+    # The gestures, driven by a real pointer (tests/ui/gestures.qml), with
+    # motion and without: part of a whole run, skipped when scenes were picked.
+    if not args.only and not args.scale:
+        for motion in ("full", "reduced"):
+            run = subprocess.run([str(ROOT / "bin/kuwai-ui-test"), "--case", "gestures", "--backend", "x11", "--motion", motion,
+                                  "--output", str(out / f"gestures-{motion}")], capture_output=True, text=True)
+            log = out / f"gestures-{motion}" / "runtime.log"
+            said = re.search(r"UI_SMOKE_FAILED: (.*)", log.read_text(errors="replace")) if log.is_file() else None
+            if said or run.returncode:
+                faults.append(gate.Fault(f"gestures ({motion} motion)", "gesture", "fail",
+                                         said[1].strip() if said else f"the gesture run did not finish ({log})", None))
+
     sheet(shots, out / "sheet.png")
     known = set(KNOWN.read_text().splitlines()) - {""} if KNOWN.is_file() else set()
     known = {k for k in known if not k.startswith("#")}
     # A partial run can only speak for the scenes it staged.
     staged = {f"{s['id']} @x{scale:g}" for s in scenes for scale in scales}
+    if not args.only and not args.scale:
+        staged |= {"gestures (full motion)", "gestures (reduced motion)"}
     known_here = {k for k in known if k.split(" | ", 1)[0] in staged}
     fails = [f for f in faults if f.level == "fail"]
     looks = [f for f in faults if f.level == "look"]

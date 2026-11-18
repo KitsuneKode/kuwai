@@ -244,34 +244,21 @@ Column {
                 Accessible.name: (card.item.app || "Notification") + ": " + stack.heading(card.item)
                 Accessible.description: card.line + (card.item.status ? ". " + card.item.status : "")
                 Accessible.onPressAction: stack.tapped(card.item)
-                // Swipe it away, either way: past 100 px or a quick flick, the
-                // conversation clears (it only clears; nothing opens while locked).
-                DragHandler {
+                // Swipe it away, either way: the shell's one swipe (components/
+                // SwipeAway), as in the notch's list and the center. It follows the
+                // pointer 1:1 and fades with the distance; past 40 % of its width or
+                // on a flick it leaves at the pointer's speed, otherwise it comes home,
+                // and it can be caught on the way. The conversation clears as it
+                // leaves (it only clears; nothing opens while locked). This used to be
+                // its own drag: a fixed 100 px line, a fixed-length ease whatever the
+                // speed, and no fade until it was already going.
+                SwipeAway {
                     id: swipe
-                    target: face
-                    yAxis.enabled: false
-                    // The flick is the pointer's speed at release (components/Fling),
-                    // not averaged over the drag, and only counts the way it's going.
-                    onActiveChanged: {
-                        if (active) { back.stop(); speed.reset(); return; }
-                        const v = speed.vx(), side = face.x < 0 ? -1 : 1;
-                        if (Math.abs(face.x) > 100 && v * side > -Theme.swipeFlick || v * side > Theme.swipeFlick) { flingTo.to = side * card.width; fling.start(); }
-                        else back.start();
-                    }
-                    onTranslationChanged: speed.add(translation.x, 0)
+                    span: card.width
+                    onLeaving: { const k = card.k; for (const i of Notifs.items.filter(i => stack.key(i) === k)) Notifs.remove(i); }
                 }
-                Fling { id: speed }
-                // Not far enough: home on the strong ease-out (no overshoot past home; the
-                // shell is critically damped).
-                NumberAnimation { id: back; target: face; property: "x"; to: 0; duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
-                SequentialAnimation {
-                    id: fling
-                    ParallelAnimation {
-                        NumberAnimation { id: flingTo; target: face; property: "x"; duration: Theme.exitMs; easing.type: Easing.OutCubic }
-                        NumberAnimation { target: face; property: "opacity"; to: 0; duration: Theme.exitMs }
-                    }
-                    ScriptAction { script: { const k = card.k; for (const i of Notifs.items.filter(i => stack.key(i) === k)) Notifs.remove(i); } }
-                }
+                transform: Translate { x: swipe.offset }
+                opacity: swipe.fade
             }
         }
     }
