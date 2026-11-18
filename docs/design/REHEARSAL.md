@@ -61,7 +61,7 @@ Wrong, whoever looks (red on the sheet, fails the gate):
 | `unreadable` | under 3:1 against what is really under it (measured on the picture, over the brightest ground a wallpaper can give the island) |
 | `small-target` | a click target under 24 px |
 | `too-big` | the panel wants more than the island can give (1080 × 600 on a 1080p screen) |
-| `insides` | a helper's name, an exit status, `NaN`, `undefined` shown as words |
+| `insides` | a helper's name, an exit status, `NaN`, `undefined` shown as words (not text set in the code face: a command to copy or a log is shown as code on purpose) |
 | `missing-font` | an icon drawn in a font it didn't ask for (stray letters) |
 | `says-nothing` | fewer than three words on the panel |
 | `waits-forever` | loading placeholders beside a message that loading failed |

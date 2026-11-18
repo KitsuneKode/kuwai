@@ -60,6 +60,12 @@ def test_each_rule_catches_its_fault_and_passes_its_fix(rule, bad, good):
     assert rule not in rules(frame(extra + [good])), f"{rule} faulted the good frame"
 
 
+def test_a_command_shown_as_code_is_content_not_insides():
+    command = text("kuwai-theme install --all --live", (20, 80, 240, 16), family="SF Mono", drawn="SF Mono")
+    assert "insides" not in rules(frame([command]))
+    assert "insides" in rules(frame([dict(command, family="SF Pro Text", drawn="SF Pro Text")]))   # the same words as a message
+
+
 def test_worst_case_data_may_be_shortened_but_not_cut():
     long = text("A thread whose title was written as a whole sentence", (20, 80, 380, 16), cut=True, elides=True)
     assert "shortened" not in rules(frame([long], kind="worst"))

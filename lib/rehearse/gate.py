@@ -31,6 +31,7 @@ ISLAND = (1080, 600)   # the most the island gives a panel on a 1080p screen
 # status, a value that never got filled in.
 INSIDES = re.compile(r"\bkuwai-[a-z]{3,}\b|\bexit(?:ed)?(?: with| code| status)? \d+\b|\(exit \d+\)|\bundefined\b|\bNaN\b|\[object |\bqs ipc\b")
 GAVE_UP = re.compile(r"\b(?:didn'?t|couldn'?t|can'?t|failed|unable)\b", re.I)
+MONO_FONT = re.compile(r"mono|courier|consol", re.I)
 GLYPH_FONT = re.compile(r"symbols|nerd|icon|material|glyph", re.I)
 
 
@@ -162,7 +163,9 @@ def judge(frame: dict, image=None) -> list[Fault]:
             add("small-type", "fail", f"{_label(t)} is set at {t['size']:g} px (the smallest is {MIN_TYPE * scale:g})", _shown(t))
         if glyph and t.get("drawn") and t["drawn"] != t.get("family"):
             add("missing-font", "fail", f"an icon asks for the font {t['family']} and was drawn in {t['drawn']}: it shows as stray letters or a box", _shown(t))
-        if not glyph and INSIDES.search(t["t"]):
+        # Text set in the code face is shown as code on purpose (a command to
+        # copy, a log): the frame says so itself. The rule is for prose.
+        if not glyph and not MONO_FONT.search(t.get("family", "")) and INSIDES.search(t["t"]):
             add("insides", "fail", f"{_label(t)} shows the program's insides (a helper's name, an exit status, an empty value)", _shown(t))
         if t.get("op", 1) >= 0.9:
             mine = _shown(t)
