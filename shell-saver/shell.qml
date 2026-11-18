@@ -42,7 +42,8 @@ ShellRoot {
                 NumberAnimation on opacity { id: fadeIn; running: false; to: 1; duration: 1200; easing.type: Easing.OutCubic }
             }
             MediaPlayer {
-                source: "file://" + root.file
+                source: "file://" + encodeURI(root.file).replace(/#/g, "%23").replace(/\?/g, "%3F")
+                activeAudioTrack: -1
                 videoOutput: out
                 loops: MediaPlayer.Infinite
                 Component.onCompleted: play()

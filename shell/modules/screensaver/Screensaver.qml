@@ -37,7 +37,8 @@ Scope {
     // Without this, stop only ended a saver that start had forced; one that
     // idleness brought up came straight back, because nothing had been typed.
     property bool dismissed: false
-    readonly property bool showing: (forced || (allowed && idle.isIdle && !dismissed)) && !fullscreenAnywhere
+    readonly property bool showing: (forced || (allowed && idle.isIdle && !dismissed))
+        && !fullscreenAnywhere && !Saver.locked && !Saver.screensOff
 
     IdleMonitor {
         id: idle
@@ -58,6 +59,7 @@ Scope {
         watchChanges: true; printErrors: false
         onFileChanged: reload()
         onLoaded: root.video = text().trim()
+        onLoadFailed: root.video = ""
     }
     readonly property bool useVideo: video !== "" && (!UPower.onBattery || Settings.liveOnBattery)
     readonly property string style: Settings.screensaverStyle || "dusk"   // dusk · borealis · night · live · still
@@ -72,6 +74,7 @@ Scope {
     property bool clipFailed: false
     onClipChanged: clipFailed = false
     onStyleChanged: clipFailed = false
+    onVideoChanged: clipFailed = false
     // The screen you were on when it came up: the one Live plays on.
     property string mainScreen: ""
     onShowingChanged: {
@@ -85,8 +88,32 @@ Scope {
     // A player inside the shell kept ~110 MB for good after it stopped
     // (measured); a separate process gives all of it back when killed.
     readonly property string film: style === "night" && !clipFailed ? clip
-        : style === "live" && useVideo ? video : ""
-    readonly property bool filmUp: showing && film !== ""
+        : style === "live" && useVideo && !clipFailed ? video : ""
+    readonly property string wantedFilm: showing ? film : ""
+    property string activeFilm: ""
+    property bool filmStopping: false
+    onWantedFilmChanged: syncFilm()
+    function syncFilm() {
+        if (filmStopping || activeFilm === wantedFilm) return;
+        if (filmProc.running || activeFilm !== "") {
+            filmStopping = true;
+            filmProc.signal(9);
+        } else if (wantedFilm !== "") {
+            activeFilm = wantedFilm;
+            filmProc.running = true;
+        }
+    }
+    function filmExited() {
+        const failed = !filmStopping && activeFilm !== "" && wantedFilm === activeFilm;
+        filmStopping = true;
+        activeFilm = "";
+        if (failed) {
+            console.warn("screensaver: the selected film didn't start or stopped; showing Dusk");
+            clipFailed = true;
+        }
+        filmStopping = false;
+        Qt.callLater(root.syncFilm);
+    }
     Process {
         id: filmProc
         // A missing file never starts it (test -r).
@@ -98,18 +125,8 @@ Scope {
         // "the screensaver only came up on one monitor". It's a separate
         // process, killed on wake, so the second decoder costs nothing after.
         // Basic render loop: the threaded one leaks per frame on NVIDIA (bin/kuwai-shell).
-        environment: ({ KUWAI_SAVER_FILE: root.film, KUWAI_SAVER_SCREEN: "*", QSG_RENDER_LOOP: "basic" })
-        // The shell is the only one that ends it (SIGKILL, filmUp false), so
-        // any exit while the film should be up is a failure: Dusk instead.
-        // Our own SIGKILL (the screensaver going, a restart) isn't a failure:
-        // counting it latched Night off to Dusk for the rest of the session.
-        onExited: {
-            if (!root.killing && root.filmUp && root.style === "night") {
-                console.warn("screensaver: the film", root.clip, "didn't start; Dusk instead");
-                root.clipFailed = true;
-            }
-            root.killing = false;
-        }
+        environment: ({ KUWAI_SAVER_FILE: root.activeFilm, KUWAI_SAVER_SCREEN: "*", QSG_RENDER_LOOP: "basic" })
+        onExited: root.filmExited()
     }
     // ── Dim after a while: ten minutes in, every screen down (services/Dim),
     // back where it was on wake.
@@ -121,11 +138,6 @@ Scope {
 
     // SIGKILL, never SIGTERM: Quickshell can crash on a polite exit and its
     // crash handler would relaunch the film (bin/kuwai-shell has the story).
-    onFilmUpChanged: {
-        if (filmUp) { if (!filmProc.running) filmProc.running = true; }
-        else if (filmProc.running) { killing = true; filmProc.signal(9); }
-    }
-    property bool killing: false
     Component.onDestruction: if (filmProc.running) filmProc.signal(9)
     // Backstop: a film left over from an earlier shell (before pdeathsig, or
     // however it happened) goes when this one starts.
@@ -169,14 +181,13 @@ Scope {
 
                     // The film's screen stays clear: the film is under this
                     // surface (its own process, Top layer).
-                    readonly property bool filmHere: root.film !== ""
+                    readonly property bool filmHere: root.wantedFilm !== ""
                     Rectangle { anchors.fill: parent; color: "black"; visible: !stage.filmHere }
 
                     // What fills the screen: the Dusk scene (default, drawn live,
                     // nothing to decode), your live wallpaper, or the still one.
                     readonly property bool stillHere: root.style === "still"
                     // Night and Live: the film on every screen (the saver process).
-                    readonly property bool night: root.style === "night" && !root.clipFailed
                     // The drawn scenes are ambient: clouds that cross the sky in
                     // minutes, stars, petals. Drawn at the screen's own rate they
                     // cost a third of a core for as long as you were away (33–36 %
@@ -188,7 +199,7 @@ Scope {
                     Loader {
                         id: sceneLoader
                         anchors.fill: parent
-                        active: !stage.filmHere && !stage.stillHere && !stage.night
+                        active: !stage.filmHere && !stage.stillHere
                         sourceComponent: root.style === "borealis" ? borealisC : duskC
                         onLoaded: sceneFrame.scheduleUpdate()
                         onWidthChanged: sceneFrame.scheduleUpdate()

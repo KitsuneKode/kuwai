@@ -28,8 +28,9 @@ def test_collection_failure_is_attributable_not_anonymous(tmp_path):
 def test_cli_records_requested_render_loop_and_source_revision(tmp_path):
  import os
  import subprocess
- result=subprocess.run([str(ROOT/'bin/kuwai-memlog'),'--config','synthetic','--run','synthetic','--render-loop','basic','--outputs','2','0','1','0','0','0','0','0'],env=dict(os.environ,XDG_STATE_HOME=str(tmp_path),KUWAI_REVISION='fixture-dirty'),capture_output=True,text=True)
+ result=subprocess.run([str(ROOT/'bin/kuwai-memlog'),'--config','synthetic','--run','synthetic','--render-loop','basic','--outputs','2','--saver-visible','no','--displays-off','yes','--wallpaper-state','hidden','0','1','0','0','0','0','0'],env=dict(os.environ,XDG_STATE_HOME=str(tmp_path),KUWAI_REVISION='fixture-dirty'),capture_output=True,text=True)
  assert result.returncode==0,result.stderr
  sample=json.loads(next((tmp_path/'kuwai/memlog').glob('*.jsonl')).read_text())
  assert sample['renderLoop']=='basic' and sample['revision']=='fixture-dirty'
  assert sample['outputs']==2
+ assert sample['activity']=={'saverVisible':False,'displaysOff':True,'wallpaper':'hidden'}

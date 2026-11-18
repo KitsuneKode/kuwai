@@ -340,9 +340,16 @@ Item {
 
     // Code gets highlighted once it's on screen (cached per entry).
     property string rendered: ""
+    readonly property string previewKey: e ? Clipboard.ref(e) : ""
+    onPreviewKeyChanged: rendered = ""
     Timer {
         running: !card.header && card.e && card.e.kind === "code" && !card.e.secret && card.rendered === ""
         interval: 80 + card.index * 30
-        onTriggered: Clipboard.render(card.e, d => { if (d.kind === "code" || d.kind === "markdown") card.rendered = d.html; })
+        onTriggered: {
+            const key = card.previewKey;
+            Clipboard.render(card.e, d => {
+                if (card.previewKey === key && (d.kind === "code" || d.kind === "markdown")) card.rendered = d.html;
+            });
+        }
     }
 }

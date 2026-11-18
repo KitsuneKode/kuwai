@@ -33,7 +33,7 @@ ShellRoot {
     readonly property bool limitsAlive: Limits.alive
     readonly property var crashWatcher: Crashes
     readonly property var wellbeing: Wellbeing   // breaks and bedtime (services/Wellbeing)
-    readonly property var memDiary: MemLog       // ~/.local/state/kuwai/memlog.tsv every 10 min
+    readonly property var memDiary: MemLog       // ~/.local/state/kuwai/memlog/ every 10 min
     readonly property var wallFx: WallFx         // wallpaper changes out of the island (its IPC: wallfx play PATH)
     // The stable copy (~/.local/share/kuwai) doesn't hot-reload: each reload
     // left ~25–30 MB behind, and `kuwai promote` restarts it cleanly anyway.
@@ -58,7 +58,8 @@ ShellRoot {
     Lock { id: lockMod }
     Binding { target: MemLog; property: "locked"; value: lockMod.locked }
     GoodbyeOverlay {}
-    LiveWallpaper {}
+    LiveWallpaper { id: liveWallpaper }
+    Binding { target: MemLog; property: "wallpaperState"; value: liveWallpaper.video === "" ? "off" : liveWallpaper.obscured ? "hidden" : "eligible" }
     Screensaver {}
     Blank {}
     Overview {}

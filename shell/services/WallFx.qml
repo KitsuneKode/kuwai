@@ -55,7 +55,14 @@ Singleton {
 
     function play(path, start) {
         if (!path) return;
-        if (phase !== "" || Theme.reduceMotion) { start(); return; }
+        if (phase !== "") {
+            cancelTransition();
+            start();
+            return;
+        }
+        // Stream callbacks from a cancelled transition can still arrive.
+        // Allow the next wallpaper through immediately while they drain.
+        if (query.running || check.running || mapLookup.running || Theme.reduceMotion) { start(); return; }
         next = path; startFn = start; ready = 0; t = 0; before = ({}); known = false;
         startedAt = Date.now();
         mapPath = ""; seed = Math.random() * 100;
@@ -66,12 +73,18 @@ Singleton {
         loadLimit.restart();
         watchdog.restart();
     }
-    function bail(why) {
-        const s = startFn;
-        phase = ""; startFn = null;
-        lastRun = "fallback: " + why;
+    function cancelTransition() {
+        phase = "";
+        startFn = null;
         loadLimit.stop(); watchdog.stop(); settleLimit.stop();
-        if (s) s();
+        handOff.stop(); beginReveal.stop(); recheck.stop(); after.stop();
+        reveal.stop();
+    }
+    function bail(why) {
+        const start = startFn;
+        cancelTransition();
+        lastRun = "fallback: " + why;
+        if (start) start();
     }
 
     // What awww shows now, per screen (": DP-3: 2560x1440, … image: /path").
@@ -88,6 +101,7 @@ Singleton {
         command: ["awww", "query"]
         stdout: StdioCollector {
             onStreamFinished: {
+                if (root.phase !== "loading") return;
                 const m = root.parse(text);
                 if (!Object.keys(m).length) { if (root.phase === "loading") root.bail("awww shows nothing"); return; }
                 root.before = m;
@@ -101,8 +115,8 @@ Singleton {
     // one starts its map in the background, for the next time it is chosen.
     Process {
         id: mapLookup
-        stdout: StdioCollector { onStreamFinished: root.mapPath = text.trim() }
-        onExited: code => { if (code !== 0) Quickshell.execDetached(["setpriv", "--pdeathsig", "KILL", "--", "nice", "-n", "19", Paths.bin + "/kuwai-wallmap", root.next]); }
+        stdout: StdioCollector { onStreamFinished: if (root.phase !== "") root.mapPath = text.trim() }
+        onExited: code => { if (code !== 0 && root.phase !== "") Quickshell.execDetached(["setpriv", "--pdeathsig", "KILL", "--", "nice", "-n", "19", Paths.bin + "/kuwai-wallmap", root.next]); }
     }
     function pick() {
         const want = Settings.wallTransition;
@@ -166,7 +180,7 @@ Singleton {
     Timer { id: after; interval: 300; onTriggered: { root.phase = ""; root.watchdog.stop(); } }
     function finish(how) {
         lastRun = how + " (" + mode + ") " + ((Date.now() - startedAt) / 1000).toFixed(2) + " s";
-        phase = ""; watchdog.stop(); settleLimit.stop();
+        cancelTransition();
     }
     Timer { id: watchdog; interval: 8000; onTriggered: if (root.phase !== "") { if (root.startFn) root.bail("stuck before the hand-off"); else root.force("stuck"); } }
 

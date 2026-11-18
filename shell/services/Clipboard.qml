@@ -88,6 +88,27 @@ Singleton {
     property var raw: []            // the same as cliphist lists it, held deletes included
     function setRaw(list) { raw = list; items = ClipState.visible(list, holds); }
     property var pins: []           // pinned entries, newest pin first
+    readonly property var previewRefs: new Set(raw.concat(pins).map(e => ref(e)))
+    property var previewOwners: ({})
+    property bool previewReady: false
+    onPreviewRefsChanged: if (previewReady) syncPreviews()
+
+    function retainPreviewRefs(table) {
+        const keys = Object.keys(table);
+        if (keys.every(key => previewRefs.has(key))) return table;
+        const kept = {};
+        for (const key of keys) if (previewRefs.has(key)) kept[key] = table[key];
+        return kept;
+    }
+    function syncPreviews() {
+        previewOwners = retainPreviewRefs(previewOwners);
+        for (const key of previewRefs) if (!previewOwners[key]) previewOwners[key] = {};
+        thumbs = retainPreviewRefs(thumbs);
+        thumbRetryAt = retainPreviewRefs(thumbRetryAt);
+        pending = retainPreviewRefs(pending);
+        renders = retainPreviewRefs(renders);
+        fileInfo = retainPreviewRefs(fileInfo);
+    }
     property var times: ({})        // cliphist id → when it was copied (ms)
     property bool loaded: false
 
@@ -451,15 +472,15 @@ Singleton {
     function purge(ids, pinFiles) {
         // The copy on top going isn't a new copy: no "Copied" pill for the one under it.
         if (ids.indexOf(lastTop) >= 0) lastTop = "";
-        // Its decoded image goes with it (kuwai-clip delete removes the file).
-        if (ids.some(id => thumbs[id])) { const t = Object.assign({}, thumbs); for (const id of ids) delete t[id]; thumbs = t; }
         expiring = expiring.filter(x => ids.indexOf(x.id) < 0);
         for (const id of ids) { forgetSecret(id); run(["delete", id]); }
         for (const p of pinFiles) run(["unpin", p]);
-        setRaw(raw);
+        // Invalidate the preview owner immediately while the delete runs.
+        // Otherwise the old card can reappear and a pending reply can refill it.
+        setRaw(raw.filter(entry => !ids.includes(entry.id)));
         saveState();
     }
-    function wipe() { commitHeld(); setRaw([]); thumbs = ({}); renders = ({}); run(["wipe"]); }
+    function wipe() { commitHeld(); setRaw([]); run(["wipe"]); }
     // Edited or transformed text: copy it, or paste it where you were.
     function copyText(t) { open = false; run(["copy-text", t]); }
     function pasteText(t) { const cls = target.cls || ""; const addr = target.address || ""; open = false; run(["paste-text", t, cls, addr]); }
@@ -467,8 +488,12 @@ Singleton {
     // cb([{ path, name, exists, dir, type, size, pages, preview }]).
     property var fileInfo: ({})
     function files(e, cb) {
-        const r = ref(e);
+        const r = ref(e), owner = previewOwners[r];
+        if (!owner) return;
+        const request = {};
+        owner.fileRequest = request;
         capture(["files", r], out => {
+            if (root.previewOwners[r] !== owner || owner.fileRequest !== request) return;
             let d = [];
             try { d = JSON.parse(out); } catch (err) {}
             root.fileInfo = Object.assign({}, root.fileInfo, { [r]: d });
@@ -480,9 +505,10 @@ Singleton {
     // per entry: cb({ kind, lang, html, image }).
     property var renders: ({})
     function render(e, cb) {
-        const r = ref(e);
+        const r = ref(e), owner = previewOwners[r];
         if (renders[r]) { cb(renders[r]); return; }
         capture(["render", r], out => {
+            if (!owner || root.previewOwners[r] !== owner) return;
             let d = { kind: "text" };
             try { d = JSON.parse(out); } catch (err) {}
             root.renders[r] = d;
@@ -524,15 +550,28 @@ Singleton {
     // Images: decoded into the cache once, on demand, for the rows on screen.
     property var thumbs: ({})       // ref → file path
     property var pending: ({})
+    property var thumbRetryAt: ({})
+    function beginThumb(key, make) {
+        if (!previewOwners[key] || pending[key] || (thumbRetryAt[key] || 0) > Date.now()) return null;
+        const proc = make();
+        if (proc) pending[key] = proc;
+        return proc;
+    }
+    function finishThumb(key, proc, path) {
+        if (pending[key] !== proc) return false;
+        delete pending[key];
+        if (path) {
+            delete thumbRetryAt[key];
+            thumbs = Object.assign({}, thumbs, { [key]: "file://" + path });
+        } else thumbRetryAt[key] = Date.now() + Theme.panelPollMs;
+        return true;
+    }
     function thumb(e) {
         const r = ref(e);
         if (thumbs[r]) return thumbs[r];
         if (e.pin !== "") return "file://" + dataDir + "/pins/" + e.pin;
-        if (!pending[r]) {
-            pending[r] = true;
-            const p = thumber.createObject(root, { key: r, command: [root.bin, "thumb", e.id, e.ext || "png"] });
-            p.running = true;
-        }
+        const p = beginThumb(r, () => thumber.createObject(root, { key: r, command: [root.bin, "thumb", e.id, e.ext || "png"] }));
+        if (p) p.running = true;
         return "";
     }
     Component {
@@ -543,10 +582,13 @@ Singleton {
             stdout: StdioCollector {
                 onStreamFinished: {
                     const path = text.trim();
-                    if (path) root.thumbs = Object.assign({}, root.thumbs, { [thumbProc.key]: "file://" + path });
+                    if (path) root.finishThumb(thumbProc.key, thumbProc, path);
                 }
             }
-            onExited: destroy(1000)
+            onExited: {
+                root.finishThumb(thumbProc.key, thumbProc, "");
+                destroy();
+            }
         }
     }
 
@@ -605,7 +647,7 @@ Singleton {
             held: ClipState.toState(holds)
         }));
     }
-    Component.onCompleted: refresh()
+    Component.onCompleted: { previewReady = true; syncPreviews(); refresh(); }
 
     // ── fzf-style matching ───────────────────────────────────────────────
     // Terms are ANDed. A term is fuzzy (letters in order) unless marked:

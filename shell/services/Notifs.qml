@@ -121,11 +121,7 @@ Singleton {
     property bool loaded: false
     property var carried: []            // reload-carried notifications waiting for the history
     onLoadedChanged: if (loaded && carried.length) {
-        const all = items.concat(snoozed);
-        for (const n of carried) {
-            const known = all.find(i => !i.notification && i.nid === n.id);
-            if (known) known.notification = n;
-        }
+        for (const n of carried) attachCarried(n);
         carried = [];
     }
 
@@ -140,6 +136,13 @@ Singleton {
         onNotification: n => root.receive(n)
     }
 
+    function attachCarried(n) {
+        const known = items.concat(snoozed).find(i => i.nid === n.id);
+        if (!known) n.dismiss();
+        else if (!known.notification) known.notification = n;
+        else if (known.notification !== n) n.dismiss();
+    }
+
     function receive(n) {
         n.tracked = true;
         // Carried over by a hot reload (keepOnReload): it's already in the
@@ -149,8 +152,7 @@ Singleton {
             // Before the history is read, hold it: it was dropped, and its
             // row came back dead (Reply, Archive, Mark as Read did nothing).
             if (!loaded) { carried.push(n); return; }
-            const known = items.concat(snoozed).find(i => !i.notification && i.nid === n.id);
-            if (known) known.notification = n;
+            attachCarried(n);
             return;
         }
         const a = NotifAdapters.adapt(n);

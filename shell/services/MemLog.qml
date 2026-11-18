@@ -12,6 +12,7 @@ Singleton {
     property int centerOpened: 0
     property bool locked: false                 // set by shell.qml from Lock
     property int saverStarts: 0
+    property string wallpaperState: "unknown"
     readonly property string runId: String(Date.now()) + "-" + Math.random().toString(36).slice(2)
     property int skipped: 0
     Process {
@@ -22,6 +23,8 @@ Singleton {
         if (append.running) { root.skipped++; return; }
         append.command = [Paths.bin + "/kuwai-memlog", "--config", Quickshell.shellDir, "--run", root.runId,
                           "--render-loop", Quickshell.env("QSG_RENDER_LOOP") || "default", "--outputs", String(Quickshell.screens.length),
+                          "--saver-visible", Saver.showing ? "yes" : "no", "--displays-off", Saver.screensOff ? "yes" : "no",
+                          "--wallpaper-state", root.wallpaperState,
                           String(Notifs.items.length), String(panelsOpened), String(centerOpened), String(T3Code.items.length),
                           root.locked ? "1" : "0", String(saverStarts), String(root.skipped)];
         append.running = true;

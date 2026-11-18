@@ -61,12 +61,18 @@ def main():
     parser.add_argument('--run',required=True)
     parser.add_argument('--render-loop',default='unknown')
     parser.add_argument('--outputs',type=int,default=0)
+    parser.add_argument('--saver-visible', choices=('yes','no'))
+    parser.add_argument('--displays-off', choices=('yes','no'))
+    parser.add_argument('--wallpaper-state', choices=('off','hidden','eligible','unknown'), default='unknown')
     parser.add_argument('counters',nargs=7,type=int)
     args=parser.parse_args()
     sample=collect(os.getppid())
     sample['configId']=hashlib.sha256(args.config.encode()).hexdigest()[:12]
     sample['renderLoop']=args.render_loop
     sample['outputs']=args.outputs
+    sample['activity']={'saverVisible':None if args.saver_visible is None else args.saver_visible=='yes',
+                        'displaysOff':None if args.displays_off is None else args.displays_off=='yes',
+                        'wallpaper':args.wallpaper_state}
     sample['counters']=dict(zip(('notifications','panels','centers','t3Items','locked','savers','skipped'),args.counters))
     sample['revision']=os.environ.get('KUWAI_REVISION','unknown')
     run=hashlib.sha256((sample['configId']+str(sample['pid'])+str(sample.get('startTicks'))+args.run).encode()).hexdigest()[:32]

@@ -7,9 +7,8 @@
 // is all there is. On: one muted, looping player per screen over it, fading
 // in once frames arrive and out to transparent when it stops.
 //
-// Paused, not decoding, whenever nobody can see it or it costs too much:
-//   a fullscreen window on that screen · the screen locked · on battery
-//   (Settings.liveOnBattery to allow it)
+// A covered screen or battery policy pauses playback and keeps the last frame.
+// The lock screen, screensaver and powered-off displays release the players.
 import QtQuick
 import QtMultimedia
 import Quickshell
@@ -76,6 +75,7 @@ Scope {
         onLoadFailed: root.locked = false
     }
 
+    readonly property bool obscured: root.locked || Saver.locked || Saver.screensOff || Saver.showing
     readonly property bool batteryOk: !UPower.onBattery || Settings.liveOnBattery
 
     Variants {
@@ -83,8 +83,7 @@ Scope {
         LazyLoader {
             id: slot
             required property ShellScreen modelData
-            active: root.video !== "" || fadeOut
-            property bool fadeOut: false
+            active: root.video !== "" && !root.obscured
 
             PanelWindow {
                 id: bg
@@ -150,7 +149,7 @@ Scope {
                     return W > 0 && H > 0 ? Math.min(1, bg.unionArea(rects) / (W * H)) : 0;
                 }
                 readonly property bool covered: fullscreen || coverage >= 0.85
-                readonly property bool shouldPlay: root.video !== "" && !covered && !root.locked && root.batteryOk && !Saver.showing   // under the screensaver: nobody sees it
+                readonly property bool shouldPlay: root.video !== "" && !covered && !root.obscured && root.batteryOk
 
                 VideoOutput {
                     id: out
@@ -161,9 +160,9 @@ Scope {
                 }
                 MediaPlayer {
                     id: player
-                    source: root.video !== "" ? "file://" + root.video : ""
+                    source: root.video !== "" ? "file://" + encodeURI(root.video).replace(/#/g, "%23").replace(/\?/g, "%3F") : ""
                     videoOutput: out
-                    audioOutput: AudioOutput { muted: true; volume: 0 }
+                    activeAudioTrack: -1
                     loops: MediaPlayer.Infinite
                 }
                 // Play, pause or stop as conditions change (a fullscreen game,
