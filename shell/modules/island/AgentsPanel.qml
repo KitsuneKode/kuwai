@@ -23,6 +23,7 @@ import Quickshell.Widgets
 import qs.config
 import qs.components
 import qs.services
+import "../../services/t3.mjs" as T3
 
 FocusScope {
     id: ap
@@ -93,8 +94,14 @@ FocusScope {
             });
         }
         for (const i of T3Code.items) {
-            const st = i.status === "waiting" ? "needs" : i.status === "completed" ? "done" : i.status === "failed" ? "error" : "working";
+            // The same reading as the T3 panel's (t3.mjs): what it wants from you,
+            // parked on another thread, stopped by a limit. It said "Working" for a
+            // parked thread and "Error" for one that had only run out of quota.
+            const said = T3.stateOf(i);
+            const st = said.tone === "attention" ? "needs" : said.key === "done" ? "done" : said.key === "limited" ? "limited"
+                     : said.key === "failed" ? "error" : said.key === "blocked" ? "idle" : "working";
             out.push({
+                word: said.key === "blocked" ? "Waiting on another thread" : said.tone === "attention" && said.key !== "waiting" ? said.word : "",
                 key: "t" + i.thread, src: "t3", agent: ap.t3Agent(i.provider), title: i.title || "Untitled thread",
                 where: "T3" + (i.project && i.project !== "No project" ? " · " + i.project : ""),
                 model: ap.on(i.model, i.effort), state: st, status: "", question: "",
@@ -241,7 +248,7 @@ FocusScope {
                 transform: Translate { x: swipe.offset }
                 SwipeAway { id: swipe; enabled: row.dismissable; span: row.width; onLeaving: ap.dismiss(row.modelData) }
                 Accessible.role: Accessible.ListItem
-                Accessible.name: modelData.title + ", " + ap.word(modelData.state) + (modelData.where ? ", " + modelData.where : "") + (modelData.model ? ", " + modelData.model : "")
+                Accessible.name: modelData.title + ", " + (modelData.word || ap.word(modelData.state)) + (modelData.where ? ", " + modelData.where : "") + (modelData.model ? ", " + modelData.model : "")
                 Accessible.description: modelData.question || ""
                 Accessible.selected: ap.sel === index
                 // The keyboard's ring is the list's FluidHighlight (ring: keyboard).
@@ -305,7 +312,7 @@ FocusScope {
                         elide: Text.ElideRight
                         // State first, in its colour; then where and on what, quieter.
                         textFormat: Text.StyledText
-                        text: "<font color='" + ap.tone(row.modelData.state) + "'>" + ap.word(row.modelData.state) + "</font>"
+                        text: "<font color='" + ap.tone(row.modelData.state) + "'>" + (row.modelData.word || ap.word(row.modelData.state)) + "</font>"
                             + [row.modelData.where, row.modelData.model].filter(x => x).map(x => " · " + ap.esc(x)).join("")
                         size: Theme.tFootnote; color: Theme.textSecondary
                     }

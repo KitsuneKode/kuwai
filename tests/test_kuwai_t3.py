@@ -19,6 +19,7 @@ create table orchestration_v2_projection_threads (thread_id text primary key, ti
 create table orchestration_v2_projection_runs (run_id text primary key, thread_id text, status text, provider text,
   requested_at text, completed_at text, ordinal integer, payload_json text);
 create table orchestration_v2_projection_runtime_requests (thread_id text, status text, kind text);
+create table orchestration_v2_projection_messages (message_id text, thread_id text, role text, updated_at text, payload_json text);
 create table orchestration_v2_projection_turn_items (thread_id text, run_id text, type text, status text,
   payload_json text, updated_at text);
 create table projection_projects (project_id text, title text);
@@ -54,6 +55,17 @@ def build(tmp_path):
     thread(db, "t-ask", "Needs approval")
     run(db, "r-ask", "t-ask", "running")
     db.execute("insert into orchestration_v2_projection_runtime_requests values ('t-ask','pending','command')")
+    thread(db, "t-question", "Has a question")
+    run(db, "r-question", "t-question", "running")
+    db.execute("insert into orchestration_v2_projection_runtime_requests values ('t-question','pending','user_input')")
+    db.execute("insert into orchestration_v2_projection_runtime_requests values ('t-question','resolved','command')")
+    thread(db, "t-guest", "A guest wrote", guestShare={"messages": [{"status": "pending"}]})
+    run(db, "r-guest", "t-guest", "running")
+    for mid, tid, role, at, text in [("m1", "t-done", "assistant", NOW, "An earlier reply."),
+                                     ("m2", "t-done", "user", LATER, "A later question from me."),
+                                     ("m3", "t-done", "assistant", LATER, "The **last** reply.\n\n```sh\nmake\n```"),
+                                     ("m4", "t-done", "assistant", LATER + "9", "")]:
+        db.execute("insert into orchestration_v2_projection_messages values (?,?,?,?,?)", (mid, tid, role, at, json.dumps({"text": text})))
     thread(db, "t-wait", "Waits on a child")
     run(db, "r-wait", "t-wait", "running")
     db.execute("insert into orchestration_v2_projection_turn_items values (?,?,?,?,?,?)",
@@ -88,7 +100,7 @@ def test_only_real_work_counts(tmp_path):
         assert hidden not in titles, hidden
     assert d["running"] == 1                       # Working; the one waiting on a child is not work
     assert titles["Waits on a child"]["blocked"] is True
-    assert d["waiting"] == 1 and titles["Needs approval"]["status"] == "waiting"
+    assert d["waiting"] == 3 and titles["Needs approval"]["status"] == "waiting"   # an approval, a question, a guest
     assert d["items"][0]["title"] == "Needs approval"       # attention first
     assert titles["Done, not seen"]["status"] == "completed"
     assert titles["Hit a limit"]["status"] == "failed" and titles["Hit a limit"]["limited"] is True
@@ -99,3 +111,28 @@ def test_not_running_without_the_server(tmp_path):
     build(tmp_path)
     (tmp_path / "server-runtime.json").write_text(json.dumps({"pid": 999999999}))
     assert read(tmp_path)["alive"] is False
+
+
+def test_why_a_thread_needs_you(tmp_path):
+    build(tmp_path)
+    asks = {i["title"]: i.get("ask") for i in read(tmp_path)["items"] if i["status"] == "waiting"}
+    assert asks == {"Needs approval": "approval", "Has a question": "question", "A guest wrote": "request"}
+    working = [i for i in read(tmp_path)["items"] if i["status"] == "running"]
+    assert working and all(i.get("ask") is None for i in working)
+
+
+def reply(tmp_path, *args):
+    env = {**os.environ, "T3_USERDATA": str(tmp_path)}
+    return json.loads(subprocess.run([str(BIN), "reply", *args], capture_output=True, text=True, env=env, timeout=15).stdout)
+
+
+def test_the_last_reply_of_one_thread(tmp_path):
+    build(tmp_path)
+    got = reply(tmp_path, "t-done")
+    assert got["text"].startswith("The **last** reply.") and got["at"] == LATER      # the newest one that says something, not mine
+    assert reply(tmp_path, "t-work") == {}                                             # a thread with no reply yet
+    assert reply(tmp_path, "no-such-thread") == {}
+    # An id is letters, digits and : _ . - ; anything else is refused before the query.
+    for bad in ("", "t-done' or '1'='1", "t-done; drop table x", "t done", "$(id)"):
+        assert reply(tmp_path, bad) == {}, bad
+    assert reply(tmp_path) == {}

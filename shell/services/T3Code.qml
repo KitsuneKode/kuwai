@@ -17,6 +17,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
 import qs.config
+import "t3.mjs" as T3
 
 Singleton {
     id: root
@@ -119,6 +120,39 @@ Singleton {
         }
     }
     Component.onCompleted: { settling = true; read(); }
+
+    // A thread's last reply, for the panel's preview: asked for one thread,
+    // when its row is rested on (never in the background), and kept until that
+    // thread moves on (its time changes). Plain lines, made by t3.mjs.
+    property var replies: ({})                 // thread → { text, at, of }
+    function wantReply(item) {
+        if (!item || !item.thread) return;
+        const had = replies[item.thread];
+        if (had && had.of === item.at) return;
+        if (replyReader.running) { replyReader.next = item; return; }
+        replyReader.item = item;
+        replyReader.command = [root.bin, "reply", String(item.thread)];
+        replyReader.running = true;
+    }
+    Process {
+        id: replyReader
+        property var item: null
+        property var next: null
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let d = {};
+                try { d = JSON.parse(text) || {}; } catch (e) {}
+                const it = replyReader.item, kept = {};
+                // Only threads still listed are kept: the cache can't outgrow the list.
+                for (const i of root.rawItems) if (root.replies[i.thread]) kept[i.thread] = root.replies[i.thread];
+                if (it) kept[it.thread] = { text: T3.excerpt(d.text), at: d.at || "", of: it.at };
+                root.replies = kept;
+                const n = replyReader.next;
+                replyReader.item = null; replyReader.next = null;
+                if (n) Qt.callLater(() => root.wantReply(n));
+            }
+        }
+    }
 
     // One thread, in T3 Code: its own link (t3code://threads/ENV/THREAD; the
     // desktop app routes a second launch's link to that thread). Without the

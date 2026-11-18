@@ -1,6 +1,5 @@
 # Faults the rehearsal knows about and that are still to be fixed (bin/kuwai-rehearse).
 # Never add a line by hand: fix the fault, or run kuwai-rehearse --accept and say why in the commit.
-agents/typical @x2 | shortened | "Fix the calendar header at large text" is shortened with an ellipsis though its content is ordinary
 calendar/new-machine @x2 | cut-off | "No calendars yet. Add one: paste an iCal…" runs 0 px past the bottom of the panel
 calendar/new-machine @x2 | cut-off | "Today · Week 0" runs 0 px past the bottom of the panel
 calendar/new-machine @x2 | cut-off | "Wednesday, 0 November" runs 0 px past the bottom of the panel
@@ -17,8 +16,6 @@ power/new-machine @x2 | on-top | "Shut Down" is drawn over "Firmware"
 settings/new-machine @x2 | on-top | "Bar & Island" is drawn over "Search"
 system/new-machine @x2 | on-top | "󰖔" is drawn over "Game mode"
 system/typical @x2 | on-top | "󰖔" is drawn over "Game mode"
-t3/typical @x2 | shortened | "Finished · Claude · 0 h ago · rice" is shortened with an ellipsis though its content is ordinary
-t3/typical @x2 | shortened | "OTP detection: origin-bound codes" is shortened with an ellipsis though its content is ordinary
 updates/typical @x2 | on-top | "linux-zen" is drawn over "Updated together, the way Arch supports"
 updates/typical @x2 | on-top | "mesa" is drawn over "Updated together, the way Arch supports"
 updates/typical @x2 | unreadable | "Update 0" has 0.0:0 against what is under it

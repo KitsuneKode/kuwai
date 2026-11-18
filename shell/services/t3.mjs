@@ -1,0 +1,94 @@
+// What a T3 Code thread's row says (modules/island/T3Panel), from what
+// bin/kuwai-t3 reports about it.
+//
+// The helper knew more than the panel said. Every thread with something for
+// you read "Needs you", whether it wanted a command approved, had asked a
+// question or held a guest's message; a thread parked on another thread read
+// "Working"; one stopped by a usage limit read "Failed"; and a working thread
+// never said for how long. The row now names the state in its own word, at
+// the right edge where a glance down the list reads them all, and how long
+// it has been so. Resting on a row shows the thread's last reply (the words
+// and the preview are t3code-bar's ideas, eliophan/t3code-bar, MIT; no code
+// of it is here).
+//
+// Plain ES for Qt's engine (no lookbehind, no spread, no named groups), typed
+// with JSDoc and checked by tsc (tsconfig.check.json). Quickshell reloads on
+// QML changes only: after changing this file, save a QML file too.
+// @ts-check
+
+/** A thread as bin/kuwai-t3 gives it. @typedef {{ status?: string, ask?: string | null, blocked?: boolean, limited?: boolean, at?: string }} Thread */
+/** What its row says. `tone`: attention (it wants you), working, idle, caution, error, done. @typedef {{ key: string, word: string, tone: string, timed: boolean }} State */
+
+/**
+ * The thread's state in one word. `timed`: the word is followed by how long
+ * (working for 8m, done 2h ago); a thread that wants you is not, it wants you now.
+ * @param {Thread | null | undefined} t @returns {State}
+ */
+export function stateOf(t) {
+    const s = t && t.status || "";
+    if (s === "waiting") {
+        const ask = t && t.ask;
+        return ask === "approval" ? { key: "approval", word: "Approval", tone: "attention", timed: false }
+            : ask === "question" ? { key: "question", word: "Question", tone: "attention", timed: false }
+            : ask === "request" ? { key: "request", word: "Request", tone: "attention", timed: false }
+            : { key: "waiting", word: "Needs you", tone: "attention", timed: false };
+    }
+    if (s === "failed") return t && t.limited ? { key: "limited", word: "Limit reached", tone: "caution", timed: true }
+        : { key: "failed", word: "Failed", tone: "error", timed: true };
+    if (s === "completed") return { key: "done", word: "Done", tone: "done", timed: true };
+    if (s === "running") return t && t.blocked ? { key: "blocked", word: "Waiting", tone: "idle", timed: false }
+        : { key: "working", word: "Working", tone: "working", timed: true };
+    return { key: "starting", word: "Starting", tone: "working", timed: false };
+}
+
+/** The same, for a screen reader: what the word stands for. @param {Thread | null | undefined} t */
+export function spoken(t) {
+    return ({ approval: "Wants your approval", question: "Has a question for you", request: "A guest wrote to it",
+              waiting: "Needs you", limited: "Stopped at a usage limit", failed: "Failed", done: "Finished",
+              blocked: "Waiting on another thread", working: "Working", starting: "Starting" })[stateOf(t).key];
+}
+
+/**
+ * How long, short: "now", "8m", "2h", "3d". "" when the time can't be read
+ * (the row then says the word alone; it said "NaN h ago" once).
+ * @param {string | number | null | undefined} at @param {number} now
+ */
+export function since(at, now) {
+    const t = typeof at === "number" ? at : Date.parse(String(at || ""));
+    if (!isFinite(t)) return "";
+    const m = Math.max(0, Math.floor((now - t) / 60000));
+    return m < 1 ? "now" : m < 60 ? m + "m" : m < 1440 ? Math.floor(m / 60) + "h" : Math.floor(m / 1440) + "d";
+}
+
+/**
+ * A reply as a few plain lines for the preview: code blocks dropped, a link
+ * as its label, heading marks, quote marks and emphasis removed, a bullet as
+ * "• ". Five lines and 360 characters at most, cut at a word, "…" when cut.
+ * @param {unknown} markdown @returns {string}
+ */
+export function excerpt(markdown) {
+    const text = String(markdown || "")
+        .replace(/```[\s\S]*?(?:```|$)/g, "")
+        .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1");
+    const lines = [];
+    const raw = text.split("\n");
+    for (let i = 0; i < raw.length; i++) {
+        const s = raw[i].trim()
+            .replace(/^#{1,6}\s+/, "")
+            .replace(/^>\s?/, "")
+            .replace(/^[-*]\s+/, "• ")
+            .replace(/\*\*|__|`/g, "")
+            .trim();
+        if (s !== "" && !/^[-=*_]{3,}$/.test(s)) lines.push(s);
+    }
+    let cut = lines.length > 5;
+    let out = lines.slice(0, 5).join("\n");
+    const chars = Array.from(out);
+    if (chars.length > 360) {
+        const head = chars.slice(0, 360).join("");
+        const at = head.lastIndexOf(" ");
+        out = at > 0 ? head.slice(0, at) : head;
+        cut = true;
+    }
+    return cut ? out.replace(/[\s.,;:]+$/, "") + "…" : out;
+}

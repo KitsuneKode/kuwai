@@ -8,6 +8,7 @@ import Quickshell
 import qs.config
 import qs.components
 import qs.services
+import "../../services/t3.mjs" as T3
 
 FocusScope {
     id: t3
@@ -20,6 +21,11 @@ FocusScope {
     }
 
     property Item hoverRow: null
+    // The thread whose last reply is showing: the row the pointer has rested
+    // on for a moment (Theme.tipMs). One at a time; leaving the row closes it.
+    property string previewOf: ""
+    property real now: Date.now()
+    Timer { interval: 30000; running: t3.visible; repeat: true; triggeredOnStart: true; onTriggered: t3.now = Date.now() }
     readonly property var live: T3Code.items.filter(i => i.status !== "completed" && i.status !== "failed")
     // Finished ones are rows too, each a way to that thread: "2 finished"
     // said how many but not which, and nothing could be done with it. Live
@@ -81,7 +87,10 @@ FocusScope {
             // All of it when it fits (eight rows do at ordinary text). At a large
             // Text size the rows are taller than the island has room for: then
             // it scrolls, and fades where more lies (ScrollFade below).
-            height: Math.min(contentHeight, Math.max(Theme.sp(46) * 3, 560 - Theme.sp(150)))
+            // (600 is what the island gives a panel on a 1080p screen. The rest is
+            // this panel's own: 76 of padding and gaps, and a header, a "+N more"
+            // line and the buttons, 84 together, which grow with the text.)
+            height: Math.min(contentHeight, Math.max(Theme.sp(46) * 3, 600 - 76 - Theme.sp(84)))
             interactive: contentHeight > height + 1
             clip: interactive
             boundsBehavior: Flickable.StopAtBounds
@@ -103,8 +112,18 @@ FocusScope {
                     readonly property bool waits: modelData.status === "waiting"
                     readonly property bool failed: modelData.status === "failed"
                     readonly property bool done: modelData.status === "completed" || failed
+                    readonly property var st: T3.stateOf(modelData)
+                    // At a large Text size there is no room for the state beside the
+                    // title: it goes under it, and the title may take two lines.
+                    readonly property bool stacked: Theme.textScale >= 1.5
+                    readonly property string saying: st.word + (st.timed && T3.since(modelData.at, t3.now) ? " " + T3.since(modelData.at, t3.now) : "")
+                    readonly property real line: Math.max(Theme.sp(46), words.implicitHeight + Theme.s3)   // its text's own height
+                    readonly property var reply: T3Code.replies[modelData.thread] || null
+                    readonly property bool previewing: t3.previewOf === modelData.thread && !!reply && reply.text !== ""
                     width: threads.width
-                    height: Theme.sp(46)      // two lines of text: it grows with Text size
+                    height: line + (previewing ? preview.height + Theme.s2 : 0)
+                    Behavior on height { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+                    clip: true
                     radius: 12
                     color: "transparent"
                     // A finished thread you've dealt with: swipe it away sideways
@@ -122,7 +141,7 @@ FocusScope {
                     // State: an orange dot when it needs you, a turning arc while it works.
                     Item {
                         id: state
-                        x: 10; anchors.verticalCenter: parent.verticalCenter
+                        x: 10; y: (row.line - height) / 2
                         width: 14; height: 14
                         Rectangle {
                             visible: row.waits
@@ -130,16 +149,26 @@ FocusScope {
                             width: 8; height: 8; radius: 4
                             color: Theme.orange
                         }
-                        // Finished in the last 15 minutes: a check, still.
+                        // Ended: a check when it finished; a warning when it broke or
+                        // was stopped by a limit (a green check sat beside "Failed").
                         Text {
+                            textFormat: Text.PlainText
                             visible: row.done
                             anchors.centerIn: parent
-                            text: "\u{f012c}"
+                            text: row.st.tone === "done" ? "\u{f012c}" : "\u{f0026}"
                             font.family: Theme.fontGlyph; font.pixelSize: 14
-                            color: Theme.green
+                            color: row.st.tone === "done" ? Theme.green : row.st.tone === "error" ? Theme.red : Theme.orange
+                        }
+                        // Parked on another thread: a still ring. It isn't working, so nothing turns.
+                        Rectangle {
+                            visible: row.st.key === "blocked"
+                            anchors.centerIn: parent
+                            width: 11; height: 11; radius: width / 2
+                            color: "transparent"
+                            border.width: 1.6; border.color: Qt.rgba(1, 1, 1, 0.28)
                         }
                         Canvas {
-                            visible: !row.waits && !row.done
+                            visible: !row.waits && !row.done && row.st.key !== "blocked"
                             anchors.fill: parent
                             onPaint: {
                                 const c = getContext("2d");
@@ -148,39 +177,103 @@ FocusScope {
                                 c.strokeStyle = Theme.cyan; c.beginPath(); c.arc(7, 7, 5.5, -Math.PI / 2, Math.PI * 0.35); c.stroke();
                             }
                             RotationAnimation on rotation {
-                                running: !row.waits && !row.done && t3.visible && !Theme.reduceMotion
+                                running: !row.waits && !row.done && row.st.key !== "blocked" && t3.visible && !Theme.reduceMotion
                                 from: 0; to: 360; duration: Theme.spinMs; loops: Animation.Infinite
                             }
                         }
                     }
+                    // The state, in its own word, at the right edge: a glance down
+                    // the list reads them all. It wants you: amber. It broke: red.
+                    // Everything else is quiet (the mark on the left has the colour).
+                    Label {
+                        id: said
+                        anchors { right: parent.right; rightMargin: 12 }
+                        y: (row.line - height) / 2
+                        visible: !row.stacked
+                        opacity: row.done && rowHover.hovered ? 0 : 1      // the × takes its place
+                        Behavior on opacity { NumberAnimation { duration: Theme.hoverMs } }
+                        text: row.saying
+                        size: Theme.tFootnote; weight: row.st.tone === "attention" ? Theme.wSemibold : Theme.wMedium
+                        color: row.st.tone === "attention" || row.st.tone === "caution" ? Theme.orange : row.st.tone === "error" ? Theme.red : Theme.textTertiary
+                        font.features: ({ "tnum": 1 })
+                    }
                     Column {
-                        anchors { left: state.right; leftMargin: 12; right: parent.right; rightMargin: row.done ? 40 : 12; verticalCenter: parent.verticalCenter }
+                        id: words
+                        anchors { left: state.right; leftMargin: 12; right: row.stacked ? parent.right : said.left; rightMargin: Theme.s3 }
+                        y: (row.line - height) / 2
                         spacing: 2
                         Label {
                             width: parent.width; elide: Text.ElideRight
+                            wrapMode: row.stacked ? Text.Wrap : Text.NoWrap
+                            maximumLineCount: row.stacked ? 2 : 1
                             text: row.modelData.title || "Untitled thread"
                             size: Theme.tBody; weight: Theme.wSemibold
+                            // What is only working steps back; what wants you or has ended leads.
+                            color: row.st.tone === "working" || row.st.tone === "idle" ? Theme.textSecondary : Theme.textPrimary
                         }
                         Label {
                             width: parent.width; elide: Text.ElideRight
-                            text: (row.waits ? "Needs you" : row.failed ? "Failed" : row.done ? "Finished" : row.modelData.status === "running" ? "Working" : "Starting")
-                                + (t3.agentName(row.modelData.provider) ? " · " + t3.agentName(row.modelData.provider) : "")
-                                + (row.done && t3.ago(row.modelData.at) ? " · " + t3.ago(row.modelData.at) : "")
-                                + (row.modelData.project && row.modelData.project !== "No project" ? " · " + row.modelData.project : "")
+                            text: [row.stacked ? row.saying : "", t3.agentName(row.modelData.provider), row.modelData.project && row.modelData.project !== "No project" ? row.modelData.project : ""].filter(x => x).join(" · ")
+                            visible: text !== ""
                             size: Theme.tFootnote
-                            color: row.waits ? Theme.orange : Theme.textTertiary
+                            color: !row.stacked ? Theme.textTertiary
+                                : row.st.tone === "attention" || row.st.tone === "caution" ? Theme.orange : row.st.tone === "error" ? Theme.red : Theme.textTertiary
                         }
+                    }
+                    // Its last reply, when the pointer has rested on the row: what it
+                    // said, without going there. Not while the screen is shared.
+                    Rectangle {
+                        id: preview
+                        x: state.x + state.width + 12
+                        y: row.line
+                        width: parent.width - x - 12
+                        height: previewCol.implicitHeight + 2 * Theme.s2
+                        radius: Theme.r1
+                        color: Theme.tileRest
+                        opacity: row.previewing ? 1 : 0
+                        Behavior on opacity { NumberAnimation { duration: Theme.hoverMs } }
+                        Column {
+                            id: previewCol
+                            x: Theme.s3; y: Theme.s2
+                            width: parent.width - 2 * Theme.s3
+                            spacing: Theme.s1
+                            Label {
+                                width: parent.width
+                                wrapMode: Text.Wrap; maximumLineCount: 5; elide: Text.ElideRight
+                                textFormat: Text.PlainText
+                                text: Notifs.sharing ? "Hidden while sharing your screen" : (row.reply ? row.reply.text : "")
+                                size: Theme.tFootnote; lineHeight: 1.3
+                                color: Theme.textSecondary
+                            }
+                            Label {
+                                visible: !!row.reply && T3.since(row.reply.at, t3.now) !== ""
+                                text: "Last reply · " + (row.reply ? T3.since(row.reply.at, t3.now) : "") + (row.reply && T3.since(row.reply.at, t3.now) !== "now" ? " ago" : "")
+                                size: Theme.tCaption; color: Theme.textTertiary
+                            }
+                        }
+                    }
+                    Timer {
+                        id: rest
+                        interval: Theme.tipMs
+                        onTriggered: if (rowHover.hovered) { T3Code.wantReply(row.modelData); t3.previewOf = row.modelData.thread; }
                     }
                     HoverHandler {
                         id: rowHover
                         cursorShape: Qt.PointingHandCursor
-                        onHoveredChanged: if (hovered) t3.hoverRow = row; else if (t3.hoverRow === row) t3.hoverRow = null
+                        onHoveredChanged: {
+                            if (hovered) { t3.hoverRow = row; rest.restart(); }
+                            else {
+                                if (t3.hoverRow === row) t3.hoverRow = null;
+                                rest.stop();
+                                if (t3.previewOf === row.modelData.thread) t3.previewOf = "";
+                            }
+                        }
                     }
                     // That thread, not just the window (T3 Code's own link).
                     TapHandler { onTapped: if (!xHover.hovered) { T3Code.openThread(row.modelData.thread); Island.close(); } }
                     Accessible.role: Accessible.ListItem
                     Accessible.name: row.modelData.title || "Untitled thread"
-                    Accessible.description: (row.waits ? "Needs you" : row.failed ? "Failed" : row.done ? "Finished" : row.modelData.status === "running" ? "Working" : "Starting")
+                    Accessible.description: T3.spoken(row.modelData)
                         + (t3.agentName(row.modelData.provider) ? ", " + t3.agentName(row.modelData.provider) : "")
                         + (row.modelData.project && row.modelData.project !== "No project" ? ", " + row.modelData.project : "")
                     Accessible.onPressAction: { T3Code.openThread(row.modelData.thread); Island.close(); }
@@ -189,7 +282,8 @@ FocusScope {
                         visible: row.done
                         opacity: rowHover.hovered ? 1 : 0
                         Behavior on opacity { NumberAnimation { duration: Theme.hoverMs } }
-                        anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
+                        anchors { right: parent.right; rightMargin: 10 }
+                        y: (row.line - height) / 2
                         width: 24; height: 24; radius: 12
                         color: xHover.hovered ? Theme.pillHover : Theme.pill
                         Behavior on color { ColorAnimation { duration: Theme.hoverMs } }

@@ -14,6 +14,24 @@ DIR="${T3_USERDATA:-$HOME/.t3/userdata}"
 DB="$DIR/statev2.sqlite"
 none() { printf '{"alive":false,"running":0,"waiting":0,"finished":0,"items":[]}\n'; exit 0; }
 
+# kuwai-t3 reply THREAD: that thread's last reply, as {"text","at"}, for the
+# panel's preview (asked for one thread, when its row is rested on; the idea
+# is t3code-bar's hover preview). The id is checked before it goes near the
+# query: letters, digits and : _ . - only.
+if [ "${1:-}" = "reply" ]; then
+  id="${2:-}"
+  case "$id" in ''|*[!A-Za-z0-9:_.-]*) echo '{}'; exit 0 ;; esac
+  [ -r "$DB" ] || { echo '{}'; exit 0; }
+  out=$(timeout 3 sqlite3 -readonly -json "file:$DB?mode=ro" "
+    select substr(json_extract(payload_json, '\$.text'), 1, 4000) as text, updated_at as at
+    from orchestration_v2_projection_messages
+    where thread_id = '$id' and role = 'assistant' and coalesce(json_extract(payload_json, '\$.text'), '') != ''
+    order by updated_at desc limit 1;" 2>/dev/null) || out=""
+  [ -n "$out" ] || out="[]"
+  jq -c '.[0] // {}' <<<"$out" 2>/dev/null || echo '{}'
+  exit 0
+fi
+
 pid=$(jq -r '.pid // empty' "$DIR/server-runtime.json" 2>/dev/null) || none
 [[ "$pid" =~ ^[0-9]+$ ]] && kill -0 "$pid" 2>/dev/null || none
 [ -r "$DB" ] || none
@@ -26,7 +44,8 @@ pid=$(jq -r '.pid // empty' "$DIR/server-runtime.json" 2>/dev/null) || none
 #    and queued runs are not work: the capsule said "2 running" over threads
 #    that were doing nothing;
 #  - a pending request is attention: an approval to run something, a question
-#    (user_input) or a guest's message, whatever the run says;
+#    (user_input) or a guest's message, whatever the run says; which of the
+#    three it is goes out as `ask`, so the panel can say what is wanted;
 #  - a run blocked only on another thread (t3_thread_wait, delegate_task in
 #    wait mode) is waiting, not working;
 #  - finished = the last run completed or failed after you last opened the
@@ -64,6 +83,8 @@ rows=$(timeout 3 sqlite3 -readonly -json "file:$DB?mode=ro" "
          json_extract(th.pj, '\$.lastVisitedAt') as visited,
          (select count(*) from orchestration_v2_projection_runtime_requests q
            where q.thread_id = th.thread and q.status = 'pending') as asks,
+         (select count(*) from orchestration_v2_projection_runtime_requests q
+           where q.thread_id = th.thread and q.status = 'pending' and q.kind = 'user_input') as questions,
          (select count(*) from json_each(th.pj, '\$.guestShare.messages') g
            where json_extract(g.value, '\$.status') = 'pending') as guests,
          case when a.status = 'running'
@@ -121,6 +142,9 @@ jq -cn --argjson rows "$rows" --arg env "$env_id" '
      finished: ($done | length),
      items: ([($wait + ($run | sort_by(.active_at) | reverse))[0:12][]
               | {status: (if .s == "blocked" then "running" else .s end), blocked: (.s == "blocked"),
+                 # Why it needs you: something to approve, a question to answer, or a message from a guest.
+                 ask: (if .s != "waiting" then null elif ((.asks // 0) - (.questions // 0)) > 0 then "approval"
+                       elif (.questions // 0) > 0 then "question" else "request" end),
                  provider, title: (.title | .[0:80]), thread, at: .active_at, model, effort, project}]
             + [$done[] | {status: (if .s == "limited" then "failed" else .s end), limited: (.s == "limited"),
                  provider, title: (.title | .[0:80]), thread, at: .latest_at, model, effort, project}])}' 2>/dev/null || none

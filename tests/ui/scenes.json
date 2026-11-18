@@ -793,8 +793,93 @@
        }
       ]
      }
+    ],
+    [
+     "T3Code",
+     "alive",
+     true
+    ],
+    [
+     "T3Code",
+     "running",
+     1
+    ],
+    [
+     "T3Code",
+     "waiting",
+     2
+    ],
+    [
+     "T3Code",
+     "rawFinished",
+     2
+    ],
+    [
+     "T3Code",
+     "rawItems",
+     [
+      {
+       "thread": "t1",
+       "env": "e1",
+       "project": "rice",
+       "status": "waiting",
+       "provider": "claudeAgent",
+       "title": "Approve the migration plan",
+       "at": "@now-460iso",
+       "ask": "approval"
+      },
+      {
+       "thread": "t2",
+       "env": "e1",
+       "project": "rice",
+       "status": "waiting",
+       "provider": "codex",
+       "title": "Which shortcut for the switcher?",
+       "at": "@now-920iso",
+       "ask": "question"
+      },
+      {
+       "thread": "t3",
+       "env": "e1",
+       "project": "rice",
+       "status": "running",
+       "provider": "claudeAgent",
+       "title": "Rehearsal harness",
+       "at": "@now-1380iso"
+      },
+      {
+       "thread": "t4",
+       "env": "e1",
+       "project": "rice",
+       "status": "running",
+       "provider": "codex",
+       "title": "Port the greeter",
+       "at": "@now-1840iso",
+       "blocked": true
+      },
+      {
+       "thread": "t5",
+       "env": "e1",
+       "project": "rice",
+       "status": "completed",
+       "provider": "claudeAgent",
+       "title": "OTP detection: origin-bound codes",
+       "at": "@now-2300iso"
+      },
+      {
+       "thread": "t6",
+       "env": "e1",
+       "project": "rice",
+       "status": "failed",
+       "provider": "gemini",
+       "title": "Translate the settings pages",
+       "at": "@now-2760iso",
+       "limited": true
+      }
+     ]
     ]
-   ]
+   ],
+   "kind": "worst"
   },
   {
    "id": "agents/worst",
@@ -920,12 +1005,12 @@
     [
      "T3Code",
      "waiting",
-     1
+     2
     ],
     [
      "T3Code",
      "rawFinished",
-     1
+     2
     ],
     [
      "T3Code",
@@ -936,29 +1021,171 @@
        "env": "e1",
        "project": "rice",
        "status": "waiting",
-       "provider": "claude",
+       "provider": "claudeAgent",
        "title": "Approve the migration plan",
-       "at": "@now-1700iso"
+       "at": "@now-460iso",
+       "ask": "approval"
       },
       {
        "thread": "t2",
        "env": "e1",
        "project": "rice",
-       "status": "running",
-       "provider": "claude",
-       "title": "Rehearsal harness",
-       "at": "@now-3400iso"
+       "status": "waiting",
+       "provider": "codex",
+       "title": "Which shortcut for the switcher?",
+       "at": "@now-920iso",
+       "ask": "question"
       },
       {
        "thread": "t3",
        "env": "e1",
        "project": "rice",
+       "status": "running",
+       "provider": "claudeAgent",
+       "title": "Rehearsal harness",
+       "at": "@now-1380iso"
+      },
+      {
+       "thread": "t4",
+       "env": "e1",
+       "project": "rice",
+       "status": "running",
+       "provider": "codex",
+       "title": "Port the greeter",
+       "at": "@now-1840iso",
+       "blocked": true
+      },
+      {
+       "thread": "t5",
+       "env": "e1",
+       "project": "rice",
        "status": "completed",
-       "provider": "claude",
+       "provider": "claudeAgent",
        "title": "OTP detection: origin-bound codes",
-       "at": "@now-5100iso"
+       "at": "@now-2300iso"
+      },
+      {
+       "thread": "t6",
+       "env": "e1",
+       "project": "rice",
+       "status": "failed",
+       "provider": "gemini",
+       "title": "Translate the settings pages",
+       "at": "@now-2760iso",
+       "limited": true
       }
      ]
+    ]
+   ]
+  },
+  {
+   "id": "t3/reply",
+   "name": "t3",
+   "panel": "T3Panel",
+   "kind": "worst",
+   "props": {
+    "previewOf": "t5"
+   },
+   "set": [
+    [
+     "T3Code",
+     "alive",
+     true
+    ],
+    [
+     "T3Code",
+     "running",
+     1
+    ],
+    [
+     "T3Code",
+     "waiting",
+     2
+    ],
+    [
+     "T3Code",
+     "rawFinished",
+     2
+    ],
+    [
+     "T3Code",
+     "rawItems",
+     [
+      {
+       "thread": "t1",
+       "env": "e1",
+       "project": "rice",
+       "status": "waiting",
+       "provider": "claudeAgent",
+       "title": "Approve the migration plan",
+       "at": "@now-460iso",
+       "ask": "approval"
+      },
+      {
+       "thread": "t2",
+       "env": "e1",
+       "project": "rice",
+       "status": "waiting",
+       "provider": "codex",
+       "title": "Which shortcut for the switcher?",
+       "at": "@now-920iso",
+       "ask": "question"
+      },
+      {
+       "thread": "t3",
+       "env": "e1",
+       "project": "rice",
+       "status": "running",
+       "provider": "claudeAgent",
+       "title": "Rehearsal harness",
+       "at": "@now-1380iso"
+      },
+      {
+       "thread": "t4",
+       "env": "e1",
+       "project": "rice",
+       "status": "running",
+       "provider": "codex",
+       "title": "Port the greeter",
+       "at": "@now-1840iso",
+       "blocked": true
+      },
+      {
+       "thread": "t5",
+       "env": "e1",
+       "project": "rice",
+       "status": "completed",
+       "provider": "claudeAgent",
+       "title": "OTP detection: origin-bound codes",
+       "at": "@now-2300iso"
+      },
+      {
+       "thread": "t6",
+       "env": "e1",
+       "project": "rice",
+       "status": "failed",
+       "provider": "gemini",
+       "title": "Translate the settings pages",
+       "at": "@now-2760iso",
+       "limited": true
+      }
+     ]
+    ],
+    [
+     "T3Code",
+     "replies",
+     {
+      "t5": {
+       "text": "The implementation is ready for review. Origin-bound codes are read before any phrase, and the lock screen hides a code it can only suspect.\n• 51 tests, eight of them from real notifications\n• Nothing is copied unless you press Copy",
+       "at": "@now-120iso",
+       "of": "@now-2300iso"
+      }
+     }
+    ],
+    [
+     "Notifs",
+     "shareKnown",
+     true
     ]
    ]
   },
