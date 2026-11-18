@@ -2,8 +2,12 @@ import { expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { functions } from '../helpers/qml.mjs';
 test('proximity follows visible monitor center rather than capped host center',()=>{
- const s=functions('shell/modules/island/IslandBar.qml',['inZone'],{onThisScreen:true,localX:960,localY:25,width:1120,screen:{width:1920},restW:260,restH:30,top:0});
+ // The zone's own arithmetic is services/proximity.js (the real file), measured from the resting width (zoneW).
+ const rules=new Function(readFileSync(new URL('../../shell/services/proximity.js',import.meta.url),'utf8').replace(/^\.pragma library\s*$/m,'')+'\nreturn { inZone };')();
+ const s=functions('shell/modules/island/IslandBar.qml',['inZone'],{onThisScreen:true,localX:960,localY:25,width:1120,screen:{width:1920},zoneW:260,restW:900,restH:30,top:0,Proximity:rules});
  expect(s.inZone(0)).toBe(true);s.localX=560;expect(s.inZone(0)).toBe(false);
+ // Nearing has widened the island to 900: a pointer 400 px from the middle is still outside the reach.
+ s.localX=1360;expect(s.inZone(20)).toBe(false);
 });
 test('failed package review can be retried without losing other package reviews',()=>{
  let requests=0;
