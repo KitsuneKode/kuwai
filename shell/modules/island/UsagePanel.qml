@@ -25,7 +25,7 @@ FocusScope {
     // the 34 of the section strip), less this panel's own rows around the list.
     // It was a fixed 470, which with the title and tabs came to 592 against a
     // ceiling of 566 on a 1080-high screen: the last card ran under the edge.
-    readonly property real ceiling: Math.min(640, (Screen.height > 0 ? Screen.height : 1080) - 24) - 40 - 34
+    readonly property real ceiling: Math.min(640, Theme.screenSize(Screen, "height", 1080) - 24) - 40 - 34
     readonly property bool hasTabs: tabs.length > 2
     readonly property bool hasFoot: Limits.loaded && groups.length > 0
     readonly property real listMax: Math.max(160, ceiling - 40 - 26 - col.spacing

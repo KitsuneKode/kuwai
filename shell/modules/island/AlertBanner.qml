@@ -85,7 +85,7 @@ Item {
                 // Only when there is more to read than the line shows.
                 visible: !banner.expanded && detailLine.truncated
                 text: "Tap for more"
-                size: 10; weight: Theme.wMedium; color: Theme.textTertiary
+                size: Theme.tFootnote; weight: Theme.wMedium; color: Theme.textTertiary
             }
         }
     }
@@ -95,6 +95,7 @@ Item {
         height: 28; radius: 14
         width: goLabel.implicitWidth + 22
         color: goArea.containsMouse ? Qt.alpha(banner.tone, 0.35) : Qt.alpha(banner.tone, 0.2)
+        Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
         Label { id: goLabel; anchors.centerIn: parent; text: banner.alert && banner.alert.action ? banner.alert.action : "Details"; size: 12; weight: Theme.wMedium; color: banner.tone }
         MouseArea {
             id: goArea

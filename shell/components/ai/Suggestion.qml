@@ -14,7 +14,7 @@ Rectangle {
     implicitHeight: 34
     implicitWidth: row.implicitWidth + 24
     radius: 17
-    color: area.containsMouse ? Qt.rgba(1, 1, 1, 0.10) : Qt.rgba(1, 1, 1, 0.05)
+    color: area.containsMouse ? Theme.tileHover : Theme.tileRest
     border.width: 1
     border.color: Qt.rgba(1, 1, 1, area.containsMouse ? 0.14 : 0.08)
     scale: area.pressed ? 0.97 : 1

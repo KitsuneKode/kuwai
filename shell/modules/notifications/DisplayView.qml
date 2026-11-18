@@ -419,7 +419,7 @@ Item {
                         width: column.width
                         height: 48
                         radius: 16
-                        color: devArea.containsMouse ? Qt.rgba(1, 1, 1, 0.10) : Qt.rgba(1, 1, 1, 0.065)
+                        color: devArea.containsMouse ? Theme.tileHover : Theme.tileRest
                         border.width: 1
                         border.color: Qt.rgba(1, 1, 1, 0.06)
                         scale: devArea.pressed ? 0.985 : 1

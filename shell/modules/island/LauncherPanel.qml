@@ -640,6 +640,7 @@ FocusScope {
                             required property string modelData
                             width: tipText.implicitWidth + 16; height: 24; radius: 12
                             color: tipArea.containsMouse ? Theme.pillHover : Theme.pill
+                            Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
                             Label { id: tipText; anchors.centerIn: parent; text: parent.modelData; size: Theme.tSub; color: Theme.textSecondary; font.features: ({ "tnum": 1 }) }
                             MouseArea {
                                 id: tipArea

@@ -714,11 +714,13 @@ Scope {
             readonly property bool up: hosts && root.shownAtAll
 
             // The shelf, and the pill it melts out of.
-            readonly property real shelfW: root.setup ? 540 : Math.min(1000, modelData.width - 80)
+            readonly property real scrW: Theme.screenSize(modelData, "width", 1920)
+            readonly property real scrH: Theme.screenSize(modelData, "height", 1080)
+            readonly property real shelfW: root.setup ? 540 : Math.min(1000, scrW - 80)
             readonly property real shelfH: root.setup ? 262 : 476
             // Reading size: most of the screen, still clear of its edges.
-            readonly property real readW: Math.min(1280, modelData.width - 80)
-            readonly property real readH: Math.min(1020, modelData.height - 150)
+            readonly property real readW: Math.min(1280, scrW - 80)
+            readonly property real readH: Math.min(1020, scrH - 150)
             readonly property real rd: read.value
             readonly property real side: 64
             // The chip states (just copied, recording, saved) have their own

@@ -93,7 +93,7 @@ Item {
                     rounded: true
                     anchors.centerIn: parent
                     text: group.count
-                    size: 10
+                    size: Theme.tCaption
                     weight: Theme.wSemibold
                     font.features: ({ "tnum": 1 })
                     color: Theme.textSecondary
@@ -113,6 +113,7 @@ Item {
                 height: 22; radius: 11
                 width: lessLabel.implicitWidth + 18
                 color: lessArea.containsMouse ? Theme.pillHover : Theme.pill
+                Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
                 Label {
                     id: lessLabel
                     anchors.centerIn: parent
@@ -134,6 +135,7 @@ Item {
             Rectangle {
                 width: 22; height: 22; radius: 11
                 color: clearArea.containsMouse ? Theme.pillHover : Theme.pill
+                Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
                 Text {
                     anchors.centerIn: parent
                     text: "\u{f0156}"

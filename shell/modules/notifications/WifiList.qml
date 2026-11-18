@@ -140,7 +140,7 @@ Column {
                 width: parent.width
                 height: 38
                 radius: 12
-                color: row.net.connected ? Qt.alpha(Theme.blue, 0.16) : hover.hovered ? Qt.rgba(1, 1, 1, 0.06) : "transparent"
+                color: row.net.connected ? Qt.alpha(Theme.blue, 0.16) : hover.hovered ? Theme.rowHover : "transparent"
                 Behavior on color { ColorAnimation { duration: Theme.colorMs } }
             }
             HoverHandler { id: hover; cursorShape: row.net.connected ? Qt.ArrowCursor : Qt.PointingHandCursor }

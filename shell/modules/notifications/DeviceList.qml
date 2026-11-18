@@ -44,7 +44,7 @@ Column {
                     Rectangle {
                         anchors.fill: parent
                         radius: 14
-                        color: devHover.hovered && !dev.on ? Qt.rgba(1, 1, 1, 0.05) : "transparent"
+                        color: devHover.hovered && !dev.on ? Theme.rowHover : "transparent"
                         Behavior on color { ColorAnimation { duration: Theme.colorMs } }
                     }
                     Rectangle {

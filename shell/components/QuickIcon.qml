@@ -40,7 +40,7 @@ Item {
         anchors.fill: parent
         radius: width / 2
         // A tinted disc only when it's lit in a colour (white glyphs don't need one).
-        color: area.containsMouse ? Qt.rgba(1, 1, 1, 0.1) : q.on && !Qt.colorEqual(q.tone, Theme.textPrimary) ? Qt.alpha(q.tone, 0.14) : "transparent"
+        color: area.containsMouse ? Theme.ghostHover : q.on && !Qt.colorEqual(q.tone, Theme.textPrimary) ? Qt.alpha(q.tone, 0.14) : "transparent"
         Behavior on color { ColorAnimation { duration: Theme.colorMs } }
     }
     Text {

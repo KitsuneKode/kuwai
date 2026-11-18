@@ -429,7 +429,7 @@ Item {
                             anchors.centerIn: parent
                             // Replaced in place: ×3; a burst it stands for: +13.
                             text: card.item.burst > 0 ? "+" + card.item.burst : card.item.count
-                            size: 10
+                            size: Theme.tCaption
                             weight: Theme.wSemibold
                             font.features: ({ "tnum": 1 })
                             color: Theme.textSecondary

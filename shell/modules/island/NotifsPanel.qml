@@ -260,6 +260,7 @@ FocusScope {
                     x: parent.width - width - 8; y: 10
                     width: 20; height: 20; radius: 10
                     color: closeHover.hovered ? Theme.pillHover : Theme.pill
+                    Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
                     Accessible.role: Accessible.Button
                     Accessible.name: "Dismiss"
                     Text { anchors.centerIn: parent; text: "\u{f0156}"; font.family: Theme.fontGlyph; font.pixelSize: 11; color: Theme.textPrimary }

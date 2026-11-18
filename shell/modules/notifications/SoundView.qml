@@ -453,7 +453,7 @@ Item {
                 Label {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: strip.audio ? view.dB(strip.vol) : ""
-                    size: 10
+                    size: Theme.tCaption
                     rounded: true
                     font.features: ({ "tnum": 1 })
                     color: Theme.textTertiary

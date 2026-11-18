@@ -80,7 +80,7 @@ Rectangle {
                             x: 8
                             anchors.verticalCenter: parent.verticalCenter
                             text: String(opt.index + 1)
-                            size: 10
+                            size: Theme.tCaption
                         }
                         Label {
                             id: optLabel

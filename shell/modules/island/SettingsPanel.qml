@@ -245,7 +245,7 @@ FocusScope {
                     width: parent.width
                     height: 36
                     radius: 9
-                    color: on ? Qt.rgba(1, 1, 1, 0.12) : itemArea.containsMouse ? Qt.rgba(1, 1, 1, 0.05) : "transparent"
+                    color: on ? Qt.rgba(1, 1, 1, 0.12) : itemArea.containsMouse ? Theme.rowHover : "transparent"
                     Behavior on color { ColorAnimation { duration: Theme.colorMs } }
                     Rectangle {
                         id: chip
@@ -282,7 +282,7 @@ FocusScope {
                     width: parent.width
                     height: 44
                     radius: 9
-                    color: on ? Qt.rgba(1, 1, 1, 0.12) : resArea.containsMouse ? Qt.rgba(1, 1, 1, 0.05) : "transparent"
+                    color: on ? Qt.rgba(1, 1, 1, 0.12) : resArea.containsMouse ? Theme.rowHover : "transparent"
                     Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
                     Rectangle {
                         id: resChip

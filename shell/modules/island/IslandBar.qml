@@ -126,8 +126,8 @@ Scope {
             // the mask keeps the empty sides click-through.
             // Never wider or taller than the screen itself (a small, portrait or
             // high-scale output); panels then fit inside it (panelSize).
-            implicitWidth: Math.min(1120, modelData ? modelData.width : 1120)
-            implicitHeight: Math.min(640, modelData ? modelData.height - 24 : 640)
+            implicitWidth: Math.min(1120, Theme.screenSize(modelData, "width", 1120))
+            implicitHeight: Math.min(640, Theme.screenSize(modelData, "height", 664) - 24)
             exclusiveZone: showBar && !tucked && !screenFullscreen ? restH + top + (notch ? 2 : 6) : 0
             color: "transparent"
             WlrLayershell.namespace: "kuwai-islandbar"

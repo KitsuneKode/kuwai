@@ -160,7 +160,7 @@ Item {
                         scale: rowArea.pressed ? 0.97 : 1
                         Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                         color: menu.sel === row.index ? Qt.rgba(1, 1, 1, 0.14)
-                             : rowArea.containsMouse ? (row.modelData.danger ? Qt.alpha(Theme.red, 0.16) : Qt.rgba(1, 1, 1, 0.07)) : "transparent"
+                             : rowArea.containsMouse ? (row.modelData.danger ? Qt.alpha(Theme.red, 0.16) : Theme.rowHover) : "transparent"
                         Text {
                             textFormat: Text.PlainText
                             id: g

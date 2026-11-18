@@ -154,7 +154,7 @@ FocusScope {
                             width: convoCol.width
                             height: mhead.height + bodyClip.height + 20
                             radius: Theme.r2
-                            color: open ? Theme.card : (mArea.containsMouse ? Qt.rgba(1, 1, 1, 0.05) : "transparent")
+                            color: open ? Theme.card : (mArea.containsMouse ? Theme.rowHover : "transparent")
                             border.width: open ? 1 : 0
                             border.color: Theme.cardEdge
                             Behavior on color { ColorAnimation { duration: Theme.hoverMs } }

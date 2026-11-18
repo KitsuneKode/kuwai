@@ -43,7 +43,7 @@ Rectangle {
     onActiveFocusChanged: if (tile.expandable) tile.tip(activeFocus, "Space: turn " + tile.title + (tile.on ? " off" : " on") + " · Return: " + tile.moreText)
     FocusRing {}
     radius: Theme.r3
-    color: area.containsMouse ? Qt.rgba(1, 1, 1, 0.11) : Qt.rgba(1, 1, 1, 0.075)
+    color: area.containsMouse ? Theme.tileHover : Theme.tileRest
     border.width: 1
     border.color: Qt.rgba(1, 1, 1, 0.06)
     scale: area.pressed ? 0.97 : 1

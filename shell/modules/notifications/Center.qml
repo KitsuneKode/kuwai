@@ -97,7 +97,7 @@ Scope {
     readonly property int padX: 52                 // room for the shadow (none above: it hangs from the bar)
     readonly property int padY: 6
     readonly property int padBottom: 84
-    function cardH(screen) { return Math.round(Math.min(780, Math.max(440, (screen ? screen.height : 1000) * 0.74))); }
+    function cardH(screen) { return Math.round(Math.min(780, Math.max(440, Theme.screenSize(screen, "height", 1000) * 0.74))); }
     // The card fits what the tab shows (one notification: a short card, not
     // 780 px of nothing), up to cardH. The surface stays cardH tall.
     function fitH(screen) {
@@ -291,8 +291,8 @@ Scope {
             screen: modelData
             readonly property bool up: root.shownScreen === modelData && (root.open || root.folding)
             anchors { top: true; left: true }
-            implicitWidth: up ? modelData.width : 1
-            implicitHeight: up ? modelData.height : 1
+            implicitWidth: up ? Theme.screenSize(modelData, "width", 1) : 1
+            implicitHeight: up ? Theme.screenSize(modelData, "height", 1) : 1
             exclusionMode: ExclusionMode.Ignore
             color: "transparent"
             mask: Region {}

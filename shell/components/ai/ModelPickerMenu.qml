@@ -233,7 +233,7 @@ Item {
                                     id: roleText
                                     anchors.centerIn: parent
                                     text: row.modelData.role || ""
-                                    size: 10
+                                    size: Theme.tCaption
                                     weight: Theme.wSemibold
                                     color: /Uncensored/.test(row.modelData.role) ? Theme.orange : Theme.accent
                                 }

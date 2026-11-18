@@ -73,7 +73,7 @@ FocusScope {
     // card and the switches is the readings' room.
     readonly property bool hasNvidia: SystemStats.gpuState !== ""
     readonly property bool hasIntel: SystemStats.igpuMax > 0
-    readonly property real ceiling: Math.min(640, (Screen.height > 0 ? Screen.height : 1080) - 24) - 40 - 34
+    readonly property real ceiling: Math.min(640, Theme.screenSize(Screen, "height", 1080) - 24) - 40 - 34
     readonly property real room: Math.max(120, ceiling - 40 - head.height - cpuCard.height - tiles.height
         - (SystemStats.updates > 0 ? upd.height + col.spacing : 0) - col.spacing * 3)
 

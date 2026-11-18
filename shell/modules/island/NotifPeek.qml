@@ -239,8 +239,9 @@ Item {
             Label {
                 visible: !peek.expanded && !!peek.item
                 width: parent.width
+                elide: Text.ElideRight
                 text: peek.hiddenOpen ? "Swipe up to dismiss" : "Pull down or tap to read · swipe up to dismiss"
-                size: 10
+                size: Theme.tFootnote
                 weight: Theme.wMedium
                 color: Theme.textTertiary
             }

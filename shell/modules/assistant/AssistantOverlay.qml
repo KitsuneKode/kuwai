@@ -84,13 +84,15 @@ Scope {
             readonly property real pillH: inIsland ? 34 : 38
 
             // Dimensions: Spacious HUD matching desktop kuwai scale with proportional expansion
-            readonly property int compactW: Math.min(920, Math.round(modelData.width * 0.52))
-            readonly property int compactH: Math.min(640, Math.round(modelData.height * 0.60))
-            readonly property int studioW: Math.min(1240, Math.round(modelData.width * 0.75))
-            readonly property int studioH: Math.min(880, Math.round(modelData.height * 0.82))
+            readonly property real scrW: Theme.screenSize(modelData, "width", 1920)
+            readonly property real scrH: Theme.screenSize(modelData, "height", 1080)
+            readonly property int compactW: Math.min(920, Math.round(scrW * 0.52))
+            readonly property int compactH: Math.min(640, Math.round(scrH * 0.60))
+            readonly property int studioW: Math.min(1240, Math.round(scrW * 0.75))
+            readonly property int studioH: Math.min(880, Math.round(scrH * 0.82))
 
-            readonly property int fullW: modelData.width - 48
-            readonly property int fullH: modelData.height - 36
+            readonly property int fullW: scrW - 48
+            readonly property int fullH: scrH - 36
             readonly property real targetW: root.fullMode ? fullW : root.studioMode ? studioW : compactW
             // Compact grows with the conversation (Spotlight / Raycast): a short chat
             // gets a short panel, not a tall one with dead space; it stops at compactH
@@ -753,7 +755,7 @@ Scope {
                                         clip: true
 
                                         Text {
-                                            text: "Search apps to launch... (↑↓ to select, ↵ to run)"
+                                            text: "Search apps to launch… (↑↓ to select, ↵ to run)"
                                             color: Theme.textDim
                                             font.pixelSize: 14
                                             visible: !appSearchInput.text && !appSearchInput.inputMethodComposing
@@ -791,7 +793,7 @@ Scope {
                                             id: escLabel
                                             anchors.centerIn: parent
                                             text: "Esc"
-                                            size: 10
+                                            size: Theme.tCaption
                                             color: Theme.textTertiary
                                         }
                                     }
@@ -887,7 +889,7 @@ Scope {
                                         anchors.rightMargin: 12
                                         anchors.verticalCenter: parent.verticalCenter
                                         text: "Enter"
-                                        size: 10
+                                        size: Theme.tCaption
                                         visible: appListView.currentIndex === index || appItemArea.containsMouse
                                     }
 

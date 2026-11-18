@@ -43,7 +43,7 @@ Item {
             id: badgeLbl
             anchors.centerIn: parent
             text: count > 9 ? "9+" : String(count)
-            size: 10
+            size: Theme.tCaption
             weight: Theme.wSemibold
             rounded: true
             color: Theme.inkOnLight

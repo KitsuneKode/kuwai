@@ -544,6 +544,7 @@ Scope {
                                 x: -8; y: -8
                                 width: 24; height: 24; radius: 12
                                 color: closeArea.containsMouse ? Theme.red : Qt.rgba(0.12, 0.12, 0.14, 0.92)
+                                Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
                                 border.width: 1; border.color: Qt.rgba(1, 1, 1, 0.18)
                                 Text { anchors.centerIn: parent; text: "\u{f0156}"; font.family: Theme.fontGlyph; font.pixelSize: 13; color: Theme.textPrimary }
                                 MouseArea { id: closeArea; anchors.fill: parent; anchors.margins: -4; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: win.closeWindow(card.toplevel) }

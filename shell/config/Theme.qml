@@ -37,6 +37,14 @@ Singleton {
     readonly property color fillDim: Qt.rgba(1, 1, 1, 0.32)
     readonly property color pill: Qt.rgba(1, 1, 1, 0.12)
     readonly property color pillHover: Qt.rgba(1, 1, 1, 0.22)
+    // Hover on what has no surface until the pointer arrives: a list or menu
+    // row, and a glyph button on the glass. One step each, shell-wide.
+    readonly property color rowHover: Qt.rgba(1, 1, 1, 0.06)
+    readonly property color ghostHover: Qt.rgba(1, 1, 1, 0.1)
+    // A tile that always shows its surface (a suggestion, a control, a
+    // device, a command), at rest and under the pointer.
+    readonly property color tileRest: Qt.rgba(1, 1, 1, 0.065)
+    readonly property color tileHover: Qt.rgba(1, 1, 1, 0.1)
     // Grouped content inside a panel (components/ui/Card): a whisper of a
     // surface and a hairline, so cards separate without boxes everywhere.
     readonly property color card: Qt.rgba(1, 1, 1, 0.05)
@@ -283,6 +291,16 @@ Singleton {
     //   fontGlyph    Symbols Nerd Font, never mixed into text runs
     // SF Compact (watchOS) and New York (serif) don't belong in a desktop UI.
     readonly property var installedFonts: Qt.fontFamilies()
+    // An output can report 0 (or nothing) for its size for a moment while it
+    // is added, moved or rescaled. Windows size from this, never straight
+    // from screen.width/height: a reading under minScreen isn't trusted and
+    // `fallback` stands in, so nothing computes a zero or negative size (the
+    // tooltip that collapsed into a one-letter column).
+    readonly property int minScreen: 320
+    function screenSize(screen, axis, fallback) {
+        const v = screen ? screen[axis] : NaN;
+        return Number.isFinite(v) && v >= minScreen ? v : fallback;
+    }
     function hasFont(name) { return installedFonts.indexOf(name) >= 0; }
     readonly property bool hasSf: hasFont("SF Pro Text") && hasFont("SF Pro Display")
     readonly property string interFamily: hasFont("Inter") && hasFont("Inter Display") ? "Inter"

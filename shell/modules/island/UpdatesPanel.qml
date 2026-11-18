@@ -131,19 +131,19 @@ FocusScope {
                         visible: (row.modelData.gone || []).length > 0
                         width: parent.width; elide: Text.ElideRight
                         text: "New default drops: " + (row.modelData.gone || []).join(", ")
-                        size: 10; color: Theme.textTertiary
+                        size: Theme.tFootnote; color: Theme.textTertiary
                     }
                     Label {
                         visible: (row.modelData.added || []).length > 0
                         width: parent.width; elide: Text.ElideRight
                         text: "Adds: " + (row.modelData.added || []).join(", ")
-                        size: 10; color: Theme.textTertiary
+                        size: Theme.tFootnote; color: Theme.textTertiary
                     }
                     Label {
                         visible: !row.modelData.readable
                         width: parent.width; wrapMode: Text.Wrap
                         text: "See it: sudo diff /etc/" + row.modelData.name + "{,.pacnew}"
-                        size: 10; color: Theme.textTertiary
+                        size: Theme.tFootnote; color: Theme.textTertiary
                     }
                 }
                 Row {
@@ -331,7 +331,7 @@ FocusScope {
                             width: (listCol.width - 28 - 18) / 2; height: 34
                             Label { width: parent.width; elide: Text.ElideRight; text: modelData.name; size: 13; weight: Theme.wMedium }
                             Version { y: 17; from: modelData.old; to: modelData.new }
-                            Label { anchors.right: parent.right; text: modelData.repo; size: 10; color: Qt.rgba(1, 1, 1, 0.3); visible: modelData.repo !== "" && modelData.repo !== "extra" }
+                            Label { anchors.right: parent.right; text: modelData.repo; size: Theme.tCaption; color: Theme.textTertiary; visible: modelData.repo !== "" && modelData.repo !== "extra" }
                         }
                     }
                 }
@@ -382,7 +382,7 @@ FocusScope {
                         Rectangle {
                             anchors.fill: parent; anchors.topMargin: 2; anchors.bottomMargin: 2
                             radius: 10
-                            color: rowArea.containsMouse ? Qt.rgba(1, 1, 1, 0.05) : "transparent"
+                            color: rowArea.containsMouse ? Theme.rowHover : "transparent"
                         }
                         MouseArea { id: rowArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: up.openReview(aurRow.modelData.name) }
                         Accessible.role: Accessible.ListItem

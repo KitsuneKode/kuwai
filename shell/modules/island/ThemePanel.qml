@@ -716,7 +716,7 @@ FocusScope {
                 width: gcol.width
                 height: cmdText.implicitHeight + 20
                 radius: Theme.r2
-                color: cmdArea.containsMouse ? Qt.rgba(1, 1, 1, 0.09) : Qt.rgba(1, 1, 1, 0.05)
+                color: cmdArea.containsMouse ? Theme.tileHover : Theme.tileRest
                 Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
                 Text {
                     textFormat: Text.PlainText

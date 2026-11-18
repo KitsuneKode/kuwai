@@ -184,6 +184,7 @@ FocusScope {
                         anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
                         width: 24; height: 24; radius: 12
                         color: xHover.hovered ? Theme.pillHover : Theme.pill
+                        Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
                         Text { anchors.centerIn: parent; text: "\u{f0156}"; font.family: Theme.fontGlyph; font.pixelSize: Theme.tSub; color: Theme.textSecondary }
                         HoverHandler { id: xHover; margin: 8 }
                         TapHandler { gesturePolicy: TapHandler.ReleaseWithinBounds; onTapped: swipe.away(1) }

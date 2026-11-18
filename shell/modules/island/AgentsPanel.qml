@@ -375,6 +375,7 @@ FocusScope {
                     anchors { right: parent.right; rightMargin: 8; top: parent.top; topMargin: 8 }
                     width: 22; height: 22; radius: 11
                     color: xHover.hovered ? Theme.pillHover : Theme.pill
+                    Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
                     Text { anchors.centerIn: parent; text: "\u{f0156}"; font.family: Theme.fontGlyph; font.pixelSize: Theme.tSub; color: Theme.textSecondary }
                     HoverHandler { id: xHover; margin: 8 }
                     TapHandler { gesturePolicy: TapHandler.ReleaseWithinBounds; onTapped: swipe.away(1) }

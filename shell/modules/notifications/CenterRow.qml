@@ -199,6 +199,7 @@ Item {
                     visible: hover.hovered || row.snoozing
                     width: 20; height: 20; radius: 10
                     color: snoozeArea.containsMouse || row.snoozing ? Theme.pillHover : Theme.pill
+                    Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
                     Accessible.role: Accessible.Button
                     Accessible.name: "Snooze"
                     Accessible.onPressAction: { row.snoozing = !row.snoozing; row.replying = false; }
@@ -213,6 +214,7 @@ Item {
                     visible: hover.hovered
                     width: 20; height: 20; radius: 10
                     color: closeArea.containsMouse ? Theme.pillHover : Theme.pill
+                    Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
                     Text {
                         anchors.centerIn: parent
                         text: "\u{f0156}"

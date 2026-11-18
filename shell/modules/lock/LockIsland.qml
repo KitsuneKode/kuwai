@@ -150,6 +150,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     width: actLabel.implicitWidth + 22; height: 24; radius: 12
                     color: modelData.id === "stop" ? Qt.alpha(Theme.orange, actArea.containsMouse ? 0.95 : 0.85) : actArea.containsMouse ? Theme.pillHover : Theme.pill
+                    Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
                     scale: actArea.pressed ? 0.97 : 1
                     Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                     Label { id: actLabel; anchors.centerIn: parent; text: parent.modelData.text; size: 12; weight: Theme.wSemibold; color: parent.modelData.id === "stop" ? Theme.inkOnLight : Theme.textPrimary }

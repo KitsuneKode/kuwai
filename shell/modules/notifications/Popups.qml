@@ -155,7 +155,7 @@ Scope {
             // Room for the cards, the close button's overhang and swipes,
             // which all happen inside the surface.
             implicitWidth: Theme.toastWidth + 72
-            implicitHeight: modelData ? Math.min(modelData.height - 80, 900) : 900
+            implicitHeight: Math.min(Theme.screenSize(modelData, "height", 980) - 80, 900)
             exclusionMode: root.fromIsland ? ExclusionMode.Ignore : ExclusionMode.Normal
             color: "transparent"
             readonly property real islandW: root.islandWidth(modelData ? modelData.name : "")

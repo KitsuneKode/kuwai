@@ -117,7 +117,7 @@ FocusScope {
             width: col.width
             height: 46
             radius: Theme.r2
-            color: rowArea.containsMouse || bp.sel === at ? Qt.rgba(1, 1, 1, 0.07) : "transparent"
+            color: rowArea.containsMouse || bp.sel === at ? Theme.rowHover : "transparent"
             Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
             Icon {
                 id: ic

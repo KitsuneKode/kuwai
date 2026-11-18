@@ -195,7 +195,7 @@ Item {
         y: 12
         height: 38; radius: 12
         width: timeRow.implicitWidth + 22
-        color: chipHover.hovered ? Qt.rgba(1, 1, 1, 0.08) : "transparent"
+        color: chipHover.hovered ? Theme.ghostHover : "transparent"
         Behavior on color { ColorAnimation { duration: Theme.colorMs } }
         Row {
             id: timeRow
@@ -304,6 +304,21 @@ Item {
                 enabled: hover.visible && hover.media && hover.player && hover.player.isPlaying
             }
             readonly property real level: peak.enabled ? (peak.peaks && peak.peaks.length ? Math.max(...peak.peaks) : (peak.peak || 0)) : 0
+            // One 20 Hz tick sets the bars straight, as the notch does
+            // (IslandRest): a 90 ms Behavior restarted by every peak, plus a
+            // timer per bar, redrew this card on every frame while it played.
+            property real shown: 0
+            property var jitter: Array(13).fill(1)
+            property int tick: 0
+            Timer {
+                running: peak.enabled; interval: 50; repeat: true
+                onTriggered: {
+                    trail.tick++;
+                    if (!Theme.reduceMotion && trail.tick % 3 === 0)
+                        trail.jitter = trail.jitter.map(() => 0.65 + Math.random() * 0.55);
+                    trail.shown = trail.level;
+                }
+            }
             Row {
                 anchors.centerIn: parent
                 spacing: 4
@@ -314,18 +329,18 @@ Item {
                     Rectangle {
                         required property int index
                         readonly property real shape: 0.35 + 0.65 * Math.sin(Math.PI * (index + 0.5) / 13)
-                        property real jitter: 1
+                        readonly property real jitter: trail.jitter[index]
                         anchors.verticalCenter: parent.verticalCenter
                         width: 3; radius: 1.5
                         readonly property bool live: hover.player && hover.player.isPlaying
-                        readonly property real liveH: Math.max(3, 24 * Math.min(1, trail.level * shape * jitter * 1.7))
+                        readonly property real liveH: Math.max(3, 24 * Math.min(1, trail.shown * shape * jitter * 1.7))
                         readonly property real pauseH: Math.max(4, 22 * shape * 0.42)
                         height: live ? liveH : pauseH
                         color: Media.artColor
                         opacity: live ? 0.9 : 0.5
-                        Behavior on height { NumberAnimation { duration: live ? 90 : 380; easing.type: Easing.OutCubic } }
+                        // Settling to the pause silhouette still eases; live bars don't.
+                        Behavior on height { enabled: !live; NumberAnimation { duration: Theme.waveSettleMs; easing.type: Easing.OutCubic } }
                         Behavior on opacity { NumberAnimation { duration: Theme.colorMs } }
-                        Timer { running: peak.enabled && !Theme.reduceMotion; interval: 110 + (index % 4) * 35; repeat: true; onTriggered: parent.jitter = 0.65 + Math.random() * 0.55 }
                     }
                 }
             }
@@ -500,7 +515,7 @@ Item {
             visible: hover.agentsHere && mediaRow.more > 0
             width: mediaRow.ring; height: mediaRow.ring
             Rectangle { anchors.fill: parent; radius: width / 2; color: "transparent"; border.width: 2.5; border.color: Theme.track }
-            Label { anchors.centerIn: parent; text: "+" + mediaRow.more; size: 10; weight: Theme.wSemibold; color: Theme.textSecondary }
+            Label { anchors.centerIn: parent; text: "+" + mediaRow.more; size: Theme.tCaption; weight: Theme.wSemibold; color: Theme.textSecondary }
             HoverHandler { cursorShape: Qt.PointingHandCursor }
             TapHandler { onTapped: Island.open("usage", hover.bar.screenName, "pointer", "island") }
             Accessible.role: Accessible.Button

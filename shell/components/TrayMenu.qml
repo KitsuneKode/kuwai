@@ -124,7 +124,7 @@ Item {
                 visible: tm.stack.length > 0
                 x: 6; y: 6
                 width: card.width - 12; height: visible ? 30 : 0
-                Rectangle { anchors.fill: parent; radius: 8; color: backArea.containsMouse ? Theme.pill : "transparent" }
+                Rectangle { anchors.fill: parent; radius: 8; color: backArea.containsMouse ? Theme.pill : "transparent"; Behavior on color { ColorAnimation { duration: Theme.hoverMs } } }
                 Row {
                     anchors { left: parent.left; leftMargin: 8; verticalCenter: parent.verticalCenter }
                     spacing: 6

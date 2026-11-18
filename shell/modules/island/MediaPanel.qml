@@ -147,7 +147,7 @@ FocusScope {
             width: 34; height: 34
             Rectangle {
                 anchors.fill: parent; radius: width / 2
-                color: ctxArea.containsMouse ? Qt.rgba(1, 1, 1, 0.1) : np.isLoved && np.kind === "cider" ? Qt.alpha(np.tint, 0.18) : "transparent"
+                color: ctxArea.containsMouse ? Theme.ghostHover : np.isLoved && np.kind === "cider" ? Qt.alpha(np.tint, 0.18) : "transparent"
                 Behavior on color { ColorAnimation { duration: Theme.colorMs } }
             }
             Text {
@@ -182,6 +182,21 @@ FocusScope {
             PwObjectTracker { objects: [Pipewire.defaultAudioSink] }
             PwNodePeakMonitor { id: peak; node: Pipewire.defaultAudioSink; enabled: Media.playing }
             readonly property real level: peak.enabled ? (peak.peaks && peak.peaks.length ? Math.max(...peak.peaks) : (peak.peak || 0)) : 0
+            // One 20 Hz tick sets the bars straight, as the notch does
+            // (IslandRest): a 90 ms Behavior restarted by every peak, plus a
+            // timer per bar, redrew the panel on every frame while it played.
+            property real shown: 0
+            property var jitter: Array(6).fill(1)
+            property int tick: 0
+            Timer {
+                running: peak.enabled; interval: 50; repeat: true
+                onTriggered: {
+                    wave.tick++;
+                    if (!Theme.reduceMotion && wave.tick % 3 === 0)
+                        wave.jitter = wave.jitter.map(() => 0.7 + Math.random() * 0.5);
+                    wave.shown = wave.level;
+                }
+            }
             Row {
                 anchors.centerIn: parent
                 spacing: 3
@@ -190,18 +205,18 @@ FocusScope {
                     Rectangle {
                         required property int index
                         readonly property real shape: [0.45, 0.8, 1, 0.7, 0.9, 0.5][index]
-                        property real jitter: 1
+                        readonly property real jitter: wave.jitter[index]
                         anchors.verticalCenter: parent.verticalCenter
                         width: 3; radius: 1.5
-                        readonly property real liveH: Math.max(3, 22 * Math.min(1, wave.level * shape * jitter * 1.8))
+                        readonly property real liveH: Math.max(3, 22 * Math.min(1, wave.shown * shape * jitter * 1.8))
                         readonly property real pauseH: Math.max(4, 20 * shape * 0.45)
                         height: Media.playing ? liveH : pauseH
                         color: np.tint
                         opacity: Media.playing ? 1 : 0.55
-                        Behavior on height { NumberAnimation { duration: Media.playing ? 90 : 380; easing.type: Easing.OutCubic } }
+                        // Settling to the pause silhouette still eases; live bars don't.
+                        Behavior on height { enabled: !Media.playing; NumberAnimation { duration: Theme.waveSettleMs; easing.type: Easing.OutCubic } }
                         Behavior on opacity { NumberAnimation { duration: Theme.colorMs } }
                         Behavior on color { ColorAnimation { duration: Theme.artMs } }
-                        Timer { running: Media.playing && !Theme.reduceMotion; interval: 120 + (index % 3) * 40; repeat: true; onTriggered: parent.jitter = 0.7 + Math.random() * 0.5 }
                     }
                 }
             }
@@ -299,7 +314,7 @@ FocusScope {
                     Rectangle {
                         anchors.centerIn: parent
                         width: btn.modelData.big ? 48 : 34; height: width; radius: width / 2
-                        color: btnArea.containsMouse ? Qt.rgba(1, 1, 1, 0.1) : btn.modelData.on ? Qt.alpha(np.tint, 0.18) : "transparent"
+                        color: btnArea.containsMouse ? Theme.ghostHover : btn.modelData.on ? Qt.alpha(np.tint, 0.18) : "transparent"
                         Behavior on color { ColorAnimation { duration: Theme.colorMs } }
                     }
                     Text {
