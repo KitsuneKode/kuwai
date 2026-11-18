@@ -138,7 +138,7 @@ Scope {
             // desktop; pauses (the frame stays) once windows cover ~85%.
             readonly property real coverage: {
                 if (!ws) return 0;
-                const W = slot.modelData.width, H = slot.modelData.height;
+                const W = Theme.screenSize(slot.modelData, "width", 0), H = Theme.screenSize(slot.modelData, "height", 0);
                 const mx = mon && mon.lastIpcObject ? mon.lastIpcObject.x : 0, my = mon && mon.lastIpcObject ? mon.lastIpcObject.y : 0;
                 const rects = [];
                 for (const t of Hyprland.toplevels.values) {
