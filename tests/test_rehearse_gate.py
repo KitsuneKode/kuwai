@@ -137,3 +137,29 @@ def test_moments_in_scene_data():
     spec.loader.exec_module(mod)
     out = mod.at_now({"a": "@now-300s", "b": ["@now+5000ms", "plain"], "c": "@now-60iso"}, now=1_800_000_000)
     assert out == {"a": 1_799_999_700, "b": [1_800_000_005_000, "plain"], "c": "2027-01-15T07:59:00Z"}
+
+
+def test_the_lock_clock_is_measured_against_the_wallpaper(tmp_path):
+    PIL = pytest.importorskip("PIL.Image")
+    from rehearse import wall
+    def paint(name, colour, band=None):
+        img = PIL.new("RGB", (1920, 1080), colour)
+        if band:
+            img.paste(band, (0, 100, 1920, 340))        # a band right behind the date and clock
+        path = tmp_path / name
+        img.save(path)
+        return path
+    night = wall.lock_clock(paint("night.png", (12, 16, 30)))
+    assert night["ok"] and night["shade"] == 0 and night["calm"]            # a dark picture is left alone
+    snow = wall.lock_clock(paint("snow.png", (245, 245, 245)))
+    assert snow["bare"] < 2                                                   # what the lock gave: white on white
+    assert snow["ok"] and snow["clock"] >= 3 and snow["shade"] > 0.35 and not snow["calm"]
+    # A dark picture with a bright sky behind the clock needs the shade; the same sky at the foot does not.
+    assert wall.lock_clock(paint("sky.png", (20, 20, 24), band=(235, 235, 240)))["shade"] > 0.3
+    foot = PIL.new("RGB", (1920, 1080), (20, 20, 24)); foot.paste((235, 235, 240), (0, 760, 1920, 1080))
+    foot.save(tmp_path / "foot.png")
+    assert wall.lock_clock(tmp_path / "foot.png")["shade"] == 0
+    assert wall.shade_for(1.0, (1, 1, 1)) <= wall.MOST and wall.shade_for(0.1, (1, 1, 1)) == wall.SCRIM
+    # A portrait picture is cover-cropped like the screen does it, not squeezed.
+    tall = PIL.new("RGB", (1080, 2400), (20, 20, 24)); tall.save(tmp_path / "tall.png")
+    assert wall.lock_layer(tmp_path / "tall.png").size == wall.SIZE

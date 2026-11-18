@@ -96,6 +96,26 @@ A new drag is built on `Spring` (interruptible, keeps its velocity), `Fling`
 (the pointer's speed over the last 100 ms) and `Theme.swipeDamp` (resistance
 past an edge), never on a fixed-length animation.
 
+## The lock clock and the wallpaper
+
+Panels bring their own ground (the island's black), so a wallpaper cannot make
+their text unreadable. The lock screen's date and clock have none: they sit on
+the wallpaper. `shell/modules/lock/ClockGround.qml` reads how bright the
+wallpaper is behind the clock and darkens the top of the screen only as much
+as it takes to reach 3.5:1 (nothing over a dark picture). A whole rehearsal
+stages it over three painted wallpapers (snow, a bright sky, night) and
+measures the clock on the real pictures (`tests/ui/clock-ground.qml`).
+
+```sh
+bin/kuwai-rehearse --wall ~/Pictures/walls/*.jpg     # each wallpaper: the clock's contrast, alone and shaded
+```
+
+`ok`: readable with little or no shade. `bright`: readable, but the top third
+has to be darkened by over a third; fine for a personal wallpaper, a poor
+choice for a default. `WRONG`: under 3:1 even shaded. `lib/rehearse/wall.py`
+is the same rule as the component, for tools that judge wallpapers
+(`wall.lock_clock(path)`).
+
 ## The known list
 
 `tests/ui/rehearsal-known.txt` holds faults that exist and are not fixed yet.

@@ -8,6 +8,8 @@
                                          is not in the list of known ones
   kuwai-rehearse --accept                write today's faults as the known ones
   kuwai-rehearse --out DIR               where the frames and the sheet go
+  kuwai-rehearse --wall IMAGE…           can the lock screen's clock be read
+                                         over these wallpapers?
 
 A whole run also drives the gestures with a real pointer, with motion and
 without (tests/ui/gestures.qml): the row follows the pointer 1:1, a flick or
@@ -139,7 +141,27 @@ def main():
     ap.add_argument("--out", type=Path)
     ap.add_argument("--gate", action="store_true")
     ap.add_argument("--accept", action="store_true")
+    ap.add_argument("--wall", nargs="+", type=Path, metavar="IMAGE",
+                    help="instead of staging: can the lock screen's date and clock be read over these wallpapers? (exit 1 if not)")
+    ap.add_argument("--accent", default="#0a84ff", help="with --wall: the theme's accent, which tints the clock")
     args = ap.parse_args()
+
+    if args.wall:
+        from rehearse import wall
+        bad = 0
+        for path in args.wall:
+            try:
+                r = wall.lock_clock(path, args.accent)
+            except OSError as ex:
+                print(f"unread  {path}: {ex}")
+                bad += 1
+                continue
+            bad += not r["ok"]
+            word = "WRONG " if not r["ok"] else "ok    " if r["calm"] else "bright"
+            print(f"{word} clock {r['clock']:.1f}:1 (alone {r['bare']:.1f}:1, shaded {round(r['shade'] * 100)} %)   {path}")
+        print(f"\n{len(args.wall)} wallpapers, {bad} where the lock screen's clock can't reach {wall.LINE:g}:1 even shaded; "
+              "'bright' ones pass but need the top of the picture darkened by over a third")
+        return 1 if bad else 0
 
     doc = json.loads(args.scenes.read_text())
     seed, scenes = (doc.get("seed", {}), doc["scenes"]) if isinstance(doc, dict) else ({}, doc)
@@ -186,13 +208,32 @@ def main():
                 faults.append(gate.Fault(f"gestures ({motion} motion)", "gesture", "fail",
                                          said[1].strip() if said else f"the gesture run did not finish ({log})", None))
 
+    # The lock clock's ground, on real pictures (tests/ui/clock-ground.qml): over
+    # snow, a bright sky and night, the clock must be readable and night untouched.
+    if not args.only and not args.scale:
+        from PIL import Image
+        cg = out / "clock-ground"
+        subprocess.run([str(ROOT / "bin/kuwai-ui-test"), "--case", "clock-ground", "--backend", "x11", "--output", str(cg)], capture_output=True, text=True)
+        seen = [json.loads(m[1]) for m in re.finditer(r"CLOCK_GROUND (\{.*\})", (cg / "runtime.log").read_text(errors="replace"))] if (cg / "runtime.log").is_file() else []
+        if len(seen) != 3:
+            faults.append(gate.Fault("lock clock", "lock-clock", "fail", f"the lock clock's ground was not staged ({cg / 'runtime.log'})", None))
+        for d in seen:
+            img = Image.open(cg / f"lock-{d['name']}.png").convert("RGB")
+            bg = gate.ground(img, d["box"])
+            r, g, b, a = gate.rgba(d["ink"])
+            ratio = gate.contrast((r * a + bg[0] * (1 - a), g * a + bg[1] * (1 - a), b * a + bg[2] * (1 - a)), bg)
+            if ratio < gate.READABLE_LARGE:
+                faults.append(gate.Fault("lock clock", "lock-clock", "fail", f"over the {d['name']} wallpaper the clock has {ratio:.1f}:1", None))
+            if d["name"] == "night" and d["shade"] > 0.01:
+                faults.append(gate.Fault("lock clock", "lock-clock", "fail", "a dark wallpaper was darkened further", None))
+
     sheet(shots, out / "sheet.png")
     known = set(KNOWN.read_text().splitlines()) - {""} if KNOWN.is_file() else set()
     known = {k for k in known if not k.startswith("#")}
     # A partial run can only speak for the scenes it staged.
     staged = {f"{s['id']} @x{scale:g}" for s in scenes for scale in scales}
     if not args.only and not args.scale:
-        staged |= {"gestures (full motion)", "gestures (reduced motion)"}
+        staged |= {"gestures (full motion)", "gestures (reduced motion)", "lock clock"}
     known_here = {k for k in known if k.split(" | ", 1)[0] in staged}
     fails = [f for f in faults if f.level == "fail"]
     looks = [f for f in faults if f.level == "look"]

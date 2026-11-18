@@ -43,7 +43,8 @@ Item {
     property bool awake: true
     function stir() { awake = true; idleFor.restart(); }
     Timer { id: idleFor; interval: 30000; running: true; onTriggered: view.awake = false }
-    // The clock's tint: the theme's accent, lifted towards white so it reads on any wallpaper.
+    // The clock's tint: the theme's accent, lifted towards white. That alone does
+    // not make it readable over a light wallpaper: ClockGround below does.
     readonly property color tint: Qt.tint(Qt.rgba(1, 1, 1, 0.9), Qt.alpha(Theme.accent, 0.35))
 
     // Asking for the password, or just showing the time.
@@ -120,6 +121,9 @@ Item {
         }
     }
     Rectangle { anchors.fill: parent; color: Qt.rgba(0, 0, 0, 0.22 * (1 - view.u)) }
+    // Under the date and clock, as much darker as this wallpaper needs (none
+    // over a dark one). It goes with the scrim on unlock.
+    ClockGround { anchors.fill: parent; source: wall.source; ink: view.tint; base: 0.22; opacity: 1 - view.u }
 
     // ── What sits on the wallpaper (lifts away on unlock) ────────────────
     Item {
