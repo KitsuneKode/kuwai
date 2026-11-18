@@ -1,0 +1,44 @@
+# Faults the rehearsal knows about and that are still to be fixed (bin/kuwai-rehearse).
+# Never add a line by hand: fix the fault, or run kuwai-rehearse --accept and say why in the commit.
+agents/typical @x2 | shortened | "Fix the calendar header at large text" is shortened with an ellipsis though its content is ordinary
+calendar/new-machine @x2 | cut-off | "No calendars yet. Add one: paste an iCal…" runs 0 px past the bottom of the panel
+calendar/new-machine @x2 | cut-off | "Today · Week 0" runs 0 px past the bottom of the panel
+calendar/new-machine @x2 | cut-off | "Wednesday, 0 November" runs 0 px past the bottom of the panel
+calendar/new-machine @x2 | too-big | wants 0 x 0, the island gives at most 0 x 0
+keys/new-machine @x2 | on-top | "Hold Super anywhere to open this" is drawn over "Close"
+launcher/new-machine @x2 | cut-off | "Search apps, windows, actions = math > m…" runs 0 px past the right of the panel
+launcher/new-machine @x2 | on-top | "Advanced Network Configuration" is drawn over "Password manager and secure wallet"
+launcher/new-machine @x2 | on-top | "All Applications" is drawn over "The player, its queue and the output"
+launcher/new-machine @x2 | on-top | "Bluetooth" is drawn over "Free a port: what listens on it · or typ…"
+launcher/new-machine @x2 | on-top | "Kill Port" is drawn over "Skills your agents never use, what they …"
+launcher/new-machine @x2 | on-top | "Now Playing" is drawn over "Devices, connect and disconnect"
+media/new-machine @x2 | cut-off | "Start something in any player and it sho…" runs 0 px past the left of the panel
+power/new-machine @x2 | on-top | "Shut Down" is drawn over "Firmware"
+settings/new-machine @x2 | on-top | "Bar & Island" is drawn over "Search"
+system/new-machine @x2 | on-top | "󰖔" is drawn over "Game mode"
+system/typical @x2 | on-top | "󰖔" is drawn over "Game mode"
+t3/typical @x2 | on-top | "OTP detection: origin-bound codes" is drawn over "Working · Claude · rice"
+t3/typical @x2 | on-top | "Rehearsal harness" is drawn over "Needs you · Claude · rice"
+t3/typical @x2 | shortened | "Finished · Claude · 0 h ago · rice" is shortened with an ellipsis though its content is ordinary
+t3/typical @x2 | shortened | "OTP detection: origin-bound codes" is shortened with an ellipsis though its content is ordinary
+t3/worst @x2 | on-top | "Failed one" is drawn over "Working · Claude · p0"
+t3/worst @x2 | on-top | "Thread 0" is drawn over "Failed · Claude · 0 min ago · rice"
+t3/worst @x2 | on-top | "Thread 0" is drawn over "Needs you · Claude · a-project-with-a-lo…"
+t3/worst @x2 | on-top | "Thread 0" is drawn over "Working · Claude · p0"
+t3/worst @x2 | on-top | "Thread 0" is drawn over "Working · Codex · p0"
+t3/worst @x2 | on-top | "Thread 0" is drawn over "Working · Gemini · p0"
+updates/typical @x2 | on-top | "linux-zen" is drawn over "Updated together, the way Arch supports"
+updates/typical @x2 | on-top | "mesa" is drawn over "Updated together, the way Arch supports"
+updates/typical @x2 | unreadable | "Update 0" has 0.0:0 against what is under it
+usage/stale @x2 | on-top | "0% left" is drawn over "0% left"
+usage/stale @x2 | on-top | "Weekly" is drawn over "Session"
+usage/stale @x2 | shortened | "Not updating · showing the last reading" is shortened with an ellipsis though its content is ordinary
+usage/typical @x2 | on-top | "0% left" is drawn over "0% left"
+usage/typical @x2 | on-top | "Weekly" is drawn over "Session"
+usage/unreadable @x2 | shortened | "Usage can't be read right now" is shortened with an ellipsis though its content is ordinary
+usage/worst @x2 | on-top | "0 of 0 accounts out" is drawn over "0 accounts"
+usage/worst @x2 | on-top | "0 out · 0 partly · first back in 0d 0h" is drawn over "Usage"
+usage/worst @x2 | on-top | "0% left" is drawn over "Personal second account · Pro"
+usage/worst @x2 | on-top | "Out" is drawn over "Work · Max 0x (team seat)"
+usage/worst @x2 | on-top | "Session" is drawn over "Personal second account · Pro"
+usage/worst @x2 | on-top | "Session" is drawn over "Work · Max 0x (team seat)"

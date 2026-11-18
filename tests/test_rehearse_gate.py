@@ -1,0 +1,139 @@
+"""The rehearsal's rules (lib/rehearse/gate.py), each with a frame it must
+fault and the same frame put right. If a rule stops catching its fault, the
+contact sheet goes quiet for the wrong reason; these keep it honest.
+
+The staging itself (bwrap, Xvfb, the real panels) is bin/kuwai-rehearse --gate:
+a minute long and not run by pytest.
+"""
+import importlib.util
+import json
+import re
+import sys
+from pathlib import Path
+
+import pytest
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "lib"))
+from rehearse import gate  # noqa: E402
+
+
+def text(t, box, **kw):
+    d = dict(t=t, box=list(box), own=list(box), size=13, weight=400, family="SF Pro Text", drawn="SF Pro Text",
+             color="#f5ffffff", op=1, on=True, cut=False, elides=False, wraps=False, lines=1, clip=None, scroll=False, path="Panel>Label")
+    d.update(kw)
+    return d
+
+
+def frame(texts=(), targets=(), **kw):
+    filler = [text("Software Update", (20, 16, 120, 18)), text("Checked ten minutes ago", (20, 40, 150, 14))]
+    d = dict(id="demo/typical @x1", panel="DemoPanel", kind="typical", scale=1, w=440, h=300, wants=[440, 300],
+             texts=filler + list(texts), targets=list(targets), scrolls=[], waiting=0)
+    d.update(kw)
+    return d
+
+
+def rules(f, image=None):
+    return sorted({x.rule for x in gate.judge(f, image) if x.level == "fail"})
+
+
+def test_a_sound_frame_has_no_faults():
+    assert gate.judge(frame()) == []
+
+
+@pytest.mark.parametrize("rule,bad,good", [
+    ("cut-off", text("Wednesday, 18 November", (300, 80, 180, 16)), text("Wednesday, 18 November", (240, 80, 180, 16))),
+    ("cut-off", text("clipped by its card", (20, 80, 200, 16), clip=[20, 70, 150, 40]), text("clipped by its card", (20, 80, 120, 16), clip=[20, 70, 150, 40])),
+    ("shortened", text("An ordinary name", (20, 80, 100, 16), cut=True, elides=True), text("An ordinary name", (20, 80, 100, 16), elides=True)),
+    ("spills", text("62% left", (20, 80, 59, 16), own=[20, 80, 56, 16]), text("62% left", (20, 80, 59, 16), own=[20, 80, 60, 16])),
+    ("small-type", text("fine print", (20, 80, 60, 10), size=9), text("fine print", (20, 80, 60, 12), size=10)),
+    ("insides", text("kuwai-usage isn't running", (20, 80, 160, 16)), text("Usage can't be read right now", (20, 80, 180, 16))),
+    ("insides", text("Finished · NaN h ago", (20, 80, 160, 16)), text("Finished · 2 h ago", (20, 80, 160, 16))),
+    ("insides", text("The helper failed (exit 99)", (20, 80, 160, 16)), text("Couldn't check for updates", (20, 80, 160, 16))),
+    ("on-top", text("7.3.4.zen2-2", (20, 90, 80, 14)), text("7.3.4.zen2-2", (20, 100, 80, 14))),
+    ("missing-font", text("", (20, 80, 16, 16), family="Phosphor", drawn="DejaVu Sans"), text("", (20, 80, 16, 16), family="Phosphor", drawn="Phosphor")),
+])
+def test_each_rule_catches_its_fault_and_passes_its_fix(rule, bad, good):
+    other = text("linux-zen", (20, 80, 70, 16)) if rule == "on-top" else None
+    extra = [other] if other else []
+    assert rule in rules(frame(extra + [bad])), f"{rule} did not fault the bad frame"
+    assert rule not in rules(frame(extra + [good])), f"{rule} faulted the good frame"
+
+
+def test_worst_case_data_may_be_shortened_but_not_cut():
+    long = text("A thread whose title was written as a whole sentence", (20, 80, 380, 16), cut=True, elides=True)
+    assert "shortened" not in rules(frame([long], kind="worst"))
+    assert "cut-off" in rules(frame([text("x" * 30, (20, 80, 600, 16))], kind="worst"))
+
+
+def test_what_is_scrolled_away_is_not_a_fault_but_a_side_cut_is():
+    clip = [20, 60, 400, 100]
+    below = text("row twelve of a long list", (30, 400, 200, 16), clip=clip, scroll=True)
+    assert rules(frame([below])) == []
+    wide = text("a row wider than its list", (30, 80, 450, 16), clip=clip, scroll=True)
+    assert "cut-off" in rules(frame([wide]))
+
+
+def test_targets_and_panel_size():
+    small = dict(box=[400, 20, 22, 22], how="tap", clip=None, scroll=False, path="X")
+    assert "small-target" in rules(frame(targets=[small]))
+    assert "small-target" not in rules(frame(targets=[dict(small, box=[392, 12, 38, 38])]))
+    half_scrolled = dict(box=[20, 150, 400, 44], how="area", clip=[20, 60, 400, 100], scroll=True, path="Row")
+    assert "small-target" not in rules(frame(targets=[half_scrolled]))
+    assert "too-big" in rules(frame(wants=[440, 773]))
+
+
+def test_a_panel_must_say_something_and_stop_waiting_when_it_failed():
+    assert "says-nothing" in rules(dict(frame(), texts=[text("Open", (380, 20, 40, 16))]))
+    waiting = frame([text("The check didn't finish", (20, 80, 160, 16))], waiting=3)
+    assert "waits-forever" in rules(waiting)
+    assert "waits-forever" not in rules(dict(waiting, waiting=0))
+    assert "waits-forever" not in rules(frame(waiting=3))            # still loading, nothing failed: fine
+
+
+def test_contrast_is_measured_against_the_picture():
+    PIL = pytest.importorskip("PIL.Image")
+    img = PIL.new("RGB", (440, 300), (15, 15, 15))
+    faint = text("26", (40, 120, 16, 16), color="#40ffffff")          # white at 25 %
+    found = {x.rule: x for x in gate.judge(frame([faint]), img)}
+    assert "unreadable" in found and "2." in found["unreadable"].what
+    dim = text("26", (40, 120, 16, 16), color="#61ffffff")            # white at 38 %: dim, readable
+    kinds = {x.rule: x.level for x in gate.judge(frame([dim]), img)}
+    assert "unreadable" not in kinds and kinds.get("faint") == "look"
+    green = PIL.new("RGB", (440, 300), (41, 178, 75))                 # white on the solid green Allow button
+    assert "unreadable" in {x.rule for x in gate.judge(frame([text("Allow", (40, 120, 40, 16))]), green)}
+    assert gate.contrast((1, 1, 1), (0, 0, 0)) == pytest.approx(21)
+
+
+def test_a_fault_is_named_the_same_whatever_the_clock_says():
+    a = gate.Fault("t3/typical @x2", "shortened", "fail", '"Finished · 57 min ago" is shortened', None)
+    b = gate.Fault("t3/typical @x2", "shortened", "fail", '"Finished · 58 min ago" is shortened', None)
+    assert a.key == b.key and "@x2" in a.key
+
+
+def test_every_island_panel_is_rehearsed():
+    """A panel nobody stages is a panel nobody has looked at."""
+    doc = json.loads((ROOT / "tests/ui/scenes.json").read_text())
+    staged = {s["panel"] for s in doc["scenes"]}
+    panels = {p.stem for p in (ROOT / "shell/modules/island").glob("*Panel.qml")}
+    assert panels - staged == set(), f"no scene for: {sorted(panels - staged)} (tests/ui/scenes.json)"
+    ids = [s["id"] for s in doc["scenes"]]
+    assert len(ids) == len(set(ids))
+    for s in doc["scenes"]:
+        assert (ROOT / "shell/modules/island" / (s["panel"] + ".qml")).is_file(), s["id"]
+        assert s.get("kind", "typical") in ("typical", "worst")
+
+
+def test_the_known_list_is_only_debt_at_twice_the_text():
+    """At 100 % and 120 % nothing is excused. What is listed is the 200 % debt."""
+    known = [l for l in (ROOT / "tests/ui/rehearsal-known.txt").read_text().splitlines() if l and not l.startswith("#")]
+    assert [l for l in known if not re.search(r" @x2 \| ", l)] == []
+    assert len(known) <= 42, "the known list only gets shorter: fix the fault instead of listing it"
+
+
+def test_moments_in_scene_data():
+    spec = importlib.util.spec_from_loader("kuwai_rehearse", importlib.machinery.SourceFileLoader("kuwai_rehearse", str(ROOT / "bin/kuwai-rehearse")))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    out = mod.at_now({"a": "@now-300s", "b": ["@now+5000ms", "plain"], "c": "@now-60iso"}, now=1_800_000_000)
+    assert out == {"a": 1_799_999_700, "b": [1_800_000_005_000, "plain"], "c": "2027-01-15T07:59:00Z"}

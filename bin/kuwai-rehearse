@@ -1,0 +1,213 @@
+#!/usr/bin/env python3
+"""Rehearse the shell's panels: every state staged, pictured and judged.
+
+  kuwai-rehearse                         every scene, text at 1, 1.2 and 2 times
+  kuwai-rehearse usage system            only scenes whose id starts so
+  kuwai-rehearse --scale 2               one text scale
+  kuwai-rehearse --gate                  also fail (exit 1) on a fault that
+                                         is not in the list of known ones
+  kuwai-rehearse --accept                write today's faults as the known ones
+  kuwai-rehearse --out DIR               where the frames and the sheet go
+
+It stages each scene of tests/ui/scenes.json in a private window (bwrap, its
+own Xvfb, inert helpers: bin/kuwai-ui-test --case rehearse), never in the
+session. Out come one picture per scene, a contact sheet with each fault
+boxed (red: wrong, amber: look at it), and one line per fault.
+
+The known faults (tests/ui/rehearsal-known.txt) are a debt list, not an
+excuse: --gate fails on a new fault and also on a listed one that is gone,
+so the list only ever gets shorter. Exit 2: could not stage (no bwrap, qs,
+Xvfb or Mesa).
+"""
+import argparse
+import collections
+import json
+import re
+import subprocess
+import sys
+import tempfile
+import time
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "lib"))
+from rehearse import gate  # noqa: E402
+
+KNOWN = ROOT / "tests/ui/rehearsal-known.txt"
+PART = re.compile(r"REHEARSE_PART (\S+) (\d+) (.*)$")
+
+
+def at_now(value, now=None):
+    """Scene data with its "@now-300s" / "@now+5400000ms" moments filled in."""
+    now = now or time.time()
+    if isinstance(value, dict):
+        return {k: at_now(v, now) for k, v in value.items()}
+    if isinstance(value, list):
+        return [at_now(v, now) for v in value]
+    m = re.fullmatch(r"@now([+-]\d+)(ms|s|iso)", value) if isinstance(value, str) else None
+    if not m:
+        return value
+    if m[2] == "iso":           # seconds from now, as the text a web API gives
+        return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now + int(m[1])))
+    return round(now * 1000) + int(m[1]) if m[2] == "ms" else round(now) + int(m[1])
+
+
+def stage(scenes, scale, out):
+    """Run the scenes at one text scale; frames as {id: facts}, or a reason."""
+    out.mkdir(parents=True, exist_ok=True)
+    listing = out / "scenes.json"
+    listing.write_text(json.dumps(scenes))
+    run = subprocess.run([str(ROOT / "bin/kuwai-ui-test"), "--case", "rehearse", "--backend", "x11",
+                          "--text-scale", f"{scale:g}", "--scenes", str(listing), "--output", str(out)],
+                         capture_output=True, text=True)
+    try:
+        verdict = json.loads(run.stdout.strip().splitlines()[-1])
+    except (IndexError, ValueError):
+        verdict = {"status": "UNQUALIFIED", "reason": run.stderr.strip()[-300:]}
+    parts = collections.defaultdict(dict)
+    log = out / "runtime.log"
+    for line in (log.read_text(errors="replace").splitlines() if log.is_file() else []):
+        m = PART.search(line)
+        if m:
+            parts[m[1]][int(m[2])] = m[3]
+    frames = {}
+    for sid, pieces in parts.items():
+        try:
+            frames[sid] = json.loads("".join(pieces[i] for i in sorted(pieces)))
+        except ValueError:
+            pass
+    return verdict, frames
+
+
+def picture(out, sid):
+    """The scene's frame over the brightest ground a wallpaper can give."""
+    from PIL import Image
+    path = out / (re.sub(r"[^\w.-]+", "_", sid) + ".png")
+    if not path.is_file():
+        return None
+    img = Image.open(path).convert("RGBA")
+    white = Image.new("RGBA", img.size, (255, 255, 255, 255))
+    return Image.alpha_composite(white, img).convert("RGB")
+
+
+def sheet(shots, path, columns=4):
+    """One picture of every frame: its name, its verdict, its faults boxed."""
+    from PIL import Image, ImageDraw, ImageFont
+    cell_w, pad, cap = 560, 16, 34
+    try:
+        font = ImageFont.truetype("/usr/share/fonts/TTF/DejaVuSans.ttf", 13)
+    except OSError:
+        font = ImageFont.load_default()
+    cells = []
+    for title, img, faults in shots:
+        img = img.copy()
+        draw = ImageDraw.Draw(img)
+        for f in faults:
+            if f.box:
+                x, y, w, h = f.box
+                draw.rectangle([x - 2, y - 2, x + w + 2, y + h + 2], outline=(255, 59, 48) if f.level == "fail" else (255, 159, 10), width=2)
+        k = min(1.0, cell_w / img.size[0])
+        if k < 1:
+            img = img.resize((round(img.size[0] * k), round(img.size[1] * k)), Image.LANCZOS)
+        fails = sum(f.level == "fail" for f in faults)
+        looks = len(faults) - fails
+        cells.append((title, img, fails, looks))
+    rows = [cells[i:i + columns] for i in range(0, len(cells), columns)]
+    heights = [max(c[1].size[1] for c in row) + cap + pad for row in rows]
+    page = Image.new("RGB", (columns * (cell_w + pad) + pad, sum(heights) + pad), (128, 128, 128))
+    draw = ImageDraw.Draw(page)
+    y = pad
+    for row, height in zip(rows, heights):
+        for i, (title, img, fails, looks) in enumerate(row):
+            x = pad + i * (cell_w + pad)
+            mark = "pass" if not fails and not looks else ", ".join(p for p in (f"{fails} wrong" if fails else "", f"{looks} to look at" if looks else "") if p)
+            draw.text((x, y), f"{title}   {mark}", fill=(255, 255, 255) if not fails else (90, 0, 0), font=font)
+            page.paste(img, (x + (cell_w - img.size[0]) // 2, y + cap - 10))
+        y += height
+    page.save(path)
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("only", nargs="*", help="scene id prefixes (default: all)")
+    ap.add_argument("--scale", type=float, action="append", choices=[1, 1.2, 2], help="text scale (default: 1, 1.2 and 2)")
+    ap.add_argument("--scenes", type=Path, default=ROOT / "tests/ui/scenes.json")
+    ap.add_argument("--out", type=Path)
+    ap.add_argument("--gate", action="store_true")
+    ap.add_argument("--accept", action="store_true")
+    args = ap.parse_args()
+
+    doc = json.loads(args.scenes.read_text())
+    seed, scenes = (doc.get("seed", {}), doc["scenes"]) if isinstance(doc, dict) else ({}, doc)
+    if args.only:
+        scenes = [s for s in scenes if any(s["id"].startswith(p) for p in args.only)]
+    if not scenes:
+        print("no scene matches", file=sys.stderr)
+        return 2
+    out = args.out or Path(tempfile.mkdtemp(prefix="kuwai-rehearsal-"))
+    scales = args.scale or [1, 1.2, 2]
+
+    faults, shots = [], []
+    for scale in scales:
+        tag = f"x{scale:g}"
+        verdict, frames = stage({"seed": at_now(seed), "scenes": at_now(scenes)}, scale, out / tag)
+        if verdict.get("status") == "UNQUALIFIED":
+            print(f"could not stage at text {tag}: {verdict.get('reason')}", file=sys.stderr)
+            return 2
+        staged_fail = verdict.get("status") != "PASS"
+        for s in scenes:
+            sid = f"{s['id']} @{tag}"
+            frame = frames.get(s["id"])
+            if frame is None:
+                faults.append(gate.Fault(sid, "not-staged", "fail", "the scene did not load or did not settle (runtime.log)", None))
+                continue
+            frame["id"] = sid
+            img = picture(out / tag, s["id"])
+            found = gate.judge(frame, img)
+            faults.extend(found)
+            if img is not None:
+                shots.append((sid, img, found))
+        if staged_fail and not any(f.rule == "not-staged" for f in faults):
+            faults.append(gate.Fault(f"all @{tag}", "runtime", "fail", f"the stage reported: {verdict.get('reason')} ({out / tag / 'runtime.log'})", None))
+
+    sheet(shots, out / "sheet.png")
+    known = set(KNOWN.read_text().splitlines()) - {""} if KNOWN.is_file() else set()
+    known = {k for k in known if not k.startswith("#")}
+    # A partial run can only speak for the scenes it staged.
+    staged = {f"{s['id']} @x{scale:g}" for s in scenes for scale in scales}
+    known_here = {k for k in known if k.split(" | ", 1)[0] in staged}
+    fails = [f for f in faults if f.level == "fail"]
+    looks = [f for f in faults if f.level == "look"]
+    new = [f for f in fails if f.key not in known]
+    gone = sorted(known_here - {f.key for f in fails})
+
+    for f in sorted(fails, key=lambda f: f.key):
+        print(("WRONG  " if f.key not in known else "known  ") + f.key)
+    # The same remark about many texts on one frame is one line with a count.
+    grouped = collections.OrderedDict()
+    for f in sorted(looks, key=lambda f: f.key):
+        grouped.setdefault((f.scene, f.rule), []).append(f.what)
+    for (scene, rule), whats in grouped.items():
+        print(f"look   {scene} | {rule} | {whats[0]}" + (f"   (and {len(whats) - 1} more)" if len(whats) > 1 else ""))
+    for k in gone:
+        print("fixed  " + k + "   (remove it from the known list: kuwai-rehearse --accept)")
+    print(f"\n{len(shots)} frames, {len(fails)} wrong ({len(new)} new), {len(looks)} to look at; sheet: {out / 'sheet.png'}")
+
+    if args.accept:
+        if args.only or args.scale:
+            print("--accept needs a whole run (no scene prefix, no --scale)", file=sys.stderr)
+            return 2
+        KNOWN.write_text("# Faults the rehearsal knows about and that are still to be fixed (bin/kuwai-rehearse).\n"
+                         "# Never add a line by hand: fix the fault, or run kuwai-rehearse --accept and say why in the commit.\n"
+                         + "".join(k + "\n" for k in sorted({f.key for f in fails})))
+        print(f"wrote {len({f.key for f in fails})} known faults to {KNOWN}")
+        return 0
+    if args.gate and (new or gone):
+        print("rehearsal failed" + (": new faults" if new else ": the known list names faults that are gone"))
+        return 1
+    print("rehearsal passed" if not new else "rehearsal has new faults (not gated)")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

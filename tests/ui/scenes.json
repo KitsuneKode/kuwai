@@ -1,0 +1,1214 @@
+{
+ "about": "The rehearsal's scenes (bin/kuwai-rehearse, docs/design/REHEARSAL.md). Each scene is one panel in one state: `set` puts services in that state ([service, property, value] or [service, \"call\", function, arguments]) and is undone after the frame. `kind: worst` is data longer than ordinary, where shortening with an ellipsis is the right answer. `seed` are files written into the private home before the shell starts (under its XDG state or cache directory). A string \"@now-300s\" or \"@now+5400000ms\" becomes that moment (epoch seconds or milliseconds); \"@now-300iso\" the same as ISO text. `running` are helpers a service keeps alive: their stand-in stays up silently (the others exit at once, as on a machine where they are missing). `props` are the panel's own properties; \"@date:2026-11-18T10:10:00\" is that moment.",
+ "running": [
+  "kuwai-usage"
+ ],
+ "seed": {
+  "state/kuwai/notifications.json": {
+   "dnd": false,
+   "lastSeen": "@now-3000000ms",
+   "history": [
+    {
+     "nid": 1,
+     "time": "@now-900000ms",
+     "app": "Mail",
+     "title": "Ada Lovelace",
+     "body": "Lunch on Thursday? I found the place with the long table.",
+     "status": "",
+     "statusGlyph": "",
+     "statusTone": "",
+     "icon": "",
+     "groupKey": "Mail",
+     "focusClass": "",
+     "jump": "",
+     "event": "",
+     "agentState": "",
+     "url": "",
+     "full": "",
+     "thread": "",
+     "quiet": false,
+     "urgency": 1,
+     "severity": "",
+     "count": 1,
+     "snoozedUntil": 0,
+     "replyable": false
+    },
+    {
+     "nid": 2,
+     "time": "@now-1800000ms",
+     "app": "GitHub",
+     "title": "Review requested",
+     "body": "chore/dead-code-and-size-20261117: remove the old vitals panel and its tests, 14 files changed",
+     "status": "Review requested",
+     "statusGlyph": "",
+     "statusTone": "",
+     "icon": "",
+     "groupKey": "GitHub",
+     "focusClass": "",
+     "jump": "",
+     "event": "",
+     "agentState": "",
+     "url": "https://example.com/pr/1",
+     "full": "",
+     "thread": "",
+     "quiet": false,
+     "urgency": 1,
+     "severity": "",
+     "count": 1,
+     "snoozedUntil": 0,
+     "replyable": false
+    },
+    {
+     "nid": 3,
+     "time": "@now-2700000ms",
+     "app": "Signal",
+     "title": "A group with a rather long name that somebody thought was funny at the time",
+     "body": "A message that goes on for much longer than a notification row has room for, with a second sentence, and a third one to be sure that it has to be shortened somewhere sensible.",
+     "status": "",
+     "statusGlyph": "",
+     "statusTone": "",
+     "icon": "",
+     "groupKey": "Signal",
+     "focusClass": "",
+     "jump": "",
+     "event": "",
+     "agentState": "",
+     "url": "",
+     "full": "",
+     "thread": "",
+     "quiet": false,
+     "urgency": 1,
+     "severity": "",
+     "count": 4,
+     "snoozedUntil": 0,
+     "replyable": false
+    },
+    {
+     "nid": 4,
+     "time": "@now-3600000ms",
+     "app": "Calendar",
+     "title": "Stand-up in 10 minutes",
+     "body": "Room 2",
+     "status": "",
+     "statusGlyph": "",
+     "statusTone": "",
+     "icon": "",
+     "groupKey": "Calendar",
+     "focusClass": "",
+     "jump": "",
+     "event": "",
+     "agentState": "",
+     "url": "",
+     "full": "",
+     "thread": "",
+     "quiet": false,
+     "urgency": 1,
+     "severity": "",
+     "count": 1,
+     "snoozedUntil": 0,
+     "replyable": false
+    },
+    {
+     "nid": 5,
+     "time": "@now-4500000ms",
+     "app": "System",
+     "title": "Battery at 15 %",
+     "body": "Plug in soon.",
+     "status": "",
+     "statusGlyph": "",
+     "statusTone": "",
+     "icon": "",
+     "groupKey": "System",
+     "focusClass": "",
+     "jump": "",
+     "event": "",
+     "agentState": "",
+     "url": "",
+     "full": "",
+     "thread": "",
+     "quiet": false,
+     "urgency": 2,
+     "severity": "",
+     "count": 1,
+     "snoozedUntil": 0,
+     "replyable": false
+    },
+    {
+     "nid": 6,
+     "time": "@now-5400000ms",
+     "app": "Bank",
+     "title": "Your code",
+     "body": "482913 is your verification code. Don't share it.",
+     "status": "",
+     "statusGlyph": "",
+     "statusTone": "",
+     "icon": "",
+     "groupKey": "Bank",
+     "focusClass": "",
+     "jump": "",
+     "event": "",
+     "agentState": "",
+     "url": "",
+     "full": "",
+     "thread": "",
+     "quiet": false,
+     "urgency": 1,
+     "severity": "",
+     "count": 1,
+     "snoozedUntil": 0,
+     "replyable": false
+    },
+    {
+     "nid": 7,
+     "time": "@now-6300000ms",
+     "app": "Spotify",
+     "title": "Now playing",
+     "body": "A song",
+     "status": "",
+     "statusGlyph": "",
+     "statusTone": "",
+     "icon": "",
+     "groupKey": "Spotify",
+     "focusClass": "",
+     "jump": "",
+     "event": "",
+     "agentState": "",
+     "url": "",
+     "full": "",
+     "thread": "",
+     "quiet": false,
+     "urgency": 1,
+     "severity": "",
+     "count": 1,
+     "snoozedUntil": 0,
+     "replyable": false
+    },
+    {
+     "nid": 8,
+     "time": "@now-7200000ms",
+     "app": "Mail",
+     "title": "Second mail",
+     "body": "Short one.",
+     "status": "",
+     "statusGlyph": "",
+     "statusTone": "",
+     "icon": "",
+     "groupKey": "Mail",
+     "focusClass": "",
+     "jump": "",
+     "event": "",
+     "agentState": "",
+     "url": "",
+     "full": "",
+     "thread": "",
+     "quiet": false,
+     "urgency": 1,
+     "severity": "",
+     "count": 1,
+     "snoozedUntil": 0,
+     "replyable": false
+    }
+   ]
+  }
+ },
+ "scenes": [
+  {
+   "id": "usage/unreadable",
+   "name": "usage",
+   "panel": "UsagePanel",
+   "set": [
+    [
+     "Limits",
+     "alive",
+     false
+    ],
+    [
+     "Limits",
+     "fails",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "usage/stale",
+   "name": "usage",
+   "panel": "UsagePanel",
+   "set": [
+    [
+     "Limits",
+     "alive",
+     false
+    ],
+    [
+     "Limits",
+     "fails",
+     3
+    ],
+    [
+     "Limits",
+     "loaded",
+     true
+    ],
+    [
+     "Limits",
+     "source",
+     "t3"
+    ],
+    [
+     "Limits",
+     "checkedAt",
+     "@now-240000ms"
+    ],
+    [
+     "Limits",
+     "providers",
+     [
+      {
+       "driver": "claude",
+       "label": "Claude",
+       "color": "#d97757",
+       "accounts": [
+        {
+         "key": "claude:Work",
+         "driver": "claude",
+         "name": "Work",
+         "email": "ada@example.com",
+         "plan": "Max 20x",
+         "accent": null,
+         "note": null,
+         "credits": 0,
+         "checkedAt": "@now-240000ms",
+         "windows": [
+          {
+           "id": "session",
+           "kind": "session",
+           "label": "Session",
+           "used": 38,
+           "resetsAt": "@now+10800000ms",
+           "durationMins": 300
+          },
+          {
+           "id": "weekly",
+           "kind": "weekly",
+           "label": "Weekly",
+           "used": 61,
+           "resetsAt": "@now+259200000ms",
+           "durationMins": 10080
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "driver": "codex",
+       "label": "Codex",
+       "color": "#10a37f",
+       "accounts": [
+        {
+         "key": "codex:Personal",
+         "driver": "codex",
+         "name": "Personal",
+         "email": "ada@example.com",
+         "plan": "Pro",
+         "accent": null,
+         "note": null,
+         "credits": 0,
+         "checkedAt": "@now-240000ms",
+         "windows": [
+          {
+           "id": "session",
+           "kind": "session",
+           "label": "Session",
+           "used": 12,
+           "resetsAt": "@now+14400000ms",
+           "durationMins": 300
+          },
+          {
+           "id": "weekly",
+           "kind": "weekly",
+           "label": "Weekly",
+           "used": 27,
+           "resetsAt": "@now+432000000ms",
+           "durationMins": 10080
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "system/new-machine",
+   "name": "system",
+   "panel": "SystemPanel"
+  },
+  {
+   "id": "media/new-machine",
+   "name": "media",
+   "panel": "MediaPanel"
+  },
+  {
+   "id": "notifs/new-machine",
+   "name": "notifs",
+   "panel": "NotifsPanel",
+   "set": [
+    [
+     "Notifs",
+     "items",
+     []
+    ]
+   ]
+  },
+  {
+   "id": "updates/new-machine",
+   "name": "updates",
+   "panel": "UpdatesPanel"
+  },
+  {
+   "id": "calendar/new-machine",
+   "name": "calendar",
+   "panel": "CalendarPanel",
+   "props": {
+    "today": "@date:2026-11-18T10:10:00",
+    "now": "@date:2026-11-18T10:10:00"
+   }
+  },
+  {
+   "id": "power/new-machine",
+   "name": "power",
+   "panel": "PowerPanel"
+  },
+  {
+   "id": "bluetooth/new-machine",
+   "name": "bluetooth",
+   "panel": "BluetoothPanel"
+  },
+  {
+   "id": "keys/new-machine",
+   "name": "keys",
+   "panel": "KeysPanel"
+  },
+  {
+   "id": "agents/new-machine",
+   "name": "agents",
+   "panel": "AgentsPanel"
+  },
+  {
+   "id": "t3/new-machine",
+   "name": "t3",
+   "panel": "T3Panel"
+  },
+  {
+   "id": "cleanup/new-machine",
+   "name": "cleanup",
+   "panel": "CleanupPanel"
+  },
+  {
+   "id": "read/new-machine",
+   "name": "read",
+   "panel": "ReadPanel"
+  },
+  {
+   "id": "launcher/new-machine",
+   "name": "launcher",
+   "panel": "LauncherPanel",
+   "kind": "worst"
+  },
+  {
+   "id": "switcher/new-machine",
+   "name": "switcher",
+   "panel": "SwitcherPanel"
+  },
+  {
+   "id": "settings/new-machine",
+   "name": "settings",
+   "panel": "SettingsPanel"
+  },
+  {
+   "id": "theme/new-machine",
+   "name": "theme",
+   "panel": "ThemePanel"
+  },
+  {
+   "id": "usage/typical",
+   "name": "usage",
+   "panel": "UsagePanel",
+   "kind": "typical",
+   "set": [
+    [
+     "Limits",
+     "loaded",
+     true
+    ],
+    [
+     "Limits",
+     "source",
+     "t3"
+    ],
+    [
+     "Limits",
+     "checkedAt",
+     "@now-240000ms"
+    ],
+    [
+     "Limits",
+     "providers",
+     [
+      {
+       "driver": "claude",
+       "label": "Claude",
+       "color": "#d97757",
+       "accounts": [
+        {
+         "key": "claude:Work",
+         "driver": "claude",
+         "name": "Work",
+         "email": "ada@example.com",
+         "plan": "Max 20x",
+         "accent": null,
+         "note": null,
+         "credits": 0,
+         "checkedAt": "@now-240000ms",
+         "windows": [
+          {
+           "id": "session",
+           "kind": "session",
+           "label": "Session",
+           "used": 38,
+           "resetsAt": "@now+10800000ms",
+           "durationMins": 300
+          },
+          {
+           "id": "weekly",
+           "kind": "weekly",
+           "label": "Weekly",
+           "used": 61,
+           "resetsAt": "@now+259200000ms",
+           "durationMins": 10080
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "driver": "codex",
+       "label": "Codex",
+       "color": "#10a37f",
+       "accounts": [
+        {
+         "key": "codex:Personal",
+         "driver": "codex",
+         "name": "Personal",
+         "email": "ada@example.com",
+         "plan": "Pro",
+         "accent": null,
+         "note": null,
+         "credits": 0,
+         "checkedAt": "@now-240000ms",
+         "windows": [
+          {
+           "id": "session",
+           "kind": "session",
+           "label": "Session",
+           "used": 12,
+           "resetsAt": "@now+14400000ms",
+           "durationMins": 300
+          },
+          {
+           "id": "weekly",
+           "kind": "weekly",
+           "label": "Weekly",
+           "used": 27,
+           "resetsAt": "@now+432000000ms",
+           "durationMins": 10080
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    ],
+    [
+     "Limits",
+     "fails",
+     0
+    ]
+   ]
+  },
+  {
+   "id": "usage/worst",
+   "name": "usage",
+   "panel": "UsagePanel",
+   "kind": "worst",
+   "set": [
+    [
+     "Limits",
+     "loaded",
+     true
+    ],
+    [
+     "Limits",
+     "source",
+     "t3-cached"
+    ],
+    [
+     "Limits",
+     "checkedAt",
+     "@now-18000000ms"
+    ],
+    [
+     "Limits",
+     "providers",
+     [
+      {
+       "driver": "claude",
+       "label": "Claude",
+       "color": "#d97757",
+       "accounts": [
+        {
+         "key": "claude:Work",
+         "driver": "claude",
+         "name": "Work",
+         "email": "a.very.long.address.for.a.shared.team.mailbox@engineering.example-company.co.uk",
+         "plan": "Max 20x (team seat)",
+         "accent": null,
+         "note": null,
+         "credits": 0,
+         "checkedAt": "@now-18000000ms",
+         "windows": [
+          {
+           "id": "session",
+           "kind": "session",
+           "label": "Session",
+           "used": 100,
+           "resetsAt": "@now+2400000ms",
+           "durationMins": 300
+          },
+          {
+           "id": "weekly",
+           "kind": "weekly",
+           "label": "Weekly",
+           "used": 93,
+           "resetsAt": "@now+518400000ms",
+           "durationMins": 10080
+          },
+          {
+           "id": "opus",
+           "kind": "opus",
+           "label": "Weekly · Opus",
+           "used": 71,
+           "resetsAt": "@now+518400000ms",
+           "durationMins": 10080
+          }
+         ]
+        },
+        {
+         "key": "claude:Personal second account",
+         "driver": "claude",
+         "name": "Personal second account",
+         "email": "ada@example.com",
+         "plan": "Pro",
+         "accent": null,
+         "note": null,
+         "credits": 0,
+         "checkedAt": "@now-18000000ms",
+         "windows": [
+          {
+           "id": "session",
+           "kind": "session",
+           "label": "Session",
+           "used": 82,
+           "resetsAt": "@now+14400000ms",
+           "durationMins": 300
+          },
+          {
+           "id": "weekly",
+           "kind": "weekly",
+           "label": "Weekly",
+           "used": 12,
+           "resetsAt": "@now+172800000ms",
+           "durationMins": 10080
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "driver": "codex",
+       "label": "Codex",
+       "color": "#10a37f",
+       "accounts": [
+        {
+         "key": "codex:Personal",
+         "driver": "codex",
+         "name": "Personal",
+         "email": "ada@example.com",
+         "plan": "Pro",
+         "accent": null,
+         "note": null,
+         "credits": 0,
+         "checkedAt": "@now-18000000ms",
+         "windows": [
+          {
+           "id": "session",
+           "kind": "session",
+           "label": "Session",
+           "used": 55,
+           "resetsAt": "@now+16200000ms",
+           "durationMins": 300
+          },
+          {
+           "id": "weekly",
+           "kind": "weekly",
+           "label": "Weekly",
+           "used": 100,
+           "resetsAt": "@now+432000000ms",
+           "durationMins": 10080
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "driver": "antigravity",
+       "label": "Antigravity",
+       "color": "#4285f4",
+       "accounts": [
+        {
+         "key": "antigravity:Main",
+         "driver": "antigravity",
+         "name": "Main",
+         "email": "ada@example.com",
+         "plan": "Ultra",
+         "accent": null,
+         "note": null,
+         "credits": 0,
+         "checkedAt": "@now-27000000ms",
+         "windows": [
+          {
+           "id": "shared",
+           "kind": "shared",
+           "label": "Claude & GPT (shared)",
+           "used": 64,
+           "resetsAt": "@now+7200000ms",
+           "durationMins": 300
+          },
+          {
+           "id": "gemini",
+           "kind": "gemini",
+           "label": "Gemini 3 Pro",
+           "used": 8,
+           "resetsAt": "@now+7200000ms",
+           "durationMins": 300
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "driver": "cursor",
+       "label": "Cursor",
+       "color": "#888888",
+       "accounts": [
+        {
+         "key": "cursor:Main",
+         "driver": "cursor",
+         "name": "Main",
+         "email": "ada@example.com",
+         "plan": "Ultra",
+         "accent": null,
+         "note": null,
+         "credits": 0,
+         "checkedAt": "@now-18000000ms",
+         "windows": [
+          {
+           "id": "monthly",
+           "kind": "monthly",
+           "label": "Monthly",
+           "used": 44,
+           "resetsAt": "@now+1036800000ms",
+           "durationMins": 43200
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    ],
+    [
+     "Limits",
+     "fails",
+     0
+    ]
+   ]
+  },
+  {
+   "id": "agents/typical",
+   "name": "agents",
+   "panel": "AgentsPanel",
+   "set": [
+    [
+     "Kittymux",
+     "feedPinned",
+     true
+    ],
+    [
+     "Kittymux",
+     "feed",
+     {
+      "version": 1,
+      "agents": [
+       {
+        "key": "fx-1",
+        "agent": "claude",
+        "brand": "claude",
+        "title": "Fix the calendar header at large text",
+        "tab_title": "rice",
+        "cwd": "~/Projects/rice",
+        "state": "waiting",
+        "account": "main",
+        "question": "Allow Bash: bun test tests/shell in ~/Projects/rice?"
+       },
+       {
+        "key": "fx-2",
+        "agent": "codex",
+        "brand": "codex",
+        "title": "Review the updates panel",
+        "tab_title": "rice",
+        "cwd": "~/Projects/rice",
+        "state": "working",
+        "account": "main"
+       },
+       {
+        "key": "fx-3",
+        "agent": "claude",
+        "brand": "claude",
+        "title": "Write the rehearsal notes",
+        "tab_title": "rice",
+        "cwd": "~/Projects/rice",
+        "state": "done",
+        "account": "main"
+       }
+      ]
+     }
+    ]
+   ]
+  },
+  {
+   "id": "agents/worst",
+   "name": "agents",
+   "panel": "AgentsPanel",
+   "kind": "worst",
+   "set": [
+    [
+     "Kittymux",
+     "feedPinned",
+     true
+    ],
+    [
+     "Kittymux",
+     "feed",
+     {
+      "version": 1,
+      "agents": [
+       {
+        "key": "fx-1",
+        "agent": "claude",
+        "brand": "claude",
+        "title": "Rework the notification centre so that a long thread of replies folds into one row and still shows who wrote last",
+        "tab_title": "rice",
+        "cwd": "~/Projects/rice",
+        "state": "waiting",
+        "account": "main",
+        "question": "Allow Bash: find . -name '*.qml' -newer shell/shell.qml -exec qmllint --max-warnings 0 {} + in ~/Projects/a/deeply/nested/checkout?"
+       },
+       {
+        "key": "fx-2",
+        "agent": "codex",
+        "brand": "codex",
+        "title": "Port the greeter",
+        "tab_title": "rice",
+        "cwd": "~/Projects/rice",
+        "state": "limited",
+        "account": "personal",
+        "limit_reset": "@now+5400s"
+       },
+       {
+        "key": "fx-3",
+        "agent": "gemini",
+        "brand": "gemini",
+        "title": "Translate the settings pages",
+        "tab_title": "rice",
+        "cwd": "~/Projects/rice",
+        "state": "error",
+        "account": "main",
+        "error": "the process ended without an answer (see the terminal)"
+       },
+       {
+        "key": "fx-4",
+        "agent": "cursor",
+        "brand": "cursor",
+        "title": "A",
+        "tab_title": "rice",
+        "cwd": "~/Projects/rice",
+        "state": "working",
+        "account": "main"
+       },
+       {
+        "key": "fx-5",
+        "agent": "opencode",
+        "brand": "opencode",
+        "title": "Benchmark the wallpaper player across three outputs at once",
+        "tab_title": "rice",
+        "cwd": "~/Projects/rice",
+        "state": "working",
+        "account": "main"
+       },
+       {
+        "key": "fx-6",
+        "agent": "claude",
+        "brand": "claude",
+        "title": "Second question",
+        "tab_title": "rice",
+        "cwd": "~/Projects/rice",
+        "state": "waiting",
+        "account": "main",
+        "question": "Edit shell/config/Theme.qml?"
+       },
+       {
+        "key": "fx-7",
+        "agent": "agy",
+        "brand": "agy",
+        "title": "Done one",
+        "tab_title": "rice",
+        "cwd": "~/Projects/rice",
+        "state": "done",
+        "account": "main"
+       },
+       {
+        "key": "fx-8",
+        "agent": "claude",
+        "brand": "claude",
+        "title": "Idle one",
+        "tab_title": "rice",
+        "cwd": "~/Projects/rice",
+        "state": "idle",
+        "account": "main"
+       }
+      ]
+     }
+    ]
+   ]
+  },
+  {
+   "id": "t3/typical",
+   "name": "t3",
+   "panel": "T3Panel",
+   "set": [
+    [
+     "T3Code",
+     "alive",
+     true
+    ],
+    [
+     "T3Code",
+     "running",
+     1
+    ],
+    [
+     "T3Code",
+     "waiting",
+     1
+    ],
+    [
+     "T3Code",
+     "rawFinished",
+     1
+    ],
+    [
+     "T3Code",
+     "rawItems",
+     [
+      {
+       "thread": "t1",
+       "env": "e1",
+       "project": "rice",
+       "status": "waiting",
+       "provider": "claude",
+       "title": "Approve the migration plan",
+       "at": "@now-1700iso"
+      },
+      {
+       "thread": "t2",
+       "env": "e1",
+       "project": "rice",
+       "status": "running",
+       "provider": "claude",
+       "title": "Rehearsal harness",
+       "at": "@now-3400iso"
+      },
+      {
+       "thread": "t3",
+       "env": "e1",
+       "project": "rice",
+       "status": "completed",
+       "provider": "claude",
+       "title": "OTP detection: origin-bound codes",
+       "at": "@now-5100iso"
+      }
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "t3/worst",
+   "name": "t3",
+   "panel": "T3Panel",
+   "kind": "worst",
+   "set": [
+    [
+     "T3Code",
+     "alive",
+     true
+    ],
+    [
+     "T3Code",
+     "running",
+     6
+    ],
+    [
+     "T3Code",
+     "waiting",
+     1
+    ],
+    [
+     "T3Code",
+     "rawFinished",
+     7
+    ],
+    [
+     "T3Code",
+     "rawItems",
+     [
+      {
+       "thread": "t1",
+       "env": "e1",
+       "project": "a-project-with-a-long-name",
+       "status": "waiting",
+       "provider": "claude",
+       "title": "A thread whose title was written as a whole sentence, with a clause, and then another clause after that",
+       "at": "@now-1700iso"
+      },
+      {
+       "thread": "t2",
+       "env": "e1",
+       "project": "rice",
+       "status": "failed",
+       "provider": "claude",
+       "title": "Failed one",
+       "at": "@now-3400iso"
+      },
+      {
+       "thread": "t3",
+       "env": "e1",
+       "project": "p3",
+       "status": "completed",
+       "provider": "claude",
+       "title": "Thread 3",
+       "at": "@now-5100iso"
+      },
+      {
+       "thread": "t4",
+       "env": "e1",
+       "project": "p4",
+       "status": "running",
+       "provider": "codex",
+       "title": "Thread 4",
+       "at": "@now-6800iso"
+      },
+      {
+       "thread": "t5",
+       "env": "e1",
+       "project": "p5",
+       "status": "completed",
+       "provider": "gemini",
+       "title": "Thread 5",
+       "at": "@now-8500iso"
+      },
+      {
+       "thread": "t6",
+       "env": "e1",
+       "project": "p6",
+       "status": "running",
+       "provider": "claude",
+       "title": "Thread 6",
+       "at": "@now-10200iso"
+      },
+      {
+       "thread": "t7",
+       "env": "e1",
+       "project": "p7",
+       "status": "completed",
+       "provider": "codex",
+       "title": "Thread 7",
+       "at": "@now-11900iso"
+      },
+      {
+       "thread": "t8",
+       "env": "e1",
+       "project": "p8",
+       "status": "running",
+       "provider": "gemini",
+       "title": "Thread 8",
+       "at": "@now-13600iso"
+      },
+      {
+       "thread": "t9",
+       "env": "e1",
+       "project": "p9",
+       "status": "completed",
+       "provider": "claude",
+       "title": "Thread 9",
+       "at": "@now-15300iso"
+      },
+      {
+       "thread": "t10",
+       "env": "e1",
+       "project": "p10",
+       "status": "running",
+       "provider": "codex",
+       "title": "Thread 10",
+       "at": "@now-17000iso"
+      },
+      {
+       "thread": "t11",
+       "env": "e1",
+       "project": "p11",
+       "status": "completed",
+       "provider": "gemini",
+       "title": "Thread 11",
+       "at": "@now-18700iso"
+      },
+      {
+       "thread": "t12",
+       "env": "e1",
+       "project": "p12",
+       "status": "running",
+       "provider": "claude",
+       "title": "Thread 12",
+       "at": "@now-20400iso"
+      },
+      {
+       "thread": "t13",
+       "env": "e1",
+       "project": "p13",
+       "status": "completed",
+       "provider": "codex",
+       "title": "Thread 13",
+       "at": "@now-22100iso"
+      },
+      {
+       "thread": "t14",
+       "env": "e1",
+       "project": "p14",
+       "status": "running",
+       "provider": "gemini",
+       "title": "Thread 14",
+       "at": "@now-23800iso"
+      }
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "notifs/inbox",
+   "name": "notifs",
+   "panel": "NotifsPanel",
+   "kind": "worst",
+   "set": [
+    [
+     "Notifs",
+     "lastSeen",
+     "@now-3000000ms"
+    ]
+   ]
+  },
+  {
+   "id": "updates/typical",
+   "name": "updates",
+   "panel": "UpdatesPanel",
+   "set": [
+    [
+     "Updates",
+     "data",
+     {
+      "checkedAt": "@now-600s",
+      "repo": [
+       {
+        "name": "linux-zen",
+        "old": "7.3.4.zen2-2",
+        "new": "7.3.5.zen1-1",
+        "repo": "extra"
+       },
+       {
+        "name": "mesa",
+        "old": "26.2.1-1",
+        "new": "26.2.2-1",
+        "repo": "extra"
+       },
+       {
+        "name": "qt6-base",
+        "old": "6.12.0-2",
+        "new": "6.12.1-1",
+        "repo": "extra"
+       },
+       {
+        "name": "firefox",
+        "old": "151.0-1",
+        "new": "151.0.1-1",
+        "repo": "extra"
+       },
+       {
+        "name": "hyprland",
+        "old": "0.57.0-1",
+        "new": "0.57.1-1",
+        "repo": "extra"
+       }
+      ],
+      "aur": [
+       {
+        "name": "quickshell-git",
+        "old": "0.3.2.r12-1",
+        "new": "0.3.2.r19-1",
+        "repo": "aur"
+       },
+       {
+        "name": "a-package-with-an-unusually-long-name-for-testing-bin",
+        "old": "2026.11.01.r1234.gabcdef0-1",
+        "new": "2026.11.17.r1301.g0123abc-1",
+        "repo": "aur"
+       }
+      ],
+      "repoError": false,
+      "lastUpgrade": "@now-432000s",
+      "news": [],
+      "freeBytes": 48000000000,
+      "power": {
+       "ac": true,
+       "battery": 100
+      },
+      "kernel": true,
+      "flatpak": []
+     }
+    ]
+   ]
+  },
+  {
+   "id": "system/typical",
+   "name": "system",
+   "panel": "SystemPanel"
+  }
+ ]
+}
