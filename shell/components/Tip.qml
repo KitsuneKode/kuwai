@@ -40,6 +40,19 @@ Item {
         else { rest.stop(); k = 0; }
     }
 
+    function availableTextWidth(shellScreen, nativeScreen) {
+        const margins = 2 * Theme.s4;
+        const padding = 2 * Theme.s2;
+        // An output can briefly report empty geometry. Reserve enough width
+        // for readable text before trusting a reported screen size.
+        const minimum = margins + padding + 2 * Theme.s5;
+        for (const screen of [shellScreen, nativeScreen]) {
+            if (screen && Number.isFinite(screen.width) && screen.width >= minimum)
+                return Math.min(Theme.panelS, screen.width - margins) - padding;
+        }
+        return Theme.panelS - padding;
+    }
+
     // The popup exists only while it shows: a window per tooltip, built up
     // front, was dozens of idle windows (every workspace pill has one, and the
     // pills are rebuilt as workspaces change).
@@ -55,10 +68,9 @@ Item {
             anchor.gravity: tip.below ? Edges.Bottom : Edges.Top
             anchor.margins.top: tip.below ? 6 : 0
             anchor.margins.bottom: tip.below ? 0 : 6
-            readonly property real screenWidth: tip.Window.window ? tip.Window.window.screen.width : Theme.panelS
-            readonly property real textWidth: Math.max(1, Math.min(Theme.panelS, screenWidth - 2 * Theme.s4) - 2 * Theme.s2)
+            readonly property real textWidth: tip.availableTextWidth(tip.QsWindow.window?.screen, tip.Window.window?.screen)
             implicitWidth: label.width + 2 * Theme.s2
-            implicitHeight: label.height + 2 * Theme.s1
+            implicitHeight: Math.ceil(label.height) + 2 * Theme.s1
             mask: Region {}
 
             Rectangle {
@@ -70,11 +82,19 @@ Item {
                 color: Qt.rgba(0.11, 0.11, 0.13, 0.98)
                 border.width: 1
                 border.color: Qt.rgba(1, 1, 1, 0.1)
+                // Measure the widest unwrapped line independently of elision.
+                Label {
+                    id: naturalText
+                    visible: false
+                    text: tip.text
+                    size: label.size
+                    weight: label.weight
+                }
                 Label {
                     id: label
                     objectName: "tooltip-label"
                     anchors.centerIn: parent
-                    width: Math.min(implicitWidth, pop.textWidth)
+                    width: Math.min(Math.ceil(naturalText.implicitWidth), pop.textWidth)
                     wrapMode: Text.Wrap
                     maximumLineCount: 6
                     elide: Text.ElideRight

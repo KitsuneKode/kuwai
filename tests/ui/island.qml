@@ -150,14 +150,31 @@ ShellRoot {
                 }
                 Island.close();
                 if (scene.stage === 0) {
+                    const fallback = Theme.panelS - 2 * Theme.s2;
+                    if (longTip.availableTextWidth({width: 0}, null) !== fallback
+                        || longTip.availableTextWidth({width: NaN}, {width: 0}) !== fallback
+                        || longTip.availableTextWidth({width: 240}, {width: 1280}) !== 240 - 2 * (Theme.s4 + Theme.s2)) {
+                        scene.fail("tooltip did not honor usable output geometry"); return;
+                    }
                     longTip.shown = true;
-                    longTip.text = "A long title with spaces and a very long address " + "表題".repeat(300);
+                    longTip.text = "Zenta";
                     driver.wait(Theme.tipMs + Theme.quickMs + 120);
                     const tooltip = driver.findChild(longTip, "tooltip-popup");
                     const label = driver.findChild(longTip, "tooltip-label");
-                    if (!tooltip || !label || label.lineCount <= 1 || label.lineCount > 6 || tooltip.implicitWidth > Theme.panelS) {
+                    if (!tooltip || !label || label.lineCount !== 1 || label.truncated || label.width < Theme.s5) {
+                        scene.fail("short tooltip collapsed into a narrow column"); return;
+                    }
+                    longTip.text = "Zenta\nClick to open";
+                    driver.wait(100);
+                    if (label.lineCount !== 2 || label.truncated) { scene.fail("tooltip failed to keep two authored lines"); return; }
+                    longTip.text = "A long title with spaces and a very long address " + "表題".repeat(300);
+                    driver.wait(100);
+                    if (label.lineCount <= 1 || label.lineCount > 6 || tooltip.implicitWidth > Theme.panelS || label.width < Theme.panelS / 2) {
                         scene.fail("long tooltip did not wrap within bounds"); return;
                     }
+                    longTip.text = "Zenta";
+                    driver.wait(100);
+                    if (label.lineCount !== 1 || label.truncated) { scene.fail("tooltip did not recover when the title shortened"); return; }
                     longTip.text = "";
                     driver.wait(Theme.quickMs + 120);
                     if (driver.findChild(longTip, "tooltip-popup")) { scene.fail("empty tooltip remained alive"); return; }
