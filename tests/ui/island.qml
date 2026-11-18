@@ -114,6 +114,15 @@ ShellRoot {
                 for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
                     if (Math.min(boxes[i].x + boxes[i].w, boxes[j].x + boxes[j].w) - Math.max(boxes[i].x, boxes[j].x) > 0.5) { scene.fail("capsules overlap"); return; }
                 }
+                // A capsule is its own target (IslandBar asks hitAt before it
+                // takes the pointer for one reaching the island).
+                for (const p of pills) {
+                    const mx = p.x + p.width / 2, my = p.y + p.height / 2;
+                    if (!split.hitAt(mx, my, 0)) { scene.fail("hitAt missed the middle of a capsule: " + p.name); return; }
+                    if (!split.hitAt(p.x - 8, my, 10) || !split.hitAt(mx, p.y + p.height + 8, 10)) { scene.fail("hitAt has no margin around a capsule: " + p.name); return; }
+                    if (split.hitAt(mx, p.y + p.height + 40, 10)) { scene.fail("hitAt reaches 40 px below a capsule: " + p.name); return; }
+                }
+                if (scene.stage !== 2 && split.hitAt(scene.width / 2, split.topY + split.h / 2, 0)) { scene.fail("hitAt counts the island itself as a capsule"); return; }
                 for (const p of pills) {
                     if (p.name === "min") continue;
                     Island.close();
@@ -198,6 +207,7 @@ ShellRoot {
                 split.atRest = false;
                 driver.wait(700);
                 if (split.pills.some(p => p.visible || p.enabled)) { scene.fail("folded capsules retained visibility or input"); return; }
+                if (boxes.some(b => split.hitAt(b.x + b.w / 2, b.y + b.h / 2, 10))) { scene.fail("a folded capsule still counts as a target"); return; }
                 split.atRest = true;
                 driver.wait(700);
                 if (split.pills.filter(p => p.enabled).length !== expected) { scene.fail("capsules did not recover after folding"); return; }

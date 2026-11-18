@@ -246,6 +246,15 @@ Item {
     readonly property bool t3Hold: t3Pill.shown
     // For the window's input mask (IslandBar): what's out takes clicks.
     readonly property var pills: [musicPill, agentsPill, t3Pill, sysPill, minPill, morePill]
+    // Is this point (in this item's coordinates) on a capsule, or within
+    // `margin` of one? A capsule is its own target: the island does not take
+    // a pointer that is on its way to one for a pointer reaching the island.
+    function hitAt(x, y, margin) {
+        const m = margin || 0;
+        for (const p of pills)
+            if (p.visible && p.enabled && x >= p.x - m && x <= p.x + p.width + m && y >= p.y - m && y <= p.y + p.height + m) return true;
+        return false;
+    }
 
     // One capsule: black glass like the island, sized to `content` (a
     // circle at least), budding from `from` toward `side`.

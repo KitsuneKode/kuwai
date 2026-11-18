@@ -162,14 +162,14 @@ Scope {
             Item {
                 id: nearStrip
                 visible: win.proximityAvailable && (Settings.islandRest === "minimal" || win.tucked)
-                width: Math.max(win.restW + 160, 360); height: 4
+                width: Math.max(win.zoneW + 160, 360); height: 4
                 x: Math.round((win.width - width) / 2); y: 0
                 HoverHandler { id: nearHover; enabled: nearStrip.visible; onHoveredChanged: { if (hovered) { nearOff.stop(); nearDwell.restart(); } else { nearDwell.stop(); if (win.near) win.fold(450); } } }
             }
             // Along the edge itself, still moving fast is passing by (to a tab
             // beside it): look again rather than open (services/proximity.js).
             Timer { id: nearDwell; interval: 90; onTriggered: { if (!nearHover.hovered || !win.proximityAvailable) return; if (Proximity.edgeSettled(Pointer, Date.now())) win.near = true; else restart(); } }
-            Timer { id: nearOff; interval: 450; onTriggered: if (!win.hovered && !nearHover.hovered && !win.inZone(20)) win.near = false }
+            Timer { id: nearOff; interval: 450; onTriggered: if (!win.hovered && !nearHover.hovered && !win.inZone(20) && !win.onCapsule) win.near = false }
             // A fast exit folds it almost at once; a drift away gets the grace.
             function fold(ms) { nearOff.interval = ms; nearOff.restart(); }
             // Nearing from below or the sides too, 30–60 px out (services/
@@ -201,9 +201,20 @@ Scope {
             readonly property real localX: Pointer.x - (monGeo.x || 0)
             readonly property real localY: Pointer.y - (monGeo.y || 0)
             readonly property bool onThisScreen: localX >= 0 && localX < screen.width && localY >= 0 && localY < screen.height
+            // The island's width as it rests, kept while nearing or hovering has
+            // it showing more: the zone and the edge strip are measured from this.
+            property real zoneW: restW
+            function keepZone() { if (!near && !hovered) zoneW = restW; }
+            onRestWChanged: keepZone()
+            onNearChanged: keepZone()
             function inZone(slack) {
-                return onThisScreen && Math.abs(localX - screen.width / 2) <= restW / 2 + 56 + slack && localY <= restH + top + 48 + slack;
+                return onThisScreen && Proximity.inZone(localX - screen.width / 2, localY, zoneW, restH + top, slack);
             }
+            // On a capsule beside the island, or within 10 px of one (the margin
+            // the workspace pills have): that is where the pointer is going.
+            // It neither brings the island's details out nor lets them fold, so
+            // nothing moves under a hand that has arrived.
+            readonly property bool onCapsule: onThisScreen && split.hitAt(localX - (screen.width - width) / 2, localY, 10)
             property int zoneHits: 0
             Connections {
                 target: Pointer
@@ -211,6 +222,7 @@ Scope {
                     if (!win.wantsProximity) { win.zoneHits = 0; return; }
                     // Reaching (resting near it, or heading up at it under
                     // 1100 px/s), not passing by: services/proximity.js.
+                    if (win.onCapsule) { win.zoneHits = 0; if (win.near) nearOff.stop(); return; }
                     if (win.inZone(win.near ? 20 : 0) && (win.near || Proximity.reaching(Pointer))) {
                         win.zoneHits++;
                         if (win.near) nearOff.stop();
@@ -299,6 +311,9 @@ Scope {
                 id: intent; interval: Settings.hoverDelay
                 onTriggered: {
                     if (win.hovered && win.edgeOnly && !win.grown) { restart(); return; }
+                    // Crossing it to the capsule on the other side: look again
+                    // when the pointer has stopped or turned down onto it.
+                    if (win.hovered && !win.grown && Proximity.crossing(aim.vx() * 1000, aim.vy() * 1000)) { restart(); return; }
                     // Now Playing only from the music's own parts (its art and
                     // waveform, MusicTap); resting on T3 or a dot in between
                     // opened the music too.
@@ -739,7 +754,14 @@ Scope {
                 opacity: win.showBar ? (win.outNow ? 1 : 0) : Math.max(0, Math.min(1, Math.max(pv.value, bv.value, nv.value, dv.value) * 2.5))
                 Behavior on opacity { enabled: win.tucked || !win.outNow; NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
 
-                HoverHandler { id: frameHover; onHoveredChanged: win.syncHover() }
+                HoverHandler {
+                    id: frameHover
+                    onHoveredChanged: { aim.reset(); win.syncHover(); }
+                    // Where the pointer is heading while over the island (the last
+                    // 100 ms): only while the island hasn't grown, which is when it is asked.
+                    onPointChanged: if (hovered && !win.grown) aim.add(point.position.x, point.position.y)
+                }
+                Fling { id: aim }
                 // The island holds the notch, its cards and panels; each names itself
                 // (a card's right-click push-back is its own Dismiss there).
                 Accessible.role: Accessible.Grouping
