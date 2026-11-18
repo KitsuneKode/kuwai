@@ -25,7 +25,7 @@ ShellRoot {
         visible: true
         width: 480; height: 460
         color: Theme.glassSolid
-        property int left: 0                  // times the row said it was leaving
+        property int went: 0                  // times the row said it was leaving
 
         Rectangle {
             id: row
@@ -35,7 +35,7 @@ ShellRoot {
             transform: Translate { x: swipe.offset }
             opacity: swipe.fade
             Label { anchors.centerIn: parent; text: "Swipe me" }
-            SwipeAway { id: swipe; span: row.width; onLeaving: scene.left++ }
+            SwipeAway { id: swipe; span: row.width; onLeaving: scene.went++ }
         }
         LockNotifs { id: lockStack; x: 25; y: 120 }
         Component {
@@ -67,7 +67,7 @@ ShellRoot {
         readonly property real cy: row.y + row.height / 2
         readonly property real cx: row.x + row.width / 2
         function fail(reason) {
-            console.log("UI_SMOKE_FAILED: " + reason + " (offset " + Math.round(swipe.offset) + ", gone " + swipe.gone + ", left " + scene.left + ")");
+            console.log("UI_SMOKE_FAILED: " + reason + " (offset " + Math.round(swipe.offset) + ", gone " + swipe.gone + ", went " + scene.went + ")");
             scene.contentItem.grabToImage(result => { result.saveToFile("/out/gestures-failure.png"); Qt.quit(); });
         }
         function near(a, b, tol) { return Math.abs(a - b) <= tol; }
@@ -97,7 +97,7 @@ ShellRoot {
                 // 2 · Let go short, having stopped: it comes home, and says nothing.
                 driver.wait(180);
                 scene.drop(100);
-                if (swipe.gone || scene.left !== 0) { scene.fail("a short, stopped drag sent the row away"); return; }
+                if (swipe.gone || scene.went !== 0) { scene.fail("a short, stopped drag sent the row away"); return; }
                 driver.wait(700);
                 if (!scene.near(swipe.offset, 0, 1)) { scene.fail("the row did not come home"); return; }
 
@@ -126,7 +126,7 @@ ShellRoot {
                 // 4 · A flick leaves from a quarter of the way.
                 scene.pull(100, 4, 8);
                 scene.drop(100);
-                if (!swipe.gone || scene.left !== 1) { scene.fail("a flick outward did not send the row away"); return; }
+                if (!swipe.gone || scene.went !== 1) { scene.fail("a flick outward did not send the row away"); return; }
                 driver.wait(700);
                 if (!scene.near(Math.abs(swipe.offset), row.width, 2) || swipe.fade > 0.02) { scene.fail("a row that left is not out and faded"); return; }
                 scene.home();
@@ -135,7 +135,7 @@ ShellRoot {
                 scene.pull(180, 12, 20);
                 driver.wait(180);
                 scene.drop(180);
-                if (!swipe.gone || scene.left !== 2) { scene.fail("released past 40 % of its width, the row stayed"); return; }
+                if (!swipe.gone || scene.went !== 2) { scene.fail("released past 40 % of its width, the row stayed"); return; }
                 driver.wait(400);
                 scene.home();
 
@@ -145,13 +145,13 @@ ShellRoot {
                 scene.pull(340, 17, 20);
                 for (let i = 1; i <= 6; i++) driver.mouseMove(scene.contentItem, scene.cx + 340 - 25 * i, scene.cy, 16, Qt.LeftButton);
                 scene.drop(190);
-                if (swipe.gone || scene.left !== 2) { scene.fail("flicked back toward home, the row left anyway"); return; }
+                if (swipe.gone || scene.went !== 2) { scene.fail("flicked back toward home, the row left anyway"); return; }
                 driver.wait(700);
                 if (!scene.near(swipe.offset, 0, 1)) { scene.fail("flicked back, the row did not come home"); return; }
 
                 // 7 · Sent away by a button: it leaves, with no throw.
                 swipe.away(-1);
-                if (!swipe.gone || scene.left !== 3 || swipe.sx.velocity !== 0) { scene.fail("away() did not send the row off from rest"); return; }
+                if (!swipe.gone || scene.went !== 3 || swipe.sx.velocity !== 0) { scene.fail("away() did not send the row off from rest"); return; }
                 driver.wait(700);
                 if (!scene.near(swipe.offset, -row.width, 2)) { scene.fail("away(-1) did not end one width to the left"); return; }
 
