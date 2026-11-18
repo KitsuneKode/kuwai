@@ -13,6 +13,12 @@
 #   resume                      at login / theme apply; does nothing while the
 #                               shell is up (it already plays `last`)
 #
+# With mpvpaper installed, the shell still decides (when to play, pause or
+# release, per screen) but mpv plays: `out-play|out-pause|out-stop SCREEN`,
+# one mpvpaper per screen with its own IPC socket. Measured 2026-11-18 on a
+# 1440p loop: the shell's own player held ~1 GB and 24 % CPU for two screens;
+# mpv with hardware decoding is ~280 MB and 7 % a screen, outside the shell.
+#
 # Without the shell (it isn't running), mpvpaper is the fallback player:
 # spawn() starts it with its IPC socket under $XDG_RUNTIME_DIR/kuwai/ and a
 # `watch` loop that pauses it while any window is fullscreen.
@@ -202,6 +208,47 @@ next() {
     echo $(( i + 1 )) > "$IDX"
 }
 
+# ── One screen, played by mpv, driven by the shell ─────────────────────────
+out_sock() { printf '%s/mpvpaper-%s.sock' "$SOCK_DIR" "$1"; }
+out_pidf() { printf '%s/mpvpaper-%s.pid' "$SOCK_DIR" "$1"; }
+out_pid() {   # the live mpvpaper for this screen, or nothing
+    local p; p=$(cat "$(out_pidf "$1")" 2>/dev/null) || return 1
+    [ -n "$p" ] && [ "$(cat "/proc/$p/comm" 2>/dev/null)" = mpvpaper ] && printf '%s' "$p"
+}
+out_cmd() {   # SCREEN JSON-command
+    local s; s=$(out_sock "$1")
+    [ -S "$s" ] && printf '%s\n' "$2" | socat - "$s" >/dev/null 2>&1
+}
+out_play() {   # SCREEN FILE [paused]: start, or switch the file, or set the pause
+    local out="$1" file="$2" paused="${3:-}" pid cur pause_now=false opts
+    [ "$paused" = paused ] && pause_now=true
+    command -v mpvpaper >/dev/null || return 1
+    (umask 077; mkdir -p "$SOCK_DIR")
+    if pid=$(out_pid "$out"); then
+        cur=$(cat "$SOCK_DIR/mpvpaper-$out.file" 2>/dev/null)
+        if [ "$cur" = "$file" ]; then out_cmd "$out" "{ \"command\": [\"set_property\", \"pause\", $pause_now] }"; return 0; fi
+        if out_cmd "$out" "$(jq -cn --arg f "$file" '{command: ["loadfile", $f, "replace"]}')"; then
+            printf '%s' "$file" > "$SOCK_DIR/mpvpaper-$out.file"
+            out_cmd "$out" "{ \"command\": [\"set_property\", \"pause\", $pause_now] }"
+            return 0
+        fi
+        kill "$pid" 2>/dev/null
+    fi
+    rm -f "$(out_sock "$out")"
+    # Its own session (it outlives a shell restart; the shell takes it over again).
+    # Started paused when the screen is covered: its first frame shows, nothing decodes.
+    opts="no-audio loop hwdec=auto panscan=1.0 input-ipc-server=$(out_sock "$out")"
+    [ "$pause_now" = true ] && opts="$opts pause"
+    setsid nice -n 5 mpvpaper -o "$opts" "$out" "$file" </dev/null >/dev/null 2>&1 &
+    printf '%s' "$!" > "$(out_pidf "$out")"
+    printf '%s' "$file" > "$SOCK_DIR/mpvpaper-$out.file"
+}
+out_stop() {   # SCREEN: the player goes, and what it held with it
+    local pid
+    pid=$(out_pid "$1") && kill "$pid" 2>/dev/null
+    rm -f "$(out_sock "$1")" "$(out_pidf "$1")" "$SOCK_DIR/mpvpaper-$1.file"
+}
+
 case "${1:-toggle}" in
     toggle)
         if shell_up; then
@@ -223,5 +270,10 @@ case "${1:-toggle}" in
             files | head -1
         fi ;;
     status)  is_running && echo "playing in: $(library)" || echo "off" ;;
+    # Driven by the shell (LiveWallpaper.qml), one screen at a time.
+    can-play) command -v mpvpaper >/dev/null && command -v socat >/dev/null && command -v jq >/dev/null ;;
+    out-play)  out_play "${2:?screen}" "${3:?file}" "${4:-}" ;;   # [paused]
+    out-pause) out_cmd "${2:?screen}" "{ \"command\": [\"set_property\", \"pause\", ${3:-true}] }" ;;
+    out-stop)  out_stop "${2:?screen}" ;;
     *)       echo "usage: $0 {toggle|next|play <file>|resume|stop|status|playable <file>}" ;;
 esac

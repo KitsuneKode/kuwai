@@ -54,7 +54,7 @@ do_()  { if [ $DRY = 1 ]; then printf '  would: %s\n' "$*"; else "$@"; fi; }
 NEED="Hyprland:hyprland qs:quickshell cliphist:cliphist wl-copy:wl-clipboard jq:jq grim:grim slurp:slurp
 brightnessctl:brightnessctl pw-play:pipewire-audio wpctl:wireplumber notify-send:libnotify curl:curl
 setpriv:util-linux gdbus:glib2 python3:python luac:lua playerctl:playerctl git:git"
-OPTIONAL="satty:satty(screenshot-editing) tesseract:tesseract(copy-text-from-images) mpv:mpv(live-wallpapers)
+OPTIONAL="satty:satty(screenshot-editing) tesseract:tesseract(copy-text-from-images) mpv:mpv(live-wallpapers) mpvpaper:mpvpaper(live-wallpapers-outside-the-shell) socat:socat(live-wallpapers-outside-the-shell)
 magick:imagemagick(thumbnails) pdftoppm:poppler(PDF-previews) kitty:kitty(terminal) secret-tool:libsecret(Gmail-password-in-keyring)
 gh:github-cli(GitHub-notifications) wtype:wtype(typing-emoji-into-windows) ydotool:ydotool(tests) ddcutil:ddcutil(external-monitor-brightness)"
 # family:package, from the official repos. The UI face is Inter (OFL); SF Pro
