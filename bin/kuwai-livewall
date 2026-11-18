@@ -35,6 +35,24 @@ set -u
 
 GLOBAL_LIB="$HOME/Pictures/live-wallpapers"
 SOCK_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/kuwai"   # private (0700), not a guessable /tmp path
+# mpvpaper's own mpv home: without it libmpv read ~/.config/mpv (measured on the wire: config
+# yes, scripts loaded, debanding, ewa_lanczos, Vulkan, a 256 MiB stream cache), so a loop behind
+# the windows paid for a film's picture, per screen, and ran your mpv scripts. A wallpaper wants
+# the plainest picture of a file already at the screen's size.
+MPV_WALL_HOME="$SOCK_DIR/mpvpaper-home"
+mpv_wall_home() {
+    (umask 077; mkdir -p "$MPV_WALL_HOME")
+    local want='# Written by kuwai-livewall for the live wallpaper (mpvpaper). Your ~/.config/mpv is for films.
+profile=fast
+load-scripts=no
+osc=no
+input-default-bindings=no
+cache=no
+demuxer-max-bytes=16MiB
+demuxer-max-back-bytes=0
+'
+    [ "$(cat "$MPV_WALL_HOME/mpv.conf" 2>/dev/null)" = "${want%$'\n'}" ] || printf '%s' "$want" > "$MPV_WALL_HOME/mpv.conf"
+}
 SOCK_PREFIX="$SOCK_DIR/mpvpaper-ipc"
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/live-wallpaper"   # where LiveWallpaper.qml reads it
 IDX="$STATE_DIR/index"       # cycle position within current library
@@ -156,7 +174,8 @@ watch() {
 spawn() {   # shared start: video layer + fullscreen watcher + persist
     local file="$1"
     (umask 077; mkdir -p "$SOCK_DIR")
-    setsid mpvpaper -o "$MPV_OPTS" '*' "$file" >/dev/null 2>&1 &
+    mpv_wall_home
+    MPV_HOME="$MPV_WALL_HOME" setsid mpvpaper -o "$MPV_OPTS" '*' "$file" >/dev/null 2>&1 &
     setsid "$0" watch >/dev/null 2>&1 &
     mkdir -p "$STATE_DIR"
     printf '%s' "$file" > "$LAST"
@@ -241,7 +260,8 @@ out_play() {   # SCREEN FILE [paused]: start, or switch the file, or set the pau
     # Started paused when the screen is covered: its first frame shows, nothing decodes.
     opts="no-audio loop hwdec=auto panscan=1.0 input-ipc-server=$(out_sock "$out")"
     [ "$pause_now" = true ] && opts="$opts pause"
-    setsid nice -n 5 mpvpaper -o "$opts" "$out" "$file" </dev/null >/dev/null 2>&1 &
+    mpv_wall_home
+    MPV_HOME="$MPV_WALL_HOME" setsid nice -n 5 mpvpaper -o "$opts" "$out" "$file" </dev/null >/dev/null 2>&1 &
     printf '%s' "$!" > "$(out_pidf "$out")"
     printf '%s' "$file" > "$SOCK_DIR/mpvpaper-$out.file"
 }

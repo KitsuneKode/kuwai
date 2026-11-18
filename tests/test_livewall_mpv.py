@@ -15,7 +15,7 @@ def setup(tmp: Path):
     fake.mkdir()
     log = tmp / "log"
     # Named mpvpaper so /proc/PID/comm says so; it stays up like the real one.
-    (fake / "mpvpaper").write_text(f'#!/bin/sh\necho "mpvpaper $*" >> "{log}"\ntrap \'kill $! 2>/dev/null; exit 0\' TERM\nsleep 30 & wait\n')
+    (fake / "mpvpaper").write_text(f'#!/bin/sh\necho "mpvpaper MPV_HOME=$MPV_HOME $*" >> "{log}"\ntrap \'kill $! 2>/dev/null; exit 0\' TERM\nsleep 30 & wait\n')
     (fake / "socat").write_text(f'#!/bin/sh\necho "socat $(cat)" >> "{log}"\n')
     for f in fake.iterdir():
         f.chmod(0o755)
@@ -43,7 +43,10 @@ def test_can_play_needs_mpvpaper(tmp_path):
     env, _, _ = setup(tmp_path)
     assert lw(env, "can-play").returncode == 0
     (tmp_path / "fakebin" / "mpvpaper").unlink()
-    assert lw(env, "can-play").returncode != 0
+    # Only the stand-ins on PATH: a real mpvpaper in /usr/bin must not answer for the missing one.
+    bare = {**env, "PATH": str(tmp_path / "fakebin")}
+    r = subprocess.run(["/usr/bin/bash", str(BIN), "can-play"], env=bare, capture_output=True, text=True, timeout=15)
+    assert r.returncode != 0
 
 
 def test_play_starts_one_player_per_screen_then_stop_ends_it(tmp_path):
@@ -91,3 +94,28 @@ def test_pause_goes_to_that_screens_socket_only(tmp_path):
         assert log.read_text().count("socat") == 1
     finally:
         s.close()
+
+
+def test_the_wallpaper_mpv_never_reads_your_film_config(tmp_path):
+    # Measured on the wire: mpvpaper's libmpv loaded ~/.config/mpv (config yes, scripts,
+    # debanding, ewa_lanczos, a 256 MiB cache), per screen, for a loop behind the windows.
+    env, log, sock = setup(tmp_path)
+    films = tmp_path / ".config/mpv"
+    films.mkdir(parents=True)
+    (films / "mpv.conf").write_text("profile=high-quality\ndeband=yes\n")
+    video = tmp_path / "loop.mp4"
+    video.write_text("v")
+    assert lw(env, "out-play", "DP-3", str(video)).returncode == 0
+    assert wait_for(log, "mpvpaper")
+    home = sock / "mpvpaper-home"
+    assert f"MPV_HOME={home} " in log.read_text()
+    conf = (home / "mpv.conf").read_text()
+    for line in ("profile=fast", "load-scripts=no", "cache=no"):
+        assert line in conf.splitlines()
+    assert "deband=yes" not in conf
+    assert oct(home.stat().st_mode & 0o777) == "0o700"
+    before = (home / "mpv.conf").stat().st_mtime_ns
+    assert lw(env, "out-play", "eDP-1", str(video)).returncode == 0   # the same file: not rewritten
+    assert wait_for(log, "eDP-1")
+    assert (home / "mpv.conf").stat().st_mtime_ns == before
+    lw(env, "out-stop", "DP-3"); lw(env, "out-stop", "eDP-1")

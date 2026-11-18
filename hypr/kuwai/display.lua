@@ -18,8 +18,11 @@
 -- Automatic (feature auto_display), only while you've chosen everyday:
 --   a colour app is open (Krita, GIMP, Inkscape, Darktable…) → accurate,
 --   until the last one closes; unplugged → battery (with auto_battery).
---   A video player focused, and not fullscreen, for a little over a second
---   → movie (120 Hz, HDR ready). The rate is not touched while that picture
+--   A video player on an external screen focused, and not fullscreen, for a
+--   little over a second → movie (120 Hz on that screen only, HDR ready); it
+--   stays until the last such player closes, not when focus moves to the
+--   terminal driving it. A player on the built-in panel changes nothing (the
+--   panel keeps its rate in Movie anyway). The rate is not touched while that picture
 --   is fullscreen: a modeset there blanks the panel. Fullscreen HDR on the
 --   current rate still arms (cm_auto_hdr 2). A fullscreen game arms HDR the
 --   same way and does not take the gaming preset — that preset reloads, and
@@ -151,11 +154,53 @@ function D.icc_for(m)
 	return K.exists(path) and path or nil
 end
 
+local function is_video(w)
+	if not w then
+		return false
+	end
+	if w.content_type == "video" then
+		return true
+	end
+	local c = (w.class or w.initial_class or ""):lower()
+	return c:find("mpv", 1, true) ~= nil
+		or c == "vlc"
+		or c:find("celluloid", 1, true) ~= nil
+		or c:find("haruna", 1, true) ~= nil
+		or c:find("clapper", 1, true) ~= nil
+end
+
+-- The screens a player window is on, by name (`gone`: a window closing now).
+local function player_screens(gone)
+	local on = {}
+	for _, w in ipairs(hl.get_windows() or {}) do
+		if is_video(w) and not (gone and w.address == gone.address) and w.monitor and w.monitor.name then
+			on[w.monitor.name] = true
+		end
+	end
+	return on
+end
+
+-- A player on an external screen: the only kind Movie's rate is for.
+local function external_player(gone)
+	for name in pairs(player_screens(gone)) do
+		if not internal({ name = name }) then
+			return true
+		end
+	end
+	return false
+end
+
 local function apply_screens(preset)
+	-- Movie that automation picked changes the rate only on the screen the player is on: it
+	-- modeset every external screen, so a film on the laptop panel blanked the Acer, which had
+	-- nothing playing (DP-3, 5 round trips 200→120→200 in one evening, each a blackout).
+	-- Movie you chose yourself is for a browser too, so it still takes every external screen.
+	local players = preset == "movie" and D.choice() == "everyday" and player_screens() or nil
 	for _, m in ipairs(hl.get_monitors() or {}) do
 		local r = rule_for(m)
 		if r then
-			local mode = mode_for(m, r.base.mode, preset) or r.base.mode
+			local mode = (players and not players[m.name]) and r.base.mode
+				or mode_for(m, r.base.mode, preset) or r.base.mode
 			r.ref.mode = mode -- the lid switch re-issues K.panel: keep the preset's rate
 			local icc = preset == "accurate" and D.icc_for(m) or nil
 			if mode ~= r.base.mode or icc then
@@ -300,21 +345,6 @@ local function find_colour(gone)
 	return why
 end
 
-local function is_video(w)
-	if not w then
-		return false
-	end
-	if w.content_type == "video" then
-		return true
-	end
-	local c = (w.class or w.initial_class or ""):lower()
-	return c:find("mpv", 1, true) ~= nil
-		or c == "vlc"
-		or c:find("celluloid", 1, true) ~= nil
-		or c:find("haruna", 1, true) ~= nil
-		or c:find("clapper", 1, true) ~= nil
-end
-
 local function is_game(w)
 	if not w then
 		return false
@@ -432,7 +462,7 @@ function D.reconcile(gone, hint)
 			hdr_arm(true)
 			return
 		end
-		if not video_fs and K.state["display_auto"] ~= "movie" and not colour then
+		if not video_fs and K.state["display_auto"] ~= "movie" and not colour and external_player(gone) then
 			local why = (active and (active.class or active.initial_class)) or "video"
 			schedule("movie", 1200, function()
 				if D.choice() ~= "everyday" or find_colour() then
@@ -441,7 +471,7 @@ function D.reconcile(gone, hint)
 				local fs = any_such(function(w)
 					return is_video(w) and fullscreen(w)
 				end)
-				if fs or not is_video(hl.get_active_window()) then
+				if fs or not is_video(hl.get_active_window()) or not external_player() then
 					return
 				end
 				go("movie", why)
@@ -456,9 +486,16 @@ function D.reconcile(gone, hint)
 		hdr_arm(true)
 		return
 	end
-	-- Focus has left the player and nothing is fullscreen. Wait, so a glance
-	-- at another window does not modeset the Acer back to 200 Hz. Nothing to
-	-- undo: don't arm a timer at all.
+	-- Focus has left the player and nothing is fullscreen. Movie stays while a player is still
+	-- open on an external screen: going back 2.5 s after focus left made every look at the
+	-- terminal driving the player (kunai) two blackouts, there and back. It ends when the last
+	-- such player closes or moves to the panel. Nothing to undo: don't arm a timer at all.
+	if K.state["display_auto"] == "movie" and external_player(gone) then
+		if pending == "idle" then
+			cancel()
+		end
+		return
+	end
 	local back = D.battery_auto()
 	if not hdr_forced and K.state["display_auto"] == back then
 		return
@@ -468,7 +505,8 @@ function D.reconcile(gone, hint)
 			go("accurate", find_colour())
 			return
 		end
-		if is_video(hl.get_active_window()) or any_such(function(w)
+		-- Still watching on an external screen (a player on the panel doesn't hold Movie).
+		if (is_video(hl.get_active_window()) and external_player()) or any_such(function(w)
 			return (is_video(w) or is_game(w)) and fullscreen(w)
 		end) then
 			return

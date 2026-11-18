@@ -22,9 +22,13 @@ icon: scroll to change, click for Controls), or `kuwai display NAME`
 **Automatic** (feature `auto_display`, only while you're on Everyday): an open
 colour app (Krita, GIMP, Inkscape, Darktable, Kdenlive, Blender, Figma…;
 `K.colour_apps` in `user.lua` extends it) → Accurate until the last one closes.
-A video player (mpv, VLC, Celluloid, Haruna, Clapper) focused, and not
-fullscreen, for a little over a second → Movie, so the external screen is
-already at 120 Hz before you go fullscreen. The rate is not changed while
+A video player (mpv, VLC, Celluloid, Haruna, Clapper) on an external screen,
+focused and not fullscreen for a little over a second → Movie, so that screen
+is already at 120 Hz before you go fullscreen. Only the screen the player is
+on changes rate; a player on the built-in panel changes nothing. Movie stays
+until the last such player closes, so looking at the terminal that drives it
+(kunai) doesn't switch the rate back and forth: every switch is a modeset,
+and a modeset blanks that screen for a moment. The rate is not changed while
 that picture is fullscreen. A fullscreen game arms HDR without taking the
 Gaming preset. Unplugged → Battery, unless a colour app or a player is in
 front. Choosing a preset yourself wins until you return to Everyday.
