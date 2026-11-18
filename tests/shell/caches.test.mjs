@@ -27,6 +27,9 @@ describe("pruneKeyed", () => {
 function clipboard() {
   const s = functions("shell/services/Clipboard.qml", ["setRaw", "render", "liveRefs", "pruneCaches", "ref"], {
     ClipState, Caches, raw: [], items: [], holds: ClipState.empty(), pins: [], renders: {}, thumbs: {}, pending: {}, fileInfo: {},
+    // render() asks who owns an entry's preview (so a render that comes back
+    // for an entry that has gone is dropped): here every entry has an owner.
+    previewOwners: new Proxy({}, { get: (t, k) => (k in t ? t[k] : (t[k] = {})) }),
     renderCap: 100,
     capture(args, cb) { cb(JSON.stringify({ kind: "md", html: "<p>" + args[1] + "</p>".repeat(20) })); },
   });
