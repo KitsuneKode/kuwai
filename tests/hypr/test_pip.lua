@@ -19,7 +19,7 @@ local function auto(name)
 end
 
 local world, handlers, tick, binds
-local function setup()
+local function setup(title, wake_on)
 	world = {
 		monitors = {
 			{ name = "eDP-1", x = 0, y = 0, width = 1920, height = 1080, scale = 1, reserved = {} },
@@ -28,7 +28,7 @@ local function setup()
 		cursor = { x = 100, y = 100 },
 		shift = false,
 	}
-	world.pip = { address = "0xp", title = "Picture-in-Picture", floating = true,
+	world.pip = { address = "0xp", title = title or "Picture-in-Picture", floating = true,
 		at = { x = 1920 + 2560 - 480 - 16, y = 1440 - 270 - 16 }, size = { x = 480, y = 270 } }
 	world.pip.monitor = world.monitors[2]
 	handlers, binds, tick = {}, {}, nil
@@ -89,7 +89,7 @@ local function setup()
 		return auto("A." .. k)
 	end })
 	dofile(os.getenv("EXTRAS_FILE") or "hypr/kuwai/extras.lua")
-	for _, f in ipairs(handlers["window.open"] or {}) do
+	for _, f in ipairs(handlers[wake_on or "window.open"] or {}) do
 		f(world.pip)
 	end
 end
@@ -164,6 +164,22 @@ check("next corner: bottom-left", world.pip.at.x, 1920 + 16)
 binds["SUPER + ALT + SHIFT + W"]()
 check("other screen: the laptop", world.pip.monitor.name, "eDP-1")
 check("other screen: same corner (bottom-left)", world.pip.at.x .. "," .. world.pip.at.y, 16 .. "," .. (1080 - 270 - 16))
+
+-- A music app's compact player (Cider's Mini Player) is one too: passing fast, it steps aside.
+setup("Cider - Mini Player")
+at(3000, 1300)
+at(3970, 1300)
+check("mini player, fast pass: steps aside", world.pip.at.x, 1920 + 16)
+
+-- A window that turns compact (its title changes to the mini player) starts the look.
+setup("Cider - Mini Player", "window.title")
+at(3000, 1300)
+at(3970, 1300)
+check("mini player by title change: steps aside", world.pip.at.x, 1920 + 16)
+
+-- The app's main window is not one: no look starts for it at all.
+setup("Cider")
+check("the main window: no dodging look runs", tick, nil)
 
 if failed > 0 then
 	print(failed .. " failed")

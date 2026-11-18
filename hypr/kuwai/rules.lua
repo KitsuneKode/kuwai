@@ -103,6 +103,15 @@ rule({
 	size = "monitor_w*0.25 monitor_h*0.25",
 	move = "monitor_w*0.73 monitor_h*0.72",
 })
+-- A music app's compact player rides with it (dodging, throws, corner keys: extras.lua),
+-- pinned and never dimmed; its own size and place stay the app's (and your user.lua's).
+rule({
+	name = "mini-player",
+	match = { class = "^([Cc]ider|[Ss]potify|feishin|org\\.gnome\\.Lollypop)$", title = "^(.*[Mm]ini ?[Pp]layer.*)$" },
+	tag = "+pip",
+	float = true,
+	pin = true,
+})
 rule({ name = "pip-look", match = { tag = "pip" }, opacity = "1.0 override 1.0 override", no_dim = true, no_blur = true })
 
 ---------------------------------------------------------------------------

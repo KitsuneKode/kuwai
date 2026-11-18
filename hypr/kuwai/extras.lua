@@ -95,6 +95,7 @@ end
 
 ---------------------------------------------------------------------------
 -- Picture-in-picture that knows when you want it (feature pip_dodge)
+-- (a browser's picture-in-picture, and a music app's mini player: Cider's)
 ---------------------------------------------------------------------------
 -- It steps aside for a pointer passing by, never for one going to it:
 --   · a pointer moving fast past it: it slides to the other bottom corner;
@@ -111,8 +112,20 @@ local PIP_TICK = 0.15                                  -- seconds
 local PIP_FAST = 1100                                  -- px/s: faster than this is passing by
 local PIP_CHASE = 27                                   -- ticks (~4 s) a dodge makes it stay put
 local PIP_MARGIN = 16
+-- What counts: a browser's picture-in-picture, and a music app's compact player
+-- (Cider's "Mini Player"): small, floating, pinned, in the pointer's way the same way.
+local PIP_TITLES = { "picture.?in.?picture", "mini.?player" }
+local function pip_title(w)
+	local t = (w and w.title or ""):lower()
+	for _, pat in ipairs(PIP_TITLES) do
+		if t:find(pat) then
+			return true
+		end
+	end
+	return false
+end
 local function is_pip(w)
-	return w and (w.title or ""):lower():find("picture.?in.?picture") and w.floating
+	return w and pip_title(w) and w.floating
 end
 local function pips()
 	local out = {}
@@ -230,15 +243,18 @@ if K.feature("pip_dodge") then
 			end
 		end
 	end
-	hl.on("window.open", function(w)
-		if w and (w.title or ""):lower():find("picture.?in.?picture") then
+	local function wake(w)
+		if w and pip_title(w) then
 			if timer then
 				timer:set_enabled(true)
 			else
 				timer = hl.timer(tick, { timeout = math.floor(PIP_TICK * 1000), type = "repeat" })
 			end
 		end
-	end)
+	end
+	hl.on("window.open", wake)
+	-- A player that turns compact in the same window (its title changes) is one too.
+	hl.on("window.title", wake)
 end
 -- Keys, with or without the dodging.
 local function the_pip()
