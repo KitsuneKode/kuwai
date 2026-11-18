@@ -19,9 +19,11 @@ if [ -n "${1:-}" ] && [ -d "/proc/$1" ]; then
 fi
 [ $print_only -eq 1 ] && { printf '%s\n' "$dir"; exit 0; }
 term=${KUWAI_TERMINAL:-kitty}
+runner=()
+command -v prime-run >/dev/null 2>&1 && runner=(prime-run)
 case $term in
-    *kitty*)   exec prime-run kitty --single-instance --instance-group=local --directory "$dir" ;;
-    *ghostty*) exec prime-run ghostty --working-directory="$dir" ;;
+    *kitty*)   exec "${runner[@]}" kitty --single-instance --instance-group=local --directory "$dir" ;;
+    *ghostty*) exec "${runner[@]}" ghostty --working-directory="$dir" ;;
     *foot*)    exec foot --working-directory="$dir" ;;
     *)         cd "$dir" && exec $term ;;
 esac

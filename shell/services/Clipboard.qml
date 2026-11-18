@@ -50,12 +50,20 @@ Singleton {
     function stopRecording() { recCmd.command = [recBin, "stop"]; recCmd.running = true; }
     Timer { id: recStartLater; interval: 260; onTriggered: recCmd.running = true }
     Process { id: recCmd }
+    // A crashed recorder cannot update its state file; check only while recording.
+    Timer { interval: Theme.panelPollMs; repeat: true; running: root.recSince > 0; onTriggered: { if (!recCheck.running) recCheck.running = true; } }
+    Process { id: recCheck; command: [root.recBin, "status"] }
     FileView {
         path: root.recState
         watchChanges: true
         printErrors: false
         onFileChanged: reload()
-        onLoaded: { const f = text().trim().split(" "); root.recSince = f.length >= 4 ? Number(f[1]) : 0; root.recTarget = f.length >= 4 ? f[3] : ""; }
+        onLoaded: {
+            const raw = text().trim(), f = raw.includes("\t") ? raw.split("\t") : raw.split(/\s+/);
+            const since = Number(f[1]), valid = f.length >= 4 && Number.isFinite(since) && since > 0;
+            root.recSince = valid ? since : 0;
+            root.recTarget = valid ? f[3] : "";
+        }
         onLoadFailed: { root.recSince = 0; root.recTarget = ""; }
     }
     FileView {
@@ -64,11 +72,12 @@ Singleton {
         printErrors: false
         onFileChanged: reload()
         onLoaded: {
-            const f = text().trim().split(" ");
-            if (f.length >= 3 && Date.now() / 1000 - Number(f[0]) < 8) {
-                root.recSaved = { at: Number(f[0]), duration: Number(f[1]), path: f[2], thumb: f[3] || "" };
+            const raw = text().trim(), f = raw.includes("\t") ? raw.split("\t") : raw.split(/\s+/);
+            const at = Number(f[0]), duration = Number(f[1]), age = Date.now() / 1000 - at;
+            if (f.length >= 3 && Number.isFinite(at) && Number.isFinite(duration) && duration >= 0 && age >= 0 && age < 8) {
+                root.recSaved = { at, duration, path: f[2], thumb: f[3] || "" };
                 savedClear.restart();
-            }
+            } else root.recSaved = null;
         }
     }
     Timer { id: savedClear; interval: 5000; onTriggered: root.recSaved = null }

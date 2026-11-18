@@ -13,60 +13,106 @@
 # records, ~/.local/state/kuwai/recording holds "pid since path target": the
 # clipboard island shows a red dot and the time, and a click on it stops.
 set -uo pipefail
+umask 077
 
 NOTIFY="$(dirname "$(readlink -f "$0")")/kuwai-notify"
 notify() { [ -x "$NOTIFY" ] && "$NOTIFY" "$@" || command -v notify-send >/dev/null && notify-send "$@" || true; }
 
 state="${XDG_STATE_HOME:-$HOME/.local/state}/kuwai/recording"
 dir="${XDG_VIDEOS_DIR:-$HOME/Videos}/Recordings"
-mkdir -p "$(dirname "$state")" "$dir"
+mkdir -p "$(dirname "$state")" "$dir" || exit 1
+exec 9>"${state}.lock"
+flock -x 9
 
-running() { [ -s "$state" ] && kill -0 "$(cut -d' ' -f1 "$state")" 2>/dev/null; }
+process_birth() {
+    local stat fields=()
+    stat=$(cat "/proc/$1/stat" 2>/dev/null) || return 1
+    read -r -a fields <<<"${stat##*) }"
+    [ "${fields[0]:-Z}" != Z ] && [ "${#fields[@]}" -ge 20 ] || return 1
+    printf '%s\n' "${fields[19]}"
+}
+read_state() {
+    local line
+    line=$(cat "$state" 2>/dev/null) || return 1
+    if [[ $line = *$'\t'* ]]; then IFS=$'\t' read -r rec_pid rec_since rec_path rec_target <<<"$line"
+    else read -r rec_pid rec_since rec_path rec_target <<<"$line"; fi
+    [[ ${rec_pid:-} =~ ^[1-9][0-9]*$ ]] && [ "$rec_pid" -gt 1 ] || return 1
+}
+running() {
+    local identity_pid birth actual
+    read_state || return 1
+    read -r identity_pid birth 2>/dev/null < "${state}.identity" || return 1
+    [ "$identity_pid" = "$rec_pid" ] && [[ $birth =~ ^[0-9]+$ ]] || return 1
+    actual=$(process_birth "$rec_pid") || return 1
+    [ "$actual" = "$birth" ]
+}
+clear_state() { rm -f -- "$state" "${state}.identity"; }
 
 stop() {
-    running || { rm -f -- "$state"; return 0; }
-    read -r pid _since path _target < "$state"
-    kill -INT "$pid"                      # SIGINT: gpu-screen-recorder finishes the file
-    for _ in $(seq 50); do kill -0 "$pid" 2>/dev/null || break; sleep 0.1; done
-    rm -f -- "$state"
+    running || { clear_state; return 0; }
+    local pid=$rec_pid since=$rec_since path=$rec_path
+    kill -INT "$pid" 2>/dev/null || true   # SIGINT finishes the file; the identity was checked above.
+    for _ in $(seq 50); do running || break; sleep 0.1; done
+    if running; then echo "kuwai-rec: recorder is still stopping; try stop again" >&2; return 1; fi
+    clear_state
+    [ -s "$path" ] || { echo "kuwai-rec: recorder produced no saved file" >&2; return 1; }
     # The island shows "Recording saved" with a frame of it for a few seconds.
     local thumb="${state}-thumb.jpg"
-    ffmpeg -y -loglevel error -ss 0.4 -i "$path" -frames:v 1 -vf scale=360:-1 "$thumb" </dev/null 2>/dev/null || thumb=""
-    printf '%s %s %s %s\n' "$(date +%s)" "$(( $(date +%s) - _since ))" "$path" "$thumb" > "${state}-saved"
+    timeout 10 ffmpeg -y -loglevel error -ss 0.4 -i "$path" -frames:v 1 -vf scale=360:-1 "$thumb" </dev/null 2>/dev/null || thumb=""
+    local now elapsed=0
+    now=$(date +%s)
+    if [[ $since =~ ^[0-9]{1,10}$ ]] && [ "$((10#$since))" -le "$now" ]; then elapsed=$((now - 10#$since)); fi
+    printf '%s\t%s\t%s\t%s\n' "$now" "$elapsed" "$path" "$thumb" > "${state}-saved"
 }
 
 start() {
     local target="${1:-monitor}" audio="${2:-system}" fps="${3:-60}" window args=() aud=()
+    [[ $fps = 30 || $fps = 60 ]] || { echo "kuwai-rec: frame rate must be 30 or 60" >&2; return 2; }
+    [[ $target =~ ^[A-Za-z0-9][A-Za-z0-9_.-]*$ ]] || { echo "kuwai-rec: invalid recording source" >&2; return 2; }
     case "$audio" in
         system) aud=(-a default_output) ;;
         mic)    aud=(-a default_input) ;;
         both)   aud=(-a "default_output|default_input") ;;
         none)   aud=() ;;
+        *) echo "kuwai-rec: audio must be system, mic, both, or none" >&2; return 2 ;;
     esac
     if [ "$target" = region ]; then
         local geo; geo=$(slurp -f '%wx%h+%x+%y' 2>/dev/null) || exit 0     # cancelled: nothing to say
         window=region; args=(-region "$geo")
     elif [ "$target" = monitor ]; then
-        window=$(hyprctl monitors -j | jq -r '.[] | select(.focused) | .name')
+        window=$(hyprctl monitors -j | jq -er 'map(select(.focused == true)) | if length == 1 then .[0].name else empty end') || return 1
     else
         window="$target"
     fi
-    local path="$dir/Recording_$(date +%Y%m%d_%H%M%S).mp4"
+    [[ $dir != *$'\t'* && $dir != *$'\n'* ]] || { echo "kuwai-rec: recording directory cannot contain tabs or newlines" >&2; return 2; }
+    local path stamp index=0 birth identity_tmp state_tmp
+    stamp="$dir/Recording_$(date +%Y%m%d_%H%M%S)"; path="$stamp.mp4"
+    while [ -e "$path" ]; do index=$((index + 1)); path="$stamp-$index.mp4"; done
     gpu-screen-recorder -w "$window" "${args[@]}" -f "$fps" "${aud[@]}" -o "$path" \
-        >/dev/null 2>"${state}.log" </dev/null &
+        >/dev/null 2>"${state}.log" </dev/null 9>&- &
     local pid=$!
     sleep 0.4
-    if ! kill -0 "$pid" 2>/dev/null; then
+    if ! birth=$(process_birth "$pid"); then
         notify -a "Screen recording" -u normal "Couldn't start recording" "$(tail -2 "${state}.log")"
         exit 1
     fi
-    printf '%s %s %s %s\n' "$pid" "$(date +%s)" "$path" "$window" > "$state"
+    identity_tmp=$(mktemp "${state}.identity.XXXXXX") || { kill -INT "$pid"; return 1; }
+    state_tmp=$(mktemp "${state}.XXXXXX") || { rm -f -- "$identity_tmp"; kill -INT "$pid"; return 1; }
+    if ! printf '%s %s\n' "$pid" "$birth" > "$identity_tmp" ||
+       ! printf '%s\t%s\t%s\t%s\n' "$pid" "$(date +%s)" "$path" "$window" > "$state_tmp" ||
+       ! mv -- "$identity_tmp" "${state}.identity" || ! mv -- "$state_tmp" "$state"; then
+        rm -f -- "$identity_tmp" "$state_tmp"
+        clear_state
+        kill -INT "$pid" 2>/dev/null || true
+        echo "kuwai-rec: could not publish recording state; stopped the new recorder" >&2
+        return 1
+    fi
 }
 
 case "${1:-toggle}" in
     toggle) if running; then stop; else start "${2:-monitor}"; fi ;;
     start)  running || start "${2:-monitor}" "${3:-system}" "${4:-60}" ;;
     stop)   stop ;;
-    status) if running; then read -r _ since path target < "$state"; echo "recording $path $since $target"; else echo idle; fi ;;
+    status) if running; then printf 'recording %s %s %s\n' "$rec_path" "$rec_since" "$rec_target"; else clear_state; echo idle; fi ;;
     *) sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
 esac

@@ -23,7 +23,8 @@ mkdir -p "$LIB"
 next_number() {
     local n
     n=$(find "$LIB" -maxdepth 1 -name '[0-9]*-*' -printf '%f\n' 2>/dev/null | sed -n 's/^\([0-9]\+\)-.*/\1/p' | sort -n | tail -1)
-    echo $(( ${n:-0} + 1 ))
+    [ "${#n}" -le 9 ] || { echo "kuwai-wall: library sequence is too large" >&2; return 1; }
+    echo $(( 10#${n:-0} + 1 ))
 }
 slug() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]\+/-/g; s/^-//; s/-$//' | cut -c1-40; }
 
@@ -41,30 +42,44 @@ encoder() {
     else echo "-c:v libx264 -preset slow -crf 22"; fi
 }
 
-add() {
+add() (
+    [ "$#" -gt 0 ] || { echo "usage: kuwai-wall add FILE [NAME] [--no-loop]" >&2; return 2; }
     local src=$1 name=${2:-} loop=1
     [ "${3:-}" = --no-loop ] || [ "${2:-}" = --no-loop ] && loop=0
     [ "${2:-}" = --no-loop ] && name=""
     [ -r "$src" ] || { echo "kuwai-wall: can't read $src" >&2; return 1; }
     [ -n "$name" ] || name=$(slug "$(basename "${src%.*}")")
-    local out="$LIB/$(next_number)-$(slug "$name").mp4"
+    name=$(slug "$name"); [ -n "$name" ] || name=wallpaper
+    exec 9>"$LIB/.import.lock"
+    flock -x 9
+    local number; number=$(next_number) || return 1
+    local out="$LIB/$number-$name.mp4"
     local H; H=$(target_h)
-    local D; D=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$src")
+    local D; D=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$src") || return 1
+    if ! [[ $D =~ ^[0-9]+([.][0-9]+)?$ ]] || ! awk -v d="$D" 'BEGIN{exit !(d > 0)}'; then
+        echo "kuwai-wall: video duration is unavailable" >&2; return 1
+    fi
     local F=1.5
     local base="scale=-2:$H:flags=lanczos,fps=30,format=yuv420p"
+    local filters=() codec=() temporary
+    temporary=$(mktemp "$LIB/.encode.XXXXXX") || return 1
+    trap 'rm -f -- "$temporary"' EXIT
     # Short clips (< 4 s) and --no-loop: as they are.
     if [ "$loop" = 1 ] && awk -v d="$D" 'BEGIN{exit !(d > 4)}'; then
         local off; off=$(awk -v d="$D" -v f="$F" 'BEGIN{printf "%.3f", d-2*f}')
-        # shellcheck disable=SC2046
-        ffmpeg -nostdin -v error -stats -y -i "$src" -filter_complex \
-            "[0:v]$base,split[x][y];[x]trim=start=$F,setpts=PTS-STARTPTS[a];[y]trim=end=$F,setpts=PTS-STARTPTS[b];[a][b]xfade=transition=fade:duration=$F:offset=$off[v]" \
-            -map "[v]" -an $(encoder) -movflags +faststart "$out" || return 1
+        filters=(-filter_complex "[0:v]${base},split[x][y];[x]trim=start=$F,setpts=PTS-STARTPTS[a];[y]trim=end=$F,setpts=PTS-STARTPTS[b];[a][b]xfade=transition=fade:duration=$F:offset=${off}[v]" -map "[v]")
     else
-        # shellcheck disable=SC2046
-        ffmpeg -nostdin -v error -stats -y -i "$src" -vf "$base" -an $(encoder) -movflags +faststart "$out" || return 1
+        filters=(-vf "$base")
     fi
+    read -r -a codec <<<"$(encoder)"
+    if ! ffmpeg -nostdin -v error -stats -y -i "$src" "${filters[@]}" -an "${codec[@]}" -movflags +faststart -f mp4 "$temporary"; then
+        [ "${codec[1]}" = h264_nvenc ] || return 1
+        ffmpeg -nostdin -v error -stats -y -i "$src" "${filters[@]}" -an -c:v libx264 -preset slow -crf 22 -movflags +faststart -f mp4 "$temporary" || return 1
+    fi
+    [ -s "$temporary" ] || return 1
+    mv -- "$temporary" "$out" || return 1
     echo "added $(basename "$out") ($(du -h "$out" | cut -f1))"
-}
+)
 
 # Wallpaper Engine: subscribed Workshop items live in
 # steamapps/workshop/content/431960/<id>/ with a project.json. Only type
@@ -104,7 +119,7 @@ json() {
     cur=$(cat "${XDG_STATE_HOME:-$HOME/.local/state}/live-wallpaper/last" 2>/dev/null)
     local first=1
     printf '['
-    while IFS= read -r f; do
+    while IFS= read -r -d '' f; do
         local path="$LIB/$f" base="${f%.*}" thumb="$cache/${f%.*}.jpg"
         if [ ! -s "$thumb" ] || [ "$thumb" -ot "$path" ]; then
             local d; d=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$path" 2>/dev/null)
@@ -114,7 +129,7 @@ json() {
         first=0
         jq -cn --arg n "$(printf '%s' "$base" | sed 's/^[0-9]*-//')" --arg p "$path" --arg t "$thumb" --argjson c "$([ "$path" = "$cur" ] && echo true || echo false)" \
             '{name: $n, path: $p, thumb: $t, current: $c}' | tr -d '\n'
-    done < <(find "$LIB" -maxdepth 1 -type f \( -iname '*.mp4' -o -iname '*.webm' -o -iname '*.mkv' \) -printf '%f\n' | sort -V)
+    done < <(find "$LIB" -maxdepth 1 -type f \( -iname '*.mp4' -o -iname '*.webm' -o -iname '*.mkv' \) -printf '%f\0' | sort -zV)
     printf ']\n'
 }
 

@@ -22,7 +22,14 @@ CFG=${XDG_CONFIG_HOME:-$HOME/.config}
 DATA=${XDG_DATA_HOME:-$HOME/.local/share}
 DIR=$STATE/kuwai/backups
 KEEP=${KUWAI_BACKUP_KEEP:-30}
+[[ $KEEP =~ ^[1-9][0-9]{0,5}$ ]] || { echo "kuwai-backup: retention must be a positive integer below 1000000" >&2; exit 2; }
+for base in "$CFG" "$DATA" "$STATE" "${KUWAI_NOTES:-$HOME/Notes}"; do
+    base=$(realpath -m -- "$base")
+    case "$base" in "$HOME"|"$HOME/"*) ;; *) echo "kuwai-backup: configured paths must be under HOME" >&2; exit 2 ;; esac
+done
 mkdir -p "$DIR"
+exec 9>"$DIR/.lock"
+flock -x 9
 
 # Paths relative to $HOME (only those that exist are taken).
 paths() {
@@ -34,31 +41,78 @@ paths() {
         "${KUWAI_NOTES:-$HOME/Notes}/inbox.md" \
         "$DATA/kuwai-data/icc" \
         "$STATE/kuwai/state" "$STATE/kuwai/channel"; do
-        [ -e "$p" ] && printf '%s\n' "${p#"$HOME"/}"
+        if [ "${1:-}" = all ] || [ -e "$p" ]; then printf '%s\0' "${p#"$HOME"/}"; fi
     done
+    return 0
 }
 
 # One number for "what's there now": changes when any file's content does.
 fingerprint() {
-    (cd "$HOME" && paths | while read -r p; do find "$p" -type f -print0 2>/dev/null; done | sort -z | xargs -0r sha256sum) | sha256sum | cut -c1-16
+    (cd "$HOME" && paths | while IFS= read -r -d '' p; do find "$p" -type f ! -name '*.bak' ! -name '*.bak-*' ! -path '*/searxng/*' -print0; done | sort -z | xargs -0r sha256sum) | sha256sum | cut -c1-16
+}
+
+validate_archive() {
+    local allowed=()
+    mapfile -d '' -t allowed < <(paths all)
+    python3 - "$1" "$2" "${CFG#"$HOME"/}/kuwai/searxng" "${allowed[@]}" <<'PY'
+import sys, tarfile
+from pathlib import PurePosixPath
+try:
+    excluded = PurePosixPath(sys.argv[3])
+    allowed = [PurePosixPath(p) for p in sys.argv[4:]]
+    with tarfile.open(sys.argv[1], 'r:gz') as archive:
+        for member in archive:
+            path = PurePosixPath(member.name)
+            if path.is_absolute() or '..' in path.parts or not (member.isfile() or member.isdir()):
+                raise ValueError('unsafe member')
+            if path == excluded or excluded in path.parents or not any(path == p or p in path.parents for p in allowed):
+                raise ValueError('member outside backup scope')
+            tarfile.data_filter(member, sys.argv[2])
+except (OSError, ValueError, tarfile.TarError):
+    print('kuwai-backup: refusing an unsafe or invalid snapshot', file=sys.stderr)
+    sys.exit(1)
+PY
+}
+
+archives() {
+    python3 - "$DIR" "${1:-all}" <<'PY'
+import os, sys
+from pathlib import Path
+items = sorted(Path(sys.argv[1]).glob('*.tar.gz'), key=lambda p: (p.stat().st_mtime_ns, p.name), reverse=True)
+if sys.argv[2] == 'first':
+    items = items[:1]
+for item in items:
+    sys.stdout.buffer.write(os.fsencode(item) + b'\0')
+PY
 }
 
 snap() {   # $1 = why (shown in list)
-    local name; name=$(date +%Y%m%d-%H%M%S)
+    local name stamp index=0 temporary hash
+    stamp=$(date +%Y%m%d-%H%M%S); name=$stamp
+    while [ -e "$DIR/$name.tar.gz" ]; do index=$((index + 1)); name="$stamp-$index"; done
     local out=$DIR/$name.tar.gz
-    (cd "$HOME" && paths | tar --exclude='*.bak-*' --exclude='*.bak' --exclude='.config/kuwai/searxng' -czf "$out" --files-from=-)
-    printf '%s\t%s\n' "$(fingerprint)" "${1:-by hand}" >"$DIR/$name.info"
+    hash=$(fingerprint)
+    temporary=$(mktemp "$DIR/.snapshot.XXXXXX")
+    if ! (cd "$HOME" && paths | tar --exclude='*.bak-*' --exclude='*.bak' --exclude="${CFG#"$HOME"/}/kuwai/searxng" -czf "$temporary" --null --verbatim-files-from --files-from=-) || ! validate_archive "$temporary" "$HOME"; then
+        rm -f -- "$temporary"; return 1
+    fi
+    mv -- "$temporary" "$out"
+    printf '%s\t%s\n' "$hash" "${1:-by hand}" >"$DIR/$name.info"
     # Keep the newest $KEEP.
-    ls -1t "$DIR"/*.tar.gz 2>/dev/null | tail -n +$((KEEP + 1)) | while read -r old; do rm -f "$old" "${old%.tar.gz}.info"; done
+    local kept=0 old
+    while IFS= read -r -d '' old; do
+        kept=$((kept + 1))
+        if [ "$kept" -gt "$KEEP" ]; then rm -f -- "$old" "${old%.tar.gz}.info"; fi
+    done < <(archives)
     printf '%s\n' "$out"
 }
 
-newest() { ls -1t "$DIR"/*.tar.gz 2>/dev/null | head -1; }
+newest() { local first; if IFS= read -r -d '' first < <(archives first); then printf '%s\n' "$first"; fi; }
 resolve() {   # NAME (with or without .tar.gz), or the newest
     local n=${1:-}
     [ -z "$n" ] && { newest; return; }
     n=${n%.tar.gz}; n=${n##*/}
-    [[ $n =~ ^[0-9]{8}-[0-9]{6}$ ]] || { echo "not a snapshot name: $1" >&2; exit 2; }
+    [[ $n =~ ^[0-9]{8}-[0-9]{6}(-[0-9]+)?$ ]] || { echo "not a snapshot name: $1" >&2; exit 2; }
     [ -f "$DIR/$n.tar.gz" ] || { echo "no snapshot $n (kuwai backup list)" >&2; exit 1; }
     printf '%s\n' "$DIR/$n.tar.gz"
 }
@@ -74,27 +128,30 @@ case ${1:-now} in
         fi ;;
     list)
         found=0
-        for f in $(ls -1t "$DIR"/*.tar.gz 2>/dev/null); do
+        while IFS= read -r -d '' f; do
             found=1
             n=$(basename "${f%.tar.gz}")
             why=$(cut -f2 "${f%.tar.gz}.info" 2>/dev/null || echo "")
             printf '%s  %6s  %s\n' "$n" "$(du -h "$f" | cut -f1)" "$why"
-        done
+        done < <(archives)
         [ $found = 1 ] || echo "no snapshots yet (kuwai backup)" ;;
     diff)
         f=$(resolve "${2:-}"); [ -n "$f" ] || { echo "no snapshots yet" >&2; exit 1; }
         tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
+        validate_archive "$f" "$tmp"
         tar -xzf "$f" -C "$tmp"
-        (cd "$HOME" && paths) | while read -r p; do
+        (cd "$HOME" && paths all) | while IFS= read -r -d '' p; do
             if [ -e "$tmp/$p" ]; then diff -ru -x '*.bak*' -x searxng --label "$(basename "${f%.tar.gz}")/$p" --label "now/$p" "$tmp/$p" "$HOME/$p" || true
-            else echo "new since then: ~/$p"; fi
+            elif [ -e "$HOME/$p" ]; then echo "new since then: ~/$p"; fi
         done ;;
     restore)
         f=$(resolve "${2:?which one? kuwai backup list}")
+        tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
+        cp -- "$f" "$tmp/restore.tar.gz"
+        validate_archive "$tmp/restore.tar.gz" "$HOME"
         before=$(snap "before restoring $(basename "${f%.tar.gz}")")
         # Only paths the snapshot holds, only under $HOME, no links or ..
-        if tar -tzf "$f" | grep -qE '(^/|(^|/)\.\.(/|$))'; then echo "refusing: the snapshot has paths outside your home" >&2; exit 1; fi
-        tar -xzf "$f" -C "$HOME" --no-same-owner --overwrite --exclude=".config/kuwai/searxng"
+        tar -xzf "$tmp/restore.tar.gz" -C "$HOME" --no-same-owner --overwrite
         echo "restored $(basename "${f%.tar.gz}") (what was there is in $before)"
         echo "reload: hyprctl reload  (settings apply by themselves)" ;;
     -h|--help|help) sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//' ;;

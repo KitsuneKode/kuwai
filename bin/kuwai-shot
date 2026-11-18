@@ -17,14 +17,24 @@
 # window under the mouse (HyDE's script left focus wherever the mouse was).
 # Cancelling the selection is not an error: nothing is said.
 set -uo pipefail
+umask 077
 
 NOTIFY="$(dirname "$(readlink -f "$0")")/kuwai-notify"
 notify() { [ -x "$NOTIFY" ] && "$NOTIFY" "$@" || command -v notify-send >/dev/null && notify-send "$@" || true; }
 
 mode="${1:-area}"
+case "$mode" in area|quick|freeze|window|delay|ocr|monitor|all) ;; *) sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;; esac
 dir="${XDG_PICTURES_DIR:-$HOME/Pictures}/Screenshots"
-mkdir -p "$dir"
-out="$dir/Screenshot_$(date +%Y%m%d_%H%M%S).png"
+mkdir -p "$dir" || exit 1
+out=$(mktemp "$dir/Screenshot_$(date +%Y%m%d_%H%M%S)_XXXXXX.png") || exit 1
+frz=""
+cleanup() {
+    if [ -n "$frz" ]; then kill "$frz" 2>/dev/null || true; fi
+    if [ ! -s "$out" ]; then rm -f -- "$out"; fi
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 # Our own region pick (grimblast's, through slurp, let a click that moved a
 # pixel or two turn into a tiny drag: "only a small part comes"). Visible
@@ -51,7 +61,7 @@ if [ "$mode" = area ] || [ "$mode" = quick ] || [ "$mode" = freeze ]; then
     frz=""
     if [ "$mode" = freeze ]; then hyprpicker -r -z >/dev/null 2>&1 & frz=$!; sleep 0.15; fi
     geo=$(pick); ok=$?
-    [ -n "$frz" ] && kill "$frz" 2>/dev/null
+    if [ -n "$frz" ]; then kill "$frz" 2>/dev/null || true; frz=""; fi
     [ $ok -eq 0 ] && [ -n "$geo" ] || exit 0                      # cancelled
     if ! grim -g "$geo" "$out" 2>/dev/null || [ ! -s "$out" ]; then
         rm -f -- "$out"; notify -a "Screenshot" "Screenshot failed" "grim couldn't capture $geo"; exit 0
@@ -128,6 +138,7 @@ fi
 case "$mode" in quick|window|delay) exit 0 ;; esac
 
 log="${XDG_STATE_HOME:-$HOME/.local/state}/kuwai/kuwai-shot.log"
+mkdir -p "$(dirname "$log")" || exit 1
 # Copying keeps the editor open (copy, annotate more, copy again); Enter copies
 # and closes, Esc closes, saving still exits. A bare --early-exit used to close
 # Satty on every copy (0.21: it means "after any action").
