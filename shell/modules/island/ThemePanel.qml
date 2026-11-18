@@ -16,6 +16,7 @@ import Quickshell.Widgets
 import qs.config
 import qs.components
 import qs.services
+import qs.modules.screensaver
 
 FocusScope {
     id: picker
@@ -62,13 +63,28 @@ FocusScope {
     readonly property var saverItems: {
         const st = Settings.screensaverStyle || "dusk", clip = Settings.screensaverClip || "smoke-soft";
         const liveThumb = (live.find(x => x.current) || {}).thumb || "";
-        return [{ name: "Dusk", style: "dusk", thumb: saverDir + "/dusk.jpg", current: st === "dusk" },
+        // Dusk is drawn, so its picture ships with it (it looked in your films'
+        // folder, where none was: a blank card).
+        return [{ name: "Dusk", style: "dusk", thumb: Quickshell.shellDir + "/assets/screensaver/dusk.jpg", current: st === "dusk" },
                 { name: "Borealis", style: "borealis", thumb: Quickshell.shellDir + "/assets/screensaver/borealis.jpg", current: st === "borealis" }]
             .concat(clips.map(c => ({ name: "Night · " + clipName(c), style: "night", clip: c, thumb: saverDir + "/" + c + ".jpg", current: st === "night" && clip === c })))
             .concat([{ name: "Live wallpaper", style: "live", thumb: liveThumb, current: st === "live" },
                      { name: "Still wallpaper", style: "still", thumb: Quickshell.env("HOME") + "/.cache/hyde/wall.set", current: st === "still" }]);
     }
-    function previewSaver() { Island.close(); saverGo.restart(); }
+    // What the preview pane can play for the one you're on: a live wallpaper's
+    // loop, a screensaver's film, or a drawn scene (Dusk, Borealis) run small.
+    // Space (or the button) plays and stops it. Until now only Live had a
+    // preview, by pointer only; a screensaver could be seen only by P, which
+    // closed the picker and showed whichever one was already set.
+    readonly property var onIt: items[current] || null
+    readonly property string previewPath: !onIt ? "" : mode === "live" ? (onIt.path || "")
+        : mode !== "saver" ? "" : onIt.clip ? saverDir + "/" + onIt.clip + ".mp4"
+        : onIt.style === "live" ? ((live.find(x => x.current) || {}).path || "") : ""
+    readonly property string previewScene: mode === "saver" && onIt && (onIt.style === "dusk" || onIt.style === "borealis") ? onIt.style : ""
+    readonly property bool canPreview: previewPath !== "" || previewScene !== ""
+    // P: use the one you're on, then show it full screen (it shows what is
+    // set, so it is set first; it used to show the old one).
+    function previewSaver() { if (mode === "saver") apply(current); Island.close(); saverGo.restart(); }
     Timer { id: saverGo; interval: 350; onTriggered: Quickshell.execDetached([Paths.bin + "/kuwai", "screensaver", "start"]) }
 
     // ── How to add your own (? or the header button): per tab, the steps,
@@ -180,18 +196,22 @@ FocusScope {
     function apply(i) {
         const it = items[i];
         if (!it) return;
-        if (applicator.running) return;
+        const nice = it.name.replace(/-/g, " ");
+        if (applicator.running) { said("Still applying " + applyingName.replace(/-/g, " ") + "…"); return; }
         applyError = "";
         if (mode === "saver") {
             Settings.set("screensaverStyle", it.style);
             if (it.clip) Settings.set("screensaverClip", it.clip);
+            said("Screensaver: " + nice);
             return;
         }
         if (mode === "live") {
             Quickshell.execDetached(it.off ? [Paths.bin + "/kuwai-wall", "off"] : [Paths.bin + "/kuwai-wall", "play", it.path]);
             relive.restart();
+            said(it.off ? "Live wallpaper off" : "Live wallpaper: " + nice);
             return;
         }
+        applyingName = it.name;
         if (mode === "themes") {
             applicator.environment = ({});
             applicator.command = [bin, "theme", it.name, "--wait"];
@@ -207,19 +227,29 @@ FocusScope {
             applicator.running = true;
         });
     }
+    // What an apply did, said where you are looking: which one is being
+    // applied (and a turning mark on its card), that it landed, or why it
+    // didn't. A screensaver or a live wallpaper used to change with no sign at
+    // all; a theme said "Applying…" in small type and, on failure, "Couldn't
+    // apply the selection" without the reason.
     property string applyError: ""
+    property string applyingName: ""
+    property string applyNote: ""
+    function said(text) { applyNote = text; noteFor.restart(); }
+    Timer { id: noteFor; interval: 2400; onTriggered: picker.applyNote = "" }
     Process {
         id: applicator
+        stderr: StdioCollector { id: applyErr }
         onExited: (code, status) => {
-            picker.applyError = code === 0 ? "" : "Couldn't apply the selection. Try again.";
+            const nice = picker.applyingName.replace(/-/g, " ");
+            if (code === 0) { picker.applyError = ""; picker.said(nice + " applied"); }
+            else {
+                const why = String(applyErr.text || "").split("\n").map(x => x.trim()).filter(x => x).pop() || "";
+                picker.applyError = "Couldn't apply " + nice + (why ? ": " + why.slice(0, 120) : "") + " · ↩ tries again";
+            }
+            picker.applyingName = "";
             lister.running = true;
         }
-    }
-    Label {
-        visible: picker.applyError !== "" || applicator.running
-        anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom }
-        text: applicator.running ? "Applying…" : picker.applyError
-        color: picker.applyError ? Theme.orange : Theme.textSecondary
     }
     Timer { id: relist; interval: 2500; onTriggered: lister.running = true }
     Timer { id: relive; interval: 600; onTriggered: { liveLister.running = false; liveLister.running = true; } }
@@ -242,6 +272,7 @@ FocusScope {
         else if (k === Qt.Key_Return || k === Qt.Key_Enter) apply(current);
         else if (k === Qt.Key_Tab || k === Qt.Key_Backtab) mode = modes[(modes.indexOf(mode) + (k === Qt.Key_Backtab ? modes.length - 1 : 1)) % modes.length];
         else if (k === Qt.Key_P && mode === "saver") { previewSaver(); return; }
+        else if (k === Qt.Key_Space && canPreview) { previewPlaying = !previewPlaying; event.accepted = true; return; }
         else if (k === Qt.Key_Question || (k === Qt.Key_Slash && (event.modifiers & Qt.ShiftModifier))) { guide = !guide; event.accepted = true; return; }
         else if (k === Qt.Key_Escape && guide) { guide = false; event.accepted = true; return; }
         else if (k === Qt.Key_F) toggleFav(current);
@@ -309,11 +340,11 @@ FocusScope {
             // the cards are stills). A short wait so arrowing past doesn't decode each.
             Loader {
                 anchors.fill: parent
-                active: picker.visible && picker.mode === "live" && !!preview.it && !!preview.it.path && previewDwell.ready && picker.previewPlaying
+                active: picker.visible && picker.previewPath !== "" && previewDwell.ready && picker.previewPlaying
                 sourceComponent: Item {
                     VideoOutput { id: pv; anchors.fill: parent; fillMode: VideoOutput.PreserveAspectCrop }
                     MediaPlayer {
-                        source: "file://" + preview.it.path
+                        source: "file://" + picker.previewPath
                         videoOutput: pv
                         audioOutput: AudioOutput { muted: true }
                         loops: MediaPlayer.Infinite
@@ -322,11 +353,27 @@ FocusScope {
                     }
                 }
             }
-            PillButton {
-                visible: picker.mode === "live" && !!preview.it && !!preview.it.path
+            // A drawn screensaver (Dusk, Borealis), running small.
+            Loader {
+                anchors.fill: parent
+                active: picker.visible && picker.previewScene !== "" && previewDwell.ready && picker.previewPlaying
+                sourceComponent: picker.previewScene === "borealis" ? borealisPreview : duskPreview
+            }
+            Component { id: duskPreview; DuskScene { running: true } }
+            Component { id: borealisPreview; BorealisScene { running: true } }
+            Row {
+                visible: picker.canPreview
                 anchors { right: parent.right; bottom: parent.bottom; margins: 10 }
-                text: picker.previewPlaying ? "Pause preview" : "Play preview"
-                onClicked: picker.previewPlaying = !picker.previewPlaying
+                spacing: 6
+                PillButton {
+                    visible: picker.mode === "saver"
+                    text: "Full screen"
+                    onClicked: picker.previewSaver()
+                }
+                PillButton {
+                    text: picker.previewPlaying ? "Stop preview" : "Preview"
+                    onClicked: picker.previewPlaying = !picker.previewPlaying
+                }
             }
             Timer { id: previewDwell; property bool ready: false; interval: 250; onTriggered: ready = true }
             Connections { target: picker; function onCurrentChanged() { previewDwell.ready = false; previewDwell.restart(); } function onModeChanged() { previewDwell.ready = false; previewDwell.restart(); } }
@@ -375,7 +422,35 @@ FocusScope {
                 }
                 Label { y: 22; text: picker.mode === "themes" ? "Theme palette" : "Wallpaper colours"; size: 11; color: Theme.textTertiary }
             }
-            Label { text: preview.it && preview.it.current ? "In use now" : picker.mode === "live" && preview.it && preview.it.off ? "Press ↵ to turn the live wallpaper off" : "Press ↵ or click to apply"; size: 12; color: Theme.textSecondary }
+            Row {
+                id: applyLine
+                readonly property bool busy: applicator.running
+                readonly property string words: busy ? "Applying " + picker.applyingName.replace(/-/g, " ") + "…" : picker.applyError !== "" ? picker.applyError : picker.applyNote
+                visible: words !== ""
+                spacing: 6
+                Accessible.role: Accessible.StatusBar
+                Accessible.name: words
+                Text {
+                    textFormat: Text.PlainText
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: applyLine.busy ? "\u{f0772}" : picker.applyError !== "" ? "\u{f0026}" : "\u{f012c}"      // turning · alert · check
+                    font.family: Theme.fontGlyph; font.pixelSize: Theme.tCallout
+                    color: picker.applyError !== "" && !applyLine.busy ? Theme.orange : applyLine.busy ? Theme.textSecondary : Theme.green
+                    RotationAnimation on rotation { running: applyLine.busy && !Theme.reduceMotion; loops: Animation.Infinite; from: 0; to: 360; duration: Theme.spinMs }
+                    onVisibleChanged: rotation = 0
+                }
+                Label {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: Math.min(implicitWidth, preview.width - 24)
+                    wrapMode: Text.Wrap
+                    maximumLineCount: 3
+                    elide: Text.ElideRight
+                    text: applyLine.words
+                    size: Theme.tSub
+                    color: picker.applyError !== "" && !applyLine.busy ? Theme.orange : Theme.textSecondary
+                }
+            }
+            Label { visible: !applyLine.visible; text: preview.it && preview.it.current ? "In use now" : picker.mode === "live" && preview.it && preview.it.off ? "Press ↵ to turn the live wallpaper off" : "Press ↵ or click to apply"; size: 12; color: Theme.textSecondary }
             Label { visible: picker.mode === "live"; width: parent.width; wrapMode: Text.Wrap; text: "Add your own: kuwai-wall add FILE.mp4 \"name\" · guide: docs/manual/looks.md"; size: 11; color: Theme.textTertiary }
             Label { visible: picker.mode === "saver"; width: parent.width; wrapMode: Text.Wrap; text: "Add your own: kuwai saver add FILE.mp4 · guide: docs/manual/looks.md"; size: 11; color: Theme.textTertiary }
         }
@@ -516,6 +591,17 @@ FocusScope {
                 border.color: Theme.accent
             }
             Rectangle {
+                visible: applicator.running && picker.applyingName === card.modelData.name && !card.isCurrent
+                anchors { right: shot.right; top: shot.top; margins: 8 }
+                width: 22; height: 22; radius: 11
+                color: Theme.chip
+                Text {
+                    textFormat: Text.PlainText
+                    anchors.centerIn: parent; text: "\u{f0772}"; font.family: Theme.fontGlyph; font.pixelSize: Theme.tBody; color: Theme.textPrimary
+                    RotationAnimation on rotation { running: parent.visible && !Theme.reduceMotion; loops: Animation.Infinite; from: 0; to: 360; duration: Theme.spinMs }
+                }
+            }
+            Rectangle {
                 visible: card.isCurrent
                 anchors { right: shot.right; top: shot.top; margins: 8 }
                 width: 22; height: 22; radius: 11
@@ -569,7 +655,14 @@ FocusScope {
         anchors { left: parent.left; leftMargin: 22; bottom: parent.bottom; bottomMargin: 14 }
         spacing: 14
         Repeater {
-            model: [["← → ↑ ↓", "Choose"], ["↩", "Apply"], ["⇥", ({ themes: "Wallpapers", wallpapers: "Live", live: "Themes" })[picker.mode]], ["F", "Favourite"]]
+            // The keys that work on this tab. (It said "⇥ Themes" on Live, where
+            // Tab goes to Screensaver; nothing after ⇥ on Screensaver; and
+            // "F Favourite" on every tab, though only themes have favourites.)
+            model: [["← → ↑ ↓", "Choose"], ["↩", picker.mode === "saver" ? "Use" : "Apply"],
+                    ["⇥", ({ themes: "Wallpapers", wallpapers: "Live", live: "Screensaver", saver: "Themes" })[picker.mode]]]
+                .concat(picker.canPreview ? [["space", picker.previewPlaying ? "Stop preview" : "Preview"]] : [])
+                .concat(picker.mode === "saver" ? [["P", "Use and show now"]] : [])
+                .concat(picker.mode === "themes" ? [["F", "Favourite"]] : [])
             Row {
                 required property var modelData
                 spacing: 6

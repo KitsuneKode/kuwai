@@ -55,6 +55,9 @@ Scope {
         // A panel as a preview (no keyboard focus, so typing stays where it
         // is): `test preview agents DP-3`. `island close` puts it away.
         function preview(panel: string, screen: string): void { Island.preview(panel, screen); }
+        // The theme picker on one of its tabs (themes, wallpapers, live,
+        // saver), as a preview: `test themes saver DP-3`.
+        function themes(mode: string, screen: string): void { Island.themeMode = mode || "themes"; Island.preview("theme", screen); }
         // Agents in given states, comma-separated (working, waiting, done,
         // limited, error): `test agentStates "working,limited,error"`.
         function agentStates(states: string): void {
