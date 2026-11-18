@@ -378,7 +378,7 @@ FocusScope {
                     Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
                     Text { anchors.centerIn: parent; text: "\u{f0156}"; font.family: Theme.fontGlyph; font.pixelSize: Theme.tSub; color: Theme.textSecondary }
                     HoverHandler { id: xHover; margin: 8 }
-                    TapHandler { gesturePolicy: TapHandler.ReleaseWithinBounds; onTapped: swipe.away(1) }
+                    TapHandler { margin: 8; gesturePolicy: TapHandler.ReleaseWithinBounds; onTapped: swipe.away(1) }
                     Accessible.role: Accessible.Button
                     Accessible.name: "Remove " + row.modelData.title
                     Accessible.onPressAction: swipe.away(1)

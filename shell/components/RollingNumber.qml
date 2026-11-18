@@ -29,7 +29,9 @@ Row {
         id: zero
         text: "0"
         font.family: num.rounded ? Theme.fontRounded : Theme.fontText
-        font.pixelSize: num.size
+        // As Label sets it: measured at the base size, the digits' cells stayed
+        // narrow at a larger Text size and the digits overlapped.
+        font.pixelSize: Math.round(num.size * Theme.textScale)
         font.features: Theme.numeralFeatures(num.rounded, true)
         font.variableAxes: Theme.axesWeight(num.size, num.weight)
     }

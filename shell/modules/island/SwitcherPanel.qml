@@ -165,9 +165,17 @@ FocusScope {
             }
         }
     }
+    // No window to switch to: say so (it was a black sheet over "0 windows").
     Label {
+        visible: sw.count === 0
+        anchors.centerIn: parent
+        text: Switcher.appOnly ? "This app has no other window" : Switcher.workspaceOnly ? "No windows on this workspace" : "No windows open"
+        size: Theme.tSub; color: Theme.textSecondary
+    }
+    Label {
+        visible: sw.count > 0 || Switcher.appOnly || Switcher.workspaceOnly
         anchors { right: parent.right; rightMargin: 20; bottom: parent.bottom; bottomMargin: 13 }
-        text: Switcher.appOnly ? "This app" : Switcher.workspaceOnly ? "This workspace" : (sw.count + " windows")
+        text: Switcher.appOnly ? "This app" : Switcher.workspaceOnly ? "This workspace" : (sw.count === 1 ? "1 window" : sw.count + " windows")
         size: 12; color: Theme.textTertiary
     }
 }

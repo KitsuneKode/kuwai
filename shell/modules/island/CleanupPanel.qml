@@ -58,7 +58,7 @@ FocusScope {
                 cp.loading = false;
             }
         }
-        onExited: code => { if (code !== 0) { cp.error = "kuwai-cleanup failed (exit " + code + ")"; cp.loading = false; } }
+        onExited: code => { if (code !== 0) { cp.error = "Couldn't look through your agents' skills. Pick a period above to try again."; cp.loading = false; } }
     }
     Process {
         id: actor
@@ -129,6 +129,9 @@ FocusScope {
             width: parent.width
             spacing: 2
             Label {
+                // No number when there is none: a failed look showed "0" in the
+                // big face, which reads as "nothing to clean".
+                visible: !(cp.error && !cp.report)
                 text: cp.loading && !cp.report ? "…" : cp.num(cp.report ? cp.report.unusedTokens : 0)
                 size: Theme.tClock * 2 - 8; weight: Theme.wBold; rounded: true
                 font.features: ({ "tnum": 1 })

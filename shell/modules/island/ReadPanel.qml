@@ -58,8 +58,18 @@ FocusScope {
         width: rp.width - 40
         spacing: 14
 
+        // Nothing to read (the message was cleared while this was open): say
+        // so. It used to leave an empty circle and an Open button for nothing.
+        Column {
+            visible: !rp.item
+            width: parent.width
+            spacing: 4
+            Label { text: "Nothing to read"; size: Theme.tSub; color: Theme.textSecondary }
+            Label { width: parent.width; wrapMode: Text.Wrap; text: "The message this showed was cleared. Recent ones are in the notification centre."; size: Theme.tFootnote; color: Theme.textTertiary }
+        }
         // ── Who: the sender leads, the app and when trail ────────────────
         Item {
+            visible: !!rp.item
             width: parent.width
             height: 40
             Rectangle {

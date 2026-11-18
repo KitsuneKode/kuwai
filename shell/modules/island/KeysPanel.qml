@@ -169,7 +169,7 @@ FocusScope {
             Label {
                 visible: !field.text
                 anchors.verticalCenter: parent.verticalCenter
-                text: "Search " + pal.items.length + " shortcuts, features and modes"
+                text: pal.items.length ? "Search " + pal.items.length + " shortcuts, features and modes" : "Search shortcuts, features and modes"
                 size: 18; color: Theme.textTertiary
             }
         }
@@ -302,6 +302,14 @@ FocusScope {
             anchors.centerIn: parent
             text: "Nothing matches “" + pal.query.trim() + "”"
             size: 13; color: Theme.textTertiary
+        }
+        // Nothing to list at all (Hyprland didn't answer): say so, not a blank sheet.
+        Column {
+            visible: pal.items.length === 0 && pal.query.trim() === ""
+            anchors.centerIn: parent
+            spacing: 4
+            Label { anchors.horizontalCenter: parent.horizontalCenter; text: "No shortcuts to show"; size: Theme.tSub; color: Theme.textSecondary }
+            Label { anchors.horizontalCenter: parent.horizontalCenter; text: "Hyprland didn't list its key bindings. Open this again in a moment."; size: Theme.tFootnote; color: Theme.textTertiary }
         }
     }
 

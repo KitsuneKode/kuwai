@@ -16,6 +16,10 @@ Singleton {
     // Accessibility (Settings → Accessibility): more contrast, less glass.
     readonly property bool contrast: Settings.highContrast
     readonly property real textScale: Math.max(1, Math.min(2, Settings.textScale || 1))
+    // A length that holds text (a row's height, a column of figures, a day's
+    // cell): it grows with Text size, as the text in it does. A fixed one cuts
+    // or overlaps its text at 120 % (bin/kuwai-rehearse finds those).
+    function sp(n) { return Math.round(n * textScale); }
     // ── Material ─────────────────────────────────────────────────────────
     // One glass, the voxtype HUD's: near-black #111114 over the compositor's
     // blur (components/GlassCard draws the ring, sheen and hairline).

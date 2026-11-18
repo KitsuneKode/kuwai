@@ -14,10 +14,14 @@ Rectangle {
     readonly property bool tinted: tint.a > 0
     signal clicked()
 
-    height: 30
-    radius: 15
+    readonly property color ink: tinted && tint.a > 0.6 ? Theme.contrastInk(tint) : Theme.textPrimary
+    height: Theme.sp(30)
+    radius: height / 2
     width: row.implicitWidth + 22
-    color: tinted ? Qt.alpha(tint, area.containsMouse ? 0.95 : 0.85)
+    // The tint as it was given: a quiet one (green at 28 % for Allow) stays
+    // quiet. Setting the alpha outright made it a solid green with white on
+    // it at 2.6:1.
+    color: tinted ? Qt.alpha(tint, tint.a * (area.containsMouse ? 0.95 : 0.85))
          : area.containsMouse ? Theme.pillHover : Theme.pill
     scale: area.pressed ? 0.97 : 1
     Behavior on color { ColorAnimation { duration: Theme.colorMs } }
@@ -34,13 +38,14 @@ Rectangle {
             text: pill.glyph
             font.family: Theme.fontGlyph
             font.pixelSize: 13
-            color: Theme.textPrimary
+            color: pill.ink
         }
         Label {
             anchors.verticalCenter: parent.verticalCenter
             text: pill.text
             size: 12
             weight: Theme.wSemibold
+            color: pill.ink
         }
     }
 

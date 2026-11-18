@@ -29,8 +29,14 @@ Rectangle {
     // Summed when segments come and go or change size (itemAt() isn't
     // something a binding can watch: built in the background, the segments
     // arrive after a binding would have run).
-    readonly property bool compact: width < naturalSum + pad * 2
+    // A pixel of slack: at 120 % text the natural width is a fraction, a
+    // layout hands back a whole number, and the control fell into its
+    // drop-down form for want of 0.4 px (Settings → Top bar).
+    readonly property bool compact: width < naturalSum + pad * 2 - 1
+    // Too narrow for its segments: the same choice as a drop-down, drawn as
+    // the rest of the shell is (the toolkit's own is a white box).
     Controls.ComboBox {
+        id: drop
         anchors.fill: parent
         visible: seg.compact
         model: seg.options
@@ -40,6 +46,51 @@ Rectangle {
         font.pixelSize: Math.round(Theme.tBody * Theme.textScale)
         Accessible.name: "Choose section"
         onActivated: seg.picked(currentValue)
+        background: Item {}
+        contentItem: Label {
+            leftPadding: 12; rightPadding: 28
+            verticalAlignment: Text.AlignVCenter
+            elide: Text.ElideRight
+            text: drop.displayText
+            size: Theme.tBody; weight: Theme.wSemibold
+        }
+        indicator: Text {
+            textFormat: Text.PlainText
+            x: drop.width - width - 10
+            anchors.verticalCenter: parent.verticalCenter
+            text: "\u{f0140}"                       // chevron down
+            font.family: Theme.fontGlyph; font.pixelSize: Theme.glyphS
+            color: Theme.textSecondary
+        }
+        delegate: Controls.ItemDelegate {
+            id: choice
+            required property var modelData
+            required property int index
+            width: drop.width
+            height: Theme.sp(32)
+            highlighted: drop.highlightedIndex === index
+            background: Rectangle { radius: Theme.r1; color: choice.highlighted ? Theme.rowHover : "transparent" }
+            contentItem: Label {
+                leftPadding: 8
+                verticalAlignment: Text.AlignVCenter
+                elide: Text.ElideRight
+                text: choice.modelData.label
+                size: Theme.tBody; weight: choice.index === drop.currentIndex ? Theme.wSemibold : Theme.wRegular
+            }
+        }
+        popup: Controls.Popup {
+            y: drop.height + 4
+            width: drop.width
+            padding: 4
+            implicitHeight: contentItem.implicitHeight + 8
+            background: Rectangle { radius: Theme.r2; color: Theme.glassSolid; border.width: 1; border.color: Theme.cardEdge }
+            contentItem: ListView {
+                clip: true
+                implicitHeight: contentHeight
+                model: drop.popup.visible ? drop.delegateModel : null
+                currentIndex: drop.highlightedIndex
+            }
+        }
     }
     property real naturalSum: 0
     function measure() {

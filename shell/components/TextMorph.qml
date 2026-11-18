@@ -42,14 +42,14 @@ Row {
                 id: digit
                 text: "0"
                 font.family: morph.rounded ? Theme.fontRounded : Theme.fontText
-                font.pixelSize: morph.size
+                font.pixelSize: Math.round(morph.size * Theme.textScale)   // as Label sets it
                 font.variableAxes: Theme.axesWeight(morph.size, morph.weight)
             }
             clip: false
             FontMetrics {
                 id: caps
                 font.family: morph.rounded ? Theme.fontRounded : Theme.fontText
-                font.pixelSize: morph.size
+                font.pixelSize: Math.round(morph.size * Theme.textScale)   // as Label sets it
                 font.variableAxes: Theme.axesWeight(morph.size, morph.weight)
             }
             readonly property real lift: -Math.round(caps.ascent - capH)
@@ -58,7 +58,7 @@ Row {
                 id: metrics
                 text: /\d/.test(cell.ch) ? "0" : cell.ch
                 font.family: morph.rounded ? Theme.fontRounded : Theme.fontText
-                font.pixelSize: morph.size
+                font.pixelSize: Math.round(morph.size * Theme.textScale)   // as Label sets it
                 font.features: Theme.numeralFeatures(morph.rounded, true)
                 font.variableAxes: Theme.axesWeight(morph.size, morph.weight)
             }

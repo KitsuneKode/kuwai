@@ -291,9 +291,10 @@ FocusScope {
                 onActed: Updates.check()
             }
 
-            // Skeleton while the first check runs.
+            // Skeleton while the first check runs; not once it has failed (the
+            // rows stayed under "The check didn't finish", promising a list).
             Repeater {
-                model: Updates.total < 0 ? 3 : 0
+                model: Updates.total < 0 && Updates.checkError === "" ? 3 : 0
                 Skeleton { width: listCol.width; height: 48; radius: 14 }
             }
 
@@ -328,9 +329,15 @@ FocusScope {
                         model: up.showAllRepo ? Updates.repo : Updates.repo.slice(0, 8)
                         Item {
                             required property var modelData
-                            width: (listCol.width - 28 - 18) / 2; height: 34
-                            Label { width: parent.width; elide: Text.ElideRight; text: modelData.name; size: 13; weight: Theme.wMedium }
-                            Version { y: 17; from: modelData.old; to: modelData.new }
+                            // Its own height: at a fixed 34 the version line sat on the name at 120 % text.
+                            width: (listCol.width - 28 - 18) / 2; height: pkg.implicitHeight + 3
+                            Column {
+                                id: pkg
+                                width: parent.width
+                                spacing: 1
+                                Label { width: parent.width; elide: Text.ElideRight; text: modelData.name; size: 13; weight: Theme.wMedium }
+                                Version { from: modelData.old; to: modelData.new }
+                            }
                             Label { anchors.right: parent.right; text: modelData.repo; size: Theme.tCaption; color: Theme.textTertiary; visible: modelData.repo !== "" && modelData.repo !== "extra" }
                         }
                     }

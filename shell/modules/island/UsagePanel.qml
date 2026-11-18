@@ -207,7 +207,7 @@ FocusScope {
             Label {
                 anchors { left: parent.left; leftMargin: 14; right: retry.left; rightMargin: 10; verticalCenter: parent.verticalCenter }
                 elide: Text.ElideRight
-                text: "kuwai-usage isn't running" + (Limits.loaded ? " · showing the last reading" : "")
+                text: Limits.loaded ? "Not updating · showing the last reading" : "Usage can't be read right now"
                 size: Theme.tBody; weight: Theme.wMedium
                 color: Theme.orange
             }
@@ -361,10 +361,14 @@ FocusScope {
                                 // provider on its own schedule, so one can be far behind).
                                 Item {
                                     id: secHead
-                                    readonly property var fresh: Usage.freshness(sec.modelData.checkedAt, Limits.now, Limits.source)
+                                    // By its own age only: that the whole reading is a kept one
+                                    // is the footer's line, said once, not once per account.
+                                    readonly property var fresh: Usage.freshness(sec.modelData.checkedAt, Limits.now, "")
+                                    readonly property bool behind: fresh.known && fresh.stale
+                                        && Math.abs((sec.modelData.checkedAt || 0) - Limits.checkedAt) > 5 * 60000
                                     readonly property string who: (card.g.sections.length > 1 ? sec.modelData.name : "")
                                         + (card.g.sections.length > 1 && sec.modelData.plan ? " · " + sec.modelData.plan : "")
-                                    visible: who !== "" || (fresh.known && fresh.stale)
+                                    visible: who !== "" || behind
                                     width: parent.width
                                     height: 14
                                     Label {
@@ -377,7 +381,7 @@ FocusScope {
                                     }
                                     Label {
                                         anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-                                        visible: secHead.fresh.known && secHead.fresh.stale
+                                        visible: secHead.behind
                                         text: "as of " + secHead.fresh.age
                                         size: Theme.tCaption
                                         color: secHead.fresh.old ? Theme.orange : Theme.textTertiary
@@ -428,7 +432,7 @@ FocusScope {
                                         Label {
                                             id: back
                                             anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-                                            width: 58
+                                            width: Theme.sp(58)
                                             horizontalAlignment: Text.AlignRight
                                             text: w.inS === "now" ? "resetting" : w.inS
                                             size: Theme.tCaption
@@ -438,7 +442,7 @@ FocusScope {
                                         Label {
                                             id: pc
                                             anchors { right: back.left; rightMargin: 6; verticalCenter: parent.verticalCenter }
-                                            width: 56
+                                            width: Theme.sp(56)
                                             horizontalAlignment: Text.AlignRight
                                             text: w.out ? "Out" : w.leftPct + "% left"
                                             size: Theme.tSub; weight: Theme.wSemibold

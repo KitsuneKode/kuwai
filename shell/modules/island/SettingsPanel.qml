@@ -136,7 +136,7 @@ FocusScope {
             id: searchBox
             x: 10; y: 12
             width: parent.width - 20
-            height: 32
+            height: Theme.sp(32)
             radius: 9
             color: Qt.rgba(1, 1, 1, search.activeFocus ? 0.10 : 0.06)
             border.width: 1
@@ -158,7 +158,7 @@ FocusScope {
                 selectionColor: Qt.alpha(Theme.blue, 0.5)
                 selectedTextColor: Theme.textPrimary
                 font.family: Theme.fontText
-                font.pixelSize: 13
+                font.pixelSize: Theme.sp(13)          // what you type grows with Text size, as its placeholder does
                 font.variableAxes: ({ "opsz": Theme.opszFor(13), "wght": Theme.wRegular })
                 font.letterSpacing: Theme.tracking(13, false)
                 renderType: Text.NativeRendering

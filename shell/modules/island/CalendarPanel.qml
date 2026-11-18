@@ -26,7 +26,7 @@ FocusScope {
     // The month shown: its first day.
     property date month: new Date(today.getFullYear(), today.getMonth(), 1)
 
-    readonly property int cell: 40
+    readonly property int cell: Theme.sp(40)
     implicitWidth: cell * 7 + 44
     implicitHeight: col.implicitHeight + 40
 
@@ -97,7 +97,7 @@ FocusScope {
 
         Item {
             width: cal.cell * 7
-            height: 30
+            height: Theme.sp(30)
             Row {
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 7
@@ -165,7 +165,7 @@ FocusScope {
                     width: cal.cell; height: cal.cell - 6
                     Rectangle {
                         anchors.centerIn: parent
-                        width: 32; height: 32; radius: 16
+                        width: Theme.sp(32); height: width; radius: width / 2
                         color: day.isToday ? "white" : dayArea.containsMouse ? Theme.pill : "transparent"
                         border.width: day.isSel && !day.isToday ? 1.5 : 0
                         border.color: Qt.rgba(1, 1, 1, 0.55)
@@ -177,7 +177,7 @@ FocusScope {
                         rounded: true
                         size: 14
                         weight: day.isToday ? Theme.wSemibold : Theme.wRegular
-                        color: day.isToday ? Theme.inkOnLight : !day.inMonth ? Qt.rgba(1, 1, 1, 0.25) : Theme.textPrimary
+                        color: day.isToday ? Theme.inkOnLight : !day.inMonth ? Qt.alpha(Theme.textPrimary, 0.38) : Theme.textPrimary
                         font.features: ({ "tnum": 1 })
                     }
                     // Something on that day: a small dot under the number.
@@ -201,7 +201,7 @@ FocusScope {
 
         Item {
             width: cal.cell * 7
-            height: 22
+            height: Theme.sp(22)
             Label {
                 anchors.verticalCenter: parent.verticalCenter
                 text: Dates.longDate(cal.selected)     // the header's shape

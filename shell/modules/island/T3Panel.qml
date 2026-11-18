@@ -27,7 +27,10 @@ FocusScope {
     readonly property var ended: T3Code.items.filter(i => i.status === "completed" || i.status === "failed")
     readonly property var shownRows: live.slice(0, 6).concat(ended.slice(0, Math.max(2, 8 - Math.min(6, live.length))))
     function ago(iso) {
-        const m = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 60000));
+        // A time that can't be read says nothing ("NaN h ago" was shown for one).
+        const at = Date.parse(iso);
+        if (!isFinite(at)) return "";
+        const m = Math.max(0, Math.round((Date.now() - at) / 60000));
         return m < 1 ? "just now" : m < 60 ? m + " min ago" : Math.round(m / 60) + " h ago";
     }
     function agentName(p) {
@@ -157,7 +160,7 @@ FocusScope {
                             width: parent.width; elide: Text.ElideRight
                             text: (row.waits ? "Needs you" : row.failed ? "Failed" : row.done ? "Finished" : row.modelData.status === "running" ? "Working" : "Starting")
                                 + (t3.agentName(row.modelData.provider) ? " · " + t3.agentName(row.modelData.provider) : "")
-                                + (row.done && row.modelData.at ? " · " + t3.ago(row.modelData.at) : "")
+                                + (row.done && t3.ago(row.modelData.at) ? " · " + t3.ago(row.modelData.at) : "")
                                 + (row.modelData.project && row.modelData.project !== "No project" ? " · " + row.modelData.project : "")
                             size: Theme.tFootnote
                             color: row.waits ? Theme.orange : Theme.textTertiary
