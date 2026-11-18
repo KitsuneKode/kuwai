@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import signal
 import socket
 import subprocess
 import sys
@@ -21,7 +22,73 @@ def runtime_dir():
     return path
 
 
+# ── One controller, and it is the session's copy of the code ────────────────
+# The controller detaches and outlives whatever started it. Started once from
+# a working checkout (a test, a dev session), it kept serving the installed
+# desktop's brightness keys with that checkout's code until the next boot
+# (found 2026-11-18: 46 hours). And after `kuwai promote` the old code kept
+# running the same way. So the controller says which code it is (runtime/owner:
+# the file's path and hash), and a client that is the session's copy (it lives
+# under KUWAI_ROOT) replaces one that differs. A client from any other checkout
+# never replaces anything: it uses the controller that is there.
+def code_id(path):
+    p=Path(path).resolve()
+    try:
+        return {'path':str(p),'sha':hashlib.sha256(p.read_bytes()).hexdigest()}
+    except OSError:
+        return {'path':str(p),'sha':''}
+
+
+def session_copy(path,root=None):
+    root=os.environ.get('KUWAI_ROOT') if root is None else root
+    if not root:
+        return False
+    try:
+        return Path(path).resolve().is_relative_to(Path(root).resolve())
+    except (OSError,ValueError):
+        return False
+
+
+def stale_daemon(runtime,mine):
+    try:
+        owner=json.loads((runtime/'owner').read_text())
+    except (OSError,ValueError):
+        owner=None                       # a controller from before it said: replace it
+    return owner!=mine
+
+
+def stop_daemon(runtime,proc=Path('/proc')):
+    """Ask the controller to end (it restores nothing: levels live in the hardware). Only a
+    process of yours whose command line is the controller's is ever signalled."""
+    try:
+        pid=int((runtime/'pid').read_text().strip())
+        if (proc/str(pid)).stat().st_uid!=os.getuid():
+            return False
+        argv=(proc/str(pid)/'cmdline').read_bytes().split(b'\0')
+    except (OSError,ValueError):
+        return False
+    if pid<=1 or b'--serve' not in argv or not any(a.endswith(b'brightness.py') for a in argv):
+        return False
+    try:
+        os.kill(pid,signal.SIGTERM)
+    except OSError:
+        return False
+    for _ in range(120):
+        time.sleep(.025)
+        try:
+            # Gone, or ended and only waiting for its parent to collect it.
+            if (proc/str(pid)/'stat').read_text().rsplit(')',1)[1].split()[0]=='Z':
+                return True
+        except (OSError,IndexError):
+            return True
+    return False
+
+
 def connect(runtime):
+    daemon=Path(__file__).with_name('brightness.py')
+    if (runtime/'pid').exists() and session_copy(daemon) and stale_daemon(runtime,code_id(daemon)):
+        stop_daemon(runtime)
+
     def open_socket():
         sock=socket.socket(socket.AF_UNIX)
         sock.settimeout(25)

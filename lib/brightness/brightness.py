@@ -758,6 +758,11 @@ async def serve(runtime):
             c.module_file = module_file
         server = await asyncio.start_unix_server(c.handle, path=str(address), limit=8192)
         (runtime / 'pid').write_text(str(os.getpid()))
+        # Which code this controller is: the client compares it with its own copy
+        # and replaces a controller that is another checkout's, or this file
+        # before it changed (brightness-client.py: stale_daemon).
+        here = Path(__file__).resolve()
+        (runtime / 'owner').write_text(json.dumps({'path': str(here), 'sha': hashlib.sha256(here.read_bytes()).hexdigest()}))
         tasks = [asyncio.create_task(c.hypr_events()), asyncio.create_task(c.backlight_events())]
         stop = asyncio.Event()
         loop = asyncio.get_running_loop()
@@ -779,6 +784,7 @@ async def serve(runtime):
             await asyncio.gather(*tasks, *c.workers.values(), *([c.initializing] if c.initializing else []), return_exceptions=True)
             address.unlink(missing_ok=True)
             (runtime / 'pid').unlink(missing_ok=True)
+            (runtime / 'owner').unlink(missing_ok=True)
 
 
 async def client(args, runtime):
