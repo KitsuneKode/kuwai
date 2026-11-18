@@ -328,7 +328,7 @@ FocusScope {
             Image {
                 id: bigImg
                 anchors.fill: parent
-                source: preview.it ? "file://" + (preview.it.thumb || preview.it.path || "") : ""
+                source: preview.it && (preview.it.thumb || preview.it.path) ? "file://" + (preview.it.thumb || preview.it.path) : ""
                 sourceSize: Qt.size(620, 349)
                 fillMode: Image.PreserveAspectCrop
                 asynchronous: true

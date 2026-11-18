@@ -75,13 +75,15 @@ playable() {
         exec 9>"$out.lock"
         flock -n 9 || exit 0
         [ -s "$out" ] && exit 0
-        enc="-c:v libx264 -preset veryfast -crf 20"
-        ffmpeg -hide_banner -encoders 2>/dev/null | grep -q ' h264_nvenc ' && enc="-c:v h264_nvenc -preset p5 -rc vbr -cq 23 -b:v 0"
+        x264="-c:v libx264 -preset veryfast -crf 20"
         # At most 1440 lines (what a wallpaper is shown at here), even sizes, no sound, starts fast.
-        # shellcheck disable=SC2086  # $enc is a fixed list of options from the two lines above
-        if nice -n 19 ffmpeg -nostdin -hide_banner -loglevel error -y -i "$f" -an $enc -pix_fmt yuv420p \
-                -vf "scale=-2:'min(1440,ih)'" -movflags +faststart -f mp4 "$out.part" 2>/dev/null \
-           && [ -s "$out.part" ]; then
+        # shellcheck disable=SC2086  # $1 is one of the two fixed option lists here
+        copy() { nice -n 19 ffmpeg -nostdin -hide_banner -loglevel error -y -i "$f" -an $1 -pix_fmt yuv420p \
+                -vf "scale=-2:'min(1440,ih)'" -movflags +faststart -f mp4 "$out.part" 2>/dev/null && [ -s "$out.part" ]; }
+        # NVENC when it's there; x264 when it's listed but won't open (the card's memory is taken:
+        # a dictation model, the shell's players), or the copy was never made.
+        if { ffmpeg -hide_banner -encoders 2>/dev/null | grep -q ' h264_nvenc ' \
+                && copy "-c:v h264_nvenc -preset p5 -rc vbr -cq 23 -b:v 0"; } || copy "$x264"; then
             mv -f -- "$out.part" "$out"
             # Still the pick: say so again, and the shell (which watches `last`) asks once more.
             [ "$(cat "$LAST" 2>/dev/null)" = "$f" ] && printf '%s' "$f" > "$LAST"

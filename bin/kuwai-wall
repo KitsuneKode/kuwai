@@ -67,14 +67,17 @@ add() (
     # Short clips (< 4 s) and --no-loop: as they are.
     if [ "$loop" = 1 ] && awk -v d="$D" 'BEGIN{exit !(d > 4)}'; then
         local off; off=$(awk -v d="$D" -v f="$F" 'BEGIN{printf "%.3f", d-2*f}')
-        filters=(-filter_complex "[0:v]${base},split[x][y];[x]trim=start=$F,setpts=PTS-STARTPTS[a];[y]trim=end=$F,setpts=PTS-STARTPTS[b];[a][b]xfade=transition=fade:duration=$F:offset=${off}[v]" -map "[v]")
+        filters=(-filter_complex "[0:v]${base},split[x][y];[x]trim=start=$F,setpts=PTS-STARTPTS[a];[y]trim=end=$F,setpts=PTS-STARTPTS[b];[a][b]xfade=transition=fade:duration=$F:offset=${off},format=yuv420p[v]" -map "[v]")
     else
         filters=(-vf "$base")
     fi
     read -r -a codec <<<"$(encoder)"
+    # 4:2:0 out, whatever the crossfade settled on: xfade renegotiated a 4:4:4 source back to
+    # 4:4:4 after the format= above, and no GPU decodes that (24 of 30 loops here, 2026-11-18).
+    codec+=(-pix_fmt yuv420p)
     if ! ffmpeg -nostdin -v error -stats -y -i "$src" "${filters[@]}" -an "${codec[@]}" -movflags +faststart -f mp4 "$temporary"; then
         [ "${codec[1]}" = h264_nvenc ] || return 1
-        ffmpeg -nostdin -v error -stats -y -i "$src" "${filters[@]}" -an -c:v libx264 -preset slow -crf 22 -movflags +faststart -f mp4 "$temporary" || return 1
+        ffmpeg -nostdin -v error -stats -y -i "$src" "${filters[@]}" -an -c:v libx264 -preset slow -crf 22 -pix_fmt yuv420p -movflags +faststart -f mp4 "$temporary" || return 1
     fi
     [ -s "$temporary" ] || return 1
     mv -- "$temporary" "$out" || return 1

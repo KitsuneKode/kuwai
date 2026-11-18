@@ -92,3 +92,29 @@ def test_json_preserves_newlines_in_filenames(wall):
     rows = json.loads(result.stdout)
     assert len(rows) == 1
     assert rows[0]['path'] == str(path)
+
+
+@pytest.mark.skipif(not (Path('/usr/bin/ffmpeg').exists() and Path('/usr/bin/ffprobe').exists()), reason='needs ffmpeg')
+@pytest.mark.parametrize('loop', [True, False], ids=['crossfade-loop', 'as-is'])
+def test_a_loop_is_made_in_colour_a_gpu_decodes(tmp_path, loop):
+    """24 of 30 loops here came out H.264 4:4:4 from a 4:4:4 source: the crossfade renegotiated the
+    format after `format=yuv420p`, and no GPU decodes 4:4:4, so they played on the CPU and held far
+    more memory (bin/kuwai-livewall `playable` then had to make a copy of each)."""
+    home = tmp_path / 'home'
+    (home / 'Pictures/live-wallpapers').mkdir(parents=True)
+    tools = tmp_path / 'tools'
+    tools.mkdir()
+    (tools / 'hyprctl').write_text('#!/bin/sh\nprintf \'[{"height":180}]\'\n')
+    (tools / 'hyprctl').chmod(0o755)
+    src = tmp_path / 'src.mp4'
+    subprocess.run(['ffmpeg', '-v', 'error', '-f', 'lavfi', '-i', 'testsrc2=s=320x180:r=30:d=6',
+                    '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv444p', str(src)], check=True, timeout=60)
+    env = dict(os.environ, HOME=str(home), PATH=f'{tools}:/usr/bin:/bin',
+               XDG_CACHE_HOME=str(home / '.cache'), XDG_STATE_HOME=str(home / '.state'))
+    args = [str(ROOT / 'bin/kuwai-wall'), 'add', str(src), 'colour'] + ([] if loop else ['--no-loop'])
+    result = subprocess.run(args, env=env, capture_output=True, text=True, timeout=120)
+    assert result.returncode == 0, result.stderr
+    out = next((home / 'Pictures/live-wallpapers').glob('*-colour.mp4'))
+    fmt = subprocess.run(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=pix_fmt',
+                          '-of', 'csv=p=0', str(out)], capture_output=True, text=True).stdout.strip()
+    assert fmt == 'yuv420p'

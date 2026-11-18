@@ -72,13 +72,20 @@ Scope {
     // there yet) kept Dusk on screen after the film was back and the setting had been
     // changed to it again, which looked like the setting doing nothing.
     property bool clipFailed: false
-    onClipChanged: clipFailed = false
-    onStyleChanged: clipFailed = false
-    onVideoChanged: clipFailed = false
+    // Before that, one more try decoded on the CPU. The film's two players (one per screen)
+    // take ~290 MB of video memory each on the GPU's decoder; with a dictation model or a
+    // game holding most of a 6 GB card the decoder can't get it ("Cannot allocate memory",
+    // the setting looked like it did nothing). On the CPU it costs a little more of a core
+    // and no video memory at all (measured, a 1440p film: 290 MB → 0, 9 % → 18 % CPU).
+    property bool filmOnCpu: false
+    function filmFresh() { clipFailed = false; filmOnCpu = false; }
+    onClipChanged: filmFresh()
+    onStyleChanged: filmFresh()
+    onVideoChanged: filmFresh()
     // The screen you were on when it came up: the one Live plays on.
     property string mainScreen: ""
     onShowingChanged: {
-        if (showing) { mainScreen = Screens.focusedName; clipFailed = false; }
+        if (showing) { mainScreen = Screens.focusedName; filmFresh(); }
         Saver.showing = showing;
         if (!showing && Dim.wanted) Dim.up();
     }
@@ -107,7 +114,10 @@ Scope {
         const failed = !filmStopping && activeFilm !== "" && wantedFilm === activeFilm;
         filmStopping = true;
         activeFilm = "";
-        if (failed) {
+        if (failed && !filmOnCpu) {
+            console.warn("screensaver: the film didn't start on the GPU's decoder; trying the CPU");
+            filmOnCpu = true;
+        } else if (failed) {
             console.warn("screensaver: the selected film didn't start or stopped; showing Dusk");
             clipFailed = true;
         }
@@ -125,7 +135,10 @@ Scope {
         // "the screensaver only came up on one monitor". It's a separate
         // process, killed on wake, so the second decoder costs nothing after.
         // Basic render loop: the threaded one leaks per frame on NVIDIA (bin/kuwai-shell).
-        environment: ({ KUWAI_SAVER_FILE: root.activeFilm, KUWAI_SAVER_SCREEN: "*", QSG_RENDER_LOOP: "basic" })
+        // On the CPU: Qt's FFmpeg backend tries no hardware decoder for an unknown device type.
+        environment: root.filmOnCpu
+            ? ({ KUWAI_SAVER_FILE: root.activeFilm, KUWAI_SAVER_SCREEN: "*", QSG_RENDER_LOOP: "basic", QT_FFMPEG_DECODING_HW_DEVICE_TYPES: "none" })
+            : ({ KUWAI_SAVER_FILE: root.activeFilm, KUWAI_SAVER_SCREEN: "*", QSG_RENDER_LOOP: "basic" })
         onExited: root.filmExited()
     }
     // ── Dim after a while: ten minutes in, every screen down (services/Dim),

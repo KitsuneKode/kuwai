@@ -106,3 +106,29 @@ def test_what_cannot_be_read_is_played_as_it_is(tmp_path):
     junk.write_bytes(b"not a video")
     assert playable(home, junk) == junk
     assert not (home / ".cache/kuwai/live").exists()
+
+
+def test_a_gpu_encoder_that_fails_still_gets_a_copy_from_x264(tmp_path):
+    # With the card's memory taken (a dictation model, the shell's players), h264_nvenc is listed
+    # but can't open; the copy was then never made and the loop played on the CPU for good.
+    home = tmp_path / "home"
+    (home / ".local/state/live-wallpaper").mkdir(parents=True)
+    (home / "run").mkdir()
+    shim = tmp_path / "shim"
+    shim.mkdir()
+    real = shutil.which("ffmpeg")
+    (shim / "ffmpeg").write_text(f'''#!/bin/sh
+case " $* " in
+    *" -encoders "*) "{real}" "$@"; echo " V....D h264_nvenc           NVIDIA NVENC H.264 encoder (codec h264)"; exit 0 ;;
+    *" h264_nvenc "*) echo "OpenEncodeSessionEx failed: out of memory" >&2; exit 1 ;;
+esac
+exec "{real}" "$@"
+''')
+    (shim / "ffmpeg").chmod(0o755)
+    src = tmp_path / "loop.mp4"
+    clip(src, "yuv444p")
+    env = env_for(home)
+    env["PATH"] = f"{shim}:{env['PATH']}"
+    r = subprocess.run([str(TOOL), "playable", str(src)], env=env, capture_output=True, text=True, timeout=30)
+    assert r.returncode == 0, r.stderr
+    assert pix_fmt(wait_for_copy(home)) == "yuv420p"

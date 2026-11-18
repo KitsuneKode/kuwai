@@ -33,8 +33,10 @@ class SaverStyles(unittest.TestCase):
         self.assertTrue((SHELL / "assets/screensaver/borealis.jpg").exists())
 
     def test_a_failed_film_is_retried_not_remembered(self):
-        self.assertRegex(SAVER, r"onStyleChanged:\s*clipFailed = false")
-        self.assertRegex(SAVER, r"if \(showing\) \{[^}]*clipFailed = false")
+        self.assertRegex(SAVER, r"function filmFresh\(\) \{ clipFailed = false; filmOnCpu = false; \}")
+        for on in ("onStyleChanged", "onClipChanged", "onVideoChanged"):
+            self.assertRegex(SAVER, on + r":\s*filmFresh\(\)")
+        self.assertRegex(SAVER, r"if \(showing\) \{[^}]*filmFresh\(\)")
         self.assertIn("didn't start", SAVER, "the failure is logged, so 'it didn't change' has a reason to find")
 
     def test_theme_tokens_it_uses_exist(self):
@@ -46,3 +48,16 @@ class SaverStyles(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_every_picker_tab_names_where_tab_goes_and_no_empty_picture():
+    # The Screensaver tab had no ⇥ label (undefined, a warning per showing) and the preview
+    # asked for file:/// (a folder) for an item with no picture.
+    qml = (ROOT / "shell/modules/island/ThemePanel.qml").read_text()
+    modes = re.findall(r'"(\w+)"', re.search(r"readonly property var modes: \[(.*?)\]", qml)[1])
+    nxt = dict(re.findall(r'(\w+): "(\w+)"', re.search(r'\["⇥", \(\{(.*?)\}\)', qml)[1]))
+    assert set(nxt) == set(modes)
+    for i, m in enumerate(modes):   # the label is the tab after it, in order
+        label = {"themes": "Themes", "wallpapers": "Wallpapers", "live": "Live", "saver": "Screensaver"}[modes[(i + 1) % len(modes)]]
+        assert nxt[m] == label, (m, nxt[m])
+    assert '"file://" + (preview.it.thumb || preview.it.path || "")' not in qml

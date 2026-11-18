@@ -69,7 +69,7 @@ test('a failed thumbnail can retry after backoff and does not hold an active req
 function film() {
   const queue = [], kills = [];
   const movie = functions('shell/modules/screensaver/Screensaver.qml', ['syncFilm','filmExited'], {
-    wantedFilm:'', activeFilm:'', filmStopping:false, clipFailed:false,
+    wantedFilm:'', activeFilm:'', filmStopping:false, clipFailed:false, filmOnCpu:false,
     filmProc:{running:false, signal(n){kills.push(n);}}, Qt:{callLater(cb){queue.push(cb);}}, console:{warn(){}},
   });
   function exit() {
@@ -97,7 +97,9 @@ test('a failed live saver film falls back instead of keeping an empty film surfa
   const {movie, exit} = film();
   Object.defineProperty(movie, 'wantedFilm', {get:()=>movie.clipFailed ? '' : '/missing.mp4'});
   movie.syncFilm();
-  exit();
+  exit();   // the GPU's decoder: one more try, on the CPU
+  expect(movie.clipFailed).toBe(false);
+  exit();   // the CPU too: Dusk
   expect(movie.clipFailed).toBe(true);
   expect(movie.filmProc.running).toBe(false);
   expect(movie.activeFilm).toBe('');
@@ -175,4 +177,21 @@ test('the saver scene and its timer are suppressed while locked or displays are 
   expect(isShowing({...state, Saver:{locked:false, screensOff:false}})).toBe(true);
   expect(isShowing({...state, Saver:{locked:true, screensOff:false}})).toBe(false);
   expect(isShowing({...state, Saver:{locked:false, screensOff:true}})).toBe(false);
+});
+
+test('a film the GPU decoder refuses plays again decoded on the CPU, once', () => {
+  const {movie, exit} = film();
+  movie.wantedFilm = '/night.mp4'; movie.syncFilm();
+  expect(movie.filmOnCpu).toBe(false);
+  exit();
+  expect(movie.filmOnCpu).toBe(true);
+  expect(movie.clipFailed).toBe(false);
+  expect(movie.activeFilm).toBe('/night.mp4');
+  expect(movie.filmProc.running).toBe(true);
+});
+
+test('the CPU retry is asked for in the film process environment', () => {
+  const src = source('shell/modules/screensaver/Screensaver.qml');
+  expect(src).toMatch(/root\.filmOnCpu\s*\?\s*\(\{[^}]*QT_FFMPEG_DECODING_HW_DEVICE_TYPES: "none"/);
+  expect(src).toMatch(/function filmFresh\(\) \{ clipFailed = false; filmOnCpu = false; \}/);
 });
