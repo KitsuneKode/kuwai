@@ -38,7 +38,8 @@ Singleton {
         const ms = Hyprland.monitors.values;
         for (let i = 0; i < ms.length; i++) {
             const o = ms[i].lastIpcObject || {};
-            const w = (o.width || 0) / (o.scale || 1);
+            const rotated = [1, 3, 5, 7].indexOf(Number(o.transform) || 0) >= 0;
+            const w = ((rotated ? o.height : o.width) || 0) / (o.scale || 1);
             if (px >= (o.x || 0) && px < (o.x || 0) + w && py >= (o.y || 0) && py < (o.y || 0) + hotBand) return true;
         }
         return false;
@@ -55,16 +56,19 @@ Singleton {
             onRead: data => {
                 try {
                     const p = JSON.parse(data.trim() + "}");
+                    if (typeof p.x !== "number" || typeof p.y !== "number" || !Number.isFinite(p.x) || !Number.isFinite(p.y)) throw new Error("Invalid cursor position");
                     const now = Date.now();
-                    const dt = Math.max(1, now - root.t);
+                    const dt = now - root.t;
                     // After a pause (nobody wanted it) the last sample is old:
                     // that's not movement, so it reads as still.
-                    const fresh = dt < 600;
+                    const fresh = dt > 0 && dt < 600;
                     root.vx = fresh ? (p.x - root.x) / dt * 1000 : 0;
                     root.vy = fresh ? (p.y - root.y) / dt * 1000 : 0;
                     root.speed = Math.hypot(root.vx, root.vy);
-                    root.x = p.x; root.y = p.y; root.t = now;
+                    root.x = p.x; root.y = p.y;
                     root.hot = root.inHotBand(p.x, p.y);
+                    // t notifies consumers: publish only after the complete sample.
+                    root.t = now;
                 } catch (e) {}
                 sock.connected = false;
             }

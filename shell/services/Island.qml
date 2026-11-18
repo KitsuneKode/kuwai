@@ -19,7 +19,7 @@ import Quickshell.Io
 Singleton {
     id: root
 
-    readonly property var panels: ["calendar", "power", "launcher", "settings", "system", "theme", "keys", "switcher", "updates", "media", "t3", "agents", "notifs", "bluetooth", "usage", "read", "cleanup"]
+    readonly property var panels: ["activities", "calendar", "power", "launcher", "settings", "system", "theme", "keys", "switcher", "updates", "media", "t3", "agents", "notifs", "bluetooth", "usage", "read", "cleanup"]
     // Old names that still open their panel: "vitals" (machine + agents'
     // usage side by side) became the System section, usage its own section.
     // Anything that still says vitals (a bind, a script, `kuwai vitals`) works.

@@ -9,6 +9,7 @@
 // outside the island's shape without the island growing or clipping it, and
 // it never takes the pointer (empty input region).
 import QtQuick
+import QtQuick.Window
 import Quickshell
 import qs.config
 
@@ -17,6 +18,7 @@ Item {
     property string text
     property bool shown: false
     property bool below: false
+    readonly property bool eligible: shown && visible && text.trim() !== "" && parent !== null
     // Shared across all tips (config/TipClock): one showing, or one just
     // closed, means this one shows at once. (A per-tip flag was never set.)
     property bool counted: false
@@ -32,9 +34,9 @@ Item {
     property real k: 0               // 0 hidden → 1 shown
     Behavior on k { NumberAnimation { duration: Theme.quickMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
 
-    Timer { id: rest; interval: Theme.tipMs; onTriggered: tip.k = 1 }
-    onShownChanged: {
-        if (shown && text !== "") { if (TipClock.warm()) k = 1; else rest.restart(); }
+    Timer { id: rest; interval: Theme.tipMs; onTriggered: if (tip.eligible) tip.k = 1 }
+    onEligibleChanged: {
+        if (eligible) { if (TipClock.warm()) k = 1; else rest.restart(); }
         else { rest.stop(); k = 0; }
     }
 
@@ -45,6 +47,7 @@ Item {
         active: tip.k > 0 && tip.parent !== null
         PopupWindow {
             id: pop
+            objectName: "tooltip-popup"
             visible: tip.k > 0.01 && tip.parent !== null
             color: "transparent"
             anchor.item: tip.parent
@@ -52,20 +55,34 @@ Item {
             anchor.gravity: tip.below ? Edges.Bottom : Edges.Top
             anchor.margins.top: tip.below ? 6 : 0
             anchor.margins.bottom: tip.below ? 0 : 6
-            implicitWidth: label.implicitWidth + 16
-            implicitHeight: label.implicitHeight + 8
+            readonly property real screenWidth: tip.Window.window ? tip.Window.window.screen.width : Theme.panelS
+            readonly property real textWidth: Math.max(1, Math.min(Theme.panelS, screenWidth - 2 * Theme.s4) - 2 * Theme.s2)
+            implicitWidth: label.width + 2 * Theme.s2
+            implicitHeight: label.height + 2 * Theme.s1
             mask: Region {}
 
             Rectangle {
                 width: pop.implicitWidth
                 height: pop.implicitHeight
-                radius: height / 2
+                radius: Math.min(Theme.r3, height / 2)
                 opacity: tip.k
-                y: (1 - tip.k) * (tip.below ? -3 : 3)
+                y: Theme.reduceMotion ? 0 : (1 - tip.k) * (tip.below ? -3 : 3)
                 color: Qt.rgba(0.11, 0.11, 0.13, 0.98)
                 border.width: 1
                 border.color: Qt.rgba(1, 1, 1, 0.1)
-                Label { id: label; anchors.centerIn: parent; text: tip.text; size: 11; weight: Theme.wMedium; color: Theme.textPrimary }
+                Label {
+                    id: label
+                    objectName: "tooltip-label"
+                    anchors.centerIn: parent
+                    width: Math.min(implicitWidth, pop.textWidth)
+                    wrapMode: Text.Wrap
+                    maximumLineCount: 6
+                    elide: Text.ElideRight
+                    text: tip.text
+                    size: Theme.tSub
+                    weight: Theme.wMedium
+                    color: Theme.textPrimary
+                }
             }
         }
     }

@@ -41,8 +41,10 @@ Item {
 
     readonly property bool on: Settings.islandSplit
     readonly property var player: bar.player
-    readonly property real ph: h - 6                 // a capsule: a little shorter, centred on the island
-    readonly property real gap: 8                    // island to capsule, capsule to capsule (Apple's ~8 pt)
+    FontMetrics { id: pillMetrics; font.family: Theme.fontText; font.pixelSize: Theme.tBody * Theme.textScale }
+    readonly property real ph: Math.max(h - 6, pillMetrics.height + Theme.s2)
+    readonly property real minimumTarget: Theme.s5 + Theme.s4
+    readonly property real gap: Theme.s2                    // island to capsule, capsule to capsule (Apple's ~8 pt)
 
     // ── What's out ──
     readonly property bool musicLive: !!player && player.isPlaying && Settings.restMedia
@@ -112,12 +114,12 @@ Item {
     property bool t3Waiting: false
     readonly property var t3Now: [T3Code.running, T3Code.waiting]
     onT3NowChanged: if (t3Live) { t3Value = String(T3Code.waiting > 0 ? T3Code.waiting : T3Code.running); t3Waiting = T3Code.waiting > 0; }
-    readonly property var wants: ({
-        music: on && atRest && musicLive,
-        min: on && atRest && minimized.length > 0,
-        agents: on && atRest && (agentsLive || agentsLinger.running),
-        t3: on && atRest && (t3Live || t3Linger.running),
-        sys: on && atRest && (sysLive || sysLinger.running)
+    readonly property var demand: ({
+        music: on && musicLive,
+        min: on && minimized.length > 0,
+        agents: on && (agentsLive || agentsLinger.running),
+        t3: on && (t3Live || t3Linger.running),
+        sys: on && (sysLive || sysLinger.running)
     })
 
     // ── Who sits where ──
@@ -127,43 +129,114 @@ Item {
     readonly property var order: ["music", "agents", "t3", "sys", "min"]
     // Windows tucked away with Super+O (special:minimized): a capsule of their
     // icons, each one a way back. Without it they were nowhere to be seen.
-    readonly property var minimized: Hyprland.toplevels.values.filter(t => t.workspace && t.workspace.name === "special:minimized")
+    property var minimized: Hyprland.toplevels.values.filter(t => t.workspace && t.workspace.name === "special:minimized")
     // Onto the workspace you're on, focused (what Super+Shift+O does for the last one).
     function bringBack(t) {
         if (!t) return;
-        const ws = Hyprland.focusedWorkspace ? Hyprland.focusedWorkspace.id : 1;
-        Hyprland.dispatch("hl.dsp.window.move({ window = 'address:0x" + t.address + "', workspace = " + ws + " })");
-        Hyprland.dispatch("hl.dsp.focus({ window = 'address:0x" + t.address + "' })");
+        const address = "0x" + String(t.address || "").replace(/^0x/, "");
+        if (!/^0x[0-9a-f]+$/i.test(address)) return;
+        const candidates = [bar && bar.screenWs ? bar.screenWs.id : 0, Hyprland.focusedWorkspace ? Hyprland.focusedWorkspace.id : 0, 1];
+        const ws = candidates.map(Number).find(n => Number.isInteger(n) && n > 0 && n <= 2147483647);
+        Hyprland.dispatch("hl.dsp.window.move({ window = " + JSON.stringify("address:" + address) + ", workspace = " + ws + " })");
+        Hyprland.dispatch("hl.dsp.focus({ window = " + JSON.stringify("address:" + address) + " })");
     }
     property var sideOf: ({})
-    onWantsChanged: assign()
-    function pillOf(k) { return ({ music: musicPill, agents: agentsPill, t3: t3Pill, sys: sysPill, min: minPill })[k]; }
+    onDemandChanged: assign()
+    function pillOf(k) { return ({ music: musicPill, agents: agentsPill, t3: t3Pill, sys: sysPill, min: minPill, more: morePill })[k]; }
     function assign() {
-        const next = {};
+        // Keep the last preferred side for a departing pill without feeding
+        // the animation back into the arrangement binding.
+        const next = Object.assign({}, sideOf);
         let left = 0, right = 0;
         for (const k of order) {
-            const s = sideOf[k];
-            if (s && (wants[k] || pillOf(k).out)) { next[k] = s; s < 0 ? left++ : right++; }
+            if (demand[k] && next[k]) next[k] < 0 ? left++ : right++;
         }
         for (const k of order) {
-            if (!wants[k] || next[k]) continue;
-            const s = k === "music" ? -1 : left < right ? -1 : left > right ? 1 : (left + right) % 2 === 0 ? -1 : 1;
+            if (!demand[k] || next[k]) continue;
+            const s = k === "music" ? -1 : left <= right ? -1 : 1;
             next[k] = s;
             s < 0 ? left++ : right++;
         }
         sideOf = next;
     }
-    // Where a capsule starts: the island's edge, past the capsules nearer it
-    // on the same side (their room grows and shrinks with their springs).
+
+    // Reserve one slot for More when there are too many activities. Urgent
+    // items take the available direct slots first, then keep their usual sides
+    // wherever there is space. Side zero places More below a full-width notch.
+    function arrange(keys, preferred, leftSlots, rightSlots) {
+        const sides = {}, overflow = [];
+        const free = { "-1": leftSlots, "1": rightSlots };
+        const total = leftSlots + rightSlots;
+        const directCount = keys.length > total ? Math.max(0, total - 1) : keys.length;
+        for (const [index, key] of keys.entries()) {
+            if (index >= directCount) { overflow.push(key); continue; }
+            const side = preferred[key] || -1;
+            const lane = free[side] > 0 ? side : -side;
+            sides[key] = lane;
+            free[lane]--;
+        }
+        if (overflow.length) sides.more = free[1] > 0 ? 1 : free[-1] > 0 ? -1 : 0;
+        return { sides, overflow };
+    }
+    readonly property var activeKeys: order.filter(k => demand[k])
+    readonly property var priorityKeys: {
+        const urgent = [];
+        if (Alerts.active.length) urgent.push("sys");
+        if (agentsErr.length || agentsNeed) urgent.push("agents");
+        if (T3Code.waiting > 0) urgent.push("t3");
+        return urgent.filter(k => demand[k]).concat(activeKeys.filter(k => !urgent.includes(k)));
+    }
+    readonly property real leftRoom: Math.max(0, leftEdge - Theme.s2)
+    readonly property real rightRoom: Math.max(0, width - rightEdge - Theme.s2)
+    readonly property int leftSlots: Math.floor(leftRoom / (minimumTarget + gap))
+    readonly property int rightSlots: Math.floor(rightRoom / (minimumTarget + gap))
+    readonly property var arrangement: arrange(priorityKeys, sideOf, leftSlots, rightSlots)
+    readonly property var displayOrder: [...order, "more"]
+    function placement(k) {
+        const lane = arrangement.sides[k];
+        if (lane !== undefined) return lane;
+        // A departing activity can animate in its old lane only while a
+        // complete target still fits there. New activity owns the space.
+        const previous = sideOf[k];
+        if (demand[k] || !previous || !pillOf(k).out) return undefined;
+        const capacity = previous < 0 ? leftSlots : rightSlots;
+        const occupied = Object.values(arrangement.sides).filter(s => s === previous).length;
+        const earlier = order.slice(0, order.indexOf(k)).filter(other => !demand[other] && sideOf[other] === previous && pillOf(other).out).length;
+        return occupied + earlier < capacity ? previous : undefined;
+    }
     function fromOf(k) {
-        const s = sideOf[k] || 1;
-        let x = s > 0 ? rightEdge : leftEdge;
-        for (const o of order) {
-            if (o === k) break;
-            if ((sideOf[o] || 0) === s) x += s * pillOf(o).room;
+        const side = placement(k);
+        if (!side) return width / 2;
+        let x = side > 0 ? rightEdge : leftEdge;
+        for (const other of displayOrder) {
+            if (other === k) break;
+            if (placement(other) === side) x += side * pillOf(other).room;
         }
         return x;
     }
+    function spaceFor(k) {
+        const side = placement(k);
+        if (!side) return k === "more" ? Math.max(1, width - 2 * Theme.s2) : minimumTarget + gap;
+        const count = displayOrder.filter(other => placement(other) === side && (arrangement.sides[other] !== undefined || pillOf(other).out)).length;
+        return (side < 0 ? leftRoom : rightRoom) / Math.max(1, count);
+    }
+    function labelFor(k) {
+        if (k === "more") {
+            const count = arrangement.overflow.length;
+            return count === 1 ? "1 more activity" : count + " more activities";
+        }
+        return ({music: "Now Playing", agents: "Agents", t3: "T3 threads", sys: "System status", min: "Restore minimized window"})[k] || k;
+    }
+    property var overflowSelection: []
+    function openOverflow(how) {
+        overflowSelection = arrangement.overflow.slice();
+        Island.open("activities", bar.screenName, how);
+    }
+    function glyphFor(k) {
+        if (k === "sys" && Alerts.active.length) return Alerts.active[0].glyph;
+        return ({music: "\u{f0387}", agents: "\u{f06a9}", sys: "\u{f06b0}", min: "\u{f05b6}"})[k] || "";
+    }
+    readonly property bool hovered: pills.some(p => p.enabled && p.hovered)
     Component.onCompleted: { t3NowChanged(); t3FinishedWas = T3Code.finished; agentsDoneWas = agentsDone.length; assign(); }
 
     // What waits on you, by capsule: the light goes on what's asking
@@ -172,7 +245,7 @@ Item {
     readonly property bool agentsHold: agentsPill.shown
     readonly property bool t3Hold: t3Pill.shown
     // For the window's input mask (IslandBar): what's out takes clicks.
-    readonly property var pills: [musicPill, agentsPill, t3Pill, sysPill, minPill]
+    readonly property var pills: [musicPill, agentsPill, t3Pill, sysPill, minPill, morePill]
 
     // One capsule: black glass like the island, sized to `content` (a
     // circle at least), budding from `from` toward `side`.
@@ -183,7 +256,13 @@ Item {
         // lists what it holds, to act on from there (not straight to one of
         // them; right-click does that where there's one to go to).
         property string panel: ""
-        function openPanel() { if (panel) Island.toggle(panel, split.bar.screenName, "pointer"); }
+        function openPanel(how = "pointer") {
+            if (name === "more") split.openOverflow(how);
+            else if (panel) Island.open(panel, split.bar.screenName, how);
+        }
+        function activate(how = "pointer") { if (panel) openPanel(how); else if (name === "min") split.bringBack(split.minimized[split.minimized.length - 1]); }
+        readonly property bool hovered: pillHover.hovered
+        readonly property alias inputTarget: hitTarget
         property bool needs: false        // something here waits on you: an orange glass edge
         // Its state's light (see "What state each is in"): a colour, and
         // whether it asks for you (a halo) or only says so (the edge).
@@ -199,25 +278,31 @@ Item {
             NumberAnimation { target: pill; property: "flash"; to: 1; duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
             NumberAnimation { target: pill; property: "flash"; to: 0; duration: Theme.breathOutMs; easing.type: Easing.InOutSine }
         }
-        readonly property int side: split.sideOf[name] || 1
+        readonly property var lane: split.placement(name)
+        readonly property int side: lane || 1
+        readonly property bool belowNotch: lane === 0
         // Never an empty capsule: what it holds decides too (a linger, or a
         // state its marks don't draw, left a black pill with nothing in it).
-        readonly property bool shown: !!split.wants[name] && !!split.sideOf[name] && slot.childrenRect.width > 0.5
+        readonly property bool shown: split.atRest && split.arrangement.sides[name] !== undefined
         readonly property real from: split.fromOf(name)
         default property alias content: slot.data
-        readonly property real bodyW: Math.max(split.ph, Math.round(slot.childrenRect.width) + 20)
+        readonly property real naturalW: Math.max(split.minimumTarget, split.ph, Math.ceil(slot.childrenRect.width) + Theme.s4 + Theme.s1)
+        readonly property real pillGap: belowNotch ? 0 : Math.min(split.gap, Math.max(0, split.spaceFor(name) - split.minimumTarget))
+        readonly property real maximumW: Math.max(1, split.spaceFor(name) - pillGap)
+        readonly property real bodyW: Math.min(naturalW, maximumW)
+        readonly property bool compact: naturalW > maximumW + 0.5 || slot.childrenRect.width <= 0.5
         // The capsule's drawn width springs to its content's (it snapped to
         // each new width): wider with the island's give, narrower clean.
-        readonly property real w: wv.value
+        readonly property real w: Math.max(1, Math.min(wv.value, maximumW))
         // settle(), not snap(): snap assigns the target and breaks its binding
         // to bodyW, and the capsule froze at its first width (T3's ✓ 4 spilled
         // out of it, 2026-11-17).
         Spring { id: wv; tier: pill.bodyW > wv.value ? Theme.surfaceIn : Theme.surfaceOut; epsilon: 0.25; target: pill.bodyW; Component.onCompleted: settle() }
         onShownChanged: if (shown && !out) wv.settle()
         readonly property bool out: sv.value > 0.02
-        onOutChanged: if (!out) split.assign()
         // The room it takes along its side (for the capsules beyond it).
-        readonly property real room: (w + split.gap) * sv.value
+        readonly property real progress: Math.max(0, Math.min(1, sv.value))
+        readonly property real room: (w + pillGap) * progress
 
         // ── A state change inside the capsule (Clove's contentReveal, Emil's
         // island lesson): what it showed leaves in 110 ms (a snapshot, frozen
@@ -247,8 +332,8 @@ Item {
         }
         Spring { id: sv; tier: pill.shown ? Theme.surfaceIn : Theme.surfaceOut; epsilon: 0.002; target: pill.shown ? 1 : 0; Component.onCompleted: settle() }
         // From 60 % tucked behind the edge to a gap clear of it.
-        readonly property real off: -w * 0.6 + (w * 0.6 + split.gap) * sv.value
-        x: side > 0 ? from + off : from - off - w
+        readonly property real off: -w * 0.6 + (w * 0.6 + pillGap) * progress
+        x: belowNotch ? (split.width - w) / 2 : side > 0 ? from + off : from - off - w
         // Pulled down (gestures skill): its bottom edge is the pointer, 1:1 up
         // to the line, the capsule stretching like a drop (top 60 %, length
         // 40 % of the travel); past the line it resists, and its edge lights:
@@ -257,20 +342,34 @@ Item {
         readonly property real pullLine: Theme.swipeThreshold * 0.8
         readonly property real pullP: Math.max(0, Math.min(1, pull.value / pullLine))
         readonly property bool pullArmed: pullDrag.active && pull.value >= pullLine
-        y: split.topY + Math.round((split.h - split.ph) / 2) + Math.max(0, pull.value) * 0.6 + Math.min(0, pull.value)
+        y: split.topY + (belowNotch ? split.h + Theme.s2 : Math.round((split.h - split.ph) / 2)) + Math.max(0, pull.value) * 0.6 + Math.min(0, pull.value)
         Spring { id: pull; tier: Theme.springFast; target: 0; epsilon: 0.2 }
         DragHandler {
             id: pullDrag
-            enabled: pill.panel !== ""
+            parent: hitTarget
+            enabled: pill.enabled && pill.panel !== "" && pill.name !== "more"
             target: null
             xAxis.enabled: false
             property real grab: 0
+            property int gesture: 0
+            onCanceled: gesture++
             onActiveChanged: {
-                if (active) { grab = pull.value; pull.snap(pull.value); return; }
-                // Opens on distance past the line, or a flick down.
-                if (pull.value >= pill.pullLine || centroid.velocity.y / 1000 > Theme.swipeFlick) pill.openPanel();
-                pull.velocity = Theme.reduceMotion ? 0 : centroid.velocity.y;
+                if (active) {
+                    gesture++;
+                    grab = pull.value;
+                    pull.snap(pull.value);
+                    return;
+                }
+                const ended = gesture;
+                const speed = centroid.velocity.y;
+                const opens = pull.value >= pill.pullLine || speed / 1000 > Theme.swipeFlick;
+                pull.velocity = Theme.reduceMotion ? 0 : speed;
                 pull.target = 0;
+                // Cancellation and losing the grab can end the gesture too.
+                // Give Qt's cancellation signal a chance to invalidate it.
+                if (opens) Qt.callLater(() => {
+                    if (ended === gesture && pill.enabled && !active) pill.openPanel();
+                });
             }
             onTranslationChanged: {
                 if (!active) return;
@@ -281,7 +380,35 @@ Item {
         }
         width: w
         height: split.ph + Math.max(0, pull.value) * 0.4
-        visible: out
+        visible: out && lane !== undefined
+        enabled: shown && w >= split.minimumTarget - 0.5 && progress >= 0.995
+        activeFocusOnTab: enabled
+        Accessible.role: Accessible.Button
+        Accessible.name: split.labelFor(name)
+        Accessible.onPressAction: activate()
+        Keys.onReturnPressed: activate("key")
+        Keys.onEnterPressed: activate("key")
+        Keys.onSpacePressed: activate("key")
+        // Vertical slop adds a dense-desktop target without increasing the
+        // painted capsule. Horizontal targets keep their allocated lanes.
+        Item {
+            id: hitTarget
+            width: pill.width
+            height: Math.max(split.minimumTarget, pill.height)
+            y: Math.max(-pill.y, (pill.height - height) / 2)
+        }
+        HoverHandler { id: pillHover; parent: hitTarget; enabled: pill.enabled; cursorShape: Qt.PointingHandCursor }
+        TapHandler {
+            parent: hitTarget
+            acceptedButtons: Qt.LeftButton
+            gesturePolicy: TapHandler.WithinBounds
+            onTapped: point => {
+                const p = slot.mapFromItem(hitTarget, point.position.x, point.position.y);
+                if (pill.name === "min" && !pill.compact && p.x >= 0 && p.x < slot.width && p.y >= 0 && p.y < slot.height) return;
+                pill.activate();
+            }
+        }
+        FocusRing { cornerRadius: split.ph / 2 }
         opacity: Math.min(1, sv.value * 2)
         scale: 0.86 + 0.14 * sv.value
         transformOrigin: side > 0 ? Item.Left : Item.Right
@@ -311,13 +438,17 @@ Item {
             Behavior on border.color { ColorAnimation { duration: Theme.colorMs } }
         }
         Item {
+          anchors.fill: parent
+          clip: true
+          Item {
             id: slot
             x: Math.round((pill.w - childrenRect.width) / 2)
             y: Math.round((split.ph - childrenRect.height) / 2)
             width: childrenRect.width; height: childrenRect.height
             // The content arrives once the capsule is mostly out, leaves first.
             readonly property real arrive: Math.max(0, Math.min(1, (sv.value - (pill.shown ? 0.45 : 0.6)) / 0.35))
-            opacity: arrive * pill.reveal
+            opacity: pill.compact ? 0 : arrive * pill.reveal
+            enabled: !pill.compact
             // Clove's live ears: the icon comes once its capsule has opened,
             // growing from 70 % on the capsule's own spring (its give included).
             readonly property real grown: Math.max(0, Math.min(1.05, (sv.value - 0.45) / 0.55))   // past 1 with the spring's give
@@ -339,9 +470,21 @@ Item {
             opacity: 0
             visible: opacity > 0.01
         }
+          Text {
+            anchors.centerIn: parent
+            visible: pill.compact
+            textFormat: Text.PlainText
+            text: pill.name === "more" ? "+" + split.arrangement.overflow.length : pill.name === "t3" ? "T3" : split.glyphFor(pill.name)
+            font.family: ["more", "t3"].includes(pill.name) ? Theme.fontText : Theme.fontGlyph
+            font.pixelSize: Theme.tSub * Theme.textScale
+            font.weight: Theme.wSemibold
+            color: pill.toned ? pill.tone : Theme.textPrimary
+          }
+        }
+        Tip { text: split.labelFor(pill.name) + " · open for details"; shown: pill.compact && pill.hovered; below: true }
         Timer {
             interval: Theme.hoverLeaveMs + 200; repeat: true; triggeredOnStart: true
-            running: pill.out && !swap.running
+            running: pill.out && !pill.compact && !Theme.reduceMotion && !swap.running
             onTriggered: ghost.scheduleUpdate()
         }
     }
@@ -376,12 +519,12 @@ Item {
             color: badge.tint
             font.features: ({ "tnum": 1 })
         }
-        HoverHandler { id: badgeHover; cursorShape: Qt.PointingHandCursor }
-        TapHandler { acceptedButtons: Qt.LeftButton | Qt.RightButton; onTapped: (point, button) => button === Qt.RightButton ? badge.altClicked() : badge.clicked() }
-        Accessible.onPressAction: badge.clicked()
+        HoverHandler { id: badgeHover; enabled: badge.enabled; cursorShape: Qt.PointingHandCursor }
+        TapHandler { acceptedButtons: Qt.LeftButton | Qt.RightButton; gesturePolicy: TapHandler.WithinBounds; onTapped: (point, button) => button === Qt.RightButton ? badge.altClicked() : badge.clicked() }
         Tip { text: badge.tip; shown: badgeHover.hovered && badge.tip !== ""; below: true }
         Accessible.role: Accessible.Button
         Accessible.name: badge.tip || badge.text
+        Accessible.onPressAction: badge.clicked()
     }
 
     // ── Music, stepped aside ──
@@ -394,8 +537,8 @@ Item {
             width: 18; height: 18; radius: 5
             color: Qt.rgba(1, 1, 1, 0.08)
             ArtImage { anchors.fill: parent; source: split.player ? (split.player.trackArtUrl || "") : ""; px: 36 }
-            HoverHandler { id: musicHover; cursorShape: Qt.PointingHandCursor }
-            TapHandler { onTapped: Island.open("media", split.bar.screenName, "pointer", "island") }
+            HoverHandler { id: musicHover; enabled: parent.enabled; cursorShape: Qt.PointingHandCursor }
+            TapHandler { gesturePolicy: TapHandler.WithinBounds; onTapped: Island.open("media", split.bar.screenName, "pointer", "island") }
             Tip { text: (split.player ? (Media.title(split.player) || split.player.identity || "Playing") : "") + " · click for Now Playing"; shown: musicHover.hovered; below: true }
             Accessible.role: Accessible.Button
             Accessible.name: "Now playing: " + (split.player ? (Media.title(split.player) || split.player.identity || "music") : "music")
@@ -529,8 +672,8 @@ Item {
                         asynchronous: true
                         opacity: mwHover.hovered ? 1 : 0.85
                     }
-                    HoverHandler { id: mwHover; margin: 3; cursorShape: Qt.PointingHandCursor }
-                    TapHandler { onTapped: split.bringBack(mw.modelData) }
+                    HoverHandler { id: mwHover; enabled: parent.enabled; margin: 3; cursorShape: Qt.PointingHandCursor }
+                    TapHandler { gesturePolicy: TapHandler.WithinBounds; onTapped: split.bringBack(mw.modelData) }
                     Tip { text: (mw.modelData.title || mw.cls) + "\nClick to bring it back"; shown: mwHover.hovered; below: true }
                     Accessible.role: Accessible.Button
                     Accessible.name: "Bring back " + (mw.modelData.title || mw.cls)
@@ -544,8 +687,8 @@ Item {
                 size: Theme.tSub; weight: Theme.wSemibold
                 color: Theme.textSecondary
                 font.features: ({ "tnum": 1 })
-                HoverHandler { id: moreHover; cursorShape: Qt.PointingHandCursor }
-                TapHandler { onTapped: split.bringBack(split.minimized[split.minimized.length - 1]) }
+                HoverHandler { id: moreHover; enabled: parent.enabled; cursorShape: Qt.PointingHandCursor }
+                TapHandler { gesturePolicy: TapHandler.WithinBounds; onTapped: split.bringBack(split.minimized[split.minimized.length - 1]) }
                 Accessible.role: Accessible.Button
                 Accessible.name: (split.minimized.length - 3) + " more minimized, bring one back"
                 Accessible.description: split.minimized.slice(3).map(t => t.title).join(", ")
@@ -554,4 +697,17 @@ Item {
             }
         }
     }
+
+    Pill {
+        id: morePill
+        name: "more"
+        panel: "activities"
+        needs: split.arrangement.overflow.some(k => split.pillOf(k).attention)
+        Label {
+            text: "+" + split.arrangement.overflow.length
+            size: Theme.tSub
+            weight: Theme.wSemibold
+        }
+    }
+
 }

@@ -4,7 +4,7 @@
 kuwai-ui-test --case primitives --output /tmp/kuwai-ui
 kuwai-ui-test --self-test-isolation --output /tmp/kuwai-ui
 Exit2 means unqualified (missing runtime/backend/isolation), not a passing skip.
-This is primitive offscreen qualification, not a full compositor/input matrix.
+This qualifies isolated rendering/input, not the live Wayland compositor.
 """
 import argparse
 import json
@@ -21,14 +21,18 @@ def has_runtime_failure(log):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--case', choices=['primitives', 'settings-store'], default='primitives')
+    parser.add_argument('--case', choices=['primitives', 'settings-store', 'island'], default='primitives')
     parser.add_argument('--compile-components', action='store_true', help='requires a real PanelWindow backend; otherwise UNQUALIFIED')
     parser.add_argument('--self-test-isolation', action='store_true')
     parser.add_argument('--text-scale', type=float, choices=[1, 1.2, 2], default=1)
+    parser.add_argument('--motion', choices=['reduced', 'full'], default='reduced')
+    parser.add_argument('--backend', choices=['offscreen', 'x11'], default='offscreen', help='x11 uses private Xvfb/Mesa and can compile PanelWindow components')
     parser.add_argument('--output', required=True, type=Path)
     args = parser.parse_args()
+    if args.compile_components and args.case != 'primitives':
+        parser.error('--compile-components requires --case primitives')
     root = Path(__file__).resolve().parents[1]
-    for binary in ('bwrap', 'qs', 'dbus-run-session'):
+    for binary in ('bwrap', 'qs', 'dbus-run-session') + (('Xvfb',) if args.backend == 'x11' else ()):
         if not shutil.which(binary):
             print(json.dumps({'status':'UNQUALIFIED','reason':'missing '+binary}))
             return 2
@@ -39,7 +43,13 @@ def main():
         app, home = private/'app', private/'home'
         home.mkdir()
         shutil.copytree(root/'shell', app/'shell')
-        fixture=(root/'tests/ui'/('primitives.qml' if args.case == 'primitives' else 'settings-store.qml')).read_text()
+        if args.case == 'island' and args.backend == 'offscreen':
+            # These two adapters require layer-shell even at compile time.
+            # The offscreen case tests capsule rendering/input, not inhibition
+            # or wallpaper composition; the production capsule code stays real.
+            for name in ('Caffeine.qml', 'WallFx.qml'):
+                shutil.copy2(root/'tests/ui/island-stubs'/name, app/'shell/services'/name)
+        fixture=(root/'tests/ui'/(args.case + '.qml')).read_text()
         if args.compile_components:
             imports='\n'.join(line for line in (root/'shell/shell.qml').read_text().splitlines() if line.startswith('import qs.') and line not in fixture)
             fixture=fixture.replace('ShellRoot {',imports+'\nShellRoot {',1)
@@ -65,7 +75,14 @@ def main():
              'XDG_CONFIG_HOME':'/home/test/config','XDG_STATE_HOME':'/home/test/state',
              'XDG_CACHE_HOME':'/home/test/cache','XDG_DATA_HOME':'/home/test/data',
              'QT_QPA_PLATFORM':'offscreen','QT_QUICK_BACKEND':'software','QSG_RENDER_LOOP':'basic',
-             'KUWAI_UI_COMPILE':json.dumps([str(p.relative_to(root/'shell')) for directory in ('components','modules') for p in (root/'shell'/directory).rglob('*.qml')] if args.compile_components else []),'KUWAI_UI_TEXT_SCALE':str(args.text_scale),'KUWAI_ROOT':'/app','KUWAI_REDUCE_MOTION':'1','LANG':'C.UTF-8'}
+             'KUWAI_UI_COMPILE':json.dumps([str(p.relative_to(root/'shell')) for directory in ('components','modules') for p in (root/'shell'/directory).rglob('*.qml')] if args.compile_components else []),'KUWAI_UI_TEXT_SCALE':str(args.text_scale),'KUWAI_ROOT':'/app','KUWAI_REDUCE_MOTION':'1' if args.motion == 'reduced' else '0','LANG':'C.UTF-8'}
+        if args.backend == 'x11':
+            vendors = sorted(Path('/usr/share/glvnd/egl_vendor.d').glob('*mesa*.json'))
+            if not vendors:
+                print(json.dumps({'status':'UNQUALIFIED','reason':'private X11 requires a Mesa EGL vendor'}))
+                return 2
+            env.update(QT_QPA_PLATFORM='xcb', QT_QUICK_BACKEND='rhi', QSG_RHI_BACKEND='opengl', DISPLAY=':99',
+                       LIBGL_ALWAYS_SOFTWARE='true', __GLX_VENDOR_LIBRARY_NAME='mesa', __EGL_VENDOR_LIBRARY_FILENAMES=str(vendors[0]))
         for key,value in env.items(): command.extend(['--setenv',key,value])
         if args.self_test_isolation:
             # The network namespace must differ, and no host bus/home is mounted.
@@ -73,7 +90,14 @@ def main():
             probe="import os,json; ok=not os.path.exists('/run/dbus/system_bus_socket') and not os.path.exists('/run/user') and not os.path.exists('/home/kitsunekode') and os.stat('/proc/self/ns/net').st_ino != "+str(net)+"; print(json.dumps({'isolated':ok})); raise SystemExit(0 if ok else 1)"
             command += ['/usr/bin/python','-c',probe]
         else:
-            command += ['/usr/bin/sh','-c','mkdir -p /run/test; chmod 700 /run/test; exec dbus-run-session -- qs -p /app/shell/ui-smoke.qml']
+            launch = 'mkdir -p /run/test; chmod 700 /run/test; '
+            if args.backend == 'x11':
+                launch += ('mkdir -p /tmp/.X11-unix; chmod 1777 /tmp/.X11-unix; '
+                           'Xvfb :99 -screen 0 1280x720x24 -nolisten tcp >/out/xvfb.log 2>&1 & server=$!; '
+                           'i=0; while [ ! -S /tmp/.X11-unix/X99 ] && [ $i -lt 100 ]; do '
+                           'kill -0 "$server" 2>/dev/null || exit 2; i=$((i+1)); sleep 0.02; done; '
+                           '[ -S /tmp/.X11-unix/X99 ] || exit 2; ')
+            command += ['/usr/bin/sh','-c',launch + 'exec dbus-run-session -- qs -p /app/shell/ui-smoke.qml']
         try:
             result=subprocess.run(command,env={'PATH':'/usr/bin:/bin'},capture_output=True,text=True,timeout=20)
         except subprocess.TimeoutExpired:
@@ -89,8 +113,10 @@ def main():
         if has_runtime_failure(result.stdout+result.stderr):
             print(json.dumps({'status':'FAIL','reason':'native fixture assertion failed','log':str(output/'runtime.log')}))
             return 1
-        ok='UI_SMOKE_CAPTURED' in result.stdout+result.stderr and (output/'primitives.png').is_file()
-        print(json.dumps({'status':'PASS' if ok else 'UNQUALIFIED','scope':'offscreen primitives only','output':str(output)}))
+        image = 'island.png' if args.case == 'island' else 'primitives.png'
+        ok='UI_SMOKE_CAPTURED' in result.stdout+result.stderr and (output/image).is_file()
+        print(json.dumps({'status':'PASS' if ok else 'UNQUALIFIED','scope':args.backend + (' island layout/input' if args.case == 'island' else ' ' + args.case),
+                          'compiledComponents':len(json.loads(env['KUWAI_UI_COMPILE'])), 'output':str(output)}))
         return 0 if ok else 2
 
 if __name__ == '__main__':

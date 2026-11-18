@@ -38,7 +38,7 @@ Item {
     signal previewRequested()
 
     implicitWidth: row.implicitWidth + 12
-    implicitHeight: 22
+    implicitHeight: Math.max(22, row.implicitHeight + Theme.s1)
 
     // The hover surface, inset with the same 6 px the content sits in.
     Rectangle {
@@ -84,6 +84,7 @@ Item {
         // when the count changes the arc makes one smooth turn (a stepping
         // arc read as a stuck spinner; a continuous one cost 15 % CPU).
         Item {
+            objectName: "rest-count-ring"
             visible: mark.ring !== "" && mark.value !== ""
             anchors.verticalCenter: parent.verticalCenter
             // Same optical drop as the wordmark beside it. The ring used to
@@ -91,8 +92,8 @@ Item {
             // digit read high.
             anchors.verticalCenterOffset: 1
             // A longer value ("15h") stretches a solid ring into a pill.
-            width: mark.ring === "solid" ? Math.max(18, ringValue.implicitWidth + 8) : 18
-            height: 18
+            width: Math.max(18, ringValue.implicitWidth + Theme.s2, mark.ring === "spin" ? ringValue.implicitHeight + Theme.s1 : 0)
+            height: mark.ring === "spin" ? width : Math.max(18, ringValue.implicitHeight + Theme.s1)
             Rectangle {
                 anchors.fill: parent; radius: height / 2
                 color: "transparent"
@@ -106,10 +107,12 @@ Item {
                 anchors.fill: parent
                 property color ink: mark.tone
                 onInkChanged: requestPaint()
+                onWidthChanged: requestPaint()
+                onHeightChanged: requestPaint()
                 onPaint: {
                     const c = getContext("2d");
                     c.reset(); c.lineWidth = 1.5; c.lineCap = "round"; c.strokeStyle = ink;
-                    c.beginPath(); c.arc(9, 9, 8.25, -Math.PI / 2, Math.PI); c.stroke();
+                    c.beginPath(); c.arc(width / 2, height / 2, Math.max(0, Math.min(width, height) / 2 - c.lineWidth / 2), -Math.PI / 2, Math.PI); c.stroke();
                 }
                 // Steps: a third of a turn every 3 s, gliding 600 ms, then
                 // still (the notch redraws only while it moves: ~1/5 of the
@@ -119,7 +122,7 @@ Item {
                 // moves together; a count change adds a bigger step of its own.
                 property int bump: 0
                 rotation: Theme.step * 120 + bump * 240     // (no wrap: a modulo spun it backwards at the wrap)
-                Behavior on rotation { enabled: arc.visible; NumberAnimation { duration: Theme.stepMs; easing.type: Easing.InOutCubic } }
+                Behavior on rotation { enabled: arc.visible && !Theme.reduceMotion; NumberAnimation { duration: Theme.stepMs; easing.type: Easing.InOutCubic } }
                 Connections {
                     target: mark
                     function onValueChanged() { if (arc.visible && !Theme.reduceMotion) arc.bump++; }
@@ -127,6 +130,7 @@ Item {
             }
             Label {
                 id: ringValue
+                objectName: "rest-count-value"
                 anchors.centerIn: parent           // measured: centred (a +1 sat 1 px low)
                 text: mark.value
                 size: Theme.tCaption; weight: Theme.wBold; rounded: true

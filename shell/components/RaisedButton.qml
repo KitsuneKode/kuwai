@@ -11,6 +11,7 @@ import qs.config
 
 Item {
     id: b
+    property bool elideText: false
     property string text
     property string glyph: ""
     property string kind: "primary"      // primary · secondary · danger
@@ -68,6 +69,7 @@ Item {
         anchors.centerIn: parent
         spacing: 6
         Text {
+            id: icon
             textFormat: Text.PlainText
             visible: b.glyph !== ""
             anchors.verticalCenter: parent.verticalCenter
@@ -78,6 +80,8 @@ Item {
         Label {
             anchors.verticalCenter: parent.verticalCenter
             text: b.text
+            width: b.elideText ? Math.min(implicitWidth, Math.max(0, b.width - 2 * Theme.s3 - (icon.visible ? icon.width + row.spacing : 0))) : implicitWidth
+            elide: b.elideText ? Text.ElideRight : Text.ElideNone
             size: b.size
             weight: b.kind === "secondary" ? Theme.wMedium : Theme.wSemibold
             color: b.ink

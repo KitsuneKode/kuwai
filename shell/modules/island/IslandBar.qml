@@ -140,16 +140,17 @@ Scope {
             // and a window that opened then (Satty) came up without focus.
             WlrLayershell.keyboardFocus: panelHere && !Island.previewing ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
             mask: Region {
-                item: frame.opacity > 0.01 ? frame : null
+                item: frame.visible && frame.opacity > 0.01 ? frame : null
                 // Minimal island: the strip along the top edge beside it counts too.
-                Region { item: Settings.islandRest === "minimal" || win.tucked ? nearStrip : null }
-                Region { item: win.hovered ? slop : null }
+                Region { item: nearStrip.visible ? nearStrip : null }
+                Region { item: frame.visible && win.hovered ? slop : null }
                 // The split island's pills (IslandSplit), while out.
-                Region { item: split.pills[0].visible ? split.pills[0] : null }
-                Region { item: split.pills[1].visible ? split.pills[1] : null }
-                Region { item: split.pills[2].visible ? split.pills[2] : null }
-                Region { item: split.pills[3].visible ? split.pills[3] : null }
-                Region { item: split.pills[4].visible ? split.pills[4] : null }
+                Region { item: split.pills[0].visible && split.pills[0].enabled ? split.pills[0].inputTarget : null }
+                Region { item: split.pills[1].visible && split.pills[1].enabled ? split.pills[1].inputTarget : null }
+                Region { item: split.pills[2].visible && split.pills[2].enabled ? split.pills[2].inputTarget : null }
+                Region { item: split.pills[3].visible && split.pills[3].enabled ? split.pills[3].inputTarget : null }
+                Region { item: split.pills[4].visible && split.pills[4].enabled ? split.pills[4].inputTarget : null }
+                Region { item: split.pills[5].visible && split.pills[5].enabled ? split.pills[5].inputTarget : null }
             }
             // Nearing the island: the pointer resting on the top edge over it
             // (its resting width and 80 px either side, not the grown one, so
@@ -160,13 +161,14 @@ Scope {
             property bool near: false
             Item {
                 id: nearStrip
+                visible: win.proximityAvailable && (Settings.islandRest === "minimal" || win.tucked)
                 width: Math.max(win.restW + 160, 360); height: 4
                 x: Math.round((win.width - width) / 2); y: 0
-                HoverHandler { id: nearHover; onHoveredChanged: { if (hovered) { nearOff.stop(); nearDwell.restart(); } else { nearDwell.stop(); if (win.near) win.fold(450); } } }
+                HoverHandler { id: nearHover; enabled: nearStrip.visible; onHoveredChanged: { if (hovered) { nearOff.stop(); nearDwell.restart(); } else { nearDwell.stop(); if (win.near) win.fold(450); } } }
             }
             // Along the edge itself, still moving fast is passing by (to a tab
             // beside it): look again rather than open (services/proximity.js).
-            Timer { id: nearDwell; interval: 90; onTriggered: { if (Proximity.edgeSettled(Pointer, Date.now())) win.near = true; else restart(); } }
+            Timer { id: nearDwell; interval: 90; onTriggered: { if (!nearHover.hovered || !win.proximityAvailable) return; if (Proximity.edgeSettled(Pointer, Date.now())) win.near = true; else restart(); } }
             Timer { id: nearOff; interval: 450; onTriggered: if (!win.hovered && !nearHover.hovered && !win.inZone(20)) win.near = false }
             // A fast exit folds it almost at once; a drift away gets the grace.
             function fold(ms) { nearOff.interval = ms; nearOff.restart(); }
@@ -178,12 +180,22 @@ Scope {
             // reaching (resting, or heading up at it) rather than passing by
             // (services/proximity.js). Out: 20 px of slack, then the fold
             // (150 ms when leaving fast, 450 ms drifting away).
-            readonly property bool wantsProximity: showBar && Settings.islandProximity && (Settings.islandRest === "minimal" || tucked || (Settings.islandRest === "auto" && restRow.compact)) && !hovered
-            onWantsProximityChanged: wantsProximity ? Pointer.want() : Pointer.unwant()
+            readonly property bool proximityAvailable: showBar && !screenFullscreen && !Saver.showing && !Saver.locked && !Saver.screensOff
+            readonly property bool wantsProximity: proximityAvailable && Settings.islandProximity && (Settings.islandRest === "minimal" || tucked || (Settings.islandRest === "auto" && restRow.compact) || near) && !hovered
+            property bool proximitySubscribed: false
+            property bool pointerReady: false
+            function syncPointerRequest() {
+                if (!pointerReady) return;
+                if (wantsProximity === proximitySubscribed) return;
+                proximitySubscribed = wantsProximity;
+                if (proximitySubscribed) Pointer.want(); else Pointer.unwant();
+            }
+            onWantsProximityChanged: { zoneHits = 0; syncPointerRequest(); }
+            onProximityAvailableChanged: if (!proximityAvailable) near = false
             // (A helper: this window already has its own onCompleted.)
             QtObject {
-                Component.onCompleted: if (win.wantsProximity) Pointer.want()
-                Component.onDestruction: if (win.wantsProximity) Pointer.unwant()
+                Component.onCompleted: { win.pointerReady = true; win.syncPointerRequest(); }
+                Component.onDestruction: { win.pointerReady = false; if (win.proximitySubscribed) { win.proximitySubscribed = false; Pointer.unwant(); } }
             }
             readonly property var monGeo: monitor && monitor.lastIpcObject ? monitor.lastIpcObject : ({})
             readonly property real localX: Pointer.x - (monGeo.x || 0)
@@ -258,7 +270,7 @@ Scope {
                 function onSettledChanged() { if (m.settled && !win.grown) win.full = false; }
             }
             // Over the workspace pills the island stays put: they're for clicking.
-            readonly property bool overPills: restRow.pillsHovered || restRow.musicHovered || restRow.marksHovered
+            readonly property bool overPills: restRow.pillsHovered || restRow.musicHovered || restRow.marksHovered || split.hovered
             // Minimal, reached on the island itself (not by the edge): the
             // compact row holds still under the pointer, so the art or a mark
             // you aimed at stays there; music opens Now Playing from it.
@@ -280,7 +292,7 @@ Scope {
             // on: under the pointer it holds (Moments.held) and the island doesn't
             // grow over it, or it vanished as you reached it (IslandRest acts on it).
             readonly property bool agentMoment: restRow.activity === "moment" && !!Moments.now && !!Moments.now.go
-            onOverPillsChanged: if (!overPills && hovered && !grown) intent.restart()
+            onOverPillsChanged: { if (overPills) intent.stop(); else if (hovered && !grown) intent.restart(); }
             // A banner on show stays a banner under the pointer (so its button
             // can be clicked): hovering only grows the island when there's none.
             Timer {
@@ -666,6 +678,7 @@ Scope {
                 }
             }
 
+            Component { id: activitiesPanel; IslandActivities { sourceSplit: split } }
             Component { id: calendarPanel; CalendarPanel {} }
             Component { id: powerPanel; PowerPanel {} }
             Component { id: launcherPanel; LauncherPanel {} }
@@ -709,7 +722,9 @@ Scope {
                 h: win.restH
                 activity: restRow.activity
                 // Not over a film: lifted for a moment, the island alone comes up.
-                atRest: win.showBar && win.outNow && !Saver.showing && restRow.opacity > 0.5 && !win.screenFullscreen
+                atRest: win.showBar && win.outNow && !Saver.showing && !Saver.locked && !Saver.screensOff && !win.screenFullscreen
+                        && !win.panelHere && !win.grown && !win.bannerHere && !win.peekHere && !win.deviceHere
+                        && restRow.opacity > 0.5
             }
             Item {
                 id: frame
@@ -1006,7 +1021,7 @@ Scope {
                         focus: win.panelHere
                         // The open panel, by name; its right-click "back" is the Back button above it.
                         Accessible.role: Accessible.Pane
-                        Accessible.name: ({ calendar: "Calendar", power: "Power", launcher: "Search", settings: "Settings", system: "System", theme: "Themes", keys: "Shortcuts", switcher: "Windows", updates: "Software Update", media: "Now Playing", t3: "T3 Code", agents: "Agents", notifs: "Notifications", bluetooth: "Bluetooth", usage: "Usage", read: "Read", cleanup: "Cleanup" })[win.shownPanel] || ""
+                        Accessible.name: ({ activities: "More activities", calendar: "Calendar", power: "Power", launcher: "Search", settings: "Settings", system: "System", theme: "Themes", keys: "Shortcuts", switcher: "Windows", updates: "Software Update", media: "Now Playing", t3: "T3 Code", agents: "Agents", notifs: "Notifications", bluetooth: "Bluetooth", usage: "Usage", read: "Read", cleanup: "Cleanup" })[win.shownPanel] || ""
                         readonly property real k: win.panelHere ? Math.max(0, Math.min(1, (pv.value - 0.5) / 0.4)) : win.reveal(pv.value, false)
                         // Also from one panel to another (pv stays 1): the next
                         // one appears as the shape makes room for it, not clipped.
@@ -1099,13 +1114,13 @@ Scope {
                                     Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f0141}"; font.family: Theme.fontGlyph; font.pixelSize: 14; color: Theme.textSecondary }
                                     Label {
                                         anchors.verticalCenter: parent.verticalCenter
-                                        text: Island.innerBackLabel || ({ calendar: "Calendar", power: "Power", launcher: "Search", settings: "Settings", system: "System", theme: "Themes", keys: "Shortcuts", switcher: "Windows", updates: "Software Update", usage: "Usage", cleanup: "Cleanup" })[Island.history[Island.history.length - 1]] || "Back"
+                                        text: Island.innerBackLabel || ({ activities: "More activities", calendar: "Calendar", power: "Power", launcher: "Search", settings: "Settings", system: "System", theme: "Themes", keys: "Shortcuts", switcher: "Windows", updates: "Software Update", usage: "Usage", cleanup: "Cleanup" })[Island.history[Island.history.length - 1]] || "Back"
                                         size: 12; weight: Theme.wMedium; color: Theme.textSecondary
                                     }
                                 }
                                 MouseArea { id: backArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: Island.back() }
                                 Accessible.role: Accessible.Button
-                                Accessible.name: "Back to " + (Island.innerBackLabel || ({ calendar: "Calendar", power: "Power", launcher: "Search", settings: "Settings", system: "System", theme: "Themes", keys: "Shortcuts", switcher: "Windows", updates: "Software Update", usage: "Usage", cleanup: "Cleanup" })[Island.history[Island.history.length - 1]] || "the last panel")
+                                Accessible.name: "Back to " + (Island.innerBackLabel || ({ activities: "More activities", calendar: "Calendar", power: "Power", launcher: "Search", settings: "Settings", system: "System", theme: "Themes", keys: "Shortcuts", switcher: "Windows", updates: "Software Update", usage: "Usage", cleanup: "Cleanup" })[Island.history[Island.history.length - 1]] || "the last panel")
                                 Accessible.onPressAction: Island.back()
                             }
                         }
@@ -1116,7 +1131,7 @@ Scope {
                             height: panelScope.height - win.backH
                             active: win.panelHere || pv.value > 0.01
                             focus: true
-                            sourceComponent: ({ calendar: calendarPanel, power: powerPanel, launcher: launcherPanel, settings: settingsPanel, system: systemPanel, theme: themePanel, keys: keysPanel, switcher: switcherPanel, updates: updatesPanel, media: mediaPanel, t3: t3Panel, agents: agentsPanel, notifs: notifsPanel, bluetooth: bluetoothPanel, usage: usagePanel, read: readPanel, cleanup: cleanupPanel })[win.shownPanel] || null
+                            sourceComponent: ({ activities: activitiesPanel, calendar: calendarPanel, power: powerPanel, launcher: launcherPanel, settings: settingsPanel, system: systemPanel, theme: themePanel, keys: keysPanel, switcher: switcherPanel, updates: updatesPanel, media: mediaPanel, t3: t3Panel, agents: agentsPanel, notifs: notifsPanel, bluetooth: bluetoothPanel, usage: usagePanel, read: readPanel, cleanup: cleanupPanel })[win.shownPanel] || null
                         }
                         // Right click (anywhere a control doesn't take it) or the mouse's back button: back.
                         TapHandler {
