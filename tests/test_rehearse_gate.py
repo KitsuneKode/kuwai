@@ -134,7 +134,7 @@ def test_the_known_list_is_only_debt_at_twice_the_text():
     """At 100 % and 120 % nothing is excused. What is listed is the 200 % debt."""
     known = [l for l in (ROOT / "tests/ui/rehearsal-known.txt").read_text().splitlines() if l and not l.startswith("#")]
     assert [l for l in known if not re.search(r" @x2 \| ", l)] == []
-    assert len(known) <= 42, "the known list only gets shorter: fix the fault instead of listing it"
+    assert len(known) <= 34, "the known list only gets shorter: fix the fault instead of listing it"
 
 
 def test_moments_in_scene_data():
@@ -169,3 +169,18 @@ def test_the_lock_clock_is_measured_against_the_wallpaper(tmp_path):
     # A portrait picture is cover-cropped like the screen does it, not squeezed.
     tall = PIL.new("RGB", (1080, 2400), (20, 20, 24)); tall.save(tmp_path / "tall.png")
     assert wall.lock_layer(tmp_path / "tall.png").size == wall.SIZE
+
+
+def test_a_list_must_not_end_on_a_row_cut_at_full_strength():
+    PIL = pytest.importorskip("PIL.Image")
+    from PIL import ImageDraw
+    clip = [20, 60, 400, 100]                                   # the list shows y 60–160
+    row = text("Battery at 15 %", (40, 152, 120, 16), clip=clip, scroll=True)   # half of it is below the edge
+    def picture(strength):
+        img = PIL.new("RGB", (440, 300), (15, 15, 15))
+        ImageDraw.Draw(img).rectangle([40, 152, 160, 159], fill=(strength, strength, strength))
+        return img
+    assert "cut-row" in rules(frame([row]), picture(245))       # drawn at full strength up to the edge
+    assert "cut-row" not in rules(frame([row]), picture(40))    # faded out where it meets the edge
+    whole = text("Stand-up in 10 minutes", (40, 100, 150, 16), clip=clip, scroll=True)
+    assert "cut-row" not in rules(frame([whole]), picture(245))

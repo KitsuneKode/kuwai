@@ -209,7 +209,45 @@ def judge(frame: dict, image=None) -> list[Fault]:
         add("many-sizes", "look", "type is set in %d sizes (%s px)" % (len(sizes), ", ".join(f"{s:g}" for s in sizes)))
 
     if image is not None:
+        out.extend(_cut_rows(frame, texts, image))
         out.extend(_look_at(frame, image))
+    return out
+
+
+def _cut_rows(frame, texts, image) -> list[Fault]:
+    """A scrolling list that ends on a line of text cut through its middle,
+    still at full strength: it reads as broken. A list with more below fades
+    into its panel (components/ScrollFade), so the cut line is nearly gone
+    where it meets the edge. One fault per list edge."""
+    w, h = image.size
+    px = image.load()
+    base = px[w // 2, 2][:3]
+    ground = tuple(v / 255 for v in base)
+    seen, out = set(), []
+    for t in texts:
+        clip = t.get("clip")
+        if not (t.get("scroll") and clip) or is_glyph(t):
+            continue
+        box = t["box"]
+        top, foot = max(box[1], clip[1]), min(box[1] + box[3], clip[1] + clip[3])
+        shown = foot - top
+        if shown < 3 or shown > box[3] * 0.8:
+            continue                                   # scrolled away, or (nearly) whole
+        at_foot = box[1] + box[3] > clip[1] + clip[3]
+        edge = (round(clip[0]), round(clip[1] + (clip[3] if at_foot else 0)))
+        if edge in seen:
+            continue
+        x0, x1 = max(0, int(max(box[0], clip[0]))), min(w, int(min(box[0] + box[2], clip[0] + clip[2])))
+        y0, y1 = max(0, int(top)), min(h, int(foot))
+        strongest = 1.0
+        for y in range(y0, y1):
+            for x in range(x0, x1):
+                strongest = max(strongest, contrast(tuple(v / 255 for v in px[x, y][:3]), ground))
+        if strongest >= FAINT:
+            seen.add(edge)
+            out.append(Fault(frame["id"], "cut-row", "fail",
+                             f"{_label(t)} is cut through at the {'foot' if at_foot else 'top'} of its list at full strength: a list with more that way fades into the panel",
+                             (x0, y0, x1 - x0, y1 - y0)))
     return out
 
 
@@ -240,5 +278,5 @@ def _look_at(frame, image) -> list[Fault]:
     if cols:
         left, right = cols[0], w - 1 - cols[-1]
         if abs(left - right) > 6 and min(left, right) < 48:
-            out.append(Fault(scene, "lopsided", "look", f"content starts {left} px from the left edge and ends {right} px from the right"))
+            out.append(Fault(scene, "lopsided", "look", f"content starts {left} px from the left edge and ends {right} px from the right", None))
     return out

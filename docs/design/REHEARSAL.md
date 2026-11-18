@@ -63,6 +63,7 @@ Wrong, whoever looks (red on the sheet, fails the gate):
 | `too-big` | the panel wants more than the island can give (1080 × 600 on a 1080p screen) |
 | `insides` | a helper's name, an exit status, `NaN`, `undefined` shown as words (not text set in the code face: a command to copy or a log is shown as code on purpose) |
 | `missing-font` | an icon drawn in a font it didn't ask for (stray letters) |
+| `cut-row` | a scrolling list ends on a line of text cut through its middle at full strength (a list with more that way fades its rows out: `components/ScrollFade`) |
 | `says-nothing` | fewer than three words on the panel |
 | `waits-forever` | loading placeholders beside a message that loading failed |
 
@@ -120,7 +121,7 @@ is the same rule as the component, for tools that judge wallpapers
 
 `tests/ui/rehearsal-known.txt` holds faults that exist and are not fixed yet.
 `--gate` fails on a fault that is not listed and also on a listed one that is
-gone, so the list only gets shorter. Today it holds only 200 % text: at 100 %
+gone, so the list only gets shorter. Today it holds only 200 % text (34 entries): at 100 %
 and 120 % nothing is excused (a test keeps it so). A length that holds text is
 written `Theme.sp(n)`, which grows with Text size; a bare number there is what
 most of that list is made of.

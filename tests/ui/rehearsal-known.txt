@@ -17,16 +17,8 @@ power/new-machine @x2 | on-top | "Shut Down" is drawn over "Firmware"
 settings/new-machine @x2 | on-top | "Bar & Island" is drawn over "Search"
 system/new-machine @x2 | on-top | "󰖔" is drawn over "Game mode"
 system/typical @x2 | on-top | "󰖔" is drawn over "Game mode"
-t3/typical @x2 | on-top | "OTP detection: origin-bound codes" is drawn over "Working · Claude · rice"
-t3/typical @x2 | on-top | "Rehearsal harness" is drawn over "Needs you · Claude · rice"
 t3/typical @x2 | shortened | "Finished · Claude · 0 h ago · rice" is shortened with an ellipsis though its content is ordinary
 t3/typical @x2 | shortened | "OTP detection: origin-bound codes" is shortened with an ellipsis though its content is ordinary
-t3/worst @x2 | on-top | "Failed one" is drawn over "Working · Claude · p0"
-t3/worst @x2 | on-top | "Thread 0" is drawn over "Failed · Claude · 0 min ago · rice"
-t3/worst @x2 | on-top | "Thread 0" is drawn over "Needs you · Claude · a-project-with-a-lo…"
-t3/worst @x2 | on-top | "Thread 0" is drawn over "Working · Claude · p0"
-t3/worst @x2 | on-top | "Thread 0" is drawn over "Working · Codex · p0"
-t3/worst @x2 | on-top | "Thread 0" is drawn over "Working · Gemini · p0"
 updates/typical @x2 | on-top | "linux-zen" is drawn over "Updated together, the way Arch supports"
 updates/typical @x2 | on-top | "mesa" is drawn over "Updated together, the way Arch supports"
 updates/typical @x2 | unreadable | "Update 0" has 0.0:0 against what is under it

@@ -48,7 +48,7 @@ FocusScope {
         // ── The live activity line: identity leads, state trails ─────────
         Item {
             width: parent.width
-            height: 26
+            height: Theme.sp(26)
             Label {
                 anchors { left: parent.left; verticalCenter: parent.verticalCenter }
                 text: "T3"
@@ -78,8 +78,13 @@ FocusScope {
         ListView {
             id: threads
             width: parent.width
-            height: contentHeight
-            interactive: false
+            // All of it when it fits (eight rows do at ordinary text). At a large
+            // Text size the rows are taller than the island has room for: then
+            // it scrolls, and fades where more lies (ScrollFade below).
+            height: Math.min(contentHeight, Math.max(Theme.sp(46) * 3, 560 - Theme.sp(150)))
+            interactive: contentHeight > height + 1
+            clip: interactive
+            boundsBehavior: Flickable.StopAtBounds
             spacing: 2
             // Live threads first (at most six, so finished ones can't crowd
             // them out), then the finished ones, each one that thread.
@@ -99,7 +104,7 @@ FocusScope {
                     readonly property bool failed: modelData.status === "failed"
                     readonly property bool done: modelData.status === "completed" || failed
                     width: threads.width
-                    height: 46
+                    height: Theme.sp(46)      // two lines of text: it grows with Text size
                     radius: 12
                     color: "transparent"
                     // A finished thread you've dealt with: swipe it away sideways
@@ -197,6 +202,7 @@ FocusScope {
                     }
                 }
         }
+        ScrollFade { flickable: threads }
 
         Label {
             visible: t3.ended.length + t3.live.length > t3.shownRows.length

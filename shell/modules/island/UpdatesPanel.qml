@@ -475,6 +475,7 @@ FocusScope {
             Item { width: 1; height: 4 }
         }
     }
+    ScrollFade { visible: up.view === "list"; flickable: listFlick }
     ScrollHint { visible: up.view === "list"; flickable: listFlick; anchors { right: parent.right; top: listFlick.top; bottom: listFlick.bottom; rightMargin: 4 } }
 
     // Footer: what will happen, and the button.

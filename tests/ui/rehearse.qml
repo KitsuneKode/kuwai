@@ -160,6 +160,13 @@ ShellRoot {
                 stage.next();
             }
         }
-        Component.onCompleted: Settings.set("textScale", Number(Quickshell.env("KUWAI_UI_TEXT_SCALE") || 1))
+        Component.onCompleted: {
+            Settings.set("textScale", Number(Quickshell.env("KUWAI_UI_TEXT_SCALE") || 1));
+            // A service starts when it is first named, and reads its files a
+            // moment later: every service a scene sets is woken now, so what a
+            // seed file holds is loaded before the first scene and not into the
+            // middle of one (a scene's "empty" list was filled behind its back).
+            for (const s of scenes) for (const one of (s.set || [])) service(one[0]);
+        }
     }
 }

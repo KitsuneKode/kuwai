@@ -385,6 +385,7 @@ FocusScope {
                 }
             }
         }
+        ScrollFade { flickable: list }
 
         // Opened from the keyboard: the keys, quietly (the pointer has the buttons).
         KeyHints {

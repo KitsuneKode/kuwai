@@ -516,17 +516,9 @@ FocusScope {
                 }
             }
         }
-        // More below: the list fades into the panel (a row cut through its
-        // middle read as broken), and a slim scroll hint shows on the edge.
-        Rectangle {
-            anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
-            height: 36
-            visible: flick.contentY < flick.contentHeight - flick.height - 1
-            gradient: Gradient {
-                GradientStop { position: 0; color: Qt.rgba(0, 0, 0, 0) }
-                GradientStop { position: 1; color: Qt.rgba(0, 0, 0, 0.92) }
-            }
-        }
+        // More below: the list fades out (a row cut through its middle read as
+        // broken), and a slim scroll hint shows on the edge.
+        ScrollFade { flickable: flick }
         ScrollHint { flickable: flick; anchors { right: parent.right; top: parent.top; bottom: parent.bottom; rightMargin: -10 } }
         }
 

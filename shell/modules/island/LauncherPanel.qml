@@ -800,6 +800,7 @@ FocusScope {
             color: Theme.textTertiary
         }
     }
+    ScrollFade { flickable: list }
 
     // ── Footer ───────────────────────────────────────────────────────────
     Rectangle { x: 0; y: parent.height - 46; width: parent.width; height: 1; color: Qt.rgba(1, 1, 1, 0.06) }
