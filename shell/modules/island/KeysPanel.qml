@@ -176,6 +176,12 @@ FocusScope {
     }
     Rectangle { x: 0; y: 63; width: parent.width; height: 1; color: Qt.rgba(1, 1, 1, 0.07) }
 
+    // More that way: the rows fade, and a thumb shows while it scrolls.
+
+    ScrollFade { flickable: list }
+
+    ScrollHint { flickable: list; inside: true }
+
     ListView {
         id: list
         x: 8; y: 64

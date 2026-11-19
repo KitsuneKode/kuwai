@@ -107,6 +107,20 @@ def test_only_real_work_counts(tmp_path):
     assert d["finished"] == 2
 
 
+def test_every_unseen_finished_thread_is_counted(tmp_path):
+    """Past eight the pill said ✓8 for good and the panel had nothing more to scroll to."""
+    build(tmp_path)
+    db = sqlite3.connect(tmp_path / "statev2.sqlite")
+    for n in range(30):
+        thread(db, f"t-many-{n}", f"Finished {n}", lastVisitedAt=NOW)
+        run(db, f"r-many-{n}", f"t-many-{n}", "completed", completed=LATER)
+    db.commit()
+    db.close()
+    d = read(tmp_path)
+    assert d["finished"] == 32                                  # the two of build() and thirty more
+    assert len([i for i in d["items"] if i["status"] in ("completed", "failed")]) == 24   # the newest, as rows
+
+
 def test_not_running_without_the_server(tmp_path):
     build(tmp_path)
     (tmp_path / "server-runtime.json").write_text(json.dumps({"pid": 999999999}))

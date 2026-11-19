@@ -801,6 +801,7 @@ FocusScope {
         }
     }
     ScrollFade { flickable: list }
+    ScrollHint { flickable: list; inside: true }
 
     // ── Footer ───────────────────────────────────────────────────────────
     Rectangle { x: 0; y: parent.height - 46; width: parent.width; height: 1; color: Qt.rgba(1, 1, 1, 0.06) }

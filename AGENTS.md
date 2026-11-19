@@ -46,7 +46,8 @@ bin/kuwai-rehearse --gate                           # every panel in every state
   `textFormat: Text.PlainText`. Markup is built only from escaped strings.
 - A value reaches a command as an argument (`["sh", "-c", script, "sh", value]`),
   never pasted into the script.
-- Links are opened only through `Turn.safeLink` (the web and mail).
+- Links are opened only after `Links.safeLink` (`shell/services/links.mjs`: the
+  web and mail; `Turn.safeLink` is the same function). `tests/security/test_links.py`.
 - A surface that isn't showing isn't mapped (1×1 or a `LazyLoader`); a helper
   that isn't needed isn't running; a streaming helper starts under
   `setpriv --pdeathsig`.

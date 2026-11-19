@@ -7,7 +7,6 @@
 // →← expand or fold the selected group, ⇥ next filter, ⌃Z undo a clear while
 // "Cleared N · Undo" shows (Notifs.undoClear).
 import QtQuick
-import QtQuick.Effects
 import Quickshell
 import qs.config
 import qs.components
@@ -296,22 +295,6 @@ Item {
         ScriptAction { script: { Notifs.clearAll("center"); list.opacity = 1; listShift.y = 0; } }
     }
 
-    // The fade's shape: opaque, then the bottom 28 px going to nothing.
-    Item {
-        id: listFade
-        visible: false
-        layer.enabled: true
-        width: list.width; height: list.height
-        Rectangle {
-            anchors.fill: parent
-            gradient: Gradient {
-                GradientStop { position: 0; color: "white" }
-                GradientStop { position: Math.max(0, 1 - 28 / Math.max(1, listFade.height)); color: "white" }
-                GradientStop { position: 1; color: "transparent" }
-            }
-        }
-    }
-
     // ── List ─────────────────────────────────────────────────────────────
     ListView {
         id: list
@@ -319,14 +302,6 @@ Item {
         clip: true
         spacing: 18
         boundsBehavior: Flickable.DragAndOvershootBounds
-        // More below: the last rows fade out instead of being cut at an edge.
-        layer.enabled: contentHeight > height + 4 && !atYEnd
-        layer.effect: MultiEffect {
-            maskEnabled: true
-            maskSource: listFade
-            maskThresholdMin: 0
-            maskSpreadAtMin: 1
-        }
         transform: Translate { id: listShift }
         model: ScriptModel { values: view.groups; objectProp: "key" }
 
@@ -355,6 +330,8 @@ Item {
         }
     }
 
+    // More that way: rows fade where the list goes on (the old inline mask faded only the foot).
+    ScrollFade { flickable: list }
     ScrollHint {
         flickable: list
         anchors { right: parent.right; rightMargin: -10; top: list.top; bottom: list.bottom }

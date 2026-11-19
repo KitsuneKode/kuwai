@@ -6,8 +6,9 @@ area) and, when there is one, its picture. `judge` returns the faults a person
 would see on it. Two kinds:
 
   fail   wrong whoever looks: text cut off or on top of other text, text that
-         can't be read, a target too small to hit, a panel taller than the
-         island can show, the program's insides shown as words.
+         can't be read, text something else is drawn over, a target too small
+         to hit, a panel taller than the island can show, the program's
+         insides shown as words.
   look   worth a person's eye on the contact sheet, never a verdict alone: a
          large empty band, a little too many type sizes, lopsided insets.
 
@@ -25,6 +26,7 @@ MIN_TARGET = 24        # px; WCAG 2.2 "Target Size (Minimum)"
 READABLE = 4.5         # WCAG 2.2 contrast for text
 READABLE_LARGE = 3.0   # the same for large text (24 px, or 18.66 px bold)
 FAINT = 3.0            # under this even a hint or a disabled label is lost
+INKLESS = 24           # summed RGB distance (0–765) under which a pixel is the ground, not a stroke
 ISLAND = (1080, 600)   # the most the island gives a panel on a 1080p screen
 
 # Words that are the program talking to itself: a helper's name, an exit
@@ -125,6 +127,20 @@ def _label(text) -> str:
     return '"' + (s[:40] + "…" if len(s) > 40 else s) + '"'
 
 
+def _covered(thing, covers) -> bool:
+    """Under a surface that floats over the panel (a menu that says
+    `floats: true`): not on the frame as far as the rules go. That surface's
+    own texts and targets are judged; what it hides is judged in the scenes
+    where nothing floats."""
+    mine = thing.get("layer", 0)
+    for c in covers:
+        if c["layer"] > mine:
+            hit = _inter(thing["box"], c["box"])
+            if hit[2] > 0.5 and hit[3] > 0.5:
+                return True
+    return False
+
+
 def judge(frame: dict, image=None) -> list[Fault]:
     scene, scale = frame["id"], float(frame.get("scale", 1) or 1)
     panel = (0.0, 0.0, float(frame["w"]), float(frame["h"]))
@@ -138,7 +154,8 @@ def judge(frame: dict, image=None) -> list[Fault]:
     if wants[1] > ISLAND[1] + 0.5 or wants[0] > ISLAND[0] + 0.5:
         add("too-big", "fail", f"wants {wants[0]:.0f} x {wants[1]:.0f}, the island gives at most {ISLAND[0]} x {ISLAND[1]}")
 
-    texts = [t for t in frame.get("texts", []) if t["box"][2] > 0.5 and t["box"][3] > 0.5 and t.get("op", 1) >= 0.05]
+    covers = frame.get("covers", [])
+    texts = [t for t in frame.get("texts", []) if t["box"][2] > 0.5 and t["box"][3] > 0.5 and t.get("op", 1) >= 0.05 and not _covered(t, covers)]
     seen = []
     for t in texts:
         box, glyph = t["box"], is_glyph(t)
@@ -187,8 +204,12 @@ def judge(frame: dict, image=None) -> list[Fault]:
                     add("unreadable", "fail", f"{_label(t)} has {ratio:.1f}:1 against what is under it", _shown(t))
                 elif ratio < need and t.get("on", True):
                     add("faint", "look", f"{_label(t)} has {ratio:.1f}:1 against what is under it (text wants {need:g}:1)", _shown(t))
+                elif ratio >= need and t["t"].strip() and _inkless(image, t, bg):
+                    add("hidden", "fail", f"{_label(t)} is set to show, but none of it is on the picture: something is drawn over it", _shown(t))
 
     for g in frame.get("targets", []):
+        if _covered(g, covers):
+            continue
         box = _inter(g["box"], g["clip"]) if g.get("clip") else tuple(g["box"])
         if box[2] <= 0.5 or box[3] <= 0.5:
             continue
@@ -212,6 +233,31 @@ def judge(frame: dict, image=None) -> list[Fault]:
         out.extend(_cut_rows(frame, texts, image))
         out.extend(_look_at(frame, image))
     return out
+
+
+def _inkless(image, text, bg) -> bool:
+    """A text that should read (its colour stands off its ground) but leaves
+    no stroke inside its box: something opaque covers it. The black mask that
+    UpdatesPanel showed over its whole list passed every other rule (white
+    against the black it read as 21:1). Only a text wholly on the picture and
+    not near a scrolling edge (where ScrollFade may thin it) is judged."""
+    w, h = image.size
+    x, y, bw, bh = _shown(text)
+    if bw < 4 or bh < 4 or x < 0 or y < 0 or x + bw > w or y + bh > h:
+        return False
+    clip = text.get("clip")
+    if text.get("scroll") and clip:
+        reach = 40 * float(text.get("scale", 1) or 1)
+        if y < clip[1] + reach or y + bh > clip[1] + clip[3] - reach:
+            return False
+    px = image.load()
+    ground = tuple(round(v * 255) for v in bg)
+    for yy in range(int(y) + 1, int(y + bh) - 1):
+        for xx in range(int(x) + 1, int(x + bw) - 1):
+            p = px[xx, yy]
+            if abs(p[0] - ground[0]) + abs(p[1] - ground[1]) + abs(p[2] - ground[2]) >= INKLESS:
+                return False
+    return True
 
 
 def _cut_rows(frame, texts, image) -> list[Fault]:

@@ -149,6 +149,9 @@ FocusScope {
         }
 
         // ── The skills nobody used ──────────────────────────────────────
+        // More that way: the rows fade, and a thumb shows while it scrolls.
+        ScrollFade { flickable: list }
+        ScrollHint { flickable: list; inside: true }
         ListView {
             id: list
             visible: cp.rows.length > 0

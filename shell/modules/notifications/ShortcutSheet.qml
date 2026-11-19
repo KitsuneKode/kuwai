@@ -61,7 +61,10 @@ Item {
         opacity: Math.min(1, sheet.p * 1.4)
         MouseArea { anchors.fill: parent }          // clicks on the sheet stay on it
 
+        ScrollFade { flickable: sheetFlick }
+        ScrollHint { flickable: sheetFlick; inside: true }
         Flickable {
+            id: sheetFlick
             anchors.fill: parent
             anchors.margins: 16
             anchors.leftMargin: 18

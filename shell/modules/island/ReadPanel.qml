@@ -256,6 +256,7 @@ FocusScope {
                     GradientStop { position: 1; color: Qt.rgba(0, 0, 0, 0.92) }
                 }
             }
+            ScrollFade { flickable: msgFlick }
             ScrollHint { flickable: msgFlick; anchors { right: parent.right; top: parent.top; bottom: parent.bottom; rightMargin: -10 } }
         }
 

@@ -169,15 +169,17 @@ gallery on` (no keyboard taken), `off` to close.
 
 | Primitive | Use it for | Don't |
 | --- | --- | --- |
-| `Button` | `primary` (the one thing to do; at most one per view), `secondary`, `danger` (destroys something; still asks), `quiet` (the third action: "Details", "Later") | Two primaries side by side; danger for "Cancel" |
+| `Button` | `primary` (the one thing to do; at most one per view), `secondary`, `danger` (destroys something; still asks), `quiet` (the third action: "Details", "Later"). Quiet with only a `glyph` is an icon button (`label` names it, shown as its tip; `busy` turns the glyph); a quiet `tone` colours its mark (a flag's orange) | Two primaries side by side; danger for "Cancel"; a hand-drawn round glyph button |
 | `Chip` | A state, a kind or a count next to a title ("Security", "AUR") | Making it clickable (use a Button) |
+| `ContextMenu` (+ `ContextMenuItem`, `ContextMenuCheckboxItem`, `ContextMenuLabel`, `ContextMenuSeparator`) | What a row offers, by right-click or Menu / Shift+F10 on the focused row (shadcn's anatomy). Show the key a row already answers to as `shortcut`; `variant: "destructive"` for what can't be taken back | The only way to reach an action (a menu repeats what the row or panel already offers); a menu on empty panel ground (right-click there goes back) |
 | `Notice` | Something to know inside a panel, in its tone: orange needs you, red broke, green done; one action at most | Stacking three; using it for a toast (that's Notifs) |
 | `Card` | Grouping related rows inside a panel; children stack 10 px apart, 14 px in | Cards inside cards |
 | `Meter` | A level with its number (memory, disk, GPU): accent, orange > 75 %, red > 90 % | A meter for things that aren't levels |
 | `Tile` | Quick on/off for a mode (Caffeine, Focus), Control Center style: accent while on | A settings row (use `Toggle`) |
 | `ControlTile` | The Control Center grid (Wi‑Fi, Bluetooth, Night Shift): disc in its tone while on, a status line; expandable ones open more from the right half | Small rows of modes (use `Tile`) |
 | `Toggle` (`components/`) | A setting's on/off in a row: green while on, like iOS | A mode tile |
-| `Segmented`, `Slider`, `Tip`, `KeyCap`, `FocusRing` (`components/`) | Tabs, levels you drag, hover help, key hints, keyboard focus | Re-drawing any of them in a panel |
+| `Segmented`, `Slider`, `Tip`, `KeyCap`, `FocusRing` (`components/`) | Tabs, one choice of a few ("Keep mine · Use new"), levels you drag, hover help, key hints, keyboard focus | Re-drawing any of them in a panel |
+| `ScrollFade` + `ScrollHint` (`components/`) | Every list that scrolls gets both: rows fade where more lies, a thumb shows while it moves (`inside: true` for a list in a Column) | Binding either one's `visible` (each follows its list) |
 
 States every pressable primitive has: hover (a wash, `colorMs`), press
 (scale 0.97, `pressMs`), disabled (tertiary ink, no press), keyboard focus

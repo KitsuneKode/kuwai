@@ -6,6 +6,11 @@
 //   Button { text: "Keep mine"; kind: "secondary" }
 //   Button { text: "Details"; kind: "quiet" }
 //   Button { primary: true; … }                  (the older API, same as kind: "primary")
+//   Button { kind: "quiet"; glyph: "…"; label: "Check again"; busy: checking }
+//                                                 an icon button (shadcn's size="icon"): square,
+//                                                 `label` names it for screen readers and its tip
+//   Button { kind: "quiet"; glyph: "…"; tone: Theme.orange; text: "Line 12" }
+//                                                 a quiet action whose mark carries a state's colour
 import QtQuick
 import qs.config
 import qs.components
@@ -18,10 +23,16 @@ Item {
     property bool primary: false
     property bool enabled: true
     property int size: 13
+    property string label: ""               // what it does, when the face is only a glyph
+    property color tone: Theme.textSecondary // quiet: the glyph's colour (a state's tone)
+    property bool busy: false                // quiet: the glyph turns (a check running)
+    readonly property bool iconOnly: text === "" && glyph !== ""
+    readonly property bool hovered: kind === "quiet" ? qArea.containsMouse : raised.lit
     signal clicked()
+    onBusyChanged: if (!busy) qglyph.rotation = 0
 
-    implicitHeight: 34
-    implicitWidth: kind === "quiet" ? quiet.implicitWidth : raised.implicitWidth
+    implicitHeight: Theme.sp(34)
+    implicitWidth: kind === "quiet" ? (iconOnly ? implicitHeight : quiet.implicitWidth) : raised.implicitWidth
 
     RaisedButton {
         id: raised
@@ -44,15 +55,23 @@ Item {
             id: qrow
             anchors.centerIn: parent
             spacing: 6
-            Text { textFormat: Text.PlainText; visible: b.glyph !== ""; anchors.verticalCenter: parent.verticalCenter; text: b.glyph; font.family: Theme.fontGlyph; font.pixelSize: b.size; color: b.enabled ? Theme.textSecondary : Theme.textTertiary }
-            Label { anchors.verticalCenter: parent.verticalCenter; text: b.text; size: b.size; weight: Theme.wMedium; color: b.enabled ? Theme.textSecondary : Theme.textTertiary }
+            Text {
+                id: qglyph
+                textFormat: Text.PlainText; visible: b.glyph !== ""; anchors.verticalCenter: parent.verticalCenter
+                text: b.glyph; font.family: Theme.fontGlyph; font.pixelSize: Theme.sp(b.iconOnly ? Math.max(b.size, Theme.glyphS) : b.size)
+                color: b.enabled ? b.tone : Theme.textTertiary
+                RotationAnimation on rotation { running: b.busy && !Theme.reduceMotion; loops: Animation.Infinite; from: 0; to: 360; duration: Theme.spinMs }
+            }
+            Label { visible: b.text !== ""; anchors.verticalCenter: parent.verticalCenter; text: b.text; size: b.size; weight: Theme.wMedium; color: b.enabled ? Theme.textSecondary : Theme.textTertiary }
         }
         MouseArea { id: qArea; anchors.fill: parent; hoverEnabled: true; enabled: b.enabled; cursorShape: Qt.PointingHandCursor; onClicked: b.clicked() }
         activeFocusOnTab: b.kind === "quiet"
         Accessible.role: Accessible.Button
-        Accessible.name: b.text
+        Accessible.name: b.text || b.label
+        Accessible.description: b.busy ? "busy" : ""
         Accessible.onPressAction: if (b.enabled) b.clicked()
         Keys.onPressed: e => { if (b.enabled && (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter)) { b.clicked(); e.accepted = true; } }
         FocusRing {}
     }
+    Tip { text: b.label; shown: b.iconOnly && b.label !== "" && qArea.containsMouse; below: true }
 }

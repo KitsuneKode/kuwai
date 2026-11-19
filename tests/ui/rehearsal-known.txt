@@ -16,9 +16,6 @@ power/new-machine @x2 | on-top | "Shut Down" is drawn over "Firmware"
 settings/new-machine @x2 | on-top | "Bar & Island" is drawn over "Search"
 system/new-machine @x2 | on-top | "󰖔" is drawn over "Game mode"
 system/typical @x2 | on-top | "󰖔" is drawn over "Game mode"
-updates/typical @x2 | on-top | "linux-zen" is drawn over "Updated together, the way Arch supports"
-updates/typical @x2 | on-top | "mesa" is drawn over "Updated together, the way Arch supports"
-updates/typical @x2 | unreadable | "Update 0" has 0.0:0 against what is under it
 usage/stale @x2 | on-top | "0% left" is drawn over "0% left"
 usage/stale @x2 | on-top | "Weekly" is drawn over "Session"
 usage/stale @x2 | shortened | "Not updating · showing the last reading" is shortened with an ellipsis though its content is ordinary

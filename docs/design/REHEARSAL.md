@@ -64,6 +64,7 @@ Wrong, whoever looks (red on the sheet, fails the gate):
 | `insides` | a helper's name, an exit status, `NaN`, `undefined` shown as words (not text set in the code face: a command to copy or a log is shown as code on purpose) |
 | `missing-font` | an icon drawn in a font it didn't ask for (stray letters) |
 | `cut-row` | a scrolling list ends on a line of text cut through its middle at full strength (a list with more that way fades its rows out: `components/ScrollFade`) |
+| `hidden` | text that should read (its colour stands off its ground) leaves no stroke on the picture: something opaque is drawn over it (ScrollFade's mask once covered the whole Updates list, and white on that black passed as 21:1) |
 | `says-nothing` | fewer than three words on the panel |
 | `waits-forever` | loading placeholders beside a message that loading failed |
 
@@ -73,7 +74,10 @@ To look at (amber, never fails by itself): `faint` (3:1 to 4.5:1), `empty-band`
 
 Each rule has a frame it must fault and the same frame put right in
 `tests/test_rehearse_gate.py`. A rule that needs an exception gets it from
-what the frame says about itself, never from a list of panel names.
+what the frame says about itself, never from a list of panel names. A surface
+that floats over its panel (a `ContextMenu`'s card) says `floats: true`; the
+frame records the box it covers, and what lies under it is judged in the
+scenes where nothing floats (its own texts and targets are judged as usual).
 
 ## Gestures
 

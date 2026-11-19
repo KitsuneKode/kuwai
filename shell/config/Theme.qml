@@ -60,6 +60,11 @@ Singleton {
     // The glass made opaque, where nothing is behind to blur (the gallery,
     // a settings preview rendered as a picture).
     readonly property color glassSolid: "#1c1c1f"
+    // A menu drawn over a panel (components/ui/ContextMenu): opaque, since the
+    // rows under it would read through glass, and one step lighter than the
+    // panel so it stands on it; its edge is a structure line you can see.
+    readonly property color menuSurface: glassSolid
+    readonly property color menuEdge: Qt.rgba(1, 1, 1, contrast ? 0.3 : 0.12)
     // The island's black, for the ring that cuts a badge out of what it
     // overlaps (a status dot on an app icon).
     readonly property color cutout: "#000000"

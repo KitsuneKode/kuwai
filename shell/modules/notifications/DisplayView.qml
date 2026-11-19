@@ -103,6 +103,9 @@ Item {
             GradientStop { position: 1; color: Qt.rgba(0.08, 0.085, 0.1, 0.9) }
         }
     }
+    // More that way: the rows fade, and a thumb shows while it scrolls.
+    ScrollFade { flickable: flick }
+    ScrollHint { flickable: flick; inside: true }
     Flickable {
         id: flick
         anchors.fill: parent

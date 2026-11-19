@@ -22,6 +22,7 @@ import Quickshell.Io
 import Quickshell.Widgets
 import qs.config
 import qs.components
+import qs.components.ui
 import qs.services
 import "../../services/t3.mjs" as T3
 
@@ -157,6 +158,13 @@ FocusScope {
 
     Keys.onPressed: e => {
         if ([Qt.Key_Down, Qt.Key_Up, Qt.Key_Return, Qt.Key_Enter].indexOf(e.key) >= 0) keyboard = true;
+        // Menu / Shift+F10: the chosen row's menu (what a right-click shows).
+        if (e.key === Qt.Key_Menu || (e.key === Qt.Key_F10 && (e.modifiers & Qt.ShiftModifier))) {
+            const it = list.itemAtIndex(sel);
+            if (it) { list.positionViewAtIndex(sel, ListView.Contain); it.menu.popup(); }
+            e.accepted = true;
+            return;
+        }
         if (e.key === Qt.Key_Down) sel = Math.min(rows.length - 1, sel + 1);
         else if (e.key === Qt.Key_Up) sel = Math.max(0, sel - 1);
         else if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) go(rows[sel]);
@@ -244,6 +252,28 @@ FocusScope {
                 // Swipe away sideways (or ×, or ⌫ on the selected row): it slides
                 // out, then goes; the rest close the gap.
                 readonly property bool dismissable: ap.canDismiss(modelData)
+                readonly property var menu: rowMenu
+                readonly property var askRaw: modelData.src === "kitty" ? modelData.raw : null
+                ContextMenu {
+                    id: rowMenu
+                    target: row
+                    bounds: ap
+                    title: row.modelData.title
+                    ContextMenuLabel { text: row.modelData.title }
+                    ContextMenuItem {
+                        text: row.modelData.src === "t3" ? "Open in T3 Code" : row.modelData.src === "recent" ? "Reopen" : "Go to it"
+                        glyph: "\u{f03cc}"; shortcut: "↵"
+                        onTriggered: ap.go(row.modelData)
+                    }
+                    // A kitty agent asking permission: answer it from here too.
+                    ContextMenuItem { text: "Allow"; glyph: "\u{f012c}"; visible: !!row.askRaw && Kittymux.canAnswer(row.askRaw); onTriggered: Kittymux.answer(row.askRaw, "allow") }
+                    ContextMenuItem { text: "Deny"; variant: "destructive"; visible: !!row.askRaw && Kittymux.canAnswer(row.askRaw); onTriggered: Kittymux.answer(row.askRaw, "deny") }
+                    ContextMenuItem { text: "Copy title"; glyph: "\u{f018f}"; onTriggered: Clipboard.copyText(row.modelData.title || "") }
+                    ContextMenuSeparator {}
+                    ContextMenuItem { text: "Mark read"; visible: !!row.modelData.event && !row.dismissable; onTriggered: Kittymux.ack(row.modelData.event) }
+                    ContextMenuItem { text: row.modelData.src === "recent" ? "Forget" : "Remove from here"; glyph: "\u{f0156}"; shortcut: "⌫"; visible: row.dismissable; onTriggered: swipe.away(1) }
+                    ContextMenuItem { text: "Mark all read"; shortcut: "A"; visible: (Kittymux.attention || []).length > 1; onTriggered: Kittymux.ackAll() }
+                }
                 opacity: swipe.fade
                 transform: Translate { x: swipe.offset }
                 SwipeAway { id: swipe; enabled: row.dismissable; span: row.width; onLeaving: ap.dismiss(row.modelData) }
@@ -393,6 +423,7 @@ FocusScope {
             }
         }
         ScrollFade { flickable: list }
+        ScrollHint { flickable: list; inside: true }
 
         // Opened from the keyboard: the keys, quietly (the pointer has the buttons).
         KeyHints {
@@ -403,15 +434,14 @@ FocusScope {
         Row {
             width: parent.width
             spacing: 8
-            PillButton {
+            Button {
                 width: (parent.width - 8) / 2
                 text: "Usage"
                 onClicked: Island.open("usage", Island.screen, "pointer")
             }
-            PillButton {
+            Button {
                 width: (parent.width - 8) / 2
                 enabled: (Kittymux.attention || []).length > 0
-                opacity: enabled ? 1 : 0.5
                 text: (Kittymux.attention || []).length ? "Mark all read (" + Kittymux.attention.length + ")" : "All read"
                 onClicked: Kittymux.ackAll()
             }

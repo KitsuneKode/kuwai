@@ -100,6 +100,7 @@ Item {
     }
 
     readonly property real naturalHeight: body.implicitHeight + 8
+    ScrollFade { flickable: soundFlick }
     ScrollHint { flickable: soundFlick; anchors { right: parent.right; top: parent.top; bottom: parent.bottom; rightMargin: -8 } z: 2 }
     Flickable {
         id: soundFlick

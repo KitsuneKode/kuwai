@@ -230,6 +230,7 @@ FocusScope {
         }   // the GPU row
         }   // readCol
         }   // readings
+        ScrollFade { flickable: readings }
         ScrollHint { flickable: readings; anchors { right: parent.right; top: parent.top; bottom: parent.bottom; rightMargin: -10 } }
         }
 

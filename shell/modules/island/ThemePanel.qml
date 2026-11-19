@@ -527,6 +527,12 @@ FocusScope {
         }
     }
 
+    // More that way: the rows fade, and a thumb shows while it scrolls.
+
+    ScrollFade { flickable: grid }
+
+    ScrollHint { flickable: grid; inside: true }
+
     GridView {
         id: grid
         x: 16; y: 66

@@ -171,6 +171,35 @@ def test_the_lock_clock_is_measured_against_the_wallpaper(tmp_path):
     assert wall.lock_layer(tmp_path / "tall.png").size == wall.SIZE
 
 
+def test_text_with_something_drawn_over_it_is_hidden():
+    """UpdatesPanel's list under ScrollFade's mask: white text, a black picture,
+    21:1 by the numbers and not a letter to see."""
+    PIL = pytest.importorskip("PIL.Image")
+    from PIL import ImageDraw
+    def hidden(t, img):
+        return any(x.rule == "hidden" and t["t"] in x.what for x in gate.judge(frame([t]), img))
+    words = text("quickshell-git", (40, 120, 100, 16))
+    covered = PIL.new("RGB", (440, 300), (0, 0, 0))
+    assert hidden(words, covered)
+    shown = PIL.new("RGB", (440, 300), (0, 0, 0))
+    ImageDraw.Draw(shown).rectangle([50, 124, 60, 130], fill=(240, 240, 240))       # a stroke of it
+    assert not hidden(words, shown)
+    faint = text("26", (40, 120, 16, 16), color="#40ffffff")                         # unreadable says so instead
+    assert not hidden(faint, covered)
+    near_edge = text("Battery at 15 %", (40, 145, 120, 14), clip=[20, 60, 400, 100], scroll=True)
+    assert not hidden(near_edge, covered)                                            # ScrollFade's to judge
+
+
+def test_what_a_floating_menu_covers_is_not_judged_but_the_menu_is():
+    under = text("linux-zen", (300, 100, 70, 16))
+    item = text("Copy name", (290, 96, 120, 16), layer=1)
+    menu = dict(box=[280, 80, 200, 120], layer=1)
+    assert "on-top" in rules(frame([under, item]))                                   # nothing says the menu floats
+    assert "on-top" not in rules(frame([under, item], covers=[menu]))
+    tiny = text("x", (20, 250, 30, 9), size=8, layer=1)                               # the menu's own text is still judged
+    assert "small-type" in rules(frame([tiny], covers=[dict(box=[10, 240, 60, 30], layer=1)]))
+
+
 def test_a_list_must_not_end_on_a_row_cut_at_full_strength():
     PIL = pytest.importorskip("PIL.Image")
     from PIL import ImageDraw

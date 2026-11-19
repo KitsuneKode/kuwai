@@ -60,11 +60,18 @@ ShellRoot {
         function kind(item) { return String(item).replace(/_QML.*|\(.*/g, "").replace(/^QQuick/, ""); }
 
         // What is on the frame. `ctx`: the clip in force, the opacity so far,
-        // whether a scrolling area holds this, and the path of types to here.
+        // whether a scrolling area holds this, the path of types to here, and
+        // how many floating surfaces it sits in (`layer`). A surface that floats
+        // over the panel (a menu) says `floats: true`; what it covers is
+        // recorded so the gate doesn't judge what lies beneath it.
         function walk(item, ctx, out) {
             if (!item.visible || item.opacity < 0.02) return;
             const name = kind(item);
-            const here = { clip: ctx.clip, op: ctx.op * item.opacity, scroll: ctx.scroll, path: ctx.path.concat(name).slice(-5) };
+            const here = { clip: ctx.clip, op: ctx.op * item.opacity, scroll: ctx.scroll, path: ctx.path.concat(name).slice(-5), layer: ctx.layer };
+            if (item.floats === true) {
+                here.layer = ctx.layer + 1;
+                out.covers.push({ box: box(item, 0, 0, item.width, item.height), layer: here.layer });
+            }
             if (item instanceof Flickable) {
                 const b = box(item, 0, 0, item.width, item.height);
                 out.scrolls.push({ box: b, clips: item.clip, w: r1(item.contentWidth), h: r1(item.contentHeight) });
@@ -85,18 +92,18 @@ ShellRoot {
                     size: item.font.pixelSize, weight: item.font.weight, family: item.font.family, drawn: item.fontInfo.family,
                     color: String(item.color), op: r1(here.op), on: item.enabled,
                     cut: item.truncated, elides: item.elide !== Text.ElideNone, wraps: item.wrapMode !== Text.NoWrap,
-                    lines: item.lineCount, clip: here.clip, scroll: here.scroll, path: here.path.join(">")
+                    lines: item.lineCount, clip: here.clip, scroll: here.scroll, path: here.path.join(">"), layer: here.layer
                 });
             }
             if (name === "Skeleton") out.waiting++;
             if (item instanceof MouseArea && item.enabled && item.acceptedButtons !== Qt.NoButton)
-                out.targets.push({ box: box(item, 0, 0, item.width, item.height), how: "area", clip: here.clip, scroll: here.scroll, path: here.path.join(">") });
+                out.targets.push({ box: box(item, 0, 0, item.width, item.height), how: "area", clip: here.clip, scroll: here.scroll, path: here.path.join(">"), layer: here.layer });
             const more = item.resources || [];
             for (let i = 0; i < more.length; i++) {
                 const h = more[i];
                 if (h instanceof TapHandler && h.enabled && (h.acceptedButtons & Qt.LeftButton)) {
                     const m = h.margin || 0;
-                    out.targets.push({ box: box(item, -m, -m, item.width + 2 * m, item.height + 2 * m), how: "tap", clip: here.clip, scroll: here.scroll, path: here.path.join(">") });
+                    out.targets.push({ box: box(item, -m, -m, item.width + 2 * m, item.height + 2 * m), how: "tap", clip: here.clip, scroll: here.scroll, path: here.path.join(">"), layer: here.layer });
                 }
             }
             const kids = item.children || [];
@@ -140,8 +147,8 @@ ShellRoot {
                 if (!it) { stage.fail("scene " + s.id + ": nothing loaded"); return; }
                 const out = { id: s.id, panel: s.panel, kind: s.kind || "typical", scale: Theme.textScale,
                               w: island.width, h: island.height, wants: [stage.r1(it.implicitWidth), stage.r1(it.implicitHeight)],
-                              texts: [], targets: [], scrolls: [], waiting: 0 };
-                stage.walk(it, { clip: null, op: 1, scroll: false, path: [] }, out);
+                              texts: [], targets: [], scrolls: [], covers: [], waiting: 0 };
+                stage.walk(it, { clip: null, op: 1, scroll: false, path: [], layer: 0 }, out);
                 // In pieces: a log line has a length the logger may cut.
                 const json = JSON.stringify(out);
                 for (let i = 0, n = 0; i < json.length; i += 3000, n++) console.log("REHEARSE_PART", s.id, n, json.slice(i, i + 3000));

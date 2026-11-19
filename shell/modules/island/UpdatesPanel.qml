@@ -15,18 +15,24 @@
 // prompt (shell-auth): one for Arch packages, one for the AUR installs.
 //
 // Keys: ↵ update (list) / approve (review) · Esc back · R check again.
+// A package row: Tab reaches it, ↵ reviews (AUR), Space includes or leaves
+// it out, Menu or Shift+F10 (or a right-click) opens what else it offers.
 import QtQuick
 import Quickshell
 import qs.config
 import qs.components
 import qs.components.ui
 import qs.services
+import "../../services/links.mjs" as Links
 
 FocusScope {
     id: up
     focus: true
     implicitWidth: Theme.panelL
-    implicitHeight: Math.min(560, (view === "review" ? 540 : view === "run" ? runCol.implicitHeight + 44 : listCol.y + listCol.implicitHeight + listFoot.height + 30))
+    // The list view is exactly its content plus the footer: a guessed constant
+    // here left the list 4 px short, so it "scrolled" (and faded) with nothing to scroll.
+    implicitHeight: Math.min(560, (view === "review" ? 540 : view === "run" ? runCol.implicitHeight + 44
+        : listFlick.contentHeight + listFlick.anchors.bottomMargin + listFoot.height + listFoot.anchors.bottomMargin))
     Behavior on implicitHeight { NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
 
     // A result only keeps the run view when this session actually started the job.
@@ -36,6 +42,7 @@ FocusScope {
     property bool showAllRepo: false
     property bool showLog: false
     property int fileIx: 0
+    property string menuOf: ""                    // a package whose menu is open (the rehearsal stages it)
 
     function openReview(name) { pkg = name; fileIx = 0; Updates.review(name); go("review"); }
     // The island's Back row leads back to the list from a review (or a result).
@@ -110,10 +117,10 @@ FocusScope {
                 required property var modelData
                 readonly property string choice: Updates.pacnewChoice[modelData.path] || ""
                 width: parent.width
-                height: info.implicitHeight + 12
+                height: Math.max(info.implicitHeight, choices.height) + 12
                 Column {
                     id: info
-                    y: 6
+                    anchors.verticalCenter: parent.verticalCenter
                     width: parent.width - choices.width - 12
                     spacing: 2
                     Row {
@@ -146,28 +153,14 @@ FocusScope {
                         size: Theme.tFootnote; color: Theme.textTertiary
                     }
                 }
-                Row {
+                // Keep mine / Use new: one choice of two, the Segmented primitive.
+                Segmented {
                     id: choices
                     anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-                    spacing: 6
-                    Repeater {
-                        model: [{ id: "keep", label: "Keep mine" }, { id: "take", label: "Use new" }]
-                        Rectangle {
-                            required property var modelData
-                            readonly property bool on: row.choice === modelData.id
-                            height: 26; radius: 13
-                            width: chLabel.implicitWidth + 20
-                            color: on ? Qt.rgba(1, 1, 1, 0.9) : chArea.containsMouse ? Theme.pillHover : Theme.pill
-                            Behavior on color { ColorAnimation { duration: Theme.colorMs } }
-                            Label { id: chLabel; anchors.centerIn: parent; text: parent.modelData.label; size: 11; weight: Theme.wMedium; color: parent.on ? Theme.inkOnLight : Theme.textPrimary }
-                            MouseArea { id: chArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: Updates.choosePacnew(row.modelData.path, parent.modelData.id) }
-                            Accessible.role: Accessible.RadioButton
-                            Accessible.name: modelData.label + ", " + row.modelData.name
-                            Accessible.checkable: true
-                            Accessible.checked: on
-                            Accessible.onPressAction: Updates.choosePacnew(row.modelData.path, modelData.id)
-                        }
-                    }
+                    options: [{ id: "keep", label: "Keep mine" }, { id: "take", label: "Use new" }]
+                    current: row.choice
+                    onPicked: id => Updates.choosePacnew(row.modelData.path, id)
+                    Accessible.name: "Config file " + row.modelData.name
                 }
             }
         }
@@ -175,15 +168,15 @@ FocusScope {
             width: parent.width
             spacing: 10
             Button {
+                id: applyChoices
                 primary: true
                 text: Updates.pacnewBusy ? "Applying…" : "Apply " + Updates.pacnewChosen + (Updates.pacnewChosen === 1 ? " choice" : " choices")
                 enabled: Updates.pacnewChosen > 0 && !Updates.pacnewBusy
-                height: 30
                 onClicked: Updates.applyPacnew()
             }
             Label {
                 anchors.verticalCenter: parent.verticalCenter
-                width: parent.width - 180; wrapMode: Text.Wrap
+                width: parent.width - applyChoices.width - parent.spacing; wrapMode: Text.Wrap
                 text: Updates.pacnewResult || "Use new keeps yours as X.kuwai-bak. sudoers is checked with visudo first."
                 size: 11; color: Updates.pacnewResult ? Theme.textSecondary : Theme.textTertiary
             }
@@ -211,35 +204,29 @@ FocusScope {
 
             // Header
             Item {
-                width: parent.width; height: 40
+                width: parent.width; height: Math.max(Theme.sp(40), headWords.implicitHeight)
                 Column {
+                    id: headWords
                     anchors.verticalCenter: parent.verticalCenter
+                    width: parent.width - refresh.width - Theme.s3
                     spacing: 2
-                    Label { text: Updates.total === 0 ? "Up to date" : "Software Update"; size: 18; weight: Theme.wSemibold }
+                    Label { text: Updates.total === 0 ? "Up to date" : "Software Update"; size: Theme.tTitle3; weight: Theme.wSemibold }
                     Label {
                         text: Updates.checking ? "Checking…"
                             : Updates.total < 0 ? "Not checked yet"
                             : ([Updates.repo.length + " Arch", Updates.aur.length + " AUR", Updates.flatpak.length ? Updates.flatpak.length + " Flatpak" : ""].filter(x => x).join(" · ") + " · checked " + Updates.ago(Updates.checkedAt))
-                        size: 12; color: Theme.textTertiary
+                        width: parent.width; elide: Text.ElideRight
+                        size: Theme.tSub; color: Theme.textTertiary
                     }
                 }
-                Rectangle {
+                Button {
+                    id: refresh
                     anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-                    width: 34; height: 34; radius: 17
-                    color: refArea.containsMouse ? Theme.pillHover : Theme.pill
-                    Text {
-                        anchors.centerIn: parent
-                        text: "\u{f0450}"
-                        font.family: Theme.fontGlyph; font.pixelSize: 15
-                        color: Theme.textSecondary
-                        RotationAnimation on rotation { running: Updates.checking && !Theme.reduceMotion; loops: Animation.Infinite; from: 0; to: 360; duration: Theme.spinMs }
-                    }
-                    MouseArea { id: refArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: Updates.check() }
-                    Accessible.role: Accessible.Button
-                    Accessible.name: Updates.checking ? "Checking for updates" : "Check again"
-                    Accessible.description: "R"
-                    Accessible.onPressAction: Updates.check()
-                    Tip { text: "Check again (R)"; shown: refArea.containsMouse; below: true }
+                    kind: "quiet"
+                    glyph: "\u{f0450}"
+                    label: Updates.checking ? "Checking for updates" : "Check again (R)"
+                    busy: Updates.checking
+                    onClicked: Updates.check()
                 }
             }
 
@@ -260,8 +247,8 @@ FocusScope {
                     required property var modelData
                     glyph: "\u{f0026}"; title: modelData.title
                     detail: "Arch news asks for a manual step with this update. Read it before updating."
-                    action: "Read"
-                    onActed: Quickshell.execDetached(["xdg-open", modelData.link])
+                    action: Links.safeLink(modelData.link) ? "Read" : ""
+                    onActed: if (Links.safeLink(modelData.link)) Qt.openUrlExternally(modelData.link)
                 }
             }
             Notice {
@@ -304,9 +291,10 @@ FocusScope {
             Card {
                 visible: Updates.repo.length > 0
                 Item {
-                    width: parent.width; height: 34
-                    Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f08c7}"; font.family: Theme.fontGlyph; font.pixelSize: 20; color: Theme.accent }
+                    width: parent.width; height: Math.max(Theme.sp(34), archHead.implicitHeight)
+                    Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f08c7}"; font.family: Theme.fontGlyph; font.pixelSize: Theme.glyphM; color: Theme.accent }
                     Column {
+                        id: archHead
                         x: 32; anchors.verticalCenter: parent.verticalCenter
                         spacing: 1
                         Label { text: "Arch Linux · " + Updates.repo.length + (Updates.repo.length === 1 ? " package" : " packages"); size: 14; weight: Theme.wSemibold }
@@ -314,6 +302,7 @@ FocusScope {
                     }
                     Toggle {
                         anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                        label: "Include Arch packages"
                         on: Updates.includeRepo
                         onToggled: Updates.includeRepo = !Updates.includeRepo
                     }
@@ -328,9 +317,20 @@ FocusScope {
                     Repeater {
                         model: up.showAllRepo ? Updates.repo : Updates.repo.slice(0, 8)
                         Item {
+                            id: repoRow
                             required property var modelData
                             // Its own height: at a fixed 34 the version line sat on the name at 120 % text.
                             width: (listCol.width - 28 - 18) / 2; height: pkg.implicitHeight + 3
+                            ContextMenu {
+                                target: repoRow
+                                bounds: up
+                                title: repoRow.modelData.name
+                                ContextMenuLabel { text: repoRow.modelData.name }
+                                ContextMenuItem { text: "Copy name"; glyph: "\u{f018f}"; onTriggered: Clipboard.copyText(repoRow.modelData.name) }
+                                ContextMenuItem { text: "Copy name and versions"; onTriggered: Clipboard.copyText(repoRow.modelData.name + " " + repoRow.modelData.old + " → " + repoRow.modelData.new) }
+                                ContextMenuSeparator {}
+                                ContextMenuCheckboxItem { text: "Include Arch packages"; checked: Updates.includeRepo; onToggled: on => Updates.includeRepo = on }
+                            }
                             Column {
                                 id: pkg
                                 width: parent.width
@@ -342,14 +342,12 @@ FocusScope {
                         }
                     }
                 }
-                Label {
+                Button {
                     visible: Updates.repo.length > 8
-                    text: up.showAllRepo ? "Show fewer" : "Show all " + Updates.repo.length + " ›"
-                    size: 12; weight: Theme.wMedium; color: Theme.accent
-                    MouseArea { anchors.fill: parent; anchors.margins: -6; cursorShape: Qt.PointingHandCursor; onClicked: up.showAllRepo = !up.showAllRepo }
-                    Accessible.role: Accessible.Button
-                    Accessible.name: up.showAllRepo ? "Show fewer" : "Show all " + Updates.repo.length
-                    Accessible.onPressAction: up.showAllRepo = !up.showAllRepo
+                    kind: "quiet"
+                    size: Theme.tSub
+                    text: up.showAllRepo ? "Show fewer" : "Show all " + Updates.repo.length
+                    onClicked: up.showAllRepo = !up.showAllRepo
                 }
             }
 
@@ -357,20 +355,22 @@ FocusScope {
             Card {
                 visible: Updates.aur.length > 0
                 Item {
-                    width: parent.width; height: 34
+                    width: parent.width; height: Math.max(Theme.sp(34), aurHead.implicitHeight)
                     Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f0393}"; font.family: Theme.fontGlyph; font.pixelSize: Theme.glyphM; color: Theme.accent }
                     Column {
+                        id: aurHead
                         x: 32; anchors.verticalCenter: parent.verticalCenter
+                        width: parent.width - 32 - (bumps.visible ? bumps.width + Theme.s3 : 0)
                         spacing: 1
                         Label { text: "AUR · " + Updates.aur.length + (Updates.aur.length === 1 ? " package" : " packages"); size: 14; weight: Theme.wSemibold }
-                        Label { text: "Built as you, from exactly the change you approve"; size: 11; color: Theme.textTertiary }
+                        Label { width: parent.width; elide: Text.ElideRight; text: "Built as you, from exactly the change you approve"; size: 11; color: Theme.textTertiary }
                     }
                     // Approve the plain version bumps in one go (each one was read).
                     Button {
+                        id: bumps
                         readonly property var routine: Updates.aur.filter(p => Updates.aurState(p.name) === "review" && Updates.reviewOf(p.name) && Updates.reviewOf(p.name).routine && !Updates.reviewOf(p.name).flags.length)
                         visible: routine.length > 0
                         anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-                        height: 28
                         glyph: "\u{f012c}"
                         text: "Approve " + routine.length + " version bump" + (routine.length > 1 ? "s" : "")
                         onClicked: { for (const p of routine) Updates.approve(p.name); }
@@ -384,26 +384,74 @@ FocusScope {
                         required property int index
                         readonly property string st: Updates.aurState(modelData.name)
                         readonly property var rv: Updates.reviewOf(modelData.name)
-                        width: parent.width; height: 44
-                        Rectangle { visible: aurRow.index > 0; width: parent.width; height: 1; color: Qt.rgba(1, 1, 1, 0.06) }
+                        readonly property string page: Links.webLink(rv && rv.url ? rv.url : "https://aur.archlinux.org/packages/" + encodeURIComponent(modelData.name))
+                        width: parent.width; height: Math.max(Theme.sp(44), aurWords.implicitHeight + Theme.s2)
+                        Rectangle { visible: aurRow.index > 0; width: parent.width; height: 1; color: Theme.cardEdge }
                         Rectangle {
+                            id: aurWash
                             anchors.fill: parent; anchors.topMargin: 2; anchors.bottomMargin: 2
-                            radius: 10
-                            color: rowArea.containsMouse ? Theme.rowHover : "transparent"
+                            radius: Theme.r1
+                            color: rowArea.containsMouse || aurMenu.open ? Theme.rowHover : "transparent"
                         }
                         MouseArea { id: rowArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: up.openReview(aurRow.modelData.name) }
+                        // Keyboard: Tab reaches the row; ↵ reviews it, Space includes or leaves it out, Menu / Shift+F10 its menu.
+                        activeFocusOnTab: true
+                        Keys.onPressed: e => {
+                            if (aurMenu.handleKey(e)) return;
+                            if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { up.openReview(aurRow.modelData.name); e.accepted = true; }
+                            else if (e.key === Qt.Key_Space && Updates.selectable(aurRow.modelData.name)) { Updates.setExcluded(aurRow.modelData.name, Updates.selected(aurRow.modelData.name)); e.accepted = true; }
+                        }
+                        FocusRing { anchors.fill: aurWash; cornerRadius: Theme.r1 }
                         Accessible.role: Accessible.ListItem
-                        Accessible.name: aurRow.modelData.name
-                        Accessible.description: "Review the changes"
+                        Accessible.name: aurRow.modelData.name + ", " + stateChip.text
+                        Accessible.description: "Review the changes. More in its menu."
                         Accessible.onPressAction: up.openReview(aurRow.modelData.name)
+                        Component.onCompleted: if (up.menuOf === modelData.name) Qt.callLater(() => aurMenu.popup(aurRow.width * 0.55, aurRow.height / 2))
+                        ContextMenu {
+                            id: aurMenu
+                            target: aurRow
+                            bounds: up
+                            title: aurRow.modelData.name
+                            ContextMenuLabel { text: aurRow.modelData.name + "  " + aurRow.modelData.new }
+                            ContextMenuItem { text: "Review changes"; glyph: "\u{f0208}"; shortcut: "↵"; onTriggered: up.openReview(aurRow.modelData.name) }
+                            ContextMenuCheckboxItem {
+                                text: "Include in this update"
+                                shortcut: "Space"
+                                enabled: Updates.selectable(aurRow.modelData.name)
+                                checked: Updates.selected(aurRow.modelData.name)
+                                onToggled: on => Updates.setExcluded(aurRow.modelData.name, !on)
+                            }
+                            ContextMenuSeparator {}
+                            ContextMenuItem {
+                                text: "Approve this version"
+                                glyph: "\u{f012c}"
+                                visible: aurRow.st === "review" && !!aurRow.rv && !aurRow.rv.error
+                                onTriggered: Updates.approve(aurRow.modelData.name)
+                            }
+                            ContextMenuItem {
+                                text: "Withdraw approval"
+                                visible: aurRow.st === "approved"
+                                onTriggered: Updates.unapprove(aurRow.modelData.name)
+                            }
+                            ContextMenuCheckboxItem {
+                                text: "Trust its future updates"
+                                checked: Updates.trusted.indexOf(aurRow.modelData.name) >= 0
+                                onToggled: on => Updates.setTrusted(aurRow.modelData.name, on)
+                            }
+                            ContextMenuSeparator {}
+                            ContextMenuItem { text: "Open on the AUR"; glyph: "\u{f03cc}"; enabled: aurRow.page !== ""; onTriggered: Qt.openUrlExternally(aurRow.page) }
+                            ContextMenuItem { text: "Copy name"; glyph: "\u{f018f}"; onTriggered: Clipboard.copyText(aurRow.modelData.name) }
+                        }
                         Toggle {
                             anchors.verticalCenter: parent.verticalCenter
+                            label: "Include " + aurRow.modelData.name
                             enabled: Updates.selectable(aurRow.modelData.name)
                             on: Updates.selected(aurRow.modelData.name)
                             opacity: enabled ? 1 : 0.35
                             onToggled: Updates.setExcluded(aurRow.modelData.name, Updates.selected(aurRow.modelData.name))
                         }
                         Column {
+                            id: aurWords
                             x: 56; anchors.verticalCenter: parent.verticalCenter
                             width: parent.width - 56 - stateChip.width - 40
                             spacing: 1
@@ -426,7 +474,7 @@ FocusScope {
                             }
                             text: look[0]; tone: look[1]; glyph: look[2]
                         }
-                        Text { id: chev; anchors.right: parent.right; anchors.rightMargin: 4; anchors.verticalCenter: parent.verticalCenter; text: "\u{f0142}"; font.family: Theme.fontGlyph; font.pixelSize: 15; color: Theme.textTertiary }
+                        Text { id: chev; textFormat: Text.PlainText; anchors.right: parent.right; anchors.rightMargin: 4; anchors.verticalCenter: parent.verticalCenter; text: "\u{f0142}"; font.family: Theme.fontGlyph; font.pixelSize: 15; color: Theme.textTertiary }
                     }
                 }
             }
@@ -435,9 +483,10 @@ FocusScope {
             Card {
                 visible: Updates.flatpak.length > 0
                 Item {
-                    width: parent.width; height: 34
+                    width: parent.width; height: Math.max(Theme.sp(34), fpHead.implicitHeight)
                     Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f08c4}"; font.family: Theme.fontGlyph; font.pixelSize: Theme.glyphM; color: Theme.accent }
                     Column {
+                        id: fpHead
                         x: 32; anchors.verticalCenter: parent.verticalCenter
                         spacing: 1
                         Label { text: "Flatpak · " + Updates.flatpak.length + (Updates.flatpak.length === 1 ? " update" : " updates"); size: 14; weight: Theme.wSemibold }
@@ -450,14 +499,35 @@ FocusScope {
                         id: fpRow
                         required property var modelData
                         required property int index
-                        width: parent.width; height: 42
-                        Rectangle { visible: fpRow.index > 0; width: parent.width; height: 1; color: Qt.rgba(1, 1, 1, 0.06) }
+                        readonly property bool chosen: !Updates.flatpakOff[modelData.id]
+                        width: parent.width; height: Math.max(Theme.sp(42), fpWords.implicitHeight + Theme.s2)
+                        Rectangle { visible: fpRow.index > 0; width: parent.width; height: 1; color: Theme.cardEdge }
+                        activeFocusOnTab: true
+                        Keys.onPressed: e => {
+                            if (fpMenu.handleKey(e)) return;
+                            if (e.key === Qt.Key_Space) { Updates.setFlatpakOff(fpRow.modelData.id, fpRow.chosen); e.accepted = true; }
+                        }
+                        FocusRing { cornerRadius: Theme.r1 }
+                        Accessible.role: Accessible.ListItem
+                        Accessible.name: fpRow.modelData.name + (fpRow.chosen ? ", included" : ", left out")
+                        ContextMenu {
+                            id: fpMenu
+                            target: fpRow
+                            bounds: up
+                            title: fpRow.modelData.name
+                            ContextMenuLabel { text: fpRow.modelData.name }
+                            ContextMenuCheckboxItem { text: "Include in this update"; shortcut: "Space"; checked: fpRow.chosen; onToggled: on => Updates.setFlatpakOff(fpRow.modelData.id, !on) }
+                            ContextMenuSeparator {}
+                            ContextMenuItem { text: "Copy app ID"; glyph: "\u{f018f}"; onTriggered: Clipboard.copyText(fpRow.modelData.app || fpRow.modelData.id) }
+                        }
                         Toggle {
                             anchors.verticalCenter: parent.verticalCenter
-                            on: !Updates.flatpakOff[fpRow.modelData.id]
+                            label: "Include " + fpRow.modelData.name
+                            on: fpRow.chosen
                             onToggled: Updates.setFlatpakOff(fpRow.modelData.id, !Updates.flatpakOff[fpRow.modelData.id])
                         }
                         Column {
+                            id: fpWords
                             x: 56; anchors.verticalCenter: parent.verticalCenter
                             width: parent.width - 56
                             spacing: 1
@@ -475,8 +545,10 @@ FocusScope {
             Item { width: 1; height: 4 }
         }
     }
-    ScrollFade { visible: up.view === "list"; flickable: listFlick }
-    ScrollHint { visible: up.view === "list"; flickable: listFlick; anchors { right: parent.right; top: listFlick.top; bottom: listFlick.bottom; rightMargin: 4 } }
+    // Both follow the list's own visibility: never bind their `visible` (an
+    // override showed ScrollFade's mask, a black rectangle, over the list).
+    ScrollFade { flickable: listFlick }
+    ScrollHint { flickable: listFlick; anchors { right: parent.right; top: listFlick.top; bottom: listFlick.bottom; rightMargin: 4 } }
 
     // Footer: what will happen, and the button.
     Item {
@@ -484,7 +556,7 @@ FocusScope {
         visible: up.view === "list" && Updates.total > 0
         opacity: up.enter
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom; leftMargin: 22; rightMargin: 22; bottomMargin: 18 }
-        height: visible ? 34 : 0
+        height: visible ? footBtns.implicitHeight : 0
         Label {
             anchors { left: parent.left; verticalCenter: parent.verticalCenter; right: footBtns.left; rightMargin: 12 }
             elide: Text.ElideRight
@@ -524,8 +596,9 @@ FocusScope {
         Item {
             id: rvHead
             x: 22; y: 12
-            width: parent.width - 44; height: 44
+            width: parent.width - 44; height: Math.max(Theme.sp(44), rvTitle.implicitHeight)
             Column {
+                id: rvTitle
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 2
                 Label { text: up.pkg; size: Theme.tTitle3; weight: Theme.wSemibold }
@@ -542,10 +615,11 @@ FocusScope {
                     tone: !r ? Theme.textTertiary : r.routine && !r.flags.length ? Theme.green : (r.firstTime || r.flags.length) ? Theme.orange : Theme.textSecondary
                 }
                 Button {
+                    readonly property string page: reviewView.r ? Links.webLink(reviewView.r.url) : ""
                     anchors.verticalCenter: parent.verticalCenter
-                    height: 30; glyph: "\u{f03cc}"; text: "AUR"
-                    enabled: !!reviewView.r && !!reviewView.r.url
-                    onClicked: Quickshell.execDetached(["xdg-open", reviewView.r.url])
+                    glyph: "\u{f03cc}"; text: "AUR"
+                    enabled: page !== ""
+                    onClicked: Qt.openUrlExternally(page)
                 }
             }
         }
@@ -595,21 +669,20 @@ FocusScope {
                 visible: !!(reviewView.r && reviewView.r.flags && reviewView.r.flags.length)
                 Repeater {
                     model: reviewView.r && reviewView.r.flags ? reviewView.r.flags : []
-                    Chip {
+                    // A line worth a look: pressing it shows that line (a Button, not a
+                    // clickable Chip; its mark keeps the flag's orange).
+                    Button {
                         required property var modelData
+                        kind: "quiet"
+                        size: Theme.tFootnote
                         tone: Theme.orange; glyph: "\u{f0026}"
                         text: modelData.why + " · " + modelData.path + ":" + modelData.line
-                        MouseArea {
-                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                const i = reviewView.r.files.findIndex(f => f.path === modelData.path);
-                                if (i >= 0) up.fileIx = i;
-                                Qt.callLater(() => diff.scrollToLine(modelData.line));
-                            }
+                        label: modelData.why + ", " + modelData.path + " line " + modelData.line
+                        onClicked: {
+                            const i = reviewView.r.files.findIndex(f => f.path === modelData.path);
+                            if (i >= 0) up.fileIx = i;
+                            Qt.callLater(() => diff.scrollToLine(modelData.line));
                         }
-                        Accessible.role: Accessible.Button
-                        Accessible.name: modelData.why + ", " + modelData.path + " line " + modelData.line
-                        Accessible.onPressAction: { const i = reviewView.r.files.findIndex(f => f.path === modelData.path); if (i >= 0) up.fileIx = i; Qt.callLater(() => diff.scrollToLine(modelData.line)); }
                     }
                 }
             }
@@ -643,7 +716,7 @@ FocusScope {
             size: 12; color: Theme.red
         }
 
-        PillButton {
+        Button {
             visible: !!(reviewView.r && reviewView.r.error)
             anchors { top: diff.top; topMargin: 10; horizontalCenter: diff.horizontalCenter }
             text: "Retry review"
@@ -653,7 +726,7 @@ FocusScope {
         Item {
             id: rvFoot
             anchors { left: parent.left; right: parent.right; bottom: parent.bottom; leftMargin: 22; rightMargin: 22; bottomMargin: 18 }
-            height: 34
+            height: Theme.sp(34)
             Label {
                 visible: Updates.mutationError !== ""
                 text: Updates.mutationError
@@ -666,6 +739,7 @@ FocusScope {
                 spacing: 10
                 Toggle {
                     anchors.verticalCenter: parent.verticalCenter
+                    label: "Trust " + up.pkg
                     on: Updates.trusted.indexOf(up.pkg) >= 0
                     onToggled: Updates.setTrusted(up.pkg, !on)
                 }

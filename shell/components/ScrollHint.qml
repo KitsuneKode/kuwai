@@ -4,6 +4,14 @@
 // is something to scroll. Drag it to scroll.
 //
 //   ScrollHint { flickable: list }   (anchor it to the flickable's right edge)
+//   ScrollHint { flickable: list; inside: true }
+//                                    it seats itself in the list's own right edge,
+//                                    over the rows; for a list in a Column, where
+//                                    a written-in hint would become a row
+//
+// It shows itself only while its list is shown and scrolls: don't bind its
+// `visible` (an override kept its drag handle live over a list that didn't
+// scroll).
 import QtQuick
 import qs.config
 
@@ -11,13 +19,21 @@ Item {
     id: bar
 
     required property Flickable flickable
-    readonly property bool needed: flickable.contentHeight > flickable.height + 1
+    property bool inside: false
+    Component.onCompleted: if (inside) {
+        parent = flickable;                 // the Flickable itself, not its content: it doesn't scroll away
+        anchors.top = flickable.top;
+        anchors.bottom = flickable.bottom;
+        anchors.right = flickable.right;
+        z = 2;
+    }
+    readonly property bool needed: flickable.visible && flickable.contentHeight + flickable.topMargin + flickable.bottomMargin > flickable.height + 1
     property bool recently: false
 
     width: 10
     visible: needed
     opacity: needed && (recently || hover.hovered || drag.active) ? 1 : 0
-    Behavior on opacity { NumberAnimation { duration: bar.opacity > 0.5 ? 120 : 160 } }
+    Behavior on opacity { NumberAnimation { duration: bar.opacity > 0.5 ? Theme.quickMs : Theme.microMs } }
 
     Connections {
         target: bar.flickable

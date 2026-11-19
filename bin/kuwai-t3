@@ -135,12 +135,16 @@ jq -cn --argjson rows "$rows" --arg env "$env_id" '
   [$rows[] | . + {s: state} | select(.s != null)] as $all
   | ($all | map(select(.s == "waiting"))) as $wait
   | ($all | map(select(.s == "running" or .s == "blocked"))) as $run
-  | ($all | map(select(.s == "completed" or .s == "failed" or .s == "limited")) | sort_by(.latest_at) | reverse | .[0:8]) as $done
+  # Every finished thread not yet opened is counted (the pill shows ✓N);
+  # the newest 24 come as rows (the panel list scrolls). The count was
+  # the length of the rows, capped at 8: past eight the pill said ✓8 for good.
+  | ($all | map(select(.s == "completed" or .s == "failed" or .s == "limited")) | sort_by(.latest_at) | reverse) as $ended
+  | ($ended | .[0:24]) as $done
   | {alive: true, env: $env,
      running: ($run | map(select(.s == "running")) | length),
      waiting: ($wait | length),
-     finished: ($done | length),
-     items: ([($wait + ($run | sort_by(.active_at) | reverse))[0:12][]
+     finished: ($ended | length),
+     items: ([($wait + ($run | sort_by(.active_at) | reverse))[0:16][]
               | {status: (if .s == "blocked" then "running" else .s end), blocked: (.s == "blocked"),
                  # Why it needs you: something to approve, a question to answer, or a message from a guest.
                  ask: (if .s != "waiting" then null elif ((.asks // 0) - (.questions // 0)) > 0 then "approval"

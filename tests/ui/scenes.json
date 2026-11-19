@@ -367,6 +367,32 @@
    "panel": "UpdatesPanel"
   },
   {
+   "id": "updates/up-to-date",
+   "name": "updates",
+   "panel": "UpdatesPanel",
+   "set": [
+    [
+     "Updates",
+     "data",
+     {
+      "checkedAt": "@now-60s",
+      "repo": [],
+      "aur": [],
+      "repoError": false,
+      "lastUpgrade": "@now-86400s",
+      "news": [],
+      "freeBytes": 48000000000,
+      "power": {
+       "ac": true,
+       "battery": 100
+      },
+      "kernel": false,
+      "flatpak": []
+     }
+    ]
+   ]
+  },
+  {
    "id": "calendar/new-machine",
    "name": "calendar",
    "panel": "CalendarPanel",
@@ -1079,6 +1105,258 @@
    ]
   },
   {
+   "id": "t3/many",
+   "name": "t3",
+   "panel": "T3Panel",
+   "set": [
+    [
+     "T3Code",
+     "alive",
+     true
+    ],
+    [
+     "T3Code",
+     "running",
+     1
+    ],
+    [
+     "T3Code",
+     "waiting",
+     2
+    ],
+    [
+     "T3Code",
+     "rawFinished",
+     26
+    ],
+    [
+     "T3Code",
+     "rawItems",
+     [
+      {
+       "thread": "t1",
+       "env": "e1",
+       "project": "rice",
+       "status": "waiting",
+       "provider": "claudeAgent",
+       "title": "Approve the migration plan",
+       "at": "@now-460iso",
+       "ask": "approval"
+      },
+      {
+       "thread": "t2",
+       "env": "e1",
+       "project": "rice",
+       "status": "waiting",
+       "provider": "codex",
+       "title": "Which shortcut for the switcher?",
+       "at": "@now-920iso",
+       "ask": "question"
+      },
+      {
+       "thread": "t3",
+       "env": "e1",
+       "project": "rice",
+       "status": "running",
+       "provider": "claudeAgent",
+       "title": "Rehearsal harness",
+       "at": "@now-1380iso"
+      },
+      {
+       "thread": "t4",
+       "env": "e1",
+       "project": "rice",
+       "status": "running",
+       "provider": "codex",
+       "title": "Port the greeter",
+       "at": "@now-1840iso",
+       "blocked": true
+      },
+      {
+       "thread": "d0",
+       "env": "e1",
+       "project": "rice",
+       "status": "failed",
+       "provider": "claudeAgent",
+       "title": "Fix the login race",
+       "at": "@now-3600iso"
+      },
+      {
+       "thread": "d1",
+       "env": "e1",
+       "project": "rice",
+       "status": "completed",
+       "provider": "claudeAgent",
+       "title": "Port the settings page",
+       "at": "@now-7200iso"
+      },
+      {
+       "thread": "d2",
+       "env": "e1",
+       "project": "rice",
+       "status": "completed",
+       "provider": "claudeAgent",
+       "title": "Audit the theme tokens",
+       "at": "@now-10800iso"
+      },
+      {
+       "thread": "d3",
+       "env": "e1",
+       "project": "rice",
+       "status": "completed",
+       "provider": "claudeAgent",
+       "title": "Write the release notes",
+       "at": "@now-14400iso"
+      },
+      {
+       "thread": "d4",
+       "env": "e1",
+       "project": "rice",
+       "status": "completed",
+       "provider": "claudeAgent",
+       "title": "Profile the idle CPU",
+       "at": "@now-18000iso"
+      },
+      {
+       "thread": "d5",
+       "env": "e1",
+       "project": "rice",
+       "status": "failed",
+       "provider": "claudeAgent",
+       "title": "Trim the bundle",
+       "at": "@now-21600iso"
+      },
+      {
+       "thread": "d6",
+       "env": "e1",
+       "project": "rice",
+       "status": "completed",
+       "provider": "claudeAgent",
+       "title": "Review the installer",
+       "at": "@now-25200iso"
+      },
+      {
+       "thread": "d7",
+       "env": "e1",
+       "project": "rice",
+       "status": "completed",
+       "provider": "claudeAgent",
+       "title": "Rename the helpers",
+       "at": "@now-28800iso"
+      },
+      {
+       "thread": "d8",
+       "env": "e1",
+       "project": "rice",
+       "status": "completed",
+       "provider": "claudeAgent",
+       "title": "Retry the flaky test",
+       "at": "@now-32400iso"
+      },
+      {
+       "thread": "d9",
+       "env": "e1",
+       "project": "rice",
+       "status": "completed",
+       "provider": "claudeAgent",
+       "title": "Tidy the README",
+       "at": "@now-36000iso"
+      },
+      {
+       "thread": "d10",
+       "env": "e1",
+       "project": "rice",
+       "status": "failed",
+       "provider": "claudeAgent",
+       "title": "Move icons to the cache",
+       "at": "@now-39600iso"
+      },
+      {
+       "thread": "d11",
+       "env": "e1",
+       "project": "rice",
+       "status": "completed",
+       "provider": "claudeAgent",
+       "title": "Split the panel file",
+       "at": "@now-43200iso"
+      },
+      {
+       "thread": "d12",
+       "env": "e1",
+       "project": "rice",
+       "status": "completed",
+       "provider": "claudeAgent",
+       "title": "Rework the empty states",
+       "at": "@now-46800iso"
+      },
+      {
+       "thread": "d13",
+       "env": "e1",
+       "project": "rice",
+       "status": "completed",
+       "provider": "claudeAgent",
+       "title": "Check the greeter",
+       "at": "@now-50400iso"
+      },
+      {
+       "thread": "d14",
+       "env": "e1",
+       "project": "rice",
+       "status": "completed",
+       "provider": "claudeAgent",
+       "title": "Speed up the launcher",
+       "at": "@now-54000iso"
+      },
+      {
+       "thread": "d15",
+       "env": "e1",
+       "project": "rice",
+       "status": "failed",
+       "provider": "claudeAgent",
+       "title": "Measure the swap use",
+       "at": "@now-57600iso"
+      },
+      {
+       "thread": "d16",
+       "env": "e1",
+       "project": "rice",
+       "status": "completed",
+       "provider": "claudeAgent",
+       "title": "Clean old worktrees",
+       "at": "@now-61200iso"
+      },
+      {
+       "thread": "d17",
+       "env": "e1",
+       "project": "rice",
+       "status": "completed",
+       "provider": "claudeAgent",
+       "title": "Teach the dictation fixes",
+       "at": "@now-64800iso"
+      },
+      {
+       "thread": "d18",
+       "env": "e1",
+       "project": "rice",
+       "status": "completed",
+       "provider": "claudeAgent",
+       "title": "Sort the agents list",
+       "at": "@now-68400iso"
+      },
+      {
+       "thread": "d19",
+       "env": "e1",
+       "project": "rice",
+       "status": "completed",
+       "provider": "claudeAgent",
+       "title": "Fix the calendar week",
+       "at": "@now-72000iso"
+      }
+     ]
+    ]
+   ]
+  },
+  {
    "id": "t3/reply",
    "name": "t3",
    "panel": "T3Panel",
@@ -1389,6 +1667,79 @@
    "id": "updates/typical",
    "name": "updates",
    "panel": "UpdatesPanel",
+   "set": [
+    [
+     "Updates",
+     "data",
+     {
+      "checkedAt": "@now-600s",
+      "repo": [
+       {
+        "name": "linux-zen",
+        "old": "7.3.4.zen2-2",
+        "new": "7.3.5.zen1-1",
+        "repo": "extra"
+       },
+       {
+        "name": "mesa",
+        "old": "26.2.1-1",
+        "new": "26.2.2-1",
+        "repo": "extra"
+       },
+       {
+        "name": "qt6-base",
+        "old": "6.12.0-2",
+        "new": "6.12.1-1",
+        "repo": "extra"
+       },
+       {
+        "name": "firefox",
+        "old": "151.0-1",
+        "new": "151.0.1-1",
+        "repo": "extra"
+       },
+       {
+        "name": "hyprland",
+        "old": "0.57.0-1",
+        "new": "0.57.1-1",
+        "repo": "extra"
+       }
+      ],
+      "aur": [
+       {
+        "name": "quickshell-git",
+        "old": "0.3.2.r12-1",
+        "new": "0.3.2.r19-1",
+        "repo": "aur"
+       },
+       {
+        "name": "a-package-with-an-unusually-long-name-for-testing-bin",
+        "old": "2026.11.01.r1234.gabcdef0-1",
+        "new": "2026.11.17.r1301.g0123abc-1",
+        "repo": "aur"
+       }
+      ],
+      "repoError": false,
+      "lastUpgrade": "@now-432000s",
+      "news": [],
+      "freeBytes": 48000000000,
+      "power": {
+       "ac": true,
+       "battery": 100
+      },
+      "kernel": true,
+      "flatpak": []
+     }
+    ]
+   ]
+  },
+  {
+   "id": "updates/menu",
+   "name": "updates",
+   "panel": "UpdatesPanel",
+   "props": {
+    "menuOf": "quickshell-git"
+   },
    "set": [
     [
      "Updates",

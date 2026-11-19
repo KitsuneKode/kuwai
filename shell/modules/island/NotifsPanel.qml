@@ -271,6 +271,7 @@ FocusScope {
             }
         }
         ScrollFade { flickable: list }
+        ScrollHint { flickable: list; inside: true }
 
         KeyHints {
             visible: Island.via === "key"

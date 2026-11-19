@@ -323,6 +323,7 @@ FocusScope {
             }
         }
         }
+        ScrollFade { flickable: sideFlick }
         ScrollHint { flickable: sideFlick; anchors { right: parent.right; top: sideFlick.top; bottom: sideFlick.bottom; rightMargin: 2 } }
     }
     Rectangle { x: side.width; width: 1; height: parent.height; color: Qt.rgba(1, 1, 1, 0.07) }
@@ -362,6 +363,7 @@ FocusScope {
                 sourceComponent: [barPage, clockPage, notifPage, assistantPage, motionPage, keyboardPage, islandRestPage, workspacesPage, powerPage, saverPage, timePage, clipboardPage, updatesPage, aboutPage][settings.current]
             }
         }
+        ScrollFade { flickable: pageFlick }
         ScrollHint { flickable: pageFlick; anchors { right: parent.right; top: pageFlick.top; bottom: pageFlick.bottom; rightMargin: 10 } }
     }
 

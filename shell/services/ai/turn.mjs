@@ -252,7 +252,8 @@ export function liveMarkdown(text) {
 
 // Links the shell opens for you: the web and mail only. A `file:`, `smb:` or
 // an app's own scheme in an answer or a copied text is shown, never opened.
-export function safeLink(url) { return /^(https?:\/\/|mailto:)/i.test(String(url || "").trim()); }
+// One check for every link from outside the shell (services/links.mjs).
+export { safeLink } from "../links.mjs";
 
 // A group of tool calls in one line (T3 Code's work-log summaries):
 // "Searched 2 times, read 3 pages and ran a command".

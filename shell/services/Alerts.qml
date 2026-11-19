@@ -41,7 +41,13 @@ Singleton {
         if (mem >= 0.82) out.push({ id: "mem", level: mem >= 0.92 ? "crit" : "warn", glyph: "\u{f035b}", title: "Memory at " + Math.round(mem * 100) + "%",
                                     detail: gb(memT - memA) + " of " + gb(memT) + " used" + (v.top ? " · most: " + v.top : "") });
         const swT = v.SwapTotal || 0, swF = v.SwapFree || 0;
-        if (swT > 0 && 1 - swF / swT >= 0.9) out.push({ id: "swap", level: "warn", glyph: "\u{f04c4}", title: "Swap almost full", detail: gb(swT - swF) + " of " + gb(swT) + " in use" });
+        // Swap filling up matters only when memory is short as well: with RAM to
+        // spare, what sits in swap is pages nothing has touched in hours, and
+        // there's nothing to do. (It held the island's orange pill for a day,
+        // flickering at 89–90 % beside 13 GB free.) It says how full, too.
+        const swUse = swT > 0 ? 1 - swF / swT : 0;
+        if (swUse >= 0.9 && memA / memT < 0.2) out.push({ id: "swap", level: "warn", glyph: "\u{f04c4}", title: "Swap at " + Math.round(swUse * 100) + "%",
+                                                       detail: gb(swT - swF) + " of " + gb(swT) + " in use, " + gb(memA) + " of memory free" });
         // One app holding a fifth of memory or more (a runaway browser tab is the
         // usual one): say which, since "memory at 70 %" alone gives you nothing to do.
         if (v.hog && v.hog.kb >= memT * 0.2) out.push({ id: "hog:" + v.hog.name, level: "warn", glyph: "\u{f035b}",

@@ -3,10 +3,13 @@
 // and how many are active, then each thread: what state it's in, its title,
 // which agent runs it. Threads waiting for you come first, in orange.
 //   Enter / click a row or the button: bring T3 Code forward. Esc closes.
+//   Right-click a row: open it, show its last reply, copy its title, dismiss
+//   it (finished ones), or dismiss every finished one.
 import QtQuick
 import Quickshell
 import qs.config
 import qs.components
+import qs.components.ui
 import qs.services
 import "../../services/t3.mjs" as T3
 
@@ -29,9 +32,13 @@ FocusScope {
     readonly property var live: T3Code.items.filter(i => i.status !== "completed" && i.status !== "failed")
     // Finished ones are rows too, each a way to that thread: "2 finished"
     // said how many but not which, and nothing could be done with it. Live
-    // first; finished fill what's left of eight rows.
+    // first, then every finished one the helper sends (its newest 24): the
+    // list scrolls. It used to stop at eight rows, with no way to the rest.
     readonly property var ended: T3Code.items.filter(i => i.status === "completed" || i.status === "failed")
-    readonly property var shownRows: live.slice(0, 6).concat(ended.slice(0, Math.max(2, 8 - Math.min(6, live.length))))
+    readonly property var shownRows: live.concat(ended)
+    // Finished ones older than what the helper sends as rows.
+    readonly property int beyond: Math.max(0, T3Code.finished - ended.length)
+    function dismissFinished() { for (const i of ended.slice()) T3Code.dismiss(i); }
     function ago(iso) {
         // A time that can't be read says nothing ("NaN h ago" was shown for one).
         const at = Date.parse(iso);
@@ -95,8 +102,7 @@ FocusScope {
             clip: interactive
             boundsBehavior: Flickable.StopAtBounds
             spacing: 2
-            // Live threads first (at most six, so finished ones can't crowd
-            // them out), then the finished ones, each one that thread.
+            // Live threads first, then the finished ones, each one that thread.
             model: ScriptModel { values: t3.shownRows; objectProp: "thread" }
             // One move (choreograph): a swiped row leaves on its spring while the
             // rows below rise into its place, together.
@@ -271,6 +277,26 @@ FocusScope {
                     }
                     // That thread, not just the window (T3 Code's own link).
                     TapHandler { onTapped: if (!xHover.hovered) { T3Code.openThread(row.modelData.thread); Island.close(); } }
+                    ContextMenu {
+                        target: row
+                        bounds: t3
+                        title: row.modelData.title || "Thread"
+                        ContextMenuLabel { text: row.modelData.title || "Untitled thread" }
+                        ContextMenuItem { text: "Open in T3 Code"; glyph: "\u{f03cc}"; shortcut: "Click"; onTriggered: { T3Code.openThread(row.modelData.thread); Island.close(); } }
+                        ContextMenuItem {
+                            text: t3.previewOf === row.modelData.thread ? "Hide last reply" : "Show last reply"
+                            glyph: "\u{f0369}"
+                            enabled: !Notifs.sharing
+                            onTriggered: {
+                                if (t3.previewOf === row.modelData.thread) t3.previewOf = "";
+                                else { T3Code.wantReply(row.modelData); t3.previewOf = row.modelData.thread; }
+                            }
+                        }
+                        ContextMenuItem { text: "Copy title"; glyph: "\u{f018f}"; onTriggered: Clipboard.copyText(row.modelData.title || "") }
+                        ContextMenuSeparator {}
+                        ContextMenuItem { text: "Dismiss"; glyph: "\u{f0156}"; visible: row.done; onTriggered: swipe.away(1) }
+                        ContextMenuItem { text: "Dismiss all finished (" + t3.ended.length + ")"; visible: t3.ended.length > 1; onTriggered: t3.dismissFinished() }
+                    }
                     Accessible.role: Accessible.ListItem
                     Accessible.name: row.modelData.title || "Untitled thread"
                     Accessible.description: T3.spoken(row.modelData)
@@ -297,11 +323,12 @@ FocusScope {
                 }
         }
         ScrollFade { flickable: threads }
+        ScrollHint { flickable: threads; inside: true }
 
         Label {
-            visible: t3.ended.length + t3.live.length > t3.shownRows.length
+            visible: t3.beyond > 0
             leftPadding: 10
-            text: "+" + (t3.ended.length + t3.live.length - t3.shownRows.length) + " more in T3 Code"
+            text: "+" + t3.beyond + " older in T3 Code"
             size: Theme.tFootnote; color: Theme.textTertiary
         }
 
@@ -310,12 +337,12 @@ FocusScope {
         Row {
             width: parent.width
             spacing: 8
-            PillButton {
+            Button {
                 width: (parent.width - 8) / 2
                 text: "Open T3 Code"
                 onClicked: { T3Code.focus(); Island.close(); }
             }
-            PillButton {
+            Button {
                 width: (parent.width - 8) / 2
                 text: "All agents"
                 onClicked: Island.open("agents", Island.screen, "pointer", "island")

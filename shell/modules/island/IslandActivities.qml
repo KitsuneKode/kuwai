@@ -13,7 +13,10 @@ Item {
     Accessible.role: Accessible.Pane
     Accessible.name: heading.text
 
+    ScrollFade { flickable: sheet }
+    ScrollHint { flickable: sheet; inside: true }
     Flickable {
+        id: sheet
         anchors.fill: parent
         contentWidth: width
         contentHeight: panel.implicitHeight
