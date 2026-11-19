@@ -128,3 +128,27 @@ def test_notes_outside_home_fail_explicitly_instead_of_misleading_backup(backup,
     result = run('now')
     assert result.returncode != 0
     assert not list(directory.glob('*.tar.gz'))
+
+
+def test_links_in_scope_are_left_out_not_fatal(backup, tmp_path):
+    # ~/.config/hypr/hypridle.conf is a link into kuwai's own files on an
+    # installed machine, and ~/.config/kuwai/searxng one to the container's
+    # folder: a snapshot refused every night from the day links were checked.
+    run, settings, directory, env = backup
+    shipped = tmp_path / 'kuwai-hypridle.conf'
+    shipped.write_text('shipped')
+    hypr = Path(env['HOME']) / '.config/hypr'
+    hypr.mkdir(parents=True)
+    (hypr / 'hypridle.conf').symlink_to(shipped)
+    (hypr / 'user.lua').write_text('yours')
+    (settings.parent / 'elsewhere').symlink_to(tmp_path)
+    result = run('now')
+    assert result.returncode == 0, result.stderr
+    [archive] = directory.glob('*.tar.gz')
+    with tarfile.open(archive) as tar:
+        names = tar.getnames()
+        assert all(not m.issym() and not m.islnk() for m in tar.getmembers())
+    assert '.config/hypr/user.lua' in names
+    assert '.config/kuwai/settings.json' in names
+    assert '.config/hypr/hypridle.conf' not in names
+    assert not any('elsewhere' in n for n in names)

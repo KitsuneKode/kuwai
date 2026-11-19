@@ -204,8 +204,14 @@ case ${1:-} in
             echo "kuwai: kuwai-check failed (above); fix it, or kuwai promote --force" >&2
             exit 1
         fi
-        # Your files as they are, before the desktop under them changes.
-        "$dev/bin/kuwai-backup" auto "before promote" >/dev/null 2>&1 || true
+        # Your files as they are, before the desktop under them changes. A
+        # migration below may rewrite them and points you at this snapshot, so
+        # no snapshot, no promote (it went without one for a day once, unseen).
+        if ! bak=$("$dev/bin/kuwai-backup" auto "before promote" 2>&1) && [ "${2:-}" != --force ]; then
+            printf '%s\n' "$bak" >&2
+            echo "kuwai: no snapshot of your files could be taken (above); fix it, or kuwai promote --force" >&2
+            exit 1
+        fi
         head=$(git -C "$dev" rev-parse HEAD) || exit 1
         # The QML that would go live must load: kuwai-check above only sees the
         # running shell, so a broken import in the new code took the island

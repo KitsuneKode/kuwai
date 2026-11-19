@@ -93,7 +93,13 @@ snap() {   # $1 = why (shown in list)
     local out=$DIR/$name.tar.gz
     hash=$(fingerprint)
     temporary=$(mktemp "$DIR/.snapshot.XXXXXX")
-    if ! (cd "$HOME" && paths | tar --exclude='*.bak-*' --exclude='*.bak' --exclude="${CFG#"$HOME"/}/kuwai/searxng" -czf "$temporary" --null --verbatim-files-from --files-from=-) || ! validate_archive "$temporary" "$HOME"; then
+    # Files and folders only, listed one by one: a link in scope is kuwai's
+    # own file linked in (hypr/hypridle.conf) or another tool's folder
+    # (kuwai/searxng), not yours; the fingerprint skips links too, and the
+    # check below refuses a snapshot holding one.
+    if ! (cd "$HOME" && paths | while IFS= read -r -d '' p; do
+              find "$p" \( -path "${CFG#"$HOME"/}/kuwai/searxng" -o -name '*.bak' -o -name '*.bak-*' \) -prune -o \( -type f -o -type d \) -print0
+          done | tar -czf "$temporary" --no-recursion --null --verbatim-files-from --files-from=-) || ! validate_archive "$temporary" "$HOME"; then
         rm -f -- "$temporary"; return 1
     fi
     mv -- "$temporary" "$out"
