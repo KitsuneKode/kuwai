@@ -191,7 +191,7 @@ def judge(frame: dict, image=None) -> list[Fault]:
                 if hit[2] > 2 and hit[3] > 2:
                     add("on-top", "fail", f"{_label(t)} is drawn over {_label(other)}", hit)
             seen.append((t, mine))
-        if image is not None and not glyph:
+        if image is not None and not glyph and not _in_fade(t):
             bg = ground(image, _shown(t))
             if bg is not None:
                 r, g, b, a = rgba(t["color"])
@@ -235,6 +235,18 @@ def judge(frame: dict, image=None) -> list[Fault]:
     return out
 
 
+def _in_fade(text) -> bool:
+    """In a scrolling list's edge band, where ScrollFade thins what is drawn
+    on purpose (more lies that way): neither its contrast nor its ink can be
+    read off the picture there."""
+    clip = text.get("clip")
+    if not (text.get("scroll") and clip):
+        return False
+    _, y, _, bh = _shown(text)
+    reach = 40 * float(text.get("scale", 1) or 1)
+    return y < clip[1] + reach or y + bh > clip[1] + clip[3] - reach
+
+
 def _inkless(image, text, bg) -> bool:
     """A text that should read (its colour stands off its ground) but leaves
     no stroke inside its box: something opaque covers it. The black mask that
@@ -245,11 +257,8 @@ def _inkless(image, text, bg) -> bool:
     x, y, bw, bh = _shown(text)
     if bw < 4 or bh < 4 or x < 0 or y < 0 or x + bw > w or y + bh > h:
         return False
-    clip = text.get("clip")
-    if text.get("scroll") and clip:
-        reach = 40 * float(text.get("scale", 1) or 1)
-        if y < clip[1] + reach or y + bh > clip[1] + clip[3] - reach:
-            return False
+    if _in_fade(text):
+        return False
     px = image.load()
     ground = tuple(round(v * 255) for v in bg)
     for yy in range(int(y) + 1, int(y + bh) - 1):

@@ -109,6 +109,13 @@ def test_contrast_is_measured_against_the_picture():
     green = PIL.new("RGB", (440, 300), (41, 178, 75))                 # white on the solid green Allow button
     assert "unreadable" in {x.rule for x in gate.judge(frame([text("Allow", (40, 120, 40, 16))]), green)}
     assert gate.contrast((1, 1, 1), (0, 0, 0)) == pytest.approx(21)
+    # In a scrolling list's fading edge (ScrollFade thins it on purpose) contrast isn't judged;
+    # the same text in the middle of the list is.
+    at_foot = text("Allow", (40, 280, 40, 16), scroll=True, clip=[0, 60, 440, 240])
+    mid = text("Allow", (40, 160, 40, 16), scroll=True, clip=[0, 60, 440, 240])
+    allow = lambda t: {x.rule for x in gate.judge(frame([t]), green) if '"Allow"' in x.what}
+    assert "unreadable" not in allow(at_foot)
+    assert "unreadable" in allow(mid)
 
 
 def test_a_fault_is_named_the_same_whatever_the_clock_says():
