@@ -64,7 +64,7 @@ Item {
         PauseAnimation { duration: Theme.reduceMotion ? 0 : 300 }
         NumberAnimation {
             target: view; property: "u"; to: 1; duration: Theme.unlockMs
-            easing.type: Easing.BezierSpline; easing.bezierCurve: [0.32, 0.72, 0, 1, 1, 1]
+            easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeDrawer
         }
     }
     Connections { target: view.lock; function onLeavingChanged() { if (view.lock.leaving) unlockAnim.restart(); else { unlockAnim.stop(); view.u = 0; } } }

@@ -170,6 +170,6 @@ Column {
         elide: Text.ElideRight
         text: entry.lock.checking ? "Checking…" : entry.lock.error || (entry.capsLock ? "Caps Lock is on" : " ")
         size: 12; weight: entry.lock.error ? Theme.wMedium : Theme.wRegular
-        color: entry.lock.error ? "#ff8a80" : Qt.rgba(1, 1, 1, 0.7)
+        color: entry.lock.error ? Theme.redText : Qt.rgba(1, 1, 1, 0.7)
     }
 }

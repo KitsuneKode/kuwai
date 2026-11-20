@@ -102,7 +102,7 @@ Item {
         anchors.horizontalCenter: parent.horizontalCenter
         width: 34 + (full - 34) * Math.min(1, island.o) + swell * 14
         height: (Settings.islandStyle === "notch" ? 54 : 36) + swell * 4
-        Behavior on width { enabled: island.o >= 1 && !Theme.reduceMotion; NumberAnimation { duration: 320; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+        Behavior on width { enabled: island.o >= 1 && !Theme.reduceMotion; NumberAnimation { duration: Theme.settleMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
         radius: 18
         color: "black"
         transform: Translate { y: -(1 - Math.min(1, island.o)) * 14 * island.move }

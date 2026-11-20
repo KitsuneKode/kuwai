@@ -1381,7 +1381,7 @@ Scope {
                 opacity: root.reveal(200)
                 Rectangle { anchors { left: parent.left; right: parent.right; top: parent.top; leftMargin: 14; rightMargin: 14 } height: 1; color: Qt.rgba(1, 1, 1, 0.07) }
                 Row {
-                    x: 20
+                    x: 22                        // the panel's one gutter (its header's, its detail line's)
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: 16
                     visible: root.entry !== null

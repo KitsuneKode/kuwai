@@ -485,8 +485,8 @@ FocusScope {
     // ── Search ───────────────────────────────────────────────────────────
     Item {
         id: search
-        x: 18; y: 12
-        width: parent.width - 36
+        x: 20; y: 12                    // the panel's one gutter (its footer's)
+        width: parent.width - 40
         height: 40
         Text {
             id: lens

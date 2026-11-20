@@ -162,7 +162,7 @@ Item {
         visible: linkGlyph !== ""
         x: mark.x + mark.width - width + 3; y: mark.y - 3
         width: 22; height: 22; radius: 11
-        color: "#2c2c2e"
+        color: Theme.chip            // an opaque disc on black
         border.width: 2; border.color: "black"
         scale: 0.8 + 0.2 * card.settle
         opacity: card.enter * card.settle * (card.gone ? 0.6 : 1)

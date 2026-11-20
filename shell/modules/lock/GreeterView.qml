@@ -322,7 +322,7 @@ Item {
         NumberAnimation {
             target: view; property: "tReveal"; to: 1
             duration: Theme.loginRevealMs
-            easing.type: Easing.BezierSpline; easing.bezierCurve: [0.32, 0.72, 0, 1, 1, 1]
+            easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeDrawer
         }
     }
     Connections {
