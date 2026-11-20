@@ -43,6 +43,7 @@ import Quickshell.Hyprland
 import Quickshell.Widgets
 import qs.config
 import qs.components
+import qs.components.ui as Ui
 import qs.services
 // Quickshell reloads on QML changes, not on the JS modules they import: after
 // changing clipstate.mjs, save this file too (or restart).
@@ -448,7 +449,7 @@ Scope {
         case "secrets": Clipboard.forgetSecrets(); say("Forgot everything that looked like a secret"); break;
         case "wipe":
             if (mode === "confirmWipe") { setMode("browse"); Clipboard.wipe(); say("History cleared; pins kept"); }
-            else { setMode("confirmWipe"); wipeWindow.restart(); say(wipeAsk); }
+            else { setMode("confirmWipe"); wipeWindow.restart(); say(wipeAsk, 0, "wipe"); }
             break;
         }
     }
@@ -511,13 +512,16 @@ Scope {
 
     // A short line of feedback over the footer; `ms` keeps it up longer.
     property string status: ""
+    // What the line offers to the pointer as well as its key: "undo" (a
+    // delete, ⌃Z) or "wipe" (clearing history, ⌃⇧⌫ again).
+    property string statusAct: ""
     readonly property int statusMs: 2600
-    function say(msg, ms) { status = msg; statusTimer.interval = typeof ms === "number" && ms > 0 ? ms : statusMs; statusTimer.restart(); }
-    Timer { id: statusTimer; interval: root.statusMs; onTriggered: root.status = "" }
+    function say(msg, ms, act) { status = msg; statusAct = act || ""; statusTimer.interval = typeof ms === "number" && ms > 0 ? ms : statusMs; statusTimer.restart(); }
+    Timer { id: statusTimer; interval: root.statusMs; onTriggered: { root.status = ""; root.statusAct = ""; } }
 
     // Deleting is held for Theme.undoMs (Clipboard.hold): ⌃Z brings the
     // latest delete back where it was, a multi-selection all together.
-    function deleted(n) { if (n > 0) say((n > 1 ? "Deleted " + n : "Deleted") + " · ⌃Z to undo", Theme.undoMs); }
+    function deleted(n) { if (n > 0) say((n > 1 ? "Deleted " + n : "Deleted") + " · ⌃Z to undo", Theme.undoMs, "undo"); }
     function undoDelete() {
         const keys = Clipboard.undo();
         if (!keys) return false;
@@ -1327,14 +1331,20 @@ Scope {
                         else if (event.key === Qt.Key_Escape) { root.finishNaming(false); event.accepted = true; }
                     }
                 }
-                Label { id: ext; anchors { right: hint.left; rightMargin: 10; verticalCenter: parent.verticalCenter } text: "." + (root.entry && root.entry.ext ? root.entry.ext : "png"); size: 13; color: Theme.textTertiary }
-                Label { id: hint; anchors { right: parent.right; rightMargin: 12; verticalCenter: parent.verticalCenter } text: "↵ save to Screenshots · esc"; size: 11; color: Theme.textTertiary }
+                Label { id: ext; anchors { right: nameActs.left; rightMargin: 10; verticalCenter: parent.verticalCenter } text: "." + (root.entry && root.entry.ext ? root.entry.ext : "png"); size: 13; color: Theme.textTertiary }
+                // The keys (↵ save, Esc) and the same two for the pointer.
+                Row {
+                    id: nameActs
+                    anchors { right: parent.right; rightMargin: Theme.s1; verticalCenter: parent.verticalCenter }
+                    spacing: Theme.s1
+                    Ui.Button { height: Theme.sp(30); size: Theme.tSub; kind: "quiet"; text: "Cancel"; onClicked: root.finishNaming(false) }
+                    Ui.Button { height: Theme.sp(30); size: Theme.tSub; kind: "primary"; text: "Save"; onClicked: root.finishNaming(true) }
+                }
             }
 
             // ── Feedback ─────────────────────────────────────────────────
             Rectangle {
                 anchors { horizontalCenter: parent.horizontalCenter; bottom: foot.top; bottomMargin: 8 }
-                width: statusLabel.implicitWidth + 28
                 height: 30; radius: 15
                 color: Qt.rgba(0.18, 0.18, 0.21, 0.98)
                 border.width: 1
@@ -1345,7 +1355,22 @@ Scope {
                 z: 20
                 Behavior on opacity { NumberAnimation { duration: root.status ? 140 : 100; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                 Behavior on scale { NumberAnimation { duration: Theme.microMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
-                Label { id: statusLabel; anchors.centerIn: parent; text: root.status; size: 12; weight: Theme.wMedium; color: root.confirmWipe ? Theme.red : Theme.textPrimary }
+                width: statusRow.implicitWidth + 28
+                Row {
+                    id: statusRow
+                    anchors.centerIn: parent
+                    spacing: Theme.s2
+                    Label { id: statusLabel; anchors.verticalCenter: parent.verticalCenter; text: root.status; size: 12; weight: Theme.wMedium; color: root.confirmWipe ? Theme.red : Theme.textPrimary }
+                    // The pointer's way to what the line's key does.
+                    Ui.Button {
+                        visible: root.statusAct === "undo" || (root.statusAct === "wipe" && root.confirmWipe)
+                        anchors.verticalCenter: parent.verticalCenter
+                        height: Theme.sp(24); size: Theme.tSub
+                        kind: root.statusAct === "wipe" ? "danger" : "quiet"
+                        text: root.statusAct === "wipe" ? "Clear history" : "Undo"
+                        onClicked: { if (root.statusAct === "wipe") root.run("wipe"); else root.undoDelete(); root.focusSearch(); }
+                    }
+                }
             }
 
             // ── Footer: the primary action, everything else under ⌃K ──────
@@ -1360,26 +1385,30 @@ Scope {
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: 16
                     visible: root.entry !== null
-                    Row {
+                    FootHint {
+                        act: "paste"
                         spacing: 7
                         Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f0192}"; font.family: Theme.fontGlyph; font.pixelSize: 14; color: Theme.textSecondary }
                         Label { anchors.verticalCenter: parent.verticalCenter; text: Clipboard.targetName() ? "Paste to " + Clipboard.targetName() : "Paste"; size: 13; weight: Theme.wMedium }
                         KeyCap { anchors.verticalCenter: parent.verticalCenter; text: "↵" }
                     }
                     Rectangle { width: 1; height: 16; anchors.verticalCenter: parent.verticalCenter; color: Qt.rgba(1, 1, 1, 0.1) }
-                    Row {
+                    FootHint {
+                        act: "quicklook"
                         spacing: 6
                         Label { anchors.verticalCenter: parent.verticalCenter; text: "Look"; size: 12; color: Theme.textTertiary }
                         KeyCap { anchors.verticalCenter: parent.verticalCenter; text: "Space" }
                     }
-                    Row {
+                    FootHint {
+                        act: "copy"
                         spacing: 6
                         Label { anchors.verticalCenter: parent.verticalCenter; text: "Copy"; size: 12; color: Theme.textTertiary }
                         KeyCap { anchors.verticalCenter: parent.verticalCenter; text: "⇧" }
                         KeyCap { anchors.verticalCenter: parent.verticalCenter; text: "↵" }
                     }
                 }
-                Row {
+                FootHint {
+                    act: "keys"
                     anchors { right: actionsBtn.left; rightMargin: 14; verticalCenter: parent.verticalCenter }
                     spacing: 6
                     Label { anchors.verticalCenter: parent.verticalCenter; text: "Shortcuts"; size: 12; color: Theme.textTertiary }
@@ -1566,5 +1595,33 @@ Scope {
         }
         else return;
         event.accepted = true;
+    }
+
+    // A footer hint is also its button: the pointer gets what the key does
+    // (a wash under it while hovered, the hand cursor).
+    component FootHint: Item {
+        id: fh
+        property string act
+        default property alias content: inner.data
+        property alias spacing: inner.spacing
+        implicitWidth: inner.implicitWidth
+        implicitHeight: inner.implicitHeight
+        Rectangle {
+            anchors { fill: parent; leftMargin: -Theme.s2; rightMargin: -Theme.s2; topMargin: -Theme.s1; bottomMargin: -Theme.s1 }
+            radius: Theme.r1
+            color: fhArea.containsMouse ? Theme.pill : "transparent"
+            Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
+        }
+        Row { id: inner; anchors.verticalCenter: parent.verticalCenter }
+        MouseArea {
+            id: fhArea
+            anchors { fill: parent; leftMargin: -Theme.s2; rightMargin: -Theme.s2; topMargin: -Theme.s1; bottomMargin: -Theme.s1 }
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: { if (fh.act === "keys") root.toggleMode("keys"); else root.run(fh.act); root.focusSearch(); }
+            Accessible.role: Accessible.Button
+            Accessible.name: ({ paste: "Paste", quicklook: "Quick Look", copy: "Copy", keys: "Shortcuts" })[fh.act] || fh.act
+            Accessible.onPressAction: { if (fh.act === "keys") root.toggleMode("keys"); else root.run(fh.act); }
+        }
     }
 }

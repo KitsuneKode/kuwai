@@ -443,6 +443,15 @@
    "kind": "worst"
   },
   {
+   "id": "launcher/menu",
+   "name": "launcher",
+   "panel": "LauncherPanel",
+   "kind": "typical",
+   "props": {
+    "menuAt": -2
+   }
+  },
+  {
    "id": "switcher/new-machine",
    "name": "switcher",
    "panel": "SwitcherPanel"

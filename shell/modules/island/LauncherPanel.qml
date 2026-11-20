@@ -20,6 +20,7 @@ import Quickshell.Hyprland
 import Quickshell.Widgets
 import qs.config
 import qs.components
+import qs.components.ui
 import qs.services
 import "../../services/calc.js" as Calc
 
@@ -209,6 +210,12 @@ FocusScope {
             }
         }
     }
+    // A file's other two answers (⌃↵, ⌥↵; and its row's menu).
+    // What ↵ does to a result, as its row and its menu say it.
+    readonly property var verbs: ({ app: "Open", window: "Switch to", action: "Run", calc: "Copy", mode: "Use", emoji: "Type", glyph: "Type", file: "Open", web: "Search", timer: "Start" })
+    property int menuAt: -1                       // a row whose menu is open (the rehearsal stages it)
+    function fileFolder(r) { Quickshell.execDetached(["xdg-open", r.dir ? r.path : r.path.slice(0, r.path.lastIndexOf("/"))]); Island.close(); }
+    function copyPath(r) { Quickshell.execDetached(["wl-copy", "--", r.path]); Island.close(); }
     function procLabel(p) { return (p.app && p.app.toLowerCase() !== p.name.toLowerCase() ? p.app + " · " : "") + p.name; }
     function endProc(r, force) {
         if (!r || r.kind !== "proc") return;
@@ -530,9 +537,7 @@ FocusScope {
                 else if ((k === Qt.Key_Return || k === Qt.Key_Enter) && launcher.results[launcher.current] && launcher.results[launcher.current].kind === "file" && (ctrl || (event.modifiers & Qt.AltModifier))) {
                     // A file: Ctrl+↩ its folder, Alt+↩ copy its path.
                     const r = launcher.results[launcher.current];
-                    if (ctrl) Quickshell.execDetached(["xdg-open", r.dir ? r.path : r.path.slice(0, r.path.lastIndexOf("/"))]);
-                    else Quickshell.execDetached(["wl-copy", "--", r.path]);
-                    Island.close();
+                    if (ctrl) launcher.fileFolder(r); else launcher.copyPath(r);
                 }
                 else if (k === Qt.Key_Return || k === Qt.Key_Enter) launcher.run(launcher.results[launcher.current]);
                 else return;
@@ -700,7 +705,7 @@ FocusScope {
                 Label {
                     anchors.verticalCenter: parent.verticalCenter
                     text: row.modelData.kind === "proc" ? (row.modelData.armed ? (launcher.armedForce ? "Force quit" : "End") : row.modelData.proc.mine ? "End…" : "")
-                        : ({ app: "Open", window: "Switch to", action: "Run", calc: "Copy", mode: "Use", emoji: "Type", glyph: "Type", file: "Open", web: "Search", timer: "Start" })[row.modelData.kind] || ""
+                        : launcher.verbs[row.modelData.kind] || ""
                     size: 12
                     color: Theme.textSecondary
                 }
@@ -783,6 +788,40 @@ FocusScope {
                     if (was && (g.x !== was.x || g.y !== was.y)) launcher.current = row.index;
                 }
                 onClicked: launcher.run(row.modelData)
+            }
+            // Right-click: what the keys do, for the pointer too (⌃↵ force
+            // quit, a file's folder and path). Ending asks twice either way.
+            ContextMenu {
+                id: rowMenu
+                target: row
+                bounds: launcher
+                enabled: !row.header && !row.dock && !row.tips
+                title: row.modelData.name || ""
+                readonly property bool proc: row.modelData.kind === "proc"
+                readonly property bool file: row.modelData.kind === "file"
+                readonly property bool armed: proc && launcher.armedPid === (row.modelData.proc || {}).pid
+                ContextMenuItem {
+                    text: rowMenu.proc ? (rowMenu.armed && !launcher.armedForce ? "End — again to confirm" : "End")
+                        : launcher.verbs[row.modelData.kind] || "Open"
+                    glyph: rowMenu.proc ? "\u{f0156}" : "\u{f03cc}"
+                    shortcut: "↵"
+                    onTriggered: launcher.run(row.modelData)
+                }
+                ContextMenuItem {
+                    visible: rowMenu.proc
+                    text: rowMenu.armed && launcher.armedForce ? "Force quit — again to confirm" : "Force quit"
+                    glyph: "\u{f0a7a}"
+                    shortcut: "⌃↵"
+                    variant: "destructive"
+                    onTriggered: launcher.endProc(row.modelData, true)
+                }
+                ContextMenuItem { visible: rowMenu.file; text: "Open enclosing folder"; glyph: "\u{f024b}"; shortcut: "⌃↵"; onTriggered: launcher.fileFolder(row.modelData) }
+                // The rehearsal stages a row's menu: menuAt (-2: the first result that has one).
+                Component.onCompleted: {
+                    const at = launcher.menuAt === -2 ? launcher.results.findIndex(r => ["header", "tips", "dock"].indexOf(r.kind) < 0) : launcher.menuAt;
+                    if (at >= 0 && at === row.index && rowMenu.enabled) Qt.callLater(() => rowMenu.popup(row.width * 0.55, row.height / 2));
+                }
+                ContextMenuItem { visible: rowMenu.file; text: "Copy path"; glyph: "\u{f018f}"; shortcut: "⌥↵"; onTriggered: launcher.copyPath(row.modelData) }
             }
             // A result as a screen reader reads it (the dock's tiles name themselves).
             Accessible.role: row.header || row.dock ? Accessible.Grouping : Accessible.ListItem
