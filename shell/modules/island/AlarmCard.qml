@@ -38,6 +38,18 @@ Item {
     property real line2: 1
     property real actsIn: 1
     property real swing: 0          // the bell's angle, degrees
+    // The keyboard (Super+Ctrl+↵, Island.cardKeys): the answer (Stop, Done)
+    // takes it; Tab or ←→ reach the other, ↵ presses, Esc gives it back.
+    function focusFirst() { if (Island.cardKeys && visible) (priBtn.visible ? priBtn : secBtn).forceActiveFocus(Qt.TabFocusReason); }
+    Connections { target: Island; function onCardKeysChanged() { if (Island.cardKeys) Qt.callLater(card.focusFirst); } }
+    Component.onCompleted: if (Island.cardKeys) Qt.callLater(card.focusFirst)
+    Keys.onPressed: e => {
+        if (e.key === Qt.Key_Escape) Island.cardKeys = false;
+        else if (e.key === Qt.Key_Left && priBtn.activeFocus && secBtn.visible) secBtn.forceActiveFocus(Qt.TabFocusReason);
+        else if (e.key === Qt.Key_Right && secBtn.activeFocus && priBtn.visible) priBtn.forceActiveFocus(Qt.TabFocusReason);
+        else return;
+        e.accepted = true;
+    }
     property real breathe: 1        // the ring of light: 0 at the disc → 1 gone
     property real fill: 1           // the disc's ring (reminder, timer)
 
@@ -171,6 +183,7 @@ Item {
         opacity: card.actsIn
         transform: Translate { x: 6 * (1 - card.actsIn) }
         readonly property var a: card.item && card.item.act ? card.item.act : ({})
+        function answer(which) { const p = acts.a[which]; if (!p) return; Island.cardKeys = false; const f = p[1]; Moments.dropCard(); f(); }
 
         Rectangle {
             visible: !!acts.a.secondary
@@ -181,10 +194,14 @@ Item {
             Behavior on color { ColorAnimation { duration: Theme.colorMs } }
             Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
             Label { id: secLabel; anchors.centerIn: parent; text: acts.a.secondary ? acts.a.secondary[0] : ""; size: 14; weight: Theme.wSemibold; color: card.tone }
-            MouseArea { id: secArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { const f = acts.a.secondary[1]; Moments.dropCard(); f(); } }
+            MouseArea { id: secArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: acts.answer("secondary") }
+            id: secBtn
+            activeFocusOnTab: visible && Island.cardKeys
+            Keys.onPressed: e => { if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { acts.answer("secondary"); e.accepted = true; } }
+            FocusRing {}
             Accessible.role: Accessible.Button
             Accessible.name: acts.a.secondary ? acts.a.secondary[0] : ""
-            Accessible.onPressAction: if (acts.a.secondary) { const f = acts.a.secondary[1]; Moments.dropCard(); f(); }
+            Accessible.onPressAction: acts.answer("secondary")
         }
         Rectangle {
             visible: !!acts.a.primary
@@ -201,10 +218,14 @@ Item {
                 font.family: Theme.fontGlyph; font.pixelSize: 20
                 color: Theme.textPrimary
             }
-            MouseArea { id: priArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { const f = acts.a.primary[1]; Moments.dropCard(); f(); } }
+            MouseArea { id: priArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: acts.answer("primary") }
+            id: priBtn
+            activeFocusOnTab: visible && Island.cardKeys
+            Keys.onPressed: e => { if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { acts.answer("primary"); e.accepted = true; } }
+            FocusRing {}
             Accessible.role: Accessible.Button
             Accessible.name: acts.a.primary ? acts.a.primary[0] : ""
-            Accessible.onPressAction: if (acts.a.primary) { const f = acts.a.primary[1]; Moments.dropCard(); f(); }
+            Accessible.onPressAction: acts.answer("primary")
         }
     }
 }

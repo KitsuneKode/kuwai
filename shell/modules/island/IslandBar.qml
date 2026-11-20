@@ -138,7 +138,9 @@ Scope {
             // music's art, the usage marks) took it exclusively, so just
             // resting the pointer on the notch stole typing from the window,
             // and a window that opened then (Satty) came up without focus.
-            WlrLayershell.keyboardFocus: panelHere && !Island.previewing ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+            // (And for its card while you asked for it: Super+Ctrl+↵, Island.cardKeys.)
+            WlrLayershell.keyboardFocus: (panelHere && !Island.previewing) || (Island.cardKeys && (peekHere || deviceHere))
+                ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
             mask: Region {
                 item: frame.visible && frame.opacity > 0.01 ? frame : null
                 // Minimal island: the strip along the top edge beside it counts too.

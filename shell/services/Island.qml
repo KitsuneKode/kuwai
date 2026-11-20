@@ -122,6 +122,11 @@ Singleton {
     // activity, its details too. Again while open: it closes.
     property bool peek: false
     property string peekScreen: ""
+    // Super+Ctrl+↵: the keyboard on the card the island shows (a notification's
+    // peek, an alarm, a reminder, a timer done), which never takes it by
+    // itself (typing would land in it). Tab or ←→ between its buttons, ↵
+    // presses, Esc gives the keyboard back; off once the card goes.
+    property bool cardKeys: false
     function peekFor(ms) {
         if (peek) { peek = false; peekTimer.stop(); return; }
         Screens.underPointer(looking => {

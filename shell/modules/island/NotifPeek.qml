@@ -108,8 +108,29 @@ Item {
 
     function openItem() {
         const i = peek.item;
+        Island.cardKeys = false;
         Notifs.dropPeek();
         if (i) Notifs.activate(i);
+    }
+    // The keyboard (Super+Ctrl+↵, Island.cardKeys): Open takes it; Tab or ←→
+    // walk the buttons, ↓ shows more (as a pull does), ⌦ dismisses, Esc
+    // gives it back.
+    function focusFirst() {
+        if (!Island.cardKeys || !visible) return;
+        (peek.expanded ? openBtn : go).forceActiveFocus(Qt.TabFocusReason);
+    }
+    Connections { target: Island; function onCardKeysChanged() { if (Island.cardKeys) Qt.callLater(peek.focusFirst); } }
+    onExpandedChanged: if (Island.cardKeys) Qt.callLater(peek.focusFirst)
+    Component.onCompleted: if (Island.cardKeys) Qt.callLater(peek.focusFirst)
+    function buttons() { return [dismissBtn, go, openBtn, copyBtn, replyBtn].filter(b => b.visible); }
+    Keys.onPressed: e => {
+        const b = buttons(), at = b.indexOf(peek.Window.activeFocusItem);
+        if (e.key === Qt.Key_Escape) Island.cardKeys = false;
+        else if (e.key === Qt.Key_Right || e.key === Qt.Key_Left) { const n = b[at + (e.key === Qt.Key_Right ? 1 : -1)]; if (n) n.forceActiveFocus(Qt.TabFocusReason); }
+        else if (e.key === Qt.Key_Down && !peek.expanded) Notifs.expandPeek();
+        else if (e.key === Qt.Key_Delete || e.key === Qt.Key_Backspace) { Island.cardKeys = false; Notifs.dismissPeekItem(peek.item); }
+        else return;
+        e.accepted = true;
     }
 
     Item {
@@ -260,6 +281,9 @@ Item {
             anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
             onClicked: Notifs.dismissPeekItem(peek.item)
         }
+        activeFocusOnTab: visible && Island.cardKeys
+        Keys.onPressed: e => { if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { Island.cardKeys = false; Notifs.dismissPeekItem(peek.item); e.accepted = true; } }
+        FocusRing {}
         Accessible.role: Accessible.Button
         Accessible.name: "Dismiss"
         Accessible.onPressAction: Notifs.dismissPeekItem(peek.item)
@@ -280,6 +304,9 @@ Item {
             anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
             onClicked: peek.openItem()
         }
+        activeFocusOnTab: visible && Island.cardKeys
+        Keys.onPressed: e => { if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { peek.openItem(); e.accepted = true; } }
+        FocusRing {}
         Accessible.role: Accessible.Button
         Accessible.name: "Open"
         Accessible.onPressAction: peek.openItem()
@@ -290,8 +317,12 @@ Item {
         anchors { left: copy.left; right: parent.right; rightMargin: peek.pad; bottom: parent.bottom; bottomMargin: peek.pad }
         spacing: 6
         Rectangle {
+            id: openBtn
             height: 28; radius: 14
             width: openLbl.implicitWidth + 22
+            activeFocusOnTab: visible && Island.cardKeys
+            Keys.onPressed: e => { if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { peek.openItem(); e.accepted = true; } }
+            FocusRing {}
             color: openArea.containsMouse ? Qt.rgba(1, 1, 1, 0.92) : Qt.rgba(1, 1, 1, 0.88)
             Label { id: openLbl; anchors.centerIn: parent; text: "Open"; size: 12; weight: Theme.wMedium; color: Theme.inkOnLight }
             MouseArea {
@@ -304,7 +335,11 @@ Item {
             Accessible.onPressAction: peek.openItem()
         }
         Rectangle {
+            id: copyBtn
             visible: peek.otp !== ""
+            activeFocusOnTab: visible && Island.cardKeys
+            Keys.onPressed: e => { if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { Notifs.copyCode(peek.item); e.accepted = true; } }
+            FocusRing {}
             height: 28; radius: 14
             width: copyLbl.implicitWidth + 22
             color: copyArea.containsMouse ? Qt.alpha(Theme.accent, 0.4) : Qt.alpha(Theme.accent, 0.25)
@@ -319,7 +354,11 @@ Item {
             Accessible.onPressAction: Notifs.copyCode(peek.item)
         }
         Rectangle {
+            id: replyBtn
             visible: peek.canReply
+            activeFocusOnTab: visible && Island.cardKeys
+            Keys.onPressed: e => { if ((e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) && peek.item) { Island.cardKeys = false; Notifs.readInIsland(peek.item); e.accepted = true; } }
+            FocusRing {}
             height: 28; radius: 14
             width: replyLbl.implicitWidth + 22
             color: replyArea.containsMouse ? Theme.pillHover : Theme.pill

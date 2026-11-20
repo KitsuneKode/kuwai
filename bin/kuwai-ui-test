@@ -21,7 +21,7 @@ def has_runtime_failure(log):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--case', choices=['primitives', 'settings-store', 'island', 'rehearse', 'gestures', 'clock-ground', 'idle', 'center-keys'], default='primitives')
+    parser.add_argument('--case', choices=['primitives', 'settings-store', 'island', 'rehearse', 'gestures', 'clock-ground', 'idle', 'center-keys', 'card-keys'], default='primitives')
     parser.add_argument('--compile-components', action='store_true', help='requires a real PanelWindow backend; otherwise UNQUALIFIED')
     parser.add_argument('--self-test-isolation', action='store_true')
     parser.add_argument('--text-scale', type=float, choices=[1, 1.2, 2], default=1)
@@ -44,7 +44,7 @@ def main():
         app, home = private/'app', private/'home'
         home.mkdir()
         shutil.copytree(root/'shell', app/'shell')
-        if args.case in ('island', 'idle') and args.backend == 'offscreen':
+        if args.case in ('island', 'idle', 'card-keys') and args.backend == 'offscreen':
             # These two adapters require layer-shell even at compile time.
             # The offscreen case tests capsule rendering/input, not inhibition
             # or wallpaper composition; the production capsule code stays real.
@@ -140,7 +140,7 @@ def main():
             print(json.dumps({'status':'FAIL','reason':'native fixture assertion failed','log':str(output/'runtime.log')}))
             return 1
         image = {'island': 'island.png', 'gestures': 'gestures.png', 'clock-ground': 'lock-sky.png'}.get(args.case, 'primitives.png')
-        ok='UI_SMOKE_CAPTURED' in result.stdout+result.stderr and (args.case in ('rehearse', 'idle', 'center-keys') or (output/image).is_file())
+        ok='UI_SMOKE_CAPTURED' in result.stdout+result.stderr and (args.case in ('rehearse', 'idle', 'center-keys', 'card-keys') or (output/image).is_file())
         print(json.dumps({'status':'PASS' if ok else 'UNQUALIFIED','scope':args.backend + (' island layout/input' if args.case == 'island' else ' ' + args.case),
                           'compiledComponents':len(json.loads(env['KUWAI_UI_COMPILE'])), 'output':str(output)}))
         return 0 if ok else 2

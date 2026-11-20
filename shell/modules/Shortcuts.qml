@@ -11,6 +11,23 @@ import qs.config
 import qs.services
 
 Scope {
+    // The island's card from the keyboard (Island.cardKeys): only while one
+    // shows; held (its timer paused) while the keyboard is on it.
+    readonly property bool cardUp: Notifs.peek !== null || Moments.card !== null
+    onCardUpChanged: if (!cardUp) Island.cardKeys = false
+    Connections {
+        target: Island
+        function onCardKeysChanged() {
+            Notifs.peekHeld = Island.cardKeys && Notifs.peek !== null;
+            Moments.cardHeld = Island.cardKeys && Moments.card !== null;
+        }
+    }
+    GlobalShortcut {
+        appid: "kuwai"
+        name: "island-card"
+        description: "Island: answer the card it shows (a notification, an alarm) from the keyboard"
+        onPressed: Island.cardKeys = !Island.cardKeys && (Notifs.peek !== null || Moments.card !== null)
+    }
     GlobalShortcut {
         appid: "kuwai"
         name: "center"

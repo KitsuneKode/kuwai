@@ -208,15 +208,17 @@ def main():
                 faults.append(gate.Fault(f"gestures ({motion} motion)", "gesture", "fail",
                                          said[1].strip() if said else f"the gesture run did not finish ({log})", None))
 
-    # The notification center from the keyboard alone (tests/ui/center-keys.qml).
+    # The notification center and the island's cards from the keyboard alone
+    # (tests/ui/center-keys.qml, tests/ui/card-keys.qml).
     if not args.only and not args.scale:
-        run = subprocess.run([str(ROOT / "bin/kuwai-ui-test"), "--case", "center-keys", "--backend", "x11",
-                              "--output", str(out / "center-keys")], capture_output=True, text=True)
-        log = out / "center-keys" / "runtime.log"
-        said = re.search(r"UI_SMOKE_FAILED: (.*)", log.read_text(errors="replace")) if log.is_file() else None
-        if said or run.returncode:
-            faults.append(gate.Fault("center keys", "keyboard", "fail",
-                                     said[1].strip() if said else f"the center keys run did not finish ({log})", None))
+        for case in ("center-keys", "card-keys"):
+            run = subprocess.run([str(ROOT / "bin/kuwai-ui-test"), "--case", case, "--backend", "x11",
+                                  "--output", str(out / case)], capture_output=True, text=True)
+            log = out / case / "runtime.log"
+            said = re.search(r"UI_SMOKE_FAILED: (.*)", log.read_text(errors="replace")) if log.is_file() else None
+            if said or run.returncode:
+                faults.append(gate.Fault(case.replace("-", " "), "keyboard", "fail",
+                                         said[1].strip() if said else f"the {case} run did not finish ({log})", None))
 
     # At rest nothing draws (tests/ui/idle.qml): the island with a capsule out
     # and the login face, frames counted over a quiet 7 s.
