@@ -18,6 +18,7 @@ import Quickshell.Io
 import Quickshell.Hyprland
 import qs.config
 import qs.services
+import "voxScreens.mjs" as VoxScreens
 
 Scope {
     id: host
@@ -26,7 +27,9 @@ Scope {
     readonly property string dir: (Quickshell.env("XDG_DATA_HOME") || Quickshell.env("HOME") + "/.local/share") + "/voxtype/quickshell"
     readonly property string styleFile: runtime + "/voxtype/quickshell-style.json"
     property bool hosting: false
-    property var parts: []
+    property var parts: []              // what's shared: state, audio bridge, style, picker, meeting
+    property var osds: ({})             // one HUD surface per output, by name
+    property var shared: null           // { state, audio, style }
 
     // Announce this shell as the host (its pid; voxtype checks it's a qs).
     FileView { id: pidFile; path: host.runtime + "/kuwai/voxtype-host.pid"; printErrors: false }
@@ -83,46 +86,74 @@ Scope {
         }
         return c.createObject(host, props || {});
     }
+    function makeOsd(scr) {
+        const sh = shared;
+        const osd = make("OsdSurface.qml", { audio: sh.audio, style: sh.style, screen: scr });
+        if (!osd) return null;
+        osd.daemonState = Qt.binding(() => sh.state.state);
+        osd.osdSuppressed = Qt.binding(() => sh.state.osdSuppressed);
+        if ("session" in osd && "session" in sh.state) osd.session = Qt.binding(() => sh.state.session);
+        if ("outcome" in osd && "outcome" in sh.state) osd.outcome = Qt.binding(() => sh.state.outcome);
+        if ("activeOutput" in osd) {
+            const name = scr.name;
+            osd.activeOutput = Qt.binding(() => !Hyprland.focusedMonitor || Hyprland.focusedMonitor.name === name);
+        }
+        return osd;
+    }
+    // One surface per output, shown on the focused one, as voxtype's own
+    // shell.qml does since 1.2 (the HUD follows you between monitors; hidden
+    // surfaces skip their per-frame work). Older files have one surface and
+    // no session/outcome: set only what the file declares. Only the outputs
+    // that changed are touched (voxScreens.mjs).
+    function syncOsds() {
+        const now = Quickshell.screens;
+        const had = {};
+        for (const n in osds) had[n] = osds[n].screen;
+        const p = VoxScreens.plan(had, now);
+        const next = {};
+        for (const n of p.keep) next[n] = osds[n];
+        for (const n of p.drop) if (osds[n]) osds[n].destroy();
+        for (const n of p.add) {
+            const osd = makeOsd(now.find(x => x.name === n));
+            if (osd) next[n] = osd;
+        }
+        osds = next;
+        if (p.drop.length || p.add.length) console.info("voxtype host: HUD surfaces " + (p.drop.length ? "-" + p.drop.join(",") + " " : "") + (p.add.length ? "+" + p.add.join(",") : ""));
+    }
     function build() {
         const state = make("voxtype-shared/StateReader.qml");
         const audio = make("voxtype-shared/AudioBridge.qml");
         const style = make("voxtype-shared/StyleLoader.qml", { styleFile: styleFile });
         if (!state || !audio || !style) { for (const p of [state, audio, style]) if (p) p.destroy(); return; }
-        // One surface per output, shown on the focused one, as voxtype's own
-        // shell.qml does since 1.2 (the HUD follows you between monitors;
-        // hidden surfaces skip their per-frame work). Older files have one
-        // surface and no session/outcome: set only what the file declares.
-        const osds = [];
-        for (const scr of Quickshell.screens) {
-            const osd = make("OsdSurface.qml", { audio: audio, style: style, screen: scr });
-            if (!osd) continue;
-            osd.daemonState = Qt.binding(() => state.state);
-            osd.osdSuppressed = Qt.binding(() => state.osdSuppressed);
-            if ("session" in osd && "session" in state) osd.session = Qt.binding(() => state.session);
-            if ("outcome" in osd && "outcome" in state) osd.outcome = Qt.binding(() => state.outcome);
-            if ("activeOutput" in osd) {
-                const name = scr.name;
-                osd.activeOutput = Qt.binding(() => !Hyprland.focusedMonitor || Hyprland.focusedMonitor.name === name);
-            }
-            osds.push(osd);
-        }
+        shared = { state: state, audio: audio, style: style };
+        osds = ({});
+        syncOsds();
         const picker = make("EnginePicker.qml");
         const meeting = make("MeetingControls.qml");
         // Their panels take the keyboard; an island panel holding it would
         // leave them unfocused, so the island steps aside when one opens.
         for (const p of [picker, meeting]) if (p) p.openChanged.connect(() => { if (p.open && Island.panel) Island.close(); });
-        parts = [state, audio, style, picker, meeting].concat(osds).filter(p => p);
+        parts = [state, audio, style, picker, meeting].filter(p => p);
         hosting = true;
         console.info("voxtype host: drawing voxtype's UI in this shell");
     }
-    // A monitor plugged in or out: surfaces are per output, so build again.
+    // A monitor plugged in, out, or back from power-off (it returns as a new
+    // output of the same name): once the outputs have settled, only the HUDs
+    // whose output changed are made again. It was the whole UI, torn down and
+    // built at once (+10–28 MB a screensaver cycle, and every surface asking
+    // the GPU for memory in the same moment: the HUD died of EGL_BAD_ALLOC).
+    Timer { id: screensSettle; interval: 2000; onTriggered: if (host.hosting) host.syncOsds() }
     Connections {
         target: Quickshell
-        function onScreensChanged() { if (host.hosting) { host.teardown(); host.build(); } }
+        function onScreensChanged() { if (host.hosting) screensSettle.restart(); }
     }
     function teardown() {
+        screensSettle.stop();
+        for (const n in osds) osds[n].destroy();
+        osds = ({});
         for (const p of parts) p.destroy();
         parts = [];
+        shared = null;
         hosting = false;
     }
 }
