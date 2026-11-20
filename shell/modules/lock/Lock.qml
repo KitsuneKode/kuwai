@@ -121,13 +121,30 @@ Scope {
     // lock, allow_session_lock_restore lets the new one take it, and the
     // flag tells it to. Only once the lock is confirmed: a locker still
     // waiting for "locked" makes Hyprland ignore the next.
+    //
+    // Quickshell 0.3.2 does give a returning screen its lock surface (Hyprland's
+    // log, 2026-11-20: a new lock surface on DP-3 as it came back), and the
+    // restart was what you saw: the process holding the lock went away, so
+    // Hyprland showed its "lock screen died" screen until the new shell locked
+    // again, at every wake while locked. So it restarts only when a screen is
+    // still without a lock surface once the screens have settled.
     readonly property bool secure: lockLoader.item ? lockLoader.item.secure : false
+    property var lockSurfaces: []        // the live WlSessionLockSurfaces (they register below)
+    function uncovered() {
+        const have = lockSurfaces.filter(s => s && s.screen).map(s => s.screen.name);
+        return Quickshell.screens.map(s => s.name).filter(n => have.indexOf(n) < 0);
+    }
     function resurface() {
         if (!locked || !secure) return;
-        console.warn("lock: a monitor came back while locked; restarting the shell to cover it");
+        const missing = uncovered();
+        if (!missing.length) {
+            console.info("lock: a monitor came back while locked; its lock surface is there");
+            return;
+        }
+        console.warn("lock: " + missing.join(", ") + " came back without a lock surface; restarting the shell to cover it");
         Quickshell.execDetached([Paths.bin + "/kuwai-shell"]);
     }
-    Timer { id: relockWait; interval: 800; onTriggered: root.resurface() }
+    Timer { id: relockWait; interval: 2000; onTriggered: root.resurface() }
     Connections {
         target: typeof Hyprland !== "undefined" ? Hyprland : null
         function onRawEvent(event) {
@@ -145,7 +162,10 @@ Scope {
         WlSessionLock {
             locked: root.locked
             WlSessionLockSurface {
+                id: lockSurface
                 color: Theme.desktop          // under the wallpaper; with none, the desktop's own ground
+                Component.onCompleted: root.lockSurfaces = root.lockSurfaces.concat([lockSurface])
+                Component.onDestruction: root.lockSurfaces = root.lockSurfaces.filter(x => x !== lockSurface)
                 LockView { anchors.fill: parent; lock: root }
             }
         }
