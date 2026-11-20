@@ -19,6 +19,7 @@ import Quickshell.Services.Pipewire
 import Quickshell.Services.Mpris
 import qs.config
 import qs.components
+import qs.components.ui
 import qs.services
 
 Item {
@@ -40,25 +41,13 @@ Item {
         return false;
     }
     Keys.onPressed: e => {
-        if (e.key === Qt.Key_Escape && view.routeFor) { view.closeRoute(); e.accepted = true; return; }
         if (keys.route(e)) e.accepted = true;
     }
     readonly property Item focusedItem: Window.activeFocusItem
     onFocusedItemChanged: if (focusedItem && keys.owns(focusedItem)) keys.reveal(focusedItem)
-    // The output picker from the keyboard: it opens on its first row, and
-    // closing it puts the keyboard back on the chip that opened it.
-    function closeRoute() {
-        const back = routeAnchor;
-        let inMenu = false;
-        for (let p = focusedItem; p; p = p.parent) if (p === routeMenu) inMenu = true;
-        routeFor = null;
-        if (inMenu && back) back.forceActiveFocus(Qt.TabFocusReason);
-    }
-    // Back to the top too: it reopened scrolled, the strips' names cut off
-    // under the search field.
-    function reset() { strips.contentX = 0; soundFlick.contentY = 0; routeFor = null; }
+    function reset() { strips.contentX = 0; soundFlick.contentY = 0; routeMenu.close(); }
     function selectFirst() {}
-    function back() { if (!routeFor) return false; routeFor = null; return true; }
+    function back() { if (!routeMenu.open) return false; routeMenu.close(); return true; }
 
     // The app whose output picker is open (null: none).
     property var routeFor: null
@@ -67,7 +56,6 @@ Item {
     function route(stream, sink) {
         const serial = stream.properties["object.serial"];
         if (serial && sink) runner.createObject(view, { command: ["pactl", "move-sink-input", String(serial), sink.name] }).running = true;
-        closeRoute();
     }
     Component { id: runner; Process { onExited: destroy() } }
 
@@ -424,10 +412,13 @@ Item {
                     color: Theme.textTertiary
                 }
                 function openRoute(keyboard) {
+                    if (routeMenu.open && view.routeFor === strip.node) { routeMenu.close(); return; }
                     view.routeAnchor = routeChip;
                     view.routeCurrent = strip.target;
-                    view.routeFor = view.routeFor === strip.node ? null : strip.node;
-                    if (keyboard && view.routeFor) Qt.callLater(() => routeMenu.focusFirst());
+                    view.routeFor = strip.node;
+                    // The shell's one menu (components/ui/ContextMenu): under the chip,
+                    // lit on its first row from the keys; at the chip's foot for the pointer.
+                    if (keyboard) routeMenu.popup(); else routeMenu.popup(routeChip.width / 2, routeChip.height + Theme.s1);
                 }
                 activeFocusOnTab: strip.routable
                 Keys.onPressed: e => { if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter || e.key === Qt.Key_Down) { routeChip.openRoute(true); e.accepted = true; } }
@@ -526,96 +517,24 @@ Item {
         }
     }
 
-    // ── The output picker for one app (opened from its strip) ─────────────
-    MouseArea {
-        anchors.fill: parent
-        visible: view.routeFor !== null
-        onClicked: view.closeRoute()
+    // ── The output picker for one app (opened from its strip's chip) ───────
+    // Where it plays now is ticked; choosing moves it there (pactl).
+    ContextMenu {
+        id: routeMenu
+        target: view.routeAnchor || view
+        bounds: view
+        title: "Play on"
+        items: {
+            const st = view.routeFor;
+            return [{ kind: "label", text: "Play on" }].concat(view.allSinks.map(sink => ({
+                kind: "checkbox", text: view.deviceName(sink), checked: view.routeCurrent === sink,
+                toggled: () => view.route(st, sink)
+            })));
+        }
+        onClosed: view.routeFor = null
     }
-    // The Sound tab; the click-outside above closes the output picker (Esc does too).
+    // The Sound tab (Esc closes the output picker first).
     Accessible.role: Accessible.Pane
     Accessible.name: "Sound"
-    Rectangle {
-        id: routeMenu
-        readonly property var stream: view.routeFor
-        readonly property point at: view.routeAnchor && stream ? view.routeAnchor.mapToItem(view, 0, view.routeAnchor.height + 6) : Qt.point(0, 0)
-        visible: opacity > 0.01
-        opacity: stream ? 1 : 0
-        scale: stream || Theme.reduceMotion ? 1 : 0.96
-        transformOrigin: Item.Top
-        Behavior on opacity { NumberAnimation { duration: routeMenu.stream ? Theme.enterMs : Theme.exitMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
-        Behavior on scale { NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
-        x: Math.max(0, Math.min(view.width - width, at.x + (view.routeAnchor ? view.routeAnchor.width / 2 : 0) - width / 2))
-        y: Math.min(view.height - height, at.y)
-        width: 240
-        height: menuCol.implicitHeight + 12
-        radius: 14
-        color: Qt.rgba(0.17, 0.17, 0.20, 0.98)
-        border.width: 1
-        border.color: Qt.rgba(1, 1, 1, 0.12)
-        z: 20
-        function focusFirst() {
-            const first = optRepeater.itemAt(Math.max(0, view.allSinks.indexOf(view.routeCurrent)));
-            if (first) first.forceActiveFocus(Qt.TabFocusReason);
-        }
-        Column {
-            id: menuCol
-            x: 6; y: 6
-            width: parent.width - 12
-            Label { x: 8; height: 24; verticalAlignment: Text.AlignVCenter; text: "Play on"; size: 11; weight: Theme.wSemibold; color: Theme.textTertiary }
-            Repeater {
-                id: optRepeater
-                model: view.allSinks
-                Rectangle {
-                    id: opt
-                    required property int index
-                    // ↑↓ walk the outputs, ↵ or Space plays there, Esc closes (the view's keys).
-                    activeFocusOnTab: !!routeMenu.stream
-                    Keys.onPressed: e => {
-                        const k = e.key, n = optRepeater.count;
-                        if (k === Qt.Key_Space || k === Qt.Key_Return || k === Qt.Key_Enter) view.route(view.routeFor, opt.modelData);
-                        else if (k === Qt.Key_Down || k === Qt.Key_Up) { const o = optRepeater.itemAt((opt.index + (k === Qt.Key_Down ? 1 : n - 1)) % n); if (o) o.forceActiveFocus(Qt.TabFocusReason); }
-                        else return;
-                        e.accepted = true;
-                    }
-                    required property var modelData
-                    readonly property bool on: view.routeCurrent === modelData
-                    width: menuCol.width
-                    height: 32
-                    radius: 9
-                    color: optArea.containsMouse || (activeFocus && focusReason !== Qt.MouseFocusReason) ? Qt.alpha(Theme.blue, 0.85) : "transparent"
-                    Text {
-                        textFormat: Text.PlainText
-                        id: tick
-                        x: 8
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: opt.on ? "\u{f012c}" : ""
-                        width: 16
-                        font.family: Theme.fontGlyph
-                        font.pixelSize: 13
-                        color: Theme.textPrimary
-                    }
-                    Label {
-                        anchors { left: tick.right; leftMargin: 6; right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter }
-                        elide: Text.ElideRight
-                        text: view.deviceName(opt.modelData)
-                        size: 13
-                        weight: opt.on ? Theme.wSemibold : Theme.wRegular
-                    }
-                    MouseArea {
-                        id: optArea
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: view.route(view.routeFor, opt.modelData)
-                    }
-                    Accessible.role: Accessible.MenuItem
-                    Accessible.name: view.deviceName(opt.modelData)
-                    Accessible.checkable: true
-                    Accessible.checked: opt.on
-                    Accessible.onPressAction: view.route(view.routeFor, opt.modelData)
-                }
-            }
-        }
-    }
+
 }

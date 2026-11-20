@@ -7,6 +7,14 @@ export function actionable(e) {
     return !!e && (e.kind === "item" || e.kind === "checkbox") && e.enabled !== false;
 }
 
+// Plain entries for a menu built from a list (ContextMenu's `items`): the
+// fields an entry object has, filled in. { text, glyph, shortcut, variant,
+// enabled, visible, triggered } or { kind: "checkbox", checked, toggled },
+// { kind: "label", text }, { kind: "separator" }.
+export function plain(list) {
+    return (list || []).map(e => Object.assign({ kind: "item", visible: true, enabled: true, text: "", glyph: "", shortcut: "", variant: "default" }, e));
+}
+
 // The entries to draw: hidden ones out, and no separator at either end or
 // next to another (a group whose items are all hidden leaves no double line).
 export function arrange(list) {

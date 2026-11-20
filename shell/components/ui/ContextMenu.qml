@@ -57,7 +57,10 @@ QtObject {
     signal opened()
     signal closed()
 
-    readonly property var entries: Menu.arrange(content)
+    // Entries from a list (a menu of devices, of outputs): plain objects after
+    // the declared ones (contextMenu.mjs `plain` says their fields).
+    property var items: []
+    readonly property var entries: Menu.arrange(Array.from(content).concat(Menu.plain(items)))
     readonly property bool lead: entries.some(e => !!e.glyph || e.kind === "checkbox")
 
     // Opens at (x, y) in the target's coordinates. From the keyboard (no point),

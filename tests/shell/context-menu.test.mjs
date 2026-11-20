@@ -49,3 +49,18 @@ describe('context menu', () => {
     expect(place(5, 2, 200, 100, 780, 560, 8)).toEqual({ x: 8, y: 8, ox: 0, oy: 0 });
   });
 });
+
+describe('context menu from a list', () => {
+  test('plain entries get every field an entry has, and keep their own', () => {
+    const { plain } = require('../../shell/components/ui/contextMenu.mjs');
+    const run = () => 'ran';
+    const [a, b, c] = plain([{ text: 'Speakers', triggered: run }, { kind: 'checkbox', text: 'Headphones', checked: true }, { kind: 'label', text: 'Play on' }]);
+    expect(a).toMatchObject({ kind: 'item', visible: true, enabled: true, glyph: '', shortcut: '', variant: 'default' });
+    expect(a.triggered()).toBe('ran');
+    expect(b.kind).toBe('checkbox');
+    expect(b.checked).toBe(true);
+    expect(actionable(a) && actionable(b) && !actionable(c)).toBe(true);
+    expect(arrange(plain([{ kind: 'separator' }, { text: 'x' }])).map(e => e.text)).toEqual(['x']);
+    expect(plain(null)).toEqual([]);
+  });
+});
