@@ -119,3 +119,27 @@ def test_the_wallpaper_mpv_never_reads_your_film_config(tmp_path):
     assert wait_for(log, "eDP-1")
     assert (home / "mpv.conf").stat().st_mtime_ns == before
     lw(env, "out-stop", "DP-3"); lw(env, "out-stop", "eDP-1")
+
+
+def test_the_shell_taking_over_ends_a_fallback_player(tmp_path):
+    # At login `resume` races the shell's start: it saw no shell, started the
+    # fallback '*' player, and that one decoded a second video under the
+    # shell's per-screen players for the whole session.
+    env, log, sock = setup(tmp_path)
+    fake = tmp_path / "fakebin"
+    # No shell yet; pgrep/pkill must never reach the real session's players.
+    for name, body in (("qs", "exit 1"), ("pgrep", "exit 1"), ("pkill", "exit 0"), ("notify-send", "exit 0")):
+        (fake / name).write_text(f"#!/bin/sh\n{body}\n")
+        (fake / name).chmod(0o755)
+    video = tmp_path / "loop.mp4"
+    video.write_text("v")
+    assert lw(env, "play", str(video)).returncode == 0
+    assert wait_for(log, "mpvpaper")
+    fallback = int((sock / "mpvpaper-ipc.pid").read_text())
+    assert Path(f"/proc/{fallback}/comm").read_text().strip() == "mpvpaper"
+    assert lw(env, "out-play", "DP-3", str(video)).returncode == 0
+    time.sleep(0.3)
+    assert not Path(f"/proc/{fallback}").exists() or Path(f"/proc/{fallback}/stat").read_text().split()[2] == "Z"
+    assert not (sock / "mpvpaper-ipc.pid").exists()
+    assert (sock / "mpvpaper-DP-3.pid").exists()
+    lw(env, "out-stop", "DP-3")
