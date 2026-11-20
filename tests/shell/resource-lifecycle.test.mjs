@@ -219,3 +219,29 @@ test('a missing film goes straight to Dusk, with no CPU retry', () => {
   expect(movie.clipFailed).toBe(true);
   expect(movie.filmProc.running).toBe(false);
 });
+
+test('a film with no picture in it goes straight to Dusk, with no CPU retry', () => {
+  const {movie, exit} = film();
+  Object.defineProperty(movie, 'wantedFilm', {get:()=>movie.clipFailed ? '' : '/broken.mp4'});
+  movie.syncFilm();
+  exit(65);
+  expect(movie.filmOnCpu).toBe(false);
+  expect(movie.clipFailed).toBe(true);
+  expect(movie.filmProc.running).toBe(false);
+});
+
+test('mpv plays the saver film once for every screen, refusing what it could not open', () => {
+  const src = source('shell/modules/screensaver/Screensaver.qml');
+  // One mpvpaper on '*' (one decoder for every screen; Qt's player had one per screen: 888 MiB).
+  expect(src).toMatch(/exec setpriv --pdeathsig KILL mpvpaper -l top -o "\$1" "\*" "\$KUWAI_SAVER_FILE"/);
+  // mpvpaper waits forever on a file mpv can't open: refused before it starts.
+  expect(src).toMatch(/ffprobe [^']*\|\| exit 65/);
+  // Copy-back decoding, or none on the GPU once the CPU was learnt; never your mpv config.
+  expect(src).toMatch(/hwdec=" \+ \(filmOnCpu \? "no" : "auto-copy-safe"\)/);
+  expect(src).toMatch(/MPV_HOME="\$home"/);
+  // A film left over from an earlier shell goes, and only the saver's (-l top) player.
+  expect(src).toMatch(/pkill", "-9", "-f", "\^mpvpaper -l top -o "/);
+  // It starts once the screen is dark; the black over it lifts once it plays.
+  expect(src).toMatch(/wantedFilm: showing && darkened \? film : ""/);
+  expect(src).toMatch(/onStarted: coverOut\.restart\(\)/);
+});

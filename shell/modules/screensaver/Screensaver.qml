@@ -93,12 +93,36 @@ Scope {
     }
     readonly property string still: Hyde.wallpaper ? "file://" + Hyde.wallpaper : ""   // none: black
 
-    // ── The film (Night, Live) plays in its own process: shell-saver/ ─────
+    // ── The film (Night, Live) plays in its own process ──────────────────
     // A player inside the shell kept ~110 MB for good after it stopped
     // (measured); a separate process gives all of it back when killed.
+    // mpv plays it when mpvpaper is installed: ONE player and one decoder for
+    // every screen (mpvpaper '*' draws one decode on each output), decoding on
+    // the GPU and copying frames back. shell-saver/ (Qt's player) had one
+    // decoder per screen: 888 MiB of video memory for two screens (nvidia-smi,
+    // 2026-11-20), the card's last free gigabyte beside a dictation model;
+    // one copy-back decoder measured 284 MiB at 3 % of a core (decoding on the
+    // CPU instead: none, 17 %). mpv falls back to the CPU by itself when the
+    // GPU's decoder fails mid-film. Without mpvpaper, shell-saver/ still plays.
+    property bool mpvSaver: false
+    Process {
+        command: ["sh", "-c", "command -v mpvpaper"]
+        running: true
+        onExited: code => root.mpvSaver = code === 0
+    }
     readonly property string film: style === "night" && !clipFailed ? clip
         : style === "live" && useVideo && !clipFailed ? video : ""
-    readonly property string wantedFilm: showing ? film : ""
+    // The film starts once the screen has gone dark (the black over it fades
+    // out once it plays, below), so it never cuts in over the desktop.
+    readonly property bool darkened: level >= 0.999
+    readonly property string wantedFilm: showing && darkened ? film : ""
+    property real filmCover: 1
+    onActiveFilmChanged: if (activeFilm === "") { coverOut.stop(); filmCover = 1; }
+    SequentialAnimation {
+        id: coverOut
+        PauseAnimation { duration: Theme.ambientFadeMs }   // a beat for the first frames
+        NumberAnimation { target: root; property: "filmCover"; to: 0; duration: Theme.ambientFadeMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+    }
     property string activeFilm: ""
     property bool filmStopping: false
     onWantedFilmChanged: syncFilm()
@@ -114,7 +138,7 @@ Scope {
     }
     function filmExited(code) {
         const failed = !filmStopping && activeFilm !== "" && wantedFilm === activeFilm;
-        const missing = code === 66;   // no such file: the CPU won't find it either
+        const missing = code === 66 || code === 65;   // no such file, or no picture in it: the CPU won't do better
         filmStopping = true;
         activeFilm = "";
         if (failed && !filmOnCpu && !missing) {
@@ -127,13 +151,27 @@ Scope {
         filmStopping = false;
         Qt.callLater(root.syncFilm);
     }
+    // mpv's options: no config of yours (its own empty MPV_HOME), the plainest
+    // picture (profile=fast), and the GPU's decoder copying back unless the
+    // CPU was learnt (filmOnCpu: no video memory at all).
+    readonly property string mpvOptions: "really-quiet no-audio loop-file=inf panscan=1.0 profile=fast load-scripts=no osc=no cache=no"
+        + " demuxer-max-bytes=16MiB demuxer-max-back-bytes=0 hwdec=" + (filmOnCpu ? "no" : "auto-copy-safe")
     Process {
         id: filmProc
         // A missing file never starts it (test -r; exit 66 goes straight to Dusk).
+        // mpvpaper never exits on a file mpv can't open (it waits for it), so a
+        // file with no picture in it is refused first (ffprobe; exit 65, Dusk).
         // pdeathsig: the film dies with the shell. Without it, a shell killed
         // while the screensaver showed (a restart, `kuwai promote`) left the
         // film orphaned, covering a monitor for hours; input couldn't reach it.
-        command: ["sh", "-c", 'test -r "$KUWAI_SAVER_FILE" || exit 66; exec setpriv --pdeathsig KILL qs -p "$1"', "kuwai-saver", Quickshell.shellDir + "/../shell-saver"]
+        // mpvpaper's surfaces take no input (an empty region) and no keyboard.
+        command: root.mpvSaver
+            ? ["sh", "-c", 'test -r "$KUWAI_SAVER_FILE" || exit 66; '
+                + 'if command -v ffprobe >/dev/null; then ffprobe -v error -select_streams v:0 -show_entries stream=codec_name -of csv=p=0 "$KUWAI_SAVER_FILE" 2>/dev/null | grep -q . || exit 65; fi; '
+                + 'home="${XDG_RUNTIME_DIR:?}/kuwai/saver-mpv"; (umask 077; mkdir -p "$home") || exit 1; '
+                + 'MPV_HOME="$home" exec setpriv --pdeathsig KILL mpvpaper -l top -o "$1" "*" "$KUWAI_SAVER_FILE" </dev/null >/dev/null 2>&1', "kuwai-saver", root.mpvOptions]
+            : ["sh", "-c", 'test -r "$KUWAI_SAVER_FILE" || exit 66; exec setpriv --pdeathsig KILL qs -p "$1"', "kuwai-saver", Quickshell.shellDir + "/../shell-saver"]
+        onStarted: coverOut.restart()
         // Every screen: one screen with the film and the other black read as
         // "the screensaver only came up on one monitor". It's a separate
         // process, killed on wake, so the second decoder costs nothing after.
@@ -159,6 +197,7 @@ Scope {
     // however it happened) goes when this one starts.
     Component.onCompleted: {
         Quickshell.execDetached(["pkill", "-9", "-f", "^qs -p .*/shell-saver$"]);
+        Quickshell.execDetached(["pkill", "-9", "-f", "^mpvpaper -l top -o "]);   // the live wallpaper's never say -l
     }
 
     function dismiss() { forced = false; dismissed = true; }
@@ -197,8 +236,9 @@ Scope {
 
                     // The film's screen stays clear: the film is under this
                     // surface (its own process, Top layer).
-                    readonly property bool filmHere: root.wantedFilm !== ""
-                    Rectangle { anchors.fill: parent; color: "black"; visible: !stage.filmHere }
+                    // (The film wanted, not yet started: the screen darkens first.)
+                    readonly property bool filmHere: root.showing && root.film !== ""
+                    Rectangle { anchors.fill: parent; color: "black"; opacity: stage.filmHere ? root.filmCover : 1; visible: opacity > 0.001 }
 
                     // What fills the screen: the Dusk scene (default, drawn live,
                     // nothing to decode), your live wallpaper, or the still one.
