@@ -465,7 +465,7 @@ FocusScope {
                                 const s = aurRow.st, r = aurRow.rv;
                                 if (s === "trusted") return ["Trusted", Theme.accent, "\u{f0565}"];
                                 if (s === "approved") return [Updates.autoApproved.indexOf(aurRow.modelData.name) >= 0 ? "Version bump · auto" : "Approved", Theme.green, "\u{f012c}"];
-                                if (s === "loading" || !r) return ["Reading…", Theme.textTertiary, ""];
+                                if (s === "loading" || !r) return ["Reading…", Theme.textSecondary, ""];   // tertiary read 3.7:1 on a row
                                 if (r.error) return ["Couldn't read", Theme.red, ""];
                                 if (r.firstTime) return ["New to you · review", Theme.orange, "\u{f0026}"];
                                 if (r.flags && r.flags.length) return [r.flags.length + " to look at", Theme.orange, "\u{f0026}"];

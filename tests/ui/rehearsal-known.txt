@@ -24,10 +24,8 @@ system/new-machine @x2 | on-top | "󰖔" is drawn over "Game mode"
 system/typical @x2 | on-top | "󰖔" is drawn over "Game mode"
 usage/stale @x2 | on-top | "0% left" is drawn over "0% left"
 usage/stale @x2 | on-top | "Weekly" is drawn over "Session"
-usage/stale @x2 | shortened | "Not updating · showing the last reading" is shortened with an ellipsis though its content is ordinary
 usage/typical @x2 | on-top | "0% left" is drawn over "0% left"
 usage/typical @x2 | on-top | "Weekly" is drawn over "Session"
-usage/unreadable @x2 | shortened | "Usage can't be read right now" is shortened with an ellipsis though its content is ordinary
 usage/worst @x2 | on-top | "0 of 0 accounts out" is drawn over "0 accounts"
 usage/worst @x2 | on-top | "0 out · 0 partly · first back in 0d 0h" is drawn over "Usage"
 usage/worst @x2 | on-top | "0% left" is drawn over "Personal second account · Pro"

@@ -202,11 +202,15 @@ FocusScope {
         Rectangle {
             visible: Limits.down
             width: parent.width
-            height: 44
+            // Its line wraps (the row grows) rather than lose its end beside Retry at a large Text size.
+            height: Math.max(44, downLine.implicitHeight + 2 * Theme.s3)
             radius: Theme.r2
             color: Qt.alpha(Theme.orange, Theme.tintNotice)
             Label {
+                id: downLine
                 anchors { left: parent.left; leftMargin: 14; right: retry.left; rightMargin: 10; verticalCenter: parent.verticalCenter }
+                wrapMode: Text.WordWrap
+                maximumLineCount: 3
                 elide: Text.ElideRight
                 text: Limits.loaded ? "Not updating · showing the last reading" : "Usage can't be read right now"
                 size: Theme.tBody; weight: Theme.wMedium
@@ -336,7 +340,8 @@ FocusScope {
                                             : card.g.rank === 1.5 ? card.g.why
                                             : card.g.rank === 1 ? Math.max(0, 100 - Math.round(card.g.top * 100)) + "% left" : "OK"   // the rows' own unit (it said "89%", used, above rows saying "11% left")
                                         size: Theme.tCaption; weight: Theme.wBold
-                                        color: usage.tone(card.g.rank === 2 ? "exhausted" : card.g.rank >= 1 ? "approaching" : "")
+                                        // Out: red for text (red itself on its own wash read 4.3:1).
+                                        color: card.g.rank === 2 ? Theme.redText : usage.tone(card.g.rank >= 1 ? "approaching" : "")
                                         font.features: ({ "tnum": 1 })
                                     }
                                 }
@@ -438,7 +443,7 @@ FocusScope {
                                             horizontalAlignment: Text.AlignRight
                                             text: w.inS === "now" ? "resetting" : w.inS
                                             size: Theme.tCaption
-                                            color: w.out ? Qt.alpha(Theme.red, 0.85) : Theme.textTertiary
+                                            color: w.out ? Theme.redText : Theme.textTertiary      // red for text on dark (85 % red read 4.0:1)
                                             font.features: ({ "tnum": 1 })
                                         }
                                         Label {
@@ -506,7 +511,7 @@ FocusScope {
                                         text: w.out ? (w.r.window.resetsAt ? "Back " + usage.at(w.r.window.resetsAt) : "Spent")
                                             : w.forecast ? "At this rate it runs out in " + Usage.span(w.forecast.inMs) + ", " + Usage.span(w.forecast.earlyMs) + " before it resets" : ""
                                         size: Theme.tCaption
-                                        color: w.out ? Qt.alpha(Theme.red, 0.85) : Theme.orange
+                                        color: w.out ? Theme.redText : Theme.orange
                                         font.features: ({ "tnum": 1 })
                                     }
                                 }
