@@ -89,6 +89,9 @@ Column {
                         hoverEnabled: true
                         cursorShape: dev.on ? Qt.ArrowCursor : Qt.PointingHandCursor
                         onClicked: if (!dev.on) devList.picked(dev.modelData)
+                        activeFocusOnTab: true
+                        Keys.onPressed: e => { if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { if (!dev.on) devList.picked(dev.modelData); e.accepted = true; } }
+                        FocusRing { cornerRadius: Theme.r2 }
                         Accessible.role: Accessible.RadioButton
                         Accessible.name: devList.view.deviceName(dev.modelData)
                         Accessible.checkable: true
@@ -117,6 +120,9 @@ Column {
                             cursorShape: Qt.PointingHandCursor
                             onClicked: if (dev.audio) dev.audio.muted = !dev.audio.muted
                         }
+                        activeFocusOnTab: !!dev.audio
+                        Keys.onPressed: e => { if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { if (dev.audio) dev.audio.muted = !dev.audio.muted; e.accepted = true; } }
+                        FocusRing {}
                         Accessible.role: Accessible.CheckBox
                         Accessible.name: "Mute " + devList.view.deviceName(dev.modelData)
                         Accessible.checkable: true

@@ -42,6 +42,27 @@ Item {
         replying = true;
         Qt.callLater(() => replyField.forceActiveFocus());
     }
+    // Its buttons from the keyboard: the first one takes it (Space on a
+    // selected row; S opens the snooze times first). ←→ walk them, Esc or
+    // typing goes back to the search with the row still selected.
+    function chips() { return chipFlow.children.filter(c => c.visible && c.activeFocusOnTab); }
+    function enterChips() {
+        const c = chips();
+        if (!c.length) return false;
+        c[0].forceActiveFocus(Qt.TabFocusReason);
+        return true;
+    }
+    function toggleSnooze() {
+        snoozing = !snoozing;
+        replying = false;
+        if (snoozing) Qt.callLater(enterChips);
+    }
+    function backToSearch(text) {
+        const f = center ? center.searchField : null;
+        if (!f) return;
+        f.forceActiveFocus(Qt.OtherFocusReason);
+        if (text) f.insert(f.cursorPosition, text);
+    }
     function selectRow() {
         if (!center) return;
         if (!Settings.seenNotifC1Hint) Settings.set("seenNotifC1Hint", true);
@@ -194,17 +215,17 @@ Item {
                     font.features: ({ "tnum": 1 })
                     color: Theme.textTertiary
                 }
-                // Snooze, beside close while hovered
+                // Snooze, beside close while hovered (or selected from the keyboard: S)
                 Rectangle {
-                    visible: hover.hovered || row.snoozing
+                    visible: hover.hovered || row.snoozing || (row.selected && row.center && row.center.keyboard)
                     width: 20; height: 20; radius: 10
                     color: snoozeArea.containsMouse || row.snoozing ? Theme.pillHover : Theme.pill
                     Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
                     Accessible.role: Accessible.Button
                     Accessible.name: "Snooze"
-                    Accessible.onPressAction: { row.snoozing = !row.snoozing; row.replying = false; }
+                    Accessible.onPressAction: row.toggleSnooze()
                     Text { anchors.centerIn: parent; text: "\u{f051b}"; font.family: Theme.fontGlyph; font.pixelSize: 11; color: Theme.textPrimary }
-                    MouseArea { id: snoozeArea; anchors.fill: parent; anchors.margins: -4; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { row.snoozing = !row.snoozing; row.replying = false; } }
+                    MouseArea { id: snoozeArea; anchors.fill: parent; anchors.margins: -4; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: row.toggleSnooze() }
                 }
                 // Close, in place of the time while hovered
                 Rectangle {
@@ -312,6 +333,21 @@ Item {
 
         // ── Its buttons: shown once the row is selected (or while snoozing) ─
         Flow {
+            id: chipFlow
+            Keys.onPressed: e => {
+                const c = row.chips(), at = c.indexOf(row.Window.activeFocusItem);
+                const plain = !(e.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier));
+                if ((e.key === Qt.Key_Right || e.key === Qt.Key_Left) && at >= 0) {
+                    const n = c[at + (e.key === Qt.Key_Right ? 1 : -1)];
+                    if (n) n.forceActiveFocus(Qt.TabFocusReason);
+                } else if (e.key === Qt.Key_Escape || e.key === Qt.Key_Up || e.key === Qt.Key_Down) {
+                    if (row.snoozing) row.snoozing = false;
+                    row.backToSearch("");
+                } else if (plain && e.text.length === 1 && e.text > " " && e.text !== "\u007f") {
+                    row.backToSearch(e.text);
+                } else return;
+                e.accepted = true;
+            }
             visible: row.snoozing || (row.selected && (row.canOpen || row.liveActions.length > 0 || row.canReply || !!row.it.full || String(row.it.body || "").length > 0))
             width: parent.width
             spacing: 6
@@ -331,7 +367,7 @@ Item {
                 onClicked: Notifs.readInIsland(row.item)
             }
             RowChip {
-                visible: row.selected && /^https?:\/\//.test(row.it.url || "")
+                visible: row.selected && !row.snoozing && /^https?:\/\//.test(row.it.url || "")
                 text: "Copy link"
                 glyph: "\u{f0339}"
                 onClicked: Clipboard.copyText(row.it.url)
@@ -366,8 +402,9 @@ Item {
                 clip: true
                 Accessible.name: "Reply to " + (row.it.app || "the app")
                 Keys.onPressed: event => {
-                    if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) { Notifs.reply(row.item, text); text = ""; row.replying = false; event.accepted = true; }
-                    else if (event.key === Qt.Key_Escape) { text = ""; row.replying = false; event.accepted = true; }
+                    // Either way the keyboard goes back to the search (it was dropped).
+                    if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) { Notifs.reply(row.item, text); text = ""; row.replying = false; row.backToSearch(""); event.accepted = true; }
+                    else if (event.key === Qt.Key_Escape) { text = ""; row.replying = false; row.backToSearch(""); event.accepted = true; }
                 }
                 Label {
                     visible: replyField.text === ""

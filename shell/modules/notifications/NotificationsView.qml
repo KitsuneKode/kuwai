@@ -70,6 +70,7 @@ Item {
         return out;
     }
     property var selected: null
+    property Item searchField: null                 // where the keyboard goes back to (a row's buttons, a reply)
     property Item selectedRow: null
     property Item hoverRow: null
     property bool keyboard: false                   // the last move came from keys
@@ -143,6 +144,9 @@ Item {
         else if (k === Qt.Key_R && queryEmpty && selected && selectedRow && selectedRow.canReply && !selectedRow.replying) {
             selectedRow.beginReply();
         }
+        // The selected row's buttons (Open, Read, Copy link, its actions, Reply), and snooze.
+        else if (k === Qt.Key_Space && queryEmpty && selected && selectedRow) { keyboard = true; if (!selectedRow.enterChips()) return false; }
+        else if (k === Qt.Key_S && queryEmpty && selected && selectedRow) { keyboard = true; selectedRow.toggleSnooze(); }
         else if (k === Qt.Key_Z && (event.modifiers & Qt.ControlModifier) && Notifs.undoSurface === "center") Notifs.undoClear();
         else if (k === Qt.Key_Delete || (k === Qt.Key_Backspace && queryEmpty)) removeSelected();
         else if (k === Qt.Key_Right && queryEmpty && selected) setExpanded(selected.app, true);

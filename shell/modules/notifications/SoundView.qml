@@ -28,7 +28,32 @@ Item {
     property bool hosting: true
     readonly property bool shown: hosting && center.open && center.tab === "sound"
 
-    function key(event, queryEmpty) { return false; }
+    // The keyboard: ↓ or ⇥ from the search field enters the tab's controls
+    // (Tab then walks them, each answers Space/↵, a fader its arrows); Esc
+    // or typing goes back to the search (components/KeyPath).
+    property Item searchField: null
+    KeyPath { id: keys; scope: view; home: view.searchField }
+    function key(event, queryEmpty) {
+        const k = event.key;
+        if (k === Qt.Key_Down || k === Qt.Key_Tab) return keys.enter(true);
+        if (k === Qt.Key_Backtab) return keys.enter(false);
+        return false;
+    }
+    Keys.onPressed: e => {
+        if (e.key === Qt.Key_Escape && view.routeFor) { view.closeRoute(); e.accepted = true; return; }
+        if (keys.route(e)) e.accepted = true;
+    }
+    readonly property Item focusedItem: Window.activeFocusItem
+    onFocusedItemChanged: if (focusedItem && keys.owns(focusedItem)) keys.reveal(focusedItem)
+    // The output picker from the keyboard: it opens on its first row, and
+    // closing it puts the keyboard back on the chip that opened it.
+    function closeRoute() {
+        const back = routeAnchor;
+        let inMenu = false;
+        for (let p = focusedItem; p; p = p.parent) if (p === routeMenu) inMenu = true;
+        routeFor = null;
+        if (inMenu && back) back.forceActiveFocus(Qt.TabFocusReason);
+    }
     // Back to the top too: it reopened scrolled, the strips' names cut off
     // under the search field.
     function reset() { strips.contentX = 0; soundFlick.contentY = 0; routeFor = null; }
@@ -42,7 +67,7 @@ Item {
     function route(stream, sink) {
         const serial = stream.properties["object.serial"];
         if (serial && sink) runner.createObject(view, { command: ["pactl", "move-sink-input", String(serial), sink.name] }).running = true;
-        routeFor = null;
+        closeRoute();
     }
     Component { id: runner; Process { onExited: destroy() } }
 
@@ -283,28 +308,26 @@ Item {
                         font.pixelSize: btn.modelData.big ? 20 : 16
                         color: Theme.textPrimary
                     }
-                    MouseArea {
-                        id: btnArea
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            const p = np.player;
-                            if (!p) return;
-                            if (btn.modelData.act === "toggle" && p.canTogglePlaying) p.togglePlaying();
-                            else if (btn.modelData.act === "next" && p.canGoNext) p.next();
-                            else if (btn.modelData.act === "prev" && p.canGoPrevious) p.previous();
-                        }
-                    }
-                    Accessible.role: Accessible.Button
-                    Accessible.name: btn.modelData.act === "toggle" ? (np.player && np.player.isPlaying ? "Pause" : "Play") : btn.modelData.act === "next" ? "Next track" : "Previous track"
-                    Accessible.onPressAction: {
+                    function act() {
                         const p = np.player;
                         if (!p) return;
                         if (btn.modelData.act === "toggle" && p.canTogglePlaying) p.togglePlaying();
                         else if (btn.modelData.act === "next" && p.canGoNext) p.next();
                         else if (btn.modelData.act === "prev" && p.canGoPrevious) p.previous();
                     }
+                    MouseArea {
+                        id: btnArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: btn.act()
+                    }
+                    activeFocusOnTab: true
+                    Keys.onPressed: e => { if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { btn.act(); e.accepted = true; } }
+                    FocusRing {}
+                    Accessible.role: Accessible.Button
+                    Accessible.name: btn.modelData.act === "toggle" ? (np.player && np.player.isPlaying ? "Pause" : "Play") : btn.modelData.act === "next" ? "Next track" : "Previous track"
+                    Accessible.onPressAction: btn.act()
                 }
             }
         }
@@ -400,20 +423,25 @@ Item {
                     size: 11
                     color: Theme.textTertiary
                 }
+                function openRoute(keyboard) {
+                    view.routeAnchor = routeChip;
+                    view.routeCurrent = strip.target;
+                    view.routeFor = view.routeFor === strip.node ? null : strip.node;
+                    if (keyboard && view.routeFor) Qt.callLater(() => routeMenu.focusFirst());
+                }
+                activeFocusOnTab: strip.routable
+                Keys.onPressed: e => { if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter || e.key === Qt.Key_Down) { routeChip.openRoute(true); e.accepted = true; } }
+                FocusRing {}
                 MouseArea {
                     id: routeArea
                     anchors.fill: parent
                     enabled: strip.routable
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        view.routeAnchor = routeChip;
-                        view.routeCurrent = strip.target;
-                        view.routeFor = view.routeFor === strip.node ? null : strip.node;
-                    }
+                    onClicked: routeChip.openRoute(false)
                     Accessible.role: strip.routable ? Accessible.ButtonMenu : Accessible.StaticText
                     Accessible.name: strip.routable ? strip.title + " plays on " + view.deviceName(strip.target || view.sink) : strip.caption
-                    Accessible.onPressAction: if (strip.routable) { view.routeAnchor = routeChip; view.routeCurrent = strip.target; view.routeFor = view.routeFor === strip.node ? null : strip.node; }
+                    Accessible.onPressAction: if (strip.routable) routeChip.openRoute(false)
                 }
             }
 
@@ -485,6 +513,9 @@ Item {
                     onContainsMouseChanged: view.center.tip(parent, containsMouse, strip.muted ? "Unmute " + strip.title : "Mute " + strip.title + "  (or right-click the fader)")
                     onClicked: if (strip.audio) strip.audio.muted = !strip.audio.muted
                 }
+                activeFocusOnTab: !!strip.audio
+                Keys.onPressed: e => { if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { if (strip.audio) strip.audio.muted = !strip.audio.muted; e.accepted = true; } }
+                FocusRing {}
                 Accessible.role: Accessible.CheckBox
                 Accessible.name: "Mute " + strip.title
                 Accessible.checkable: true
@@ -499,7 +530,7 @@ Item {
     MouseArea {
         anchors.fill: parent
         visible: view.routeFor !== null
-        onClicked: view.routeFor = null
+        onClicked: view.closeRoute()
     }
     // The Sound tab; the click-outside above closes the output picker (Esc does too).
     Accessible.role: Accessible.Pane
@@ -523,21 +554,36 @@ Item {
         border.width: 1
         border.color: Qt.rgba(1, 1, 1, 0.12)
         z: 20
+        function focusFirst() {
+            const first = optRepeater.itemAt(Math.max(0, view.allSinks.indexOf(view.routeCurrent)));
+            if (first) first.forceActiveFocus(Qt.TabFocusReason);
+        }
         Column {
             id: menuCol
             x: 6; y: 6
             width: parent.width - 12
             Label { x: 8; height: 24; verticalAlignment: Text.AlignVCenter; text: "Play on"; size: 11; weight: Theme.wSemibold; color: Theme.textTertiary }
             Repeater {
+                id: optRepeater
                 model: view.allSinks
                 Rectangle {
                     id: opt
+                    required property int index
+                    // ↑↓ walk the outputs, ↵ or Space plays there, Esc closes (the view's keys).
+                    activeFocusOnTab: !!routeMenu.stream
+                    Keys.onPressed: e => {
+                        const k = e.key, n = optRepeater.count;
+                        if (k === Qt.Key_Space || k === Qt.Key_Return || k === Qt.Key_Enter) view.route(view.routeFor, opt.modelData);
+                        else if (k === Qt.Key_Down || k === Qt.Key_Up) { const o = optRepeater.itemAt((opt.index + (k === Qt.Key_Down ? 1 : n - 1)) % n); if (o) o.forceActiveFocus(Qt.TabFocusReason); }
+                        else return;
+                        e.accepted = true;
+                    }
                     required property var modelData
                     readonly property bool on: view.routeCurrent === modelData
                     width: menuCol.width
                     height: 32
                     radius: 9
-                    color: optArea.containsMouse ? Qt.alpha(Theme.blue, 0.85) : "transparent"
+                    color: optArea.containsMouse || (activeFocus && focusReason !== Qt.MouseFocusReason) ? Qt.alpha(Theme.blue, 0.85) : "transparent"
                     Text {
                         textFormat: Text.PlainText
                         id: tick

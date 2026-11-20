@@ -14,6 +14,10 @@ Rectangle {
     color: chip.filled
         ? (chipArea.containsMouse ? Qt.rgba(1, 1, 1, 0.92) : Qt.rgba(1, 1, 1, 0.88))
         : (chipArea.containsMouse ? Theme.pillHover : Theme.pill)
+    // The keyboard: Space or ↵ (reached from the row: Space, or S for snooze).
+    activeFocusOnTab: visible
+    Keys.onPressed: e => { if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { chip.clicked(); e.accepted = true; } }
+    FocusRing {}
     Accessible.role: Accessible.Button
     Accessible.name: chip.text
     Accessible.onPressAction: chip.clicked()

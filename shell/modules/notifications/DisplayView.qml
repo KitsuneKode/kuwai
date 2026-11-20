@@ -34,7 +34,24 @@ Item {
     Binding { target: Display; property: "watching"; value: view.shown; when: view.hosting }
     Component.onCompleted: Hyprland.refreshMonitors()
 
-    function key(event, queryEmpty) { return false; }
+    // The keyboard: ↓ or ⇥ from the search field enters the tiles, sliders
+    // and rows (Tab walks them, each answers Space/↵, a slider its arrows);
+    // Esc steps back (a password, the network list), then to the search, as
+    // does typing (components/KeyPath).
+    property Item searchField: null
+    KeyPath { id: keys; scope: view; home: view.searchField }
+    function key(event, queryEmpty) {
+        const k = event.key;
+        if (k === Qt.Key_Down || k === Qt.Key_Tab) return keys.enter(true);
+        if (k === Qt.Key_Backtab) return keys.enter(false);
+        return false;
+    }
+    Keys.onPressed: e => {
+        if (e.key === Qt.Key_Escape && view.back()) { e.accepted = true; return; }
+        if (keys.route(e)) e.accepted = true;
+    }
+    readonly property Item focusedItem: Window.activeFocusItem
+    onFocusedItemChanged: if (focusedItem && keys.owns(focusedItem)) keys.reveal(focusedItem)
     function reset() { flick.contentY = 0; wifiOpen = false; }
     function selectFirst() {}
     // Esc: the password field, then the network list, then (false) close.
@@ -91,18 +108,6 @@ Item {
     readonly property string profileLabel: (profiles.find(p => p.id === PowerProfiles.profile) || profiles[1]).label
 
     readonly property real naturalHeight: column.implicitHeight + 8
-    // More below (the card stops at its cap, 780 px): a soft fade at the
-    // bottom says so; the last row looked cut, not scrollable. Gone at the end.
-    Rectangle {
-        z: 2
-        anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
-        height: 36
-        visible: flick.contentY + flick.height < flick.contentHeight - 2
-        gradient: Gradient {
-            GradientStop { position: 0; color: "transparent" }
-            GradientStop { position: 1; color: Qt.rgba(0.08, 0.085, 0.1, 0.9) }
-        }
-    }
     // More that way: the rows fade, and a thumb shows while it scrolls.
     ScrollFade { flickable: flick }
     ScrollHint { flickable: flick; inside: true }
@@ -477,6 +482,14 @@ Item {
                             cursorShape: Qt.PointingHandCursor
                             onClicked: dev.modelData.connected ? dev.modelData.disconnect() : dev.modelData.connect()
                         }
+                        activeFocusOnTab: true
+                        Keys.onPressed: e => {
+                            if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) {
+                                if (!dev.busy) dev.modelData.connected ? dev.modelData.disconnect() : dev.modelData.connect();
+                                e.accepted = true;
+                            }
+                        }
+                        FocusRing {}
                         Accessible.role: Accessible.ListItem
                         Accessible.name: dev.modelData.name + (dev.modelData.batteryAvailable ? ", " + Math.round(dev.modelData.battery * 100) + "%" : "")
                         Accessible.description: dev.busy ? (dev.modelData.connected ? "Disconnecting" : "Connecting") : dev.modelData.connected ? "Connected. Press to disconnect" : "Not connected. Press to connect"

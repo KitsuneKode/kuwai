@@ -192,6 +192,7 @@ Item {
 
         NotificationsView {
             hosting: content.hosting
+            searchField: search
             id: notifications
             center: content.center
             anchors.fill: parent
@@ -201,6 +202,7 @@ Item {
         }
         SoundView {
             hosting: content.hosting
+            searchField: search
             id: sound
             center: content.center
             anchors.fill: parent
@@ -210,6 +212,7 @@ Item {
         }
         DisplayView {
             hosting: content.hosting
+            searchField: search
             id: display
             center: content.center
             anchors.fill: parent
