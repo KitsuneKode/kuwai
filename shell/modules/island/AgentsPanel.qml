@@ -371,14 +371,16 @@ FocusScope {
                             spacing: 8
                             enabled: !(answerRow.st && answerRow.st.busy)
                             opacity: enabled ? 1 : 0.6
-                            PillButton {
+                            Button {
+                                height: Theme.sp(30); size: Theme.tSub
                                 text: answerRow.st && answerRow.st.done === "deny" ? "Denied" : "Deny"
                                 onClicked: Kittymux.answer(answerRow.r, "deny")
                                 Accessible.name: "Deny " + row.modelData.title + ": " + row.modelData.question
                             }
-                            PillButton {
+                            Button {
+                                height: Theme.sp(30); size: Theme.tSub
                                 text: answerRow.st && answerRow.st.done === "allow" ? "Allowed" : "Allow"
-                                tint: Qt.alpha(Theme.green, 0.28)
+                                kind: "primary"
                                 onClicked: Kittymux.answer(answerRow.r, "allow")
                                 Accessible.name: "Allow " + row.modelData.title + ": " + row.modelData.question
                             }

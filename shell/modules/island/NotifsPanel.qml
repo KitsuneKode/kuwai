@@ -13,6 +13,7 @@ import Quickshell.Widgets
 import qs.config
 import qs.components
 import qs.services
+import qs.components.ui as Ui
 
 FocusScope {
     id: np
@@ -279,8 +280,9 @@ FocusScope {
                 ? [["↑↓", "Choose"], ["↩", "Read"], ["⌫", "Dismiss"], ["⌃Z", "Undo"], ["esc", "Back"]]
                 : [["↑↓", "Choose"], ["↩", "Read"], ["⌫", "Dismiss"], ["C", "Center"], ["esc", "Back"]]
         }
-        PillButton {
+        Ui.Button {
             width: parent.width
+            height: Theme.sp(30); size: Theme.tSub
             text: "Open notification center" + (Notifs.inbox > 0 ? " · " + (Notifs.inbox > 9 ? "9+" : String(Notifs.inbox)) : "")
             onClicked: { Island.close(); Notifs.toggleCenter("notifications", "pointer", Island.screen); }
         }

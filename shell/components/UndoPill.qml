@@ -7,9 +7,12 @@
 import QtQuick
 import qs.config
 import qs.services
+import qs.components.ui as Ui
 
-PillButton {
+Ui.Button {
     id: pill
+    kind: "secondary"
+    size: Theme.tSub
     required property string surface
     readonly property bool live: Notifs.undoSurface === surface && Notifs.undoLabel !== ""
     // Keeps its words while it fades (the label empties the moment it ends).

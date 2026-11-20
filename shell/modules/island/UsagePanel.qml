@@ -14,6 +14,7 @@ import qs.services
 // Quickshell reloads on QML changes, not on the JS modules they import: after
 // changing usage.mjs, save a QML file too.
 import "../../services/usage.mjs" as Usage
+import qs.components.ui as Ui
 
 FocusScope {
     id: usage
@@ -211,8 +212,9 @@ FocusScope {
                 size: Theme.tBody; weight: Theme.wMedium
                 color: Theme.orange
             }
-            PillButton {
+            Ui.Button {
                 id: retry
+                height: Theme.sp(30); size: Theme.tSub
                 anchors { right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter }
                 text: "Retry"
                 onClicked: Limits.retry()

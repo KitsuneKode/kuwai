@@ -11,6 +11,7 @@ import Quickshell
 import qs.config
 import qs.components
 import qs.services
+import qs.components.ui as Ui
 
 Item {
     id: view
@@ -257,17 +258,19 @@ Item {
         anchors { right: parent.right; rightMargin: 2; verticalCenter: filterRow.verticalCenter }
         spacing: 6
         opacity: view.center.revealAt(80)
-        PillButton {
+        Ui.Button {
             height: 28
             width: 28
-            glyph: "\u{f0594}"                     // moon
-            text: ""
-            tint: Notifs.muted ? Theme.indigo : "transparent"
+            kind: "quiet"
+            glyph: "\u{f0594}"                     // moon: indigo while on
+            label: Notifs.muted ? "Do Not Disturb is on" : "Do Not Disturb"
+            tone: Notifs.muted ? Theme.indigo : Theme.textSecondary
             onClicked: Notifs.toggleUserDnd()
         }
-        PillButton {
+        Ui.Button {
             visible: Notifs.items.length > 0 && !view.undoing
             height: 28
+            size: Theme.tSub
             text: "Clear"
             onClicked: view.clearAll()
         }

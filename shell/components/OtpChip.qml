@@ -5,6 +5,7 @@
 import QtQuick
 import qs.config
 import qs.services
+import qs.components.ui as Ui
 
 Rectangle {
     id: chip
@@ -37,10 +38,11 @@ Rectangle {
             size: Theme.tCaption; color: Theme.textTertiary
         }
     }
-    PillButton {
+    Ui.Button {
         anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
+        height: Theme.sp(30); size: Theme.tSub
         text: "Copy"
-        tint: chip.stale ? "transparent" : Theme.accent
+        kind: chip.stale ? "secondary" : "primary"
         onClicked: Notifs.copyCode(chip.item)
     }
 }

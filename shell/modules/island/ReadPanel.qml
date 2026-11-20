@@ -15,6 +15,7 @@ import Quickshell
 import qs.config
 import qs.components
 import qs.services
+import qs.components.ui as Ui
 
 FocusScope {
     id: rp
@@ -101,8 +102,9 @@ FocusScope {
                     size: Theme.tFootnote; color: Theme.textTertiary
                 }
             }
-            PillButton {
+            Ui.Button {
                 id: openBtn
+                height: Theme.sp(30); size: Theme.tSub
                 anchors { right: parent.right; verticalCenter: parent.verticalCenter }
                 text: "Open"
                 onClicked: { const i = rp.item; Island.close(); Notifs.openItem(i); }
@@ -316,10 +318,11 @@ FocusScope {
                     text: "⌃↵ send · ↵ new line · Esc back"
                     size: Theme.tCaption; color: Theme.textTertiary
                 }
-                PillButton {
+                Ui.Button {
                     anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                    height: Theme.sp(30); size: Theme.tSub
                     text: "Send"
-                    tint: composer.text.trim() !== "" ? Theme.accent : "transparent"
+                    kind: composer.text.trim() !== "" ? "primary" : "secondary"
                     opacity: composer.text.trim() !== "" ? 1 : 0.45
                     Behavior on opacity { NumberAnimation { duration: Theme.colorMs } }
                     onClicked: rp.send()

@@ -657,10 +657,11 @@ FocusScope {
                     spacing: 6
                     Repeater {
                         model: kbPage.choices
-                        PillButton {
+                        Button {
                             required property var modelData
+                            height: Theme.sp(30); size: Theme.tSub
                             text: modelData.label
-                            tint: kbPage.layouts.includes(modelData.id) ? Qt.alpha(Theme.accent, 0.35) : "transparent"
+                            glyph: kbPage.layouts.includes(modelData.id) ? "\u{f012c}" : ""   // a check on the ones in use
                             onClicked: kbPage.toggle(modelData.id)
                         }
                     }
@@ -860,7 +861,7 @@ FocusScope {
                 }
                 SettingsRow {
                     label: "Preview"; detail: "Any input ends it"
-                    PillButton { text: "Start now"; onClicked: Quickshell.execDetached([settings.kuwai, "screensaver", "start"]) }
+                    Button { height: Theme.sp(30); size: Theme.tSub; text: "Start now"; onClicked: Quickshell.execDetached([settings.kuwai, "screensaver", "start"]) }
                 }
             }
             SettingsGroup {
@@ -904,7 +905,7 @@ FocusScope {
                         id: remRow
                         required property var modelData
                         label: modelData.text; detail: Reminders.when(modelData.at)
-                        PillButton { text: "Remove"; onClicked: Reminders.cancel(remRow.modelData.id) }
+                        Button { height: Theme.sp(30); size: Theme.tSub; text: "Remove"; onClicked: Reminders.cancel(remRow.modelData.id) }
                     }
                 }
             }
@@ -920,7 +921,7 @@ FocusScope {
                         id: alRow
                         required property var modelData
                         label: modelData.label; detail: Dates.weekdayTime(modelData.at)
-                        PillButton { text: "Remove"; onClicked: Alarms.cancel(alRow.modelData.id) }
+                        Button { height: Theme.sp(30); size: Theme.tSub; text: "Remove"; onClicked: Alarms.cancel(alRow.modelData.id) }
                     }
                 }
                 SettingsRow {
@@ -931,7 +932,7 @@ FocusScope {
             SettingsGroup {
                 title: "Notes and focus"
                 SettingsRow { label: "Quick note"; detail: "Super+Ctrl+J, or \"note …\" in the launcher: a line in " + Notes.file.replace(Quickshell.env("HOME"), "~")
-                    PillButton { text: "Open"; onClicked: Notes.open() } }
+                    Button { height: Theme.sp(30); size: Theme.tSub; text: "Open"; onClicked: Notes.open() } }
                 SettingsRow { label: "Pomodoro"; detail: "\"pomodoro\" in the launcher: 25 min focus, 5 min break, ×4, then 15" }
             }
         }
@@ -1028,7 +1029,7 @@ FocusScope {
                 }
                 SettingsRow {
                     label: "Trusted packages"; detail: Updates.trusted.length ? Updates.trusted.join(", ") : "None: trust one from its review"
-                    PillButton { visible: Updates.trusted.length > 0; text: "Open Software Update"; onClicked: Island.open("updates", Island.screen, "pointer", "island") }
+                    Button { height: Theme.sp(30); size: Theme.tSub; visible: Updates.trusted.length > 0; text: "Open Software Update"; onClicked: Island.open("updates", Island.screen, "pointer", "island") }
                 }
             }
         }
@@ -1042,11 +1043,11 @@ FocusScope {
                 SettingsRow { label: "Settings file"; Label { text: "~/.config/kuwai/settings.json"; size: 13; color: Theme.textSecondary; font.family: Theme.fontMono } }
                 SettingsRow {
                     label: "Backups"; detail: "Your settings, Hyprland files, reminders, alarms, notes and pins: daily and before every update of the desktop, the newest 30. Put one back: kuwai backup restore NAME"
-                    PillButton { text: "Back up now"; onClicked: Quickshell.execDetached([settings.kuwai, "backup"]) }
+                    Button { height: Theme.sp(30); size: Theme.tSub; text: "Back up now"; onClicked: Quickshell.execDetached([settings.kuwai, "backup"]) }
                 }
                 SettingsRow {
                     label: "Restart the shell"; detail: "Reloads everything; notifications stay"
-                    PillButton { text: "Restart"; onClicked: Quickshell.execDetached([settings.kuwai, "restart"]) }
+                    Button { height: Theme.sp(30); size: Theme.tSub; text: "Restart"; onClicked: Quickshell.execDetached([settings.kuwai, "restart"]) }
                 }
             }
         }

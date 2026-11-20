@@ -17,6 +17,7 @@ import qs.config
 import qs.components
 import qs.services
 import qs.modules.screensaver
+import qs.components.ui as Ui
 
 FocusScope {
     id: picker
@@ -291,8 +292,9 @@ FocusScope {
             current: picker.mode
             onPicked: id => picker.mode = id
         }
-        PillButton {
+        Ui.Button {
             id: guideBtn
+            height: Theme.sp(30); size: Theme.tSub
             anchors { right: parent.right; verticalCenter: parent.verticalCenter }
             text: picker.guide ? "Done" : "How to add"
             onClicked: picker.guide = !picker.guide
@@ -365,12 +367,14 @@ FocusScope {
                 visible: picker.canPreview
                 anchors { right: parent.right; bottom: parent.bottom; margins: 10 }
                 spacing: 6
-                PillButton {
+                Ui.Button {
+                    height: Theme.sp(30); size: Theme.tSub
                     visible: picker.mode === "saver"
                     text: "Full screen"
                     onClicked: picker.previewSaver()
                 }
-                PillButton {
+                Ui.Button {
+                    height: Theme.sp(30); size: Theme.tSub
                     text: picker.previewPlaying ? "Stop preview" : "Preview"
                     onClicked: picker.previewPlaying = !picker.previewPlaying
                 }
@@ -750,8 +754,8 @@ FocusScope {
             Label { width: gcol.width; wrapMode: Text.Wrap; text: picker.guideNow.worth; size: Theme.tSub; color: Theme.textSecondary }
             Row {
                 spacing: 8
-                PillButton { text: "Open folder"; onClicked: Quickshell.execDetached(["xdg-open", picker.guideNow.folder]) }
-                PillButton { text: "Full guide"; onClicked: Quickshell.execDetached(["xdg-open", Paths.root + "/docs/manual/looks.md"]) }
+                Ui.Button { height: Theme.sp(30); size: Theme.tSub; text: "Open folder"; onClicked: Quickshell.execDetached(["xdg-open", picker.guideNow.folder]) }
+                Ui.Button { height: Theme.sp(30); size: Theme.tSub; text: "Full guide"; onClicked: Quickshell.execDetached(["xdg-open", Paths.root + "/docs/manual/looks.md"]) }
             }
         }
     }

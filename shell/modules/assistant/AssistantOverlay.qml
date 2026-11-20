@@ -13,6 +13,7 @@ import qs.config
 import qs.components
 import qs.components.ai
 import qs.services
+import qs.components.ui as Ui
 
 Scope {
     id: root
@@ -269,7 +270,8 @@ Scope {
                     Row {
                         anchors.horizontalCenter: parent.horizontalCenter
                         spacing: 10
-                        PillButton {
+                        Ui.Button {
+                            height: Theme.sp(30); size: Theme.tSub
                             text: "Not now"
                             onClicked: Assistant.hide()
                         }
@@ -407,7 +409,8 @@ Scope {
                                                 size: 13
                                                 color: Theme.textTertiary
                                             }
-                                            PillButton {
+                                            Ui.Button {
+                                                height: Theme.sp(30); size: Theme.tSub
                                                 visible: OllamaService.status === "offline"
                                                 anchors.horizontalCenter: parent.horizontalCenter
                                                 text: "Check again"

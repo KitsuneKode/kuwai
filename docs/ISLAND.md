@@ -53,7 +53,7 @@ center; media → player; capsules → workspace overview.
 
 `components/` grows into a small design system, each piece one job, styled only by Theme tokens:
 `Island` (the morphing black-glass surface: rect + radius + spring, squircle corners), `Panel`, `Card`, `Tile`,
-`Toggle`, `Slider`, `Segmented`, `ListRow`, `Section`, `IconButton`, `PillButton`, `KeyCap`, `Tips`, `Skeleton`,
+`Toggle`, `Slider`, `Segmented`, `ListRow`, `Section`, `IconButton`, `KeyCap`, `Tips`, `Skeleton`,
 `RollingNumber`/`AnimatedDigits` (skiper37-style digit roll for the clock), `ActionMenu`, `Sheet`. Modules compose
 them; no module draws its own button.
 
