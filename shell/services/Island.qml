@@ -19,7 +19,12 @@ import Quickshell.Io
 Singleton {
     id: root
 
-    readonly property var panels: ["activities", "calendar", "power", "launcher", "settings", "system", "theme", "keys", "switcher", "updates", "media", "t3", "agents", "notifs", "bluetooth", "usage", "read", "cleanup"]
+    // Every panel the island opens, by name, with what it is called: the one
+    // list (its name for a screen reader, the Back row's "‹ Calendar").
+    // IslandBar maps each name to its component (tests/shell/island-panels.test.mjs).
+    readonly property var titles: ({ activities: "More activities", calendar: "Calendar", power: "Power", launcher: "Search", settings: "Settings", system: "System", theme: "Themes", keys: "Shortcuts", switcher: "Windows", updates: "Software Update", media: "Now Playing", t3: "T3 Code", agents: "Agents", notifs: "Notifications", bluetooth: "Bluetooth", usage: "Usage", read: "Read", cleanup: "Cleanup" })
+    readonly property var panels: Object.keys(titles)
+    function titleOf(name) { return titles[name] || ""; }
     // Old names that still open their panel: "vitals" (machine + agents'
     // usage side by side) became the System section, usage its own section.
     // Anything that still says vitals (a bind, a script, `kuwai vitals`) works.

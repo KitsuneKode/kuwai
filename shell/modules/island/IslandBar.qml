@@ -1045,7 +1045,7 @@ Scope {
                         focus: win.panelHere
                         // The open panel, by name; its right-click "back" is the Back button above it.
                         Accessible.role: Accessible.Pane
-                        Accessible.name: ({ activities: "More activities", calendar: "Calendar", power: "Power", launcher: "Search", settings: "Settings", system: "System", theme: "Themes", keys: "Shortcuts", switcher: "Windows", updates: "Software Update", media: "Now Playing", t3: "T3 Code", agents: "Agents", notifs: "Notifications", bluetooth: "Bluetooth", usage: "Usage", read: "Read", cleanup: "Cleanup" })[win.shownPanel] || ""
+                        Accessible.name: Island.titleOf(win.shownPanel)
                         readonly property real k: win.panelHere ? Math.max(0, Math.min(1, (pv.value - 0.5) / 0.4)) : win.reveal(pv.value, false)
                         // Also from one panel to another (pv stays 1): the next
                         // one appears as the shape makes room for it, not clipped.
@@ -1138,13 +1138,13 @@ Scope {
                                     Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f0141}"; font.family: Theme.fontGlyph; font.pixelSize: 14; color: Theme.textSecondary }
                                     Label {
                                         anchors.verticalCenter: parent.verticalCenter
-                                        text: Island.innerBackLabel || ({ activities: "More activities", calendar: "Calendar", power: "Power", launcher: "Search", settings: "Settings", system: "System", theme: "Themes", keys: "Shortcuts", switcher: "Windows", updates: "Software Update", usage: "Usage", cleanup: "Cleanup" })[Island.history[Island.history.length - 1]] || "Back"
+                                        text: Island.innerBackLabel || Island.titleOf(Island.history[Island.history.length - 1]) || "Back"
                                         size: 12; weight: Theme.wMedium; color: Theme.textSecondary
                                     }
                                 }
                                 MouseArea { id: backArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: Island.back() }
                                 Accessible.role: Accessible.Button
-                                Accessible.name: "Back to " + (Island.innerBackLabel || ({ activities: "More activities", calendar: "Calendar", power: "Power", launcher: "Search", settings: "Settings", system: "System", theme: "Themes", keys: "Shortcuts", switcher: "Windows", updates: "Software Update", usage: "Usage", cleanup: "Cleanup" })[Island.history[Island.history.length - 1]] || "the last panel")
+                                Accessible.name: "Back to " + (Island.innerBackLabel || Island.titleOf(Island.history[Island.history.length - 1]) || "the last panel")
                                 Accessible.onPressAction: Island.back()
                             }
                         }
