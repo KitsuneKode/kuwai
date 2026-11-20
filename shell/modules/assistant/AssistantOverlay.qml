@@ -398,7 +398,7 @@ Scope {
                                             Label {
                                                 anchors.horizontalCenter: parent.horizontalCenter
                                                 text: OllamaService.status === "ready" ? "What can I help with?" : OllamaService.status === "loading" ? "Starting up" : "Ollama isn't running"
-                                                size: 22
+                                                size: Theme.tTitle1
                                                 weight: Theme.wSemibold
                                                 color: Theme.textPrimary
                                             }

@@ -367,7 +367,7 @@ Item {
                 anchors.centerIn: parent
                 text: view.narrowed ? "\u{f0349}" : "\u{f009b}"   // magnify / bell-outline
                 font.family: Theme.fontGlyph
-                font.pixelSize: 26
+                font.pixelSize: Theme.glyphXL      // an empty panel's mark (the clipboard's too)
                 color: Theme.textTertiary
             }
         }

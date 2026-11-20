@@ -793,7 +793,7 @@ FocusScope {
                     textFormat: Text.PlainText
                     anchors.centerIn: parent
                     text: Updates.running ? "\u{f06b0}" : runCol.ok ? "\u{f012c}" : "\u{f0026}"
-                    font.family: Theme.fontGlyph; font.pixelSize: 20
+                    font.family: Theme.fontGlyph; font.pixelSize: Theme.glyphM   // in a status disc, as its siblings (it was 20)
                     color: Updates.running ? Theme.accent : runCol.ok ? Theme.green : Theme.orange
                     RotationAnimation on rotation { running: Updates.running && !Theme.reduceMotion; loops: Animation.Infinite; from: 0; to: 360; duration: Theme.spinMs }
                 }

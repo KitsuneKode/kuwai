@@ -169,7 +169,7 @@ Item {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: card.file0 && card.file0.dir ? "\u{f024b}" : "\u{f0214}"
                     font.family: Theme.fontGlyph
-                    font.pixelSize: 34
+                    font.pixelSize: Theme.glyphXL      // a card's stand-in mark: one size for all of them
                     color: card.file0 && card.file0.dir ? Theme.cyan : Theme.textSecondary
                 }
                 Label {
@@ -241,7 +241,7 @@ Item {
                 visible: card.masked
                 anchors.centerIn: parent
                 spacing: 6
-                Text { anchors.horizontalCenter: parent.horizontalCenter; text: "\u{f0306}"; font.family: Theme.fontGlyph; font.pixelSize: 26; color: Theme.orange }
+                Text { anchors.horizontalCenter: parent.horizontalCenter; text: "\u{f0306}"; font.family: Theme.fontGlyph; font.pixelSize: Theme.glyphXL; color: Theme.orange }
                 Label { anchors.horizontalCenter: parent.horizontalCenter; text: "Looks like a secret"; size: 11; color: Theme.orange }
             }
             Text {
@@ -249,7 +249,7 @@ Item {
                 anchors.centerIn: parent
                 text: "\u{f0214}"
                 font.family: Theme.fontGlyph
-                font.pixelSize: 30
+                font.pixelSize: Theme.glyphXL
                 color: Theme.textTertiary
             }
 

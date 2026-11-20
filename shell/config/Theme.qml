@@ -103,7 +103,7 @@ Singleton {
     readonly property int tLockClock: 150      // the lock and login screens' clock
     readonly property int tLockDate: 26        // the date above it
     readonly property int tLockHeadline: 34    // the login's "Welcome back"
-    readonly property int tFarewellTitle: 30   // the farewell's title ("Shutting Down", "Sleeping")
+    readonly property int tFarewellTitle: tLockHeadline   // the farewell's title ("Shutting Down", "Sleeping"): the same size as the login's (it was 30 beside 34)
     readonly property int tLockInitial: 36     // the initial that stands in for a missing picture (login)
     readonly property int tLockName: 21        // your name under your picture (login)
     readonly property int tLockBody: 17        // a line on these screens: the unlock hint, the track playing, the farewell's line
