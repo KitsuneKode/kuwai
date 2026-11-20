@@ -119,6 +119,11 @@ Singleton {
     readonly property int glyphXL: 28      // the mark of a large tile, an empty panel or a device card (in place of its photo)
     readonly property int glyphFarewell: 54   // the farewell's mark (moon, door)
     readonly property int glyphPlay: 32       // play/pause between the skip buttons (Now Playing; the skips take tTitle1)
+    // A list row (components/ListRow): every list's rows line up on these.
+    readonly property int rowInset: 10   // the row's edge to its mark, and its right edge to its state
+    readonly property int rowMark: 30    // the leading mark's box (a 14 px dot sits centred in it)
+    readonly property int rowGap: 12     // the mark to the text
+    readonly property int rowMin: 46     // the least height of a row (Theme.sp'd: it grows with Text size)
     readonly property int r1: 8          // small controls, thumbnails
     readonly property int r2: 12         // tiles, switches
     readonly property int r3: 16         // cards, notices

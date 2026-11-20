@@ -220,3 +220,14 @@ def test_a_list_must_not_end_on_a_row_cut_at_full_strength():
     assert "cut-row" not in rules(frame([row]), picture(40))    # faded out where it meets the edge
     whole = text("Stand-up in 10 minutes", (40, 100, 150, 16), clip=clip, scroll=True)
     assert "cut-row" not in rules(frame([whole]), picture(245))
+    # A wrapped text: only the line that crosses the edge is judged. Three lines from
+    # y 112: the first two are whole and bright, the third crosses at 160 and is faded.
+    para = text("Allow Bash: bun test tests/shell in ~/Projects/rice?", (40, 112, 300, 54), clip=clip, scroll=True, lines=3, wraps=True)
+    def para_picture(last):
+        img = PIL.new("RGB", (440, 300), (15, 15, 15))
+        d = ImageDraw.Draw(img)
+        d.rectangle([40, 114, 300, 145], fill=(245, 245, 245))      # lines 1–2, whole
+        d.rectangle([40, 150, 300, 159], fill=(last, last, last))   # line 3, up to the edge
+        return img
+    assert "cut-row" not in rules(frame([para]), para_picture(40))
+    assert "cut-row" in rules(frame([para]), para_picture(245))

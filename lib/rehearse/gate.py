@@ -283,12 +283,20 @@ def _cut_rows(frame, texts, image) -> list[Fault]:
         clip = t.get("clip")
         if not (t.get("scroll") and clip) or is_glyph(t):
             continue
-        box = t["box"]
+        box = list(t["box"])
+        at_foot = box[1] + box[3] > clip[1] + clip[3]
+        # A wrapped text is judged by the one line that crosses the edge: the
+        # lines above it are whole (a question's first line over the fade).
+        lines = max(1, int(t.get("lines", 1) or 1))
+        if lines > 1:
+            lh = box[3] / lines
+            edge_y = clip[1] + clip[3] if at_foot else clip[1]
+            k = min(lines - 1, max(0, int((edge_y - box[1]) // lh)))
+            box = [box[0], box[1] + k * lh, box[2], lh]
         top, foot = max(box[1], clip[1]), min(box[1] + box[3], clip[1] + clip[3])
         shown = foot - top
         if shown < 3 or shown > box[3] * 0.8:
             continue                                   # scrolled away, or (nearly) whole
-        at_foot = box[1] + box[3] > clip[1] + clip[3]
         edge = (round(clip[0]), round(clip[1] + (clip[3] if at_foot else 0)))
         if edge in seen:
             continue

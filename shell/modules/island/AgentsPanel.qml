@@ -246,7 +246,7 @@ FocusScope {
                 required property int index
                 readonly property bool needs: modelData.state === "needs"
                 width: list.width
-                height: inner.implicitHeight + 20
+                height: lrow.implicitHeight
                 radius: Theme.r2
                 color: "transparent"              // the list's one highlight lights it
                 // Swipe away sideways (or ×, or ⌫ on the selected row): it slides
@@ -283,119 +283,96 @@ FocusScope {
                 Accessible.selected: ap.sel === index
                 // The keyboard's ring is the list's FluidHighlight (ring: keyboard).
 
-                // Who: the agent's mark, its state on the corner (the words say it too).
-                Item {
-                    x: 10; y: 12
-                    width: 30; height: 30
-                    Rectangle { anchors.fill: parent; radius: 9; color: Qt.rgba(1, 1, 1, 0.06) }
-                    Image {
-                        id: mark
-                        anchors.centerIn: parent
-                        width: 18; height: 18
-                        sourceSize: Qt.size(36, 36)
-                        source: Kittymux.brand(row.modelData.agent)
-                        smooth: true; mipmap: true
-                    }
-                    Text {
-                        visible: mark.status !== Image.Ready
-                        anchors.centerIn: parent
-                        text: "\u{f06a9}"
-                        font.family: Theme.fontGlyph; font.pixelSize: 15
-                        color: Theme.textSecondary
-                    }
-                    Rectangle {
-                        visible: row.modelData.state !== "idle"
-                        x: parent.width - 7; y: -2
-                        width: 9; height: 9; radius: 4.5
-                        color: ap.tone(row.modelData.state)
-                        border.width: 2; border.color: Theme.cutout
-                    }
-                }
-                Column {
-                    id: inner
-                    x: 52; y: 10
-                    width: parent.width - 62
-                    spacing: 2
-                    Item {
-                        width: parent.width
-                        height: title.implicitHeight
-                        Label {
-                            id: title
-                            width: parent.width - age.implicitWidth - 8
-                            elide: Text.ElideRight
-                            text: row.modelData.title
-                            size: Theme.tBody; weight: Theme.wSemibold
+                // The shared row (components/ListRow): who (the agent's mark, its
+                // state on the corner; the words say it too), the title, the state
+                // in its colour then where and on what, its age at the right edge,
+                // and what it asks under it.
+                ListRow {
+                    id: lrow
+                    width: parent.width
+                    lead: Item {
+                        anchors.fill: parent
+                        Rectangle { anchors.fill: parent; radius: 9; color: Qt.rgba(1, 1, 1, 0.06) }
+                        Image {
+                            id: mark
+                            anchors.centerIn: parent
+                            width: 18; height: 18
+                            sourceSize: Qt.size(36, 36)
+                            source: Kittymux.brand(row.modelData.agent)
+                            smooth: true; mipmap: true
                         }
-                        Label {
-                            id: age
-                            anchors { right: parent.right; baseline: title.baseline }
-                            text: ap.ago(row.modelData.t)
-                            // The × takes its place on hover (a removable row).
-                            opacity: row.dismissable && rowHover.hovered ? 0 : 1
-                            Behavior on opacity { NumberAnimation { duration: Theme.hoverMs } }
-                            size: Theme.tFootnote; color: Theme.textTertiary
-                            font.features: ({ "tnum": 1 })
+                        Text {
+                            visible: mark.status !== Image.Ready
+                            anchors.centerIn: parent
+                            text: "\u{f06a9}"
+                            font.family: Theme.fontGlyph; font.pixelSize: 15
+                            color: Theme.textSecondary
+                        }
+                        Rectangle {
+                            visible: row.modelData.state !== "idle"
+                            x: parent.width - 7; y: -2
+                            width: 9; height: 9; radius: 4.5
+                            color: ap.tone(row.modelData.state)
+                            border.width: 2; border.color: Theme.cutout
                         }
                     }
-                    Label {
-                        width: parent.width
-                        elide: Text.ElideRight
-                        // State first, in its colour; then where and on what, quieter.
-                        textFormat: Text.StyledText
-                        text: "<font color='" + ap.tone(row.modelData.state) + "'>" + (row.modelData.word || ap.word(row.modelData.state)) + "</font>"
-                            + [row.modelData.where, row.modelData.model].filter(x => x).map(x => " · " + ap.esc(x)).join("")
-                        size: Theme.tFootnote; color: Theme.textSecondary
-                    }
+                    title: row.modelData.title
+                    stateText: ap.ago(row.modelData.t)
+                    // The × takes its place on hover (a removable row).
+                    stateOpacity: row.dismissable && rowHover.hovered ? 0 : 1
+                    subFormat: Text.StyledText
+                    sub: "<font color='" + ap.tone(row.modelData.state) + "'>" + (row.modelData.word || ap.word(row.modelData.state)) + "</font>"
+                        + [row.modelData.where, row.modelData.model].filter(x => x).map(x => " · " + ap.esc(x)).join("")
+                    subColor: Theme.textSecondary
                     Label {
                         visible: row.needs && row.modelData.question !== ""
                         width: parent.width
-                        topPadding: 2
                         wrapMode: Text.Wrap; maximumLineCount: 3; elide: Text.ElideRight
                         text: row.modelData.question
                         size: Theme.tSub; lineHeight: 1.3; color: Theme.textPrimary
                     }
-                    // Answer it from here (Claude Code, Codex): kittymux types the
-                    // key only if this exact question is still on screen. Deny
-                    // first, Allow last; Enter on the row goes there, never Allow.
-                    Item {
-                        id: answerRow
-                        readonly property var r: row.modelData.raw
-                        readonly property var st: r ? (Kittymux.answers[r.key] || null) : null
-                        visible: row.modelData.src === "kitty" && Kittymux.canAnswer(r)
-                        width: parent.width
-                        height: visible ? answerBtns.height + 6 + (answerWhy.visible ? answerWhy.implicitHeight + 4 : 0) : 0
-                        HoverHandler { id: answerHover }
-                        Row {
-                            id: answerBtns
-                            y: 6
-                            spacing: 8
-                            enabled: !(answerRow.st && answerRow.st.busy)
-                            opacity: enabled ? 1 : 0.6
-                            Button {
-                                height: Theme.sp(30); size: Theme.tSub
-                                text: answerRow.st && answerRow.st.done === "deny" ? "Denied" : "Deny"
-                                onClicked: Kittymux.answer(answerRow.r, "deny")
-                                Accessible.name: "Deny " + row.modelData.title + ": " + row.modelData.question
-                            }
-                            Button {
-                                height: Theme.sp(30); size: Theme.tSub
-                                text: answerRow.st && answerRow.st.done === "allow" ? "Allowed" : "Allow"
-                                kind: "primary"
-                                onClicked: Kittymux.answer(answerRow.r, "allow")
-                                Accessible.name: "Allow " + row.modelData.title + ": " + row.modelData.question
-                            }
-                        }
-                        // Refused (the prompt changed, or it's gone): why, and the row still jumps there.
-                        Label {
-                            id: answerWhy
-                            visible: !!answerRow.st && !answerRow.st.busy && answerRow.st.why !== ""
-                            anchors { top: answerBtns.bottom; topMargin: 4 }
+                        // Answer it from here (Claude Code, Codex): kittymux types the
+                        // key only if this exact question is still on screen. Deny
+                        // first, Allow last; Enter on the row goes there, never Allow.
+                        Item {
+                            id: answerRow
+                            readonly property var r: row.modelData.raw
+                            readonly property var st: r ? (Kittymux.answers[r.key] || null) : null
+                            visible: row.modelData.src === "kitty" && Kittymux.canAnswer(r)
                             width: parent.width
-                            wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight
-                            text: answerRow.st ? answerRow.st.why + (answerRow.st.done ? "" : " · open it to answer") : ""
-                            size: Theme.tFootnote; color: answerRow.st && answerRow.st.done ? Theme.textTertiary : Theme.orange
+                            height: visible ? answerBtns.height + 6 + (answerWhy.visible ? answerWhy.implicitHeight + 4 : 0) : 0
+                            HoverHandler { id: answerHover }
+                            Row {
+                                id: answerBtns
+                                y: 6
+                                spacing: 8
+                                enabled: !(answerRow.st && answerRow.st.busy)
+                                opacity: enabled ? 1 : 0.6
+                                Button {
+                                    height: Theme.sp(30); size: Theme.tSub
+                                    text: answerRow.st && answerRow.st.done === "deny" ? "Denied" : "Deny"
+                                    onClicked: Kittymux.answer(answerRow.r, "deny")
+                                    Accessible.name: "Deny " + row.modelData.title + ": " + row.modelData.question
+                                }
+                                Button {
+                                    height: Theme.sp(30); size: Theme.tSub
+                                    text: answerRow.st && answerRow.st.done === "allow" ? "Allowed" : "Allow"
+                                    kind: "primary"
+                                    onClicked: Kittymux.answer(answerRow.r, "allow")
+                                    Accessible.name: "Allow " + row.modelData.title + ": " + row.modelData.question
+                                }
+                            }
+                            // Refused (the prompt changed, or it's gone): why, and the row still jumps there.
+                            Label {
+                                id: answerWhy
+                                visible: !!answerRow.st && !answerRow.st.busy && answerRow.st.why !== ""
+                                anchors { top: answerBtns.bottom; topMargin: 4 }
+                                width: parent.width
+                                wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight
+                                text: answerRow.st ? answerRow.st.why + (answerRow.st.done ? "" : " · open it to answer") : ""
+                                size: Theme.tFootnote; color: answerRow.st && answerRow.st.done ? Theme.textTertiary : Theme.orange
+                            }
                         }
-                    }
                 }
                 HoverHandler {
                     id: rowHover

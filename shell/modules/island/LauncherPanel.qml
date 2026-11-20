@@ -668,54 +668,53 @@ FocusScope {
                 Label { visible: text !== ""; width: parent.width; elide: Text.ElideRight; text: row.modelData.sub || ""; size: Theme.tFootnote; color: Theme.textTertiary }
             }
 
-            Item {
-                id: iconBox
+            // The shared row (components/ListRow): its icon, the name with the
+            // letters you typed in the accent, what it is, and on the chosen
+            // row what ↵ does (room for that hint only on that row).
+            ListRow {
                 visible: !row.header && !row.card && !row.dock
-                x: 12; anchors.verticalCenter: parent.verticalCenter
-                width: 32; height: 32
-                readonly property string path: row.modelData.icon ? NotifAdapters.iconSource(row.modelData.icon) : ""
-                IconImage { anchors.fill: parent; visible: iconBox.path !== ""; source: iconBox.path; asynchronous: true }
-                Rectangle {
-                    visible: iconBox.path === ""
-                    anchors.fill: parent; radius: 9
-                    color: Theme.pill
-                    Text {
-                        textFormat: Text.PlainText
-                        anchors.centerIn: parent
-                        text: row.modelData.glyph || "\u{f0b2a}"
-                        font.family: row.modelData.kind === "calc" ? Theme.fontRounded : row.modelData.kind === "emoji" ? "Noto Color Emoji" : Theme.fontGlyph
-                        font.pixelSize: row.modelData.kind === "calc" ? 18 : row.modelData.kind === "emoji" ? 22 : 17
-                        color: Theme.textSecondary
+                width: parent.width
+                minHeight: launcher.rowH
+                lead: Item {
+                    id: iconBox
+                    anchors.fill: parent
+                    readonly property string path: row.modelData.icon ? NotifAdapters.iconSource(row.modelData.icon) : ""
+                    IconImage { anchors.fill: parent; visible: iconBox.path !== ""; source: iconBox.path; asynchronous: true }
+                    Rectangle {
+                        visible: iconBox.path === ""
+                        anchors.fill: parent; radius: 9
+                        color: Theme.pill
+                        Text {
+                            textFormat: Text.PlainText
+                            anchors.centerIn: parent
+                            text: row.modelData.glyph || "\u{f0b2a}"
+                            font.family: row.modelData.kind === "calc" ? Theme.fontRounded : row.modelData.kind === "emoji" ? "Noto Color Emoji" : Theme.fontGlyph
+                            font.pixelSize: row.modelData.kind === "calc" ? 18 : row.modelData.kind === "emoji" ? 22 : 17
+                            color: Theme.textSecondary
+                        }
                     }
                 }
-            }
-            Column {
-                visible: !row.header && !row.card && !row.dock
-                // Room for the hint ("Open ↵") only on the row that shows it.
-                anchors { left: iconBox.right; leftMargin: 12; right: hint.opacity > 0 ? hint.left : parent.right; rightMargin: 12; verticalCenter: parent.verticalCenter }
-                spacing: 1
-                // The letters you typed, in the accent.
-                Label {
-                    width: parent.width; elide: Text.ElideRight
-                    textFormat: row.modelData.pos && row.modelData.pos.length ? Text.StyledText : Text.PlainText
-                    text: row.modelData.pos && row.modelData.pos.length ? launcher.marked(row.modelData.name, row.modelData.pos) : row.modelData.name
-                    size: row.modelData.kind === "calc" ? 17 : 14; weight: Theme.wMedium; rounded: row.modelData.kind === "calc"
+                titleFormat: row.modelData.pos && row.modelData.pos.length ? Text.StyledText : Text.PlainText
+                title: row.modelData.pos && row.modelData.pos.length ? launcher.marked(row.modelData.name, row.modelData.pos) : (row.modelData.name || "")
+                titleSize: row.modelData.kind === "calc" ? 17 : Theme.tCallout
+                titleWeight: Theme.wMedium
+                titleRounded: row.modelData.kind === "calc"
+                sub: row.modelData.sub || ""
+                subSize: Theme.tSub
+                forceStacked: false
+                trailOpacity: row.on ? 1 : 0
+                trail: Row {
+                    id: hint
+                    spacing: 8
+                    Label {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: row.modelData.kind === "proc" ? (row.modelData.armed ? (launcher.armedForce ? "Force quit" : "End") : row.modelData.proc.mine ? "End…" : "")
+                            : launcher.verbs[row.modelData.kind] || ""
+                        size: 12
+                        color: Theme.textSecondary
+                    }
+                    KeyCap { anchors.verticalCenter: parent.verticalCenter; text: "↩" }
                 }
-                Label { visible: text !== ""; width: parent.width; elide: Text.ElideRight; text: row.modelData.sub || ""; size: 12; color: Theme.textTertiary }
-            }
-            Row {
-                id: hint
-                anchors { right: parent.right; rightMargin: 12; verticalCenter: parent.verticalCenter }
-                spacing: 8
-                opacity: row.on && !row.header && !row.dock ? 1 : 0
-                Label {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: row.modelData.kind === "proc" ? (row.modelData.armed ? (launcher.armedForce ? "Force quit" : "End") : row.modelData.proc.mine ? "End…" : "")
-                        : launcher.verbs[row.modelData.kind] || ""
-                    size: 12
-                    color: Theme.textSecondary
-                }
-                KeyCap { anchors.verticalCenter: parent.verticalCenter; text: "↩" }
             }
             // The dock: tiles of icon + name; the chosen one lit like a row.
             Row {
