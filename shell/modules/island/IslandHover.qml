@@ -163,7 +163,7 @@ Item {
                 id: appIcon
                 width: 18; height: 18
                 anchors.verticalCenter: parent.verticalCenter
-                readonly property string path: hover.app && hover.app.icon ? Quickshell.iconPath(hover.app.icon, true) : ""
+                readonly property string path: hover.app && hover.app.icon ? NotifAdapters.iconSource(hover.app.icon) : ""
                 IconImage { anchors.fill: parent; visible: appIcon.path !== ""; source: appIcon.path; asynchronous: true }
                 Text { visible: appIcon.path === ""; anchors.centerIn: parent; text: "\u{f05b5}"; font.family: Theme.fontGlyph; font.pixelSize: 14; color: Theme.textSecondary }
             }

@@ -477,7 +477,7 @@ Item {
                     required property var modelData
                     width: 16; height: 16
                     anchors.verticalCenter: parent.verticalCenter
-                    readonly property string path: Quickshell.iconPath(modelData.icon, true)
+                    readonly property string path: NotifAdapters.iconSource(modelData.icon)
                     IconImage { anchors.fill: parent; visible: parent.path !== ""; source: parent.path; asynchronous: true }
                     Text { visible: parent.path === ""; anchors.centerIn: parent; text: "\u{f05b5}"; font.family: Theme.fontGlyph; font.pixelSize: 13; color: Theme.textSecondary }
                 }

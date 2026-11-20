@@ -831,7 +831,7 @@ Scope {
                                             id: appIcon
                                             width: 26; height: 26
                                             anchors.verticalCenter: parent.verticalCenter
-                                            readonly property string path: modelData.icon ? Quickshell.iconPath(modelData.icon, true) : ""
+                                            readonly property string path: modelData.icon ? NotifAdapters.iconSource(modelData.icon) : ""
                                             IconImage { anchors.fill: parent; visible: appIcon.path !== ""; source: appIcon.path; asynchronous: true }
                                             Icon {
                                                 visible: appIcon.path === ""

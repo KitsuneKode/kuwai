@@ -34,7 +34,7 @@ FocusScope {
     function iconFor(t) {
         const cls = Switcher.classOf(t);
         const app = cls ? DesktopEntries.heuristicLookup(cls) : null;
-        return app && app.icon ? Quickshell.iconPath(app.icon, true) : "";
+        return app && app.icon ? NotifAdapters.iconSource(app.icon) : "";
     }
     function appName(t) {
         const cls = Switcher.classOf(t);

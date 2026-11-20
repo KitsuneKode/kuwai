@@ -673,7 +673,7 @@ FocusScope {
                 visible: !row.header && !row.card && !row.dock
                 x: 12; anchors.verticalCenter: parent.verticalCenter
                 width: 32; height: 32
-                readonly property string path: row.modelData.icon ? Quickshell.iconPath(row.modelData.icon, true) : ""
+                readonly property string path: row.modelData.icon ? NotifAdapters.iconSource(row.modelData.icon) : ""
                 IconImage { anchors.fill: parent; visible: iconBox.path !== ""; source: iconBox.path; asynchronous: true }
                 Rectangle {
                     visible: iconBox.path === ""
@@ -744,7 +744,7 @@ FocusScope {
                             id: tileIcon
                             anchors.horizontalCenter: parent.horizontalCenter
                             y: 10; width: 36; height: 36
-                            readonly property string path: tile.modelData.icon ? Quickshell.iconPath(tile.modelData.icon, true) : ""
+                            readonly property string path: tile.modelData.icon ? NotifAdapters.iconSource(tile.modelData.icon) : ""
                             IconImage { anchors.fill: parent; visible: tileIcon.path !== ""; source: tileIcon.path; asynchronous: true }
                             Label { visible: tileIcon.path === ""; anchors.centerIn: parent; text: (tile.modelData.name || "?").charAt(0); size: 18; weight: Theme.wSemibold; color: Theme.textSecondary }
                         }

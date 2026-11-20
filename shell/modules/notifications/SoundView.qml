@@ -103,9 +103,12 @@ Item {
         const bin = alsa ? alsa[1] : "";
         return bin ? bin.charAt(0).toUpperCase() + bin.slice(1) : raw;
     }
+    // Only while the Sound tab shows (the center builds all three tabs as it
+    // opens), and through NotifAdapters' cache: see iconSource there.
     function appIcon(n) {
+        if (!view.shown) return "";
         const p = n.properties || {};
-        const own = p["application.icon-name"] ? Quickshell.iconPath(p["application.icon-name"], true) : "";
+        const own = p["application.icon-name"] ? NotifAdapters.iconSource(String(p["application.icon-name"])) : "";
         return own || NotifAdapters.iconForApp(appName(n)) || "";
     }
     function deviceName(n) {

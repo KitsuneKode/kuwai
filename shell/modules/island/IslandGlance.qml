@@ -60,7 +60,7 @@ Item {
             id: appIcon
             width: 18; height: 18
             anchors.verticalCenter: parent.verticalCenter
-            readonly property string path: glance.app && glance.app.icon ? Quickshell.iconPath(glance.app.icon, true) : ""
+            readonly property string path: glance.app && glance.app.icon ? NotifAdapters.iconSource(glance.app.icon) : ""
             IconImage { anchors.fill: parent; visible: appIcon.path !== ""; source: appIcon.path; asynchronous: true }
             Text { visible: appIcon.path === ""; anchors.centerIn: parent; text: "\u{f05b5}"; font.family: Theme.fontGlyph; font.pixelSize: Theme.tCallout; color: Theme.textSecondary }
         }

@@ -325,10 +325,23 @@ Singleton {
         return e ? iconSource(e.icon) : "";
     }
 
+    // Each theme icon name is looked up once a session. Qt's icon loader
+    // crashed the shell inside this lookup as the center opened (2026-11-20
+    // 21:47, a segfault in QIconLoader::findIconHelper during a binding):
+    // opening it asked for every row's and every stream's icon again, each
+    // time. A name already asked is answered from here.
+    // Mutated in place, never reassigned: bindings call this, and writing a
+    // property they read would be a binding loop.
+    readonly property var iconCache: ({ names: {}, count: 0 })
     function iconSource(icon) {
         if (!icon) return "";
         if (icon.startsWith("/")) return "file://" + icon;
         if (/^(file|image|https?):/.test(icon)) return icon;
-        return Quickshell.iconPath(icon, true);
+        const c = iconCache;
+        if (Object.prototype.hasOwnProperty.call(c.names, icon)) return c.names[icon];
+        const p = Quickshell.iconPath(icon, true);
+        if (c.count >= 500) { c.names = {}; c.count = 0; }
+        c.names[icon] = p; c.count++;
+        return p;
     }
 }
