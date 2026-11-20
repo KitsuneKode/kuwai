@@ -120,12 +120,18 @@ Item {
                 // step when the count changes.
                 // On the shared beat (Theme.step), so every ring on the notch
                 // moves together; a count change adds a bigger step of its own.
-                property int bump: 0
-                rotation: Theme.step * 120 + bump * 240     // (no wrap: a modulo spun it backwards at the wrap)
+                // Only while it shows: a hidden arc turned on every beat still
+                // drew the notch once every 3 s. (No wrap: a modulo spun it
+                // backwards at the wrap.)
                 Behavior on rotation { enabled: arc.visible && !Theme.reduceMotion; NumberAnimation { duration: Theme.stepMs; easing.type: Easing.InOutCubic } }
                 Connections {
+                    target: Theme
+                    enabled: arc.visible && !Theme.reduceMotion
+                    function onStepChanged() { arc.rotation += 120; }
+                }
+                Connections {
                     target: mark
-                    function onValueChanged() { if (arc.visible && !Theme.reduceMotion) arc.bump++; }
+                    function onValueChanged() { if (arc.visible && !Theme.reduceMotion) arc.rotation += 240; }
                 }
             }
             Label {

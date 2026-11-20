@@ -34,7 +34,12 @@ Item {
     readonly property color tint: Qt.tint(Qt.rgba(1, 1, 1, 0.92), Qt.alpha(accent, 0.22))
     readonly property real move: Theme.reduceMotion ? 0 : 1
     property date now: new Date()
-    Timer { interval: 1000; running: true; repeat: true; onTriggered: view.now = new Date() }
+    // The clock wakes on the minute, not every second (it shows minutes), as LockView's.
+    Timer {
+        running: true
+        interval: 60000 - (Date.now() % 60000) + 50
+        onTriggered: { view.now = new Date(); interval = 60000 - (Date.now() % 60000) + 50; restart(); }
+    }
     readonly property int hour: now.getHours()
     readonly property string greeting: hour < 5 ? "Up late" : hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening"
 

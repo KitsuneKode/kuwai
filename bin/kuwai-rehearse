@@ -208,6 +208,19 @@ def main():
                 faults.append(gate.Fault(f"gestures ({motion} motion)", "gesture", "fail",
                                          said[1].strip() if said else f"the gesture run did not finish ({log})", None))
 
+    # At rest nothing draws (tests/ui/idle.qml): the island with a capsule out
+    # and the login face, frames counted over a quiet 7 s.
+    if not args.only and not args.scale:
+        run = subprocess.run([str(ROOT / "bin/kuwai-ui-test"), "--case", "idle", "--backend", "x11", "--motion", "full",
+                              "--output", str(out / "idle")], capture_output=True, text=True)
+        log = out / "idle" / "runtime.log"
+        text = log.read_text(errors="replace") if log.is_file() else ""
+        said = re.search(r"UI_SMOKE_FAILED: (.*)", text)
+        if said or run.returncode:
+            counted = re.search(r"IDLE_FRAMES (.*)", text)
+            faults.append(gate.Fault("idle", "idle", "fail",
+                                     (said[1].strip() + (": " + counted[1].strip() if counted else "")) if said else f"the idle run did not finish ({log})", None))
+
     # The lock clock's ground, on real pictures (tests/ui/clock-ground.qml): over
     # snow, a bright sky and night, the clock must be readable and night untouched.
     if not args.only and not args.scale:

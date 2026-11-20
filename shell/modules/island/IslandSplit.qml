@@ -330,6 +330,7 @@ Item {
         }
         SequentialAnimation {
             id: swap
+            onFinished: Qt.callLater(pill.snap)
             ParallelAnimation {
                 // Overlapping, so the capsule is never empty between them.
                 NumberAnimation { target: ghost; property: "opacity"; to: 0; duration: Theme.quickMs - 10; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
@@ -465,10 +466,11 @@ Item {
             layer.enabled: pill.reveal < 0.999
             layer.effect: MultiEffect { blurEnabled: true; blurMax: 12; blur: (1 - pill.reveal) * 0.25; autoPaddingEnabled: true }
         }
-        // The old content, for the swap: a snapshot refreshed twice a second
-        // while the capsule is out (live, an animating capsule — T3's spinner
-        // — rendered twice every frame: +3 % CPU at rest). Half a second old
-        // is still the old state: states change rarely.
+        // The old content, for the swap: a snapshot taken when the capsule
+        // settles into a state (snap() below), never live (live, an animating
+        // capsule — T3's spinner — rendered twice every frame: +3 % CPU at
+        // rest). States change rarely; a count a minute old is still the old
+        // state for the 110 ms it takes to leave.
         ShaderEffectSource {
             id: ghost
             y: slot.y
@@ -491,11 +493,16 @@ Item {
           }
         }
         Tip { text: split.labelFor(pill.name) + " · open for details"; shown: pill.compact && pill.hovered; below: true }
-        Timer {
-            interval: Theme.hoverLeaveMs + 200; repeat: true; triggeredOnStart: true
-            running: pill.out && !pill.compact && !Theme.reduceMotion && !swap.running
-            onTriggered: ghost.scheduleUpdate()
-        }
+        // Snapshot the moments the capsule shows a state at rest: as it comes
+        // out, once it has arrived, after a swap, and when what it holds
+        // changes size (a count, a time). A timer refreshing it twice a second
+        // drew a frame every 500 ms for as long as a capsule was out.
+        function snap() { if (pill.out && !pill.compact && !Theme.reduceMotion && !swap.running) ghost.scheduleUpdate(); }
+        readonly property bool arrived: slot.arrive >= 1
+        onOutChanged: if (out) Qt.callLater(snap)
+        onArrivedChanged: if (arrived) Qt.callLater(snap)
+        onCompactChanged: if (!compact) Qt.callLater(snap)
+        onNaturalWChanged: Qt.callLater(snap)
     }
 
     // A state's glyph, and a word or time beside it, in its colour.
