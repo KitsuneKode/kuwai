@@ -11,6 +11,12 @@ launcher/new-machine @x2 | on-top | "All Applications" is drawn over "The player
 launcher/new-machine @x2 | on-top | "Bluetooth" is drawn over "Free a port: what listens on it · or typ…"
 launcher/new-machine @x2 | on-top | "Kill Port" is drawn over "Skills your agents never use, what they …"
 launcher/new-machine @x2 | on-top | "Now Playing" is drawn over "Devices, connect and disconnect"
+launcher/menu @x2 | cut-off | "Search apps, windows, actions = math > m…" runs 0 px past the right of the panel
+launcher/menu @x2 | on-top | "Advanced Network Configuration" is drawn over "Password manager and secure wallet"
+launcher/menu @x2 | on-top | "All Applications" is drawn over "The player, its queue and the output"
+launcher/menu @x2 | on-top | "Now Playing" is drawn over "Devices, connect and disconnect"
+launcher/menu @x2 | shortened | "Advanced Network Configuration" is shortened with an ellipsis though its content is ordinary
+launcher/menu @x2 | shortened | "Manage and change your network connectio…" is shortened with an ellipsis though its content is ordinary
 media/new-machine @x2 | cut-off | "Start something in any player and it sho…" runs 0 px past the left of the panel
 power/new-machine @x2 | on-top | "Shut Down" is drawn over "Firmware"
 settings/new-machine @x2 | on-top | "Bar & Island" is drawn over "Search"
