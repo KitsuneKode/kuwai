@@ -362,28 +362,11 @@ Item {
         }
     }
     // The welcome, over your wallpaper as it opens.
-    Column {
+    LoginWelcome {
         anchors.centerIn: parent
-        spacing: 6
-        opacity: Math.max(0, Math.min(1, (view.tReveal - 0.35) / 0.4))
-        visible: opacity > 0
-        transform: Translate { y: (1 - Math.min(1, view.tReveal)) * 10 * view.move }
-        Label {
-            anchors.horizontalCenter: parent.horizontalCenter
-            text: "Welcome back"
-            size: Theme.tLockHeadline; weight: Theme.wSemibold
-            color: "white"
-            layer.enabled: true
-            layer.effect: MultiEffect { shadowEnabled: true; shadowBlur: 0.8; shadowOpacity: 0.5 }
-        }
-        Label {
-            anchors.horizontalCenter: parent.horizontalCenter
-            text: view.lock.name
-            size: 18; weight: Theme.wMedium
-            color: Qt.rgba(1, 1, 1, 0.8)
-            layer.enabled: true
-            layer.effect: MultiEffect { shadowEnabled: true; shadowBlur: 0.8; shadowOpacity: 0.5 }
-        }
+        name: view.lock.name
+        progress: view.tReveal
+        motion: view.move
     }
 
     // ── Goodbye ──────────────────────────────────────────────────────────

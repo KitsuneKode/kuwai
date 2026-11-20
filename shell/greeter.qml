@@ -19,8 +19,10 @@
 // shows that state.
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Services.Greetd
+import Quickshell.Services.UPower
 import qs.config
 import qs.services
 import qs.modules.lock
@@ -65,6 +67,7 @@ ShellRoot {
     function fail(message) {
         trace("failure");
         handoff.stop();
+        quitAnyway.stop();
         locked = true;
         leaving = false;
         checking = false;
@@ -102,9 +105,15 @@ ShellRoot {
             root.leaving = true;      // the views play their outro, into your wallpaper
             handoff.start();
         }
+        function onLaunched() {
+            root.trace("launched");
+            endCompositor.running = true;
+            quitAnyway.start();
+        }
     }
     // After the outro: unlock (quitting while locked would flash Hyprland's
-    // "lockscreen died" screen) and hand over to the session.
+    // "lockscreen died" screen) and hand over to the session. The cover below
+    // already shows the outro's last frame, so the unlock changes nothing seen.
     Timer {
         id: handoff
         interval: 1100
@@ -115,8 +124,73 @@ ShellRoot {
             // so they're one shell line, quoted for that: separate argv words
             // (sh -c 'script' sh arg) fall apart into `sh -c exec`, which
             // ends the session at once, and greetd shows the login again.
-            Greetd.launch(['"${SHELL:-/bin/sh}"', "-l", "-c", "'" + root.session.replace(/'/g, "'\\''") + "'"], ["KUWAI_HANDOFF_ID=" + root.handoffId], true);
+            Greetd.launch(['"${SHELL:-/bin/sh}"', "-l", "-c", "'" + root.session.replace(/'/g, "'\\''") + "'"], ["KUWAI_HANDOFF_ID=" + root.handoffId], false);
         }
+    }
+    // Hyprland is told to end while the cover is still up: it stops drawing
+    // at once, so its last frame (your wallpaper) stays on the screens through
+    // its ~1 s teardown, where quitting first left its black background.
+    Process {
+        id: endCompositor
+        command: ["hyprctl", "dispatch", "hl.dsp.exit()"]
+        onExited: Qt.quit()
+    }
+    // hyprctl didn't answer: quit the old way (greeter/start ends Hyprland).
+    Timer { id: quitAnyway; interval: 3000; onTriggered: Qt.quit() }
+
+    // The outro's last frame (your wallpaper, the welcome) on the overlay
+    // layer, made as the outro starts: hidden under the lock until it lifts.
+    LazyLoader {
+        active: Greetd.available && root.leaving
+        Variants {
+            model: Quickshell.screens
+            PanelWindow {
+                required property var modelData
+                screen: modelData
+                anchors { top: true; bottom: true; left: true; right: true }
+                exclusionMode: ExclusionMode.Ignore
+                WlrLayershell.layer: WlrLayer.Overlay
+                WlrLayershell.namespace: "kuwai-greeter-cover"
+                color: "black"
+                Image {
+                    id: coverWall
+                    anchors.fill: parent
+                    source: root.desktopWall ? "file://" + root.desktopWall : ""
+                    sourceSize: Qt.size(width, height)
+                    fillMode: Image.PreserveAspectCrop
+                    asynchronous: true
+                }
+                LoginWelcome {
+                    anchors.centerIn: parent
+                    name: root.name
+                    visible: coverWall.status === Image.Ready
+                }
+            }
+        }
+    }
+
+    // ── Nobody logs in: dim, then screens off, then sleep ────────────────
+    // Any key or the pointer brings it back; a password half typed is
+    // dropped when the screens go off.
+    readonly property bool watchIdle: Greetd.available && locked && !leaving && !checking && !farewell
+    property bool dimmed: false
+    IdleMonitor {
+        enabled: root.watchIdle
+        timeout: 30
+        onIsIdleChanged: root.dimmed = isIdle
+    }
+    IdleMonitor {
+        enabled: root.watchIdle
+        timeout: 60
+        onIsIdleChanged: {
+            if (isIdle) root.password = "";
+            Quickshell.execDetached(["hyprctl", "dispatch", `hl.dsp.dpms({ action = "${isIdle ? "disable" : "enable"}" })`]);
+        }
+    }
+    IdleMonitor {
+        enabled: root.watchIdle
+        timeout: UPower.onBattery ? 600 : 1200
+        onIsIdleChanged: if (isIdle) Quickshell.execDetached(["systemctl", "suspend"])
     }
 
     // The session lock: one surface per screen, keyboard on whichever has
@@ -126,6 +200,13 @@ ShellRoot {
         WlSessionLockSurface {
             color: "black"
             GreeterView { anchors.fill: parent; lock: root }
+            Rectangle {
+                anchors.fill: parent
+                color: "black"
+                opacity: root.dimmed && root.watchIdle ? 0.6 : 0
+                visible: opacity > 0
+                Behavior on opacity { NumberAnimation { duration: root.dimmed ? Theme.ambientFadeMs : Theme.exitMs } }
+            }
         }
     }
 
