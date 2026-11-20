@@ -17,7 +17,8 @@ FocusScope {
     readonly property int shotH: 128
     readonly property int count: Switcher.list.length
     implicitWidth: Math.min(1160, Math.max(3, count) * (cardW + 12) + 28)
-    implicitHeight: shotH + 112
+    // No window: as tall as its empty state, not a row of missing shots.
+    implicitHeight: count > 0 ? shotH + 112 : Math.round(emptyState.implicitHeight) + 2 * Theme.s5 + 48
 
     Keys.onPressed: event => {
         const k = event.key;
@@ -165,12 +166,30 @@ FocusScope {
             }
         }
     }
-    // No window to switch to: say so (it was a black sheet over "0 windows").
-    Label {
+    // No window to switch to: say so, and where windows come from (it was a
+    // black sheet over "0 windows", then one line in a 240 px band).
+    Column {
+        id: emptyState
         visible: sw.count === 0
-        anchors.centerIn: parent
-        text: Switcher.appOnly ? "This app has no other window" : Switcher.workspaceOnly ? "No windows on this workspace" : "No windows open"
-        size: Theme.tSub; color: Theme.textSecondary
+        anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: Theme.s5 }
+        spacing: Theme.s1
+        Text {
+            anchors.horizontalCenter: parent.horizontalCenter
+            textFormat: Text.PlainText
+            text: "\u{f05b2}"
+            font.family: Theme.fontGlyph; font.pixelSize: Theme.glyphL
+            color: Theme.textTertiary
+        }
+        Label {
+            anchors.horizontalCenter: parent.horizontalCenter
+            text: Switcher.appOnly ? "This app has no other window" : Switcher.workspaceOnly ? "No windows on this workspace" : "No windows open"
+            size: Theme.tCallout; weight: Theme.wSemibold
+        }
+        Label {
+            anchors.horizontalCenter: parent.horizontalCenter
+            text: Switcher.workspaceOnly ? "W shows every workspace's" : "Open an app from the launcher, Super+A"
+            size: Theme.tSub; color: Theme.textSecondary
+        }
     }
     Label {
         visible: sw.count > 0 || Switcher.appOnly || Switcher.workspaceOnly

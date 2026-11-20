@@ -14,13 +14,20 @@ import Quickshell.Io
 import Quickshell.Hyprland
 import qs.config
 import qs.components
+import qs.components.ui as Ui
 import qs.services
 
 FocusScope {
     id: pal
     focus: true
     implicitWidth: Theme.panelL
-    implicitHeight: 580
+    // Nothing listed (Hyprland didn't answer): the panel is only as tall as
+    // what it has to say, not a 580 px sheet with one line in it.
+    implicitHeight: empty ? 64 + emptyState.implicitHeight + 2 * Theme.s5 + 47 : 580
+    readonly property bool empty: (loaded || failed) && items.length === 0 && query.trim() === ""
+    property bool loaded: false
+    property bool failed: false
+    function retry() { loaded = false; failed = false; ask.running = true; }
 
     property var items: []
     property bool runnable: true
@@ -70,8 +77,10 @@ FocusScope {
             };
         });
         runnable = live;
+        loaded = true;
     }
     Process {
+        id: ask
         running: true
         command: ["hyprctl", "repl", "return kuwai.palette()"]
         stdout: StdioCollector {
@@ -87,7 +96,7 @@ FocusScope {
         stdout: StdioCollector {
             onStreamFinished: {
                 let all = [];
-                try { all = JSON.parse(text); } catch (e) { return; }
+                try { all = JSON.parse(text); } catch (e) { pal.failed = true; return; }
                 const mods = m => [[64, "SUPER"], [4, "CTRL"], [8, "ALT"], [1, "SHIFT"]].filter(([b]) => m & b).map(([, n]) => n);
                 pal.load(all.filter(b => b.has_description && b.description).map((b, i) => {
                     const m = b.description.match(/^\[([^\]]+)\]\s*(.*)$/);
@@ -309,13 +318,23 @@ FocusScope {
             text: "Nothing matches “" + pal.query.trim() + "”"
             size: 13; color: Theme.textTertiary
         }
-        // Nothing to list at all (Hyprland didn't answer): say so, not a blank sheet.
+        // Nothing to list at all (Hyprland didn't answer): what happened and
+        // what to do, with the panel shrunk around it.
         Column {
-            visible: pal.items.length === 0 && pal.query.trim() === ""
+            id: emptyState
+            visible: pal.empty
             anchors.centerIn: parent
-            spacing: 4
-            Label { anchors.horizontalCenter: parent.horizontalCenter; text: "No shortcuts to show"; size: Theme.tSub; color: Theme.textSecondary }
-            Label { anchors.horizontalCenter: parent.horizontalCenter; text: "Hyprland didn't list its key bindings. Open this again in a moment."; size: Theme.tFootnote; color: Theme.textTertiary }
+            spacing: Theme.s2
+            Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                textFormat: Text.PlainText
+                text: "\u{f030c}"
+                font.family: Theme.fontGlyph; font.pixelSize: Theme.glyphXL
+                color: Theme.textTertiary
+            }
+            Label { anchors.horizontalCenter: parent.horizontalCenter; text: "No shortcuts to show"; size: Theme.tCallout; weight: Theme.wSemibold }
+            Label { anchors.horizontalCenter: parent.horizontalCenter; text: "Hyprland didn't list its key bindings."; size: Theme.tSub; color: Theme.textSecondary }
+            Ui.Button { anchors.horizontalCenter: parent.horizontalCenter; text: "Try again"; size: Theme.tSub; height: Theme.sp(30); onClicked: pal.retry() }
         }
     }
 
