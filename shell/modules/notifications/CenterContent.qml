@@ -136,8 +136,9 @@ Item {
                     else if (!content.currentView().back || !content.currentView().back())
                         Notifs.setCenter(false, "key");
                 } else if (ctrl && (k === Qt.Key_Tab || k === Qt.Key_Backtab)) {
-                    const i = content.order.indexOf(content.center.tab);
-                    Notifs.centerTab = content.order[(i + (k === Qt.Key_Backtab ? 3 : 1)) % 4];
+                    const n = content.order.length;
+                    const i = Math.max(0, content.order.indexOf(content.center.tab));
+                    Notifs.centerTab = content.order[(i + (k === Qt.Key_Backtab ? n - 1 : 1)) % n];
                 } else if (alt && k >= Qt.Key_1 && k <= Qt.Key_3) {
                     Notifs.centerTab = content.order[k - Qt.Key_1];
                 } else if (!content.currentView().key(event, search.text === "")) {

@@ -92,10 +92,13 @@ Item {
             }
         }
         Row {
+            id: transport
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
             spacing: 2
-            opacity: over.hovered ? 1 : 0
+            // Shown for the pointer, and for the keyboard while Tab is on one of them.
+            property bool keyed: false
+            opacity: over.hovered || keyed ? 1 : 0
             visible: opacity > 0.01
             Behavior on opacity { NumberAnimation { duration: Theme.microMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
             Repeater {
@@ -114,6 +117,12 @@ Item {
                     Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                     Text { textFormat: Text.PlainText; anchors.centerIn: parent; text: b.modelData.g; font.family: Theme.fontGlyph; font.pixelSize: b.modelData.big ? 22 : 17; color: "white" }
                     MouseArea { id: bArea; anchors.fill: parent; enabled: b.modelData.ok; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: b.modelData.on() }
+                    activeFocusOnTab: b.modelData.ok
+                    onActiveFocusChanged: transport.keyed = activeFocus
+                    Keys.onPressed: e => {
+                        if (b.modelData.ok && (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter)) { b.modelData.on(); e.accepted = true; }
+                    }
+                    FocusRing {}
                     Accessible.role: Accessible.Button
                     Accessible.name: b.modelData.big ? (media.player && media.player.isPlaying ? "Pause" : "Play") : b.modelData.g === "\u{f04ae}" ? "Previous track" : "Next track"
                     Accessible.onPressAction: if (b.modelData.ok) b.modelData.on()

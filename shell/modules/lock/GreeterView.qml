@@ -302,6 +302,8 @@ Item {
 
     // A click anywhere asks (and puts the keyboard back in the field).
     TapHandler { onTapped: view.ask() }
+    // Keys a control Tab reached doesn't use: Esc or typing goes back to the field.
+    Keys.onPressed: e => { if (entry.routeKey(e)) e.accepted = true; }
     Accessible.role: Accessible.Pane
     Accessible.name: "Log in as " + view.lock.name
     Accessible.onPressAction: view.ask()

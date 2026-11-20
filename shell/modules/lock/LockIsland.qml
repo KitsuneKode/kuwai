@@ -156,6 +156,14 @@ Item {
                     Label { id: actLabel; anchors.centerIn: parent; text: parent.modelData.text; size: 12; weight: Theme.wSemibold; color: parent.modelData.id === "stop" ? Theme.inkOnLight : Theme.textPrimary }
                     MouseArea { id: actArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                         onClicked: parent.modelData.id === "stop" ? Alarms.stop() : Alarms.snooze(9) }
+                    activeFocusOnTab: !island.preview
+                    Keys.onPressed: e => {
+                        if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) {
+                            modelData.id === "stop" ? Alarms.stop() : Alarms.snooze(9);
+                            e.accepted = true;
+                        }
+                    }
+                    FocusRing {}
                     Accessible.role: Accessible.Button
                     Accessible.name: modelData.text + " the alarm"
                     Accessible.onPressAction: modelData.id === "stop" ? Alarms.stop() : Alarms.snooze(9)

@@ -67,7 +67,7 @@ FocusScope {
         holding = i;
         release.stop();
         fill.from = held;
-        fill.duration = Math.round(900 * (1 - held));
+        fill.duration = Math.round(Theme.holdMs * (1 - held));
         fill.restart();
     }
     function letGo() {
@@ -86,7 +86,7 @@ FocusScope {
     Keys.onPressed: event => {
         const k = event.key;
         if (event.isAutoRepeat) { event.accepted = true; return; }
-        if (k === Qt.Key_Left) current = (current + actions.length - 1) % actions.length;
+        if (k === Qt.Key_Left || k === Qt.Key_Backtab) current = (current + actions.length - 1) % actions.length;
         else if (k === Qt.Key_Right || k === Qt.Key_Tab) current = (current + 1) % actions.length;
         else if (k === Qt.Key_Return || k === Qt.Key_Enter || k === Qt.Key_Space) press(current);
         else if (k >= Qt.Key_1 && k <= Qt.Key_6) current = k - Qt.Key_1;

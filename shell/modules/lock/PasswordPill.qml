@@ -35,8 +35,31 @@ Column {
     Component.onCompleted: if (!preview) caps.running = true
     // Any key in the field: the view keeps the pill up while you type.
     signal activity()
+    function reclaim() {
+        const w = field.Window.window;
+        const f = w ? w.activeFocusItem : null;
+        if (!f || f === w.contentItem) field.forceActiveFocus();
+    }
     signal dismissed()
     function focusField() { if (!preview) field.forceActiveFocus(); }
+    readonly property bool fieldFocused: field.activeFocus
+    // A key typed while a control held the keyboard (Tab took it to a power
+    // button, a track button, a card): the field takes the keyboard back and
+    // the character with it, so a password started anywhere still lands.
+    function typeKey(t) {
+        if (preview || field.readOnly) return;
+        field.forceActiveFocus();
+        field.insert(field.cursorPosition, t);
+    }
+    // The views' shared key path for their controls: Esc puts the keyboard
+    // back in the field, a printable key types there. True when it took the key.
+    function routeKey(e) {
+        if (preview || field.activeFocus) return false;
+        if (e.key === Qt.Key_Escape) { focusField(); return true; }
+        const plain = !(e.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier));
+        if (plain && e.text.length === 1 && e.text >= " " && e.text !== "\u007f") { typeKey(e.text); return true; }
+        return false;
+    }
 
     spacing: 10
 
@@ -102,7 +125,11 @@ Column {
                 function onPasswordChanged() { if (field.text !== entry.lock.password) field.text = entry.lock.password; }
                 function onFailuresChanged() { entry.focusField(); }
             }
-            onActiveFocusChanged: if (!activeFocus && !entry.preview) Qt.callLater(() => field.forceActiveFocus())
+            // Losing the keyboard to nothing (a click on bare ground, the window
+            // coming back) takes it back; losing it to a control Tab reached
+            // keeps it there: Esc or any typed key returns (routeKey).
+            activeFocusOnTab: !entry.preview
+            onActiveFocusChanged: if (!activeFocus && !entry.preview) Qt.callLater(entry.reclaim)
             color: "white"
             font.pixelSize: 14
             font.letterSpacing: 2

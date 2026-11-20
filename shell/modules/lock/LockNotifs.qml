@@ -134,6 +134,7 @@ Column {
                 height: 64 + (lineLabel.visible ? 18 : 0) + (statusRow.visible ? 20 : 0)
 
                 Rectangle {
+                    id: faceBg
                     anchors.fill: parent
                     radius: 20
                     color: Qt.rgba(1, 1, 1, over.hovered ? 0.2 : 0.15)
@@ -239,6 +240,18 @@ Column {
                 }
                 HoverHandler { id: over; cursorShape: Qt.PointingHandCursor }
                 TapHandler { onTapped: stack.tapped(card.item) }
+                // The keyboard's way to the same two things: Enter asks to open it,
+                // Delete clears the conversation (as a swipe does).
+                activeFocusOnTab: true
+                Keys.onPressed: e => {
+                    if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { stack.tapped(card.item); e.accepted = true; }
+                    else if (e.key === Qt.Key_Delete) {
+                        const k = card.k;
+                        for (const i of Notifs.items.filter(i => stack.key(i) === k)) Notifs.remove(i);
+                        e.accepted = true;
+                    }
+                }
+                FocusRing { cornerRadius: faceBg.radius }
                 // Only what the lock screen already shows (its heading and line, never more).
                 Accessible.role: Accessible.Button
                 Accessible.name: (card.item.app || "Notification") + ": " + stack.heading(card.item)

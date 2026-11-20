@@ -231,6 +231,8 @@ Item {
 
     // Any click wakes the password pill too.
     TapHandler { onTapped: view.ask() }
+    // Keys a control Tab reached doesn't use: Esc or typing goes back to the field.
+    Keys.onPressed: e => { if (entry.routeKey(e)) e.accepted = true; }
     Accessible.role: Accessible.Pane
     Accessible.name: "Locked"
     Accessible.onPressAction: view.ask()
