@@ -65,13 +65,17 @@ FocusScope {
     }
     property int current: 0
     property var lastPointer: null
-    readonly property int rowH: 50
-    readonly property int maxRows: 7
+    // A length that holds text grows with Text size (at 200 % the rows ran into each other).
+    readonly property int rowH: Theme.sp(50)
+    // Seven rows at 100 %; as rows grow with Text size, fewer of them, so the
+    // launcher stays the height the island can give it.
+    readonly property int maxRows: Math.max(3, Math.floor(350 / rowH))
+    readonly property int footH: Theme.sp(46)   // its hints grow with the text too
 
     // A fixed height: a launcher is used a hundred times a day, so it never
     // resizes under your typing (Raycast doesn't either).
     implicitWidth: Theme.panelM
-    implicitHeight: 64 + maxRows * rowH + 46
+    implicitHeight: 64 + maxRows * rowH + footH
 
     // ── Frecency (kept by the Island service, which outlives this panel) ─
     function frecency(id) { return Island.frecency(id); }
@@ -546,7 +550,8 @@ FocusScope {
             Label {
                 visible: !field.text
                 anchors.verticalCenter: parent.verticalCenter
-                text: "Search apps, windows, actions    = math   > modes"
+                // The hints go first when it can't hold them (200 % Text size).
+                text: Theme.textScale >= 1.5 ? "Search apps, windows, actions" : "Search apps, windows, actions    = math   > modes"
                 size: Theme.tTitle3
                 color: Theme.textTertiary
             }
@@ -576,7 +581,7 @@ FocusScope {
             readonly property bool tips: modelData.kind === "tips"
             readonly property bool dock: modelData.kind === "dock"
             width: list.width
-            height: tips ? 84 : header ? 30 : card ? 78 : dock ? 100 : launcher.rowH
+            height: tips ? Theme.sp(84) : header ? Theme.sp(30) : card ? Theme.sp(78) : dock ? 100 : launcher.rowH
 
             // No cascade: the launcher opens many times a day and the island's
             // grow already carries it in (one entrance per container).
@@ -686,7 +691,8 @@ FocusScope {
             }
             Column {
                 visible: !row.header && !row.card && !row.dock
-                anchors { left: iconBox.right; leftMargin: 12; right: hint.left; rightMargin: 12; verticalCenter: parent.verticalCenter }
+                // Room for the hint ("Open ↵") only on the row that shows it.
+                anchors { left: iconBox.right; leftMargin: 12; right: hint.opacity > 0 ? hint.left : parent.right; rightMargin: 12; verticalCenter: parent.verticalCenter }
                 spacing: 1
                 // The letters you typed, in the accent.
                 Label {
@@ -843,7 +849,7 @@ FocusScope {
     ScrollHint { flickable: list; inside: true }
 
     // ── Footer ───────────────────────────────────────────────────────────
-    Rectangle { x: 0; y: parent.height - 46; width: parent.width; height: 1; color: Qt.rgba(1, 1, 1, 0.06) }
+    Rectangle { x: 0; y: parent.height - launcher.footH; width: parent.width; height: 1; color: Qt.rgba(1, 1, 1, 0.06) }
     Row {
         anchors { left: parent.left; leftMargin: 20; bottom: parent.bottom; bottomMargin: 14 }
         spacing: 16
