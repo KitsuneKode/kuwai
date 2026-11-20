@@ -23,6 +23,16 @@
 #              open, so a broken one would otherwise hide until you open it)
 #   tokens     literal font sizes, durations and hex colours never increase
 #              (bin/kuwai-tokens; the baseline only goes down)
+#   helpers    the shell's long-running children are only the expected ones (udevadm
+#              monitor, kuwai-usage --watch, login1's gdbus monitor, the sleep guard,
+#              pactl subscribe, voxtype's audio bridge; the screensaver's film while it
+#              shows; kuwai-render only while the assistant or the clipboard (layer kuwai-island) is open);
+#              anything else alive 30 s or more (a brightness-client.py, a shell loop)
+#              fails. One-shots younger than that are left alone.
+#   pdeathsig  no streaming helper in the running shell's QML starts without
+#              setpriv --pdeathsig (the lint promote runs, on what is running)
+#   warnings   0 "Pointer.qml … Unable to assign" in the shell's log
+# All of them read only (ps, /proc, the log, the QML).
 # Exit 0 = all good, 1 = something failed (listed).
 set -u
 QUIET=0; SHOTS=0; SOAK=0
@@ -64,6 +74,39 @@ for p in $(pgrep -f '^systemd-inhibit .*--who=kuwai' ; pgrep -f 'gdbus monitor -
     descends "$p" || orph="$orph $p"
 done
 if [ -z "$orph" ]; then ok "orphans: none"; else bad "orphans: helpers left by an earlier shell:$orph (kill them)"; fi
+
+# helpers: the shell's children, against the ones it is meant to keep. A known
+# one's own children (its pipeline: grep, a while-read) come with it.
+expected='^(udevadm monitor |bun [^ ]*/kuwai-usage --watch|sh -c setpriv --pdeathsig KILL -- gdbus monitor --system --dest org\.freedesktop\.login1|systemd-inhibit .*--who=kuwai|pactl subscribe|[^ ]*/voxtype-audio-bridge|mpvpaper -l top |qs -p [^ ]*/shell-saver)'
+open_ui=$(hyprctl layers -j 2>/dev/null | jq -r '[.. | objects | select(.namespace?) | .namespace] | map(select(test("^kuwai-(assistant|island)$"))) | length' 2>/dev/null)
+stray=""
+for c in $(pgrep -P "$pid"); do
+    cmd=$(tr '\0' ' ' < /proc/$c/cmdline 2>/dev/null)
+    [ -z "$cmd" ] && continue
+    printf '%s' "$cmd" | grep -qE "$expected" && continue
+    if printf '%s' "$cmd" | grep -q 'kuwai-render'; then [ "${open_ui:-0}" -gt 0 ] && continue; fi
+    up=$(ps -o etimes= -p "$c" 2>/dev/null | tr -d ' ')
+    [ -n "$up" ] && [ "$up" -lt 30 ] && ! printf '%s' "$cmd" | grep -qE 'brightness-client|kuwai-render' && continue
+    stray="$stray
+      $c (${up:-?} s): $(printf '%s' "$cmd" | cut -c1-110)"
+done
+if [ -z "$stray" ]; then ok "helpers: only the expected ones"; else bad "helpers: children the shell shouldn't keep:$stray"; fi
+
+# pdeathsig: the promote lint, on the QML that is running.
+leak=$(grep -rnE 'command: *\[.*("subscribe"|"monitor"|"--watch"|"watch"|"-F"|"--serve"|while :)' "$root/shell" --include='*.qml' 2>/dev/null | grep -v pdeathsig | grep -v '"hyprctl", "monitors"')
+for f in $(grep -rlE 'while :|while true;' "$root/shell" --include='*.qml' 2>/dev/null); do
+    late=$(awk -v f="$f" '/command: *\[/ { cmd = $0; at = NR } /while :|while true;/ && at && NR - at < 15 && cmd !~ /pdeathsig/ { print f ":" NR }' "$f")
+    [ -n "$late" ] && leak="${leak:+$leak
+}$late"
+done
+if [ -z "$leak" ]; then ok "pdeathsig: every streaming helper dies with the shell"; else bad "pdeathsig: helpers that would outlive a restart:
+$(printf '%s\n' "$leak" | sed "s|$root/||" | cut -c1-140 | sed 's/^/      /')"; fi
+
+# warnings: the pointer's binding warnings (they ran per frame once).
+if [ -r "$log" ]; then
+    pw=$(strings "$log" | grep -cE 'Pointer\.qml.*Unable to assign')
+    [ "$pw" = 0 ] && ok "warnings: no Pointer.qml binding warnings" || bad "warnings: $pw Pointer.qml 'Unable to assign' in the log"
+fi
 
 # idle
 owner=$(jq -r '.idleOwner // "shell"' "${XDG_CONFIG_HOME:-$HOME/.config}/kuwai/settings.json" 2>/dev/null)
