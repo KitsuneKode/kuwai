@@ -81,7 +81,7 @@ Item {
             Image {
                 id: wall
                 anchors.fill: parent
-                source: Hyde.wallpaper ? "file://" + Hyde.wallpaper : ""      // none: the black below
+                source: Hyde.wallpaper ? "file://" + Hyde.wallpaper : ""      // none: the desktop's ground below (Theme.desktop)
                 sourceSize: Qt.size(640, 360)
                 fillMode: Image.PreserveAspectCrop
                 asynchronous: true

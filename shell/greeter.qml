@@ -36,7 +36,7 @@ ShellRoot {
     readonly property string wallpaper: Quickshell.env("KUWAI_GREETER_WALL") || "/usr/share/sddm/themes/sddm-astronaut-theme/Backgrounds/post-apocalyptic_hacker.png"
     readonly property color accent: Quickshell.env("KUWAI_GREETER_ACCENT") || Theme.loginAccent
     // What your session will show first: its wallpaper (greeter/sync copies it).
-    readonly property string desktopWall: Hyde.wallpaper     // "" without one: GreeterView shows black
+    readonly property string desktopWall: Hyde.wallpaper     // "" without one: GreeterView shows the desktop's ground (Theme.desktop)
     // The session, without the terminal in between: clear tty1 and hide its
     // cursor, and preserve startup diagnostics in the journal without
     // flashing compositor output between the login screen and desktop.
@@ -151,7 +151,7 @@ ShellRoot {
                 exclusionMode: ExclusionMode.Ignore
                 WlrLayershell.layer: WlrLayer.Overlay
                 WlrLayershell.namespace: "kuwai-greeter-cover"
-                color: "black"
+                color: Theme.desktop          // the desktop's ground under the wallpaper (none: that's what shows)
                 Image {
                     id: coverWall
                     anchors.fill: parent

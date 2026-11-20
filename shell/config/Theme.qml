@@ -68,6 +68,11 @@ Singleton {
     // The island's black, for the ring that cuts a badge out of what it
     // overlaps (a status dot on an app icon).
     readonly property color cutout: "#000000"
+    // The desktop's own ground where there is no wallpaper: Hyprland's
+    // background (hypr/kuwai/look.lua background_color). What stands in for a
+    // missing wallpaper (the lock, the login opening into the desktop, a
+    // wallpaper changing) is this, not pure black.
+    readonly property color desktop: "#0b0b0f"
     // A round grey button on black (iOS's stop ✕): rest and hover.
     readonly property color knob: "#3a3a3c"
     readonly property color knobHover: "#4a4a4e"

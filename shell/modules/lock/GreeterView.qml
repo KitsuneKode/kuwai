@@ -341,14 +341,14 @@ Item {
             if (desk.status === Image.Ready) reveal.start();
         }
     }
-    Rectangle { anchors.fill: parent; color: "black"; opacity: desk.status === Image.Ready ? 0 : view.leave }
+    Rectangle { anchors.fill: parent; color: Theme.desktop; opacity: desk.status === Image.Ready ? 0 : view.leave }   // no wallpaper: the desktop as it is
     ClippingRectangle {
         id: hole
         readonly property real r: 44 + (view.revealMax - 44) * view.tReveal
         visible: view.tReveal > 0
         x: view.revealAt.x - r; y: view.revealAt.y - r
         width: 2 * r; height: 2 * r; radius: r
-        color: "black"
+        color: Theme.desktop
         Image {
             id: desk
             x: -hole.x; y: -hole.y

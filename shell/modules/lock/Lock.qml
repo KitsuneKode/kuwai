@@ -145,7 +145,7 @@ Scope {
         WlSessionLock {
             locked: root.locked
             WlSessionLockSurface {
-                color: "black"
+                color: Theme.desktop          // under the wallpaper; with none, the desktop's own ground
                 LockView { anchors.fill: parent; lock: root }
             }
         }

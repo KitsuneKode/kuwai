@@ -205,7 +205,7 @@ Singleton {
                 readonly property string oldPath: root.before[modelData.name] || root.next
                 anchors { top: true; bottom: true; left: true; right: true }
                 exclusionMode: ExclusionMode.Ignore
-                color: "black"
+                color: Theme.desktop
                 mask: Region {}
                 WlrLayershell.namespace: "kuwai.wallfx"
                 WlrLayershell.layer: WlrLayer.Bottom
