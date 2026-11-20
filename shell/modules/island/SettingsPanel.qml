@@ -439,7 +439,7 @@ FocusScope {
                 }
                 SettingsRow {
                     key: "restWeather"
-                    label: "Weather"; detail: "In the island, for " + (Settings.weatherLocation || "where you are") + "  ·  kuwai set weatherLocation \"City\""
+                    label: "Weather"; detail: "In the island, for " + (Settings.weatherLocation || ((Weather.place ? Weather.place : "where you are") + ", found from your connection")) + "  ·  kuwai set weatherLocation \"City\""
                     Toggle { on: Settings.restWeather; onToggled: Settings.set("restWeather", !Settings.restWeather) }
                 }
                 SettingsRow {

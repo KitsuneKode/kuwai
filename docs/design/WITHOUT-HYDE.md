@@ -112,9 +112,9 @@ history; kuwai's own `kuwai-clipboard.service` does, so that's corrected),
   **Update in a terminal:** says it needs HyDE, once.
 - `install.sh` lists all of this when HyDE is absent.
 
-Also found while reading (not HyDE): `Settings.weatherLocation` defaults to the
-author's town (`shell/services/Weather.qml`); a stranger gets that town's
-weather until they set their own.
+Also found while reading (not HyDE): `Settings.weatherLocation` defaulted to the
+author's town. Fixed 2026-11-20: unset is the default and means wttr.in's own
+guess from the connection (`Weather.automatic`, `Weather.place` names it).
 
 ## Plan: kuwai's own wallpaper and palette
 

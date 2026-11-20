@@ -1,7 +1,9 @@
 pragma Singleton
 
 // Current weather for the island: wttr.in's JSON (no key), every 30 minutes,
-// for Settings.weatherLocation (default: the city HyDE's config.toml names).
+// for Settings.weatherLocation. Unset (the default): wttr.in finds the place
+// from the connection itself (no town was ever anyone's but the author's), and
+// `place` names what it found, so the surfaces can say where and how to set it.
 // Offline or failing: `ok` stays false and nothing is shown. One curl per
 // half hour, bounded to 8 s.
 import QtQuick
@@ -18,7 +20,9 @@ Singleton {
     property int wind: 0
     property string desc: ""
     property string glyph: "\u{f0599}"
-    readonly property string location: Settings.weatherLocation || "North Lakhimpur"
+    readonly property string location: Settings.weatherLocation || ""
+    readonly property bool automatic: location === ""
+    property string place: ""                 // the place wttr.in answered for (nearest_area)
 
     // wttr/WWO weather codes → Material Design glyphs (Symbols Nerd Font).
     function glyphFor(code, night) {
@@ -47,6 +51,8 @@ Singleton {
                     root.wind = Number(c.windspeedKmph);
                     root.desc = (c.weatherDesc && c.weatherDesc[0] ? c.weatherDesc[0].value : "").trim();
                     root.glyph = root.glyphFor(c.weatherCode, h < 6 || h >= 18);
+                    const a = d.nearest_area && d.nearest_area[0];
+                    root.place = a && a.areaName && a.areaName[0] ? String(a.areaName[0].value || "").slice(0, 64) : "";   // from outside: plain text (Label), bounded
                     root.ok = true;
                     retry.stop();
                 } catch (e) { retry.start(); /* keep the last good reading; try again soon */ }

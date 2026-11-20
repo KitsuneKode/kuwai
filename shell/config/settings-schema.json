@@ -181,7 +181,7 @@
     {
       "key": "weatherLocation",
       "type": "string",
-      "default": "North Lakhimpur",
+      "default": "",
       "maxLength": 512,
       "section": "bar",
       "label": "weatherLocation",

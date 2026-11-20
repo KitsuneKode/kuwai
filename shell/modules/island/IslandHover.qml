@@ -239,7 +239,10 @@ Item {
                     color: Theme.textSecondary
                 }
                 HoverHandler { id: wxHover }
-                Tip { text: Weather.desc + " · feels " + Weather.feels + "° · " + Weather.humidity + "% humidity · " + Weather.wind + " km/h"; shown: wxHover.hovered; below: true }
+                // Where it is for, when kuwai found the place itself (and how to choose one).
+                Tip { text: Weather.desc + " · feels " + Weather.feels + "° · " + Weather.humidity + "% humidity · " + Weather.wind + " km/h"
+                            + (Weather.automatic ? "\n" + (Weather.place ? "Near " + Weather.place : "Near you") + ", from your connection · set a town in Settings → Island" : "")
+                      shown: wxHover.hovered; below: true }
             }
         }
         HoverHandler { id: chipHover; cursorShape: Qt.PointingHandCursor }
