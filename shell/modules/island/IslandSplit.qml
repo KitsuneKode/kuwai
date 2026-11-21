@@ -26,6 +26,7 @@ import qs.config
 import qs.components
 import qs.services
 import Quickshell.Hyprland
+import "../../services/t3.mjs" as T3
 
 Item {
     id: split
@@ -100,7 +101,7 @@ Item {
     }
 
     readonly property bool agentsLive: agentStack.list.length > 0 || agentsErr.length > 0 || agentsLim.length > 0 || agentsDone.length > 0
-    readonly property bool t3Live: T3Code.total > 0 || T3Code.finished > 0
+    readonly property bool t3Live: T3Code.total > 0 || T3Code.finished > 0 || t3Word
     readonly property bool sysLive: sysMarks.any
     // A capsule folds only after its work has been gone a few seconds, and
     // shows its last value meanwhile.
@@ -112,8 +113,12 @@ Item {
     Timer { id: sysLinger; interval: 2000 }
     property string t3Value: ""
     property bool t3Waiting: false
+    // What the T3 capsule says first (t3.mjs headline): the state that wants
+    // you as a word ("Approval", "Limit reached"), else the working count.
+    readonly property var t3Head: T3.headline(T3Code.items)
+    readonly property bool t3Word: !!t3Head && t3Head.tone !== "working"
     readonly property var t3Now: [T3Code.running, T3Code.waiting]
-    onT3NowChanged: if (t3Live) { t3Value = String(T3Code.waiting > 0 ? T3Code.waiting : T3Code.running); t3Waiting = T3Code.waiting > 0; }
+    onT3NowChanged: if (t3Live) { t3Value = String(T3Code.running); t3Waiting = T3Code.waiting > 0; }
     readonly property var demand: ({
         music: on && musicLive,
         min: on && minimized.length > 0,
@@ -610,25 +615,29 @@ Item {
         id: t3Pill
         name: "t3"
         panel: "t3"
-        needs: split.t3Waiting && T3Code.total > 0
-        stateKey: [split.t3Waiting, T3Code.total > 0, T3Code.finished > 0].join()
-        tone: needs ? Theme.orange : T3Code.finished > 0 ? Theme.green : "transparent"
+        needs: split.t3Word && split.t3Head.tone === "attention"
+        stateKey: [split.t3Head ? split.t3Head.key : "", T3Code.total > 0, T3Code.finished > 0].join()
+        tone: split.t3Word ? (split.t3Head.tone === "error" ? Theme.red : Theme.orange) : T3Code.finished > 0 ? Theme.green : "transparent"
         Row {
           spacing: 6
+          // What it wants, in a word, as t3code-bar's tray says it ("Approval",
+          // "Question 2", "Limit reached", "Failed"); plain work is the turning
+          // ring and its count. It said "T3 ① ✓ 13": two numbers to decode.
           RestMark {
-            visible: T3Code.total > 0 || (t3Linger.running && T3Code.finished === 0)   // its last value while it lingers
+            visible: split.t3Word || T3Code.total > 0 || (t3Linger.running && T3Code.finished === 0)   // its last value while it lingers
             wordmark: "T3"
-            value: split.t3Value
-            ring: split.t3Waiting ? "solid" : "spin"
-            tone: split.t3Waiting ? Theme.orange : Theme.cyan
+            value: split.t3Word ? split.t3Head.word + (split.t3Head.count > 1 ? " " + split.t3Head.count : "") : split.t3Value
+            ring: split.t3Word ? "" : "spin"
+            tone: !split.t3Word ? Theme.cyan : split.t3Head.tone === "error" ? Theme.red : Theme.orange
             previews: true
             onPreviewRequested: if (Island.panel === "") Island.preview("t3", split.bar.screenName)
             onClicked: t3Pill.openPanel()
           }
           // Finished since you last looked: T3's own "seen" (each thread's
           // last visit), so it clears as you open them there.
+          // (Not while it's asking for something: the word is the news then.)
           Badge {
-            visible: T3Code.finished > 0
+            visible: T3Code.finished > 0 && !split.t3Word
             glyph: "\u{f05e0}"                         // check-circle
             text: (T3Code.total > 0 ? "" : "T3 ") + T3Code.finished
             tint: Theme.green

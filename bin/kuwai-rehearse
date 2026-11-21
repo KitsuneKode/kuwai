@@ -211,7 +211,7 @@ def main():
     # The notification center and the island's cards from the keyboard alone
     # (tests/ui/center-keys.qml, tests/ui/card-keys.qml).
     if not args.only and not args.scale:
-        for case in ("center-keys", "card-keys"):
+        for case in ("center-keys", "card-keys", "pill"):
             run = subprocess.run([str(ROOT / "bin/kuwai-ui-test"), "--case", case, "--backend", "x11",
                                   "--output", str(out / case)], capture_output=True, text=True)
             log = out / case / "runtime.log"

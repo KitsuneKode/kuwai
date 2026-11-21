@@ -75,3 +75,20 @@ describe("the reply preview", () => {
   });
   test("rules between sections are not lines", () => expect(excerpt("a\n\n---\n\nb")).toBe("a\nb"));
 });
+
+describe('the capsule\'s headline', () => {
+  const { headline } = require('../../shell/services/t3.mjs');
+  const t = (status, more = {}) => ({ status, ...more });
+  test('what wants you leads, as its own word, with how many', () => {
+    expect(headline([t('running'), t('waiting', { ask: 'approval' })])).toMatchObject({ word: 'Approval', tone: 'attention', count: 1 });
+    expect(headline([t('waiting', { ask: 'approval' }), t('waiting', { ask: 'approval' })])).toMatchObject({ word: 'Approval', count: 2 });
+    expect(headline([t('waiting', { ask: 'approval' }), t('waiting', { ask: 'question' })])).toMatchObject({ word: 'Needs you', count: 2 });
+  });
+  test('then a limit, then a failure, then work; finished threads are no headline', () => {
+    expect(headline([t('running'), t('failed', { limited: true })])).toMatchObject({ word: 'Limit reached', tone: 'caution' });
+    expect(headline([t('running'), t('failed')])).toMatchObject({ word: 'Failed', tone: 'error' });
+    expect(headline([t('running'), t('running'), t('completed')])).toMatchObject({ word: 'Working', count: 2 });
+    expect(headline([t('completed'), t('completed')])).toBeNull();
+    expect(headline([])).toBeNull();
+  });
+});

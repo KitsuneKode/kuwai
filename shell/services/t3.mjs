@@ -41,6 +41,31 @@ export function stateOf(t) {
     return { key: "starting", word: "Starting", tone: "working", timed: false };
 }
 
+/**
+ * What the island's T3 capsule says: the one state that matters most, as a
+ * word, and how many threads share it (t3code-bar's idea: say what's wanted,
+ * not how many there are). Wants you (Approval, Question, Request, Needs you)
+ * > stopped at a limit > failed > working. Finished threads aren't news here
+ * (the capsule's ✓ counts those); nothing going on: null.
+ * When several want you for different reasons it says "Needs you".
+ * @param {Thread[]} items @returns {{ key: string, word: string, tone: string, count: number } | null}
+ */
+export function headline(items) {
+    const list = (items || []).map(t => ({ t, st: stateOf(t) }));
+    const pick = (keys) => list.filter(x => keys.includes(x.st.key));
+    const want = pick(["approval", "question", "request", "waiting"]);
+    if (want.length) {
+        const kinds = new Set(want.map(x => x.st.key));
+        const st = kinds.size === 1 ? want[0].st : { key: "waiting", word: "Needs you", tone: "attention" };
+        return { key: st.key, word: st.word, tone: st.tone, count: want.length };
+    }
+    for (const keys of [["limited"], ["failed"], ["working", "starting"]]) {
+        const got = pick(keys);
+        if (got.length) return { key: got[0].st.key, word: got[0].st.word, tone: got[0].st.tone, count: got.length };
+    }
+    return null;
+}
+
 /** The same, for a screen reader: what the word stands for. @param {Thread | null | undefined} t */
 export function spoken(t) {
     return ({ approval: "Wants your approval", question: "Has a question for you", request: "A guest wrote to it",
