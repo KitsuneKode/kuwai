@@ -60,6 +60,14 @@ else
     bad "load: no log for pid $pid"
 fi
 
+if systemctl --user cat kuwai-shell.service >/dev/null 2>&1; then
+    if [ "$(systemctl --user show -p MainPID --value kuwai-shell.service 2>/dev/null)" = "$pid" ]; then
+        ok "unit: kept running by kuwai-shell.service"
+    else
+        bad "unit: this shell was started outside kuwai-shell.service, so nothing restarts it (kuwai restart)"
+    fi
+fi
+
 # orphans
 descends() {   # $1 descends from $pid?
     local a=$1

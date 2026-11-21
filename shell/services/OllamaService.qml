@@ -525,7 +525,7 @@ Singleton {
             root.errorText = "No app called " + appQuery;
             return;
         }
-        found.execute();
+        Apps.launch(found);
 
         const userMsg = {
             role: "user",

@@ -356,11 +356,11 @@ cmd_auth() {
             [ -n "$s" ] || s=$(hyprctl monitors -j | jq -r '.[]|select(.focused).name')
             mkdir -p "$rt" && echo "$s" > "$rt/auth-summon" && echo "prompt → $s" ;;
         restart)   # a stuck prompt: restart it (a request it held is dismissed; the app can ask again)
-            systemctl --user restart kuwai-auth.service && echo "password prompt restarted" ;;
+            systemctl --user reset-failed kuwai-auth.service 2>/dev/null; systemctl --user restart kuwai-auth.service && echo "password prompt restarted" ;;
         fallback)  # kuwai's prompt misbehaves: use KDE's agent until `kuwai auth restore`
             systemctl --user stop kuwai-auth.service; systemctl --user start plasma-polkit-agent.service && echo "KDE's password prompt is in charge (kuwai auth restore to go back)" ;;
         restore)
-            systemctl --user stop plasma-polkit-agent.service; systemctl --user start kuwai-auth.service && echo "kuwai's password prompt is back" ;;
+            systemctl --user stop plasma-polkit-agent.service; systemctl --user reset-failed kuwai-auth.service 2>/dev/null; systemctl --user start kuwai-auth.service && echo "kuwai's password prompt is back" ;;
         reset-tries)  # after cancels or wrong passwords locked you out (your own record; no root)
             faillock --user "$USER" --reset && echo "failed tries cleared" ;;
         *) echo "kuwai auth [status|here [SCREEN]|restart|fallback|restore|reset-tries|diff]" >&2; return 2 ;;

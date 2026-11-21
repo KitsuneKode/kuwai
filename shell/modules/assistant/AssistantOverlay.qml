@@ -815,7 +815,7 @@ Scope {
                                     border.color: Qt.alpha(Theme.accent, 0.3)
 
                                     function launch() {
-                                        modelData.execute();
+                                        Apps.launch(modelData);
                                         root.appLauncherOpen = false;
                                         OllamaService.recordToolLaunch(modelData.name);
                                     }

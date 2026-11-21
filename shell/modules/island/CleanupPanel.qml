@@ -251,7 +251,7 @@ FocusScope {
                         kind: "secondary"
                         text: lo.modelData.safe ? "Move to Trash" : "Show"
                         onClicked: lo.modelData.safe ? cp.act(["trash-path"].concat(lo.modelData.paths), lo.modelData.label.toLowerCase())
-                                                     : Quickshell.execDetached(["xdg-open", lo.modelData.paths[0]])
+                                                     : Apps.open(lo.modelData.paths[0])
                     }
                 }
             }

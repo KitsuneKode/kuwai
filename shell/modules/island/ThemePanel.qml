@@ -754,8 +754,8 @@ FocusScope {
             Label { width: gcol.width; wrapMode: Text.Wrap; text: picker.guideNow.worth; size: Theme.tSub; color: Theme.textSecondary }
             Row {
                 spacing: 8
-                Ui.Button { height: Theme.sp(30); size: Theme.tSub; text: "Open folder"; onClicked: Quickshell.execDetached(["xdg-open", picker.guideNow.folder]) }
-                Ui.Button { height: Theme.sp(30); size: Theme.tSub; text: "Full guide"; onClicked: Quickshell.execDetached(["xdg-open", Paths.root + "/docs/manual/looks.md"]) }
+                Ui.Button { height: Theme.sp(30); size: Theme.tSub; text: "Open folder"; onClicked: Apps.open(picker.guideNow.folder) }
+                Ui.Button { height: Theme.sp(30); size: Theme.tSub; text: "Full guide"; onClicked: Apps.open(Paths.root + "/docs/manual/looks.md") }
             }
         }
     }
