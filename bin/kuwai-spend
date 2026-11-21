@@ -1,0 +1,156 @@
+#!/usr/bin/env node
+// kuwai-spend: what the agents spent, per provider per day, from the logs they
+// write on this machine (Claude Code, Codex, opencode). Nothing leaves the
+// machine and nothing is fetched. Prices: lib/spend-prices.json (list prices;
+// an estimate, a subscription doesn't pay them). Parsing: lib/spend.mjs.
+//
+//   kuwai-spend           one line of JSON: { asOf, providers: { claude: { today, week } … } }
+//   kuwai-spend --watch   that line now and again whenever a log grows (the Usage
+//                         panel runs it only while it is open: no work otherwise)
+//
+// Incremental: each log file is read from where the last read stopped (its byte
+// offset, kept in $XDG_CACHE_HOME/kuwai/spend.json with the totals); a file that
+// shrank or was replaced is read again from the start. The first run reads the
+// last 35 days once. Logs older than that are never opened.
+import { readFileSync, writeFileSync, mkdirSync, statSync, readdirSync, openSync, readSync, closeSync, watch, renameSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+import { claudeLine, codexLine, opencodeMessage, costOf, add, prune, summary, dayOf } from "../lib/spend.mjs";
+
+const HOME = process.env.HOME || "";
+const KEEP = 35;
+const here = dirname(fileURLToPath(import.meta.url));
+const prices = JSON.parse(readFileSync(join(here, "../lib/spend-prices.json"), "utf8"));
+const cacheDir = join(process.env.XDG_CACHE_HOME || join(HOME, ".cache"), "kuwai");
+const statePath = join(cacheDir, "spend.json");
+const ROOTS = {
+  claude: join(HOME, ".claude/projects"),
+  codex: join(HOME, ".codex/sessions"),
+  opencode: join(HOME, ".local/share/opencode/storage/message"),
+};
+
+let state = { version: 1, files: {}, days: {} };
+try { const s = JSON.parse(readFileSync(statePath, "utf8")); if (s && s.version === 1) state = s; } catch {}
+
+const since = Date.now() - KEEP * 86400000;
+function walk(dir, want, out, depth = 0) {
+  let names;
+  try { names = readdirSync(dir, { withFileTypes: true }); } catch { return out; }
+  for (const e of names) {
+    const p = join(dir, e.name);
+    if (e.isDirectory()) { if (depth < 6) walk(p, want, out, depth + 1); }
+    else if (want(e.name)) {
+      try { const st = statSync(p); if (st.mtimeMs >= since) out.push([p, st]); } catch {}
+    }
+  }
+  return out;
+}
+
+// The lines a file gained since we last read it, handed to `onLine` one at a
+// time, read 8 MB at a time (one Claude log here is over 512 MB). A line
+// longer than 64 MB (a pasted image, a huge tool result) is skipped: it holds
+// no usage. `want` is a cheap test on the raw line before it is parsed.
+const CHUNK = 8 << 20, LONGEST = 64 << 20;
+function eachNewLine(path, st, want, onLine) {
+  const f = state.files[path];
+  let from = f && f.ino === st.ino && f.offset <= st.size ? f.offset : 0;
+  if (f && from === 0) delete state.files[path];                 // replaced or truncated: start over
+  const meta = (state.files[path] ||= { ino: st.ino, offset: 0 });
+  meta.ino = st.ino;
+  if (from >= st.size) { meta.offset = from; return meta; }
+  const fd = openSync(path, "r");
+  try {
+    let carry = Buffer.alloc(0), skipping = false, pos = from;
+    while (pos < st.size) {
+      const n = Math.min(CHUNK, st.size - pos);
+      const buf = Buffer.alloc(n);
+      readSync(fd, buf, 0, n, pos);
+      pos += n;
+      let data = carry.length ? Buffer.concat([carry, buf]) : buf;
+      let start = 0;
+      for (let nl = data.indexOf(10, start); nl >= 0; nl = data.indexOf(10, start)) {
+        if (!skipping) {
+          const line = data.subarray(start, nl);
+          if (want(line)) onLine(line.toString("utf8"), meta);
+        }
+        skipping = false;
+        start = nl + 1;
+      }
+      carry = data.subarray(start);
+      if (carry.length > LONGEST) { carry = Buffer.alloc(0); skipping = true; }
+      meta.offset = pos - carry.length;
+    }
+    if (skipping) meta.offset = st.size;
+  } finally { closeSync(fd); }
+  return meta;
+}
+const TOKEN = Buffer.from("token_count"), CONTEXT = Buffer.from("turn_context"), META = Buffer.from("session_meta");
+const has = (needle) => { const b = Buffer.from(needle); return (line) => line.indexOf(b) >= 0; };
+
+function scan() {
+  let changed = false;
+  const usage = has('"usage"');
+  for (const [path, st] of walk(ROOTS.claude, (n) => n.endsWith(".jsonl"), [])) {
+    eachNewLine(path, st, usage, (l, meta) => {
+      let o; try { o = JSON.parse(l); } catch { return; }
+      const r = claudeLine(o);
+      if (!r || r.id === meta.lastId) return;                   // a message's later blocks repeat its usage
+      meta.lastId = r.id;
+      add(state.days, r, costOf(prices, r)); changed = true;
+    });
+  }
+  const tokenOrModel = (line) => line.indexOf(TOKEN) >= 0 || line.indexOf(CONTEXT) >= 0 || line.indexOf(META) >= 0;
+  for (const [path, st] of walk(ROOTS.codex, (n) => n.endsWith(".jsonl"), [])) {
+    const known = state.files[path];
+    const ctx = { model: (known && known.model) || "" };
+    const meta = eachNewLine(path, st, tokenOrModel, (l) => {
+      let o; try { o = JSON.parse(l); } catch { return; }
+      const r = codexLine(o, ctx);
+      if (r) { add(state.days, r, costOf(prices, r)); changed = true; }
+    });
+    meta.model = ctx.model;
+  }
+  for (const [path, st] of walk(ROOTS.opencode, (n) => n.endsWith(".json"), [])) {
+    const f = state.files[path];
+    if (f && f.size === st.size && f.mtime === st.mtimeMs) continue;   // a message file is written whole, once (or rewritten)
+    if (f && f.counted) continue;                                       // counted when complete; later rewrites add nothing new
+    let o; try { o = JSON.parse(readFileSync(path, "utf8")); } catch { continue; }
+    const r = opencodeMessage(o);
+    const done = !!(o && o.time && o.time.completed);
+    state.files[path] = { size: st.size, mtime: st.mtimeMs, counted: done };
+    if (r && done) { add(state.days, r, costOf(prices, r)); changed = true; }
+  }
+  // Forget files that fell out of the window.
+  for (const p of Object.keys(state.files)) {
+    try { if (statSync(p).mtimeMs < since) delete state.files[p]; } catch { delete state.files[p]; }
+  }
+  const today = dayOf(Date.now());
+  prune(state.days, today, KEEP);
+  try {
+    mkdirSync(cacheDir, { recursive: true });
+    writeFileSync(statePath + ".tmp", JSON.stringify(state));
+    renameSync(statePath + ".tmp", statePath);
+  } catch {}
+  return changed;
+}
+
+let last = "";
+function emit() {
+  const line = JSON.stringify({ asOf: Date.now(), today: dayOf(Date.now()), pricesAsOf: prices.asOf, providers: summary(state.days, dayOf(Date.now()), 7) });
+  const key = line.replace(/"asOf":\d+,/, "");
+  if (key !== last) { last = key; process.stdout.write(line + "\n"); }
+}
+
+scan();
+emit();
+if (process.argv.includes("--watch")) {
+  // A log grew: read what's new, a moment after the writes settle.
+  let soon = null;
+  const later = () => { clearTimeout(soon); soon = setTimeout(() => { scan(); emit(); }, 1500); };
+  let watching = 0;
+  for (const dir of Object.values(ROOTS)) {
+    try { watch(dir, { recursive: true }, later); watching++; } catch {}
+  }
+  // The day turning over changes "today" with no write; and with no watcher, look now and then.
+  setInterval(() => { if (!watching) scan(); emit(); }, watching ? 60000 : 15000);
+}

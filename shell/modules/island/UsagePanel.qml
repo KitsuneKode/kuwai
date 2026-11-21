@@ -36,6 +36,9 @@ FocusScope {
 
     // Countdowns tick (once a minute) while this is open.
     Binding { target: Limits; property: "panelShown"; value: usage.visible }
+    // What each provider spent, from this machine's logs (services/Spend): read
+    // only while this shows.
+    Binding { target: Spend; property: "wanted"; value: usage.visible }
 
     function pid(p) { return p.driver || p.label; }
     function isClaude(p) { return /claude/i.test(String(p.driver || p.label || "")); }
@@ -367,6 +370,27 @@ FocusScope {
                                         color: card.g.rank === 2 ? Theme.redText : usage.tone(card.g.rank >= 1 ? "approaching" : "")
                                         font.features: ({ "tnum": 1 })
                                     }
+                                }
+                            }
+
+                            // What it spent (services/Spend): tokens today, and an
+                            // estimate at list prices, from this machine's own logs.
+                            Label {
+                                id: spendLine
+                                readonly property string said: Spend.line(card.g.id)
+                                visible: said !== ""
+                                width: parent.width
+                                wrapMode: Text.WordWrap; maximumLineCount: 2; elide: Text.ElideRight
+                                text: said
+                                size: Theme.tFootnote
+                                color: Theme.textTertiary
+                                font.features: ({ "tnum": 1 })
+                                HoverHandler { id: spendHover }
+                                Tip {
+                                    shown: spendHover.hovered
+                                    below: true
+                                    text: "From the logs " + card.g.name + " keeps on this machine. Money is an estimate at list prices"
+                                        + (Spend.pricesAsOf ? " (as of " + Spend.pricesAsOf + ")" : "") + "; a subscription doesn't pay these."
                                 }
                             }
 
