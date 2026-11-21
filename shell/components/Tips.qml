@@ -45,18 +45,19 @@ Item {
     Timer { id: wait; interval: Theme.tipMs; onTriggered: tips.apply(false) }
 
     readonly property rect at: target && shown ? target.mapToItem(tips, 0, 0, target.width, target.height) : Qt.rect(0, 0, 0, 0)
-    readonly property bool flip: at.y - bubble.height - 8 < 0
+    readonly property bool flip: at.y + at.height + bubble.height + Theme.s2 <= height
 
+    Elevation { target: bubble; radius: Theme.r1; strength: 0.5; visible: bubble.visible; opacity: bubble.opacity }
     Rectangle {
         id: bubble
         x: Math.round(Math.max(6, Math.min(tips.width - width - 6, tips.at.x + tips.at.width / 2 - width / 2)))
-        y: Math.round(tips.flip ? tips.at.y + tips.at.height + 8 : tips.at.y - height - 8)
+        y: Math.round(tips.flip ? tips.at.y + tips.at.height + Theme.s2 : tips.at.y - height - Theme.s2)
         width: row.implicitWidth + 18
         height: 26
-        radius: 8
-        color: Qt.rgba(0.20, 0.20, 0.23, 0.98)
+        radius: Theme.r1
+        color: Theme.menuSurface
         border.width: 1
-        border.color: Qt.rgba(1, 1, 1, 0.12)
+        border.color: Theme.menuEdge
         transformOrigin: tips.flip ? Item.Top : Item.Bottom
         opacity: tips.shown ? 1 : 0
         scale: tips.shown || Theme.reduceMotion ? 1 : 0.97
