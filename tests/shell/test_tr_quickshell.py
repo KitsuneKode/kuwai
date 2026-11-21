@@ -118,6 +118,8 @@ def test_german_under_a_german_locale(out):
     # A key no catalogue has reads English; a value put into a text is never looked up.
     assert r["missing"] == "A string no catalogue has"
     assert r["outside"] == "Shut Down"
+    # The tiles grow to the longest label ("Herunterfahren"): every label fits inside its tile.
+    assert all(t["w"] < t["tile"] for t in r["tiles"])
     print("GEOMETRY de", json.dumps({"tiles": r["tiles"], "hints": r["hints"]}, ensure_ascii=False))
     assert (out / "power.png").is_file()
 

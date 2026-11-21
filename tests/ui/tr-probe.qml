@@ -26,7 +26,9 @@ ShellRoot {
             interval: 1200; running: true
             onTriggered: {
                 function labels(item, out) {
-                    if (item.text !== undefined && item.size === 12 && item.parent && item.parent.parent && item.parent.parent.width === 88) out.push({ text: item.text, w: Math.ceil(item.implicitWidth) });
+                    // A tile's label: its tile carries the action (tiles grow with their longest label).
+                    const tile = item.parent && item.parent.parent;
+                    if (item.text !== undefined && item.size === 12 && tile && tile.modelData && item.text === tile.modelData.label) out.push({ text: item.text, w: Math.ceil(item.implicitWidth), tile: tile.width });
                     for (const c of item.children || []) labels(c, out);
                     return out;
                 }
@@ -36,7 +38,7 @@ ShellRoot {
                     language: Tr.language,
                     locale: Qt.locale().name,
                     tiles: labels(panel, []),
-                    tileWidth: 88,
+                    tileWidth: (labels(panel, [])[0] || {}).tile || 0,
                     hints: hints,
                     panelWidth: Theme.panelM,
                     today: Dates.day(now),
