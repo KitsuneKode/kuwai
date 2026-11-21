@@ -143,6 +143,13 @@ for attempt in 1 2 3; do
     # (2026-11-07). One thread instead of one per window, too.
     envs+=("QSG_RENDER_LOOP=basic")
     envs+=("KUWAI_REVISION=$(git -C "$KUWAI" describe --always --dirty 2>/dev/null || printf unknown)")
+    # After a crash Quickshell starts itself again from what it noted at launch;
+    # on 2026-11-21 that note had no path, it fell back to its own default
+    # (~/.config/quickshell: an old prototype here) and the desktop came back
+    # as something else. With the path in its environment too, the restart is
+    # kuwai again. Nothing the shell starts runs a bare `qs` (only `qs ipc`,
+    # which then also finds this shell).
+    envs+=("QS_CONFIG_PATH=$SHELL_DIR")
     # Diagnostics for one run: KUWAI_SHELL_ENV="QV4_MM_STATS=1" kuwai-shell
     # (the JS heap after every collection, in the shell's log).
     if [ -n "${KUWAI_SHELL_ENV:-}" ]; then read -ra extra <<<"$KUWAI_SHELL_ENV"; envs+=("${extra[@]}"); fi

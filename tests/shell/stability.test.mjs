@@ -71,3 +71,24 @@ test('the screens stay on while work runs on power, and go off after', () => {
   const list = Array.isArray(schema) ? schema : schema.settings;
   expect(list.find(s => s.key === 'idleScreensWhileWork').default).toBe(true);
 });
+
+// Closing the notification centre crashed the shell (2026-11-20 21:47,
+// 11-21 09:36): ScrollFade took the list's layer down inside the change that
+// tore the view down, and Qt then used the layer's deleted source. The layer
+// is decided a moment later now (bin/kuwai-ui-test --case center-keys fails
+// on any crash, teardown included). And the restart after a crash came up on
+// Quickshell's default config, an old prototype: the path rides along in the
+// environment so a restart is kuwai again.
+test('ScrollFade never switches a layer inside the change that asked for it', () => {
+  const src = readFileSync(new URL('../../shell/components/ScrollFade.qml', import.meta.url), 'utf8');
+  expect(src).toMatch(/onScrollsChanged:\s*settle\.restart\(\)/);
+  expect(src).not.toMatch(/onScrollsChanged:\s*apply\(\)/);
+  expect(src).toMatch(/layer\.enabled:\s*fade\.layered/);
+});
+
+test('a restarted shell is kuwai: its path is in its environment', () => {
+  const src = readFileSync(new URL('../../bin/kuwai-shell', import.meta.url), 'utf8');
+  expect(src).toMatch(/envs\+=\("QS_CONFIG_PATH=\$SHELL_DIR"\)/);
+  const at = src.indexOf('QS_CONFIG_PATH=');
+  expect(at).toBeLessThan(src.indexOf('qs -p "$SHELL_DIR" -d'));
+});
