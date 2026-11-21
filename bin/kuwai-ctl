@@ -285,6 +285,16 @@ case ${1:-} in
             printf "kuwai: stable (%s) has changes that aren't committed; stable left as it is:\n%s\nMake them in the repo instead (or: git -C %s stash), then promote again.\n" "$STABLE" "$dirty" "$STABLE" >&2
             exit 1
         fi
+        # Would the new release's pending migrations run on this machine? Asked
+        # before stable moves, so a machine that can't run them (no Landlock: an
+        # older kernel or util-linux) is told why up front instead of seeing
+        # stable move and roll back at every promote. Not promoting is the safe
+        # answer: the new code may need its migrations done, the old code doesn't.
+        if ! why=$("$dev/bin/kuwai-migrations" --check 2>&1); then
+            printf "kuwai: not promoted: %s\nStable stays at %s. (kuwai migrations --list shows what's pending.)\n" \
+                "${why#kuwai-migrations: }" "$(git -C "$STABLE" log --oneline -1)" >&2
+            exit 1
+        fi
         prev=$(git -C "$STABLE" rev-parse HEAD)
         git -C "$STABLE" merge --ff-only --quiet "$head" || { echo "kuwai: stable can't fast-forward to $(git -C "$dev" log --oneline -1)" >&2; exit 1; }
         echo "stable is now $(git -C "$STABLE" log --oneline -1)"

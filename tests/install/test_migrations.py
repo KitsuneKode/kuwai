@@ -253,3 +253,38 @@ def test_list_without_a_state_folder_writes_nothing(shipped):
     r = run(shipped, '--list')
     assert r.returncode == 0 and 'pending  0002-launcher-vitals-to-system' in r.stdout
     assert not shipped['state'].exists()
+
+
+# kuwai promote asks `--check` before stable moves (2026-11-21): a machine
+# without Landlock was told only after stable had moved, and rolled back at
+# every promote.
+@needs_landlock
+def test_check_runs_nothing_and_says_they_can_run(env):
+    add(env, '0001-a.sh', 'mkdir -p "$XDG_CONFIG_HOME/kuwai"; echo x > "$XDG_CONFIG_HOME/kuwai/changed"\n')
+    before = snapshot(env['home'])
+    r = run(env, '--check')
+    assert r.returncode == 0 and 'can run here' in r.stdout
+    assert snapshot(env['home']) == before
+
+
+def test_check_without_landlock_refuses_and_says_what_to_install(env):
+    add(env, '0001-a.sh', 'true\n')
+    fake = env['tmp'] / 'bin'
+    fake.mkdir()
+    (fake / 'setpriv').write_text('#!/bin/sh\necho "setpriv: unrecognized option --landlock-access" >&2\nexit 1\n')
+    (fake / 'setpriv').chmod(0o755)
+    r = run(env, '--check', extra={'PATH': str(fake) + ':' + env['env'].get('PATH', '/usr/bin:/bin')})
+    assert r.returncode == 2
+    assert 'no Landlock' in r.stderr and 'Linux 5.13' in r.stderr and 'util-linux 2.39' in r.stderr
+
+
+def test_check_with_nothing_pending_passes_without_landlock(env):
+    r = run(env, '--check')
+    assert r.returncode == 0 and 'nothing to do' in r.stdout
+
+
+def test_promote_asks_before_stable_moves():
+    ctl = (Path(__file__).resolve().parents[2] / 'bin/kuwai-ctl').read_text()
+    check = ctl.index('kuwai-migrations" --check')
+    move = ctl.index('merge --ff-only --quiet "$head"')
+    assert check < move and 'not promoted:' in ctl[check:move]

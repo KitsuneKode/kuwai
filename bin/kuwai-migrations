@@ -18,6 +18,9 @@
 # $HOME): a migration can read anything but change only those. Without Landlock
 # nothing runs (exit 2).
 #
+# --check runs nothing: 0 when nothing is pending or what is can run here, 2
+# with the reason when it couldn't (kuwai promote asks this before stable moves).
+#
 # It needs the rename's mover (bin/kuwai-migrate, run by kuwai-shell before the
 # shell starts) to have run first: a migration reads kuwai's folders, and on a
 # machine where ~/.local/state/rice is still a folder and kuwai's isn't there
@@ -45,8 +48,9 @@ case ${1:-} in
     "") ;;
     --list) mode=list ;;
     --dry-run|-n) mode=dry ;;
+    --check) mode=check ;;      # would the pending ones run here? Runs nothing (kuwai promote asks first)
     -h|--help) sed -n '2,/^set /p' "$0" | grep '^#' | sed 's/^# \{0,1\}//'; exit 0 ;;
-    *) echo "usage: kuwai migrations [--list|--dry-run]" >&2; exit 2 ;;
+    *) echo "usage: kuwai migrations [--list|--dry-run|--check]" >&2; exit 2 ;;
 esac
 
 [ "$(id -u)" -ne 0 ] || refuse "never as root: run it as the user whose desktop this is"
@@ -100,10 +104,11 @@ fi
 
 # The kernel's fence. Every right that changes the filesystem is handled; it's
 # granted beneath the four roots (and on /dev/null) only. Reads and runs anywhere.
-command -v setpriv >/dev/null || refuse "needs setpriv (util-linux) to fence the migrations in"
+command -v setpriv >/dev/null || refuse "needs setpriv (util-linux 2.39 or later) to fence the migrations in"
 W="write-file,remove-dir,remove-file,make-char,make-dir,make-reg,make-sock,make-fifo,make-block,make-sym,refer,truncate"
 setpriv --landlock-access "fs:$W" --landlock-rule "path-beneath:write-file:/dev/null" -- true 2>/dev/null \
-    || refuse "this kernel or setpriv has no Landlock, so a migration couldn't be kept inside your folders; nothing ran"
+    || refuse "this kernel or setpriv has no Landlock (Linux 5.13 or later with landlock in its lsm= list; setpriv from util-linux 2.39 or later), so a migration couldn't be kept inside your folders; nothing ran"
+if [ "$mode" = check ]; then say "${#pending[@]} pending, and they can run here"; exit 0; fi
 
 mkdir -p "$REC/done" "${ROOTS[@]}" || refuse "can't make $REC"
 exec 9>"$REC/.lock"
