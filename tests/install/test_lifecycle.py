@@ -221,3 +221,25 @@ def test_fonts_sf_pro_stands_in_for_inter_when_installed(install_env):
     out = _fonts(install_env, ['SF Pro Text', 'SF Pro Display', 'SF Pro Rounded', 'Symbols Nerd Font'])
     assert 'missing font: Inter' not in out
     assert 'SF Pro (found: the shell uses it instead of Inter)' in out
+
+
+def _without_python(install_env):
+    """A PATH with the fixture's tools and every system command but python."""
+    nopy = install_env.home.parent / 'nopython'
+    nopy.mkdir()
+    for d in ('/usr/bin', '/bin'):
+        for name in os.listdir(d) if os.path.isdir(d) else []:
+            if name.startswith('python') or (nopy / name).is_symlink() or (nopy / name).exists():
+                continue
+            (nopy / name).symlink_to(os.path.join(d, name))
+    tools = install_env.env['PATH'].split(':')[0]
+    return {'PATH': tools + ':' + str(nopy)}
+
+
+# A machine where the packages were never installed has no python3 (found
+# in a fresh Arch container, 2026-11-21: uninstall died with exit 127).
+def test_uninstall_without_python_and_nothing_installed_says_so(install_env):
+    env = dict(install_env.env, **_without_python(install_env))
+    r = subprocess.run(['bash', str(install_env.repo / 'install.sh'), '--uninstall'], env=env, text=True, capture_output=True)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert 'Nothing to put back' in r.stdout

@@ -215,6 +215,16 @@ install_all() {
 
 uninstall_all() {
     step "Uninstall"
+    # What to put back is read by python3. Without it (the packages were never
+    # installed) the first install never got as far as changing anything.
+    if ! command -v python3 >/dev/null; then
+        if [ -d "$STATE/original" ]; then
+            say "  Uninstall reads what to put back with python3 (package python), which isn't installed; install it, then run this again."
+            exit 1
+        fi
+        say "  Nothing to put back: kuwai was never installed for this user (nothing is kept in $STATE/original)."
+        return 0
+    fi
     for u in "${UNITS[@]}"; do do_ systemctl --user disable --now "$u" >/dev/null 2>&1 || true; done
     if [ $DRY = 1 ]; then ORIG restore --dry-run; else ORIG restore; fi
     do_ systemctl --user daemon-reload
