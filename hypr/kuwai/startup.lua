@@ -1,18 +1,12 @@
 local K = require("kuwai.core")
 
-local EXPORT = table.concat({
-	"WAYLAND_DISPLAY", "XDG_CURRENT_DESKTOP", "XDG_SESSION_TYPE", "XDG_SESSION_DESKTOP",
-	"HYPRLAND_INSTANCE_SIGNATURE", "QT_QPA_PLATFORMTHEME", "QT_QPA_PLATFORM", "SSH_AUTH_SOCK",
-	"XCURSOR_THEME", "XCURSOR_SIZE", "HYPRCURSOR_THEME", "HYPRCURSOR_SIZE", "KUWAI_ROOT", "PATH",
-}, " ")
-
 local function unit(name)
 	return "systemctl --user start " .. name
 end
 
 hl.on("hyprland.start", function()
     print("[kuwai-handoff " .. (os.getenv("KUWAI_HANDOFF_ID") or "unknown") .. "] hyprland-start-hook")
-	hl.exec_cmd("dbus-update-activation-environment --systemd " .. EXPORT)
+	hl.exec_cmd(K.bin .. "/kuwai-session-env")
 	hl.exec_cmd("hyprctl setcursor " .. K.cursor.theme .. " " .. K.cursor.size)
 
 	hl.exec_cmd(unit("gcr-ssh-agent.socket"))

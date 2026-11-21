@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -u
+stamp=${1:-0}
+case $stamp in ""|*[!0-9]*) stamp=0 ;; esac
+names=()
+while IFS= read -r -d '' kv; do
+    n=${kv%%=*}
+    [[ $n =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || continue
+    case $n in
+        HYPRLAND_CONFIG|HYPRLAND_CMD|PWD|OLDPWD|SHLVL|_|TERM|COLORTERM|MOTD_SHOWN|KUWAI_HANDOFF_ID|KUWAI_ENV_STAMP) continue ;;
+        NOTIFY_SOCKET|INVOCATION_ID|JOURNAL_STREAM|SYSTEMD_EXEC_PID|MANAGERPID|LISTEN_*|WATCHDOG_*|MEMORY_PRESSURE_*) continue ;;
+    esac
+    [[ ${kv#*=} == *$'\n'* ]] && continue
+    names+=("$n")
+done < <(env -0)
+export KUWAI_ENV_STAMP=$stamp
+exec dbus-update-activation-environment --systemd "${names[@]}" KUWAI_ENV_STAMP

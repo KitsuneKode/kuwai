@@ -131,7 +131,7 @@ def test_the_client_imports_hyprland_and_restarts_the_unit(tmp_path):
 case "$*" in
   "--user cat kuwai-shell.service") exit 0 ;;
   "--user show -p MainPID --value kuwai-shell.service") echo 4242 ;;
-  "--user show-environment") echo HYPRLAND_INSTANCE_SIGNATURE=old ;;
+  "--user show-environment") echo HYPRLAND_INSTANCE_SIGNATURE=old; cat {tmp_path}/manager-env 2>/dev/null ;;
   "--user restart kuwai-shell.service")
     mkdir -p {log_dir}
     printf 'Launching config: "%s/shell/shell.qml"\\nConfiguration Loaded\\n' {root} >{log_dir}/log.qslog ;;
@@ -139,11 +139,16 @@ esac
 exit 0""")
     stub(fake / "qs", f"echo '{json.dumps([{'pid': 4242}, {'pid': stray.pid}])}'")
     stub(fake / "busctl", "echo 'u 4242'")
-    stub(fake / "dbus-update-activation-environment", f'echo "import $*" >>{calls}')
+    stub(fake / "dbus-update-activation-environment",
+         f'echo "import $*" >>{calls}; echo "KUWAI_ENV_STAMP=$KUWAI_ENV_STAMP" >{tmp_path}/manager-env')
+    stub(fake / "hyprctl", f'''echo "hyprctl $*" >>{calls}
+cmd=${{2#*\\[==\\[}}; cmd=${{cmd%\\]==\\]*}}
+eval "$cmd"''')
+    shutil.copy(REPO / "bin/kuwai-session-env", root / "bin/kuwai-session-env")
     env = {**os.environ, "PATH": f"{fake}:{os.environ['PATH']}", "XDG_RUNTIME_DIR": str(rt),
            "HOME": str(tmp_path), "XDG_STATE_HOME": str(tmp_path / "state"), "XDG_CACHE_HOME": str(tmp_path / "cache"),
            "XDG_CONFIG_HOME": str(tmp_path / "config"), "HYPRLAND_INSTANCE_SIGNATURE": "live",
-           "KUWAI_SHELL_ENV": "QV4_MM_STATS=1"}
+           "KUWAI_SHELL_ENV": "QV4_MM_STATS=1", "SHAZAM_DUP_WINDOW": "0"}
     env.pop("KUWAI_SHELL_LEGACY", None)
     try:
         r = subprocess.run([root / "bin/kuwai-shell"], env=env, capture_output=True, text=True, timeout=30)
@@ -152,7 +157,8 @@ exit 0""")
         imported = next(i for i, line in enumerate(lines) if line.startswith("import "))
         restarted = lines.index("systemctl --user restart kuwai-shell.service")
         assert imported < restarted, "Hyprland's environment goes in before the shell starts"
-        assert "HYPRLAND_INSTANCE_SIGNATURE" in lines[imported] and "WAYLAND_DISPLAY" in lines[imported]
+        assert any(line.startswith("hyprctl dispatch hl.dsp.exec_cmd(") for line in lines[:imported]), "through Hyprland"
+        assert "HYPRLAND_INSTANCE_SIGNATURE" in lines[imported].split() and "SHAZAM_DUP_WINDOW" in lines[imported].split()
         assert lines.index("systemctl --user reset-failed kuwai-shell.service kuwai-shell-broken.service") < restarted
         written = (rt / "kuwai/shell.env").read_text()
         assert f'KUWAI_SHELL_ROOT="{root}"' in written and 'KUWAI_SHELL_ENV="QV4_MM_STATS=1"' in written
@@ -161,3 +167,24 @@ exit 0""")
     finally:
         stray.kill()
         sock.close()
+
+
+def test_the_session_environment_goes_over_whole_but_for_a_few(tmp_path):
+    fake = tmp_path / "fakebin"
+    fake.mkdir()
+    out = tmp_path / "args"
+    stub(fake / "dbus-update-activation-environment", f'printf "%s\\n" "$@" >{out}; echo "$KUWAI_ENV_STAMP" >>{out}')
+    env = {"PATH": f"{fake}:/usr/bin:/bin", "HOME": str(tmp_path), "LIBVA_DRIVER_NAME": "nvidia",
+           "HYPRLAND_CONFIG": "/x/hyprland.lua", "MULTI": "a\nb", "WAYLAND_DISPLAY": "wayland-1"}
+    subprocess.run([REPO / "bin/kuwai-session-env", "12;rm"], env=env, check=True)
+    got = out.read_text().split()
+    assert "--systemd" in got and "LIBVA_DRIVER_NAME" in got and "WAYLAND_DISPLAY" in got
+    assert "HYPRLAND_CONFIG" not in got, "Hyprland 0.57 reads it as its config: never hand it to other programs"
+    assert "MULTI" not in got and "PWD" not in got
+    assert got[-1] == "0", "a stamp that isn't digits becomes 0"
+
+
+def test_startup_exports_through_the_same_helper():
+    src = (REPO / "hypr/kuwai/startup.lua").read_text()
+    assert 'hl.exec_cmd(K.bin .. "/kuwai-session-env")' in src
+    assert src.index("kuwai-session-env") < src.index("kuwai-shell")
