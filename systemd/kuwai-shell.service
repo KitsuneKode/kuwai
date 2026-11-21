@@ -41,8 +41,12 @@ ExecStart=/bin/sh -c 'exec "${KUWAI_SHELL_ROOT:-${KUWAI_ROOT:-%h/Projects/rice}}
 ExecStartPost=-/bin/sh -c 'exec "${KUWAI_SHELL_ROOT:-${KUWAI_ROOT:-%h/Projects/rice}}/bin/kuwai-shell" --settle'
 Restart=always
 RestartSec=1
-# SIGKILL: Quickshell 0.3.2 can segfault tearing down on a polite exit.
+# SIGKILL: Quickshell 0.3.2 can segfault tearing down on a polite exit. And
+# that SIGKILL is a clean stop: counted as a failure (systemd's default), every
+# `kuwai restart` fired OnFailure, whose Conflicts= then cancelled the start
+# (2026-11-21 10:54, caught by promote's rollback).
 KillMode=control-group
 KillSignal=SIGKILL
+SuccessExitStatus=SIGKILL
 TimeoutStopSec=3
 Slice=session.slice

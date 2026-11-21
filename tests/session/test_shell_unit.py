@@ -31,6 +31,7 @@ def test_the_unit_restarts_the_shell_and_owns_everything_it_started():
     u = unit("kuwai-shell.service")
     assert u["Restart"] == ["always"] and u["RestartSec"] == ["1"]
     assert u["KillMode"] == ["control-group"] and u["KillSignal"] == ["SIGKILL"]
+    assert u["SuccessExitStatus"] == ["SIGKILL"], "a restart's own SIGKILL must not fire OnFailure (the fallback cancels the start)"
     assert "QS_DISABLE_CRASH_HANDLER=1" in u["Environment"]
     assert "KUWAI_SHELL_UNIT=1" in u["Environment"]
     assert u["OnFailure"] == ["kuwai-shell-broken.service"]
