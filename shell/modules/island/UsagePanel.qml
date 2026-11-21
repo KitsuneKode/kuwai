@@ -26,11 +26,13 @@ FocusScope {
     // the 34 of the section strip), less this panel's own rows around the list.
     // It was a fixed 470, which with the title and tabs came to 592 against a
     // ceiling of 566 on a 1080-high screen: the last card ran under the edge.
-    readonly property real ceiling: Math.min(640, Theme.screenSize(Screen, "height", 1080) - 24) - 40 - 34
+    readonly property real ceiling: Math.min(Theme.panelMaxH, Theme.screenSize(Screen, "height", 1080) - 24) - 40 - 34
     readonly property bool hasTabs: tabs.length > 2
     readonly property bool hasFoot: Limits.loaded && groups.length > 0
-    readonly property real listMax: Math.max(160, ceiling - 40 - 26 - col.spacing
-        - (hasTabs ? 28 + col.spacing : 0) - (hasFoot ? 14 + col.spacing : 0) - (Limits.down ? 44 + col.spacing : 0))
+    // (By the rows' own heights: they grow with the Text size; fixed numbers
+    // let the panel outgrow the island at 200 %.)
+    readonly property real listMax: Math.max(120, ceiling - 40 - head.height - col.spacing
+        - (hasTabs ? tabsRow.height + col.spacing : 0) - (hasFoot ? foot.height + col.spacing : 0) - (Limits.down ? downBox.height + col.spacing : 0))
 
     // Countdowns tick (once a minute) while this is open.
     Binding { target: Limits; property: "panelShown"; value: usage.visible }
@@ -120,16 +122,25 @@ FocusScope {
         spacing: 14
 
         // ── Title: what matters, in one line ─────────────────────────────
+        // Where the summary doesn't fit beside the title (a large Text size), it
+        // goes under it.
         Item {
+            id: head
             width: parent.width
-            height: 26
+            readonly property bool stack: summary.visible && headTitle.implicitWidth + Theme.s3 + summary.implicitWidth > width
+            height: stack ? headTitle.implicitHeight + 2 + summary.implicitHeight : Math.max(Theme.sp(26), headTitle.implicitHeight)
             Label {
-                anchors { left: parent.left; verticalCenter: parent.verticalCenter }
+                id: headTitle
+                y: head.stack ? 0 : (head.height - implicitHeight) / 2
                 text: "Usage"
                 size: Theme.tTitle3; weight: Theme.wSemibold   // the panels' one title style
             }
             Label {
-                anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                id: summary
+                x: head.stack ? 0 : head.width - implicitWidth
+                y: head.stack ? headTitle.implicitHeight + 2 : (head.height - implicitHeight) / 2
+                width: head.stack ? head.width : implicitWidth
+                wrapMode: head.stack ? Text.Wrap : Text.NoWrap
                 visible: Limits.loaded
                 text: usage.outCount
                     ? usage.outCount + " out" + (usage.partCount ? " · " + usage.partCount + " partly" : "") + (usage.backIn(usage.firstBack) ? " · first back in " + usage.backIn(usage.firstBack) : "")
@@ -143,6 +154,7 @@ FocusScope {
         // Tabs as the agents' logos; the chosen one opens to say its name
         // (six names didn't fit, and logos are what you scan for). A red dot: out.
         Row {
+            id: tabsRow
             visible: usage.hasTabs
             spacing: 4
             Repeater {
@@ -200,6 +212,7 @@ FocusScope {
 
         // ── Error: on the thing that failed, with Retry beside it ─────────
         Rectangle {
+            id: downBox
             visible: Limits.down
             width: parent.width
             // Its line wraps (the row grows) rather than lose its end beside Retry at a large Text size.
@@ -290,14 +303,18 @@ FocusScope {
                             width: parent.width - 28
                             spacing: 10
 
-                            // Header: logo · name · accounts ……… status
+                            // Header: logo · name · accounts ……… status. Where the
+                            // status doesn't fit on that line it goes under the name.
                             Item {
+                                id: cardHead
                                 width: parent.width
-                                height: 22
+                                readonly property bool stack: logo.width + 10 + pname.implicitWidth + 6 + pcount.implicitWidth + Theme.s3 + pchip.width > width
+                                readonly property real line: Math.max(22, pname.implicitHeight)
+                                height: stack ? line + 4 + pchip.height : line
                                 Rectangle {
                                     id: logo
                                     width: 22; height: 22; radius: 11
-                                    anchors.verticalCenter: parent.verticalCenter
+                                    y: (cardHead.line - height) / 2
                                     color: Theme.chip
                                     Image {
                                         anchors.centerIn: parent
@@ -316,20 +333,26 @@ FocusScope {
                                 }
                                 Label {
                                     id: pname
-                                    anchors { left: logo.right; leftMargin: 10; verticalCenter: parent.verticalCenter }
+                                    anchors { left: logo.right; leftMargin: 10 }
+                                    y: (cardHead.line - implicitHeight) / 2
                                     text: card.g.name
                                     size: Theme.tCallout; weight: Theme.wSemibold
                                 }
                                 Label {
-                                    anchors { left: pname.right; leftMargin: 6; verticalCenter: parent.verticalCenter }
+                                    id: pcount
+                                    anchors { left: pname.right; leftMargin: 6; baseline: pname.baseline }
                                     visible: text !== ""
+                                    width: Math.min(implicitWidth, Math.max(0, cardHead.width - x))
+                                    elide: Text.ElideRight
                                     text: card.g.accounts > 1 ? card.g.accounts + " accounts" : (card.g.sections[0] && card.g.sections[0].plan) || ""
                                     size: Theme.tFootnote; color: Theme.textTertiary
                                 }
                                 // One status: out (and when back), near the line, or fine.
                                 Rectangle {
-                                    anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-                                    height: 20
+                                    id: pchip
+                                    x: cardHead.stack ? pname.x : cardHead.width - width
+                                    y: cardHead.stack ? cardHead.line + 4 : (cardHead.line - height) / 2
+                                    height: Math.max(20, status.implicitHeight + Theme.s1)
                                     width: status.implicitWidth + 16
                                     radius: 10
                                     color: Qt.alpha(usage.tone(card.g.rank === 2 ? "exhausted" : card.g.rank >= 1 ? "approaching" : ""), 0.14)
@@ -419,17 +442,23 @@ FocusScope {
                                     Accessible.role: Accessible.ListItem
                                     Accessible.name: w.r.label + ": " + (w.out ? "out" : w.leftPct + " percent left")
                                         + (w.inS && w.inS !== "now" ? ", resets in " + w.inS : "") + (note.visible ? ". " + note.text : "")
+                                    // Its height from its text; at a large Text size the bar
+                                    // goes under the name and the numbers (it was a fixed
+                                    // 18 px line, and rows ran into each other at 200 %).
                                     Item {
                                         id: line
                                         width: parent.width
-                                        height: 18
+                                        readonly property bool stack: Theme.textScale >= 1.5
+                                        readonly property real first: Math.max(18, name.implicitHeight, pc.implicitHeight)
+                                        height: stack ? first + 6 + bucket.height : first
                                         Label {
                                             id: name
-                                            anchors { left: parent.left; verticalCenter: parent.verticalCenter }
+                                            anchors.left: parent.left
+                                            y: (line.first - implicitHeight) / 2
                                             // As wide as the longest label needs, up to 40 % of the row
                                             // ("Claude & GPT (shared) · 5-hour" is cut, with the whole of
                                             // it in the tip); "Session" and "Weekly" leave the bar its room.
-                                            width: Math.min(Math.max(implicitWidth, card.labelW), Math.round(parent.width * 0.4))
+                                            width: line.stack ? Math.max(0, pc.x - 8) : Math.min(Math.max(implicitWidth, card.labelW), Math.round(parent.width * 0.4))
                                             onImplicitWidthChanged: card.labelW = Math.max(card.labelW, implicitWidth)
                                             Component.onCompleted: card.labelW = Math.max(card.labelW, implicitWidth)
                                             elide: Text.ElideRight
@@ -438,7 +467,8 @@ FocusScope {
                                         }
                                         Label {
                                             id: back
-                                            anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                                            anchors.right: parent.right
+                                            y: (line.first - implicitHeight) / 2
                                             width: Theme.sp(58)
                                             horizontalAlignment: Text.AlignRight
                                             text: w.inS === "now" ? "resetting" : w.inS
@@ -448,7 +478,8 @@ FocusScope {
                                         }
                                         Label {
                                             id: pc
-                                            anchors { right: back.left; rightMargin: 6; verticalCenter: parent.verticalCenter }
+                                            anchors { right: back.left; rightMargin: 6 }
+                                            y: (line.first - implicitHeight) / 2
                                             width: Theme.sp(56)
                                             horizontalAlignment: Text.AlignRight
                                             text: w.out ? "Out" : w.leftPct + "% left"
@@ -462,7 +493,9 @@ FocusScope {
                                         // everywhere else in the shell.
                                         Item {
                                             id: bucket
-                                            anchors { left: name.right; leftMargin: 10; right: pc.left; rightMargin: 8; verticalCenter: parent.verticalCenter }
+                                            x: line.stack ? 0 : name.width + 10
+                                            y: line.stack ? line.first + 6 : (line.first - height) / 2
+                                            width: line.stack ? line.width : Math.max(0, pc.x - 8 - x)
                                             height: 8
                                             readonly property color ink: w.near || w.forecast ? Theme.orange : Qt.alpha(Theme.textPrimary, 0.72)
                                             property real k: 0
