@@ -17,8 +17,11 @@ weather finds its own place; voice HUDs kept across a monitor's deep sleep;
 kuwai-check runs the live checks itself. From the owner's reports: the lock
 no longer restarts the shell when a monitor comes back (the "lock screen
 died" flash, the crash screen after sleep); screens stay on while agents work
-(turning them off unplugged DP-3 and moved its workspaces); notification
-centre icons looked up once and cached (the QIconLoader crash). Usage: spend
+(turning them off unplugged DP-3 and moved its workspaces); closing the
+notification centre crashed the shell (ScrollFade switched a list's layer
+inside Qt's own teardown; b7f56bc), and the restart came up on
+~/.config/quickshell, an old prototype (QS_CONFIG_PATH now; 90e9a9f); icons
+looked up once and cached (the 11-20 QIconLoader crash). Usage: spend
 per provider from the local logs (bin/kuwai-spend). The T3 capsule says what
 it wants in a word. promote asks Landlock first; install.sh tried on a fresh
 Arch container (font package, no session bus, uninstall without python).
@@ -29,7 +32,7 @@ handoff; the greeter's Hyprland crashed at handoff on 11-19 and 11-20);
 sleep" off; a `diagnostics:read` T3 token for spend from T3 itself
 ([PLAN-agents.md](PLAN-agents.md)).
 
-Not proven: the centre's icon crash is mitigated, not reproduced; a real DPMS
+Not proven: the 11-20 QIconLoader crash is mitigated, not reproduced; a real DPMS
 cycle on the live session; the 11-19 18:22 poweroff (systemctl, from the user
 manager) has no cause found. Next: [PLAN-agents.md](PLAN-agents.md).
 
