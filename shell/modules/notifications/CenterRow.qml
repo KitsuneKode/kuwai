@@ -6,6 +6,7 @@
 import QtQuick
 import qs.config
 import qs.components
+import qs.components.ui
 import qs.services
 
 Item {
@@ -123,15 +124,30 @@ Item {
     Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
     TapHandler {
         id: tapH
-        acceptedButtons: Qt.LeftButton | Qt.RightButton
-        onTapped: (point, button) => {
-            if (button === Qt.RightButton) row.remove();
+        acceptedButtons: Qt.LeftButton
+        onTapped: {
+            if (!Settings.seenNotifC1Hint) Settings.set("seenNotifC1Hint", true);
+            if (row.canOpen && !row.replying) Notifs.openItem(row.item);
             else row.selectRow();
         }
-        onDoubleTapped: () => {
-            if (!Settings.seenNotifC1Hint) Settings.set("seenNotifC1Hint", true);
-            if (row.canOpen) Notifs.openItem(row.item);
-        }
+    }
+    ContextMenu {
+        id: rowMenu
+        target: row
+        enabled: !row.replying
+        title: row.it.title || row.it.app || ""
+        onOpened: row.selectRow()
+        items: [
+            { visible: row.canOpen, text: "Open", glyph: "\u{f03cc}", shortcut: "↵", triggered: () => Notifs.openItem(row.item) },
+            { visible: !!row.it.full || String(row.it.body || "").length > 0, text: "Read in the island", glyph: "\u{f0208}", triggered: () => Notifs.readInIsland(row.item) },
+            { visible: row.canReply, text: "Reply", glyph: "\u{f0167}", triggered: () => row.beginReply() }
+        ].concat(row.liveActions.map(a => ({ text: a.text, triggered: () => Notifs.invokeAction(row.item, a.id) }))).concat([
+            { text: "Snooze…", glyph: "\u{f04b2}", shortcut: "S", triggered: () => row.toggleSnooze() },
+            { visible: /^https?:\/\//.test(row.it.url || ""), text: "Copy link", glyph: "\u{f0339}", triggered: () => Clipboard.copyText(row.it.url) },
+            { kind: "separator" },
+            { text: "Dismiss", glyph: "\u{f0156}", variant: "destructive", triggered: () => row.remove() },
+            { text: "Dismiss all from " + (row.it.app || "this app"), triggered: () => Notifs.removeApp(row.it.app, "center") }
+        ])
     }
 
     Rectangle {

@@ -21,7 +21,7 @@ def has_runtime_failure(log):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--case', choices=['primitives', 'settings-store', 'island', 'rehearse', 'gestures', 'clock-ground', 'idle', 'center-keys', 'card-keys', 'pill'], default='primitives')
+    parser.add_argument('--case', choices=['primitives', 'settings-store', 'island', 'rehearse', 'gestures', 'clock-ground', 'idle', 'center-keys', 'center-clear', 'card-keys', 'pill'], default='primitives')
     parser.add_argument('--compile-components', action='store_true', help='requires a real PanelWindow backend; otherwise UNQUALIFIED')
     parser.add_argument('--self-test-isolation', action='store_true')
     parser.add_argument('--text-scale', type=float, choices=[1, 1.2, 2], default=1)
@@ -128,7 +128,7 @@ def main():
             print(json.dumps({'status':'FAIL','reason':'native fixture assertion failed','log':str(output/'runtime.log')}))
             return 1
         image = {'island': 'island.png', 'gestures': 'gestures.png', 'clock-ground': 'lock-sky.png'}.get(args.case, 'primitives.png')
-        ok='UI_SMOKE_CAPTURED' in result.stdout+result.stderr and (args.case in ('rehearse', 'idle', 'center-keys', 'card-keys', 'pill') or (output/image).is_file())
+        ok='UI_SMOKE_CAPTURED' in result.stdout+result.stderr and (args.case in ('rehearse', 'idle', 'center-keys', 'center-clear', 'card-keys', 'pill') or (output/image).is_file())
         print(json.dumps({'status':'PASS' if ok else 'UNQUALIFIED','scope':args.backend + (' island layout/input' if args.case == 'island' else ' ' + args.case),
                           'compiledComponents':len(json.loads(env['KUWAI_UI_COMPILE'])), 'output':str(output)}))
         return 0 if ok else 2

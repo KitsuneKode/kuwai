@@ -74,7 +74,8 @@ Item {
     property Item searchField: null                 // where the keyboard goes back to (a row's buttons, a reply)
     property Item selectedRow: null
     property Item hoverRow: null
-    property bool keyboard: false                   // the last move came from keys
+    property bool keyboard: false
+    readonly property alias list: list                   // the last move came from keys
     readonly property int selectedIndex: visibleItems.indexOf(selected)
     onVisibleItemsChanged: if (selected && selectedIndex < 0) selected = visibleItems[0] || null
 
@@ -286,7 +287,7 @@ Item {
         visible: !Settings.seenNotifC1Hint && !view.narrowed
         anchors { left: parent.left; right: parent.right; top: filterRow.bottom; topMargin: 10 }
         wrapMode: Text.WordWrap
-        text: "Click a row to select, then Open — or double-click to open. Toasts: tap to preview unless Settings → Toast opens on first click."
+        text: "Click a notification to open it; right-click for its other options. Toasts: tap to preview unless Settings → Toast opens on first click."
         size: 12
         color: Theme.textTertiary
         opacity: view.center.revealAt(100)
