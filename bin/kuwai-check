@@ -151,6 +151,8 @@ age=$(ps -o etimes= -p "$pid" 2>/dev/null | tr -d ' ')
 [ -n "$age" ] && [ "$age" -lt 15 ] && sleep $((15 - age))
 cpu_budget=5; cpu_why="at rest"
 if command -v playerctl >/dev/null && playerctl -a status 2>/dev/null | grep -qx Playing; then cpu_budget=8; cpu_why="with music playing"; fi
+working=$("$root/bin/kuwai-t3" 2>/dev/null | jq -r '.running // 0' 2>/dev/null)
+if [ "${working:-0}" -gt 0 ] 2>/dev/null && [ "$cpu_budget" -lt 10 ]; then cpu_budget=10; cpu_why="while agents work (the island's T3 ring steps every 3 s)"; fi
 # Dictation is not rest: voxtype's own overlay repaints a whole screen while
 # you speak (25 % measured, 2026-11-17), and a promote must not fail because
 # you were talking. Its cost is voxtype's to fix; here it is named, not hidden.
