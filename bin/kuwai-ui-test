@@ -126,11 +126,12 @@ def main():
             return 2
         (output/'runtime.log').write_text(result.stdout+'\n'+result.stderr)
         said = result.stdout + result.stderr
-        # center-keys: qs crashes tearing the center down at quit in the sandbox
-        # (as it did before the fixture); a crash after a whole pass still passes.
-        torn = args.case == 'center-keys' and 'UI_SMOKE_CAPTURED' in said and 'UI_SMOKE_FAILED' not in said \
-            and said.index('UI_SMOKE_CAPTURED') < said.find('has crashed')
-        if result.returncode and not torn:
+        # A crash fails the case, at teardown too: center-keys crashed tearing the
+        # centre down, the crash the owner hit closing it (ScrollFade, 2026-11-21).
+        if 'has crashed' in said:
+            print(json.dumps({'status':'FAIL','reason':'quickshell crashed','log':str(output/'runtime.log')}))
+            return 1
+        if result.returncode:
             print(json.dumps({'status':'UNQUALIFIED','reason':'isolation/runtime failed','code':result.returncode,'log':str(output/'runtime.log')}))
             return 2
         if args.self_test_isolation:

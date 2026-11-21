@@ -167,5 +167,10 @@ reserve space during fullscreen (the film would reflow).
   set the start value synchronously in the change handler, then start the animation.
 - **Theme switches go through HyDE**, which restarts Waybar afterwards; `kuwai-themes` re-applies the bar
   (`kuwai bar apply`) after 3 s and 10 s. Any new path that switches a theme must do the same.
+- **A layer is never switched inside the change that asked for it** (2026-11-21: closing the notification
+  centre crashed the shell). Taking `layer.enabled`/`layer.effect` down from a handler that runs while Qt
+  is reparenting the item (teardown resizes it, a list stops "scrolling") leaves Qt 6.12 calling the
+  layer's listener with its source already deleted. Decide it a tick later from a `Timer` the same object
+  owns (ScrollFade's `settle`); `bin/kuwai-ui-test --case center-keys` fails on any crash, teardown too.
 - **The user's session state is theirs**: no pointer moves, no typed text, no keyboard-taking panels, and
   no media control (`playerctl`) to reach a test state. Use the test hooks (verify-kuwai skill).

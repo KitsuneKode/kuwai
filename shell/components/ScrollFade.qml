@@ -54,7 +54,7 @@ QtObject {
         width: fade.flickable ? fade.flickable.width : 0
         height: fade.flickable ? fade.flickable.height : 0
         visible: false
-        layer.enabled: fade.scrolls
+        layer.enabled: fade.layered
         Rectangle {
             id: ramp
             anchors.fill: parent
@@ -73,9 +73,21 @@ QtObject {
 
     // On: the layer, then its effect. Off: the effect while the layer is
     // still there to take it down, then the layer.
+    //
+    // Decided a moment after `scrolls` changes, never inside the change that
+    // caused it. Closing the notification centre crashed the shell (2026-11-20
+    // 21:47 and 11-21 09:36; then Quickshell's restart came up on another
+    // config): Qt unparents the list while tearing the view down, a listener
+    // earlier in that same notification resizes it, `scrolls` turns false,
+    // and taking the layer down right there left Qt (6.12, QQuickItemLayer::
+    // itemParentChanged, called from its copy of the listeners) unparenting
+    // the layer's source after it was deleted: a null pointer. The timer
+    // belongs to this object, so a list being torn down never sees it fire.
+    property bool layered: false
     function apply() {
-        if (!flickable) return;
-        if (scrolls) {
+        if (!flickable || scrolls === layered) return;
+        layered = scrolls;
+        if (layered) {
             flickable.layer.enabled = true;
             flickable.layer.effect = effect;
         } else {
@@ -83,7 +95,8 @@ QtObject {
             flickable.layer.enabled = false;
         }
     }
-    onScrollsChanged: apply()
+    readonly property Timer settle: Timer { interval: 0; onTriggered: fade.apply() }
+    onScrollsChanged: settle.restart()
     Component.onCompleted: apply()
-    Component.onDestruction: if (flickable) { flickable.layer.effect = null; flickable.layer.enabled = false; }
+    Component.onDestruction: if (flickable && layered) { flickable.layer.effect = null; flickable.layer.enabled = false; }
 }
