@@ -46,7 +46,9 @@ FocusScope {
     readonly property bool charging: hasBattery && battery.state === UPowerDeviceState.Charging
 
     implicitWidth: Theme.panelM
-    implicitHeight: 236
+    // As tall as its tiles and hint (they grow with Text size; it was 236).
+    implicitHeight: row.y + row.height + Theme.s5 + hint.implicitHeight + 18
+    property real widestLabel: 0
 
     function run(i) {
         const a = actions[i];
@@ -127,11 +129,14 @@ FocusScope {
     }
 
     // ── Tiles ────────────────────────────────────────────────────────────
-    Row {
+    // Six across; three across where six don't fit (a large Text size).
+    Grid {
         id: row
         anchors.horizontalCenter: parent.horizontalCenter
         y: 80
-        spacing: 10
+        columnSpacing: 10; rowSpacing: 10
+        readonly property real tileW: Math.max(88, power.widestLabel + 2 * Theme.s3)
+        columns: power.actions.length * (tileW + columnSpacing) - columnSpacing <= power.width - 48 ? power.actions.length : Math.ceil(power.actions.length / 2)
         Repeater {
             model: power.actions
             Item {
@@ -140,7 +145,7 @@ FocusScope {
                 required property int index
                 readonly property bool on: power.current === index
                 readonly property color wash: modelData.danger || modelData.id === "reboot" || modelData.id === "firmware" ? Theme.red : Theme.accent
-                width: 88; height: 96
+                width: row.tileW; height: Math.max(96, tileCol.implicitHeight + 2 * Theme.s3)
                 scale: area.pressed && !modelData.hold ? 0.95 : 1
                 Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
 
@@ -160,6 +165,7 @@ FocusScope {
                     }
                 }
                 Column {
+                    id: tileCol
                     anchors.centerIn: parent
                     spacing: 8
                     Text {
@@ -173,6 +179,8 @@ FocusScope {
                     Label {
                         anchors.horizontalCenter: parent.horizontalCenter
                         text: tile.modelData.label
+                        onImplicitWidthChanged: power.widestLabel = Math.max(power.widestLabel, implicitWidth)
+                        Component.onCompleted: power.widestLabel = Math.max(power.widestLabel, implicitWidth)
                         size: 12
                         weight: tile.on ? Theme.wMedium : Theme.wRegular
                         color: tile.on ? Theme.textPrimary : Theme.textSecondary
@@ -199,6 +207,7 @@ FocusScope {
     }
 
     Label {
+        id: hint
         anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 18 }
         readonly property var a: power.actions[power.current]
         text: a.hint

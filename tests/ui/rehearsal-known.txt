@@ -1,8 +1,2 @@
 # Faults the rehearsal knows about and that are still to be fixed (bin/kuwai-rehearse).
 # Never add a line by hand: fix the fault, or run kuwai-rehearse --accept and say why in the commit.
-keys/new-machine @x2 | on-top | "Hold Super anywhere to open this" is drawn over "Close"
-media/new-machine @x2 | cut-off | "Start something in any player and it sho…" runs 0 px past the left of the panel
-power/new-machine @x2 | on-top | "Shut Down" is drawn over "Firmware"
-settings/new-machine @x2 | on-top | "Bar & Island" is drawn over "Search"
-system/new-machine @x2 | on-top | "󰖔" is drawn over "Game mode"
-system/typical @x2 | on-top | "󰖔" is drawn over "Game mode"

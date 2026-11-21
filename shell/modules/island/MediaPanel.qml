@@ -98,7 +98,12 @@ FocusScope {
         spacing: 6
         Icon { anchors.horizontalCenter: parent.horizontalCenter; name: "music-notes"; size: Theme.tTitle2; color: Theme.textTertiary }
         Label { anchors.horizontalCenter: parent.horizontalCenter; text: "Nothing playing"; size: Theme.tSub; color: Theme.textSecondary }
-        Label { anchors.horizontalCenter: parent.horizontalCenter; text: "Start something in any player and it shows here."; size: Theme.tFootnote; color: Theme.textTertiary }
+        Label {
+            anchors.horizontalCenter: parent.horizontalCenter
+            width: Math.min(implicitWidth, np.width - 2 * Theme.s5)      // wraps rather than run off both sides (200 %)
+            wrapMode: Text.WordWrap; horizontalAlignment: Text.AlignHCenter
+            text: "Start something in any player and it shows here."; size: Theme.tFootnote; color: Theme.textTertiary
+        }
     }
 
     Item {

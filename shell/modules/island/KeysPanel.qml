@@ -341,6 +341,7 @@ FocusScope {
     // ── Footer ───────────────────────────────────────────────────────────
     Rectangle { x: 0; y: parent.height - 46; width: parent.width; height: 1; color: Qt.rgba(1, 1, 1, 0.06) }
     Row {
+        id: keysFoot
         anchors { left: parent.left; leftMargin: 20; bottom: parent.bottom; bottomMargin: 14 }
         spacing: 16
         Repeater {
@@ -355,6 +356,8 @@ FocusScope {
     }
     Label {
         anchors { right: parent.right; rightMargin: 20; bottom: parent.bottom; bottomMargin: 15 }
+        // Only where it fits beside the keys (at 200 % it ran into "Close").
+        visible: pal.width - 20 - implicitWidth > keysFoot.x + keysFoot.width + Theme.s3
         text: pal.query ? pal.count + (pal.count === 1 ? " match" : " matches") : "Hold Super anywhere to open this"
         size: 12; color: Theme.textTertiary
     }

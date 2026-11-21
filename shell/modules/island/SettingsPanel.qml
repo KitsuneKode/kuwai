@@ -215,7 +215,7 @@ FocusScope {
         // the current one in view as ↑ ↓ move.
         Flickable {
           id: sideFlick
-          x: 10; y: 54
+          x: 10; y: searchBox.y + searchBox.height + 10     // under the search, which grows with Text size (it was 54: the first row sat on it at 200 %)
           width: parent.width - 20
           height: parent.height - y - 10
           contentHeight: settings.query ? resCol.implicitHeight : sideCol.implicitHeight

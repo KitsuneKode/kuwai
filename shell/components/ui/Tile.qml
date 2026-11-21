@@ -13,8 +13,9 @@ Rectangle {
     property bool on
     signal clicked()
 
-    implicitHeight: 38
-    implicitWidth: 138
+    // At least 138 × 38; more as its label grows with the Text size.
+    implicitHeight: Math.max(38, tileRow.implicitHeight + 2 * Theme.s2)
+    implicitWidth: Math.max(138, tileRow.implicitWidth + 2 * Theme.s3)
     radius: Theme.r2
     color: on ? Qt.alpha(Theme.accent, 0.9) : area.containsMouse ? Theme.pillHover : Theme.pill
     scale: area.pressed ? 0.97 : 1
@@ -22,6 +23,7 @@ Rectangle {
     Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
 
     Row {
+        id: tileRow
         anchors.centerIn: parent
         spacing: 7
         Text { textFormat: Text.PlainText; anchors.verticalCenter: parent.verticalCenter; text: t.glyph; font.family: Theme.fontGlyph; font.pixelSize: 15; color: t.on ? Theme.onAccent : Theme.textPrimary }

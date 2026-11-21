@@ -141,7 +141,8 @@ def test_the_known_list_is_only_debt_at_twice_the_text():
     """At 100 % and 120 % nothing is excused. What is listed is the 200 % debt."""
     known = [l for l in (ROOT / "tests/ui/rehearsal-known.txt").read_text().splitlines() if l and not l.startswith("#")]
     assert [l for l in known if not re.search(r" @x2 \| ", l)] == []
-    assert len(known) <= 31, "the known list only gets shorter: fix the fault instead of listing it"
+    # Empty since 2026-11-21 (it was 31 on Nov 18): a new fault is fixed, not listed.
+    assert len(known) == 0, "the known list is empty: fix the fault instead of listing it"
 
 
 def test_moments_in_scene_data():
