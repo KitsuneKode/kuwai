@@ -577,7 +577,7 @@ Singleton {
     }
     // Mounted already (an automounter), or mount it now; then the files.
     function openDrive(dev) {
-        Quickshell.execDetached(["sh", "-c", 'm=$(lsblk -nro MOUNTPOINT "$1" | head -n1); [ -n "$m" ] || m=$(udisksctl mount -b "$1" | sed -n "s/.* at //p"); [ -n "$m" ] && xdg-open "$m"', "sh", dev]);
+        Apps.run(["sh", "-c", 'm=$(lsblk -nro MOUNTPOINT "$1" | head -n1); [ -n "$m" ] || m=$(udisksctl mount -b "$1" | sed -n "s/.* at //p"); [ -n "$m" ] && xdg-open "$m"', "sh", dev]);
     }
 
     // ── Network: the connection coming and going ─────────────────────────

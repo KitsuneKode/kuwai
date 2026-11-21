@@ -27,7 +27,7 @@ Singleton {
         Moments.show({ kind: "note", glyph: "\u{f0219}", label: "Noted", value: "", ring: -1, tone: Theme.textPrimary }, 1400);
         return true;
     }
-    function open() { Quickshell.execDetached(["sh", "-c", 'mkdir -p "$(dirname "$1")" && touch "$1" && xdg-open "$1"', "sh", root.file]); }
+    function open() { Apps.run(["sh", "-c", 'mkdir -p "$(dirname "$1")" && touch "$1" && xdg-open "$1"', "sh", root.file]); }
 
     IpcHandler {
         target: "note"

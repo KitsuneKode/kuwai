@@ -6,10 +6,12 @@ PartOf=graphical-session.target
 After=graphical-session.target
 # One agent per session: starting this one retires KDE's…
 Conflicts=plasma-polkit-agent.service
-# …and if this one fails for good, KDE's takes over, so there's always one.
+# …and if this one fails for good, KDE's takes over where it's installed.
 OnFailure=plasma-polkit-agent.service
-StartLimitIntervalSec=60
-StartLimitBurst=3
+# Never give up for good (2026-11-21: two `killall qs` in 18 s used up three
+# tries in 60 s, KDE's agent isn't on every machine, and every pkexec then
+# failed with no prompt). The wait grows instead: 1 s, then up to 30 s.
+StartLimitIntervalSec=0
 
 [Service]
 # No crash handler: it writes a memory dump (which could hold what you typed)
@@ -27,6 +29,8 @@ ExecStart=/bin/sh -c 'exec /usr/bin/qs -p "${KUWAI_ROOT:-%h/Projects/rice}/shell
 # (kuwai auth fallback) still stops it for good.
 Restart=always
 RestartSec=1
+RestartSteps=5
+RestartMaxDelaySec=30
 # 3 = another agent already owns the session: not a crash, don't retry.
 RestartPreventExitStatus=3
 Slice=session.slice

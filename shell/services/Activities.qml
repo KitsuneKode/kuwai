@@ -111,7 +111,7 @@ Singleton {
     Timer { id: foundFor; interval: 12000; onTriggered: root.shazamFound = null }
     function shazamToggle() { Quickshell.execDetached([Paths.bin + "/kuwai-shazam", "toggle"]); }
     function shazamOpen() {
-        if (shazamFound && shazamFound.id) Quickshell.execDetached(["xdg-open", "music://play/s/" + shazamFound.id]);
+        if (shazamFound && shazamFound.id) Apps.open("music://play/s/" + shazamFound.id);
         shazamFound = null;
     }
 

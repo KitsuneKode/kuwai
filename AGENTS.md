@@ -43,6 +43,13 @@ bin/kuwai-rehearse --gate                           # every panel in every state
 
 ## Rules that came from real failures
 
+- The shell is `kuwai-shell.service`: start, restart and stop it with `kuwai
+  restart` / `kuwai stop` (or `bin/kuwai-shell`), never `qs kill`, `killall qs`
+  or a bare `qs` (that loads `~/.config/quickshell`, not kuwai). systemd
+  restarts it within a second and stops everything it started with it.
+- What the shell opens for the user (an app, a link, a file, a terminal) goes
+  through `Apps.open` / `Apps.run` / `Apps.launch` (`shell/services/Apps.qml`),
+  so a shell restart never closes it. `tests/session/test_shell_unit.py`.
 - Text from outside the shell goes in a `Label`, or a `Text` with
   `textFormat: Text.PlainText`. Markup is built only from escaped strings.
 - A value reaches a command as an argument (`["sh", "-c", script, "sh", value]`),

@@ -248,7 +248,7 @@ FocusScope {
                     glyph: "\u{f0026}"; title: modelData.title
                     detail: "Arch news asks for a manual step with this update. Read it before updating."
                     action: Links.safeLink(modelData.link) ? "Read" : ""
-                    onActed: if (Links.safeLink(modelData.link)) Qt.openUrlExternally(modelData.link)
+                    onActed: if (Links.safeLink(modelData.link)) Apps.open(modelData.link)
                 }
             }
             Notice {
@@ -439,7 +439,7 @@ FocusScope {
                                 onToggled: on => Updates.setTrusted(aurRow.modelData.name, on)
                             }
                             ContextMenuSeparator {}
-                            ContextMenuItem { text: "Open on the AUR"; glyph: "\u{f03cc}"; enabled: aurRow.page !== ""; onTriggered: Qt.openUrlExternally(aurRow.page) }
+                            ContextMenuItem { text: "Open on the AUR"; glyph: "\u{f03cc}"; enabled: aurRow.page !== ""; onTriggered: Apps.open(aurRow.page) }
                             ContextMenuItem { text: "Copy name"; glyph: "\u{f018f}"; onTriggered: Clipboard.copyText(aurRow.modelData.name) }
                         }
                         Toggle {
@@ -619,7 +619,7 @@ FocusScope {
                     anchors.verticalCenter: parent.verticalCenter
                     glyph: "\u{f03cc}"; text: "AUR"
                     enabled: page !== ""
-                    onClicked: Qt.openUrlExternally(page)
+                    onClicked: Apps.open(page)
                 }
             }
         }

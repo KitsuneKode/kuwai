@@ -380,7 +380,7 @@ Item {
                                         color: Theme.textPrimary
                                         font.family: Theme.fontText
                                         font.pixelSize: 15
-                                        onLinkActivated: link => { if (Turn.safeLink(link)) Qt.openUrlExternally(link); }
+                                        onLinkActivated: link => { if (Turn.safeLink(link)) Apps.open(link); }
                                         HoverHandler { cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.IBeamCursor }
                                     }
                                 }
@@ -506,13 +506,13 @@ Item {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: Qt.openUrlExternally("file://" + OllamaService.sandboxDir() + "/" + fileChip.modelData.replace(/^\/?(work\/[^\/]+\/)?/, ""))
+                        onClicked: Apps.open("file://" + OllamaService.sandboxDir() + "/" + fileChip.modelData.replace(/^\/?(work\/[^\/]+\/)?/, ""))
                     }
                     activeFocusOnTab: true
                     Accessible.role: Accessible.Link
                     Accessible.name: "Open " + fileChip.modelData
-                    Accessible.onPressAction: Qt.openUrlExternally("file://" + OllamaService.sandboxDir() + "/" + fileChip.modelData.replace(/^\/?(work\/[^\/]+\/)?/, ""))
-                    Keys.onPressed: e => { if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { Qt.openUrlExternally("file://" + OllamaService.sandboxDir() + "/" + fileChip.modelData.replace(/^\/?(work\/[^\/]+\/)?/, "")); e.accepted = true; } }
+                    Accessible.onPressAction: Apps.open("file://" + OllamaService.sandboxDir() + "/" + fileChip.modelData.replace(/^\/?(work\/[^\/]+\/)?/, ""))
+                    Keys.onPressed: e => { if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { Apps.open("file://" + OllamaService.sandboxDir() + "/" + fileChip.modelData.replace(/^\/?(work\/[^\/]+\/)?/, "")); e.accepted = true; } }
                     FocusRing {}
                 }
             }
@@ -529,12 +529,12 @@ Item {
                     Icon { name: "folder-open"; size: 13; color: Theme.textTertiary; anchors.verticalCenter: parent.verticalCenter }
                     Label { text: "Sandbox folder"; size: 12; color: Theme.textTertiary; anchors.verticalCenter: parent.verticalCenter }
                 }
-                MouseArea { id: folderArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: Qt.openUrlExternally("file://" + OllamaService.sandboxDir()) }
+                MouseArea { id: folderArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: Apps.open("file://" + OllamaService.sandboxDir()) }
                 activeFocusOnTab: true
                 Accessible.role: Accessible.Link
                 Accessible.name: "Open the sandbox folder"
-                Accessible.onPressAction: Qt.openUrlExternally("file://" + OllamaService.sandboxDir())
-                Keys.onPressed: e => { if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { Qt.openUrlExternally("file://" + OllamaService.sandboxDir()); e.accepted = true; } }
+                Accessible.onPressAction: Apps.open("file://" + OllamaService.sandboxDir())
+                Keys.onPressed: e => { if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { Apps.open("file://" + OllamaService.sandboxDir()); e.accepted = true; } }
                 FocusRing {}
             }
         }
@@ -570,13 +570,13 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                         }
                     }
-                    MouseArea { id: srcArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { if (Turn.safeLink(src.modelData.url)) Qt.openUrlExternally(src.modelData.url); } }
+                    MouseArea { id: srcArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { if (Turn.safeLink(src.modelData.url)) Apps.open(src.modelData.url); } }
                     activeFocusOnTab: true
                     Accessible.role: Accessible.Link
                     Accessible.name: src.modelData.domain
                     Accessible.description: src.modelData.read ? "A page it read" : "A search result it saw"
-                    Accessible.onPressAction: { if (Turn.safeLink(src.modelData.url)) Qt.openUrlExternally(src.modelData.url); }
-                    Keys.onPressed: e => { if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { if (Turn.safeLink(src.modelData.url)) Qt.openUrlExternally(src.modelData.url); e.accepted = true; } }
+                    Accessible.onPressAction: { if (Turn.safeLink(src.modelData.url)) Apps.open(src.modelData.url); }
+                    Keys.onPressed: e => { if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { if (Turn.safeLink(src.modelData.url)) Apps.open(src.modelData.url); e.accepted = true; } }
                     FocusRing {}
                 }
             }

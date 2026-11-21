@@ -1,0 +1,48 @@
+# kuwai's shell: the island, panels, notifications and the lock screen
+# (shell/shell.qml), kept running by systemd.
+#
+# Why a service (2026-11-21): the shell had no keeper. A crash left it to
+# Quickshell's crash handler, which re-execs in place (same pid, so the old
+# run's helpers stayed as its children: two sleep guards) and once came back
+# with no path, loading ~/.config/quickshell, an old prototype, as the
+# desktop. A `killall qs` left nothing at all. Here systemd restarts it within
+# a second, everything it started lives in this unit's cgroup and goes with
+# it, and `kuwai restart` / `kuwai stop` mean one thing.
+#
+# Started by bin/kuwai-shell (startup.lua at login, `kuwai restart`,
+# promote), never enabled on its own: kuwai-shell first makes sure the user
+# manager has this Hyprland's environment, then writes which copy to run
+# (stable or dev) to $XDG_RUNTIME_DIR/kuwai/shell.env and restarts this.
+#
+# Apps the shell opens (the launcher, links, files) run in units of their own
+# (shell/services/Apps.qml), so restarting the shell never closes them.
+#
+# The lock: if the shell dies while locked, Hyprland keeps the session locked
+# and the restart a second later sees the lock flag and locks again.
+[Unit]
+Description=kuwai shell (island, notifications, lock screen)
+PartOf=graphical-session.target
+After=graphical-session.target
+# Five failed starts in 30 s is a shell that can't load (a broken file):
+# Waybar and a notice instead, until the next save (kuwai-shell --broken).
+StartLimitIntervalSec=30
+StartLimitBurst=5
+OnFailure=kuwai-shell-broken.service
+
+[Service]
+Type=simple
+WorkingDirectory=%h
+EnvironmentFile=-%t/kuwai/shell.env
+# systemd restarts it; Quickshell's own handler re-execs in place instead.
+Environment=QS_DISABLE_CRASH_HANDLER=1
+Environment=KUWAI_SHELL_UNIT=1
+ExecStart=/bin/sh -c 'exec "${KUWAI_SHELL_ROOT:-${KUWAI_ROOT:-%h/Projects/rice}}/bin/kuwai-shell" --run'
+# Takes org.freedesktop.Notifications back from dunst, then applies the bar.
+ExecStartPost=-/bin/sh -c 'exec "${KUWAI_SHELL_ROOT:-${KUWAI_ROOT:-%h/Projects/rice}}/bin/kuwai-shell" --settle'
+Restart=always
+RestartSec=1
+# SIGKILL: Quickshell 0.3.2 can segfault tearing down on a polite exit.
+KillMode=control-group
+KillSignal=SIGKILL
+TimeoutStopSec=3
+Slice=session.slice

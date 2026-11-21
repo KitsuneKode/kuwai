@@ -159,7 +159,7 @@ Singleton {
     // ids it falls back to bringing the window forward.
     function openThread(thread) {
         if (!thread || !env) { focus(); return; }
-        Quickshell.execDetached(["xdg-open", "t3code://threads/" + encodeURIComponent(env) + "/" + encodeURIComponent(thread)]);
+        Apps.open("t3code://threads/" + encodeURIComponent(env) + "/" + encodeURIComponent(thread));
         focus();
     }
     // The thread that matters most: the one that needs you, else the newest

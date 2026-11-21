@@ -1,0 +1,15 @@
+# While kuwai's shell can't load (kuwai-shell.service gave up after five
+# tries): Waybar for a bar, hypridle for idle and locking, one notice, and a
+# watch on the shell's files that starts the shell again at the next save.
+# Starting the shell stops this (Conflicts), and with it the Waybar it started.
+[Unit]
+Description=kuwai shell fallback (while the island can't load)
+Conflicts=kuwai-shell.service
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h
+EnvironmentFile=-%t/kuwai/shell.env
+ExecStart=/bin/sh -c 'exec "${KUWAI_SHELL_ROOT:-${KUWAI_ROOT:-%h/Projects/rice}}/bin/kuwai-shell" --broken'
+Slice=session.slice

@@ -556,7 +556,7 @@ Singleton {
         }
     }
     function openLog() {
-        if (result && result.log) Quickshell.execDetached(["xdg-open", result.log]);
+        if (result && result.log) Apps.open(result.log);
     }
     function terminal() {
         // sysup in a terminal, for anything the panel leaves to paru.

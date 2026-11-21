@@ -5,13 +5,13 @@ to whatever claims it. A panel that opens a link it read from a helper, a
 feed or a reply goes through services/links.mjs (`Links.safeLink`) first.
 This finds the shape that skipped it before: a link taken from data
 (`modelData.link`, `….url`) passed straight to xdg-open or
-Qt.openUrlExternally.
+Qt.openUrlExternally, or Apps.open (which hands it to xdg-open).
 """
 import re
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
-OPENS = re.compile(r"""(?:execDetached\(\[\s*"xdg-open",\s*|openUrlExternally\()\s*([\w.]+(?:\.(?:link|url|href))\b)""")
+OPENS = re.compile(r"""(?:execDetached\(\[\s*"xdg-open",\s*|openUrlExternally\(|Apps\.open\()\s*([\w.]+(?:\.(?:link|url|href))\b)""")
 
 
 def unchecked(path):

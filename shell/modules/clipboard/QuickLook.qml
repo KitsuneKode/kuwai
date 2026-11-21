@@ -171,7 +171,7 @@ Item {
                 selectionColor: Qt.alpha(Theme.blue, 0.5)
                 font.family: Theme.fontText
                 font.pixelSize: 15
-                onLinkActivated: link => { if (/^(https?:\/\/|mailto:)/i.test(link)) Qt.openUrlExternally(link); }   // the web and mail only: a copied text can carry any scheme
+                onLinkActivated: link => { if (/^(https?:\/\/|mailto:)/i.test(link)) Apps.open(link); }   // the web and mail only: a copied text can carry any scheme
             }
         }
         Image {

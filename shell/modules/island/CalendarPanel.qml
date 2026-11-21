@@ -251,14 +251,14 @@ FocusScope {
                     color: !Calendar.configured && addCal.containsMouse ? Theme.textSecondary : Theme.textTertiary
                     Accessible.role: Calendar.configured ? Accessible.StaticText : Accessible.Button
                     Accessible.name: text
-                    Accessible.onPressAction: if (!Calendar.configured) { Quickshell.execDetached(["sh", "-c", 'mkdir -p "$(dirname "$1")" && touch "$1" && xdg-open "$1"', "sh", Calendar.listPath]); Island.close(); }
+                    Accessible.onPressAction: if (!Calendar.configured) { Apps.run(["sh", "-c", 'mkdir -p "$(dirname "$1")" && touch "$1" && xdg-open "$1"', "sh", Calendar.listPath]); Island.close(); }
                     MouseArea {
                         id: addCal
                         anchors.fill: parent
                         enabled: !Calendar.configured
                         hoverEnabled: true
                         cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                        onClicked: { Quickshell.execDetached(["sh", "-c", 'mkdir -p "$(dirname "$1")" && touch "$1" && xdg-open "$1"', "sh", Calendar.listPath]); Island.close(); }
+                        onClicked: { Apps.run(["sh", "-c", 'mkdir -p "$(dirname "$1")" && touch "$1" && xdg-open "$1"', "sh", Calendar.listPath]); Island.close(); }
                     }
                 }
                 // As many as the island has room for: five, fewer as the text grows;

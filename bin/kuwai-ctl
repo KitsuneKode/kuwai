@@ -7,6 +7,7 @@ Control the running kuwai.
 
   kuwai start|restart        (re)start the shell, take over notifications
   kuwai stop                 stop it (dunst takes notifications back)
+  kuwai status               is it running, since when, its last lines (kuwai-shell.service)
   kuwai logs                 follow the shell's log
   kuwai notifs <cmd>         dnd | dnd-on | dnd-off | mute-on | mute-off | clear | hide | open | last | count | waybar
   kuwai feeds [status|gmail-setup|gmail-forget|logs]   GitHub and Gmail notifications (bin/kuwai-feeds)
@@ -134,8 +135,10 @@ switch_to() {
             return 1
         fi
     fi
+    local main
+    main=$(systemctl --user show -p MainPID --value kuwai-shell.service 2>/dev/null)
     qs list --all --json 2>/dev/null | jq -r '.[] | select(.config_path | endswith("/shell/shell.qml")) | "\(.pid) \(.config_path | sub("/shell/shell.qml$"; ""))"' | while read -r pid root; do
-        [ "$root" = "$1" ] || kill -9 "$pid" 2>/dev/null
+        [ "$root" = "$1" ] || [ "$pid" = "$main" ] || kill -9 "$pid" 2>/dev/null
     done
     systemctl --user set-environment KUWAI_ROOT="$1" 2>/dev/null
     hyprctl dispatch "hl.dsp.exec_cmd('dbus-update-activation-environment --systemd PATH KUWAI_ROOT')" >/dev/null 2>&1
@@ -224,6 +227,7 @@ case ${1:-} in
             echo "kuwai: a migration didn't run (above); stable back to $(git -C "$STABLE" log --oneline -1); fix it in dev and promote again" >&2
             exit 1
         fi
+        git -C "$STABLE" diff --quiet "$prev" HEAD -- systemd || systemctl --user daemon-reload 2>/dev/null
         if [ "$(cat "$STATE_DIR/channel" 2>/dev/null)" = stable ]; then
             KUWAI_ERRS_BEFORE=$(hyprctl configerrors 2>/dev/null)
             if ! ( switch_to "$STABLE" ); then
@@ -252,7 +256,9 @@ case ${1:-} in
     migrations)    shift; exec "$KUWAI/bin/kuwai-migrations" "$@" ;;
     doctor)        shift; exec "$KUWAI/bin/kuwai-doctor" "$@" ;;
     start|restart) exec "$KUWAI/bin/kuwai-shell" ;;
-    stop)          for pid in $(qs list -p "$SHELL_DIR" --json 2>/dev/null | jq -r ".[].pid"); do kill -9 "$pid"; done ;;
+    stop)          systemctl --user stop kuwai-shell.service kuwai-shell-broken.service 2>/dev/null
+                   for pid in $(qs list -p "$SHELL_DIR" --json 2>/dev/null | jq -r ".[].pid"); do kill -9 "$pid"; done ;;
+    status)        exec systemctl --user status kuwai-shell.service --no-pager ;;
     logs)          exec qs log -p "$SHELL_DIR" -f ;;
     notifs)        shift; notifs "$@" ;;
     feeds)         case ${2:-status} in

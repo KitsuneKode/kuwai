@@ -61,7 +61,7 @@ FocusScope {
         const t = Hyprland.activeToplevel;
         const pid = t && t.lastIpcObject && t.lastIpcObject.pid ? String(t.lastIpcObject.pid) : "";
         Island.close();
-        Quickshell.execDetached([Paths.bin + "/kuwai-agent", name, pid]);
+        Apps.run([Paths.bin + "/kuwai-agent", name, pid]);
     }
     property int current: 0
     property var lastPointer: null
@@ -93,7 +93,7 @@ FocusScope {
         { name: "Calendar", sub: "This month", glyph: "\u{f00ed}", run: () => Qt.callLater(() => Island.open("calendar", Island.screen, "key")), keep: true },
         { name: "Clipboard", sub: "History and pins", glyph: "\u{f014c}", run: () => Clipboard.toggle("all") },
         { name: "Screen Recording", sub: "Choose a screen, audio and frame rate", glyph: "\u{f044a}", run: () => Clipboard.recordKey() },
-        { name: "Screenshot", sub: "Pick an area or a window, then annotate", glyph: "\u{f0104}", run: () => Quickshell.execDetached([Paths.bin + "/kuwai-shot", "area"]) },
+        { name: "Screenshot", sub: "Pick an area or a window, then annotate", glyph: "\u{f0104}", run: () => Apps.run([Paths.bin + "/kuwai-shot", "area"]) },
         { name: "Notifications", sub: "The center", glyph: "\u{f009a}", run: () => Notifs.toggleCenter("notifications", "key") },
         { name: "Claude here", sub: "Claude Code in this folder, as a kittymux tab", glyph: "\u{f06a9}", run: () => launcher.agentHere("claude") },
         { name: "Codex here", sub: "Codex in this folder, as a kittymux tab", glyph: "\u{f06a9}", run: () => launcher.agentHere("codex") },
@@ -218,7 +218,7 @@ FocusScope {
     // What ↵ does to a result, as its row and its menu say it.
     readonly property var verbs: ({ app: "Open", window: "Switch to", action: "Run", calc: "Copy", mode: "Use", emoji: "Type", glyph: "Type", file: "Open", web: "Search", timer: "Start" })
     property int menuAt: -1                       // a row whose menu is open (the rehearsal stages it)
-    function fileFolder(r) { Quickshell.execDetached(["xdg-open", r.dir ? r.path : r.path.slice(0, r.path.lastIndexOf("/"))]); Island.close(); }
+    function fileFolder(r) { Apps.open(r.dir ? r.path : r.path.slice(0, r.path.lastIndexOf("/"))); Island.close(); }
     function copyPath(r) { Quickshell.execDetached(["wl-copy", "--", r.path]); Island.close(); }
     function procLabel(p) { return (p.app && p.app.toLowerCase() !== p.name.toLowerCase() ? p.app + " · " : "") + p.name; }
     function endProc(r, force) {
@@ -441,7 +441,7 @@ FocusScope {
             return;
         } else if (r.kind === "app") {
             used(r.entry.id);
-            r.entry.execute();
+            Apps.launch(r.entry);
         } else if (r.kind === "timer") {
             Timers.start(r.secs, r.label);
         } else if (r.kind === "remind") {
@@ -456,9 +456,9 @@ FocusScope {
         } else if (r.kind === "pomo") {
             Timers.pomo ? Timers.stopPomo() : Timers.startPomo();
         } else if (r.kind === "file") {
-            Quickshell.execDetached(["xdg-open", r.path]);
+            Apps.open(r.path);
         } else if (r.kind === "web") {
-            Quickshell.execDetached(["xdg-open", "https://duckduckgo.com/?q=" + encodeURIComponent(query.trim())]);
+            Apps.open("https://duckduckgo.com/?q=" + encodeURIComponent(query.trim()));
         } else if (r.kind === "window") {
             Hyprland.dispatch("hl.dsp.focus({window = 'address:0x" + r.toplevel.address + "'})");
         } else if (r.kind === "action") {

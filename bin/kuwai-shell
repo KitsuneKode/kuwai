@@ -7,6 +7,10 @@ KUWAI="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
 . "$KUWAI/lib/hyde.sh"
 SHELL_DIR="$KUWAI/shell"
 NAME=org.freedesktop.Notifications
+UNIT=kuwai-shell.service
+BROKEN_UNIT=kuwai-shell-broken.service
+RT="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+ENV_FILE="$RT/kuwai/shell.env"
 
 owner_pid() {
     busctl --user call org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus \
@@ -25,15 +29,22 @@ stop_shells() {
     done
 }
 
+has_unit() { systemctl --user cat "$UNIT" >/dev/null 2>&1; }
+unit_pid() { systemctl --user show -p MainPID --value "$UNIT" 2>/dev/null; }
+inside_unit() { grep -qE '/kuwai-shell(-broken)?\.service$' /proc/self/cgroup 2>/dev/null; }
+
 newest_log() {
     local d
-    for d in $(find "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/quickshell/by-id" -mindepth 1 -maxdepth 1 -type d -newer "$MARK" 2>/dev/null); do
+    for d in $(find "$RT/quickshell/by-id" -mindepth 1 -maxdepth 1 -type d ${MARK:+-newer "$MARK"} -printf '%T@ %p\n' 2>/dev/null | sort -rn | cut -d' ' -f2-); do
         if strings "$d/log.qslog" 2>/dev/null | grep -qF "Launching config: \"$SHELL_DIR/shell.qml\""; then
             echo "$d/log.qslog"
             return
         fi
     done
 }
+
+loaded() { [ -n "$1" ] && strings "$1" 2>/dev/null | grep -q 'Configuration Loaded'; }
+failed_to_load() { [ -n "$1" ] && strings "$1" 2>/dev/null | grep -q 'Failed to load configuration' && ! loaded "$1"; }
 
 notify_critical() {
     local title=$1 body=$2
@@ -43,7 +54,21 @@ notify_critical() {
         'Shell' 0 'dialog-error' "$title" "$body" '[]' '{"urgency": <byte 2>}' 15000 \
         >/dev/null 2>&1 || true
 }
-broken() {
+
+WATCH='
+dir=$1 kuwai=$2
+stamp() { find "$dir" \( -name "*.qml" -o -name "*.js" -o -name "*.mjs" -o -name qmldir \) -printf "%T@\n" 2>/dev/null | sort -n | tail -1; }
+was=$(stamp)
+for _ in $(seq 3600); do
+    sleep 2
+    now=$(stamp)
+    if [ "$now" != "$was" ]; then
+        sleep 1
+        exec "$kuwai/bin/kuwai-shell"
+    fi
+done'
+
+fall_back() {
     local log=$1 why
     why=$(strings "$log" 2>/dev/null | grep -m3 'caused by' | sed 's/^[^c]*caused by //' | paste -sd ' ' | cut -c1-220)
     echo "kuwai-shell: the shell didn't load: $why" >&2
@@ -51,18 +76,11 @@ broken() {
     waybar_start || bar=""
     systemctl --user start hypridle.service 2>/dev/null
     notify_critical "The island didn't load" "${why:-see the Quickshell log} · ${bar}saving a fixed QML file reloads the island"
-    setsid -f bash -c '
-        dir=$1 kuwai=$2
-        stamp() { find "$dir" \( -name "*.qml" -o -name "*.js" -o -name "*.mjs" -o -name qmldir \) -printf "%T@\n" 2>/dev/null | sort -n | tail -1; }
-        was=$(stamp)
-        for _ in $(seq 3600); do       # two hours, then give up quietly
-            sleep 2
-            now=$(stamp)
-            if [ "$now" != "$was" ]; then
-                sleep 1                # let a burst of saves finish
-                exec "$kuwai/bin/kuwai-shell"
-            fi
-        done' kuwai-shell-watch "$SHELL_DIR" "$KUWAI" >/dev/null 2>&1 </dev/null
+}
+
+broken() {
+    fall_back "$1"
+    setsid -f bash -c "$WATCH" kuwai-shell-watch "$SHELL_DIR" "$KUWAI" >/dev/null 2>&1 </dev/null
     exit 1
 }
 
@@ -74,59 +92,157 @@ stop_dunst() {
     done
 }
 
-stop_shells
-pkill -f 'qs -p .*/quickshell/glass-osd' 2>/dev/null
-"$KUWAI/bin/kuwai-migrate"
-if ! systemctl --user -q is-active kuwai-auth.service plasma-polkit-agent.service 2>/dev/null; then
-    systemctl --user start kuwai-auth.service 2>/dev/null || systemctl --user start plasma-polkit-agent.service 2>/dev/null
-fi
-for p in $(pgrep -f "kuwai-shell-watch $SHELL_DIR $KUWAI\$"); do [ "$p" != "$$" ] && kill "$p" 2>/dev/null; done
+private_dirs() {
+    for d in "${XDG_STATE_HOME:-$HOME/.local/state}/kuwai" "${XDG_CACHE_HOME:-$HOME/.cache}/kuwai" "${XDG_CONFIG_HOME:-$HOME/.config}/kuwai"; do
+        mkdir -p "$d" 2>/dev/null && chmod 700 "$d" 2>/dev/null
+    done
+}
 
-for d in "${XDG_STATE_HOME:-$HOME/.local/state}/kuwai" "${XDG_CACHE_HOME:-$HOME/.cache}/kuwai" "${XDG_CONFIG_HOME:-$HOME/.config}/kuwai"; do
-    mkdir -p "$d" 2>/dev/null && chmod 700 "$d" 2>/dev/null
-done
+prepare() {
+    "$KUWAI/bin/kuwai-migrate"
+    if ! systemctl --user -q is-active kuwai-auth.service plasma-polkit-agent.service 2>/dev/null; then
+        systemctl --user reset-failed kuwai-auth.service 2>/dev/null
+        systemctl --user start kuwai-auth.service 2>/dev/null || systemctl --user start plasma-polkit-agent.service 2>/dev/null
+    fi
+    for p in $(pgrep -f "kuwai-shell-watch $SHELL_DIR $KUWAI\$"); do [ "$p" != "$$" ] && kill "$p" 2>/dev/null; done
+    private_dirs
+}
 
-loaded() { [ -n "$1" ] && strings "$1" 2>/dev/null | grep -q 'Configuration Loaded'; }
-
-MARK=$(mktemp "${XDG_RUNTIME_DIR:-/tmp}/kuwai/launch.XXXXXX")
-trap 'rm -f -- "$MARK"' EXIT
-for attempt in 1 2 3; do
+run() {
+    private_dirs
     stop_dunst
-    touch "$MARK"
-    envs=("GLIBC_TUNABLES=glibc.malloc.arena_max=2:glibc.malloc.trim_threshold=8388608")
-    envs+=("QSG_RENDER_LOOP=basic")
-    envs+=("KUWAI_REVISION=$(git -C "$KUWAI" describe --always --dirty 2>/dev/null || printf unknown)")
-    envs+=("QS_CONFIG_PATH=$SHELL_DIR")
-    if [ -n "${KUWAI_SHELL_ENV:-}" ]; then read -ra extra <<<"$KUWAI_SHELL_ENV"; envs+=("${extra[@]}"); fi
-    cmd=$(printf '%q ' env "${envs[@]}" qs -p "$SHELL_DIR" -d)
-    if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && hyprctl dispatch "hl.dsp.exec_cmd([==[$cmd]==])" >/dev/null 2>&1; then :
-    else env "${envs[@]}" qs -p "$SHELL_DIR" -d >/dev/null 2>&1; fi
-    log=
-    for i in $(seq 60); do
-        if [ $((i % 5)) -eq 0 ]; then
-            log=$(newest_log)
-            if [ -n "$log" ] && strings "$log" 2>/dev/null | grep -q 'Failed to load configuration' \
-               && ! loaded "$log"; then
-                broken "$log"
-            fi
-        fi
+    export GLIBC_TUNABLES="glibc.malloc.arena_max=2:glibc.malloc.trim_threshold=8388608"
+    export QSG_RENDER_LOOP=basic
+    KUWAI_REVISION=$(git -C "$KUWAI" describe --always --dirty 2>/dev/null || printf unknown)
+    export KUWAI_REVISION
+    if [ -n "${KUWAI_SHELL_ENV:-}" ]; then read -ra extra <<<"$KUWAI_SHELL_ENV"; export "${extra[@]}"; fi
+    exec qs -p "$SHELL_DIR"
+}
+
+settle() {
+    local pid
+    for _ in $(seq 60); do
         pid=$(owner_pid)
         [ -n "$pid" ] && [ "$(cat /proc/"$pid"/comm 2>/dev/null)" = "dunst" ] && pkill -x dunst
-        if [ -n "$pid" ] && shell_pids | grep -qx "$pid"; then
-            "$KUWAI/bin/kuwai" bar apply
+        [ -n "$pid" ] && [ "$pid" = "${MAINPID:-}" ] && break
+        sleep 0.1
+    done
+    "$KUWAI/bin/kuwai" bar apply >/dev/null 2>&1
+    exit 0
+}
+
+broken_unit() {
+    fall_back "$(newest_log)"
+    exec bash -c "$WATCH" kuwai-shell-watch "$SHELL_DIR" "$KUWAI"
+}
+
+env_value() {
+    case $2 in *$'\n'*) return ;; esac
+    local v=${2//\\/\\\\}
+    printf '%s="%s"\n' "$1" "${v//\"/\\\"}"
+}
+
+write_env() {
+    {
+        env_value KUWAI_SHELL_ROOT "$KUWAI"
+        [ -n "${KUWAI_SHELL_ENV:-}" ] && env_value KUWAI_SHELL_ENV "$KUWAI_SHELL_ENV"
+        [ -n "${KUWAI_HANDOFF_ID:-}" ] && env_value KUWAI_HANDOFF_ID "$KUWAI_HANDOFF_ID"
+    } >"$ENV_FILE.new" && mv -f -- "$ENV_FILE.new" "$ENV_FILE"
+}
+
+sync_env() {
+    local sig=${HYPRLAND_INSTANCE_SIGNATURE:-} have
+    [ -n "$sig" ] && [ -S "$RT/hypr/$sig/.socket.sock" ] || return 0
+    have=$(systemctl --user show-environment 2>/dev/null | sed -n 's/^HYPRLAND_INSTANCE_SIGNATURE=//p')
+    [ "$have" = "$sig" ] && return 0
+    dbus-update-activation-environment --systemd WAYLAND_DISPLAY DISPLAY HYPRLAND_INSTANCE_SIGNATURE \
+        XDG_CURRENT_DESKTOP XDG_SESSION_TYPE XDG_SESSION_DESKTOP PATH 2>/dev/null
+}
+
+start_unit() {
+    if inside_unit; then
+        local keep=()
+        [ -n "${KUWAI_SHELL_ENV:-}" ] && keep+=("--setenv=KUWAI_SHELL_ENV=$KUWAI_SHELL_ENV")
+        [ -n "${KUWAI_HANDOFF_ID:-}" ] && keep+=("--setenv=KUWAI_HANDOFF_ID=$KUWAI_HANDOFF_ID")
+        exec systemd-run --user --collect --quiet --description="kuwai shell restart" "${keep[@]}" -- "$KUWAI/bin/kuwai-shell"
+    fi
+    prepare
+    sync_env
+    write_env
+    local main
+    main=$(unit_pid)
+    for pid in $(shell_pids); do [ "$pid" != "$main" ] && kill -9 "$pid" 2>/dev/null; done
+    systemctl --user reset-failed "$UNIT" "$BROKEN_UNIT" 2>/dev/null
+    MARK=$(mktemp "$RT/kuwai/launch.XXXXXX")
+    trap 'rm -f -- "$MARK"' EXIT
+    systemctl --user restart "$UNIT"
+    local log=""
+    for _ in $(seq 60); do
+        log=$(newest_log)
+        if failed_to_load "$log"; then
+            echo "kuwai-shell: the shell didn't load (systemd retries it; after five tries Waybar takes over until the next save)" >&2
+            exit 1
+        fi
+        if loaded "$log" && systemctl --user -q is-active "$UNIT"; then
+            [ "$(owner_pid)" = "$(unit_pid)" ] || echo "kuwai-shell: running; notifications stay with pid $(owner_pid) until it exits" >&2
             exit 0
         fi
         sleep 0.1
     done
-    if loaded "$log" && [ -n "$(shell_pids)" ]; then
-        owner=$(owner_pid)
-        echo "kuwai-shell: running; notifications stay with pid ${owner:-?} ($(tr '\0' ' ' </proc/"${owner:-0}"/cmdline 2>/dev/null | cut -c1-80)) until it exits" >&2
-        "$KUWAI/bin/kuwai" bar apply
-        exit 0
-    fi
-    echo "kuwai-shell: the shell didn't come up (attempt $attempt), retrying" >&2
-    stop_shells
-done
+    echo "kuwai-shell: the shell didn't come up (systemctl --user status $UNIT)" >&2
+    exit 1
+}
 
-echo "kuwai-shell: gave up; dunst stays the notification server" >&2
-exit 1
+start_legacy() {
+    stop_shells
+    pkill -f 'qs -p .*/quickshell/glass-osd' 2>/dev/null
+    prepare
+    MARK=$(mktemp "$RT/kuwai/launch.XXXXXX")
+    trap 'rm -f -- "$MARK"' EXIT
+    for attempt in 1 2 3; do
+        stop_dunst
+        touch "$MARK"
+        envs=("GLIBC_TUNABLES=glibc.malloc.arena_max=2:glibc.malloc.trim_threshold=8388608")
+        envs+=("QSG_RENDER_LOOP=basic")
+        envs+=("KUWAI_REVISION=$(git -C "$KUWAI" describe --always --dirty 2>/dev/null || printf unknown)")
+        envs+=("QS_CONFIG_PATH=$SHELL_DIR")
+        if [ -n "${KUWAI_SHELL_ENV:-}" ]; then read -ra extra <<<"$KUWAI_SHELL_ENV"; envs+=("${extra[@]}"); fi
+        cmd=$(printf '%q ' env "${envs[@]}" qs -p "$SHELL_DIR" -d)
+        if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && hyprctl dispatch "hl.dsp.exec_cmd([==[$cmd]==])" >/dev/null 2>&1; then :
+        else env "${envs[@]}" qs -p "$SHELL_DIR" -d >/dev/null 2>&1; fi
+        log=
+        for i in $(seq 60); do
+            if [ $((i % 5)) -eq 0 ]; then
+                log=$(newest_log)
+                failed_to_load "$log" && broken "$log"
+            fi
+            pid=$(owner_pid)
+            [ -n "$pid" ] && [ "$(cat /proc/"$pid"/comm 2>/dev/null)" = "dunst" ] && pkill -x dunst
+            if [ -n "$pid" ] && shell_pids | grep -qx "$pid"; then
+                "$KUWAI/bin/kuwai" bar apply
+                exit 0
+            fi
+            sleep 0.1
+        done
+        if loaded "$log" && [ -n "$(shell_pids)" ]; then
+            owner=$(owner_pid)
+            echo "kuwai-shell: running; notifications stay with pid ${owner:-?} ($(tr '\0' ' ' </proc/"${owner:-0}"/cmdline 2>/dev/null | cut -c1-80)) until it exits" >&2
+            "$KUWAI/bin/kuwai" bar apply
+            exit 0
+        fi
+        echo "kuwai-shell: the shell didn't come up (attempt $attempt), retrying" >&2
+        stop_shells
+    done
+    echo "kuwai-shell: gave up; dunst stays the notification server" >&2
+    exit 1
+}
+
+case ${1:-} in
+    --run) run ;;
+    --settle) settle ;;
+    --broken) broken_unit ;;
+    "")
+        if [ "${KUWAI_SHELL_LEGACY:-}" != 1 ] && has_unit; then start_unit; fi
+        start_legacy ;;
+    *) echo "usage: kuwai-shell [--run|--settle|--broken]" >&2; exit 2 ;;
+esac

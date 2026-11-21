@@ -5,6 +5,30 @@ they land. User wants: extremely secure, premium, tasteful, fast, Apple-grade.
 
 **2026-11-16: the order of work toward a public launch is in [PLAN-launch.md](PLAN-launch.md)** (in-flight worktrees, the 12 reported issues, references, pstack verification, clips).
 
+## STATUS (2026-11-21, later) — the shell is a systemd service (feat/shell-unit)
+
+Why it felt flaky: the shell had no keeper. 09:36 crash → Quickshell's handler
+re-exec'd it as ~/.config/quickshell (a prototype) with the old run's helpers
+attached; 10:11 `killall qs` → no shell, and kuwai-auth used up 3 tries in
+60 s with no fallback installed (no password prompts). Now kuwai-shell.service
+(Restart=always, cgroup kill, crash handler off) + kuwai-shell-broken.service
+(Waybar + notice until the next save); bin/kuwai-shell is the client; apps the
+shell opens go to app.slice via Apps.qml; auth never gives up (backoff to
+30 s); migration 0003 links the units; `kuwai status`. The CPU gate's coin
+flip while agents work is named (10 %), not hidden.
+
+Not live yet: stable is 7500442. To land: commit (or set aside) the
+comment-removal session's uncommitted edits in the main checkout, merge
+feat/shell-unit (conflicts only in bin/kuwai{,-check,-ctl,-shell} and
+install.sh: comments vs code), `bin/kuwai promote`. Then check: `kuwai status`
+says active; `kuwai-check` says "unit: kept running by kuwai-shell.service".
+
+Next: the T3 ring's 600 ms step costs ~120 frames on the 200 Hz monitor (8–12 %
+in a second that has one): step it cheaper or less often; the notification
+centre (badge 7, list empty; clicked items linger; smart cleanup) from the
+last thread; HyDE pieces still running here (awww, wallpaper.sh,
+hyde-config.service, dunst, Waybar).
+
 ## STATUS (2026-11-21) — five lists and the owner's reports, landed on feat/assistant-agent
 
 Landed (each its own commit; `git log 2026-11-20..`): keyboard and mouse reach
