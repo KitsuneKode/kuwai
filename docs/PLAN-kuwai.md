@@ -5,6 +5,34 @@ they land. User wants: extremely secure, premium, tasteful, fast, Apple-grade.
 
 **2026-11-16: the order of work toward a public launch is in [PLAN-launch.md](PLAN-launch.md)** (in-flight worktrees, the 12 reported issues, references, pstack verification, clips).
 
+## STATUS (2026-11-21) — five lists and the owner's reports, landed on feat/assistant-agent
+
+Landed (each its own commit; `git log 2026-11-20..`): keyboard and mouse reach
+the same things everywhere (Ctrl+Tab, lock and login focus, island cards on
+Super+Ctrl+↵); nothing repaints at rest (ghost snapshot, minute clocks, rings
+step only while seen); one screensaver film on all screens; one ContextMenu,
+one Button (PillButton gone), one ListRow for T3/Agents/Notifications/Launcher;
+contrast ≥ 4.5 and every panel whole at 200% text (rehearsal known list: 0);
+weather finds its own place; voice HUDs kept across a monitor's deep sleep;
+kuwai-check runs the live checks itself. From the owner's reports: the lock
+no longer restarts the shell when a monitor comes back (the "lock screen
+died" flash, the crash screen after sleep); screens stay on while agents work
+(turning them off unplugged DP-3 and moved its workspaces); notification
+centre icons looked up once and cached (the QIconLoader crash). Usage: spend
+per provider from the local logs (bin/kuwai-spend). The T3 capsule says what
+it wants in a word. promote asks Landlock first; install.sh tried on a fresh
+Arch container (font package, no session bus, uninstall without python).
+
+Needs the owner: `sudo greeter/install --code`, then one logout (the new
+handoff; the greeter's Hyprland crashed at handoff on 11-19 and 11-20);
+`hyprctl reload` or a new login for Super+Ctrl+↵; the monitor's own "DP deep
+sleep" off; a `diagnostics:read` T3 token for spend from T3 itself
+([PLAN-agents.md](PLAN-agents.md)).
+
+Not proven: the centre's icon crash is mitigated, not reproduced; a real DPMS
+cycle on the live session; the 11-19 18:22 poweroff (systemctl, from the user
+manager) has no cause found. Next: [PLAN-agents.md](PLAN-agents.md).
+
 ## STATUS (2026-11-17, night) — audit pass 2, promoted (stable d47301e)
 
 Landed and live: one-time codes by rule (services/otp.mjs: the origin-bound
