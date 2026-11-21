@@ -1,17 +1,9 @@
--- kuwai.extras — resize mode, per-app place memory, smart PiP, focus sessions.
--- Each is a feature (`kuwai feature NAME off`).
-
 local K = require("kuwai.core")
 local A = require("kuwai.actions")
 
 local dsp = hl.dsp
 local bind = K.bind
 
----------------------------------------------------------------------------
--- Resize mode: Super+Ctrl+S, then arrows (Shift = big steps, Ctrl+Alt+±
--- = column width). Enter/Esc or any other key leaves. While it's on, a small
--- Hyprland notification says so (the island can read `submap>>resize` too).
----------------------------------------------------------------------------
 if K.feature("resize_mode") then
 	K.group("Windows|Resize")
 	bind("SUPER + CTRL + S", "Resize mode (arrows; Enter/Esc to leave)", dsp.submap("resize"))
@@ -45,16 +37,10 @@ if K.feature("resize_mode") then
 	end)
 end
 
----------------------------------------------------------------------------
--- Remember place: a floating app reopens where it was on its screen.
--- (Size is persistent_size's job.) Your own move/size rules in user.lua load
--- later and win; only the last 40 apps are kept.
----------------------------------------------------------------------------
 if K.feature("remember_place") then
 	local function key(cls)
 		return "place." .. cls:gsub("[^%w%.%-_]", "_")
 	end
-	-- Recreate the rules from what was saved.
 	for k, v in pairs(K.state) do
 		local cls = k:match("^place%.(.+)$")
 		local x, y = (v or ""):match("^(%-?%d+),(%-?%d+)")
@@ -75,7 +61,6 @@ if K.feature("remember_place") then
 		if not (m and at.x) then
 			return
 		end
-		-- monitor-local logical position; skip windows mostly off-screen
 		local x, y = math.floor(at.x - m.x), math.floor(at.y - m.y)
 		if x < -50 or y < -50 then
 			return
@@ -93,27 +78,10 @@ if K.feature("remember_place") then
 	end)
 end
 
----------------------------------------------------------------------------
--- Picture-in-picture that knows when you want it (feature pip_dodge)
--- (a browser's picture-in-picture, and a music app's mini player: Cider's)
----------------------------------------------------------------------------
--- It steps aside for a pointer passing by, never for one going to it:
---   · a pointer moving fast past it: it slides to the other bottom corner;
---   · a pointer arriving slowly, resting near it, or already on it: it stays
---     (you're reaching for it: seek, pause, close);
---   · just moved and you came after it: it stays (you're chasing it);
---   · Shift held: it stays, as before.
--- Drag it (Super+drag) and let go: it settles in the corner it was heading
--- for, on whichever screen that is, so a throw up sends it to a top corner
--- and a throw across sends it to the other screen.
--- Keys: Super+Alt+W next corner · Super+Alt+Shift+W the other screen ·
--- (bigger / smaller: your user.lua binds A.pip_toggle). The 150 ms look runs only while one exists.
-local PIP_TICK = 0.15                                  -- seconds
-local PIP_FAST = 1100                                  -- px/s: faster than this is passing by
-local PIP_CHASE = 27                                   -- ticks (~4 s) a dodge makes it stay put
+local PIP_TICK = 0.15
+local PIP_FAST = 1100
+local PIP_CHASE = 27
 local PIP_MARGIN = 16
--- What counts: a browser's picture-in-picture, and a music app's compact player
--- (Cider's "Mini Player"): small, floating, pinned, in the pointer's way the same way.
 local PIP_TITLES = { "picture.?in.?picture", "mini.?player" }
 local function pip_title(w)
 	local t = (w and w.title or ""):lower()
@@ -149,8 +117,6 @@ local function mon_at(x, y)
 	end
 	return best
 end
--- The four corners of a screen for a window of size sz: top-left, top-right,
--- bottom-right, bottom-left (clockwise, the order Super+Alt+W walks).
 local function corners(m, sz)
 	local u = A.usable(m)
 	local l, r = u.x + PIP_MARGIN, u.x + u.w - sz.x - PIP_MARGIN
@@ -198,14 +164,11 @@ if K.feature("pip_dodge") then
 				local inside = c and c.x >= at.x and c.x <= at.x + sz.x and c.y >= at.y and c.y <= at.y + sz.y
 				local pad = 24
 				local near = c and c.x > at.x - pad and c.x < at.x + sz.x + pad and c.y > at.y - pad and c.y < at.y + sz.y + pad
-				-- Reaching: on it, or slowly near it; it holds until the pointer has gone.
 				if inside or (near and speed < PIP_FAST) then
 					pip.reaching = true
 				elseif not near then
 					pip.reaching = false
 				end
-				-- Moved by you (a drag), not by us: when it stops, it settles in the
-				-- corner it was heading for, on the screen that corner is on.
 				local s = pip.seen[key]
 				local mine = pip.ours[key]
 				if mine and math.abs(mine[1] - at.x) < 4 and math.abs(mine[2] - at.y) < 4 then
@@ -231,7 +194,6 @@ if K.feature("pip_dodge") then
 				if not pip.seen[key] or not s then
 					pip.seen[key] = { x = at.x, y = at.y, still = 0, moving = false }
 				end
-				-- Passing by, fast, and not chased: step aside.
 				if near and not inside and not pip.reaching and not shift and speed >= PIP_FAST
 						and pip.tick - pip.dodged > PIP_CHASE and not (s and s.moving) then
 					local m = w.monitor or mon_at(at.x, at.y)
@@ -253,10 +215,8 @@ if K.feature("pip_dodge") then
 		end
 	end
 	hl.on("window.open", wake)
-	-- A player that turns compact in the same window (its title changes) is one too.
 	hl.on("window.title", wake)
 end
--- Keys, with or without the dodging.
 local function the_pip()
 	return pips()[1]
 end
@@ -296,11 +256,6 @@ end
 bind("SUPER + ALT + W", "Picture-in-picture: next corner", kuwai_pip_corner)
 bind("SUPER + ALT + SHIFT + W", "Picture-in-picture: the other screen", kuwai_pip_screen)
 
----------------------------------------------------------------------------
--- Focus sessions: Super+Ctrl+G starts 25 minutes (again: stop). Do Not
--- Disturb and focus mode for the length of it; a notification when it ends.
--- `kuwai focus 50` for another length. Survives reloads.
----------------------------------------------------------------------------
 _G.kuwai = _G.kuwai or {}
 if K.feature("focus_sessions") then
 	local t
@@ -334,8 +289,6 @@ if K.feature("focus_sessions") then
 			return "stopped"
 		end
 		minutes = tonumber(minutes) or 25
-		-- A new length replaces a running session: its timer goes first, or
-		-- the old deadline would end the new session early.
 		if t then
 			pcall(function()
 				t:set_enabled(false)

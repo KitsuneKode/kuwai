@@ -42,6 +42,8 @@ jobs:
         run: for t in tests/hypr/test_*.lua; do lua "$t" || exit 1; done
       - name: Design tokens only go down
         run: bin/kuwai-tokens --check
+      - name: Code comments only go down
+        run: bin/kuwai-comments --check
 
   chat-state:
     runs-on: ubuntu-latest

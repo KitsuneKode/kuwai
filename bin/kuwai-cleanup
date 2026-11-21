@@ -81,16 +81,12 @@ def skills():
                 s["links"].append(str(entry))
             if agent != "store" and agent not in s["agents"]:
                 s["agents"].append(agent)
-    # The same skill in two real folders (a copy, not a link): both are listed
-    # to the agents that read them; say so, and trash moves both.
     names = {}
     for s in found.values():
         names.setdefault(s["name"], []).append(s["path"])
     for s in found.values():
         s["copies"] = len(names[s["name"]])
     for s in found.values():
-        # What it costs every session: its name and description in the skill list
-        # (≈ 4 characters a token, plus the list's own markup).
         s["tokens"] = max(8, (s.pop("chars") + 24) // 4)
     return list(found.values())
 
@@ -120,7 +116,7 @@ def usage(days):
             f, _, name = line.rpartition(":")
             if not name:
                 continue
-            name = name.split(":")[-1]          # plugin:skill → skill
+            name = name.split(":")[-1]
             t = mt.get(f)
             if t is None:
                 try:
@@ -145,7 +141,6 @@ def leftovers():
     out = []
     aur = CACHE / "aur"
     if aur.is_dir():
-        # makepkg's scratch (src/, pkg/): rebuilt from the recipe every time.
         scratch = [p for d in aur.iterdir() if d.is_dir() for p in (d / "src", d / "pkg") if p.is_dir()]
         size = sum(du(p) for p in scratch)
         if size:
@@ -203,7 +198,7 @@ def trash_skills(names):
         if n not in by:
             print(f"no skill {n}", file=sys.stderr)
             continue
-        for s in by[n]:                      # every copy
+        for s in by[n]:
             if not gio_trash(s["path"]):
                 print(f"couldn't trash {s['path']}", file=sys.stderr)
                 continue

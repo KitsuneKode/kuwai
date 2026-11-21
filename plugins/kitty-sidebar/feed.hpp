@@ -25,7 +25,6 @@ inline std::vector<Row> parseFeed(const std::string& bytes) {
         const auto text = [&](const char* key, const char* fallback) {
             auto it = a.find(key);
             if (it == a.end() || !it->is_string()) return std::string(fallback);
-            // Bound layout work; Pango receives plain text, never markup.
             auto value = it->get<std::string>();
             if (value.size() > 256) {
                 size_t end = 256;

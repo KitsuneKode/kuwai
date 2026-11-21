@@ -36,10 +36,8 @@ from pathlib import Path
 OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 UA = {"User-Agent": "kuwai-ollama/1.0"}
 MAX_TOOL_ROUNDS = 10
-CHAT = ""            # the chat's id: its sandbox folder
-MODE = "agent"       # this turn's mode; Chat can't run changing tools even if the model names one
-# Ollama's num_predict is unlimited by default; a small model that falls into
-# a loop then writes forever. 2048 tokens is ~8k characters, plenty for an answer.
+CHAT = ""
+MODE = "agent"
 NUM_PREDICT = 2048
 
 
@@ -57,11 +55,6 @@ SYSTEM_GENERAL = (
     "integration. Be direct, concise, and technically rigorous. Never give corporate boilerplate or claim to be "
     "fictional. For code, output clean idiomatic snippets."
 )
-# Measured 2026-11-03 against the real models (5 prompts × 3 runs): with this
-# wording hermes3 calls run_command 3/3 (0/3 before: it asked "type yes" in
-# text), and deepseek-r1 answers a plain question in ~15 s instead of 90+ s of
-# reasoning about tool JSON. Don't say "the user approves it" in tool
-# descriptions: small models read it as "ask first".
 TOOL_GUIDE = (
     "\n\nYou can use tools on this computer. Call a tool when the request is about this computer, the screen, "
     "the user's files or clipboard, running or opening something, or anything recent you'd need to look up. "
@@ -101,8 +94,6 @@ SYSTEM_VISION = (
     "fidelity and precision."
 )
 
-
-# ── Output ────────────────────────────────────────────────────────────────
 
 def emit(ev):
     ev["ts"] = int(time.time() * 1000)
@@ -198,8 +189,6 @@ class ThinkSplitter:
         rest, self.buf = self.buf, ""
         return [(self._kind(), rest)] if rest else []
 
-
-# ── Ollama ────────────────────────────────────────────────────────────────
 
 _caps = {}
 
@@ -311,7 +300,7 @@ def context_block(ctx):
     return "Context (what I'm looking at):\n" + "\n".join(lines) + "\n\n" + files
 
 
-FILE_BUDGET = 6000      # characters of attached files per message; run_turn sizes it to the window
+FILE_BUDGET = 6000
 
 
 def file_text(path):
@@ -340,7 +329,6 @@ def files_block(files):
         path = os.path.expanduser(str(f["path"]))
         name = os.path.basename(path)
         where = ""
-        # Attachments get the same secrets rule as reading (red-team 9: any path could be attached).
         try:
             kuwai_files.check_readable(Path(path))
         except kuwai_files.FileError as e:
@@ -406,7 +394,6 @@ def vision_hop(ids, messages, stats):
     emit({"type": "item.started", "id": item_id, "itemType": "image_view",
           "title": "Looking at the screenshot", "input": {}})
     have = installed_models()
-    # The everyday model sees images and is the quickest to load; else any vision model.
     vision = "qwen3.5:4b" if "qwen3.5:4b" in have else next((m for m in have if "vision" in capabilities(m)), None)
     b64 = read_image(img)
     if not vision or not b64:
@@ -427,11 +414,6 @@ def vision_hop(ids, messages, stats):
     emit({"type": "item.completed", "id": item_id, "status": "completed", "output": text})
     messages[last]["content"] += f"\n\n[Screenshot: {text}]"
 
-
-# ── Tools ─────────────────────────────────────────────────────────────────
-# Each tool: schema for Ollama, the item type the UI shows, a title for the
-# row, whether it needs the user's approval, and run(args) -> str. A tool
-# raises ToolError for a failure the model should read.
 
 class ToolError(Exception):
     pass
@@ -513,13 +495,6 @@ def tool_read_selection(_args):
         raise ToolError("Nothing is selected")
     return _cap(p.stdout, 8192)
 
-
-# ── Web ───────────────────────────────────────────────────────────────────
-# Search, free and keyless by default: SearXNG when you run one
-# (KUWAI_SEARXNG_URL, JSON format enabled), Ollama's hosted search when
-# OLLAMA_API_KEY is set, then DuckDuckGo's HTML endpoint, Bing's, Wikipedia. web_fetch reads a
-# page as plain text. Checked 2026-11-03: html.duckduckgo.com/html returns
-# `a.result__a` (title, link) and `a.result__snippet` per result.
 
 BROWSER_UA = "Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0"
 
@@ -647,7 +622,7 @@ def search_duckduckgo(q, n):
     for block in re.split(r'<div[^>]+class="[^"]*\bresult\b', page)[1:]:
         a = re.search(r'class="result__a"[^>]*href="([^"]+)"[^>]*>(.*?)</a>', block, re.S)
         if not a or "/y.js?" in a.group(1) or "result--ad" in block[:300]:
-            continue          # no link, or an ad (y.js click-through)
+            continue
         snip = re.search(r'class="result__snippet"[^>]*>(.*?)</a>', block, re.S)
         out.append({"title": _strip_tags(a.group(2)), "url": _real_link(a.group(1)),
                     "snippet": _strip_tags(snip.group(1)) if snip else ""})
@@ -715,15 +690,11 @@ def tool_web_search(args):
         raise ToolError("Give a query")
     n = 6
     chain = []
-    # Local SearXNG (kuwai-ollama search start: Brave, DuckDuckGo, Google, Wikipedia… at once, JSON, no key)
-    # first; KUWAI_SEARXNG_URL="" turns it off.
     searx = os.environ.get("KUWAI_SEARXNG_URL", "http://127.0.0.1:8888")
     if searx:
         chain.append(lambda: search_searxng(searx, q, n))
     if os.environ.get("OLLAMA_API_KEY"):
         chain.append(lambda: search_ollama(os.environ["OLLAMA_API_KEY"], q, n))
-    # DuckDuckGo starts answering an "anomaly" (bot check) page after a burst of
-    # searches (seen 2026-11-03), so Bing's HTML and then Wikipedia back it up.
     chain.append(lambda: search_duckduckgo(q, n))
     chain.append(lambda: search_bing(q, n))
     chain.append(lambda: search_wikipedia(q, n))
@@ -747,11 +718,6 @@ def tool_web_search(args):
                  "now, before answering.")
     return _cap("\n".join(lines), 6000)
 
-
-# ── Shopping: live prices from the stores' own search pages ─────────────
-# Amazon.in answers a plain request with full HTML (22 results, measured);
-# Flipkart builds its results with JavaScript, so it goes through the
-# sandbox's headless Chromium (~13 s). Both read 2026-11-03.
 
 def _amazon(q, n):
     import html as h
@@ -855,7 +821,7 @@ def page_text(html_text):
         def __init__(self):
             super().__init__(convert_charrefs=True)
             self.skip = 0
-            self.dates = []        # datetime of open <time>/<relative-time>: "03 Nov" → "03 Nov (2026-11-03)"
+            self.dates = []
             self.in_title = False
             self.title = ""
             self.parts = []
@@ -918,7 +884,6 @@ def tool_web_fetch(args):
         raise ToolError(f"Couldn't read the page: {e}")
     looks_html = "html" in (ctype or "") or page.lstrip()[:200].lower().startswith(("<!doctype html", "<html"))
     text = page_text(page) if looks_html else page
-    # Shops and apps fill the page with JavaScript: little text, or "enable JavaScript".
     if looks_html and (len(text) < 800 or "enable javascript" in text.lower()) and sandbox_ready() \
             and _render_allowed(url):
         try:
@@ -929,7 +894,7 @@ def tool_web_fetch(args):
             pass
     if not text.strip():
         raise ToolError("The page has no readable text")
-    return _cap(text, 8000)       # ~2k tokens
+    return _cap(text, 8000)
 
 
 def tool_run_command(args):
@@ -946,8 +911,6 @@ def tool_run_command(args):
     out = kuwai_files.head_tail(out.strip(), 8000)
     return (out + "\n" if out else "(no output)\n") + f"(exit {p.returncode})"
 
-
-# ── Sandbox (bin/kuwai_sandbox.py): its own Linux box, so no approval ─────
 
 import kuwai_sandbox  # noqa: E402
 import kuwai_context  # noqa: E402
@@ -1050,10 +1013,6 @@ def tool_read(args):
     return _files(kuwai_files.read, full, args.get("offset"), args.get("limit"))
 
 
-# Where a write goes is decided ONCE, from the path as written (never by following links), and
-# that decision is what the approval and the write both use (review finding 01: the path was
-# resolved twice, so a link the container made in between could turn an approval-free sandbox
-# write into a host write).
 _DECIDED = {}
 
 
@@ -1067,7 +1026,7 @@ def _classify(args):
     if raw.startswith("/work/") or not raw.startswith(("/", "~")):
         rel = raw
         if raw.startswith("/work/"):
-            bits = raw.split("/", 3)          # /work/<chat>/rest or /work/rest
+            bits = raw.split("/", 3)
             rel = bits[3] if len(bits) > 3 and bits[2] == ws.name else "/".join(bits[2:])
         parts = [p for p in Path(rel).parts if p not in ("", ".", "/")]
         if not parts or any(p == ".." for p in parts):
@@ -1093,7 +1052,7 @@ def _decide(args):
 def _write_request(args):
     full, inside, _parts = _decide(args)
     if inside:
-        return None                        # its own folder: no need to ask
+        return None
     content = str(args.get("content") or "")
     old = full.read_text(encoding="utf-8", errors="replace") if full.is_file() else ""
     detail = kuwai_files.diff(full, old, content) if old else content[:4000]
@@ -1132,7 +1091,7 @@ def tool_write(args):
 
 def _edits(args):
     e = args.get("edits")
-    if isinstance(e, str):                 # pi's argument repair: a JSON string, one object, or top-level fields
+    if isinstance(e, str):
         try:
             e = json.loads(e)
         except ValueError:
@@ -1202,7 +1161,6 @@ def tool_system_audit(_args):
     out = []
     def section(title, text, limit=1800):
         out.append(f"## {title}\n{_cap(text or '(nothing)', limit)}")
-    # Reachable from the network first (what an audit is about); local-only ones just counted.
     ports = run(["ss", "-tulpnH"]).splitlines()
     local = ("127.", "[::1]", "::1", "[fe80", "fe80")
     public = [l for l in ports if len(l.split()) > 4 and not l.split()[4].startswith(local)]
@@ -1259,7 +1217,7 @@ def tool_update_plan(args):
                       "status": st if st in ("pending", "in_progress", "completed") else "pending"})
     if not clean:
         raise ToolError("Give the steps")
-    args["steps"] = clean          # the UI reads the cleaned list from the item's input
+    args["steps"] = clean
     done = sum(1 for s in clean if s["status"] == "completed")
     return f"Plan updated ({done} of {len(clean)} done). Carry on with the next step."
 
@@ -1402,7 +1360,6 @@ TOOLS = {
                    {"id": {"type": "string"}, "stop": {"type": "boolean"}}, ["id"]),
         item="dynamic_tool_call", title=lambda a: f"Checking job {a.get('id', '')}", approve=None, run=tool_job,
         sandbox=True),
-    # Files, after pi: relative paths are the sandbox folder, ~/ and / are the user's.
     "read": dict(
         schema=_fn("read", "Read a text file. Relative paths are your sandbox folder; ~/ or / paths are the "
                    "user's files. Shows up to 250 lines; use offset to read on.",
@@ -1465,15 +1422,11 @@ TOOLS = {
                    ["question"]),
         item="user_input", title=lambda a: str(a.get("question", ""))[:80], approve=None, ask=_question_request,
         run=None),
-    # These act on the machine: each asks first (request.opened → stdin).
-    # approve(args) -> (kind, summary, detail); it may raise ToolError to
-    # fail the call before anyone is asked.
     "run_command": dict(
         schema=_fn("run_command", "Run a bash command on this computer and get its output.",
                    {"command": {"type": "string", "description": "The bash command"},
                     "cwd": {"type": "string", "description": "Folder to run in (default ~)"}}, ["command"]),
         item="command_execution", title=lambda a: str(a.get("command", ""))[:80],
-        # The folder is part of what you approve: `cat id_ed25519` in ~/.ssh isn't harmless (red-team 10).
         approve=lambda a: ("command", "Run a command" + (f" in {a.get('cwd')}" if a.get("cwd") else ""),
                            str(a.get("command", ""))), run=tool_run_command),
     "launch_app": dict(
@@ -1488,12 +1441,6 @@ TOOLS = {
         approve=_url_request, run=tool_open_url),
 }
 
-
-# ── Tool routing ──────────────────────────────────────────────────────────
-# Small models pick tools better from a short list, and 20 schemas cost ~2,500
-# tokens. Each request offers the groups the recent user messages point to;
-# plain chat gets only the web. A tool the model calls that wasn't offered
-# still runs (it's real), so a miss costs nothing but the tokens.
 
 TOOL_GROUPS = {
     "web": ["web_search", "web_fetch"],
@@ -1511,8 +1458,6 @@ ROUTES = [
     ("files", r"(~/|\b/[a-z]|\.(py|js|ts|tsx|qml|lua|rs|go|json|md|toml|ya?ml|conf|sh|txt|csv|log)\b|\b(file|files|folder|directory|dir|repo|project|codebase|config|dotfile|path|grep|search (in|my|the) (code|files))\b)"),
     ("code", r"\b(code|script|python|node|javascript|bash|program|function|compute|calculate|calc|test|tests|debug|bug|fix|compile|build|install|package|pip|npm|sandbox|run (it|this|the))\b"),
     ("desktop", r"\b(screen|window|app i|using|clipboard|copied|selected|selection|highlighted|cpu|gpu|ram|memory|battery|load|system|temperature)\b"),
-    # Your own machine only when it's explicit: opening things, system tools, or "on my computer". Plain "run"
-    # or "install" is the sandbox's (measured: "run it again" offered run_command and the 4B used it twice).
     ("act", r"\b(open|launch|go to|visit|terminal|systemctl|pacman|paru|yay|flatpak|kill|restart|reboot|shutdown)\b"
             r"|shell command|run_command|\bon (my|this) (computer|machine|system|laptop|pc|desktop)\b"),
     ("memory", r"\b(remember|my name|i prefer|i like|i use|i'm a|i am a|call me|forget)\b"),
@@ -1521,12 +1466,8 @@ ROUTES = [
 ]
 
 
-# Chat mode (ChatGPT / Claude's plain chat): answers, search, prices, what's on screen,
-# memory; it reads but never changes anything. Agent mode: everything, files and the
-# sandbox always on hand.
 CHAT_SAFE = {"web_search", "web_fetch", "shop_search", "active_window", "system_info", "read_clipboard",
              "read_selection", "ask_user", "read", "ls", "find", "grep", "system_audit"}
-# (remember isn't here: in Chat a page saying "remember this" could plant an instruction for later chats.)
 
 
 def route_tools(convo, attachments=False, mode="agent"):
@@ -1544,11 +1485,8 @@ def route_tools(convo, attachments=False, mode="agent"):
         names |= set(TOOL_GROUPS["files"]) | {"sandbox_run"}
     if mode == "chat":
         return names & CHAT_SAFE
-    # Agent: the workbench is always out.
     return names | set(TOOL_GROUPS["code"]) | set(TOOL_GROUPS["files"]) | {"update_plan"}
 
-
-# ── Approvals and cancel ──────────────────────────────────────────────────
 
 class Interrupted(Exception):
     pass
@@ -1661,7 +1599,7 @@ def missing(tool, args):
 
 def run_tool(ids, name, raw_args):
     """Run one tool call as an item. Returns (status, output) for the model."""
-    _DECIDED.clear()        # one call at a time: no decision outlives its call
+    _DECIDED.clear()
     tool = TOOLS.get(name)
     try:
         args = parse_args(raw_args)
@@ -1669,8 +1607,6 @@ def run_tool(ids, name, raw_args):
         args, bad = {}, str(e)
     else:
         bad = ""
-    # Chat mode's contract is enforced here, not only by which schemas were offered (review finding 10):
-    # a model that names a changing tool anyway gets an error, never the tool.
     if tool and MODE == "chat" and name not in CHAT_SAFE:
         bad = f"{name} isn't available in Chat mode (it only reads). Tell the user to switch this chat to Agent mode."
     item_type = tool["item"] if tool else "dynamic_tool_call"
@@ -1678,7 +1614,7 @@ def run_tool(ids, name, raw_args):
     item_id = ids.next("t")
     if tool and name == "update_plan" and not bad:
         try:
-            tool_update_plan(args)         # clean the steps before the UI sees them
+            tool_update_plan(args)
         except ToolError:
             pass
     ev = {"type": "item.started", "id": item_id, "itemType": item_type, "title": title, "input": args}
@@ -1697,7 +1633,6 @@ def run_tool(ids, name, raw_args):
             try:
                 if tool.get("ask"):
                     kind, question, detail, options = tool["ask"](args)
-                    # A question waits longer than an approval: the user may need to think.
                     decision = APPROVALS.ask(ids, item_id, kind, question, detail, options, timeout=600)
                     answer = APPROVALS.answer
                     if decision != "accept" or not answer:
@@ -1731,15 +1666,6 @@ def run_tool(ids, name, raw_args):
     return status, output
 
 
-# ── The turn ──────────────────────────────────────────────────────────────
-
-# ── Compaction ────────────────────────────────────────────────────────────
-# Codex's approach, sized for a 4k window: when the UI says the chat is near
-# full (`compact: true`), everything before the last two exchanges becomes a
-# short handoff note written by the same model (already loaded), and the
-# turn runs on note + recent messages. The UI keeps the note (`summary`).
-
-# pi's structured handoff (coding-agent compaction.ts), shortened for a small model.
 COMPACT_PROMPT = (
     "Summarise this conversation for yourself, so you can carry on with less context. Do NOT continue the "
     "conversation or answer anything in it. Output only this, at most 250 words:\n"
@@ -1754,8 +1680,6 @@ def compact(ids, model, caps, options, summary, convo):
     users = [i for i, m in enumerate(convo) if m.get("role") == "user"]
     if len(users) < 2 or users[-2] == 0:
         return summary, convo
-    # Keep the last two exchanges word for word, or only the last one when two would take more
-    # than ~30% of the window (≈3.5 characters a token); the rest becomes the summary.
     budget = int(int(options.get("num_ctx", 4096)) * 0.30 * 3.5)
     keep_from = users[-2]
     if sum(len(m.get("content") or "") for m in convo[keep_from:]) > budget:
@@ -1763,7 +1687,6 @@ def compact(ids, model, caps, options, summary, convo):
     if keep_from == 0:
         return summary, convo
     older = convo[:keep_from]
-    # Each message cut to 1,500 characters, so one runaway answer can't crowd out the rest.
     lines = [("User: " if m["role"] == "user" else "Assistant: ") + _cap(m.get("content") or "", 1500) for m in older]
     text = ("Earlier summary:\n" + summary + "\n\n" if summary else "") + "Conversation:\n" + "\n\n".join(lines)
     item_id = ids.next("t")
@@ -1837,7 +1760,6 @@ def apply_steers(messages):
 def run_turn(req):
     global CHAT, FILE_BUDGET, MODE
     CHAT = str(req.get("chat") or "")
-    # Files may fill about 40% of the window (≈3.5 characters a token).
     FILE_BUDGET = int(int((req.get("options") or {}).get("num_ctx", 4096)) * 1.4)
     model = req.get("model") or "qwen3.5:4b"
     options = dict(req.get("options") or {"num_ctx": 4096})
@@ -1846,12 +1768,9 @@ def run_turn(req):
     use_tools = "tools" in caps
     ids = Ids()
     emit({"type": "turn.started", "model": model})
-    # Before the first word: is the model still loading into VRAM (~10 s cold) or just thinking?
     emit({"type": "turn.phase", "phase": "waiting" if is_loaded(model) else "loading"})
 
     system = SYSTEM_VISION if ("vision" in caps and not use_tools) else SYSTEM_GENERAL
-    # Small models fill in years from their training data ("released 2022"): give them today,
-    # and ask for what the source says, as written.
     system += time.strftime(" Today is %A, %d %B %Y.") + (
         " When you answer from a tool result or a page, copy dates, numbers and names exactly as written there.")
     raw_msgs = req.get("messages") or []
@@ -1862,7 +1781,7 @@ def run_turn(req):
     if os.environ.get("KUWAI_AGENT_CONTEXT") != "off":
         last = next((m for m in reversed(raw_msgs) if m.get("role") == "user"), {})
         ask = last.get("content") if isinstance(last.get("content"), str) else last.get("text", "")
-        system += kuwai_context.block(ask or "")        # this computer, your AGENTS.md, memory, skills that fit
+        system += kuwai_context.block(ask or "")
     if mode == "chat":
         system += CHAT_GUIDE
     else:
@@ -1885,17 +1804,12 @@ def run_turn(req):
             summary, convo = compact(ids, model, caps, options, summary, convo)
         messages = [{"role": "system", "content": system}]
         if summary:
-            # An opening exchange, not a second system message: with tools offered,
-            # hermes3 ignores everything after a second system message (0/5 recall vs 5/5).
             messages += [{"role": "user", "content": SUMMARY_HEAD + summary},
                          {"role": "assistant", "content": "Got it."}]
         messages += convo
         vision_hop(ids, messages, stats)
         while True:
-            # A task with a plan is long work: it gets three times the rounds.
             limit = 6 if mode == "chat" else MAX_TOOL_ROUNDS * 3 if planned else MAX_TOOL_ROUNDS
-            # Plan-only rounds don't count as work, but a model that only re-plans is stuck: 4 in a row ends it
-            # (review finding 15).
             capped = rounds >= limit or plan_streak >= 4
             payload = {"model": model, "messages": messages, "stream": True,
                        "keep_alive": req.get("keep_alive", "5m"), "options": options}
@@ -1904,14 +1818,12 @@ def run_turn(req):
             if "thinking" in caps:
                 payload["think"] = bool(req.get("think", True)) and not capped
             if capped:
-                # Out of tool rounds: answer now from what it has, no more thinking or tools.
                 payload["messages"] = messages + [{"role": "user", "content":
                     "(You've used all your tool calls for this turn. Answer now from what you have, "
                     "and say what's left undone.)"}]
             try:
                 calls = stream_round(payload, stream, stats)
             except MalformedCall as e:
-                # pi's rule: a broken call goes back to the model as an error it can fix, not a dead turn.
                 stream.close()
                 partial = stream.message_text()
                 stream.text.clear()
@@ -1924,7 +1836,6 @@ def run_turn(req):
                                  "Call the tool again with valid arguments, one call at a time.)"})
                 continue
             except Steer:
-                # Keep what it had written, then let it hear the user.
                 stream.close()
                 partial = stream.message_text()
                 stream.text.clear()
@@ -1940,7 +1851,6 @@ def run_turn(req):
                 plan_streak = plan_streak + 1 if only_plan else 0
                 if any((c.get("function") or {}).get("name") == "update_plan" for c in calls):
                     planned = True
-                # Keeping the plan current isn't work: it doesn't use up a round.
                 if any((c.get("function") or {}).get("name") != "update_plan" for c in calls):
                     rounds += 1
                 messages.append({"role": "assistant", "content": stream.message_text(), "tool_calls": calls})
@@ -1950,7 +1860,6 @@ def run_turn(req):
                     fn = c.get("function") or {}
                     name = fn.get("name", "")
                     if cut_off:
-                        # pi: a reply cut at the length limit may carry half-written arguments; don't run them.
                         messages.append({"role": "tool", "tool_name": name, "content":
                             f"Tool call \"{name}\" was not run: your reply hit the output limit, so its arguments "
                             "may be cut off. Call it again with complete arguments (write long files in parts)."})
@@ -1958,15 +1867,12 @@ def run_turn(req):
                     _, output = run_tool(ids, name, fn.get("arguments"))
                     messages.append({"role": "tool", "tool_name": name, "content": output})
             if APPROVALS is not None and APPROVALS.has_steer():
-                # A steer that came in during the round or a tool: answer it in this turn.
                 if not calls:
                     messages.append({"role": "assistant", "content": stream.message_text()})
                     stream.text.clear()
                 apply_steers(messages)
                 continue
             if not calls:
-                # Small thinking models sometimes finish their tool work, think, and stop
-                # without a word (seen with qwen3.5 after a sandbox loop): ask once for the answer.
                 if not stream.message_text().strip() and rounds > 0 and not nudged and not capped:
                     nudged = True
                     messages.append({"role": "user", "content": "(Now answer my request from what you found.)"})
@@ -1981,7 +1887,7 @@ def run_turn(req):
     except urllib.error.URLError as e:
         stream.close("failed")
         status, error = "failed", f"Can't reach Ollama at {OLLAMA_HOST} ({e.reason})"
-    except Exception as e:  # a broken stream must still end the turn
+    except Exception as e:
         stream.close("failed")
         status, error = "failed", str(e) or e.__class__.__name__
 
@@ -1992,7 +1898,7 @@ def run_turn(req):
 
 
 def _on_term(_sig, _frame):
-    signal.signal(signal.SIGTERM, signal.SIG_IGN)  # once: the unwind must finish
+    signal.signal(signal.SIGTERM, signal.SIG_IGN)
     raise Interrupted()
 
 

@@ -1,15 +1,4 @@
-# lib/dispatch.sh (was ~/Scripts/lib-dispatch.sh) — dual-mode Hyprland dispatcher calls.
 # shellcheck shell=bash
-#
-# Classic `hyprctl dispatch <name> <args>` syntax is REMOVED under Lua configs
-# (upstream issue HyDE #2114 — the dispatch table is gone). Under the Lua
-# config manager, `hyprctl dispatch <expr>` wraps the arg as hl.dispatch(<expr>),
-# so dispatchers are invoked as hl.dsp.* builder calls instead.
-#
-# Detection: `hyprctl eval` exists only with the Lua config manager.
-#
-# Source this file, then call d_* helpers — each handles both modes:
-#   source "$KUWAI_ROOT/lib/dispatch.sh"
 
 _DSP_MODE=""
 _dsp_lua_string() {
@@ -26,7 +15,6 @@ _dsp_number() {
 }
 _dsp_is_lua() {
     if [ -z "$_DSP_MODE" ]; then
-        # `hyprctl eval` only ever answers "ok"; `hyprctl repl` returns values.
         if hyprctl repl 'return "__LUA__"' 2>/dev/null | grep -q "__LUA__"; then
             _DSP_MODE=lua
         else
@@ -36,9 +24,7 @@ _dsp_is_lua() {
     [ "$_DSP_MODE" = "lua" ]
 }
 
-# --- window ops (all take a raw address like 0x5c9f...) ---
-
-d_focus() { # $1 = addr
+d_focus() {
     if _dsp_is_lua; then
         hyprctl dispatch "hl.dsp.focus({window=$(_dsp_lua_string "address:$1")})" >/dev/null 2>&1
     else
@@ -46,10 +32,7 @@ d_focus() { # $1 = addr
     fi
 }
 
-# Clear the maximize flag the scrolling layout puts on solo-column windows.
-# Classic fullscreenstate acts on the FOCUSED window only (no selector), so the
-# conf path focuses first. The Lua path takes a window arg — no focus steal.
-d_unmaximize() { # $1 = addr
+d_unmaximize() {
     if _dsp_is_lua; then
         hyprctl dispatch "hl.dsp.window.fullscreen_state({window=$(_dsp_lua_string "address:$1"), internal=0, client=0, action='set'})" >/dev/null 2>&1
     else
@@ -57,7 +40,7 @@ d_unmaximize() { # $1 = addr
     fi
 }
 
-d_move_pixel() { # $1=addr $2=x $3=y (absolute, global logical coords)
+d_move_pixel() {
     local x y
     x=$(_dsp_number "$2") || return 2
     y=$(_dsp_number "$3") || return 2
@@ -68,7 +51,7 @@ d_move_pixel() { # $1=addr $2=x $3=y (absolute, global logical coords)
     fi
 }
 
-d_resize_pixel() { # $1=addr $2=w $3=h
+d_resize_pixel() {
     local x y
     x=$(_dsp_number "$2") || return 2
     y=$(_dsp_number "$3") || return 2
@@ -79,7 +62,7 @@ d_resize_pixel() { # $1=addr $2=w $3=h
     fi
 }
 
-d_float() { # $1=addr — set floating ON
+d_float() {
     if _dsp_is_lua; then
         hyprctl dispatch "hl.dsp.window.float({window=$(_dsp_lua_string "address:$1"), action='on'})" >/dev/null 2>&1
     else
@@ -87,7 +70,7 @@ d_float() { # $1=addr — set floating ON
     fi
 }
 
-d_pin() { # $1=addr — toggle (mirrors legacy `pin` semantics)
+d_pin() {
     if _dsp_is_lua; then
         hyprctl dispatch "hl.dsp.window.pin({window=$(_dsp_lua_string "address:$1"), action='toggle'})" >/dev/null 2>&1
     else
@@ -95,7 +78,6 @@ d_pin() { # $1=addr — toggle (mirrors legacy `pin` semantics)
     fi
 }
 
-# $1=addr $2=workspace $3=follow(1|0, default 1)
 d_movetows() {
     local FL="${3:-1}"
     if _dsp_is_lua; then
@@ -108,7 +90,7 @@ d_movetows() {
     fi
 }
 
-d_sendshortcut() { # $1=addr $2=mods $3=key
+d_sendshortcut() {
     if _dsp_is_lua; then
         hyprctl dispatch "hl.dsp.send_shortcut({window=$(_dsp_lua_string "address:$1"), mods=$(_dsp_lua_string "$2"), key=$(_dsp_lua_string "$3")})" >/dev/null 2>&1
     else
@@ -116,7 +98,7 @@ d_sendshortcut() { # $1=addr $2=mods $3=key
     fi
 }
 
-d_close_window() { # $1 = addr
+d_close_window() {
     if _dsp_is_lua; then
         hyprctl dispatch "hl.dsp.window.close({window=$(_dsp_lua_string "address:$1")})" >/dev/null 2>&1
     else
@@ -124,9 +106,7 @@ d_close_window() { # $1 = addr
     fi
 }
 
-# --- everything else ---
-
-d_killactive() { # graceful close of active window (lua `kill` is SIGKILL)
+d_killactive() {
     if _dsp_is_lua; then
         hyprctl dispatch "hl.dsp.window.close()" >/dev/null 2>&1
     else
@@ -134,7 +114,7 @@ d_killactive() { # graceful close of active window (lua `kill` is SIGKILL)
     fi
 }
 
-d_exec_float() { # $1 = command
+d_exec_float() {
     if _dsp_is_lua; then
         hyprctl dispatch "hl.dsp.exec_cmd($(_dsp_lua_string "$1"), {float=true})" >/dev/null 2>&1
     else
@@ -142,7 +122,7 @@ d_exec_float() { # $1 = command
     fi
 }
 
-d_layoutmsg() { # $1 = layout message
+d_layoutmsg() {
     if _dsp_is_lua; then
         hyprctl dispatch "hl.dsp.layout($(_dsp_lua_string "$1"))" >/dev/null 2>&1
     else
@@ -150,7 +130,7 @@ d_layoutmsg() { # $1 = layout message
     fi
 }
 
-d_focus_monitor() { # $1 = monitor name/id
+d_focus_monitor() {
     if _dsp_is_lua; then
         hyprctl dispatch "hl.dsp.focus({monitor=$(_dsp_lua_string "$1")})" >/dev/null 2>&1
     else
@@ -158,7 +138,7 @@ d_focus_monitor() { # $1 = monitor name/id
     fi
 }
 
-d_ws_to_monitor() { # $1 = workspace, $2 = monitor
+d_ws_to_monitor() {
     if _dsp_is_lua; then
         hyprctl dispatch "hl.dsp.workspace.move({workspace=$(_dsp_lua_string "$1"), monitor=$(_dsp_lua_string "$2")})" >/dev/null 2>&1
     else
@@ -166,7 +146,7 @@ d_ws_to_monitor() { # $1 = workspace, $2 = monitor
     fi
 }
 
-d_workspace() { # $1 = workspace to focus
+d_workspace() {
     if _dsp_is_lua; then
         hyprctl dispatch "hl.dsp.focus({workspace=$(_dsp_lua_string "$1")})" >/dev/null 2>&1
     else

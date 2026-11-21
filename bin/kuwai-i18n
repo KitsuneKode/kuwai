@@ -20,7 +20,7 @@ import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-SHELL = os.environ.get("KUWAI_I18N_SHELL") or os.path.join(ROOT, "shell")   # a test points it at a copy
+SHELL = os.environ.get("KUWAI_I18N_SHELL") or os.path.join(ROOT, "shell")
 I18N = os.path.join(SHELL, "i18n")
 CATEGORIES = {"zero", "one", "two", "few", "many", "other"}
 
@@ -50,13 +50,11 @@ def keys():
     """{key: "t" | "n"} for every Tr.t / Tr.n literal under shell/."""
     out = {}
     for p in sources():
-        # Comment lines are documentation, not requests.
         text = "\n".join("" if re.match(r"^\s*(?://|\*)", l) else l
                          for l in open(p, encoding="utf-8", errors="replace").read().split("\n"))
         for m in T_CALL.finditer(text):
             out.setdefault(unquote(m.group(1)), "t")
         for m in N_CALL.finditer(text):
-            # Tr.n(count, "one", "other"): the first two literals after the call.
             lits = LITERAL.findall(text[m.end():m.end() + 400])
             if len(lits) >= 2:
                 out[unquote(lits[0])] = "n"
@@ -117,8 +115,6 @@ def check():
     return errors
 
 
-# A string a person reads: a letter, then a space or a lowercase run (not an id,
-# a path, a command word, a colour or a property name).
 WORDS = re.compile(r"^(?=.*[A-Za-z])(?=.*(?:\s|[a-z]{3})).*$")
 NOT_UI = re.compile(r"^(?:[a-z][A-Za-z0-9]*|[a-z0-9_.:/-]+|#[0-9a-fA-F]+|\\u.*|[A-Z_]+|qs\..*|Qt.*|.*\$[({A-Za-z].*|.*/[A-Za-z0-9_.-]+/.*|.*\.qml|return .*)$")
 UI_PROP = re.compile(r"\b(?:text|label|title|placeholderText|hint|tip|subtitle|description|body|empty|caption|summary|note|t)\s*:\s*\"")

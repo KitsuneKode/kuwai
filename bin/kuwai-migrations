@@ -1,35 +1,40 @@
 #!/usr/bin/env bash
-# kuwai-migrations: change what an earlier kuwai left on this machine (settings,
-# state, caches) into what this one expects, once per machine, in order.
-#
-#   kuwai migrations             run the ones not run here yet, in order
-#   kuwai migrations --list      each one, done (when) or pending
-#   kuwai migrations --dry-run   what would run; runs and writes nothing
-#
-# The migrations are migrations/NNNN-what.sh in this copy (README.md there says
-# how to write one). What has run is recorded in
-# $XDG_STATE_HOME/kuwai/migrations/done/, one file each, with its output in
-# migrations/log. The first one that fails stops the run: it and everything
-# after it stay pending, the reason is printed, the exit is 1.
-#
-# Each runs in bash -euo pipefail, never as root, with no input, a 5-minute
-# limit, and the kernel (Landlock, through setpriv) refusing any write outside
-# the user's four XDG folders (config, state, cache, data: each must be inside
-# $HOME): a migration can read anything but change only those. Without Landlock
-# nothing runs (exit 2).
-#
-# --check runs nothing: 0 when nothing is pending or what is can run here, 2
-# with the reason when it couldn't (kuwai promote asks this before stable moves).
-#
-# It needs the rename's mover (bin/kuwai-migrate, run by kuwai-shell before the
-# shell starts) to have run first: a migration reads kuwai's folders, and on a
-# machine where ~/.local/state/rice is still a folder and kuwai's isn't there
-# they would find nothing and be recorded as done. It refuses then (exit 2).
-#
-# Exit: 0 nothing pending or all ran · 1 one failed · 2 refused (root, no
-# Landlock, an XDG folder outside $HOME, the rename not moved yet, two
-# migrations with one number, another run going on).
 set -u -o pipefail
+
+usage() {
+cat <<'KUWAI_USAGE'
+kuwai-migrations: change what an earlier kuwai left on this machine (settings,
+state, caches) into what this one expects, once per machine, in order.
+
+  kuwai migrations             run the ones not run here yet, in order
+  kuwai migrations --list      each one, done (when) or pending
+  kuwai migrations --dry-run   what would run; runs and writes nothing
+
+The migrations are migrations/NNNN-what.sh in this copy (README.md there says
+how to write one). What has run is recorded in
+$XDG_STATE_HOME/kuwai/migrations/done/, one file each, with its output in
+migrations/log. The first one that fails stops the run: it and everything
+after it stay pending, the reason is printed, the exit is 1.
+
+Each runs in bash -euo pipefail, never as root, with no input, a 5-minute
+limit, and the kernel (Landlock, through setpriv) refusing any write outside
+the user's four XDG folders (config, state, cache, data: each must be inside
+$HOME): a migration can read anything but change only those. Without Landlock
+nothing runs (exit 2).
+
+--check runs nothing: 0 when nothing is pending or what is can run here, 2
+with the reason when it couldn't (kuwai promote asks this before stable moves).
+
+It needs the rename's mover (bin/kuwai-migrate, run by kuwai-shell before the
+shell starts) to have run first: a migration reads kuwai's folders, and on a
+machine where ~/.local/state/rice is still a folder and kuwai's isn't there
+they would find nothing and be recorded as done. It refuses then (exit 2).
+
+Exit: 0 nothing pending or all ran · 1 one failed · 2 refused (root, no
+Landlock, an XDG folder outside $HOME, the rename not moved yet, two
+migrations with one number, another run going on).
+KUWAI_USAGE
+}
 
 ROOT=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)
 DIR=${KUWAI_MIGRATIONS_DIR:-$ROOT/migrations}
@@ -48,15 +53,14 @@ case ${1:-} in
     "") ;;
     --list) mode=list ;;
     --dry-run|-n) mode=dry ;;
-    --check) mode=check ;;      # would the pending ones run here? Runs nothing (kuwai promote asks first)
-    -h|--help) sed -n '2,/^set /p' "$0" | grep '^#' | sed 's/^# \{0,1\}//'; exit 0 ;;
+    --check) mode=check ;;
+    -h|--help) usage; exit 0 ;;
     *) echo "usage: kuwai migrations [--list|--dry-run|--check]" >&2; exit 2 ;;
 esac
 
 [ "$(id -u)" -ne 0 ] || refuse "never as root: run it as the user whose desktop this is"
 [ -n "${HOME:-}" ] && [ "$HOME" != / ] && [ -d "$HOME" ] && [ -O "$HOME" ] || refuse "\$HOME ($HOME) isn't a home folder you own"
 
-# The four roots, each inside $HOME (realpath -m: the folder may not exist yet).
 home=$(realpath -m -- "$HOME")
 ROOTS=()
 for r in "$CFG" "$STATE_HOME" "$CACHE" "$DATA"; do
@@ -66,7 +70,6 @@ for r in "$CFG" "$STATE_HOME" "$CACHE" "$DATA"; do
     ROOTS+=("$rr")
 done
 
-# The migrations, in order. NNNN-name.sh only; anything else (README, TEMPLATE) is not one.
 names=()
 if [ -d "$DIR" ]; then
     while IFS= read -r f; do names+=("$f"); done < <(find "$DIR" -maxdepth 1 -type f -name '[0-9][0-9][0-9][0-9]-*.sh' -printf '%f\n' | LC_ALL=C sort)
@@ -88,7 +91,6 @@ if [ "$mode" = list ]; then
     exit 0
 fi
 
-# The rename's mover first (see the header).
 for base in "$STATE_HOME" "$CFG" "$CACHE"; do
     if [ -d "$base/rice" ] && [ ! -L "$base/rice" ] && [ ! -e "$base/kuwai" ]; then
         refuse "$base/rice hasn't moved to $base/kuwai yet; that happens when the shell starts (kuwai restart), or run $ROOT/bin/kuwai-migrate, then this again"
@@ -102,8 +104,6 @@ if [ "$mode" = dry ]; then
     exit 0
 fi
 
-# The kernel's fence. Every right that changes the filesystem is handled; it's
-# granted beneath the four roots (and on /dev/null) only. Reads and runs anywhere.
 command -v setpriv >/dev/null || refuse "needs setpriv (util-linux 2.39 or later) to fence the migrations in"
 W="write-file,remove-dir,remove-file,make-char,make-dir,make-reg,make-sock,make-fifo,make-block,make-sym,refer,truncate"
 setpriv --landlock-access "fs:$W" --landlock-rule "path-beneath:write-file:/dev/null" -- true 2>/dev/null \

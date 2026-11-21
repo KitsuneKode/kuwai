@@ -1,39 +1,3 @@
--- kuwai.display — what the screens are for right now. The look modes
--- (modes.lua) change how windows look; this changes the signal the screens
--- get: refresh rate, Night Shift and how strictly colour is managed.
---
---   everyday  every screen at the rate monitors.lua gives it; Night Shift on
---             its sunset schedule
---   accurate  Night Shift off and held off (sunset won't warm it); colour
---             always goes through the shader pipeline and nothing is scanned
---             out directly, so what you see is the managed result. For
---             judging colour in client work
---   movie     external screens at 120 Hz (5×24, 4×30, 2×60 fps: even film
---             cadence in a window or a browser; fullscreen video already gets
---             VRR). Built-in panels keep their rate
---   gaming    the gaming look mode (nothing between you and the frame);
---             leaving restores the look you had
---   battery   built-in panel at its lowest rate (60 Hz); externals untouched
---
--- Automatic (feature auto_display), only while you've chosen everyday:
---   a colour app is open (Krita, GIMP, Inkscape, Darktable…) → accurate,
---   until the last one closes; unplugged → battery (with auto_battery).
---   A video player on an external screen focused, and not fullscreen, for a
---   little over a second → movie (120 Hz on that screen only, HDR ready); it
---   stays until the last such player closes, not when focus moves to the
---   terminal driving it. A player on the built-in panel changes nothing (the
---   panel keeps its rate in Movie anyway). The rate is not touched while that picture
---   is fullscreen: a modeset there blanks the panel. Fullscreen HDR on the
---   current rate still arms (cm_auto_hdr 2). A fullscreen game arms HDR the
---   same way and does not take the gaming preset — that preset reloads, and
---   auto_game already drops the effects.
---
--- `kuwai.display("movie")`, `kuwai.display()` → the preset in effect.
--- State (~/.local/state/kuwai/state): display = your choice, display_auto =
--- what automation picked on top of everyday, display_why = the reason.
--- Applied by a config reload (like the look modes): leaving a preset gives
--- back exactly what the config says.
-
 local K = require("kuwai.core")
 
 local D = {
@@ -47,7 +11,6 @@ local D = {
 	},
 }
 
--- Apps where colour is the work. user.lua can add to K.colour_apps.
 K.colour_apps = K.colour_apps
 	or {
 		"^gimp", "^org%.gimp", "^krita$", "^org%.kde%.krita$", "^inkscape$", "^org%.inkscape",
@@ -65,7 +28,6 @@ function D.choice()
 	return valid(c) and c or "everyday"
 end
 
--- The preset in effect: your choice, or what automation put on top of everyday.
 function D.current()
 	local c = D.choice()
 	if c == "everyday" and valid(K.state["display_auto"]) then
@@ -74,14 +36,7 @@ function D.current()
 	return c
 end
 
----------------------------------------------------------------------------
--- Screens: monitors.lua's rules are remembered as they're made, so a preset
--- can re-issue a screen's own rule with only the mode changed (position,
--- scale, VRR and bit depth stay what you wrote).
----------------------------------------------------------------------------
-local rules = {} -- { ref = the table passed in, base = a copy as written }
--- The original, kept once: if the Lua state outlives a reload, wrapping the
--- previous load's wrapper would stack one more layer per reload.
+local rules = {}
 _G.__kuwai_raw_monitor = _G.__kuwai_raw_monitor or hl.monitor
 local raw_monitor = _G.__kuwai_raw_monitor
 hl.monitor = function(spec, ...)
@@ -116,7 +71,6 @@ local function rule_for(m)
 	end
 end
 
--- The mode a screen should run in for `preset`, or nil for its own rule's.
 local function mode_for(m, base_mode, preset)
 	local w, h = tostring(base_mode or ""):match("^(%d+)x(%d+)")
 	w, h = tonumber(w) or m.width, tonumber(h) or m.height
@@ -140,13 +94,8 @@ local function mode_for(m, base_mode, preset)
 	end
 end
 
--- A measured profile for this screen (from a colorimeter; see `kuwai display
--- profile`): ~/.local/share/kuwai-data/icc/<screen>.icc, <screen> being its
--- description in lowercase with dashes (no serial number). Used only by the
--- accurate preset: an ICC replaces the screen's colour preset (so no automatic
--- HDR there), and the other presets are for watching and playing.
 function D.icc_name(m)
-	local d = (m.description or m.name or ""):gsub("%s+%x+$", "") -- drop a trailing serial
+	local d = (m.description or m.name or ""):gsub("%s+%x+$", "")
 	return (d:lower():gsub("[^%w]+", "-"):gsub("^-+", ""):gsub("-+$", ""))
 end
 function D.icc_for(m)
@@ -169,7 +118,6 @@ local function is_video(w)
 		or c:find("clapper", 1, true) ~= nil
 end
 
--- The screens a player window is on, by name (`gone`: a window closing now).
 local function player_screens(gone)
 	local on = {}
 	for _, w in ipairs(hl.get_windows() or {}) do
@@ -180,7 +128,6 @@ local function player_screens(gone)
 	return on
 end
 
--- A player on an external screen: the only kind Movie's rate is for.
 local function external_player(gone)
 	for name in pairs(player_screens(gone)) do
 		if not internal({ name = name }) then
@@ -191,17 +138,13 @@ local function external_player(gone)
 end
 
 local function apply_screens(preset)
-	-- Movie that automation picked changes the rate only on the screen the player is on: it
-	-- modeset every external screen, so a film on the laptop panel blanked the Acer, which had
-	-- nothing playing (DP-3, 5 round trips 200→120→200 in one evening, each a blackout).
-	-- Movie you chose yourself is for a browser too, so it still takes every external screen.
 	local players = preset == "movie" and D.choice() == "everyday" and player_screens() or nil
 	for _, m in ipairs(hl.get_monitors() or {}) do
 		local r = rule_for(m)
 		if r then
 			local mode = (players and not players[m.name]) and r.base.mode
 				or mode_for(m, r.base.mode, preset) or r.base.mode
-			r.ref.mode = mode -- the lid switch re-issues K.panel: keep the preset's rate
+			r.ref.mode = mode
 			local icc = preset == "accurate" and D.icc_for(m) or nil
 			if mode ~= r.base.mode or icc then
 				local spec = {}
@@ -218,19 +161,10 @@ local function apply_screens(preset)
 	end
 end
 
----------------------------------------------------------------------------
--- Apply (every load, after monitors.lua, user.lua and the look mode)
----------------------------------------------------------------------------
 function D.apply()
 	local p = D.current()
 	local ok, err = pcall(function()
 		apply_screens(p)
-		-- Movie and gaming are the presets where a modeset is the point
-		-- (film cadence, a game's own HDR). Everyday, accurate and battery
-		-- stay on the picture monitors.lua asked for.
-		-- 2 = hdredid: the PQ signal with this screen's own primaries (its
-		-- EDID), not BT.2020 (1): a DisplayHDR 400 panel covers ~90 % P3,
-		-- two-thirds of Rec.2020, so 1 claimed colours the glass doesn't have.
 		local auto_hdr = (p == "movie" or p == "gaming") and 2 or 0
 		if p == "accurate" then
 			K.config({ render = { non_shader_cm = 0, direct_scanout = 0, cm_auto_hdr = 0 } })
@@ -244,12 +178,10 @@ function D.apply()
 	end
 end
 
--- Change what's in effect: state first, then a reload re-runs the config.
 local function switch(from, to)
 	if from == to then
 		return
 	end
-	-- The gaming look rides along with the gaming preset.
 	local mode = K.state["mode"] or "focus"
 	if to == "gaming" and mode ~= "gaming" then
 		K.set_state("mode_before_display_gaming", mode)
@@ -264,14 +196,11 @@ local function switch(from, to)
 	if to == "accurate" then
 		hl.exec_cmd(K.night_off)
 	elseif from == "accurate" and K.night_sync then
-		K.night_sync(true) -- back to what the schedule says now
+		K.night_sync(true)
 	end
 	hl.dispatch(hl.dsp.reload_config())
 end
 
----------------------------------------------------------------------------
--- Runtime API (the center's Display row, the kuwai CLI, `hyprctl eval`)
----------------------------------------------------------------------------
 _G.kuwai = _G.kuwai or {}
 
 function kuwai.display(name)
@@ -284,14 +213,12 @@ function kuwai.display(name)
 	end
 	local from = D.current()
 	K.set_state("display", name ~= "everyday" and name or nil)
-	-- Choosing hands-off: a manual choice clears what automation picked.
 	K.set_state("display_auto", nil)
 	K.set_state("display_why", nil)
 	switch(from, D.current())
 	return name
 end
 
--- Automation's layer: only on top of everyday; nil clears it.
 function D.auto(preset, why)
 	if K.state["display_auto"] == preset then
 		return
@@ -304,7 +231,6 @@ function D.auto(preset, why)
 	end
 end
 
--- For `kuwai display profile`: each screen, its profile file, and whether it exists.
 function kuwai.display_profiles()
 	local out = {}
 	for _, m in ipairs(hl.get_monitors() or {}) do
@@ -318,11 +244,6 @@ function kuwai.displays()
 	return table.concat(D.list, " ")
 end
 
----------------------------------------------------------------------------
--- Automatic, only on top of everyday.
--- Colour work wins. A player you have settled on takes Movie, but never by
--- modesetting under a fullscreen picture. A fullscreen game only arms HDR.
----------------------------------------------------------------------------
 local function colour_app(w)
 	local c = (w and (w.class or w.initial_class) or ""):lower()
 	if c == "" then
@@ -368,16 +289,12 @@ local function any_such(pred)
 	end
 end
 
--- Unplugged (and auto_battery on) → battery underneath anything else.
 function D.battery_auto()
 	if K.feature("auto_display") and K.feature("auto_battery") and K.ac_online and K.ac_online() == false then
 		return "battery", "On battery"
 	end
 end
 
--- cm_auto_hdr armed without a preset change. The preset's own apply() owns
--- the flag while Movie, Gaming or Accurate is in effect. Kept local so a
--- later "off" cannot run while one of those still wants it on.
 local hdr_forced = false
 local function preset_wants_hdr()
 	local p = D.current()
@@ -394,7 +311,6 @@ local function hdr_arm(on)
 	K.config({ render = { cm_auto_hdr = on and 2 or 0 } })
 end
 
--- One outstanding settle. A new reason cancels the previous timer.
 local ticket, pending = 0, nil
 local function cancel()
 	pending = nil
@@ -417,13 +333,10 @@ local function schedule(kind, ms, fn)
 end
 
 local function go(preset, why)
-	hdr_forced = false -- apply() sets the flag for the preset we land on
+	hdr_forced = false
 	D.auto(preset, why)
 end
 
--- The window an event just handed us, when it is the one in front.
--- window.open runs before get_active_window() sees the new player, and a
--- fullscreen callback can run while the active window is still the one behind.
 local function front(hint)
 	local active = hl.get_active_window()
 	if hint and (is_video(hint) or is_game(hint)) then
@@ -434,7 +347,6 @@ local function front(hint)
 	return active
 end
 
--- What everyday should be showing right now.
 function D.reconcile(gone, hint)
 	if not K.feature("auto_display") or D.choice() ~= "everyday" then
 		return
@@ -445,9 +357,6 @@ function D.reconcile(gone, hint)
 	end)
 	local active = front(hint)
 	local watching = is_video(active) or video_fs
-	-- A colour app wins, except under a fullscreen picture: leaving Movie
-	-- for Accurate there reloads sRGB while the PQ signal is still up and
-	-- the panel keeps the wide primaries.
 	if colour and not video_fs then
 		cancel()
 		go("accurate", colour)
@@ -458,7 +367,6 @@ function D.reconcile(gone, hint)
 			cancel()
 		end
 		if video_fs and D.current() ~= "movie" then
-			-- Same rate. Hyprland flips to PQ only if this frame is HDR.
 			hdr_arm(true)
 			return
 		end
@@ -486,10 +394,6 @@ function D.reconcile(gone, hint)
 		hdr_arm(true)
 		return
 	end
-	-- Focus has left the player and nothing is fullscreen. Movie stays while a player is still
-	-- open on an external screen: going back 2.5 s after focus left made every look at the
-	-- terminal driving the player (kunai) two blackouts, there and back. It ends when the last
-	-- such player closes or moves to the panel. Nothing to undo: don't arm a timer at all.
 	if K.state["display_auto"] == "movie" and external_player(gone) then
 		if pending == "idle" then
 			cancel()
@@ -505,7 +409,6 @@ function D.reconcile(gone, hint)
 			go("accurate", find_colour())
 			return
 		end
-		-- Still watching on an external screen (a player on the panel doesn't hold Movie).
 		if (is_video(hl.get_active_window()) and external_player()) or any_such(function(w)
 			return (is_video(w) or is_game(w)) and fullscreen(w)
 		end) then
@@ -521,8 +424,6 @@ end
 
 hl.on("window.open", function(w)
 	D.reconcile(nil, w)
-	-- Focus often lands a moment after open. A raw timer, so this retry
-	-- cannot cancel a Movie settle that reconcile just armed.
 	if is_video(w) then
 		hl.timer(function()
 			D.reconcile()
@@ -547,7 +448,7 @@ hl.on("window.destroy", function(w)
 	D.reconcile(w)
 end)
 K.defer(function()
-	D.reconcile() -- a colour app or a player already open across a reload
+	D.reconcile()
 end)
 
 kuwai.display_module = D

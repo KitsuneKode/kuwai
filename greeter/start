@@ -1,21 +1,12 @@
 #!/bin/sh
-# Runs the login face inside the greeter's Hyprland, then ends that Hyprland
-# whatever happened (logged in: greetd starts the session; crashed: greetd
-# starts the greeter again).
-#
-# HOME points at the copy of your theme files (greeter/sync), so the face
-# shows your wallpaper and accent. Anything written goes to the runtime dir.
 ROOT=/var/lib/kuwai-greeter
 [ -n "${LANG:-}" ] || . /etc/locale.conf 2>/dev/null
 export LANG="${LANG:-C.UTF-8}"
 run="${XDG_RUNTIME_DIR:-/tmp}/kuwai-greeter"
 mkdir -p "$run/state/kuwai" "$run/cache"
-: >"$run/brightness"   # greeter/keys writes the DDC value here; the HUD watches it
+: >"$run/brightness"
 cp -f "$ROOT/home/.local/state/kuwai/prefs.json" "$run/state/kuwai/" 2>/dev/null
 
-# Your name and picture: data greeter/sync keeps in home/ (the only part of
-# this directory you can write); the old places for an install not yet
-# re-run.
 who=$(cat "$ROOT/home/.kuwai-user" 2>/dev/null || cat "$ROOT/user" 2>/dev/null)
 face=
 for f in "$ROOT/home/.face" "$ROOT/face"; do [ -f "$f" ] && { face=$f; break; }; done
@@ -33,7 +24,6 @@ HOME="$ROOT/home" \
 if command -v systemd-cat >/dev/null 2>&1 && [ -S /run/systemd/journal/stdout ]; then
     run_face 2>&1 | systemd-cat -t kuwai-greeter-ui
 else
-    # No journal: retain a bounded tail without preventing a login.
     run_face 2>&1 | tail -c 1048576 >"$run/qs.log"
 fi
 

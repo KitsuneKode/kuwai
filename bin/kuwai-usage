@@ -1,37 +1,4 @@
 #!/usr/bin/env node
-// Usage limits for the center's Agents tab, shaped like T3 Code's own view:
-// providers, each with every signed-in account, each with its windows.
-//
-//   T3 Code    the running desktop server (~/.t3/userdata/server-runtime.json),
-//              `server.getConfig` over its WebSocket RPC, read with a
-//              read-only bearer token kept in ~/.local/state/kuwai/t3-token
-//              (issue one with: t3 auth session issue --scope orchestration:read
-//              --label kuwai-usage --ttl 365d --token-only)
-//   T3 Code's last snapshot  ~/.local/state/kuwai/usage-t3.json: every
-//              account T3 Code last reported, kept (up to a week) for while
-//              it's closed, so the rings don't collapse to kittymux's view
-//   kittymux   ~/.local/state/kittymux/agent-usage.json: one account per
-//              provider (Claude usually "idle", so dropped); used only when
-//              there's no recent T3 Code snapshot
-//
-//   kuwai-usage           prints one snapshot and exits
-//   kuwai-usage --watch   stays connected and prints a line on every change:
-//                        T3 Code pushes provider and usage updates itself
-//                        (subscribeServerConfig), so nothing polls; without
-//                        T3 Code it rereads kittymux's file once a minute
-//
-// Read-only throughout: the token can only read (orchestration:read), and
-// nothing here writes to T3 Code or kittymux. The token is read from its
-// 0600 file and sent only as the socket's Authorization header (never in
-// the URL, argv or the environment). The shell runs this under bun when it's
-// installed (services/Limits.qml: ~4 MB private against node's 11–29 MB);
-// it runs unchanged under node.
-//
-// Each line is one JSON object:
-//   { source, checkedAt, providers: [{ driver, label, color,
-//       accounts: [{ key, name, email, plan, note, windows: [{ id, kind, label,
-//         used, resetsAt, durationMins }] }] }] }
-// Times are epoch milliseconds; `used` is 0–100.
 import { readFileSync, writeFileSync, renameSync, mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 
@@ -39,7 +6,6 @@ const HOME = homedir();
 const STATE = process.env.XDG_STATE_HOME || `${HOME}/.local/state`;
 const T3_HOME = process.env.T3CODE_HOME || `${HOME}/.t3`;
 
-// T3 Code's provider presentation (apps/web/src/components/usage/usageProviders.ts).
 const PROVIDERS = {
   codex: { label: "Codex", color: "#e5e5ea" },
   claude: { label: "Claude Code", color: "#d97757" },
@@ -61,7 +27,6 @@ const readText = (path) => {
   try { return readFileSync(path, "utf8").trim(); } catch { return ""; }
 };
 
-// ── T3 Code ──────────────────────────────────────────────────────────────
 function rpc(url, token, tag, payload, timeoutMs = 4000) {
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(url, { headers: { Authorization: `Bearer ${token}` } });
@@ -111,18 +76,13 @@ async function fromT3() {
   return shapeT3(config.providers, config.usageLimitSources);
 }
 
-// "ChatGPT Plus Subscription" → "Plus", "Claude Pro Subscription" → "Pro";
-// generic labels ("Google account") say nothing about the plan.
 function planOf(auth) {
   const label = auth?.label || "";
   if (!/subscription/i.test(label)) return null;
   return label.replace(/\b(subscription|chatgpt|claude|openai|anthropic)\b/gi, "").trim() || null;
 }
 
-// T3 Code's server config → accounts, the way its usage view collects them.
 function shapeT3(providers, sources) {
-  // One entry per real account: the same login reached through two
-  // instances (or a hub) shows once, the freshest read winning.
   const accounts = new Map();
   const add = (key, account) => {
     const prev = accounts.get(key);
@@ -164,12 +124,9 @@ function shapeT3(providers, sources) {
       });
     }
   }
-  // Signed in but no limit windows (OpenCode, some Cursor plans): nothing to draw.
   return group([...accounts.values()].filter((a) => a.windows.length), "t3");
 }
 
-// Live: subscribeServerConfig streams a snapshot, then provider and usage
-// source updates. Effect RPC over the socket: each chunk is acknowledged.
 function watchT3(ep, onState) {
   return new Promise((resolve) => {
     let providers = null, sources = [];
@@ -204,7 +161,6 @@ function watchT3(ep, onState) {
   });
 }
 
-// ── kittymux ─────────────────────────────────────────────────────────────
 const KM_WINDOWS = {
   "5h": { kind: "session", label: "5 hour", mins: 300 },
   day: { kind: "session", label: "Daily", mins: 1440 },
@@ -232,7 +188,6 @@ function fromKittymux() {
         durationMins: r.window_s ? r.window_s / 60 : known.mins,
       };
     });
-    // Cursor: "Overall" is both pools together, not a third quota.
     const pools = windows.some((w) => w.id === "auto") && windows.some((w) => w.id === "api");
     return {
       key: `${p.name}:kittymux`,
@@ -249,7 +204,6 @@ function fromKittymux() {
   return group(accounts, "kittymux");
 }
 
-// ── Shape ────────────────────────────────────────────────────────────────
 function group(accounts, source) {
   const byDriver = new Map();
   for (const a of accounts) {
@@ -269,13 +223,8 @@ function group(accounts, source) {
   };
 }
 
-// The reader (the shell) going away ends us quietly.
 process.stdout.on("error", () => process.exit(0));
 const print = (o) => process.stdout.write(JSON.stringify(o) + "\n");
-// T3 Code's last full view, saved on every update (it holds account emails,
-// so owner-only). Read back while T3 Code is closed: "t3-cached", with the
-// time it was taken. Windows whose reset has passed read as reset in the
-// shell (Limits.windows), so an old snapshot doesn't claim a spent limit.
 const CACHE = `${STATE}/kuwai/usage-t3.json`;
 const CACHE_MAX_MS = 7 * 24 * 3600 * 1000;
 function saveT3(o) {
@@ -304,7 +253,6 @@ if (process.argv.includes("--watch")) {
       const why = await watchT3(ep, (state) => { live = true; wait = 2000; saveT3(state); emit(state); });
       if (!live) emit(fallback(why));
     } else emit(fallback(null));
-    // Reconnect (T3 Code restarts, sleeps) with backoff; kittymux meanwhile.
     await new Promise((r) => setTimeout(r, wait));
     wait = Math.min(60000, wait * 2);
   }

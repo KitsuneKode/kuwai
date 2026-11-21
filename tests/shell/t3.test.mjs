@@ -88,6 +88,7 @@ describe('the capsule\'s headline', () => {
     expect(headline([t('running'), t('failed', { limited: true })])).toMatchObject({ word: 'Limit reached', tone: 'caution' });
     expect(headline([t('running'), t('failed')])).toMatchObject({ word: 'Failed', tone: 'error' });
     expect(headline([t('running'), t('running'), t('completed')])).toMatchObject({ word: 'Working', count: 2 });
+    expect(headline([t('starting'), t('running')])).toMatchObject({ word: 'Working', count: 2 });
     expect(headline([t('completed'), t('completed')])).toBeNull();
     expect(headline([])).toBeNull();
   });

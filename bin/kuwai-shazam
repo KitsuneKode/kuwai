@@ -1,20 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# =============================================================================
-# kuwai-shazam (was ~/Scripts/shazam-now.sh) — Hyprland / Waybar / Kitty one-shot SongRec helper
-#
-# Uses:
-#   songrec recognize
-#   xdg-open "music://play/s/<id>"
-# =============================================================================
-
 PROG="${0##*/}"
 SELF="$(readlink -f "$0" 2>/dev/null || printf '%s' "$0")"
-
-# -----------------------------------------------------------------------------
-# Early helpers
-# -----------------------------------------------------------------------------
 
 have() {
   command -v "$1" >/dev/null 2>&1
@@ -34,10 +22,6 @@ detect_default_monitor() {
   printf '%s' "alsa_output.usb-TTGK_Technology_Co._Ltd_Audiocular_D07-00.analog-stereo.monitor"
 }
 
-# -----------------------------------------------------------------------------
-# Config
-# -----------------------------------------------------------------------------
-
 DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/shazam-now"
 RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp}/shazam-now"
 
@@ -46,29 +30,16 @@ DEVICE="${SONGREC_DEVICE:-$(detect_default_monitor)}"
 
 ICON="${SHAZAM_ICON:-audio-headphones}"
 
-# SongRec recognize timeout.
 RECOGNIZE_TIMEOUT="${SHAZAM_TIMEOUT:-45}"
 
-# Avoid saving same song again inside this many seconds.
-# 0 = save every detection.
 DUP_WINDOW="${SHAZAM_DUP_WINDOW:-600}"
 
-# Show the last detected song in Waybar for 5 minutes.
 WAYBAR_RECENT_WINDOW="${SHAZAM_WAYBAR_RECENT_WINDOW:-300}"
 
-# Must match Waybar "signal": 8.
 WAYBAR_SIGNAL="${SHAZAM_WAYBAR_SIGNAL:-8}"
 
-# Cider protocol.
-# All six schemes are interchangeable (cider://, music://, musics://,
-# itms://, itmss://, ame://).  Cider's LinkHandler splits on /play/
-# so the scheme prefix does not matter for playback.
-# Default: music (xdg-mime registered to Cider).
 CIDER_PROTOCOL="${CIDER_PROTOCOL:-music}"
 
-# Cider action segment inside the URI.
-# Cider LinkHandler expects /play/s/<id> — "open" is equivalent
-# but may fall through to the generic router in older versions.
 CIDER_ACTION="${CIDER_ACTION:-play}"
 
 PID_FILE="$RUNTIME_DIR/recognize.pid"
@@ -77,10 +48,6 @@ LOG_FILE="$DATA_DIR/shazam-now.log"
 
 mkdir -p "$DATA_DIR" "$RUNTIME_DIR"
 touch "$HISTORY_FILE" "$LOG_FILE"
-
-# -----------------------------------------------------------------------------
-# General helpers
-# -----------------------------------------------------------------------------
 
 log() {
   printf '[%s] %s\n' "$(date '+%F %T')" "$*" >>"$LOG_FILE"
@@ -154,10 +121,6 @@ urlencode() {
 hash_key() {
   printf '%s' "$1" | sha256sum | awk '{print $1}'
 }
-
-# -----------------------------------------------------------------------------
-# Runtime state / toggle
-# -----------------------------------------------------------------------------
 
 read_state() {
   if [ ! -s "$PID_FILE" ]; then
@@ -267,15 +230,10 @@ cmd_toggle() {
   refresh_waybar
 }
 
-# -----------------------------------------------------------------------------
-# Apple Music / Cider URI helpers
-# -----------------------------------------------------------------------------
-
 extract_apple_id_from_url() {
   local url="${1:-}"
   local id=""
 
-  # Apple Music album URLs often carry the song id as ?i=<id>
   id="$(
     printf '%s\n' "$url" |
       sed -nE 's/.*[?&]i=([0-9]+).*/\1/p' |
@@ -287,7 +245,6 @@ extract_apple_id_from_url() {
     return 0
   fi
 
-  # Direct song URLs often end with /song/<slug>/<id>
   id="$(
     printf '%s\n' "$url" |
       sed -nE 's|.*/song/[^/?#]+/([0-9]+).*|\1|p' |
@@ -307,10 +264,6 @@ to_cider_uri() {
   local apple_id="${2:-}"
   local protocol="$CIDER_PROTOCOL"
   local action="$CIDER_ACTION"
-
-  # Cider LinkHandler expects:
-  #   {scheme}://play/s/{store-id}
-  # All 6 schemes are handled identically.
 
   if [ -n "$apple_id" ] && [ "$apple_id" != "null" ]; then
     printf '%s://%s/s/%s\n' "$protocol" "$action" "$apple_id"
@@ -348,14 +301,6 @@ to_cider_uri() {
 
   return 1
 }
-
-# -------------------------------------------------------------------------
-# Wait for Cider to be ready before sending protocol URIs.
-# Cider's LinkHandler only processes protocol URLs via the
-# `second-instance` event, which requires Cider to already be running.
-# On cold start (first instance) the URL passed by xdg-open is silently
-# lost because Cider never reads process.argv for protocol URLs.
-# -------------------------------------------------------------------------
 
 wait_for_cider() {
   local timeout="${1:-12}"
@@ -453,7 +398,6 @@ open_music_search() {
   track_name="$(jq -r '.results[0].trackName // empty' <<<"$json")"
   artist_name="$(jq -r '.results[0].artistName // empty' <<<"$json")"
 
-  # Cider LinkHandler format: {scheme}://play/s/{store-id}
   if [ -n "$track_id" ] && [ "$track_id" != "null" ]; then
     uri="${CIDER_PROTOCOL:-music}://${action}/s/${track_id}"
   elif [ -n "$track_url" ] && [ "$track_url" != "null" ]; then
@@ -469,10 +413,6 @@ open_music_search() {
   setsid xdg-open "$uri" >/dev/null 2>&1 &
   notify "Cider" "Opening: $artist_name - $track_name" "low"
 }
-
-# -----------------------------------------------------------------------------
-# Detection parsing
-# -----------------------------------------------------------------------------
 
 extract_music_url_from_json() {
   local json="$1"
@@ -703,10 +643,6 @@ run_songrec_recognize() {
   return "$status"
 }
 
-# -----------------------------------------------------------------------------
-# History saving — generates a stable `id` for every entry
-# -----------------------------------------------------------------------------
-
 save_detection() {
   local json_output="$1"
   local now track_key artist title id
@@ -807,17 +743,10 @@ cmd_recognize() {
     esac
   fi
 
-  # Important:
-  # Do not auto-open Cider here. Recognition should not hijack current playback.
-  # Use history Enter / open-last to play/search in Cider.
   log "Auto-open disabled after detection: $track_name"
 
   refresh_waybar
 }
-
-# -----------------------------------------------------------------------------
-# History helpers
-# -----------------------------------------------------------------------------
 
 get_entry_by_key_ts() {
   local key="${1:-}"
@@ -833,15 +762,10 @@ get_entry_by_key_ts() {
   ' "$HISTORY_FILE" 2>/dev/null | tail -n 1
 }
 
-# -------------------------------------------------------------------------
-# Stable-ID lookup — handles both new entries (with .id) and old (compute)
-# -------------------------------------------------------------------------
-
 get_entry_by_id() {
   local id="${1:-}"
   [ -n "$id" ] || return 1
 
-  # Fast path: entries that already have a stored .id field.
   local entry
   entry="$(jq -c --arg id "$id" 'select(.id == $id)' "$HISTORY_FILE" 2>/dev/null | tail -n 1)"
   if [ -n "$entry" ]; then
@@ -849,7 +773,6 @@ get_entry_by_id() {
     return 0
   fi
 
-  # Slow path: entries without .id — compute id on the fly.
   while IFS= read -r line; do
     [ -n "$line" ] || continue
     local ts key artist title computed
@@ -876,9 +799,6 @@ open_entry_json() {
   artist="$(jq -r '.track.subtitle // "Unknown"' <<<"$entry")"
   title="$(jq -r '.track.title // "Unknown"' <<<"$entry")"
 
-  # Ensure Cider is running before any open attempt.
-  # Cold start loses protocol URLs — Cider only handles them
-  # via second-instance (requires an already-running process).
   wait_for_cider || return 1
 
   if open_music_link "$url" "$apple_id"; then
@@ -887,10 +807,6 @@ open_entry_json() {
 
   open_music_search "$artist" "$title"
 }
-
-# -------------------------------------------------------------------------
-# id-based fzf helpers
-# -------------------------------------------------------------------------
 
 cmd___preview_id() {
   local id="${1:-}"
@@ -992,7 +908,6 @@ cmd___delete_id() {
   local tmp before after
   tmp="$(mktemp)"
 
-  # Try direct .id match (new entries)
   jq -c --arg id "$id" 'select((.id // "") != $id)' "$HISTORY_FILE" >"$tmp" 2>/dev/null
 
   before="$(wc -l <"$HISTORY_FILE" | tr -d ' ')"
@@ -1005,7 +920,6 @@ cmd___delete_id() {
     return 0
   fi
 
-  # Fallback: entries without .id — compute id for each
   : >"$tmp"
   while IFS= read -r line; do
     [ -n "$line" ] || continue
@@ -1025,15 +939,9 @@ cmd___delete_id() {
   notify "Shazam" "Deleted history entry" "low"
 }
 
-# -------------------------------------------------------------------------
-# fzf source — outputs tab-separated lines with stable id as field 2
-# -------------------------------------------------------------------------
-
 cmd___source() {
   [ -s "$HISTORY_FILE" ] || return 0
 
-  # Use placeholders for empty fields so that read's IFS splitting
-  # does not collapse consecutive tabs.
   jq -r '
     select(.track? and .track.key?)
     | [
@@ -1052,7 +960,6 @@ cmd___source() {
       local d link_mark
       d="$(date -d "@$ts" '+%Y-%m-%d %H:%M' 2>/dev/null || printf '%s' "$ts")"
 
-      # Restore placeholders to real empty strings
       [ "$url" = "-" ] && url=""
       [ "$apple_id" = "-" ] && apple_id=""
       [ "$key" = "-" ] && key=""
@@ -1066,12 +973,10 @@ cmd___source() {
         link_mark="⌕"
       fi
 
-      # Stable id for backward-compat entries that lack .id
       if [ -z "$id" ] || [ "$id" = "null" ]; then
         id="$(hash_key "${ts}:${key}:${artist}:${title}")"
       fi
 
-      # visible_text<TAB>id<TAB>key<TAB>timestamp
       printf "%s %s  %s - %s\t%s\t%s\t%s\n" "$link_mark" "$d" "$artist" "$title" "$id" "$key" "$ts"
     done
 }
@@ -1134,10 +1039,6 @@ cmd_open_last() {
   entry="$(tail -n 1 "$HISTORY_FILE")"
   open_entry_json "$entry"
 }
-
-# -----------------------------------------------------------------------------
-# Waybar / display
-# -----------------------------------------------------------------------------
 
 last_short() {
   [ -s "$HISTORY_FILE" ] || return 1
@@ -1235,10 +1136,6 @@ cmd_waybar() {
   tooltip="$(printf '%s\n\n%s' "$(last_tooltip)" $'Hidden from bar because it is older than 5 minutes.\n\nLeft click: detect song\nRight click: history')"
   json_out " Shazam" "$tooltip" "idle" "idle"
 }
-
-# -----------------------------------------------------------------------------
-# Utility commands
-# -----------------------------------------------------------------------------
 
 cmd_last() {
   if [ ! -s "$HISTORY_FILE" ]; then

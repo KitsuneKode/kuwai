@@ -21,16 +21,14 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-MIN_TYPE = 10          # px at text scale 1; docs/DESIGN.md's smallest label
-MIN_TARGET = 24        # px; WCAG 2.2 "Target Size (Minimum)"
-READABLE = 4.5         # WCAG 2.2 contrast for text
-READABLE_LARGE = 3.0   # the same for large text (24 px, or 18.66 px bold)
-FAINT = 3.0            # under this even a hint or a disabled label is lost
-INKLESS = 24           # summed RGB distance (0–765) under which a pixel is the ground, not a stroke
-ISLAND = (1080, 600)   # the most the island gives a panel on a 1080p screen
+MIN_TYPE = 10
+MIN_TARGET = 24
+READABLE = 4.5
+READABLE_LARGE = 3.0
+FAINT = 3.0
+INKLESS = 24
+ISLAND = (1080, 600)
 
-# Words that are the program talking to itself: a helper's name, an exit
-# status, a value that never got filled in.
 INSIDES = re.compile(r"\bkuwai-[a-z]{3,}\b|\bexit(?:ed)?(?: with| code| status)? \d+\b|\(exit \d+\)|\bundefined\b|\bNaN\b|\[object |\bqs ipc\b")
 GAVE_UP = re.compile(r"\b(?:didn'?t|couldn'?t|can'?t|failed|unable)\b", re.I)
 MONO_FONT = re.compile(r"mono|courier|consol", re.I)
@@ -41,9 +39,9 @@ GLYPH_FONT = re.compile(r"symbols|nerd|icon|material|glyph", re.I)
 class Fault:
     scene: str
     rule: str
-    level: str            # "fail" | "look"
-    what: str             # one line a person can act on
-    box: tuple | None     # where on the frame, for the contact sheet
+    level: str
+    what: str
+    box: tuple | None
 
     @property
     def key(self) -> str:
@@ -163,7 +161,7 @@ def judge(frame: dict, image=None) -> list[Fault]:
         if t.get("scroll") and t.get("clip"):
             shown = _inter(box, t["clip"])
             if shown[2] <= 0.5 or shown[3] <= 0.5:
-                continue                              # scrolled away: not on the frame
+                continue
             left, _, right, _ = _outside(box, t["clip"])
             if left or right:
                 add("cut-off", "fail", f"{_label(t)} is cut at the side of its scrolling area by {max(left, right):.0f} px", shown)
@@ -180,8 +178,6 @@ def judge(frame: dict, image=None) -> list[Fault]:
             add("small-type", "fail", f"{_label(t)} is set at {t['size']:g} px (the smallest is {MIN_TYPE * scale:g})", _shown(t))
         if glyph and t.get("drawn") and t["drawn"] != t.get("family"):
             add("missing-font", "fail", f"an icon asks for the font {t['family']} and was drawn in {t['drawn']}: it shows as stray letters or a box", _shown(t))
-        # Text set in the code face is shown as code on purpose (a command to
-        # copy, a log): the frame says so itself. The rule is for prose.
         if not glyph and not MONO_FONT.search(t.get("family", "")) and INSIDES.search(t["t"]):
             add("insides", "fail", f"{_label(t)} shows the program's insides (a helper's name, an exit status, an empty value)", _shown(t))
         if t.get("op", 1) >= 0.9:
@@ -214,7 +210,7 @@ def judge(frame: dict, image=None) -> list[Fault]:
         if box[2] <= 0.5 or box[3] <= 0.5:
             continue
         if g.get("scroll") and box[2] * box[3] < g["box"][2] * g["box"][3] - 1:
-            continue                                  # partly scrolled out: it is whole when scrolled to
+            continue
         if min(box[2], box[3]) < MIN_TARGET - 0.5:
             add("small-target", "fail", f"a click target is {box[2]:.0f} x {box[3]:.0f} px (the smallest is {MIN_TARGET})", box)
 
@@ -285,8 +281,6 @@ def _cut_rows(frame, texts, image) -> list[Fault]:
             continue
         box = list(t["box"])
         at_foot = box[1] + box[3] > clip[1] + clip[3]
-        # A wrapped text is judged by the one line that crosses the edge: the
-        # lines above it are whole (a question's first line over the fade).
         lines = max(1, int(t.get("lines", 1) or 1))
         if lines > 1:
             lh = box[3] / lines
@@ -296,7 +290,7 @@ def _cut_rows(frame, texts, image) -> list[Fault]:
         top, foot = max(box[1], clip[1]), min(box[1] + box[3], clip[1] + clip[3])
         shown = foot - top
         if shown < 3 or shown > box[3] * 0.8:
-            continue                                   # scrolled away, or (nearly) whole
+            continue
         edge = (round(clip[0]), round(clip[1] + (clip[3] if at_foot else 0)))
         if edge in seen:
             continue
@@ -318,7 +312,7 @@ def _look_at(frame, image) -> list[Fault]:
     """What only the picture shows: a large band of nothing, lopsided insets."""
     scene, w, h = frame["id"], image.size[0], image.size[1]
     px = image.load()
-    base = px[w // 2, 2][:3]              # the island's own ground, just under its top edge
+    base = px[w // 2, 2][:3]
 
     def bare(p):
         return abs(p[0] - base[0]) + abs(p[1] - base[1]) + abs(p[2] - base[2]) < 12

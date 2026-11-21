@@ -1,17 +1,21 @@
 #!/usr/bin/env bash
-# Dev only: worst-case data for the shell, through the same door real data
-# uses (D-Bus notifications), so it tests the components, not an edit.
-#
-#   kuwai-fixture notifs worst   long names, emails, emoji, markup, RTL, Thai,
-#                                long actions, critical, a 14-deep group
-#   kuwai-fixture notifs one     a single notification (every count at 1)
-#   kuwai-fixture notifs many    300 notifications (the list's real upper bound)
-#   kuwai-fixture notifs clear   remove what this script sent (yours stay)
-#
-# Every notification it sends is recorded (app + title) and removed again by
-# `clear` through the shell's removeMatching, so your history is untouched.
 set -u
-# (Some app terminals leak LD_LIBRARY_PATH with an old libnotify: T3 Code.)
+
+usage() {
+cat <<'KUWAI_USAGE'
+Dev only: worst-case data for the shell, through the same door real data
+uses (D-Bus notifications), so it tests the components, not an edit.
+
+  kuwai-fixture notifs worst   long names, emails, emoji, markup, RTL, Thai,
+                               long actions, critical, a 14-deep group
+  kuwai-fixture notifs one     a single notification (every count at 1)
+  kuwai-fixture notifs many    300 notifications (the list's real upper bound)
+  kuwai-fixture notifs clear   remove what this script sent (yours stay)
+
+Every notification it sends is recorded (app + title) and removed again by
+`clear` through the shell's removeMatching, so your history is untouched.
+KUWAI_USAGE
+}
 unset LD_LIBRARY_PATH
 STATE="${XDG_RUNTIME_DIR:-/tmp}/kuwai/fixture-sent.tsv"
 ROOT="${KUWAI_ROOT:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}"
@@ -19,7 +23,7 @@ mkdir -p "$(dirname "$STATE")"
 
 ipc() { qs ipc -p "$ROOT/shell" call notifs "$@"; }
 
-send() {   # app title body [urgency] [actions…]
+send() {
     local app=$1 title=$2 body=$3 urg=${4:-normal}; shift 4 2>/dev/null || shift $#
     printf '%s\t%s\n' "$app" "$title" >> "$STATE"
     local notify=( "$ROOT/bin/kuwai-notify" -a "$app" -u "$urg" )
@@ -33,7 +37,7 @@ send() {   # app title body [urgency] [actions…]
 
 clear_sent() {
     [ -f "$STATE" ] || return 0
-    sort -u "$STATE" | while IFS=$'\t' read -r app title; do ipc removeMatching "$app" "$title" >/dev/null 2>&1 </dev/null; done   # (qs would read the list from stdin)
+    sort -u "$STATE" | while IFS=$'\t' read -r app title; do ipc removeMatching "$app" "$title" >/dev/null 2>&1 </dev/null; done
     : > "$STATE"
 }
 
@@ -60,5 +64,5 @@ case "${1:-} ${2:-}" in
     "notifs one")   clear_sent; send "Calendar" "Standup" "In 1 minute" normal ;;
     "notifs many")  clear_sent; for i in $(seq 1 300); do send "Load test" "Item $i of 300" "Body $i" low; done ;;
     "notifs clear") clear_sent ;;
-    *) sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+    *) usage; exit 2 ;;
 esac

@@ -52,6 +52,7 @@ export function stateOf(t) {
  */
 export function headline(items) {
     const list = (items || []).map(t => ({ t, st: stateOf(t) }));
+    /** @param {string[]} keys */
     const pick = (keys) => list.filter(x => keys.includes(x.st.key));
     const want = pick(["approval", "question", "request", "waiting"]);
     if (want.length) {
@@ -61,7 +62,10 @@ export function headline(items) {
     }
     for (const keys of [["limited"], ["failed"], ["working", "starting"]]) {
         const got = pick(keys);
-        if (got.length) return { key: got[0].st.key, word: got[0].st.word, tone: got[0].st.tone, count: got.length };
+        if (got.length) {
+            const lead = got.find(x => x.st.key === keys[0]) || got[0];
+            return { key: lead.st.key, word: lead.st.word, tone: lead.st.tone, count: got.length };
+        }
     }
     return null;
 }

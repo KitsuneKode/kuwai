@@ -1,7 +1,2 @@
 #!/usr/bin/env bash
-# kuwai-brightness: every screen's brightness (laptop panel through
-# brightnessctl, external monitors through DDC/CI), one session-local daemon.
-#   kuwai-brightness status | set N | up | down | watch --part osd | …
-# Kuwai owns it: lib/brightness is the copy to edit (~/Scripts/brightness.sh
-# only forwards here). One daemon, one socket in $XDG_RUNTIME_DIR.
 exec /usr/bin/python3 "$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)/lib/brightness/brightness-client.py" "$@"

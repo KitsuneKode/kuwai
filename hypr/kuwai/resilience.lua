@@ -1,19 +1,3 @@
--- kuwai.resilience — what happens when the world changes under you.
---
---   clamshell        lid closed with an external screen: the panel turns off,
---                    nothing locks (logind ignores the lid while docked). Lid
---                    closed with no external screen: lock (logind suspends).
---   hotplug notice   the GPU that renders is chosen at login; plugging the
---                    Acer into an iGPU session (or unplugging it from an
---                    NVIDIA one) says what that costs and how to fix it.
---   battery_guard    ≤10%: one warning. ≤4% and still discharging: the session
---                    is snapshotted and the machine suspends 30 s later unless
---                    you plug in (K.battery.critical_action = "hibernate" if
---                    hibernation is set up on this machine).
---   session_restore  every 5 minutes (and at logout) the open apps and where
---                    they were are saved; at the next login you're offered to
---                    put them back. `kuwai session save|restore`.
-
 local K = require("kuwai.core")
 
 local dsp = hl.dsp
@@ -33,10 +17,6 @@ local function externals()
 	return n
 end
 
----------------------------------------------------------------------------
--- Lid / clamshell
----------------------------------------------------------------------------
--- The shell's lock (it falls back to hyprlock when the shell is down).
 local LOCK = K.bin .. "/kuwai lock"
 
 if K.feature("clamshell") then
@@ -61,9 +41,6 @@ else
 	K.bind("switch:on:Lid Switch", "", LOCK, { locked = true })
 end
 
----------------------------------------------------------------------------
--- Hotplug: say when the renderer choice no longer fits the screens
----------------------------------------------------------------------------
 hl.on("monitor.added", function(m)
 	local g = K.gpu or {}
 	if internal(m) or not g.nvidia or g.mode ~= "auto" then
@@ -86,9 +63,6 @@ hl.on("monitor.removed", function()
 	end
 end)
 
----------------------------------------------------------------------------
--- Session snapshot / restore
----------------------------------------------------------------------------
 local SNAP = K.state_dir .. "/session"
 local SKIP = {
 	"^xdg%-desktop%-portal", "polkit", "pinentry", "gcr%-prompter", "^hyprland%-", "^kuwai%-", "^kuwai%-",
@@ -124,7 +98,7 @@ function R.save(keep_if_empty)
 		if not skip(cls) and ws and ws.id and ws.id > 0 and not seen[cls] then
 			local cmd = cmdline(w.pid)
 			if cmd then
-				seen[cls] = true -- one launch per app: browsers/editors restore their own windows
+				seen[cls] = true
 				local at, sz, m = w.at or {}, w.size or {}, w.monitor or {}
 				lines[#lines + 1] = table.concat({
 					ws.id,
@@ -138,9 +112,6 @@ function R.save(keep_if_empty)
 		end
 	end
 	if #lines == 0 then
-		-- Nothing to restore any more: an old snapshot would offer apps you
-		-- closed on purpose. At shutdown, though, windows may already be going
-		-- (a logout closes them), so the last good snapshot stays.
 		if not keep_if_empty then
 			os.remove(SNAP)
 		end
@@ -156,10 +127,6 @@ function R.save(keep_if_empty)
 end
 
 function R.restore()
-	-- The snapshot is a list of commands to run: only trust one that is ours and
-	-- not writable by anyone else (the state dir is created 0700 for this).
-	-- (os.execute can't see exit codes inside Hyprland, it reaps its children:
-	-- read stat's output instead. Rare, user-triggered, so a popen is fine.)
 	local h = io.popen("stat -c '%a %u' " .. K.q(SNAP) .. " 2>/dev/null; id -u")
 	local out = h and h:read("*a") or ""
 	if h then
@@ -167,7 +134,7 @@ function R.restore()
 	end
 	local mode, owner, me = out:match("^(%d+) (%d+)%s+(%d+)")
 	local m = tonumber(mode or "", 8)
-	if not m or owner ~= me or (m % 64) & 18 ~= 0 then -- group/other write bits (0o022)
+	if not m or owner ~= me or (m % 64) & 18 ~= 0 then
 		K.notify("kuwai: not restoring — " .. SNAP .. " isn't private to you", 4000, "error")
 		return "unsafe snapshot"
 	end
@@ -217,7 +184,6 @@ if K.feature("session_restore") then
 		R.save(true)
 	end)
 	hl.on("hyprland.start", function()
-		-- Offer once the shell (notifications) is up, only if little is open yet.
 		hl.timer(function()
 			if K.exists(SNAP) and #(hl.get_windows() or {}) <= 2 then
 				hl.exec_cmd(K.bin .. "/kuwai session offer")
@@ -226,9 +192,6 @@ if K.feature("session_restore") then
 	end)
 end
 
----------------------------------------------------------------------------
--- Battery guard
----------------------------------------------------------------------------
 K.battery = K.battery or { low = 10, critical = 4, critical_action = "suspend" }
 
 local BAT

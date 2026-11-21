@@ -135,6 +135,18 @@ def test_why_a_thread_needs_you(tmp_path):
     assert working and all(i.get("ask") is None for i in working)
 
 
+def test_pending_guest_message_on_idle_thread_still_surfaces(tmp_path):
+    build(tmp_path)
+    db = sqlite3.connect(tmp_path / "statev2.sqlite")
+    thread(db, "t-guest-idle", "Idle guest thread", guestShare={"messages": [{"status": "pending"}]})
+    run(db, "r-guest-idle", "t-guest-idle", "completed", completed="2020-01-01T00:00:00.000Z")
+    db.commit()
+    db.close()
+    d = read(tmp_path)
+    asks = {i["title"]: i.get("ask") for i in d["items"] if i["status"] == "waiting"}
+    assert asks.get("Idle guest thread") == "request"
+
+
 def reply(tmp_path, *args):
     env = {**os.environ, "T3_USERDATA": str(tmp_path)}
     return json.loads(subprocess.run([str(BIN), "reply", *args], capture_output=True, text=True, env=env, timeout=15).stdout)

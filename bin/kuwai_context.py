@@ -138,11 +138,7 @@ def remember(fact):
 SKILLS = CONFIG / "skills"
 
 
-# Skills shipped with kuwai (assistant/skills/) and your own; yours win on a name clash.
 REPO_SKILLS = Path(__file__).resolve().parents[1] / "assistant" / "skills"
-# The skills every agent on this machine shares (~/.agents/skills: 150+). Too
-# many to list for a 16k-context model (~11k tokens), so only the ones that
-# match what was asked go in (relevant_skills).
 AGENT_SKILLS = Path.home() / ".agents" / "skills"
 _SKILL_CACHE = {}
 

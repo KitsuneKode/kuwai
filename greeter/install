@@ -1,40 +1,23 @@
 #!/usr/bin/env bash
-# Make kuwai's login screen the system login (replaces SDDM):
-#
-#   sudo greeter/install            greetd + the login face, from the next boot
-#   sudo greeter/install --code     only refresh the login screen's code (after an update)
-#   sudo greeter/install --undo     back to what was there before
-#
-# tty2–tty6 stay plain text logins either way (Ctrl+Alt+F2).
-#
-# Who owns what in /var/lib/kuwai-greeter:
-#   root   the code: shell/, hyprland.lua, start, session-start, compositor-start, keys
-#   you    home/ only: wallpaper, colours, settings, your name and face (greeter/sync)
-# The login screen takes your password, so nothing running as you may rewrite
-# its code. Before 2026-11-17 the whole directory was yours; running this
-# again (or --code) closes it.
 set -eu
 [ "$(id -u)" = 0 ] || { echo "run with sudo" >&2; exit 1; }
 USER_NAME=${SUDO_USER:?run with sudo from your account}
 KUWAI="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
 DEST=/var/lib/kuwai-greeter
-KEEP=$DEST/original        # what this script replaced, for --undo (root's)
+KEEP=$DEST/original
 
 install_code() {
     install -d -m755 -o root -g root "$DEST"
     chown root:root "$DEST"; chmod 755 "$DEST"
     rsync -a --delete --chown=root:root --chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r "$KUWAI/shell/" "$DEST/shell/"
-    chown -R root:root "$DEST/shell"      # files rsync found unchanged keep their old owner otherwise
+    chown -R root:root "$DEST/shell"
     for f in start session-start compositor-start keys; do
         install -m755 -o root -g root "$KUWAI/greeter/$f" "$DEST/$f"
     done
     install -m644 -o root -g root "$KUWAI/greeter/hyprland.lua" "$DEST/hyprland.lua"
-    # Which code this is, for `kuwai doctor` ("the login screen is behind").
     { git -C "$KUWAI" rev-parse HEAD 2>/dev/null || echo unknown; } >"$DEST/code-revision"
     chmod 644 "$DEST/code-revision"
-    # The one part that stays yours.
     install -d -m755 -o "$USER_NAME" "$DEST/home"
-    # From the old layout: your name and face move into home/.
     for pair in user:.kuwai-user face:.face; do
         old=$DEST/${pair%%:*}; new=$DEST/home/${pair#*:}
         if [ -f "$old" ] && [ ! -L "$old" ]; then
@@ -55,13 +38,11 @@ fi
 
 if [ "${1:-}" = --undo ]; then
     systemctl disable greetd.service 2>/dev/null || true
-    # Each file back as it was; one this script created is removed.
     for pair in pam-greetd:/etc/pam.d/greetd greetd-config.toml:/etc/greetd/config.toml getty-tty1-override.conf:/etc/systemd/system/getty@tty1.service.d/override.conf; do
         saved=$KEEP/${pair%%:*}; target=${pair#*:}
         if [ -f "$saved" ]; then install -D -m644 "$saved" "$target"; echo "restored $target"
         elif [ -f "$saved.absent" ]; then rm -f "$target"; fi
     done
-    # Backups an older install left beside the files.
     if [ ! -f "$KEEP/pam-greetd" ] && [ -f /etc/pam.d/greetd.orig ]; then cp -f /etc/pam.d/greetd.orig /etc/pam.d/greetd; fi
     if [ ! -f "$KEEP/greetd-config.toml" ] && [ -f /etc/greetd/config.toml.orig ]; then cp -f /etc/greetd/config.toml.orig /etc/greetd/config.toml; fi
     systemctl daemon-reload
@@ -77,8 +58,7 @@ fi
 
 pacman -S --needed --noconfirm greetd rsync
 
-# Remember what is replaced, once: the first install's state is the one to go back to.
-keep() {   # $1 = name under $KEEP, $2 = the file
+keep() {
     if [ -e "$KEEP/$1" ] || [ -e "$KEEP/$1.absent" ]; then return 0; fi
     if [ -f "$2" ]; then install -D -m600 "$2" "$KEEP/$1"; else : >"$KEEP/$1.absent"; fi
 }
@@ -93,8 +73,6 @@ if [ ! -e "$KEEP/display-manager" ]; then
     printf '%s\n' "$dm" >"$KEEP/display-manager"
 fi
 
-# Log in the way SDDM did: the same PAM stack, so the GNOME keyring (and the
-# SSH agent on it) is unlocked by the login password.
 cat >/etc/pam.d/greetd <<'EOF'
 #%PAM-1.0
 
@@ -124,8 +102,6 @@ command = "$DEST/compositor-start"
 user = "greeter"
 EOF
 
-# tty1 belongs to greetd now: no autologin or prefilled name left over there
-# (kept in $KEEP; --undo puts it back).
 rm -f /etc/systemd/system/getty@tty1.service.d/override.conf
 rmdir /etc/systemd/system/getty@tty1.service.d 2>/dev/null || true
 systemctl daemon-reload

@@ -22,15 +22,6 @@ def runtime_dir():
     return path
 
 
-# ── One controller, and it is the session's copy of the code ────────────────
-# The controller detaches and outlives whatever started it. Started once from
-# a working checkout (a test, a dev session), it kept serving the installed
-# desktop's brightness keys with that checkout's code until the next boot
-# (found 2026-11-18: 46 hours). And after `kuwai promote` the old code kept
-# running the same way. So the controller says which code it is (runtime/owner:
-# the file's path and hash), and a client that is the session's copy (it lives
-# under KUWAI_ROOT) replaces one that differs. A client from any other checkout
-# never replaces anything: it uses the controller that is there.
 def code_id(path):
     p=Path(path).resolve()
     try:
@@ -53,7 +44,7 @@ def stale_daemon(runtime,mine):
     try:
         owner=json.loads((runtime/'owner').read_text())
     except (OSError,ValueError):
-        owner=None                       # a controller from before it said: replace it
+        owner=None
     return owner!=mine
 
 
@@ -76,7 +67,6 @@ def stop_daemon(runtime,proc=Path('/proc')):
     for _ in range(120):
         time.sleep(.025)
         try:
-            # Gone, or ended and only waiting for its parent to collect it.
             if (proc/str(pid)/'stat').read_text().rsplit(')',1)[1].split()[0]=='Z':
                 return True
         except (OSError,IndexError):
@@ -174,9 +164,6 @@ def main():
             preset(runtime,args.output,args.at_cursor)
             return 0
         if args.action=='socket':
-            # The controller's socket, for a client that holds the stream itself
-            # (the shell's HUD): the private directory is checked above and the
-            # controller started if it wasn't running.
             with connect(runtime):
                 pass
             print(runtime/'control.sock')

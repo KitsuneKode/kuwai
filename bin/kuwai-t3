@@ -1,23 +1,9 @@
 #!/usr/bin/env bash
-# T3 Code's live work, for the island (services/T3Code.qml): one JSON line.
-#
-#   {"alive":true,"running":2,"waiting":0,"finished":1,"items":[{"status":"running"|"waiting"|"completed","title":"…","provider":"…",
-#    "thread":"…","at":"ISO time","model":"grok-4.7","effort":"high","project":"kuwai"}]}
-#
-# Read-only and local: T3 Code's own state database (statev2.sqlite, opened
-# with mode=ro) through an indexed query (~3 ms), only while its server is up
-# (server-runtime.json's pid). Nothing is written, nothing leaves the machine.
-# An unofficial interface: if T3 changes its schema this prints alive:false
-# rather than anything wrong.
 set -u
 DIR="${T3_USERDATA:-$HOME/.t3/userdata}"
 DB="$DIR/statev2.sqlite"
 none() { printf '{"alive":false,"running":0,"waiting":0,"finished":0,"items":[]}\n'; exit 0; }
 
-# kuwai-t3 reply THREAD: that thread's last reply, as {"text","at"}, for the
-# panel's preview (asked for one thread, when its row is rested on; the idea
-# is t3code-bar's hover preview). The id is checked before it goes near the
-# query: letters, digits and : _ . - only.
 if [ "${1:-}" = "reply" ]; then
   id="${2:-}"
   case "$id" in ''|*[!A-Za-z0-9:_.-]*) echo '{}'; exit 0 ;; esac
@@ -36,21 +22,6 @@ pid=$(jq -r '.pid // empty' "$DIR/server-runtime.json" 2>/dev/null) || none
 [[ "$pid" =~ ^[0-9]+$ ]] && kill -0 "$pid" 2>/dev/null || none
 [ -r "$DB" ] || none
 
-# What each thread is doing, decided the way T3 Code's own sidebar does
-# (rules as in eliophan/t3code-bar, MIT: desktop/crates/bar-threads):
-#  - only the sidebar's threads: not settled, snoozed, delegated, side chats
-#    or subagent threads (ids starting thread:), and not deleted or archived;
-#  - runs T3 starts in the background (payload.silent: titles and the like)
-#    and queued runs are not work: the capsule said "2 running" over threads
-#    that were doing nothing;
-#  - a pending request is attention: an approval to run something, a question
-#    (user_input) or a guest's message, whatever the run says; which of the
-#    three it is goes out as `ask`, so the panel can say what is wanted;
-#  - a run blocked only on another thread (t3_thread_wait, delegate_task in
-#    wait mode) is waiting, not working;
-#  - finished = the last run completed or failed after you last opened the
-#    thread (lastVisitedAt), in the last 3 days.
-# One row per thread; the classification is in jq below.
 rows=$(timeout 3 sqlite3 -readonly -json "file:$DB?mode=ro" "
   with th as (
     select t.thread_id as thread, coalesce(t.title, '') as title, t.payload_json as pj
@@ -117,11 +88,10 @@ rows=$(timeout 3 sqlite3 -readonly -json "file:$DB?mode=ro" "
   where a.status is not null
      or exists (select 1 from orchestration_v2_projection_runtime_requests q
                  where q.thread_id = th.thread and q.status = 'pending')
+     or exists (select 1 from json_each(th.pj, '\$.guestShare.messages') g
+                 where json_extract(g.value, '\$.status') = 'pending')
      or (l.status in ('completed','failed') and l.at >= strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-3 days'));" 2>/dev/null) || none
 [ -n "$rows" ] || rows="[]"
-# The thread and the environment make T3 Code's own link to it
-# (t3code://threads/ENV/THREAD, its desktop app opens it), so a row opens
-# that thread instead of only raising the window.
 env_id=$(tr -cd 'A-Za-z0-9-' < "$DIR/environment-id" 2>/dev/null)
 jq -cn --argjson rows "$rows" --arg env "$env_id" '
   def state:

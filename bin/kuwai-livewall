@@ -1,44 +1,9 @@
 #!/usr/bin/env bash
-# kuwai-livewall (was ~/Scripts/live-wallpaper.sh) — picks the live wallpaper
-#
-# The shell plays it: shell/modules/wallpaper/LiveWallpaper.qml watches
-# $XDG_STATE_HOME/live-wallpaper/last and plays that video on the background
-# layer itself (one muted, looping player per screen, paused under a
-# fullscreen window, the lock and, unless allowed, on battery). This script
-# only chooses and records:
-#
-#   toggle | next | play FILE   write the pick to `last`, set `enabled`
-#   stop                        empty `last` (the shell fades the video out)
-#   first                       the remembered pick, else the library's first
-#   resume                      at login / theme apply; does nothing while the
-#                               shell is up (it already plays `last`)
-#
-# With mpvpaper installed, the shell still decides (when to play, pause or
-# release, per screen) but mpv plays: `out-play|out-pause|out-stop SCREEN`,
-# one mpvpaper per screen with its own IPC socket. Measured 2026-11-18 on a
-# 1440p loop: the shell's own player held ~1 GB and 24 % CPU for two screens;
-# mpv with hardware decoding is ~280 MB and 7 % a screen, outside the shell.
-#
-# Without the shell (it isn't running), mpvpaper is the fallback player:
-# spawn() starts it with its IPC socket under $XDG_RUNTIME_DIR/kuwai/ and a
-# `watch` loop that pauses it while any window is fullscreen.
-#
-# Library (Omarchy's per-theme convention), merged, sorted by name:
-#   1. ~/.config/hyde/themes/<ACTIVE THEME>/wallpapers/live/
-#   2. ~/Pictures/live-wallpapers/
-# Prefix filenames 1-, 2-, 3- ... to define cycle order.
-#
-# State: $XDG_STATE_HOME/live-wallpaper/{last,enabled,index}.
-# The fallback needs mpvpaper, socat and jq.
 
 set -u
 
 GLOBAL_LIB="$HOME/Pictures/live-wallpapers"
-SOCK_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/kuwai"   # private (0700), not a guessable /tmp path
-# mpvpaper's own mpv home: without it libmpv read ~/.config/mpv (measured on the wire: config
-# yes, scripts loaded, debanding, ewa_lanczos, Vulkan, a 256 MiB stream cache), so a loop behind
-# the windows paid for a film's picture, per screen, and ran your mpv scripts. A wallpaper wants
-# the plainest picture of a file already at the screen's size.
+SOCK_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/kuwai"
 MPV_WALL_HOME="$SOCK_DIR/mpvpaper-home"
 mpv_wall_home() {
     (umask 077; mkdir -p "$MPV_WALL_HOME")
@@ -54,25 +19,14 @@ demuxer-max-back-bytes=0
     [ "$(cat "$MPV_WALL_HOME/mpv.conf" 2>/dev/null)" = "${want%$'\n'}" ] || printf '%s' "$want" > "$MPV_WALL_HOME/mpv.conf"
 }
 SOCK_PREFIX="$SOCK_DIR/mpvpaper-ipc"
-FALLBACK_PIDF="$SOCK_DIR/mpvpaper-ipc.pid"   # the fallback's '*' player
-WATCH_PIDF="$SOCK_DIR/livewall-watch.pid"    # its fullscreen watcher (a process group: setsid)
-STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/live-wallpaper"   # where LiveWallpaper.qml reads it
-IDX="$STATE_DIR/index"       # cycle position within current library
-LAST="$STATE_DIR/last"       # last played file
-ENABLED="$STATE_DIR/enabled" # flag: live walls wanted across boots/themes
+FALLBACK_PIDF="$SOCK_DIR/mpvpaper-ipc.pid"
+WATCH_PIDF="$SOCK_DIR/livewall-watch.pid"
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/live-wallpaper"
+IDX="$STATE_DIR/index"
+LAST="$STATE_DIR/last"
+ENABLED="$STATE_DIR/enabled"
 MPV_OPTS="no-audio loop hwdec=auto panscan=1.0 input-ipc-server=$SOCK_PREFIX.sock"
 
-# ── A copy the GPU can decode ───────────────────────────────────────────────
-# `playable FILE` prints the file the shell should play. Many loops from the
-# web are H.264 in 4:4:4 colour (yuv444p), which no GPU decodes (24 of the
-# owner's 30 loops, 2026-11-18). Measured on one 1440p loop, shell memory
-# while it played on two screens: 1110 MB with the 4:4:4 original, 910–935 MB
-# with its 4:2:0 copy. So the copy helps (and is what a GPU can decode), but
-# it is not where most of the memory is: that is the two players themselves,
-# about 700 MB while they play, whatever the file. For a 4:4:4 file a 4:2:0
-# copy is made once, in the background, in the cache; the original plays until
-# it is ready, then `last` is written again so the shell switches to the copy.
-# A file that is already fine is printed as it is, and nothing is made.
 LIVE_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/kuwai/live"
 playable() {
     local f=$1 fmt codec key out
@@ -82,30 +36,24 @@ playable() {
     codec=$(ffprobe -v error -select_streams v:0 -show_entries stream=codec_name -of csv=p=0 -- "$f" 2>/dev/null | head -n 1)
     case "$codec:$fmt" in
         h264:yuv420p|h264:yuvj420p|hevc:yuv420p|hevc:yuvj420p|hevc:yuv420p10le|av1:yuv420p|av1:yuv420p10le|vp9:yuv420p) printf '%s\n' "$f"; return 0 ;;
-        :*|*:) printf '%s\n' "$f"; return 0 ;;            # couldn't read it: play it as it is
+        :*|*:) printf '%s\n' "$f"; return 0 ;;
     esac
-    # The copy's name follows the file's path, size and date: a changed file gets a new copy.
     key=$(printf '%s|%s' "$f" "$(stat -c '%s|%Y' -- "$f" 2>/dev/null)" | sha1sum | cut -c1-20)
     out="$LIVE_CACHE/$key.mp4"
     if [ -s "$out" ]; then printf '%s\n' "$out"; return 0; fi
     printf '%s\n' "$f"
     mkdir -p "$LIVE_CACHE" || return 0
-    # One at a time per file; the lock is held by the job, gone when it ends.
     (
         exec 9>"$out.lock"
         flock -n 9 || exit 0
         [ -s "$out" ] && exit 0
         x264="-c:v libx264 -preset veryfast -crf 20"
-        # At most 1440 lines (what a wallpaper is shown at here), even sizes, no sound, starts fast.
         # shellcheck disable=SC2086  # $1 is one of the two fixed option lists here
         copy() { nice -n 19 ffmpeg -nostdin -hide_banner -loglevel error -y -i "$f" -an $1 -pix_fmt yuv420p \
                 -vf "scale=-2:'min(1440,ih)'" -movflags +faststart -f mp4 "$out.part" 2>/dev/null && [ -s "$out.part" ]; }
-        # NVENC when it's there; x264 when it's listed but won't open (the card's memory is taken:
-        # a dictation model, the shell's players), or the copy was never made.
         if { ffmpeg -hide_banner -encoders 2>/dev/null | grep -q ' h264_nvenc ' \
                 && copy "-c:v h264_nvenc -preset p5 -rc vbr -cq 23 -b:v 0"; } || copy "$x264"; then
             mv -f -- "$out.part" "$out"
-            # Still the pick: say so again, and the shell (which watches `last`) asks once more.
             [ "$(cat "$LAST" 2>/dev/null)" = "$f" ] && printf '%s' "$f" > "$LAST"
         else
             rm -f -- "$out.part"
@@ -134,7 +82,7 @@ library() {
     fi
 }
 
-files() {   # theme library + global library merged (theme vids surface first by name)
+files() {
     local td; td=$(theme_live_dir)
     {
         if [ -n "$td" ]; then
@@ -148,19 +96,16 @@ files() {   # theme library + global library merged (theme vids surface first by
     } | sort -V
 }
 
-is_running() { pgrep -x mpvpaper >/dev/null; }   # the player, not a command line naming it
-# The shell that plays video itself: kuwai (its process is `qs`), or a
-# standalone Quickshell.
+is_running() { pgrep -x mpvpaper >/dev/null; }
 shell_up() { qs list --all --json 2>/dev/null | jq -e 'any(.[]; .config_path | endswith("/shell/shell.qml"))' >/dev/null; }
 
-mpv_pause() {   # $1 = true|false — sent to every mpvpaper ipc socket (multi-monitor safe)
+mpv_pause() {
     for s in "$SOCK_PREFIX"*.sock; do
         [ -S "$s" ] && printf '{ "command": ["set_property", "pause", %s] }\n' "$1" \
             | socat - "$s" >/dev/null 2>&1
     done
 }
 
-# Pause whenever any fullscreen window exists anywhere (battery + focus)
 watch() {
     local sock="$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock"
     socat -u "UNIX-CONNECT:$sock" - 2>/dev/null | while read -r _line; do
@@ -173,7 +118,7 @@ watch() {
     done
 }
 
-spawn() {   # shared start: video layer + fullscreen watcher + persist
+spawn() {
     local file="$1"
     (umask 077; mkdir -p "$SOCK_DIR")
     mpv_wall_home
@@ -186,11 +131,9 @@ spawn() {   # shared start: video layer + fullscreen watcher + persist
 }
 
 start() {
-    # Always record the pick — Quickshell's background watches $LAST live.
     mkdir -p "$STATE_DIR"
     printf '%s' "$1" > "$LAST"
     touch "$ENABLED"
-    # mpvpaper is the fallback backend — only when Quickshell isn't running
     if ! shell_up; then
         command -v mpvpaper >/dev/null || { notify "mpvpaper not installed — yay -S mpvpaper"; exit 1; }
         is_running && stop_sleep
@@ -199,12 +142,9 @@ start() {
     notify "▶ $(basename "$1")"
 }
 
-resume() {   # login / theme-apply entry point — no-op unless user opted in
+resume() {
     [ -f "$ENABLED" ] || exit 0
     command -v mpvpaper >/dev/null || exit 0
-    # Quickshell's background layer renders video natively — never double-decode.
-    # At login this runs beside the shell's own start: give it a moment to show
-    # up before falling back (out_play also ends a fallback that won the race).
     local i
     for i in 1 2 3 4 5 6 7 8 9 10 11 12; do shell_up && exit 0; sleep 0.5; done
     is_running && exit 0
@@ -221,8 +161,8 @@ stop_sleep() { stop; sleep 0.4; }
 stop() {
     pkill -x mpvpaper 2>/dev/null
     pkill -f 'kuwai-livewall watch' 2>/dev/null
-    pkill -f 'live-wallpaper.sh watch' 2>/dev/null   # a watcher from before the move
-    : > "$LAST"   # empty LAST = Quickshell fades video out, poster shows
+    pkill -f 'live-wallpaper.sh watch' 2>/dev/null
+    : > "$LAST"
     rm -f "$ENABLED" "$IDX" "$SOCK_PREFIX"*.sock "$FALLBACK_PIDF" "$WATCH_PIDF"
     notify "⏹ back to static wallpaper"
 }
@@ -236,19 +176,16 @@ next() {
     echo $(( i + 1 )) > "$IDX"
 }
 
-# ── One screen, played by mpv, driven by the shell ─────────────────────────
 out_sock() { printf '%s/mpvpaper-%s.sock' "$SOCK_DIR" "$1"; }
 out_pidf() { printf '%s/mpvpaper-%s.pid' "$SOCK_DIR" "$1"; }
-out_pid() {   # the live mpvpaper for this screen, or nothing
+out_pid() {
     local p; p=$(cat "$(out_pidf "$1")" 2>/dev/null) || return 1
     [ -n "$p" ] && [ "$(cat "/proc/$p/comm" 2>/dev/null)" = mpvpaper ] && printf '%s' "$p"
 }
-out_cmd() {   # SCREEN JSON-command
+out_cmd() {
     local s; s=$(out_sock "$1")
     [ -S "$s" ] && printf '%s\n' "$2" | socat - "$s" >/dev/null 2>&1
 }
-# The shell plays now: a fallback player started before it was up (resume at
-# login races the shell's own start) would decode a second video under it.
 fallback_stop() {
     local p
     p=$(cat "$FALLBACK_PIDF" 2>/dev/null)
@@ -258,7 +195,7 @@ fallback_stop() {
     rm -f "$FALLBACK_PIDF" "$WATCH_PIDF" "$SOCK_PREFIX.sock"
 }
 
-out_play() {   # SCREEN FILE [paused]: start, or switch the file, or set the pause
+out_play() {
     local out="$1" file="$2" paused="${3:-}" pid cur pause_now=false opts
     [ "$paused" = paused ] && pause_now=true
     command -v mpvpaper >/dev/null || return 1
@@ -275,8 +212,6 @@ out_play() {   # SCREEN FILE [paused]: start, or switch the file, or set the pau
         kill "$pid" 2>/dev/null
     fi
     rm -f "$(out_sock "$out")"
-    # Its own session (it outlives a shell restart; the shell takes it over again).
-    # Started paused when the screen is covered: its first frame shows, nothing decodes.
     opts="no-audio loop hwdec=auto panscan=1.0 input-ipc-server=$(out_sock "$out")"
     [ "$pause_now" = true ] && opts="$opts pause"
     mpv_wall_home
@@ -284,7 +219,7 @@ out_play() {   # SCREEN FILE [paused]: start, or switch the file, or set the pau
     printf '%s' "$!" > "$(out_pidf "$out")"
     printf '%s' "$file" > "$SOCK_DIR/mpvpaper-$out.file"
 }
-out_stop() {   # SCREEN: the player goes, and what it held with it
+out_stop() {
     local pid
     pid=$(out_pid "$1") && kill "$pid" 2>/dev/null
     rm -f "$(out_sock "$1")" "$(out_pidf "$1")" "$SOCK_DIR/mpvpaper-$1.file"
@@ -303,7 +238,7 @@ case "${1:-toggle}" in
     stop)    stop ;;
     watch)   watch ;;
     playable) playable "${2:?usage: $0 playable <file>}" ;;
-    first)   # Quickshell seed — remembered pick wins, else first of merged library
+    first)
         pick=$(cat "$LAST" 2>/dev/null || true)
         if [ -n "$pick" ] && [ -f "$pick" ] && is_video "$pick"; then
             printf '%s\n' "$pick"
@@ -311,9 +246,8 @@ case "${1:-toggle}" in
             files | head -1
         fi ;;
     status)  is_running && echo "playing in: $(library)" || echo "off" ;;
-    # Driven by the shell (LiveWallpaper.qml), one screen at a time.
     can-play) command -v mpvpaper >/dev/null && command -v socat >/dev/null && command -v jq >/dev/null ;;
-    out-play)  out_play "${2:?screen}" "${3:?file}" "${4:-}" ;;   # [paused]
+    out-play)  out_play "${2:?screen}" "${3:?file}" "${4:-}" ;;
     out-pause) out_cmd "${2:?screen}" "{ \"command\": [\"set_property\", \"pause\", ${3:-true}] }" ;;
     out-stop)  out_stop "${2:?screen}" ;;
     *)       echo "usage: $0 {toggle|next|play <file>|resume|stop|status|playable <file>}" ;;

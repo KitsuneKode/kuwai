@@ -1,9 +1,4 @@
 #!/usr/bin/env bash
-# Send a freedesktop notification without libnotify (notify-send breaks on some hosts).
-#   kuwai-notify TITLE BODY
-#   kuwai-notify -a APP -i ICON -u low|normal|critical TITLE BODY
-#   kuwai-notify -A key=Label ...   (actions; blocks until clicked if -w)
-#   kuwai-notify -H key=value ...   (kuwai hints only: keys must match x-kuwai-*)
 set -eu
 app=kuwai
 icon=""
@@ -34,7 +29,7 @@ hints="{\"urgency\": <byte $urgency>"
 if command -v jq >/dev/null 2>&1; then
     for k in "${!xhints[@]}"; do
         esc=$(jq -Rn --arg v "${xhints[$k]}" '$v')
-        hints+=", \"$k\": <$esc>"     # a{sv}: each value is a variant
+        hints+=", \"$k\": <$esc>"
     done
 else
     for k in "${!xhints[@]}"; do
@@ -58,8 +53,6 @@ else
     arr="[]"
 fi
 
-# gdbus's own error is kept for the one line saying what failed (no server on
-# the bus, a malformed hint); its reply is the line "(uint32 ID,)".
 if ! out=$(gdbus call --session --dest org.freedesktop.Notifications \
     --object-path /org/freedesktop/Notifications \
     --method org.freedesktop.Notifications.Notify \

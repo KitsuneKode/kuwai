@@ -1,0 +1,699 @@
+#!/usr/bin/env python3
+"""Code-comment ratchet linter for kuwai.
+
+Bans non-exempt code comments across tracked source files and enforces a
+per-file ratchet against docs/comments-baseline.json so comment counts can
+only go down. Any file absent from the baseline has a budget of 0.
+
+Exemptions:
+  - Shebangs (#! on line 1)
+  - JSDoc type blocks (/** ... */ with @param/@returns/@typedef/@type/etc.)
+  - Tool directives (# noqa, # type:, # shellcheck, // eslint-, // @ts-, etc.)
+  - Python docstrings (string literals, not comments)
+
+Usage:
+  kuwai-comments                    summary vs baseline
+  kuwai-comments --check            exit 1 if any file exceeds its baseline
+  kuwai-comments --update           lower baseline to current counts (never raises)
+  kuwai-comments --list [paths...]  list every counted comment
+  kuwai-comments --json [paths...]  dump counted comments as JSON
+  kuwai-comments --stats            estimate lines shed by deleting all comments
+"""
+import io
+import json
+import os
+import re
+import subprocess
+import sys
+import tokenize
+
+ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+BASE = os.path.join(ROOT, "docs", "comments-baseline.json")
+
+SKIP_PREFIXES = ("refs/", "docs/", ".claude/", ".devin/", "themes/", "plans/", ".worktrees/")
+
+CSTYLE_EXTS = {".qml", ".mjs", ".js", ".ts", ".tsx", ".cpp", ".c", ".h", ".hpp", ".frag", ".glsl"}
+JS_REGEX_EXTS = {".qml", ".mjs", ".js", ".ts", ".tsx"}
+
+JSDOC_TYPE_TAG = re.compile(
+    r"@(?:param|returns?|typedef|type|template|callback|property|prop|satisfies|overload|enum|augments|extends|implements|this)\b"
+)
+PY_DIRECTIVE = re.compile(
+    r"^#\s*(?:noqa|type:\s*ignore|pylint:|ruff:|fmt:|pyright:|mypy:|pragma:\s*no\s+cover|isort:)\b",
+    re.I,
+)
+SH_DIRECTIVE = re.compile(r"^#\s*(?:shellcheck\b|what:\s)", re.I)
+LUA_DIRECTIVE = re.compile(r"^--\s*(?:luacheck:|stylua:)", re.I)
+CSTYLE_DIRECTIVE = re.compile(
+    r"^(?://|/\*)\s*(?:eslint-|@ts-|qmllint\b|clang-format\b|NOLINT\b|istanbul\b|v8\b|c8\b)",
+    re.I,
+)
+
+REGEX_PRECEDING_KEYWORDS = {
+    "return", "case", "throw", "in", "of", "typeof", "void",
+    "delete", "yield", "await", "new", "else", "do",
+}
+REGEX_PRECEDING_CHARS = set("([{,;:!=&|?+-*%^~<>\n")
+HEREDOC_RE = re.compile(r"<<(-?)\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\2")
+
+
+def detect_lang(relpath):
+    if relpath.startswith(SKIP_PREFIXES):
+        return None
+    full = os.path.join(ROOT, relpath)
+    if os.path.islink(full) or not os.path.isfile(full):
+        return None
+    ext = os.path.splitext(relpath)[1].lower()
+    if ext in CSTYLE_EXTS:
+        return ("cstyle", ext in JS_REGEX_EXTS)
+    if ext == ".py":
+        return ("py", False)
+    if ext == ".lua":
+        return ("lua", False)
+    if ext == ".sh":
+        return ("sh", False)
+    if ext == "":
+        try:
+            with open(full, "rb") as fp:
+                first = fp.readline(200)
+        except OSError:
+            return None
+        if first.startswith(b"#!"):
+            if b"python" in first:
+                return ("py", False)
+            if b"sh" in first or b"bash" in first:
+                return ("sh", False)
+            if b"lua" in first:
+                return ("lua", False)
+            if b"node" in first or b"bun" in first:
+                return ("cstyle", True)
+    return None
+
+
+def is_exempt_cstyle(raw):
+    if CSTYLE_DIRECTIVE.match(raw):
+        return True
+    if raw.startswith("/**") and JSDOC_TYPE_TAG.search(raw):
+        return True
+    return False
+
+
+def scan_py(text):
+    lines = text.splitlines()
+    hits = []
+    try:
+        toks = list(tokenize.generate_tokens(io.StringIO(text).readline))
+    except tokenize.TokenError:
+        return hits
+    for tok in toks:
+        if tok.type != tokenize.COMMENT:
+            continue
+        ln = tok.start[0]
+        raw = tok.string
+        if ln == 1 and raw.startswith("#!"):
+            continue
+        if PY_DIRECTIVE.match(raw):
+            continue
+        standalone = lines[ln - 1].lstrip().startswith("#")
+        hits.append({
+            "start_line": ln,
+            "end_line": ln,
+            "start_col": tok.start[1],
+            "end_col": tok.end[1],
+            "standalone": standalone,
+            "text": raw,
+        })
+    return hits
+
+
+def _prev_allows_regex(text, pos):
+    j = pos - 1
+    while j >= 0 and text[j] in " \t\r":
+        j -= 1
+    if j < 0:
+        return True
+    ch = text[j]
+    if ch in REGEX_PRECEDING_CHARS:
+        return True
+    if ch.isalnum() or ch in "_$":
+        k = j
+        while k >= 0 and (text[k].isalnum() or text[k] in "_$"):
+            k -= 1
+        word = text[k + 1 : j + 1]
+        return word in REGEX_PRECEDING_KEYWORDS
+    return False
+
+
+def scan_cstyle(text, allow_js_regex):
+    lines = text.splitlines()
+    hits = []
+    n = len(text)
+    i = 0
+    line = 1
+    line_start = 0
+
+    if text.startswith("#!"):
+        nl = text.find("\n")
+        if nl == -1:
+            return hits
+        i = nl + 1
+        line = 2
+        line_start = i
+
+    while i < n:
+        ch = text[i]
+        nxt = text[i + 1] if i + 1 < n else ""
+
+        if ch in ("'", '"', "`"):
+            quote = ch
+            i += 1
+            while i < n:
+                c = text[i]
+                if c == "\\":
+                    if i + 1 < n and text[i + 1] == "\n":
+                        line += 1
+                        line_start = i + 2
+                    i += 2
+                    continue
+                if c == "\n":
+                    line += 1
+                    line_start = i + 1
+                if c == quote:
+                    i += 1
+                    break
+                i += 1
+            continue
+
+        if ch == "/" and nxt == "/":
+            start_line = line
+            start_col = i - line_start
+            j = i
+            while j < n and text[j] != "\n":
+                j += 1
+            raw = text[i:j]
+            if not is_exempt_cstyle(raw):
+                standalone = lines[start_line - 1].lstrip().startswith("//")
+                hits.append({
+                    "start_line": start_line,
+                    "end_line": start_line,
+                    "start_col": start_col,
+                    "end_col": j - line_start,
+                    "standalone": standalone,
+                    "text": raw,
+                })
+            i = j
+            continue
+
+        if ch == "/" and nxt == "*":
+            start_line = line
+            start_col = i - line_start
+            j = i + 2
+            while j < n - 1 and not (text[j] == "*" and text[j + 1] == "/"):
+                if text[j] == "\n":
+                    line += 1
+                    line_start = j + 1
+                j += 1
+            end_idx = min(j + 2, n)
+            raw = text[i:end_idx]
+            end_line = line
+            if not is_exempt_cstyle(raw):
+                before = lines[start_line - 1][:start_col].strip()
+                after = lines[end_line - 1][end_idx - line_start :].strip()
+                standalone = (before == "" and after == "")
+                hits.append({
+                    "start_line": start_line,
+                    "end_line": end_line,
+                    "start_col": start_col,
+                    "end_col": end_idx - line_start,
+                    "standalone": standalone,
+                    "text": raw,
+                })
+            i = end_idx
+            continue
+
+        if allow_js_regex and ch == "/" and nxt not in ("/", "*") and _prev_allows_regex(text, i):
+            j = i + 1
+            in_class = False
+            closed = False
+            while j < n and text[j] != "\n":
+                c = text[j]
+                if c == "\\":
+                    j += 2
+                    continue
+                if c == "[":
+                    in_class = True
+                elif c == "]" and in_class:
+                    in_class = False
+                elif c == "/" and not in_class:
+                    j += 1
+                    while j < n and text[j].isalpha():
+                        j += 1
+                    closed = True
+                    break
+                j += 1
+            if closed:
+                i = j
+                continue
+
+        if ch == "\n":
+            line += 1
+            line_start = i + 1
+        i += 1
+    return hits
+
+
+def _match_lua_long_bracket(text, pos):
+    if pos >= len(text) or text[pos] != "[":
+        return None
+    j = pos + 1
+    while j < len(text) and text[j] == "=":
+        j += 1
+    if j < len(text) and text[j] == "[":
+        return (j - pos + 1, "]" + "=" * (j - pos - 1) + "]")
+    return None
+
+
+def scan_lua(text):
+    lines = text.splitlines()
+    hits = []
+    n = len(text)
+    i = 0
+    line = 1
+    line_start = 0
+
+    if text.startswith("#!"):
+        nl = text.find("\n")
+        if nl == -1:
+            return hits
+        i = nl + 1
+        line = 2
+        line_start = i
+
+    while i < n:
+        ch = text[i]
+        nxt = text[i + 1] if i + 1 < n else ""
+
+        if ch in ("'", '"'):
+            quote = ch
+            i += 1
+            while i < n:
+                c = text[i]
+                if c == "\\":
+                    if i + 1 < n and text[i + 1] == "\n":
+                        line += 1
+                        line_start = i + 2
+                    i += 2
+                    continue
+                if c == "\n":
+                    line += 1
+                    line_start = i + 1
+                if c == quote:
+                    i += 1
+                    break
+                i += 1
+            continue
+
+        if ch == "[":
+            lb = _match_lua_long_bracket(text, i)
+            if lb:
+                open_len, close_tok = lb
+                end = text.find(close_tok, i + open_len)
+                end_idx = n if end == -1 else end + len(close_tok)
+                seg = text[i:end_idx]
+                nl_count = seg.count("\n")
+                if nl_count:
+                    line += nl_count
+                    line_start = i + seg.rfind("\n") + 1
+                i = end_idx
+                continue
+
+        if ch == "-" and nxt == "-":
+            start_line = line
+            start_col = i - line_start
+            lb = _match_lua_long_bracket(text, i + 2)
+            if lb:
+                open_len, close_tok = lb
+                end = text.find(close_tok, i + 2 + open_len)
+                end_idx = n if end == -1 else end + len(close_tok)
+                raw = text[i:end_idx]
+                nl_count = raw.count("\n")
+                if nl_count:
+                    line += nl_count
+                    line_start = i + raw.rfind("\n") + 1
+                end_line = line
+                before = lines[start_line - 1][:start_col].strip()
+                after = lines[end_line - 1][end_idx - line_start :].strip()
+                standalone = (before == "" and after == "")
+                if not LUA_DIRECTIVE.match(raw):
+                    hits.append({
+                        "start_line": start_line,
+                        "end_line": end_line,
+                        "start_col": start_col,
+                        "end_col": end_idx - line_start,
+                        "standalone": standalone,
+                        "text": raw,
+                    })
+                i = end_idx
+                continue
+
+            j = i
+            while j < n and text[j] != "\n":
+                j += 1
+            raw = text[i:j]
+            if not LUA_DIRECTIVE.match(raw):
+                standalone = lines[start_line - 1].lstrip().startswith("--")
+                hits.append({
+                    "start_line": start_line,
+                    "end_line": start_line,
+                    "start_col": start_col,
+                    "end_col": j - line_start,
+                    "standalone": standalone,
+                    "text": raw,
+                })
+            i = j
+            continue
+
+        if ch == "\n":
+            line += 1
+            line_start = i + 1
+        i += 1
+    return hits
+
+
+def scan_sh(text):
+    lines = text.splitlines()
+    hits = []
+    heredocs = []
+    in_quote = None
+
+    for idx, line_str in enumerate(lines, 1):
+        if heredocs:
+            strip_tab, delim = heredocs[0]
+            candidate = line_str.lstrip("\t") if strip_tab else line_str
+            if candidate == delim:
+                heredocs.pop(0)
+            continue
+
+        if idx == 1 and line_str.startswith("#!"):
+            continue
+
+        i = 0
+        n = len(line_str)
+        code_part_end = n
+        comment_col = None
+        brace_depth = 0
+
+        while i < n:
+            ch = line_str[i]
+            if in_quote == "'":
+                if ch == "'":
+                    in_quote = None
+                i += 1
+                continue
+            if in_quote == '"':
+                if ch == "\\":
+                    i += 2
+                    continue
+                if ch == '"':
+                    in_quote = None
+                i += 1
+                continue
+
+            if ch == "\\":
+                i += 2
+                continue
+            if ch in ("'", '"'):
+                in_quote = ch
+                i += 1
+                continue
+            if ch == "$" and i + 1 < n and line_str[i + 1] == "{":
+                brace_depth += 1
+                i += 2
+                continue
+            if ch == "}" and brace_depth > 0:
+                brace_depth -= 1
+                i += 1
+                continue
+            if ch == "#" and brace_depth == 0:
+                if i == 0 or line_str[i - 1] in " \t;&|()":
+                    comment_col = i
+                    code_part_end = i
+                    break
+            i += 1
+
+        if in_quote is None:
+            code_seg = line_str[:code_part_end]
+            for m in HEREDOC_RE.finditer(code_seg):
+                start = m.start()
+                if start > 0 and code_seg[start - 1] == "<":
+                    continue
+                if start + 2 < len(code_seg) and code_seg[start + 2] == "<":
+                    continue
+                heredocs.append((m.group(1) == "-", m.group(3)))
+
+        if comment_col is not None:
+            raw = line_str[comment_col:]
+            if not SH_DIRECTIVE.match(raw):
+                standalone = line_str[:comment_col].strip() == ""
+                hits.append({
+                    "start_line": idx,
+                    "end_line": idx,
+                    "start_col": comment_col,
+                    "end_col": n,
+                    "standalone": standalone,
+                    "text": raw,
+                })
+
+    return hits
+
+
+def scan_file(relpath):
+    lang_info = detect_lang(relpath)
+    if not lang_info:
+        return None
+    lang, allow_regex = lang_info
+    full = os.path.join(ROOT, relpath)
+    text = open(full, encoding="utf-8", errors="replace").read()
+    if lang == "py":
+        hits = scan_py(text)
+    elif lang == "cstyle":
+        hits = scan_cstyle(text, allow_regex)
+    elif lang == "lua":
+        hits = scan_lua(text)
+    else:
+        hits = scan_sh(text)
+    return {
+        "path": relpath,
+        "lang": lang,
+        "total_lines": len(text.splitlines()),
+        "hits": hits,
+    }
+
+
+def group_blocks(hits):
+    blocks = []
+    for h in hits:
+        if (
+            blocks
+            and h["standalone"]
+            and blocks[-1]["standalone"]
+            and h["start_line"] == blocks[-1]["end_line"] + 1
+        ):
+            blocks[-1]["end_line"] = h["end_line"]
+            blocks[-1]["lines"].append(h["text"])
+            blocks[-1]["count"] += 1
+        else:
+            blocks.append({
+                "start_line": h["start_line"],
+                "end_line": h["end_line"],
+                "standalone": h["standalone"],
+                "lines": [h["text"]],
+                "count": 1,
+            })
+    return blocks
+
+
+def tracked_files(filter_paths=None):
+    out = subprocess.check_output(
+        ["git", "-C", ROOT, "ls-files", "--cached", "--others", "--exclude-standard"],
+        text=True,
+    ).splitlines()
+    if not filter_paths:
+        return sorted(set(out))
+    prefixes = [os.path.relpath(os.path.abspath(p), ROOT).rstrip("/") for p in filter_paths]
+    return sorted(
+        set(f for f in out if any(f == p or f.startswith(p + "/") for p in prefixes))
+    )
+
+
+def count_comment_lines(hits):
+    covered = set()
+    standalone_lines = set()
+    for h in hits:
+        for ln in range(h["start_line"], h["end_line"] + 1):
+            covered.add(ln)
+            if h["standalone"]:
+                standalone_lines.add(ln)
+    return len(covered), len(standalone_lines)
+
+
+def scan_all(filter_paths=None):
+    results = []
+    for rel in tracked_files(filter_paths):
+        info = scan_file(rel)
+        if info is not None:
+            results.append(info)
+    return results
+
+
+def load_baseline():
+    try:
+        data = json.load(open(BASE, encoding="utf-8"))
+        return data.get("files", {}) if isinstance(data, dict) else {}
+    except (OSError, ValueError):
+        return None
+
+
+def save_baseline(per_file):
+    clean = {k: v for k, v in sorted(per_file.items()) if v > 0}
+    payload = {
+        "total_comment_lines": sum(clean.values()),
+        "files_with_comments": len(clean),
+        "files": clean,
+    }
+    os.makedirs(os.path.dirname(BASE), exist_ok=True)
+    with open(BASE, "w", encoding="utf-8") as fp:
+        json.dump(payload, fp, indent=2)
+        fp.write("\n")
+    return payload
+
+
+def main():
+    args = sys.argv[1:]
+    mode = ""
+    paths = []
+    for a in args:
+        if a in ("--check", "--update", "--list", "--json", "--stats"):
+            mode = a
+        else:
+            paths.append(a)
+
+    results = scan_all(paths if paths else None)
+    per_file = {}
+    for r in results:
+        c_lines, _ = count_comment_lines(r["hits"])
+        per_file[r["path"]] = c_lines
+
+    if mode == "--list":
+        for r in results:
+            for b in group_blocks(r["hits"]):
+                loc = (
+                    f"{r['path']}:{b['start_line']}"
+                    if b["start_line"] == b["end_line"]
+                    else f"{r['path']}:{b['start_line']}-{b['end_line']}"
+                )
+                kind = "block" if b["standalone"] else "inline"
+                preview = " ".join(l.strip() for l in b["lines"])[:120]
+                print(f"{kind:6} {loc}  {preview}")
+        return 0
+
+    if mode == "--json":
+        out = []
+        for r in results:
+            if not r["hits"]:
+                continue
+            out.append({
+                "path": r["path"],
+                "lang": r["lang"],
+                "blocks": group_blocks(r["hits"]),
+            })
+        print(json.dumps(out, indent=2))
+        return 0
+
+    if mode == "--stats":
+        by_dir = {}
+        tot_files = len(results)
+        tot_lines = 0
+        tot_clines = 0
+        tot_standalone = 0
+        tot_blocks = 0
+        for r in results:
+            c_lines, s_lines = count_comment_lines(r["hits"])
+            n_blocks = len(group_blocks(r["hits"]))
+            tot_lines += r["total_lines"]
+            tot_clines += c_lines
+            tot_standalone += s_lines
+            tot_blocks += n_blocks
+            top = r["path"].split("/")[0] if "/" in r["path"] else "(root)"
+            d = by_dir.setdefault(top, [0, 0, 0, 0, 0])
+            d[0] += 1
+            d[1] += r["total_lines"]
+            d[2] += c_lines
+            d[3] += s_lines
+            d[4] += n_blocks
+        print(
+            f"files={tot_files} total_lines={tot_lines} comment_lines={tot_clines} "
+            f"standalone_shed={tot_standalone} inline={tot_clines - tot_standalone} blocks={tot_blocks}"
+        )
+        print(f"{'dir':14} {'files':>6} {'lines':>7} {'c_lines':>8} {'shed':>6} {'inline':>7} {'blocks':>7}")
+        for k, (nf, nl, nc, ns, nb) in sorted(by_dir.items(), key=lambda x: -x[1][2]):
+            print(f"{k:14} {nf:6d} {nl:7d} {nc:8d} {ns:6d} {nc - ns:7d} {nb:7d}")
+        return 0
+
+    base = load_baseline()
+    if mode == "--update" or base is None:
+        if base is None:
+            new_base = dict(per_file)
+        else:
+            new_base = {}
+            for path, now_n in per_file.items():
+                allowed = base.get(path, 0)
+                new_base[path] = min(now_n, allowed)
+        payload = save_baseline(new_base)
+        print(
+            f"baseline: {payload['total_comment_lines']} comment lines across "
+            f"{payload['files_with_comments']} files"
+        )
+        return 0
+
+    regressions = []
+    improvements = 0
+    for path, now_n in sorted(per_file.items()):
+        allowed = base.get(path, 0)
+        if now_n > allowed:
+            regressions.append((path, allowed, now_n))
+        elif now_n < allowed:
+            improvements += allowed - now_n
+    for path, allowed in base.items():
+        if path not in per_file and allowed > 0:
+            improvements += allowed
+
+    total_now = sum(per_file.values())
+    total_base = sum(base.values())
+
+    if mode == "--check":
+        if regressions:
+            for path, a, b in regressions:
+                print(f"comment budget exceeded: {path} {a} -> {b}")
+            return 1
+        hint = (
+            f" ({improvements} below baseline: run bin/kuwai-comments --update)"
+            if improvements
+            else ""
+        )
+        print(
+            f"comments: {total_now} lines across "
+            f"{sum(1 for v in per_file.values() if v > 0)} files{hint}"
+        )
+        return 0
+
+    print(f"now:      {total_now} comment lines across {sum(1 for v in per_file.values() if v > 0)} files")
+    print(f"baseline: {total_base} comment lines across {len(base)} files")
+    if regressions:
+        for path, a, b in regressions[:20]:
+            print(f"  UP   {path}: {a} -> {b}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -1,20 +1,3 @@
--- kuwai.browsers — browser popups appear in place, floating, instantly.
---
--- A sign-in or wallet popup maps with the same class and the same generic
--- initial title as the browser's main window, so no static rule can tell them
--- apart. But a popup always has a parent: the browser already has a window.
---
---   window.open_early (before rules apply): if this browser already has a
---     window, enable its "<class>-extra" rule — the new window maps floating,
---     centred and without animation. The first window maps tiled, as normal.
---   window.title: once a floating extra window's title arrives, a known popup
---     (Google sign-in, a wallet) is sized/placed; a normal page (Ctrl+N) is
---     tiled; a still-loading title keeps waiting, up to 10 s.
---
--- Main windows are never touched, so fullscreen video keeps working.
--- (Replaces ~/.config/hypr/zen_popups.py, which did this from a socket
--- watcher with a `hyprctl keyword` round trip per event.)
-
 local K = require("kuwai.core")
 local A = require("kuwai.actions")
 
@@ -22,7 +5,6 @@ local B = {}
 
 B.classes = { "zen", "google-chrome", "brave-browser", "chromium", "firefox", "floorp" }
 
--- title (Lua pattern, lowercased), width, height, placement
 B.popups = {
 	{ "google accounts?", 500, 650, "center" },
 	{ "metamask", 420, 620, "topright" },
@@ -60,7 +42,6 @@ local function matches_any(s, list)
 	return false
 end
 
--- Static parts: one disabled "extra window" rule per browser, DevTools sizes.
 local extra = {}
 for _, cls in ipairs(B.classes) do
 	local ok, h = pcall(hl.window_rule, {
@@ -92,12 +73,8 @@ pcall(hl.window_rule, {
 	size = "960 600",
 	no_anim = true,
 })
--- The main window keeps the glide (Super+W, fullscreen). Only a second window
--- — a Google sign-in, a wallet, DevTools — maps floating and snaps to its size.
--- A spring on that popup resizes it every frame while the page is still loading.
 
--- Dynamic part ----------------------------------------------------------------
-local pending = {} -- address -> true while we wait for a meaningful title
+local pending = {}
 
 local function others_of(cls, except)
 	for _, w in ipairs(hl.get_windows() or {}) do
@@ -140,10 +117,10 @@ local function decide(w)
 		end
 	end
 	if matches_any(t, GENERIC) or matches_any(t, WAIT) then
-		return -- still loading, or mid-redirect in an OAuth flow
+		return
 	end
 	pending[w.address] = nil
-	if w.floating then -- Ctrl+N: a real page, give it back to the layout
+	if w.floating then
 		hl.dispatch(hl.dsp.window.float({ window = "address:" .. w.address, action = "disable" }))
 	end
 end
@@ -159,7 +136,7 @@ hl.on("window.open", function(w)
 		return
 	end
 	if not (extra[w.class] and extra[w.class]:is_enabled()) then
-		return -- floated by some other rule (DevTools, PiP…): not ours
+		return
 	end
 	pending[w.address] = true
 	local addr = w.address

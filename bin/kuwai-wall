@@ -1,21 +1,26 @@
 #!/usr/bin/env bash
-# Live wallpapers: add your own, and play them in the shell.
-#
-#   kuwai-wall add FILE [NAME] [--no-loop]   make FILE a live wallpaper: 30 fps,
-#                                           your largest screen's height (max
-#                                           1440p), GPU-encoded, and a seamless
-#                                           loop (the last 1.5 s fade into the
-#                                           first) unless it already loops
-#   kuwai-wall import [STEAM_DIR]            Wallpaper Engine's *video* wallpapers
-#                                           from the Steam Workshop (431960)
-#   kuwai-wall list                          the library, in play order
-#   kuwai-wall play NAME|FILE                play one now
-#
-# The library is ~/Pictures/live-wallpapers (or a theme's own
-# ~/.config/hyde/themes/<theme>/wallpapers/live). Names start with a number
-# for the order Super+Ctrl+Shift+W steps through.
 set -u
-unset LD_LIBRARY_PATH   # some app terminals ship an older libnotify (T3 Code)
+
+usage() {
+cat <<'KUWAI_USAGE'
+Live wallpapers: add your own, and play them in the shell.
+
+  kuwai-wall add FILE [NAME] [--no-loop]   make FILE a live wallpaper: 30 fps,
+                                          your largest screen's height (max
+                                          1440p), GPU-encoded, and a seamless
+                                          loop (the last 1.5 s fade into the
+                                          first) unless it already loops
+  kuwai-wall import [STEAM_DIR]            Wallpaper Engine's *video* wallpapers
+                                          from the Steam Workshop (431960)
+  kuwai-wall list                          the library, in play order
+  kuwai-wall play NAME|FILE                play one now
+
+The library is ~/Pictures/live-wallpapers (or a theme's own
+~/.config/hyde/themes/<theme>/wallpapers/live). Names start with a number
+for the order Super+Ctrl+Shift+W steps through.
+KUWAI_USAGE
+}
+unset LD_LIBRARY_PATH
 LIB="$HOME/Pictures/live-wallpapers"
 SCRIPT="$(dirname "$(readlink -f "$0")")/kuwai-livewall"
 mkdir -p "$LIB"
@@ -28,7 +33,6 @@ next_number() {
 }
 slug() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]\+/-/g; s/^-//; s/-$//' | cut -c1-40; }
 
-# The tallest screen, capped at 1440 (a 4K decode costs four times a 1080p one).
 target_h() {
     local h
     h=$(hyprctl monitors -j 2>/dev/null | jq '[.[].height] | max' 2>/dev/null)
@@ -64,7 +68,6 @@ add() (
     local filters=() codec=() temporary
     temporary=$(mktemp "$LIB/.encode.XXXXXX") || return 1
     trap 'rm -f -- "$temporary"' EXIT
-    # Short clips (< 4 s) and --no-loop: as they are.
     if [ "$loop" = 1 ] && awk -v d="$D" 'BEGIN{exit !(d > 4)}'; then
         local off; off=$(awk -v d="$D" -v f="$F" 'BEGIN{printf "%.3f", d-2*f}')
         filters=(-filter_complex "[0:v]${base},split[x][y];[x]trim=start=$F,setpts=PTS-STARTPTS[a];[y]trim=end=$F,setpts=PTS-STARTPTS[b];[a][b]xfade=transition=fade:duration=$F:offset=${off},format=yuv420p[v]" -map "[v]")
@@ -72,8 +75,6 @@ add() (
         filters=(-vf "$base")
     fi
     read -r -a codec <<<"$(encoder)"
-    # 4:2:0 out, whatever the crossfade settled on: xfade renegotiated a 4:4:4 source back to
-    # 4:4:4 after the format= above, and no GPU decodes that (24 of 30 loops here, 2026-11-18).
     codec+=(-pix_fmt yuv420p)
     if ! ffmpeg -nostdin -v error -stats -y -i "$src" "${filters[@]}" -an "${codec[@]}" -movflags +faststart -f mp4 "$temporary"; then
         [ "${codec[1]}" = h264_nvenc ] || return 1
@@ -84,9 +85,6 @@ add() (
     echo "added $(basename "$out") ($(du -h "$out" | cut -f1))"
 )
 
-# Wallpaper Engine: subscribed Workshop items live in
-# steamapps/workshop/content/431960/<id>/ with a project.json. Only type
-# "video" is a plain video file; "scene" and "web" need linux-wallpaperengine.
 import() {
     local steam=${1:-}
     if [ -z "$steam" ]; then
@@ -114,8 +112,6 @@ import() {
     echo "imported $n video wallpapers; $skipped scene/web ones skipped"
 }
 
-# For the island's Live tab: [{ name, path, thumb, current }] (thumbnails
-# made once, from a frame a third of the way in, into ~/.cache/kuwai/live-thumbs).
 json() {
     local cache="${XDG_CACHE_HOME:-$HOME/.cache}/kuwai/live-thumbs" cur
     mkdir -p "$cache"
@@ -145,5 +141,5 @@ case "${1:-list}" in
     play)   f=${2:?usage: kuwai-wall play NAME|FILE}; [ -f "$f" ] || f=$(find "$LIB" -maxdepth 1 -iname "*$f*" | sort -V | head -1)
             [ -f "$f" ] || { echo "kuwai-wall: no wallpaper matches $2" >&2; exit 1; }
             "$SCRIPT" play "$f" ;;
-    *)      sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+    *)      usage; exit 2 ;;
 esac

@@ -19,6 +19,7 @@ Singleton {
     property var items: []                    // [{ id, label, at: ms }], soonest first
     readonly property var next: items.length ? items[0] : null
     property var ringing: null                // the alarm ringing now
+    property real ringStartedAt: 0
     property bool canWake: false              // kuwai-wake installed (the file is ours to write)
 
     // "7:30", "6am", "18:05 tea" → { at, label } (the next time it comes round).
@@ -27,7 +28,7 @@ Singleton {
         if (!m) return null;
         let h = +m[1], min = +(m[2] || 0);
         const ap = (m[3] || "").toLowerCase();
-        if (h > 23 || min > 59 || (ap && h > 12)) return null;
+        if (h > 23 || min > 59 || (ap && (h < 1 || h > 12))) return null;
         if (ap === "pm" && h < 12) h += 12;
         if (ap === "am" && h === 12) h = 0;
         const d = new Date();
@@ -47,6 +48,7 @@ Singleton {
     // ── Ringing ──────────────────────────────────────────────────────────
     function ring(a) {
         ringing = a;
+        ringStartedAt = Date.now();
         // The island grows the alarm (AlarmCard): Snooze and Stop, until answered.
         // Locked, the lock island has the same two (LockIsland).
         Moments.showCard({ key: "alarm", kind: "alarm", sticky: true, id: a.id, title: a.label,
@@ -76,7 +78,7 @@ Singleton {
         interval: 2600; repeat: true; triggeredOnStart: true
         running: root.ringing !== null
         onTriggered: {
-            if (Date.now() - root.ringing.at > 5 * 60000) {
+            if (Date.now() - root.ringStartedAt > 5 * 60000) {
                 // Unanswered for 5 minutes: quiet, and said in the center.
                 missed.createObject(root, { alarm: root.ringing });
                 root.stop();

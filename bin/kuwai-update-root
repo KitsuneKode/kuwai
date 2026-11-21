@@ -56,7 +56,7 @@ def say(**msg):
         sys.stdout.write(json.dumps(msg) + "\n")
         sys.stdout.flush()
     except (BrokenPipeError, OSError):
-        alive = False  # nobody listening: keep going, so pacman finishes
+        alive = False
 
 
 def pacman(args):
@@ -104,7 +104,7 @@ def files(req, home, uid):
     return out
 
 
-ETC = "/etc/"   # a constant so the tests can aim the same checks at a temp folder
+ETC = "/etc/"
 
 
 def pacnew(req):
@@ -119,7 +119,6 @@ def pacnew(req):
                 or "\0" in path or any(part in ("", ".", "..") for part in path[1:].split("/")):
             raise ValueError(f"not a config file: {path!r}")
         new = path + ".pacnew"
-        # No symlinks anywhere: the file, its .pacnew, or a directory on the way.
         if os.path.realpath(new) != new or os.path.realpath(os.path.dirname(path)) != os.path.dirname(path):
             raise ValueError(f"symlink in the way: {path!r}")
         st = os.lstat(new)

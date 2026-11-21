@@ -71,13 +71,6 @@ def load(path, default):
 state = load(STATE, {})
 
 
-# ~/.config/kuwai/feeds.json, read each time (edit it, no restart):
-#   { "gmail": "you@gmail.com",
-#     "gmailQuery": "is:unread is:important category:primary",
-#     "github": { "enabled": true,
-#                 "mute":  ["someorg/*"],          never tell me
-#                 "quiet": ["me/dotfiles"],        the center only
-#                 "bots":  "quiet" } }             quiet | hide | show
 def conf():
     c = load(CONFIG, {})
     g = c.get("github") if isinstance(c.get("github"), dict) else {}
@@ -112,28 +105,23 @@ def clip(s, n):
 def full_text(s, n=6000):
     """The whole readable text for the island's preview: paragraphs kept,
     runs of blank lines folded, each line trimmed, capped at n characters."""
-    # Trailing space goes; leading stays (nested bullets, indented code).
     lines = [re.sub(r"(?<=\S)[ \t\u00a0]+", " ", l.replace("\t", "  ")).rstrip() for l in str(s or "").replace("\r", "").split("\n")]
     t = re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip()
     return t if len(t) <= n else t[: n - 1].rstrip() + "…"
 
 
-# ── Notifications (org.freedesktop.Notifications, on GLib's loop) ────────────
 class Notifier:
     def __init__(self):
         from gi.repository import Gio, GLib
         self.GLib = GLib
         self.bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
-        self.by_id = {}       # notification id -> { key, on }
-        self.by_key = {}      # key -> notification id
+        self.by_id = {}
+        self.by_key = {}
         for sig in ("ActionInvoked", "NotificationReplied", "NotificationClosed"):
             self.bus.signal_subscribe(None, "org.freedesktop.Notifications", sig, "/org/freedesktop/Notifications",
                                       None, 0, self._signal)
 
     def _call(self, method, args, reply=None, sent=None):
-        # sent: this call's own (key, on), carried with its reply. A shared
-        # queue lost its order when a call failed (a shell restart): every
-        # later card was bound to the previous card's link and actions.
         self.bus.call(
             "org.freedesktop.Notifications", "/org/freedesktop/Notifications", "org.freedesktop.Notifications",
             method, args, reply and self.GLib.VariantType(reply), 0, -1, None,
@@ -142,7 +130,7 @@ class Notifier:
     def _done(self, bus, res, method, sent=None):
         try:
             out = bus.call_finish(res)
-        except Exception as e:  # the server is gone (a restart): it comes back
+        except Exception as e:
             log("notify:", method, e)
             return
         if method == "Notify" and sent:
@@ -212,20 +200,14 @@ class Notifier:
 
 
 def open_url(url):
-    # Web links only: a URL from GitHub's API or a mail is someone else's
-    # data, and xdg-open would hand file:// or an app's own scheme to that app.
     if not re.match(r"https?://", str(url or "")):
         log("open: refused a non-web link")
         return
-    # Its own transient unit, not a child of this service: a browser started
-    # from here used to live in kuwai-feeds' cgroup (its 2.5 GB "memory peak")
-    # and died whenever the service restarted.
     subprocess.Popen(["systemd-run", "--user", "--collect", "--quiet", "--slice=app.slice",
                       "--", "xdg-open", url],
                      stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
-# ── GitHub ──────────────────────────────────────────────────────────────────
 def gh(args, timeout=30):
     return subprocess.run(["gh", "api", *args], capture_output=True, text=True, timeout=timeout)
 
@@ -234,7 +216,6 @@ BOTS = re.compile(r"(\[bot\]$|^dependabot|^renovate|^github-actions|^snyk-bot|^g
 BOT_TITLE = re.compile(r"^(chore|build|fix|ci)\((deps|deps-dev|dev-deps)\)|^bump |^update dependency |^\[snyk\]", re.I)
 BOT_BRANCH = re.compile(r"^(dependabot|renovate|snyk)[/-]", re.I)
 
-# reason -> (status, glyph, tone, severity, peek)
 REASONS = {
     "review_requested": ("Review requested", "\U000f04c2", "caution", "warning", True),
     "mention": ("Mentioned you", "\U000f01ee", "caution", "warning", True),
@@ -281,7 +262,6 @@ AVATARS = os.path.expanduser("~/.cache/kuwai/feeds/avatars")
 
 def avatar(login, url):
     """Their GitHub picture as a file URL (fetched once, then cached)."""
-    # Only GitHub's own avatar host, at most 1 MB (the URL comes from the API).
     if not login or not url or not url.startswith("https://avatars.githubusercontent.com/"):
         return ""
     path = os.path.join(AVATARS, re.sub(r"[^\w.-]", "_", login) + ".png")
@@ -334,7 +314,6 @@ def gh_thread(t, fetch=gh_fetch, c=None):
     body, who = f"{short(repo)} {number}".strip(), ""
 
     if s["type"] == "CheckSuite":
-        # "CI workflow run failed for <branch> branch"
         cm = re.match(r"^(.*?) workflow run (\w+) for (\S+) branch", title)
         wf, outcome, branch = cm.groups() if cm else ("Workflow", "failed" if "fail" in title.lower() else "", "")
         failed = outcome in ("failed", "cancelled", "timed_out") or "fail" in title.lower()
@@ -343,13 +322,11 @@ def gh_thread(t, fetch=gh_fetch, c=None):
         status, glyph = ("Run failed", "\U000f0028") if failed else ("Run " + (outcome or "finished"), "\U000f05e0")
         tone, severity, peek = ("critical", "warning", True) if failed else ("positive", "", False)
         bot = bool(branch and BOT_BRANCH.match(branch))
-        # One card per workflow and branch: the next run replaces it.
         t["_group"] = f"gh:ci:{repo}:{wf}:{branch}"
         if branch:
             t["_url"] = f"https://github.com/{repo}/actions?query=branch%3A{branch}"
     else:
         bot = bool(BOT_TITLE.search(title))
-        # Who said what: the latest comment, or the pull request / issue itself.
         url = s.get("latest_comment_url") or s.get("url")
         got = fetch(url) if url else None
         if isinstance(got, dict):
@@ -359,13 +336,9 @@ def gh_thread(t, fetch=gh_fetch, c=None):
                 t["_url"] = got["html_url"]
             if who and BOTS.search(who):
                 bot = True
-            # Your own comment or push: you know.
             if who and who.lower() == me() and reason not in ("review_requested", "assign", "mention"):
                 return None
             t["_avatar"] = (who, (got.get("user") or {}).get("avatar_url") or "")
-            # The whole comment for the reading view keeps its Markdown (code,
-            # "a < b"); the shell's readable() cleans it in one place. Only
-            # the one-line preview is stripped hard here.
             raw = re.sub(r"<!--.*?-->", "", text, flags=re.S).strip()
             text = re.sub(r"<!--.*?-->|<[^>]+>|```.*?```|!\[[^\]]*\]\([^)]*\)", " ", text, flags=re.S)
             text = re.sub(r"[#>*_`|]+", " ", text)
@@ -377,7 +350,6 @@ def gh_thread(t, fetch=gh_fetch, c=None):
     if bot and c["bots"] == "hide":
         return None
     quiet = (bot and c["bots"] == "quiet") or matches(repo, c["quiet"])
-    # Somewhere to answer: a comment on the pull request or issue.
     reply = (repo, m.group(2)) if m and reason in REPLYABLE and not bot else None
     return {
         "title": title, "body": body, "status": status, "glyph": glyph, "tone": tone,
@@ -411,7 +383,7 @@ def gh_conversation(repo, number, fetch=gh_fetch, n=4):
                 "text": full_text(raw, 2500) or "(no description)", "bot": bool(BOTS.search(who))}
     out = [item(first)] + [item(c) for c in comments[-n:]]
     if len(comments) > n:
-        out[0]["skipped"] = len(comments) - n           # "3 earlier comments"
+        out[0]["skipped"] = len(comments) - n
     return out
 
 
@@ -433,8 +405,8 @@ def gh_reply(notify, repo, number, tid, text):
 def github(notify):
     g = state.setdefault("github", {})
     first = "seen" not in g
-    seen = g.setdefault("seen", {})          # thread id -> updated_at we've told you about
-    shown = {}                               # thread id -> card key, up this run
+    seen = g.setdefault("seen", {})
+    shown = {}
     wait, backoff = 60, 60
     while True:
         if not conf()["github"]:
@@ -468,7 +440,6 @@ def github(notify):
             except ValueError:
                 threads = []
             live = {t["id"] for t in threads}
-            # Read on github.com (or anywhere): the card goes too.
             for tid in list(shown):
                 if tid not in live:
                     key = shown.pop(tid)
@@ -480,11 +451,8 @@ def github(notify):
                     seen[t["id"]] = t["updated_at"]
                 log(f"github: {len(threads)} unread now; telling you about new ones from here")
                 fresh, first = [], False
-            # Seen once handled (or deliberately skipped: older than the 12, or
-            # folded into a card), not before: a thread whose details failed is
-            # tried again on the next update (review 2026-11-10, finding 14).
             failed = set()
-            cards = {}                       # newest per card: a burst of runs is one
+            cards = {}
             for t in sorted(fresh, key=lambda t: t["updated_at"])[-12:]:
                 try:
                     c = gh_thread(t)
@@ -502,7 +470,6 @@ def github(notify):
                          "x-kuwai-severity": c["severity"], "x-kuwai-quiet": "1" if c["quiet"] else "",
                          "x-kuwai-calm": "" if c["peek"] else "1", "image-path": avatar(c["who"], c["avatar"]),
                          "x-kuwai-full": c.get("full") or ""}
-                # The conversation, for the reading view's second pull.
                 if c.get("number") and not c["quiet"]:
                     try:
                         conv = gh_conversation(c["repo"], c["number"])
@@ -523,7 +490,6 @@ def github(notify):
             for t in fresh:
                 if t["id"] not in failed:
                     seen[t["id"]] = t["updated_at"]
-            # Forget what's long gone, so the state stays small.
             if len(seen) > 600:
                 for k in sorted(seen, key=seen.get)[:-400]:
                     seen.pop(k, None)
@@ -536,7 +502,6 @@ def github(notify):
         time.sleep(backoff if code not in (200, 304) else wait)
 
 
-# ── Gmail ───────────────────────────────────────────────────────────────────
 def gmail_secret(address):
     r = subprocess.run(["secret-tool", "lookup", "service", "kuwai-feeds", "account", address],
                        capture_output=True, text=True)
@@ -558,9 +523,6 @@ def text_of(msg, full=False):
     except Exception:
         return ""
     if part.get_content_type() == "text/html":
-        # Keep the shape: blocks and breaks become new lines, list items
-        # bullets (every tag became a space before, so a newsletter read as
-        # one paragraph-less blob). Hidden preheaders go.
         t = re.sub(r"(?is)<(style|script|head|title)\b.*?</\1>", " ", t)
         t = re.sub(r"(?is)<([a-z0-9]+)[^>]*display\s*:\s*none[^>]*>.*?</\1>", " ", t)
         t = re.sub(r"(?i)<br\s*/?>", "\n", t)
@@ -570,8 +532,6 @@ def text_of(msg, full=False):
         t = t.replace("\u200c", "").replace("\u00a0", " ").replace("\u034f", "")
         t = "\n".join(l.strip() for l in t.split("\n"))
     t = t.replace("\r\n", "\n")
-    # The reply itself, not the thread under it: cut at "On … wrote:", an
-    # "Original Message" block or the signature; quoted lines (">") go.
     t = re.split(r"\n\s*(On .{4,200}? wrote:|-{2,}\s*Original Message\s*-{2,}|-- \n)", t, maxsplit=1)[0]
     t = "\n".join(l for l in t.split("\n") if not l.lstrip().startswith(">"))
     return full_text(t) if full else clip(re.sub(r"\s+", " ", t), 180)
@@ -660,7 +620,7 @@ def gmail_card(m, uid):
     thr = re.search(r"X-GM-THRID (\d+)", meta)
     size = re.search(r"RFC822.SIZE (\d+)", meta)
     full = None
-    if size and int(size.group(1)) < 3_000_000:      # inline images made most newsletters "too big" at 400 KB
+    if size and int(size.group(1)) < 3_000_000:
         typ, got = m.uid("FETCH", uid, "(BODY.PEEK[])")
         if typ == "OK" and got and isinstance(got[0], tuple):
             full = got[0][1]
@@ -686,7 +646,6 @@ def gmail_mark_read(address, uid):
 
 
 def gmail_archive(notify, address, uid):
-    # Archiving in Gmail is losing the Inbox label (it stays in All Mail).
     if not gmail_act(address, uid, ("+FLAGS", "(\\Seen)"), ("-X-GM-LABELS", "(\\Inbox)")):
         notify.flash("Gmail", "gmail", "Couldn't archive it")
 
@@ -718,7 +677,7 @@ def gmail_reply(notify, address, uid, c, text):
 
 def gmail(notify, address):
     g = state.setdefault("gmail", {})
-    shown = {}                               # uid -> key, cards up this run
+    shown = {}
     backoff = 30
     while True:
         try:
@@ -728,7 +687,6 @@ def gmail(notify, address):
                 raise RuntimeError("can't open INBOX")
             validity = int(re.search(rb"\d+", m.response("UIDVALIDITY")[1][0]).group())
             if g.get("validity") != validity or "last" not in g:
-                # First time (or Gmail renumbered): start from now, no flood.
                 typ, d = m.uid("SEARCH", None, "ALL")
                 uids = [int(x) for x in d[0].split()] if typ == "OK" and d[0] else []
                 g.update(validity=validity, last=max(uids) if uids else 0)
@@ -737,7 +695,6 @@ def gmail(notify, address):
             backoff = 30
             while True:
                 gmail_check(m, notify, address, g, shown)
-                # Gmail drops an IDLE after ~30 min; renew a little sooner.
                 with m.idle(duration=24 * 60) as idler:
                     for typ, _ in idler:
                         if typ in ("EXISTS", "EXPUNGE", "FETCH"):
@@ -752,7 +709,6 @@ def gmail(notify, address):
 
 
 def gmail_check(m, notify, address, g, shown):
-    # Read, archived or deleted in Gmail since: those cards go.
     if shown:
         uids = ",".join(shown)
         typ, d = m.uid("SEARCH", None, f"UID {uids} UNSEEN")
@@ -764,11 +720,6 @@ def gmail_check(m, notify, address, g, shown):
     new = [u for u in new if u > g["last"]]
     if not new:
         return
-    # The watermark moves past a message only once it was handled (shown, or
-    # deliberately not: outside the query, older than the last five), never
-    # before: a failed query or card left it to be tried again on the next
-    # check instead of losing it (review 2026-11-10, finding 14). It stops
-    # just before a failure, so nothing already shown is shown twice.
     query = conf()["gmailQuery"].replace('"', "")
     typ, d = m.uid("SEARCH", None, f'UID {min(new)}:{max(new)} X-GM-RAW "{query}"')
     if typ != "OK":
@@ -787,11 +738,8 @@ def gmail_check(m, notify, address, g, shown):
             continue
         key = "gmail:" + (c["thread"] or uid)
         hints = {"x-kuwai-feed": "gmail", "x-kuwai-group": key, "x-kuwai-url": c["url"]}
-        # The whole message for the island's preview (the body stays short for
-        # the toast); only when there's more than the snippet.
         if c.get("full") and len(c["full"]) > len(c["snippet"]) + 20:
             hints["x-kuwai-full"] = c["subject"] + "\n\n" + c["full"]
-        # A reply in a conversation: the whole exchange for the reading view.
         try:
             conv = gmail_conversation(m, c.get("thrid", ""), address)
         except Exception as e:
@@ -803,7 +751,6 @@ def gmail_check(m, notify, address, g, shown):
         on = {"default": lambda u=c["url"]: open_url(u),
               "archive": lambda i=uid: gmail_archive(notify, address, i),
               "read": lambda i=uid: gmail_mark_read(address, i)}
-        # Nobody reads a no-reply inbox: no reply field for those.
         if not c["noreply"]:
             on["inline-reply"] = lambda text, i=uid, c=c: gmail_reply(notify, address, i, c, text)
             hints["x-kde-reply-placeholder-text"] = f"Reply to {c['from']}"
@@ -814,7 +761,6 @@ def gmail_check(m, notify, address, g, shown):
         save()
 
 
-# ── Commands ────────────────────────────────────────────────────────────────
 def gmail_setup():
     cfg = load(CONFIG, {})
     address = input(f"Gmail address [{cfg.get('gmail', '')}]: ").strip() or cfg.get("gmail", "")

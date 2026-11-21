@@ -1,10 +1,4 @@
 #!/usr/bin/env bash
-# Session doctor for kuwai + kuwai: config, notifications, shell, feeds.
-#   kuwai doctor           human-readable report (exit 1 if anything failed)
-#   kuwai doctor --quiet   failures only
-#
-# Run after odd notification behaviour, before `kuwai promote`, or when ZapZap
-# "stopped working" after a shell crash.
 set -u
 KUWAI="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
 QUIET=0
@@ -27,14 +21,12 @@ notify_send_broken() {
 
 [ "$QUIET" = 1 ] || echo "Kuwai doctor · session checks (kuwai + Hyprland + shell)"
 
-# ── Kuwai (Hyprland, units, binds) ───────────────────────────────────────
 if [ -x "$KUWAI/bin/kuwai" ]; then
     [ "$QUIET" = 1 ] || echo "Hyprland & kuwai"
     KUWAI_ROOT="$KUWAI" "$KUWAI/bin/kuwai" doctor || fail=1
     [ "$QUIET" = 1 ] || echo
 fi
 
-# ── Notifications ─────────────────────────────────────────────────────────
 [ "$QUIET" = 1 ] || echo "Notifications"
 npid=$(notif_owner)
 if [ -z "$npid" ]; then
@@ -86,7 +78,6 @@ else
     note "no notification history file yet ($STATE)"
 fi
 
-# ── Shell ─────────────────────────────────────────────────────────────────
 [ "$QUIET" = 1 ] || echo "Shell"
 if qs list --all --json 2>/dev/null | jq -e 'any(.[]; .config_path | endswith("/shell/shell.qml"))' >/dev/null; then
     if ! "$KUWAI/bin/kuwai-check" --quiet; then
@@ -108,7 +99,6 @@ else
     fi
 fi
 
-# ── Feeds & sidecars ──────────────────────────────────────────────────────
 [ "$QUIET" = 1 ] || echo "Services"
 for u in kuwai-feeds.service kuwai-clipboard.service; do
     st=$(systemctl --user is-active "$u" 2>/dev/null)
@@ -129,7 +119,6 @@ else
     note "ZapZap not running (WhatsApp notifications need it)"
 fi
 
-# ── Channel ───────────────────────────────────────────────────────────────
 CH="${XDG_STATE_HOME:-$HOME/.local/state}/kuwai/channel"
 [ "$QUIET" = 1 ] || echo "Channel"
 if [ -f "$CH" ]; then

@@ -27,15 +27,13 @@ from __future__ import annotations
 
 from . import gate
 
-SCRIM = 0.22                 # LockView: Qt.rgba(0, 0, 0, 0.22)
-TEXT_ALPHA = 0.9             # LockView.tint: white at 90 %, tinted 35 % toward the accent
+SCRIM = 0.22
+TEXT_ALPHA = 0.9
 ACCENT_SHARE = 0.35
-LINE = gate.READABLE_LARGE   # 3:1
-# Where the text is, as shares of the screen (1080p: the column starts at 11 %
-# of the height; the date is ~30 px, the clock ~150 px tall and ~5 digits wide).
+LINE = gate.READABLE_LARGE
 DATE = (0.40, 0.105, 0.60, 0.14)
 CLOCK = (0.33, 0.14, 0.67, 0.295)
-SIZE = (480, 270)            # measured small: the layer is blurred anyway
+SIZE = (480, 270)
 
 
 def lock_layer(path):
@@ -44,10 +42,10 @@ def lock_layer(path):
     img = Image.open(path).convert("RGB")
     w, h = img.size
     want = SIZE[0] / SIZE[1]
-    if w / h > want:                       # cover: crop the sides
+    if w / h > want:
         cut = round((w - h * want) / 2)
         img = img.crop((cut, 0, w - cut, h))
-    else:                                  # or the top and bottom
+    else:
         cut = round((h - w / want) / 2)
         img = img.crop((0, cut, w, h - cut))
     img = img.resize(SIZE, Image.LANCZOS).filter(ImageFilter.GaussianBlur(48 * SIZE[1] / 1080))
@@ -73,7 +71,7 @@ def _met_by_most(layer, area, ink):
     return ratios[len(ratios) // 20]
 
 
-WANT, MOST = 3.5, 0.62       # ClockGround: the contrast it aims for, the most it will darken
+WANT, MOST = 3.5, 0.62
 ZONE = (0.33, 0.10, 0.67, 0.30)
 
 
@@ -98,7 +96,6 @@ def lock_clock(path, accent="#0a84ff"):
     ink = _ink(accent)
     layer = lock_layer(path)
     bare = min(_met_by_most(layer, CLOCK, ink), _met_by_most(layer, DATE, ink))
-    # What the shell's own probe reads: the picture small, the zone's brightest tones.
     small = Image.open(path).convert("RGB").resize((32, 18), Image.BILINEAR)
     px = small.load()
     tones = sorted(max(px[x, y]) / 255 for y in range(int(ZONE[1] * 18), max(int(ZONE[1] * 18) + 1, -(-int(ZONE[3] * 18 * 100) // 100)))

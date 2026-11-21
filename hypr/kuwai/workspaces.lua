@@ -1,29 +1,8 @@
--- kuwai.workspaces — where windows live.
---
--- Per-monitor workspaces (feature per_monitor_ws). Hyprland numbers workspaces
--- globally, so each screen owns a block of ten: the laptop panel 1–10, the
--- next screen 11–20, … Super+3 is the third workspace *of the focused screen*.
--- A block belongs to the physical monitor (its description: make, model,
--- serial), remembered in kuwai's state, so the Acer gets 11–20 back whether it
--- arrives as DP-3 or HDMI-A-5. Off: plain global 1–10, as before.
---
--- Layout per workspace (feature layouts): Super+Alt+L cycles the current
--- workspace through scrolling → dwindle → monocle → floating. Remembered.
---
--- Quake console (feature quake): Super+` drops a terminal over whatever you're
--- on — its own special workspace, spawned the first time it's opened.
---
--- Minimize (feature minimize): Super+O tucks a window into special:minimized,
--- Super+Shift+O brings the most recent back to where you are.
-
 local K = require("kuwai.core")
 
 local W = {}
 local dsp = hl.dsp
 
----------------------------------------------------------------------------
--- Monitor blocks
----------------------------------------------------------------------------
 local function ident(m)
 	return (m and m.description and m.description ~= "") and m.description or (m and m.name) or "?"
 end
@@ -32,7 +11,6 @@ local function is_internal(m)
 	return m and m.name and m.name:match("^eDP") ~= nil
 end
 
--- Block index for a monitor; assigns and persists the next free one on first sight.
 function W.block(m)
 	if not K.feature("per_monitor_ws") or not m then
 		return 0
@@ -63,15 +41,11 @@ function W.base(m)
 	return W.block(m or hl.get_active_monitor()) * 10
 end
 
--- Bind each screen's block to it, so its workspaces open there and come back
--- there after an unplug.
 local rules = {}
 local function claim(m)
 	if not m then
 		return
 	end
-	-- Published for the island, so it numbers each screen's pills from
-	-- kuwai's own answer instead of guessing (wsbase.DP-3=10).
 	if K.state["wsbase." .. m.name] ~= tostring(W.base(m)) then
 		K.set_state("wsbase." .. m.name, W.base(m))
 	end
@@ -83,10 +57,6 @@ local function claim(m)
 	for n = 1, 10 do
 		local id = tostring(base + n)
 		if not rules[id] then
-			-- No default_name ("1" on every screen): two workspaces named
-			-- "1" made Quickshell lose track of the Acer's (it follows them
-			-- by name), so its island showed the laptop's. The island numbers
-			-- each screen 1–10 itself.
 			local spec = { workspace = id, monitor = sel, default = (n == 1) }
 			local ok, h = pcall(hl.workspace_rule, spec)
 			if ok then
@@ -94,7 +64,6 @@ local function claim(m)
 			end
 		end
 	end
-	-- Ones named that way before this change get their own names back.
 	for _, ws in ipairs(hl.get_workspaces() or {}) do
 		if ws.id and ws.id > base and ws.id <= base + 10 and ws.name ~= tostring(ws.id) then
 			hl.dispatch(dsp.workspace.rename({ workspace = ws.id, name = tostring(ws.id) }))
@@ -103,7 +72,6 @@ local function claim(m)
 end
 
 local function reclaim(m)
-	-- Workspaces of this block that drifted to another screen come home.
 	local base = W.base(m)
 	for _, ws in ipairs(hl.get_workspaces() or {}) do
 		if ws.id and ws.id > base and ws.id <= base + 10 and ws.monitor and ws.monitor.name ~= m.name then
@@ -122,24 +90,16 @@ hl.on("monitor.added", function(m)
 	end
 end)
 
--- Workspace n of the focused screen.
 function W.ws(n)
 	return W.base() + n
 end
 
----------------------------------------------------------------------------
--- Desktops (feature desktops): "desktop n" is workspace n of every screen
--- (each screen's own block: laptop n, the next screen 10+n…). Switching a
--- desktop switches every screen together; keys, pills and the island all
--- speak in desktops, so there is one row, the same on every screen.
----------------------------------------------------------------------------
 local function desktops()
 	return K.feature("desktops") and K.feature("per_monitor_ws")
 end
 W.desktops = desktops
 K.set_state("workspace_model", desktops() and "desktops" or (K.feature("per_monitor_ws") and "per_screen" or "global"))
 
--- The desktop you're on: the focused screen's workspace, within its block.
 function W.current()
 	local cur = hl.get_active_workspace()
 	local base = W.base()
@@ -150,26 +110,19 @@ function W.current()
 	return 1
 end
 
--- The workspace id a screen is showing.
 local function showing(m)
 	local ws = m and m.active_workspace
 	return ws and ws.id
 end
 
--- Focus workspace id on screen m, unless it's already there: re-focusing the
--- workspace a screen shows trips workspace_back_and_forth and bounces it back
--- to its previous one.
 local function show(m, id)
 	if showing(m) ~= id then
 		hl.dispatch(dsp.focus({ workspace = id }))
 	end
 end
 
-local prev_desktop -- desktops: where Super+N on the current desktop goes back to
+local prev_desktop
 
--- Show desktop n: every other screen first (cursor warps off, so neither the
--- pointer nor focus leaves you), then your own screen last, so focus ends
--- where you are and all screens slide together. Screens already there stay.
 function W.go(n)
 	n = math.max(1, math.min(10, n))
 	local here = hl.get_active_monitor()
@@ -194,8 +147,6 @@ function W.go(n)
 	K.set_state("desktop", n)
 end
 
--- Super+N. On the workspace you're already on it goes back to the previous
--- one (back-and-forth) — on purpose here, and only here.
 function W.focus(n)
 	return function()
 		if showing(hl.get_active_monitor()) ~= W.ws(n) then
@@ -205,7 +156,7 @@ function W.focus(n)
 				W.go(prev_desktop)
 			end
 		else
-			hl.dispatch(dsp.focus({ workspace = W.ws(n) })) -- Hyprland's own back-and-forth
+			hl.dispatch(dsp.focus({ workspace = W.ws(n) }))
 		end
 	end
 end
@@ -219,22 +170,16 @@ function W.send(n, follow)
 	end
 end
 
--- Step through a screen's block (clamped, empty ones included): the focused
--- screen's, or `m`'s (the island you scrolled on).
 function W.step(delta, carry, on)
 	return function()
 		local m = on or hl.get_active_monitor()
 		local base = W.base(m)
 		local cur = showing(m)
 		local id = (cur and cur > 0) and cur or (base + 1)
-		-- On a workspace from another screen's block (a guest after an unplug),
-		-- step from this screen's first one instead of jumping to its edge.
 		if id <= base or id > base + 10 then
 			id = base + 1 - (delta > 0 and 1 or -1)
 		end
 		local n = math.max(1, math.min(10, (id - base) + delta))
-		-- At an edge, stop. Re-focusing the workspace you're on would trip
-		-- workspace_back_and_forth and bounce you back to the previous one.
 		if base + n == id then
 			return
 		end
@@ -249,8 +194,6 @@ function W.step(delta, carry, on)
 	end
 end
 
--- Next/previous busy workspace on this screen, stopping at the ends. (Hyprland's
--- m+1 loops round, and hops to another screen's workspace on the way.)
 function W.busy(delta)
 	return function()
 		local busy = {}
@@ -264,7 +207,7 @@ function W.busy(delta)
 			if busy[base + n] then
 				return true
 			end
-			if desktops() then -- a desktop is busy if any screen has windows there
+			if desktops() then
 				for _, m in ipairs(hl.get_monitors() or {}) do
 					if busy[W.base(m) + n] then
 						return true
@@ -286,8 +229,6 @@ function W.busy(delta)
 	end
 end
 
--- The first empty workspace of the focused screen's own block (Hyprland's
--- "empty" picks the lowest empty id anywhere, which can be another screen's).
 function W.empty()
 	return function()
 		local base = W.base()
@@ -300,7 +241,6 @@ function W.empty()
 		for n = 1, 10 do
 			local empty = not used[base + n]
 			if empty and desktops() then
-				-- a desktop is empty only if it's empty on every screen
 				for _, m in ipairs(hl.get_monitors() or {}) do
 					if used[W.base(m) + n] then
 						empty = false
@@ -315,9 +255,6 @@ function W.empty()
 	end
 end
 
----------------------------------------------------------------------------
--- Layout per workspace
----------------------------------------------------------------------------
 W.cycle = { "scrolling", "dwindle", "monocle", "floating" }
 local layout_rules, float_rules = {}, {}
 
@@ -341,8 +278,6 @@ local function set_layout(id, name, quiet)
 		layout_rules[key] = h
 	end
 	if name == "floating" then
-		-- New windows on this workspace float; existing ones are floated and
-		-- tagged so leaving the mode tiles exactly those again.
 		local ok2, r = pcall(hl.window_rule, { name = "kuwai-floatws-" .. key, match = { workspace = key }, float = true })
 		if ok2 then
 			float_rules[key] = r
@@ -397,11 +332,6 @@ function W.layout_next(dir)
 	end
 end
 
----------------------------------------------------------------------------
--- Next / previous, whatever the context
----------------------------------------------------------------------------
--- In a group: the next tab. Monocle: the next window. Scrolling: the next
--- column. Otherwise: the next window on the workspace.
 function W.next(forward)
 	return function()
 		local w = hl.get_active_window()
@@ -421,7 +351,6 @@ function W.next(forward)
 	end
 end
 
--- Super+J: rearrange, per layout.
 function W.arrange()
 	local ws = hl.get_active_workspace()
 	local lay = ws and ws.tiled_layout
@@ -436,9 +365,6 @@ function W.arrange()
 	end
 end
 
----------------------------------------------------------------------------
--- Quake console
----------------------------------------------------------------------------
 local function windows_on(name)
 	local out = {}
 	for _, w in ipairs(hl.get_windows() or {}) do
@@ -469,9 +395,6 @@ function W.console()
 	end
 end
 
----------------------------------------------------------------------------
--- Minimize
----------------------------------------------------------------------------
 local hidden = {}
 
 function W.minimize()
@@ -492,7 +415,7 @@ function W.restore()
 	while #hidden > 0 and not target do
 		target = present[table.remove(hidden)]
 	end
-	if not target then -- after a reload the stack is gone: newest by focus history
+	if not target then
 		for _, w in pairs(present) do
 			if not target or (w.focus_history_id or 99) < (target.focus_history_id or 99) then
 				target = w
@@ -510,19 +433,6 @@ end
 
 _G.kuwai = _G.kuwai or {}
 kuwai.workspaces = W
--- A screen goes away (unplugged, lid shut on the second screen…): its windows
--- fold into the same-numbered workspace on a remaining screen (its 3 joins
--- your 3), each remembered; when that screen comes back they go home. No
--- "guest" workspaces from another screen ever sit in your row.
---
--- A screen that loses power flaps (off, on, off within a second or two), and
--- a config reload can land while it's dark, so:
---   · only windows whose own screen is really gone move (a pass that ran
---     after the screen was already back moved the wrong windows);
---   · where each came from is kept in kuwai's state, not in memory;
---   · coming back is quick (250 ms, the screen's first frame), each window to
---     its own workspace, and that screen shows what it showed; if you were on
---     it, you are again.
 local function key_of(m)
 	return ident(m):gsub("[^%w]", "_")
 end
@@ -534,12 +444,12 @@ local function owned(id, mons)
 		end
 	end
 end
-local homes = {} -- window address → the workspace id it came from
+local homes = {}
 for addr, id in (K.state["wshomes"] or ""):gmatch("([%w]+)=(%d+)") do
 	homes[addr] = tonumber(id)
 end
 hl.on("hyprland.start", function()
-	homes = {} -- a new session: last login's window addresses mean nothing
+	homes = {}
 	if K.state["wshomes"] then
 		K.set_state("wshomes", nil)
 	end
@@ -558,14 +468,12 @@ local function wsid(w)
 	end
 	return ws.id or tonumber(tostring(ws):match("%((%-?%d+):"))
 end
--- What each screen shows and which one you're on, kept as it changes (once a
--- screen is gone there's no asking it).
 local focused_key
 local function remember_shown()
 	local here = hl.get_active_monitor()
 	local mons = hl.get_monitors() or {}
 	if #mons < 2 then
-		return -- one screen left: the moment of loss, keep what was known
+		return
 	end
 	focused_key = here and key_of(here) or focused_key
 	for _, m in ipairs(mons) do
@@ -617,7 +525,7 @@ hl.on("monitor.added", function(m)
 		for addr, home in pairs(homes) do
 			local w = live[addr]
 			if not w then
-				homes[addr] = nil -- closed while its screen was dark
+				homes[addr] = nil
 			elseif owned(home, mons) then
 				if wsid(w) ~= home then
 					hl.dispatch(dsp.window.move({ window = "address:" .. addr, workspace = home, follow = false }))
@@ -633,7 +541,6 @@ hl.on("monitor.added", function(m)
 			end
 			return
 		end
-		-- That screen shows what it showed; focus goes back only if you were there.
 		local mon
 		for _, x in ipairs(mons) do
 			if m and x.name == m.name then
@@ -657,20 +564,6 @@ hl.on("monitor.added", function(m)
 	end, { timeout = 250, type = "oneshot" })
 end)
 
----------------------------------------------------------------------------
--- Every workspace stays on its own screen
----------------------------------------------------------------------------
--- Each screen owns a block (laptop 1–10, the Acer 11–20). Nothing used to
--- stop one landing on the other screen (a swipe past the end, a workspace
--- moved by hand, a screen waking up late); then Super+N, Super+Ctrl+arrows
--- and Mission Control all counted from the wrong block and the laptop's 2
--- sat on the Acer. Now a stray is fixed as soon as it appears, without
--- anything you can see jumping screens:
---   · showing on the wrong screen: its windows stay where you see them,
---     moved into a free workspace of that screen (you stay on them); the
---     emptied stray goes away by itself
---   · not showing: the workspace just goes back to its own screen (moving a
---     hidden workspace doesn't change what either screen shows)
 local function owner_of(id, mons)
 	for _, m in ipairs(mons) do
 		local base = W.base(m)
@@ -752,9 +645,6 @@ hl.on("monitor.added", function()
 end)
 keep_soon()
 
--- Super+Ctrl+Alt+Shift+←/→: this workspace's windows go to the screen on that
--- side, into its first empty workspace, and you go with them. (Moving the
--- workspace itself would break the blocks above.)
 function W.windows_to_screen(dir)
 	return function()
 		local here = hl.get_active_monitor()
@@ -798,7 +688,6 @@ function W.windows_to_screen(dir)
 	end
 end
 
--- The island speaks in desktops too: a pill click → kuwai.desktop(n).
 function kuwai.desktop(n)
 	W.go(tonumber(n) or 1)
 	return hl.dsp.no_op()
@@ -811,15 +700,11 @@ local function monitor_named(name)
 	end
 end
 
--- The island steps the same way the keys do, on the screen whose island you
--- scrolled (pills scroll → kuwai.ws_step(±1, "DP-3")); no name: the focused one.
 function kuwai.ws_step(d, screen)
 	W.step(d >= 0 and 1 or -1, false, screen and monitor_named(screen) or nil)()
 	return hl.dsp.no_op()
 end
 
--- A pill click: show workspace id on that island's screen. Already there:
--- nothing (a click on the lit pill never bounces you away).
 function kuwai.show_ws(screen, id)
 	local m = monitor_named(screen) or hl.get_active_monitor()
 	id = tonumber(id)
@@ -829,9 +714,6 @@ function kuwai.show_ws(screen, id)
 	return hl.dsp.no_op()
 end
 
--- The island's dots for another screen: go to that screen's workspace `id`,
--- and your focus goes with it. Already showing there: just focus that screen
--- (never a back-and-forth bounce).
 function kuwai.go_ws(screen, id)
 	local m = monitor_named(screen)
 	id = tonumber(id)

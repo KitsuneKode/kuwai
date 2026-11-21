@@ -1,13 +1,3 @@
-// The screensaver's film, in its own small process (the main shell's
-// Screensaver.qml starts it while Night or Live shows, and SIGKILLs it when
-// the screensaver goes). Measured: a video player costs ~190 MB while it
-// plays and left ~110 MB behind for good inside the shell once it stopped;
-// here the whole process ends, so all of it goes back.
-//
-// Every screen (KUWAI_SAVER_SCREEN "*", one player each; a name for one), on the Top layer: under the shell's own
-// screensaver surface (Overlay: the clock, the input that dismisses), no
-// keyboard, no input region. Any failure quits; the shell (which only ever kills it) then
-// treats any exit as a failure and falls back to Dusk.
 import QtQuick
 import QtMultimedia
 import Quickshell
@@ -28,7 +18,7 @@ ShellRoot {
             anchors { top: true; bottom: true; left: true; right: true }
             exclusionMode: ExclusionMode.Ignore
             WlrLayershell.layer: WlrLayer.Top
-            WlrLayershell.namespace: "kuwai-saver-film"   // outside kuwai-* blur rules (see Screensaver.qml)
+            WlrLayershell.namespace: "kuwai.saver-film"
             WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
             mask: Region {}
             color: "black"
@@ -38,7 +28,6 @@ ShellRoot {
                 anchors.fill: parent
                 fillMode: VideoOutput.PreserveAspectCrop
                 opacity: 0
-                // In once the first frames are up, as slowly as the shell's fade.
                 NumberAnimation on opacity { id: fadeIn; running: false; to: 1; duration: 1200; easing.type: Easing.OutCubic }
             }
             MediaPlayer {

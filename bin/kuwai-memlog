@@ -78,7 +78,6 @@ def main():
     run=hashlib.sha256((sample['configId']+str(sample['pid'])+str(sample.get('startTicks'))+args.run).encode()).hexdigest()[:32]
     state=Path(os.environ.get('XDG_STATE_HOME') or Path.home()/'.local/state')/'kuwai/memlog'
     append_sample(state,run,sample)
-    # Seven days of inactive diagnostic logs; never touches the legacy diary.
     for path in state.glob('*.jsonl'):
         if path.stat().st_mtime < time.time()-7*86400:
             path.unlink(missing_ok=True)

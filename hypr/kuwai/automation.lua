@@ -1,37 +1,19 @@
--- kuwai.automation — things kuwai does on its own. Each one is a feature
--- (kuwai.features) you can switch off: `kuwai feature NAME off`.
--- All event-driven or a cheap sysfs timer; no daemons.
-
 local K = require("kuwai.core")
 
 local dsp = hl.dsp
 
----------------------------------------------------------------------------
--- Screen-share privacy
----------------------------------------------------------------------------
--- While a real share is live (a capture running > 2.5 s): private apps and
--- notifications are drawn black in it and notifications go quiet; all of it
--- is undone when the share ends. Screenshots are never affected.
--- user.lua can extend K.privacy.
 K.privacy = K.privacy
 	or {
 		windows = "^(Bitwarden|bitwarden|org\\.keepassxc\\.KeePassXC|1Password|pinentry-.*|gcr-prompter|org\\.telegram\\.desktop|vesktop|discord|com\\.rtosta\\.zapzap|signal|Signal)$",
 		layers = "^(kuwai-notifs|kuwai-center|notifications|swaync-notification-window|swaync-control-center)$",
 	}
 
--- A shell that starts while a share runs (a restart, a promote) asks with
--- `kuwai.privacy_resync()`: the compositor's `engaged` is the truth, so the
--- new shell is muted again instead of showing private bodies in the share
--- (review 2026-11-10, finding 05). Always acknowledge, including the
--- deliberate feature-off case; the shell holds private bodies until this reply.
 function kuwai.privacy_resync()
 	hl.exec_cmd(K.bin .. "/kuwai notifs mute-off")
 	return hl.dsp.no_op()
 end
 
 if K.feature("screenshare_privacy") then
-	-- no_screen_share blacks a surface out of *every* capture, screenshots
-	-- included, so these exist only while a real share is running.
 	local _, wr = pcall(hl.window_rule, { name = "privacy-windows", match = { class = K.privacy.windows }, no_screen_share = true, enabled = false })
 	local _, lr = pcall(hl.layer_rule, { name = "privacy-layers", match = { namespace = K.privacy.layers }, no_screen_share = true, enabled = false })
 	local function privacy(on)
@@ -45,29 +27,16 @@ if K.feature("screenshare_privacy") then
 	end
 	privacy(false)
 
-	-- Screenshots (grim, the island's previews) are capture sessions too, but
-	-- they last a fraction of a second. Only a capture still running after
-	-- 2.5 s is a share; only what was switched on is switched back off.
 	local shares, engaged = 0, false
-	-- The shell's own live previews (Mission Control, the switcher) are captures
-	-- too: it says so with `kuwai.capture_hold(true|false)` around them.
 	local held, grace = 0, 0
 	function kuwai.capture_hold(on)
 		held = math.max(0, held + (on and 1 or -1))
-		-- Hyprland ends the shell's capture sessions a moment after the panel
-		-- closes: keep ignoring captures for a few seconds after the last one.
 		if held == 0 then
 			grace = os.time() + 4
 		end
 		return hl.dsp.no_op()
 	end
-	-- `run` changes whenever captures stop, so a burst of screenshots (each
-	-- short, but one always in flight 2.5 s later) isn't taken for a share:
-	-- only a capture that never stopped since the timer started counts.
 	local run = 0
-	-- The check repeats while the capture lasts: one that falls inside a
-	-- Mission Control / switcher hold (or its grace) is postponed, not lost,
-	-- so a share that began meanwhile is still caught once the hold ends.
 	local function check(mine)
 		if shares == 0 or run ~= mine or engaged then
 			return
@@ -108,16 +77,10 @@ if K.feature("screenshare_privacy") then
 	end)
 end
 
----------------------------------------------------------------------------
--- Remember floating sizes; Super+Esc is in binds
----------------------------------------------------------------------------
 if K.feature("persistent_size") then
 	pcall(hl.window_rule, { name = "remember-float-size", match = { float = true }, persistent_size = true })
 end
 
----------------------------------------------------------------------------
--- Wobble
----------------------------------------------------------------------------
 K.config({
 	decoration = {
 		wobble = {
@@ -130,9 +93,6 @@ K.config({
 })
 pcall(hl.window_rule, { name = "no-wobble-games", match = { content = "game" }, no_wobble = true })
 
----------------------------------------------------------------------------
--- Battery: unplugged → battery mode, plugged in → the mode you had
----------------------------------------------------------------------------
 local AC
 for _, name in ipairs({ "ACAD", "AC", "AC0", "ADP0", "ADP1", "ACAD0" }) do
 	if K.read_line("/sys/class/power_supply/" .. name .. "/online") then
@@ -141,7 +101,6 @@ for _, name in ipairs({ "ACAD", "AC", "AC0", "ADP0", "ADP1", "ACAD0" }) do
 	end
 end
 
--- nil when there's no AC adapter to read (a desktop).
 function K.ac_online()
 	if not AC then
 		return nil
@@ -158,12 +117,7 @@ if K.feature("auto_battery") and AC then
 			return
 		end
 		K.set_state("ac_last", now)
-		-- The display preset's battery layer (kuwai.display) changes with it;
-		-- an open colour app (accurate) stays on top.
 		local display_changed = false
-		-- display.lua owns the stack (accurate, then a focused player, then
-		-- battery). It is loaded after this file; by the time power changes,
-		-- K.display is there. Fall back to the battery bit if it isn't.
 		if K.feature("auto_display") and K.display and K.display.reconcile then
 			K.display.reconcile()
 		elseif K.feature("auto_display") and K.state["display_auto"] ~= "accurate" then
@@ -192,9 +146,6 @@ if K.feature("auto_battery") and AC then
 	end)
 end
 
----------------------------------------------------------------------------
--- Games: a fullscreen game turns the effects off, live; leaving restores.
----------------------------------------------------------------------------
 local function is_game(w)
 	if not w then
 		return false
@@ -223,14 +174,13 @@ if K.feature("auto_game") then
 				},
 			})
 		elseif gaming and not fs_game then
-			-- Still a fullscreen game anywhere? Then stay.
 			for _, x in ipairs(hl.get_windows() or {}) do
 				if is_game(x) and (x.fullscreen or 0) > 0 then
 					return
 				end
 			end
 			gaming = false
-			hl.dispatch(dsp.reload_config()) -- exactly what the theme and mode said
+			hl.dispatch(dsp.reload_config())
 		end
 	end
 	hl.on("window.fullscreen", sync)
@@ -241,14 +191,9 @@ if K.feature("auto_game") then
 	end)
 end
 
----------------------------------------------------------------------------
--- Night light: warm from sunset to sunrise. Acts only at the two edges, so
--- the Night Shift switch in the center still works in between.
----------------------------------------------------------------------------
-K.night = K.night or { lat = 27.2353, lon = 94.1053, warm = 4200 } -- North Lakhimpur; user.lua can change
+K.night = K.night or { lat = 27.2353, lon = 94.1053, warm = 4200 }
 
 local function sun_hours(lat, lon, t)
-	-- NOAA sunrise/sunset (zenith 90.833°), result in local hours.
 	local rad, deg = math.pi / 180, 180 / math.pi
 	local N = os.date("*t", t).yday
 	local lng = lon / 15
@@ -285,14 +230,12 @@ if K.feature("night_light") then
 		return (h >= set or h < rise) and "night" or "day"
 	end
 	local function apply(p)
-		-- The accurate display preset holds Night Shift off (kuwai.display).
 		if p == "night" and not (K.display and K.display.current() == "accurate") then
 			hl.exec_cmd("hyprctl hyprsunset temperature " .. K.night.warm)
 		else
 			hl.exec_cmd(K.night_off)
 		end
 	end
-	-- Leaving the accurate preset: warm again if it's night now.
 	function K.night_sync()
 		local p = phase()
 		K.set_state("night_phase", p)
@@ -304,7 +247,7 @@ if K.feature("night_light") then
 		K.set_state("night_phase", p)
 		hl.timer(function()
 			apply(p)
-		end, { timeout = 3000, type = "oneshot" }) -- after hyprsunset is up
+		end, { timeout = 3000, type = "oneshot" })
 	end)
 	K.defer(function()
 		hl.timer(function()
@@ -317,13 +260,6 @@ if K.feature("night_light") then
 	end)
 end
 
----------------------------------------------------------------------------
--- Where are you looking? One answer for every surface that appears on its
--- own (toasts, the password prompt): the pointer's screen and the focused
--- screen agree → that one; you typed in the last 5 s → the focused screen
--- (you're reading what you type); otherwise the pointer's screen. Hyprland's
--- Lua exposes key events but not pointer motion, so typing is the signal.
----------------------------------------------------------------------------
 local last_key = 0
 hl.on("input.keyboard.key", function()
 	last_key = os.time()
@@ -346,14 +282,8 @@ function kuwai.where()
 		K.json_str(looking), K.json_str(pointer), K.json_str(f), typing and "true" or "false")
 end
 
----------------------------------------------------------------------------
--- Hold Super alone → the Shortcuts panel while held (macOS CheatSheet)
----------------------------------------------------------------------------
 if K.feature("hold_super") then
-	-- Hold Super alone ~0.65 s → the palette opens and stays (Esc or a click
-	-- away closes it). If a real shortcut follows while Super is still held,
-	-- the hold was just you thinking: the palette closes again.
-	local SUPER = { [133] = true, [134] = true } -- XKB keycodes of Super_L / Super_R
+	local SUPER = { [133] = true, [134] = true }
 	local token, opened, held, pos = 0, false, false, nil
 	hl.on("input.keyboard.key", function(code, _, state)
 		if SUPER[code] then
@@ -376,7 +306,7 @@ if K.feature("hold_super") then
 				token = token + 1
 			end
 		elseif state == 1 then
-			token = token + 1 -- any other key: a shortcut, not a hold
+			token = token + 1
 			if held and opened then
 				opened = false
 				hl.dispatch(dsp.global("kuwai:keys-close"))
@@ -385,11 +315,8 @@ if K.feature("hold_super") then
 	end)
 end
 
----------------------------------------------------------------------------
--- The island switcher: Alt coming up commits the switch.
----------------------------------------------------------------------------
 if K.feature("island_switcher") then
-	local ALT = { [64] = true, [108] = true } -- XKB keycodes of Alt_L / Alt_R
+	local ALT = { [64] = true, [108] = true }
 	hl.on("input.keyboard.key", function(code, _, state)
 		if state == 0 and ALT[code] and K.alt_switch then
 			K.alt_switch = false

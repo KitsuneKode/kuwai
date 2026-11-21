@@ -45,9 +45,6 @@ def main():
         home.mkdir()
         shutil.copytree(root/'shell', app/'shell')
         if args.case in ('island', 'idle', 'card-keys', 'pill') and args.backend == 'offscreen':
-            # These two adapters require layer-shell even at compile time.
-            # The offscreen case tests capsule rendering/input, not inhibition
-            # or wallpaper composition; the production capsule code stays real.
             for name in ('Caffeine.qml', 'WallFx.qml'):
                 shutil.copy2(root/'tests/ui/island-stubs'/name, app/'shell/services'/name)
         fixture=(root/'tests/ui'/(args.case + '.qml')).read_text()
@@ -56,11 +53,8 @@ def main():
             fixture=fixture.replace('ShellRoot {',imports+'\nShellRoot {',1)
         scenes, staged = [], []
         if args.case == 'rehearse':
-            # The stage names services as its scenes do; QML resolves a name
-            # only where it is written, so every singleton gets a case.
             staged = json.loads(args.scenes.read_text()) if args.scenes else []
             scenes = staged['scenes'] if isinstance(staged, dict) else staged
-            # Files a scene's services read at start, into the private home only.
             for where, content in (staged.get('seed', {}) if isinstance(staged, dict) else {}).items():
                 target = (home/where).resolve()
                 if home.resolve() not in target.parents: raise SystemExit('seed outside the private home: ' + where)
@@ -76,11 +70,7 @@ def main():
                 stub=helpers/original.name
                 stub.write_text('#!/bin/sh\nexit 99\n')
                 stub.chmod(0o755)
-        # The schema writer only touches the private HOME; exercise its real
-        # acknowledgement path. All session/device helpers remain inert.
         shutil.copy2(root/'bin/kuwai-settings', helpers/'kuwai-settings')
-        # A helper a service keeps running: a stand-in that stays up and says
-        # nothing, so "it died" handling doesn't race a scene's own state.
         for name in (staged.get('running', []) if args.case == 'rehearse' and isinstance(staged, dict) else []):
             if '/' not in name and (root/'bin'/name).is_file():
                 (helpers/name).write_text('#!/bin/sh\nexec sleep 600\n')
@@ -106,7 +96,6 @@ def main():
                        LIBGL_ALWAYS_SOFTWARE='true', __GLX_VENDOR_LIBRARY_NAME='mesa', __EGL_VENDOR_LIBRARY_FILENAMES=str(vendors[0]))
         for key,value in env.items(): command.extend(['--setenv',key,value])
         if args.self_test_isolation:
-            # The network namespace must differ, and no host bus/home is mounted.
             net=os.stat('/proc/self/ns/net').st_ino
             probe="import os,json; ok=not os.path.exists('/run/dbus/system_bus_socket') and not os.path.exists('/run/user') and not os.path.exists('/home/kitsunekode') and os.stat('/proc/self/ns/net').st_ino != "+str(net)+"; print(json.dumps({'isolated':ok})); raise SystemExit(0 if ok else 1)"
             command += ['/usr/bin/python','-c',probe]
@@ -126,8 +115,6 @@ def main():
             return 2
         (output/'runtime.log').write_text(result.stdout+'\n'+result.stderr)
         said = result.stdout + result.stderr
-        # A crash fails the case, at teardown too: center-keys crashed tearing the
-        # centre down, the crash the owner hit closing it (ScrollFade, 2026-11-21).
         if 'has crashed' in said:
             print(json.dumps({'status':'FAIL','reason':'quickshell crashed','log':str(output/'runtime.log')}))
             return 1

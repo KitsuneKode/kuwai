@@ -1,18 +1,21 @@
 #!/usr/bin/env bash
-# Screen recording with GPU Screen Recorder (encodes on the GPU: NVENC here).
-#
-#   kuwai-rec toggle            record the focused monitor; again to stop (Super+Shift+Alt+R)
-#   kuwai-rec toggle region     pick a region with slurp, record it (Super+Ctrl+Alt+R)
-#   kuwai-rec start SOURCE AUDIO FPS
-#                              SOURCE: a monitor name or `region`; AUDIO: system,
-#                              mic, both or none; FPS: 30 or 60 (the island's setup)
-#   kuwai-rec stop              stop if recording
-#   kuwai-rec status            "recording PATH SINCE TARGET" or "idle"
-#
-# System audio is recorded with it. Files go to ~/Videos/Recordings. While it
-# records, ~/.local/state/kuwai/recording holds "pid since path target": the
-# clipboard island shows a red dot and the time, and a click on it stops.
 set -uo pipefail
+
+usage() {
+cat <<'KUWAI_USAGE'
+Screen recording with GPU Screen Recorder (encodes on the GPU: NVENC here).
+
+  kuwai-rec toggle            record the focused monitor; again to stop (Super+Shift+Alt+R)
+  kuwai-rec toggle region     pick a region with slurp, record it (Super+Ctrl+Alt+R)
+  kuwai-rec start SOURCE AUDIO FPS
+                             SOURCE: a monitor name or `region`; AUDIO: system,
+                             mic, both or none; FPS: 30 or 60 (the island's setup)
+  kuwai-rec stop              stop if recording
+  kuwai-rec status            "recording PATH SINCE TARGET" or "idle"
+
+System audio is recorded with it. Files go to ~/Videos/Recordings. While it
+KUWAI_USAGE
+}
 umask 077
 
 NOTIFY="$(dirname "$(readlink -f "$0")")/kuwai-notify"
@@ -51,12 +54,11 @@ clear_state() { rm -f -- "$state" "${state}.identity"; }
 stop() {
     running || { clear_state; return 0; }
     local pid=$rec_pid since=$rec_since path=$rec_path
-    kill -INT "$pid" 2>/dev/null || true   # SIGINT finishes the file; the identity was checked above.
+    kill -INT "$pid" 2>/dev/null || true
     for _ in $(seq 50); do running || break; sleep 0.1; done
     if running; then echo "kuwai-rec: recorder is still stopping; try stop again" >&2; return 1; fi
     clear_state
     [ -s "$path" ] || { echo "kuwai-rec: recorder produced no saved file" >&2; return 1; }
-    # The island shows "Recording saved" with a frame of it for a few seconds.
     local thumb="${state}-thumb.jpg"
     timeout 10 ffmpeg -y -loglevel error -ss 0.4 -i "$path" -frames:v 1 -vf scale=360:-1 "$thumb" </dev/null 2>/dev/null || thumb=""
     local now elapsed=0
@@ -77,7 +79,7 @@ start() {
         *) echo "kuwai-rec: audio must be system, mic, both, or none" >&2; return 2 ;;
     esac
     if [ "$target" = region ]; then
-        local geo; geo=$(slurp -f '%wx%h+%x+%y' 2>/dev/null) || exit 0     # cancelled: nothing to say
+        local geo; geo=$(slurp -f '%wx%h+%x+%y' 2>/dev/null) || exit 0
         window=region; args=(-region "$geo")
     elif [ "$target" = monitor ]; then
         window=$(hyprctl monitors -j | jq -er 'map(select(.focused == true)) | if length == 1 then .[0].name else empty end') || return 1
@@ -114,5 +116,5 @@ case "${1:-toggle}" in
     start)  running || start "${2:-monitor}" "${3:-system}" "${4:-60}" ;;
     stop)   stop ;;
     status) if running; then printf 'recording %s %s %s\n' "$rec_path" "$rec_since" "$rec_target"; else clear_state; echo idle; fi ;;
-    *) sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+    *) usage; exit 2 ;;
 esac

@@ -1,12 +1,4 @@
 #!/usr/bin/env bash
-# kuwai-agent AGENT [PID] — start a coding agent (claude, codex, …) in the
-# folder you're working in, the kittymux way:
-#   · the focused window is kitty → a new tab in it (kittymux spawn), so the
-#     agent sits in your session, its bar, inbox and `pick`
-#   · anything else → a new kitty window in that folder (kittymux still
-#     tracks the agent through its hooks)
-# PID is the focused window's process (kuwai passes it); the folder is the one
-# the focused terminal's shell is in (kuwai-term --dir), else $HOME.
 set -u
 agent=${1:-claude}
 case $agent in claude|codex|devin|gemini|opencode|aider) ;; *) echo "kuwai-agent: unknown agent '$agent'" >&2; exit 2 ;; esac

@@ -18,13 +18,11 @@ MAX_LINES = 250
 MAX_BYTES = 12_000
 LINE_CAP = 400
 HOME = Path.home()
-# Never read these, even if asked: keys and secrets.
 SECRET = [HOME / ".ssh", HOME / ".gnupg", HOME / ".local/share/keyrings", HOME / ".password-store",
           HOME / ".config/kuwai/secrets", HOME / ".aws", HOME / ".kube", HOME / ".mozilla", HOME / ".zen",
           HOME / ".config/chromium", HOME / ".config/google-chrome", HOME / ".config/BraveSoftware",
           HOME / ".config/gh", HOME / ".docker", HOME / ".gcloud", HOME / ".config/gcloud", HOME / ".azure",
           HOME / ".local/share/kwalletd", HOME / ".pki", HOME / ".cert"]
-# Keys, tokens and password stores by name, anywhere.
 SECRET_NAME = re.compile(r"(^id_[a-z0-9]+$|\.pem$|\.key$|\.p12$|\.pfx$|^\.env(\..*)?$|^credentials(\.json)?$|\.kdbx$"
                          r"|^\.netrc$|^\.git-credentials$|^\.npmrc$|^\.pypirc$|^cookies(\.sqlite)?$|^login data$"
                          r"|^key[34]\.db$|^logins\.json$|^hosts\.ya?ml$|^auth\.json$|token)", re.I)
@@ -40,7 +38,7 @@ def resolve(path, sandbox_dir):
     if not p:
         raise FileError("No path given")
     sb = Path(sandbox_dir).resolve()
-    if p.startswith("/work/"):              # the sandbox's own view of its folder
+    if p.startswith("/work/"):
         p = p.split("/", 3)[3] if p.count("/") >= 3 else ""
     if p.startswith("~"):
         full = Path(os.path.expanduser(p)).resolve()
@@ -91,8 +89,6 @@ def show(full):
     return "~" + s[len(h):] if s.startswith(h) else s
 
 
-# ── read ─────────────────────────────────────────────────────────────────
-
 def read(full, offset=None, limit=None, raw=None, name=None):
     """A file's lines with pi's notes. `raw` is given when the caller already read the bytes
     safely (sandbox files: through the no-follow walker)."""
@@ -128,8 +124,6 @@ def read(full, offset=None, limit=None, raw=None, name=None):
         text += f"\n\n[Showing lines {start}-{end} of {total}. Use offset={end + 1} to continue.]"
     return text
 
-
-# ── write / edit ─────────────────────────────────────────────────────────
 
 def label(full, sandbox_dir):
     """How to name a path to the model: relative inside its sandbox folder, ~/… outside."""
@@ -220,8 +214,6 @@ def apply_edit(full, new_text, count, name=None):
     return f"Successfully replaced {count} block(s) in {name or show(full)}."
 
 
-# ── ls / find / grep ─────────────────────────────────────────────────────
-
 def ls(full, limit=200):
     check_readable(full)
     if not full.is_dir():
@@ -239,7 +231,6 @@ def find(pattern, full, limit=200):
     check_readable(full)
     fd = shutil.which("fd") or shutil.which("fdfind")
     if fd:
-        # "--" first: a pattern like --follow or --exec must stay a pattern (red-team finding 7).
         p = subprocess.run([fd, "--glob", "--color", "never", "--max-results", str(limit + 1), "--", pattern, str(full)],
                            capture_output=True, text=True, timeout=15)
         hits = [l for l in p.stdout.splitlines() if l]
@@ -258,9 +249,6 @@ def grep(pattern, full, glob=None, ignore_case=False, literal=False, limit=60):
     rg = shutil.which("rg")
     if not rg:
         raise FileError("ripgrep (rg) isn't installed")
-    # --null: the path ends at a NUL, so each hit can be checked against the
-    # secrets policy below; the globs only save work, a caller's glob can't
-    # re-admit what the check refuses.
     argv = [rg, "--null", "--line-number", "--no-heading", "--color", "never", "--max-columns", str(LINE_CAP),
             "--max-columns-preview", "--glob", "!.git"]
     for s in SECRET:
@@ -272,7 +260,6 @@ def grep(pattern, full, glob=None, ignore_case=False, literal=False, limit=60):
     if glob:
         argv += ["--glob", glob]
     argv += ["--", pattern, str(full)]
-    # Read lines as rg writes them and stop once there are plenty (it could list millions).
     p = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     got = []
     try:
@@ -293,7 +280,7 @@ def grep(pattern, full, glob=None, ignore_case=False, literal=False, limit=60):
     single = full.is_file()
     for raw in p.stdout.splitlines():
         path, sep, rest = raw.partition("\0")
-        if not sep:                     # one file searched: rg prints no path
+        if not sep:
             path, rest = str(full), raw
         if path not in cache:
             cache[path] = not single and is_secret(path, full)
@@ -307,10 +294,6 @@ def grep(pattern, full, glob=None, ignore_case=False, literal=False, limit=60):
         out += f"\n[{len(lines)} matches, showing {limit}. Use limit={min(len(lines), 300)} for more, or refine the pattern.]"
     return out
 
-
-# ── Bounded process output (review finding 16) ───────────────────────────
-# Read a process's output keeping only the start and the end, so a command that
-# prints gigabytes costs the host ~64 KB, not its memory.
 
 def run_bounded(argv, timeout, keep=65536, stdin_text=None):
     """(exit code or None on timeout, text, total bytes). stdout and stderr merged."""
@@ -365,8 +348,6 @@ def _join(head, tail, total, keep):
     return (bytes(head).decode("utf-8", errors="replace") + f"\n… {cut:,} bytes cut …\n"
             + t.decode("utf-8", errors="replace"))
 
-
-# ── command output (Codex's head + tail) ─────────────────────────────────
 
 def head_tail(text, budget=8000):
     """Keep the start and the end of long output; the middle goes."""

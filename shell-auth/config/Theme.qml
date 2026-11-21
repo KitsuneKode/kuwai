@@ -1,12 +1,3 @@
-// The password prompt's own design tokens: the subset of shell/config/Theme.qml
-// it uses, kept as a reviewed copy (not a link) so nothing added to the shell
-// later can end up running next to your password. Rule for shell-auth/: read
-// files and draw, nothing else (no Process, sockets, network, IPC). `kuwai
-// doctor` checks it; `kuwai auth diff` shows where it drifted from the shell.
-//
-// Same look as the island: SF Pro at Apple's optical sizes and tracking, the
-// same greys, and the theme's accent from the same files (HyDE's colour mode:
-// the theme's theme.dcol → its kitty.theme, or the wallpaper's wall.dcol).
 pragma Singleton
 
 import QtQuick
@@ -16,7 +7,6 @@ import Quickshell.Io
 Singleton {
     id: root
 
-    // ── Material and text ────────────────────────────────────────────────
     readonly property color glassTint: Qt.rgba(0.067, 0.067, 0.078, 0.58)
     readonly property color pill: Qt.rgba(1, 1, 1, 0.12)
     readonly property color pillHover: Qt.rgba(1, 1, 1, 0.22)
@@ -28,7 +18,6 @@ Singleton {
     readonly property color green: "#30d158"
     readonly property color blue: "#0a84ff"
 
-    // ── The theme's accent (files only) ──────────────────────────────────
     property color accent: blue
     Behavior on accent { ColorAnimation { duration: 400; easing.type: Easing.OutCubic } }
     function luminance(c) {
@@ -45,10 +34,6 @@ Singleton {
     property string themeName: ""
     readonly property string home: Quickshell.env("HOME")
 
-    // The theme's colour, made vivid enough to read as an accent: its hue is
-    // kept, saturation and lightness pulled into the band of the voxtype HUD's
-    // colours (#66C7FF, #86E0B4, #FF7A98: S ≥ 0.6, L 0.62–0.74). A washed-out
-    // wallpaper pink becomes a clear pink; near-grey themes (1-Bit) stay grey.
     function vivid(c) {
         c = Qt.color(c);
         const h = c.hslHue, s = c.hslSaturation, l = c.hslLightness;
@@ -114,8 +99,7 @@ Singleton {
         onLoaded: { ok = true; root.recolor(); }
     }
 
-    // ── Type (Apple's faces, optical sizes, tracking) ────────────────────
-    readonly property string fontText: "SF Pro Text"          // static faces: see Label
+    readonly property string fontText: "SF Pro Text"
     readonly property string fontDisplay: "SF Pro Display"
     readonly property string fontRounded: "SF Pro Rounded"
     readonly property string fontGlyph: "Symbols Nerd Font"
@@ -142,14 +126,12 @@ Singleton {
     }
     function opszFor(px) { return px < 20 ? 17 : px < 25 ? 22 : 28; }
 
-    // ── Motion ───────────────────────────────────────────────────────────
     readonly property var easeOut: [0.23, 1, 0.32, 1, 1, 1]
     readonly property int pressMs: 140
     readonly property var springFast: ({ stiffness: 13300, damping: 231, exitMs: 60 })
     readonly property var springModerate: ({ stiffness: 3329, damping: 115, exitMs: 120 })
     readonly property var springSlow: ({ stiffness: 1069, damping: 57.5, exitMs: 160 })
 
-    // Reduced motion: the shell's switch (read-only here) or the env var.
     readonly property bool reduceMotion: prefsReduce || Quickshell.env("KUWAI_REDUCE_MOTION") === "1"
     property bool prefsReduce: false
     FileView {

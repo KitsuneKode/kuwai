@@ -45,7 +45,6 @@ def cmd_status():
             listed = [m for m in data.get("models", []) if m.get("name")]
             status["models"] = [m["name"] for m in listed]
             status["status"] = "ready"
-            # What each model can do (tools / thinking / vision), for the picker.
             status["info"] = {}
             for m in listed:
                 caps = []
@@ -150,7 +149,6 @@ def get_wayland_clipboard():
         pass
     return ""
 
-# ── Making the snapshot's context mean something ─────────────────────────
 TERMINALS = {"kitty", "foot", "alacritty", "wezterm", "org.wezfurlong.wezterm", "ghostty", "com.mitchellh.ghostty",
              "konsole", "org.kde.konsole", "gnome-terminal", "xterm", "code", "code-oss", "codium", "zed", "dev.zed.zed",
              "cursor", "neovide", "jetbrains-idea", "jetbrains-pycharm"}
@@ -271,9 +269,8 @@ def cmd_snapshot(mode="window"):
             sys.exit(1)
 
     if mode == "region":
-        # Interactive region pick with grab release buffer
         try:
-            time.sleep(0.18)  # Let Wayland exclusive seat grab release
+            time.sleep(0.18)
             slurp = subprocess.run(["slurp", "-d"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, check=True)
             geometry = slurp.stdout.strip()
             if not geometry:
@@ -286,7 +283,6 @@ def cmd_snapshot(mode="window"):
             print(json.dumps({"status": "error", "message": str(e)}))
             sys.exit(1)
 
-    # Default: mode == "window" (T3 Code pattern: snap active foreground app directly)
     try:
         res = subprocess.run(["hyprctl", "activewindow", "-j"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
         w = json.loads(res.stdout) if res.stdout.strip() else {}
@@ -310,10 +306,8 @@ def cmd_snapshot(mode="window"):
         ws_name = ws_info.get("name", "") if isinstance(ws_info, dict) else str(ws_info)
         bounds = {"x": at[0], "y": at[1], "width": size[0], "height": size[1]}
 
-        # Deep context extraction: CWD, Git state, highlighted text, clipboard
         term = kitty_context(pid) if wm_class.lower() == "kitty" else None
         cwd = term["cwd"] if term and term.get("cwd") else get_process_cwd(pid)
-        # A folder only means something for terminals and editors (T3 Code's "cwd" is just ~).
         if wm_class.lower() not in TERMINALS and (not cwd or os.path.realpath(cwd) == os.path.realpath(os.path.expanduser("~"))):
             cwd = ""
         git_info = get_git_info(cwd) if cwd else None
@@ -451,7 +445,7 @@ def cmd_render(input_file=None):
     else:
         raw_text = sys.stdin.read()
 
-    render_bin = os.path.join(os.path.dirname(os.path.realpath(__file__)), "kuwai-render")  # beside this copy (stable or dev)
+    render_bin = os.path.join(os.path.dirname(os.path.realpath(__file__)), "kuwai-render")
     if os.path.isfile(render_bin) and os.access(render_bin, os.X_OK):
         proc = subprocess.run([render_bin], input=raw_text, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         sys.stdout.write(proc.stdout)
@@ -499,10 +493,6 @@ def cmd_find(args):
     folder, q = args[0], args[1].lower().strip()
     hits = {}
     if q and os.path.isdir(folder):
-        # A cheap pre-check on the raw file, unless the query has what JSON escapes
-        # (quotes, backslashes, control characters, and anything not ASCII, which a
-        # writer may escape as \uXXXX) or whitespace (runs of it are
-        # matched as one space, and a newline is "\n" in the file).
         raw_ok = q.isascii() and not any(c in q for c in '"\\') and not any(c.isspace() or ord(c) < 0x20 for c in q)
         for name in sorted(os.listdir(folder)):
             cid = name[:-5] if name.endswith(".json") else ""
@@ -540,9 +530,6 @@ def cmd_sandbox(args):
             print(out.rstrip())
             sys.exit(1 if "FAIL" in out else 0)
         elif sub == "firewall":
-            # Root's job, so this only prints it. Docker's DOCKER-USER chain runs before its own
-            # rules (ufw route rules don't see container traffic); the ufw after.rules block keeps
-            # it across reboots.
             net = sb.JAIL_SUBNET
             drops = ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "169.254.0.0/16", "100.64.0.0/10"]
             print("# Keep the AI sandbox off your LAN and this machine; the internet stays open.")
@@ -560,7 +547,6 @@ def cmd_sandbox(args):
             p = sb.audit_log_path()
             print(open(p).read()[-8000:] if os.path.exists(p) else "(nothing yet)")
         elif sub == "jobs":
-            # Finished background jobs not yet announced (the shell polls this while jobs run).
             print(json.dumps(sb.finished_unnotified()))
         elif sub == "path":
             print(sb.workspace(args[1] if len(args) > 1 else ""))

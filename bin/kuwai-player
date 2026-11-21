@@ -1,18 +1,23 @@
 #!/usr/bin/env bash
-# Player-specific actions for the island's Now Playing (MediaPanel.qml).
-# MPRIS covers play/seek/shuffle/repeat; this covers what MPRIS can't.
-#
-#   kuwai-player cider love | unlove      Apple Music "Love" via Cider's local API
-#   kuwai-player cider library            add the playing track to your library
-#   kuwai-player cider alive              exit 0 if Cider's API answers
-#   kuwai-player cider-token              store Cider's app token in the keyring
-#                                        (Cider → Settings → Connectivity →
-#                                        Manage External Application Access)
-#   kuwai-player link URL [SECONDS]       copy the link (YouTube: at that second)
-#
-# Cider's API is localhost only (127.0.0.1:10767). The token lives in the
-# keyring (secret-tool service kuwai-cider), never in a file or argv.
 set -u
+
+usage() {
+cat <<'KUWAI_USAGE'
+Player-specific actions for the island's Now Playing (MediaPanel.qml).
+MPRIS covers play/seek/shuffle/repeat; this covers what MPRIS can't.
+
+  kuwai-player cider love | unlove      Apple Music "Love" via Cider's local API
+  kuwai-player cider library            add the playing track to your library
+  kuwai-player cider alive              exit 0 if Cider's API answers
+  kuwai-player cider-token              store Cider's app token in the keyring
+                                       (Cider → Settings → Connectivity →
+                                       Manage External Application Access)
+  kuwai-player link URL [SECONDS]       copy the link (YouTube: at that second)
+
+Cider's API is localhost only (127.0.0.1:10767). The token lives in the
+keyring (secret-tool service kuwai-cider), never in a file or argv.
+KUWAI_USAGE
+}
 API="http://127.0.0.1:10767/api/v1/playback"
 
 token() { secret-tool lookup service kuwai-cider 2>/dev/null; }
@@ -21,7 +26,6 @@ cider() {
     local method=$1 path=$2 body=${3:-}
     local tok; tok=$(token)
     local args=(-s -m 3 -o /dev/null -w '%{http_code}' -X "$method" "$API$path")
-    # The token goes in through a header file descriptor, not the command line.
     [ -n "$tok" ] && args+=(-H @<(printf 'apptoken: %s\n' "$tok"))
     [ -n "$body" ] && args+=(-H 'Content-Type: application/json' --data "$body")
     local code; code=$(curl "${args[@]}")
@@ -56,5 +60,5 @@ case "${1:-}" in
             case "$url" in *\?*) url="$url&t=${secs}s" ;; *) url="$url?t=${secs}s" ;; esac
         fi
         printf '%s' "$url" | wl-copy && printf '%s\n' "$url" ;;
-    *) sed -n '2,15p' "$0"; exit 64 ;;
+    *) usage; exit 64 ;;
 esac

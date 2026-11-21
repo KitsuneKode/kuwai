@@ -36,6 +36,7 @@ python -m pytest -q -p no:cacheprovider tests      # helpers, updater, installer
 bun test                                           # shell logic (bunfig.toml scopes it to this repo)
 for t in tests/hypr/test_*.lua; do lua "$t"; done  # Hyprland config logic
 bin/kuwai-tokens --check                            # literals never go up
+bin/kuwai-comments --check                          # comments never go up (docs/decisions/ADR-010-comment-ban-and-ratchet.md)
 bin/kuwai-check                                     # the running shell: load, orphans, idle, memory, CPU, compile
 bin/kuwai-rehearse --gate                           # every panel in every state, pictured and judged (a minute; then open the sheet)
 ```

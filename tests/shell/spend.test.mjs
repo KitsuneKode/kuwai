@@ -26,6 +26,7 @@ describe('reading the logs', () => {
     const r = opencodeMessage({ role: 'assistant', modelID: 'claude-opus-4.5', time: { created: Date.parse(at) }, cost: 0.42, tokens: { input: 10, output: 5, reasoning: 3, cache: { read: 100, write: 7 } } });
     expect(r).toMatchObject({ provider: 'opencode', in: 10, out: 8, cacheRead: 100, cacheWrite: 7, cost: 0.42 });
     expect(costOf(prices, r)).toBe(0.42);
+    expect(opencodeMessage({ role: 'assistant', modelID: 'claude-opus-4.5', tokens: { input: 1, output: 1 } }).day).toBe('');
   });
 });
 

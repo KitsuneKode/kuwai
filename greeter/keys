@@ -1,16 +1,4 @@
 #!/bin/sh
-# The login screen's brightness keys: the screen you're on, like the session
-# (bin/kuwai-brightness changes the focused screen; it used to change every
-# screen here, each on its own curve, and they drifted apart).
-#   keys brightness up|down
-# The focused output comes from the greeter's Hyprland. The laptop panel goes
-# through brightnessctl (logind; same -e4 curve as the session's fallback);
-# an external monitor through DDC/CI on the bus wired to that connector
-# (ddcutil's udev rule gives the active seat's user, here the greeter,
-# /dev/i2c-*). A DDC write takes ~0.3 s, so a held key doesn't queue them:
-# one at a time, the rest dropped (only that screen's, so nothing drifts).
-# The new DDC level goes to $run/brightness (percent) for the HUD (LockOsd);
-# the panel's HUD reads the backlight itself.
 set -u
 run="${XDG_RUNTIME_DIR:-/tmp}/kuwai-greeter"
 mkdir -p "$run"
@@ -20,7 +8,6 @@ case "${1:-} ${2:-}" in
     *) echo "usage: keys brightness up|down" >&2; exit 2 ;;
 esac
 
-# "Monitor DP-3 (ID 0):" … "focused: yes" in hyprctl's plain output.
 out=$(hyprctl monitors 2>/dev/null | awk '/^Monitor /{ m = $2 } /^[[:space:]]*focused: yes/{ print m; exit }')
 
 panel() { brightnessctl -e4 -n2 set "5%$sign" >/dev/null 2>&1; }
@@ -31,8 +18,6 @@ esac
 command -v ddcutil >/dev/null || exit 0
 exec 9>"$run/ddc.lock"
 flock -n 9 || exit 0
-# connector → bus, found once per boot (detect takes a second or two):
-# "DP-3 15" per line, from "I2C bus: /dev/i2c-15" + "DRM connector: card0-DP-3".
 [ -s "$run/ddc-map" ] || ddcutil detect --terse 2>/dev/null | awk '
     /^Display/ { ok = 1; bus = "" } /^Invalid/ { ok = 0 }
     ok && /I2C bus:/ { sub(/.*i2c-/, ""); bus = $0 }
@@ -40,7 +25,6 @@ flock -n 9 || exit 0
 ' >"$run/ddc-map"
 bus=$(awk -v o="$out" '$1 == o { print $2; exit }' "$run/ddc-map")
 [ -n "$bus" ] || exit 0
-# Percent steps of the monitor's own range ("VCP 10 C cur max").
 set -- $(ddcutil --bus "$bus" getvcp 10 --terse 2>/dev/null)
 cur=${4:-}; max=${5:-}
 case "$cur$max" in ""|*[!0-9]*) exit 0 ;; esac

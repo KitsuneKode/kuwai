@@ -1,29 +1,31 @@
 #!/usr/bin/env bash
-# Screenshots for kuwai, in place of HyDE's script (hypr/kuwai/binds.lua).
-#
-#   kuwai-shot area      pick a region, then annotate it in Satty (Super+P)
-#   kuwai-shot quick     pick a region, done: copied and saved, no editor; the
-#                       clipboard island shows it (Super+Alt+P)
-#   kuwai-shot window    the window you're in (Super+Ctrl+Alt+P)
-#   kuwai-shot delay     this monitor in 3 s, for menus that close on a click (Shift+Print)
-#   kuwai-shot ocr       pick a region; its text is copied, not the picture (Super+Shift+Alt+P)
-#   kuwai-shot freeze    freeze the screen, then pick (Super+Ctrl+P)
-#   kuwai-shot monitor   the focused monitor (Super+Ctrl+Shift+P)
-#   kuwai-shot all       every monitor (Print)
-#
-# The shot goes on the clipboard at once (the clipboard island shows it) and
-# is saved to ~/Pictures/Screenshots; then Satty opens on it to annotate,
-# floating and centred, and gets the keyboard: Super+Q closes Satty, not the
-# window under the mouse (HyDE's script left focus wherever the mouse was).
-# Cancelling the selection is not an error: nothing is said.
 set -uo pipefail
+
+usage() {
+cat <<'KUWAI_USAGE'
+Screenshots for kuwai, in place of HyDE's script (hypr/kuwai/binds.lua).
+
+  kuwai-shot area      pick a region, then annotate it in Satty (Super+P)
+  kuwai-shot quick     pick a region, done: copied and saved, no editor; the
+                      clipboard island shows it (Super+Alt+P)
+  kuwai-shot window    the window you're in (Super+Ctrl+Alt+P)
+  kuwai-shot delay     this monitor in 3 s, for menus that close on a click (Shift+Print)
+  kuwai-shot ocr       pick a region; its text is copied, not the picture (Super+Shift+Alt+P)
+  kuwai-shot freeze    freeze the screen, then pick (Super+Ctrl+P)
+  kuwai-shot monitor   the focused monitor (Super+Ctrl+Shift+P)
+  kuwai-shot all       every monitor (Print)
+
+The shot goes on the clipboard at once (the clipboard island shows it) and
+is saved to ~/Pictures/Screenshots; then Satty opens on it to annotate,
+KUWAI_USAGE
+}
 umask 077
 
 NOTIFY="$(dirname "$(readlink -f "$0")")/kuwai-notify"
 notify() { [ -x "$NOTIFY" ] && "$NOTIFY" "$@" || command -v notify-send >/dev/null && notify-send "$@" || true; }
 
 mode="${1:-area}"
-case "$mode" in area|quick|freeze|window|delay|ocr|monitor|all) ;; *) sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;; esac
+case "$mode" in area|quick|freeze|window|delay|ocr|monitor|all) ;; *) usage; exit 2 ;; esac
 dir="${XDG_PICTURES_DIR:-$HOME/Pictures}/Screenshots"
 mkdir -p "$dir" || exit 1
 out=$(mktemp "$dir/Screenshot_$(date +%Y%m%d_%H%M%S)_XXXXXX.png") || exit 1
@@ -36,10 +38,6 @@ trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-# Our own region pick (grimblast's, through slurp, let a click that moved a
-# pixel or two turn into a tiny drag: "only a small part comes"). Visible
-# windows are offered as boxes; a click selects one; a drag selects a region;
-# a "drag" smaller than 16 px is taken as the click it was meant to be.
 pick() {
     local ws boxes geo x y w h
     ws=$(hyprctl -j monitors | jq -c '[.[] | .activeWorkspace.id, .specialWorkspace.id] | map(select(. != 0))')
@@ -56,13 +54,12 @@ pick() {
     printf '%s\n' "$geo"
 }
 
-# area/quick/freeze: pick, then grim the region; the rest go through grimblast.
 if [ "$mode" = area ] || [ "$mode" = quick ] || [ "$mode" = freeze ]; then
     frz=""
     if [ "$mode" = freeze ]; then hyprpicker -r -z >/dev/null 2>&1 & frz=$!; sleep 0.15; fi
     geo=$(pick); ok=$?
     if [ -n "$frz" ]; then kill "$frz" 2>/dev/null || true; frz=""; fi
-    [ $ok -eq 0 ] && [ -n "$geo" ] || exit 0                      # cancelled
+    [ $ok -eq 0 ] && [ -n "$geo" ] || exit 0
     if ! grim -g "$geo" "$out" 2>/dev/null || [ ! -s "$out" ]; then
         rm -f -- "$out"; notify -a "Screenshot" "Screenshot failed" "grim couldn't capture $geo"; exit 0
     fi
@@ -71,9 +68,6 @@ if [ "$mode" = area ] || [ "$mode" = quick ] || [ "$mode" = freeze ]; then
     args=()
 fi
 
-# window: the focused window with its own corners. grimblast's rectangle kept
-# whatever was behind the rounded corners; this cuts them to the window's
-# rounding (its rule's, else the config's) and rounding_power, transparent.
 if [ "$mode" = window ]; then
     win=$(hyprctl -j activewindow 2>/dev/null)
     addr=$(jq -r '.address // empty' <<<"$win")
@@ -82,7 +76,6 @@ if [ "$mode" = window ]; then
     if ! grim -g "$geo" "$out" 2>/dev/null || [ ! -s "$out" ]; then
         rm -f -- "$out"; notify -a "Screenshot" "Screenshot failed" "grim couldn't capture the window"; exit 0
     fi
-    # Fullscreen windows have square corners on screen too.
     if [ "$(jq -r '.fullscreen' <<<"$win")" = 0 ]; then
         r=$(hyprctl getprop "address:$addr" rounding 2>/dev/null)
         pw=$(hyprctl getprop "address:$addr" rounding_power 2>/dev/null)
@@ -110,15 +103,9 @@ case "$mode" in
         rm -f -- "$tmp"; exit 0 ;;
     monitor) args=(copysave output) ;;
     all)     args=(copysave screen) ;;
-    *) sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+    *) usage; exit 2 ;;
 esac
 
-# A cancelled selection (Esc, right click: slurp says "selection
-# cancelled") is the user changing their mind: leave quietly. Anything else
-# is a real failure and says so, with grimblast's own words.
-# Errors go to a file, not a pipe: grimblast leaves wl-copy running in the
-# background to serve the clipboard, and it would hold a pipe open, so
-# waiting for grimblast's output would wait until the next copy.
 errf=$(mktemp)
 rc=0
 if [ ${#args[@]} -gt 0 ]; then
@@ -134,19 +121,14 @@ if [ $rc -ne 0 ] || [ ! -s "$out" ]; then
     exit 0
 fi
 
-# Quick: the shot is on the clipboard and on disk; that's all.
 case "$mode" in quick|window|delay) exit 0 ;; esac
 
 log="${XDG_STATE_HOME:-$HOME/.local/state}/kuwai/kuwai-shot.log"
 mkdir -p "$(dirname "$log")" || exit 1
-# Copying keeps the editor open (copy, annotate more, copy again); Enter copies
-# and closes, Esc closes, saving still exits. A bare --early-exit used to close
-# Satty on every copy (0.21: it means "after any action").
 satty --filename "$out" --output-filename "$out" --copy-command wl-copy \
     --early-exit save --actions-on-enter save-to-clipboard,exit --actions-on-escape exit >>"$log" 2>&1 &
 pid=$!
 
-# Give Satty the keyboard once it's on screen.
 for _ in $(seq 60); do
     addr=$(hyprctl clients -j 2>/dev/null | jq -r --argjson p "$pid" '.[] | select(.pid == $p) | .address' | head -1)
     if [ -n "$addr" ]; then

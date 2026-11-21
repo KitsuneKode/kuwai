@@ -1,10 +1,3 @@
--- kuwai.rules — window, layer and workspace rules that make the desktop behave.
--- App-specific taste (sizes, opacities, which app lives where) is user.lua's.
---
--- Effects are evaluated top to bottom and the last match wins, so specific
--- rules sit below general ones. Static effects (float, size, move, workspace…)
--- are decided once, at map time, from the initial class/title.
-
 local K = require("kuwai.core")
 
 local R = { named = {} }
@@ -30,16 +23,8 @@ end
 
 R.rule, R.layer = rule, layer
 
----------------------------------------------------------------------------
--- Everyone
----------------------------------------------------------------------------
--- Apps asking to maximize themselves (Chromium/Electron at start, mostly) put
--- tiled windows into fullscreen mode 1, where they refuse moves and resizes.
--- Ignore the request; Super+F11 / the gestures still fullscreen on purpose.
 rule({ name = "suppress-maximize", match = { class = ".*" }, suppress_event = "maximize" })
 
--- XWayland: menus/tooltips with no class or title — no blur, and don't let
--- the invisible drag helper steal focus.
 rule({ name = "xwayland-menus", match = { class = "^$", title = "^$" }, no_blur = true })
 rule({
 	name = "xwayland-drag-fix",
@@ -47,13 +32,8 @@ rule({
 	no_focus = true,
 })
 
--- Depth: tiled windows sit flat on the desktop, only floating ones cast a
--- shadow. (The 0.53 conversion had this inverted.)
 rule({ name = "flat-tiles", match = { float = false }, no_shadow = true })
 
----------------------------------------------------------------------------
--- Dialogs, pickers, portals: float and centre
----------------------------------------------------------------------------
 local DIALOG_TITLES = table.concat({
 	"Open File.*", "Select a File.*", "Open Folder.*", "Save As.*", "Save File.*", "Choose Files.*",
 	"Library.*", "File Upload.*", "Confirm to replace files", "File Operation Progress",
@@ -76,7 +56,6 @@ rule({
 rule({ name = "pinentry", match = { class = "^(pinentry-.*|gcr-prompter|org\\.gnome\\.keyring\\..*)$" }, float = true, center = true, stay_focused = true })
 rule({ name = "polkit", match = { class = "^(org\\.kde\\.polkit-kde-authentication-agent-1|hyprpolkitagent|polkit-gnome-authentication-agent-1)$" }, float = true, center = true, stay_focused = true })
 
--- Utility windows that are always small and floating.
 rule({
 	name = "utilities",
 	match = { class = "^(blueman-manager|blueberry\\.py|pavucontrol|pavucontrol-qt|org\\.pulseaudio\\.pavucontrol|nm-connection-editor|nm-applet|nwg-(look|displays)|qt[56]ct|kvantummanager|org\\.kde\\.ark|com\\.github\\.wwmm\\.easyeffects|org\\.kde\\.easyeffects|io\\.missioncenter\\.MissionCenter|Zotero|guifetch|kcm_.*|.*plasmawindowed.*|.*bluedevilwizard|vlc|eglgears|vkcube|hyprland-share-picker|hyprland-run|hyprland-dialog|hyprland-update-screen|hyprland-welcome|hyprland-donate-screen)$" },
@@ -88,9 +67,6 @@ rule({ name = "wallpaper-picker", match = { title = "^(Choose wallpaper)(.*)$" }
 rule({ name = "dolphin-progress", match = { class = "^(org\\.kde\\.dolphin)$", title = "^(Progress Dialog|Copying) — Dolphin$" }, float = true, move = "40 80" })
 rule({ name = "plasma-changeicons", match = { class = "^(plasma-changeicons)$" }, float = true, no_initial_focus = true, move = "999999 999999" })
 
----------------------------------------------------------------------------
--- Picture-in-picture: pinned bottom-right, a quarter of the screen, never dimmed
----------------------------------------------------------------------------
 local PIP = "^([Pp]icture[- ]?[Ii]n[- ]?[Pp]icture)(.*)$"
 rule({
 	name = "pip",
@@ -103,8 +79,6 @@ rule({
 	size = "monitor_w*0.25 monitor_h*0.25",
 	move = "monitor_w*0.73 monitor_h*0.72",
 })
--- A music app's compact player rides with it (dodging, throws, corner keys: extras.lua),
--- pinned and never dimmed; its own size and place stay the app's (and your user.lua's).
 rule({
 	name = "mini-player",
 	match = { class = "^([Cc]ider|[Ss]potify|feishin|org\\.gnome\\.Lollypop)$", title = "^(.*[Mm]ini ?[Pp]layer.*)$" },
@@ -114,37 +88,23 @@ rule({
 })
 rule({ name = "pip-look", match = { tag = "pip" }, opacity = "1.0 override 1.0 override", no_dim = true, no_blur = true })
 
----------------------------------------------------------------------------
--- Media, games, idle
----------------------------------------------------------------------------
 rule({ name = "idle-media", match = { class = "^(.*celluloid.*|.*mpv.*|.*vlc.*|.*[Ss]potify.*|.*[Cc]ider.*)$" }, idle_inhibit = "fullscreen" })
 rule({ name = "idle-browsers", match = { class = "^(.*LibreWolf.*|.*floorp.*|.*brave-browser.*|.*firefox.*|.*chromium.*|.*zen.*|google-chrome.*|.*vivaldi.*)$" }, idle_inhibit = "fullscreen" })
 rule({ name = "video-content", match = { class = "^(mpv|vlc|io\\.github\\.celluloid_player\\.Celluloid|haruna|clapper)$" }, content = "video" })
--- A fullscreen terminal or editor must not modeset the panel just because
--- Movie (or a game) has auto-HDR armed. The wiki's case is foot.
 rule({
 	name = "no-auto-hdr-work",
 	match = { class = "^(kitty|com\\.mitchellh\\.ghostty|foot|footclient|Alacritty|org\\.wezfurlong\\.wezterm|code|Code|neovide|emacs|zeditor)$" },
 	no_auto_hdr = true,
 })
 
--- VRR only where it helps. On 0.57 a fullscreen window turns adaptive sync on
--- whatever the monitor's vrr mode says (even 0), and an LCD whose refresh
--- follows a terminal's or browser's uneven frame rate flickers and pulses in
--- brightness. So: off for every window, back on for games and video.
 rule({ name = "vrr-off", match = { class = ".*" }, no_vrr = true })
 rule({ name = "vrr-games", match = { content = "game" }, no_vrr = false })
 rule({ name = "vrr-video", match = { content = "video" }, no_vrr = false })
 
--- Games tear (lowest latency) and are marked as games, which lets VRR and the
--- cursor's no_break_fs_vrr logic treat them right.
 rule({ name = "games", match = { class = "^(steam_app_.*|gamescope|.*\\.exe|Minecraft.*|cs2|dota2)$" }, immediate = true, content = "game", idle_inhibit = "fullscreen", no_blur = true, no_shadow = true, no_vrr = false })
 rule({ name = "games-title", match = { title = "^(.*\\.exe|.*[Mm]inecraft.*)$" }, immediate = true, content = "game" })
 rule({ name = "steam-friends", match = { class = "^([Ss]team)$", title = "^(Friends List|Steam Settings)$" }, float = true })
 
----------------------------------------------------------------------------
--- JetBrains IDEs: splash and popups behave
----------------------------------------------------------------------------
 rule({ name = "jb-splash-tag", match = { class = "^(jetbrains-.*)$", title = "^(splash)$", float = true }, tag = "+jetbrains-splash" })
 rule({ name = "jb-splash", match = { tag = "jetbrains-splash" }, center = true, no_focus = true, border_size = 0 })
 rule({ name = "jb-popup-tag", match = { class = "^(jetbrains-.*)$", title = "^()$", float = true }, tag = "+jetbrains" })
@@ -153,55 +113,25 @@ rule({ name = "jb-popup-size", match = { class = "^(jetbrains-.*)$", title = "^(
 rule({ name = "jb-tooltips", match = { class = "^(jetbrains-.*)$", title = "^(win.*)$", float = true }, no_initial_focus = true })
 rule({ name = "jb-mouse", match = { class = "^(jetbrains-.*)$" }, no_follow_mouse = true })
 
----------------------------------------------------------------------------
--- Kuwai's own windows and kuwai's terminal variants
----------------------------------------------------------------------------
 rule({ name = "satty", match = { class = "^(com\\.gabm\\.satty)$" }, float = true, center = true, size = "monitor_w*0.82 monitor_h*0.82" })
 rule({ name = "kuwai-edit", match = { class = "^(kuwai-edit)$" }, float = true, center = true, size = "1100 760" })
 rule({ name = "recorder-picker", match = { initial_class = "^(recorder-picker)$" }, float = true, center = true, size = "500 250", stay_focused = true })
 rule({ name = "kittymux-hud", match = { class = "^(kittymux-hud)$" }, float = true, center = true, fullscreen_state = "0 0", size = "700 420" })
--- --class float-term / drop-term (Super+Alt+T / Super+Ctrl+T): anchored, local
--- to whichever monitor they open on.
 rule({ name = "float-term", match = { class = "^(float-term)$" }, float = true, fullscreen_state = "0 0", size = "730 480", move = "(monitor_w-760) (monitor_h-510)" })
 rule({ name = "drop-term", match = { class = "^(drop-term)$" }, float = true, fullscreen_state = "0 0", size = "930 500", move = "((monitor_w-930)/2) 150" })
 rule({ name = "warp-tile", match = { class = "^dev\\.warp\\.Warp$" }, tile = true })
 rule({ name = "xwaylandvideobridge", match = { class = "^(xwaylandvideobridge)$" }, no_initial_focus = true, no_focus = true, no_anim = true, no_blur = true, opacity = "0.0 override", float = true, max_size = "1 1" })
 rule({ name = "pypr-noanim", match = { tag = "pypr_noanim" }, no_anim = true })
 
----------------------------------------------------------------------------
--- Layers
----------------------------------------------------------------------------
--- Bars and panels blur only the wallpaper (xray): cheap, and steady while
--- windows move under them. Kuwai's glass (kuwai-*, glass-osd) is excluded:
--- its glass must show the real windows behind it.
 layer({ name = "xray-default", match = { namespace = "negative:^(glass-osd|kuwai-.*|voxtype-osd)$" }, xray = true })
 
--- Kuwai: every surface is a layer named kuwai-*, draws its own glass and its
--- own motion. Blur only under the card (alpha > 0.3), real windows behind it.
 layer({ name = "kuwai-glass", match = { namespace = "^kuwai-.*$" }, blur = true, ignore_alpha = 0.3, xray = false, no_anim = true })
--- The island and what grows out of it (near-opaque black): blur only the
--- shape itself. At 0.3 the soft shadow around a panel was blurred too, which
--- showed as a square halo behind the rounded panel.
 layer({ name = "kuwai-island-shape", match = { namespace = "^kuwai-(island|islandbar|osd|auth)$" }, ignore_alpha = 0.75 })
--- Toasts drop from the island in a tall column (kuwai-notifs, 440×900): at
--- 0.3 a card fading into the center, or fading out, still had full blur
--- under it, an empty light slab in the middle of the screen. Cards are 0.84
--- black: blur only under a card that's really there.
 layer({ name = "kuwai-toasts", match = { namespace = "^kuwai-notifs$" }, ignore_alpha = 0.7 })
--- The screensaver and its film are kuwai.screensaver / kuwai.saver-film: a dot,
--- on purpose, so ^kuwai-.* (kuwai-glass) cannot match them: kuwai-glass blurred behind them wherever alpha passed
--- 0.3, and the vignette crossed that two-thirds down (a hard line, the film
--- blurred below it). A later blur = false did not undo kuwai-glass's blur.
-layer({ name = "kuwai-saver", match = { namespace = "^kuwai\\.(screensaver|saver-film)$" }, no_anim = true })
--- Live video, kuwai.wallpaper: a dot, outside ^kuwai-.*, so the glass blur rule cannot catch a
--- full-screen frame. A later blur = false does not undo kuwai-glass.
+layer({ name = "kuwai-saver", match = { namespace = "^kuwai\\.(screensaver|saver-film|fade)$" }, no_anim = true })
 layer({ name = "kuwai-wallpaper", match = { namespace = "^kuwai\\.wallpaper$" }, no_anim = true })
--- A wallpaper change (services/WallFx): the shell plays it on its own short
--- layer; a compositor fade would show the hand-off. Outside kuwai-*: no blur.
 layer({ name = "kuwai-wallfx", match = { namespace = "^kuwai\\.wallfx$" }, no_anim = true })
--- The password prompt never appears in a screen share, recording or screenshot.
 layer({ name = "kuwai-auth-private", match = { namespace = "^kuwai-auth$" }, no_screen_share = true })
--- The center's scrim: deliberately outside kuwai-* so nothing blurs under it.
 layer({ name = "kuwai-scrim", match = { namespace = "^kuwai\\.scrim$" }, no_anim = true })
 layer({ name = "glass-osd", match = { namespace = "^glass-osd$" }, blur = true, ignore_alpha = 0.3, xray = false, no_anim = true })
 layer({ name = "voxtype-osd", match = { namespace = "^voxtype-osd$" }, blur = true, ignore_alpha = 0.5 })
@@ -213,12 +143,8 @@ layer({ name = "launcher-dim", match = { namespace = "^(launcher)$" }, dim_aroun
 layer({ name = "vicinae-fast", match = { namespace = "^vicinae$" }, no_anim = true })
 layer({ name = "notifications", match = { namespace = "^(notifications|swaync-notification-window|swaync-control-center|shell:notifications)$" }, blur = true, ignore_alpha = 0.69, animation = "slide right" })
 layer({ name = "kittymux-panel", match = { namespace = "^kittymux-panel$" }, animation = "slide left" })
--- Pickers and overlays must appear on the same frame.
 layer({ name = "instant", match = { namespace = "^(selection|hyprpicker|walker|overview|anyrun|indicator.*|osk|noanim|quickshell:overview|gtk4-layer-shell)$" }, no_anim = true })
 
----------------------------------------------------------------------------
--- Workspaces
----------------------------------------------------------------------------
 pcall(hl.workspace_rule, { workspace = "special:special", gaps_out = 30 })
 pcall(hl.workspace_rule, { workspace = "special:notes", gaps_out = 30 })
 

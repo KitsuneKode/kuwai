@@ -1,4 +1,3 @@
-// Research spike only. Intentionally refuses ordinary desktop sessions.
 #include <hyprland/src/plugins/PluginAPI.hpp>
 #include <hyprland/src/desktop/view/window/Window.hpp>
 #include <hyprland/src/desktop/view/window/WindowMetadata.hpp>
@@ -88,7 +87,6 @@ class SidebarDecoration final : public IHyprWindowDecoration {
         const auto global = globalBox(presentation);
         auto panel = global;
         panel.translate(-mon->m_position).scale(mon->m_scale).round();
-        // The core rect/texture elements handle blur and compositor presentation.
         CRectPassElement::SRectData bg;
         bg.box = panel;
         bg.color = CHyprColor{0.065, 0.075, 0.10, 0.76F * alpha};
@@ -98,7 +96,6 @@ class SidebarDecoration final : public IHyprWindowDecoration {
         bg.blurOwner = w;
         bg.workspacePresentation = presentation;
         Render::IHyprRenderer::addPassElement(ctx, makeUnique<CRectPassElement>(bg));
-        // Fixed spike colours only; production would share rice theme tokens.
         std::string key = lastBytes + status;
         const auto scale = mon->m_scale;
         if (cacheKey != key || cacheScale != scale || labels.empty()) {
@@ -149,8 +146,6 @@ class SidebarDecoration final : public IHyprWindowDecoration {
             const int index = static_cast<int>((relativeY-TOP)/ROW);
             if (relativeY >= TOP && index >= 0 && static_cast<size_t>(index) < actions.size() &&
                 TOP + (index+1)*ROW <= box.h-36 && !actions[index].is_null()) {
-                // Deliberate no-exec stub. Future helper: posix_spawnp("kittymux", {"kittymux", "act", action.dump()}).
-                // Never pass JSON through a shell. Never run this against live kitty from a test.
                 status = "Action staged: jump (no execution)";
                 damageEntire();
             }
@@ -176,7 +171,6 @@ void refresh() {
         auto parsed = Sidebar::parseFeed(bytes);
         rows = std::move(parsed); lastBytes = std::move(bytes);
     } catch (...) {
-        // Fail closed: malformed/removed feeds must not leave actionable stale rows.
         if (lastBytes.empty() && rows.empty()) return;
         rows.clear(); lastBytes.clear();
     }
@@ -201,7 +195,6 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE h) {
     feedPath = std::string(state) + "/agents.json";
     refresh();
     openListener = Event::bus()->m_events.window.open.listen([](PHLWINDOW w) { attach(w); });
-    // Animation ticks stop when idle: use an event-loop timer so feed changes wake the panel.
     pollTimer = makeShared<CEventLoopTimer>(std::chrono::milliseconds(500), [](SP<CEventLoopTimer> self, void*) {
         refresh();
         self->updateTimeout(std::chrono::milliseconds(500));

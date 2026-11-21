@@ -1,11 +1,3 @@
--- kuwai.hyde — the HyDE bridge. kuwai doesn't need HyDE; when it's installed,
--- this keeps the HyDE pieces kuwai hasn't replaced yet working: wallpaper
--- daemon and wallbash, Waybar, rofi pickers, battery alerts, config.toml.
--- Themes come through kuwai.theme (HyDE's theme.conf + wallbash colours).
---
--- As the shell grows (island bar, wallpapers, themes are already kuwai's),
--- lines here simply get deleted.
-
 local K = require("kuwai.core")
 
 local LIB = K.hyde_lib
@@ -18,16 +10,11 @@ local function hyde(script)
 end
 
 hl.on("hyprland.start", function()
-	-- The wallpaper first, straight from awww's own cache: the login screen
-	-- has just opened onto it, so it should simply be there. wallpaper.sh
-	-- (HyDE's environment loads slowly) started the daemon a second later and
-	-- then grew the same picture in again from the pointer.
 	if K.has("awww-daemon") then
 		hl.exec_cmd("awww-daemon --format xrgb")
 	end
-	hl.exec_cmd("WALLPAPER_AWWW_TRANSITION_DEFAULT=none " .. hyde("wallpaper.sh") .. " --start --global") -- wallbash recolouring
-	-- (HyDE's batterynotify.sh is replaced by kuwai's battery_guard.)
-	hl.exec_cmd("systemctl --user start hyde-config.service") -- config.toml → HyDE scripts
+	hl.exec_cmd("WALLPAPER_AWWW_TRANSITION_DEFAULT=none " .. hyde("wallpaper.sh") .. " --start --global")
+	hl.exec_cmd("systemctl --user start hyde-config.service")
 end)
 
 local bind, group = K.bind, K.group
@@ -36,26 +23,15 @@ local rofi = function(cmd)
 end
 
 group("Pickers")
--- Power tools live in Vicinae (Super+Space) when it's installed; the island
--- launcher (Super+A) is for apps and open windows.
 local vic = K.has("vicinae")
--- Emoji and glyphs: the island launcher's `:` / `;` modes (HyDE's databases,
--- kuwai's UI).
 bind("SUPER + comma", "Emoji", hl.dsp.global("kuwai:emoji"))
 bind("SUPER + period", "Glyphs", hl.dsp.global("kuwai:glyphs"))
 bind("SUPER + SHIFT + E", "Find a file", vic and "vicinae cmd launch files:search" or rofi(hyde("rofilaunch.sh") .. " f"))
 bind("SUPER + SHIFT + A", "Rofi style", rofi(hyde("rofiselect.sh")))
 
 group("Theming")
--- Wallpapers: the island's panel (Super+Shift+W). Super+Alt+arrows are workspaces.
 bind("SUPER + SHIFT + R", "Wallbash mode", rofi(hyde("wallbashtoggle.sh") .. " -m"), { locked = true })
 bind("SUPER + SHIFT + U", "Lock screen layout", rofi(hyde("hyprlock.sh") .. " --select"))
--- The top bar on/off: with the island as the bar, tuck it away (its strip
--- goes back to your windows; it comes out for what matters, or near the top
--- edge); with Waybar, Waybar on/off as before.
--- Straight to the shell (it knows which bar runs: the island tucks, Waybar
--- toggles). The old route, a shell command calling `hyprctl eval` back into
--- Hyprland, silently did nothing.
 bind("CTRL + ALT + W", "Top bar: tuck the island (Minimal ⇄ Hidden) / Waybar on/off", hl.dsp.global("kuwai:island-tuck"), { locked = true })
 bind("CTRL + ALT + SHIFT + W", "Island: minimal ⇄ everything (workspaces, time, status)", hl.dsp.global("kuwai:island-style"), { locked = true })
 

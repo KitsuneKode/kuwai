@@ -1,11 +1,3 @@
--- kuwai.actions — window actions that used to be shell scripts (jq + several
--- hyprctl round trips each). In Lua they're one step on the compositor's own
--- state: no process, no race with focus-follows-mouse, no visible jumps.
---
--- Everything targets windows by address, never "the active window" after a
--- change, because un-maximizing or floating reflows the layout and the pointer
--- can hand focus to whatever lands under it mid-way.
-
 local K = require("kuwai.core")
 
 local A = {}
@@ -18,7 +10,6 @@ local function dsp(d)
 	return hl.dispatch(d)
 end
 
--- Logical rectangle of a monitor, minus bars (reserved area).
 function A.usable(m)
 	local s = m.scale or 1
 	local w, h = math.floor(m.width / s), math.floor(m.height / s)
@@ -43,12 +34,6 @@ local function unmaximize(w)
 	end
 end
 
--- Float at one predictable size (62% × 66% of the usable area, centred),
--- tile back on the second press. The window is floating at that box before
--- fullscreen ends. Leaving fullscreen while it is still tiled restores the
--- column and configures that size first; a browser lays the page out there,
--- then again at the floating size. Exiting once it is already floating
--- recenters onto the floating box (one configure).
 function A.float_toggle()
 	local w = hl.get_active_window()
 	if not w then
@@ -70,7 +55,6 @@ function A.float_toggle()
 	end
 end
 
--- Pin = float + show on every workspace; unpinning tiles it back.
 function A.pin_toggle()
 	local w = hl.get_active_window()
 	if not w then
@@ -87,7 +71,6 @@ function A.pin_toggle()
 	end
 end
 
--- Close; Steam's main window is hidden to the tray instead of quitting.
 function A.close()
 	local w = hl.get_active_window()
 	if not w then
@@ -102,7 +85,6 @@ function A.close()
 	dsp(hl.dsp.window.close({ window = sel(w) }))
 end
 
--- Floating: nudge by (dx, dy). Tiled: move within the layout.
 function A.move(direction, dx, dy)
 	return function()
 		local w = hl.get_active_window()
@@ -114,9 +96,6 @@ function A.move(direction, dx, dy)
 	end
 end
 
--- Picture-in-picture / mpv: flip between small and large, anchored to the
--- bottom-right of the monitor the window is on. The window keeps focus where
--- it was (nothing is focused to do this).
 local PIP_SIZES = { small = { 480, 270 }, large = { 955, 540 } }
 function A.pip_toggle(kind)
 	return function()
@@ -145,7 +124,6 @@ function A.pip_toggle(kind)
 	end
 end
 
--- Zoom into the cursor (Alt+Shift+wheel), clamped to 1–10×.
 function A.zoom(mult)
 	return function()
 		local z = K.get("cursor.zoom_factor") or 1
@@ -154,10 +132,6 @@ function A.zoom(mult)
 	end
 end
 
--- Launch-or-focus (feature launch_focus). `pattern` is a Lua pattern matched
--- against the lowercased window class. Not open → launch. Open but not focused
--- → focus its most recent window. Already focused → the next one of that app.
--- Feature off → always launch.
 function A.app(pattern, cmd)
 	return function()
 		if not K.feature("launch_focus") then
@@ -179,7 +153,6 @@ function A.app(pattern, cmd)
 		end)
 		local target = mine[1]
 		if active and (active.class or ""):lower():match(pattern) then
-			-- cycle: the least recently used one comes next
 			target = mine[#mine]
 		end
 		dsp(hl.dsp.focus({ window = sel(target) }))
@@ -187,7 +160,6 @@ function A.app(pattern, cmd)
 end
 A.focus_or_launch = A.app
 
--- Focus the next/previous screen, left to right.
 local function monitors_by_x()
 	local ms = hl.get_monitors() or {}
 	table.sort(ms, function(a, b)
@@ -212,7 +184,6 @@ function A.focus_screen(delta)
 	end
 end
 
--- Exit: let kuwai (or hyprshutdown) close apps gracefully when available.
 function A.exit()
 	if K.has("hyprshutdown") then
 		hl.exec_cmd("hyprshutdown")

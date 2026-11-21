@@ -1,50 +1,27 @@
 #!/usr/bin/env bash
-# kuwai-migrate: move what kuwai kept under its old name (rice) to kuwai. Safe to
-# run any number of times; kuwai-shell runs it before it starts the shell.
-#
-#   folders  ~/.local/state/rice, ~/.cache/rice, ~/.config/rice → …/kuwai, and
-#            ~/.local/share/rice → ~/.local/share/kuwai-data (the screensaver films,
-#            clipboard pins, alarms, reminders, AUR recipes, the sandbox, colour
-#            profiles, the cut-out model: not ~/.local/share/kuwai, which is the
-#            stable copy of the repo): each entry moves
-#            into the new folder (one that is already there wins and
-#            the old copy stays, said once), then the old folder becomes a link to
-#            the new one, so anything still reading the old path finds the data.
-#   runtime  $XDG_RUNTIME_DIR/rice → kuwai (a link, every login: it is a tmpfs),
-#            for programs started with the old path in their environment
-#            (voxtype's VOXTYPE_OSD_HOST=%t/rice/voxtype-host.pid).
-#   units    user units linked as rice-NAME (auth, backup, clipboard, feeds) are
-#            linked again as kuwai-NAME from this copy, enabled as they were,
-#            and started again if they were running.
-# Root's parts (the login screen, rice-wake) move when you run their installers
-# again (greeter/install, system/install); until then they keep working as they are.
 set -u
 ROOT=${KUWAI_ROOT:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}
 said() { printf 'kuwai-migrate: %s\n' "$*" >&2; }
 
-merge() {   # OLD NEW: every entry of OLD goes into NEW, folders on both sides merge all the way down
+merge() {
     local old="$1" new="$2" e n
     for e in "$old"/* "$old"/.[!.]*; do
         [ -e "$e" ] || [ -L "$e" ] || continue
         n="$new/${e##*/}"
         if [ -d "$e" ] && [ ! -L "$e" ] && [ -d "$n" ] && [ ! -L "$n" ]; then
-            # The same folder on both sides: what isn't there yet goes over.
             merge "$e" "$n"
             rmdir -- "$e" 2>/dev/null || said "kept $e: some of it is already in $n"
         elif [ "$(readlink -- "$n")" = "$e" ]; then
-            :   # linked on an earlier run (not movable without root): nothing to say
+            :
         elif [ -e "$n" ] || [ -L "$n" ]; then
-            # A lock or a file the new shell already made: the old one is stale.
             case "${e##*/}" in *.lock) rm -f -- "$e" ;; *) said "kept $e: $n is already there" ;; esac
         elif ! mv -- "$e" "$new/" 2>/dev/null; then
-            # Not ours to move (a container's volume, owned by its user): it stays,
-            # and the new name points at it.
             ln -s -- "$e" "$n" && said "linked $n to $e (not movable without root)"
         fi
     done
 }
 
-folder() {   # base [new name, default kuwai]
+folder() {
     local old="$1/rice" new="$1/${2:-kuwai}"
     [ -d "$old" ] && [ ! -L "$old" ] || return 0
     mkdir -p "$new" || return 1
@@ -55,11 +32,7 @@ folder() {   # base [new name, default kuwai]
     return 0
 }
 
-# 2026-11-18: an earlier version moved ~/.local/share/rice into
-# ~/.local/share/kuwai, the stable copy of the repo, so your data sat in a git
-# checkout as untracked files (and the next promote refused to run). What it
-# put there goes to kuwai-data: only these names, only if git doesn't track them.
-data_rescue() {   # data home
+data_rescue() {
     local stable="$1/kuwai" data="$1/kuwai-data" e
     [ -e "$stable/.git" ] || return 0
     mkdir -p "$data" || return 1

@@ -56,9 +56,9 @@ def main(argv: list[str]) -> int:
     if want == skips and CONF.is_file():
         return 0
     if not CONF.parent.is_dir():
-        return 0                                 # no HyDE here: nothing to keep out
+        return 0
     new = write(text, want)
-    tomllib.loads(new)                           # never write a file HyDE can't read
+    tomllib.loads(new)
     tmp = CONF.with_suffix(".toml.kuwai-tmp")
     tmp.write_text(new)
     tmp.replace(CONF)

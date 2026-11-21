@@ -1,17 +1,4 @@
 #!/usr/bin/env bash
-# kuwai-loadtest [rev] [entry]: does this commit's shell load? (entry: greeter.qml
-# for the login screen; default the shell.) Loads it for real in a
-# throwaway Quickshell (offscreen, its own D-Bus, HOME and runtime dir in a
-# temp folder, so it touches nothing of the session), and reads the error
-# chain. qmllint missed what took the shell down twice (a FINAL property
-# overridden, one handler set twice); only a load reports those.
-# Offscreen has no layer-shell, so "No PanelWindow backend loaded" is the
-# expected stop: anything else at the root of the chain is a real failure.
-# Exit 0: loads (as far as offscreen goes): the chain ended at exactly that
-# expected stop. 1: it wouldn't, or nothing proved it did (no unpack, no
-# output, a timeout): the cause printed. 2: can't check here (qs or
-# dbus-run-session missing). Fails closed: only the positive stop passes
-# (review 2026-11-10, finding 09).
 set -u -o pipefail
 dev="$(cd "$(dirname "$0")/.." && pwd)"
 rev="${1:-HEAD}"

@@ -23,12 +23,9 @@ _RULE = re.compile(r"^\s*([-*_])(\s*\1){2,}\s*$")
 _TABLE_SEP = re.compile(r"^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$")
 
 
-# ── Repair (Streamdown's remend) ─────────────────────────────────────────
-
 def heal(text):
     """Close what a half-written answer leaves open, so it renders as meant."""
     t = text
-    # A link being typed: "[label](http…" or "[label" → just the label.
     t = re.sub(r"\[([^\]\n]*)\]\([^)\n]*$", r"\1", t)
     t = re.sub(r"\[([^\]\n]*)$", r"\1", t)
     if t.count("`") % 2:
@@ -44,8 +41,6 @@ def heal(text):
         t = t.rstrip() + "*"
     return t
 
-
-# ── Inline ───────────────────────────────────────────────────────────────
 
 def inline(s):
     codes = []
@@ -71,8 +66,6 @@ def inline(s):
     s = re.sub(r"~~(?=\S)(.+?)(?<=\S)~~", r"<s>\1</s>", s)
     def link(m):
         label, href = links[int(m.group(1))]
-        # The web and mail only: any other scheme (file:, smb:, an app's own)
-        # is shown as its label, never made clickable.
         if not _SAFE_HREF.match(href.strip()):
             return inline(label)
         return '<a href="{1}">{0}</a>'.format(inline(label), html.escape(href.strip(), quote=True))
@@ -81,8 +74,6 @@ def inline(s):
     s = re.sub(r"\x00(\d+)\x00", lambda m: "<code>" + html.escape(codes[int(m.group(1))], quote=False) + "</code>", s)
     return s
 
-
-# ── Blocks ───────────────────────────────────────────────────────────────
 
 def _cells(line):
     line = line.strip()
@@ -106,14 +97,13 @@ def _table(rows, aligns):
 
 def _list(items):
     """items: [(indent, ordered, start, text)] → nested <ul>/<ol>."""
-    out, stack = [], []          # stack of (indent, tag)
+    out, stack = [], []
     for indent, ordered, start, text in items:
         tag = "ol" if ordered else "ul"
         while stack and indent < stack[-1][0]:
             out.append(f"</li></{stack.pop()[1]}>")
         if not stack or indent > stack[-1][0]:
             attr = f' start="{start}"' if ordered and start != 1 else ""
-            # Qt nests by -qt-list-indent, not by the HTML nesting: one level each.
             out.append(f'<{tag}{attr} style="-qt-list-indent: {len(stack) + 1}">')
             stack.append((indent, tag))
         else:
@@ -152,7 +142,6 @@ def render(text):
         if not line.strip():
             flush_para()
             flush_quote()
-            # A blank line inside a list doesn't end it if the list carries on.
             nxt = next((l for l in lines[i + 1:] if l.strip()), "")
             if items and (_BULLET.match(nxt) or _NUMBER.match(nxt)):
                 i += 1
@@ -195,7 +184,7 @@ def render(text):
             continue
         b, n = _BULLET.match(line), _NUMBER.match(line)
         if b or n:
-            flush_para()            # models put a list right under a line: that starts a list
+            flush_para()
             m = b or n
             items.append((len(m.group(1).expandtabs(4)), bool(n), int(n.group(2)) if n else 1, m.group(3)))
             i += 1

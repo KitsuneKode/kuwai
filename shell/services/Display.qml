@@ -156,7 +156,7 @@ Singleton {
                     s[m.name] = {
                         hz: Math.round(m.refreshRate),
                         depth: /2101010|16161616/.test(m.currentFormat || "") ? 10 : 8,
-                        hdr: /hdr/i.test(m.colorManagementPreset || ""),
+                        hdr: !!(root.hdrWire[m.name] && root.hdrWire[m.name].hdr) || /hdr/i.test(m.colorManagementPreset || ""),
                         vrr: !!m.vrr
                     };
                 root.screens = s;

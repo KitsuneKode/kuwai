@@ -1,19 +1,3 @@
--- kuwai.modes — one desktop, a few moods. Replaces HyDE's workflows and
--- gamemode.sh (both wrote hyprlang files a Lua config never reads).
---
---   focus    opaque windows, glass only on the shell — colour-true for
---            reading, writing and picking colours (HyDE's "editing")
---   default  the theme as it comes, with per-app translucency from user.lua
---   glass    Liquid-Glass: acrylic lens blur + translucent windows (the
---            screenshot mode — costs GPU)
---   gaming   no blur/shadows/animations/gaps/rounding, tearing allowed
---   battery  light blur, no shadows or motion blur, quicker animations
---
--- Switch: Super+Shift+/ (picker), Super+Alt+G (gaming on/off),
---         `kuwai mode <name>`, or `hyprctl eval 'kuwai.mode("glass")'`.
--- The choice persists (~/.local/state/kuwai/state) and survives reloads.
--- It's applied last — after the theme and user.lua — so it always wins.
-
 local K = require("kuwai.core")
 
 local M = { list = { "focus", "default", "glass", "gaming", "battery" } }
@@ -28,12 +12,6 @@ M.describe = {
 
 local apply = {}
 
--- `opaque` only tells the renderer to ignore per-pixel alpha. user.lua's
--- opacity rules (Chrome at 0.8, Zen at 0.9, …) still multiply the whole
--- window, so a windowed browser stays a translucent pane: page animations,
--- text and video blend with whatever is behind them. Fullscreen uses
--- fullscreen_opacity and looks solid. The override is what makes this mode
--- actually solid. A reload drops the rule when you leave the mode.
 local SOLID = "1 override 1 override 1 override"
 
 function apply.focus()
@@ -64,7 +42,6 @@ function apply.glass()
 			},
 		},
 	})
-	-- Video, games and the capture tools stay crisp and opaque.
 	for _, c in ipairs({ "video", "game", "photo" }) do
 		pcall(hl.window_rule, { name = "mode-glass-opaque-" .. c, match = { content = c }, opaque = true })
 	end
@@ -114,7 +91,6 @@ function M.apply()
 	end
 end
 
--- Runtime API (binds, `hyprctl eval`, the kuwai CLI) -------------------------
 _G.kuwai = _G.kuwai or {}
 
 function kuwai.mode(name)
@@ -127,7 +103,6 @@ function kuwai.mode(name)
 	end
 	if name ~= "gaming" then
 		K.set_state("mode_before_gaming", nil)
-		-- Leaving the gaming look leaves the gaming display preset too.
 		if K.state["display"] == "gaming" then
 			K.set_state("display", nil)
 			K.set_state("mode_before_display_gaming", nil)
@@ -135,8 +110,6 @@ function kuwai.mode(name)
 	end
 	K.set_state("mode", name)
 	K.notify("Mode: " .. name .. " — " .. (M.describe[name] or ""), 2000)
-	-- A reload re-runs everything from a clean slate, so leaving a mode
-	-- restores exactly what the theme and user.lua said.
 	hl.dispatch(hl.dsp.reload_config())
 	return name
 end

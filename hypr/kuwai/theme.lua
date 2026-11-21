@@ -1,16 +1,3 @@
--- kuwai.theme — HyDE themes and wallbash colours, read straight from the
--- hyprlang files HyDE's switcher writes:
---
---   ~/.config/hypr/themes/colors.conf   $wallbash_* colours (wallpaper palette)
---   ~/.config/hypr/themes/theme.conf    the theme's general/decoration/group
---
--- HyDE's switcher ends with `hyprctl reload`, which re-runs this, so switching
--- themes from the island (Super+Shift+T) or HyDE keeps working without HyDE's
--- Lua runtime or hyq. Only plain options are taken: rules, exec, source,
--- animations and anything unknown are skipped (kuwai owns motion and rules).
--- Each value is coerced to the type the live option has, so a theme saying
--- `blur:enabled = 1` lands as a boolean.
-
 local K = require("kuwai.core")
 
 local T = { colors = {}, vars = {}, applied = 0, skipped = {} }
@@ -24,7 +11,6 @@ local function trim(s)
 end
 
 local function strip_comment(line)
-	-- hyprlang: '#' starts a comment, '##' is a literal '#'
 	local out = line:gsub("##", "\1"):gsub("#.*$", ""):gsub("\1", "#")
 	return out
 end
@@ -35,7 +21,6 @@ local function subst(v)
 	end))
 end
 
--- "rgba(..) rgba(..) 45deg" -> gradient table; a single colour stays a string.
 local function parse_color(v)
 	local colors, angle = {}, nil
 	for tok in v:gmatch("%S+%b()") do
@@ -87,7 +72,6 @@ local function coerce(key, raw)
 		end
 		return n
 	elseif t == "table" then
-		-- css gaps ("5" or "5 10 5 10"), vec2 ("0 6"), gradients
 		local n = tonumber(v)
 		if n then
 			return n
@@ -118,7 +102,6 @@ local function parse_vars(path)
 	return true
 end
 
--- Returns a flat { ["decoration.blur.size"] = 5, ... } table.
 local function parse_theme(path)
 	local s = K.read(path)
 	if not s then
@@ -128,7 +111,6 @@ local function parse_theme(path)
 	for raw in (s .. "\n"):gmatch("([^\n]*)\n") do
 		local line = trim(strip_comment(raw))
 		if line == "" or line:match("^/%*") then
-			-- skip
 		elseif line:match("^[%w_%.:%-]+%s*{$") then
 			stack[#stack + 1] = (line:match("^([%w_%.:%-]+)"):gsub(":", "."))
 		elseif line == "}" then
@@ -154,7 +136,6 @@ local function parse_theme(path)
 	return out
 end
 
--- Palette only (cheap; safe to call more than once).
 function T.load_colors()
 	if not T._colors_loaded then
 		T._colors_loaded = parse_vars(COLORS)
@@ -168,12 +149,10 @@ function T.apply()
 	if not flat then
 		return T
 	end
-	-- HyDE themes sometimes say rounding:power; Hyprland calls it rounding_power.
 	if flat["decoration.rounding.power"] then
 		flat["decoration.rounding_power"] = flat["decoration.rounding.power"]
 		flat["decoration.rounding.power"] = nil
 	end
-	-- Shadows used to be stripped by HyDE's sanitizer; themes still carry them.
 	local keys = {}
 	for k in pairs(flat) do
 		keys[#keys + 1] = k
@@ -197,7 +176,6 @@ function T.apply()
 	return T
 end
 
--- Wallbash palette as rgba() strings: T.rgba("pry1", "ee")
 function T.rgba(name, alpha)
 	local hex = T.colors[name]
 	if not hex or not hex:match("^%x%x%x%x%x%x$") then

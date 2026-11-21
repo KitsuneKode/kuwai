@@ -1,28 +1,33 @@
 #!/usr/bin/env bash
-# kuwai — the desktop from the command line. This file is the Hyprland half; any other
-# command goes to the shell half, bin/kuwai-ctl (channel, promote, bar, notifs, timers, …).
-#
-#   kuwai info                      version, mode, GPU, theme
-#   kuwai doctor                    check config, session, scripts; exit 1 on problems
-#   kuwai mode [NAME|--pick|list]   focus · default · glass · gaming · battery
-#   kuwai display [NAME|list]       everyday · accurate · movie · gaming · battery (what the screens are for)
-#   kuwai display calibrate [SCREEN] adjust a screen by eye with test patterns (→ next, q done)
-#   kuwai display profile           measured (colorimeter) profiles: where they go, which are loaded
-#   kuwai motion [full|reduced|off]
-#   kuwai gpu [auto|nvidia|intel]   renderer for the next login
-#   kuwai rescue                    password prompt, clipboard, island, idle: back to working
-#   kuwai auth [status|here|restart|fallback|restore|reset-tries]   the password prompt
-#   kuwai feature [NAME on|off]     list / switch what kuwai does on its own
-#   kuwai keyboard [LAYOUTS [VARIANTS]] [--switch alt-shift|caps|win-space|ctrl-shift|none]
-#                                   e.g. `kuwai keyboard us,de` · `kuwai keyboard --switch alt-shift`
-#   kuwai focus [MINUTES|stop]      focus session: DND + focus mode for a while
-#   kuwai session [save|restore]    the open apps and where they were
-#   kuwai binds [WORD]              every bind, grouped as in the Shortcuts panel
-#   kuwai reload
 set -uo pipefail
 
-ROOT=${KUWAI_ROOT:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}   # else the copy this script is in
-HERE=$(dirname "$(readlink -f "$0")")   # the shell half shipped with this copy (not KUWAI_ROOT's, which may be the other channel)
+usage() {
+cat <<'KUWAI_USAGE'
+kuwai — the desktop from the command line. This file is the Hyprland half; any other
+command goes to the shell half, bin/kuwai-ctl (channel, promote, bar, notifs, timers, …).
+
+  kuwai info                      version, mode, GPU, theme
+  kuwai doctor                    check config, session, scripts; exit 1 on problems
+  kuwai mode [NAME|--pick|list]   focus · default · glass · gaming · battery
+  kuwai display [NAME|list]       everyday · accurate · movie · gaming · battery (what the screens are for)
+  kuwai display calibrate [SCREEN] adjust a screen by eye with test patterns (→ next, q done)
+  kuwai display profile           measured (colorimeter) profiles: where they go, which are loaded
+  kuwai motion [full|reduced|off]
+  kuwai gpu [auto|nvidia|intel]   renderer for the next login
+  kuwai rescue                    password prompt, clipboard, island, idle: back to working
+  kuwai auth [status|here|restart|fallback|restore|reset-tries]   the password prompt
+  kuwai feature [NAME on|off]     list / switch what kuwai does on its own
+  kuwai keyboard [LAYOUTS [VARIANTS]] [--switch alt-shift|caps|win-space|ctrl-shift|none]
+                                  e.g. `kuwai keyboard us,de` · `kuwai keyboard --switch alt-shift`
+  kuwai focus [MINUTES|stop]      focus session: DND + focus mode for a while
+  kuwai session [save|restore]    the open apps and where they were
+  kuwai binds [WORD]              every bind, grouped as in the Shortcuts panel
+  kuwai reload
+KUWAI_USAGE
+}
+
+ROOT=${KUWAI_ROOT:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}
+HERE=$(dirname "$(readlink -f "$0")")
 ENTRY=${XDG_CONFIG_HOME:-$HOME/.config}/hypr/hyprland.lua
 STATE_DIR=${XDG_STATE_HOME:-$HOME/.local/state}/kuwai
 STATE=$STATE_DIR/state
@@ -30,7 +35,7 @@ STATE=$STATE_DIR/state
 lua() { hyprctl repl "$1" 2>/dev/null; }
 live() { [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && hyprctl version >/dev/null 2>&1; }
 
-state_set() { # key value (value empty = delete)
+state_set() {
     mkdir -p "$STATE_DIR"; touch "$STATE"
     local tmp; tmp=$(mktemp "$STATE_DIR/.state.XXXXXX")
     grep -v "^$1=" "$STATE" >"$tmp" || true
@@ -70,8 +75,6 @@ cmd_mode() {
     echo "mode: $m — $(describe "$m")"
 }
 
-# Measured profiles: where each screen's ICC goes and whether it's there. The
-# measuring itself needs a colorimeter and ArgyllCMS; this says how.
 display_profile() {
     live || { echo "kuwai: needs the running desktop" >&2; return 1; }
     echo "Measured colour profiles (used by the accurate preset):"
@@ -93,9 +96,6 @@ display_profile() {
 STEPS
 }
 
-# Adjust a screen by eye: full-screen test patterns (bin/kuwai-calibrate) in
-# mpv at 1:1 pixels, nothing altering them (no deband, scripts or scaling),
-# under the accurate display preset; the preset you had comes back after.
 display_calibrate() {
     live || { echo "kuwai: calibrate needs the running desktop" >&2; return 1; }
     local mon w h cache prev conf
@@ -121,7 +121,6 @@ display_calibrate() {
 }
 
 cmd_display() {
-    # Display presets (hypr/kuwai/display.lua): what the screens are for right now.
     local all="everyday accurate movie gaming battery" m=${1:-}
     case $m in
         "") if live; then lua 'return kuwai.display()'; echo; else c=$(state_get display); echo "${c:-everyday}"; fi; return ;;
@@ -191,9 +190,6 @@ cmd_feature() {
     echo "$name: $v"
 }
 
-# kuwai keyboard: layouts as xkb names (us, de, fr, in…), comma-separated;
-# variants line up with them (",nodeadkeys"). Checked strictly: they're
-# handed to Hyprland's Lua. Live when Hyprland runs, else for the next login.
 cmd_keyboard() {
     local layout="" variant="" switch="" set=0
     while [ $# -gt 0 ]; do
@@ -233,8 +229,6 @@ cmd_doctor() {
     echo "Config"
     out=$(Hyprland --verify-config -c "$ENTRY" 2>&1); vrc=$?
     if [ $vrc -ge 128 ]; then
-        # A crash of the verifier is Hyprland's bug, not a config error: in a
-        # session, the live config's own errors say whether it's fine.
         if live && [ -z "$(hyprctl configerrors 2>/dev/null | tr -d '[:space:]')" ]; then
             note "Hyprland --verify-config crashed (signal $((vrc - 128)), Hyprland's bug); the live config has no errors"
         else
@@ -261,7 +255,6 @@ cmd_doctor() {
 
     echo "Session"
     if live; then
-        # Ask the live process: /proc/PID/environ only shows the env it started with.
         cfg=$(lua 'return os.getenv("HYPRLAND_CONFIG") or ""')
         case $cfg in
             ""|*hyprland.lua) ok "Hyprland reads ${cfg:-~/.config/hypr/hyprland.lua}" ;;
@@ -270,8 +263,6 @@ cmd_doctor() {
         if grep -qs 'HYPRLAND_CONFIG=.*hyprland\.conf' "${ZDOTDIR:-$HOME}"/conf.d/hyde/env.zsh "$HOME"/.config/uwsm/env-hyprland.d/*.sh; then
             bad "your login env still exports a hyprlang HYPRLAND_CONFIG (HyDE's env.zsh / uwsm env)"
         fi
-        # loaded_at is set by init.lua on every real load. A `hyprctl eval`
-        # dofile doesn't count, and Hyprland caches its config path at start.
         stamp=$(lua 'return tostring(kuwai and kuwai.loaded_at)')
         [[ $stamp =~ ^[0-9]+$ ]] && ok "kuwai loaded by Hyprland $(date -d "@$stamp" +%H:%M:%S)" || bad "kuwai isn't what Hyprland loaded this session — log out and back in"
         errs=$(hyprctl configerrors 2>/dev/null | sed '/^$/d')
@@ -285,7 +276,6 @@ cmd_doctor() {
     else
         note "not inside Hyprland — session checks skipped"
     fi
-    # hypridle only when settings hand idle to it (else the shell's services/Idle does it).
     idle_owner=$(jq -r '.idleOwner // "shell"' "${XDG_CONFIG_HOME:-$HOME/.config}/kuwai/settings.json" 2>/dev/null || echo shell)
     if [ "$idle_owner" = hypridle ]; then units="hypridle.service"; else units=""
         systemctl --user is-active --quiet hypridle.service && bad "hypridle runs beside the shell's idle: systemctl --user stop hypridle" || ok "idle: the shell's (hypridle off)"
@@ -293,7 +283,6 @@ cmd_doctor() {
     for u in $units voxtype.service gcr-ssh-agent.socket kuwai-clipboard.service kuwai-feeds.service; do
         st=$(systemctl --user is-active "$u" 2>/dev/null); [ "$st" = active ] && ok "$u" || note "$u: $st"
     done
-    # Password prompts: kuwai's (kuwai-auth), or KDE's as the fallback; never none.
     if [ "$(systemctl --user is-active kuwai-auth.service 2>/dev/null)" = active ]; then ok "password prompt: kuwai (kuwai-auth)"
     elif [ "$(systemctl --user is-active plasma-polkit-agent.service 2>/dev/null)" = active ]; then note "password prompt: KDE's fallback (kuwai-auth not running)"
     else bad "no password prompt (polkit agent) running: systemctl --user start kuwai-auth"; fi
@@ -318,10 +307,6 @@ cmd_doctor() {
     [ $problems -eq 0 ]
 }
 
-# The password prompt (shell-auth/) may only read files and draw. Its own
-# shell.qml runs four known commands; the vendored config/ and components/ run
-# none. Links into the shell are refused: anything added there later would
-# run next to your password.
 auth_audit() {
     local A="$ROOT/shell-auth" bad_=0
     [ -d "$A" ] || { note "shell-auth not found"; return; }
@@ -338,7 +323,7 @@ auth_audit() {
 
 cmd_auth() {
     case ${1:-status} in
-        diff)   # where the prompt's vendored copies drifted from the shell's
+        diff)
             for f in Label Spring NotchShape GlassCard RaisedButton; do
                 diff -u <(cat "$ROOT/shell/components/$f.qml") <(sed '1,/^\/\/ on purpose/d' "$ROOT/shell-auth/components/$f.qml") \
                     --label "shell/components/$f.qml" --label "shell-auth/components/$f.qml" || true
@@ -350,26 +335,23 @@ cmd_auth() {
             pgrep -a pkexec | sed 's/^/  pkexec: /'
             n=$(faillock --user "$USER" 2>/dev/null | grep -c ' V$'); echo "  failed tries: ${n:-0}"
             auth_audit ;;
-        here|summon)   # bring a waiting prompt to the screen you're on (or NAME)
+        here|summon)
             local rt="${XDG_RUNTIME_DIR:-/run/user/$UID}/kuwai" s=${2:-}
             [ -n "$s" ] || s=$(hyprctl repl 'return kuwai.where()' 2>/dev/null | tail -1 | jq -r '.looking // empty' 2>/dev/null)
             [ -n "$s" ] || s=$(hyprctl monitors -j | jq -r '.[]|select(.focused).name')
             mkdir -p "$rt" && echo "$s" > "$rt/auth-summon" && echo "prompt → $s" ;;
-        restart)   # a stuck prompt: restart it (a request it held is dismissed; the app can ask again)
+        restart)
             systemctl --user restart kuwai-auth.service && echo "password prompt restarted" ;;
-        fallback)  # kuwai's prompt misbehaves: use KDE's agent until `kuwai auth restore`
+        fallback)
             systemctl --user stop kuwai-auth.service; systemctl --user start plasma-polkit-agent.service && echo "KDE's password prompt is in charge (kuwai auth restore to go back)" ;;
         restore)
             systemctl --user stop plasma-polkit-agent.service; systemctl --user start kuwai-auth.service && echo "kuwai's password prompt is back" ;;
-        reset-tries)  # after cancels or wrong passwords locked you out (your own record; no root)
+        reset-tries)
             faillock --user "$USER" --reset && echo "failed tries cleared" ;;
         *) echo "kuwai auth [status|here [SCREEN]|restart|fallback|restore|reset-tries|diff]" >&2; return 2 ;;
     esac
 }
 
-# kuwai rescue: the usual suspects, back to working, in one go (safe to run
-# any time: nothing is lost; a password request that was stuck is dismissed
-# and the app can ask again).
 cmd_rescue() {
     echo "kuwai rescue"
     local rt="${XDG_RUNTIME_DIR:-/run/user/$UID}/kuwai"
@@ -379,7 +361,6 @@ cmd_rescue() {
     systemctl --user restart kuwai-feeds.service && echo "  ✓ GitHub and Gmail notifications restarted"
     : > "$rt/auth-pending" 2>/dev/null
     "$ROOT/bin/kuwai-shell" >/dev/null 2>&1 && echo "  ✓ island shell restarted"
-    # services/Idle reconciles the requested owner after readiness; do not race it.
     echo "  • idle ownership is reconciled by the shell (see Power & Idle for errors)"
     if [ "$(faillock --user "$USER" 2>/dev/null | grep -c ' V$')" -gt 0 ]; then echo "  • failed password tries recorded: kuwai auth reset-tries clears them"; fi
     echo "  then: kuwai doctor"
@@ -387,7 +368,7 @@ cmd_rescue() {
 
 case ${1:-info} in
     info) live && lua 'return kuwai.info()' && echo || echo "kuwai (not running) · mode $(state_get mode || echo focus)" ;;
-    doctor) cmd_doctor; rc=$?; "$HERE/kuwai-doctor" || rc=1; exit $rc ;;   # the session, then the shell
+    doctor) cmd_doctor; rc=$?; "$HERE/kuwai-doctor" || rc=1; exit $rc ;;
     auth) shift; cmd_auth "$@" ;;
     rescue) cmd_rescue ;;
     mode) shift; cmd_mode "$@" ;;
@@ -401,7 +382,7 @@ case ${1:-info} in
         case ${1:-show} in
             save) lua 'return kuwai.session_save and kuwai.session_save() or 0' | sed 's/$/ apps saved/' ;;
             restore) lua 'return kuwai.session_restore and kuwai.session_restore() or "session_restore is off"'; echo ;;
-            offer)  # asked at login (kuwai.resilience): one notification, one button
+            offer)
                 [ -s "$snap" ] || exit 0
                 n=$(grep -vc '^#' "$snap"); when=$(head -1 "$snap" | sed 's/^# kuwai session //')
                 RN="$ROOT/bin/kuwai-notify"
@@ -417,8 +398,7 @@ case ${1:-info} in
                *) lua "return kuwai.focus and kuwai.focus(${1:-25}) or 'focus_sessions is off'" ;;
            esac; echo ;;
     reload) hyprctl reload ;;
-    -h|--help|help) sed -n '2,/^set/p' "$0" | grep '^#' | sed 's/^# \{0,1\}//'
+    -h|--help|help) usage
                     echo; "$HERE/kuwai-ctl" help 2>/dev/null ;;
-    # The shell half (kuwai-ctl): channel, promote, bar, notifs, timers, lock, settings, …
     *) exec "$HERE/kuwai-ctl" "$@" ;;
 esac

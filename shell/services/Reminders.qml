@@ -40,7 +40,7 @@ Singleton {
                 const tomorrow = !!m[1] || /\btomorrow\b/i.test(s.slice(0, s.length - m[5].length));
                 let h = +m[2], min = +(m[3] || 0);
                 const ap = (m[4] || "").toLowerCase();
-                if (h > 23 || min > 59) return null;
+                if (h > 23 || min > 59 || (ap && (h < 1 || h > 12))) return null;
                 if (ap === "pm" && h < 12) h += 12;
                 if (ap === "am" && h === 12) h = 0;
                 const d = new Date(now);

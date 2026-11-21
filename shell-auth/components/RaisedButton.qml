@@ -1,26 +1,3 @@
-// VENDORED for the password prompt (shell-auth): a reviewed copy of
-// shell/components/RaisedButton.qml, not a link. Rule for everything in shell-auth/: read
-// files and draw, nothing else — no Process, sockets, network or IPC here
-// (`kuwai doctor` checks). Change the shell's copy freely; update this one
-// on purpose (`kuwai auth diff` shows what drifted).
-// Text set the Apple way: variable SF Pro at the optical size for its pixel
-// size (Text cut small, Display cut large), Apple's weights, and Apple's own
-// per-size tracking (read from the font's trak table, see Theme). `rounded`
-// switches to SF Pro Rounded for numerals. Use this, not a bare Text.
-//
-//   Label { size: 15; weight: Theme.wSemibold; text: "Title" }
-//   Label { size: 11; rounded: true; text: count }
-// A raised button, after Kobra's (the plate under the label): the surface is
-// its own layer, so a press sinks and flattens the plate while the words stay
-// exactly where the eye is. Light catches the top edge (a 1 px lip and a soft
-// inner glow), a darker ring in the fill's own hue draws the edge, and a few
-// stacked shadows give it weight. Hover lights it a little; press takes the
-// lift away. Plain rectangles only: it renders the same in the shell and in
-// the password prompt's software renderer (shell-auth vendors this file).
-//
-//   RaisedButton { text: "Update 31"; onClicked: … }                  primary, the theme's accent
-//   RaisedButton { text: "Terminal"; glyph: "\u{f018d}"; kind: "secondary" }
-//   RaisedButton { text: "Remove"; kind: "danger"; enabled: … }
 import QtQuick
 import qs.config
 
@@ -28,7 +5,7 @@ Item {
     id: b
     property string text
     property string glyph: ""
-    property string kind: "primary"      // primary · secondary · danger
+    property string kind: "primary"
     property bool enabled: true
     property int size: 13
     signal clicked()
@@ -48,14 +25,12 @@ Item {
         : kind === "danger" ? Theme.onDanger
         : Theme.onAccent
 
-    // The plate (everything that moves on press).
     Item {
         id: plate
         anchors.fill: parent
         scale: b.pressed && !Theme.reduceMotion ? 0.97 : 1
         Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
 
-        // Weight: stacked shadows, gone while pressed.
         Repeater {
             model: b.solid ? 3 : 1
             Rectangle {
@@ -68,7 +43,6 @@ Item {
                 Behavior on color { ColorAnimation { duration: 200 } }
             }
         }
-        // Fill + the edge ring (a darker step of the fill itself).
         Rectangle {
             id: face
             anchors.fill: parent
@@ -78,7 +52,6 @@ Item {
             border.width: 1
             border.color: b.solid ? Qt.darker(b.fill, 1.45) : Qt.rgba(1, 1, 1, 0.1)
         }
-        // Light from above: a soft glow in the top half, a 1 px lip.
         Rectangle {
             anchors.fill: parent
             anchors.margins: 1
@@ -93,7 +66,6 @@ Item {
         }
     }
 
-    // The label: does not move.
     Row {
         id: row
         anchors.centerIn: parent
@@ -121,7 +93,6 @@ Item {
         cursorShape: b.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
         onClicked: if (b.enabled) b.clicked()
     }
-    // Screen readers: what it is and does (the password prompt's own copy keeps its own keys).
     Accessible.role: Accessible.Button
     Accessible.name: b.text
     Accessible.onPressAction: if (b.enabled) b.clicked()

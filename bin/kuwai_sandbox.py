@@ -77,13 +77,11 @@ Safe to delete any chat folder here; the assistant makes them again when needed.
 
 
 def chat_slug(chat):
-    # No leading dots: "..", "." and ".home" would name the parent, the root
-    # or the sandbox's $HOME instead of a chat folder.
     return re.sub(r"[^A-Za-z0-9_.-]", "", str(chat or "")).lstrip(".")[:64] or "scratch"
 
 
 JOB_ID = re.compile(r"j[0-9a-f]{6}")
-JOB_LOG_MAX = 256_000      # the tail of a job's log the host reads
+JOB_LOG_MAX = 256_000
 
 
 def workspace(chat):
@@ -101,11 +99,6 @@ def workspace(chat):
             raise SandboxError(f"{d} isn't a plain folder any more (a link or file replaced it); refusing to use it")
     return root / chat_slug(chat)
 
-
-# ── Host-side access to container-writable files ────────────────────────
-# The container can turn any name under /work into a link, a FIFO or a hard
-# link, so the host never opens those paths by name: it walks down from the
-# sandbox root one descriptor at a time, refusing links at every step.
 
 _DIR = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC
 
@@ -240,13 +233,6 @@ def build(stream=None):
     return p.returncode
 
 
-# ── Containers: one per chat (red-team 3) ────────────────────────────────
-# Each chat's container mounts only its own folder (at /work/<chat>) and keeps its
-# $HOME inside it, so one chat can't read another's files or plant a program on a
-# PATH the next chat runs. They share one Docker network, kuwai-jail, so firewall
-# rules can target the jail exactly (kuwai-ollama sandbox firewall). Containers idle
-# for 30 minutes with no job running are stopped.
-
 JAIL_NET = os.environ.get("KUWAI_SANDBOX_NET") or "kuwai-jail"
 JAIL_SUBNET = "172.30.97.0/24"
 IDLE_S = 1800
@@ -333,14 +319,13 @@ def ensure(chat=None, web=False):
         raise SandboxError("The sandbox image isn't built yet: run `kuwai-ollama sandbox build`")
     root = host_root()
     root.mkdir(parents=True, exist_ok=True)
-    # Created only if nothing (not even a dangling link) is there, never through a link (red-team 8).
     try:
         fd = os.open(root / "README.txt", os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o644)
         with os.fdopen(fd, "w", encoding="utf-8") as fh:
             fh.write(JAIL_README)
     except OSError:
         pass
-    _docker("rm", "-f", NAME, timeout=30)          # the old shared container, if it's still there
+    _docker("rm", "-f", NAME, timeout=30)
     net = _network()
     if web:
         name, src, dest, env = f"{NAME}-web", None, None, []
@@ -382,7 +367,6 @@ def run(chat, command, timeout=120):
     cwd = f"/work/{ws.name}"
     import kuwai_files
     check_space()
-    # Bounded: the host keeps ~64 KB of whatever it prints (review finding 16).
     code, out, _total = kuwai_files.run_bounded(
         [DOCKER, "exec", "-w", cwd, "-e", "TERM=dumb", name, "timeout", "-k", "5", str(int(timeout)), "bash", "-lc", command],
         timeout=timeout + 15)
@@ -392,11 +376,6 @@ def run(chat, command, timeout=120):
         out = (out + "\n" if out else "") + f"(stopped after {int(timeout)} s)"
     return code, out.strip()
 
-
-# ── Background jobs: they run on after the turn; files in <chat>/.jobs/ ──
-# <id>.cmd the command, <id>.log its output, <id>.status its exit code when done,
-# <id>.notified once the desktop said so. The folder is mounted, so the host
-# reads them directly.
 
 JOB_HOURS = float(os.environ.get("KUWAI_SANDBOX_JOB_HOURS") or 2)
 JAIL_MAX_GB = float(os.environ.get("KUWAI_SANDBOX_MAX_GB") or 10)
@@ -424,8 +403,6 @@ def start_job(chat, command):
     jid = "j" + secrets.token_hex(3)
     ws = workspace(chat)
     write_file(chat, [".jobs", f"{jid}.cmd"], command)
-    # A job ends after JOB_HOURS and its log stops at 20 MB (red-team 5: a job could write the
-    # host's disk full through an endless log). `head -c` cuts the log; the exit code is the job's.
     script = (f"set -o pipefail; timeout -k 10 {int(JOB_HOURS * 3600)} bash -lc {shlex.quote(command)} 2>&1 "
               f"| head -c 20000000 > .jobs/{jid}.log; echo ${{PIPESTATUS[0]}} > .jobs/{jid}.status")
     p = _docker("exec", "-d", "-w", f"/work/{ws.name}", "-e", "TERM=dumb", name, "bash", "-lc", script)
@@ -490,8 +467,6 @@ def finished_unnotified():
     return out
 
 
-# What a check run inside the container tries; each must fail (or, for the network
-# lines, is reported so you know what it can reach).
 ESCAPES = r"""
 t() { if eval "$2" >/dev/null 2>&1; then echo "FAIL  $1"; else echo "ok    $1"; fi; }
 w() { if eval "$2" >/dev/null 2>&1; then echo "warn  $1"; else echo "ok    $1"; fi; }
@@ -520,7 +495,6 @@ echo "info  runs as: $(id -u):$(id -g), caps: $(grep CapEff /proc/self/status | 
 
 def check():
     """Run the escape attempts inside the real container; lines of 'ok/FAIL/warn/info  what'."""
-    # Your real router, from the host's routing table (the container's own gateway is Docker's).
     import socket
     import struct
     gw = ""
@@ -549,9 +523,6 @@ def stop():
 def render_page(url, timeout=25):
     """A page's DOM after its JavaScript ran (headless Chromium in the sandbox)."""
     import kuwai_files
-    # The DOM is read bounded (red-team 2: unbounded capture). The caller checks the URL is public
-    # first; a page that then redirects Chromium to a private address is stopped by the jail's
-    # network (kuwai-ollama sandbox firewall), since Chromium does its own lookups.
     code, out, _n = kuwai_files.run_bounded(
         [DOCKER, "exec", ensure(web=True), "timeout", str(timeout), "chromium-headless-shell",
          "--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage", "--hide-scrollbars",

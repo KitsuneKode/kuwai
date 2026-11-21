@@ -1,20 +1,27 @@
 #!/usr/bin/env bash
-# kuwai-backup: your desktop's own files, snapshotted and put back.
-#
-#   kuwai backup                 a snapshot now (prints its path)
-#   kuwai backup list            the snapshots, newest first, with what's in them
-#   kuwai backup diff [NAME]     what changed since a snapshot (the newest by default)
-#   kuwai backup restore NAME    put a snapshot back (a snapshot of now is taken first)
-#   kuwai backup auto            what the daily timer and `kuwai promote` run: a snapshot
-#                               only if something changed since the last one
-#
 # What: settings (~/.config/kuwai), Hyprland's files that are yours
-# (~/.config/hypr: hyprland.lua, monitors.lua, user.lua, hypridle.conf),
-# reminders, alarms, clipboard pins, quick notes, screen profiles (icc), the
-# kuwai state (mode, channel). Not: clipboard history, caches, the repo.
-# Where: ~/.local/state/kuwai/backups/<time>.tar.gz, readable by you only
-# (settings can hold keys); the newest 30 kept. (searxng: its container's, not ours.)
 set -euo pipefail
+
+usage() {
+cat <<'KUWAI_USAGE'
+kuwai-backup: your desktop's own files, snapshotted and put back.
+
+  kuwai backup                 a snapshot now (prints its path)
+  kuwai backup list            the snapshots, newest first, with what's in them
+  kuwai backup diff [NAME]     what changed since a snapshot (the newest by default)
+  kuwai backup restore NAME    put a snapshot back (a snapshot of now is taken first)
+  kuwai backup auto            what the daily timer and `kuwai promote` run: a snapshot
+                              only if something changed since the last one
+
+What: settings (~/.config/kuwai), Hyprland's files that are yours
+(~/.config/hypr: hyprland.lua, monitors.lua, user.lua, hypridle.conf),
+reminders, alarms, clipboard pins, quick notes, screen profiles (icc), the
+kuwai state (mode, channel). Not: clipboard history, caches, the repo.
+Where: ~/.local/state/kuwai/backups/<time>.tar.gz, readable by you only
+(settings can hold keys); the newest 30 kept. (searxng: its container's, not ours.)
+umask 077
+KUWAI_USAGE
+}
 umask 077
 
 STATE=${XDG_STATE_HOME:-$HOME/.local/state}
@@ -31,7 +38,6 @@ mkdir -p "$DIR"
 exec 9>"$DIR/.lock"
 flock -x 9
 
-# Paths relative to $HOME (only those that exist are taken).
 paths() {
     local p
     for p in \
@@ -46,7 +52,6 @@ paths() {
     return 0
 }
 
-# One number for "what's there now": changes when any file's content does.
 fingerprint() {
     (cd "$HOME" && paths | while IFS= read -r -d '' p; do find "$p" -type f ! -name '*.bak' ! -name '*.bak-*' ! -path '*/searxng/*' -print0; done | sort -z | xargs -0r sha256sum) | sha256sum | cut -c1-16
 }
@@ -86,17 +91,13 @@ for item in items:
 PY
 }
 
-snap() {   # $1 = why (shown in list)
+snap() {
     local name stamp index=0 temporary hash
     stamp=$(date +%Y%m%d-%H%M%S); name=$stamp
     while [ -e "$DIR/$name.tar.gz" ]; do index=$((index + 1)); name="$stamp-$index"; done
     local out=$DIR/$name.tar.gz
     hash=$(fingerprint)
     temporary=$(mktemp "$DIR/.snapshot.XXXXXX")
-    # Files and folders only, listed one by one: a link in scope is kuwai's
-    # own file linked in (hypr/hypridle.conf) or another tool's folder
-    # (kuwai/searxng), not yours; the fingerprint skips links too, and the
-    # check below refuses a snapshot holding one.
     if ! (cd "$HOME" && paths | while IFS= read -r -d '' p; do
               find "$p" \( -path "${CFG#"$HOME"/}/kuwai/searxng" -o -name '*.bak' -o -name '*.bak-*' \) -prune -o \( -type f -o -type d \) -print0
           done | tar -czf "$temporary" --no-recursion --null --verbatim-files-from --files-from=-) || ! validate_archive "$temporary" "$HOME"; then
@@ -104,7 +105,6 @@ snap() {   # $1 = why (shown in list)
     fi
     mv -- "$temporary" "$out"
     printf '%s\t%s\n' "$hash" "${1:-by hand}" >"$DIR/$name.info"
-    # Keep the newest $KEEP.
     local kept=0 old
     while IFS= read -r -d '' old; do
         kept=$((kept + 1))
@@ -114,7 +114,7 @@ snap() {   # $1 = why (shown in list)
 }
 
 newest() { local first; if IFS= read -r -d '' first < <(archives first); then printf '%s\n' "$first"; fi; }
-resolve() {   # NAME (with or without .tar.gz), or the newest
+resolve() {
     local n=${1:-}
     [ -z "$n" ] && { newest; return; }
     n=${n%.tar.gz}; n=${n##*/}
@@ -156,10 +156,9 @@ case ${1:-now} in
         cp -- "$f" "$tmp/restore.tar.gz"
         validate_archive "$tmp/restore.tar.gz" "$HOME"
         before=$(snap "before restoring $(basename "${f%.tar.gz}")")
-        # Only paths the snapshot holds, only under $HOME, no links or ..
         tar -xzf "$tmp/restore.tar.gz" -C "$HOME" --no-same-owner --overwrite
         echo "restored $(basename "${f%.tar.gz}") (what was there is in $before)"
         echo "reload: hyprctl reload  (settings apply by themselves)" ;;
-    -h|--help|help) sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//' ;;
+    -h|--help|help) usage ;;
     *) echo "kuwai backup [now|list|diff [NAME]|restore NAME|auto]" >&2; exit 2 ;;
 esac

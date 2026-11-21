@@ -31,8 +31,8 @@ from pygments.token import (Comment, Error, Generic, Keyword, Name, Number, Oper
 from pygments.util import ClassNotFound
 
 MONO = "SF Mono"
-TEXT = "SF Pro Text"          # body copy: Apple's Text cut (made for 11–19px)
-DISPLAY = "SF Pro Display"    # headings: the Display cut
+TEXT = "SF Pro Text"
+DISPLAY = "SF Pro Display"
 
 
 class RiceDark(Style):
@@ -205,7 +205,6 @@ def render(text):
     if lexer is None and "\n" in s and len(s) > 40:
         try:
             g = guess_lexer(s)
-            # Pygments guesses something for any text; only trust code-ish ones.
             if g.name not in ("Text only", "markdown", "Text output") and re.search(r"[{};()=<>]", s):
                 lexer = g
         except ClassNotFound:
@@ -215,7 +214,6 @@ def render(text):
     return {"kind": "text"}
 
 
-# Chat blocks: no margins (the chat spaces its blocks), same type and colours.
 BLOCK_STYLE = STYLESHEET.replace("margin-top: 2px; margin-bottom: 12px;", "margin-top: 0; margin-bottom: 0;") \
     .replace("margin-top: 20px; margin-bottom: 8px;", "margin-top: 0; margin-bottom: 0;") \
     .replace("margin-top: 16px; margin-bottom: 6px;", "margin-top: 0; margin-bottom: 0;") \
@@ -245,12 +243,10 @@ def render_block(req):
         lexer = lexer_for(text, req.get("lang") or "") or get_lexer_by_name("text")
         pre = re.search(r"<pre[\s\S]*</pre>", code_html(text, lexer, 12))
         return pre.group(0) if pre else html.escape(text)
-    # Our own Streamdown-style renderer (bin/kuwai_md.py, stdlib): python-markdown went
-    # missing with Python 3.14 and every block came back as raw text.
     sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
     import kuwai_md
     if req.get("live"):
-        text = kuwai_md.heal(text)      # the block being written: close what's still open
+        text = kuwai_md.heal(text)
     return BLOCK_STYLE + kuwai_md.render(text)
 
 
@@ -266,7 +262,7 @@ def serve():
             continue
         try:
             out = {"id": req.get("id"), "html": render_block(req)}
-        except Exception as e:  # one bad block mustn't stop the server; "" → the chat shows Qt's own Markdown
+        except Exception as e:
             out = {"id": req.get("id"), "html": "", "error": str(e)}
         sys.stdout.write(json.dumps(out) + "\n")
         sys.stdout.flush()

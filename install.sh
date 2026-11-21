@@ -1,28 +1,33 @@
 #!/usr/bin/env bash
-# kuwai + kuwai: install, check, or remove, without touching anything it can't
-# put back. Run from the repo (wherever you cloned it).
-#
-#   ./install.sh               install (or update the install) for this user
-#   ./install.sh --dry-run     say what it would do; change nothing
-#   ./install.sh --deps        also install missing packages (sudo pacman; all in the official repos)
-#   ./install.sh --uninstall   put back what was there before the first install
-#   ./install.sh --doctor      only check (kuwai doctor + kuwai-check)
-#
-# What it does:
-#   1. checks the packages the desktop needs (and the optional ones)
-#   2. remembers, the first time only, how each path it replaces was (absent, a
-#      file, or a link) and whether each service was enabled: ~/.local/state/kuwai/original/
-#   3. ~/.config/hypr/hyprland.lua ← hypr/templates/hyprland.lua (your monitors.lua
-#      and user.lua beside it are created empty if missing, never overwritten)
-#   4. the stable channel: a checkout of the `stable` branch in ~/.local/share/kuwai
-#      (your session runs from it; `kuwai promote` moves it forward)
-#   5. user services (password prompt, clipboard history, GitHub/Gmail feeds,
-#      a daily snapshot of your own files: kuwai backup),
-#      linked from the stable checkout and enabled
-#   6. the checks
-# Never: root, autologin, or your settings. The login screen and alarms that
-# wake the laptop are separate, with sudo: greeter/install, system/install.
 set -euo pipefail
+
+usage() {
+cat <<'KUWAI_USAGE'
+kuwai + kuwai: install, check, or remove, without touching anything it can't
+put back. Run from the repo (wherever you cloned it).
+
+  ./install.sh               install (or update the install) for this user
+  ./install.sh --dry-run     say what it would do; change nothing
+  ./install.sh --deps        also install missing packages (sudo pacman; all in the official repos)
+  ./install.sh --uninstall   put back what was there before the first install
+  ./install.sh --doctor      only check (kuwai doctor + kuwai-check)
+
+What it does:
+  1. checks the packages the desktop needs (and the optional ones)
+  2. remembers, the first time only, how each path it replaces was (absent, a
+     file, or a link) and whether each service was enabled: ~/.local/state/kuwai/original/
+  3. ~/.config/hypr/hyprland.lua ← hypr/templates/hyprland.lua (your monitors.lua
+     and user.lua beside it are created empty if missing, never overwritten)
+  4. the stable channel: a checkout of the `stable` branch in ~/.local/share/kuwai
+     (your session runs from it; `kuwai promote` moves it forward)
+  5. user services (password prompt, clipboard history, GitHub/Gmail feeds,
+     a daily snapshot of your own files: kuwai backup),
+     linked from the stable checkout and enabled
+  6. the checks
+Never: root, autologin, or your settings. The login screen and alarms that
+wake the laptop are separate, with sudo: greeter/install, system/install.
+KUWAI_USAGE
+}
 
 REPO="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
 CFG=${XDG_CONFIG_HOME:-$HOME/.config}
@@ -38,7 +43,7 @@ for a in "$@"; do
         --deps) DEPS=1 ;;
         --uninstall) MODE=uninstall ;;
         --doctor) MODE=doctor ;;
-        -h|--help) sed -n '2,24p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help) usage; exit 0 ;;
         *) echo "unknown option: $a (see --help)" >&2; exit 2 ;;
     esac
 done
@@ -48,20 +53,15 @@ step() { printf '\n\033[1m%s\033[0m\n' "$*"; }
 ok()   { printf '  ✓ %s\n' "$*"; }
 warn() { printf '  • %s\n' "$*"; }
 do_()  { if [ $DRY = 1 ]; then printf '  would: %s\n' "$*"; else "$@"; fi; }
-userbus() { systemctl --user show-environment >/dev/null 2>&1; }   # a user session to talk to
+userbus() { systemctl --user show-environment >/dev/null 2>&1; }
 
-# ── Packages ─────────────────────────────────────────────────────────────
-# binary:package. Needed = the desktop doesn't work without; optional = one feature.
 NEED="Hyprland:hyprland qs:quickshell cliphist:cliphist wl-copy:wl-clipboard jq:jq grim:grim slurp:slurp
 brightnessctl:brightnessctl pw-play:pipewire-audio wpctl:wireplumber notify-send:libnotify curl:curl
 setpriv:util-linux gdbus:glib2 python3:python luac:lua playerctl:playerctl git:git"
 OPTIONAL="satty:satty(screenshot-editing) tesseract:tesseract(copy-text-from-images) mpv:mpv(live-wallpapers) mpvpaper:mpvpaper(live-wallpapers-outside-the-shell) socat:socat(live-wallpapers-outside-the-shell)
 magick:imagemagick(thumbnails) pdftoppm:poppler(PDF-previews) kitty:kitty(terminal) secret-tool:libsecret(Gmail-password-in-keyring)
 gh:github-cli(GitHub-notifications) wtype:wtype(typing-emoji-into-windows) ydotool:ydotool(tests) ddcutil:ddcutil(external-monitor-brightness)"
-# family:package, from the official repos. The UI face is Inter (OFL); SF Pro
-# is used instead when it is installed, but kuwai never installs it (Apple's
-# licence limits it to Apple platforms: that's the owner's call, not ours).
-FONTS="Inter:inter-font|Symbols Nerd Font:ttf-nerd-fonts-symbols"   # not -mono: that one is "Symbols Nerd Font Mono", which the shell doesn't ask for
+FONTS="Inter:inter-font|Symbols Nerd Font:ttf-nerd-fonts-symbols"
 
 check_deps() {
     step "Packages"
@@ -80,13 +80,11 @@ check_deps() {
     for f in "${fl[@]}"; do
         name=${f%%:*}; p=${f#*:}
         if grep -qx -- "$name\( Variable\)\?" <<<"$have"; then ok "font: $name"
-        elif [ "$name" = Inter ] && [ $sf = 1 ]; then :     # SF Pro stands in (said below)
+        elif [ "$name" = Inter ] && [ $sf = 1 ]; then :
         else warn "missing font: $name (package $p; the shell falls back to sans-serif)"; fonts+=("$p"); fi
     done
     [ $sf = 1 ] && ok "font: SF Pro (found: the shell uses it instead of Inter)" \
         || say "  (SF Pro is used instead of Inter if you install it yourself; Apple's licence limits it to Apple platforms)"
-    # Everything needed is in the official repos (no AUR helper). A missing
-    # font doesn't stop the install: the shell falls back to sans-serif.
     if [ ${#missing[@]} -gt 0 ] || [ ${#fonts[@]} -gt 0 ]; then
         if [ $DEPS = 1 ] && [ $DRY = 0 ]; then
             sudo pacman -S --needed "${missing[@]}" "${fonts[@]}"
@@ -100,10 +98,6 @@ check_deps() {
     return 0
 }
 
-# ── HyDE ─────────────────────────────────────────────────────────────────
-# kuwai grew on HyDE (another Hyprland dotfiles project) and still uses some
-# of it when it's there; it never installs it. Say which features need it
-# (docs/design/WITHOUT-HYDE.md has what each falls back to).
 # shellcheck source=lib/hyde.sh
 . "$REPO/lib/hyde.sh" 2>/dev/null || hyde_here() { return 1; }
 hyde_report() {
@@ -123,16 +117,10 @@ hyde_report() {
     say "  Live wallpapers, screensavers, the island, notifications, the lock and login screens don't need it."
 }
 
-# ── The original state ───────────────────────────────────────────────────
-# bin/kuwai_install.py keeps it: how each path was before the first install
-# (later installs don't overwrite that), and what kuwai put there, so
-# uninstall can tell your later edits from its own files.
 ORIG() { python3 "$REPO/bin/kuwai_install.py" --state "$STATE" "$@"; }
 remember()  { [ $DRY = 1 ] || ORIG remember "$1"; }
 installed() { [ $DRY = 1 ] || ORIG installed "$1"; }
 
-# Replace $2 with a copy of $1 (or, with -s, a link to $1) in one rename:
-# if $2 is a link, the link is replaced, never the file it points at.
 place() {
     local link=0; [ "$1" = -s ] && { link=1; shift; }
     local src=$1 dst=$2 tmp
@@ -158,10 +146,6 @@ install_all() {
     [ -f "$STATE/channel" ] || { [ $DRY = 1 ] && say "  would: write stable to $STATE/channel" || echo stable >"$STATE/channel"; }
     ok "channel: $(cat "$STATE/channel" 2>/dev/null || echo stable)"
 
-    # What this kuwai expects of the settings and state an earlier one left
-    # (bin/kuwai-migrations, migrations/): once per machine, before the
-    # services below start the new code. A fresh install runs them all as
-    # no-ops and records them. One that fails stops the install here.
     step "Migrations"
     local mig=$STABLE/bin/kuwai-migrations
     [ -x "$mig" ] || mig=$REPO/bin/kuwai-migrations
@@ -196,9 +180,6 @@ install_all() {
         if [ "$(readlink -f "$dst" 2>/dev/null)" = "$(readlink -f "$src")" ]; then ok "$u linked"
         else place -s "$src" "$dst"; ok "$u → $src"; fi
     done
-    # No user session here (a text console before your first login, or SSH):
-    # the services are linked, and enabled from your session instead of
-    # failing the whole install at its last step (seen in a clean container).
     if [ $DRY = 0 ] && ! userbus; then
         warn "no user session to enable them in (a text console or SSH); once you're logged in to Hyprland run:"
         say "    systemctl --user daemon-reload && systemctl --user enable ${UNITS[*]}"
@@ -224,8 +205,6 @@ install_all() {
 
 uninstall_all() {
     step "Uninstall"
-    # What to put back is read by python3. Without it (the packages were never
-    # installed) the first install never got as far as changing anything.
     if ! command -v python3 >/dev/null; then
         if [ -d "$STATE/original" ]; then
             say "  Uninstall reads what to put back with python3 (package python), which isn't installed; install it, then run this again."

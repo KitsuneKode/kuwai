@@ -54,8 +54,6 @@ class Store:
             self.data = json.loads(self.file.read_text())
         except (OSError, ValueError):
             root = self.state / "backup"
-            # Older installs already replaced things: their backups are the
-            # only trace of the original, and current unit states aren't.
             self.data = {"paths": {}, "units": {}, "legacy": root.is_dir() and any(root.glob("*/MANIFEST"))}
 
     def save(self):
@@ -124,7 +122,7 @@ class Store:
         if name in self.data["units"]:
             return
         if self.data.get("legacy"):
-            state = "unknown"   # an older install already enabled it; what it was before is lost
+            state = "unknown"
         else:
             r = subprocess.run(["systemctl", "--user", "is-enabled", name], capture_output=True, text=True)
             state = "enabled" if r.stdout.strip() == "enabled" else "disabled"
@@ -161,10 +159,10 @@ class Store:
         if not dry:
             self.dir.rename(done)
             legacy = self.state / "backup"
-            if legacy.is_dir():   # used up: a later install starts a fresh record
+            if legacy.is_dir():
                 legacy.rename(self.state / f"backup.restored-{stamp}")
             say(f"  (the record is kept in {done})")
-        return 0   # a conflict is reported, not a failure: your file is kept
+        return 0
 
     def restore_legacy(self, dry):
         """No record: an older installer's backups. Each path from its oldest copy."""

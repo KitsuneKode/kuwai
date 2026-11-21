@@ -53,7 +53,7 @@ def at_now(value, now=None):
     m = re.fullmatch(r"@now([+-]\d+)(ms|s|iso)", value) if isinstance(value, str) else None
     if not m:
         return value
-    if m[2] == "iso":           # seconds from now, as the text a web API gives
+    if m[2] == "iso":
         return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now + int(m[1])))
     return round(now * 1000) + int(m[1]) if m[2] == "ms" else round(now) + int(m[1])
 
@@ -196,8 +196,6 @@ def main():
         if staged_fail and not any(f.rule == "not-staged" for f in faults):
             faults.append(gate.Fault(f"all @{tag}", "runtime", "fail", f"the stage reported: {verdict.get('reason')} ({out / tag / 'runtime.log'})", None))
 
-    # The gestures, driven by a real pointer (tests/ui/gestures.qml), with
-    # motion and without: part of a whole run, skipped when scenes were picked.
     if not args.only and not args.scale:
         for motion in ("full", "reduced"):
             run = subprocess.run([str(ROOT / "bin/kuwai-ui-test"), "--case", "gestures", "--backend", "x11", "--motion", motion,
@@ -208,8 +206,6 @@ def main():
                 faults.append(gate.Fault(f"gestures ({motion} motion)", "gesture", "fail",
                                          said[1].strip() if said else f"the gesture run did not finish ({log})", None))
 
-    # The notification center and the island's cards from the keyboard alone
-    # (tests/ui/center-keys.qml, tests/ui/card-keys.qml).
     if not args.only and not args.scale:
         for case in ("center-keys", "card-keys", "pill"):
             run = subprocess.run([str(ROOT / "bin/kuwai-ui-test"), "--case", case, "--backend", "x11",
@@ -220,8 +216,6 @@ def main():
                 faults.append(gate.Fault(case.replace("-", " "), "keyboard", "fail",
                                          said[1].strip() if said else f"the {case} run did not finish ({log})", None))
 
-    # At rest nothing draws (tests/ui/idle.qml): the island with a capsule out
-    # and the login face, frames counted over a quiet 7 s.
     if not args.only and not args.scale:
         run = subprocess.run([str(ROOT / "bin/kuwai-ui-test"), "--case", "idle", "--backend", "x11", "--motion", "full",
                               "--output", str(out / "idle")], capture_output=True, text=True)
@@ -233,8 +227,6 @@ def main():
             faults.append(gate.Fault("idle", "idle", "fail",
                                      (said[1].strip() + (": " + counted[1].strip() if counted else "")) if said else f"the idle run did not finish ({log})", None))
 
-    # The lock clock's ground, on real pictures (tests/ui/clock-ground.qml): over
-    # snow, a bright sky and night, the clock must be readable and night untouched.
     if not args.only and not args.scale:
         from PIL import Image
         cg = out / "clock-ground"
@@ -255,7 +247,6 @@ def main():
     sheet(shots, out / "sheet.png")
     known = set(KNOWN.read_text().splitlines()) - {""} if KNOWN.is_file() else set()
     known = {k for k in known if not k.startswith("#")}
-    # A partial run can only speak for the scenes it staged.
     staged = {f"{s['id']} @x{scale:g}" for s in scenes for scale in scales}
     if not args.only and not args.scale:
         staged |= {"gestures (full motion)", "gestures (reduced motion)", "lock clock"}
@@ -267,7 +258,6 @@ def main():
 
     for f in sorted(fails, key=lambda f: f.key):
         print(("WRONG  " if f.key not in known else "known  ") + f.key)
-    # The same remark about many texts on one frame is one line with a count.
     grouped = collections.OrderedDict()
     for f in sorted(looks, key=lambda f: f.key):
         grouped.setdefault((f.scene, f.rule), []).append(f.what)

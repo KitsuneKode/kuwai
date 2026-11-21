@@ -47,7 +47,7 @@ def cutout(picture: Path):
     py = VENV / "bin" / "python"
     if not py.exists():
         return None
-    CACHE.mkdir(parents=True, exist_ok=True)   # the model saves into it before make() would have created it
+    CACHE.mkdir(parents=True, exist_ok=True)
     out = CACHE / (key(picture).stem + ".mask.png")
     if not out.exists():
         script = (
@@ -81,7 +81,6 @@ def build(mask, size):
     m = np.asarray(Image.fromarray((mask * 255).astype("uint8")).resize((WIDTH, mh), Image.BILINEAR),
                    dtype=np.float32) / 255.0
     sub = m > 0.5
-    # Small specks are not a subject; keep the pieces that are at least 2 % of the largest.
     lab, n = ndimage.label(sub)
     if n:
         sizes = ndimage.sum(sub, lab, range(1, n + 1))

@@ -1,14 +1,3 @@
-// VENDORED for the password prompt (shell-auth): a reviewed copy of
-// shell/components/NotchShape.qml, not a link. Rule for everything in shell-auth/: read
-// files and draw, nothing else — no Process, sockets, network or IPC here
-// (`kuwai doctor` checks). Change the shell's copy freely; update this one
-// on purpose (`kuwai auth diff` shows what drifted).
-// The notch: a black shape that hangs from the screen's top edge, with
-// concave "ears" where it meets the edge and continuous (squircle-like)
-// bottom corners, like a MacBook's notch. `w`×`h` is the body; the ears
-// add `ear` on each side. The fill is the island colour.
-//
-//   NotchShape { w: 220; h: 32; radius: 14 }
 import QtQuick
 import QtQuick.Shapes
 
@@ -26,8 +15,6 @@ Shape {
     preferredRendererType: Shape.CurveRenderer
 
     readonly property real r: Math.max(0, Math.min(radius, h / 2, w / 2))
-    // A continuous corner: the curve starts earlier (k) and its handles sit
-    // closer to the corner than a circle's, so the curvature eases in.
     readonly property real k: r * 1.28
     readonly property real e: Math.min(ear, h / 2)
 

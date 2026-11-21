@@ -1,21 +1,3 @@
--- kuwai.gpu — which GPU renders, and the driver environment that follows.
---
--- Hybrid laptops wire the panel to the iGPU and the HDMI/DP ports (often) to
--- the dGPU. Rendering on the GPU that owns the busy screen avoids a cross-GPU
--- copy every frame; rendering on the iGPU keeps the dGPU asleep on battery.
---
---   auto    (default) NVIDIA renders when a screen hangs off it at login (an
---           external monitor, or the panel itself behind a MUX in dGPU mode),
---           otherwise the iGPU renders and NVIDIA wakes only for prime-run apps.
---   nvidia  always NVIDIA        intel   always the iGPU
---
--- Pick with `kuwai gpu <auto|nvidia|intel>` (or KUWAI_GPU=...); it takes effect
--- at the next login — Hyprland chooses its renderer once, at start.
---
--- Everything here reads cached sysfs only. lspci/nvidia-smi would wake a
--- runtime-suspended dGPU, and that wake alone can outlast Hyprland's config
--- budget (both Omarchy and HyDE learned this the hard way).
-
 local K = require("kuwai.core")
 
 local VENDORS = { ["0x10de"] = "nvidia", ["0x8086"] = "intel", ["0x1002"] = "amd" }
@@ -59,7 +41,7 @@ if nv and igpu then
 		primary = nv
 	elseif mode == "intel" or mode == "igpu" then
 		primary = igpu
-	else -- auto: render where the screens are; default to dGPU on AC to prevent boot handshake race
+	else
 		local on_ac = K.read_line("/sys/class/power_supply/ACAD/online") == "1"
 		primary = (#nv.outputs > 0 or on_ac) and nv or igpu
 	end
@@ -67,7 +49,6 @@ end
 G.mode, G.primary = mode, primary and primary.vendor or "none"
 
 if primary and #cards > 1 then
-	-- Every card that drives a screen must be listed, primary first.
 	local list = { primary.dev }
 	for _, c in ipairs(cards) do
 		if c ~= primary then
@@ -78,18 +59,13 @@ if primary and #cards > 1 then
 end
 
 if nv then
-	-- nvidia-vaapi-driver: direct backend is the one that works on 525+.
 	hl.env("NVD_BACKEND", "direct")
 	if primary == nv then
-		-- Only when NVIDIA composites. On an iGPU-rendered session these force
-		-- Chromium/Electron video onto a GPU that doesn't own the screen
-		-- (black video, broken decode). prime-run sets them per app instead.
 		hl.env("LIBVA_DRIVER_NAME", "nvidia")
 		hl.env("__GLX_VENDOR_LIBRARY_NAME", "nvidia")
 	end
 end
 
--- For scripts and the shell: `echo $KUWAI_GPU_PRIMARY`.
 hl.env("KUWAI_GPU_PRIMARY", G.primary)
 print(("[kuwai] gpu: mode=%s primary=%s nvidia_outputs=%s"):format(
 	mode,
@@ -97,15 +73,6 @@ print(("[kuwai] gpu: mode=%s primary=%s nvidia_outputs=%s"):format(
 	nv and table.concat(nv.outputs, ",") or "-"
 ))
 
--- Hardware cursors: Hyprland's auto (2) already avoids them while tearing and
--- uses a CPU buffer on NVIDIA. The old forced-off setting cost a software
--- cursor on every frame and isn't needed on the open 5xx/6xx drivers.
---
--- Anti-flicker is the other pre-explicit-sync workaround. On 555+ it drops
--- frames: a commit that lands while a page-flip is in flight is discarded,
--- and the new pixels stay invisible until something else redraws the whole
--- window. Typed text in Electron shows up when the window is unfocused,
--- because that redraw is the something else.
 K.config({
 	cursor = { no_hardware_cursors = 2 },
 	opengl = { nvidia_anti_flicker = false },

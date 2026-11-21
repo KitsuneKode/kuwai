@@ -1,15 +1,4 @@
 #!/usr/bin/env bash
-# Renders the login and lock screens into docs/media/login for the README:
-# stills of the login screen (greeter.qml's own shot mode) and GIFs of each
-# motion, filmed by shell/film.qml. Runs inside your Hyprland session; draws
-# windows for a few seconds each, locks nothing.
-#
-#   greeter/preview          all of it (~1 min)
-#
-# It runs in a throwaway HOME and runtime dir (your picture, wallpaper and
-# theme linked in), so the fake notifications and timers never touch yours.
-#
-# Needs quickshell, ffmpeg, ImageMagick and python3.
 set -euo pipefail
 
 KUWAI="$(cd "$(dirname "$0")/.." && pwd)"
@@ -20,8 +9,6 @@ trap 'rm -rf "$WORK"' EXIT
 mkdir -p "$OUT"
 face="$HOME/.face"
 
-# A throwaway HOME (your picture, wallpaper and theme linked in) and runtime
-# dir: what the films do to notifications and timers stays in there.
 SB="$WORK/sandbox"
 mkdir -p "$SB/home/.cache" "$SB/home/.config" "$SB/home/.local/state" "$SB/run"
 chmod 700 "$SB/run"
@@ -33,18 +20,17 @@ sandboxed() {
         WAYLAND_DISPLAY="$XDG_RUNTIME_DIR/${WAYLAND_DISPLAY:-wayland-0}" "$@"
 }
 
-shot() {   # shot <demo|""> <name>
+shot() {
     KUWAI_GREETER_DEMO="$1" KUWAI_GREETER_FACE="$face" KUWAI_GREETER_SHOT="$WORK/$2.png" \
         sandboxed timeout 30 qs -p "$SHELL_DIR/greeter.qml" >/dev/null 2>&1
     magick "$WORK/$2.png" -resize 1920x -quality 90 "$OUT/$2.webp"
     echo "  $2.webp"
 }
-film() {   # film <scene> <ms> [full]
+film() {
     mkdir -p "$WORK/$1"
     SCENE="$1" LENGTH="$2" OUT="$WORK/$1" FULL="${3:-}" \
         sandboxed timeout 40 qs -p "$SHELL_DIR/film.qml" >/dev/null 2>&1
 }
-# gif <scene> <name> <fps> <hold ms> <width> [crop w:h:x:y] [colours]
 gif() {
     python3 - "$WORK" "$OUT" "$@" <<'EOF'
 import glob, os, subprocess, sys
@@ -75,8 +61,7 @@ subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "concat", "-safe", "0", "-i
 print(f"  {name}.gif  {os.path.getsize(f'{out}/{name}.gif') // 1024} KB")
 EOF
 }
-drop() { rm -rf "${WORK:?}/$1"; }   # a scene's frames, once encoded
-# still <scene> <ms> <name>: the full-size frame taken nearest that moment.
+drop() { rm -rf "${WORK:?}/$1"; }
 still() {
     local f
     f=$(python3 -c "

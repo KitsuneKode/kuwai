@@ -1,31 +1,3 @@
-// kuwai's password prompt (the polkit authentication agent), grown out of the
-// island.
-//
-// It runs as its own small process (kuwai-auth.service), not inside the main
-// shell: nothing untrusted (notifications, clipboard previews, web content)
-// shares memory with what you type, and a reload or crash of the shell never
-// cancels an authentication. To still *be* the island, it starts exactly
-// where the island rests on your screen (the shell publishes that shape to
-// $XDG_RUNTIME_DIR/kuwai/island.json), in the same glass and the same springs,
-// grows into the card, and folds back into the island when it's done. Tokens,
-// type and the theme's accent come from the shell's own config/ and
-// components/ (symlinked; they read files only, no services).
-//
-// Security:
-//   · the password goes from the field straight to polkit's own checker
-//     (AuthFlow.submit → polkit-agent-helper-1, a system socket service); this
-//     code never stores, logs or forwards it, and the field is wiped on
-//     submit, cancel and close
-//   · it says what is asking: polkit's message, the action id, and whose
-//     password; it answers as *you* when polkit offers several admins
-//   · tries left and the lockout come from pam_faillock (`faillock`, your own
-//     record, read-only); a cancel counts as a try there, so it says so
-//   · Overlay layer, exclusive keyboard, dimmed screen: nothing sits above it
-//     or takes the keyboard while it's up; the lock screen still covers it
-//   · no crash handler or core dumps (see systemd/kuwai-auth.service); exits 3
-//     if another agent owns the session, and systemd falls back to KDE's
-//
-// Keys: ↵ authenticate · Esc cancel.
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -37,18 +9,14 @@ import qs.components
 ShellRoot {
     id: root
 
-    // ── The request ──────────────────────────────────────────────────────
     PolkitAgent {
         id: agent
         onAuthenticationRequestStarted: root.begin()
         onIsActiveChanged: if (!isActive && !root.succeeded) root.finish()
-        // A queued request becomes the current one while we're closed.
         onFlowChanged: if (flow && !root.open && !hold.running) root.begin()
     }
     readonly property var flow: agent.flow
 
-    // A snapshot, so the card keeps its words while it folds away after the
-    // request is gone.
     property bool open: false
     property string screenName: ""
     property string message: ""
@@ -72,22 +40,15 @@ ShellRoot {
         syncPrompt();
         faillock.running = true;
         capsProbe.running = true;
-        where.running = true;               // which screen you're on, then open
+        where.running = true;
     }
     function finish() {
         open = false;
         busy = false;
         pendingFile.setText("");
-        // Another request was waiting behind this one: bring it up (it used to
-        // stay invisible until something else woke the agent).
         Qt.callLater(() => { if (agent.flow && !agent.flow.isCompleted && !root.open) root.begin(); });
     }
-    // "A password is needed" for the island (every screen shows a lock chip
-    // until it's answered; clicking it brings this prompt to that screen).
-    // Only what is asking goes in this file, never anything typed.
     FileView { id: pendingFile; path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/kuwai/auth-pending"; printErrors: false }
-    // Line 3: this process's pid, so the island can tell a live prompt from a
-    // leftover (a crash mid-request). Cleared whenever the prompt starts.
     property string myPid: ""
     Process {
         running: true
@@ -95,7 +56,6 @@ ShellRoot {
         stdout: StdioCollector { onStreamFinished: { root.myPid = text.trim(); pendingFile.setText(""); } }
     }
     onOpenChanged: if (open) pendingFile.setText(describe(actionId) + "\n" + screenName + "\n" + myPid + "\n")
-    // The island asks for the prompt on another screen: move it there.
     FileView {
         path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/kuwai/auth-summon"
         watchChanges: true; printErrors: false
@@ -116,9 +76,6 @@ ShellRoot {
         promptText = (f.inputPrompt || "").replace(/[\s:]+$/, "");
         echo = !!f.responseVisible;
     }
-    // Polkit lists every admin and picks the first (often root): answer as
-    // you. Switching restarts PAM, which polkit reports as a failure; that one
-    // is swallowed. (From DankMaterialShell's agent.)
     function selectMe() {
         const f = agent.flow;
         if (!f || !f.identities || f.identities.length < 2 || !me) return;
@@ -163,20 +120,15 @@ ShellRoot {
         function onResponseVisibleChanged() { root.syncPrompt(); }
         function onSelectedIdentityChanged() { root.syncPrompt(); }
     }
-    // A beat on the check mark before folding away.
     Timer { id: hold; interval: 520; onTriggered: root.finish() }
 
-    // Never without an agent: exit 3 lets systemd start KDE's instead.
     Timer {
         interval: 6000; running: true
         onTriggered: if (!agent.isRegistered) { console.warn("kuwai-auth: another polkit agent owns this session"); Qt.exit(3); }
     }
 
-    // ── Which screen (Hyprland's word; Quickshell's can be stale) ────────
     Process {
         id: where
-        // The screen you're looking at (kuwai.where(): pointer and focus agree,
-        // or you just typed → the focused one, else the pointer's).
         command: ["hyprctl", "repl", "return kuwai.where()"]
         stdout: StdioCollector {
             onStreamFinished: {
@@ -199,8 +151,6 @@ ShellRoot {
         }
     }
 
-    // ── Tries left (pam_faillock) ────────────────────────────────────────
-    // Arch's defaults: 3 failures within 15 minutes lock the account for 10.
     property int deny: 3
     property int failInterval: 900
     property int unlockTime: 600
@@ -240,7 +190,6 @@ ShellRoot {
         }
     }
 
-    // ── The island's resting shape, per screen (published by the shell) ──
     property var shapes: ({})
     FileView {
         path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/kuwai/island.json"
@@ -268,7 +217,6 @@ ShellRoot {
             return /pacman -U\b/.test(root.message) ? "Install AUR updates" : "Install system updates";
         return m[id] || "Administrator access";
     }
-    // Your picture (~/.face), as a round PNG in the runtime dir.
     property string facePng: ""
     readonly property string faceOut: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/kuwai/face.png"
     Process {
@@ -277,7 +225,6 @@ ShellRoot {
         stdout: StdioCollector { onStreamFinished: if (text.trim() === "ok") root.facePng = root.faceOut }
     }
     function mmss(s) { return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); }
-    // Text on the accent: dark on light accents, white on dark ones.
     function onAccent(c) { return Theme.contrastInk(c); }
 
     Variants {
@@ -301,7 +248,6 @@ ShellRoot {
                 if (here) field.forceActiveFocus();
             }
 
-            // The island's own springs (IslandBar: grow 300/34.6, shrink 380/39).
             Spring {
                 id: g
                 tier: win.here ? (Theme.reduceMotion ? Theme.springFast : ({ stiffness: 300, damping: 34.6 }))
@@ -311,14 +257,12 @@ ShellRoot {
             }
             readonly property real p: Math.max(0, Math.min(1.08, g.value))
 
-            // The screen dims (it isn't clickable meanwhile).
             Rectangle {
                 anchors.fill: parent
                 color: Qt.rgba(0, 0, 0, 0.36 * Math.min(1, win.p))
                 MouseArea { anchors.fill: parent; enabled: win.here }
             }
 
-            // Soft shadow (plain rectangles: this process renders in software).
             Repeater {
                 model: 5
                 Rectangle {
@@ -340,11 +284,9 @@ ShellRoot {
                 x: Math.round((win.width - width) / 2)
                 y: win.rest.top
                 readonly property real radius: Math.min(height / 2, win.rest.h / 2 + (30 - win.rest.h / 2) * Math.min(1, win.p))
-                // Fades in over the island's first moves (so the island's own
-                // content goes under it smoothly) and out as it lands back.
                 opacity: Math.min(1, win.p * 5)
                 transform: Translate { id: shake; x: 0 }
-                clip: win.p < 0.98            // nothing spills past the shape while it grows
+                clip: win.p < 0.98
 
                 GlassCard {
                     visible: !win.rest.notch
@@ -352,8 +294,6 @@ ShellRoot {
                     radius: card.radius
                     tint: Qt.rgba(0, 0, 0, 0.9)
                 }
-                // The notch style: the same shape as the island, ears and all
-                // (IslandBar: radius 14 at rest, 30 grown).
                 NotchShape {
                     visible: win.rest.notch
                     x: -ear
@@ -386,12 +326,10 @@ ShellRoot {
                     x: 22; y: 22
                     width: card.fullW - 44
                     spacing: 0
-                    // Content arrives once the shape is mostly there, and leaves first.
                     opacity: win.here ? Math.max(0, Math.min(1, (win.p - 0.55) / 0.4))
                                       : Math.max(0, Math.min(1, (win.p - 0.7) / 0.3))
                     transform: Translate { y: (1 - content.opacity) * 6 }
 
-                    // Who and what
                     Row {
                         width: parent.width
                         spacing: 14
@@ -401,8 +339,6 @@ ShellRoot {
                                 anchors.fill: parent
                                 radius: 22
                                 color: Qt.rgba(1, 1, 1, 0.1)
-                                // ~/.face, cut round once by magick (this process
-                                // renders in software, which can't clip to a circle).
                                 Image {
                                     id: face
                                     anchors.fill: parent
@@ -420,7 +356,6 @@ ShellRoot {
                                     color: Theme.textPrimary
                                 }
                             }
-                            // The lock badge, in the theme's accent.
                             Rectangle {
                                 anchors { right: parent.right; bottom: parent.bottom; rightMargin: -3; bottomMargin: -3 }
                                 width: 20; height: 20; radius: 10
@@ -463,7 +398,6 @@ ShellRoot {
 
                     Item { width: 1; height: 18 }
 
-                    // Password
                     Rectangle {
                         id: box
                         width: parent.width; height: 44; radius: 22
@@ -488,13 +422,7 @@ ShellRoot {
                             height: parent.height
                             verticalAlignment: TextInput.AlignVCenter
                             enabled: !root.busy && !root.succeeded && root.lockLeft === 0
-                            // Nothing on screen says how long it is (a dot per
-                            // character tells anyone watching or recording the
-                            // length): no echo at all, like a terminal; the
-                            // dots below only pulse once per keystroke.
                             echoMode: root.echo ? TextInput.Normal : TextInput.NoEcho
-                            // A password field to assistive tech (unless the prompt asks to echo):
-                            // named by the prompt, never by what's typed.
                             Accessible.role: Accessible.EditableText
                             Accessible.passwordEdit: !root.echo
                             Accessible.name: root.promptText || "Password"
@@ -511,8 +439,6 @@ ShellRoot {
                             Keys.onPressed: event => {
                                 if (event.key === Qt.Key_CapsLock) { root.caps = !root.caps; capsProbe.running = true; }
                             }
-                            // Typing feedback that gives nothing away: always
-                            // five dots, a wave runs across them on each key.
                             Row {
                                 visible: !root.echo && !!field.text
                                 anchors.verticalCenter: parent.verticalCenter
@@ -541,7 +467,6 @@ ShellRoot {
                                     }
                                 }
                             }
-                            // (only a trigger for the dots' wave)
                             QtObject { id: keyPulse; signal hit() }
                             Label {
                                 visible: !field.text
@@ -550,7 +475,6 @@ ShellRoot {
                                 size: 14; color: Theme.textTertiary
                             }
                         }
-                        // Caps Lock on: say so where you're looking.
                         Rectangle {
                             id: capsTag
                             anchors { right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter }
@@ -568,7 +492,6 @@ ShellRoot {
                                 Label { anchors.verticalCenter: parent.verticalCenter; text: "Caps Lock"; size: 11; weight: Theme.wMedium; color: Theme.orange }
                             }
                         }
-                        // Checking: a quiet sweep along the bottom edge.
                         Rectangle {
                             visible: root.busy
                             anchors { bottom: parent.bottom; bottomMargin: 1 }
@@ -586,7 +509,6 @@ ShellRoot {
 
                     Item { width: 1; height: 10 }
 
-                    // Tries left, the lockout, PAM's own words.
                     Label {
                         id: note
                         width: parent.width
@@ -611,7 +533,6 @@ ShellRoot {
 
                     Item { width: 1; height: 18 }
 
-                    // Actions
                     Item {
                         width: parent.width; height: 36
                         Label {
@@ -639,7 +560,7 @@ ShellRoot {
 
             function submit() {
                 const v = field.text;
-                field.text = "";              // the field never keeps it
+                field.text = "";
                 if (!root.submit(v)) field.forceActiveFocus();
             }
         }

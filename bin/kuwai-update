@@ -73,7 +73,6 @@ NAME_OK = re.compile(r"^[a-z0-9@._+-]+$")
 SHA_OK = re.compile(r"^[0-9a-f]{40}$")
 
 
-# ── small helpers ────────────────────────────────────────────────────────────
 def sh(cmd, **kw):
     return subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True, text=True, **kw)
 
@@ -113,7 +112,6 @@ def git(d, *args, check=False):
     return r
 
 
-# ── check ────────────────────────────────────────────────────────────────────
 LINE = re.compile(r"^(\S+)\s+(\S+)\s+->\s+(\S+)")
 
 
@@ -255,14 +253,12 @@ def flatpak_updates():
             if len(p) < 4 or not FLATPAK_TARGET.match(p[0]):
                 continue
             ref, app = p[0], p[1]
-            # `list` shows refs without the app/ or runtime/ that `remote-ls` puts first.
             name, old = have.get(ref.split("/", 1)[-1], (app.split(".")[-1], ""))
             out.append({"id": f"{inst}:{ref}", "app": app, "name": name, "old": old, "new": p[2] or "newer build",
                         "origin": p[3], "install": inst, "runtime": ref.startswith("runtime/")})
     return out
 
 
-# ── AUR community standing ──────────────────────────────────────────────────
 AUR_RPC = "https://aur.archlinux.org/rpc/v5/info"
 
 
@@ -301,7 +297,6 @@ def aur_info(names):
     return out
 
 
-# ── AUR review ───────────────────────────────────────────────────────────────
 def clone(pkg):
     info = aur_info([pkg]).get(pkg, {})
     base = info.get("packageBase")
@@ -412,7 +407,6 @@ def review(pkg):
     if base:
         diff = git(d, "diff", "--no-color", "-U3", "--no-renames", base, head, "--", ".", ":(exclude).SRCINFO").stdout
     else:
-        # First time we see it: show every file as new (empty tree → head).
         empty = git(d, "hash-object", "-t", "tree", "/dev/null").stdout.strip()
         diff = git(d, "diff", "--no-color", "-U3", empty, head, "--", ".", ":(exclude).SRCINFO").stdout
     cur = None
@@ -454,9 +448,6 @@ def review(pkg):
     ver = re.search(r"^\s*pkgver = (.+)$", head_si, re.M)
     rel = re.search(r"^\s*pkgrel = (.+)$", head_si, re.M)
 
-    # A version bump rewrites the version, checksums and download links; that's
-    # routine. A line is routine when, with versions and hashes blanked out, it
-    # matches a line it replaced. Only the rest is flagged.
     vers = set()
     have = installed_version(pkg)
     if have:
@@ -516,7 +507,6 @@ def review(pkg):
     }
 
 
-# ── run ──────────────────────────────────────────────────────────────────────
 class Run:
     def __init__(self):
         os.makedirs(LOG_DIR, exist_ok=True)
@@ -531,7 +521,6 @@ class Run:
             os.symlink(os.path.basename(self.path), link)
         except OSError:
             pass
-        # Keep the ten newest logs.
         logs = sorted(f for f in os.listdir(LOG_DIR) if f.endswith(".log") and f != "last.log")
         for f in logs[:-10]:
             try:
@@ -545,7 +534,7 @@ class Run:
         try:
             print(line, flush=True)
         except (BrokenPipeError, OSError):
-            pass  # nobody listening on stdout: the events file still has it
+            pass
         if ev.get("e") == "log":
             self.log.write(ev["line"] + "\n")
         elif ev.get("e") in ("phase", "error", "done"):
@@ -564,17 +553,14 @@ class Run:
                                  env={**os.environ, "LC_ALL": "C", "PACMAN_COLOR": "never"}, start_new_session=True)
         pending = ""
         shown = ""
-        with open(out, newline="") as r:   # keep \r: progress redraws are handled below
+        with open(out, newline="") as r:
             while True:
                 chunk = r.read()
                 if chunk:
                     pending += ANSI.sub("", chunk)
                     *lines, pending = pending.split("\n")
                     for line in lines:
-                        # A progress bar redrawn with \r (flatpak, curl): the log
-                        # keeps the line's final state, not every redraw.
                         self.line(line.split("\r")[-1] if "\r" in line.rstrip("\r") else line, progress)
-                    # Still drawing (no newline yet): show where it is now.
                     now = pending.rstrip("\r").split("\r")[-1].strip()
                     if now and now != shown:
                         shown = now
@@ -615,7 +601,6 @@ def helper_ok():
         return False
 
 
-
 def agent_missing():
     """No polkit agent in this session: pkexec fails at once and looks like a
     cancel. Start one (kuwai's, else KDE's) and say so."""
@@ -643,9 +628,6 @@ class Root:
         self.R = R
         self.p = None
         self.prompts = 0
-        # The helper is used whenever its source is here: not installed yet (or
-        # out of date), the same password installs it and starts it, so even the
-        # first run asks once (it used to be once per step until `install-helper`).
         self.helper = os.path.isfile(HELPER_SRC)
 
     def open(self):
@@ -656,8 +638,6 @@ class Root:
         if helper_ok():
             cmd = ["pkexec", HELPER]
         else:
-            # Copied to a root-owned place first, then run from there (never from
-            # your home folder, which anything running as you could rewrite).
             self.R.emit(e="log", line="Setting up one-password updates (kuwai-update-root)")
             cmd = ["pkexec", "/bin/sh", "-c", 'umask 022 && /usr/bin/install -D -o root -g root -m 0755 -- "$1" "$2" && exec "$2"',
                    "sh", HELPER_SRC, HELPER]
@@ -673,7 +653,6 @@ class Root:
         if not self.helper:
             self.prompts += 1
             if op == "upgrade" and deps:
-                # One prompt for both: the upgrade, then the build deps marked as deps.
                 script = '/usr/bin/pacman -Syu --noconfirm --needed && /usr/bin/pacman -S --noconfirm --needed --asdeps -- "$@"'
                 return self.R.stream(["pkexec", "/bin/sh", "-c", script, "sh", *deps], progress=progress)
             cmd = {"upgrade": ["-Syu", "--noconfirm", "--needed"],
@@ -728,7 +707,6 @@ def prepare_recipe(repository, pkg, head):
         save(os.path.join(stage, ".kuwai-workspace.json"), {"schema": 1, "repository": os.path.realpath(repository), "created": time.time_ns()})
         return stage
     except Exception:
-        # No recipe has executed; an empty failed preparation is disposable.
         git(repository, "worktree", "remove", "--force", stage)
         if os.path.isdir(stage) and not os.listdir(stage): os.rmdir(stage)
         raise
@@ -832,12 +810,11 @@ def missing_deps(d):
     in_repo, aur_only = missing("depends|makedepends")
     check_repo, check_aur = missing("checkdepends")
     if check_aur:
-        return in_repo, aur_only, False   # tests skipped: what they need is only in the AUR
+        return in_repo, aur_only, False
     return sorted(set(in_repo + check_repo)), aur_only, True
 
 
 def run(args):
-    # Nothing outside should stop it halfway: a closed terminal or pipe is ignored.
     signal.signal(signal.SIGHUP, signal.SIG_IGN)
     signal.signal(signal.SIGPIPE, signal.SIG_IGN)
     os.makedirs(RUNTIME, exist_ok=True)
@@ -845,9 +822,6 @@ def run(args):
     try:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except OSError:
-        # Another update holds it (sysup in a terminal, an earlier start):
-        # wait for it instead of failing every step as "skipped"; then this
-        # one runs (what's left to do is checked afresh below).
         print(json.dumps({"e": "status", "line": "Waiting for the update that's already running…"}), flush=True)
         fcntl.flock(lock, fcntl.LOCK_EX)
     try:
@@ -879,12 +853,7 @@ def run_locked(args):
     trusted = set(load(TRUSTED, []))
     result = {"ok": True, "repo": None, "built": [], "skipped": [], "installed": [], "log": R.path}
 
-    # The plan first: a shell that joins mid-run (a restart, the panel opened
-    # later) reads it from the top of the feed, so its progress ring is scaled
-    # to what this run will do (it assumed "repo only" and sat at 97 % through
-    # every AUR build).
     R.emit(e="plan", repo=want_repo, aur=aur, flatpak=flatpaks)
-    # Pre-flight
     R.emit(e="phase", id="check", label="Checking space and power")
     for destination in ("/", CACHE, AUR_DIR):
         probe = os.path.abspath(destination)
@@ -896,7 +865,6 @@ def run_locked(args):
             R.emit(e="done", **{**result, "ok": False})
             return 1
 
-    # Prepare AUR packages first (no root): fetch, verify the reviewed commit, find deps.
     plan = []
     prepared = {}
     extra_repo_deps = []
@@ -906,7 +874,6 @@ def run_locked(args):
         except Exception as ex:
             result["skipped"].append({"pkg": pkg, "why": f"couldn't fetch it: {ex}"})
             continue
-        # --unreviewed: you chose "update everything now" for this run.
         want = head if (pkg in trusted or unreviewed) else approved.get(pkg, "")
         if want != head:
             result["skipped"].append({"pkg": pkg, "why": "it changed after you reviewed it: review it again" if want else "not reviewed"})
@@ -930,7 +897,6 @@ def run_locked(args):
         plan.append((pkg, d, head, tests, outputs))
     extra_repo_deps = sorted(set(extra_repo_deps))
 
-    # Root, once (kuwai-update-root installed): the password now, before the builds.
     root = Root(R)
     try:
         result["oneprompt"] = root.helper
@@ -941,7 +907,6 @@ def run_locked(args):
                 R.emit(e="done", **{**result, "ok": False, "cancelled": True})
                 return 1
 
-        # 1. Arch's packages, together; then the repo deps the AUR builds need, as deps.
         if want_repo or extra_repo_deps:
             R.emit(e="phase", id="repo", label="Updating Arch packages" if want_repo else "Installing build dependencies")
             rc = root.run("upgrade" if want_repo else "deps", progress="repo", deps=extra_repo_deps)
@@ -955,7 +920,6 @@ def run_locked(args):
                 return 1
             result["repo"] = True
 
-        # 2. AUR builds, as you.
         built = []
         for i, (pkg, d, head, tests, outputs) in enumerate(plan, 1):
             R.emit(e="phase", id="build", label=f"Building {pkg}", k=i, n=len(plan))
@@ -976,7 +940,6 @@ def run_locked(args):
             built.append((outputs, d, head, files))
             result["built"].extend(outputs)
 
-        # 3. Install them all with one prompt.
         if built:
             R.emit(e="phase", id="install", label=f"Installing {len(built)} AUR package" + ("s" if len(built) > 1 else ""))
             files = [f for b in built for f in b[3]]
@@ -1007,9 +970,6 @@ def run_locked(args):
         root.close()
     result["prompts"] = root.prompts
 
-    # 4. Flatpak (yours: no password; system-wide ones ask through polkit), one
-    # flatpak call per installation ("user:app/ID/arch/branch"; a bare ID from an
-    # older check: whichever installation has it).
     if flatpaks:
         R.emit(e="phase", id="flatpak", label=f"Updating {len(flatpaks)} Flatpak item" + ("s" if len(flatpaks) > 1 else ""))
         groups = {}
@@ -1024,7 +984,6 @@ def run_locked(args):
             R.emit(e="error", msg="Some Flatpak updates didn't install (see the log).")
             result["ok"] = False
 
-    # 5. What needs your attention afterwards.
     R.emit(e="phase", id="after", label="Finishing")
     running = os.uname().release
     result["restart"] = not os.path.isdir(f"/usr/lib/modules/{running}")
@@ -1064,7 +1023,6 @@ def main(argv):
         elif cmd == "run":
             return run(argv[1:])
         elif cmd == "install-helper":
-            # Root-owned, outside your home, so nothing running as you can change what runs as root.
             if helper_ok():
                 print(json.dumps({"installed": True, "already": True}))
                 return 0
@@ -1084,7 +1042,7 @@ def main(argv):
                 return 1
             sh(["systemctl", "--user", "reset-failed", UNIT + ".service"])
             os.makedirs(RUNTIME, exist_ok=True)
-            open(EVENTS, "w").close()   # a fresh feed for the island
+            open(EVENTS, "w").close()
             env = [f"--setenv={k}={os.environ[k]}" for k in ("PATH", "HOME", "LANG", "XDG_RUNTIME_DIR", "XDG_STATE_HOME", "XDG_CACHE_HOME") if k in os.environ]
             r = sh(["systemd-run", "--user", "--quiet", "--collect", f"--unit={UNIT}",
                     "--description=kuwai: installing updates", *env,
@@ -1097,7 +1055,7 @@ def main(argv):
         else:
             print(__doc__.strip(), file=sys.stderr)
             return 2
-    except Exception as ex:  # one JSON error, never a traceback in the UI
+    except Exception as ex:
         print(json.dumps({"error": str(ex)}))
         return 1
     return 0

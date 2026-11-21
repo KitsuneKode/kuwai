@@ -1,9 +1,4 @@
 #!/usr/bin/python3 -I
-# Root side of kuwai's alarms: set the RTC to wake the machine.
-# Runs from kuwai-wake.service when /var/lib/kuwai-wake/at changes. That file
-# holds one integer (a Unix time, or 0 for none) and is the only input; it is
-# parsed as a number, bounded to the next 8 days, and written to the RTC.
-# Installed root-owned at /usr/local/libexec/kuwai-wake-root by system/install.
 import os, sys, time
 
 AT = "/var/lib/kuwai-wake/at"
@@ -21,7 +16,7 @@ def main():
         return 1
     t = int(raw)
     now = int(time.time())
-    with open(RTC, "w") as f:      # clear first: the kernel refuses to overwrite a set alarm
+    with open(RTC, "w") as f:
         f.write("0")
     if t == 0:
         print("kuwai-wake: cleared")

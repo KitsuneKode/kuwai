@@ -36,16 +36,9 @@ Singleton {
                 let row;
                 try { row = JSON.parse(line); } catch (e) { return; }
                 if (!row || !row.brief) return;
-                alertProc.brief = row.brief;
-                alertProc.running = true;
+                Quickshell.execDetached([root.alertBin, row.brief]);
             }
         }
-    }
-
-    Process {
-        id: alertProc
-        property string brief: ""
-        command: [root.alertBin, brief]
     }
 
     // systemd-coredump stores each dump in /var/lib/systemd/coredump (its

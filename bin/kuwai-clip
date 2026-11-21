@@ -1,46 +1,31 @@
 #!/usr/bin/env bash
-# The clipboard panel's hands (shell/services/Clipboard.qml). History is
-# cliphist's (the wl-paste watchers keep feeding it); pins are kuwai's own
-# and outlive cliphist's 750-item cap.
-#
-#   kuwai-clip list                 cliphist list, wide previews
-#   kuwai-clip text ID              the entry's text (first 64 KiB)
-#   kuwai-clip thumb ID EXT         decode an image entry into the cache, print its path
-#   kuwai-clip copy ID|pin:N        put an entry (or pin) on the clipboard
-#   kuwai-clip paste ID|pin:N       copy, then paste into the focused window
-#   kuwai-clip open ID|pin:N        open with the default app (URL, path, image, text)
-#   kuwai-clip delete ID            remove from history
-#   kuwai-clip wipe                 clear history (pins stay)
-#   kuwai-clip copy-text TEXT       put this text on the clipboard (edits, transforms)
-#   kuwai-clip paste-text TEXT      …and paste it into the focused window
-#   kuwai-clip render ID|pin:N      what the text is, as rich text (bin/kuwai-render)
-#   kuwai-clip edit ID|pin:N        open it in your editor (nvim) in a floating kitty;
-#                                  if you change it, the edit lands on the clipboard
-#                                  ($KUWAI_EDITOR, else $EDITOR, else nvim; $KUWAI_TERMINAL, else kitty)
-#   kuwai-clip ocr ID|pin:N         the text in an image (tesseract)
-#   kuwai-clip save ID|pin:N        save to ~/Pictures/Clipboard; prints the path
-#   kuwai-clip save-as ID|pin:N NAME   save into ~/Pictures/Screenshots as NAME (an
-#                                  extension is added; a taken name gets -2, -3…)
-#   kuwai-clip stamp                record when the newest entry was copied (run by
-#                                  `wl-paste --watch kuwai-clip stamp`, hypr/kuwai/startup.lua)
-#   kuwai-clip files ID|pin:N       copied files (file:// URIs or a path): JSON with
-#                                  each one's path, name, size, type, whether it still
-#                                  exists, and a preview (PDF first page, the image)
-#   kuwai-clip pin ID               save an entry as a pin; prints its pin file
-#   kuwai-clip unpin FILE           remove a pin
 set -euo pipefail
+
+usage() {
+cat <<'KUWAI_USAGE'
+The clipboard panel's hands (shell/services/Clipboard.qml). History is
+cliphist's (the wl-paste watchers keep feeding it); pins are kuwai's own
+and outlive cliphist's 750-item cap.
+
+  kuwai-clip list                 cliphist list, wide previews
+  kuwai-clip text ID              the entry's text (first 64 KiB)
+  kuwai-clip thumb ID EXT         decode an image entry into the cache, print its path
+  kuwai-clip copy ID|pin:N        put an entry (or pin) on the clipboard
+  kuwai-clip paste ID|pin:N       copy, then paste into the focused window
+  kuwai-clip open ID|pin:N        open with the default app (URL, path, image, text)
+  kuwai-clip delete ID            remove from history
+  kuwai-clip wipe                 clear history (pins stay)
+  kuwai-clip copy-text TEXT       put this text on the clipboard (edits, transforms)
+  kuwai-clip paste-text TEXT      …and paste it into the focused window
+KUWAI_USAGE
+}
 
 cache="${XDG_CACHE_HOME:-$HOME/.cache}/kuwai/clip"
 pins="${XDG_DATA_HOME:-$HOME/.local/share}/kuwai-data/clipboard/pins"
 mkdir -p "$cache/thumbs" "$cache/open" "$cache/edit" "$pins"
-# Copies made for a moment (opened, edited) leave after a day, decoded images
-# after a week: kept bounded without anyone clearing history. Never fatal: under
-# set -e a failed find (a folder not made yet) ended the script before `list`,
-# and the clipboard panel showed nothing (2026-11-11).
 find "$cache/open" "$cache/edit" -type f -mmin +1440 -delete 2>/dev/null || true
 find "$cache/thumbs" -type f -mtime +7 -delete 2>/dev/null || true
 
-# An entry's bytes on stdout: a cliphist id, or pin:FILE.
 emit() {
     case "$1" in
         pin:*) cat -- "$pins/${1#pin:}" ;;
@@ -48,7 +33,7 @@ emit() {
     esac
 }
 
-ext_of() {   # sniff the type: png, jpg, … or txt
+ext_of() {
     case "$(file -b --mime-type "$1")" in
         image/png) echo png ;; image/jpeg) echo jpg ;; image/gif) echo gif ;;
         image/webp) echo webp ;; image/bmp) echo bmp ;; image/svg+xml) echo svg ;;
@@ -56,9 +41,6 @@ ext_of() {   # sniff the type: png, jpg, … or txt
     esac
 }
 
-# Copied files come back as files: a list of file:// URIs goes on the
-# clipboard as text/uri-list (what file managers and upload fields take),
-# without the ones that no longer exist.
 uris_existing() {
     while IFS= read -r line; do
         line="${line%$'\r'}"
@@ -93,11 +75,8 @@ case "${1:-}" in
     copy)  copy "$2" ;;
     paste|paste-text)
         if [ "$1" = paste ]; then copy "$2"; else printf '%s' "$2" | wl-copy; fi
-        # Class and address from when the panel opened (the window that should
-        # receive the paste). Focus it, then paste the way that app expects.
         hint_class=${3:-}
         hint_addr=${4:-}
-        # Spliced into a Lua string below: only a Hyprland address (0x + hex).
         [[ "$hint_addr" =~ ^0x[0-9a-fA-F]+$ ]] || hint_addr=""
         sleep 0.08
         if [ -n "$hint_addr" ]; then
@@ -117,7 +96,6 @@ case "${1:-}" in
         if [ "$ext" = txt ]; then
             text=$(head -c 4096 "$tmp" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
             single=$(printf '%s' "$text" | wc -l)
-            # A link, a path, or a file:// URI opens what it points at.
             if [ "$single" -eq 0 ] && [[ "$text" =~ ^(https?|ftp|mailto):[^[:space:]]+$ ]]; then
                 rm -f -- "$tmp"; exec xdg-open "$text"
             fi
@@ -162,16 +140,12 @@ for p in paths[:50]:
 print(json.dumps(out))
 ' ;;
     stamp)
-        # wl-paste hands us the new contents on stdin; we only want the moment.
         cat > /dev/null
         now=$(date +%s%3N)
-        # cliphist's own watcher stores the same copy; give it a moment.
         sleep 0.4
         id=$(cliphist list 2>/dev/null | head -1 | cut -f1)
         [ -n "$id" ] || exit 0
         times="$(dirname "$pins")/times.tsv"
-        # Once per entry: re-copying the same thing moves it to the top with
-        # the same id, which counts as copying it again.
         tail -1 "$times" 2>/dev/null | grep -q "^$id	" || printf '%s\t%s\n' "$id" "$now" >> "$times" ;;
     edit)
         dir="$cache/edit"; mkdir -p "$dir"
@@ -183,7 +157,6 @@ print(json.dumps(out))
         before=$(sha1sum < "$f")
         editor="${KUWAI_EDITOR:-${EDITOR:-nvim}}"
         term="${KUWAI_TERMINAL:-kitty}"
-        # The window class lets Hyprland float and centre it (hypr/kuwai/rules.lua).
         $term --class kuwai-edit --title "Clipboard · $(basename "$f")" -e $editor "$f"
         if [ "$(sha1sum < "$f")" != "$before" ]; then wl-copy < "$f"; fi ;;
     render) emit "$2" | head -c 262144 | "$(dirname "$0")/kuwai-render" ;;
@@ -210,10 +183,6 @@ print(json.dumps(out))
         while [ -e "$out" ]; do out="$dir/$name-$n.$ext"; n=$((n + 1)); done
         mv -- "$tmp" "$out"
         printf '%s\n' "$out" ;;
-    # Deleting an entry or clearing history also removes what this script made
-    # from it: the decoded image (a full copy, not a small preview), and on a
-    # wipe the opened and edited copies and the render cache (review
-    # 2026-11-10, finding 12). Pins and files you saved (Pictures) stay.
     delete)
         printf '%s\t\n' "$2" | cliphist delete
         [[ "$2" =~ ^[0-9]+$ ]] && rm -f -- "$cache/thumbs/$2".* ;;
@@ -228,5 +197,5 @@ print(json.dumps(out))
         mv -- "$tmp" "$pins/$name"
         printf '%s\n' "$name" ;;
     unpin)  rm -f -- "$pins/${2##*/}" ;;
-    *) sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+    *) usage; exit 2 ;;
 esac

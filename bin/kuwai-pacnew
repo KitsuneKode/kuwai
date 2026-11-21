@@ -21,7 +21,6 @@ import sys
 
 HELPER = "/usr/local/lib/kuwai/kuwai-update-root"
 HELPER_SRC = os.path.join(os.path.dirname(os.path.realpath(__file__)), "kuwai-update-root")
-# Files whose own tools keep them current: always keep yours.
 KEEP = {"/etc/pacman.d/mirrorlist": "reflector keeps your mirror list fresh"}
 
 
@@ -59,9 +58,8 @@ def original(path):
         pkgs = [f for f in os.listdir(cache) if f.startswith(owner + "-") and ".pkg.tar" in f and not f.endswith(".sig")]
     except OSError:
         return None
-    # name-version-rel-arch.pkg.tar.*: older than the installed version, newest first.
     def ver(f):
-        rest = f[len(owner) + 1:].split(".pkg.tar")[0].rsplit("-", 1)[0]   # drop arch
+        rest = f[len(owner) + 1:].split(".pkg.tar")[0].rsplit("-", 1)[0]
         return rest if re.match(r"^[0-9:]", rest) else None
     olds = [(ver(f), f) for f in pkgs if ver(f) and ver(f) != cur]
     if not olds:
@@ -89,12 +87,10 @@ def yours_evident(gone, new):
     everywhere = {norm(l.lstrip().lstrip("#")) for l in lines}
     keys_anywhere = {norm(l.lstrip().lstrip("#").split("=", 1)[0]) for l in lines if "=" in l}
     def added_by_you(l):
-        # A section or a setting the default doesn't mention at all, even commented.
         if re.match(r"^\s*\[.+\]\s*$", l):
             return norm(l) not in everywhere
         if "=" in l:
             return norm(l.split("=", 1)[0]) not in keys_anywhere
-        # A bare one-word flag it never mentions (ILoveCandy); not JSON or other syntax.
         return bool(re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]*", l.strip())) and norm(l) not in everywhere
     def mine(l):
         if added_by_you(l):
@@ -113,7 +109,6 @@ def describe(path):
     if not item["readable"]:
         item.update(rec="review", why="Only root can read it: look before choosing", gone=[], added=[], lines=0)
         return item
-    # Three-way, when the previous default is still cached: yours untouched → take.
     orig = original(path)
     if orig is not None:
         with open(path, errors="replace") as f:
@@ -122,19 +117,13 @@ def describe(path):
             item.update(rec="take", why="You never changed it: the new default replaces it", gone=[], added=[], lines=0)
             return item
     mine, theirs = active(path), active(new)
-    # Spacing isn't a change ("type": "x" vs "type":"x").
     norm = lambda l: re.sub(r"\s+", "", l)
     nm, nt = {norm(l) for l in mine}, {norm(l) for l in theirs}
-    gone = [l for l in mine if norm(l) not in nt]      # your settings the default doesn't have
-    added = [l for l in theirs if norm(l) not in nm]   # new settings you don't have
-    # The same settings with the default's values (MODULES=() for your
-    # MODULES=(nvidia …)) aren't new: taking them would only undo yours.
+    gone = [l for l in mine if norm(l) not in nt]
+    added = [l for l in theirs if norm(l) not in nm]
     key = lambda l: re.split(r"\s*[=:]\s*", l, maxsplit=1)[0].strip().strip('"') if re.search(r"[=:]", l) else None
     gone_keys = {key(l) for l in gone if key(l)}
     really_added = [l for l in added if key(l) not in gone_keys]
-    # What you removed or commented out of the old default (three-way, when
-    # it is cached): a line the new default still has is your choice coming
-    # back, not a new setting (review 2026-11-10, finding 13).
     removed = {norm(l) for l in active_lines(orig)} - nm if orig is not None else set()
     turned_back = [l for l in added if norm(l) in removed]
     item.update(gone=short(gone), added=short(added), lines=len(gone) + len(added))
@@ -144,16 +133,12 @@ def describe(path):
         item.update(rec="keep", gone=short(turned_back),
                     why="You turned these off; the new default would turn them back on")
     elif not gone and orig is None:
-        # Without the old default nobody can tell a setting you removed from
-        # one the package added: don't claim the file was never changed.
         item.update(rec="review", why="The new default adds settings: check none of them is one you removed on purpose")
     elif not gone:
         item.update(rec="take", why="Everything you have is in the new default, which adds settings")
     elif not really_added and yours_evident(gone, new):
         item.update(rec="keep", why="You switched these on or filled them in; the new default would undo that")
     elif not really_added and orig is None:
-        # Same settings, other values, and the old default isn't cached: we
-        # can't tell whether you or the package set them. Say what differs.
         item.update(rec="review", why="The new default changes these values (you may have set them)")
     elif not really_added:
         item.update(rec="keep", why="The new default would only undo your settings")

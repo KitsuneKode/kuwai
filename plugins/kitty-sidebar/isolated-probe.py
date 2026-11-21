@@ -42,7 +42,6 @@ env = {
 resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
 log = BASE / "evidence/headless.log"
 with log.open("w") as output:
-    # Mask DRM cards, ttys, D-Bus, live runtime sockets and sysfs. /mnt maps ONLY our run directory.
     command = ["/usr/bin/bwrap", "--ro-bind", "/", "/", "--dev", "/dev", "--proc", "/proc",
                "--tmpfs", "/run", "--tmpfs", "/sys", "--tmpfs", "/tmp", "--bind", str(run), "/mnt",
                "--unshare-all", "--die-with-parent", "--new-session", "--chdir", "/mnt",

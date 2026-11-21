@@ -74,7 +74,6 @@ class DDC:
             return False
         if self.lib.ddca_set_non_table_vcp_value(h, 0x10, (raw >> 8) & 0xff, raw & 0xff) == 0:
             return True
-        # A stale handle (the monitor slept or was replugged): reopen once.
         self.lib.ddca_close_display(h)
         self.handles.pop(bus, None)
         h = self._handle(bus)
@@ -109,8 +108,6 @@ def build_modules(names):
     names = sorted(set(names), key=lambda name: (not internal(name), name))
     command = '"$HOME/Scripts/brightness.sh"'
     def module(part, output=None):
-        # Waybar exports WAYBAR_OUTPUT_NAME to exec only, not to click/scroll
-        # handlers, so the main chip resolves its screen from the cursor.
         target = f' --output {shlex.quote(output)}' if output else ' --at-cursor'
         bar = '' if output else ' --output "${WAYBAR_OUTPUT_NAME:-}"'
         return {'exec': f'{command} watch --part {shlex.quote(part)}{bar}',
@@ -147,9 +144,6 @@ def level_icon(value):
 
 
 def next_value(current, up, is_internal):
-    # One curve for every screen: fine 1% steps at the dim end (where 5% is
-    # a big jump to the eye), then the 5% grid so 41 goes to 45/40 instead of
-    # drifting through 46, 51, ... (Monitors used to step 5% all the way down.)
     if current < 10 if up else current <= 10:
         value = current + (1 if up else -1)
     else:
@@ -266,8 +260,6 @@ class Controller:
         return next((m.get('model') for m in self.monitors if m['name'] == name and m.get('model')), name)
 
     def chip(self, o, icon):
-        # Fixed-width number and no pending marker in the text: the bar must not
-        # reflow on every step. Pending/error state is carried by CSS classes.
         value = o.desired if o.desired is not None else o.value
         text = f'{icon} {value:>2}%' if value is not None else f'{icon} —'
         return text + ' !' if o.error else text
@@ -306,7 +298,7 @@ class Controller:
     def render_part(self, part=None, output=None):
         data = self.render(output)
         if part is None:
-            return data  # Backwards-compatible diagnostic stream.
+            return data
         if part == 'main':
             if self.show_all and self.online and self.monitors:
                 data = dict(data, text='󰃠')
@@ -351,7 +343,7 @@ class Controller:
             if self.reload_task:
                 self.reload_task.cancel()
             async def reload_bar():
-                await asyncio.sleep(.2)  # Coalesce connector event bursts.
+                await asyncio.sleep(.2)
                 try:
                     await self.run('pkill', '-USR2', '-u', str(os.getuid()), '-x', 'waybar', timeout=2)
                 except (RuntimeError, TimeoutError):
@@ -361,9 +353,6 @@ class Controller:
             print(f'Brightness modules: {exc}', file=sys.stderr)
 
     def queue_notify(self, name, error=None, limit=False):
-        # Feedback shows the requested value immediately instead of waiting for
-        # a slow DDC write. A running glass HUD (~/.config/quickshell/glass-osd)
-        # gets an event on its `watch --part osd` stream; dunst is the fallback.
         o = self.outputs.get(name)
         if self.osd_queues and o is not None:
             event = {'kind': 'brightness', 'output': name, 'internal': internal(name),
@@ -375,7 +364,6 @@ class Controller:
                     queue.get_nowait()
                 queue.put_nowait(event)
             return
-        # Key repeat collapses into one in-flight notify-send.
         self.notice = (name, error)
         if self.notice_task is None or self.notice_task.done():
             self.notice_task = asyncio.create_task(self.notifier())
@@ -389,8 +377,6 @@ class Controller:
             await self.notify(name, None if error else o.desired if o.desired is not None else o.value, error)
 
     async def notify(self, name, value=None, error=None):
-        # Summary is the display, body the value; the dunst rule in
-        # dunstrc.d/50-brightness.conf lays them out as an Apple-style HUD.
         level = 0 if not value else 1 + min(3, value * 4 // 101)
         icon = OSD_ICONS / f'sun-{level}.svg'
         args = ['notify-send', '-a', 'Brightness', '-t', '1500', '-u', 'low',
@@ -406,7 +392,7 @@ class Controller:
         try:
             await self.run(*args, timeout=2)
         except (RuntimeError, TimeoutError):
-            pass  # Notifications are feedback, never a prerequisite for hardware.
+            pass
 
     async def initialize_ddc(self):
         async with self.topology_lock:
@@ -467,9 +453,6 @@ class Controller:
                     self.workers[name].cancel()
                 self.outputs[name] = Output(name)
         if changed:
-            # Bus numbers are not output identities. Invalidate them before
-            # publishing a new topology, so a key cannot hit a reassigned bus
-            # while discovery is still in flight.
             for name, output in self.outputs.items():
                 if not internal(name):
                     if name in self.workers:
@@ -478,8 +461,6 @@ class Controller:
         self.monitors = monitors
         if self.focus_revision == focus_revision or self.focus not in names:
             self.focus = next((m['name'] for m in monitors if m.get('focused')), monitors[0]['name'] if monitors else '')
-        # Laptop backlight is uniquely identifiable here. Multiple internal panels
-        # need an explicit device mapping; never guess and adjust the wrong one.
         devices = sorted(Path('/sys/class/backlight').glob('*'))
         internals = [o for n, o in self.outputs.items() if internal(n)]
         for o in internals:
@@ -502,8 +483,6 @@ class Controller:
             self.initializing = asyncio.create_task(self.initialize_ddc())
 
     async def apply(self, output):
-        # A worker owns a particular Output object. Hotplug replaces that object;
-        # cancellation and identity checks prevent a stale cache from surviving.
         while self.outputs.get(output.name) is output and output.desired is not None:
             desired = output.desired
             try:
@@ -511,9 +490,6 @@ class Controller:
                     await self.run('brightnessctl', '-d', output.device.name, '-q', 'set', f'{desired}%')
                     self.read_backlight(output)
                 else:
-                    # Ramp in eased 1% steps (at most 8, ~70 ms each), so the
-                    # external screen fades like the laptop's backlight. A new
-                    # request mid-ramp retargets from wherever it got to.
                     start = output.value if output.value is not None else desired
                     span = desired - start
                     steps = max(1, min(8, abs(span)))
@@ -545,8 +521,6 @@ class Controller:
                 return
             if self.outputs.get(output.name) is not output:
                 return
-            # Clear only the request actually sent. New commands may have arrived
-            # during I/O. No process/file read-modify-write race or exit handoff.
             if output.desired == desired:
                 output.desired = None
             self.publish()
@@ -562,7 +536,7 @@ class Controller:
             finally:
                 writer.close()
         except (OSError, ValueError, TimeoutError):
-            return None  # Fall back to the focused screen.
+            return None
         for m in self.monitors:
             width, height = m['width'] / m['scale'], m['height'] / m['scale']
             if m.get('transform', 0) % 2:
@@ -615,7 +589,7 @@ class Controller:
         current = o.desired if o.desired is not None else o.value
         value = request['value'] if action == 'set' else next_value(current, action in ('up', 'i'), internal(o.name))
         if value == current and o.desired is None:
-            self.queue_notify(o.name, limit=True)  # At a limit: still show where it is.
+            self.queue_notify(o.name, limit=True)
             return {'ok': True, 'output': o.name, 'value': value}
         o.desired, o.error = value, ''
         o.revision += 1
@@ -637,7 +611,7 @@ class Controller:
                     raise ValueError('Invalid brightness segment')
                 queue = asyncio.Queue(maxsize=1)
                 if part == 'osd':
-                    self.osd_queues.add(queue)  # Events only; nothing to render.
+                    self.osd_queues.add(queue)
                 else:
                     self.subscribers[queue] = (part, output)
                     data = self.render_part(part, output)
@@ -676,7 +650,7 @@ class Controller:
             try:
                 await writer.wait_closed()
             except OSError:
-                pass  # A bar can exit/reset its socket during a normal reload.
+                pass
 
     async def hypr_events(self):
         address = hypr_socket('.socket2.sock')
@@ -707,8 +681,6 @@ class Controller:
             await asyncio.sleep(2)
 
     async def backlight_events(self):
-        # Passive kernel uevents also catch hypridle dim/restore and changes made
-        # by other programs. No timer, brightnessctl read, or extra subprocess.
         try:
             sock = socket.socket(socket.AF_NETLINK, socket.SOCK_DGRAM, 15)
             sock.bind((0, 1))
@@ -758,9 +730,6 @@ async def serve(runtime):
             c.module_file = module_file
         server = await asyncio.start_unix_server(c.handle, path=str(address), limit=8192)
         (runtime / 'pid').write_text(str(os.getpid()))
-        # Which code this controller is: the client compares it with its own copy
-        # and replaces a controller that is another checkout's, or this file
-        # before it changed (brightness-client.py: stale_daemon).
         here = Path(__file__).resolve()
         (runtime / 'owner').write_text(json.dumps({'path': str(here), 'sha': hashlib.sha256(here.read_bytes()).hexdigest()}))
         tasks = [asyncio.create_task(c.hypr_events()), asyncio.create_task(c.backlight_events())]
@@ -771,8 +740,6 @@ async def serve(runtime):
         try:
             async with server:
                 await stop.wait()
-                # Since Python 3.12 leaving the block waits for every client to
-                # disconnect; Waybar watchers never do, so drop them explicitly.
                 server.close()
                 server.close_clients()
         finally:
