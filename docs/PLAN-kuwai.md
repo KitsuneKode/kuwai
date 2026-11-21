@@ -17,11 +17,17 @@ shell opens go to app.slice via Apps.qml; auth never gives up (backoff to
 30 s); migration 0003 links the units; `kuwai status`. The CPU gate's coin
 flip while agents work is named (10 %), not hidden.
 
-Not live yet: stable is 7500442. To land: commit (or set aside) the
-comment-removal session's uncommitted edits in the main checkout, merge
-feat/shell-unit (conflicts only in bin/kuwai{,-check,-ctl,-shell} and
-install.sh: comments vs code), `bin/kuwai promote`. Then check: `kuwai status`
-says active; `kuwai-check` says "unit: kept running by kuwai-shell.service".
+Live (stable, 2026-11-21 ~11:00): promoted through `kuwai promote`; the
+comment-removal session's work committed first (7e665f8) at the owner's word.
+Proven on the session: SIGKILL of the shell → back in 1.1 s, notifications
+its own, no dunst, kuwai-check green incl. "unit: kept running by
+kuwai-shell.service"; the launch command runs in app.slice with Hyprland's
+environment and nothing in the journal. Found on the way and fixed: the unit
+lacked what hl.env sets (bin/kuwai-session-env now exports Hyprland's whole
+environment, uwsm-style, minus HYPRLAND_CONFIG); a restart's own SIGKILL
+fired OnFailure and the fallback cancelled the start (SuccessExitStatus).
+Not proven: a real login (startup.lua's export + first start), a broken file
+reaching the fallback unit on the live session.
 
 Next: the T3 ring's 600 ms step costs ~120 frames on the 200 Hz monitor (8–12 %
 in a second that has one): step it cheaper or less often; the notification
