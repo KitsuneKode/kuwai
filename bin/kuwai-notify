@@ -4,14 +4,16 @@ app=kuwai
 icon=""
 urgency=1
 wait=0
+transient=0
 actions=()
 declare -A xhints=()
-while getopts "a:i:u:wA:H:" opt; do
+while getopts "a:i:u:wtA:H:" opt; do
     case $opt in
         a) app=$OPTARG ;;
         i) icon=$OPTARG ;;
         u) case $OPTARG in critical) urgency=2 ;; low) urgency=0 ;; *) urgency=1 ;; esac ;;
         w) wait=1 ;;
+        t) transient=1 ;;
         A) actions+=("$OPTARG") ;;
         H)
             key=${OPTARG%%=*}; val=${OPTARG#*=}
@@ -26,6 +28,7 @@ shift $((OPTIND - 1))
 title=${1:-Notification}; body=${2:-}
 
 hints="{\"urgency\": <byte $urgency>"
+[ "$transient" = 1 ] && hints+=", \"transient\": <true>"
 if command -v jq >/dev/null 2>&1; then
     for k in "${!xhints[@]}"; do
         esc=$(jq -Rn --arg v "${xhints[$k]}" '$v')

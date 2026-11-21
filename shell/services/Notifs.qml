@@ -18,6 +18,7 @@ import qs.config
 // running. Found 2026-11-17: two edits to otp.mjs, no reload.
 import "otp.mjs" as Otp
 import "notifUndo.mjs" as Undo
+import "notifTidy.mjs" as Tidy
 
 Singleton {
     property real copyAskedAt: 0
@@ -179,6 +180,8 @@ Singleton {
         // While the center is open the new one just lands in its list; so
         // does a quiet one (a bot's pull request, say).
         item.popup = toastsFor(item);
+        if (n.transient && !item.popup) { n.dismiss(); item.destroy(); return; }
+        item.fleeting = !!n.transient;
         // One app, one toast: a burst (14 meeting reminders) replaces its own
         // toast on screen instead of pushing everyone else's off. The earlier
         // ones stay in the history; the toast counts them (+13).
@@ -187,6 +190,7 @@ Singleton {
             for (const p of prev) { item.burst += 1 + p.burst; p.leaving = true; }
         }
         items = [item, ...items];
+        for (const r of Tidy.repeats(items, item)) remove(r);
         // Sound only where it earns its place: critical alerts (they also
         // break through do-not-disturb), unless the sender asked for silence.
         if (item.severity === "critical" && !(n.hints && n.hints["suppress-sound"])) alertSound.running = true;
@@ -647,7 +651,7 @@ Singleton {
         item.popup = false;
         item.leaving = false;
         item.hovered = false;
-        if (item.discard) remove(item);
+        if (item.discard || item.fleeting) remove(item);
     }
 
     // Every notification from one app (the center's group "clear").
@@ -797,15 +801,19 @@ Singleton {
         save();
     }
 
-    // Seen and untouched for a day (by default): cleared, so the center holds
-    // what is still news. Checked on load and every ten minutes.
+    // What is no longer news leaves on its own (notifTidy.mjs): seen ones after
+    // notifKeepSeenHours, low ones an hour after seen, sudo prompts, T3 threads opened.
     function sweepSeen() {
-        const hours = Settings.notifKeepSeenHours;
-        if (!loaded || hours <= 0) return;
-        const cutoff = Date.now() - hours * 3600000;
-        const old = items.filter(i => !i.popup && i.time <= lastSeen && i.time < cutoff);
-        for (const i of old) remove(i);
+        if (!loaded) return;
+        for (const i of Tidy.expired(items, Date.now(), lastSeen, Settings.notifKeepSeenHours)) remove(i);
+        for (const i of Tidy.olderTwins(items)) remove(i);
+        settleT3();
     }
+    function settleT3() {
+        if (!loaded) return;
+        for (const i of Tidy.t3Settled(items, T3Code, Date.now())) remove(i);
+    }
+    Connections { target: T3Code; function onRawItemsChanged() { root.settleT3(); } }
     Timer { interval: 600000; running: root.loaded; repeat: true; triggeredOnStart: true; onTriggered: root.sweepSeen() }
 
     // History: at most maxItems, and at most perApp from any one app, so a

@@ -42,6 +42,7 @@ QtObject {
     property bool replyable: false    // feeds offered inline reply when live
 
     // ── Popup state ──────────────────────────────────────────────────────
+    property bool fleeting: false
     property bool popup: false        // on screen (including while leaving)
     property bool leaving: false      // exit animation requested
     property bool discard: false      // drop from history once it has left
