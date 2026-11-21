@@ -91,6 +91,7 @@ def test_apps_never_writes_what_it_opens_into_the_journal():
     src = (REPO / "shell/services/Apps.qml").read_text()
     assert '"--description=kuwai: opened from the shell"' in src
     assert '"--slice=app.slice"' in src
+    assert '"--property=StandardOutput=null", "--property=StandardError=null"' in src, "an app's own output (URLs, tokens) stays out of the journal"
 
 
 def env_line(value):

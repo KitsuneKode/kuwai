@@ -13,6 +13,7 @@ Singleton {
         if (!unit) return cmd;
         return ["systemd-run", "--user", "--collect", "--quiet", "--slice=app.slice",
                 "--description=kuwai: opened from the shell",
+                "--property=StandardOutput=null", "--property=StandardError=null",
                 "--working-directory=" + (dir || home), "--"].concat(cmd);
     }
 
