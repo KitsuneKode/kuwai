@@ -25,40 +25,80 @@ from today, so none of it is a guess about what exists.
 - **The screens stay on while agents work** (62d3520): turning them off
   disconnected the external monitor and moved its workspaces.
 
+## What T3 Code already gives us (found 2026-11-21, no new token needed)
+
+- **Every provider's state**: `~/.t3/caches/<instance>.json`, one per provider
+  instance (23 here): `displayName`, `driver`, the owner's `accentColor`,
+  `status` ready · warning · disabled with a `message` in words ("Sign in with
+  ChatGPT to use Codex."), `auth.label` (the plan: "Claude Pro Subscription"),
+  `models[]` with real names ("Claude Opus 5.5"). `auth` also holds email and
+  workspace ids: never read past `label` and `status`.
+- **Every turn's tokens**: `statev2.sqlite`,
+  `orchestration_v2_projection_provider_turns.payload_json`:
+  `turnTokenUsage` (input, output, cached, cache-creation, reasoning, models,
+  `usageStatus` complete · partial · unavailable), `tokenUsage.usedTokens /
+  maxTokens` (how full the context is), `tokenUsage.promptCacheExpiresAt`.
+  kuwai-t3 already reads this database. So spend per provider, model and day
+  comes from T3 itself, and item 1 of the old list (a `diagnostics:read`
+  token) is no longer needed.
+- **Model names**: `userdata/model-manifest.json` (slug → name per provider).
+- **Provider marks**: T3 Code's own `apps/web/src/components/Icons.tsx` (MIT,
+  `refs/pingdotgg_t3code`): Cursor, Kiro, Antigravity, ACP Registry, … — the
+  ones `shell/assets/brands/` lacks (kiro, fx, pi, muse).
+
+Measured this week: 650 turns; ~45 % ran on Antigravity, Codex, Devin, Grok
+and Cursor, which Usage doesn't show, and `lib/spend-prices.json` prices only
+Anthropic's models. 96 turns say `unavailable` and 94 `partial`.
+
 ## Next, in order
 
-1. **Spend from T3 Code itself** (the biggest gap left). `server.getUsageSummary`
-   is in the installed T3 Code (nightly) and covers every provider T3 runs,
-   with T3's up-to-date prices and session counts. It needs a token with
-   `diagnostics:read`; kuwai's token has `orchestration:read` only, and minting
-   one is the owner's call:
-   `t3 auth session issue --scope diagnostics:read --label kuwai-spend --ttl 365d --token-only > ~/.local/state/kuwai/t3-usage-token && chmod 600 ~/.local/state/kuwai/t3-usage-token`
-   Then: `bin/kuwai-spend` asks it first (day buckets for 90 days, hour buckets
-   for 24h), the local logs stay the fallback while T3 Code is closed.
-2. **A Spend view in Usage**: Limits · Spend tabs; 24h / 7d / 30d / 90d; the
-   total, a daily bar chart (one Canvas, drawn once per change), per provider:
-   cost, share of the total, tokens, sessions. A scene per period.
-3. **Limits with their history**: kittymux's `agent-usage-trends.json` samples
-   each limit over time; draw the last day as a line under each bar and forecast
-   "runs out at" from the real slope (Usage now forecasts from the window's
-   average pace).
-4. **One agents capsule**: T3 threads and kittymux panes are one list in the
-   Agents panel already; the island still has two capsules counting separately.
-   One capsule with the headline across both (`headline()` over T3 threads and
-   kittymux states), the brands as small marks.
-5. **"Go to what needs me"**: one key (beside Super+Shift+N) that opens the most
-   urgent thing directly: the kitty pane asking, or the T3 thread at its
-   approval. Super+Ctrl+↵ already answers the island's card.
-6. **Away summary**: back at the desk after the lock, one card: "3 finished, 1
-   needs approval, ~$4.20" instead of a stack of toasts; built from the inbox
-   and T3's items.
-7. **Cost on the rows**: T3's summary carries a session's source; show a
-   thread's cost on its row (quiet, right-aligned under the state) and a daily
-   budget (Settings) that notifies once when today's estimate passes it.
-8. **Limited → elsewhere**: when a provider is out, its rows say when it's back
-   and offer "continue in Codex/Claude" where the pane's agent can switch.
+1. **Providers service** (`services/Providers.qml` + a reader): the caches
+   above, watched (no poll), one entry per instance: name, driver, colour,
+   status + message, plan label, models. The one place that turns a driver or
+   model slug into a mark and a name (Limits, Kittymux, T3, Spend use it).
+2. **Spend and tokens from T3's turns** (`bin/kuwai-spend` asks T3 first):
+   per instance, model and day; `partial`/`unavailable` turns counted and
+   said, never priced as 0. Prices for OpenAI, Google and xAI next to
+   Anthropic's (source and date per row); a model without a price shows its
+   tokens and "no price", like t3code-bar's muted rows. Don't count a session
+   twice: T3 runs the Claude and Codex CLIs, which also write the local logs
+   kuwai-spend reads today; T3's turns win for its sessions, local logs only
+   for agents run outside T3 (kittymux panes).
+3. **Marks everywhere**: T3 panel rows get the provider mark (today "Claude ·
+   rice" in text) and the model's name with effort ("Opus 5.5 · high"); a
+   harness that runs other vendors' models (OpenCode, Cursor, Devin,
+   Antigravity) shows its mark with a small badge for the model's vendor
+   (claude-* Anthropic, gpt-* OpenAI, gemini-* Google, grok-* xAI). The four
+   missing marks from T3 Code's Icons.tsx (+ NOTICE row); no mark: two letters
+   on the instance's colour.
+4. **Usage: Limits · Spend · Tokens**, 24h / 7d / 30d / 90d: the total, a row
+   per provider (mark, sessions, share, tokens, cost), a daily stacked chart
+   (one Canvas, redrawn on new data only), the top 5 models, totals (processed,
+   cached input = cache hit rate). Every enabled instance, Claude and Claude-2
+   grouped under their account; not just the two cards of today.
+5. **Provider health**: instances in `warning` named where you'd look (Usage's
+   header, the Agents footer): "Codex-2: sign in with ChatGPT", click → T3's
+   settings. Disabled ones stay out.
+6. **Rows say more, quietly**: a working thread's context fill when > 70 %
+   ("context 84 %": it will compact soon); an idle thread whose prompt cache is
+   still warm ("cache warm 3 min": answering now is cheaper); a limited one
+   says when it's back ("back 13:40") from Limits' reset time.
+7. **One agents capsule** (T3 + kittymux, `headline()` over both), and the
+   "✓ 17" goes: finished threads count until you've looked (opened the T3
+   panel or T3), not forever. Settled = nothing, as t3code-bar does.
+8. Then the earlier ideas, unchanged: "go to what needs me" key, away summary,
+   cost on rows with a daily budget, limited → offer an instance that's ready
+   and has room (status + Limits already say which).
+
+Each step: a scene per new state in `tests/ui/scenes.json` (unpriced, partial,
+warning provider, 90d with gaps, 20 instances), fixtures built from synthetic
+JSON in T3's shapes, never this machine's database.
 
 ## Rules for all of it
+
+- t3code-bar's boundary, adopted: read what T3 Code ships, never write it;
+  name the T3 version a field was seen in; missing or changed data shows an
+  explicit "unavailable", never an empty or wrong number.
 
 - Nothing leaves the machine; T3 Code and kittymux are read, never written,
   except answering a prompt the way the Agents panel already does.
