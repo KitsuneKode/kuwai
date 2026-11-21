@@ -243,3 +243,23 @@ def test_uninstall_without_python_and_nothing_installed_says_so(install_env):
     r = subprocess.run(['bash', str(install_env.repo / 'install.sh'), '--uninstall'], env=env, text=True, capture_output=True)
     assert r.returncode == 0, r.stdout + r.stderr
     assert 'Nothing to put back' in r.stdout
+
+
+# Installing from a text console or SSH, before any desktop session (seen in a
+# clean container, 2026-11-21): no user bus, and install failed at its last
+# step after doing everything else. It links the services and says how to
+# enable them from the session instead.
+def test_install_without_a_user_session_links_and_says_how_to_enable(install_env):
+    tools = Path(install_env.env['PATH'].split(':')[0])
+    (tools / 'systemctl').write_text('#!/bin/sh\necho "Failed to connect to user scope bus" >&2\nexit 1\n')
+    out = install_env.run()
+    assert 'no user session' in out and 'systemctl --user enable' in out
+    assert (install_env.home / '.config/systemd/user/kuwai-auth.service').is_symlink()
+
+
+def test_the_glyph_font_is_the_package_that_has_it():
+    # ttf-nerd-fonts-symbols-mono is "Symbols Nerd Font Mono"; the shell asks for "Symbols Nerd Font".
+    text = (ROOT / 'install.sh').read_text()
+    assert 'Symbols Nerd Font:ttf-nerd-fonts-symbols"' in text
+    assert 'Theme.fontGlyph' not in text
+    assert '"Symbols Nerd Font"' in (ROOT / 'shell/config/Theme.qml').read_text()

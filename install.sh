@@ -48,6 +48,7 @@ step() { printf '\n\033[1m%s\033[0m\n' "$*"; }
 ok()   { printf '  ✓ %s\n' "$*"; }
 warn() { printf '  • %s\n' "$*"; }
 do_()  { if [ $DRY = 1 ]; then printf '  would: %s\n' "$*"; else "$@"; fi; }
+userbus() { systemctl --user show-environment >/dev/null 2>&1; }   # a user session to talk to
 
 # ── Packages ─────────────────────────────────────────────────────────────
 # binary:package. Needed = the desktop doesn't work without; optional = one feature.
@@ -60,7 +61,7 @@ gh:github-cli(GitHub-notifications) wtype:wtype(typing-emoji-into-windows) ydoto
 # family:package, from the official repos. The UI face is Inter (OFL); SF Pro
 # is used instead when it is installed, but kuwai never installs it (Apple's
 # licence limits it to Apple platforms: that's the owner's call, not ours).
-FONTS="Inter:inter-font|Symbols Nerd Font:ttf-nerd-fonts-symbols-mono"
+FONTS="Inter:inter-font|Symbols Nerd Font:ttf-nerd-fonts-symbols"   # not -mono: that one is "Symbols Nerd Font Mono", which the shell doesn't ask for
 
 check_deps() {
     step "Packages"
@@ -195,11 +196,19 @@ install_all() {
         if [ "$(readlink -f "$dst" 2>/dev/null)" = "$(readlink -f "$src")" ]; then ok "$u linked"
         else place -s "$src" "$dst"; ok "$u → $src"; fi
     done
-    do_ systemctl --user daemon-reload
-    for u in "${UNITS[@]}"; do
-        [ $DRY = 1 ] || ORIG unit "$u"
-        do_ systemctl --user enable "$u" >/dev/null 2>&1 || warn "couldn't enable $u"
-    done
+    # No user session here (a text console before your first login, or SSH):
+    # the services are linked, and enabled from your session instead of
+    # failing the whole install at its last step (seen in a clean container).
+    if [ $DRY = 0 ] && ! userbus; then
+        warn "no user session to enable them in (a text console or SSH); once you're logged in to Hyprland run:"
+        say "    systemctl --user daemon-reload && systemctl --user enable ${UNITS[*]}"
+    else
+        do_ systemctl --user daemon-reload
+        for u in "${UNITS[@]}"; do
+            [ $DRY = 1 ] || ORIG unit "$u"
+            do_ systemctl --user enable "$u" >/dev/null 2>&1 || warn "couldn't enable $u"
+        done
+    fi
 
     [ $DRY = 1 ] || { step "Original state"; ok "kept in $STATE/original (./install.sh --uninstall puts it back)"; }
 
@@ -227,7 +236,7 @@ uninstall_all() {
     fi
     for u in "${UNITS[@]}"; do do_ systemctl --user disable --now "$u" >/dev/null 2>&1 || true; done
     if [ $DRY = 1 ]; then ORIG restore --dry-run; else ORIG restore; fi
-    do_ systemctl --user daemon-reload
+    userbus && do_ systemctl --user daemon-reload
     say "  The stable checkout ($STABLE), your settings (~/.config/kuwai) and notes stay."
     say "  Remove the checkout too:  git -C $REPO worktree remove $STABLE"
     say "  The login screen / alarms: sudo greeter/install --undo · sudo system/install --undo"
