@@ -20,6 +20,12 @@ FocusScope {
     property date today: new Date()
     // The island's clock lands here (IslandBar's flyer); IslandBar keeps it ticking.
     property date now: new Date()
+    // On the minute, while it shows (the clock and what's "now" froze while open).
+    Timer {
+        running: cal.visible
+        interval: 60000 - (Date.now() % 60000) + 50
+        onTriggered: { cal.now = new Date(); interval = 60000 - (Date.now() % 60000) + 50; restart(); }
+    }
     readonly property Item clockItem: calClock
     property bool clockHidden: false
     property date selected: today
@@ -28,7 +34,10 @@ FocusScope {
 
     readonly property int cell: Theme.sp(40)
     implicitWidth: cell * 7 + 44
-    implicitHeight: col.implicitHeight + 40
+    // As tall as it needs, up to what the island gives; past that (a large
+    // Text size, a long day) it scrolls, with the shell's fade.
+    readonly property real ceiling: Math.min(Theme.panelMaxH, Theme.screenSize(Screen, "height", 1080) - 64)
+    implicitHeight: Math.min(col.implicitHeight + 40, ceiling)
 
     function sameDay(a, b) { return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); }
     function addDays(d, n) { return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n); }
@@ -72,201 +81,224 @@ FocusScope {
         event.accepted = true;
     }
 
-    Column {
-        id: col
-        x: 22; y: 20
-        spacing: 10
-
-        Row {
-            spacing: 10
-            IslandClock {
-                id: calClock
-                opacity: cal.clockHidden ? 0 : 1   // not visible: the Row would close up under the flying clock
-                now: cal.now; size: Theme.tClock
-                rounded: false; weight: Theme.wMedium
-                color: Qt.rgba(1, 0.98, 0.95, 0.95)
-                anchors.verticalCenter: parent.verticalCenter
-            }
-            Label {
-                anchors.verticalCenter: parent.verticalCenter
-                text: Dates.longDate(cal.now)
-                size: Theme.tHeadline; weight: Theme.wMedium
-                color: Theme.textTertiary
-            }
-        }
-
-        Item {
-            width: cal.cell * 7
-            height: Theme.sp(30)
-            Row {
-                anchors.verticalCenter: parent.verticalCenter
-                spacing: 7
-                // Month and year in the locale's order (2026年 11月 in Japanese);
-                // the month carries the weight, the year recedes.
-                Repeater {
-                    model: Dates.monthYearParts(cal.month)
-                    Label {
-                        required property var modelData
-                        text: modelData.text; size: 20
-                        weight: modelData.year ? Theme.wRegular : Theme.wSemibold
-                        color: modelData.year ? Theme.textTertiary : Theme.textPrimary
-                    }
-                }
-            }
-            Row {
-                anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-                spacing: 4
-                Repeater {
-                    model: [{ g: "\u{f0141}", d: -1 }, { g: "\u{f0142}", d: 1 }]
-                    Rectangle {
-                        id: nav
-                        required property var modelData
-                        width: 28; height: 28; radius: 14
-                        color: navArea.containsMouse ? Theme.pillHover : "transparent"
-                        scale: navArea.pressed ? 0.94 : 1
-                        Behavior on color { ColorAnimation { duration: Theme.colorMs } }
-                        Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
-                        Text { textFormat: Text.PlainText; anchors.centerIn: parent; text: nav.modelData.g; font.family: Theme.fontGlyph; font.pixelSize: Theme.glyphS; color: Theme.textSecondary }
-                        MouseArea { id: navArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: cal.shiftMonth(nav.modelData.d) }
-                        Accessible.role: Accessible.Button
-                        Accessible.name: nav.modelData.d < 0 ? "Previous month" : "Next month"
-                        Accessible.onPressAction: cal.shiftMonth(nav.modelData.d)
-                    }
-                }
-            }
-        }
-
-        Row {
-            Repeater {
-                model: Dates.weekOrder()
-                Label {
-                    required property int modelData
-                    required property int index
-                    width: cal.cell
-                    horizontalAlignment: Text.AlignHCenter
-                    text: Dates.weekdayNames()[index]
-                    size: 11
-                    weight: Theme.wMedium
-                    color: Dates.isWeekend(modelData) ? Theme.textTertiary : Theme.textSecondary
-                }
-            }
-        }
-
-        Grid {
-            columns: 7
-            Repeater {
-                model: cal.days
-                Item {
-                    id: day
-                    required property var modelData
-                    readonly property bool inMonth: modelData.getMonth() === cal.month.getMonth()
-                    readonly property bool isToday: cal.sameDay(modelData, cal.today)
-                    readonly property bool isSel: cal.sameDay(modelData, cal.selected)
-                    width: cal.cell; height: cal.cell - 6
-                    Rectangle {
-                        anchors.centerIn: parent
-                        width: Theme.sp(32); height: width; radius: width / 2
-                        color: day.isToday ? "white" : dayArea.containsMouse ? Theme.pill : "transparent"
-                        border.width: day.isSel && !day.isToday ? 1.5 : 0
-                        border.color: Qt.rgba(1, 1, 1, 0.55)
-                        Behavior on color { ColorAnimation { duration: Theme.colorMs } }
-                    }
-                    Label {
-                        anchors.centerIn: parent
-                        text: day.modelData.getDate()
-                        rounded: true
-                        size: 14
-                        weight: day.isToday ? Theme.wSemibold : Theme.wRegular
-                        color: day.isToday ? Theme.inkOnLight : !day.inMonth ? Theme.textTertiary : Theme.textPrimary   // another month's days: tertiary (at 38 % white they read 3.6:1)
-                        font.features: ({ "tnum": 1 })
-                    }
-                    // Something on that day: a small dot under the number.
-                    Rectangle {
-                        visible: Calendar.events.length > 0 && Calendar.eventsOn(day.modelData).length > 0
-                        anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 1 }
-                        width: 4; height: 4; radius: 2
-                        color: day.inMonth ? Theme.textSecondary : Qt.rgba(1, 1, 1, 0.25)
-                    }
-                    MouseArea { id: dayArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: cal.select(day.modelData) }
-                    Accessible.role: Accessible.Cell
-                    Accessible.name: Dates.longDate(day.modelData) + (day.isToday ? ", today" : "")
-                    Accessible.description: Calendar.events.length > 0 && Calendar.eventsOn(day.modelData).length > 0 ? Calendar.eventsOn(day.modelData).length + (Calendar.eventsOn(day.modelData).length === 1 ? " event" : " events") : ""
-                    Accessible.selected: day.isSel
-                    Accessible.onPressAction: cal.select(day.modelData)
-                }
-            }
-        }
-
-        Rectangle { width: cal.cell * 7; height: 1; color: Qt.rgba(1, 1, 1, 0.08) }
-
-        Item {
-            width: cal.cell * 7
-            height: Theme.sp(22)
-            Label {
-                anchors.verticalCenter: parent.verticalCenter
-                text: Dates.longDate(cal.selected)     // the header's shape
-                size: 14
-                weight: Theme.wMedium
-            }
-            Label {
-                anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-                text: (cal.sameDay(cal.selected, cal.today) ? "Today · " : "") + "Week " + cal.week(cal.selected)
-                size: 12
-                color: Theme.textTertiary
-            }
-        }
-
-        // ── That day's events (services/Calendar) ────────────────────────
+    ScrollFade { flickable: calFlick }
+    ScrollHint { flickable: calFlick; anchors { right: parent.right; top: parent.top; bottom: parent.bottom; rightMargin: 4 } }
+    Flickable {
+        id: calFlick
+        anchors.fill: parent
+        clip: true
+        contentWidth: width
+        contentHeight: col.implicitHeight + 40
+        interactive: contentHeight > height + 1
+        boundsBehavior: Flickable.StopAtBounds
         Column {
-            width: cal.cell * 7
-            spacing: 8
-            readonly property var dayEvents: Calendar.eventsOn(cal.selected)
-            Label {
-                visible: !Calendar.configured || parent.dayEvents.length === 0
-                width: parent.width
-                wrapMode: Text.Wrap
-                // Not set up: one click opens the list to paste a link into,
-                // instead of a path to go and find.
-                text: Calendar.configured ? "No events" : "No calendars yet. Add one: paste an iCal link or the path of an .ics file, one per line."
-                size: 12
-                color: !Calendar.configured && addCal.containsMouse ? Theme.textSecondary : Theme.textTertiary
-                Accessible.role: Calendar.configured ? Accessible.StaticText : Accessible.Button
-                Accessible.name: text
-                Accessible.onPressAction: if (!Calendar.configured) { Quickshell.execDetached(["sh", "-c", 'mkdir -p "$(dirname "$1")" && touch "$1" && xdg-open "$1"', "sh", Calendar.listPath]); Island.close(); }
-                MouseArea {
-                    id: addCal
-                    anchors.fill: parent
-                    enabled: !Calendar.configured
-                    hoverEnabled: true
-                    cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                    onClicked: { Quickshell.execDetached(["sh", "-c", 'mkdir -p "$(dirname "$1")" && touch "$1" && xdg-open "$1"', "sh", Calendar.listPath]); Island.close(); }
+            id: col
+            x: 22; y: 20
+            spacing: 10
+
+            Row {
+                spacing: 10
+                IslandClock {
+                    id: calClock
+                    opacity: cal.clockHidden ? 0 : 1   // not visible: the Row would close up under the flying clock
+                    now: cal.now; size: Theme.tClock
+                    rounded: false; weight: Theme.wMedium
+                    color: Qt.rgba(1, 0.98, 0.95, 0.95)
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+                Label {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: Dates.longDate(cal.now)
+                    size: Theme.tHeadline; weight: Theme.wMedium
+                    color: Theme.textTertiary
                 }
             }
-            Repeater {
-                model: parent.dayEvents.slice(0, 5)
+
+            Item {
+                width: cal.cell * 7
+                height: Theme.sp(30)
                 Row {
-                    id: evRow
-                    required property var modelData
-                    readonly property bool past: modelData.end < Date.now()
-                    spacing: 10
-                    opacity: past ? 0.45 : 1
-                    Rectangle { width: 3; height: 30; radius: 1.5; color: evRow.modelData.start <= Date.now() && !evRow.past ? Theme.green : Theme.textSecondary }
-                    Column {
-                        width: cal.cell * 7 - 13
-                        spacing: 1
-                        Label { width: parent.width; elide: Text.ElideRight; text: evRow.modelData.title; size: 13; weight: Theme.wMedium }
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 7
+                    // Month and year in the locale's order (2026年 11月 in Japanese);
+                    // the month carries the weight, the year recedes.
+                    Repeater {
+                        model: Dates.monthYearParts(cal.month)
                         Label {
-                            width: parent.width; elide: Text.ElideRight
-                            text: Calendar.timeOf(evRow.modelData) + (evRow.modelData.location ? " · " + evRow.modelData.location : "")
-                            size: 11; color: Theme.textTertiary
+                            required property var modelData
+                            text: modelData.text; size: 20
+                            weight: modelData.year ? Theme.wRegular : Theme.wSemibold
+                            color: modelData.year ? Theme.textTertiary : Theme.textPrimary
+                        }
+                    }
+                }
+                Row {
+                    anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                    spacing: 4
+                    Repeater {
+                        model: [{ g: "\u{f0141}", d: -1 }, { g: "\u{f0142}", d: 1 }]
+                        Rectangle {
+                            id: nav
+                            required property var modelData
+                            width: 28; height: 28; radius: 14
+                            color: navArea.containsMouse ? Theme.pillHover : "transparent"
+                            scale: navArea.pressed ? 0.94 : 1
+                            Behavior on color { ColorAnimation { duration: Theme.colorMs } }
+                            Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+                            Text { textFormat: Text.PlainText; anchors.centerIn: parent; text: nav.modelData.g; font.family: Theme.fontGlyph; font.pixelSize: Theme.glyphS; color: Theme.textSecondary }
+                            MouseArea { id: navArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: cal.shiftMonth(nav.modelData.d) }
+                            Accessible.role: Accessible.Button
+                            Accessible.name: nav.modelData.d < 0 ? "Previous month" : "Next month"
+                            Accessible.onPressAction: cal.shiftMonth(nav.modelData.d)
                         }
                     }
                 }
             }
-            Label {
-                visible: parent.dayEvents.length > 5
-                text: "+" + (parent.dayEvents.length - 5) + " more"
-                size: 11; color: Theme.textTertiary
+
+            Row {
+                Repeater {
+                    model: Dates.weekOrder()
+                    Label {
+                        required property int modelData
+                        required property int index
+                        width: cal.cell
+                        horizontalAlignment: Text.AlignHCenter
+                        text: Dates.weekdayNames()[index]
+                        size: 11
+                        weight: Theme.wMedium
+                        color: Dates.isWeekend(modelData) ? Theme.textTertiary : Theme.textSecondary
+                    }
+                }
+            }
+
+            Grid {
+                columns: 7
+                Repeater {
+                    model: cal.days
+                    Item {
+                        id: day
+                        required property var modelData
+                        readonly property bool inMonth: modelData.getMonth() === cal.month.getMonth()
+                        readonly property bool isToday: cal.sameDay(modelData, cal.today)
+                        readonly property bool isSel: cal.sameDay(modelData, cal.selected)
+                        width: cal.cell; height: cal.cell - 6
+                        Rectangle {
+                            anchors.centerIn: parent
+                            width: Theme.sp(32); height: width; radius: width / 2
+                            color: day.isToday ? "white" : dayArea.containsMouse ? Theme.pill : "transparent"
+                            border.width: day.isSel && !day.isToday ? 1.5 : 0
+                            border.color: Qt.rgba(1, 1, 1, 0.55)
+                            Behavior on color { ColorAnimation { duration: Theme.colorMs } }
+                        }
+                        Label {
+                            anchors.centerIn: parent
+                            text: day.modelData.getDate()
+                            rounded: true
+                            size: 14
+                            weight: day.isToday ? Theme.wSemibold : Theme.wRegular
+                            color: day.isToday ? Theme.inkOnLight : !day.inMonth ? Theme.textTertiary : Theme.textPrimary   // another month's days: tertiary (at 38 % white they read 3.6:1)
+                            font.features: ({ "tnum": 1 })
+                        }
+                        // Something on that day: a small dot under the number.
+                        Rectangle {
+                            visible: Calendar.events.length > 0 && Calendar.eventsOn(day.modelData).length > 0
+                            anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 1 }
+                            width: 4; height: 4; radius: 2
+                            color: day.inMonth ? Theme.textSecondary : Qt.rgba(1, 1, 1, 0.25)
+                        }
+                        MouseArea { id: dayArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: cal.select(day.modelData) }
+                        Accessible.role: Accessible.Cell
+                        Accessible.name: Dates.longDate(day.modelData) + (day.isToday ? ", today" : "")
+                        Accessible.description: Calendar.events.length > 0 && Calendar.eventsOn(day.modelData).length > 0 ? Calendar.eventsOn(day.modelData).length + (Calendar.eventsOn(day.modelData).length === 1 ? " event" : " events") : ""
+                        Accessible.selected: day.isSel
+                        Accessible.onPressAction: cal.select(day.modelData)
+                    }
+                }
+            }
+
+            Rectangle { width: cal.cell * 7; height: 1; color: Qt.rgba(1, 1, 1, 0.08) }
+
+            Item {
+                width: cal.cell * 7
+                height: Theme.sp(22)
+                Label {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: Dates.longDate(cal.selected)     // the header's shape
+                    size: 14
+                    weight: Theme.wMedium
+                }
+                Label {
+                    anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                    text: (cal.sameDay(cal.selected, cal.today) ? "Today · " : "") + "Week " + cal.week(cal.selected)
+                    size: 12
+                    color: Theme.textTertiary
+                }
+            }
+
+            // ── That day's events (services/Calendar) ────────────────────────
+            Column {
+                width: cal.cell * 7
+                spacing: 8
+                readonly property var dayEvents: Calendar.eventsOn(cal.selected)
+                Label {
+                    visible: !Calendar.configured || parent.dayEvents.length === 0
+                    width: parent.width
+                    wrapMode: Text.Wrap
+                    // Not set up: one click opens the list to paste a link into,
+                    // instead of a path to go and find.
+                    text: Calendar.configured ? "No events" : "No calendars yet. Add one: paste an iCal link or the path of an .ics file, one per line."
+                    size: 12
+                    color: !Calendar.configured && addCal.containsMouse ? Theme.textSecondary : Theme.textTertiary
+                    Accessible.role: Calendar.configured ? Accessible.StaticText : Accessible.Button
+                    Accessible.name: text
+                    Accessible.onPressAction: if (!Calendar.configured) { Quickshell.execDetached(["sh", "-c", 'mkdir -p "$(dirname "$1")" && touch "$1" && xdg-open "$1"', "sh", Calendar.listPath]); Island.close(); }
+                    MouseArea {
+                        id: addCal
+                        anchors.fill: parent
+                        enabled: !Calendar.configured
+                        hoverEnabled: true
+                        cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                        onClicked: { Quickshell.execDetached(["sh", "-c", 'mkdir -p "$(dirname "$1")" && touch "$1" && xdg-open "$1"', "sh", Calendar.listPath]); Island.close(); }
+                    }
+                }
+                // As many as the island has room for: five, fewer as the text grows;
+                // the rest as "+N more".
+                readonly property int fits: Theme.textScale >= 1.5 ? 1 : Theme.textScale > 1 ? 3 : 5
+                Repeater {
+                    model: parent.dayEvents.slice(0, parent.fits)
+                    Row {
+                        id: evRow
+                        required property var modelData
+                        // The panel's clock (it was the real one: a day you were looking
+                        // at ahead read as past). Past: quieter in colour, not faded (a
+                        // faded time line fell under 3:1).
+                        readonly property bool past: modelData.end < cal.now.getTime()
+                        readonly property bool onNow: modelData.start <= cal.now.getTime() && !past
+                        spacing: 10
+                        Rectangle { width: 3; height: evCol.implicitHeight; radius: 1.5; color: evRow.onNow ? Theme.green : evRow.past ? Theme.textTertiary : Theme.textSecondary }
+                        Column {
+                            id: evCol
+                            width: cal.cell * 7 - 13
+                            spacing: 1
+                            Label {
+                                width: parent.width; elide: Text.ElideRight
+                                wrapMode: Text.Wrap; maximumLineCount: 2
+                                text: evRow.modelData.title; size: 13; weight: Theme.wMedium
+                                color: evRow.past ? Theme.textTertiary : Theme.textPrimary
+                            }
+                            Label {
+                                width: parent.width; elide: Text.ElideRight
+                                text: Calendar.timeOf(evRow.modelData) + (evRow.modelData.location ? " · " + evRow.modelData.location : "")
+                                size: 11; color: Theme.textTertiary
+                            }
+                        }
+                    }
+                }
+                Label {
+                    visible: parent.dayEvents.length > parent.fits
+                    text: "+" + (parent.dayEvents.length - parent.fits) + " more"
+                    size: 11; color: Theme.textTertiary
+                }
             }
         }
     }

@@ -350,6 +350,56 @@
    "panel": "MediaPanel"
   },
   {
+   "id": "media/playing",
+   "name": "media",
+   "panel": "MediaPanel",
+   "kind": "typical",
+   "set": [
+    [
+     "Media",
+     "active",
+     null
+    ],
+    [
+     "Media",
+     "staged",
+     true
+    ],
+    [
+     "Media",
+     "call",
+     "stagePlayer",
+     [
+      {
+       "identity": "Spotify",
+       "desktopEntry": "spotify",
+       "dbusName": "org.mpris.MediaPlayer2.spotify",
+       "trackTitle": "Midnight City",
+       "trackArtist": "M83",
+       "trackArtUrl": "",
+       "metadata": {},
+       "playbackState": 1,
+       "isPlaying": true,
+       "lengthSupported": true,
+       "length": 243,
+       "positionSupported": true,
+       "position": 81,
+       "canSeek": true,
+       "canGoNext": true,
+       "canGoPrevious": true,
+       "canTogglePlaying": true,
+       "canControl": true,
+       "canRaise": true,
+       "loopSupported": true,
+       "loopState": 0,
+       "shuffleSupported": true,
+       "shuffle": false
+      }
+     ]
+    ]
+   ]
+  },
+  {
    "id": "notifs/new-machine",
    "name": "notifs",
    "panel": "NotifsPanel",
@@ -402,6 +452,71 @@
    }
   },
   {
+   "id": "calendar/events",
+   "name": "calendar",
+   "panel": "CalendarPanel",
+   "kind": "typical",
+   "props": {
+    "today": "@date:2026-11-18T10:10:00",
+    "now": "@date:2026-11-18T10:10:00"
+   },
+   "set": [
+    [
+     "Calendar",
+     "configured",
+     true
+    ],
+    [
+     "Calendar",
+     "events",
+     [
+      {
+       "start": 1794994200000,
+       "end": 1794996000000,
+       "title": "Stand-up",
+       "location": "Meet",
+       "allDay": false
+      },
+      {
+       "start": 1794999600000,
+       "end": 1795005000000,
+       "title": "Design review: the island's panels at large text",
+       "location": "Room 4 · second floor",
+       "allDay": false
+      },
+      {
+       "start": 1795010400000,
+       "end": 1795014000000,
+       "title": "Dentist",
+       "location": "",
+       "allDay": false
+      },
+      {
+       "start": 1795023000000,
+       "end": 1795024800000,
+       "title": "Call with Priya",
+       "location": "",
+       "allDay": false
+      },
+      {
+       "start": 1795082400000,
+       "end": 1795086000000,
+       "title": "Release kuwai 0.9",
+       "location": "",
+       "allDay": false
+      },
+      {
+       "start": 1795132800000,
+       "end": 1795219200000,
+       "title": "Holiday",
+       "location": "",
+       "allDay": true
+      }
+     ]
+    ]
+   ]
+  },
+  {
    "id": "power/new-machine",
    "name": "power",
    "panel": "PowerPanel"
@@ -410,6 +525,82 @@
    "id": "bluetooth/new-machine",
    "name": "bluetooth",
    "panel": "BluetoothPanel"
+  },
+  {
+   "id": "bluetooth/devices",
+   "name": "bluetooth",
+   "panel": "BluetoothPanel",
+   "kind": "typical",
+   "props": {
+    "stage": {
+     "adapter": {
+      "enabled": true,
+      "discovering": true
+     },
+     "devices": [
+      {
+       "name": "WH-1000XM5",
+       "address": "AC:80:0A:11:22:33",
+       "icon": "audio-headphones",
+       "paired": true,
+       "connected": true,
+       "trusted": true,
+       "batteryAvailable": true,
+       "battery": 0.72,
+       "state": 1,
+       "pairing": false
+      },
+      {
+       "name": "MX Master 3S",
+       "address": "D4:1B:22:33:44:55",
+       "icon": "input-mouse",
+       "paired": true,
+       "connected": true,
+       "trusted": true,
+       "batteryAvailable": true,
+       "battery": 0.18,
+       "state": 1,
+       "pairing": false
+      },
+      {
+       "name": "Keychron K3 Pro",
+       "address": "DC:2C:33:44:55:66",
+       "icon": "input-keyboard",
+       "paired": true,
+       "connected": false,
+       "trusted": true,
+       "batteryAvailable": false,
+       "battery": 0,
+       "state": 0,
+       "pairing": false
+      },
+      {
+       "name": "Living Room TV",
+       "address": "F0:70:44:55:66:77",
+       "icon": "video-display",
+       "paired": false,
+       "connected": false,
+       "trusted": false,
+       "batteryAvailable": false,
+       "battery": 0,
+       "state": 0,
+       "pairing": false
+      },
+      {
+       "name": "Pixel 9",
+       "address": "9C:5A:55:66:77:88",
+       "icon": "phone",
+       "paired": false,
+       "connected": false,
+       "trusted": false,
+       "batteryAvailable": false,
+       "battery": 0,
+       "state": 0,
+       "pairing": false
+      }
+     ]
+    }
+   }
   },
   {
    "id": "keys/new-machine",

@@ -160,6 +160,7 @@ Item {
     MouseArea {
         id: area
         anchors.fill: parent
+        anchors.margins: -Theme.s1 / 2         // 22 px drawn, 26 px to hit (WCAG's 24 px least)
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         onClicked: mark.clicked()

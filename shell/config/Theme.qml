@@ -135,6 +135,7 @@ Singleton {
     readonly property int panelM: 620    // a list with detail: Launcher, System, Power, Cleanup
     readonly property int panelL: 780    // two columns: Settings, Updates, Shortcuts
     readonly property int panelXL: 980   // a gallery: Themes
+    readonly property int panelMaxH: 600 // the most height the island gives a panel (its window is 640; bin/kuwai-rehearse's ISLAND)
     readonly property int s1: 4
     readonly property int s2: 8
     readonly property int s3: 12

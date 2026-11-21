@@ -1,9 +1,5 @@
 # Faults the rehearsal knows about and that are still to be fixed (bin/kuwai-rehearse).
 # Never add a line by hand: fix the fault, or run kuwai-rehearse --accept and say why in the commit.
-calendar/new-machine @x2 | cut-off | "No calendars yet. Add one: paste an iCal…" runs 0 px past the bottom of the panel
-calendar/new-machine @x2 | cut-off | "Today · Week 0" runs 0 px past the bottom of the panel
-calendar/new-machine @x2 | cut-off | "Wednesday, 0 November" runs 0 px past the bottom of the panel
-calendar/new-machine @x2 | too-big | wants 0 x 0, the island gives at most 0 x 0
 keys/new-machine @x2 | on-top | "Hold Super anywhere to open this" is drawn over "Close"
 media/new-machine @x2 | cut-off | "Start something in any player and it sho…" runs 0 px past the left of the panel
 power/new-machine @x2 | on-top | "Shut Down" is drawn over "Firmware"

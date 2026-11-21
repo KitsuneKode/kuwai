@@ -43,6 +43,7 @@ Singleton {
         return /firefox|zen|chrom|brave|vivaldi|opera|edge|librewolf|floorp|epiphany|qutebrowser/.test(id);
     }
     function pick() {
+        if (staged) return;
         const ps = players;
         const alive = active && ps.indexOf(active) >= 0;
         const playing = ps.filter(p => p.playbackState === MprisPlaybackState.Playing);
@@ -54,6 +55,14 @@ Singleton {
         else if (now && now !== active && isBrowser(active) && !isBrowser(now)) active = now;
     }
     onPlayersChanged: pick()
+    // The rehearsal's player (tests/ui/scenes.json): a plain object with a
+    // player's fields, given its methods as no-ops. Held until the stage ends;
+    // the real players are not looked at meanwhile.
+    property bool staged: false
+    function stagePlayer(p) {
+        staged = true;
+        active = Object.assign({ positionChanged() {}, togglePlaying() {}, next() {}, previous() {}, raise() {} }, p);
+    }
     // Playback states change without the list changing; a cheap look each second.
     Timer { interval: 1000; running: root.players.length > 1 || !root.active; repeat: true; triggeredOnStart: true; onTriggered: root.pick() }
 

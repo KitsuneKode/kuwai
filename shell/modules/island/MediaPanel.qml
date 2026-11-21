@@ -234,7 +234,7 @@ FocusScope {
             Label {
                 id: elapsed
                 anchors { left: parent.left; verticalCenter: parent.verticalCenter }
-                width: 44
+                width: Theme.sp(44)        // holds a time: grows with the text
                 text: Media.clock(scrub.f * Media.length)
                 size: 11; color: Theme.textTertiary
                 font.features: ({ "tnum": 1 })
@@ -242,7 +242,7 @@ FocusScope {
             Label {
                 id: remain
                 anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-                width: 44; horizontalAlignment: Text.AlignRight
+                width: Theme.sp(44); horizontalAlignment: Text.AlignRight
                 text: Media.length > 0 ? "−" + Media.clock(Media.length - scrub.f * Media.length) : ""
                 size: 11; color: Theme.textTertiary
                 font.features: ({ "tnum": 1 })
