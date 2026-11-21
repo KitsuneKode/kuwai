@@ -779,6 +779,12 @@ FocusScope {
                     Toggle { on: Settings.idleNoSleepWhilePlaying; onToggled: Settings.set("idleNoSleepWhilePlaying", !Settings.idleNoSleepWhilePlaying) }
                 }
                 SettingsRow {
+                    key: "idleScreensWhileWork"
+                    label: "Keep screens on while work runs"
+                    detail: "While an agent, a T3 thread or an update is working, on power, the screens dim and lock but don't turn off (an external monitor that sleeps can disconnect, and its windows move)"
+                    Toggle { on: Settings.idleScreensWhileWork; onToggled: Settings.set("idleScreensWhileWork", !Settings.idleScreensWhileWork) }
+                }
+                SettingsRow {
                     key: "caffeineMode"
                     label: "Keep awake"
                     detail: Settings.caffeineMode === "login" ? "Caffeine comes on with each login (it still ends with the session)"

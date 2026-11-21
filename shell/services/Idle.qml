@@ -107,23 +107,30 @@ Singleton {
         respectInhibitors: true
         onIsIdleChanged: if (isIdle) Quickshell.execDetached([root.kuwai, "lock"])
     }
-    // ── Screens off
+    // ── Screens off. Not while work runs on power (Settings.idleScreensWhileWork,
+    // Caffeine.workNow): dim and lock still happen, the screens stay on, and
+    // they go off once the work ends if you're still away. (Holding the
+    // monitor off instead would wake the screens whenever an agent started.)
+    readonly property bool screensHeld: Settings.idleScreensWhileWork && Caffeine.workNow.length > 0
+    function screens(off) {
+        Saver.screensOff = off;
+        root.run(`hyprctl dispatch 'hl.dsp.dpms({ action = "${off ? "disable" : "enable"}" })'`);
+    }
     IdleMonitor {
+        id: offMonitor
         enabled: root.enabled && !root.held && root.offAfter > 0
         timeout: root.offAfter
         respectInhibitors: true
         onIsIdleChanged: {
-            Saver.screensOff = isIdle;
-            root.run(`hyprctl dispatch 'hl.dsp.dpms({ action = "${isIdle ? "disable" : "enable"}" })'`);
+            if (isIdle && root.screensHeld) return;
+            if (isIdle || Saver.screensOff) root.screens(isIdle);
         }
         // Disabled while held (Caffeine, a dictation): the screens come back.
         // Clearing the flag is not DPMS. A click in the shell is not a key,
         // so key_press_enables_dpms does not run for it.
-        onEnabledChanged: if (!enabled && Saver.screensOff) {
-            Saver.screensOff = false;
-            root.run(`hyprctl dispatch 'hl.dsp.dpms({ action = "enable" })'`);
-        }
+        onEnabledChanged: if (!enabled && Saver.screensOff) root.screens(false)
     }
+    onScreensHeldChanged: if (!screensHeld && offMonitor.enabled && offMonitor.isIdle && !Saver.screensOff) screens(true)
     // ── Sleep (never while music plays, nor while work runs: Caffeine.working)
     IdleMonitor {
         enabled: root.enabled && !root.held && !Caffeine.working && root.sleepAfter > 0

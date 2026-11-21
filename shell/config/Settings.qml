@@ -62,6 +62,7 @@ Singleton {
     readonly property int idleOffBattery: value("idleOffBattery")
     readonly property int idleSleepBattery: value("idleSleepBattery")
     readonly property bool idleNoSleepWhilePlaying: value("idleNoSleepWhilePlaying")
+    readonly property bool idleScreensWhileWork: value("idleScreensWhileWork")
     readonly property string caffeineMode: value("caffeineMode")   // manual | login | work (services/Caffeine)
     readonly property bool highContrast: value("highContrast")
     readonly property real textScale: value("textScale")

@@ -530,6 +530,18 @@
       "restartScope": "live"
     },
     {
+      "key": "idleScreensWhileWork",
+      "type": "boolean",
+      "default": true,
+      "section": "power",
+      "label": "Keep screens on while work runs",
+      "detail": "",
+      "group": "",
+      "searchTerms": "keep screens on while work runs agents t3 updates screen off dpms monitor",
+      "requires": [],
+      "restartScope": "live"
+    },
+    {
       "key": "caffeineMode",
       "type": "string",
       "default": "manual",

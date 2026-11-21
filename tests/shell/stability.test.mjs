@@ -53,3 +53,21 @@ test('theme icons are looked up through the one cache', () => {
   walk(root);
   expect(hits).toEqual(['services/NotifAdapters.qml:' + (readFileSync(root + 'services/NotifAdapters.qml', 'utf8').split('\n').findIndex(l => /Quickshell\.iconPath\(icon, true\)/.test(l)) + 1)]);
 });
+
+// Screens off while agents worked (2026-11-21): turning them off disconnects
+// the external monitor here and Hyprland moved its workspaces onto the laptop
+// and back. While work runs on power the screens stay on (dim and lock still
+// happen), whatever Keep awake says; they go off once it ends if you're away.
+test('the screens stay on while work runs on power, and go off after', () => {
+  const idle = readFileSync(new URL('../../shell/services/Idle.qml', import.meta.url), 'utf8');
+  const caf = readFileSync(new URL('../../shell/services/Caffeine.qml', import.meta.url), 'utf8');
+  expect(idle).toMatch(/screensHeld: Settings\.idleScreensWhileWork && Caffeine\.workNow\.length > 0/);
+  expect(idle).toMatch(/if \(isIdle && root\.screensHeld\) return;/);
+  expect(idle).toMatch(/onScreensHeldChanged: if \(!screensHeld && offMonitor\.enabled && offMonitor\.isIdle && !Saver\.screensOff\) screens\(true\)/);
+  // workNow ignores Keep awake; Keep awake's "work" mode is still only that mode's.
+  expect(caf).toMatch(/readonly property var workNow: \{\s*if \(UPower\.onBattery\) return \[\];/);
+  expect(caf).toMatch(/readonly property var reasons: Settings\.caffeineMode === "work" \? workNow : \[\]/);
+  const schema = JSON.parse(readFileSync(new URL('../../shell/config/settings-schema.json', import.meta.url), 'utf8'));
+  const list = Array.isArray(schema) ? schema : schema.settings;
+  expect(list.find(s => s.key === 'idleScreensWhileWork').default).toBe(true);
+});

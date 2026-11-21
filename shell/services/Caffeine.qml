@@ -33,11 +33,15 @@ Singleton {
     //            state is in the runtime dir, so a reboot starts from the setting)
     //   work     while something you started is working — a kittymux agent,
     //            a T3 Code thread, a software update — on AC power, the laptop
-    //            doesn't fall asleep from idle. Screens still dim, lock and
-    //            turn off (you're away; your work isn't), and the lid and the
-    //            power menu still sleep: only the idle timer waits.
-    readonly property var reasons: {
-        if (Settings.caffeineMode !== "work" || UPower.onBattery) return [];
+    //            doesn't fall asleep from idle. Screens still dim and lock
+    //            (you're away; your work isn't), and the lid and the power
+    //            menu still sleep: only the idle timer waits.
+    // Work running on power, whatever Keep awake says: Idle holds the screens
+    // on for it (Settings.idleScreensWhileWork). Turning them off disconnects
+    // an external monitor here (it sleeps deeply), and Hyprland moves its
+    // workspaces onto the laptop's screen and back: agents' windows jumped.
+    readonly property var workNow: {
+        if (UPower.onBattery) return [];
         const r = [];
         const k = Kittymux.working ? Kittymux.working.length : 0;
         if (k > 0) r.push(k === 1 ? "an agent is working" : k + " agents are working");
@@ -45,6 +49,7 @@ Singleton {
         if (Updates.running) r.push("an update is running");
         return r;
     }
+    readonly property var reasons: Settings.caffeineMode === "work" ? workNow : []
     readonly property bool working: reasons.length > 0
     readonly property string why: working ? "Staying up: " + reasons.join(", ") : ""
     property bool fresh: false            // no state file: a new session
