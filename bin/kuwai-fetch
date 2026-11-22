@@ -7,7 +7,10 @@ kuwai-fetch: fastfetch with a moving picture beside it.
 
   kuwai-fetch              an animated GIF on the left (kitty), the system on the right
   kuwai-fetch NAME         that one (a file name in the folder, without .gif)
-  kuwai-fetch --list       what's in the folder
+  kuwai-fetch --list       what's in the library
+  kuwai-fetch --gather     one library for every fetch: ~/Pictures/fetch (text art in ascii/),
+                           with ~/.config/fastfetch/logo, neofetch/pngs, neofetch/gifs and
+                           kuwai/fetch linked to it (each picture once; the old folders kept)
   kuwai-fetch --greet      the greeting: once per new kitty window, unless one is already on this workspace
   kuwai-fetch --logo       a random picture from ~/.config/fastfetch/logo (fastfetch's own logo)
   kuwai-fetch --get-pokemon N [N…]   (a range 1-151, or random=10)
@@ -29,14 +32,46 @@ image placed with `kitten icat`, then below the info) is the one pocket-dots
 uses for its pokéfetch; written again here, not copied.
 KUWAI_USAGE
 }
-DIR="${XDG_CONFIG_HOME:-$HOME/.config}/kuwai/fetch"
+CFG="${XDG_CONFIG_HOME:-$HOME/.config}"
+DIR="${KUWAI_FETCH_LIB:-$HOME/Pictures/fetch}"
+[ -d "$DIR" ] || DIR="$CFG/kuwai/fetch"
 CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/kuwai/fetch"
 W=${KUWAI_FETCH_W:-200}
 H=${KUWAI_FETCH_H:-168}
 INDENT=${KUWAI_FETCH_INDENT:-30}
 
 NEO="${XDG_CONFIG_HOME:-$HOME/.config}/neofetch"
-pics() { find "$DIR" "$NEO/gifs" "$NEO/pngs" -maxdepth 1 -type f \( -iname '*.gif' -o -iname '*.png' -o -iname '*.webp' \) 2>/dev/null | sort; }
+pics() {
+    find -L "$DIR" "$DIR/ascii" "$CFG/kuwai/fetch" "$NEO/gifs" "$NEO/pngs" -maxdepth 1 -type f \( -iname '*.gif' -o -iname '*.png' -o -iname '*.webp' -o -iname '*.txt' \) 2>/dev/null \
+        | while IFS= read -r f; do printf '%s\t%s\n' "$(readlink -f "$f")" "$f"; done | sort -u -t $'\t' -k1,1 | cut -f1
+}
+gather() {
+    local lib=${KUWAI_FETCH_LIB:-$HOME/Pictures/fetch} keep
+    keep="${XDG_STATE_HOME:-$HOME/.local/state}/kuwai/fetch-folders-$(date +%Y%m%d-%H%M%S)"
+    mkdir -p "$lib/ascii"
+    declare -A seen=()
+    local f sum name
+    while IFS= read -r f; do sum=$(md5sum <"$f" | cut -d' ' -f1); seen[$sum]=1; done < <(find "$lib" -maxdepth 2 -type f 2>/dev/null)
+    local src dest
+    for pair in "$CFG/fastfetch/logo:" "$NEO/pngs:" "$NEO/gifs:" "$CFG/kuwai/fetch:" "$CFG/fastfetch/ascii:ascii"; do
+        src=${pair%%:*}; dest=$lib; [ -n "${pair#*:}" ] && dest=$lib/${pair#*:}
+        [ -d "$src" ] && [ ! -L "$src" ] || continue
+        while IFS= read -r f; do
+            sum=$(md5sum <"$f" | cut -d' ' -f1)
+            [ -n "${seen[$sum]:-}" ] && continue
+            seen[$sum]=1
+            name=$(basename "$f")
+            [ -e "$dest/$name" ] && name="${name%.*}-$sum.${name##*.}"
+            cp -p -- "$f" "$dest/$name"
+        done < <(find "$src" -type f \( -iname '*.gif' -o -iname '*.png' -o -iname '*.jpg' -o -iname '*.webp' -o -iname '*.icon' -o -iname '*.txt' \))
+        mkdir -p "$keep"
+        mv -- "$src" "$keep/$(printf '%s' "${src#"$CFG"/}" | tr / -)"
+        ln -s -- "$dest" "$src"
+        printf 'linked %s → %s\n' "${src/#$HOME/\~}" "${dest/#$HOME/\~}"
+    done
+    [ -d "$keep" ] && printf 'the old folders are in %s (delete them once you are happy)\n' "${keep/#$HOME/\~}"
+    printf '%s pictures and %s text pictures in %s\n' "$(find "$lib" -maxdepth 1 -type f | wc -l)" "$(find "$lib/ascii" -maxdepth 1 -type f | wc -l)" "${lib/#$HOME/\~}"
+}
 info() {
     if [ "${KUWAI_FETCH_INFO:-auto}" != fastfetch ] && command -v neofetch >/dev/null && [ -f "$NEO/config.conf" ]; then
         neofetch --off 2>/dev/null | sed -E $'s/\x1b\\[\\?(25|7)[hl]//g'
@@ -48,8 +83,9 @@ info() {
 
 case "${1:-}" in
     --list) pics | sed "s|$DIR/||"; exit 0 ;;
+    --gather) gather; exit 0 ;;
     --logo)
-        mapfile -t logos < <(find "${XDG_CONFIG_HOME:-$HOME/.config}/fastfetch/logo" -maxdepth 1 -type f \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.webp' -o -iname '*.icon' \) 2>/dev/null)
+        mapfile -t logos < <(find -L "${XDG_CONFIG_HOME:-$HOME/.config}/fastfetch/logo" -maxdepth 1 -type f \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.webp' -o -iname '*.icon' \) 2>/dev/null)
         [ ${#logos[@]} -gt 0 ] && printf '%s\n' "${logos[RANDOM % ${#logos[@]}]}"
         exit 0 ;;
     --get-pokemon)
@@ -99,6 +135,13 @@ elif [ ${#all[@]} -gt 0 ]; then
     pick=${all[RANDOM % ${#all[@]}]}
 fi
 [ -n "$pick" ] || exec fastfetch
+case "$pick" in
+    *.txt)
+        if [ "${KUWAI_FETCH_INFO:-auto}" != fastfetch ] && command -v neofetch >/dev/null && [ -f "$NEO/config.conf" ]; then
+            exec neofetch --ascii "$pick" --ascii_colors 6
+        fi
+        exec fastfetch --logo-type file --logo "$pick" --logo-color-1 cyan ;;
+esac
 
 in_kitty() { [ -n "${KITTY_WINDOW_ID:-}" ] && command -v kitten >/dev/null; }
 
