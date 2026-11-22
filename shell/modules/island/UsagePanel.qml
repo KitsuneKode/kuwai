@@ -5,7 +5,7 @@
 // A window shared by two accounts (Antigravity's "Claude & GPT") shows once.
 // The header says the one thing that matters: how many are out, and when the
 // first comes back.
-//   Tab / Shift+Tab: the next / previous tab. Esc closes (IslandBar).
+//   Tab / Shift+Tab: the next / previous tab (Spend, Tokens: the period). Ctrl+Tab: Limits, Spend, Tokens. Esc closes.
 import QtQuick
 import Quickshell
 import qs.config
@@ -31,7 +31,7 @@ FocusScope {
     readonly property bool hasFoot: Limits.loaded && groups.length > 0
     // (By the rows' own heights: they grow with the Text size; fixed numbers
     // let the panel outgrow the island at 200 %.)
-    readonly property real listMax: Math.max(120, ceiling - 40 - head.height - col.spacing
+    readonly property real listMax: Math.max(120, ceiling - 40 - head.height - col.spacing - viewSeg.height - col.spacing
         - (hasTabs ? tabsRow.height + col.spacing : 0) - (hasFoot ? foot.height + col.spacing : 0) - (Limits.down ? downBox.height + col.spacing : 0))
 
     // Countdowns tick (once a minute) while this is open.
@@ -44,12 +44,30 @@ FocusScope {
     function isClaude(p) { return /claude/i.test(String(p.driver || p.label || "")); }
 
     property string tab: "all"
-    Component.onCompleted: if (Limits.usageTab) { tab = Limits.usageTab; Limits.usageTab = ""; }
+    property string view: "limits"
+    property alias spendData: spendView.doc
+    readonly property bool limitsView: view === "limits"
+    Component.onCompleted: {
+        if (Limits.usageTab === "spend" || Limits.usageTab === "tokens") view = Limits.usageTab;
+        else if (Limits.usageTab) tab = Limits.usageTab;
+        Limits.usageTab = "";
+    }
     readonly property var tabs: [{ id: "all", label: "All", brand: "" }].concat(
         usage.groups.map(g => ({ id: g.id, label: g.name, brand: g.brand, rank: g.rank })))
     onTabsChanged: if (!tabs.some(t => t.id === tab)) tab = "all"
 
     Keys.onPressed: e => {
+        if ((e.modifiers & Qt.ControlModifier) && (e.key === Qt.Key_Tab || e.key === Qt.Key_Backtab)) {
+            const v = ["limits", "spend", "tokens"], i = v.indexOf(view);
+            view = v[(i + (e.key === Qt.Key_Backtab ? 2 : 1)) % 3];
+            e.accepted = true;
+            return;
+        }
+        if (!limitsView && (e.key === Qt.Key_Tab || e.key === Qt.Key_Backtab || e.key === Qt.Key_Left || e.key === Qt.Key_Right)) {
+            spendView.step(e.key === Qt.Key_Backtab || e.key === Qt.Key_Left ? -1 : 1);
+            e.accepted = true;
+            return;
+        }
         if (e.key === Qt.Key_Tab || e.key === Qt.Key_Backtab) {
             const i = tabs.findIndex(t => t.id === tab);
             tab = tabs[(i + (e.key === Qt.Key_Backtab ? tabs.length - 1 : 1)) % tabs.length].id;
@@ -144,7 +162,7 @@ FocusScope {
                 y: head.stack ? headTitle.implicitHeight + 2 : (head.height - implicitHeight) / 2
                 width: head.stack ? head.width : implicitWidth
                 wrapMode: head.stack ? Text.Wrap : Text.NoWrap
-                visible: Limits.loaded
+                visible: Limits.loaded && usage.limitsView
                 text: usage.outCount
                     ? usage.outCount + " out" + (usage.partCount ? " · " + usage.partCount + " partly" : "") + (usage.backIn(usage.firstBack) ? " · first back in " + usage.backIn(usage.firstBack) : "")
                     : usage.partCount ? usage.partCount + " partly out · the rest have room" : "All agents have room"
@@ -156,9 +174,25 @@ FocusScope {
 
         // Tabs as the agents' logos; the chosen one opens to say its name
         // (six names didn't fit, and logos are what you scan for). A red dot: out.
+        Segmented {
+            id: viewSeg
+            width: parent.width
+            options: [{ id: "limits", label: "Limits" }, { id: "spend", label: "Spend" }, { id: "tokens", label: "Tokens" }]
+            current: usage.view
+            onPicked: id => usage.view = id
+        }
+
+        SpendView {
+            id: spendView
+            visible: !usage.limitsView
+            width: parent.width
+            metric: usage.view === "tokens" ? "tokens" : "cost"
+            maxH: Math.max(120, usage.ceiling - 40 - head.height - viewSeg.height - 3 * col.spacing - Theme.sp(36) - Theme.s3)
+        }
+
         Row {
             id: tabsRow
-            visible: usage.hasTabs
+            visible: usage.limitsView && usage.hasTabs
             spacing: 4
             Repeater {
                 model: usage.tabs
@@ -216,7 +250,7 @@ FocusScope {
         // ── Error: on the thing that failed, with Retry beside it ─────────
         Rectangle {
             id: downBox
-            visible: Limits.down
+            visible: usage.limitsView && Limits.down
             width: parent.width
             // Its line wraps (the row grows) rather than lose its end beside Retry at a large Text size.
             height: Math.max(44, downLine.implicitHeight + 2 * Theme.s3)
@@ -243,7 +277,7 @@ FocusScope {
 
         // ── Loading: the cards' own shape ────────────────────────────────
         Column {
-            visible: !Limits.loaded && !Limits.down
+            visible: usage.limitsView && !Limits.loaded && !Limits.down
             width: parent.width
             spacing: 8
             Repeater {
@@ -253,7 +287,7 @@ FocusScope {
         }
 
         Label {
-            visible: Limits.loaded && usage.groups.length === 0
+            visible: usage.limitsView && Limits.loaded && usage.groups.length === 0
             width: parent.width
             topPadding: 4; bottomPadding: 4
             text: "No usage yet · T3 Code or kittymux reports it"
@@ -263,6 +297,7 @@ FocusScope {
         // ── One card per agent ───────────────────────────────────────────
         Item {
           id: listWrap
+          visible: usage.limitsView
           width: parent.width
           height: flick.height
         Flickable {
@@ -591,7 +626,7 @@ FocusScope {
         // what is worth saying is its source and, when it isn't live, its age.
         Item {
             id: foot
-            visible: usage.hasFoot
+            visible: usage.limitsView && usage.hasFoot
             width: parent.width
             height: 14
             readonly property var fresh: Usage.freshness(Limits.checkedAt, Limits.now, Limits.source)

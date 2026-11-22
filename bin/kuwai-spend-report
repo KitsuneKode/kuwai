@@ -1,0 +1,93 @@
+#!/usr/bin/env node
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+const HOME = process.env.HOME || "";
+const STATE = process.env.XDG_STATE_HOME || join(HOME, ".local/state");
+const CACHE = process.env.XDG_CACHE_HOME || join(HOME, ".cache");
+const T3_HOME = process.env.T3CODE_HOME || join(HOME, ".t3");
+const PERIODS = { "24h": 1, "7d": 7, "30d": 30, "90d": 90 };
+
+const period = PERIODS[process.argv[2]] ? process.argv[2] : "7d";
+const now = Number(process.env.KUWAI_NOW_MS) || Date.now();
+const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+const dayOf = ms => new Date(ms).toLocaleDateString("en-CA", { timeZone: zone });
+
+function readText(p) { try { return readFileSync(p, "utf8").trim(); } catch { return ""; } }
+function readJson(p) { try { return JSON.parse(readFileSync(p, "utf8")); } catch { return null; } }
+
+function endpoint() {
+  const token = process.env.KUWAI_T3_TOKEN || readText(join(STATE, "kuwai/t3-token"));
+  const runtime = readJson(join(T3_HOME, "userdata/server-runtime.json"));
+  if (!token || !runtime || !runtime.port) return null;
+  return { url: `ws://${runtime.host || "127.0.0.1"}:${runtime.port}/ws?orchestrationProtocol=2`, token };
+}
+
+function rpc(ep, tag, payload, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    let ws;
+    try { ws = new WebSocket(ep.url, { headers: { Authorization: `Bearer ${ep.token}` } }); } catch (e) { reject(new Error("closed")); return; }
+    const timer = setTimeout(() => { try { ws.close(); } catch {} reject(new Error("timeout")); }, timeoutMs);
+    const done = (fn, v) => { clearTimeout(timer); try { ws.close(); } catch {} fn(v); };
+    ws.onerror = () => done(reject, new Error("closed"));
+    ws.onopen = () => ws.send(JSON.stringify({ _tag: "Request", id: "1", tag, payload, headers: [] }));
+    ws.onmessage = event => {
+      let m;
+      try { m = JSON.parse(String(event.data)); } catch { return; }
+      if (m && m._tag === "Ping") { ws.send(JSON.stringify({ _tag: "Pong" })); return; }
+      if (!m || m._tag !== "Exit") return;
+      if (m.exit && m.exit._tag === "Success") { done(resolve, m.exit.value); return; }
+      const err = JSON.stringify(m.exit || {});
+      done(reject, new Error(/missing required scope/i.test(err) ? "scope" : "failed"));
+    };
+  });
+}
+
+async function fromT3() {
+  const ep = endpoint();
+  if (!ep) throw new Error("token");
+  const days = PERIODS[period];
+  const since = now - days * 86400000;
+  const payload = { sinceDay: dayOf(since), untilDay: dayOf(now), timeZone: zone, resolution: days === 1 ? "hour" : "day" };
+  if (days === 1) { payload.sinceTime = new Date(since).toISOString(); payload.untilTime = new Date(now).toISOString(); }
+  const v = await rpc(ep, "server.getUsageSummary", payload, 45000);
+  const buckets = (v.buckets || []).map(b => {
+    const t = b.totals || {};
+    const input = t.uncachedInputTokens || 0, cached = t.cachedInputTokens || 0, cacheWrite = t.cacheCreationTokens || 0, output = t.outputTokens || 0;
+    return {
+      day: b.day, hour: b.hourStart || "", provider: b.provider, model: b.model,
+      input, cached, cacheWrite, output, tokens: input + cached + cacheWrite + output,
+      cost: b.costUsd || 0, saved: b.cacheSavingsUsd || 0, priced: b.costSource !== "unpriced"
+    };
+  });
+  const sessions = {};
+  for (const s of v.sources || []) {
+    const p = s.fingerprint && s.fingerprint.provider;
+    if (p) sessions[p] = (sessions[p] || 0) + (s.distinctSessions || 0);
+  }
+  return { source: "t3", why: "", readAt: v.readAt || new Date(now).toISOString(), buckets, sessions, pricing: v.pricing ? v.pricing.status : "" };
+}
+
+function fromLocal(why) {
+  const doc = readJson(join(CACHE, "kuwai/spend.json")) || {};
+  const first = dayOf(now - (PERIODS[period] - 1) * 86400000);
+  const buckets = [];
+  for (const [provider, days] of Object.entries(doc.days || {})) {
+    for (const [day, d] of Object.entries(days || {})) {
+      if (day < first || !d) continue;
+      const models = Object.entries(d.models || {});
+      const total = d.tokens || models.reduce((a, [, n]) => a + n, 0) || 1;
+      for (const [model, n] of models.length ? models : [["", d.tokens || 0]]) {
+        const share = n / total;
+        buckets.push({ day, hour: "", provider, model, input: 0, cached: 0, cacheWrite: 0, output: 0, tokens: n,
+                       cost: (d.cost || 0) * share, saved: 0, priced: (d.unpriced || 0) < (d.tokens || 0) });
+      }
+    }
+  }
+  return { source: "local", why, readAt: new Date(now).toISOString(), buckets, sessions: {}, pricing: "" };
+}
+
+let out;
+try { out = await fromT3(); } catch (e) { out = fromLocal(e && e.message || "failed"); }
+out.period = period;
+process.stdout.write(JSON.stringify(out) + "\n");

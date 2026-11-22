@@ -239,7 +239,7 @@ Give it a read-only token once:
 
 ```sh
 umask 077; mkdir -p ~/.local/state/kuwai
-t3 auth session issue --scope orchestration:read --label kuwai-usage --ttl 365d --token-only > ~/.local/state/kuwai/t3-token
+t3 auth session issue --scope orchestration:read --scope diagnostics:read --label kuwai-usage --ttl 365d --token-only > ~/.local/state/kuwai/t3-token
 ```
 
 Without a token, or with T3 Code closed, it falls back to kittymux's
