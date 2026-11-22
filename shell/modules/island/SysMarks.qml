@@ -19,8 +19,8 @@ Row {
     spacing: 2
     // From the data, not the children's `visible`: a hidden parent makes
     // every child report invisible, so `any` could never turn on.
-    readonly property bool any: (Updates.fresh && !Updates.running && !quiet) || Alerts.active.length > 0 || Limits.markShown || updateOffStage
-    readonly property bool hovered: upd.hovered || warn.hovered || lim.hovered || updRun.hovered
+    readonly property bool any: (Updates.fresh && !Updates.running && !quiet) || (Sweep.fresh && !quiet) || Alerts.active.length > 0 || Limits.markShown || updateOffStage
+    readonly property bool hovered: upd.hovered || swp.hovered || warn.hovered || lim.hovered || updRun.hovered
     RestMark {
         id: updRun
         visible: sys.updateOffStage
@@ -44,6 +44,17 @@ Row {
         previews: true
         onPreviewRequested: if (Island.panel === "" && sys.bar) Island.preview("updates", sys.bar.screenName)
         onClicked: Island.open("updates", sys.bar ? sys.bar.screenName : "", "pointer", "island")
+    }
+    RestMark {
+        id: swp
+        visible: Sweep.fresh && !sys.quiet
+        anchors.verticalCenter: parent.verticalCenter
+        glyph: "\u{f00e2}"
+        value: Sweep.compact
+        tip: Sweep.tip
+        previews: true
+        onPreviewRequested: if (Island.panel === "" && sys.bar) Island.preview("sweep", sys.bar.screenName)
+        onClicked: { Sweep.markViewed(); Island.open("sweep", sys.bar ? sys.bar.screenName : "", "pointer", "island"); }
     }
     RestMark {
         id: warn

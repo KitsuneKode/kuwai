@@ -1,0 +1,373 @@
+#!/usr/bin/env python3
+"""What sweep could free, for the island (services/Sweep.qml): one JSON line.
+
+  {"alive":true,"checkedAt":1763300000,"stale":false,"root":"/home/me/Projects",
+   "reclaimable":5.6e10,"safe":1e9,"caution":5.5e10,"protected":22,
+   "idle":{"days":30,"projects":6,"bytes":3.1e10,
+           "kinds":[{"kind":"node_modules","bytes":2.2e10,"count":9}]},
+   "kinds":[{"kind":"node_modules","bytes":2e10,"count":210}],
+   "projects":[{"name":"old-app","path":"/home/me/Projects/old-app","bytes":4e9,"idleDays":212}]}
+
+Never blocks the shell: it prints the last answer at once. When that answer is
+older than the TTL (6 h: idle projects change slowly; the panel, when you open
+it, asks with --max-age 1800) it starts one refresh in the background and
+exits. The refresh is `sweep scan --json` run at
+idle CPU and I/O priority under a lock, written to the cache atomically.
+A failed refresh (the folder missing, sweep gone, the scan failing) is noted in
+the cache as `error` + `failedAt` beside the last good answer, which is still
+served; the next try waits 30 min. `refreshing` says one is running (the lock
+is held), `pending` that nothing has been counted for this folder yet.
+`reclaimable` counts only safe and caution items; dangerous and blocked are
+shown as `protected`, never as space you can have. A project whose last
+activity sweep could not read is not called idle (unknown is not idle).
+Read-only: nothing is deleted or changed outside the cache file (0600; it holds
+project names and paths, kept on this machine).
+
+  kuwai-sweep                  the last answer (+ a background refresh if stale)
+  kuwai-sweep --refresh        refresh now, wait for it, print the new answer
+  kuwai-sweep --max-age S      refresh in the background if the answer is older than S seconds
+  kuwai-sweep --root DIR       what to scan (default $KUWAI_SWEEP_ROOT or ~/Projects)
+  kuwai-sweep --open [DIR]     sweep's review of DIR (default the root) in your terminal:
+                              $KUWAI_TERMINAL as bin/kuwai-term picks it (kitty if unset);
+                              the window stays open only if sweep exits with an error
+"""
+import fcntl
+import json
+import os
+import shlex
+import shutil
+import subprocess
+import sys
+import tempfile
+import time
+from pathlib import Path
+
+TTL_S = int(os.environ.get("KUWAI_SWEEP_TTL", str(6 * 3600)))
+FAIL_RETRY_S = 1800
+IDLE_DAYS = 30
+SCAN_TIMEOUT_S = 180
+DAY_MS = 86_400_000
+
+
+def find_sweep() -> str | None:
+    """The sweep command. The shell session's PATH often lacks ~/.bun/bin."""
+    found = shutil.which("sweep")
+    if found:
+        return found
+    for d in (Path.home() / ".bun" / "bin", Path.home() / ".local" / "bin", Path("/usr/local/bin"), Path("/usr/bin")):
+        c = d / "sweep"
+        if c.is_file() and os.access(c, os.X_OK):
+            return str(c)
+    return None
+
+
+def state_dir() -> Path:
+    base = os.environ.get("XDG_STATE_HOME") or str(Path.home() / ".local" / "state")
+    return Path(base) / "kuwai"
+
+
+def summarize(plan: dict, now_ms: float, idle_days: int = IDLE_DAYS, top_kinds: int = 4, top_projects: int = 5) -> dict:
+    """A scan plan reduced to what the island shows. Pure."""
+    safe = caution = prot = 0
+    kinds: dict[str, dict] = {}
+    projects: dict[str, dict] = {}
+    for c in plan.get("candidates", []):
+        tier = c.get("riskTier")
+        size = c.get("estimatedBytes") or 0
+        if tier in ("dangerous", "blocked"):
+            prot += 1
+            continue
+        if tier not in ("safe", "caution"):
+            continue
+        if tier == "safe":
+            safe += size
+        else:
+            caution += size
+        name = c.get("kind") or c.get("name") or "other"
+        k = kinds.setdefault(name, {"bytes": 0, "count": 0})
+        k["bytes"] += size
+        k["count"] += 1
+        root, active = c.get("projectRoot"), c.get("projectActiveMs")
+        if root and isinstance(active, (int, float)) and active > 0:
+            p = projects.setdefault(root, {"bytes": 0, "active": active, "kinds": {}})
+            p["bytes"] += size
+            pk = p["kinds"].setdefault(name, {"bytes": 0, "count": 0})
+            pk["bytes"] += size
+            pk["count"] += 1
+    idle = []
+    idle_kinds: dict[str, dict] = {}
+    for root, p in projects.items():
+        days = int((now_ms - p["active"]) // DAY_MS)
+        if days >= idle_days:
+            idle.append({"name": os.path.basename(root.rstrip("/")) or root, "path": root,
+                         "bytes": p["bytes"], "idleDays": days})
+            for name, v in p["kinds"].items():
+                ik = idle_kinds.setdefault(name, {"bytes": 0, "count": 0})
+                ik["bytes"] += v["bytes"]
+                ik["count"] += v["count"]
+    idle.sort(key=lambda p: p["bytes"], reverse=True)
+
+    def ranked(d: dict) -> list[dict]:
+        return sorted(({"kind": n, **v} for n, v in d.items()), key=lambda k: k["bytes"], reverse=True)[:top_kinds]
+    return {
+        "reclaimable": safe + caution, "safe": safe, "caution": caution, "protected": prot,
+        "idle": {"days": idle_days, "projects": len(idle), "bytes": sum(p["bytes"] for p in idle),
+                 "kinds": ranked(idle_kinds)},
+        "kinds": ranked(kinds), "projects": idle[:top_projects],
+    }
+
+
+def read_cache(path: Path) -> dict | None:
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, ValueError):
+        return None
+    return data if isinstance(data, dict) and isinstance(data.get("checkedAt"), (int, float)) else None
+
+
+def write_cache(path: Path, data: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".sweep-status.")
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump(data, f, separators=(",", ":"))
+        os.chmod(tmp, 0o600)
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+
+_why = ""
+
+
+def _run(args: list[str]) -> bytes | None:
+    """sweep's stdout for `args` at idle priority; None if it can't run or fails."""
+    global _why
+    exe = find_sweep()
+    if not exe:
+        _why = "sweep not found"
+        return None
+    cmd = [exe, *args]
+    if shutil.which("ionice"):
+        cmd = ["ionice", "-c3", *cmd]
+    try:
+        return subprocess.run(cmd, capture_output=True, timeout=SCAN_TIMEOUT_S, check=True,
+                              preexec_fn=lambda: os.nice(19)).stdout
+    except subprocess.TimeoutExpired:
+        _why = "timed out"
+    except subprocess.CalledProcessError as e:
+        _why = f"exit {e.returncode}"
+    except (OSError, subprocess.SubprocessError):
+        _why = "couldn't start"
+    return None
+
+
+def scan(root: str) -> dict | None:
+    """sweep's plan for `root` (older sweep: no `status`); None if it can't."""
+    if not os.path.isdir(root):
+        return None
+    global _why
+    out = _run(["scan", root, "--json", "--quiet"])
+    try:
+        plan = json.loads(out) if out else None
+    except ValueError:
+        plan = None
+    if out and not isinstance(plan, dict):
+        _why = "unreadable output"
+    return plan if isinstance(plan, dict) else None
+
+
+def from_status(st: dict) -> dict:
+    """sweep's own StatusSummary in the shape this script keeps. `idle.kinds`
+    only when sweep gives it (the panel then splits all of what sweep found)."""
+    si = st["idle"]
+    idle = {"days": si["days"], "projects": si["projects"], "bytes": si["bytes"]}
+    if isinstance(si.get("kinds"), list):
+        idle["kinds"] = [{"kind": k["kind"], "bytes": k["bytes"], "count": k.get("count", 0)} for k in si["kinds"][:4]]
+    return {
+        "reclaimable": st["reclaimableBytes"], "safe": st["safeBytes"], "caution": st["cautionBytes"],
+        "protected": st["protectedCount"], "idle": idle,
+        "kinds": st.get("kinds", [])[:4],
+        "projects": [{"name": p["name"], "bytes": p["bytes"], "idleDays": p["idleDays"],
+                      **({"path": p["path"]} if isinstance(p.get("path"), str) else {})}
+                     for p in st.get("projects", [])[:5]],
+    }
+
+
+def status(root: str) -> dict | None:
+    """`sweep status --json` (sweep keeps the definition of reclaimable and
+    idle); None when this sweep is older than the command."""
+    if not os.path.isdir(root):
+        return None
+    out = _run(["status", root, "--json", "--quiet"])
+    try:
+        st = json.loads(out) if out else None
+    except ValueError:
+        return None
+    if not isinstance(st, dict) or not isinstance(st.get("reclaimableBytes"), (int, float)):
+        return None
+    try:
+        return from_status(st)
+    except (KeyError, TypeError):
+        return None
+
+
+def lock_path(cache: Path) -> Path:
+    return cache.parent / "sweep-status.lock"
+
+
+def is_refreshing(cache: Path) -> bool:
+    """Whether a refresh holds the lock right now."""
+    try:
+        with open(lock_path(cache), "a") as f:
+            try:
+                fcntl.flock(f, fcntl.LOCK_SH | fcntl.LOCK_NB)
+            except OSError:
+                return True
+            fcntl.flock(f, fcntl.LOCK_UN)
+            return False
+    except OSError:
+        return False
+
+
+def record_failure(cache: Path, root: str, error: str, now: float) -> dict:
+    """Note a failed refresh, keeping the last good answer for this root (or
+    none: checkedAt 0, never counted)."""
+    prev = read_cache(cache)
+    base = prev if prev and prev.get("root") == root else {"alive": True, "root": root, "checkedAt": 0}
+    data = {**base, "error": error, "failedAt": int(now)}
+    write_cache(cache, data)
+    return data
+
+
+def refresh(root: str, cache: Path, now: float | None = None) -> dict | None:
+    """Scan and cache. None when a refresh is already running, or this one
+    failed (then the cache keeps the last good answer with an `error` note)."""
+    cache.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    with open(lock_path(cache), "a") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            return None
+        now = time.time() if now is None else now
+        error = None
+        summary = None
+        if not os.path.isdir(root):
+            error = "folder missing"
+        elif not find_sweep():
+            error = "sweep not found"
+        else:
+            summary = status(root)
+            if summary is None:
+                plan = scan(root)
+                if plan is None:
+                    error = "scan failed" + (f" ({_why})" if _why else "")
+                else:
+                    summary = summarize(plan, now * 1000)
+        if error:
+            record_failure(cache, root, error, now)
+            return None
+        data = {"alive": True, "checkedAt": int(now), "root": root, **summary}
+        write_cache(cache, data)
+        return data
+
+
+def answer(cache: Path, root: str, now: float, ttl: int = TTL_S) -> tuple[dict, bool]:
+    """(what to print, whether a background refresh should start).
+
+    `refreshing`: one is running (or about to). `error`: the last refresh
+    failed; the last good answer, if any, still comes with it."""
+    if not find_sweep():
+        return {"alive": False}, False
+    if not os.path.isdir(root):
+        return {"alive": True, "root": root, "checkedAt": 0, "error": "folder missing"}, False
+    busy = is_refreshing(cache)
+    data = read_cache(cache)
+    if data is None or data.get("root") != root:
+        return {"alive": True, "pending": True, "root": root, "refreshing": True}, not busy
+    stale = now - data["checkedAt"] > ttl
+    failed = data.get("failedAt")
+    backing_off = isinstance(failed, (int, float)) and now - failed < FAIL_RETRY_S
+    go = stale and not busy and not backing_off
+    return {**data, "alive": True, "stale": stale, "refreshing": busy or go}, go
+
+
+REVIEW_SH = ('"$1" ui "$2"; s=$?; '
+             'if [ "$s" -ne 0 ]; then printf "\\nsweep exited with %s. Press Enter to close." "$s"; read -r _; fi; '
+             'exit "$s"')
+
+
+def open_cmd(term: str, exe: str, d: str) -> list[str]:
+    """The command that opens sweep's review of `d` in `term` (bin/kuwai-term's
+    choice of terminal). Pure."""
+    run = ["sh", "-c", REVIEW_SH, "sh", exe, d]
+    term = term or "kitty"
+    if "kitty" in term:
+        return ["kitty", "--single-instance", "--instance-group=local", "--title", "sweep", "--directory", d, *run]
+    if "ghostty" in term:
+        return ["ghostty", f"--working-directory={d}", "--title=sweep", "-e", *run]
+    if "foot" in term:
+        return ["foot", f"--working-directory={d}", "--title=sweep", *run]
+    return [*shlex.split(term), "-e", *run]
+
+
+def open_review(d: str) -> int:
+    exe = find_sweep()
+    if not exe:
+        print("kuwai-sweep: sweep isn't installed", file=sys.stderr)
+        return 1
+    if not os.path.isdir(d):
+        print(f"kuwai-sweep: no folder {d}", file=sys.stderr)
+        return 1
+    cmd = open_cmd(os.environ.get("KUWAI_TERMINAL", ""), exe, d)
+    try:
+        subprocess.Popen(cmd, cwd=d, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                         stderr=subprocess.DEVNULL, start_new_session=True)
+    except OSError as e:
+        print(f"kuwai-sweep: couldn't start {cmd[0]}: {e}", file=sys.stderr)
+        return 1
+    return 0
+
+
+def main(argv: list[str]) -> int:
+    root = os.environ.get("KUWAI_SWEEP_ROOT") or str(Path.home() / "Projects")
+    args = list(argv)
+    if "--root" in args:
+        i = args.index("--root")
+        root = args[i + 1] if i + 1 < len(args) else root
+        del args[i:i + 2]
+    ttl = TTL_S
+    if "--max-age" in args:
+        i = args.index("--max-age")
+        try:
+            ttl = max(0, int(args[i + 1]))
+        except (IndexError, ValueError):
+            print("kuwai-sweep: --max-age takes seconds", file=sys.stderr)
+            return 2
+        del args[i:i + 2]
+    if "--open" in args:
+        i = args.index("--open")
+        target = args[i + 1] if i + 1 < len(args) and not args[i + 1].startswith("--") else root
+        return open_review(os.path.realpath(os.path.expanduser(target)))
+    root = os.path.realpath(os.path.expanduser(root))
+    cache = state_dir() / "sweep-status.json"
+    if "--refresh" in args:
+        data = refresh(root, cache) or read_cache(cache) or {"alive": find_sweep() is not None, "pending": True}
+        print(json.dumps(data, separators=(",", ":")))
+        return 0
+    out, needs_refresh = answer(cache, root, time.time(), ttl)
+    print(json.dumps(out, separators=(",", ":")))
+    sys.stdout.flush()
+    if needs_refresh:
+        subprocess.Popen([sys.executable, os.path.abspath(__file__), "--refresh", "--root", root],
+                         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                         start_new_session=True)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

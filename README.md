@@ -100,6 +100,16 @@ opens the panel where you act on it.
   (backs up your settings first; `--remove` takes it out):
   `kittymux hooks --install` (and `--settings ~/.claude_personal/settings.json`
   for a second account), `kittymux hooks --codex --install`.
+- **Idle projects** (needs [sweep](https://github.com/KitsuneKode/sweep)): when old
+  projects hold space worth getting back (10 GB by default; Settings → Island),
+  a small broom mark joins the system news with the size. Rest on it for the
+  bar of what's taking it (node_modules, target, .next…) with the old projects
+  below; a click keeps it open, and Review in sweep (or Enter) opens sweep's own
+  review, in your terminal. Nothing is deleted from the island, and the mark
+  steps back once you've looked until the number grows by 5 GB. It reads
+  sweep's own scan, kept for 6 hours (30 minutes when you open the panel) and
+  refreshed at idle priority (`bin/kuwai-sweep`); also in the launcher as Idle
+  Projects.
 - **HDR** reads the signal on the wire (`bin/kuwai-hdr`), not the preset name:
   the notch says HDR when the screen is really receiving PQ or HLG.
 

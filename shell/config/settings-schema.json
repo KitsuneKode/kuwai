@@ -802,6 +802,32 @@
       "restartScope": "live"
     },
     {
+      "key": "sweepMark",
+      "type": "boolean",
+      "default": true,
+      "section": "island",
+      "label": "Idle projects mark",
+      "detail": "A small mark when sweep finds old projects holding space; rest on it to see which. Needs sweep installed",
+      "group": "Idle projects",
+      "searchTerms": "idle projects mark a small mark when sweep finds old projects holding space; rest on it to see which. needs sweep installed  idle projects",
+      "requires": [],
+      "restartScope": "live"
+    },
+    {
+      "key": "sweepMinGB",
+      "type": "integer",
+      "default": 10,
+      "min": 1,
+      "max": 500,
+      "section": "island",
+      "label": "Show it from",
+      "detail": "How much idle space is worth a mark (GB)",
+      "group": "Idle projects",
+      "searchTerms": "show it from how much idle space is worth a mark (gb)  idle projects",
+      "requires": [],
+      "restartScope": "live"
+    },
+    {
       "key": "quickPrimary",
       "type": "string",
       "default": "caffeine",

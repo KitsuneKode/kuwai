@@ -3744,6 +3744,366 @@
    "id": "system/typical",
    "name": "system",
    "panel": "SystemPanel"
+  },
+  {
+   "id": "sweep/typical",
+   "name": "sweep",
+   "panel": "SweepPanel",
+   "kind": "typical",
+   "set": [
+    [
+     "Sweep",
+     "data",
+     {
+      "alive": true,
+      "checkedAt": "@now-2700s",
+      "stale": false,
+      "root": "/home/ada/Projects",
+      "reclaimable": 36000000000.0,
+      "safe": 29000000000.0,
+      "caution": 7000000000.0,
+      "protected": 12,
+      "idle": {
+       "days": 30,
+       "projects": 5,
+       "bytes": 31800000000.0,
+       "kinds": [
+        {
+         "kind": "node_modules",
+         "bytes": 22000000000.0,
+         "count": 19
+        },
+        {
+         "kind": "target",
+         "bytes": 6100000000.0,
+         "count": 4
+        },
+        {
+         "kind": ".next",
+         "bytes": 2400000000.0,
+         "count": 6
+        },
+        {
+         "kind": "dist",
+         "bytes": 900000000.0,
+         "count": 11
+        },
+        {
+         "kind": ".venv",
+         "bytes": 400000000.0,
+         "count": 2
+        }
+       ]
+      },
+      "kinds": [
+       {
+        "kind": "node_modules",
+        "bytes": 22000000000.0,
+        "count": 19
+       },
+       {
+        "kind": "target",
+        "bytes": 6100000000.0,
+        "count": 4
+       },
+       {
+        "kind": ".next",
+        "bytes": 2400000000.0,
+        "count": 6
+       },
+       {
+        "kind": "dist",
+        "bytes": 900000000.0,
+        "count": 11
+       },
+       {
+        "kind": ".venv",
+        "bytes": 400000000.0,
+        "count": 2
+       }
+      ],
+      "projects": [
+       {
+        "name": "old-shop",
+        "path": "/home/ada/Projects/old-shop",
+        "bytes": 9400000000.0,
+        "idleDays": 212
+       },
+       {
+        "name": "sweep-ui",
+        "path": "/home/ada/Projects/kuwai/.worktrees/sweep-ui",
+        "bytes": 6300000000.0,
+        "idleDays": 44
+       },
+       {
+        "name": "rust-raytracer",
+        "path": "/home/ada/Projects/rust-raytracer",
+        "bytes": 6100000000.0,
+        "idleDays": 130
+       },
+       {
+        "name": "hackathon-2025",
+        "path": "/home/ada/Projects/hackathon-2025",
+        "bytes": 3800000000.0,
+        "idleDays": 340
+       },
+       {
+        "name": "blog",
+        "path": "/home/ada/Projects/blog",
+        "bytes": 1200000000.0,
+        "idleDays": 61
+       }
+      ]
+     }
+    ]
+   ]
+  },
+  {
+   "id": "sweep/counting",
+   "name": "sweep",
+   "panel": "SweepPanel",
+   "kind": "typical",
+   "set": [
+    [
+     "Sweep",
+     "data",
+     {
+      "alive": true,
+      "pending": true,
+      "refreshing": true,
+      "root": "/home/ada/Projects",
+      "checkedAt": 0
+     }
+    ]
+   ]
+  },
+  {
+   "id": "sweep/failed",
+   "name": "sweep",
+   "panel": "SweepPanel",
+   "kind": "typical",
+   "set": [
+    [
+     "Sweep",
+     "data",
+     {
+      "alive": true,
+      "checkedAt": "@now-2700s",
+      "stale": false,
+      "root": "/home/ada/Projects",
+      "reclaimable": 36000000000.0,
+      "safe": 29000000000.0,
+      "caution": 7000000000.0,
+      "protected": 12,
+      "idle": {
+       "days": 30,
+       "projects": 5,
+       "bytes": 31800000000.0,
+       "kinds": [
+        {
+         "kind": "node_modules",
+         "bytes": 22000000000.0,
+         "count": 19
+        },
+        {
+         "kind": "target",
+         "bytes": 6100000000.0,
+         "count": 4
+        },
+        {
+         "kind": ".next",
+         "bytes": 2400000000.0,
+         "count": 6
+        },
+        {
+         "kind": "dist",
+         "bytes": 900000000.0,
+         "count": 11
+        },
+        {
+         "kind": ".venv",
+         "bytes": 400000000.0,
+         "count": 2
+        }
+       ]
+      },
+      "kinds": [
+       {
+        "kind": "node_modules",
+        "bytes": 22000000000.0,
+        "count": 19
+       },
+       {
+        "kind": "target",
+        "bytes": 6100000000.0,
+        "count": 4
+       },
+       {
+        "kind": ".next",
+        "bytes": 2400000000.0,
+        "count": 6
+       },
+       {
+        "kind": "dist",
+        "bytes": 900000000.0,
+        "count": 11
+       },
+       {
+        "kind": ".venv",
+        "bytes": 400000000.0,
+        "count": 2
+       }
+      ],
+      "projects": [
+       {
+        "name": "old-shop",
+        "path": "/home/ada/Projects/old-shop",
+        "bytes": 9400000000.0,
+        "idleDays": 212
+       },
+       {
+        "name": "sweep-ui",
+        "path": "/home/ada/Projects/kuwai/.worktrees/sweep-ui",
+        "bytes": 6300000000.0,
+        "idleDays": 44
+       },
+       {
+        "name": "rust-raytracer",
+        "path": "/home/ada/Projects/rust-raytracer",
+        "bytes": 6100000000.0,
+        "idleDays": 130
+       },
+       {
+        "name": "hackathon-2025",
+        "path": "/home/ada/Projects/hackathon-2025",
+        "bytes": 3800000000.0,
+        "idleDays": 340
+       },
+       {
+        "name": "blog",
+        "path": "/home/ada/Projects/blog",
+        "bytes": 1200000000.0,
+        "idleDays": 61
+       }
+      ],
+      "error": "the scan stopped: folder missing",
+      "failedAt": "@now-600s"
+     }
+    ]
+   ]
+  },
+  {
+   "id": "sweep/worst",
+   "name": "sweep",
+   "panel": "SweepPanel",
+   "kind": "worst",
+   "set": [
+    [
+     "Sweep",
+     "data",
+     {
+      "alive": true,
+      "checkedAt": "@now-2700s",
+      "stale": false,
+      "root": "/home/ada/Projects",
+      "reclaimable": 36000000000.0,
+      "safe": 29000000000.0,
+      "caution": 7000000000.0,
+      "protected": 12,
+      "idle": {
+       "days": 30,
+       "projects": 38,
+       "bytes": 1200000000000.0,
+       "kinds": [
+        {
+         "kind": "node_modules",
+         "bytes": 22000000000.0,
+         "count": 19
+        },
+        {
+         "kind": "target",
+         "bytes": 6100000000.0,
+         "count": 4
+        },
+        {
+         "kind": ".next",
+         "bytes": 2400000000.0,
+         "count": 6
+        },
+        {
+         "kind": "dist",
+         "bytes": 900000000.0,
+         "count": 11
+        },
+        {
+         "kind": ".venv",
+         "bytes": 400000000.0,
+         "count": 2
+        }
+       ]
+      },
+      "kinds": [
+       {
+        "kind": "node_modules",
+        "bytes": 22000000000.0,
+        "count": 19
+       },
+       {
+        "kind": "target",
+        "bytes": 6100000000.0,
+        "count": 4
+       },
+       {
+        "kind": ".next",
+        "bytes": 2400000000.0,
+        "count": 6
+       },
+       {
+        "kind": "dist",
+        "bytes": 900000000.0,
+        "count": 11
+       },
+       {
+        "kind": ".venv",
+        "bytes": 400000000.0,
+        "count": 2
+       }
+      ],
+      "projects": [
+       {
+        "name": "old-shop-with-a-much-longer-folder-name-than-usual",
+        "path": "/home/ada/Projects/old-shop-with-a-much-longer-folder-name-than-usual",
+        "bytes": 9400000000.0,
+        "idleDays": 212
+       },
+       {
+        "name": "sweep-ui-with-a-much-longer-folder-name-than-usual",
+        "path": "/home/ada/Projects/kuwai/.worktrees/sweep-ui-with-a-much-longer-folder-name-than-usual",
+        "bytes": 6300000000.0,
+        "idleDays": 44
+       },
+       {
+        "name": "rust-raytracer-with-a-much-longer-folder-name-than-usual",
+        "path": "/home/ada/Projects/rust-raytracer-with-a-much-longer-folder-name-than-usual",
+        "bytes": 6100000000.0,
+        "idleDays": 130
+       },
+       {
+        "name": "hackathon-2025-with-a-much-longer-folder-name-than-usual",
+        "path": "/home/ada/Projects/hackathon-2025-with-a-much-longer-folder-name-than-usual",
+        "bytes": 3800000000.0,
+        "idleDays": 340
+       },
+       {
+        "name": "blog-with-a-much-longer-folder-name-than-usual",
+        "path": "/home/ada/Projects/blog-with-a-much-longer-folder-name-than-usual",
+        "bytes": 1200000000.0,
+        "idleDays": 61
+       }
+      ]
+     }
+    ]
+   ]
   }
  ]
 }
