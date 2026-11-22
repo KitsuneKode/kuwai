@@ -126,8 +126,13 @@ Scope {
             // the mask keeps the empty sides click-through.
             // Never wider or taller than the screen itself (a small, portrait or
             // high-scale output); panels then fit inside it (panelSize).
-            implicitWidth: Math.min(1120, Theme.screenSize(modelData, "width", 1120))
-            implicitHeight: Math.min(640, Theme.screenSize(modelData, "height", 664) - 24)
+            readonly property real maxWinW: Math.min(1120, Theme.screenSize(modelData, "width", 1120))
+            readonly property real maxWinH: Math.min(640, Theme.screenSize(modelData, "height", 664) - 24)
+            readonly property bool islandExpanded: panelHere || bannerHere || peekHere || deviceHere || grown
+                || m.value > 0.005 || pv.value > 0.005 || bv.value > 0.005 || nv.value > 0.005 || dv.value > 0.005
+                || clockFlying || glanceDragging
+            implicitWidth: maxWinW
+            implicitHeight: islandExpanded ? maxWinH : Math.min(72, maxWinH)
             exclusiveZone: showBar && !tucked && !screenFullscreen ? restH + top + (notch ? 2 : 6) : 0
             color: "transparent"
             WlrLayershell.namespace: "kuwai-islandbar"
@@ -404,14 +409,14 @@ Scope {
             // A panel's own size, but never past the window (room for the shadow):
             // on a normal screen nothing changes, on a small one it fits.
             readonly property size panelSize: panelLoader.item
-                ? Qt.size(Math.min(panelLoader.item.implicitWidth, implicitWidth - 40), Math.min(panelLoader.item.implicitHeight + backH, implicitHeight - 40))
+                ? Qt.size(Math.min(panelLoader.item.implicitWidth, maxWinW - 40), Math.min(panelLoader.item.implicitHeight + backH, maxWinH - 40))
                 : Qt.size(420, 300)
             // Expanded, recent background work from the assistant gets a row at the bottom.
             // Its width is IslandHover's own (wider with many agent accounts,
             // so the rings clear both sides); 720 until it's loaded.
             readonly property size hoverSize: !hoverFull
-                ? Qt.size(glanceLoader.item ? Math.min(glanceLoader.item.implicitWidth, implicitWidth - 40) : 460, glanceLoader.item ? glanceLoader.item.implicitHeight : 52)
-                : Qt.size(hoverLoader.item ? Math.min(hoverLoader.item.implicitWidth, implicitWidth - 40) : 720,
+                ? Qt.size(glanceLoader.item ? Math.min(glanceLoader.item.implicitWidth, maxWinW - 40) : 460, glanceLoader.item ? glanceLoader.item.implicitHeight : 52)
+                : Qt.size(hoverLoader.item ? Math.min(hoverLoader.item.implicitWidth, maxWinW - 40) : 720,
                           hoverLoader.item ? hoverLoader.item.implicitHeight : 148 + (OllamaService.recentWork.length || OllamaService.bgWorking ? 38 : 0))
             // A warning grows the island too (below panels and hover in priority).
             readonly property bool bannerHere: Alerts.banner !== null && screenName === (Screens.present(Alerts.bannerOn) ? Alerts.bannerOn : Screens.focusedName) && !panelHere && !grown
@@ -537,7 +542,7 @@ Scope {
                 NumberAnimation { id: needSettle; target: win; property: "needGlow"; easing.type: Easing.InOutSine }
             }
             // Expanded with a whole message (a mail, a comment): room to read it.
-            readonly property real peekH: Notifs.peekExpanded ? (peekLoader.item ? Math.min(peekLoader.item.wantH, implicitHeight - 40) : 172) : 76
+            readonly property real peekH: Notifs.peekExpanded ? (peekLoader.item ? Math.min(peekLoader.item.wantH, maxWinH - 40) : 172) : 76
             readonly property real bannerH: bannerHere && alertLoader.item ? alertLoader.item.implicitHeight : 72
             readonly property real targetW: panelHere ? panelSize.width : grown ? hoverSize.width : bannerHere ? 440 : peekHere ? 460 : deviceHere ? (win.alarmCard ? 440 : 420) : restRow.implicitWidth + 32
             readonly property real targetH: panelHere ? panelSize.height : grown ? hoverSize.height : bannerHere ? bannerH : peekHere ? peekH : deviceHere ? 84 : restH

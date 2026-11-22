@@ -56,7 +56,8 @@ def test_play_starts_one_player_per_screen_then_stop_ends_it(tmp_path):
     assert lw(env, "out-play", "DP-3", str(video)).returncode == 0
     assert wait_for(log, "mpvpaper")
     line = log.read_text()
-    assert f"input-ipc-server={sock}/mpvpaper-DP-3.sock" in line and "hwdec=auto" in line and "no-audio" in line
+    assert f"input-ipc-server={sock}/mpvpaper-DP-3.sock" in line and "no-audio" in line
+    assert ("hwdec=vaapi-copy" in line or "hwdec=no" in line) and "hwdec=auto" not in line
     assert f"DP-3 {video}" in line and " pause " not in line + " "
     pid = int((sock / "mpvpaper-DP-3.pid").read_text())
     assert Path(f"/proc/{pid}/comm").read_text().strip() == "mpvpaper"
@@ -70,13 +71,24 @@ def test_play_starts_one_player_per_screen_then_stop_ends_it(tmp_path):
     assert not (sock / "mpvpaper-DP-3.pid").exists()
 
 
-def test_a_covered_screen_starts_paused(tmp_path):
+def test_a_covered_screen_does_not_spawn_a_cold_player(tmp_path):
     env, log, sock = setup(tmp_path)
     video = tmp_path / "loop.mp4"
     video.write_text("v")
     assert lw(env, "out-play", "eDP-1", str(video), "paused").returncode == 0
+    time.sleep(0.2)
+    assert not log.exists()
+    assert not (sock / "mpvpaper-eDP-1.pid").exists()
+    assert lw(env, "out-play", "eDP-1", str(video)).returncode == 0
     assert wait_for(log, "mpvpaper")
-    assert " pause eDP-1 " in log.read_text()
+    import socket
+    s = socket.socket(socket.AF_UNIX)
+    s.bind(str(sock / "mpvpaper-eDP-1.sock"))
+    try:
+        assert lw(env, "out-play", "eDP-1", str(video), "paused").returncode == 0
+        assert '"pause", true' in log.read_text()
+    finally:
+        s.close()
     lw(env, "out-stop", "eDP-1")
 
 

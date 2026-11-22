@@ -25,7 +25,22 @@ STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/live-wallpaper"
 IDX="$STATE_DIR/index"
 LAST="$STATE_DIR/last"
 ENABLED="$STATE_DIR/enabled"
-MPV_OPTS="no-audio loop hwdec=auto panscan=1.0 input-ipc-server=$SOCK_PREFIX.sock"
+MPV_HWDEC="hwdec=no"
+MPV_HWDEC_ENV=()
+mpv_detect_hwdec() {
+    local rn v
+    for rn in /dev/dri/renderD*; do
+        [ -e "$rn" ] || continue
+        v=$(cat "/sys/class/drm/$(basename "$rn")/device/vendor" 2>/dev/null || true)
+        if [ "$v" = "0x8086" ]; then
+            MPV_HWDEC="hwdec=vaapi-copy vaapi-device=$rn"
+            MPV_HWDEC_ENV=(LIBVA_DRIVER_NAME=iHD)
+            return 0
+        fi
+    done
+}
+mpv_detect_hwdec
+MPV_OPTS="no-audio loop $MPV_HWDEC panscan=1.0 input-ipc-server=$SOCK_PREFIX.sock"
 
 LIVE_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/kuwai/live"
 playable() {
@@ -122,7 +137,7 @@ spawn() {
     local file="$1"
     (umask 077; mkdir -p "$SOCK_DIR")
     mpv_wall_home
-    MPV_HOME="$MPV_WALL_HOME" setsid mpvpaper -o "$MPV_OPTS" '*' "$file" >/dev/null 2>&1 &
+    env "${MPV_HWDEC_ENV[@]}" MPV_HOME="$MPV_WALL_HOME" setsid mpvpaper -o "$MPV_OPTS" '*' "$file" >/dev/null 2>&1 &
     printf '%s' "$!" > "$FALLBACK_PIDF"
     setsid "$0" watch </dev/null >/dev/null 2>&1 &
     printf '%s' "$!" > "$WATCH_PIDF"
@@ -211,11 +226,13 @@ out_play() {
         fi
         kill "$pid" 2>/dev/null
     fi
+    if [ "$pause_now" = true ]; then
+        return 0
+    fi
     rm -f "$(out_sock "$out")"
-    opts="no-audio loop hwdec=auto panscan=1.0 input-ipc-server=$(out_sock "$out")"
-    [ "$pause_now" = true ] && opts="$opts pause"
+    opts="no-audio loop $MPV_HWDEC panscan=1.0 input-ipc-server=$(out_sock "$out")"
     mpv_wall_home
-    MPV_HOME="$MPV_WALL_HOME" setsid nice -n 5 mpvpaper -o "$opts" "$out" "$file" </dev/null >/dev/null 2>&1 &
+    env "${MPV_HWDEC_ENV[@]}" MPV_HOME="$MPV_WALL_HOME" setsid nice -n 5 mpvpaper -o "$opts" "$out" "$file" </dev/null >/dev/null 2>&1 &
     printf '%s' "$!" > "$(out_pidf "$out")"
     printf '%s' "$file" > "$SOCK_DIR/mpvpaper-$out.file"
 }

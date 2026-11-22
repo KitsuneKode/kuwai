@@ -15,7 +15,14 @@ local apply = {}
 local SOLID = "1 override 1 override 1 override"
 
 function apply.focus()
-	K.config({ decoration = { active_opacity = 1, inactive_opacity = 1, fullscreen_opacity = 1 } })
+	K.config({
+		decoration = {
+			active_opacity = 1,
+			inactive_opacity = 1,
+			fullscreen_opacity = 1,
+			blur = { size = 5, passes = 2, popups = false, special = false },
+		},
+	})
 	pcall(hl.window_rule, { name = "mode-focus-opaque", match = { class = ".*" }, opaque = true, opacity = SOLID })
 end
 

@@ -153,7 +153,15 @@ Scope {
             }
             readonly property bool covered: fullscreen || coverage >= 0.85
             readonly property bool shouldPlay: root.video !== "" && !covered && !root.obscured && root.batteryOk
-            readonly property string want: root.video === "" || root.obscured ? "stop" : shouldPlay ? "play" : "pause"
+            property bool released: !shouldPlay
+            onShouldPlayChanged: if (shouldPlay) released = false
+            Timer {
+                id: coverRelease
+                interval: 10000
+                running: root.video !== "" && !root.obscured && !slot.shouldPlay && !slot.released
+                onTriggered: slot.released = true
+            }
+            readonly property string want: root.video === "" || root.obscured || (slot.released && !shouldPlay) ? "stop" : shouldPlay ? "play" : "pause"
 
             // Window geometry (lastIpcObject) is a snapshot: refresh it a
             // moment after windows open, close or move.
