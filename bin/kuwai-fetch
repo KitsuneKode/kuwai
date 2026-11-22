@@ -8,9 +8,11 @@ kuwai-fetch: fastfetch with a moving picture beside it.
   kuwai-fetch              an animated GIF on the left (kitty), the system on the right
   kuwai-fetch NAME         that one (a file name in the folder, without .gif)
   kuwai-fetch --list       what's in the folder
+  kuwai-fetch --logo       a random picture from ~/.config/fastfetch/logo (fastfetch's own logo)
   kuwai-fetch --get-pokemon N [N…]   (a range 1-151, or random=10)
-                           fetch Pokémon N's animated sprite (gen 5, from the
-                           PokeAPI sprites repo on GitHub) into the folder. Your
+                           fetch Pokémon N's animated sprite (Gen 5's, else
+                           Pokémon Showdown's; the PokeAPI sprites repo on
+                           GitHub, the source pocket-dots uses) into the folder. Your
                            download, for your machine: nothing like it ships here.
 
 Pictures: ~/.config/kuwai/fetch/*.gif (or .png / .webp). Put any GIF there.
@@ -34,13 +36,17 @@ pics() { find "$DIR" -maxdepth 1 -type f \( -iname '*.gif' -o -iname '*.png' -o 
 
 case "${1:-}" in
     --list) pics | sed "s|$DIR/||"; exit 0 ;;
+    --logo)
+        mapfile -t logos < <(find "${XDG_CONFIG_HOME:-$HOME/.config}/fastfetch/logo" -maxdepth 1 -type f \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.webp' -o -iname '*.icon' \) 2>/dev/null)
+        [ ${#logos[@]} -gt 0 ] && printf '%s\n' "${logos[RANDOM % ${#logos[@]}]}"
+        exit 0 ;;
     --get-pokemon)
         shift
         mkdir -p "$DIR"
         nums=()
         for a in "$@"; do
             case "$a" in
-                random=*) k=${a#random=}; case "$k" in *[!0-9]*|"") k=6 ;; esac; mapfile -t -O "${#nums[@]}" nums < <(shuf -i 1-649 -n "$k") ;;
+                random=*) k=${a#random=}; case "$k" in *[!0-9]*|"") k=6 ;; esac; mapfile -t -O "${#nums[@]}" nums < <(shuf -i 1-1025 -n "$k") ;;
                 *-*) lo=${a%-*}; hi=${a#*-}; case "$lo$hi" in *[!0-9]*|"") nums+=("$a") ;; *) mapfile -t -O "${#nums[@]}" nums < <(seq "$lo" "$hi") ;; esac ;;
                 *) nums+=("$a") ;;
             esac
@@ -48,11 +54,12 @@ case "${1:-}" in
         for n in "${nums[@]}"; do
             [ -s "$DIR/pokemon-$n.gif" ] && continue
             case "$n" in *[!0-9]*|"") echo "not a number: $n" >&2; continue ;; esac
-            url="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/$n.gif"
-            if curl -fsSL --max-time 20 -o "$DIR/pokemon-$n.gif.part" "$url"; then
+            base="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon"
+            if curl -fsSL --max-time 20 -o "$DIR/pokemon-$n.gif.part" "$base/versions/generation-v/black-white/animated/$n.gif" \
+                || curl -fsSL --max-time 20 -o "$DIR/pokemon-$n.gif.part" "$base/other/showdown/$n.gif"; then
                 mv "$DIR/pokemon-$n.gif.part" "$DIR/pokemon-$n.gif"; echo "pokemon-$n"
             else
-                rm -f "$DIR/pokemon-$n.gif.part"; echo "couldn't fetch $n (only 1–649 have animated sprites)" >&2
+                rm -f "$DIR/pokemon-$n.gif.part"; echo "couldn't fetch $n (1–1025: Gen 5's animated sprites, else Pokémon Showdown's)" >&2
             fi
         done
         exit 0 ;;
@@ -94,7 +101,7 @@ if [ ! -s "$box" ]; then
 fi
 
 mapfile -t info < <(fastfetch --logo none --pipe false 2>/dev/null \
-    | sed -E 's/ \([0-9]+\) @ [0-9.]+ GHz//; s/ @ [0-9.]+ GHz//; s/ \[(Integrated|Discrete)\]//')
+    | sed -E 's/ \([0-9]+\) @ [0-9.]+ GHz//; s/ @ [0-9.]+ GHz//; s/ \[(Integrated|Discrete)\]//; s/\((R|TM)\)//g')
 n=${#info[@]}
 printf '\0337'
 printf '\033[?7l'
