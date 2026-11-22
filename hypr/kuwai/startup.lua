@@ -19,6 +19,9 @@ hl.on("hyprland.start", function()
 	end
 
 	hl.exec_cmd(K.bin .. "/kuwai-shell")
+	if not K.hyde then
+		hl.exec_cmd(K.bin .. "/kuwai-wall restore")
+	end
 	hl.exec_cmd(KUWAI_ROOT .. "/greeter/sync")
 
 	hl.exec_cmd(unit("kuwai-clipboard.service"))

@@ -55,12 +55,12 @@ after.
 | File | Reads | Before, without HyDE | Now |
 |---|---|---|---|
 | `shell/config/Theme.qml` | `staterc`, the theme's `theme.dcol` / `kitty.theme`, `wall.dcol` | silent: Theme's own accent (#0a84ff) and background | unchanged (the defined state; verified by the probe) |
-| `shell/modules/lock/LockView.qml` | `~/.cache/hyde/wall.set` | black behind the lock, a "Cannot open" warning at each lock | black, no warning (`Hyde.wallpaper`) |
+| `shell/modules/lock/LockView.qml` | `Hyde.wallpaper`: HyDE's `wall.set`, else kuwai's `~/.local/state/kuwai/wallpaper` | black, a warning | the kept still wallpaper (`kuwai-wall set IMAGE`, restored at login without HyDE) |
 | `shell/modules/screensaver/Screensaver.qml` | `wall.set` (the "still" style) | black, a warning | black, no warning |
 | `shell/greeter.qml` | the greeter's copy of `wall.set` (greeter/sync) | black under the welcome, a warning | black, no warning |
 | `shell/film.qml` (the clip harness) | `wall.set` | black, a warning | black, no warning |
 | `shell/modules/island/ThemePanel.qml` | `wall.set` (the still thumbnail); HyDE's folders in its guides | "No themes found" and a guide pointing at HyDE's folders | says "Themes and wallpapers come from HyDE, which isn't installed", and that live wallpapers and screensavers work without it |
-| `shell/services/Glyphs.qml` | `~/.local/share/hyde/{emoji,glyph}.db` | `:` / `;` in the launcher: an empty list | the launcher says the lists aren't there (`Glyphs.emojiMissing`) |
+| `shell/services/Glyphs.qml` | kuwai's own `lib/lists/{emoji,glyph}.db` (built by `bin/kuwai-lists`) | — | works without HyDE (2026-11-22) |
 | `bin/kuwai-themes` (also b) | themes, thumbnails, `staterc`, dcols, `wall.set`; runs `theme.switch.sh`, `wallpaper.sh`, `hyde-shell` | `list` **crashed** (traceback; the panel kept its last listing or nothing); `wallpaper` crashed too; `colormode` failed silently | `list`: empty with `"hyde": false`; the three switches exit 3 with the reason |
 | `bin/kuwai-theme` | installs a kuwai theme into `~/.config/hyde/themes`; reads `staterc` | writes a theme nothing reads | unchanged (being reworked elsewhere; see the caveat) |
 | `bin/kuwai-livewall` | `staterc`, the theme's `wallpapers/live/` | silent: uses `~/Pictures/live-wallpapers` | unchanged |

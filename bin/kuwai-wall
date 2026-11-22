@@ -14,6 +14,9 @@ Live wallpapers: add your own, and play them in the shell.
                                           from the Steam Workshop (431960)
   kuwai-wall list                          the library, in play order
   kuwai-wall play NAME|FILE                play one now
+  kuwai-wall set IMAGE                     the still wallpaper, set with awww and
+                                          kept in kuwai's state (no HyDE needed)
+  kuwai-wall restore                       set the kept one again (at login)
 
 The library is ~/Pictures/live-wallpapers (or a theme's own
 ~/.config/hyde/themes/<theme>/wallpapers/live). Names start with a number
@@ -132,7 +135,24 @@ json() {
     printf ']\n'
 }
 
+STILL=${XDG_STATE_HOME:-$HOME/.local/state}/kuwai/wallpaper
+still() {
+    local f; f=$(readlink -f "$1")
+    [ -f "$f" ] || { echo "kuwai-wall: no such image: $f" >&2; return 1; }
+    case "$(file -b --mime-type "$f" 2>/dev/null)" in image/*) ;; *) echo "kuwai-wall: not an image: $f" >&2; return 1 ;; esac
+    command -v awww >/dev/null || { echo "kuwai-wall: awww isn't installed" >&2; return 1; }
+    if ! awww query >/dev/null 2>&1; then
+        setsid -f awww-daemon --format xrgb >/dev/null 2>&1
+        for _ in $(seq 1 50); do awww query >/dev/null 2>&1 && break; sleep 0.1; done
+    fi
+    awww img "$f" --transition-type fade --transition-duration 0.6 >/dev/null 2>&1 || return 1
+    mkdir -p "$(dirname "$STILL")"
+    ln -sfn "$(readlink -f "$f")" "$STILL"
+}
+
 case "${1:-list}" in
+    set)    still "${2:?usage: kuwai-wall set IMAGE}" ;;
+    restore) [ -e "$STILL" ] || exit 0; still "$STILL" ;;
     json)   json ;;
     off)    "$SCRIPT" stop ;;
     add)    shift; add "$@" ;;

@@ -9,6 +9,8 @@ Not covered by that license, and kept under their own terms:
 | --- | --- | --- |
 | Phosphor icons | `shell/assets/phosphor/` | MIT (its own `LICENSE` there) |
 | Agent and tool logos (Anthropic, OpenAI, Gemini, …) | `shell/assets/brands/` | Trademarks of their owners, used only to identify each agent; no endorsement implied |
+| Emoji names and keywords | `lib/lists/emoji.db` | Built from Unicode's emoji-test.txt and CLDR annotations: Unicode License v3 (unicode.org/license.txt) |
+| Nerd Font glyph names | `lib/lists/glyph.db` | Names from the Symbols Nerd Font (Nerd Fonts, MIT) |
 | Design references (screenshots of other products) | `docs/design/inspiration/` | Belong to their authors; kept for study, not redistributed as part of kuwai |
 
 Reference projects in `refs/` (not tracked) were read for ideas and rewritten

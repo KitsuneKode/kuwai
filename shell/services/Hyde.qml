@@ -28,6 +28,7 @@ Singleton {
     readonly property string state: (Quickshell.env("XDG_STATE_HOME") || home + "/.local/state") + "/hyde"
     readonly property string data: (Quickshell.env("XDG_DATA_HOME") || home + "/.local/share") + "/hyde"
     readonly property string wallSet: cache + "/wall.set"
+    readonly property string kuwaiWall: (Quickshell.env("XDG_STATE_HOME") || home + "/.local/state") + "/kuwai/wallpaper"
 
     // A small text file, read now: present from the first frame, no process.
     FileView { id: marker; path: root.lib + "/globalcontrol.sh"; blockLoading: true; printErrors: false }
@@ -42,12 +43,12 @@ Singleton {
         id: probe
         running: true
         // Arguments, not pasted into the script: the path is the user's.
-        command: ["sh", "-c", 'command -v hyde-shell >/dev/null && echo shell; [ -e "$1" ] && echo wall', "sh", root.wallSet]
+        command: ["sh", "-c", 'command -v hyde-shell >/dev/null && echo shell; [ -e "$1" ] && echo wall; [ -e "$2" ] && echo kuwai', "sh", root.wallSet, root.kuwaiWall]
         stdout: StdioCollector {
             onStreamFinished: {
                 const got = text.split("\n");
                 root.hasShell = got.indexOf("shell") >= 0;
-                root.wallpaper = got.indexOf("wall") >= 0 ? root.wallSet : "";
+                root.wallpaper = got.indexOf("wall") >= 0 ? root.wallSet : got.indexOf("kuwai") >= 0 ? root.kuwaiWall : "";
             }
         }
     }
