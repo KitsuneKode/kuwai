@@ -27,6 +27,7 @@ def test_dry_run_changes_nothing(tmp_path):
     assert "would link" in out and not (tmp_path / ".config").exists()
 
 
-def test_the_fastfetch_config_draws_no_image_and_runs_nothing():
+def test_the_fastfetch_config_needs_no_hyde_and_runs_nothing():
     text = (ROOT / "home/.config/fastfetch/config.jsonc").read_text()
-    assert "hyde" not in text.lower() and '"command"' not in text and "kitty" not in text
+    assert "hyde" not in text.lower() and '"command"' not in text and "splash" not in text
+    assert '"type": "kitty"' in text and "kuwai-fetch --logo" in text
