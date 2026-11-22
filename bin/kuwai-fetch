@@ -16,7 +16,9 @@ kuwai-fetch: fastfetch with a moving picture beside it.
                            GitHub, the source pocket-dots uses) into the folder. Your
                            download, for your machine: nothing like it ships here.
 
-Pictures: ~/.config/kuwai/fetch/*.gif (or .png / .webp). Put any GIF there.
+Pictures: ~/.config/kuwai/fetch, ~/.config/neofetch/gifs and ~/.config/neofetch/pngs
+(.gif, .png, .webp). The text: your neofetch layout (neofetch --off) when you
+have a neofetch config, else fastfetch's (KUWAI_FETCH_INFO=fastfetch picks it).
 Each is scaled once (nearest neighbour for pixel art, transparent background,
 full frames so kitty draws no trails) into ~/.cache/kuwai/fetch/.
 Outside kitty, or with no pictures: a still picture in blocks (chafa), else
@@ -33,7 +35,16 @@ W=${KUWAI_FETCH_W:-200}
 H=${KUWAI_FETCH_H:-168}
 INDENT=${KUWAI_FETCH_INDENT:-30}
 
-pics() { find "$DIR" -maxdepth 1 -type f \( -iname '*.gif' -o -iname '*.png' -o -iname '*.webp' \) 2>/dev/null | sort; }
+NEO="${XDG_CONFIG_HOME:-$HOME/.config}/neofetch"
+pics() { find "$DIR" "$NEO/gifs" "$NEO/pngs" -maxdepth 1 -type f \( -iname '*.gif' -o -iname '*.png' -o -iname '*.webp' \) 2>/dev/null | sort; }
+info() {
+    if [ "${KUWAI_FETCH_INFO:-auto}" != fastfetch ] && command -v neofetch >/dev/null && [ -f "$NEO/config.conf" ]; then
+        neofetch --off 2>/dev/null | sed -E $'s/\x1b\\[\\?(25|7)[hl]//g'
+    else
+        fastfetch --logo none --pipe false 2>/dev/null \
+            | sed -E 's/ \([0-9]+\) @ [0-9.]+ GHz//; s/ @ [0-9.]+ GHz//; s/ \[(Integrated|Discrete)\]//; s/\((R|TM)\)//g'
+    fi
+}
 
 case "${1:-}" in
     --list) pics | sed "s|$DIR/||"; exit 0 ;;
@@ -113,8 +124,7 @@ if [ ! -s "$box" ]; then
     [ -s "$box" ] || cp -f "$pick" "$box" 2>/dev/null
 fi
 
-mapfile -t info < <(fastfetch --logo none --pipe false 2>/dev/null \
-    | sed -E 's/ \([0-9]+\) @ [0-9.]+ GHz//; s/ @ [0-9.]+ GHz//; s/ \[(Integrated|Discrete)\]//; s/\((R|TM)\)//g')
+mapfile -t info < <(info)
 n=${#info[@]}
 printf '\0337'
 printf '\033[?7l'
