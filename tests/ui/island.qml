@@ -14,7 +14,7 @@ ShellRoot {
         width: 320; height: 190
         color: Theme.glassSolid
         property int stage: 0
-        property var widths: [320, 320, 200, 480, 1120]
+        property var widths: [320, 240, 200, 480, 1120]
         Rectangle {
             id: tipHost
             x: Theme.s4; y: scene.height - height - Theme.s4
@@ -93,13 +93,13 @@ ShellRoot {
                 if (Settings.pending || Settings.error) { scene.fail("settings did not acknowledge"); return; }
                 const pills = split.pills.filter(p => p.visible);
                 console.log("ISLAND_STATE", JSON.stringify({demand:split.demand, arrangement:split.arrangement, pills:split.pills.map(p => ({name:p.name,shown:p.shown,out:p.out,w:p.width}))}));
-                const expected = [4, 4, 1, 5, 5][scene.stage];
+                const expected = [3, 2, 1, 4, 4][scene.stage];
                 if (pills.length !== expected) { scene.fail("unexpected item count at stage " + scene.stage); return; }
                 const more = pills.find(p => p.name === "more");
-                if (scene.stage === 1 && (!more || split.arrangement.overflow.length !== 2 || !pills.some(p => p.name === "sys"))) {
-                    scene.fail("five activities did not retain the urgent warning and group two items"); return;
+                if (scene.stage === 1 && (!more || split.arrangement.overflow.length !== 3 || !pills.some(p => p.name === "sys"))) {
+                    scene.fail("four activities did not retain the urgent warning and group three items"); return;
                 }
-                if (scene.stage === 2 && (!more || !more.belowNotch || split.arrangement.overflow.length !== 5 || more.y <= split.topY + split.h)) {
+                if (scene.stage === 2 && (!more || !more.belowNotch || split.arrangement.overflow.length !== 4 || more.y <= split.topY + split.h)) {
                     scene.fail("full-width notch lost its More control"); return;
                 }
                 const boxes = pills.map(p => ({name:p.name, x:p.x, y:p.y, w:p.width, h:p.height}));
