@@ -52,19 +52,25 @@ Item {
     }
     readonly property Item focusedItem: Window.activeFocusItem
     onFocusedItemChanged: if (focusedItem && keys.owns(focusedItem)) keys.reveal(focusedItem)
-    function reset() { flick.contentY = 0; wifiOpen = false; }
+    function reset() { flick.contentY = 0; module = ""; }
     function selectFirst() {}
     // Esc: the password field, then the network list, then (false) close.
     function back() {
-        if (wifiList.back()) return true;
-        if (wifiOpen) { wifiOpen = false; return true; }
+        if (wifiOpen && wifiList.back()) return true;
+        if (module !== "") { module = ""; return true; }
         return false;
     }
     // Typing a search opens the network list, so a network can be found.
-    property bool wifiOpen: false
+    property string module: ""
+    readonly property bool wifiOpen: module === "wifi"
+    readonly property bool btOpen: module === "bluetooth"
+    function openModule(m) { module = module === m ? "" : m; }
+    property real swap: 1
+    onModuleChanged: { flick.contentY = 0; swapIn.restart(); }
+    NumberAnimation { id: swapIn; target: view; property: "swap"; from: Theme.reduceMotion ? 1 : 0; to: 1; duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
     Connections {
         target: view.center
-        function onQueryChanged() { if (view.shown && view.center.query !== "") view.wifiOpen = true; }
+        function onQueryChanged() { if (view.shown && view.center.query !== "") view.module = "wifi"; }
     }
 
     function modelOf(name) {
@@ -129,7 +135,10 @@ Item {
                 columns: 2
                 columnSpacing: 8
                 rowSpacing: 8
-                opacity: view.center.revealAt(60)
+                visible: view.module === ""
+                opacity: view.center.revealAt(60) * view.swap
+                scale: 0.985 + 0.015 * view.swap
+                transformOrigin: Item.Top
 
                 Tile {
                     glyph: Networking.wifiEnabled ? "\u{f05a9}" : "\u{f05aa}"
@@ -141,7 +150,7 @@ Item {
                     moreText: "Show networks"
                     expanded: view.wifiOpen
                     onToggled: Networking.wifiEnabled = !Networking.wifiEnabled
-                    onOpened: view.wifiOpen = !view.wifiOpen
+                    onOpened: view.openModule("wifi")
                 }
                 Tile {
                     glyph: view.adapter && view.adapter.enabled ? "\u{f00af}" : "\u{f00b2}"
@@ -151,7 +160,11 @@ Item {
                             : view.btConnected.length ? view.btConnected.length + " connected" : "On"
                     on: !!(view.adapter && view.adapter.enabled)
                     tone: Theme.blue
+                    expandable: true
+                    moreText: "Show devices"
+                    expanded: view.btOpen
                     onToggled: if (view.adapter) view.adapter.enabled = !view.adapter.enabled
+                    onOpened: view.openModule("bluetooth")
                 }
                 Tile {
                     glyph: "\u{f0594}"
@@ -209,7 +222,38 @@ Item {
                 }
             }
 
-            // ── Wi‑Fi networks (from the tile's chevron) ─────────────────
+            // ── A tile's module (its chevron): back, its switch, then its list ──
+            Item {
+                visible: view.module !== ""
+                opacity: view.swap
+                width: parent.width
+                height: Theme.sp(40)
+                Button {
+                    id: moduleBack
+                    anchors { left: parent.left; leftMargin: Theme.s1; verticalCenter: parent.verticalCenter }
+                    kind: "quiet"
+                    glyph: "\u{f0141}"
+                    label: "Back to Controls"
+                    onClicked: view.module = ""
+                }
+                Label {
+                    anchors { left: moduleBack.right; leftMargin: Theme.s2; right: moduleSwitch.left; rightMargin: Theme.s2; verticalCenter: parent.verticalCenter }
+                    elide: Text.ElideRight
+                    text: view.btOpen ? "Bluetooth" : "Wi‑Fi"
+                    size: 15
+                    weight: Theme.wSemibold
+                }
+                Toggle {
+                    id: moduleSwitch
+                    anchors { right: parent.right; rightMargin: Theme.s1; verticalCenter: parent.verticalCenter }
+                    label: view.btOpen ? "Bluetooth" : "Wi‑Fi"
+                    on: view.btOpen ? !!(view.adapter && view.adapter.enabled) : Networking.wifiEnabled
+                    onToggled: {
+                        if (view.btOpen) { if (view.adapter) view.adapter.enabled = !view.adapter.enabled; }
+                        else Networking.wifiEnabled = !Networking.wifiEnabled;
+                    }
+                }
+            }
             Item {
                 width: parent.width
                 height: view.wifiOpen ? wifiList.implicitHeight : 0
@@ -221,11 +265,15 @@ Item {
                     center: view.center
                     device: view.wifiDevice
                     open: view.wifiOpen && view.shown
-                    opacity: view.wifiOpen ? 1 : 0
-                    Behavior on opacity { NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+                    opacity: view.wifiOpen ? view.swap : 0
                 }
             }
 
+            Column {
+            width: parent.width
+            spacing: 22
+            visible: view.module === ""
+            opacity: view.swap
             // ── Battery ──────────────────────────────────────────────────
             Rectangle {
                 visible: view.hasBattery
@@ -410,14 +458,30 @@ Item {
                 }
             }
 
+            }
             // ── Bluetooth devices ────────────────────────────────────────
             Column {
-                visible: view.adapter && view.adapter.enabled && view.btDevices.length > 0
+                visible: view.btOpen
                 width: parent.width
                 spacing: 8
-                opacity: view.center.revealAt(180)
+                opacity: view.center.revealAt(180) * view.swap
 
-                Label { x: 4; text: "Devices"; size: 14; weight: Theme.wSemibold; color: Theme.textSecondary }
+                Label {
+                    x: 4
+                    text: !(view.adapter && view.adapter.enabled) ? "Bluetooth is off" : view.btDevices.length ? "Devices" : "No paired devices"
+                    size: 14
+                    weight: Theme.wSemibold
+                    color: Theme.textSecondary
+                }
+                Label {
+                    visible: !!(view.adapter && view.adapter.enabled) && view.btDevices.length === 0
+                    x: 4
+                    width: parent.width - 8
+                    wrapMode: Text.WordWrap
+                    text: "Pair a device from the Bluetooth panel in the island; it shows here once paired."
+                    size: 12
+                    color: Theme.textTertiary
+                }
                 Repeater {
                     model: view.btDevices
                     Rectangle {

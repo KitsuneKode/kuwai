@@ -207,7 +207,7 @@ def main():
                                          said[1].strip() if said else f"the gesture run did not finish ({log})", None))
 
     if not args.only and not args.scale:
-        for case in ("center-keys", "center-clear", "card-keys", "pill"):
+        for case in ("center-keys", "center-clear", "center-controls", "card-keys", "pill"):
             run = subprocess.run([str(ROOT / "bin/kuwai-ui-test"), "--case", case, "--backend", "x11",
                                   "--output", str(out / case)], capture_output=True, text=True)
             log = out / case / "runtime.log"
