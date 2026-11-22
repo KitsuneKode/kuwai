@@ -89,13 +89,15 @@ rule({
 rule({ name = "pip-look", match = { tag = "pip" }, opacity = "1.0 override 1.0 override", no_dim = true, no_blur = true })
 
 rule({ name = "idle-media", match = { class = "^(.*celluloid.*|.*mpv.*|.*vlc.*|.*[Ss]potify.*|.*[Cc]ider.*)$" }, idle_inhibit = "fullscreen" })
-rule({ name = "idle-browsers", match = { class = "^(.*LibreWolf.*|.*floorp.*|.*brave-browser.*|.*firefox.*|.*chromium.*|.*zen.*|google-chrome.*|.*vivaldi.*)$" }, idle_inhibit = "fullscreen" })
+local BROWSER_CLASS = "^(.*LibreWolf.*|.*floorp.*|.*brave-browser.*|.*firefox.*|.*chromium.*|.*zen.*|google-chrome.*|.*vivaldi.*)$"
+rule({ name = "idle-browsers", match = { class = BROWSER_CLASS }, idle_inhibit = "fullscreen" })
 rule({ name = "video-content", match = { class = "^(mpv|vlc|io\\.github\\.celluloid_player\\.Celluloid|haruna|clapper)$" }, content = "video" })
 rule({
 	name = "no-auto-hdr-work",
 	match = { class = "^(kitty|com\\.mitchellh\\.ghostty|foot|footclient|Alacritty|org\\.wezfurlong\\.wezterm|code|Code|neovide|emacs|zeditor|com\\.t3tools\\.T3Code)$" },
 	no_auto_hdr = true,
 })
+rule({ name = "no-auto-hdr-browsers", match = { class = BROWSER_CLASS }, no_auto_hdr = true })
 
 rule({ name = "vrr-off", match = { class = ".*" }, no_vrr = true })
 rule({ name = "vrr-games", match = { content = "game" }, no_vrr = false })

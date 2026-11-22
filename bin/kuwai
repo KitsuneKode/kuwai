@@ -10,8 +10,10 @@ command goes to the shell half, bin/kuwai-ctl (channel, promote, bar, notifs, ti
   kuwai doctor                    check config, session, scripts; exit 1 on problems
   kuwai mode [NAME|--pick|list]   focus · default · glass · gaming · battery
   kuwai display [NAME|list]       everyday · accurate · movie · gaming · battery (what the screens are for)
+  kuwai display hdr [on|off|toggle] explicit HDR (hdredid) on external HDR screens (for browser HDR)
   kuwai display calibrate [SCREEN] adjust a screen by eye with test patterns (→ next, q done)
   kuwai display profile           measured (colorimeter) profiles: where they go, which are loaded
+  kuwai play [URL]                open a URL (or clipboard link) in mpv (auto 120 Hz + auto HDR)
   kuwai motion [full|reduced|off]
   kuwai gpu [auto|nvidia|intel]   renderer for the next login
   kuwai rescue                    password prompt, clipboard, island, idle: back to working
@@ -124,6 +126,26 @@ cmd_display() {
     local all="everyday accurate movie gaming battery" m=${1:-}
     case $m in
         "") if live; then lua 'return kuwai.display()'; echo; else c=$(state_get display); echo "${c:-everyday}"; fi; return ;;
+        hdr)
+            local v=${2:-}
+            case $v in
+                "")
+                    if live; then lua 'return kuwai.display_hdr()'; echo
+                    else [ "$(state_get display_hdr)" = on ] && echo on || echo off; fi
+                    return ;;
+                on|off|toggle)
+                    if live; then
+                        local res; res=$(lua "return kuwai.display_hdr('$v')")
+                        echo "display hdr: ${res:-$v}"
+                    else
+                        local cur; cur=$(state_get display_hdr)
+                        [ "$v" = toggle ] && { [ "$cur" = on ] && v=off || v=on; }
+                        state_set display_hdr "$([ "$v" = on ] && echo on)"
+                        echo "display hdr: $v"
+                    fi
+                    return ;;
+                *) echo "usage: kuwai display hdr [on|off|toggle]" >&2; return 2 ;;
+            esac ;;
         calibrate) shift; display_calibrate "$@"; return ;;
         profile) display_profile; return ;;
         list) printf '%s\n' \
@@ -136,6 +158,21 @@ cmd_display() {
     case " $all " in *" $m "*) ;; *) echo "kuwai: no display preset '$m' (try: $all)" >&2; return 2 ;; esac
     if live; then hyprctl eval "kuwai.display('$m')" >/dev/null; else state_set display "$([ "$m" = everyday ] || echo "$m")"; fi
     echo "display: $m"
+}
+
+cmd_play() {
+    local url=${1:-}
+    if [ -z "$url" ]; then
+        url=$(wl-paste --no-newline 2>/dev/null || true)
+    fi
+    if ! [[ "$url" =~ ^https?:// ]]; then
+        echo "kuwai play: need an http(s) URL (pass one or copy it to the clipboard)" >&2
+        [ -x "$ROOT/bin/kuwai-notify" ] && "$ROOT/bin/kuwai-notify" -a kuwai "Nothing to play" "Copy a video URL first, or run kuwai play <URL>" >/dev/null 2>&1 || true
+        return 2
+    fi
+    command -v mpv >/dev/null || { echo "kuwai play: mpv not installed" >&2; return 1; }
+    setsid mpv -- "$url" </dev/null >/dev/null 2>&1 &
+    echo "playing in mpv: $url"
 }
 
 cmd_motion() {
@@ -382,6 +419,7 @@ case ${1:-info} in
     rescue) cmd_rescue ;;
     mode) shift; cmd_mode "$@" ;;
     display) shift; cmd_display "$@" ;;
+    play) shift; cmd_play "$@" ;;
     motion) shift; cmd_motion "$@" ;;
     gpu) shift; cmd_gpu "$@" ;;
     binds) shift; cmd_binds "$@" ;;

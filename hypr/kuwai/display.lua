@@ -36,6 +36,14 @@ function D.current()
 	return c
 end
 
+function D.hdr_choice()
+	return K.state["display_hdr"] == "on"
+end
+
+function D.hdr_active(preset)
+	return D.hdr_choice() and (preset or D.current()) ~= "accurate"
+end
+
 local rules = {}
 _G.__kuwai_raw_monitor = _G.__kuwai_raw_monitor or hl.monitor
 local raw_monitor = _G.__kuwai_raw_monitor
@@ -137,21 +145,37 @@ local function external_player(gone)
 	return false
 end
 
+local function hdr_capable(m, r)
+	if r.base.hdr == false then
+		return false
+	end
+	if r.base.hdr == true then
+		return true
+	end
+	return not internal(m) and r.base.max_luminance ~= nil
+end
+
 local function apply_screens(preset)
 	local players = preset == "movie" and D.choice() == "everyday" and player_screens() or nil
+	local hdr = D.hdr_active(preset)
 	for _, m in ipairs(hl.get_monitors() or {}) do
 		local r = rule_for(m)
 		if r then
 			local mode = (players and not players[m.name]) and r.base.mode
 				or mode_for(m, r.base.mode, preset) or r.base.mode
+			local cm = (hdr and hdr_capable(m, r)) and "hdredid" or r.base.cm
 			r.ref.mode = mode
+			r.ref.cm = cm
 			local icc = preset == "accurate" and D.icc_for(m) or nil
-			if mode ~= r.base.mode or icc then
+			if mode ~= r.base.mode or cm ~= r.base.cm or icc then
 				local spec = {}
 				for k, v in pairs(r.base) do
 					spec[k] = v
 				end
 				spec.mode = mode
+				if cm ~= nil then
+					spec.cm = cm
+				end
 				if icc then
 					spec.icc = icc
 				end
@@ -165,7 +189,7 @@ function D.apply()
 	local p = D.current()
 	local ok, err = pcall(function()
 		apply_screens(p)
-		local auto_hdr = (p == "movie" or p == "gaming") and 2 or 0
+		local auto_hdr = (not D.hdr_active(p) and (p == "movie" or p == "gaming")) and 2 or 0
 		if p == "accurate" then
 			K.config({ render = { non_shader_cm = 0, direct_scanout = 0, cm_auto_hdr = 0 } })
 			hl.exec_cmd(K.night_off)
@@ -240,6 +264,32 @@ function kuwai.display_profiles()
 	return table.concat(out, "\n")
 end
 
+function kuwai.display_hdr(val)
+	if val == nil then
+		if D.hdr_active() then
+			return "on"
+		end
+		return D.hdr_choice() and "paused" or "off"
+	end
+	local want
+	if val == true or val == "on" then
+		want = true
+	elseif val == false or val == "off" then
+		want = false
+	elseif val == "toggle" then
+		want = not D.hdr_choice()
+	else
+		K.notify("kuwai: display_hdr expects on, off or toggle", 2500, "error")
+		return kuwai.display_hdr()
+	end
+	if want == D.hdr_choice() then
+		return kuwai.display_hdr()
+	end
+	K.set_state("display_hdr", want and "on" or nil)
+	hl.dispatch(hl.dsp.reload_config())
+	return kuwai.display_hdr()
+end
+
 function kuwai.displays()
 	return table.concat(D.list, " ")
 end
@@ -298,7 +348,7 @@ end
 local hdr_forced = false
 local function preset_wants_hdr()
 	local p = D.current()
-	return p == "movie" or p == "gaming"
+	return D.hdr_active(p) or p == "movie" or p == "gaming"
 end
 local function hdr_arm(on)
 	if preset_wants_hdr() then

@@ -12,17 +12,17 @@ local DP3 = { name = "DP-3", width = 2560, height = 1440, available_modes = {
 local EDP = { name = "eDP-1", width = 2560, height = 1440, available_modes = {
 	{ width = 2560, height = 1440, refresh_rate = 165 }, { width = 2560, height = 1440, refresh_rate = 60 } } }
 
-local W, active, timers, modes, reloads, handlers
+local W, active, timers, modes, cms, last_cfg, reloads, handlers
 local function fresh()
 	for k in pairs(package.loaded) do
 		if k:match("^kuwai") then package.loaded[k] = nil end
 	end
 	_G.__kuwai_raw_monitor, _G.kuwai = nil, nil
-	W, active, timers, modes, reloads, handlers = {}, nil, {}, {}, 0, {}
+	W, active, timers, modes, cms, last_cfg, reloads, handlers = {}, nil, {}, {}, {}, {}, 0, {}
 	local K = { state = {}, home = "/nonexistent", night_off = "true", colour_apps = {} }
 	function K.set_state(k, v) K.state[k] = v ~= nil and tostring(v) or nil end
 	function K.feature(name) return name == "auto_display" end
-	function K.config() end
+	function K.config(c) last_cfg = c end
 	function K.notify() end
 	function K.err(m) error(m) end
 	function K.exists() return false end
@@ -31,7 +31,7 @@ local function fresh()
 	package.loaded["kuwai.core"] = K
 	_G.hl = {
 		dsp = { reload_config = function() return "reload" end },
-		monitor = function(spec) modes[spec.output] = spec.mode end,
+		monitor = function(spec) modes[spec.output] = spec.mode; cms[spec.output] = spec.cm end,
 		get_monitors = function() return { DP3, EDP } end,
 		get_windows = function() return W end,
 		get_active_window = function() return active end,
@@ -41,9 +41,9 @@ local function fresh()
 		exec_cmd = function() end,
 	}
 	local D = require("kuwai.display")
-	hl.monitor({ output = "DP-3", mode = "2560x1440@200" })
+	hl.monitor({ output = "DP-3", mode = "2560x1440@200", bitdepth = 10, cm = "srgb", max_luminance = 400 })
 	hl.monitor({ output = "eDP-1", mode = "2560x1440@165" })
-	modes = {}
+	modes, cms = {}, {}
 	return D, K
 end
 local function settle()   -- let every pending timer run (the settles are one-shot)
@@ -105,6 +105,38 @@ do -- Movie you chose yourself is for a browser too: every external screen, play
 	K.state.display = "movie"
 	D.apply()
 	check(modes["DP-3"] == "2560x1440@120", "a chosen Movie didn't take the Acer")
+end
+
+do
+	local D, K = fresh()
+	check(kuwai.display_hdr() == "off", "HDR starts off")
+	check(kuwai.display_hdr("on") == "on", "HDR turns on")
+	check(K.state.display_hdr == "on", "HDR persisted in state")
+	check(reloads == 1, "turning HDR on reloads once")
+	modes, cms, last_cfg = {}, {}, {}
+	D.apply()
+	check(cms["DP-3"] == "hdredid", "DP-3 didn't switch to hdredid")
+	check(cms["eDP-1"] == nil, "eDP-1 was touched by HDR")
+	check(last_cfg.render and last_cfg.render.cm_auto_hdr == 0, "cm_auto_hdr wasn't 0 while explicit HDR is on")
+
+	kuwai.display("accurate")
+	check(kuwai.display_hdr() == "paused", "HDR isn't paused under Accurate")
+	modes, cms, last_cfg = {}, {}, {}
+	D.apply()
+	check(cms["DP-3"] == nil, "Accurate still applied hdredid to DP-3")
+	kuwai.display("everyday")
+	check(kuwai.display_hdr() == "on", "HDR didn't resume after leaving Accurate")
+	modes, cms = {}, {}
+	D.apply()
+	check(cms["DP-3"] == "hdredid", "DP-3 didn't return to hdredid after Accurate")
+
+	check(kuwai.display_hdr("toggle") == "off", "toggle didn't turn HDR off")
+	check(K.state.display_hdr == nil, "HDR off left display_hdr state set")
+	K.state.display = "movie"
+	modes, cms, last_cfg = {}, {}, {}
+	D.apply()
+	check(cms["DP-3"] == "srgb", "Movie with HDR off didn't keep base srgb")
+	check(last_cfg.render and last_cfg.render.cm_auto_hdr == 2, "Movie with HDR off didn't arm cm_auto_hdr = 2")
 end
 
 if fails > 0 then

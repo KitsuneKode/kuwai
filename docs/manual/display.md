@@ -35,21 +35,34 @@ front. Choosing a preset yourself wins until you return to Everyday.
 
 ## HDR
 
-Leave the monitor's own HDR setting on **Auto**. Everyday, accurate and
-battery keep the screen on the sRGB picture from `monitors.lua`. A browser
-stays on that picture: it is not treated as a player, because a fullscreen
-page that advertises HDR modesets the panel. Movie, gaming, a settled
-player, and a fullscreen game turn `render.cm_auto_hdr` on, so a real HDR
-film or game can switch the screen and switch it back. Terminals and
-editors are marked `no_auto_hdr`, so a fullscreen shell cannot. The notch's HDR label follows the preset name. An automatic switch keeps
-that name at `srgb`, so the label stays off until the shell can read the
-live infoframe.
+Leave the monitor's own HDR setting on **Auto** (on Acer displays, the OSD
+mode label says "HDR" while Auto is selected even during SDR — that only
+means it is ready to follow an HDR signal; brightness stays adjustable until
+real PQ arrives).
 
-mpv must tag its output with the source's colours, not the screen's:
-`target-colorspace-hint-mode=source` in `mpv.conf`. Without it (mpv > 0.40's
-default, `target`) SDR films were sent as PQ/BT.2020: fullscreen flipped the
-screen to HDR (a black flash) and, with the monitor's HDR off, looked washed
-out. See `docs/research/2026-11-08-display-presets.md`.
+Everyday, accurate and battery keep external screens on the sRGB picture
+from `monitors.lua`. Browsers are marked `no_auto_hdr` (`rules.lua`), so a
+fullscreen SDR webpage in Chrome/Zen/Firefox never flashes the monitor into
+HDR even while Movie or Gaming is active.
+
+Two ways to watch HDR:
+- **In Chrome / browser (YouTube HDR):** turn on the **HDR** switch in
+  Controls → Display, or run `kuwai display hdr on` (`toggle` / `off`). This
+  switches HDR-capable external screens (`max_luminance` or `hdr = true` in
+  `monitors.lua`) directly to `cm = "hdredid"` while leaving the built-in
+  panel untouched, and is held off automatically while Accurate is active.
+  Reload YouTube once after turning HDR on so it sees `dynamic-range: high`.
+- **Automatic HDR without toggling (`mpv` / games):** `mpv` (with
+  `target-colorspace-hint-mode=source` in `mpv.conf`) and fullscreen games
+  tag PQ honestly, so Movie, Gaming, a settled player, or a fullscreen game
+  arms `render.cm_auto_hdr = 2` and enters/exits HDR automatically on
+  fullscreen. Use `kuwai play [URL]` to send a YouTube link (or clipboard
+  URL) straight to `mpv` at 1440p60 AV1 HDR10 with automatic 120 Hz + auto-HDR.
+
+Terminals, editors and browsers are marked `no_auto_hdr`, so a fullscreen
+shell or browser tab cannot spuriously trigger `cm_auto_hdr`. The notch
+shows a yellow `HDR` label whenever `kuwai-hdr` reads live PQ/HLG on the
+wire or an HDR preset is active.
 
 ## 10-bit
 

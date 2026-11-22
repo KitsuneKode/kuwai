@@ -124,6 +124,46 @@ Singleton {
         interval: 700
         onTriggered: root.setPreset(root.requestedPreset)
     }
+    property bool hdrChoice: false
+    readonly property bool hdrHeld: preset === "accurate"
+    readonly property bool hdrActive: hdrChoice && !hdrHeld
+    property bool hdrPending: false
+    property bool hdrRequested: false
+    property string hdrError: ""
+    function toggleHdr() { if (!hdrHeld) setHdr(!hdrChoice); }
+    function setHdr(on) {
+        if (hdrHeld) return;
+        const want = !!on;
+        hdrDeadline.stop();
+        hdrRequested = want;
+        hdrPending = true;
+        hdrError = "";
+        if (hdrApply.running) return;
+        hdrApply.goal = want;
+        hdrApply.command = ["timeout", "--kill-after=2", "10", "hyprctl", "eval", `kuwai.display_hdr("${want ? "on" : "off"}")`];
+        hdrApply.running = true;
+    }
+    Process {
+        id: hdrApply
+        property bool goal: false
+        onExited: (code, status) => {
+            if (root.hdrPending && root.hdrRequested !== goal) { Qt.callLater(() => root.setHdr(root.hdrRequested)); return; }
+            if (code !== 0) { root.hdrError = "HDR change failed. Try again."; root.hdrPending = false; }
+            else if (root.hdrPending) {
+                presetState.reload();
+                hdrDeadline.goal = goal;
+                hdrDeadline.restart();
+                root.hdrLooks = 0;
+                hdrLook.restart();
+            }
+        }
+    }
+    Timer {
+        id: hdrDeadline; interval: 5000
+        property bool goal: false
+        onTriggered: if (root.hdrPending && root.hdrRequested === goal) { root.hdrError = "HDR change was not confirmed. Try again."; root.hdrPending = false; }
+    }
+
     FileView {
         id: presetState
         path: Quickshell.env("HOME") + "/.local/state/kuwai/state"
@@ -132,12 +172,20 @@ Singleton {
         onLoaded: {
             const t = text();
             const get = k => { const m = t.match(new RegExp("^" + k + "=(\\S+)", "m")); return m ? m[1] : ""; };
+            const prevHdr = root.hdrChoice;
+            const wasKnown = root.presetKnown;
             root.choice = get("display") || "everyday";
             root.auto = get("display_auto");
+            root.hdrChoice = get("display_hdr") === "on";
             const why = t.match(/^display_why=(.*)$/m);
             root.autoWhy = why ? why[1] : "";
             root.presetKnown = true;
             if (root.requestedPreset === root.choice) { root.requestedPreset = ""; presetDeadline.stop(); }
+            if (root.hdrPending && root.hdrRequested === root.hdrChoice) { root.hdrPending = false; hdrDeadline.stop(); }
+            if ((!wasKnown && root.hdrChoice) || (wasKnown && prevHdr !== root.hdrChoice)) {
+                root.hdrLooks = 0;
+                hdrLook.restart();
+            }
         }
     }
 

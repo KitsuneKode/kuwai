@@ -434,6 +434,41 @@ Item {
                     size: 12
                     color: Theme.textTertiary
                 }
+                Rectangle {
+                    visible: Display.outputs.some(o => !o.internal)
+                    width: parent.width
+                    height: Math.max(48, hdrText.implicitHeight + 18)
+                    radius: 16
+                    color: Qt.rgba(1, 1, 1, 0.065)
+                    border.width: 1
+                    border.color: Qt.rgba(1, 1, 1, 0.06)
+
+                    Column {
+                        id: hdrText
+                        anchors { left: parent.left; leftMargin: 14; right: hdrSwitch.left; rightMargin: 12; verticalCenter: parent.verticalCenter }
+                        spacing: 1
+                        Label { text: "HDR"; size: 13; weight: Theme.wSemibold }
+                        Label {
+                            width: parent.width
+                            wrapMode: Text.WordWrap
+                            text: Display.hdrHeld ? "Paused · Accurate"
+                                : Display.hdrPending ? (Display.hdrRequested ? "Turning HDR on…" : "Returning to SDR…")
+                                : Display.hdrError !== "" ? Display.hdrError
+                                : Display.hdrActive ? "On · external display (EDID) · reload YouTube for HDR"
+                                : "Off · turn on for browser HDR (mpv and games switch on their own)"
+                            size: 11
+                            color: Display.hdrError !== "" ? Theme.orange : Theme.textTertiary
+                        }
+                    }
+                    Toggle {
+                        id: hdrSwitch
+                        anchors { right: parent.right; rightMargin: 12; verticalCenter: parent.verticalCenter }
+                        label: "HDR"
+                        on: Display.hdrActive
+                        enabled: !Display.hdrHeld && !Display.hdrPending
+                        onToggled: Display.toggleHdr()
+                    }
+                }
                 Repeater {
                     model: Display.outputs
                     Row {
