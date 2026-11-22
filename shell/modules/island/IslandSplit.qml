@@ -571,7 +571,7 @@ Item {
                 text: (split.agentsHead.tone === "caution" && split.limWho ? split.limWho + " · " : "") + split.agentsHead.word
                 tint: ({ attention: Theme.orange, error: Theme.red, caution: Theme.yellow })[split.agentsHead.tone] || Theme.textSecondary
                 tip: (split.agentsHead.tone === "caution" ? split.limTip : Agents.next ? Agents.next.title : "")
-                    + (split.agentsHead.tone === "caution" ? "\nClick: usage, every account · right-click: put it away" : "\nClick: every agent · right-click: go there (Super+Ctrl+N)")
+                    + (split.agentsHead.tone === "caution" ? "\nClick: usage, every account · right-click: put it away" : "\nClick: every agent · right-click: go there (Super+Ctrl+A)")
                 onClicked: split.agentsHead.tone === "caution" ? Island.toggle("usage", split.bar.screenName, "pointer") : agentsPill.openPanel()
                 onAltClicked: split.agentsHead.tone === "caution" ? split.agentsLim.forEach(r => Kittymux.quiet(r)) : Agents.goNeeds()
             }
