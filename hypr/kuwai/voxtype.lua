@@ -23,6 +23,9 @@ bind("SUPER + CTRL + D", "Dictate (again to stop)", TOGGLE)
 bind("SUPER + SHIFT + F23", "Dictate (again to stop)", TOGGLE)
 bind("SUPER + SHIFT + D", "Cancel dictation", CANCEL .. " now")
 bind("SUPER + CTRL + SHIFT + D", "Teach a dictation fix", SCRIPTS .. "voxtype_learn.py fix")
+if K.exists(SCRIPTS .. "voxtype-studio.py") then
+	bind("SUPER + ALT + D", "Voxtype Studio (history, corrections, vocabulary, snippets)", SCRIPTS .. "voxtype-studio.py")
+end
 K.bind_hold("F9", "Dictate while held (tap: hands-free)", TOGGLE .. " hold", TOGGLE .. " release")
 bind("SUPER + CTRL + E", "Edit the selection by voice", TOGGLE .. " command")
 

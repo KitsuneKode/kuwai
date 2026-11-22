@@ -93,7 +93,7 @@ rule({ name = "idle-browsers", match = { class = "^(.*LibreWolf.*|.*floorp.*|.*b
 rule({ name = "video-content", match = { class = "^(mpv|vlc|io\\.github\\.celluloid_player\\.Celluloid|haruna|clapper)$" }, content = "video" })
 rule({
 	name = "no-auto-hdr-work",
-	match = { class = "^(kitty|com\\.mitchellh\\.ghostty|foot|footclient|Alacritty|org\\.wezfurlong\\.wezterm|code|Code|neovide|emacs|zeditor)$" },
+	match = { class = "^(kitty|com\\.mitchellh\\.ghostty|foot|footclient|Alacritty|org\\.wezfurlong\\.wezterm|code|Code|neovide|emacs|zeditor|com\\.t3tools\\.T3Code)$" },
 	no_auto_hdr = true,
 })
 
@@ -115,6 +115,8 @@ rule({ name = "jb-mouse", match = { class = "^(jetbrains-.*)$" }, no_follow_mous
 
 rule({ name = "satty", match = { class = "^(com\\.gabm\\.satty)$" }, float = true, center = true, size = "monitor_w*0.82 monitor_h*0.82" })
 rule({ name = "kuwai-edit", match = { class = "^(kuwai-edit)$" }, float = true, center = true, size = "1100 760" })
+rule({ name = "kuwai-monitor", match = { class = "^(kuwai-monitor)$" }, float = true, center = true, size = "monitor_w*0.6 monitor_h*0.65" })
+rule({ name = "voxtype-studio", match = { class = "^(dev\\.kitsunekode\\.voxtype-studio)$" }, float = true, center = true, size = "1140 720" })
 rule({ name = "recorder-picker", match = { initial_class = "^(recorder-picker)$" }, float = true, center = true, size = "500 250", stay_focused = true })
 rule({ name = "kittymux-hud", match = { class = "^(kittymux-hud)$" }, float = true, center = true, fullscreen_state = "0 0", size = "700 420" })
 rule({ name = "float-term", match = { class = "^(float-term)$" }, float = true, fullscreen_state = "0 0", size = "730 480", move = "(monitor_w-760) (monitor_h-510)" })
@@ -143,7 +145,7 @@ layer({ name = "launcher-dim", match = { namespace = "^(launcher)$" }, dim_aroun
 layer({ name = "vicinae-fast", match = { namespace = "^vicinae$" }, no_anim = true })
 layer({ name = "notifications", match = { namespace = "^(notifications|swaync-notification-window|swaync-control-center|shell:notifications)$" }, blur = true, ignore_alpha = 0.69, animation = "slide right" })
 layer({ name = "kittymux-panel", match = { namespace = "^kittymux-panel$" }, animation = "slide left" })
-layer({ name = "instant", match = { namespace = "^(selection|hyprpicker|walker|overview|anyrun|indicator.*|osk|noanim|quickshell:overview|gtk4-layer-shell)$" }, no_anim = true })
+layer({ name = "instant", match = { namespace = "^(selection|hyprpicker|walker|overview|anyrun|indicator.*|osk|noanim|quickshell:overview|gtk4-layer-shell|t3-snap-shot)$" }, no_anim = true })
 
 pcall(hl.workspace_rule, { workspace = "special:special", gaps_out = 30 })
 pcall(hl.workspace_rule, { workspace = "special:notes", gaps_out = 30 })

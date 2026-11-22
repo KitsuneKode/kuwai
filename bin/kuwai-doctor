@@ -21,9 +21,9 @@ notify_send_broken() {
 
 [ "$QUIET" = 1 ] || echo "Kuwai doctor · session checks (kuwai + Hyprland + shell)"
 
-if [ -x "$KUWAI/bin/kuwai" ]; then
+if [ "${KUWAI_IN_DOCTOR:-0}" != 1 ] && [ -x "$KUWAI/bin/kuwai" ]; then
     [ "$QUIET" = 1 ] || echo "Hyprland & kuwai"
-    KUWAI_ROOT="$KUWAI" "$KUWAI/bin/kuwai" doctor || fail=1
+    KUWAI_IN_DOCTOR=1 KUWAI_ROOT="$KUWAI" "$KUWAI/bin/kuwai" doctor || fail=1
     [ "$QUIET" = 1 ] || echo
 fi
 

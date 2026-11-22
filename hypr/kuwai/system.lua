@@ -87,6 +87,7 @@ for _, bin in ipairs({
 	"/usr/bin/snappy-switcher",
 	"/usr/bin/gsr-kms-server",
 	"/usr/bin/satty",
+	((K.data_home .. "/t3code/hyprland-capture/t3-hyprland-snap-shot"):gsub("%.", "\\.")),
 }) do
 	allow(bin, "screencopy")
 end

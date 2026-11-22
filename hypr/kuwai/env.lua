@@ -16,6 +16,8 @@ set("QT_AUTO_SCREEN_SCALE_FACTOR", "1")
 set("QT_WAYLAND_DISABLE_WINDOWDECORATION", "1")
 set("QT_QPA_PLATFORMTHEME", K.state["qt_theme"] or "qt5ct")
 set("GDK_SCALE", "1")
+set("ACCESSIBILITY_ENABLED", "1")
+set("QT_LINUX_ACCESSIBILITY_ALWAYS_ON", "1")
 
 local cursor_theme = K.state["cursor_theme"] or "macOS"
 local cursor_size = K.state["cursor_size"] or "24"

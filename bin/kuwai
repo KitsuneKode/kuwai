@@ -368,7 +368,7 @@ cmd_rescue() {
 
 case ${1:-info} in
     info) live && lua 'return kuwai.info()' && echo || echo "kuwai (not running) · mode $(state_get mode || echo focus)" ;;
-    doctor) cmd_doctor; rc=$?; "$HERE/kuwai-doctor" || rc=1; exit $rc ;;
+    doctor) cmd_doctor; rc=$?; if [ "${KUWAI_IN_DOCTOR:-0}" != 1 ] && [ -x "$HERE/kuwai-doctor" ]; then KUWAI_IN_DOCTOR=1 "$HERE/kuwai-doctor" || rc=1; fi; exit $rc ;;
     auth) shift; cmd_auth "$@" ;;
     rescue) cmd_rescue ;;
     mode) shift; cmd_mode "$@" ;;
