@@ -21,6 +21,8 @@ def install_env(tmp_path):
     helper = ROOT / 'bin/kuwai_install.py'
     if helper.exists():
         shutil.copy2(helper, repo / 'bin/kuwai_install.py')
+    shutil.copy2(ROOT / 'bin/kuwai-home', repo / 'bin/kuwai-home')
+    shutil.copytree(ROOT / 'home', repo / 'home')
     (repo / 'hypr/templates').mkdir(parents=True)
     (repo / 'hypr/templates/hyprland.lua').write_text('-- installed entry\n')
     (repo / 'systemd').mkdir()

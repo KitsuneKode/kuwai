@@ -103,14 +103,13 @@ check_deps() {
 hyde_report() {
     step "HyDE (optional)"
     if hyde_here; then
-        ok "HyDE is installed: kuwai uses its wallpaper, themes and theme colours, emoji lists, Waybar and a few pickers"
+        ok "HyDE is installed: kuwai uses its wallpaper, themes and theme colours, Waybar and a few pickers"
         return 0
     fi
     say "  HyDE isn't installed. kuwai works without it; these features need it, and without it:"
-    say "    • the desktop wallpaper: Hyprland's near-black background; the lock and login screens show black"
+    say "    • the desktop wallpaper: set one with kuwai-wall set IMAGE (kept for the next login)"
     say "    • the Themes panel's themes, wallpapers and Colours: it says HyDE isn't there"
     say "    • the island's theme colour: kuwai's own blue"
-    say "    • emoji and glyph search in the launcher (: and ;): it says the lists aren't there"
     say "    • Waybar: plain waybar if it's installed, else the island is the bar"
     say "    • Game mode: kuwai's gaming mode (Super+Alt+G) instead of HyDE's"
     say "    • HyDE's pickers (Super+Shift+E, A, R, U, G) and 'update in a terminal': not bound / says so"
@@ -158,6 +157,11 @@ install_all() {
         say "  Fix what it says, then run ./install.sh again (what ran is kept; it continues from there)."
         exit 1
     fi
+
+    step "Configs kuwai owns (home/)"
+    if [ ! -x "$REPO/bin/kuwai-home" ]; then ok "nothing to link in this copy"
+    elif [ $DRY = 1 ]; then "$REPO/bin/kuwai-home" --dry-run | sed 's/^/  /'
+    else KUWAI_HOME_SRC="$STABLE/home" "$REPO/bin/kuwai-home" | sed 's/^/  /'; fi
 
     step "Hyprland entry point"
     local entry=$CFG/hypr/hyprland.lua

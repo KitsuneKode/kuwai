@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+set -u
+REPO=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)
+SRC=${KUWAI_HOME_SRC:-${KUWAI_ROOT:-$HOME/.local/share/kuwai}/home}
+[ -d "$SRC" ] || SRC=$REPO/home
+STATE=${XDG_STATE_HOME:-$HOME/.local/state}/kuwai
+DRY=0
+case "${1:-}" in
+    -n|--dry-run) DRY=1 ;;
+    -h|--help) printf 'kuwai-home [--dry-run]: link the configs kuwai owns (%s) into your home; what each replaces is kept and put back by install.sh --uninstall\n' "$SRC"; exit 0 ;;
+esac
+n=0
+while IFS= read -r -d '' f; do
+    rel=${f#"$SRC"/}
+    dst=$HOME/$rel
+    if [ -L "$dst" ] && [ "$(readlink "$dst")" = "$f" ]; then continue; fi
+    if [ $DRY = 1 ]; then printf 'would link %s → %s\n' "$dst" "$f"; n=$((n + 1)); continue; fi
+    python3 "$REPO/bin/kuwai_install.py" --state "$STATE" remember "$dst" || { printf 'kuwai-home: could not keep %s; left it alone\n' "$dst" >&2; continue; }
+    mkdir -p "$(dirname "$dst")"
+    tmp=$(dirname "$dst")/.$(basename "$dst").kuwai-new
+    rm -f "$tmp"
+    ln -s "$f" "$tmp" && mv -fT "$tmp" "$dst"
+    python3 "$REPO/bin/kuwai_install.py" --state "$STATE" installed "$dst"
+    printf 'linked %s\n' "$rel"
+    n=$((n + 1))
+done < <(find "$SRC" -type f -print0 | sort -z)
+[ $n -gt 0 ] || echo "kuwai-home: everything is already linked"
