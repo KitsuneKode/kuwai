@@ -120,7 +120,12 @@ function A.pip_toggle(kind)
 			dsp(hl.dsp.window.float({ window = sel(target), action = "enable" }))
 		end
 		dsp(hl.dsp.window.resize({ window = sel(target), x = s[1], y = s[2] }))
-		dsp(hl.dsp.window.move({ window = sel(target), x = u.mx + u.mw - s[1] - margin, y = u.my + u.mh - s[2] - margin }))
+		local px = u.x + u.w - s[1] - margin
+		local py = u.y + u.h - s[2] - margin
+		if _G.kuwai and _G.kuwai.pip_note_move then
+			_G.kuwai.pip_note_move(target.address, px, py)
+		end
+		dsp(hl.dsp.window.move({ window = sel(target), x = px, y = py }))
 	end
 end
 

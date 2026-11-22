@@ -37,6 +37,13 @@ if K.feature("resize_mode") then
 	end)
 end
 
+local PLACE_SKIP = {
+	cider = true,
+	["com.mitchellh.ghostty"] = true,
+	["google-chrome"] = true,
+	["brave-browser"] = true,
+}
+
 if K.feature("remember_place") then
 	local function key(cls)
 		return "place." .. cls:gsub("[^%w%.%-_]", "_")
@@ -44,7 +51,7 @@ if K.feature("remember_place") then
 	for k, v in pairs(K.state) do
 		local cls = k:match("^place%.(.+)$")
 		local x, y = (v or ""):match("^(%-?%d+),(%-?%d+)")
-		if cls and x then
+		if cls and x and not PLACE_SKIP[cls:lower()] then
 			pcall(hl.window_rule, {
 				name = "place-" .. cls,
 				match = { class = "^(" .. cls:gsub("([%.%-%+%*%?%^%$%(%)%[%]])", "\\%1") .. ")$", float = true },
@@ -54,6 +61,9 @@ if K.feature("remember_place") then
 	end
 	hl.on("window.close", function(w)
 		if not (w and w.floating and w.class and w.class ~= "" and not w.pinned) then
+			return
+		end
+		if PLACE_SKIP[w.class:lower()] then
 			return
 		end
 		local m = w.monitor
@@ -78,10 +88,11 @@ if K.feature("remember_place") then
 	end)
 end
 
-local PIP_TICK = 0.15
+local PIP_TICK = 0.05
 local PIP_FAST = 1100
-local PIP_CHASE = 27
+local PIP_CHASE = 30
 local PIP_MARGIN = 16
+local PIP_PAD = 28
 local PIP_TITLES = { "picture.?in.?picture", "mini.?player" }
 local function pip_title(w)
 	local t = (w and w.title or ""):lower()
@@ -103,6 +114,36 @@ local function pips()
 		end
 	end
 	return out
+end
+local function seg_hits_rect(x1, y1, x2, y2, rx, ry, rw, rh)
+	local dx, dy = x2 - x1, y2 - y1
+	local t0, t1 = 0, 1
+	local function clip(p, q)
+		if p == 0 then
+			return q >= 0
+		end
+		local r = q / p
+		if p < 0 then
+			if r > t1 then
+				return false
+			end
+			if r > t0 then
+				t0 = r
+			end
+		else
+			if r < t0 then
+				return false
+			end
+			if r < t1 then
+				t1 = r
+			end
+		end
+		return true
+	end
+	return clip(-dx, x1 - rx)
+		and clip(dx, rx + rw - x1)
+		and clip(-dy, y1 - ry)
+		and clip(dy, ry + rh - y1)
 end
 local function mon_at(x, y)
 	local best, bd
@@ -133,10 +174,21 @@ local function nearest(m, sz, x, y)
 	end
 	return best, bi
 end
-local pip = { tick = 0, cur = nil, dodged = -1000, reaching = false, seen = {}, ours = {} }
+local pip = { tick = 0, cur = nil, dodged = {}, reaching = {}, seen = {}, ours = {} }
 local function place(w, x, y)
-	pip.ours[tostring(w.address)] = { math.floor(x), math.floor(y) }
+	local key = tostring(w.address)
+	pip.ours[key] = { math.floor(x), math.floor(y) }
+	pip.seen[key] = nil
 	hl.dispatch(dsp.window.move({ window = "address:" .. w.address, x = math.floor(x), y = math.floor(y) }))
+end
+_G.kuwai = _G.kuwai or {}
+function kuwai.pip_note_move(addr, x, y)
+	if not addr or not x or not y then
+		return
+	end
+	local key = tostring(addr)
+	pip.ours[key] = { math.floor(x), math.floor(y) }
+	pip.seen[key] = nil
 end
 if K.feature("pip_dodge") then
 	local timer
@@ -146,29 +198,31 @@ if K.feature("pip_dodge") then
 			if timer then
 				timer:set_enabled(false)
 			end
-			pip.seen, pip.ours, pip.reaching = {}, {}, false
+			pip.seen, pip.ours, pip.reaching, pip.dodged, pip.cur = {}, {}, {}, {}, nil
 			return
 		end
 		pip.tick = pip.tick + 1
+		local prev = pip.cur
 		local c = hl.get_cursor_pos()
 		local speed = 0
-		if c and pip.cur then
-			speed = math.sqrt((c.x - pip.cur.x) ^ 2 + (c.y - pip.cur.y) ^ 2) / PIP_TICK
+		if c and prev then
+			speed = math.sqrt((c.x - prev.x) ^ 2 + (c.y - prev.y) ^ 2) / PIP_TICK
 		end
 		pip.cur = c and { x = c.x, y = c.y } or nil
 		local shift = hl.is_key_down("Shift_L") or hl.is_key_down("Shift_R")
+		local live = {}
 		for _, w in ipairs(list) do
 			local at, sz = w.at or {}, w.size or {}
 			if at.x and sz.x then
 				local key = tostring(w.address)
+				live[key] = true
 				local inside = c and c.x >= at.x and c.x <= at.x + sz.x and c.y >= at.y and c.y <= at.y + sz.y
-				local pad = 24
-				local near = c and c.x > at.x - pad and c.x < at.x + sz.x + pad and c.y > at.y - pad and c.y < at.y + sz.y + pad
-				if inside or (near and speed < PIP_FAST) then
-					pip.reaching = true
-				elseif not near then
-					pip.reaching = false
-				end
+				local was_inside = prev and prev.x >= at.x and prev.x <= at.x + sz.x and prev.y >= at.y and prev.y <= at.y + sz.y
+				local near = c and c.x > at.x - PIP_PAD and c.x < at.x + sz.x + PIP_PAD and c.y > at.y - PIP_PAD and c.y < at.y + sz.y + PIP_PAD
+				local crossed = c and prev and seg_hits_rect(prev.x, prev.y, c.x, c.y, at.x - PIP_PAD, at.y - PIP_PAD, sz.x + PIP_PAD * 2, sz.y + PIP_PAD * 2)
+				local hit = near or crossed
+				local cx, cy = at.x + sz.x / 2, at.y + sz.y / 2
+				local toward = c and prev and ((c.x - prev.x) * (cx - prev.x) + (c.y - prev.y) * (cy - prev.y) > 0)
 				local s = pip.seen[key]
 				local mine = pip.ours[key]
 				if mine and math.abs(mine[1] - at.x) < 4 and math.abs(mine[2] - at.y) < 4 then
@@ -194,31 +248,77 @@ if K.feature("pip_dodge") then
 				if not pip.seen[key] or not s then
 					pip.seen[key] = { x = at.x, y = at.y, still = 0, moving = false }
 				end
-				if near and not inside and not pip.reaching and not shift and speed >= PIP_FAST
-						and pip.tick - pip.dodged > PIP_CHASE and not (s and s.moving) then
+				local last_dodge = pip.dodged[key] or -1000
+				local dodged_now = false
+				if hit and not was_inside and not pip.reaching[key] and not shift and toward and speed >= PIP_FAST
+						and pip.tick - last_dodge > PIP_CHASE and not (s and s.moving) then
 					local m = w.monitor or mon_at(at.x, at.y)
 					local u = A.usable(m)
 					local x = (at.x - u.x > u.w / 2 - sz.x / 2) and (u.x + PIP_MARGIN) or (u.x + u.w - sz.x - PIP_MARGIN)
-					pip.dodged = pip.tick
+					pip.dodged[key] = pip.tick
+					pip.reaching[key] = false
+					dodged_now = true
 					place(w, x, at.y)
+				end
+				if not dodged_now then
+					if inside or (near and speed < PIP_FAST) then
+						pip.reaching[key] = true
+					elseif not hit then
+						pip.reaching[key] = false
+					end
+				end
+			end
+		end
+		for _, tbl in ipairs({ pip.seen, pip.ours, pip.reaching, pip.dodged }) do
+			for k in pairs(tbl) do
+				if not live[k] then
+					tbl[k] = nil
 				end
 			end
 		end
 	end
+	local function start_timer()
+		if timer then
+			timer:set_enabled(true)
+		else
+			timer = hl.timer(tick, { timeout = math.floor(PIP_TICK * 1000), type = "repeat" })
+		end
+	end
 	local function wake(w)
 		if w and pip_title(w) then
-			if timer then
-				timer:set_enabled(true)
-			else
-				timer = hl.timer(tick, { timeout = math.floor(PIP_TICK * 1000), type = "repeat" })
-			end
+			start_timer()
 		end
 	end
 	hl.on("window.open", wake)
 	hl.on("window.title", wake)
+	K.defer(function()
+		if #pips() > 0 then
+			start_timer()
+		end
+	end)
 end
 local function the_pip()
-	return pips()[1]
+	local list = pips()
+	if #list <= 1 then
+		return list[1]
+	end
+	local c = hl.get_cursor_pos()
+	if c then
+		for _, w in ipairs(list) do
+			local at, sz = w.at or {}, w.size or {}
+			if at.x and sz.x and c.x >= at.x and c.x <= at.x + sz.x and c.y >= at.y and c.y <= at.y + sz.y then
+				return w
+			end
+		end
+	end
+	local best, best_rank = list[1], list[1].focus_history_id or 999
+	for i = 2, #list do
+		local r = list[i].focus_history_id or 999
+		if r < best_rank then
+			best, best_rank = list[i], r
+		end
+	end
+	return best
 end
 local function kuwai_pip_corner()
 	local w = the_pip()
@@ -228,7 +328,7 @@ local function kuwai_pip_corner()
 	local m = w.monitor or mon_at(w.at.x, w.at.y)
 	local _, i = nearest(m, w.size, w.at.x, w.at.y)
 	local c = corners(m, w.size)[(i % 4) + 1]
-	pip.dodged = pip.tick
+	pip.dodged[tostring(w.address)] = pip.tick
 	place(w, c[1], c[2])
 end
 local function kuwai_pip_screen()
@@ -250,7 +350,7 @@ local function kuwai_pip_screen()
 	local there = mons[(idx % #mons) + 1]
 	local _, i = nearest(here, w.size, w.at.x, w.at.y)
 	local c = corners(there, w.size)[i]
-	pip.dodged = pip.tick
+	pip.dodged[tostring(w.address)] = pip.tick
 	place(w, c[1], c[2])
 end
 bind("SUPER + ALT + W", "Picture-in-picture: next corner", kuwai_pip_corner)

@@ -18,8 +18,8 @@ local function auto(name)
 	})
 end
 
-local world, handlers, tick, binds
-local function setup(title, wake_on)
+local world, handlers, tick, binds, deferred
+local function setup(title, wake_on, extra_wins)
 	world = {
 		monitors = {
 			{ name = "eDP-1", x = 0, y = 0, width = 1920, height = 1080, scale = 1, reserved = {} },
@@ -31,7 +31,12 @@ local function setup(title, wake_on)
 	world.pip = { address = "0xp", title = title or "Picture-in-Picture", floating = true,
 		at = { x = 1920 + 2560 - 480 - 16, y = 1440 - 270 - 16 }, size = { x = 480, y = 270 } }
 	world.pip.monitor = world.monitors[2]
-	handlers, binds, tick = {}, {}, nil
+	world.windows = { world.pip }
+	for _, ew in ipairs(extra_wins or {}) do
+		ew.monitor = ew.monitor or world.monitors[2]
+		world.windows[#world.windows + 1] = ew
+	end
+	handlers, binds, tick, deferred = {}, {}, nil, {}
 	_G.hl = auto("hl")
 	hl.dsp = auto("dsp")
 	hl.on = function(ev, f)
@@ -46,16 +51,23 @@ local function setup(title, wake_on)
 	end
 	hl.dispatch = function(a)
 		if type(a) == "table" and a.op == "window.move" and a.args.x then
-			world.pip.at = { x = a.args.x, y = a.args.y }
+			local target = world.pip
+			for _, w in ipairs(world.windows) do
+				if a.args.window == "address:" .. w.address then
+					target = w
+					break
+				end
+			end
+			target.at = { x = a.args.x, y = a.args.y }
 			for _, m in ipairs(world.monitors) do
 				if a.args.x >= m.x and a.args.x < m.x + m.width then
-					world.pip.monitor = m
+					target.monitor = m
 				end
 			end
 		end
 	end
 	hl.get_windows = function()
-		return { world.pip }
+		return world.windows
 	end
 	hl.get_monitors = function()
 		return world.monitors
@@ -74,6 +86,9 @@ local function setup(title, wake_on)
 		bind = function(keys, _, fn)
 			binds[keys] = fn
 		end,
+		defer = function(fn)
+			deferred[#deferred + 1] = fn
+		end,
 	}, { __index = function(_, k)
 		return auto("K." .. k)
 	end })
@@ -89,8 +104,14 @@ local function setup(title, wake_on)
 		return auto("A." .. k)
 	end })
 	dofile(os.getenv("EXTRAS_FILE") or "hypr/kuwai/extras.lua")
-	for _, f in ipairs(handlers[wake_on or "window.open"] or {}) do
-		f(world.pip)
+	if wake_on == "defer" then
+		for _, f in ipairs(deferred) do
+			f()
+		end
+	else
+		for _, f in ipairs(handlers[wake_on or "window.open"] or {}) do
+			f(world.pip)
+		end
 	end
 end
 local function at(x, y)
@@ -180,6 +201,50 @@ check("mini player by title change: steps aside", world.pip.at.x, 1920 + 16)
 -- The app's main window is not one: no look starts for it at all.
 setup("Cider")
 check("the main window: no dodging look runs", tick, nil)
+
+setup("Cider - Mini Player")
+at(3000, 1300)
+at(4150, 1300)
+check("fast flick tunneling inside: still dodges", world.pip.at.x, 1920 + 16)
+
+setup("Cider - Mini Player")
+at(3970, 1300)
+at(3000, 1300)
+check("fast flick away: stays", world.pip.at.x, home)
+
+setup("Cider - Mini Player")
+world.shift = true
+at(3000, 1300)
+at(4150, 1300)
+check("shift held on fast flick: stays", world.pip.at.x, home)
+
+local mini = { address = "0xm", title = "Cider - Mini Player", floating = true,
+	at = { x = 1920 + 2560 - 340 - 20, y = 54 }, size = { x = 340, y = 120 } }
+setup("Picture-in-Picture", nil, { mini })
+at(3950, 1220)
+at(3975, 1230)
+at(4020, 1245)
+check("two pips: slow approach to first stays despite second", world.pip.at.x, home)
+world.cursor = { x = mini.at.x + 50, y = mini.at.y + 50 }
+binds["SUPER + ALT + W"]()
+check("two pips: corner key moves hovered mini player", mini.at.x, 1920 + 2560 - 340 - 16)
+check("two pips: unhovered pip untouched by corner key", world.pip.at.x, home)
+
+setup("Cider - Mini Player")
+at(100, 100)
+local dock_x, dock_y = 1920 + 2560 - 480 - 20, 54
+_G.kuwai.pip_note_move(world.pip.address, dock_x, dock_y)
+world.pip.at = { x = dock_x, y = dock_y }
+at(100, 100)
+at(100, 100)
+at(100, 100)
+check("programmatic dock: not throw-snapped", world.pip.at.y, 54)
+
+setup("Cider - Mini Player", "defer")
+check("reload with existing mini player: wakes timer", tick ~= nil, true)
+
+setup("Cider", "defer")
+check("reload with only main window: no timer", tick, nil)
 
 if failed > 0 then
 	print(failed .. " failed")
