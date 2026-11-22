@@ -227,8 +227,17 @@ note() { printf '  \033[33m•\033[0m %s\n' "$*"; }
 
 cmd_doctor() {
     echo "Config"
-    out=$(Hyprland --verify-config -c "$ENTRY" 2>&1); vrc=$?
-    if [ $vrc -ge 128 ]; then
+    if live; then
+        errs=$(hyprctl configerrors 2>/dev/null | sed '/^[[:space:]]*$/d')
+        if [ -z "$errs" ]; then ok "the running Hyprland's config has no errors"
+        else bad "the running Hyprland's config has errors:"; printf '%s\n' "$errs" | sed 's/^/      /'; fi
+        vrc=-1
+    else
+        if command -v prlimit >/dev/null; then out=$(prlimit --core=1:1 -- Hyprland --verify-config -c "$ENTRY" 2>&1); vrc=$?
+        else out=$(Hyprland --verify-config -c "$ENTRY" 2>&1); vrc=$?; fi
+    fi
+    if [ $vrc -eq -1 ]; then :
+    elif [ $vrc -ge 128 ]; then
         if live && [ -z "$(hyprctl configerrors 2>/dev/null | tr -d '[:space:]')" ]; then
             note "Hyprland --verify-config crashed (signal $((vrc - 128)), Hyprland's bug); the live config has no errors"
         else
