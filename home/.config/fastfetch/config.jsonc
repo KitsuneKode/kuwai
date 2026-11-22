@@ -92,8 +92,7 @@
     },
     {
       "type": "disk",
-      "key": "   Disk",
-      "folders": "/",
+      "key": "   Disk ({?name}{name}{?}{/name}{mountpoint}{/})",
       "format": "{size-used} / {size-total} ({size-percentage})",
       "keyColor": "blue",
     },
