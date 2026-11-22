@@ -114,13 +114,16 @@ case "${1:-}" in
     -h|--help) usage; exit 0 ;;
     --greet)
         [ -n "${KITTY_WINDOW_ID:-}" ] || exit 0
-        term=$(ps -o ppid= -p "$PPID" 2>/dev/null | tr -d ' ')
-        mark="${XDG_RUNTIME_DIR:-/tmp}/kuwai/greeted-${term:-0}"
+        hypr=""
+        [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && command -v hyprctl >/dev/null && command -v jq >/dev/null && hypr=1
+        win=""
+        [ -n "$hypr" ] && win=$(hyprctl activewindow -j 2>/dev/null | jq -r 'select(.class == "kitty") | .address' 2>/dev/null)
+        mark="${XDG_RUNTIME_DIR:-/tmp}/kuwai/greeted-${win:-${KITTY_PID:-0}}"
         [ -e "$mark" ] && exit 0
         mkdir -p "$(dirname "$mark")" && : >"$mark"
-        if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && command -v hyprctl >/dev/null && command -v jq >/dev/null; then
+        if [ -n "$hypr" ] && [ -n "$win" ]; then
             ws=$(hyprctl activeworkspace -j 2>/dev/null | jq -r '.id' 2>/dev/null)
-            others=$(hyprctl clients -j 2>/dev/null | jq --argjson ws "${ws:-0}" --argjson pid "${term:-0}" '[.[] | select(.class == "kitty" and .workspace.id == $ws and .pid != $pid)] | length' 2>/dev/null)
+            others=$(hyprctl clients -j 2>/dev/null | jq --argjson ws "${ws:-0}" --arg win "$win" '[.[] | select(.class == "kitty" and .workspace.id == $ws and .address != $win)] | length' 2>/dev/null)
             [ "${others:-0}" -gt 0 ] && exit 0
         fi
         shift ;;
