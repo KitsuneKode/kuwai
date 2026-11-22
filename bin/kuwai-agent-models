@@ -3,7 +3,7 @@
 
 Prints one JSON object: {"AGENT:CWD": {"model": "claude-opus-5-5", "effort": "high", "context": 253000, "window": 1000000}, …}.
 context: the tokens its last turn sent (its context now); window: its size when known (Codex says it;
-Claude's past 200K is the 1M window), else 0.
+Claude's past 200K is the 1M window), else 0. reply: the agent's last words to you (600 characters at most).
 Claude: the newest session log for that folder (~/.claude*/projects/<folder with / as ->/*.jsonl),
 its last real model (not "<synthetic>") and effort. Codex: the newest rollout in
 ~/.codex/sessions whose cwd is that folder. Reads at most the last 256 KiB of one file per pane,
@@ -70,6 +70,26 @@ def codex_context(data):
     return 0, window
 
 
+def reply_of(data):
+    for raw in reversed(data.split(b"\n")):
+        if b'"assistant"' not in raw or (b'"text"' not in raw and b'"output_text"' not in raw):
+            continue
+        try:
+            d = json.loads(raw)
+        except ValueError:
+            continue
+        if d.get("isSidechain"):
+            continue
+        msg = d.get("message") if isinstance(d.get("message"), dict) else d.get("payload")
+        if not isinstance(msg, dict) or msg.get("role") != "assistant":
+            continue
+        parts = [c.get("text", "") for c in msg.get("content") or [] if isinstance(c, dict) and c.get("type") in ("text", "output_text")]
+        text = "\n".join(p for p in parts if p).strip()
+        if text:
+            return text[:600]
+    return ""
+
+
 def claude(cwd):
     enc = re.sub(r"[^A-Za-z0-9]", "-", cwd)
     files = []
@@ -82,7 +102,7 @@ def claude(cwd):
     if not model:
         return None
     used, window = claude_context(data, model)
-    return {"model": model, "effort": last(EFFORT, data), "context": used, "window": window}
+    return {"model": model, "effort": last(EFFORT, data), "context": used, "window": window, "reply": reply_of(data)}
 
 
 def codex(cwd):
@@ -94,7 +114,7 @@ def codex(cwd):
             model = last(MODEL, data)
             if model:
                 used, window = codex_context(data)
-                return {"model": model, "effort": last(EFFORT, data), "context": used, "window": window}
+                return {"model": model, "effort": last(EFFORT, data), "context": used, "window": window, "reply": reply_of(data)}
     return None
 
 

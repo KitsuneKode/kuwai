@@ -23,6 +23,8 @@ def claude_log(home, cwd, used, model="claude-opus-5-5"):
         {"type": "assistant", "message": {"model": model, "usage": {"input_tokens": 2, "cache_creation_input_tokens": 1000,
                                                                    "cache_read_input_tokens": used - 1002, "output_tokens": 5}}, "effort": "high"},
         {"type": "assistant", "isSidechain": True, "message": {"model": model, "usage": {"input_tokens": 7}}},
+        {"type": "assistant", "message": {"role": "assistant", "model": model, "content": [{"type": "text", "text": "All 12 tests pass."}]}},
+        {"type": "assistant", "isSidechain": True, "message": {"role": "assistant", "content": [{"type": "text", "text": "a subagent"}]}},
     ]
     (d / "s.jsonl").write_text("\n".join(json.dumps(r) for r in rows) + "\n")
 
@@ -30,7 +32,7 @@ def claude_log(home, cwd, used, model="claude-opus-5-5"):
 def test_claude_past_200k_is_the_1m_window(tmp_path):
     claude_log(tmp_path, "/w/big", 256000)
     got = run(tmp_path, "claude:/w/big")["claude:/w/big"]
-    assert got == {"model": "claude-opus-5-5", "effort": "high", "context": 256000, "window": 1000000}
+    assert got == {"model": "claude-opus-5-5", "effort": "high", "context": 256000, "window": 1000000, "reply": "All 12 tests pass."}
 
 
 def test_claude_under_200k_window_unknown(tmp_path):
@@ -45,7 +47,9 @@ def test_codex_says_its_window(tmp_path):
     rows = [
         {"type": "session_meta", "payload": {"cwd": "/w/x", "model": "gpt-6.1-sol", "model_context_window": 475000}},
         {"type": "event_msg", "payload": {"type": "token_count", "info": {"last_token_usage": {"input_tokens": 400000}}}},
+        {"type": "response_item", "payload": {"type": "message", "role": "assistant", "content": [{"type": "output_text", "text": "Done: the tooltip stays."}]}},
     ]
     (d / "r.jsonl").write_text("\n".join(json.dumps(r, separators=(",", ":")) for r in rows) + "\n")
     got = run(tmp_path, "codex:/w/x")["codex:/w/x"]
     assert got["model"] == "gpt-6.1-sol" and got["context"] == 400000 and got["window"] == 475000
+    assert got["reply"] == "Done: the tooltip stays."

@@ -92,7 +92,7 @@ FocusScope {
                 word: back ? "Limit · back in " + back : "",
                 key: "k" + r.key, src: "kitty", agent: r.agent, title: r.title,
                 where: r.project || String(r.where || "").replace(/^.*\//, ""),
-                model: ap.on(m.model, m.effort), state: state, status: r.status, ctx: m.context || 0, win: m.window || 0,
+                model: ap.on(m.model, m.effort), state: state, status: r.status, ctx: m.context || 0, win: m.window || 0, reply: m.reply || "",
                 question: r.question || (ev && ev.severity === "needs-you" ? Notifs.readable(ev.body || "") : ""),
                 t: (r.since || 0) * 1000, event: ev ? ev.id : "", action: r.action, raw: r
             });
@@ -342,6 +342,13 @@ FocusScope {
                         wrapMode: Text.Wrap; maximumLineCount: 3; elide: Text.ElideRight
                         text: row.modelData.question
                         size: Theme.tSub; lineHeight: 1.3; color: Theme.textPrimary
+                    }
+                    Label {
+                        visible: row.modelData.state === "done" && !!row.modelData.reply
+                        width: parent.width
+                        wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight
+                        text: row.modelData.reply ? T3.excerpt(row.modelData.reply) : ""
+                        size: Theme.tSub; lineHeight: 1.3; color: Theme.textTertiary
                     }
                         // Answer it from here (Claude Code, Codex): kittymux types the
                         // key only if this exact question is still on screen. Deny
