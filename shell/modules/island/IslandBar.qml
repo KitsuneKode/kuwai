@@ -283,6 +283,7 @@ Scope {
                 }
             }
             readonly property bool hoverFull: Settings.hoverView === "full" || full || peeked
+            readonly property bool restIsGlance: (Settings.islandRest === "minimal" || tucked) && Settings.hoverView === "glance" && proximityAvailable
             // Back to a glance next time, but only once the island has folded:
             // reset at once, the full view took the glance's size on its way
             // out and its sides squashed over the middle.
@@ -327,7 +328,9 @@ Scope {
                     // waveform, MusicTap); resting on T3 or a dot in between
                     // opened the music too.
                     if (win.hovered && win.holdCompact && restRow.activity === "media" && restRow.musicHovered && !win.panelHere && !win.pushed) { Island.preview("media", win.screenName); return; }
-                    win.grown = win.hovered && !win.panelHere && !win.overPills && !win.bannerHere && !win.peekHere && !win.deviceHere && !win.agentMoment && !win.pushed;
+                    const grow = win.hovered && !win.panelHere && !win.overPills && !win.bannerHere && !win.peekHere && !win.deviceHere && !win.agentMoment && !win.pushed;
+                    if (grow && win.restIsGlance) { win.near = true; nearOff.stop(); return; }
+                    win.grown = grow;
                 }
             }
             // Open tray menus (TrayRow): the pointer is on the menu, not the
