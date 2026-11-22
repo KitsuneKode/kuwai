@@ -103,8 +103,14 @@ local function pip_title(w)
 	end
 	return false
 end
+local function is_special_ws(ws)
+	if not ws then
+		return false
+	end
+	return (ws.id and ws.id < 0) or (ws.name and ws.name:sub(1, 8) == "special:") or false
+end
 local function is_pip(w)
-	return w and pip_title(w) and w.floating
+	return w and pip_title(w) and w.floating and not is_special_ws(w.workspace)
 end
 local function pips()
 	local out = {}
@@ -181,6 +187,7 @@ local function place(w, x, y)
 	pip.seen[key] = nil
 	hl.dispatch(dsp.window.move({ window = "address:" .. w.address, x = math.floor(x), y = math.floor(y) }))
 end
+local pip_wake
 _G.kuwai = _G.kuwai or {}
 function kuwai.pip_note_move(addr, x, y)
 	if not addr or not x or not y then
@@ -189,6 +196,9 @@ function kuwai.pip_note_move(addr, x, y)
 	local key = tostring(addr)
 	pip.ours[key] = { math.floor(x), math.floor(y) }
 	pip.seen[key] = nil
+	if pip_wake then
+		pip_wake()
+	end
 end
 if K.feature("pip_dodge") then
 	local timer
@@ -284,6 +294,7 @@ if K.feature("pip_dodge") then
 			timer = hl.timer(tick, { timeout = math.floor(PIP_TICK * 1000), type = "repeat" })
 		end
 	end
+	pip_wake = start_timer
 	local function wake(w)
 		if w and pip_title(w) then
 			start_timer()

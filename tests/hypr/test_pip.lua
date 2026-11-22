@@ -18,7 +18,7 @@ local function auto(name)
 	})
 end
 
-local world, handlers, tick, binds, deferred
+local world, handlers, tick, binds, deferred, timer_on
 local function setup(title, wake_on, extra_wins)
 	world = {
 		monitors = {
@@ -36,7 +36,7 @@ local function setup(title, wake_on, extra_wins)
 		ew.monitor = ew.monitor or world.monitors[2]
 		world.windows[#world.windows + 1] = ew
 	end
-	handlers, binds, tick, deferred = {}, {}, nil, {}
+	handlers, binds, tick, deferred, timer_on = {}, {}, nil, {}, false
 	_G.hl = auto("hl")
 	hl.dsp = auto("dsp")
 	hl.on = function(ev, f)
@@ -46,8 +46,9 @@ local function setup(title, wake_on, extra_wins)
 	hl.timer = function(f, o)
 		if o.type == "repeat" then
 			tick = f
+			timer_on = true
 		end
-		return { set_enabled = function() end }
+		return { set_enabled = function(_, on) if o.type == "repeat" then timer_on = on end end }
 	end
 	hl.dispatch = function(a)
 		if type(a) == "table" and a.op == "window.move" and a.args.x then
@@ -245,6 +246,14 @@ check("reload with existing mini player: wakes timer", tick ~= nil, true)
 
 setup("Cider", "defer")
 check("reload with only main window: no timer", tick, nil)
+
+setup("Cider - Mini Player")
+world.pip.workspace = { id = -98, name = "special:cider-mini" }
+at(3000, 1300)
+check("stashed mini player: timer stops and does not dodge", timer_on, false)
+world.pip.workspace = { id = 12, name = "12" }
+_G.kuwai.pip_note_move(world.pip.address, home, 1154)
+check("unstashed mini player via pip_note_move: wakes timer", timer_on, true)
 
 if failed > 0 then
 	print(failed .. " failed")
