@@ -12,6 +12,7 @@ if not K.exists(TOGGLE) then
 	return
 end
 local STATE = K.runtime .. "/voxtype/state"
+local KEYS = K.runtime .. "/kuwai/keys"
 
 local function dictating()
 	local s = K.read_line(STATE)
@@ -30,6 +31,9 @@ K.bind_hold("F9", "Dictate while held (tap: hands-free)", TOGGLE .. " hold", TOG
 bind("SUPER + CTRL + E", "Edit the selection by voice", TOGGLE .. " command")
 
 bind("Escape", "", function()
+	if K.read_line(KEYS) == "panel" then
+		return { ok = false }
+	end
 	if dictating() then
 		hl.exec_cmd(CANCEL)
 		return
