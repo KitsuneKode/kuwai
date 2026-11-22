@@ -25,6 +25,7 @@ import qs.components
 import qs.components.ui
 import qs.services
 import "../../services/t3.mjs" as T3
+import "../../services/agents.mjs" as Ag
 
 FocusScope {
     id: ap
@@ -86,10 +87,12 @@ FocusScope {
             const state = r.needs || (ev && ev.severity === "needs-you") ? "needs"
                 : r.working ? "working" : r.state === "error" ? "error" : r.state === "limited" ? "limited"
                 : r.state === "done" ? "done" : "idle";
+            const back = state === "limited" ? Ag.until((r.limitReset || 0) * 1000, Date.now()) : "";
             out.push({
+                word: back ? "Limit · back in " + back : "",
                 key: "k" + r.key, src: "kitty", agent: r.agent, title: r.title,
                 where: r.project || String(r.where || "").replace(/^.*\//, ""),
-                model: ap.on(m.model, m.effort), state: state, status: r.status,
+                model: ap.on(m.model, m.effort), state: state, status: r.status, ctx: m.context || 0, win: m.window || 0,
                 question: r.question || (ev && ev.severity === "needs-you" ? Notifs.readable(ev.body || "") : ""),
                 t: (r.since || 0) * 1000, event: ev ? ev.id : "", action: r.action, raw: r
             });
@@ -148,6 +151,14 @@ FocusScope {
         if (r.src === "t3") T3Code.openThread(r.thread);
         else if (r.event) Kittymux.jumpEvent(r.event);
         else Kittymux.act(r.action);
+    }
+    function fill(r) {
+        if (!r || !r.ctx) return "";
+        if (r.win > 0) {
+            const p = r.ctx / r.win;
+            return p >= 0.7 ? "<font color='" + (p >= 0.9 ? Theme.orange : Theme.textSecondary) + "'>Context " + Math.round(p * 100) + "%</font>" : "";
+        }
+        return r.ctx >= 140000 ? "Context " + Math.round(r.ctx / 1000) + "K" : "";
     }
     function word(s) {
         return ({ needs: "Needs you", working: "Working", error: "Error", limited: "Hit a limit", done: "Done", idle: "Idle", recent: "Closed · reopen" })[s] || "";
@@ -278,7 +289,7 @@ FocusScope {
                 transform: Translate { x: swipe.offset }
                 SwipeAway { id: swipe; enabled: row.dismissable; span: row.width; onLeaving: ap.dismiss(row.modelData) }
                 Accessible.role: Accessible.ListItem
-                Accessible.name: modelData.title + ", " + (modelData.word || ap.word(modelData.state)) + (modelData.where ? ", " + modelData.where : "") + (modelData.model ? ", " + modelData.model : "")
+                Accessible.name: modelData.title + ", " + (modelData.word || ap.word(modelData.state)) + (modelData.where ? ", " + modelData.where : "") + (modelData.model ? ", " + modelData.model : "") + (modelData.win && modelData.ctx / modelData.win >= 0.7 ? ", context " + Math.round(modelData.ctx / modelData.win * 100) + " percent full" : "")
                 Accessible.description: modelData.question || ""
                 Accessible.selected: ap.sel === index
                 // The keyboard's ring is the list's FluidHighlight (ring: keyboard).
@@ -323,6 +334,7 @@ FocusScope {
                     subFormat: Text.StyledText
                     sub: "<font color='" + ap.tone(row.modelData.state) + "'>" + (row.modelData.word || ap.word(row.modelData.state)) + "</font>"
                         + [row.modelData.where, row.modelData.model].filter(x => x).map(x => " · " + ap.esc(x)).join("")
+                        + (ap.fill(row.modelData) ? " · " + ap.fill(row.modelData) : "")
                     subColor: Theme.textSecondary
                     Label {
                         visible: row.needs && row.modelData.question !== ""
