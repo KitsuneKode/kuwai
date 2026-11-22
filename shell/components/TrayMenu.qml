@@ -27,6 +27,13 @@ Item {
     property var items: null            // or plain actions: { text, glyph, enabled, isSeparator, keepOpen, danger, triggered }
     property var window                 // the island window (focus grab, menu count)
     property bool open: false
+    property bool counted: false
+    function count(on) {
+        if (!window || window.menus === undefined) return;
+        if (on && !counted) { counted = true; window.menus++; }
+        else if (!on && counted) { counted = false; window.menus = Math.max(0, window.menus - 1); }
+    }
+    Component.onDestruction: count(false)
     property bool anchorHovered: false   // the pointer is on the icon that opened it
     property var stack: []              // submenus drilled into: [{ entry, title }]
     readonly property var current: stack.length ? stack[stack.length - 1].entry : handle
@@ -34,6 +41,7 @@ Item {
 
     width: 0; height: 0
     onOpenChanged: {
+        count(open);
         if (open) { stack = []; k.target = 1; }
         else { k.target = 0; closed(); }
     }

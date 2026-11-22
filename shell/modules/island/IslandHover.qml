@@ -923,11 +923,6 @@ Item {
                     anchorItem: updChip
                     anchorHovered: updArea.containsMouse
                     window: hover.bar
-                    property bool counted: false
-                    onOpenChanged: {
-                        if (open && !counted) { counted = true; hover.bar.menus++; }
-                        else if (!open && counted) { counted = false; hover.bar.menus = Math.max(0, hover.bar.menus - 1); }
-                    }
                     items: Updates.running ? [
                         { text: "Show progress", glyph: "\u{f06b0}", triggered: () => Island.open("updates", hover.bar.screenName, "pointer", "island") }
                     ] : [

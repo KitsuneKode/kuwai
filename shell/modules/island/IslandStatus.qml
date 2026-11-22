@@ -159,12 +159,6 @@ Row {
     // ── Menus (the island's own: components/TrayMenu) ──────────────────
     component Menu: TrayMenu {
         window: status.bar
-        property bool counted: false
-        onOpenChanged: {
-            if (!status.bar) return;
-            if (open && !counted) { counted = true; status.bar.menus++; }
-            else if (!open && counted) { counted = false; status.bar.menus = Math.max(0, status.bar.menus - 1); }
-        }
     }
     Menu {
         id: netMenu

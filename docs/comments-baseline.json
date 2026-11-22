@@ -1,5 +1,5 @@
 {
-  "total_comment_lines": 7896,
+  "total_comment_lines": 7895,
   "files_with_comments": 307,
   "files": {
     "shell/components/ActionMenu.qml": 23,
@@ -128,7 +128,7 @@
     "shell/modules/island/SystemPanel.qml": 48,
     "shell/modules/island/T3Panel.qml": 48,
     "shell/modules/island/ThemePanel.qml": 75,
-    "shell/modules/island/TrayRow.qml": 11,
+    "shell/modules/island/TrayRow.qml": 10,
     "shell/modules/island/UpdatesPanel.qml": 73,
     "shell/modules/island/UsagePanel.qml": 90,
     "shell/modules/lock/ClockGround.qml": 25,

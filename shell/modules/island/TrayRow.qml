@@ -38,13 +38,6 @@ Row {
                 handle: it.modelData.menu
                 window: tray.window
                 anchorHovered: area.containsMouse
-                // Keep the island open while this menu is (see IslandBar.menus).
-                property bool counted: false
-                onOpenChanged: {
-                    if (open && !counted) { counted = true; tray.window.menus++; }
-                    else if (!open && counted) { counted = false; tray.window.menus = Math.max(0, tray.window.menus - 1); }
-                }
-                Component.onDestruction: if (counted) tray.window.menus = Math.max(0, tray.window.menus - 1)
             }
             MouseArea {
                 id: area
