@@ -53,7 +53,7 @@ K.config({
 	},
 
 	debug = {
-		disable_logs = false,
+		disable_logs = true,
 		error_position = 0,
 	},
 })
