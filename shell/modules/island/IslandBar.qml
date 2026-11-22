@@ -514,14 +514,12 @@ Scope {
                 return OllamaService.pendingRequest ? "Assistant asks" : "";
             }
             function goWaiting() {
-                const a = waitingAgents[0];
-                if (a && a.action) Kittymux.act(a.action);
-                else if (T3Code.waiting) T3Code.openBest();
-                else if (OllamaService.pendingRequest) OllamaService.openSession(OllamaService.draftSessionId);
+                if (Agents.go(Agents.next)) return;
+                if (OllamaService.pendingRequest) OllamaService.openSession(OllamaService.draftSessionId);
             }
             // Lit at rest, glancing and in the hover view; a panel over it says enough.
             // What's out in a capsule (IslandSplit) lights its capsule instead.
-            readonly property int waitingHere: waitingCount - (split.agentsHold ? waitingAgents.length : 0) - (split.t3Hold ? T3Code.waiting : 0)
+            readonly property int waitingHere: waitingCount - (split.agentsHold ? waitingAgents.length + T3Code.waiting : 0)
             readonly property real needTarget: waitingHere > 0 && !panelHere ? 1 : 0
             property real needGlow: 0
             property int lastWaiting: 0

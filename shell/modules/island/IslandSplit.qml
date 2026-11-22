@@ -4,11 +4,11 @@
 // small floating capsules, shared out evenly left and right so the notch
 // stays the centre:
 //
-//        ( ▣ ) ( ✳◐ )   [   21:08 ·  live   ]   ( T3 ② ) ( ⟲ 3 )
+//        ( ▣ ) ( ✳◐ Approval )   [   21:08 ·  live   ]   ( ⟲ 3 )
 //
 // What gets a capsule: music, stepped aside while dictation, a recording, a
 // timer or an update has the island (always on the left: it's yours); the
-// kitty agents at work; T3's threads; system news (updates waiting, a
+// agents at work, kitty panes and T3 threads in one; system news (updates waiting, a
 // warning, a used-up limit). Each new one goes to the side with fewer, and
 // keeps its side while it's out (nothing jumps across); the nearer the
 // notch, the more it matters.
@@ -26,7 +26,6 @@ import qs.config
 import qs.components
 import qs.services
 import Quickshell.Hyprland
-import "../../services/t3.mjs" as T3
 
 Item {
     id: split
@@ -92,38 +91,27 @@ Item {
         const e = agentsDone[0];
         if (e) Kittymux.jumpEvent(e.id);
     }
-    // T3: threads finished since you last opened them.
     property int t3Finished: T3Code.finished
     property int t3FinishedWas: -1
     onT3FinishedChanged: {
-        if (t3FinishedWas >= 0 && T3Code.finished > t3FinishedWas) t3Pill.celebrate();
+        if (t3FinishedWas >= 0 && T3Code.finished > t3FinishedWas) agentsPill.celebrate();
         t3FinishedWas = T3Code.finished;
     }
 
-    readonly property bool agentsLive: agentStack.list.length > 0 || agentsErr.length > 0 || agentsLim.length > 0 || agentsDone.length > 0
-    readonly property bool t3Live: T3Code.total > 0 || T3Code.finished > 0 || t3Word
+    readonly property var agentsHead: Agents.head
+    readonly property bool agentsWord: agentsHead.word !== ""
+    readonly property bool agentsLive: agentStack.list.length > 0 || agentsHead.tone !== ""
     readonly property bool sysLive: sysMarks.any
     // A capsule folds only after its work has been gone a few seconds, and
     // shows its last value meanwhile.
     onAgentsLiveChanged: if (!agentsLive) agentsLinger.restart()
-    onT3LiveChanged: if (!t3Live) t3Linger.restart()
     onSysLiveChanged: if (!sysLive) sysLinger.restart()
     Timer { id: agentsLinger; interval: 3000 }
-    Timer { id: t3Linger; interval: 4000 }
     Timer { id: sysLinger; interval: 2000 }
-    property string t3Value: ""
-    property bool t3Waiting: false
-    // What the T3 capsule says first (t3.mjs headline): the state that wants
-    // you as a word ("Approval", "Limit reached"), else the working count.
-    readonly property var t3Head: T3.headline(T3Code.items)
-    readonly property bool t3Word: !!t3Head && t3Head.tone !== "working"
-    readonly property var t3Now: [T3Code.running, T3Code.waiting]
-    onT3NowChanged: if (t3Live) { t3Value = String(T3Code.running); t3Waiting = T3Code.waiting > 0; }
     readonly property var demand: ({
         music: on && musicLive,
         min: on && minimized.length > 0,
         agents: on && (agentsLive || agentsLinger.running),
-        t3: on && (t3Live || t3Linger.running),
         sys: on && (sysLive || sysLinger.running)
     })
 
@@ -131,7 +119,7 @@ Item {
     // Nearest the notch first. Music always left; the rest to the side with
     // fewer out (a tie: the first of a pair left, the next right). A side,
     // once given, holds until that capsule has folded away.
-    readonly property var order: ["music", "agents", "t3", "sys", "min"]
+    readonly property var order: ["music", "agents", "sys", "min"]
     // Windows tucked away with Super+O (special:minimized): a capsule of their
     // icons, each one a way back. Without it they were nowhere to be seen.
     property var minimized: Hyprland.toplevels.values.filter(t => t.workspace && t.workspace.name === "special:minimized")
@@ -147,7 +135,7 @@ Item {
     }
     property var sideOf: ({})
     onDemandChanged: assign()
-    function pillOf(k) { return ({ music: musicPill, agents: agentsPill, t3: t3Pill, sys: sysPill, min: minPill, more: morePill })[k]; }
+    function pillOf(k) { return ({ music: musicPill, agents: agentsPill, sys: sysPill, min: minPill, more: morePill })[k]; }
     function assign() {
         // Keep the last preferred side for a departing pill without feeding
         // the animation back into the arrangement binding.
@@ -187,8 +175,7 @@ Item {
     readonly property var priorityKeys: {
         const urgent = [];
         if (Alerts.active.length) urgent.push("sys");
-        if (agentsErr.length || agentsNeed) urgent.push("agents");
-        if (T3Code.waiting > 0) urgent.push("t3");
+        if (agentsErr.length || agentsNeed || agentsHead.tone === "attention" || agentsHead.tone === "error") urgent.push("agents");
         return urgent.filter(k => demand[k]).concat(activeKeys.filter(k => !urgent.includes(k)));
     }
     readonly property real leftRoom: Math.max(0, leftEdge - Theme.s2)
@@ -230,7 +217,7 @@ Item {
             const count = arrangement.overflow.length;
             return count === 1 ? "1 more activity" : count + " more activities";
         }
-        return ({music: "Now Playing", agents: "Agents", t3: "T3 threads", sys: "System status", min: "Restore minimized window"})[k] || k;
+        return ({music: "Now Playing", agents: "Agents", sys: "System status", min: "Restore minimized window"})[k] || k;
     }
     property var overflowSelection: []
     function openOverflow(how) {
@@ -242,15 +229,14 @@ Item {
         return ({music: "\u{f0387}", agents: "\u{f06a9}", sys: "\u{f06b0}", min: "\u{f05b6}"})[k] || "";
     }
     readonly property bool hovered: pills.some(p => p.enabled && p.hovered)
-    Component.onCompleted: { t3NowChanged(); t3FinishedWas = T3Code.finished; agentsDoneWas = agentsDone.length; assign(); }
+    Component.onCompleted: { t3FinishedWas = T3Code.finished; agentsDoneWas = agentsDone.length; assign(); }
 
     // What waits on you, by capsule: the light goes on what's asking
     // (IslandBar keeps its own rim for what's still in the island).
     readonly property bool agentsNeed: agentStack.list.some(a => a.needs) || Kittymux.running.some(r => r.needs)
     readonly property bool agentsHold: agentsPill.shown
-    readonly property bool t3Hold: t3Pill.shown
     // For the window's input mask (IslandBar): what's out takes clicks.
-    readonly property var pills: [musicPill, agentsPill, t3Pill, sysPill, minPill, morePill]
+    readonly property var pills: [musicPill, agentsPill, sysPill, minPill, morePill]
     // Is this point (in this item's coordinates) on a capsule, or within
     // `margin` of one? A capsule is its own target: the island does not take
     // a pointer that is on its way to one for a pointer reaching the island.
@@ -490,8 +476,8 @@ Item {
             anchors.centerIn: parent
             visible: pill.compact
             textFormat: Text.PlainText
-            text: pill.name === "more" ? "+" + split.arrangement.overflow.length : pill.name === "t3" ? "T3" : split.glyphFor(pill.name)
-            font.family: ["more", "t3"].includes(pill.name) ? Theme.fontText : Theme.fontGlyph
+            text: pill.name === "more" ? "+" + split.arrangement.overflow.length : split.glyphFor(pill.name)
+            font.family: pill.name === "more" ? Theme.fontText : Theme.fontGlyph
             font.pixelSize: Theme.tSub * Theme.textScale
             font.weight: Theme.wSemibold
             color: pill.toned ? pill.tone : Theme.textPrimary
@@ -523,6 +509,7 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         Text {
             textFormat: Text.PlainText
+            visible: badge.glyph !== ""
             anchors.verticalCenter: parent.verticalCenter
             text: badge.glyph
             font.family: Theme.fontGlyph; font.pixelSize: Theme.tCallout
@@ -567,84 +554,38 @@ Item {
         }
     }
 
-    // ── Agents at work in kitty ──
     Pill {
         id: agentsPill
         name: "agents"
         panel: "agents"
-        needs: split.agentsNeed
-        stateKey: [split.agentsErr.length > 0, split.agentsNeed, split.agentsLim.length > 0, split.agentsDone.length > 0].join()
-        // An error outranks a question; a limit only says so.
-        tone: split.agentsErr.length ? Theme.red : split.agentsNeed ? Theme.orange : split.agentsLim.length ? Theme.yellow
-            : split.agentsDone.length ? Theme.green : "transparent"
-        attention: split.agentsErr.length > 0 || split.agentsNeed
+        needs: split.agentsNeed || split.agentsHead.tone === "attention"
+        stateKey: [split.agentsHead.key, split.agentsHead.done > 0].join()
+        tone: ({ attention: Theme.orange, error: Theme.red, caution: Theme.yellow, done: Theme.green })[split.agentsHead.tone] || "transparent"
+        attention: split.agentsHead.tone === "attention" || split.agentsHead.tone === "error"
         Row {
             spacing: 6
-            AgentStack { id: agentStack; bar: split.bar; visible: list.length > 0; anchors.verticalCenter: parent.verticalCenter }
+            AgentStack { id: agentStack; bar: split.bar; withT3: true; visible: list.length > 0; anchors.verticalCenter: parent.verticalCenter }
             Badge {
-                visible: split.agentsErr.length > 0
-                glyph: "\u{f0028}"                       // alert-circle
-                tint: Theme.red
-                tip: split.agentsErr.map(r => Kittymux.agentLabel(r.agent) + ": " + (r.status || "error")).join(" · ") + "\nClick: every agent · right-click: put it away"
-                onClicked: agentsPill.openPanel()
-                onAltClicked: split.agentsErr.forEach(r => Kittymux.quiet(r))
+                visible: split.agentsWord
+                glyph: ({ error: "\u{f0028}", caution: "\u{f051f}" })[split.agentsHead.tone] || ""
+                text: (split.agentsHead.tone === "caution" && split.limWho ? split.limWho + " · " : "") + split.agentsHead.word
+                tint: ({ attention: Theme.orange, error: Theme.red, caution: Theme.yellow })[split.agentsHead.tone] || Theme.textSecondary
+                tip: (split.agentsHead.tone === "caution" ? split.limTip : Agents.next ? Agents.next.title : "")
+                    + (split.agentsHead.tone === "caution" ? "\nClick: usage, every account · right-click: put it away" : "\nClick: every agent · right-click: go there (Super+Ctrl+N)")
+                onClicked: split.agentsHead.tone === "caution" ? Island.toggle("usage", split.bar.screenName, "pointer") : agentsPill.openPanel()
+                onAltClicked: split.agentsHead.tone === "caution" ? split.agentsLim.forEach(r => Kittymux.quiet(r)) : Agents.goNeeds()
             }
             Badge {
-                visible: split.agentsLim.length > 0 && split.agentsErr.length === 0
-                glyph: "\u{f051f}"                       // timer-sand
-                text: (split.limWho ? split.limWho + " · " : "") + split.limReset
-                tint: Theme.yellow
-                tip: split.limTip + "\nClick: usage, every account · right-click: put it away"
-                onClicked: Island.toggle("usage", split.bar.screenName, "pointer")
-                onAltClicked: split.agentsLim.forEach(r => Kittymux.quiet(r))
-            }
-            Badge {
-                visible: split.agentsDone.length > 0
-                glyph: "\u{f05e0}"                       // check-circle
-                text: split.agentsDone.length > 1 ? String(split.agentsDone.length) : ""
+                visible: split.agentsHead.done > 0 && !split.agentsWord
+                glyph: "\u{f05e0}"
+                text: split.agentsHead.done > 1 ? String(split.agentsHead.done) : ""
                 tint: Theme.green
-                tip: split.agentsDone.slice(0, 3).map(e => Kittymux.agentLabel(e.agent) + " finished" + (e.tab ? " · " + Kittymux.clean(e.tab) : "")).join(" · ") + "\nClick: every agent · right-click: go to the newest"
+                tip: split.agentsDone.slice(0, 3).map(e => Kittymux.agentLabel(e.agent) + " finished" + (e.tab ? " · " + Kittymux.clean(e.tab) : ""))
+                    .concat(T3Code.items.filter(i => i.status === "completed").slice(0, 3).map(i => i.title + " finished")).slice(0, 3).join(" · ")
+                    + "\nClick: every agent · right-click: go to the newest"
                 onClicked: agentsPill.openPanel()
-                onAltClicked: split.goDone()
+                onAltClicked: split.agentsDone.length ? split.goDone() : T3Code.openBest()
             }
-        }
-    }
-
-    // ── T3's threads ──
-    Pill {
-        id: t3Pill
-        name: "t3"
-        panel: "t3"
-        needs: split.t3Word && split.t3Head.tone === "attention"
-        stateKey: [split.t3Head ? split.t3Head.key : "", T3Code.total > 0, T3Code.finished > 0].join()
-        tone: split.t3Word ? (split.t3Head.tone === "error" ? Theme.red : Theme.orange) : T3Code.finished > 0 ? Theme.green : "transparent"
-        Row {
-          spacing: 6
-          // What it wants, in a word, as t3code-bar's tray says it ("Approval",
-          // "Question 2", "Limit reached", "Failed"); plain work is the turning
-          // ring and its count. It said "T3 ① ✓ 13": two numbers to decode.
-          RestMark {
-            visible: split.t3Word || T3Code.total > 0 || (t3Linger.running && T3Code.finished === 0)   // its last value while it lingers
-            wordmark: "T3"
-            value: split.t3Word ? split.t3Head.word + (split.t3Head.count > 1 ? " " + split.t3Head.count : "") : split.t3Value
-            ring: split.t3Word ? "" : "spin"
-            tone: !split.t3Word ? Theme.cyan : split.t3Head.tone === "error" ? Theme.red : Theme.orange
-            previews: true
-            onPreviewRequested: if (Island.panel === "") Island.preview("t3", split.bar.screenName)
-            onClicked: t3Pill.openPanel()
-          }
-          // Finished since you last looked: T3's own "seen" (each thread's
-          // last visit), so it clears as you open them there.
-          // (Not while it's asking for something: the word is the news then.)
-          Badge {
-            visible: T3Code.finished > 0 && !split.t3Word
-            glyph: "\u{f05e0}"                         // check-circle
-            text: (T3Code.total > 0 ? "" : "T3 ") + T3Code.finished
-            tint: Theme.green
-            tip: T3Code.items.filter(i => i.status === "completed").slice(0, 3).map(i => i.title).join(" · ") + " · finished\nClick: the threads · right-click: open the newest"
-            onClicked: t3Pill.openPanel()
-            onAltClicked: T3Code.openBest()
-          }
         }
     }
 

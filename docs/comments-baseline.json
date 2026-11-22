@@ -1,5 +1,5 @@
 {
-  "total_comment_lines": 7895,
+  "total_comment_lines": 7878,
   "files_with_comments": 307,
   "files": {
     "shell/components/ActionMenu.qml": 23,
@@ -112,7 +112,7 @@
     "shell/modules/island/IslandGlance.qml": 37,
     "shell/modules/island/IslandHover.qml": 121,
     "shell/modules/island/IslandRest.qml": 174,
-    "shell/modules/island/IslandSplit.qml": 148,
+    "shell/modules/island/IslandSplit.qml": 131,
     "shell/modules/island/IslandStatus.qml": 22,
     "shell/modules/island/KeysPanel.qml": 32,
     "shell/modules/island/LauncherPanel.qml": 118,

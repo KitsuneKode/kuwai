@@ -42,6 +42,12 @@ Scope {
     }
     GlobalShortcut {
         appid: "kuwai"
+        name: "agents-go"
+        description: "Agents: go to the one that needs you (its kitty pane, its T3 thread); none: the list"
+        onPressed: Agents.goNeeds()
+    }
+    GlobalShortcut {
+        appid: "kuwai"
         name: "assistant"
         description: "AI Assistant: local LLM chat and multimodal vision"
         onPressed: {

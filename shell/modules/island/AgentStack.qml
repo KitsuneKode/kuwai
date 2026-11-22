@@ -15,6 +15,10 @@ import qs.services
 Item {
     id: stack
     property var bar
+    property bool withT3: false
+    readonly property var t3Rows: withT3 ? T3Code.items.filter(i => i.status === "waiting" || i.status === "running")
+        .map(i => ({ agent: Agents.t3Agent(i.provider), title: i.title || "T3 thread", where: "T3", status: i.status === "waiting" ? "needs you" : "working",
+                     needs: i.status === "waiting", thread: i.thread })) : []
     readonly property var waiting: Kittymux.attention.filter(e => e.severity === "needs-you")
         .map(e => ({ agent: e.agent, title: Kittymux.clean(e.tab || e.title), where: "", status: "needs you", needs: true, event: e.id }))
     // An agent kittymux reads as waiting (agents.json state) with no unread
@@ -22,8 +26,9 @@ Item {
     // read): it's still asking, so it leads too. It was left out of the stack.
     readonly property var waitingPanes: Kittymux.running.filter(r => r.needs
         && !Kittymux.attention.some(e => e.severity === "needs-you" && String(e.pid) === String(r.pid) && String(e.w) === r.w))
-    readonly property var list: waiting.concat(waitingPanes, Kittymux.working)
-    readonly property int needN: waiting.length + waitingPanes.length
+    readonly property var list: waiting.concat(waitingPanes, t3Rows.filter(a => a.needs), Kittymux.working, t3Rows.filter(a => !a.needs))
+    readonly property int needN: waiting.length + waitingPanes.length + t3Rows.filter(a => a.needs).length
+    readonly property int workN: Kittymux.working.length + t3Rows.filter(a => !a.needs).length
     readonly property int shown: Math.min(3, list.length)
     readonly property bool many: list.length > 1
     readonly property bool hovered: hover.hovered
@@ -83,7 +88,7 @@ Item {
 
     HoverHandler { id: hover; enabled: stack.enabled; margin: 6; cursorShape: Qt.PointingHandCursor }
     Accessible.role: Accessible.Button
-    Accessible.name: !stack.list.length ? "" : stack.many ? "Agents: " + (stack.needN ? stack.needN + " need you, " : "") + Kittymux.working.length + " working"
+    Accessible.name: !stack.list.length ? "" : stack.many ? "Agents: " + (stack.needN ? stack.needN + " need you, " : "") + stack.workN + " working"
         : stack.list[0].agent + ", " + stack.list[0].title + ", " + stack.list[0].status
     Accessible.description: "Opens every agent"
     Accessible.onPressAction: if (stack.list.length) Island.open("agents", stack.bar.screenName, "pointer")
@@ -99,9 +104,9 @@ Item {
         shown: hover.hovered && !stack.open
         below: true
         text: !stack.list.length ? ""
-            : (stack.many ? (stack.needN ? stack.needN + " need you · " : "") + Kittymux.working.length + " working"
+            : (stack.many ? (stack.needN ? stack.needN + " need you · " : "") + stack.workN + " working"
                           : stack.list[0].agent + " · " + stack.list[0].title + " · " + stack.list[0].status)
               + "\nClick: every agent · right-click: go to " + (stack.many ? "the first" : "it")
     }
-    function go(a) { if (!a) return; if (a.event) Kittymux.jumpEvent(a.event); else Kittymux.act(a.action); }
+    function go(a) { if (!a) return; if (a.thread) T3Code.openThread(a.thread); else if (a.event) Kittymux.jumpEvent(a.event); else Kittymux.act(a.action); }
 }

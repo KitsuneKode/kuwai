@@ -1,4 +1,4 @@
-// The island's T3 capsule in its states (bin/kuwai-ui-test --case pill): it
+// The island's Agents capsule with T3 threads in its states (bin/kuwai-ui-test --case pill): it
 // says what is wanted as a word ("Approval", "Question 2", "Limit reached"),
 // the turning count only for plain work, and stays inside its outline. A
 // picture of each goes to /out/pill-<state>.png.
@@ -55,8 +55,8 @@ ShellRoot {
             interval: 1500
             onTriggered: {
                 const s = scene.states[scene.at];
-                const pill = split.pills.find(p => p.name === "t3");
-                if (!pill || !pill.out) { scene.fail(s.id + ": the T3 capsule isn't out"); return; }
+                const pill = split.pills.find(p => p.name === "agents");
+                if (!pill || !pill.out) { scene.fail(s.id + ": the Agents capsule isn't out"); return; }
                 if (s.want) {
                     const said = scene.find(pill, c => c.text !== undefined && String(c.text) === s.want && c.visible);
                     if (!said) { scene.fail(s.id + ": the capsule doesn't say \"" + s.want + "\""); return; }
