@@ -122,4 +122,4 @@ def test_the_shell_without_hyde_is_quiet_and_falls_back(tmp_path):
     out = r.stdout
     assert 'Hyde.present=false' in out and 'Hyde.hasShell=false' in out and 'Hyde.wallpaper=""' in out
     assert 'Theme.accent=#0a84ff' in out                     # Theme's own blue
-    assert 'Glyphs.emojiMissing=true' in out
+    assert 'Glyphs.emojiMissing=false' in out and 'emoji=0' not in out
