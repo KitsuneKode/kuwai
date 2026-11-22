@@ -518,12 +518,16 @@ FocusScope {
                     }
                 }
                 SettingsRow {
-                    key: "notifRedactSensitive"
-                    label: "Hide sensitive message text"
-                    detail: Settings.notifRedactSensitive ? "Chat/mail: show who, not the body, until you Open" : "Full text on peek, toasts and center"
-                    Toggle {
-                        on: Settings.notifRedactSensitive
-                        onToggled: Settings.set("notifRedactSensitive", !Settings.notifRedactSensitive)
+                    key: "notifPrivacy"
+                    label: "Message privacy"
+                    detail: (Settings.notifPrivacy === "always" ? "Chat messages show who sent them, not what, until you open them"
+                          : Settings.notifPrivacy === "never" ? "Chat messages show in full, the lock screen too"
+                          : "Chat messages show on your desktop; the lock screen shows only who sent them")
+                          + (Settings.notifPrivateSenders ? "  ·  Kept private: " + Settings.notifPrivateSenders : "  ·  Passwords and card numbers stay hidden; nothing shows while you share your screen")
+                    Segmented {
+                        options: [{ id: "lock", label: "Lock screen" }, { id: "always", label: "Always" }, { id: "never", label: "Never" }]
+                        current: Settings.notifPrivacy
+                        onPicked: id => Settings.set("notifPrivacy", id)
                     }
                 }
                 SettingsRow {

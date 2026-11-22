@@ -55,6 +55,7 @@ Column {
     }
     function preview(i) {
         if (isCode(i)) return "Code hidden · unlock to see";
+        if (Notifs.lockHidden(i)) return "Message hidden · unlock to read";
         return String(i.body || "").replace(/\s+/g, " ").trim();
     }
 

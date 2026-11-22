@@ -19,6 +19,7 @@ import qs.config
 import "otp.mjs" as Otp
 import "notifUndo.mjs" as Undo
 import "notifTidy.mjs" as Tidy
+import "notifPrivacy.mjs" as Privacy
 
 Singleton {
     property real copyAskedAt: 0
@@ -269,18 +270,18 @@ Singleton {
     // ── Privacy: hide message bodies for chat/mail apps (title = who) ─────
     // Private chats, matched on the app's name only (a GitHub title that says
     // "mail" is not a chat). Gmail and GitHub are previews you asked for.
-    readonly property var sensitiveApps: /\b(zapzap|whatsapp|telegram|signal|discord|slack|element|messenger|beeper)\b/i
+    readonly property var sensitiveApps: Privacy.chatApps
     // Sharing the screen: every body is private, even when opened.
     readonly property bool sharing: !shareKnown || dndMute
     // Sharing comes before urgency (review 2026-11-10, finding 04): a critical
     // message still arrives (its title, the island grows for it), but its body
     // is not in the capture. Outside a share, warnings and critical ones show.
-    function bodyRedacted(item) {
-        if (!item) return false;
-        if (sharing) return true;
-        if (item.severity === "critical" || item.severity === "warning") return false;
-        return Settings.notifRedactSensitive && sensitiveApps.test(String(item.app || ""));
-    }
+    function privacyFor(place) { return { sharing: sharing, place: place, mode: Settings.notifPrivacy, privateSenders: Settings.notifPrivateSenders }; }
+    function bodyRedacted(item) { return Privacy.hidden(item, privacyFor("desktop")); }
+    function lockHidden(item) { return Privacy.hidden(item, privacyFor("lock")); }
+    function senderOf(item) { return item ? String(sensitiveApps.test(String(item.app || "")) ? item.title || item.app : item.app || "") : ""; }
+    function isPrivateSender(item) { return !!item && Privacy.fromPrivateSender(item, Settings.notifPrivateSenders); }
+    function togglePrivate(item) { Settings.set("notifPrivateSenders", Privacy.toggleSender(Settings.notifPrivateSenders, senderOf(item))); }
     // reveal: the person opened it on purpose (expanded, selected, the bell
     // list). That shows a chat's body too, unless the screen is being shared.
     function bodyHidden(item, reveal) { return bodyRedacted(item) && (!reveal || sharing); }

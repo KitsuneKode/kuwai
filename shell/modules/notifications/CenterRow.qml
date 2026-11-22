@@ -144,6 +144,7 @@ Item {
         ].concat(row.liveActions.map(a => ({ text: a.text, triggered: () => Notifs.invokeAction(row.item, a.id) }))).concat([
             { text: "Snooze…", glyph: "\u{f04b2}", shortcut: "S", triggered: () => row.toggleSnooze() },
             { visible: /^https?:\/\//.test(row.it.url || ""), text: "Copy link", glyph: "\u{f0339}", triggered: () => Clipboard.copyText(row.it.url) },
+            { visible: !!Notifs.senderOf(row.it), text: (Notifs.isPrivateSender(row.it) ? "Stop hiding messages from " : "Always hide messages from ") + Notifs.senderOf(row.it), glyph: "\u{f0209}", triggered: () => Notifs.togglePrivate(row.it) },
             { kind: "separator" },
             { text: "Dismiss", glyph: "\u{f0156}", variant: "destructive", triggered: () => row.remove() },
             { text: "Dismiss all from " + (row.it.app || "this app"), triggered: () => Notifs.removeApp(row.it.app, "center") }

@@ -657,14 +657,33 @@
       "restartScope": "live"
     },
     {
-      "key": "notifRedactSensitive",
-      "type": "boolean",
-      "default": true,
+      "key": "notifPrivacy",
+      "type": "string",
+      "default": "lock",
+      "enum": [
+        "lock",
+        "always",
+        "never"
+      ],
+      "maxLength": 512,
       "section": "notifs",
-      "label": "Hide sensitive message text",
-      "detail": "Chat/mail: show who, not the body, until you Open",
+      "label": "Message privacy",
+      "detail": "Chat messages: shown on your desktop, only who sent them on the lock screen",
       "group": "",
-      "searchTerms": "hide sensitive message text chat/mail: show who, not the body, until you open  ",
+      "searchTerms": "message privacy chat messages hide sensitive whatsapp lock screen always never ",
+      "requires": [],
+      "restartScope": "live"
+    },
+    {
+      "key": "notifPrivateSenders",
+      "type": "string",
+      "default": "",
+      "maxLength": 512,
+      "section": "notifs",
+      "label": "People kept private",
+      "detail": "Their messages stay hidden until opened, everywhere (right-click a notification, or kuwai set notifPrivateSenders \"Mom, Bank\")",
+      "group": "",
+      "searchTerms": "people kept private senders contacts hide censor ",
       "requires": [],
       "restartScope": "live"
     },

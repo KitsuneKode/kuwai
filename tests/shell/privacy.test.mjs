@@ -48,20 +48,12 @@ describe("lock screen codes", () => {
     test("leaves " + JSON.stringify(i.body) + " alone", () => expect(isCode(i)).toBe(false));
 });
 
-describe("sharing before urgency", () => {
-  const make = (sharing, redactSensitive = true) => eval(`(() => {
-    const sharing = ${sharing};
-    const Settings = { notifRedactSensitive: ${redactSensitive} };
-    const sensitiveApps = /\\b(zapzap|whatsapp|telegram|signal|discord|slack|element|messenger|beeper)\\b/i;
-    return (${grab(notifs, "bodyRedacted")});
-  })()`);
-  test("a critical body is hidden while sharing", () => expect(make(true)({ app: "Bank", severity: "critical", body: "x" })).toBe(true));
-  test("a warning body is hidden while sharing", () => expect(make(true)({ app: "x", severity: "warning", body: "x" })).toBe(true));
-  test("outside a share, critical and warning bodies show", () => {
-    expect(make(false)({ app: "Signal", severity: "critical", body: "x" })).toBe(false);
-    expect(make(false)({ app: "x", severity: "warning", body: "x" })).toBe(false);
+describe("one rule for every surface (notifPrivacy.mjs, notif-privacy.test.mjs)", () => {
+  test("the desktop and the lock screen ask the same module, each for its place", () => {
+    expect(notifs).toMatch(/function bodyRedacted\(item\) \{ return Privacy\.hidden\(item, privacyFor\("desktop"\)\); \}/);
+    expect(notifs).toMatch(/function lockHidden\(item\) \{ return Privacy\.hidden\(item, privacyFor\("lock"\)\); \}/);
+    expect(notifs).toMatch(/sharing: sharing/);
   });
-  test("a private chat is hidden outside a share", () => expect(make(false)({ app: "Signal", severity: "", body: "x" })).toBe(true));
 });
 
 describe('restart privacy handshake',()=>{
