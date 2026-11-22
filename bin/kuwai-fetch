@@ -11,7 +11,8 @@ kuwai-fetch: fastfetch with a moving picture beside it.
   kuwai-fetch --gather     one library for every fetch: ~/Pictures/fetch (text art in ascii/),
                            with ~/.config/fastfetch/logo, neofetch/pngs, neofetch/gifs and
                            kuwai/fetch linked to it (each picture once; the old folders kept)
-  kuwai-fetch --greet      the greeting: once per new kitty window, unless one is already on this workspace
+  kuwai-fetch --greet      the greeting: only in the first kitty window (none other open), not in a
+                           kitty started with its own --class (drop-down, floating, console)
   kuwai-fetch --logo       a random picture from ~/.config/fastfetch/logo (fastfetch's own logo)
   kuwai-fetch --get-pokemon N [N…]   (a range 1-151, or random=10)
                            fetch Pokémon N's animated sprite (Gen 5's, else
@@ -114,18 +115,20 @@ case "${1:-}" in
     -h|--help) usage; exit 0 ;;
     --greet)
         [ -n "${KITTY_WINDOW_ID:-}" ] || exit 0
-        hypr=""
-        [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && command -v hyprctl >/dev/null && command -v jq >/dev/null && hypr=1
-        win=""
-        [ -n "$hypr" ] && win=$(hyprctl activewindow -j 2>/dev/null | jq -r 'select(.class == "kitty") | .address' 2>/dev/null)
+        kcmd=$(tr '\0' ' ' <"/proc/${KITTY_PID:-0}/cmdline" 2>/dev/null)
+        case " $kcmd" in *" --class "*|*" --class="*|*" --app-id"*) exit 0 ;; esac
+        win=""; others=0
+        if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && command -v hyprctl >/dev/null && command -v jq >/dev/null; then
+            win=$(hyprctl activewindow -j 2>/dev/null | jq -r --argjson pid "${KITTY_PID:-0}" 'select(.pid == $pid) | .address' 2>/dev/null)
+            while read -r addr pid; do
+                [ "$addr" = "$win" ] && continue
+                [ "$(cat "/proc/$pid/comm" 2>/dev/null)" = kitty ] && others=$((others + 1))
+            done < <(hyprctl clients -j 2>/dev/null | jq -r '.[] | "\(.address) \(.pid)"' 2>/dev/null)
+        fi
+        [ "$others" -gt 0 ] && exit 0
         mark="${XDG_RUNTIME_DIR:-/tmp}/kuwai/greeted-${win:-${KITTY_PID:-0}}"
         [ -e "$mark" ] && exit 0
         mkdir -p "$(dirname "$mark")" && : >"$mark"
-        if [ -n "$hypr" ] && [ -n "$win" ]; then
-            ws=$(hyprctl activeworkspace -j 2>/dev/null | jq -r '.id' 2>/dev/null)
-            others=$(hyprctl clients -j 2>/dev/null | jq --argjson ws "${ws:-0}" --arg win "$win" '[.[] | select(.class == "kitty" and .workspace.id == $ws and .address != $win)] | length' 2>/dev/null)
-            [ "${others:-0}" -gt 0 ] && exit 0
-        fi
         shift ;;
 esac
 
