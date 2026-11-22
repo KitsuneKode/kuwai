@@ -128,10 +128,12 @@ Scope {
             // high-scale output); panels then fit inside it (panelSize).
             readonly property real maxWinW: Math.min(1120, Theme.screenSize(modelData, "width", 1120))
             readonly property real maxWinH: Math.min(640, Theme.screenSize(modelData, "height", 664) - 24)
+            readonly property bool splitActive: split.pills.some(p => p.visible)
             readonly property bool islandExpanded: panelHere || bannerHere || peekHere || deviceHere || grown
                 || m.value > 0.005 || pv.value > 0.005 || bv.value > 0.005 || nv.value > 0.005 || dv.value > 0.005
                 || clockFlying || glanceDragging
-            implicitWidth: maxWinW
+            readonly property real restWinW: Math.min(maxWinW, Math.max(520, Math.ceil((Math.max(restW, nearStrip.visible ? nearStrip.width : 0) + 96) / 64) * 64))
+            implicitWidth: islandExpanded || splitActive ? maxWinW : restWinW
             implicitHeight: islandExpanded ? maxWinH : Math.min(72, maxWinH)
             exclusiveZone: showBar && !tucked && !screenFullscreen ? restH + top + (notch ? 2 : 6) : 0
             color: "transparent"
@@ -974,7 +976,7 @@ Scope {
                         active: (win.grown && win.hoverFull) || (m.value > 0.01 && fv.value > 0.01)
                         // Its own size, always (hoverSize is the glance's while
                         // a glance shows; the full view mustn't take it).
-                        width: item ? Math.min(item.implicitWidth, win.implicitWidth - 40) : 720
+                        width: item ? Math.min(item.implicitWidth, win.maxWinW - 40) : 720
                         height: item ? item.implicitHeight : 148
                         x: Math.round((body.width - width) / 2)
                         readonly property real k: win.reveal(Math.min(m.value, fv.value), win.grown && win.hoverFull)
