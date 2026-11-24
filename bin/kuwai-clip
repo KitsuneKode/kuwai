@@ -146,9 +146,15 @@ print(json.dumps(out))
         id=$(cliphist list 2>/dev/null | head -1 | cut -f1)
         [ -n "$id" ] || exit 0
         times="$(dirname "$pins")/times.tsv"
-        tail -1 "$times" 2>/dev/null | grep -q "^$id	" || printf '%s\t%s\n' "$id" "$now" >> "$times" ;;
+        if ! tail -1 "$times" 2>/dev/null | grep -q "^$id	"; then
+            printf '%s\t%s\n' "$id" "$now" >> "$times"
+            if [ "$(wc -l < "$times" 2>/dev/null || echo 0)" -gt 1200 ]; then
+                tmp_t=$(mktemp "$times.XXXXXX") && tail -n 1000 "$times" > "$tmp_t" && mv -- "$tmp_t" "$times" || rm -f -- "$tmp_t"
+            fi
+        fi ;;
     edit)
         dir="$cache/edit"; mkdir -p "$dir"
+        find "$dir" -maxdepth 1 -name 'clip-*' -type f -mtime +7 -delete 2>/dev/null || true
         tmp=$(mktemp "$dir/.raw.XXXXXX")
         emit "$2" > "$tmp"
         ext=$(ext_of "$tmp"); [ "$ext" = txt ] && head -c 4096 "$tmp" | grep -qE '^#{1,6} |^```|^\s*[-*] \S' && ext=md

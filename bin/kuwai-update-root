@@ -62,9 +62,10 @@ def say(**msg):
 
 
 def run_tool(cmd):
-    with open(OUT, "w") as w:
+    fd = os.open(OUT, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)
+    with os.fdopen(fd, "w") as w:
         p = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=w, stderr=subprocess.STDOUT,
-                             env=ENV, start_new_session=True)
+                             env=ENV, start_new_session=True, umask=0o022)
     pending = ""
     with open(OUT) as r:
         while True:
@@ -165,6 +166,7 @@ def pacnew(req):
 
 
 def main():
+    os.umask(0o077)
     signal.signal(signal.SIGHUP, signal.SIG_IGN)
     signal.signal(signal.SIGPIPE, signal.SIG_IGN)
     signal.alarm(4 * 3600)

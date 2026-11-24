@@ -1,5 +1,6 @@
 import QtQuick
 import qs.components
+import qs.components.ui as Ui
 import qs.config
 import qs.services
 
@@ -47,7 +48,7 @@ Item {
             }
             Repeater {
                 model: panel.activities
-                delegate: RaisedButton {
+                delegate: Ui.Button {
                     required property string modelData
                     objectName: "activity-" + modelData
                     text: panel.sourceSplit.labelFor(modelData)

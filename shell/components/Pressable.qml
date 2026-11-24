@@ -8,7 +8,8 @@ FocusScope {
     property string accessibleName: ""
     property int accessibleRole: Accessible.Button
     property bool hoverWash: true
-    property real pressScale: 0.98
+    property bool row: false
+    property real pressScale: row ? 0.985 : 0.97
     readonly property bool hovered: hover.hovered && !disabled
     readonly property bool pressed: area.pressed && !disabled
 
@@ -21,9 +22,9 @@ FocusScope {
     Accessible.onPressAction: if (!disabled) clicked()
 
     activeFocusOnTab: !disabled
-    opacity: disabled ? 0.45 : 1.0
+    opacity: disabled ? 0.38 : 1.0
     scale: (!Theme.reduceMotion && pressed) ? pressScale : 1.0
-    Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.pressMs; easing.type: Easing.OutCubic } }
+    Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
 
     Rectangle {
         anchors.fill: parent

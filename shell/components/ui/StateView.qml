@@ -7,6 +7,8 @@ Item {
     property bool loading: false
     property bool empty: false
     property string error: ""
+    property string errorTitle: "Couldn’t load"
+    property string emptyIcon: ""
     property string emptyGlyph: ""
     property string emptyTitle: ""
     property string emptyBody: ""
@@ -56,7 +58,11 @@ Item {
     }
 
     implicitWidth: readyHost.implicitWidth
-    implicitHeight: Math.max(readyHost.implicitHeight, stateBox.visible ? stateBox.implicitHeight + Theme.s5 : 0)
+    implicitHeight: Math.max(
+        readyHost.visible ? readyHost.implicitHeight : 0,
+        sv.showSkeleton ? skeletonBox.implicitHeight + Theme.s5 : 0,
+        stateBox.visible ? stateBox.implicitHeight + Theme.s5 : 0
+    )
 
     Item {
         id: readyHost
@@ -78,8 +84,9 @@ Item {
         id: stateBox
         visible: !sv.showSkeleton && (sv.error !== "" || sv.empty)
         anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter }
-        glyph: sv.error !== "" ? "\u{f0026}" : sv.emptyGlyph
-        title: sv.error !== "" ? "Something went wrong" : sv.emptyTitle
+        icon: sv.error !== "" ? "warning-circle" : sv.emptyIcon
+        glyph: sv.error !== "" ? "" : sv.emptyGlyph
+        title: sv.error !== "" ? sv.errorTitle : sv.emptyTitle
         body: sv.error !== "" ? sv.error : sv.emptyBody
         actionLabel: sv.actionLabel
         onActionTriggered: sv.actionTriggered()

@@ -166,7 +166,7 @@ Item {
                 // row under the pointer, neutral like ActionMenu's (no accent
                 // flood on every row passed over); disabled rows don't light.
                 property Item hoverRow: null
-                FluidHighlight { parent: list.contentItem; radius: 8; target: list.hoverRow }
+                FluidHighlight { parent: list.contentItem; radius: Theme.r1; target: list.hoverRow }
 
                 delegate: Item {
                     id: row

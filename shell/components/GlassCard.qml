@@ -16,63 +16,23 @@
 //   grain    off by default; a whisper (≤ 0.05) at most, where a large flat
 //            surface needs tooth (assets/grain.png, made locally)
 //
-// All plain rectangles (no Canvas): nothing repaints on the CPU while a
-// card changes size, so morphs stay cheap.
+// Single-pass SDF ShaderEffect (shaders/glasscard.frag): tint, dark ring,
+// sheen, bottom shade, directional rim and procedural grain in one draw call.
 import QtQuick
-import Quickshell.Widgets
 import qs.config
 
-Item {
+ShaderEffect {
     id: card
+    property string level: "regular"
+    readonly property var spec: Theme.materialSpec(level)
     property real radius: height / 2.9
-    property color tint: Theme.glassTint
+    property color tint: spec.tint
+    property color rimColor: spec.rim
+    property real sheen: spec.sheen
+    property real darkRing: spec.darkRing
     property real grain: 0
-
-    // base + dark ring
-    Rectangle {
-        anchors.fill: parent
-        radius: card.radius
-        color: card.tint
-        border.width: 1
-        border.color: Qt.rgba(0, 0, 0, 0.55)
-    }
-
-    // sheen: lip, glow, clear, shade
-    Rectangle {
-        anchors.fill: parent
-        anchors.margins: 1
-        radius: Math.max(0, card.radius - 1)
-        gradient: Gradient {
-            GradientStop { position: 0.0;  color: Theme.wash(4) }
-            GradientStop { position: Math.min(0.04, 3 / Math.max(1, card.height)); color: Theme.wash(2) }
-            GradientStop { position: 0.4;  color: Theme.wash(0) }
-            GradientStop { position: 0.7;  color: Theme.wash(0) }
-            GradientStop { position: 1.0;  color: Qt.rgba(0, 0, 0, 0.12) }
-        }
-    }
-
-    // inner hairline
-    Rectangle {
-        anchors.fill: parent
-        anchors.margins: 1
-        radius: Math.max(0, card.radius - 1)
-        color: "transparent"
-        border.width: 1
-        border.color: Theme.edge(0)
-    }
-
-    ClippingRectangle {
-        visible: card.grain > 0
-        anchors.fill: parent
-        radius: card.radius
-        color: "transparent"
-        opacity: Math.min(0.05, card.grain)
-        Image {
-            anchors.fill: parent
-            source: Qt.resolvedUrl("../assets/grain.png")
-            fillMode: Image.Tile
-            smooth: false
-            cache: true
-        }
-    }
+    readonly property vector2d size: Qt.vector2d(width, height)
+    visible: width > 1 && height > 1
+    blending: true
+    fragmentShader: Qt.resolvedUrl("../shaders/glasscard.frag.qsb")
 }

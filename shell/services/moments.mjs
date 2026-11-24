@@ -21,3 +21,18 @@ export function forgetAnnounced(announced, now) {
     }
     return dropped ? keep : announced;
 }
+
+export function nextHideInterval(now, currentInterval, held) {
+    if (held || !now) return currentInterval;
+    if (now.sticky) return currentInterval;
+    return Math.min(currentInterval, 2000);
+}
+
+export function dismissMoment(state) {
+    return {
+        now: null,
+        held: false,
+        queue: state && Array.isArray(state.queue) ? state.queue : [],
+        startGap: !!(state && Array.isArray(state.queue) && state.queue.length > 0)
+    };
+}

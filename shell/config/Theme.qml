@@ -211,10 +211,10 @@ Singleton {
         return Qt.rgba(1, 1, 1, table[i]);
     }
     function materialSpec(level) {
-        if (level === "thin") return { tint: Qt.rgba(0.067, 0.067, 0.078, 0.42), rim: edge(0), sheen: 0.14, darkRing: 0.42 };
-        if (level === "thick") return { tint: Qt.rgba(0.067, 0.067, 0.078, 0.78), rim: edge(1), sheen: 0.18, darkRing: 0.58 };
-        if (level === "elevated") return { tint: Qt.rgba(0.075, 0.075, 0.090, 0.86), rim: edge(2), sheen: 0.22, darkRing: 0.65 };
-        if (level === "island") return { tint: glassIsland, rim: edge(1), sheen: 0.10, darkRing: 0.72 };
+        if (level === "thin") return { tint: Qt.rgba(0.067, 0.067, 0.078, contrast ? 0.88 : 0.44), rim: edge(0), sheen: 0.14, darkRing: 0.45 };
+        if (level === "thick") return { tint: glassTintThick, rim: edge(1), sheen: 0.18, darkRing: 0.58 };
+        if (level === "elevated") return { tint: glassTintElevated, rim: edge(1), sheen: 0.20, darkRing: 0.62 };
+        if (level === "island") return { tint: glassIsland, rim: edge(1), sheen: 0.10, darkRing: 0.70 };
         if (level === "solid") return { tint: glassSolid, rim: edge(1), sheen: 0.0, darkRing: 0.65 };
         return { tint: glassTint, rim: edge(0), sheen: 0.20, darkRing: 0.55 };
     }

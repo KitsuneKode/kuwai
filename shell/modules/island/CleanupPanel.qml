@@ -18,6 +18,7 @@ import Quickshell
 import Quickshell.Io
 import qs.config
 import qs.components
+import qs.components.ui as Ui
 import qs.services
 
 FocusScope {
@@ -245,7 +246,7 @@ FocusScope {
                         Label { width: parent.width; elide: Text.ElideRight; text: lo.modelData.label + "  ·  " + cp.gb(lo.modelData.bytes); size: Theme.tBody; weight: Theme.wMedium }
                         Label { width: parent.width; elide: Text.ElideRight; text: lo.modelData.detail; size: Theme.tFootnote; color: Theme.textTertiary }
                     }
-                    RaisedButton {
+                    Ui.Button {
                         id: loAct
                         anchors { right: parent.right; rightMargin: 6; verticalCenter: parent.verticalCenter }
                         kind: "secondary"
@@ -261,7 +262,7 @@ FocusScope {
         Item {
             width: parent.width
             height: 34
-            RaisedButton {
+            Ui.Button {
                 anchors { left: parent.left; verticalCenter: parent.verticalCenter }
                 visible: cp.markedCount > 0
                 kind: cp.confirm ? "danger" : "primary"
@@ -274,7 +275,7 @@ FocusScope {
                 text: cp.status || (cp.rows.length ? "Click a skill (or Space) to mark it" : "")
                 size: Theme.tSub; color: Theme.textSecondary
             }
-            RaisedButton {
+            Ui.Button {
                 anchors { right: parent.right; verticalCenter: parent.verticalCenter }
                 visible: cp.canPutBack
                 kind: "secondary"

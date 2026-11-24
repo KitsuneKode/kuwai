@@ -104,6 +104,11 @@ Singleton {
     // interval doesn't count suspended time, Date.now() does.
     property string pacStamp: ""
     property bool pacQuiet: false
+    property bool pacPending: false
+    function touchPac() {
+        if (pacStat.running) pacPending = true;
+        else pacDebounce.restart();
+    }
     Process {
         id: pacStat
         command: ["sh", "-c", "[ -e /var/lib/pacman/db.lck ] && echo busy || stat -c %Y /var/lib/pacman/local /var/lib/pacman/sync"]
@@ -111,18 +116,30 @@ Singleton {
             onStreamFinished: {
                 const st = text.trim().replace(/\s+/g, " ");
                 const quiet = root.pacQuiet;
+                const more = root.pacPending;
                 root.pacQuiet = false;
-                if (!st || st === "busy") return;
+                root.pacPending = false;
+                if (st === "busy") {
+                    pacRetry.restart();
+                    return;
+                }
+                if (!st) return;
                 const changed = root.pacStamp !== "" && st !== root.pacStamp;
                 root.pacStamp = st;
                 if (changed && !quiet && !root.running) root.check();
+                if (more) pacDebounce.restart();
             }
         }
     }
+    FileView { path: "/var/lib/pacman"; preload: false; watchChanges: true; printErrors: false; onFileChanged: root.touchPac() }
+    FileView { path: "/var/lib/pacman/local"; preload: false; watchChanges: true; printErrors: false; onFileChanged: root.touchPac() }
+    FileView { path: "/var/lib/pacman/sync"; preload: false; watchChanges: true; printErrors: false; onFileChanged: root.touchPac() }
+    Timer { id: pacDebounce; interval: 2500; onTriggered: if (!pacStat.running) pacStat.running = true }
+    Timer { id: pacRetry; interval: 5000; onTriggered: if (!pacStat.running) pacStat.running = true }
+    Component.onCompleted: { pacQuiet = true; pacStat.running = true; }
     Timer {
         interval: 120 * 1000; running: true; repeat: true
         onTriggered: {
-            if (!pacStat.running) pacStat.running = true;
             if (Settings.updatesCheckHours > 0 && root.checkedAt > 0 && Date.now() - root.checkedAt > Settings.updatesCheckHours * 3600 * 1000) root.check();
         }
     }

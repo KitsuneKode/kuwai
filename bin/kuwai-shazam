@@ -10,16 +10,22 @@ have() {
 
 detect_default_monitor() {
   if have pactl; then
-    local sink
+    local sink mon
     sink="$(pactl get-default-sink 2>/dev/null || true)"
 
     if [ -n "$sink" ]; then
       printf '%s.monitor' "$sink"
       return 0
     fi
+
+    mon="$(pactl list short sources 2>/dev/null | awk '$2 ~ /\.monitor$/ {print $2; exit}' || true)"
+    if [ -n "$mon" ]; then
+      printf '%s' "$mon"
+      return 0
+    fi
   fi
 
-  printf '%s' "alsa_output.usb-TTGK_Technology_Co._Ltd_Audiocular_D07-00.analog-stereo.monitor"
+  printf '%s' ""
 }
 
 DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/shazam-now"

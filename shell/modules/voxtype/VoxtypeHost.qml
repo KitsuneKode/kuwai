@@ -27,6 +27,19 @@ Scope {
     readonly property string dir: (Quickshell.env("XDG_DATA_HOME") || Quickshell.env("HOME") + "/.local/share") + "/voxtype/quickshell"
     readonly property string styleFile: runtime + "/voxtype/quickshell-style.json"
     property bool hosting: false
+    property bool installed: false
+    FileView {
+        id: stateReaderFile
+        path: host.dir + "/voxtype-shared/StateReader.qml"
+        watchChanges: true
+        printErrors: false
+        onLoaded: {
+            host.installed = true;
+            if (!probe.running && !host.hosting) probe.running = true;
+        }
+        onFileChanged: reload()
+        onLoadFailed: host.installed = false
+    }
     property var parts: []              // what's shared: state, audio bridge, style, picker, meeting
     property var osds: ({})             // one HUD surface per output, by name
     property var shared: null           // { state, audio, style }
@@ -62,7 +75,7 @@ Scope {
     Process { id: reclaim; command: ["sh", "-c", 'pkill -f "^qs -p .*/voxtype/quickshell$"; sleep 1; ' + host.sweep] }
     Process { id: tidy; command: ["sh", "-c", host.sweep] }
     Timer { id: reprobe; interval: 3000; onTriggered: probe.running = true }
-    Timer { interval: 1500; running: true; onTriggered: { probe.running = true; tidy.running = true; } }
+    Timer { interval: 1500; running: true; onTriggered: { if (host.installed) probe.running = true; tidy.running = true; } }
     // Quickshell makes $XDG_RUNTIME_DIR/quickshell/by-pid/<pid> for every
     // instance it starts: that folder is watched, so voxtype's own shell
     // starting is seen at once (it was a pgrep every 30 s for the shell's
@@ -75,8 +88,8 @@ Scope {
         printErrors: false
         onFileChanged: instanceSeen.restart()
     }
-    Timer { id: instanceSeen; interval: 1000; onTriggered: if (!probe.running) probe.running = true }
-    Timer { interval: 30000; running: !host.hosting; repeat: true; onTriggered: probe.running = true }
+    Timer { id: instanceSeen; interval: 1000; onTriggered: { if (!host.installed) stateReaderFile.reload(); else if (!probe.running) probe.running = true; } }
+    Timer { interval: 30000; running: !host.hosting && host.installed; repeat: true; onTriggered: probe.running = true }
 
     function make(file, props) {
         const c = Qt.createComponent("file://" + dir + "/" + file);
@@ -124,7 +137,11 @@ Scope {
         const state = make("voxtype-shared/StateReader.qml");
         const audio = make("voxtype-shared/AudioBridge.qml");
         const style = make("voxtype-shared/StyleLoader.qml", { styleFile: styleFile });
-        if (!state || !audio || !style) { for (const p of [state, audio, style]) if (p) p.destroy(); return; }
+        if (!state || !audio || !style) {
+            for (const p of [state, audio, style]) if (p) p.destroy();
+            installed = false;
+            return;
+        }
         shared = { state: state, audio: audio, style: style };
         osds = ({});
         syncOsds();

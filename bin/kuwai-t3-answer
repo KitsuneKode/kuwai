@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 
@@ -13,7 +14,14 @@ const id = /^[A-Za-z0-9:%._-]{1,400}$/;
 if (!id.test(thread || "") || !id.test(request || "") || !DECISIONS.has(decision || "")) out({ ok: false, why: "usage" });
 const readText = (p) => { try { return readFileSync(p, "utf8").trim(); } catch { return ""; } };
 const readJson = (p) => { try { return JSON.parse(readFileSync(p, "utf8")); } catch { return null; } };
-const token = process.env.KUWAI_T3_TOKEN || readText(join(STATE, "kuwai/t3-token"));
+const readSecret = () => {
+  try {
+    return execFileSync("secret-tool", ["lookup", "service", "kuwai", "key", "t3-token"], {
+      encoding: "utf8", timeout: 1500, stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch { return ""; }
+};
+const token = process.env.KUWAI_T3_TOKEN || readSecret() || readText(join(STATE, "kuwai/t3-token"));
 const runtime = readJson(join(T3_HOME, "userdata/server-runtime.json"));
 if (!token || !runtime || !runtime.port) out({ ok: false, why: "offline" });
 const url = `ws://${runtime.host || "127.0.0.1"}:${runtime.port}/ws?orchestrationProtocol=2`;

@@ -335,7 +335,7 @@ FocusScope {
             if (emo) Glyphs.wantEmoji = true; else Glyphs.wantGlyphs = true;
             const hits = Glyphs.search(emo ? Glyphs.emoji : Glyphs.glyphs, query.slice(1), 60);
             if (emo ? Glyphs.emojiMissing : Glyphs.glyphsMissing)
-                out.push({ kind: "tips", name: "", sub: (emo ? "Emoji" : "Glyphs") + " come from HyDE's lists, which aren't installed", tips: [] });
+                out.push({ kind: "tips", name: "", sub: (emo ? "Emoji" : "Glyphs") + " list isn't installed yet", tips: [] });
             section(emo ? "Emoji" : "Glyphs", hits.map(e => ({ kind: emo ? "emoji" : "glyph", name: e.name, sub: emo ? "Emoji" : "Nerd Font glyph", ch: e.ch, glyph: e.ch })));
             return out;
         }

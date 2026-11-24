@@ -1,5 +1,5 @@
 [Unit]
-Description=Rice: a daily snapshot of your desktop's own files
+Description=kuwai: a daily snapshot of your desktop's own files
 
 [Timer]
 OnCalendar=daily

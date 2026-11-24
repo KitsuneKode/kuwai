@@ -54,7 +54,7 @@ Singleton {
             title: v.hog.name + " is holding " + gb(v.hog.kb),
             detail: (v.hog.tab ? "One browser tab: find it in about:processes and reload or close it" : "Quit or restart it to give the memory back") + " · " + Math.round(v.hog.kb / memT * 100) + "% of memory" });
         for (const d of v.disks || []) if (d.use >= 92) out.push({ id: "disk:" + d.mount, level: d.use >= 97 ? "crit" : "warn", glyph: "\u{f02ca}", title: "Disk " + d.mount + " at " + d.use + "%", detail: d.free + " free" });
-        hot = (v.cpuTemp || 0) >= 95 ? hot + 1 : 0;
+        hot = (v.cpuTemp || 0) >= root.tempLimit ? hot + 1 : 0;
         if (hot >= 3) out.push({ id: "temp", level: "crit", glyph: "\u{f050f}", title: "CPU at " + v.cpuTemp + "°", detail: "Running hot for 30 seconds" });
         if (batteryLow) out.push({ id: "battery", level: "crit", glyph: "\u{f008e}", title: "Battery low", detail: "Plug in soon" });
         active = out;
@@ -108,11 +108,19 @@ Singleton {
 
     property int tick: 0
     property int cpuTemp: 0
+    property int tempLimit: 95
     property string tempPath: ""         // the Legion's CPU sensor, if there is one
     Process {
         running: true
-        command: ["sh", "-c", 'for h in /sys/class/hwmon/*; do [ "$(cat "$h/name" 2>/dev/null)" = legion_hwmon ] && echo "$h/temp1_input"; done']
-        stdout: StdioCollector { onStreamFinished: root.tempPath = text.trim().split("\n")[0] || "" }
+        command: ["sh", "-c", 'for name in legion_hwmon k10temp coretemp zenpower; do for h in /sys/class/hwmon/*; do [ "$(cat "$h/name" 2>/dev/null)" = "$name" ] && [ -r "$h/temp1_input" ] && { lim=; for f in "$h/temp1_crit" "$h/temp1_max"; do [ -r "$f" ] && { lim=$(cat "$f" 2>/dev/null); break; }; done; echo "$h/temp1_input $lim"; exit 0; }; done; done']
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const p = text.trim().split(/\s+/);
+                root.tempPath = p[0] || "";
+                const c = Math.round(Number(p[1] || 0) / 1000);
+                if (c >= 80 && c <= 115) root.tempLimit = Math.max(95, c - 3);
+            }
+        }
     }
     FileView { id: meminfo; path: "/proc/meminfo"; printErrors: false; onLoaded: root.sample(text()) }
     FileView { id: tempFile; path: root.tempPath; printErrors: false; onLoaded: root.cpuTemp = Math.round(Number(text().trim()) / 1000) }
@@ -143,22 +151,30 @@ Singleton {
     Process {
         id: heavy
         command: ["sh", "-c", `
-            ps -eo rss=,args= --sort=-rss | head -1 | awk '{a=$2; t=0; if ($0 ~ /zen-bin -contentproc|firefox -contentproc|--type=renderer/) t=1; n=a; sub(/.*\\//, "", n); printf "hog %d %d %s\\n", $1, t, n}'
-            ps -eo rss=,comm= --sort=-rss | head -1 | awk '{r=$1; $1=""; sub(/^ /, ""); printf "top %s %.1f GB\\n", $0, r/1048576}'
-            df -P -B1 / /home 2>/dev/null | awk 'NR>1 && !seen[$1]++ {print "disk", $6, $5, $4}'`]
+            ps -eo rss=,pid=,args= --sort=-rss | head -1 | while read -r r pid args; do
+                c=$(tr '\\n' ' ' < "/proc/$pid/comm" 2>/dev/null || echo "")
+                c=\${c% }
+                t=0
+                case "$args" in *"zen-bin -contentproc"*|*"firefox -contentproc"*|*"--type=renderer"*) t=1 ;; esac
+                bin=\${args%% *}
+                bin=\${bin##*/}
+                gb=$(awk -v r="$r" 'BEGIN { printf "%.1f", r/1048576 }')
+                printf 'hog\t%s\t%s\t%s\ntop\t%s\t%s GB\n' "$r" "$t" "$bin" "$c" "$gb"
+            done
+            df -P -B1 / /home 2>/dev/null | awk 'NR>1 && !seen[$1]++ {printf "disk\t%s\t%s\t%s\n", $6, $5, $4}'`]
         stdout: StdioCollector {
             onStreamFinished: {
                 const out = { disks: [] };
                 for (const line of text.split("\n")) {
-                    const f = line.trim().split(/\s+/);
+                    const f = line.split("\t");
                     if (f[0] === "disk") {
                         const free = Number(f[3]);
                         out.disks.push({ mount: f[1], use: parseInt(f[2]), free: free >= 1073741824 ? Math.round(free / 1073741824) + " GB" : Math.round(free / 1048576) + " MB" });
                     } else if (f[0] === "hog") {
-                        const bin = f.slice(3).join(" ");
+                        const bin = f[3] || "";
                         const nm = /zen/.test(bin) ? "Zen" : /firefox/.test(bin) ? "Firefox" : /chrom/.test(bin) ? "Chrome" : /t3code/.test(bin) ? "T3 Code" : bin;
                         out.hog = { kb: Number(f[1]), tab: f[2] === "1", name: f[2] === "1" ? nm + " tab" : nm };
-                    } else if (f[0] === "top") out.top = f[1] + " " + f.slice(2).join(" ");
+                    } else if (f[0] === "top") out.top = (f[1] || "") + " " + (f[2] || "");
                 }
                 root.last = out;
             }

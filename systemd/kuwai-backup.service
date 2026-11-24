@@ -1,5 +1,5 @@
 [Unit]
-Description=Rice: snapshot your desktop's own files (settings, hypr files, reminders, pins) if they changed
+Description=kuwai: snapshot your desktop's own files (settings, hypr files, reminders, pins) if they changed
 
 [Service]
 Type=oneshot

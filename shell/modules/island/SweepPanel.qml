@@ -257,6 +257,7 @@ FocusScope {
         }
         }
         ScrollFade { flickable: listFlick }
+        ScrollHint { flickable: listFlick; inside: true }
         }
 
         KeyHints {

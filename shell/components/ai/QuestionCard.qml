@@ -58,7 +58,7 @@ Rectangle {
 
             FluidHighlight {
                 target: root.hoverRow
-                radius: 8
+                radius: Theme.r1
             }
 
             Column {

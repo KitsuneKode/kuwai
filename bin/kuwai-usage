@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { readFileSync, writeFileSync, renameSync, mkdirSync, readdirSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { homedir } from "node:os";
 
 const HOME = homedir();
@@ -62,8 +63,25 @@ function windowOf(w) {
   };
 }
 
+let cachedT3Token = null;
+function readT3Token() {
+  if (process.env.KUWAI_T3_TOKEN) return process.env.KUWAI_T3_TOKEN.trim();
+  if (cachedT3Token !== null) return cachedT3Token;
+  let token = "";
+  try {
+    token = execFileSync("secret-tool", ["lookup", "service", "kuwai", "key", "t3-token"], {
+      encoding: "utf8",
+      timeout: 1500,
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch {}
+  if (!token) token = readText(`${STATE}/kuwai/t3-token`);
+  cachedT3Token = token;
+  return token;
+}
+
 function t3Endpoint() {
-  const token = process.env.KUWAI_T3_TOKEN || readText(`${STATE}/kuwai/t3-token`);
+  const token = readT3Token();
   const runtime = readJson(`${T3_HOME}/userdata/server-runtime.json`);
   if (!token || !runtime?.port) return null;
   return { url: `ws://${runtime.host || "127.0.0.1"}:${runtime.port}/ws?orchestrationProtocol=2`, token };

@@ -28,6 +28,7 @@ import qs.config
 import qs.components
 import qs.services
 import "../../services/proximity.js" as Proximity
+import "state.mjs" as IslandState
 
 Scope {
     id: root
@@ -80,11 +81,16 @@ Scope {
                 if (panelHere) {
                     shownPanel = Island.panel;
                     grown = false;
+                    pushed = false;
                     armed = false;
+                    armSeq++;
+                    arm.seq = armSeq;
                     arm.restart();
                     idle.restart();
-                } else if (hovered) {
-                    grown = true;           // back to the island you came from, not all the way down
+                } else {
+                    armed = false;
+                    armSeq++;
+                    if (hovered) grown = true;
                 }
             }
             Connections {
@@ -174,11 +180,19 @@ Scope {
                 visible: win.proximityAvailable && (Settings.islandRest === "minimal" || win.tucked)
                 width: Math.max(win.zoneW + 160, 360); height: 4
                 x: Math.round((win.width - width) / 2); y: 0
-                HoverHandler { id: nearHover; enabled: nearStrip.visible; onHoveredChanged: { if (hovered) { nearOff.stop(); nearDwell.restart(); } else { nearDwell.stop(); if (win.near) win.fold(450); } } }
+                HoverHandler { id: nearHover; enabled: nearStrip.visible; onHoveredChanged: { win.dwellRetries = 0; if (hovered) { nearOff.stop(); nearDwell.restart(); } else { nearDwell.stop(); if (win.near) win.fold(450); } } }
             }
-            // Along the edge itself, still moving fast is passing by (to a tab
-            // beside it): look again rather than open (services/proximity.js).
-            Timer { id: nearDwell; interval: 90; onTriggered: { if (!nearHover.hovered || !win.proximityAvailable) return; if (Proximity.edgeSettled(Pointer, Date.now())) win.near = true; else restart(); } }
+            property int dwellRetries: 0
+            Timer {
+                id: nearDwell
+                interval: 90
+                onTriggered: {
+                    if (!nearHover.hovered || !win.proximityAvailable) { win.dwellRetries = 0; return; }
+                    if (Proximity.edgeSettled(Pointer, Date.now())) { win.near = true; win.dwellRetries = 0; return; }
+                    win.dwellRetries++;
+                    if (win.dwellRetries < IslandState.MAX_DWELL_RETRIES) restart();
+                }
+            }
             Timer { id: nearOff; interval: 450; onTriggered: if (!win.hovered && !nearHover.hovered && !win.inZone(20) && !win.onCapsule) win.near = false }
             // A fast exit folds it almost at once; a drift away gets the grace.
             function fold(ms) { nearOff.interval = ms; nearOff.restart(); }
@@ -248,7 +262,8 @@ Scope {
             readonly property bool edgeOnly: (win.tucked || Settings.islandRest === "minimal") && frameHover.hovered && frameHover.point.position.y < 6
 
             property bool armed: false
-            Timer { id: arm; interval: 160; onTriggered: win.armed = true }
+            property int armSeq: 0
+            Timer { id: arm; property int seq: 0; interval: 160; onTriggered: if (win.panelHere && seq === win.armSeq) win.armed = true }
             HyprlandFocusGrab {
                 windows: [win]
                 active: win.panelHere && win.armed && !Island.previewing
@@ -329,7 +344,10 @@ Scope {
                     // waveform, MusicTap); resting on T3 or a dot in between
                     // opened the music too.
                     if (win.hovered && win.holdCompact && restRow.activity === "media" && restRow.musicHovered && !win.panelHere && !win.pushed) { Island.preview("media", win.screenName); return; }
-                    const grow = win.hovered && !win.panelHere && !win.overPills && !win.bannerHere && !win.peekHere && !win.deviceHere && !win.agentMoment && !win.pushed;
+                    const grow = IslandState.canGrow(
+                        { hovered: win.hovered, panelHere: win.panelHere, pushed: win.pushed },
+                        { overPills: win.overPills, bannerHere: win.bannerHere, peekHere: win.peekHere, deviceHere: win.deviceHere, agentMoment: win.agentMoment }
+                    );
                     if (grow && win.restIsGlance) { win.near = true; nearOff.stop(); return; }
                     win.grown = grow;
                 }
@@ -349,7 +367,7 @@ Scope {
             // Super+Alt+I (Island.peek): grow here as if hovered, for a moment.
             readonly property bool peeked: Island.peek && Island.peekScreen === screenName
             onPeekedChanged: {
-                if (peeked && !panelHere) { if (bannerHere) Alerts.dismiss(); grown = true; }
+                if (peeked && !panelHere) { if (bannerHere) Alerts.dismiss(); pushed = false; grown = true; }
                 else if (!peeked && !hovered && menus === 0) grown = false;
             }
 

@@ -105,7 +105,7 @@ Item {
             if (preview) focusSpring.settle();
         }
         entry.focusField();
-        if (!preview) focusGrab.grab();
+        if (!preview) focusGrab.arm();
     }
     FocusGrabber { id: focusGrab; target: entry }
     // A goodbye quiets everything under it.
@@ -124,7 +124,7 @@ Item {
             id: wall
             anchors.fill: parent
             source: view.lock.wallpaper ? "file://" + view.lock.wallpaper : ""
-            sourceSize: Qt.size(1920, 1080)
+            sourceSize: Qt.size(Theme.screenSize(Screen, "width", 1920), Theme.screenSize(Screen, "height", 1080))
             fillMode: Image.PreserveAspectCrop
             asynchronous: true
         }
@@ -223,6 +223,7 @@ Item {
             }
             Connections { target: view.lock; function onFailuresChanged() { missFlash.restart(); } }
             Rectangle {
+                id: authRing
                 anchors.centerIn: parent
                 width: parent.width + avatar.miss * 8 * view.move; height: width
                 radius: width / 2
@@ -233,7 +234,7 @@ Item {
                 SequentialAnimation on opacity {
                     running: view.lock.checking && !Theme.reduceMotion
                     loops: Animation.Infinite
-                    onRunningChanged: if (!running) parent.opacity = 1
+                    onRunningChanged: if (!running) authRing.opacity = 1
                     NumberAnimation { to: 0.35; duration: Theme.pulseMs; easing.type: Easing.InOutSine }
                     NumberAnimation { to: 1; duration: Theme.pulseMs; easing.type: Easing.InOutSine }
                 }
@@ -358,9 +359,10 @@ Item {
             width: view.width; height: view.height
             scale: 1 + 0.08 * (1 - view.tReveal) * view.move
             source: view.lock.desktopWall ? "file://" + view.lock.desktopWall : ""
-            sourceSize: Qt.size(view.width, view.height)
+            sourceSize: Qt.size(Theme.screenSize(Screen, "width", 1920), Theme.screenSize(Screen, "height", 1080))
             fillMode: Image.PreserveAspectCrop
             asynchronous: true
+            onStatusChanged: if (status === Image.Ready && view.lock.leaving && outro.running && !reveal.running && view.tReveal === 0) reveal.start()
         }
         Image {
             anchors.centerIn: parent

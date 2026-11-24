@@ -309,7 +309,23 @@ Scope {
                         id: face
                         spacing: 2
                         property date now: new Date()
-                        Timer { interval: 1000; repeat: true; running: root.showing; onTriggered: face.now = new Date() }
+                        onVisibleChanged: if (visible) now = new Date()
+                        Connections {
+                            target: root
+                            function onShowingChanged() {
+                                if (root.showing) {
+                                    face.now = new Date();
+                                    saverClock.interval = 60000 - (Date.now() % 60000) + 50;
+                                    saverClock.restart();
+                                }
+                            }
+                        }
+                        Timer {
+                            id: saverClock
+                            interval: 60000 - (Date.now() % 60000) + 50
+                            running: root.showing
+                            onTriggered: { face.now = new Date(); interval = 60000 - (Date.now() % 60000) + 50; restart(); }
+                        }
                         Text {
                             textFormat: Text.PlainText
                             text: Dates.clock(face.now)

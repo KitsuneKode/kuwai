@@ -27,6 +27,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Hyprland
+import Quickshell.Widgets
 import qs.config
 import qs.components
 import qs.services
@@ -314,7 +315,7 @@ Scope {
                             readonly property real lead: firstOther ? 30 : 0
                             readonly property var tmon: (modelData.monitor && modelData.monitor.lastIpcObject) || ({})
                             width: strip.tileW + lead
-                            scale: keyed ? 1.05 : 1
+                            scale: keyed && !Theme.reduceMotion ? 1.05 : 1
                             Behavior on scale { NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                             height: strip.tileH + 22
 
@@ -442,10 +443,16 @@ Scope {
                         visible: win.filter !== ""
                         anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.top; bottomMargin: 8 }
                         height: 30; radius: 15
-                        width: filterText.implicitWidth + 36
+                        width: filterRow.implicitWidth + 28
                         color: Theme.wash(2)
                         border.width: 1; border.color: Theme.edge(2)
-                        Label { id: filterText; anchors.centerIn: parent; text: "\u{f0349}  " + win.filter; size: 14; weight: Theme.wMedium }
+                        Row {
+                            id: filterRow
+                            anchors.centerIn: parent
+                            spacing: Theme.s2
+                            Icon { anchors.verticalCenter: parent.verticalCenter; name: "magnifying-glass"; size: Theme.glyphS; color: Theme.textSecondary }
+                            Label { anchors.verticalCenter: parent.verticalCenter; text: win.filter; size: 14; weight: Theme.wMedium }
+                        }
                     }
                     Label {
                         anchors.centerIn: parent
@@ -481,14 +488,13 @@ Scope {
                             Drag.hotSpot.x: width / 2
                             Drag.hotSpot.y: height / 2
 
-                            Rectangle {
+                            ClippingRectangle {
                                 id: shot
                                 width: parent.width
                                 height: parent.height - 26
                                 radius: 12
                                 color: Qt.rgba(0, 0, 0, 0.25)
-                                clip: true
-                                scale: card.chosen && !mouse.drag.active ? 1.025 : 1
+                                scale: card.chosen && !mouse.drag.active && !Theme.reduceMotion ? 1.025 : 1
                                 Behavior on scale { NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
 
                                 ScreencopyView {

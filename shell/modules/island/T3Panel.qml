@@ -80,12 +80,12 @@ FocusScope {
         }
 
         // ── Empty ────────────────────────────────────────────────────────
-        Label {
+        EmptyState {
             visible: t3.live.length === 0 && T3Code.finished === 0
             width: parent.width
-            topPadding: 4; bottomPadding: 4
-            text: T3Code.alive ? "Nothing running in T3 Code." : "T3 Code isn't open."
-            size: Theme.tBody; color: Theme.textTertiary
+            icon: "terminal-window"
+            title: T3Code.alive ? "Nothing running in T3 Code." : "T3 Code isn't open."
+            body: T3Code.alive ? "Active and recent threads appear here." : "Open T3 Code to watch and answer threads from the notch."
         }
 
         // ── Threads ──────────────────────────────────────────────────────
@@ -112,7 +112,7 @@ FocusScope {
                 NumberAnimation { property: "y"; duration: Theme.reduceMotion ? 0 : Theme.reflowMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeInOut }
             }
             // One highlight for the list, gliding row to row (fluid hover).
-            FluidHighlight { parent: threads.contentItem; radius: 12; target: t3.hoverRow }
+            FluidHighlight { parent: threads.contentItem; radius: Theme.r2; target: t3.hoverRow }
             delegate: Rectangle {
                     id: row
                     required property var modelData

@@ -5,10 +5,11 @@ local dsp = hl.dsp
 K.privacy = K.privacy
 	or {
 		windows = "^(Bitwarden|bitwarden|org\\.keepassxc\\.KeePassXC|1Password|pinentry-.*|gcr-prompter|org\\.telegram\\.desktop|vesktop|discord|com\\.rtosta\\.zapzap|signal|Signal)$",
-		layers = "^(kuwai-notifs|kuwai-center|notifications|swaync-notification-window|swaync-control-center)$",
+		layers = "^(kuwai-notifs|kuwai-center|kuwai-island|kuwai-assistant|notifications|swaync-notification-window|swaync-control-center)$",
 	}
 
 function kuwai.privacy_resync()
+	K.set_state("sharing", "0")
 	hl.exec_cmd(K.bin .. "/kuwai notifs mute-off")
 	return hl.dsp.no_op()
 end
@@ -26,6 +27,7 @@ if K.feature("screenshare_privacy") then
 		end
 	end
 	privacy(false)
+	K.set_state("sharing", "0")
 
 	local shares, engaged = 0, false
 	local held, grace = 0, 0
@@ -49,10 +51,12 @@ if K.feature("screenshare_privacy") then
 		end
 		engaged = true
 		privacy(true)
+		K.set_state("sharing", "1")
 		hl.exec_cmd(K.bin .. "/kuwai notifs mute-on")
 		K.notify("Sharing your screen — notifications muted, private apps hidden", 3000, "info")
 	end
 	function kuwai.privacy_resync()
+		K.set_state("sharing", engaged and "1" or "0")
 		hl.exec_cmd(K.bin .. "/kuwai notifs " .. (engaged and "mute-on" or "mute-off"))
 		return hl.dsp.no_op()
 	end
@@ -71,6 +75,7 @@ if K.feature("screenshare_privacy") then
 			if shares == 0 and engaged then
 				engaged = false
 				privacy(false)
+				K.set_state("sharing", "0")
 				hl.exec_cmd(K.bin .. "/kuwai notifs mute-off")
 			end
 		end
@@ -191,7 +196,7 @@ if K.feature("auto_game") then
 	end)
 end
 
-K.night = K.night or { lat = 27.2353, lon = 94.1053, warm = 4200 }
+K.night = K.night or { warm = 4200, start = 20, stop = 6 }
 
 local function sun_hours(lat, lon, t)
 	local rad, deg = math.pi / 180, 180 / math.pi
@@ -223,11 +228,16 @@ if K.feature("night_light") then
 	local function phase()
 		local now = os.date("*t")
 		local h = now.hour + now.min / 60
-		local rise, set = sun_hours(K.night.lat, K.night.lon, os.time())
-		if not rise then
-			return "day"
+		if K.night.lat and K.night.lon then
+			local rise, set = sun_hours(K.night.lat, K.night.lon, os.time())
+			if not rise then
+				return "day"
+			end
+			return (h >= set or h < rise) and "night" or "day"
 		end
-		return (h >= set or h < rise) and "night" or "day"
+		local s = tonumber(K.night.start) or 20
+		local e = tonumber(K.night.stop) or 6
+		return (s > e and (h >= s or h < e) or (s <= e and h >= s and h < e)) and "night" or "day"
 	end
 	local function apply(p)
 		if p == "night" and not (K.display and K.display.current() == "accurate") then

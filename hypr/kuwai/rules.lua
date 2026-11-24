@@ -116,7 +116,6 @@ rule({ name = "jb-splash-tag", match = { class = "^(jetbrains-.*)$", title = "^(
 rule({ name = "jb-splash", match = { tag = "jetbrains-splash" }, center = true, no_focus = true, border_size = 0, no_glow = true })
 rule({ name = "jb-popup-tag", match = { class = "^(jetbrains-.*)$", title = "^()$", float = true }, tag = "+jetbrains" })
 rule({ name = "jb-popup", match = { tag = "jetbrains" }, center = true, stay_focused = true, border_size = 0, no_glow = true })
-rule({ name = "jb-popup-size", match = { class = "^(jetbrains-.*)$", title = "^()$", float = true }, min_size = "monitor_w*0.5 monitor_h*0.5" })
 rule({ name = "jb-tooltips", match = { class = "^(jetbrains-.*)$", title = "^(win.*)$", float = true }, no_initial_focus = true })
 rule({ name = "jb-mouse", match = { class = "^(jetbrains-.*)$" }, no_follow_mouse = true })
 
@@ -132,7 +131,7 @@ rule({ name = "warp-tile", match = { class = "^dev\\.warp\\.Warp$" }, tile = tru
 rule({ name = "xwaylandvideobridge", match = { class = "^(xwaylandvideobridge)$" }, no_initial_focus = true, no_focus = true, no_anim = true, no_blur = true, opacity = "0.0 override", float = true, max_size = "1 1" })
 rule({ name = "pypr-noanim", match = { tag = "pypr_noanim" }, no_anim = true })
 
-layer({ name = "xray-default", match = { namespace = "negative:^(glass-osd|kuwai-.*|voxtype-osd)$" }, xray = true })
+layer({ name = "xray-default", match = { namespace = "negative:^(glass-osd|kuwai[-.].*|voxtype-osd)$" }, xray = true })
 
 layer({ name = "kuwai-glass", match = { namespace = "^kuwai-.*$" }, blur = true, ignore_alpha = 0.3, xray = false, no_anim = true })
 layer({ name = "kuwai-island-shape", match = { namespace = "^kuwai-(island|islandbar|osd|auth)$" }, ignore_alpha = 0.75 })

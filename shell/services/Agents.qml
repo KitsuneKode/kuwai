@@ -90,7 +90,7 @@ Singleton {
 
     function focusDesktop(it) {
         const cls = String((it && (it.windowClass || it.window_class)) || "");
-        if (!cls || cls.indexOf("]]") >= 0) return false;
+        if (!cls || !/^[A-Za-z0-9._:@+-]+$/.test(cls)) return false;
         Hyprland.dispatch("hl.dsp.focus({window = [[class:" + cls + "]]})");
         return true;
     }

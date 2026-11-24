@@ -7,7 +7,7 @@ Shape {
     property color tint: Theme.accent
     property real radius: Theme.r3
     property bool breathing: false
-    property real strength: 0.85
+    property real strength: tint.hslSaturation < 0.25 ? 0.42 : 0.85
     anchors.fill: parent
     preferredRendererType: Shape.CurveRenderer
     opacity: breath

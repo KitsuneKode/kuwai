@@ -48,6 +48,7 @@ import qs.services
 // Quickshell reloads on QML changes, not on the JS modules they import: after
 // changing clipstate.mjs, save this file too (or restart).
 import "../../services/clipstate.mjs" as ClipState
+import "../../services/surfaceState.mjs" as Surface
 
 Scope {
     id: root
@@ -57,7 +58,28 @@ Scope {
     property string filter: "all"
     property string selKey: ""
     property bool revealed: false
-    property bool armed: false
+    property var surfaceState: Surface.createSurfaceState()
+    readonly property var surfaceOut: Surface.surfaceOutputs(surfaceState)
+    readonly property bool armed: surfaceOut.armed
+    function dispatchSurface(ev) {
+        const res = Surface.stepSurface(root.surfaceState, ev);
+        root.surfaceState = res.state;
+        for (let i = 0; i < res.effects.length; i++) {
+            const eff = res.effects[i];
+            if (eff.type === "scheduleBegin") {
+                dispatchSurface({ type: "surfaceMapped", seq: eff.seq });
+            } else if (eff.type === "scheduleArm") {
+                armTimer.seq = eff.seq;
+                armTimer.restart();
+            } else if (eff.type === "startClose") {
+                armTimer.stop();
+                dispatchSurface({ type: "foldDone", seq: eff.seq });
+            } else if (eff.type === "requestClose") {
+                Clipboard.open = false;
+                Clipboard.recordSetup = false;
+            }
+        }
+    }
     property bool altHeld: false
     property Item selRow: null
     property Item searchField: null
@@ -664,15 +686,23 @@ Scope {
     property bool warm: false
     function warmUp() { warm = true; coolDown.stop(); }
     Timer { id: coolDown; interval: 180000; onTriggered: root.warm = root.expanded || melt.value > 0.003 }
-    onExpandedChanged: if (!expanded) coolDown.restart()
-    onSetupChanged: { if (setup) warmUp(); armed = false; if (setup) setupArm.restart(); }
-    Timer { id: setupArm; interval: 160; onTriggered: { root.armed = root.setup; if (root.setupPanel) root.setupPanel.forceActiveFocus(); } }
+    onExpandedChanged: {
+        if (expanded) {
+            warmUp();
+            dispatchSurface({ type: "open" });
+        } else {
+            dispatchSurface({ type: "close" });
+            coolDown.restart();
+        }
+    }
+    onSetupChanged: {
+        if (setup && expanded) dispatchSurface({ type: "open" });
+    }
     property Item setupPanel: null
     onOpenChanged: {
-        if (open) warmUp();
-        armed = false;
         altHeld = false;
         if (open) {
+            dispatchSurface({ type: "open" });
             toasting = false;
             toastEntry = null;
             query = "";
@@ -685,7 +715,6 @@ Scope {
             reading = false;
             clock = 0;
             clockRun.restart();
-            armSoon.restart();
             if (Theme.reduceMotion) { pill.settle(); melt.settle(); }
         } else {
             if (selKey) lastKey = selKey;          // ⌥← brings you back here next time
@@ -705,7 +734,17 @@ Scope {
         running: root.open && !root.busy
         onTriggered: Clipboard.open = false
     }
-    Timer { id: armSoon; interval: 160; onTriggered: { root.armed = root.open; if (root.open) root.focusSearch(); } }
+    Timer {
+        id: armTimer
+        property int seq: 0
+        interval: Theme.microMs
+        onTriggered: {
+            if (!root.expanded) return;
+            root.dispatchSurface({ type: "armed", seq: seq });
+            if (root.setup && root.setupPanel) root.setupPanel.forceActiveFocus();
+            else if (root.open) root.focusSearch();
+        }
+    }
 
     // ── Surface: one per monitor, mapped for good (1×1 while idle) ────────
     Variants {
@@ -758,8 +797,8 @@ Scope {
 
             HyprlandFocusGrab {
                 windows: [win]
-                active: win.up && root.expanded && root.armed
-                onCleared: { Clipboard.open = false; Clipboard.recordSetup = false; }
+                active: win.up && root.expanded && root.surfaceOut.grabActive
+                onCleared: root.dispatchSurface({ type: "grabCleared" })
             }
             HoverHandler { onHoveredChanged: if (win.hosts) root.pointerIn = hovered }
 

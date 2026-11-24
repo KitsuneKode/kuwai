@@ -9,6 +9,7 @@ import Quickshell
 import Quickshell.Bluetooth
 import qs.config
 import qs.components
+import qs.components.ui as Ui
 import qs.services
 
 FocusScope {
@@ -116,11 +117,12 @@ FocusScope {
                 }
             }
 
-            Label {
+            Ui.EmptyState {
                 visible: !bp.on
                 width: parent.width
-                text: !bp.adapter ? "No Bluetooth adapter." : "Bluetooth is off."
-                size: Theme.tBody; color: Theme.textTertiary
+                icon: "bluetooth"
+                title: !bp.adapter ? "No Bluetooth adapter." : "Bluetooth is off."
+                body: !bp.adapter ? "Connect a Bluetooth adapter to pair devices." : "Turn Bluetooth on above to connect or pair nearby devices."
             }
 
             component Section: Label {

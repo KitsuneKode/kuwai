@@ -42,12 +42,29 @@ Singleton {
     property bool dndMute: false
     property bool shareKnown: false
     property int shareSyncTries: 0
-    readonly property bool muted: root.dnd || root.dndMute || !root.shareKnown
+    readonly property bool muted: root.dnd || root.dndMute
+    FileView {
+        path: Quickshell.env("HOME") + "/.local/state/kuwai/state"
+        watchChanges: true; printErrors: false
+        onFileChanged: reload()
+        onLoaded: {
+            const m = text().match(/^sharing=([01])/m);
+            if (m) {
+                root.dndMute = m[1] === "1";
+                root.shareKnown = true;
+            }
+        }
+    }
     function requestShareState() {
         root.shareSyncTries++;
         Hyprland.dispatch("kuwai.privacy_resync()");
     }
-    Timer { interval: 1000; repeat: true; running: !root.shareKnown && root.shareSyncTries < 5; onTriggered: root.requestShareState() }
+    Timer {
+        interval: [1000, 2000, 4000, 8000, 15000, 30000][Math.min(5, root.shareSyncTries)]
+        repeat: true
+        running: !root.shareKnown
+        onTriggered: root.requestShareState()
+    }
     // Toasts beyond the visible three wait (hidden) behind the stack, as in
     // Sonner; this only bounds how many can pile up.
     readonly property int maxPopups: 8

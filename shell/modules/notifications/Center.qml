@@ -30,6 +30,7 @@ import Quickshell.Hyprland
 import qs.config
 import qs.components
 import qs.services
+import "../../services/surfaceState.mjs" as Surface
 
 Scope {
     id: root
@@ -83,12 +84,24 @@ Scope {
     property real contentFade: 1
     readonly property bool folding: foldAnim.running
 
+    property var surface: Surface.createSurfaceState()
+    readonly property var surfaceOut: Surface.surfaceOutputs(surface)
+    property int foldSeq: 0
+    function dispatchSurface(ev) {
+        const res = Surface.stepSurface(surface, ev);
+        surface = res.state;
+        return res.effects;
+    }
+
     NumberAnimation {
         id: foldAnim; target: root; property: "closeT"; to: 0
         duration: root.mode === "morph" ? Theme.springSlow.exitMs : Theme.springModerate.exitMs
         easing.type: Easing.BezierSpline
         easing.bezierCurve: root.mode === "morph" ? Theme.easeInOut : Theme.easeOut
-        onFinished: morph.snap(0)
+        onFinished: {
+            morph.snap(0);
+            root.dispatchSurface({ type: "foldDone", seq: root.foldSeq });
+        }
     }
     NumberAnimation { id: contentOut; target: root; property: "contentFade"; to: 0; duration: Theme.springFast.exitMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
 
@@ -158,26 +171,20 @@ Scope {
                         from = { x: padX + (cardW - 48) / 2, y: padY - 4, w: 48, h: 34, r: 17 };
                 }
             }
-            capturing = false;
-            armed = false;
+            dispatchSurface({ type: "open", peeking: root.peeking });
             if (ui) ui.reset();
             if (ui && Notifs.centerTab === "notifications") Qt.callLater(() => ui.notifications.applyHandoff());
             foldAnim.stop();
             contentOut.stop();
             contentFade = 1;
-            // Reopened while closing: continue from where it is, not from 0.
             morph.snap(reopening ? closeT : 0);
             if (!reopening) clock = 0;
-            // The surface grows to the card's size first (one configure from
-            // Hyprland); start once it has, or a spring started before that
-            // would show up already part way through.
-            pendingBegin = true;
+            beginSoon.seq = root.surface.seq;
             beginSoon.restart();
             if (ui && !Notifs.centerFocusReply) ui.search.forceActiveFocus();
         } else {
-            pendingBegin = false;
-            capturing = false;
-            armed = false;
+            dispatchSurface({ type: "close" });
+            root.foldSeq = root.surface.seq;
             closeT = morph.value;
             clockRun.stop();
             contentOut.restart();
@@ -192,22 +199,19 @@ Scope {
     property bool warm: false
     Timer { id: coolDown; interval: 180000; onTriggered: root.warm = root.open || root.folding }
     Component.onCompleted: console.info("center: ready")
-    property bool pendingBegin: false
-    function begin() {
-        if (!pendingBegin || !open) return;
+    readonly property bool pendingBegin: surfaceOut.pendingBegin
+    function begin(seq) {
+        const effects = dispatchSurface({ type: "surfaceMapped", seq: seq === undefined ? root.surface.seq : seq });
+        if (!effects.length || !open) return;
         console.info("center: begin on " + (shownScreen ? shownScreen.name : "?"));
-        pendingBegin = false;
         morph.target = 1;
         clockRun.restart();
+        armSoon.seq = root.surface.seq;
         armSoon.restart();
     }
-    // Click-outside-closes (the focus grab) is armed only once the card is
-    // on screen with the keyboard: armed while the surface was still growing
-    // from 1×1, Hyprland cleared it at once and the center shut as it opened.
-    property bool armed: false
-    Timer { id: armSoon; interval: 120; onTriggered: root.armed = root.open }
-    // Fallback if the surface already has its size (reopening) or is slow.
-    Timer { id: beginSoon; interval: 34; onTriggered: root.begin() }
+    readonly property bool armed: surfaceOut.armed
+    Timer { id: armSoon; property int seq: 0; interval: 120; onTriggered: root.dispatchSurface({ type: "armed", seq: seq }) }
+    Timer { id: beginSoon; property int seq: 0; interval: 34; onTriggered: root.begin(seq) }
 
     function lerp(a, b, t) { return a + (b - a) * t; }
     // Tooltips on the hosting copy's layer (components/Tips).
@@ -219,22 +223,22 @@ Scope {
     // screenshot picker (slurp, hyprpicker's freeze, grimblast…) also takes
     // the pointer and keyboard: then the center stays, hands the keyboard
     // over, and takes it back once the picker has gone.
-    property bool capturing: false
+    readonly property bool capturing: surfaceOut.capturing
     // Shown for a screenshot or visual check (centerdebug.peek): no keyboard
     // grab and no focus grab, so whoever is typing keeps typing.
     property bool peeking: false
     readonly property var captureTools: ["pgrep", "-x", "slurp|hyprpicker|grim|grimblast|hyprshot|wayfreeze|satty|swappy|wf-recorder|wl-screenrec|gpu-screen-reco"]
     function grabCleared() {
         console.info("center: focus grab cleared (open=" + open + ", armed=" + armed + ")");
-        if (open && armed) captureProbe.running = true;
+        if (surfaceOut.grabActive) captureProbe.running = true;
     }
     Process {
         id: captureProbe
         command: root.captureTools
         onExited: code => {
             console.info("center: screenshot tool running: " + (code === 0));
-            if (code === 0) root.capturing = true;
-            else Notifs.setCenter(false, "pointer");
+            const effects = root.dispatchSurface({ type: "grabCleared", capturingTool: code === 0 });
+            if (effects.some(e => e.type === "requestClose")) Notifs.setCenter(false, "pointer");
         }
     }
     Timer {
@@ -248,7 +252,7 @@ Scope {
         command: root.captureTools
         onExited: code => {
             if (code !== 0 && root.capturing) {
-                root.capturing = false;
+                root.dispatchSurface({ type: "captureEnded" });
                 if (root.ui) root.ui.search.forceActiveFocus();
             }
         }
@@ -407,29 +411,10 @@ Scope {
                 // Elevation from layered shadows, not one big smudge: a tight
                 // contact shadow that grounds the edge, a mid one for form,
                 // and a wide soft ambient one that lifts the card off the page.
-                RectangularShadow {
-                    anchors.fill: glass
+                Elevation {
+                    target: glass
                     radius: glass.radius
-                    offset.y: 30
-                    blur: 72
-                    spread: -14
-                    color: Qt.rgba(0, 0, 0, 0.42 * Math.min(1, root.p))
-                }
-                RectangularShadow {
-                    anchors.fill: glass
-                    radius: glass.radius
-                    offset.y: 10
-                    blur: 24
-                    spread: -6
-                    color: Qt.rgba(0, 0, 0, 0.30 * Math.min(1, root.p))
-                }
-                RectangularShadow {
-                    anchors.fill: glass
-                    radius: glass.radius
-                    offset.y: 1
-                    blur: 3
-                    spread: 0
-                    color: Qt.rgba(0, 0, 0, 0.35 * Math.min(1, root.p))
+                    strength: Math.min(1, root.p)
                 }
                 GlassCard {
                     id: glass

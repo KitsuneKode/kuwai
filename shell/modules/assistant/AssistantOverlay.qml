@@ -14,6 +14,7 @@ import qs.components
 import qs.components.ai
 import qs.services
 import qs.components.ui as Ui
+import "../../services/surfaceState.mjs" as Surface
 
 Scope {
     id: root
@@ -35,28 +36,33 @@ Scope {
         root.sidebarOpen = true;
         Qt.callLater(root.searchRequested);
     }
-    property bool armed: false
+    property var surface: Surface.createSurfaceState()
+    readonly property var surfaceOut: Surface.surfaceOutputs(surface)
+    readonly property bool armed: surfaceOut.armed
     // Built only while used: open, and 10 s after (the close animation, and a
     // quick reopen stays instant). It used to be mapped for good on every
     // screen as a 1×1 surface with the whole chat UI inside.
     property bool alive: open
-    Timer { id: linger; interval: 10000; onTriggered: root.alive = root.open }
+    Timer { id: linger; interval: 10000; onTriggered: { root.alive = root.open; if (!root.open) root.surface = Surface.stepSurface(root.surface, { type: "foldDone", seq: root.surface.seq }).state; } }
 
     Timer {
         id: armTimer
+        property int seq: 0
         interval: 180
-        onTriggered: root.armed = root.open
+        onTriggered: root.surface = Surface.stepSurface(root.surface, { type: "armed", seq: seq }).state
     }
 
     onOpenChanged: {
         if (open) {
             linger.stop();
             alive = true;
-            armed = false;
+            surface = Surface.stepSurface(surface, { type: "open" }).state;
+            surface = Surface.stepSurface(surface, { type: "surfaceMapped", seq: surface.seq }).state;
+            armTimer.seq = surface.seq;
             armTimer.restart();
         } else {
             armTimer.stop();
-            armed = false;
+            surface = Surface.stepSurface(surface, { type: "close" }).state;
             linger.restart();
             // Closing doesn't decline: the request waits (it times out on its own) and you get a
             // notification to come back to it; the turn carries on in the background.
@@ -532,6 +538,7 @@ Scope {
                                 // Scroll fade (AI Elements' utility): the edges fade out only when
                                 // there's more to scroll that way, so text never meets a hard cut.
                                 ScrollFade { flickable: scroll; reach: Theme.sp(28) }
+                                ScrollHint { flickable: scroll; inside: true }
 
                                 // Scrolled up: a way back to the newest message (prompt-kit's scroll button).
                                 Rectangle {

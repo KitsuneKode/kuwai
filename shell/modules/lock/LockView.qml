@@ -72,7 +72,7 @@ Item {
     // ── Background ───────────────────────────────────────────────────────
     Item {
         anchors.fill: parent
-        scale: 1.08 - 0.08 * view.u * view.move
+        scale: 1 + 0.08 * (1 - view.u) * view.move
         // The wallpaper, decoded small and blurred once: the layer caches the
         // result.
         Item {
@@ -194,7 +194,7 @@ Item {
         }
 
         // ── Unlock ───────────────────────────────────────────────────────────
-        Spring { id: ask; tier: ({ stiffness: 300, damping: 24 }); target: view.asking || view.lock.checking || view.lock.error !== "" ? 1 : 0 }
+        Spring { id: ask; tier: Theme.surfaceIn; target: view.asking || view.lock.checking || view.lock.error !== "" ? 1 : 0 }
         Item {
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.bottom: parent.bottom

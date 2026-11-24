@@ -5,22 +5,24 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import "settingsSchema.js" as Contract
+import "settingsState.mjs" as SettingsState
 
 Singleton {
     id: root
     readonly property var schema: JSON.parse(schemaFile.text())
     readonly property var defaults: Contract.defaults(schema)
     property var document: ({})
-    property var queue: []
-    property var activeWrite: null
+    property var _sm: SettingsState.createSettingsState()
+    readonly property var queue: _sm.queue
+    readonly property var activeWrite: _sm.activeWrite
     property string loadError: ""
     property string writeError: ""
     readonly property string error: [loadError, writeError].filter(x => x).join(" · ")
-    property bool loaded: false
-    property int generation: 0
-    property int readGeneration: 0
-    property bool readBusy: true          // initial FileView load
-    property bool needsRead: false
+    readonly property bool loaded: _sm.loaded
+    readonly property int generation: _sm.generation
+    readonly property int readGeneration: _sm.readGeneration
+    readonly property bool readBusy: _sm.readBusy
+    readonly property bool needsRead: _sm.needsRead
     readonly property bool pending: activeWrite !== null || queue.length > 0
     readonly property var overrides: Contract.overrides(document, activeWrite, queue)
     readonly property var values: Object.assign(Object.create(null), defaults, overrides)
@@ -96,73 +98,62 @@ Singleton {
     function defaultOf(key) { const e = Contract.entry(root.schema, key); return e ? e.default : undefined; }
     function isDefault(key) { return !Object.prototype.hasOwnProperty.call(root.overrides || ({}), key); }
     function sourceOf(key) { return isDefault(key) ? "Default" : "Override"; }
+    function dispatch(ev) {
+        const res = SettingsState.stepSettings(root._sm, ev);
+        root._sm = res.state;
+        for (let i = 0; i < res.effects.length; i++) {
+            const eff = res.effects[i];
+            if (eff.type === "drain") drain();
+            else if (eff.type === "scheduleRead") readLater.restart();
+            else if (eff.type === "reloadFile") file.reload();
+            else if (eff.type === "acceptDocument") accept(eff.text);
+            else if (eff.type === "recordLoadError") {
+                if (eff.missing) { root.document = ({}); root.loadError = ""; }
+                else root.loadError = "Could not read settings; previous values retained";
+            } else if (eff.type === "runWriter") {
+                const p = eff.patch;
+                writer.command = ["timeout", "--kill-after=1", "8", Paths.bin + "/kuwai-settings", p.reset ? "reset" : "set", p.key];
+                if (!p.reset) writer.command = writer.command.concat([JSON.stringify(p.value)]);
+                writer.running = true;
+            } else if (eff.type === "recordWriteError") {
+                root.writeError = (eff.detail || "").trim() || "Could not save settings; the previous value is retained";
+            }
+        }
+    }
     function set(key, value) {
         if (!Contract.valid(Contract.entry(schema, key), value)) { root.writeError = "Invalid value for " + key; return false; }
         root.writeError = "";
-        root.generation++;
-        root.queue = root.queue.concat([{key:key, value:value}]);
-        drain();
+        dispatch({ type: "enqueue", patch: { key: key, value: value } });
         return true;
     }
     function reset(key) {
         if (!Contract.entry(schema, key)) return false;
         root.writeError = "";
-        root.generation++;
-        root.queue = root.queue.concat([{key:key, reset:true}]);
-        drain();
+        dispatch({ type: "enqueue", patch: { key: key, reset: true } });
         return true;
     }
     function accept(text) {
-        try { root.document = Contract.parse(schema, text); root.loadError = ""; root.loaded = true; return true; }
-        catch (e) { root.loadError = String(e); root.loaded = true; return false; }
+        try { root.document = Contract.parse(schema, text); root.loadError = ""; return true; }
+        catch (e) { root.loadError = String(e); return false; }
     }
-    function changedFile() {
-        root.generation++;
-        root.needsRead = true;
-        readLater.restart();
-    }
+    function changedFile() { dispatch({ type: "fileChanged" }); }
     function readFile() {
-        if (!root.needsRead || root.readBusy || writer.running || root.activeWrite || root.queue.length) return;
-        root.needsRead = false;
-        root.readBusy = true;
-        root.readGeneration = root.generation;
-        file.reload();
+        if (writer.running) return;
+        dispatch({ type: "beginRead" });
     }
-    function loadedFile(text) {
-        root.readBusy = false;
-        if (root.readGeneration === root.generation && !root.activeWrite && !writer.running && !root.queue.length) accept(text);
-        else { root.loaded = true; root.needsRead = true; }
-        if (root.needsRead) readLater.restart();
-        drain();
-    }
-    function failedFile(missing) {
-        root.readBusy = false;
-        root.loaded = true;
-        if (root.readGeneration === root.generation && !root.activeWrite && !writer.running && !root.queue.length) {
-            if (missing) { root.document = ({}); root.loadError = ""; }
-            else root.loadError = "Could not read settings; previous values retained";
-        } else root.needsRead = true;
-        if (root.needsRead) readLater.restart();
-        drain();
-    }
+    function loadedFile(text) { dispatch({ type: "readCompleted", ok: true, text: text }); }
+    function failedFile(missing) { dispatch({ type: "readCompleted", ok: false, missing: missing }); }
     function drain() {
-        if (!root.loaded || writer.running || root.activeWrite || !root.queue.length) return;
-        root.activeWrite = root.queue[0];
-        root.queue = root.queue.slice(1);
-        const p = root.activeWrite;
-        writer.command = ["timeout", "--kill-after=1", "8", Paths.bin + "/kuwai-settings", p.reset ? "reset" : "set", p.key];
-        if (!p.reset) writer.command = writer.command.concat([JSON.stringify(p.value)]);
-        writer.running = true;
+        if (writer.running) return;
+        dispatch({ type: "beginWrite" });
     }
     function finished(code, output, detail) {
-        const ok = code === 0 && accept(output);
-        root.activeWrite = null;
-        if (!ok) { root.writeError = detail.trim() || "Could not save settings; the previous value is retained"; root.queue = []; }
-        // Read current disk state too: another cooperating writer may have
-        // committed after this process produced its acknowledgement.
-        root.needsRead = true;
-        readLater.restart();
-        drain();
+        let ok = false;
+        if (code === 0) {
+            try { Contract.parse(schema, output); ok = true; }
+            catch (e) { detail = String(e); }
+        }
+        dispatch({ type: "writeCompleted", ok: ok, text: output, detail: detail });
     }
     FileView {
         id: schemaFile

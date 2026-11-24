@@ -90,7 +90,7 @@ Singleton {
         running: root.watchers > 0
         // Dies with the shell (a kill -9 while a panel showed left it looping).
         command: ["setpriv", "--pdeathsig", "KILL", "--", "sh", "-c", `
-            hw=; for h in /sys/class/hwmon/*; do [ "$(cat "$h/name" 2>/dev/null)" = legion_hwmon ] && hw=$h; done
+            hw=; for name in legion_hwmon k10temp coretemp zenpower; do for h in /sys/class/hwmon/*; do [ "$(cat "$h/name" 2>/dev/null)" = "$name" ] && [ -r "$h/temp1_input" ] && { hw=$h; break 2; }; done; done
             gs=; for d in /sys/bus/pci/drivers/nvidia/0000:*; do [ -e "$d/power/runtime_status" ] && gs=$d/power/runtime_status; done
             while :; do
                 echo @

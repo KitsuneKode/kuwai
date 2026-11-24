@@ -45,15 +45,18 @@ test('typed reads use schema defaults before dependent bindings settle',()=>{
   expect(r.value('clock24')).toBe(true); expect(r.value('idleLockAc')).toBe(300);
   expect(r.isDefault('clock24')).toBe(true);
 });
-test('a pre-write file read cannot replace a newer acknowledged value',()=>{
-  const r=functions('shell/config/Settings.qml',['loadedFile'],{
-    readBusy:true, readGeneration:2,generation:3,activeWrite:null,queue:[],writer:{running:false},
-    document:{idleOwner:'hypridle'},loaded:true,needsRead:false,readLater:{restart(){}},drain(){},
+test('a pre-write file read cannot replace a newer acknowledged value',async ()=>{
+  const SettingsState=await import('../../shell/config/settingsState.mjs');
+  const r=functions('shell/config/Settings.qml',['dispatch','loadedFile'],{
+    SettingsState,
+    _sm:{readBusy:true,readGeneration:2,generation:3,activeWrite:null,queue:[],loaded:true,needsRead:false},
+    writer:{running:false},document:{idleOwner:'hypridle'},readLater:{restart(){}},drain(){},
     accept(text){ this.document=JSON.parse(text); }
   });
   r.loadedFile('{"idleOwner":"shell"}');
-  expect(r.document.idleOwner).toBe('hypridle'); expect(r.needsRead).toBe(true);
-  r.readGeneration=3; r.loadedFile('{"idleOwner":"shell"}');
+  expect(r.document.idleOwner).toBe('hypridle'); expect(r._sm.needsRead).toBe(true);
+  r._sm=Object.assign({},r._sm,{readBusy:true,readGeneration:3,needsRead:false});
+  r.loadedFile('{"idleOwner":"shell"}');
   expect(r.document.idleOwner).toBe('shell');
 });
 test('bedtime choices find the Power wellbeing row without Screensaver contamination',()=>{

@@ -8,10 +8,13 @@ Every new surface should feel like it came from the same hand. Tokens live in
 
 Hyprland does the blur, the surface draws the material (`components/GlassCard.qml`):
 
-- **Tint:** dark, ~46% alpha (`Theme.glassTint`), so the blur reads through.
-- **Sheen:** vertical light, bright at the top, clear in the middle, a faint
-  refracted band at the bottom.
-- **Rim:** a 1px specular edge, brightest top-left, a weaker bounce bottom-right.
+- **Tint:** near-black `#111114` at 58% alpha (`Theme.glassTint`; denser steps
+  `glassTintThick` 68%, `glassTintElevated` 74%, `glassIsland` 84%), so text
+  stays readable while the blur reads through.
+- **Sheen & rim (single-pass SDF):** `GlassCard` draws the base tint, 1px
+  outer dark ring, top-down sheen, bottom shade, directional specular rim
+  (brightest top-left, softer bounce bottom-right), and optional procedural
+  grain in one `ShaderEffect` pass (`shaders/glasscard.frag`).
 - **Hyprland side:** every surface is a layer named `kuwai-*`, with blur,
   `ignore_alpha 0.3` (blur only under the card, not the clear margins),
   `xray 0` (blur real windows), and `no_anim` (the surface animates itself).
@@ -88,8 +91,8 @@ press 140, enter 200, exit 150, glide 150, reflow 200, HUD 180/150.
 
 **The center is a menu, not a tile**: a floating 420px card hanging from
 the bar's right corner (where the bell is), ~3/4 of the screen tall, on
-`glassTintElevated` (lighter than a window) with a deep shadow, while
-Hyprland's `dim_around` layer rule recedes everything behind it. It scales up
+`glassTintElevated` (lighter than a window) with a deep shadow, while its own
+`kuwai.scrim` backdrop recedes everything behind it. It scales up
 from its top-right corner on the moderate spring (0.96 → 1, 6px drop, fade),
 content 40ms a step behind, and closes the same way in 120ms. With toasts on
 screen it morphs out of the front one instead (slow spring; rectangle and

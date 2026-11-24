@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { join } from "node:path";
 
 const HOME = process.env.HOME || "";
@@ -16,8 +17,21 @@ const dayOf = ms => new Date(ms).toLocaleDateString("en-CA", { timeZone: zone })
 function readText(p) { try { return readFileSync(p, "utf8").trim(); } catch { return ""; } }
 function readJson(p) { try { return JSON.parse(readFileSync(p, "utf8")); } catch { return null; } }
 
+function readT3Token() {
+  if (process.env.KUWAI_T3_TOKEN) return process.env.KUWAI_T3_TOKEN.trim();
+  try {
+    const t = execFileSync("secret-tool", ["lookup", "service", "kuwai", "key", "t3-token"], {
+      encoding: "utf8",
+      timeout: 1500,
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+    if (t) return t;
+  } catch {}
+  return readText(join(STATE, "kuwai/t3-token"));
+}
+
 function endpoint() {
-  const token = process.env.KUWAI_T3_TOKEN || readText(join(STATE, "kuwai/t3-token"));
+  const token = readT3Token();
   const runtime = readJson(join(T3_HOME, "userdata/server-runtime.json"));
   if (!token || !runtime || !runtime.port) return null;
   return { url: `ws://${runtime.host || "127.0.0.1"}:${runtime.port}/ws?orchestrationProtocol=2`, token };

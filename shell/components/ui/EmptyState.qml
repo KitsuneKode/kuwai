@@ -4,6 +4,7 @@ import qs.components
 
 Column {
     id: empty
+    property string icon: ""
     property string glyph: ""
     property string title: ""
     property string body: ""
@@ -13,8 +14,16 @@ Column {
     spacing: Theme.s2
     width: parent ? parent.width : Theme.sp(260)
 
+    Icon {
+        visible: empty.icon !== ""
+        anchors.horizontalCenter: parent.horizontalCenter
+        name: empty.icon
+        size: Theme.glyphXL
+        color: Theme.textTertiary
+    }
+
     Text {
-        visible: empty.glyph !== ""
+        visible: empty.icon === "" && empty.glyph !== ""
         anchors.horizontalCenter: parent.horizontalCenter
         textFormat: Text.PlainText
         text: empty.glyph

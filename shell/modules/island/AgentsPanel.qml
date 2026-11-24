@@ -113,6 +113,7 @@ FocusScope {
     }
 
     // ── One list: kittymux panes, then T3 threads, by how much they need you ─
+    readonly property var sections: [...new Set(rows.map(r => r.section))]
     readonly property var rows: {
         const out = [];
         const events = Kittymux.attention || [];
@@ -127,7 +128,7 @@ FocusScope {
                 : state === "error" ? "failed" : state;
             const back = state === "limited" ? Ag.until((r.limitReset || 0) * 1000, Date.now()) : "";
             out.push({
-                section: "TUI · Kittymux",
+                section: "Terminal",
                 word: stateKey === "approval" ? "Approval" : back ? "Limit · back in " + back : "",
                 stateKey: stateKey,
                 key: "k" + r.key, src: "kitty", agent: r.agent, title: r.title,
@@ -185,7 +186,7 @@ FocusScope {
             });
         }
         const rank = { needs: 0, error: 1, limited: 2, working: 3, done: 4, idle: 5, recent: 6 };
-        const secOrder = { "T3 Code": 0, "TUI · Kittymux": 1, "Desktop": 2, "Recent": 3 };
+        const secOrder = { "T3 Code": 0, "Terminal": 1, "Desktop": 2, "Recent": 3 };
         const secUrgent = {};
         for (const row of out) {
             const r = rank[row.state] ?? 9;
@@ -331,39 +332,6 @@ FocusScope {
             spacing: Theme.s2
             boundsBehavior: Flickable.StopAtBounds
             model: ScriptModel { values: ap.rows; objectProp: "key" }
-            section.property: ""
-            section.criteria: ViewSection.FullString
-            section.delegate: Item {
-                required property string section
-                readonly property int secCount: ap.rows.filter(r => r.section === section).length
-                width: list.width
-                height: Theme.sp(24)
-                Row {
-                    anchors { left: parent.left; leftMargin: Theme.rowInset; verticalCenter: parent.verticalCenter }
-                    spacing: 6
-                    Text {
-                        visible: section !== "T3 Code" && section !== "Recent"
-                        anchors.verticalCenter: parent.verticalCenter
-                        textFormat: Text.PlainText
-                        text: section === "Desktop" ? "\u{f0379}" : "\u{f018d}"
-                        font.family: Theme.fontGlyph; font.pixelSize: Theme.tSub
-                        color: section === "Desktop" ? Theme.mint : Theme.textTertiary
-                    }
-                    Label {
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: section
-                        size: Theme.tFootnote; weight: Theme.wSemibold
-                        color: section === "T3 Code" ? Theme.cyan : section === "Desktop" ? Theme.mint : Theme.textTertiary
-                    }
-                    Label {
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: String(secCount)
-                        size: Theme.tCaption; weight: Theme.wMedium; rounded: true
-                        color: Theme.textTertiary
-                        font.features: ({ "tnum": 1 })
-                    }
-                }
-            }
             // One move (choreograph): a swiped row's spring carries it out while
             // the rows below rise into its place, together, not one after the other.
             remove: Transition { PauseAnimation { duration: Theme.reduceMotion ? 0 : Theme.swipeOutMs } }
@@ -375,25 +343,69 @@ FocusScope {
             FluidHighlight {
                 parent: list.contentItem
                 radius: Theme.r3
-                target: ap.keyboard ? list.itemAtIndex(ap.sel) : ap.hoverRow
+                target: ap.keyboard ? (list.itemAtIndex(ap.sel) ? list.itemAtIndex(ap.sel).plate : null) : ap.hoverRow
                 ring: ap.keyboard
             }
-            delegate: Rectangle {
+            delegate: Item {
                 id: row
                 required property var modelData
                 required property int index
                 readonly property bool needs: modelData.state === "needs"
+                readonly property bool firstOfGroup: index === 0 || (ap.rows[index - 1] || {}).section !== modelData.section
+                readonly property real headH: firstOfGroup && ap.sections.length > 1 ? Theme.sp(30) : 0
+                readonly property alias plate: plate
                 width: list.width
-                height: lrow.implicitHeight + Theme.s2 * 2
-                radius: Theme.r3
-                color: Theme.card
-                border.width: 1
-                border.color: Theme.cardEdge
-                AmbientGlow {
-                    visible: row.modelData.state === "working"
-                    tint: ap.brandOf(row.modelData.agent)
+                height: headH + lrow.implicitHeight + Theme.s2 * 2
+                Row {
+                    visible: row.headH > 0
+                    x: Theme.s1
+                    y: row.headH - height - 8
+                    spacing: 6
+                    Image {
+                        visible: row.modelData.section === "T3 Code" && status === Image.Ready
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 14; height: 14
+                        sourceSize: Qt.size(28, 28)
+                        source: row.modelData.section === "T3 Code" && row.headH > 0 ? NotifAdapters.entryIcon("t3code") : ""
+                        smooth: true; mipmap: true
+                    }
+                    Text {
+                        visible: row.modelData.section === "Terminal" || row.modelData.section === "Desktop"
+                        anchors.verticalCenter: parent.verticalCenter
+                        textFormat: Text.PlainText
+                        text: row.modelData.section === "Desktop" ? "\u{f0379}" : "\u{f018d}"
+                        font.family: Theme.fontGlyph; font.pixelSize: Theme.tSub
+                        color: Theme.textTertiary
+                    }
+                    Label {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: row.modelData.section
+                        size: Theme.tFootnote; weight: Theme.wSemibold
+                        color: Theme.textSecondary
+                    }
+                    Label {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: String(ap.rows.filter(r => r.section === row.modelData.section).length)
+                        size: Theme.tFootnote; weight: Theme.wMedium; rounded: true
+                        color: Theme.textTertiary
+                        font.features: ({ "tnum": 1 })
+                    }
+                }
+                Rectangle {
+                    id: plate
+                    y: row.headH
+                    width: parent.width
+                    height: parent.height - row.headH
                     radius: Theme.r3
-                    breathing: true
+                    color: Theme.card
+                    border.width: 1
+                    border.color: Theme.cardEdge
+                    AmbientGlow {
+                        visible: row.modelData.state === "working"
+                        tint: ap.brandOf(row.modelData.agent)
+                        radius: Theme.r3
+                        breathing: true
+                    }
                 }
                 // Swipe away sideways (or ×, or ⌫ on the selected row): it slides
                 // out, then goes; the rest close the gap.
@@ -435,7 +447,7 @@ FocusScope {
                 // and what it asks under it.
                 ListRow {
                     id: lrow
-                    y: Theme.s2
+                    y: row.headH + Theme.s2
                     width: parent.width
                     lead: Item {
                         anchors.fill: parent
@@ -445,6 +457,20 @@ FocusScope {
                             sourceSize: Qt.size(64, 64)
                             source: Kittymux.tile(row.modelData.agent)
                             smooth: true; mipmap: true
+                        }
+                        Rectangle {
+                            visible: row.modelData.src === "t3" && t3Badge.status === Image.Ready
+                            anchors { right: parent.right; bottom: parent.bottom; rightMargin: -4; bottomMargin: -4 }
+                            width: 16; height: 16; radius: 5
+                            color: Theme.cutout
+                            Image {
+                                id: t3Badge
+                                anchors.centerIn: parent
+                                width: 13; height: 13
+                                sourceSize: Qt.size(26, 26)
+                                source: row.modelData.src === "t3" ? NotifAdapters.entryIcon("t3code") : ""
+                                smooth: true; mipmap: true
+                            }
                         }
                         Rectangle {
                             visible: tileImg.status !== Image.Ready
@@ -472,7 +498,7 @@ FocusScope {
                     // The × takes its place on hover (a removable row).
                     trailOpacity: row.dismissable && rowHover.hovered ? 0 : 1
                     subFormat: Text.StyledText
-                    sub: [Kittymux.agentLabel(row.modelData.agent), row.modelData.src === "t3" ? "T3" : "", row.modelData.where, row.modelData.model]
+                    sub: [Kittymux.agentLabel(row.modelData.agent), row.modelData.where, row.modelData.model]
                         .filter(x => x).map(x => ap.esc(x)).join(" · ")
                         + (ap.fill(row.modelData) ? " · " + ap.fill(row.modelData) : "")
                     subColor: Theme.textSecondary
@@ -604,8 +630,8 @@ FocusScope {
                     id: rowHover
                     cursorShape: Qt.PointingHandCursor
                     onHoveredChanged: {
-                        if (hovered) { ap.keyboard = false; ap.sel = row.index; ap.hoverRow = row; }
-                        else if (ap.hoverRow === row) ap.hoverRow = null;
+                        if (hovered) { ap.keyboard = false; ap.sel = row.index; ap.hoverRow = row.plate; }
+                        else if (ap.hoverRow === row.plate) ap.hoverRow = null;
                     }
                 }
                 TapHandler { onTapped: if (!xHover.hovered && !answerHover.hovered) ap.go(row.modelData) }
@@ -614,7 +640,7 @@ FocusScope {
                     visible: row.dismissable
                     opacity: rowHover.hovered ? 1 : 0
                     Behavior on opacity { NumberAnimation { duration: Theme.hoverMs } }
-                    anchors { right: parent.right; rightMargin: 8; top: parent.top; topMargin: 8 }
+                    anchors { right: parent.right; rightMargin: 8; top: plate.top; topMargin: 8 }
                     width: 22; height: 22; radius: 11
                     color: xHover.hovered ? Theme.pillHover : Theme.pill
                     Behavior on color { ColorAnimation { duration: Theme.hoverMs } }

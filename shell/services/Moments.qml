@@ -79,7 +79,7 @@ Singleton {
     // under the pointer (held, IslandBar) waits: an agent's "needs you" no
     // longer timed out just as you reached it; let go and it stays 2 s more.
     property bool held: false
-    onHeldChanged: if (!held && now) { hide.interval = Math.min(hide.interval, 2000); hide.restart(); }
+    onHeldChanged: if (!held && now) { hide.interval = MomentsLogic.nextHideInterval(now, hide.interval, held); hide.restart(); }
     Timer { id: hide; onTriggered: { if (root.held) { restart(); return; } root.now = null; if (root.queue.length) gap.start(); } }
     // Pulled down: the notch opens into its list of recent important ones
     function openRecent(screen) { Notifs.toggleCenter("notifications", "pointer", screen || ""); }
@@ -93,9 +93,10 @@ Singleton {
     // Gone now (it was acted on: tapped, pulled down, swiped up).
     function dismissNow() {
         hide.stop();
-        held = false;
-        now = null;
-        if (queue.length) gap.start();
+        const d = MomentsLogic.dismissMoment({ now: now, held: held, queue: queue });
+        held = d.held;
+        now = d.now;
+        if (d.startGap) gap.start();
     }
     Timer {
         id: gap
@@ -140,7 +141,7 @@ Singleton {
         cardFor.interval = ms || 4000;
         cardFor.restart();
     }
-    function dropCard() { cardFor.stop(); card = null; }
+    function dropCard() { cardFor.stop(); cardHeld = false; card = null; }
     Timer { id: cardFor; onTriggered: if (root.cardHeld) restart(); else root.card = null }
 
     // ── What's been said about each device ──────────────────────────────

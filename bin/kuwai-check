@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -u
-QUIET=0; SHOTS=0; SOAK=0
-for a in "$@"; do case $a in --quiet) QUIET=1 ;; --shots) SHOTS=1 ;; --soak) SOAK=1 ;; esac; done
+QUIET=0; SHOTS=0; SOAK=0; STRICT_GPU=0
+for a in "$@"; do case $a in --quiet) QUIET=1 ;; --shots) SHOTS=1 ;; --soak) SOAK=1 ;; --strict-gpu) STRICT_GPU=1 ;; esac; done
 BUDGET=${KUWAI_MEM_BUDGET_MB:-450}
+WAKEUP_BUDGET=${KUWAI_WAKEUP_BUDGET:-250}
 fail=0
 ok()   { [ $QUIET = 1 ] || printf '  ✓ %s\n' "$1"; }
 bad()  { printf '  ✗ %s\n' "$1"; fail=1; }
@@ -101,13 +102,38 @@ if command -v hyprctl >/dev/null && hyprctl layers -j 2>/dev/null | jq -e '[.. |
     cpu_budget=40; cpu_why="with a film on screen (screensaver or live wallpaper)"
 fi
 tck=$(getconf CLK_TCK); samples=""
+sum_vcs() { awk '/^voluntary_ctxt_switches:/ {s+=$2} END {print s+0}' /proc/$pid/task/*/status 2>/dev/null; }
 t0=$(awk '{print $14+$15}' /proc/$pid/stat)
+w0=$(sum_vcs)
 for _ in 1 2 3 4 5; do
     sleep 1; t1=$(awk '{print $14+$15}' /proc/$pid/stat)
     samples="$samples $(( (t1 - t0) * 100 / tck ))"; t0=$t1
 done
+w1=$(sum_vcs)
+wrate=$(( (w1 - w0) / 5 ))
 set -- $(printf '%s\n' $samples | sort -n); cpu=$3; worst=$5
 [ "$cpu" -lt "$cpu_budget" ] && ok "cpu: ${cpu}% $cpu_why (median of 5 s; worst second ${worst}%)" || bad "cpu: ${cpu}% $cpu_why, median of 5 s (want < $cpu_budget; seconds:$samples)"
+if [ "$cpu_why" = "at rest" ]; then
+    [ "$wrate" -le "$WAKEUP_BUDGET" ] && ok "wakeups: ${wrate}/s at rest (budget ${WAKEUP_BUDGET}/s)" || bad "wakeups: ${wrate}/s at rest (want <= ${WAKEUP_BUDGET}/s)"
+else
+    ok "wakeups: ${wrate}/s ($cpu_why)"
+fi
+
+for d in /sys/bus/pci/drivers/nvidia/0000:*; do
+    [ -r "$d/power/runtime_status" ] || continue
+    gstate=$(cat "$d/power/runtime_status" 2>/dev/null)
+    if [ "$gstate" = suspended ]; then
+        ok "dgpu: suspended"
+    else
+        holders=$(nvidia-smi --query-compute-apps=process_name,used_memory --format=csv,noheader 2>/dev/null | tr '\n' ';' | sed 's/;*$//')
+        if [ "$STRICT_GPU" = 1 ] && [ "$cpu_why" = "at rest" ]; then
+            bad "dgpu: $gstate${holders:+ ($holders)}"
+        else
+            ok "dgpu: $gstate${holders:+ ($holders)}"
+        fi
+    fi
+    break
+done
 
 broken=""
 for f in $(cd "$root/shell" && find modules components -name '*.qml' | sort); do

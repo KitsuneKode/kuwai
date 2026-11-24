@@ -20,13 +20,13 @@ Item {
     property Item target: null
     property bool ring: false
     property bool glideKeys: false      // true only for a list that wants the ring to travel
-    property real radius: 18
+    property real radius: Theme.r2
 
     z: 50
     visible: opacity > 0.001
     opacity: target ? 1 : 0
     Behavior on opacity {
-        NumberAnimation { duration: h.target ? 80 : Theme.springFast.exitMs; easing.type: Easing.OutCubic }
+        NumberAnimation { duration: h.target ? Theme.hoverMs : Theme.springFast.exitMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
     }
 
     x: sx.value; y: sy.value; width: sw.value; height: sh.value
@@ -37,15 +37,64 @@ Item {
     Spring { id: sh; tier: Theme.springFast; epsilon: 0.25 }
 
     property bool fresh: true
-    onTargetChanged: if (!target) freshTimer.restart(); else { freshTimer.stop(); follow(); }
+    property bool pendingFollow: false
+    property var _unsubs: []
+    function scheduleFollow() {
+        if (pendingFollow) return;
+        pendingFollow = true;
+        Qt.callLater(() => {
+            pendingFollow = false;
+            follow();
+        });
+    }
+    function clearWatches() {
+        for (let i = 0; i < _unsubs.length; i++) {
+            try { _unsubs[i](); } catch (e) {}
+        }
+        _unsubs = [];
+    }
+    function bindWatch(sig, fn) {
+        if (!sig || typeof sig.connect !== "function") return;
+        sig.connect(fn);
+        _unsubs.push(() => { try { sig.disconnect(fn); } catch (e) {} });
+    }
+    function watchChain() {
+        clearWatches();
+        if (!target || !parent) return;
+        const onMove = () => h.scheduleFollow();
+        const onReparent = () => { h.watchChain(); h.scheduleFollow(); };
+        let p = target;
+        let depth = 0;
+        while (p && depth < 32) {
+            bindWatch(p.xChanged, onMove);
+            bindWatch(p.yChanged, onMove);
+            bindWatch(p.widthChanged, onMove);
+            bindWatch(p.heightChanged, onMove);
+            if ("contentY" in p && p.contentYChanged) bindWatch(p.contentYChanged, onMove);
+            if ("contentX" in p && p.contentXChanged) bindWatch(p.contentXChanged, onMove);
+            if (p.transform && p.transform.length) {
+                for (let i = 0; i < p.transform.length; i++) {
+                    const tr = p.transform[i];
+                    if (tr && tr.xChanged) bindWatch(tr.xChanged, onMove);
+                    if (tr && tr.yChanged) bindWatch(tr.yChanged, onMove);
+                }
+            }
+            if (p === h.parent) break;
+            bindWatch(p.parentChanged, onReparent);
+            p = p.parent;
+            depth++;
+        }
+    }
+
+    onTargetChanged: {
+        watchChain();
+        if (!target) freshTimer.restart();
+        else { freshTimer.stop(); follow(); }
+    }
+    onParentChanged: watchChain()
+    Component.onDestruction: clearWatches()
     // Once it has faded out, the next entry starts fresh.
     Timer { id: freshTimer; interval: Theme.springFast.exitMs; onTriggered: h.fresh = true }
-
-    // Items move (rows grow, lists scroll), so track the target every frame.
-    FrameAnimation {
-        running: h.target !== null
-        onTriggered: h.follow()
-    }
 
     function follow() {
         if (!target || !parent) return;

@@ -15,13 +15,14 @@ import QtQuick
 import qs.config
 import qs.components
 
-Item {
+FocusScope {
     id: b
     property string text
     property string glyph: ""
     property string kind: primary ? "primary" : "secondary"   // primary · secondary · danger · quiet
     property bool primary: false
     property bool enabled: true
+    property bool elideText: false
     property int size: 13
     property string label: ""               // what it does, when the face is only a glyph
     property color tone: Theme.textSecondary // quiet: the glyph's colour (a state's tone)
@@ -37,13 +38,15 @@ Item {
     RaisedButton {
         id: raised
         visible: b.kind !== "quiet"
+        focus: b.kind !== "quiet"
         anchors.fill: parent
-        text: b.text; glyph: b.glyph; kind: b.kind; enabled: b.enabled; size: b.size
+        text: b.text; glyph: b.glyph; kind: b.kind; enabled: b.enabled; elideText: b.elideText; size: b.size
         onClicked: b.clicked()
     }
     Rectangle {
         id: quiet
         visible: b.kind === "quiet"
+        focus: b.kind === "quiet"
         anchors.fill: parent
         implicitWidth: qrow.implicitWidth + 24
         radius: height / 2

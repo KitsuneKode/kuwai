@@ -820,7 +820,7 @@ Item {
                 // Live only on the screen you're on: every notch drew the bars 20 times a
                 // second while music played; the others rest at their still shape (the
                 // same notch, drawn once), and pick it up as you move there.
-                PwNodePeakMonitor { id: restPeak; node: Pipewire.defaultAudioSink; enabled: (rest.activity === "media" || rest.restMusic) && Media.playing && (!rest.bar || rest.bar.screenName === Screens.focusedName) }
+                PwNodePeakMonitor { id: restPeak; node: Pipewire.defaultAudioSink; enabled: (rest.activity === "media" || rest.restMusic) && Media.playing && !Saver.showing && !Saver.locked && !Saver.screensOff && rest.visible && !Theme.reduceMotion && (!rest.bar || rest.bar.screenName === Screens.focusedName) }
                 readonly property real level: restPeak.enabled ? (restPeak.peaks && restPeak.peaks.length ? Math.max(...restPeak.peaks) : (restPeak.peak || 0)) : 0
                 // The bars move 20 times a second, set straight (no Behavior).
                 // Following every peak, each one restarting a 90 ms animation,
