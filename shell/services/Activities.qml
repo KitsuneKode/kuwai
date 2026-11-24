@@ -49,7 +49,7 @@ Singleton {
         onFileChanged: reload()
         onLoaded: root.voxText = text().trim().slice(-160)
     }
-    function voxToggle() { Quickshell.execDetached([scripts + "/voxtype-toggle.sh"]); }
+    function voxToggle() { Quickshell.execDetached(["sh", "-c", 'for d in "$1" "$HOME/Scripts"; do [ -x "$d/voxtype-toggle.sh" ] && exec "$d/voxtype-toggle.sh"; done', "sh", scripts]); }
     function voxCancel() { Quickshell.execDetached(["voxtype", "record", "cancel"]); }
 
     // ── Shazam ───────────────────────────────────────────────────────────
