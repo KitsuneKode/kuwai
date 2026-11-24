@@ -153,3 +153,24 @@ export function target(panes, threads, desktop) {
     const top = merge(panes, threads, desktop).find(x => x.rank < WORKING);
     return top || null;
 }
+
+/**
+ * The capsule's marks: each provider once, the one that wants you first, with
+ * how many of its agents are active and whether any of them needs you.
+ * @param {{ agent?: string, needs?: boolean }[]} list @param {number} max
+ * @returns {{ marks: { agent: string, count: number, needs: boolean }[], more: number }}
+ */
+export function stackMarks(list, max) {
+    /** @type {Record<string, { agent: string, count: number, needs: boolean }>} */
+    const by = {};
+    /** @type {{ agent: string, count: number, needs: boolean }[]} */
+    const all = [];
+    for (const a of list || []) {
+        const k = String(a.agent || "agent");
+        if (!by[k]) all.push(by[k] = { agent: k, count: 0, needs: false });
+        by[k].count++;
+        if (a.needs) by[k].needs = true;
+    }
+    all.sort((a, b) => Number(b.needs) - Number(a.needs));
+    return { marks: all.slice(0, max), more: Math.max(0, all.length - max) };
+}

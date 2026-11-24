@@ -103,8 +103,10 @@ Item {
     readonly property bool agentsLive: agentStack.list.length > 0 || agentsHead.tone !== ""
     readonly property bool sysLive: sysMarks.any
     readonly property var limitsPartition: Limits.partitionWith(Agents.extraLimited)
-    readonly property var limits: Settings.limitAlerts ? Limits.summarize(limitsPartition) : Limits.summarize(null)
-    readonly property bool limitsLive: limits.items.length > 0
+    readonly property var limitsNow: Settings.limitAlerts ? Limits.summarize(limitsPartition) : Limits.summarize(null)
+    readonly property bool limitsLive: limitsNow.items.length > 0
+    property var limits: Limits.summarize(null)
+    onLimitsNowChanged: if (limitsNow.items.length) limits = limitsNow
     readonly property color limitTint: limits.tone === "soon" ? Theme.orange : Theme.red
     // A capsule folds only after its work has been gone a few seconds, and
     // shows its last value meanwhile.
@@ -218,7 +220,7 @@ Item {
         return ({music: "\u{f0387}", agents: "\u{f06a9}", sys: "\u{f06b0}", limits: "\u{f051f}", min: "\u{f05b6}"})[k] || "";
     }
     readonly property bool hovered: pills.some(p => p.enabled && p.hovered)
-    Component.onCompleted: { t3FinishedWas = T3Code.finished; agentsDoneWas = agentsDone.length; }
+    Component.onCompleted: { t3FinishedWas = T3Code.finished; agentsDoneWas = agentsDone.length; if (limitsNow.items.length) limits = limitsNow; }
 
     // What waits on you, by capsule: the light goes on what's asking
     // (IslandBar keeps its own rim for what's still in the island).
@@ -606,24 +608,18 @@ Item {
         attention: false
         Row {
             spacing: 6
-            Row {
-                anchors.verticalCenter: parent.verticalCenter
-                spacing: -3
-                Repeater {
-                    model: split.limits.providers.slice(0, 3)
+            Repeater {
+                model: split.limits.providers.slice(0, 3)
+                Row {
+                    id: mark
+                    required property var modelData
+                    required property int index
+                    readonly property bool ringed: index === 0 && split.limits.tone === "soon"
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 2
                     Item {
-                        id: mark
-                        required property var modelData
-                        required property int index
-                        readonly property bool ringed: index === 0 && split.limits.tone === "soon"
-                        z: 3 - index
-                        width: 20; height: 20
                         anchors.verticalCenter: parent.verticalCenter
-                        Rectangle {
-                            anchors.centerIn: parent
-                            width: 18; height: 18; radius: 9
-                            color: Theme.cutout
-                        }
+                        width: 20; height: 20
                         StatRing {
                             visible: mark.ringed
                             anchors.fill: parent
@@ -647,20 +643,15 @@ Item {
                             text: "\u{f051f}"; font.family: Theme.fontGlyph; font.pixelSize: Theme.tFootnote
                             color: split.limitTint
                         }
-                        Rectangle {
-                            visible: mark.modelData.count > 1
-                            anchors.right: parent.right; anchors.bottom: parent.bottom
-                            anchors.rightMargin: -3; anchors.bottomMargin: -2
-                            width: Math.max(height, markCount.implicitWidth + 4); height: 11; radius: height / 2
-                            color: split.limitTint
-                            Label {
-                                id: markCount
-                                anchors.centerIn: parent
-                                text: String(mark.modelData.count)
-                                size: Theme.tCaption; weight: Theme.wBold; rounded: true
-                                color: Theme.cutout
-                            }
-                        }
+                    }
+                    Label {
+                        visible: mark.modelData.count > 1
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.verticalCenterOffset: 1
+                        text: String(mark.modelData.count)
+                        size: Theme.tCaption; weight: Theme.wBold; rounded: true
+                        color: split.limitTint
+                        font.features: ({ "tnum": 1 })
                     }
                 }
             }

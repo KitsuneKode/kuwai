@@ -45,8 +45,7 @@ Item {
         if (desktopRows.length) g.push({ id: "desktop", tag: "", glyph: "\u{f0379}", tint: Theme.mint, items: sortNeeds(desktopRows) });
         return g;
     }
-    readonly property bool multiSurface: groups.length > 1
-    readonly property int perGroupMax: multiSurface ? 2 : 3
+    readonly property var marks: Agents.stackMarks(list, 3)
     readonly property int needN: list.filter(a => a.needs).length
     readonly property int workN: list.length - needN
     readonly property int shown: Math.min(3, list.length)
@@ -58,95 +57,64 @@ Item {
     property real step: hover.hovered && many && !open ? 10 : 8
     Behavior on step { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.microMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
     readonly property int markSize: 13
-    implicitWidth: groupsRow.implicitWidth
+    implicitWidth: marksRow.implicitWidth
     implicitHeight: 16
 
     Row {
-        id: groupsRow
+        id: marksRow
         anchors.verticalCenter: parent.verticalCenter
-        spacing: 5
+        spacing: stack.step - 2
         Repeater {
-            model: stack.groups
+            model: stack.marks.marks
             Row {
-                id: grp
+                id: m
                 required property var modelData
-                required property int index
-                readonly property int cap: Math.min(stack.perGroupMax, modelData.items.length)
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: 4
-                Rectangle {
-                    visible: grp.index > 0
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: 1; height: 10
-                    color: Theme.edge(1)
-                }
-                Label {
-                    visible: stack.multiSurface && grp.modelData.tag !== ""
-                    anchors.verticalCenter: parent.verticalCenter
-                    anchors.verticalCenterOffset: 1
-                    text: grp.modelData.tag
-                    size: Theme.tCaption; weight: Theme.wBold; rounded: true
-                    color: grp.modelData.tint
-                }
-                Text {
-                    visible: stack.multiSurface && grp.modelData.glyph !== ""
-                    anchors.verticalCenter: parent.verticalCenter
-                    textFormat: Text.PlainText
-                    text: grp.modelData.glyph
-                    font.family: Theme.fontGlyph; font.pixelSize: Theme.tFootnote
-                    color: grp.modelData.tint
-                }
+                spacing: 2
                 Item {
                     anchors.verticalCenter: parent.verticalCenter
-                    implicitWidth: grp.cap ? stack.markSize + (grp.cap - 1) * stack.step + (grp.modelData.items.length > grp.cap ? grpMore.implicitWidth + 3 : 0) : 0
-                    implicitHeight: 16
-                    Repeater {
-                        model: grp.cap
-                        Item {
-                            required property int index
-                            readonly property var a: grp.modelData.items[index] || null
-                            x: index * stack.step
-                            z: grp.cap - index
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: stack.markSize; height: stack.markSize
-                            // Over the one behind it: a ring of the island's black between them.
-                            Rectangle {
-                                visible: grp.cap > 1 || (!!parent.a && !!parent.a.needs)
-                                anchors.centerIn: parent
-                                width: parent.width + 4; height: width; radius: width / 2
-                                color: Qt.rgba(0, 0, 0, 0.94)
-                                border.width: parent.a && parent.a.needs ? 1.5 : 0
-                                border.color: Theme.orange
-                            }
-                            Image {
-                                id: mark
-                                anchors.fill: parent
-                                sourceSize: Qt.size(26, 26)
-                                source: parent.a ? Kittymux.brand(parent.a.agent) : ""
-                                visible: status === Image.Ready
-                                opacity: stack.open ? 0.35 : 1
-                                Behavior on opacity { NumberAnimation { duration: Theme.quickMs } }
-                            }
-                            Text {
-                                visible: !mark.visible
-                                anchors.centerIn: parent
-                                textFormat: Text.PlainText
-                                text: "\u{f06a9}"; font.family: Theme.fontGlyph; font.pixelSize: Theme.tBody
-                                color: Theme.textSecondary
-                            }
-                        }
+                    width: stack.markSize + 4; height: width
+                    Rectangle {
+                        visible: m.modelData.needs
+                        anchors.fill: parent; radius: width / 2
+                        color: "transparent"
+                        border.width: 1.5; border.color: Theme.orange
                     }
-                    Label {
-                        id: grpMore
-                        visible: grp.modelData.items.length > grp.cap
-                        x: stack.markSize + (grp.cap - 1) * stack.step + 3
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: "+" + (grp.modelData.items.length - grp.cap)
-                        size: Theme.tFootnote; weight: Theme.wSemibold; rounded: true
+                    Image {
+                        id: markImg
+                        anchors.centerIn: parent
+                        width: stack.markSize; height: width
+                        sourceSize: Qt.size(26, 26)
+                        source: Kittymux.brand(m.modelData.agent)
+                        visible: status === Image.Ready
+                        opacity: stack.open ? 0.35 : 1
+                        Behavior on opacity { NumberAnimation { duration: Theme.quickMs } }
+                    }
+                    Text {
+                        visible: !markImg.visible
+                        anchors.centerIn: parent
+                        textFormat: Text.PlainText
+                        text: "\u{f06a9}"; font.family: Theme.fontGlyph; font.pixelSize: Theme.tBody
                         color: Theme.textSecondary
                     }
                 }
+                Label {
+                    visible: m.modelData.count > 1
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.verticalCenterOffset: 1
+                    text: String(m.modelData.count)
+                    size: Theme.tCaption; weight: Theme.wBold; rounded: true
+                    color: m.modelData.needs ? Theme.orange : Theme.textSecondary
+                    font.features: ({ "tnum": 1 })
+                }
             }
+        }
+        Label {
+            visible: stack.marks.more > 0
+            anchors.verticalCenter: parent.verticalCenter
+            text: "+" + stack.marks.more
+            size: Theme.tFootnote; weight: Theme.wSemibold; rounded: true
+            color: Theme.textSecondary
         }
     }
 

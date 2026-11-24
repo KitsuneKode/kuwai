@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { headline, limitedItems, target, merge, until, t3Agent, stateGlyph } from "../../shell/services/agents.mjs";
+import { headline, limitedItems, target, merge, until, t3Agent, stateGlyph, stackMarks } from "../../shell/services/agents.mjs";
 
 const now = Date.parse("2026-11-22T12:00:00Z");
 const pane = (o) => Object.assign({ key: "p", agent: "claude", state: "working", working: true, since: 0 }, o);
@@ -92,5 +92,27 @@ describe("small readings", () => {
     expect(t3Agent("codex_2")).toBe("codex");
     expect(t3Agent("devin")).toBe("devin");
     expect(t3Agent("newthing")).toBe("newthing");
+  });
+});
+
+describe("the capsule's marks", () => {
+  test("each provider once, counted, the one that needs you first", () => {
+    const r = stackMarks([
+      { agent: "claude" }, { agent: "codex" }, { agent: "claude" },
+      { agent: "antigravity", needs: true }, { agent: "claude" }
+    ], 3);
+    expect(r.marks).toEqual([
+      { agent: "antigravity", count: 1, needs: true },
+      { agent: "claude", count: 3, needs: false },
+      { agent: "codex", count: 1, needs: false }
+    ]);
+    expect(r.more).toBe(0);
+  });
+
+  test("past the cap, a count of the rest", () => {
+    const r = stackMarks(["a", "b", "c", "d", "e"].map(agent => ({ agent })), 3);
+    expect(r.marks.map(m => m.agent)).toEqual(["a", "b", "c"]);
+    expect(r.more).toBe(2);
+    expect(stackMarks([], 3)).toEqual({ marks: [], more: 0 });
   });
 });
