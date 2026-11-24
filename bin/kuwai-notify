@@ -67,12 +67,21 @@ fi
 reply=$(printf '%s\n' "$out" | grep -m1 '^(uint32' || true)
 if [ "$wait" = 1 ] && [ ${#actions[@]} -gt 0 ]; then
     nid=$(echo "$reply" | awk '{print $2}' | tr -d '(),')
-    gdbus monitor --session --dest org.freedesktop.Notifications 2>/dev/null | while read -r line; do
+    exec 3< <(gdbus monitor --session --dest org.freedesktop.Notifications 2>/dev/null)
+    mon=$!
+    choice=""
+    while read -r line <&3; do
         case "$line" in
-            *"ActionInvoked"*"uint32 $nid"*)
-                echo "$line" | sed -n "s/.*'\\([^']*\\)'.*/\\1/p" | head -1
-                exit 0
+            *"ActionInvoked"*"uint32 $nid,"*)
+                choice=$(echo "$line" | sed -n "s/.*'\\([^']*\\)'.*/\\1/p" | head -1)
+                break
+                ;;
+            *"NotificationClosed"*"uint32 $nid,"*)
+                break
                 ;;
         esac
     done
+    kill "$mon" 2>/dev/null
+    exec 3<&-
+    if [ -n "$choice" ]; then echo "$choice"; fi
 fi
