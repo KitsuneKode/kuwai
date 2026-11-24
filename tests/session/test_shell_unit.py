@@ -188,5 +188,5 @@ def test_the_session_environment_goes_over_whole_but_for_a_few(tmp_path):
 
 def test_startup_exports_through_the_same_helper():
     src = (REPO / "hypr/kuwai/startup.lua").read_text()
-    assert 'hl.exec_cmd(K.bin .. "/kuwai-session-env")' in src
+    assert 'K.bin .. "/kuwai-session-env"' in src
     assert src.index("kuwai-session-env") < src.index("kuwai-shell")

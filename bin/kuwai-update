@@ -7,6 +7,11 @@
     kuwai-update approve PKG SHA        remember that you reviewed PKG at commit SHA
     kuwai-update trust PKG on|off       skip review for PKG from now on (your call, per package)
     kuwai-update state                  JSON: approvals and trusted packages
+    kuwai-update storage                JSON: what the update pipeline keeps on disk, why, and what
+                                       retention would free (read-only)
+    kuwai-update clean [--legacy] [--artifacts] [--builds] [--pacman] [--all] [--dry-run]
+                                       reclaim legacy AUR trees, stale artifacts, failed builds,
+                                       and optionally pacman cache (via paccache)
     kuwai-update start [--repo] [--aur PKG ...] [--flatpak APP ...] [--unreviewed]
                                        (--unreviewed: build the AUR packages' newest commits without a
                                        review, for this run only; you chose it explicitly)
@@ -71,6 +76,11 @@ HELPER_SRC = os.path.join(os.path.dirname(os.path.realpath(__file__)), "kuwai-up
 FLATPAK_TARGET = re.compile(r"^(?:(user|system):)?([A-Za-z0-9][A-Za-z0-9._/-]*)$")
 NAME_OK = re.compile(r"^[a-z0-9@._+-]+$")
 SHA_OK = re.compile(r"^[0-9a-f]{40}$")
+ARTIFACT_KEEP = 1
+ARTIFACT_CAP_BYTES = 1024 ** 3
+FAILED_KEEP = 1
+PACMAN_CACHE = "/var/cache/pacman/pkg"
+SIZE_UNITS = {"B": 1, "KiB": 1024, "MiB": 1024 ** 2, "GiB": 1024 ** 3, "TiB": 1024 ** 4}
 
 
 def sh(cmd, **kw):
@@ -649,9 +659,14 @@ class Root:
             return rc or 127
         return 0
 
-    def run(self, op, progress=None, deps=(), files=()):
+    def run(self, op, progress=None, deps=(), files=(), keep=2):
         if not self.helper:
             self.prompts += 1
+            if op == "clean-cache":
+                if not shutil.which("paccache"):
+                    return 0
+                script = f'/usr/bin/paccache -rk{int(keep)} && /usr/bin/paccache -ruk0'
+                return self.R.stream(["pkexec", "/bin/sh", "-c", script], progress=progress)
             if op == "upgrade" and deps:
                 script = '/usr/bin/pacman -Syu --noconfirm --needed && /usr/bin/pacman -S --noconfirm --needed --asdeps -- "$@"'
                 return self.R.stream(["pkexec", "/bin/sh", "-c", script, "sh", *deps], progress=progress)
@@ -664,7 +679,10 @@ class Root:
             return rc
         self.R.log.write(f"$ (root) pacman {op} {' '.join([*deps, *files])}\n")
         try:
-            self.p.stdin.write(json.dumps({"op": op, "deps": list(deps), "files": list(files)}) + "\n")
+            payload = {"op": op, "deps": list(deps), "files": list(files)}
+            if op == "clean-cache":
+                payload = {"op": "clean-cache", "keep": int(keep)}
+            self.p.stdin.write(json.dumps(payload) + "\n")
             self.p.stdin.flush()
             for raw in self.p.stdout:
                 try:
@@ -724,8 +742,50 @@ def workspace_repository(stage):
     return repository
 
 
+def makepkg_config(stage):
+    """Write a build-local makepkg config that inherits user settings and disables -debug packages."""
+    cfg = os.path.join(stage, ".kuwai-makepkg.conf")
+    with open(cfg, "w", encoding="utf-8") as f:
+        f.write('[ -r /etc/makepkg.conf ] && source /etc/makepkg.conf\n')
+        f.write('[ -r "${XDG_CONFIG_HOME:-$HOME/.config}/pacman/makepkg.conf" ] && source "${XDG_CONFIG_HOME:-$HOME/.config}/pacman/makepkg.conf"\n')
+        f.write('[ -r "$HOME/.makepkg.conf" ] && source "$HOME/.makepkg.conf"\n')
+        f.write('OPTIONS+=(!debug)\n')
+    return cfg
+
+
+def enforce_artifact_cap(keep_batch=None):
+    """Evict oldest rollback artifact batches across all recipes until total stays within ARTIFACT_CAP_BYTES."""
+    if ARTIFACT_CAP_BYTES <= 0:
+        return 0
+    archives = os.path.join(CACHE, "artifacts")
+    entries = []
+    for recipe in subdirs(archives):
+        for b in subdirs(recipe):
+            if os.path.basename(b).startswith("installed-"):
+                entries.append((os.path.getmtime(b), b, recipe, tree_bytes(b)))
+    total = sum(e[3] for e in entries)
+    freed = 0
+    if total <= ARTIFACT_CAP_BYTES:
+        return 0
+    keep_real = os.path.realpath(keep_batch) if keep_batch else ""
+    for _, b, recipe, sz in sorted(entries, key=lambda e: e[0]):
+        if total <= ARTIFACT_CAP_BYTES:
+            break
+        if keep_real and os.path.realpath(b) == keep_real:
+            continue
+        shutil.rmtree(b, ignore_errors=True)
+        total -= sz
+        freed += sz
+        try:
+            if not os.listdir(recipe):
+                os.rmdir(recipe)
+        except OSError:
+            pass
+    return freed
+
+
 def finish_workspace(stage, files):
-    """Retain three successful artifact sets per recipe; release build sources."""
+    """Retain bounded rollback artifact sets per recipe; release build sources immediately."""
     repository = workspace_repository(stage)
     archives = os.path.join(CACHE, "artifacts", os.path.basename(repository))
     os.makedirs(archives, mode=0o700, exist_ok=True)
@@ -741,16 +801,15 @@ def finish_workspace(stage, files):
     batches = sorted((os.path.join(archives, n) for n in os.listdir(archives) if n.startswith("installed-")
                       and os.path.isdir(os.path.join(archives, n)) and not os.path.islink(os.path.join(archives, n))),
                      key=os.path.getmtime)
-    for old in batches[:-3]: shutil.rmtree(old)
+    drop = batches if ARTIFACT_KEEP <= 0 else batches[:-ARTIFACT_KEEP]
+    for old in drop:
+        shutil.rmtree(old)
+    enforce_artifact_cap(keep_batch=batch)
     return kept
 
 
 def prune_failed_workspaces():
-    """Only our new workspaces; legacy AUR caches and unknown directories stay intact.
-
-    Called while holding the global updater lock, after builds/install have ended.
-    Two failed workspaces per recipe remain available for diagnosis.
-    """
+    """Prune owned failed build workspaces beyond FAILED_KEEP and strip unpacked src/pkg trees."""
     builds = os.path.join(CACHE, "builds")
     if not os.path.isdir(builds): return
     groups = {}
@@ -762,8 +821,16 @@ def prune_failed_workspaces():
             continue
         groups.setdefault(repository, []).append(stage)
     for repository, stages in groups.items():
-        for old in sorted(stages, key=os.path.getmtime)[:-2]:
+        ordered = sorted(stages, key=os.path.getmtime)
+        drop = ordered if FAILED_KEEP <= 0 else ordered[:-FAILED_KEEP]
+        keep = [] if FAILED_KEEP <= 0 else ordered[-FAILED_KEEP:]
+        for old in drop:
             git(repository, "worktree", "remove", "--force", old, check=True)
+        for held in keep:
+            for sub in ("src", "pkg"):
+                p = os.path.join(held, sub)
+                if os.path.isdir(p) and not os.path.islink(p):
+                    shutil.rmtree(p, ignore_errors=True)
 
 
 def package_files(directory, wanted):
@@ -812,6 +879,330 @@ def missing_deps(d):
     if check_aur:
         return in_repo, aur_only, False
     return sorted(set(in_repo + check_repo)), aur_only, True
+
+
+def legacy_aur_dir():
+    """Where recipes lived before they moved to kuwai-data (057b5e8)."""
+    return os.path.join(CACHE, "aur")
+
+
+def stat_isdir(st):
+    return (st.st_mode & 0o170000) == 0o040000
+
+
+def tree_bytes(path):
+    """Allocated bytes under path; links are counted as links, never followed."""
+    try:
+        st = os.lstat(path)
+    except OSError:
+        return 0
+    total = st.st_blocks * 512
+    if not stat_isdir(st):
+        return total
+    for top, dirs, files in os.walk(path, followlinks=False, onerror=lambda e: None):
+        for name in dirs + files:
+            try:
+                total += os.lstat(os.path.join(top, name)).st_blocks * 512
+            except OSError:
+                pass
+    return total
+
+
+def subdirs(path):
+    """Real directories directly under path (no links), sorted by name."""
+    try:
+        names = sorted(os.listdir(path))
+    except OSError:
+        return []
+    out = []
+    for name in names:
+        full = os.path.join(path, name)
+        try:
+            if stat_isdir(os.lstat(full)):
+                out.append(full)
+        except OSError:
+            pass
+    return out
+
+
+def parse_size(text):
+    """Parse pacman/paccache human sizes into integer bytes."""
+    m = re.fullmatch(r"\s*([0-9]+(?:\.[0-9]+)?)\s*(B|KiB|MiB|GiB|TiB)\s*", text or "")
+    return int(float(m[1]) * SIZE_UNITS[m[2]]) if m else None
+
+
+def paccache_dry(args):
+    """Bytes paccache would remove, from its own dry run (read-only)."""
+    if not shutil.which("paccache"):
+        return None
+    r = sh(["paccache", "-d", "-c", PACMAN_CACHE, *args], timeout=60)
+    out = r.stdout + "\n" + r.stderr
+    if "no candidate packages found" in out:
+        return {"files": 0, "bytes": 0}
+    m = re.search(r"(\d+)\s+candidates?\s+\(disk space saved:\s*([^)]+)\)", out)
+    if not m:
+        return None
+    sz = parse_size(m[2])
+    return {"files": int(m[1]), "bytes": sz} if sz is not None else None
+
+
+def installed_sizes(names):
+    """Installed size per package, from one pacman -Qi call."""
+    if not names:
+        return {}
+    r = sh(["pacman", "-Qi", "--", *names], timeout=60)
+    out, name = {}, None
+    for line in r.stdout.splitlines():
+        if ":" not in line:
+            continue
+        key, value = line.split(":", 1)
+        key = key.strip()
+        if key == "Name":
+            name = value.strip()
+        elif key == "Installed Size" and name:
+            out[name] = parse_size(value)
+    return out
+
+
+def artifact_package_name(filename):
+    """Extract package name from name-ver-rel-arch.pkg.tar.*."""
+    stem = re.sub(r"\.pkg\.tar(\.[a-z0-9]+)?$", "", filename)
+    if stem == filename:
+        return None
+    parts = stem.rsplit("-", 3)
+    return parts[0] if len(parts) == 4 and parts[0] else None
+
+
+def update_running():
+    return sh(["systemctl", "--user", "is-active", "--quiet", UNIT + ".service"]).returncode == 0
+
+
+def storage_report():
+    """Every byte the updater owns, by purpose, with the retention it is held to."""
+    items = []
+    installed = set(sh(["pacman", "-Qq"], timeout=60).stdout.split())
+    receipts = load(INSTALLED, {})
+
+    items.append({"id": "recipes", "path": AUR_DIR, "owner": "kuwai-update", "keep": True,
+                  "purpose": "Reviewed recipe history: what review diffs and install receipts are checked against",
+                  "bytes": tree_bytes(AUR_DIR), "reclaimable": 0, "count": len(subdirs(AUR_DIR))})
+
+    builds = os.path.join(CACHE, "builds")
+    stages = [(d, tree_bytes(d)) for d in subdirs(builds)]
+    by_repo, unowned = {}, []
+    for d, size in stages:
+        try:
+            by_repo.setdefault(workspace_repository(d), []).append((d, size))
+        except (RuntimeError, OSError):
+            unowned.append(d)
+    over = [size for group in by_repo.values()
+            for _, size in (sorted(group, key=lambda e: os.path.getmtime(e[0])) if FAILED_KEEP <= 0
+                            else sorted(group, key=lambda e: os.path.getmtime(e[0]))[:-FAILED_KEEP])]
+    items.append({"id": "builds", "path": builds, "owner": "kuwai-update", "keep": False,
+                  "purpose": f"Failed build workspaces, {FAILED_KEEP} per recipe kept for diagnosis",
+                  "bytes": sum(size for _, size in stages), "reclaimable": sum(over),
+                  "count": len(stages), "unowned": unowned})
+
+    archives = os.path.join(CACHE, "artifacts")
+    entries = []
+    retained_batches = []
+    for recipe in subdirs(archives):
+        batches = sorted((b for b in subdirs(recipe) if os.path.basename(b).startswith("installed-")),
+                         key=os.path.getmtime)
+        sizes = {b: tree_bytes(b) for b in batches}
+        names = set()
+        for b in batches[-1:]:
+            try:
+                names = {n for f in os.listdir(b) if (n := artifact_package_name(f))}
+            except OSError:
+                pass
+        gone = bool(names) and not (names & installed)
+        drop = batches if (gone or ARTIFACT_KEEP <= 0) else batches[:-ARTIFACT_KEEP]
+        kept = [] if (gone or ARTIFACT_KEEP <= 0) else batches[-ARTIFACT_KEEP:]
+        for b in kept:
+            retained_batches.append((os.path.getmtime(b), sizes[b]))
+        free = sum(sizes[b] for b in drop)
+        entries.append({"recipe": os.path.basename(recipe), "batches": len(batches),
+                        "bytes": sum(sizes.values()), "reclaimable": free,
+                        **({"why": "none of its packages is installed any more"} if gone else {})})
+    artifact_total = sum(e["bytes"] for e in entries)
+    artifact_reclaim = sum(e["reclaimable"] for e in entries)
+    kept_total = sum(sz for _, sz in retained_batches)
+    if ARTIFACT_CAP_BYTES > 0 and kept_total > ARTIFACT_CAP_BYTES:
+        for _, sz in sorted(retained_batches, key=lambda e: e[0]):
+            if kept_total <= ARTIFACT_CAP_BYTES:
+                break
+            kept_total -= sz
+            artifact_reclaim += sz
+    items.append({"id": "artifacts", "path": archives, "owner": "kuwai-update", "keep": False,
+                  "purpose": f"Built packages for rollback, {ARTIFACT_KEEP} set per recipe (cap {ARTIFACT_CAP_BYTES // (1024 ** 2)} MiB)",
+                  "bytes": artifact_total, "reclaimable": artifact_reclaim,
+                  "capBytes": ARTIFACT_CAP_BYTES, "entries": entries})
+
+    legacy_dir = legacy_aur_dir()
+    legacy = []
+    for d in subdirs(legacy_dir):
+        name = os.path.basename(d)
+        ref = git(d, "for-each-ref", "--format=%(refname)", "refs/rice/installed", "refs/kuwai/installed").stdout.strip()
+        legacy.append({"recipe": name, "bytes": tree_bytes(d),
+                       "receipt": isinstance(receipts.get(name), dict), "legacyRef": bool(ref)})
+    items.append({"id": "legacy-aur", "path": legacy_dir, "owner": "nobody (pre-rename location)", "keep": False,
+                  "purpose": "Recipe clones and build trees from before recipes moved to kuwai-data; the updater no longer reads them",
+                  "bytes": sum(e["bytes"] for e in legacy), "reclaimable": sum(e["bytes"] for e in legacy),
+                  "entries": legacy,
+                  "note": "A recipe without a receipt is reviewed in full next time either way: a legacy ref cannot be verified."})
+
+    options = {"keep2": paccache_dry(["-k2"]), "keep1": paccache_dry(["-k1"]),
+               "keep0": paccache_dry(["-k0"]), "uninstalled": paccache_dry(["-uk0"])}
+    try:
+        stale = sorted(n for n in os.listdir(PACMAN_CACHE) if n.startswith("download-"))
+    except OSError:
+        stale = []
+    items.append({"id": "pacman-cache", "path": PACMAN_CACHE, "owner": "pacman", "keep": False,
+                  "purpose": "Package files pacman downloaded; paccache prunes it",
+                  "bytes": tree_bytes(PACMAN_CACHE),
+                  "reclaimable": sum((options[k] or {}).get("bytes", 0) for k in ("keep2", "uninstalled")),
+                  "policy": "paccache -rk2 (installed + one older version) and -ruk0 (nothing of removed packages)",
+                  "options": options,
+                  "staleDownloads": len(stale)})
+
+    orphan_names = sh(["pacman", "-Qdtq"], timeout=60).stdout.split()
+    debug_names = sorted(n for n in installed if n.endswith("-debug") and n[:-len("-debug")] in installed)
+    sizes = installed_sizes(orphan_names + debug_names)
+    packages = {"orphans": [{"name": n, "bytes": sizes.get(n)} for n in orphan_names],
+                "debug": [{"name": n, "bytes": sizes.get(n)} for n in debug_names]}
+
+    return {"schema": 1, "dryRun": True, "at": int(time.time()), "running": update_running(),
+            "bytes": sum(i["bytes"] for i in items), "reclaimable": sum(i["reclaimable"] for i in items),
+            "items": items, "packages": packages}
+
+
+def clean_storage(args):
+    """Reclaim legacy AUR trees, stale/over-cap artifacts, owned failed builds, and optionally pacman cache."""
+    dry = "--dry-run" in args
+    want_all = "--all" in args
+    want_legacy = want_all or "--legacy" in args
+    want_artifacts = want_all or "--artifacts" in args
+    want_builds = want_all or "--builds" in args
+    want_pacman = "--pacman" in args
+    if not (want_legacy or want_artifacts or want_builds or want_pacman):
+        want_legacy = want_artifacts = want_builds = True
+
+    os.makedirs(RUNTIME, exist_ok=True)
+    lock = open(LOCK, "w")
+    try:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        lock.close()
+        return {"ok": False, "error": "An update is currently running."}
+
+    actions = []
+    freed = 0
+    try:
+        if want_legacy:
+            legacy_dir = legacy_aur_dir()
+            cache_real = os.path.realpath(CACHE)
+            if os.path.isdir(legacy_dir) and not os.path.islink(legacy_dir) and os.path.dirname(os.path.realpath(legacy_dir)) == cache_real:
+                sz = tree_bytes(legacy_dir)
+                if not dry:
+                    shutil.rmtree(legacy_dir)
+                freed += sz
+                actions.append({"id": "legacy-aur", "path": legacy_dir, "bytes": sz})
+
+        if want_artifacts:
+            installed = set(sh(["pacman", "-Qq"], timeout=60).stdout.split())
+            archives = os.path.join(CACHE, "artifacts")
+            art_freed = 0
+            removed_batches = 0
+            for recipe in subdirs(archives):
+                batches = sorted((b for b in subdirs(recipe) if os.path.basename(b).startswith("installed-")),
+                                 key=os.path.getmtime)
+                names = set()
+                for b in batches[-1:]:
+                    try:
+                        names = {n for f in os.listdir(b) if (n := artifact_package_name(f))}
+                    except OSError:
+                        pass
+                gone = bool(names) and not (names & installed)
+                drop = batches if (gone or ARTIFACT_KEEP <= 0) else batches[:-ARTIFACT_KEEP]
+                for old in drop:
+                    sz = tree_bytes(old)
+                    if not dry:
+                        shutil.rmtree(old, ignore_errors=True)
+                    art_freed += sz
+                    removed_batches += 1
+                if not dry:
+                    try:
+                        if not os.listdir(recipe):
+                            os.rmdir(recipe)
+                    except OSError:
+                        pass
+            if ARTIFACT_CAP_BYTES > 0:
+                if dry:
+                    rem = []
+                    for recipe in subdirs(archives):
+                        batches = sorted((b for b in subdirs(recipe) if os.path.basename(b).startswith("installed-")),
+                                         key=os.path.getmtime)
+                        names = set()
+                        for b in batches[-1:]:
+                            try:
+                                names = {n for f in os.listdir(b) if (n := artifact_package_name(f))}
+                            except OSError:
+                                pass
+                        gone = bool(names) and not (names & installed)
+                        kept = [] if (gone or ARTIFACT_KEEP <= 0) else batches[-ARTIFACT_KEEP:]
+                        for b in kept:
+                            rem.append((os.path.getmtime(b), tree_bytes(b)))
+                    tot = sum(sz for _, sz in rem)
+                    for _, sz in sorted(rem, key=lambda e: e[0]):
+                        if tot <= ARTIFACT_CAP_BYTES:
+                            break
+                        tot -= sz
+                        art_freed += sz
+                        removed_batches += 1
+                else:
+                    cap_freed = enforce_artifact_cap()
+                    art_freed += cap_freed
+            freed += art_freed
+            actions.append({"id": "artifacts", "path": archives, "bytes": art_freed, "removedBatches": removed_batches})
+
+        if want_builds:
+            builds = os.path.join(CACHE, "builds")
+            b_freed = 0
+            b_count = 0
+            for stage in subdirs(builds):
+                try:
+                    repo = workspace_repository(stage)
+                except (RuntimeError, OSError):
+                    continue
+                sz = tree_bytes(stage)
+                if not dry:
+                    git(repo, "worktree", "remove", "--force", stage)
+                    if os.path.isdir(stage):
+                        shutil.rmtree(stage, ignore_errors=True)
+                b_freed += sz
+                b_count += 1
+            freed += b_freed
+            actions.append({"id": "builds", "path": builds, "bytes": b_freed, "removedWorkspaces": b_count})
+
+        if want_pacman:
+            keep2 = paccache_dry(["-k2"]) or {}
+            uninst = paccache_dry(["-uk0"]) or {}
+            est = keep2.get("bytes", 0) + uninst.get("bytes", 0)
+            rc = 0
+            if not dry:
+                R = Run()
+                root = Root(R)
+                try:
+                    rc = root.run("clean-cache", keep=2)
+                finally:
+                    root.close()
+            if rc == 0:
+                freed += est
+            actions.append({"id": "pacman-cache", "path": PACMAN_CACHE, "bytes": est if rc == 0 else 0, "rc": rc})
+    finally:
+        lock.close()
+    return {"ok": all(a.get("rc", 0) == 0 for a in actions), "dryRun": dry, "freedBytes": freed, "actions": actions}
 
 
 def run(args):
@@ -925,7 +1316,8 @@ def run_locked(args):
             R.emit(e="phase", id="build", label=f"Building {pkg}", k=i, n=len(plan))
             if not tests:
                 R.emit(e="log", line=f"{pkg}: its tests need AUR packages; building without them (--nocheck)")
-            rc = R.stream(["makepkg", "-f", "--noconfirm", "--noprogressbar", *([] if tests else ["--nocheck"])], cwd=d)
+            cfg = makepkg_config(d)
+            rc = R.stream(["makepkg", "-f", "-c", "--noconfirm", "--noprogressbar", "--config", cfg, *([] if tests else ["--nocheck"])], cwd=d)
             if rc != 0:
                 why = "build failed (see the log)"
                 if rc == 13:
@@ -966,6 +1358,9 @@ def run_locked(args):
                     except Exception as ex:
                         R.emit(e="log", line=f"Build files retained for diagnosis: {ex}")
                 save(APPROVED, approved)
+        if root.helper and root.p and (result["repo"] or result["installed"]):
+            R.emit(e="phase", id="clean", label="Pruning package cache")
+            root.run("clean-cache", keep=2)
     finally:
         root.close()
     result["prompts"] = root.prompts
@@ -1020,6 +1415,12 @@ def main(argv):
             save(TRUSTED, sorted(t))
         elif cmd == "state":
             print(json.dumps({"approved": load(APPROVED, {}), "trusted": load(TRUSTED, [])}))
+        elif cmd == "storage" and len(argv) == 1:
+            print(json.dumps(storage_report()))
+        elif cmd == "clean":
+            res = clean_storage(argv[1:])
+            print(json.dumps(res))
+            return 0 if res.get("ok") else 1
         elif cmd == "run":
             return run(argv[1:])
         elif cmd == "install-helper":

@@ -116,3 +116,17 @@ def test_files_only_your_package_files(ur, tmp_path):
             ur.files({"files": bad}, home, uid)
     with pytest.raises(ValueError):            # someone else's file
         ur.files({"files": [str(pkg)]}, home, uid + 1)
+
+
+@pytest.mark.parametrize("keep", [-1, 6, "2", True, False, None, 1.5])
+def test_clean_cache_refuses_invalid_keep(ur, keep):
+    with pytest.raises(ValueError):
+        ur.clean_cache({"keep": keep})
+
+
+def test_clean_cache_runs_paccache_with_bounded_keep(ur, monkeypatch):
+    ran = []
+    monkeypatch.setattr(ur.os.path, "isfile", lambda p: p == ur.PACCACHE)
+    monkeypatch.setattr(ur, "run_tool", lambda cmd: (ran.append(cmd) or 0))
+    assert ur.clean_cache({"keep": 2}) == 0
+    assert ran == [[ur.PACCACHE, "-rk2"], [ur.PACCACHE, "-ruk0"]]

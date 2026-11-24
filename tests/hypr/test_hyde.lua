@@ -52,5 +52,36 @@ local wall = false
 for _, c in ipairs(execs) do if c:find('/fixture/.local/lib/hyde/wallpaper.sh', 1, true) then wall = true end end
 assert(wall, "HyDE: its wallpaper starts from HyDE's own folder")
 
+local native_binds = {}
+_G.hl = {
+    dsp = {
+        global = function(name) return 'global:' .. name end,
+        window = setmetatable({}, { __index = function() return function() return '' end end }),
+        group = setmetatable({}, { __index = function() return function() return '' end end }),
+        workspace = setmetatable({}, { __index = function() return function() return '' end end }),
+        focus = function() return '' end,
+        layout = function() return '' end,
+    },
+    exec_cmd = function() end,
+    dispatch = function() end,
+    get_active_window = function() return nil end,
+}
+package.loaded['kuwai.core'] = {
+    home = '/fixture', bin = '/fixture/bin', hyde = false, hyde_lib = '/fixture/.local/lib/hyde', apps = {},
+    has = function() return false end,
+    exists = function() return false end,
+    feature = function() return false end,
+    get = function() return 'us' end,
+    bind = function(keys, _, act) native_binds[keys] = act end,
+    group = function() end,
+}
+package.loaded['kuwai.actions'] = setmetatable({}, { __index = function() return function() return '' end end })
+package.loaded['kuwai.workspaces'] = setmetatable({}, { __index = function() return function() return '' end end })
+dofile('hypr/kuwai/binds.lua')
+assert(native_binds['SUPER + comma'] == 'global:kuwai:emoji', 'no HyDE: emoji bind still exists')
+assert(native_binds['SUPER + period'] == 'global:kuwai:glyphs', 'no HyDE: glyphs bind still exists')
+assert(native_binds['CTRL + ALT + W'] == 'global:kuwai:island-tuck', 'no HyDE: island-tuck bind still exists')
+assert(native_binds['CTRL + ALT + SHIFT + W'] == 'global:kuwai:island-style', 'no HyDE: island-style bind still exists')
+
 os.execute('rm -rf ' .. tmp)
 print('test_hyde: ok')

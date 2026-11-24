@@ -9,6 +9,9 @@ put back. Run from the repo (wherever you cloned it).
   ./install.sh               install (or update the install) for this user
   ./install.sh --dry-run     say what it would do; change nothing
   ./install.sh --deps        also install missing packages (sudo pacman; all in the official repos)
+  ./install.sh --yes         pass --noconfirm when installing packages with --deps
+  ./install.sh --print-missing  print missing required packages/fonts one per line and exit
+  ./install.sh --no-services skip linking and enabling systemd user units
   ./install.sh --uninstall   put back what was there before the first install
   ./install.sh --doctor      only check (kuwai doctor + kuwai-check)
 
@@ -36,11 +39,14 @@ STATE=${XDG_STATE_HOME:-$HOME/.local/state}/kuwai
 STABLE=$DATA/kuwai
 UNITS=(kuwai-auth.service kuwai-shell.service kuwai-shell-broken.service kuwai-clipboard.service kuwai-feeds.service kuwai-backup.service kuwai-backup.timer)
 
-DRY=0; DEPS=0; MODE=install
+DRY=0; DEPS=0; YES=0; PRINT_MISSING=0; NO_SERVICES=0; MODE=install
 for a in "$@"; do
     case $a in
         --dry-run) DRY=1 ;;
         --deps) DEPS=1 ;;
+        --yes|-y) YES=1 ;;
+        --print-missing) PRINT_MISSING=1 ;;
+        --no-services) NO_SERVICES=1 ;;
         --uninstall) MODE=uninstall ;;
         --doctor) MODE=doctor ;;
         -h|--help) usage; exit 0 ;;
@@ -55,39 +61,70 @@ warn() { printf '  • %s\n' "$*"; }
 do_()  { if [ $DRY = 1 ]; then printf '  would: %s\n' "$*"; else "$@"; fi; }
 userbus() { systemctl --user show-environment >/dev/null 2>&1; }
 
-NEED="Hyprland:hyprland qs:quickshell cliphist:cliphist wl-copy:wl-clipboard jq:jq grim:grim slurp:slurp
-brightnessctl:brightnessctl pw-play:pipewire-audio wpctl:wireplumber notify-send:libnotify curl:curl
-setpriv:util-linux gdbus:glib2 python3:python luac:lua playerctl:playerctl git:git"
-OPTIONAL="satty:satty(screenshot-editing) tesseract:tesseract(copy-text-from-images) mpv:mpv(live-wallpapers) mpvpaper:mpvpaper(live-wallpapers-outside-the-shell) socat:socat(live-wallpapers-outside-the-shell)
-magick:imagemagick(thumbnails) pdftoppm:poppler(PDF-previews) kitty:kitty(terminal) secret-tool:libsecret(Gmail-password-in-keyring)
-gh:github-cli(GitHub-notifications) wtype:wtype(typing-emoji-into-windows) ydotool:ydotool(tests) ddcutil:ddcutil(external-monitor-brightness)"
-FONTS="Inter:inter-font|Symbols Nerd Font:ttf-nerd-fonts-symbols"
+read_pkg_file() {
+    [ -f "$1" ] || return 1
+    awk 'NF && $1 !~ /^#/' "$1"
+}
+
+NEED_LIST=$(read_pkg_file "$REPO/packages/core.txt" || printf '%s\n' \
+    Hyprland:hyprland qs:quickshell cliphist:cliphist wl-copy:wl-clipboard jq:jq grim:grim slurp:slurp \
+    brightnessctl:brightnessctl pw-play:pipewire-audio wpctl:wireplumber notify-send:libnotify curl:curl \
+    setpriv:util-linux gdbus:glib2 python3:python luac:lua playerctl:playerctl git:git file:file)
+OPTIONAL_LIST=$(read_pkg_file "$REPO/packages/optional.txt" || printf '%s\n' \
+    'satty:satty(screenshot-editing)' 'tesseract:tesseract(copy-text-from-images)' 'mpv:mpv(live-wallpapers)' \
+    'mpvpaper:mpvpaper(live-wallpapers-outside-the-shell)' 'socat:socat(live-wallpapers-outside-the-shell)' \
+    'magick:imagemagick(thumbnails)' 'pdftoppm:poppler(PDF-previews)' 'kitty:kitty(terminal)' \
+    'secret-tool:libsecret(Gmail-password-in-keyring)' 'gh:github-cli(GitHub-notifications)' \
+    'wtype:wtype(typing-emoji-into-windows)' 'ydotool:ydotool(tests)' 'ddcutil:ddcutil(external-monitor-brightness)')
+FONTS_LIST=$(read_pkg_file "$REPO/packages/fonts.txt" || printf '%s\n' \
+    'Inter:inter-font' 'Symbols Nerd Font:ttf-nerd-fonts-symbols')
+
+has_pkg() {
+    local b=$1 p=$2
+    if [ -n "$b" ]; then
+        command -v "$b" >/dev/null
+    elif command -v pacman >/dev/null; then
+        pacman -Q "$p" >/dev/null 2>&1
+    else
+        return 0
+    fi
+}
 
 check_deps() {
-    step "Packages"
+    [ $PRINT_MISSING = 1 ] || step "Packages"
     local missing=() fonts=()
-    for pair in $NEED; do
+    while IFS= read -r pair; do
+        [ -n "$pair" ] || continue
         b=${pair%%:*}; p=${pair#*:}
-        if command -v "$b" >/dev/null; then ok "$b"; else warn "missing: $b (package $p)"; missing+=("$p"); fi
-    done
-    for pair in $OPTIONAL; do
-        b=${pair%%:*}; rest=${pair#*:}; p=${rest%%(*}; why=${rest#*(}; why=${why%)}
-        command -v "$b" >/dev/null || warn "optional, not installed: $p — for ${why//-/ }"
-    done
+        if has_pkg "$b" "$p"; then [ $PRINT_MISSING = 1 ] || ok "${b:-$p}"; else [ $PRINT_MISSING = 1 ] || warn "missing: ${b:-$p} (package $p)"; missing+=("$p"); fi
+    done <<<"$NEED_LIST"
+    if [ $PRINT_MISSING = 0 ]; then
+        while IFS= read -r pair; do
+            [ -n "$pair" ] || continue
+            b=${pair%%:*}; rest=${pair#*:}; p=${rest%%(*}; why=${rest#*(}; why=${why%)}
+            has_pkg "$b" "$p" || warn "optional, not installed: $p — for ${why//-/ }"
+        done <<<"$OPTIONAL_LIST"
+    fi
     local have; have=$(fc-list : family 2>/dev/null | tr ',' '\n' || true)
     local sf=0; grep -qx -- "SF Pro Text" <<<"$have" && grep -qx -- "SF Pro Display" <<<"$have" && sf=1
-    IFS='|' read -ra fl <<<"$FONTS"
-    for f in "${fl[@]}"; do
+    while IFS= read -r f; do
+        [ -n "$f" ] || continue
         name=${f%%:*}; p=${f#*:}
-        if grep -qx -- "$name\( Variable\)\?" <<<"$have"; then ok "font: $name"
+        if grep -qx -- "$name\( Variable\)\?" <<<"$have"; then [ $PRINT_MISSING = 1 ] || ok "font: $name"
         elif [ "$name" = Inter ] && [ $sf = 1 ]; then :
-        else warn "missing font: $name (package $p; the shell falls back to sans-serif)"; fonts+=("$p"); fi
-    done
+        else [ $PRINT_MISSING = 1 ] || warn "missing font: $name (package $p; the shell falls back to sans-serif)"; fonts+=("$p"); fi
+    done <<<"$FONTS_LIST"
+    if [ $PRINT_MISSING = 1 ]; then
+        for p in "${missing[@]}" "${fonts[@]}"; do printf '%s\n' "$p"; done
+        return 0
+    fi
     [ $sf = 1 ] && ok "font: SF Pro (found: the shell uses it instead of Inter)" \
         || say "  (SF Pro is used instead of Inter if you install it yourself; Apple's licence limits it to Apple platforms)"
     if [ ${#missing[@]} -gt 0 ] || [ ${#fonts[@]} -gt 0 ]; then
         if [ $DEPS = 1 ] && [ $DRY = 0 ]; then
-            sudo pacman -S --needed "${missing[@]}" "${fonts[@]}"
+            local pflags=(--needed)
+            [ $YES = 1 ] && pflags+=(--noconfirm)
+            sudo pacman -S "${pflags[@]}" "${missing[@]}" "${fonts[@]}"
         else
             say "  install: sudo pacman -S --needed ${missing[*]} ${fonts[*]}"
             say "  (or rerun with --deps)"
@@ -177,22 +214,26 @@ install_all() {
     done
 
     step "User services"
-    do_ mkdir -p "$CFG/systemd/user"
-    for u in "${UNITS[@]}"; do
-        local dst=$CFG/systemd/user/$u src=$STABLE/systemd/$u
-        [ -f "$src" ] || src=$REPO/systemd/$u
-        if [ "$(readlink -f "$dst" 2>/dev/null)" = "$(readlink -f "$src")" ]; then ok "$u linked"
-        else place -s "$src" "$dst"; ok "$u → $src"; fi
-    done
-    if [ $DRY = 0 ] && ! userbus; then
-        warn "no user session to enable them in (a text console or SSH); once you're logged in to Hyprland run:"
-        say "    systemctl --user daemon-reload && systemctl --user enable ${UNITS[*]}"
+    if [ $NO_SERVICES = 1 ]; then
+        ok "skipped (--no-services)"
     else
-        do_ systemctl --user daemon-reload
+        do_ mkdir -p "$CFG/systemd/user"
         for u in "${UNITS[@]}"; do
-            [ $DRY = 1 ] || ORIG unit "$u"
-            do_ systemctl --user enable "$u" >/dev/null 2>&1 || warn "couldn't enable $u"
+            local dst=$CFG/systemd/user/$u src=$STABLE/systemd/$u
+            [ -f "$src" ] || src=$REPO/systemd/$u
+            if [ "$(readlink -f "$dst" 2>/dev/null)" = "$(readlink -f "$src")" ]; then ok "$u linked"
+            else place -s "$src" "$dst"; ok "$u → $src"; fi
         done
+        if [ $DRY = 0 ] && ! userbus; then
+            warn "no user session to enable them in (a text console or SSH); once you're logged in to Hyprland run:"
+            say "    systemctl --user daemon-reload && systemctl --user enable ${UNITS[*]}"
+        else
+            do_ systemctl --user daemon-reload
+            for u in "${UNITS[@]}"; do
+                [ $DRY = 1 ] || ORIG unit "$u"
+                do_ systemctl --user enable "$u" >/dev/null 2>&1 || warn "couldn't enable $u"
+            done
+        fi
     fi
 
     [ $DRY = 1 ] || { step "Original state"; ok "kept in $STATE/original (./install.sh --uninstall puts it back)"; }
@@ -241,6 +282,11 @@ doctor() {
     fi
     return $rc
 }
+
+if [ $PRINT_MISSING = 1 ]; then
+    check_deps
+    exit 0
+fi
 
 case $MODE in
     install) install_all ;;

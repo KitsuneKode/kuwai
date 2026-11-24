@@ -11,5 +11,5 @@ PartOf=graphical-session.target
 Type=simple
 WorkingDirectory=%h
 EnvironmentFile=-%t/kuwai/shell.env
-ExecStart=/bin/sh -c 'exec "${KUWAI_SHELL_ROOT:-${KUWAI_ROOT:-%h/Projects/rice}}/bin/kuwai-shell" --broken'
+ExecStart=/bin/sh -c 'exec "${KUWAI_SHELL_ROOT:-${KUWAI_ROOT:-%h/.local/share/kuwai}}/bin/kuwai-shell" --broken'
 Slice=session.slice

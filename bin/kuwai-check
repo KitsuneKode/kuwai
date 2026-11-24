@@ -139,6 +139,8 @@ fi
 KUWAI_ROOT="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
 if out=$("$KUWAI_ROOT/bin/kuwai-tokens" --check 2>&1); then ok "$out"; else bad "tokens went up: $out (use Theme tokens)"; fi
 if out=$("$KUWAI_ROOT/bin/kuwai-comments" --check 2>&1); then ok "$out"; else bad "comments went up: $out (run /delete-comment)"; fi
+if out=$("$KUWAI_ROOT/bin/kuwai-layers" --check 2>&1); then ok "$out"; else bad "layers went up: $out (components cannot import services/modules)"; fi
+if out=$("$KUWAI_ROOT/bin/kuwai-hyde-ratchet" --check 2>&1); then ok "$out"; else bad "hyde references went up: $out"; fi
 
 if [ $SHOTS = 1 ]; then
     commit=$(git -C "$root" rev-parse --short HEAD 2>/dev/null || echo unknown)

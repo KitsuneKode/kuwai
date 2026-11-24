@@ -15,6 +15,7 @@ It reads one JSON request per line on stdin and only ever runs pacman:
     {"op": "deps", "deps": [PKG...]}      pacman -S --noconfirm --needed --asdeps PKG...
     {"op": "install", "files": [FILE...]} pacman -U --noconfirm --needed FILE...
                                           (package files owned by you, in your home folder)
+    {"op": "clean-cache", "keep": 2}      paccache -rk<keep> and paccache -ruk0 (0 <= keep <= 5)
     {"op": "pacnew", "items": [{"path": "/etc/X", "action": "keep"|"take"}]}
                                           a config file's .pacnew after an update: keep yours
                                           (delete X.pacnew) or take the new default (X.pacnew
@@ -40,6 +41,7 @@ import stat
 import time
 
 PACMAN = "/usr/bin/pacman"
+PACCACHE = "/usr/bin/paccache"
 OUT = "/run/kuwai-update-root.out"
 NAME = re.compile(r"^[a-z0-9@_+][a-z0-9@._+-]*$")
 PKGFILE = re.compile(r"\.pkg\.tar(\.[a-z0-9]+)?$")
@@ -59,9 +61,9 @@ def say(**msg):
         alive = False
 
 
-def pacman(args):
+def run_tool(cmd):
     with open(OUT, "w") as w:
-        p = subprocess.Popen([PACMAN, *args], stdin=subprocess.DEVNULL, stdout=w, stderr=subprocess.STDOUT,
+        p = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=w, stderr=subprocess.STDOUT,
                              env=ENV, start_new_session=True)
     pending = ""
     with open(OUT) as r:
@@ -80,6 +82,23 @@ def pacman(args):
                 return p.returncode
             else:
                 time.sleep(0.1)
+
+
+def pacman(args):
+    return run_tool([PACMAN, *args])
+
+
+def clean_cache(req):
+    """Prune /var/cache/pacman/pkg using paccache with a bounded keep count."""
+    keep = req.get("keep", 2)
+    if isinstance(keep, bool) or not isinstance(keep, int) or keep < 0 or keep > 5:
+        raise ValueError(f"invalid keep count: {keep!r}")
+    if not os.path.isfile(PACCACHE):
+        say(log="paccache not installed; skipping pacman cache cleanup")
+        return 0
+    rc = run_tool([PACCACHE, f"-rk{keep}"])
+    rc2 = run_tool([PACCACHE, "-ruk0"])
+    return rc if rc != 0 else rc2
 
 
 def names(req):
@@ -170,6 +189,8 @@ def main():
                 rc = pacnew(req)
             elif op == "install":
                 rc = pacman(["-U", "--noconfirm", "--needed", "--", *files(req, home, uid)])
+            elif op == "clean-cache":
+                rc = clean_cache(req)
             else:
                 raise ValueError(f"unknown request {op!r}")
         except (ValueError, OSError, TypeError, AttributeError) as ex:

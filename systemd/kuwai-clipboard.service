@@ -9,7 +9,7 @@ PartOf=graphical-session.target
 After=graphical-session.target
 
 [Service]
-ExecStart=/bin/sh -c 'R="${KUWAI_ROOT:-%h/Projects/rice}"; wl-paste --type text --watch cliphist store & wl-paste --type image --watch cliphist store & wl-paste --watch "$R/bin/kuwai-clip" stamp & wait -n; exit 1'
+ExecStart=/bin/sh -c 'R="${KUWAI_ROOT:-%h/.local/share/kuwai}"; wl-paste --type text --watch cliphist store & wl-paste --type image --watch cliphist store & wl-paste --watch "$R/bin/kuwai-clip" stamp & wait -n; exit 1'
 Restart=always
 RestartSec=1
 Slice=background.slice

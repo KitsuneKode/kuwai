@@ -33,9 +33,9 @@ ShellRoot {
     property string error: ""
     property int failures: 0
     property string farewell: ""
-    readonly property string name: "kitsunekode"
+    readonly property string name: Quickshell.env("KUWAI_GREETER_USER") || Quickshell.env("USER") || "user"
     readonly property string face: Quickshell.env("HOME") + "/.face"
-    readonly property string wallpaper: "/usr/share/sddm/themes/sddm-astronaut-theme/Backgrounds/post-apocalyptic_hacker.png"
+    readonly property string wallpaper: Quickshell.env("KUWAI_GREETER_WALL") || ""
     readonly property string desktopWall: Hyde.wallpaper
     readonly property color accent: Theme.loginAccent
     function submit() {}

@@ -11,7 +11,7 @@ PanelWindow {
     property int page: 0
     property string query: ""
     // The laptop's screen when there is one: a test picture, not over your work.
-    screen: Quickshell.screens.find(s => s.name === "eDP-1") || null
+    screen: Quickshell.screens.find(s => s.name === (Quickshell.env("KUWAI_PREVIEW_SCREEN") || "eDP-1")) || Quickshell.screens[0] || null
     anchors { top: true; left: true }
     margins { top: 80; left: 80 }
     implicitWidth: 780

@@ -24,16 +24,12 @@ end
 
 group("Pickers")
 local vic = K.has("vicinae")
-bind("SUPER + comma", "Emoji", hl.dsp.global("kuwai:emoji"))
-bind("SUPER + period", "Glyphs", hl.dsp.global("kuwai:glyphs"))
 bind("SUPER + SHIFT + E", "Find a file", vic and "vicinae cmd launch files:search" or rofi(hyde("rofilaunch.sh") .. " f"))
 bind("SUPER + SHIFT + A", "Rofi style", rofi(hyde("rofiselect.sh")))
 
 group("Theming")
 bind("SUPER + SHIFT + R", "Wallbash mode", rofi(hyde("wallbashtoggle.sh") .. " -m"), { locked = true })
 bind("SUPER + SHIFT + U", "Lock screen layout", rofi(hyde("hyprlock.sh") .. " --select"))
-bind("CTRL + ALT + W", "Top bar: tuck the island (Minimal ⇄ Hidden) / Waybar on/off", hl.dsp.global("kuwai:island-tuck"), { locked = true })
-bind("CTRL + ALT + SHIFT + W", "Island: minimal ⇄ everything (workspaces, time, status)", hl.dsp.global("kuwai:island-style"), { locked = true })
 
 group("Utilities")
 bind("SUPER + SHIFT + G", "Game launcher", hyde("gamelauncher.sh"))

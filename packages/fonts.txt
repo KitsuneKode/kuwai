@@ -1,0 +1,2 @@
+Inter:inter-font
+Symbols Nerd Font:ttf-nerd-fonts-symbols

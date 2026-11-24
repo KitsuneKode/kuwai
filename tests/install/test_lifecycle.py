@@ -23,6 +23,8 @@ def install_env(tmp_path):
         shutil.copy2(helper, repo / 'bin/kuwai_install.py')
     shutil.copy2(ROOT / 'bin/kuwai-home', repo / 'bin/kuwai-home')
     shutil.copytree(ROOT / 'home', repo / 'home')
+    if (ROOT / 'packages').is_dir():
+        shutil.copytree(ROOT / 'packages', repo / 'packages')
     (repo / 'hypr/templates').mkdir(parents=True)
     (repo / 'hypr/templates/hyprland.lua').write_text('-- installed entry\n')
     (repo / 'systemd').mkdir()
@@ -37,7 +39,7 @@ def install_env(tmp_path):
     tools.mkdir()
     for name in ('Hyprland', 'qs', 'cliphist', 'wl-copy', 'jq', 'grim', 'slurp',
                  'brightnessctl', 'pw-play', 'wpctl', 'notify-send', 'curl',
-                 'setpriv', 'gdbus', 'luac', 'playerctl', 'git', 'fc-list'):
+                 'setpriv', 'gdbus', 'luac', 'playerctl', 'git', 'file', 'fc-list'):
         p = tools / name
         p.write_text('#!/bin/sh\nexit 0\n')
         p.chmod(0o755)
@@ -261,7 +263,20 @@ def test_install_without_a_user_session_links_and_says_how_to_enable(install_env
 
 def test_the_glyph_font_is_the_package_that_has_it():
     # ttf-nerd-fonts-symbols-mono is "Symbols Nerd Font Mono"; the shell asks for "Symbols Nerd Font".
-    text = (ROOT / 'install.sh').read_text()
-    assert 'Symbols Nerd Font:ttf-nerd-fonts-symbols"' in text
+    text = (ROOT / 'packages/fonts.txt').read_text()
+    assert 'Symbols Nerd Font:ttf-nerd-fonts-symbols' in text
     assert 'Theme.fontGlyph' not in text
     assert '"Symbols Nerd Font"' in (ROOT / 'shell/config/Theme.qml').read_text()
+
+
+def test_install_no_services_skips_unit_links(install_env):
+    out = install_env.run('--no-services')
+    assert 'skipped (--no-services)' in out
+    assert not any((install_env.cfg / 'systemd/user' / u).exists() for u in UNITS)
+
+
+def test_install_print_missing_lists_missing_packages_only(install_env):
+    core = install_env.repo / 'packages/core.txt'
+    core.write_text(core.read_text() + 'kuwai-no-such-bin-xyz:kuwai-missing-pkg\n')
+    out = install_env.run('--print-missing')
+    assert 'kuwai-missing-pkg' in out.splitlines()

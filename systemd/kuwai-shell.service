@@ -36,9 +36,9 @@ EnvironmentFile=-%t/kuwai/shell.env
 # systemd restarts it; Quickshell's own handler re-execs in place instead.
 Environment=QS_DISABLE_CRASH_HANDLER=1
 Environment=KUWAI_SHELL_UNIT=1
-ExecStart=/bin/sh -c 'exec "${KUWAI_SHELL_ROOT:-${KUWAI_ROOT:-%h/Projects/rice}}/bin/kuwai-shell" --run'
+ExecStart=/bin/sh -c 'exec "${KUWAI_SHELL_ROOT:-${KUWAI_ROOT:-%h/.local/share/kuwai}}/bin/kuwai-shell" --run'
 # Takes org.freedesktop.Notifications back from dunst, then applies the bar.
-ExecStartPost=-/bin/sh -c 'exec "${KUWAI_SHELL_ROOT:-${KUWAI_ROOT:-%h/Projects/rice}}/bin/kuwai-shell" --settle'
+ExecStartPost=-/bin/sh -c 'exec "${KUWAI_SHELL_ROOT:-${KUWAI_ROOT:-%h/.local/share/kuwai}}/bin/kuwai-shell" --settle'
 Restart=always
 RestartSec=1
 # SIGKILL: Quickshell 0.3.2 can segfault tearing down on a polite exit. And

@@ -21,7 +21,7 @@ do
 			break
 		end
 	end
-	KUWAI_ROOT = KUWAI_ROOT or (home .. "/Projects/rice")
+	KUWAI_ROOT = KUWAI_ROOT or (data .. "/kuwai")
 end
 package.path = KUWAI_ROOT .. "/hypr/?.lua;" .. package.path
 

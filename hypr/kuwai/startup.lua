@@ -6,26 +6,31 @@ end
 
 hl.on("hyprland.start", function()
     print("[kuwai-handoff " .. (os.getenv("KUWAI_HANDOFF_ID") or "unknown") .. "] hyprland-start-hook")
-	hl.exec_cmd(K.bin .. "/kuwai-session-env")
 	hl.exec_cmd("hyprctl setcursor " .. K.cursor.theme .. " " .. K.cursor.size)
 
-	hl.exec_cmd(unit("gcr-ssh-agent.socket"))
+	local auth_unit = "plasma-polkit-agent.service"
 	local f = os.getenv("HOME") and io.open(os.getenv("HOME") .. "/.config/systemd/user/kuwai-auth.service", "r")
 	if f then
 		f:close()
-		hl.exec_cmd(unit("kuwai-auth.service"))
-	else
-		hl.exec_cmd(unit("plasma-polkit-agent.service"))
+		auth_unit = "kuwai-auth.service"
 	end
+	hl.exec_cmd(
+		K.q(K.bin .. "/kuwai-session-env")
+			.. "; "
+			.. unit("gcr-ssh-agent.socket")
+			.. "; "
+			.. unit(auth_unit)
+			.. "; "
+			.. unit("kuwai-clipboard.service")
+			.. "; "
+			.. unit("kuwai-feeds.service")
+	)
 
 	hl.exec_cmd(K.bin .. "/kuwai-shell")
 	if not K.hyde then
 		hl.exec_cmd(K.bin .. "/kuwai-wall restore")
 	end
 	hl.exec_cmd(KUWAI_ROOT .. "/greeter/sync")
-
-	hl.exec_cmd(unit("kuwai-clipboard.service"))
-	hl.exec_cmd(unit("kuwai-feeds.service"))
 
 	if K.has("wl-clip-persist") then
 		hl.exec_cmd("wl-clip-persist --clipboard regular")

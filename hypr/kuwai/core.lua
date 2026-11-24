@@ -7,7 +7,7 @@ K.state_home = env("XDG_STATE_HOME") or (K.home .. "/.local/state")
 K.data_home = env("XDG_DATA_HOME") or (K.home .. "/.local/share")
 K.runtime = env("XDG_RUNTIME_DIR") or "/tmp"
 K.hypr = K.config_home .. "/hypr"
-K.root = KUWAI_ROOT or (K.home .. "/Projects/rice")
+K.root = KUWAI_ROOT or (K.data_home .. "/kuwai")
 K.bin = K.root .. "/bin"
 K.state_dir = K.state_home .. "/kuwai"
 

@@ -14,12 +14,13 @@ set("ELECTRON_OZONE_PLATFORM_HINT", "auto")
 set("MOZ_ENABLE_WAYLAND", "1")
 set("QT_AUTO_SCREEN_SCALE_FACTOR", "1")
 set("QT_WAYLAND_DISABLE_WINDOWDECORATION", "1")
-set("QT_QPA_PLATFORMTHEME", K.state["qt_theme"] or "qt5ct")
+set("QT_QPA_PLATFORMTHEME", K.state["qt_theme"] or (K.has("qt6ct") and "qt6ct" or "qt5ct"))
 set("GDK_SCALE", "1")
 set("ACCESSIBILITY_ENABLED", "1")
 set("QT_LINUX_ACCESSIBILITY_ALWAYS_ON", "1")
 
-local cursor_theme = K.state["cursor_theme"] or "macOS"
+local default_cursor = (K.exists(K.data_home .. "/icons/macOS/index.theme") or K.exists("/usr/share/icons/macOS/index.theme")) and "macOS" or "Adwaita"
+local cursor_theme = K.state["cursor_theme"] or default_cursor
 local cursor_size = K.state["cursor_size"] or "24"
 set("XCURSOR_THEME", cursor_theme)
 set("XCURSOR_SIZE", cursor_size)

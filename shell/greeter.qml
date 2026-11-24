@@ -30,10 +30,10 @@ import qs.modules.lock
 ShellRoot {
     id: root
 
-    readonly property string user: Quickshell.env("KUWAI_GREETER_USER") || "kitsunekode"
+    readonly property string user: Quickshell.env("KUWAI_GREETER_USER") || Quickshell.env("USER") || ""
     readonly property string name: user
     readonly property string face: Quickshell.env("KUWAI_GREETER_FACE") || ""
-    readonly property string wallpaper: Quickshell.env("KUWAI_GREETER_WALL") || "/usr/share/sddm/themes/sddm-astronaut-theme/Backgrounds/post-apocalyptic_hacker.png"
+    readonly property string wallpaper: Quickshell.env("KUWAI_GREETER_WALL") || ""
     readonly property color accent: Quickshell.env("KUWAI_GREETER_ACCENT") || Theme.loginAccent
     // What your session will show first: its wallpaper (greeter/sync copies it).
     readonly property string desktopWall: Hyde.wallpaper     // "" without one: GreeterView shows the desktop's ground (Theme.desktop)
