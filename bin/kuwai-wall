@@ -148,6 +148,8 @@ still() {
     awww img "$f" --transition-type fade --transition-duration 0.6 >/dev/null 2>&1 || return 1
     mkdir -p "$(dirname "$STILL")"
     ln -sfn "$(readlink -f "$f")" "$STILL"
+    local look="$(dirname "$(readlink -f "$0")")/kuwai-look"
+    [ -x "$look" ] && "$look" set-wallpaper --no-apply "$f" >/dev/null 2>&1 || true
 }
 
 case "${1:-list}" in

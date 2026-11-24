@@ -30,6 +30,9 @@ copy() {
     mkdir -p "$H/$(dirname "$1")"
     cp -fL "$HOME/$1" "$H/$1"
 }
+copy .local/state/kuwai/wallpaper
+copy .local/state/kuwai/look/current/palette.json
+copy .local/state/kuwai/look/state.json
 copy .cache/hyde/wall.set
 copy .cache/hyde/wall.dcol
 copy .local/state/hyde/staterc

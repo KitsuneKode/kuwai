@@ -190,6 +190,10 @@ Singleton {
         function linear(v) { return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }
         return 0.2126 * linear(c.r) + 0.7152 * linear(c.g) + 0.0722 * linear(c.b);
     }
+    function contrast(a, b) {
+        const la = luminance(Qt.color(a)), lb = luminance(Qt.color(b));
+        return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+    }
     function contrastInk(c) {
         const y = luminance(c);
         return (y + 0.05) / 0.05 >= 1.05 / (y + 0.05) ? "#000000" : "#ffffff";
@@ -202,6 +206,9 @@ Singleton {
     property int colorMode: 0                  // 0 theme · 1 auto · 2 dark · 3 light
     property string themeName: ""
     readonly property string hydeThemes: Quickshell.env("HOME") + "/.config/hyde/themes/"
+    readonly property string kuwaiLookPath: (Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")) + "/kuwai/look/current/palette.json"
+    property real wallTopLuma: 0.1
+    property color wallInk: "#ffffff"
 
     // The theme's colour, made vivid enough to read as an accent: its hue is
     // kept, saturation and lightness pulled into the band of the voxtype HUD's
@@ -244,12 +251,45 @@ Singleton {
         palette = ["background", "color1", "color3", "color2", "color6", "color4", "color5"].filter(k => v[k]).map(k => v[k]);
         return true;
     }
+    function fromKuwaiLook(text) {
+        try {
+            const d = JSON.parse(text);
+            if (!d || d.schema !== 1 || !d.role || !d.role.accent) return false;
+            accent = Qt.color(d.role.accent);
+            if (d.role.accentSoft) accentSoft = Qt.color(d.role.accentSoft);
+            if (d.role.bg) themeBg = Qt.color(d.role.bg);
+            if (d.role.fg) themeFg = Qt.color(d.role.fg);
+            if (Array.isArray(d.swatches) && d.swatches.length > 0) palette = d.swatches;
+            if (d.source && d.source.name) themeName = d.source.name;
+            if (d.wall && typeof d.wall.topLuma === "number") wallTopLuma = d.wall.topLuma;
+            if (d.wall && d.wall.ink) wallInk = Qt.color(d.wall.ink);
+            const m = d.mode || "dark";
+            colorMode = m === "theme" ? 0 : m === "auto" ? 1 : m === "light" ? 3 : 2;
+            return true;
+        } catch (e) {
+            return false;
+        }
+    }
+    function reloadLook() {
+        kuwaiPalette.reload();
+    }
     function recolor() {
+        if (kuwaiPalette.loaded && fromKuwaiLook(kuwaiPalette.text())) return;
         if (colorMode === 0 && themeName) {
             if (themeDcol.loaded && fromDcol(parseDcol(themeDcol.text()))) return;
             if (themeKitty.loaded && fromKitty(themeKitty.text())) return;
         }
         if (wallDcol.loaded) fromDcol(parseDcol(wallDcol.text()));
+    }
+    FileView {
+        id: kuwaiPalette
+        property bool loaded: false
+        path: root.kuwaiLookPath
+        watchChanges: true
+        printErrors: false
+        onFileChanged: reload()
+        onLoaded: { loaded = true; root.recolor(); }
+        onLoadFailed: { loaded = false; root.recolor(); }
     }
     FileView {
         path: Quickshell.env("HOME") + "/.local/state/hyde/staterc"

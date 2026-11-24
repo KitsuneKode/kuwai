@@ -105,7 +105,25 @@ K.config({
 })
 
 function L.apply_theme()
-	T.load_colors()
+	T.load_colors(true)
+	if T.kuwai then
+		local active_b = T.rgba("accent", "cc")
+		local soft_b = T.rgba("accentSoft", "77") or active_b
+		local inactive_b = T.rgba("border", "55")
+		if active_b then
+			K.config({
+				general = {
+					col = {
+						active_border = { colors = { active_b, soft_b }, angle = 45 },
+						inactive_border = inactive_b or "rgba(ffffff14)",
+					},
+				},
+			})
+		end
+		if T.colors.bg and T.colors.bg:match("^%x%x%x%x%x%x$") then
+			K.config({ misc = { background_color = "rgb(" .. T.colors.bg .. ")" } })
+		end
+	end
 	local active, inactive = T.rgba("pry3", "ee"), T.rgba("pry1", "ee")
 	if active then
 		K.config({

@@ -48,7 +48,7 @@ Singleton {
             onStreamFinished: {
                 const got = text.split("\n");
                 root.hasShell = got.indexOf("shell") >= 0;
-                root.wallpaper = got.indexOf("wall") >= 0 ? root.wallSet : got.indexOf("kuwai") >= 0 ? root.kuwaiWall : "";
+                root.wallpaper = got.indexOf("kuwai") >= 0 ? root.kuwaiWall : got.indexOf("wall") >= 0 ? root.wallSet : "";
             }
         }
     }

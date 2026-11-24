@@ -4,6 +4,7 @@ local T = { colors = {}, vars = {}, applied = 0, skipped = {} }
 
 local THEME = K.hypr .. "/themes/theme.conf"
 local COLORS = K.hypr .. "/themes/colors.conf"
+local KUWAI_PALETTE = K.state_dir .. "/look/current/palette.lua"
 local SECTIONS = { general = true, decoration = true, group = true, misc = false }
 
 local function trim(s)
@@ -136,15 +137,49 @@ local function parse_theme(path)
 	return out
 end
 
-function T.load_colors()
-	if not T._colors_loaded then
-		T._colors_loaded = parse_vars(COLORS)
+local function load_kuwai_palette()
+	local fn = loadfile(KUWAI_PALETTE, "t", {})
+	if not fn then
+		return nil
+	end
+	local ok, pal = pcall(fn)
+	if not ok or type(pal) ~= "table" or type(pal.role) ~= "table" then
+		return nil
+	end
+	T.kuwai = pal
+	T.name = pal.name or "kuwai"
+	for k, v in pairs(pal.role) do
+		if type(v) == "string" then
+			T.colors[k] = v
+		end
+	end
+	local r = pal.role
+	T.colors.pry1 = r.bg
+	T.colors.pry2 = r.surface
+	T.colors.pry3 = r.accent
+	T.colors.pry4 = r.border
+	T.colors.txt1 = r.fg
+	T.colors.txt3 = r.onAccent
+	return pal
+end
+
+function T.load_colors(force)
+	if force or not T._colors_loaded then
+		T.kuwai = nil
+		if load_kuwai_palette() then
+			T._colors_loaded = true
+		else
+			T._colors_loaded = parse_vars(COLORS)
+		end
 	end
 	return T.colors
 end
 
 function T.apply()
-	T.load_colors()
+	T.load_colors(true)
+	if T.kuwai then
+		return T
+	end
 	local flat = parse_theme(THEME)
 	if not flat then
 		return T

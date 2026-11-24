@@ -21,11 +21,14 @@ hl.on("hyprland.start", function()
 			.. "; "
 			.. unit(auth_unit)
 			.. "; "
+			.. unit("kuwai-wallpaper.service")
+			.. "; "
 			.. unit("kuwai-clipboard.service")
 			.. "; "
 			.. unit("kuwai-feeds.service")
 	)
 
+	hl.exec_cmd(K.bin .. "/kuwai-look init --no-apply")
 	hl.exec_cmd(K.bin .. "/kuwai-shell")
 	if not K.hyde then
 		hl.exec_cmd(K.bin .. "/kuwai-wall restore")
