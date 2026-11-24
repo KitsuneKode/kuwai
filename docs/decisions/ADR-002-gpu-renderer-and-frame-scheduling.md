@@ -36,7 +36,8 @@ measurable frame drops, GPU wake stalls, and memory leaks:
    - Probe DRM connectors exclusively via cached sysfs — never fork `lspci` or
      `nvidia-smi`.
    - In `auto` mode, pick NVIDIA as primary when a connected screen hangs off
-     it (or on AC to avoid boot-handshake races), listing all display-driving
+     it (or on AC in the first 120 s after boot, while a docked screen may not
+     have answered yet), listing all display-driving
      cards with primary first; otherwise render on the iGPU so NVIDIA sleeps
      until `prime-run`.
    - Set `NVD_BACKEND=direct` (required on 525+ `nvidia-vaapi-driver`), and

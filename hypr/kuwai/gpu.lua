@@ -43,7 +43,8 @@ if nv and igpu then
 		primary = igpu
 	else
 		local on_ac = K.read_line("/sys/class/power_supply/ACAD/online") == "1"
-		primary = (#nv.outputs > 0 or on_ac) and nv or igpu
+		local uptime = tonumber((K.read_line("/proc/uptime") or ""):match("^[%d.]+")) or 0
+		primary = (#nv.outputs > 0 or (on_ac and uptime < 120)) and nv or igpu
 	end
 end
 G.mode, G.primary = mode, primary and primary.vendor or "none"
