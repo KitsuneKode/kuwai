@@ -4,6 +4,8 @@
 Prints one JSON object: {"AGENT:CWD": {"model": "claude-opus-5-5", "effort": "high", "context": 253000, "window": 1000000}, …}.
 context: the tokens its last turn sent (its context now); window: its size when known (Codex says it;
 Claude's past 200K is the 1M window), else 0. reply: the agent's last words to you (600 characters at most).
+steps: its last three actions in plain words ("Read Theme.qml", "Run bun", a command's own description),
+oldest first; file names only, never a command line or a file's contents.
 Claude: the newest session log for that folder (~/.claude*/projects/<folder with / as ->/*.jsonl),
 its last real model (not "<synthetic>") and effort. Codex: the newest rollout in
 ~/.codex/sessions whose cwd is that folder. Reads at most the last 256 KiB of one file per pane,
@@ -90,6 +92,63 @@ def reply_of(data):
     return ""
 
 
+def describe(name, args):
+    a = args if isinstance(args, dict) else {}
+    base = lambda v: os.path.basename(str(v or "").rstrip("/")) or ""
+    n = name.lower()
+    if n in ("read", "notebookread"):
+        return "Read " + base(a.get("file_path") or a.get("notebook_path"))
+    if n in ("edit", "multiedit", "write", "notebookedit", "apply_patch"):
+        return "Edit " + (base(a.get("file_path") or a.get("notebook_path")) or "files")
+    if n in ("bash", "shell", "exec_command", "local_shell"):
+        d = str(a.get("description") or "").strip()
+        if d:
+            return d
+        cmd = a.get("command") or a.get("cmd") or ""
+        first = (cmd[0] if isinstance(cmd, list) and cmd else str(cmd)).strip().split()
+        word = os.path.basename(first[0]) if first else ""
+        if word in ("bash", "sh", "zsh") and isinstance(cmd, list) and len(cmd) > 2:
+            word = os.path.basename(str(cmd[2]).split()[0]) if str(cmd[2]).split() else word
+        return "Run " + word if word else "Run a command"
+    if n in ("grep", "glob"):
+        return "Search for " + str(a.get("pattern") or "")[:40]
+    if n in ("task", "agent"):
+        return str(a.get("description") or "Ask a helper")[:60]
+    if n in ("webfetch", "websearch"):
+        return "Look up " + (str(a.get("url") or a.get("query") or "")[:40])
+    if n in ("todowrite", "update_plan"):
+        return ""
+    return name[:1].upper() + name[1:]
+
+
+def steps_of(data, keep=3):
+    out = []
+    for raw in data.split(b"\n"):
+        if b'"tool_use"' not in raw and b'"function_call"' not in raw:
+            continue
+        try:
+            d = json.loads(raw)
+        except ValueError:
+            continue
+        if d.get("isSidechain"):
+            continue
+        msg = d.get("message") if isinstance(d.get("message"), dict) else None
+        if msg:
+            for c in msg.get("content") or []:
+                if isinstance(c, dict) and c.get("type") == "tool_use":
+                    out.append(describe(str(c.get("name") or ""), c.get("input")))
+            continue
+        pl = d.get("payload") if isinstance(d.get("payload"), dict) else {}
+        if pl.get("type") == "function_call":
+            try:
+                args = json.loads(pl.get("arguments") or "{}")
+            except ValueError:
+                args = {}
+            out.append(describe(str(pl.get("name") or ""), args))
+    steps = [re.sub(r"\s+", " ", x).strip()[:80] for x in out if x and x.strip()]
+    return steps[-keep:]
+
+
 def claude(cwd):
     enc = re.sub(r"[^A-Za-z0-9]", "-", cwd)
     files = []
@@ -102,7 +161,7 @@ def claude(cwd):
     if not model:
         return None
     used, window = claude_context(data, model)
-    return {"model": model, "effort": last(EFFORT, data), "context": used, "window": window, "reply": reply_of(data)}
+    return {"model": model, "effort": last(EFFORT, data), "context": used, "window": window, "reply": reply_of(data), "steps": steps_of(data)}
 
 
 def codex(cwd):
@@ -114,7 +173,7 @@ def codex(cwd):
             model = last(MODEL, data)
             if model:
                 used, window = codex_context(data)
-                return {"model": model, "effort": last(EFFORT, data), "context": used, "window": window, "reply": reply_of(data)}
+                return {"model": model, "effort": last(EFFORT, data), "context": used, "window": window, "reply": reply_of(data), "steps": steps_of(data)}
     return None
 
 

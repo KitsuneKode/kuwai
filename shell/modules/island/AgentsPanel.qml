@@ -107,7 +107,7 @@ FocusScope {
                 stateKey: stateKey,
                 key: "k" + r.key, src: "kitty", agent: r.agent, title: r.title,
                 where: r.project || String(r.where || "").replace(/^.*\//, ""),
-                model: ap.on(m.model, m.effort), state: state, status: r.status, ctx: m.context || 0, win: m.window || 0, reply: m.reply || "",
+                model: ap.on(m.model, m.effort), state: state, status: r.status, ctx: m.context || 0, win: m.window || 0, reply: m.reply || "", steps: m.steps || [],
                 question: r.question || (ev && ev.severity === "needs-you" ? Notifs.readable(ev.body || "") : ""),
                 t: (r.since || 0) * 1000, event: ev ? ev.id : "", action: r.action, raw: r
             });
@@ -456,6 +456,36 @@ FocusScope {
                         wrapMode: Text.Wrap; maximumLineCount: 3; elide: Text.ElideRight
                         text: row.modelData.question
                         size: Theme.tSub; lineHeight: 1.3; color: Theme.textPrimary
+                    }
+                    Column {
+                        visible: row.modelData.state === "working" && (row.modelData.steps || []).length > 0
+                        width: parent.width
+                        spacing: 2
+                        Repeater {
+                            model: row.modelData.steps || []
+                            Row {
+                                id: stepRow
+                                required property string modelData
+                                required property int index
+                                readonly property bool newest: index === (row.modelData.steps || []).length - 1
+                                spacing: 6
+                                Text {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    textFormat: Text.PlainText
+                                    text: stepRow.newest ? "\u{f0142}" : "\u{f012c}"
+                                    font.family: Theme.fontGlyph; font.pixelSize: Theme.tFootnote
+                                    color: stepRow.newest ? ap.brandOf(row.modelData.agent) : Theme.textTertiary
+                                }
+                                Label {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: lrow.width - Theme.rowInset * 2 - Theme.rowMark - Theme.rowGap - 20
+                                    elide: Text.ElideRight
+                                    text: stepRow.modelData
+                                    size: Theme.tSub
+                                    color: stepRow.newest ? Theme.textSecondary : Theme.textTertiary
+                                }
+                            }
+                        }
                     }
                     Label {
                         visible: row.modelData.state === "done" && !!row.modelData.reply
