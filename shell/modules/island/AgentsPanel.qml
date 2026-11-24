@@ -110,10 +110,7 @@ FocusScope {
         const m = Math.max(0, Math.round((ap.now - ms) / 60000));
         return m < 1 ? "now" : m < 60 ? m + "m" : m < 1440 ? Math.floor(m / 60) + "h" : Math.floor(m / 1440) + "d";
     }
-    function t3Agent(p) {
-        const base = String(p || "").replace(/_\d+$/, "");
-        return ({ claudeAgent: "claude", codex: "codex", cursor: "cursor", antigravity: "antigravity", opencode: "opencode", gemini: "gemini", grok: "grok" })[base] || base;
-    }
+    function t3Agent(p) { return Agents.t3Agent(p); }
 
     // ── One list: kittymux panes, then T3 threads, by how much they need you ─
     readonly property var sections: [...new Set(rows.map(r => r.section))]

@@ -116,3 +116,10 @@ describe("the capsule's marks", () => {
     expect(stackMarks([], 3)).toEqual({ marks: [], more: 0 });
   });
 });
+
+test("T3's provider instances read as their agent", () => {
+  expect(t3Agent("claudeAgent_2")).toBe("claude");
+  expect(t3Agent("devin_personal")).toBe("devin");
+  expect(t3Agent("acpRegistry_devin")).toBe("devin");
+  expect(t3Agent("codex_2")).toBe("codex");
+});
