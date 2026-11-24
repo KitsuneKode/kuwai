@@ -89,3 +89,15 @@ def test_binary_or_mode_change_is_not_routine(world):
     def chmod(d_):
         os.chmod(d_ / "helper.bin", 0o755)
     assert review(commit(d, "1.2", "c" * 64, extra=chmod))["routine"] is False
+
+
+def test_only_a_changed_local_entry_counts_as_installed():
+    loader = importlib.machinery.SourceFileLoader("receipt_updater", str(ROOT / "bin/kuwai-update"))
+    spec = importlib.util.spec_from_loader("receipt_updater", loader)
+    m = importlib.util.module_from_spec(spec)
+    loader.exec_module(m)
+    fp = {"version": "1.0-1", "identity": "x", "inode": 1, "mtimeNs": 1, "ctimeNs": 1}
+    assert m.newly_installed(fp, dict(fp)) is False, "pacman --needed skipped it: no receipt"
+    assert m.newly_installed(fp, {**fp, "identity": "y", "inode": 2}) is True
+    assert m.newly_installed(None, fp) is True
+    assert m.newly_installed(fp, None) is False

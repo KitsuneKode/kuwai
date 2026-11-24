@@ -355,6 +355,16 @@ def installed_fingerprint(pkg):
         return None
 
 
+def newly_installed(before, after):
+    """pacman -U --needed exits 0 without touching a same-version package; only a changed local entry is an install."""
+    if not after:
+        return False
+    if not before:
+        return True
+    keys = ("version", "identity", "inode", "mtimeNs", "ctimeNs")
+    return any(before.get(k) != after.get(k) for k in keys)
+
+
 def record_install(pkg, head, files):
     fingerprint = installed_fingerprint(pkg)
     if not fingerprint:
@@ -1351,6 +1361,7 @@ def run_locked(args):
         if built:
             R.emit(e="phase", id="install", label=f"Installing {len(built)} AUR package" + ("s" if len(built) > 1 else ""))
             files = [f for b in built for f in b[3]]
+            before = {pkg: installed_fingerprint(pkg) for b in built for pkg in b[0]}
             rc = root.run("install", progress="install", files=files)
             if rc in AUTH_FAIL:
                 R.emit(e="error", msg=cancelled_msg("The AUR packages are built but not installed."))
@@ -1361,6 +1372,9 @@ def run_locked(args):
             else:
                 for outputs, d, head, files in built:
                     for pkg in outputs:
+                        if not newly_installed(before.get(pkg), installed_fingerprint(pkg)):
+                            result["skipped"].append({"pkg": pkg, "why": "pacman kept the copy already installed (same version); nothing recorded"})
+                            continue
                         result["installed"].append(pkg)
                         try:
                             record_install(pkg, head, files)
