@@ -68,7 +68,7 @@ Item {
                     visible: appIcon.status !== Image.Ready
                     anchors.centerIn: parent
                     text: (Array.from(String(group.modelData.app || "").trim())[0] || "?").toUpperCase()
-                    size: 11; weight: Theme.wSemibold
+                    size: Theme.tFootnote; weight: Theme.wSemibold
                     color: Theme.textSecondary
                 }
             }
@@ -78,7 +78,7 @@ Item {
                 width: Math.min(implicitWidth, group.width - 150)
                 elide: Text.ElideRight
                 text: group.modelData.app
-                size: 13
+                size: Theme.tBody
                 weight: Theme.wSemibold
                 color: Theme.textSecondary
             }
@@ -118,7 +118,7 @@ Item {
                     id: lessLabel
                     anchors.centerIn: parent
                     text: "Show less"
-                    size: 11
+                    size: Theme.tFootnote
                     weight: Theme.wSemibold
                 }
                 MouseArea {

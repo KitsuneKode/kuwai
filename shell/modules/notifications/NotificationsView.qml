@@ -214,14 +214,14 @@ Item {
                     spacing: 5
                     Label {
                         text: chip.modelData.label
-                        size: 12
+                        size: Theme.tFootnote
                         weight: chip.on ? Theme.wSemibold : Theme.wMedium
                         color: chip.on ? Theme.inkOnLight : Theme.textPrimary
                     }
                     Label {
                         visible: chip.modelData.n > 0
                         text: chip.modelData.n
-                        size: 12
+                        size: Theme.tFootnote
                         tabular: true
                         color: chip.on ? Qt.rgba(0, 0, 0, 0.5) : Theme.textTertiary
                     }
@@ -249,7 +249,7 @@ Item {
         visible: view.narrowed && !view.undoing
         anchors { right: parent.right; rightMargin: 6; verticalCenter: filterRow.verticalCenter }
         text: view.resultCount === 1 ? "1 result" : view.resultCount + " results"
-        size: 12
+        size: Theme.tFootnote
         color: Theme.textTertiary
     }
     Row {
@@ -271,7 +271,7 @@ Item {
         Ui.Button {
             visible: Notifs.items.length > 0 && !view.undoing
             height: 28
-            size: Theme.tSub
+            size: Theme.tFootnote
             text: "Clear"
             onClicked: view.clearAll()
         }
@@ -291,7 +291,7 @@ Item {
         anchors { left: parent.left; right: parent.right; top: filterRow.bottom; topMargin: 10 }
         wrapMode: Text.WordWrap
         text: "Click a notification to open it; right-click for its other options. Toasts: tap to preview unless Settings → Toast opens on first click."
-        size: 12
+        size: Theme.tFootnote
         color: Theme.textTertiary
         opacity: view.center.revealAt(100)
     }
@@ -378,7 +378,7 @@ Item {
         Label {
             anchors.horizontalCenter: parent.horizontalCenter
             text: view.narrowed ? "No results" : "No notifications"
-            size: 15
+            size: Theme.tHeadline
             weight: Theme.wSemibold
             color: Theme.textSecondary
         }
@@ -391,7 +391,7 @@ Item {
                 : view.filter === "unread" ? "You've seen everything."
                 : view.filter === "important" ? "No warnings or alerts."
                 : "You're all caught up."
-            size: 13
+            size: Theme.tBody
             color: Theme.textTertiary
         }
     }

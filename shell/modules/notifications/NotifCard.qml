@@ -368,7 +368,7 @@ Item {
                     anchors.centerIn: parent
                     anchors.verticalCenterOffset: 0.5
                     text: "!"
-                    size: 11
+                    size: Theme.tFootnote
                     weight: Theme.wBold
                     color: card.critical ? "white" : Qt.rgba(0.12, 0.08, 0, 1)
                 }
@@ -402,7 +402,7 @@ Item {
                             id: chipLabel
                             anchors.centerIn: parent
                             text: card.critical ? "Critical" : "Warning"
-                            size: 11
+                            size: Theme.tFootnote
                             weight: Theme.wSemibold
                             color: card.critical ? Theme.redText : Theme.orange
                         }
@@ -411,7 +411,7 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         width: Math.min(implicitWidth, parent.width - x)
                         text: card.item.app
-                        size: 12
+                        size: Theme.tFootnote
                         weight: Theme.wMedium
                         elide: Text.ElideRight
                         color: Theme.textTertiary
@@ -441,7 +441,7 @@ Item {
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
                     text: card.ageText
-                    size: 12
+                    size: Theme.tFootnote
                     tabular: true
                     color: Theme.textTertiary
                 }
@@ -456,7 +456,7 @@ Item {
                 wrapMode: Text.Wrap
                 maximumLineCount: 2
                 elide: Text.ElideRight
-                size: 15
+                size: Theme.tHeadline
                 weight: Theme.wSemibold
                 lineHeight: 1.1
                 color: Theme.textPrimary
@@ -471,7 +471,7 @@ Item {
                 wrapMode: Text.Wrap
                 maximumLineCount: card.low ? 1 : 3
                 elide: Text.ElideRight
-                size: 13
+                size: Theme.tBody
                 lineHeight: 1.18
                 color: Theme.textSecondary
                 font.italic: Notifs.bodyRedacted(card.item) && !card.engaged
@@ -506,7 +506,7 @@ Item {
                 Label {
                     anchors.verticalCenter: parent.verticalCenter
                     text: card.item.status
-                    size: 12
+                    size: Theme.tFootnote
                     weight: Theme.wMedium
                     color: Theme.textSecondary
                 }
@@ -522,7 +522,7 @@ Item {
                     height: 28; radius: 14
                     width: openAct.implicitWidth + 26
                     color: openArea.containsMouse ? Qt.rgba(1, 1, 1, 0.92) : Qt.rgba(1, 1, 1, 0.88)
-                    Label { id: openAct; anchors.centerIn: parent; text: "Open"; size: 12; weight: Theme.wSemibold; color: Theme.inkOnLight }
+                    Label { id: openAct; anchors.centerIn: parent; text: "Open"; size: Theme.tFootnote; weight: Theme.wSemibold; color: Theme.inkOnLight }
                     MouseArea {
                         id: openArea
                         anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
@@ -537,7 +537,7 @@ Item {
                     height: 28; radius: 14
                     width: replyChip.implicitWidth + 26
                     color: replyBtn.containsMouse ? Theme.pillHover : Theme.pill
-                    Label { id: replyChip; anchors.centerIn: parent; text: "Reply"; size: 12; weight: Theme.wSemibold }
+                    Label { id: replyChip; anchors.centerIn: parent; text: "Reply"; size: Theme.tFootnote; weight: Theme.wSemibold }
                     MouseArea {
                         id: replyBtn
                         anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
@@ -567,7 +567,7 @@ Item {
                             id: actionLabel
                             anchors.centerIn: parent
                             text: pillRect.modelData.text
-                            size: 12
+                            size: Theme.tFootnote
                             weight: Theme.wSemibold
                             color: Theme.textPrimary
                         }
@@ -620,7 +620,7 @@ Item {
                         visible: toastReply.text === ""
                         anchors.verticalCenter: parent.verticalCenter
                         text: (card.item.notification && card.item.notification.inlineReplyPlaceholder) || "Reply…"
-                        size: 13
+                        size: Theme.tBody
                         color: Theme.textTertiary
                     }
                 }

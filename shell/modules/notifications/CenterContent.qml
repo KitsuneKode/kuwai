@@ -109,7 +109,7 @@ Item {
                 visible: search.text === ""
                 anchors.verticalCenter: parent.verticalCenter
                 text: ({ notifications: "Search notifications", sound: "Search apps and devices", controls: "Search networks and devices" })[content.center.tab] || "Search"
-                size: 14
+                size: Theme.tBody
                 color: Theme.textTertiary
             }
 
@@ -264,7 +264,7 @@ Item {
                     Label {
                         anchors.verticalCenter: parent.verticalCenter
                         text: hint.modelData.t
-                        size: 12
+                        size: Theme.tFootnote
                         color: Theme.textTertiary
                     }
                 }
@@ -283,7 +283,7 @@ Item {
             Label {
                 anchors.verticalCenter: parent.verticalCenter
                 text: "Shortcuts"
-                size: 12
+                size: Theme.tFootnote
                 color: helpArea.containsMouse ? Theme.textSecondary : Theme.textTertiary
             }
         }

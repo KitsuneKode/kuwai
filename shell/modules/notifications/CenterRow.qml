@@ -195,7 +195,7 @@ Item {
                         id: chip
                         anchors.centerIn: parent
                         text: row.critical ? "Critical" : "Warning"
-                        size: 11
+                        size: Theme.tFootnote
                         weight: Theme.wSemibold
                         color: row.critical ? Theme.redText : Theme.orange
                     }
@@ -209,7 +209,7 @@ Item {
                     wrapMode: Text.Wrap
                     maximumLineCount: 2
                     elide: Text.ElideRight
-                    size: 14
+                    size: Theme.tBody
                     weight: Theme.wSemibold
                 }
             }
@@ -228,7 +228,7 @@ Item {
                 Label {
                     visible: row.showTime && !hover.hovered
                     text: row.ageText
-                    size: 12
+                    size: Theme.tFootnote
                     tabular: true
                     color: Theme.textTertiary
                 }
@@ -285,7 +285,7 @@ Item {
             wrapMode: Text.Wrap
             maximumLineCount: row.selected && (row.warning || row.critical) ? 6 : 3
             elide: row.selected ? Text.ElideNone : Text.ElideRight
-            size: 13
+            size: Theme.tBody
             lineHeight: 1.18
             color: Theme.textSecondary
         }
@@ -309,7 +309,7 @@ Item {
                         : row.center && row.center.terms.length ? row.center.highlight(row.it.body.replace(/<[^>]*>/g, "")) : Notifs.styledSafe(row.it.body)
                     // A whole message is plain text (paragraphs kept, nothing parsed).
                     textFormat: row.reading ? Text.PlainText : Text.StyledText
-                    size: 13; lineHeight: 1.18; color: Theme.textSecondary
+                    size: Theme.tBody; lineHeight: 1.18; color: Theme.textSecondary
                 }
             }
         }
@@ -319,7 +319,7 @@ Item {
             width: parent.width
             wrapMode: Text.WordWrap
             text: "Reply needs a live notification — use Open for the thread, or wait for the next alert from feeds."
-            size: 11
+            size: Theme.tFootnote
             color: Theme.textTertiary
             topPadding: 2
         }
@@ -343,7 +343,7 @@ Item {
             Label {
                 anchors.verticalCenter: parent.verticalCenter
                 text: row.it.status
-                size: 12
+                size: Theme.tFootnote
                 weight: Theme.wMedium
                 color: Theme.textSecondary
             }
@@ -428,7 +428,7 @@ Item {
                     visible: replyField.text === ""
                     anchors.verticalCenter: parent.verticalCenter
                     text: (row.it.notification && row.it.notification.inlineReplyPlaceholder) || "Reply…"
-                    size: 13; color: Theme.textTertiary
+                    size: Theme.tBody; color: Theme.textTertiary
                 }
             }
         }
