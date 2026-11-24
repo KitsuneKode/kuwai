@@ -344,12 +344,40 @@ Singleton {
     Timer { interval: root.freshLogin ? 60000 : 20000; running: !root.settled; onTriggered: root.settled = true }
     // After the desktop has drawn, so it's seen.
     Timer { id: helloLater; interval: 1800; onTriggered: root.show({ kind: "hello", image: root.face, round: true, label: root.greeting(), value: root.userName, ring: -1, tone: Theme.textPrimary }, 3600) }
+    function awayCounts(since) {
+        const kittyDone = (Kittymux.attention || []).filter(e => e.kind === "done" && (e.t || 0) * 1000 >= since).length;
+        const t3Done = T3Code.liveItems.filter(i => i.status === "completed" && Date.parse(i.at || "") >= since).length;
+        const waiting = Kittymux.running.filter(r => r.needs).length + T3Code.liveItems.filter(i => i.status === "waiting").length;
+        const alerts = Notifs.items.filter(i => !i.discard && i.time >= since && (i.severity === "critical" || i.severity === "warning")).length;
+        return { waiting: waiting, done: kittyDone + t3Done, alerts: alerts };
+    }
+    function recap(since) {
+        if (Notifs.dnd || Notifs.sharing || Date.now() - since < 120000) return false;
+        const s = MomentsLogic.awaySummary(awayCounts(since));
+        if (!s) return false;
+        const open = scr => s.opens === "agents" ? Island.open("agents", scr || "", "pointer", "island") : Notifs.toggleCenter("notifications", "pointer", scr || "");
+        show({ kind: "away", glyph: "\u{f02da}", label: s.label, value: s.value, ring: -1,
+               tone: s.tone === "attention" ? Theme.orange : s.tone === "caution" ? Theme.orange : Theme.green,
+               go: () => open(""), list: open, dismiss: () => {} }, 9000);
+        return true;
+    }
+    property real saverSince: 0
+    Connections {
+        target: Saver
+        function onShowingChanged() {
+            if (Saver.showing) root.saverSince = Date.now();
+            else if (root.saverSince && !Saver.locked) { const t = root.saverSince; root.saverSince = 0; awayLater.since = t; awayLater.restart(); }
+        }
+    }
+    Timer { id: awayLater; property real since: 0; interval: 700; onTriggered: root.recap(since) }
+
     // Lock.qml, on the right password: how long you were away.
     function welcomeBack(since) {
         const m = Math.round((Date.now() - since) / 60000);
         // A short lock is not an absence: the lock island already said
         // "Unlocked", so no second greeting saying the same thing.
         if (m < 2) return;
+        if (recap(since)) return;
         const away = m < 60 ? "Away " + m + " min" : "Away " + Math.floor(m / 60) + " h" + (m % 60 ? " " + (m % 60) + " min" : "");
         // Hours away is arriving: say the time of day ("Good morning · away 7 h").
         show({ kind: "hello", image: face, round: true, label: m >= 180 ? greeting() : "Welcome back", value: away.replace("Away", "away"), ring: -1, tone: Theme.textSecondary }, m >= 180 ? 3600 : 2800);

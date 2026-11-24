@@ -1,7 +1,7 @@
 // Moments' memory of announced calendar events is bounded: an event an hour
 // past its start is forgotten. `bun test tests/shell/moments.test.mjs`
 import { describe, expect, test } from "bun:test";
-import { dismissMoment, forgetAnnounced, nextHideInterval } from "../../shell/services/moments.mjs";
+import { awaySummary, dismissMoment, forgetAnnounced, nextHideInterval } from "../../shell/services/moments.mjs";
 
 const H = 3600000;
 
@@ -39,5 +39,19 @@ describe("moment hide and dismiss rules", () => {
     expect(d.now).toBeNull();
     expect(d.held).toBe(false);
     expect(d.startGap).toBe(true);
+  });
+});
+
+describe("while you were away", () => {
+  test("nothing new is no recap", () => {
+    expect(awaySummary({ waiting: 0, done: 0, alerts: 0 })).toBe(null);
+  });
+  test("waiting on you leads, then finished, then alerts", () => {
+    expect(awaySummary({ waiting: 2, done: 3, alerts: 1 })).toEqual({ label: "While you were away", value: "2 need you · 3 finished · 1 alert", tone: "attention", opens: "agents" });
+    expect(awaySummary({ waiting: 1, done: 0, alerts: 0 }).value).toBe("1 needs you");
+  });
+  test("only alerts open the notification center", () => {
+    expect(awaySummary({ waiting: 0, done: 0, alerts: 2 })).toEqual({ label: "While you were away", value: "2 alerts", tone: "caution", opens: "center" });
+    expect(awaySummary({ waiting: 0, done: 4, alerts: 0 }).tone).toBe("done");
   });
 });

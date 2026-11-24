@@ -36,3 +36,19 @@ export function dismissMoment(state) {
         startGap: !!(state && Array.isArray(state.queue) && state.queue.length > 0)
     };
 }
+
+/**
+ * What happened while you were away, in one line for the notch, or null when
+ * nothing did (then the plain welcome stays). Waiting on you leads.
+ * @param {{ waiting: number, done: number, alerts: number }} c
+ * @returns {{ label: string, value: string, tone: string, opens: string } | null}
+ */
+export function awaySummary(c) {
+    const w = Math.max(0, c.waiting | 0), d = Math.max(0, c.done | 0), a = Math.max(0, c.alerts | 0);
+    if (!w && !d && !a) return null;
+    const parts = [];
+    if (w) parts.push(w + (w === 1 ? " needs you" : " need you"));
+    if (d) parts.push(d + " finished");
+    if (a) parts.push(a + (a === 1 ? " alert" : " alerts"));
+    return { label: "While you were away", value: parts.join(" · "), tone: w ? "attention" : a ? "caution" : "done", opens: w || d ? "agents" : "center" };
+}
