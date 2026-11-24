@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFileSync, writeFileSync, mkdirSync, statSync, readdirSync, openSync, readSync, closeSync, watch, renameSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, statSync, readdirSync, openSync, readSync, closeSync, watch, renameSync, realpathSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { claudeLine, codexLine, opencodeMessage, costOf, add, prune, summary, dayOf } from "../lib/spend.mjs";
@@ -10,10 +10,25 @@ const here = dirname(fileURLToPath(import.meta.url));
 const prices = JSON.parse(readFileSync(join(here, "../lib/spend-prices.json"), "utf8"));
 const cacheDir = join(process.env.XDG_CACHE_HOME || join(HOME, ".cache"), "kuwai");
 const statePath = join(cacheDir, "spend.json");
+function homes(env, prefix, sub) {
+  const found = [];
+  if (process.env[env]) found.push(join(process.env[env], sub));
+  try {
+    for (const e of readdirSync(HOME, { withFileTypes: true }))
+      if ((e.name === prefix || e.name.startsWith(prefix + "_") || e.name.startsWith(prefix + "-")) && (e.isDirectory() || e.isSymbolicLink())) found.push(join(HOME, e.name, sub));
+  } catch {}
+  const seen = new Set(), out = [];
+  for (const p of found) {
+    let real;
+    try { real = realpathSync(p); if (!statSync(real).isDirectory()) continue; } catch { continue; }
+    if (!seen.has(real)) { seen.add(real); out.push(real); }
+  }
+  return out;
+}
 const ROOTS = {
-  claude: join(HOME, ".claude/projects"),
-  codex: join(HOME, ".codex/sessions"),
-  opencode: join(HOME, ".local/share/opencode/storage/message"),
+  claude: homes("CLAUDE_CONFIG_DIR", ".claude", "projects"),
+  codex: homes("CODEX_HOME", ".codex", "sessions"),
+  opencode: [join(HOME, ".local/share/opencode/storage/message")],
 };
 
 let state = { version: 1, files: {}, days: {} };
@@ -73,7 +88,7 @@ const has = (needle) => { const b = Buffer.from(needle); return (line) => line.i
 function scan() {
   let changed = false;
   const usage = has('"usage"');
-  for (const [path, st] of walk(ROOTS.claude, (n) => n.endsWith(".jsonl"), [])) {
+  for (const [path, st] of ROOTS.claude.flatMap(dir => walk(dir, (n) => n.endsWith(".jsonl"), []))) {
     eachNewLine(path, st, usage, (l, meta) => {
       let o; try { o = JSON.parse(l); } catch { return; }
       const r = claudeLine(o);
@@ -83,7 +98,7 @@ function scan() {
     });
   }
   const tokenOrModel = (line) => line.indexOf(TOKEN) >= 0 || line.indexOf(CONTEXT) >= 0 || line.indexOf(META) >= 0;
-  for (const [path, st] of walk(ROOTS.codex, (n) => n.endsWith(".jsonl"), [])) {
+  for (const [path, st] of ROOTS.codex.flatMap(dir => walk(dir, (n) => n.endsWith(".jsonl"), []))) {
     const known = state.files[path];
     const ctx = { model: (known && known.model) || "" };
     const meta = eachNewLine(path, st, tokenOrModel, (l) => {
@@ -93,7 +108,7 @@ function scan() {
     });
     meta.model = ctx.model;
   }
-  for (const [path, st] of walk(ROOTS.opencode, (n) => n.endsWith(".json"), [])) {
+  for (const [path, st] of ROOTS.opencode.flatMap(dir => walk(dir, (n) => n.endsWith(".json"), []))) {
     const f = state.files[path];
     if (f && f.size === st.size && f.mtime === st.mtimeMs) continue;
     if (f && f.counted) continue;
@@ -129,7 +144,7 @@ if (process.argv.includes("--watch")) {
   let soon = null;
   const later = () => { clearTimeout(soon); soon = setTimeout(() => { scan(); emit(); }, 1500); };
   let watching = 0;
-  for (const dir of Object.values(ROOTS)) {
+  for (const dir of Object.values(ROOTS).flat()) {
     try { watch(dir, { recursive: true }, later); watching++; } catch {}
   }
   setInterval(() => { if (!watching) scan(); emit(); }, watching ? 60000 : 15000);
