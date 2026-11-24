@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bounded, run-attributed shell memory samples. Never stores window/account content."""
+"""Bounded, run-attributed shell and compositor memory samples. Never stores window/account content."""
 import argparse
 from collections import deque
 import fcntl
@@ -19,13 +19,25 @@ def collect(pid, proc_root=Path('/proc')):
         stat=(root/'stat').read_text()
         sample['startTicks']=int(stat.rsplit(')',1)[1].split()[19])
         text=(root/'smaps_rollup').read_text()
-        for name,key in [('Pss_Anon','pssAnonKb'),('Pss','pssKb'),('Rss','rssKb')]:
+        for name,key in [('Pss_Anon','pssAnonKb'),('Pss','pssKb'),('Rss','rssKb'),('Swap','swapKb'),('SwapPss','swapPssKb')]:
             match=re.search(r'^'+name+r':\s+(\d+)',text,re.M)
             sample[key]=int(match[1]) if match else None
         sample['status']='ok'
     except (OSError,ValueError,IndexError):
         sample.update(status='unavailable',error='process sample unavailable')
     return sample
+
+
+def compositor_pid():
+    sig=os.environ.get('HYPRLAND_INSTANCE_SIGNATURE','')
+    runtime=os.environ.get('XDG_RUNTIME_DIR','')
+    if not sig or not runtime or '/' in sig:
+        return None
+    try:
+        first=(Path(runtime)/'hypr'/sig/'hyprland.lock').read_text().split('\n',1)[0].strip()
+    except OSError:
+        return None
+    return int(first) if first.isdigit() else None
 
 
 def append_sample(directory,run,sample,limit=2000):
@@ -78,6 +90,11 @@ def main():
     run=hashlib.sha256((sample['configId']+str(sample['pid'])+str(sample.get('startTicks'))+args.run).encode()).hexdigest()[:32]
     state=Path(os.environ.get('XDG_STATE_HOME') or Path.home()/'.local/state')/'kuwai/memlog'
     append_sample(state,run,sample)
+    hypr=compositor_pid()
+    if hypr:
+        comp=collect(hypr)
+        comp.update(role='compositor',revision=sample['revision'])
+        append_sample(state,'hypr-'+hashlib.sha256(f"{hypr}:{comp.get('startTicks')}".encode()).hexdigest()[:24],comp)
     for path in state.glob('*.jsonl'):
         if path.stat().st_mtime < time.time()-7*86400:
             path.unlink(missing_ok=True)
