@@ -321,6 +321,8 @@ def gh_thread(t, fetch=gh_fetch, c=None):
         body = f"{short(repo)} · {branch}" if branch else short(repo)
         status, glyph = ("Run failed", "\U000f0028") if failed else ("Run " + (outcome or "finished"), "\U000f05e0")
         tone, severity, peek = ("critical", "warning", True) if failed else ("positive", "", False)
+        if branch and branch not in ("main", "master", "dev", "develop"):
+            peek = False
         bot = bool(branch and BOT_BRANCH.match(branch))
         t["_group"] = f"gh:ci:{repo}:{wf}:{branch}"
         if branch:
@@ -336,7 +338,7 @@ def gh_thread(t, fetch=gh_fetch, c=None):
                 t["_url"] = got["html_url"]
             if who and BOTS.search(who):
                 bot = True
-            if who and who.lower() == me() and reason not in ("review_requested", "assign", "mention"):
+            if who and who.lower() == me() and reason not in ("review_requested", "assign"):
                 return None
             t["_avatar"] = (who, (got.get("user") or {}).get("avatar_url") or "")
             raw = re.sub(r"<!--.*?-->", "", text, flags=re.S).strip()

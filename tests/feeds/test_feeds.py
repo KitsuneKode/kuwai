@@ -43,11 +43,14 @@ def by(login, body="", html=""):
     return lambda url: {"user": {"login": login, "avatar_url": f"https://avatars/{login}"}, "body": body, "html_url": html}
 
 
-def test_failed_ci_peeks_and_groups_per_branch(rf):
+def test_failed_ci_groups_per_branch_and_peeks_only_on_main(rf):
     t = thread("ci_activity", "CI workflow run failed for fix/pointer branch", kind="CheckSuite")
     c = rf.gh_thread(t, fetch=lambda u: pytest.fail("CI needs no lookup"), c=conf())
     assert (c["title"], c["status"], c["tone"]) == ("CI", "Run failed", "critical")
-    assert c["peek"] and not c["quiet"]
+    assert not c["peek"] and not c["quiet"]
+    main = rf.gh_thread(thread("ci_activity", "CI workflow run failed for main branch", kind="CheckSuite"),
+                        fetch=None, c=conf())
+    assert main["peek"]
     assert c["body"] == "kunai · fix/pointer"
     assert c["group"] == "gh:ci:KitsuneKode/kunai:CI:fix/pointer"
     assert c["url"].endswith("actions?query=branch%3Afix/pointer")
@@ -89,6 +92,8 @@ def test_a_mention_peeks_with_who_said_what_and_a_reply(rf):
 
 def test_your_own_comment_is_not_news(rf):
     assert rf.gh_thread(thread("author", "fix: lock"), fetch=by("KitsuneKode", "done"), c=conf()) is None
+    mention = thread("mention", "feat: stremio", kind="PullRequest", number=7)
+    assert rf.gh_thread(mention, fetch=by("KitsuneKode", "@KitsuneKode done"), c=conf()) is None
 
 
 def test_a_review_request_says_who_asked_not_the_pr_body(rf):
