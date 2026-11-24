@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFileSync, writeFileSync, renameSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, renameSync, mkdirSync, readdirSync } from "node:fs";
 import { homedir } from "node:os";
 
 const HOME = homedir();
@@ -204,6 +204,64 @@ function fromKittymux() {
   return group(accounts, "kittymux");
 }
 
+function devinProfiles() {
+  const data = process.env.XDG_DATA_HOME || `${HOME}/.local/share`;
+  const found = [`${data}/devin/credentials.toml`];
+  try {
+    for (const d of readdirSync(data, { withFileTypes: true }))
+      if (d.isDirectory() && d.name !== "devin") found.push(`${data}/${d.name}/devin/credentials.toml`);
+  } catch {}
+  return found.filter((f) => readText(f));
+}
+
+function tomlString(text, key) {
+  const m = new RegExp(`^\\s*${key}\\s*=\\s*"([^"]*)"`, "m").exec(text);
+  return m ? m[1] : "";
+}
+
+async function devinAccount(file, n) {
+  const text = readText(file);
+  const key = tomlString(text, "windsurf_api_key"), server = tomlString(text, "api_server_url");
+  if (!key || !/^(https:\/\/|http:\/\/127\.0\.0\.1[:/])/.test(server)) return null;
+  const meta = { api_key: key, ide_name: "devin_cli", ide_version: "1.0.0", extension_name: "devin_cli", extension_version: "1.0.0" };
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 8000);
+  try {
+    const res = await fetch(server.replace(/\/+$/, "") + "/exa.seat_management_pb.SeatManagementService/GetUserStatus", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ metadata: meta }), signal: ctl.signal,
+    });
+    if (!res.ok) return null;
+    const d = await res.json();
+    const us = d.userStatus || {}, ps = us.planStatus || {}, pi = ps.planInfo || d.planInfo || {};
+    const win = (id, kind, label, left, reset, mins) => left == null || !isFinite(Number(left)) ? null : {
+      id, kind, label, used: Math.max(0, Math.min(100, 100 - Number(left))),
+      resetsAt: Number(reset) > 0 ? Number(reset) * 1000 : null, durationMins: mins,
+    };
+    const windows = [
+      pi.hideDailyQuota ? null : win("daily", "session", "Daily", ps.dailyQuotaRemainingPercent, ps.dailyQuotaResetAtUnix, 1440),
+      pi.hideWeeklyQuota ? null : win("weekly", "weekly", "Weekly", ps.weeklyQuotaRemainingPercent, ps.weeklyQuotaResetAtUnix, 10080),
+    ].filter(Boolean);
+    if (!windows.length) return null;
+    const email = us.email || null;
+    return {
+      key: `devin:${email ? email.toLowerCase() : file}`,
+      driver: "devin", name: n ? `Devin-${n + 1}` : "Devin", email, plan: pi.planName || null,
+      note: null, credits: 0, checkedAt: Date.now(), windows,
+    };
+  } catch { return null; } finally { clearTimeout(timer); }
+}
+
+async function fromDevin() {
+  const list = await Promise.all(devinProfiles().map((f, i) => devinAccount(f, i)));
+  return list.filter(Boolean);
+}
+
+function withExtra(o, extra) {
+  if (!extra.length) return o;
+  const base = (o.providers || []).flatMap((p) => p.accounts).filter((a) => a.driver !== "devin" || !extra.some((x) => x.key === a.key));
+  return { ...o, providers: group([...base, ...extra], o.source).providers };
+}
+
 function group(accounts, source) {
   const byDriver = new Map();
   for (const a of accounts) {
@@ -244,8 +302,11 @@ function fromCache() {
 const fallback = (t3Error) => ({ ...(fromCache() || fromKittymux() || group([], "none")), t3Error });
 
 if (process.argv.includes("--watch")) {
-  let last = "";
-  const emit = (o) => { const line = JSON.stringify({ ...o, checkedAt: 0 }); if (line !== last) { last = line; print(o); } };
+  let last = "", base = null, devin = [];
+  const emit = (o) => { base = o; const out = withExtra(o, devin); const line = JSON.stringify({ ...out, checkedAt: 0 }); if (line !== last) { last = line; print(out); } };
+  const refreshDevin = async () => { devin = await fromDevin(); if (base) emit(base); };
+  refreshDevin();
+  setInterval(refreshDevin, 300000).unref();
   for (let wait = 2000; ; ) {
     const ep = t3Endpoint();
     if (ep) {
@@ -263,5 +324,5 @@ let t3Error = null;
 try { out = await fromT3(); } catch (e) { t3Error = e.message; }
 if (out && out.providers.length) saveT3(out);
 else out = fallback(t3Error);
-print(out);
+print(withExtra(out, await fromDevin()));
 process.exit(0);
