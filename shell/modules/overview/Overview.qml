@@ -324,7 +324,7 @@ Scope {
                                 x: tile.lead / 2 - 1 - 9
                                 y: strip.tileH * 0.15
                                 width: 1; height: strip.tileH * 0.7
-                                color: Qt.rgba(1, 1, 1, 0.16)
+                                color: Theme.wash(3)
                             }
                             GlassCard {
                                 id: frame
@@ -356,7 +356,7 @@ Scope {
                                     radius: parent.radius
                                     color: "transparent"
                                     border.width: tile.current || drop.containsDrag ? 2 : 1
-                                    border.color: drop.containsDrag || tile.keyed ? Theme.accent : tile.current ? Qt.alpha(Theme.accent, 0.6) : tileHover.hovered ? Qt.rgba(1, 1, 1, 0.3) : Qt.rgba(1, 1, 1, 0.12)
+                                    border.color: drop.containsDrag || tile.keyed ? Theme.accent : tile.current ? Qt.alpha(Theme.accent, 0.6) : tileHover.hovered ? Theme.edge(4) : Theme.edge(1)
                                 }
                             }
                             Label {
@@ -443,8 +443,8 @@ Scope {
                         anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.top; bottomMargin: 8 }
                         height: 30; radius: 15
                         width: filterText.implicitWidth + 36
-                        color: Qt.rgba(1, 1, 1, 0.1)
-                        border.width: 1; border.color: Qt.rgba(1, 1, 1, 0.16)
+                        color: Theme.wash(2)
+                        border.width: 1; border.color: Theme.edge(2)
                         Label { id: filterText; anchors.centerIn: parent; text: "\u{f0349}  " + win.filter; size: 14; weight: Theme.wMedium }
                     }
                     Label {
@@ -501,7 +501,7 @@ Scope {
                                     radius: parent.radius
                                     color: "transparent"
                                     border.width: card.chosen ? 2 : 1
-                                    border.color: card.chosen ? Theme.accent : Qt.rgba(1, 1, 1, 0.10)
+                                    border.color: card.chosen ? Theme.accent : Theme.edge(1)
                                 }
                             }
                             Label {
@@ -545,7 +545,7 @@ Scope {
                                 width: 24; height: 24; radius: 12
                                 color: closeArea.containsMouse ? Theme.red : Qt.rgba(0.12, 0.12, 0.14, 0.92)
                                 Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
-                                border.width: 1; border.color: Qt.rgba(1, 1, 1, 0.18)
+                                border.width: 1; border.color: Theme.edge(2)
                                 Text { anchors.centerIn: parent; text: "\u{f0156}"; font.family: Theme.fontGlyph; font.pixelSize: 13; color: Theme.textPrimary }
                                 MouseArea { id: closeArea; anchors.fill: parent; anchors.margins: -4; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: win.closeWindow(card.toplevel) }
                                 Accessible.role: Accessible.Button

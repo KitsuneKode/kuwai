@@ -156,10 +156,10 @@ Item {
         anchors.fill: parent
         radius: 18
         // Hover and the keyboard ring are the view's one gliding highlight.
-        color: Qt.rgba(1, 1, 1, 0.065)
+        color: Theme.wash(1)
         border.width: 1
         border.color: row.selected ? Qt.rgba(1, 1, 1, row.critical || row.warning ? 0.28 : 0.18)
-            : row.critical || row.warning ? Qt.alpha(row.accent, 0.35) : Qt.rgba(1, 1, 1, 0.06)
+            : row.critical || row.warning ? Qt.alpha(row.accent, 0.35) : Theme.wash(1)
 
         Rectangle {
             anchors.fill: parent
@@ -408,8 +408,8 @@ Item {
         Rectangle {
             visible: row.replying
             width: parent.width; height: 34; radius: 10
-            color: Qt.rgba(1, 1, 1, 0.08)
-            border.width: 1; border.color: replyField.activeFocus ? Qt.rgba(1, 1, 1, 0.22) : Qt.rgba(1, 1, 1, 0.08)
+            color: Theme.wash(2)
+            border.width: 1; border.color: replyField.activeFocus ? Theme.edge(3) : Theme.edge(1)
             TextInput {
                 id: replyField
                 anchors { fill: parent; leftMargin: 12; rightMargin: 12 }

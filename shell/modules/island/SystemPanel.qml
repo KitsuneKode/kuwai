@@ -135,7 +135,7 @@ FocusScope {
                                 text: "Thread " + parent.index + " · " + SystemStats.coreKind(parent.index) + " · " + Math.round(parent.v * 100) + "%" + (SystemStats.coreMHz[parent.index] ? " · " + (SystemStats.coreMHz[parent.index] / 1000).toFixed(1) + " GHz" : "")
                                 shown: coreHover.hovered
                             }
-                            Rectangle { anchors.fill: parent; radius: 4; color: Qt.rgba(1, 1, 1, 0.07) }
+                            Rectangle { anchors.fill: parent; radius: 4; color: Theme.wash(1) }
                             Rectangle {
                                 anchors.bottom: parent.bottom
                                 width: parent.width; radius: 4

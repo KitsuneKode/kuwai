@@ -152,9 +152,9 @@ FocusScope {
                 ClippingRectangle {
                     anchors.fill: parent
                     radius: 22
-                    color: tile.on ? Qt.rgba(1, 1, 1, 0.16) : area.containsMouse ? Theme.tileHover : Theme.tileRest
+                    color: tile.on ? Theme.wash(3) : area.containsMouse ? Theme.tileHover : Theme.tileRest
                     border.width: tile.on ? 1 : 0
-                    border.color: Qt.rgba(1, 1, 1, 0.22)
+                    border.color: Theme.edge(3)
                     Behavior on color { ColorAnimation { duration: Theme.colorMs } }
                     // The hold: a wash of colour from the left.
                     Rectangle {

@@ -163,7 +163,7 @@ FocusScope {
                                 color: row.st.tone === "attention" ? Theme.orange
                                     : row.st.tone === "done" ? Theme.green
                                     : row.st.tone === "error" ? Theme.red
-                                    : row.st.tone === "caution" ? Theme.yellow
+                                    : row.st.tone === "caution" ? Theme.orange
                                     : row.st.key === "goal" ? Theme.cyan
                                     : Theme.textTertiary
                             }
@@ -173,7 +173,7 @@ FocusScope {
                                 onPaint: {
                                     const c = getContext("2d");
                                     c.reset(); c.lineWidth = 1.6; c.lineCap = "round";
-                                    c.strokeStyle = Qt.rgba(1, 1, 1, 0.16); c.beginPath(); c.arc(7, 7, 5.5, 0, Math.PI * 2); c.stroke();
+                                    c.strokeStyle = Theme.wash(3); c.beginPath(); c.arc(7, 7, 5.5, 0, Math.PI * 2); c.stroke();
                                     c.strokeStyle = Theme.cyan; c.beginPath(); c.arc(7, 7, 5.5, -Math.PI / 2, Math.PI * 0.35); c.stroke();
                                 }
                                 RotationAnimation on rotation {

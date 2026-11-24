@@ -280,9 +280,9 @@ Item {
                 width: parent.width
                 height: 52
                 radius: 16
-                color: Qt.rgba(1, 1, 1, 0.065)
+                color: Theme.wash(1)
                 border.width: 1
-                border.color: Qt.rgba(1, 1, 1, 0.06)
+                border.color: Theme.edge(0)
                 opacity: view.center.revealAt(100)
                 readonly property int level: view.hasBattery ? view.pct(view.battery.percentage) : 0
                 readonly property bool charging: view.hasBattery && (view.battery.state === UPowerDeviceState.Charging || view.battery.state === UPowerDeviceState.FullyCharged)
@@ -439,9 +439,9 @@ Item {
                     width: parent.width
                     height: Math.max(48, hdrText.implicitHeight + 18)
                     radius: 16
-                    color: Qt.rgba(1, 1, 1, 0.065)
+                    color: Theme.wash(1)
                     border.width: 1
-                    border.color: Qt.rgba(1, 1, 1, 0.06)
+                    border.color: Theme.edge(0)
 
                     Column {
                         id: hdrText
@@ -528,7 +528,7 @@ Item {
                         radius: 16
                         color: devArea.containsMouse ? Theme.tileHover : Theme.tileRest
                         border.width: 1
-                        border.color: Qt.rgba(1, 1, 1, 0.06)
+                        border.color: Theme.edge(0)
                         scale: devArea.pressed ? 0.985 : 1
                         Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
                         Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }

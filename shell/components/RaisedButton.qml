@@ -24,9 +24,9 @@ Item {
 
     readonly property bool pressed: area.pressed && enabled
     readonly property bool lit: area.containsMouse && enabled
-    readonly property color fill: !enabled ? Qt.rgba(1, 1, 1, 0.08)
+    readonly property color fill: !enabled ? Theme.wash(2)
         : kind === "danger" ? Theme.red
-        : kind === "secondary" ? Qt.rgba(1, 1, 1, 0.12)
+        : kind === "secondary" ? Theme.wash(2)
         : Theme.accent
     readonly property bool solid: enabled && kind !== "secondary"
     readonly property color ink: !enabled ? Theme.textTertiary
@@ -56,10 +56,10 @@ Item {
             id: face
             anchors.fill: parent
             radius: height / 2
-            color: b.lit && b.solid ? Qt.lighter(b.fill, 1.07) : b.lit ? Qt.rgba(1, 1, 1, 0.18) : b.fill
+            color: b.lit && b.solid ? Qt.lighter(b.fill, 1.07) : b.lit ? Theme.wash(4) : b.fill
             Behavior on color { ColorAnimation { duration: Theme.colorMs } }
             border.width: 1
-            border.color: b.solid ? Qt.darker(b.fill, 1.2) : Qt.rgba(1, 1, 1, 0.28)
+            border.color: b.solid ? Qt.darker(b.fill, 1.2) : Theme.edge(4)
         }
     }
 

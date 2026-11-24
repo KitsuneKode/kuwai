@@ -19,9 +19,9 @@ Rectangle {
 
     implicitHeight: col.implicitHeight + 24
     radius: 12
-    color: Qt.rgba(1, 1, 1, 0.05)
+    color: Theme.wash(1)
     border.width: 1
-    border.color: Qt.rgba(1, 1, 1, 0.10)
+    border.color: Theme.edge(1)
 
     Column {
         id: col

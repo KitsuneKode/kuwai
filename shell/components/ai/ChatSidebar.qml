@@ -26,7 +26,7 @@ Rectangle {
         NumberAnimation { duration: root.open ? 240 : 180; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
     }
 
-    Rectangle { anchors.right: parent.right; width: 1; height: parent.height; color: Qt.rgba(1, 1, 1, 0.07); visible: root.open }
+    Rectangle { anchors.right: parent.right; width: 1; height: parent.height; color: Theme.wash(1); visible: root.open }
 
     property string query: ""
     property string confirming: ""     // id of the chat asking "Delete?"
@@ -190,7 +190,7 @@ Rectangle {
                         visible: row.selected
                         anchors.fill: parent
                         radius: 8
-                        color: Qt.rgba(1, 1, 1, 0.08)
+                        color: Theme.wash(2)
                     }
 
                     TextInput {

@@ -179,7 +179,7 @@ FocusScope {
                     ClippingRectangle {
                         anchors.fill: parent
                         radius: 9
-                        color: Qt.rgba(1, 1, 1, 0.06)
+                        color: Theme.wash(1)
                         Image {
                             id: rowIcon
                             anchors.fill: parent

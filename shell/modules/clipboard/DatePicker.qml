@@ -133,7 +133,7 @@ Item {
         radius: dp.lerp(dp.src.height / 2, 16, Math.min(1, t.value))
         color: Qt.rgba(0.09, 0.09, 0.105, 0.98)
         border.width: 1
-        border.color: Qt.rgba(1, 1, 1, 0.10)
+        border.color: Theme.edge(1)
         opacity: Math.min(1, t.value * 4)
         clip: true
         MouseArea { anchors.fill: parent }
@@ -188,7 +188,7 @@ Item {
                     }
                 }
             }
-            Rectangle { x: quickCol.x + quickCol.width + 8; y: 12; width: 1; height: dp.toH - 24; color: Qt.rgba(1, 1, 1, 0.08) }
+            Rectangle { x: quickCol.x + quickCol.width + 8; y: 12; width: 1; height: dp.toH - 24; color: Theme.wash(2) }
 
             // Month
             Item {

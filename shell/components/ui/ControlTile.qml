@@ -45,7 +45,7 @@ Rectangle {
     radius: Theme.r3
     color: area.containsMouse ? Theme.tileHover : Theme.tileRest
     border.width: 1
-    border.color: Qt.rgba(1, 1, 1, 0.06)
+    border.color: Theme.edge(0)
     scale: area.pressed ? 0.97 : 1
     Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
     Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
@@ -55,7 +55,7 @@ Rectangle {
         x: 10
         anchors.verticalCenter: parent.verticalCenter
         width: 34; height: 34; radius: 17
-        color: tile.on ? tile.tone : Qt.rgba(1, 1, 1, 0.12)
+        color: tile.on ? tile.tone : Theme.wash(2)
         Behavior on color { ColorAnimation { duration: Theme.colorMs } }
         Text {
             textFormat: Text.PlainText

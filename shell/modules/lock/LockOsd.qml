@@ -87,7 +87,7 @@ Item {
         anchors.fill: parent
         radius: height / 2
         color: Qt.rgba(0.08, 0.08, 0.09, 0.82)
-        border.width: 1; border.color: Qt.rgba(1, 1, 1, 0.1)
+        border.width: 1; border.color: Theme.edge(1)
     }
     Text {
         textFormat: Text.PlainText
@@ -102,7 +102,7 @@ Item {
         id: track
         anchors { left: glyph.right; leftMargin: 14; right: pct.left; rightMargin: 14; verticalCenter: parent.verticalCenter }
         height: 6; radius: 3
-        color: Qt.rgba(1, 1, 1, 0.14)
+        color: Theme.wash(3)
         Rectangle {
             width: parent.width * Math.max(0, Math.min(1, hud.value)); height: parent.height; radius: 3
             color: hud.muted ? Theme.textTertiary : Theme.textPrimary

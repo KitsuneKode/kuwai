@@ -100,7 +100,7 @@ Rectangle {
         pickCurrent();
     }
     readonly property real extra: rep.count ? Math.max(0, (width - pad * 2 - naturalSum) / rep.count) : 0
-    color: Qt.rgba(1, 1, 1, 0.06)
+    color: Theme.wash(1)
 
     // Found, not bound: a binding over itemAt() ran once, before the
     // segments existed, and stayed null, so the selected pill never showed
@@ -137,9 +137,9 @@ Rectangle {
         width: pw.value
         height: seg.height - seg.pad * 2
         radius: seg.radius - seg.pad
-        color: Qt.rgba(1, 1, 1, 0.14)
+        color: Theme.wash(3)
         border.width: 1
-        border.color: Qt.rgba(1, 1, 1, 0.08)
+        border.color: Theme.edge(1)
     }
 
     Row {
@@ -180,7 +180,7 @@ Rectangle {
                         anchors.verticalCenter: parent.verticalCenter
                         height: 16; radius: 8
                         width: Math.max(16, badgeText.implicitWidth + 9)
-                        color: opt.modelData.alert ? Theme.red : Qt.rgba(1, 1, 1, 0.16)
+                        color: opt.modelData.alert ? Theme.red : Theme.wash(3)
                         Label {
                             id: badgeText
                             rounded: true

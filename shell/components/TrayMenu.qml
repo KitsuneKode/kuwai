@@ -123,7 +123,7 @@ Item {
                 radius: 14
                 color: Qt.rgba(0.07, 0.07, 0.08, 0.97)
                 border.width: 1
-                border.color: Qt.rgba(1, 1, 1, 0.09)
+                border.color: Theme.edge(1)
             }
 
             // Submenu header.
@@ -180,7 +180,7 @@ Item {
                         visible: row.e.isSeparator
                         anchors.verticalCenter: parent.verticalCenter
                         x: 8; width: parent.width - 16; height: 1
-                        color: Qt.rgba(1, 1, 1, 0.08)
+                        color: Theme.wash(2)
                     }
                     // Check / radio mark, the app's icon, the label, a submenu chevron.
                     Item {

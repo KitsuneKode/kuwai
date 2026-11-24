@@ -373,7 +373,7 @@ Scope {
                             Rectangle {
                                 width: parent.width
                                 height: 1
-                                color: Qt.rgba(1, 1, 1, 0.06)
+                                color: Theme.wash(1)
                             }
 
                             // ── Message Scroller ──────────────────────
@@ -546,7 +546,7 @@ Scope {
                                     radius: 17
                                     color: Qt.rgba(0.16, 0.16, 0.19, 0.96)
                                     border.width: 1
-                                    border.color: Qt.rgba(1, 1, 1, 0.12)
+                                    border.color: Theme.edge(1)
                                     opacity: show ? 1 : 0
                                     visible: opacity > 0.01
                                     scale: tbArea.pressed ? 0.97 : 1
@@ -689,7 +689,7 @@ Scope {
                         radius: 16
                         color: Theme.glassTintElevated
                         border.width: 1
-                        border.color: Qt.rgba(1, 1, 1, 0.12)
+                        border.color: Theme.edge(1)
                         clip: true
 
                         Elevation {
@@ -709,7 +709,7 @@ Scope {
                                 radius: 10
                                 color: Qt.rgba(0, 0, 0, 0.35)
                                 border.width: 1
-                                border.color: appSearchInput.activeFocus ? Theme.accent : Qt.rgba(1, 1, 1, 0.10)
+                                border.color: appSearchInput.activeFocus ? Theme.accent : Theme.edge(1)
 
                                 Row {
                                     anchors.fill: parent
@@ -765,7 +765,7 @@ Scope {
                                         height: 22
                                         width: escLabel.implicitWidth + 12
                                         radius: 5
-                                        color: Qt.rgba(1, 1, 1, 0.08)
+                                        color: Theme.wash(2)
                                         anchors.verticalCenter: parent.verticalCenter
 
                                         Label {

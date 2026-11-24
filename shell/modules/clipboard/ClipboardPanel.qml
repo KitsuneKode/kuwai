@@ -816,7 +816,7 @@ Scope {
                     ClippingRectangle {
                         anchors.verticalCenter: parent.verticalCenter
                         width: 24; height: 24; radius: 7
-                        color: toastRow.e && toastRow.e.kind === "color" ? root.colorOf(toastRow.e.preview) : Qt.rgba(1, 1, 1, 0.1)
+                        color: toastRow.e && toastRow.e.kind === "color" ? root.colorOf(toastRow.e.preview) : Theme.wash(2)
                         Image {
                             anchors.fill: parent
                             visible: toastRow.e && toastRow.e.kind === "image"
@@ -880,7 +880,7 @@ Scope {
                     Item {
                         anchors.verticalCenter: parent.verticalCenter
                         width: 26; height: 26
-                        Rectangle { anchors.fill: parent; radius: 13; color: "transparent"; border.width: 2; border.color: Qt.rgba(1, 1, 1, 0.16) }
+                        Rectangle { anchors.fill: parent; radius: 13; color: "transparent"; border.width: 2; border.color: Theme.edge(2) }
                         Canvas {
                             id: sweep
                             anchors.fill: parent
@@ -909,7 +909,7 @@ Scope {
                         anchors.verticalCenter: parent.verticalCenter
                         visible: root.saved && Clipboard.recSaved.thumb !== ""
                         width: 46; height: 28; radius: 7
-                        color: Qt.rgba(1, 1, 1, 0.08)
+                        color: Theme.wash(2)
                         Image { anchors.fill: parent; source: parent.visible ? "file://" + Clipboard.recSaved.thumb : ""; fillMode: Image.PreserveAspectCrop; asynchronous: true; cache: false; sourceSize: Qt.size(92, 56) }
                     }
                 }
@@ -1348,7 +1348,7 @@ Scope {
                 height: 30; radius: 15
                 color: Qt.rgba(0.18, 0.18, 0.21, 0.98)
                 border.width: 1
-                border.color: root.confirmWipe ? Qt.alpha(Theme.red, 0.5) : Qt.rgba(1, 1, 1, 0.12)
+                border.color: root.confirmWipe ? Qt.alpha(Theme.red, 0.5) : Theme.edge(1)
                 opacity: root.status ? 1 : 0
                 visible: opacity > 0.01
                 scale: root.status || Theme.reduceMotion ? 1 : 0.96
@@ -1379,7 +1379,7 @@ Scope {
                 anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
                 height: 48
                 opacity: root.reveal(200)
-                Rectangle { anchors { left: parent.left; right: parent.right; top: parent.top; leftMargin: 14; rightMargin: 14 } height: 1; color: Qt.rgba(1, 1, 1, 0.07) }
+                Rectangle { anchors { left: parent.left; right: parent.right; top: parent.top; leftMargin: 14; rightMargin: 14 } height: 1; color: Theme.wash(1) }
                 Row {
                     x: 22                        // the panel's one gutter (its header's, its detail line's)
                     anchors.verticalCenter: parent.verticalCenter
@@ -1392,7 +1392,7 @@ Scope {
                         Label { anchors.verticalCenter: parent.verticalCenter; text: Clipboard.targetName() ? "Paste to " + Clipboard.targetName() : "Paste"; size: 13; weight: Theme.wMedium }
                         KeyCap { anchors.verticalCenter: parent.verticalCenter; text: "↵" }
                     }
-                    Rectangle { width: 1; height: 16; anchors.verticalCenter: parent.verticalCenter; color: Qt.rgba(1, 1, 1, 0.1) }
+                    Rectangle { width: 1; height: 16; anchors.verticalCenter: parent.verticalCenter; color: Theme.wash(2) }
                     FootHint {
                         act: "quicklook"
                         spacing: 6

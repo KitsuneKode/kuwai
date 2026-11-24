@@ -191,7 +191,7 @@ Item {
                     radius: 14
                     color: Qt.rgba(1, 1, 1, 0.075 - 0.025 * parent.depth)
                     border.width: 1
-                    border.color: Qt.rgba(1, 1, 1, 0.05)
+                    border.color: Theme.edge(0)
                 }
             }
         }

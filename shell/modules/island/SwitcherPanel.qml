@@ -70,7 +70,7 @@ FocusScope {
                 width: parent.width
                 height: sw.shotH
                 radius: 14
-                color: Qt.rgba(1, 1, 1, 0.05)
+                color: Theme.wash(1)
                 clip: true
                 scale: card.on ? 1 : 0.97
                 Behavior on scale { NumberAnimation { duration: Theme.reduceMotion ? 0 : 140; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
@@ -86,7 +86,7 @@ FocusScope {
                     radius: parent.radius
                     color: "transparent"
                     border.width: card.on ? 2 : 1
-                    border.color: card.on ? Theme.accent : Qt.rgba(1, 1, 1, 0.10)
+                    border.color: card.on ? Theme.accent : Theme.edge(1)
                 }
                 // App icon, or its initial when there is none.
                 Rectangle {

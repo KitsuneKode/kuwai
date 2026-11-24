@@ -32,7 +32,7 @@ Rectangle {
     radius: 18
     color: Qt.rgba(0.08, 0.08, 0.10, 0.85)
     border.width: 1
-    border.color: inputArea.activeFocus ? Theme.accent : Qt.rgba(1, 1, 1, 0.12)
+    border.color: inputArea.activeFocus ? Theme.accent : Theme.edge(1)
 
     Behavior on border.color { ColorAnimation { duration: Theme.colorMs } }
     Behavior on implicitHeight {
@@ -265,9 +265,9 @@ Rectangle {
                     height: 30
                     width: chipRow.implicitWidth + 14
                     radius: 10
-                    color: Qt.rgba(1, 1, 1, 0.06)
+                    color: Theme.wash(1)
                     border.width: 1
-                    border.color: Qt.rgba(1, 1, 1, 0.08)
+                    border.color: Theme.edge(1)
                     opacity: 0
                     transform: Translate { id: chipLift; y: Theme.reduceMotion ? 0 : 4
                         Behavior on y { NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } } }
@@ -553,7 +553,7 @@ Rectangle {
                     height: 30
                     width: chatSeg.width + agentSeg.width + 6
                     radius: 15
-                    color: Qt.rgba(1, 1, 1, 0.05)
+                    color: Theme.wash(1)
                     anchors.verticalCenter: parent.verticalCenter
                     readonly property bool agent: OllamaService.mode === "agent"
                     Rectangle {
@@ -562,7 +562,7 @@ Rectangle {
                         width: modeSwitch.agent ? agentSeg.width : chatSeg.width
                         height: 24
                         radius: 12
-                        color: modeSwitch.agent ? Qt.alpha(Theme.accent, 0.22) : Qt.rgba(1, 1, 1, 0.10)
+                        color: modeSwitch.agent ? Qt.alpha(Theme.accent, 0.22) : Theme.wash(2)
                         Behavior on x { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                         Behavior on width { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                         Behavior on color { ColorAnimation { duration: Theme.colorMs } }
@@ -691,7 +691,7 @@ Rectangle {
                     readonly property bool stopping: OllamaService.busyHere && !root.canSend
                     color: stopping
                         ? (btnArea.containsMouse ? Theme.red : Qt.alpha(Theme.red, 0.90))
-                        : (root.canSend ? (btnArea.containsMouse ? Theme.accent : Qt.alpha(Theme.accent, 0.92)) : Qt.rgba(1, 1, 1, 0.08))
+                        : (root.canSend ? (btnArea.containsMouse ? Theme.accent : Qt.alpha(Theme.accent, 0.92)) : Theme.wash(2))
                     scale: btnArea.pressed ? 0.97 : 1
 
                     Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }

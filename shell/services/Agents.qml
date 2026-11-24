@@ -76,7 +76,7 @@ Singleton {
         key: it.key,
         id: it.agent,
         brand: Kittymux.brand(it.agent),
-        tint: String(Theme.brandTint[it.agent] || Theme.yellow),
+        tint: String(Theme.brandTint[it.agent] || Theme.red),
         name: Kittymux.agentLabel(it.agent),
         account: it.account || "",
         resetsAt: it.reset || 0,

@@ -50,14 +50,14 @@ Item {
         radius: 22
         color: Qt.rgba(1, 1, 1, over.hovered ? 0.2 : 0.14)
         border.width: 1
-        border.color: Qt.rgba(1, 1, 1, 0.22)
+        border.color: Theme.edge(3)
         Behavior on color { ColorAnimation { duration: Theme.colorMs } }
     }
     ClippingRectangle {
         id: art
         x: 13; anchors.verticalCenter: parent.verticalCenter
         width: 50; height: 50; radius: 12
-        color: Qt.rgba(1, 1, 1, 0.12)
+        color: Theme.wash(2)
         Image { anchors.fill: parent; source: media.player ? (media.player.trackArtUrl || "") : ""; sourceSize: Qt.size(100, 100); fillMode: Image.PreserveAspectCrop; asynchronous: true }
     }
     Column {
@@ -112,7 +112,7 @@ Item {
                     required property var modelData
                     width: 34; height: 34; radius: 17
                     opacity: modelData.ok ? 1 : 0.35
-                    color: bArea.containsMouse ? Qt.rgba(1, 1, 1, 0.18) : "transparent"
+                    color: bArea.containsMouse ? Theme.wash(4) : "transparent"
                     scale: bArea.pressed ? 0.9 : 1
                     Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                     Text { textFormat: Text.PlainText; anchors.centerIn: parent; text: b.modelData.g; font.family: Theme.fontGlyph; font.pixelSize: b.modelData.big ? 22 : 17; color: "white" }

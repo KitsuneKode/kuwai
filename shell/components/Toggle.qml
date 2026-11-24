@@ -22,7 +22,7 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: height / 2
-        color: Qt.tint(Qt.rgba(1, 1, 1, 0.16), Qt.alpha(Theme.green, Math.max(0, Math.min(1, k.value))))
+        color: Qt.tint(Theme.wash(3), Qt.alpha(Theme.green, Math.max(0, Math.min(1, k.value))))
     }
     // The knob: Apple's pressed stretch is 19/16 of its width (22 → 26 px),
     // with a soft shadow under it so it sits on the track rather than in it.

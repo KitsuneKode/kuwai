@@ -25,7 +25,7 @@ Item {
     property string label
     property string glyph
     property string valueText: Math.round(norm(value) * 100) + "%"
-    property color fillColor: Qt.rgba(1, 1, 1, 0.16)
+    property color fillColor: Theme.wash(3)
     property bool dim: false                  // muted: the fill goes quiet
     signal moved(real value)
     // Right-click: a secondary action on the whole track (audio: mute), as
@@ -59,7 +59,7 @@ Item {
         radius: s.vertical ? 14 : 12
         color: Qt.rgba(1, 1, 1, s.hot ? 0.08 : 0.065)
         border.width: 1
-        border.color: Qt.rgba(1, 1, 1, 0.06)
+        border.color: Theme.edge(0)
         clip: true
         Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
 

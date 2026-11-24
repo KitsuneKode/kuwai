@@ -95,7 +95,7 @@ Item {
                     height: 26
                     width: fRow.implicitWidth + 16
                     radius: 8
-                    color: Qt.rgba(1, 1, 1, 0.06)
+                    color: Theme.wash(1)
                     Row {
                         id: fRow
                         anchors.centerIn: parent
@@ -129,7 +129,7 @@ Item {
             radius: 12
             color: Qt.rgba(0, 0, 0, 0.35)
             border.width: 1
-            border.color: Qt.rgba(1, 1, 1, 0.12)
+            border.color: Theme.edge(1)
             clip: true
             Image {
                 anchors.fill: parent
@@ -147,9 +147,9 @@ Item {
             width: root.editing ? col.width * 0.85 : Math.min(col.width * 0.8, userText.implicitWidth + 30)
             implicitHeight: (root.editing ? editor.implicitHeight : userText.implicitHeight) + 22
             radius: 18
-            color: Qt.rgba(1, 1, 1, 0.09)
+            color: Theme.wash(2)
             border.width: 1
-            border.color: root.editing ? Qt.alpha(Theme.accent, 0.6) : Qt.rgba(1, 1, 1, 0.06)
+            border.color: root.editing ? Qt.alpha(Theme.accent, 0.6) : Theme.edge(0)
             Behavior on border.color { ColorAnimation { duration: Theme.colorMs } }
 
             TextEdit {
@@ -297,7 +297,7 @@ Item {
                             width: Math.min(parent.width * 0.8, steerText.implicitWidth + 30)
                             height: steerText.implicitHeight + 20
                             radius: 16
-                            color: Qt.rgba(1, 1, 1, 0.09)
+                            color: Theme.wash(2)
                             Text {
                                 textFormat: Text.PlainText
                                 id: steerText
@@ -393,7 +393,7 @@ Item {
                                         radius: 10
                                         color: Qt.rgba(0, 0, 0, 0.30)
                                         border.width: 1
-                                        border.color: Qt.rgba(1, 1, 1, 0.06)
+                                        border.color: Theme.edge(0)
                                         property bool copied: false
                                         Timer { id: codeCopied; interval: 1500; onTriggered: codeBox.copied = false }
 
@@ -429,7 +429,7 @@ Item {
                                                 Keys.onPressed: e => { if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { Clipboard.copyText(seg.text); codeBox.copied = true; codeCopied.restart(); e.accepted = true; } }
                                                 FocusRing { cornerRadius: Theme.r1 }
                                             }
-                                            Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Qt.rgba(1, 1, 1, 0.06) }
+                                            Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.wash(1) }
                                         }
 
                                         Flickable {

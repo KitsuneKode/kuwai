@@ -539,7 +539,7 @@ Item {
         stateKey: split.player ? (split.player.trackTitle || "") : ""
         ClippingRectangle {
             width: 18; height: 18; radius: 5
-            color: Qt.rgba(1, 1, 1, 0.08)
+            color: Theme.wash(2)
             ArtImage { anchors.fill: parent; source: split.player ? (split.player.trackArtUrl || "") : ""; px: 36 }
             HoverHandler { id: musicHover; enabled: parent.enabled; cursorShape: Qt.PointingHandCursor }
             TapHandler { gesturePolicy: TapHandler.WithinBounds; onTapped: Island.open("media", split.bar.screenName, "pointer", "island") }

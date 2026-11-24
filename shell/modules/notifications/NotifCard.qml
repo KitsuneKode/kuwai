@@ -293,7 +293,7 @@ Item {
         visible: card.engaged && !card.critical && !card.warning
         color: "transparent"
         border.width: 1
-        border.color: Qt.rgba(1, 1, 1, 0.22)
+        border.color: Theme.edge(3)
     }
 
     // Critical arrival: one ring of light leaves the card. Once, not a loop.
@@ -582,9 +582,9 @@ Item {
                 width: parent.width
                 height: 34
                 radius: 10
-                color: Qt.rgba(1, 1, 1, 0.08)
+                color: Theme.wash(2)
                 border.width: 1
-                border.color: toastReply.activeFocus ? Qt.rgba(1, 1, 1, 0.22) : Qt.rgba(1, 1, 1, 0.08)
+                border.color: toastReply.activeFocus ? Theme.edge(3) : Theme.edge(1)
                 TextInput {
                     id: toastReply
                     anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
@@ -632,7 +632,7 @@ Item {
         Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
         color: closeArea.containsMouse ? Qt.rgba(0.30, 0.30, 0.33, 0.97) : Qt.rgba(0.18, 0.18, 0.20, 0.95)
         border.width: 1
-        border.color: Qt.rgba(1, 1, 1, 0.18)
+        border.color: Theme.edge(2)
         Text {
             textFormat: Text.PlainText
             anchors.centerIn: parent

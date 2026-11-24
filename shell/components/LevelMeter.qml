@@ -47,7 +47,7 @@ Item {
                 Rectangle {
                     anchors.fill: parent
                     radius: 2
-                    color: Qt.rgba(1, 1, 1, 0.06)
+                    color: Theme.wash(1)
                 }
                 // The lit part, clipped from a full-height gradient.
                 Item {

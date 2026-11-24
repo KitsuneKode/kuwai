@@ -43,7 +43,7 @@ Item {
                 const c = getContext("2d");
                 c.reset();
                 c.lineWidth = 2;
-                c.strokeStyle = Qt.rgba(1, 1, 1, 0.14);
+                c.strokeStyle = Theme.wash(3);
                 c.beginPath(); c.arc(8, 8, 6, 0, Math.PI * 2); c.stroke();
                 c.strokeStyle = root.tone;
                 c.lineCap = "round";
@@ -71,7 +71,7 @@ Item {
         radius: 10
         color: Qt.rgba(0.15, 0.15, 0.18, 0.98)
         border.width: 1
-        border.color: Qt.rgba(1, 1, 1, 0.12)
+        border.color: Theme.edge(1)
         z: 50
         Column {
             id: tip

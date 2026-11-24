@@ -19,9 +19,9 @@ Rectangle {
     height: size + 9
     width: Math.max(height, label.implicitWidth + (word ? 10 : 6))
     radius: 5
-    color: Qt.rgba(1, 1, 1, 0.08)
+    color: Theme.wash(2)
     border.width: 1
-    border.color: Qt.rgba(1, 1, 1, 0.10)
+    border.color: Theme.edge(1)
 
     // A hairline of light along the bottom edge: the cap reads as raised.
     Rectangle {

@@ -125,9 +125,9 @@ Column {
                 anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom }
                 width: parent.width - 24; height: 30
                 radius: 16
-                color: Qt.rgba(1, 1, 1, 0.08)
+                color: Theme.wash(2)
                 border.width: 1
-                border.color: Qt.rgba(1, 1, 1, 0.12)
+                border.color: Theme.edge(1)
             }
             Item {
                 id: face
@@ -140,7 +140,7 @@ Column {
                     radius: 20
                     color: Qt.rgba(1, 1, 1, over.hovered ? 0.2 : 0.15)
                     border.width: 1
-                    border.color: card.loud ? Qt.alpha(card.tone, 0.55) : Qt.rgba(1, 1, 1, 0.2)
+                    border.color: card.loud ? Qt.alpha(card.tone, 0.55) : Theme.edge(3)
                     Behavior on color { ColorAnimation { duration: Theme.colorMs } }
                 }
                 Item {
@@ -158,7 +158,7 @@ Column {
                         anchors.fill: parent
                         visible: icon.status !== Image.Ready
                         radius: 19
-                        color: card.loud ? Qt.alpha(card.tone, 0.25) : Qt.rgba(1, 1, 1, 0.14)
+                        color: card.loud ? Qt.alpha(card.tone, 0.25) : Theme.wash(3)
                         Text {
                             textFormat: Text.PlainText
                             anchors.centerIn: parent

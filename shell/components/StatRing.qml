@@ -34,7 +34,7 @@ Item {
             anchors.fill: parent
             preferredRendererType: Shape.CurveRenderer
             ShapePath {
-                strokeColor: Qt.rgba(1, 1, 1, 0.1); strokeWidth: ring.stroke; fillColor: "transparent"; capStyle: ShapePath.RoundCap
+                strokeColor: Theme.wash(2); strokeWidth: ring.stroke; fillColor: "transparent"; capStyle: ShapePath.RoundCap
                 PathAngleArc { centerX: ring.size / 2; centerY: ring.size / 2; radiusX: ring.size / 2 - ring.stroke / 2 - 1; radiusY: ring.size / 2 - ring.stroke / 2 - 1; startAngle: -90; sweepAngle: 360 }
             }
             ShapePath {

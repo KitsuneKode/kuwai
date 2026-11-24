@@ -15,7 +15,7 @@ Rectangle {
     property bool running: visible
     property real phase: -1                 // ≥ 0: driven from outside
     radius: Math.min(height / 2, 8)
-    color: Qt.rgba(1, 1, 1, 0.07)
+    color: Theme.wash(1)
     clip: true
 
     Rectangle {
@@ -27,7 +27,7 @@ Rectangle {
         gradient: Gradient {
             orientation: Gradient.Horizontal
             GradientStop { position: 0.0; color: "transparent" }
-            GradientStop { position: 0.5; color: Qt.rgba(1, 1, 1, 0.07) }
+            GradientStop { position: 0.5; color: Theme.wash(1) }
             GradientStop { position: 1.0; color: "transparent" }
         }
         NumberAnimation on x {

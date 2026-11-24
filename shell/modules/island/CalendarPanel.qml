@@ -204,7 +204,7 @@ FocusScope {
                             visible: Calendar.events.length > 0 && Calendar.eventsOn(day.modelData).length > 0
                             anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 1 }
                             width: 4; height: 4; radius: 2
-                            color: day.inMonth ? Theme.textSecondary : Qt.rgba(1, 1, 1, 0.25)
+                            color: day.inMonth ? Theme.textSecondary : Theme.wash(5)
                         }
                         MouseArea { id: dayArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: cal.select(day.modelData) }
                         Accessible.role: Accessible.Cell
@@ -216,7 +216,7 @@ FocusScope {
                 }
             }
 
-            Rectangle { width: cal.cell * 7; height: 1; color: Qt.rgba(1, 1, 1, 0.08) }
+            Rectangle { width: cal.cell * 7; height: 1; color: Theme.wash(2) }
 
             Item {
                 width: cal.cell * 7

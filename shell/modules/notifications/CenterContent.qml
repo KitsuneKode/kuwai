@@ -71,7 +71,7 @@ Item {
         color: Qt.rgba(1, 1, 1, search.activeFocus ? 0.10 : 0.07)
         border.width: 1
         // Focused: a soft white edge, not the accent (that means "where you are").
-        border.color: search.activeFocus ? Qt.rgba(1, 1, 1, 0.22) : Qt.rgba(1, 1, 1, 0.07)
+        border.color: search.activeFocus ? Theme.edge(3) : Theme.edge(0)
         Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
         Behavior on border.color { ColorAnimation { duration: Theme.hoverMs } }
 
@@ -233,7 +233,7 @@ Item {
         Rectangle {
             anchors { left: parent.left; right: parent.right; bottom: parent.top; bottomMargin: 8 }
             height: 1
-            color: Qt.rgba(1, 1, 1, 0.06)
+            color: Theme.wash(1)
         }
 
         Row {

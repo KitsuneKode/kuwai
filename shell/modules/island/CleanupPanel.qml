@@ -185,7 +185,7 @@ FocusScope {
                     width: 16; height: 16; radius: 8
                     color: row.on ? Theme.accent : "transparent"
                     border.width: row.on ? 0 : 1.5
-                    border.color: Qt.rgba(1, 1, 1, 0.3)
+                    border.color: Theme.edge(4)
                     Behavior on color { ColorAnimation { duration: Theme.microMs } }
                     Text {
                         anchors.centerIn: parent

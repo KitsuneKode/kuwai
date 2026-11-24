@@ -73,9 +73,9 @@ Column {
         Rectangle {
             anchors.fill: parent
             radius: 21
-            color: Qt.rgba(1, 1, 1, 0.16)
+            color: Theme.wash(3)
             border.width: 1
-            border.color: entry.lock.error ? Qt.alpha(Theme.red, 0.6) : Qt.rgba(1, 1, 1, 0.18)
+            border.color: entry.lock.error ? Qt.alpha(Theme.red, 0.6) : Theme.edge(2)
         }
         TextInput {
             id: field
@@ -144,7 +144,7 @@ Column {
             id: go
             anchors { right: parent.right; rightMargin: 6; verticalCenter: parent.verticalCenter }
             width: 30; height: 30; radius: 15
-            color: entry.lock.password ? Qt.alpha(entry.accent, 0.9) : Qt.rgba(1, 1, 1, 0.12)
+            color: entry.lock.password ? Qt.alpha(entry.accent, 0.9) : Theme.wash(2)
             Behavior on color { ColorAnimation { duration: Theme.colorMs } }
             scale: goPress.pressed ? 0.9 : 1
             Behavior on scale { NumberAnimation { duration: Theme.quickMs; easing.type: Easing.OutCubic } }

@@ -183,7 +183,7 @@ FocusScope {
             }
         }
     }
-    Rectangle { x: 0; y: 63; width: parent.width; height: 1; color: Qt.rgba(1, 1, 1, 0.07) }
+    Rectangle { x: 0; y: 63; width: parent.width; height: 1; color: Theme.wash(1) }
 
     // More that way: the rows fade, and a thumb shows while it scrolls.
 
@@ -231,9 +231,9 @@ FocusScope {
                 anchors.leftMargin: 2; anchors.rightMargin: 2
                 radius: 11
                 visible: !row.header
-                color: Qt.rgba(1, 1, 1, 0.10)
+                color: Theme.wash(2)
                 border.width: 1
-                border.color: Qt.rgba(1, 1, 1, 0.06)
+                border.color: Theme.edge(0)
                 opacity: row.on ? 1 : 0
                 Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 0 : 90; easing.type: Easing.OutCubic } }
             }
@@ -278,7 +278,7 @@ FocusScope {
                     anchors.verticalCenter: parent.verticalCenter
                     height: 20; radius: 10
                     width: stateLabel.implicitWidth + 16
-                    color: row.modelData.on ? Qt.alpha(Theme.accent, 0.22) : Qt.rgba(1, 1, 1, 0.07)
+                    color: row.modelData.on ? Qt.alpha(Theme.accent, 0.22) : Theme.wash(1)
                     Label {
                         id: stateLabel
                         anchors.centerIn: parent
@@ -339,7 +339,7 @@ FocusScope {
     }
 
     // ── Footer ───────────────────────────────────────────────────────────
-    Rectangle { x: 0; y: parent.height - 46; width: parent.width; height: 1; color: Qt.rgba(1, 1, 1, 0.06) }
+    Rectangle { x: 0; y: parent.height - 46; width: parent.width; height: 1; color: Theme.wash(1) }
     Row {
         id: keysFoot
         anchors { left: parent.left; leftMargin: 20; bottom: parent.bottom; bottomMargin: 14 }

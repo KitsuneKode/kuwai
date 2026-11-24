@@ -5,6 +5,8 @@ Counts what should come from Theme but is typed by hand:
   sizes      `size:` / `font.pixelSize:` numbers off the type scale
   durations  `duration: <number>` (motion tokens live in Theme)
   hex        raw "#rrggbb" colours outside shell/config
+  white      a hand-typed white overlay (Qt.rgba(1, 1, 1, ≤ 0.3)) outside shell/config:
+             fills take Theme.wash(step), borders Theme.edge(step)
 
   kuwai-tokens            print the counts and the baseline
   kuwai-tokens --check    exit 1 if any count went UP from the baseline
@@ -27,6 +29,7 @@ SCALE = {10, 11, 12, 13, 14, 15, 18, 20, 24}
 SIZE = re.compile(r"\b(?:size|font\.pixelSize)\s*:\s*(\d+)\b")
 DUR = re.compile(r"\bduration\s*:\s*\d+\b")
 HEX = re.compile(r'"#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?"')
+WHITE = re.compile(r"Qt\.rgba\(\s*1\s*,\s*1\s*,\s*1\s*,\s*(\d*\.\d+|0)\s*\)")
 
 
 def literals():
@@ -48,10 +51,13 @@ def literals():
             if os.sep + "config" + os.sep not in p:
                 for m in HEX.finditer(code):
                     yield "hex", p, line(m), m.group(0)
+                for m in WHITE.finditer(code):
+                    if float(m.group(1)) <= 0.3:
+                        yield "white", p, line(m), m.group(0)
 
 
 def count():
-    c = {"sizes": 0, "durations": 0, "hex": 0}
+    c = {"sizes": 0, "durations": 0, "hex": 0, "white": 0}
     for kind, *_ in literals():
         c[kind] += 1
     return c

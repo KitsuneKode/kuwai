@@ -6,11 +6,12 @@
 //
 //   ClippingRectangle { radius: 11; Image { … } ImageEdge { radius: 11 } }
 import QtQuick
+import qs.config
 
 Rectangle {
     anchors.fill: parent
     color: "transparent"
     border.width: 1
-    border.color: Qt.rgba(1, 1, 1, 0.1)
+    border.color: Theme.edge(1)
     antialiasing: true
 }

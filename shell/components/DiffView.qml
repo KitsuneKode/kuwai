@@ -50,7 +50,7 @@ Item {
         radius: 12
         color: Qt.rgba(0, 0, 0, 0.35)
         border.width: 1
-        border.color: Qt.rgba(1, 1, 1, 0.06)
+        border.color: Theme.edge(0)
     }
 
     Text {
@@ -130,7 +130,7 @@ Item {
                     horizontalAlignment: Text.AlignRight
                     text: row.r.o || ""
                     font.family: Theme.fontMono; font.pixelSize: dv.fontSize - 1
-                    color: Qt.rgba(1, 1, 1, 0.28)
+                    color: Theme.wash(5)
                 }
                 Text {
                     textFormat: Text.PlainText
@@ -139,7 +139,7 @@ Item {
                     horizontalAlignment: Text.AlignRight
                     text: row.r.n || ""
                     font.family: Theme.fontMono; font.pixelSize: dv.fontSize - 1
-                    color: Qt.rgba(1, 1, 1, 0.28)
+                    color: Theme.wash(5)
                 }
                 Text {
                     textFormat: Text.PlainText

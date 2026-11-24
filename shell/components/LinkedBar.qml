@@ -77,7 +77,7 @@ Column {
                 readonly property int part: lb.owner[index]
                 x: col * (lb.dot + lb.gap); y: row * (lb.dot + lb.gap)
                 width: lb.dot; height: lb.dot; radius: lb.dot / 2
-                color: part < 0 ? Qt.rgba(1, 1, 1, 0.08) : lb.parts[part].color
+                color: part < 0 ? Theme.wash(2) : lb.parts[part].color
                 opacity: lb.hot < 0 || part === lb.hot ? 1 : 0.28
                 Behavior on opacity { NumberAnimation { duration: Theme.hoverMs } }
             }

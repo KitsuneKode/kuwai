@@ -51,7 +51,7 @@ Item {
     Rectangle {
         visible: !row.Positioner.isFirstItem
         x: 14; width: parent.width - 14; height: 1
-        color: Qt.rgba(1, 1, 1, 0.07)
+        color: Theme.wash(1)
     }
     Column {
         id: text

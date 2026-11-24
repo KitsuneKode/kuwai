@@ -509,7 +509,7 @@ FocusScope {
             font.pixelSize: Theme.tTitle3
             font.variableAxes: ({ "opsz": Theme.opszFor(Theme.tTitle3), "wght": Theme.wRegular })
             color: Theme.textPrimary
-            selectionColor: Qt.rgba(1, 1, 1, 0.25)
+            selectionColor: Theme.wash(5)
             selectedTextColor: Theme.textPrimary
             cursorDelegate: Rectangle { width: 2; radius: 1; color: Theme.blue; visible: field.cursorVisible }
             onTextChanged: { launcher.query = text; Island.lastQuery = text; }
@@ -558,7 +558,7 @@ FocusScope {
             }
         }
     }
-    Rectangle { x: 0; y: 63; width: parent.width; height: 1; color: Qt.rgba(1, 1, 1, 0.08) }
+    Rectangle { x: 0; y: 63; width: parent.width; height: 1; color: Theme.wash(2) }
 
     // ── Results ──────────────────────────────────────────────────────────
     ListView {
@@ -594,9 +594,9 @@ FocusScope {
                 anchors.leftMargin: 2; anchors.rightMargin: 2
                 radius: 12
                 visible: !row.header && !row.dock
-                color: Qt.rgba(1, 1, 1, 0.10)
+                color: Theme.wash(2)
                 border.width: 1
-                border.color: Qt.rgba(1, 1, 1, 0.06)
+                border.color: Theme.edge(0)
                 // Instant: arrow keys move it hundreds of times a day.
                 opacity: row.on ? 1 : 0
             }
@@ -735,9 +735,9 @@ FocusScope {
                         Rectangle {
                             anchors.fill: parent
                             radius: 12
-                            color: Qt.rgba(1, 1, 1, 0.10)
+                            color: Theme.wash(2)
                             border.width: 1
-                            border.color: Qt.rgba(1, 1, 1, 0.06)
+                            border.color: Theme.edge(0)
                             opacity: tile.chosen ? 1 : tileArea.containsMouse ? 0.6 : 0     // instant, like the rows
                         }
                         Item {
@@ -849,7 +849,7 @@ FocusScope {
     ScrollHint { flickable: list; inside: true }
 
     // ── Footer ───────────────────────────────────────────────────────────
-    Rectangle { x: 0; y: parent.height - launcher.footH; width: parent.width; height: 1; color: Qt.rgba(1, 1, 1, 0.06) }
+    Rectangle { x: 0; y: parent.height - launcher.footH; width: parent.width; height: 1; color: Theme.wash(1) }
     Row {
         anchors { left: parent.left; leftMargin: 20; bottom: parent.bottom; bottomMargin: 14 }
         spacing: 16

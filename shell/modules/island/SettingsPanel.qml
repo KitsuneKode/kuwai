@@ -129,7 +129,7 @@ FocusScope {
         id: side
         width: Math.round(212 * Theme.textScale)   // grows with Text size
         height: parent.height
-        color: Qt.rgba(1, 1, 1, 0.03)
+        color: Theme.wash(0)
         // The search sits where the title was (System Settings): the panel
         // says "Settings" in its own header row (Accessible name below).
         Rectangle {
@@ -140,7 +140,7 @@ FocusScope {
             radius: 9
             color: Qt.rgba(1, 1, 1, search.activeFocus ? 0.10 : 0.06)
             border.width: 1
-            border.color: search.activeFocus ? Qt.rgba(1, 1, 1, 0.22) : Qt.rgba(1, 1, 1, 0.06)
+            border.color: search.activeFocus ? Theme.edge(3) : Theme.edge(0)
             Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
             Behavior on border.color { ColorAnimation { duration: Theme.hoverMs } }
             Text {
@@ -245,7 +245,7 @@ FocusScope {
                     width: parent.width
                     height: 36
                     radius: 9
-                    color: on ? Qt.rgba(1, 1, 1, 0.12) : itemArea.containsMouse ? Theme.rowHover : "transparent"
+                    color: on ? Theme.wash(2) : itemArea.containsMouse ? Theme.rowHover : "transparent"
                     Behavior on color { ColorAnimation { duration: Theme.colorMs } }
                     Rectangle {
                         id: chip
@@ -282,7 +282,7 @@ FocusScope {
                     width: parent.width
                     height: 44
                     radius: 9
-                    color: on ? Qt.rgba(1, 1, 1, 0.12) : resArea.containsMouse ? Theme.rowHover : "transparent"
+                    color: on ? Theme.wash(2) : resArea.containsMouse ? Theme.rowHover : "transparent"
                     Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
                     Rectangle {
                         id: resChip
@@ -326,7 +326,7 @@ FocusScope {
         ScrollFade { flickable: sideFlick }
         ScrollHint { flickable: sideFlick; anchors { right: parent.right; top: sideFlick.top; bottom: sideFlick.bottom; rightMargin: 2 } }
     }
-    Rectangle { x: side.width; width: 1; height: parent.height; color: Qt.rgba(1, 1, 1, 0.07) }
+    Rectangle { x: side.width; width: 1; height: parent.height; color: Theme.wash(1) }
 
     // ── Content ──────────────────────────────────────────────────────────
     Item {

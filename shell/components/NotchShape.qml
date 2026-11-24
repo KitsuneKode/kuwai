@@ -5,6 +5,7 @@
 //
 //   NotchShape { w: 220; h: 32; radius: 14 }
 import QtQuick
+import qs.config
 import QtQuick.Shapes
 
 Shape {
@@ -14,7 +15,7 @@ Shape {
     property real radius: 14
     property real ear: 9
     property color fill: "black"
-    property color edge: Qt.rgba(1, 1, 1, 0.06)
+    property color edge: Theme.edge(0)
 
     width: w + ear * 2
     height: h

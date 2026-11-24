@@ -383,7 +383,7 @@ FocusScope {
                     width: parent.width
                     lead: Item {
                         anchors.fill: parent
-                        Rectangle { anchors.fill: parent; radius: 9; color: Qt.rgba(1, 1, 1, 0.06) }
+                        Rectangle { anchors.fill: parent; radius: 9; color: Theme.wash(1) }
                         Image {
                             id: mark
                             anchors.centerIn: parent

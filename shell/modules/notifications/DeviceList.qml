@@ -23,9 +23,9 @@ Column {
         width: devList.width
         height: devices.implicitHeight + 8
         radius: 18
-        color: Qt.rgba(1, 1, 1, 0.065)
+        color: Theme.wash(1)
         border.width: 1
-        border.color: Qt.rgba(1, 1, 1, 0.06)
+        border.color: Theme.edge(0)
         Column {
             id: devices
             x: 4; y: 4
@@ -51,7 +51,7 @@ Column {
                         visible: dev.index > 0
                         anchors { left: parent.left; right: parent.right; top: parent.top; leftMargin: 44; rightMargin: 10 }
                         height: 1
-                        color: Qt.rgba(1, 1, 1, 0.06)
+                        color: Theme.wash(1)
                     }
                     HoverHandler { id: devHover }
 
@@ -153,12 +153,12 @@ Column {
                                 width: parent.width
                                 height: 2
                                 radius: 1
-                                color: Qt.rgba(1, 1, 1, 0.06)
+                                color: Theme.wash(1)
                                 Rectangle {
                                     height: parent.height
                                     radius: 1
                                     width: parent.width * parent.v
-                                    color: parent.v > 0.95 ? Theme.red : parent.v > 0.8 ? Theme.yellow : Theme.green
+                                    color: parent.v > 0.9 ? Theme.red : parent.v > 0.75 ? Theme.orange : Theme.green
                                     Behavior on width { NumberAnimation { duration: Theme.peakFollowMs } }
                                 }
                             }
@@ -169,7 +169,7 @@ Column {
                         height: 22
                         value: dev.audio ? dev.audio.volume : 0
                         dim: muteBtn.muted
-                        fillColor: dev.on ? Qt.alpha(Theme.blue, 0.55) : Qt.rgba(1, 1, 1, 0.18)
+                        fillColor: dev.on ? Qt.alpha(Theme.blue, 0.55) : Theme.wash(4)
                         onMoved: v => { if (dev.audio) dev.audio.volume = v; }
                         onRightClicked: if (dev.audio) dev.audio.muted = !dev.audio.muted
                     }

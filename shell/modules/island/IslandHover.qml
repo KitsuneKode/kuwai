@@ -268,7 +268,7 @@ Item {
             id: art
             x: 9; anchors.verticalCenter: parent.verticalCenter
             width: 48; height: 48; radius: 11
-            color: Qt.rgba(1, 1, 1, 0.08)
+            color: Theme.wash(2)
             ArtImage { anchors.fill: parent; source: hover.player ? (hover.player.trackArtUrl || "") : ""; px: 96; player: hover.player }
             ImageEdge { radius: 11 }
         }
@@ -380,7 +380,7 @@ Item {
         Rectangle {
             anchors { left: art.right; leftMargin: 12; right: parent.right; rightMargin: 14; bottom: parent.bottom; bottomMargin: 7 }
             height: 2; radius: 1
-            color: Qt.rgba(1, 1, 1, 0.08)
+            color: Theme.wash(2)
             Rectangle {
                 width: parent.width * Media.fraction
                 height: parent.height; radius: 1

@@ -274,7 +274,7 @@ Item {
         visible: !peek.expanded
         anchors { right: go.left; rightMargin: 8; verticalCenter: parent.verticalCenter }
         width: 22; height: 22; radius: 11
-        color: dismissArea.containsMouse ? Theme.pillHover : Qt.rgba(1, 1, 1, 0.06)
+        color: dismissArea.containsMouse ? Theme.pillHover : Theme.wash(1)
         Text { anchors.centerIn: parent; text: "\u{f0056}"; font.family: Theme.fontGlyph; font.pixelSize: 12; color: Theme.textSecondary }
         MouseArea {
             id: dismissArea

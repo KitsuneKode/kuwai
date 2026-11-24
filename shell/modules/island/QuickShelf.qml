@@ -92,7 +92,7 @@ Item {
             anchors.fill: parent
             radius: height / 2
             color: Qt.rgba(0.1, 0.1, 0.11, 0.98)
-            border.width: 1; border.color: Qt.rgba(1, 1, 1, 0.1)
+            border.width: 1; border.color: Theme.edge(1)
         }
         Row {
             id: row

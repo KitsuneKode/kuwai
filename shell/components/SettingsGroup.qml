@@ -24,9 +24,9 @@ Column {
         width: g.width
         height: list.implicitHeight
         radius: 12
-        color: Qt.rgba(1, 1, 1, 0.05)
+        color: Theme.wash(1)
         border.width: 1
-        border.color: Qt.rgba(1, 1, 1, 0.05)
+        border.color: Theme.edge(0)
         Column { id: list; width: parent.width }
     }
 }

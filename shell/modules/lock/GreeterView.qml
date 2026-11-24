@@ -228,7 +228,7 @@ Item {
                 radius: width / 2
                 color: "transparent"
                 border.width: 2 + avatar.miss
-                border.color: Qt.tint(view.lock.checking ? view.accent : Qt.rgba(1, 1, 1, 0.22), Qt.alpha(Theme.red, avatar.miss))
+                border.color: Qt.tint(view.lock.checking ? view.accent : Theme.edge(3), Qt.alpha(Theme.red, avatar.miss))
                 Behavior on border.color { enabled: avatar.miss === 0; ColorAnimation { duration: Theme.colorMs } }
                 SequentialAnimation on opacity {
                     running: view.lock.checking && !Theme.reduceMotion

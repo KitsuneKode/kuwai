@@ -242,9 +242,9 @@ Column {
                 width: parent.width - 37 - 4
                 height: 34
                 radius: 10
-                color: Qt.rgba(1, 1, 1, 0.08)
+                color: Theme.wash(2)
                 border.width: 1
-                border.color: psk.activeFocus ? Qt.alpha(Theme.blue, 0.6) : Qt.rgba(1, 1, 1, 0.08)
+                border.color: psk.activeFocus ? Qt.alpha(Theme.blue, 0.6) : Theme.edge(1)
                 TextInput {
                     id: psk
                     anchors { left: parent.left; right: joinBtn.left; leftMargin: 10; rightMargin: 8; verticalCenter: parent.verticalCenter }

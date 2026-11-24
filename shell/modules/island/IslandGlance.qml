@@ -128,7 +128,7 @@ Item {
             visible: glance.playing
             anchors.verticalCenter: parent.verticalCenter
             width: 22; height: 22; radius: 6
-            color: Qt.rgba(1, 1, 1, 0.08)
+            color: Theme.wash(2)
             ArtImage { anchors.fill: parent; source: glance.playing ? (glance.player.trackArtUrl || "") : ""; px: 44 }
         }
     }

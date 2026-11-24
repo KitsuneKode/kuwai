@@ -707,7 +707,7 @@ FocusScope {
         height: Math.min(parent.height - y - 14, gcol.implicitHeight + 32)
         radius: Theme.r3
         color: Qt.rgba(0.07, 0.07, 0.08, 0.98)
-        border.width: 1; border.color: Qt.rgba(1, 1, 1, 0.08)
+        border.width: 1; border.color: Theme.edge(1)
         z: 10
         visible: opacity > 0.01
         opacity: picker.guide ? 1 : 0
@@ -730,7 +730,7 @@ FocusScope {
                     spacing: 10
                     Rectangle {
                         width: 20; height: 20; radius: 10
-                        color: Qt.rgba(1, 1, 1, 0.08)
+                        color: Theme.wash(2)
                         Label { anchors.centerIn: parent; text: String(index + 1); size: Theme.tCaption; weight: Theme.wSemibold; color: Theme.textSecondary }
                     }
                     Label { width: gcol.width - 30; wrapMode: Text.Wrap; text: modelData; size: Theme.tBody; color: Theme.textPrimary; lineHeight: 1.3 }

@@ -95,7 +95,7 @@ Item {
         radius: menu.lerp(menu.from.height / 2, 16, Math.min(1, t.value))
         color: Qt.rgba(0.15, 0.15, 0.18, 0.98)
         border.width: 1
-        border.color: Qt.rgba(1, 1, 1, 0.12)
+        border.color: Theme.edge(1)
         opacity: Math.min(1, t.value * 4)
         clip: true
 
@@ -128,7 +128,7 @@ Item {
                     size: 11
                     color: Theme.textTertiary
                 }
-                Rectangle { anchors { left: parent.left; right: parent.right; bottom: parent.bottom } height: 1; color: Qt.rgba(1, 1, 1, 0.07) }
+                Rectangle { anchors { left: parent.left; right: parent.right; bottom: parent.bottom } height: 1; color: Theme.wash(1) }
             }
             ListView {
                 id: list
@@ -159,7 +159,7 @@ Item {
                         radius: 9
                         scale: rowArea.pressed ? 0.97 : 1
                         Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
-                        color: menu.sel === row.index ? Qt.rgba(1, 1, 1, 0.14)
+                        color: menu.sel === row.index ? Theme.wash(3)
                              : rowArea.containsMouse ? (row.modelData.danger ? Qt.alpha(Theme.red, 0.16) : Theme.rowHover) : "transparent"
                         Text {
                             textFormat: Text.PlainText

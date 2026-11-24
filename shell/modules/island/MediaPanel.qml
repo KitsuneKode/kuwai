@@ -114,7 +114,7 @@ FocusScope {
         ClippingRectangle {
             id: art
             width: 64; height: 64; radius: 14
-            color: Qt.rgba(1, 1, 1, 0.08)
+            color: Theme.wash(2)
             // The shared cover: art, else a frame of the playing window (a film), else the note.
             ArtImage { anchors.fill: parent; source: Media.art; px: 128; player: np.p }
             ImageEdge { radius: 14 }
@@ -269,7 +269,7 @@ FocusScope {
                     anchors.verticalCenter: parent.verticalCenter
                     width: parent.width
                     height: track.active ? 8 : 5; radius: height / 2
-                    color: Qt.rgba(1, 1, 1, 0.14)
+                    color: Theme.wash(3)
                     Behavior on height { NumberAnimation { duration: Theme.quickMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                     Rectangle {
                         width: parent.width * scrub.f

@@ -61,7 +61,7 @@ Item {
         radius: 18
         color: Qt.rgba(0.11, 0.11, 0.13, 0.97)
         border.width: 1
-        border.color: Qt.rgba(1, 1, 1, 0.10)
+        border.color: Theme.edge(1)
         transform: Translate { y: Theme.reduceMotion ? 0 : (1 - sheet.p) * (card.height * 0.35) }
         opacity: Math.min(1, sheet.p * 1.4)
         MouseArea { anchors.fill: parent }          // clicks on the sheet stay on it

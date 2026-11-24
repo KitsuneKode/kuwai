@@ -183,9 +183,9 @@ Item {
                     anchors { right: parent.right; top: parent.top; bottom: parent.bottom }
                     width: 84
                     radius: 18
-                    color: Qt.rgba(1, 1, 1, 0.04)
+                    color: Theme.wash(0)
                     border.width: 1
-                    border.color: Qt.rgba(1, 1, 1, 0.12)
+                    border.color: Theme.edge(1)
                     Strip {
                         anchors.centerIn: parent
                         node: view.sink
@@ -229,9 +229,9 @@ Item {
         width: parent ? parent.width : 0
         height: 132
         radius: 18
-        color: Qt.rgba(1, 1, 1, 0.065)
+        color: Theme.wash(1)
         border.width: 1
-        border.color: Qt.rgba(1, 1, 1, 0.06)
+        border.color: Theme.edge(0)
 
         // MPRIS doesn't push position; ask while playing and on screen.
         Timer {

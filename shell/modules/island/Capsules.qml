@@ -224,7 +224,7 @@ Row {
                 GradientStop { position: 1; color: Qt.lighter(Theme.accent, 1.35) }
             }
             border.width: 1
-            border.color: Qt.rgba(1, 1, 1, 0.25)
+            border.color: Theme.edge(3)
             Text {
                 textFormat: Text.PlainText
                 anchors.centerIn: parent
