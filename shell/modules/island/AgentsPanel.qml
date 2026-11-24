@@ -263,6 +263,7 @@ FocusScope {
 
         // ── The live activity line: what it is, then how they're doing ──
         Item {
+            id: head
             width: parent.width
             height: 24
             Label {
@@ -297,7 +298,9 @@ FocusScope {
             id: list
             visible: ap.rows.length > 0
             width: parent.width
-            height: Math.min(contentHeight, 420)
+            readonly property real others: head.height + footRow.height + (portsCard.visible ? portsCard.height : 0) + (usageCard.visible ? usageCard.height : 0)
+                + (keyHints.visible ? keyHints.height : 0) + col.spacing * (2 + (portsCard.visible ? 1 : 0) + (usageCard.visible ? 1 : 0) + (keyHints.visible ? 1 : 0))
+            height: Math.min(contentHeight, Math.max(Theme.sp(96), Theme.panelMaxH - 36 - others))
             clip: true
             spacing: Theme.s2
             boundsBehavior: Flickable.StopAtBounds
@@ -535,6 +538,7 @@ FocusScope {
         ScrollHint { flickable: list; inside: true }
 
         Rectangle {
+            id: portsCard
             visible: ap.ports.length > 0
             width: parent.width
             height: portsCol.implicitHeight + Theme.s2 * 2
@@ -546,7 +550,7 @@ FocusScope {
                 x: Theme.s3; y: Theme.s2
                 width: parent.width - Theme.s3 * 2
                 Repeater {
-                    model: ap.ports.slice(0, 4)
+                    model: ap.ports.slice(0, Theme.textScale >= 1.5 ? 2 : 4)
                     Item {
                         required property var modelData
                         width: portsCol.width
@@ -585,13 +589,17 @@ FocusScope {
             }
         }
 
+        UsageCard { id: usageCard; width: parent.width; max: Theme.textScale >= 1.5 ? 0 : 3 }
+
         // Opened from the keyboard: the keys, quietly (the pointer has the buttons).
         KeyHints {
+            id: keyHints
             visible: Island.via === "key"
             hints: [["↑↓", "Choose"], ["↩", "Go"], ["⌫", "Mark read / forget"], ["A", "All read"], ["U", "Usage"], ["esc", "Back"]]
         }
         // The way on: how much they've got left, or the full list with recent ones to resume.
         Row {
+            id: footRow
             width: parent.width
             spacing: 8
             Button {

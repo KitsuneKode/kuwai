@@ -2882,6 +2882,104 @@
      "T3Code",
      "rawItems",
      []
+    ],
+    [
+     "Limits",
+     "loaded",
+     true
+    ],
+    [
+     "Limits",
+     "source",
+     "t3"
+    ],
+    [
+     "Limits",
+     "checkedAt",
+     "@now-240000ms"
+    ],
+    [
+     "Limits",
+     "providers",
+     [
+      {
+       "driver": "claude",
+       "label": "Claude",
+       "color": "#d97757",
+       "accounts": [
+        {
+         "key": "claude:Work",
+         "driver": "claude",
+         "name": "Work",
+         "email": "ada@example.com",
+         "plan": "Max 20x",
+         "accent": null,
+         "note": null,
+         "credits": 0,
+         "checkedAt": "@now-240000ms",
+         "windows": [
+          {
+           "id": "session",
+           "kind": "session",
+           "label": "Session",
+           "used": 38,
+           "resetsAt": "@now+10800000ms",
+           "durationMins": 300
+          },
+          {
+           "id": "weekly",
+           "kind": "weekly",
+           "label": "Weekly",
+           "used": 61,
+           "resetsAt": "@now+259200000ms",
+           "durationMins": 10080
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "driver": "codex",
+       "label": "Codex",
+       "color": "#10a37f",
+       "accounts": [
+        {
+         "key": "codex:Personal",
+         "driver": "codex",
+         "name": "Personal",
+         "email": "ada@example.com",
+         "plan": "Pro",
+         "accent": null,
+         "note": null,
+         "credits": 0,
+         "checkedAt": "@now-240000ms",
+         "windows": [
+          {
+           "id": "session",
+           "kind": "session",
+           "label": "Session",
+           "used": 12,
+           "resetsAt": "@now+14400000ms",
+           "durationMins": 300
+          },
+          {
+           "id": "weekly",
+           "kind": "weekly",
+           "label": "Weekly",
+           "used": 27,
+           "resetsAt": "@now+432000000ms",
+           "durationMins": 10080
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    ],
+    [
+     "Limits",
+     "fails",
+     0
     ]
    ],
    "kind": "worst",
