@@ -33,6 +33,7 @@ rule({
 })
 
 rule({ name = "flat-tiles", match = { float = false }, no_shadow = true })
+rule({ name = "fullscreen-no-glow", match = { fullscreen = true }, no_glow = true })
 
 local DIALOG_TITLES = table.concat({
 	"Open File.*", "Select a File.*", "Open Folder.*", "Save As.*", "Save File.*", "Choose Files.*",
@@ -103,7 +104,7 @@ rule({ name = "vrr-off", match = { class = ".*" }, no_vrr = true })
 rule({ name = "vrr-games", match = { content = "game" }, no_vrr = false })
 rule({ name = "vrr-video", match = { content = "video" }, no_vrr = false })
 
-rule({ name = "games", match = { class = "^(steam_app_.*|gamescope|.*\\.exe|Minecraft.*|cs2|dota2)$" }, immediate = true, content = "game", idle_inhibit = "fullscreen", no_blur = true, no_shadow = true, no_vrr = false })
+rule({ name = "games", match = { class = "^(steam_app_.*|gamescope|.*\\.exe|Minecraft.*|cs2|dota2)$" }, immediate = true, content = "game", idle_inhibit = "fullscreen", no_blur = true, no_shadow = true, no_glow = true, no_vrr = false })
 rule({ name = "games-title", match = { title = "^(.*\\.exe|.*[Mm]inecraft.*)$" }, immediate = true, content = "game" })
 rule({ name = "steam-friends", match = { class = "^([Ss]team)$", title = "^(Friends List|Steam Settings)$" }, float = true })
 

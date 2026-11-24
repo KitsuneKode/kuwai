@@ -47,6 +47,14 @@ K.config({
 			color_inactive = "rgba(00000030)",
 		},
 
+		glow = {
+			enabled = true,
+			range = 14,
+			render_power = 3,
+			color = { colors = { "rgba(ffffff38)", "rgba(ffffff12)" }, angle = 45 },
+			color_inactive = "rgba(00000000)",
+		},
+
 		blur = {
 			enabled = true,
 			variant = "kawase",
@@ -116,6 +124,12 @@ function L.apply_theme()
 					col = {
 						active_border = { colors = { active_b, soft_b }, angle = 45 },
 						inactive_border = inactive_b or "rgba(ffffff14)",
+					},
+				},
+				decoration = {
+					glow = {
+						color = { colors = { T.rgba("accent", "48"), T.rgba("accentSoft", "1c") or T.rgba("accent", "1c") }, angle = 45 },
+						color_inactive = "rgba(00000000)",
 					},
 				},
 			})
