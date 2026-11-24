@@ -74,6 +74,22 @@ def test_a_bot_commenting_on_your_pr_is_quiet(rf):
     assert rf.gh_thread(t, fetch=by("coderabbitai[bot]", "Walkthrough"), c=conf())["quiet"]
 
 
+def test_smart_bots_toast_what_needs_you_and_say_a_limit_once(rf):
+    rf.state.pop("bot_limits", None)
+    t = thread("author", "feat: stremio")
+    limit = "> [!WARNING] Review limit reached. Next included review available in 35 minutes."
+    first = rf.gh_thread(t, fetch=by("coderabbitai[bot]", limit), c=conf(bots="smart"))
+    assert first["status"] == "Limit reached" and first["quiet"]
+    assert first["group"] == "gh:limit:coderabbitai[bot]"
+    again = limit.replace("35", "8")
+    assert rf.gh_thread(t, fetch=by("coderabbitai[bot]", again), c=conf(bots="smart")) is None
+    failed = "Deployment failed for project kunai-docs with the following error: Build failed"
+    toast = rf.gh_thread(t, fetch=by("vercel[bot]", failed), c=conf(bots="smart"))
+    assert not toast["quiet"] and not toast["peek"]
+    routine = rf.gh_thread(t, fetch=by("vercel[bot]", "[vc]: #abc preview ready"), c=conf(bots="smart"))
+    assert routine["quiet"]
+
+
 def test_bots_hide_and_show(rf):
     t = thread("review_requested", "chore(deps): bump vite")
     assert rf.gh_thread(t, fetch=by("dependabot[bot]"), c=conf(bots="hide")) is None

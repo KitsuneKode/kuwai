@@ -10,9 +10,9 @@ GitHub: your notifications inbox through `gh` (its login, no token of ours).
 It asks every X-Poll-Interval seconds (60) with If-Modified-Since, and a 304
 ("nothing new") doesn't count against the rate limit; each new thread costs
 one more call, for who wrote it and what they said. Review requests,
-mentions, assignments and failed CI peek out of the island; comments and
-the rest are a plain toast; bots (Dependabot, Renovate, their branches' CI)
-go quietly into the center.
+mentions, assignments and failed CI on main peek out of the island; comments
+and the rest are a plain toast; bots go quietly into the center, except a
+failure or review finding (a toast) and a quota notice (once per 6 hours).
 
 Gmail: IMAP IDLE, so Gmail tells us when mail arrives: no polling, nothing
 to rate-limit. Only what Gmail itself marks important, in Primary, unread.
@@ -80,7 +80,7 @@ def conf():
         "github": g.get("enabled", True) is not False,
         "mute": [str(x).lower() for x in g.get("mute", [])],
         "quiet": [str(x).lower() for x in g.get("quiet", [])],
-        "bots": g.get("bots", "quiet") if g.get("bots") in ("quiet", "hide", "show") else "quiet",
+        "bots": g.get("bots", "smart") if g.get("bots") in ("smart", "quiet", "hide", "show") else "smart",
     }
 
 
@@ -213,6 +213,10 @@ def gh(args, timeout=30):
 
 
 BOTS = re.compile(r"(\[bot\]$|^dependabot|^renovate|^github-actions|^snyk-bot|^greenkeeper)", re.I)
+BOT_LIMIT = re.compile(r"review limit reached|rate.limited|resource is limited|usage limit|free.per.day|try again in", re.I)
+BOT_NEEDS_YOU = re.compile(r"deployment failed|build failed|changes requested|actionable comments? posted|potential issue|"
+                           r"security|vulnerab", re.I)
+LIMIT_EVERY = 6 * 3600
 BOT_TITLE = re.compile(r"^(chore|build|fix|ci)\((deps|deps-dev|dev-deps)\)|^bump |^update dependency |^\[snyk\]", re.I)
 BOT_BRANCH = re.compile(r"^(dependabot|renovate|snyk)[/-]", re.I)
 
@@ -344,6 +348,7 @@ def gh_thread(t, fetch=gh_fetch, c=None):
             raw = re.sub(r"<!--.*?-->", "", text, flags=re.S).strip()
             text = re.sub(r"<!--.*?-->|<[^>]+>|```.*?```|!\[[^\]]*\]\([^)]*\)", " ", text, flags=re.S)
             text = re.sub(r"[#>*_`|]+", " ", text)
+            t["_text"] = text
             if who and text.strip() and reason not in ("review_requested", "assign"):
                 body = f"{who}: {clip(text, 160)}"
                 t["_full"] = f"{who}:\n\n{full_text(raw, 4000)}"
@@ -351,7 +356,18 @@ def gh_thread(t, fetch=gh_fetch, c=None):
                 body = f"{short(repo)} {number} · by {who}".strip()
     if bot and c["bots"] == "hide":
         return None
-    quiet = (bot and c["bots"] == "quiet") or matches(repo, c["quiet"])
+    quiet = (bot and c["bots"] in ("quiet", "smart")) or matches(repo, c["quiet"])
+    if bot and c["bots"] == "smart" and who:
+        said = t.get("_text", "")
+        if BOT_LIMIT.search(said):
+            limits = state.setdefault("bot_limits", {})
+            if time.time() - limits.get(who, 0) < LIMIT_EVERY:
+                return None
+            limits[who] = time.time()
+            title, body, status, tone = f"{who.removesuffix('[bot]')} hit a limit", clip(said, 160), "Limit reached", "caution"
+            t["_group"] = f"gh:limit:{who}"
+        elif BOT_NEEDS_YOU.search(said):
+            quiet = matches(repo, c["quiet"])
     reply = (repo, m.group(2)) if m and reason in REPLYABLE and not bot else None
     return {
         "title": title, "body": body, "status": status, "glyph": glyph, "tone": tone,
