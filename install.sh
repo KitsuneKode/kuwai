@@ -162,6 +162,11 @@ place() {
     local src=$1 dst=$2 tmp
     if [ $DRY = 1 ]; then printf '  would: %s %s → %s\n' "$([ $link = 1 ] && echo link || echo copy)" "$src" "$dst"; return; fi
     remember "$dst"
+    if ORIG edited "$dst"; then
+        if [ $link = 1 ]; then ln -sfn "$src" "$dst.kuwai-new"; else cp "$src" "$dst.kuwai-new"; fi
+        warn "you changed $dst since kuwai installed it: kept yours; the new one is $dst.kuwai-new"
+        return 1
+    fi
     mkdir -p "$(dirname "$dst")"
     tmp=$(dirname "$dst")/.$(basename "$dst").kuwai-new
     rm -f "$tmp"
@@ -204,8 +209,7 @@ install_all() {
     local entry=$CFG/hypr/hyprland.lua
     if [ -f "$entry" ] && cmp -s "$entry" "$REPO/hypr/templates/hyprland.lua"; then ok "$entry is current"
     else
-        place "$REPO/hypr/templates/hyprland.lua" "$entry"
-        ok "$entry ← hypr/templates/hyprland.lua"
+        if place "$REPO/hypr/templates/hyprland.lua" "$entry"; then ok "$entry ← hypr/templates/hyprland.lua"; fi
     fi
     for f in monitors.lua user.lua; do
         if [ -e "$CFG/hypr/$f" ]; then ok "$f: yours, kept"
@@ -222,7 +226,7 @@ install_all() {
             local dst=$CFG/systemd/user/$u src=$STABLE/systemd/$u
             [ -f "$src" ] || src=$REPO/systemd/$u
             if [ "$(readlink -f "$dst" 2>/dev/null)" = "$(readlink -f "$src")" ]; then ok "$u linked"
-            else place -s "$src" "$dst"; ok "$u → $src"; fi
+            elif place -s "$src" "$dst"; then ok "$u → $src"; fi
         done
         if [ $DRY = 0 ] && ! userbus; then
             warn "no user session to enable them in (a text console or SSH); once you're logged in to Hyprland run:"

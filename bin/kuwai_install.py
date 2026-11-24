@@ -19,6 +19,7 @@ original.
 
   kuwai_install.py --state DIR remember PATH
   kuwai_install.py --state DIR installed PATH
+  kuwai_install.py --state DIR edited PATH     exit 0: changed since kuwai installed it
   kuwai_install.py --state DIR unit NAME
   kuwai_install.py --state DIR restore [--dry-run]
 """
@@ -95,7 +96,7 @@ class Store:
         if old and old[0] == "copy" and (old[1].exists() or old[1].is_symlink()):
             src = old[1]
             rec["from"] = "legacy backup " + str(src.parent)
-        elif old and old[0] == "absent":
+        elif old and old[0] == "absent" and not (p.exists() or p.is_symlink()):
             src = None
             rec["from"] = "legacy backups (not in any: it was absent)"
         else:
@@ -117,6 +118,11 @@ class Store:
         if path in self.data["paths"]:
             self.data["paths"][path]["installed"] = fingerprint(path)
             self.save()
+
+    def edited(self, path):
+        rec = self.data["paths"].get(str(Path(path).absolute())) or {}
+        now = fingerprint(path)
+        sys.exit(0 if rec.get("installed") and now != rec["installed"] and now != ["absent"] else 1)
 
     def unit(self, name):
         if name in self.data["units"]:
@@ -213,7 +219,7 @@ def put_back(p, rec, files):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--state", required=True)
-    ap.add_argument("cmd", choices=["remember", "installed", "unit", "restore"])
+    ap.add_argument("cmd", choices=["remember", "installed", "edited", "unit", "restore"])
     ap.add_argument("arg", nargs="?")
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()

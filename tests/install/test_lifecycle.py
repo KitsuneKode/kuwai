@@ -304,3 +304,27 @@ def test_inside_the_session_a_failing_check_still_fails_the_install(install_env)
     i.env['HYPRLAND_INSTANCE_SIGNATURE'] = 'fixture'
     r = subprocess.run(['bash', str(i.repo / 'install.sh')], env=i.env, text=True, capture_output=True)
     assert r.returncode != 0
+
+
+def test_a_path_no_legacy_backup_knew_keeps_its_current_file(install_env):
+    i = install_env
+    d = Path(i.env['XDG_STATE_HOME']) / 'kuwai/backup/20260101-000000'
+    (d / '.config/waybar').mkdir(parents=True)
+    (d / '.config/waybar/config').write_text('{}\n')
+    (d / 'MANIFEST').write_text('.config/waybar/config\n')
+    i.entry.parent.mkdir(parents=True)
+    i.entry.write_text('-- mine, never managed by the old installer\n')
+    i.run()
+    i.run('--uninstall')
+    assert i.entry.read_text() == '-- mine, never managed by the old installer\n'
+
+
+def test_reinstall_keeps_your_edit_and_leaves_the_new_entry_beside_it(install_env):
+    i = install_env
+    i.run()
+    i.entry.write_text('-- installed entry\n-- my edit\n')
+    (i.repo / 'hypr/templates/hyprland.lua').write_text('-- upgraded entry\n')
+    out = i.run()
+    assert i.entry.read_text() == '-- installed entry\n-- my edit\n'
+    assert (i.entry.parent / 'hyprland.lua.kuwai-new').read_text() == '-- upgraded entry\n'
+    assert 'hyprland.lua.kuwai-new' in out
