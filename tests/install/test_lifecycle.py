@@ -280,3 +280,27 @@ def test_install_print_missing_lists_missing_packages_only(install_env):
     core.write_text(core.read_text() + 'kuwai-no-such-bin-xyz:kuwai-missing-pkg\n')
     out = install_env.run('--print-missing')
     assert 'kuwai-missing-pkg' in out.splitlines()
+
+
+def _doctor_fails(i):
+    p = i.repo / 'bin/kuwai-doctor'
+    p.write_text('#!/bin/sh\necho "session check failed"\nexit 1\n')
+    p.chmod(0o755)
+    for k in ('WAYLAND_DISPLAY', 'HYPRLAND_INSTANCE_SIGNATURE'):
+        i.env.pop(k, None)
+
+
+def test_a_headless_install_succeeds_and_leaves_the_session_checks_for_login(install_env):
+    i = install_env
+    _doctor_fails(i)
+    out = i.run()
+    assert 'session check failed' not in out
+    assert 'kuwai doctor' in out
+
+
+def test_inside_the_session_a_failing_check_still_fails_the_install(install_env):
+    i = install_env
+    _doctor_fails(i)
+    i.env['HYPRLAND_INSTANCE_SIGNATURE'] = 'fixture'
+    r = subprocess.run(['bash', str(i.repo / 'install.sh')], env=i.env, text=True, capture_output=True)
+    assert r.returncode != 0

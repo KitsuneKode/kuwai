@@ -269,6 +269,10 @@ uninstall_all() {
 doctor() {
     step "Checks"
     local rc=0
+    if [ -z "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && [ -z "${WAYLAND_DISPLAY:-}" ]; then
+        ok "installed; no graphical session here, so the session checks wait for your first login: kuwai doctor"
+        return 0
+    fi
     if [ -x "$STABLE/bin/kuwai" ] || [ -x "$REPO/bin/kuwai" ]; then
         KUWAI_ROOT=$STABLE "${STABLE}/bin/kuwai" doctor 2>/dev/null || KUWAI_ROOT=$REPO "$REPO/bin/kuwai" doctor || rc=1
     fi
