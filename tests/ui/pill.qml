@@ -41,6 +41,7 @@ ShellRoot {
             { id: "busy", running: 3, waiting: 0, items: [{ thread: "b", status: "running", provider: "claudeAgent", title: "x" }, { thread: "c", status: "running", provider: "claudeAgent", title: "y" }, { thread: "e", status: "running", provider: "codex", title: "w" }], pill: "agents", want: "" },
             { id: "limits-soon", running: 0, waiting: 0, items: [], pill: "limits", want: "15m", quota: [["antigravity", "Antigravity", ["Antigravity", 15], ["Antigravity-2", 25]]] },
             { id: "limits-later", running: 0, waiting: 0, items: [], pill: "limits", want: "1h", quota: [["claude", "Claude", ["Work", 90]], ["codex", "Codex", ["Personal", 200]]] },
+            { id: "limits-swipe", running: 0, waiting: 0, items: [], pill: "limits", want: "1h", swipe: true, quota: [["claude", "Claude", ["Work", 90]], ["codex", "Codex", ["Personal", 200]]] },
             { id: "working", running: 2, waiting: 0, items: [{ thread: "a", status: "running", title: "w" }, { thread: "b", status: "running", title: "w2" }, { thread: "c", status: "completed", title: "d" }], pill: "agents", want: "" }
         ]
         property int at: 0
@@ -72,6 +73,15 @@ ShellRoot {
                     if (!said) { scene.fail(s.id + ": the capsule doesn't say \"" + s.want + "\""); return; }
                     const r = said.mapToItem(pill, 0, 0);
                     if (r.x < 0 || r.x + said.width > pill.width + 0.5) { scene.fail(s.id + ": \"" + s.want + "\" runs outside its capsule"); return; }
+                }
+                if (s.swipe) {
+                    const t = pill.inputTarget, c = t.mapToItem(scene.contentItem, t.width / 2, t.height / 2);
+                    driver.mousePress(scene.contentItem, c.x, c.y);
+                    for (let i = 1; i <= 8; i++) { driver.mouseMove(scene.contentItem, c.x, c.y - i * 9); driver.wait(16); }
+                    driver.mouseRelease(scene.contentItem, c.x, c.y - 72);
+                    driver.wait(400);
+                    if (split.demand.limits) { scene.fail(s.id + ": swiping the limits capsule up did not hide it"); return; }
+                    if (split.limitsHidden !== split.limitsKey) { scene.fail(s.id + ": the hidden state is not remembered"); return; }
                 }
                 scene.contentItem.grabToImage(img => {
                     img.saveToFile("/out/pill-" + s.id + ".png");

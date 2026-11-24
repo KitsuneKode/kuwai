@@ -105,7 +105,9 @@ Item {
     readonly property bool sysLive: sysMarks.any
     readonly property var limitsPartition: Limits.partitionWith(Agents.extraLimited)
     readonly property var limitsNow: Settings.limitAlerts ? Limits.summarize(limitsPartition) : Limits.summarize(null)
-    readonly property bool limitsLive: limitsNow.items.length > 0
+    readonly property string limitsKey: limitsNow.tone + ":" + limitsNow.providers.map(p => p.id).join()
+    property string limitsHidden: ""
+    readonly property bool limitsLive: limitsNow.items.length > 0 && limitsKey !== limitsHidden
     property var limits: Limits.summarize(null)
     onLimitsNowChanged: if (limitsNow.items.length) limits = limitsNow
     readonly property color limitTint: limits.tone === "soon" ? Theme.orange : Theme.red
@@ -339,6 +341,8 @@ Item {
         readonly property real pullLine: Theme.swipeThreshold * 0.8
         readonly property real pullP: Math.max(0, Math.min(1, pull.value / pullLine))
         readonly property bool pullArmed: pullDrag.active && pull.value >= pullLine
+        property bool dismissible: false
+        signal dismissed()
         y: split.topY + (belowNotch ? split.h + Theme.s2 : Math.round((split.h - split.ph) / 2)) + Math.max(0, pull.value) * 0.6 + Math.min(0, pull.value)
         Spring { id: pull; tier: Theme.springFast; target: 0; epsilon: 0.2 }
         DragHandler {
@@ -360,8 +364,10 @@ Item {
                 const ended = gesture;
                 const speed = centroid.velocity.y;
                 const opens = pull.value >= pill.pullLine || speed / 1000 > Theme.swipeFlick;
+                const away = pill.dismissible && (pull.value <= -pill.pullLine * 0.6 || speed / 1000 < -Theme.swipeFlick);
                 pull.velocity = Theme.reduceMotion ? 0 : speed;
                 pull.target = 0;
+                if (away) { Qt.callLater(() => { if (ended === gesture && !active) pill.dismissed(); }); return; }
                 // Cancellation and losing the grab can end the gesture too.
                 // Give Qt's cancellation signal a chance to invalidate it.
                 if (opens) Qt.callLater(() => {
@@ -372,7 +378,7 @@ Item {
                 if (!active) return;
                 const d = grab + translation.y, L = pill.pullLine;
                 // 1:1 to the line, then rubber-banded; upward only a hint.
-                pull.snap(d <= 0 ? -Theme.swipeDamp(-d) * 0.25 : d <= L ? d : L + (d - L) * L * 0.55 / (L + 0.55 * (d - L)));
+                pull.snap(d <= 0 ? (pill.dismissible ? -Theme.swipeDamp(-d) : -Theme.swipeDamp(-d) * 0.25) : d <= L ? d : L + (d - L) * L * 0.55 / (L + 0.55 * (d - L)));
             }
         }
         width: w
@@ -633,6 +639,8 @@ Item {
         stateKey: split.limits.tone + ":" + split.limits.providers.map(p => p.id + p.count).join()
         tone: split.limitTint
         attention: false
+        dismissible: true
+        onDismissed: { split.limitsHidden = split.limitsKey; limitsLinger.stop(); }
         Row {
             spacing: 5
             Item {
@@ -672,7 +680,7 @@ Item {
                 tip: (leadMark.p ? leadMark.p.name + " is back " + (split.limits.at > Limits.now ? "in " + Limits.compact(split.limits.at - Limits.now) : "when its limit resets") : "Limit reached") + "\n"
                     + split.limits.items.map(x => x.name + (x.account && x.account.toLowerCase() !== x.name.toLowerCase() ? " (" + x.account + ")" : "")
                         + (x.resetsAt > Limits.now ? " · back in " + Limits.compact(x.resetsAt - Limits.now) : " · out")).join("\n")
-                    + "\nClick: Usage" + (split.agentsLim.length ? " · right-click: dismiss agent limits" : "")
+                    + "\nClick: Usage · swipe up: hide until it changes" + (split.agentsLim.length ? " · right-click: dismiss agent limits" : "")
                 onClicked: {
                     const first = split.limits.items[0];
                     if (first && first.id) Limits.usageTab = first.id;
