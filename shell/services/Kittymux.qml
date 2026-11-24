@@ -128,7 +128,7 @@ Singleton {
     }
     function agentLabel(a) {
         const n = String(a || "").replace(/-agent$/, "");
-        return ({ claude: "Claude", codex: "Codex", cursor: "Cursor", agy: "Antigravity", gemini: "Gemini", opencode: "OpenCode" })[n] || (n ? n.charAt(0).toUpperCase() + n.slice(1) : "Agent");
+        return ({ claude: "Claude", codex: "Codex", cursor: "Cursor", agy: "Antigravity", antigravity: "Antigravity", gemini: "Gemini", opencode: "OpenCode", devin: "Devin", grok: "Grok" })[n] || (n ? n.charAt(0).toUpperCase() + n.slice(1) : "Agent");
     }
 
     // OSC 9;4: a fraction from agents.json, or {state, pct} from tabs.json (pct is 0–100).

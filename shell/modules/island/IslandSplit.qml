@@ -102,24 +102,53 @@ Item {
     readonly property bool agentsWord: agentsHead.word !== ""
     readonly property bool agentsLive: agentStack.list.length > 0 || agentsHead.tone !== ""
     readonly property bool sysLive: sysMarks.any
+    readonly property var limitsPartition: Limits.partitionWith(Agents.extraLimited)
+    readonly property var limitResetItems: Settings.limitAlerts ? limitsPartition.resettingSoon : []
+    readonly property var limitOutItems: Settings.limitAlerts ? limitsPartition.exhaustedLater : []
+    readonly property bool limitResetLive: limitResetItems.length > 0
+    readonly property bool limitOutLive: limitOutItems.length > 0
+    property int resetIdx: 0
+    property int outIdx: 0
+    onLimitResetItemsChanged: if (resetIdx >= limitResetItems.length) resetIdx = 0
+    onLimitOutItemsChanged: if (outIdx >= limitOutItems.length) outIdx = 0
+    readonly property var resetActive: limitResetItems.length ? limitResetItems[resetIdx % limitResetItems.length] : null
+    readonly property var outActive: limitOutItems.length ? limitOutItems[outIdx % limitOutItems.length] : null
+    readonly property var resetStack: Limits.orderedStack(limitResetItems, resetIdx)
+    readonly property var outStack: Limits.orderedStack(limitOutItems, outIdx)
+    Timer {
+        interval: 4000; repeat: true
+        running: split.limitResetItems.length > 1 && limitResetPill.out && !limitResetPill.hovered && !Theme.reduceMotion
+        onTriggered: split.resetIdx = (split.resetIdx + 1) % split.limitResetItems.length
+    }
+    Timer {
+        interval: 4000; repeat: true
+        running: split.limitOutItems.length > 1 && limitOutPill.out && !limitOutPill.hovered && !Theme.reduceMotion
+        onTriggered: split.outIdx = (split.outIdx + 1) % split.limitOutItems.length
+    }
     // A capsule folds only after its work has been gone a few seconds, and
     // shows its last value meanwhile.
     onAgentsLiveChanged: if (!agentsLive) agentsLinger.restart()
     onSysLiveChanged: if (!sysLive) sysLinger.restart()
+    onLimitResetLiveChanged: if (!limitResetLive) limitResetLinger.restart()
+    onLimitOutLiveChanged: if (!limitOutLive) limitOutLinger.restart()
     Timer { id: agentsLinger; interval: 3000 }
     Timer { id: sysLinger; interval: 2000 }
+    Timer { id: limitResetLinger; interval: 2000 }
+    Timer { id: limitOutLinger; interval: 2000 }
     readonly property var demand: ({
         music: on && musicLive,
         min: on && minimized.length > 0,
         agents: on && (agentsLive || agentsLinger.running),
-        sys: on && (sysLive || sysLinger.running)
+        sys: on && (sysLive || sysLinger.running),
+        limitReset: on && (limitResetLive || limitResetLinger.running),
+        limitOut: on && (limitOutLive || limitOutLinger.running)
     })
 
     // ── Who sits where ──
     // Nearest the notch first. Music always left; the rest to the side with
     // fewer out (a tie: the first of a pair left, the next right). A side,
     // once given, holds until that capsule has folded away.
-    readonly property var order: ["music", "agents", "sys", "min"]
+    readonly property var order: ["music", "agents", "sys", "limitReset", "limitOut", "min"]
     // Windows tucked away with Super+O (special:minimized): a capsule of their
     // icons, each one a way back. Without it they were nowhere to be seen.
     property var minimized: Hyprland.toplevels.values.filter(t => t.workspace && t.workspace.name === "special:minimized")
@@ -135,7 +164,7 @@ Item {
     }
     property var sideOf: ({})
     onDemandChanged: assign()
-    function pillOf(k) { return ({ music: musicPill, agents: agentsPill, sys: sysPill, min: minPill, more: morePill })[k]; }
+    function pillOf(k) { return ({ music: musicPill, agents: agentsPill, sys: sysPill, limitReset: limitResetPill, limitOut: limitOutPill, min: minPill, more: morePill })[k]; }
     function assign() {
         // Keep the last preferred side for a departing pill without feeding
         // the animation back into the arrangement binding.
@@ -146,7 +175,9 @@ Item {
         }
         for (const k of order) {
             if (!demand[k] || next[k]) continue;
-            const s = k === "music" ? -1 : left <= right ? -1 : 1;
+            const s = (k === "music" || k === "agents") ? -1
+                : (k === "limitReset" || k === "limitOut") ? 1
+                : left <= right ? -1 : 1;
             next[k] = s;
             s < 0 ? left++ : right++;
         }
@@ -217,7 +248,7 @@ Item {
             const count = arrangement.overflow.length;
             return count === 1 ? "1 more activity" : count + " more activities";
         }
-        return ({music: "Now Playing", agents: "Agents", sys: "System status", min: "Restore minimized window"})[k] || k;
+        return ({music: "Now Playing", agents: "Agents", sys: "System status", limitReset: "Limit resetting soon", limitOut: "Limit exhausted", min: "Restore minimized window"})[k] || k;
     }
     property var overflowSelection: []
     function openOverflow(how) {
@@ -226,17 +257,17 @@ Item {
     }
     function glyphFor(k) {
         if (k === "sys" && Alerts.active.length) return Alerts.active[0].glyph;
-        return ({music: "\u{f0387}", agents: "\u{f06a9}", sys: "\u{f06b0}", min: "\u{f05b6}"})[k] || "";
+        return ({music: "\u{f0387}", agents: "\u{f06a9}", sys: "\u{f06b0}", limitReset: "\u{f0020}", limitOut: "\u{f051f}", min: "\u{f05b6}"})[k] || "";
     }
     readonly property bool hovered: pills.some(p => p.enabled && p.hovered)
     Component.onCompleted: { t3FinishedWas = T3Code.finished; agentsDoneWas = agentsDone.length; assign(); }
 
     // What waits on you, by capsule: the light goes on what's asking
     // (IslandBar keeps its own rim for what's still in the island).
-    readonly property bool agentsNeed: agentStack.list.some(a => a.needs) || Kittymux.running.some(r => r.needs)
+    readonly property bool agentsNeed: agentStack.list.some(a => a.needs) || Kittymux.running.some(r => r.needs) || Agents.desktop.some(d => d.state === "waiting" || d.state === "woke")
     readonly property bool agentsHold: agentsPill.shown
     // For the window's input mask (IslandBar): what's out takes clicks.
-    readonly property var pills: [musicPill, agentsPill, sysPill, minPill, morePill]
+    readonly property var pills: [musicPill, agentsPill, sysPill, limitResetPill, limitOutPill, minPill, morePill]
     // Is this point (in this item's coordinates) on a capsule, or within
     // `margin` of one? A capsule is its own target: the island does not take
     // a pointer that is on its way to one for a pointer reaching the island.
@@ -560,20 +591,19 @@ Item {
         panel: "agents"
         needs: split.agentsNeed || split.agentsHead.tone === "attention"
         stateKey: [split.agentsHead.key, split.agentsHead.done > 0].join()
-        tone: ({ attention: Theme.orange, error: Theme.red, caution: Theme.yellow, done: Theme.green })[split.agentsHead.tone] || "transparent"
+        tone: ({ attention: Theme.orange, error: Theme.red, done: Theme.green })[split.agentsHead.tone] || "transparent"
         attention: split.agentsHead.tone === "attention" || split.agentsHead.tone === "error"
         Row {
             spacing: 6
-            AgentStack { id: agentStack; bar: split.bar; withT3: true; visible: list.length > 0; anchors.verticalCenter: parent.verticalCenter }
+            AgentStack { id: agentStack; bar: split.bar; withT3: true; withDesktop: true; visible: list.length > 0; anchors.verticalCenter: parent.verticalCenter }
             Badge {
                 visible: split.agentsWord
-                glyph: ({ error: "\u{f0028}", caution: "\u{f051f}" })[split.agentsHead.tone] || ""
-                text: (split.agentsHead.tone === "caution" && split.limWho ? split.limWho + " · " : "") + split.agentsHead.word
-                tint: ({ attention: Theme.orange, error: Theme.red, caution: Theme.yellow })[split.agentsHead.tone] || Theme.textSecondary
-                tip: (split.agentsHead.tone === "caution" ? split.limTip : Agents.next ? Agents.next.title : "")
-                    + (split.agentsHead.tone === "caution" ? "\nClick: usage, every account · right-click: put it away" : "\nClick: every agent · right-click: go there (Super+Ctrl+A)")
-                onClicked: split.agentsHead.tone === "caution" ? Island.toggle("usage", split.bar.screenName, "pointer") : agentsPill.openPanel()
-                onAltClicked: split.agentsHead.tone === "caution" ? split.agentsLim.forEach(r => Kittymux.quiet(r)) : Agents.goNeeds()
+                glyph: split.agentsHead.glyph || ({ error: "\u{f0028}" })[split.agentsHead.tone] || ""
+                text: split.agentsHead.word
+                tint: ({ attention: Theme.orange, error: Theme.red })[split.agentsHead.tone] || Theme.textSecondary
+                tip: (Agents.next ? Agents.next.title : "") + "\nClick: every agent · right-click: go there (Super+Ctrl+A)"
+                onClicked: agentsPill.openPanel()
+                onAltClicked: Agents.goNeeds()
             }
             Badge {
                 visible: split.agentsHead.done > 0 && !split.agentsWord
@@ -581,7 +611,8 @@ Item {
                 text: split.agentsHead.done > 1 ? String(split.agentsHead.done) : ""
                 tint: Theme.green
                 tip: split.agentsDone.slice(0, 3).map(e => Kittymux.agentLabel(e.agent) + " finished" + (e.tab ? " · " + Kittymux.clean(e.tab) : ""))
-                    .concat(T3Code.items.filter(i => i.status === "completed").slice(0, 3).map(i => i.title + " finished")).slice(0, 3).join(" · ")
+                    .concat(T3Code.items.filter(i => i.status === "completed").slice(0, 3).map(i => i.title + " finished"))
+                    .concat(Agents.desktop.filter(d => d.state === "done").slice(0, 3).map(d => Kittymux.agentLabel(d.agent) + " finished" + (d.title ? " · " + d.title : ""))).slice(0, 3).join(" · ")
                     + "\nClick: every agent · right-click: go to the newest"
                 onClicked: agentsPill.openPanel()
                 onAltClicked: split.agentsDone.length ? split.goDone() : T3Code.openBest()
@@ -593,17 +624,187 @@ Item {
     Pill {
         id: sysPill
         name: "sys"
-        stateKey: Alerts.active.length ? Alerts.active[0].level + Alerts.active[0].id : Updates.fresh ? "updates" : Sweep.fresh ? "sweep" : Limits.markShown ? "limit" : ""
+        stateKey: Alerts.active.length ? Alerts.active[0].level + Alerts.active[0].id : Updates.fresh ? "updates" : Sweep.fresh ? "sweep" : ""
         // Pulled: what it's saying most loudly (a warning, else updates, else idle projects, else a used-up limit).
-        panel: Alerts.active.length ? "system" : Updates.fresh || Updates.running ? "updates" : Sweep.fresh ? "sweep" : Limits.markShown ? "usage" : "updates"
+        panel: Alerts.active.length ? "system" : Updates.fresh || Updates.running ? "updates" : Sweep.fresh ? "sweep" : "updates"
         // A warning in its level's colour (asking: a halo); a used-up limit amber (only saying so).
-        tone: Alerts.active.length ? (Alerts.active[0].level === "crit" ? Theme.red : Theme.orange) : Limits.markShown ? Theme.yellow : "transparent"
+        tone: Alerts.active.length ? (Alerts.active[0].level === "crit" ? Theme.red : Theme.orange) : "transparent"
         attention: Alerts.active.length > 0
         SysMarks {
             id: sysMarks
             bar: split.bar
+            showLimit: false
             quiet: split.activity !== "" && split.activity !== "media"
             updateOffStage: Updates.running && split.activity !== "update"
+        }
+    }
+
+    Pill {
+        id: limitResetPill
+        name: "limitReset"
+        panel: "usage"
+        stateKey: split.resetActive ? (split.resetActive.key + ":" + split.resetIdx) : ""
+        tone: Theme.orange
+        attention: false
+        Row {
+            spacing: 6
+            Item {
+                id: resetCluster
+                readonly property int shownN: Math.min(3, split.resetStack.length)
+                property real step: limitResetPill.hovered && shownN > 1 ? 11 : 9
+                Behavior on step { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.microMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+                anchors.verticalCenter: parent.verticalCenter
+                implicitWidth: shownN ? 20 + (shownN - 1) * step + (split.resetStack.length > 3 ? resetMore.implicitWidth + 3 : 0) : 0
+                implicitHeight: 20
+                Item {
+                    visible: resetCluster.shownN > 0
+                    x: 0; z: 4
+                    width: 20; height: 20
+                    anchors.verticalCenter: parent.verticalCenter
+                    StatRing {
+                        anchors.fill: parent
+                        size: 20; stroke: 2
+                        value: split.resetActive && split.resetActive.resetsAt > Limits.now ? Math.max(0, Math.min(1, (split.resetActive.resetsAt - Limits.now) / Limits.soonMs)) : 0
+                        color: split.resetActive && split.resetActive.tint ? split.resetActive.tint : Theme.orange
+                        text: ""; label: ""
+                    }
+                    Image {
+                        id: resetLeadImg
+                        anchors.centerIn: parent
+                        width: 10; height: 10
+                        source: split.resetActive ? split.resetActive.brand : ""
+                        sourceSize: Qt.size(20, 20)
+                        asynchronous: true
+                    }
+                    Text {
+                        visible: resetLeadImg.status !== Image.Ready
+                        anchors.centerIn: parent
+                        textFormat: Text.PlainText
+                        text: "\u{f0020}"; font.family: Theme.fontGlyph; font.pixelSize: Theme.tFootnote
+                        color: Theme.orange
+                    }
+                }
+                Repeater {
+                    model: Math.max(0, resetCluster.shownN - 1)
+                    Item {
+                        required property int index
+                        readonly property var item: split.resetStack[index + 1] || null
+                        x: 10 + index * resetCluster.step + 2
+                        z: 3 - index
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 13; height: 13
+                        Rectangle {
+                            anchors.centerIn: parent
+                            width: parent.width + 4; height: width; radius: width / 2
+                            color: Qt.rgba(0, 0, 0, 0.94)
+                        }
+                        Image {
+                            anchors.fill: parent
+                            sourceSize: Qt.size(26, 26)
+                            source: parent.item ? parent.item.brand : ""
+                            asynchronous: true
+                        }
+                    }
+                }
+                Label {
+                    id: resetMore
+                    visible: split.resetStack.length > 3
+                    x: 20 + (resetCluster.shownN - 1) * resetCluster.step + 3
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "+" + (split.resetStack.length - 3)
+                    size: Theme.tFootnote; weight: Theme.wSemibold; rounded: true
+                    color: Theme.textSecondary
+                }
+            }
+            Badge {
+                glyph: ""
+                text: Limits.slideLabel(split.resetActive, split.limitResetItems.length, true)
+                tint: Theme.orange
+                tip: "Resetting soon\n" + split.limitResetItems.map(x => x.name + (x.account ? " (" + x.account + ")" : "") + " · back in " + Limits.compact(x.resetsAt - Limits.now)).join("\n") + "\nClick: Usage"
+                onClicked: {
+                    if (split.resetActive && split.resetActive.id) Limits.usageTab = split.resetActive.id;
+                    Island.open("usage", split.bar.screenName, "pointer");
+                }
+                onAltClicked: Island.open("usage", split.bar.screenName, "pointer")
+            }
+        }
+    }
+
+    Pill {
+        id: limitOutPill
+        name: "limitOut"
+        panel: "usage"
+        stateKey: split.outActive ? (split.outActive.key + ":" + split.outIdx) : ""
+        tone: Theme.yellow
+        attention: false
+        Row {
+            spacing: 6
+            Item {
+                id: outCluster
+                readonly property int shownN: Math.min(3, split.outStack.length)
+                property real step: limitOutPill.hovered && shownN > 1 ? 10 : 8
+                Behavior on step { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.microMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+                anchors.verticalCenter: parent.verticalCenter
+                implicitWidth: shownN ? 13 + (shownN - 1) * step + (split.outStack.length > 3 ? outMore.implicitWidth + 3 : 0) : 0
+                implicitHeight: 16
+                Repeater {
+                    model: outCluster.shownN
+                    Item {
+                        required property int index
+                        readonly property var item: split.outStack[index] || null
+                        x: index * outCluster.step
+                        z: outCluster.shownN - index
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 13; height: 13
+                        Rectangle {
+                            visible: outCluster.shownN > 1 || index === 0
+                            anchors.centerIn: parent
+                            width: parent.width + 4; height: width; radius: width / 2
+                            color: Qt.rgba(0, 0, 0, 0.94)
+                            border.width: index === 0 && outCluster.shownN > 1 ? 1 : 0
+                            border.color: Theme.yellow
+                        }
+                        Image {
+                            id: outImg
+                            anchors.fill: parent
+                            sourceSize: Qt.size(26, 26)
+                            source: parent.item ? parent.item.brand : ""
+                            asynchronous: true
+                        }
+                        Text {
+                            visible: outImg.status !== Image.Ready
+                            anchors.centerIn: parent
+                            textFormat: Text.PlainText
+                            text: "\u{f051f}"; font.family: Theme.fontGlyph; font.pixelSize: Theme.tFootnote
+                            color: Theme.yellow
+                        }
+                    }
+                }
+                Label {
+                    id: outMore
+                    visible: split.outStack.length > 3
+                    x: 13 + (outCluster.shownN - 1) * outCluster.step + 3
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "+" + (split.outStack.length - 3)
+                    size: Theme.tFootnote; weight: Theme.wSemibold; rounded: true
+                    color: Theme.textSecondary
+                }
+            }
+            Badge {
+                glyph: "\u{f051f}"
+                text: Limits.slideLabel(split.outActive, split.limitOutItems.length, false)
+                tint: Theme.yellow
+                tip: "Limit reached\n" + split.limitOutItems.map(x => x.name + (x.account ? " (" + x.account + ")" : "") + (x.resetsAt > Limits.now ? " · resets in " + Limits.compact(x.resetsAt - Limits.now) : " · exhausted")).join("\n")
+                    + "\nClick: usage, every account" + (split.agentsLim.length ? " · right-click: dismiss agent limits" : "")
+                onClicked: {
+                    if (split.outActive && split.outActive.id) Limits.usageTab = split.outActive.id;
+                    Island.open("usage", split.bar.screenName, "pointer");
+                }
+                onAltClicked: {
+                    if (split.agentsLim.length) split.agentsLim.forEach(r => Kittymux.quiet(r));
+                    else Island.open("usage", split.bar.screenName, "pointer");
+                }
+            }
         }
     }
 

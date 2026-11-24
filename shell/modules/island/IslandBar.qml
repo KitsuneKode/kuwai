@@ -154,12 +154,13 @@ Scope {
                 Region { item: nearStrip.visible ? nearStrip : null }
                 Region { item: frame.visible && win.hovered ? slop : null }
                 // The split island's pills (IslandSplit), while out.
-                Region { item: split.pills[0].visible && split.pills[0].enabled ? split.pills[0].inputTarget : null }
-                Region { item: split.pills[1].visible && split.pills[1].enabled ? split.pills[1].inputTarget : null }
-                Region { item: split.pills[2].visible && split.pills[2].enabled ? split.pills[2].inputTarget : null }
-                Region { item: split.pills[3].visible && split.pills[3].enabled ? split.pills[3].inputTarget : null }
-                Region { item: split.pills[4].visible && split.pills[4].enabled ? split.pills[4].inputTarget : null }
-                Region { item: split.pills[5].visible && split.pills[5].enabled ? split.pills[5].inputTarget : null }
+                Region { item: split.pills.length > 0 && split.pills[0].visible && split.pills[0].enabled ? split.pills[0].inputTarget : null }
+                Region { item: split.pills.length > 1 && split.pills[1].visible && split.pills[1].enabled ? split.pills[1].inputTarget : null }
+                Region { item: split.pills.length > 2 && split.pills[2].visible && split.pills[2].enabled ? split.pills[2].inputTarget : null }
+                Region { item: split.pills.length > 3 && split.pills[3].visible && split.pills[3].enabled ? split.pills[3].inputTarget : null }
+                Region { item: split.pills.length > 4 && split.pills[4].visible && split.pills[4].enabled ? split.pills[4].inputTarget : null }
+                Region { item: split.pills.length > 5 && split.pills[5].visible && split.pills[5].enabled ? split.pills[5].inputTarget : null }
+                Region { item: split.pills.length > 6 && split.pills[6].visible && split.pills[6].enabled ? split.pills[6].inputTarget : null }
             }
             // Nearing the island: the pointer resting on the top edge over it
             // (its resting width and 80 px either side, not the grown one, so

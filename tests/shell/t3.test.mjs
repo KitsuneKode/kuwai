@@ -1,6 +1,6 @@
 // What a T3 thread's row says, and the reply preview. `bun test tests/shell/t3.test.mjs`
 import { describe, expect, test } from "bun:test";
-import { stateOf, spoken, since, excerpt } from "../../shell/services/t3.mjs";
+import { stateOf, stateGlyph, spoken, since, excerpt } from "../../shell/services/t3.mjs";
 
 describe("the row names the state", () => {
   test("why it needs you: three different things", () => {
@@ -26,6 +26,14 @@ describe("the row names the state", () => {
   test("a thread that wants you is not timed; work and its end are", () => {
     expect(stateOf({ status: "waiting", ask: "approval" }).timed).toBe(false);
     expect(stateOf({ status: "running" }).timed).toBe(true);
+  });
+  test("goal, woke, input alias, and distinct state glyphs", () => {
+    expect(stateOf({ status: "running", goal: true })).toMatchObject({ key: "goal", word: "Goal", tone: "working" });
+    expect(stateOf({ status: "woke" })).toMatchObject({ key: "woke", word: "Woke", tone: "attention" });
+    expect(stateOf({ status: "waiting", ask: "input" })).toMatchObject({ key: "question", word: "Question", tone: "attention" });
+    const keys = ["approval", "question", "request", "waiting", "goal", "blocked", "woke", "failed", "limited", "done", "working"];
+    for (const k of keys) expect(stateGlyph(k).length).toBeGreaterThan(0);
+    expect(new Set(["approval", "question", "request", "goal", "blocked", "woke", "failed", "limited", "done"].map(stateGlyph)).size).toBe(9);
   });
   test("every state has words for a screen reader", () => {
     for (const t of [{ status: "waiting", ask: "approval" }, { status: "waiting", ask: "question" }, { status: "waiting", ask: "request" }, { status: "waiting" },

@@ -16,11 +16,12 @@ Row {
     // holds the stage: it still shows, as a ring with its percent. The
     // notch said nothing while the panel showed Build / Install.
     property bool updateOffStage: false
+    property bool showLimit: true
     spacing: 2
     // From the data, not the children's `visible`: a hidden parent makes
     // every child report invisible, so `any` could never turn on.
-    readonly property bool any: (Updates.fresh && !Updates.running && !quiet) || (Sweep.fresh && !quiet) || Alerts.active.length > 0 || Limits.markShown || updateOffStage
-    readonly property bool hovered: upd.hovered || swp.hovered || warn.hovered || lim.hovered || updRun.hovered
+    readonly property bool any: (Updates.fresh && !Updates.running && !quiet) || (Sweep.fresh && !quiet) || Alerts.active.length > 0 || (showLimit && Limits.markShown) || updateOffStage
+    readonly property bool hovered: upd.hovered || swp.hovered || warn.hovered || (showLimit && lim.hovered) || updRun.hovered
     RestMark {
         id: updRun
         visible: sys.updateOffStage
@@ -79,7 +80,7 @@ Row {
         id: lim
         readonly property alias hovered: limArea.containsMouse
         readonly property var b: Limits.backSoon
-        visible: Limits.markShown
+        visible: sys.showLimit && Limits.markShown
         // It arrives (fade + a small rise in scale), it doesn't pop.
         onVisibleChanged: if (visible && !Theme.reduceMotion) limIn.restart()
         ParallelAnimation {

@@ -65,6 +65,9 @@ ShellRoot {
             Settings.set("textScale", Number(Quickshell.env("KUWAI_UI_TEXT_SCALE") || 1));
             Settings.set("islandSplit", true);
             Settings.set("restMedia", true);
+            Settings.set("limitAlerts", true);
+            Agents.desktopPinned = true;
+            Agents.desktopFeed = [];
             Kittymux.feedPinned = true;
             Kittymux.feed = { version: 1, agents: [
                 { key: "fixture-1", agent: "claude", brand: "claude", title: "Fixture", state: "working", account: "main" },
@@ -93,13 +96,13 @@ ShellRoot {
                 if (Settings.pending || Settings.error) { scene.fail("settings did not acknowledge"); return; }
                 const pills = split.pills.filter(p => p.visible);
                 console.log("ISLAND_STATE", JSON.stringify({demand:split.demand, arrangement:split.arrangement, pills:split.pills.map(p => ({name:p.name,shown:p.shown,out:p.out,w:p.width}))}));
-                const expected = [3, 2, 1, 4, 4][scene.stage];
+                const expected = [4, 2, 1, 5, 5][scene.stage];
                 if (pills.length !== expected) { scene.fail("unexpected item count at stage " + scene.stage); return; }
                 const more = pills.find(p => p.name === "more");
-                if (scene.stage === 1 && (!more || split.arrangement.overflow.length !== 3 || !pills.some(p => p.name === "sys"))) {
-                    scene.fail("four activities did not retain the urgent warning and group three items"); return;
+                if (scene.stage === 1 && (!more || split.arrangement.overflow.length !== 4 || !pills.some(p => p.name === "sys"))) {
+                    scene.fail("five activities did not retain the urgent warning and group four items"); return;
                 }
-                if (scene.stage === 2 && (!more || !more.belowNotch || split.arrangement.overflow.length !== 4 || more.y <= split.topY + split.h)) {
+                if (scene.stage === 2 && (!more || !more.belowNotch || split.arrangement.overflow.length !== 5 || more.y <= split.topY + split.h)) {
                     scene.fail("full-width notch lost its More control"); return;
                 }
                 const boxes = pills.map(p => ({name:p.name, x:p.x, y:p.y, w:p.width, h:p.height}));
@@ -148,12 +151,12 @@ ShellRoot {
                             if (Island.panel !== "activities") { scene.fail("back did not restore More"); return; }
                         }
                     }
-                    if (p.name === "agents" && !p.compact) {
+                    if (p.name === "limitOut" && !p.compact) {
                         const limit = scene.descendant(p, c => c.visible && c.tint !== undefined && String(c.tip || "").indexOf("Click: usage") >= 0);
                         if (limit) {
                             Island.close();
                             driver.mouseClick(limit, limit.width / 2, limit.height / 2, Qt.LeftButton, Qt.NoModifier);
-                            if (Island.panel !== "usage") { scene.fail("nested limit badge lost its Usage action"); return; }
+                            if (Island.panel !== "usage") { scene.fail("limitOut badge lost its Usage action"); return; }
                         }
                     }
                 }

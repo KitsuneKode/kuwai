@@ -87,9 +87,13 @@ FocusScope {
             const state = r.needs || (ev && ev.severity === "needs-you") ? "needs"
                 : r.working ? "working" : r.state === "error" ? "error" : r.state === "limited" ? "limited"
                 : r.state === "done" ? "done" : "idle";
+            const stateKey = state === "needs" ? (Kittymux.askFor(r) ? "approval" : "waiting")
+                : state === "error" ? "failed" : state;
             const back = state === "limited" ? Ag.until((r.limitReset || 0) * 1000, Date.now()) : "";
             out.push({
-                word: back ? "Limit · back in " + back : "",
+                section: "TUI · Kittymux",
+                word: stateKey === "approval" ? "Approval" : back ? "Limit · back in " + back : "",
+                stateKey: stateKey,
                 key: "k" + r.key, src: "kitty", agent: r.agent, title: r.title,
                 where: r.project || String(r.where || "").replace(/^.*\//, ""),
                 model: ap.on(m.model, m.effort), state: state, status: r.status, ctx: m.context || 0, win: m.window || 0, reply: m.reply || "",
@@ -105,24 +109,62 @@ FocusScope {
             const st = said.tone === "attention" ? "needs" : said.key === "done" ? "done" : said.key === "limited" ? "limited"
                      : said.key === "failed" ? "error" : said.key === "blocked" ? "idle" : "working";
             out.push({
-                word: said.key === "blocked" ? "Waiting on another thread" : said.tone === "attention" && said.key !== "waiting" ? said.word : "",
+                section: "T3 Code",
+                word: said.key === "blocked" ? "Waiting on another thread" : (said.tone === "attention" && said.key !== "waiting") || said.key === "goal" ? said.word : "",
+                stateKey: said.key,
                 key: "t" + i.thread, src: "t3", agent: ap.t3Agent(i.provider), title: i.title || "Untitled thread",
-                where: "T3" + (i.project && i.project !== "No project" ? " · " + i.project : ""),
+                where: i.project && i.project !== "No project" ? i.project : "",
                 model: ap.on(i.model, i.effort), state: st, status: "", question: "",
                 t: i.at ? Date.parse(i.at) : 0, thread: i.thread, item: i
+            });
+        }
+        for (const d of Agents.desktop) {
+            const st = d.state === "waiting" || d.state === "woke" ? "needs"
+                : d.state === "failed" ? "error" : d.state === "limited" ? "limited"
+                : d.state === "done" ? "done" : d.state === "blocked" ? "idle" : "working";
+            const stateKey = d.state === "waiting" ? (d.ask === "approval" ? "approval" : (d.ask === "question" || d.ask === "input") ? "question" : d.ask === "request" ? "request" : "waiting")
+                : d.state || "working";
+            const word = stateKey === "approval" ? "Approval" : stateKey === "question" ? "Question" : stateKey === "request" ? "Request"
+                : stateKey === "woke" ? "Woke" : stateKey === "goal" ? "Goal" : stateKey === "blocked" ? "Waiting" : "";
+            out.push({
+                section: "Desktop",
+                word: word,
+                stateKey: stateKey,
+                key: "d" + d.id, src: "desktop", agent: d.agent || "desktop", title: d.title || Kittymux.agentLabel(d.agent),
+                where: d.project || "",
+                model: ap.on(d.model, ""), state: st, status: "", question: d.question || "",
+                t: (d.since || d.updated_at || 0) * 1000, windowClass: d.window_class || "", desktopId: d.id, raw: d
             });
         }
         // Closed conversations to reopen (kittymux asks before resuming one),
         // last: what the center's Agents tab had that this list didn't.
         for (const r of Kittymux.recent) {
             out.push({
+                section: "Recent",
+                stateKey: "",
                 key: "r" + r.hideKey, src: "recent", agent: r.agent, title: r.title,
                 where: r.project || String(r.where || "").replace(/^.*\//, ""),
                 model: "", state: "recent", status: r.status || "", question: "", t: 0, action: r.action, hideKey: r.hideKey, raw: r
             });
         }
         const rank = { needs: 0, error: 1, limited: 2, working: 3, done: 4, idle: 5, recent: 6 };
-        return out.sort((a, b) => (rank[a.state] - rank[b.state]) || (b.t - a.t));
+        const secOrder = { "T3 Code": 0, "TUI · Kittymux": 1, "Desktop": 2, "Recent": 3 };
+        const secUrgent = {};
+        for (const row of out) {
+            const r = rank[row.state] ?? 9;
+            if (secUrgent[row.section] === undefined || r < secUrgent[row.section]) secUrgent[row.section] = r;
+        }
+        return out.sort((a, b) => {
+            if (a.section !== b.section) {
+                if (a.section === "Recent") return 1;
+                if (b.section === "Recent") return -1;
+                const ua = secUrgent[a.section] <= 1 ? 0 : 1;
+                const ub = secUrgent[b.section] <= 1 ? 0 : 1;
+                if (ua !== ub) return ua - ub;
+                return (secOrder[a.section] ?? 9) - (secOrder[b.section] ?? 9);
+            }
+            return (rank[a.state] - rank[b.state]) || (b.t - a.t);
+        });
     }
     onRowsChanged: sel = Math.min(sel, Math.max(0, rows.length - 1))
     readonly property int needN: rows.filter(r => r.state === "needs").length
@@ -134,11 +176,13 @@ FocusScope {
     // they're live, and swiping one away would hide something still on.
     function canDismiss(r) {
         return !!r && ((r.src === "t3" && (r.state === "done" || r.state === "error")) || r.src === "recent"
+            || (r.src === "desktop" && (r.state === "done" || r.state === "error" || r.state === "limited"))
             || (r.src === "kitty" && (r.state === "limited" || r.state === "error" || (r.event && r.state !== "needs"))));
     }
     function dismiss(r) {
         if (!canDismiss(r)) return;
         if (r.src === "t3") T3Code.dismiss(r.item);
+        else if (r.src === "desktop") Agents.dismissDesktop(r.desktopId);
         else if (r.src === "recent") Kittymux.hideRecent(r.raw);
         else {
             if (r.event) Kittymux.ack(r.event);
@@ -149,6 +193,7 @@ FocusScope {
         if (!r) return;
         Island.close();
         if (r.src === "t3") T3Code.openThread(r.thread);
+        else if (r.src === "desktop") Agents.focusDesktop(r);
         else if (r.event) Kittymux.jumpEvent(r.event);
         else Kittymux.act(r.action);
     }
@@ -237,6 +282,39 @@ FocusScope {
             spacing: 2
             boundsBehavior: Flickable.StopAtBounds
             model: ScriptModel { values: ap.rows; objectProp: "key" }
+            section.property: "section"
+            section.criteria: ViewSection.FullString
+            section.delegate: Item {
+                required property string section
+                readonly property int secCount: ap.rows.filter(r => r.section === section).length
+                width: list.width
+                height: Theme.sp(24)
+                Row {
+                    anchors { left: parent.left; leftMargin: Theme.rowInset; verticalCenter: parent.verticalCenter }
+                    spacing: 6
+                    Text {
+                        visible: section !== "T3 Code" && section !== "Recent"
+                        anchors.verticalCenter: parent.verticalCenter
+                        textFormat: Text.PlainText
+                        text: section === "Desktop" ? "\u{f0379}" : "\u{f018d}"
+                        font.family: Theme.fontGlyph; font.pixelSize: Theme.tSub
+                        color: section === "Desktop" ? Theme.mint : Theme.textTertiary
+                    }
+                    Label {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: section
+                        size: Theme.tFootnote; weight: Theme.wSemibold
+                        color: section === "T3 Code" ? Theme.cyan : section === "Desktop" ? Theme.mint : Theme.textTertiary
+                    }
+                    Label {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: String(secCount)
+                        size: Theme.tCaption; weight: Theme.wMedium; rounded: true
+                        color: Theme.textTertiary
+                        font.features: ({ "tnum": 1 })
+                    }
+                }
+            }
             // One move (choreograph): a swiped row's spring carries it out while
             // the rows below rise into its place, together, not one after the other.
             remove: Transition { PauseAnimation { duration: Theme.reduceMotion ? 0 : Theme.swipeOutMs } }
@@ -272,7 +350,7 @@ FocusScope {
                     title: row.modelData.title
                     ContextMenuLabel { text: row.modelData.title }
                     ContextMenuItem {
-                        text: row.modelData.src === "t3" ? "Open in T3 Code" : row.modelData.src === "recent" ? "Reopen" : "Go to it"
+                        text: row.modelData.src === "t3" ? "Open in T3 Code" : row.modelData.src === "desktop" ? "Focus " + Kittymux.agentLabel(row.modelData.agent) : row.modelData.src === "recent" ? "Reopen" : "Go to it"
                         glyph: "\u{f03cc}"; shortcut: "↵"
                         onTriggered: ap.go(row.modelData)
                     }
@@ -332,7 +410,9 @@ FocusScope {
                     // The × takes its place on hover (a removable row).
                     stateOpacity: row.dismissable && rowHover.hovered ? 0 : 1
                     subFormat: Text.StyledText
-                    sub: "<font color='" + ap.tone(row.modelData.state) + "'>" + (row.modelData.word || ap.word(row.modelData.state)) + "</font>"
+                    sub: "<font color='" + ap.tone(row.modelData.state) + "'>"
+                        + (Agents.stateGlyph(row.modelData.stateKey) ? "<font face='" + Theme.fontGlyph + "'>" + Agents.stateGlyph(row.modelData.stateKey) + "</font> " : "")
+                        + (row.modelData.word || ap.word(row.modelData.state)) + "</font>"
                         + [row.modelData.where, row.modelData.model].filter(x => x).map(x => " · " + ap.esc(x)).join("")
                         + (ap.fill(row.modelData) ? " · " + ap.fill(row.modelData) : "")
                     subColor: Theme.textSecondary

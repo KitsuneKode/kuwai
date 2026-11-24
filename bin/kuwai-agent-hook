@@ -1,0 +1,468 @@
+#!/usr/bin/env python3
+"""Unified push hook receiver for desktop coding agents (Cursor, Devin, MCP).
+
+Writes per-session state files under $XDG_STATE_HOME/kuwai/desktop-agents/
+and an atomic snapshot at $XDG_STATE_HOME/kuwai/desktop-agents.json so Kuwai's
+Dynamic Island watches one file via inotify with 0% idle CPU.
+"""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import re
+import sys
+import tempfile
+import time
+from pathlib import Path
+from typing import Any
+
+MAX_STDIN_BYTES = 65536
+ACTIVE_TTL_S = 1800
+ENDED_TTL_S = 900
+
+WINDOW_CLASSES = {
+    "cursor": "^(cursor|Cursor)$",
+    "devin": "^(devin|Devin)$",
+    "windsurf": "^(windsurf|Windsurf)$",
+    "zed": "^(dev\\.zed\\.Zed|zed|Zed)$",
+    "claude": "^(claude|Claude)$",
+}
+
+EVENT_MAP: dict[str, tuple[str, str | None]] = {
+    "sessionstart": ("working", None),
+    "beforesubmitprompt": ("working", None),
+    "userpromptsubmit": ("working", None),
+    "pretooluse": ("working", None),
+    "posttooluse": ("working", None),
+    "beforeshellexecution": ("working", None),
+    "aftershellexecution": ("working", None),
+    "beforemcpexecution": ("working", None),
+    "aftermcpexecution": ("working", None),
+    "beforereadfile": ("working", None),
+    "afterfileedit": ("working", None),
+    "afteragentthought": ("working", None),
+    "subagentstart": ("working", None),
+    "working": ("working", None),
+    "running": ("working", None),
+    "starting": ("working", None),
+    "goal": ("goal", None),
+    "permissionrequest": ("waiting", "approval"),
+    "beforeapproval": ("waiting", "approval"),
+    "approval": ("waiting", "approval"),
+    "question": ("waiting", "question"),
+    "input": ("waiting", "question"),
+    "userinput": ("waiting", "question"),
+    "notification": ("waiting", "question"),
+    "request": ("waiting", "request"),
+    "waiting": ("waiting", None),
+    "blocked": ("blocked", None),
+    "woke": ("woke", None),
+    "stop": ("done", None),
+    "subagentstop": ("done", None),
+    "afteragentresponse": ("done", None),
+    "done": ("done", None),
+    "completed": ("done", None),
+    "error": ("failed", None),
+    "failed": ("failed", None),
+    "posttoolusefailure": ("failed", None),
+    "limited": ("limited", None),
+    "sessionend": ("clear", None),
+    "clear": ("clear", None),
+    "close": ("clear", None),
+    "idle": ("clear", None),
+}
+
+CURSOR_HOOK_EVENTS = (
+    "sessionStart",
+    "beforeSubmitPrompt",
+    "preToolUse",
+    "postToolUse",
+    "stop",
+    "sessionEnd",
+)
+
+DEVIN_HOOK_EVENTS = (
+    "SessionStart",
+    "UserPromptSubmit",
+    "PreToolUse",
+    "PostToolUse",
+    "PermissionRequest",
+    "Notification",
+    "Stop",
+    "SessionEnd",
+)
+
+
+def state_root() -> Path:
+    base = os.environ.get("XDG_STATE_HOME") or str(Path.home() / ".local" / "state")
+    return Path(base) / "kuwai"
+
+
+def sessions_dir() -> Path:
+    return state_root() / "desktop-agents"
+
+
+def index_path() -> Path:
+    return state_root() / "desktop-agents.json"
+
+
+def ensure_dirs() -> Path:
+    d = sessions_dir()
+    d.mkdir(parents=True, exist_ok=True)
+    try:
+        os.chmod(d, 0o700)
+    except OSError:
+        pass
+    return d
+
+
+def safe_id(raw: str) -> str:
+    cleaned = re.sub(r"[^A-Za-z0-9_-]+", "-", raw.strip()).strip("-")
+    return cleaned[:96] or "session"
+
+
+def safe_agent(raw: str) -> str:
+    cleaned = re.sub(r"[^a-z0-9-]+", "", raw.strip().lower())
+    return cleaned[:32] or "desktop"
+
+
+def first_str(data: dict[str, Any], *keys: str) -> str:
+    for k in keys:
+        v = data.get(k)
+        if isinstance(v, str) and v.strip():
+            return v.strip()
+    return ""
+
+
+def clean_line(text: str, limit: int = 120) -> str:
+    s = re.sub(r"\s+", " ", text or "").strip()
+    return (s[: limit - 1] + "…") if len(s) > limit else s
+
+
+def read_stdin_json() -> dict[str, Any]:
+    if sys.stdin is None or sys.stdin.isatty():
+        return {}
+    try:
+        raw = sys.stdin.read(MAX_STDIN_BYTES + 1)
+    except OSError:
+        return {}
+    if not raw or len(raw) > MAX_STDIN_BYTES:
+        return {}
+    try:
+        parsed = json.loads(raw)
+        return parsed if isinstance(parsed, dict) else {}
+    except ValueError:
+        return {}
+
+
+def atomic_write_json(path: Path, payload: Any) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(prefix=".tmp-", suffix=".json", dir=str(path.parent))
+    try:
+        os.chmod(fd, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            json.dump(payload, fh, ensure_ascii=False, separators=(",", ":"))
+            fh.write("\n")
+        os.replace(tmp, path)
+    except Exception:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+
+def load_fresh_agents(now: float | None = None, prune: bool = True) -> list[dict[str, Any]]:
+    now_t = time.time() if now is None else now
+    d = sessions_dir()
+    if not d.is_dir():
+        return []
+    out: list[dict[str, Any]] = []
+    for p in sorted(d.glob("*.json")):
+        try:
+            entry = json.loads(p.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            if prune:
+                p.unlink(missing_ok=True)
+            continue
+        if not isinstance(entry, dict):
+            if prune:
+                p.unlink(missing_ok=True)
+            continue
+        updated = float(entry.get("updated_at") or entry.get("since") or 0)
+        st = str(entry.get("state") or "")
+        ttl = float(entry.get("ttl") or (ENDED_TTL_S if st in ("done", "failed", "limited") else ACTIVE_TTL_S))
+        if updated > 0 and now_t - updated > ttl:
+            if prune:
+                p.unlink(missing_ok=True)
+            continue
+        out.append(entry)
+    out.sort(key=lambda e: float(e.get("updated_at") or 0), reverse=True)
+    return out
+
+
+def rebuild_index(now: float | None = None) -> list[dict[str, Any]]:
+    agents = load_fresh_agents(now=now, prune=True)
+    atomic_write_json(index_path(), {"version": 1, "agents": agents})
+    return agents
+
+
+def resolve_state(event: str, explicit_state: str, explicit_ask: str | None) -> tuple[str, str | None]:
+    if explicit_state:
+        key = re.sub(r"[^a-z]+", "", explicit_state.lower())
+        st, ask = EVENT_MAP.get(key, (explicit_state.lower(), None))
+        return st, explicit_ask or ask
+    if event:
+        key = re.sub(r"[^a-z]+", "", event.lower())
+        if key in EVENT_MAP:
+            st, ask = EVENT_MAP[key]
+            return st, explicit_ask or ask
+    return "working", explicit_ask
+
+
+def infer_project(payload: dict[str, Any], cli_project: str) -> str:
+    if cli_project:
+        return cli_project
+    roots = payload.get("workspace_roots") or payload.get("workspaceRoots")
+    if isinstance(roots, list) and roots and isinstance(roots[0], str) and roots[0].strip():
+        return roots[0].strip()
+    direct = first_str(payload, "project_dir", "projectDir", "cwd", "working_directory", "workingDirectory")
+    if direct:
+        return direct
+    for env_key in ("DEVIN_PROJECT_DIR", "CURSOR_PROJECT_DIR"):
+        if os.environ.get(env_key):
+            return os.environ[env_key]
+    return ""
+
+
+def infer_agent(payload: dict[str, Any], cli_agent: str) -> str:
+    if cli_agent:
+        return safe_agent(cli_agent)
+    direct = first_str(payload, "agent", "provider", "source")
+    if direct:
+        return safe_agent(direct)
+    if os.environ.get("DEVIN_PROJECT_DIR") or os.environ.get("DEVIN_SESSION_ID"):
+        return "devin"
+    if os.environ.get("CURSOR_TRACE_ID") or "workspace_roots" in payload or "conversation_id" in payload:
+        return "cursor"
+    return "desktop"
+
+
+def handle_hook(args: argparse.Namespace) -> int:
+    payload = read_stdin_json()
+    agent = infer_agent(payload, args.agent or "")
+    event = args.event or first_str(payload, "hook_event_name", "hookEventName", "event", "type")
+    state, ask = resolve_state(event, args.state or "", args.ask)
+    project_path = infer_project(payload, args.project or "")
+    project_name = Path(project_path).name if project_path else ""
+
+    raw_sid = (
+        args.session
+        or first_str(payload, "session_id", "sessionId", "conversation_id", "conversationId", "generation_id", "id")
+        or os.environ.get("DEVIN_SESSION_ID")
+        or ""
+    )
+    if not raw_sid:
+        digest = hashlib.sha256(f"{agent}:{project_path or 'default'}".encode()).hexdigest()[:12]
+        raw_sid = digest
+    sid = safe_id(f"{agent}-{raw_sid}")
+
+    d = ensure_dirs()
+    session_file = d / f"{sid}.json"
+    now_t = time.time()
+
+    if state == "clear":
+        session_file.unlink(missing_ok=True)
+        rebuild_index(now=now_t)
+        return 0
+
+    prev: dict[str, Any] = {}
+    if session_file.is_file():
+        try:
+            loaded = json.loads(session_file.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                prev = loaded
+        except (OSError, ValueError):
+            prev = {}
+
+    title = clean_line(
+        args.title
+        or first_str(payload, "title", "prompt", "user_prompt", "task")
+        or prev.get("title", "")
+        or project_name
+        or agent.capitalize(),
+        80,
+    )
+    question = ""
+    if state == "waiting":
+        question = clean_line(
+            args.question
+            or first_str(payload, "question", "message", "command", "tool_name", "toolName")
+            or prev.get("question", ""),
+            220,
+        )
+    model = clean_line(args.model or first_str(payload, "model", "model_name", "modelName") or prev.get("model", ""), 64)
+    window_class = args.window or first_str(payload, "window_class", "windowClass") or WINDOW_CLASSES.get(agent, "")
+    since = float(prev.get("since") or now_t) if prev.get("state") == state else now_t
+    ttl = ENDED_TTL_S if state in ("done", "failed", "limited") else ACTIVE_TTL_S
+
+    record = {
+        "id": sid,
+        "agent": agent,
+        "state": state,
+        "ask": ask,
+        "title": title,
+        "project": project_name,
+        "cwd": project_path,
+        "model": model,
+        "question": question,
+        "window_class": window_class,
+        "since": since,
+        "updated_at": now_t,
+        "ttl": ttl,
+    }
+    atomic_write_json(session_file, record)
+    rebuild_index(now=now_t)
+    return 0
+
+
+def merge_cursor_hooks(hooks_path: Path, hook_bin: str, dry_run: bool) -> dict[str, Any]:
+    existing: dict[str, Any] = {}
+    if hooks_path.is_file():
+        try:
+            loaded = json.loads(hooks_path.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                existing = loaded
+        except (OSError, ValueError):
+            existing = {}
+    hooks = existing.get("hooks")
+    if not isinstance(hooks, dict):
+        hooks = {}
+    existing["version"] = existing.get("version") or 1
+    marker = "kuwai-agent-hook"
+    for ev in CURSOR_HOOK_EVENTS:
+        entries = hooks.get(ev)
+        if not isinstance(entries, list):
+            entries = []
+        cmd = f"'{hook_bin}' --agent cursor --event {ev}"
+        has_kuwai = any(isinstance(item, dict) and marker in str(item.get("command", "")) for item in entries)
+        if not has_kuwai:
+            entries.append({"command": cmd})
+        hooks[ev] = entries
+    existing["hooks"] = hooks
+    if not dry_run:
+        atomic_write_json(hooks_path, existing)
+    return existing
+
+
+def merge_devin_hooks(config_path: Path, hook_bin: str, dry_run: bool) -> dict[str, Any]:
+    existing: dict[str, Any] = {}
+    if config_path.is_file():
+        try:
+            loaded = json.loads(config_path.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                existing = loaded
+        except (OSError, ValueError):
+            existing = {}
+    hooks = existing.get("hooks")
+    if not isinstance(hooks, dict):
+        hooks = {}
+    marker = "kuwai-agent-hook"
+    for ev in DEVIN_HOOK_EVENTS:
+        entries = hooks.get(ev)
+        if not isinstance(entries, list):
+            entries = []
+        cmd = f"'{hook_bin}' --agent devin --event {ev}"
+        has_kuwai = any(
+            isinstance(item, dict)
+            and (
+                marker in str(item.get("command", ""))
+                or any(isinstance(h, dict) and marker in str(h.get("command", "")) for h in (item.get("hooks") or []))
+            )
+            for item in entries
+        )
+        if not has_kuwai:
+            entries.append({"hooks": [{"type": "command", "command": cmd}]})
+        hooks[ev] = entries
+    existing["hooks"] = hooks
+    if not dry_run:
+        atomic_write_json(config_path, existing)
+    return existing
+
+
+def build_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(prog="kuwai-agent-hook", description="Kuwai desktop agent HUD hook receiver")
+    sub = p.add_subparsers(dest="cmd")
+
+    sub.add_parser("list", help="Print live desktop agents as JSON")
+
+    dp = sub.add_parser("dismiss", help="Remove a single desktop agent session")
+    dp.add_argument("id")
+
+    sub.add_parser("clear", help="Clear all desktop agent sessions")
+
+    ip = sub.add_parser("install-hooks", help="Wire Kuwai hooks into Cursor / Devin configs without clobbering existing hooks")
+    ip.add_argument("--cursor", action="store_true", help="Install into ~/.cursor/hooks.json")
+    ip.add_argument("--devin", action="store_true", help="Install into ~/.config/devin/config.json")
+    ip.add_argument("--cursor-path", default="", help="Override Cursor hooks.json path")
+    ip.add_argument("--devin-path", default="", help="Override Devin config.json path")
+    ip.add_argument("--dry-run", action="store_true", help="Print resulting config without writing")
+
+    p.add_argument("--agent", default="")
+    p.add_argument("--event", default="")
+    p.add_argument("--state", default="")
+    p.add_argument("--ask", default=None)
+    p.add_argument("--session", default="")
+    p.add_argument("--title", default="")
+    p.add_argument("--project", default="")
+    p.add_argument("--question", default="")
+    p.add_argument("--model", default="")
+    p.add_argument("--window", default="")
+    return p
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    if args.cmd == "list":
+        agents = rebuild_index()
+        json.dump(agents, sys.stdout, ensure_ascii=False)
+        sys.stdout.write("\n")
+        return 0
+    if args.cmd == "dismiss":
+        ensure_dirs()
+        target = sessions_dir() / f"{safe_id(args.id)}.json"
+        target.unlink(missing_ok=True)
+        rebuild_index()
+        return 0
+    if args.cmd == "clear":
+        d = sessions_dir()
+        if d.is_dir():
+            for f in d.glob("*.json"):
+                f.unlink(missing_ok=True)
+        rebuild_index()
+        return 0
+    if args.cmd == "install-hooks":
+        hook_bin = os.path.realpath(__file__)
+        want_cursor = args.cursor or (not args.cursor and not args.devin)
+        want_devin = args.devin or (not args.cursor and not args.devin)
+        report: dict[str, Any] = {}
+        if want_cursor:
+            cpath = Path(args.cursor_path) if args.cursor_path else Path.home() / ".cursor" / "hooks.json"
+            report["cursor"] = {"path": str(cpath), "config": merge_cursor_hooks(cpath, hook_bin, args.dry_run)}
+        if want_devin:
+            dpath = Path(args.devin_path) if args.devin_path else Path.home() / ".config" / "devin" / "config.json"
+            report["devin"] = {"path": str(dpath), "config": merge_devin_hooks(dpath, hook_bin, args.dry_run)}
+        json.dump(report, sys.stdout, ensure_ascii=False, indent=2)
+        sys.stdout.write("\n")
+        return 0
+    try:
+        return handle_hook(args)
+    except Exception:
+        return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

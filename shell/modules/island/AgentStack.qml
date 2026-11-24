@@ -16,19 +16,39 @@ Item {
     id: stack
     property var bar
     property bool withT3: false
-    readonly property var t3Rows: withT3 ? T3Code.items.filter(i => i.status === "waiting" || i.status === "running")
-        .map(i => ({ agent: Agents.t3Agent(i.provider), title: i.title || "T3 thread", where: "T3", status: i.status === "waiting" ? "needs you" : "working",
-                     needs: i.status === "waiting", thread: i.thread })) : []
+    property bool withDesktop: true
+    readonly property var t3Rows: withT3 ? T3Code.items.filter(i => i.status === "waiting" || i.status === "running" || i.status === "woke" || i.status === "goal")
+        .map(i => ({ agent: Agents.t3Agent(i.provider), title: i.title || "T3 thread", where: "T3", src: "t3",
+                     status: i.status === "waiting" || i.status === "woke" ? "needs you" : "working",
+                     needs: i.status === "waiting" || i.status === "woke", thread: i.thread })) : []
     readonly property var waiting: Kittymux.attention.filter(e => e.severity === "needs-you")
-        .map(e => ({ agent: e.agent, title: Kittymux.clean(e.tab || e.title), where: "", status: "needs you", needs: true, event: e.id }))
+        .map(e => ({ agent: e.agent, title: Kittymux.clean(e.tab || e.title), where: "TUI", src: "kitty", status: "needs you", needs: true, event: e.id }))
     // An agent kittymux reads as waiting (agents.json state) with no unread
     // event for its pane (it asked before the inbox caught it, or the event was
     // read): it's still asking, so it leads too. It was left out of the stack.
     readonly property var waitingPanes: Kittymux.running.filter(r => r.needs
         && !Kittymux.attention.some(e => e.severity === "needs-you" && String(e.pid) === String(r.pid) && String(e.w) === r.w))
-    readonly property var list: waiting.concat(waitingPanes, t3Rows.filter(a => a.needs), Kittymux.working, t3Rows.filter(a => !a.needs))
-    readonly property int needN: waiting.length + waitingPanes.length + t3Rows.filter(a => a.needs).length
-    readonly property int workN: Kittymux.working.length + t3Rows.filter(a => !a.needs).length
+        .map(r => Object.assign({ src: "kitty", where: "TUI" }, r))
+    readonly property var tuiWorking: Kittymux.working.map(r => Object.assign({ src: "kitty", where: "TUI" }, r))
+    readonly property var tuiRows: waiting.concat(waitingPanes, tuiWorking)
+    readonly property var desktopRows: withDesktop ? Agents.desktop.filter(d => d.state === "waiting" || d.state === "woke" || d.state === "working" || d.state === "goal")
+        .map(d => ({ agent: d.agent || "desktop", title: d.title || Kittymux.agentLabel(d.agent), where: "Desktop", src: "desktop",
+                     status: d.state === "waiting" || d.state === "woke" ? "needs you" : "working",
+                     needs: d.state === "waiting" || d.state === "woke", windowClass: d.window_class || "", desktop: d })) : []
+    readonly property var list: waiting.concat(waitingPanes, t3Rows.filter(a => a.needs), desktopRows.filter(a => a.needs),
+                                               tuiWorking, t3Rows.filter(a => !a.needs), desktopRows.filter(a => !a.needs))
+    readonly property var groups: {
+        const g = [];
+        const sortNeeds = arr => arr.filter(a => a.needs).concat(arr.filter(a => !a.needs));
+        if (t3Rows.length) g.push({ id: "t3", tag: "T3", glyph: "", tint: Theme.cyan, items: sortNeeds(t3Rows) });
+        if (tuiRows.length) g.push({ id: "tui", tag: "", glyph: "\u{f018d}", tint: Theme.textSecondary, items: sortNeeds(tuiRows) });
+        if (desktopRows.length) g.push({ id: "desktop", tag: "", glyph: "\u{f0379}", tint: Theme.mint, items: sortNeeds(desktopRows) });
+        return g;
+    }
+    readonly property bool multiSurface: groups.length > 1
+    readonly property int perGroupMax: multiSurface ? 2 : 3
+    readonly property int needN: list.filter(a => a.needs).length
+    readonly property int workN: list.length - needN
     readonly property int shown: Math.min(3, list.length)
     readonly property bool many: list.length > 1
     readonly property bool hovered: hover.hovered
@@ -38,52 +58,96 @@ Item {
     property real step: hover.hovered && many && !open ? 10 : 8
     Behavior on step { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.microMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
     readonly property int markSize: 13
-    implicitWidth: shown ? markSize + (shown - 1) * step + (list.length > 3 ? moreLabel.implicitWidth + 4 : 0) : 0
+    implicitWidth: groupsRow.implicitWidth
     implicitHeight: 16
 
-    Repeater {
-        model: stack.shown
-        Item {
-            required property int index
-            readonly property var a: stack.list[index] || null
-            x: index * stack.step
-            z: stack.shown - index
-            anchors.verticalCenter: parent.verticalCenter
-            width: stack.markSize; height: stack.markSize
-            // Over the one behind it: a ring of the island's black between them.
-            Rectangle {
-                visible: stack.many || (!!parent.a && !!parent.a.needs)
-                anchors.centerIn: parent
-                width: parent.width + 4; height: width; radius: width / 2
-                color: Qt.rgba(0, 0, 0, 0.94)
-                border.width: parent.a && parent.a.needs ? 1.5 : 0
-                border.color: Theme.orange
-            }
-            Image {
-                id: mark
-                anchors.fill: parent
-                sourceSize: Qt.size(26, 26)
-                source: parent.a ? Kittymux.brand(parent.a.agent) : ""
-                visible: status === Image.Ready
-                opacity: stack.open ? 0.35 : 1
-                Behavior on opacity { NumberAnimation { duration: Theme.quickMs } }
-            }
-            Text {
-                visible: !mark.visible
-                anchors.centerIn: parent
-                text: "\u{f06a9}"; font.family: Theme.fontGlyph; font.pixelSize: 13
-                color: Theme.textSecondary
+    Row {
+        id: groupsRow
+        anchors.verticalCenter: parent.verticalCenter
+        spacing: 5
+        Repeater {
+            model: stack.groups
+            Row {
+                id: grp
+                required property var modelData
+                required property int index
+                readonly property int cap: Math.min(stack.perGroupMax, modelData.items.length)
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 4
+                Rectangle {
+                    visible: grp.index > 0
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 1; height: 10
+                    color: Theme.edge(1)
+                }
+                Label {
+                    visible: stack.multiSurface && grp.modelData.tag !== ""
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.verticalCenterOffset: 1
+                    text: grp.modelData.tag
+                    size: Theme.tCaption; weight: Theme.wBold; rounded: true
+                    color: grp.modelData.tint
+                }
+                Text {
+                    visible: stack.multiSurface && grp.modelData.glyph !== ""
+                    anchors.verticalCenter: parent.verticalCenter
+                    textFormat: Text.PlainText
+                    text: grp.modelData.glyph
+                    font.family: Theme.fontGlyph; font.pixelSize: Theme.tFootnote
+                    color: grp.modelData.tint
+                }
+                Item {
+                    anchors.verticalCenter: parent.verticalCenter
+                    implicitWidth: grp.cap ? stack.markSize + (grp.cap - 1) * stack.step + (grp.modelData.items.length > grp.cap ? grpMore.implicitWidth + 3 : 0) : 0
+                    implicitHeight: 16
+                    Repeater {
+                        model: grp.cap
+                        Item {
+                            required property int index
+                            readonly property var a: grp.modelData.items[index] || null
+                            x: index * stack.step
+                            z: grp.cap - index
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: stack.markSize; height: stack.markSize
+                            // Over the one behind it: a ring of the island's black between them.
+                            Rectangle {
+                                visible: grp.cap > 1 || (!!parent.a && !!parent.a.needs)
+                                anchors.centerIn: parent
+                                width: parent.width + 4; height: width; radius: width / 2
+                                color: Qt.rgba(0, 0, 0, 0.94)
+                                border.width: parent.a && parent.a.needs ? 1.5 : 0
+                                border.color: Theme.orange
+                            }
+                            Image {
+                                id: mark
+                                anchors.fill: parent
+                                sourceSize: Qt.size(26, 26)
+                                source: parent.a ? Kittymux.brand(parent.a.agent) : ""
+                                visible: status === Image.Ready
+                                opacity: stack.open ? 0.35 : 1
+                                Behavior on opacity { NumberAnimation { duration: Theme.quickMs } }
+                            }
+                            Text {
+                                visible: !mark.visible
+                                anchors.centerIn: parent
+                                textFormat: Text.PlainText
+                                text: "\u{f06a9}"; font.family: Theme.fontGlyph; font.pixelSize: Theme.tBody
+                                color: Theme.textSecondary
+                            }
+                        }
+                    }
+                    Label {
+                        id: grpMore
+                        visible: grp.modelData.items.length > grp.cap
+                        x: stack.markSize + (grp.cap - 1) * stack.step + 3
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "+" + (grp.modelData.items.length - grp.cap)
+                        size: Theme.tFootnote; weight: Theme.wSemibold; rounded: true
+                        color: Theme.textSecondary
+                    }
+                }
             }
         }
-    }
-    Label {
-        id: moreLabel
-        visible: stack.list.length > 3
-        x: stack.markSize + (stack.shown - 1) * stack.step + 4
-        anchors.verticalCenter: parent.verticalCenter
-        text: "+" + (stack.list.length - 3)
-        size: 11; weight: Theme.wSemibold; rounded: true
-        color: Theme.textSecondary
     }
 
     HoverHandler { id: hover; enabled: stack.enabled; margin: 6; cursorShape: Qt.PointingHandCursor }
@@ -104,9 +168,18 @@ Item {
         shown: hover.hovered && !stack.open
         below: true
         text: !stack.list.length ? ""
-            : (stack.many ? (stack.needN ? stack.needN + " need you · " : "") + stack.workN + " working"
-                          : stack.list[0].agent + " · " + stack.list[0].title + " · " + stack.list[0].status)
+            : (stack.many ? [stack.t3Rows.length ? "T3 " + stack.t3Rows.length : "",
+                             stack.tuiRows.length ? "TUI " + stack.tuiRows.length : "",
+                             stack.desktopRows.length ? "Desktop " + stack.desktopRows.length : ""].filter(x => x).join(" · ")
+                             + " (" + (stack.needN ? stack.needN + " need you · " : "") + stack.workN + " working)"
+                          : (stack.list[0].where ? stack.list[0].where + " · " : "") + Kittymux.agentLabel(stack.list[0].agent) + " · " + stack.list[0].title + " · " + stack.list[0].status)
               + "\nClick: every agent · right-click: go to " + (stack.many ? "the first" : "it")
     }
-    function go(a) { if (!a) return; if (a.thread) T3Code.openThread(a.thread); else if (a.event) Kittymux.jumpEvent(a.event); else Kittymux.act(a.action); }
+    function go(a) {
+        if (!a) return;
+        if (a.thread) T3Code.openThread(a.thread);
+        else if (a.src === "desktop") Agents.focusDesktop(a);
+        else if (a.event) Kittymux.jumpEvent(a.event);
+        else Kittymux.act(a.action);
+    }
 }

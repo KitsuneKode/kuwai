@@ -16,8 +16,33 @@
 // QML changes only: after changing this file, save a QML file too.
 // @ts-check
 
-/** A thread as bin/kuwai-t3 gives it. @typedef {{ status?: string, ask?: string | null, blocked?: boolean, limited?: boolean, at?: string }} Thread */
+/** A thread as bin/kuwai-t3 gives it. @typedef {{ status?: string, ask?: string | null, blocked?: boolean, limited?: boolean, goal?: boolean, woke?: boolean, at?: string }} Thread */
 /** What its row says. `tone`: attention (it wants you), working, idle, caution, error, done. @typedef {{ key: string, word: string, tone: string, timed: boolean }} State */
+
+/**
+ * Verified Symbols Nerd Font MDI glyph matching t3code-bar's status iconography.
+ * @param {string | null | undefined} key
+ * @returns {string}
+ */
+export function stateGlyph(key) {
+    return /** @type {Record<string, string>} */ ({
+        approval: "\u{f0499}",
+        question: "\u{f0186}",
+        input: "\u{f0186}",
+        request: "\u{f0013}",
+        waiting: "\u{f0625}",
+        needs: "\u{f0625}",
+        goal: "\u{f04fe}",
+        blocked: "\u{f0150}",
+        woke: "\u{f0020}",
+        failed: "\u{f0028}",
+        error: "\u{f0028}",
+        limited: "\u{f051f}",
+        done: "\u{f05e0}",
+        working: "\u{f0772}",
+        starting: "\u{f0772}"
+    })[String(key || "")] || "";
+}
 
 /**
  * The thread's state in one word. `timed`: the word is followed by how long
@@ -29,13 +54,15 @@ export function stateOf(t) {
     if (s === "waiting") {
         const ask = t && t.ask;
         return ask === "approval" ? { key: "approval", word: "Approval", tone: "attention", timed: false }
-            : ask === "question" ? { key: "question", word: "Question", tone: "attention", timed: false }
+            : (ask === "question" || ask === "input") ? { key: "question", word: "Question", tone: "attention", timed: false }
             : ask === "request" ? { key: "request", word: "Request", tone: "attention", timed: false }
             : { key: "waiting", word: "Needs you", tone: "attention", timed: false };
     }
+    if (s === "woke" || (t && t.woke)) return { key: "woke", word: "Woke", tone: "attention", timed: false };
     if (s === "failed") return t && t.limited ? { key: "limited", word: "Limit reached", tone: "caution", timed: true }
         : { key: "failed", word: "Failed", tone: "error", timed: true };
     if (s === "completed") return { key: "done", word: "Done", tone: "done", timed: true };
+    if (s === "goal" || (s === "running" && t && t.goal)) return { key: "goal", word: "Goal", tone: "working", timed: true };
     if (s === "running") return t && t.blocked ? { key: "blocked", word: "Waiting", tone: "idle", timed: false }
         : { key: "working", word: "Working", tone: "working", timed: true };
     return { key: "starting", word: "Starting", tone: "working", timed: false };
@@ -73,8 +100,8 @@ export function headline(items) {
 /** The same, for a screen reader: what the word stands for. @param {Thread | null | undefined} t */
 export function spoken(t) {
     return ({ approval: "Wants your approval", question: "Has a question for you", request: "A guest wrote to it",
-              waiting: "Needs you", limited: "Stopped at a usage limit", failed: "Failed", done: "Finished",
-              blocked: "Waiting on another thread", working: "Working", starting: "Starting" })[stateOf(t).key];
+              waiting: "Needs you", woke: "Scheduled task woke up", limited: "Stopped at a usage limit", failed: "Failed", done: "Finished",
+              blocked: "Waiting on another thread", goal: "Working on a goal", working: "Working", starting: "Starting" })[stateOf(t).key];
 }
 
 /**

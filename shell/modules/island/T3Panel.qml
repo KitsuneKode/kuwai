@@ -154,32 +154,21 @@ FocusScope {
                         lead: Item {
                             anchors.centerIn: parent
                             width: 14; height: 14
-                            Rectangle {
-                                visible: row.waits
-                                anchors.centerIn: parent
-                                width: 8; height: 8; radius: 4
-                                color: Theme.orange
-                            }
-                            // Ended: a check when it finished; a warning when it broke or
-                            // was stopped by a limit (a green check sat beside "Failed").
                             Text {
                                 textFormat: Text.PlainText
-                                visible: row.done
+                                visible: row.waits || row.done || row.st.key === "blocked" || row.st.key === "goal" || row.st.key === "woke"
                                 anchors.centerIn: parent
-                                text: row.st.tone === "done" ? "\u{f012c}" : "\u{f0026}"
-                                font.family: Theme.fontGlyph; font.pixelSize: 14
-                                color: row.st.tone === "done" ? Theme.green : row.st.tone === "error" ? Theme.red : Theme.orange
-                            }
-                            // Parked on another thread: a still ring. It isn't working, so nothing turns.
-                            Rectangle {
-                                visible: row.st.key === "blocked"
-                                anchors.centerIn: parent
-                                width: 11; height: 11; radius: width / 2
-                                color: "transparent"
-                                border.width: 1.6; border.color: Qt.rgba(1, 1, 1, 0.28)
+                                text: T3.stateGlyph(row.st.key) || (row.st.tone === "done" ? "\u{f05e0}" : "\u{f0028}")
+                                font.family: Theme.fontGlyph; font.pixelSize: Theme.tCallout
+                                color: row.st.tone === "attention" ? Theme.orange
+                                    : row.st.tone === "done" ? Theme.green
+                                    : row.st.tone === "error" ? Theme.red
+                                    : row.st.tone === "caution" ? Theme.yellow
+                                    : row.st.key === "goal" ? Theme.cyan
+                                    : Theme.textTertiary
                             }
                             Canvas {
-                                visible: !row.waits && !row.done && row.st.key !== "blocked"
+                                visible: !row.waits && !row.done && row.st.key !== "blocked" && row.st.key !== "goal" && row.st.key !== "woke"
                                 anchors.fill: parent
                                 onPaint: {
                                     const c = getContext("2d");
@@ -188,7 +177,7 @@ FocusScope {
                                     c.strokeStyle = Theme.cyan; c.beginPath(); c.arc(7, 7, 5.5, -Math.PI / 2, Math.PI * 0.35); c.stroke();
                                 }
                                 RotationAnimation on rotation {
-                                    running: !row.waits && !row.done && row.st.key !== "blocked" && t3.visible && !Theme.reduceMotion
+                                    running: !row.waits && !row.done && row.st.key !== "blocked" && row.st.key !== "goal" && row.st.key !== "woke" && t3.visible && !Theme.reduceMotion
                                     from: 0; to: 360; duration: Theme.spinMs; loops: Animation.Infinite
                                 }
                             }

@@ -26,6 +26,7 @@ import QtQuick
 import Quickshell
 import qs.config
 import Quickshell.Io
+import "limits.mjs" as L
 
 Singleton {
     id: root
@@ -101,7 +102,7 @@ Singleton {
         const n = String((p && (p.driver || p.label)) || "").toLowerCase();
         const f = /claude/.test(n) ? "claude" : /codex|openai|gpt/.test(n) ? "openai" : /cursor/.test(n) ? "cursor"
             : /antigravity|agy/.test(n) ? "antigravity" : /grok/.test(n) ? "grok" : /gemini/.test(n) ? "googlegemini"
-            : /opencode/.test(n) ? "opencode" : /kimi/.test(n) ? "kimi" : /qwen/.test(n) ? "qwen" : "";
+            : /opencode/.test(n) ? "opencode" : /kimi/.test(n) ? "kimi" : /qwen/.test(n) ? "qwen" : /devin/.test(n) ? "devin" : "";
         return f ? brandDir + "/" + f + ".svg" : "";
     }
     // The soonest reset among exhausted windows (ms from now, -1 if none known).
@@ -141,15 +142,29 @@ Singleton {
     // The tab the Usage panel opens on (an agent's id), set by whoever opens
     // it; the panel takes it once.
     property string usageTab: ""
-    readonly property var backSoon: {
-        let best = null;
-        for (const x of exhausted) {
-            const r = x.window.resetsAt || 0;
-            if (r > now && r - now <= soonMs && (!best || r < best.at))
-                best = { at: r, brand: brandFor(x.provider), tint: tintFor(x.provider), name: providerShort(x.provider) };
-        }
-        return best;
-    }
+    readonly property var quotaExhausted: exhausted.map(x => ({
+        key: x.key,
+        id: String(x.provider.driver || x.provider.label || ""),
+        brand: brandFor(x.provider),
+        tint: String(tintFor(x.provider)),
+        name: providerShort(x.provider),
+        account: (x.provider.accounts || []).length > 1 ? accountLabel(x.provider, x.account) : "",
+        resetsAt: x.window.resetsAt || 0,
+        windowLabel: windowLabel(x.window),
+        source: "quota"
+    }))
+    readonly property var partitioned: L.partitionLimits(quotaExhausted, [], now, soonMs)
+    readonly property var resettingSoon: partitioned.resettingSoon
+    readonly property var exhaustedLater: partitioned.exhaustedLater
+    readonly property var backSoon: resettingSoon.length ? ({
+        at: resettingSoon[0].resetsAt,
+        brand: resettingSoon[0].brand,
+        tint: resettingSoon[0].tint || Theme.orange,
+        name: resettingSoon[0].name
+    }) : null
+    function partitionWith(extra) { return L.partitionLimits(quotaExhausted, extra || [], now, soonMs); }
+    function slideLabel(entry, total, isResetting) { return L.slideLabel(entry, total, now, isResetting); }
+    function orderedStack(list, idx) { return L.orderedStack(list, idx); }
     readonly property bool markShown: Settings.limitAlerts && backSoon !== null
     // One entry per account for the hover view's rings: the session window
     // (the shortest) and the weekly one (the longest), what each has left.
