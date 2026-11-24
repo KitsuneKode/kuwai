@@ -16,6 +16,17 @@ Shape {
     property real ear: 9
     property color fill: "black"
     property color edge: Theme.edge(0)
+    property real expand: 0
+    property real capH: 34
+    function mix(a, b, t) { return Qt.rgba(a.r + (b.r - a.r) * t, a.g + (b.g - a.g) * t, a.b + (b.b - a.b) * t, a.a + (b.a - a.a) * t); }
+    readonly property real t: Math.max(0, Math.min(1, expand))
+    property LinearGradient glass: LinearGradient {
+        x1: 0; y1: 0; x2: 0; y2: notch.h
+        GradientStop { position: 0; color: notch.fill }
+        GradientStop { position: Math.min(0.97, notch.capH / Math.max(notch.capH + 1, notch.h)); color: notch.fill }
+        GradientStop { position: Math.min(0.98, (notch.capH + 36) / Math.max(notch.capH + 37, notch.h)); color: notch.mix(notch.fill, Theme.notchGlassMid, notch.t) }
+        GradientStop { position: 1; color: notch.mix(notch.fill, Theme.notchGlassBottom, notch.t) }
+    }
 
     width: w + ear * 2
     height: h
@@ -29,8 +40,8 @@ Shape {
 
     ShapePath {
         fillColor: notch.fill
-        strokeColor: notch.edge
-        strokeWidth: 1
+        fillGradient: notch.t > 0.001 ? notch.glass : null
+        strokeWidth: -1
         startX: 0; startY: 0
         // The ear (shoulder): a continuous flare, not a quarter circle: it
         // leaves the screen edge flat and meets the side straight, with the
@@ -45,5 +56,18 @@ Shape {
         PathLine { x: notch.e + notch.w; y: notch.e }
         PathCubic { x: notch.w + notch.e * 2; y: 0; control1X: notch.e + notch.w; control1Y: notch.e * 0.38; control2X: notch.e + notch.w + notch.e * 0.38; control2Y: 0 }
         PathLine { x: 0; y: 0 }
+    }
+    ShapePath {
+        fillColor: "transparent"
+        strokeColor: notch.mix(notch.edge, Theme.contrast ? Theme.edge(3) : Theme.edge(1), notch.t)
+        strokeWidth: 1
+        startX: 0; startY: 0
+        PathCubic { x: notch.e; y: notch.e; control1X: notch.e * 0.62; control1Y: 0; control2X: notch.e; control2Y: notch.e * 0.38 }
+        PathLine { x: notch.e; y: notch.h - notch.k }
+        PathCubic { x: notch.e + notch.k; y: notch.h; control1X: notch.e; control1Y: notch.h - notch.k * 0.3; control2X: notch.e + notch.k * 0.3; control2Y: notch.h }
+        PathLine { x: notch.e + notch.w - notch.k; y: notch.h }
+        PathCubic { x: notch.e + notch.w; y: notch.h - notch.k; control1X: notch.e + notch.w - notch.k * 0.3; control1Y: notch.h; control2X: notch.e + notch.w; control2Y: notch.h - notch.k * 0.3 }
+        PathLine { x: notch.e + notch.w; y: notch.e }
+        PathCubic { x: notch.w + notch.e * 2; y: 0; control1X: notch.e + notch.w; control1Y: notch.e * 0.38; control2X: notch.e + notch.w + notch.e * 0.38; control2Y: 0 }
     }
 }

@@ -854,6 +854,8 @@ Scope {
                     ear: win.ear
                     radius: win.shapeRadius
                     fill: Qt.rgba(0, 0, 0, 0.94)
+                    expand: Math.max(pv.value, m.value)
+                    capH: win.restH
                 }
                 // Liquid glass, expanded only: the rim catches the pointer.
                 LiquidRim {
