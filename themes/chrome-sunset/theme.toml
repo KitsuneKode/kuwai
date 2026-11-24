@@ -1,0 +1,5 @@
+schema = 1
+slug = "chrome-sunset"
+name = "Chrome Sunset"
+mode = "dark"
+accent = "#ff3fb0"

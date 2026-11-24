@@ -1,0 +1,5 @@
+schema = 1
+slug = "neon-district"
+name = "Neon District"
+mode = "dark"
+accent = "#3ee6ff"

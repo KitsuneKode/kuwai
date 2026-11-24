@@ -27,6 +27,7 @@ def look_env(tmp_path):
         "XDG_STATE_HOME": str(tmp_path / "state"),
         "XDG_CACHE_HOME": str(tmp_path / "cache"),
         "XDG_CONFIG_HOME": str(tmp_path / "config"),
+        "XDG_DATA_HOME": str(tmp_path / "data"),
         "XDG_RUNTIME_DIR": str(tmp_path / "run"),
     }
 
@@ -118,3 +119,74 @@ print('lua_look_ok')
 """
     r = subprocess.run(["lua", "-e", lua_code], env=env, capture_output=True, text=True, timeout=15)
     assert r.returncode == 0 and "lua_look_ok" in r.stdout, r.stdout + r.stderr
+
+
+def test_all_shipped_themes_have_native_toml_and_apply_cleanly(tmp_path):
+    env = look_env(tmp_path)
+    themes = sorted(p for p in (ROOT / "themes").iterdir() if p.is_dir())
+    assert len(themes) >= 11
+    for theme in themes:
+        assert (theme / "theme.toml").is_file(), theme.name
+        assert (theme / "palette.toml").is_file(), theme.name
+        r = run_look(env, "theme", theme.name, "--no-apply")
+        assert r.returncode == 0, f"{theme.name}: {r.stderr}"
+        pal = json.loads(r.stdout)["palette"]
+        role = pal["role"]
+        assert contrast_ratio(role["fg"], role["bg"]) >= 7.0, theme.name
+        assert contrast_ratio(role["accent"], role["bg"]) >= 3.5, theme.name
+    listed = json.loads(run_look(env, "list").stdout)
+    assert len(listed["themes"]) == len(themes)
+    assert listed["modes"] == ["theme", "auto", "dark", "light"]
+    assert all(t["bg"].startswith("#") and t["accent"].startswith("#") and t["palette"] for t in listed["themes"])
+
+
+def init_git_repo(repo_dir):
+    subprocess.run(["git", "init", "-q", str(repo_dir)], check=True)
+    subprocess.run(["git", "-C", str(repo_dir), "config", "user.email", "t@kuwai.test"], check=True)
+    subprocess.run(["git", "-C", str(repo_dir), "config", "user.name", "Kuwai Test"], check=True)
+    subprocess.run(["git", "-C", str(repo_dir), "add", "-A"], check=True)
+    subprocess.run(["git", "-C", str(repo_dir), "-c", "commit.gpgsign=false", "commit", "-q", "-m", "init"], check=True)
+
+
+def test_install_accepts_safe_theme_and_rejects_scripts_and_symlinks(tmp_path):
+    env = look_env(tmp_path)
+
+    good = tmp_path / "good-theme"
+    good.mkdir()
+    (good / "theme.toml").write_text('schema = 1\nslug = "good-theme"\nname = "Good Theme"\n')
+    (good / "palette.toml").write_text('[colors]\nbg = "#101218"\nfg = "#f0f2f6"\naccent = "#55ccff"\n')
+    init_git_repo(good)
+
+    r = run_look(env, "install", str(good))
+    assert r.returncode == 0, r.stderr
+    d = json.loads(r.stdout)
+    assert d["ok"] is True and d["slug"] == "good-theme"
+    r_apply = run_look(env, "theme", "good-theme", "--no-apply")
+    assert r_apply.returncode == 0, r_apply.stderr
+
+    bad_script = tmp_path / "evil-script"
+    bad_script.mkdir()
+    (bad_script / "palette.toml").write_text('[colors]\nbg = "#101218"\nfg = "#f0f2f6"\naccent = "#55ccff"\n')
+    (bad_script / "install.sh").write_text("#!/bin/sh\necho pwned\n")
+    init_git_repo(bad_script)
+    r_bad = run_look(env, "install", str(bad_script))
+    assert r_bad.returncode != 0 and "rejected" in r_bad.stderr
+
+    bad_link = tmp_path / "evil-link"
+    bad_link.mkdir()
+    (bad_link / "palette.toml").write_text('[colors]\nbg = "#101218"\nfg = "#f0f2f6"\naccent = "#55ccff"\n')
+    (bad_link / "README.md").symlink_to("/etc/passwd")
+    init_git_repo(bad_link)
+    r_link = run_look(env, "install", str(bad_link))
+    assert r_link.returncode != 0 and "symlink" in r_link.stderr
+
+
+def test_home_app_include_configs_are_portable():
+    for rel in (
+        "home/.config/kitty/kuwai.conf",
+        "home/.config/gtk-3.0/kuwai.css",
+        "home/.config/gtk-4.0/kuwai.css",
+        "home/.config/qt6ct/kuwai.conf",
+    ):
+        text = (ROOT / rel).read_text()
+        assert "kitsunekode" not in text and "hyde" not in text.lower()

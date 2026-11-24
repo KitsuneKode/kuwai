@@ -4,6 +4,7 @@
     kuwai-look set-wallpaper IMAGE [--mode auto|dark|light] [--no-apply]
     kuwai-look theme NAME [--mode theme|auto|dark|light] [--no-apply]
     kuwai-look mode theme|auto|dark|light [--no-apply]
+    kuwai-look install REPO [SLUG]
     kuwai-look undo [--no-apply]
     kuwai-look init [--no-apply]
     kuwai-look status [--json]
@@ -14,8 +15,10 @@ import json
 import os
 import re
 import shutil
+import stat
 import subprocess
 import sys
+import tempfile
 import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
@@ -24,22 +27,37 @@ if os.path.join(ROOT, "lib") not in sys.path:
 
 from look.extract import extract_image
 from look.render import write_generation
-from look.roles import build_palette, norm_hex
+from look.roles import build_palette
 
 HOME = os.path.expanduser("~")
 STATE_HOME = os.environ.get("XDG_STATE_HOME") or os.path.join(HOME, ".local/state")
 CACHE_HOME = os.environ.get("XDG_CACHE_HOME") or os.path.join(HOME, ".cache")
 CONFIG_HOME = os.environ.get("XDG_CONFIG_HOME") or os.path.join(HOME, ".config")
+DATA_HOME = os.environ.get("XDG_DATA_HOME") or os.path.join(HOME, ".local/share")
 
 KUWAI_STATE = os.path.join(STATE_HOME, "kuwai")
 LOOK_DIR = os.path.join(KUWAI_STATE, "look")
 WALL_LINK = os.path.join(KUWAI_STATE, "wallpaper")
 PALETTE_CACHE = os.path.join(CACHE_HOME, "kuwai", "palettes")
 CUSTOM_TEMPLATES = os.path.join(CONFIG_HOME, "kuwai", "custom", "templates")
+CUSTOM_HOOKS = os.path.join(CONFIG_HOME, "kuwai", "custom", "hooks", "look-changed.d")
+USER_THEMES = os.path.join(DATA_HOME, "kuwai-data", "themes")
 RUNTIME_DIR = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "kuwai")
 LOCK_PATH = os.path.join(RUNTIME_DIR, "look.lock")
 
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".avif", ".bmp"}
+MODES = ["theme", "auto", "dark", "light"]
+ALLOWED_THEME_FILES = {
+    "theme.toml",
+    "palette.toml",
+    "kitty.theme",
+    "ghostty.theme",
+    "hypr.theme",
+    "CREDITS.txt",
+    "README.md",
+    "wallpapers.tsv",
+}
+SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,63}$")
 
 
 def new_generation():
@@ -97,17 +115,30 @@ def parse_dcol(path):
     return vals
 
 
-def theme_raw(name):
-    repo_dir = os.path.join(ROOT, "themes", name)
+def theme_dirs():
+    out = {}
+    for base in (os.path.join(ROOT, "themes"), USER_THEMES):
+        if not os.path.isdir(base):
+            continue
+        for name in sorted(os.listdir(base)):
+            full = os.path.join(base, name)
+            if os.path.isdir(full) and not name.startswith("."):
+                out[name] = full
+    return out
+
+
+def theme_raw_from_dir(repo_dir):
     palette_toml = os.path.join(repo_dir, "palette.toml")
     if os.path.isfile(palette_toml):
         t = parse_simple_toml(palette_toml)
+        ansi = [t.get(f"ansi.color{i}") for i in range(16)]
         return {
             "bg": t.get("colors.bg") or t.get("bg"),
             "fg": t.get("colors.fg") or t.get("fg"),
             "accent": t.get("colors.accent") or t.get("accent"),
             "secondary": t.get("colors.secondary") or t.get("secondary"),
             "tertiary": t.get("colors.tertiary") or t.get("tertiary"),
+            "ansi": ansi if all(ansi) else None,
             "exactBg": True,
         }, os.path.join(repo_dir, "wallpapers")
     kitty_file = os.path.join(repo_dir, "kitty.theme")
@@ -135,6 +166,27 @@ def theme_raw(name):
             "exactBg": True,
         }, os.path.join(repo_dir, "wallpapers")
     return None, None
+
+
+def theme_raw(name):
+    if "/" in name or name in ("", ".", ".."):
+        return None, None
+    dirs = theme_dirs()
+    repo_dir = dirs.get(name)
+    if not repo_dir:
+        return None, None
+    return theme_raw_from_dir(repo_dir)
+
+
+def first_image_in(folder):
+    if not folder or not os.path.isdir(folder):
+        return ""
+    for fn in sorted(os.listdir(folder)):
+        if os.path.splitext(fn)[1].lower() in IMAGE_EXTS:
+            p = os.path.join(folder, fn)
+            if os.path.isfile(p):
+                return p
+    return ""
 
 
 def set_wall_symlink(image):
@@ -166,7 +218,31 @@ def apply_awww(image):
     return r.returncode == 0
 
 
-def reload_consumers(image=None):
+def run_user_hooks(state):
+    if not os.path.isdir(CUSTOM_HOOKS):
+        return []
+    errors = []
+    env = dict(os.environ)
+    env["KUWAI_LOOK_GEN"] = str((state or {}).get("generation") or "")
+    env["KUWAI_LOOK_MODE"] = str((state or {}).get("mode") or "dark")
+    env["KUWAI_LOOK_THEME"] = str((state or {}).get("theme") or "")
+    env["KUWAI_LOOK_WALLPAPER"] = str((state or {}).get("wallpaper") or "")
+    for name in sorted(os.listdir(CUSTOM_HOOKS)):
+        if name.startswith("."):
+            continue
+        p = os.path.join(CUSTOM_HOOKS, name)
+        if not os.path.isfile(p) or os.path.islink(p) or not os.access(p, os.X_OK):
+            continue
+        try:
+            r = subprocess.run([p], env=env, stdin=subprocess.DEVNULL, capture_output=True, timeout=10)
+            if r.returncode != 0:
+                errors.append(f"hook:{name}:{r.returncode}")
+        except (OSError, subprocess.TimeoutExpired):
+            errors.append(f"hook:{name}:err")
+    return errors
+
+
+def reload_consumers(image=None, mode="dark", state=None):
     errors = []
     if image:
         try:
@@ -180,11 +256,24 @@ def reload_consumers(image=None):
         )
         if r.returncode != 0:
             errors.append("hyprctl")
+    if shutil.which("qs") and os.environ.get("WAYLAND_DISPLAY"):
+        shell_dir = os.path.join(ROOT, "shell")
+        subprocess.run(
+            ["qs", "ipc", "-p", shell_dir, "call", "look", "reload"],
+            stdin=subprocess.DEVNULL, capture_output=True, timeout=5,
+        )
+    if shutil.which("gsettings") and os.environ.get("DBUS_SESSION_BUS_ADDRESS"):
+        scheme = "prefer-light" if mode == "light" else "prefer-dark"
+        subprocess.run(
+            ["gsettings", "set", "org.gnome.desktop.interface", "color-scheme", scheme],
+            stdin=subprocess.DEVNULL, capture_output=True, timeout=5,
+        )
     if shutil.which("pkill"):
         subprocess.run(["pkill", "-USR1", "-x", "kitty"], stdin=subprocess.DEVNULL, capture_output=True)
     sync_bin = os.path.join(ROOT, "greeter", "sync")
     if os.path.isfile(sync_bin) and os.access(sync_bin, os.X_OK):
         subprocess.run([sync_bin], stdin=subprocess.DEVNULL, capture_output=True, timeout=10)
+    errors.extend(run_user_hooks(state))
     return errors
 
 
@@ -213,7 +302,7 @@ def cmd_set_wallpaper(image, mode="dark", apply_live=True):
     )
     _, state = write_generation(LOOK_DIR, palette, custom_templates_dir=CUSTOM_TEMPLATES)
     set_wall_symlink(real)
-    reload_errors = reload_consumers(real) if apply_live else []
+    reload_errors = reload_consumers(real, mode=palette["mode"], state=state) if apply_live else []
     return {"ok": True, "state": state, "palette": palette, "reloadErrors": reload_errors}
 
 
@@ -222,11 +311,8 @@ def cmd_theme(name, mode="theme", apply_live=True):
     if raw is None:
         raise SystemExit(f"kuwai-look: unknown theme: {name}")
     wall = os.path.realpath(WALL_LINK) if os.path.exists(WALL_LINK) else ""
-    if not wall and wall_dir and os.path.isdir(wall_dir):
-        for fn in sorted(os.listdir(wall_dir)):
-            if os.path.splitext(fn)[1].lower() in IMAGE_EXTS:
-                wall = os.path.join(wall_dir, fn)
-                break
+    if not wall:
+        wall = first_image_in(wall_dir)
     gen = new_generation()
     palette = build_palette(
         raw,
@@ -237,12 +323,12 @@ def cmd_theme(name, mode="theme", apply_live=True):
     _, state = write_generation(LOOK_DIR, palette, custom_templates_dir=CUSTOM_TEMPLATES)
     if wall and os.path.isfile(wall):
         set_wall_symlink(wall)
-    reload_errors = reload_consumers(wall if wall and os.path.isfile(wall) else None) if apply_live else []
+    reload_errors = reload_consumers(wall if wall and os.path.isfile(wall) else None, mode=palette["mode"], state=state) if apply_live else []
     return {"ok": True, "state": state, "palette": palette, "reloadErrors": reload_errors}
 
 
 def cmd_mode(mode, apply_live=True):
-    if mode not in ("theme", "auto", "dark", "light"):
+    if mode not in MODES:
         raise SystemExit(f"kuwai-look: unknown mode: {mode}")
     cur = load_json(os.path.join(LOOK_DIR, "state.json"), {})
     if mode == "theme" and cur.get("theme"):
@@ -253,6 +339,82 @@ def cmd_mode(mode, apply_live=True):
     if wall and os.path.isfile(wall):
         return cmd_set_wallpaper(wall, mode=mode, apply_live=apply_live)
     return cmd_init(mode=mode, apply_live=apply_live, force=True)
+
+
+def derive_slug(source, slug=None):
+    cand = slug or os.path.basename(source.rstrip("/"))
+    if cand.endswith(".git"):
+        cand = cand[:-4]
+    cand = re.sub(r"[^a-z0-9._-]+", "-", cand.lower()).strip(".-")
+    if not SLUG_RE.match(cand):
+        raise SystemExit(f"kuwai-look: invalid theme slug: {cand!r}")
+    return cand
+
+
+def validate_theme_tree(root_dir):
+    safe_files = []
+    for cur_dir, dirnames, filenames in os.walk(root_dir, followlinks=False):
+        dirnames[:] = [d for d in dirnames if d != ".git"]
+        rel_dir = os.path.relpath(cur_dir, root_dir)
+        for d in dirnames:
+            full_d = os.path.join(cur_dir, d)
+            if os.path.islink(full_d):
+                raise SystemExit(f"kuwai-look: rejected symlink directory in theme: {d}")
+            if rel_dir == "." and d != "wallpapers":
+                raise SystemExit(f"kuwai-look: rejected directory in theme: {d}")
+            if rel_dir != ".":
+                raise SystemExit(f"kuwai-look: rejected nested directory in theme: {os.path.join(rel_dir, d)}")
+        for fn in filenames:
+            full_f = os.path.join(cur_dir, fn)
+            rel_f = fn if rel_dir == "." else os.path.join(rel_dir, fn)
+            st = os.lstat(full_f)
+            if stat.S_ISLNK(st.st_mode):
+                raise SystemExit(f"kuwai-look: rejected symlink in theme: {rel_f}")
+            if not stat.S_ISREG(st.st_mode):
+                raise SystemExit(f"kuwai-look: rejected special file in theme: {rel_f}")
+            if st.st_mode & (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH):
+                raise SystemExit(f"kuwai-look: rejected executable file in theme: {rel_f}")
+            if rel_dir == ".":
+                if fn not in ALLOWED_THEME_FILES:
+                    raise SystemExit(f"kuwai-look: rejected disallowed file in theme: {rel_f}")
+            elif rel_dir == "wallpapers":
+                if os.path.splitext(fn)[1].lower() not in IMAGE_EXTS:
+                    raise SystemExit(f"kuwai-look: rejected non-image in wallpapers/: {rel_f}")
+            else:
+                raise SystemExit(f"kuwai-look: rejected file path in theme: {rel_f}")
+            safe_files.append((full_f, rel_f))
+    return safe_files
+
+
+def cmd_install(source, slug=None):
+    target_slug = derive_slug(source, slug)
+    with tempfile.TemporaryDirectory(prefix="kuwai-theme-") as tmp:
+        clone_dir = os.path.join(tmp, "repo")
+        r = subprocess.run(
+            ["git", "clone", "--depth", "1", "--config", "core.hooksPath=/dev/null", "--", source, clone_dir],
+            stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=60,
+        )
+        if r.returncode != 0:
+            raise SystemExit(f"kuwai-look: git clone failed: {r.stderr.strip()}")
+        safe_files = validate_theme_tree(clone_dir)
+        raw, _ = theme_raw_from_dir(clone_dir)
+        if raw is None or not raw.get("bg") or not raw.get("accent"):
+            raise SystemExit("kuwai-look: theme must provide palette.toml, kitty.theme, or theme.dcol with bg and accent")
+        os.makedirs(USER_THEMES, exist_ok=True)
+        stage_dir = os.path.join(USER_THEMES, f".stage-{target_slug}-{os.getpid()}")
+        dest_dir = os.path.join(USER_THEMES, target_slug)
+        if os.path.exists(stage_dir):
+            shutil.rmtree(stage_dir)
+        os.makedirs(stage_dir, exist_ok=True)
+        for src_f, rel_f in safe_files:
+            out_f = os.path.join(stage_dir, rel_f)
+            os.makedirs(os.path.dirname(out_f), exist_ok=True)
+            shutil.copyfile(src_f, out_f)
+            os.chmod(out_f, 0o644)
+        if os.path.exists(dest_dir):
+            shutil.rmtree(dest_dir)
+        os.replace(stage_dir, dest_dir)
+    return {"ok": True, "slug": target_slug, "path": dest_dir, "files": len(safe_files)}
 
 
 def cmd_undo(apply_live=True):
@@ -283,7 +445,7 @@ def cmd_undo(apply_live=True):
         json.dump(new_state, f, indent=2)
         f.write("\n")
     os.replace(tmp_s, os.path.join(LOOK_DIR, "state.json"))
-    reload_errors = reload_consumers(wall if wall and os.path.isfile(wall) else None) if apply_live else []
+    reload_errors = reload_consumers(wall if wall and os.path.isfile(wall) else None, mode=new_state["mode"], state=new_state) if apply_live else []
     return {"ok": True, "state": new_state, "palette": pal, "reloadErrors": reload_errors}
 
 
@@ -301,7 +463,7 @@ def cmd_init(mode="dark", apply_live=False, force=False):
         mode="dark" if mode == "theme" else mode,
     )
     _, state = write_generation(LOOK_DIR, palette, custom_templates_dir=CUSTOM_TEMPLATES)
-    reload_errors = reload_consumers(None) if apply_live else []
+    reload_errors = reload_consumers(None, mode=palette["mode"], state=state) if apply_live else []
     return {"ok": True, "state": state, "palette": palette, "reloadErrors": reload_errors}
 
 
@@ -318,19 +480,42 @@ def cmd_status():
 
 
 def cmd_list():
-    themes_dir = os.path.join(ROOT, "themes")
+    state = load_json(os.path.join(LOOK_DIR, "state.json"), {})
+    cur_theme = state.get("theme") or ""
+    cur_wall = os.path.realpath(WALL_LINK) if os.path.exists(WALL_LINK) else ""
+    cur_mode_name = state.get("mode") or "theme"
+    cur_mode_idx = MODES.index(cur_mode_name) if cur_mode_name in MODES else 0
+
     themes = []
-    if os.path.isdir(themes_dir):
-        for name in sorted(os.listdir(themes_dir)):
-            full = os.path.join(themes_dir, name)
-            if os.path.isdir(full) and not name.startswith("."):
-                themes.append({"name": name, "path": full})
+    for name, full in sorted(theme_dirs().items(), key=lambda kv: kv[0].lower()):
+        raw, wall_dir = theme_raw_from_dir(full)
+        if raw is None:
+            continue
+        bg = raw.get("bg") or "#111114"
+        fg = raw.get("fg") or "#f4f4f6"
+        accent = raw.get("accent") or "#66c7ff"
+        ansi = raw.get("ansi")
+        swatch = [bg, ansi[1], ansi[3], ansi[2], ansi[6], ansi[4], ansi[5], fg] if ansi and len(ansi) >= 7 else [bg, accent, raw.get("secondary") or accent, raw.get("tertiary") or accent, fg]
+        themes.append({
+            "name": name,
+            "path": full,
+            "thumb": first_image_in(wall_dir),
+            "current": name == cur_theme,
+            "bg": bg,
+            "fg": fg,
+            "accent": accent,
+            "palette": swatch,
+        })
+
     walls = []
     seen = set()
-    for folder in (
+    folders = [
         os.path.join(HOME, "Pictures", "Wallpapers"),
         os.path.join(HOME, "Pictures", "wallpapers"),
-    ):
+    ]
+    if cur_theme and cur_theme in theme_dirs():
+        folders.insert(0, os.path.join(theme_dirs()[cur_theme], "wallpapers"))
+    for folder in folders:
         if not os.path.isdir(folder):
             continue
         for root_d, _, files in os.walk(folder):
@@ -340,8 +525,21 @@ def cmd_list():
                     real = os.path.realpath(p)
                     if real not in seen:
                         seen.add(real)
-                        walls.append({"name": os.path.splitext(fn)[0], "path": real})
-    return {"schema": 1, "themes": themes, "wallpapers": walls}
+                        walls.append({
+                            "name": os.path.splitext(fn)[0],
+                            "path": real,
+                            "thumb": real,
+                            "current": real == cur_wall,
+                            "palette": [],
+                        })
+    return {
+        "schema": 1,
+        "current": cur_theme,
+        "mode": cur_mode_idx,
+        "modes": MODES,
+        "themes": themes,
+        "wallpapers": walls,
+    }
 
 
 def main(argv):
@@ -370,6 +568,10 @@ def main(argv):
         return 0
     if cmd == "mode" and len(args) == 1:
         res = with_lock(lambda: cmd_mode(args[0], apply_live=apply_live))
+        print(json.dumps(res))
+        return 0
+    if cmd == "install" and len(args) in (1, 2):
+        res = with_lock(lambda: cmd_install(args[0], args[1] if len(args) == 2 else None))
         print(json.dumps(res))
         return 0
     if cmd == "undo" and not args:
