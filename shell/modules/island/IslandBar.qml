@@ -1082,9 +1082,19 @@ Scope {
                             autoPaddingEnabled: false
                         }
                         Keys.onEscapePressed: Island.back()
+                        property PanelKeys keys: PanelKeys { scope: panelLoader }
+                        Connections {
+                            target: panelScope.Window.window
+                            enabled: win.panelHere
+                            function onActiveFocusItemChanged() {
+                                const it = panelScope.Window.window ? panelScope.Window.window.activeFocusItem : null;
+                                panelScope.keys.reveal(it);
+                            }
+                        }
 
                         Keys.onPressed: event => {
                             idle.restart();
+                            if (panelScope.keys.handle(event, panelScope.Window.window)) { event.accepted = true; return; }
                             // ⌥1–4: the sections (keys the panel didn't take bubble here).
                             if (win.sectioned && (event.modifiers & Qt.AltModifier) && event.key >= Qt.Key_1 && event.key <= Qt.Key_4) {
                                 const s = Island.sections[event.key - Qt.Key_1];
