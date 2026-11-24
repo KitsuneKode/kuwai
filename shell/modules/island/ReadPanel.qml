@@ -229,7 +229,7 @@ FocusScope {
                                     anchors { right: parent.right; verticalCenter: parent.verticalCenter }
                                     text: rp.when(mcard.modelData.when)
                                     size: Theme.tFootnote; color: Theme.textTertiary
-                                    font.features: ({ "tnum": 1 })
+                                    tabular: true
                                 }
                             }
                             // Open: the whole message. Height eases (an accordion,

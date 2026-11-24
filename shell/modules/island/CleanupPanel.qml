@@ -135,7 +135,7 @@ FocusScope {
                 visible: !(cp.error && !cp.report)
                 text: cp.loading && !cp.report ? "…" : cp.num(cp.report ? cp.report.unusedTokens : 0)
                 size: Theme.tClock * 2 - 8; weight: Theme.wBold; rounded: true
-                font.features: ({ "tnum": 1 })
+                tabular: true
             }
             Label {
                 width: parent.width
@@ -212,7 +212,7 @@ FocusScope {
                     anchors { right: parent.right; rightMargin: 12; verticalCenter: parent.verticalCenter }
                     text: row.modelData.tokens + " tokens"
                     size: Theme.tSub; color: Theme.textSecondary
-                    font.features: ({ "tnum": 1 })
+                    tabular: true
                 }
                 HoverHandler {
                     cursorShape: Qt.PointingHandCursor

@@ -128,7 +128,7 @@ Row {
                 text: lim.b ? Limits.compact(lim.b.at - Limits.now) : ""
                 size: Theme.tSub; weight: Theme.wSemibold
                 color: Theme.textSecondary
-                font.features: ({ "tnum": 1 })
+                tabular: true
             }
         }
         MouseArea {

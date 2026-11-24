@@ -19,7 +19,7 @@ Column {
         width: parent.width; height: 26
         Label { anchors.verticalCenter: parent.verticalCenter; text: m.title; size: 11; weight: Theme.wMedium; color: Theme.textTertiary }
         Label { anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-            text: m.big; size: 20; weight: Theme.wSemibold; rounded: true; font.features: ({ "tnum": 1 }) }
+            text: m.big; size: 20; weight: Theme.wSemibold; rounded: true; tabular: true }
     }
     Item {
         width: parent.width; height: 8

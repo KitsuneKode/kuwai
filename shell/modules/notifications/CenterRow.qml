@@ -229,7 +229,7 @@ Item {
                     visible: row.showTime && !hover.hovered
                     text: row.ageText
                     size: 12
-                    font.features: ({ "tnum": 1 })
+                    tabular: true
                     color: Theme.textTertiary
                 }
                 // Snooze, beside close while hovered (or selected from the keyboard: S)

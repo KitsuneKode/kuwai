@@ -107,7 +107,7 @@ Item {
                     text: String(m.modelData.count)
                     size: Theme.tCaption; weight: Theme.wBold; rounded: true
                     color: m.modelData.needs ? Theme.orange : Theme.textSecondary
-                    font.features: ({ "tnum": 1 })
+                    tabular: true
                 }
             }
         }

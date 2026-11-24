@@ -105,7 +105,7 @@ FocusScope {
                     Label { text: "CPU"; size: 11; weight: Theme.wMedium; color: Theme.textTertiary }
                     Row {
                         spacing: 8
-                        Label { text: Math.round(SystemStats.cpu * 100) + "%"; size: 24; weight: Theme.wSemibold; rounded: true; font.features: ({ "tnum": 1 }) }
+                        Label { text: Math.round(SystemStats.cpu * 100) + "%"; size: 24; weight: Theme.wSemibold; rounded: true; tabular: true }
                         Label {
                             anchors.baseline: parent.children[0].baseline
                             visible: SystemStats.cpuTemp > 0

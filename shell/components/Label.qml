@@ -17,6 +17,7 @@ Text {
     property int size: 13
     property int weight: Theme.wRegular
     property bool rounded: false
+    property bool tabular: false
     property real extraTracking: 0
     property real opsz: Theme.opszFor(size)
 
@@ -31,9 +32,8 @@ Text {
     font.weight: weight
     font.letterSpacing: Theme.tracking(size, rounded) + extraTracking
     font.variableAxes: Theme.axesFor(size)
-    // A caller that sets font.features (tabular figures) replaces this; use
-    // Theme.numeralFeatures(rounded, true) there to keep Inter's open digits.
-    font.features: Theme.numeralFeatures(rounded, false)
+    // tabular: figures that line up, keeping Inter's open digits.
+    font.features: Theme.numeralFeatures(rounded, tabular)
     // FreeType, not Qt's distance-field glyph atlas: with a variable font at
     // many weight/optical-size combinations the atlas drew labels blank or
     // on top of each other; native rendering is also crisper at UI sizes.

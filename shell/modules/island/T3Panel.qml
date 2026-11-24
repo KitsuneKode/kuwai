@@ -75,7 +75,7 @@ FocusScope {
                     : T3Code.running + " active"
                 size: Theme.tCallout; weight: Theme.wSemibold
                 color: T3Code.stale ? Theme.textTertiary : T3Code.waiting > 0 ? Theme.orange : Theme.cyan
-                font.features: ({ "tnum": 1 })
+                tabular: true
             }
         }
 

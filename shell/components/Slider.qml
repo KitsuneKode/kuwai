@@ -118,7 +118,7 @@ Item {
             size: 13
             rounded: true
             weight: Theme.wMedium
-            font.features: ({ "tnum": 1 })
+            tabular: true
             color: s.hot ? Theme.textPrimary : Theme.textSecondary
             Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
         }

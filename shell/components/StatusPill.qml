@@ -20,7 +20,7 @@ Rectangle {
             text: pill.text
             size: Theme.tFootnote; weight: Theme.wMedium
             color: Theme.textSecondary
-            font.features: ({ "tnum": 1 })
+            tabular: true
         }
     }
     Accessible.role: Accessible.StaticText

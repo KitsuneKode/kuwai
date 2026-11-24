@@ -478,7 +478,7 @@ Item {
                     text: strip.audio ? view.dB(strip.vol) : ""
                     size: Theme.tCaption
                     rounded: true
-                    font.features: ({ "tnum": 1 })
+                    tabular: true
                     color: Theme.textTertiary
                 }
             }

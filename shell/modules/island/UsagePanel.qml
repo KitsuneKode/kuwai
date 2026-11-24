@@ -168,7 +168,7 @@ FocusScope {
                     : usage.partCount ? usage.partCount + " partly out · the rest have room" : "All agents have room"
                 size: Theme.tFootnote; weight: Theme.wSemibold
                 color: usage.outCount ? Theme.orange : Theme.textTertiary
-                font.features: ({ "tnum": 1 })
+                tabular: true
             }
         }
 
@@ -403,7 +403,7 @@ FocusScope {
                                         size: Theme.tCaption; weight: Theme.wBold
                                         // Out: red for text (red itself on its own wash read 4.3:1).
                                         color: card.g.rank === 2 ? Theme.redText : usage.tone(card.g.rank >= 1 ? "approaching" : "")
-                                        font.features: ({ "tnum": 1 })
+                                        tabular: true
                                     }
                                 }
                             }
@@ -419,7 +419,7 @@ FocusScope {
                                 text: said
                                 size: Theme.tFootnote
                                 color: Theme.textTertiary
-                                font.features: ({ "tnum": 1 })
+                                tabular: true
                                 HoverHandler { id: spendHover }
                                 Tip {
                                     shown: spendHover.hovered
@@ -463,10 +463,8 @@ FocusScope {
                                     Label {
                                         anchors { left: parent.left; verticalCenter: parent.verticalCenter }
                                         text: secHead.who
-                                        size: Theme.tCaption; weight: Theme.wSemibold
-                                        color: Theme.textTertiary
-                                        font.capitalization: Font.AllUppercase
-                                        font.letterSpacing: 0.6
+                                        size: Theme.tFootnote; weight: Theme.wSemibold
+                                        color: Theme.textSecondary
                                     }
                                     Label {
                                         anchors { right: parent.right; verticalCenter: parent.verticalCenter }
@@ -474,7 +472,7 @@ FocusScope {
                                         text: "as of " + secHead.fresh.age
                                         size: Theme.tCaption
                                         color: secHead.fresh.old ? Theme.orange : Theme.textTertiary
-                                        font.features: ({ "tnum": 1 })
+                                        tabular: true
                                     }
                                 }
                               Repeater {
@@ -533,7 +531,7 @@ FocusScope {
                                             text: w.inS === "now" ? "resetting" : w.inS
                                             size: Theme.tCaption
                                             color: w.out ? Theme.redText : Theme.textTertiary      // red for text on dark (85 % red read 4.0:1)
-                                            font.features: ({ "tnum": 1 })
+                                            tabular: true
                                         }
                                         Label {
                                             id: pc
@@ -544,7 +542,7 @@ FocusScope {
                                             text: w.out ? "Out" : w.leftPct + "% left"
                                             size: Theme.tSub; weight: Theme.wSemibold
                                             color: w.out ? Theme.red : w.near || w.forecast ? Theme.orange : Theme.textPrimary
-                                            font.features: ({ "tnum": 1 })
+                                            tabular: true
                                         }
                                         // The bar drains as you spend. Its colour is its state, not
                                         // the agent's brand: Claude's own orange made a full, healthy
@@ -604,7 +602,7 @@ FocusScope {
                                             : w.forecast ? "At this rate it runs out in " + Usage.span(w.forecast.inMs) + ", " + Usage.span(w.forecast.earlyMs) + " before it resets" : ""
                                         size: Theme.tCaption
                                         color: w.out ? Theme.redText : Theme.orange
-                                        font.features: ({ "tnum": 1 })
+                                        tabular: true
                                     }
                                 }
                             }
@@ -646,7 +644,7 @@ FocusScope {
                       + (foot.fresh.known ? " · checked " + foot.fresh.age : "")
                 size: Theme.tCaption
                 color: foot.caution ? Theme.orange : Theme.textTertiary
-                font.features: ({ "tnum": 1 })
+                tabular: true
             }
         }
     }

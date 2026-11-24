@@ -167,7 +167,7 @@ Item {
             text: card.item ? card.item.sub || "" : ""
             size: 13; weight: Theme.wMedium; rounded: true
             color: card.tone
-            font.features: ({ "tnum": 1 })
+            tabular: true
             opacity: card.line2
             transform: Translate { y: 4 * (1 - card.line2) }
         }

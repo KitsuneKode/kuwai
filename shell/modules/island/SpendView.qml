@@ -106,7 +106,7 @@ Column {
                 Label {
                     text: !sv.rep ? "" : sv.tokens ? SR.compact(sv.rep.totals.tokens) : SR.money(sv.rep.totals.cost)
                     size: Theme.tTitle1; weight: Theme.wBold; rounded: true
-                    font.features: ({ "tnum": 1 })
+                    tabular: true
                 }
                 Label {
                     width: parent.width
@@ -118,7 +118,7 @@ Column {
                         sv.tokens && sv.rep.totals.unpriced > 0 && !sv.fromT3 ? SR.compact(sv.rep.totals.unpriced) + " without a price" : ""
                     ].filter(x => x).join(" · ")
                     size: Theme.tFootnote; color: Theme.textTertiary
-                    font.features: ({ "tnum": 1 })
+                    tabular: true
                 }
             }
 
@@ -244,7 +244,7 @@ Column {
                                 anchors { right: parent.right; verticalCenter: parent.verticalCenter }
                                 text: sv.value(prow.modelData) + "  " + Math.round(prow.modelData.share * 100) + "%"
                                 size: Theme.tBody; weight: Theme.wSemibold
-                                font.features: ({ "tnum": 1 })
+                                tabular: true
                             }
                         }
                         Rectangle {
@@ -273,7 +273,7 @@ Column {
                         width: parent.width
                         height: tl.implicitHeight
                         Label { id: tl; text: modelData[0]; size: Theme.tSub; color: Theme.textSecondary }
-                        Label { anchors.right: parent.right; text: SR.compact(modelData[1]); size: Theme.tSub; font.features: ({ "tnum": 1 }) }
+                        Label { anchors.right: parent.right; text: SR.compact(modelData[1]); size: Theme.tSub; tabular: true }
                     }
                 }
             }
@@ -302,7 +302,7 @@ Column {
                             anchors.right: parent.right
                             text: sv.value(mrow.modelData) + "  " + Math.round(mrow.modelData.share * 100) + "%"
                             size: Theme.tSub; color: Theme.textSecondary
-                            font.features: ({ "tnum": 1 })
+                            tabular: true
                         }
                     }
                 }

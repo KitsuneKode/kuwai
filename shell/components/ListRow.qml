@@ -71,7 +71,7 @@ Item {
         text: lr.stateText
         size: Theme.tFootnote; weight: lr.stateWeight
         color: lr.stateColor
-        font.features: ({ "tnum": 1 })
+        tabular: true
     }
     Item {
         id: trailBox
@@ -104,7 +104,7 @@ Item {
             text: lr.stateText
             size: Theme.tFootnote; weight: lr.stateWeight
             color: lr.stateColor
-            font.features: ({ "tnum": 1 })
+            tabular: true
         }
         Label {
             visible: lr.sub !== ""

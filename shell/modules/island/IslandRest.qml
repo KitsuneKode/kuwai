@@ -278,7 +278,7 @@ Item {
             text: parent.m.value ? " · " + parent.m.value : ""
             size: 13; weight: Theme.wMedium; rounded: true
             color: parent.m.tone || Theme.textSecondary
-            font.features: ({ "tnum": 1 })
+            tabular: true
         }
     }
     // The live activity, as one thing: its icon or ring and, with the full
@@ -423,7 +423,7 @@ Item {
                 : rest.activity === "timer" ? rest.timerLeft : ""
             size: 13; weight: Theme.wSemibold; rounded: true
             color: Theme.textPrimary
-            font.features: ({ "tnum": 1 })
+            tabular: true
         }
         HoverHandler { id: actHover }
         Tip { text: rest.activityDetail; shown: actHover.hovered; below: true }
@@ -469,7 +469,7 @@ Item {
                 text: rest.shownHint ? pills.num(rest.shownHint.id) : ""
                 size: 15; weight: Theme.wSemibold; rounded: true
                 color: Theme.accent
-                font.features: ({ "tnum": 1 })
+                tabular: true
             }
             Repeater {
                 model: hintBox.apps.slice(0, 2)
@@ -674,7 +674,7 @@ Item {
             text: parent.m.value || ""
             size: 13; weight: Theme.wSemibold; rounded: true
             color: parent.m.tone || Theme.textPrimary
-            font.features: ({ "tnum": 1 })
+            tabular: true
         }
         // A device's battery, or an agent's usage window: the ring fills
         // from empty each time it comes up (a reset: all the way, in green).
@@ -716,7 +716,7 @@ Item {
                 text: rest.timerLeft
                 size: 13; weight: Theme.wSemibold; rounded: true
                 color: Timers.next && Timers.next.pomo ? (Timers.next.pomo.phase === "work" ? Theme.red : Theme.green) : Theme.orange
-                font.features: ({ "tnum": 1 })
+                tabular: true
             }
             // A pomodoro's four rounds: done ones filled, the current one
             // breathing while you focus.
@@ -750,7 +750,7 @@ Item {
                 text: Alerts.active.length ? ((Alerts.active[0].title.match(/\d+\s*[%°]/) || [""])[0]).replace(/\s+/g, "") : ""
                 size: 13; weight: Theme.wSemibold; rounded: true
                 color: Alerts.active.length && Alerts.active[0].level === "crit" ? Theme.red : Theme.orange
-                font.features: ({ "tnum": 1 })
+                tabular: true
             }
             Label {
                 visible: rest.activity === "rec"
@@ -758,7 +758,7 @@ Item {
                 text: rest.clockOf(rest.recSecs)
                 size: 13; weight: Theme.wSemibold; rounded: true
                 color: Theme.red
-                font.features: ({ "tnum": 1 })
+                tabular: true
             }
             Label {
                 visible: rest.activity === "vox"
@@ -766,7 +766,7 @@ Item {
                 text: Activities.voxListening ? Math.floor(rest.voxSecs / 60) + ":" + String(Math.floor(rest.voxSecs % 60)).padStart(2, "0") : "Writing"
                 size: 13; weight: Theme.wSemibold; rounded: true
                 color: Activities.voxListening ? Theme.red : Theme.textSecondary
-                font.features: ({ "tnum": 1 })
+                tabular: true
             }
             Label {
                 visible: rest.activity === "auth"
@@ -784,7 +784,7 @@ Item {
                 text: Math.round(Updates.progress * 100) + "%"
                 size: 13; weight: Theme.wSemibold; rounded: true
                 color: Theme.accent
-                font.features: ({ "tnum": 1 })
+                tabular: true
             }
             Label {
                 visible: rest.activity === "shazam"

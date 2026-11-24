@@ -303,7 +303,7 @@ FocusScope {
                 text: [ap.needN ? ap.needN + " need" + (ap.needN === 1 ? "s" : "") + " you" : "", ap.workN ? ap.workN + " working" : ""].filter(x => x).join(" · ")
                 size: Theme.tFootnote; weight: Theme.wMedium
                 color: ap.needN ? Theme.orange : Theme.textTertiary
-                font.features: ({ "tnum": 1 })
+                tabular: true
             }
         }
 
@@ -388,7 +388,7 @@ FocusScope {
                         text: String(ap.rows.filter(r => r.section === row.modelData.section).length)
                         size: Theme.tFootnote; weight: Theme.wMedium; rounded: true
                         color: Theme.textTertiary
-                        font.features: ({ "tnum": 1 })
+                        tabular: true
                     }
                 }
                 Rectangle {
@@ -685,7 +685,7 @@ FocusScope {
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: ":" + modelData.port
                                 size: Theme.tSub; weight: Theme.wBold
-                                font.features: ({ "tnum": 1 })
+                                tabular: true
                             }
                             Label {
                                 anchors.verticalCenter: parent.verticalCenter

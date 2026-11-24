@@ -192,7 +192,7 @@ Item {
                 text: island.done ? "Done" : island.last ? Timers.clock(Timers.remaining(island.last)) : ""
                 size: 13; weight: Theme.wSemibold; rounded: true
                 color: island.done ? Theme.positive : Theme.orange
-                font.features: ({ "tnum": 1 })
+                tabular: true
             }
         }
     }

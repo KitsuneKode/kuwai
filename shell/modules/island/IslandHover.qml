@@ -101,7 +101,7 @@ Item {
                     text: OllamaService.bgSecs + "s"
                     size: 12
                     color: Theme.textTertiary
-                    font.features: ({ "tnum": 1 })
+                    tabular: true
                 }
             }
             MouseArea { id: nowArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: OllamaService.openSession(OllamaService.draftSessionId) }

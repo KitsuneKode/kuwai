@@ -87,10 +87,10 @@ FocusScope {
         property string to
         readonly property var split: Updates.versionSplit(from, to)
         spacing: 0
-        Label { text: parent.from; size: 11; color: Theme.textTertiary; font.features: ({ "tnum": 1 }) }
+        Label { text: parent.from; size: 11; color: Theme.textTertiary; tabular: true }
         Label { text: "  →  "; size: 11; color: Theme.textTertiary }
-        Label { text: parent.split[0]; size: 11; color: Theme.textSecondary; font.features: ({ "tnum": 1 }) }
-        Label { text: parent.split[1]; size: 11; weight: Theme.wSemibold; color: Theme.accent; font.features: ({ "tnum": 1 }) }
+        Label { text: parent.split[0]; size: 11; color: Theme.textSecondary; tabular: true }
+        Label { text: parent.split[1]; size: 11; weight: Theme.wSemibold; color: Theme.accent; tabular: true }
     }
 
 

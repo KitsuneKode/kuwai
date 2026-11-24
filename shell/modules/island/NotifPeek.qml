@@ -221,7 +221,7 @@ Item {
                 size: peek.otp !== "" ? Theme.tTitle3 : 12
                 weight: peek.otp !== "" ? Theme.wSemibold : Theme.wRegular
                 font.letterSpacing: peek.otp !== "" ? 1.5 : 0
-                font.features: ({ "tnum": 1 })
+                tabular: true
                 color: peek.otp !== "" ? Theme.textPrimary : peek.redacted ? Theme.textTertiary : Theme.textSecondary
                 font.italic: peek.redacted && peek.otp === ""
             }

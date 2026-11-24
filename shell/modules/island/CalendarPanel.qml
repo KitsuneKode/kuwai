@@ -197,7 +197,7 @@ FocusScope {
                             size: Theme.tBody
                             weight: day.isToday ? Theme.wSemibold : Theme.wRegular
                             color: day.isToday ? Theme.inkOnLight : !day.inMonth ? Theme.textTertiary : Theme.textPrimary   // another month's days: tertiary (at 38 % white they read 3.6:1)
-                            font.features: ({ "tnum": 1 })
+                            tabular: true
                         }
                         // Something on that day: a small dot under the number.
                         Rectangle {

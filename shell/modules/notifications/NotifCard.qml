@@ -431,7 +431,7 @@ Item {
                             text: card.item.burst > 0 ? "+" + card.item.burst : card.item.count
                             size: Theme.tCaption
                             weight: Theme.wSemibold
-                            font.features: ({ "tnum": 1 })
+                            tabular: true
                             color: Theme.textSecondary
                         }
                     }
@@ -442,7 +442,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     text: card.ageText
                     size: 12
-                    font.features: ({ "tnum": 1 })
+                    tabular: true
                     color: Theme.textTertiary
                 }
             }

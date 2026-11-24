@@ -527,7 +527,7 @@ Item {
             text: badge.text
             size: Theme.tSub; weight: Theme.wSemibold
             color: badge.tint
-            font.features: ({ "tnum": 1 })
+            tabular: true
         }
         HoverHandler { id: badgeHover; enabled: badge.enabled; cursorShape: Qt.PointingHandCursor }
         TapHandler { acceptedButtons: Qt.LeftButton | Qt.RightButton; gesturePolicy: TapHandler.WithinBounds; onTapped: (point, button) => button === Qt.RightButton ? badge.altClicked() : badge.clicked() }
@@ -764,7 +764,7 @@ Item {
                 text: "+" + (split.minimized.length - 3)
                 size: Theme.tSub; weight: Theme.wSemibold
                 color: Theme.textSecondary
-                font.features: ({ "tnum": 1 })
+                tabular: true
                 HoverHandler { id: moreHover; enabled: parent.enabled; cursorShape: Qt.PointingHandCursor }
                 TapHandler { gesturePolicy: TapHandler.WithinBounds; onTapped: split.bringBack(split.minimized[split.minimized.length - 1]) }
                 Accessible.role: Accessible.Button

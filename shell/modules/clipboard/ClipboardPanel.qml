@@ -913,7 +913,7 @@ Scope {
                             NumberAnimation { to: 1; duration: Theme.breatheMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }
                         }
                     }
-                    Label { anchors.verticalCenter: parent.verticalCenter; text: root.elapsed(root.nowSec - Clipboard.recSince); size: 13; rounded: true; weight: Theme.wSemibold; color: Theme.red; font.features: ({ "tnum": 1 }) }
+                    Label { anchors.verticalCenter: parent.verticalCenter; text: root.elapsed(root.nowSec - Clipboard.recSince); size: 13; rounded: true; weight: Theme.wSemibold; color: Theme.red; tabular: true }
                     Label { anchors.verticalCenter: parent.verticalCenter; text: "Screen Recording"; size: 13; weight: Theme.wMedium }
                     // Stop: a red square in a ring that sweeps once a second.
                     Item {
@@ -942,7 +942,7 @@ Scope {
                     opacity: root.saved && !root.toasting ? Math.max(0, 1 - win.m * 4) : 0
                     visible: opacity > 0.01
                     Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f012c}"; font.family: Theme.fontGlyph; font.pixelSize: 15; color: Theme.green }
-                    Label { anchors.verticalCenter: parent.verticalCenter; text: root.saved ? root.elapsed(Clipboard.recSaved.duration) : ""; size: 13; rounded: true; weight: Theme.wSemibold; font.features: ({ "tnum": 1 }) }
+                    Label { anchors.verticalCenter: parent.verticalCenter; text: root.saved ? root.elapsed(Clipboard.recSaved.duration) : ""; size: 13; rounded: true; weight: Theme.wSemibold; tabular: true }
                     Label { anchors.verticalCenter: parent.verticalCenter; text: "Recording saved · click to open"; size: 13; color: Theme.textSecondary }
                     ClippingRectangle {
                         anchors.verticalCenter: parent.verticalCenter

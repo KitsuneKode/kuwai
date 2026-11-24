@@ -95,7 +95,7 @@ Item {
                     text: group.count
                     size: Theme.tCaption
                     weight: Theme.wSemibold
-                    font.features: ({ "tnum": 1 })
+                    tabular: true
                     color: Theme.textSecondary
                 }
             }

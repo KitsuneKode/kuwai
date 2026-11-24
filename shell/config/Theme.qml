@@ -93,7 +93,7 @@ Singleton {
     // ── Shape and space (docs/ROADMAP.md, Phase 2) ───────────────────────
     // Type scale (px). Nine steps; anything else is a bug. Weight and colour
     // carry hierarchy before size does: Primary/Secondary/Tertiary text first.
-    readonly property int tCaption: 10     // badges, chip counts, meta under meta
+    readonly property int tCaption: 11     // badges, chip counts (no text is set below 11 px)
     readonly property int tFootnote: 11    // secondary lines, timestamps, hints
     readonly property int tSub: 12         // list detail, buttons, tips
     readonly property int tBody: 13        // rows, notification bodies (default)
@@ -147,7 +147,7 @@ Singleton {
     // on a solid surface (vibrancy), and lean on weight for hierarchy.
     readonly property color textPrimary: Qt.rgba(1, 1, 1, 0.96)
     readonly property color textSecondary: Qt.rgba(1, 1, 1, contrast ? 0.88 : 0.72)
-    readonly property color textTertiary: Qt.rgba(1, 1, 1, contrast ? 0.74 : 0.50)
+    readonly property color textTertiary: Qt.rgba(1, 1, 1, contrast ? 0.74 : 0.56)
     readonly property color textDim: Qt.rgba(1, 1, 1, contrast ? 0.76 : 0.55)
 
     // Apple's dark-mode system colours: tuned to read on dark material.

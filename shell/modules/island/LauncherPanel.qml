@@ -619,7 +619,7 @@ FocusScope {
                     elide: Text.ElideRight
                     text: row.modelData.sub || ""
                     size: Theme.tSub; color: Theme.textTertiary
-                    font.features: ({ "tnum": 1 })
+                    tabular: true
                 }
                 Label {
                     id: cardNote
@@ -632,7 +632,7 @@ FocusScope {
                     elide: Text.ElideRight
                     text: row.card ? row.modelData.name : ""
                     size: Theme.tTitle1; weight: Theme.wSemibold; rounded: true
-                    font.features: ({ "tnum": 1 })
+                    tabular: true
                 }
             }
             // `=` with nothing yet: what it understands, each one a tap away.
@@ -651,7 +651,7 @@ FocusScope {
                             width: tipText.implicitWidth + 16; height: 24; radius: 12
                             color: tipArea.containsMouse ? Theme.pillHover : Theme.pill
                             Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
-                            Label { id: tipText; anchors.centerIn: parent; text: parent.modelData; size: Theme.tSub; color: Theme.textSecondary; font.features: ({ "tnum": 1 }) }
+                            Label { id: tipText; anchors.centerIn: parent; text: parent.modelData; size: Theme.tSub; color: Theme.textSecondary; tabular: true }
                             MouseArea {
                                 id: tipArea
                                 anchors.fill: parent

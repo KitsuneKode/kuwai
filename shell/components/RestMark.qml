@@ -147,7 +147,7 @@ Item {
                 text: mark.value
                 size: Theme.tCaption; weight: Theme.wBold; rounded: true
                 color: mark.tone
-                font.features: ({ "tnum": 1 })
+                tabular: true
             }
         }
         Label {
@@ -159,7 +159,7 @@ Item {
             text: mark.value
             size: Theme.tSub; weight: Theme.wSemibold
             color: mark.tone
-            font.features: ({ "tnum": 1 })
+            tabular: true
             Behavior on color { ColorAnimation { duration: Theme.colorMs } }
         }
     }

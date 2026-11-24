@@ -1,5 +1,5 @@
 {
-  "total_comment_lines": 7648,
+  "total_comment_lines": 7647,
   "files_with_comments": 293,
   "files": {
     "shell/components/ActionMenu.qml": 23,
@@ -18,7 +18,7 @@
     "shell/components/KeyHints.qml": 3,
     "shell/components/KeyPath.qml": 12,
     "shell/components/KeySheet.qml": 9,
-    "shell/components/Label.qml": 22,
+    "shell/components/Label.qml": 21,
     "shell/components/LevelMeter.qml": 7,
     "shell/components/LinkRing.qml": 6,
     "shell/components/LinkedBar.qml": 21,

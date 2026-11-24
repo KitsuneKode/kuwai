@@ -140,7 +140,7 @@ Row {
             anchors.horizontalCenterOffset: -1
             text: Math.round(status.drawnPct)
             size: Theme.tCaption; weight: Theme.wBold
-            font.features: ({ "tnum": 1 })
+            tabular: true
             color: status.drawnPct > 38 ? Qt.rgba(0.08, 0.08, 0.1, 0.92) : status.tint
         }
         HoverHandler { id: batHover; cursorShape: status.bar ? Qt.PointingHandCursor : Qt.ArrowCursor }

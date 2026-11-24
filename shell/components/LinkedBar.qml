@@ -54,7 +54,7 @@ Column {
             text: lb.hot >= 0 && lb.parts[lb.hot] ? lb.fmt(lb.parts[lb.hot].value) : lb.big
             size: Theme.tTitle1; weight: Theme.wBold; rounded: true
             color: lb.hot >= 0 && lb.parts[lb.hot] ? lb.parts[lb.hot].color : Theme.textPrimary
-            font.features: ({ "tnum": 1 })
+            tabular: true
         }
         Label {
             width: parent.width
@@ -113,7 +113,7 @@ Column {
                     spacing: 5
                     Rectangle { anchors.verticalCenter: parent.verticalCenter; width: 7; height: 7; radius: 3.5; color: chip.modelData.color }
                     Label { anchors.verticalCenter: parent.verticalCenter; text: chip.modelData.label; size: Theme.tFootnote; color: chip.lit ? Theme.textPrimary : Theme.textSecondary }
-                    Label { anchors.verticalCenter: parent.verticalCenter; text: lb.fmt(chip.modelData.value); size: Theme.tFootnote; color: Theme.textTertiary; font.features: ({ "tnum": 1 }) }
+                    Label { anchors.verticalCenter: parent.verticalCenter; text: lb.fmt(chip.modelData.value); size: Theme.tFootnote; color: Theme.textTertiary; tabular: true }
                 }
                 HoverHandler { onHoveredChanged: lb.hot = hovered ? chip.index : (lb.hot === chip.index ? -1 : lb.hot) }
                 Accessible.role: Accessible.StaticText

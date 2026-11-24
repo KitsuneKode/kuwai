@@ -105,7 +105,7 @@ FocusScope {
                 text: Model.headline(Sweep.idleBytes, Sweep.idleProjects, Sweep.idleDays)
                 size: Theme.tFootnote; weight: Theme.wSemibold
                 color: Sweep.error && !Sweep.refreshing ? Theme.orange : Theme.textTertiary
-                font.features: ({ "tnum": 1 })
+                tabular: true
             }
         }
 
@@ -167,7 +167,7 @@ FocusScope {
             size: Theme.tSub; weight: Theme.wMedium
             color: panel.focused >= 0 ? Theme.textPrimary : Theme.textSecondary
             wrapMode: Text.Wrap
-            font.features: ({ "tnum": 1 })
+            tabular: true
             NumberAnimation { id: capIn; target: cap; property: "opacity"; from: 0.35; to: 1; duration: Theme.quickMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
         }
 
@@ -240,7 +240,7 @@ FocusScope {
                         text: Model.idleText(row.modelData.idleDays) + " · " + Model.long(row.modelData.bytes)
                         size: Theme.tSub
                         color: Theme.textTertiary
-                        font.features: ({ "tnum": 1 })
+                        tabular: true
                     }
                     MouseArea {
                         anchors.fill: parent

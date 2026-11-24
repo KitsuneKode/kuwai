@@ -222,7 +222,7 @@ Item {
                         visible: chip.modelData.n > 0
                         text: chip.modelData.n
                         size: 12
-                        font.features: ({ "tnum": 1 })
+                        tabular: true
                         color: chip.on ? Qt.rgba(0, 0, 0, 0.5) : Theme.textTertiary
                     }
                 }

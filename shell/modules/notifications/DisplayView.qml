@@ -486,7 +486,7 @@ Item {
                         Label {
                             text: sig.s ? [sig.s.hz + " Hz", sig.s.depth + "-bit", sig.s.hdr ? "HDR" : "SDR"].concat(sig.s.vrr ? ["VRR"] : []).join(" · ") : ""
                             size: 12
-                            font.features: ({ "tnum": 1 })
+                            tabular: true
                             color: Theme.textTertiary
                         }
                     }
@@ -571,7 +571,7 @@ Item {
                             size: 12
                             rounded: true
                             weight: Theme.wMedium
-                            font.features: ({ "tnum": 1 })
+                            tabular: true
                             color: dev.modelData.battery < 0.2 ? Theme.red : Theme.textSecondary
                         }
                         MouseArea {

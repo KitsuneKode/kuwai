@@ -69,7 +69,7 @@ Rectangle {
                         text: acc.used + "%"
                         size: Theme.tSub; weight: Theme.wSemibold; rounded: true
                         color: acc.ink
-                        font.features: ({ "tnum": 1 })
+                        tabular: true
                     }
                 }
                 Item {
@@ -98,14 +98,14 @@ Rectangle {
                         id: metaL
                         text: [card.spanOf(acc.w), card.resetOf(acc.w)].filter(x => x).join(" · ")
                         size: Theme.tFootnote; color: Theme.textTertiary
-                        font.features: ({ "tnum": 1 })
+                        tabular: true
                     }
                     Label {
                         anchors.right: parent.right
                         visible: !!acc.modelData.session && !!acc.modelData.weekly
                         text: "Week " + card.usedOf(acc.modelData.weekly) + "%"
                         size: Theme.tFootnote; color: Theme.textSecondary
-                        font.features: ({ "tnum": 1 })
+                        tabular: true
                     }
                 }
             }

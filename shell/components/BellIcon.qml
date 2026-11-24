@@ -47,7 +47,7 @@ Item {
             weight: Theme.wSemibold
             rounded: true
             color: Theme.inkOnLight
-            font.features: ({ "tnum": 1 })
+            tabular: true
         }
     }
 

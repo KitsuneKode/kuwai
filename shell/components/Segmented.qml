@@ -188,7 +188,7 @@ Rectangle {
                             text: opt.modelData.badge || ""
                             size: 11
                             weight: Theme.wSemibold
-                            font.features: ({ "tnum": 1 })
+                            tabular: true
                         }
                     }
                 }
