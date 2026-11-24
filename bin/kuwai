@@ -30,7 +30,8 @@ KUWAI_USAGE
 
 ROOT=${KUWAI_ROOT:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}
 HERE=$(dirname "$(readlink -f "$0")")
-ENTRY=${XDG_CONFIG_HOME:-$HOME/.config}/hypr/hyprland.lua
+ENTRY=${XDG_CONFIG_HOME:-$HOME/.config}/kuwai/hypr/hyprland.lua
+[ -f "$ENTRY" ] || ENTRY=${XDG_CONFIG_HOME:-$HOME/.config}/hypr/hyprland.lua
 STATE_DIR=${XDG_STATE_HOME:-$HOME/.local/state}/kuwai
 STATE=$STATE_DIR/state
 
@@ -303,7 +304,7 @@ cmd_doctor() {
     if live; then
         cfg=$(lua 'return os.getenv("HYPRLAND_CONFIG") or ""')
         case $cfg in
-            ""|*hyprland.lua) ok "Hyprland reads ${cfg:-~/.config/hypr/hyprland.lua}" ;;
+            ""|*hyprland.lua) ok "Hyprland reads ${cfg:-$ENTRY}" ;;
             *) bad "HYPRLAND_CONFIG=$cfg is not the Lua entry — Hyprland will load the wrong file" ;;
         esac
         if grep -qs 'HYPRLAND_CONFIG=.*hyprland\.conf' "${ZDOTDIR:-$HOME}"/conf.d/hyde/env.zsh "$HOME"/.config/uwsm/env-hyprland.d/*.sh; then
@@ -348,7 +349,7 @@ cmd_doctor() {
         echo "Hyprland & kuwai: all good"
     else
         echo "Hyprland & kuwai: $problems problem(s)"
-        echo "  (user.lua errors are in ~/.config/hypr — not the kuwai repo)"
+        echo "  (user.lua errors are in ${ENTRY%/*} — not the kuwai repo)"
     fi
     [ $problems -eq 0 ]
 }

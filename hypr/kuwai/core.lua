@@ -7,6 +7,7 @@ K.state_home = env("XDG_STATE_HOME") or (K.home .. "/.local/state")
 K.data_home = env("XDG_DATA_HOME") or (K.home .. "/.local/share")
 K.runtime = env("XDG_RUNTIME_DIR") or "/tmp"
 K.hypr = K.config_home .. "/hypr"
+K.user_dir = KUWAI_USER_DIR or K.hypr
 K.root = KUWAI_ROOT or (K.data_home .. "/kuwai")
 K.bin = K.root .. "/bin"
 K.state_dir = K.state_home .. "/kuwai"
@@ -98,7 +99,7 @@ function K.reload_again()
 end
 
 function K.load_user(file)
-	local path = K.hypr .. "/" .. file
+	local path = K.user_dir .. "/" .. file
 	if not K.exists(path) then
 		return false
 	end

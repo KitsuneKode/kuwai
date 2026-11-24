@@ -20,8 +20,10 @@ original.
   kuwai_install.py --state DIR remember PATH
   kuwai_install.py --state DIR installed PATH
   kuwai_install.py --state DIR edited PATH     exit 0: changed since kuwai installed it
+  kuwai_install.py --state DIR manages PATH    exit 0: recorded
   kuwai_install.py --state DIR unit NAME
   kuwai_install.py --state DIR restore [--dry-run]
+  kuwai_install.py --state DIR restore-one PATH
 """
 import argparse
 import hashlib
@@ -124,16 +126,45 @@ class Store:
         now = fingerprint(path)
         sys.exit(0 if rec.get("installed") and now != rec["installed"] and now != ["absent"] else 1)
 
+    def original(self, rec):
+        if rec["kind"] == "absent":
+            return ["absent"]
+        if rec["kind"] == "link":
+            return ["link", rec["target"]]
+        saved = self.dir / "files" / str(rec.get("saved"))
+        return ["file", hashlib.sha256(saved.read_bytes()).hexdigest()] if saved.is_file() else None
+
+    def manages(self, path):
+        sys.exit(0 if str(Path(path).absolute()) in self.data["paths"] else 1)
+
     def unit(self, name):
         if name in self.data["units"]:
             return
         if self.data.get("legacy"):
             state = "unknown"
-        else:
+        elif user_bus():
             r = subprocess.run(["systemctl", "--user", "is-enabled", name], capture_output=True, text=True)
             state = "enabled" if r.stdout.strip() == "enabled" else "disabled"
+        else:
+            state = "enabled" if wanted_links(name) else "disabled"
         self.data["units"][name] = state
         self.save()
+
+    def restore_one(self, path):
+        path = str(Path(path).absolute())
+        rec = self.data["paths"].get(path)
+        if not rec:
+            print(f"  • {path}: kuwai has no record of what was there before; left as it is")
+            return 1
+        now = fingerprint(path)
+        if rec.get("installed") and now != rec["installed"] and now != ["absent"]:
+            print(f"  • conflict: {path} changed since kuwai installed it; kept as it is")
+            return 1
+        put_back(Path(path), rec, self.dir / "files")
+        del self.data["paths"][path]
+        self.save()
+        print(f"  ✓ restored {path} ({'removed: it was absent' if rec['kind'] == 'absent' else rec['kind']})")
+        return 0
 
     def restore(self, dry):
         say = print
@@ -142,9 +173,21 @@ class Store:
         conflicts = 0
         stamp = time.strftime('%Y%m%d-%H%M%S')
         done = self.state / f"original.restored-{stamp}"
+        failed = []
+        units = sorted(self.data["units"].items())
+        bus = user_bus()
+        for name, state in units:
+            if state == "enabled":
+                continue
+            if dry:
+                say(f"  would: stop and disable {name} (as before kuwai)")
+            elif not set_unit(name, False, bus):
+                failed.append(name)
         for path, rec in sorted(self.data["paths"].items()):
             p = Path(path)
             now = fingerprint(p)
+            if now == self.original(rec):
+                continue
             if rec.get("installed") and now != rec["installed"] and now != ["absent"]:
                 conflicts += 1
                 where = f" (the original is saved at {(self.dir if dry else done) / 'files' / rec['saved']})" if rec["kind"] == "file" else ""
@@ -155,13 +198,22 @@ class Store:
                 continue
             put_back(p, rec, self.dir / "files")
             say(f"  ✓ restored {path} ({'removed: it was absent' if rec['kind'] == 'absent' else rec['kind']})")
-        for name, state in sorted(self.data["units"].items()):
-            verb = "enable" if state == "enabled" else "disable"
-            if dry:
-                say(f"  would: systemctl --user {verb} {name} (as before kuwai)")
+        if not dry and bus:
+            subprocess.run(["systemctl", "--user", "daemon-reload"], capture_output=True)
+        for name, state in units:
+            if state != "enabled":
+                if not dry and name not in failed:
+                    say(f"  ✓ {name}: disabled" + (", as before kuwai" if state != "unknown" else ""))
                 continue
-            subprocess.run(["systemctl", "--user", verb, name], capture_output=True)
-            say(f"  ✓ {name}: {verb}d, as before kuwai" if state != "unknown" else f"  ✓ {name}: disabled")
+            if dry:
+                say(f"  would: systemctl --user enable {name} (as before kuwai)")
+            elif set_unit(name, True, bus):
+                say(f"  ✓ {name}: enabled, as before kuwai")
+            else:
+                failed.append(name)
+        if failed:
+            say(f"  • could not set {', '.join(failed)} back; the record stays in {self.dir}: run ./install.sh --uninstall again")
+            return 1
         if not dry:
             self.dir.rename(done)
             legacy = self.state / "backup"
@@ -195,6 +247,37 @@ class Store:
         return 0
 
 
+def user_bus():
+    try:
+        return subprocess.run(["systemctl", "--user", "show-environment"], capture_output=True).returncode == 0
+    except OSError:
+        return False
+
+
+def units_dir():
+    return Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "systemd" / "user"
+
+
+def wanted_links(name):
+    return [p for d in units_dir().glob("*.wants") for p in [d / name] if p.is_symlink() or p.exists()] + \
+        [p for d in units_dir().glob("*.requires") for p in [d / name] if p.is_symlink() or p.exists()]
+
+
+def set_unit(name, on, bus):
+    if bus:
+        args = ["enable", name] if on else ["disable", "--now", name]
+        r = subprocess.run(["systemctl", "--user", *args], capture_output=True, text=True)
+        if r.returncode == 0:
+            return True
+        missing = "not found" in (r.stderr or "") or "does not exist" in (r.stderr or "")
+        return missing and not on
+    if on:
+        return False
+    for link in wanted_links(name):
+        link.unlink(missing_ok=True)
+    return True
+
+
 def put_back(p, rec, files):
     """Make `p` what `rec` says, replacing whatever is there (never writing through a link)."""
     p.parent.mkdir(parents=True, exist_ok=True)
@@ -219,7 +302,7 @@ def put_back(p, rec, files):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--state", required=True)
-    ap.add_argument("cmd", choices=["remember", "installed", "edited", "unit", "restore"])
+    ap.add_argument("cmd", choices=["remember", "installed", "edited", "manages", "unit", "restore", "restore-one"])
     ap.add_argument("arg", nargs="?")
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
@@ -228,6 +311,8 @@ def main():
         sys.exit(s.restore(a.dry_run))
     if not a.arg:
         ap.error(f"{a.cmd} needs an argument")
+    if a.cmd == "restore-one":
+        sys.exit(s.restore_one(a.arg))
     getattr(s, a.cmd)(a.arg)
 
 

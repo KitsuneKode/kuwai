@@ -1,7 +1,9 @@
 #!/bin/sh
 printf '\033[2J\033[3J\033[H\033[?25l'
+start=start-hyprland
+[ -x /usr/local/bin/kuwai-session ] && start=/usr/local/bin/kuwai-session
 if command -v systemd-cat >/dev/null 2>&1 && [ -S /run/systemd/journal/stdout ]; then
     printf 'kuwai-handoff %s user-session-exec\n' "${KUWAI_HANDOFF_ID:-unknown}" | systemd-cat -t kuwai-session
-    exec systemd-cat -t kuwai-session start-hyprland
+    [ "$start" = start-hyprland ] && exec systemd-cat -t kuwai-session start-hyprland
 fi
-exec start-hyprland
+exec "$start"

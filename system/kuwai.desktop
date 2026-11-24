@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Kuwai
+Comment=Hyprland with Kuwai, beside your other sessions
+Exec=/usr/local/bin/kuwai-session
+Type=Application
+DesktopNames=Hyprland
+Keywords=tiling;wayland;compositor;kuwai;
+X-Kuwai-Owned=true

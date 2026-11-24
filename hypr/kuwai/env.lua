@@ -30,7 +30,7 @@ K.cursor = { theme = cursor_theme, size = cursor_size }
 
 set("SSH_AUTH_SOCK", K.runtime .. "/gcr/ssh")
 
-set("HYPRLAND_CONFIG", K.hypr .. "/hyprland.lua")
+set("HYPRLAND_CONFIG", K.user_dir .. "/hyprland.lua")
 
 local path = os.getenv("PATH") or "/usr/local/bin:/usr/bin"
 local seen, parts = {}, {}

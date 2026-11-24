@@ -10,14 +10,21 @@ Commands stay `bin/kuwai …` (control plane); the product name is **kuwai**.
 git clone https://github.com/KitsuneKode/kuwai.git ~/Projects/kuwai && cd ~/Projects/kuwai
 # legacy path ~/Projects/rice works if KUWAI_ROOT points at the clone
 ./install.sh --dry-run     # what it would change (nothing yet)
-./install.sh --deps        # install: packages, the stable channel, Hyprland's entry point, user services
+./install.sh --deps        # install: packages, the stable channel, Kuwai's Hyprland config, user services, the "Kuwai" login entry (sudo, once)
 sudo greeter/install       # optional: the login screen (greetd; --undo puts back what was there; --code refreshes it after an update)
 sudo system/install        # optional: alarms that wake the laptop from sleep
 ```
 
+Kuwai is its own session: log out and pick **Kuwai** on the login screen.
+Its Hyprland config lives in `~/.config/kuwai/hypr/` (`hyprland.lua`,
+`monitors.lua`, `user.lua`), so `~/.config/hypr` and the plain Hyprland session
+(Omarchy's, HyDE's or your own) stay exactly as they were. An install from
+before this used `~/.config/hypr`; `./install.sh --separate-session` moves it.
+
 Everything it replaces is backed up first (`./install.sh --uninstall` puts it
-back). It never touches your `monitors.lua`, `user.lua` or settings, never
-needs root for itself, and never sets up autologin. Check a running desktop
+back, and `sudo system/session --undo` takes the login entry away). It never
+touches your `monitors.lua`, `user.lua` or settings, needs sudo only for the
+login entry, and never sets up autologin. Check a running desktop
 any time with `./install.sh --doctor` or `bin/kuwai doctor` (kuwai + notifications + shell).
 
 **The font.** The shell is set in [Inter](https://rsms.me/inter/) (OFL,
@@ -207,7 +214,8 @@ refs/                       shallow clones of other shells to read (gitignored)
 
 ## How it hooks into the system
 
-- `~/.config/hypr/hyprland.lua` loads kuwai (`hypr/init.lua`), which autostarts
+- `kuwai-session` (the "Kuwai" login entry) starts Hyprland on
+  `~/.config/kuwai/hypr/hyprland.lua`, which loads kuwai (`hypr/init.lua`) and autostarts
   `bin/kuwai-shell`, binds the shell's global shortcuts and gives every `kuwai-*`
   layer blur without animation, exempt from xray so the glass blurs real
   windows, not just the wallpaper. Details: [hypr/README.md](hypr/README.md).

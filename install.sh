@@ -13,22 +13,27 @@ put back. Run from the repo (wherever you cloned it).
   ./install.sh --print-missing  print missing required packages/fonts one per line and exit
   ./install.sh --no-services skip linking and enabling systemd user units
   ./install.sh --uninstall   put back what was there before the first install
+  ./install.sh --separate-session  an older install that used ~/.config/hypr:
+                             move Kuwai to ~/.config/kuwai/hypr and give ~/.config/hypr back
   ./install.sh --doctor      only check (kuwai doctor + kuwai-check)
 
 What it does:
   1. checks the packages the desktop needs (and the optional ones)
   2. remembers, the first time only, how each path it replaces was (absent, a
      file, or a link) and whether each service was enabled: ~/.local/state/kuwai/original/
-  3. ~/.config/hypr/hyprland.lua ← hypr/templates/hyprland.lua (your monitors.lua
-     and user.lua beside it are created empty if missing, never overwritten)
+  3. ~/.config/kuwai/hypr/hyprland.lua ← hypr/templates/hyprland.lua (your
+     monitors.lua and user.lua beside it are created empty if missing, never
+     overwritten); ~/.config/hypr and the plain Hyprland session are not touched
   4. the stable channel: a checkout of the `stable` branch in ~/.local/share/kuwai
      (your session runs from it; `kuwai promote` moves it forward)
   5. user services (password prompt, clipboard history, GitHub/Gmail feeds,
      a daily snapshot of your own files: kuwai backup),
      linked from the stable checkout and enabled
-  6. the checks
-Never: root, autologin, or your settings. The login screen and alarms that
-wake the laptop are separate, with sudo: greeter/install, system/install.
+  6. a "Kuwai" entry on the login screen, beside your other sessions (sudo,
+     once: system/session; without a terminal it says the command instead)
+  7. the checks
+Never: autologin, or your settings. The login screen and alarms that wake the
+laptop are separate, with sudo: greeter/install, system/install.
 KUWAI_USAGE
 }
 
@@ -39,7 +44,7 @@ STATE=${XDG_STATE_HOME:-$HOME/.local/state}/kuwai
 STABLE=$DATA/kuwai
 UNITS=(kuwai-auth.service kuwai-shell.service kuwai-shell-broken.service kuwai-wallpaper.service kuwai-clipboard.service kuwai-feeds.service kuwai-backup.service kuwai-backup.timer)
 
-DRY=0; DEPS=0; YES=0; PRINT_MISSING=0; NO_SERVICES=0; MODE=install
+DRY=0; DEPS=0; YES=0; PRINT_MISSING=0; NO_SERVICES=0; MODE=install; SEPARATE=0
 for a in "$@"; do
     case $a in
         --dry-run) DRY=1 ;;
@@ -48,6 +53,7 @@ for a in "$@"; do
         --print-missing) PRINT_MISSING=1 ;;
         --no-services) NO_SERVICES=1 ;;
         --uninstall) MODE=uninstall ;;
+        --separate-session) SEPARATE=1 ;;
         --doctor) MODE=doctor ;;
         -h|--help) usage; exit 0 ;;
         *) echo "unknown option: $a (see --help)" >&2; exit 2 ;;
@@ -175,6 +181,44 @@ place() {
     installed "$dst"
 }
 
+KDIR=$CFG/kuwai/hypr
+
+kuwai_dir() {
+    local old=$CFG/hypr/hyprland.lua
+    if [ ! -f "$KDIR/hyprland.lua" ] && { ORIG manages "$old" 2>/dev/null || grep -qs KUWAI_ROOT "$old"; }; then
+        printf '%s\n' "$CFG/hypr"
+    else
+        printf '%s\n' "$KDIR"
+    fi
+}
+
+separate_session() {
+    if [ $DRY = 1 ]; then say "  would: copy monitors.lua, user.lua, features.lua to $KDIR and put back $CFG/hypr/hyprland.lua"; return; fi
+    mkdir -p "$KDIR"
+    for f in monitors.lua user.lua features.lua; do
+        [ -f "$CFG/hypr/$f" ] && [ ! -e "$KDIR/$f" ] || continue
+        remember "$KDIR/$f"; cp -p "$CFG/hypr/$f" "$KDIR/$f"; installed "$KDIR/$f"
+        ok "$f copied to $KDIR (the one in $CFG/hypr stays)"
+    done
+    place "$REPO/hypr/templates/hyprland.lua" "$KDIR/hyprland.lua" && ok "$KDIR/hyprland.lua ← hypr/templates/hyprland.lua"
+    if ORIG manages "$CFG/hypr/hyprland.lua"; then ORIG restore-one "$CFG/hypr/hyprland.lua" || true
+    else warn "$CFG/hypr/hyprland.lua was Kuwai's before kuwai kept records; it's left as it is (replace it with your own to make the plain Hyprland session yours again)"; fi
+}
+
+login_session() {
+    step "Login session"
+    local s=$REPO/system/session
+    if [ ! -x "$s" ]; then ok "nothing to add in this copy"
+    elif "$s" --check >/dev/null 2>&1; then ok "\"Kuwai\" is on the login screen"
+    elif [ $DRY = 1 ]; then say "  would: sudo $s (adds \"Kuwai\" to the login screen)"
+    elif [ -t 0 ] && [ -t 1 ] && command -v sudo >/dev/null; then
+        say "  adding \"Kuwai\" to the login screen (sudo, once; nothing else of the system changes)"
+        sudo "$s" | sed 's/^/  /' || warn "not added; run: sudo $s"
+    else
+        warn "add \"Kuwai\" to the login screen with: sudo $s"
+    fi
+}
+
 install_all() {
     check_deps
 
@@ -205,40 +249,55 @@ install_all() {
     elif [ $DRY = 1 ]; then "$REPO/bin/kuwai-home" --dry-run | sed 's/^/  /'
     else KUWAI_HOME_SRC="$STABLE/home" "$REPO/bin/kuwai-home" | sed 's/^/  /'; fi
 
-    step "Hyprland entry point"
-    local entry=$CFG/hypr/hyprland.lua
+    step "Kuwai's Hyprland config"
+    local dir; dir=$(kuwai_dir)
+    if [ $SEPARATE = 1 ] && [ "$dir" = "$CFG/hypr" ]; then separate_session; dir=$KDIR; fi
+    [ "$dir" = "$KDIR" ] || warn "an older install: Kuwai reads $dir, so the plain Hyprland session starts Kuwai too (./install.sh --separate-session moves it to $KDIR)"
+    local entry=$dir/hyprland.lua
     if [ -f "$entry" ] && cmp -s "$entry" "$REPO/hypr/templates/hyprland.lua"; then ok "$entry is current"
     else
         if place "$REPO/hypr/templates/hyprland.lua" "$entry"; then ok "$entry ← hypr/templates/hyprland.lua"; fi
     fi
     for f in monitors.lua user.lua; do
-        if [ -e "$CFG/hypr/$f" ]; then ok "$f: yours, kept"
-        elif [ $DRY = 1 ]; then say "  would: create an empty $CFG/hypr/$f"
-        else mkdir -p "$CFG/hypr"; printf -- '-- %s: yours (kuwai never overwrites it)\n' "$f" >"$CFG/hypr/$f"; fi
+        if [ -e "$dir/$f" ]; then ok "$f: yours, kept"
+        elif [ $DRY = 1 ]; then say "  would: create an empty $dir/$f"
+        else
+            remember "$dir/$f"; mkdir -p "$dir"
+            printf -- '-- %s: yours (kuwai never overwrites it)\n' "$f" >"$dir/$f"
+            installed "$dir/$f"
+        fi
     done
+    [ "$dir" = "$CFG/hypr" ] || [ ! -f "$CFG/hypr/hyprland.lua" ] || ok "$CFG/hypr/hyprland.lua: not Kuwai's, left as it is"
 
     step "User services"
     if [ $NO_SERVICES = 1 ]; then
         ok "skipped (--no-services)"
     else
         do_ mkdir -p "$CFG/systemd/user"
+        [ $DRY = 1 ] || for u in "${UNITS[@]}"; do ORIG unit "$u"; done
         for u in "${UNITS[@]}"; do
             local dst=$CFG/systemd/user/$u src=$STABLE/systemd/$u
             [ -f "$src" ] || src=$REPO/systemd/$u
             if [ "$(readlink -f "$dst" 2>/dev/null)" = "$(readlink -f "$src")" ]; then ok "$u linked"
             elif place -s "$src" "$dst"; then ok "$u → $src"; fi
         done
+        local enable=()
+        for u in "${UNITS[@]}"; do
+            local src=$STABLE/systemd/$u; [ -f "$src" ] || src=$REPO/systemd/$u
+            grep -qs '^\[Install\]' "$src" && enable+=("$u")
+        done
         if [ $DRY = 0 ] && ! userbus; then
-            warn "no user session to enable them in (a text console or SSH); once you're logged in to Hyprland run:"
-            say "    systemctl --user daemon-reload && systemctl --user enable ${UNITS[*]}"
+            warn "no user session to enable them in (a text console or SSH); once you're logged in run:"
+            say "    systemctl --user daemon-reload && systemctl --user enable ${enable[*]}"
         else
             do_ systemctl --user daemon-reload
-            for u in "${UNITS[@]}"; do
-                [ $DRY = 1 ] || ORIG unit "$u"
+            for u in "${enable[@]}"; do
                 do_ systemctl --user enable "$u" >/dev/null 2>&1 || warn "couldn't enable $u"
             done
         fi
     fi
+
+    login_session
 
     [ $DRY = 1 ] || { step "Original state"; ok "kept in $STATE/original (./install.sh --uninstall puts it back)"; }
 
@@ -249,7 +308,7 @@ install_all() {
 
     [ $DRY = 1 ] || doctor
     say ""
-    say "Done. Log out and pick Hyprland, or: hyprctl reload && kuwai restart"
+    say "Done. Log out and pick Kuwai on the login screen (from a console: kuwai-session)."
 }
 
 uninstall_all() {
@@ -262,12 +321,13 @@ uninstall_all() {
         say "  Nothing to put back: kuwai was never installed for this user (nothing is kept in $STATE/original)."
         return 0
     fi
-    for u in "${UNITS[@]}"; do do_ systemctl --user disable --now "$u" >/dev/null 2>&1 || true; done
-    if [ $DRY = 1 ]; then ORIG restore --dry-run; else ORIG restore; fi
-    userbus && do_ systemctl --user daemon-reload
+    local rc=0
+    if [ $DRY = 1 ]; then ORIG restore --dry-run; else ORIG restore || rc=$?; fi
     say "  The stable checkout ($STABLE), your settings (~/.config/kuwai) and notes stay."
     say "  Remove the checkout too:  git -C $REPO worktree remove $STABLE"
+    say "  The Kuwai login entry: sudo $REPO/system/session --undo"
     say "  The login screen / alarms: sudo greeter/install --undo · sudo system/install --undo"
+    return $rc
 }
 
 doctor() {

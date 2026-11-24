@@ -2,13 +2,16 @@
 
 Hyprland 0.57 configures itself in Lua; hyprlang (`*.conf`) is gone. kuwai is
 this kuwai's Hyprland config: a small set of Lua modules in this repo, plus two
-personal files in `~/.config/hypr`. It works without HyDE, and keeps HyDE's
+personal files in `~/.config/kuwai/hypr` (an install from before the separate
+session keeps them in `~/.config/hypr`; whichever directory holds the entry is
+the one read). It works without HyDE, and keeps HyDE's
 themes, wallpapers and pickers working while HyDE is still installed.
 
 ```
-~/.config/hypr/hyprland.lua    entry: finds kuwai (KUWAI_ROOT), safety net if it fails
-~/.config/hypr/monitors.lua    this machine's screens            (yours)
-~/.config/hypr/user.lua        apps, launchers, per-app rules     (yours)
+~/.config/kuwai/hypr/hyprland.lua  entry: finds kuwai (KUWAI_ROOT), safety net if it fails
+~/.config/kuwai/hypr/monitors.lua  this machine's screens            (yours)
+~/.config/kuwai/hypr/user.lua      apps, launchers, per-app rules     (yours)
+/usr/local/bin/kuwai-session       the "Kuwai" login entry: start-hyprland -- --config <entry>
 
 hypr/init.lua                  load order; errors → one notification + `kuwai doctor`
 hypr/kuwai/core.lua            K: paths, file probes, binds (K.bind/K.bind_hold/K.submap), state

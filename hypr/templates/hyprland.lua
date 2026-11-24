@@ -1,4 +1,6 @@
 do
+	local ok, info = pcall(function() return debug.getinfo(1, "S") end)
+	KUWAI_USER_DIR = ok and info and type(info.source) == "string" and info.source:match("^@(.+)/[^/]+$") or nil
 	local home = os.getenv("HOME") or ""
 	local data = os.getenv("XDG_DATA_HOME") or (home .. "/.local/share")
 	local tries = { home .. "/Projects/kuwai", home .. "/Projects/rice", data .. "/kuwai" }

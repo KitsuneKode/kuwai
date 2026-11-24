@@ -1,0 +1,18 @@
+#!/bin/sh
+cfg=${XDG_CONFIG_HOME:-$HOME/.config}
+entry=$cfg/kuwai/hypr/hyprland.lua
+[ -f "$entry" ] || { grep -qs KUWAI_ROOT "$cfg/hypr/hyprland.lua" && entry=$cfg/hypr/hyprland.lua; }
+set -- --config "$entry"
+if [ ! -f "$entry" ]; then
+    printf 'kuwai-session: no Kuwai config for %s (run install.sh); starting Hyprland as it is\n' "${USER:-this user}" >&2
+    set --
+fi
+if command -v start-hyprland >/dev/null 2>&1; then
+    [ $# -gt 0 ] && set -- start-hyprland -- "$@" || set -- start-hyprland
+else
+    set -- Hyprland "$@"
+fi
+if command -v systemd-cat >/dev/null 2>&1 && [ -S /run/systemd/journal/stdout ]; then
+    exec systemd-cat -t kuwai-session "$@"
+fi
+exec "$@"
