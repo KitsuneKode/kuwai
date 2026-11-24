@@ -2,7 +2,10 @@
 """Static HyDE dependency ratchet (docs/design/WITHOUT-HYDE.md).
 
 Counts runtime files under shell/, hypr/, bin/, lib/, greeter/, and install.sh
-that still mention HyDE markers (hyde, wallbash, wall.set, wall.dcol, staterc).
+whose code (not comments, not Markdown) still mentions HyDE markers (hyde,
+wallbash, wall.set, wall.dcol, staterc): a comment saying "no HyDE needed" is
+not a dependency, and neither is going through the adapter (Hyde.*, K.hyde,
+lib/hyde.sh's hyde_* functions).
 Dedicated adapter files are tracked separately from non-adapter files so the
 non-adapter count can only shrink toward zero.
 
@@ -31,6 +34,26 @@ ADAPTER_FILES = {
     "bin/kuwai-hyde-waybar",
 }
 HYDE_RE = re.compile(r"hyde|wallbash|wall\.set|wall\.dcol|staterc", re.I)
+
+
+ADAPTER_USE = re.compile(r"\bHyde\.\w+|\bK\.hyde\w*|kuwai\.hyde\b|lib/hyde\.sh|\bhyde_\w+|kuwai-hyde-waybar|kuwai-themes")
+
+
+def code_of(rel, text):
+    ext = os.path.splitext(rel)[1]
+    if ext in (".md", ".txt"):
+        return ""
+    first = text.split("\n", 1)[0]
+    if ext in (".qml", ".js", ".mjs", ".ts"):
+        text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
+        return "\n".join(re.sub(r"(^|\s)//.*$", "", l) for l in text.split("\n"))
+    if ext == ".lua":
+        text = re.sub(r"--\[\[.*?\]\]", "", text, flags=re.S)
+        return "\n".join(re.sub(r"(^|\s)--.*$", "", l) for l in text.split("\n"))
+    if ext in (".sh", ".py", ".conf", ".toml", "") or first.startswith("#!"):
+        text = re.sub(r'(?s)^(#![^\n]*\n)?\s*"""(.*?)"""', r"\1", text, count=1)
+        return "\n".join(re.sub(r"(^|\s)#.*$", "", l) for l in text.split("\n"))
+    return text
 
 
 def iter_files():
@@ -65,7 +88,7 @@ def hits():
         if b"\x00" in data:
             continue
         text = data.decode("utf-8", errors="replace")
-        if HYDE_RE.search(text):
+        if HYDE_RE.search(ADAPTER_USE.sub("", code_of(rel, text))):
             if rel in ADAPTER_FILES:
                 adapters.append(rel)
             else:
