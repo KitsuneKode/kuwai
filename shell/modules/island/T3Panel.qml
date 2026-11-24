@@ -70,10 +70,11 @@ FocusScope {
             }
             Label {
                 anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-                text: T3Code.waiting > 0 ? T3Code.waiting + " need" + (T3Code.waiting === 1 ? "s" : "") + " you · " + T3Code.running + " active"
+                text: T3Code.stale ? ("Offline · saved " + t3.ago(new Date(T3Code.lastGoodAt).toISOString()))
+                    : T3Code.waiting > 0 ? T3Code.waiting + " need" + (T3Code.waiting === 1 ? "s" : "") + " you · " + T3Code.running + " active"
                     : T3Code.running + " active"
                 size: Theme.tCallout; weight: Theme.wSemibold
-                color: T3Code.waiting > 0 ? Theme.orange : Theme.cyan
+                color: T3Code.stale ? Theme.textTertiary : T3Code.waiting > 0 ? Theme.orange : Theme.cyan
                 font.features: ({ "tnum": 1 })
             }
         }

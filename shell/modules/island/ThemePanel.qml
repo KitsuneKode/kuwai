@@ -96,15 +96,23 @@ FocusScope {
     function copyCmd(t) { Quickshell.execDetached(["sh", "-c", 'printf %s "$1" | wl-copy', "copy", t]); copied = t; copiedFor.restart(); }
     readonly property string home: Quickshell.env("HOME")
     readonly property var guides: ({
-        themes: { title: "Add a theme",
+        themes: Hyde.present ? { title: "Add a theme",
             steps: ["Find a HyDE theme repository (search “hyde theme” on GitHub).", "Run the command with its name and URL.", "It appears here on the next open; ↵ applies it."],
             cmd: home + "/.local/lib/hyde/theme.patch.sh \"Theme-Name\" https://github.com/User/Repository",
             folder: home + "/.config/hyde/themes",
+            worth: "One clear accent on near-black: the island keeps colour for state." } : { title: "Add a theme",
+            steps: ["Install any Kuwai theme git repository.", "Run kuwai-look install with the repository URL.", "It appears here on the next open; ↵ applies it."],
+            cmd: "kuwai-look install https://github.com/User/kuwai-theme",
+            folder: home + "/.local/share/kuwai-data/themes",
             worth: "One clear accent on near-black: the island keeps colour for state." },
-        wallpapers: { title: "Add a wallpaper",
+        wallpapers: Hyde.present ? { title: "Add a wallpaper",
             steps: ["Pick an image at least 2560×1440 (PNG or JPG).", "Copy it into this theme's wallpapers folder.", "Reopen this tab; ↵ sets it, Colours can follow it."],
             cmd: "cp ~/Pictures/my-wallpaper.png \"" + home + "/.config/hyde/themes/" + (info.current || "THEME") + "/wallpapers/\"",
             folder: home + "/.config/hyde/themes/" + (info.current || "") + "/wallpapers",
+            worth: "A calm, dark top edge: the island and its text sit there." } : { title: "Add a wallpaper",
+            steps: ["Pick an image at least 2560×1440 (PNG or JPG).", "Drop it into ~/Pictures/wallpapers or run kuwai-look set-wallpaper.", "Reopen this tab; ↵ sets it and recolours the desktop."],
+            cmd: "kuwai-look set-wallpaper ~/Pictures/my-wallpaper.png",
+            folder: home + "/Pictures/wallpapers",
             worth: "A calm, dark top edge: the island and its text sit there." },
         live: { title: "Add a live wallpaper",
             steps: ["Any video works (MP4/WebM); slow and dark looks best.", "kuwai-wall makes it loop without a seam and sizes it for your screens.", "Wallpaper Engine videos: kuwai-wall import <workshop folder>."],
@@ -121,7 +129,8 @@ FocusScope {
 
     property var info: ({ current: "", themes: [], wallpapers: [] })
     property bool loading: true
-    readonly property string bin: Paths.bin + "/kuwai-themes"
+    readonly property bool useLook: !Hyde.present
+    readonly property string bin: Paths.bin + (useLook ? "/kuwai-look" : "/kuwai-themes")
     readonly property var favs: Settings.favoriteThemes || []
     readonly property var items: mode === "saver" ? saverItems
         : mode === "live" ? liveItems
@@ -134,7 +143,7 @@ FocusScope {
         if (id === colorMode) return;
         if (applicator.running) return;
         applyError = "";
-        applicator.command = [bin, "colormode", id, "--wait"];
+        applicator.command = useLook ? [bin, "mode", id] : [bin, "colormode", id, "--wait"];
         applicator.running = true;
         relist.restart();
     }
@@ -152,7 +161,7 @@ FocusScope {
         printErrors: false
     }
     Component.onCompleted: {
-        try { const t = kept.text(); if (t && loading) took(JSON.parse(t)); } catch (e) {}
+        try { const t = !useLook ? kept.text() : ""; if (t && loading) took(JSON.parse(t)); } catch (e) {}
         Qt.callLater(() => picker.settled = true);
     }
     // Built: from here a change fades (the skeleton giving way to the cards);
@@ -215,7 +224,7 @@ FocusScope {
         applyingName = it.name;
         if (mode === "themes") {
             applicator.environment = ({});
-            applicator.command = [bin, "theme", it.name, "--wait"];
+            applicator.command = useLook ? [bin, "theme", it.name] : [bin, "theme", it.name, "--wait"];
             applicator.running = true;
             return;
         }
@@ -224,7 +233,7 @@ FocusScope {
         const path = it.path;
         WallFx.play(path, () => {
             applicator.environment = ({ WALLPAPER_AWWW_TRANSITION_DEFAULT: "none" });
-            applicator.command = [bin, "wallpaper", path, "--wait"];
+            applicator.command = useLook ? [bin, "set-wallpaper", path] : [bin, "wallpaper", path, "--wait"];
             applicator.running = true;
         });
     }
@@ -243,7 +252,11 @@ FocusScope {
         stderr: StdioCollector { id: applyErr }
         onExited: (code, status) => {
             const nice = picker.applyingName.replace(/-/g, " ");
-            if (code === 0) { picker.applyError = ""; picker.said(nice + " applied"); }
+            if (code === 0) {
+                picker.applyError = "";
+                picker.said(nice + " applied");
+                if (picker.useLook) { Theme.reloadLook(); Hyde.refresh(); }
+            }
             else {
                 const why = String(applyErr.text || "").split("\n").map(x => x.trim()).filter(x => x).pop() || "";
                 picker.applyError = "Couldn't apply " + nice + (why ? ": " + why.slice(0, 120) : "") + " · ↩ tries again";

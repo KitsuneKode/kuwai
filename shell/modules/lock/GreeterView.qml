@@ -97,7 +97,7 @@ Item {
         duration: Theme.greetOutMs
         easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut
     }
-    Component.onCompleted: {
+        Component.onCompleted: {
         if (preview) { tWall = tClock = tHint = tPower = tCorner = 1; }
         else intro.start();
         if (view.lock.password !== "" || view.lock.error !== "" || view.lock.checking) {
@@ -105,7 +105,9 @@ Item {
             if (preview) focusSpring.settle();
         }
         entry.focusField();
+        if (!preview) focusGrab.grab();
     }
+    FocusGrabber { id: focusGrab; target: entry }
     // A goodbye quiets everything under it.
     function shown(t) { return t * (1 - leave) * (1 - bye.tIn); }
     function lift(t) { return ((1 - t) * 12 - leave * 10) * move; }
@@ -161,6 +163,7 @@ Item {
             }
         }
         Rectangle { anchors.fill: parent; color: Qt.rgba(0.03, 0.02, 0.03, 0.38 * view.f) }
+        ClockGround { anchors.fill: parent; source: wall.source; ink: view.tint; base: 0.22 }
     }
 
     // ── The clock, top centre (where the lock screen has it) ─────────────

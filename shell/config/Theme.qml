@@ -194,6 +194,30 @@ Singleton {
         const la = luminance(Qt.color(a)), lb = luminance(Qt.color(b));
         return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
     }
+    function inkFor(surfaces, target) {
+        const list = Array.isArray(surfaces) && surfaces.length ? surfaces : [themeBg];
+        const minW = Math.min.apply(null, list.map(s => contrast("#ffffff", s)));
+        const minB = Math.min.apply(null, list.map(s => contrast("#000000", s)));
+        return minB >= minW ? "#000000" : "#ffffff";
+    }
+    function wash(step) {
+        const table = [0.03, 0.06, 0.10, 0.14, 0.20, 0.28];
+        const i = Math.max(0, Math.min(table.length - 1, Math.round(step)));
+        return Qt.rgba(1, 1, 1, table[i]);
+    }
+    function edge(step) {
+        const table = [0.06, 0.10, 0.15, 0.22, 0.32, 0.45];
+        const i = Math.max(0, Math.min(table.length - 1, Math.round(step)));
+        return Qt.rgba(1, 1, 1, table[i]);
+    }
+    function materialSpec(level) {
+        if (level === "thin") return { tint: Qt.rgba(0.067, 0.067, 0.078, 0.42), rim: edge(0), sheen: 0.14, darkRing: 0.42 };
+        if (level === "thick") return { tint: Qt.rgba(0.067, 0.067, 0.078, 0.78), rim: edge(1), sheen: 0.18, darkRing: 0.58 };
+        if (level === "elevated") return { tint: Qt.rgba(0.075, 0.075, 0.090, 0.86), rim: edge(2), sheen: 0.22, darkRing: 0.65 };
+        if (level === "island") return { tint: glassIsland, rim: edge(1), sheen: 0.10, darkRing: 0.72 };
+        if (level === "solid") return { tint: glassSolid, rim: edge(1), sheen: 0.0, darkRing: 0.65 };
+        return { tint: glassTint, rim: edge(0), sheen: 0.20, darkRing: 0.55 };
+    }
     function contrastInk(c) {
         const y = luminance(c);
         return (y + 0.05) / 0.05 >= 1.05 / (y + 0.05) ? "#000000" : "#ffffff";

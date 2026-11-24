@@ -22,6 +22,8 @@ import "t3.mjs" as T3
 Singleton {
     id: root
     property bool alive: false
+    property real lastGoodAt: 0
+    readonly property bool stale: !alive && lastGoodAt > 0 && rawItems.length > 0
     property int running: 0
     property int waiting: 0
     // Completed in the last 15 min and not dismissed here (shown in the panel,
@@ -106,15 +108,21 @@ Singleton {
                 root.lastText = text;
                 try {
                     const d = JSON.parse(text);
-                    root.alive = !!d.alive;
-                    root.running = d.running || 0;
-                    root.waiting = d.waiting || 0;
-                    root.rawFinished = d.finished || 0;
-                    root.env = d.env || "";
-                    // Only replace the list when it changed: an identical array
-                    // still re-creates every delegate bound to it.
+                    const up = !!d.alive;
+                    root.alive = up;
+                    root.running = up ? (d.running || 0) : 0;
+                    root.waiting = up ? (d.waiting || 0) : 0;
                     const next = d.items || [];
-                    if (JSON.stringify(next) !== JSON.stringify(root.rawItems)) root.rawItems = next;
+                    if (up) {
+                        root.lastGoodAt = Date.now();
+                        root.rawFinished = d.finished || 0;
+                        root.env = d.env || "";
+                        if (JSON.stringify(next) !== JSON.stringify(root.rawItems)) root.rawItems = next;
+                    } else if (root.lastGoodAt === 0) {
+                        root.rawFinished = 0;
+                        root.env = "";
+                        if (root.rawItems.length > 0) root.rawItems = [];
+                    }
                 } catch (e) {}
             }
         }
