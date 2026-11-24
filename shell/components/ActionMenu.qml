@@ -92,10 +92,10 @@ Item {
         y: menu.lerp(menu.from.y, menu.toY, t.value)
         width: Math.max(1, menu.lerp(menu.from.width, menu.toW, t.value))
         height: Math.max(1, menu.lerp(menu.from.height, menu.toH, t.value))
-        radius: menu.lerp(menu.from.height / 2, 16, Math.min(1, t.value))
-        color: Qt.rgba(0.15, 0.15, 0.18, 0.98)
+        radius: menu.lerp(menu.from.height / 2, Theme.r2, Math.min(1, t.value))
+        color: Theme.menuSurface
         border.width: 1
-        border.color: Theme.edge(1)
+        border.color: Theme.menuEdge
         opacity: Math.min(1, t.value * 4)
         clip: true
 
@@ -117,7 +117,7 @@ Item {
                     x: 14
                     anchors.verticalCenter: parent.verticalCenter
                     text: menu.query ? menu.query : menu.title
-                    size: 13
+                    size: Theme.tBody
                     weight: menu.query ? Theme.wRegular : Theme.wSemibold
                     color: menu.query ? Theme.textPrimary : Theme.textSecondary
                 }
@@ -125,15 +125,21 @@ Item {
                     anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
                     visible: !menu.query
                     text: "type to filter"
-                    size: 11
+                    size: Theme.tFootnote
                     color: Theme.textTertiary
                 }
-                Rectangle { anchors { left: parent.left; right: parent.right; bottom: parent.bottom } height: 1; color: Theme.wash(1) }
+                Rectangle { anchors { left: parent.left; right: parent.right; bottom: parent.bottom } height: 1; color: Theme.menuEdge }
             }
             ListView {
                 id: list
-                anchors { left: parent.left; right: parent.right; top: head.bottom; bottom: parent.bottom; margins: 6 }
+                anchors { left: parent.left; right: parent.right; top: head.bottom; bottom: parent.bottom; margins: Theme.s1 }
                 clip: true
+                FluidHighlight {
+                    parent: list.contentItem
+                    radius: Theme.r1
+                    readonly property Item at: list.count > 0 && menu.open && t.value > 0.5 ? list.itemAtIndex(menu.sel) : null
+                    target: at ? at.plate : null
+                }
                 boundsBehavior: Flickable.StopAtBounds
                 model: menu.shown
                 currentIndex: menu.sel
@@ -143,45 +149,43 @@ Item {
                     required property var modelData
                     required property int index
                     readonly property bool lead: index === 0 || menu.shown[index - 1].section !== modelData.section
+                    readonly property alias plate: plate
                     width: ListView.view.width
-                    height: 34 + (lead && modelData.section && !menu.query ? 22 : 0)
+                    height: Theme.sp(30) + (lead && modelData.section && !menu.query ? Theme.sp(26) : 0)
                     Label {
                         visible: row.lead && !!row.modelData.section && !menu.query
-                        x: 10; y: 6
+                        x: Theme.s2; y: 6
                         text: row.modelData.section || ""
-                        size: 11
+                        size: Theme.tFootnote
                         weight: Theme.wSemibold
                         color: Theme.textTertiary
                     }
-                    Rectangle {
+                    Item {
+                        id: plate
                         anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
-                        height: 34
-                        radius: 9
+                        height: Theme.sp(30)
                         scale: rowArea.pressed ? 0.97 : 1
                         Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
-                        color: menu.sel === row.index ? Theme.wash(3)
-                             : rowArea.containsMouse ? (row.modelData.danger ? Qt.alpha(Theme.red, 0.16) : Theme.rowHover) : "transparent"
                         Text {
                             textFormat: Text.PlainText
                             id: g
-                            x: 10
+                            width: Theme.sp(28); horizontalAlignment: Text.AlignHCenter
                             anchors.verticalCenter: parent.verticalCenter
                             text: row.modelData.glyph || ""
-                            width: 18
                             font.family: Theme.fontGlyph
-                            font.pixelSize: 14
+                            font.pixelSize: Theme.sp(Theme.glyphS)
                             color: row.modelData.danger ? Theme.red : Theme.textSecondary
                         }
                         Label {
-                            anchors { left: g.right; leftMargin: 8; right: keys.left; rightMargin: 8; verticalCenter: parent.verticalCenter }
+                            anchors { left: g.right; right: keys.left; rightMargin: Theme.s4; verticalCenter: parent.verticalCenter }
                             elide: Text.ElideRight
                             text: row.modelData.label
-                            size: 13
-                            color: row.modelData.danger ? Theme.red : Theme.textPrimary
+                            size: Theme.tBody
+                            color: row.modelData.danger ? Theme.redText : Theme.textPrimary
                         }
                         Row {
                             id: keys
-                            anchors { right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter }
+                            anchors { right: parent.right; rightMargin: Theme.s2; verticalCenter: parent.verticalCenter }
                             spacing: 3
                             Repeater { model: row.modelData.keys || []; KeyCap { required property string modelData; text: modelData } }
                         }
