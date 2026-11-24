@@ -335,7 +335,7 @@ Item {
                 Image {
                     id: icon
                     anchors.fill: parent
-                    source: card.item.icon
+                    source: NotifAdapters.resolveIcon(card.item)
                     sourceSize: Qt.size(84, 84)
                     fillMode: Image.PreserveAspectCrop
                     asynchronous: true

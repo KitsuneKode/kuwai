@@ -152,7 +152,7 @@ Column {
                         radius: 10
                         color: "transparent"
                         visible: icon.status === Image.Ready
-                        Image { id: icon; anchors.fill: parent; source: card.item.icon || ""; sourceSize: Qt.size(76, 76); fillMode: Image.PreserveAspectCrop; asynchronous: true; mipmap: true }
+                        Image { id: icon; anchors.fill: parent; source: NotifAdapters.resolveIcon(card.item); sourceSize: Qt.size(76, 76); fillMode: Image.PreserveAspectCrop; asynchronous: true; mipmap: true }
                     }
                     Rectangle {
                         anchors.fill: parent

@@ -784,7 +784,7 @@ Item {
                       toggle: () => { if (sink && sink.audio) sink.audio.muted = !sink.audio.muted; },
                       wheel: steps => { if (sink && sink.audio) { sink.audio.muted = false; sink.audio.volume = Math.max(0, Math.min(1.5, Math.round((sink.audio.volume + steps * 0.05) * 20) / 20)); } } },
                     { id: "focus", glyph: "\u{f0594}", on: Notifs.dnd, alert: Notifs.dnd, tone: Theme.focus,
-                      tip: Notifs.dnd ? "Focus on: notifications held" : "Focus (Do Not Disturb)", toggle: () => { Notifs.toggleUserDnd(); } },
+                      tip: Notifs.dnd ? "Do Not Disturb is on: notifications held" : "Do Not Disturb", toggle: () => { Notifs.toggleUserDnd(); } },
                     { id: "night", glyph: "\u{f0599}", on: Display.nightOn, alert: false, tone: Theme.orange,
                       tip: Display.nightHeld ? "Night Shift paused while Accurate" : Display.nightOn ? "Night Shift on" : "Night Shift", toggle: () => Display.toggleNight() },
                     // Display preset: scroll through them here; click opens Controls.

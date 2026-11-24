@@ -81,7 +81,7 @@ FocusScope {
                 clip: true
                 Image {
                     anchors.fill: parent
-                    source: rp.item && rp.item.icon ? rp.item.icon : ""
+                    source: NotifAdapters.resolveIcon(rp.item)
                     sourceSize: Qt.size(72, 72)
                     fillMode: Image.PreserveAspectCrop
                     asynchronous: true

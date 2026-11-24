@@ -308,6 +308,15 @@ Singleton {
         return entry ? iconSource(entry.icon) : "";
     }
 
+    function resolveIcon(item) {
+        if (!item) return "";
+        if (item.icon) return item.icon;
+        const app = String(item.app || "");
+        const agent = Kittymux.brand(app.replace(/\s+(Code|CLI|Agent)$/i, ""));
+        if (agent) return agent;
+        const alias = ({ "t3 code": "t3code", "t3": "t3code", "whatsapp": "com.rtosta.zapzap" })[app.toLowerCase()];
+        return (alias && entryIcon(alias)) || iconForApp(app);
+    }
     // For history entries that lost their icon: the app's, by name.
     function iconForApp(app) {
         const e = DesktopEntries.heuristicLookup(app);

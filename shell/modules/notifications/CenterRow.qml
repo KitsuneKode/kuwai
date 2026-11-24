@@ -305,6 +305,7 @@ Item {
                     width: previewFlick.width
                     wrapMode: Text.Wrap
                     text: row.reading ? Notifs.fullForDisplay(row.it)
+                        : Notifs.bodyHidden(row.it, true) ? Notifs.bodyForDisplay(row.it, true)
                         : row.center && row.center.terms.length ? row.center.highlight(row.it.body.replace(/<[^>]*>/g, "")) : Notifs.styledSafe(row.it.body)
                     // A whole message is plain text (paragraphs kept, nothing parsed).
                     textFormat: row.reading ? Text.PlainText : Text.StyledText

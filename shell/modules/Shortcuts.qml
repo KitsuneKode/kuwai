@@ -68,10 +68,7 @@ Scope {
         appid: "kuwai"
         name: "open-latest"
         description: "Open the newest notification on screen"
-        onPressed: {
-            const top = Notifs.popups.find(i => !i.leaving);
-            if (top) Notifs.activate(top);
-        }
+        onPressed: Notifs.activateLatest()
     }
     GlobalShortcut {
         appid: "kuwai"

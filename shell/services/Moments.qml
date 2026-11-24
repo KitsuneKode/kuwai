@@ -368,7 +368,7 @@ Singleton {
     }
     function focusMoment() {
         if (!root.armed || !Notifs.loaded) return;
-        root.show({ kind: "focus", glyph: "\u{f0594}", label: "Focus", value: focusMomentValue(), ring: -1, tone: Theme.focus }, 2400);
+        root.show({ kind: "focus", glyph: "\u{f0594}", label: "Do Not Disturb", value: focusMomentValue(), ring: -1, tone: Theme.focus }, 2400);
     }
 
     // ── Caffeine (Super+\, Super+Shift+C, Controls, the cup) ───────────

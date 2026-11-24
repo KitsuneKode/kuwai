@@ -57,7 +57,7 @@ Item {
                 Image {
                     id: appIcon
                     anchors.fill: parent
-                    source: group.modelData.icon || NotifAdapters.iconForApp(group.modelData.app)
+                    source: NotifAdapters.resolveIcon(group.modelData)
                     sourceSize: Qt.size(36, 36)
                     asynchronous: true
                     smooth: true

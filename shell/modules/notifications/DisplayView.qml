@@ -171,7 +171,7 @@ Item {
                     title: "Do Not Disturb"
                     subtitle: Notifs.dnd ? "On" : "Off"
                     on: Notifs.dnd
-                    tone: Theme.indigo
+                    tone: Theme.focus
                     onToggled: Notifs.toggleUserDnd()
                 }
                 Tile {

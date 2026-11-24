@@ -147,7 +147,7 @@ Item {
             radius: 11
             color: "transparent"
             visible: icon.status === Image.Ready
-            Image { id: icon; anchors.fill: parent; source: peek.item ? peek.item.icon || "" : ""; sourceSize: Qt.size(84, 84); fillMode: Image.PreserveAspectCrop; asynchronous: true; mipmap: true }
+            Image { id: icon; anchors.fill: parent; source: NotifAdapters.resolveIcon(peek.item); sourceSize: Qt.size(84, 84); fillMode: Image.PreserveAspectCrop; asynchronous: true; mipmap: true }
         }
         Rectangle {
             anchors.fill: parent

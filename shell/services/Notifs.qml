@@ -88,7 +88,7 @@ Singleton {
     readonly property color bellBadgeTone: missed.some(i => i.severity === "critical") ? Theme.critical
         : missed.length ? Theme.orange : Theme.accent
     readonly property string bellTip: !shareKnown ? "Screen-sharing state unconfirmed · previews held"
-        : dnd ? "Focus on · notifications held"
+        : dnd ? "Do Not Disturb · notifications held"
         : dndMute ? "Held while sharing"
         : inbox === 0 ? "Notifications · click · right-click list"
         : (inbox > 9 ? "9+ in center" : inbox === 1 ? "1 in center" : inbox + " in center") + " · click · right-click list"
@@ -337,6 +337,11 @@ Singleton {
     }
 
     property var peek: null
+    function activateLatest() {
+        if (root.peek) { const p = root.peek; root.dropPeek(); root.activate(p); return; }
+        const top = root.popups.find(i => !i.leaving);
+        if (top) root.activate(top);
+    }
     // The screen it came up on: it stays there while it shows (it jumped
     // to the other monitor mid-read when focus moved).
     property string peekOn: ""
@@ -950,10 +955,7 @@ Singleton {
             return root.undoClear();
         }
         // Act on the newest toast on screen, as if it were clicked.
-        function openLatest(): void {
-            const top = root.popups.find(i => !i.leaving);
-            if (top) root.activate(top);
-        }
+        function openLatest(): void { root.activateLatest(); }
         // Bring the most recent notification back on screen.
         function showLast(): void {
             const last = root.items.find(i => !i.popup);

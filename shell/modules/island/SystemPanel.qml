@@ -246,7 +246,7 @@ FocusScope {
             Tile { id: game; width: tiles.cellW; glyph: "\u{f0eb5}"; label: "Game mode"; on: sys.gameMode; onClicked: sys.toggleGame() }
             Tile { id: night; width: tiles.cellW; glyph: "\u{f0594}"; label: "Night light"; on: Display.nightOn; onClicked: Display.toggleNight() }
             Tile { id: caff; width: tiles.cellW; glyph: "\u{f0176}"; label: "Caffeine"; on: Caffeine.on; onClicked: Caffeine.on = !Caffeine.on }
-            Tile { id: focusTile; width: tiles.cellW; glyph: "\u{f009b}"; label: "Focus"; on: Notifs.dnd; onClicked: Notifs.toggleUserDnd() }
+            Tile { id: focusTile; width: tiles.cellW; glyph: "\u{f0594}"; label: "Do Not Disturb"; on: Notifs.dnd; onClicked: Notifs.toggleUserDnd() }
         }
         Item {
             id: upd

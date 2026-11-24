@@ -37,7 +37,7 @@ Item {
     }
     function matches(i) {
         if (!passesFilter(i)) return false;
-        return center.matchesText(i.app + " " + i.title + " " + i.body.replace(/<[^>]*>/g, "") + " " + i.status);
+        return center.matchesText(i.app + " " + i.title + " " + (Notifs.bodyHidden(i, true) ? "" : i.body.replace(/<[^>]*>/g, "")) + " " + i.status);
     }
     readonly property int importantCount: Notifs.items.filter(i => i.severity === "critical" || i.severity === "warning").length
 
@@ -46,7 +46,7 @@ Item {
         const map = new Map();
         for (const i of Notifs.items) {
             if (i.discard || !matches(i)) continue;
-            if (!map.has(i.app)) map.set(i.app, { key: i.app, app: i.app, icon: i.icon, items: [] });
+            if (!map.has(i.app)) map.set(i.app, { key: i.app, app: i.app, icon: NotifAdapters.iconForApp(i.app) || NotifAdapters.resolveIcon(i), items: [] });
             map.get(i.app).items.push(i);
         }
         return [...map.values()];
@@ -263,9 +263,9 @@ Item {
             height: 28
             width: 28
             kind: "quiet"
-            glyph: "\u{f0594}"                     // moon: indigo while on
-            label: Notifs.muted ? "Do Not Disturb is on" : "Do Not Disturb"
-            tone: Notifs.muted ? Theme.indigo : Theme.textSecondary
+            glyph: "\u{f0594}"                     // moon: Theme.focus while on
+            label: Notifs.dnd ? "Do Not Disturb is on" : Notifs.dndMute ? "Do Not Disturb (held while sharing)" : "Do Not Disturb"
+            tone: Notifs.dnd ? Theme.focus : Theme.textSecondary
             onClicked: Notifs.toggleUserDnd()
         }
         Ui.Button {
