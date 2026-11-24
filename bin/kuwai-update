@@ -415,10 +415,14 @@ def review(pkg):
     files = []
     flags = []
     if base:
-        diff = git(d, "diff", "--no-color", "-U3", "--no-renames", base, head, "--", ".", ":(exclude).SRCINFO").stdout
+        dr = git(d, "diff", "--no-color", "-U3", "--no-renames", base, head, "--", ".", ":(exclude).SRCINFO")
     else:
         empty = git(d, "hash-object", "-t", "tree", "/dev/null").stdout.strip()
-        diff = git(d, "diff", "--no-color", "-U3", empty, head, "--", ".", ":(exclude).SRCINFO").stdout
+        dr = git(d, "diff", "--no-color", "-U3", empty, head, "--", ".", ":(exclude).SRCINFO")
+    diff = dr.stdout
+    diff_ok = dr.returncode == 0
+    if not diff_ok:
+        flags.append({"path": "", "line": 0, "text": (dr.stderr or "").strip()[:160], "why": "the diff could not be produced"})
     cur = None
     hunk = None
     o = n = 0
@@ -434,8 +438,10 @@ def review(pkg):
             cur["status"] = "added"
         elif l.startswith("deleted file"):
             cur["status"] = "deleted"
-        elif l.startswith("Binary files"):
+        elif l.startswith(("Binary files", "GIT binary patch")):
             cur["binary"] = True
+        elif l.startswith(("old mode", "new mode")):
+            cur["mode"] = True
         elif l.startswith("@@"):
             m = re.match(r"@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@(.*)", l)
             o, n = (int(m[1]), int(m[2])) if m else (0, 0)
@@ -480,9 +486,18 @@ def review(pkg):
         x = re.sub(r"\b\d+(\.\d+){1,3}\b", "{N}", x)
         return x
 
-    routine = True
+    def substantive(text):
+        t = text.strip()
+        return bool(t) and not t.startswith("#")
+
+    routine = diff_ok
     for f in files:
+        if f["binary"] or f.get("mode") or f["status"] != "modified":
+            routine = False
         removed = {norm(r["s"]) for h in f["hunks"] for r in h["lines"] if r["t"] == "-"}
+        added = {norm(r["s"]) for h in f["hunks"] for r in h["lines"] if r["t"] == "+"}
+        if any(norm(x) not in added for x in removed if substantive(x)):
+            routine = False
         for h in f["hunks"]:
             for r in h["lines"]:
                 if r["t"] != "+":
