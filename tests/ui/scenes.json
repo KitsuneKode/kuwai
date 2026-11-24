@@ -631,6 +631,43 @@
    }
   },
   {
+   "id": "launcher/packages",
+   "name": "launcher",
+   "panel": "LauncherPanel",
+   "kind": "worst",
+   "props": {
+    "query": "+ ripgrep",
+    "pkgLoaded": true,
+    "armedPkg": "ripgrep-all",
+    "pkgHits": [
+     {
+      "name": "ripgrep",
+      "repo": "extra",
+      "version": "14.1.1-1",
+      "desc": "A search tool that combines the usability of ag with the raw speed of grep",
+      "installed": true,
+      "aur": false
+     },
+     {
+      "name": "ripgrep-all",
+      "repo": "extra",
+      "version": "0.10.6-2",
+      "desc": "rga: ripgrep, but also search in PDFs, E-Books, Office documents, zip, tar.gz",
+      "installed": false,
+      "aur": false
+     },
+     {
+      "name": "ripgrep-git",
+      "repo": "aur",
+      "version": "14.1.0.r12-1",
+      "desc": "A search tool (git version)",
+      "installed": false,
+      "aur": true
+     }
+    ]
+   }
+  },
+  {
    "id": "switcher/new-machine",
    "name": "switcher",
    "panel": "SwitcherPanel"

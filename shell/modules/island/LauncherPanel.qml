@@ -165,7 +165,8 @@ FocusScope {
         { name: "Calculator", sub: "Math, units, currencies", prefix: "= ", glyph: "=" },
         { name: "Emoji", sub: "Search by name, type it", prefix: ":", glyph: "\u{f0785}" },
         { name: "Glyphs", sub: "Nerd Font symbols", prefix: ";", glyph: "\u{f0f3c}" },
-        { name: "Processes", sub: "What's using the most · end one · free a port (! 3000)", prefix: "!", glyph: "\u{f0675}" }
+        { name: "Processes", sub: "What's using the most · end one · free a port (! 3000)", prefix: "!", glyph: "\u{f0675}" },
+        { name: "Packages", sub: "Search Arch and the AUR · install or remove (+ firefox)", prefix: "+ ", glyph: "\u{f03d7}" }
     ]
 
     // ── `!`: processes and ports (bin/kuwai-procs) ──
@@ -178,6 +179,45 @@ FocusScope {
     // ("port" only before a number: "port forwarding" stays a search.)
     readonly property var procWords: /^\s*(?:kill(?:all)?|pkill|force[ -]?quit)\s+(?:port\s+)?(\S.*)$/i.exec(query)
         || /^\s*(?:free\s+)?port\s+(:?\d{1,5})\s*$/i.exec(query)
+    readonly property bool pkgMode: /^\s*\+/.test(query)
+    readonly property string pkgQuery: pkgMode ? query.replace(/^\s*\+\s*/, "") : ""
+    property var pkgHits: []
+    property bool pkgLoaded: false
+    property string armedPkg: ""
+    property string pkgNote: ""
+    onPkgQueryChanged: { armedPkg = ""; pkgNote = ""; pkgLoaded = false; if (pkgMode) pkgSoon.restart(); }
+    Timer { id: pkgSoon; interval: 350; onTriggered: { if (launcher.pkgQuery.trim().length < 2) { launcher.pkgHits = []; return; } pkgSearch.running = false; pkgSearch.running = true; } }
+    Process {
+        id: pkgSearch
+        command: [Paths.bin + "/kuwai-pkgs", "search", launcher.pkgQuery.trim()]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                if (!text.trim()) { launcher.pkgNote = launcher.pkgHits.length ? "" : "Couldn't search packages (is pacman there?)"; launcher.pkgLoaded = true; return; }
+                try { launcher.pkgHits = JSON.parse(text) || []; } catch (e) { launcher.pkgHits = []; }
+                launcher.pkgLoaded = true;
+            }
+        }
+    }
+    Process {
+        id: pkgRun
+        property string who: ""
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let r = {};
+                try { r = JSON.parse(text); } catch (e) {}
+                launcher.pkgNote = r.ok ? "" : "Couldn't open a terminal for " + pkgRun.who + ": " + (r.why || "unknown");
+                if (r.ok) Island.close();
+            }
+        }
+    }
+    function runPkg(r) {
+        const p = r.pkg;
+        if (armedPkg !== p.name) { armedPkg = p.name; return; }
+        armedPkg = "";
+        pkgRun.who = p.name;
+        pkgRun.command = [Paths.bin + "/kuwai-pkgs", p.installed ? "remove" : "install", p.name].concat(p.aur && !p.installed ? ["--aur"] : []);
+        pkgRun.running = true;
+    }
     readonly property bool procMode: /^\s*!/.test(query) || !!procWords
     readonly property string procQuery: /^\s*!/.test(query) ? query.replace(/^\s*!\s*/, "") : procWords ? procWords[1] : ""
     function enterMode(prefix) { field.text = prefix; field.cursorPosition = prefix.length; }
@@ -216,7 +256,7 @@ FocusScope {
     }
     // A file's other two answers (⌃↵, ⌥↵; and its row's menu).
     // What ↵ does to a result, as its row and its menu say it.
-    readonly property var verbs: ({ app: "Open", window: "Switch to", action: "Run", calc: "Copy", mode: "Use", emoji: "Type", glyph: "Type", file: "Open", web: "Search", timer: "Start" })
+    readonly property var verbs: ({ app: "Open", window: "Switch to", action: "Run", calc: "Copy", mode: "Use", emoji: "Type", glyph: "Type", file: "Open", web: "Search", timer: "Start", pkg: "Install" })
     property int menuAt: -1                       // a row whose menu is open (the rehearsal stages it)
     function fileFolder(r) { Apps.open(r.dir ? r.path : r.path.slice(0, r.path.lastIndexOf("/"))); Island.close(); }
     function copyPath(r) { Quickshell.execDetached(["wl-copy", "--", r.path]); Island.close(); }
@@ -318,6 +358,19 @@ FocusScope {
             const hit = x => !n || x.name.toLowerCase().indexOf(n) >= 0 || x.sub.toLowerCase().indexOf(n) >= 0 || (x.also || "").indexOf(n) >= 0;
             section("Modes", modes.filter(hit).map(m => ({ kind: "mode", name: m.name, sub: m.sub + "  ·  " + m.prefix.trim(), glyph: m.glyph, prefix: m.prefix })));
             section("Run", actions.filter(hit).map(a => ({ kind: "action", action: a, name: a.name, sub: a.sub, glyph: a.glyph })));
+            return out;
+        }
+        if (pkgMode) {
+            const n = pkgQuery.trim();
+            if (pkgNote) out.push({ kind: "tips", name: "", sub: pkgNote, tips: [] });
+            if (n.length < 2) out.push({ kind: "tips", name: "", prefix: "+ ", sub: "Type a package name: Arch's repositories, then the AUR", tips: ["+ firefox", "+ ripgrep", "+ obs"] });
+            else if (!pkgLoaded) out.push({ kind: "tips", name: "", sub: "Searching Arch and the AUR…", tips: [] });
+            else if (!pkgHits.length) out.push({ kind: "tips", name: "", sub: "No package matches “" + n + "”", tips: [] });
+            else section("Packages", pkgHits.map(p => ({
+                kind: "pkg", pkg: p, name: p.name,
+                sub: (armedPkg === p.name ? "↵ again to " + (p.installed ? "remove it" : "install it") + " in a terminal · " : "")
+                     + (p.aur ? "AUR" : p.repo) + " · " + p.version + (p.installed ? " · installed" : "") + (p.desc ? " · " + p.desc : ""),
+                glyph: p.installed ? "\u{f012c}" : "\u{f03d7}" })));
             return out;
         }
         if (procMode) {
@@ -424,6 +477,7 @@ FocusScope {
     function run(r) {
         if (!r) return;
         if (r.kind === "proc") { endProc(r, false); return; }
+        if (r.kind === "pkg") { runPkg(r); return; }
         if (r.kind === "emoji" || r.kind === "glyph") {
             // Typed into the window you came from once the island lets go of
             // the keyboard, and left on the clipboard too.
@@ -709,7 +763,7 @@ FocusScope {
                     Label {
                         anchors.verticalCenter: parent.verticalCenter
                         text: row.modelData.kind === "proc" ? (row.modelData.armed ? (launcher.armedForce ? "Force quit" : "End") : row.modelData.proc.mine ? "End…" : "")
-                            : launcher.verbs[row.modelData.kind] || ""
+                            : row.modelData.kind === "pkg" ? (row.modelData.pkg.installed ? "Remove" : "Install") : launcher.verbs[row.modelData.kind] || ""
                         size: 12
                         color: Theme.textSecondary
                     }
@@ -807,7 +861,7 @@ FocusScope {
                 readonly property bool armed: proc && launcher.armedPid === (row.modelData.proc || {}).pid
                 ContextMenuItem {
                     text: rowMenu.proc ? (rowMenu.armed && !launcher.armedForce ? "End — again to confirm" : "End")
-                        : launcher.verbs[row.modelData.kind] || "Open"
+                        : row.modelData.kind === "pkg" ? (row.modelData.pkg.installed ? "Remove" : "Install") : launcher.verbs[row.modelData.kind] || "Open"
                     glyph: rowMenu.proc ? "\u{f0156}" : "\u{f03cc}"
                     shortcut: "↵"
                     onTriggered: launcher.run(row.modelData)

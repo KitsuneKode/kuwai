@@ -1,0 +1,102 @@
+#!/usr/bin/env -S python3 -I
+"""Packages from the launcher: search Arch and the AUR, install or remove in a terminal you can see.
+
+  kuwai-pkgs search QUERY            [{name, repo, version, desc, installed, aur}] as JSON
+  kuwai-pkgs install NAME [--aur]    a terminal runs pacman -S (or the AUR helper) and waits
+  kuwai-pkgs remove NAME             a terminal runs pacman -Rns and waits
+Never runs pacman as root itself: sudo asks in the terminal, where you see what it does.
+"""
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import urllib.parse
+import urllib.request
+
+NAME = re.compile(r"^[a-z0-9@._+-]{1,100}$")
+TERMS = ["kitty", "ghostty", "foot", "alacritty", "wezterm", "konsole", "gnome-terminal", "xterm"]
+
+
+def run(cmd, timeout=6):
+    try:
+        return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout).stdout
+    except (OSError, subprocess.SubprocessError):
+        return ""
+
+
+def installed():
+    return set(run(["pacman", "-Qq"]).split())
+
+
+def repo_search(q, have):
+    out, lines = [], run(["pacman", "-Ss", "--", q]).splitlines()
+    for i in range(0, len(lines) - 1, 2):
+        m = re.match(r"^(\S+)/(\S+) (\S+)", lines[i])
+        if m:
+            out.append({"name": m.group(2), "repo": m.group(1), "version": m.group(3), "desc": lines[i + 1].strip()[:160],
+                        "installed": m.group(2) in have, "aur": False})
+    return out
+
+
+def aur_search(q, have):
+    url = "https://aur.archlinux.org/rpc/v5/search/" + urllib.parse.quote(q) + "?by=name-desc"
+    try:
+        with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "kuwai"}), timeout=5) as r:
+            data = json.loads(r.read().decode("utf-8", "replace"))
+    except Exception:
+        return []
+    rows = sorted(data.get("results") or [], key=lambda p: -(p.get("Popularity") or 0))[:15]
+    return [{"name": p["Name"], "repo": "aur", "version": p.get("Version", ""), "desc": (p.get("Description") or "")[:160],
+             "installed": p["Name"] in have, "aur": True} for p in rows if NAME.match(p.get("Name", ""))]
+
+
+def search(q):
+    q = q.strip()
+    if len(q) < 2 or not re.match(r"^[\w@.+-][\w@.+ -]*$", q):
+        return []
+    have = installed()
+    repo = repo_search(q, have)
+    names = {p["name"] for p in repo}
+    rank = lambda p: (p["name"] != q, not p["name"].startswith(q), p["aur"], p["name"])
+    return sorted(repo + [p for p in aur_search(q, have) if p["name"] not in names], key=rank)[:30]
+
+
+def terminal(script, title):
+    term = os.environ.get("KUWAI_TERMINAL") or next((t for t in TERMS if shutil.which(t)), "")
+    if not term:
+        return False
+    argv = {"kitty": ["kitty", "--title", title, "sh", "-c", script], "ghostty": ["ghostty", "-e", "sh", "-c", script],
+            "foot": ["foot", "--title", title, "sh", "-c", script], "wezterm": ["wezterm", "start", "--", "sh", "-c", script],
+            "gnome-terminal": ["gnome-terminal", "--", "sh", "-c", script]}.get(os.path.basename(term), [term, "-e", "sh", "-c", script])
+    subprocess.Popen(argv, start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return True
+
+
+def main(args):
+    if len(args) >= 2 and args[0] == "search":
+        print(json.dumps(search(" ".join(args[1:]))))
+        return 0
+    if len(args) >= 2 and args[0] in ("install", "remove") and NAME.match(args[1]):
+        name, aur = args[1], "--aur" in args[2:]
+        helper = next((h for h in ("paru", "yay") if shutil.which(h)), "")
+        if args[0] == "remove":
+            cmd = f"sudo pacman -Rns -- {name}"
+        elif aur:
+            if not helper:
+                print(json.dumps({"ok": False, "why": "no AUR helper (paru or yay)"}))
+                return 1
+            cmd = f"{helper} -S -- {name}"
+        else:
+            cmd = f"sudo pacman -S --needed -- {name}"
+        script = f"printf '\\033[1m%s\\033[0m\\n\\n' '$ {cmd}'; {cmd}; printf '\\nDone. Press Enter to close. '; read _"
+        ok = terminal(script, ("Install " if args[0] == "install" else "Remove ") + name)
+        print(json.dumps({"ok": ok, "why": "" if ok else "no terminal installed"}))
+        return 0 if ok else 1
+    print(__doc__.strip(), file=sys.stderr)
+    return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))
