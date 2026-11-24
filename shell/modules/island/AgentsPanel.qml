@@ -55,6 +55,31 @@ FocusScope {
     Timer { interval: 30000; repeat: true; running: ap.visible; onTriggered: ap.askModels() }
     property real now: Date.now()
     Timer { interval: 30000; repeat: true; running: ap.visible; triggeredOnStart: true; onTriggered: ap.now = Date.now() }
+    property var t3Answers: ({})
+    function setT3Answer(id, v) { const n = Object.assign({}, t3Answers); n[id] = v; t3Answers = n; }
+    function answerT3(r, decision) {
+        if (!r || !r.request || (t3Answers[r.request.id] || {}).busy) return;
+        setT3Answer(r.request.id, { busy: true, done: "", why: "" });
+        t3AnswerProc.pending = { id: r.request.id, decision: decision };
+        t3AnswerProc.command = [Paths.bin + "/kuwai-t3-answer", r.thread, r.request.id, decision];
+        t3AnswerProc.running = true;
+    }
+    Process {
+        id: t3AnswerProc
+        property var pending: null
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const p = t3AnswerProc.pending;
+                if (!p) return;
+                let r = {};
+                try { r = JSON.parse(text); } catch (e) {}
+                ap.setT3Answer(p.id, { busy: false, done: r.ok ? p.decision : "",
+                    why: r.ok ? "" : r.why === "scope" ? "T3's token for Kuwai can't answer yet (it needs orchestration:operate). Open it in T3."
+                        : r.why === "gone" ? "Already answered." : "T3 didn't take it. Open it in T3." });
+                if (r.ok) T3Code.read();
+            }
+        }
+    }
     property var ports: []
     Process {
         id: portsProc
@@ -125,7 +150,8 @@ FocusScope {
                 stateKey: said.key,
                 key: "t" + i.thread, src: "t3", agent: ap.t3Agent(i.provider), title: i.title || "Untitled thread",
                 where: i.project && i.project !== "No project" ? i.project : "",
-                model: ap.on(i.model, i.effort), state: st, status: "", question: "",
+                model: ap.on(i.model, i.effort), state: st, status: "", question: i.request && i.request.prompt ? i.request.prompt : "",
+                request: i.request || null,
                 t: i.at ? Date.parse(i.at) : 0, thread: i.thread, item: i
             });
         }
@@ -494,6 +520,43 @@ FocusScope {
                         text: row.modelData.reply ? T3.excerpt(row.modelData.reply) : ""
                         size: Theme.tSub; lineHeight: 1.3; color: Theme.textTertiary
                     }
+                        Item {
+                            id: t3AnswerRow
+                            readonly property var req: row.modelData.request
+                            readonly property var st: req ? (ap.t3Answers[req.id] || null) : null
+                            visible: row.modelData.src === "t3" && row.needs && !!req
+                            width: parent.width
+                            height: visible ? t3Btns.height + 6 + (t3Why.visible ? t3Why.implicitHeight + 4 : 0) : 0
+                            Row {
+                                id: t3Btns
+                                y: 6
+                                spacing: 8
+                                enabled: !(t3AnswerRow.st && (t3AnswerRow.st.busy || t3AnswerRow.st.done))
+                                opacity: enabled ? 1 : 0.6
+                                Button {
+                                    height: Theme.sp(30); size: Theme.tSub
+                                    text: t3AnswerRow.st && t3AnswerRow.st.done === "decline" ? "Denied" : "Deny"
+                                    onClicked: ap.answerT3(row.modelData, "decline")
+                                    Accessible.name: "Deny " + row.modelData.title + ": " + row.modelData.question
+                                }
+                                Button {
+                                    height: Theme.sp(30); size: Theme.tSub
+                                    text: t3AnswerRow.st && t3AnswerRow.st.done === "accept" ? "Allowed" : "Allow"
+                                    kind: "primary"
+                                    onClicked: ap.answerT3(row.modelData, "accept")
+                                    Accessible.name: "Allow " + row.modelData.title + ": " + row.modelData.question
+                                }
+                            }
+                            Label {
+                                id: t3Why
+                                visible: !!t3AnswerRow.st && !t3AnswerRow.st.busy && t3AnswerRow.st.why !== ""
+                                anchors { top: t3Btns.bottom; topMargin: 4 }
+                                width: parent.width
+                                wrapMode: Text.Wrap
+                                text: t3AnswerRow.st ? t3AnswerRow.st.why : ""
+                                size: Theme.tFootnote; color: Theme.orange
+                            }
+                        }
                         // Answer it from here (Claude Code, Codex): kittymux types the
                         // key only if this exact question is still on screen. Deny
                         // first, Allow last; Enter on the row goes there, never Allow.

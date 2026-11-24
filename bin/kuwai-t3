@@ -71,6 +71,13 @@ rows=$(timeout 3 sqlite3 -readonly -json -cmd ".timeout 2000" "file:$DB?mode=ro"
            where q.thread_id = th.thread and q.status = 'pending' and q.kind = 'user_input') as questions,
          (select count(*) from json_each(th.pj, '\$.guestShare.messages') g
            where json_extract(g.value, '\$.status') = 'pending') as guests,
+         (select json_object('id', q.runtime_request_id, 'kind', q.kind,
+                  'prompt', substr(coalesce((select json_extract(ti.payload_json, '\$.prompt') from orchestration_v2_projection_turn_items ti
+                                              where ti.thread_id = th.thread and ti.type = 'approval_request'
+                                                and json_extract(ti.payload_json, '\$.requestId') = q.runtime_request_id limit 1), ''), 1, 400))
+           from orchestration_v2_projection_runtime_requests q
+           where q.thread_id = th.thread and q.status = 'pending' and q.kind != 'user_input'
+           order by q.created_at limit 1) as req,
          case when a.status = 'running'
            and exists (select 1 from orchestration_v2_projection_turn_items ti
                         where ti.thread_id = a.thread and ti.run_id = a.run and ti.status in ('running','waiting')
@@ -132,6 +139,7 @@ jq -cn --argjson rows "$rows" --arg env "$env_id" '
                  # Why it needs you: something to approve, a question to answer, or a message from a guest.
                  ask: (if .s != "waiting" then null elif ((.asks // 0) - (.questions // 0)) > 0 then "approval"
                        elif (.questions // 0) > 0 then "question" else "request" end),
+                 request: (if .s == "waiting" and .req != null then (.req | fromjson? // null) else null end),
                  provider, title: (.title | .[0:80]), thread, at: .active_at, model, effort, project}]
             + [$done[] | {status: (if .s == "limited" then "failed" else .s end), limited: (.s == "limited"),
                  provider, title: (.title | .[0:80]), thread, at: .latest_at, model, effort, project}])}' 2>/dev/null || none

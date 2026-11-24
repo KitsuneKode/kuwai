@@ -1,0 +1,36 @@
+#!/usr/bin/env node
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { randomUUID } from "node:crypto";
+
+const HOME = process.env.HOME || "";
+const STATE = process.env.XDG_STATE_HOME || join(HOME, ".local/state");
+const T3_HOME = process.env.T3CODE_HOME || join(HOME, ".t3");
+const DECISIONS = new Set(["accept", "acceptForSession", "decline"]);
+const out = (o) => { process.stdout.write(JSON.stringify(o) + "\n"); process.exit(o.ok ? 0 : 1); };
+const [thread, request, decision] = process.argv.slice(2);
+const id = /^[A-Za-z0-9:%._-]{1,400}$/;
+if (!id.test(thread || "") || !id.test(request || "") || !DECISIONS.has(decision || "")) out({ ok: false, why: "usage" });
+const readText = (p) => { try { return readFileSync(p, "utf8").trim(); } catch { return ""; } };
+const readJson = (p) => { try { return JSON.parse(readFileSync(p, "utf8")); } catch { return null; } };
+const token = process.env.KUWAI_T3_TOKEN || readText(join(STATE, "kuwai/t3-token"));
+const runtime = readJson(join(T3_HOME, "userdata/server-runtime.json"));
+if (!token || !runtime || !runtime.port) out({ ok: false, why: "offline" });
+const url = `ws://${runtime.host || "127.0.0.1"}:${runtime.port}/ws?orchestrationProtocol=2`;
+const command = { type: "runtime-request.respond", commandId: "kuwai-" + randomUUID(), threadId: thread, requestId: request, decision };
+let ws;
+try { ws = new WebSocket(url, { headers: { Authorization: `Bearer ${token}` } }); } catch { out({ ok: false, why: "offline" }); }
+const timer = setTimeout(() => out({ ok: false, why: "timeout" }), 8000);
+ws.onerror = () => { clearTimeout(timer); out({ ok: false, why: "offline" }); };
+ws.onopen = () => ws.send(JSON.stringify({ _tag: "Request", id: "1", tag: "orchestration.dispatchCommand", payload: command, headers: [] }));
+ws.onmessage = (event) => {
+  let m;
+  try { m = JSON.parse(String(event.data)); } catch { return; }
+  if (m && m._tag === "Ping") { ws.send(JSON.stringify({ _tag: "Pong" })); return; }
+  if (!m || m._tag !== "Exit") return;
+  clearTimeout(timer);
+  try { ws.close(); } catch {}
+  if (m.exit && m.exit._tag === "Success") out({ ok: true });
+  const err = JSON.stringify(m.exit || {});
+  out({ ok: false, why: /missing required scope/i.test(err) ? "scope" : /not.*pending|already|resolved/i.test(err) ? "gone" : "failed" });
+};

@@ -2546,7 +2546,12 @@
        "provider": "claudeAgent",
        "title": "Approve the migration plan",
        "at": "@now-460iso",
-       "ask": "approval"
+       "ask": "approval",
+       "request": {
+        "id": "req-fixture",
+        "kind": "command",
+        "prompt": "bun run migrate --plan plans/0042.sql"
+       }
       },
       {
        "thread": "t2",

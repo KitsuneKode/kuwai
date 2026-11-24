@@ -18,7 +18,7 @@ create table orchestration_v2_projection_threads (thread_id text primary key, ti
   deleted_at text, archived_at text, project_id text);
 create table orchestration_v2_projection_runs (run_id text primary key, thread_id text, status text, provider text,
   requested_at text, completed_at text, ordinal integer, payload_json text);
-create table orchestration_v2_projection_runtime_requests (thread_id text, status text, kind text);
+create table orchestration_v2_projection_runtime_requests (thread_id text, status text, kind text, runtime_request_id text, created_at text);
 create table orchestration_v2_projection_messages (message_id text, thread_id text, role text, updated_at text, payload_json text);
 create table orchestration_v2_projection_turn_items (thread_id text, run_id text, type text, status text,
   payload_json text, updated_at text);
@@ -54,11 +54,13 @@ def build(tmp_path):
     run(db, "r-settled", "t-settled", "running")
     thread(db, "t-ask", "Needs approval")
     run(db, "r-ask", "t-ask", "running")
-    db.execute("insert into orchestration_v2_projection_runtime_requests values ('t-ask','pending','command')")
+    db.execute("insert into orchestration_v2_projection_runtime_requests values ('t-ask','pending','command','req-1','2026-01-01T00:00:00Z')")
+    db.execute("insert into orchestration_v2_projection_turn_items values ('t-ask','r-ask','approval_request','running',?,'2026-01-01T00:00:00Z')",
+               (json.dumps({'requestId': 'req-1', 'prompt': 'bun test tests/shell'}),))
     thread(db, "t-question", "Has a question")
     run(db, "r-question", "t-question", "running")
-    db.execute("insert into orchestration_v2_projection_runtime_requests values ('t-question','pending','user_input')")
-    db.execute("insert into orchestration_v2_projection_runtime_requests values ('t-question','resolved','command')")
+    db.execute("insert into orchestration_v2_projection_runtime_requests values ('t-question','pending','user_input','req-2','2026-01-01T00:00:00Z')")
+    db.execute("insert into orchestration_v2_projection_runtime_requests values ('t-question','resolved','command','req-3','2026-01-01T00:00:00Z')")
     thread(db, "t-guest", "A guest wrote", guestShare={"messages": [{"status": "pending"}]})
     run(db, "r-guest", "t-guest", "running")
     for mid, tid, role, at, text in [("m1", "t-done", "assistant", NOW, "An earlier reply."),
@@ -186,3 +188,10 @@ def test_a_failed_query_is_not_reported_as_t3_being_down(tmp_path):
     db.close()
     d = read(tmp_path)
     assert d["alive"] is True and d.get("error") == "query"
+
+
+def test_a_pending_approval_carries_what_it_asks(tmp_path):
+    build(tmp_path)
+    items = {i["thread"]: i for i in read(tmp_path)["items"]}
+    assert items["t-ask"]["request"] == {"id": "req-1", "kind": "command", "prompt": "bun test tests/shell"}
+    assert items["t-question"].get("request") is None
