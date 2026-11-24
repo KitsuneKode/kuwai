@@ -999,6 +999,13 @@ def artifact_package_name(filename):
     return parts[0] if len(parts) == 4 and parts[0] else None
 
 
+def installed_names():
+    """The names pacman reports as installed, or None when it can't say (never an empty guess)."""
+    r = sh(["pacman", "-Qq"], timeout=60)
+    names = set(r.stdout.split())
+    return names if r.returncode == 0 and names else None
+
+
 def update_running():
     return sh(["systemctl", "--user", "is-active", "--quiet", UNIT + ".service"]).returncode == 0
 
@@ -1006,7 +1013,8 @@ def update_running():
 def storage_report():
     """Every byte the updater owns, by purpose, with the retention it is held to."""
     items = []
-    installed = set(sh(["pacman", "-Qq"], timeout=60).stdout.split())
+    known = installed_names()
+    installed = known if known is not None else set()
     receipts = load(INSTALLED, {})
 
     items.append({"id": "recipes", "path": AUR_DIR, "owner": "kuwai-update", "keep": True,
@@ -1042,7 +1050,7 @@ def storage_report():
                 names = {n for f in os.listdir(b) if (n := artifact_package_name(f))}
             except OSError:
                 pass
-        gone = bool(names) and not (names & installed)
+        gone = known is not None and bool(names) and not (names & installed)
         drop = batches if (gone or ARTIFACT_KEEP <= 0) else batches[:-ARTIFACT_KEEP]
         kept = [] if (gone or ARTIFACT_KEEP <= 0) else batches[-ARTIFACT_KEEP:]
         for b in kept:
@@ -1135,8 +1143,11 @@ def clean_storage(args):
                 freed += sz
                 actions.append({"id": "legacy-aur", "path": legacy_dir, "bytes": sz})
 
+        installed = installed_names() if want_artifacts else None
+        if want_artifacts and installed is None:
+            actions.append({"id": "artifacts", "kept": True, "why": "pacman's package list could not be read; rollback archives kept"})
+            want_artifacts = False
         if want_artifacts:
-            installed = set(sh(["pacman", "-Qq"], timeout=60).stdout.split())
             archives = os.path.join(CACHE, "artifacts")
             art_freed = 0
             removed_batches = 0

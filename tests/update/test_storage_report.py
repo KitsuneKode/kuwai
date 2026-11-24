@@ -41,6 +41,8 @@ def stub_system(m, monkeypatch, installed=('pkg-a',), orphans=(), paccache=None)
         calls.append(cmd)
         out, rc = '', 0
         if cmd[:2] == ['pacman', '-Qq']:
+            if installed is None:
+                return SimpleNamespace(returncode=1, stdout='', stderr='error: could not open database')
             out = '\n'.join(installed)
         elif cmd[:2] == ['pacman', '-Qdtq']:
             out = '\n'.join(orphans)
@@ -180,3 +182,15 @@ def test_makepkg_config_disables_debug(updater, tmp_path):
     text = Path(cfg).read_text(encoding='utf-8')
     assert 'OPTIONS+=(!debug)' in text
     assert '/etc/makepkg.conf' in text
+
+
+def test_unreadable_package_list_keeps_every_rollback_archive(updater, monkeypatch, tmp_path):
+    m = updater
+    for name in ('pkg-a', 'pkg-b'):
+        write(tmp_path / f'CACHE/artifacts/{name}/installed-0/{name}-1.0-1-x86_64.pkg.tar.zst', MIB)
+    stub_system(m, monkeypatch, installed=None)
+    res = m.clean_storage([])
+    assert (tmp_path / 'CACHE/artifacts/pkg-a').exists()
+    assert (tmp_path / 'CACHE/artifacts/pkg-b').exists()
+    report = m.storage_report()
+    assert all(not i.get('why') for i in report.get('items', report) if isinstance(i, dict) and i.get('id', '').startswith('artifact'))
