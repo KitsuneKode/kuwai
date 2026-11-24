@@ -19,7 +19,7 @@ Item {
 
     Timer {
         id: delayTimer
-        interval: Theme.fastMs
+        interval: Theme.microMs
         onTriggered: {
             if (sv.loading) {
                 sv.showSkeleton = true;
@@ -30,7 +30,7 @@ Item {
 
     Timer {
         id: holdTimer
-        interval: Theme.colorMs
+        interval: Theme.artMs
         onTriggered: {
             if (!sv.loading) sv.showSkeleton = false;
         }
@@ -44,7 +44,7 @@ Item {
             delayTimer.stop();
             if (showSkeleton) {
                 const elapsed = Date.now() - shownAt;
-                const rem = Theme.colorMs - elapsed;
+                const rem = Theme.artMs - elapsed;
                 if (rem > 20) {
                     holdTimer.interval = rem;
                     holdTimer.restart();
