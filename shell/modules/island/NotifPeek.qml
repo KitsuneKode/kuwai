@@ -112,12 +112,20 @@ Item {
         Notifs.dropPeek();
         if (i) Notifs.activate(i);
     }
+    readonly property var acts: item && item.actions ? item.actions.slice(0, 2) : []
+    function runAction(id) {
+        const i = peek.item;
+        Island.cardKeys = false;
+        Notifs.dropPeek();
+        if (i) Notifs.invokeAction(i, id);
+    }
+    function primary() { if (acts.length) runAction(acts[0].id); else openItem(); }
     // The keyboard (Super+Ctrl+↵, Island.cardKeys): Open takes it; Tab or ←→
     // walk the buttons, ↓ shows more (as a pull does), ⌦ dismisses, Esc
     // gives it back.
     function focusFirst() {
         if (!Island.cardKeys || !visible) return;
-        (peek.expanded ? openBtn : go).forceActiveFocus(Qt.TabFocusReason);
+        (peek.expanded ? (peek.acts.length ? actRow.itemAt(0) : openBtn) : go).forceActiveFocus(Qt.TabFocusReason);
     }
     Connections { target: Island; function onCardKeysChanged() { if (Island.cardKeys) Qt.callLater(peek.focusFirst); } }
     onExpandedChanged: if (Island.cardKeys) Qt.callLater(peek.focusFirst)
@@ -298,26 +306,51 @@ Item {
         readonly property color c: peek.loud ? peek.tone : Theme.textPrimary
         color: goArea.containsMouse ? Qt.alpha(c, 0.3) : Qt.alpha(c, 0.16)
         Behavior on color { ColorAnimation { duration: Theme.colorMs } }
-        Label { id: goLabel; anchors.centerIn: parent; text: "Open"; size: 12; weight: Theme.wMedium; color: go.c }
+        Label { id: goLabel; anchors.centerIn: parent; text: peek.acts.length ? peek.acts[0].text : "Open"; size: 12; weight: Theme.wMedium; color: go.c }
         MouseArea {
             id: goArea
             anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-            onClicked: peek.openItem()
+            onClicked: peek.primary()
         }
         activeFocusOnTab: visible && Island.cardKeys
-        Keys.onPressed: e => { if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { peek.openItem(); e.accepted = true; } }
+        Keys.onPressed: e => { if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { peek.primary(); e.accepted = true; } }
         FocusRing {}
         Accessible.role: Accessible.Button
-        Accessible.name: "Open"
-        Accessible.onPressAction: peek.openItem()
+        Accessible.name: goLabel.text
+        Accessible.onPressAction: peek.primary()
     }
 
     Row {
         visible: peek.expanded
         anchors { left: copy.left; right: parent.right; rightMargin: peek.pad; bottom: parent.bottom; bottomMargin: peek.pad }
         spacing: 6
+        Repeater {
+            id: actRow
+            model: peek.acts
+            delegate: Rectangle {
+                required property var modelData
+                required property int index
+                height: 28; radius: 14
+                width: actLbl.implicitWidth + 22
+                activeFocusOnTab: visible && Island.cardKeys
+                Keys.onPressed: e => { if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { peek.runAction(modelData.id); e.accepted = true; } }
+                FocusRing {}
+                color: index === 0 ? (actArea.containsMouse ? Qt.rgba(1, 1, 1, 0.92) : Qt.rgba(1, 1, 1, 0.88))
+                                   : (actArea.containsMouse ? Theme.pillHover : Theme.pill)
+                Label { id: actLbl; anchors.centerIn: parent; text: modelData.text; size: 12; weight: Theme.wMedium; color: index === 0 ? Theme.inkOnLight : Theme.textPrimary }
+                MouseArea {
+                    id: actArea
+                    anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                    onClicked: peek.runAction(modelData.id)
+                }
+                Accessible.role: Accessible.Button
+                Accessible.name: modelData.text
+                Accessible.onPressAction: peek.runAction(modelData.id)
+            }
+        }
         Rectangle {
             id: openBtn
+            visible: !peek.acts.length
             height: 28; radius: 14
             width: openLbl.implicitWidth + 22
             activeFocusOnTab: visible && Island.cardKeys

@@ -31,6 +31,7 @@ QtObject {
     property bool agentTool: false       // a tool in the pane (sudo, ssh) asked, not the agent
     property string url                  // what a click opens once the sender is gone (bin/kuwai-feeds)
     property bool quiet: false           // straight to the center: no toast, no peek, not "missed"
+    property bool island: false
     property int urgency: NotificationUrgency.Normal
     property string severity: "normal"   // critical | warning | normal | low
     property var actions: []          // [{ id, text }] besides the default one
@@ -102,6 +103,7 @@ QtObject {
         full = a.full || "";
         thread = a.thread || "";
         quiet = !!a.quiet;
+        island = !!a.island;
         urgency = n.urgency;
         severity = a.severity;
         hasDefault = n.actions.some(x => x.identifier === "default");

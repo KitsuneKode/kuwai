@@ -99,6 +99,26 @@ Singleton {
             }
         },
         {
+            match: n => n.appName === "Shuush",
+            adapt: n => {
+                const h = n.hints || {};
+                return {
+                    app: "Shuush",
+                    title: n.summary,
+                    body: n.body,
+                    status: h["x-kuwai-status"] || "",
+                    statusGlyph: h["x-kuwai-glyph"] || "",
+                    statusTone: h["x-kuwai-tone"] || "",
+                    icon: root.imageOrIcon(n),
+                    groupKey: h["x-kuwai-group"] || "shuush",
+                    focusClass: "",
+                    island: h["x-kuwai-island"] === "1",
+                    calm: h["x-kuwai-calm"] === "1",
+                    severity: "normal"
+                };
+            }
+        },
+        {
             // T3 Code: "Thread completed" / "Usage limit reached" + thread title
             match: n => /^T3 Code/.test(n.appName),
             adapt: n => {

@@ -235,7 +235,7 @@ Singleton {
     // more severe one takes over (the current one goes back in line); at
     // most two wait, the rest become toasts. 5 s each, held under the pointer.
     function important(i) {
-        return i.severity === "critical" || i.severity === "warning" || i.urgency === NotificationUrgency.Critical || canReply(i);
+        return i.severity === "critical" || i.severity === "warning" || i.urgency === NotificationUrgency.Critical || canReply(i) || i.island;
     }
     function rank(i) { return i.severity === "critical" || i.urgency === NotificationUrgency.Critical ? 0 : i.severity === "warning" ? 1 : canReply(i) ? 2 : 3; }
     // Live (hasFullscreen follows Hyprland's events; lastIpcObject was a stale snapshot).
