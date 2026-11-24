@@ -607,7 +607,7 @@ Item {
         tone: split.limitTint
         attention: false
         Row {
-            spacing: 6
+            spacing: 8
             Repeater {
                 model: split.limits.providers.slice(0, 3)
                 Row {
@@ -650,7 +650,7 @@ Item {
                         anchors.verticalCenterOffset: 1
                         text: String(mark.modelData.count)
                         size: Theme.tCaption; weight: Theme.wBold; rounded: true
-                        color: split.limitTint
+                        color: Theme.textSecondary
                         font.features: ({ "tnum": 1 })
                     }
                 }
