@@ -17,3 +17,5 @@ luac:lua
 playerctl:playerctl
 git:git
 file:file
+node:nodejs
+:qt6-multimedia

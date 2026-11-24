@@ -27,6 +27,9 @@ def test_package_manifests_exist_and_parse():
     fonts = [l.strip() for l in (ROOT / "packages/fonts.txt").read_text().splitlines() if l.strip()]
     assert any(l.endswith(":hyprland") for l in core)
     assert any(l.endswith(":file") for l in core)
+    assert ":qt6-multimedia" in core, "LiveWallpaper and ThemePanel import QtMultimedia; without it the shell does not load"
+    assert "node:nodejs" in core, "kuwai-usage and kuwai-spend fall back to node when bun is absent"
+    assert not any("qt6-multimedia" in l for l in opt)
     assert any("awww" in l for l in opt)
     assert any("matugen" in l for l in opt)
     assert any("inter-font" in l for l in fonts)

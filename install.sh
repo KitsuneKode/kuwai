@@ -69,7 +69,7 @@ read_pkg_file() {
 NEED_LIST=$(read_pkg_file "$REPO/packages/core.txt" || printf '%s\n' \
     Hyprland:hyprland qs:quickshell cliphist:cliphist wl-copy:wl-clipboard jq:jq grim:grim slurp:slurp \
     brightnessctl:brightnessctl pw-play:pipewire-audio wpctl:wireplumber notify-send:libnotify curl:curl \
-    setpriv:util-linux gdbus:glib2 python3:python luac:lua playerctl:playerctl git:git file:file)
+    setpriv:util-linux gdbus:glib2 python3:python luac:lua playerctl:playerctl git:git file:file node:nodejs :qt6-multimedia)
 OPTIONAL_LIST=$(read_pkg_file "$REPO/packages/optional.txt" || printf '%s\n' \
     'satty:satty(screenshot-editing)' 'tesseract:tesseract(copy-text-from-images)' 'mpv:mpv(live-wallpapers)' \
     'mpvpaper:mpvpaper(live-wallpapers-outside-the-shell)' 'socat:socat(live-wallpapers-outside-the-shell)' \
