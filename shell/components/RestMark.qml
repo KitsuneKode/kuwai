@@ -124,9 +124,15 @@ Item {
                 // drew the notch once every 3 s. (No wrap: a modulo spun it
                 // backwards at the wrap.)
                 Behavior on rotation { enabled: arc.visible && !Theme.reduceMotion; NumberAnimation { duration: Theme.stepMs; easing.type: Easing.InOutCubic } }
+                readonly property bool stepping: arc.visible && !Theme.reduceMotion
+                property bool counted: false
+                function count() { if (stepping !== counted) { Theme.stepUsers += stepping ? 1 : -1; counted = stepping; } }
+                onSteppingChanged: count()
+                Component.onCompleted: count()
+                Component.onDestruction: if (counted) Theme.stepUsers--
                 Connections {
                     target: Theme
-                    enabled: arc.visible && !Theme.reduceMotion
+                    enabled: arc.stepping
                     function onStepChanged() { arc.rotation += 120; }
                 }
                 Connections {

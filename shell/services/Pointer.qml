@@ -7,7 +7,7 @@ pragma Singleton
 // process, a few hundred bytes, ~0.1 ms.
 //
 // Only while someone wants it (`want()` / `unwant()`), and adaptively:
-// ~12 Hz while the pointer is in the top band of a screen, 4 Hz elsewhere.
+// ~12 Hz while the pointer is in the top band of a screen, 1 Hz elsewhere.
 // (No braces before the pragma: Quickshell's scanner stops at the first.)
 
 import QtQuick
@@ -75,7 +75,7 @@ Singleton {
         }
     }
     Timer {
-        interval: root.hot ? 80 : 250
+        interval: root.hot ? 80 : 1000
         repeat: true
         running: root.wanted > 0
         onTriggered: { if (sock.connected) sock.connected = false; sock.connected = true; }

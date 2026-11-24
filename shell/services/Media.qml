@@ -64,7 +64,7 @@ Singleton {
         active = Object.assign({ positionChanged() {}, togglePlaying() {}, next() {}, previous() {}, raise() {} }, p);
     }
     // Playback states change without the list changing; a cheap look each second.
-    Timer { interval: 1000; running: root.players.length > 1 || !root.active; repeat: true; triggeredOnStart: true; onTriggered: root.pick() }
+    Timer { interval: 1000; running: root.players.length > 1 || (!root.active && root.players.length > 0); repeat: true; triggeredOnStart: true; onTriggered: root.pick() }
 
     // ── Position ─────────────────────────────────────────────────────────
     // Surfaces that show the time say so (watch/unwatch); then it ticks.

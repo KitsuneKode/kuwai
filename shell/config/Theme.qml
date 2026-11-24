@@ -486,10 +486,11 @@ Singleton {
     readonly property int stepMs: 600           // one step of a working ring (glides, then rests ~2.4 s)
     // The one beat every working ring on the notch steps to: T3's and an
     // update's moved on their own timers, so two rings side by side ticked
-    // out of phase (a queue, not one rhythm). One wake every 3 s.
+    // out of phase (a queue, not one rhythm). One wake every 3 s, only while a ring shows.
     readonly property int stepEvery: 3000
     property int step: 0
-    property Timer stepClock: Timer { interval: root.stepEvery; repeat: true; running: !root.reduceMotion; onTriggered: root.step++ }
+    property int stepUsers: 0
+    property Timer stepClock: Timer { interval: root.stepEvery; repeat: true; running: root.stepUsers > 0 && !root.reduceMotion; onTriggered: root.step++ }
     readonly property int quickMs: 120          // a quick fade in place: tooltips, hints, a caret
     readonly property int microMs: 160          // a small state change in place: an icon's fill, a fade, a press
     readonly property int pulseMs: 520          // half a quick pulse (InOutSine there and back)
