@@ -23,7 +23,8 @@ detect_default_monitor() {
 }
 
 DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/shazam-now"
-RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp}/shazam-now"
+RT=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}; { [ -d "$RT" ] && [ -O "$RT" ]; } || RT="${XDG_STATE_HOME:-$HOME/.local/state}/kuwai/run"
+RUNTIME_DIR="$RT/shazam-now"
 
 HISTORY_FILE="${SONGREC_HISTORY:-$DATA_DIR/history.jsonl}"
 DEVICE="${SONGREC_DEVICE:-$(detect_default_monitor)}"

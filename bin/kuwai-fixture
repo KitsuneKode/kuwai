@@ -17,7 +17,8 @@ Every notification it sends is recorded (app + title) and removed again by
 KUWAI_USAGE
 }
 unset LD_LIBRARY_PATH
-STATE="${XDG_RUNTIME_DIR:-/tmp}/kuwai/fixture-sent.tsv"
+RT=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}; { [ -d "$RT" ] && [ -O "$RT" ]; } || RT="${XDG_STATE_HOME:-$HOME/.local/state}/kuwai/run"
+STATE="$RT/kuwai/fixture-sent.tsv"
 ROOT="${KUWAI_ROOT:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}"
 mkdir -p "$(dirname "$STATE")"
 

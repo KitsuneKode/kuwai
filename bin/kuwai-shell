@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -u
-mkdir -p "${XDG_RUNTIME_DIR:-/tmp}/kuwai"
+RT=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}; { [ -d "$RT" ] && [ -O "$RT" ]; } || RT="${XDG_STATE_HOME:-$HOME/.local/state}/kuwai/run"
+mkdir -p -m 700 "$RT/kuwai"
 
 KUWAI="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
 # shellcheck source=lib/hyde.sh
