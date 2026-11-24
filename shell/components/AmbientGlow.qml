@@ -7,7 +7,7 @@ Shape {
     property color tint: Theme.accent
     property real radius: Theme.r3
     property bool breathing: false
-    property real strength: 0.55
+    property real strength: 0.85
     anchors.fill: parent
     preferredRendererType: Shape.CurveRenderer
     opacity: breath
@@ -21,12 +21,14 @@ Shape {
     }
     ShapePath {
         strokeWidth: -1
+        fillTransform: PlanarTransform.fromScale(1, 0.24, glow.width * 0.36, glow.height + 4)
         fillGradient: RadialGradient {
-            centerX: glow.width * 0.3; centerY: glow.height + glow.height * 0.15
-            centerRadius: Math.max(glow.width * 0.55, glow.height * 0.9)
+            centerX: glow.width * 0.36; centerY: glow.height + 4
+            centerRadius: glow.width * 0.62
             focalX: centerX; focalY: centerY
             GradientStop { position: 0; color: Qt.alpha(glow.tint, glow.strength) }
-            GradientStop { position: 0.45; color: Qt.alpha(glow.tint, glow.strength * 0.35) }
+            GradientStop { position: 0.28; color: Qt.alpha(glow.tint, glow.strength * 0.62) }
+            GradientStop { position: 0.6; color: Qt.alpha(glow.tint, glow.strength * 0.16) }
             GradientStop { position: 1; color: Qt.alpha(glow.tint, 0) }
         }
         PathRectangle { width: glow.width; height: glow.height; radius: glow.radius }

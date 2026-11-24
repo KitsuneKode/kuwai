@@ -315,6 +315,10 @@ Singleton {
         const name = (agent || "").toLowerCase().replace(/[^a-z0-9-]/g, "");
         return brands[name] ? brandDir + "/" + brands[name] + ".svg" : "";
     }
+    function tile(agent) {
+        const name = (agent || "").toLowerCase().replace(/[^a-z0-9-]/g, "");
+        return brands[name] ? brandDir + "/tiles/" + brands[name] + ".svg" : "";
+    }
     function icon(agent) {
         const name = (agent || "").toLowerCase().replace(/[^a-z0-9-]/g, "");
         return brand(name) || (name ? "file://" + iconDir + "/" + name + ".png" : "");

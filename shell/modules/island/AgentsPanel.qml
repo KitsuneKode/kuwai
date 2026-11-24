@@ -55,6 +55,15 @@ FocusScope {
     Timer { interval: 30000; repeat: true; running: ap.visible; onTriggered: ap.askModels() }
     property real now: Date.now()
     Timer { interval: 30000; repeat: true; running: ap.visible; triggeredOnStart: true; onTriggered: ap.now = Date.now() }
+    property var ports: []
+    Process {
+        id: portsProc
+        command: [Paths.bin + "/kuwai-ports"]
+        stdout: StdioCollector {
+            onStreamFinished: { try { const v = JSON.parse(text); if (JSON.stringify(v) !== JSON.stringify(ap.ports)) ap.ports = v; } catch (e) {} }
+        }
+    }
+    Timer { interval: Theme.panelPollMs; repeat: true; running: ap.visible; triggeredOnStart: true; onTriggered: if (!portsProc.running) portsProc.running = true }
 
     // "claude-opus-5-5" → "Opus 5.5", "grok-4.7" → "Grok 4.7", "gpt-6.1-sol" → "GPT-6.1 Sol".
     function modelName(m) {
@@ -401,21 +410,32 @@ FocusScope {
                     width: parent.width
                     lead: Item {
                         anchors.fill: parent
-                        Rectangle { anchors.fill: parent; radius: Theme.r1; color: Qt.alpha(ap.brandOf(row.modelData.agent), 0.16); border.width: 1; border.color: Theme.edge(0) }
                         Image {
-                            id: mark
-                            anchors.centerIn: parent
-                            width: 18; height: 18
-                            sourceSize: Qt.size(36, 36)
-                            source: Kittymux.brand(row.modelData.agent)
+                            id: tileImg
+                            anchors.fill: parent
+                            sourceSize: Qt.size(64, 64)
+                            source: Kittymux.tile(row.modelData.agent)
                             smooth: true; mipmap: true
                         }
-                        Text {
-                            visible: mark.status !== Image.Ready
-                            anchors.centerIn: parent
-                            text: "\u{f06a9}"
-                            font.family: Theme.fontGlyph; font.pixelSize: 15
-                            color: Theme.textSecondary
+                        Rectangle {
+                            visible: tileImg.status !== Image.Ready
+                            anchors.fill: parent; radius: Theme.r1
+                            color: Theme.wash(2)
+                            Image {
+                                id: mark
+                                anchors.centerIn: parent
+                                width: 18; height: 18
+                                sourceSize: Qt.size(36, 36)
+                                source: Kittymux.brand(row.modelData.agent)
+                                smooth: true; mipmap: true
+                            }
+                            Text {
+                                visible: mark.status !== Image.Ready
+                                anchors.centerIn: parent
+                                text: "\u{f06a9}"
+                                font.family: Theme.fontGlyph; font.pixelSize: 15
+                                color: Theme.textSecondary
+                            }
                         }
                     }
                     title: row.modelData.title
@@ -513,6 +533,57 @@ FocusScope {
         }
         ScrollFade { flickable: list }
         ScrollHint { flickable: list; inside: true }
+
+        Rectangle {
+            visible: ap.ports.length > 0
+            width: parent.width
+            height: portsCol.implicitHeight + Theme.s2 * 2
+            radius: Theme.r3
+            color: Theme.card
+            border.width: 1; border.color: Theme.cardEdge
+            Column {
+                id: portsCol
+                x: Theme.s3; y: Theme.s2
+                width: parent.width - Theme.s3 * 2
+                Repeater {
+                    model: ap.ports.slice(0, 4)
+                    Item {
+                        required property var modelData
+                        width: portsCol.width
+                        height: Theme.sp(36)
+                        Row {
+                            id: portWords
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: parent.width - portOpen.width - Theme.s2
+                            spacing: Theme.s2
+                            Rectangle { anchors.verticalCenter: parent.verticalCenter; width: 6; height: 6; radius: 3; color: Theme.green }
+                            Label {
+                                id: portNum
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: ":" + modelData.port
+                                size: Theme.tSub; weight: Theme.wBold
+                                font.features: ({ "tnum": 1 })
+                            }
+                            Label {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: Math.max(0, portWords.width - portNum.width - 6 - Theme.s2 * 2)
+                                elide: Text.ElideRight
+                                text: modelData.proc + " · " + modelData.project
+                                size: Theme.tSub; color: Theme.textSecondary
+                            }
+                        }
+                        Button {
+                            id: portOpen
+                            anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                            height: Theme.sp(28); size: Theme.tFootnote
+                            text: "Open"
+                            onClicked: { Apps.open("http://localhost:" + modelData.port); Island.close(); }
+                            Accessible.name: "Open localhost port " + modelData.port + ", " + modelData.proc + " in " + modelData.project
+                        }
+                    }
+                }
+            }
+        }
 
         // Opened from the keyboard: the keys, quietly (the pointer has the buttons).
         KeyHints {

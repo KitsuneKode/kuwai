@@ -1,0 +1,64 @@
+#!/usr/bin/env python3
+"""Make the app-icon tiles (shell/assets/brands/tiles/NAME.svg) from the one-colour brand marks.
+
+  kuwai-brand-tiles          write every tile
+  kuwai-brand-tiles --check  exit 1 if a tile is missing or stale
+"""
+import re
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+BRANDS = ROOT / "shell/assets/brands"
+TILES = BRANDS / "tiles"
+STYLE = {
+    "claude": ("#D97757", "#FFFFFF"),
+    "claudecode": ("#D97757", "#FFFFFF"),
+    "openai": ("#F4F4F5", "#0B0B0D"),
+    "antigravity": ("#F4F4F5", "#3B6FF5"),
+    "googlegemini": ("#F4F4F5", "#6E5BD3"),
+    "grok": ("#0B0B0D", "#FFFFFF"),
+    "cursor": ("#141416", "#FFFFFF"),
+    "devin": ("#12203A", "#FFFFFF"),
+    "opencode": ("#141416", "#FFFFFF"),
+    "kimi": ("#141416", "#FFFFFF"),
+    "qwen": ("#5B45E0", "#FFFFFF"),
+}
+
+
+def tile(name, bg, fg):
+    src = (BRANDS / f"{name}.svg").read_text()
+    vb = re.search(r'viewBox="([-\d.\s]+)"', src)
+    x, y, w, h = (float(v) for v in vb.group(1).split())
+    inner = re.sub(r"(?s).*?<svg[^>]*>", "", src, count=1).rsplit("</svg>", 1)[0]
+    inner = re.sub(r"<title>.*?</title>", "", inner)
+    inner = re.sub(r'\s(fill|stroke)="(?!none)[^"]*"', "", inner)
+    s = 58 / max(w, h)
+    tx, ty = 50 - (x + w / 2) * s, 50 - (y + h / 2) * s
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">'
+            f'<rect width="100" height="100" rx="23" fill="{bg}"/>'
+            f'<rect x="0.5" y="0.5" width="99" height="99" rx="22.5" fill="none" stroke="#FFFFFF" stroke-opacity="0.12"/>'
+            f'<g fill="{fg}" fill-rule="evenodd" transform="translate({tx:.3f} {ty:.3f}) scale({s:.5f})">{inner.strip()}</g></svg>\n')
+
+
+def main():
+    check = "--check" in sys.argv
+    TILES.mkdir(exist_ok=True)
+    stale = []
+    for name, (bg, fg) in STYLE.items():
+        if not (BRANDS / f"{name}.svg").exists():
+            continue
+        out, want = TILES / f"{name}.svg", tile(name, bg, fg)
+        if check:
+            if not out.exists() or out.read_text() != want:
+                stale.append(name)
+        else:
+            out.write_text(want)
+    if stale:
+        print("stale tiles: " + ", ".join(stale) + " (run bin/kuwai-brand-tiles)")
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

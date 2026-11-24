@@ -1,0 +1,58 @@
+#!/usr/bin/env -S python3 -I
+"""Local servers you started: listening TCP ports whose process works in a folder of yours.
+
+  kuwai-ports    print [{port, proc, project, pid, local}] as JSON, by port
+"""
+import json
+import os
+import re
+import subprocess
+
+HOME = os.path.realpath(os.path.expanduser("~"))
+SKIP = re.compile(r"^(t3code|antigravity|chrome|chromium|firefox|zen|electron|code|cursor|windsurf|devin|discord|slack|spotify|steam|"
+                  r"syncthing|kdeconnectd|Hyprland|qs|quickshell|kitty|ghostty|systemd.*|pipewire.*|wireplumber|obs|zapzap|"
+                  r"language_server.*|gopls|rust-analyzer|tsserver|vscode.*|claude|codex|opencode|kittymux.*)$", re.I)
+LINE = re.compile(r"\s(\[?[0-9a-fA-F:.*%\w]*\]?):(\d+)\s.*users:\(\(\"([^\"]+)\",pid=(\d+)")
+
+
+def project(cwd):
+    p = cwd
+    while p.startswith(HOME) and p != HOME:
+        if os.path.exists(os.path.join(p, ".git")):
+            return os.path.basename(p)
+        p = os.path.dirname(p)
+    return os.path.basename(cwd)
+
+
+def listening(text):
+    seen, out = set(), []
+    for line in text.splitlines():
+        m = LINE.search(line)
+        if not m:
+            continue
+        host, port, proc, pid = m.group(1), int(m.group(2)), m.group(3), int(m.group(4))
+        name = re.sub(r"-MainThread$", "", proc)
+        if port in seen or SKIP.match(name):
+            continue
+        try:
+            cwd = os.path.realpath(os.readlink(f"/proc/{pid}/cwd"))
+        except OSError:
+            continue
+        if not cwd.startswith(HOME + os.sep):
+            continue
+        seen.add(port)
+        out.append({"port": port, "proc": name, "project": project(cwd), "pid": pid,
+                    "local": host.startswith(("127.", "[::1]", "localhost"))})
+    return sorted(out, key=lambda r: r["port"])
+
+
+def main():
+    try:
+        text = subprocess.run(["ss", "-ltnpH"], capture_output=True, text=True, timeout=3).stdout
+    except (OSError, subprocess.SubprocessError):
+        text = ""
+    print(json.dumps(listening(text)))
+
+
+if __name__ == "__main__":
+    main()

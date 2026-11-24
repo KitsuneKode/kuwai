@@ -2842,6 +2842,96 @@
    }
   },
   {
+   "id": "agents/servers",
+   "name": "agents",
+   "panel": "AgentsPanel",
+   "set": [
+    [
+     "Kittymux",
+     "feedPinned",
+     true
+    ],
+    [
+     "Kittymux",
+     "feed",
+     {
+      "version": 1,
+      "agents": [
+       {
+        "key": "fx-3",
+        "agent": "claude",
+        "brand": "claude",
+        "title": "Write the rehearsal notes",
+        "tab_title": "rice",
+        "cwd": "~/Projects/rice",
+        "state": "done",
+        "account": "main"
+       }
+      ]
+     }
+    ],
+    [
+     "T3Code",
+     "alive",
+     true
+    ],
+    [
+     "T3Code",
+     "running",
+     0
+    ],
+    [
+     "T3Code",
+     "waiting",
+     0
+    ],
+    [
+     "T3Code",
+     "rawFinished",
+     0
+    ],
+    [
+     "T3Code",
+     "rawItems",
+     []
+    ]
+   ],
+   "kind": "worst",
+   "props": {
+    "models": {
+     "claude:~/Projects/rice": {
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "context": 930000,
+      "window": 1000000,
+      "reply": "Wrote docs/design/REHEARSAL.md: how a scene is staged, what the gate counts, and the three faults left to look at.\n\n```sh\nbin/kuwai-rehearse --gate\n```"
+     },
+     "codex:~/Projects/rice": {
+      "model": "gpt-6.1-sol",
+      "effort": "high",
+      "context": 350000,
+      "window": 475000
+     }
+    },
+    "ports": [
+     {
+      "port": 3000,
+      "proc": "node",
+      "project": "marketplace",
+      "pid": 1,
+      "local": true
+     },
+     {
+      "port": 5173,
+      "proc": "bun",
+      "project": "portfolio",
+      "pid": 2,
+      "local": true
+     }
+    ]
+   }
+  },
+  {
    "id": "agents/worst",
    "name": "agents",
    "panel": "AgentsPanel",
