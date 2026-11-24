@@ -1,0 +1,181 @@
+#!/usr/bin/env python3
+"""kuwai-webapp: create, list, and remove standalone desktop web-app launchers.
+
+    kuwai-webapp install NAME URL [ICON]
+    kuwai-webapp remove NAME
+    kuwai-webapp list
+"""
+import json
+import os
+import re
+import shutil
+import sys
+import urllib.parse
+
+HOME = os.path.expanduser("~")
+DATA_HOME = os.environ.get("XDG_DATA_HOME") or os.path.join(HOME, ".local/share")
+APPS_DIR = os.path.join(DATA_HOME, "applications")
+ICONS_DIR = os.path.join(DATA_HOME, "kuwai-data", "webapp-icons")
+PREFIX = "kuwai-webapp-"
+
+CHROMIUM_BROWSERS = (
+    "chromium",
+    "google-chrome-stable",
+    "brave",
+    "vivaldi-stable",
+    "helium-browser",
+)
+GECKO_BROWSERS = ("zen-browser", "firefox")
+
+
+def slugify(name):
+    s = re.sub(r"[^a-z0-9]+", "-", name.strip().lower()).strip("-")
+    if not s or len(s) > 64:
+        raise SystemExit(f"kuwai-webapp: invalid app name: {name!r}")
+    return s
+
+
+def validate_url(url):
+    if any(ch in url for ch in ("\r", "\n", "\t", " ", '"', "'", "`", "$")):
+        raise SystemExit("kuwai-webapp: url contains invalid characters")
+    parsed = urllib.parse.urlsplit(url)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        raise SystemExit("kuwai-webapp: url must be http:// or https:// with a host")
+    return url
+
+
+def clean_field(text):
+    return re.sub(r"[\r\n\t]+", " ", text).strip()
+
+
+def find_browser():
+    override = os.environ.get("KUWAI_WEBAPP_BROWSER", "").strip()
+    if override:
+        return override, os.path.basename(override) not in GECKO_BROWSERS
+    for cand in CHROMIUM_BROWSERS:
+        p = shutil.which(cand)
+        if p:
+            return cand, True
+    for cand in GECKO_BROWSERS:
+        p = shutil.which(cand)
+        if p:
+            return cand, False
+    return "chromium", True
+
+
+def desktop_escape_arg(arg):
+    escaped = arg.replace("\\", "\\\\").replace('"', '\\"').replace("$", "\\$").replace("`", "\\`")
+    return f'"{escaped}"'
+
+
+def cmd_install(name, url, icon=None):
+    title = clean_field(name)
+    if not title:
+        raise SystemExit("kuwai-webapp: name cannot be empty")
+    slug = slugify(title)
+    safe_url = validate_url(url)
+    wm_class = f"{PREFIX}{slug}"
+    browser, is_chromium = find_browser()
+
+    if is_chromium:
+        exec_line = f"{browser} --app={desktop_escape_arg(safe_url)} --class={wm_class}"
+    else:
+        exec_line = f"{browser} --new-window {desktop_escape_arg(safe_url)}"
+
+    icon_val = "web-browser"
+    if icon:
+        if os.path.isfile(icon):
+            os.makedirs(ICONS_DIR, exist_ok=True)
+            ext = os.path.splitext(icon)[1].lower() or ".png"
+            if ext not in (".png", ".svg", ".jpg", ".jpeg", ".webp", ".ico"):
+                raise SystemExit("kuwai-webapp: unsupported icon file extension")
+            dest_icon = os.path.join(ICONS_DIR, f"{slug}{ext}")
+            shutil.copyfile(icon, dest_icon)
+            icon_val = dest_icon
+        else:
+            icon_val = clean_field(icon)
+
+    os.makedirs(APPS_DIR, exist_ok=True)
+    desktop_path = os.path.join(APPS_DIR, f"{wm_class}.desktop")
+    body = "\n".join([
+        "[Desktop Entry]",
+        "Version=1.0",
+        "Type=Application",
+        f"Name={title}",
+        f"Exec={exec_line}",
+        f"Icon={icon_val}",
+        "Terminal=false",
+        "Categories=Network;WebBrowser;",
+        f"StartupWMClass={wm_class}",
+        f"X-Kuwai-WebApp-Url={safe_url}",
+        "",
+    ])
+    tmp = desktop_path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        f.write(body)
+    os.chmod(tmp, 0o644)
+    os.replace(tmp, desktop_path)
+    return {"ok": True, "slug": slug, "name": title, "url": safe_url, "desktop": desktop_path}
+
+
+def cmd_remove(name):
+    slug = slugify(name)
+    wm_class = f"{PREFIX}{slug}"
+    desktop_path = os.path.join(APPS_DIR, f"{wm_class}.desktop")
+    removed = False
+    if os.path.exists(desktop_path):
+        os.unlink(desktop_path)
+        removed = True
+    if os.path.isdir(ICONS_DIR):
+        for fn in os.listdir(ICONS_DIR):
+            if fn.startswith(f"{slug}."):
+                os.unlink(os.path.join(ICONS_DIR, fn))
+    return {"ok": True, "slug": slug, "removed": removed}
+
+
+def cmd_list():
+    items = []
+    if not os.path.isdir(APPS_DIR):
+        return items
+    for fn in sorted(os.listdir(APPS_DIR)):
+        if not (fn.startswith(PREFIX) and fn.endswith(".desktop")):
+            continue
+        p = os.path.join(APPS_DIR, fn)
+        meta = {}
+        try:
+            for line in open(p, encoding="utf-8", errors="replace"):
+                if "=" in line and not line.startswith("["):
+                    k, v = line.strip().split("=", 1)
+                    meta[k] = v
+        except OSError:
+            continue
+        slug = fn[len(PREFIX):-len(".desktop")]
+        items.append({
+            "slug": slug,
+            "name": meta.get("Name", slug),
+            "url": meta.get("X-Kuwai-WebApp-Url", ""),
+            "desktop": p,
+        })
+    return items
+
+
+def main(argv):
+    if not argv or argv[0] in ("-h", "--help"):
+        print(__doc__.strip())
+        return 0
+    cmd = argv[0]
+    if cmd == "install" and len(argv) in (3, 4):
+        print(json.dumps(cmd_install(argv[1], argv[2], argv[3] if len(argv) == 4 else None)))
+        return 0
+    if cmd == "remove" and len(argv) == 2:
+        print(json.dumps(cmd_remove(argv[1])))
+        return 0
+    if cmd == "list" and len(argv) == 1:
+        print(json.dumps(cmd_list()))
+        return 0
+    print(__doc__.strip(), file=sys.stderr)
+    return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

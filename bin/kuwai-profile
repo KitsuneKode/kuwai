@@ -1,0 +1,147 @@
+#!/usr/bin/env python3
+"""kuwai-profile: export and diff portable machine manifests (packages, units, settings, look).
+
+    kuwai-profile export [FILE]
+    kuwai-profile diff FILE
+"""
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import time
+
+ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+HOME = os.path.expanduser("~")
+CONFIG_HOME = os.environ.get("XDG_CONFIG_HOME") or os.path.join(HOME, ".config")
+STATE_HOME = os.environ.get("XDG_STATE_HOME") or os.path.join(HOME, ".local/state")
+
+SECRET_KEY_RE = re.compile(r"(token|secret|password|passwd|apikey|api_key|cookie|credential|private)", re.I)
+
+
+def run_lines(cmd):
+    if not shutil.which(cmd[0]):
+        return []
+    try:
+        r = subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=15)
+        if r.returncode != 0:
+            return []
+        return sorted({line.strip() for line in r.stdout.splitlines() if line.strip()})
+    except (OSError, subprocess.TimeoutExpired):
+        return []
+
+
+def redact(obj):
+    if isinstance(obj, dict):
+        out = {}
+        for k, v in obj.items():
+            if SECRET_KEY_RE.search(str(k)):
+                continue
+            out[k] = redact(v)
+        return out
+    if isinstance(obj, list):
+        return [redact(x) for x in obj]
+    return obj
+
+
+def load_json(path, default):
+    try:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return default
+
+
+def kuwai_version():
+    vf = os.path.join(ROOT, "VERSION")
+    try:
+        return open(vf, encoding="utf-8").read().strip()
+    except OSError:
+        return "0.2.0"
+
+
+def collect_manifest():
+    foreign = run_lines(["pacman", "-Qqm"])
+    foreign_set = set(foreign)
+    explicit = run_lines(["pacman", "-Qqe"])
+    repo = sorted(p for p in explicit if p not in foreign_set)
+    flatpaks = run_lines(["flatpak", "list", "--app", "--columns=application"])
+
+    units = []
+    if shutil.which("systemctl"):
+        raw_units = run_lines(["systemctl", "--user", "list-unit-files", "kuwai-*", "--state=enabled", "--no-legend"])
+        units = sorted({u.split()[0] for u in raw_units if u.split()})
+
+    settings_raw = load_json(os.path.join(CONFIG_HOME, "kuwai", "settings.json"), {})
+    look_raw = load_json(os.path.join(STATE_HOME, "kuwai", "look", "state.json"), {})
+    return {
+        "schema": 1,
+        "kuwaiVersion": kuwai_version(),
+        "exportedAt": int(time.time()),
+        "packages": {"repo": repo, "foreign": foreign},
+        "flatpaks": flatpaks,
+        "units": units,
+        "settings": redact(settings_raw),
+        "look": {
+            "theme": look_raw.get("theme") or "",
+            "mode": look_raw.get("mode") or "dark",
+        },
+    }
+
+
+def diff_manifests(saved, current):
+    s_pkg = saved.get("packages") or {}
+    c_pkg = current.get("packages") or {}
+    s_set = saved.get("settings") or {}
+    c_set = current.get("settings") or {}
+    settings_diff = {}
+    for k in sorted(set(s_set) | set(c_set)):
+        if s_set.get(k) != c_set.get(k):
+            settings_diff[k] = {"saved": s_set.get(k), "current": c_set.get(k)}
+    s_look = saved.get("look") or {}
+    c_look = current.get("look") or {}
+    look_diff = {k: {"saved": s_look.get(k), "current": c_look.get(k)} for k in ("theme", "mode") if s_look.get(k) != c_look.get(k)}
+    return {
+        "missingRepo": sorted(set(s_pkg.get("repo") or []) - set(c_pkg.get("repo") or [])),
+        "missingForeign": sorted(set(s_pkg.get("foreign") or []) - set(c_pkg.get("foreign") or [])),
+        "missingFlatpaks": sorted(set(saved.get("flatpaks") or []) - set(current.get("flatpaks") or [])),
+        "missingUnits": sorted(set(saved.get("units") or []) - set(current.get("units") or [])),
+        "settingsDiff": settings_diff,
+        "lookDiff": look_diff,
+    }
+
+
+def main(argv):
+    if not argv or argv[0] in ("-h", "--help"):
+        print(__doc__.strip())
+        return 0
+    cmd = argv[0]
+    if cmd == "export" and len(argv) in (1, 2):
+        data = collect_manifest()
+        text = json.dumps(data, indent=2) + "\n"
+        if len(argv) == 2:
+            dest = argv[1]
+            parent = os.path.dirname(os.path.abspath(dest))
+            os.makedirs(parent, exist_ok=True)
+            tmp = dest + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as f:
+                f.write(text)
+            os.replace(tmp, dest)
+            print(json.dumps({"ok": True, "path": dest}))
+        else:
+            sys.stdout.write(text)
+        return 0
+    if cmd == "diff" and len(argv) == 2:
+        saved = load_json(argv[1], None)
+        if not isinstance(saved, dict):
+            raise SystemExit(f"kuwai-profile: cannot read manifest: {argv[1]}")
+        current = collect_manifest()
+        print(json.dumps(diff_manifests(saved, current), indent=2))
+        return 0
+    print(__doc__.strip(), file=sys.stderr)
+    return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

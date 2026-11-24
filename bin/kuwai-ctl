@@ -20,6 +20,12 @@ Control the running kuwai.
   kuwai timer 10m [label]    a timer in the island (cancel · list)
   kuwai pomodoro             start/stop 25/5 focus cycles
   kuwai remind in 20m tea    a reminder ("at 5 call mum", "tomorrow 9am x"; list · clear)
+  kuwai look <cmd>           standalone wallpaper & palette engine (bin/kuwai-look)
+  kuwai webapp <cmd>         install/remove/list standalone web apps (bin/kuwai-webapp)
+  kuwai export [file]        export or diff a portable machine manifest (bin/kuwai-profile)
+  kuwai promote              validate dev HEAD and fast-forward stable (with auto-rollback)
+  kuwai rollback             revert stable to the previous promoted commit (stable-prev)
+  kuwai update-self          fetch origin into stable, validate, migrate, and restart
 KUWAI_USAGE
 }
 
@@ -220,6 +226,7 @@ case ${1:-} in
             exit 1
         fi
         prev=$(git -C "$STABLE" rev-parse HEAD)
+        git -C "$STABLE" branch -f stable-prev "$prev" 2>/dev/null || true
         git -C "$STABLE" merge --ff-only --quiet "$head" || { echo "kuwai: stable can't fast-forward to $(git -C "$dev" log --oneline -1)" >&2; exit 1; }
         echo "stable is now $(git -C "$STABLE" log --oneline -1)"
         if ! "$STABLE/bin/kuwai-migrations"; then
@@ -253,6 +260,64 @@ case ${1:-} in
             fi
         fi ;;
     check)         shift; exec "$KUWAI/bin/kuwai-check" "$@" ;;
+    rollback)
+        [ -e "$STABLE/.git" ] || { echo "kuwai: no stable copy at $STABLE" >&2; exit 1; }
+        target=$(git -C "$STABLE" rev-parse --verify refs/heads/stable-prev 2>/dev/null) || { echo "kuwai: no stable-prev rollback target recorded yet" >&2; exit 1; }
+        dirty=$(git -C "$STABLE" status --porcelain 2>/dev/null)
+        [ -z "$dirty" ] || { echo "kuwai: stable has uncommitted changes; refusing rollback" >&2; exit 1; }
+        cur=$(git -C "$STABLE" rev-parse HEAD)
+        [ "$cur" != "$target" ] || { echo "kuwai: stable is already at stable-prev ($target)"; exit 0; }
+        git -C "$STABLE" reset --hard --quiet "$target"
+        git -C "$STABLE" branch -f stable-prev "$cur" 2>/dev/null || true
+        echo "stable rolled back to $(git -C "$STABLE" log --oneline -1)"
+        if [ "$(cat "$STATE_DIR/channel" 2>/dev/null)" = stable ]; then
+            switch_to "$STABLE"
+        fi ;;
+    update-self)
+        [ -e "$STABLE/.git" ] || { echo "kuwai: no stable copy at $STABLE" >&2; exit 1; }
+        dirty=$(git -C "$STABLE" status --porcelain 2>/dev/null)
+        [ -z "$dirty" ] || { echo "kuwai: stable has uncommitted changes; refusing update-self" >&2; exit 1; }
+        git -C "$STABLE" remote get-url origin >/dev/null 2>&1 || { echo "kuwai: no origin remote configured in $STABLE" >&2; exit 1; }
+        git -C "$STABLE" fetch --quiet origin || { echo "kuwai: git fetch origin failed" >&2; exit 1; }
+        ref=""
+        for cand in origin/stable origin/main origin/master; do
+            if git -C "$STABLE" rev-parse --verify "$cand" >/dev/null 2>&1; then ref="$cand"; break; fi
+        done
+        [ -n "$ref" ] || { echo "kuwai: no origin/stable or origin/main branch found" >&2; exit 1; }
+        prev=$(git -C "$STABLE" rev-parse HEAD)
+        target=$(git -C "$STABLE" rev-parse "$ref")
+        if [ "$prev" = "$target" ]; then
+            echo "kuwai: already up to date ($(git -C "$STABLE" log --oneline -1))"
+            exit 0
+        fi
+        if command -v luac >/dev/null; then
+            for f in $(git -C "$STABLE" ls-tree -r --name-only "$target" -- hypr | grep '\.lua$'); do
+                git -C "$STABLE" show "$target:$f" | luac -p - >/dev/null || { echo "kuwai: upstream Lua failed syntax check ($f); staying on $prev" >&2; exit 1; }
+            done
+        fi
+        "$STABLE/bin/kuwai-loadtest" "$target" || { echo "kuwai: upstream shell failed loadtest; staying on $prev" >&2; exit 1; }
+        "$STABLE/bin/kuwai-loadtest" "$target" greeter.qml || { echo "kuwai: upstream greeter failed loadtest; staying on $prev" >&2; exit 1; }
+        git -C "$STABLE" branch -f stable-prev "$prev" 2>/dev/null || true
+        git -C "$STABLE" merge --ff-only --quiet "$target" || { echo "kuwai: cannot fast-forward stable to $ref" >&2; exit 1; }
+        if ! "$STABLE/bin/kuwai-migrations"; then
+            git -C "$STABLE" reset --hard --quiet "$prev"
+            echo "kuwai: migration failed; rolled back to $prev" >&2
+            exit 1
+        fi
+        git -C "$STABLE" diff --quiet "$prev" HEAD -- systemd || systemctl --user daemon-reload 2>/dev/null
+        echo "kuwai: updated stable to $(git -C "$STABLE" log --oneline -1)"
+        if [ "$(cat "$STATE_DIR/channel" 2>/dev/null)" = stable ]; then
+            if ! ( switch_to "$STABLE" ); then
+                git -C "$STABLE" reset --hard --quiet "$prev"
+                ( switch_to "$STABLE" ) || true
+                echo "kuwai: new shell failed to start; rolled back to $prev" >&2
+                exit 1
+            fi
+        fi ;;
+    look)          shift; exec "$KUWAI/bin/kuwai-look" "$@" ;;
+    webapp)        shift; exec "$KUWAI/bin/kuwai-webapp" "$@" ;;
+    export)        shift; exec "$KUWAI/bin/kuwai-profile" export "$@" ;;
+    profile)       shift; exec "$KUWAI/bin/kuwai-profile" "$@" ;;
     migrations)    shift; exec "$KUWAI/bin/kuwai-migrations" "$@" ;;
     doctor)        shift; exec "$KUWAI/bin/kuwai-doctor" "$@" ;;
     start|restart) exec "$KUWAI/bin/kuwai-shell" ;;

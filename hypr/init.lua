@@ -2,7 +2,7 @@ local K = require("kuwai.core")
 
 _G.kuwai = _G.kuwai or {}
 kuwai.K = K
-kuwai.version = "0.1.0"
+kuwai.version = (K.read_line(K.root .. "/VERSION") or "0.2.0"):gsub("%s+$", "")
 kuwai.loaded_at = os.time()
 
 K.F = K.load("kuwai.features")
