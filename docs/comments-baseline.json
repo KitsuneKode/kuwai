@@ -1,5 +1,5 @@
 {
-  "total_comment_lines": 7869,
+  "total_comment_lines": 7868,
   "files_with_comments": 307,
   "files": {
     "shell/components/ActionMenu.qml": 23,
@@ -99,7 +99,7 @@
     "shell/modules/clipboard/QuickLook.qml": 29,
     "shell/modules/clipboard/RecordSetup.qml": 15,
     "shell/modules/island/AgentStack.qml": 12,
-    "shell/modules/island/AgentsPanel.qml": 59,
+    "shell/modules/island/AgentsPanel.qml": 58,
     "shell/modules/island/AlarmCard.qml": 33,
     "shell/modules/island/AlertBanner.qml": 6,
     "shell/modules/island/BluetoothPanel.qml": 18,

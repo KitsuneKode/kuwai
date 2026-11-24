@@ -211,8 +211,17 @@ FocusScope {
         return ({ needs: "Needs you", working: "Working", error: "Error", limited: "Hit a limit", done: "Done", idle: "Idle", recent: "Closed · reopen" })[s] || "";
     }
     function tone(s) {
-        return s === "needs" || s === "limited" ? Theme.orange : s === "error" ? Theme.red : s === "done" ? Theme.green : s === "working" ? Theme.cyan : Theme.textTertiary;
+        return s === "needs" ? Theme.orange : s === "error" || s === "limited" ? Theme.red : s === "done" ? Theme.green : s === "working" ? Theme.cyan : Theme.textTertiary;
     }
+    function brandOf(agent) { return Theme.brandTint[String(Kittymux.brand(agent)).replace(/^.*\//, "").replace(/\.svg$/, "")] || Theme.accent; }
+    function pillText(r) {
+        const age = ago(r.t);
+        if (r.state === "done") return "Done" + (age && age !== "now" ? " " + age : "");
+        if (r.state === "working") return "Working";
+        if (r.state === "idle") return age || "Idle";
+        return r.word || word(r.state);
+    }
+    function dotOf(r) { return r.state === "working" ? brandOf(r.agent) : tone(r.state); }
 
     Keys.onPressed: e => {
         if ([Qt.Key_Down, Qt.Key_Up, Qt.Key_Return, Qt.Key_Enter].indexOf(e.key) >= 0) keyboard = true;
@@ -281,10 +290,10 @@ FocusScope {
             width: parent.width
             height: Math.min(contentHeight, 420)
             clip: true
-            spacing: 2
+            spacing: Theme.s2
             boundsBehavior: Flickable.StopAtBounds
             model: ScriptModel { values: ap.rows; objectProp: "key" }
-            section.property: "section"
+            section.property: ""
             section.criteria: ViewSection.FullString
             section.delegate: Item {
                 required property string section
@@ -327,7 +336,7 @@ FocusScope {
             // under the pointer on the fast spring, and is the keyboard's ring.
             FluidHighlight {
                 parent: list.contentItem
-                radius: Theme.r2
+                radius: Theme.r3
                 target: ap.keyboard ? list.itemAtIndex(ap.sel) : ap.hoverRow
                 ring: ap.keyboard
             }
@@ -337,9 +346,17 @@ FocusScope {
                 required property int index
                 readonly property bool needs: modelData.state === "needs"
                 width: list.width
-                height: lrow.implicitHeight
-                radius: Theme.r2
-                color: "transparent"              // the list's one highlight lights it
+                height: lrow.implicitHeight + Theme.s2 * 2
+                radius: Theme.r3
+                color: Theme.card
+                border.width: 1
+                border.color: Theme.cardEdge
+                AmbientGlow {
+                    visible: row.modelData.state === "working"
+                    tint: ap.brandOf(row.modelData.agent)
+                    radius: Theme.r3
+                    breathing: true
+                }
                 // Swipe away sideways (or ×, or ⌫ on the selected row): it slides
                 // out, then goes; the rest close the gap.
                 readonly property bool dismissable: ap.canDismiss(modelData)
@@ -380,10 +397,11 @@ FocusScope {
                 // and what it asks under it.
                 ListRow {
                     id: lrow
+                    y: Theme.s2
                     width: parent.width
                     lead: Item {
                         anchors.fill: parent
-                        Rectangle { anchors.fill: parent; radius: 9; color: Theme.wash(1) }
+                        Rectangle { anchors.fill: parent; radius: Theme.r1; color: Qt.alpha(ap.brandOf(row.modelData.agent), 0.16); border.width: 1; border.color: Theme.edge(0) }
                         Image {
                             id: mark
                             anchors.centerIn: parent
@@ -399,23 +417,14 @@ FocusScope {
                             font.family: Theme.fontGlyph; font.pixelSize: 15
                             color: Theme.textSecondary
                         }
-                        Rectangle {
-                            visible: row.modelData.state !== "idle"
-                            x: parent.width - 7; y: -2
-                            width: 9; height: 9; radius: 4.5
-                            color: ap.tone(row.modelData.state)
-                            border.width: 2; border.color: Theme.cutout
-                        }
                     }
                     title: row.modelData.title
-                    stateText: ap.ago(row.modelData.t)
+                    trail: StatusPill { text: ap.pillText(row.modelData); dot: ap.dotOf(row.modelData) }
                     // The × takes its place on hover (a removable row).
-                    stateOpacity: row.dismissable && rowHover.hovered ? 0 : 1
+                    trailOpacity: row.dismissable && rowHover.hovered ? 0 : 1
                     subFormat: Text.StyledText
-                    sub: "<font color='" + ap.tone(row.modelData.state) + "'>"
-                        + (Agents.stateGlyph(row.modelData.stateKey) ? "<font face='" + Theme.fontGlyph + "'>" + Agents.stateGlyph(row.modelData.stateKey) + "</font> " : "")
-                        + (row.modelData.word || ap.word(row.modelData.state)) + "</font>"
-                        + [row.modelData.where, row.modelData.model].filter(x => x).map(x => " · " + ap.esc(x)).join("")
+                    sub: [Kittymux.agentLabel(row.modelData.agent), row.modelData.src === "t3" ? "T3" : "", row.modelData.where, row.modelData.model]
+                        .filter(x => x).map(x => ap.esc(x)).join(" · ")
                         + (ap.fill(row.modelData) ? " · " + ap.fill(row.modelData) : "")
                     subColor: Theme.textSecondary
                     Label {
