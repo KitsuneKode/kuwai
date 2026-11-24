@@ -91,7 +91,7 @@ FocusScope {
             onStreamFinished: { try { const v = JSON.parse(text); if (JSON.stringify(v) !== JSON.stringify(ap.ports)) ap.ports = v; } catch (e) {} }
         }
     }
-    Timer { interval: Theme.panelPollMs; repeat: true; running: ap.visible; triggeredOnStart: true; onTriggered: if (!portsProc.running) portsProc.running = true }
+    Timer { interval: Theme.panelPollMs; repeat: true; running: ap.visible && Settings.agentServers; triggeredOnStart: true; onTriggered: if (!portsProc.running) portsProc.running = true }
 
     // "claude-opus-5-5" → "Opus 5.5", "grok-4.7" → "Grok 4.7", "gpt-6.1-sol" → "GPT-6.1 Sol".
     function modelName(m) {
@@ -405,7 +405,7 @@ FocusScope {
                     border.width: 1
                     border.color: Theme.cardEdge
                     AmbientGlow {
-                        visible: row.modelData.state === "working"
+                        visible: row.modelData.state === "working" && Settings.agentGlow
                         tint: ap.brandOf(row.modelData.agent)
                         radius: Theme.r3
                         breathing: true
@@ -662,7 +662,7 @@ FocusScope {
 
         Rectangle {
             id: portsCard
-            visible: ap.ports.length > 0
+            visible: ap.ports.length > 0 && Settings.agentServers
             width: parent.width
             height: portsCol.implicitHeight + Theme.s2 * 2
             radius: Theme.r3

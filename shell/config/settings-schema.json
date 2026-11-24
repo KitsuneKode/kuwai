@@ -724,6 +724,42 @@
       "restartScope": "live"
     },
     {
+      "key": "awayRecap",
+      "type": "boolean",
+      "default": true,
+      "section": "bar",
+      "label": "While you were away",
+      "detail": "Back from the screensaver or the lock after two minutes: one line in the notch with what needs you, what finished and important alerts",
+      "group": "",
+      "searchTerms": "while you were away recap summary missed screensaver lock return welcome back",
+      "requires": [],
+      "restartScope": "live"
+    },
+    {
+      "key": "agentGlow",
+      "type": "boolean",
+      "default": true,
+      "section": "bar",
+      "label": "Glow on working agents",
+      "detail": "A working agent's card in the Agents panel glows softly in its colour",
+      "group": "",
+      "searchTerms": "glow working agents card colour light ambient",
+      "requires": [],
+      "restartScope": "live"
+    },
+    {
+      "key": "agentServers",
+      "type": "boolean",
+      "default": true,
+      "section": "bar",
+      "label": "Local servers in Agents",
+      "detail": "The Agents panel lists the dev servers your projects are running, with Open",
+      "group": "",
+      "searchTerms": "local servers ports dev server localhost open agents",
+      "requires": [],
+      "restartScope": "live"
+    },
+    {
       "key": "breakReminders",
       "type": "boolean",
       "default": true,

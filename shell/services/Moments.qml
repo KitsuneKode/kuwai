@@ -352,7 +352,7 @@ Singleton {
         return { waiting: waiting, done: kittyDone + t3Done, alerts: alerts };
     }
     function recap(since) {
-        if (Notifs.dnd || Notifs.sharing || Date.now() - since < 120000) return false;
+        if (!Settings.awayRecap || Notifs.dnd || Notifs.sharing || Date.now() - since < 120000) return false;
         const s = MomentsLogic.awaySummary(awayCounts(since));
         if (!s) return false;
         const open = scr => s.opens === "agents" ? Island.open("agents", scr || "", "pointer", "island") : Notifs.toggleCenter("notifications", "pointer", scr || "");
