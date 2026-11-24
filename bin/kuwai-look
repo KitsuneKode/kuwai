@@ -42,7 +42,8 @@ PALETTE_CACHE = os.path.join(CACHE_HOME, "kuwai", "palettes")
 CUSTOM_TEMPLATES = os.path.join(CONFIG_HOME, "kuwai", "custom", "templates")
 CUSTOM_HOOKS = os.path.join(CONFIG_HOME, "kuwai", "custom", "hooks", "look-changed.d")
 USER_THEMES = os.path.join(DATA_HOME, "kuwai-data", "themes")
-RUNTIME_DIR = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "kuwai")
+_XDG_RT = os.environ.get("XDG_RUNTIME_DIR")
+RUNTIME_DIR = os.path.join(_XDG_RT, "kuwai") if _XDG_RT and os.access(_XDG_RT, os.W_OK) else KUWAI_STATE
 LOCK_PATH = os.path.join(RUNTIME_DIR, "look.lock")
 
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".avif", ".bmp"}

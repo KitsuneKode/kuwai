@@ -190,3 +190,11 @@ def test_home_app_include_configs_are_portable():
     ):
         text = (ROOT / rel).read_text()
         assert "kitsunekode" not in text and "hyde" not in text.lower()
+
+
+def test_lock_falls_back_to_user_state_when_runtime_dir_unset(tmp_path):
+    env = look_env(tmp_path)
+    env.pop("XDG_RUNTIME_DIR", None)
+    r = run_look(env, "init", "--no-apply")
+    assert r.returncode == 0, r.stderr
+    assert (tmp_path / "state/kuwai/look.lock").is_file()
