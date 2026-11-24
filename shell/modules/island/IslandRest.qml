@@ -901,11 +901,9 @@ Item {
             const down = d > 28 || v > Theme.swipeFlick, up = d < -22 || v < -Theme.swipeFlick;
             if (m && down) { Moments.dismissNow(); if (m.list) m.list(rest.bar.screenName); }
             else if (m && up) { if (m.dismiss) m.dismiss(); Moments.dismissNow(); }
-            // Nothing to act on: the island itself opens into its notifications
-            // panel, from where you pulled (one container growing, not the
-            // center sliding in at the screen's edge).
-            else if (!m && down && Island.panel !== "notifs")
-                Island.open("notifs", rest.bar.screenName, "pointer", "island");
+            // Nothing to act on: the notification center (one place for them).
+            else if (!m && down && !Notifs.centerOpen)
+                Notifs.toggleCenter("notifications", "pointer", rest.bar.screenName);
             pull.velocity = v * 1000;
             pull.target = 0;
         }

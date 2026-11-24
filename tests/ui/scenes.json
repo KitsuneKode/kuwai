@@ -400,18 +400,6 @@
    ]
   },
   {
-   "id": "notifs/new-machine",
-   "name": "notifs",
-   "panel": "NotifsPanel",
-   "set": [
-    [
-     "Notifs",
-     "items",
-     []
-    ]
-   ]
-  },
-  {
    "id": "updates/new-machine",
    "name": "updates",
    "panel": "UpdatesPanel"
@@ -3648,42 +3636,6 @@
        "at": "@now-23800iso"
       }
      ]
-    ]
-   ]
-  },
-  {
-   "id": "notifs/inbox",
-   "name": "notifs",
-   "panel": "NotifsPanel",
-   "kind": "worst",
-   "set": [
-    [
-     "Notifs",
-     "lastSeen",
-     "@now-3000000ms"
-    ],
-    [
-     "Notifs",
-     "shareKnown",
-     true
-    ]
-   ]
-  },
-  {
-   "id": "notifs/sharing",
-   "name": "notifs",
-   "panel": "NotifsPanel",
-   "kind": "worst",
-   "set": [
-    [
-     "Notifs",
-     "lastSeen",
-     "@now-3000000ms"
-    ],
-    [
-     "Notifs",
-     "shareKnown",
-     false
     ]
    ]
   },

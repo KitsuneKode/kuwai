@@ -22,7 +22,7 @@ Singleton {
     // Every panel the island opens, by name, with what it is called: the one
     // list (its name for a screen reader, the Back row's "‹ Calendar").
     // IslandBar maps each name to its component (tests/shell/island-panels.test.mjs).
-    readonly property var titles: ({ activities: "More activities", calendar: "Calendar", power: "Power", launcher: "Search", settings: "Settings", system: "System", theme: "Themes", keys: "Shortcuts", switcher: "Windows", updates: "Software Update", media: "Now Playing", t3: "T3 Code", agents: "Agents", notifs: "Notifications", bluetooth: "Bluetooth", sweep: "Idle Projects", usage: "Usage", read: "Read", cleanup: "Cleanup" })
+    readonly property var titles: ({ activities: "More activities", calendar: "Calendar", power: "Power", launcher: "Search", settings: "Settings", system: "System", theme: "Themes", keys: "Shortcuts", switcher: "Windows", updates: "Software Update", media: "Now Playing", t3: "T3 Code", agents: "Agents", bluetooth: "Bluetooth", sweep: "Idle Projects", usage: "Usage", read: "Read", cleanup: "Cleanup" })
     readonly property var panels: Object.keys(titles)
     function titleOf(name) { return titles[name] || ""; }
     // Old names that still open their panel: "vitals" (machine + agents'
@@ -160,6 +160,7 @@ Singleton {
     // `from` "island": opened from the island itself (its clock, rings…);
     // going back returns to it, expanded while the pointer is still there.
     function open(name, screenName, how, from) {
+        if (name === "notifs") { Notifs.toggleCenter("notifications", how || "key", screenName || ""); return; }
         name = canon(name);
         if (panels.indexOf(name) < 0) return;
         // From a key (no screen given): ask Hyprland where you are first.

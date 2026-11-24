@@ -829,8 +829,8 @@ Item {
                 badgeTone: Notifs.bellBadgeTone
                 tip: Notifs.bellTip
                 onTapped: Notifs.toggleCenter("notifications", "pointer", hover.bar.screenName)
-                // Right-click / hold: the island grows into the list (NotifsPanel).
-                onQuickPressed: Island.open("notifs", hover.bar.screenName, "pointer", "island")
+                // Right-click / hold: Do Not Disturb on or off.
+                onQuickPressed: Notifs.toggleUserDnd()
             }
             HoverHandler { id: bellHover; cursorShape: Qt.PointingHandCursor }
         }

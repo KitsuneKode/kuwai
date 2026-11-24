@@ -159,12 +159,14 @@ Item {
                 glance.bar.full = true;
             } else {
                 // What's playing or waiting is its own door too: Now Playing,
-                // or the notifications list (C there opens the center).
+                // or the notification center.
                 const r = right.mapFromItem(glance, eventPoint.position.x, eventPoint.position.y);
                 if (r.x >= -6 && r.x <= right.width + 6 && r.y >= -8 && r.y <= right.height + 8 && glance.waiting)
                     glance.bar.goWaiting();
+                else if (r.x >= -6 && r.x <= right.width + 6 && r.y >= -8 && r.y <= right.height + 8 && glance.playing)
+                    Island.open("media", glance.bar.screenName, "pointer", "island");
                 else if (r.x >= -6 && r.x <= right.width + 6 && r.y >= -8 && r.y <= right.height + 8)
-                    Island.open(glance.playing ? "media" : "notifs", glance.bar.screenName, "pointer", "island");
+                    Notifs.toggleCenter("notifications", "pointer", glance.bar.screenName);
                 else glance.bar.full = true;
             }
         }

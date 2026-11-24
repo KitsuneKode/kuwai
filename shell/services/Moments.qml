@@ -82,8 +82,7 @@ Singleton {
     onHeldChanged: if (!held && now) { hide.interval = Math.min(hide.interval, 2000); hide.restart(); }
     Timer { id: hide; onTriggered: { if (root.held) { restart(); return; } root.now = null; if (root.queue.length) gap.start(); } }
     // Pulled down: the notch opens into its list of recent important ones
-    // (NotifsPanel: what needs you first; its button leads to the center).
-    function openRecent(screen) { Island.open("notifs", screen || "", "pointer", "island"); }
+    function openRecent(screen) { Notifs.toggleCenter("notifications", "pointer", screen || ""); }
     // A T3 thread that waited is answered: its sticky moment goes.
     Connections {
         target: T3Code
