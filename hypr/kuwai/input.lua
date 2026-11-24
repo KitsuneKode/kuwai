@@ -85,6 +85,7 @@ K.config({
 		zoom_rigid = false,
 		zoom_disable_aa = true,
 		hotspot_padding = 1,
+		warp_on_toggle_special = 1,
 	},
 })
 

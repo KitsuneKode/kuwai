@@ -70,6 +70,7 @@ function M.apply()
 
 	anim("zoomFactor", 3, "kuwaiOut")
 	anim("monitorAdded", 2.5, "kuwaiOut")
+	anim("fadeDpms", 2.5, "kuwaiOut")
 end
 
 function M.reduce()

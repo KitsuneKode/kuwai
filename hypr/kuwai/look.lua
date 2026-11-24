@@ -83,6 +83,7 @@ K.config({
 		auto_group = false,
 		groupbar = {
 			enabled = true,
+			disable_when_only = true,
 			font_family = UI_FONT,
 			font_size = 11,
 			font_weight_active = "semibold",
