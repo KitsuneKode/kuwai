@@ -19,7 +19,7 @@ Singleton {
     id: root
 
     readonly property string runtime: Quickshell.env("XDG_RUNTIME_DIR") || "/tmp"
-    readonly property string scripts: Quickshell.env("HOME") + "/Scripts"
+    readonly property string scripts: Quickshell.env("HOME") + "/.local/share/shuush/libexec"
 
     // ── voxtype ──────────────────────────────────────────────────────────
     // idle | recording | streaming | transcribing | review …
