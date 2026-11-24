@@ -99,8 +99,9 @@ Item {
     }
 
     readonly property var agentsHead: Agents.head
-    readonly property bool agentsWord: agentsHead.word !== ""
-    readonly property bool agentsLive: agentStack.list.length > 0 || agentsHead.tone !== ""
+    readonly property bool asking: agentsHead.tone === "attention"
+    readonly property bool agentsWord: agentsHead.tone === "error"
+    readonly property bool agentsLive: agentStack.list.length > 0 || agentsHead.tone === "error" || agentsHead.done > 0
     readonly property bool sysLive: sysMarks.any
     readonly property var limitsPartition: Limits.partitionWith(Agents.extraLimited)
     readonly property var limitsNow: Settings.limitAlerts ? Limits.summarize(limitsPartition) : Limits.summarize(null)
@@ -111,12 +112,15 @@ Item {
     // A capsule folds only after its work has been gone a few seconds, and
     // shows its last value meanwhile.
     onAgentsLiveChanged: if (!agentsLive) agentsLinger.restart()
+    onAskingChanged: if (!asking) askLinger.restart()
+    Timer { id: askLinger; interval: 1500 }
     onSysLiveChanged: if (!sysLive) sysLinger.restart()
     onLimitsLiveChanged: if (!limitsLive) limitsLinger.restart()
     Timer { id: agentsLinger; interval: 3000 }
     Timer { id: sysLinger; interval: 2000 }
     Timer { id: limitsLinger; interval: 2000 }
     readonly property var demand: ({
+        ask: on && (asking || askLinger.running),
         music: on && musicLive,
         min: on && minimized.length > 0,
         agents: on && (agentsLive || agentsLinger.running),
@@ -127,7 +131,7 @@ Item {
     // ── Who sits where ──
     // Fixed lanes, nearest the notch first: left is what you run, right is
     // what the system tells you. A lane never depends on what came first.
-    readonly property var order: ["music", "agents", "sys", "limits", "min"]
+    readonly property var order: ["ask", "music", "agents", "sys", "limits", "min"]
     // Windows tucked away with Super+O (special:minimized): a capsule of their
     // icons, each one a way back. Without it they were nowhere to be seen.
     property var minimized: Hyprland.toplevels.values.filter(t => t.workspace && t.workspace.name === "special:minimized")
@@ -141,8 +145,8 @@ Item {
         Hyprland.dispatch("hl.dsp.window.move({ window = " + JSON.stringify("address:" + address) + ", workspace = " + ws + " })");
         Hyprland.dispatch("hl.dsp.focus({ window = " + JSON.stringify("address:" + address) + " })");
     }
-    readonly property var sideOf: ({ music: -1, agents: -1, min: -1, sys: 1, limits: 1 })
-    function pillOf(k) { return ({ music: musicPill, agents: agentsPill, sys: sysPill, limits: limitsPill, min: minPill, more: morePill })[k]; }
+    readonly property var sideOf: ({ ask: -1, music: -1, agents: -1, min: -1, sys: 1, limits: 1 })
+    function pillOf(k) { return ({ ask: askPill, music: musicPill, agents: agentsPill, sys: sysPill, limits: limitsPill, min: minPill, more: morePill })[k]; }
 
     // Reserve one slot for More when there are too many activities. Urgent
     // items take the available direct slots first, then keep their usual sides
@@ -166,7 +170,8 @@ Item {
     readonly property var priorityKeys: {
         const urgent = [];
         if (Alerts.active.length) urgent.push("sys");
-        if (agentsErr.length || agentsNeed || agentsHead.tone === "attention" || agentsHead.tone === "error") urgent.push("agents");
+        if (asking) urgent.push("ask");
+        if (agentsErr.length || agentsHead.tone === "error") urgent.push("agents");
         return urgent.filter(k => demand[k]).concat(activeKeys.filter(k => !urgent.includes(k)));
     }
     readonly property real leftRoom: Math.max(0, leftEdge - Theme.s2)
@@ -208,7 +213,7 @@ Item {
             const count = arrangement.overflow.length;
             return count === 1 ? "1 more activity" : count + " more activities";
         }
-        return ({music: "Now Playing", agents: "Agents", sys: "System status", limits: "Usage limits", min: "Restore minimized window"})[k] || k;
+        return ({ask: "Needs you", music: "Now Playing", agents: "Agents", sys: "System status", limits: "Usage limits", min: "Restore minimized window"})[k] || k;
     }
     property var overflowSelection: []
     function openOverflow(how) {
@@ -217,7 +222,7 @@ Item {
     }
     function glyphFor(k) {
         if (k === "sys" && Alerts.active.length) return Alerts.active[0].glyph;
-        return ({music: "\u{f0387}", agents: "\u{f06a9}", sys: "\u{f06b0}", limits: "\u{f051f}", min: "\u{f05b6}"})[k] || "";
+        return ({ask: "\u{f0026}", music: "\u{f0387}", agents: "\u{f06a9}", sys: "\u{f06b0}", limits: "\u{f051f}", min: "\u{f05b6}"})[k] || "";
     }
     readonly property bool hovered: pills.some(p => p.enabled && p.hovered)
     Component.onCompleted: { t3FinishedWas = T3Code.finished; agentsDoneWas = agentsDone.length; if (limitsNow.items.length) limits = limitsNow; }
@@ -227,7 +232,7 @@ Item {
     readonly property bool agentsNeed: agentStack.list.some(a => a.needs) || Kittymux.running.some(r => r.needs) || Agents.desktop.some(d => d.state === "waiting" || d.state === "woke")
     readonly property bool agentsHold: agentsPill.shown
     // For the window's input mask (IslandBar): what's out takes clicks.
-    readonly property var pills: [musicPill, agentsPill, sysPill, limitsPill, minPill, morePill]
+    readonly property var pills: [askPill, musicPill, agentsPill, sysPill, limitsPill, minPill, morePill]
     // Is this point (in this item's coordinates) on a capsule, or within
     // `margin` of one? A capsule is its own target: the island does not take
     // a pointer that is on its way to one for a pointer reaching the island.
@@ -251,7 +256,7 @@ Item {
             if (name === "more") split.openOverflow(how);
             else if (panel) Island.open(panel, split.bar.screenName, how);
         }
-        function activate(how = "pointer") { if (panel) openPanel(how); else if (name === "min") split.bringBack(split.minimized[split.minimized.length - 1]); }
+        function activate(how = "pointer") { if (name === "ask") Agents.goNeeds(); else if (panel) openPanel(how); else if (name === "min") split.bringBack(split.minimized[split.minimized.length - 1]); }
         readonly property bool hovered: pillHover.hovered
         readonly property alias inputTarget: hitTarget
         property bool needs: false        // something here waits on you: an orange glass edge
@@ -546,16 +551,38 @@ Item {
     }
 
     Pill {
+        id: askPill
+        name: "ask"
+        panel: "agents"
+        needs: true
+        stateKey: split.agentsHead.key
+        tone: Theme.orange
+        attention: true
+        Row {
+            spacing: 6
+            AgentStack { id: askStack; bar: split.bar; withT3: true; withDesktop: true; only: "needs"; visible: list.length > 0; anchors.verticalCenter: parent.verticalCenter }
+            Badge {
+                glyph: split.agentsHead.glyph || "\u{f0026}"
+                text: split.asking ? split.agentsHead.word : ""
+                tint: Theme.orange
+                tip: (Agents.next ? Kittymux.agentLabel(Agents.next.agent) + " · " + Agents.next.title : "") + "\nClick: go there (Super+Ctrl+A) · right-click: every agent"
+                onClicked: Agents.goNeeds()
+                onAltClicked: askPill.openPanel()
+            }
+        }
+    }
+
+    Pill {
         id: agentsPill
         name: "agents"
         panel: "agents"
-        needs: split.agentsNeed || split.agentsHead.tone === "attention"
+        needs: false
         stateKey: [split.agentsHead.key, split.agentsHead.done > 0].join()
-        tone: ({ attention: Theme.orange, error: Theme.red, done: Theme.green })[split.agentsHead.tone] || "transparent"
-        attention: split.agentsHead.tone === "attention" || split.agentsHead.tone === "error"
+        tone: split.agentsHead.tone === "error" ? Theme.red : split.agentsHead.done > 0 && !agentStack.list.length ? Theme.green : "transparent"
+        attention: split.agentsHead.tone === "error"
         Row {
             spacing: 6
-            AgentStack { id: agentStack; bar: split.bar; withT3: true; withDesktop: true; visible: list.length > 0; anchors.verticalCenter: parent.verticalCenter }
+            AgentStack { id: agentStack; bar: split.bar; withT3: true; withDesktop: true; only: "work"; visible: list.length > 0; anchors.verticalCenter: parent.verticalCenter }
             Badge {
                 visible: split.agentsWord
                 glyph: split.agentsHead.glyph || ({ error: "\u{f0028}" })[split.agentsHead.tone] || ""
@@ -607,66 +634,42 @@ Item {
         tone: split.limitTint
         attention: false
         Row {
-            spacing: 8
-            Repeater {
-                model: split.limits.providers.slice(0, 3)
-                Row {
-                    id: mark
-                    required property var modelData
-                    required property int index
-                    readonly property bool ringed: index === 0 && split.limits.tone === "soon"
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: 2
-                    Item {
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: 20; height: 20
-                        StatRing {
-                            visible: mark.ringed
-                            anchors.fill: parent
-                            size: 20; stroke: 2
-                            value: split.limits.at > Limits.now ? Math.max(0, Math.min(1, (split.limits.at - Limits.now) / Limits.soonMs)) : 0
-                            color: split.limitTint
-                            text: ""; label: ""
-                        }
-                        Image {
-                            id: markImg
-                            anchors.centerIn: parent
-                            width: mark.ringed ? 10 : 13; height: width
-                            source: mark.modelData.brand || ""
-                            sourceSize: Qt.size(26, 26)
-                            asynchronous: true
-                        }
-                        Text {
-                            visible: markImg.status !== Image.Ready
-                            anchors.centerIn: parent
-                            textFormat: Text.PlainText
-                            text: "\u{f051f}"; font.family: Theme.fontGlyph; font.pixelSize: Theme.tFootnote
-                            color: split.limitTint
-                        }
-                    }
-                    Label {
-                        visible: mark.modelData.count > 1
-                        anchors.verticalCenter: parent.verticalCenter
-                        anchors.verticalCenterOffset: 1
-                        text: String(mark.modelData.count)
-                        size: Theme.tCaption; weight: Theme.wBold; rounded: true
-                        color: Theme.textSecondary
-                        font.features: ({ "tnum": 1 })
-                    }
-                }
-            }
-            Label {
-                visible: split.limits.providers.length > 3
+            spacing: 5
+            Item {
+                id: leadMark
+                readonly property var p: split.limits.providers[0] || null
+                readonly property bool ringed: split.limits.tone === "soon"
                 anchors.verticalCenter: parent.verticalCenter
-                text: "+" + (split.limits.providers.length - 3)
-                size: Theme.tFootnote; weight: Theme.wSemibold; rounded: true
-                color: Theme.textSecondary
+                width: 20; height: 20
+                StatRing {
+                    visible: leadMark.ringed
+                    anchors.fill: parent
+                    size: 20; stroke: 2
+                    value: split.limits.at > Limits.now ? Math.max(0, Math.min(1, (split.limits.at - Limits.now) / Limits.soonMs)) : 0
+                    color: split.limitTint
+                    text: ""; label: ""
+                }
+                Image {
+                    id: leadImg
+                    anchors.centerIn: parent
+                    width: leadMark.ringed ? 10 : 14; height: width
+                    source: leadMark.p ? leadMark.p.brand || "" : ""
+                    sourceSize: Qt.size(28, 28)
+                    asynchronous: true
+                }
+                Text {
+                    visible: leadImg.status !== Image.Ready
+                    anchors.centerIn: parent
+                    textFormat: Text.PlainText
+                    text: "\u{f051f}"; font.family: Theme.fontGlyph; font.pixelSize: Theme.tFootnote
+                    color: split.limitTint
+                }
             }
             Badge {
                 glyph: ""
                 text: split.limits.label
                 tint: split.limitTint
-                tip: (split.limits.tone === "soon" ? "Back soon" : "Limit reached") + "\n"
+                tip: (leadMark.p ? leadMark.p.name + " is back " + (split.limits.at > Limits.now ? "in " + Limits.compact(split.limits.at - Limits.now) : "when its limit resets") : "Limit reached") + "\n"
                     + split.limits.items.map(x => x.name + (x.account && x.account.toLowerCase() !== x.name.toLowerCase() ? " (" + x.account + ")" : "")
                         + (x.resetsAt > Limits.now ? " · back in " + Limits.compact(x.resetsAt - Limits.now) : " · out")).join("\n")
                     + "\nClick: Usage" + (split.agentsLim.length ? " · right-click: dismiss agent limits" : "")
@@ -679,6 +682,31 @@ Item {
                     if (split.agentsLim.length) split.agentsLim.forEach(r => Kittymux.quiet(r));
                     else Island.open("usage", split.bar.screenName, "pointer");
                 }
+            }
+            Rectangle {
+                visible: split.limits.providers.length > 1
+                anchors.verticalCenter: parent.verticalCenter
+                width: 1; height: 12
+                color: Theme.edge(1)
+            }
+            Repeater {
+                model: split.limits.providers.slice(1, 4)
+                Image {
+                    required property var modelData
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 11; height: 11
+                    source: modelData.brand || ""
+                    sourceSize: Qt.size(22, 22)
+                    asynchronous: true
+                    opacity: 0.55
+                }
+            }
+            Label {
+                visible: split.limits.providers.length > 4
+                anchors.verticalCenter: parent.verticalCenter
+                text: "+" + (split.limits.providers.length - 4)
+                size: Theme.tCaption; weight: Theme.wSemibold; rounded: true
+                color: Theme.textSecondary
             }
         }
     }

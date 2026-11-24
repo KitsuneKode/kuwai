@@ -15,7 +15,7 @@ ShellRoot {
     Window {
         id: scene
         visible: true
-        width: 520; height: 70
+        width: 900; height: 70
         color: Theme.glassSolid
         QtObject {
             id: fakeBar
@@ -34,10 +34,10 @@ ShellRoot {
         Rectangle { x: split.leftEdge; y: split.topY; width: 112; height: 34; radius: 17; color: Theme.cutout }
         TestCase { id: driver; name: "Pill"; when: false }
         readonly property var states: [
-            { id: "approval", running: 1, waiting: 1, items: [{ thread: "a", status: "waiting", ask: "approval", title: "Approve the plan" }, { thread: "b", status: "running", title: "x" }], pill: "agents", want: "Approval" },
-            { id: "questions", running: 0, waiting: 2, items: [{ thread: "a", status: "waiting", ask: "question", title: "q1" }, { thread: "b", status: "waiting", ask: "question", title: "q2" }], pill: "agents", want: "Question 2" },
+            { id: "approval", running: 1, waiting: 1, items: [{ thread: "a", status: "waiting", ask: "approval", title: "Approve the plan" }, { thread: "b", status: "running", title: "x" }], pill: "ask", want: "Approval" },
+            { id: "questions", running: 0, waiting: 2, items: [{ thread: "a", status: "waiting", ask: "question", title: "q1" }, { thread: "b", status: "waiting", ask: "question", title: "q2" }], pill: "ask", want: "Question 2" },
             { id: "limit", running: 0, waiting: 0, items: [{ thread: "a", status: "failed", limited: true, provider: "claudeAgent", title: "l" }], pill: "limits", want: "Out" },
-            { id: "many", running: 4, waiting: 1, items: [{ thread: "a", status: "waiting", ask: "approval", provider: "antigravity", title: "Approve the plan" }, { thread: "b", status: "running", provider: "claudeAgent", title: "x" }, { thread: "c", status: "running", provider: "claudeAgent", title: "y" }, { thread: "d", status: "running", provider: "claudeAgent", title: "z" }, { thread: "e", status: "running", provider: "codex", title: "w" }], pill: "agents", want: "Approval" },
+            { id: "many", running: 4, waiting: 1, items: [{ thread: "a", status: "waiting", ask: "approval", provider: "antigravity", title: "Approve the plan" }, { thread: "b", status: "running", provider: "claudeAgent", title: "x" }, { thread: "c", status: "running", provider: "claudeAgent", title: "y" }, { thread: "d", status: "running", provider: "claudeAgent", title: "z" }, { thread: "e", status: "running", provider: "codex", title: "w" }], pill: "ask", want: "Approval" },
             { id: "busy", running: 3, waiting: 0, items: [{ thread: "b", status: "running", provider: "claudeAgent", title: "x" }, { thread: "c", status: "running", provider: "claudeAgent", title: "y" }, { thread: "e", status: "running", provider: "codex", title: "w" }], pill: "agents", want: "" },
             { id: "limits-soon", running: 0, waiting: 0, items: [], pill: "limits", want: "15m", quota: [["antigravity", "Antigravity", ["Antigravity", 15], ["Antigravity-2", 25]]] },
             { id: "limits-later", running: 0, waiting: 0, items: [], pill: "limits", want: "1h", quota: [["claude", "Claude", ["Work", 90]], ["codex", "Codex", ["Personal", 200]]] },

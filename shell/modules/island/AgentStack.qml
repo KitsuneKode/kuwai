@@ -35,8 +35,10 @@ Item {
         .map(d => ({ agent: d.agent || "desktop", title: d.title || Kittymux.agentLabel(d.agent), where: "Desktop", src: "desktop",
                      status: d.state === "waiting" || d.state === "woke" ? "needs you" : "working",
                      needs: d.state === "waiting" || d.state === "woke", windowClass: d.window_class || "", desktop: d })) : []
-    readonly property var list: waiting.concat(waitingPanes, t3Rows.filter(a => a.needs), desktopRows.filter(a => a.needs),
-                                               tuiWorking, t3Rows.filter(a => !a.needs), desktopRows.filter(a => !a.needs))
+    property string only: ""
+    readonly property var all: waiting.concat(waitingPanes, t3Rows.filter(a => a.needs), desktopRows.filter(a => a.needs),
+                                              tuiWorking, t3Rows.filter(a => !a.needs), desktopRows.filter(a => !a.needs))
+    readonly property var list: only === "needs" ? all.filter(a => a.needs) : only === "work" ? all.filter(a => !a.needs) : all
     readonly property var groups: {
         const g = [];
         const sortNeeds = arr => arr.filter(a => a.needs).concat(arr.filter(a => !a.needs));
