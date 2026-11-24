@@ -145,9 +145,8 @@ Item {
     })
 
     // ── Who sits where ──
-    // Nearest the notch first. Music always left; the rest to the side with
-    // fewer out (a tie: the first of a pair left, the next right). A side,
-    // once given, holds until that capsule has folded away.
+    // Fixed lanes, nearest the notch first: left is what you run, right is
+    // what the system tells you. A lane never depends on what came first.
     readonly property var order: ["music", "agents", "sys", "limitReset", "limitOut", "min"]
     // Windows tucked away with Super+O (special:minimized): a capsule of their
     // icons, each one a way back. Without it they were nowhere to be seen.
@@ -162,27 +161,8 @@ Item {
         Hyprland.dispatch("hl.dsp.window.move({ window = " + JSON.stringify("address:" + address) + ", workspace = " + ws + " })");
         Hyprland.dispatch("hl.dsp.focus({ window = " + JSON.stringify("address:" + address) + " })");
     }
-    property var sideOf: ({})
-    onDemandChanged: assign()
+    readonly property var sideOf: ({ music: -1, agents: -1, min: -1, sys: 1, limitReset: 1, limitOut: 1 })
     function pillOf(k) { return ({ music: musicPill, agents: agentsPill, sys: sysPill, limitReset: limitResetPill, limitOut: limitOutPill, min: minPill, more: morePill })[k]; }
-    function assign() {
-        // Keep the last preferred side for a departing pill without feeding
-        // the animation back into the arrangement binding.
-        const next = Object.assign({}, sideOf);
-        let left = 0, right = 0;
-        for (const k of order) {
-            if (demand[k] && next[k]) next[k] < 0 ? left++ : right++;
-        }
-        for (const k of order) {
-            if (!demand[k] || next[k]) continue;
-            const s = (k === "music" || k === "agents") ? -1
-                : (k === "limitReset" || k === "limitOut") ? 1
-                : left <= right ? -1 : 1;
-            next[k] = s;
-            s < 0 ? left++ : right++;
-        }
-        sideOf = next;
-    }
 
     // Reserve one slot for More when there are too many activities. Urgent
     // items take the available direct slots first, then keep their usual sides
@@ -260,7 +240,7 @@ Item {
         return ({music: "\u{f0387}", agents: "\u{f06a9}", sys: "\u{f06b0}", limitReset: "\u{f0020}", limitOut: "\u{f051f}", min: "\u{f05b6}"})[k] || "";
     }
     readonly property bool hovered: pills.some(p => p.enabled && p.hovered)
-    Component.onCompleted: { t3FinishedWas = T3Code.finished; agentsDoneWas = agentsDone.length; assign(); }
+    Component.onCompleted: { t3FinishedWas = T3Code.finished; agentsDoneWas = agentsDone.length; }
 
     // What waits on you, by capsule: the light goes on what's asking
     // (IslandBar keeps its own rim for what's still in the island).
