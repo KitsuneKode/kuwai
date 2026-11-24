@@ -60,6 +60,18 @@ Scope {
     }
     GlobalShortcut {
         appid: "kuwai"
+        name: "bluetooth"
+        description: "Bluetooth: devices, connect, battery"
+        onPressed: Island.open("bluetooth", "", "key")
+    }
+    GlobalShortcut {
+        appid: "kuwai"
+        name: "wifi"
+        description: "Wi-Fi and the other controls"
+        onPressed: Notifs.toggleCenter("controls", "key")
+    }
+    GlobalShortcut {
+        appid: "kuwai"
         name: "dnd"
         description: "Do Not Disturb on/off"
         onPressed: Notifs.toggleUserDnd()
