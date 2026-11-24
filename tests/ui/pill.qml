@@ -36,7 +36,9 @@ ShellRoot {
         readonly property var states: [
             { id: "approval", running: 1, waiting: 1, items: [{ thread: "a", status: "waiting", ask: "approval", title: "Approve the plan" }, { thread: "b", status: "running", title: "x" }], pill: "agents", want: "Approval" },
             { id: "questions", running: 0, waiting: 2, items: [{ thread: "a", status: "waiting", ask: "question", title: "q1" }, { thread: "b", status: "waiting", ask: "question", title: "q2" }], pill: "agents", want: "Question 2" },
-            { id: "limit", running: 0, waiting: 0, items: [{ thread: "a", status: "failed", limited: true, provider: "claudeAgent", title: "l" }], pill: "limitOut", want: "Claude" },
+            { id: "limit", running: 0, waiting: 0, items: [{ thread: "a", status: "failed", limited: true, provider: "claudeAgent", title: "l" }], pill: "limits", want: "Out" },
+            { id: "limits-soon", running: 0, waiting: 0, items: [], pill: "limits", want: "15m", quota: [["antigravity", "Antigravity", ["Antigravity", 15], ["Antigravity-2", 25]]] },
+            { id: "limits-later", running: 0, waiting: 0, items: [], pill: "limits", want: "1h", quota: [["claude", "Claude", ["Work", 90]], ["codex", "Codex", ["Personal", 200]]] },
             { id: "working", running: 2, waiting: 0, items: [{ thread: "a", status: "running", title: "w" }, { thread: "b", status: "running", title: "w2" }, { thread: "c", status: "completed", title: "d" }], pill: "agents", want: "" }
         ]
         property int at: 0
@@ -49,6 +51,10 @@ ShellRoot {
             T3Code.alive = true;
             T3Code.running = s.running; T3Code.waiting = s.waiting;
             T3Code.rawItems = s.items; T3Code.rawFinished = s.items.filter(i => i.status === "completed").length;
+            const t0 = Limits.now;
+            Limits.providers = (s.quota || []).map(([driver, label, ...accounts]) => ({ driver: driver, label: label,
+                accounts: accounts.map(([name, mins]) => ({ key: driver + ":" + name, driver: driver, name: name,
+                    windows: [{ id: "session", kind: "session", label: "Session", used: 100, resetsAt: t0 + mins * 60000 - 1000, durationMins: 300 }] })) }));
             check.restart();
         }
         Timer {
@@ -58,7 +64,7 @@ ShellRoot {
                 const s = scene.states[scene.at];
                 const pill = split.pills.find(p => p.name === s.pill);
                 if (!pill || !pill.out) { scene.fail(s.id + ": the " + s.pill + " capsule isn't out"); return; }
-                if (s.pill === "limitOut" && pill.x < split.rightEdge) { scene.fail(s.id + ": limitOut must sit on the right"); return; }
+                if (s.pill === "limits" && pill.x < split.rightEdge) { scene.fail(s.id + ": limits must sit on the right"); return; }
                 if (s.want) {
                     const said = scene.find(pill, c => c.text !== undefined && String(c.text) === s.want && c.visible);
                     if (!said) { scene.fail(s.id + ": the capsule doesn't say \"" + s.want + "\""); return; }

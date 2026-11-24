@@ -117,52 +117,29 @@ export function partitionLimits(quotaExhausted, sessionLimited, now, soonMs) {
 }
 
 /**
- * Concise text label for a carousel slide.
- * When only one entry exists and a reset time is known, omit the brand name
- * because the brand icon already sits beside it; when cycling through multiple
- * entries (or when multiple accounts share a provider), include the name.
- *
- * @param {LimitEntry | null | undefined} entry
- * @param {number} total
+ * One capsule's worth: when you can carry on (the soonest known reset), whether
+ * that is within the soon window, and each provider once with how many of its
+ * accounts are out.
+ * @param {{ resettingSoon: LimitEntry[], exhaustedLater: LimitEntry[] }} part
  * @param {number} now
- * @param {boolean} isResetting
- * @returns {string}
+ * @returns {{ tone: string, label: string, at: number, providers: { id: string, brand: string, tint: string, name: string, count: number }[], items: LimitEntry[] }}
  */
-export function slideLabel(entry, total, now, isResetting) {
-    if (!entry) return "";
-    const left = entry.resetsAt > now ? compactDuration(entry.resetsAt - now) : "";
-    const who = entry.account && entry.account.toLowerCase() !== entry.name.toLowerCase()
-        ? entry.name + " " + entry.account
-        : entry.name;
-    if (total <= 1) {
-        if (left) return left;
-        return isResetting ? "Soon" : entry.name;
+export function summarizeLimits(part, now) {
+    const items = [...(part && part.resettingSoon || []), ...(part && part.exhaustedLater || [])];
+    if (!items.length) return { tone: "", label: "", at: 0, providers: [], items: [] };
+    const at = items.reduce((m, e) => e.resetsAt > now && (!m || e.resetsAt < m) ? e.resetsAt : m, 0);
+    /** @type {Record<string, { id: string, brand: string, tint: string, name: string, count: number }>} */
+    const by = {};
+    /** @type {{ id: string, brand: string, tint: string, name: string, count: number }[]} */
+    const providers = [];
+    for (const e of items) {
+        const k = String(e.id || e.name).toLowerCase();
+        if (!by[k]) providers.push(by[k] = { id: e.id, brand: e.brand, tint: e.tint, name: e.name, count: 0 });
+        by[k].count++;
     }
-    if (left) return who + " · " + left;
-    return isResetting ? who + " · soon" : who + " · out";
-}
-
-/**
- * Unique brand entries for stacked icon display, active item first.
- * @param {LimitEntry[]} list
- * @param {number} activeIndex
- * @returns {LimitEntry[]}
- */
-export function orderedStack(list, activeIndex) {
-    if (!list || !list.length) return [];
-    const idx = Math.max(0, Math.min(list.length - 1, activeIndex || 0));
-    /** @type {LimitEntry[]} */
-    const ordered = [list[idx]];
-    /** @type {Record<string, boolean>} */
-    const seen = {};
-    const keyOf = (/** @type {LimitEntry} */ e) => (e.brand || e.id || e.name).toLowerCase();
-    seen[keyOf(list[idx])] = true;
-    for (let i = 0; i < list.length; i++) {
-        if (i === idx) continue;
-        const k = keyOf(list[i]);
-        if (seen[k]) continue;
-        seen[k] = true;
-        ordered.push(list[i]);
-    }
-    return ordered;
+    return {
+        tone: part.resettingSoon.length ? "soon" : "out",
+        label: at ? compactDuration(at - now) : "Out",
+        at, providers, items
+    };
 }

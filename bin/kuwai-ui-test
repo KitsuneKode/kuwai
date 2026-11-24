@@ -110,8 +110,9 @@ def main():
             command += ['/usr/bin/sh','-c',launch + 'exec dbus-run-session -- qs -p /app/shell/ui-smoke.qml']
         try:
             result=subprocess.run(command,env={'PATH':'/usr/bin:/bin'},capture_output=True,text=True,timeout=20 + 2 * len(scenes))
-        except subprocess.TimeoutExpired:
-            print(json.dumps({'status':'UNQUALIFIED','reason':'isolated runtime timed out'}))
+        except subprocess.TimeoutExpired as e:
+            (output/'runtime.log').write_text(b'\n'.join(x if isinstance(x, bytes) else str(x or '').encode() for x in (e.stdout, e.stderr)).decode(errors='replace'))
+            print(json.dumps({'status':'UNQUALIFIED','reason':'isolated runtime timed out','log':str(output/'runtime.log')}))
             return 2
         (output/'runtime.log').write_text(result.stdout+'\n'+result.stderr)
         said = result.stdout + result.stderr

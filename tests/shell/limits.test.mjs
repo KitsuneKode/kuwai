@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { compactDuration, orderedStack, partitionLimits, slideLabel } from "../../shell/services/limits.mjs";
+import { compactDuration, partitionLimits, summarizeLimits } from "../../shell/services/limits.mjs";
 
 const now = Date.parse("2026-11-24T12:00:00Z");
 const soonMs = 15 * 60000;
@@ -66,24 +66,25 @@ describe("carousel formatting and stacked brand ordering", () => {
     expect(compactDuration(0)).toBe("");
   });
 
-  test("slideLabel is compact for single item and named for multi-item carousel", () => {
-    const c = entry({ name: "Claude", resetsAt: now + 6 * 60000 });
-    const noReset = entry({ name: "Grok", resetsAt: 0 });
-    expect(slideLabel(c, 1, now, true)).toBe("6m");
-    expect(slideLabel(c, 2, now, true)).toBe("Claude · 6m");
-    expect(slideLabel(noReset, 1, now, false)).toBe("Grok");
-    expect(slideLabel(noReset, 2, now, false)).toBe("Grok · out");
-    expect(slideLabel(entry({ name: "Claude", account: "work", resetsAt: now + 50 * 60000 }), 2, now, false)).toBe("Claude work · 50m");
+  test("one summary: the soonest reset, the state, each provider once", () => {
+    const part = partitionLimits([
+      entry({ key: "a1", id: "antigravity", name: "Antigravity", account: "Antigravity-2", resetsAt: now + 15 * 60000 }),
+      entry({ key: "a2", id: "antigravity", name: "Antigravity", account: "Antigravity", resetsAt: now + 25 * 60000 }),
+    ], [], now, soonMs);
+    const s = summarizeLimits(part, now);
+    expect(s.label).toBe("15m");
+    expect(s.tone).toBe("soon");
+    expect(s.providers.map(p => [p.id, p.count])).toEqual([["antigravity", 2]]);
+    expect(s.items.length).toBe(2);
   });
 
-  test("orderedStack puts active carousel item first with unique brands", () => {
-    const list = [
-      entry({ id: "claude", brand: "claude.svg", account: "a" }),
-      entry({ id: "codex", brand: "openai.svg", account: "a" }),
-      entry({ id: "claude", brand: "claude.svg", account: "b" }),
-      entry({ id: "cursor", brand: "cursor.svg", account: "a" })
-    ];
-    expect(orderedStack(list, 1).map(x => x.id)).toEqual(["codex", "claude", "cursor"]);
-    expect(orderedStack(list, 3).map(x => x.id)).toEqual(["cursor", "claude", "codex"]);
+  test("out for longer is its own state, an unknown reset says Out", () => {
+    const later = summarizeLimits(partitionLimits([entry({ resetsAt: now + 90 * 60000 }), entry({ key: "g", id: "grok", name: "Grok", resetsAt: 0 })], [], now, soonMs), now);
+    expect(later.tone).toBe("out");
+    expect(later.label).toBe("1h");
+    expect(later.providers.map(p => p.id)).toEqual(["claude", "grok"]);
+    const unknown = summarizeLimits(partitionLimits([entry({ resetsAt: 0 })], [], now, soonMs), now);
+    expect(unknown.label).toBe("Out");
+    expect(summarizeLimits({ resettingSoon: [], exhaustedLater: [] }, now).tone).toBe("");
   });
 });

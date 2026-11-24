@@ -163,8 +163,7 @@ Singleton {
         name: resettingSoon[0].name
     }) : null
     function partitionWith(extra) { return L.partitionLimits(quotaExhausted, extra || [], now, soonMs); }
-    function slideLabel(entry, total, isResetting) { return L.slideLabel(entry, total, now, isResetting); }
-    function orderedStack(list, idx) { return L.orderedStack(list, idx); }
+    function summarize(part) { return L.summarizeLimits(part, now); }
     readonly property bool markShown: Settings.limitAlerts && backSoon !== null
     // One entry per account for the hover view's rings: the session window
     // (the shortest) and the weekly one (the longest), what each has left.
