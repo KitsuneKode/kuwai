@@ -250,9 +250,26 @@ def infer_agent(payload: dict[str, Any], cli_agent: str) -> str:
     return "desktop"
 
 
+def host_app(payload: dict[str, Any]) -> str:
+    if os.environ.get("CURSOR_VERSION") or os.environ.get("CURSOR_TRACE_ID") or "cursor_version" in payload:
+        return "cursor"
+    if os.environ.get("DEVIN_PROJECT_DIR") or os.environ.get("DEVIN_SESSION_ID"):
+        return "devin"
+    return ""
+
+
+def reported_elsewhere(agent: str, payload: dict[str, Any]) -> bool:
+    if os.environ.get("T3CODE_THREAD_ID"):
+        return True
+    host = host_app(payload)
+    return bool(host) and agent != host
+
+
 def handle_hook(args: argparse.Namespace) -> int:
     payload = read_stdin_json()
     agent = infer_agent(payload, args.agent or "")
+    if reported_elsewhere(agent, payload):
+        return 0
     event = args.event or first_str(payload, "hook_event_name", "hookEventName", "event", "type")
     state, ask = resolve_state(event, args.state or "", args.ask)
     project_path = infer_project(payload, args.project or "")

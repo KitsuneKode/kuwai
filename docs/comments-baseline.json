@@ -1,5 +1,5 @@
 {
-  "total_comment_lines": 7878,
+  "total_comment_lines": 7870,
   "files_with_comments": 307,
   "files": {
     "shell/components/ActionMenu.qml": 23,
@@ -112,7 +112,7 @@
     "shell/modules/island/IslandGlance.qml": 37,
     "shell/modules/island/IslandHover.qml": 121,
     "shell/modules/island/IslandRest.qml": 174,
-    "shell/modules/island/IslandSplit.qml": 131,
+    "shell/modules/island/IslandSplit.qml": 128,
     "shell/modules/island/IslandStatus.qml": 22,
     "shell/modules/island/KeysPanel.qml": 32,
     "shell/modules/island/LauncherPanel.qml": 118,
@@ -126,7 +126,7 @@
     "shell/modules/island/SwitcherPanel.qml": 10,
     "shell/modules/island/SysMarks.qml": 24,
     "shell/modules/island/SystemPanel.qml": 48,
-    "shell/modules/island/T3Panel.qml": 48,
+    "shell/modules/island/T3Panel.qml": 45,
     "shell/modules/island/ThemePanel.qml": 75,
     "shell/modules/island/TrayRow.qml": 10,
     "shell/modules/island/UpdatesPanel.qml": 73,
@@ -202,7 +202,7 @@
     "shell/services/Spend.qml": 10,
     "shell/services/Switcher.qml": 35,
     "shell/services/SystemStats.qml": 29,
-    "shell/services/T3Code.qml": 42,
+    "shell/services/T3Code.qml": 40,
     "shell/services/Timers.qml": 14,
     "shell/services/Updates.qml": 104,
     "shell/services/WallFx.qml": 53,

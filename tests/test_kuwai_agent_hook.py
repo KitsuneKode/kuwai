@@ -28,7 +28,8 @@ def make_env(tmp_path: Path) -> dict[str, str]:
     env["XDG_STATE_HOME"] = str(tmp_path / "state")
     env.pop("DEVIN_PROJECT_DIR", None)
     env.pop("DEVIN_SESSION_ID", None)
-    env.pop("CURSOR_TRACE_ID", None)
+    for k in ("CURSOR_TRACE_ID", "CURSOR_VERSION", "T3CODE_THREAD_ID"):
+        env.pop(k, None)
     return env
 
 
@@ -154,3 +155,35 @@ def test_malformed_stdin_never_fails_hook(tmp_path: Path) -> None:
     env = make_env(tmp_path)
     res = run_hook(["--agent", "cursor", "--event", "sessionStart"], env, "{not valid json")
     assert res.returncode == 0
+
+
+def _rows(env: dict[str, str]) -> list[dict]:
+    return json.loads(run_hook(["list"], env).stdout)
+
+
+def test_a_claude_hook_fired_by_cursor_or_devin_is_not_a_second_agent(tmp_path: Path) -> None:
+    payload = json.dumps({"hook_event_name": "UserPromptSubmit", "session_id": "s-1", "cwd": "/p/kuwai"})
+    for extra, body in (
+        ({"CURSOR_VERSION": "2.1.0"}, payload),
+        ({"CURSOR_TRACE_ID": "abc"}, payload),
+        ({}, json.dumps({"hook_event_name": "Stop", "session_id": "s-1", "cursor_version": "2.1.0"})),
+        ({"DEVIN_PROJECT_DIR": "/p/kuwai"}, payload),
+        ({"DEVIN_SESSION_ID": "d-1"}, payload),
+    ):
+        env = make_env(tmp_path) | extra
+        assert run_hook(["--agent", "claude"], env, body).returncode == 0
+        assert _rows(env) == [], extra
+
+
+def test_the_native_cursor_and_devin_hooks_still_report(tmp_path: Path) -> None:
+    env = make_env(tmp_path) | {"CURSOR_VERSION": "2.1.0"}
+    run_hook(["--agent", "cursor", "--event", "sessionStart"], env, json.dumps({"conversation_id": "c-1"}))
+    env = make_env(tmp_path) | {"DEVIN_PROJECT_DIR": "/p/kuwai"}
+    run_hook(["--agent", "devin", "--event", "SessionStart"], env, json.dumps({"session_id": "d-1"}))
+    assert sorted(r["agent"] for r in _rows(env)) == ["cursor", "devin"]
+
+
+def test_an_agent_t3_started_is_left_to_t3(tmp_path: Path) -> None:
+    env = make_env(tmp_path) | {"T3CODE_THREAD_ID": "thread-1"}
+    run_hook(["--agent", "claude", "--event", "UserPromptSubmit"], env, json.dumps({"session_id": "s-2"}))
+    assert _rows(env) == []
