@@ -61,7 +61,7 @@ Item {
         anchors.horizontalCenter: parent.horizontalCenter
         width: 44; height: 44
         scale: btn.holding ? 0.92 : 1
-        Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.OutCubic } }
+        Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
         Rectangle {
             anchors.fill: parent
             radius: width / 2

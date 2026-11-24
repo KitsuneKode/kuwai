@@ -474,6 +474,9 @@ Singleton {
     readonly property var easeOut: [0.23, 1, 0.32, 1, 1, 1]
     readonly property var easeInOut: [0.77, 0, 0.175, 1, 1, 1]
     readonly property var easeDrawer: [0.32, 0.72, 0, 1, 1, 1]
+    readonly property var easeSine: [0.37, 0, 0.63, 1, 1, 1]
+    readonly property var easeIn: [0.55, 0.085, 0.68, 0.53, 1, 1]
+    function innerRadius(outer, inset) { return Math.max(4, Math.round(outer - inset)); }
     readonly property int pressMs: 140          // press feedback (scale 0.97)
     readonly property int enterMs: 200          // small surfaces arriving, rows growing
     readonly property int exitMs: 150           // leaving: quicker than arriving

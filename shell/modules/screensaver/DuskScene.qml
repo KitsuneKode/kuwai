@@ -114,8 +114,8 @@ Item {
             ScriptAction { script: { meteor.x = scene.width * (0.15 + Math.random() * 0.5); meteor.y = scene.height * (0.05 + Math.random() * 0.2); } }
             ParallelAnimation {
                 NumberAnimation { target: meteor; property: "opacity"; from: 0; to: 0.9; duration: Theme.duskMeteorInMs }
-                NumberAnimation { target: meteor; property: "x"; to: meteor.x + scene.width * 0.16; duration: Theme.duskMeteorMs; easing.type: Easing.OutQuad }
-                NumberAnimation { target: meteor; property: "y"; to: meteor.y + scene.height * 0.06; duration: Theme.duskMeteorMs; easing.type: Easing.OutQuad }
+                NumberAnimation { target: meteor; property: "x"; to: meteor.x + scene.width * 0.16; duration: Theme.duskMeteorMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+                NumberAnimation { target: meteor; property: "y"; to: meteor.y + scene.height * 0.06; duration: Theme.duskMeteorMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
                 SequentialAnimation { PauseAnimation { duration: Theme.duskMeteorMs / 2 } NumberAnimation { target: meteor; property: "opacity"; to: 0; duration: Theme.duskMeteorMs / 2 } }
             }
             PauseAnimation { duration: Theme.duskMeteorRestMs }

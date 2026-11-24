@@ -1,11 +1,3 @@
-// The model picker: grows out of the model pill, kuwai's ActionMenu motion
-// (one surface: the pill's rectangle and radius become the card's on the
-// moderate spring, rows fade in once it's mostly there, and it folds back into
-// the pill on close). Each row says what the model can really do, from Ollama
-// (tools, thinking, vision), its size, and whether it's loaded right now.
-// Type to filter (Kobra's ranking: exact, prefix, substring, subsequence);
-// ↑↓ move the fluid highlight, ↵ picks, Esc or ⌃K closes.
-// Refs: T3 Code ModelPickerContent / ModelListRow, AI Elements model-selector.
 import QtQuick
 import qs.config
 import qs.components
@@ -39,7 +31,6 @@ Item {
         if (Theme.reduceMotion) t.settle();
     }
 
-    // ── Models ───────────────────────────────────────────────────────────
     function describe(name) {
         const i = OllamaService.modelInfo[name] || {};
         const caps = i.capabilities || [];
@@ -49,7 +40,6 @@ Item {
                  : think ? "Thinking, no tools" : "Chat only";
         return what + (i.sizeGb ? " · " + i.sizeGb + " GB" : "");
     }
-    // The recommended models first, with what each is for; then everything else installed.
     readonly property var models: {
         const have = OllamaService.availableModels || [];
         const picks = OllamaService.curated.filter(c => have.indexOf(c.id) >= 0).map(c => ({
@@ -61,7 +51,6 @@ Item {
         return picks.concat(rest);
     }
 
-    // Kobra's ranking: exact 0, prefix 1, substring 2, letters in order 3, else no match.
     function rank(text, q) {
         const s = text.toLowerCase();
         if (s === q) return 0;
@@ -82,8 +71,6 @@ Item {
     property bool keyboard: false
     onQueryChanged: sel = 0
 
-    // ↵ switches this chat to the model (history is plain text; a smaller window just
-    // compacts sooner). ⌃↵ forks the chat into a new one on that model, leaving this as it was.
     function pick(m) {
         if (!m) return;
         OllamaService.model = m.id;
@@ -95,7 +82,6 @@ Item {
         open = false;
     }
 
-    // Keys from whoever owns the keyboard (the prompt). Returns true if handled.
     function key(event) {
         if (!open) return false;
         const k = event.key;
@@ -109,7 +95,6 @@ Item {
         return true;
     }
 
-    // ── Geometry: from the pill to the card, opening upward ──────────────
     property rect from: Qt.rect(0, 0, 120, 30)
     readonly property real toW: menuW
     readonly property real toH: Math.min(460, head.height + list.contentHeight + 14)
@@ -143,7 +128,7 @@ Item {
             id: inner
             width: menu.toW
             height: menu.toH
-            y: frame.height - height        // rides the bottom edge up, out of the pill
+            y: frame.height - height
             opacity: Math.max(0, Math.min(1, (t.value - 0.45) / 0.4))
 
             Item {
@@ -196,7 +181,6 @@ Item {
                     width: ListView.view.width
                     height: 52 + (sep ? 28 : 0)
 
-                    // "Other installed" above the first model that isn't a pick.
                     Label {
                         visible: row.sep
                         x: 12; y: 10

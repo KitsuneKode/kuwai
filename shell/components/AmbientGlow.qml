@@ -15,8 +15,8 @@ Shape {
     SequentialAnimation on breath {
         running: glow.breathing && glow.visible && !Theme.reduceMotion
         loops: Animation.Infinite
-        NumberAnimation { to: 0.62; duration: Theme.breathOutMs * 2; easing.type: Easing.InOutSine }
-        NumberAnimation { to: 1; duration: Theme.breathOutMs * 2; easing.type: Easing.InOutSine }
+        NumberAnimation { to: 0.62; duration: Theme.breathOutMs * 2; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }
+        NumberAnimation { to: 1; duration: Theme.breathOutMs * 2; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }
         onRunningChanged: if (!running) glow.breath = 1
     }
     ShapePath {

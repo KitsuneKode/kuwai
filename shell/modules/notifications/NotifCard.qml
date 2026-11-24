@@ -138,8 +138,8 @@ Item {
     }
     SequentialAnimation {
         id: bump
-        NumberAnimation { target: pulse; properties: "xScale,yScale"; to: 1.02; duration: Theme.kickMs; easing.type: Easing.OutQuad }
-        NumberAnimation { target: pulse; properties: "xScale,yScale"; to: 1.0; duration: Theme.bumpBackMs; easing.type: Easing.OutCubic }
+        NumberAnimation { target: pulse; properties: "xScale,yScale"; to: 1.02; duration: Theme.kickMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+        NumberAnimation { target: pulse; properties: "xScale,yScale"; to: 1.0; duration: Theme.bumpBackMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
     }
 
     // ── Swipe ────────────────────────────────────────────────────────────
@@ -309,8 +309,8 @@ Item {
     }
     ParallelAnimation {
         id: arrival
-        NumberAnimation { target: ring; property: "opacity"; from: 0.9; to: 0; duration: Theme.flashFadeMs; easing.type: Easing.OutCubic }
-        NumberAnimation { target: ringScale; properties: "xScale,yScale"; from: 1; to: 1.07; duration: Theme.flashFadeMs; easing.type: Easing.OutCubic }
+        NumberAnimation { target: ring; property: "opacity"; from: 0.9; to: 0; duration: Theme.flashFadeMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+        NumberAnimation { target: ringScale; properties: "xScale,yScale"; from: 1; to: 1.07; duration: Theme.flashFadeMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
     }
 
     // ── Content ──────────────────────────────────────────────────────────
@@ -477,7 +477,15 @@ Item {
                 font.italic: Notifs.bodyRedacted(card.item) && !card.engaged
             }
             // A one-time code: the hero, with Copy.
-            OtpChip { item: card.item; width: parent.width }
+            OtpChip {
+                readonly property string otp: Notifs.otpOf(card.item)
+                code: otp
+                spacedCode: Notifs.spacedCode(otp)
+                stale: !!card.item && Date.now() - card.item.time > 10 * 60000
+                hidden: Notifs.sharing
+                width: parent.width
+                onCopyRequested: Notifs.copyCode(card.item)
+            }
 
             Row {
                 visible: card.item.status !== ""

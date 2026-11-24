@@ -1,8 +1,3 @@
-// The model's reasoning, as a quiet row like the tool rows. While it thinks,
-// a highlight sweeps across "Thinking" and the newest lines show underneath;
-// one second after it's done the block folds itself away and reads
-// "Thought for 6s" (AI Elements reasoning.tsx: auto-open, AUTO_CLOSE 1000 ms).
-// Click the row to open or close it.
 import QtQuick
 import QtQuick.Effects
 import qs.config
@@ -58,7 +53,6 @@ Item {
                     Icon { anchors.centerIn: parent; name: "brain"; size: 14; color: root.isThinking ? Theme.accent : Theme.textTertiary }
                 }
 
-                // The label, with a highlight sweeping through it while thinking.
                 Item {
                     width: title.implicitWidth
                     height: title.implicitHeight
@@ -140,7 +134,6 @@ Item {
             FocusRing { cornerRadius: Theme.r1 }
         }
 
-        // While thinking: the newest lines, pinned to the bottom. Done: all of it.
         Item {
             width: parent.width
             readonly property real full: body.implicitHeight

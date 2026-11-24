@@ -1,6 +1,3 @@
-// How full the chat's context window is (AI Elements <Context>): a small
-// ring and a percentage next to Send; hover for the numbers and what happens
-// at 75% (older messages get summarised). Accent, then orange past 65%, red past 85%.
 import QtQuick
 import qs.config
 import qs.components
@@ -58,14 +55,13 @@ Item {
         }
     }
 
-    // The numbers, on hover.
     Rectangle {
         visible: opacity > 0.01
         opacity: hover.hovered ? 1 : 0
         Behavior on opacity { NumberAnimation { duration: hover.hovered ? Theme.enterMs : Theme.exitMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
         anchors.bottom: parent.top
         anchors.bottomMargin: 8
-        anchors.right: parent.right           // flush right: centred, it ran past the panel's edge
+        anchors.right: parent.right
         width: tip.implicitWidth + 24
         height: tip.implicitHeight + 16
         radius: 10

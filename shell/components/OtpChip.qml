@@ -4,15 +4,16 @@
 //   OtpChip { item: card.item }
 import QtQuick
 import qs.config
-import qs.services
 import qs.components.ui as Ui
 
 Rectangle {
     id: chip
-    property var item
-    readonly property string code: Notifs.otpOf(item)
-    readonly property bool stale: !!item && Date.now() - item.time > 10 * 60000
-    visible: code !== "" && !Notifs.sharing
+    property string code: ""
+    property string spacedCode: code
+    property bool stale: false
+    property bool hidden: false
+    signal copyRequested()
+    visible: code !== "" && !hidden
     width: parent ? parent.width : 300
     height: 52
     radius: Theme.r3
@@ -24,7 +25,7 @@ Rectangle {
         spacing: 0
         Text {
             textFormat: Text.PlainText
-            text: Notifs.spacedCode(chip.code)
+            text: chip.spacedCode
             font.family: Theme.fontRounded
             font.pixelSize: Theme.tTitle1
             font.weight: Font.DemiBold
@@ -43,6 +44,6 @@ Rectangle {
         height: Theme.sp(30); size: Theme.tSub
         text: "Copy"
         kind: chip.stale ? "secondary" : "primary"
-        onClicked: Notifs.copyCode(chip.item)
+        onClicked: chip.copyRequested()
     }
 }

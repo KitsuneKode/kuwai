@@ -1,8 +1,3 @@
-// The chats, as in ChatGPT / Claude: search, then the chats grouped by day
-// (Today, Yesterday, Previous 7 days, Older), one gliding hover highlight
-// (FluidHighlight). Hover a chat for its trash; the row then asks
-// "Delete this chat?" in place (Delete / Cancel, Esc cancels): nothing is
-// deleted on one stray click. Empty new chats don't clutter the list.
 import QtQuick
 import qs.config
 import qs.components
@@ -20,7 +15,6 @@ Rectangle {
     clip: true
     color: Qt.rgba(0.04, 0.04, 0.05, 0.55)
 
-    // Opens in 240 ms, closes quicker (180); both ease out (an ease-in close lags).
     Behavior on implicitWidth {
         enabled: !Theme.reduceMotion
         NumberAnimation { duration: root.open ? 240 : 180; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
@@ -29,13 +23,11 @@ Rectangle {
     Rectangle { anchors.right: parent.right; width: 1; height: parent.height; color: Theme.wash(1); visible: root.open }
 
     property string query: ""
-    property string confirming: ""     // id of the chat asking "Delete?"
-    property string renaming: ""       // id of the chat being renamed (double-click)
+    property string confirming: ""
+    property string renaming: ""
     property Item hoverRow: null
 
     function focusSearch() { search.forceActiveFocus(); search.selectAll(); }
-    // Where a search hit in a chat's messages (not its title): ~70 characters around it.
-    // Only the open chat's messages are in memory; the service searches the rest's files.
     function snippet(s, q) { return OllamaService.chatSnippet(s, q); }
     onQueryChanged: OllamaService.searchChats(query)
 
@@ -93,7 +85,6 @@ Rectangle {
                 }
             }
 
-            // Search
             Rectangle {
                 width: parent.width
                 height: 32
@@ -128,7 +119,7 @@ Rectangle {
             ListView {
                 id: list
                 width: parent.width
-                height: parent.height - 30 - 32 - 20 - 24     // header, search, two gaps, the column's margins
+                height: parent.height - 30 - 32 - 20 - 24
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
                 model: root.rows
@@ -224,8 +215,6 @@ Rectangle {
                         color: Theme.textTertiary
                         elide: Text.ElideRight
                     }
-                    // Answering in the background (you're in another chat), or an
-                    // answer that came while you were away: a ring, then a dot.
                     readonly property bool working: !!row.chat && OllamaService.streaming && OllamaService.draftSessionId === row.chat.id && !row.selected
                     readonly property bool fresh: !!row.chat && !!OllamaService.unread[row.chat.id]
                     Item {
@@ -281,12 +270,10 @@ Rectangle {
                         onClicked: root.confirming = row.chat.id
                     }
 
-                    // "Delete this chat?" in place.
                     Item {
                         visible: row.asking
                         anchors.fill: parent
                         focus: row.asking
-                        // focus: alone doesn't take it from the search field: Esc never reached here.
                         onVisibleChanged: if (visible) forceActiveFocus()
                         Keys.onEscapePressed: root.confirming = ""
                         Label {

@@ -40,7 +40,7 @@ Item {
                 from: 0; to: 1
                 duration: Theme.shimmerMs
                 loops: Animation.Infinite
-                easing.type: Easing.InOutSine
+                easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine
             }
             gradient: Gradient {
                 orientation: Gradient.Horizontal

@@ -106,13 +106,13 @@ Item {
             // Drift to one side and back; breathe. Each curtain on its own beat.
             SequentialAnimation on drift {
                 running: scene.moving; loops: Animation.Infinite
-                NumberAnimation { from: -1; to: 1; duration: Theme.borealisSwayMs / cur.modelData.rate; easing.type: Easing.InOutSine }
-                NumberAnimation { from: 1; to: -1; duration: Theme.borealisSwayMs / cur.modelData.rate; easing.type: Easing.InOutSine }
+                NumberAnimation { from: -1; to: 1; duration: Theme.borealisSwayMs / cur.modelData.rate; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }
+                NumberAnimation { from: 1; to: -1; duration: Theme.borealisSwayMs / cur.modelData.rate; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }
             }
             SequentialAnimation on pulse {
                 running: scene.moving; loops: Animation.Infinite
-                NumberAnimation { from: 1; to: 0.55; duration: Theme.borealisPulseMs / cur.modelData.rate; easing.type: Easing.InOutSine }
-                NumberAnimation { from: 0.55; to: 1; duration: Theme.borealisPulseMs / cur.modelData.rate; easing.type: Easing.InOutSine }
+                NumberAnimation { from: 1; to: 0.55; duration: Theme.borealisPulseMs / cur.modelData.rate; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }
+                NumberAnimation { from: 0.55; to: 1; duration: Theme.borealisPulseMs / cur.modelData.rate; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }
             }
         }
     }

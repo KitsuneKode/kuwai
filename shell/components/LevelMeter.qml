@@ -77,7 +77,7 @@ Item {
                     y: parent.height * (1 - bar.hold)
                     color: Qt.rgba(1, 1, 1, 0.7)
                 }
-                NumberAnimation { id: holdFall; target: bar; property: "hold"; to: 0; duration: Theme.peakFallMs; easing.type: Easing.InQuad }
+                NumberAnimation { id: holdFall; target: bar; property: "hold"; to: 0; duration: Theme.peakFallMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeIn }
             }
         }
     }

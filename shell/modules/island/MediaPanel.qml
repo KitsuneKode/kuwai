@@ -116,7 +116,7 @@ FocusScope {
             width: 64; height: 64; radius: 14
             color: Theme.wash(2)
             // The shared cover: art, else a frame of the playing window (a film), else the note.
-            ArtImage { anchors.fill: parent; source: Media.art; px: 128; player: np.p }
+            ArtImage { anchors.fill: parent; source: Media.art; px: 128; windowSource: np.p && !Media.art ? Media.windowShowing(np.p) : null }
             ImageEdge { radius: 14 }
             scale: artArea.pressed ? 0.96 : 1
             Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
@@ -219,7 +219,7 @@ FocusScope {
                         color: np.tint
                         opacity: Media.playing ? 1 : 0.55
                         // Settling to the pause silhouette still eases; live bars don't.
-                        Behavior on height { enabled: !Media.playing; NumberAnimation { duration: Theme.waveSettleMs; easing.type: Easing.OutCubic } }
+                        Behavior on height { enabled: !Media.playing; NumberAnimation { duration: Theme.waveSettleMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                         Behavior on opacity { NumberAnimation { duration: Theme.colorMs } }
                         Behavior on color { ColorAnimation { duration: Theme.artMs } }
                     }

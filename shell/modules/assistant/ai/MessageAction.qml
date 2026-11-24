@@ -1,5 +1,3 @@
-// A small icon button under a message (copy, edit, retry): 28 px target,
-// lights on hover, presses in.
 import QtQuick
 import qs.config
 import qs.components
@@ -7,9 +5,9 @@ import qs.components
 Rectangle {
     id: ab
     property string icon
-    property string tip: ""          // a label above it after a moment's hover (AI Elements MessageAction tooltip)
-    property var hoverSource: abArea  // whose hover shows the tip (another MouseArea can lend its own)
-    property int tipAlign: 0          // 0 centred over it; 1 right edges flush (at a panel's right edge); -1 left
+    property string tip: ""
+    property var hoverSource: abArea
+    property int tipAlign: 0
     signal clicked()
     width: 28; height: 28
     radius: 8
@@ -19,7 +17,6 @@ Rectangle {
     Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
     Icon { anchors.centerIn: parent; name: ab.icon; size: 15; color: abArea.containsMouse ? Theme.textPrimary : Theme.textTertiary }
     MouseArea { id: abArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: ab.clicked() }
-    // One with no icon only lends its tooltip to the control under it, which has the name.
     activeFocusOnTab: ab.enabled && ab.icon !== ""
     Accessible.ignored: ab.icon === ""
     Accessible.role: Accessible.Button

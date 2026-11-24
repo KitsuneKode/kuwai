@@ -1,6 +1,3 @@
-// Port of shadcn AI Elements: <Suggestion>
-// Clickable prompt chip shown after assistant responses or in the welcome state.
-// Hover lifts the text; press presses in (0.97).
 import QtQuick
 import qs.config
 import qs.components

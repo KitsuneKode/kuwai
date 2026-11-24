@@ -909,8 +909,8 @@ Scope {
                         SequentialAnimation on opacity {
                             running: root.recording && !Theme.reduceMotion
                             loops: Animation.Infinite
-                            NumberAnimation { to: 0.35; duration: Theme.breatheMs; easing.type: Easing.InOutSine }
-                            NumberAnimation { to: 1; duration: Theme.breatheMs; easing.type: Easing.InOutSine }
+                            NumberAnimation { to: 0.35; duration: Theme.breatheMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }
+                            NumberAnimation { to: 1; duration: Theme.breatheMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }
                         }
                     }
                     Label { anchors.verticalCenter: parent.verticalCenter; text: root.elapsed(root.nowSec - Clipboard.recSince); size: 13; rounded: true; weight: Theme.wSemibold; color: Theme.red; font.features: ({ "tnum": 1 }) }
@@ -1203,7 +1203,7 @@ Scope {
                 function clampX(x) { return Math.max(originX, Math.min(maxX, x)); }
                 property real wheelTo: 0
                 property int lastDir: 0
-                NumberAnimation { id: wheelGlide; target: shelf; property: "contentX"; duration: Theme.microMs; easing.type: Easing.OutCubic }
+                NumberAnimation { id: wheelGlide; target: shelf; property: "contentX"; duration: Theme.microMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
                 WheelHandler {
                     acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
                     onWheel: event => {

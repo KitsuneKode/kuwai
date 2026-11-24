@@ -102,7 +102,7 @@ Row {
             anchors.centerIn: parent
             spacing: 5
             scale: limArea.pressed ? 0.96 : 1
-            Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.OutCubic } }
+            Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
             Item {
                 anchors.verticalCenter: parent.verticalCenter
                 width: 20; height: 20

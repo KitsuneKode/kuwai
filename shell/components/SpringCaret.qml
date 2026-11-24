@@ -26,9 +26,9 @@ Rectangle {
         running: caret.idle && caret.visible
         loops: Animation.Infinite
         onStopped: caret.opacity = 1
-        NumberAnimation { to: 0; duration: Theme.quickMs; easing.type: Easing.OutQuad }
+        NumberAnimation { to: 0; duration: Theme.quickMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
         PauseAnimation { duration: Theme.caretBlinkMs - Theme.quickMs }
-        NumberAnimation { to: 1; duration: Theme.quickMs; easing.type: Easing.OutQuad }
+        NumberAnimation { to: 1; duration: Theme.quickMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
         PauseAnimation { duration: Theme.caretBlinkMs - Theme.quickMs }
     }
 }

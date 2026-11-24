@@ -560,8 +560,8 @@ Scope {
                     needSettle.duration = !lit ? Theme.exitMs * 2 : Theme.reduceMotion ? Theme.microMs : Theme.breatheMs * 2;
                     start();
                 }
-                NumberAnimation { id: needFlare; target: win; property: "needGlow"; easing.type: Easing.OutCubic }
-                NumberAnimation { id: needSettle; target: win; property: "needGlow"; easing.type: Easing.InOutSine }
+                NumberAnimation { id: needFlare; target: win; property: "needGlow"; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+                NumberAnimation { id: needSettle; target: win; property: "needGlow"; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }
             }
             // Expanded with a whole message (a mail, a comment): room to read it.
             readonly property real peekH: Notifs.peekExpanded ? (peekLoader.item ? Math.min(peekLoader.item.wantH, maxWinH - 40) : 172) : 76
@@ -960,7 +960,7 @@ Scope {
                             x: -width + pos * (parent.width + width)
                             NumberAnimation on pos {
                                 running: assistGlow.visible && !assistGlow.done && !Theme.reduceMotion
-                                from: 0; to: 1; duration: Theme.shimmerMs; loops: Animation.Infinite; easing.type: Easing.InOutSine
+                                from: 0; to: 1; duration: Theme.shimmerMs; loops: Animation.Infinite; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine
                             }
                             gradient: Gradient {
                                 orientation: Gradient.Horizontal

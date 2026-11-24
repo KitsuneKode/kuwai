@@ -274,7 +274,7 @@ Item {
         SequentialAnimation {
             id: flashIn
             NumberAnimation { target: pill; property: "flash"; to: 1; duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
-            NumberAnimation { target: pill; property: "flash"; to: 0; duration: Theme.breathOutMs; easing.type: Easing.InOutSine }
+            NumberAnimation { target: pill; property: "flash"; to: 0; duration: Theme.breathOutMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }
         }
         readonly property var lane: split.placement(name)
         readonly property int side: lane || 1

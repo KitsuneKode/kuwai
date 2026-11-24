@@ -1,6 +1,3 @@
-// Port of shadcn AI Elements: <PromptInput>
-// Auto-expanding input field with attachment previews, screenshot capture,
-// model selector pill, and cancel/send actions.
 import QtQuick
 import QtQuick.Controls
 import Quickshell
@@ -13,8 +10,6 @@ Rectangle {
     id: root
 
     property alias text: inputArea.text
-    // The model picker (ModelPickerMenu) gets the keys while it's open; so do
-    // the other popups listed here (the slash menu).
     property var picker: null
     property var popups: []
     readonly property alias slashAnchor: slashAnchor
@@ -43,7 +38,6 @@ Rectangle {
         }
     }
 
-    // An open popup (model picker, slash menu) takes the keys. True if it did.
     function routeToPopup(event) {
         const open = [root.picker].concat(root.popups).find(p => p && p.open);
         if (!open) return false;
@@ -88,7 +82,6 @@ Rectangle {
         inputArea.forceActiveFocus();
     }
 
-    // Drop files on the composer to attach them (text, code, PDF, images).
     DropArea {
         id: drop
         anchors.fill: parent
@@ -108,11 +101,8 @@ Rectangle {
         Label { anchors.centerIn: parent; text: "Drop to attach"; size: 13; weight: Theme.wMedium; color: Theme.accent }
     }
 
-    // ── Dictation (AI Elements speech-input) via voxtype ──────────────
-    // Click the mic: voxtype records; click again: it transcribes into a file,
-    // and the text lands in the composer where the cursor is. Esc cancels.
-    property int editIndex: -1                  // ↑: editing that message; ↵ resends from it
-    property string micState: "idle"            // idle | recording | transcribing
+    property int editIndex: -1
+    property string micState: "idle"
     property string dictPath: ""
     function toggleMic() {
         if (micState === "idle") {
@@ -161,11 +151,8 @@ Rectangle {
         anchors.margins: 12
         spacing: 10
 
-        // ── Queue: what's waiting, and steers on their way in ─────────
-        // (AI Elements queue.tsx: a ring per item, actions on hover.)
         Column {
             id: queueList
-            // This chat's: steers only while it's the one answering, its own queue.
             readonly property var mine: OllamaService.queue.filter(x => !x.session || x.session === OllamaService.activeSessionId)
             readonly property var items: (OllamaService.busyHere ? OllamaService.steering.map(x => ({ id: x.id, text: x.text, steering: true })) : [])
                 .concat(mine.map(x => ({ id: x.id, text: x.text || "Screenshot", steering: false, image: !!x.image })))
@@ -248,9 +235,6 @@ Rectangle {
             }
         }
 
-        // ── Context chips: what goes with the next message ─────────────
-        // The screenshot (and the window it's from), its folder and branch,
-        // the selection, the clipboard. Each can go (× or ⌫ on an empty prompt).
         Flow {
             id: chipFlow
             width: parent.width
@@ -328,7 +312,6 @@ Rectangle {
             }
         }
 
-        // ── Auto-Expanding Text Input ─────────────────────────────────
         Item {
             width: parent.width
             implicitHeight: Math.max(42, Math.min(160, inputArea.contentHeight + 10))
@@ -349,7 +332,6 @@ Rectangle {
                 selectionColor: Theme.accent
                 selectedTextColor: Theme.onAccent
 
-                // Placeholder Text
                 Text {
                     textFormat: Text.PlainText
                     anchors.fill: parent
@@ -366,12 +348,10 @@ Rectangle {
                     visible: !inputArea.text && !inputArea.inputMethodComposing
                 }
 
-                // Qt calls these key-specific handlers before onPressed, so each asks the popups first.
                 Keys.onReturnPressed: event => {
                     if (root.routeToPopup(event)) return;
                     const pend = OllamaService.pendingHere;
                     if (pend && pend.kind === "question" && !(event.modifiers & Qt.ShiftModifier)) {
-                        // The composer answers the question.
                         event.accepted = true;
                         const t = inputArea.text.trim();
                         if (t) { OllamaService.resolveRequest(pend.id, "accept", t); inputArea.text = ""; }
@@ -379,7 +359,7 @@ Rectangle {
                         event.accepted = true;
                         OllamaService.resolveRequest(OllamaService.pendingHere.id, "accept");
                     } else if (event.modifiers & Qt.ShiftModifier) {
-                        event.accepted = false; // allow newline
+                        event.accepted = false;
                     } else {
                         event.accepted = true;
                         root.submit();
@@ -391,7 +371,7 @@ Rectangle {
                     const pend = OllamaService.pendingHere;
                     if (pend && pend.kind === "question" && inputArea.text === "" && !(event.modifiers & Qt.ControlModifier)
                             && event.key >= Qt.Key_1 && event.key <= Qt.Key_9 && event.key - Qt.Key_1 < pend.options.length) {
-                        event.accepted = true;     // 1–9 picks an option
+                        event.accepted = true;
                         OllamaService.resolveRequest(pend.id, "accept", pend.options[event.key - Qt.Key_1]);
                         return;
                     }
@@ -409,7 +389,6 @@ Rectangle {
                             return;
                         }
                     }
-                    // ↑ in an empty composer edits your last message (Codex, ChatGPT).
                     if (event.key === Qt.Key_Up && inputArea.text === "" && !OllamaService.busyHere && root.editIndex < 0) {
                         const msgs = OllamaService.messages;
                         for (let i = msgs.length - 1; i >= 0; i--) {
@@ -426,13 +405,13 @@ Rectangle {
                     if (ctrl && event.key === Qt.Key_D) { event.accepted = true; root.toggleMic(); return; }
                     if (ctrl && event.key === Qt.Key_F) { event.accepted = true; root.searchRequested(); return; }
                     if (ctrl && event.key === Qt.Key_Period) {
-                        event.accepted = true;      // ⌃. Chat ⇄ Agent
+                        event.accepted = true;
                         OllamaService.mode = OllamaService.mode === "agent" ? "chat" : "agent";
                         OllamaService.syncCurrentSession();
                         return;
                     }
                     if (ctrl && (event.modifiers & Qt.ShiftModifier) && event.key === Qt.Key_C) {
-                        event.accepted = true;      // ⌃⇧C copies the last answer
+                        event.accepted = true;
                         const msgs = OllamaService.messages;
                         for (let i = msgs.length - 1; i >= 0; i--) if (msgs[i].role === "assistant") { Clipboard.copyText(msgs[i].text || ""); break; }
                         return;
@@ -485,19 +464,16 @@ Rectangle {
             }
         }
 
-        // ── Action Bar (Attachments, Model Selector, Send Button) ─────
         Item {
             width: parent.width
             height: 36
 
-            // Left: attach the focused window, or a region; then the model.
             Row {
                 anchors.left: parent.left
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 4
 
                 MessageAction { width: 30; height: 30; radius: 15; icon: "paperclip"; tip: "Attach files · or drop them here"; onClicked: OllamaService.pickFiles() }
-                // Mic: red and breathing while it listens, a spinner while voxtype writes.
                 Item {
                     width: 30; height: 30
                     anchors.verticalCenter: parent.verticalCenter
@@ -510,8 +486,8 @@ Rectangle {
                             running: root.micState === "recording" && !Theme.reduceMotion
                             loops: Animation.Infinite
                             onRunningChanged: if (!running) parent.scale = 1
-                            NumberAnimation { to: 1.12; duration: Theme.breatheMs; easing.type: Easing.InOutSine }
-                            NumberAnimation { to: 1.0; duration: Theme.breatheMs; easing.type: Easing.InOutSine }
+                            NumberAnimation { to: 1.12; duration: Theme.breatheMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }
+                            NumberAnimation { to: 1.0; duration: Theme.breatheMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }
                         }
                     }
                     Icon {
@@ -532,7 +508,6 @@ Rectangle {
                     Accessible.description: "Control D"
                     Accessible.onPressAction: root.toggleMic()
                     MessageAction {
-                        // Only for its tooltip: sits under the mic, never takes the click.
                         anchors.fill: parent
                         color: "transparent"
                         icon: ""
@@ -547,7 +522,6 @@ Rectangle {
 
                 Item { width: 4; height: 1 }
 
-                // Chat | Agent (⌃.): a two-part switch, the highlight slides to the one that's on.
                 Rectangle {
                     id: modeSwitch
                     height: 30
@@ -635,7 +609,7 @@ Rectangle {
                             weight: Theme.wMedium
                             color: Theme.textPrimary
                             elide: Text.ElideRight
-                            width: Math.min(implicitWidth, 130)   // a long model name can't push into Send
+                            width: Math.min(implicitWidth, 130)
                             anchors.verticalCenter: parent.verticalCenter
                         }
                         Icon {
@@ -678,7 +652,6 @@ Rectangle {
                 anchors.verticalCenter: parent.verticalCenter
             }
 
-            // Right cluster: Cancel or Send Button (Raised Button Plate)
             Item {
                 id: sendBox
                 anchors.right: parent.right
@@ -712,7 +685,7 @@ Rectangle {
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
                             if (parent.stopping) OllamaService.cancel();
-                            else if (root.canSend) root.submit();          // mid-answer this steers
+                            else if (root.canSend) root.submit();
                         }
                     }
                     Accessible.role: Accessible.Button
@@ -746,7 +719,7 @@ Rectangle {
             OllamaService.editAndResend(i, prompt);
             return;
         }
-        if (OllamaService.busyHere) { OllamaService.steer(prompt); return; }   // ↵ mid-answer steers it
+        if (OllamaService.busyHere) { OllamaService.steer(prompt); return; }
         root.submitted(prompt);
         OllamaService.send(prompt);
     }

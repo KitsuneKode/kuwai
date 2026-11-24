@@ -1,7 +1,3 @@
-// The agent asks you something (its ask_user tool): the question, then its
-// likely answers as rows you pick with a click or 1–9, or type your own in
-// the composer and ↵. Esc skips (it carries on with its best guess).
-// Refs: AI Elements question, T3 Code ComposerPendingUserInputPanel.
 import QtQuick
 import qs.config
 import qs.components
@@ -9,7 +5,6 @@ import qs.components
 Rectangle {
     id: root
 
-    // { id, kind: "question", summary (the question), options: [..], state }
     property var request: ({})
     signal answered(string text)
     signal skipped()

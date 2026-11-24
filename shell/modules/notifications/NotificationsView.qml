@@ -277,9 +277,12 @@ Item {
         }
     }
     UndoPill {
-        surface: "center"
+        live: Notifs.undoSurface === "center" && Notifs.undoLabel !== ""
+        label: Notifs.undoLabel
+        count: Notifs.undoCount
         anchors { right: parent.right; rightMargin: view.narrowed ? 2 : 36; verticalCenter: filterRow.verticalCenter }
         opacity: live ? view.center.revealAt(80) : 0
+        onUndoRequested: Notifs.undoClear()
     }
 
     Label {

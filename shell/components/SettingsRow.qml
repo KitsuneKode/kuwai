@@ -31,7 +31,7 @@ Item {
     property bool found: false
     property real pulseK: 0
     function pulse() { if (!Theme.reduceMotion) pulseIn.restart(); }
-    NumberAnimation { id: pulseIn; target: row; property: "pulseK"; from: 1; to: 0; duration: Theme.breathOutMs; easing.type: Easing.OutCubic }
+    NumberAnimation { id: pulseIn; target: row; property: "pulseK"; from: 1; to: 0; duration: Theme.breathOutMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
     Rectangle {
         anchors { fill: parent; margins: 4 }
         radius: 8

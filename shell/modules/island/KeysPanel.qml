@@ -235,7 +235,7 @@ FocusScope {
                 border.width: 1
                 border.color: Theme.edge(0)
                 opacity: row.on ? 1 : 0
-                Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 0 : 90; easing.type: Easing.OutCubic } }
+                Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 0 : 90; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
             }
 
             Label {

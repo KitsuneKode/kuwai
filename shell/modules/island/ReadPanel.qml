@@ -112,7 +112,15 @@ FocusScope {
         }
 
         // A one-time code leads, with Copy.
-        OtpChip { item: rp.item; width: parent.width }
+        OtpChip {
+            readonly property string otp: Notifs.otpOf(rp.item)
+            code: otp
+            spacedCode: Notifs.spacedCode(otp)
+            stale: !!rp.item && Date.now() - rp.item.time > 10 * 60000
+            hidden: Notifs.sharing
+            width: parent.width
+            onCopyRequested: Notifs.copyCode(rp.item)
+        }
 
         // ── The message: paragraphs, scrolls past ~16 lines ──────────────
         Item {

@@ -1,16 +1,8 @@
-// One turn of the conversation.
-//   You: a bubble on the right, with the screenshot and the window it came
-//        from above it; hover for Copy and Edit (edit resends from here).
-//   Assistant: no card, the text sits on the glass (as in ChatGPT/Claude).
-//        Its parts render in order: reasoning, tool rows (grouped), text.
-//        Below: Copy, Retry and the model/speed/time, shown on hover and
-//        always on the last answer.
-// `msg` is a message from OllamaService (user, or Turn's Msg with parts).
 import QtQuick
 import qs.config
 import qs.components
 import qs.services
-import "../../services/ai/turn.mjs" as Turn
+import "../../../services/ai/turn.mjs" as Turn
 
 Item {
     id: root
@@ -31,10 +23,9 @@ Item {
         return -1;
     }
 
-    // Parts → blocks; consecutive tool parts become one group.
     readonly property var blocks: {
         const out = [];
-        let plan = null;          // one checklist, where the plan first appeared, showing its latest version
+        let plan = null;
         for (let i = 0; i < parts.length; i++) {
             const p = parts[i];
             const last = out.length ? out[out.length - 1] : null;
@@ -58,8 +49,6 @@ Item {
 
     HoverHandler { id: hover }
 
-    // New messages you send arrive from just below (opacity + 6 px); answers
-    // arrive with the streaming message, so the finished one doesn't animate again.
     opacity: animateIn ? 0 : 1
     transform: Translate {
         id: lift
@@ -82,8 +71,6 @@ Item {
         width: parent.width
         spacing: 8
 
-        // ── You ────────────────────────────────────────────────────────
-        // Files that went with it.
         Row {
             visible: root.isUser && !!root.msg.context && (root.msg.context.files || []).length > 0
             anchors.right: parent.right
@@ -205,9 +192,6 @@ Item {
             }
         }
 
-        // ── Assistant ──────────────────────────────────────────────────
-        // Before the first word: loading the model into memory (cold, ~10 s) or
-        // thinking; a seconds counter once it's been a moment.
         Item {
             id: waiting
             visible: !root.isUser && root.isStreaming && (root.parts.length === 0 || root.parts[root.parts.length - 1].kind === "steer")
@@ -225,7 +209,6 @@ Item {
             Row {
                 spacing: 8
                 anchors.verticalCenter: parent.verticalCenter
-                // "Loading …" only before anything came back; after a steer it's thinking again.
                 Shimmer {
                     text: waiting.loading ? "Loading " + OllamaService.modelLabel(root.msg.model) + " into memory" : "Thinking"
                     size: 14
@@ -242,7 +225,6 @@ Item {
             }
         }
 
-        // An int model keeps each block (open tool rows, text selection) while parts stream.
         Repeater {
             model: root.isUser ? 0 : root.blocks.length
 
@@ -284,7 +266,6 @@ Item {
                         live: root.isStreaming
                     }
                 }
-                // Your message steered into this turn: your bubble, where it landed.
                 Component {
                     id: steerBlock
                     Item {
@@ -312,13 +293,6 @@ Item {
                         }
                     }
                 }
-                // Text, block by block (Turn.splitBlocks; T3 Code's idea): a finished
-                // paragraph, list, table or code block never changes, so it renders once
-                // (kuwai-render, cached by text) and stays put; only the block being
-                // written re-renders as it grows, and new blocks fade in. The same HTML
-                // shows while streaming and after, so nothing swaps at the end.
-                // Code gets a block with its language and Copy, highlighted once its
-                // fence closes (AI Elements code-block).
                 Component {
                     id: textBlock
                     Column {
@@ -334,21 +308,16 @@ Item {
                             Loader {
                                 id: seg
                                 required property int index
-                                // Declared properties only notify on a real change: a finished block's
-                                // text stays the same string, so its delegate is left alone.
                                 property string text: (tcol.blocks[index] || {}).text || ""
                                 property string kind: (tcol.blocks[index] || {}).kind || "md"
                                 property string lang: (tcol.blocks[index] || {}).lang || ""
                                 property bool open: !!(tcol.blocks[index] || {}).open
                                 readonly property bool tail: tcol.live && index === tcol.blocks.length - 1
-                                // The tail renders healed (`**bo` → `**bo**`); an open fence stays plain.
                                 readonly property string html: {
                                     OllamaService.renderTick;
                                     if (kind === "code" && open) return "";
-                                    // The block being written is repaired by the renderer (Streamdown's remend).
                                     return OllamaService.blockHtml({ kind: kind, lang: lang, text: text, live: tail && kind === "md" });
                                 }
-                                // Keep the last HTML while the next is on its way (no flicker).
                                 property string shown: ""
                                 onHtmlChanged: if (html) shown = html
                                 onOpenChanged: if (open) shown = ""
@@ -356,7 +325,6 @@ Item {
                                 width: tcol.width
                                 sourceComponent: kind === "code" ? codeSeg : mdSeg
 
-                                // New blocks fade in while the answer streams (not when a chat opens).
                                 NumberAnimation on opacity {
                                     id: fadeIn
                                     running: false
@@ -447,7 +415,6 @@ Item {
                                             clip: true
                                             TextEdit {
                                                 id: codeText
-                                                // Plain while the fence is open, highlighted the moment it closes.
                                                 textFormat: seg.shown ? TextEdit.RichText : TextEdit.PlainText
                                                 text: seg.shown ? seg.shown : seg.text
                                                 readOnly: true
@@ -468,8 +435,6 @@ Item {
             }
         }
 
-        // Files it wrote in its sandbox (AI Elements file tree, flat): click one to
-        // open it, or the folder. Each path once.
         Flow {
             readonly property var files: {
                 if (root.isUser || root.isStreaming || !root.msg.parts) return [];
@@ -539,8 +504,6 @@ Item {
             }
         }
 
-        // Sources: the pages it read (document) and the search results it saw (globe),
-        // so an answer can be checked. Click opens the page.
         Flow {
             readonly property var sources: root.isUser || root.isStreaming ? [] : Turn.sourcesOf(root.msg)
             visible: sources.length > 0

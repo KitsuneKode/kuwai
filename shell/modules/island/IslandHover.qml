@@ -269,7 +269,7 @@ Item {
             x: 9; anchors.verticalCenter: parent.verticalCenter
             width: 48; height: 48; radius: 11
             color: Theme.wash(2)
-            ArtImage { anchors.fill: parent; source: hover.player ? (hover.player.trackArtUrl || "") : ""; px: 96; player: hover.player }
+            ArtImage { anchors.fill: parent; source: hover.player ? (hover.player.trackArtUrl || "") : ""; px: 96; windowSource: hover.player && !(hover.player.trackArtUrl || "") ? Media.windowShowing(hover.player) : null }
             ImageEdge { radius: 11 }
         }
         // The art and the title open Now Playing (MediaPanel); right-click for
@@ -342,7 +342,7 @@ Item {
                         color: Media.artColor
                         opacity: live ? 0.9 : 0.5
                         // Settling to the pause silhouette still eases; live bars don't.
-                        Behavior on height { enabled: !live; NumberAnimation { duration: Theme.waveSettleMs; easing.type: Easing.OutCubic } }
+                        Behavior on height { enabled: !live; NumberAnimation { duration: Theme.waveSettleMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                         Behavior on opacity { NumberAnimation { duration: Theme.colorMs } }
                     }
                 }
@@ -850,7 +850,7 @@ Item {
                 Behavior on width { NumberAnimation { duration: Theme.reflowMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                 clip: true
                 scale: updArea.pressed ? 0.96 : 1
-                Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.OutCubic } }
+                Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                 readonly property bool hot: updArea.containsMouse
                 color: Qt.alpha(Theme.accent, Updates.running ? 0.12 : hot ? 0.28 : 0.16)
                 Behavior on color { ColorAnimation { duration: Theme.colorMs } }

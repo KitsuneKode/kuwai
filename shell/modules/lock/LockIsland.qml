@@ -48,7 +48,7 @@ Item {
 
     SequentialAnimation {
         id: bump
-        NumberAnimation { target: pill; property: "swell"; to: 1; duration: Theme.microMs; easing.type: Easing.OutCubic }
+        NumberAnimation { target: pill; property: "swell"; to: 1; duration: Theme.microMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
         NumberAnimation { target: pill; property: "swell"; to: 0; duration: Theme.pulseMs; easing.type: Easing.OutBack; easing.overshoot: 1.2 }   // a small swell back (critical damping elsewhere; rare moment)
     }
 

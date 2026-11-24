@@ -1,11 +1,7 @@
-// Consecutive tool calls in a turn. One call shows as its row; several fold
-// under "Used N tools" once the turn is done (T3 Code's work log), and stay
-// open while it runs or while one of them waits for approval.
 import QtQuick
 import qs.config
 import qs.components
-import qs.components.ai
-import "../../services/ai/turn.mjs" as Turn
+import "../../../services/ai/turn.mjs" as Turn
 
 Item {
     id: root
@@ -100,7 +96,6 @@ Item {
                 x: root.folds && !root.live ? 10 : 0
                 spacing: 2
 
-                // An int model keeps each row (and its open/closed state) while parts update.
                 Repeater {
                     model: root.parts.length
                     Tool {

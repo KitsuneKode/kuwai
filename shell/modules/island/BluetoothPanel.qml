@@ -202,8 +202,8 @@ FocusScope {
                     SequentialAnimation on opacity {
                         running: parent.visible && bp.visible && !Theme.reduceMotion
                         loops: Animation.Infinite
-                        NumberAnimation { to: 0.3; duration: Theme.breatheMs * 2; easing.type: Easing.InOutSine }
-                        NumberAnimation { to: 1; duration: Theme.breatheMs * 2; easing.type: Easing.InOutSine }
+                        NumberAnimation { to: 0.3; duration: Theme.breatheMs * 2; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }
+                        NumberAnimation { to: 1; duration: Theme.breatheMs * 2; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }
                     }
                 }
             }

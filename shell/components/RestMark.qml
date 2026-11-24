@@ -53,7 +53,7 @@ Item {
         anchors.centerIn: parent
         spacing: 4
         scale: area.pressed ? 0.96 : 1
-        Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.OutCubic } }
+        Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
         Label {
             visible: mark.wordmark !== ""
             anchors.verticalCenter: parent.verticalCenter
@@ -123,7 +123,7 @@ Item {
                 // Only while it shows: a hidden arc turned on every beat still
                 // drew the notch once every 3 s. (No wrap: a modulo spun it
                 // backwards at the wrap.)
-                Behavior on rotation { enabled: arc.visible && !Theme.reduceMotion; NumberAnimation { duration: Theme.stepMs; easing.type: Easing.InOutCubic } }
+                Behavior on rotation { enabled: arc.visible && !Theme.reduceMotion; NumberAnimation { duration: Theme.stepMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeInOut } }
                 readonly property bool stepping: arc.visible && !Theme.reduceMotion
                 property bool counted: false
                 function count() { if (stepping !== counted) { Theme.stepUsers += stepping ? 1 : -1; counted = stepping; } }

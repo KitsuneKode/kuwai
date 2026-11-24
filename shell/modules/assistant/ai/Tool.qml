@@ -1,12 +1,6 @@
-// One tool call in a turn, from a Part (services/ai/turn.mjs): a quiet row
-// (icon, what it did, a status only when it didn't simply work) that opens to
-// show what went in and what came out. A pending approval shows its card
-// under the row. Refs: AI Elements tool.tsx, T3 Code TimelineAssistantRows /
-// TimelineToolActivityIcon, Codex exec_cell.
 import QtQuick
 import qs.config
 import qs.components
-import qs.components.ai
 import qs.services
 
 Item {
@@ -59,7 +53,6 @@ Item {
         return a && b ? a + "\n\n" + b : (a || b);
     }
     readonly property bool hasBody: bodyText !== "" && !pending && !question
-    // A command's exit code (the output ends "(exit N)"): a chip on the row, red when it failed.
     readonly property int exitCode: {
         if (itemType !== "command_execution" || status !== "completed") return -1;
         const m = /\(exit (\d+)\)\s*$/.exec(part.output || "");
@@ -117,7 +110,6 @@ Item {
                     weight: root.running ? Theme.wMedium : Theme.wRegular
                     color: root.running ? Theme.textPrimary : Theme.textSecondary
                     elide: Text.ElideRight
-                    // Room left by what's on the right (answer, exit chip, Sandbox, duration), not a guess.
                     width: Math.min(implicitWidth, Math.max(80, row.width - rightRow.width - 40))
                     anchors.verticalCenter: parent.verticalCenter
                     Behavior on color { ColorAnimation { duration: Theme.colorMs } }
@@ -131,7 +123,6 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 6
 
-                // A question answered: the answer, where a duration would be.
                 Label {
                     visible: root.question && root.status === "completed"
                     text: root.part.output || ""

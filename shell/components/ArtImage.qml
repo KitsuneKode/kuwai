@@ -14,15 +14,14 @@
 import QtQuick
 import Quickshell.Wayland
 import qs.config
-import qs.services
 
 Item {
     id: art
     property string source: ""
     property int px: 40                       // decoded size (2× the shown size)
-    property var player: null
+    property var windowSource: null
     readonly property bool ready: img.status === Image.Ready
-    readonly property var win: player && !art.source && art.px >= 80 && art.visible ? Media.windowShowing(player) : null
+    readonly property var win: !art.source && art.px >= 80 && art.visible ? art.windowSource : null
     readonly property bool framed: !!(win && win.wayland) && shot.hasContent
     Image {
         id: img

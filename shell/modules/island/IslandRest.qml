@@ -309,8 +309,8 @@ Item {
                 SequentialAnimation on opacity {
                     running: rest.activity === "auth" && !Theme.reduceMotion
                     loops: Animation.Infinite
-                    NumberAnimation { to: 0.55; duration: Theme.breatheMs; easing.type: Easing.InOutSine }
-                    NumberAnimation { to: 1; duration: Theme.breatheMs; easing.type: Easing.InOutSine }
+                    NumberAnimation { to: 0.55; duration: Theme.breatheMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }
+                    NumberAnimation { to: 1; duration: Theme.breatheMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }
                 }
             }
             // Recording the screen: a red dot that breathes (click: stop).
@@ -322,8 +322,8 @@ Item {
             SequentialAnimation on opacity {
                 running: rest.activity === "rec" && !Theme.reduceMotion
                 loops: Animation.Infinite
-                NumberAnimation { to: 0.45; duration: Theme.breatheMs; easing.type: Easing.InOutSine }
-                NumberAnimation { to: 1; duration: Theme.breatheMs; easing.type: Easing.InOutSine }
+                NumberAnimation { to: 0.45; duration: Theme.breatheMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }
+                NumberAnimation { to: 1; duration: Theme.breatheMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }
             }
         }
         // A timer: a ring that empties as it runs.
@@ -361,8 +361,8 @@ Item {
                 SequentialAnimation on opacity {
                     running: rest.activity === "vox" && Activities.voxListening && !Theme.reduceMotion
                     loops: Animation.Infinite
-                    NumberAnimation { to: 0.45; duration: Theme.breatheMs; easing.type: Easing.InOutSine }
-                    NumberAnimation { to: 1; duration: Theme.breatheMs; easing.type: Easing.InOutSine }
+                    NumberAnimation { to: 0.45; duration: Theme.breatheMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }
+                    NumberAnimation { to: 1; duration: Theme.breatheMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }
                 }
                 RotationAnimation on rotation {
                     running: rest.activity === "vox" && !Activities.voxListening && !Theme.reduceMotion
@@ -397,8 +397,8 @@ Item {
                 SequentialAnimation on scale {
                     running: rest.activity === "shazam" && Activities.shazamListening && !Theme.reduceMotion
                     loops: Animation.Infinite
-                    NumberAnimation { to: 1.18; duration: Theme.pulseMs; easing.type: Easing.InOutSine }
-                    NumberAnimation { to: 1; duration: Theme.pulseMs; easing.type: Easing.InOutSine }
+                    NumberAnimation { to: 1.18; duration: Theme.pulseMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }
+                    NumberAnimation { to: 1; duration: Theme.pulseMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }
                 }
             }
             // Music: the album art, tiny.
@@ -737,8 +737,8 @@ Item {
                         SequentialAnimation on opacity {
                             running: pomoDot.now && !Theme.reduceMotion
                             loops: Animation.Infinite
-                            NumberAnimation { to: 0.35; duration: Theme.breatheMs * 2; easing.type: Easing.InOutSine }
-                            NumberAnimation { to: 1; duration: Theme.breatheMs * 2; easing.type: Easing.InOutSine }
+                            NumberAnimation { to: 0.35; duration: Theme.breatheMs * 2; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }
+                            NumberAnimation { to: 1; duration: Theme.breatheMs * 2; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }
                         }
                     }
                 }
@@ -861,7 +861,7 @@ Item {
                             color: Media.artAt(index / 4)       // the cover's two colours, across the bars
                             opacity: Media.playing ? 1 : 0.55
                             // Settling to the pause silhouette still eases; live bars don't.
-                            Behavior on height { enabled: !Media.playing; NumberAnimation { duration: Theme.waveSettleMs; easing.type: Easing.OutCubic } }
+                            Behavior on height { enabled: !Media.playing; NumberAnimation { duration: Theme.waveSettleMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                             Behavior on opacity { NumberAnimation { duration: Theme.colorMs } }
                             Behavior on color { ColorAnimation { duration: Theme.artMs } }
                         }

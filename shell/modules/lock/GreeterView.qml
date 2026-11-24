@@ -218,7 +218,7 @@ Item {
             property real miss: 0
             SequentialAnimation {
                 id: missFlash
-                NumberAnimation { target: avatar; property: "miss"; to: 1; duration: Theme.kickMs; easing.type: Easing.OutQuad }
+                NumberAnimation { target: avatar; property: "miss"; to: 1; duration: Theme.kickMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
                 NumberAnimation { target: avatar; property: "miss"; to: 0; duration: Theme.flashFadeMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
             }
             Connections { target: view.lock; function onFailuresChanged() { missFlash.restart(); } }
@@ -235,8 +235,8 @@ Item {
                     running: view.lock.checking && !Theme.reduceMotion
                     loops: Animation.Infinite
                     onRunningChanged: if (!running) authRing.opacity = 1
-                    NumberAnimation { to: 0.35; duration: Theme.pulseMs; easing.type: Easing.InOutSine }
-                    NumberAnimation { to: 1; duration: Theme.pulseMs; easing.type: Easing.InOutSine }
+                    NumberAnimation { to: 0.35; duration: Theme.pulseMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }
+                    NumberAnimation { to: 1; duration: Theme.pulseMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }
                 }
             }
             ClippingRectangle {

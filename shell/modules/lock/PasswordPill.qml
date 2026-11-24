@@ -107,12 +107,12 @@ Column {
                             id: ldWave
                             PauseAnimation { duration: ld.index * 28 }
                             ParallelAnimation {
-                                NumberAnimation { target: ld; property: "opacity"; to: 1; duration: Theme.kickMs; easing.type: Easing.OutQuad }
-                                NumberAnimation { target: ld; property: "scale"; to: 1.25; duration: Theme.kickMs; easing.type: Easing.OutQuad }
+                                NumberAnimation { target: ld; property: "opacity"; to: 1; duration: Theme.kickMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+                                NumberAnimation { target: ld; property: "scale"; to: 1.25; duration: Theme.kickMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
                             }
                             ParallelAnimation {
-                                NumberAnimation { target: ld; property: "opacity"; to: 0.6; duration: Theme.enterMs; easing.type: Easing.OutCubic }
-                                NumberAnimation { target: ld; property: "scale"; to: 1; duration: Theme.enterMs; easing.type: Easing.OutCubic }
+                                NumberAnimation { target: ld; property: "opacity"; to: 0.6; duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+                                NumberAnimation { target: ld; property: "scale"; to: 1; duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
                             }
                         }
                         Component.onCompleted: lockDots.waves = [...lockDots.waves, ldWave]
@@ -147,7 +147,7 @@ Column {
             color: entry.lock.password ? Qt.alpha(entry.accent, 0.9) : Theme.wash(2)
             Behavior on color { ColorAnimation { duration: Theme.colorMs } }
             scale: goPress.pressed ? 0.9 : 1
-            Behavior on scale { NumberAnimation { duration: Theme.quickMs; easing.type: Easing.OutCubic } }
+            Behavior on scale { NumberAnimation { duration: Theme.quickMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
             Text {
                 textFormat: Text.PlainText
                 anchors.centerIn: parent

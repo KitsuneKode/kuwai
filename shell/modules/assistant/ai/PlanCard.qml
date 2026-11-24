@@ -1,7 +1,3 @@
-// The agent's plan for a task (its update_plan tool; AI Elements Plan / Task,
-// Codex's checklist): one card that updates in place as steps start and
-// finish. Done steps dim and strike through, the current one is bright with a
-// spinner, the rest wait as hollow circles. "2 of 5" in the header.
 import QtQuick
 import qs.config
 import qs.components

@@ -11,7 +11,7 @@ import Quickshell.Hyprland
 import Quickshell.Widgets
 import qs.config
 import qs.components
-import qs.components.ai
+import "ai"
 import qs.services
 import qs.components.ui as Ui
 import "../../services/surfaceState.mjs" as Surface
@@ -281,7 +281,8 @@ Scope {
                             text: "Not now"
                             onClicked: Assistant.hide()
                         }
-                        RaisedButton {
+                        Ui.Button {
+                            primary: true
                             text: "Turn on"
                             onClicked: {
                                 Settings.set("assistantOptIn", true);

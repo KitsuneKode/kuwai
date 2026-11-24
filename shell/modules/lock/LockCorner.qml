@@ -56,8 +56,8 @@ Item {
                 running: sweep.running
                 PauseAnimation { duration: Theme.chargeRingDelayMs + ping.index * Theme.chargeRingGapMs }
                 ParallelAnimation {
-                    NumberAnimation { target: ping; property: "scale"; from: 1; to: 1.9; duration: Theme.breatheMs; easing.type: Easing.OutCubic }
-                    NumberAnimation { target: ping; property: "opacity"; from: 0.9; to: 0; duration: Theme.breatheMs; easing.type: Easing.OutCubic }
+                    NumberAnimation { target: ping; property: "scale"; from: 1; to: 1.9; duration: Theme.breatheMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+                    NumberAnimation { target: ping; property: "opacity"; from: 0.9; to: 0; duration: Theme.breatheMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
                 }
             }
         }

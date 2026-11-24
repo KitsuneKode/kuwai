@@ -1,16 +1,11 @@
-// The agent wants to act on the machine: show exactly what it will do and
-// wait. Lives under its tool row; once answered the row says what happened.
-// Keys (handled by the overlay): ⌃↵ allow, Esc don't.
-// Refs: AI Elements confirmation.tsx, T3 Code TimelinePendingApprovalRow,
-// Codex bottom_pane/approval_overlay.rs.
 import QtQuick
 import qs.config
 import qs.components
+import qs.components.ui as Ui
 
 Rectangle {
     id: root
 
-    // { id, kind: "command"|"launch"|"open_url", summary, detail, state }
     property var request: ({})
     signal decided(string decision)
 
@@ -18,7 +13,7 @@ Rectangle {
     readonly property string verb: kind === "command" ? "Run" : kind === "write" ? "Save" : "Open"
 
     implicitHeight: col.implicitHeight + 24
-    radius: 12
+    radius: Theme.r3
     color: Theme.wash(1)
     border.width: 1
     border.color: Theme.edge(1)
@@ -52,12 +47,11 @@ Rectangle {
             }
         }
 
-        // What will run, exactly as it will run.
         Rectangle {
             visible: root.kind !== "launch"
             width: parent.width
             implicitHeight: detail.implicitHeight + 16
-            radius: 8
+            radius: Theme.innerRadius(root.radius, 4)
             color: Qt.rgba(0, 0, 0, 0.30)
 
             TextEdit {
@@ -100,12 +94,12 @@ Rectangle {
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 8
 
-                RaisedButton {
+                Ui.Button {
                     kind: "secondary"
                     text: "Don't " + root.verb.toLowerCase()
                     onClicked: root.decided("decline")
                 }
-                RaisedButton {
+                Ui.Button {
                     kind: "primary"
                     text: root.verb
                     onClicked: root.decided("accept")

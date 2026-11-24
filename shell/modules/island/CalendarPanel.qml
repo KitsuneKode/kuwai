@@ -109,7 +109,7 @@ FocusScope {
                 Label {
                     anchors.verticalCenter: parent.verticalCenter
                     text: Dates.longDate(cal.now)
-                    size: Theme.tHeadline; weight: Theme.wMedium
+                    size: Theme.tBody; weight: Theme.wMedium
                     color: Theme.textTertiary
                 }
             }
@@ -126,7 +126,7 @@ FocusScope {
                         model: Dates.monthYearParts(cal.month)
                         Label {
                             required property var modelData
-                            text: modelData.text; size: 20
+                            text: modelData.text; size: Theme.tTitle2
                             weight: modelData.year ? Theme.wRegular : Theme.wSemibold
                             color: modelData.year ? Theme.textTertiary : Theme.textPrimary
                         }
@@ -164,7 +164,7 @@ FocusScope {
                         width: cal.cell
                         horizontalAlignment: Text.AlignHCenter
                         text: Dates.weekdayNames()[index]
-                        size: 11
+                        size: Theme.tFootnote
                         weight: Theme.wMedium
                         color: Dates.isWeekend(modelData) ? Theme.textTertiary : Theme.textSecondary
                     }
@@ -194,7 +194,7 @@ FocusScope {
                             anchors.centerIn: parent
                             text: day.modelData.getDate()
                             rounded: true
-                            size: 14
+                            size: Theme.tBody
                             weight: day.isToday ? Theme.wSemibold : Theme.wRegular
                             color: day.isToday ? Theme.inkOnLight : !day.inMonth ? Theme.textTertiary : Theme.textPrimary   // another month's days: tertiary (at 38 % white they read 3.6:1)
                             font.features: ({ "tnum": 1 })
@@ -224,13 +224,13 @@ FocusScope {
                 Label {
                     anchors.verticalCenter: parent.verticalCenter
                     text: Dates.longDate(cal.selected)     // the header's shape
-                    size: 14
+                    size: Theme.tBody
                     weight: Theme.wMedium
                 }
                 Label {
                     anchors { right: parent.right; verticalCenter: parent.verticalCenter }
                     text: (cal.sameDay(cal.selected, cal.today) ? "Today · " : "") + "Week " + cal.week(cal.selected)
-                    size: 12
+                    size: Theme.tFootnote
                     color: Theme.textTertiary
                 }
             }
@@ -247,7 +247,7 @@ FocusScope {
                     // Not set up: one click opens the list to paste a link into,
                     // instead of a path to go and find.
                     text: Calendar.configured ? "No events" : "No calendars yet. Add one: paste an iCal link or the path of an .ics file, one per line."
-                    size: 12
+                    size: Theme.tFootnote
                     color: !Calendar.configured && addCal.containsMouse ? Theme.textSecondary : Theme.textTertiary
                     Accessible.role: Calendar.configured ? Accessible.StaticText : Accessible.Button
                     Accessible.name: text
@@ -283,13 +283,13 @@ FocusScope {
                             Label {
                                 width: parent.width; elide: Text.ElideRight
                                 wrapMode: Text.Wrap; maximumLineCount: 2
-                                text: evRow.modelData.title; size: 13; weight: Theme.wMedium
+                                text: evRow.modelData.title; size: Theme.tBody; weight: Theme.wMedium
                                 color: evRow.past ? Theme.textTertiary : Theme.textPrimary
                             }
                             Label {
                                 width: parent.width; elide: Text.ElideRight
                                 text: Calendar.timeOf(evRow.modelData) + (evRow.modelData.location ? " · " + evRow.modelData.location : "")
-                                size: 11; color: Theme.textTertiary
+                                size: Theme.tFootnote; color: Theme.textTertiary
                             }
                         }
                     }
@@ -297,7 +297,7 @@ FocusScope {
                 Label {
                     visible: parent.dayEvents.length > parent.fits
                     text: "+" + (parent.dayEvents.length - parent.fits) + " more"
-                    size: 11; color: Theme.textTertiary
+                    size: Theme.tFootnote; color: Theme.textTertiary
                 }
             }
         }

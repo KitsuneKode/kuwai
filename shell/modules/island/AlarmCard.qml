@@ -94,11 +94,11 @@ Item {
     // One swing: out, back past the middle, settling (a damped pendulum).
     SequentialAnimation {
         id: swingOnce
-        NumberAnimation { target: card; property: "swing"; to: 16; duration: Theme.swingMs * 0.13; easing.type: Easing.OutQuad }
-        NumberAnimation { target: card; property: "swing"; to: -12; duration: Theme.swingMs * 0.21; easing.type: Easing.InOutQuad }
-        NumberAnimation { target: card; property: "swing"; to: 8; duration: Theme.swingMs * 0.2; easing.type: Easing.InOutQuad }
-        NumberAnimation { target: card; property: "swing"; to: -4; duration: Theme.swingMs * 0.19; easing.type: Easing.InOutQuad }
-        NumberAnimation { target: card; property: "swing"; to: 0; duration: Theme.swingMs * 0.27; easing.type: Easing.OutQuad }
+        NumberAnimation { target: card; property: "swing"; to: 16; duration: Theme.swingMs * 0.13; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+        NumberAnimation { target: card; property: "swing"; to: -12; duration: Theme.swingMs * 0.21; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeInOut }
+        NumberAnimation { target: card; property: "swing"; to: 8; duration: Theme.swingMs * 0.2; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeInOut }
+        NumberAnimation { target: card; property: "swing"; to: -4; duration: Theme.swingMs * 0.19; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeInOut }
+        NumberAnimation { target: card; property: "swing"; to: 0; duration: Theme.swingMs * 0.27; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
     }
     // An alarm: swing and breathe, again, while it rings and the card shows.
     Timer {

@@ -47,14 +47,14 @@ Item {
     SequentialAnimation {
         id: play
         NumberAnimation { target: bye; property: "tIn"; to: 1; duration: Theme.pulseMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
-        NumberAnimation { target: bye; property: "tMark"; to: 1; duration: Theme.farewellMarkMs; easing.type: Easing.InOutCubic }
+        NumberAnimation { target: bye; property: "tMark"; to: 1; duration: Theme.farewellMarkMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeInOut }
         PauseAnimation { duration: Theme.farewellHoldMs }
         // Into black: gathers pace, then lands softly (ease-in would hit black at full speed).
         NumberAnimation { target: bye; property: "tOut"; to: 1; duration: Theme.farewellOutMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeInOut }
         ScriptAction { script: bye.done() }
     }
     // Back from sleep: the screen returns without a show.
-    NumberAnimation { id: back; target: bye; properties: "tIn,tMark,tOut"; to: 0; duration: Theme.settleMs; easing.type: Easing.OutCubic }
+    NumberAnimation { id: back; target: bye; properties: "tIn,tMark,tOut"; to: 0; duration: Theme.settleMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
 
     // The room going dark.
     Rectangle { anchors.fill: parent; color: "black"; opacity: Math.max(bye.tIn * 0.82, bye.tOut) }
