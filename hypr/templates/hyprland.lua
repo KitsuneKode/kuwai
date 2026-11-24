@@ -31,6 +31,12 @@ local ok, err = pcall(dofile, KUWAI_ROOT .. "/hypr/init.lua")
 
 if not ok then
 	local term = "kitty"
+	for _, t in ipairs({ "kitty", "ghostty", "foot", "alacritty", "wezterm", "konsole", "xterm" }) do
+		if os.execute("command -v " .. t .. " >/dev/null 2>&1") then
+			term = t
+			break
+		end
+	end
 	hl.bind("SUPER + T", hl.dsp.exec_cmd(term))
 	hl.bind("SUPER + RETURN", hl.dsp.exec_cmd(term))
 	hl.bind("SUPER + Q", hl.dsp.window.close())

@@ -13,12 +13,22 @@ if [ -n "${1:-}" ] && [ -d "/proc/$1" ]; then
     d=$(readlink "/proc/$pid/cwd" 2>/dev/null) && [ -d "$d" ] && dir=$d
 fi
 [ $print_only -eq 1 ] && { printf '%s\n' "$dir"; exit 0; }
-term=${KUWAI_TERMINAL:-kitty}
+term=${KUWAI_TERMINAL:-}
+if [ -z "$term" ]; then
+    for t in kitty ghostty foot alacritty wezterm konsole gnome-terminal xfce4-terminal xterm; do
+        command -v "$t" >/dev/null 2>&1 && { term=$t; break; }
+    done
+fi
+[ -n "$term" ] || { command -v notify-send >/dev/null 2>&1 && notify-send "No terminal installed" "Install one: sudo pacman -S kitty (or set KUWAI_TERMINAL)"; exit 1; }
 runner=()
 command -v prime-run >/dev/null 2>&1 && runner=(prime-run)
 case $term in
     *kitty*)   exec "${runner[@]}" kitty --single-instance --instance-group=local --directory "$dir" ;;
     *ghostty*) exec "${runner[@]}" ghostty --working-directory="$dir" ;;
     *foot*)    exec foot --working-directory="$dir" ;;
+    *alacritty*) exec alacritty --working-directory "$dir" ;;
+    *wezterm*) exec wezterm start --cwd "$dir" ;;
+    *konsole*) exec konsole --workdir "$dir" ;;
+    *gnome-terminal*) exec gnome-terminal --working-directory="$dir" ;;
     *)         cd "$dir" && exec $term ;;
 esac
