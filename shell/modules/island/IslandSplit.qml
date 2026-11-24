@@ -611,7 +611,7 @@ Item {
                 text: split.agentsHead.done > 1 ? String(split.agentsHead.done) : ""
                 tint: Theme.green
                 tip: split.agentsDone.slice(0, 3).map(e => Kittymux.agentLabel(e.agent) + " finished" + (e.tab ? " · " + Kittymux.clean(e.tab) : ""))
-                    .concat(T3Code.items.filter(i => i.status === "completed").slice(0, 3).map(i => i.title + " finished"))
+                    .concat(T3Code.liveItems.filter(i => i.status === "completed").slice(0, 3).map(i => i.title + " finished"))
                     .concat(Agents.desktop.filter(d => d.state === "done").slice(0, 3).map(d => Kittymux.agentLabel(d.agent) + " finished" + (d.title ? " · " + d.title : ""))).slice(0, 3).join(" · ")
                     + "\nClick: every agent · right-click: go to the newest"
                 onClicked: agentsPill.openPanel()

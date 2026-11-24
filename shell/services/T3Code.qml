@@ -34,6 +34,8 @@ Singleton {
     // What T3 lists, minus the finished threads you swiped away or closed
     // with × (a finished thread you've dealt with, without opening it).
     readonly property var items: rawItems.filter(i => !isDismissed(i))
+    readonly property var liveItems: alive ? items : []
+    readonly property int liveFinished: alive ? finished : 0
     // Keyed by thread and when it finished, so the same thread finishing again
     // comes back. Kept across restarts, the 200 newest; nothing else is stored.
     property var dismissed: []
@@ -108,6 +110,7 @@ Singleton {
                 root.lastText = text;
                 try {
                     const d = JSON.parse(text);
+                    if (d.error) { root.alive = true; return; }
                     const up = !!d.alive;
                     root.alive = up;
                     root.running = up ? (d.running || 0) : 0;

@@ -70,9 +70,9 @@ Singleton {
     }
     readonly property int doneKitty: (Kittymux.attention || []).filter(e => e.kind === "done").length
     readonly property int doneDesktop: desktop.filter(d => d.state === "done").length
-    readonly property var head: A.headline(panes, T3Code.items, doneKitty, T3Code.finished, now, desktop, doneDesktop)
-    readonly property var next: A.target(panes, T3Code.items, desktop)
-    readonly property var extraLimited: A.limitedItems(panes, T3Code.items, desktop).map(it => ({
+    readonly property var head: A.headline(panes, T3Code.liveItems, doneKitty, T3Code.liveFinished, now, desktop, doneDesktop)
+    readonly property var next: A.target(panes, T3Code.liveItems, desktop)
+    readonly property var extraLimited: A.limitedItems(panes, T3Code.liveItems, desktop).map(it => ({
         key: it.key,
         id: it.agent,
         brand: Kittymux.brand(it.agent),

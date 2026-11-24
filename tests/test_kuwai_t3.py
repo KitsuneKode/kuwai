@@ -162,3 +162,27 @@ def test_the_last_reply_of_one_thread(tmp_path):
     for bad in ("", "t-done' or '1'='1", "t-done; drop table x", "t done", "$(id)"):
         assert reply(tmp_path, bad) == {}, bad
     assert reply(tmp_path) == {}
+
+
+def test_a_reused_pid_is_not_the_server(tmp_path):
+    build(tmp_path)
+    (tmp_path / "server-runtime.json").write_text(json.dumps({"pid": os.getpid(), "startedAt": "2000-01-01T00:00:00Z"}))
+    assert read(tmp_path)["alive"] is False
+
+
+def test_the_server_started_just_after_its_process(tmp_path):
+    build(tmp_path)
+    import datetime
+    now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    (tmp_path / "server-runtime.json").write_text(json.dumps({"pid": os.getpid(), "startedAt": now}))
+    assert read(tmp_path)["alive"] is True
+
+
+def test_a_failed_query_is_not_reported_as_t3_being_down(tmp_path):
+    build(tmp_path)
+    db = sqlite3.connect(tmp_path / "statev2.sqlite")
+    db.execute("drop table orchestration_v2_projection_runs")
+    db.commit()
+    db.close()
+    d = read(tmp_path)
+    assert d["alive"] is True and d.get("error") == "query"

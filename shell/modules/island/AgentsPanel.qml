@@ -53,6 +53,8 @@ FocusScope {
     function askModels() { if (modelArgs.length && !modelsProc.running) modelsProc.running = true; }
     Component.onCompleted: askModels()
     Timer { interval: 30000; repeat: true; running: ap.visible; onTriggered: ap.askModels() }
+    property real now: Date.now()
+    Timer { interval: 30000; repeat: true; running: ap.visible; triggeredOnStart: true; onTriggered: ap.now = Date.now() }
 
     // "claude-opus-5-5" → "Opus 5.5", "grok-4.7" → "Grok 4.7", "gpt-6.1-sol" → "GPT-6.1 Sol".
     function modelName(m) {
@@ -68,7 +70,7 @@ FocusScope {
     function on(model, effort) { const n = modelName(model); return n ? n + (effort ? " " + effort : "") : ""; }
     function ago(ms) {
         if (!ms) return "";
-        const m = Math.max(0, Math.round((Date.now() - ms) / 60000));
+        const m = Math.max(0, Math.round((ap.now - ms) / 60000));
         return m < 1 ? "now" : m < 60 ? m + "m" : m < 1440 ? Math.floor(m / 60) + "h" : Math.floor(m / 1440) + "d";
     }
     function t3Agent(p) {
@@ -101,7 +103,7 @@ FocusScope {
                 t: (r.since || 0) * 1000, event: ev ? ev.id : "", action: r.action, raw: r
             });
         }
-        for (const i of T3Code.items) {
+        for (const i of T3Code.liveItems) {
             // The same reading as the T3 panel's (t3.mjs): what it wants from you,
             // parked on another thread, stopped by a limit. It said "Working" for a
             // parked thread and "Error" for one that had only run out of quota.

@@ -17,7 +17,7 @@ Item {
     property var bar
     property bool withT3: false
     property bool withDesktop: true
-    readonly property var t3Rows: withT3 ? T3Code.items.filter(i => i.status === "waiting" || i.status === "running" || i.status === "woke" || i.status === "goal")
+    readonly property var t3Rows: withT3 ? T3Code.liveItems.filter(i => i.status === "waiting" || i.status === "running" || i.status === "woke" || i.status === "goal")
         .map(i => ({ agent: Agents.t3Agent(i.provider), title: i.title || "T3 thread", where: "T3", src: "t3",
                      status: i.status === "waiting" || i.status === "woke" ? "needs you" : "working",
                      needs: i.status === "waiting" || i.status === "woke", thread: i.thread })) : []
