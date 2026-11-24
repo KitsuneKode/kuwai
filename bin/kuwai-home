@@ -13,6 +13,7 @@ n=0
 while IFS= read -r -d '' f; do
     rel=${f#"$SRC"/}
     dst=$HOME/$rel
+    case $rel in .config/*) dst=${XDG_CONFIG_HOME:-$HOME/.config}/${rel#.config/} ;; esac
     if [ -L "$dst" ] && [ "$(readlink "$dst")" = "$f" ]; then continue; fi
     if [ $DRY = 1 ]; then printf 'would link %s → %s\n' "$dst" "$f"; n=$((n + 1)); continue; fi
     python3 "$REPO/bin/kuwai_install.py" --state "$STATE" remember "$dst" || { printf 'kuwai-home: could not keep %s; left it alone\n' "$dst" >&2; continue; }

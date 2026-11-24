@@ -31,3 +31,12 @@ def test_the_fastfetch_config_needs_no_hyde_and_runs_nothing():
     text = (ROOT / "home/.config/fastfetch/config.jsonc").read_text()
     assert "hyde" not in text.lower() and '"command"' not in text and "splash" not in text
     assert '"type": "kitty"' in text and "kuwai-fetch --logo" in text
+
+
+def test_links_follow_xdg_config_home(tmp_path):
+    xdg = tmp_path / "elsewhere"
+    env = {"HOME": str(tmp_path), "XDG_CONFIG_HOME": str(xdg), "XDG_STATE_HOME": str(tmp_path / ".local/state"),
+           "KUWAI_HOME_SRC": str(ROOT / "home"), "PATH": os.environ["PATH"]}
+    subprocess.run([str(ROOT / "bin/kuwai-home")], env=env, capture_output=True, text=True, check=True)
+    assert (xdg / "fastfetch/config.jsonc").is_symlink()
+    assert not (tmp_path / ".config").exists()
