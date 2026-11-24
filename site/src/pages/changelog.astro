@@ -1,0 +1,70 @@
+---
+import { getCollection, render } from "astro:content";
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+const releases = (await getCollection("releases")).sort(
+  (a, b) => b.data.date.getTime() - a.data.date.getTime()
+);
+const rendered = await Promise.all(
+  releases.map(async (entry) => ({
+    entry,
+    rendered: await render(entry)
+  }))
+);
+
+const schema = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "CollectionPage",
+      name: "kuwai Changelog",
+      url: "https://kuwai.kitsunekode.in/changelog/",
+      description: "Release history and verified upgrades for kuwai.",
+      isPartOf: { "@id": "https://kuwai.kitsunekode.in/#website" }
+    },
+    {
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: "https://kuwai.kitsunekode.in/" },
+        { "@type": "ListItem", position: 2, name: "Changelog", item: "https://kuwai.kitsunekode.in/changelog/" }
+      ]
+    }
+  ]
+};
+---
+<BaseLayout
+  title="Changelog: kuwai Releases and Engineering Notes"
+  description="Release history and verified milestones for kuwai v0.2.0, including the standalone theming engine, supervised shell service, and dedicated approval capsule."
+  canonicalPath="/changelog/"
+  ogImage="/og-changelog.png"
+  ogAlt="kuwai v0.2.0 Changelog showing zero token drift, 141 verified frames, and 73% measured boot memory headroom"
+  solidHeader={true}
+  schemaJson={schema}
+>
+  <main class="subpage-main">
+    <section class="subpage-head">
+      <div class="container">
+        <h1 class="subpage-title">Release changelog</h1>
+        <p class="section-intro">Every milestone promoted to the stable channel after automated test, token, and visual verification. Subscribe via <a href="/feed.xml" class="inline-link">RSS 2.0</a> or <a href="/atom.xml" class="inline-link">Atom</a>.</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <div class="changelog-stream">
+          {rendered.map(({ entry, rendered: { Content } }) => (
+            <article class="changelog-entry" id={entry.data.slugId}>
+              <div class="changelog-date tabular">
+                {entry.data.date.toISOString().slice(0, 10)}
+              </div>
+              <div class="changelog-body">
+                <h2>{entry.data.title}</h2>
+                <Content />
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  </main>
+</BaseLayout>

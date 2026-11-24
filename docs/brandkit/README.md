@@ -21,12 +21,14 @@
 
 | Asset | Location |
 |-------|----------|
+| SVG brand marks (light, dark, app tile) | `docs/brandkit/assets/kuwai-mark.svg`, `kuwai-mark-dark.svg`, `kuwai-mark-tile.svg` |
+| SVG horizontal wordmarks (light, dark) | `docs/brandkit/assets/kuwai-wordmark.svg`, `kuwai-wordmark-dark.svg` |
 | UI tokens (colour, type, motion) | `shell/config/Theme.qml`, [DESIGN.md](../DESIGN.md) |
 | Phosphor map (island glyphs) | `shell/assets/phosphor/` |
 | Greeter / lock art | `greeter/`, `shell/modules/lock/` |
 | Manual diagrams | `docs/media/` |
 
-Add exported logos or wordmarks here under `docs/brandkit/assets/` when you have them (SVG only; no raster mascots). Until then, the island shape and SF Pro stack *are* the brand.
+All brand marks live in `docs/brandkit/assets/` (SVG only; no raster mascots) and mirror into `site/assets/brand/` for web, PWA, and Open Graph surfaces. The continuous-ear Dynamic Island silhouette with a single amber attention dot and Inter / SF Pro typography *are* the brand.
 
 ## Do / don't
 

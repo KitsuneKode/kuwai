@@ -1,0 +1,256 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import DynamicIslandStage from "../components/DynamicIslandStage.tsx";
+import PermissionSandbox from "../components/PermissionSandbox.tsx";
+import UpgradeList from "../components/UpgradeList.tsx";
+import SurfaceShowcase from "../components/SurfaceShowcase.tsx";
+import HeadroomExplorer from "../components/HeadroomExplorer.tsx";
+import InstallBlock from "../components/InstallBlock.tsx";
+
+const siteUrl = "https://kuwai.kitsunekode.in";
+
+const faqs = [
+  {
+    q: "Will kuwai overwrite my existing Hyprland configuration?",
+    a: "No. kuwai writes its Hyprland configuration to ~/.config/kuwai/hypr/ and registers its own login session, leaving ~/.config/hypr untouched. Any file it replaces is backed up and restored automatically by ./install.sh --uninstall."
+  },
+  {
+    q: "Do I need HyDE or Apple's SF Pro font installed?",
+    a: "Neither is required. kuwai ships its own standalone atomic Look engine with 11 bundled themes and uses Inter (open-source OFL, installed automatically from Arch repos) with optical sizing. If SF Pro is present on your machine, kuwai upgrades typography automatically."
+  },
+  {
+    q: "How do agent approvals work without typing into my terminal?",
+    a: "Approval actions route through native PermissionRequest hooks for Claude Code and Codex. Your decision goes straight to the hook with zero synthetic keystrokes, and only appears for single-line commands you can read in full. Ignored prompts fall back cleanly to the terminal after 45 seconds."
+  },
+  {
+    q: "How much memory and CPU does the desktop shell use at idle?",
+    a: "A fresh stable shell starts near 207 MB and settles between 207 and 350 MB at idle under 2% CPU. Surfaces unmount when hidden, streaming helpers terminate with the shell via pdeathsig, and our upcoming boot optimization cuts full-session boot memory by 73%."
+  },
+  {
+    q: "What happens if an edit or update breaks the shell?",
+    a: "kuwai runs from a supervised systemd service on the stable channel. Promotions run automated unit, token, and 141-frame visual checks first, roll back automatically within 4 seconds if a load fails, and fall back to a rescue bar if anything ever crashes repeatedly."
+  }
+];
+
+const shortcuts = [
+  { keys: ["Super", "A"], name: "Launcher, processes, and ports", detail: "Launch apps, math, timers, reminders, or type ! 3000 to inspect and stop a listening server." },
+  { keys: ["Super", "V"], name: "Clipboard island", detail: "Search copy history with fuzzy matching, Quick Look previews, inline editing, OCR, and automatic secret masking." },
+  { keys: ["Super", "N"], name: "Notification and control center", detail: "Grouped app notifications with undo clear, per-app audio mixer, Wi-Fi, Bluetooth, Night Shift, and Caffeine." },
+  { keys: ["Super", "Shift", "N"], name: "Agents overview", detail: "Every active kitty pane and T3 Code thread in one list, sorted with waiting approvals at the top." },
+  { keys: ["Super", "Ctrl", "Enter"], name: "Answer active island card", detail: "Act directly on a ringing alarm, due reminder, or waiting prompt without reaching for the pointer." },
+  { keys: ["Super", "Ctrl", "I"], name: "Live settings", detail: "Adjust appearance, motion, displays, power, privacy, and updates with instant apply and per-row reset." }
+];
+
+const homeSchema = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": `${siteUrl}/#website`,
+      url: `${siteUrl}/`,
+      name: "kuwai",
+      description: "Liquid-glass Hyprland desktop and Dynamic Island built for coding agents.",
+      inLanguage: "en-US"
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": `${siteUrl}/#software`,
+      name: "kuwai",
+      applicationCategory: "DesktopEnvironment",
+      operatingSystem: "Linux (Arch Linux, Hyprland 0.57)",
+      softwareVersion: "0.2.0",
+      license: "https://www.gnu.org/licenses/gpl-3.0.en.html",
+      url: `${siteUrl}/`,
+      downloadUrl: "https://github.com/KitsuneKode/kuwai",
+      codeRepository: "https://github.com/KitsuneKode/kuwai",
+      screenshot: `${siteUrl}/og-image.png`,
+      author: {
+        "@type": "Person",
+        name: "KitsuneKode",
+        url: "https://github.com/KitsuneKode"
+      },
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "USD"
+      }
+    },
+    {
+      "@type": "FAQPage",
+      "@id": `${siteUrl}/#faq`,
+      mainEntity: faqs.map((item) => ({
+        "@type": "Question",
+        name: item.q,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: item.a
+        }
+      }))
+    }
+  ]
+};
+---
+<BaseLayout
+  title="kuwai: Liquid-Glass Hyprland Desktop for Coding Agents"
+  description="kuwai is a liquid-glass Hyprland 0.57 desktop and Dynamic Island built for coding agents, native permission approvals, verified updates, and calm focus."
+  canonicalPath="/"
+  ogImage="/og-image.png"
+  ogVideo="/media/kuwai-launch-demo.mp4"
+  schemaJson={homeSchema}
+>
+  <main id="top">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-backdrop" aria-hidden="true">
+        <img src="/assets/imageory/eclipse-halo.webp" alt="" class="hero-bg-img" fetchpriority="high">
+        <div class="hero-vignette"></div>
+      </div>
+
+      <div class="hero-content">
+        <h1 id="hero-title" class="hero-title">Your desktop knows which agent needs you</h1>
+        <p class="hero-lead">A liquid-glass Hyprland desktop and Dynamic Island built for coding agents, reviewed system updates, and calm focus.</p>
+        <div class="hero-actions">
+          <a href="#install" class="btn-primary">Install kuwai</a>
+        </div>
+      </div>
+
+      <DynamicIslandStage client:load />
+    </section>
+
+    <section class="section" id="island" aria-labelledby="island-title">
+      <div class="container">
+        <div class="split-editorial">
+          <div class="split-copy">
+            <h2 id="island-title">Approve agent work without switching windows</h2>
+            <p>When Claude Code, Codex, or T3 Code runs across multiple terminals, conventional status bars bury the one prompt waiting on you. kuwai splits attention into focused capsules around a centered clock so you read state in a single glance.</p>
+            <p>Waiting approvals surface in their own orange capsule beside the notch while active agents stay calm next to it. Decisions route through native permission hooks with zero synthetic keystrokes, falling back to your terminal prompt after 45 seconds if you stay focused elsewhere.</p>
+            <ul class="detail-list">
+              <li><strong>Dedicated approval capsule:</strong> orange attention halo for waiting prompts; click once to jump directly to the pane.</li>
+              <li><strong>Unified quota countdown:</strong> leads with whichever provider resets soonest across Claude, Codex, Antigravity, Cursor, Grok, Gemini, and multi-profile Devin accounts.</li>
+              <li><strong>Respectful interruption rules:</strong> critical approvals surface over fullscreen windows, while Focus and screen-share modes stay completely quiet.</li>
+            </ul>
+          </div>
+
+          <div class="split-visual">
+            <figure class="media-frame">
+              <img src="/assets/kuwai/capsule-states.png" alt="Live kuwai island capsule states showing Working, Needs you, Hit a limit, and Error" loading="lazy">
+              <figcaption>Live shell captures: Working, Needs you, Hit a limit, and Error capsule states.</figcaption>
+            </figure>
+
+            <PermissionSandbox client:visible />
+          </div>
+        </div>
+
+        <div class="compat-strip">
+          <span class="compat-label">Built for your daily stack</span>
+          <div class="compat-names">
+            <span>Hyprland 0.57</span>
+            <span>Quickshell</span>
+            <span>Claude Code</span>
+            <span>OpenAI Codex</span>
+            <span>T3 Code</span>
+            <span>Devin CLI</span>
+            <span>kitty</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-alt" id="upgrades" aria-labelledby="upgrades-title">
+      <div class="container">
+        <div class="section-head">
+          <h2 id="upgrades-title">Engineered for daily-driver reliability</h2>
+          <p class="section-intro">Every milestone promoted to the stable channel passes automated unit, token, and visual regression gates. Browse the full <a href="/changelog/" class="inline-link">release changelog</a> or follow via <a href="/feed.xml" class="inline-link">RSS</a>.</p>
+        </div>
+
+        <UpgradeList client:visible />
+      </div>
+    </section>
+
+    <section class="section section-craft" id="craft" aria-labelledby="craft-title">
+      <div class="craft-backdrop" aria-hidden="true">
+        <img src="/assets/imageory/liquid-silk.webp" alt="" class="craft-bg-img" loading="lazy">
+        <div class="craft-overlay"></div>
+      </div>
+
+      <div class="container craft-inner">
+        <div class="section-head">
+          <h2 id="craft-title">Liquid glass built from one primitive per job</h2>
+          <p class="section-intro">Hyprland blurs live windows behind every translucent layer while Quickshell draws dark tint, specular rim lighting, and critically damped springs from one shared component grammar.</p>
+        </div>
+
+        <SurfaceShowcase client:visible />
+      </div>
+    </section>
+
+    <section class="section section-alt" id="shortcuts" aria-labelledby="shortcuts-title">
+      <div class="container">
+        <div class="section-head">
+          <h2 id="shortcuts-title">Every surface one keystroke away</h2>
+          <p class="section-intro">Global shortcuts route directly into the running shell with zero subprocess lag, and every panel shares consistent arrow, tab, and escape navigation.</p>
+        </div>
+
+        <div class="shortcut-grid">
+          {shortcuts.map((s) => (
+            <div class="shortcut-item">
+              <div class="shortcut-keys" aria-label={s.keys.join(" + ")}>
+                {s.keys.map((k) => <kbd class="keycap">{k}</kbd>)}
+              </div>
+              <div class="shortcut-copy">
+                <h3>{s.name}</h3>
+                <p>{s.detail}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="improve" aria-labelledby="improve-title">
+      <div class="container">
+        <div class="section-head">
+          <h2 id="improve-title">How much faster and leaner we can go</h2>
+          <p class="section-intro">Measured resource headroom on real hardware alongside the next wave of features on our road to a zero-friction public release.</p>
+        </div>
+
+        <HeadroomExplorer client:visible />
+      </div>
+    </section>
+
+    <section class="section section-alt" id="faq" aria-labelledby="faq-title">
+      <div class="container">
+        <div class="section-head">
+          <h2 id="faq-title">Questions before you install</h2>
+          <p class="section-intro">Direct answers on session safety, fonts, privacy, and recovery.</p>
+        </div>
+
+        <div class="faq-list">
+          {faqs.map((item) => (
+            <details class="faq-item">
+              <summary class="faq-q">
+                <span>{item.q}</span>
+                <span class="faq-plus" aria-hidden="true">+</span>
+              </summary>
+              <p class="faq-a">{item.a}</p>
+            </details>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-install" id="install" aria-labelledby="install-title">
+      <div class="install-backdrop" aria-hidden="true">
+        <img src="/assets/imageory/monolith-portal.webp" alt="" class="install-bg-img" loading="lazy">
+        <div class="install-overlay"></div>
+      </div>
+
+      <div class="container install-inner">
+        <h2 id="install-title">Install kuwai beside your existing session</h2>
+        <p class="install-lead">kuwai installs its Hyprland configuration into <code>~/.config/kuwai/hypr/</code> as a separate login session, leaving your existing <code>~/.config/hypr</code> untouched. Every change is backed up and cleanly reversible.</p>
+
+        <InstallBlock client:visible />
+
+        <p class="install-footnote">Optional: run <code>sudo greeter/install</code> for the unified greetd login screen and <code>sudo system/install</code> for wake-from-sleep alarms.</p>
+      </div>
+    </section>
+  </main>
+</BaseLayout>

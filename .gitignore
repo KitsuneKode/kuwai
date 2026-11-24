@@ -1,3 +1,8 @@
 refs/
 __pycache__/
 /.worktrees/
+site/node_modules/
+site/dist/
+site/.astro/
+site/.vercel/
+.vercel/

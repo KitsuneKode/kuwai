@@ -1,0 +1,209 @@
+---
+import "../styles/global.css";
+
+interface Props {
+  title: string;
+  description: string;
+  canonicalPath?: string;
+  ogImage?: string;
+  ogAlt?: string;
+  ogVideo?: string;
+  solidHeader?: boolean;
+  schemaJson?: Record<string, unknown>;
+}
+
+const {
+  title,
+  description,
+  canonicalPath = "/",
+  ogImage = "/og-image.png",
+  ogAlt = "kuwai liquid-glass Hyprland Dynamic Island showing an orange Claude Code Approval capsule beside a centered clock",
+  ogVideo,
+  solidHeader = false,
+  schemaJson
+} = Astro.props;
+
+const siteUrl = "https://kuwai.kitsunekode.in";
+const canonicalUrl = new URL(canonicalPath, siteUrl).toString();
+const fullOgImage = new URL(ogImage, siteUrl).toString();
+const fullOgVideo = ogVideo ? new URL(ogVideo, siteUrl).toString() : null;
+const currentPath = Astro.url.pathname;
+
+const defaultSchema = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": `${siteUrl}/#website`,
+      url: `${siteUrl}/`,
+      name: "kuwai",
+      description: "Liquid-glass Hyprland desktop and Dynamic Island built for coding agents.",
+      inLanguage: "en-US"
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": `${siteUrl}/#software`,
+      name: "kuwai",
+      applicationCategory: "DesktopEnvironment",
+      operatingSystem: "Linux (Arch Linux, Hyprland 0.57)",
+      softwareVersion: "0.2.0",
+      license: "https://www.gnu.org/licenses/gpl-3.0.en.html",
+      url: `${siteUrl}/`,
+      downloadUrl: "https://github.com/KitsuneKode/kuwai",
+      codeRepository: "https://github.com/KitsuneKode/kuwai",
+      screenshot: `${siteUrl}/og-image.png`,
+      author: {
+        "@type": "Person",
+        name: "KitsuneKode",
+        url: "https://github.com/KitsuneKode"
+      },
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "USD"
+      }
+    }
+  ]
+};
+
+const jsonLd = JSON.stringify(schemaJson ?? defaultSchema);
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{title}</title>
+  <meta name="description" content={description}>
+  <meta name="robots" content="index, follow, max-image-preview:large, max-video-preview:-1">
+  <meta name="theme-color" content="#0b0b0f">
+  <meta name="color-scheme" content="dark">
+  <link rel="canonical" href={canonicalUrl}>
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="kuwai">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:url" content={canonicalUrl}>
+  <meta property="og:title" content={title}>
+  <meta property="og:description" content={description}>
+  <meta property="og:image" content={fullOgImage}>
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content={ogAlt}>
+  {fullOgVideo && (
+    <>
+      <meta property="og:video" content={fullOgVideo}>
+      <meta property="og:video:type" content="video/mp4">
+      <meta property="og:video:width" content="1920">
+      <meta property="og:video:height" content="1080">
+    </>
+  )}
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content={title}>
+  <meta name="twitter:description" content={description}>
+  <meta name="twitter:image" content={fullOgImage}>
+  <meta name="twitter:image:alt" content={ogAlt}>
+
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/favicon-32x32.png" type="image/png" sizes="32x32">
+  <link rel="icon" href="/favicon-16x16.png" type="image/png" sizes="16x16">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <link rel="alternate" type="application/rss+xml" title="kuwai Releases (RSS 2.0)" href="/feed.xml">
+  <link rel="alternate" type="application/atom+xml" title="kuwai Releases (Atom)" href="/atom.xml">
+  <link rel="author" href="/humans.txt">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script type="application/ld+json" set:html={jsonLd} />
+</head>
+<body>
+  <header class:list={["site-header", { "is-scrolled": solidHeader }]} id="siteHeader">
+    <div class="header-inner">
+      <a href="/" class="brand-wordmark" aria-label="kuwai home">
+        <img src="/assets/brand/kuwai-mark.svg" alt="" width="28" height="28" class="brand-mark-img">
+        <span>kuwai</span>
+      </a>
+      <nav class="site-nav" aria-label="Primary">
+        <a href="/#island">Island</a>
+        <a href="/#upgrades">Upgrades</a>
+        <a href="/#craft">Surfaces</a>
+        <a href="/#improve">Roadmap</a>
+        <a href="/changelog/" aria-current={currentPath.startsWith("/changelog") ? "page" : undefined}>Changelog</a>
+        <a href="/brand/" aria-current={currentPath.startsWith("/brand") ? "page" : undefined}>Brand</a>
+        <a href="/#install">Install</a>
+      </nav>
+    </div>
+  </header>
+
+  <slot />
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-about">
+          <a href="/" class="footer-logo" aria-label="kuwai home">
+            <img src="/assets/brand/kuwai-wordmark.svg" alt="kuwai" width="114" height="26">
+          </a>
+          <p class="footer-tagline">A liquid-glass Hyprland desktop and Dynamic Island built for coding agents, reviewed system updates, and calm focus.</p>
+          <p class="footer-colophon">Designed with Gemini Frontend Design. Atmospheric imagery curated from <a href="https://imageory.in/" target="_blank" rel="noopener noreferrer" class="inline-link">imageory.in</a>.</p>
+        </div>
+
+        <div class="footer-col">
+          <h3 class="footer-heading">Product</h3>
+          <ul class="footer-list">
+            <li><a href="/#island">Dynamic Island</a></li>
+            <li><a href="/#upgrades">Verified upgrades</a></li>
+            <li><a href="/#craft">Surfaces and glass</a></li>
+            <li><a href="/#shortcuts">Keyboard shortcuts</a></li>
+            <li><a href="/#improve">Headroom and roadmap</a></li>
+            <li><a href="/#install">Install guide</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h3 class="footer-heading">Resources</h3>
+          <ul class="footer-list">
+            <li><a href="/changelog/">Release changelog</a></li>
+            <li><a href="/brand/">Brand kit and tokens</a></li>
+            <li><a href="/#faq">Questions and requirements</a></li>
+            <li><a href="https://github.com/KitsuneKode/kuwai" target="_blank" rel="noopener noreferrer">GitHub repository</a></li>
+            <li><a href="/.well-known/security.txt">Security policy</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h3 class="footer-heading">Syndication</h3>
+          <ul class="footer-list">
+            <li><a href="/feed.xml">RSS 2.0 feed</a></li>
+            <li><a href="/atom.xml">Atom 1.0 feed</a></li>
+            <li><a href="/sitemap-index.xml">XML sitemap</a></li>
+            <li><a href="/llms.txt">llms.txt summary</a></li>
+            <li><a href="/media/kuwai-launch-demo.mp4">Launch reel (1080p MP4)</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <span>kuwai v0.2.0 · Open source under GPL-3.0-or-later</span>
+        <span>Built for Arch Linux and Hyprland 0.57 · Crafted with Gemini Frontend Design</span>
+      </div>
+    </div>
+  </footer>
+
+  {!solidHeader && (
+    <script is:inline>
+      (() => {
+        const h = document.getElementById("siteHeader");
+        if (!h) return;
+        const sync = () => h.classList.toggle("is-scrolled", window.scrollY > 32);
+        sync();
+        window.addEventListener("scroll", sync, { passive: true });
+      })();
+    </script>
+  )}
+</body>
+</html>

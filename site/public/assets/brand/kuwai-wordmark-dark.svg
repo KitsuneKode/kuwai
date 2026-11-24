@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 210 48" width="210" height="48" fill="none" role="img" aria-label="kuwai">
+  <path d="M5 13H9C11.761 13 14 15.239 14 18V23C14 28.523 18.477 33 24 33C29.523 33 34 28.523 34 23V18C34 15.239 36.239 13 39 13H43" fill="#0b0b0f"/>
+  <path d="M4 13H44" stroke="#0b0b0f" stroke-width="2" stroke-linecap="round"/>
+  <rect x="17.5" y="21" width="8.5" height="3.5" rx="1.75" fill="#ffffff"/>
+  <circle cx="29.75" cy="22.75" r="2.25" fill="#ff9f0a"/>
+  <text x="58" y="33" fill="#0b0b0f" font-family="Inter, -apple-system, BlinkMacSystemFont, sans-serif" font-size="29" font-weight="600" letter-spacing="-1.1">kuwai</text>
+</svg>
