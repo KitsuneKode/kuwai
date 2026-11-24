@@ -638,19 +638,16 @@ class Root:
         self.R = R
         self.p = None
         self.prompts = 0
-        self.helper = os.path.isfile(HELPER_SRC)
+        verified = os.path.isfile(HELPER_SRC) and helper_ok()
+        self.stale = os.path.isfile(HELPER_SRC) and not verified
+        self.helper = verified
 
     def open(self):
         """0 once root is there; pkexec's code (126/127: cancelled) when it isn't."""
         if not self.helper or self.p:
             return 0
         self.prompts += 1
-        if helper_ok():
-            cmd = ["pkexec", HELPER]
-        else:
-            self.R.emit(e="log", line="Setting up one-password updates (kuwai-update-root)")
-            cmd = ["pkexec", "/bin/sh", "-c", 'umask 022 && /usr/bin/install -D -o root -g root -m 0755 -- "$1" "$2" && exec "$2"',
-                   "sh", HELPER_SRC, HELPER]
+        cmd = ["pkexec", HELPER]
         self.p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, bufsize=1)
         hello = self.p.stdout.readline()
         if '"ready"' not in hello:
@@ -660,6 +657,10 @@ class Root:
         return 0
 
     def run(self, op, progress=None, deps=(), files=(), keep=2):
+        if self.stale:
+            self.stale = False
+            self.R.emit(e="log", line="kuwai-update-root is missing or out of date, so each step asks for the password. "
+                                      "Run `kuwai-update install-helper` once to review and install it.")
         if not self.helper:
             self.prompts += 1
             if op == "clean-cache":
