@@ -34,6 +34,8 @@ rule({
 
 rule({ name = "flat-tiles", match = { float = false }, no_shadow = true })
 rule({ name = "fullscreen-no-glow", match = { fullscreen = true }, no_glow = true })
+rule({ name = "solo-tile-no-glow", match = { float = false, workspace = "w[tv1]" }, no_glow = true })
+rule({ name = "special-lifted", match = { workspace = "s[true]" }, no_shadow = false, no_glow = false })
 
 local DIALOG_TITLES = table.concat({
 	"Open File.*", "Select a File.*", "Open Folder.*", "Save As.*", "Save File.*", "Choose Files.*",
@@ -87,12 +89,14 @@ rule({
 	float = true,
 	pin = true,
 })
-rule({ name = "pip-look", match = { tag = "pip" }, opacity = "1.0 override 1.0 override", no_dim = true, no_blur = true })
+rule({ name = "pip-look", match = { tag = "pip" }, opacity = "1.0 override 1.0 override", no_dim = true, no_blur = true, no_glow = true })
 
 rule({ name = "idle-media", match = { class = "^(.*celluloid.*|.*mpv.*|.*vlc.*|.*[Ss]potify.*|.*[Cc]ider.*)$" }, idle_inhibit = "fullscreen" })
 local BROWSER_CLASS = "^(.*LibreWolf.*|.*floorp.*|.*brave-browser.*|.*firefox.*|.*chromium.*|.*zen.*|google-chrome.*|.*vivaldi.*)$"
 rule({ name = "idle-browsers", match = { class = BROWSER_CLASS }, idle_inhibit = "fullscreen" })
 rule({ name = "video-content", match = { class = "^(mpv|vlc|io\\.github\\.celluloid_player\\.Celluloid|haruna|clapper)$" }, content = "video" })
+rule({ name = "video-no-glow", match = { content = "video" }, no_glow = true })
+rule({ name = "photo-no-glow", match = { content = "photo" }, no_glow = true })
 rule({
 	name = "no-auto-hdr-work",
 	match = { class = "^(kitty|com\\.mitchellh\\.ghostty|foot|footclient|Alacritty|org\\.wezfurlong\\.wezterm|code|Code|neovide|emacs|zeditor|com\\.t3tools\\.T3Code)$" },
@@ -109,9 +113,9 @@ rule({ name = "games-title", match = { title = "^(.*\\.exe|.*[Mm]inecraft.*)$" }
 rule({ name = "steam-friends", match = { class = "^([Ss]team)$", title = "^(Friends List|Steam Settings)$" }, float = true })
 
 rule({ name = "jb-splash-tag", match = { class = "^(jetbrains-.*)$", title = "^(splash)$", float = true }, tag = "+jetbrains-splash" })
-rule({ name = "jb-splash", match = { tag = "jetbrains-splash" }, center = true, no_focus = true, border_size = 0 })
+rule({ name = "jb-splash", match = { tag = "jetbrains-splash" }, center = true, no_focus = true, border_size = 0, no_glow = true })
 rule({ name = "jb-popup-tag", match = { class = "^(jetbrains-.*)$", title = "^()$", float = true }, tag = "+jetbrains" })
-rule({ name = "jb-popup", match = { tag = "jetbrains" }, center = true, stay_focused = true, border_size = 0 })
+rule({ name = "jb-popup", match = { tag = "jetbrains" }, center = true, stay_focused = true, border_size = 0, no_glow = true })
 rule({ name = "jb-popup-size", match = { class = "^(jetbrains-.*)$", title = "^()$", float = true }, min_size = "monitor_w*0.5 monitor_h*0.5" })
 rule({ name = "jb-tooltips", match = { class = "^(jetbrains-.*)$", title = "^(win.*)$", float = true }, no_initial_focus = true })
 rule({ name = "jb-mouse", match = { class = "^(jetbrains-.*)$" }, no_follow_mouse = true })

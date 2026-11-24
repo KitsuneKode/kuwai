@@ -40,18 +40,18 @@ K.config({
 
 		shadow = {
 			enabled = true,
-			range = 28,
+			range = 40,
 			render_power = 3,
-			offset = "0 8",
-			color = "rgba(0000005a)",
-			color_inactive = "rgba(00000030)",
+			offset = "0 12",
+			color = "rgba(00000066)",
+			color_inactive = "rgba(00000033)",
 		},
 
 		glow = {
 			enabled = true,
-			range = 14,
+			range = 12,
 			render_power = 3,
-			color = { colors = { "rgba(ffffff38)", "rgba(ffffff12)" }, angle = 45 },
+			color = { colors = { "rgba(ffffff36)", "rgba(ffffff10)" }, angle = 45 },
 			color_inactive = "rgba(00000000)",
 		},
 
@@ -115,8 +115,8 @@ K.config({
 function L.apply_theme()
 	T.load_colors(true)
 	if T.kuwai then
-		local active_b = T.rgba("accent", "cc")
-		local soft_b = T.rgba("accentSoft", "77") or active_b
+		local active_b = T.rgba("accent", "b3")
+		local soft_b = T.rgba("accent", "4d")
 		local inactive_b = T.rgba("border", "55")
 		if active_b then
 			K.config({
@@ -128,7 +128,7 @@ function L.apply_theme()
 				},
 				decoration = {
 					glow = {
-						color = { colors = { T.rgba("accent", "48"), T.rgba("accentSoft", "1c") or T.rgba("accent", "1c") }, angle = 45 },
+						color = { colors = { T.rgba("accent", "40"), T.rgba("accent", "14") }, angle = 45 },
 						color_inactive = "rgba(00000000)",
 					},
 				},

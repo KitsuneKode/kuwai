@@ -15,9 +15,11 @@ hl.curve("kuwaiGlide", { type = "spring", mass = 1, stiffness = 550, damping = 4
 hl.curve("kuwaiSheet", { type = "spring", mass = 1, stiffness = 380, damping = 39 })
 hl.curve("kuwaiPage", { type = "spring", mass = 1, stiffness = 520, damping = 45.6 })
 
+local SPRINGS = { kuwaiGlide = true, kuwaiSheet = true, kuwaiPage = true }
+
 local function anim(leaf, speed, curve_name, style)
 	local spec = { leaf = leaf, enabled = true, speed = speed or 1 }
-	if curve_name and curve_name:match("Glide$") or curve_name and (curve_name:match("Sheet$") or curve_name:match("Page$")) then
+	if SPRINGS[curve_name] then
 		spec.spring = curve_name
 	else
 		spec.bezier = curve_name or "kuwaiOut"
@@ -45,9 +47,12 @@ function M.apply()
 
 	anim("fadeIn", 1.8, "kuwaiOut")
 	anim("fadeOut", 1.2, "kuwaiOut")
-	anim("fadeSwitch", 1.8, "kuwaiOut")
-	anim("fadeShadow", 1.8, "kuwaiOut")
-	anim("fadeDim", 2.5, "kuwaiOut")
+	anim("fadeSwitch", 2, "kuwaiOut")
+	anim("fadeShadow", 2, "kuwaiOut")
+	anim("fadeGlow", 2, "kuwaiOut")
+	anim("fadeDim", 2, "kuwaiOut")
+	anim("fadePopupsIn", 0.9, "kuwaiOut")
+	anim("fadePopupsOut", 1.2, "kuwaiOut")
 
 	anim("layersIn", 2.2, "kuwaiOut", "popin 93%")
 	anim("layersOut", 1.5, "kuwaiOut", "popin 94%")
@@ -58,8 +63,10 @@ function M.apply()
 	anim("specialWorkspaceIn", 1, "kuwaiSheet", "slidevert")
 	anim("specialWorkspaceOut", 1.6, "kuwaiOut", "slidevert")
 
-	anim("border", 1.5, "kuwaiOut")
+	anim("border", 2, "kuwaiOut")
 	off("borderangle")
+	off("shadowangle")
+	off("glowangle")
 
 	anim("zoomFactor", 3, "kuwaiOut")
 	anim("monitorAdded", 2.5, "kuwaiOut")

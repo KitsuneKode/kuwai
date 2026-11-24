@@ -58,6 +58,9 @@ end
 local themed = load_look({ accent = '8aadf4', accentSoft = 'c6a0f6', border = '363a4f' }, true).decoration.glow
 local first = stops(themed.color)[1]
 assert(first:find('^rgba%(8aadf4'), 'glow must follow the theme accent, got ' .. first)
+for _, st in ipairs(stops(themed.color)) do
+    assert(st:find('^rgba%(8aadf4'), 'every glow stop must stay in the accent hue, got ' .. st)
+end
 assert(themed.color_inactive == 'rgba(00000000)', 'themed: unfocused windows must not glow')
 for _, s in ipairs(stops(themed.color)) do
     local a = tonumber(alpha_of(s), 16)
@@ -80,5 +83,19 @@ for _, r in ipairs(rules) do
 end
 assert(fs, 'a rule must turn glow off for fullscreen windows')
 assert(games, 'the games rule must turn glow off')
+local function rule_named(n)
+    for _, r in ipairs(rules) do if r.name == n then return r end end
+end
+for _, n in ipairs({ 'pip-look', 'video-no-glow', 'photo-no-glow', 'solo-tile-no-glow', 'jb-splash', 'jb-popup' }) do
+    local r = rule_named(n)
+    assert(r and r.no_glow == true, n .. ' must turn glow off')
+end
+local solo, lifted
+for i, r in ipairs(rules) do
+    if r.name == 'solo-tile-no-glow' then solo = i end
+    if r.name == 'special-lifted' then lifted = i end
+end
+assert(lifted and solo and lifted > solo, 'special-lifted must come after solo-tile-no-glow so it wins')
+assert(rule_named('special-lifted').no_glow == false and rule_named('special-lifted').no_shadow == false)
 
 print('ok look glow')
