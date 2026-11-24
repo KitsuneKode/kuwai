@@ -18,6 +18,11 @@ import qs.components.ui as Ui
 
 FocusScope {
     id: usage
+    property bool inStrip: false
+    readonly property string headerMeta: !Limits.loaded || !limitsView ? "" : outCount
+        ? outCount + " out" + (partCount ? " · " + partCount + " partly" : "") + (backIn(firstBack) ? " · first back in " + backIn(firstBack) : "")
+        : partCount ? partCount + " partly out" : ""
+    readonly property color headerMetaTone: outCount ? Theme.orange : Theme.textTertiary
     focus: true
     implicitWidth: Theme.panelS
     implicitHeight: col.implicitHeight + 40
@@ -138,7 +143,7 @@ FocusScope {
 
     Column {
         id: col
-        x: 20; y: 20
+        x: 20; y: usage.inStrip ? Theme.s2 : 20
         width: usage.width - 40
         spacing: 14
 
@@ -147,6 +152,7 @@ FocusScope {
         // goes under it.
         Item {
             id: head
+            visible: !usage.inStrip
             width: parent.width
             readonly property bool stack: summary.visible && headTitle.implicitWidth + Theme.s3 + summary.implicitWidth > width
             height: stack ? headTitle.implicitHeight + 2 + summary.implicitHeight : Math.max(Theme.sp(26), headTitle.implicitHeight)

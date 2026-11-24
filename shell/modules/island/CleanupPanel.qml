@@ -23,6 +23,7 @@ import qs.services
 
 FocusScope {
     id: cp
+    property bool inStrip: false
     focus: true
     implicitWidth: Theme.panelM
     implicitHeight: col.implicitHeight + 40
@@ -104,7 +105,7 @@ FocusScope {
 
     Column {
         id: col
-        x: 20; y: 20
+        x: 20; y: cp.inStrip ? Theme.s2 : 20
         width: cp.width - 40
         spacing: 14
 
@@ -114,6 +115,7 @@ FocusScope {
             height: 28
             Label {
                 anchors { left: parent.left; verticalCenter: parent.verticalCenter }
+                visible: !cp.inStrip
                 text: "Cleanup"
                 size: Theme.tTitle3; weight: Theme.wSemibold
             }

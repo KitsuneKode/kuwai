@@ -1145,7 +1145,7 @@ Scope {
                                         required property int index
                                         readonly property bool picked: win.shownPanel === modelData.id
                                         width: 30; height: 24; radius: 12
-                                        color: Qt.rgba(1, 1, 1, picked ? 0.14 : secArea.containsMouse ? 0.07 : 0)
+                                        color: picked ? Theme.wash(3) : secArea.containsMouse ? Theme.wash(1) : "transparent"
                                         Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
                                         Accessible.role: Accessible.PageTab
                                         Accessible.name: modelData.label
@@ -1163,12 +1163,33 @@ Scope {
                                     }
                                 }
                             }
+                            Row {
+                                visible: !Island.canBack && win.sectioned
+                                x: Theme.s4; y: 10
+                                height: 24
+                                spacing: 6
+                                Label {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: Island.titleOf(win.shownPanel)
+                                    size: Theme.tBody; weight: Theme.wSemibold
+                                    color: Theme.textSecondary
+                                }
+                                Label {
+                                    readonly property string meta: panelLoader.item && panelLoader.item.headerMeta !== undefined ? panelLoader.item.headerMeta : ""
+                                    visible: meta !== ""
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: "·  " + meta
+                                    size: Theme.tFootnote; weight: Theme.wMedium
+                                    color: panelLoader.item && panelLoader.item.headerMetaTone !== undefined ? panelLoader.item.headerMetaTone : Theme.textTertiary
+                                    tabular: true
+                                }
+                            }
                             Rectangle {
                                 visible: Island.canBack
-                                x: 14; y: 10
+                                x: 10; y: 10
                                 height: 24; radius: 12
                                 width: backRow.implicitWidth + 18
-                                color: backArea.containsMouse ? Theme.pillHover : Theme.pill
+                                color: backArea.containsMouse ? Theme.wash(2) : "transparent"
                                 Behavior on color { ColorAnimation { duration: Theme.colorMs } }
                                 Row {
                                     id: backRow
@@ -1178,7 +1199,7 @@ Scope {
                                     Label {
                                         anchors.verticalCenter: parent.verticalCenter
                                         text: Island.innerBackLabel || Island.titleOf(Island.history[Island.history.length - 1]) || "Back"
-                                        size: 12; weight: Theme.wMedium; color: Theme.textSecondary
+                                        size: Theme.tFootnote; weight: Theme.wMedium; color: Theme.textSecondary
                                     }
                                 }
                                 MouseArea { id: backArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: Island.back() }
@@ -1195,6 +1216,7 @@ Scope {
                             active: win.panelHere || pv.value > 0.01
                             focus: true
                             sourceComponent: ({ activities: activitiesPanel, calendar: calendarPanel, power: powerPanel, launcher: launcherPanel, settings: settingsPanel, system: systemPanel, theme: themePanel, keys: keysPanel, switcher: switcherPanel, updates: updatesPanel, media: mediaPanel, t3: t3Panel, agents: agentsPanel, bluetooth: bluetoothPanel, usage: usagePanel, sweep: sweepPanel, read: readPanel, cleanup: cleanupPanel })[win.shownPanel] || null
+                            onLoaded: if (item && item.inStrip !== undefined) item.inStrip = win.sectioned && !Island.canBack
                         }
                         // Right click (anywhere a control doesn't take it) or the mouse's back button: back.
                         TapHandler {

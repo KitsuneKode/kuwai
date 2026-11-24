@@ -26,6 +26,8 @@ import qs.services
 
 FocusScope {
     id: sys
+    property bool inStrip: false
+    readonly property string headerMeta: uptime + (SystemStats.load ? " · load " + SystemStats.load.split(" ")[0] : "")
     focus: true
     implicitWidth: Theme.panelM
     implicitHeight: col.implicitHeight + 40
@@ -79,12 +81,13 @@ FocusScope {
 
     Column {
         id: col
-        x: 22; y: 20
+        x: 22; y: sys.inStrip ? Theme.s2 : 20
         width: parent.width - 44
         spacing: 14
 
         Item {
             id: head
+            visible: !sys.inStrip
             width: parent.width; height: 26
             Label { anchors.verticalCenter: parent.verticalCenter; text: "System"; size: 20; weight: Theme.wSemibold }
             Label {

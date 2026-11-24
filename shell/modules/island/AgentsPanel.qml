@@ -80,6 +80,9 @@ FocusScope {
             }
         }
     }
+    property bool inStrip: false
+    readonly property string headerMeta: [needN ? needN + " need" + (needN === 1 ? "s" : "") + " you" : "", workN ? workN + " working" : ""].filter(x => x).join(" · ")
+    readonly property color headerMetaTone: needN ? Theme.orange : Theme.textTertiary
     property var ports: []
     Process {
         id: portsProc
@@ -284,13 +287,14 @@ FocusScope {
 
     Column {
         id: col
-        x: 18; y: 18
+        x: 18; y: ap.inStrip ? Theme.s2 : 18
         width: ap.width - 36
         spacing: 10
 
         // ── The live activity line: what it is, then how they're doing ──
         Item {
             id: head
+            visible: !ap.inStrip
             width: parent.width
             height: 24
             Label {
@@ -325,8 +329,8 @@ FocusScope {
             id: list
             visible: ap.rows.length > 0
             width: parent.width
-            readonly property real others: head.height + footRow.height + (portsCard.visible ? portsCard.height : 0) + (usageCard.visible ? usageCard.height : 0)
-                + (keyHints.visible ? keyHints.height : 0) + col.spacing * (2 + (portsCard.visible ? 1 : 0) + (usageCard.visible ? 1 : 0) + (keyHints.visible ? 1 : 0))
+            readonly property real others: (head.visible ? head.height + col.spacing : 0) + footRow.height + (portsCard.visible ? portsCard.height : 0) + (usageCard.visible ? usageCard.height : 0)
+                + (keyHints.visible ? keyHints.height : 0) + col.spacing * (1 + (portsCard.visible ? 1 : 0) + (usageCard.visible ? 1 : 0) + (keyHints.visible ? 1 : 0))
             height: Math.min(contentHeight, Math.max(Theme.sp(96), Theme.panelMaxH - 36 - others))
             clip: true
             spacing: Theme.s2
