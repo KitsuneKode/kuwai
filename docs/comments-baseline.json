@@ -1,5 +1,5 @@
 {
-  "total_comment_lines": 7556,
+  "total_comment_lines": 7554,
   "files_with_comments": 291,
   "files": {
     "shell/components/ActionMenu.qml": 23,
@@ -66,7 +66,7 @@
     "shell/config/Icons.qml": 7,
     "shell/config/Paths.qml": 5,
     "shell/config/Settings.qml": 3,
-    "shell/config/Theme.qml": 308,
+    "shell/config/Theme.qml": 306,
     "shell/config/TipClock.qml": 5,
     "shell/config/Tr.qml": 23,
     "shell/config/dates.mjs": 39,

@@ -461,7 +461,7 @@ Scope {
             // on a normal screen nothing changes, on a small one it fits.
             readonly property size panelSize: panelLoader.item
                 ? Qt.size(Math.min(panelLoader.item.implicitWidth, maxWinW - 40), Math.min(panelLoader.item.implicitHeight + backH, maxWinH - 40))
-                : Qt.size(420, 300)
+                : Qt.size(Theme.panelS, 300)
             // Expanded, recent background work from the assistant gets a row at the bottom.
             // Its width is IslandHover's own (wider with many agent accounts,
             // so the rings clear both sides); 720 until it's loaded.
@@ -593,7 +593,7 @@ Scope {
             // Expanded with a whole message (a mail, a comment): room to read it.
             readonly property real peekH: Notifs.peekExpanded ? (peekLoader.item ? Math.min(peekLoader.item.wantH, maxWinH - 40) : 172) : 76
             readonly property real bannerH: bannerHere && alertLoader.item ? alertLoader.item.implicitHeight : 72
-            readonly property real targetW: panelHere ? panelSize.width : grown ? hoverSize.width : bannerHere ? 440 : peekHere ? 460 : deviceHere ? (win.alarmCard ? 440 : 420) : restRow.implicitWidth + 32
+            readonly property real targetW: panelHere ? panelSize.width : grown ? hoverSize.width : bannerHere ? Theme.cardW : peekHere ? Theme.cardW : deviceHere ? (win.alarmCard ? Theme.cardW : Theme.cardWNarrow) : restRow.implicitWidth + 32
             readonly property real targetH: panelHere ? panelSize.height : grown ? hoverSize.height : bannerHere ? bannerH : peekHere ? peekH : deviceHere ? 84 : restH
             // Published so surfaces that grow out of the island (the HUD, the
             // clipboard) start from the shape actually on screen: rest, banner,
@@ -1042,9 +1042,9 @@ Scope {
                     Loader {
                         id: alertLoader
                         active: win.bannerHere || bv.value > 0.01
-                        x: Math.round((body.width - 440) / 2)
+                        x: Math.round((body.width - Theme.cardW) / 2)
                         readonly property real k: win.reveal(bv.value, win.bannerHere)
-                        opacity: k * win.fitIn(440, win.bannerH).shown * Math.max(0, 1 - Math.max(m.value, pv.value) * 3)
+                        opacity: k * win.fitIn(Theme.cardW, win.bannerH).shown * Math.max(0, 1 - Math.max(m.value, pv.value) * 3)
                         // Reduce motion: the shape jumps, the content fades (fades only).
                         Behavior on opacity { enabled: Theme.reduceMotion; NumberAnimation { duration: Theme.microMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                         visible: opacity > 0.01
@@ -1058,12 +1058,12 @@ Scope {
                     Loader {
                         id: peekLoader
                         active: win.peekHere || nv.value > 0.01
-                        x: Math.round((body.width - Math.min(460, body.width)) / 2)
-                        width: Math.min(460, Math.max(body.width, 1))
+                        x: Math.round((body.width - Math.min(Theme.cardW, body.width)) / 2)
+                        width: Math.min(Theme.cardW, Math.max(body.width, 1))
                         height: body.height
                         readonly property real k: win.reveal(nv.value, win.peekHere)
-                        readonly property real fit: Math.min(1, body.width / 460)
-                        opacity: k * win.fitIn(460, win.peekH).shown * Math.max(0, 1 - Math.max(m.value, pv.value, bv.value) * 3)
+                        readonly property real fit: Math.min(1, body.width / Theme.cardW)
+                        opacity: k * win.fitIn(Theme.cardW, win.peekH).shown * Math.max(0, 1 - Math.max(m.value, pv.value, bv.value) * 3)
                         // Reduce motion: the shape jumps, the content fades (fades only).
                         Behavior on opacity { enabled: Theme.reduceMotion; NumberAnimation { duration: Theme.microMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                         scale: 0.92 + 0.08 * fit
@@ -1078,9 +1078,9 @@ Scope {
                     Loader {
                         id: deviceLoader
                         active: win.deviceHere || dv.value > 0.01
-                        x: Math.round((body.width - (win.alarmCard ? 440 : 420)) / 2)
+                        x: Math.round((body.width - (win.alarmCard ? Theme.cardW : Theme.cardWNarrow)) / 2)
                         readonly property real k: win.reveal(dv.value, win.deviceHere)
-                        opacity: k * win.fitIn(win.alarmCard ? 440 : 420, 84).shown * Math.max(0, 1 - Math.max(m.value, pv.value, bv.value, nv.value) * 3)
+                        opacity: k * win.fitIn(win.alarmCard ? Theme.cardW : Theme.cardWNarrow, 84).shown * Math.max(0, 1 - Math.max(m.value, pv.value, bv.value, nv.value) * 3)
                         // Reduce motion: the shape jumps, the content fades (fades only).
                         Behavior on opacity { enabled: Theme.reduceMotion; NumberAnimation { duration: Theme.microMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                         visible: opacity > 0.01

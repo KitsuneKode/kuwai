@@ -59,7 +59,7 @@ Item {
         id: k
         property real target: 0
         property real value: 0
-        Behavior on value { NumberAnimation { duration: k.target > 0 ? 160 : 110; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+        Behavior on value { NumberAnimation { duration: k.target > 0 ? Theme.menuInMs : Theme.menuOutMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
         onTargetChanged: value = target
     }
 
@@ -114,13 +114,13 @@ Item {
                     readonly property real s: 2 + index * 5
                     x: -s; y: -s + 6 + index * 2
                     width: card.width + s * 2; height: card.height + s * 2
-                    radius: 14 + s
+                    radius: Theme.r2 + s
                     color: Qt.rgba(0, 0, 0, 0.09)
                 }
             }
             Rectangle {
                 anchors.fill: parent
-                radius: 14
+                radius: Theme.r2
                 color: Qt.rgba(0.07, 0.07, 0.08, 0.97)
                 border.width: 1
                 border.color: Theme.edge(1)
@@ -174,7 +174,7 @@ Item {
                     // (null for a moment while the list is replaced: a Wi-Fi scan, a device connecting)
                     readonly property var e: modelData || ({ isSeparator: true, enabled: false, text: "", hasChildren: false })
                     width: list.width
-                    height: e.isSeparator ? 9 : 30
+                    height: e.isSeparator ? 9 : Theme.sp(30)
 
                     Rectangle {
                         visible: row.e.isSeparator

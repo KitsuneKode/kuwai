@@ -25,7 +25,7 @@ Item {
     id: card
     required property var item
     required property var bar
-    implicitWidth: 440
+    implicitWidth: Theme.cardW
     implicitHeight: 84
 
     readonly property string kind: item ? item.kind || "" : ""
@@ -68,20 +68,20 @@ Item {
     ParallelAnimation {
         id: entering
         SequentialAnimation {
-            PauseAnimation { duration: Theme.hoverMs }
+            PauseAnimation { duration: Theme.handoffMs * 2 }
             NumberAnimation { target: card; property: "enter"; to: 1; duration: Theme.cardInMs; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
         }
         SequentialAnimation {
-            PauseAnimation { duration: Theme.pressMs }
-            NumberAnimation { target: card; property: "line1"; to: 1; duration: Theme.cardRiseMs; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
+            PauseAnimation { duration: Theme.handoffMs * 4 }
+            NumberAnimation { target: card; property: "line1"; to: 1; duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
         }
         SequentialAnimation {
-            PauseAnimation { duration: Theme.pressMs + Theme.revealStepMs + 10 }
-            NumberAnimation { target: card; property: "line2"; to: 1; duration: Theme.cardRiseMs; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
+            PauseAnimation { duration: Theme.handoffMs * 4 }
+            NumberAnimation { target: card; property: "line2"; to: 1; duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
         }
         SequentialAnimation {
-            PauseAnimation { duration: Theme.cardRiseMs }
-            NumberAnimation { target: card; property: "actsIn"; to: 1; duration: Theme.cardRiseMs; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
+            PauseAnimation { duration: Theme.handoffMs * 4 }
+            NumberAnimation { target: card; property: "actsIn"; to: 1; duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
         }
     }
     // A reminder or a timer: the ring fills, the bell swings once.

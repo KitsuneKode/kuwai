@@ -136,6 +136,8 @@ Singleton {
     readonly property int panelS: 460    // a list or a card: Agents, Usage, T3, Notifications, Bluetooth, Now Playing
     readonly property int panelM: 640    // a list with detail: Launcher, System, Power, Cleanup
     readonly property int panelL: 800    // two columns: Settings, Updates, Shortcuts
+    readonly property int cardW: panelS
+    readonly property int cardWNarrow: panelS - 40
     readonly property int panelXL: 980   // a gallery: Themes
     readonly property int panelMaxH: 600 // the most height the island gives a panel (its window is 640; bin/kuwai-rehearse's ISLAND)
     readonly property int s1: 4
@@ -510,14 +512,13 @@ Singleton {
     readonly property int shimmerMs: 1300
     readonly property int hudInMs: 180          // the HUD answers a keypress: fast, 6px, no scale bounce
     readonly property int hudOutMs: 150
-    readonly property int revealStepMs: 40      // stagger between groups of content (30–80ms)
     // Cards that grow out of the island (DeviceCard, AlarmCard).
     readonly property int cardInMs: 300         // the mark coming up
     readonly property int cardRiseMs: 260       // each line rising 4 px into place
     readonly property int ringDrawMs: 480       // a ring drawing itself closed
     readonly property int swingMs: 700          // a bell's damped swing, all of it
     readonly property int breathOutMs: 1100
-    readonly property int wallRevealMs: 900
+    readonly property int wallRevealMs: 700
     readonly property int handoffMs: 30          // one swap's new content waits this long for the old to start leaving
     readonly property int settleMs: 260          // settling into a new place or size, not arriving: a surface resizing to fit, a pulled one let go, a farewell undone
     readonly property int kickMs: 90             // the quick first half of a there-and-back: a rubber band's stretch, a typed dot's pop, a bump, a miss
@@ -531,7 +532,8 @@ Singleton {
     readonly property int peakFollowMs: 60       // a live level following its peaks: just enough to smooth the steps
     readonly property int peakFallMs: 1600       // a meter's peak-hold line falling back
     readonly property int waveSettleMs: 380      // the now-playing bars settling to their pause shape
-    readonly property int revealClockMs: 600     // a panel's reveal clock: long enough for its last staged step to land
+    readonly property int menuInMs: 140
+    readonly property int menuOutMs: 100
     readonly property int ambientFadeMs: 600     // something behind everything fading by itself (a live wallpaper's video)
     // A device card's own beats (DeviceCard; it enters like AlarmCard).
     readonly property int cardPingMs: 450        // the link closing sends one ping out
@@ -598,7 +600,7 @@ Singleton {
     // deleting a copy. Long enough to notice and reach (Material's snackbar:
     // 4–10 s), short enough that it is soon final.
     readonly property int undoMs: 6000
-    readonly property int panelPollMs: 5000     // live numbers that need a process, only while their panel is open     // a wallpaper change growing out of the island (WallFx): rare, so it may take its time     // light breathing out of a ringing alarm
+    readonly property int panelPollMs: 5000     // live numbers that need a process, only while their panel is open
 
     // Reduced motion: fewer and gentler: fades and colour stay, travel,
     // scale and stagger go. On when you switch it on (Controls → Reduce

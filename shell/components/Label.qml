@@ -4,8 +4,8 @@
 // face's own tracking (SF Pro's trak table; none for Inter). `rounded` is
 // SF Pro Rounded for numerals, or Inter's open digits. Use this, not a bare Text.
 //
-//   Label { size: 15; weight: Theme.wSemibold; text: "Title" }
-//   Label { size: 11; rounded: true; text: count }
+//   Label { size: Theme.tHeadline; weight: Theme.wSemibold; text: "Title" }
+//   Label { size: Theme.tCaption; rounded: true; text: count }
 import QtQuick
 import qs.config
 

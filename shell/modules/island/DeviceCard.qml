@@ -30,7 +30,7 @@ Item {
     id: card
     required property var item
     required property var bar
-    implicitWidth: 420
+    implicitWidth: Theme.cardWNarrow
     implicitHeight: 84
     readonly property bool gone: !!(item && item.gone)
     readonly property bool quiet: !!(item && item.quiet)
@@ -67,16 +67,16 @@ Item {
     ParallelAnimation {
         id: entering
         SequentialAnimation {
-            PauseAnimation { duration: Theme.hoverMs }
+            PauseAnimation { duration: Theme.handoffMs * 2 }
             NumberAnimation { target: card; property: "enter"; to: 1; duration: Theme.cardInMs; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
         }
         SequentialAnimation {
-            PauseAnimation { duration: Theme.pressMs }
-            NumberAnimation { target: card; property: "line1"; to: 1; duration: Theme.cardRiseMs; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
+            PauseAnimation { duration: Theme.handoffMs * 4 }
+            NumberAnimation { target: card; property: "line1"; to: 1; duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
         }
         SequentialAnimation {
-            PauseAnimation { duration: Theme.pressMs + Theme.revealStepMs + 10 }
-            NumberAnimation { target: card; property: "line2"; to: 1; duration: Theme.cardRiseMs; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
+            PauseAnimation { duration: Theme.handoffMs * 4 }
+            NumberAnimation { target: card; property: "line2"; to: 1; duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
         }
     }
     SequentialAnimation {
@@ -108,13 +108,13 @@ Item {
     Accessible.role: Accessible.Button
     Accessible.name: card.item ? [card.item.title, card.item.state].filter(x => x).join(", ") : ""
     Accessible.description: card.item ? card.item.detail || "" : ""
-    Accessible.onPressAction: { const open = card.item ? card.item.open : null; Moments.dropCard(); if (open) open(); else Notifs.toggleCenter("sound", "click", card.bar.screenName); }
+    Accessible.onPressAction: { const open = card.item ? card.item.open : null; Moments.dropCard(); if (open) open(); else Notifs.toggleCenter("sound", "pointer", card.bar.screenName); }
     TapHandler {
         onTapped: {
             const open = card.item ? card.item.open : null;
             Moments.dropCard();
             if (open) open();
-            else Notifs.toggleCenter("sound", "click", card.bar.screenName);
+            else Notifs.toggleCenter("sound", "pointer", card.bar.screenName);
         }
     }
 

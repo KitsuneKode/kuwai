@@ -171,7 +171,7 @@ QtObject {
 
             // 0 → 1 on open (ease-out, enterMs), back to 0 quicker; then gone.
             property real k: 0
-            Behavior on k { NumberAnimation { duration: ov.shown ? Theme.enterMs : Theme.exitMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+            Behavior on k { NumberAnimation { duration: ov.shown ? Theme.menuInMs : Theme.menuOutMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
             Component.onCompleted: k = 1
             onShownChanged: k = shown ? 1 : 0
             onKChanged: if (!shown && k === 0) menu.where = null

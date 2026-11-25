@@ -183,7 +183,8 @@ Scope {
             contentFade = 1;
             morph.snap(reopening ? closeT : 0);
             beginSoon.seq = root.surface.seq;
-            beginSoon.restart();
+            if (reopening) root.begin(root.surface.seq);
+            else beginSoon.restart();
             if (ui && !Notifs.centerFocusReply) ui.search.forceActiveFocus();
         } else {
             dispatchSurface({ type: "close" });
@@ -277,7 +278,7 @@ Scope {
             const kids = it => { const o = []; if (!it) return o; for (let k = 0; k < it.children.length; k++) { const c = it.children[k]; o.push([Math.round(c.x), Math.round(c.width), c.visible]); } return o; };
             const tabsRow = root.ui ? root.ui.tabs.children[1] : null;
             return JSON.stringify({
-                open: root.open, folding: root.folding, capturing: root.capturing, clock: root.clock, p: root.p,
+                open: root.open, folding: root.folding, capturing: root.capturing, p: root.p,
                 screen: root.shownScreen ? root.shownScreen.name : null, ui: !!root.ui,
                 tabs: root.ui ? { w: root.ui.tabs.width, implicit: root.ui.tabs.implicitWidth, items: kids(tabsRow) } : null,
                 groups: root.ui ? root.ui.notifications.groupCount : null,

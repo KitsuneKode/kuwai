@@ -12,7 +12,7 @@ Item {
     id: peek
     required property var item
     required property var bar
-    width: 460
+    width: Theme.cardW
     height: parent ? parent.height : 76
     opacity: swipeFade
     readonly property bool expanded: Notifs.peekExpanded

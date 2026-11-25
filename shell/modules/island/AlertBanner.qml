@@ -11,7 +11,7 @@ Item {
     required property var alert
     required property var bar
     property bool expanded: false
-    width: 440
+    width: Theme.cardW
     implicitHeight: expanded ? Math.min(140, 76 + Math.max(40, detailScroll.contentHeight + 8)) : 72
     readonly property color tone: !alert ? Theme.orange : alert.level === "crit" ? Theme.red : alert.level === "info" ? Theme.accent : Theme.orange
 
