@@ -331,7 +331,8 @@ FocusScope {
             width: parent.width
             readonly property real others: (head.visible ? head.height + col.spacing : 0) + footRow.height + (portsCard.visible ? portsCard.height : 0)
                 + (keyHints.visible ? keyHints.height : 0) + col.spacing * (1 + (portsCard.visible ? 1 : 0) + (keyHints.visible ? 1 : 0))
-            height: Math.min(contentHeight, Math.max(Theme.sp(96), Theme.panelMaxH - 36 - others))
+            readonly property real room: Theme.panelMaxH - (ap.inStrip ? 34 : 0) - col.y - 18
+            height: Math.min(contentHeight, Math.max(Theme.sp(96), room - others))
             clip: true
             spacing: Theme.s2
             boundsBehavior: Flickable.StopAtBounds
@@ -673,16 +674,21 @@ FocusScope {
             radius: Theme.r3
             color: Theme.card
             border.width: 1; border.color: Theme.cardEdge
-            Column {
+            ListView {
                 id: portsCol
                 x: Theme.s3; y: Theme.s2
                 width: parent.width - Theme.s3 * 2
-                Repeater {
-                    model: ap.ports.slice(0, Theme.textScale >= 1.5 ? 2 : 4)
-                    Item {
+                readonly property real rowH: Theme.sp(36)
+                height: Math.min(count, 2) * rowH
+                implicitHeight: height
+                clip: true
+                interactive: count > 2
+                boundsBehavior: Flickable.StopAtBounds
+                model: ap.ports
+                delegate: Item {
                         required property var modelData
                         width: portsCol.width
-                        height: Theme.sp(36)
+                        height: portsCol.rowH
                         Row {
                             id: portWords
                             anchors.verticalCenter: parent.verticalCenter
@@ -713,8 +719,8 @@ FocusScope {
                             Accessible.name: "Open localhost port " + modelData.port + ", " + modelData.proc + " in " + modelData.project
                         }
                     }
-                }
             }
+            ScrollHint { flickable: portsCol; inside: true }
         }
 
 
