@@ -73,7 +73,12 @@ Item {
     NumberAnimation { id: swapIn; target: view; property: "swap"; from: Theme.reduceMotion ? 1 : 0; to: 1; duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
     Connections {
         target: view.center
-        function onQueryChanged() { if (view.shown && view.center.query !== "") view.module = "wifi"; }
+        function onQueryChanged() {
+            if (!view.shown || view.center.query === "") return;
+            const bt = view.btDevices.some(d => view.center.matchesText(d.name));
+            const wifi = !!view.wifiDevice && view.wifiDevice.networks.values.some(n => view.center.matchesText(n.name));
+            view.module = bt && !wifi ? "bluetooth" : "wifi";
+        }
     }
 
     function modelOf(name) {

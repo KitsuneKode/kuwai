@@ -12,8 +12,8 @@ Control the running kuwai.
   kuwai demo [--step]        a 45 s tour of the island with pretend agents (for trying it, or recording)
   kuwai notifs <cmd>         dnd | dnd-on | dnd-off | mute-on | mute-off | clear | hide | open | last | count | waybar
   kuwai feeds [status|gmail-setup|gmail-forget|logs]   GitHub and Gmail notifications (bin/kuwai-feeds)
-  kuwai center [agents] [pointer]   toggle the center (Notifications or Agents);
-                            `pointer` (the bell) morphs it, keys open it instantly
+  kuwai center [notifications|controls|sound] [pointer]   toggle the center (the notch grown);
+                            agents opens the island's Agents panel
   kuwai assistant [here|open] toggle the AI assistant; `here` opens it about the focused window
   kuwai bar [island|waybar]  which top bar: kuwai's island or HyDE's Waybar
   kuwai lock [--wait]        lock with kuwai's lock screen (--wait: until it is locked; hyprlock if the shell is down)

@@ -89,15 +89,15 @@ bounce 0.12 (large surfaces, morphs). Exits are tweens one tier quicker.
 `easeDrawer` 0.32,0.72,0,1). Never ease-in on UI. UI stays under 300ms:
 press 140, enter 200, exit 150, glide 150, reflow 200, HUD 180/150.
 
-**The center is a menu, not a tile**: a floating 420px card hanging from
-the bar's right corner (where the bell is), ~3/4 of the screen tall, on
-`glassTintElevated` (lighter than a window) with a deep shadow, while its own
-`kuwai.scrim` backdrop recedes everything behind it. It scales up
-from its top-right corner on the moderate spring (0.96 → 1, 6px drop, fade),
-content 40ms a step behind, and closes the same way in 120ms. With toasts on
-screen it morphs out of the front one instead (slow spring; rectangle and
-radius grow into the card, content revealed by the clip). Motion starts only
-once Hyprland has mapped the surface.
+**The center is the notch grown** (the phone's model): Notifications is
+pulled down from the notch, Controls and Sound from its right side. It hangs
+from the top edge in the island's black (NotchShape, LiquidRim), panelS + 20
+wide, and grows out of the island's rest shape on the island's springs
+(surfaceIn, surfaceKeyIn from a key), folding back into it on an ease-out;
+while it covers a screen, that screen's notch steps aside. Its content fades
+in once, on the card's progress. With Waybar or the floating pill it is a
+420px glass card at the right corner instead, over a `kuwai.scrim` backdrop.
+Motion starts only once Hyprland has mapped the surface.
 
 **Text renders with FreeType** (`renderType: Text.NativeRendering` in Label):
 Qt's distance-field atlas drew some labels blank or overlapped with a
@@ -140,7 +140,7 @@ Swipe locks its axis on the first pixel, follows 1:1 away from the corner
 
 ## Notification center
 
-Glass panel from the right edge, grouped by app; each group folds into a
+The notch grown (above), grouped by app; each group folds into a
 stack (newest on top, two plates peeking out below). Opening focuses search.
 Words must all match (app, title, body, status) and matches highlight in
 yellow. Filters: All / Unread / Important. Keyboard: ↑↓ select (blue ring),

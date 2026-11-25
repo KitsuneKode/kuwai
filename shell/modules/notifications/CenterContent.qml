@@ -46,8 +46,10 @@ Item {
     Item {
         id: header
         anchors { left: parent.left; right: parent.right; top: parent.top; margins: 16 }
-        visible: content.order.length > 1
-        height: visible ? 36 : 0
+        visible: height > 1
+        height: content.order.length > 1 ? 36 : 0
+        clip: true
+        Behavior on height { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.settleMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
 
         Segmented {
             id: tabs
@@ -322,6 +324,7 @@ Item {
 
     ShortcutSheet {
         id: sheet
+        order: content.order
         anchors.fill: parent
         z: 10
     }

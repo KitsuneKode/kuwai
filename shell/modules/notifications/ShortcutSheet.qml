@@ -9,6 +9,9 @@ Item {
     id: sheet
 
     property bool open: false
+    property var order: ["notifications", "sound", "controls"]
+    readonly property var tabRows: (order.length > 1 ? [{ keys: ["⌃", "⇥"], label: "Switch tab" }] : [])
+        .concat(order.length > 1 ? order.map((id, i) => ({ keys: ["⌥", String(i + 1)], label: ({ notifications: "Notifications", sound: "Sound", controls: "Controls" })[id] })) : [])
     readonly property real p: rise.value
     visible: p > 0.001
 
@@ -19,11 +22,7 @@ Item {
             { keys: ["↑", "↓"], label: "Select" },
             { keys: ["→", "←"], label: "Expand or fold a group" },
             { keys: ["⇥"], label: "Next filter" },
-            { keys: ["⌃", "⇥"], label: "Switch tab" },
-            { keys: ["⌥", "1"], label: "Notifications" },
-            { keys: ["⌥", "2"], label: "Sound" },
-            { keys: ["⌥", "3"], label: "Controls" },
-            { keys: ["↓"], label: "Sound, Controls: into the controls (⎋ back)" } ] },
+            { keys: ["↓"], label: "Sound, Controls: into the controls (⎋ back)" } ].concat(sheet.tabRows) },
         { title: "Act", rows: [
             { keys: ["↩"], label: "Open" },
             { keys: ["Space"], label: "The selected one's buttons" },
@@ -37,6 +36,7 @@ Item {
             { keys: ["⎋"], label: "Clear search, then close" } ] },
         { title: "Anywhere", rows: [
             { keys: ["Super", "N"], label: "Notifications" },
+            { keys: ["Super", "⌃", "⌥", "W"], label: "Controls" },
             { keys: ["Super", "⇧", "N"], label: "Agents" },
             { keys: ["Super", "⌥", "N"], label: "Do Not Disturb" },
             { keys: ["Super", "⇧", "⌥", "N"], label: "Open the newest notification" } ] }
