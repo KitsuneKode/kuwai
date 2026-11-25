@@ -25,11 +25,24 @@ def test_install_lists_the_theme_with_its_own_palette(tmp_path):
     pics.mkdir()
     for n in ("a", "b"):
         Image.new("RGB", (64, 36), (10, 10, 20)).save(pics / f"{n}.png")
-    (src / "wallpapers.tsv").write_text("".join(f"0{i}-{n}\tfile://{pics}/{n}.png\n" for i, n in enumerate("ab", 1)))
+    import hashlib
+    good = hashlib.sha256((pics / "a.png").read_bytes()).hexdigest()
+    (src / "wallpapers.tsv").write_text(f"01-a\thttps://walls.invalid/a.png\t{good}\n"
+                                        f"02-b\thttps://walls.invalid/b.png\n"
+                                        f"03-c\thttps://walls.invalid/b.png\t{'0' * 64}\n")
+    stubs = tmp_path / "stubs"
+    stubs.mkdir()
+    (stubs / "curl").write_text(f"""#!/bin/sh
+case "$*" in *"--proto =https"*"--max-filesize"*) ;; *) exit 9 ;; esac
+for a; do out=$url; url=$a; done
+while [ $# -gt 0 ]; do [ "$1" = -o ] && dest=$2; shift; done
+cp "{pics}/$(basename "$url")" "$dest"
+""")
+    (stubs / "curl").chmod(0o755)
 
     home = tmp_path / "home"
     home.mkdir()
-    env = {"HOME": str(home), "PATH": os.environ["PATH"]}
+    env = {"HOME": str(home), "PATH": f"{stubs}:{os.environ['PATH']}"}
     r = subprocess.run(["bash", str(repo / "bin/kuwai-theme"), "install", "demo-night"], env=env, capture_output=True, text=True, timeout=60)
     assert r.returncode == 0, r.stderr
     dest = home / ".config/hyde/themes/Demo Night"
@@ -38,5 +51,8 @@ def test_install_lists_the_theme_with_its_own_palette(tmp_path):
     wall = dest / "wall.set"
     assert wall.is_symlink() and wall.resolve().parent == (dest / "wallpapers").resolve()
     assert wall.resolve().exists()
+    walls = sorted(p.name for p in (dest / "wallpapers").glob("*.jpg"))
+    assert walls == ["01-a.jpg", "02-b.jpg"], "a file that doesn't match its listed checksum is skipped"
+    assert "checksum differs" in r.stderr
     # run again: nothing breaks, nothing is fetched twice
     assert subprocess.run(["bash", str(repo / "bin/kuwai-theme"), "install", "demo-night"], env=env, capture_output=True, text=True, timeout=60).returncode == 0

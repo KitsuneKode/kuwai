@@ -273,7 +273,7 @@ FocusScope {
         if (!p.mine || !p.pid) { procNote = p.pid ? procLabel(p) + " belongs to " + p.user + " (needs sudo)" : "Owned by another user (needs sudo): " + (p.addr || ""); return; }
         if (armedPid !== p.pid || armedForce !== force) { armedPid = p.pid; armedForce = force; return; }
         procEnd.who = (p.group ? p.app : procLabel(p)) + " (" + p.pid + ")";
-        procEnd.command = [Paths.bin + "/kuwai-procs", "--end", String(p.pid)].concat(force ? ["--force"] : []);
+        procEnd.command = [Paths.bin + "/kuwai-procs", "--end", String(p.pid)].concat(p.start ? ["--start", String(p.start)] : []).concat(force ? ["--force"] : []);
         procEnd.running = true;
     }
     function procRows() {

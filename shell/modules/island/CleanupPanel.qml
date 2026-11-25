@@ -68,10 +68,12 @@ FocusScope {
     Process {
         id: actor
         property string what: ""
+        property int kept: 0
         stdout: StdioCollector { id: actOut }
         onExited: code => {
             if (actor.what === "restore") cp.status = code === 0 ? "Put back" : "Nothing to put back";
-            else cp.status = code === 0 ? "Moved " + actor.what + " to the Trash" : "Couldn't move " + actor.what;
+            else cp.status = code !== 0 ? "Couldn't move all of " + actor.what
+                : "Moved " + actor.what + " to the Trash" + (actor.kept ? "; " + actor.kept + " linked from elsewhere: only the links went" : "");
             cp.canPutBack = code === 0 && actor.what !== "restore";
             cp.marked = ({});
             cp.confirm = false;
@@ -89,7 +91,11 @@ FocusScope {
         if (!markedCount) return;
         if (!confirm) { confirm = true; return; }
         const names = Object.keys(marked);
-        act(["trash"].concat(names), names.length === 1 ? names[0] : names.length + " skills");
+        const chosen = rows.filter(r => marked[r.name]);
+        const paths = [].concat(...chosen.map(r => r.paths || [r.path]));
+        const kept = [].concat(...chosen.map(r => r.externalPaths || []));
+        actor.kept = kept.length;
+        act(["trash"].concat(paths), names.length === 1 ? names[0] : names.length + " skills");
     }
     function num(n) { return Number(n || 0).toLocaleString(Qt.locale("en_US"), "f", 0); }
     function gb(b) { return b >= 1e9 ? (b / 1e9).toFixed(1) + " GB" : Math.round(b / 1e6) + " MB"; }

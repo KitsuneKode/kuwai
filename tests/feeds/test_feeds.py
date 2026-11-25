@@ -266,3 +266,30 @@ def test_a_notification_action_counts_only_from_the_notification_server(rf):
         assert ran == ["open", "reply:hi"]
     finally:
         threading.Thread = real
+
+
+def test_a_reply_travels_on_stdin_not_in_the_arguments(rf, monkeypatch):
+    seen = {}
+
+    def run(cmd, **kw):
+        seen["cmd"], seen["input"] = cmd, kw.get("input")
+        return type("R", (), {"returncode": 0, "stdout": "{}", "stderr": ""})()
+    monkeypatch.setattr(rf.subprocess, "run", run)
+    monkeypatch.setattr(rf, "gh_mark_read", lambda tid: None)
+    flashes = []
+    note = type("N", (), {"flash": lambda self, *a: flashes.append(a)})()
+    rf.gh_reply(note, "o/r", 7, "t1", "the secret plan")
+    assert not any("secret" in a for a in seen["cmd"])
+    assert seen["cmd"][-2:] == ["--input", "-"]
+    import json
+    assert json.loads(seen["input"]) == {"body": "the secret plan"}
+
+
+def test_dry_run_logs_shapes_not_text(rf, monkeypatch, capsys):
+    monkeypatch.setattr(rf, "DRY", True)
+    monkeypatch.delenv("KUWAI_FEEDS_SHOW_TEXT", raising=False)
+    n = rf.Notifier.__new__(rf.Notifier)
+    n.send("Gmail", "mail", "Salary review", "your offer is 1.2M", {"x-kuwai-feed": "g", "category": "email"}, "k", {})
+    out = capsys.readouterr().out
+    assert "Salary" not in out and "offer" not in out
+    assert "<title, 13 chars>" in out

@@ -2,8 +2,8 @@ pragma Singleton
 
 // Your calendars' events, for the calendar panel and the island's "in 10
 // min" moment. Sources: ~/.config/kuwai/calendars.txt, one per line, each an
-// iCal link (Google Calendar's "Secret address in iCal format", Outlook,
-// iCloud, Fastmail…) or a local .ics path; # starts a comment. Links are
+// iCal link over HTTPS (Google Calendar's "Secret address in iCal format",
+// Outlook, iCloud, Fastmail…) or a local .ics path; # starts a comment. Links are
 // fetched every 30 minutes into ~/.cache/kuwai/calendars/ (only the link
 // itself is requested; nothing else leaves the machine).
 //
@@ -49,21 +49,27 @@ Singleton {
     }
     Process {
         id: fetch
-        // Sources are arguments ("$@"), never part of the command.
+        // The list is read here, never passed: a secret link stays out of argv.
         command: ["sh", "-c", `
-            dir=$1; shift; mkdir -p "$dir"; i=0
-            for src in "$@"; do
+            dir=$1; list=$2; mkdir -p "$dir"; chmod 700 "$dir"; i=0
+            while IFS= read -r src || [ -n "$src" ]; do
+                src=$(printf %s "$src" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+                case $src in ""|"#"*) continue ;; esac
                 i=$((i + 1))
+                f=
                 case $src in
-                    http://*|https://*|webcal://*)
+                    https://*|webcal://*)
                         url=$(printf %s "$src" | sed 's#^webcal://#https://#')
-                        curl -sfL --max-time 15 --max-filesize 8M --proto =https,http --proto-redir =https "$url" -o "$dir/$i.ics.tmp" && mv -f "$dir/$i.ics.tmp" "$dir/$i.ics"
+                        printf %s "$url" | grep -q '[[:space:]"\\\\]' && continue
+                        printf 'url = "%s"\\n' "$url" | curl -sfL --max-time 15 --max-filesize 8M --proto =https --proto-redir =https -K - -o "$dir/$i.ics.tmp" \\
+                            && mv -f "$dir/$i.ics.tmp" "$dir/$i.ics"
                         f="$dir/$i.ics" ;;
+                    http://*) continue ;;
                     "~/"*) f="$HOME/\${src#\\~/}" ;;
                     *) f=$src ;;
                 esac
                 [ -r "$f" ] && { cat "$f"; printf '\\nX-RICE-END-OF-FILE\\n'; }
-            done`, "sh", root.cacheDir, ...root.sources]
+            done < "$list"`, "sh", root.cacheDir, root.listPath]
         stdout: StdioCollector { onStreamFinished: root.events = root.parse(text) }
     }
     Timer { interval: 30 * 60 * 1000; running: root.configured; repeat: true; onTriggered: root.refresh() }

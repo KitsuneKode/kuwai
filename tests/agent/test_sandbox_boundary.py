@@ -130,3 +130,19 @@ def test_log_is_read_as_a_bounded_tail(env):
     (jobs / f"{JID}.log").write_text("x" * (sb.JOB_LOG_MAX + 50) + "END")
     out = sb.job_state("c1", JID)[2]
     assert len(out) == sb.JOB_LOG_MAX and out.endswith("END")
+
+
+def test_a_strangers_container_under_the_sandbox_name_is_never_removed(monkeypatch):
+    import kuwai_sandbox as sb
+    calls = []
+
+    def docker(*a, **k):
+        calls.append(a)
+        out = "someone-else\n" if a[0] == "inspect" else ""
+        return type("P", (), {"returncode": 0, "stdout": out, "stderr": ""})()
+    monkeypatch.setattr(sb, "_docker", docker)
+    import pytest
+    with pytest.raises(sb.SandboxError, match="isn't the sandbox's"):
+        sb._replace("kuwai-sandbox-c1")
+    sb._replace(sb.NAME, quiet=True)
+    assert not any(c[:2] == ("rm", "-f") for c in calls)

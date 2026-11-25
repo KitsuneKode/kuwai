@@ -152,9 +152,8 @@ def get_wayland_clipboard():
 TERMINALS = {"kitty", "foot", "alacritty", "wezterm", "org.wezfurlong.wezterm", "ghostty", "com.mitchellh.ghostty",
              "konsole", "org.kde.konsole", "gnome-terminal", "xterm", "code", "code-oss", "codium", "zed", "dev.zed.zed",
              "cursor", "neovide", "jetbrains-idea", "jetbrains-pycharm"}
-SECRETY = re.compile(r"(-----BEGIN [A-Z ]*PRIVATE KEY-----|\bgh[pousr]_[A-Za-z0-9]{20,}|\bsk-[A-Za-z0-9_-]{20,}"
-                     r"|\bAKIA[0-9A-Z]{16}\b|\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.|\bxox[baprs]-[A-Za-z0-9-]{10,}"
-                     r"|\b[A-Za-z0-9+/]{40,}={0,2}\b)")
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+from kuwai_redact import looks_secret, without_secrets  # noqa: E402
 
 
 def app_display_name(wm_class):
@@ -188,7 +187,7 @@ def fresh_text(kind, text):
     import hashlib
     if not text:
         return ""
-    if SECRETY.search(text):
+    if looks_secret(text):
         return ""
     state_file = os.path.expanduser("~/.cache/kuwai/assistant/last-context.json")
     try:
@@ -241,12 +240,12 @@ def kitty_context(pid):
         out = "\n".join((p.stdout or "").rstrip().splitlines()[-60:])[-4000:]
     except (subprocess.SubprocessError, OSError):
         pass
-    if out and SECRETY.search(out):
+    if out and looks_secret(out):
         out = "(left out: it looked like it contained a secret)"
     return {
         "cwd": win.get("cwd") or "",
-        "running": fg[0] if fg and not win.get("at_prompt") else "",
-        "last_command": (win.get("last_reported_cmdline") or "")[:300],
+        "running": without_secrets(fg[0]) if fg and not win.get("at_prompt") else "",
+        "last_command": without_secrets((win.get("last_reported_cmdline") or "")[:300]),
         "last_output": out,
         "at_prompt": bool(win.get("at_prompt")),
     }
@@ -457,9 +456,15 @@ def cmd_search(args):
     """kuwai-ollama search <start|stop|status>: the local SearXNG the assistant searches first."""
     sub = args[0] if args else "status"
     conf = os.path.expanduser("~/.config/kuwai/searxng")
+    label = subprocess.run(["docker", "inspect", "-f", '{{index .Config.Labels "kuwai.search"}}', "kuwai-searxng"],
+                           capture_output=True, text=True)
+    stranger = label.returncode == 0 and label.stdout.strip() != "1"
+    if sub in ("start", "stop") and stranger:
+        print("A container named kuwai-searxng exists and isn't kuwai's; rename or remove it yourself.", file=sys.stderr)
+        sys.exit(1)
     if sub == "start":
         subprocess.run(["docker", "rm", "-f", "kuwai-searxng"], capture_output=True)
-        p = subprocess.run(["docker", "run", "-d", "--name", "kuwai-searxng", "--restart", "unless-stopped",
+        p = subprocess.run(["docker", "run", "-d", "--name", "kuwai-searxng", "--label", "kuwai.search=1", "--restart", "unless-stopped",
                             "-p", "127.0.0.1:8888:8080", "-v", f"{conf}:/etc/searxng:rw", "--cap-drop", "ALL",
                             "--cap-add", "CHOWN", "--cap-add", "SETGID", "--cap-add", "SETUID", "--memory", "512m",
                             "searxng/searxng:latest"], capture_output=True, text=True)

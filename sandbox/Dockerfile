@@ -17,9 +17,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/* /usr/share/doc /usr/share/man
 
 # Code-audit scanners for the security-audit skill: Python (bandit, pip-audit), secrets (gitleaks).
-RUN pip install --no-cache-dir --break-system-packages bandit pip-audit \
-    && curl -fsSL https://github.com/gitleaks/gitleaks/releases/download/v8.24.2/gitleaks_8.24.2_linux_x64.tar.gz \
-       | tar -xz -C /usr/local/bin gitleaks
+# gitleaks is checked against its release's published sha256 before it's unpacked.
+RUN pip install --no-cache-dir --break-system-packages bandit==1.8.6 pip-audit==2.9.0 \
+    && curl -fsSL --proto =https --max-filesize 50M -o /tmp/gitleaks.tgz \
+       https://github.com/gitleaks/gitleaks/releases/download/v8.24.2/gitleaks_8.24.2_linux_x64.tar.gz \
+    && echo "fa0500f6b7e41d28791ebc680f5dd9899cd42b58629218a5f041efa899151a8e  /tmp/gitleaks.tgz" | sha256sum -c - \
+    && tar -xzf /tmp/gitleaks.tgz -C /usr/local/bin gitleaks && rm -f /tmp/gitleaks.tgz
 
 # HOME lives in the mounted folder, so `pip install --user` and npm packages persist.
 ENV HOME=/work/.home \

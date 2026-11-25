@@ -26,3 +26,25 @@ def test_one_random_looking_word_is_removed_but_prose_and_paths_stay():
 def test_clipboard_and_audit_are_not_offered_in_chat_mode():
     assert "read_clipboard" not in kuwai_agent.CHAT_SAFE
     assert "system_audit" not in kuwai_agent.CHAT_SAFE
+
+
+def test_one_redactor_for_every_path(tmp_path, monkeypatch):
+    import importlib.machinery, importlib.util, os, stat
+    from pathlib import Path
+    import kuwai_redact
+    import kuwai_sandbox
+    assert kuwai_agent.without_secrets is kuwai_redact.without_secrets
+    token = "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"
+    root = Path(__file__).resolve().parents[2]
+    loader = importlib.machinery.SourceFileLoader("ollama_snap", str(root / "bin/kuwai-ollama"))
+    spec = importlib.util.spec_from_loader("ollama_snap", loader)
+    o = importlib.util.module_from_spec(spec)
+    loader.exec_module(o)
+    assert o.without_secrets is kuwai_redact.without_secrets
+    prompt = kuwai_agent.context_block({"terminal": {"last_command": f"export GH_TOKEN={token}", "last_output": token}})
+    assert "Last terminal command" in prompt and token not in prompt
+    log = tmp_path / "sandbox.log"
+    monkeypatch.setattr(kuwai_sandbox, "audit_log_path", lambda: log)
+    kuwai_sandbox.audit("c", "exec", f"curl -H 'Authorization: token {token}'", "ok")
+    assert token not in log.read_text() and "[secret removed]" in log.read_text()
+    assert stat.S_IMODE(os.stat(log).st_mode) == 0o600

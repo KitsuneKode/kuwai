@@ -287,13 +287,13 @@ def context_block(ctx):
     term = ctx.get("terminal")
     if isinstance(term, dict):
         if term.get("running"):
-            lines.append(f"Terminal is running: {term['running']}")
+            lines.append(f"Terminal is running: {without_secrets(str(term['running']))}")
         if term.get("last_command"):
-            out = _cap(str(term.get("last_output") or ""), 3000)
-            lines.append(f"Last terminal command: {term['last_command']}" + (f"\nIts output:\n```\n{out}\n```" if out else ""))
+            out = without_secrets(_cap(str(term.get("last_output") or ""), 3000))
+            lines.append(f"Last terminal command: {without_secrets(str(term['last_command']))}" + (f"\nIts output:\n```\n{out}\n```" if out else ""))
     for key, label in (("selection", "Selected text"), ("clipboard", "Clipboard")):
         if ctx.get(key):
-            lines.append(f"{label}:\n```\n{_cap(str(ctx[key]), 4096)}\n```")
+            lines.append(f"{label}:\n```\n{without_secrets(_cap(str(ctx[key]), 4096))}\n```")
     files = files_block(ctx.get("files"))
     if not lines:
         return files
@@ -482,30 +482,7 @@ def tool_system_info(_args):
     return "\n".join(lines)
 
 
-SECRET_TOKEN = re.compile(r"\b(sk-(ant-|proj-)?[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,}"
-                          r"|glpat-[A-Za-z0-9_-]{20,}|xox[abpr]-[A-Za-z0-9-]{10,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{35}"
-                          r"|npm_[A-Za-z0-9]{30,}|hf_[A-Za-z0-9]{30,})\b"
-                          r"|eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]*"
-                          r"|-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?(-----END [A-Z ]*PRIVATE KEY-----|$)")
-
-
-def _entropy(s):
-    import math
-    from collections import Counter
-    n = len(s)
-    return -sum(c / n * math.log2(c / n) for c in Counter(s).values()) if n else 0.0
-
-
-def without_secrets(text):
-    """Text for the model with anything secret-shaped replaced, by the same rules the
-    clipboard panel masks with: known token shapes, JWTs, private keys, and one long
-    random-looking word."""
-    out = SECRET_TOKEN.sub("[secret removed]", text)
-    t = out.strip()
-    if re.fullmatch(r"\S{24,200}", t) and not re.match(r"(https?:|file:|/|~)", t) and re.search(r"[a-z]", t) \
-            and re.search(r"[A-Z]", t) and re.search(r"\d", t) and _entropy(t) > 4.0:
-        return "[secret removed]"
-    return out
+from kuwai_redact import SECRET_TOKEN, without_secrets, _entropy  # noqa: E402,F401
 
 
 def tool_read_clipboard(_args):

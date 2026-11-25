@@ -22,6 +22,7 @@ def procs():
             rest = st[st.rindex(")") + 2:].split()
             ppid = int(rest[1])
             ticks = int(rest[11]) + int(rest[12])
+            start = int(rest[19])
             rss = int(rest[21]) * PAGE
             uid = os.stat(p).st_uid
             with open(p + "/cmdline", "rb") as f:
@@ -34,7 +35,7 @@ def procs():
             first = os.path.basename(cmd.split()[0]) if cmd.split() else ""
             if first.startswith(name.split()[0]):
                 name = first
-        out[int(d)] = {"pid": int(d), "ppid": ppid, "name": name, "cmd": cmd[:300], "uid": uid, "ticks": ticks, "rss": rss}
+        out[int(d)] = {"pid": int(d), "ppid": ppid, "name": name, "cmd": cmd[:300], "uid": uid, "ticks": ticks, "rss": rss, "start": start}
     return out
 
 
@@ -76,7 +77,7 @@ def friendly(r):
 
 
 def row(r, cpu, pm):
-    return {"pid": r["pid"], "name": r["name"], "cmd": r["cmd"], "user": user_of(r["uid"]),
+    return {"pid": r["pid"], "start": r.get("start", 0), "name": r["name"], "cmd": r["cmd"], "user": user_of(r["uid"]),
             "mine": r["uid"] == ME, "cpu": round(cpu, 1), "memMB": round(r["rss"] / 1048576),
             "ports": pm.get(r["pid"], []), "app": friendly(r)}
 
@@ -118,20 +119,40 @@ def apps(hits, allp, cpu, pm):
     return out
 
 
-def end(pid, force):
+def started(pid):
+    with open("/proc/%d/stat" % pid) as f:
+        st = f.read()
+    return int(st[st.rindex(")") + 2:].split()[19])
+
+
+def end(pid, force, start=None):
+    """Signal pid only if it is still the process that was listed: a pidfd pins it, and its
+    start time must match the listing's (a number reused by a newer process doesn't)."""
+    if pid in (os.getpid(), os.getppid(), 1):
+        return {"ok": False, "why": "that's the launcher itself"}
+    try:
+        fd = os.pidfd_open(pid)
+    except ProcessLookupError:
+        return {"ok": True, "why": "already gone"}
+    except OSError as e:
+        return {"ok": False, "why": str(e)}
     try:
         if os.stat("/proc/%d" % pid).st_uid != ME:
             return {"ok": False, "why": "not yours (another user's process needs sudo)"}
-        if pid in (os.getpid(), os.getppid(), 1):
-            return {"ok": False, "why": "that's the launcher itself"}
-        os.kill(pid, signal.SIGKILL if force else signal.SIGTERM)
+        if start is not None and started(pid) != start:
+            return {"ok": False, "why": "that process has ended; the number now belongs to another one"}
+        signal.pidfd_send_signal(fd, signal.SIGKILL if force else signal.SIGTERM)
         return {"ok": True}
     except ProcessLookupError:
         return {"ok": True, "why": "already gone"}
+    except FileNotFoundError:
+        return {"ok": True, "why": "already gone"}
     except PermissionError:
         return {"ok": False, "why": "not allowed"}
-    except OSError as e:
+    except (OSError, ValueError, IndexError) as e:
         return {"ok": False, "why": str(e)}
+    finally:
+        os.close(fd)
 
 
 def pss(pid):
@@ -169,7 +190,14 @@ def main(argv):
         except (IndexError, ValueError):
             print(json.dumps({"ok": False, "why": "no pid"}))
             return
-        print(json.dumps(end(pid, "--force" in argv)))
+        start = None
+        if "--start" in argv:
+            try:
+                start = int(argv[argv.index("--start") + 1])
+            except (IndexError, ValueError):
+                print(json.dumps({"ok": False, "why": "bad start time"}))
+                return
+        print(json.dumps(end(pid, "--force" in argv, start)))
         return
     q = " ".join(argv).strip()
     a = procs()

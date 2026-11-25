@@ -154,8 +154,10 @@ class Notifier:
         """on: { action id: fn } in button order; "default" is a click on the
         card, "inline-reply" gets the text typed into the card's reply field."""
         if DRY:
-            log("would notify:", app, "|", title, "|", clip(body, 80), "|", list(on),
-                {k: v for k, v in hints.items() if k != "x-kuwai-feed" and v})
+            shown = os.environ.get("KUWAI_FEEDS_SHOW_TEXT") == "1"
+            log("would notify:", app, "|", title if shown else f"<title, {len(title)} chars>", "|",
+                clip(body, 80) if shown else f"<body, {len(body)} chars>", "|", list(on),
+                sorted(k for k, v in hints.items() if k != "x-kuwai-feed" and v))
             return
         GLib = self.GLib
 
@@ -225,7 +227,11 @@ def open_url(url):
                      stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
-def gh(args, timeout=30):
+def gh(args, timeout=30, body=None):
+    """body: a JSON request body, sent on stdin (--input -), never in the arguments."""
+    if body is not None:
+        return subprocess.run(["gh", "api", *args, "--input", "-"], input=json.dumps(body),
+                              capture_output=True, text=True, timeout=timeout)
     return subprocess.run(["gh", "api", *args], capture_output=True, text=True, timeout=timeout)
 
 
@@ -429,7 +435,7 @@ def gh_mark_read(tid):
 
 
 def gh_reply(notify, repo, number, tid, text):
-    r = gh(["-X", "POST", f"/repos/{repo}/issues/{number}/comments", "-f", f"body={text}"], timeout=30)
+    r = gh(["-X", "POST", f"/repos/{repo}/issues/{number}/comments"], timeout=30, body={"body": text})
     if r.returncode == 0:
         gh_mark_read(tid)
         notify.flash("GitHub", "github", "Comment posted", f"{short(repo)} #{number}")
@@ -726,7 +732,7 @@ def gmail(notify, address):
                 uids = [int(x) for x in d[0].split()] if typ == "OK" and d[0] else []
                 g.update(validity=validity, last=max(uids) if uids else 0)
                 save()
-                log(f"gmail: watching {address}")
+                log("gmail: watching the inbox")
             backoff = 30
             while True:
                 gmail_check(m, notify, address, g, shown)

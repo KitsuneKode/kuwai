@@ -2,9 +2,13 @@
 """kuwai-cleanup: what your agents carry that they don't use, and the leftovers.
 
   kuwai-cleanup [--days 30|90|180] [--fresh]   JSON: skills + leftovers (cached 30 min)
-  kuwai-cleanup trash SKILL…                   move skills to the Trash (and their links)
+  kuwai-cleanup trash PATH… [--with-external]  move listed skills (by their own path) to the Trash
+                                               and remove their links; a linked skill whose
+                                               folder lives elsewhere (a checkout of yours)
+                                               only loses its links, unless --with-external
   kuwai-cleanup trash-path PATH…               move a listed leftover to the Trash
-  kuwai-cleanup restore                        put back what the last `trash` moved
+  kuwai-cleanup restore                        put back the last batch (earlier ones stay,
+                                               and anything that couldn't go back stays listed)
 
 Skills: every SKILL.md under ~/.agents/skills (the store) and the agents' own
 folders (~/.claude*/skills, ~/.cursor/skills, ~/.codex/skills). Each one is
@@ -59,8 +63,19 @@ def frontmatter(md):
     return out
 
 
+def outside(real):
+    """A skill folder that isn't in any skills folder: something a link points at."""
+    for d in AGENT_DIRS:
+        try:
+            if d.is_dir() and Path(real).is_relative_to(d.resolve()):
+                return False
+        except OSError:
+            continue
+    return True
+
+
 def skills():
-    """name → {name, path (real dir), links [symlinks], tokens, agents}"""
+    """name → {name, path (real dir), links [symlinks], tokens, agents, external}"""
     found = {}
     for d in AGENT_DIRS:
         if not d.is_dir():
@@ -76,7 +91,8 @@ def skills():
             name = fm.get("name") or entry.name
             desc = fm.get("description", "")
             s = found.setdefault(str(real), {"name": name, "path": str(real), "links": [], "agents": [],
-                                             "description": desc[:300], "chars": len(name) + len(desc)})
+                                             "description": desc[:300], "chars": len(name) + len(desc),
+                                             "external": outside(real)})
             if entry.is_symlink():
                 s["links"].append(str(entry))
             if agent != "store" and agent not in s["agents"]:
@@ -169,10 +185,14 @@ def report(days, fresh):
         s["idleDays"] = int((now - t) / 86400) if t else None
         rows.append(s)
     seen, unused = set(), []
-    for s in sorted([s for s in rows if not s["lastUsed"]], key=lambda s: -s["tokens"]):
+    idle = [s for s in rows if not s["lastUsed"]]
+    for s in sorted(idle, key=lambda s: -s["tokens"]):
         if s["name"] in seen:
             continue
         seen.add(s["name"])
+        same = [c for c in idle if c["name"] == s["name"]]
+        s["paths"] = [c["path"] for c in same]
+        s["externalPaths"] = [c["path"] for c in same if c["external"]]
         s["tokens"] *= s["copies"]
         unused.append(s)
     out = {"days": days, "at": int(now), "skills": len(rows), "used": len(rows) - len(unused),
@@ -189,30 +209,56 @@ def gio_trash(path):
     return subprocess.run(["gio", "trash", "--", path], capture_output=True).returncode == 0
 
 
-def trash_skills(names):
-    by = {}
-    for s in skills():
-        by.setdefault(s["name"], []).append(s)
-    moved = []
-    for n in names:
-        if n not in by:
-            print(f"no skill {n}", file=sys.stderr)
+def trash_skills(args):
+    with_external = "--with-external" in args
+    listed = {s["path"]: s for s in skills()}
+    moved, seen, rc = [], set(), 0
+    for p in (a for a in args if a != "--with-external"):
+        s = listed.get(p)
+        if not s:
+            print(f"not a listed skill: {p}", file=sys.stderr)
+            rc = 1
             continue
-        for s in by[n]:
-            if not gio_trash(s["path"]):
-                print(f"couldn't trash {s['path']}", file=sys.stderr)
-                continue
-            for link in s["links"]:
-                try:
-                    os.unlink(link)
-                except OSError:
-                    pass
-            moved.append({"path": s["path"], "links": s["links"]})
+        if p in seen:
+            continue
+        seen.add(p)
+        gone = []
+        for link in s["links"]:
+            try:
+                os.unlink(link)
+                gone.append(link)
+            except OSError:
+                print(f"couldn't remove the link {link}", file=sys.stderr)
+        if s["external"] and not with_external:
+            if gone:
+                moved.append({"kind": "unlink", "path": s["path"], "links": gone})
+            continue
+        if not gio_trash(s["path"]):
+            print(f"couldn't trash {s['path']}", file=sys.stderr)
+            relink(s["path"], gone)
+            rc = 1
+            continue
+        moved.append({"kind": "trash", "path": s["path"], "links": gone})
     record(moved)
     for c in CACHE.glob("cleanup-*.json"):
         c.unlink(missing_ok=True)
-    print(json.dumps({"moved": [m["path"] for m in moved]}))
-    return 0 if moved else 1
+    print(json.dumps({"moved": [m["path"] for m in moved if m["kind"] == "trash"],
+                      "unlinked": [m["path"] for m in moved if m["kind"] == "unlink"]}))
+    return 0 if moved and not rc else 1
+
+
+def relink(target, links):
+    back = []
+    for link in links:
+        try:
+            if os.path.islink(link) and os.readlink(link) == target:
+                back.append(link)
+                continue
+            os.symlink(target, link)
+            back.append(link)
+        except OSError:
+            pass
+    return back
 
 
 def trash_paths(paths):
@@ -223,7 +269,7 @@ def trash_paths(paths):
             print(f"not a listed leftover: {p}", file=sys.stderr)
             continue
         if gio_trash(p):
-            moved.append({"path": p, "links": []})
+            moved.append({"kind": "trash", "path": p, "links": []})
     record(moved)
     for c in CACHE.glob("cleanup-*.json"):
         c.unlink(missing_ok=True)
@@ -231,35 +277,61 @@ def trash_paths(paths):
     return 0 if moved else 1
 
 
-def record(moved):
-    if not moved:
-        return
+JOURNAL = STATE / "cleanup-undo.json"
+
+
+def batches():
+    try:
+        data = json.loads(JOURNAL.read_text())
+        return data if isinstance(data, list) else []
+    except (OSError, ValueError):
+        return []
+
+
+def save_batches(b):
     STATE.mkdir(parents=True, exist_ok=True)
-    (STATE / "cleanup-last.json").write_text(json.dumps({"at": int(time.time()), "moved": moved}))
+    tmp = JOURNAL.with_suffix(".tmp")
+    tmp.write_text(json.dumps(b[-20:]))
+    tmp.replace(JOURNAL)
+
+
+def record(moved):
+    if moved:
+        save_batches(batches() + [{"at": int(time.time()), "moved": moved}])
 
 
 def restore():
-    f = STATE / "cleanup-last.json"
-    if not f.is_file():
+    b = batches()
+    legacy = STATE / "cleanup-last.json"
+    if not b and legacy.is_file():
+        try:
+            b = [json.loads(legacy.read_text())]
+        except ValueError:
+            b = []
+        legacy.unlink(missing_ok=True)
+    if not b:
         print("nothing to put back", file=sys.stderr)
         return 1
-    last = json.loads(f.read_text())
+    last = b.pop()
     listing = subprocess.run(["gio", "trash", "--list"], capture_output=True, text=True).stdout
-    back = []
+    back, left = [], []
     for m in last["moved"]:
-        uri = next((l.split("\t")[0] for l in listing.splitlines() if l.split("\t")[-1] == m["path"]), None)
-        if uri and subprocess.run(["gio", "trash", "--restore", uri], capture_output=True).returncode == 0:
-            for link in m["links"]:
-                try:
-                    os.symlink(m["path"], link)
-                except OSError:
-                    pass
-            back.append(m["path"])
-    f.unlink(missing_ok=True)
+        if m.get("kind", "trash") == "trash":
+            uri = next((l.split("\t")[0] for l in listing.splitlines() if l.split("\t")[-1] == m["path"]), None)
+            if not uri or subprocess.run(["gio", "trash", "--restore", uri], capture_output=True).returncode != 0:
+                left.append(m)
+                continue
+        missing = [l for l in m["links"] if l not in relink(m["path"], m["links"])]
+        if missing:
+            left.append({**m, "kind": "unlink", "links": missing})
+        back.append(m["path"])
+    if left:
+        b.append({"at": last.get("at", 0), "moved": left})
+    save_batches(b)
     for c in CACHE.glob("cleanup-*.json"):
         c.unlink(missing_ok=True)
-    print(json.dumps({"restored": back}))
-    return 0 if back else 1
+    print(json.dumps({"restored": back, "notRestored": [m["path"] for m in left]}))
+    return 0 if back and not left else 1
 
 
 def main(argv):

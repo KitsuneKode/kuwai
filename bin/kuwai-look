@@ -387,16 +387,30 @@ def validate_theme_tree(root_dir):
     return safe_files
 
 
+THEME_MAX = 200 * 1024 * 1024
+THEME_FILE_MAX = 40 * 1024 * 1024
+
+
+def clone_limits():
+    """No file the clone writes (its one pack included) may pass THEME_MAX."""
+    import resource
+    resource.setrlimit(resource.RLIMIT_FSIZE, (THEME_MAX, THEME_MAX))
+
+
 def cmd_install(source, slug=None):
     target_slug = derive_slug(source, slug)
     with tempfile.TemporaryDirectory(prefix="kuwai-theme-") as tmp:
         clone_dir = os.path.join(tmp, "repo")
         r = subprocess.run(
-            ["git", "clone", "--depth", "1", "--config", "core.hooksPath=/dev/null", "--", source, clone_dir],
-            stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=60,
+            ["git", "clone", "--depth", "1", "--single-branch", "--no-recurse-submodules",
+             "--config", "core.hooksPath=/dev/null", "--", source, clone_dir],
+            stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=60, preexec_fn=clone_limits,
         )
         if r.returncode != 0:
-            raise SystemExit(f"kuwai-look: git clone failed: {r.stderr.strip()}")
+            too_big = r.returncode in (-25, 153) or "File size limit" in r.stderr
+            raise SystemExit("kuwai-look: the theme is bigger than 200 MB; not installed" if too_big
+                             else f"kuwai-look: git clone failed: {r.stderr.strip()}")
+        commit = subprocess.run(["git", "-C", clone_dir, "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
         safe_files = validate_theme_tree(clone_dir)
         raw, _ = theme_raw_from_dir(clone_dir)
         if raw is None or not raw.get("bg") or not raw.get("accent"):
@@ -408,10 +422,15 @@ def cmd_install(source, slug=None):
             shutil.rmtree(stage_dir)
         os.makedirs(stage_dir, exist_ok=True)
         for src_f, rel_f in safe_files:
+            if os.path.getsize(src_f) > THEME_FILE_MAX:
+                shutil.rmtree(stage_dir, ignore_errors=True)
+                raise SystemExit(f"kuwai-look: {rel_f} is bigger than 40 MB; not installed")
             out_f = os.path.join(stage_dir, rel_f)
             os.makedirs(os.path.dirname(out_f), exist_ok=True)
             shutil.copyfile(src_f, out_f)
             os.chmod(out_f, 0o644)
+        with open(os.path.join(stage_dir, ".kuwai-source.json"), "w") as f:
+            json.dump({"source": source, "commit": commit}, f)
         old_dir = None
         if os.path.exists(dest_dir):
             old_dir = os.path.join(USER_THEMES, f".old-{target_slug}-{os.getpid()}")
@@ -424,7 +443,7 @@ def cmd_install(source, slug=None):
             raise
         if old_dir:
             shutil.rmtree(old_dir, ignore_errors=True)
-    return {"ok": True, "slug": target_slug, "path": dest_dir, "files": len(safe_files)}
+    return {"ok": True, "slug": target_slug, "path": dest_dir, "files": len(safe_files), "commit": commit}
 
 
 def cmd_undo(apply_live=True):

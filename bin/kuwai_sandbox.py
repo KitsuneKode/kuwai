@@ -49,10 +49,13 @@ def audit_log_path():
 def audit(chat, what, detail, result=""):
     """One line per thing the assistant did in the jail: time, chat, what, detail, result."""
     import time
+    from kuwai_redact import without_secrets
     line = "\t".join([time.strftime("%Y-%m-%d %H:%M:%S"), chat_slug(chat), what,
-                      " ".join(str(detail).split())[:300], str(result)[:40]])
+                      without_secrets(" ".join(str(detail).split())[:300]), without_secrets(str(result)[:40])])
     try:
-        with open(audit_log_path(), "a", encoding="utf-8") as f:
+        fd = os.open(audit_log_path(), os.O_WRONLY | os.O_APPEND | os.O_CREAT | os.O_NOFOLLOW, 0o600)
+        os.fchmod(fd, 0o600)
+        with os.fdopen(fd, "a", encoding="utf-8") as f:
             f.write(line + "\n")
     except OSError:
         pass
@@ -307,7 +310,7 @@ def _reap(used, keep):
     p = _docker("ps", "--filter", "label=kuwai.sandbox=1", "--format", "{{.Names}}", timeout=10)
     for name in (p.stdout or "").split():
         slug = name[len(NAME) + 1:]
-        if name == keep or not slug or slug == "web" or time.time() - used.get(slug, 0) < IDLE_S:
+        if name == keep or not slug or slug in ("web", "webnet") or time.time() - used.get(slug, 0) < IDLE_S:
             continue
         jobs = host_root() / slug / ".jobs"
         running = jobs.is_dir() and any(not (jobs / (c.stem + ".status")).exists() for c in jobs.glob("*.cmd"))
@@ -315,8 +318,28 @@ def _reap(used, keep):
             _docker("stop", "-t", "2", name, timeout=20)
 
 
+def _owner(name):
+    """'kuwai' for a container this sandbox made (its label), None when there's no such container,
+    'other' for anything else under that name."""
+    p = _docker("inspect", "-f", '{{index .Config.Labels "kuwai.sandbox"}}', name, timeout=10)
+    if p.returncode != 0:
+        return None
+    return "kuwai" if p.stdout.strip() == "1" else "other"
+
+
+def _replace(name, quiet=False):
+    """Remove `name` only if this sandbox made it; a stranger's container is never touched."""
+    who = _owner(name)
+    if who == "kuwai":
+        _docker("rm", "-f", name, timeout=30)
+    elif who == "other" and not quiet:
+        raise SandboxError(f"A container named {name} exists and isn't the sandbox's. Rename or remove it "
+                           f"yourself (docker rm {name}); kuwai won't.")
+
+
 def ensure(chat=None, web=False):
-    """The container for `chat` (or the mount-less one for the web renderer), checked and running."""
+    """The container for `chat`, or for web=True the renderer with no network at all, or for
+    web="net" the renderer that loads a page itself (shopping); checked and running."""
     if not image_exists():
         raise SandboxError("The sandbox image isn't built yet: run `kuwai-ollama sandbox build`")
     root = host_root()
@@ -329,10 +352,10 @@ def ensure(chat=None, web=False):
             fh.write(JAIL_README)
     except OSError:
         pass
-    _docker("rm", "-f", NAME, timeout=30)
-    net = _network()
+    _replace(NAME, quiet=True)
+    net = _network() if web != True else "none"
     if web:
-        name, src, dest, env = f"{NAME}-web", None, None, []
+        name, src, dest, env = (f"{NAME}-web" if web == True else f"{NAME}-webnet"), None, None, []
     else:
         slug = workspace(chat).name
         name, src, dest = container(chat), root / slug, f"/work/{slug}"
@@ -344,7 +367,7 @@ def ensure(chat=None, web=False):
     if running.returncode == 0 and _matches(name, src, dest, net):
         if running.stdout.strip() == "true" or _docker("start", name).returncode == 0:
             return name
-    _docker("rm", "-f", name, timeout=30)
+    _replace(name)
     p = _docker(
         "run", "-d", "--name", name, "--init",
         "--user", f"{os.getuid()}:{os.getgid()}",
@@ -356,7 +379,7 @@ def ensure(chat=None, web=False):
         "--network", net,
         *(["-v", f"{src}:{dest}"] if src else []),
         *env,
-        "--label", "kuwai.sandbox=1", "--label", f"kuwai.chat={'web' if web else src.name}",
+        "--label", "kuwai.sandbox=1", "--label", f"kuwai.chat={('web' if web == True else 'webnet') if web else src.name}",
         IMAGE, "sleep", "infinity", timeout=60)
     if p.returncode != 0:
         raise SandboxError(f"Couldn't start the sandbox: {p.stderr.strip()[:300]}")
@@ -521,13 +544,13 @@ def stop():
     ids = (p.stdout or "").split()
     if ids:
         _docker("rm", "-f", *ids, timeout=60)
-    _docker("rm", "-f", NAME, timeout=30)
+    _replace(NAME, quiet=True)
 
 
 def render_html(html, timeout=25):
     """The DOM of a page already fetched (by the pinned client) after its inline
-    JavaScript ran, with Chromium's network off: every request goes to a dead
-    proxy, so the page can't reach the host, the LAN or anything else."""
+    JavaScript ran, in a container with no network at all (and a dead proxy besides),
+    so the page can't reach the host, the LAN or anything else."""
     import kuwai_files
     code, out, _n = kuwai_files.run_bounded(
         [DOCKER, "exec", "-i", ensure(web=True), "sh", "-c",
@@ -545,7 +568,7 @@ def render_page(url, timeout=25):
     """A page's DOM after its JavaScript ran (headless Chromium in the sandbox)."""
     import kuwai_files
     code, out, _n = kuwai_files.run_bounded(
-        [DOCKER, "exec", ensure(web=True), "timeout", str(timeout), "chromium-headless-shell",
+        [DOCKER, "exec", ensure(web="net"), "timeout", str(timeout), "chromium-headless-shell",
          "--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage", "--hide-scrollbars",
          "--virtual-time-budget=8000", "--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
          "(KHTML, like Gecko) Chrome/141.0 Safari/537.36", "--dump-dom", url],

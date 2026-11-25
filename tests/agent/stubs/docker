@@ -7,7 +7,7 @@ root = os.environ["KUWAI_SANDBOX_DIR"]
 if a[:2] == ["image", "inspect"]:
     sys.exit(0)
 if a[0] == "inspect":
-    print("true"); sys.exit(0)
+    print("1" if any("Labels" in x for x in a) else "true"); sys.exit(0)
 if a[0] == "exec":
     i, cwd, detach = 1, root, False
     while a[i].startswith("-"):
