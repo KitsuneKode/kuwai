@@ -481,14 +481,21 @@ Singleton {
     readonly property var easeSine: [0.37, 0, 0.63, 1, 1, 1]
     readonly property var easeIn: [0.55, 0.085, 0.68, 0.53, 1, 1]
     function innerRadius(outer, inset) { return Math.max(4, Math.round(outer - inset)); }
-    readonly property int pressMs: 140          // press feedback (scale 0.97)
-    readonly property int enterMs: 200          // small surfaces arriving, rows growing
-    readonly property int exitMs: 150           // leaving: quicker than arriving
-    readonly property int glideMs: 150          // values chasing a target (level fill, meters)
-    readonly property int reflowMs: 200         // neighbours closing a gap
-    readonly property int colorMs: 140
-    readonly property int hoverMs: 80           // hover tints: answer the pointer at once
-    readonly property int artMs: 400            // a colour following its new source: album art after a new track, the accent after a theme change
+    readonly property int durInstant: 80
+    readonly property int durExit: 100
+    readonly property int durFast: 140
+    readonly property int durBase: 200
+    readonly property int durSettle: 260
+    readonly property int durSlow: 400
+    readonly property int durGentle: 700
+    readonly property int pressMs: durFast          // press feedback (scale 0.97)
+    readonly property int enterMs: durBase          // small surfaces arriving, rows growing
+    readonly property int exitMs: durFast           // leaving: quicker than arriving
+    readonly property int glideMs: durFast          // values chasing a target (level fill, meters)
+    readonly property int reflowMs: durBase         // neighbours closing a gap
+    readonly property int colorMs: durFast
+    readonly property int hoverMs: durInstant           // hover tints: answer the pointer at once
+    readonly property int artMs: durSlow            // a colour following its new source: album art after a new track, the accent after a theme change
     readonly property int spinMs: 750           // one turn of a spinner: brisk (a faster turn reads as faster work; every spinner uses it)
     readonly property int stepMs: 600           // one step of a working ring (glides, then rests ~2.4 s)
     // The one beat every working ring on the notch steps to: T3's and an
@@ -498,10 +505,10 @@ Singleton {
     property int step: 0
     property int stepUsers: 0
     property Timer stepClock: Timer { interval: root.stepEvery; repeat: true; running: root.stepUsers > 0 && !root.reduceMotion; onTriggered: root.step++ }
-    readonly property int quickMs: 120          // a quick fade in place: tooltips, hints, a caret
-    readonly property int microMs: 160          // a small state change in place: an icon's fill, a fade, a press
+    readonly property int quickMs: durFast          // a quick fade in place: tooltips, hints, a caret
+    readonly property int microMs: durFast          // a small state change in place: an icon's fill, a fade, a press
     readonly property int pulseMs: 520          // half a quick pulse (InOutSine there and back)
-    readonly property int breatheMs: 700        // half a slow breath (a live mic, a waiting dot)
+    readonly property int breatheMs: durGentle        // half a slow breath (a live mic, a waiting dot)
     // Hover timing, one set for the whole shell: things open after
     // Settings.hoverDelay (your setting), stay hoverLeaveMs after the pointer
     // leaves (crossing a gap doesn't close them), and tooltips wait tipMs
@@ -510,18 +517,18 @@ Singleton {
     readonly property int tipMs: 450
     // One loading sweep everywhere (Shimmer, the reasoning label, the notch's edge light): brisk, not drifting.
     readonly property int shimmerMs: 1300
-    readonly property int hudInMs: 180          // the HUD answers a keypress: fast, 6px, no scale bounce
-    readonly property int hudOutMs: 150
+    readonly property int hudInMs: durBase          // the HUD answers a keypress: fast, 6px, no scale bounce
+    readonly property int hudOutMs: durFast
     // Cards that grow out of the island (DeviceCard, AlarmCard).
     readonly property int cardInMs: 300         // the mark coming up
     readonly property int cardRiseMs: 260       // each line rising 4 px into place
     readonly property int ringDrawMs: 480       // a ring drawing itself closed
-    readonly property int swingMs: 700          // a bell's damped swing, all of it
+    readonly property int swingMs: durGentle          // a bell's damped swing, all of it
     readonly property int breathOutMs: 1100
     readonly property int wallRevealMs: 700
     readonly property int handoffMs: 30          // one swap's new content waits this long for the old to start leaving
-    readonly property int settleMs: 260          // settling into a new place or size, not arriving: a surface resizing to fit, a pulled one let go, a farewell undone
-    readonly property int kickMs: 90             // the quick first half of a there-and-back: a rubber band's stretch, a typed dot's pop, a bump, a miss
+    readonly property int settleMs: durSettle          // settling into a new place or size, not arriving: a surface resizing to fit, a pulled one let go, a farewell undone
+    readonly property int kickMs: durInstant             // the quick first half of a there-and-back: a rubber band's stretch, a typed dot's pop, a bump, a miss
     readonly property int bumpBackMs: 300        // an update in place settling back from its 1.02 bump (NotifCard)
     readonly property int flashFadeMs: 900       // a one-time flash fading out: a critical toast's arrival ring, a wrong password's red ring
     readonly property int morphMs: 560           // one character morphing (TextMorph's default)
@@ -532,8 +539,8 @@ Singleton {
     readonly property int peakFollowMs: 60       // a live level following its peaks: just enough to smooth the steps
     readonly property int peakFallMs: 1600       // a meter's peak-hold line falling back
     readonly property int waveSettleMs: 380      // the now-playing bars settling to their pause shape
-    readonly property int menuInMs: 140
-    readonly property int menuOutMs: 100
+    readonly property int menuInMs: durFast
+    readonly property int menuOutMs: durExit
     readonly property int ambientFadeMs: 600     // something behind everything fading by itself (a live wallpaper's video)
     // A device card's own beats (DeviceCard; it enters like AlarmCard).
     readonly property int cardPingMs: 450        // the link closing sends one ping out
@@ -662,14 +669,14 @@ Singleton {
     readonly property int stackGap: 14           // GAP
     readonly property int stackVisible: 3        // VISIBLE_TOASTS_AMOUNT
     readonly property real stackScaleStep: 0.05  // each toast behind is 5% smaller
-    readonly property int stackMs: 400           // transform/opacity/height transition
+    readonly property int stackMs: durSlow           // transform/opacity/height transition
     readonly property var easeCss: [0.25, 0.1, 0.25, 1, 1, 1]     // CSS `ease`
     readonly property var easeOutCss: [0, 0, 0.58, 1, 1, 1]       // CSS `ease-out`
     readonly property int swipeThreshold: 45     // px, or…
     readonly property real swipeVelocity: 0.11   // px/ms averaged over the gesture (Sonner's; the lock screen's own check)
     readonly property real swipeFlick: 0.5       // px/ms at release (components/Fling): a flick dismisses on its own
-    readonly property int swipeOutMs: 200
-    readonly property int unmountMs: 200         // TIME_BEFORE_UNMOUNT
+    readonly property int swipeOutMs: durBase
+    readonly property int unmountMs: durBase         // TIME_BEFORE_UNMOUNT
     // Movement the wrong way is damped, not blocked, so it feels elastic.
     function swipeDamp(d) {
         const damped = d / (1.5 + Math.abs(d) / 20);

@@ -194,6 +194,13 @@ has a plural rule `tr.mjs` doesn't know yet, add its family there with a test.
 
 ## 6. Plan for the rest of the shell
 
+**Decision (2026-11-26): English only for now; the pipeline stays.** The design
+review called the pilot premature (2 of ~219 files). Wiring the rest is about
+three weeks of work with no translator waiting, so it isn't scheduled; deleting
+a tested, zero-cost-in-English pipeline would only mean building it again. The
+Power panel stays the worked example. When someone offers a language, start at
+step 1 below with the literal ratchet turned on.
+
 Sized with `bin/kuwai-i18n --count` (a heuristic: by sampling, about 85 % of
 what it counts is real UI text). It finds about **2,530 literal sites, about
 1,880 unique strings**, of which about **400 are fragments** (a leading or
