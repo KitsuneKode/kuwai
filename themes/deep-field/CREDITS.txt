@@ -1,0 +1,20 @@
+Deep Field: the pictures and films this theme downloads, and whose they are.
+kuwai does not ship them: `kuwai-theme install` fetches each from Wikimedia Commons and checks it
+is the file listed here. Each stays under its own licence; none was changed except scaled to fit
+a screen (and, for films, re-encoded to loop).
+
+Wallpapers
+  01-cosmic-cliffs  Image: National Aeronautics and Space Administration (a U.S. federal government agency; https://www.nasa.gov/) Europe. public domain. https://commons.wikimedia.org/wiki/File:NASA%E2%80%99s_Webb_Reveals_Cosmic_Cliffs,_Glittering_Landscape_of_Star_Birth.jpg
+  02-orion-nebula  (c) NASA, ESA, CSA / Science leads and image processing: M. McCaughrean, S. Pearson, CC BY-SA 3.0 IGO. CC BY-SA 3.0. https://commons.wikimedia.org/wiki/File:Orion_sw_clean_proc_8bit_20230925.jpg
+  03-tarantula-nebula  NASA, ESA, CSA, STScI, Webb ERO Production Team. public domain. https://commons.wikimedia.org/wiki/File:Tarantula_Nebula_by_JWST.jpg
+  04-carina-nebula  Hubble image: NASA, ESA, N. Smith (University of California, Berkeley), and The Hubble Heritage Team (STScI/AURA) CTIO d. public domain. https://commons.wikimedia.org/wiki/File:Eta_Carinae_Nebula_1.jpg
+  05-cats-eye-nebula  ESA/Hubble & NASA, ESA Euclid/Euclid Consortium/NASA/Q1-2025, J.-C. Cuillandre & E. Bertin (CEA Paris-Saclay), Z. CC BY 4.0. https://commons.wikimedia.org/wiki/File:Euclid_and_Hubble%27s_view_of_Cat%27s_Eye_Nebula_(potm2602c).jpg
+  06-galactic-centre  NASA/JPL-Caltech/ESA/CXC/STScI. public domain. https://commons.wikimedia.org/wiki/File:Center_of_the_Milky_Way_Galaxy_IV_%E2%80%93_Composite.jpg
+  07-milky-way-paranal  ESO/S. Guisard (www.eso.org/~sguisard). CC BY 4.0. https://commons.wikimedia.org/wiki/File:Guisard_-_Milky_Way.jpg
+  08-w5-star-nursery  NASA/JPL-Caltech. public domain. https://commons.wikimedia.org/wiki/File:W5_cropped.jpg
+  09-andromeda  Brody Wesner. CC0 1.0. https://commons.wikimedia.org/wiki/File:Andromeda_Galaxy_2025.png
+  10-whirlpool-galaxy  Taavi Niittee/Tõrva Astronoomiaklubi/Tõrva Astronomy Club. CC BY 4.0. https://commons.wikimedia.org/wiki/File:Whirpool_galaxy.jpg
+
+Live wallpapers and screensaver films
+  horsehead-zoom  ESA/Euclid/Euclid Consortium/NASA, image processing by J.-C. Cuillandre, G. Anselmi. CC BY 4.0. https://commons.wikimedia.org/wiki/File:Zoom_into_the_Horsehead_Nebula_ESA496748.webm
+  cats-paw-zoom  NASA's Scientific Visualization Studio. public domain. https://commons.wikimedia.org/wiki/File:Zoom_into_the_Cats_Paw_Nebula_(SVS31369).webm

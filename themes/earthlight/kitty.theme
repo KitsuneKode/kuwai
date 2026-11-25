@@ -1,0 +1,52 @@
+$HOME/.config/kitty/theme.conf|killall -SIGUSR1 kitty
+# vim:ft=kitty
+# Made by bin/kuwai-theme-build from theme.toml. Edit that, not this.
+
+## name: Earthlight
+## author: kuwai
+## license: GPL-3.0-or-later
+## blurb: Cities at night from the Space Station. Sodium amber on black.
+
+foreground                      #e9e7e5
+background                      #100e0c
+selection_foreground            #e9e7e5
+selection_background            #4f3006
+cursor                          #ffad4a
+cursor_text_color               #100e0c
+url_color                       #ffad4a
+active_tab_foreground           #100e0c
+active_tab_background           #ffad4a
+inactive_tab_foreground         #7e7975
+inactive_tab_background         #100e0c
+
+#: black
+color0  #2c2825
+color8  #7e7975
+
+#: red
+color1  #f69088
+color9  #ffbfb8
+
+#: green
+color2  #76c783
+color10  #a6e3ae
+
+#: yellow
+color3  #ceae48
+color11  #e7d087
+
+#: blue
+color4  #ffad4a
+color12  #ffd2a2
+
+#: magenta
+color5  #de93d7
+color13  #f5bbef
+
+#: cyan
+color6  #2ac5df
+color14  #81e2f5
+
+#: white
+color7  #cdcac7
+color15  #f6f5f3

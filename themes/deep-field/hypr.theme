@@ -1,0 +1,80 @@
+$HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
+
+$GTK_THEME = Abyssal-Wave
+$ICON_THEME = Papirus-kanagawa
+$COLOR_SCHEME=prefer-dark   
+$FONT= Rubik Regular
+
+exec = gsettings set org.gnome.desktop.interface icon-theme '$ICON_THEME'
+exec = gsettings set org.gnome.desktop.interface gtk-theme '$GTK_THEME'
+exec = gsettings set org.gnome.desktop.interface color-scheme '$COLOR_SCHEME'
+exec = gsettings set org.gnome.desktop.interface font-name '$FONT'
+
+general {
+    border_size = 2
+    col.inactive_border = rgba(977aff22) # Deep Field: a faint accent hairline: structure, never competition
+    col.active_border = rgba(977affee) rgba(2ac5df99) 45deg # Deep Field: the accent into its companion, so the focused window is the one lit
+    resize_on_border = yes
+    gaps_in = 5
+    gaps_out = 10
+}
+
+decoration {
+    rounding = 20
+    rounding:power = 4
+
+    active_opacity = 0.95
+    inactive_opacity = 0.95
+
+    blur {
+        enabled = yes
+        size = 7
+        passes = 3
+        ignore_opacity = true
+        new_optimizations = true
+        xray = false
+        noise = 0.1
+        popups = true
+    }
+
+    dim_inactive = true   # a theme of ours: the window you are not in recedes a little
+    dim_strength = 0.06
+
+    glow {
+        enabled = false
+        range = 20
+        render_power = 3
+        color = rgba(00000000)
+        color_inactive = rgba(00000000)
+    }
+
+    shadow {
+        enabled = true
+        range = 30
+        render_power = 3
+        offset = 0 6
+        color = rgba(1e5950d0) # Deep Field: a deep accent under the focused window
+        color_inactive = rgba(00000066)
+    }
+}
+
+group {
+    col.border_inactive = rgba(ffffff14)
+    col.border_active = rgba(977aff88)
+
+    groupbar {
+      col.active = rgba(977aff44)
+      col.inactive = rgba(ffffff12)
+      font_family = JetBrainsMono NFM
+      font_size = 10
+      text_color = rgba(e5e5e7ff)
+    }
+}
+
+/* layerrule = blur on, ignore_alpha 0,match:namespace waybar */
+windowrulev2 = opacity 1 override 1 override 1 override,class:^(.*)$
+
+layerrule = blur, waybar
+layerrule = ignorezero, waybar
+layerrule = ignore_alpha 0, waybar
+

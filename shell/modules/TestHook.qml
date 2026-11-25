@@ -26,6 +26,7 @@ Scope {
     id: hook
     property bool testing: false
     property var realFeed: null
+    property var demoTimers: []
     LazyLoader { id: galleryLoader; active: false; Gallery {} }
     property int settingsPage: 0
     property string settingsQuery: ""
@@ -89,6 +90,19 @@ Scope {
             Moments.showCard({ key: "test-" + kind, kind: kind, id: Date.now(), title: title, sub: sub, act: act }, 12000);
         }
         function timer(seconds: int, label: string): void { Timers.start(seconds, label); }
+        function demoTimer(seconds: int, label: string): void {
+            Timers.start(seconds, label);
+            const t = Timers.timers.filter(x => x.label === label).sort((a, b) => b.id - a.id)[0];
+            if (t) hook.demoTimers = hook.demoTimers.concat([t.id]);
+        }
+        function feed(json: string): string {
+            let f = null;
+            try { f = JSON.parse(json); } catch (e) { return "not JSON"; }
+            if (!f || !Array.isArray(f.agents)) return "no agents list";
+            if (!hook.testing) { hook.realFeed = Kittymux.feed; hook.testing = true; Kittymux.feedPinned = true; }
+            Kittymux.feed = { version: 1, agents: f.agents };
+            return "ok";
+        }
         // Memory: run the JS garbage collector now (for measuring what it frees).
         function collect(): void { gc(); }
         function peek(screen: string, size: string, expanded: string): void {
@@ -116,7 +130,8 @@ Scope {
             Moments.now = null;
             if (Moments.card && String(Moments.card.key).indexOf("test-") === 0) Moments.dropCard();
             if (hook.testing) { Kittymux.feedPinned = false; Kittymux.feed = hook.realFeed; hook.testing = false; }
-            for (const t of Timers.timers.slice()) if (/^test/i.test(t.label)) Timers.cancel(t.id);
+            for (const t of Timers.timers.slice()) if (/^test/i.test(t.label) || hook.demoTimers.indexOf(t.id) >= 0) Timers.cancel(t.id);
+            hook.demoTimers = [];
         }
     }
 }

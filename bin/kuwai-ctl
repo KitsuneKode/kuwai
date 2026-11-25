@@ -9,6 +9,7 @@ Control the running kuwai.
   kuwai stop                 stop it (dunst takes notifications back)
   kuwai status               is it running, since when, its last lines (kuwai-shell.service)
   kuwai logs                 follow the shell's log
+  kuwai demo [--step]        a 45 s tour of the island with pretend agents (for trying it, or recording)
   kuwai notifs <cmd>         dnd | dnd-on | dnd-off | mute-on | mute-off | clear | hide | open | last | count | waybar
   kuwai feeds [status|gmail-setup|gmail-forget|logs]   GitHub and Gmail notifications (bin/kuwai-feeds)
   kuwai center [agents] [pointer]   toggle the center (Notifications or Agents);
@@ -282,6 +283,7 @@ case ${1:-} in
             fi
         fi ;;
     check)         shift; exec "$KUWAI/bin/kuwai-check" "$@" ;;
+    demo)          shift; exec "$KUWAI/bin/kuwai-demo" "$@" ;;
     rollback)
         [ -e "$STABLE/.git" ] || { echo "kuwai: no stable copy at $STABLE" >&2; exit 1; }
         target=$(git -C "$STABLE" rev-parse --verify refs/heads/stable-prev 2>/dev/null) || { echo "kuwai: no stable-prev rollback target recorded yet" >&2; exit 1; }

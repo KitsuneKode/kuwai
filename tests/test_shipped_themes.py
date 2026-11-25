@@ -52,7 +52,9 @@ def test_every_theme_has_borders_credits_and_wallpapers(theme):
     assert (theme / "CREDITS.txt").exists()
     names = set()
     for line in (theme / "wallpapers.tsv").read_text().splitlines():
-        name, url = line.split("\t")
+        if not line.strip() or line.startswith("#"):
+            continue
+        name, url = line.split("\t")[:2]
         assert re.fullmatch(r"[A-Za-z0-9._-]+", name), name
         assert name not in names, f"{name} twice"
         names.add(name)

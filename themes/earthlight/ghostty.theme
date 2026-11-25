@@ -1,0 +1,30 @@
+$HOME/.config/ghostty/themes/hyde-active
+# Made by bin/kuwai-theme-build from theme.toml. Edit that, not this.
+
+## name: Earthlight
+## author: kuwai
+## license: GPL-3.0-or-later
+## blurb: Cities at night from the Space Station. Sodium amber on black.
+
+foreground = #e9e7e5
+background = #100e0c
+selection-foreground = #e9e7e5
+selection-background = #4f3006
+cursor-color = #ffad4a
+cursor-text = #100e0c
+palette = 0=#2c2825
+palette = 1=#f69088
+palette = 2=#76c783
+palette = 3=#ceae48
+palette = 4=#ffad4a
+palette = 5=#de93d7
+palette = 6=#2ac5df
+palette = 7=#cdcac7
+palette = 8=#7e7975
+palette = 9=#ffbfb8
+palette = 10=#a6e3ae
+palette = 11=#e7d087
+palette = 12=#ffd2a2
+palette = 13=#f5bbef
+palette = 14=#81e2f5
+palette = 15=#f6f5f3

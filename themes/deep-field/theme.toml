@@ -1,0 +1,5 @@
+schema = 1
+slug = "deep-field"
+name = "Deep Field"
+mode = "dark"
+accent = "#a48bff"

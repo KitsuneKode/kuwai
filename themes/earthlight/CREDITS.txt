@@ -1,0 +1,26 @@
+Earthlight: the pictures and films this theme downloads, and whose they are.
+kuwai does not ship them: `kuwai-theme install` fetches each from Wikimedia Commons and checks it
+is the file listed here. Each stays under its own licence; none was changed except scaled to fit
+a screen (and, for films, re-encoded to loop).
+
+Wallpapers
+  01-france-italy-border  NASA Expedition 23 crew. public domain. https://commons.wikimedia.org/wiki/File:City_Lights_at_Night_along_the_France-Italy_Border.JPG
+  02-ireland-and-britain  NASA. public domain. https://commons.wikimedia.org/wiki/File:ISS-30_Night_lights_of_the_cities_of_Ireland_and_the_United_Kingdom.jpg
+  03-europe-meets-asia  NASA. public domain. https://commons.wikimedia.org/wiki/File:ISS-62_City_lights_at_the_intersection_of_Europe_and_Asia.jpg
+  04-europe  NASA. public domain. https://commons.wikimedia.org/wiki/File:ISS-65_Europe,_city_lights_from_space.jpg
+  05-northwest-america  NASA. public domain. https://commons.wikimedia.org/wiki/File:ISS-65_Northwest_America_at_night,_city_lights.jpg
+  06-african-coast-stars  NASA. public domain. https://commons.wikimedia.org/wiki/File:ISS-65_Starry_night_sky_over_southeastern_African_coast.jpg
+  07-night-pass-2024  NASA Johnson Space Center. public domain. https://commons.wikimedia.org/wiki/File:Iss072e159772_(Nov_10,_2024)_--_As_the_International_Space_Station_orbited_259_miles_above_Earth,_right_off_coast_of_Vancouver,_NASA_astronaut_Don_Pettit_captured_this_image_of_city_lights_and_a_green_aurora_dancing_i.jpg
+  08-chicago  Astronaut photograph ISS070-E-105097 was acquired on March 1, 2024, with a Nikon D5 digital camera using a focal length. public domain. https://commons.wikimedia.org/wiki/File:Windy_City_of_Lights_(153622).jpg
+  09-italy  NASA/Luca Parmitano. public domain. https://commons.wikimedia.org/wiki/File:ISS-36_Night_picture_of_Italy.jpg
+  10-st-louis  NASA. public domain. https://commons.wikimedia.org/wiki/File:ISS-38_Night_image_of_St._Louis.jpg
+  11-sunrise-aurora-europe  NASA. public domain. https://commons.wikimedia.org/wiki/File:ISS-43_Earth_sunrise,_aurora_and_sparling_cities_in_northern_Europe.jpg
+  12-moscow  NASA. public domain. https://commons.wikimedia.org/wiki/File:ISS-45_Moscow,_Russia_night_view.jpg
+  13-london  NASA/Tim Kopra. public domain. https://commons.wikimedia.org/wiki/File:ISS-46_London,_England_night_view.jpg
+  14-dubai  NASA/Tim Kopra. public domain. https://commons.wikimedia.org/wiki/File:ISS-47_Dubai_at_night.jpg
+  15-ankara  NASA. public domain. https://commons.wikimedia.org/wiki/File:ISS-62_Ankara,_Turkey_at_night.jpg
+  16-aurora-blanket  NASA. public domain. https://commons.wikimedia.org/wiki/File:An_aurora_blankets_the_Earth_beneath_a_celestial_night_sky_as_the_International_Space_Station_orbited_261_miles_above_the_Atlantic_Ocean_off_the_coast_of_North_America.jpg
+
+Live wallpapers and screensaver films
+  ocean-moon-glint  NASA Johnson Space Center. public domain. https://commons.wikimedia.org/wiki/File:Ocean_Moon_Glint_and_City_Night_Lights_in_4K_UHD.webm
+  five-minutes-in-orbit  NASA, ISS Expedition 73 crew. public domain. https://commons.wikimedia.org/wiki/File:Five_Minutes_in_Orbit_(154728).webm

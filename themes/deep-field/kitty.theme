@@ -1,0 +1,52 @@
+$HOME/.config/kitty/theme.conf|killall -SIGUSR1 kitty
+# vim:ft=kitty
+# Made by bin/kuwai-theme-build from theme.toml. Edit that, not this.
+
+## name: Deep Field
+## author: kuwai
+## license: GPL-3.0-or-later
+## blurb: Nebulae and galaxies from Webb, Hubble and the darkest skies. Violet, for the far light.
+
+foreground                      #e8e7ea
+background                      #0e0e11
+selection_foreground            #e8e7ea
+selection_background            #383159
+cursor                          #977aff
+cursor_text_color               #0e0e11
+url_color                       #977aff
+active_tab_foreground           #0e0e11
+active_tab_background           #977aff
+inactive_tab_foreground         #7a797f
+inactive_tab_background         #0e0e11
+
+#: black
+color0  #29282d
+color8  #7a797f
+
+#: red
+color1  #f69088
+color9  #ffbfb8
+
+#: green
+color2  #76c783
+color10  #a6e3ae
+
+#: yellow
+color3  #ceae48
+color11  #e7d087
+
+#: blue
+color4  #977aff
+color12  #ad9dfe
+
+#: magenta
+color5  #de93d7
+color13  #f5bbef
+
+#: cyan
+color6  #2ac5df
+color14  #81e2f5
+
+#: white
+color7  #cacacd
+color15  #f5f5f7

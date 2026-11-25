@@ -1,0 +1,328 @@
+#!/usr/bin/env python3
+"""kuwai-wallcheck: is a picture good enough to be a kuwai wallpaper?
+
+  kuwai-wallcheck FILE…                 check pictures, one line each
+  kuwai-wallcheck --theme DIR           check an installed theme's wallpapers/ against
+                                        the theme's band (themes/<slug>/theme.toml)
+  kuwai-wallcheck --tsv themes/<slug>   check a theme's wallpapers.tsv: every row pinned
+                                        (sha256:… or sha1:…) and licensed, every downloaded file the
+                                        one pinned (needs --dir with the downloaded files)
+  options: --json   --sheet OUT.jpg (a contact sheet with each verdict)   --ocr (look for
+           text and watermarks with tesseract)   --band LO,HI (mean lightness, L* 0–100)
+           --skip size (checking small previews of pictures whose full size is known)
+
+What it measures, on the picture as a 2560×1440 screen shows it (cropped to fill):
+  size      the crop needs no upscaling (at least 2560×1440 after the crop)
+  crop      how much of the picture the 16:9 crop throws away (over 30 %: warn)
+  strip     the top 60 px, where the island and its text sit: calm and dark
+            (mean L* ≤ 38, spread ≤ 14), else the island's ink fights it
+  bars      letterboxing: flat near-black bands at the top or bottom
+  band      the picture's mean lightness inside the theme's band (default 6–48):
+            the glass is near-black, a bright picture dies behind it
+  loud      the share of pixels both bright and saturated (over 20 %: warn): kuwai keeps
+            colour for state
+  text      words found by OCR (--ocr): logos, captions, watermarks
+  twin      near-duplicates of another picture checked in the same run (dHash)
+  clock     the lock screen's clock over it, as the lock draws it (lib/rehearse/wall.py):
+            under 3:1 even with the lock's shade fails; needing the shade (not
+            calm) warns, since a default wallpaper should not need it
+Verdicts: ok · warn (a person decides) · fail (never ships). Exit 1 on any fail.
+"""
+import hashlib
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tomllib
+from pathlib import Path
+
+from PIL import Image, ImageChops, ImageCms, ImageDraw, ImageFont, ImageStat
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "lib"))
+try:
+    from rehearse import wall as lockwall
+except ImportError:
+    lockwall = None
+
+W, H = 2560, 1440
+STRIP = 60
+STRIP_MEAN, STRIP_SPREAD = 38.0, 14.0
+BAND = (6.0, 48.0)
+LOUD_SAT, LOUD_VALUE, LOUD_SHARE = 0.55, 0.5, 0.20
+CROP_WARN = 0.30
+TWIN_BITS = 6
+EXTS = {".jpg", ".jpeg", ".png", ".webp"}
+LICENCES = {"CC0", "PD", "CC-BY-4.0", "CC-BY-SA-4.0", "CC-BY-3.0", "CC-BY-SA-3.0", "CC-BY-2.0", "CC-BY-SA-2.0",
+            "ESO-CC-BY-4.0", "personal"}
+
+_lab = ImageCms.buildTransform(ImageCms.createProfile("sRGB"), ImageCms.createProfile("LAB"), "RGB", "LAB")
+
+
+def cover(img, w=W, h=H):
+    """The picture as a w×h screen shows it: scaled to fill, centre-cropped. Returns (crop, scale, loss)."""
+    iw, ih = img.size
+    s = max(w / iw, h / ih)
+    nw, nh = round(iw * s), round(ih * s)
+    loss = 1 - (w * h) / (nw * nh)
+    img = img.resize((nw, nh), Image.LANCZOS)
+    x, y = (nw - w) // 2, (nh - h) // 2
+    return img.crop((x, y, x + w, y + h)), s, loss
+
+
+def lightness(img):
+    """L* (0–100) channel of an RGB picture."""
+    return ImageCms.applyTransform(img, _lab).split()[0].point(lambda v: v * 100 / 255)
+
+
+def dhash(img):
+    g = img.convert("L").resize((9, 8), Image.LANCZOS)
+    px = list(g.tobytes())
+    bits = 0
+    for r in range(8):
+        for c in range(8):
+            bits = bits << 1 | (px[r * 9 + c] > px[r * 9 + c + 1])
+    return bits
+
+
+def bars(L):
+    """Letterboxing, as a share of the height at the top and bottom: flat near-black rows that end
+    in a straight edge (the next row is lit across nearly its whole width). A dark sky or a black
+    silhouette ends unevenly, so it is not a bar."""
+    w, h = L.size
+    lit = L.point(lambda v: 255 if v > 6 else 0)
+    def flat(y):
+        st = ImageStat.Stat(L.crop((0, y, w, y + 1)))
+        return st.mean[0] < 4 and st.stddev[0] < 1.5
+    def edge(y):
+        return 0 <= y < h and ImageStat.Stat(lit.crop((0, y, w, y + 1))).mean[0] / 255 > 0.9
+    top = 0
+    while top < h // 3 and flat(top):
+        top += 1
+    bot = 0
+    while bot < h // 3 and flat(h - 1 - bot):
+        bot += 1
+    return (top / h if top and (edge(top) or edge(top + 1)) else 0.0,
+            bot / h if bot and (edge(h - 1 - bot) or edge(h - 2 - bot)) else 0.0)
+
+
+def ocr_words(img):
+    if not shutil.which("tesseract"):
+        return None
+    small = img.convert("L").resize((1920, 1080), Image.LANCZOS)
+    tmp = Path(os.environ.get("TMPDIR", "/tmp")) / f"kuwai-wallcheck-{os.getpid()}.png"
+    small.save(tmp)
+    try:
+        out = subprocess.run(["tesseract", str(tmp), "-", "--psm", "11", "tsv"], capture_output=True, text=True, timeout=60).stdout
+    finally:
+        tmp.unlink(missing_ok=True)
+    words = []
+    for line in out.splitlines()[1:]:
+        p = line.split("\t")
+        if len(p) == 12 and p[11].strip():
+            word, conf = p[11].strip(), float(p[10])
+            if conf >= 80 and len(re.sub(r"[^A-Za-z0-9]", "", word)) >= 3:
+                words.append(word)
+    return words
+
+
+def check(path, band=BAND, ocr=False, skip=(), accent="#0a84ff"):
+    r = {"file": str(path), "verdict": "ok", "why": []}
+    try:
+        img = Image.open(path)
+        img.load()
+    except Exception as e:
+        r.update(verdict="fail", why=[f"unreadable: {e}"])
+        return r
+    img = img.convert("RGB")
+    r["size"] = list(img.size)
+    crop, scale, loss = cover(img)
+    r["crop"] = round(loss, 3)
+    L = lightness(crop)
+    st = ImageStat.Stat(L.crop((0, 0, W, STRIP)))
+    r["strip"] = [round(st.mean[0], 1), round(st.stddev[0], 1)]
+    r["mean"] = round(ImageStat.Stat(L).mean[0], 1)
+    hsv = crop.resize((640, 360)).convert("HSV")
+    s_ok = hsv.split()[1].point(lambda v: 255 if v / 255 >= LOUD_SAT else 0)
+    v_ok = hsv.split()[2].point(lambda v: 255 if v / 255 >= LOUD_VALUE else 0)
+    loud = ImageChops.multiply(s_ok, v_ok)
+    r["loud"] = round(ImageStat.Stat(loud).mean[0] / 255, 3)
+    top, bot = bars(L.resize((640, 360)))
+    r["bars"] = [round(top, 3), round(bot, 3)]
+    r["dhash"] = f"{dhash(crop):016x}"
+
+    def bad(level, why):
+        r["why"].append(why)
+        if level == "fail" or r["verdict"] == "ok":
+            r["verdict"] = level
+    if scale > 1.0001 and "size" not in skip:
+        bad("fail" if scale > 1.35 else "warn", f"upscaled ×{scale:.2f} (needs {W}×{H} after the crop)")
+    if loss > CROP_WARN:
+        bad("warn", f"the 16:9 crop loses {loss:.0%}")
+    if top > 0.02 or bot > 0.02:
+        bad("fail", f"letterboxed (bars {top:.0%} top, {bot:.0%} bottom)")
+    if st.mean[0] > STRIP_MEAN or st.stddev[0] > STRIP_SPREAD:
+        bad("fail" if st.mean[0] > STRIP_MEAN + 15 else "warn",
+            f"busy or bright under the island (strip L* {st.mean[0]:.0f}±{st.stddev[0]:.0f})")
+    if not band[0] <= r["mean"] <= band[1]:
+        bad("fail" if r["mean"] > band[1] + 12 else "warn", f"mean L* {r['mean']:.0f} outside {band[0]:.0f}–{band[1]:.0f}")
+    if r["loud"] > LOUD_SHARE:
+        bad("warn", f"{r['loud']:.0%} bright and saturated")
+    if lockwall is not None and "clock" not in skip:
+        c = lockwall.lock_clock(str(path), accent=accent)
+        r["clock"] = {k: c[k] for k in ("clock", "shade", "calm", "ok")}
+        if not c["ok"]:
+            bad("fail", f"the lock clock reads at {c['clock']:.1f}:1 even shaded")
+        elif not c["calm"]:
+            bad("warn", f"the lock clock needs a {c['shade']:.0%} shade")
+    if ocr:
+        words = ocr_words(crop)
+        if words:
+            r["text"] = words[:8]
+            bad("warn", "text: " + " ".join(words[:5]))
+    return r
+
+
+def twins(results):
+    seen = []
+    for r in results:
+        if "dhash" not in r:
+            continue
+        h = int(r["dhash"], 16)
+        for other, oh in seen:
+            if bin(h ^ oh).count("1") <= TWIN_BITS:
+                r["why"].append(f"near-duplicate of {Path(other).name}")
+                r["verdict"] = "fail"
+                break
+        seen.append((r["file"], h))
+
+
+def theme_accent(theme_dir):
+    """A theme's accent from its theme.toml or kuwai.toml (installed), for the lock clock's tint."""
+    for name in ("theme.toml", "kuwai.toml"):
+        f = Path(theme_dir) / name
+        if f.exists():
+            return tomllib.loads(f.read_text()).get("accent", "#0a84ff")
+    return "#0a84ff"
+
+
+def theme_band(theme_dir):
+    """A theme's band from its theme.toml ([wallpapers] band = [lo, hi]), else the default."""
+    for cand in (Path(theme_dir) / "theme.toml", Path(theme_dir) / "kuwai.toml"):
+        if cand.exists():
+            t = tomllib.loads(cand.read_text())
+            b = t.get("wallpapers", {}).get("band")
+            if b:
+                return (float(b[0]), float(b[1]))
+    return BAND
+
+
+def read_tsv(theme):
+    rows = []
+    for n, line in enumerate((Path(theme) / "wallpapers.tsv").read_text().splitlines(), 1):
+        if not line.strip() or line.startswith("#"):
+            continue
+        p = line.split("\t")
+        rows.append({"line": n, "name": p[0], "url": p[1], "sha256": p[2] if len(p) > 2 else "",
+                     "licence": p[3] if len(p) > 3 else "", "author": p[4] if len(p) > 4 else "",
+                     "page": p[5] if len(p) > 5 else ""})
+    return rows
+
+
+def check_tsv(theme, files_dir=None):
+    """Every row of a kuwai (not personal) theme is pinned and licensed; files match their pins."""
+    problems = []
+    t = Path(theme) / "theme.toml"
+    personal = t.exists() and tomllib.loads(t.read_text()).get("personal", False)
+    for row in read_tsv(theme):
+        where = f"{theme}/wallpapers.tsv:{row['line']} {row['name']}"
+        if not personal:
+            if not re.fullmatch(r"sha256:[0-9a-f]{64}|sha1:[0-9a-f]{40}", row["sha256"]):
+                problems.append(f"{where}: not pinned (sha256:… or sha1:…, as Commons reports it)")
+            if row["licence"] not in LICENCES - {"personal"}:
+                problems.append(f"{where}: licence {row['licence'] or 'missing'} is not one kuwai can ship")
+            if not row["author"]:
+                problems.append(f"{where}: no author to credit")
+        if files_dir and ":" in row["sha256"]:
+            algo, want = row["sha256"].split(":", 1)
+            f = next((Path(files_dir) / f"{row['name']}{e}" for e in (".jpg", ".png", ".webp") if (Path(files_dir) / f"{row['name']}{e}").exists()), None)
+            if f and hashlib.new(algo, f.read_bytes()).hexdigest() != want:
+                problems.append(f"{where}: the file on disk is not the pinned one")
+    return problems
+
+
+def sheet(results, out):
+    tw, th, pad = 384, 216, 6
+    cols = 5
+    rows = (len(results) + cols - 1) // cols
+    canvas = Image.new("RGB", (cols * (tw + pad) + pad, rows * (th + 34 + pad) + pad), (24, 24, 27))
+    d = ImageDraw.Draw(canvas)
+    try:
+        font = ImageFont.truetype("DejaVuSans.ttf", 12)
+    except OSError:
+        font = ImageFont.load_default()
+    colour = {"ok": (48, 209, 88), "warn": (255, 159, 10), "fail": (255, 69, 58)}
+    for i, r in enumerate(results):
+        x, y = pad + (i % cols) * (tw + pad), pad + (i // cols) * (th + 34 + pad)
+        try:
+            im = cover(Image.open(r["file"]).convert("RGB"), tw, th)[0]
+            canvas.paste(im, (x, y))
+        except Exception:
+            pass
+        d.rectangle((x, y, x + tw - 1, y + round(th * STRIP / H)), outline=(255, 255, 255))
+        d.rectangle((x, y + th, x + 10, y + th + 10), fill=colour[r["verdict"]])
+        d.text((x + 16, y + th + 1), f"{i + 1}. {Path(r['file']).stem}"[:52], fill=(230, 230, 232), font=font)
+        d.text((x, y + th + 16), ("; ".join(r["why"]) or "ok")[:62], fill=(160, 160, 166), font=font)
+    canvas.save(out, quality=85)
+
+
+def main(argv):
+    args, opts = [], {"json": False, "ocr": False, "sheet": None, "band": None, "theme": None, "tsv": None, "dir": None, "skip": ""}
+    it = iter(argv)
+    for a in it:
+        if a in ("-h", "--help"):
+            print(__doc__.strip())
+            return 0
+        if a in ("--json", "--ocr"):
+            opts[a[2:]] = True
+        elif a in ("--sheet", "--band", "--theme", "--tsv", "--dir", "--skip"):
+            opts[a[2:]] = next(it, None)
+        else:
+            args.append(a)
+    if opts["tsv"]:
+        problems = check_tsv(opts["tsv"], opts["dir"])
+        for p in problems:
+            print(p)
+        return 1 if problems else 0
+    band, accent = BAND, "#0a84ff"
+    if opts["band"]:
+        lo, hi = opts["band"].split(",")
+        band = (float(lo), float(hi))
+    if opts["theme"]:
+        d = Path(opts["theme"])
+        args += sorted(str(p) for p in (d / "wallpapers").iterdir() if p.suffix.lower() in EXTS)
+        if not opts["band"]:
+            band = theme_band(d)
+        accent = theme_accent(d)
+    files = []
+    for a in args:
+        p = Path(a)
+        files += sorted(str(x) for x in p.iterdir() if x.suffix.lower() in EXTS) if p.is_dir() else [a]
+    if not files:
+        print(__doc__.strip(), file=sys.stderr)
+        return 2
+    results = [check(f, band, opts["ocr"], tuple((opts["skip"] or "").split(",")), accent) for f in files]
+    twins(results)
+    if opts["sheet"]:
+        sheet(results, opts["sheet"])
+    if opts["json"]:
+        print(json.dumps(results, indent=1))
+    else:
+        for r in results:
+            print(f"{r['verdict']:4}  {Path(r['file']).name}  {'; '.join(r['why'])}")
+    return 1 if any(r["verdict"] == "fail" for r in results) else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

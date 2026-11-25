@@ -41,8 +41,8 @@ else
     for f in kitty.theme ghostty.theme; do [ -f "$src/$f" ] && cp "$src/$f" "$dest/"; done
 fi
 cp "$src/CREDITS.txt" "$dest/wallpapers/"
-while IFS=$'\t' read -r file url; do
-    [ -n "$file" ] || continue
+while IFS=$'\t' read -r file url _rest; do
+    case $file in ''|'#'*) continue ;; esac
     out="$dest/wallpapers/$file.jpg"
     [ -s "$out" ] && continue
     tmp=$(mktemp)

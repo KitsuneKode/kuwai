@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+usage() {
+cat <<'KUWAI_DEMO'
+kuwai demo: a 45-second tour of the island with pretend agents, for trying the
+notch without real ones and for recording the showcase clips.
+
+  kuwai demo                  the tour on the island you're looking at
+  kuwai demo --screen DP-3    on that screen's island
+  kuwai demo --fast           every beat in half the time
+  kuwai demo --step           wait for ↵ between beats (for recording one at a time)
+
+What it shows, one beat at a time (each is said here as it happens):
+  three agents at work · Codex finishes · Claude asks before running a command ·
+  it is allowed · a timer as a live activity · a build notification ·
+  a usage limit reached · everything done.
+Nothing real is touched: the agents are a feed the shell is handed through its
+test hooks (no pane is typed into, no hook answered, no file written); the
+timer and notification are marked as the demo's. Ctrl+C, or the end, puts
+everything back (`test clear`).
+KUWAI_DEMO
+exit "${1:-2}"
+}
+case "${1:-}" in -h|--help) usage 0 ;; esac
+set -euo pipefail
+ROOT="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+
+screen="" pace=${KUWAI_DEMO_PACE:-1} step=0
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --screen) screen=${2:-}; shift ;;
+        --fast) pace=0.5 ;;
+        --step) step=1 ;;
+        -h|--help) usage 0 ;;
+        *) usage ;;
+    esac
+    shift
+done
+
+shell_dir() {
+    [ -n "${KUWAI_SHELL:-}" ] && { echo "$KUWAI_SHELL"; return; }
+    pgrep -a -x qs 2>/dev/null | sed -n 's/.* -p \([^ ]*\/shell\)\( .*\)\{0,1\}$/\1/p' | head -n1
+}
+SHELL_DIR=$(shell_dir)
+if [ -z "$SHELL_DIR" ] || ! qs ipc -p "$SHELL_DIR" show >/dev/null 2>&1; then
+    echo "The island isn't running, so there is nothing to show the tour on (kuwai start)." >&2
+    exit 1
+fi
+t() { qs ipc -p "$SHELL_DIR" call test "$@" </dev/null >/dev/null 2>&1 || true; }
+if [ -z "$screen" ]; then
+    screen=$(hyprctl monitors -j 2>/dev/null | jq -r '.[] | select(.focused) | .name' | head -n1)
+fi
+[ "$(qs ipc -p "$SHELL_DIR" call lock state 2>/dev/null || echo unlocked)" = "unlocked" ] || { echo "Unlock first: the tour plays on the island, not the lock screen." >&2; exit 1; }
+
+finish() { t clear; echo; echo "Done. The island is back to your real agents."; }
+trap finish EXIT
+trap 'exit 130' INT TERM
+
+beat() {
+    printf '  %s\n' "$2"
+    if [ $step = 1 ]; then read -r -p "    ↵ next " _ </dev/tty || true
+    else sleep "$(awk -v s="$1" -v p="$pace" 'BEGIN { print s * p }')"; fi
+}
+
+agent() {
+    jq -cn --arg key "$1" --arg agent "$2" --arg title "$3" --arg cwd "$4" --arg state "$5" \
+        --arg question "${6:-}" --arg account "${7:-}" --arg reset "${8:-}" \
+        '{key: $key, agent: $agent, brand: $agent, title: $title, tab_title: $title, cwd: $cwd, state: $state,
+          question: $question, account: $account} + (if $reset == "" then {} else {limit_reset: ($reset | tonumber)} end)'
+}
+feed() { t feed "$(jq -cn --argjson a "[$(IFS=,; echo "$*")]" '{agents: $a}')"; }
+
+ASK="Allow Bash: rm -rf dist && bun run build?"
+claude_auth() { agent demo-1 claude "Refactor the sign-in flow" "~/Projects/web" "$1" "${2:-}"; }
+codex_test() { agent demo-2 codex "Fix the flaky date test" "~/Projects/api" "$1"; }
+claude_notes() { agent demo-3 claude "Write the release notes" "~/Projects/kuwai" "$1" "" personal "${2:-}"; }
+in_72m=$(( $(date +%s) + 4320 ))
+
+echo "kuwai demo, on $screen (Ctrl+C ends it and puts everything back)"
+t clear
+feed "$(claude_auth working)" "$(codex_test working)" "$(claude_notes working)"
+beat 6 "Three agents at work: one capsule beside the island, their marks turning."
+feed "$(claude_auth working)" "$(codex_test done)" "$(claude_notes working)"
+beat 5 "Codex finished: the capsule's edge turns green and its halo flashes once."
+feed "$(claude_auth waiting "$ASK")" "$(codex_test done)" "$(claude_notes working)"
+beat 8 "Claude asks before running a command: the capsule glows orange, Allow or Deny from the island."
+feed "$(claude_auth working)" "$(codex_test done)" "$(claude_notes working)"
+beat 4 "Allowed. (With the hooks installed, this answers Claude itself, not the terminal.)"
+t demoTimer 90 "Deploy preview"
+beat 6 "A timer is a live activity in the island."
+t peek "$screen" short ""
+beat 6 "A build notification peeks out of the island and folds back."
+feed "$(claude_auth working)" "$(codex_test done)" "$(claude_notes limited "$in_72m")"
+beat 6 "A usage limit reached: amber, with when it resets and whose account it is."
+feed "$(claude_auth done)" "$(codex_test done)" "$(claude_notes done)"
+beat 5 "Everything done."
