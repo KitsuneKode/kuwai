@@ -2,6 +2,7 @@
 import { readFileSync, writeFileSync, renameSync, mkdirSync, readdirSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { homedir } from "node:os";
+import { t3Token } from "./kuwai_t3token.mjs";
 
 const HOME = homedir();
 const STATE = process.env.XDG_STATE_HOME || `${HOME}/.local/state`;
@@ -65,19 +66,8 @@ function windowOf(w) {
 
 let cachedT3Token = null;
 function readT3Token() {
-  if (process.env.KUWAI_T3_TOKEN) return process.env.KUWAI_T3_TOKEN.trim();
-  if (cachedT3Token !== null) return cachedT3Token;
-  let token = "";
-  try {
-    token = execFileSync("secret-tool", ["lookup", "service", "kuwai", "key", "t3-token"], {
-      encoding: "utf8",
-      timeout: 1500,
-      stdio: ["ignore", "pipe", "ignore"],
-    }).trim();
-  } catch {}
-  if (!token) token = readText(`${STATE}/kuwai/t3-token`);
-  cachedT3Token = token;
-  return token;
+  if (cachedT3Token === null) cachedT3Token = t3Token("read");
+  return cachedT3Token;
 }
 
 function t3Endpoint() {

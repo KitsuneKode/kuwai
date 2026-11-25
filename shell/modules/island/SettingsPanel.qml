@@ -584,6 +584,12 @@ FocusScope {
                     }
                 }
                 SettingsRow {
+                    key: "assistantTerminal"
+                    label: "Include the terminal's last command"
+                    detail: "When you snapshot a terminal: its last command and output go to the assistant (secrets removed). Off: only its folder"
+                    Toggle { on: Settings.assistantTerminal; onToggled: Settings.set("assistantTerminal", !Settings.assistantTerminal) }
+                }
+                SettingsRow {
                     label: "Crash diagnosis"
                     detail: "Coredump toasts offer Diagnose → local assistant only; nothing sent upstream without you"
                 }

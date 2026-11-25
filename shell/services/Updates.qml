@@ -30,6 +30,7 @@ Singleton {
     property bool checking: false
     property string checkError: ""
     readonly property var repo: data && data.repo ? data.repo : []
+    readonly property var repoExtra: data && data.repoExtra ? data.repoExtra : []
     readonly property var aur: data && data.aur ? data.aur : []
     readonly property var news: data && data.news ? data.news : []
     readonly property var flatpak: data && data.flatpak && Settings.updatesFlatpak ? data.flatpak : []

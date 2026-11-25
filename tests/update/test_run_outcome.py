@@ -76,3 +76,11 @@ def test_cache_is_pruned_only_when_asked(m):
     m.run_locked(["--repo", "--prune-cache"])
     done, _ = m.done()
     assert done["pruned"] is False and done["ok"] is True
+
+
+def test_check_names_what_pacman_adds_beyond_the_list(m, tmp_path, monkeypatch):
+    db = tmp_path / "db"
+    (db / "sync").mkdir(parents=True)
+    monkeypatch.setenv("CHECKUPDATES_DB", str(db))
+    monkeypatch.setattr(m, "sh", lambda cmd, **kw: SimpleNamespace(returncode=0, stdout="linux 7.3-1\nnew-dep 1.0-1\n", stderr=""))
+    assert m.resolved_extra({"linux"}) == [{"name": "new-dep", "new": "1.0-1"}]

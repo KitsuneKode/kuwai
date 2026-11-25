@@ -207,10 +207,28 @@ def news(since):
     return out[:6]
 
 
+def resolved_extra(listed):
+    """What pacman's own resolution adds to the listed upgrades (new dependencies, replacements),
+    from the copy of the databases checkupdates just synced: no root, nothing changed."""
+    db = os.environ.get("CHECKUPDATES_DB") or os.path.join(os.environ.get("TMPDIR", "/tmp"), f"checkup-db-{os.getuid()}")
+    if not os.path.isdir(os.path.join(db, "sync")):
+        return []
+    r = sh(["pacman", "-Su", "--print", "--print-format", "%n %v", "--dbpath", db, "--logfile", "/dev/null"], timeout=60)
+    if r.returncode != 0:
+        return []
+    out = []
+    for line in r.stdout.splitlines():
+        parts = line.split()
+        if len(parts) == 2 and parts[0] not in listed:
+            out.append({"name": parts[0], "new": parts[1]})
+    return out[:200]
+
+
 def check(flatpak_on=True):
     repo_run = sh(["checkupdates", "--nocolor"])
     repo = parse_updates(repo_run.stdout, "")
     repos = repo_of([p["name"] for p in repo])
+    extra = resolved_extra({p["name"] for p in repo}) if repo else []
     for p in repo:
         p["repo"] = repos.get(p["name"], "")
     aur = []
@@ -242,6 +260,7 @@ def check(flatpak_on=True):
     return {
         "checkedAt": int(time.time()),
         "repo": repo,
+        "repoExtra": extra,
         "aur": aur,
         "repoError": repo_run.returncode not in (0, 2) and (repo_run.stderr.strip() or "checkupdates failed"),
         "lastUpgrade": since,

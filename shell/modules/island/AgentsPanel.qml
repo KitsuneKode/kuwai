@@ -216,7 +216,7 @@ FocusScope {
     function canDismiss(r) {
         return !!r && ((r.src === "t3" && (r.state === "done" || r.state === "error")) || r.src === "recent"
             || (r.src === "desktop" && (r.state === "done" || r.state === "error" || r.state === "limited"))
-            || (r.src === "kitty" && (r.state === "limited" || r.state === "error" || (r.event && r.state !== "needs"))));
+            || (r.src === "kitty" && (r.state === "limited" || r.state === "error")));
     }
     function dismiss(r) {
         if (!canDismiss(r)) return;

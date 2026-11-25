@@ -712,6 +712,18 @@
       "restartScope": "live"
     },
     {
+      "key": "assistantTerminal",
+      "type": "boolean",
+      "default": false,
+      "section": "assistant",
+      "label": "Include the terminal's last command",
+      "detail": "When you snapshot a terminal: its last command and output go to the assistant (secrets removed). Off: only its folder",
+      "group": "",
+      "searchTerms": "include the terminal's last command output snapshot assistant context",
+      "requires": [],
+      "restartScope": "live"
+    },
+    {
       "key": "seenAssistantPrompt",
       "type": "boolean",
       "default": false,

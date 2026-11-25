@@ -251,6 +251,17 @@ def kitty_context(pid):
     }
 
 
+def setting(key, default):
+    """One value from your settings.json (the shell's), or default."""
+    path = os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"), "kuwai", "settings.json")
+    try:
+        with open(path) as f:
+            v = json.load(f).get(key, default)
+        return v if isinstance(v, type(default)) else default
+    except (OSError, ValueError, AttributeError):
+        return default
+
+
 def cmd_snapshot(mode="window"):
     """T3 Code-style window & screen snapshotting with rich context."""
     _, shots_dir = get_runtime_dir()
@@ -306,6 +317,8 @@ def cmd_snapshot(mode="window"):
         bounds = {"x": at[0], "y": at[1], "width": size[0], "height": size[1]}
 
         term = kitty_context(pid) if wm_class.lower() == "kitty" else None
+        if term and not setting("assistantTerminal", False):
+            term = {**term, "last_command": "", "last_output": "", "running": ""}
         cwd = term["cwd"] if term and term.get("cwd") else get_process_cwd(pid)
         if wm_class.lower() not in TERMINALS and (not cwd or os.path.realpath(cwd) == os.path.realpath(os.path.expanduser("~"))):
             cwd = ""
@@ -452,6 +465,10 @@ def cmd_render(input_file=None):
         out = {"kind": "text", "html": raw_text}
         print(json.dumps(out))
 
+SEARXNG_IMAGE = os.environ.get("KUWAI_SEARXNG_IMAGE") or \
+    "searxng/searxng@sha256:892ed5710603e38f9dc201e6a0b2f3f14dbdb8108edcadac30e55b165c979fb7"
+
+
 def cmd_search(args):
     """kuwai-ollama search <start|stop|status>: the local SearXNG the assistant searches first."""
     sub = args[0] if args else "status"
@@ -467,7 +484,7 @@ def cmd_search(args):
         p = subprocess.run(["docker", "run", "-d", "--name", "kuwai-searxng", "--label", "kuwai.search=1", "--restart", "unless-stopped",
                             "-p", "127.0.0.1:8888:8080", "-v", f"{conf}:/etc/searxng:rw", "--cap-drop", "ALL",
                             "--cap-add", "CHOWN", "--cap-add", "SETGID", "--cap-add", "SETUID", "--memory", "512m",
-                            "searxng/searxng:latest"], capture_output=True, text=True)
+                            SEARXNG_IMAGE], capture_output=True, text=True)
         sys.exit(p.returncode)
     elif sub == "stop":
         subprocess.run(["docker", "rm", "-f", "kuwai-searxng"], capture_output=True)

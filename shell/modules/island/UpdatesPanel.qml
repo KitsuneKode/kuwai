@@ -342,6 +342,15 @@ FocusScope {
                         }
                     }
                 }
+                Label {
+                    visible: Updates.repoExtra.length > 0
+                    width: parent.width
+                    wrapMode: Text.Wrap
+                    text: "pacman also installs " + Updates.repoExtra.slice(0, 6).map(p => p.name).join(", ")
+                        + (Updates.repoExtra.length > 6 ? " and " + (Updates.repoExtra.length - 6) + " more" : "")
+                        + " (new dependencies or replacements)"
+                    size: Theme.tFootnote; color: Theme.textSecondary
+                }
                 Button {
                     visible: Updates.repo.length > 8
                     kind: "quiet"

@@ -2,6 +2,7 @@
 import { readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { join } from "node:path";
+import { t3Token } from "./kuwai_t3token.mjs";
 
 const HOME = process.env.HOME || "";
 const STATE = process.env.XDG_STATE_HOME || join(HOME, ".local/state");
@@ -17,18 +18,7 @@ const dayOf = ms => new Date(ms).toLocaleDateString("en-CA", { timeZone: zone })
 function readText(p) { try { return readFileSync(p, "utf8").trim(); } catch { return ""; } }
 function readJson(p) { try { return JSON.parse(readFileSync(p, "utf8")); } catch { return null; } }
 
-function readT3Token() {
-  if (process.env.KUWAI_T3_TOKEN) return process.env.KUWAI_T3_TOKEN.trim();
-  try {
-    const t = execFileSync("secret-tool", ["lookup", "service", "kuwai", "key", "t3-token"], {
-      encoding: "utf8",
-      timeout: 1500,
-      stdio: ["ignore", "pipe", "ignore"],
-    }).trim();
-    if (t) return t;
-  } catch {}
-  return readText(join(STATE, "kuwai/t3-token"));
-}
+function readT3Token() { return t3Token("read"); }
 
 function endpoint() {
   const token = readT3Token();

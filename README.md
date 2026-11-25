@@ -264,6 +264,17 @@ umask 077; mkdir -p ~/.local/state/kuwai
 t3 auth session issue --scope orchestration:read --scope diagnostics:read --label kuwai-usage --ttl 365d --token-only > ~/.local/state/kuwai/t3-token
 ```
 
+Answering T3's permission requests from the notch (Allow/Deny) uses a second,
+separate token, so the readers above never hold one that can approve:
+
+```sh
+t3 auth session issue --scope orchestration:operate --label kuwai-answer --ttl 365d --token-only > ~/.local/state/kuwai/t3-operate-token
+```
+
+Both files must be yours alone (`umask 077` makes them 0600); a token file
+others can read is ignored. The keyring works too (`secret-tool store
+--label kuwai service kuwai key t3-operate-token`).
+
 Without a token, or with T3 Code closed, it falls back to kittymux's
 `agent-usage.json` (one account per provider).
 

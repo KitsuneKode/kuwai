@@ -47,6 +47,7 @@ Singleton {
     readonly property bool updatesFlatpak: value("updatesFlatpak")
     readonly property bool updatesAnnounce: value("updatesAnnounce")
     readonly property bool updatesPruneCache: value("updatesPruneCache")
+    readonly property bool assistantTerminal: value("assistantTerminal")
     readonly property bool clipPinsFirst: value("clipPinsFirst")
     readonly property string islandRest: value("islandRest")
     readonly property bool islandTucked: value("islandTucked")
