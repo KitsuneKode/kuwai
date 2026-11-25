@@ -46,7 +46,6 @@ Item {
         id: header
         anchors { left: parent.left; right: parent.right; top: parent.top; margins: 16 }
         height: 36
-        opacity: content.center.revealAt(0)
 
         Segmented {
             id: tabs
@@ -67,7 +66,6 @@ Item {
         anchors { left: parent.left; right: parent.right; top: header.bottom; margins: 16; topMargin: 12 }
         height: 36
         radius: 12
-        opacity: content.center.revealAt(40)
         color: Qt.rgba(1, 1, 1, search.activeFocus ? 0.10 : 0.07)
         border.width: 1
         // Focused: a soft white edge, not the accent (that means "where you are").
@@ -227,7 +225,6 @@ Item {
         id: footer
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: 16; bottomMargin: 12 }
         height: 22
-        opacity: content.center.revealAt(200)
 
         // Hairline above: where the list ends and the chrome begins.
         Rectangle {

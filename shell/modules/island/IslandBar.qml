@@ -768,7 +768,7 @@ Scope {
                 // Not over a film: lifted for a moment, the island alone comes up.
                 atRest: win.showBar && win.outNow && !Saver.showing && !Saver.locked && !Saver.screensOff && !win.screenFullscreen
                         && !win.panelHere && !win.grown && !win.bannerHere && !win.peekHere && !win.deviceHere
-                        && restRow.opacity > 0.5
+                        && restRow.opacity > 0.01
             }
             Item {
                 id: frame
@@ -925,7 +925,7 @@ Scope {
                         width: Math.max(0, rw.value)
                         anchors.horizontalCenter: parent.horizontalCenter
                         y: Math.round((win.restH - height) / 2)
-                        opacity: Math.max(0, 1 - Math.max(m.value, pv.value, bv.value, nv.value, dv.value) * 3)
+                        opacity: Math.max(0, 1 - Math.max(m.value, pv.value, bv.value, nv.value, dv.value) * 2)
                         visible: opacity > 0.01
                     }
 
@@ -1043,7 +1043,7 @@ Scope {
                         transformOrigin: Item.Top
                         visible: opacity > 0.01 && body.width > 120
                         property var keep: null
-                        sourceComponent: NotifPeek { item: Notifs.peek || peekLoader.keep; bar: win; reveal: Math.max(0, Math.min(1, (nv.value - 0.2) / 0.6)) }
+                        sourceComponent: NotifPeek { item: Notifs.peek || peekLoader.keep; bar: win }
                         Connections { target: Notifs; function onPeekChanged() { if (Notifs.peek) peekLoader.keep = Notifs.peek; } }
                     }
 

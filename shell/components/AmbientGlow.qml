@@ -7,16 +7,17 @@ Shape {
     property color tint: Theme.accent
     property real radius: Theme.r3
     property bool breathing: false
+    property bool calm: false
     property real strength: tint.hslSaturation < 0.25 ? 0.42 : 0.85
     anchors.fill: parent
     preferredRendererType: Shape.CurveRenderer
     opacity: breath
     property real breath: 1
     SequentialAnimation on breath {
-        running: glow.breathing && glow.visible && !Theme.reduceMotion
+        running: glow.breathing && glow.visible && !glow.calm && !Theme.reduceMotion
         loops: Animation.Infinite
-        NumberAnimation { to: 0.62; duration: Theme.breathOutMs * 2; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }
-        NumberAnimation { to: 1; duration: Theme.breathOutMs * 2; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }
+        NumberAnimation { to: 0.8; duration: Theme.breathOutMs * 3; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }
+        NumberAnimation { to: 1; duration: Theme.breathOutMs * 3; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }
         onRunningChanged: if (!running) glow.breath = 1
     }
     ShapePath {

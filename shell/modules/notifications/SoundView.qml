@@ -133,14 +133,12 @@ Item {
             // ── Now Playing ──────────────────────────────────────────────
             NowPlaying {
                 visible: player !== null
-                opacity: view.center.revealAt(60)
             }
 
             // ── Strips ───────────────────────────────────────────────────
             Item {
                 width: parent.width
                 height: 318
-                opacity: view.center.revealAt(80)
 
                 Flickable {
                     id: strips
@@ -205,7 +203,6 @@ Item {
                 nodes: view.sinks
                 current: view.sink
                 onPicked: n => Pipewire.preferredDefaultAudioSink = n
-                opacity: view.center.revealAt(120)
             }
             DeviceList {
                 view: view
@@ -214,7 +211,6 @@ Item {
                 nodes: view.sources
                 current: view.source
                 onPicked: n => Pipewire.preferredDefaultAudioSource = n
-                opacity: view.center.revealAt(150)
             }
         }
     }

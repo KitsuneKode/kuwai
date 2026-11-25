@@ -12,10 +12,9 @@ Item {
     id: peek
     required property var item
     required property var bar
-    property real reveal: 1
     width: 460
     height: parent ? parent.height : 76
-    opacity: reveal * swipeFade
+    opacity: swipeFade
     readonly property bool expanded: Notifs.peekExpanded
     // Expanded, its own height (IslandBar.peekH): padding, the header, the
     // body (scrolling past maxBody), a gap, the buttons, padding. A fixed 340

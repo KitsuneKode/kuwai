@@ -27,6 +27,18 @@ is listed here.
 - Screenshots need only grim and slurp (grimblast is gone); recording falls
   back to wf-recorder; an agent opens in whatever terminal you have.
 
+### Motion
+- Unlocking gives you the desktop at 400 ms instead of 760: the lock lifts
+  with the shackle, not after it, and the release is computed from the tokens.
+- Super+V, Super+N and Super+/ each have one entrance: the shelf, the center
+  and the key palette no longer stagger their rows after the panel arrives.
+- Closing the island is quicker than opening it, and the clock and capsules
+  come back together instead of one after another.
+- A working agent's glow breathes slower and shallower, and holds still while
+  you're in the panel; an alarm stops swinging while the pointer is on it.
+- A toast moves on one curve and finishes fading before it is removed; a
+  notification peek fades in once.
+
 ### Security
 - Allow on an agent's request is bound to that request: the panel shows the
   request's own command in full, and the answer carries its id (kittymux's

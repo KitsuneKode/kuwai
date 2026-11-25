@@ -47,11 +47,6 @@ Item {
     }
     Component.onDestruction: if (panel.selRow === card) panel.selRow = null
 
-    // Gradual reveal: rise and settle, a step apart.
-    readonly property real shown: panel.reveal(Math.min(index, 8) * 22)
-    opacity: shown
-    transform: Translate { y: (1 - card.shown) * 10 }
-
     // ── Section label, standing up between cards ──────────────────────────
     Label {
         visible: card.header

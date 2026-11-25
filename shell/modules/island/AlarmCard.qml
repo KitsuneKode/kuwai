@@ -103,12 +103,12 @@ Item {
     // An alarm: swing and breathe, again, while it rings and the card shows.
     Timer {
         interval: 1400; repeat: true; triggeredOnStart: true
-        running: card.ringing && !card.calm && card.visible
+        running: card.ringing && !card.calm && card.visible && !cardHover.hovered
         onTriggered: { swingOnce.restart(); breath.restart(); }
     }
     NumberAnimation { id: breath; target: card; property: "breathe"; from: 0; to: 1; duration: Theme.breathOutMs; easing.type: Easing.BezierSpline; easing.bezierCurve: card.ease }
 
-    HoverHandler { onHoveredChanged: Moments.cardHeld = hovered }
+    HoverHandler { id: cardHover; onHoveredChanged: Moments.cardHeld = hovered }
 
     // ── The mark ─────────────────────────────────────────────────────────
     Item {

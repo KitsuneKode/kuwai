@@ -63,17 +63,8 @@ Scope {
     function snap() { instant = true; settle.restart(); }
     Timer { id: settle; interval: 80; onTriggered: root.instant = false }
 
-    // ── Reveal clock: content fades in a step apart after the card ───────
-    property real clock: 0
-    NumberAnimation { id: clockRun; target: root; property: "clock"; from: 0; to: Theme.revealClockMs; duration: Theme.revealClockMs }
-    // Steps are half the nominal delay and 90ms long: the whole card is in
-    // by ~190ms, so it reads instant, but still lands in order. Reduced
-    // motion: everything at once.
-    function revealAt(ms) {
-        if (Theme.reduceMotion) return 1;
-        const t = Math.max(0, Math.min(1, (clock - ms * 0.5) / 90));
-        return 1 - Math.pow(1 - t, 3);      // ease-out
-    }
+    // One entrance: the content fades in as one, on the card's own progress.
+    readonly property real contentIn: Theme.reduceMotion || !open ? 1 : Math.max(0, Math.min(1, (p - 0.3) / 0.5))
 
     // ── Open/close ───────────────────────────────────────────────────────
     property string mode: "pop"                    // pop (from the bell's corner) | morph (out of a toast)
@@ -178,7 +169,6 @@ Scope {
             contentOut.stop();
             contentFade = 1;
             morph.snap(reopening ? closeT : 0);
-            if (!reopening) clock = 0;
             beginSoon.seq = root.surface.seq;
             beginSoon.restart();
             if (ui && !Notifs.centerFocusReply) ui.search.forceActiveFocus();
@@ -186,7 +176,6 @@ Scope {
             dispatchSurface({ type: "close" });
             root.foldSeq = root.surface.seq;
             closeT = morph.value;
-            clockRun.stop();
             contentOut.restart();
             foldAnim.restart();
         }
@@ -205,7 +194,6 @@ Scope {
         if (!effects.length || !open) return;
         console.info("center: begin on " + (shownScreen ? shownScreen.name : "?"));
         morph.target = 1;
-        clockRun.restart();
         armSoon.seq = root.surface.seq;
         armSoon.restart();
     }
@@ -448,7 +436,7 @@ Scope {
                         y: frame.morphing ? win.dy - frame.y : 0
                         width: win.dw
                         height: win.dh
-                        opacity: root.contentFade
+                        opacity: root.contentFade * root.contentIn
                         sourceComponent: CenterContent {
                             center: root
                             hosting: win.hosts

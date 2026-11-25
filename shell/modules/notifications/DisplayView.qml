@@ -136,7 +136,7 @@ Item {
                 columnSpacing: 8
                 rowSpacing: 8
                 visible: view.module === ""
-                opacity: view.center.revealAt(60) * view.swap
+                opacity: view.swap
                 scale: 0.985 + 0.015 * view.swap
                 transformOrigin: Item.Top
 
@@ -283,7 +283,6 @@ Item {
                 color: Theme.wash(1)
                 border.width: 1
                 border.color: Theme.edge(0)
-                opacity: view.center.revealAt(100)
                 readonly property int level: view.hasBattery ? view.pct(view.battery.percentage) : 0
                 readonly property bool charging: view.hasBattery && (view.battery.state === UPowerDeviceState.Charging || view.battery.state === UPowerDeviceState.FullyCharged)
 
@@ -347,7 +346,6 @@ Item {
             Column {
                 width: parent.width
                 spacing: 8
-                opacity: view.center.revealAt(140)
 
                 Label { x: 4; text: "Brightness"; size: 14; weight: Theme.wSemibold; color: Theme.textSecondary }
                 Repeater {
@@ -404,7 +402,6 @@ Item {
             Column {
                 width: parent.width
                 spacing: 8
-                opacity: view.center.revealAt(160)
 
                 Label { x: 4; text: "Display"; size: 14; weight: Theme.wSemibold; color: Theme.textSecondary }
                 Segmented {
@@ -499,7 +496,7 @@ Item {
                 visible: view.btOpen
                 width: parent.width
                 spacing: 8
-                opacity: view.center.revealAt(180) * view.swap
+                opacity: view.swap
 
                 Label {
                     x: 4

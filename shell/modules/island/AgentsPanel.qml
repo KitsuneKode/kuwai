@@ -29,6 +29,7 @@ import "../../services/agents.mjs" as Ag
 
 FocusScope {
     id: ap
+    HoverHandler { id: panelHover }
     focus: true
     implicitWidth: Theme.panelS
     implicitHeight: col.implicitHeight + 36
@@ -406,6 +407,7 @@ FocusScope {
                         tint: ap.brandOf(row.modelData.agent)
                         radius: Theme.r3
                         breathing: true
+                        calm: panelHover.hovered
                     }
                 }
                 // Swipe away sideways (or ×, or ⌫ on the selected row): it slides

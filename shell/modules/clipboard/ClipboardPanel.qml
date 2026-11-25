@@ -666,19 +666,11 @@ Scope {
 
     // pill: 0 gone → 1 there (it swells out of a dot). melt: 0 pill → 1 shelf.
     Spring { id: pill; tier: Theme.springFast; epsilon: 0.002; target: root.expanded || root.toasting || root.recording || root.saved ? 1 : 0 }
-    Spring { id: melt; tier: root.expanded ? Theme.surfaceIn : Theme.surfaceOut; epsilon: 0.001; target: root.expanded ? 1 : 0 }
+    Spring { id: melt; tier: root.expanded ? Theme.surfaceKeyIn : Theme.surfaceKeyOut; epsilon: 0.001; target: root.expanded ? 1 : 0 }
     Spring { id: read; tier: root.reading ? Theme.surfaceIn : Theme.surfaceOut; epsilon: 0.001; target: root.open && root.reading ? 1 : 0 }
     readonly property bool shownAtAll: expanded || toasting || recording || saved || pill.value > 0.003 || melt.value > 0.003
     readonly property var hostScreen: expanded ? (Clipboard.screen || Quickshell.screens[0]) : (toastScreen || Clipboard.screen || Quickshell.screens[0])
 
-    // Reveal clock for the cards' rise.
-    property real clock: 1000
-    NumberAnimation { id: clockRun; target: root; property: "clock"; from: 0; to: Theme.revealClockMs; duration: Theme.revealClockMs }
-    function reveal(ms) {
-        if (Theme.reduceMotion) return 1;
-        const k = Math.max(0, Math.min(1, (clock - ms - 90) / 160));
-        return 1 - Math.pow(1 - k, 3);
-    }
     // The shelf, Quick Look and the recording setup are built when the
     // island first opens as one (on the screen that shows it) and kept a few
     // minutes after it closes, then released: ~100 MB that sat unused while
@@ -713,8 +705,6 @@ Scope {
             status = "";
             setDate(0, 0, "");
             reading = false;
-            clock = 0;
-            clockRun.restart();
             if (Theme.reduceMotion) { pill.settle(); melt.settle(); }
         } else {
             if (selKey) lastKey = selKey;          // ⌥← brings you back here next time
@@ -977,7 +967,7 @@ Scope {
                     y: 0
                     width: win.shelfW
                     height: win.shelfH
-                    opacity: root.setup ? 0 : Math.max(0, Math.min(1, (win.m - 0.55) / 0.4))
+                    opacity: root.setup ? 0 : Math.max(0, Math.min(1, (win.m - 0.5) / 0.4))
                     visible: opacity > 0.01 || root.open
                     sourceComponent: shelfBody
                 }
@@ -1319,7 +1309,6 @@ Scope {
                 id: detail
                 anchors { left: parent.left; right: parent.right; top: shelf.bottom; leftMargin: 22; rightMargin: 22; topMargin: 10 }
                 height: 44
-                opacity: root.reveal(160)
                 Label {
                     id: detailTitle
                     anchors { left: parent.left; right: detailMeta.left; rightMargin: 16; verticalCenter: parent.verticalCenter }
@@ -1417,7 +1406,6 @@ Scope {
                 id: foot
                 anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
                 height: 48
-                opacity: root.reveal(200)
                 Rectangle { anchors { left: parent.left; right: parent.right; top: parent.top; leftMargin: 14; rightMargin: 14 } height: 1; color: Theme.wash(1) }
                 Row {
                     x: 22                        // the panel's one gutter (its header's, its detail line's)

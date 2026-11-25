@@ -38,7 +38,7 @@ Scope {
     property real lockedAt: Date.now()
     // A notification tapped on the lock screen: opened once you're in.
     property var openAfter: null
-    Timer { id: release; interval: 760; onTriggered: {
+    Timer { id: release; interval: Theme.unlockReleaseMs; onTriggered: {
         root.leaving = false;
         root.unlocked();
         if (root.openAfter && !root.openAfter.discard) Notifs.activate(root.openAfter);

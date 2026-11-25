@@ -32,8 +32,6 @@ FocusScope {
     property var items: []
     property bool runnable: true
     property string query: ""
-    // When this panel appeared: rows cascade in only during the first moment.
-    readonly property real born: Date.now()
     property int current: -1
     property var lastPointer: null
 
@@ -212,19 +210,6 @@ FocusScope {
             readonly property bool on: index === pal.current
             width: list.width
             height: header ? 32 : 40
-
-            // First paint after opening: rows cascade in (20 ms apart, the
-            // first nine), rising 6 px. Afterwards results just appear —
-            // typing must never replay this.
-            property real enter: 1
-            opacity: enter
-            transform: Translate { y: 6 * (1 - row.enter) }
-            Component.onCompleted: if (!Theme.reduceMotion && Date.now() - pal.born < 260 && index < 9) { enter = 0; cascade.start(); }
-            SequentialAnimation {
-                id: cascade
-                PauseAnimation { duration: Theme.revealStepMs + row.index * 20 }
-                NumberAnimation { target: row; property: "enter"; to: 1; duration: Theme.cardRiseMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
-            }
 
             Rectangle {
                 anchors.fill: parent

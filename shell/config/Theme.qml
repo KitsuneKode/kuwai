@@ -540,11 +540,13 @@ Singleton {
     readonly property int cardGoWaitMs: 260      // a device leaving: the ring waits this long…
     readonly property int cardUnlinkMs: 420      // …then undoes itself
     // Lock, login and farewell (full-screen moments: slower, they are rare).
-    readonly property int unlockMs: 440          // the lock lifting away, after the shackle opens
+    readonly property int unlockLeadMs: 60
+    readonly property int unlockMs: 320          // the lock lifting away
+    readonly property int unlockReleaseMs: reduceMotion ? exitMs : unlockLeadMs + unlockMs + 20
     readonly property int shackleWaitMs: 380     // the padlock waits for the island to land before it clicks shut
     readonly property int shackleShutMs: 260     // the shackle clicking shut
-    readonly property int shackleOpenWaitMs: 90  // a beat before the shackle springs open
-    readonly property int shackleOpenMs: 300     // the shackle springing open
+    readonly property int shackleOpenWaitMs: 0   // the shackle opens with the unlock, not before it
+    readonly property int shackleOpenMs: 220     // the shackle springing open
     readonly property int idleDimMs: 14000       // the screen dimming before it sleeps (any movement lifts it)
     readonly property int greetStepMs: 420       // one part of the login's intro rising in
     readonly property int greetWallMs: 1400      // the login's wallpaper coming up out of black
@@ -649,9 +651,9 @@ Singleton {
     // for "alive" elements, bounce ≤ 0.3). Folding back, and anything the
     // keyboard opened, stays critically damped: it's getting out of the way.
     readonly property var surfaceIn: ({ stiffness: 300, damping: 27.7 })
-    readonly property var surfaceOut: ({ stiffness: 380, damping: 39 })
+    readonly property var surfaceOut: ({ stiffness: 560, damping: 47.3 })
     readonly property var surfaceKeyIn: ({ stiffness: 560, damping: 47.3 })
-    readonly property var surfaceKeyOut: ({ stiffness: 640, damping: 50.6 })
+    readonly property var surfaceKeyOut: ({ stiffness: 900, damping: 60 })
 
     // ── Toast stack: Sonner's numbers (emilkowalski/sonner, refs/) ───────
     readonly property int toastWidth: 368        // Sonner 356; ours carries an icon

@@ -58,10 +58,9 @@ Item {
     // that same wallpaper (Lock.qml waits for this).
     readonly property real move: Theme.reduceMotion ? 0 : 1
     property real u: 0
-    // The island's shackle springs open first (LockIsland).
     SequentialAnimation {
         id: unlockAnim
-        PauseAnimation { duration: Theme.reduceMotion ? 0 : 300 }
+        PauseAnimation { duration: Theme.reduceMotion ? 0 : Theme.unlockLeadMs }
         NumberAnimation {
             target: view; property: "u"; to: 1; duration: Theme.unlockMs
             easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeDrawer

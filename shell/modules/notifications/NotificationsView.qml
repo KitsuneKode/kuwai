@@ -187,7 +187,6 @@ Item {
     Row {
         id: filterRow
         x: 2
-        opacity: view.center.revealAt(80)
         spacing: 6
 
         Repeater {
@@ -258,7 +257,6 @@ Item {
         // search field above (the page is 14 px in, the header 16).
         anchors { right: parent.right; rightMargin: 2; verticalCenter: filterRow.verticalCenter }
         spacing: 6
-        opacity: view.center.revealAt(80)
         Ui.Button {
             height: 28
             width: 28
@@ -281,7 +279,7 @@ Item {
         label: Notifs.undoLabel
         count: Notifs.undoCount
         anchors { right: parent.right; rightMargin: view.narrowed ? 2 : 36; verticalCenter: filterRow.verticalCenter }
-        opacity: live ? view.center.revealAt(80) : 0
+        opacity: live ? 1 : 0
         onUndoRequested: Notifs.undoClear()
     }
 
@@ -293,7 +291,6 @@ Item {
         text: "Click a notification to open it; right-click for its other options. Toasts: tap to preview unless Settings → Toast opens on first click."
         size: Theme.tFootnote
         color: Theme.textTertiary
-        opacity: view.center.revealAt(100)
     }
 
     // Clear all: the list falls away, then empties.
@@ -322,7 +319,6 @@ Item {
             canFold: !view.narrowed
             onToggled: view.setExpanded(modelData.key, !view.expandedGroups[modelData.key])
             // Product reveal: groups fade in a step apart, no rise.
-            opacity: view.center.revealAt(120 + Math.min(index, 6) * Theme.revealStepMs)
         }
 
         remove: Transition {
@@ -361,7 +357,6 @@ Item {
         visible: view.groups.length === 0
         anchors.centerIn: list
         spacing: 8
-        opacity: view.center.revealAt(120)
         Rectangle {
             anchors.horizontalCenter: parent.horizontalCenter
             width: 56; height: 56; radius: 28
