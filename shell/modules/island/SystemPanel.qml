@@ -237,19 +237,15 @@ FocusScope {
         ScrollHint { flickable: readings; anchors { right: parent.right; top: parent.top; bottom: parent.bottom; rightMargin: -10 } }
         }
 
-        // ── Quick switches and updates ───────────────────────────────────
-        // Four across, two across where four don't fit (a large Text size).
+        // ── Game mode, and the rest of the switches where they live ──────
         Grid {
             id: tiles
             width: parent.width
             columnSpacing: 8; rowSpacing: 8
-            readonly property real widest: Math.max(game.implicitWidth, night.implicitWidth, caff.implicitWidth, focusTile.implicitWidth)
-            columns: widest * 4 + 3 * columnSpacing <= width ? 4 : 2
-            readonly property real cellW: (width - (columns - 1) * columnSpacing) / columns
+            columns: 2
+            readonly property real cellW: (width - columnSpacing) / 2
             Tile { id: game; width: tiles.cellW; glyph: "\u{f0eb5}"; label: "Game mode"; on: sys.gameMode; onClicked: sys.toggleGame() }
-            Tile { id: night; width: tiles.cellW; glyph: "\u{f0594}"; label: "Night light"; on: Display.nightOn; onClicked: Display.toggleNight() }
-            Tile { id: caff; width: tiles.cellW; glyph: "\u{f0176}"; label: "Caffeine"; on: Caffeine.on; onClicked: Caffeine.on = !Caffeine.on }
-            Tile { id: focusTile; width: tiles.cellW; glyph: "\u{f0594}"; label: "Do Not Disturb"; on: Notifs.dnd; onClicked: Notifs.toggleUserDnd() }
+            Tile { id: ctl; width: tiles.cellW; glyph: "\u{f0493}"; label: "Controls"; on: false; onClicked: Notifs.openControls("", "pointer", Island.screen) }
         }
         Item {
             id: upd

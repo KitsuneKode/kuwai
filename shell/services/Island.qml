@@ -22,13 +22,13 @@ Singleton {
     // Every panel the island opens, by name, with what it is called: the one
     // list (its name for a screen reader, the Back row's "‹ Calendar").
     // IslandBar maps each name to its component (tests/shell/island-panels.test.mjs).
-    readonly property var titles: ({ activities: "More activities", calendar: "Calendar", power: "Power", launcher: "Search", settings: "Settings", system: "System", theme: "Themes", keys: "Shortcuts", switcher: "Windows", updates: "Software Update", media: "Now Playing", t3: "T3 Code", agents: "Agents", sweep: "Idle Projects", usage: "Usage", read: "Read", cleanup: "Cleanup" })
+    readonly property var titles: ({ activities: "More activities", calendar: "Calendar", power: "Power", launcher: "Search", settings: "Settings", system: "System", theme: "Themes", keys: "Shortcuts", switcher: "Windows", updates: "Software Update", media: "Now Playing", agents: "Agents", usage: "Usage", read: "Read", cleanup: "Cleanup" })
     readonly property var panels: Object.keys(titles)
     function titleOf(name) { return titles[name] || ""; }
     // Old names that still open their panel: "vitals" (machine + agents'
     // usage side by side) became the System section, usage its own section.
     // Anything that still says vitals (a bind, a script, `kuwai vitals`) works.
-    readonly property var aliases: ({ vitals: "system" })
+    readonly property var aliases: ({ vitals: "system", t3: "agents" })
     function canon(name) { return aliases[name] || name; }
     property string panel: ""
     // Each screen's island width at rest, so other surfaces (the clipboard,
@@ -161,6 +161,7 @@ Singleton {
     // going back returns to it, expanded while the pointer is still there.
     function open(name, screenName, how, from) {
         if (name === "notifs") { Notifs.toggleCenter("notifications", how || "key", screenName || ""); return; }
+        if (name === "sweep") { cleanupView = "projects"; name = "cleanup"; }
         if (name === "bluetooth") { Notifs.openControls("bluetooth", how || "key", screenName || ""); return; }
         name = canon(name);
         if (panels.indexOf(name) < 0) return;
@@ -168,7 +169,9 @@ Singleton {
         if (!screenName) { Screens.refresh(n => root.openOn(name, n, how, from)); return; }
         openOn(name, screenName, how, from);
     }
+    property string cleanupView: ""
     function openOn(name, screenName, how, from) {
+        if (name === "sweep") { cleanupView = "projects"; name = "cleanup"; }
         name = canon(name);
         if (Notifs.centerOpen) Notifs.setCenter(false, how === "key" ? "key" : "pointer");
         previewing = false;

@@ -26,7 +26,10 @@ FocusScope {
     property bool inStrip: false
     focus: true
     implicitWidth: Theme.panelM
-    implicitHeight: col.implicitHeight + 40
+    implicitHeight: view === "projects" ? projects.y + projects.implicitHeight : col.y + col.implicitHeight + 20
+    property string view: "skills"
+    function takeView() { if (Island.cleanupView) { view = Island.cleanupView; Island.cleanupView = ""; } }
+    Connections { target: Island; function onCleanupViewChanged() { cp.takeView(); } }
 
     property int days: 30
     property var report: null              // (not `data`: that is every Item's children list)
@@ -48,7 +51,7 @@ FocusScope {
         reader.command = [Paths.bin + "/kuwai-cleanup", "--days", String(days)].concat(fresh ? ["--fresh"] : []);
         reader.running = true;
     }
-    Component.onCompleted: load(false)
+    Component.onCompleted: { takeView(); load(false); }
     onDaysChanged: { marked = ({}); confirm = false; load(false); }
 
     Process {
@@ -92,6 +95,8 @@ FocusScope {
     function gb(b) { return b >= 1e9 ? (b / 1e9).toFixed(1) + " GB" : Math.round(b / 1e6) + " MB"; }
 
     Keys.onPressed: e => {
+        if (e.key === Qt.Key_Tab && (e.modifiers & Qt.ControlModifier)) { view = view === "skills" ? "projects" : "skills"; e.accepted = true; return; }
+        if (view !== "skills") return;
         if ([Qt.Key_Down, Qt.Key_Up, Qt.Key_Space, Qt.Key_Delete, Qt.Key_Backspace].indexOf(e.key) >= 0) keyboard = true;
         if (e.key === Qt.Key_Down) sel = Math.min(rows.length - 1, sel + 1);
         else if (e.key === Qt.Key_Up) sel = Math.max(0, sel - 1);
@@ -103,29 +108,36 @@ FocusScope {
         e.accepted = true;
     }
 
+    Segmented {
+        id: viewSwitch
+        x: 20; y: cp.inStrip ? Theme.s2 : 20
+        options: [{ id: "skills", label: "Skills" }, { id: "projects", label: "Idle projects" }]
+        current: cp.view
+        onPicked: id => cp.view = id
+    }
+    Segmented {
+        visible: cp.view === "skills"
+        anchors { right: parent.right; rightMargin: 20 }
+        y: viewSwitch.y
+        options: [{ id: "30", label: "30 days" }, { id: "90", label: "90" }, { id: "180", label: "180" }]
+        current: String(cp.days)
+        onPicked: id => cp.days = Number(id)
+    }
+    Loader {
+        id: projects
+        y: viewSwitch.y + viewSwitch.height
+        width: cp.width
+        active: cp.view === "projects"
+        visible: active
+        focus: active
+        sourceComponent: SweepPanel {}
+    }
     Column {
         id: col
-        x: 20; y: cp.inStrip ? Theme.s2 : 20
+        x: 20; y: viewSwitch.y + viewSwitch.height + 10
+        visible: cp.view === "skills"
         width: cp.width - 40
         spacing: 14
-
-        // ── Title, window ───────────────────────────────────────────────
-        Item {
-            width: parent.width
-            height: 28
-            Label {
-                anchors { left: parent.left; verticalCenter: parent.verticalCenter }
-                visible: !cp.inStrip
-                text: "Cleanup"
-                size: Theme.tTitle3; weight: Theme.wSemibold
-            }
-            Segmented {
-                anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-                options: [{ id: "30", label: "30 days" }, { id: "90", label: "90" }, { id: "180", label: "180" }]
-                current: String(cp.days)
-                onPicked: id => cp.days = Number(id)
-            }
-        }
 
         // ── The number ──────────────────────────────────────────────────
         Column {

@@ -130,11 +130,6 @@ Item {
             width: parent.width
             spacing: 22
 
-            // ── Now Playing ──────────────────────────────────────────────
-            NowPlaying {
-                visible: player !== null
-            }
-
             // ── Strips ───────────────────────────────────────────────────
             Item {
                 width: parent.width
@@ -212,123 +207,6 @@ Item {
                 current: view.source
                 onPicked: n => Pipewire.preferredDefaultAudioSource = n
             }
-        }
-    }
-
-    // ── Pieces ───────────────────────────────────────────────────────────
-    // The playing player (else the first one): art, track, artist, controls,
-    // and a scrubber you can seek with when the player allows it.
-    component NowPlaying: Rectangle {
-        id: np
-        readonly property var player: Mpris.players.values.find(p => p.playbackState === MprisPlaybackState.Playing)
-            || Mpris.players.values[0] || null
-        width: parent ? parent.width : 0
-        height: 132
-        radius: 18
-        color: Theme.wash(1)
-        border.width: 1
-        border.color: Theme.edge(0)
-
-        // MPRIS doesn't push position; ask while playing and on screen.
-        Timer {
-            running: np.player && np.player.isPlaying && view.shown
-            interval: 500
-            repeat: true
-            onTriggered: np.player.positionChanged()
-        }
-        function clock(s) {
-            s = Math.max(0, Math.floor(s || 0));
-            return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
-        }
-
-        ClippingRectangle {
-            id: art
-            x: 12; y: 12
-            width: 64; height: 64
-            radius: 12
-            color: Theme.platter
-            Image {
-                anchors.fill: parent
-                source: np.player ? np.player.trackArtUrl : ""
-                sourceSize: Qt.size(128, 128)
-                fillMode: Image.PreserveAspectCrop
-                asynchronous: true
-            }
-            Text {
-                anchors.centerIn: parent
-                visible: !(np.player && np.player.trackArtUrl)
-                text: "\u{f075a}"
-                font.family: Theme.fontGlyph
-                font.pixelSize: 24
-                color: Theme.textTertiary
-            }
-        }
-        Column {
-            anchors { left: art.right; leftMargin: 12; right: controls.left; rightMargin: 8; top: art.top; topMargin: 6 }
-            spacing: 3
-            Label { width: parent.width; elide: Text.ElideRight; text: np.player ? (Media.title(np.player) || "Unknown track") : ""; size: Theme.tCallout; weight: Theme.wSemibold }
-            Label { width: parent.width; elide: Text.ElideRight; text: Media.byline(np.player); size: Theme.tSub; color: Theme.textSecondary }
-            Label { width: parent.width; elide: Text.ElideRight; text: np.player ? (np.player.identity || "") : ""; size: Theme.tFootnote; color: Theme.textTertiary }
-        }
-        Row {
-            id: controls
-            anchors { right: parent.right; rightMargin: 10; verticalCenter: art.verticalCenter }
-            spacing: 2
-            Repeater {
-                model: [
-                    { g: "\u{f04ae}", act: "prev", big: false },
-                    { g: np.player && np.player.isPlaying ? "\u{f03e4}" : "\u{f040a}", act: "toggle", big: true },
-                    { g: "\u{f04ad}", act: "next", big: false }
-                ]
-                Rectangle {
-                    id: btn
-                    required property var modelData
-                    width: modelData.big ? 40 : 32; height: width; radius: width / 2
-                    color: btnArea.containsMouse ? Theme.pillHover : modelData.big ? Theme.pill : "transparent"
-                    scale: btnArea.pressed ? 0.92 : 1
-                    Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
-                    Text {
-                        textFormat: Text.PlainText
-                        anchors.centerIn: parent
-                        text: btn.modelData.g
-                        font.family: Theme.fontGlyph
-                        font.pixelSize: btn.modelData.big ? 20 : 16
-                        color: Theme.textPrimary
-                    }
-                    function act() {
-                        const p = np.player;
-                        if (!p) return;
-                        if (btn.modelData.act === "toggle" && p.canTogglePlaying) p.togglePlaying();
-                        else if (btn.modelData.act === "next" && p.canGoNext) p.next();
-                        else if (btn.modelData.act === "prev" && p.canGoPrevious) p.previous();
-                    }
-                    MouseArea {
-                        id: btnArea
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: btn.act()
-                    }
-                    activeFocusOnTab: true
-                    Keys.onPressed: e => { if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { btn.act(); e.accepted = true; } }
-                    FocusRing {}
-                    Accessible.role: Accessible.Button
-                    Accessible.name: btn.modelData.act === "toggle" ? (np.player && np.player.isPlaying ? "Pause" : "Play") : btn.modelData.act === "next" ? "Next track" : "Previous track"
-                    Accessible.onPressAction: btn.act()
-                }
-            }
-        }
-        Slider {
-            anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: 12 }
-            height: 28
-            enabled: np.player && np.player.canSeek && np.player.length > 0
-            from: 0
-            to: np.player && np.player.length > 0 ? np.player.length : 1
-            stepSize: 1
-            value: np.player ? np.player.position : 0
-            label: np.clock(np.player ? np.player.position : 0)
-            valueText: np.player && np.player.length > 0 ? "−" + np.clock(np.player.length - np.player.position) : ""
-            onMoved: v => { if (np.player && np.player.canSeek) np.player.position = v; }
         }
     }
 
