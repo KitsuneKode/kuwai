@@ -18,6 +18,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.config
 
 Singleton {
     id: root
@@ -25,10 +26,10 @@ Singleton {
     readonly property string lib: home + "/.local/lib/hyde"
     readonly property string cache: (Quickshell.env("XDG_CACHE_HOME") || home + "/.cache") + "/hyde"
     readonly property string config: (Quickshell.env("XDG_CONFIG_HOME") || home + "/.config") + "/hyde"
-    readonly property string state: (Quickshell.env("XDG_STATE_HOME") || home + "/.local/state") + "/hyde"
+    readonly property string state: Paths.stateHome + "/hyde"
     readonly property string data: (Quickshell.env("XDG_DATA_HOME") || home + "/.local/share") + "/hyde"
     readonly property string wallSet: cache + "/wall.set"
-    readonly property string kuwaiWall: (Quickshell.env("XDG_STATE_HOME") || home + "/.local/state") + "/kuwai/wallpaper"
+    readonly property string kuwaiWall: Paths.stateHome + "/kuwai/wallpaper"
 
     // A small text file, read now: present from the first frame, no process.
     FileView { id: marker; path: root.lib + "/globalcontrol.sh"; blockLoading: true; printErrors: false }

@@ -7,7 +7,7 @@ import qs.config
 Singleton {
     id: root
 
-    readonly property string bin: Quickshell.shellDir + "/../bin/kuwai-look"
+    readonly property string bin: Paths.bin + "/kuwai-look"
     property var themes: []
     property var wallpapers: []
     property var state: ({})

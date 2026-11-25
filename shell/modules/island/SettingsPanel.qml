@@ -630,7 +630,7 @@ FocusScope {
             readonly property string kuwai: Paths.bin + "/kuwai"
             property var kv: ({})
             FileView {
-                path: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/kuwai/state"
+                path: Paths.stateHome + "/kuwai/state"
                 watchChanges: true
                 printErrors: false
                 onFileChanged: reload()

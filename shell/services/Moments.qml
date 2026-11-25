@@ -52,7 +52,7 @@ Singleton {
         if (!allowed(m)) return;
         // Answered while it waited in the queue: not shown again.
         if (m.sticky && m.event && Kittymux.answered(m.event)) return;
-        if (m.sticky && m.t3 && T3Code.waiting === 0) return;
+        if (m.sticky && m.t3 && t3Answered(m)) return;
         // A sticky one (an agent waiting on you) steps aside for anything else
         // and comes back after it, instead of holding the rest in the queue.
         if (now && now.sticky && now !== m && !(m.sticky && m.event && m.event === now.event)) {
@@ -83,15 +83,21 @@ Singleton {
     onHeldChanged: if (!held && now) { hide.interval = MomentsLogic.nextHideInterval(now, hide.interval, held); hide.restart(); }
     Timer { id: hide; onTriggered: { if (root.held) { restart(); return; } root.now = null; if (root.queue.length) gap.start(); } }
     // Pulled down: the notch opens into its list of recent important ones
+    function t3Answered(m) {
+        const same = (T3Code.liveItems || []).filter(i => i.title === m.t3Title);
+        if (same.length) return !same.some(i => i.status === "waiting" || i.status === "woke");
+        return T3Code.waiting === 0;
+    }
+    function settleT3() {
+        queue = queue.filter(q => !(q.m.sticky && q.m.t3 && t3Answered(q.m)));
+        if (now && now.sticky && now.t3 && t3Answered(now)) dismissNow();
+    }
     function openRecent(screen) { Notifs.toggleCenter("notifications", "pointer", screen || ""); }
     // A T3 thread that waited is answered: its sticky moment goes.
     Connections {
         target: T3Code
-        function onWaitingChanged() {
-            if (T3Code.waiting !== 0) return;
-            root.queue = root.queue.filter(q => !(q.m.sticky && q.m.t3));
-            if (root.now && root.now.sticky && root.now.t3) root.dismissNow();
-        }
+        function onWaitingChanged() { root.settleT3(); }
+        function onLiveItemsChanged() { root.settleT3(); }
     }
     // The center's Agents tab: every one waiting, each a jump (opens it, never closes it).
     function openAgents() { if (Island.panel !== "agents") Island.open("agents", "", "pointer"); }
@@ -712,7 +718,7 @@ Singleton {
             // gone, the thread that matters most.
             go: () => { if (!(item.notification && Notifs.invokeDefault(item))) T3Code.openBest(); else T3Code.focus(); },
             list: root.openRecent,
-            sticky: tone === "caution", t3: true
+            sticky: tone === "caution", t3: true, t3Title: t
         }, tone === "caution" ? 600000 : tone === "critical" ? 8000 : 5000);
     }
 

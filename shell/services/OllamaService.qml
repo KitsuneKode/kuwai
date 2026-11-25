@@ -252,7 +252,7 @@ Singleton {
     // ── Persistent Sessions Store ─────────────────────────────────────
     // The list (ai-sessions.json) and one file per chat (ai-chats/<id>.json);
     // the rules are ChatStore's (services/ai/chatstore.mjs, tests/shell).
-    readonly property string stateDir: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/kuwai"
+    readonly property string stateDir: Paths.stateHome + "/kuwai"
     readonly property string chatDir: stateDir + "/ai-chats"
     FileView {
         id: sessionStore
@@ -813,8 +813,8 @@ function onPanelClosed() {
     // ── Background work and notifications ─────────────────────────────
     // A turn keeps running with the overlay closed; when it ends (or needs you),
     // a notification says so and its Open button brings the assistant back.
-    readonly property string kuwaiBin: Quickshell.shellDir + "/../bin/kuwai"
-    readonly property string notifyBin: Quickshell.shellDir + "/../bin/kuwai-notify"
+    readonly property string kuwaiBin: Paths.bin + "/kuwai"
+    readonly property string notifyBin: Paths.bin + "/kuwai-notify"
     function notify(title, body, urgency) {
         const p = notifyComponent.createObject(root, { command: ["sh", "-c",
             'r=$("$6" -a Assistant -i chat-bubbles -u "$3" -w -A open=Open -- "$1" "$2"); [ "$r" = open ] && "$5" assistant open',

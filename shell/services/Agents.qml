@@ -17,7 +17,7 @@ Singleton {
         onTriggered: root.now = Date.now()
     }
 
-    readonly property string desktopPath: (Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")) + "/kuwai/desktop-agents.json"
+    readonly property string desktopPath: Paths.stateHome + "/kuwai/desktop-agents.json"
     readonly property string hookBin: Paths.bin + "/kuwai-agent-hook"
     property bool desktopPinned: false
     property var desktopFeed: []

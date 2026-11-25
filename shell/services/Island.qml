@@ -15,6 +15,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
+import qs.config
 
 Singleton {
     id: root
@@ -265,7 +266,7 @@ Singleton {
     property var uses: ({})
     FileView {
         id: usesFile
-        path: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/kuwai/launcher.json"
+        path: Paths.stateHome + "/kuwai/launcher.json"
         printErrors: false
         onLoaded: { try { const d = JSON.parse(text()); root.uses = d.counts || d || {}; } catch (e) { root.uses = {}; } }
     }

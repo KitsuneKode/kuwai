@@ -50,7 +50,7 @@ Singleton {
     property bool centerShown: false
 
     readonly property string bin: Paths.bin + "/kuwai-usage"
-    readonly property string toldPath: (Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")) + "/kuwai/limits-told.json"
+    readonly property string toldPath: Paths.stateHome + "/kuwai/limits-told.json"
 
     // Every window, flat: [{ key, provider, account, window, used (0–1),
     // name ("Claude weekly"), level: "" | "approaching" | "exhausted" }].

@@ -48,7 +48,7 @@ Singleton {
     }
     FileView {
         id: dismissedFile
-        path: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/kuwai/t3-dismissed.json"
+        path: Paths.stateHome + "/kuwai/t3-dismissed.json"
         printErrors: false
         onLoaded: { try { const d = JSON.parse(text()); if (Array.isArray(d)) root.dismissed = d; } catch (e) {} }
     }
@@ -56,7 +56,7 @@ Singleton {
     property string lastText: ""
     readonly property int total: running + waiting
 
-    readonly property string bin: Quickshell.shellDir + "/../bin/kuwai-t3"
+    readonly property string bin: Paths.bin + "/kuwai-t3"
     readonly property string userdata: Quickshell.env("T3_USERDATA") || Quickshell.env("HOME") + "/.t3/userdata"
     readonly property bool away: Saver.locked || Saver.screensOff
     property bool settling: false        // the log changed: reading until two answers agree

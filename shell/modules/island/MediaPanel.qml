@@ -75,7 +75,7 @@ FocusScope {
             else np.say((actErr.text || "Didn't work").trim().split("\n").pop());
         }
     }
-    function run(args, ok) { if (act.running) return; act.onOk = ok; act.command = [Quickshell.shellDir + "/../bin/kuwai-player", ...args]; act.running = true; }
+    function run(args, ok) { if (act.running) return; act.onOk = ok; act.command = [Paths.bin + "/kuwai-player", ...args]; act.running = true; }
     function contextAct() {
         if (kind === "cider") {
             const key = trackKey, was = isLoved;

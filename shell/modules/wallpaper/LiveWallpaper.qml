@@ -29,7 +29,7 @@ import qs.services
 Scope {
     id: root
 
-    readonly property string stateDir: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state")
+    readonly property string stateDir: Paths.stateHome
     property string video: ""
     property bool locked: false
 

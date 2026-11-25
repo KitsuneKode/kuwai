@@ -52,7 +52,7 @@ Scope {
     }
 
     // What to play: the live wallpaper's pick, else the still wallpaper.
-    readonly property string stateDir: Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state"
+    readonly property string stateDir: Paths.stateHome
     property string video: ""
     FileView {
         path: root.stateDir + "/live-wallpaper/last"

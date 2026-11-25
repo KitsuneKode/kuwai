@@ -202,3 +202,23 @@ def test_a_hook_inside_kitty_records_its_pane(tmp_path: Path) -> None:
     run_hook(["--agent", "devin"], env, json.dumps({"hook_event_name": "UserPromptSubmit", "session_id": "s2", "cwd": "/home/user/q", "prompt": "hi"}))
     rows = {r["id"]: r for r in json.loads((tmp_path / "state" / "kuwai" / "desktop-agents.json").read_text())["agents"]}
     assert [r["pane"] for k, r in rows.items() if r["cwd"] == "/home/user/q"] == [""]
+
+
+def test_install_hooks_points_at_the_stable_copy_and_rewrites_an_old_path(tmp_path: Path) -> None:
+    env = make_env(tmp_path)
+    stable = tmp_path / "data" / "kuwai" / "bin" / "kuwai-agent-hook"
+    stable.parent.mkdir(parents=True)
+    stable.write_text("#!/bin/sh\n")
+    env["XDG_DATA_HOME"] = str(tmp_path / "data")
+    cursor_hooks = tmp_path / "cursor-hooks.json"
+    cursor_hooks.write_text(json.dumps({"version": 1, "hooks": {
+        "sessionStart": [{"command": "'/gone/worktree/bin/kuwai-agent-hook' --agent cursor --event sessionStart"}]}}), encoding="utf-8")
+    devin_cfg = tmp_path / "devin-config.json"
+    devin_cfg.write_text(json.dumps({"hooks": {"PermissionRequest": [{"hooks": [
+        {"type": "command", "command": "'/gone/worktree/bin/kuwai-agent-hook' --agent devin --event PermissionRequest"}]}]}}), encoding="utf-8")
+    args = ["install-hooks", "--cursor", "--devin", "--cursor-path", str(cursor_hooks), "--devin-path", str(devin_cfg)]
+    assert run_hook(args, env).returncode == 0
+    starts = json.loads(cursor_hooks.read_text(encoding="utf-8"))["hooks"]["sessionStart"]
+    assert len(starts) == 1 and str(stable) in starts[0]["command"]
+    perm = json.loads(devin_cfg.read_text(encoding="utf-8"))["hooks"]["PermissionRequest"]
+    assert len(perm) == 1 and str(stable) in perm[0]["hooks"][0]["command"]

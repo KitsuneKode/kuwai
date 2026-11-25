@@ -78,7 +78,7 @@ Singleton {
     readonly property var updateKeys: Updates.total > 0 ? Updates.repo.concat(Updates.aur).map(p => p.name + "@" + (p.new || "")).concat(Updates.flatpak.map(p => p.id + "@" + (p.new || p.version || ""))) : []
     FileView {
         id: told
-        path: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/kuwai/updates-told.json"
+        path: Paths.stateHome + "/kuwai/updates-told.json"
         blockLoading: true
         printErrors: false
     }

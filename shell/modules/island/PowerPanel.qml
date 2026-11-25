@@ -28,7 +28,7 @@ FocusScope {
     focus: true
 
     readonly property var actions: [
-        { id: "lock", label: Tr.t("Lock"), hint: Tr.t("Click or press ↵ to lock"), glyph: "\u{f033e}", hold: false, cmd: [Quickshell.shellDir + "/../bin/kuwai", "lock"] },
+        { id: "lock", label: Tr.t("Lock"), hint: Tr.t("Click or press ↵ to lock"), glyph: "\u{f033e}", hold: false, cmd: [Paths.bin + "/kuwai", "lock"] },
         { id: "sleep", label: Tr.t("Sleep"), hint: Tr.t("Hold to sleep"), glyph: "\u{f0594}", hold: true, bye: "suspend", cmd: ["systemctl", "suspend"] },
         { id: "logout", label: Tr.t("Log Out"), hint: Tr.t("Hold to log out"), glyph: "\u{f0343}", hold: true, bye: "logout", cmd: ["hyprctl", "dispatch", "hl.dsp.exit()"] },
         { id: "reboot", label: Tr.t("Restart"), hint: Tr.t("Hold to restart"), glyph: "\u{f0709}", hold: true, bye: "reboot", cmd: ["systemctl", "reboot"] },

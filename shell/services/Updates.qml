@@ -44,7 +44,7 @@ Singleton {
     readonly property bool fresh: total > 0 && setKey !== viewedKey
     FileView {
         id: viewedFile
-        path: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/kuwai/updates-viewed"
+        path: Paths.stateHome + "/kuwai/updates-viewed"
         printErrors: false
         onLoaded: root.viewedKey = text().trim()
     }
@@ -392,7 +392,7 @@ Singleton {
     // A run that ended while no shell was watching (a restart in its last
     // seconds): its "done" is still in the feed. Shown once, if it ended in
     // the last 15 minutes and isn't the one already shown (updates-shown).
-    readonly property string shownPath: (Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")) + "/kuwai/updates-shown"
+    readonly property string shownPath: Paths.stateHome + "/kuwai/updates-shown"
     FileView { id: shownFile; path: root.shownPath; blockLoading: true; printErrors: false }
     Process {
         id: missedDone

@@ -366,7 +366,11 @@ def merge_cursor_hooks(hooks_path: Path, hook_bin: str, dry_run: bool) -> dict[s
         if not isinstance(entries, list):
             entries = []
         cmd = f"'{hook_bin}' --agent cursor --event {ev}"
-        has_kuwai = any(isinstance(item, dict) and marker in str(item.get("command", "")) for item in entries)
+        has_kuwai = False
+        for item in entries:
+            if isinstance(item, dict) and marker in str(item.get("command", "")):
+                item["command"] = cmd
+                has_kuwai = True
         if not has_kuwai:
             entries.append({"command": cmd})
         hooks[ev] = entries
@@ -394,14 +398,17 @@ def merge_devin_hooks(config_path: Path, hook_bin: str, dry_run: bool) -> dict[s
         if not isinstance(entries, list):
             entries = []
         cmd = f"'{hook_bin}' --agent devin --event {ev}"
-        has_kuwai = any(
-            isinstance(item, dict)
-            and (
-                marker in str(item.get("command", ""))
-                or any(isinstance(h, dict) and marker in str(h.get("command", "")) for h in (item.get("hooks") or []))
-            )
-            for item in entries
-        )
+        has_kuwai = False
+        for item in entries:
+            if not isinstance(item, dict):
+                continue
+            if marker in str(item.get("command", "")):
+                item["command"] = cmd
+                has_kuwai = True
+            for h in item.get("hooks") or []:
+                if isinstance(h, dict) and marker in str(h.get("command", "")):
+                    h["command"] = cmd
+                    has_kuwai = True
         if not has_kuwai:
             entries.append({"hooks": [{"type": "command", "command": cmd}]})
         hooks[ev] = entries
@@ -464,7 +471,8 @@ def main(argv: list[str] | None = None) -> int:
         rebuild_index()
         return 0
     if args.cmd == "install-hooks":
-        hook_bin = os.path.realpath(__file__)
+        stable = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local" / "share") / "kuwai" / "bin" / "kuwai-agent-hook"
+        hook_bin = str(stable) if stable.is_file() else os.path.realpath(__file__)
         want_cursor = args.cursor or (not args.cursor and not args.devin)
         want_devin = args.devin or (not args.cursor and not args.devin)
         report: dict[str, Any] = {}

@@ -31,8 +31,7 @@ Singleton {
     id: root
 
     readonly property string home: Quickshell.env("HOME")
-    readonly property string stateDir: Quickshell.env("KITTYMUX_STATE")
-        || ((Quickshell.env("XDG_STATE_HOME") || home + "/.local/state") + "/kittymux")
+    readonly property string stateDir: Paths.kittymuxState
     readonly property string bin: home + "/.local/bin/kittymux"
     // Override with KITTYMUX_ROOT when kittymux isn't under ~/Projects/kittymux.
     readonly property string muxRoot: Quickshell.env("KITTYMUX_ROOT") || (home + "/Projects/kittymux")
@@ -49,7 +48,6 @@ Singleton {
     property var tabsDoc: null                 // tabs.json, when this kittymux publishes it
     readonly property bool tabsLive: !!tabsDoc && tabsDoc.version === 1 && Array.isArray(tabsDoc.windows)
     property bool loaded: false                // first pick has answered
-    property var usage: []                     // [{ name, rows: [{ label, pct, reset }] }]
 
     // What needs you: unread inbox events, the ones blocking an agent first.
     readonly property var attention: {
@@ -82,7 +80,7 @@ Singleton {
     function isQuiet(r) { return (r.state === "limited" || r.state === "error") && hiddenRecent.indexOf(quietKey(r)) >= 0; }
     function quiet(r) {
         if (!r || !r.key || isQuiet(r)) return;
-        hiddenRecent = hiddenRecent.concat([quietKey(r)]).slice(-200);
+        hiddenRecent = trimHidden(hiddenRecent.concat([quietKey(r)]));
         hiddenFile.setText(JSON.stringify(hiddenRecent));
     }
     // Closed conversations, worth reopening: a title that's just the last
@@ -107,7 +105,10 @@ Singleton {
     // Suggestions you said no to (× or a swipe in the Agents tab): kept
     // across restarts, the 200 newest; nothing else is stored.
     property var hiddenRecent: []
-    readonly property string hiddenPath: (Quickshell.env("XDG_STATE_HOME") || home + "/.local/state") + "/kuwai/agents-hidden.json"
+    function trimHidden(list) {
+        return list.filter(k => !String(k).startsWith("q:")).slice(-200).concat(list.filter(k => String(k).startsWith("q:")).slice(-100));
+    }
+    readonly property string hiddenPath: Paths.stateHome + "/kuwai/agents-hidden.json"
     FileView {
         id: hiddenFile
         path: root.hiddenPath
@@ -116,7 +117,7 @@ Singleton {
     }
     function hideRecent(r) {
         if (!r || !r.hideKey || hiddenRecent.indexOf(r.hideKey) >= 0) return;
-        hiddenRecent = hiddenRecent.concat([r.hideKey]).slice(-200);
+        hiddenRecent = trimHidden(hiddenRecent.concat([r.hideKey]));
         hiddenFile.setText(JSON.stringify(hiddenRecent));
     }
     function looksLikeCommand(t) {
@@ -363,7 +364,7 @@ Singleton {
     // asks/<pane key>.answer. Answering writes that file: the agent gets the
     // decision from its own hook, nothing is typed, nothing is read off the
     // screen. Without a request file, Allow/Deny falls back to `kittymux answer`.
-    readonly property string asksDir: (Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")) + "/kittymux/asks"
+    readonly property string asksDir: Paths.kittymuxState + "/asks"
     property var asks: ({})                     // pane key → { what, tool, agent, until }
     // The folder is watched only if it exists when the watch starts: make it
     // first (private: the requests name commands), then watch.
@@ -507,22 +508,6 @@ Singleton {
             try { root.tabsDoc = JSON.parse(text()); } catch (e) {}
         }
         onLoadFailed: root.tabsDoc = null        // not written yet: `tabs` falls back to running agents
-    }
-
-    FileView {
-        path: root.available ? root.stateDir + "/agent-usage.json" : ""
-        watchChanges: true
-        printErrors: false
-        onFileChanged: reload()
-        onLoaded: {
-            let d = {};
-            try { d = JSON.parse(text()); } catch (e) { return; }
-            root.usage = (d.providers || []).map(p => ({
-                name: p.name,
-                rows: (p.rows || []).filter(r => typeof r.pct === "number")
-                    .map(r => ({ label: r.label, pct: r.pct, reset: (r.reset || "").replace(/^resets in /, "") }))
-            })).filter(p => p.rows.length);
-        }
     }
 
     Timer { id: refresh; interval: 300; onTriggered: if (!pick.running) pick.running = true }

@@ -1,5 +1,5 @@
 {
-  "total_comment_lines": 7554,
+  "total_comment_lines": 7553,
   "files_with_comments": 291,
   "files": {
     "shell/components/ActionMenu.qml": 23,
@@ -168,7 +168,7 @@
     "shell/services/Hyde.qml": 20,
     "shell/services/Idle.qml": 39,
     "shell/services/Island.qml": 74,
-    "shell/services/Kittymux.qml": 103,
+    "shell/services/Kittymux.qml": 102,
     "shell/services/Limits.qml": 104,
     "shell/services/Media.qml": 49,
     "shell/services/MemLog.qml": 4,

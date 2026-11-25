@@ -10,7 +10,7 @@ Singleton {
     id: root
 
     readonly property string bin: Paths.bin + "/kuwai-sweep"
-    readonly property string stateDir: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/kuwai"
+    readonly property string stateDir: Paths.stateHome + "/kuwai"
     readonly property bool enabled: Settings.sweepMark
 
     property var data: null

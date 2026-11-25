@@ -37,7 +37,7 @@ Singleton {
     property string recTarget: ""
     property var recSaved: null                // { at, duration, path, thumb } just after a stop
     readonly property string recBin: Paths.bin + "/kuwai-rec"
-    readonly property string recState: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/kuwai/recording"
+    readonly property string recState: Paths.stateHome + "/kuwai/recording"
     function recordKey() {
         if (recSince > 0) { recCmd.command = [recBin, "stop"]; recCmd.running = true; return; }
         if (!recordSetup) { open = false; screen = Screens.screenNamed(Screens.focusedName); }
@@ -115,7 +115,7 @@ Singleton {
 
     readonly property string bin: Paths.bin + "/kuwai-clip"
     readonly property string dataDir: (Quickshell.env("XDG_DATA_HOME") || Quickshell.env("HOME") + "/.local/share") + "/kuwai-data/clipboard"
-    readonly property string stateFile: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/kuwai/clipboard.json"
+    readonly property string stateFile: Paths.stateHome + "/kuwai/clipboard.json"
     readonly property string thumbDir: (Quickshell.env("XDG_CACHE_HOME") || Quickshell.env("HOME") + "/.cache") + "/kuwai/clip/thumbs"
 
     // A window that opens while the shelf holds the keyboard (Satty after a

@@ -234,7 +234,7 @@ Singleton {
     property int colorMode: 0                  // 0 theme · 1 auto · 2 dark · 3 light
     property string themeName: ""
     readonly property string hydeThemes: Quickshell.env("HOME") + "/.config/hyde/themes/"
-    readonly property string kuwaiLookPath: (Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")) + "/kuwai/look/current/palette.json"
+    readonly property string kuwaiLookPath: Paths.stateHome + "/kuwai/look/current/palette.json"
     property real wallTopLuma: 0.1
     property color wallInk: "#ffffff"
 
@@ -620,7 +620,7 @@ Singleton {
         }
     }
     FileView {
-        path: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/kuwai/prefs.json"
+        path: Paths.stateHome + "/kuwai/prefs.json"
         watchChanges: true
         printErrors: false
         onFileChanged: reload()
