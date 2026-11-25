@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import shutil
 import os
 import re
 import sys
@@ -347,15 +348,30 @@ def handle_hook(args: argparse.Namespace) -> int:
     return 0
 
 
+def load_config(path: Path) -> dict[str, Any]:
+    """The config as it is, or {} when there is none; a file that can't be read as a
+    JSON object stops the install (it is never replaced by an empty one)."""
+    if not path.exists():
+        return {}
+    try:
+        loaded = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as ex:
+        raise SystemExit(f"kuwai-agent-hook: {path} isn't readable JSON ({ex}); left as it is, nothing installed")
+    if not isinstance(loaded, dict):
+        raise SystemExit(f"kuwai-agent-hook: {path} isn't a JSON object; left as it is, nothing installed")
+    return loaded
+
+
+def write_config(path: Path, config: dict[str, Any]) -> None:
+    if path.exists():
+        backup = path.with_name(path.name + ".kuwai-bak")
+        if not backup.exists():
+            shutil.copy2(path, backup)
+    atomic_write_json(path, config)
+
+
 def merge_cursor_hooks(hooks_path: Path, hook_bin: str, dry_run: bool) -> dict[str, Any]:
-    existing: dict[str, Any] = {}
-    if hooks_path.is_file():
-        try:
-            loaded = json.loads(hooks_path.read_text(encoding="utf-8"))
-            if isinstance(loaded, dict):
-                existing = loaded
-        except (OSError, ValueError):
-            existing = {}
+    existing = load_config(hooks_path)
     hooks = existing.get("hooks")
     if not isinstance(hooks, dict):
         hooks = {}
@@ -376,19 +392,12 @@ def merge_cursor_hooks(hooks_path: Path, hook_bin: str, dry_run: bool) -> dict[s
         hooks[ev] = entries
     existing["hooks"] = hooks
     if not dry_run:
-        atomic_write_json(hooks_path, existing)
+        write_config(hooks_path, existing)
     return existing
 
 
 def merge_devin_hooks(config_path: Path, hook_bin: str, dry_run: bool) -> dict[str, Any]:
-    existing: dict[str, Any] = {}
-    if config_path.is_file():
-        try:
-            loaded = json.loads(config_path.read_text(encoding="utf-8"))
-            if isinstance(loaded, dict):
-                existing = loaded
-        except (OSError, ValueError):
-            existing = {}
+    existing = load_config(config_path)
     hooks = existing.get("hooks")
     if not isinstance(hooks, dict):
         hooks = {}
@@ -414,7 +423,7 @@ def merge_devin_hooks(config_path: Path, hook_bin: str, dry_run: bool) -> dict[s
         hooks[ev] = entries
     existing["hooks"] = hooks
     if not dry_run:
-        atomic_write_json(config_path, existing)
+        write_config(config_path, existing)
     return existing
 
 
@@ -478,10 +487,14 @@ def main(argv: list[str] | None = None) -> int:
         report: dict[str, Any] = {}
         if want_cursor:
             cpath = Path(args.cursor_path) if args.cursor_path else Path.home() / ".cursor" / "hooks.json"
-            report["cursor"] = {"path": str(cpath), "config": merge_cursor_hooks(cpath, hook_bin, args.dry_run)}
+            merged = merge_cursor_hooks(cpath, hook_bin, args.dry_run)
+            report["cursor"] = {"path": str(cpath), "hooks": sorted(k for k, v in (merged.get("hooks") or {}).items()
+                                                                      if any("kuwai-agent-hook" in json.dumps(e) for e in v))}
         if want_devin:
             dpath = Path(args.devin_path) if args.devin_path else Path.home() / ".config" / "devin" / "config.json"
-            report["devin"] = {"path": str(dpath), "config": merge_devin_hooks(dpath, hook_bin, args.dry_run)}
+            merged = merge_devin_hooks(dpath, hook_bin, args.dry_run)
+            report["devin"] = {"path": str(dpath), "hooks": sorted(k for k, v in (merged.get("hooks") or {}).items()
+                                                                     if any("kuwai-agent-hook" in json.dumps(e) for e in v))}
         json.dump(report, sys.stdout, ensure_ascii=False, indent=2)
         sys.stdout.write("\n")
         return 0

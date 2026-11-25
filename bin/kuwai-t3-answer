@@ -23,7 +23,7 @@ const readSecret = () => {
 };
 const token = process.env.KUWAI_T3_TOKEN || readSecret() || readText(join(STATE, "kuwai/t3-token"));
 const runtime = readJson(join(T3_HOME, "userdata/server-runtime.json"));
-if (!token || !runtime || !runtime.port) out({ ok: false, why: "offline" });
+if (!token || !runtime || !runtime.port || !/^(127\.\d{1,3}\.\d{1,3}\.\d{1,3}|::1|\[::1\]|localhost)$/.test(String(runtime.host || "127.0.0.1"))) out({ ok: false, why: "offline" });
 const url = `ws://${runtime.host || "127.0.0.1"}:${runtime.port}/ws?orchestrationProtocol=2`;
 const command = { type: "runtime-request.respond", commandId: "kuwai-" + randomUUID(), threadId: thread, requestId: request, decision };
 let ws;

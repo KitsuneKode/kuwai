@@ -13,12 +13,13 @@ It reads one JSON request per line on stdin and only ever runs pacman:
     {"op": "upgrade", "deps": [PKG...]}   pacman -Syu --noconfirm --needed, then (deps given)
                                           pacman -S --noconfirm --needed --asdeps PKG...
     {"op": "deps", "deps": [PKG...]}      pacman -S --noconfirm --needed --asdeps PKG...
-    {"op": "install", "files": [FILE...]} pacman -U --noconfirm --needed FILE...
-                                          (package files owned by you, in your home folder;
-                                          each is copied once, through a descriptor that
-                                          refuses links, into a folder only root can open,
-                                          and pacman installs those copies, so a file
-                                          swapped after the check is never the one installed)
+    {"op": "install", "files": [{"path": FILE, "sha256": HEX}...]}
+                                          pacman -U --noconfirm --needed on copies: each package
+                                          file (yours, in your home folder) is copied once,
+                                          through a descriptor that refuses links, into a folder
+                                          only root can open, and must hash to the digest taken
+                                          when it was built, so a file changed or swapped after
+                                          the build is never the one installed
     {"op": "clean-cache", "keep": 2}      paccache -rk<keep> and paccache -ruk0 (0 <= keep <= 5)
     {"op": "pacnew", "items": [{"path": "/etc/X", "action": "keep"|"take"}]}
                                           a config file's .pacnew after an update: keep yours
@@ -33,6 +34,7 @@ It ends when stdin closes (kuwai-update finished or died), or after four hours a
 pacman writes to a file, not to the pipe: if kuwai-update dies halfway, pacman still has
 somewhere to write and finishes its transaction instead of dying of a broken pipe.
 """
+import hashlib
 import json
 import os
 import pwd
@@ -107,6 +109,9 @@ def clean_cache(req):
     return rc if rc != 0 else rc2
 
 
+SHA256 = re.compile(r"[0-9a-f]{64}")
+
+
 def names(req):
     pkgs = req.get("deps") or []
     if not isinstance(pkgs, list) or not all(isinstance(x, str) and NAME.match(x) for x in pkgs):
@@ -116,7 +121,7 @@ def names(req):
 
 def taken(paths, into, uid):
     out = []
-    for p in paths:
+    for p, want in paths:
         fd = os.open(p, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
         try:
             st = os.fstat(fd)
@@ -124,8 +129,14 @@ def taken(paths, into, uid):
                 raise ValueError(f"not a package file of yours: {p!r}")
             dst = os.path.join(into, os.path.basename(p))
             wfd = os.open(dst, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600)
+            h = hashlib.sha256()
             with os.fdopen(wfd, "wb") as w, os.fdopen(os.dup(fd), "rb") as r:
-                shutil.copyfileobj(r, w, 1 << 20)
+                for chunk in iter(lambda: r.read(1 << 20), b""):
+                    h.update(chunk)
+                    w.write(chunk)
+            if h.hexdigest() != want:
+                os.unlink(dst)
+                raise ValueError(f"{os.path.basename(p)} is not the file that was built (its digest changed)")
             out.append(dst)
         finally:
             os.close(fd)
@@ -134,14 +145,16 @@ def taken(paths, into, uid):
 
 def files(req, home, uid):
     out = []
-    for f in req.get("files") or []:
-        if not isinstance(f, str) or os.path.islink(f):
-            raise ValueError(f"not a package file: {f!r}")
+    for entry in req.get("files") or []:
+        f = entry.get("path") if isinstance(entry, dict) else None
+        want = entry.get("sha256") if isinstance(entry, dict) else None
+        if not isinstance(f, str) or not isinstance(want, str) or not SHA256.fullmatch(want) or os.path.islink(f):
+            raise ValueError(f"not a package file with its digest: {entry!r}")
         real = os.path.realpath(f)
         st = os.stat(real)
         if not (real.startswith(home + "/") and PKGFILE.search(real) and os.path.isfile(real) and st.st_uid == uid):
             raise ValueError(f"not a package file of yours: {f!r}")
-        out.append(real)
+        out.append((real, want))
     if not out:
         raise ValueError("no package files")
     return out

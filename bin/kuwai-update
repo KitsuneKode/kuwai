@@ -376,18 +376,14 @@ def newly_installed(before, after):
     return any(before.get(k) != after.get(k) for k in keys)
 
 
-def record_install(pkg, head, files):
+def record_install(pkg, head, files, digests=None):
     fingerprint = installed_fingerprint(pkg)
     if not fingerprint:
         raise RuntimeError(f"{pkg}: installed package identity unavailable; provenance not recorded")
     receipts = load(INSTALLED, {})
     artifacts = []
     for path in files:
-        h = hashlib.sha256()
-        with open(path, "rb") as f:
-            for block in iter(lambda: f.read(1024 * 1024), b""):
-                h.update(block)
-        artifacts.append({"file": os.path.basename(path), "sha256": h.hexdigest()})
+        artifacts.append({"file": os.path.basename(path), "sha256": (digests or {}).get(path) or file_sha256(path)})
     receipts[pkg] = {"schema": 1, "recipe": head, "installed": fingerprint,
                      "artifacts": artifacts, "at": time.time_ns()}
     save(INSTALLED, receipts)
@@ -697,6 +693,10 @@ class Root:
             self.stale = False
             self.R.emit(e="log", line="kuwai-update-root is missing or out of date, so each step asks for the password. "
                                       "Run `kuwai-update install-helper` once to review and install it.")
+        if not self.helper and op == "install":
+            self.R.emit(e="log", line="Built packages are installed only through kuwai-update-root, which copies and checks "
+                                      "each file first. Run `kuwai-update install-helper` once, then update again.")
+            return 1
         if not self.helper:
             self.prompts += 1
             if op == "clean-cache":
@@ -714,7 +714,7 @@ class Root:
         rc = self.open()
         if rc:
             return rc
-        self.R.log.write(f"$ (root) pacman {op} {' '.join([*deps, *files])}\n")
+        self.R.log.write(f"$ (root) pacman {op} {' '.join([*deps, *[f['path'] if isinstance(f, dict) else f for f in files]])}\n")
         try:
             payload = {"op": op, "deps": list(deps), "files": list(files)}
             if op == "clean-cache":
@@ -868,6 +868,14 @@ def prune_failed_workspaces():
                 p = os.path.join(held, sub)
                 if os.path.isdir(p) and not os.path.islink(p):
                     shutil.rmtree(p, ignore_errors=True)
+
+
+def file_sha256(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
 
 
 def package_files(directory, wanted):
@@ -1360,6 +1368,7 @@ def run_locked(args):
             result["repo"] = True
 
         built = []
+        digests = {}
         for i, (pkg, d, head, tests, outputs) in enumerate(plan, 1):
             R.emit(e="phase", id="build", label=f"Building {pkg}", k=i, n=len(plan))
             if not tests:
@@ -1377,12 +1386,13 @@ def run_locked(args):
             except RuntimeError as ex:
                 result["skipped"].extend({"pkg": name, "why": str(ex)} for name in outputs)
                 continue
+            digests.update({f: file_sha256(f) for f in files})
             built.append((outputs, d, head, files))
             result["built"].extend(outputs)
 
         if built:
             R.emit(e="phase", id="install", label=f"Installing {len(built)} AUR package" + ("s" if len(built) > 1 else ""))
-            files = [f for b in built for f in b[3]]
+            files = [{"path": f, "sha256": digests[f]} for b in built for f in b[3]]
             before = {pkg: installed_fingerprint(pkg) for b in built for pkg in b[0]}
             rc = root.run("install", progress="install", files=files)
             if rc in AUTH_FAIL:
@@ -1399,7 +1409,7 @@ def run_locked(args):
                             continue
                         result["installed"].append(pkg)
                         try:
-                            record_install(pkg, head, files)
+                            record_install(pkg, head, files, digests)
                             git(d, "update-ref", "refs/kuwai/installed", head, check=True)
                             approved.pop(pkg, None)
                         except Exception as ex:

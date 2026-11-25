@@ -22,8 +22,9 @@ SECRET = [HOME / ".ssh", HOME / ".gnupg", HOME / ".local/share/keyrings", HOME /
           HOME / ".config/kuwai/secrets", HOME / ".aws", HOME / ".kube", HOME / ".mozilla", HOME / ".zen",
           HOME / ".config/chromium", HOME / ".config/google-chrome", HOME / ".config/BraveSoftware",
           HOME / ".config/gh", HOME / ".docker", HOME / ".gcloud", HOME / ".config/gcloud", HOME / ".azure",
-          HOME / ".local/share/kwalletd", HOME / ".pki", HOME / ".cert"]
-SECRET_NAME = re.compile(r"(^id_[a-z0-9]+$|\.pem$|\.key$|\.p12$|\.pfx$|^\.env(\..*)?$|^credentials(\.json)?$|\.kdbx$"
+          HOME / ".local/share/kwalletd", HOME / ".pki", HOME / ".cert", HOME / ".local/share/devin", HOME / ".t3",
+          HOME / ".codex", HOME / ".config/kuwai/feeds"]
+SECRET_NAME = re.compile(r"(^id_[a-z0-9]+$|\.pem$|\.key$|\.p12$|\.pfx$|^\.env(\..*)?$|^credentials(\.(json|toml|ya?ml))?$|\.kdbx$"
                          r"|^\.netrc$|^\.git-credentials$|^\.npmrc$|^\.pypirc$|^cookies(\.sqlite)?$|^login data$"
                          r"|^key[34]\.db$|^logins\.json$|^hosts\.ya?ml$|^auth\.json$|token)", re.I)
 

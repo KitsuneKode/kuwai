@@ -116,14 +116,6 @@ Scope {
             Notifs.peekOn = screen;
             if (expanded === "expanded") Notifs.expandPeek();
         }
-        // Allow / Deny for a pane, as the Agents panel's buttons do (a pane
-        // with a hook request answers through it): `test answerKey w1.99 allow`.
-        function answerKey(key: string, choice: string): string {
-            const r = Kittymux.running.find(x => x.key === key) || { key: key, needs: true, agent: "claude", question: "test" };
-            if (!Kittymux.canAnswer(r)) return "not answerable (no request for " + key + ")";
-            Kittymux.answer(r, choice);
-            return Kittymux.asks[key] ? "answered through the hook" : "answered by typing (kittymux answer)";
-        }
         function clear(): void {
             Alerts.active = [];
             if (Notifs.peek && Notifs.peek.test) { Notifs.peekHeld = false; Notifs.peek = null; }

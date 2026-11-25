@@ -182,18 +182,29 @@ class Notifier:
             self.by_id.pop(nid, None)
             self._call("CloseNotification", self.GLib.Variant("(u)", (nid,)))
 
+    def owner(self):
+        """The unique bus name of whoever serves notifications now (the shell)."""
+        try:
+            r = self.bus.call_sync("org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus", "GetNameOwner",
+                                   self.GLib.Variant("(s)", ("org.freedesktop.Notifications",)), None, 0, 2000, None)
+            return r.unpack()[0]
+        except Exception:
+            return ""
+
     def _signal(self, bus, sender, path, iface, sig, params):
         args = params.unpack()
         nid = args[0]
         entry = self.by_id.get(nid)
         if not entry:
             return
+        if sig != "NotificationClosed" and (not sender or sender != self.owner()):
+            return
         if sig == "ActionInvoked":
             fn = entry["on"].get(args[1])
             if fn and args[1] != "inline-reply":
                 threading.Thread(target=fn, daemon=True).start()
         elif sig == "NotificationReplied":
-            fn = entry["on"].get("inline-reply")
+            fn = entry["on"].pop("inline-reply", None)
             if fn and args[1].strip():
                 threading.Thread(target=fn, args=(args[1].strip(),), daemon=True).start()
         elif sig == "NotificationClosed":

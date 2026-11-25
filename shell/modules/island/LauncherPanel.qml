@@ -105,7 +105,6 @@ FocusScope {
         { name: "Bluetooth", sub: "Pair, connect, forget · in Controls", glyph: "\u{f00af}", run: () => Qt.callLater(() => Island.open("bluetooth", Island.screen, "key")), keep: true },
         { name: "Cleanup", sub: "Skills your agents never use, what they cost each session · leftovers on disk", glyph: "\u{f00e2}", run: () => Qt.callLater(() => Island.open("cleanup", Island.screen, "key")), keep: true },
         { name: "Software Update", sub: "Review and install updates", glyph: "\u{f06b0}", run: () => Qt.callLater(() => Island.open("updates", Island.screen, "key")), keep: true },
-        { name: "Update everything now", sub: "Arch, AUR without review, Flatpak: in the background", glyph: "\u{f0e4f}", run: () => Updates.runAll() },
         { name: "Update in a terminal", sub: "sysup", glyph: "\u{f018d}", run: () => Updates.terminal() },
         { name: "Do Not Disturb", sub: Notifs.dnd ? "On: turn off" : "Off: turn on", glyph: "\u{f0594}", run: () => { Notifs.toggleUserDnd(); } },
         { name: "Sound", sub: "Outputs, inputs, the microphone", glyph: "\u{f057e}", run: () => Notifs.toggleCenter("sound", "key") },

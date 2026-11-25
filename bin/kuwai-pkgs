@@ -3,7 +3,7 @@
 
   kuwai-pkgs search QUERY            [{name, repo, version, desc, installed, aur}] as JSON
   kuwai-pkgs install NAME [--aur]    a terminal runs pacman -S (or the AUR helper) and waits
-  kuwai-pkgs remove NAME             a terminal runs pacman -Rns and waits
+  kuwai-pkgs remove NAME             a terminal runs pacman -Rs (your edited configs kept as .pacsave) and waits
 Never runs pacman as root itself: sudo asks in the terminal, where you see what it does.
 """
 import json
@@ -82,7 +82,7 @@ def main(args):
         name, aur = args[1], "--aur" in args[2:]
         helper = next((h for h in ("paru", "yay") if shutil.which(h)), "")
         if args[0] == "remove":
-            cmd = f"sudo pacman -Rns -- {name}"
+            cmd = f"sudo pacman -Rs -- {name}"
         elif aur:
             if not helper:
                 print(json.dumps({"ok": False, "why": "no AUR helper (paru or yay)"}))
@@ -90,7 +90,9 @@ def main(args):
             cmd = f"{helper} -S -- {name}"
         else:
             cmd = f"sudo pacman -S --needed -- {name}"
-        script = f"printf '\\033[1m%s\\033[0m\\n\\n' '$ {cmd}'; {cmd}; printf '\\nDone. Press Enter to close. '; read _"
+        script = (f"printf '\\033[1m%s\\033[0m\\n\\n' '$ {cmd}'; {cmd}; rc=$?; "
+                  "if [ $rc -eq 0 ]; then printf '\\nDone.'; else printf '\\nStopped (pacman exited %s): nothing more was changed.' $rc; fi; "
+                  "printf ' Press Enter to close. '; read _")
         ok = terminal(script, ("Install " if args[0] == "install" else "Remove ") + name)
         print(json.dumps({"ok": ok, "why": "" if ok else "no terminal installed"}))
         return 0 if ok else 1

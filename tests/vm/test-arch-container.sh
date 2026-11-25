@@ -6,7 +6,7 @@ RUNTIME="${CONTAINER_RUNTIME:-$(command -v podman || command -v docker || true)}
 [ -n "$RUNTIME" ] || { echo "test-arch-container: podman or docker required" >&2; exit 2; }
 
 exec "$RUNTIME" run --rm -v "$ROOT:/src:ro" archlinux:base bash -euo pipefail -c '
-    pacman -Sy --noconfirm --needed git python lua jq >/dev/null
+    pacman -Syu --noconfirm --needed git python lua jq >/dev/null
     useradd -m tester
     su - tester -c "
         set -euo pipefail

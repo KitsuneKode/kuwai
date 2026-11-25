@@ -509,12 +509,13 @@ FocusScope {
                         + (ap.fill(row.modelData) ? " · " + ap.fill(row.modelData) : "")
                     subColor: Theme.textSecondary
                     Label {
-                        readonly property var ask: row.modelData.src === "kitty" ? Kittymux.askFor(row.modelData.raw) : null
+                        readonly property var ask: row.modelData.src === "kitty" ? Kittymux.askFor(row.modelData.raw)
+                            : row.modelData.src === "t3" && row.modelData.request && row.modelData.request.prompt ? { what: row.modelData.request.prompt } : null
                         visible: row.needs && text !== ""
                         width: parent.width
                         textFormat: Text.PlainText
                         wrapMode: ask ? Text.WrapAnywhere : Text.Wrap
-                        maximumLineCount: ask ? 12 : 3
+                        maximumLineCount: ask ? 40 : 3
                         elide: ask ? Text.ElideNone : Text.ElideRight
                         text: ask ? String(ask.what || "") : row.modelData.question
                         size: Theme.tSub; lineHeight: 1.3; color: Theme.textPrimary
@@ -576,6 +577,15 @@ FocusScope {
                                     Accessible.name: "Deny " + row.modelData.title + ": " + row.modelData.question
                                 }
                                 Button {
+                                    visible: !t3Allow.visible
+                                    height: Theme.sp(30); size: Theme.tSub
+                                    text: "Open in T3 Code"
+                                    onClicked: ap.go(row.modelData)
+                                }
+                                Button {
+                                    id: t3Allow
+                                    readonly property string prompt: t3AnswerRow.req ? String(t3AnswerRow.req.prompt || "") : ""
+                                    visible: prompt.trim() !== "" && prompt.length < 2000
                                     height: Theme.sp(30); size: Theme.tSub
                                     text: t3AnswerRow.st && t3AnswerRow.st.done === "accept" ? "Allowed" : "Allow"
                                     kind: "primary"

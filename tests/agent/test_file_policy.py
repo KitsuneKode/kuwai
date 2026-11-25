@@ -60,3 +60,11 @@ def test_find_hides_secret_names(tree):
     out = kuwai_files.find("*", tree)
     assert "app.py" in out
     assert "credentials.json" not in out and "server.pem" not in out and "plain.txt" not in out
+
+
+def test_agent_credential_stores_are_refused(tmp_path):
+    for name in ("credentials.toml", "credentials.yaml"):
+        p = tmp_path / name
+        p.write_text("api_key = 'synthetic'\n")
+        with pytest.raises(kuwai_files.FileError):
+            kuwai_files.read(p)

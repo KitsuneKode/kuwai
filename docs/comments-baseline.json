@@ -1,5 +1,5 @@
 {
-  "total_comment_lines": 7553,
+  "total_comment_lines": 7550,
   "files_with_comments": 291,
   "files": {
     "shell/components/ActionMenu.qml": 23,
@@ -78,7 +78,7 @@
     "shell/modules/Gallery.qml": 4,
     "shell/modules/SettingsPreview.qml": 4,
     "shell/modules/Shortcuts.qml": 14,
-    "shell/modules/TestHook.qml": 32,
+    "shell/modules/TestHook.qml": 30,
     "shell/modules/assistant/AssistantOverlay.qml": 65,
     "shell/modules/clipboard/ClipCard.qml": 25,
     "shell/modules/clipboard/ClipboardPanel.qml": 178,
@@ -237,7 +237,7 @@
     "tests/install/test_migrations.py": 9,
     "tests/recovery/test_lock_boundary.py": 1,
     "tests/render/test_md.py": 1,
-    "tests/root/test_update_root.py": 8,
+    "tests/root/test_update_root.py": 7,
     "tests/shell/alerts.test.mjs": 2,
     "tests/shell/caches.test.mjs": 16,
     "tests/shell/calc.test.mjs": 2,

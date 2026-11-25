@@ -101,21 +101,31 @@ def test_names_accepts(ur):
     assert ur.names({"deps": ["linux", "lib32-glibc", "python-pip", "qt6-base"]}) == ["linux", "lib32-glibc", "python-pip", "qt6-base"]
 
 
-def test_files_only_your_package_files(ur, tmp_path):
+def sha(data):
+    import hashlib
+    return hashlib.sha256(data).hexdigest()
+
+
+def entry(path, data=b"x"):
+    return {"path": str(path), "sha256": sha(data)}
+
+
+def test_files_only_your_package_files_with_their_digest(ur, tmp_path):
     home = str(tmp_path)
     uid = os.getuid()
     pkg = tmp_path / "foo-1.0-1-x86_64.pkg.tar.zst"
     pkg.write_bytes(b"x")
-    assert ur.files({"files": [str(pkg)]}, home, uid) == [str(pkg)]
+    assert ur.files({"files": [entry(pkg)]}, home, uid) == [(str(pkg), sha(b"x"))]
     other = tmp_path / "notes.txt"
     other.write_text("x")
     link = tmp_path / "bar-1.0-1-x86_64.pkg.tar.zst"
     link.symlink_to(pkg)
-    for bad in ([str(other)], [str(link)], ["/etc/passwd"], [str(pkg) + "/../notes.txt"], []):
+    for bad in ([entry(other)], [entry(link)], [entry("/etc/passwd")], [entry(str(pkg) + "/../notes.txt")], [],
+                [str(pkg)], [{"path": str(pkg)}], [{"path": str(pkg), "sha256": "nothex"}]):
         with pytest.raises((ValueError, FileNotFoundError, NotADirectoryError)):
             ur.files({"files": bad}, home, uid)
-    with pytest.raises(ValueError):            # someone else's file
-        ur.files({"files": [str(pkg)]}, home, uid + 1)
+    with pytest.raises(ValueError):
+        ur.files({"files": [entry(pkg)]}, home, uid + 1)
 
 
 @pytest.mark.parametrize("keep", [-1, 6, "2", True, False, None, 1.5])
@@ -138,13 +148,18 @@ def test_taken_copies_what_was_checked_and_refuses_a_link(ur, tmp_path):
     pkg.write_bytes(b"the real package")
     into = tmp_path / "root-only"
     into.mkdir(mode=0o700)
-    (copy,) = ur.taken([str(pkg)], str(into), uid)
+    (copy,) = ur.taken([(str(pkg), sha(b"the real package"))], str(into), uid)
     pkg.write_bytes(b"swapped afterwards")
     assert open(copy, "rb").read() == b"the real package"
+    again = tmp_path / "again"
+    again.mkdir(mode=0o700)
+    with pytest.raises(ValueError):
+        ur.taken([(str(pkg), sha(b"the real package"))], str(again), uid)
+    assert list(again.iterdir()) == []
     assert os.stat(copy).st_mode & 0o777 == 0o600
     link = tmp_path / "bar-1.0-1-x86_64.pkg.tar.zst"
     link.symlink_to(pkg)
     with pytest.raises(OSError):
-        ur.taken([str(link)], str(into), uid)
+        ur.taken([(str(link), sha(b"x"))], str(into), uid)
     with pytest.raises(ValueError):
-        ur.taken([str(pkg)], str(tmp_path / "other"), uid + 1)
+        ur.taken([(str(pkg), sha(b"swapped afterwards"))], str(tmp_path / "other"), uid + 1)

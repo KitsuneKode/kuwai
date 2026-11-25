@@ -222,3 +222,12 @@ def test_install_hooks_points_at_the_stable_copy_and_rewrites_an_old_path(tmp_pa
     assert len(starts) == 1 and str(stable) in starts[0]["command"]
     perm = json.loads(devin_cfg.read_text(encoding="utf-8"))["hooks"]["PermissionRequest"]
     assert len(perm) == 1 and str(stable) in perm[0]["hooks"][0]["command"]
+
+
+def test_install_hooks_leaves_an_unreadable_config_alone(tmp_path: Path) -> None:
+    env = make_env(tmp_path)
+    cursor_hooks = tmp_path / "cursor-hooks.json"
+    cursor_hooks.write_text("{ not json", encoding="utf-8")
+    res = run_hook(["install-hooks", "--cursor", "--cursor-path", str(cursor_hooks)], env)
+    assert res.returncode != 0
+    assert cursor_hooks.read_text(encoding="utf-8") == "{ not json"

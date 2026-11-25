@@ -14,20 +14,21 @@ def main():
         finally:
             os.close(fd)
     except (OSError, UnicodeDecodeError):
-        raw = "0"
+        print("kuwai-wake: couldn't read the request; the alarm is left as it is", file=sys.stderr)
+        return 1
     if not raw.isdigit() or len(raw) > 12:
         print("kuwai-wake: not a time; ignored", file=sys.stderr)
         return 1
     t = int(raw)
     now = int(time.time())
+    if t != 0 and not (now + 30 <= t <= now + 8 * 86400):
+        print(f"kuwai-wake: {t} is not within the next 8 days; the alarm is left as it is", file=sys.stderr)
+        return 1
     with open(RTC, "w") as f:
         f.write("0")
     if t == 0:
         print("kuwai-wake: cleared")
         return 0
-    if not (now + 30 <= t <= now + 8 * 86400):
-        print(f"kuwai-wake: {t} is not within the next 8 days; cleared", file=sys.stderr)
-        return 1
     with open(RTC, "w") as f:
         f.write(str(t))
     print(f"kuwai-wake: wake at {time.strftime('%F %T', time.localtime(t))}")

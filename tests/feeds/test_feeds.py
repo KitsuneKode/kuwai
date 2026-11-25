@@ -240,3 +240,29 @@ def test_gmail_connections_verify_the_certificate_and_the_host(rf):
     src = (ROOT / "bin" / "kuwai-feeds").read_text()
     calls = re.findall(r"(?:IMAP4_SSL|SMTP_SSL)\([^)]*\)", src)
     assert calls and all("context=tls()" in c for c in calls), calls
+
+
+def test_a_notification_action_counts_only_from_the_notification_server(rf):
+    import threading
+    ran = []
+
+    class P:
+        def __init__(self, *a): self.a = a
+        def unpack(self): return self.a
+
+    n = object.__new__(rf.Notifier)
+    n.by_id = {7: {"key": "k", "on": {"open": lambda: ran.append("open"), "inline-reply": lambda t: ran.append("reply:" + t)}}}
+    n.by_key = {}
+    n.owner = lambda: ":1.42"
+    real = threading.Thread
+    threading.Thread = lambda target, args=(), daemon=True: type("T", (), {"start": lambda self: target(*args)})()
+    try:
+        n._signal(None, ":1.99", "", "", "ActionInvoked", P(7, "open"))
+        n._signal(None, ":1.99", "", "", "NotificationReplied", P(7, "hi"))
+        assert ran == []
+        n._signal(None, ":1.42", "", "", "ActionInvoked", P(7, "open"))
+        n._signal(None, ":1.42", "", "", "NotificationReplied", P(7, "hi"))
+        n._signal(None, ":1.42", "", "", "NotificationReplied", P(7, "again"))
+        assert ran == ["open", "reply:hi"]
+    finally:
+        threading.Thread = real

@@ -83,7 +83,7 @@ function readT3Token() {
 function t3Endpoint() {
   const token = readT3Token();
   const runtime = readJson(`${T3_HOME}/userdata/server-runtime.json`);
-  if (!token || !runtime?.port) return null;
+  if (!token || !runtime?.port || !/^(127\.\d{1,3}\.\d{1,3}\.\d{1,3}|::1|\[::1\]|localhost)$/.test(String(runtime.host || "127.0.0.1"))) return null;
   return { url: `ws://${runtime.host || "127.0.0.1"}:${runtime.port}/ws?orchestrationProtocol=2`, token };
 }
 

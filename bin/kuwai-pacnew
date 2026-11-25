@@ -4,8 +4,8 @@
     kuwai-pacnew list            JSON: [{path, name, readable, rec, why, gone, added, lines}]
     kuwai-pacnew diff PATH       the difference, yours (-) against the new default (+)
     kuwai-pacnew apply JSON      [{"path": ..., "action": "keep"|"take"}]: one password for all,
-                                through the root helper (kuwai-update-root), installing or
-                                updating it first when needed
+                                through the installed root helper (kuwai-update-root); without
+                                it, nothing is applied and it says how to install it
 
 What the recommendation means (rec):
     keep    you changed this file and the new default would undo it (your repos, your
@@ -148,18 +148,16 @@ def describe(path):
 
 
 def helper_cmd():
-    """pkexec the root helper, installing it from the repo copy if it's missing or stale."""
-    ok = False
+    """pkexec the installed root helper; None when it is missing or not this version's
+    (installing it is its own reviewed step: kuwai-update install-helper)."""
     try:
         st = os.stat(HELPER)
         with open(HELPER, "rb") as a, open(HELPER_SRC, "rb") as b:
-            ok = st.st_uid == 0 and not (st.st_mode & 0o022) and a.read() == b.read()
+            if st.st_uid == 0 and not (st.st_mode & 0o022) and a.read() == b.read():
+                return ["pkexec", HELPER]
     except OSError:
         pass
-    if ok:
-        return ["pkexec", HELPER]
-    return ["pkexec", "/bin/sh", "-c", 'umask 022 && /usr/bin/install -D -o root -g root -m 0755 -- "$1" "$2" && exec "$2"',
-            "sh", HELPER_SRC, HELPER]
+    return None
 
 
 def apply(raw):
@@ -169,7 +167,13 @@ def apply(raw):
     if not items:
         print(json.dumps({"ok": True, "done": 0}))
         return 0
-    p = subprocess.Popen(helper_cmd(), stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+    cmd = helper_cmd()
+    if not cmd:
+        print(json.dumps({"ok": False, "done": 0, "log": [
+            "kuwai-update-root is missing or not this version's. Install it once with `kuwai-update install-helper` "
+            "(it shows what it installs and asks for the password), then apply again."]}))
+        return 1
+    p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
     log, rc = [], 1
     for line in p.stdout:
         msg = json.loads(line)
