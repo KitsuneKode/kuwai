@@ -56,18 +56,19 @@ Singleton {
         // A sticky one (an agent waiting on you) steps aside for anything else
         // and comes back after it, instead of holding the rest in the queue.
         if (now && now.sticky && now !== m && !(m.sticky && m.event && m.event === now.event)) {
-            queue = [{ m: now, ms: nowMs }].concat(queue.filter(q => q.m !== now));
+            const was = now;
+            queue = [{ m: was, ms: nowMs }].concat(queue.filter(q => q.m !== was && !(was.event && q.m.event === was.event) && !(was.t3 && q.m.t3 && q.m.sticky))).slice(0, 3);
             now = null;
         }
         if (now && now.kind !== m.kind && (m.kind === "copied" || m.kind === "hello")) {
-            queue = [{ m: now, ms: nowMs }].concat(queue);
+            queue = [{ m: now, ms: nowMs }].concat(queue).slice(0, 3);
             now = null;
         } else if (now && now.kind !== m.kind) {
             queue = queue.filter(q => q.m.kind !== m.kind).concat([{ m: m, ms: ms }]).slice(-3);
             return;
         }
         if (!now && gap.running) {
-            queue = [{ m: m, ms: ms }].concat(queue.filter(q => q.m.kind !== m.kind));
+            queue = [{ m: m, ms: ms }].concat(queue.filter(q => q.m.kind !== m.kind)).slice(0, 3);
             return;
         }
         now = m;
@@ -86,7 +87,11 @@ Singleton {
     // A T3 thread that waited is answered: its sticky moment goes.
     Connections {
         target: T3Code
-        function onWaitingChanged() { if (T3Code.waiting === 0 && root.now && root.now.sticky && root.now.t3) root.dismissNow(); }
+        function onWaitingChanged() {
+            if (T3Code.waiting !== 0) return;
+            root.queue = root.queue.filter(q => !(q.m.sticky && q.m.t3));
+            if (root.now && root.now.sticky && root.now.t3) root.dismissNow();
+        }
     }
     // The center's Agents tab: every one waiting, each a jump (opens it, never closes it).
     function openAgents() { if (Island.panel !== "agents") Island.open("agents", "", "pointer"); }
@@ -105,6 +110,7 @@ Singleton {
             const q = root.queue[0];
             root.queue = root.queue.slice(1);
             if (q) root.show(q.m, q.ms);
+            if (!root.now && root.queue.length) gap.restart();
         }
     }
 

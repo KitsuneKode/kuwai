@@ -38,9 +38,20 @@ Scope {
     property bool open: false
     // Live previews are screen captures: tell kuwai they're ours, so its
     // screen-share privacy doesn't think you're sharing.
+    property bool holding: false
+    function hold(on) {
+        if (holding === on) return;
+        holding = on;
+        Hyprland.dispatch("kuwai.capture_hold(" + on + ")");
+    }
+    Component.onCompleted: Hyprland.dispatch("kuwai.capture_reset()")
     onOpenChanged: {
         cycled = false;
-        if (!open) { Hyprland.dispatch("kuwai.capture_hold(false)"); lingering = true; linger.restart(); }
+        if (!open) { hold(false); lingering = true; linger.restart(); }
+    }
+    Connections {
+        target: Quickshell
+        function onScreensChanged() { if (root.open && !Quickshell.screens.some(s => s.name === root.screenName)) root.open = false; }
     }
     // Built only while open (and a moment after, for the way out), only on
     // the screen it opens on: nothing of it sits in memory the rest of the
@@ -48,13 +59,16 @@ Scope {
     property bool lingering: false
     Timer { id: linger; interval: 700; onTriggered: root.lingering = false }
     property string screenName: ""
+    property bool opening: false
 
     function toggle() {
         if (open) {
             open = false;
             return;
         }
-        Hyprland.dispatch("kuwai.capture_hold(true)");
+        if (opening) return;
+        opening = true;
+        hold(true);
         Hyprland.refreshToplevels();
         Hyprland.refreshWorkspaces();
         Hyprland.refreshMonitors();
@@ -62,6 +76,7 @@ Scope {
         // opens there even when focus sits on the other screen.
         Screens.underPointer((looking, focused) => {
             root.screenName = looking || focused || Screens.focusedName || (Quickshell.screens[0] ? Quickshell.screens[0].name : "");
+            root.opening = false;
             root.open = true;
         });
     }

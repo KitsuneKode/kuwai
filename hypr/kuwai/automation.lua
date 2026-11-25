@@ -31,6 +31,11 @@ if K.feature("screenshare_privacy") then
 
 	local shares, engaged = 0, false
 	local held, grace = 0, 0
+	function kuwai.capture_reset()
+		held = 0
+		grace = os.time() + 4
+		return hl.dsp.no_op()
+	end
 	function kuwai.capture_hold(on)
 		held = math.max(0, held + (on and 1 or -1))
 		if held == 0 then

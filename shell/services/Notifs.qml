@@ -650,8 +650,9 @@ Singleton {
     // Close button, right click or swipe: gone from history as well.
     function dismiss(item) {
         item.discard = true;
-        item.leaving = true;
         if (item.notification) item.notification.dismiss();
+        if (item.popup) item.leaving = true;
+        else Qt.callLater(() => { if (items.indexOf(item) >= 0) left(item); });
     }
 
     // Swiped or ×'d from a list (the notch's, the center's): gone from the
@@ -821,6 +822,7 @@ Singleton {
 
     function remove(item) {
         items = items.filter(i => i !== item);
+        if (snoozed.indexOf(item) >= 0) snoozed = snoozed.filter(i => i !== item);
         if (!Undo.isHeld(undo, item)) release(item);        // held for Undo: parked, not ended
         save();
     }

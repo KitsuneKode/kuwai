@@ -375,9 +375,13 @@ Singleton {
     }
     // And while an agent waits, look again now and then (a watch can miss).
     Timer {
-        interval: Theme.panelPollMs / 3; repeat: true
-        running: root.running.some(r => r.needs)
+        interval: Theme.panelPollMs; repeat: true
+        running: root.running.some(r => r.needs) && !Saver.locked && !Saver.showing
         onTriggered: askRead.running = true
+    }
+    Connections {
+        target: Saver
+        function onLockedChanged() { if (!Saver.locked) askRead.running = true; }
     }
     FolderListModel {
         folder: root.asksReady ? "file://" + root.asksDir : ""
