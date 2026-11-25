@@ -231,3 +231,31 @@ def test_install_hooks_leaves_an_unreadable_config_alone(tmp_path: Path) -> None
     res = run_hook(["install-hooks", "--cursor", "--cursor-path", str(cursor_hooks)], env)
     assert res.returncode != 0
     assert cursor_hooks.read_text(encoding="utf-8") == "{ not json"
+
+
+def test_an_agent_whose_process_ended_leaves_at_once(tmp_path: Path) -> None:
+    """The hook records the agent's own process (its nearest ancestor named for
+    the agent); once that process is gone, a working row is dropped at the next
+    list instead of staying for the half-hour timeout."""
+    env = make_env(tmp_path)
+    fake = tmp_path / "bin" / "cursor"
+    fake.parent.mkdir()
+    fake.write_text(f"#!/bin/sh\n{BIN} --agent cursor\nexec sleep 30\n")
+    fake.chmod(0o755)
+    payload = json.dumps({"hook_event_name": "sessionStart", "conversation_id": "live-1", "prompt": "x"})
+    agent = subprocess.Popen([str(fake)], env=env, stdin=subprocess.PIPE, text=True)
+    agent.stdin.write(payload)
+    agent.stdin.close()
+    try:
+        index = tmp_path / "state" / "kuwai" / "desktop-agents.json"
+        for _ in range(50):
+            if index.is_file() and json.loads(index.read_text())["agents"]:
+                break
+            time.sleep(0.1)
+        row = json.loads(index.read_text())["agents"][0]
+        assert row["pid"] == agent.pid and isinstance(row["pid_start"], int)
+        assert json.loads(run_hook(["list"], env).stdout)[0]["id"] == "cursor-live-1"
+    finally:
+        agent.kill()
+        agent.wait()
+    assert json.loads(run_hook(["list"], env).stdout) == []

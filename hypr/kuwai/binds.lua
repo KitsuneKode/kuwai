@@ -129,10 +129,10 @@ end
 
 group("Workspaces")
 for i = 1, 10 do
-	local key = tostring(i % 10)
-	bind(S .. " + " .. key, "Workspace " .. i, W.focus(i))
-	bind(S .. " + SHIFT + " .. key, "Move window to workspace " .. i, W.send(i, true))
-	bind(S .. " + ALT + " .. key, "Send window to workspace " .. i .. " (stay)", W.send(i, false))
+	local key, code = tostring(i % 10), "code:" .. (9 + i)
+	bind(S .. " + " .. code, "Workspace " .. i, W.focus(i), { show = S .. " + " .. key })
+	bind(S .. " + SHIFT + " .. code, "Move window to workspace " .. i, W.send(i, true), { show = S .. " + SHIFT + " .. key })
+	bind(S .. " + ALT + " .. code, "Send window to workspace " .. i .. " (stay)", W.send(i, false), { show = S .. " + ALT + " .. key })
 end
 bind(S .. " + CTRL + right", "Next workspace", W.step(1))
 bind(S .. " + CTRL + left", "Previous workspace", W.step(-1))

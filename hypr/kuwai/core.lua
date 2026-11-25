@@ -218,6 +218,8 @@ end
 
 function K.bind(keys, desc, action, opts)
 	opts = opts or {}
+	local show = opts.show or keys
+	opts.show = nil
 	if desc and desc ~= "" then
 		opts.description = group and ("[" .. group .. "] " .. desc) or desc
 	end
@@ -247,7 +249,7 @@ function K.bind(keys, desc, action, opts)
 		if not K.palette_index[id] then
 			K.palette_order[#K.palette_order + 1] = id
 		end
-		K.palette_index[id] = { group = group or "Other", text = desc, keys = keys, action = d }
+		K.palette_index[id] = { group = group or "Other", text = desc, keys = show, action = d }
 	end
 	return b
 end

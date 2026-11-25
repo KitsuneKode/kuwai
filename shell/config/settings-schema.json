@@ -680,7 +680,7 @@
       "maxLength": 512,
       "section": "notifs",
       "label": "Message privacy",
-      "detail": "Chat messages: shown on your desktop, only who sent them on the lock screen",
+      "detail": "Chats, mail and texts: shown on your desktop, only who sent them on the lock screen",
       "group": "",
       "searchTerms": "message privacy chat messages hide sensitive whatsapp lock screen always never ",
       "requires": [],

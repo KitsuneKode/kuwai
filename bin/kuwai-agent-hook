@@ -175,6 +175,44 @@ def atomic_write_json(path: Path, payload: Any) -> None:
         raise
 
 
+def started(pid: int) -> int | None:
+    try:
+        st = Path(f"/proc/{pid}/stat").read_text()
+        return int(st[st.rindex(")") + 2:].split()[19])
+    except (OSError, ValueError, IndexError):
+        return None
+
+
+def owner(agent: str) -> tuple[int, int] | None:
+    """The agent's own process: the nearest ancestor of this hook whose name or
+    command line names the agent (the hook itself runs in a short-lived child)."""
+    name = re.sub(r"[^a-z]", "", agent.lower())
+    if not name:
+        return None
+    pid = os.getppid()
+    for _ in range(10):
+        if pid <= 1:
+            return None
+        try:
+            comm = Path(f"/proc/{pid}/comm").read_text().strip().lower()
+            cmd = Path(f"/proc/{pid}/cmdline").read_bytes().replace(b"\0", b" ").decode(errors="replace").lower()
+            st = Path(f"/proc/{pid}/stat").read_text()
+        except OSError:
+            return None
+        if name in comm or name in cmd.split(" ")[0]:
+            start = started(pid)
+            return (pid, start) if start is not None else None
+        pid = int(st[st.rindex(")") + 2:].split()[1])
+    return None
+
+
+def alive(entry: dict[str, Any]) -> bool:
+    pid, start = entry.get("pid"), entry.get("pid_start")
+    if not isinstance(pid, int) or not isinstance(start, int):
+        return True
+    return started(pid) == start
+
+
 def load_fresh_agents(now: float | None = None, prune: bool = True) -> list[dict[str, Any]]:
     now_t = time.time() if now is None else now
     d = sessions_dir()
@@ -196,6 +234,10 @@ def load_fresh_agents(now: float | None = None, prune: bool = True) -> list[dict
         st = str(entry.get("state") or "")
         ttl = float(entry.get("ttl") or (ENDED_TTL_S if st in ("done", "failed", "limited") else ACTIVE_TTL_S))
         if updated > 0 and now_t - updated > ttl:
+            if prune:
+                p.unlink(missing_ok=True)
+            continue
+        if st not in ("done", "failed", "limited") and not alive(entry):
             if prune:
                 p.unlink(missing_ok=True)
             continue
@@ -343,6 +385,9 @@ def handle_hook(args: argparse.Namespace) -> int:
         "updated_at": now_t,
         "ttl": ttl,
     }
+    proc = owner(agent)
+    if proc:
+        record["pid"], record["pid_start"] = proc
     atomic_write_json(session_file, record)
     rebuild_index(now=now_t)
     return 0

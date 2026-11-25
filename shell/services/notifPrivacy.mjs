@@ -1,4 +1,10 @@
 export const chatApps = /\b(zapzap|whatsapp|telegram|signal|discord|slack|element|messenger|beeper)\b/i;
+export const mailApps = /\b(gmail|mail|thunderbird|betterbird|evolution|geary|kmail|mailspring|outlook|proton ?mail|tutanota|fastmail)\b/i;
+export const textApps = /\b(sms|messages|kde ?connect|kdeconnect)\b/i;
+export function personal(item) {
+    const app = String(item.app || "");
+    return chatApps.test(app) || mailApps.test(app) || textApps.test(app);
+}
 
 export const sensitiveText = /\b(password|passcode|passphrase|cvv|upi pin|atm pin|pin is|card (number|ending)|account (number|no))\b/i;
 
@@ -17,10 +23,10 @@ export function hidden(item, ctx) {
     const urgent = item.severity === "critical" || item.severity === "warning";
     if (fromPrivateSender(item, ctx.privateSenders)) return true;
     if (sensitiveText.test(String(item.title || "") + " " + String(item.body || ""))) return true;
-    const chat = chatApps.test(String(item.app || ""));
-    if (ctx.place === "lock") return chat && ctx.mode !== "never";
+    const mine = personal(item);
+    if (ctx.place === "lock") return mine && ctx.mode !== "never";
     if (urgent) return false;
-    return chat && ctx.mode === "always";
+    return mine && ctx.mode === "always";
 }
 
 export function toggleSender(list, name) {

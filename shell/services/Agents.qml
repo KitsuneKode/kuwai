@@ -53,6 +53,11 @@ Singleton {
         }
     }
     Component.onCompleted: desktopInit.running = true
+    Timer {
+        interval: 20000; repeat: true
+        running: !root.desktopPinned && root.desktopFeed.some(d => d && ["working", "waiting", "needs"].includes(d.state))
+        onTriggered: if (!desktopInit.running) desktopInit.running = true
+    }
 
     function trimDir(p) { return String(p || "").replace(/^~(?=\/|$)/, Quickshell.env("HOME") || "~").replace(/\/+$/, ""); }
     function inKitty(d) {

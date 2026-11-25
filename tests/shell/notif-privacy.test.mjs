@@ -40,3 +40,10 @@ describe('people you keep private', () => {
     expect(toggleSender('Mom', 'Ravi')).toBe('Mom, Ravi');
   });
 });
+
+describe('mail and texts are messages too', () => {
+  test('on the lock screen: who, not what', () => {
+    for (const app of ['Gmail', 'Thunderbird', 'Evolution', 'KDE Connect', 'Messages']) expect(hidden({ app, title: 'Anna', body: 'the contract' }, ctx({ place: 'lock' }))).toBe(true);
+  });
+  test('on the desktop by default: shown', () => expect(hidden({ app: 'Gmail', title: 'Anna', body: 'x' }, ctx())).toBe(false));
+});

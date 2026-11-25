@@ -520,9 +520,9 @@ FocusScope {
                 SettingsRow {
                     key: "notifPrivacy"
                     label: "Message privacy"
-                    detail: (Settings.notifPrivacy === "always" ? "Chat messages show who sent them, not what, until you open them"
-                          : Settings.notifPrivacy === "never" ? "Chat messages show in full, the lock screen too"
-                          : "Chat messages show on your desktop; the lock screen shows only who sent them")
+                    detail: (Settings.notifPrivacy === "always" ? "Chats, mail and texts show who sent them, not what, until you open them"
+                          : Settings.notifPrivacy === "never" ? "Chats, mail and texts show in full, the lock screen too"
+                          : "Chats, mail and texts show on your desktop; the lock screen shows only who sent them")
                           + (Settings.notifPrivateSenders ? "  ·  Kept private: " + Settings.notifPrivateSenders : "  ·  Passwords and card numbers stay hidden; nothing shows while you share your screen")
                     Segmented {
                         options: [{ id: "lock", label: "Lock screen" }, { id: "always", label: "Always" }, { id: "never", label: "Never" }]

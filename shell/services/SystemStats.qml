@@ -69,6 +69,7 @@ Singleton {
                 gpuTemp = Math.round(Number(f[2] || 0) / 1000);
                 fans = f.slice(3).map(Number).filter(n => !isNaN(n));
             } else if (f[0] === "gpustate") gpuState = f[1] || "";
+            else if (f[0] === "gputemp" && Number(f[1]) > 0) gpuTemp = Math.round(Number(f[1]) / 1000);
             else if (f[0] === "gpu") {
                 const g = l.slice(4).split(",").map(s => Number(s.trim()));
                 gpu = (g[0] || 0) / 100; gpuMemUsed = g[1] || 0; gpuMemTotal = g[2] || 0; gpuPower = g[3] || 0;
@@ -92,6 +93,7 @@ Singleton {
         command: ["setpriv", "--pdeathsig", "KILL", "--", "sh", "-c", `
             hw=; for name in legion_hwmon k10temp coretemp zenpower; do for h in /sys/class/hwmon/*; do [ "$(cat "$h/name" 2>/dev/null)" = "$name" ] && [ -r "$h/temp1_input" ] && { hw=$h; break 2; }; done; done
             gs=; for d in /sys/bus/pci/drivers/nvidia/0000:*; do [ -e "$d/power/runtime_status" ] && gs=$d/power/runtime_status; done
+            amd=; [ -z "$gs" ] && for c in /sys/class/drm/card[0-9]*; do [ -r "$c/device/gpu_busy_percent" ] && { amd=$c/device; break; }; done
             while :; do
                 echo @
                 grep '^cpu' /proc/stat
@@ -100,6 +102,14 @@ Singleton {
                 if [ -n "$gs" ]; then
                     read -r st < "$gs"; echo "gpustate $st"
                     [ "$st" = active ] && echo "gpu $(nvidia-smi --query-gpu=utilization.gpu,memory.used,memory.total,power.draw --format=csv,noheader,nounits 2>/dev/null | head -1)"
+                elif [ -n "$amd" ]; then
+                    st=active; [ -r "$amd/power/runtime_status" ] && read -r st < "$amd/power/runtime_status"; echo "gpustate $st"
+                    if [ "$st" = active ]; then
+                        read -r u < "$amd/gpu_busy_percent"; mu=$(cat "$amd/mem_info_vram_used" 2>/dev/null || echo 0); mt=$(cat "$amd/mem_info_vram_total" 2>/dev/null || echo 0)
+                        pw=$(cat "$amd"/hwmon/hwmon*/power1_average "$amd"/hwmon/hwmon*/power1_input 2>/dev/null | head -n 1)
+                        echo "gpu $u, $((mu / 1048576)), $((mt / 1048576)), $(( \${pw:-0} / 1000000 ))"
+                        echo "gputemp $(cat "$amd"/hwmon/hwmon*/temp1_input 2>/dev/null | head -n 1)"
+                    fi
                 fi
                 read -r a b c _ < /proc/loadavg; echo "load $a $b $c"
                 s=; i=0; while [ -e "/sys/devices/system/cpu/cpu$i/cpufreq/scaling_cur_freq" ]; do read -r v < "/sys/devices/system/cpu/cpu$i/cpufreq/scaling_cur_freq"; s="$s $v"; i=$((i+1)); done; echo "freq$s"
