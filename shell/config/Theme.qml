@@ -96,14 +96,14 @@ Singleton {
     // Type scale (px). Nine steps; anything else is a bug. Weight and colour
     // carry hierarchy before size does: Primary/Secondary/Tertiary text first.
     readonly property int tCaption: 11     // badges, chip counts (no text is set below 11 px)
-    readonly property int tFootnote: 11    // secondary lines, timestamps, hints
-    readonly property int tSub: 12         // list detail, buttons, tips
-    readonly property int tBody: 13        // rows, notification bodies (default)
-    readonly property int tCallout: 14     // row titles, panel section labels
-    readonly property int tHeadline: 15    // the island's clock, card titles
-    readonly property int tTitle3: 18      // panel titles
-    readonly property int tTitle2: 20      // big values (volume %, battery)
-    readonly property int tTitle1: 24      // hero numbers; displays scale from screen size
+    readonly property int tFootnote: 12    // secondary lines, timestamps, hints
+    readonly property int tSub: 13         // list detail, buttons, tips
+    readonly property int tBody: 14        // rows, notification bodies (default)
+    readonly property int tCallout: 15     // row titles, panel section labels
+    readonly property int tHeadline: 16    // the island's clock, card titles
+    readonly property int tTitle3: 19      // panel titles
+    readonly property int tTitle2: 22      // big values (volume %, battery)
+    readonly property int tTitle1: 26      // hero numbers; displays scale from screen size
     readonly property int tClock: 26       // the island's big clock: the hover view, the calendar, the clock in flight
     // Full-screen moments (lock, login, farewell) are read from across the
     // desk, off the panel scale on purpose.
@@ -133,9 +133,9 @@ Singleton {
     // Island panels come in four widths, not one per panel (there were
     // eleven: 400, 420, 440, 560, 620, 640, 720, 760, 762, 780, 980). A panel
     // you switch to at the same size doesn't re-morph the island sideways.
-    readonly property int panelS: 440    // a list or a card: Agents, Usage, T3, Notifications, Bluetooth, Now Playing
-    readonly property int panelM: 620    // a list with detail: Launcher, System, Power, Cleanup
-    readonly property int panelL: 780    // two columns: Settings, Updates, Shortcuts
+    readonly property int panelS: 460    // a list or a card: Agents, Usage, T3, Notifications, Bluetooth, Now Playing
+    readonly property int panelM: 640    // a list with detail: Launcher, System, Power, Cleanup
+    readonly property int panelL: 800    // two columns: Settings, Updates, Shortcuts
     readonly property int panelXL: 980   // a gallery: Themes
     readonly property int panelMaxH: 600 // the most height the island gives a panel (its window is 640; bin/kuwai-rehearse's ISLAND)
     readonly property int s1: 4

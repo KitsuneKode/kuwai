@@ -111,7 +111,7 @@ FocusScope {
         { name: "Sound", sub: "Outputs, inputs, the microphone", glyph: "\u{f057e}", run: () => Notifs.toggleCenter("sound", "key") },
         // vicinae's names for them (it went on 11-05), so the habit still works.
         { name: "Kill Process", sub: "End an app or a process · or type kill zen", glyph: "\u{f0675}", run: () => launcher.enterMode("! "), keep: true },
-        { name: "Kill Port", sub: "Free a port: what listens on it · or type kill 3000", glyph: "\u{f0675}", run: () => launcher.enterMode("! :"), keep: true }
+        { name: "Kill Port", sub: "Free a port, or type kill 3000", glyph: "\u{f0675}", run: () => launcher.enterMode("! :"), keep: true }
     ]
 
     // ── Conversions: "5 km to mi", "72 f in c", "100 usd to inr" ────────

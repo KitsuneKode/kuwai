@@ -13,7 +13,7 @@ Rectangle {
     property string title
     property string subtitle
     property bool on: false
-    property color tone: Theme.blue
+    property color tone: Theme.accent
     // Expandable tiles (Wi‑Fi): the disc toggles, the rest opens more.
     property bool expandable: false
     property bool expanded: false

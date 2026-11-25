@@ -180,13 +180,20 @@ Item {
     // (A list builds rows only for the room it has, so contentHeight reads
     // short right after opening: more than a few groups simply wants the
     // full card, and a few want at least their rows' typical height.)
-    readonly property real naturalHeight: filterRow.height + 14 + (list.count === 0 ? 220
+    readonly property real naturalHeight: (todayRow.visible ? todayRow.height + 10 : 0) + filterRow.height + 14 + (list.count === 0 ? 220
         : list.count > 3 ? 100000 : Math.max(list.contentHeight, list.count * 96) + 8)
+
+    TodayRow {
+        id: todayRow
+        visible: !!view.center.notch && !view.center.terms.length
+        width: parent.width
+    }
 
     // ── Filters row ──────────────────────────────────────────────────────
     Row {
         id: filterRow
         x: 2
+        y: todayRow.visible ? todayRow.height + 10 : 0
         spacing: 6
 
         Repeater {

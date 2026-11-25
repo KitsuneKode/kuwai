@@ -440,10 +440,10 @@ Item {
             radius: split.ph / 2         // stays a capsule as it stretches
             color: Qt.rgba(0, 0, 0, 0.94)
             // A hairline of light at the edge: glass, not a hole in the screen.
-            border.width: pill.toned || pill.pullArmed ? 1.5 : 1
+            border.width: (pill.toned && pill.attention) || pill.pullArmed ? 1.5 : 1
             // Pulled, the glass edge brightens with the pull; at the line it's lit.
             border.color: pill.pullArmed ? Qt.rgba(1, 1, 1, 0.55)
-                : pill.toned ? Qt.alpha(pill.tone, pill.attention ? 0.9 : 0.6) : Qt.rgba(1, 1, 1, 0.07 + 0.2 * pill.pullP)
+                : pill.toned && pill.attention ? Qt.alpha(pill.tone, 0.9) : Qt.rgba(1, 1, 1, 0.07 + 0.2 * pill.pullP)
             Behavior on border.color { ColorAnimation { duration: Theme.colorMs } }
         }
         Item {

@@ -317,6 +317,8 @@ FocusScope {
             spacing: 4
             Label { text: "No agents running"; size: Theme.tSub; color: Theme.textSecondary }
             Label {
+                width: parent.width
+                wrapMode: Text.Wrap
                 text: !Kittymux.available && !T3Code.alive ? "Neither kittymux nor T3 Code is running."
                     : "Super+A, then “claude” or “codex”, starts one here."
                 size: Theme.tFootnote; color: Theme.textTertiary

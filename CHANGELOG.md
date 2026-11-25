@@ -7,6 +7,20 @@ is listed here.
 
 ## Unreleased
 
+### The notch
+- The center is the notch grown: Notifications pulled from the notch, Controls
+  and Sound from its right side (the phone's model), hanging from the top edge
+  in the island's black. Waybar and the floating pill keep the corner card.
+- Notifications opens with a Today row (the date, what's next, the weather);
+  Controls has a Sound module (the output's volume; right-click mutes).
+- Switching island panels and center tabs crossfades instead of cutting.
+- Text is one notch larger on a real scale (11 · 12 · 13 · 14 · 15 · 16 · 19
+  · 22 · 26) and panels are 20 px wider; one colour means "on"; capsules
+  keep a coloured edge only when something needs you.
+- Capsules on the right can be swiped up to hide them until what they say
+  changes (it never worked: the screen's edge stopped the pointer short).
+- The Agents panel no longer repeats usage; it lives in the Usage section.
+
 ### Install and updates
 - Rollback undoes migrations. A migration names what it changes in
   `# touches:` lines; the runner copies those paths first, puts them back at

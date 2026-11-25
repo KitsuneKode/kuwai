@@ -62,6 +62,9 @@ Item {
     }
     // Typing a search opens the network list, so a network can be found.
     property string module: ""
+    readonly property var sink: Pipewire.defaultAudioSink
+    readonly property var sinkAudio: sink ? sink.audio : null
+    PwObjectTracker { objects: view.sink ? [view.sink] : [] }
     readonly property bool wifiOpen: module === "wifi"
     readonly property bool btOpen: module === "bluetooth"
     function openModule(m) { module = module === m ? "" : m; }
@@ -145,7 +148,6 @@ Item {
                     title: "Wi‑Fi"
                     subtitle: !Networking.wifiEnabled ? "Off" : view.wifiNetwork ? view.wifiNetwork.name : "Not connected"
                     on: Networking.wifiEnabled
-                    tone: Theme.blue
                     expandable: true
                     moreText: "Show networks"
                     expanded: view.wifiOpen
@@ -159,7 +161,6 @@ Item {
                             : view.btConnected.length === 1 ? view.btConnected[0].name
                             : view.btConnected.length ? view.btConnected.length + " connected" : "On"
                     on: !!(view.adapter && view.adapter.enabled)
-                    tone: Theme.blue
                     expandable: true
                     moreText: "Show devices"
                     expanded: view.btOpen
@@ -339,6 +340,25 @@ Item {
                     size: 12
                     weight: Theme.wMedium
                     color: Theme.textSecondary
+                }
+            }
+
+            Column {
+                width: parent.width
+                spacing: 8
+                visible: !!view.sinkAudio
+                Label { x: 4; text: "Sound"; size: Theme.tCallout; weight: Theme.wSemibold; color: Theme.textSecondary }
+                Slider {
+                    width: parent.width
+                    from: 0; to: 1; stepSize: 0.01
+                    value: view.sinkAudio ? view.sinkAudio.volume : 0
+                    dim: view.sinkAudio ? view.sinkAudio.muted : false
+                    glyph: dim ? "\u{f075f}" : "\u{f057e}"
+                    label: view.sink ? (view.sink.nickname || view.sink.description || view.sink.name) : "Output"
+                    valueText: dim ? "Muted" : Math.round(value * 100) + "%"
+                    fillColor: Qt.rgba(1, 1, 1, 0.42)
+                    onMoved: v => { if (view.sinkAudio) view.sinkAudio.volume = v; }
+                    onRightClicked: if (view.sinkAudio) view.sinkAudio.muted = !view.sinkAudio.muted
                 }
             }
 
@@ -534,7 +554,7 @@ Item {
                             x: 10
                             anchors.verticalCenter: parent.verticalCenter
                             width: 30; height: 30; radius: 15
-                            color: dev.modelData.connected ? Theme.blue : Theme.platter
+                            color: dev.modelData.connected ? Theme.accent : Theme.platter
                             Behavior on color { ColorAnimation { duration: Theme.colorMs } }
                             Text {
                                 textFormat: Text.PlainText

@@ -96,7 +96,26 @@ Scope {
             }
             Connections {
                 target: Island
-                function onPanelChanged() { if (win.panelHere) win.shownPanel = Island.panel; }
+                function onPanelChanged() {
+                    if (!win.panelHere) return;
+                    if (win.shownPanel !== "" && win.shownPanel !== Island.panel && pv.value > 0.9 && panelLoader.item && !Theme.reduceMotion) {
+                        panelGhost.width = panelLoader.width;
+                        panelGhost.height = panelLoader.height;
+                        panelGhost.scheduleUpdate();
+                        swapLater.restart();
+                    } else win.shownPanel = Island.panel;
+                }
+            }
+            Timer {
+                id: swapLater
+                interval: 16
+                onTriggered: {
+                    if (!win.panelHere) return;
+                    panelGhost.opacity = 1;
+                    ghostOut.restart();
+                    win.shownPanel = Island.panel;
+                    panelIn.restart();
+                }
             }
             // Another workspace: a panel left open would only be in the way (and its key would close it).
             Connections {
@@ -715,12 +734,15 @@ Scope {
             // Once a minute, on the minute (the clock shows hours:minutes);
             // every second only when it shows seconds.
             Timer {
+                id: clockTick
                 running: true; repeat: true; triggeredOnStart: true
-                interval: Settings.showSeconds ? 1000 : 60000 - (Date.now() % 60000) + 20
-                onTriggered: {
-                    win.now = new Date();
-                    if (!Settings.showSeconds) interval = 60000 - (Date.now() % 60000) + 20;
-                }
+                function next() { return Settings.showSeconds ? 1000 - (Date.now() % 1000) + 5 : 60000 - (Date.now() % 60000) + 20; }
+                interval: 1000
+                onTriggered: { win.now = new Date(); interval = next(); }
+            }
+            Connections {
+                target: Settings
+                function onShowSecondsChanged() { win.now = new Date(); clockTick.interval = clockTick.next(); clockTick.restart(); }
             }
 
             Component { id: activitiesPanel; IslandActivities { sourceSplit: split } }
@@ -1209,8 +1231,26 @@ Scope {
                                 Accessible.onPressAction: Island.back()
                             }
                         }
+                        ShaderEffectSource {
+                            id: panelGhost
+                            y: win.backH
+                            sourceItem: panelLoader
+                            live: false
+                            hideSource: false
+                            opacity: 0
+                            visible: opacity > 0.01
+                            NumberAnimation on opacity { id: ghostOut; running: false; to: 0; duration: Theme.quickMs - 10; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+                        }
                         Loader {
                             id: panelLoader
+                            property real swapIn: 1
+                            opacity: swapIn
+                            SequentialAnimation {
+                                id: panelIn
+                                PropertyAction { target: panelLoader; property: "swapIn"; value: 0 }
+                                PauseAnimation { duration: Theme.handoffMs }
+                                NumberAnimation { target: panelLoader; property: "swapIn"; to: 1; duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+                            }
                             y: win.backH
                             width: panelScope.width
                             height: panelScope.height - win.backH
