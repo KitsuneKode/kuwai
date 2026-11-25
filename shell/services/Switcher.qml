@@ -149,6 +149,9 @@ Singleton {
     // If the island closes the panel (click outside, Esc), the switch is off.
     Connections {
         target: Island
-        function onPanelChanged() { if (root.shown && Island.panel !== "switcher") root.finish(); }
+        function onPanelChanged() {
+            if (Island.panel === "switcher" && !root.shown) { Island.close(); return; }
+            if (root.shown && Island.panel !== "switcher") root.finish();
+        }
     }
 }

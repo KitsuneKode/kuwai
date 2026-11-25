@@ -76,7 +76,7 @@ Scope {
         LazyLoader {
             id: slot
             required property ShellScreen modelData
-            active: root.alive
+            active: root.alive && (Quickshell.screens.length === 1 || Assistant.targetScreen === "" || Assistant.targetScreen === modelData.name)
         PanelWindow {
             id: win
             readonly property ShellScreen modelData: slot.modelData
