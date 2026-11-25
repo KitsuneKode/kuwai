@@ -44,6 +44,7 @@ import json
 import os
 import re
 import smtplib
+import ssl
 import subprocess
 import sys
 import threading
@@ -55,6 +56,11 @@ CONFIG = os.path.expanduser("~/.config/kuwai/feeds.json")
 DRY = os.environ.get("KUWAI_FEEDS_DRYRUN") == "1"
 lock = threading.Lock()
 
+
+
+def tls() -> ssl.SSLContext:
+    """Verified TLS for Gmail: imaplib and smtplib default to an unverified context."""
+    return ssl.create_default_context()
 
 def log(*a):
     print(time.strftime("%H:%M:%S"), *a, flush=True)
@@ -527,7 +533,7 @@ def gmail_secret(address):
 
 
 def imap_login(address):
-    m = imaplib.IMAP4_SSL("imap.gmail.com", timeout=60)
+    m = imaplib.IMAP4_SSL("imap.gmail.com", timeout=60, ssl_context=tls())
     m.login(address, gmail_secret(address))
     return m
 
@@ -683,7 +689,7 @@ def reply_message(address, c, text):
 
 def gmail_reply(notify, address, uid, c, text):
     try:
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=30) as smtp:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=30, context=tls()) as smtp:
             smtp.login(address, gmail_secret(address))
             smtp.send_message(reply_message(address, c, text))
         gmail_mark_read(address, uid)
@@ -787,7 +793,7 @@ def gmail_setup():
     print("An app password (https://myaccount.google.com/apppasswords; needs 2-Step Verification).")
     pw = getpass.getpass("App password: ").replace(" ", "")
     try:
-        m = imaplib.IMAP4_SSL("imap.gmail.com", timeout=30)
+        m = imaplib.IMAP4_SSL("imap.gmail.com", timeout=30, ssl_context=tls())
         m.login(address, pw)
         m.logout()
     except Exception as e:

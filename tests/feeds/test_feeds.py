@@ -230,3 +230,13 @@ def test_gmail_a_failed_card_is_tried_again_and_nothing_twice(rf, monkeypatch):
 def test_gmail_all_handled_moves_past_the_newest(rf, monkeypatch):
     g, n = run_gmail(rf, monkeypatch, FakeImap(), lambda m, uid: card(uid))
     assert g["last"] == 13 and len(n.sent) == 3
+
+
+def test_gmail_connections_verify_the_certificate_and_the_host(rf):
+    import re
+    import ssl
+    ctx = rf.tls()
+    assert ctx.verify_mode == ssl.CERT_REQUIRED and ctx.check_hostname
+    src = (ROOT / "bin" / "kuwai-feeds").read_text()
+    calls = re.findall(r"(?:IMAP4_SSL|SMTP_SSL)\([^)]*\)", src)
+    assert calls and all("context=tls()" in c for c in calls), calls
