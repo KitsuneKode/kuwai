@@ -202,7 +202,7 @@ FocusScope {
                 if (ua !== ub) return ua - ub;
                 return (secOrder[a.section] ?? 9) - (secOrder[b.section] ?? 9);
             }
-            return (rank[a.state] - rank[b.state]) || (b.t - a.t);
+            return (rank[a.state] - rank[b.state]) || (a.state === "needs" ? (a.t || Infinity) - (b.t || Infinity) : b.t - a.t);
         });
     }
     onRowsChanged: sel = Math.min(sel, Math.max(0, rows.length - 1))
