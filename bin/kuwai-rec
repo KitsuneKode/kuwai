@@ -90,8 +90,26 @@ start() {
     local path stamp index=0 birth identity_tmp state_tmp
     stamp="$dir/Recording_$(date +%Y%m%d_%H%M%S)"; path="$stamp.mp4"
     while [ -e "$path" ]; do index=$((index + 1)); path="$stamp-$index.mp4"; done
-    gpu-screen-recorder -w "$window" "${args[@]}" -f "$fps" "${aud[@]}" -o "$path" \
-        >/dev/null 2>"${state}.log" </dev/null 9>&- &
+    if command -v gpu-screen-recorder >/dev/null; then
+        gpu-screen-recorder -w "$window" "${args[@]}" -f "$fps" "${aud[@]}" -o "$path" \
+            >/dev/null 2>"${state}.log" </dev/null 9>&- &
+    elif command -v wf-recorder >/dev/null; then
+        local wf=() wfa=()
+        if [ "$window" = region ] && [[ ${args[1]} =~ ^([0-9]+)x([0-9]+)\+(-?[0-9]+)\+(-?[0-9]+)$ ]]; then
+            wf=(-g "${BASH_REMATCH[3]},${BASH_REMATCH[4]} ${BASH_REMATCH[1]}x${BASH_REMATCH[2]}")
+        else
+            wf=(-o "$window")
+        fi
+        case "$audio" in
+            system|both) wfa=("--audio=$(pactl get-default-sink 2>/dev/null).monitor") ;;
+            mic) wfa=(--audio) ;;
+        esac
+        wf-recorder "${wf[@]}" -r "$fps" "${wfa[@]}" -f "$path" \
+            >/dev/null 2>"${state}.log" </dev/null 9>&- &
+    else
+        notify -a "Screen recording" -u normal "Screen recording needs a recorder" "Install one: sudo pacman -S gpu-screen-recorder (or wf-recorder)"
+        return 1
+    fi
     local pid=$!
     sleep 0.4
     if ! birth=$(process_birth "$pid"); then

@@ -10,4 +10,18 @@ if [ "$class" = "kitty" ] && command -v kittymux >/dev/null && kittymux spawn "$
     exit 0
 fi
 command -v "$agent" >/dev/null || { "$here/kuwai-notify" -a kuwai "kuwai" "$agent isn't installed — install the CLI or use bin/agents/$agent"; exit 1; }
-exec prime-run kitty --single-instance --instance-group=local --directory "$dir" "$agent"
+runner=()
+command -v prime-run >/dev/null && runner=(prime-run)
+term=${KUWAI_TERMINAL:-}
+if [ -z "$term" ]; then
+    for t in kitty ghostty foot alacritty wezterm konsole xterm; do command -v "$t" >/dev/null && { term=$t; break; }; done
+fi
+cd "$dir" || exit 1
+case $term in
+    *kitty*)   exec "${runner[@]}" kitty --single-instance --instance-group=local --directory "$dir" "$agent" ;;
+    *ghostty*) exec "${runner[@]}" ghostty --working-directory="$dir" -e "$agent" ;;
+    *foot*)    exec foot --working-directory="$dir" "$agent" ;;
+    *wezterm*) exec wezterm start --cwd "$dir" -- "$agent" ;;
+    "")        "$here/kuwai-notify" -a kuwai "kuwai" "No terminal installed: sudo pacman -S kitty (or set KUWAI_TERMINAL)"; exit 1 ;;
+    *)         exec "$term" -e "$agent" ;;
+esac

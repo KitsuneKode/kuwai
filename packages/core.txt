@@ -19,3 +19,14 @@ git:git
 file:file
 node:nodejs
 :qt6-multimedia
+awww:awww
+checkupdates:pacman-contrib
+pactl:libpulse
+hyprsunset:hyprsunset
+hyprpicker:hyprpicker
+xdg-open:xdg-utils
+pkexec:polkit
+upower:upower
+sqlite3:sqlite
+:pipewire-pulse
+cmp:diffutils

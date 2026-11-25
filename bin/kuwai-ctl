@@ -132,7 +132,12 @@ notifs() {
 
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/kuwai"
 STABLE="${XDG_DATA_HOME:-$HOME/.local/share}/kuwai"
-dev_root() { for d in "$HOME/Projects/kuwai" "$HOME/Projects/rice"; do [ -e "$d/hypr/init.lua" ] && { echo "$d"; return; }; done; }
+dev_root() {
+    local d
+    d=$(cat "$STATE_DIR/dev-root" 2>/dev/null)
+    [ -n "$d" ] && [ -e "$d/hypr/init.lua" ] && { echo "$d"; return; }
+    for d in "$HOME/Projects/kuwai" "$HOME/Projects/rice"; do [ -e "$d/hypr/init.lua" ] && { echo "$d"; return; }; done
+}
 set_head() { git -C "$STABLE" reset --hard --quiet "$1" 2>/dev/null && [ "$(git -C "$STABLE" rev-parse HEAD 2>/dev/null)" = "$1" ]; }
 undo_migrations() {
     local done=$STATE_DIR/migrations/done n gone=()
@@ -192,7 +197,7 @@ case ${1:-} in
         esac ;;
     promote)
         dev=$(dev_root)
-        [ -n "$dev" ] || { echo "kuwai: no dev clone found at ~/Projects/kuwai or ~/Projects/rice" >&2; exit 1; }
+        [ -n "$dev" ] || { echo "kuwai: no dev clone found (the one install.sh ran from, ~/Projects/kuwai or ~/Projects/rice)" >&2; exit 1; }
         if [ "$(git -C "$STABLE" rev-parse HEAD 2>/dev/null)" = "$(git -C "$dev" rev-parse HEAD 2>/dev/null)" ]; then
             echo "kuwai: stable is already at $(git -C "$STABLE" log --oneline -1); nothing to promote"
             exit 0
@@ -258,6 +263,7 @@ case ${1:-} in
         fi
         prev=$(git -C "$STABLE" rev-parse HEAD)
         old_prev=$(git -C "$STABLE" rev-parse --verify -q refs/heads/stable-prev)
+        git -C "$STABLE" fetch --quiet "$dev" HEAD 2>/dev/null
         git -C "$STABLE" merge --ff-only --quiet "$head" || { echo "kuwai: stable can't fast-forward to $(git -C "$dev" log --oneline -1)" >&2; exit 1; }
         git -C "$STABLE" branch -f stable-prev "$prev" 2>/dev/null || true
         echo "stable is now $(git -C "$STABLE" log --oneline -1)"

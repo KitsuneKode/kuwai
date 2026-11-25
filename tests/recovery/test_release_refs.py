@@ -176,3 +176,20 @@ def test_rollback_undoes_the_migrations_the_older_release_lacks(tmp_path):
     assert r.returncode == 0, r.stderr
     assert git(stable, "rev-parse", "HEAD") == a
     assert (Path(env["XDG_STATE_HOME"]) / "undo-args").read_text().split() == ["--undo", "0009-new.sh"]
+
+
+def test_promote_and_rollback_with_a_standalone_stable_clone(tmp_path):
+    env, dev, stable, a, b = make_world(tmp_path)
+    git(dev, "worktree", "remove", "--force", str(stable))
+    subprocess.run(["git", "clone", "-q", "--branch", "stable", str(dev), str(stable)], check=True, env=GIT_ENV)
+    state = Path(env["XDG_STATE_HOME"]) / "kuwai"
+    state.mkdir(parents=True, exist_ok=True)
+    moved = tmp_path / "elsewhere"
+    dev.rename(moved)
+    (state / "dev-root").write_text(f"{moved}\n")
+    r = ctl(env, "promote")
+    assert r.returncode == 0, r.stderr
+    assert git(stable, "rev-parse", "HEAD") == b
+    r = ctl(env, "rollback")
+    assert r.returncode == 0, r.stderr
+    assert git(stable, "rev-parse", "HEAD") == a

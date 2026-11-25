@@ -137,8 +137,21 @@ check_deps() {
             [ ${#missing[@]} -gt 0 ] && [ $DRY = 0 ] && { say "  (the needed ones first; stopping here)"; exit 1; }
         fi
     fi
+    hypr_version || exit 1
     hyde_report
     return 0
+}
+
+hypr_version() {
+    command -v Hyprland >/dev/null || return 0
+    local v; v=$(Hyprland --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -1)
+    [ -n "$v" ] || { warn "couldn't read Hyprland's version; Kuwai needs 0.57 or later (Lua config)"; return 0; }
+    if [ "$(printf '%s\n0.57\n' "$v" | sort -V | head -1)" != 0.57 ]; then
+        warn "Hyprland $v is too old: Kuwai's config is Lua, which needs Hyprland 0.57 or later (sudo pacman -Syu)"
+        [ $DRY = 1 ] && return 0
+        return 1
+    fi
+    [ $PRINT_MISSING = 1 ] || ok "Hyprland $v (0.57 or later)"
 }
 
 # shellcheck source=lib/hyde.sh
@@ -226,8 +239,16 @@ install_all() {
     if git -C "$REPO" show-ref --verify --quiet refs/heads/stable; then ok "branch stable exists"
     else do_ git -C "$REPO" branch stable HEAD; ok "branch stable made at $(git -C "$REPO" rev-parse --short HEAD)"; fi
     if [ -e "$STABLE/hypr/init.lua" ]; then ok "checkout exists ($(git -C "$STABLE" rev-parse --short HEAD 2>/dev/null))"
-    else do_ git -C "$REPO" worktree add "$STABLE" stable; fi
+    else
+        do_ git clone -q --branch stable "$REPO" "$STABLE"
+        if [ $DRY = 0 ]; then
+            up=$(git -C "$REPO" remote get-url origin 2>/dev/null || true)
+            if [ -n "$up" ]; then git -C "$STABLE" remote set-url origin "$up"; fi
+            ok "checkout cloned (its own copy: moving or deleting $REPO doesn't break it)"
+        fi
+    fi
     do_ mkdir -p "$STATE"
+    [ $DRY = 1 ] || printf '%s\n' "$REPO" >"$STATE/dev-root"
     [ -f "$STATE/channel" ] || { [ $DRY = 1 ] && say "  would: write stable to $STATE/channel" || echo stable >"$STATE/channel"; }
     ok "channel: $(cat "$STATE/channel" 2>/dev/null || echo stable)"
 
@@ -324,7 +345,8 @@ uninstall_all() {
     local rc=0
     if [ $DRY = 1 ]; then ORIG restore --dry-run; else ORIG restore || rc=$?; fi
     say "  The stable checkout ($STABLE), your settings (~/.config/kuwai) and notes stay."
-    say "  Remove the checkout too:  git -C $REPO worktree remove $STABLE"
+    if [ -f "$STABLE/.git" ]; then say "  Remove the checkout too:  git -C $REPO worktree remove $STABLE"
+    else say "  Remove the checkout too:  rm -rf $STABLE"; fi
     say "  The Kuwai login entry: sudo $REPO/system/session --undo"
     say "  The login screen / alarms: sudo greeter/install --undo · sudo system/install --undo"
     return $rc

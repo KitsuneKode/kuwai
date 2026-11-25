@@ -4,7 +4,7 @@
     {
       "key": "bar",
       "type": "string",
-      "default": "waybar",
+      "default": "island",
       "enum": [
         "waybar",
         "island"

@@ -55,3 +55,13 @@ jobs:
       - run: bun test ./tests ./shell
       - name: Types of the shell's JS logic (JSDoc, nothing compiled)
         run: bunx -p typescript tsc -p tsconfig.check.json
+
+  cleanroom:
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - name: Tools
+        run: pacman -Syu --noconfirm --needed git
+      - uses: actions/checkout@v4
+      - name: Install on a fresh Arch as a new user, check it, uninstall it
+        run: bash tests/cleanroom/inside.sh "$GITHUB_WORKSPACE"

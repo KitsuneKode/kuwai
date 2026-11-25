@@ -65,7 +65,7 @@ if [ "$mode" = area ] || [ "$mode" = quick ] || [ "$mode" = freeze ]; then
     fi
     wl-copy --type image/png < "$out"
     case "$mode" in quick) exit 0 ;; esac
-    args=()
+    shoot=()
 fi
 
 if [ "$mode" = window ]; then
@@ -87,12 +87,14 @@ if [ "$mode" = window ]; then
     exit 0
 fi
 
+focused_output() { hyprctl -j monitors 2>/dev/null | jq -r 'map(select(.focused)) | .[0].name // empty'; }
+
 case "$mode" in
     area|quick|freeze) ;;
-    delay)   args=(--wait 3 copysave output) ;;
+    delay)   sleep 3; shoot=(grim -o "$(focused_output)") ;;
     ocr)
         tmp=$(mktemp --suffix=.png)
-        if grimblast save area "$tmp" >/dev/null 2>&1 </dev/null && [ -s "$tmp" ]; then
+        if geo=$(slurp 2>/dev/null) && grim -g "$geo" "$tmp" 2>/dev/null && [ -s "$tmp" ]; then
             text=$(tesseract "$tmp" - 2>/dev/null | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}')
             if [ -n "$text" ]; then
                 printf '%s' "$text" | wl-copy
@@ -101,16 +103,17 @@ case "$mode" in
             fi
         fi
         rm -f -- "$tmp"; exit 0 ;;
-    monitor) args=(copysave output) ;;
-    all)     args=(copysave screen) ;;
+    monitor) shoot=(grim -o "$(focused_output)") ;;
+    all)     shoot=(grim) ;;
     *) usage; exit 2 ;;
 esac
 
 errf=$(mktemp)
 rc=0
-if [ ${#args[@]} -gt 0 ]; then
-    grimblast "${args[@]}" "$out" >/dev/null 2>"$errf" </dev/null
+if [ ${#shoot[@]} -gt 0 ]; then
+    "${shoot[@]}" "$out" >/dev/null 2>"$errf" </dev/null
     rc=$?
+    [ $rc -eq 0 ] && [ -s "$out" ] && wl-copy --type image/png < "$out"
 fi
 err=$(cat "$errf"); rm -f -- "$errf"
 if [ $rc -ne 0 ] || [ ! -s "$out" ]; then

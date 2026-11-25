@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -euo pipefail
+usage() {
+cat <<'KUWAI_USAGE'
+kuwai-cleanroom: install this checkout's HEAD on a fresh Arch Linux container as a
+new user, the way a stranger would, and check every step (tests/cleanroom/inside.sh):
+packages, the Hyprland version, the config, the stable copy (and that it survives
+the clone moving), migrations, the shell and login screen loading offscreen, a
+second install changing nothing, the login session, and an uninstall that puts
+the home folder back. Needs docker; downloads the packages (about 1 GB).
+
+  kuwai-cleanroom            run it (committed HEAD only; uncommitted edits are left out)
+  kuwai-cleanroom --keep     keep the container's log in ./cleanroom.log
+KUWAI_USAGE
+exit "${1:-2}"
+}
+case ${1:-} in -h|--help) usage 0 ;; ""|--keep) ;; *) usage ;; esac
+ROOT=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)
+command -v docker >/dev/null || { echo "kuwai-cleanroom: needs docker" >&2; exit 2; }
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+git -C "$ROOT" bundle create "$tmp/kuwai.bundle" HEAD >/dev/null 2>&1
+cp "$ROOT/tests/cleanroom/inside.sh" "$tmp/"
+chmod -R a+rX "$tmp"
+log=/dev/null
+[ "${1:-}" = --keep ] && log=./cleanroom.log
+docker run --rm -v "$tmp:/in:ro" archlinux:latest bash /in/inside.sh /in/kuwai.bundle 2>&1 | tee "$log" | grep -E '^(PASS|FAIL|SKIP)  '
+exit "${PIPESTATUS[0]}"
