@@ -412,9 +412,18 @@ def cmd_install(source, slug=None):
             os.makedirs(os.path.dirname(out_f), exist_ok=True)
             shutil.copyfile(src_f, out_f)
             os.chmod(out_f, 0o644)
+        old_dir = None
         if os.path.exists(dest_dir):
-            shutil.rmtree(dest_dir)
-        os.replace(stage_dir, dest_dir)
+            old_dir = os.path.join(USER_THEMES, f".old-{target_slug}-{os.getpid()}")
+            os.replace(dest_dir, old_dir)
+        try:
+            os.replace(stage_dir, dest_dir)
+        except OSError:
+            if old_dir:
+                os.replace(old_dir, dest_dir)
+            raise
+        if old_dir:
+            shutil.rmtree(old_dir, ignore_errors=True)
     return {"ok": True, "slug": target_slug, "path": dest_dir, "files": len(safe_files)}
 
 

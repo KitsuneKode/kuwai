@@ -14,6 +14,33 @@ is listed here.
   update-self that fails partway) puts them back when returning to a release
   that doesn't have that migration. A path you changed since is kept and named.
   `kuwai migrations --undo N…` does it by hand.
+- A fresh Arch install works: the core packages now include what the desktop
+  calls at once (awww, pacman-contrib, libpulse and pipewire-pulse, hyprsunset,
+  hyprpicker, xdg-utils, polkit, upower, sqlite, and diffutils, which Arch's
+  base doesn't have), install.sh refuses a Hyprland older than 0.57, and the
+  island is the default bar.
+- The stable copy is its own clone, so moving or deleting the folder you
+  installed from doesn't break `update-self`, `rollback` or `version`.
+- `bin/kuwai-cleanroom` (and a CI job) installs on a fresh Arch container as a
+  new user and checks every step through to an uninstall that puts the home
+  folder back.
+- Screenshots need only grim and slurp (grimblast is gone); recording falls
+  back to wf-recorder; an agent opens in whatever terminal you have.
+
+### Security
+- Allow on an agent's request is bound to that request: the panel shows the
+  request's own command in full, and the answer carries its id (kittymux's
+  mux-ask ignores any other).
+- Notification text keeps only bold, italic, underline and line breaks; an
+  image tag, closed or not, can no longer make the shell fetch a URL.
+- Package files are copied to a root-only folder before `pacman -U`, so a file
+  swapped after the check is never the one installed.
+- The assistant: secret-shaped text is removed from what it reads off the
+  clipboard and selection; chat mode no longer reads the clipboard or runs the
+  system audit; a page is rendered from the bytes already fetched, with the
+  browser's network off. The sandbox folder is private to you.
+- The login screen never takes code from a folder you can write; a theme
+  reinstall keeps the old copy until the new one is in place.
 
 ## 0.1.0 — 2026-11-25
 

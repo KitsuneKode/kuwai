@@ -350,8 +350,10 @@ Singleton {
     //   answers: { key: { busy, done: "allow"|"deny"|"", why } }
     property var answers: ({})
     readonly property bool answerDry: Quickshell.env("KUWAI_ANSWER_DRYRUN") === "1"
+    function safeKey(k) { return /^[A-Za-z0-9._-]{1,128}$/.test(String(k || "")) && k !== "." && k !== ".."; }
     function canAnswer(r) {
-        if (r && r.key && asks[r.key]) return true;             // the agent asked us itself (kittymux's mux-ask hook)
+        if (!r || !safeKey(r.key)) return false;
+        if (asks[r.key]) return String(asks[r.key].what || "").trim() !== "";
         return !!r && !!r.key && r.needs === true && /^(claude|codex)$/.test(String(r.agent || "").toLowerCase()) && String(r.question || "").trim() !== "";
     }
 
@@ -403,8 +405,10 @@ Singleton {
         setAnswer(r.key, { busy: true, done: "", why: "" });
         if (asks[r.key] && !answerDry) {
             // The hook waits for this file; written atomically, readable only by you.
+            const id = String(asks[r.key].id || "");
+            const reply = /^[0-9a-f]{8,64}$/.test(id) ? choice + " " + id : choice;
             replier.createObject(root, { key: r.key, choice: choice, command: ["sh", "-c",
-                "umask 077; printf %s \"$2\" > \"$1.tmp\" && mv -f \"$1.tmp\" \"$1\"", "sh", asksDir + "/" + r.key + ".answer", choice] }).running = true;
+                "umask 077; printf %s \"$2\" > \"$1.tmp\" && mv -f \"$1.tmp\" \"$1\"", "sh", asksDir + "/" + r.key + ".answer", reply] }).running = true;
             return;
         }
         const cmd = [bin, "answer", r.key, choice, "--expect", r.question];

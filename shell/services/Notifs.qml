@@ -19,6 +19,7 @@ import qs.config
 import "otp.mjs" as Otp
 import "notifUndo.mjs" as Undo
 import "notifTidy.mjs" as Tidy
+import "notifMarkup.mjs" as Markup
 import "notifPrivacy.mjs" as Privacy
 
 Singleton {
@@ -329,9 +330,8 @@ Singleton {
             return v === undefined ? m : v;
         });
     }
-    // A body for StyledText (toasts, rows): apps send <b> and <i>, but an
-    // <img> would make the shell fetch it (a tracking pixel), so it goes.
-    function styledSafe(t) { return String(t || "").replace(/<img\b[^>]*>/gi, "").replace(/<(script|style|iframe|object)\b[\s\S]*?<\/\1>/gi, ""); }
+    function styledSafe(t) { return Markup.styledSafe(t); }
+    function plainStyled(t) { return Markup.plainStyled(t); }
     function readable(t) {
         return decodeEntities(String(t || "")
             .replace(/\r\n?/g, "\n")

@@ -4,26 +4,14 @@ DEST=${KUWAI_GREETER_DIR:-/var/lib/kuwai-greeter}
 KUWAI="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
 H="$DEST/home"
 
-legacy=0
 if [ -O "$DEST" ] && [ -w "$DEST" ]; then
-    legacy=1
-    echo "kuwai greeter: the login screen's code is still writable by you; run: sudo $KUWAI/greeter/install --code" >&2
-    rsync -a --delete "$KUWAI/shell/" "$DEST/shell/"
-    install -m755 "$KUWAI/greeter/start" "$DEST/start"
-    install -m755 "$KUWAI/greeter/session-start" "$DEST/session-start"
-    install -m755 "$KUWAI/greeter/compositor-start" "$DEST/compositor-start"
-    install -m755 "$KUWAI/greeter/keys" "$DEST/keys"
-    install -m644 "$KUWAI/greeter/hyprland.lua" "$DEST/hyprland.lua"
-    mkdir -p "$H"
+    echo "kuwai greeter: the login screen's code is writable by you, so nothing is copied into it; run: sudo $KUWAI/greeter/install --code" >&2
+    exit 0
 fi
 [ -d "$H" ] && [ -w "$H" ] || exit 0
 
 id -un >"$H/.kuwai-user"
 if [ -f "$HOME/.face" ]; then cp -fL "$HOME/.face" "$H/.face"; else rm -f "$H/.face"; fi
-if [ $legacy = 1 ]; then
-    cp -f "$H/.kuwai-user" "$DEST/user"
-    if [ -f "$H/.face" ]; then cp -f "$H/.face" "$DEST/face"; else rm -f "$DEST/face"; fi
-fi
 
 copy() {
     [ -e "$HOME/$1" ] || return 0
@@ -87,4 +75,4 @@ fi
 chmod 644 "$tmp"
 mv -f "$tmp" "$conf"
 
-if [ $legacy = 1 ]; then chmod -R a+rX "$DEST"; else chmod -R a+rX "$H"; fi
+chmod -R a+rX "$H"

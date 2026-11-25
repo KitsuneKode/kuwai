@@ -504,10 +504,14 @@ FocusScope {
                         + (ap.fill(row.modelData) ? " · " + ap.fill(row.modelData) : "")
                     subColor: Theme.textSecondary
                     Label {
-                        visible: row.needs && row.modelData.question !== ""
+                        readonly property var ask: row.modelData.src === "kitty" ? Kittymux.askFor(row.modelData.raw) : null
+                        visible: row.needs && text !== ""
                         width: parent.width
-                        wrapMode: Text.Wrap; maximumLineCount: 3; elide: Text.ElideRight
-                        text: row.modelData.question
+                        textFormat: Text.PlainText
+                        wrapMode: ask ? Text.WrapAnywhere : Text.Wrap
+                        maximumLineCount: ask ? 12 : 3
+                        elide: ask ? Text.ElideNone : Text.ElideRight
+                        text: ask ? String(ask.what || "") : row.modelData.question
                         size: Theme.tSub; lineHeight: 1.3; color: Theme.textPrimary
                     }
                     Column {
@@ -605,14 +609,14 @@ FocusScope {
                                     height: Theme.sp(30); size: Theme.tSub
                                     text: answerRow.st && answerRow.st.done === "deny" ? "Denied" : "Deny"
                                     onClicked: Kittymux.answer(answerRow.r, "deny")
-                                    Accessible.name: "Deny " + row.modelData.title + ": " + row.modelData.question
+                                    Accessible.name: "Deny " + row.modelData.title + ": " + (Kittymux.askFor(answerRow.r) ? Kittymux.askFor(answerRow.r).what : row.modelData.question)
                                 }
                                 Button {
                                     height: Theme.sp(30); size: Theme.tSub
                                     text: answerRow.st && answerRow.st.done === "allow" ? "Allowed" : "Allow"
                                     kind: "primary"
                                     onClicked: Kittymux.answer(answerRow.r, "allow")
-                                    Accessible.name: "Allow " + row.modelData.title + ": " + row.modelData.question
+                                    Accessible.name: "Allow " + row.modelData.title + ": " + (Kittymux.askFor(answerRow.r) ? Kittymux.askFor(answerRow.r).what : row.modelData.question)
                                 }
                             }
                             // Refused (the prompt changed, or it's gone): why, and the row still jumps there.

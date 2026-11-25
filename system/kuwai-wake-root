@@ -1,14 +1,18 @@
 #!/usr/bin/python3 -I
-import os, sys, time
+import os, stat, sys, time
 
 AT = "/var/lib/kuwai-wake/at"
 RTC = "/sys/class/rtc/rtc0/wakealarm"
 
 def main():
     try:
-        fd = os.open(AT, os.O_RDONLY | os.O_NOFOLLOW)
-        raw = os.read(fd, 32).decode("ascii", "strict").strip()
-        os.close(fd)
+        fd = os.open(AT, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        try:
+            if not stat.S_ISREG(os.fstat(fd).st_mode):
+                raise OSError("not a regular file")
+            raw = os.read(fd, 32).decode("ascii", "strict").strip()
+        finally:
+            os.close(fd)
     except (OSError, UnicodeDecodeError):
         raw = "0"
     if not raw.isdigit() or len(raw) > 12:

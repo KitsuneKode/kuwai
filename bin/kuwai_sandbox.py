@@ -89,7 +89,9 @@ def workspace(chat):
     root is writable from inside the container, so the folder must still be a
     real folder: a link put in its place would aim host-side writes elsewhere."""
     root = host_root()
-    root.mkdir(parents=True, exist_ok=True)
+    root.mkdir(mode=0o700, parents=True, exist_ok=True)
+    if not root.is_symlink():
+        os.chmod(root, 0o700)
     for d in (root / chat_slug(chat), root / ".home"):
         try:
             d.mkdir(exist_ok=True)
@@ -318,9 +320,11 @@ def ensure(chat=None, web=False):
     if not image_exists():
         raise SandboxError("The sandbox image isn't built yet: run `kuwai-ollama sandbox build`")
     root = host_root()
-    root.mkdir(parents=True, exist_ok=True)
+    root.mkdir(mode=0o700, parents=True, exist_ok=True)
+    if not root.is_symlink():
+        os.chmod(root, 0o700)
     try:
-        fd = os.open(root / "README.txt", os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o644)
+        fd = os.open(root / "README.txt", os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
         with os.fdopen(fd, "w", encoding="utf-8") as fh:
             fh.write(JAIL_README)
     except OSError:
@@ -518,6 +522,23 @@ def stop():
     if ids:
         _docker("rm", "-f", *ids, timeout=60)
     _docker("rm", "-f", NAME, timeout=30)
+
+
+def render_html(html, timeout=25):
+    """The DOM of a page already fetched (by the pinned client) after its inline
+    JavaScript ran, with Chromium's network off: every request goes to a dead
+    proxy, so the page can't reach the host, the LAN or anything else."""
+    import kuwai_files
+    code, out, _n = kuwai_files.run_bounded(
+        [DOCKER, "exec", "-i", ensure(web=True), "sh", "-c",
+         'cat > /tmp/kuwai-page.html && exec timeout "$1" chromium-headless-shell --no-sandbox --disable-gpu '
+         '--disable-dev-shm-usage --hide-scrollbars --virtual-time-budget=4000 '
+         '--proxy-server=http://127.0.0.1:9 "--proxy-bypass-list=<-loopback>" '
+         '--dump-dom file:///tmp/kuwai-page.html', "sh", str(timeout)],
+        timeout=timeout + 10, keep=1_500_000, stdin_text=html)
+    if code != 0 or not out.strip():
+        raise SandboxError("The browser couldn't render it")
+    return out
 
 
 def render_page(url, timeout=25):

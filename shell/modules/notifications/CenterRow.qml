@@ -203,7 +203,7 @@ Item {
                 Label {
                     id: titleText
                     width: titleRow.width - (row.critical || row.warning ? chip.implicitWidth + 18 : 0)
-                    text: row.center ? row.center.highlight(row.it.title) : row.it.title
+                    text: row.center ? row.center.highlight(row.it.title) : Notifs.plainStyled(row.it.title)
                     textFormat: Text.StyledText
                     // Two lines, like the toasts: the title is what tells them apart.
                     wrapMode: Text.Wrap
@@ -276,7 +276,7 @@ Item {
             width: parent.width
             visible: (row.it.body !== "" || Notifs.bodyRedacted(row.it)) && !(row.selected && row.previewScroll)
             text: {
-                const raw = row.it.body.replace(/<[^>]*>/g, "");
+                const raw = Notifs.plainStyled(row.it.body);
                 // Selected shows a chat's body, never while sharing (bodyHidden).
                 const show = Notifs.bodyHidden(row.it, row.selected) ? Notifs.bodyForDisplay(row.it, row.selected) : raw;
                 return row.center && row.center.terms.length ? row.center.highlight(show) : show;

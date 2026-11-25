@@ -62,17 +62,14 @@ def test_not_installed_does_nothing(tmp_path):
     assert not dest.exists()
 
 
-def test_old_layout_still_works_and_says_how_to_close_it(tmp_path):
+def test_a_login_screen_you_can_write_gets_no_code_and_says_how_to_close_it(tmp_path):
     home = home_with_data(tmp_path)
     dest = tmp_path / "greeter"
     dest.mkdir()                                # all yours: the layout before the split
     r = run(dest, home)
     assert r.returncode == 0, r.stderr
     assert "greeter/install --code" in r.stderr
-    assert (dest / "shell" / "greeter.qml").exists() and (dest / "start").exists()
-    assert stat.S_IMODE((dest / "start").stat().st_mode) == 0o755
-    assert (dest / "user").read_text().strip() and (dest / "face").read_bytes() == b"png"
-    assert (dest / "home/.kuwai-user").exists()
+    assert list(dest.iterdir()) == []
 
 
 def test_install_script_keeps_the_code_roots():

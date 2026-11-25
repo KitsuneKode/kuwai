@@ -130,3 +130,21 @@ def test_clean_cache_runs_paccache_with_bounded_keep(ur, monkeypatch):
     monkeypatch.setattr(ur, "run_tool", lambda cmd: (ran.append(cmd) or 0))
     assert ur.clean_cache({"keep": 2}) == 0
     assert ran == [[ur.PACCACHE, "-rk2"], [ur.PACCACHE, "-ruk0"]]
+
+
+def test_taken_copies_what_was_checked_and_refuses_a_link(ur, tmp_path):
+    uid = os.getuid()
+    pkg = tmp_path / "foo-1.0-1-x86_64.pkg.tar.zst"
+    pkg.write_bytes(b"the real package")
+    into = tmp_path / "root-only"
+    into.mkdir(mode=0o700)
+    (copy,) = ur.taken([str(pkg)], str(into), uid)
+    pkg.write_bytes(b"swapped afterwards")
+    assert open(copy, "rb").read() == b"the real package"
+    assert os.stat(copy).st_mode & 0o777 == 0o600
+    link = tmp_path / "bar-1.0-1-x86_64.pkg.tar.zst"
+    link.symlink_to(pkg)
+    with pytest.raises(OSError):
+        ur.taken([str(link)], str(into), uid)
+    with pytest.raises(ValueError):
+        ur.taken([str(pkg)], str(tmp_path / "other"), uid + 1)

@@ -1,5 +1,5 @@
 {
-  "total_comment_lines": 7647,
+  "total_comment_lines": 7644,
   "files_with_comments": 293,
   "files": {
     "shell/components/ActionMenu.qml": 23,
@@ -170,7 +170,7 @@
     "shell/services/Hyde.qml": 20,
     "shell/services/Idle.qml": 39,
     "shell/services/Island.qml": 74,
-    "shell/services/Kittymux.qml": 104,
+    "shell/services/Kittymux.qml": 103,
     "shell/services/Limits.qml": 104,
     "shell/services/Media.qml": 49,
     "shell/services/MemLog.qml": 4,
@@ -178,7 +178,7 @@
     "shell/services/Notes.qml": 6,
     "shell/services/NotifAdapters.qml": 91,
     "shell/services/NotifItem.qml": 36,
-    "shell/services/Notifs.qml": 237,
+    "shell/services/Notifs.qml": 235,
     "shell/services/OllamaService.qml": 194,
     "shell/services/Pointer.qml": 21,
     "shell/services/Reminders.qml": 23,

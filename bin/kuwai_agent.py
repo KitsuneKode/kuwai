@@ -482,18 +482,44 @@ def tool_system_info(_args):
     return "\n".join(lines)
 
 
+SECRET_TOKEN = re.compile(r"\b(sk-(ant-|proj-)?[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,}"
+                          r"|glpat-[A-Za-z0-9_-]{20,}|xox[abpr]-[A-Za-z0-9-]{10,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{35}"
+                          r"|npm_[A-Za-z0-9]{30,}|hf_[A-Za-z0-9]{30,})\b"
+                          r"|eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]*"
+                          r"|-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?(-----END [A-Z ]*PRIVATE KEY-----|$)")
+
+
+def _entropy(s):
+    import math
+    from collections import Counter
+    n = len(s)
+    return -sum(c / n * math.log2(c / n) for c in Counter(s).values()) if n else 0.0
+
+
+def without_secrets(text):
+    """Text for the model with anything secret-shaped replaced, by the same rules the
+    clipboard panel masks with: known token shapes, JWTs, private keys, and one long
+    random-looking word."""
+    out = SECRET_TOKEN.sub("[secret removed]", text)
+    t = out.strip()
+    if re.fullmatch(r"\S{24,200}", t) and not re.match(r"(https?:|file:|/|~)", t) and re.search(r"[a-z]", t) \
+            and re.search(r"[A-Z]", t) and re.search(r"\d", t) and _entropy(t) > 4.0:
+        return "[secret removed]"
+    return out
+
+
 def tool_read_clipboard(_args):
     p = _run(["wl-paste", "--no-newline", "--type", "text"])
     if p.returncode != 0:
         raise ToolError("The clipboard is empty or holds no text")
-    return _cap(p.stdout, 8192)
+    return _cap(without_secrets(p.stdout), 8192)
 
 
 def tool_read_selection(_args):
     p = _run(["wl-paste", "--no-newline", "--primary"])
     if p.returncode != 0 or not p.stdout:
         raise ToolError("Nothing is selected")
-    return _cap(p.stdout, 8192)
+    return _cap(without_secrets(p.stdout), 8192)
 
 
 BROWSER_UA = "Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0"
@@ -887,7 +913,7 @@ def tool_web_fetch(args):
     if looks_html and (len(text) < 800 or "enable javascript" in text.lower()) and sandbox_ready() \
             and _render_allowed(url):
         try:
-            rendered = page_text(kuwai_sandbox.render_page(url))
+            rendered = page_text(kuwai_sandbox.render_html(page))
             if len(rendered) > len(text):
                 text = rendered
         except kuwai_sandbox.SandboxError:
@@ -1466,8 +1492,8 @@ ROUTES = [
 ]
 
 
-CHAT_SAFE = {"web_search", "web_fetch", "shop_search", "active_window", "system_info", "read_clipboard",
-             "read_selection", "ask_user", "read", "ls", "find", "grep", "system_audit"}
+CHAT_SAFE = {"web_search", "web_fetch", "shop_search", "active_window", "system_info",
+             "read_selection", "ask_user", "read", "ls", "find", "grep"}
 
 
 def route_tools(convo, attachments=False, mode="agent"):
