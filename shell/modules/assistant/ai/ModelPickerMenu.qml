@@ -139,7 +139,7 @@ Item {
                     x: 14
                     anchors.verticalCenter: parent.verticalCenter
                     text: menu.query ? menu.query : "Model"
-                    size: 13
+                    size: Theme.tBody
                     weight: menu.query ? Theme.wRegular : Theme.wSemibold
                     color: menu.query ? Theme.textPrimary : Theme.textSecondary
                 }
@@ -147,7 +147,7 @@ Item {
                     anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
                     text: menu.query ? (menu.shown.length ? "" : "No match")
                         : OllamaService.messages.length > 0 ? "↵ switch · ⌃↵ new chat with it" : "Type to filter"
-                    size: 11
+                    size: Theme.tFootnote
                     color: Theme.textTertiary
                 }
                 Rectangle { anchors { left: parent.left; right: parent.right; bottom: parent.bottom } height: 1; color: Theme.wash(1) }
@@ -185,7 +185,7 @@ Item {
                         visible: row.sep
                         x: 12; y: 10
                         text: "Other installed"
-                        size: 11
+                        size: Theme.tFootnote
                         weight: Theme.wMedium
                         color: Theme.textTertiary
                     }
@@ -198,7 +198,7 @@ Item {
                             spacing: 8
                             Label {
                                 text: row.modelData.label
-                                size: 13
+                                size: Theme.tBody
                                 weight: Theme.wMedium
                                 color: row.modelData.other ? Theme.textSecondary : Theme.textPrimary
                                 elide: Text.ElideRight
@@ -226,7 +226,7 @@ Item {
                         Label {
                             width: parent.width
                             text: row.modelData.detail
-                            size: 12
+                            size: Theme.tSub
                             color: Theme.textTertiary
                             elide: Text.ElideRight
                         }
@@ -241,7 +241,7 @@ Item {
                             spacing: 5
                             anchors.verticalCenter: parent.verticalCenter
                             Rectangle { width: 6; height: 6; radius: 3; color: Theme.green; anchors.verticalCenter: parent.verticalCenter }
-                            Label { text: "Loaded"; size: 11; color: Theme.textTertiary; anchors.verticalCenter: parent.verticalCenter }
+                            Label { text: "Loaded"; size: Theme.tFootnote; color: Theme.textTertiary; anchors.verticalCenter: parent.verticalCenter }
                         }
                         Icon {
                             visible: row.current

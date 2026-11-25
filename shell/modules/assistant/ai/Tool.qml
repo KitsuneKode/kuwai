@@ -106,7 +106,7 @@ Item {
 
                 Label {
                     text: root.part.title || "Tool"
-                    size: 13
+                    size: Theme.tBody
                     weight: root.running ? Theme.wMedium : Theme.wRegular
                     color: root.running ? Theme.textPrimary : Theme.textSecondary
                     elide: Text.ElideRight
@@ -126,7 +126,7 @@ Item {
                 Label {
                     visible: root.question && root.status === "completed"
                     text: root.part.output || ""
-                    size: 12
+                    size: Theme.tSub
                     weight: Theme.wMedium
                     color: Theme.textSecondary
                     elide: Text.ElideRight
@@ -144,7 +144,7 @@ Item {
                         id: exitLabel
                         anchors.centerIn: parent
                         text: "exit " + root.exitCode
-                        size: 11
+                        size: Theme.tFootnote
                         weight: Theme.wMedium
                         color: Theme.red
                         font.features: { "tnum": 1 }
@@ -153,7 +153,7 @@ Item {
                 Label {
                     visible: root.part.where === "sandbox" && !root.running
                     text: "Sandbox"
-                    size: 11
+                    size: Theme.tFootnote
                     color: Theme.textTertiary
                     anchors.verticalCenter: parent.verticalCenter
                 }
@@ -161,7 +161,7 @@ Item {
                     readonly property real ms: root.part.endedAt > root.part.startedAt && root.part.startedAt > 0 ? root.part.endedAt - root.part.startedAt : 0
                     visible: root.statusText === "" && !root.running && ms > 0 && !root.question
                     text: ms < 1000 ? Math.round(ms) + " ms" : (ms / 1000).toFixed(1) + "s"
-                    size: 12
+                    size: Theme.tSub
                     color: Theme.textTertiary
                     font.features: { "tnum": 1 }
                     anchors.verticalCenter: parent.verticalCenter
@@ -169,7 +169,7 @@ Item {
                 Label {
                     visible: root.statusText !== ""
                     text: root.statusText
-                    size: 12
+                    size: Theme.tSub
                     color: root.status === "failed" ? Theme.red : Theme.textTertiary
                     anchors.verticalCenter: parent.verticalCenter
                 }
@@ -266,7 +266,7 @@ Item {
                         Label {
                             visible: bodyLabel.truncated || root.showAll
                             text: root.showAll ? "Show less" : "Show all"
-                            size: 12
+                            size: Theme.tSub
                             weight: Theme.wMedium
                             color: Theme.accent
                             MouseArea {
@@ -285,7 +285,7 @@ Item {
                             id: copyLabel
                             property bool copied: false
                             text: copied ? "Copied" : "Copy"
-                            size: 12
+                            size: Theme.tSub
                             weight: Theme.wMedium
                             color: copied ? Theme.green : Theme.textTertiary
                             Timer { id: copiedTimer; interval: 1500; onTriggered: copyLabel.copied = false }

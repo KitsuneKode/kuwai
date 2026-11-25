@@ -88,7 +88,7 @@ Item {
                         anchors.centerIn: parent
                         spacing: 6
                         Icon { name: /\.pdf$/i.test(parent.parent.modelData.name) ? "file-pdf" : "file-text"; size: 13; color: Theme.textTertiary; anchors.verticalCenter: parent.verticalCenter }
-                        Label { text: parent.parent.modelData.name; size: 12; color: Theme.textSecondary; anchors.verticalCenter: parent.verticalCenter }
+                        Label { text: parent.parent.modelData.name; size: Theme.tSub; color: Theme.textSecondary; anchors.verticalCenter: parent.verticalCenter }
                     }
                 }
             }
@@ -101,7 +101,7 @@ Item {
             Icon { name: "app-window"; size: 12; color: Theme.textTertiary; anchors.verticalCenter: parent.verticalCenter }
             Label {
                 text: root.msg.context ? [root.msg.context.app, root.msg.context.title].filter(s => !!s).join(" · ") : ""
-                size: 12
+                size: Theme.tSub
                 color: Theme.textTertiary
                 elide: Text.ElideRight
                 width: Math.min(implicitWidth, col.width * 0.7)
@@ -211,13 +211,13 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 Shimmer {
                     text: waiting.loading ? "Loading " + OllamaService.modelLabel(root.msg.model) + " into memory" : "Thinking"
-                    size: 14
+                    size: Theme.tCallout
                     anchors.verticalCenter: parent.verticalCenter
                 }
                 Label {
                     visible: waiting.secs >= 2
                     text: waiting.secs + "s"
-                    size: 12
+                    size: Theme.tSub
                     color: Theme.textDim
                     font.features: { "tnum": 1 }
                     anchors.verticalCenter: parent.verticalCenter
@@ -373,7 +373,7 @@ Item {
                                                 x: 12
                                                 anchors.verticalCenter: parent.verticalCenter
                                                 text: seg.lang || "code"
-                                                size: 11
+                                                size: Theme.tFootnote
                                                 weight: Theme.wMedium
                                                 color: Theme.textTertiary
                                             }
@@ -383,7 +383,7 @@ Item {
                                                 anchors.verticalCenter: parent.verticalCenter
                                                 spacing: 5
                                                 Icon { name: codeBox.copied ? "check" : "copy"; size: 12; color: codeBox.copied ? Theme.green : Theme.textTertiary; anchors.verticalCenter: parent.verticalCenter }
-                                                Label { text: codeBox.copied ? "Copied" : "Copy"; size: 11; color: codeBox.copied ? Theme.green : Theme.textTertiary; anchors.verticalCenter: parent.verticalCenter }
+                                                Label { text: codeBox.copied ? "Copied" : "Copy"; size: Theme.tFootnote; color: codeBox.copied ? Theme.green : Theme.textTertiary; anchors.verticalCenter: parent.verticalCenter }
                                             }
                                             MouseArea {
                                                 anchors.right: parent.right
@@ -463,7 +463,7 @@ Item {
                         anchors.centerIn: parent
                         spacing: 6
                         Icon { name: "file-code"; size: 13; color: Theme.textTertiary; anchors.verticalCenter: parent.verticalCenter }
-                        Label { text: fileChip.modelData; size: 12; color: Theme.textSecondary; anchors.verticalCenter: parent.verticalCenter
+                        Label { text: fileChip.modelData; size: Theme.tSub; color: Theme.textSecondary; anchors.verticalCenter: parent.verticalCenter
                                 elide: Text.ElideMiddle; width: Math.min(implicitWidth, Math.max(80, col.width - 64)) }
                     }
                     MouseArea {
@@ -492,7 +492,7 @@ Item {
                     anchors.centerIn: parent
                     spacing: 6
                     Icon { name: "folder-open"; size: 13; color: Theme.textTertiary; anchors.verticalCenter: parent.verticalCenter }
-                    Label { text: "Sandbox folder"; size: 12; color: Theme.textTertiary; anchors.verticalCenter: parent.verticalCenter }
+                    Label { text: "Sandbox folder"; size: Theme.tSub; color: Theme.textTertiary; anchors.verticalCenter: parent.verticalCenter }
                 }
                 MouseArea { id: folderArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: Apps.open("file://" + OllamaService.sandboxDir()) }
                 activeFocusOnTab: true
@@ -528,7 +528,7 @@ Item {
                         Icon { name: src.modelData.read ? "file-text" : "globe-simple"; size: 12; color: Theme.textTertiary; anchors.verticalCenter: parent.verticalCenter }
                         Label {
                             text: src.modelData.domain
-                            size: 12
+                            size: Theme.tSub
                             color: srcArea.containsMouse ? Theme.textPrimary : Theme.textSecondary
                             anchors.verticalCenter: parent.verticalCenter
                         }
@@ -563,7 +563,7 @@ Item {
                        root.msg.status === "interrupted" ? "Stopped" : root.msg.status === "max_tool_rounds" ? "Stopped after 6 tool rounds"
                        : root.msg.status === "repeating" ? "Stopped: it was repeating itself" : ""]
                       .filter(s => !!s).join(" · ")
-                size: 12
+                size: Theme.tSub
                 color: Theme.textTertiary
                 leftPadding: 6
                 anchors.verticalCenter: parent.verticalCenter

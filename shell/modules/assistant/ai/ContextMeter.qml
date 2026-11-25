@@ -49,7 +49,7 @@ Item {
         }
         Label {
             text: Math.round(root.ratio * 100) + "%"
-            size: 12
+            size: Theme.tSub
             color: Theme.textTertiary
             anchors.verticalCenter: parent.verticalCenter
         }
@@ -76,14 +76,14 @@ Item {
             Label {
                 text: OllamaService.contextUsed.toLocaleString(Qt.locale(), "f", 0) + " of "
                       + OllamaService.contextTotal.toLocaleString(Qt.locale(), "f", 0) + " tokens"
-                size: 12
+                size: Theme.tSub
                 weight: Theme.wMedium
                 color: Theme.textPrimary
             }
             Label {
                 text: OllamaService.compactNext ? "Summarises before your next message"
                     : OllamaService.summary ? "Earlier messages are summarised" : "Older messages get summarised at 75%"
-                size: 11
+                size: Theme.tFootnote
                 color: Theme.textTertiary
             }
         }

@@ -40,7 +40,7 @@ Rectangle {
                     : root.kind === "write" ? (root.request.summary || "Change a file") + "?"
                     : root.kind === "launch" ? (root.request.summary || "Open an app") + "?"
                     : "Open this link?"
-                size: 13
+                size: Theme.tBody
                 weight: Theme.wSemibold
                 color: Theme.textPrimary
                 anchors.verticalCenter: parent.verticalCenter
@@ -79,7 +79,7 @@ Rectangle {
             Label {
                 text: root.kind === "write" ? "Only this file changes." : "It runs as you, in your home folder."
                 visible: root.kind === "command" || root.kind === "write"
-                size: 12
+                size: Theme.tSub
                 color: Theme.textTertiary
                 anchors.left: parent.left
                 anchors.right: btnRow.left
@@ -111,11 +111,11 @@ Rectangle {
             anchors.right: parent.right
             spacing: 4
             KeyCap { text: "Esc"; size: Theme.tCaption }
-            Label { text: "don't"; size: 11; color: Theme.textTertiary; anchors.verticalCenter: parent.verticalCenter }
+            Label { text: "don't"; size: Theme.tFootnote; color: Theme.textTertiary; anchors.verticalCenter: parent.verticalCenter }
             Item { width: 8; height: 1 }
             KeyCap { text: "⌃"; size: Theme.tCaption }
             KeyCap { text: "↵"; size: Theme.tCaption }
-            Label { text: root.verb.toLowerCase(); size: 11; color: Theme.textTertiary; anchors.verticalCenter: parent.verticalCenter }
+            Label { text: root.verb.toLowerCase(); size: Theme.tFootnote; color: Theme.textTertiary; anchors.verticalCenter: parent.verticalCenter }
         }
     }
 }

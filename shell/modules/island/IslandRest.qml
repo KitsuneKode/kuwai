@@ -209,7 +209,35 @@ Item {
     // taking over from a recording) arrives like the capsules' content: from
     // 0.97, a blur clearing, while the notch springs to its new width.
     property real actReveal: 1
-    onActivityChanged: if (activity !== "" && activity !== "moment" && !Theme.reduceMotion) { actReveal = 0; actIn.restart(); }
+    property string lastActivity: ""
+    onActivityChanged: {
+        if (activity !== "" && activity !== "moment" && !Theme.reduceMotion) { actReveal = 0; actIn.restart(); }
+        if (activity === "" && lastActivity !== "" && lastActivity !== "moment" && !Theme.reduceMotion && actGhost.width > 0) {
+            const at = actChip.mapToItem(rest, 0, 0);
+            actGhost.x = at.x;
+            actGhost.y = at.y;
+            actGhost.show = 1;
+            actOut.restart();
+        }
+        lastActivity = activity;
+    }
+    ShaderEffectSource {
+        id: actGhost
+        sourceItem: actChip
+        live: false
+        hideSource: false
+        width: actChip.width
+        height: actChip.height
+        property real show: 0
+        opacity: Math.max(0.002, show)
+        visible: actChip.visible || show > 0
+        NumberAnimation on show { id: actOut; running: false; to: 0; duration: Theme.quickMs - 10; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+    }
+    Timer {
+        interval: 1000; repeat: true; triggeredOnStart: true
+        running: actChip.visible && rest.actReveal >= 1 && !Theme.reduceMotion
+        onTriggered: actGhost.scheduleUpdate()
+    }
     NumberAnimation { id: actIn; target: rest; property: "actReveal"; to: 1; duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
 
     property real voxSecs: 0

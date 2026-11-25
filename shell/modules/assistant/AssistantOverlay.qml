@@ -267,11 +267,11 @@ Scope {
                     width: Math.min(320, parent.width - 48)
                     visible: root.needsOptIn && win.m > 0.4
                     spacing: 14
-                    Label { width: parent.width; wrapMode: Text.WordWrap; text: "Local assistant"; size: 20; weight: Theme.wSemibold; horizontalAlignment: Text.AlignHCenter }
+                    Label { width: parent.width; wrapMode: Text.WordWrap; text: "Local assistant"; size: Theme.tTitle2; weight: Theme.wSemibold; horizontalAlignment: Text.AlignHCenter }
                     Label {
                         width: parent.width; wrapMode: Text.WordWrap; horizontalAlignment: Text.AlignHCenter
                         text: "Chat with Ollama on this machine. Off until you opt in — like Omarchy Quattro, nothing runs in the background without your choice."
-                        size: 13; color: Theme.textSecondary
+                        size: Theme.tBody; color: Theme.textSecondary
                     }
                     Row {
                         anchors.horizontalCenter: parent.horizontalCenter
@@ -348,7 +348,7 @@ Scope {
                                         Label {
                                             readonly property var sess: OllamaService.sessions.find(x => x.id === OllamaService.activeSessionId)
                                             text: sess && sess.title && OllamaService.messages.length > 0 ? sess.title : "New chat"
-                                            size: 14
+                                            size: Theme.tCallout
                                             weight: Theme.wSemibold
                                             color: Theme.textPrimary
                                             elide: Text.ElideRight
@@ -358,7 +358,7 @@ Scope {
                                             visible: OllamaService.status !== "ready"
                                             spacing: 6
                                             Rectangle { width: 6; height: 6; radius: 3; color: Theme.red; anchors.verticalCenter: parent.verticalCenter }
-                                            Label { text: "Ollama isn't running"; size: 12; color: Theme.textTertiary }
+                                            Label { text: "Ollama isn't running"; size: Theme.tSub; color: Theme.textTertiary }
                                         }
                                     }
                                 }
@@ -413,7 +413,7 @@ Scope {
                                                 visible: OllamaService.status !== "ready"
                                                 anchors.horizontalCenter: parent.horizontalCenter
                                                 text: OllamaService.status === "loading" ? "Waking the model…" : "It runs as a system service: sudo systemctl start ollama"
-                                                size: 13
+                                                size: Theme.tBody
                                                 color: Theme.textTertiary
                                             }
                                             Ui.Button {
@@ -512,7 +512,7 @@ Scope {
                                             Icon { name: "warning-circle"; size: 15; color: Theme.red; anchors.verticalCenter: parent.verticalCenter }
                                             Label {
                                                 text: OllamaService.errorText
-                                                size: 13
+                                                size: Theme.tBody
                                                 color: Theme.textSecondary
                                                 wrapMode: Text.Wrap
                                                 width: Math.min(implicitWidth, parent.width - 90)
@@ -520,7 +520,7 @@ Scope {
                                             }
                                             Label {
                                                 text: "Try again"
-                                                size: 13
+                                                size: Theme.tBody
                                                 weight: Theme.wMedium
                                                 color: Theme.accent
                                                 anchors.verticalCenter: parent.verticalCenter
@@ -856,14 +856,14 @@ Scope {
 
                                             Label {
                                                 text: modelData.name || "Application"
-                                                size: 13
+                                                size: Theme.tBody
                                                 weight: Theme.wSemibold
                                                 color: Theme.textPrimary
                                             }
 
                                             Label {
                                                 text: modelData.comment || modelData.id || "Desktop Application"
-                                                size: 11
+                                                size: Theme.tFootnote
                                                 color: Theme.textTertiary
                                                 elide: Text.ElideRight
                                                 width: 380

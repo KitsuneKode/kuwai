@@ -98,7 +98,7 @@ Rectangle {
         visible: opacity > 0
         z: 20
         Behavior on opacity { NumberAnimation { duration: Theme.colorMs } }
-        Label { anchors.centerIn: parent; text: "Drop to attach"; size: 13; weight: Theme.wMedium; color: Theme.accent }
+        Label { anchors.centerIn: parent; text: "Drop to attach"; size: Theme.tBody; weight: Theme.wMedium; color: Theme.accent }
     }
 
     property int editIndex: -1
@@ -165,7 +165,7 @@ Rectangle {
                     : OllamaService.busyHere ? "Queued · sends when this answer is done"
                     : OllamaService.streaming ? "Queued · another chat is answering; this one is next" : "Queued"
                 visible: queueList.items.length > 0
-                size: 11
+                size: Theme.tFootnote
                 weight: Theme.wMedium
                 color: Theme.textTertiary
                 leftPadding: 6
@@ -211,7 +211,7 @@ Rectangle {
                     Label {
                         anchors { left: ring.right; leftMargin: 8; right: qActions.left; rightMargin: 6; verticalCenter: parent.verticalCenter }
                         text: (qrow.modelData.image ? "Screenshot · " : "") + qrow.modelData.text.split("\n")[0]
-                        size: 13
+                        size: Theme.tBody
                         color: Theme.textSecondary
                         elide: Text.ElideRight
                     }
@@ -289,7 +289,7 @@ Rectangle {
                         }
                         Label {
                             text: chip.modelData.label
-                            size: 12
+                            size: Theme.tSub
                             color: Theme.textSecondary
                             elide: Text.ElideRight
                             width: Math.min(implicitWidth, 240)
@@ -546,7 +546,7 @@ Rectangle {
                         Item {
                             id: chatSeg
                             width: chatLbl.implicitWidth + 20; height: 24
-                            Label { id: chatLbl; anchors.centerIn: parent; text: "Chat"; size: 12; weight: Theme.wMedium
+                            Label { id: chatLbl; anchors.centerIn: parent; text: "Chat"; size: Theme.tSub; weight: Theme.wMedium
                                     color: !modeSwitch.agent ? Theme.textPrimary : Theme.textTertiary }
                             MouseArea { id: chatSegArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                                         onClicked: { OllamaService.mode = "chat"; OllamaService.syncCurrentSession(); } }
@@ -566,7 +566,7 @@ Rectangle {
                                 spacing: 5
                                 Icon { anchors.verticalCenter: parent.verticalCenter; name: "lightning"; style: modeSwitch.agent ? "fill" : "regular"; size: 12
                                        color: modeSwitch.agent ? Theme.accent : Theme.textTertiary }
-                                Label { anchors.verticalCenter: parent.verticalCenter; text: "Agent"; size: 12; weight: Theme.wMedium
+                                Label { anchors.verticalCenter: parent.verticalCenter; text: "Agent"; size: Theme.tSub; weight: Theme.wMedium
                                         color: modeSwitch.agent ? Theme.textPrimary : Theme.textTertiary }
                             }
                             MouseArea { id: agentSegArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
@@ -605,7 +605,7 @@ Rectangle {
 
                         Label {
                             text: OllamaService.modelLabel(OllamaService.model)
-                            size: 13
+                            size: Theme.tBody
                             weight: Theme.wMedium
                             color: Theme.textPrimary
                             elide: Text.ElideRight

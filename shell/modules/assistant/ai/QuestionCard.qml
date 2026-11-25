@@ -39,7 +39,7 @@ Rectangle {
             Label {
                 width: parent.width - qIcon.width - 8
                 text: root.request.summary || ""
-                size: 13
+                size: Theme.tBody
                 weight: Theme.wSemibold
                 color: Theme.textPrimary
                 wrapMode: Text.Wrap
@@ -81,7 +81,7 @@ Rectangle {
                             id: optLabel
                             anchors { left: key.right; leftMargin: 10; right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter }
                             text: opt.modelData
-                            size: 13
+                            size: Theme.tBody
                             color: optArea.containsMouse ? Theme.textPrimary : Theme.textSecondary
                             wrapMode: Text.Wrap
                             Behavior on color { ColorAnimation { duration: Theme.colorMs } }
@@ -111,7 +111,7 @@ Rectangle {
             height: 18
             Label {
                 text: root.options.length ? "Or type your own answer below" : "Type your answer below"
-                size: 12
+                size: Theme.tSub
                 color: Theme.textTertiary
                 anchors.verticalCenter: parent.verticalCenter
             }
@@ -120,12 +120,12 @@ Rectangle {
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 4
                 KeyCap { text: "↵"; size: Theme.tCaption }
-                Label { text: "answer"; size: 11; color: Theme.textTertiary; anchors.verticalCenter: parent.verticalCenter }
+                Label { text: "answer"; size: Theme.tFootnote; color: Theme.textTertiary; anchors.verticalCenter: parent.verticalCenter }
                 Item { width: 8; height: 1 }
                 KeyCap { text: "Esc"; size: Theme.tCaption }
                 Label {
                     text: "skip"
-                    size: 11
+                    size: Theme.tFootnote
                     color: Theme.textTertiary
                     anchors.verticalCenter: parent.verticalCenter
                     MouseArea { anchors.fill: parent; anchors.margins: -4; cursorShape: Qt.PointingHandCursor; onClicked: root.skipped() }

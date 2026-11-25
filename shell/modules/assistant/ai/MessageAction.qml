@@ -51,6 +51,6 @@ Rectangle {
         border.width: 1
         border.color: Theme.edge(1)
         z: 60
-        Label { id: tipLabel; anchors.centerIn: parent; text: ab.tip; size: 11; color: Theme.textPrimary }
+        Label { id: tipLabel; anchors.centerIn: parent; text: ab.tip; size: Theme.tFootnote; color: Theme.textPrimary }
     }
 }

@@ -125,7 +125,7 @@ Item {
                 visible: island.drawn === "unlock"
                 anchors.verticalCenter: parent.verticalCenter
                 text: "Unlocked"
-                size: 13; weight: Theme.wSemibold
+                size: Theme.tBody; weight: Theme.wSemibold
                 color: Theme.positive
             }
 
@@ -141,7 +141,7 @@ Item {
                 visible: island.drawn === "alarm"
                 anchors.verticalCenter: parent.verticalCenter
                 text: Alarms.ringing ? Alarms.ringing.label : ""
-                size: 13; weight: Theme.wSemibold
+                size: Theme.tBody; weight: Theme.wSemibold
             }
             Repeater {
                 model: island.drawn === "alarm" ? [{ id: "snooze", text: "Snooze" }, { id: "stop", text: "Stop" }] : []
@@ -153,7 +153,7 @@ Item {
                     Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
                     scale: actArea.pressed ? 0.97 : 1
                     Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
-                    Label { id: actLabel; anchors.centerIn: parent; text: parent.modelData.text; size: 12; weight: Theme.wSemibold; color: parent.modelData.id === "stop" ? Theme.inkOnLight : Theme.textPrimary }
+                    Label { id: actLabel; anchors.centerIn: parent; text: parent.modelData.text; size: Theme.tSub; weight: Theme.wSemibold; color: parent.modelData.id === "stop" ? Theme.inkOnLight : Theme.textPrimary }
                     MouseArea { id: actArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                         onClicked: parent.modelData.id === "stop" ? Alarms.stop() : Alarms.snooze(9) }
                     activeFocusOnTab: !island.preview
@@ -183,14 +183,14 @@ Item {
                 visible: island.drawn === "timer"
                 anchors.verticalCenter: parent.verticalCenter
                 text: island.last ? island.last.label : ""
-                size: 13; weight: Theme.wMedium
+                size: Theme.tBody; weight: Theme.wMedium
                 color: Qt.rgba(1, 1, 1, 0.75)
             }
             Label {
                 visible: island.drawn === "timer"
                 anchors.verticalCenter: parent.verticalCenter
                 text: island.done ? "Done" : island.last ? Timers.clock(Timers.remaining(island.last)) : ""
-                size: 13; weight: Theme.wSemibold; rounded: true
+                size: Theme.tBody; weight: Theme.wSemibold; rounded: true
                 color: island.done ? Theme.positive : Theme.orange
                 tabular: true
             }

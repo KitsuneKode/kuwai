@@ -26,13 +26,13 @@ Rectangle {
                 spacing: 7
                 anchors.verticalCenter: parent.verticalCenter
                 Icon { name: "list-checks"; size: 14; color: Theme.textTertiary; anchors.verticalCenter: parent.verticalCenter }
-                Label { text: "Plan"; size: 12; weight: Theme.wSemibold; color: Theme.textSecondary; anchors.verticalCenter: parent.verticalCenter }
+                Label { text: "Plan"; size: Theme.tSub; weight: Theme.wSemibold; color: Theme.textSecondary; anchors.verticalCenter: parent.verticalCenter }
             }
             Label {
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
                 text: root.done + " of " + root.steps.length
-                size: 11
+                size: Theme.tFootnote
                 color: Theme.textTertiary
                 font.features: { "tnum": 1 }
             }
@@ -68,7 +68,7 @@ Rectangle {
                 Label {
                     width: stepRow.width - 25
                     text: stepRow.step.step || ""
-                    size: 13
+                    size: Theme.tBody
                     wrapMode: Text.Wrap
                     weight: stepRow.isNow ? Theme.wMedium : Theme.wRegular
                     color: stepRow.isDone ? Theme.textTertiary : stepRow.isNow ? Theme.textPrimary : Theme.textSecondary

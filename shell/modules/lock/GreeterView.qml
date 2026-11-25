@@ -180,7 +180,7 @@ Item {
         Label {
             anchors.horizontalCenter: parent.horizontalCenter
             text: Dates.longDate(view.now)
-            size: 24; weight: Theme.wSemibold
+            size: Theme.tTitle1; weight: Theme.wSemibold
             color: Qt.alpha(view.tint, 0.88)
         }
         TextMorph {
@@ -193,7 +193,7 @@ Item {
         Label {
             anchors.horizontalCenter: parent.horizontalCenter
             text: view.greeting
-            size: 20; weight: Theme.wMedium
+            size: Theme.tTitle2; weight: Theme.wMedium
             color: Qt.alpha(view.tint, 0.72)
             opacity: 1 - view.f
         }
@@ -278,7 +278,7 @@ Item {
                 opacity: Math.max(0, 1 - view.f * 2.5)
                 visible: opacity > 0.01
                 text: "Press any key to log in"
-                size: 15; weight: Theme.wMedium
+                size: Theme.tHeadline; weight: Theme.wMedium
                 color: Qt.alpha(view.tint, 0.78)
             }
             PasswordPill {

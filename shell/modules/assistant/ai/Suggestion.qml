@@ -35,7 +35,7 @@ Rectangle {
 
         Label {
             text: root.text
-            size: 13
+            size: Theme.tBody
             weight: Theme.wMedium
             color: area.containsMouse ? Theme.textPrimary : Theme.textSecondary
             anchors.verticalCenter: parent.verticalCenter

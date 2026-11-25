@@ -28,7 +28,7 @@ Column {
     Label {
         anchors.horizontalCenter: parent.horizontalCenter
         text: welcome.name
-        size: 18; weight: Theme.wMedium
+        size: Theme.tTitle3; weight: Theme.wMedium
         color: Qt.rgba(1, 1, 1, 0.8)
         layer.enabled: true
         layer.effect: MultiEffect { shadowEnabled: true; shadowBlur: 0.8; shadowOpacity: 0.5 }

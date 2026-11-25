@@ -46,7 +46,7 @@ Item {
                 }
                 Label {
                     text: (Turn.toolSummary(root.parts) || ("Used " + root.parts.length + " tools")) + (root.anyFailed ? " · one failed" : "")
-                    size: 13
+                    size: Theme.tBody
                     color: Theme.textSecondary
                     anchors.verticalCenter: parent.verticalCenter
                 }

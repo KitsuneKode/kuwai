@@ -138,7 +138,7 @@ Column {
             Keys.onEnterPressed: entry.lock.submit()
             Keys.onEscapePressed: { entry.lock.password = ""; entry.dismissed(); }
             Keys.onPressed: event => { entry.activity(); capsAsk.restart(); event.accepted = false; }
-            Label { visible: !field.text && !entry.lock.password; anchors.centerIn: parent; text: entry.placeholder; size: 14; color: Qt.rgba(1, 1, 1, 0.6) }
+            Label { visible: !field.text && !entry.lock.password; anchors.centerIn: parent; text: entry.placeholder; size: Theme.tCallout; color: Qt.rgba(1, 1, 1, 0.6) }
         }
         Rectangle {
             id: go
@@ -169,7 +169,7 @@ Column {
         width: Math.min(implicitWidth, 320)
         elide: Text.ElideRight
         text: entry.lock.checking ? "Checking…" : entry.lock.error || (entry.capsLock ? "Caps Lock is on" : " ")
-        size: 12; weight: entry.lock.error ? Theme.wMedium : Theme.wRegular
+        size: Theme.tSub; weight: entry.lock.error ? Theme.wMedium : Theme.wRegular
         color: entry.lock.error ? Theme.redText : Qt.rgba(1, 1, 1, 0.7)
     }
 }

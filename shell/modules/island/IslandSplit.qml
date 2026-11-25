@@ -456,7 +456,11 @@ Item {
             width: childrenRect.width; height: childrenRect.height
             // The content arrives once the capsule is mostly out, leaves first.
             readonly property real arrive: Math.max(0, Math.min(1, (sv.value - (pill.shown ? 0.45 : 0.6)) / 0.35))
-            opacity: pill.compact ? 0 : arrive * pill.reveal
+            readonly property real fit: {
+                const t = Math.max(0, Math.min(1, ((pill.bodyW > 0 ? pill.w / pill.bodyW : 1) - 0.8) / 0.2));
+                return t * t * (3 - 2 * t);
+            }
+            opacity: pill.compact ? 0 : arrive * pill.reveal * fit
             enabled: !pill.compact
             // Clove's live ears: the icon comes once its capsule has opened,
             // growing from 70 % on the capsule's own spring (its give included).

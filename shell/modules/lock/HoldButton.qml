@@ -90,7 +90,7 @@ Item {
     Label {
         anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom }
         text: btn.holding || btn.held > 0 ? "Hold to " + btn.verb : btn.label
-        size: 12; weight: Theme.wMedium
+        size: Theme.tSub; weight: Theme.wMedium
         color: Qt.rgba(1, 1, 1, btn.holding ? 0.95 : over.hovered ? 0.85 : 0.62)
     }
     HoverHandler { id: over; cursorShape: Qt.PointingHandCursor }

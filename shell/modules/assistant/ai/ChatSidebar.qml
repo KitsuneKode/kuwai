@@ -72,7 +72,7 @@ Rectangle {
                     x: 6
                     anchors.verticalCenter: parent.verticalCenter
                     text: "Chats"
-                    size: 13
+                    size: Theme.tBody
                     weight: Theme.wSemibold
                     color: Theme.textSecondary
                 }
@@ -135,7 +135,7 @@ Rectangle {
                     anchors.horizontalCenter: parent.horizontalCenter
                     y: 24
                     text: root.query ? "No chats match" : "No chats yet"
-                    size: 12
+                    size: Theme.tSub
                     color: Theme.textTertiary
                 }
 
@@ -172,7 +172,7 @@ Rectangle {
                         anchors.bottom: parent.bottom
                         anchors.bottomMargin: 6
                         text: row.modelData.header || ""
-                        size: 11
+                        size: Theme.tFootnote
                         weight: Theme.wMedium
                         color: Theme.textTertiary
                     }
@@ -211,7 +211,7 @@ Rectangle {
                         visible: !!row.hit && !row.asking && !row.renamingThis
                         anchors { left: parent.left; leftMargin: 8; right: parent.right; rightMargin: 8; bottom: parent.bottom; bottomMargin: 7 }
                         text: row.hit
-                        size: 11
+                        size: Theme.tFootnote
                         color: Theme.textTertiary
                         elide: Text.ElideRight
                     }
@@ -235,7 +235,7 @@ Rectangle {
                         visible: !row.isHeader && !row.asking && !row.renamingThis
                         anchors { left: chatState.right; leftMargin: chatState.visible ? 7 : 0; right: trash.left; rightMargin: 4; verticalCenter: parent.verticalCenter; verticalCenterOffset: row.hit ? -8 : 0 }
                         text: row.chat ? (row.chat.title && row.chat.title !== "New Chat" ? row.chat.title : "New chat") : ""
-                        size: 13
+                        size: Theme.tBody
                         weight: row.selected ? Theme.wMedium : Theme.wRegular
                         color: row.selected ? Theme.textPrimary : Theme.textSecondary
                         elide: Text.ElideRight
@@ -280,7 +280,7 @@ Rectangle {
                             x: 8
                             anchors.verticalCenter: parent.verticalCenter
                             text: "Delete this chat?"
-                            size: 13
+                            size: Theme.tBody
                             color: Theme.textPrimary
                         }
                         Row {
@@ -290,7 +290,7 @@ Rectangle {
                             spacing: 12
                             Label {
                                 text: "Cancel"
-                                size: 12
+                                size: Theme.tSub
                                 color: Theme.textTertiary
                                 MouseArea { anchors.fill: parent; anchors.margins: -4; cursorShape: Qt.PointingHandCursor; onClicked: root.confirming = "" }
                                 activeFocusOnTab: true
@@ -302,7 +302,7 @@ Rectangle {
                             }
                             Label {
                                 text: "Delete"
-                                size: 12
+                                size: Theme.tSub
                                 weight: Theme.wSemibold
                                 color: Theme.red
                                 MouseArea {

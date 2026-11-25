@@ -61,7 +61,7 @@ Item {
                     Label {
                         id: title
                         text: root.label
-                        size: 13
+                        size: Theme.tBody
                         color: root.isThinking ? Theme.textTertiary : Theme.textSecondary
                         layer.enabled: sweep.visible
                     }

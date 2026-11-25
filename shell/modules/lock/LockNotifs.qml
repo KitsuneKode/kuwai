@@ -173,7 +173,7 @@ Column {
                         anchors { right: parent.right; top: parent.top; rightMargin: -6; topMargin: -6 }
                         width: Math.max(18, countLabel.implicitWidth + 10); height: 18; radius: 9
                         color: "white"
-                        Label { id: countLabel; anchors.centerIn: parent; text: card.group.count; size: 11; weight: Theme.wBold; rounded: true; color: Theme.inkOnLight }
+                        Label { id: countLabel; anchors.centerIn: parent; text: card.group.count; size: Theme.tFootnote; weight: Theme.wBold; rounded: true; color: Theme.inkOnLight }
                     }
                 }
                 Column {
@@ -187,14 +187,14 @@ Column {
                             width: parent.width - when.width - 8
                             elide: Text.ElideRight
                             text: card.item.app || "Notification"
-                            size: 12; weight: Theme.wMedium
+                            size: Theme.tSub; weight: Theme.wMedium
                             color: Qt.rgba(1, 1, 1, 0.62)
                         }
                         Label {
                             id: when
                             anchors.right: parent.right
                             text: stack.ago(card.item.time)
-                            size: 12
+                            size: Theme.tSub
                             color: Qt.rgba(1, 1, 1, 0.5)
                         }
                     }
@@ -203,7 +203,7 @@ Column {
                         elide: Text.ElideRight
                         text: stack.heading(card.item)
                         textFormat: Text.PlainText
-                        size: 14; weight: Theme.wSemibold
+                        size: Theme.tCallout; weight: Theme.wSemibold
                         color: "white"
                     }
                     Label {
@@ -214,7 +214,7 @@ Column {
                         elide: Text.ElideRight
                         text: card.line
                         textFormat: Text.PlainText
-                        size: 13
+                        size: Theme.tBody
                         font.italic: stack.isCode(card.item)
                         color: Qt.rgba(1, 1, 1, stack.isCode(card.item) ? 0.55 : 0.78)
                     }
@@ -234,7 +234,7 @@ Column {
                         Label {
                             anchors.verticalCenter: parent.verticalCenter
                             text: card.item.status || ""
-                            size: 12; weight: Theme.wMedium
+                            size: Theme.tSub; weight: Theme.wMedium
                             color: card.statusColor
                         }
                     }
@@ -280,7 +280,7 @@ Column {
         anchors.horizontalCenter: parent.horizontalCenter
         visible: stack.groups.length > stack.shownGroups.length
         text: (stack.groups.length - stack.shownGroups.length) + " more"
-        size: 13; weight: Theme.wMedium
+        size: Theme.tBody; weight: Theme.wMedium
         color: Qt.rgba(1, 1, 1, 0.6)
     }
 }

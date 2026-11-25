@@ -172,13 +172,13 @@ Item {
                     visible: SystemStats.weatherTemp !== ""
                     spacing: 7
                     Text { textFormat: Text.PlainText; anchors.verticalCenter: parent.verticalCenter; text: SystemStats.weatherGlyph; font.family: Theme.fontGlyph; font.pixelSize: 18; color: view.tint }
-                    Label { anchors.verticalCenter: parent.verticalCenter; text: SystemStats.weatherTemp; size: 18; weight: Theme.wMedium; color: view.tint }
+                    Label { anchors.verticalCenter: parent.verticalCenter; text: SystemStats.weatherTemp; size: Theme.tTitle3; weight: Theme.wMedium; color: view.tint }
                 }
                 Row {
                     visible: Notifs.muted
                     spacing: 7
                     Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f0594}"; font.family: Theme.fontGlyph; font.pixelSize: 18; color: view.tint }
-                    Label { anchors.verticalCenter: parent.verticalCenter; text: "Focus"; size: 18; weight: Theme.wMedium; color: view.tint }
+                    Label { anchors.verticalCenter: parent.verticalCenter; text: "Focus"; size: Theme.tTitle3; weight: Theme.wMedium; color: view.tint }
                 }
             }
         }
