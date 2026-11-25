@@ -130,7 +130,7 @@ Item {
         agents: on && (agentsLive || agentsLinger.running),
         sys: on && (sysLive || sysLinger.running),
         limits: on && (limitsLive || limitsLinger.running),
-        custom: on && Capsules.latest !== null
+        custom: on && UserCapsules.latest !== null
     })
 
     // ── Who sits where ──
@@ -261,7 +261,7 @@ Item {
             if (name === "more") split.openOverflow(how);
             else if (panel) Island.open(panel, split.bar.screenName, how);
         }
-        function activate(how = "pointer") { if (name === "ask") Agents.goNeeds(); else if (name === "custom") Capsules.activate(); else if (panel) openPanel(how); else if (name === "min") split.bringBack(split.minimized[split.minimized.length - 1]); }
+        function activate(how = "pointer") { if (name === "ask") Agents.goNeeds(); else if (name === "custom") UserCapsules.activate(); else if (panel) openPanel(how); else if (name === "min") split.bringBack(split.minimized[split.minimized.length - 1]); }
         readonly property bool hovered: pillHover.hovered
         readonly property alias inputTarget: hitTarget
         property bool needs: false        // something here waits on you: an orange glass edge
@@ -648,28 +648,28 @@ Item {
     Pill {
         id: customPill
         name: "custom"
-        stateKey: Capsules.latest ? Capsules.latest.name : ""
-        tone: !Capsules.latest ? "transparent" : ({ green: Theme.green, orange: Theme.orange, red: Theme.red })[Capsules.latest.tone] || "transparent"
+        stateKey: UserCapsules.latest ? UserCapsules.latest.name : ""
+        tone: !UserCapsules.latest ? "transparent" : ({ green: Theme.green, orange: Theme.orange, red: Theme.red })[UserCapsules.latest.tone] || "transparent"
         dismissible: true
-        onDismissed: Capsules.dismiss()
+        onDismissed: UserCapsules.dismiss()
         Row {
             spacing: Theme.s1
             Text {
-                visible: !!Capsules.latest && Capsules.latest.glyph !== ""
+                visible: !!UserCapsules.latest && UserCapsules.latest.glyph !== ""
                 anchors.verticalCenter: parent.verticalCenter
                 textFormat: Text.PlainText
-                text: Capsules.latest ? Capsules.latest.glyph : ""
+                text: UserCapsules.latest ? UserCapsules.latest.glyph : ""
                 font.family: Theme.fontGlyph; font.pixelSize: Theme.sp(Theme.glyphS)
                 color: Theme.textSecondary
             }
             Label {
                 anchors.verticalCenter: parent.verticalCenter
-                text: Capsules.latest ? Capsules.latest.text + (Capsules.items.length > 1 ? "  +" + (Capsules.items.length - 1) : "") : ""
+                text: UserCapsules.latest ? UserCapsules.latest.text + (UserCapsules.items.length > 1 ? "  +" + (UserCapsules.items.length - 1) : "") : ""
                 size: Theme.tFootnote; weight: Theme.wMedium
                 tabular: true
             }
         }
-        Accessible.name: Capsules.latest ? Capsules.latest.text : ""
+        Accessible.name: UserCapsules.latest ? UserCapsules.latest.text : ""
     }
 
     // ── Usage limits: when you can carry on (orange: back within soonMs; red: later) ──

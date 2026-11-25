@@ -222,10 +222,10 @@ ShellRoot {
                         restart();
                         return;
                     }
-                    Capsules.raw = { deploy: { text: "Deploy 3/5", glyph: "", tone: "green", since: Date.now() / 1000, until: Date.now() / 1000 + 600 } };
+                    UserCapsules.raw = { deploy: { text: "Deploy 3/5", glyph: "", tone: "green", since: Date.now() / 1000, until: Date.now() / 1000 + 600 } };
                     driver.wait(900);
                     if (!split.demand.custom || !split.pillOf("custom").shown) { scene.fail("a capsule raised by a script did not show"); return; }
-                    Capsules.raw = {};
+                    UserCapsules.raw = {};
                     driver.wait(900);
                     if (split.demand.custom) { scene.fail("a cleared capsule stayed"); return; }
                     console.log(result.saveToFile("/out/island.png") ? "UI_SMOKE_CAPTURED" : "UI_SMOKE_FAILED: capture failed");
