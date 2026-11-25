@@ -62,6 +62,7 @@ def test_not_installed_does_nothing(tmp_path):
     assert not dest.exists()
 
 
+@pytest.mark.skipif(os.geteuid() == 0, reason="as root every folder is writable: the check only applies to the user")
 def test_a_login_screen_you_can_write_gets_no_code_and_says_how_to_close_it(tmp_path):
     home = home_with_data(tmp_path)
     dest = tmp_path / "greeter"
