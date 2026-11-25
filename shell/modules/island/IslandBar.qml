@@ -72,6 +72,7 @@ Scope {
             // only an urgent one keeps the island out, and the dot waits there
             // for when you near it.
             readonly property bool panelHere: Island.panel !== "" && Island.screen === screenName
+            readonly property bool centerHere: Notifs.centerCover === screenName
             property string shownPanel: ""
             onPanelHereChanged: {
                 // The calendar opened from a clock you clicked: that clock flies
@@ -767,14 +768,14 @@ Scope {
                 activity: restRow.activity
                 // Not over a film: lifted for a moment, the island alone comes up.
                 atRest: win.showBar && win.outNow && !Saver.showing && !Saver.locked && !Saver.screensOff && !win.screenFullscreen
-                        && !win.panelHere && !win.grown && !win.bannerHere && !win.peekHere && !win.deviceHere
+                        && !win.panelHere && !win.grown && !win.bannerHere && !win.peekHere && !win.deviceHere && !win.centerHere
                         && restRow.opacity > 0.01
             }
             Item {
                 id: frame
                 // Under the screensaver nothing here is seen: hidden, its
                 // spinners and waveforms stop drawing frames.
-                visible: !Saver.showing
+                visible: !Saver.showing && !win.centerHere
                 width: win.shapeW + win.ear * 2
                 height: Math.max(0, sh.value - win.pull)
                 x: Math.round((win.width - width) / 2)

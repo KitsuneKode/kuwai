@@ -102,7 +102,9 @@ Item {
     readonly property bool asking: agentsHead.tone === "attention"
     readonly property bool agentsWord: agentsHead.tone === "error"
     readonly property bool agentsLive: agentStack.list.length > 0 || agentsHead.tone === "error" || agentsHead.done > 0
-    readonly property bool sysLive: sysMarks.any
+    readonly property string sysKey: sysPill.stateKey + ":" + Updates.setKey + ":" + Alerts.active.map(a => a.id).join()
+    property string sysHidden: ""
+    readonly property bool sysLive: sysMarks.any && sysKey !== sysHidden
     readonly property var limitsPartition: Limits.partitionWith(Agents.extraLimited)
     readonly property var limitsNow: Settings.limitAlerts ? Limits.summarize(limitsPartition) : Limits.summarize(null)
     readonly property string limitsKey: limitsNow.tone + ":" + limitsNow.providers.map(p => p.id).join()
@@ -351,20 +353,23 @@ Item {
             enabled: pill.enabled && pill.panel !== "" && pill.name !== "more"
             target: null
             xAxis.enabled: false
+            dragThreshold: 4
             property real grab: 0
+            property real raw: 0
             property int gesture: 0
             onCanceled: gesture++
             onActiveChanged: {
                 if (active) {
                     gesture++;
                     grab = pull.value;
+                    raw = 0;
                     pull.snap(pull.value);
                     return;
                 }
                 const ended = gesture;
                 const speed = centroid.velocity.y;
                 const opens = pull.value >= pill.pullLine || speed / 1000 > Theme.swipeFlick;
-                const away = pill.dismissible && (pull.value <= -pill.pullLine * 0.6 || speed / 1000 < -Theme.swipeFlick);
+                const away = pill.dismissible && (raw <= -Theme.s3 || speed / 1000 < -Theme.swipeFlick * 0.6);
                 pull.velocity = Theme.reduceMotion ? 0 : speed;
                 pull.target = 0;
                 if (away) { Qt.callLater(() => { if (ended === gesture && !active) pill.dismissed(); }); return; }
@@ -377,6 +382,7 @@ Item {
             onTranslationChanged: {
                 if (!active) return;
                 const d = grab + translation.y, L = pill.pullLine;
+                raw = translation.y;
                 // 1:1 to the line, then rubber-banded; upward only a hint.
                 pull.snap(d <= 0 ? (pill.dismissible ? -Theme.swipeDamp(-d) : -Theme.swipeDamp(-d) * 0.25) : d <= L ? d : L + (d - L) * L * 0.55 / (L + 0.55 * (d - L)));
             }
@@ -622,6 +628,8 @@ Item {
         panel: Alerts.active.length ? "system" : Updates.fresh || Updates.running ? "updates" : Sweep.fresh ? "sweep" : "updates"
         tone: Alerts.active.length ? (Alerts.active[0].level === "crit" ? Theme.red : Theme.orange) : "transparent"
         attention: Alerts.active.length > 0
+        dismissible: true
+        onDismissed: { split.sysHidden = split.sysKey; sysLinger.stop(); }
         SysMarks {
             id: sysMarks
             bar: split.bar

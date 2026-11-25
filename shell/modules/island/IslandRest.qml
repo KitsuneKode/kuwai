@@ -903,7 +903,7 @@ Item {
             else if (m && up) { if (m.dismiss) m.dismiss(); Moments.dismissNow(); }
             // Nothing to act on: the notification center (one place for them).
             else if (!m && down && !Notifs.centerOpen)
-                Notifs.toggleCenter("notifications", "pointer", rest.bar.screenName);
+                Notifs.toggleCenter(centroid.pressPosition.x > rest.width * 0.62 ? "controls" : "notifications", "pointer", rest.bar.screenName);
             pull.velocity = v * 1000;
             pull.target = 0;
         }

@@ -21,7 +21,8 @@ Item {
     readonly property alias sound: sound
     readonly property alias display: display
     readonly property alias tips: tipLayer
-    readonly property var order: ["notifications", "sound", "controls"]   // agents live in the notch (Agents panel)
+    readonly property var order: !center.notch ? ["notifications", "sound", "controls"]
+                                 : center.tab === "notifications" ? ["notifications"] : ["controls", "sound"]
 
     function currentView() {
         return ({ notifications: notifications, sound: sound, controls: display })[center.tab] || notifications;
@@ -45,17 +46,19 @@ Item {
     Item {
         id: header
         anchors { left: parent.left; right: parent.right; top: parent.top; margins: 16 }
-        height: 36
+        visible: content.order.length > 1
+        height: visible ? 36 : 0
 
         Segmented {
             id: tabs
             width: parent.width
             current: content.center.tab
-            options: [
-                { id: "notifications", label: "Notifications", badge: Notifs.inbox },
-                { id: "sound", label: "Sound" },
-                { id: "controls", label: "Controls" }
-            ]
+            readonly property var all: ({
+                notifications: { id: "notifications", label: "Notifications", badge: Notifs.inbox },
+                sound: { id: "sound", label: "Sound" },
+                controls: { id: "controls", label: "Controls" }
+            })
+            options: content.order.map(id => all[id])
             onPicked: id => { Notifs.centerTab = id; search.forceActiveFocus(); }
         }
     }
@@ -137,7 +140,7 @@ Item {
                     const n = content.order.length;
                     const i = Math.max(0, content.order.indexOf(content.center.tab));
                     Notifs.centerTab = content.order[(i + (k === Qt.Key_Backtab ? n - 1 : 1)) % n];
-                } else if (alt && k >= Qt.Key_1 && k <= Qt.Key_3) {
+                } else if (alt && k >= Qt.Key_1 && k < Qt.Key_1 + content.order.length) {
                     Notifs.centerTab = content.order[k - Qt.Key_1];
                 } else if (!content.currentView().key(event, search.text === "")) {
                     return;
@@ -182,11 +185,29 @@ Item {
         id: pages
         anchors { left: parent.left; right: parent.right; top: searchBox.bottom; bottom: footer.top; leftMargin: 14; rightMargin: 14; topMargin: 14; bottomMargin: 18 }
 
-        Spring { id: tabT; tier: Theme.springModerate; target: content.order.indexOf(content.center.tab); Component.onCompleted: tabT.settle() }
-        // Each page: fully there at its index, fading and drifting 24px
-        // toward the side it sits on as the selection moves away.
-        function vis(i) { return Math.max(0, 1 - Math.abs(tabT.value - i)); }
-        function drift(i) { return Theme.reduceMotion ? 0 : (i - tabT.value) * 24; }
+        // A switch crossfades only the two pages involved (12 px drift, none
+        // from a key); retargeted mid-way, the more visible page leaves.
+        readonly property var rank: ["notifications", "sound", "controls"]
+        property string shown: content.center.tab
+        property string prev: ""
+        property int dir: 1
+        property bool keyed: false
+        readonly property string asked: content.center.tab
+        onAskedChanged: {
+            if (asked === shown) return;
+            prev = swapT.value >= 0.5 || prev === "" ? shown : prev;
+            dir = rank.indexOf(asked) >= rank.indexOf(prev) ? 1 : -1;
+            keyed = content.usedKeys;
+            shown = asked;
+            swapT.snap(0);
+            swapT.target = 1;
+        }
+        Spring { id: swapT; tier: Theme.springModerate; target: 1; Component.onCompleted: swapT.settle() }
+        function vis(id) { return id === shown ? swapT.value : id === prev ? 1 - swapT.value : 0; }
+        function drift(id) {
+            if (Theme.reduceMotion || keyed) return 0;
+            return id === shown ? dir * 12 * (1 - swapT.value) : id === prev ? -dir * 12 * swapT.value : 0;
+        }
 
         NotificationsView {
             hosting: content.hosting
@@ -195,8 +216,8 @@ Item {
             center: content.center
             anchors.fill: parent
             visible: opacity > 0.01
-            opacity: pages.vis(0)
-            transform: Translate { x: pages.drift(0) }
+            opacity: pages.vis("notifications")
+            transform: Translate { x: pages.drift("notifications") }
         }
         SoundView {
             hosting: content.hosting
@@ -205,8 +226,8 @@ Item {
             center: content.center
             anchors.fill: parent
             visible: opacity > 0.01
-            opacity: pages.vis(1)
-            transform: Translate { x: pages.drift(1) }
+            opacity: pages.vis("sound")
+            transform: Translate { x: pages.drift("sound") }
         }
         DisplayView {
             hosting: content.hosting
@@ -215,8 +236,8 @@ Item {
             center: content.center
             anchors.fill: parent
             visible: opacity > 0.01
-            opacity: pages.vis(2)
-            transform: Translate { x: pages.drift(2) }
+            opacity: pages.vis("controls")
+            transform: Translate { x: pages.drift("controls") }
         }
     }
 
