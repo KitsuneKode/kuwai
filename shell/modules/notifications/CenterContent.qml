@@ -47,7 +47,7 @@ Item {
         id: header
         anchors { left: parent.left; right: parent.right; top: parent.top; margins: 16 }
         visible: height > 1
-        height: content.order.length > 1 ? 36 : 0
+        height: content.order.length > 1 ? tabs.implicitHeight : 0
         clip: true
         Behavior on height { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.settleMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
 
@@ -69,7 +69,7 @@ Item {
     Rectangle {
         id: searchBox
         anchors { left: parent.left; right: parent.right; top: header.bottom; margins: 16; topMargin: 12 }
-        height: 36
+        height: Theme.sp(36)
         radius: Theme.r2
         color: Qt.rgba(1, 1, 1, search.activeFocus ? 0.10 : 0.07)
         border.width: 1
@@ -92,7 +92,8 @@ Item {
 
         TextInput {
             id: search
-            anchors { left: searchGlyph.right; right: clearSearch.left; verticalCenter: parent.verticalCenter; leftMargin: 9; rightMargin: 6 }
+            anchors { left: searchGlyph.right; right: clearSearch.left; top: parent.top; bottom: parent.bottom; leftMargin: 9; rightMargin: 6 }
+            verticalAlignment: TextInput.AlignVCenter
             onTextChanged: {
                 content.center.query = text;
                 Qt.callLater(() => content.currentView().selectFirst());
@@ -101,17 +102,20 @@ Item {
             selectionColor: Qt.alpha(Theme.blue, 0.5)
             selectedTextColor: Theme.textPrimary
             font.family: Theme.fontText
-            font.pixelSize: 14
-            font.variableAxes: ({ "opsz": Theme.opszFor(14), "wght": Theme.wRegular })
-            font.letterSpacing: Theme.tracking(14, false)
+            readonly property int px: Math.round(Theme.tBody * Theme.textScale)
+            font.pixelSize: px
+            font.variableAxes: ({ "opsz": Theme.opszFor(px), "wght": Theme.wRegular })
+            font.letterSpacing: Theme.tracking(px, false)
             renderType: Text.NativeRendering
             cursorDelegate: SpringCaret {}
             clip: true
 
             Label {
                 visible: search.text === ""
+                width: parent.width
+                elide: Text.ElideRight
                 anchors.verticalCenter: parent.verticalCenter
-                text: ({ notifications: "Search notifications", sound: "Search apps and devices", controls: "Search networks and devices" })[content.center.tab] || "Search"
+                text: ({ notifications: "Search notifications", sound: "Search sound", controls: "Search controls" })[content.center.tab] || "Search"
                 size: Theme.tBody
                 color: Theme.textTertiary
             }
@@ -137,7 +141,7 @@ Item {
                 } else if (k === Qt.Key_Escape) {
                     if (search.text !== "") search.text = "";
                     else if (!content.currentView().back || !content.currentView().back())
-                        Notifs.setCenter(false, "key");
+                        Notifs.centerBack();
                 } else if (ctrl && (k === Qt.Key_Tab || k === Qt.Key_Backtab)) {
                     const n = content.order.length;
                     const i = Math.max(0, content.order.indexOf(content.center.tab));

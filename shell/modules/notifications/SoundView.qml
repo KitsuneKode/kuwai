@@ -133,7 +133,7 @@ Item {
             // ── Strips ───────────────────────────────────────────────────
             Item {
                 width: parent.width
-                height: 318
+                height: masterStrip.height + 16
 
                 Flickable {
                     id: strips
@@ -174,12 +174,13 @@ Item {
                 Rectangle {
                     id: masterCard
                     anchors { right: parent.right; top: parent.top; bottom: parent.bottom }
-                    width: 84
+                    width: masterStrip.width + 8
                     radius: 18
                     color: Theme.wash(0)
                     border.width: 1
                     border.color: Theme.edge(1)
                     Strip {
+                        id: masterStrip
                         anchors.centerIn: parent
                         node: view.sink
                         title: "Master"
@@ -229,10 +230,11 @@ Item {
         readonly property real vol: audio ? audio.volume : 0
         readonly property bool muted: audio ? audio.muted : false
 
-        width: 76
-        height: 318
+        width: Theme.sp(76)
+        height: stripCol.implicitHeight + 16
 
         Column {
+            id: stripCol
             anchors.horizontalCenter: parent.horizontalCenter
             y: 8
             spacing: 6
@@ -264,7 +266,7 @@ Item {
             }
             Label {
                 anchors.horizontalCenter: parent.horizontalCenter
-                width: 68
+                width: strip.width - 8
                 horizontalAlignment: Text.AlignHCenter
                 elide: Text.ElideRight
                 text: strip.title
@@ -275,7 +277,7 @@ Item {
             Rectangle {
                 id: routeChip
                 anchors.horizontalCenter: parent.horizontalCenter
-                width: 70; height: 18; radius: 9
+                width: strip.width - 6; height: Theme.sp(18); radius: height / 2
                 color: strip.routable && routeArea.containsMouse ? Theme.pillHover : strip.routable ? Theme.pill : "transparent"
                 Behavior on color { ColorAnimation { duration: Theme.colorMs } }
                 Label {
@@ -360,7 +362,7 @@ Item {
             // Mute
             Rectangle {
                 anchors.horizontalCenter: parent.horizontalCenter
-                width: 30; height: 22; radius: 11
+                width: Theme.sp(34); height: Theme.sp(26); radius: height / 2
                 color: strip.muted ? Qt.alpha(Theme.red, 0.85) : muteArea.containsMouse ? Theme.pillHover : Theme.pill
                 scale: muteArea.pressed ? 0.94 : 1
                 Behavior on color { ColorAnimation { duration: Theme.colorMs } }

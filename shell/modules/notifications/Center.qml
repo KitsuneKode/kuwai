@@ -1,7 +1,7 @@
-// The center: Notifications, and Controls with Sound. With the island as a
-// notch it is the notch grown (the phone's model: Notifications pulled from
-// the notch, Controls from its right side), hanging from the top edge in the
-// island's black; with Waybar or the floating pill, a glass card at the right.
+// The center: Notifications, and Controls with Sound, as a glass card at the
+// right (Waybar or the floating pill). With the island as a notch they are
+// the island's own panels instead (island/CenterPanel: the notch grown, one
+// surface with Agents and the rest); this card then never opens.
 //
 // Open: Super+N, Super+Ctrl+Alt+W (Controls), `bin/kuwai center [tab]`. Esc
 // clears the search, then closes; so does a click anywhere else.
@@ -33,33 +33,13 @@ import "../../services/surfaceState.mjs" as Surface
 Scope {
     id: root
 
-    readonly property bool open: Notifs.centerOpen
+    readonly property bool open: Notifs.centerOpen && !notch
     readonly property string tab: Notifs.centerTab
     // The hosting monitor's content (CenterContent), once built.
     property Item ui: null
 
-    // ── Search, shared by every tab ──────────────────────────────────────
-    property string query: ""
-    readonly property var terms: query.toLowerCase().split(/\s+/).filter(t => t)
-    function matchesText(text) {
-        if (!terms.length) return true;
-        const hay = (text || "").toLowerCase();
-        return terms.every(t => hay.includes(t));
-    }
-    // Matches in StyledText: escaped, each term in Apple's yellow.
-    function highlight(text) {
-        const esc = s => (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-        if (!terms.length) return esc(text);
-        const pattern = new RegExp("(" + terms.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|") + ")", "gi");
-        return (text || "").split(pattern).map((part, k) => k % 2 ? `<font color="${Theme.yellow}"><b>${esc(part)}</b></font>` : esc(part)).join("");
-    }
-    // Results update instantly while typing, like Spotlight: choreography
-    // between keystrokes only reads as lag.
-    property bool instant: false
-    onQueryChanged: snap()
-    onTabChanged: snap()
-    function snap() { instant = true; settle.restart(); }
-    Timer { id: settle; interval: 80; onTriggered: root.instant = false }
+    // Search, matching and tips for the content (shared with the notch's panels).
+    readonly property CenterHost host: CenterHost { open: root.open; notch: root.notch; ui: root.ui }
 
     // One entrance: the content fades in as one, on the card's own progress.
     readonly property real contentIn: Theme.reduceMotion || !open ? 1 : Math.max(0, Math.min(1, (p - 0.3) / 0.5))
@@ -72,10 +52,6 @@ Scope {
     property var from: ({ x: 0, y: 0, w: 44, h: 32, r: 16 })
     property real contentFade: 1
     readonly property bool folding: foldAnim.running
-    Binding {
-        target: Notifs; property: "centerCover"
-        value: root.notch && (root.open || root.folding) && root.p > 0.02 && root.shownScreen ? root.shownScreen.name : ""
-    }
 
     property var surface: Surface.createSurfaceState()
     readonly property var surfaceOut: Surface.surfaceOutputs(surface)
@@ -221,8 +197,8 @@ Scope {
 
     function lerp(a, b, t) { return a + (b - a) * t; }
     // Tooltips on the hosting copy's layer (components/Tips).
-    function tip(item, on, text, keys) { if (!ui) return; if (on) ui.tips.show(item, text, keys); else ui.tips.hide(item); }
-    function currentView() { return ui ? ui.currentView() : null; }
+    function tip(item, on, text, keys) { host.tip(item, on, text, keys); }
+    function currentView() { return host.currentView(); }
 
     // ── Screenshots ──────────────────────────────────────────────────────
     // A click elsewhere closes the center (the focus grab clears). But a
@@ -474,7 +450,7 @@ Scope {
                         height: win.dh
                         opacity: root.contentFade * root.contentIn
                         sourceComponent: CenterContent {
-                            center: root
+                            center: root.host
                             hosting: win.hosts
                         }
                         onLoaded: win.claim()

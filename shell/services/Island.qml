@@ -23,7 +23,7 @@ Singleton {
     // Every panel the island opens, by name, with what it is called: the one
     // list (its name for a screen reader, the Back row's "‹ Calendar").
     // IslandBar maps each name to its component (tests/shell/island-panels.test.mjs).
-    readonly property var titles: ({ activities: "More activities", calendar: "Calendar", power: "Power", launcher: "Search", settings: "Settings", system: "System", theme: "Themes", keys: "Shortcuts", switcher: "Windows", updates: "Software Update", media: "Now Playing", agents: "Agents", usage: "Usage", read: "Read", cleanup: "Cleanup" })
+    readonly property var titles: ({ activities: "More activities", calendar: "Calendar", power: "Power", launcher: "Search", settings: "Settings", system: "System", theme: "Themes", keys: "Shortcuts", switcher: "Windows", updates: "Software Update", media: "Now Playing", agents: "Agents", usage: "Usage", read: "Read", cleanup: "Cleanup", notifications: "Notifications", controls: "Controls" })
     readonly property var panels: Object.keys(titles)
     function titleOf(name) { return titles[name] || ""; }
     // Old names that still open their panel: "vitals" (machine + agents'
@@ -160,8 +160,11 @@ Singleton {
 
     // `from` "island": opened from the island itself (its clock, rings…);
     // going back returns to it, expanded while the pointer is still there.
+    readonly property bool hostsCenter: Settings.bar === "island" && Settings.islandStyle === "notch"
+    function isCenter(name) { return name === "notifications" || name === "controls"; }
     function open(name, screenName, how, from) {
-        if (name === "notifs") { Notifs.toggleCenter("notifications", how || "key", screenName || ""); return; }
+        if (name === "notifs" || name === "notifications") { Notifs.toggleCenter("notifications", how || "key", screenName || ""); return; }
+        if (name === "controls" || name === "sound") { Notifs.toggleCenter(name, how || "key", screenName || ""); return; }
         if (name === "sweep") { cleanupView = "projects"; name = "cleanup"; }
         if (name === "bluetooth") { Notifs.openControls("bluetooth", how || "key", screenName || ""); return; }
         name = canon(name);
@@ -174,7 +177,7 @@ Singleton {
     function openOn(name, screenName, how, from) {
         if (name === "sweep") { cleanupView = "projects"; name = "cleanup"; }
         name = canon(name);
-        if (Notifs.centerOpen) Notifs.setCenter(false, how === "key" ? "key" : "pointer");
+        if (Notifs.centerOpen && !hostsCenter) Notifs.setCenter(false, how === "key" ? "key" : "pointer");
         previewing = false;
         const s = screenName || Screens.focusedName;
         history = panel && panel !== name && s === screen ? [...history, panel] : from === "island" ? ["island"] : [];

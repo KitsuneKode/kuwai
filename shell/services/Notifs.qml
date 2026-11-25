@@ -87,7 +87,6 @@ Singleton {
     property string centerTab: "notifications"     // notifications | agents | sound | controls
     property real closedAt: 0
     property string centerVia: "key"                // what opened/closed it: key | pointer
-    property string centerCover: ""
     property string centerModule: ""
     function openControls(module, via, screenName) {
         centerModule = module || "";
@@ -763,6 +762,16 @@ Singleton {
         if (tab === "agents") { Island.toggle("agents", screenName || "", via || "key"); return; }
         const go = s => {
             const t = ["sound", "controls"].includes(tab) ? tab : "notifications";
+            if (Island.hostsCenter) {
+                const name = t === "notifications" ? "notifications" : "controls";
+                const here = Island.isCenter(Island.panel) && Island.screen === s;
+                if (here && Island.panel === name && centerTab !== t) { centerTab = t; return; }
+                if (here && Island.panel === name) { Island.close(); return; }
+                if (via === "pointer" && Date.now() - closedAt < 350) return;
+                centerTab = t;
+                if (here) Island.switchTo(name); else Island.openOn(name, s, via || "key");
+                return;
+            }
             if (centerOpen && centerTab !== t && s === centerScreen) { centerTab = t; return; }
             if (centerOpen && s !== centerScreen) {           // open elsewhere: bring it here
                 // (closedAt cleared: the reopen fell inside the click guard and was
@@ -779,6 +788,12 @@ Singleton {
     function setCenter(open, via) {
         console.info("center: " + (open ? "open" : "close") + " via " + via + (open === centerOpen ? " (no change)" : ""));
         if (open === centerOpen) return;
+        if (Island.hostsCenter) {
+            if (!open) { if (Island.isCenter(Island.panel)) Island.close(); return; }
+            if (via === "pointer" && Date.now() - closedAt < 350) return;
+            Island.openOn(centerTab === "notifications" ? "notifications" : "controls", centerScreen || Screens.focusedName, via);
+            return;
+        }
         centerVia = via === "pointer" ? "pointer" : "key";
         // A click on the bell while open first closes it (focus grab), then
         // the bell toggles: don't let that one click reopen it. Keys are
@@ -794,6 +809,31 @@ Singleton {
             // "missed" dot and the Unread filter after you've opened the center.
             markSeen();
         }
+    }
+
+    function centerBack() {
+        if (Island.hostsCenter && Island.isCenter(Island.panel)) Island.back();
+        else setCenter(false, "key");
+    }
+    Connections {
+        target: Island
+        function onPanelChanged() { root.followIsland(); }
+        function onScreenChanged() { root.followIsland(); }
+    }
+    function followIsland() {
+        if (!Island.hostsCenter) return;
+        const here = Island.isCenter(Island.panel);
+        if (here) {
+            if (Island.panel === "notifications") centerTab = "notifications";
+            else if (centerTab === "notifications") centerTab = "controls";
+            centerScreen = Island.screen;
+            centerVia = Island.via;
+            centerMorphFrom = "";
+            centerMorphFromRect = null;
+        }
+        if (here === centerOpen) return;
+        centerOpen = here;
+        if (!here) { closedAt = Date.now(); markSeen(); }
     }
 
     function markAllRead() {

@@ -3868,6 +3868,43 @@
      }
     ]
    ]
+  },
+  {
+   "id": "notifications/new-machine",
+   "name": "notifications",
+   "panel": "CenterPanel",
+   "set": [
+    [
+     "Notifs",
+     "centerTab",
+     "notifications"
+    ]
+   ]
+  },
+  {
+   "id": "controls/new-machine",
+   "name": "controls",
+   "panel": "CenterPanel",
+   "set": [
+    [
+     "Notifs",
+     "centerTab",
+     "controls"
+    ]
+   ]
+  },
+  {
+   "id": "controls/sound",
+   "name": "controls",
+   "panel": "CenterPanel",
+   "kind": "typical",
+   "set": [
+    [
+     "Notifs",
+     "centerTab",
+     "sound"
+    ]
+   ]
   }
  ]
 }

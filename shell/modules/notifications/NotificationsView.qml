@@ -182,7 +182,7 @@ Item {
     // (A list builds rows only for the room it has, so contentHeight reads
     // short right after opening: more than a few groups simply wants the
     // full card, and a few want at least their rows' typical height.)
-    readonly property real naturalHeight: (todayRow.visible ? todayRow.height + 10 : 0) + filterRow.height + 14 + (list.count === 0 ? 220
+    readonly property real naturalHeight: (todayRow.visible ? todayRow.height + 10 : 0) + filterBar.height + 14 + (list.count === 0 ? 220
         : list.count > 3 ? 100000 : Math.max(list.contentHeight, list.count * 96) + 8)
 
     TodayRow {
@@ -192,6 +192,13 @@ Item {
     }
 
     // ── Filters row ──────────────────────────────────────────────────────
+    readonly property bool stackTools: filterRow.width + tools.implicitWidth + 12 > width
+    Item {
+        id: filterBar
+        y: filterRow.y
+        width: parent.width
+        height: view.stackTools ? filterRow.height + 6 + tools.height : filterRow.height
+    }
     Row {
         id: filterRow
         x: 2
@@ -210,7 +217,7 @@ Item {
                 id: chip
                 required property var modelData
                 readonly property bool on: view.filter === modelData.id
-                height: 28; radius: 14
+                height: Theme.sp(28); radius: height / 2
                 width: chipRow.implicitWidth + 22
                 scale: chipArea.pressed ? 0.97 : 1
                 Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
@@ -261,14 +268,17 @@ Item {
         color: Theme.textTertiary
     }
     Row {
+        id: tools
         visible: !view.narrowed
         // 2 px in, as the filters are (x: 2): both edges line up with the
         // search field above (the page is 14 px in, the header 16).
-        anchors { right: parent.right; rightMargin: 2; verticalCenter: filterRow.verticalCenter }
+        anchors.right: parent.right
+        anchors.rightMargin: 2
+        y: view.stackTools ? filterRow.y + filterRow.height + 6 : filterRow.y + (filterRow.height - height) / 2
         spacing: 6
         Ui.Button {
-            height: 28
-            width: 28
+            height: Theme.sp(28)
+            width: Theme.sp(28)
             kind: "quiet"
             glyph: "\u{f0594}"                     // moon: Theme.focus while on
             label: Notifs.dnd ? "Do Not Disturb is on" : Notifs.dndMute ? "Do Not Disturb (held while sharing)" : "Do Not Disturb"
@@ -277,7 +287,7 @@ Item {
         }
         Ui.Button {
             visible: Notifs.items.length > 0 && !view.undoing
-            height: 28
+            height: Theme.sp(28)
             size: Theme.tFootnote
             text: "Clear"
             onClicked: view.clearAll()
@@ -287,7 +297,7 @@ Item {
         live: Notifs.undoSurface === "center" && Notifs.undoLabel !== ""
         label: Notifs.undoLabel
         count: Notifs.undoCount
-        anchors { right: parent.right; rightMargin: view.narrowed ? 2 : 36; verticalCenter: filterRow.verticalCenter }
+        anchors { right: parent.right; rightMargin: view.narrowed ? 2 : 36; verticalCenter: view.stackTools ? tools.verticalCenter : filterRow.verticalCenter }
         opacity: live ? 1 : 0
         onUndoRequested: Notifs.undoClear()
     }
@@ -295,9 +305,9 @@ Item {
     Label {
         id: c1Hint
         visible: !Settings.seenNotifC1Hint && !view.narrowed
-        anchors { left: parent.left; right: parent.right; top: filterRow.bottom; topMargin: 10 }
+        anchors { left: parent.left; right: parent.right; top: filterBar.bottom; topMargin: 10 }
         wrapMode: Text.WordWrap
-        text: "Click a notification to open it; right-click for its other options. Toasts: tap to preview unless Settings → Toast opens on first click."
+        text: "Click a notification to open it; right-click for more."
         size: Theme.tFootnote
         color: Theme.textTertiary
     }
@@ -315,7 +325,7 @@ Item {
     // ── List ─────────────────────────────────────────────────────────────
     ListView {
         id: list
-        anchors { left: parent.left; right: parent.right; top: c1Hint.visible ? c1Hint.bottom : filterRow.bottom; bottom: parent.bottom; topMargin: c1Hint.visible ? 8 : 14 }
+        anchors { left: parent.left; right: parent.right; top: c1Hint.visible ? c1Hint.bottom : filterBar.bottom; bottom: parent.bottom; topMargin: c1Hint.visible ? 8 : 14 }
         clip: true
         spacing: 18
         boundsBehavior: Flickable.DragAndOvershootBounds

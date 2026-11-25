@@ -40,7 +40,7 @@ Item {
     Item {
         id: header
         width: parent.width
-        height: 26
+        height: Theme.sp(26)
 
         HoverHandler { id: headerHover }
 
@@ -51,7 +51,7 @@ Item {
             spacing: 8
 
             ClippingRectangle {
-                width: 18; height: 18; radius: 5
+                width: Theme.sp(18); height: width; radius: Math.round(width * 0.28)
                 anchors.verticalCenter: parent.verticalCenter
                 color: Theme.platter
                 Image {
@@ -85,7 +85,7 @@ Item {
             Rectangle {
                 visible: group.count > 1
                 anchors.verticalCenter: parent.verticalCenter
-                height: 16; radius: Theme.r1
+                height: Theme.sp(16); radius: Theme.r1
                 width: countLabel.implicitWidth + 10
                 color: Theme.pill
                 Label {

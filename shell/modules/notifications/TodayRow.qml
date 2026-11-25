@@ -18,7 +18,7 @@ Rectangle {
     Keys.onEnterPressed: open()
     Keys.onSpacePressed: open()
     FocusRing { cornerRadius: Theme.r3 }
-    height: Theme.sp(64)
+    height: Math.max(Theme.sp(64), textCol.implicitHeight + Theme.s4)
     radius: Theme.r3
     color: Theme.card
     border.width: 1
@@ -35,6 +35,7 @@ Rectangle {
         }
         Rectangle { width: 1; height: parent.height - Theme.s4; anchors.verticalCenter: parent.verticalCenter; color: Theme.wash(1) }
         Column {
+            id: textCol
             anchors.verticalCenter: parent.verticalCenter
             width: parent.width - Theme.sp(52) - weather.width - 1 - Theme.s3 * 3
             spacing: 2
@@ -43,6 +44,7 @@ Rectangle {
                 text: today.next ? today.next.title : "Nothing else today"
                 size: Theme.tBody; weight: Theme.wMedium
                 color: today.next ? Theme.textPrimary : Theme.textSecondary
+                wrapMode: Text.Wrap; maximumLineCount: 2
                 elide: Text.ElideRight
             }
             Label {
@@ -51,6 +53,7 @@ Rectangle {
                                     : Dates.day(today.next.start, today.now) + " · " + Dates.time(today.next.start))
                                : Dates.longDate(today.now)
                 size: Theme.tFootnote; color: Theme.textTertiary
+                wrapMode: Text.Wrap; maximumLineCount: 2
                 elide: Text.ElideRight
             }
         }

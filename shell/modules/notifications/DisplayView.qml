@@ -147,7 +147,7 @@ Item {
             // ── Toggles ──────────────────────────────────────────────────
             Grid {
                 width: parent.width
-                columns: 2
+                columns: view.tileCols
                 columnSpacing: 8
                 rowSpacing: 8
                 visible: view.module === ""
@@ -532,10 +532,11 @@ Item {
         }
     }
 
-    // A Control Center tile (components/ui/ControlTile), two to a row here.
+    // A Control Center tile (components/ui/ControlTile): two to a row, one at large text.
+    readonly property int tileCols: Theme.textScale >= 1.5 ? 1 : 2
     component Tile: ControlTile {
         id: t
-        width: (view.width - 8) / 2
+        width: (view.width - 8 * (view.tileCols - 1)) / view.tileCols
         onTip: (shown, text) => view.center.tip(t, shown, text)
     }
 }
