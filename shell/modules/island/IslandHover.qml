@@ -193,7 +193,7 @@ Item {
         id: timeChip
         anchors.horizontalCenter: parent.horizontalCenter
         y: 12
-        height: 38; radius: 12
+        height: 38; radius: Theme.r2
         width: timeRow.implicitWidth + 22
         color: chipHover.hovered ? Theme.ghostHover : "transparent"
         Behavior on color { ColorAnimation { duration: Theme.colorMs } }
@@ -845,7 +845,7 @@ Item {
                 id: updChip
                 visible: Updates.running || Updates.total > 0
                 anchors.verticalCenter: parent.verticalCenter
-                height: 24; radius: 12
+                height: 24; radius: Theme.r2
                 width: updRow.implicitWidth + 16
                 Behavior on width { NumberAnimation { duration: Theme.reflowMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                 clip: true

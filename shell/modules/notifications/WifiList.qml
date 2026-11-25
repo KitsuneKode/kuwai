@@ -139,7 +139,7 @@ Column {
             Rectangle {
                 width: parent.width
                 height: 38
-                radius: 12
+                radius: Theme.r2
                 color: row.net.connected ? Qt.alpha(Theme.accent, 0.16) : hover.hovered ? Theme.rowHover : "transparent"
                 Behavior on color { ColorAnimation { duration: Theme.colorMs } }
             }
@@ -263,7 +263,7 @@ Column {
                 Rectangle {
                     id: joinBtn
                     anchors { right: parent.right; rightMargin: 4; verticalCenter: parent.verticalCenter }
-                    height: 26; radius: 8
+                    height: 26; radius: Theme.r1
                     width: joinLabel.implicitWidth + 20
                     color: psk.text.length >= 8 ? Theme.accent : Theme.pill
                     function join() {

@@ -653,7 +653,7 @@ FocusScope {
             Rectangle {
                 anchors.fill: parent
                 anchors.leftMargin: 2; anchors.rightMargin: 2
-                radius: 12
+                radius: Theme.r2
                 visible: !row.header && !row.dock
                 color: Theme.wash(2)
                 border.width: 1
@@ -710,7 +710,7 @@ FocusScope {
                         model: row.tips ? row.modelData.tips : []
                         Rectangle {
                             required property string modelData
-                            width: tipText.implicitWidth + 16; height: 24; radius: 12
+                            width: tipText.implicitWidth + 16; height: 24; radius: Theme.r2
                             color: tipArea.containsMouse ? Theme.pillHover : Theme.pill
                             Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
                             Label { id: tipText; anchors.centerIn: parent; text: parent.modelData; size: Theme.tSub; color: Theme.textSecondary; tabular: true }
@@ -795,7 +795,7 @@ FocusScope {
                         Accessible.name: modelData.name + " (Alt+" + (index + 1) + ")"
                         Rectangle {
                             anchors.fill: parent
-                            radius: 12
+                            radius: Theme.r2
                             color: Theme.wash(2)
                             border.width: 1
                             border.color: Theme.edge(0)

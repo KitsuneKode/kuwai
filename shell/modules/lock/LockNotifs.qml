@@ -124,7 +124,7 @@ Column {
                 visible: card.stacked
                 anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom }
                 width: parent.width - 24; height: 30
-                radius: 16
+                radius: Theme.r3
                 color: Theme.wash(2)
                 border.width: 1
                 border.color: Theme.edge(1)

@@ -178,7 +178,7 @@ Rectangle {
                     Rectangle {
                         visible: (opt.modelData.badge || 0) > 0
                         anchors.verticalCenter: parent.verticalCenter
-                        height: 16; radius: 8
+                        height: 16; radius: Theme.r1
                         width: Math.max(16, badgeText.implicitWidth + 9)
                         color: opt.modelData.alert ? Theme.red : Theme.wash(3)
                         Label {

@@ -23,7 +23,7 @@ Column {
     Rectangle {
         width: g.width
         height: list.implicitHeight
-        radius: 12
+        radius: Theme.r2
         color: Theme.wash(1)
         border.width: 1
         border.color: Theme.edge(0)

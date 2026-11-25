@@ -507,7 +507,7 @@ Scope {
                                 id: shot
                                 width: parent.width
                                 height: parent.height - 26
-                                radius: 12
+                                radius: Theme.r2
                                 color: Qt.rgba(0, 0, 0, 0.25)
                                 scale: card.chosen && !mouse.drag.active && !Theme.reduceMotion ? 1.025 : 1
                                 Behavior on scale { NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
@@ -563,7 +563,7 @@ Scope {
                                 visible: hover.hovered && !mouse.drag.active
                                 z: 2
                                 x: -8; y: -8
-                                width: 24; height: 24; radius: 12
+                                width: 24; height: 24; radius: Theme.r2
                                 color: closeArea.containsMouse ? Theme.red : Qt.rgba(0.12, 0.12, 0.14, 0.92)
                                 Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
                                 border.width: 1; border.color: Theme.edge(2)

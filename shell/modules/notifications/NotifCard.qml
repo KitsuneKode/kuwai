@@ -267,7 +267,7 @@ Item {
     GlassCard {
         id: glass
         anchors.fill: parent
-        radius: 22
+        radius: Theme.r4
         tint: card.low ? Theme.glassTint : Theme.glassIsland
     }
 
@@ -396,7 +396,7 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         height: 16
                         width: chipLabel.implicitWidth + 12
-                        radius: 8
+                        radius: Theme.r1
                         color: Qt.alpha(card.accent, 0.24)
                         Label {
                             id: chipLabel
@@ -421,7 +421,7 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         height: 16
                         width: countLabel.implicitWidth + 10
-                        radius: 8
+                        radius: Theme.r1
                         color: Theme.pill
                         Label {
                             id: countLabel

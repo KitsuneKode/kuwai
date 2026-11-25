@@ -165,7 +165,7 @@ Item {
                         required property var modelData
                         width: quickCol.width
                         height: 28
-                        radius: 8
+                        radius: Theme.r1
                         activeFocusOnTab: dp.open
                         Accessible.role: Accessible.Button
                         Accessible.name: modelData.t
@@ -216,7 +216,7 @@ Item {
                         Rectangle {
                             id: nav
                             required property var modelData
-                            width: 26; height: 26; radius: 8
+                            width: 26; height: 26; radius: Theme.r1
                             activeFocusOnTab: dp.open
                             Accessible.role: Accessible.Button
                             Accessible.name: modelData.n < 0 ? "Previous month" : "Next month"

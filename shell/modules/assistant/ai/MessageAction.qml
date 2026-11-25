@@ -10,7 +10,7 @@ Rectangle {
     property int tipAlign: 0
     signal clicked()
     width: 28; height: 28
-    radius: 8
+    radius: Theme.r1
     color: Qt.rgba(1, 1, 1, abArea.containsMouse ? 0.08 : 0)
     scale: abArea.pressed ? 0.97 : 1
     Behavior on color { ColorAnimation { duration: Theme.colorMs } }

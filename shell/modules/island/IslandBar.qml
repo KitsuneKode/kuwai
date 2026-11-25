@@ -1189,7 +1189,7 @@ Scope {
                                         required property var modelData
                                         required property int index
                                         readonly property bool picked: win.shownPanel === modelData.id
-                                        width: 30; height: 24; radius: 12
+                                        width: 30; height: 24; radius: Theme.r2
                                         color: picked ? Theme.wash(3) : secArea.containsMouse ? Theme.wash(1) : "transparent"
                                         Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
                                         Accessible.role: Accessible.PageTab
@@ -1232,7 +1232,7 @@ Scope {
                             Rectangle {
                                 visible: Island.canBack
                                 x: 10; y: 10
-                                height: 24; radius: 12
+                                height: 24; radius: Theme.r2
                                 width: backRow.implicitWidth + 18
                                 color: backArea.containsMouse ? Theme.wash(2) : "transparent"
                                 Behavior on color { ColorAnimation { duration: Theme.colorMs } }

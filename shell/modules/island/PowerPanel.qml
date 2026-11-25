@@ -151,7 +151,7 @@ FocusScope {
 
                 ClippingRectangle {
                     anchors.fill: parent
-                    radius: 22
+                    radius: Theme.r4
                     color: tile.on ? Theme.wash(3) : area.containsMouse ? Theme.tileHover : Theme.tileRest
                     border.width: tile.on ? 1 : 0
                     border.color: Theme.edge(3)

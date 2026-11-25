@@ -694,7 +694,7 @@ Scope {
                         width: Math.min(540, parent.width - 40)
                         height: Math.min(420, parent.height - 40)
                         anchors.centerIn: parent
-                        radius: 16
+                        radius: Theme.r3
                         color: Theme.glassTintElevated
                         border.width: 1
                         border.color: Theme.edge(1)
@@ -702,7 +702,7 @@ Scope {
 
                         Elevation {
                             strength: 1
-                            radius: 16
+                            radius: Theme.r3
                         }
 
                         Column {
@@ -815,7 +815,7 @@ Scope {
                                     id: appItem
                                     width: appListView.width
                                     height: 44
-                                    radius: 8
+                                    radius: Theme.r1
                                     color: (appListView.currentIndex === index || appItemArea.containsMouse) 
                                         ? Qt.alpha(Theme.accent, 0.15) 
                                         : "transparent"

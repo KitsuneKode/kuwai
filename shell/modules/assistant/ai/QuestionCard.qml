@@ -13,7 +13,7 @@ Rectangle {
     property Item hoverRow: null
 
     implicitHeight: col.implicitHeight + 24
-    radius: 12
+    radius: Theme.r2
     color: Theme.wash(1)
     border.width: 1
     border.color: Theme.edge(1)

@@ -34,7 +34,7 @@ Item {
         anchors.top: parent.top
         anchors.topMargin: -1
         height: 16
-        radius: 8
+        radius: Theme.r1
         width: Math.max(16, badgeLbl.implicitWidth + 8)
         color: badgeTone
         border.width: 1.5

@@ -1015,7 +1015,7 @@ Scope {
                     visible: root.filter !== "all"
                     anchors { left: glyph.right; leftMargin: 10; verticalCenter: parent.verticalCenter }
                     width: visible ? scopeRow.implicitWidth + 16 : 0
-                    height: 26; radius: 8
+                    height: 26; radius: Theme.r1
                     color: Qt.alpha(Theme.blue, 0.22)
                     border.width: 1
                     border.color: Qt.alpha(Theme.blue, 0.4)
@@ -1042,7 +1042,7 @@ Scope {
                     visible: root.whenLabel !== "" && !root.typedDate
                     anchors { left: scope.visible ? scope.right : glyph.right; leftMargin: scope.visible ? 6 : 10; verticalCenter: parent.verticalCenter }
                     width: visible ? whenRow.implicitWidth + 16 : 0
-                    height: 26; radius: 8
+                    height: 26; radius: Theme.r1
                     color: Qt.alpha(Theme.orange, 0.20)
                     border.width: 1
                     border.color: Qt.alpha(Theme.orange, 0.42)
@@ -1270,7 +1270,7 @@ Scope {
                     model: 5
                     Column {
                         spacing: 10
-                        Skeleton { width: 176; height: 182; radius: 16 }
+                        Skeleton { width: 176; height: 182; radius: Theme.r3 }
                         Skeleton { width: 130; height: 11 }
                         Skeleton { width: 80; height: 9 }
                     }

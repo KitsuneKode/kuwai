@@ -188,7 +188,7 @@ Item {
                 Rectangle {
                     visible: row.critical || row.warning
                     anchors.verticalCenter: titleText.verticalCenter
-                    height: 16; radius: 8
+                    height: 16; radius: Theme.r1
                     width: chip.implicitWidth + 12
                     color: Qt.alpha(row.accent, 0.24)
                     Label {

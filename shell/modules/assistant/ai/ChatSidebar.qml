@@ -127,7 +127,7 @@ Rectangle {
                 FluidHighlight {
                     parent: list.contentItem
                     target: root.hoverRow
-                    radius: 8
+                    radius: Theme.r1
                 }
 
                 Label {
@@ -180,7 +180,7 @@ Rectangle {
                     Rectangle {
                         visible: row.selected
                         anchors.fill: parent
-                        radius: 8
+                        radius: Theme.r1
                         color: Theme.wash(2)
                     }
 
@@ -201,7 +201,7 @@ Rectangle {
                     Rectangle {
                         visible: row.renamingThis
                         anchors.fill: parent
-                        radius: 8
+                        radius: Theme.r1
                         color: "transparent"
                         border.width: 1
                         border.color: Qt.alpha(Theme.accent, 0.5)

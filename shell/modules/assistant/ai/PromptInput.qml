@@ -179,7 +179,7 @@ Rectangle {
                     required property var modelData
                     width: queueList.width
                     height: 30
-                    radius: 8
+                    radius: Theme.r1
                     color: Qt.rgba(1, 1, 1, qArea.containsMouse ? 0.06 : 0)
                     Behavior on color { ColorAnimation { duration: Theme.colorMs } }
                     opacity: 0
@@ -535,7 +535,7 @@ Rectangle {
                         y: 3
                         width: modeSwitch.agent ? agentSeg.width : chatSeg.width
                         height: 24
-                        radius: 12
+                        radius: Theme.r2
                         color: modeSwitch.agent ? Qt.alpha(Theme.accent, 0.22) : Theme.wash(2)
                         Behavior on x { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                         Behavior on width { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }

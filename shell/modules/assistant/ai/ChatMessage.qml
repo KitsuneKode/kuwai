@@ -81,7 +81,7 @@ Item {
                     required property var modelData
                     height: 26
                     width: fRow.implicitWidth + 16
-                    radius: 8
+                    radius: Theme.r1
                     color: Theme.wash(1)
                     Row {
                         id: fRow
@@ -113,7 +113,7 @@ Item {
             visible: root.isUser && !!root.msg.image
             anchors.right: parent.right
             width: 220; height: 132
-            radius: 12
+            radius: Theme.r2
             color: Qt.rgba(0, 0, 0, 0.35)
             border.width: 1
             border.color: Theme.edge(1)
@@ -277,7 +277,7 @@ Item {
                             y: 4
                             width: Math.min(parent.width * 0.8, steerText.implicitWidth + 30)
                             height: steerText.implicitHeight + 20
-                            radius: 16
+                            radius: Theme.r3
                             color: Theme.wash(2)
                             Text {
                                 textFormat: Text.PlainText
@@ -455,7 +455,7 @@ Item {
                     required property string modelData
                     height: 28
                     width: fileRow.implicitWidth + 18
-                    radius: 8
+                    radius: Theme.r1
                     color: Qt.rgba(1, 1, 1, fileArea.containsMouse ? 0.09 : 0.05)
                     Behavior on color { ColorAnimation { duration: Theme.colorMs } }
                     Row {
@@ -484,7 +484,7 @@ Item {
             Rectangle {
                 height: 28
                 width: folderRow.implicitWidth + 18
-                radius: 8
+                radius: Theme.r1
                 color: Qt.rgba(1, 1, 1, folderArea.containsMouse ? 0.09 : 0)
                 Behavior on color { ColorAnimation { duration: Theme.colorMs } }
                 Row {
@@ -516,7 +516,7 @@ Item {
                     required property var modelData
                     height: 26
                     width: srcRow.implicitWidth + 16
-                    radius: 8
+                    radius: Theme.r1
                     color: Qt.rgba(1, 1, 1, srcArea.containsMouse ? 0.09 : 0.05)
                     scale: srcArea.pressed ? 0.97 : 1
                     Behavior on color { ColorAnimation { duration: Theme.colorMs } }

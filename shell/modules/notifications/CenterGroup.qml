@@ -85,7 +85,7 @@ Item {
             Rectangle {
                 visible: group.count > 1
                 anchors.verticalCenter: parent.verticalCenter
-                height: 16; radius: 8
+                height: 16; radius: Theme.r1
                 width: countLabel.implicitWidth + 10
                 color: Theme.pill
                 Label {

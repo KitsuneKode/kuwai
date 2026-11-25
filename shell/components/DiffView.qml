@@ -47,7 +47,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        radius: 12
+        radius: Theme.r2
         color: Qt.rgba(0, 0, 0, 0.35)
         border.width: 1
         border.color: Theme.edge(0)

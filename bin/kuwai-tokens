@@ -2,8 +2,9 @@
 """Design-token ratchet for the shell (docs/design/STATES.md).
 
 Counts what should come from Theme but is typed by hand:
-  sizes      `size:` / `font.pixelSize:` numbers off the type scale
-  durations  `duration: <number>` (motion tokens live in Theme)
+  sizes      `size:` / `font.pixelSize:` numbers (text: Theme.t*, glyphs: Theme.glyph*)
+  durations  a number in a `duration:` expression (motion tokens live in Theme)
+  radii      `radius:` numbers above 4 (Theme.r1–r4, rNotch, rIsland; bars and dots exempt)
   hex        raw "#rrggbb" colours outside shell/config
   white      a hand-typed white overlay (Qt.rgba(1, 1, 1, ≤ 0.3)) outside shell/config:
              fills take Theme.wash(step), borders Theme.edge(step)
@@ -24,10 +25,11 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 SHELL = os.path.join(ROOT, "shell")
 BASE = os.path.join(ROOT, "docs", "design", "tokens-baseline.json")
-SCALE = {10, 11, 12, 13, 14, 15, 18, 20, 24}
 
 SIZE = re.compile(r"\b(?:size|font\.pixelSize)\s*:\s*(\d+)\b")
-DUR = re.compile(r"\bduration\s*:\s*\d+\b")
+DUR = re.compile(r"\bduration\s*:([^\n;}]*)")
+DUR_NUM = re.compile(r"(?<![\w.*/])\d{2,}(?![\w.])")
+RADIUS = re.compile(r"\bradius\s*:\s*(\d+(?:\.\d+)?)\b(?!\s*[*/+-])")
 HEX = re.compile(r'"#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?"')
 WHITE = re.compile(r"Qt\.rgba\(\s*1\s*,\s*1\s*,\s*1\s*,\s*(\d*\.\d+|0)\s*\)")
 EASING = re.compile(r"\bEasing\.(?:OutCubic|InOutCubic|InCubic|OutQuad|InOutQuad|InQuad|OutQuart|InOutQuart|OutSine|InOutSine|OutExpo)\b")
@@ -45,10 +47,13 @@ def literals():
             code = "\n".join(l.split("//")[0] if not l.lstrip().startswith("//") else "" for l in text.split("\n"))
             line = lambda m: code.count("\n", 0, m.start()) + 1
             for m in SIZE.finditer(code):
-                if int(m.group(1)) not in SCALE:
-                    yield "sizes", p, line(m), m.group(0)
+                yield "sizes", p, line(m), m.group(0)
             for m in DUR.finditer(code):
-                yield "durations", p, line(m), m.group(0)
+                if DUR_NUM.search(m.group(1)):
+                    yield "durations", p, line(m), m.group(0).strip()
+            for m in RADIUS.finditer(code):
+                if float(m.group(1)) > 4:
+                    yield "radii", p, line(m), m.group(0)
             if os.sep + "config" + os.sep not in p:
                 for m in HEX.finditer(code):
                     yield "hex", p, line(m), m.group(0)
@@ -60,7 +65,7 @@ def literals():
 
 
 def count():
-    c = {"sizes": 0, "durations": 0, "hex": 0, "white": 0, "easings": 0}
+    c = {"sizes": 0, "durations": 0, "radii": 0, "hex": 0, "white": 0, "easings": 0}
     for kind, *_ in literals():
         c[kind] += 1
     return c

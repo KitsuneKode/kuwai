@@ -70,7 +70,7 @@ Item {
         id: searchBox
         anchors { left: parent.left; right: parent.right; top: header.bottom; margins: 16; topMargin: 12 }
         height: 36
-        radius: 12
+        radius: Theme.r2
         color: Qt.rgba(1, 1, 1, search.activeFocus ? 0.10 : 0.07)
         border.width: 1
         // Focused: a soft white edge, not the accent (that means "where you are").

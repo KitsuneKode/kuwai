@@ -30,7 +30,7 @@ Item {
 
             Rectangle {
                 anchors.fill: parent
-                radius: 8
+                radius: Theme.r1
                 color: Qt.rgba(1, 1, 1, sumArea.containsMouse ? 0.05 : 0)
                 Behavior on color { ColorAnimation { duration: Theme.colorMs } }
             }

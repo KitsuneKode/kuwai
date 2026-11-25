@@ -707,7 +707,7 @@ FocusScope {
             visible: !reviewView.r
             x: 22; width: parent.width - 44
             anchors { top: rvInfo.bottom; topMargin: 10; bottom: rvFoot.top; bottomMargin: 12 }
-            radius: 12
+            radius: Theme.r2
         }
         Label {
             visible: !!(reviewView.r && reviewView.r.error)
@@ -786,7 +786,7 @@ FocusScope {
             width: parent.width; height: 44
             Rectangle {
                 id: runBadge
-                width: 44; height: 44; radius: 22
+                width: 44; height: 44; radius: Theme.r4
                 color: Updates.running ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.18)
                      : runCol.ok ? Qt.rgba(0.19, 0.82, 0.35, 0.18) : Qt.rgba(1, 0.62, 0.04, 0.18)
                 Text {
@@ -911,7 +911,7 @@ FocusScope {
 
         Rectangle {
             visible: up.showLog
-            width: parent.width; height: 190; radius: 12
+            width: parent.width; height: 190; radius: Theme.r2
             color: Qt.rgba(0, 0, 0, 0.35)
             ListView {
                 id: logList

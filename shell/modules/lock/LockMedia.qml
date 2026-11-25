@@ -47,7 +47,7 @@ Item {
     // Glass: a light frost over the blurred wallpaper, a hairline edge.
     Rectangle {
         anchors.fill: parent
-        radius: 22
+        radius: Theme.r4
         color: Qt.rgba(1, 1, 1, over.hovered ? 0.2 : 0.14)
         border.width: 1
         border.color: Theme.edge(3)
@@ -56,7 +56,7 @@ Item {
     ClippingRectangle {
         id: art
         x: 13; anchors.verticalCenter: parent.verticalCenter
-        width: 50; height: 50; radius: 12
+        width: 50; height: 50; radius: Theme.r2
         color: Theme.wash(2)
         Image { anchors.fill: parent; source: media.player ? (media.player.trackArtUrl || "") : ""; sourceSize: Qt.size(100, 100); fillMode: Image.PreserveAspectCrop; asynchronous: true }
     }

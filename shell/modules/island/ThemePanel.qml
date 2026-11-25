@@ -338,7 +338,7 @@ FocusScope {
         ClippingRectangle {
             id: big
             width: parent.width; height: Math.round(width * 0.5625)
-            radius: 16
+            radius: Theme.r3
             color: preview.it && preview.it.bg ? preview.it.bg : Theme.pill
             Image {
                 id: bigImg
@@ -515,7 +515,7 @@ FocusScope {
                             x: 6; y: 6
                             width: parent.width - 12
                             height: Math.round(width * 0.5625)
-                            radius: 12
+                            radius: Theme.r2
                             phase: picker.sheen
                         }
                         Skeleton { x: 8; y: shotSk.y + shotSk.height + 8 + 3; width: Math.round(shotSk.width * 0.55); height: 10; phase: picker.sheen }
@@ -577,7 +577,7 @@ FocusScope {
                 x: 6; y: 6
                 width: parent.width - 12
                 height: Math.round(width * 0.5625)
-                radius: 12
+                radius: Theme.r2
                 color: card.modelData.bg || Theme.pill
                 Text {
                     visible: !!card.modelData.off

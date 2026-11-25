@@ -34,7 +34,7 @@ Item {
     NumberAnimation { id: pulseIn; target: row; property: "pulseK"; from: 1; to: 0; duration: Theme.breathOutMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
     Rectangle {
         anchors { fill: parent; margins: 4 }
-        radius: 8
+        radius: Theme.r1
         color: Qt.alpha(Theme.accent, 0.14)
         opacity: row.found ? 1 : 0
         visible: opacity > 0.01
@@ -42,7 +42,7 @@ Item {
     }
     Rectangle {
         anchors { fill: parent; margins: 4 }
-        radius: 8
+        radius: Theme.r1
         color: Qt.alpha(Theme.accent, 0.24)
         opacity: row.pulseK
         visible: opacity > 0.01

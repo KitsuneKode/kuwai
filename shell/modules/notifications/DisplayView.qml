@@ -292,7 +292,7 @@ Item {
                 visible: view.hasBattery
                 width: parent.width
                 height: 52
-                radius: 16
+                radius: Theme.r3
                 color: Theme.wash(1)
                 border.width: 1
                 border.color: Theme.edge(0)
@@ -467,7 +467,7 @@ Item {
                     visible: Display.outputs.some(o => !o.internal)
                     width: parent.width
                     height: Math.max(48, hdrText.implicitHeight + 18)
-                    radius: 16
+                    radius: Theme.r3
                     color: Theme.wash(1)
                     border.width: 1
                     border.color: Theme.edge(0)

@@ -9,7 +9,7 @@ Rectangle {
     readonly property int done: steps.filter(s => s.status === "completed").length
 
     implicitHeight: col.implicitHeight + 22
-    radius: 12
+    radius: Theme.r2
     color: Theme.wash(0)
     border.width: 1
     border.color: Theme.edge(1)

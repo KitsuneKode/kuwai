@@ -260,7 +260,7 @@ FocusScope {
             Keys.onPressed: e => { if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { upd.go(); e.accepted = true; } }
             FocusRing {}
             Rectangle {
-                anchors.fill: parent; radius: 12
+                anchors.fill: parent; radius: Theme.r2
                 color: updArea.containsMouse ? Qt.alpha(Theme.accent, 0.22) : Qt.alpha(Theme.accent, 0.12)
                 Behavior on color { ColorAnimation { duration: Theme.colorMs } }
             }

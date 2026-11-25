@@ -4,11 +4,12 @@
 // glass and point `target` at it; `strength` fades all three (0–1).
 import QtQuick
 import QtQuick.Effects
+import qs.config
 
 Item {
     id: e
     property Item target
-    property real radius: 22
+    property real radius: Theme.r4
     property real strength: 1
     anchors.fill: target
 

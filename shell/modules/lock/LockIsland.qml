@@ -148,7 +148,7 @@ Item {
                 Rectangle {
                     required property var modelData
                     anchors.verticalCenter: parent.verticalCenter
-                    width: actLabel.implicitWidth + 22; height: 24; radius: 12
+                    width: actLabel.implicitWidth + 22; height: 24; radius: Theme.r2
                     color: modelData.id === "stop" ? Qt.alpha(Theme.orange, actArea.containsMouse ? 0.95 : 0.85) : actArea.containsMouse ? Theme.pillHover : Theme.pill
                     Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
                     scale: actArea.pressed ? 0.97 : 1

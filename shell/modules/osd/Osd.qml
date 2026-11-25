@@ -781,7 +781,7 @@ Scope {
             Rectangle {
                 id: platter
                 opacity: card.inner
-                width: 44; height: 44; radius: 22
+                width: 44; height: 44; radius: Theme.r4
                 anchors.left: parent.left
                 anchors.leftMargin: 15
                 anchors.verticalCenter: parent.verticalCenter
