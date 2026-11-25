@@ -26,6 +26,8 @@ def run_hook(args: list[str], env: dict[str, str], stdin_data: str = "") -> subp
 def make_env(tmp_path: Path) -> dict[str, str]:
     env = os.environ.copy()
     env["XDG_STATE_HOME"] = str(tmp_path / "state")
+    env["T3CODE_HOME"] = str(tmp_path / "no-t3")
+    env.pop("T3CODE_THREAD_ID", None)
     env.pop("DEVIN_PROJECT_DIR", None)
     env.pop("DEVIN_SESSION_ID", None)
     for k in ("CURSOR_TRACE_ID", "CURSOR_VERSION", "T3CODE_THREAD_ID"):
@@ -259,3 +261,24 @@ def test_an_agent_whose_process_ended_leaves_at_once(tmp_path: Path) -> None:
         agent.kill()
         agent.wait()
     assert json.loads(run_hook(["list"], env).stdout) == []
+
+
+def test_an_agent_t3_started_is_left_to_t3(tmp_path: Path) -> None:
+    env = make_env(tmp_path)
+    tagged = json.dumps({"hook_event_name": "sessionStart", "conversation_id": "sub-1",
+                         "prompt": "<t3_code_orchestration_instructions>do x</t3_code_orchestration_instructions> Fix it"})
+    assert run_hook(["--agent", "cursor"], env, tagged).returncode == 0
+    t3home = tmp_path / "t3"
+    (t3home / "userdata").mkdir(parents=True)
+    (t3home / "userdata" / "server-runtime.json").write_text(json.dumps({"pid": os.getpid()}))
+    child = json.dumps({"hook_event_name": "sessionStart", "conversation_id": "sub-2", "prompt": "plain"})
+    assert run_hook(["--agent", "cursor"], {**env, "T3CODE_HOME": str(t3home)}, child).returncode == 0
+    assert json.loads(run_hook(["list"], env).stdout) == []
+
+
+def test_a_title_never_starts_with_an_instructions_block(tmp_path: Path) -> None:
+    env = make_env(tmp_path)
+    payload = json.dumps({"hook_event_name": "sessionStart", "conversation_id": "c-3",
+                          "prompt": "<system_notes a=\"1\">long rules</system_notes>\n Make the docs clearer"})
+    run_hook(["--agent", "cursor"], env, payload)
+    assert json.loads(run_hook(["list"], env).stdout)[0]["title"] == "Make the docs clearer"

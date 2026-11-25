@@ -195,3 +195,22 @@ def test_a_pending_approval_carries_what_it_asks(tmp_path):
     items = {i["thread"]: i for i in read(tmp_path)["items"]}
     assert items["t-ask"]["request"] == {"id": "req-1", "kind": "command", "prompt": "bun test tests/shell"}
     assert items["t-question"].get("request") is None
+
+
+def test_a_finished_turn_still_waiting_on_its_background_work_is_not_done(tmp_path):
+    db = sqlite3.connect(tmp_path / "statev2.sqlite")
+    db.executescript(SCHEMA + "create table orchestration_v2_projection_provider_threads (thread_id text, payload_json text);")
+    for tid, tasks in (("t-sub", [{"kind": "subagent"}]), ("t-awaited", [{"kind": "command", "awaited": True}]),
+                       ("t-devserver", [{"kind": "command", "awaited": False}])):
+        thread(db, tid, tid)
+        run(db, "r-" + tid, tid, "completed", completed=NOW)
+        db.execute("insert into orchestration_v2_projection_provider_threads values (?, ?)",
+                   (tid, json.dumps({"pendingBackgroundTasks": tasks})))
+    db.commit()
+    (tmp_path / "environment-id").write_text("env-1")
+    import os as _os
+    (tmp_path / "server-runtime.json").write_text(json.dumps({"pid": _os.getpid()}))
+    items = {i["title"]: i for i in read(tmp_path)["items"]}
+    assert items["t-sub"]["status"] == "running" and items["t-sub"]["held"] is True and items["t-sub"]["blocked"] is True
+    assert items["t-awaited"]["held"] is True
+    assert items["t-devserver"]["status"] == "completed", "a dev server left running doesn't hold the thread"

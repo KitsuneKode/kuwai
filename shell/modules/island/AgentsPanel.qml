@@ -148,7 +148,7 @@ FocusScope {
                      : said.key === "failed" ? "error" : said.key === "blocked" ? "idle" : "working";
             out.push({
                 section: "T3 Code",
-                word: said.key === "blocked" ? "Waiting on another thread" : (said.tone === "attention" && said.key !== "waiting") || said.key === "goal" ? said.word : "",
+                word: said.key === "blocked" ? (i.held ? "Waiting on background work" : "Waiting on another thread") : (said.tone === "attention" && said.key !== "waiting") || said.key === "goal" ? said.word : "",
                 stateKey: said.key,
                 key: "t" + i.thread, src: "t3", agent: ap.t3Agent(i.provider), title: i.title || "Untitled thread",
                 where: i.project && i.project !== "No project" ? i.project : "",
@@ -205,7 +205,10 @@ FocusScope {
             return (rank[a.state] - rank[b.state]) || (a.state === "needs" ? (a.t || Infinity) - (b.t || Infinity) : b.t - a.t);
         });
     }
-    onRowsChanged: sel = Math.min(sel, Math.max(0, rows.length - 1))
+    onRowsChanged: {
+        sel = Math.min(sel, Math.max(0, rows.length - 1));
+        if (list.followTop) Qt.callLater(() => list.positionViewAtBeginning());
+    }
     readonly property int needN: rows.filter(r => r.state === "needs").length
     readonly property int workN: rows.filter(r => r.state === "working").length
 
@@ -280,6 +283,7 @@ FocusScope {
         }
         else return;
         list.positionViewAtIndex(sel, ListView.Contain);
+        list.followTop = sel === 0;
         e.accepted = true;
     }
 
@@ -336,6 +340,8 @@ FocusScope {
             clip: true
             spacing: Theme.s2
             boundsBehavior: Flickable.StopAtBounds
+            property bool followTop: true
+            onMovementEnded: followTop = atYBeginning
             model: ScriptModel { values: ap.rows; objectProp: "key" }
             // One move (choreograph): a swiped row's spring carries it out while
             // the rows below rise into its place, together, not one after the other.

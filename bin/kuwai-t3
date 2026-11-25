@@ -35,6 +35,12 @@ pid=$(jq -r '.pid // empty' "$DIR/server-runtime.json" 2>/dev/null) || none
 is_server "$pid" || none
 [ -r "$DB" ] || none
 
+HOLDING=0
+if [ "$(timeout 3 sqlite3 -readonly -cmd ".timeout 2000" "file:$DB?mode=ro" "select count(*) from sqlite_master where name = 'orchestration_v2_projection_provider_threads';" 2>/dev/null)" = 1 ]; then
+  HOLDING="(select count(*) from orchestration_v2_projection_provider_threads pt, json_each(pt.payload_json, '\$.pendingBackgroundTasks') bt
+           where pt.thread_id = th.thread
+             and (json_extract(bt.value, '\$.awaited') = 1 or json_extract(bt.value, '\$.kind') in ('subagent', 'background_task')))"
+fi
 rows=$(timeout 3 sqlite3 -readonly -json -cmd ".timeout 2000" "file:$DB?mode=ro" "
   with th as (
     select t.thread_id as thread, coalesce(t.title, '') as title, t.payload_json as pj
@@ -98,6 +104,7 @@ rows=$(timeout 3 sqlite3 -readonly -json -cmd ".timeout 2000" "file:$DB?mode=ro"
            where l.status = 'failed' and ti.thread_id = l.thread and ti.run_id = l.run
              and ti.type = 'error' and ti.status = 'failed'
            order by ti.updated_at desc limit 1) as failure,
+         $HOLDING as holding,
          json_extract(th.pj, '\$.modelSelection.model') as model,
          (select json_extract(o.value, '\$.value') from json_each(th.pj, '\$.modelSelection.options') o
            where json_extract(o.value, '\$.id') = 'reasoningEffort') as effort,
@@ -106,6 +113,7 @@ rows=$(timeout 3 sqlite3 -readonly -json -cmd ".timeout 2000" "file:$DB?mode=ro"
   left join active a on a.thread = th.thread and a.n = 1
   left join latest l on l.thread = th.thread and l.n = 1
   where a.status is not null
+     or $HOLDING > 0
      or exists (select 1 from orchestration_v2_projection_runtime_requests q
                  where q.thread_id = th.thread and q.status = 'pending')
      or exists (select 1 from json_each(th.pj, '\$.guestShare.messages') g
@@ -118,13 +126,14 @@ jq -cn --argjson rows "$rows" --arg env "$env_id" '
     if (.asks // 0) > 0 or (.guests // 0) > 0 then "waiting"
     elif .active == "running" and .blocked == 1 then "blocked"
     elif .active != null then "running"
+    elif (.holding // 0) > 0 then "held"
     elif .latest == "failed" and ((.visited == null) or (.latest_at > .visited)) then
       (if .failure == "usage_limit" then "limited" else "failed" end)
     elif .latest == "completed" and ((.visited == null) or (.latest_at > .visited)) then "completed"
     else null end;
   [$rows[] | . + {s: state} | select(.s != null)] as $all
   | ($all | map(select(.s == "waiting"))) as $wait
-  | ($all | map(select(.s == "running" or .s == "blocked"))) as $run
+  | ($all | map(select(.s == "running" or .s == "blocked" or .s == "held"))) as $run
   # Every finished thread not yet opened is counted (the pill shows ✓N);
   # the newest 24 come as rows (the panel list scrolls). The count was
   # the length of the rows, capped at 8: past eight the pill said ✓8 for good.
@@ -134,12 +143,12 @@ jq -cn --argjson rows "$rows" --arg env "$env_id" '
      running: ($run | map(select(.s == "running")) | length),
      waiting: ($wait | length),
      finished: ($ended | length),
-     items: ([($wait + ($run | sort_by(.active_at) | reverse))[0:16][]
-              | {status: (if .s == "blocked" then "running" else .s end), blocked: (.s == "blocked"),
+     items: ([($wait + ($run | sort_by(.active_at // .latest_at) | reverse))[0:16][]
+              | {status: (if .s == "blocked" or .s == "held" then "running" else .s end), blocked: (.s == "blocked" or .s == "held"), held: (.s == "held"),
                  # Why it needs you: something to approve, a question to answer, or a message from a guest.
                  ask: (if .s != "waiting" then null elif ((.asks // 0) - (.questions // 0)) > 0 then "approval"
                        elif (.questions // 0) > 0 then "question" else "request" end),
                  request: (if .s == "waiting" and .req != null then (.req | fromjson? // null) else null end),
-                 provider, title: (.title | .[0:80]), thread, at: .active_at, model, effort, project}]
+                 provider, title: (.title | .[0:80]), thread, at: (.active_at // .latest_at), model, effort, project}]
             + [$done[] | {status: (if .s == "limited" then "failed" else .s end), limited: (.s == "limited"),
                  provider, title: (.title | .[0:80]), thread, at: .latest_at, model, effort, project}])}' 2>/dev/null || none

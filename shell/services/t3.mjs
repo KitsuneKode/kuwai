@@ -101,7 +101,7 @@ export function headline(items) {
 export function spoken(t) {
     return ({ approval: "Wants your approval", question: "Has a question for you", request: "A guest wrote to it",
               waiting: "Needs you", woke: "Scheduled task woke up", limited: "Stopped at a usage limit", failed: "Failed", done: "Finished",
-              blocked: "Waiting on another thread", goal: "Working on a goal", working: "Working", starting: "Starting" })[stateOf(t).key];
+              blocked: t && t.held ? "Waiting on background work" : "Waiting on another thread", goal: "Working on a goal", working: "Working", starting: "Starting" })[stateOf(t).key];
 }
 
 /**

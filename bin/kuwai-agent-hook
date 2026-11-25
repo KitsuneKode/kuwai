@@ -237,6 +237,10 @@ def load_fresh_agents(now: float | None = None, prune: bool = True) -> list[dict
             if prune:
                 p.unlink(missing_ok=True)
             continue
+        if str(entry.get("title") or "").lstrip().startswith("<t3_code_orchestration"):
+            if prune:
+                p.unlink(missing_ok=True)
+            continue
         if st not in ("done", "failed", "limited") and not alive(entry):
             if prune:
                 p.unlink(missing_ok=True)
@@ -301,8 +305,40 @@ def host_app(payload: dict[str, Any]) -> str:
     return ""
 
 
+def t3_server_pid() -> int:
+    runtime = Path(os.environ.get("T3CODE_HOME") or Path.home() / ".t3") / "userdata" / "server-runtime.json"
+    try:
+        pid = json.loads(runtime.read_text()).get("pid")
+        return pid if isinstance(pid, int) else 0
+    except (OSError, ValueError, AttributeError):
+        return 0
+
+
+def under_t3() -> bool:
+    """T3 Code started this agent (a thread's provider or a delegated subagent): T3 lists it."""
+    server, pid = t3_server_pid(), os.getppid()
+    if not server:
+        return False
+    for _ in range(15):
+        if pid == server:
+            return True
+        if pid <= 1:
+            return False
+        try:
+            st = Path(f"/proc/{pid}/stat").read_text()
+            pid = int(st[st.rindex(")") + 2:].split()[1])
+        except (OSError, ValueError, IndexError):
+            return False
+    return False
+
+
 def reported_elsewhere(agent: str, payload: dict[str, Any]) -> bool:
     if os.environ.get("T3CODE_THREAD_ID"):
+        return True
+    prompt = first_str(payload, "prompt", "user_prompt", "task", "title")
+    if prompt.lstrip().startswith("<t3_code_orchestration_instructions"):
+        return True
+    if under_t3():
         return True
     host = host_app(payload)
     return bool(host) and agent != host
@@ -349,7 +385,7 @@ def handle_hook(args: argparse.Namespace) -> int:
 
     title = clean_line(
         args.title
-        or first_str(payload, "title", "prompt", "user_prompt", "task")
+        or re.sub(r"^\s*(<([A-Za-z_][\w-]*)[^>]*>.*?</\2>\s*)+", "", first_str(payload, "title", "prompt", "user_prompt", "task"), flags=re.S)
         or prev.get("title", "")
         or project_name
         or agent.capitalize(),
