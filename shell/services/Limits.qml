@@ -68,6 +68,11 @@ Singleton {
                 }
         return out;
     }
+    readonly property var agentsOut: {
+        const seen = {};
+        for (const x of exhausted) seen[Agents.providerId(x.provider.driver || x.provider.label) + "|" + (x.account.email || x.account.key || x.account.name || "")] = true;
+        return Object.keys(seen);
+    }
     // One per window: two accounts on one shared quota (Antigravity's
     // "Claude & GPT (shared)") reported it twice, so it was said twice.
     readonly property var exhausted: {
@@ -358,7 +363,7 @@ Singleton {
     }
 
     function alertKey(p, a, w) {
-        return (p.driver || p.label || "p") + ":" + (a.key || a.email || "") + ":" + (w.id || w.label || "");
+        return Agents.providerId(p.driver || p.label || "p") + ":" + (a.email || a.key || a.name || "") + ":" + windowLabel(w).toLowerCase().replace(/\s+/g, " ");
     }
     // "Claude Code" + "Weekly" → "Claude weekly"; "5 hour" → "5-hour".
     function providerShort(p) { return String(p.label || p.driver || "Agent").replace(/\s+(Code|Build)$/, ""); }

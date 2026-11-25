@@ -808,11 +808,11 @@ Item {
             glyph: "\u{f029a}"
             on: Island.panel === "system" || Island.panel === "usage"
             tone: Theme.accent
-            badge: Limits.exhausted.length > 0
+            badge: Limits.agentsOut.length > 0
             badgeTone: Theme.orange
-            tip: Limits.exhausted.length ? "Usage: " + Limits.exhausted.length + " agent" + (Limits.exhausted.length === 1 ? "" : "s") + " out"
+            tip: Limits.agentsOut.length ? "Usage: " + Limits.agentsOut.length + " agent" + (Limits.agentsOut.length === 1 ? "" : "s") + " out"
                 : "System: CPU, memory, GPU, modes"
-            onClicked: Island.open(Limits.exhausted.length ? "usage" : "system", hover.bar.screenName, "pointer", "island")
+            onClicked: Island.open(Limits.agentsOut.length ? "usage" : "system", hover.bar.screenName, "pointer", "island")
         }
         Item {
             id: bellRow
