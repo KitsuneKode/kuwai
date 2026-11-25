@@ -56,9 +56,9 @@ Singleton {
 
     function trimDir(p) { return String(p || "").replace(/^~(?=\/|$)/, Quickshell.env("HOME") || "~").replace(/\/+$/, ""); }
     function inKitty(d) {
+        if (d.pane) return Kittymux.available;
         const agent = String(d.agent || "").toLowerCase(), dir = trimDir(d.cwd);
-        return (Kittymux.running || []).some(r => (d.pane && (r.key === d.pane || "w" + r.pid + "." + r.w === d.pane))
-            || (String(r.agent || "").toLowerCase() === agent && dir !== "" && trimDir(r.where) === dir));
+        return (Kittymux.running || []).filter(r => String(r.agent || "").toLowerCase() === agent && dir !== "" && trimDir(r.where) === dir).length === 1;
     }
     readonly property var desktop: desktopFeed.filter(d => d && d.id && (!d.updated_at || !d.ttl || root.now / 1000 - d.updated_at <= d.ttl) && !inKitty(d))
 
@@ -95,9 +95,10 @@ Singleton {
     function stateGlyph(key) { return A.stateGlyph(key); }
 
     function focusDesktop(it) {
-        const cls = String((it && (it.windowClass || it.window_class)) || "");
-        if (!cls || !/^[A-Za-z0-9._:@+-]+$/.test(cls)) return false;
-        Hyprland.dispatch("hl.dsp.focus({window = [[class:" + cls + "]]})");
+        const raw = String((it && (it.windowClass || it.window_class)) || "");
+        const names = raw.replace(/^\^\(?/, "").replace(/\)?\$$/, "").replace(/\\/g, "").split("|").filter(n => n);
+        if (!names.length || !names.every(n => /^[A-Za-z0-9._:@+-]+$/.test(n))) return false;
+        Hyprland.dispatch("hl.dsp.focus({window = [[class:^(" + names.map(n => n.replace(/\./g, "\\.")).join("|") + ")$]]})");
         return true;
     }
 
