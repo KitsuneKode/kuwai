@@ -10,9 +10,12 @@
 What the recommendation means (rec):
     keep    you changed this file and the new default would undo it (your repos, your
             initramfs modules, your locale); delete the .pacnew, nothing is lost
-    take    you never changed it: the new default replaces it (yours saved as X.kuwai-bak)
-    review  both sides have changes, or the file is root-only (sudoers): look first
+    take    you never changed it: the new default replaces it (yours saved under
+            /var/lib/kuwai/pacnew-backups)
+    review  both sides have changes, the file is root-only (sudoers), or the comparison isn't
+            sure (no older package cached, settings reordered or repeated): look first
 """
+import functools
 import json
 import os
 import re
@@ -47,7 +50,8 @@ def short(lines, n=4):
 
 def original(path):
     """The default you had before this update, from the previous package in pacman's cache
-    (the .pacnew is the new one). None when it isn't cached."""
+    (the .pacnew is the new one): the newest cached version older than the installed one,
+    never a newer file downloaded but not installed. None when it isn't cached."""
     owner = subprocess.run(["pacman", "-Qoq", path], capture_output=True, text=True).stdout.strip()
     if not owner:
         return None
@@ -61,15 +65,27 @@ def original(path):
     def ver(f):
         rest = f[len(owner) + 1:].split(".pkg.tar")[0].rsplit("-", 1)[0]
         return rest if re.match(r"^[0-9:]", rest) else None
-    olds = [(ver(f), f) for f in pkgs if ver(f) and ver(f) != cur]
+    def vercmp(a, b):
+        r = subprocess.run(["vercmp", a, b], capture_output=True, text=True).stdout.strip()
+        return int(r) if re.fullmatch(r"-?\d+", r) else 0
+    olds = [(ver(f), f) for f in pkgs if ver(f) and cur and vercmp(ver(f), cur) < 0]
     if not olds:
         return None
-    olds.sort(key=lambda x: subprocess.run(["vercmp", x[0], cur], capture_output=True, text=True).stdout.strip())
-    for v, f in sorted(olds, key=lambda x: x[0], reverse=True):
+    olds.sort(key=functools.cmp_to_key(lambda x, y: vercmp(x[0], y[0])), reverse=True)
+    best = olds[0][0]
+    for v, f in olds:
+        if v != best:
+            break
         r = subprocess.run(["bsdtar", "-xOf", os.path.join(cache, f), path.lstrip("/")], capture_output=True)
         if r.returncode == 0 and r.stdout:
             return r.stdout.decode(errors="replace")
     return None
+
+
+def in_order(small, big):
+    """small appears in big in the same order (each line used once)."""
+    it = iter(big)
+    return all(any(x == y for y in it) for x in small)
 
 
 def yours_evident(gone, new):
@@ -127,15 +143,20 @@ def describe(path):
     removed = {norm(l) for l in active_lines(orig)} - nm if orig is not None else set()
     turned_back = [l for l in added if norm(l) in removed]
     item.update(gone=short(gone), added=short(added), lines=len(gone) + len(added))
-    if not gone and not added:
+    om, ot = [norm(l) for l in mine], [norm(l) for l in theirs]
+    if not gone and not added and om == ot:
         item.update(rec="keep", why="Only the comments changed")
+    elif not gone and not added:
+        item.update(rec="review", why="The same settings, reordered or repeated: order can matter, look first")
     elif turned_back:
         item.update(rec="keep", gone=short(turned_back),
                     why="You turned these off; the new default would turn them back on")
     elif not gone and orig is None:
         item.update(rec="review", why="The new default adds settings: check none of them is one you removed on purpose")
-    elif not gone:
+    elif not gone and in_order(om, ot):
         item.update(rec="take", why="Everything you have is in the new default, which adds settings")
+    elif not gone:
+        item.update(rec="review", why="The new default adds settings and moves yours around")
     elif not really_added and yours_evident(gone, new):
         item.update(rec="keep", why="You switched these on or filled them in; the new default would undo that")
     elif not really_added and orig is None:
@@ -174,19 +195,23 @@ def apply(raw):
             "(it shows what it installs and asks for the password), then apply again."]}))
         return 1
     p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
-    log, rc = [], 1
+    log, rc, results = [], 1, []
     for line in p.stdout:
         msg = json.loads(line)
         if msg.get("ready"):
             p.stdin.write(json.dumps({"op": "pacnew", "items": items}) + "\n")
             p.stdin.flush()
+        elif "item" in msg and isinstance(msg["item"], dict):
+            results.append(msg["item"])
         elif "log" in msg:
             log.append(msg["log"])
         elif "rc" in msg:
             rc = msg["rc"]
             p.stdin.close()
     p.wait()
-    print(json.dumps({"ok": rc == 0, "done": len(items), "log": log}))
+    done = sum(1 for r in results if r.get("ok"))
+    failed = [{"path": r.get("path", ""), "why": r.get("why", "")} for r in results if not r.get("ok")]
+    print(json.dumps({"ok": rc == 0 and done == len(items), "done": done, "failed": failed, "log": log}))
     return 0 if rc == 0 else 1
 
 

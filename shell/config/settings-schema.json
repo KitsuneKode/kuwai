@@ -257,6 +257,18 @@
       "restartScope": "live"
     },
     {
+      "key": "updatesPruneCache",
+      "type": "boolean",
+      "default": false,
+      "section": "updates",
+      "label": "Prune the package cache after updating",
+      "detail": "Keeps the installed and one older version of each package; removed packages' files go. Off keeps every downloaded file for rolling back",
+      "group": "Checking",
+      "searchTerms": "prune package cache after updating paccache rollback old versions checking",
+      "requires": [],
+      "restartScope": "live"
+    },
+    {
       "key": "updatesAnnounce",
       "type": "boolean",
       "default": true,

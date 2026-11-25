@@ -12,7 +12,8 @@
     kuwai-update clean [--legacy] [--artifacts] [--builds] [--pacman] [--all] [--dry-run]
                                        reclaim legacy AUR trees, stale artifacts, failed builds,
                                        and optionally pacman cache (via paccache)
-    kuwai-update start [--repo] [--aur PKG ...] [--flatpak APP ...] [--unreviewed]
+    kuwai-update check [--no-flatpak]
+    kuwai-update start [--repo] [--aur PKG ...] [--flatpak APP ...] [--unreviewed] [--prune-cache]
                                        (--unreviewed: build the AUR packages' newest commits without a
                                        review, for this run only; you chose it explicitly)
                                        run the update as its own background job (systemd user unit
@@ -206,7 +207,7 @@ def news(since):
     return out[:6]
 
 
-def check():
+def check(flatpak_on=True):
     repo_run = sh(["checkupdates", "--nocolor"])
     repo = parse_updates(repo_run.stdout, "")
     repos = repo_of([p["name"] for p in repo])
@@ -236,7 +237,7 @@ def check():
                 power["battery"] = int(open(os.path.join(base, "capacity")).read().strip())
         except (OSError, ValueError):
             pass
-    flatpak = flatpak_updates()
+    flatpak = flatpak_updates() if flatpak_on else []
     kernel = any(re.match(r"^linux(-zen|-lts|-hardened|-rt)?$", p["name"]) for p in repo)
     return {
         "checkedAt": int(time.time()),
@@ -494,13 +495,16 @@ def review(pkg):
             vers.add(bv[1].strip())
     vers = sorted((v for v in vers if v), key=len, reverse=True)
 
+    metadata = re.compile(r"^\s*(pkgver|pkgrel|epoch|_?[a-z0-9_]*ver|source(_[a-z0-9_]+)?|(sha\d+|b2|md5|ck)sums(_[a-z0-9_]+)?)\s*[=+]|^\s*['\"][^'\"]*['\"]\s*\)?\s*$")
+
     def norm(x):
         x = x.strip()
         for v in vers:
             x = x.replace(v, "{V}")
-        x = re.sub(r"\b[0-9a-f]{32,}\b", "{H}", x)
-        x = re.sub(r"^(pkgrel|epoch)\s*=\s*\S+", r"\1={R}", x)
-        x = re.sub(r"\b\d+(\.\d+){1,3}\b", "{N}", x)
+        if metadata.search(x):
+            x = re.sub(r"\b[0-9a-f]{32,}\b", "{H}", x)
+            x = re.sub(r"^(pkgrel|epoch)\s*=\s*\S+", r"\1={R}", x)
+            x = re.sub(r"\b\d+(\.\d+){1,3}\b", "{N}", x)
         return x
 
     def substantive(text):
@@ -513,8 +517,11 @@ def review(pkg):
             routine = False
         removed = {norm(r["s"]) for h in f["hunks"] for r in h["lines"] if r["t"] == "-"}
         added = {norm(r["s"]) for h in f["hunks"] for r in h["lines"] if r["t"] == "+"}
-        if any(norm(x) not in added for x in removed if substantive(x)):
-            routine = False
+        for h in f["hunks"]:
+            before = [norm(r["s"]) for r in h["lines"] if r["t"] != "+" and substantive(r["s"])]
+            after = [norm(r["s"]) for r in h["lines"] if r["t"] != "-" and substantive(r["s"])]
+            if before != after:
+                routine = False
         for h in f["hunks"]:
             for r in h["lines"]:
                 if r["t"] != "+":
@@ -627,6 +634,7 @@ class Run:
 
 
 AUTH_FAIL = (126, 127)
+DEPS_FAILED = 90
 ANSI = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]|\x1b\][^\x07]*\x07")
 
 
@@ -670,6 +678,7 @@ class Root:
         self.R = R
         self.p = None
         self.prompts = 0
+        self.transaction = None
         verified = os.path.isfile(HELPER_SRC) and helper_ok()
         self.stale = os.path.isfile(HELPER_SRC) and not verified
         self.helper = verified
@@ -705,7 +714,8 @@ class Root:
                 script = f'/usr/bin/paccache -rk{int(keep)} && /usr/bin/paccache -ruk0'
                 return self.R.stream(["pkexec", "/bin/sh", "-c", script], progress=progress)
             if op == "upgrade" and deps:
-                script = '/usr/bin/pacman -Syu --noconfirm --needed && /usr/bin/pacman -S --noconfirm --needed --asdeps -- "$@"'
+                script = ('/usr/bin/pacman -Syu --noconfirm --needed || exit $?; '
+                          f'/usr/bin/pacman -S --noconfirm --needed --asdeps -- "$@" || exit {DEPS_FAILED}')
                 return self.R.stream(["pkexec", "/bin/sh", "-c", script, "sh", *deps], progress=progress)
             cmd = {"upgrade": ["-Syu", "--noconfirm", "--needed"],
                    "deps": ["-S", "--noconfirm", "--needed", "--asdeps", "--", *deps],
@@ -728,6 +738,11 @@ class Root:
                     continue
                 if "log" in msg:
                     self.R.line(msg["log"], progress)
+                elif "plan" in msg and isinstance(msg["plan"], list):
+                    self.transaction = [str(x)[:120] for x in msg["plan"][:2000]]
+                    self.R.emit(e="transaction", pkgs=self.transaction)
+                    self.R.emit(e="log", line=f"pacman resolved {len(self.transaction)} package(s): " + ", ".join(self.transaction[:40])
+                                + (" …" if len(self.transaction) > 40 else ""))
                 elif "rc" in msg:
                     return msg["rc"]
         except (BrokenPipeError, OSError):
@@ -1284,6 +1299,7 @@ def run(args):
 def run_locked(args):
     want_repo = "--repo" in args
     unreviewed = "--unreviewed" in args
+    prune = "--prune-cache" in args
     def after(flag):
         if flag not in args:
             return []
@@ -1298,7 +1314,10 @@ def run_locked(args):
     R = Run()
     approved = load(APPROVED, {})
     trusted = set(load(TRUSTED, []))
-    result = {"ok": True, "repo": None, "built": [], "skipped": [], "installed": [], "log": R.path}
+    result = {"ok": True, "repo": None, "deps": None, "built": [], "skipped": [], "installed": [], "phases": [], "log": R.path}
+
+    def phase_done(pid, ok, **more):
+        result["phases"].append({"id": pid, "ok": bool(ok), **more})
 
     R.emit(e="plan", repo=want_repo, aur=aur, flatpak=flatpaks)
     R.emit(e="phase", id="check", label="Checking space and power")
@@ -1356,16 +1375,34 @@ def run_locked(args):
 
         if want_repo or extra_repo_deps:
             R.emit(e="phase", id="repo", label="Updating Arch packages" if want_repo else "Installing build dependencies")
-            rc = root.run("upgrade" if want_repo else "deps", progress="repo", deps=extra_repo_deps)
+            together = want_repo and extra_repo_deps and not root.helper
+            rc = root.run("upgrade" if want_repo else "deps", progress="repo", deps=extra_repo_deps if together or not want_repo else ())
             if rc in AUTH_FAIL:
                 R.emit(e="error", msg=cancelled_msg())
                 R.emit(e="done", **{**result, "ok": False, "cancelled": True})
                 return 1
-            if rc != 0:
-                R.emit(e="error", msg="pacman stopped (see the log). Nothing was half-installed: pacman applies a transaction whole or not at all.")
-                R.emit(e="done", **{**result, "ok": False, "repo": False})
+            upgraded = want_repo and rc in (0, DEPS_FAILED)
+            if want_repo:
+                result["repo"] = upgraded
+                phase_done("repo", upgraded, transaction=root.transaction)
+            if want_repo and not upgraded:
+                R.emit(e="error", msg="pacman stopped before the Arch update finished (see the log). "
+                                      "pacman usually refuses before it changes anything; the log says whether it got that far. "
+                                      "Nothing was built or installed after it.")
+                R.emit(e="done", **{**result, "ok": False})
                 return 1
-            result["repo"] = True
+            if extra_repo_deps:
+                if not together and want_repo:
+                    rc = root.run("deps", progress="repo", deps=extra_repo_deps)
+                deps_ok = rc == 0
+                result["deps"] = deps_ok
+                phase_done("deps", deps_ok, pkgs=extra_repo_deps)
+                if not deps_ok:
+                    why = "its build dependencies couldn't be installed (see the log)"
+                    R.emit(e="error", msg=("Arch packages are updated, but " if upgraded else "")
+                           + "the build dependencies (" + ", ".join(extra_repo_deps[:6]) + ") couldn't be installed, so the AUR builds were skipped.")
+                    result["skipped"].extend({"pkg": name, "why": why} for (_, _, _, _, outputs) in plan for name in outputs)
+                    plan = []
 
         built = []
         digests = {}
@@ -1395,6 +1432,7 @@ def run_locked(args):
             files = [{"path": f, "sha256": digests[f]} for b in built for f in b[3]]
             before = {pkg: installed_fingerprint(pkg) for b in built for pkg in b[0]}
             rc = root.run("install", progress="install", files=files)
+            phase_done("install", rc == 0)
             if rc in AUTH_FAIL:
                 R.emit(e="error", msg=cancelled_msg("The AUR packages are built but not installed."))
                 result["ok"] = False
@@ -1405,7 +1443,7 @@ def run_locked(args):
                 for outputs, d, head, files in built:
                     for pkg in outputs:
                         if not newly_installed(before.get(pkg), installed_fingerprint(pkg)):
-                            result["skipped"].append({"pkg": pkg, "why": "pacman kept the copy already installed (same version); nothing recorded"})
+                            result["skipped"].append({"pkg": pkg, "why": "pacman kept the copy already installed (same version); nothing recorded", "benign": True})
                             continue
                         result["installed"].append(pkg)
                         try:
@@ -1420,9 +1458,13 @@ def run_locked(args):
                     except Exception as ex:
                         R.emit(e="log", line=f"Build files retained for diagnosis: {ex}")
                 save(APPROVED, approved)
-        if root.helper and root.p and (result["repo"] or result["installed"]):
+        if prune and (result["repo"] or result["installed"]):
             R.emit(e="phase", id="clean", label="Pruning package cache")
-            root.run("clean-cache", keep=2)
+            rc = root.run("clean-cache", keep=2)
+            result["pruned"] = rc == 0
+            phase_done("clean", rc == 0)
+            if rc != 0:
+                R.emit(e="log", line=f"Pruning the package cache failed (exit {rc}); the update itself is unaffected.")
     finally:
         root.close()
     result["prompts"] = root.prompts
@@ -1437,6 +1479,7 @@ def run_locked(args):
         for inst, refs in groups.items():
             rc |= R.stream(["flatpak", "update", *([f"--{inst}"] if inst else []), "-y", "--noninteractive", *refs], progress="flatpak")
         result["flatpak"] = rc == 0
+        phase_done("flatpak", rc == 0)
         if rc != 0:
             R.emit(e="error", msg="Some Flatpak updates didn't install (see the log).")
             result["ok"] = False
@@ -1448,8 +1491,11 @@ def run_locked(args):
     result["pacnew"] = pac[:20]
     failed = sh(["systemctl", "--failed", "--no-legend", "--plain"]).stdout
     result["failedUnits"] = [l.split()[0] for l in failed.splitlines() if l.strip()][:10]
-    if result["skipped"]:
-        result["ok"] = False if not (result["repo"] or result["installed"]) else result["ok"]
+    missed = [x for x in result["skipped"] if not x.get("benign")]
+    done_any = bool(result["repo"] or result["deps"] or result["installed"] or result.get("flatpak"))
+    if missed:
+        result["ok"] = False
+    result["partial"] = done_any and not result["ok"]
     R.emit(e="done", **result)
     return 0 if result["ok"] else 1
 
@@ -1457,8 +1503,8 @@ def run_locked(args):
 def main(argv):
     cmd = argv[0] if argv else "check"
     try:
-        if cmd == "check":
-            data = check()
+        if cmd == "check" and set(argv[1:]) <= {"--no-flatpak"}:
+            data = check(flatpak_on="--no-flatpak" not in argv)
             save(os.path.join(CACHE, "updates.json"), data)
             print(json.dumps(data))
         elif cmd == "review" and len(argv) == 2:

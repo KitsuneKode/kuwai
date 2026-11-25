@@ -59,12 +59,15 @@ Singleton {
         if (checking || running) return;
         checking = true;
         checkError = "";
+        localChanged = false;
         checker.running = true;
     }
-    function checkIfStale() { if (Date.now() - checkedAt > 20 * 60 * 1000) check(); }
+    function checkIfStale() { if (localChanged || Date.now() - checkedAt > 20 * 60 * 1000) check(); }
+    readonly property bool autoCheck: Settings.updatesCheckHours > 0
+    property bool localChanged: false
     Process {
         id: checker
-        command: [root.bin, "check"]
+        command: Settings.updatesFlatpak ? [root.bin, "check"] : [root.bin, "check", "--no-flatpak"]
         stdout: StdioCollector {
             onStreamFinished: {
                 root.checking = false;
@@ -92,7 +95,7 @@ Singleton {
         onTriggered: { root.retries++; root.check(); }
     }
     function afterCheck(ok) {
-        if (ok) { retries = 0; retry.stop(); } else retry.restart();
+        if (ok) { retries = 0; retry.stop(); } else if (autoCheck) retry.restart();
         pacQuiet = true;          // what's installed now is what this check saw
         if (!pacStat.running) pacStat.running = true;
     }
@@ -126,7 +129,10 @@ Singleton {
                 if (!st) return;
                 const changed = root.pacStamp !== "" && st !== root.pacStamp;
                 root.pacStamp = st;
-                if (changed && !quiet && !root.running) root.check();
+                if (changed && !quiet && !root.running) {
+                    if (root.autoCheck) root.check();
+                    else root.localChanged = true;
+                }
                 if (more) pacDebounce.restart();
             }
         }
@@ -149,7 +155,7 @@ Singleton {
         printErrors: false
         onLoaded: { if (!root.data) { try { root.data = JSON.parse(text()); } catch (e) {} } }
     }
-    Timer { interval: 120 * 1000; running: true; onTriggered: root.check() }
+    Timer { interval: 120 * 1000; running: root.autoCheck; onTriggered: root.check() }
     Timer { interval: Math.max(1, Settings.updatesCheckHours) * 3600 * 1000; running: Settings.updatesCheckHours > 0; repeat: true; onTriggered: root.check() }
 
     // ── AUR review ───────────────────────────────────────────────────────
@@ -325,6 +331,7 @@ Singleton {
         if (plan.repo) args.push("--repo");
         if (plan.aur.length) args.push("--aur", ...plan.aur);
         if (plan.flatpak.length) args.push("--flatpak", ...plan.flatpak);
+        if (Settings.updatesPruneCache) args.push("--prune-cache");
         // Its own background job (systemd user unit kuwai-update, sleep and
         // shutdown held off): restarting or crashing the shell can't touch it.
         starter.command = args;
@@ -343,6 +350,7 @@ Singleton {
         if (plan.aur.length) args.push("--aur", ...plan.aur);
         if (plan.flatpak.length) args.push("--flatpak", ...plan.flatpak);
         args.push("--unreviewed");
+        if (Settings.updatesPruneCache) args.push("--prune-cache");
         starter.command = args;
         resetRun();
         ownedRun = true;
@@ -520,7 +528,7 @@ Singleton {
             if (result.log) shownFile.setText(result.log + "\n");
             const n = (result.installed || []).length;
             Moments.show(result.unknown || !result.ok
-                ? { kind: "update", glyph: "\u{f0026}", label: result.unknown ? "Update stopped" : "Updated, with things to look at", value: "", ring: -1, tone: Theme.orange }
+                ? { kind: "update", glyph: "\u{f0026}", label: result.unknown ? "Update stopped" : result.partial ? "Partly updated" : "Updated, with things to look at", value: "", ring: -1, tone: Theme.orange }
                 : { kind: "update", glyph: "\u{f012c}", label: "Updated", value: n ? n + (n === 1 ? " package" : " packages") : "", ring: -1, tone: Theme.green }, 4000);
         }
         Qt.callLater(check);
@@ -665,7 +673,11 @@ Singleton {
                 let r = {};
                 try { r = JSON.parse(text); } catch (e) {}
                 root.pacnewBusy = false;
-                root.pacnewResult = r.ok ? "Done: " + (r.done || 0) + " config files sorted" : "Not applied (cancelled, or a file was refused)";
+                const failed = r.failed || [];
+                root.pacnewResult = r.ok ? "Done: " + (r.done || 0) + " config files sorted"
+                    : (r.done || 0) > 0 ? "Sorted " + r.done + "; " + failed.length + " refused: " + failed.map(f => f.path.replace(/^\/etc\//, "")).join(", ")
+                    : failed.length ? "Not applied: " + failed.map(f => f.path.replace(/^\/etc\//, "") + " (" + f.why + ")").join(", ")
+                    : (r.log && r.log.length ? r.log[r.log.length - 1] : "Not applied (cancelled at the password prompt?)");
                 root.loadPacnew();
             }
         }

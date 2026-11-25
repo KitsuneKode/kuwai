@@ -101,3 +101,19 @@ def test_only_a_changed_local_entry_counts_as_installed():
     assert m.newly_installed(fp, {**fp, "identity": "y", "inode": 2}) is True
     assert m.newly_installed(None, fp) is True
     assert m.newly_installed(fp, None) is False
+
+
+def test_a_number_inside_a_command_is_not_a_version_bump(world):
+    d, review = world
+    first = commit(d, "1.1", "b" * 64, check="  sleep 1\n")
+    second = commit(d, "1.2", "c" * 64, check="  sleep 900\n")
+    assert review(second, base_override=first)["routine"] is False
+
+
+def test_reordered_commands_are_not_routine(world):
+    d, review = world
+    first = commit(d, "1.1", "b" * 64, check="  make a\n  make b\n")
+    second = commit(d, "1.2", "c" * 64, check="  make b\n  make a\n")
+    assert review(second, base_override=first)["routine"] is False
+    third = commit(d, "1.3", "d" * 64, check="  make b\n  make a\n")
+    assert review(third, base_override=second)["routine"] is True

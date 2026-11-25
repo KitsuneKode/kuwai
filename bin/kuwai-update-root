@@ -10,7 +10,10 @@ never run from your home folder, which anything running as you could rewrite.
 
 It reads one JSON request per line on stdin and only ever runs pacman:
 
-    {"op": "upgrade", "deps": [PKG...]}   pacman -Syu --noconfirm --needed, then (deps given)
+    {"op": "upgrade", "deps": [PKG...]}   pacman -Sy, then {"plan": ["NAME VERSION"...]}: the
+                                          transaction pacman resolved against the fresh
+                                          databases (replacements and new dependencies too),
+                                          then pacman -Su --noconfirm --needed; with deps,
                                           pacman -S --noconfirm --needed --asdeps PKG...
     {"op": "deps", "deps": [PKG...]}      pacman -S --noconfirm --needed --asdeps PKG...
     {"op": "install", "files": [{"path": FILE, "sha256": HEX}...]}
@@ -24,7 +27,9 @@ It reads one JSON request per line on stdin and only ever runs pacman:
     {"op": "pacnew", "items": [{"path": "/etc/X", "action": "keep"|"take"}]}
                                           a config file's .pacnew after an update: keep yours
                                           (delete X.pacnew) or take the new default (X.pacnew
-                                          replaces X, X saved as X.kuwai-bak). Only real files
+                                          replaces X; X saved under /var/lib/kuwai/pacnew-backups
+                                          with a name of its own). Each file answers
+                                          {"item": {path, ok, why}}. Only real files
                                           under /etc with a root-owned X.pacnew beside them, no
                                           symlinks; sudoers only after `visudo -c` passes.
 
@@ -96,6 +101,16 @@ def pacman(args):
     return run_tool([PACMAN, *args])
 
 
+def resolved():
+    """What -Su would install now, as pacman itself resolved it."""
+    try:
+        r = subprocess.run([PACMAN, "-Su", "--print", "--print-format", "%n %v"], env=ENV,
+                           stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=300)
+    except (OSError, subprocess.TimeoutExpired):
+        return []
+    return [l.strip() for l in r.stdout.splitlines() if l.strip() and " " in l.strip()][:2000]
+
+
 def clean_cache(req):
     """Prune /var/cache/pacman/pkg using paccache with a bounded keep count."""
     keep = req.get("keep", 2)
@@ -163,41 +178,90 @@ def files(req, home, uid):
 ETC = "/etc/"
 
 
+BACKUPS = "/var/lib/kuwai/pacnew-backups"
+
+
+def backup_dir():
+    """Root's own folder for the files a take replaces: made 0700, never through a link."""
+    os.makedirs(BACKUPS, mode=0o700, exist_ok=True)
+    for d in (os.path.dirname(BACKUPS), BACKUPS):
+        st = os.lstat(d)
+        if not stat.S_ISDIR(st.st_mode) or st.st_uid != 0 or st.st_mode & 0o022:
+            raise ValueError(f"backup folder not root's own: {d}")
+    return BACKUPS
+
+
+def backup(path):
+    """A copy of path under BACKUPS with a name of its own (time, path, a counter), opened
+    without following links and never over an existing file."""
+    src = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    try:
+        if not stat.S_ISREG(os.fstat(src).st_mode):
+            raise ValueError(f"not a regular file: {path!r}")
+        base = os.path.join(backup_dir(), time.strftime("%Y%m%d-%H%M%S-") + path[len(ETC):].replace("/", "%"))
+        for n in range(100):
+            dest = base if n == 0 else f"{base}.{n}"
+            try:
+                out = os.open(dest, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+                break
+            except FileExistsError:
+                continue
+        else:
+            raise ValueError(f"no free backup name for {path!r}")
+        with os.fdopen(out, "wb") as o, os.fdopen(os.dup(src), "rb") as i:
+            shutil.copyfileobj(i, o)
+            o.flush()
+            os.fsync(o.fileno())
+        return dest
+    finally:
+        os.close(src)
+
+
+def pacnew_one(path, action):
+    if action not in ("keep", "take") or not isinstance(path, str) or not path.startswith(ETC) \
+            or "\0" in path or any(part in ("", ".", "..") for part in path[1:].split("/")):
+        raise ValueError(f"not a config file: {path!r}")
+    new = path + ".pacnew"
+    if os.path.realpath(new) != new or os.path.realpath(os.path.dirname(path)) != os.path.dirname(path):
+        raise ValueError(f"symlink in the way: {path!r}")
+    st = os.lstat(new)
+    if not stat.S_ISREG(st.st_mode) or st.st_uid != 0:
+        raise ValueError(f"not a root-owned .pacnew: {new!r}")
+    if os.path.lexists(path) and (os.path.islink(path) or not stat.S_ISREG(os.lstat(path).st_mode)):
+        raise ValueError(f"not a regular file: {path!r}")
+    if action == "keep":
+        os.unlink(new)
+        return f"kept yours: {path}"
+    if path == "/etc/sudoers" or path.startswith("/etc/sudoers.d/"):
+        if subprocess.run(["/usr/bin/visudo", "-c", "-q", "-f", new], env=ENV).returncode != 0:
+            raise ValueError(f"{new} doesn't pass visudo -c; yours stays")
+    saved = ""
+    if os.path.exists(path):
+        old = os.lstat(path)
+        saved = backup(path)
+        os.chmod(new, stat.S_IMODE(old.st_mode))
+        os.chown(new, old.st_uid, old.st_gid)
+    os.replace(new, path)
+    return f"took the new default: {path}" + (f" (yours saved as {saved})" if saved else "")
+
+
 def pacnew(req):
-    """Keep yours or take the new default, for each X with an X.pacnew."""
+    """Keep yours or take the new default, for each X with an X.pacnew. Each file is its own
+    step: one refused doesn't stop the rest, and each one says how it went."""
     items = req.get("items") or []
     if not isinstance(items, list) or not items:
         raise ValueError("no config files")
     rc = 0
     for it in items:
         path, action = (it or {}).get("path"), (it or {}).get("action")
-        if action not in ("keep", "take") or not isinstance(path, str) or not path.startswith(ETC) \
-                or "\0" in path or any(part in ("", ".", "..") for part in path[1:].split("/")):
-            raise ValueError(f"not a config file: {path!r}")
-        new = path + ".pacnew"
-        if os.path.realpath(new) != new or os.path.realpath(os.path.dirname(path)) != os.path.dirname(path):
-            raise ValueError(f"symlink in the way: {path!r}")
-        st = os.lstat(new)
-        if not stat.S_ISREG(st.st_mode) or st.st_uid != 0:
-            raise ValueError(f"not a root-owned .pacnew: {new!r}")
-        if os.path.lexists(path) and (os.path.islink(path) or not stat.S_ISREG(os.lstat(path).st_mode)):
-            raise ValueError(f"not a regular file: {path!r}")
-        if action == "keep":
-            os.unlink(new)
-            say(log=f"kept yours: {path}")
-            continue
-        if path == "/etc/sudoers" or path.startswith("/etc/sudoers.d/"):
-            if subprocess.run(["/usr/bin/visudo", "-c", "-q", "-f", new], env=ENV).returncode != 0:
-                say(log=f"refused: {new} doesn't pass visudo -c; yours stays")
-                rc = 1
-                continue
-        if os.path.exists(path):
-            old = os.lstat(path)
-            shutil.copy2(path, path + ".kuwai-bak")
-            os.chmod(new, stat.S_IMODE(old.st_mode))
-            os.chown(new, old.st_uid, old.st_gid)
-        os.replace(new, path)
-        say(log=f"took the new default: {path} (yours saved as {path}.kuwai-bak)")
+        try:
+            line = pacnew_one(path, action)
+            say(log=line)
+            say(item={"path": path, "ok": True})
+        except (ValueError, OSError) as ex:
+            rc = 1
+            say(log=f"refused {path!r}: {ex}")
+            say(item={"path": path if isinstance(path, str) else "", "ok": False, "why": str(ex)[:200]})
     return rc
 
 
@@ -218,7 +282,10 @@ def main():
             op = req.get("op")
             if op == "upgrade":
                 deps = names(req)
-                rc = pacman(["-Syu", "--noconfirm", "--needed"])
+                rc = pacman(["-Sy"])
+                if rc == 0:
+                    say(plan=resolved())
+                    rc = pacman(["-Su", "--noconfirm", "--needed"])
                 if rc == 0 and deps:
                     rc = pacman(["-S", "--noconfirm", "--needed", "--asdeps", "--", *deps])
             elif op == "deps":

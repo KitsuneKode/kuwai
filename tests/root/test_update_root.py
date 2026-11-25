@@ -37,7 +37,7 @@ def ur():
 ])
 def test_pacnew_refuses(ur, item):
     with pytest.raises((ValueError, FileNotFoundError)):
-        ur.pacnew({"items": [item]})
+        ur.pacnew_one(item.get("path"), item.get("action"))
 
 
 def test_pacnew_needs_items(ur):
@@ -70,7 +70,7 @@ def test_pacnew_refuses_a_symlink_in_the_way(ur, etc, plant):
         (d / "linked").symlink_to(elsewhere, target_is_directory=True)
         path = d / "linked" / "shadow"
     with pytest.raises(ValueError, match="symlink in the way"):
-        ur.pacnew({"items": [{"path": str(path), "action": "take"}]})
+        ur.pacnew_one(str(path), "take")
     assert (elsewhere / "shadow").read_text() == "target"
     assert (elsewhere / "shadow.pacnew").read_text() == "planted"
 
@@ -81,8 +81,35 @@ def test_pacnew_refuses_a_linked_target(ur, etc, monkeypatch):
     (d / "app.conf.pacnew").write_text("new default")
     monkeypatch.setattr(ur.os, "lstat", lambda p, _real=os.lstat: _as_root(_real(p)) if str(p).endswith(".pacnew") else _real(p))
     with pytest.raises(ValueError, match="not a regular file"):
-        ur.pacnew({"items": [{"path": str(d / "app.conf"), "action": "take"}]})
+        ur.pacnew_one(str(d / "app.conf"), "take")
     assert (elsewhere / "shadow").read_text() == "target"
+
+
+def test_pacnew_batch_reports_each_file_and_backs_up_uniquely(ur, etc, monkeypatch, tmp_path):
+    d, _ = etc
+    saved = tmp_path / "backups"
+    saved.mkdir(mode=0o700)
+    monkeypatch.setattr(ur, "backup_dir", lambda: str(saved))
+    monkeypatch.setattr(ur.os, "lstat", lambda p, _real=os.lstat: _as_root(_real(p)) if str(p).endswith(".pacnew") else _real(p))
+    monkeypatch.setattr(ur.os, "chown", lambda *a: None)
+    said = []
+    monkeypatch.setattr(ur, "say", lambda **m: said.append(m))
+    for name in ("a.conf", "b.conf"):
+        (d / name).write_text("yours " + name)
+        (d / (name + ".pacnew")).write_text("new " + name)
+    rc = ur.pacnew({"items": [{"path": str(d / "a.conf"), "action": "take"},
+                              {"path": str(d / "missing.conf"), "action": "keep"},
+                              {"path": str(d / "b.conf"), "action": "take"}]})
+    assert rc == 1
+    items = [m["item"] for m in said if "item" in m]
+    assert [i["ok"] for i in items] == [True, False, True], "one refusal doesn't stop the rest"
+    assert (d / "a.conf").read_text() == "new a.conf" and (d / "b.conf").read_text() == "new b.conf"
+    copies = sorted(p.read_text() for p in saved.iterdir())
+    assert copies == ["yours a.conf", "yours b.conf"]
+    assert all(p.stat().st_mode & 0o777 == 0o600 for p in saved.iterdir())
+    (d / "a.conf.pacnew").write_text("newer")
+    assert ur.pacnew({"items": [{"path": str(d / "a.conf"), "action": "take"}]}) == 0
+    assert len(list(saved.iterdir())) == 3, "a second take never overwrites the first backup"
 
 
 def _as_root(st):

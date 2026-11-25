@@ -177,7 +177,7 @@ FocusScope {
             Label {
                 anchors.verticalCenter: parent.verticalCenter
                 width: parent.width - applyChoices.width - parent.spacing; wrapMode: Text.Wrap
-                text: Updates.pacnewResult || "Use new keeps yours as X.kuwai-bak. sudoers is checked with visudo first."
+                text: Updates.pacnewResult || "Use new saves yours in /var/lib/kuwai/pacnew-backups. sudoers is checked with visudo first."
                 size: Theme.tFootnote; color: Updates.pacnewResult ? Theme.textSecondary : Theme.textTertiary
             }
         }
@@ -804,7 +804,8 @@ FocusScope {
                 spacing: 2
                 Label {
                     text: Updates.running ? "Updating" : runCol.ok ? "All done" : (runCol.res && runCol.res.cancelled) ? "Cancelled"
-                        : (runCol.res && runCol.res.unknown) ? "Update stopped" : "Finished, with things to look at"
+                        : (runCol.res && runCol.res.unknown) ? "Update stopped" : (runCol.res && runCol.res.partial) ? "Partly done"
+                        : "Finished, with things to look at"
                     size: Theme.tTitle3; weight: Theme.wSemibold
                 }
                 Label {

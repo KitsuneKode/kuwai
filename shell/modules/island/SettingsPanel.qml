@@ -1046,6 +1046,11 @@ FocusScope {
                     label: "Include Flatpak apps"; detail: "Sandboxed and signed; your own installs need no password"
                     Toggle { on: Settings.updatesFlatpak; onToggled: Settings.set("updatesFlatpak", !Settings.updatesFlatpak) }
                 }
+                SettingsRow {
+                    key: "updatesPruneCache"
+                    label: "Prune the package cache after updating"; detail: "Keeps the installed and one older version of each package; removed packages' files go. Off keeps every downloaded file for rolling back"
+                    Toggle { on: Settings.updatesPruneCache; onToggled: Settings.set("updatesPruneCache", !Settings.updatesPruneCache) }
+                }
             }
             SettingsGroup {
                 title: "AUR"

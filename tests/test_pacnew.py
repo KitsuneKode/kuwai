@@ -51,6 +51,42 @@ class AdviceTests(unittest.TestCase):
         self.assertEqual(item["rec"], "review", item)
         self.assertNotIn("never changed", item["why"])
 
+    def test_reordered_settings_are_never_just_comments(self):
+        yours = "# mine\nVerbosePkgLists\nColor\nParallelDownloads = 5\n"
+        item = self.case(yours, OLD, OLD.replace("# stock\n", "# stock, older\n"))
+        self.assertEqual(item["rec"], "review", item)
+
+    def test_repeated_lines_are_not_a_subset(self):
+        yours = OLD + "Color\n"
+        item = self.case(yours, OLD + "DownloadUser = alpm\n", OLD)
+        self.assertEqual(item["rec"], "review", item)
+
+
+class BaselineTests(unittest.TestCase):
+    def test_the_baseline_is_the_newest_version_older_than_installed(self):
+        files = ["pacman-7.0.0-1-x86_64.pkg.tar.zst", "pacman-7.1.0-1-x86_64.pkg.tar.zst",
+                 "pacman-6.9.0-3-x86_64.pkg.tar.zst", "pacman-7.0.0-10-x86_64.pkg.tar.zst",
+                 "pacman-7.2.0-1-x86_64.pkg.tar.zst"]
+        seen = []
+
+        def run(cmd, **kw):
+            out = ""
+            if cmd[:2] == ["pacman", "-Qoq"]:
+                out = "pacman\n"
+            elif cmd[:2] == ["pacman", "-Q"]:
+                out = "pacman 7.1.0-1\n"
+            elif cmd[0] == "vercmp":
+                a, b = cmd[1], cmd[2]
+                key = lambda v: [int(x) for x in v.replace("-", ".").split(".")]
+                out = str((key(a) > key(b)) - (key(a) < key(b)))
+            elif cmd[0] == "bsdtar":
+                seen.append(os.path.basename(cmd[2]))
+                return mock.Mock(returncode=0, stdout=b"old default")
+            return mock.Mock(returncode=0, stdout=out)
+        with mock.patch.object(P.os, "listdir", return_value=files), mock.patch.object(P.subprocess, "run", side_effect=run):
+            self.assertEqual(P.original("/etc/pacman.conf"), "old default")
+        self.assertEqual(seen, ["pacman-7.0.0-10-x86_64.pkg.tar.zst"], "never the newer 7.2.0, never 7.0.0-1 over -10")
+
 
 if __name__ == "__main__":
     unittest.main()
