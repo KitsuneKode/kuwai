@@ -88,6 +88,12 @@ Singleton {
     property real closedAt: 0
     property string centerVia: "key"                // what opened/closed it: key | pointer
     property string centerCover: ""
+    property string centerModule: ""
+    function openControls(module, via, screenName) {
+        centerModule = module || "";
+        if (centerOpen && centerTab === "controls") return;
+        toggleCenter("controls", via || "key", screenName || "");
+    }
     property real lastSeen: 0
     readonly property int unread: items.filter(i => i.time > lastSeen).length
     // Bell badge: still in the center until dismissed (not cleared by opening the panel).

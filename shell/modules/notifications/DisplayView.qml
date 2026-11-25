@@ -32,7 +32,10 @@ Item {
     property bool hosting: true
     readonly property bool shown: hosting && center.open && center.tab === "controls"
     Binding { target: Display; property: "watching"; value: view.shown; when: view.hosting }
-    Component.onCompleted: Hyprland.refreshMonitors()
+    Component.onCompleted: {
+        Hyprland.refreshMonitors();
+        if (Notifs.centerModule) { module = Notifs.centerModule; Notifs.centerModule = ""; }
+    }
 
     // The keyboard: ↓ or ⇥ from the search field enters the tiles, sliders
     // and rows (Tab walks them, each answers Space/↵, a slider its arrows);
@@ -52,7 +55,11 @@ Item {
     }
     readonly property Item focusedItem: Window.activeFocusItem
     onFocusedItemChanged: if (focusedItem && keys.owns(focusedItem)) keys.reveal(focusedItem)
-    function reset() { flick.contentY = 0; module = ""; }
+    function reset() { flick.contentY = 0; module = Notifs.centerModule; Notifs.centerModule = ""; }
+    Connections {
+        target: Notifs
+        function onCenterModuleChanged() { if (Notifs.centerModule && view.shown) { view.module = Notifs.centerModule; Notifs.centerModule = ""; } }
+    }
     function selectFirst() {}
     // Esc: the password field, then the network list, then (false) close.
     function back() {
@@ -516,107 +523,11 @@ Item {
             }
 
             }
-            // ── Bluetooth devices ────────────────────────────────────────
-            Column {
+            BluetoothDevices {
                 visible: view.btOpen
                 width: parent.width
-                spacing: 8
+                scanning: view.shown && view.btOpen
                 opacity: view.swap
-
-                Label {
-                    x: 4
-                    text: !(view.adapter && view.adapter.enabled) ? "Bluetooth is off" : view.btDevices.length ? "Devices" : "No paired devices"
-                    size: Theme.tCallout
-                    weight: Theme.wSemibold
-                    color: Theme.textSecondary
-                }
-                Label {
-                    visible: !!(view.adapter && view.adapter.enabled) && view.btDevices.length === 0
-                    x: 4
-                    width: parent.width - 8
-                    wrapMode: Text.WordWrap
-                    text: "Pair a device from the Bluetooth panel in the island; it shows here once paired."
-                    size: Theme.tSub
-                    color: Theme.textTertiary
-                }
-                Repeater {
-                    model: view.btDevices
-                    Rectangle {
-                        id: dev
-                        required property var modelData
-                        readonly property bool busy: modelData.state === BluetoothDeviceState.Connecting || modelData.state === BluetoothDeviceState.Disconnecting
-                        width: column.width
-                        height: 48
-                        radius: 16
-                        color: devArea.containsMouse ? Theme.tileHover : Theme.tileRest
-                        border.width: 1
-                        border.color: Theme.edge(0)
-                        scale: devArea.pressed ? 0.985 : 1
-                        Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
-                        Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
-
-                        Rectangle {
-                            x: 10
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: 30; height: 30; radius: 15
-                            color: dev.modelData.connected ? Theme.accent : Theme.platter
-                            Behavior on color { ColorAnimation { duration: Theme.colorMs } }
-                            Text {
-                                textFormat: Text.PlainText
-                                anchors.centerIn: parent
-                                text: /headset|headphone|audio/.test(dev.modelData.icon) ? "\u{f02cb}"
-                                    : /phone/.test(dev.modelData.icon) ? "\u{f011c}"
-                                    : /mouse/.test(dev.modelData.icon) ? "\u{f037d}"
-                                    : /keyboard/.test(dev.modelData.icon) ? "\u{f030c}" : "\u{f00af}"
-                                font.family: Theme.fontGlyph
-                                font.pixelSize: 15
-                                color: Theme.textPrimary
-                            }
-                        }
-                        Column {
-                            x: 52
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: parent.width - 52 - 70
-                            spacing: 1
-                            Label { width: parent.width; elide: Text.ElideRight; text: dev.modelData.name; size: Theme.tBody; weight: Theme.wSemibold }
-                            Label {
-                                text: dev.busy ? (dev.modelData.connected ? "Disconnecting…" : "Connecting…")
-                                    : dev.modelData.connected ? "Connected" : "Not connected"
-                                size: Theme.tFootnote
-                                color: Theme.textTertiary
-                            }
-                        }
-                        Label {
-                            visible: dev.modelData.batteryAvailable
-                            anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
-                            text: Math.round(dev.modelData.battery * 100) + "%"
-                            size: Theme.tSub
-                            rounded: true
-                            weight: Theme.wMedium
-                            tabular: true
-                            color: dev.modelData.battery < 0.2 ? Theme.red : Theme.textSecondary
-                        }
-                        MouseArea {
-                            id: devArea
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: dev.modelData.connected ? dev.modelData.disconnect() : dev.modelData.connect()
-                        }
-                        activeFocusOnTab: true
-                        Keys.onPressed: e => {
-                            if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) {
-                                if (!dev.busy) dev.modelData.connected ? dev.modelData.disconnect() : dev.modelData.connect();
-                                e.accepted = true;
-                            }
-                        }
-                        FocusRing {}
-                        Accessible.role: Accessible.ListItem
-                        Accessible.name: dev.modelData.name + (dev.modelData.batteryAvailable ? ", " + Math.round(dev.modelData.battery * 100) + "%" : "")
-                        Accessible.description: dev.busy ? (dev.modelData.connected ? "Disconnecting" : "Connecting") : dev.modelData.connected ? "Connected. Press to disconnect" : "Not connected. Press to connect"
-                        Accessible.onPressAction: dev.modelData.connected ? dev.modelData.disconnect() : dev.modelData.connect()
-                    }
-                }
             }
         }
     }

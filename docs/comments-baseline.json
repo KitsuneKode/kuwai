@@ -1,6 +1,6 @@
 {
-  "total_comment_lines": 7627,
-  "files_with_comments": 293,
+  "total_comment_lines": 7608,
+  "files_with_comments": 292,
   "files": {
     "shell/components/ActionMenu.qml": 23,
     "shell/components/ArtImage.qml": 18,
@@ -89,7 +89,6 @@
     "shell/modules/island/AgentsPanel.qml": 58,
     "shell/modules/island/AlarmCard.qml": 33,
     "shell/modules/island/AlertBanner.qml": 6,
-    "shell/modules/island/BluetoothPanel.qml": 18,
     "shell/modules/island/CalendarPanel.qml": 30,
     "shell/modules/island/Capsules.qml": 59,
     "shell/modules/island/CleanupPanel.qml": 26,
@@ -136,7 +135,7 @@
     "shell/modules/notifications/CenterGroup.qml": 24,
     "shell/modules/notifications/CenterRow.qml": 31,
     "shell/modules/notifications/DeviceList.qml": 6,
-    "shell/modules/notifications/DisplayView.qml": 42,
+    "shell/modules/notifications/DisplayView.qml": 41,
     "shell/modules/notifications/NotifCard.qml": 81,
     "shell/modules/notifications/NotificationsView.qml": 44,
     "shell/modules/notifications/Popups.qml": 51,

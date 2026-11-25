@@ -766,7 +766,6 @@ Scope {
             Component { id: t3Panel; T3Panel {} }
             Component { id: cleanupPanel; CleanupPanel {} }
             Component { id: agentsPanel; AgentsPanel {} }
-            Component { id: bluetoothPanel; BluetoothPanel {} }
             Component { id: usagePanel; UsagePanel {} }
             Component { id: sweepPanel; SweepPanel {} }
             Component { id: readPanel; ReadPanel {} }
@@ -1265,7 +1264,7 @@ Scope {
                             height: panelScope.height - win.backH
                             active: win.panelHere || pv.value > 0.01
                             focus: true
-                            sourceComponent: ({ activities: activitiesPanel, calendar: calendarPanel, power: powerPanel, launcher: launcherPanel, settings: settingsPanel, system: systemPanel, theme: themePanel, keys: keysPanel, switcher: switcherPanel, updates: updatesPanel, media: mediaPanel, t3: t3Panel, agents: agentsPanel, bluetooth: bluetoothPanel, usage: usagePanel, sweep: sweepPanel, read: readPanel, cleanup: cleanupPanel })[win.shownPanel] || null
+                            sourceComponent: ({ activities: activitiesPanel, calendar: calendarPanel, power: powerPanel, launcher: launcherPanel, settings: settingsPanel, system: systemPanel, theme: themePanel, keys: keysPanel, switcher: switcherPanel, updates: updatesPanel, media: mediaPanel, t3: t3Panel, agents: agentsPanel, usage: usagePanel, sweep: sweepPanel, read: readPanel, cleanup: cleanupPanel })[win.shownPanel] || null
                             onLoaded: if (item && item.inStrip !== undefined) item.inStrip = win.sectioned && !Island.canBack
                         }
                         // Right click (anywhere a control doesn't take it) or the mouse's back button: back.

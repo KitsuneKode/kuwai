@@ -512,12 +512,12 @@
   {
    "id": "bluetooth/new-machine",
    "name": "bluetooth",
-   "panel": "BluetoothPanel"
+   "panel": "../notifications/BluetoothDevices"
   },
   {
    "id": "bluetooth/devices",
    "name": "bluetooth",
-   "panel": "BluetoothPanel",
+   "panel": "../notifications/BluetoothDevices",
    "kind": "typical",
    "props": {
     "stage": {
