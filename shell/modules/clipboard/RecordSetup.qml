@@ -79,7 +79,7 @@ FocusScope {
                 id: line
                 required property var modelData
                 spacing: 8
-                Label { width: 70; anchors.verticalCenter: parent.verticalCenter; text: line.modelData.label; size: 13; color: Theme.textSecondary }
+                Label { width: 70; anchors.verticalCenter: parent.verticalCenter; text: line.modelData.label; size: Theme.tBody; color: Theme.textSecondary }
                 Repeater {
                     model: line.modelData.items
                     Rectangle {
@@ -96,8 +96,8 @@ FocusScope {
                             id: chipRow
                             anchors.centerIn: parent
                             spacing: 6
-                            Label { anchors.verticalCenter: parent.verticalCenter; text: chip.modelData.label; size: 12; weight: chip.on ? Theme.wSemibold : Theme.wMedium; color: chip.on ? Theme.inkOnLight : Theme.textPrimary }
-                            Label { visible: !!chip.modelData.sub; anchors.verticalCenter: parent.verticalCenter; text: chip.modelData.sub || ""; size: 11; color: chip.on ? Qt.alpha(Theme.inkOnLight, 0.7) : Theme.textTertiary }
+                            Label { anchors.verticalCenter: parent.verticalCenter; text: chip.modelData.label; size: Theme.tSub; weight: chip.on ? Theme.wSemibold : Theme.wMedium; color: chip.on ? Theme.inkOnLight : Theme.textPrimary }
+                            Label { visible: !!chip.modelData.sub; anchors.verticalCenter: parent.verticalCenter; text: chip.modelData.sub || ""; size: Theme.tFootnote; color: chip.on ? Qt.alpha(Theme.inkOnLight, 0.7) : Theme.textTertiary }
                         }
                         MouseArea { id: chipArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: setup[line.modelData.key] = chip.modelData.id }
                         Accessible.role: Accessible.RadioButton
@@ -127,7 +127,7 @@ FocusScope {
             anchors.centerIn: parent
             spacing: 8
             Rectangle { anchors.verticalCenter: parent.verticalCenter; width: 10; height: 10; radius: 5; color: "white" }
-            Label { anchors.verticalCenter: parent.verticalCenter; text: "Record"; size: 14; weight: Theme.wSemibold; color: "white" }
+            Label { anchors.verticalCenter: parent.verticalCenter; text: "Record"; size: Theme.tCallout; weight: Theme.wSemibold; color: "white" }
             KeyCap { anchors.verticalCenter: parent.verticalCenter; text: "↵" }
         }
         MouseArea { id: recArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: setup.record() }
@@ -139,7 +139,7 @@ FocusScope {
     Label {
         anchors { left: parent.left; leftMargin: 22; verticalCenter: rec.verticalCenter }
         text: "Saved to ~/Videos/Recordings · encoded on the GPU"
-        size: 11
+        size: Theme.tFootnote
         color: Theme.textTertiary
     }
 }

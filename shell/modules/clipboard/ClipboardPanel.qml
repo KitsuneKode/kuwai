@@ -868,7 +868,7 @@ Scope {
                     Label {
                         anchors.verticalCenter: parent.verticalCenter
                         text: root.open && !root.toastEntry ? "Clipboard" : "Copied"
-                        size: 13
+                        size: Theme.tBody
                         weight: Theme.wSemibold
                         color: Theme.green
                     }
@@ -880,7 +880,7 @@ Scope {
                             : toastRow.e.kind === "image" ? "Image " + toastRow.e.dims.replace("x", " × ")
                             : toastRow.e.secret ? "Something secret (hidden)"
                             : toastRow.e.preview.replace(/\s+/g, " ").slice(0, 80)
-                        size: 13
+                        size: Theme.tBody
                         color: Theme.textSecondary
                     }
                 }
@@ -903,8 +903,8 @@ Scope {
                             NumberAnimation { to: 1; duration: Theme.breatheMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }
                         }
                     }
-                    Label { anchors.verticalCenter: parent.verticalCenter; text: root.elapsed(root.nowSec - Clipboard.recSince); size: 13; rounded: true; weight: Theme.wSemibold; color: Theme.red; tabular: true }
-                    Label { anchors.verticalCenter: parent.verticalCenter; text: "Screen Recording"; size: 13; weight: Theme.wMedium }
+                    Label { anchors.verticalCenter: parent.verticalCenter; text: root.elapsed(root.nowSec - Clipboard.recSince); size: Theme.tBody; rounded: true; weight: Theme.wSemibold; color: Theme.red; tabular: true }
+                    Label { anchors.verticalCenter: parent.verticalCenter; text: "Screen Recording"; size: Theme.tBody; weight: Theme.wMedium }
                     // Stop: a red square in a ring that sweeps once a second.
                     Item {
                         anchors.verticalCenter: parent.verticalCenter
@@ -932,8 +932,8 @@ Scope {
                     opacity: root.saved && !root.toasting ? Math.max(0, 1 - win.m * 4) : 0
                     visible: opacity > 0.01
                     Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f012c}"; font.family: Theme.fontGlyph; font.pixelSize: 15; color: Theme.green }
-                    Label { anchors.verticalCenter: parent.verticalCenter; text: root.saved ? root.elapsed(Clipboard.recSaved.duration) : ""; size: 13; rounded: true; weight: Theme.wSemibold; tabular: true }
-                    Label { anchors.verticalCenter: parent.verticalCenter; text: "Recording saved · click to open"; size: 13; color: Theme.textSecondary }
+                    Label { anchors.verticalCenter: parent.verticalCenter; text: root.saved ? root.elapsed(Clipboard.recSaved.duration) : ""; size: Theme.tBody; rounded: true; weight: Theme.wSemibold; tabular: true }
+                    Label { anchors.verticalCenter: parent.verticalCenter; text: "Recording saved · click to open"; size: Theme.tBody; color: Theme.textSecondary }
                     ClippingRectangle {
                         anchors.verticalCenter: parent.verticalCenter
                         visible: root.saved && Clipboard.recSaved.thumb !== ""
@@ -1023,7 +1023,7 @@ Scope {
                         id: scopeRow
                         anchors.centerIn: parent
                         spacing: 6
-                        Label { anchors.verticalCenter: parent.verticalCenter; text: root.filterLabel(root.filter); size: 12; weight: Theme.wSemibold }
+                        Label { anchors.verticalCenter: parent.verticalCenter; text: root.filterLabel(root.filter); size: Theme.tSub; weight: Theme.wSemibold }
                         Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f0156}"; font.family: Theme.fontGlyph; font.pixelSize: 10; color: Theme.textSecondary }
                     }
                     MouseArea {
@@ -1051,7 +1051,7 @@ Scope {
                         anchors.centerIn: parent
                         spacing: 6
                         Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f00ed}"; font.family: Theme.fontGlyph; font.pixelSize: 11; color: Theme.orange }
-                        Label { anchors.verticalCenter: parent.verticalCenter; text: root.whenLabel; size: 12; weight: Theme.wSemibold }
+                        Label { anchors.verticalCenter: parent.verticalCenter; text: root.whenLabel; size: Theme.tSub; weight: Theme.wSemibold }
                         Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f0156}"; font.family: Theme.fontGlyph; font.pixelSize: 10; color: Theme.textSecondary }
                     }
                     MouseArea {
@@ -1083,7 +1083,7 @@ Scope {
                         visible: search.text === ""
                         anchors.verticalCenter: parent.verticalCenter
                         text: root.filter === "all" ? "Search, or @pin @image @link @code…" : "Search " + root.filterLabel(root.filter).toLowerCase()
-                        size: 18
+                        size: Theme.tTitle3
                         color: Theme.textTertiary
                     }
                     Keys.onPressed: event => root.key(event)
@@ -1101,7 +1101,7 @@ Scope {
                         anchors.centerIn: parent
                         spacing: 6
                         Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f00ed}"; font.family: Theme.fontGlyph; font.pixelSize: 13; color: Theme.textSecondary }
-                        Label { anchors.verticalCenter: parent.verticalCenter; text: root.whenLabel || "Any time"; size: 12; weight: Theme.wMedium }
+                        Label { anchors.verticalCenter: parent.verticalCenter; text: root.whenLabel || "Any time"; size: Theme.tSub; weight: Theme.wMedium }
                     }
                     MouseArea {
                         id: dateArea
@@ -1151,7 +1151,7 @@ Scope {
                         id: typeRow
                         anchors.centerIn: parent
                         spacing: 6
-                        Label { anchors.verticalCenter: parent.verticalCenter; text: root.filterLabel(root.filter); size: 12; weight: Theme.wMedium }
+                        Label { anchors.verticalCenter: parent.verticalCenter; text: root.filterLabel(root.filter); size: Theme.tSub; weight: Theme.wMedium }
                         Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f0140}"; font.family: Theme.fontGlyph; font.pixelSize: 14; color: Theme.textSecondary }
                     }
                     MouseArea {
@@ -1292,14 +1292,14 @@ Scope {
                 Label {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: root.query ? "No matches" : root.filter === "pinned" ? "No pins yet" : "Nothing here yet"
-                    size: 14
+                    size: Theme.tCallout
                     weight: Theme.wSemibold
                     color: Theme.textSecondary
                 }
                 Label {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: root.query ? `Nothing matches “${root.query}”.` : root.filter === "pinned" ? "⌃P pins the selected card." : "Copy something and it lands here."
-                    size: 12
+                    size: Theme.tSub
                     color: Theme.textTertiary
                 }
             }
@@ -1318,7 +1318,7 @@ Scope {
                         : root.entry.kind === "image" ? "Image"
                         : root.entry.secret && !root.revealed ? "Looks like a secret · ⌃H to show"
                         : Clipboard.marked(root.entry.preview.replace(/\s+/g, " ").slice(0, 200), root.current && root.current.m ? root.current.m.pos : [], Theme.yellow)
-                    size: 14
+                    size: Theme.tCallout
                     weight: Theme.wMedium
                     font.family: root.entry && root.entry.kind === "code" ? Theme.fontMono : Theme.fontText
                 }
@@ -1326,7 +1326,7 @@ Scope {
                     id: detailMeta
                     anchors { right: parent.right; verticalCenter: parent.verticalCenter }
                     text: root.entry ? root.kindOf(root.entry) + "  ·  " + root.detailOf(root.entry, "") : ""
-                    size: 12
+                    size: Theme.tSub
                     color: Theme.textTertiary
                 }
             }
@@ -1359,7 +1359,7 @@ Scope {
                         else if (event.key === Qt.Key_Escape) { root.finishNaming(false); event.accepted = true; }
                     }
                 }
-                Label { id: ext; anchors { right: nameActs.left; rightMargin: 10; verticalCenter: parent.verticalCenter } text: "." + (root.entry && root.entry.ext ? root.entry.ext : "png"); size: 13; color: Theme.textTertiary }
+                Label { id: ext; anchors { right: nameActs.left; rightMargin: 10; verticalCenter: parent.verticalCenter } text: "." + (root.entry && root.entry.ext ? root.entry.ext : "png"); size: Theme.tBody; color: Theme.textTertiary }
                 // The keys (↵ save, Esc) and the same two for the pointer.
                 Row {
                     id: nameActs
@@ -1388,7 +1388,7 @@ Scope {
                     id: statusRow
                     anchors.centerIn: parent
                     spacing: Theme.s2
-                    Label { id: statusLabel; anchors.verticalCenter: parent.verticalCenter; text: root.status; size: 12; weight: Theme.wMedium; color: root.confirmWipe ? Theme.red : Theme.textPrimary }
+                    Label { id: statusLabel; anchors.verticalCenter: parent.verticalCenter; text: root.status; size: Theme.tSub; weight: Theme.wMedium; color: root.confirmWipe ? Theme.red : Theme.textPrimary }
                     // The pointer's way to what the line's key does.
                     Ui.Button {
                         visible: root.statusAct === "undo" || (root.statusAct === "wipe" && root.confirmWipe)
@@ -1416,20 +1416,20 @@ Scope {
                         act: "paste"
                         spacing: 7
                         Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f0192}"; font.family: Theme.fontGlyph; font.pixelSize: 14; color: Theme.textSecondary }
-                        Label { anchors.verticalCenter: parent.verticalCenter; text: Clipboard.targetName() ? "Paste to " + Clipboard.targetName() : "Paste"; size: 13; weight: Theme.wMedium }
+                        Label { anchors.verticalCenter: parent.verticalCenter; text: Clipboard.targetName() ? "Paste to " + Clipboard.targetName() : "Paste"; size: Theme.tBody; weight: Theme.wMedium }
                         KeyCap { anchors.verticalCenter: parent.verticalCenter; text: "↵" }
                     }
                     Rectangle { width: 1; height: 16; anchors.verticalCenter: parent.verticalCenter; color: Theme.wash(2) }
                     FootHint {
                         act: "quicklook"
                         spacing: 6
-                        Label { anchors.verticalCenter: parent.verticalCenter; text: "Look"; size: 12; color: Theme.textTertiary }
+                        Label { anchors.verticalCenter: parent.verticalCenter; text: "Look"; size: Theme.tSub; color: Theme.textTertiary }
                         KeyCap { anchors.verticalCenter: parent.verticalCenter; text: "Space" }
                     }
                     FootHint {
                         act: "copy"
                         spacing: 6
-                        Label { anchors.verticalCenter: parent.verticalCenter; text: "Copy"; size: 12; color: Theme.textTertiary }
+                        Label { anchors.verticalCenter: parent.verticalCenter; text: "Copy"; size: Theme.tSub; color: Theme.textTertiary }
                         KeyCap { anchors.verticalCenter: parent.verticalCenter; text: "⇧" }
                         KeyCap { anchors.verticalCenter: parent.verticalCenter; text: "↵" }
                     }
@@ -1438,7 +1438,7 @@ Scope {
                     act: "keys"
                     anchors { right: actionsBtn.left; rightMargin: 14; verticalCenter: parent.verticalCenter }
                     spacing: 6
-                    Label { anchors.verticalCenter: parent.verticalCenter; text: "Shortcuts"; size: 12; color: Theme.textTertiary }
+                    Label { anchors.verticalCenter: parent.verticalCenter; text: "Shortcuts"; size: Theme.tSub; color: Theme.textTertiary }
                     KeyCap { anchors.verticalCenter: parent.verticalCenter; text: "?" }
                 }
                 Rectangle {
@@ -1453,7 +1453,7 @@ Scope {
                         id: actRow
                         anchors.centerIn: parent
                         spacing: 6
-                        Label { anchors.verticalCenter: parent.verticalCenter; text: "Actions"; size: 12; weight: Theme.wMedium; color: Theme.textSecondary }
+                        Label { anchors.verticalCenter: parent.verticalCenter; text: "Actions"; size: Theme.tSub; weight: Theme.wMedium; color: Theme.textSecondary }
                         KeyCap { anchors.verticalCenter: parent.verticalCenter; text: "⌃" }
                         KeyCap { anchors.verticalCenter: parent.verticalCenter; text: "K" }
                     }

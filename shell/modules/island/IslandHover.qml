@@ -72,7 +72,7 @@ Item {
         Label {
             anchors.verticalCenter: parent.verticalCenter
             text: "Assistant"
-            size: 11
+            size: Theme.tFootnote
             weight: Theme.wSemibold
             color: Theme.textTertiary
         }
@@ -91,7 +91,7 @@ Item {
                 Shimmer {
                     anchors.verticalCenter: parent.verticalCenter
                     text: OllamaService.pendingRequest ? "Needs you" : (OllamaService.bgLabel || "Thinking")
-                    size: 12
+                    size: Theme.tSub
                     color: OllamaService.pendingRequest ? Theme.orange : Theme.textSecondary
                     active: !OllamaService.pendingRequest
                 }
@@ -99,7 +99,7 @@ Item {
                     visible: OllamaService.bgSecs >= 2
                     anchors.verticalCenter: parent.verticalCenter
                     text: OllamaService.bgSecs + "s"
-                    size: 12
+                    size: Theme.tSub
                     color: Theme.textTertiary
                     tabular: true
                 }
@@ -133,7 +133,7 @@ Item {
                     Label {
                         anchors.verticalCenter: parent.verticalCenter
                         text: workChip.modelData.title
-                        size: 12
+                        size: Theme.tSub
                         color: Theme.textSecondary
                         elide: Text.ElideRight
                         width: Math.min(implicitWidth, 200)
@@ -172,7 +172,7 @@ Item {
                 width: Math.min(implicitWidth, 170)
                 elide: Text.ElideRight
                 text: hover.app ? hover.app.name : hover.winClass ? hover.winClass.charAt(0).toUpperCase() + hover.winClass.slice(1) : "Desktop"
-                size: 14; weight: Theme.wMedium
+                size: Theme.tCallout; weight: Theme.wMedium
             }
             HoverHandler { id: appHover; cursorShape: Qt.PointingHandCursor }
             TapHandler { onTapped: Island.open("launcher", hover.bar.screenName, "pointer", "island") }
@@ -212,7 +212,7 @@ Item {
             Label {
                 anchors.verticalCenter: parent.verticalCenter
                 text: Dates.shortDate(hover.bar.now)
-                size: 15; weight: Theme.wMedium
+                size: Theme.tHeadline; weight: Theme.wMedium
                 color: Theme.textTertiary
             }
             // Weather beside the date (services/Weather): glyph and degrees,
@@ -220,7 +220,7 @@ Item {
             Label {
                 visible: Settings.restWeather && Weather.ok
                 anchors.verticalCenter: parent.verticalCenter
-                text: "·"; size: 15; color: Theme.textTertiary
+                text: "·"; size: Theme.tHeadline; color: Theme.textTertiary
             }
             Row {
                 visible: Settings.restWeather && Weather.ok
@@ -235,7 +235,7 @@ Item {
                 Label {
                     anchors.verticalCenter: parent.verticalCenter
                     text: Weather.temp + "°"
-                    size: 15; weight: Theme.wMedium; rounded: true
+                    size: Theme.tHeadline; weight: Theme.wMedium; rounded: true
                     color: Theme.textSecondary
                 }
                 HoverHandler { id: wxHover }
@@ -290,8 +290,8 @@ Item {
         Column {
             anchors { left: art.right; leftMargin: 12; right: trail.left; rightMargin: 10; verticalCenter: parent.verticalCenter }
             spacing: 2
-            Label { width: parent.width; elide: Text.ElideRight; text: hover.player ? (Media.title(hover.player) || "Unknown") : ""; size: 14; weight: Theme.wSemibold }
-            Label { width: parent.width; elide: Text.ElideRight; text: Media.byline(hover.player); size: 12; color: Theme.textTertiary }
+            Label { width: parent.width; elide: Text.ElideRight; text: hover.player ? (Media.title(hover.player) || "Unknown") : ""; size: Theme.tCallout; weight: Theme.wSemibold }
+            Label { width: parent.width; elide: Text.ElideRight; text: Media.byline(hover.player); size: Theme.tSub; color: Theme.textTertiary }
         }
 
         // The waveform at rest; the controls once the pointer is on the card.
@@ -677,7 +677,7 @@ Item {
                             horizontalAlignment: Text.AlignHCenter
                             elide: Text.ElideRight
                             text: ag.e.n > 1 ? ag.e.name : ag.e.label      // a provider ring says the provider
-                            size: 11; weight: Theme.wMedium; color: Theme.textSecondary
+                            size: Theme.tFootnote; weight: Theme.wMedium; color: Theme.textSecondary
                         }
                         Image {
                             x: ag.rx + (Theme.statRingSize - width) / 2; y: (Theme.statRingSize - height) / 2
@@ -707,13 +707,13 @@ Item {
                         width: Theme.statRingSize; height: Theme.statRingSize; radius: width / 2
                         color: "transparent"
                         border.width: 3; border.color: Theme.track
-                        Label { anchors.centerIn: parent; text: "+" + agents.more; size: 12; weight: Theme.wSemibold; color: Theme.textSecondary }
+                        Label { anchors.centerIn: parent; text: "+" + agents.more; size: Theme.tSub; weight: Theme.wSemibold; color: Theme.textSecondary }
                     }
                     Label {
                         anchors.horizontalCenter: parent.horizontalCenter
                         y: Theme.statRingSize + 4
                         text: "More"
-                        size: 11; weight: Theme.wMedium; color: Theme.textSecondary
+                        size: Theme.tFootnote; weight: Theme.wMedium; color: Theme.textSecondary
                     }
                     HoverHandler { cursorShape: Qt.PointingHandCursor }
                     TapHandler { onTapped: Island.open("usage", hover.bar.screenName, "pointer", "island") }
@@ -741,7 +741,7 @@ Item {
             const many = e.n > 1 ? " (tightest of " + e.n + ")" : "";
             return e.label + many + " · " + [agents.line(e.session), agents.line(e.weekly)].filter(x => x).join(" · ");
         }
-        size: 11
+        size: Theme.tFootnote
         weight: Theme.wMedium
         color: Theme.textSecondary
     }

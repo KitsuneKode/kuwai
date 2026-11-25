@@ -17,7 +17,7 @@ ShellRoot {
         color: Qt.rgba(0.02, 0.02, 0.027, 1)
         Rectangle { anchors.fill: parent; color: Qt.rgba(0.02, 0.02, 0.027, 1) }
         PowerPanel { id: panel; x: 20; y: 20; width: Theme.panelM; height: implicitHeight }
-        Label { id: probe; visible: false; size: 12 }
+        Label { id: probe; visible: false; size: Theme.tSub }
         Timer {
             id: grab; interval: 400
             onTriggered: scene.contentItem.grabToImage(r => { r.saveToFile("/out/power.png"); console.log("TR_CAPTURED"); Qt.quit(); })
@@ -28,7 +28,7 @@ ShellRoot {
                 function labels(item, out) {
                     // A tile's label: its tile carries the action (tiles grow with their longest label).
                     const tile = item.parent && item.parent.parent;
-                    if (item.text !== undefined && item.size === 12 && tile && tile.modelData && item.text === tile.modelData.label) out.push({ text: item.text, w: Math.ceil(item.implicitWidth), tile: tile.width });
+                    if (item.text !== undefined && item.size === Theme.tSub && tile && tile.modelData && item.text === tile.modelData.label) out.push({ text: item.text, w: Math.ceil(item.implicitWidth), tile: tile.width });
                     for (const c of item.children || []) labels(c, out);
                     return out;
                 }

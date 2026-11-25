@@ -14,7 +14,7 @@ Flow {
             required property var modelData
             spacing: 6
             KeyCap { anchors.verticalCenter: parent.verticalCenter; text: parent.modelData[0] }
-            Label { anchors.verticalCenter: parent.verticalCenter; text: parent.modelData[1]; size: Theme.tSub; color: Theme.textTertiary }
+            Label { anchors.verticalCenter: parent.verticalCenter; text: parent.modelData[1]; size: Theme.tFootnote; color: Theme.textTertiary }
         }
     }
 }

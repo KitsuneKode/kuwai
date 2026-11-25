@@ -16,7 +16,7 @@ Item {
     property string glyph: ""
     property string kind: "primary"      // primary · secondary · danger
     property bool enabled: true
-    property int size: 13
+    property int size: Theme.tBody
     signal clicked()
 
     implicitHeight: 34

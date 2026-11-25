@@ -1,5 +1,5 @@
 {
-  "total_comment_lines": 7629,
+  "total_comment_lines": 7627,
   "files_with_comments": 293,
   "files": {
     "shell/components/ActionMenu.qml": 23,
@@ -178,7 +178,7 @@
     "shell/services/Notes.qml": 6,
     "shell/services/NotifAdapters.qml": 91,
     "shell/services/NotifItem.qml": 36,
-    "shell/services/Notifs.qml": 235,
+    "shell/services/Notifs.qml": 233,
     "shell/services/OllamaService.qml": 194,
     "shell/services/Pointer.qml": 21,
     "shell/services/Reminders.qml": 23,

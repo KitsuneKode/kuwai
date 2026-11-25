@@ -174,13 +174,13 @@ Item {
                         Keys.onSpacePressed: dp.quick(modelData.id)
                         FocusRing { cornerRadius: Theme.r1 }
                         color: qa.containsMouse || activeFocus ? Qt.alpha(Theme.blue, 0.85) : "transparent"
-                        Label { x: 10; anchors.verticalCenter: parent.verticalCenter; text: q.modelData.t; size: 13; color: qa.containsMouse ? "white" : Theme.textPrimary }
+                        Label { x: 10; anchors.verticalCenter: parent.verticalCenter; text: q.modelData.t; size: Theme.tBody; color: qa.containsMouse ? "white" : Theme.textPrimary }
                         Label {
                             readonly property int n: q.modelData.ms ? (dp.counts[dp.dayKey(new Date(q.modelData.ms))] || 0) : 0
                             visible: n > 0
                             anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
                             text: n
-                            size: 11
+                            size: Theme.tFootnote
                             rounded: true
                             color: qa.containsMouse ? "white" : Theme.textTertiary
                         }
@@ -205,7 +205,7 @@ Item {
                     height: 28
                     verticalAlignment: Text.AlignVCenter
                     text: Dates.monthYear(dp.month)
-                    size: 14
+                    size: Theme.tCallout
                     weight: Theme.wSemibold
                 }
                 Row {
@@ -235,7 +235,7 @@ Item {
                     y: 32
                     Repeater {
                         model: Dates.weekdayNames(true)
-                        Label { required property string modelData; width: cal.cellW; horizontalAlignment: Text.AlignHCenter; text: modelData; size: 11; color: Theme.textTertiary }
+                        Label { required property string modelData; width: cal.cellW; horizontalAlignment: Text.AlignHCenter; text: modelData; size: Theme.tFootnote; color: Theme.textTertiary }
                     }
                 }
                 Grid {
@@ -267,7 +267,7 @@ Item {
                                 anchors.centerIn: parent
                                 anchors.verticalCenterOffset: -2
                                 text: cell.modelData.d.getDate()
-                                size: 12
+                                size: Theme.tSub
                                 rounded: true
                                 weight: cell.n > 0 ? Theme.wSemibold : Theme.wRegular
                                 color: cell.inRange ? "white" : !cell.modelData.inMonth ? Theme.textTertiary : cell.n > 0 ? Theme.textPrimary : Theme.textSecondary

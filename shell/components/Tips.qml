@@ -69,7 +69,7 @@ Item {
             id: row
             anchors.centerIn: parent
             spacing: 6
-            Label { anchors.verticalCenter: parent.verticalCenter; text: tips.text; size: 12; weight: Theme.wMedium }
+            Label { anchors.verticalCenter: parent.verticalCenter; text: tips.text; size: Theme.tSub; weight: Theme.wMedium }
             Row {
                 visible: tips.keys.length > 0
                 anchors.verticalCenter: parent.verticalCenter

@@ -119,12 +119,12 @@ FocusScope {
             width: 40; height: 40; radius: 20
             color: Theme.pill
             Image { id: faceImg; anchors.fill: parent; source: "file://" + Quickshell.env("HOME") + "/.face"; sourceSize: Qt.size(80, 80); fillMode: Image.PreserveAspectCrop; asynchronous: true }
-            Label { visible: faceImg.status !== Image.Ready; anchors.centerIn: parent; text: power.user.charAt(0); size: 18; weight: Theme.wSemibold }
+            Label { visible: faceImg.status !== Image.Ready; anchors.centerIn: parent; text: power.user.charAt(0); size: Theme.tTitle3; weight: Theme.wSemibold }
         }
         Column {
             anchors { left: face.right; leftMargin: 12; verticalCenter: parent.verticalCenter }
-            Label { text: power.user; size: 15; weight: Theme.wSemibold }
-            Label { text: power.uptime + (power.hasBattery ? "  ·  " + power.pct + "%" + (power.charging ? " " + Tr.t("charging") : !UPower.onBattery ? " " + Tr.t("plugged in") : "") : ""); size: 12; color: Theme.textTertiary }
+            Label { text: power.user; size: Theme.tHeadline; weight: Theme.wSemibold }
+            Label { text: power.uptime + (power.hasBattery ? "  ·  " + power.pct + "%" + (power.charging ? " " + Tr.t("charging") : !UPower.onBattery ? " " + Tr.t("plugged in") : "") : ""); size: Theme.tSub; color: Theme.textTertiary }
         }
     }
 
@@ -181,7 +181,7 @@ FocusScope {
                         text: tile.modelData.label
                         onImplicitWidthChanged: power.widestLabel = Math.max(power.widestLabel, implicitWidth)
                         Component.onCompleted: power.widestLabel = Math.max(power.widestLabel, implicitWidth)
-                        size: 12
+                        size: Theme.tSub
                         weight: tile.on ? Theme.wMedium : Theme.wRegular
                         color: tile.on ? Theme.textPrimary : Theme.textSecondary
                     }
@@ -211,7 +211,7 @@ FocusScope {
         anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 18 }
         readonly property var a: power.actions[power.current]
         text: a.hint
-        size: 12
+        size: Theme.tSub
         color: power.holding >= 0 ? Theme.textPrimary : Theme.textTertiary
     }
 }

@@ -266,9 +266,9 @@ Item {
         Column {
             anchors { left: art.right; leftMargin: 12; right: controls.left; rightMargin: 8; top: art.top; topMargin: 6 }
             spacing: 3
-            Label { width: parent.width; elide: Text.ElideRight; text: np.player ? (Media.title(np.player) || "Unknown track") : ""; size: 14; weight: Theme.wSemibold }
-            Label { width: parent.width; elide: Text.ElideRight; text: Media.byline(np.player); size: 12; color: Theme.textSecondary }
-            Label { width: parent.width; elide: Text.ElideRight; text: np.player ? (np.player.identity || "") : ""; size: 11; color: Theme.textTertiary }
+            Label { width: parent.width; elide: Text.ElideRight; text: np.player ? (Media.title(np.player) || "Unknown track") : ""; size: Theme.tCallout; weight: Theme.wSemibold }
+            Label { width: parent.width; elide: Text.ElideRight; text: Media.byline(np.player); size: Theme.tSub; color: Theme.textSecondary }
+            Label { width: parent.width; elide: Text.ElideRight; text: np.player ? (np.player.identity || "") : ""; size: Theme.tFootnote; color: Theme.textTertiary }
         }
         Row {
             id: controls
@@ -390,7 +390,7 @@ Item {
                 horizontalAlignment: Text.AlignHCenter
                 elide: Text.ElideRight
                 text: strip.title
-                size: 12
+                size: Theme.tSub
                 weight: Theme.wSemibold
             }
             // The device it plays to (apps: a picker), or what it is.
@@ -407,7 +407,7 @@ Item {
                     elide: Text.ElideRight
                     // No link seen yet (it follows the default output): name that, not "—".
                     text: strip.routable ? view.deviceName(strip.target || view.sink) + " \u25BE" : strip.caption
-                    size: 11
+                    size: Theme.tFootnote
                     color: Theme.textTertiary
                 }
                 function openRoute(keyboard) {
@@ -465,7 +465,7 @@ Item {
                     anchors.horizontalCenter: parent.horizontalCenter
                     value: strip.vol * 100
                     suffix: "%"
-                    size: 13
+                    size: Theme.tBody
                     weight: Theme.wSemibold
                     color: strip.muted ? Theme.textTertiary : Theme.textPrimary
                 }
@@ -490,7 +490,7 @@ Item {
                 Label {
                     anchors.centerIn: parent
                     text: "M"
-                    size: 11
+                    size: Theme.tFootnote
                     rounded: true
                     weight: Theme.wSemibold
                     color: strip.muted ? "white" : Theme.textSecondary

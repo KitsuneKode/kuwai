@@ -28,7 +28,7 @@ Rectangle {
             font.family: Theme.fontGlyph; font.pixelSize: 11
             color: chip.tone
         }
-        Label { anchors.verticalCenter: parent.verticalCenter; text: chip.text; size: 11; weight: Theme.wMedium; color: chip.tone }
+        Label { anchors.verticalCenter: parent.verticalCenter; text: chip.text; size: Theme.tFootnote; weight: Theme.wMedium; color: chip.tone }
     }
     Accessible.role: Accessible.StaticText
     Accessible.name: chip.text

@@ -183,7 +183,7 @@ FocusScope {
                     visible: search.text === ""
                     anchors.verticalCenter: parent.verticalCenter
                     text: "Search"
-                    size: 13
+                    size: Theme.tBody
                     color: Theme.textTertiary
                 }
                 Accessible.role: Accessible.EditableText
@@ -255,7 +255,7 @@ FocusScope {
                         Text { textFormat: Text.PlainText; anchors.centerIn: parent; text: item.modelData.glyph; font.family: Theme.fontGlyph; font.pixelSize: 14; color: "white" }
                     }
                     Label { anchors { left: chip.right; leftMargin: 10; verticalCenter: parent.verticalCenter }
-                    text: item.modelData.label; size: 13; weight: item.on ? Theme.wMedium : Theme.wRegular }
+                    text: item.modelData.label; size: Theme.tBody; weight: item.on ? Theme.wMedium : Theme.wRegular }
                     MouseArea { id: itemArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: settings.current = item.index }
                     Accessible.role: Accessible.PageTab
                     Accessible.name: item.modelData.label
@@ -297,12 +297,12 @@ FocusScope {
                         Label {
                             width: parent.width; elide: Text.ElideRight
                             text: res.modelData.row ? res.modelData.row.label : res.modelData.section.label
-                            size: 13; weight: res.on ? Theme.wMedium : Theme.wRegular
+                            size: Theme.tBody; weight: res.on ? Theme.wMedium : Theme.wRegular
                         }
                         Label {
                             width: parent.width; elide: Text.ElideRight
                             text: res.modelData.row ? res.modelData.section.label + (res.modelData.row.group ? " · " + res.modelData.row.group : "") : "Page"
-                            size: 11; color: Theme.textTertiary
+                            size: Theme.tFootnote; color: Theme.textTertiary
                         }
                     }
                     MouseArea { id: resArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: settings.show(res.index, true) }
@@ -318,8 +318,8 @@ FocusScope {
                 x: 12; topPadding: 14
                 width: parent.width - 24
                 spacing: 4
-                Label { text: "No Results"; size: 13; weight: Theme.wMedium; color: Theme.textSecondary }
-                Label { width: parent.width; wrapMode: Text.Wrap; text: "Nothing in Settings matches “" + settings.query + "”. Try a shorter word."; size: 11; color: Theme.textTertiary }
+                Label { text: "No Results"; size: Theme.tBody; weight: Theme.wMedium; color: Theme.textSecondary }
+                Label { width: parent.width; wrapMode: Text.Wrap; text: "Nothing in Settings matches “" + settings.query + "”. Try a shorter word."; size: Theme.tFootnote; color: Theme.textTertiary }
             }
         }
         }
@@ -335,7 +335,7 @@ FocusScope {
         width: parent.width - x
         height: parent.height
 
-        Label { id: heading; x: 28; y: 20; text: (settings.sections[settings.current] || {}).label || ""; size: 20; weight: Theme.wSemibold }
+        Label { id: heading; x: 28; y: 20; text: (settings.sections[settings.current] || {}).label || ""; size: Theme.tTitle2; weight: Theme.wSemibold }
 
         Label {
             id: saveStatus
@@ -344,7 +344,7 @@ FocusScope {
             visible: text !== ""
             text: Settings.error || (Settings.pending ? "Saving changes…" : "")
             wrapMode: Text.Wrap
-            size: 11
+            size: Theme.tFootnote
             color: Settings.error ? Theme.red : Theme.textSecondary
             Accessible.role: Accessible.StaticText
             Accessible.name: text
@@ -563,7 +563,7 @@ FocusScope {
                 width: parent.width
                 wrapMode: Text.WordWrap
                 text: "A notification you click, answer or open from the center leaves the list, and so does one the app withdraws (you read it there)."
-                size: 12
+                size: Theme.tSub
                 color: Theme.textTertiary
             }
         }
@@ -836,7 +836,7 @@ FocusScope {
                 SettingsRow { key: "idleSleepBattery"; label: "Sleep"; SecondsChoice { key: "idleSleepBattery"; values: [600, 900, 1800, 0] } }
             }
             Label {
-                width: parent.width; wrapMode: Text.WordWrap; size: 12; color: Theme.textTertiary
+                width: parent.width; wrapMode: Text.WordWrap; size: Theme.tSub; color: Theme.textTertiary
                 text: "Caffeine (the cup in the island) holds all of these off. The screen always locks before the laptop sleeps."
             }
         }
@@ -1067,8 +1067,8 @@ FocusScope {
         Column {
             spacing: 18
             SettingsGroup {
-                SettingsRow { label: "Shell"; Label { text: "Quickshell " + (Quickshell.version || ""); size: 13; color: Theme.textSecondary } }
-                SettingsRow { label: "Settings file"; Label { text: "~/.config/kuwai/settings.json"; size: 13; color: Theme.textSecondary; font.family: Theme.fontMono } }
+                SettingsRow { label: "Shell"; Label { text: "Quickshell " + (Quickshell.version || ""); size: Theme.tBody; color: Theme.textSecondary } }
+                SettingsRow { label: "Settings file"; Label { text: "~/.config/kuwai/settings.json"; size: Theme.tBody; color: Theme.textSecondary; font.family: Theme.fontMono } }
                 SettingsRow {
                     label: "Backups"; detail: "Your settings, Hyprland files, reminders, alarms, notes and pins: daily and before every update of the desktop, the newest 30. Put one back: kuwai backup restore NAME"
                     Button { height: Theme.sp(30); size: Theme.tSub; text: "Back up now"; onClicked: Quickshell.execDetached([settings.kuwai, "backup"]) }

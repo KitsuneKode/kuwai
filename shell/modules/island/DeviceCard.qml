@@ -220,7 +220,7 @@ Item {
                     id: stateLabel
                     anchors.verticalCenter: parent.verticalCenter
                     text: card.item ? card.item.state || "" : ""
-                    size: 12; weight: Theme.wMedium
+                    size: Theme.tSub; weight: Theme.wMedium
                     color: card.item ? card.item.tone || Theme.green : Theme.green
                 }
                 Label {
@@ -229,7 +229,7 @@ Item {
                     width: Math.min(implicitWidth, parent.width - stateLabel.width - 18)
                     elide: Text.ElideRight
                     text: card.item && card.item.detail ? "·  " + card.item.detail : ""
-                    size: 12
+                    size: Theme.tSub
                     color: Theme.textSecondary
                 }
             }
@@ -257,7 +257,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     width: Math.max(26, implicitWidth); horizontalAlignment: Text.AlignRight
                     text: card.item && card.item.muted ? "Muted" : String(Math.round(Math.max(0, card.level) * 100 * card.levelFill))
-                    size: 12; weight: Theme.wMedium
+                    size: Theme.tSub; weight: Theme.wMedium
                     color: Theme.textSecondary
                     font.features: { "tnum": 1 }
                 }

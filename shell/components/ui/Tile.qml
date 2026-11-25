@@ -27,7 +27,7 @@ Rectangle {
         anchors.centerIn: parent
         spacing: 7
         Text { textFormat: Text.PlainText; anchors.verticalCenter: parent.verticalCenter; text: t.glyph; font.family: Theme.fontGlyph; font.pixelSize: 15; color: t.on ? Theme.onAccent : Theme.textPrimary }
-        Label { anchors.verticalCenter: parent.verticalCenter; text: t.label; size: 12; weight: Theme.wMedium; color: t.on ? Theme.onAccent : Theme.textPrimary }
+        Label { anchors.verticalCenter: parent.verticalCenter; text: t.label; size: Theme.tSub; weight: Theme.wMedium; color: t.on ? Theme.onAccent : Theme.textPrimary }
     }
     MouseArea { id: area; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: t.clicked() }
 

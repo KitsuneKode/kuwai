@@ -9,7 +9,7 @@ import qs.config
 Item {
     id: root
     property alias text: base.text
-    property int size: 13
+    property int size: Theme.tBody
     property color color: Theme.textTertiary
     property color shine: Theme.textPrimary
     property bool active: true

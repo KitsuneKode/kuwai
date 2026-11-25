@@ -87,13 +87,13 @@ Item {
             Item {
                 width: parent.width
                 height: 20
-                Label { text: "Keyboard shortcuts"; size: 15; weight: Theme.wSemibold }
+                Label { text: "Keyboard shortcuts"; size: Theme.tHeadline; weight: Theme.wSemibold }
                 Row {
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: 4
                     KeyCap { text: "?" }
-                    Label { anchors.verticalCenter: parent.verticalCenter; text: " close"; size: 12; color: Theme.textTertiary }
+                    Label { anchors.verticalCenter: parent.verticalCenter; text: " close"; size: Theme.tSub; color: Theme.textTertiary }
                 }
             }
 
@@ -104,7 +104,7 @@ Item {
                     required property var modelData
                     width: body.width
                     spacing: 6
-                    Label { text: group.modelData.title; size: 12; weight: Theme.wSemibold; color: Theme.textTertiary }
+                    Label { text: group.modelData.title; size: Theme.tSub; weight: Theme.wSemibold; color: Theme.textTertiary }
                     Repeater {
                         model: group.modelData.rows
                         Item {
@@ -115,7 +115,7 @@ Item {
                             Label {
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: line.modelData.label
-                                size: 13
+                                size: Theme.tBody
                                 color: Theme.textSecondary
                             }
                             Row {

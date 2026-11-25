@@ -17,9 +17,9 @@ Column {
     spacing: 6
     Item {
         width: parent.width; height: 26
-        Label { anchors.verticalCenter: parent.verticalCenter; text: m.title; size: 11; weight: Theme.wMedium; color: Theme.textTertiary }
+        Label { anchors.verticalCenter: parent.verticalCenter; text: m.title; size: Theme.tFootnote; weight: Theme.wMedium; color: Theme.textTertiary }
         Label { anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-            text: m.big; size: 20; weight: Theme.wSemibold; rounded: true; tabular: true }
+            text: m.big; size: Theme.tTitle2; weight: Theme.wSemibold; rounded: true; tabular: true }
     }
     Item {
         width: parent.width; height: 8
@@ -30,7 +30,7 @@ Column {
             Behavior on width { NumberAnimation { duration: Theme.glideMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
         }
     }
-    Label { visible: text !== ""; text: m.detail; size: 11; color: Theme.textTertiary }
+    Label { visible: text !== ""; text: m.detail; size: Theme.tFootnote; color: Theme.textTertiary }
     Accessible.role: Accessible.ProgressBar
     Accessible.name: m.title + " " + m.big
 }

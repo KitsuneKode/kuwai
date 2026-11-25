@@ -89,11 +89,11 @@ FocusScope {
             id: head
             visible: !sys.inStrip
             width: parent.width; height: 26
-            Label { anchors.verticalCenter: parent.verticalCenter; text: "System"; size: 20; weight: Theme.wSemibold }
+            Label { anchors.verticalCenter: parent.verticalCenter; text: "System"; size: Theme.tTitle2; weight: Theme.wSemibold }
             Label {
                 anchors { right: parent.right; verticalCenter: parent.verticalCenter }
                 text: sys.uptime + (SystemStats.load ? "  ·  load " + SystemStats.load.split(" ")[0] : "")
-                size: 12; color: Theme.textTertiary
+                size: Theme.tSub; color: Theme.textTertiary
             }
         }
 
@@ -105,19 +105,19 @@ FocusScope {
                 Column {
                     width: 128
                     spacing: 2
-                    Label { text: "CPU"; size: 11; weight: Theme.wMedium; color: Theme.textTertiary }
+                    Label { text: "CPU"; size: Theme.tFootnote; weight: Theme.wMedium; color: Theme.textTertiary }
                     Row {
                         spacing: 8
-                        Label { text: Math.round(SystemStats.cpu * 100) + "%"; size: 24; weight: Theme.wSemibold; rounded: true; tabular: true }
+                        Label { text: Math.round(SystemStats.cpu * 100) + "%"; size: Theme.tTitle1; weight: Theme.wSemibold; rounded: true; tabular: true }
                         Label {
                             anchors.baseline: parent.children[0].baseline
                             visible: SystemStats.cpuTemp > 0
                             text: SystemStats.cpuTemp + "°"
-                            size: 14; weight: Theme.wMedium; rounded: true
+                            size: Theme.tCallout; weight: Theme.wMedium; rounded: true
                             color: SystemStats.cpuTemp >= 90 ? Theme.red : SystemStats.cpuTemp >= 80 ? Theme.orange : Theme.textSecondary
                         }
                     }
-                    Label { text: SystemStats.fans.length ? "Fans " + SystemStats.fans.join(" · ") + " rpm" : ""; size: 11; color: Theme.textTertiary }
+                    Label { text: SystemStats.fans.length ? "Fans " + SystemStats.fans.join(" · ") + " rpm" : ""; size: Theme.tFootnote; color: Theme.textTertiary }
                 }
                 // One bar per thread, narrower when there are many (32
                 // threads at 14 px ran out of the card).
@@ -272,10 +272,10 @@ FocusScope {
                 anchors { left: parent.left; leftMargin: 14; verticalCenter: parent.verticalCenter }
                 spacing: 8
                 Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f06b0}"; font.family: Theme.fontGlyph; font.pixelSize: 15; color: Theme.accent }
-                Label { anchors.verticalCenter: parent.verticalCenter; text: SystemStats.updates + (SystemStats.updates === 1 ? " update" : " updates") + " available"; size: 13; weight: Theme.wMedium }
+                Label { anchors.verticalCenter: parent.verticalCenter; text: SystemStats.updates + (SystemStats.updates === 1 ? " update" : " updates") + " available"; size: Theme.tBody; weight: Theme.wMedium }
             }
             Label { anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
-                text: "Review and update ›"; size: 12; color: Theme.textSecondary }
+                text: "Review and update ›"; size: Theme.tSub; color: Theme.textSecondary }
             MouseArea { id: updArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: upd.go() }
         }
     }

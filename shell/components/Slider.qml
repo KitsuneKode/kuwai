@@ -105,7 +105,7 @@ Item {
             Label {
                 anchors.verticalCenter: parent.verticalCenter
                 text: s.label
-                size: 13
+                size: Theme.tBody
                 weight: Theme.wMedium
             }
         }
@@ -115,7 +115,7 @@ Item {
             anchors.rightMargin: 12
             anchors.verticalCenter: parent.verticalCenter
             text: s.valueText
-            size: 13
+            size: Theme.tBody
             rounded: true
             weight: Theme.wMedium
             tabular: true

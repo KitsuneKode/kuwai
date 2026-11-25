@@ -60,8 +60,8 @@ Item {
         width: Math.max(0, row.stacked ? row.width - (resetMark.visible ? 54 : 28) : (resetMark.visible ? resetMark.x : slot.x) - x - 16)
         y: row.stacked ? 12 : (row.height - height) / 2
         spacing: 2
-        Label { width: parent.width; elide: Text.ElideRight; text: row.label; size: 13 }
-        Label { visible: row.detail !== ""; width: parent.width; wrapMode: Text.Wrap; text: row.detail; size: 11; color: Theme.textTertiary }
+        Label { width: parent.width; elide: Text.ElideRight; text: row.label; size: Theme.tBody }
+        Label { visible: row.detail !== ""; width: parent.width; wrapMode: Text.Wrap; text: row.detail; size: Theme.tFootnote; color: Theme.textTertiary }
     }
     Text {
         textFormat: Text.PlainText

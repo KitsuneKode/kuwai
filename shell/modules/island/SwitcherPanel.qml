@@ -104,7 +104,7 @@ FocusScope {
                         visible: !ico.visible
                         anchors.centerIn: parent
                         text: (Switcher.classOf(card.modelData) || "?").charAt(0).toUpperCase()
-                        size: 15; weight: Theme.wSemibold
+                        size: Theme.tHeadline; weight: Theme.wSemibold
                     }
                 }
                 // Workspace number (special ones show their name).
@@ -119,7 +119,7 @@ FocusScope {
                         id: wsLabel
                         anchors.centerIn: parent
                         text: parent.ws ? (parent.ws.id > 0 ? String(((parent.ws.id - 1) % 10) + 1) : parent.ws.name.replace("special:", "")) : ""
-                        size: 11; weight: Theme.wMedium; rounded: true
+                        size: Theme.tFootnote; weight: Theme.wMedium; rounded: true
                     }
                 }
             }
@@ -129,13 +129,13 @@ FocusScope {
                 Label {
                     width: parent.width; elide: Text.ElideRight
                     text: sw.appName(card.modelData)
-                    size: 13; weight: Theme.wMedium
+                    size: Theme.tBody; weight: Theme.wMedium
                     color: card.on ? Theme.textPrimary : Theme.textSecondary
                 }
                 Label {
                     width: parent.width; elide: Text.ElideRight
                     text: card.modelData.title || ""
-                    size: 11; color: Theme.textTertiary
+                    size: Theme.tFootnote; color: Theme.textTertiary
                 }
             }
             MouseArea {
@@ -162,7 +162,7 @@ FocusScope {
                 required property var modelData
                 spacing: 6
                 KeyCap { anchors.verticalCenter: parent.verticalCenter; text: parent.modelData[0] }
-                Label { anchors.verticalCenter: parent.verticalCenter; text: parent.modelData[1]; size: 12; color: Theme.textTertiary }
+                Label { anchors.verticalCenter: parent.verticalCenter; text: parent.modelData[1]; size: Theme.tFootnote; color: Theme.textTertiary }
             }
         }
     }
@@ -195,6 +195,6 @@ FocusScope {
         visible: sw.count > 0 || Switcher.appOnly || Switcher.workspaceOnly
         anchors { right: parent.right; rightMargin: 20; bottom: parent.bottom; bottomMargin: 13 }
         text: Switcher.appOnly ? "This app" : Switcher.workspaceOnly ? "This workspace" : (sw.count === 1 ? "1 window" : sw.count + " windows")
-        size: 12; color: Theme.textTertiary
+        size: Theme.tSub; color: Theme.textTertiary
     }
 }

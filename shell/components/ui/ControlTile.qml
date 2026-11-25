@@ -69,8 +69,8 @@ Rectangle {
     Column {
         anchors { left: disc.right; leftMargin: 10; right: chevron.left; rightMargin: 6; verticalCenter: parent.verticalCenter }
         spacing: 1
-        Label { width: parent.width; elide: Text.ElideRight; text: tile.title; size: 13; weight: Theme.wSemibold }
-        Label { width: parent.width; elide: Text.ElideRight; text: tile.subtitle; size: 11; color: Theme.textTertiary }
+        Label { width: parent.width; elide: Text.ElideRight; text: tile.title; size: Theme.tBody; weight: Theme.wSemibold }
+        Label { width: parent.width; elide: Text.ElideRight; text: tile.subtitle; size: Theme.tFootnote; color: Theme.textTertiary }
     }
     Text {
         textFormat: Text.PlainText

@@ -23,7 +23,7 @@ FocusScope {
     property bool primary: false
     property bool enabled: true
     property bool elideText: false
-    property int size: 13
+    property int size: Theme.tBody
     property string label: ""               // what it does, when the face is only a glyph
     property color tone: Theme.textSecondary // quiet: the glyph's colour (a state's tone)
     property bool busy: false                // quiet: the glyph turns (a check running)

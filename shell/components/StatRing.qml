@@ -43,8 +43,8 @@ Item {
             }
         }
         // The number morphs digit by digit when it changes (TextMorph, quick).
-        TextMorph { visible: ring.text !== ""; anchors.centerIn: parent; text: ring.text; size: 11; weight: Theme.wSemibold; rounded: true; duration: Theme.morphSmallMs; stagger: 25 }
+        TextMorph { visible: ring.text !== ""; anchors.centerIn: parent; text: ring.text; size: Theme.tCaption; weight: Theme.wSemibold; rounded: true; duration: Theme.morphSmallMs; stagger: 25 }
     }
-    Label { visible: ring.label !== ""; anchors.horizontalCenter: parent.horizontalCenter; text: ring.label; size: 11; weight: Theme.wMedium; color: Theme.textSecondary }
+    Label { visible: ring.label !== ""; anchors.horizontalCenter: parent.horizontalCenter; text: ring.label; size: Theme.tFootnote; weight: Theme.wMedium; color: Theme.textSecondary }
   }
 }

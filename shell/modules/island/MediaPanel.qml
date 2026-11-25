@@ -129,7 +129,7 @@ FocusScope {
             Label {
                 width: parent.width; elide: Text.ElideRight
                 text: np.note !== "" ? np.note : np.p ? [np.p.trackArtist || Media.byline(np.p), np.p.trackArtist ? np.p.identity : ""].filter(x => x).join(" · ") : ""
-                size: 13; color: np.note !== "" ? np.tint : Theme.textSecondary
+                size: Theme.tBody; color: np.note !== "" ? np.tint : Theme.textSecondary
                 Behavior on color { ColorAnimation { duration: Theme.colorMs } }
             }
         }
@@ -241,7 +241,7 @@ FocusScope {
                 anchors { left: parent.left; verticalCenter: parent.verticalCenter }
                 width: Theme.sp(44)        // holds a time: grows with the text
                 text: Media.clock(scrub.f * Media.length)
-                size: 11; color: Theme.textTertiary
+                size: Theme.tFootnote; color: Theme.textTertiary
                 tabular: true
             }
             Label {
@@ -249,7 +249,7 @@ FocusScope {
                 anchors { right: parent.right; verticalCenter: parent.verticalCenter }
                 width: Theme.sp(44); horizontalAlignment: Text.AlignRight
                 text: Media.length > 0 ? "−" + Media.clock(Media.length - scrub.f * Media.length) : ""
-                size: 11; color: Theme.textTertiary
+                size: Theme.tFootnote; color: Theme.textTertiary
                 tabular: true
             }
             Item {

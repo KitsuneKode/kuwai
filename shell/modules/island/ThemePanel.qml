@@ -317,7 +317,7 @@ FocusScope {
             text: picker.mode === "saver" ? (Settings.screensaverWhen === "off" ? "Off · Settings → Screensaver"
                     : (Settings.screensaverWhen === "always" ? "When idle" : "With Caffeine on") + " · after " + (Settings.screensaverMins || 3) + " min · P to see it")
                 : picker.mode === "live" ? "Plays behind your windows; pauses when they cover it" : (picker.info.current || "").replace(/-/g, " ")
-            size: 13; weight: Theme.wMedium; color: Theme.textSecondary
+            size: Theme.tBody; weight: Theme.wMedium; color: Theme.textSecondary
         }
         // Loading: the theme's name, in its own shape.
         Skeleton {
@@ -437,7 +437,7 @@ FocusScope {
                         }
                     }
                 }
-                Label { y: 22; text: picker.mode === "themes" ? "Theme palette" : "Wallpaper colours"; size: 11; color: Theme.textTertiary }
+                Label { y: 22; text: picker.mode === "themes" ? "Theme palette" : "Wallpaper colours"; size: Theme.tFootnote; color: Theme.textTertiary }
             }
             Row {
                 id: applyLine
@@ -467,9 +467,9 @@ FocusScope {
                     color: picker.applyError !== "" && !applyLine.busy ? Theme.orange : Theme.textSecondary
                 }
             }
-            Label { visible: !applyLine.visible; text: preview.it && preview.it.current ? "In use now" : picker.mode === "live" && preview.it && preview.it.off ? "Press ↵ to turn the live wallpaper off" : "Press ↵ or click to apply"; size: 12; color: Theme.textSecondary }
-            Label { visible: picker.mode === "live"; width: parent.width; wrapMode: Text.Wrap; text: "Add your own: kuwai-wall add FILE.mp4 \"name\" · guide: docs/manual/looks.md"; size: 11; color: Theme.textTertiary }
-            Label { visible: picker.mode === "saver"; width: parent.width; wrapMode: Text.Wrap; text: "Add your own: kuwai saver add FILE.mp4 · guide: docs/manual/looks.md"; size: 11; color: Theme.textTertiary }
+            Label { visible: !applyLine.visible; text: preview.it && preview.it.current ? "In use now" : picker.mode === "live" && preview.it && preview.it.off ? "Press ↵ to turn the live wallpaper off" : "Press ↵ or click to apply"; size: Theme.tSub; color: Theme.textSecondary }
+            Label { visible: picker.mode === "live"; width: parent.width; wrapMode: Text.Wrap; text: "Add your own: kuwai-wall add FILE.mp4 \"name\" · guide: docs/manual/looks.md"; size: Theme.tFootnote; color: Theme.textTertiary }
+            Label { visible: picker.mode === "saver"; width: parent.width; wrapMode: Text.Wrap; text: "Add your own: kuwai saver add FILE.mp4 · guide: docs/manual/looks.md"; size: Theme.tFootnote; color: Theme.textTertiary }
         }
     }
 
@@ -479,7 +479,7 @@ FocusScope {
         anchors { right: parent.right; rightMargin: 22; bottom: parent.bottom; bottomMargin: 14 }
         width: 310
         spacing: 8
-        Label { text: "Colours"; size: 12; weight: Theme.wMedium; color: Theme.textSecondary }
+        Label { text: "Colours"; size: Theme.tSub; weight: Theme.wMedium; color: Theme.textSecondary }
         Segmented {
             width: parent.width
             options: [{ id: "theme", label: "Theme" }, { id: "auto", label: "Wallpaper" }, { id: "dark", label: "Dark" }, { id: "light", label: "Light" }]
@@ -644,7 +644,7 @@ FocusScope {
                     width: parent.width - 26
                     elide: Text.ElideRight
                     text: card.modelData.name.replace(/-/g, " ")
-                    size: 12; weight: card.on ? Theme.wMedium : Theme.wRegular
+                    size: Theme.tSub; weight: card.on ? Theme.wMedium : Theme.wRegular
                     color: card.on ? Theme.textPrimary : Theme.textSecondary
                 }
                 Text {
@@ -694,7 +694,7 @@ FocusScope {
                 required property var modelData
                 spacing: 6
                 KeyCap { anchors.verticalCenter: parent.verticalCenter; text: parent.modelData[0] }
-                Label { anchors.verticalCenter: parent.verticalCenter; text: parent.modelData[1]; size: 12; color: Theme.textTertiary }
+                Label { anchors.verticalCenter: parent.verticalCenter; text: parent.modelData[1]; size: Theme.tFootnote; color: Theme.textTertiary }
             }
         }
     }

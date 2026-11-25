@@ -14,7 +14,7 @@ Text {
     // the default, AutoText, treated a title like `<img src="https://…">`
     // from any app, tab or thread as rich text and fetched the image.
     textFormat: Text.PlainText
-    property int size: 13
+    property int size: Theme.tBody
     property int weight: Theme.wRegular
     property bool rounded: false
     property bool tabular: false

@@ -27,7 +27,7 @@ Rectangle {
         anchors.centerIn: parent
         spacing: 5
         Text { textFormat: Text.PlainText; visible: chip.glyph !== ""; anchors.verticalCenter: parent.verticalCenter; text: chip.glyph; font.family: Theme.fontGlyph; font.pixelSize: 12; color: Theme.textPrimary }
-        Label { anchors.verticalCenter: parent.verticalCenter; text: chip.text; size: 12; weight: Theme.wMedium; color: chip.filled ? Theme.inkOnLight : Theme.textPrimary }
+        Label { anchors.verticalCenter: parent.verticalCenter; text: chip.text; size: Theme.tSub; weight: Theme.wMedium; color: chip.filled ? Theme.inkOnLight : Theme.textPrimary }
     }
     MouseArea { id: chipArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: chip.clicked() }
 }

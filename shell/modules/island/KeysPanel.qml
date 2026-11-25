@@ -177,7 +177,7 @@ FocusScope {
                 visible: !field.text
                 anchors.verticalCenter: parent.verticalCenter
                 text: pal.items.length ? "Search " + pal.items.length + " shortcuts, features and modes" : "Search shortcuts, features and modes"
-                size: 18; color: Theme.textTertiary
+                size: Theme.tTitle3; color: Theme.textTertiary
             }
         }
     }
@@ -227,15 +227,15 @@ FocusScope {
                 visible: row.header
                 x: 14; anchors.bottom: parent.bottom; anchors.bottomMargin: 7
                 text: row.modelData.header || ""
-                size: 12; weight: Theme.wSemibold; color: Theme.textTertiary
+                size: Theme.tSub; weight: Theme.wSemibold; color: Theme.textTertiary
             }
 
             Column {
                 visible: !row.header
                 anchors { left: parent.left; leftMargin: 14; right: trail.left; rightMargin: 14; verticalCenter: parent.verticalCenter }
                 spacing: 1
-                Label { width: parent.width; elide: Text.ElideRight; text: row.modelData.text || ""; size: 13; weight: Theme.wMedium }
-                Label { visible: !!row.modelData.sub; width: parent.width; elide: Text.ElideRight; text: row.modelData.sub || ""; size: 11; color: Theme.textTertiary }
+                Label { width: parent.width; elide: Text.ElideRight; text: row.modelData.text || ""; size: Theme.tBody; weight: Theme.wMedium }
+                Label { visible: !!row.modelData.sub; width: parent.width; elide: Text.ElideRight; text: row.modelData.sub || ""; size: Theme.tFootnote; color: Theme.textTertiary }
             }
 
             Row {
@@ -252,7 +252,7 @@ FocusScope {
                     visible: row.modelData.kind === "bind" && (row.modelData.alt || []).length > 0
                     anchors.verticalCenter: parent.verticalCenter
                     leftPadding: 4; rightPadding: 4
-                    text: "or"; size: 11; color: Theme.textTertiary
+                    text: "or"; size: Theme.tFootnote; color: Theme.textTertiary
                 }
                 Repeater {
                     model: row.modelData.kind === "bind" && row.modelData.alt && row.modelData.alt.length ? row.modelData.alt[0] : []
@@ -268,7 +268,7 @@ FocusScope {
                         id: stateLabel
                         anchors.centerIn: parent
                         text: row.modelData.kind === "mode" ? (row.modelData.on ? "Current" : "Switch") : (row.modelData.on ? "On" : "Off")
-                        size: 11; weight: Theme.wMedium
+                        size: Theme.tFootnote; weight: Theme.wMedium
                         color: row.modelData.on ? Theme.textPrimary : Theme.textSecondary
                     }
                 }
@@ -301,7 +301,7 @@ FocusScope {
             visible: pal.count === 0 && pal.query.trim() !== ""
             anchors.centerIn: parent
             text: "Nothing matches “" + pal.query.trim() + "”"
-            size: 13; color: Theme.textTertiary
+            size: Theme.tBody; color: Theme.textTertiary
         }
         // Nothing to list at all (Hyprland didn't answer): what happened and
         // what to do, with the panel shrunk around it.
@@ -335,7 +335,7 @@ FocusScope {
                 required property var modelData
                 spacing: 6
                 KeyCap { anchors.verticalCenter: parent.verticalCenter; text: parent.modelData[0] }
-                Label { anchors.verticalCenter: parent.verticalCenter; text: parent.modelData[1]; size: 12; color: Theme.textTertiary }
+                Label { anchors.verticalCenter: parent.verticalCenter; text: parent.modelData[1]; size: Theme.tFootnote; color: Theme.textTertiary }
             }
         }
     }
@@ -344,6 +344,6 @@ FocusScope {
         // Only where it fits beside the keys (at 200 % it ran into "Close").
         visible: pal.width - 20 - implicitWidth > keysFoot.x + keysFoot.width + Theme.s3
         text: pal.query ? pal.count + (pal.count === 1 ? " match" : " matches") : "Hold Super anywhere to open this"
-        size: 12; color: Theme.textTertiary
+        size: Theme.tSub; color: Theme.textTertiary
     }
 }

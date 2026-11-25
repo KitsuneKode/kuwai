@@ -49,7 +49,7 @@ Column {
     Column {
         width: lb.width
         spacing: 1
-        Label { visible: lb.title !== ""; text: lb.title; size: 12; color: Theme.textSecondary; bottomPadding: 4 }
+        Label { visible: lb.title !== ""; text: lb.title; size: Theme.tSub; color: Theme.textSecondary; bottomPadding: 4 }
         Label {
             text: lb.hot >= 0 && lb.parts[lb.hot] ? lb.fmt(lb.parts[lb.hot].value) : lb.big
             size: Theme.tTitle1; weight: Theme.wBold; rounded: true

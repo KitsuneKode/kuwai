@@ -15,7 +15,7 @@ Row {
 
     property real value: 0
     property string suffix
-    property int size: 13
+    property int size: Theme.tBody
     property int weight: Theme.wRegular
     property color color: Theme.textPrimary
     property bool rounded: true

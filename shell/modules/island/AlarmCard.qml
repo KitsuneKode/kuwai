@@ -165,7 +165,7 @@ Item {
         Label {
             width: parent.width; elide: Text.ElideRight
             text: card.item ? card.item.sub || "" : ""
-            size: 13; weight: Theme.wMedium; rounded: true
+            size: Theme.tBody; weight: Theme.wMedium; rounded: true
             color: card.tone
             tabular: true
             opacity: card.line2
@@ -193,7 +193,7 @@ Item {
             scale: secArea.pressed ? 0.96 : 1
             Behavior on color { ColorAnimation { duration: Theme.colorMs } }
             Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
-            Label { id: secLabel; anchors.centerIn: parent; text: acts.a.secondary ? acts.a.secondary[0] : ""; size: 14; weight: Theme.wSemibold; color: card.tone }
+            Label { id: secLabel; anchors.centerIn: parent; text: acts.a.secondary ? acts.a.secondary[0] : ""; size: Theme.tCallout; weight: Theme.wSemibold; color: card.tone }
             MouseArea { id: secArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: acts.answer("secondary") }
             id: secBtn
             activeFocusOnTab: visible && Island.cardKeys

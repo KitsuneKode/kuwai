@@ -54,13 +54,13 @@ Item {
             id: copyCol
             width: parent.width
             spacing: expanded ? 4 : 2
-            Label { width: parent.width; elide: Text.ElideRight; text: banner.alert ? banner.alert.title : ""; size: 14; weight: Theme.wSemibold }
+            Label { width: parent.width; elide: Text.ElideRight; text: banner.alert ? banner.alert.title : ""; size: Theme.tCallout; weight: Theme.wSemibold }
             Label {
                 id: detailLine
                 visible: !banner.expanded && text !== ""
                 width: parent.width; elide: Text.ElideRight
                 text: banner.alert ? banner.alert.detail || "" : ""
-                size: 12; color: Theme.textSecondary
+                size: Theme.tSub; color: Theme.textSecondary
             }
             Item {
                 visible: banner.expanded && !!banner.alert && !!banner.alert.detail
@@ -77,7 +77,7 @@ Item {
                         width: detailScroll.width
                         wrapMode: Text.Wrap
                         text: banner.alert ? banner.alert.detail : ""
-                        size: 12; lineHeight: 1.35; color: Theme.textSecondary
+                        size: Theme.tSub; lineHeight: 1.35; color: Theme.textSecondary
                     }
                 }
             }
@@ -96,7 +96,7 @@ Item {
         width: goLabel.implicitWidth + 22
         color: goArea.containsMouse ? Qt.alpha(banner.tone, 0.35) : Qt.alpha(banner.tone, 0.2)
         Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
-        Label { id: goLabel; anchors.centerIn: parent; text: banner.alert && banner.alert.action ? banner.alert.action : "Details"; size: 12; weight: Theme.wMedium; color: banner.tone }
+        Label { id: goLabel; anchors.centerIn: parent; text: banner.alert && banner.alert.action ? banner.alert.action : "Details"; size: Theme.tSub; weight: Theme.wMedium; color: banner.tone }
         MouseArea {
             id: goArea
             anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor

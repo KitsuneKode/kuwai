@@ -53,7 +53,7 @@ Item {
         anchors.centerIn: parent
         rotation: -90
         text: (card.r.header || "").toUpperCase()
-        size: 11
+        size: Theme.tFootnote
         weight: Theme.wSemibold
         extraTracking: 1.2
         color: Theme.textTertiary
@@ -170,7 +170,7 @@ Item {
                 Label {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: card.file0 ? (card.file0.name.split(".").length > 1 && !card.file0.dir ? card.file0.name.split(".").pop().toUpperCase() : card.file0.dir ? "Folder" : "File") : ""
-                    size: 11
+                    size: Theme.tFootnote
                     weight: Theme.wSemibold
                     color: Theme.textTertiary
                 }
@@ -186,7 +186,7 @@ Item {
                     id: fcount
                     anchors.centerIn: parent
                     text: !card.fileList ? "" : card.missing ? (card.missing === card.fileList.length ? "Missing" : card.missing + " missing") : card.fileList.length + " files"
-                    size: 11
+                    size: Theme.tFootnote
                     weight: Theme.wSemibold
                     color: "white"
                 }
@@ -198,7 +198,7 @@ Item {
                 anchors { left: parent.left; bottom: parent.bottom; margins: 10 }
                 readonly property color c: card.e && card.e.kind === "color" ? card.panel.colorOf(card.e.preview) : "black"
                 text: card.e ? card.e.preview.trim() : ""
-                size: 13
+                size: Theme.tBody
                 weight: Theme.wSemibold
                 font.family: Theme.fontMono
                 color: (0.299 * c.r + 0.587 * c.g + 0.114 * c.b) > 0.6 ? Theme.inkOnLight : "white"
@@ -211,8 +211,8 @@ Item {
                 spacing: 4
                 readonly property var u: card.e && card.e.kind === "link" ? card.e.preview.trim().replace(/^\w+:\/\//, "") : ""
                 Text { text: "\u{f0339}"; font.family: Theme.fontGlyph; font.pixelSize: 20; color: Theme.blue }
-                Label { width: parent.width; elide: Text.ElideRight; text: parent.u ? parent.u.split("/")[0] : ""; size: 15; weight: Theme.wSemibold }
-                Label { width: parent.width; elide: Text.ElideMiddle; text: parent.u ? "/" + parent.u.split("/").slice(1).join("/") : ""; size: 11; color: Theme.textTertiary; visible: text.length > 1 }
+                Label { width: parent.width; elide: Text.ElideRight; text: parent.u ? parent.u.split("/")[0] : ""; size: Theme.tHeadline; weight: Theme.wSemibold }
+                Label { width: parent.width; elide: Text.ElideMiddle; text: parent.u ? "/" + parent.u.split("/").slice(1).join("/") : ""; size: Theme.tFootnote; color: Theme.textTertiary; visible: text.length > 1 }
             }
 
             // Code: highlighted (rendered once, cached); text: its first lines.
@@ -237,7 +237,7 @@ Item {
                 anchors.centerIn: parent
                 spacing: 6
                 Text { anchors.horizontalCenter: parent.horizontalCenter; text: "\u{f0306}"; font.family: Theme.fontGlyph; font.pixelSize: Theme.glyphXL; color: Theme.orange }
-                Label { anchors.horizontalCenter: parent.horizontalCenter; text: "Looks like a secret"; size: 11; color: Theme.orange }
+                Label { anchors.horizontalCenter: parent.horizontalCenter; text: "Looks like a secret"; size: Theme.tFootnote; color: Theme.orange }
             }
             Text {
                 visible: card.e && card.e.kind === "file"
@@ -315,7 +315,7 @@ Item {
                 : card.isFiles && card.file0 ? card.file0.name + (card.fileList.length > 1 ? "  +" + (card.fileList.length - 1) : "")
                 : card.masked ? "•••••••••"
                 : Clipboard.marked(card.e.preview.replace(/\s+/g, " ").slice(0, 120), card.r.m ? card.r.m.pos : [], Theme.yellow)
-            size: 12
+            size: Theme.tSub
             weight: card.selected ? Theme.wSemibold : Theme.wMedium
         }
         Label {
@@ -328,7 +328,7 @@ Item {
                        card.file0.dir ? "" : card.bytes(card.file0.size),
                        card.file0.pages ? card.file0.pages + (card.file0.pages === 1 ? " page" : " pages") : ""].filter(x => x).join("  ·  "))
                 : card.panel.metaOf(card.e)
-            size: 11
+            size: Theme.tFootnote
             color: Theme.textTertiary
         }
     }

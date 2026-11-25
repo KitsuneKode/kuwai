@@ -241,7 +241,7 @@ Item {
                     anchors { left: moduleBack.right; leftMargin: Theme.s2; right: moduleSwitch.left; rightMargin: Theme.s2; verticalCenter: parent.verticalCenter }
                     elide: Text.ElideRight
                     text: view.btOpen ? "Bluetooth" : "Wi‑Fi"
-                    size: 15
+                    size: Theme.tHeadline
                     weight: Theme.wSemibold
                 }
                 Toggle {
@@ -315,7 +315,7 @@ Item {
                     RollingNumber {
                         value: parent.parent.level
                         suffix: "%"
-                        size: 14
+                        size: Theme.tCallout
                         weight: Theme.wSemibold
                     }
                     Label {
@@ -329,7 +329,7 @@ Item {
                             if (!UPower.onBattery) return b.state === UPowerDeviceState.PendingCharge ? "Plugged in · holding charge" : "Plugged in";
                             return b.timeToEmpty > 0 ? view.duration(b.timeToEmpty) + " left" : "On battery";
                         }
-                        size: 12
+                        size: Theme.tSub
                         color: Theme.textTertiary
                     }
                 }
@@ -337,7 +337,7 @@ Item {
                     visible: view.profilesAvailable
                     anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
                     text: view.profileLabel
-                    size: 12
+                    size: Theme.tSub
                     weight: Theme.wMedium
                     color: Theme.textSecondary
                 }
@@ -367,7 +367,7 @@ Item {
                 width: parent.width
                 spacing: 8
 
-                Label { x: 4; text: "Brightness"; size: 14; weight: Theme.wSemibold; color: Theme.textSecondary }
+                Label { x: 4; text: "Brightness"; size: Theme.tCallout; weight: Theme.wSemibold; color: Theme.textSecondary }
                 Repeater {
                     model: Display.outputs
                     Column {
@@ -391,7 +391,7 @@ Item {
                             width: parent.width - 8
                             elide: Text.ElideRight
                             text: out.modelData.error
-                            size: 11
+                            size: Theme.tFootnote
                             color: Theme.caution
                         }
                     }
@@ -400,7 +400,7 @@ Item {
                     visible: Display.outputs.length === 0
                     x: 4
                     text: "Reading displays…"
-                    size: 12
+                    size: Theme.tSub
                     color: Theme.textTertiary
                 }
                 Slider {
@@ -423,7 +423,7 @@ Item {
                 width: parent.width
                 spacing: 8
 
-                Label { x: 4; text: "Display"; size: 14; weight: Theme.wSemibold; color: Theme.textSecondary }
+                Label { x: 4; text: "Display"; size: Theme.tCallout; weight: Theme.wSemibold; color: Theme.textSecondary }
                 Segmented {
                     width: parent.width
                     options: Display.presets.map(p => ({ id: p.id, label: p.label }))
@@ -448,7 +448,7 @@ Item {
                            ? "\nAutomatic" + (Display.autoWhy ? " · " + Display.autoWhy + (Display.auto === "accurate" ? " is open" : "") : "")
                              + " · Everyday to override"
                            : "")
-                    size: 12
+                    size: Theme.tSub
                     color: Theme.textTertiary
                 }
                 Rectangle {
@@ -464,7 +464,7 @@ Item {
                         id: hdrText
                         anchors { left: parent.left; leftMargin: 14; right: hdrSwitch.left; rightMargin: 12; verticalCenter: parent.verticalCenter }
                         spacing: 1
-                        Label { text: "HDR"; size: 13; weight: Theme.wSemibold }
+                        Label { text: "HDR"; size: Theme.tBody; weight: Theme.wSemibold }
                         Label {
                             width: parent.width
                             wrapMode: Text.WordWrap
@@ -473,7 +473,7 @@ Item {
                                 : Display.hdrError !== "" ? Display.hdrError
                                 : Display.hdrActive ? "On · external display (EDID) · reload YouTube for HDR"
                                 : "Off · turn on for browser HDR (mpv and games switch on their own)"
-                            size: 11
+                            size: Theme.tFootnote
                             color: Display.hdrError !== "" ? Theme.orange : Theme.textTertiary
                         }
                     }
@@ -497,12 +497,12 @@ Item {
                         spacing: 6
                         Label {
                             text: sig.modelData.internal ? "Built-in" : (view.modelOf(sig.modelData.name) || sig.modelData.name)
-                            size: 12; weight: Theme.wMedium
+                            size: Theme.tSub; weight: Theme.wMedium
                             color: Theme.textSecondary
                         }
                         Label {
                             text: sig.s ? [sig.s.hz + " Hz", sig.s.depth + "-bit", sig.s.hdr ? "HDR" : "SDR"].concat(sig.s.vrr ? ["VRR"] : []).join(" · ") : ""
-                            size: 12
+                            size: Theme.tSub
                             tabular: true
                             color: Theme.textTertiary
                         }
@@ -521,7 +521,7 @@ Item {
                 Label {
                     x: 4
                     text: !(view.adapter && view.adapter.enabled) ? "Bluetooth is off" : view.btDevices.length ? "Devices" : "No paired devices"
-                    size: 14
+                    size: Theme.tCallout
                     weight: Theme.wSemibold
                     color: Theme.textSecondary
                 }
@@ -531,7 +531,7 @@ Item {
                     width: parent.width - 8
                     wrapMode: Text.WordWrap
                     text: "Pair a device from the Bluetooth panel in the island; it shows here once paired."
-                    size: 12
+                    size: Theme.tSub
                     color: Theme.textTertiary
                 }
                 Repeater {
@@ -573,11 +573,11 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                             width: parent.width - 52 - 70
                             spacing: 1
-                            Label { width: parent.width; elide: Text.ElideRight; text: dev.modelData.name; size: 13; weight: Theme.wSemibold }
+                            Label { width: parent.width; elide: Text.ElideRight; text: dev.modelData.name; size: Theme.tBody; weight: Theme.wSemibold }
                             Label {
                                 text: dev.busy ? (dev.modelData.connected ? "Disconnecting…" : "Connecting…")
                                     : dev.modelData.connected ? "Connected" : "Not connected"
-                                size: 11
+                                size: Theme.tFootnote
                                 color: Theme.textTertiary
                             }
                         }
@@ -585,7 +585,7 @@ Item {
                             visible: dev.modelData.batteryAvailable
                             anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
                             text: Math.round(dev.modelData.battery * 100) + "%"
-                            size: 12
+                            size: Theme.tSub
                             rounded: true
                             weight: Theme.wMedium
                             tabular: true

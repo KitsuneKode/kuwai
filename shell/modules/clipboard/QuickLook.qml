@@ -246,7 +246,7 @@ Item {
                ql.panel.detailOf(ql.entry, ql.full),
                ql.rendered.kind !== "text" ? (ql.raw ? "⌃R rendered" : "⌃R raw") : "",
                ql.masked ? "" : "⌃E or double-click to edit", "Space close"].filter(x => x).join("    ")
-        size: 11
+        size: Theme.tFootnote
         color: Theme.textTertiary
     }
 }

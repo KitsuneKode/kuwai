@@ -13,7 +13,7 @@ Row {
     id: morph
 
     property string text
-    property int size: 14
+    property int size: Theme.tCallout
     property int weight: Theme.wSemibold
     property color color: Theme.textPrimary
     property bool rounded: true

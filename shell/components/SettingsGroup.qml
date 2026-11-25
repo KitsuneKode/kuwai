@@ -16,7 +16,7 @@ Column {
         visible: g.title !== ""
         x: 4
         text: g.title
-        size: 12
+        size: Theme.tSub
         weight: Theme.wMedium
         color: Theme.textTertiary
     }

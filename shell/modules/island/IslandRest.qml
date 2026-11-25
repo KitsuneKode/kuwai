@@ -269,14 +269,14 @@ Item {
             visible: !!parent.m.label && parent.m.kind !== "device"
             anchors.verticalCenter: parent.verticalCenter
             text: parent.m.label || ""
-            size: 13; weight: Theme.wSemibold
+            size: Theme.tBody; weight: Theme.wSemibold
             color: Theme.textPrimary
         }
         Label {
             visible: !!parent.m.value && (parent.m.kind === "hello" || parent.m.kind === "focus" || parent.m.kind === "caffeine")
             anchors.verticalCenter: parent.verticalCenter
             text: parent.m.value ? " · " + parent.m.value : ""
-            size: 13; weight: Theme.wMedium; rounded: true
+            size: Theme.tBody; weight: Theme.wMedium; rounded: true
             color: parent.m.tone || Theme.textSecondary
             tabular: true
         }
@@ -421,7 +421,7 @@ Item {
                 : rest.activity === "auth" ? "Password"
                 : rest.activity === "rec" ? rest.clockOf(rest.recSecs)
                 : rest.activity === "timer" ? rest.timerLeft : ""
-            size: 13; weight: Theme.wSemibold; rounded: true
+            size: Theme.tBody; weight: Theme.wSemibold; rounded: true
             color: Theme.textPrimary
             tabular: true
         }
@@ -467,7 +467,7 @@ Item {
             Label {
                 anchors.verticalCenter: parent.verticalCenter
                 text: rest.shownHint ? pills.num(rest.shownHint.id) : ""
-                size: 15; weight: Theme.wSemibold; rounded: true
+                size: Theme.tHeadline; weight: Theme.wSemibold; rounded: true
                 color: Theme.accent
                 tabular: true
             }
@@ -486,7 +486,7 @@ Item {
                 visible: hintBox.apps.length > 2 || hintBox.apps.length === 0
                 anchors.verticalCenter: parent.verticalCenter
                 text: hintBox.apps.length ? "+" + (hintBox.apps.length - 2) : "empty"
-                size: 13; weight: Theme.wMedium
+                size: Theme.tBody; weight: Theme.wMedium
                 color: Theme.textTertiary
             }
         }
@@ -521,7 +521,7 @@ Item {
         visible: rest.clockShown && !rest.clockHidden
         opacity: (1 - rest.hintOn) * rest.chromeReveal
         Behavior on opacity { NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
-        now: rest.bar.now; size: 15
+        now: rest.bar.now; size: Theme.tHeadline
         rounded: false
         weight: Theme.wMedium
         color: Qt.rgba(1, 0.98, 0.95, 0.92)
@@ -548,7 +548,7 @@ Item {
         width: Math.min(implicitWidth, 220)
         elide: Text.ElideRight
         text: rest.soonText
-        size: 13; weight: Theme.wMedium
+        size: Theme.tBody; weight: Theme.wMedium
         color: Theme.textSecondary
     }
 
@@ -672,7 +672,7 @@ Item {
                      && parent.m.kind !== "hello" && parent.m.kind !== "focus" && parent.m.kind !== "caffeine"
             anchors.verticalCenter: parent.verticalCenter
             text: parent.m.value || ""
-            size: 13; weight: Theme.wSemibold; rounded: true
+            size: Theme.tBody; weight: Theme.wSemibold; rounded: true
             color: parent.m.tone || Theme.textPrimary
             tabular: true
         }
@@ -714,7 +714,7 @@ Item {
                 visible: rest.activity === "timer"
                 anchors.verticalCenter: parent.verticalCenter
                 text: rest.timerLeft
-                size: 13; weight: Theme.wSemibold; rounded: true
+                size: Theme.tBody; weight: Theme.wSemibold; rounded: true
                 color: Timers.next && Timers.next.pomo ? (Timers.next.pomo.phase === "work" ? Theme.red : Theme.green) : Theme.orange
                 tabular: true
             }
@@ -748,7 +748,7 @@ Item {
                 visible: rest.activity === "alert" && text !== ""
                 anchors.verticalCenter: parent.verticalCenter
                 text: Alerts.active.length ? ((Alerts.active[0].title.match(/\d+\s*[%°]/) || [""])[0]).replace(/\s+/g, "") : ""
-                size: 13; weight: Theme.wSemibold; rounded: true
+                size: Theme.tBody; weight: Theme.wSemibold; rounded: true
                 color: Alerts.active.length && Alerts.active[0].level === "crit" ? Theme.red : Theme.orange
                 tabular: true
             }
@@ -756,7 +756,7 @@ Item {
                 visible: rest.activity === "rec"
                 anchors.verticalCenter: parent.verticalCenter
                 text: rest.clockOf(rest.recSecs)
-                size: 13; weight: Theme.wSemibold; rounded: true
+                size: Theme.tBody; weight: Theme.wSemibold; rounded: true
                 color: Theme.red
                 tabular: true
             }
@@ -764,7 +764,7 @@ Item {
                 visible: rest.activity === "vox"
                 anchors.verticalCenter: parent.verticalCenter
                 text: Activities.voxListening ? Math.floor(rest.voxSecs / 60) + ":" + String(Math.floor(rest.voxSecs % 60)).padStart(2, "0") : "Writing"
-                size: 13; weight: Theme.wSemibold; rounded: true
+                size: Theme.tBody; weight: Theme.wSemibold; rounded: true
                 color: Activities.voxListening ? Theme.red : Theme.textSecondary
                 tabular: true
             }
@@ -775,14 +775,14 @@ Item {
                 // small arrow says "click to bring it here".
                 text: Island.authScreen === rest.bar.screenName ? "" : "\u{f0045}"
                 font.family: Theme.fontGlyph
-                size: 12; weight: Theme.wSemibold
+                size: Theme.tSub; weight: Theme.wSemibold
                 color: Theme.accent
             }
             Label {
                 visible: rest.activity === "update"
                 anchors.verticalCenter: parent.verticalCenter
                 text: Math.round(Updates.progress * 100) + "%"
-                size: 13; weight: Theme.wSemibold; rounded: true
+                size: Theme.tBody; weight: Theme.wSemibold; rounded: true
                 color: Theme.accent
                 tabular: true
             }
@@ -792,7 +792,7 @@ Item {
                 width: Math.min(implicitWidth, 170)
                 elide: Text.ElideRight
                 text: Activities.shazamFound ? Activities.shazamFound.title + " · " + Activities.shazamFound.artist : "Listening"
-                size: 12; weight: Theme.wMedium
+                size: Theme.tSub; weight: Theme.wMedium
             }
             // Music: waveform while playing; a low, still silhouette when paused.
             Item {

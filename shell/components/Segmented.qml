@@ -171,7 +171,7 @@ Rectangle {
                     Label {
                         anchors.verticalCenter: parent.verticalCenter
                         text: opt.modelData.label
-                        size: 13
+                        size: Theme.tBody
                         weight: opt.on ? Theme.wSemibold : Theme.wRegular
                         color: opt.on ? Theme.textPrimary : Theme.textSecondary
                     }
@@ -186,7 +186,7 @@ Rectangle {
                             rounded: true
                             anchors.centerIn: parent
                             text: opt.modelData.badge || ""
-                            size: 11
+                            size: Theme.tFootnote
                             weight: Theme.wSemibold
                             tabular: true
                         }

@@ -200,13 +200,13 @@ Item {
             Label {
                 width: parent.width; elide: Text.ElideRight
                 text: !peek.item ? "" : (peek.item.app || "Notification") + (peek.item.status ? "  ·  " + peek.item.status : "")
-                size: 11; weight: Theme.wMedium
+                size: Theme.tFootnote; weight: Theme.wMedium
                 color: peek.item && peek.item.status ? peek.statusColor : Theme.textTertiary
             }
             Label {
                 width: parent.width; elide: Text.ElideRight
                 text: peek.item ? peek.item.title || peek.item.app : ""
-                size: 14; weight: Theme.wSemibold
+                size: Theme.tCallout; weight: Theme.wSemibold
             }
             Label {
                 visible: !!peek.item && (!!peek.item.body || peek.redacted) && !peek.expanded
@@ -262,7 +262,7 @@ Item {
                 width: parent.width
                 wrapMode: Text.WordWrap
                 text: "Hidden while you share your screen."
-                size: 12; color: Theme.textTertiary
+                size: Theme.tSub; color: Theme.textTertiary
             }
             Label {
                 visible: !peek.expanded && !!peek.item
@@ -305,7 +305,7 @@ Item {
         readonly property color c: peek.loud ? peek.tone : Theme.textPrimary
         color: goArea.containsMouse ? Qt.alpha(c, 0.3) : Qt.alpha(c, 0.16)
         Behavior on color { ColorAnimation { duration: Theme.colorMs } }
-        Label { id: goLabel; anchors.centerIn: parent; text: peek.acts.length ? peek.acts[0].text : "Open"; size: 12; weight: Theme.wMedium; color: go.c }
+        Label { id: goLabel; anchors.centerIn: parent; text: peek.acts.length ? peek.acts[0].text : "Open"; size: Theme.tSub; weight: Theme.wMedium; color: go.c }
         MouseArea {
             id: goArea
             anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
@@ -336,7 +336,7 @@ Item {
                 FocusRing {}
                 color: index === 0 ? (actArea.containsMouse ? Qt.rgba(1, 1, 1, 0.92) : Qt.rgba(1, 1, 1, 0.88))
                                    : (actArea.containsMouse ? Theme.pillHover : Theme.pill)
-                Label { id: actLbl; anchors.centerIn: parent; text: modelData.text; size: 12; weight: Theme.wMedium; color: index === 0 ? Theme.inkOnLight : Theme.textPrimary }
+                Label { id: actLbl; anchors.centerIn: parent; text: modelData.text; size: Theme.tSub; weight: Theme.wMedium; color: index === 0 ? Theme.inkOnLight : Theme.textPrimary }
                 MouseArea {
                     id: actArea
                     anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
@@ -356,7 +356,7 @@ Item {
             Keys.onPressed: e => { if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { peek.openItem(); e.accepted = true; } }
             FocusRing {}
             color: openArea.containsMouse ? Qt.rgba(1, 1, 1, 0.92) : Qt.rgba(1, 1, 1, 0.88)
-            Label { id: openLbl; anchors.centerIn: parent; text: "Open"; size: 12; weight: Theme.wMedium; color: Theme.inkOnLight }
+            Label { id: openLbl; anchors.centerIn: parent; text: "Open"; size: Theme.tSub; weight: Theme.wMedium; color: Theme.inkOnLight }
             MouseArea {
                 id: openArea
                 anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
@@ -375,7 +375,7 @@ Item {
             height: 28; radius: 14
             width: copyLbl.implicitWidth + 22
             color: copyArea.containsMouse ? Qt.alpha(Theme.accent, 0.4) : Qt.alpha(Theme.accent, 0.25)
-            Label { id: copyLbl; anchors.centerIn: parent; text: "Copy code"; size: 12; weight: Theme.wMedium }
+            Label { id: copyLbl; anchors.centerIn: parent; text: "Copy code"; size: Theme.tSub; weight: Theme.wMedium }
             MouseArea {
                 id: copyArea
                 anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
@@ -394,7 +394,7 @@ Item {
             height: 28; radius: 14
             width: replyLbl.implicitWidth + 22
             color: replyArea.containsMouse ? Theme.pillHover : Theme.pill
-            Label { id: replyLbl; anchors.centerIn: parent; text: "Reply"; size: 12; weight: Theme.wMedium }
+            Label { id: replyLbl; anchors.centerIn: parent; text: "Reply"; size: Theme.tSub; weight: Theme.wMedium }
             MouseArea {
                 id: replyArea
                 anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor

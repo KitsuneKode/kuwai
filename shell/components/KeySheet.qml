@@ -57,7 +57,7 @@ Item {
         Label {
             anchors { right: parent.right; verticalCenter: head.verticalCenter }
             text: "any key to close"
-            size: 11
+            size: Theme.tFootnote
             color: Theme.textTertiary
         }
 
@@ -81,7 +81,7 @@ Item {
                             spacing: 7
                             Label {
                                 text: sec.modelData.title.toUpperCase()
-                                size: 11
+                                size: Theme.tFootnote
                                 weight: Theme.wSemibold
                                 extraTracking: 0.8
                                 color: Theme.textTertiary
@@ -103,7 +103,7 @@ Item {
                                         anchors { left: parent.left; leftMargin: 92; right: parent.right; verticalCenter: parent.verticalCenter }
                                         elide: Text.ElideRight
                                         text: line.modelData.t
-                                        size: 12
+                                        size: Theme.tSub
                                         color: Theme.textSecondary
                                     }
                                 }

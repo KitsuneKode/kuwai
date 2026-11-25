@@ -27,8 +27,8 @@ Rectangle {
         x: 42; anchors.verticalCenter: parent.verticalCenter
         width: n.width - 42 - (act.visible ? act.width + 24 : 14)
         spacing: 2
-        Label { width: parent.width; elide: Text.ElideRight; text: n.title; size: 13; weight: Theme.wSemibold }
-        Label { width: parent.width; wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight; text: n.detail; size: 11; color: Theme.textSecondary; visible: text !== "" }
+        Label { width: parent.width; elide: Text.ElideRight; text: n.title; size: Theme.tBody; weight: Theme.wSemibold }
+        Label { width: parent.width; wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight; text: n.detail; size: Theme.tFootnote; color: Theme.textSecondary; visible: text !== "" }
     }
     Button {
         id: act

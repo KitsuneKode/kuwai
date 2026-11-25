@@ -87,10 +87,10 @@ FocusScope {
         property string to
         readonly property var split: Updates.versionSplit(from, to)
         spacing: 0
-        Label { text: parent.from; size: 11; color: Theme.textTertiary; tabular: true }
-        Label { text: "  →  "; size: 11; color: Theme.textTertiary }
-        Label { text: parent.split[0]; size: 11; color: Theme.textSecondary; tabular: true }
-        Label { text: parent.split[1]; size: 11; weight: Theme.wSemibold; color: Theme.accent; tabular: true }
+        Label { text: parent.from; size: Theme.tFootnote; color: Theme.textTertiary; tabular: true }
+        Label { text: "  →  "; size: Theme.tFootnote; color: Theme.textTertiary }
+        Label { text: parent.split[0]; size: Theme.tFootnote; color: Theme.textSecondary; tabular: true }
+        Label { text: parent.split[1]; size: Theme.tFootnote; weight: Theme.wSemibold; color: Theme.accent; tabular: true }
     }
 
 
@@ -106,8 +106,8 @@ FocusScope {
             Column {
                 width: parent.width - 30
                 spacing: 2
-                Label { text: Updates.pacnew.length + " config files from updates"; size: 14; weight: Theme.wSemibold }
-                Label { width: parent.width; wrapMode: Text.Wrap; text: "An update ships a new default beside a file you have (X.pacnew). Yours stays in use until you choose."; size: 11; color: Theme.textTertiary }
+                Label { text: Updates.pacnew.length + " config files from updates"; size: Theme.tCallout; weight: Theme.wSemibold }
+                Label { width: parent.width; wrapMode: Text.Wrap; text: "An update ships a new default beside a file you have (X.pacnew). Yours stays in use until you choose."; size: Theme.tFootnote; color: Theme.textTertiary }
             }
         }
         Repeater {
@@ -125,7 +125,7 @@ FocusScope {
                     spacing: 2
                     Row {
                         spacing: 6
-                        Label { text: row.modelData.name; size: 12; weight: Theme.wMedium; font.family: Theme.fontMono || Theme.fontText }
+                        Label { text: row.modelData.name; size: Theme.tSub; weight: Theme.wMedium; font.family: Theme.fontMono || Theme.fontText }
                         Chip {
                             anchors.verticalCenter: parent.verticalCenter
                             height: 18
@@ -133,7 +133,7 @@ FocusScope {
                             tone: row.modelData.rec === "review" ? Theme.orange : Theme.textSecondary
                         }
                     }
-                    Label { width: parent.width; wrapMode: Text.Wrap; text: row.modelData.why; size: 11; color: Theme.textSecondary }
+                    Label { width: parent.width; wrapMode: Text.Wrap; text: row.modelData.why; size: Theme.tFootnote; color: Theme.textSecondary }
                     Label {
                         visible: (row.modelData.gone || []).length > 0
                         width: parent.width; elide: Text.ElideRight
@@ -178,7 +178,7 @@ FocusScope {
                 anchors.verticalCenter: parent.verticalCenter
                 width: parent.width - applyChoices.width - parent.spacing; wrapMode: Text.Wrap
                 text: Updates.pacnewResult || "Use new keeps yours as X.kuwai-bak. sudoers is checked with visudo first."
-                size: 11; color: Updates.pacnewResult ? Theme.textSecondary : Theme.textTertiary
+                size: Theme.tFootnote; color: Updates.pacnewResult ? Theme.textSecondary : Theme.textTertiary
             }
         }
     }
@@ -297,8 +297,8 @@ FocusScope {
                         id: archHead
                         x: 32; anchors.verticalCenter: parent.verticalCenter
                         spacing: 1
-                        Label { text: "Arch Linux · " + Updates.repo.length + (Updates.repo.length === 1 ? " package" : " packages"); size: 14; weight: Theme.wSemibold }
-                        Label { text: "Updated together, the way Arch supports"; size: 11; color: Theme.textTertiary }
+                        Label { text: "Arch Linux · " + Updates.repo.length + (Updates.repo.length === 1 ? " package" : " packages"); size: Theme.tCallout; weight: Theme.wSemibold }
+                        Label { text: "Updated together, the way Arch supports"; size: Theme.tFootnote; color: Theme.textTertiary }
                     }
                     Toggle {
                         anchors { right: parent.right; verticalCenter: parent.verticalCenter }
@@ -335,7 +335,7 @@ FocusScope {
                                 id: pkg
                                 width: parent.width
                                 spacing: 1
-                                Label { width: parent.width; elide: Text.ElideRight; text: modelData.name; size: 13; weight: Theme.wMedium }
+                                Label { width: parent.width; elide: Text.ElideRight; text: modelData.name; size: Theme.tBody; weight: Theme.wMedium }
                                 Version { from: modelData.old; to: modelData.new }
                             }
                             Label { anchors.right: parent.right; text: modelData.repo; size: Theme.tCaption; color: Theme.textTertiary; visible: modelData.repo !== "" && modelData.repo !== "extra" }
@@ -362,8 +362,8 @@ FocusScope {
                         x: 32; anchors.verticalCenter: parent.verticalCenter
                         width: parent.width - 32 - (bumps.visible ? bumps.width + Theme.s3 : 0)
                         spacing: 1
-                        Label { text: "AUR · " + Updates.aur.length + (Updates.aur.length === 1 ? " package" : " packages"); size: 14; weight: Theme.wSemibold }
-                        Label { width: parent.width; elide: Text.ElideRight; text: "Built as you, from exactly the change you approve"; size: 11; color: Theme.textTertiary }
+                        Label { text: "AUR · " + Updates.aur.length + (Updates.aur.length === 1 ? " package" : " packages"); size: Theme.tCallout; weight: Theme.wSemibold }
+                        Label { width: parent.width; elide: Text.ElideRight; text: "Built as you, from exactly the change you approve"; size: Theme.tFootnote; color: Theme.textTertiary }
                     }
                     // Approve the plain version bumps in one go (each one was read).
                     Button {
@@ -455,7 +455,7 @@ FocusScope {
                             x: 56; anchors.verticalCenter: parent.verticalCenter
                             width: parent.width - 56 - stateChip.width - 40
                             spacing: 1
-                            Label { width: parent.width; elide: Text.ElideRight; text: aurRow.modelData.name; size: 13; weight: Theme.wMedium }
+                            Label { width: parent.width; elide: Text.ElideRight; text: aurRow.modelData.name; size: Theme.tBody; weight: Theme.wMedium }
                             Version { from: aurRow.modelData.old; to: aurRow.modelData.new }
                         }
                         Chip {
@@ -489,8 +489,8 @@ FocusScope {
                         id: fpHead
                         x: 32; anchors.verticalCenter: parent.verticalCenter
                         spacing: 1
-                        Label { text: "Flatpak · " + Updates.flatpak.length + (Updates.flatpak.length === 1 ? " update" : " updates"); size: 14; weight: Theme.wSemibold }
-                        Label { text: "Sandboxed and signed: pick any, no review needed"; size: 11; color: Theme.textTertiary }
+                        Label { text: "Flatpak · " + Updates.flatpak.length + (Updates.flatpak.length === 1 ? " update" : " updates"); size: Theme.tCallout; weight: Theme.wSemibold }
+                        Label { text: "Sandboxed and signed: pick any, no review needed"; size: Theme.tFootnote; color: Theme.textTertiary }
                     }
                 }
                 Repeater {
@@ -532,7 +532,7 @@ FocusScope {
                             width: parent.width - 56
                             spacing: 1
                             Label {
-                                width: parent.width; elide: Text.ElideRight; size: 13; weight: Theme.wMedium
+                                width: parent.width; elide: Text.ElideRight; size: Theme.tBody; weight: Theme.wMedium
                                 text: fpRow.modelData.name + "  ·  " + (fpRow.modelData.app || fpRow.modelData.id)
                                     + (fpRow.modelData.runtime ? "  ·  runtime" : "") + (fpRow.modelData.install === "system" ? "  ·  system-wide" : "")
                             }
@@ -563,7 +563,7 @@ FocusScope {
             text: Updates.waitingReview > 0
                 ? Updates.waitingReview + " AUR " + (Updates.waitingReview === 1 ? "package waits" : "packages wait") + " for your review"
                 : "Sleep and shutdown wait until it's done"
-            size: 11; color: Theme.textTertiary
+            size: Theme.tFootnote; color: Theme.textTertiary
         }
         Row {
             id: footBtns
@@ -635,9 +635,9 @@ FocusScope {
                 Row {
                     required property var modelData
                     spacing: 8
-                    Label { text: modelData.sha; size: 11; font.family: Theme.fontMono; color: Theme.accent }
-                    Label { text: modelData.subject; size: 12; color: Theme.textSecondary; width: Math.min(implicitWidth, rvInfo.width - 260); elide: Text.ElideRight }
-                    Label { text: modelData.author + " · " + modelData.when; size: 11; color: Theme.textTertiary }
+                    Label { text: modelData.sha; size: Theme.tFootnote; font.family: Theme.fontMono; color: Theme.accent }
+                    Label { text: modelData.subject; size: Theme.tSub; color: Theme.textSecondary; width: Math.min(implicitWidth, rvInfo.width - 260); elide: Text.ElideRight }
+                    Label { text: modelData.author + " · " + modelData.when; size: Theme.tFootnote; color: Theme.textTertiary }
                 }
             }
             // Its standing in the AUR: how many use it, who keeps it, how old.
@@ -660,7 +660,7 @@ FocusScope {
                                      years >= 1 ? Math.floor(years) + (Math.floor(years) === 1 ? " year" : " years") + " on the AUR" : Math.max(1, Math.round(years * 12)) + " months on the AUR",
                                      c.outOfDate ? "flagged out of date" : "",
                                      c.binary ? "prebuilt program (not reviewable)" : ""].filter(x => x).join(" · ")
-                    size: 11; color: Theme.textTertiary
+                    size: Theme.tFootnote; color: Theme.textTertiary
                 }
             }
             Flow {
@@ -713,7 +713,7 @@ FocusScope {
             visible: !!(reviewView.r && reviewView.r.error)
             anchors.centerIn: diff
             text: reviewView.r ? (reviewView.r.error || "") : ""
-            size: 12; color: Theme.red
+            size: Theme.tSub; color: Theme.red
         }
 
         Button {
@@ -745,8 +745,8 @@ FocusScope {
                 }
                 Column {
                     anchors.verticalCenter: parent.verticalCenter
-                    Label { text: "Trust " + up.pkg; size: 12; weight: Theme.wMedium }
-                    Label { text: "Skip reviewing its future updates"; size: 11; color: Theme.textTertiary }
+                    Label { text: "Trust " + up.pkg; size: Theme.tSub; weight: Theme.wMedium }
+                    Label { text: "Skip reviewing its future updates"; size: Theme.tFootnote; color: Theme.textTertiary }
                 }
             }
             Row {
@@ -805,13 +805,13 @@ FocusScope {
                 Label {
                     text: Updates.running ? "Updating" : runCol.ok ? "All done" : (runCol.res && runCol.res.cancelled) ? "Cancelled"
                         : (runCol.res && runCol.res.unknown) ? "Update stopped" : "Finished, with things to look at"
-                    size: 18; weight: Theme.wSemibold
+                    size: Theme.tTitle3; weight: Theme.wSemibold
                 }
                 Label {
                     width: parent.width; elide: Text.ElideRight
                     text: Updates.running ? Updates.phaseLabel
                         : Updates.runError || (runCol.res ? [runCol.res.repo ? "Arch packages updated" : "", runCol.res.installed && runCol.res.installed.length ? runCol.res.installed.length + " AUR installed" : ""].filter(x => x).join(" · ") : "")
-                    size: 12; color: Updates.runError ? Theme.orange : Theme.textTertiary
+                    size: Theme.tSub; color: Updates.runError ? Theme.orange : Theme.textTertiary
                 }
             }
         }
@@ -861,7 +861,7 @@ FocusScope {
                         font.family: Theme.fontGlyph; font.pixelSize: 13
                         color: parent.now ? Theme.accent : parent.seen ? Theme.green : Theme.textTertiary
                     }
-                    Label { anchors.verticalCenter: parent.verticalCenter; text: modelData.label + (parent.skipped ? " · skipped" : ""); size: 13; weight: parent.now ? Theme.wSemibold : Theme.wRegular; color: parent.seen || parent.now ? Theme.textPrimary : Theme.textTertiary }
+                    Label { anchors.verticalCenter: parent.verticalCenter; text: modelData.label + (parent.skipped ? " · skipped" : ""); size: Theme.tBody; weight: parent.now ? Theme.wSemibold : Theme.wRegular; color: parent.seen || parent.now ? Theme.textPrimary : Theme.textTertiary }
                 }
             }
         }
@@ -871,7 +871,7 @@ FocusScope {
             visible: Updates.running && !up.showLog
             width: parent.width; elide: Text.ElideRight
             text: Updates.currentLine
-            size: 11; font.family: Theme.fontMono; color: Theme.textTertiary
+            size: Theme.tFootnote; font.family: Theme.fontMono; color: Theme.textTertiary
         }
 
         // What needs you now.

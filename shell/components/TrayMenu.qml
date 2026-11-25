@@ -137,7 +137,7 @@ Item {
                     anchors { left: parent.left; leftMargin: 8; verticalCenter: parent.verticalCenter }
                     spacing: 6
                     Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f0141}"; font.family: Theme.fontGlyph; font.pixelSize: 14; color: Theme.accent }
-                    Label { anchors.verticalCenter: parent.verticalCenter; text: tm.stack.length ? (tm.stack[tm.stack.length - 1].title || "Back").replace(/_/g, "") : ""; size: 13; weight: Theme.wSemibold }
+                    Label { anchors.verticalCenter: parent.verticalCenter; text: tm.stack.length ? (tm.stack[tm.stack.length - 1].title || "Back").replace(/_/g, "") : ""; size: Theme.tBody; weight: Theme.wSemibold }
                 }
                 MouseArea { id: backArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: tm.back() }
                 Accessible.role: Accessible.Button
@@ -219,7 +219,7 @@ Item {
                             elide: Text.ElideRight
                             // Mnemonic underscores ("_Quit") are for keyboard menus.
                             text: (row.e.text || "").replace(/_(?!_)/g, "")
-                            size: 13
+                            size: Theme.tBody
                             color: row.e.danger ? Theme.orange : Theme.textPrimary
                         }
                         Text {

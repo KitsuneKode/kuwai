@@ -9,7 +9,7 @@ import qs.config
 Rectangle {
     id: cap
     property string text
-    property int size: 11
+    property int size: Theme.tCaption
     // Modifier and special keys as macOS writes them (Super is ⌘ here).
     readonly property string glyph: ({ Super: "⌘", Meta: "⌘", Cmd: "⌘", Win: "⌘", Ctrl: "⌃", Control: "⌃", Shift: "⇧",
         Alt: "⌥", Option: "⌥", Esc: "⎋", Escape: "⎋", Enter: "↩", Return: "↩", Tab: "⇥", Backspace: "⌫", Delete: "⌦",
