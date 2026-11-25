@@ -54,7 +54,13 @@ Singleton {
     }
     Component.onCompleted: desktopInit.running = true
 
-    readonly property var desktop: desktopFeed.filter(d => d && d.id && (!d.updated_at || !d.ttl || root.now / 1000 - d.updated_at <= d.ttl))
+    function trimDir(p) { return String(p || "").replace(/^~(?=\/|$)/, Quickshell.env("HOME") || "~").replace(/\/+$/, ""); }
+    function inKitty(d) {
+        const agent = String(d.agent || "").toLowerCase(), dir = trimDir(d.cwd);
+        return (Kittymux.running || []).some(r => (d.pane && (r.key === d.pane || "w" + r.pid + "." + r.w === d.pane))
+            || (String(r.agent || "").toLowerCase() === agent && dir !== "" && trimDir(r.where) === dir));
+    }
+    readonly property var desktop: desktopFeed.filter(d => d && d.id && (!d.updated_at || !d.ttl || root.now / 1000 - d.updated_at <= d.ttl) && !inKitty(d))
 
     readonly property var panes: {
         const events = Kittymux.attention || [];

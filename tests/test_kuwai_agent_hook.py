@@ -187,3 +187,18 @@ def test_an_agent_t3_started_is_left_to_t3(tmp_path: Path) -> None:
     env = make_env(tmp_path) | {"T3CODE_THREAD_ID": "thread-1"}
     run_hook(["--agent", "claude", "--event", "UserPromptSubmit"], env, json.dumps({"session_id": "s-2"}))
     assert _rows(env) == []
+
+
+
+def test_a_hook_inside_kitty_records_its_pane(tmp_path: Path) -> None:
+    env = make_env(tmp_path)
+    env.update(KITTY_PID="4242", KITTY_WINDOW_ID="7")
+    res = run_hook(["--agent", "devin"], env, json.dumps({"hook_event_name": "UserPromptSubmit", "session_id": "s1", "cwd": "/home/user/p", "prompt": "hi"}))
+    assert res.returncode == 0, res.stderr
+    row = json.loads((tmp_path / "state" / "kuwai" / "desktop-agents.json").read_text())["agents"][0]
+    assert row["pane"] == "w4242.7"
+    env.pop("KITTY_PID")
+    env.pop("KITTY_WINDOW_ID")
+    run_hook(["--agent", "devin"], env, json.dumps({"hook_event_name": "UserPromptSubmit", "session_id": "s2", "cwd": "/home/user/q", "prompt": "hi"}))
+    rows = {r["id"]: r for r in json.loads((tmp_path / "state" / "kuwai" / "desktop-agents.json").read_text())["agents"]}
+    assert [r["pane"] for k, r in rows.items() if r["cwd"] == "/home/user/q"] == [""]

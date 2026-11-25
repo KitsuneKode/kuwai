@@ -336,6 +336,8 @@ def handle_hook(args: argparse.Namespace) -> int:
         "model": model,
         "question": question,
         "window_class": window_class,
+        "pane": f"w{os.environ['KITTY_PID']}.{os.environ['KITTY_WINDOW_ID']}"
+        if os.environ.get("KITTY_PID", "").isdigit() and os.environ.get("KITTY_WINDOW_ID", "").isdigit() else "",
         "since": since,
         "updated_at": now_t,
         "ttl": ttl,
