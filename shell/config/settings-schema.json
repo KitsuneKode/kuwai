@@ -989,6 +989,76 @@
       "words": "input method fcitx5 (or ibus) for japanese, chinese, korean, indic scripts; applies after a reload  "
     },
     {
+      "page": "pointer",
+      "label": "Speed",
+      "detail": "How far the pointer goes for a move of the mouse or a slide on the trackpad",
+      "group": "Pointer",
+      "words": "speed how far the pointer goes for a move of the mouse or a slide on the trackpad sensitivity pointer"
+    },
+    {
+      "page": "pointer",
+      "label": "Acceleration",
+      "detail": "Faster moves go further. Off: the same distance every time (most gamers' choice)",
+      "group": "Pointer",
+      "words": "acceleration faster moves go further. off: the same distance every time (most gamers' choice) off on accel pointer"
+    },
+    {
+      "page": "pointer",
+      "label": "Natural scrolling with a mouse",
+      "detail": "The page follows the wheel, as on a touch screen",
+      "group": "Pointer",
+      "words": "natural scrolling with a mouse the page follows the wheel, as on a touch screen reverse pointer"
+    },
+    {
+      "page": "pointer",
+      "label": "Natural scrolling",
+      "detail": "Content moves with your fingers",
+      "group": "Trackpad",
+      "words": "natural scrolling content moves with your fingers touchpad reverse trackpad"
+    },
+    {
+      "page": "pointer",
+      "label": "Tap to click",
+      "detail": "A light tap clicks; two fingers right-click",
+      "group": "Trackpad",
+      "words": "tap to click a light tap clicks; two fingers right-click touchpad trackpad"
+    },
+    {
+      "page": "pointer",
+      "label": "Scrolling speed",
+      "detail": "",
+      "group": "Trackpad",
+      "words": "scrolling speed  slow normal fast touchpad trackpad"
+    },
+    {
+      "page": "displays",
+      "label": "Scale",
+      "detail": "How big everything is on a screen",
+      "group": "",
+      "words": "scale how big everything is on a screen hidpi zoom "
+    },
+    {
+      "page": "displays",
+      "label": "Refresh rate",
+      "detail": "",
+      "group": "",
+      "words": "refresh rate  hz smooth "
+    },
+    {
+      "page": "keyboard",
+      "label": "Delay before repeating",
+      "detail": "",
+      "group": "Key repeat",
+      "words": "delay before repeating  short normal long key repeat"
+    },
+    {
+      "page": "keyboard",
+      "label": "Repeat speed",
+      "detail": "",
+      "group": "Key repeat",
+      "words": "repeat speed  slow normal fast key repeat"
+    },
+    {
       "page": "island",
       "label": "Style",
       "detail": "",

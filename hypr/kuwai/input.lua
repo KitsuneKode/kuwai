@@ -30,6 +30,53 @@ function kuwai.keyboard(layout, variant, switch)
 	return s.kb_layout .. (s.kb_variant ~= "" and (" (" .. s.kb_variant .. ")") or "") .. (s.kb_options ~= "" and (" · " .. s.kb_options) or "")
 end
 
+local POINTER = {
+	speed = { default = "-0.5", num = { -1, 1 } },
+	accel = { default = "flat", one_of = { flat = true, adaptive = true } },
+	["mouse-natural"] = { default = "off", one_of = { on = true, off = true } },
+	["trackpad-natural"] = { default = "on", one_of = { on = true, off = true } },
+	tap = { default = "on", one_of = { on = true, off = true } },
+	["trackpad-scroll"] = { default = "0.7", num = { 0.2, 3 } },
+	["repeat-delay"] = { default = "250", num = { 150, 1000 } },
+	["repeat-rate"] = { default = "35", num = { 10, 80 } },
+}
+local function ptr(key)
+	return K.state["ptr." .. key] or POINTER[key].default
+end
+local function pointer_settings()
+	return {
+		sensitivity = tonumber(ptr("speed")),
+		accel_profile = ptr("accel"),
+		force_no_accel = ptr("accel") == "flat",
+		natural_scroll = ptr("mouse-natural") == "on",
+		repeat_delay = math.floor(tonumber(ptr("repeat-delay"))),
+		repeat_rate = math.floor(tonumber(ptr("repeat-rate"))),
+		touchpad = {
+			natural_scroll = ptr("trackpad-natural") == "on",
+			tap_to_click = ptr("tap") == "on",
+			scroll_factor = tonumber(ptr("trackpad-scroll")),
+		},
+	}
+end
+function kuwai.pointer(key, value)
+	local spec = POINTER[key]
+	if not spec then
+		return "unknown setting: " .. tostring(key)
+	end
+	value = tostring(value)
+	if spec.num then
+		local n = tonumber(value)
+		if not n or n < spec.num[1] or n > spec.num[2] then
+			return key .. " takes a number from " .. spec.num[1] .. " to " .. spec.num[2]
+		end
+	elseif not spec.one_of[value] then
+		return key .. ": not a choice (" .. value .. ")"
+	end
+	K.set_state("ptr." .. key, value ~= spec.default and value or nil)
+	K.config({ input = pointer_settings() })
+	return key .. " " .. value
+end
+
 if K.feature("input_method") then
 	local im = K.has("fcitx5") and "fcitx" or K.has("ibus-daemon") and "ibus" or nil
 	if im then
@@ -49,12 +96,13 @@ K.config({
 		kb_variant = kb.kb_variant,
 		kb_options = kb.kb_options,
 		numlock_by_default = false,
-		repeat_delay = 250,
-		repeat_rate = 35,
+		repeat_delay = pointer_settings().repeat_delay,
+		repeat_rate = pointer_settings().repeat_rate,
 
-		sensitivity = -0.5,
-		accel_profile = "flat",
-		force_no_accel = true,
+		sensitivity = pointer_settings().sensitivity,
+		accel_profile = pointer_settings().accel_profile,
+		force_no_accel = pointer_settings().force_no_accel,
+		natural_scroll = pointer_settings().natural_scroll,
 		follow_mouse = 1,
 		float_switch_override_focus = 1,
 		off_window_axis_events = 2,
@@ -62,11 +110,11 @@ K.config({
 		special_fallthrough = true,
 
 		touchpad = {
-			natural_scroll = true,
+			natural_scroll = pointer_settings().touchpad.natural_scroll,
 			disable_while_typing = true,
 			clickfinger_behavior = true,
-			tap_to_click = true,
-			scroll_factor = 0.7,
+			tap_to_click = pointer_settings().touchpad.tap_to_click,
+			scroll_factor = pointer_settings().touchpad.scroll_factor,
 		},
 	},
 

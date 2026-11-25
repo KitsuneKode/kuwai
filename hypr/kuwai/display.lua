@@ -45,6 +45,26 @@ function D.hdr_active(preset)
 end
 
 local rules = {}
+
+local function key_of(output)
+	return "screen." .. tostring(output):lower():gsub("[^%w]+", "-")
+end
+function D.override(spec, m)
+	local k = key_of(spec.output)
+	local scale = tonumber(K.state[k .. ".scale"] or "")
+	if scale then
+		spec.scale = scale
+	end
+	local rate = tonumber(K.state[k .. ".rate"] or "")
+	local w, h = tostring(spec.mode or ""):match("^(%d+)x(%d+)")
+	if not w and m then
+		w, h = m.width, m.height
+	end
+	if rate and w then
+		spec.mode = ("%sx%s@%s"):format(w, h, K.state[k .. ".rate"])
+	end
+	return spec
+end
 _G.__kuwai_raw_monitor = _G.__kuwai_raw_monitor or hl.monitor
 local raw_monitor = _G.__kuwai_raw_monitor
 hl.monitor = function(spec, ...)
@@ -56,11 +76,16 @@ hl.monitor = function(spec, ...)
 			end
 		end
 		if not known then
+			local orig = {}
+			for k, v in pairs(spec) do
+				orig[k] = v
+			end
+			D.override(spec)
 			local base = {}
 			for k, v in pairs(spec) do
 				base[k] = v
 			end
-			rules[#rules + 1] = { ref = spec, base = base }
+			rules[#rules + 1] = { ref = spec, base = base, orig = orig }
 		end
 	end
 	return raw_monitor(spec, ...)
@@ -502,4 +527,106 @@ K.defer(function()
 end)
 
 kuwai.display_module = D
+
+local function screen_named(name)
+	for _, m in ipairs(hl.get_monitors() or {}) do
+		if m.name == name then
+			return m
+		end
+	end
+end
+
+local unruled = {}
+local function original(m)
+	local r = rule_for(m)
+	local spec = {}
+	if r then
+		for k, v in pairs(r.orig) do
+			spec[k] = v
+		end
+		return spec, r
+	end
+	unruled[m.name] = unruled[m.name] or { output = m.name, mode = ("%dx%d"):format(m.width, m.height), position = ("%dx%d"):format(m.x, m.y), scale = m.scale }
+	for k, v in pairs(unruled[m.name]) do
+		spec[k] = v
+	end
+	return spec, nil
+end
+
+local function apply_override(m)
+	local spec, r = original(m)
+	local applied = D.override(spec, m)
+	if r then
+		r.base.scale, r.base.mode = applied.scale, applied.mode
+		r.ref.scale, r.ref.mode = applied.scale, applied.mode
+	end
+	return pcall(raw_monitor, applied), applied
+end
+
+function kuwai.screen(name, field, value)
+	local m = screen_named(name)
+	if not m then
+		return "no screen " .. tostring(name)
+	end
+	local k = key_of((original(m)).output)
+	if field == "reset" then
+		K.set_state(k .. ".scale", nil)
+		K.set_state(k .. ".rate", nil)
+	elseif field == "scale" then
+		local n = tonumber(value)
+		if not n or n < 0.5 or n > 3 then
+			return "scale takes 0.5 to 3"
+		end
+		K.set_state(k .. ".scale", ("%g"):format(n))
+	elseif field == "rate" then
+		local n, ok = tonumber(value), false
+		for _, am in ipairs(m.available_modes or {}) do
+			if am.width == m.width and am.height == m.height and n and math.abs(am.refresh_rate - n) < 0.5 then
+				ok = true
+			end
+		end
+		if not ok then
+			return ("%s has no %s Hz at %dx%d"):format(name, tostring(value), m.width, m.height)
+		end
+		K.set_state(k .. ".rate", ("%g"):format(n))
+	else
+		return "usage: scale N | rate HZ | reset"
+	end
+	local ok, applied = apply_override(m)
+	return ok and (name .. ": " .. tostring(applied.mode) .. " · scale " .. tostring(applied.scale)) or ("couldn't apply it to " .. name)
+end
+
+function kuwai.screens_json()
+	local out = {}
+	for _, m in ipairs(hl.get_monitors() or {}) do
+		local k = key_of((original(m)).output)
+		local rates, seen = {}, {}
+		for _, am in ipairs(m.available_modes or {}) do
+			local hz = math.floor(am.refresh_rate + 0.5)
+			if am.width == m.width and am.height == m.height and not seen[hz] then
+				seen[hz] = true
+				rates[#rates + 1] = hz
+			end
+		end
+		table.sort(rates)
+		local rs = {}
+		for i, v in ipairs(rates) do
+			rs[i] = tostring(v)
+		end
+		out[#out + 1] = ('{"name":%s,"description":%s,"width":%d,"height":%d,"rate":%d,"scale":%g,"rates":[%s],"changed":%s}'):format(
+			K.json_str(m.name), K.json_str(m.description or ""), m.width or 0, m.height or 0, math.floor((m.refresh_rate or 0) + 0.5), m.scale or 1,
+			table.concat(rs, ","), tostring(K.state[k .. ".scale"] ~= nil or K.state[k .. ".rate"] ~= nil))
+	end
+	return "[" .. table.concat(out, ",") .. "]"
+end
+
+hl.on("hyprland.start", function()
+	for _, m in ipairs(hl.get_monitors() or {}) do
+		local k = key_of((original(m)).output)
+		if K.state[k .. ".scale"] or K.state[k .. ".rate"] then
+			apply_override(m)
+		end
+	end
+end)
+
 return D

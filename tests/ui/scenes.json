@@ -3997,6 +3997,235 @@
      ]
     ]
    ]
+  },
+  {
+   "id": "settings/pointer",
+   "name": "settings",
+   "panel": "SettingsPanel",
+   "kind": "typical",
+   "props": {
+    "current": 6
+   }
+  },
+  {
+   "id": "settings/displays",
+   "name": "settings",
+   "panel": "SettingsPanel",
+   "kind": "typical",
+   "props": {
+    "current": 7
+   }
+  },
+  {
+   "id": "settings/keyboard",
+   "name": "settings",
+   "panel": "SettingsPanel",
+   "kind": "typical",
+   "props": {
+    "current": 5
+   }
+  },
+  {
+   "id": "controls/vpn-printers",
+   "name": "controls",
+   "panel": "CenterPanel",
+   "kind": "typical",
+   "set": [
+    [
+     "NetExtras",
+     "pinned",
+     true
+    ],
+    [
+     "NetExtras",
+     "vpns",
+     [
+      {
+       "name": "Office",
+       "uuid": "u1",
+       "kind": "VPN",
+       "active": true
+      },
+      {
+       "name": "home-wg",
+       "uuid": "u2",
+       "kind": "WireGuard",
+       "active": false
+      }
+     ]
+    ],
+    [
+     "NetExtras",
+     "printers",
+     [
+      {
+       "name": "Brother_HL_L2350DW",
+       "state": "printing",
+       "default": true
+      },
+      {
+       "name": "Label_Writer",
+       "state": "disabled",
+       "default": false
+      }
+     ]
+    ],
+    [
+     "NetExtras",
+     "jobs",
+     [
+      {
+       "id": "Brother_HL_L2350DW-112",
+       "printer": "Brother_HL_L2350DW",
+       "user": "ada",
+       "bytes": 20480
+      }
+     ]
+    ],
+    [
+     "Notifs",
+     "centerTab",
+     "controls"
+    ]
+   ]
+  },
+  {
+   "id": "controls/vpn-list",
+   "name": "controls",
+   "panel": "CenterPanel",
+   "kind": "typical",
+   "set": [
+    [
+     "NetExtras",
+     "pinned",
+     true
+    ],
+    [
+     "NetExtras",
+     "vpns",
+     [
+      {
+       "name": "Office",
+       "uuid": "u1",
+       "kind": "VPN",
+       "active": true
+      },
+      {
+       "name": "home-wg",
+       "uuid": "u2",
+       "kind": "WireGuard",
+       "active": false
+      }
+     ]
+    ],
+    [
+     "NetExtras",
+     "printers",
+     [
+      {
+       "name": "Brother_HL_L2350DW",
+       "state": "printing",
+       "default": true
+      },
+      {
+       "name": "Label_Writer",
+       "state": "disabled",
+       "default": false
+      }
+     ]
+    ],
+    [
+     "NetExtras",
+     "jobs",
+     [
+      {
+       "id": "Brother_HL_L2350DW-112",
+       "printer": "Brother_HL_L2350DW",
+       "user": "ada",
+       "bytes": 20480
+      }
+     ]
+    ],
+    [
+     "Notifs",
+     "centerTab",
+     "controls"
+    ],
+    [
+     "Notifs",
+     "centerModule",
+     "vpn"
+    ]
+   ]
+  },
+  {
+   "id": "controls/printers-list",
+   "name": "controls",
+   "panel": "CenterPanel",
+   "kind": "typical",
+   "set": [
+    [
+     "NetExtras",
+     "pinned",
+     true
+    ],
+    [
+     "NetExtras",
+     "vpns",
+     [
+      {
+       "name": "Office",
+       "uuid": "u1",
+       "kind": "VPN",
+       "active": true
+      },
+      {
+       "name": "home-wg",
+       "uuid": "u2",
+       "kind": "WireGuard",
+       "active": false
+      }
+     ]
+    ],
+    [
+     "NetExtras",
+     "printers",
+     [
+      {
+       "name": "Brother_HL_L2350DW",
+       "state": "printing",
+       "default": true
+      },
+      {
+       "name": "Label_Writer",
+       "state": "disabled",
+       "default": false
+      }
+     ]
+    ],
+    [
+     "NetExtras",
+     "jobs",
+     [
+      {
+       "id": "Brother_HL_L2350DW-112",
+       "printer": "Brother_HL_L2350DW",
+       "user": "ada",
+       "bytes": 20480
+      }
+     ]
+    ],
+    [
+     "Notifs",
+     "centerTab",
+     "controls"
+    ],
+    [
+     "Notifs",
+     "centerModule",
+     "printers"
+    ]
+   ]
   }
  ]
 }

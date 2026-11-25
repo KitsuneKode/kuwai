@@ -10,6 +10,7 @@
 //   ▣ Motion           │ Workspaces at rest                  (●) │
 //   ▣ About            └──────────────────────────────────────────┘
 import QtQuick
+import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import qs.config
@@ -335,7 +336,7 @@ FocusScope {
         width: parent.width - x
         height: parent.height
 
-        Label { id: heading; x: 28; y: 20; text: (settings.sections[settings.current] || {}).label || ""; size: Theme.tTitle2; weight: Theme.wSemibold }
+        Label { id: heading; x: 28; y: 20; width: parent.width - 56; wrapMode: Text.Wrap; text: (settings.sections[settings.current] || {}).label || ""; size: Theme.tTitle2; weight: Theme.wSemibold }
 
         Label {
             id: saveStatus
@@ -360,7 +361,7 @@ FocusScope {
             Loader {
                 id: page
                 width: parent.width
-                sourceComponent: [barPage, clockPage, notifPage, assistantPage, motionPage, keyboardPage, islandRestPage, workspacesPage, powerPage, saverPage, timePage, clipboardPage, updatesPage, aboutPage][settings.current]
+                sourceComponent: [barPage, clockPage, notifPage, assistantPage, motionPage, keyboardPage, pointerPage, displaysPage, islandRestPage, workspacesPage, powerPage, saverPage, timePage, clipboardPage, updatesPage, aboutPage][settings.current]
             }
         }
         ScrollFade { flickable: pageFlick }
@@ -686,6 +687,25 @@ FocusScope {
                 }
             }
             SettingsGroup {
+                title: "Key repeat"
+                SettingsRow {
+                    label: "Delay before repeating"
+                    Segmented {
+                        options: [{ id: "200", label: "Short" }, { id: "250", label: "Normal" }, { id: "400", label: "Long" }]
+                        current: kbPage.kv["ptr.repeat-delay"] || "250"
+                        onPicked: id => Quickshell.execDetached([kbPage.kuwai, "pointer", "repeat-delay", id])
+                    }
+                }
+                SettingsRow {
+                    label: "Repeat speed"
+                    Segmented {
+                        options: [{ id: "25", label: "Slow" }, { id: "35", label: "Normal" }, { id: "50", label: "Fast" }]
+                        current: kbPage.kv["ptr.repeat-rate"] || "35"
+                        onPicked: id => Quickshell.execDetached([kbPage.kuwai, "pointer", "repeat-rate", id])
+                    }
+                }
+            }
+            SettingsGroup {
                 SettingsRow {
                     label: "Input method"
                     detail: "fcitx5 (or ibus) for Japanese, Chinese, Korean, Indic scripts; applies after a reload"
@@ -694,6 +714,157 @@ FocusScope {
                         onToggled: Quickshell.execDetached([kbPage.kuwai, "feature", "input_method", kbPage.kv["feature.input_method"] === "on" ? "off" : "on"])
                     }
                 }
+            }
+        }
+    }
+    Component {
+        id: pointerPage
+        Column {
+            id: ptPage
+            spacing: 18
+            readonly property string kuwai: Paths.bin + "/kuwai"
+            property var kv: ({})
+            FileView {
+                path: Paths.stateHome + "/kuwai/state"
+                watchChanges: true
+                printErrors: false
+                onFileChanged: reload()
+                onLoaded: {
+                    const o = {};
+                    for (const l of text().split("\n")) { const i = l.indexOf("="); if (i > 0) o[l.slice(0, i)] = l.slice(i + 1); }
+                    ptPage.kv = o;
+                }
+            }
+            readonly property var defaults: ({ speed: "-0.5", accel: "flat", "mouse-natural": "off", "trackpad-natural": "on", tap: "on", "trackpad-scroll": "0.7" })
+            function get(k) { return kv["ptr." + k] || defaults[k]; }
+            function set(k, v) { Quickshell.execDetached([kuwai, "pointer", k, String(v)]); }
+            property real pendingSpeed: 0
+            Timer { id: speedLater; interval: 200; onTriggered: ptPage.set("speed", ptPage.pendingSpeed.toFixed(2)) }
+
+            SettingsGroup {
+                title: "Pointer"
+                SettingsRow {
+                    label: "Speed"
+                    detail: "How far the pointer goes for a move of the mouse or a slide on the trackpad"
+                    Slider {
+                        Layout.fillWidth: true; Layout.preferredWidth: Theme.sp(180); Layout.maximumWidth: Theme.sp(180); implicitHeight: Theme.sp(28)
+                        from: -1; to: 1
+                        value: Number(ptPage.get("speed"))
+                        valueText: Math.round((value + 1) * 50) + "%"
+                        onMoved: v => { ptPage.pendingSpeed = v; speedLater.restart(); }
+                    }
+                }
+                SettingsRow {
+                    label: "Acceleration"
+                    detail: "Faster moves go further. Off: the same distance every time (most gamers' choice)"
+                    Segmented {
+                        options: [{ id: "flat", label: "Off" }, { id: "adaptive", label: "On" }]
+                        current: ptPage.get("accel")
+                        onPicked: id => ptPage.set("accel", id)
+                    }
+                }
+                SettingsRow {
+                    label: "Natural scrolling with a mouse"
+                    detail: "The page follows the wheel, as on a touch screen"
+                    Toggle { on: ptPage.get("mouse-natural") === "on"; onToggled: ptPage.set("mouse-natural", on ? "off" : "on") }
+                }
+            }
+            SettingsGroup {
+                title: "Trackpad"
+                SettingsRow {
+                    label: "Natural scrolling"
+                    detail: "Content moves with your fingers"
+                    Toggle { on: ptPage.get("trackpad-natural") === "on"; onToggled: ptPage.set("trackpad-natural", on ? "off" : "on") }
+                }
+                SettingsRow {
+                    label: "Tap to click"
+                    detail: "A light tap clicks; two fingers right-click"
+                    Toggle { on: ptPage.get("tap") === "on"; onToggled: ptPage.set("tap", on ? "off" : "on") }
+                }
+                SettingsRow {
+                    label: "Scrolling speed"
+                    Segmented {
+                        options: [{ id: "0.4", label: "Slow" }, { id: "0.7", label: "Normal" }, { id: "1.2", label: "Fast" }]
+                        current: ptPage.get("trackpad-scroll")
+                        onPicked: id => ptPage.set("trackpad-scroll", id)
+                    }
+                }
+            }
+        }
+    }
+    Component {
+        id: displaysPage
+        Column {
+            id: dpPage
+            spacing: 18
+            readonly property string kuwai: Paths.bin + "/kuwai"
+            property var screens: []
+            function load() { if (!reader.running) reader.running = true; }
+            Component.onCompleted: load()
+            Process {
+                id: reader
+                command: ["hyprctl", "repl", "return kuwai.screens_json()"]
+                stdout: StdioCollector {
+                    onStreamFinished: {
+                        const t = text.trim(), i = t.indexOf("[");
+                        try { dpPage.screens = i >= 0 ? JSON.parse(t.slice(i)) : []; } catch (e) { dpPage.screens = []; }
+                    }
+                }
+            }
+            Timer { id: reread; interval: 700; onTriggered: dpPage.load() }
+            function set(name, field, value) {
+                Quickshell.execDetached([kuwai, "screen", name, field, String(value)]);
+                reread.restart();
+            }
+            function scales(cur) {
+                const std = [1, 1.25, 1.5, 2];
+                const r = Math.round(cur * 100) / 100;
+                return (std.some(v => Math.abs(v - cur) < 0.01) ? std : std.concat([r]).sort((a, b) => a - b))
+                    .map(v => ({ id: String(v), label: v + "×" }));
+            }
+            Label {
+                width: parent.width
+                wrapMode: Text.Wrap
+                visible: dpPage.screens.length === 0
+                text: "Reading your screens…"
+                size: Theme.tSub; color: Theme.textTertiary
+            }
+            Repeater {
+                model: dpPage.screens
+                SettingsGroup {
+                    required property var modelData
+                    title: modelData.description ? modelData.description + " · " + modelData.name : modelData.name
+                    SettingsRow {
+                        label: "Scale"
+                        detail: modelData.width + " × " + modelData.height + " pixels"
+                        Segmented {
+                            options: dpPage.scales(modelData.scale)
+                            current: String(dpPage.scales(modelData.scale).find(o => Math.abs(Number(o.id) - modelData.scale) < 0.01).id)
+                            onPicked: id => dpPage.set(modelData.name, "scale", id)
+                        }
+                    }
+                    SettingsRow {
+                        visible: modelData.rates.length > 1
+                        label: "Refresh rate"
+                        Segmented {
+                            options: modelData.rates.map(r => ({ id: String(r), label: r + " Hz" }))
+                            current: String(modelData.rate)
+                            onPicked: id => dpPage.set(modelData.name, "rate", id)
+                        }
+                    }
+                    SettingsRow {
+                        visible: modelData.changed
+                        label: "Changed here"
+                        detail: "Over what monitors.lua says for this screen"
+                        Button { height: Theme.sp(30); size: Theme.tSub; text: "Use monitors.lua"; onClicked: dpPage.set(modelData.name, "reset", "") }
+                    }
+                }
+            }
+            Label {
+                width: parent.width
+                wrapMode: Text.Wrap
+                text: "Where screens sit and which is which stay in ~/.config/kuwai/hypr/monitors.lua."
+                size: Theme.tFootnote; color: Theme.textTertiary
             }
         }
     }

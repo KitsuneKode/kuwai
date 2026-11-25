@@ -31,6 +31,10 @@ Item {
     required property var center
     property bool hosting: true
     readonly property bool shown: hosting && center.open && center.tab === "controls"
+    onShownChanged: NetExtras.watch(shown)
+    Component.onDestruction: if (shown) NetExtras.watch(false)
+    readonly property bool iwd: NetExtras.backend === "iwd"
+    readonly property var vpnOn: NetExtras.vpns.filter(v => v.active)
     Binding { target: Display; property: "watching"; value: view.shown; when: view.hosting }
     Component.onCompleted: {
         Hyprland.refreshMonitors();
@@ -158,13 +162,14 @@ Item {
                 Tile {
                     glyph: Networking.wifiEnabled ? "\u{f05a9}" : "\u{f05aa}"
                     title: "Wi‑Fi"
-                    subtitle: !Networking.wifiEnabled ? "Off" : view.wifiNetwork ? view.wifiNetwork.name : "Not connected"
-                    on: Networking.wifiEnabled
+                    subtitle: view.iwd ? (!NetExtras.iwdPowered ? "Off" : NetExtras.iwdNetwork || "Not connected")
+                            : !Networking.wifiEnabled ? "Off" : view.wifiNetwork ? view.wifiNetwork.name : "Not connected"
+                    on: view.iwd ? NetExtras.iwdPowered : Networking.wifiEnabled
                     expandable: true
-                    moreText: "Show networks"
+                    moreText: view.iwd ? "Choose a network (iwd)" : "Show networks"
                     expanded: view.wifiOpen
-                    onToggled: Networking.wifiEnabled = !Networking.wifiEnabled
-                    onOpened: view.openModule("wifi")
+                    onToggled: if (view.iwd) NetExtras.setIwdPower(!NetExtras.iwdPowered); else Networking.wifiEnabled = !Networking.wifiEnabled
+                    onOpened: if (view.iwd) NetExtras.iwdPicker(); else view.openModule("wifi")
                 }
                 Tile {
                     glyph: view.adapter && view.adapter.enabled ? "\u{f00af}" : "\u{f00b2}"
@@ -178,6 +183,34 @@ Item {
                     expanded: view.btOpen
                     onToggled: if (view.adapter) view.adapter.enabled = !view.adapter.enabled
                     onOpened: view.openModule("bluetooth")
+                }
+                Tile {
+                    visible: NetExtras.vpns.length > 0
+                    glyph: "\u{f0582}"
+                    title: "VPN"
+                    subtitle: view.vpnOn.length ? view.vpnOn.map(v => v.name).join(", ") : "Off"
+                    on: view.vpnOn.length > 0
+                    expandable: true
+                    moreText: "Show connections"
+                    expanded: view.module === "vpn"
+                    onToggled: {
+                        if (view.vpnOn.length) for (const v of view.vpnOn) NetExtras.setVpn(v.uuid, false);
+                        else NetExtras.setVpn(NetExtras.vpns[0].uuid, true);
+                    }
+                    onOpened: view.openModule("vpn")
+                }
+                Tile {
+                    visible: NetExtras.printers.length > 0
+                    glyph: "\u{f042a}"
+                    title: "Printers"
+                    subtitle: NetExtras.jobs.length ? NetExtras.jobs.length + (NetExtras.jobs.length === 1 ? " job printing" : " jobs printing")
+                            : ((NetExtras.printers.find(p => p.default) || NetExtras.printers[0] || {}).name || "").replace(/_/g, " ")
+                    on: NetExtras.jobs.length > 0
+                    expandable: true
+                    moreText: "Show printers"
+                    expanded: view.module === "printers"
+                    onToggled: view.openModule("printers")
+                    onOpened: view.openModule("printers")
                 }
                 Tile {
                     glyph: "\u{f0594}"
@@ -252,12 +285,13 @@ Item {
                 Label {
                     anchors { left: moduleBack.right; leftMargin: Theme.s2; right: moduleSwitch.left; rightMargin: Theme.s2; verticalCenter: parent.verticalCenter }
                     elide: Text.ElideRight
-                    text: view.btOpen ? "Bluetooth" : "Wi‑Fi"
+                    text: ({ wifi: "Wi‑Fi", bluetooth: "Bluetooth", vpn: "VPN", printers: "Printers" })[view.module] || ""
                     size: Theme.tHeadline
                     weight: Theme.wSemibold
                 }
                 Toggle {
                     id: moduleSwitch
+                    visible: view.wifiOpen || view.btOpen
                     anchors { right: parent.right; rightMargin: Theme.s1; verticalCenter: parent.verticalCenter }
                     label: view.btOpen ? "Bluetooth" : "Wi‑Fi"
                     on: view.btOpen ? !!(view.adapter && view.adapter.enabled) : Networking.wifiEnabled
@@ -522,6 +556,55 @@ Item {
                 }
             }
 
+            }
+            SettingsGroup {
+                visible: view.module === "vpn"
+                width: parent.width
+                opacity: view.swap
+                Repeater {
+                    model: NetExtras.vpns
+                    SettingsRow {
+                        required property var modelData
+                        label: modelData.name
+                        detail: modelData.kind + (modelData.active ? " · connected" : "")
+                        Toggle { on: modelData.active; label: modelData.name; onToggled: NetExtras.setVpn(modelData.uuid, !modelData.active) }
+                    }
+                }
+            }
+            Column {
+                visible: view.module === "printers"
+                width: parent.width
+                spacing: Theme.s2
+                opacity: view.swap
+                SettingsGroup {
+                    Repeater {
+                        model: NetExtras.printers
+                        SettingsRow {
+                            required property var modelData
+                            label: modelData.name.replace(/_/g, " ")
+                            detail: (modelData.default ? "Default · " : "") + (modelData.state === "disabled" ? "Paused" : modelData.state === "printing" ? "Printing" : "Ready")
+                            Button {
+                                visible: !modelData.default
+                                height: Theme.sp(30); size: Theme.tSub
+                                text: "Make default"
+                                onClicked: NetExtras.setDefaultPrinter(modelData.name)
+                            }
+                        }
+                    }
+                }
+                SettingsGroup {
+                    visible: NetExtras.jobs.length > 0
+                    title: "Waiting to print"
+                    Repeater {
+                        model: NetExtras.jobs
+                        SettingsRow {
+                            required property var modelData
+                            label: modelData.id
+                            detail: modelData.printer.replace(/_/g, " ") + " · " + Math.max(1, Math.round(modelData.bytes / 1024)) + " KB"
+                            Button { height: Theme.sp(30); size: Theme.tSub; text: "Cancel"; onClicked: NetExtras.cancelJob(modelData.id) }
+                        }
+                    }
+                }
             }
             BluetoothDevices {
                 visible: view.btOpen

@@ -19,6 +19,8 @@ command goes to the shell half, bin/kuwai-ctl (channel, promote, bar, notifs, ti
   kuwai rescue                    password prompt, clipboard, island, idle: back to working
   kuwai auth [status|here|restart|fallback|restore|reset-tries|pin|unpin]   the password prompt (pin: root-owned copy)
   kuwai feature [NAME on|off]     list / switch what kuwai does on its own
+  kuwai screen [NAME scale N|rate HZ|reset]  a screen's scale and refresh rate (over monitors.lua)
+  kuwai pointer SETTING VALUE     speed, accel, natural scrolling, tap, scroll speed, key repeat (kuwai pointer for the list)
   kuwai keyboard [LAYOUTS [VARIANTS]] [--switch alt-shift|caps|win-space|ctrl-shift|none]
                                   e.g. `kuwai keyboard us,de` · `kuwai keyboard --switch alt-shift`
   kuwai focus [MINUTES|stop]      focus session: DND + focus mode for a while
@@ -226,6 +228,30 @@ cmd_feature() {
     esac
     if live; then hyprctl eval "kuwai.feature('$name', $([ "$v" = on ] && echo true || echo false))" >/dev/null; else state_set "feature.$name" "$v"; fi
     echo "$name: $v"
+}
+
+cmd_screen() {
+    local name=${1:-} field=${2:-} value=${3:-}
+    if [ -z "$name" ] || [ "$name" = list ]; then live && { lua 'return kuwai.screens_json()'; echo; }; return 0; fi
+    [[ "$name" =~ ^[A-Za-z0-9_-]+$ ]] || { echo "kuwai screen: a screen's name, like DP-3 (kuwai screen list)" >&2; return 2; }
+    case $field in
+        scale|rate) [[ "$value" =~ ^[0-9]+(\.[0-9]+)?$ ]] || { echo "kuwai screen: $field takes a number" >&2; return 2; } ;;
+        reset) value="" ;;
+        *) echo "usage: kuwai screen NAME scale 1.5 | rate 144 | reset   (kuwai screen list)" >&2; return 2 ;;
+    esac
+    live || { echo "kuwai screen: needs the running session" >&2; return 1; }
+    lua "return kuwai.screen('$name', '$field', '$value')"; echo
+}
+
+cmd_pointer() {
+    local key=${1:-} value=${2:-}
+    case $key in
+        speed|accel|mouse-natural|trackpad-natural|tap|trackpad-scroll|repeat-delay|repeat-rate) ;;
+        *) echo "usage: kuwai pointer speed -1..1 | accel flat|adaptive | mouse-natural on|off | trackpad-natural on|off | tap on|off | trackpad-scroll 0.2..3 | repeat-delay 150..1000 | repeat-rate 10..80" >&2; return 2 ;;
+    esac
+    [[ "$value" =~ ^(-?[0-9]+(\.[0-9]+)?|flat|adaptive|on|off)$ ]] || { echo "kuwai pointer: $key needs a value" >&2; return 2; }
+    if live; then lua "return kuwai.pointer('$key', '$value')"; echo
+    else state_set "ptr.$key" "$value"; echo "saved for the next login"; fi
 }
 
 cmd_keyboard() {
@@ -461,6 +487,8 @@ case ${1:-info} in
     binds) shift; cmd_binds "$@" ;;
     feature|features) shift; cmd_feature "$@" ;;
     keyboard|kb) shift; cmd_keyboard "$@" ;;
+    pointer|mouse|trackpad) shift; cmd_pointer "$@" ;;
+    screen|screens) shift; cmd_screen "$@" ;;
     session) shift; snap=$STATE_DIR/session
         case ${1:-show} in
             save) lua 'return kuwai.session_save and kuwai.session_save() or 0' | sed 's/$/ apps saved/' ;;
