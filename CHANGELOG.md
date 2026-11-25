@@ -7,10 +7,23 @@ is listed here.
 
 ## Unreleased
 
+### Welcome
+- A new install opens Welcome: the four keys that reach nearly everything, and
+  clipboard history and GitHub/Gmail notifications to turn on if you want them.
+  After an update, the notch says so; a click shows what's new.
+- Kuwai is an AUR package (`kuwai`): pacman installs everything it needs, and
+  `kuwai-setup` sets it up in your home.
+
 ### The notch
-- The center is the notch grown: Notifications pulled from the notch, Controls
-  and Sound from its right side (the phone's model), hanging from the top edge
-  in the island's black. Waybar and the floating pill keep the corner card.
+- Notifications and Controls (with Sound) are the island's own panels, the
+  notch grown (the phone's model): going between Agents, Usage, Notifications
+  and Controls is one shape changing, and Esc goes back where you came from.
+  Waybar and the floating pill keep the corner card.
+- Notifications and Controls work at large text sizes: fields and tabs grow,
+  control tiles go one to a row, the filters' tools move under them.
+- A row you swipe away that has to stay (an agent you only marked read) comes
+  back instead of hiding in its slot; a terminal agent is marked read in place.
+- Every menu has the same rows, type and surface (the tray's menus too).
 - Notifications opens with a Today row (the date, what's next, the weather);
   Controls has a Sound module (the output's volume; right-click mutes).
 - Switching island panels and center tabs crossfades instead of cutting.
@@ -53,7 +66,31 @@ is listed here.
 - A toast moves on one curve and finishes fading before it is removed; a
   notification peek fades in once.
 
+### Software Update
+- Before you update, it names what pacman adds beyond the list (new
+  dependencies, replacements); afterwards it says which steps happened, and a
+  run where the Arch update worked but something after it didn't says "Partly
+  done" instead of claiming nothing changed.
+- Pruning the package cache after updating is a setting, off by default.
+- Config files an update left beside yours (.pacnew) are compared with the
+  right older version, each file reports how it went, and backups get names of
+  their own instead of overwriting one another.
+- "Only when you open Software Update" means no checks run by themselves.
+
 ### Security
+- Release updates (`kuwai update-self`) take only tags that exist on GitHub,
+  refuse a tag that moves, and check signatures once you list a signer.
+- The password prompt can run from a copy only root can change
+  (`kuwai auth pin`).
+- Clipboard history and the GitHub/Gmail feeds run only if you said yes
+  (`kuwai collect`); installing asks.
+- The login screen's installer shows its plan first, installs only committed
+  code, and gets only the display settings it needs.
+- One rule for secrets covers everything the assistant reads and its sandbox
+  log; a terminal's last command goes to it only if you turn that on.
+- Ending a process from the launcher can't hit a newer process that reused its
+  number; the sandbox never removes a container it didn't make; calendar links
+  stay out of process lists and must be HTTPS.
 - Allow on an agent's request is bound to that request: the panel shows the
   request's own command in full, and the answer carries its id (kittymux's
   mux-ask ignores any other).

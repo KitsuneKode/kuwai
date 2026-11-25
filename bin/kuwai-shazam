@@ -350,7 +350,7 @@ open_music_uri() {
   [ -n "$uri" ] || return 1
 
   if ! have xdg-open; then
-    notify "Cider" "xdg-open is missing" "critical"
+    notify "Music" "xdg-open is missing" "critical"
     return 1
   fi
 
@@ -805,6 +805,12 @@ open_entry_json() {
   apple_id="$(jq -r '.track.apple_id // empty' <<<"$entry")"
   artist="$(jq -r '.track.subtitle // "Unknown"' <<<"$entry")"
   title="$(jq -r '.track.title // "Unknown"' <<<"$entry")"
+
+  if ! have cider; then
+    if [ -n "$url" ]; then open_music_uri "$url"; return 0; fi
+    open_music_uri "https://www.shazam.com/search?q=$(jq -rn --arg q "$artist $title" '$q|@uri')"
+    return 0
+  fi
 
   wait_for_cider || return 1
 

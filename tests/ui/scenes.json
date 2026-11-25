@@ -3905,6 +3905,98 @@
      "sound"
     ]
    ]
+  },
+  {
+   "id": "welcome/first-run",
+   "name": "welcome",
+   "panel": "WelcomePanel",
+   "set": [
+    [
+     "Welcome",
+     "version",
+     "0.1.0"
+    ],
+    [
+     "Welcome",
+     "loaded",
+     true
+    ],
+    [
+     "Welcome",
+     "settingsChecked",
+     true
+    ],
+    [
+     "Welcome",
+     "announced",
+     true
+    ],
+    [
+     "Welcome",
+     "seen",
+     ""
+    ],
+    [
+     "Welcome",
+     "hadSettings",
+     false
+    ]
+   ]
+  },
+  {
+   "id": "welcome/whats-new",
+   "name": "welcome",
+   "panel": "WelcomePanel",
+   "kind": "typical",
+   "set": [
+    [
+     "Welcome",
+     "version",
+     "0.1.0"
+    ],
+    [
+     "Welcome",
+     "loaded",
+     true
+    ],
+    [
+     "Welcome",
+     "settingsChecked",
+     true
+    ],
+    [
+     "Welcome",
+     "announced",
+     true
+    ],
+    [
+     "Welcome",
+     "seen",
+     "0.0.9"
+    ],
+    [
+     "Welcome",
+     "notes",
+     [
+      {
+       "group": "The notch",
+       "text": "Notifications and Controls are the island's own panels: going between Agents, Usage, Notifications and Controls is one shape changing."
+      },
+      {
+       "group": "The notch",
+       "text": "Swiped rows whose item stays come home instead of hiding in their slot."
+      },
+      {
+       "group": "Install",
+       "text": "Kuwai installs from the AUR now: pacman owns everything it needs."
+      },
+      {
+       "group": "Security",
+       "text": "Release tags are checked against origin and pinned; signed releases once you list a signer."
+      }
+     ]
+    ]
+   ]
   }
  ]
 }

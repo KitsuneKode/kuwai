@@ -37,9 +37,9 @@ HOME = Path.home()
 CACHE = Path(os.environ.get("XDG_CACHE_HOME", HOME / ".cache")) / "kuwai"
 STATE = Path(os.environ.get("XDG_STATE_HOME", HOME / ".local/state")) / "kuwai"
 STORE = HOME / ".agents/skills"
-AGENT_DIRS = [HOME / ".claude/skills", HOME / ".claude_personal/skills", HOME / ".cursor/skills",
-              HOME / ".codex/skills", STORE]
-TRANSCRIPTS = [HOME / ".claude/projects", HOME / ".claude_personal/projects", HOME / ".codex/sessions"]
+CLAUDE_HOMES = sorted(p for p in HOME.glob(".claude*") if p.is_dir())
+AGENT_DIRS = [h / "skills" for h in CLAUDE_HOMES] + [HOME / ".cursor/skills", HOME / ".codex/skills", STORE]
+TRANSCRIPTS = [h / "projects" for h in CLAUDE_HOMES] + [HOME / ".codex/sessions"]
 TTL = 1800
 
 
@@ -80,8 +80,9 @@ def skills():
     for d in AGENT_DIRS:
         if not d.is_dir():
             continue
-        agent = {".claude": "Claude", ".claude_personal": "Claude (personal)", ".cursor": "Cursor",
-                 ".codex": "Codex", ".agents": "store"}.get(d.parent.name, d.parent.name)
+        name = d.parent.name
+        agent = ("Claude" if name == ".claude" else "Claude (" + name[len(".claude"):].strip("_-.") + ")") if name.startswith(".claude") \
+            else {".cursor": "Cursor", ".codex": "Codex", ".agents": "store"}.get(name, name)
         for entry in sorted(d.iterdir()):
             md = entry / "SKILL.md"
             if not md.is_file():

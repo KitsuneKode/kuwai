@@ -15,6 +15,8 @@ Column {
 
     SectionLabel {
         visible: g.title !== ""
+        width: g.width - x
+        wrapMode: Text.Wrap
         text: g.title
     }
     Card {

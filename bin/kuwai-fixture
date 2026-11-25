@@ -53,7 +53,7 @@ worst() {
     send "Zalo" "Thông báo: Cuộc họp đã được dời sang ngày mai lúc 9 giờ sáng" "Nguyễn Thị Phương Thảo đã cập nhật lịch họp của nhóm Kỹ thuật." normal
     send "LINE" "ประชุมทีมเลื่อนไปพรุ่งนี้" "กรุณายืนยันการเข้าร่วมภายในวันนี้ ขอบคุณครับ" normal
     send "WhatsApp" "تم تحديث التطبيق بنجاح" "سيتم إعادة تشغيل الخدمة خلال خمس دقائق، يرجى حفظ عملك." normal
-    send "Disk" "Disk / at 97%" "2.1 GB free of 476 GB · /home/kitsunekode/.local/share/Steam/steamapps/common is 214 GB" critical
+    send "Disk" "Disk / at 97%" "2.1 GB free of 476 GB · ~/.local/share/Steam/steamapps/common is 214 GB" critical
     send "Slack" "x" "a" normal
     for i in $(seq 1 14); do
         send "Microsoft Teams (work or school)" "Meeting reminder $i of 14: Weekly Cross-Functional Sync" "Starts in $((15 - i)) min · Room 4.12 \"The Big One\"" normal

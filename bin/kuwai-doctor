@@ -115,8 +115,8 @@ if pgrep -x zapzap >/dev/null 2>&1; then
         bad "ZapZap running but notifications are not owned by kuwai shell"
         fix "kuwai restart · then restart ZapZap if it disabled its backend after a shell outage"
     fi
-else
-    note "ZapZap not running (WhatsApp notifications need it)"
+elif command -v zapzap >/dev/null 2>&1 || flatpak info com.rtosta.zapzap >/dev/null 2>&1; then
+    note "ZapZap installed but not running (WhatsApp notifications need it)"
 fi
 
 CH="${XDG_STATE_HOME:-$HOME/.local/state}/kuwai/channel"

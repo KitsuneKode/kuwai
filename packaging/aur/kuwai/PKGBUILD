@@ -1,0 +1,89 @@
+# Maintainer: KitsuneKode
+#
+# Kuwai: a Hyprland desktop shell (Quickshell). pacman owns everything it needs;
+# the desktop itself lives in each person's home: kuwai-setup clones this
+# release there and runs its install.sh (which can undo itself).
+pkgname=kuwai
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="A calm Hyprland desktop: a Dynamic Island, notifications, controls and an agent cockpit (Quickshell)"
+arch=('any')
+url="https://github.com/KitsuneKode/kuwai"
+license=('GPL-3.0-or-later')
+depends=(
+  'awww'
+  'bash'
+  'brightnessctl'
+  'cliphist'
+  'curl'
+  'diffutils'
+  'file'
+  'git'
+  'glib2'
+  'grim'
+  'hyprland'
+  'hyprpicker'
+  'hyprsunset'
+  'inter-font'
+  'jq'
+  'libnotify'
+  'libpulse'
+  'lua'
+  'nodejs'
+  'pacman-contrib'
+  'pipewire-audio'
+  'pipewire-pulse'
+  'playerctl'
+  'polkit'
+  'python'
+  'qt6-multimedia'
+  'quickshell'
+  'slurp'
+  'sqlite'
+  'sudo'
+  'ttf-nerd-fonts-symbols'
+  'upower'
+  'util-linux'
+  'wireplumber'
+  'wl-clipboard'
+  'xdg-utils'
+)
+optdepends=(
+  'matugen: wallpaper palette extraction'
+  'qt6ct: Qt6 theming'
+  'adw-gtk-theme: GTK3 dark theming'
+  'xdg-desktop-portal-hyprland: screen sharing and portals'
+  'waybar: fallback bar if the shell cannot load'
+  'hyprlock: fallback lock'
+  'hypridle: fallback idle daemon'
+  'satty: screenshot editing'
+  'tesseract: copy text from images'
+  'mpv: live wallpapers'
+  'mpvpaper: live wallpapers outside the shell'
+  'socat: live wallpapers outside the shell'
+  'imagemagick: thumbnails and fallback palette'
+  'poppler: PDF previews'
+  'kitty: terminal'
+  'libsecret: Gmail password in keyring'
+  'github-cli: GitHub notifications'
+  'wtype: typing emoji into windows'
+  'ydotool: tests'
+  'ddcutil: external monitor brightness'
+  'gpu-screen-recorder: screen recording'
+  'wf-recorder: screen recording without gpu screen recorder'
+  'ffmpeg: live wallpaper copies and recordings'
+  'ripgrep: Cleanup panel'
+  'networkmanager: Wi Fi controls'
+  'bluez-utils: Bluetooth controls'
+)
+install=kuwai.install
+source=("LICENSE-$pkgver::https://raw.githubusercontent.com/KitsuneKode/kuwai/v$pkgver/LICENSE"
+        "kuwai-setup")
+sha256sums=('fb981668c18a279e285fc4d83fba1e836cc84dd4daa73c9697d3cfd2d8aca6e0'
+            'SKIP')
+
+package() {
+  install -Dm755 "$srcdir/kuwai-setup" "$pkgdir/usr/bin/kuwai-setup"
+  sed -i "s/@VERSION@/$pkgver/" "$pkgdir/usr/bin/kuwai-setup"
+  install -Dm644 "$srcdir/LICENSE-$pkgver" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

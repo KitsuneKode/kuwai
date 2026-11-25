@@ -766,6 +766,7 @@ Scope {
             Component { id: agentsPanel; AgentsPanel {} }
             Component { id: usagePanel; UsagePanel {} }
             Component { id: centerPanel; CenterPanel {} }
+            Component { id: welcomePanel; WelcomePanel {} }
             Component { id: readPanel; ReadPanel {} }
 
             Elevation {
@@ -1268,7 +1269,7 @@ Scope {
                             height: panelScope.height - win.backH
                             active: win.panelHere || pv.value > 0.01
                             focus: true
-                            sourceComponent: ({ activities: activitiesPanel, calendar: calendarPanel, power: powerPanel, launcher: launcherPanel, settings: settingsPanel, system: systemPanel, theme: themePanel, keys: keysPanel, switcher: switcherPanel, updates: updatesPanel, media: mediaPanel, agents: agentsPanel, usage: usagePanel, read: readPanel, cleanup: cleanupPanel, notifications: centerPanel, controls: centerPanel })[win.shownPanel] || null
+                            sourceComponent: ({ activities: activitiesPanel, calendar: calendarPanel, power: powerPanel, launcher: launcherPanel, settings: settingsPanel, system: systemPanel, theme: themePanel, keys: keysPanel, switcher: switcherPanel, updates: updatesPanel, media: mediaPanel, agents: agentsPanel, usage: usagePanel, read: readPanel, cleanup: cleanupPanel, notifications: centerPanel, controls: centerPanel, welcome: welcomePanel })[win.shownPanel] || null
                             onLoaded: if (item && item.inStrip !== undefined) item.inStrip = win.sectioned && !Island.canBack
                         }
                         // Right click (anywhere a control doesn't take it) or the mouse's back button: back.
