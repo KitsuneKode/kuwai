@@ -58,7 +58,7 @@ def kuwai_version():
     try:
         return open(vf, encoding="utf-8").read().strip()
     except OSError:
-        return "0.2.0"
+        return "0.1.0"
 
 
 def collect_manifest():

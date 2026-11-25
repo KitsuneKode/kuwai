@@ -39,6 +39,10 @@ Your session runs from the **stable channel** (`~/.local/share/kuwai`, the
 refuses unless `kuwai-check` passes (`kuwai channel dev` runs straight from
 the repo while you work).
 
+Releases are tagged (`v0.1.0` is the first; what changed is in
+[CHANGELOG.md](CHANGELOG.md)). `kuwai update-self` moves an install to the
+newest release, and `kuwai version` says which one you run.
+
 ## Every day
 
 | | |

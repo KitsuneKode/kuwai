@@ -26,7 +26,8 @@ Control the running kuwai.
   kuwai export [file]        export or diff a portable machine manifest (bin/kuwai-profile)
   kuwai promote              validate dev HEAD and fast-forward stable (with auto-rollback)
   kuwai rollback             revert stable to the previous promoted commit (stable-prev)
-  kuwai update-self          fetch origin into stable, validate, migrate, and restart
+  kuwai update-self          update stable to the newest release (v* tag; KUWAI_UPDATE_REF=<ref> picks another), validate, migrate, restart
+  kuwai version              the version, the commit stable runs, and the channel
 KUWAI_USAGE
 }
 
@@ -284,6 +285,12 @@ case ${1:-} in
         fi ;;
     check)         shift; exec "$KUWAI/bin/kuwai-check" "$@" ;;
     demo)          shift; exec "$KUWAI/bin/kuwai-demo" "$@" ;;
+    version|--version|-V)
+        printf 'kuwai %s\n' "$(cat "$KUWAI/VERSION" 2>/dev/null || echo unknown)"
+        if [ -e "$STABLE/.git" ]; then
+            printf 'stable  %s\n' "$(git -C "$STABLE" describe --tags --always 2>/dev/null)"
+        fi
+        printf 'channel %s\n' "$(cat "$STATE_DIR/channel" 2>/dev/null || echo stable)" ;;
     rollback)
         [ -e "$STABLE/.git" ] || { echo "kuwai: no stable copy at $STABLE" >&2; exit 1; }
         target=$(git -C "$STABLE" rev-parse --verify refs/heads/stable-prev 2>/dev/null) || { echo "kuwai: no stable-prev rollback target recorded yet" >&2; exit 1; }
@@ -303,15 +310,17 @@ case ${1:-} in
         dirty=$(git -C "$STABLE" status --porcelain 2>/dev/null)
         [ -z "$dirty" ] || { echo "kuwai: stable has uncommitted changes; refusing update-self" >&2; exit 1; }
         git -C "$STABLE" remote get-url origin >/dev/null 2>&1 || { echo "kuwai: no origin remote configured in $STABLE" >&2; exit 1; }
-        git -C "$STABLE" fetch --quiet origin || { echo "kuwai: git fetch origin failed" >&2; exit 1; }
-        ref=""
-        for cand in origin/stable origin/main origin/master; do
-            if git -C "$STABLE" rev-parse --verify "$cand" >/dev/null 2>&1; then ref="$cand"; break; fi
-        done
-        [ -n "$ref" ] || { echo "kuwai: no origin/stable or origin/main branch found" >&2; exit 1; }
+        git -C "$STABLE" fetch --quiet --tags origin || { echo "kuwai: git fetch origin failed" >&2; exit 1; }
+        ref="${KUWAI_UPDATE_REF:-$(git -C "$STABLE" tag -l 'v[0-9]*' --sort=-v:refname | head -n1)}"
+        if [ -z "$ref" ]; then
+            for cand in origin/stable origin/main origin/master; do
+                if git -C "$STABLE" rev-parse --verify "$cand" >/dev/null 2>&1; then ref="$cand"; break; fi
+            done
+        fi
+        [ -n "$ref" ] || { echo "kuwai: no release tag (v*) and no origin/stable or origin/main branch found" >&2; exit 1; }
         prev=$(git -C "$STABLE" rev-parse HEAD)
-        target=$(git -C "$STABLE" rev-parse "$ref")
-        if [ "$prev" = "$target" ]; then
+        target=$(git -C "$STABLE" rev-parse --verify -q "$ref^{commit}") || { echo "kuwai: $ref is not a commit" >&2; exit 1; }
+        if [ "$prev" = "$target" ] || git -C "$STABLE" merge-base --is-ancestor "$target" "$prev"; then
             echo "kuwai: already up to date ($(git -C "$STABLE" log --oneline -1))"
             exit 0
         fi

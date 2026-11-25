@@ -113,3 +113,48 @@ def test_rollback_reports_failure_when_git_refuses_the_reset(tmp_path):
     assert "rolled back" not in r.stdout
     assert git(stable, "rev-parse", "HEAD") == b
     assert prev_of(stable) == a, "a refused reset must not move stable-prev"
+
+
+def with_origin(tmp_path, dev):
+    origin = tmp_path / "origin.git"
+    git(tmp_path, "init", "-q", "--bare", str(origin))
+    git(dev, "remote", "add", "origin", str(origin))
+    git(dev, "push", "-q", "origin", "main")
+    return origin
+
+
+def test_update_self_follows_the_newest_release_tag(tmp_path):
+    env, dev, stable, a, b = make_world(tmp_path)
+    with_origin(tmp_path, dev)
+    git(dev, "tag", "v0.1.0", a)
+    git(dev, "tag", "v0.2.0", b)
+    git(dev, "push", "-q", "origin", "--tags")
+    r = ctl(env, "update-self")
+    assert r.returncode == 0, r.stderr
+    assert git(stable, "rev-parse", "HEAD") == b
+    assert prev_of(stable) == a
+    r = ctl(env, "update-self")
+    assert r.returncode == 0, r.stderr
+    assert "already up to date" in r.stdout
+
+
+def test_update_self_never_moves_stable_back_to_an_older_tag(tmp_path):
+    env, dev, stable, a, b = make_world(tmp_path)
+    with_origin(tmp_path, dev)
+    git(stable, "merge", "--ff-only", "-q", b)
+    git(dev, "tag", "v0.1.0", a)
+    git(dev, "push", "-q", "origin", "--tags")
+    r = ctl(env, "update-self")
+    assert r.returncode == 0, r.stderr
+    assert "already up to date" in r.stdout
+    assert git(stable, "rev-parse", "HEAD") == b
+
+
+def test_version_names_the_release_and_the_stable_commit(tmp_path):
+    env, dev, stable, a, b = make_world(tmp_path)
+    git(dev, "tag", "v0.1.0", a)
+    r = ctl(env, "version")
+    assert r.returncode == 0, r.stderr
+    version = (ROOT / "VERSION").read_text().strip()
+    assert r.stdout.splitlines()[0] == f"kuwai {version}"
+    assert "stable  v0.1.0" in r.stdout

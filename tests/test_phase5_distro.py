@@ -1,6 +1,7 @@
 """Phase 5 distribution tests: VERSION, kuwai-webapp, kuwai-profile, and kuwai-ctl rollback/help."""
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -22,7 +23,8 @@ def isolated_env(tmp_path):
 
 def test_version_file_and_hypr_init_agree():
     ver = (ROOT / "VERSION").read_text().strip()
-    assert ver == "0.2.0"
+    assert re.fullmatch(r"\d+\.\d+\.\d+", ver)
+    assert f"## {ver}" in (ROOT / "CHANGELOG.md").read_text()
     assert (ROOT / "CHANGELOG.md").is_file()
     lua_code = f"""
 package.path = '{ROOT}/hypr/?.lua;' .. package.path
@@ -98,7 +100,7 @@ def test_kuwai_profile_export_redacts_secrets_and_diffs(tmp_path):
     )
     assert r.returncode == 0, r.stderr
     data = json.loads(manifest.read_text())
-    assert data["schema"] == 1 and data["kuwaiVersion"] == "0.2.0"
+    assert data["schema"] == 1 and data["kuwaiVersion"] == (ROOT / "VERSION").read_text().strip()
     assert data["settings"]["bar"] == "island"
     assert "apiToken" not in data["settings"]
     assert "github_secret" not in data["settings"]["nested"]

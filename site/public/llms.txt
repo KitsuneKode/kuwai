@@ -3,7 +3,7 @@
 > Liquid-glass Hyprland 0.57 (Lua) and Quickshell (QML) desktop environment built for developers running coding agents, featuring a Dynamic Island status bar, native permission approvals, atomic theming, and automated visual regression verification.
 
 ## Pages
-- [Home](https://kuwai.kitsunekode.in/): Interactive Dynamic Island showcase, verified v0.2.0 upgrades, captured UI surfaces, measured resource headroom, and side-by-side install guide.
+- [Home](https://kuwai.kitsunekode.in/): Interactive Dynamic Island showcase, the v0.1.0 release, captured UI surfaces, measured resource headroom, and side-by-side install guide.
 - [Changelog](https://kuwai.kitsunekode.in/changelog): Release history and verified milestones.
 - [Brand Kit](https://kuwai.kitsunekode.in/brand): Official SVG marks, wordmarks, liquid-glass design tokens, and Open Graph previews.
 
@@ -12,7 +12,7 @@
 - [Atom 1.0 Feed](https://kuwai.kitsunekode.in/atom.xml)
 - [XML Sitemap](https://kuwai.kitsunekode.in/sitemap-index.xml)
 
-## Key Facts (v0.2.0)
+## Key Facts (v0.1.0)
 - License: GPL-3.0-or-later (https://github.com/KitsuneKode/kuwai)
 - Platform: Arch Linux, Hyprland 0.57 (Lua), Quickshell (QtQuick/QML), systemd user units
 - Session isolation: Installs to ~/.config/kuwai/hypr/ as its own login session without modifying ~/.config/hypr
