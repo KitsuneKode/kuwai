@@ -101,7 +101,10 @@ Scope {
     // Card geometry, shared by every monitor's surface.
     readonly property bool notch: Settings.bar === "island" && Settings.islandStyle === "notch"
     readonly property int restH: 34
-    function restW(screen) { return (screen && Island.restWidths[screen.name]) || 220; }
+    function restW(screen) {
+        const r = screen ? Island.restShapes[screen.name] : null;
+        return (r && r.w) || 220;
+    }
     readonly property int cardW: notch ? Theme.panelS + 20 : 420
     readonly property int padX: 52                 // room for the shadow (none above: it hangs from the bar)
     readonly property int padY: notch ? 0 : 6
@@ -184,6 +187,10 @@ Scope {
             if (ui && !Notifs.centerFocusReply) ui.search.forceActiveFocus();
         } else {
             dispatchSurface({ type: "close" });
+            if (notch && mode === "morph" && !Notifs.centerMorphFrom) {
+                const rw = restW(shownScreen);
+                from = { x: padX + (cardW - rw) / 2, y: 0, w: rw, h: restH, r: 14 };
+            }
             root.foldSeq = root.surface.seq;
             closeT = morph.value;
             contentOut.restart();
@@ -359,7 +366,7 @@ Scope {
             implicitWidth: up ? fullW : 1
             implicitHeight: up ? fullH : 1
             onHeightChanged: if (up && height >= fullH) Qt.callLater(root.begin)
-            exclusionMode: ExclusionMode.Normal
+            exclusionMode: root.notch ? ExclusionMode.Ignore : ExclusionMode.Normal
             color: "transparent"
 
             WlrLayershell.namespace: "kuwai-center"
@@ -406,7 +413,7 @@ Scope {
                 readonly property real ear: root.notch ? 9 + 5 * grownT : 0
                 transformOrigin: Item.TopRight
                 scale: morphing || Theme.reduceMotion ? 1 : 0.96 + 0.04 * root.p
-                opacity: root.notch ? 1 : morphing ? Math.min(1, root.p * 5) : Math.min(1, root.p * 1.6)
+                opacity: root.notch && !Theme.reduceMotion ? 1 : morphing ? Math.min(1, root.p * 5) : Math.min(1, root.p * 1.6)
 
                 // Elevation from layered shadows, not one big smudge: a tight
                 // contact shadow that grounds the edge, a mid one for form,

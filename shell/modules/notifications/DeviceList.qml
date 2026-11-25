@@ -18,7 +18,7 @@ Column {
     spacing: 8
     visible: nodes.length > 0
 
-    Label { x: 4; text: devList.title; size: 14; weight: Theme.wSemibold; color: Theme.textSecondary }
+    Label { x: 4; text: devList.title; size: Theme.tCallout; weight: Theme.wSemibold; color: Theme.textSecondary }
     Rectangle {
         width: devList.width
         height: devices.implicitHeight + 8
@@ -60,7 +60,7 @@ Column {
                         id: pick
                         x: 12; y: 12
                         width: 22; height: 22; radius: 11
-                        color: dev.on ? Theme.blue : "transparent"
+                        color: dev.on ? Theme.accent : "transparent"
                         border.width: dev.on ? 0 : 1.5
                         border.color: pickArea.containsMouse ? Theme.textSecondary : Theme.textTertiary
                         Behavior on color { ColorAnimation { duration: Theme.colorMs } }
@@ -78,7 +78,7 @@ Column {
                         elide: Text.ElideRight
                         text: devList.view.center.highlight(devList.view.deviceName(dev.modelData))
                         textFormat: Text.StyledText
-                        size: 13
+                        size: Theme.tBody
                         weight: dev.on ? Theme.wSemibold : Theme.wMedium
                         color: dev.on ? Theme.textPrimary : Theme.textSecondary
                     }
@@ -169,7 +169,7 @@ Column {
                         height: 22
                         value: dev.audio ? dev.audio.volume : 0
                         dim: muteBtn.muted
-                        fillColor: dev.on ? Qt.alpha(Theme.blue, 0.55) : Theme.wash(4)
+                        fillColor: dev.on ? Qt.alpha(Theme.accent, 0.55) : Theme.wash(4)
                         onMoved: v => { if (dev.audio) dev.audio.volume = v; }
                         onRightClicked: if (dev.audio) dev.audio.muted = !dev.audio.muted
                     }

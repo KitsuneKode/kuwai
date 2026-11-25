@@ -109,34 +109,8 @@ Singleton {
     readonly property string bellTip: !shareKnown ? "Screen-sharing state unconfirmed · previews held"
         : dnd ? "Do Not Disturb · notifications held"
         : dndMute ? "Held while sharing"
-        : inbox === 0 ? "Notifications · click · right-click list"
-        : (inbox > 9 ? "9+ in center" : inbox === 1 ? "1 in center" : inbox + " in center") + " · click · right-click list"
-
-    function bellQuickList(maxN) {
-        const cap = maxN || 8;
-        const out = [];
-        const seen = new Set();
-        const key = i => String(i.nid || "") + "|" + i.time + "|" + i.app + "|" + i.title;
-        // One row per kittymux pane: its newest (finished after it asked, the
-        // ask is over); "Zen loader" five times read as five things.
-        const panes = new Set();
-        const add = i => {
-            const k = key(i);
-            if (seen.has(k) || (i.jump && panes.has(i.jump))) return;
-            seen.add(k); if (i.jump) panes.add(i.jump); out.push(i);
-        };
-        for (const i of missed) { add(i); if (out.length >= cap) return out; }
-        const unreadItems = items.filter(i => i.time > lastSeen && !i.discard);
-        const pri = unreadItems.filter(i => {
-            if (seen.has(key(i))) return false;
-            if (i.severity === "critical" || i.severity === "warning") return true;
-            return sensitiveApps.test(String(i.app || ""));
-        }).sort((a, b) => b.time - a.time);
-        for (const i of pri) { add(i); if (out.length >= cap) return out; }
-        for (const i of unreadItems.sort((a, b) => b.time - a.time)) { add(i); if (out.length >= cap) return out; }
-        for (const i of items.filter(x => !x.discard).sort((a, b) => b.time - a.time)) { add(i); if (out.length >= cap) return out; }
-        return out;
-    }
+        : inbox === 0 ? "Notifications"
+        : (inbox > 9 ? "9+ in center" : inbox === 1 ? "1 in center" : inbox + " in center")
 
     readonly property string stateDir: Quickshell.env("HOME") + "/.local/state/kuwai"
     property bool loaded: false
@@ -805,6 +779,7 @@ Singleton {
         // never swallowed.
         if (open && via === "pointer" && Date.now() - closedAt < 350) return;
         centerOpen = open;
+        if (open && Island.panel !== "") Island.close();
         // Toasts on screen are handed to the center by Popups (it fades them
         // as the center morphs out of the front one).
         if (!open) {

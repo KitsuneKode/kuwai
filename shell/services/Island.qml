@@ -169,6 +169,7 @@ Singleton {
     }
     function openOn(name, screenName, how, from) {
         name = canon(name);
+        if (Notifs.centerOpen) Notifs.setCenter(false, how === "key" ? "key" : "pointer");
         previewing = false;
         const s = screenName || Screens.focusedName;
         history = panel && panel !== name && s === screen ? [...history, panel] : from === "island" ? ["island"] : [];

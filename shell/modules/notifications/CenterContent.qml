@@ -130,7 +130,7 @@ Item {
                     sheet.open = false;
                 } else if (ctrl && k === Qt.Key_D) {
                     Notifs.toggleUserDnd();
-                } else if (ctrl && shift && (k === Qt.Key_Backspace || k === Qt.Key_Delete)) {
+                } else if (ctrl && shift && (k === Qt.Key_Backspace || k === Qt.Key_Delete) && content.center.tab === "notifications") {
                     notifications.clearAll();
                 } else if (k === Qt.Key_Escape) {
                     if (search.text !== "") search.text = "";
@@ -196,7 +196,8 @@ Item {
         onAskedChanged: {
             if (asked === shown) return;
             prev = swapT.value >= 0.5 || prev === "" ? shown : prev;
-            dir = rank.indexOf(asked) >= rank.indexOf(prev) ? 1 : -1;
+            const seq = content.order.indexOf(asked) >= 0 && content.order.indexOf(prev) >= 0 ? content.order : rank;
+            dir = seq.indexOf(asked) >= seq.indexOf(prev) ? 1 : -1;
             keyed = content.usedKeys;
             shown = asked;
             swapT.snap(0);

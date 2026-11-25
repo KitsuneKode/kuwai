@@ -1,4 +1,4 @@
-// Island bell: glyph + capped badge (9+). Click → center; right-click / hold → quick list (QuickIcon rules).
+// Island bell: glyph + capped badge (9+). Click → Notifications; right-click / hold → Do Not Disturb.
 import QtQuick
 import qs.config
 
@@ -23,7 +23,7 @@ Item {
         anchors.centerIn: parent
         anchors.horizontalCenterOffset: count > 0 && !muted ? -2 : 0
         name: muted ? "bell-slash" : "bell"
-        size: 18
+        size: Theme.glyphM
         active: count > 0 || missed
         color: dnd ? Theme.focus : muted ? Theme.textTertiary : (count > 0 ? Theme.accent : Theme.textSecondary)
     }
@@ -87,7 +87,7 @@ Item {
     }
 
     Tip {
-        text: bell.tip + "\nClick: center · Right-click, hold or Ctrl+click: quick list"
+        text: bell.tip + "\nClick: Notifications · right-click, hold or Ctrl+click: Do Not Disturb"
         shown: area.containsMouse && !bell.suppressTip
         below: true
     }

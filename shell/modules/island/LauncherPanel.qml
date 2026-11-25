@@ -109,6 +109,8 @@ FocusScope {
         { name: "Update in a terminal", sub: "sysup", glyph: "\u{f018d}", run: () => Updates.terminal() },
         { name: "Do Not Disturb", sub: Notifs.dnd ? "On: turn off" : "Off: turn on", glyph: "\u{f0594}", run: () => { Notifs.toggleUserDnd(); } },
         { name: "Sound", sub: "Outputs, inputs, the microphone", glyph: "\u{f057e}", run: () => Notifs.toggleCenter("sound", "key") },
+        { name: "Controls", sub: "Wi-Fi, Bluetooth, Do Not Disturb, brightness, sound · Super+Ctrl+Alt+W", glyph: "\u{f0493}", run: () => Notifs.toggleCenter("controls", "key") },
+        { name: "Wi-Fi", sub: "Networks, join one", glyph: "\u{f05a9}", run: () => Notifs.toggleCenter("controls", "key") },
         // vicinae's names for them (it went on 11-05), so the habit still works.
         { name: "Kill Process", sub: "End an app or a process · or type kill zen", glyph: "\u{f0675}", run: () => launcher.enterMode("! "), keep: true },
         { name: "Kill Port", sub: "Free a port, or type kill 3000", glyph: "\u{f0675}", run: () => launcher.enterMode("! :"), keep: true }
@@ -658,7 +660,7 @@ FocusScope {
                 visible: row.header && !row.tips
                 x: 14; anchors.bottom: parent.bottom; anchors.bottomMargin: 6
                 text: row.modelData.name
-                size: 11; weight: Theme.wSemibold; color: Theme.textTertiary
+                size: Theme.tFootnote; weight: Theme.wSemibold; color: Theme.textTertiary
                 extraTracking: 0.4
             }
 
@@ -764,7 +766,7 @@ FocusScope {
                         anchors.verticalCenter: parent.verticalCenter
                         text: row.modelData.kind === "proc" ? (row.modelData.armed ? (launcher.armedForce ? "Force quit" : "End") : row.modelData.proc.mine ? "End…" : "")
                             : row.modelData.kind === "pkg" ? (row.modelData.pkg.installed ? "Remove" : "Install") : launcher.verbs[row.modelData.kind] || ""
-                        size: 12
+                        size: Theme.tSub
                         color: Theme.textSecondary
                     }
                     KeyCap { anchors.verticalCenter: parent.verticalCenter; text: "↩" }
@@ -799,7 +801,7 @@ FocusScope {
                             y: 10; width: 36; height: 36
                             readonly property string path: tile.modelData.icon ? NotifAdapters.iconSource(tile.modelData.icon) : ""
                             IconImage { anchors.fill: parent; visible: tileIcon.path !== ""; source: tileIcon.path; asynchronous: true }
-                            Label { visible: tileIcon.path === ""; anchors.centerIn: parent; text: (tile.modelData.name || "?").charAt(0); size: 18; weight: Theme.wSemibold; color: Theme.textSecondary }
+                            Label { visible: tileIcon.path === ""; anchors.centerIn: parent; text: (tile.modelData.name || "?").charAt(0); size: Theme.tTitle3; weight: Theme.wSemibold; color: Theme.textSecondary }
                         }
                         Label {
                             anchors { left: parent.left; right: parent.right; leftMargin: 4; rightMargin: 4; top: tileIcon.bottom; topMargin: 7 }
@@ -810,7 +812,7 @@ FocusScope {
                             lineHeight: 0.95
                             elide: Text.ElideRight
                             text: tile.modelData.name
-                            size: 11
+                            size: Theme.tFootnote
                             color: tile.chosen ? Theme.textPrimary : Theme.textSecondary
                         }
                         MouseArea {
@@ -894,7 +896,7 @@ FocusScope {
             visible: launcher.selectable === 0 && launcher.query.trim() !== "" && !launcher.calcMode
             anchors.centerIn: parent
             text: "No results for “" + launcher.query.trim() + "”"
-            size: 13
+            size: Theme.tBody
             color: Theme.textTertiary
         }
     }
@@ -915,14 +917,14 @@ FocusScope {
                 required property var modelData
                 spacing: 6
                 KeyCap { anchors.verticalCenter: parent.verticalCenter; text: parent.modelData[0] }
-                Label { anchors.verticalCenter: parent.verticalCenter; text: parent.modelData[1]; size: 12; color: Theme.textTertiary }
+                Label { anchors.verticalCenter: parent.verticalCenter; text: parent.modelData[1]; size: Theme.tFootnote; color: Theme.textTertiary }
             }
         }
     }
     Label {
         anchors { right: parent.right; rightMargin: 20; bottom: parent.bottom; bottomMargin: 15 }
         text: launcher.query ? launcher.selectable + (launcher.selectable === 1 ? " result" : " results") : ""
-        size: 12
+        size: Theme.tSub
         color: Theme.textTertiary
     }
 }

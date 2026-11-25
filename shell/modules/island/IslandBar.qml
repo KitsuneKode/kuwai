@@ -101,22 +101,25 @@ Scope {
                     if (win.shownPanel !== "" && win.shownPanel !== Island.panel && pv.value > 0.9 && panelLoader.item && !Theme.reduceMotion) {
                         panelGhost.width = panelLoader.width;
                         panelGhost.height = panelLoader.height;
+                        panelGhost.x = panelScope.x;
+                        panelGhost.y = panelScope.y + win.backH;
+                        panelGhost.pending = Island.panel;
                         panelGhost.scheduleUpdate();
                         swapLater.restart();
                     } else win.shownPanel = Island.panel;
                 }
             }
-            Timer {
-                id: swapLater
-                interval: 16
-                onTriggered: {
-                    if (!win.panelHere) return;
-                    panelGhost.opacity = 1;
-                    ghostOut.restart();
-                    win.shownPanel = Island.panel;
-                    panelIn.restart();
-                }
+            function swapNow() {
+                if (!panelGhost.pending) return;
+                panelGhost.pending = "";
+                swapLater.stop();
+                if (!win.panelHere) return;
+                panelGhost.show = 1;
+                ghostOut.restart();
+                win.shownPanel = Island.panel;
+                panelIn.restart();
             }
+            Timer { id: swapLater; interval: 48; onTriggered: win.swapNow() }
             // Another workspace: a panel left open would only be in the way (and its key would close it).
             Connections {
                 target: win.monitor
@@ -1089,6 +1092,18 @@ Scope {
                     }
 
                     // ── A panel ──────────────────────────────────────────
+                    ShaderEffectSource {
+                        id: panelGhost
+                        sourceItem: panelLoader
+                        live: false
+                        hideSource: false
+                        property real show: 0
+                        property string pending: ""
+                        opacity: Math.max(0.002, show)
+                        visible: win.panelHere || show > 0
+                        NumberAnimation on show { id: ghostOut; running: false; to: 0; duration: Theme.quickMs - 10; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+                        onScheduledUpdateCompleted: win.swapNow()
+                    }
                     FocusScope {
                         id: panelScope
                         width: win.panelSize.width
@@ -1230,16 +1245,6 @@ Scope {
                                 Accessible.name: "Back to " + (Island.innerBackLabel || Island.titleOf(Island.history[Island.history.length - 1]) || "the last panel")
                                 Accessible.onPressAction: Island.back()
                             }
-                        }
-                        ShaderEffectSource {
-                            id: panelGhost
-                            y: win.backH
-                            sourceItem: panelLoader
-                            live: false
-                            hideSource: false
-                            opacity: 0
-                            visible: opacity > 0.01
-                            NumberAnimation on opacity { id: ghostOut; running: false; to: 0; duration: Theme.quickMs - 10; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
                         }
                         Loader {
                             id: panelLoader

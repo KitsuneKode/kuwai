@@ -315,7 +315,7 @@ Item {
         onStateKeyChanged: {
             if (!out || Theme.reduceMotion) return;
             ghost.x = slot.x;
-            ghost.opacity = 1;
+            ghost.show = 1;
             pill.reveal = 0;                 // now, not on the animation's first tick (one frame of the new at full)
             swap.restart();
         }
@@ -324,7 +324,7 @@ Item {
             onFinished: Qt.callLater(pill.snap)
             ParallelAnimation {
                 // Overlapping, so the capsule is never empty between them.
-                NumberAnimation { target: ghost; property: "opacity"; to: 0; duration: Theme.quickMs - 10; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+                NumberAnimation { target: ghost; property: "show"; to: 0; duration: Theme.quickMs - 10; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
                 SequentialAnimation {
                     PauseAnimation { duration: Theme.handoffMs }
                     NumberAnimation { target: pill; property: "reveal"; to: 1; duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
@@ -477,8 +477,9 @@ Item {
             sourceItem: slot
             live: false
             hideSource: false
-            opacity: 0
-            visible: opacity > 0.01
+            property real show: 0
+            opacity: Math.max(0.002, show)
+            visible: pill.out && !pill.compact
         }
           Text {
             anchors.centerIn: parent
@@ -660,7 +661,7 @@ Item {
                 StatRing {
                     visible: leadMark.ringed
                     anchors.fill: parent
-                    size: 20; stroke: 2
+                    size: Theme.tTitle2; stroke: 2
                     value: split.limits.at > Limits.now ? Math.max(0, Math.min(1, (split.limits.at - Limits.now) / Limits.soonMs)) : 0
                     color: split.limitTint
                     text: ""; label: ""

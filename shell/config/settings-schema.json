@@ -152,7 +152,7 @@
     {
       "key": "islandStyle",
       "type": "string",
-      "default": "floating",
+      "default": "notch",
       "enum": [
         "notch",
         "floating"

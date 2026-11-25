@@ -542,7 +542,7 @@ Singleton {
     // Lock, login and farewell (full-screen moments: slower, they are rare).
     readonly property int unlockLeadMs: 60
     readonly property int unlockMs: 320          // the lock lifting away
-    readonly property int unlockReleaseMs: reduceMotion ? exitMs : unlockLeadMs + unlockMs + 20
+    readonly property int unlockReleaseMs: (reduceMotion ? 0 : unlockLeadMs) + unlockMs + 20
     readonly property int shackleWaitMs: 380     // the padlock waits for the island to land before it clicks shut
     readonly property int shackleShutMs: 260     // the shackle clicking shut
     readonly property int shackleOpenWaitMs: 0   // the shackle opens with the unlock, not before it

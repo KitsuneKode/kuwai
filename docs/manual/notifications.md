@@ -18,7 +18,7 @@ For chat/mail apps (WhatsApp/ZapZap, Telegram, Signal, Discord, Gmail, …):
 
 - **Title / app** stay visible (who sent it).
 - **Body** is hidden on passive surfaces (toast, the peek at rest) for **chat apps only**, matched by the app's name: ZapZap/WhatsApp, Telegram, Signal, Discord, Slack, Element, Messenger, Beeper.
-- **Opening it on purpose** shows the body: tap the peek, the bell's quick list, or select the row in the center.
+- **Opening it on purpose** shows the body: tap the peek, or select the row in Notifications.
 - **Sharing your screen**: every non-critical body stays hidden everywhere, even when opened ("Hidden while sharing your screen").
 - **Gmail and GitHub** (kuwai-feeds) are never redacted: previewing and replying in the island is the point.
 - Critical/warning alerts are never redacted.
@@ -27,7 +27,7 @@ For chat/mail apps (WhatsApp/ZapZap, Telegram, Signal, Discord, Gmail, …):
 
 - **Badge**: count of notifications **still in the center** until you dismiss them (⌦), not cleared by opening the panel. Caps at **9+**. **Focus** → purple bell-slash.
 - **Click** → notification **center** (Notifications tab).
-- **Right-click** → toggle **quick list** (missed / mail & chat / recent). **Open notification center** at the bottom of the list.
+- **Right-click** or **hold** → Do Not Disturb on or off.
 - Rows in the center still show **unread** styling (since last “mark read”) separately from the badge.
 
 ## Do Not Disturb (most common “nothing shows”)

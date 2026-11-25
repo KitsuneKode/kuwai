@@ -85,7 +85,7 @@ Column {
     Item {
         width: wifi.width
         height: 26
-        Label { x: 4; anchors.verticalCenter: parent.verticalCenter; text: "Networks"; size: 13; weight: Theme.wSemibold; color: Theme.textSecondary }
+        Label { x: 4; anchors.verticalCenter: parent.verticalCenter; text: "Networks"; size: Theme.tBody; weight: Theme.wSemibold; color: Theme.textSecondary }
         Row {
             anchors { right: parent.right; rightMargin: 4; verticalCenter: parent.verticalCenter }
             spacing: 8
@@ -140,7 +140,7 @@ Column {
                 width: parent.width
                 height: 38
                 radius: 12
-                color: row.net.connected ? Qt.alpha(Theme.blue, 0.16) : hover.hovered ? Theme.rowHover : "transparent"
+                color: row.net.connected ? Qt.alpha(Theme.accent, 0.16) : hover.hovered ? Theme.rowHover : "transparent"
                 Behavior on color { ColorAnimation { duration: Theme.colorMs } }
             }
             HoverHandler { id: hover; cursorShape: row.net.connected ? Qt.ArrowCursor : Qt.PointingHandCursor }
@@ -170,7 +170,7 @@ Column {
                 text: wifi.bars(row.net.signalStrength)
                 font.family: Theme.fontGlyph
                 font.pixelSize: Theme.glyphM
-                color: row.net.connected ? Theme.blue : Theme.textSecondary
+                color: row.net.connected ? Theme.accent : Theme.textSecondary
             }
             Label {
                 anchors { left: strength.right; leftMargin: 10; right: trail.left; rightMargin: 8 }
@@ -178,7 +178,7 @@ Column {
                 elide: Text.ElideRight
                 text: wifi.center.highlight(row.net.name)
                 textFormat: Text.StyledText
-                size: 13
+                size: Theme.tBody
                 weight: row.net.connected ? Theme.wSemibold : Theme.wRegular
             }
             Row {
@@ -193,7 +193,7 @@ Column {
                         : row.net.connected ? (row.lit ? "" : "Connected")
                         : row.net.known && !row.lit ? "Saved" : ""
                     visible: text !== ""
-                    size: 11
+                    size: Theme.tFootnote
                     color: Theme.textTertiary
                 }
                 // Hover actions: leave the one you're on; forget a saved one.
@@ -203,7 +203,7 @@ Column {
                     height: 20; radius: 10
                     width: actLabel.implicitWidth + 14
                     color: actArea.containsMouse ? Theme.pillHover : Theme.pill
-                    Label { id: actLabel; anchors.centerIn: parent; text: row.net.connected ? "Disconnect" : "Forget"; size: 11; weight: Theme.wMedium }
+                    Label { id: actLabel; anchors.centerIn: parent; text: row.net.connected ? "Disconnect" : "Forget"; size: Theme.tFootnote; weight: Theme.wMedium }
                     MouseArea {
                         id: actArea
                         anchors.fill: parent
@@ -230,7 +230,7 @@ Column {
                 visible: row.why !== ""
                 x: 37; y: 36
                 text: "Couldn't join: " + row.why
-                size: 11
+                size: Theme.tFootnote
                 color: Theme.red
             }
 
@@ -244,7 +244,7 @@ Column {
                 radius: 10
                 color: Theme.wash(2)
                 border.width: 1
-                border.color: psk.activeFocus ? Qt.alpha(Theme.blue, 0.6) : Theme.edge(1)
+                border.color: psk.activeFocus ? Qt.alpha(Theme.accent, 0.6) : Theme.edge(1)
                 TextInput {
                     id: psk
                     anchors { left: parent.left; right: joinBtn.left; leftMargin: 10; rightMargin: 8; verticalCenter: parent.verticalCenter }
@@ -255,7 +255,7 @@ Column {
                     renderType: Text.NativeRendering
                     clip: true
                     onVisibleChanged: if (visible) { text = ""; forceActiveFocus(); }
-                    Label { visible: psk.text === ""; anchors.verticalCenter: parent.verticalCenter; text: "Password"; size: 13; color: Theme.textTertiary }
+                    Label { visible: psk.text === ""; anchors.verticalCenter: parent.verticalCenter; text: "Password"; size: Theme.tBody; color: Theme.textTertiary }
                     Keys.onReturnPressed: joinBtn.join()
                     Keys.onEnterPressed: joinBtn.join()
                     Keys.onEscapePressed: { wifi.asking = null; row.forceActiveFocus(); }    // back where you were
@@ -265,14 +265,14 @@ Column {
                     anchors { right: parent.right; rightMargin: 4; verticalCenter: parent.verticalCenter }
                     height: 26; radius: 8
                     width: joinLabel.implicitWidth + 20
-                    color: psk.text.length >= 8 ? Theme.blue : Theme.pill
+                    color: psk.text.length >= 8 ? Theme.accent : Theme.pill
                     function join() {
                         if (psk.text.length < 8) return;
                         row.net.connectWithPsk(psk.text);
                         wifi.asking = null;
                         wifi.center.ui.search.forceActiveFocus();
                     }
-                    Label { id: joinLabel; anchors.centerIn: parent; text: "Join"; size: 12; weight: Theme.wSemibold }
+                    Label { id: joinLabel; anchors.centerIn: parent; text: "Join"; size: Theme.tSub; weight: Theme.wSemibold }
                     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: joinBtn.join() }
                     Accessible.role: Accessible.Button
                     Accessible.name: "Join " + row.net.name
