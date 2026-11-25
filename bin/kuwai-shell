@@ -147,7 +147,7 @@ write_env() {
     {
         env_value KUWAI_SHELL_ROOT "$KUWAI"
         [ -n "${KUWAI_SHELL_ENV:-}" ] && env_value KUWAI_SHELL_ENV "$KUWAI_SHELL_ENV"
-        [ -n "${KUWAI_HANDOFF_ID:-}" ] && env_value KUWAI_HANDOFF_ID "$KUWAI_HANDOFF_ID"
+        if [ -n "${KUWAI_HANDOFF_ID:-}" ]; then env_value KUWAI_HANDOFF_ID "$KUWAI_HANDOFF_ID"; fi
     } >"$ENV_FILE.new" && mv -f -- "$ENV_FILE.new" "$ENV_FILE"
 }
 

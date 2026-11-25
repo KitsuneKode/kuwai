@@ -43,6 +43,14 @@ def install_env(tmp_path):
         p = tools / name
         p.write_text('#!/bin/sh\nexit 0\n')
         p.chmod(0o755)
+    for line in (ROOT / 'packages/core.txt').read_text().splitlines():
+        cmd = line.split(':', 1)[0].strip()
+        if cmd and not line.startswith('#') and not shutil.which(cmd) and not (tools / cmd).exists():
+            (tools / cmd).write_text('#!/bin/sh\nexit 0\n')
+            (tools / cmd).chmod(0o755)
+    (tools / 'pacman').write_text('#!/bin/sh\n[ "$1" = -Q ] && exit 0\nexit 1\n')
+    (tools / 'pacman').chmod(0o755)
+    (tools / 'fc-list').write_text('#!/bin/sh\nprintf "Inter\\nSymbols Nerd Font\\n"\n')
     for name in ('kuwai', 'kuwai-doctor'):
         p = repo / 'bin' / name
         p.write_text('#!/bin/sh\nexit 0\n')

@@ -148,7 +148,7 @@ def test_unreadable_paccache_output_is_unknown_not_zero(updater, monkeypatch):
 
 def test_clean_removes_legacy_stale_artifacts_and_owned_builds_only(updater, monkeypatch, tmp_path):
     m = updater
-    monkeypatch.setattr(m, 'ARTIFACT_CAP_BYTES', 2 * MIB)
+    monkeypatch.setattr(m, 'ARTIFACT_CAP_BYTES', 2 * MIB + 256 * 1024)
     write(tmp_path / 'CACHE/aur/old/src/blob', MIB)
     for name, ts in (('pkg-a', 1000), ('pkg-b', 2000), ('pkg-c', 3000)):
         batch = tmp_path / f'CACHE/artifacts/{name}/installed-0'

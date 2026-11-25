@@ -15,7 +15,7 @@ jobs:
     container: archlinux:latest
     steps:
       - name: Tools
-        run: pacman -Syu --noconfirm --needed python python-pytest python-pillow python-numpy ripgrep lua qt6-declarative bash git jq ffmpeg
+        run: pacman -Syu --noconfirm --needed python python-pytest python-pillow python-numpy python-scipy diffutils ripgrep lua qt6-declarative bash git jq ffmpeg nodejs sudo
       - uses: actions/checkout@v4
       - name: QML syntax (every file)
         run: |
@@ -36,8 +36,11 @@ jobs:
             bash -n "$f" || fail=1
           done
           exit $fail
-      - name: Python tests
-        run: PYTHONDONTWRITEBYTECODE=1 python -m pytest -q -p no:cacheprovider tests
+      - name: Python tests (as an ordinary user, the way Kuwai runs)
+        run: |
+          useradd -m tester
+          chown -R tester: "$GITHUB_WORKSPACE"
+          sudo -u tester env HOME=/home/tester PYTHONDONTWRITEBYTECODE=1 python -m pytest -q -p no:cacheprovider tests
       - name: Hyprland config tests
         run: for t in tests/hypr/test_*.lua; do lua "$t" || exit 1; done
       - name: Design tokens only go down

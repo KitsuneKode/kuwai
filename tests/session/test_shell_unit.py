@@ -152,6 +152,7 @@ eval "$cmd"''')
            "XDG_CONFIG_HOME": str(tmp_path / "config"), "HYPRLAND_INSTANCE_SIGNATURE": "live",
            "KUWAI_SHELL_ENV": "QV4_MM_STATS=1", "SHAZAM_DUP_WINDOW": "0"}
     env.pop("KUWAI_SHELL_LEGACY", None)
+    env.pop("KUWAI_HANDOFF_ID", None)
     try:
         r = subprocess.run([root / "bin/kuwai-shell"], env=env, capture_output=True, text=True, timeout=30)
         assert r.returncode == 0, r.stderr
