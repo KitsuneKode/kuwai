@@ -193,3 +193,43 @@ def test_promote_and_rollback_with_a_standalone_stable_clone(tmp_path):
     r = ctl(env, "rollback")
     assert r.returncode == 0, r.stderr
     assert git(stable, "rev-parse", "HEAD") == a
+
+
+def test_update_self_needs_a_release_or_an_explicit_ref(tmp_path):
+    env, dev, stable, a, b = make_world(tmp_path)
+    with_origin(tmp_path, dev)
+    r = ctl(env, "update-self")
+    assert r.returncode != 0 and "no release tag" in r.stderr
+    assert git(stable, "rev-parse", "HEAD") == a, "no silent branch fallback"
+    r = ctl({**env, "KUWAI_UPDATE_REF": "origin/main"}, "update-self")
+    assert r.returncode == 0, r.stderr
+    assert git(stable, "rev-parse", "HEAD") == b
+
+
+def test_update_self_ignores_local_only_tags_and_refuses_a_moved_release(tmp_path):
+    env, dev, stable, a, b = make_world(tmp_path)
+    origin = with_origin(tmp_path, dev)
+    git(dev, "tag", "v0.1.0", a)
+    git(dev, "push", "-q", "origin", "--tags")
+    git(dev, "tag", "v9.0.0", b)
+    r = ctl(env, "update-self")
+    assert r.returncode == 0, r.stderr
+    assert git(stable, "rev-parse", "HEAD") == a, "a tag origin doesn't have is never picked"
+    git(dev, "tag", "-f", "-a", "-m", "moved", "v0.1.0", b)
+    git(dev, "push", "-q", "-f", "origin", "v0.1.0")
+    r = ctl(env, "update-self")
+    assert r.returncode != 0 and "points somewhere else" in r.stderr
+    assert git(stable, "rev-parse", "HEAD") == a
+
+
+def test_update_self_refuses_an_unsigned_release_once_signers_are_listed(tmp_path):
+    env, dev, stable, a, b = make_world(tmp_path)
+    with_origin(tmp_path, dev)
+    conf = Path(env["HOME"]) / ".config/kuwai"
+    conf.mkdir(parents=True)
+    (conf / "release-signers").write_text("0123456789ABCDEF0123456789ABCDEF01234567\n")
+    git(dev, "tag", "-a", "-m", "r", "v0.2.0", b)
+    git(dev, "push", "-q", "origin", "--tags")
+    r = ctl(env, "update-self")
+    assert r.returncode != 0 and "isn't signed" in r.stderr
+    assert git(stable, "rev-parse", "HEAD") == a

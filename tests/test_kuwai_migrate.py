@@ -93,3 +93,45 @@ def test_data_an_earlier_version_left_in_the_stable_copy_moves_out():
         assert os.readlink(share / "rice") == "kuwai-data"
         status = subprocess.run(["git", "status", "--porcelain"], cwd=stable, capture_output=True, text=True).stdout
         assert status == ""                                              # the checkout is clean again
+
+
+def test_runtime_leftovers_with_a_namesake_or_a_dot_are_kept(tmp_path):
+    home, rt = tmp_path / "home", tmp_path / "run"
+    (rt / "rice").mkdir(parents=True)
+    (rt / "kuwai").mkdir()
+    (rt / "rice/.hidden").write_text("dot")
+    (rt / "rice/both").write_text("old")
+    (rt / "kuwai/both").write_text("new")
+    env = {"HOME": str(home), "PATH": "/usr/bin:/bin", "KUWAI_ROOT": str(ROOT), "XDG_RUNTIME_DIR": str(rt)}
+    r = subprocess.run(["bash", str(ROOT / "bin/kuwai-migrate")], env=env, capture_output=True, text=True, timeout=30)
+    assert r.returncode == 0, r.stderr
+    assert (rt / "kuwai/.hidden").read_text() == "dot"
+    assert (rt / "rice/both").read_text() == "old", "never deleted for having a namesake"
+    assert (rt / "kuwai/both").read_text() == "new"
+
+
+def test_an_old_unit_is_retired_only_after_its_successor_starts(tmp_path):
+    home = tmp_path / "home"
+    units = home / ".config/systemd/user"
+    units.mkdir(parents=True)
+    (units / "rice-feeds.service").symlink_to(ROOT / "systemd/kuwai-feeds.service")
+    stubs = tmp_path / "stubs"
+    stubs.mkdir()
+    log = tmp_path / "calls"
+    (stubs / "systemctl").write_text(f"""#!/bin/sh
+echo "$*" >> {log}
+case "$*" in
+  *"start kuwai-feeds.service"*) exit 1 ;;
+  *"is-enabled"*|*"is-active"*) exit 0 ;;
+esac
+exit 0
+""")
+    (stubs / "systemctl").chmod(0o755)
+    env = {"HOME": str(home), "PATH": f"{stubs}:/usr/bin:/bin", "KUWAI_ROOT": str(ROOT)}
+    r = subprocess.run(["bash", str(ROOT / "bin/kuwai-migrate")], env=env, capture_output=True, text=True, timeout=30)
+    assert r.returncode == 0, r.stderr
+    assert "runs again" in r.stderr
+    assert (units / "rice-feeds.service").is_symlink(), "the old unit stays when the new one won't start"
+    calls = log.read_text().splitlines()
+    assert "--user start rice-feeds.service" in calls
+    assert not any(c.startswith("--user disable rice-feeds") or "disable --now rice-feeds" in c for c in calls)

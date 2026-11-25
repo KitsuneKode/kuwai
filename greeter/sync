@@ -24,15 +24,19 @@ copy .local/state/kuwai/look/state.json
 copy .cache/hyde/wall.set
 copy .cache/hyde/wall.dcol
 copy .local/state/hyde/staterc
-copy .config/kuwai/settings.json
-copy .local/state/kuwai/prefs.json
-copy_as() {
-    [ -e "$HOME/$1" ] || return 0
-    mkdir -p "$H/$(dirname "$2")"
-    cp -fL "$HOME/$1" "$H/$2"
+only() {
+    local src=$HOME/$1 keys=$2 dst tmp; shift 2
+    for dst in "$@"; do
+        if [ ! -f "$src" ]; then rm -f "$H/$dst"; continue; fi
+        mkdir -p "$H/$(dirname "$dst")"
+        tmp=$(mktemp "$H/$(dirname "$dst")/.only.XXXXXX")
+        if jq --argjson keep "$keys" 'if type == "object" then with_entries(select(.key as $k | $keep | index($k))) else {} end' "$src" >"$tmp" 2>/dev/null
+        then mv -f "$tmp" "$H/$dst"; else rm -f "$tmp" "$H/$dst"; fi
+    done
 }
-copy_as .config/kuwai/settings.json .config/rice/settings.json
-copy_as .local/state/kuwai/prefs.json .local/state/rice/prefs.json
+only .config/kuwai/settings.json '["clock24","showSeconds","highContrast","textScale","islandStyle","hoverDelay"]' \
+    .config/kuwai/settings.json .config/rice/settings.json
+only .local/state/kuwai/prefs.json '["reduceMotion"]' .local/state/kuwai/prefs.json .local/state/rice/prefs.json
 theme=$(sed -n 's/^HYDE_THEME="\{0,1\}\([^"]*\)"\{0,1\}$/\1/p' "$HOME/.local/state/hyde/staterc" 2>/dev/null | head -n 1)
 if [ -n "$theme" ]; then
     copy ".config/hyde/themes/$theme/theme.dcol"
@@ -75,4 +79,4 @@ fi
 chmod 644 "$tmp"
 mv -f "$tmp" "$conf"
 
-chmod -R a+rX "$H"
+chmod -R u=rwX,g=rX,o= "$H"

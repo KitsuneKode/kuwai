@@ -190,3 +190,9 @@ def test_startup_exports_through_the_same_helper():
     src = (REPO / "hypr/kuwai/startup.lua").read_text()
     assert 'K.bin .. "/kuwai-session-env"' in src
     assert src.index("kuwai-session-env") < src.index("kuwai-shell")
+
+
+def test_the_password_prompt_prefers_roots_copy():
+    cmd = " ".join(unit("kuwai-auth.service")["ExecStart"])
+    assert cmd.index("/usr/local/share/kuwai/shell-auth") < cmd.index("KUWAI_ROOT")
+    assert '[ -f "$p/shell.qml" ]' in cmd

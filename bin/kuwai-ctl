@@ -12,6 +12,7 @@ Control the running kuwai.
   kuwai demo [--step]        a 45 s tour of the island with pretend agents (for trying it, or recording)
   kuwai notifs <cmd>         dnd | dnd-on | dnd-off | mute-on | mute-off | clear | hide | open | last | count | waybar
   kuwai feeds [status|gmail-setup|gmail-forget|logs]   GitHub and Gmail notifications (bin/kuwai-feeds)
+  kuwai collect [clipboard|feeds on|off]  what kuwai collects in the background; with no arguments, what it does now
   kuwai center [notifications|controls|sound] [pointer]   toggle the center (the notch grown);
                             agents opens the island's Agents panel
   kuwai assistant [here|open] toggle the AI assistant; `here` opens it about the focused window
@@ -26,7 +27,8 @@ Control the running kuwai.
   kuwai export [file]        export or diff a portable machine manifest (bin/kuwai-profile)
   kuwai promote              validate dev HEAD and fast-forward stable (with auto-rollback)
   kuwai rollback             revert stable to the previous promoted commit (stable-prev)
-  kuwai update-self          update stable to the newest release (v* tag; KUWAI_UPDATE_REF=<ref> picks another), validate, migrate, restart
+  kuwai update-self          update stable to origin's newest release tag (signed by a key in release-signers when it lists any;
+                             a tag that moves is refused; KUWAI_UPDATE_REF=<ref> follows another on purpose), validate, migrate, restart
   kuwai version              the version, the commit stable runs, and the channel
 KUWAI_USAGE
 }
@@ -37,6 +39,24 @@ SHELL_DIR="$KUWAI/shell"
 . "$KUWAI/lib/hyde.sh"
 
 ipc() { qs ipc -p "$SHELL_DIR" call "$@" 2>/dev/null; }
+
+COLLECT="${XDG_CONFIG_HOME:-$HOME/.config}/kuwai/collect.conf"
+collect() {
+    local what=$1 state=$2 unit
+    if [ -z "$what" ]; then
+        echo "clipboard  $(sed -n 's/^clipboard=//p' "$COLLECT" 2>/dev/null | tail -1 || true)  text and images you copy, kept by cliphist until you clear them"
+        echo "feeds      $(sed -n 's/^feeds=//p' "$COLLECT" 2>/dev/null | tail -1 || true)  GitHub notifications (your gh login) and Gmail (kuwai feeds gmail-setup)"
+        return 0
+    fi
+    case $what in clipboard) unit=kuwai-clipboard.service ;; feeds) unit=kuwai-feeds.service ;;
+        *) echo "usage: kuwai collect [clipboard|feeds on|off]" >&2; return 2 ;; esac
+    case $state in on|off) ;; *) echo "usage: kuwai collect $what on|off" >&2; return 2 ;; esac
+    mkdir -p "$(dirname "$COLLECT")"
+    { grep -v "^$what=" "$COLLECT" 2>/dev/null; echo "$what=$state"; } >"$COLLECT.new" && mv -- "$COLLECT.new" "$COLLECT"
+    if [ "$state" = on ]; then systemctl --user enable --now "$unit" 2>/dev/null
+    else systemctl --user disable --now "$unit" 2>/dev/null; fi
+    echo "$what: $state"
+}
 
 kuwai_owns_notifications() {
     local pid
@@ -328,16 +348,38 @@ case ${1:-} in
         dirty=$(git -C "$STABLE" status --porcelain 2>/dev/null)
         [ -z "$dirty" ] || { echo "kuwai: stable has uncommitted changes; refusing update-self" >&2; exit 1; }
         git -C "$STABLE" remote get-url origin >/dev/null 2>&1 || { echo "kuwai: no origin remote configured in $STABLE" >&2; exit 1; }
-        git -C "$STABLE" fetch --quiet --tags origin || { echo "kuwai: git fetch origin failed" >&2; exit 1; }
-        ref="${KUWAI_UPDATE_REF:-$(git -C "$STABLE" tag -l 'v[0-9]*' --sort=-v:refname | head -n1)}"
-        if [ -z "$ref" ]; then
-            for cand in origin/stable origin/main origin/master; do
-                if git -C "$STABLE" rev-parse --verify "$cand" >/dev/null 2>&1; then ref="$cand"; break; fi
-            done
-        fi
-        [ -n "$ref" ] || { echo "kuwai: no release tag (v*) and no origin/stable or origin/main branch found" >&2; exit 1; }
         prev=$(git -C "$STABLE" rev-parse HEAD)
-        target=$(git -C "$STABLE" rev-parse --verify -q "$ref^{commit}") || { echo "kuwai: $ref is not a commit" >&2; exit 1; }
+        if [ -n "${KUWAI_UPDATE_REF:-}" ]; then
+            ref="$KUWAI_UPDATE_REF"
+            git -C "$STABLE" fetch --quiet origin || { echo "kuwai: git fetch origin failed" >&2; exit 1; }
+            echo "kuwai: following $ref because KUWAI_UPDATE_REF says so: not a release, not signature-checked" >&2
+            target=$(git -C "$STABLE" rev-parse --verify -q "$ref^{commit}") || { echo "kuwai: $ref is not a commit" >&2; exit 1; }
+        else
+            remote=$(git -C "$STABLE" ls-remote --tags --refs origin 'refs/tags/v[0-9]*') || { echo "kuwai: can't list origin's release tags" >&2; exit 1; }
+            ref=$(printf '%s\n' "$remote" | awk 'NF == 2 { sub("^refs/tags/", "", $2); print $2 }' | sort -V | tail -n1)
+            [ -n "$ref" ] || { echo "kuwai: origin has no release tag (v*); to follow a branch on purpose, set KUWAI_UPDATE_REF=origin/main" >&2; exit 1; }
+            want=$(printf '%s\n' "$remote" | awk -v t="refs/tags/$ref" '$2 == t { print $1 }')
+            git -C "$STABLE" fetch --quiet --no-tags origin "+refs/tags/$ref:refs/kuwai/release/$ref" || { echo "kuwai: git fetch of $ref failed" >&2; exit 1; }
+            [ "$(git -C "$STABLE" rev-parse "refs/kuwai/release/$ref")" = "$want" ] || { echo "kuwai: $ref changed while it was fetched; staying on $prev" >&2; exit 1; }
+            pins="$STATE_DIR/release-pins"
+            pinned=$(awk -v t="$ref" '$1 == t { print $2 }' "$pins" 2>/dev/null | tail -n1)
+            if [ -n "$pinned" ] && [ "$pinned" != "$want" ]; then
+                echo "kuwai: release $ref now points somewhere else than when this machine first saw it ($pinned → $want); staying on $prev" >&2
+                exit 1
+            fi
+            signers=$( { git -C "$STABLE" show HEAD:release-signers 2>/dev/null; cat "${XDG_CONFIG_HOME:-$HOME/.config}/kuwai/release-signers" 2>/dev/null; } \
+                | tr -d ' ' | grep -Eio '^[0-9a-f]{40}$' | tr 'a-f' 'A-F')
+            if [ -n "$signers" ]; then
+                sig=$(git -C "$STABLE" verify-tag --raw "refs/kuwai/release/$ref" 2>&1 | awk '$2 == "VALIDSIG" { print toupper($3); print toupper($NF) }')
+                printf '%s\n' "$sig" | grep -qxF -f <(printf '%s\n' "$signers") \
+                    || { echo "kuwai: $ref isn't signed by a key in release-signers; staying on $prev" >&2; exit 1; }
+            else
+                echo "kuwai: no release-signers listed, so $ref is checked against origin and this machine's pins only" >&2
+            fi
+            [ -n "$pinned" ] || { mkdir -p "$STATE_DIR"; printf '%s %s\n' "$ref" "$want" >> "$pins"; }
+            git -C "$STABLE" rev-parse --verify -q "refs/tags/$ref" >/dev/null || git -C "$STABLE" update-ref "refs/tags/$ref" "$want"
+            target=$(git -C "$STABLE" rev-parse --verify -q "refs/kuwai/release/$ref^{commit}") || { echo "kuwai: $ref is not a commit" >&2; exit 1; }
+        fi
         if [ "$prev" = "$target" ] || git -C "$STABLE" merge-base --is-ancestor "$target" "$prev"; then
             echo "kuwai: already up to date ($(git -C "$STABLE" log --oneline -1))"
             exit 0
@@ -383,6 +425,7 @@ case ${1:-} in
     status)        exec systemctl --user status kuwai-shell.service --no-pager ;;
     logs)          exec qs log -p "$SHELL_DIR" -f ;;
     notifs)        shift; notifs "$@" ;;
+    collect)       collect "${2:-}" "${3:-}" ;;
     feeds)         case ${2:-status} in
                        logs) exec journalctl --user -u kuwai-feeds.service -f ;;
                        *) exec "$KUWAI/bin/kuwai-feeds" "${2:-status}" ;;

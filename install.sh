@@ -12,6 +12,8 @@ put back. Run from the repo (wherever you cloned it).
   ./install.sh --yes         pass --noconfirm when installing packages with --deps
   ./install.sh --print-missing  print missing required packages/fonts one per line and exit
   ./install.sh --no-services skip linking and enabling systemd user units
+  ./install.sh --clipboard / --no-clipboard   keep clipboard history, or not (asked otherwise)
+  ./install.sh --feeds / --no-feeds           GitHub/Gmail notifications, or not (asked otherwise)
   ./install.sh --uninstall   put back what was there before the first install
   ./install.sh --separate-session  an older install that used ~/.config/hypr:
                              move Kuwai to ~/.config/kuwai/hypr and give ~/.config/hypr back
@@ -26,9 +28,10 @@ What it does:
      overwritten); ~/.config/hypr and the plain Hyprland session are not touched
   4. the stable channel: a checkout of the `stable` branch in ~/.local/share/kuwai
      (your session runs from it; `kuwai promote` moves it forward)
-  5. user services (password prompt, clipboard history, GitHub/Gmail feeds,
-     a daily snapshot of your own files: kuwai backup),
-     linked from the stable checkout and enabled
+  5. user services (password prompt, a daily snapshot of your own files: kuwai
+     backup), linked from the stable checkout and enabled; clipboard history and
+     GitHub/Gmail feeds only if you say yes (asked once, kept in
+     ~/.config/kuwai/collect.conf; kuwai collect changes it)
   6. a "Kuwai" entry on the login screen, beside your other sessions (sudo,
      once: system/session; without a terminal it says the command instead)
   7. the checks
@@ -44,7 +47,7 @@ STATE=${XDG_STATE_HOME:-$HOME/.local/state}/kuwai
 STABLE=$DATA/kuwai
 UNITS=(kuwai-auth.service kuwai-shell.service kuwai-shell-broken.service kuwai-wallpaper.service kuwai-clipboard.service kuwai-feeds.service kuwai-backup.service kuwai-backup.timer)
 
-DRY=0; DEPS=0; YES=0; PRINT_MISSING=0; NO_SERVICES=0; MODE=install; SEPARATE=0
+DRY=0; DEPS=0; YES=0; PRINT_MISSING=0; NO_SERVICES=0; MODE=install; SEPARATE=0; WANT_CLIP=""; WANT_FEEDS=""
 for a in "$@"; do
     case $a in
         --dry-run) DRY=1 ;;
@@ -52,6 +55,10 @@ for a in "$@"; do
         --yes|-y) YES=1 ;;
         --print-missing) PRINT_MISSING=1 ;;
         --no-services) NO_SERVICES=1 ;;
+        --clipboard) WANT_CLIP=on ;;
+        --no-clipboard) WANT_CLIP=off ;;
+        --feeds) WANT_FEEDS=on ;;
+        --no-feeds) WANT_FEEDS=off ;;
         --uninstall) MODE=uninstall ;;
         --separate-session) SEPARATE=1 ;;
         --doctor) MODE=doctor ;;
@@ -61,6 +68,26 @@ for a in "$@"; do
 done
 
 say()  { printf '%s\n' "$*"; }
+
+COLLECT=$CFG/kuwai/collect.conf
+collect_state() { [ -f "$COLLECT" ] || return 0; sed -n "s/^$1=//p" "$COLLECT" | tail -1; }
+consent() {
+    local name=$1 flag=$2 question=$3 answer
+    answer=${flag:-$(collect_state "$name")}
+    if [ -z "$answer" ]; then
+        answer=off
+        if [ $DRY = 0 ] && [ -t 0 ]; then
+            printf '  %s [y/N] ' "$question"
+            read -r reply || reply=""
+            case $reply in [yY]*) answer=on ;; esac
+        else
+            warn "$name: off (asked only on a terminal; --$name turns it on, or later: kuwai collect $name on)"
+        fi
+    fi
+    [ $DRY = 1 ] && { say "  would: $name=$answer in $COLLECT"; return 0; }
+    mkdir -p "$(dirname "$COLLECT")"
+    { grep -v "^$name=" "$COLLECT" 2>/dev/null || true; echo "$name=$answer"; } >"$COLLECT.new" && mv -- "$COLLECT.new" "$COLLECT"
+}
 step() { printf '\n\033[1m%s\033[0m\n' "$*"; }
 ok()   { printf '  ✓ %s\n' "$*"; }
 warn() { printf '  • %s\n' "$*"; }
@@ -176,21 +203,41 @@ ORIG() { python3 "$REPO/bin/kuwai_install.py" --state "$STATE" "$@"; }
 remember()  { [ $DRY = 1 ] || ORIG remember "$1"; }
 installed() { [ $DRY = 1 ] || ORIG installed "$1"; }
 
+stage() {
+    local link=$1 src=$2 dst=$3 tmp
+    mkdir -p "$(dirname "$dst")"
+    if [ "$link" = 1 ]; then
+        tmp=$(mktemp -u "$(dirname "$dst")/.$(basename "$dst").XXXXXX")
+        ln -s "$src" "$tmp"
+    else
+        tmp=$(mktemp "$(dirname "$dst")/.$(basename "$dst").XXXXXX")
+        cp -- "$src" "$tmp"
+        chmod --reference="$src" "$tmp"
+    fi
+    if [ "${4:-}" = new ]; then mv -nT -- "$tmp" "$dst"; rm -f -- "$tmp"
+    else mv -fT -- "$tmp" "$dst"; fi
+}
+
+create() {
+    local dst=$1 tmp
+    tmp=$(mktemp "$(dirname "$dst")/.$(basename "$dst").XXXXXX")
+    printf '%s\n' "$2" >"$tmp"
+    chmod 0644 "$tmp"
+    mv -nT -- "$tmp" "$dst"
+    rm -f -- "$tmp"
+}
+
 place() {
     local link=0; [ "$1" = -s ] && { link=1; shift; }
-    local src=$1 dst=$2 tmp
+    local src=$1 dst=$2
     if [ $DRY = 1 ]; then printf '  would: %s %s → %s\n' "$([ $link = 1 ] && echo link || echo copy)" "$src" "$dst"; return; fi
     remember "$dst"
     if ORIG edited "$dst"; then
-        if [ $link = 1 ]; then ln -sfn "$src" "$dst.kuwai-new"; else cp "$src" "$dst.kuwai-new"; fi
+        stage "$link" "$src" "$dst.kuwai-new"
         warn "you changed $dst since kuwai installed it: kept yours; the new one is $dst.kuwai-new"
         return 1
     fi
-    mkdir -p "$(dirname "$dst")"
-    tmp=$(dirname "$dst")/.$(basename "$dst").kuwai-new
-    rm -f "$tmp"
-    if [ $link = 1 ]; then ln -s "$src" "$tmp"; else cp "$src" "$tmp"; fi
-    mv -fT "$tmp" "$dst"
+    stage "$link" "$src" "$dst"
     installed "$dst"
 }
 
@@ -210,7 +257,7 @@ separate_session() {
     mkdir -p "$KDIR"
     for f in monitors.lua user.lua features.lua; do
         [ -f "$CFG/hypr/$f" ] && [ ! -e "$KDIR/$f" ] || continue
-        remember "$KDIR/$f"; cp -p "$CFG/hypr/$f" "$KDIR/$f"; installed "$KDIR/$f"
+        remember "$KDIR/$f"; stage 0 "$CFG/hypr/$f" "$KDIR/$f" new; installed "$KDIR/$f"
         ok "$f copied to $KDIR (the one in $CFG/hypr stays)"
     done
     place "$REPO/hypr/templates/hyprland.lua" "$KDIR/hyprland.lua" && ok "$KDIR/hyprland.lua ← hypr/templates/hyprland.lua"
@@ -284,7 +331,7 @@ install_all() {
         elif [ $DRY = 1 ]; then say "  would: create an empty $dir/$f"
         else
             remember "$dir/$f"; mkdir -p "$dir"
-            printf -- '-- %s: yours (kuwai never overwrites it)\n' "$f" >"$dir/$f"
+            create "$dir/$f" "-- $f: yours (kuwai never overwrites it)"
             installed "$dir/$f"
         fi
     done
@@ -302,9 +349,15 @@ install_all() {
             if [ "$(readlink -f "$dst" 2>/dev/null)" = "$(readlink -f "$src")" ]; then ok "$u linked"
             elif place -s "$src" "$dst"; then ok "$u → $src"; fi
         done
-        local enable=()
+        consent clipboard "$WANT_CLIP" "Keep clipboard history? Text and images you copy are kept by cliphist in your home folder until you clear them."
+        consent feeds "$WANT_FEEDS" "Show GitHub and Gmail notifications? Uses your gh login to read your GitHub notifications (private repositories too); Gmail only after kuwai feeds gmail-setup."
+        local enable=() off=()
         for u in "${UNITS[@]}"; do
             local src=$STABLE/systemd/$u; [ -f "$src" ] || src=$REPO/systemd/$u
+            case $u in
+                kuwai-clipboard.service) [ "$(collect_state clipboard)" = on ] || { off+=("$u"); continue; } ;;
+                kuwai-feeds.service) [ "$(collect_state feeds)" = on ] || { off+=("$u"); continue; } ;;
+            esac
             grep -qs '^\[Install\]' "$src" && enable+=("$u")
         done
         if [ $DRY = 0 ] && ! userbus; then
@@ -314,6 +367,10 @@ install_all() {
             do_ systemctl --user daemon-reload
             for u in "${enable[@]}"; do
                 do_ systemctl --user enable "$u" >/dev/null 2>&1 || warn "couldn't enable $u"
+            done
+            for u in "${off[@]}"; do
+                systemctl --user -q is-enabled "$u" 2>/dev/null && { do_ systemctl --user disable --now "$u" >/dev/null 2>&1 || true; }
+                ok "$u left off (your choice: kuwai collect)"
             done
         fi
     fi

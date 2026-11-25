@@ -425,7 +425,22 @@ def test_a_unit_without_an_install_section_is_not_enabled(install_env):
     i.run()
     s = json.loads(i.services.read_text())
     assert s.get('kuwai-shell.service') != 'enabled'
-    assert all(s[u] == 'enabled' for u in UNITS)
+    assert s['kuwai-auth.service'] == 'enabled'
+
+
+def test_collectors_start_only_when_asked_and_the_answer_is_kept(install_env):
+    i = install_env
+    i.run()
+    s = json.loads(i.services.read_text())
+    assert s.get('kuwai-clipboard.service') != 'enabled' and s.get('kuwai-feeds.service') != 'enabled'
+    conf = i.home / '.config/kuwai/collect.conf'
+    assert conf.read_text().split() == ['clipboard=off', 'feeds=off']
+    i.run('--clipboard')
+    assert json.loads(i.services.read_text())['kuwai-clipboard.service'] == 'enabled'
+    i.run()
+    assert 'clipboard=on' in conf.read_text().split(), 'a later run keeps the earlier answer'
+    assert json.loads(i.services.read_text()).get('kuwai-feeds.service') != 'enabled'
+
 
 
 def test_offline_install_reads_enablement_from_the_links(install_env):
@@ -451,3 +466,14 @@ def test_a_failed_unit_restore_keeps_the_record_to_retry(install_env):
     i.run('--uninstall')
     assert json.loads(i.services.read_text())[UNITS[0]] == 'enabled'
     assert not i.entry.exists()
+
+
+def test_a_planted_link_never_redirects_a_new_config(install_env, tmp_path):
+    i = install_env
+    target = tmp_path / 'outside' / 'victim'
+    target.parent.mkdir()
+    d = i.home / '.config/kuwai/hypr'
+    d.mkdir(parents=True, exist_ok=True)
+    (d / 'monitors.lua').symlink_to(target)
+    i.run()
+    assert not target.exists(), "the empty monitors.lua is never written through a link"

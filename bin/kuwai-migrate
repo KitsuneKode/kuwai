@@ -56,10 +56,10 @@ if [ -n "${XDG_RUNTIME_DIR:-}" ]; then
     rt="$XDG_RUNTIME_DIR"
     mkdir -p "$rt/kuwai"
     if [ -d "$rt/rice" ] && [ ! -L "$rt/rice" ]; then
-        for e in "$rt/rice"/*; do [ -e "$e" ] && [ ! -e "$rt/kuwai/${e##*/}" ] && mv -- "$e" "$rt/kuwai/"; done
-        rm -rf -- "$rt/rice"
+        merge "$rt/rice" "$rt/kuwai"
+        rmdir -- "$rt/rice" 2>/dev/null || said "kept $rt/rice: what's left in it has a namesake in $rt/kuwai"
     fi
-    [ -e "$rt/rice" ] || ln -s kuwai "$rt/rice"
+    [ -e "$rt/rice" ] || [ -L "$rt/rice" ] || ln -s kuwai "$rt/rice"
 fi
 
 units="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
@@ -73,11 +73,21 @@ if command -v systemctl >/dev/null && [ -d "$units" ]; then
         enabled=0; active=0
         systemctl --user is-enabled --quiet "$old" 2>/dev/null && enabled=1
         systemctl --user is-active --quiet "$old" 2>/dev/null && active=1
-        systemctl --user disable --now "$old" >/dev/null 2>&1
+        systemctl --user link "$src" >/dev/null 2>&1 || { said "couldn't link $src; $old stays"; continue; }
+        systemctl --user daemon-reload >/dev/null 2>&1
+        if [ "$enabled" = 1 ] && ! systemctl --user enable "$new" >/dev/null 2>&1; then
+            said "couldn't enable $new; $old stays"; continue
+        fi
+        if [ "$active" = 1 ]; then
+            systemctl --user stop "$old" >/dev/null 2>&1
+            if ! systemctl --user start "$new" >/dev/null 2>&1; then
+                systemctl --user start "$old" >/dev/null 2>&1
+                [ "$enabled" = 1 ] && systemctl --user disable "$new" >/dev/null 2>&1
+                said "$new didn't start; $old runs again"; continue
+            fi
+        fi
+        systemctl --user disable "$old" >/dev/null 2>&1
         rm -f -- "$f"
-        systemctl --user link "$src" >/dev/null 2>&1 || { said "couldn't link $src"; continue; }
-        [ "$enabled" = 1 ] && systemctl --user enable "$new" >/dev/null 2>&1
-        [ "$active" = 1 ] && systemctl --user start "$new" >/dev/null 2>&1
         said "$old is now $new"
         changed=1
     done

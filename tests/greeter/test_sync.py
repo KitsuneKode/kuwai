@@ -26,7 +26,7 @@ def run(dest, home):
 def home_with_data(tmp_path):
     home = tmp_path / "home"
     (home / ".config/kuwai").mkdir(parents=True)
-    (home / ".config/kuwai/settings.json").write_text('{"clock24": true}')
+    (home / ".config/kuwai/settings.json").write_text('{"clock24": true, "weatherLocation": "Home Street", "agentServers": ["x"]}')
     (home / ".face").write_bytes(b"png")
     return home
 
@@ -48,7 +48,8 @@ def test_locked_layout_gets_data_only(tmp_path):
         assert not (dest / "user").exists() and not (dest / "face").exists()
         assert (dest / "home/.kuwai-user").read_text().strip()
         assert (dest / "home/.face").read_bytes() == b"png"
-        assert (dest / "home/.config/kuwai/settings.json").read_text() == '{"clock24": true}'
+        assert json.loads((dest / "home/.config/kuwai/settings.json").read_text()) == {"clock24": True}, "display fields only"
+        assert not (dest / "home/.config/kuwai/settings.json").stat().st_mode & 0o007, "not readable by everyone"
         assert "still writable" not in r.stderr
     finally:
         os.chmod(dest, 0o755)
@@ -169,7 +170,7 @@ def test_screens_and_keyboard_from_the_session(tmp_path):
             "monitor=2560x1440@200;1920;0;1;0;10;srgb;Acer Technologies XV272U X1 7626041D84232",
             "monitor=2560x1440@165.003;0;360;1.333333;0;8;srgb;California Institute of Technology 0x1509",
         ]
-        assert stat.S_IMODE(conf.stat().st_mode) == 0o644
+        assert stat.S_IMODE(conf.stat().st_mode) == 0o640
         assert not list((dest / "home/.config").glob(".kuwai-greeter.*")), "the temporary file is left behind"
         if LUA:
             got = greeter_reads(conf)
@@ -224,3 +225,12 @@ def test_a_tampered_file_falls_back_to_defaults(tmp_path):
     conf.write_text('kb_layout=us\nmonitor=1920x1080@60;0;0;1;0;8;;x"]]..os.execute("id")..[["\n')
     assert greeter_reads(conf) == ["monitor |preferred|auto|1|||", "keyboard us||"]
     assert greeter_reads(tmp_path / "missing.conf") == ["monitor |preferred|auto|1|||", "keyboard us||"]
+
+
+def test_install_shows_its_plan_and_copies_only_committed_code():
+    text = (REPO / "greeter" / "install").read_text()
+    assert "--noconfirm" not in text, "pacman shows the packages and asks"
+    assert "Go ahead? [y/N]" in text and "Nothing changed." in text
+    assert "git -C \"$KUWAI\" archive HEAD shell greeter" in text
+    assert "--no-links" in text and "rsync -a" not in text
+    assert "uncommitted changes" in text

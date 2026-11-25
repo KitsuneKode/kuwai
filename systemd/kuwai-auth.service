@@ -22,7 +22,9 @@ Environment=QS_DISABLE_FILE_WATCHER=1
 # A small card and a dimmed backdrop: the software renderer draws it fine and
 # skips loading the GPU drivers (~370 MB → ~140 MB).
 Environment=QT_QUICK_BACKEND=software
-ExecStart=/bin/sh -c 'exec /usr/bin/qs -p "${KUWAI_ROOT:-%h/.local/share/kuwai}/shell-auth"'
+# Root's copy first (kuwai auth pin), so the code that reads your password
+# isn't code your account can change; your checkout's until it's pinned.
+ExecStart=/bin/sh -c 'p=/usr/local/share/kuwai/shell-auth; [ -f "$p/shell.qml" ] || p="${KUWAI_ROOT:-%h/.local/share/kuwai}/shell-auth"; exec /usr/bin/qs -p "$p"'
 # Always: a plain SIGTERM (a stray `pkill qs`, 2026-11-13 00:03) is a clean
 # exit, and on-failure left the session with no password prompt for 17 h:
 # every update "cancelled at the password prompt" at once. `systemctl stop`

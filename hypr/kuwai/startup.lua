@@ -18,9 +18,12 @@ hl.on("hyprland.start", function()
 		unit("gcr-ssh-agent.socket"),
 		unit(auth_unit),
 		unit("kuwai-wallpaper.service"),
-		unit("kuwai-clipboard.service"),
 	}
-	if os.getenv("KUWAI_FEEDS") == "1" or (xdg ~= "" and (K.exists(xdg .. "/kuwai/feeds.json") or K.exists(xdg .. "/gh/hosts.yml"))) then
+	local collect = xdg ~= "" and (K.read(xdg .. "/kuwai/collect.conf") or "") or ""
+	if not collect:find("clipboard=off", 1, true) then
+		units[#units + 1] = unit("kuwai-clipboard.service")
+	end
+	if os.getenv("KUWAI_FEEDS") == "1" or collect:find("feeds=on", 1, true) then
 		units[#units + 1] = unit("kuwai-feeds.service")
 	end
 	hl.exec_cmd(table.concat(units, "; "))

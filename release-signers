@@ -1,0 +1,4 @@
+# GPG fingerprints (40 hex digits, one per line) whose signed v* tags kuwai update-self accepts.
+# While this lists none, update-self checks a release against origin and this machine's pins only;
+# once it lists one, an unsigned or otherwise-signed release tag is refused.
+# Extra signers of your own: ~/.config/kuwai/release-signers, same format.

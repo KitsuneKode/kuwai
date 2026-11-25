@@ -17,7 +17,7 @@ command goes to the shell half, bin/kuwai-ctl (channel, promote, bar, notifs, ti
   kuwai motion [full|reduced|off]
   kuwai gpu [auto|nvidia|intel]   renderer for the next login
   kuwai rescue                    password prompt, clipboard, island, idle: back to working
-  kuwai auth [status|here|restart|fallback|restore|reset-tries]   the password prompt
+  kuwai auth [status|here|restart|fallback|restore|reset-tries|pin|unpin]   the password prompt (pin: root-owned copy)
   kuwai feature [NAME on|off]     list / switch what kuwai does on its own
   kuwai keyboard [LAYOUTS [VARIANTS]] [--switch alt-shift|caps|win-space|ctrl-shift|none]
                                   e.g. `kuwai keyboard us,de` · `kuwai keyboard --switch alt-shift`
@@ -331,6 +331,11 @@ cmd_doctor() {
         st=$(systemctl --user is-active "$u" 2>/dev/null); [ "$st" = active ] && ok "$u" || note "$u: $st"
     done
     if [ "$(systemctl --user is-active kuwai-auth.service 2>/dev/null)" = active ]; then ok "password prompt: kuwai (kuwai-auth)"
+        case $(auth_pin_state) in
+            current) ok "password prompt code: root's copy ($AUTH_PINNED)" ;;
+            older) note "password prompt code: root's copy is older than this checkout: kuwai auth pin" ;;
+            *) note "password prompt code: from your checkout, which your account can change: kuwai auth pin (sudo)" ;;
+        esac
     elif [ "$(systemctl --user is-active plasma-polkit-agent.service 2>/dev/null)" = active ]; then note "password prompt: KDE's fallback (kuwai-auth not running)"
     else bad "no password prompt (polkit agent) running: systemctl --user start kuwai-auth"; fi
     auth_audit
@@ -368,8 +373,33 @@ auth_audit() {
     [ $bad_ -eq 0 ] && ok "password prompt code: files and drawing only (no links, 5 known commands)"
 }
 
+AUTH_PINNED=/usr/local/share/kuwai/shell-auth
+
+auth_pin_state() {
+    if [ ! -f "$AUTH_PINNED/shell.qml" ]; then echo none
+    elif diff -rq "$AUTH_PINNED" "$ROOT/shell-auth" >/dev/null 2>&1; then echo current
+    else echo older; fi
+}
+
 cmd_auth() {
     case ${1:-status} in
+        pin)
+            local tmp st
+            if ! git -C "$ROOT" diff --quiet HEAD -- shell-auth || [ -n "$(git -C "$ROOT" ls-files --others --exclude-standard -- shell-auth)" ]; then
+                echo "shell-auth/ has uncommitted changes: commit or discard them first" >&2; return 1
+            fi
+            tmp=$(mktemp -d) || return 1
+            git -C "$ROOT" archive HEAD shell-auth | tar -x -C "$tmp" || { rm -rf "$tmp"; return 1; }
+            if [ -n "$(find "$tmp" ! -type f ! -type d)" ]; then rm -rf "$tmp"; echo "shell-auth/ holds something that isn't a plain file; refusing" >&2; return 1; fi
+            echo "Copies the password prompt (shell-auth/ at $(git -C "$ROOT" rev-parse --short HEAD)) to $AUTH_PINNED,"
+            echo "owned by root, so the code that reads your password isn't code your account can change. sudo asks once."
+            sudo sh -c 'set -e; rm -rf "$1.new"; mkdir -p "$(dirname "$1")"; cp -R --no-preserve=all "$2/shell-auth" "$1.new"
+                        chown -R root:root "$1.new"; chmod -R u=rwX,go=rX "$1.new"; rm -rf "$1"; mv "$1.new" "$1"' sh "$AUTH_PINNED" "$tmp"
+            st=$?; rm -rf "$tmp"
+            [ $st = 0 ] || { echo "not pinned" >&2; return 1; }
+            systemctl --user reset-failed kuwai-auth.service 2>/dev/null; systemctl --user restart kuwai-auth.service && echo "password prompt now runs from $AUTH_PINNED" ;;
+        unpin)
+            sudo rm -rf "$AUTH_PINNED" && systemctl --user restart kuwai-auth.service && echo "password prompt runs from $ROOT/shell-auth again" ;;
         diff)
             for f in Label Spring NotchShape GlassCard RaisedButton; do
                 diff -u <(cat "$ROOT/shell/components/$f.qml") <(sed '1,/^\/\/ on purpose/d' "$ROOT/shell-auth/components/$f.qml") \
@@ -377,6 +407,11 @@ cmd_auth() {
             done ;;
         status)
             systemctl --user --no-pager status kuwai-auth.service | head -5
+            case $(auth_pin_state) in
+                current) echo "  runs from $AUTH_PINNED (root's copy, same as this checkout)" ;;
+                older) echo "  runs from $AUTH_PINNED (root's copy, older than this checkout: kuwai auth pin)" ;;
+                *) echo "  runs from $ROOT/shell-auth (your account can change it: kuwai auth pin)" ;;
+            esac
             local rt="${XDG_RUNTIME_DIR:-/run/user/$UID}/kuwai"
             [ -s "$rt/auth-pending" ] && echo "  waiting: $(head -1 "$rt/auth-pending") (on $(sed -n 2p "$rt/auth-pending"))" || echo "  no password request waiting"
             pgrep -a pkexec | sed 's/^/  pkexec: /'
@@ -395,7 +430,7 @@ cmd_auth() {
             systemctl --user stop plasma-polkit-agent.service; systemctl --user reset-failed kuwai-auth.service 2>/dev/null; systemctl --user start kuwai-auth.service && echo "kuwai's password prompt is back" ;;
         reset-tries)
             faillock --user "$USER" --reset && echo "failed tries cleared" ;;
-        *) echo "kuwai auth [status|here [SCREEN]|restart|fallback|restore|reset-tries|diff]" >&2; return 2 ;;
+        *) echo "kuwai auth [status|here [SCREEN]|restart|fallback|restore|reset-tries|diff|pin|unpin]" >&2; return 2 ;;
     esac
 }
 
