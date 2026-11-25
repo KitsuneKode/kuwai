@@ -22,12 +22,22 @@ export function forgetAnnounced(announced, now) {
     return dropped ? keep : announced;
 }
 
+/**
+ * @param {{ sticky?: boolean } | null | undefined} now  the moment showing
+ * @param {number} currentInterval
+ * @param {boolean} held
+ * @returns {number}
+ */
 export function nextHideInterval(now, currentInterval, held) {
     if (held || !now) return currentInterval;
     if (now.sticky) return currentInterval;
     return Math.min(currentInterval, 2000);
 }
 
+/**
+ * @param {{ queue?: unknown[] } | null | undefined} state
+ * @returns {{ now: null, held: boolean, queue: unknown[], startGap: boolean }}
+ */
 export function dismissMoment(state) {
     return {
         now: null,
