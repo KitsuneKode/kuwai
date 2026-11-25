@@ -249,6 +249,19 @@ def test_0002_run_twice_is_a_no_op(shipped, tmp_path):
     assert launcher(shipped).read_text() == once
 
 
+@needs_landlock
+def test_0006_keeps_what_ran_at_login_without_asking_systemd(shipped):
+    cfg = shipped['home'] / '.config'
+    units = cfg / 'systemd/user'
+    units.mkdir(parents=True)
+    (units / 'kuwai-clipboard.service').symlink_to(ROOT / 'systemd/kuwai-clipboard.service')
+    (units / 'kuwai-feeds.service').symlink_to(ROOT / 'systemd/kuwai-feeds.service')
+    (cfg / 'gh').mkdir()
+    (cfg / 'gh/hosts.yml').write_text('github.com: {}\n')
+    assert run(shipped).returncode == 0
+    assert (cfg / 'kuwai/collect.conf').read_text().split() == ['clipboard=on', 'feeds=on']
+
+
 def test_list_without_a_state_folder_writes_nothing(shipped):
     r = run(shipped, '--list')
     assert r.returncode == 0 and 'pending  0002-launcher-vitals-to-system' in r.stdout
