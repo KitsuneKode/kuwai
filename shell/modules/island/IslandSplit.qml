@@ -130,7 +130,7 @@ Item {
         agents: on && (agentsLive || agentsLinger.running),
         sys: on && (sysLive || sysLinger.running),
         limits: on && (limitsLive || limitsLinger.running),
-        custom: on && Capsules.top !== null
+        custom: on && Capsules.latest !== null
     })
 
     // ── Who sits where ──
@@ -648,28 +648,28 @@ Item {
     Pill {
         id: customPill
         name: "custom"
-        stateKey: Capsules.top ? Capsules.top.name : ""
-        tone: !Capsules.top ? "transparent" : ({ green: Theme.green, orange: Theme.orange, red: Theme.red })[Capsules.top.tone] || "transparent"
+        stateKey: Capsules.latest ? Capsules.latest.name : ""
+        tone: !Capsules.latest ? "transparent" : ({ green: Theme.green, orange: Theme.orange, red: Theme.red })[Capsules.latest.tone] || "transparent"
         dismissible: true
         onDismissed: Capsules.dismiss()
         Row {
             spacing: Theme.s1
             Text {
-                visible: !!Capsules.top && Capsules.top.glyph !== ""
+                visible: !!Capsules.latest && Capsules.latest.glyph !== ""
                 anchors.verticalCenter: parent.verticalCenter
                 textFormat: Text.PlainText
-                text: Capsules.top ? Capsules.top.glyph : ""
+                text: Capsules.latest ? Capsules.latest.glyph : ""
                 font.family: Theme.fontGlyph; font.pixelSize: Theme.sp(Theme.glyphS)
                 color: Theme.textSecondary
             }
             Label {
                 anchors.verticalCenter: parent.verticalCenter
-                text: Capsules.top ? Capsules.top.text + (Capsules.items.length > 1 ? "  +" + (Capsules.items.length - 1) : "") : ""
+                text: Capsules.latest ? Capsules.latest.text + (Capsules.items.length > 1 ? "  +" + (Capsules.items.length - 1) : "") : ""
                 size: Theme.tFootnote; weight: Theme.wMedium
                 tabular: true
             }
         }
-        Accessible.name: Capsules.top ? Capsules.top.text : ""
+        Accessible.name: Capsules.latest ? Capsules.latest.text : ""
     }
 
     // ── Usage limits: when you can carry on (orange: back within soonMs; red: later) ──
