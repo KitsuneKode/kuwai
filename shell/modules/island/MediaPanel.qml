@@ -9,7 +9,7 @@
 // button is where it plays (the Sound tab: outputs, per-app). The art and
 // title take you to the player. Keys: Space play/pause, ← → ±10 s (⇧ ±30 s),
 // N / P next / previous, S shuffle, R repeat, L the player's own action
-// (♥ in Cider, copy link in a web player: bin/kuwai-player), Esc closes.
+// (♥ in Cider, copy link in a web player: bin/kuwai-player), ↵/G the player, O the output, Esc closes.
 import QtQuick
 import QtQuick.Effects
 import Quickshell
@@ -44,6 +44,8 @@ FocusScope {
         else if (k === Qt.Key_S && p.shuffleSupported) p.shuffle = !p.shuffle;
         else if (k === Qt.Key_R && p.loopSupported) np.cycleLoop();
         else if (k === Qt.Key_L && np.kind !== "") np.contextAct();
+        else if (k === Qt.Key_Return || k === Qt.Key_Enter || k === Qt.Key_G) { Media.goTo(); Island.close(); }
+        else if (k === Qt.Key_O) { Island.close(); Notifs.toggleCenter("sound", "key", Island.screen); }
         else return;
         event.accepted = true;
     }

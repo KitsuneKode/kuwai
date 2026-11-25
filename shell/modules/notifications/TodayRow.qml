@@ -12,6 +12,12 @@ Rectangle {
         const later = end.getTime() + 86400000;
         return (Calendar.events || []).find(e => !e.allDay && e.end > now && e.start < later) || null;
     }
+    function open() { Notifs.setCenter(false, "key"); Island.open("calendar", Notifs.centerScreen, "key"); }
+    activeFocusOnTab: true
+    Keys.onReturnPressed: open()
+    Keys.onEnterPressed: open()
+    Keys.onSpacePressed: open()
+    FocusRing { cornerRadius: Theme.r3 }
     height: Theme.sp(64)
     radius: Theme.r3
     color: Theme.card

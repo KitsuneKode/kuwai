@@ -1158,6 +1158,12 @@ Scope {
                                 const s = Island.sections[event.key - Qt.Key_1];
                                 if (s) { Island.switchTo(s.id); event.accepted = true; return; }
                             }
+                            if (win.sectioned && (event.modifiers & Qt.AltModifier) && (event.key === Qt.Key_Left || event.key === Qt.Key_Right)) {
+                                const ids = Island.sections.map(x => x.id), at = ids.indexOf(win.shownPanel);
+                                Island.switchTo(ids[(at + (event.key === Qt.Key_Left ? ids.length - 1 : 1)) % ids.length]);
+                                event.accepted = true;
+                                return;
+                            }
                             event.accepted = false;
                         }
 

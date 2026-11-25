@@ -576,6 +576,7 @@ FocusScope {
             Keys.onPressed: event => {
                 const k = event.key, ctrl = event.modifiers & Qt.ControlModifier;
                 const alt = event.modifiers & Qt.AltModifier;
+                if (k === Qt.Key_Escape && field.text !== "") { field.text = ""; event.accepted = true; return; }
                 // The dock row: ←/→ choose a tile (the field is empty there, so
                 // the caret has nowhere to go); ⌥1…⌥8 open one from anywhere.
                 if (launcher.onDock && field.text === "" && (k === Qt.Key_Left || k === Qt.Key_Right)) {

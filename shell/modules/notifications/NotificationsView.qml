@@ -121,6 +121,7 @@ Item {
     function move(step) {
         if (!visibleItems.length) return;
         keyboard = true;
+        if (!Settings.seenNotifC1Hint) Settings.set("seenNotifC1Hint", true);
         const at = selectedIndex < 0 ? (step > 0 ? -1 : 0) : selectedIndex;
         selected = visibleItems[Math.max(0, Math.min(visibleItems.length - 1, at + step))];
         const g = groups.findIndex(x => x.items.includes(selected));
@@ -137,7 +138,8 @@ Item {
 
     function key(event, queryEmpty) {
         const k = event.key;
-        if (k === Qt.Key_Down) move(1);
+        if (k === Qt.Key_T && queryEmpty && todayRow.visible && (event.modifiers & Qt.ControlModifier)) todayRow.open();
+        else if (k === Qt.Key_Down) move(1);
         else if (k === Qt.Key_Up) move(-1);
         else if (k === Qt.Key_Return || k === Qt.Key_Enter) {
             if (selected && selectedRow && selectedRow.replying) return false;

@@ -5,7 +5,7 @@
 // A window shared by two accounts (Antigravity's "Claude & GPT") shows once.
 // The header says the one thing that matters: how many are out, and when the
 // first comes back.
-//   Tab / Shift+Tab: the next / previous tab (Spend, Tokens: the period). Ctrl+Tab: Limits, Spend, Tokens. Esc closes.
+//   ← → (or [ ]): the next / previous tab (Spend, Tokens: the period); Tab walks the buttons. Ctrl+Tab: Limits, Spend, Tokens. Esc closes.
 import QtQuick
 import Quickshell
 import qs.config
@@ -68,14 +68,15 @@ FocusScope {
             e.accepted = true;
             return;
         }
-        if (!limitsView && (e.key === Qt.Key_Tab || e.key === Qt.Key_Backtab || e.key === Qt.Key_Left || e.key === Qt.Key_Right)) {
-            spendView.step(e.key === Qt.Key_Backtab || e.key === Qt.Key_Left ? -1 : 1);
+        if (!limitsView && (e.key === Qt.Key_Left || e.key === Qt.Key_Right)) {
+            spendView.step(e.key === Qt.Key_Left ? -1 : 1);
             e.accepted = true;
             return;
         }
-        if (e.key === Qt.Key_Tab || e.key === Qt.Key_Backtab) {
+        const back = e.key === Qt.Key_Left || e.key === Qt.Key_BracketLeft;
+        if (back || e.key === Qt.Key_Right || e.key === Qt.Key_BracketRight) {
             const i = tabs.findIndex(t => t.id === tab);
-            tab = tabs[(i + (e.key === Qt.Key_Backtab ? tabs.length - 1 : 1)) % tabs.length].id;
+            tab = tabs[(i + (back ? tabs.length - 1 : 1)) % tabs.length].id;
             e.accepted = true;
         }
     }

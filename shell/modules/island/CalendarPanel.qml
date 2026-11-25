@@ -251,7 +251,12 @@ FocusScope {
                     color: !Calendar.configured && addCal.containsMouse ? Theme.textSecondary : Theme.textTertiary
                     Accessible.role: Calendar.configured ? Accessible.StaticText : Accessible.Button
                     Accessible.name: text
-                    Accessible.onPressAction: if (!Calendar.configured) { Apps.run(["sh", "-c", 'mkdir -p "$(dirname "$1")" && touch "$1" && xdg-open "$1"', "sh", Calendar.listPath]); Island.close(); }
+                    function addCalendar() { if (!Calendar.configured) { Apps.run(["sh", "-c", 'mkdir -p "$(dirname "$1")" && touch "$1" && xdg-open "$1"', "sh", Calendar.listPath]); Island.close(); } }
+                    Accessible.onPressAction: addCalendar()
+                    activeFocusOnTab: !Calendar.configured
+                    Keys.onReturnPressed: addCalendar()
+                    Keys.onEnterPressed: addCalendar()
+                    FocusRing { cornerRadius: Theme.r1 }
                     MouseArea {
                         id: addCal
                         anchors.fill: parent
