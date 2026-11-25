@@ -18,6 +18,17 @@ export function t3Agent(p) {
         opencode: "opencode", gemini: "gemini", grok: "grok", devin: "devin" })[base] || base;
 }
 
+/**
+ * One id per provider whichever source names it: kittymux says agy and
+ * cursor-agent, T3 says antigravity and cursor (limits dedupe and the Usage
+ * tabs key on this).
+ * @param {string} name @returns {string}
+ */
+export function providerId(name) {
+    const s = t3Agent(String(name || "")).toLowerCase();
+    return /** @type {Record<string, string>} */ ({ agy: "antigravity", "cursor-agent": "cursor", "claude-code": "claude", claudeagent: "claude" })[s] || s;
+}
+
 export { stateGlyph };
 
 const WANTS = 0, FAILED = 1, WORKING = 2, LIMITED = 3, OTHER = 9;

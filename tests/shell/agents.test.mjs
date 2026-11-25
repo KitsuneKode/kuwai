@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { headline, limitedItems, target, merge, until, t3Agent, stateGlyph, stackMarks } from "../../shell/services/agents.mjs";
+import { headline, limitedItems, target, merge, until, t3Agent, stateGlyph, stackMarks, providerId } from "../../shell/services/agents.mjs";
 
 const now = Date.parse("2026-11-22T12:00:00Z");
 const pane = (o) => Object.assign({ key: "p", agent: "claude", state: "working", working: true, since: 0 }, o);
@@ -122,4 +122,15 @@ test("T3's provider instances read as their agent", () => {
   expect(t3Agent("devin_personal")).toBe("devin");
   expect(t3Agent("acpRegistry_devin")).toBe("devin");
   expect(t3Agent("codex_2")).toBe("codex");
+});
+
+describe('one provider id whichever source names it', () => {
+    test('kittymux and T3 names meet', () => {
+        expect(providerId('agy')).toBe('antigravity');
+        expect(providerId('antigravity')).toBe('antigravity');
+        expect(providerId('cursor-agent')).toBe('cursor');
+        expect(providerId('claudeAgent')).toBe('claude');
+        expect(providerId('acpRegistry_devin')).toBe('devin');
+        expect(providerId('Codex')).toBe('codex');
+    });
 });

@@ -78,9 +78,13 @@ Singleton {
     readonly property int doneDesktop: desktop.filter(d => d.state === "done").length
     readonly property var head: A.headline(panes, T3Code.liveItems, doneKitty, T3Code.liveFinished, now, desktop, doneDesktop)
     readonly property var next: A.target(panes, T3Code.liveItems, desktop)
+    readonly property var items: A.merge(panes, T3Code.liveItems, desktop)
+    readonly property int needN: items.filter(i => i.rank === 0).length
+    readonly property int workN: items.filter(i => i.rank === 2).length
+    function providerId(name) { return A.providerId(name); }
     readonly property var extraLimited: A.limitedItems(panes, T3Code.liveItems, desktop).map(it => ({
         key: it.key,
-        id: it.agent,
+        id: A.providerId(it.agent),
         brand: Kittymux.brand(it.agent),
         tint: String(Theme.brandTint[it.agent] || Theme.red),
         name: Kittymux.agentLabel(it.agent),

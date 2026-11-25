@@ -1,5 +1,5 @@
 {
-  "total_comment_lines": 7630,
+  "total_comment_lines": 7629,
   "files_with_comments": 293,
   "files": {
     "shell/components/ActionMenu.qml": 23,
@@ -85,7 +85,7 @@
     "shell/modules/clipboard/DatePicker.qml": 22,
     "shell/modules/clipboard/QuickLook.qml": 29,
     "shell/modules/clipboard/RecordSetup.qml": 15,
-    "shell/modules/island/AgentStack.qml": 12,
+    "shell/modules/island/AgentStack.qml": 11,
     "shell/modules/island/AgentsPanel.qml": 58,
     "shell/modules/island/AlarmCard.qml": 33,
     "shell/modules/island/AlertBanner.qml": 6,

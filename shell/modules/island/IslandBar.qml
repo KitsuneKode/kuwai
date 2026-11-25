@@ -544,12 +544,12 @@ Scope {
             // still light, so no frames; it blooms once as it starts and again
             // when one more joins). The glance says who, and takes you there.
             readonly property var waitingAgents: Kittymux.running.filter(r => r.needs)
-            readonly property int waitingCount: waitingAgents.length + T3Code.waiting + (OllamaService.pendingRequest ? 1 : 0)
+            readonly property int waitingCount: Agents.needN + (OllamaService.pendingRequest ? 1 : 0)
             readonly property string waitingWho: {
                 if (waitingCount > 1) return waitingCount + " need you";
                 const a = waitingAgents[0];
                 if (a) return Kittymux.agentLabel(a.agent) + " needs you";
-                if (T3Code.waiting) return "T3 needs you";
+                if (Agents.next && Agents.next.rank === 0) return Kittymux.agentLabel(Agents.next.agent) + " needs you";
                 return OllamaService.pendingRequest ? "Assistant asks" : "";
             }
             function goWaiting() {
@@ -558,7 +558,7 @@ Scope {
             }
             // Lit at rest, glancing and in the hover view; a panel over it says enough.
             // What's out in a capsule (IslandSplit) lights its capsule instead.
-            readonly property int waitingHere: waitingCount - (split.agentsHold ? waitingAgents.length + T3Code.waiting : 0)
+            readonly property int waitingHere: waitingCount - (split.agentsHold ? Agents.needN : 0)
             readonly property real needTarget: waitingHere > 0 && !panelHere ? 1 : 0
             property real needGlow: 0
             property int lastWaiting: 0
