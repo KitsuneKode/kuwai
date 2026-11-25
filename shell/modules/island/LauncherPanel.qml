@@ -22,6 +22,7 @@ import qs.config
 import qs.components
 import qs.components.ui
 import qs.services
+import "../../services/links.mjs" as Links
 import "../../services/calc.js" as Calc
 
 FocusScope {
@@ -224,6 +225,40 @@ FocusScope {
         pkgRun.command = [Paths.bin + "/kuwai-pkgs", p.installed ? "remove" : "install", p.name].concat(p.aur && !p.installed ? ["--aur"] : []);
         pkgRun.running = true;
     }
+    property var providers: []
+    Process {
+        running: true
+        command: [Paths.bin + "/kuwai-ext", "providers"]
+        stdout: StdioCollector { onStreamFinished: { try { const p = JSON.parse(text) || []; if (p.length) launcher.providers = p; } catch (e) {} } }
+    }
+    readonly property var extProvider: {
+        const m = query.match(/^(\w+)\s+\S/);
+        return m ? providers.find(p => p.prefix === m[1]) || null : null;
+    }
+    readonly property string extQuery: extProvider ? query.replace(/^\w+\s+/, "") : ""
+    property var extHits: []
+    property bool extLoaded: false
+    property bool extPinned: false
+    onExtQueryChanged: { if (extPinned) return; extLoaded = false; if (extProvider) extSoon.restart(); }
+    Timer {
+        id: extSoon
+        interval: 250
+        onTriggered: {
+            if (!launcher.extProvider) return;
+            extRun.running = false;
+            extRun.command = [Paths.bin + "/kuwai-ext", "query", launcher.extProvider.name, launcher.extQuery];
+            extRun.running = true;
+        }
+    }
+    Process {
+        id: extRun
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try { launcher.extHits = JSON.parse(text) || []; } catch (e) { launcher.extHits = []; }
+                launcher.extLoaded = true;
+            }
+        }
+    }
     readonly property bool procMode: /^\s*!/.test(query) || !!procWords
     readonly property string procQuery: /^\s*!/.test(query) ? query.replace(/^\s*!\s*/, "") : procWords ? procWords[1] : ""
     function enterMode(prefix) { field.text = prefix; field.cursorPosition = prefix.length; }
@@ -350,6 +385,12 @@ FocusScope {
         const q = query.trim().toLowerCase();
         const out = [];
         const section = (title, rows) => { if (rows.length) out.push({ kind: "header", name: title }, ...rows); };
+        if (extProvider) {
+            const p = extProvider;
+            if (!extLoaded) out.push({ kind: "tips", name: "", sub: "Asking " + p.title + "…", tips: [] });
+            else section(p.title, extHits.map(h => ({ kind: "ext", name: h.title, sub: h.sub || (h.url ? h.url : ""), glyph: h.glyph || p.glyph || "\u{f0349}", ext: h })));
+            return out;
+        }
         // `=`: the calculator alone, with what to try when it's empty.
         if (calcMode) {
             if (calcRow) section("Calculator", [calcRow]);
@@ -482,6 +523,12 @@ FocusScope {
 
     function run(r) {
         if (!r) return;
+        if (r.kind === "ext") {
+            if (r.ext.url) { if (Links.safeLink(r.ext.url)) Apps.open(r.ext.url); }
+            else if (r.ext.run) Apps.run(r.ext.run);
+            Island.close();
+            return;
+        }
         if (r.kind === "proc") { endProc(r, false); return; }
         if (r.kind === "pkg") { runPkg(r); return; }
         if (r.kind === "emoji" || r.kind === "glyph") {

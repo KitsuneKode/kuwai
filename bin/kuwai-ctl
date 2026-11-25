@@ -12,6 +12,8 @@ Control the running kuwai.
   kuwai demo [--step]        a 45 s tour of the island with pretend agents (for trying it, or recording)
   kuwai notifs <cmd>         dnd | dnd-on | dnd-off | mute-on | mute-off | clear | hide | open | last | count | waybar
   kuwai feeds [status|gmail-setup|gmail-forget|logs]   GitHub and Gmail notifications (bin/kuwai-feeds)
+  kuwai capsule set NAME --text T [--glyph G] [--tone green|orange|red] [--ttl S] [--url U | --run CMD…] | clear NAME | list
+                             a capsule of your own beside the island (bin/kuwai-ext)
   kuwai collect [clipboard|feeds on|off]  what kuwai collects in the background; with no arguments, what it does now
   kuwai center [notifications|controls|sound] [pointer]   toggle the center (the notch grown);
                             agents opens the island's Agents panel
@@ -426,6 +428,8 @@ case ${1:-} in
     logs)          exec qs log -p "$SHELL_DIR" -f ;;
     notifs)        shift; notifs "$@" ;;
     collect)       collect "${2:-}" "${3:-}" ;;
+    capsule)       shift; exec "$KUWAI/bin/kuwai-ext" capsule "$@" ;;
+    providers)     exec "$KUWAI/bin/kuwai-ext" providers ;;
     feeds)         case ${2:-status} in
                        logs) exec journalctl --user -u kuwai-feeds.service -f ;;
                        *) exec "$KUWAI/bin/kuwai-feeds" "${2:-status}" ;;

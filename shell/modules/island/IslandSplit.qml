@@ -129,13 +129,14 @@ Item {
         min: on && minimized.length > 0,
         agents: on && (agentsLive || agentsLinger.running),
         sys: on && (sysLive || sysLinger.running),
-        limits: on && (limitsLive || limitsLinger.running)
+        limits: on && (limitsLive || limitsLinger.running),
+        custom: on && Capsules.top !== null
     })
 
     // ── Who sits where ──
     // Fixed lanes, nearest the notch first: left is what you run, right is
     // what the system tells you. A lane never depends on what came first.
-    readonly property var order: ["ask", "music", "agents", "sys", "limits", "min"]
+    readonly property var order: ["ask", "music", "agents", "sys", "limits", "custom", "min"]
     // Windows tucked away with Super+O (special:minimized): a capsule of their
     // icons, each one a way back. Without it they were nowhere to be seen.
     property var minimized: Hyprland.toplevels.values.filter(t => t.workspace && t.workspace.name === "special:minimized")
@@ -149,8 +150,8 @@ Item {
         Hyprland.dispatch("hl.dsp.window.move({ window = " + JSON.stringify("address:" + address) + ", workspace = " + ws + " })");
         Hyprland.dispatch("hl.dsp.focus({ window = " + JSON.stringify("address:" + address) + " })");
     }
-    readonly property var sideOf: ({ ask: -1, music: -1, agents: -1, min: -1, sys: 1, limits: 1 })
-    function pillOf(k) { return ({ ask: askPill, music: musicPill, agents: agentsPill, sys: sysPill, limits: limitsPill, min: minPill, more: morePill })[k]; }
+    readonly property var sideOf: ({ ask: -1, music: -1, agents: -1, min: -1, sys: 1, limits: 1, custom: 1 })
+    function pillOf(k) { return ({ ask: askPill, music: musicPill, agents: agentsPill, sys: sysPill, limits: limitsPill, custom: customPill, min: minPill, more: morePill })[k]; }
 
     // Reserve one slot for More when there are too many activities. Urgent
     // items take the available direct slots first, then keep their usual sides
@@ -236,7 +237,7 @@ Item {
     readonly property bool agentsNeed: agentStack.list.some(a => a.needs) || Kittymux.running.some(r => r.needs) || Agents.desktop.some(d => d.state === "waiting" || d.state === "woke")
     readonly property bool agentsHold: agentsPill.shown
     // For the window's input mask (IslandBar): what's out takes clicks.
-    readonly property var pills: [askPill, musicPill, agentsPill, sysPill, limitsPill, minPill, morePill]
+    readonly property var pills: [askPill, musicPill, agentsPill, sysPill, limitsPill, customPill, minPill, morePill]
     // Is this point (in this item's coordinates) on a capsule, or within
     // `margin` of one? A capsule is its own target: the island does not take
     // a pointer that is on its way to one for a pointer reaching the island.
@@ -260,7 +261,7 @@ Item {
             if (name === "more") split.openOverflow(how);
             else if (panel) Island.open(panel, split.bar.screenName, how);
         }
-        function activate(how = "pointer") { if (name === "ask") Agents.goNeeds(); else if (panel) openPanel(how); else if (name === "min") split.bringBack(split.minimized[split.minimized.length - 1]); }
+        function activate(how = "pointer") { if (name === "ask") Agents.goNeeds(); else if (name === "custom") Capsules.activate(); else if (panel) openPanel(how); else if (name === "min") split.bringBack(split.minimized[split.minimized.length - 1]); }
         readonly property bool hovered: pillHover.hovered
         readonly property alias inputTarget: hitTarget
         property bool needs: false        // something here waits on you: an orange glass edge
@@ -642,6 +643,33 @@ Item {
             quiet: split.activity !== "" && split.activity !== "media"
             updateOffStage: Updates.running && split.activity !== "update"
         }
+    }
+
+    Pill {
+        id: customPill
+        name: "custom"
+        stateKey: Capsules.top ? Capsules.top.name : ""
+        tone: !Capsules.top ? "transparent" : ({ green: Theme.green, orange: Theme.orange, red: Theme.red })[Capsules.top.tone] || "transparent"
+        dismissible: true
+        onDismissed: Capsules.dismiss()
+        Row {
+            spacing: Theme.s1
+            Text {
+                visible: !!Capsules.top && Capsules.top.glyph !== ""
+                anchors.verticalCenter: parent.verticalCenter
+                textFormat: Text.PlainText
+                text: Capsules.top ? Capsules.top.glyph : ""
+                font.family: Theme.fontGlyph; font.pixelSize: Theme.sp(Theme.glyphS)
+                color: Theme.textSecondary
+            }
+            Label {
+                anchors.verticalCenter: parent.verticalCenter
+                text: Capsules.top ? Capsules.top.text + (Capsules.items.length > 1 ? "  +" + (Capsules.items.length - 1) : "") : ""
+                size: Theme.tFootnote; weight: Theme.wMedium
+                tabular: true
+            }
+        }
+        Accessible.name: Capsules.top ? Capsules.top.text : ""
     }
 
     // ── Usage limits: when you can carry on (orange: back within soonMs; red: later) ──

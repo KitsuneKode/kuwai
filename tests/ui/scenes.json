@@ -4226,6 +4226,44 @@
      "printers"
     ]
    ]
+  },
+  {
+   "id": "launcher/provider",
+   "name": "launcher",
+   "panel": "LauncherPanel",
+   "kind": "typical",
+   "props": {
+    "extPinned": true,
+    "providers": [
+     {
+      "name": "gh",
+      "prefix": "gh",
+      "title": "GitHub",
+      "glyph": ""
+     }
+    ],
+    "query": "gh island",
+    "extLoaded": true,
+    "extHits": [
+     {
+      "title": "KitsuneKode/kuwai · Notch surface",
+      "sub": "Pull request #41 · merged",
+      "url": "https://github.com/KitsuneKode/kuwai/pull/41"
+     },
+     {
+      "title": "Island morph between panels",
+      "sub": "Issue #38 · open",
+      "url": "https://github.com/KitsuneKode/kuwai/issues/38"
+     },
+     {
+      "title": "Run the island rehearsal",
+      "sub": "Checks every panel at every text size",
+      "run": [
+       "true"
+      ]
+     }
+    ]
+   }
   }
  ]
 }

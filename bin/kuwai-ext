@@ -1,0 +1,215 @@
+#!/usr/bin/env python3
+"""kuwai-ext: the two ways to add to Kuwai without changing it.
+
+Launcher providers: ~/.config/kuwai/providers/NAME.json
+    {"prefix": "gh", "title": "GitHub", "glyph": "", "command": ["/home/you/bin/gh-search"]}
+  Typing "gh something" in Search runs the command with "something" as its last
+  argument (2 s at most, nothing on stdin) and lists what it prints: a JSON
+  array, or one JSON object per line, each
+    {"title": "...", "sub": "...", "glyph": "...", "url": "https://..."}  or  {..., "run": ["argv", ...]}
+  The command must be yours alone (owned by you, not writable by others).
+
+  kuwai-ext providers                  JSON: the providers that load
+  kuwai-ext query NAME TEXT            JSON: what NAME answers for TEXT
+
+Capsules: a small capsule of your own beside the island, from any script.
+  kuwai-ext capsule set NAME --text "Deploy 3/5" [--glyph G] [--tone accent|green|orange|red]
+                                     [--ttl SECONDS] [--url URL | --run CMD ARGS...]
+  kuwai-ext capsule clear NAME | list
+  ($XDG_RUNTIME_DIR/kuwai/capsules.json, yours only; at most 8; an hour unless --ttl.)
+"""
+import json
+import os
+import re
+import stat
+import subprocess
+import sys
+import tempfile
+import time
+from pathlib import Path
+
+HOME = Path.home()
+PROVIDERS = Path(os.environ.get("XDG_CONFIG_HOME", HOME / ".config")) / "kuwai" / "providers"
+RUNTIME = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")) / "kuwai"
+CAPSULES = RUNTIME / "capsules.json"
+NAME = re.compile(r"^[a-z0-9][a-z0-9-]{0,31}$")
+TONES = {"accent", "green", "orange", "red"}
+
+
+def clip(v, n):
+    return " ".join(str(v or "").split())[:n]
+
+
+def safe_url(u):
+    u = str(u or "")
+    return u if re.match(r"^(https?://|mailto:)[^\s]{1,2000}$", u, re.I) else ""
+
+
+def safe_argv(a):
+    if not isinstance(a, list) or not a or len(a) > 16:
+        return None
+    if not all(isinstance(x, str) and 0 < len(x) < 512 and "\0" not in x for x in a):
+        return None
+    return a
+
+
+def own(path):
+    try:
+        st = os.stat(path)
+    except OSError:
+        return False
+    return stat.S_ISREG(st.st_mode) and st.st_uid == os.getuid() and not st.st_mode & 0o022 and os.access(path, os.X_OK)
+
+
+def providers():
+    out = []
+    if not PROVIDERS.is_dir():
+        return out
+    for f in sorted(PROVIDERS.glob("*.json")):
+        name = f.stem
+        if not NAME.match(name) or not own_file(f):
+            continue
+        try:
+            m = json.loads(f.read_text())
+        except (OSError, ValueError):
+            continue
+        cmd = safe_argv(m.get("command"))
+        prefix = str(m.get("prefix") or "")
+        if not cmd or not os.path.isabs(cmd[0]) or not own(cmd[0]) or not re.match(r"^[a-z0-9]{1,8}$", prefix):
+            continue
+        out.append({"name": name, "prefix": prefix, "title": clip(m.get("title") or name, 40),
+                    "glyph": clip(m.get("glyph"), 2), "command": cmd})
+    return out
+
+
+def own_file(p):
+    try:
+        st = os.stat(p)
+    except OSError:
+        return False
+    return st.st_uid == os.getuid() and not st.st_mode & 0o022
+
+
+def query(name, text):
+    p = next((x for x in providers() if x["name"] == name), None)
+    if not p:
+        return []
+    env = {"PATH": "/usr/local/bin:/usr/bin:/bin", "HOME": str(HOME), "LANG": os.environ.get("LANG", "C.UTF-8")}
+    try:
+        r = subprocess.run(p["command"] + [clip(text, 200)], stdin=subprocess.DEVNULL, capture_output=True,
+                           text=True, timeout=2, env=env)
+    except (OSError, subprocess.TimeoutExpired):
+        return []
+    raw = r.stdout[:200_000].strip()
+    items = []
+    try:
+        parsed = json.loads(raw)
+        items = parsed if isinstance(parsed, list) else [parsed]
+    except ValueError:
+        for line in raw.splitlines():
+            try:
+                items.append(json.loads(line))
+            except ValueError:
+                continue
+    out = []
+    for it in items:
+        if not isinstance(it, dict) or not clip(it.get("title"), 120):
+            continue
+        row = {"title": clip(it.get("title"), 120), "sub": clip(it.get("sub"), 160), "glyph": clip(it.get("glyph"), 2)}
+        url, argv = safe_url(it.get("url")), safe_argv(it.get("run"))
+        if url:
+            row["url"] = url
+        elif argv:
+            row["run"] = argv
+        out.append(row)
+        if len(out) >= 20:
+            break
+    return out
+
+
+def load_capsules():
+    try:
+        d = json.loads(CAPSULES.read_text())
+        return {k: v for k, v in d.items() if isinstance(v, dict) and NAME.match(k) and v.get("until", 0) > time.time()}
+    except (OSError, ValueError, AttributeError):
+        return {}
+
+
+def save_capsules(d):
+    RUNTIME.mkdir(parents=True, exist_ok=True, mode=0o700)
+    fd, tmp = tempfile.mkstemp(dir=RUNTIME, prefix=".capsules.")
+    with os.fdopen(fd, "w") as f:
+        json.dump(d, f)
+    os.chmod(tmp, 0o600)
+    os.replace(tmp, CAPSULES)
+
+
+def capsule(args):
+    if not args or args[0] == "list":
+        print(json.dumps(load_capsules()))
+        return 0
+    if args[0] == "clear" and len(args) == 2:
+        d = load_capsules()
+        d.pop(args[1], None)
+        save_capsules(d)
+        return 0
+    if args[0] != "set" or len(args) < 2 or not NAME.match(args[1]):
+        print(__doc__.strip(), file=sys.stderr)
+        return 2
+    name, rest = args[1], args[2:]
+    c = {"text": "", "glyph": "", "tone": "accent", "ttl": 3600}
+    while rest:
+        a = rest.pop(0)
+        if a == "--run":
+            argv = safe_argv(rest)
+            if not argv:
+                print("kuwai-ext: --run takes a command and its arguments", file=sys.stderr)
+                return 2
+            c["run"], rest = argv, []
+        elif a in ("--text", "--glyph", "--tone", "--ttl", "--url") and rest:
+            c[a[2:]] = rest.pop(0)
+        else:
+            print(f"kuwai-ext: unknown {a!r}", file=sys.stderr)
+            return 2
+    text = clip(c["text"], 40)
+    if not text:
+        print("kuwai-ext: --text is needed", file=sys.stderr)
+        return 2
+    try:
+        ttl = max(5, min(86400, int(c["ttl"])))
+    except ValueError:
+        print("kuwai-ext: --ttl takes seconds", file=sys.stderr)
+        return 2
+    entry = {"text": text, "glyph": clip(c["glyph"], 2), "tone": c["tone"] if c["tone"] in TONES else "accent",
+             "since": time.time(), "until": time.time() + ttl}
+    if c.get("url"):
+        if not safe_url(c["url"]):
+            print("kuwai-ext: --url takes a web (https://) or mail (mailto:) address", file=sys.stderr)
+            return 2
+        entry["url"] = c["url"]
+    if c.get("run"):
+        entry["run"] = c["run"]
+    d = load_capsules()
+    d[name] = entry
+    if len(d) > 8:
+        for old in sorted(d, key=lambda k: d[k].get("since", 0))[:len(d) - 8]:
+            d.pop(old)
+    save_capsules(d)
+    return 0
+
+
+def main(argv):
+    if argv[:1] == ["providers"]:
+        print(json.dumps([{k: v for k, v in p.items() if k != "command"} for p in providers()]))
+        return 0
+    if argv[:1] == ["query"] and len(argv) == 3:
+        print(json.dumps(query(argv[1], argv[2])))
+        return 0
+    if argv[:1] == ["capsule"]:
+        return capsule(argv[1:])
+    print(__doc__.strip(), file=sys.stderr)
+    return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
