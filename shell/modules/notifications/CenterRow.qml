@@ -105,7 +105,9 @@ Item {
         id: swipe
         span: row.width
         enabled: !row.replying
+        keepMs: Theme.exitMs + Theme.swipeOutMs + 900
         onLeaving: row.collapse()
+        onKept: if (row.removing) { shrink.stop(); row.removing = false; grow.start(); }
     }
 
     HoverHandler {

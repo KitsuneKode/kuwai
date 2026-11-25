@@ -188,10 +188,11 @@ Item {
                     width: parent.width
                     height: 36
                     y: parent.height - height
-                    radius: 14
-                    color: Qt.rgba(1, 1, 1, 0.075 - 0.025 * parent.depth)
+                    radius: 18
+                    color: Theme.wash(1)
+                    opacity: parent.depth === 1 ? 0.8 : 0.5
                     border.width: 1
-                    border.color: Theme.edge(0)
+                    border.color: Theme.edge(1)
                 }
             }
         }

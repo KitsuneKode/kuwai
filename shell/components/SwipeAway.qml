@@ -11,8 +11,8 @@
 //
 // `leaving` fires the moment it's going (release past the line, the × or
 // Delete): remove the row then, so the rows below close the gap while it
-// slides, not after. `away(dir)` sends it out without a drag (no throw: no
-// force was applied, so no bounce). Reduced motion: the springs land at once.
+// slides, not after. `away(dir)` sends it out without a drag. Still here `keepMs`
+// later (its item stayed), it springs home and says `kept`. Reduced motion: no springs.
 import QtQuick
 import qs.config
 
@@ -22,7 +22,15 @@ DragHandler {
     readonly property real offset: sx.value
     readonly property real fade: Math.max(0, 1 - Math.abs(sx.value) / Math.max(1, span))
     property bool gone: false
+    property int keepMs: Theme.swipeOutMs + 900
     signal leaving()
+    signal kept()
+
+    readonly property Timer keep: Timer {
+        interval: h.keepMs
+        running: h.gone
+        onTriggered: { h.gone = false; h.sx.target = 0; h.kept(); }
+    }
 
     target: null
     yAxis.enabled: false                     // the list scrolls; only sideways is ours

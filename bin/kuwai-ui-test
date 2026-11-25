@@ -44,7 +44,7 @@ def main():
         app, home = private/'app', private/'home'
         home.mkdir()
         shutil.copytree(root/'shell', app/'shell')
-        if args.case in ('island', 'idle', 'card-keys', 'pill', 'panel-keys', 'center-keys', 'center-clear', 'center-controls') and args.backend == 'offscreen':
+        if args.case in ('island', 'gestures', 'idle', 'card-keys', 'pill', 'panel-keys', 'center-keys', 'center-clear', 'center-controls') and args.backend == 'offscreen':
             for name in ('Caffeine.qml', 'WallFx.qml'):
                 shutil.copy2(root/'tests/ui/island-stubs'/name, app/'shell/services'/name)
         fixture=(root/'tests/ui'/(args.case + '.qml')).read_text()

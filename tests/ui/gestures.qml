@@ -155,6 +155,9 @@ ShellRoot {
                 driver.wait(700);
                 if (!scene.near(swipe.offset, -row.width, 2)) { scene.fail("away(-1) did not end one width to the left"); return; }
 
+                driver.wait(1200);
+                if (swipe.gone || !scene.near(swipe.offset, 0, 1) || swipe.fade < 0.99) { scene.fail("a row whose item stayed was left out of sight"); return; }
+
                 // 8 · The lock screen's card is the same swipe: a flick clears its conversation.
                 const a = note.createObject(scene, { nid: 1, title: "Ada Lovelace", body: "Lunch on Thursday?", groupKey: "mail-ada" });
                 const b = note.createObject(scene, { nid: 2, title: "Build failed", body: "2 tests", app: "CI", groupKey: "ci", time: Date.now() - 60000 });
