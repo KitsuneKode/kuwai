@@ -119,7 +119,11 @@ Scope {
                 win.shownPanel = Island.panel;
                 panelIn.restart();
             }
-            Timer { id: swapLater; interval: 48; onTriggered: win.swapNow() }
+            Timer {
+                id: swapLater
+                interval: 48
+                onTriggered: win.swapNow()
+            }
             // Another workspace: a panel left open would only be in the way (and its key would close it).
             Connections {
                 target: win.monitor
