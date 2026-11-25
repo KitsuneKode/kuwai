@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # what: "Hide sensitive message text" becomes Message privacy (chat messages hidden on the lock screen, shown on the desktop)
+# touches: $XDG_CONFIG_HOME/kuwai/settings.json
 
 f="$XDG_CONFIG_HOME/kuwai/settings.json"
 [ -f "$f" ] || exit 0

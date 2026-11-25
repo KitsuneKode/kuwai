@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# what: the wallpaper and palette move from HyDE's cache to kuwai look
+# touches: $XDG_STATE_HOME/kuwai/wallpaper
+# touches: $XDG_STATE_HOME/kuwai/look
 set -euo pipefail
 
 STATE=${XDG_STATE_HOME:-$HOME/.local/state}/kuwai

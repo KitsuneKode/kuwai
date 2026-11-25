@@ -134,6 +134,14 @@ STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/kuwai"
 STABLE="${XDG_DATA_HOME:-$HOME/.local/share}/kuwai"
 dev_root() { for d in "$HOME/Projects/kuwai" "$HOME/Projects/rice"; do [ -e "$d/hypr/init.lua" ] && { echo "$d"; return; }; done; }
 set_head() { git -C "$STABLE" reset --hard --quiet "$1" 2>/dev/null && [ "$(git -C "$STABLE" rev-parse HEAD 2>/dev/null)" = "$1" ]; }
+undo_migrations() {
+    local done=$STATE_DIR/migrations/done n gone=()
+    [ -d "$done" ] && [ -x "$STABLE/bin/kuwai-migrations" ] || return 0
+    while IFS= read -r n; do
+        git -C "$STABLE" cat-file -e "$1:migrations/$n" 2>/dev/null || gone+=("$n")
+    done < <(find "$done" -maxdepth 1 -type f -name '[0-9][0-9][0-9][0-9]-*.sh' -printf '%f\n' | LC_ALL=C sort -r)
+    [ ${#gone[@]} -eq 0 ] || "$STABLE/bin/kuwai-migrations" --undo "${gone[@]}"
+}
 undo_release() {
     if ! set_head "$1"; then
         echo "kuwai: git refused to move stable back to $1; run: git -C $STABLE reset --hard $1" >&2
@@ -254,6 +262,7 @@ case ${1:-} in
         git -C "$STABLE" branch -f stable-prev "$prev" 2>/dev/null || true
         echo "stable is now $(git -C "$STABLE" log --oneline -1)"
         if ! "$STABLE/bin/kuwai-migrations"; then
+            undo_migrations "$prev"
             undo_release "$prev" "$old_prev" || exit 1
             echo "kuwai: a migration didn't run (above); stable back to $(git -C "$STABLE" log --oneline -1); fix it in dev and promote again" >&2
             exit 1
@@ -267,6 +276,7 @@ case ${1:-} in
                 for w in $(pgrep -x bash); do
                     [ "$(tr '\0' '\n' < /proc/$w/cmdline 2>/dev/null | sed -n 4p)" = kuwai-shell-watch ] && kill "$w" 2>/dev/null
                 done
+                undo_migrations "$prev"
                 undo_release "$prev" "$old_prev" || exit 1
                 ( switch_to "$STABLE" ) && echo "kuwai: rolled back; fix it in dev and promote again" >&2
                 exit 1
@@ -278,6 +288,7 @@ case ${1:-} in
                 for w in $(pgrep -x bash); do
                     [ "$(tr '\0' '\n' < /proc/$w/cmdline 2>/dev/null | sed -n 4p)" = kuwai-shell-watch ] && kill "$w" 2>/dev/null
                 done
+                undo_migrations "$prev"
                 undo_release "$prev" "$old_prev" || exit 1
                 "$STABLE/bin/kuwai-shell" && echo "kuwai: rolled back; fix it in dev and promote again" >&2
                 exit 1
@@ -298,6 +309,7 @@ case ${1:-} in
         [ -z "$dirty" ] || { echo "kuwai: stable has uncommitted changes; refusing rollback" >&2; exit 1; }
         cur=$(git -C "$STABLE" rev-parse HEAD)
         [ "$cur" != "$target" ] || { echo "kuwai: stable is already at stable-prev ($target)"; exit 0; }
+        undo_migrations "$target"
         set_head "$target" || { echo "kuwai: git refused to move stable to $target; nothing was rolled back" >&2; exit 1; }
         git -C "$STABLE" branch -f stable-prev "$cur" 2>/dev/null || true
         echo "stable rolled back to $(git -C "$STABLE" log --oneline -1)"
@@ -335,6 +347,7 @@ case ${1:-} in
         git -C "$STABLE" merge --ff-only --quiet "$target" || { echo "kuwai: cannot fast-forward stable to $ref" >&2; exit 1; }
         git -C "$STABLE" branch -f stable-prev "$prev" 2>/dev/null || true
         if ! "$STABLE/bin/kuwai-migrations"; then
+            undo_migrations "$prev"
             undo_release "$prev" "$old_prev" || exit 1
             echo "kuwai: migration failed; rolled back to $prev" >&2
             exit 1
@@ -345,6 +358,7 @@ case ${1:-} in
             KUWAI_ERRS_BEFORE=$(hyprctl configerrors 2>/dev/null)
             if ! ( switch_to "$STABLE" ); then
                 unset KUWAI_ERRS_BEFORE
+                undo_migrations "$prev"
                 undo_release "$prev" "$old_prev" || exit 1
                 ( switch_to "$STABLE" ) || true
                 echo "kuwai: new shell failed to start; rolled back to $prev" >&2

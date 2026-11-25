@@ -42,7 +42,7 @@ PY_DIRECTIVE = re.compile(
     r"^#\s*(?:noqa|type:\s*ignore|pylint:|ruff:|fmt:|pyright:|mypy:|pragma:\s*no\s+cover|isort:)\b",
     re.I,
 )
-SH_DIRECTIVE = re.compile(r"^#\s*(?:shellcheck\b|what:\s)", re.I)
+SH_DIRECTIVE = re.compile(r"^#\s*(?:shellcheck\b|what:\s|touches:\s)", re.I)
 LUA_DIRECTIVE = re.compile(r"^--\s*(?:luacheck:|stylua:)", re.I)
 CSTYLE_DIRECTIVE = re.compile(
     r"^(?://|/\*)\s*(?:eslint-|@ts-|qmllint\b|clang-format\b|NOLINT\b|istanbul\b|v8\b|c8\b)",

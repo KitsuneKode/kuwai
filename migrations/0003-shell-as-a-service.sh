@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 # what: kuwai's shell runs as kuwai-shell.service, which systemd restarts
+# touches: $XDG_CONFIG_HOME/systemd/user/kuwai-shell.service
+# touches: $XDG_CONFIG_HOME/systemd/user/kuwai-shell-broken.service
 
 d="$XDG_CONFIG_HOME/systemd/user"
 [ -e "$d/kuwai-auth.service" ] || exit 0

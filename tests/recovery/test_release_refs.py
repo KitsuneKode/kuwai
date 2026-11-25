@@ -158,3 +158,21 @@ def test_version_names_the_release_and_the_stable_commit(tmp_path):
     version = (ROOT / "VERSION").read_text().strip()
     assert r.stdout.splitlines()[0] == f"kuwai {version}"
     assert "stable  v0.1.0" in r.stdout
+
+
+def test_rollback_undoes_the_migrations_the_older_release_lacks(tmp_path):
+    env, dev, stable, a, b = make_world(tmp_path)
+    runner = dev / "bin/kuwai-migrations"
+    runner.write_text('#!/bin/sh\n[ "$1" = --undo ] && echo "$@" >> "$XDG_STATE_HOME/undo-args"\nexit 0\n')
+    (dev / "migrations").mkdir()
+    (dev / "migrations/0009-new.sh").write_text("# what: x\n# touches: $XDG_STATE_HOME/kuwai/x\n")
+    git(dev, "add", "-A")
+    git(dev, "commit", "-qm", "C")
+    assert ctl(env, "promote").returncode == 0
+    done = Path(env["XDG_STATE_HOME"]) / "kuwai/migrations/done"
+    done.mkdir(parents=True)
+    (done / "0009-new.sh").write_text("now\n")
+    r = ctl(env, "rollback")
+    assert r.returncode == 0, r.stderr
+    assert git(stable, "rev-parse", "HEAD") == a
+    assert (Path(env["XDG_STATE_HOME"]) / "undo-args").read_text().split() == ["--undo", "0009-new.sh"]

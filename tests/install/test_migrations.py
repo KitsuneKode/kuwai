@@ -288,3 +288,86 @@ def test_promote_asks_before_stable_moves():
     check = ctl.index('kuwai-migrations" --check')
     move = ctl.index('merge --ff-only --quiet "$head"')
     assert check < move and 'not promoted:' in ctl[check:move]
+
+
+def settings(env):
+    return env['home'] / '.config/kuwai/settings.json'
+
+
+@needs_landlock
+def test_a_failing_migration_puts_back_what_it_touched(env):
+    settings(env).parent.mkdir(parents=True)
+    settings(env).write_text('{"a": 1}')
+    add(env, '0001-half.sh', '# touches: $XDG_CONFIG_HOME/kuwai/settings.json\n'
+        'echo broken > "$XDG_CONFIG_HOME/kuwai/settings.json"; exit 4\n')
+    r = run(env)
+    assert r.returncode == 1
+    assert 'put back' in r.stderr
+    assert settings(env).read_text() == '{"a": 1}'
+    assert not (env['state'] / 'migrations/undo/0001-half').exists()
+
+
+@needs_landlock
+def test_undo_puts_back_changed_and_removes_created_paths(env):
+    settings(env).parent.mkdir(parents=True)
+    settings(env).write_text('{"old": true}')
+    add(env, '0001-reshape.sh', '# touches: $XDG_CONFIG_HOME/kuwai/settings.json\n'
+        '# touches: ${XDG_STATE_HOME}/kuwai/new\n'
+        'echo \'{"new": true}\' > "$XDG_CONFIG_HOME/kuwai/settings.json.new"\n'
+        'mv "$XDG_CONFIG_HOME/kuwai/settings.json.new" "$XDG_CONFIG_HOME/kuwai/settings.json"\n'
+        'mkdir -p "$XDG_STATE_HOME/kuwai/new"; touch "$XDG_STATE_HOME/kuwai/new/x"\n')
+    assert run(env).returncode == 0
+    assert 'new' in settings(env).read_text()
+    r = run(env, '--undo', '0001-reshape.sh')
+    assert r.returncode == 0, r.stderr
+    assert 'undid 0001-reshape' in r.stdout
+    assert settings(env).read_text() == '{"old": true}'
+    assert not (env['state'] / 'new').exists()
+    assert not (env['state'] / 'migrations/done/0001-reshape.sh').exists()
+    assert 'pending' in run(env, '--list').stdout
+
+
+@needs_landlock
+def test_undo_keeps_a_path_changed_after_the_migration(env):
+    settings(env).parent.mkdir(parents=True)
+    settings(env).write_text('{"v": 1}')
+    add(env, '0001-bump.sh', '# touches: $XDG_CONFIG_HOME/kuwai/settings.json\n'
+        'echo \'{"v": 2}\' > "$XDG_CONFIG_HOME/kuwai/settings.json"\n')
+    assert run(env).returncode == 0
+    settings(env).write_text('{"v": 2, "yours": true}')
+    r = run(env, '--undo', '0001-bump.sh')
+    assert r.returncode == 0
+    assert 'kept' in r.stdout and 'changed after 0001-bump' in r.stdout
+    assert settings(env).read_text() == '{"v": 2, "yours": true}'
+
+
+@needs_landlock
+def test_touches_outside_the_xdg_folders_is_refused_before_it_runs(env):
+    add(env, '0001-sneaky.sh', '# touches: /etc/passwd\ntouch "$XDG_STATE_HOME/ran"\n')
+    r = run(env)
+    assert r.returncode == 1
+    assert 'outside your four XDG folders' in r.stderr
+    assert not (env['home'] / '.local/state/ran').exists()
+
+
+@needs_landlock
+def test_undo_without_touches_says_so_and_lets_it_run_again(env):
+    add(env, '0001-plain.sh', 'mkdir -p "$XDG_STATE_HOME/kuwai"; touch "$XDG_STATE_HOME/kuwai/p"\n')
+    assert run(env).returncode == 0
+    r = run(env, '--undo', '0001-plain.sh')
+    assert r.returncode == 0
+    assert "can't be undone" in r.stdout
+    assert (env['state'] / 'p').exists()
+    assert 'pending' in run(env, '--list').stdout
+
+
+def test_undo_of_a_migration_that_never_ran_does_nothing(env):
+    r = run(env, '--undo', '0007-never.sh')
+    assert r.returncode == 0 and r.stdout == ''
+
+
+def test_every_shipped_migration_names_what_it_touches():
+    for f in sorted((ROOT / 'migrations').glob('[0-9][0-9][0-9][0-9]-*.sh')):
+        text = f.read_text()
+        assert '# what:' in text, f.name
+        assert '# touches:' in text, f.name

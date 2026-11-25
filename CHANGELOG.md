@@ -7,6 +7,14 @@ is listed here.
 
 ## Unreleased
 
+### Install and updates
+- Rollback undoes migrations. A migration names what it changes in
+  `# touches:` lines; the runner copies those paths first, puts them back at
+  once if the migration fails, and `kuwai rollback` (and a promote or
+  update-self that fails partway) puts them back when returning to a release
+  that doesn't have that migration. A path you changed since is kept and named.
+  `kuwai migrations --undo N…` does it by hand.
+
 ## 0.1.0 — 2026-11-25
 
 The first release. Kuwai is a desktop for Arch Linux: its own Hyprland session

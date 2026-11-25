@@ -41,6 +41,12 @@ digits; only names of that shape run). Then:
   line); nothing when it didn't. Exit non-zero to stop the run: it and all after
   it stay pending, and the reason is printed.
 - `# what:` near the top is what `--list` and `--dry-run` show.
+- **`# touches:` lines name every path it changes** (one each, written with
+  `$XDG_CONFIG_HOME` and the like; a folder covers what's in it). The runner
+  copies them before it runs, puts them back at once if it fails, and
+  `kuwai rollback` puts them back when it returns to a release without this
+  migration, except a path changed since (kept, and named). Without these
+  lines it can't be undone, and rollback says so.
 - Never rename or renumber a shipped migration: its file name is its record.
   A later number may land below one a machine already ran (see 0001 below):
   the runner runs whatever is pending in number order, so migrations must not

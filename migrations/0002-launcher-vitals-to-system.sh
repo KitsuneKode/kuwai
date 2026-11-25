@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # what: the launcher's use counts for the old "Vitals" action go to "System"
+# touches: $XDG_STATE_HOME/kuwai/launcher.json
 
 f="$XDG_STATE_HOME/kuwai/launcher.json"
 [ -f "$f" ] || exit 0
