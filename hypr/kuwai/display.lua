@@ -613,7 +613,7 @@ function kuwai.screens_json()
 		for i, v in ipairs(rates) do
 			rs[i] = tostring(v)
 		end
-		out[#out + 1] = ('{"name":%s,"description":%s,"width":%d,"height":%d,"rate":%d,"scale":%g,"rates":[%s],"changed":%s}'):format(
+		out[#out + 1] = ('{"name":%s,"description":%s,"size":"%d × %d","rate":%d,"scale":%g,"rates":[%s],"changed":%s}'):format(
 			K.json_str(m.name), K.json_str(m.description or ""), m.width or 0, m.height or 0, math.floor((m.refresh_rate or 0) + 0.5), m.scale or 1,
 			table.concat(rs, ","), tostring(K.state[k .. ".scale"] ~= nil or K.state[k .. ".rate"] ~= nil))
 	end

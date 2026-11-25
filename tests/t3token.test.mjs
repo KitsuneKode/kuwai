@@ -11,7 +11,7 @@ function tokens(files) {
     writeFileSync(`${state}/kuwai/${name}`, text);
     chmodSync(`${state}/kuwai/${name}`, mode);
   }
-  const r = spawnSync('node', ['-e', `import(${JSON.stringify(mod)}).then(m => console.log(JSON.stringify([m.t3Token('read'), m.t3Token('operate')])))`],
+  const r = spawnSync(process.execPath, ['-e', `import(${JSON.stringify(mod)}).then(m => console.log(JSON.stringify([m.t3Token('read'), m.t3Token('operate')])))`],
     { encoding: 'utf8', env: { PATH: '/usr/bin:/bin', HOME: state, XDG_STATE_HOME: state } });
   return JSON.parse(r.stdout);
 }

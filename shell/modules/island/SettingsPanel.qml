@@ -720,7 +720,7 @@ FocusScope {
     Component {
         id: pointerPage
         Column {
-            id: ptPage
+            id: ptCol
             spacing: 18
             readonly property string kuwai: Paths.bin + "/kuwai"
             property var kv: ({})
@@ -732,14 +732,14 @@ FocusScope {
                 onLoaded: {
                     const o = {};
                     for (const l of text().split("\n")) { const i = l.indexOf("="); if (i > 0) o[l.slice(0, i)] = l.slice(i + 1); }
-                    ptPage.kv = o;
+                    ptCol.kv = o;
                 }
             }
             readonly property var defaults: ({ speed: "-0.5", accel: "flat", "mouse-natural": "off", "trackpad-natural": "on", tap: "on", "trackpad-scroll": "0.7" })
             function get(k) { return kv["ptr." + k] || defaults[k]; }
             function set(k, v) { Quickshell.execDetached([kuwai, "pointer", k, String(v)]); }
             property real pendingSpeed: 0
-            Timer { id: speedLater; interval: 200; onTriggered: ptPage.set("speed", ptPage.pendingSpeed.toFixed(2)) }
+            Timer { id: speedLater; interval: 200; onTriggered: ptCol.set("speed", ptCol.pendingSpeed.toFixed(2)) }
 
             SettingsGroup {
                 title: "Pointer"
@@ -749,9 +749,9 @@ FocusScope {
                     Slider {
                         Layout.fillWidth: true; Layout.preferredWidth: Theme.sp(180); Layout.maximumWidth: Theme.sp(180); implicitHeight: Theme.sp(28)
                         from: -1; to: 1
-                        value: Number(ptPage.get("speed"))
+                        value: Number(ptCol.get("speed"))
                         valueText: Math.round((value + 1) * 50) + "%"
-                        onMoved: v => { ptPage.pendingSpeed = v; speedLater.restart(); }
+                        onMoved: v => { ptCol.pendingSpeed = v; speedLater.restart(); }
                     }
                 }
                 SettingsRow {
@@ -759,14 +759,14 @@ FocusScope {
                     detail: "Faster moves go further. Off: the same distance every time (most gamers' choice)"
                     Segmented {
                         options: [{ id: "flat", label: "Off" }, { id: "adaptive", label: "On" }]
-                        current: ptPage.get("accel")
-                        onPicked: id => ptPage.set("accel", id)
+                        current: ptCol.get("accel")
+                        onPicked: id => ptCol.set("accel", id)
                     }
                 }
                 SettingsRow {
                     label: "Natural scrolling with a mouse"
                     detail: "The page follows the wheel, as on a touch screen"
-                    Toggle { on: ptPage.get("mouse-natural") === "on"; onToggled: ptPage.set("mouse-natural", on ? "off" : "on") }
+                    Toggle { on: ptCol.get("mouse-natural") === "on"; onToggled: ptCol.set("mouse-natural", on ? "off" : "on") }
                 }
             }
             SettingsGroup {
@@ -774,19 +774,19 @@ FocusScope {
                 SettingsRow {
                     label: "Natural scrolling"
                     detail: "Content moves with your fingers"
-                    Toggle { on: ptPage.get("trackpad-natural") === "on"; onToggled: ptPage.set("trackpad-natural", on ? "off" : "on") }
+                    Toggle { on: ptCol.get("trackpad-natural") === "on"; onToggled: ptCol.set("trackpad-natural", on ? "off" : "on") }
                 }
                 SettingsRow {
                     label: "Tap to click"
                     detail: "A light tap clicks; two fingers right-click"
-                    Toggle { on: ptPage.get("tap") === "on"; onToggled: ptPage.set("tap", on ? "off" : "on") }
+                    Toggle { on: ptCol.get("tap") === "on"; onToggled: ptCol.set("tap", on ? "off" : "on") }
                 }
                 SettingsRow {
                     label: "Scrolling speed"
                     Segmented {
                         options: [{ id: "0.4", label: "Slow" }, { id: "0.7", label: "Normal" }, { id: "1.2", label: "Fast" }]
-                        current: ptPage.get("trackpad-scroll")
-                        onPicked: id => ptPage.set("trackpad-scroll", id)
+                        current: ptCol.get("trackpad-scroll")
+                        onPicked: id => ptCol.set("trackpad-scroll", id)
                     }
                 }
             }
@@ -795,7 +795,7 @@ FocusScope {
     Component {
         id: displaysPage
         Column {
-            id: dpPage
+            id: dpCol
             spacing: 18
             readonly property string kuwai: Paths.bin + "/kuwai"
             property var screens: []
@@ -807,11 +807,11 @@ FocusScope {
                 stdout: StdioCollector {
                     onStreamFinished: {
                         const t = text.trim(), i = t.indexOf("[");
-                        try { dpPage.screens = i >= 0 ? JSON.parse(t.slice(i)) : []; } catch (e) { dpPage.screens = []; }
+                        try { dpCol.screens = i >= 0 ? JSON.parse(t.slice(i)) : []; } catch (e) { dpCol.screens = []; }
                     }
                 }
             }
-            Timer { id: reread; interval: 700; onTriggered: dpPage.load() }
+            Timer { id: reread; interval: 700; onTriggered: dpCol.load() }
             function set(name, field, value) {
                 Quickshell.execDetached([kuwai, "screen", name, field, String(value)]);
                 reread.restart();
@@ -825,22 +825,22 @@ FocusScope {
             Label {
                 width: parent.width
                 wrapMode: Text.Wrap
-                visible: dpPage.screens.length === 0
+                visible: dpCol.screens.length === 0
                 text: "Reading your screens…"
                 size: Theme.tSub; color: Theme.textTertiary
             }
             Repeater {
-                model: dpPage.screens
+                model: dpCol.screens
                 SettingsGroup {
                     required property var modelData
                     title: modelData.description ? modelData.description + " · " + modelData.name : modelData.name
                     SettingsRow {
                         label: "Scale"
-                        detail: modelData.width + " × " + modelData.height + " pixels"
+                        detail: modelData.size + " pixels"
                         Segmented {
-                            options: dpPage.scales(modelData.scale)
-                            current: String(dpPage.scales(modelData.scale).find(o => Math.abs(Number(o.id) - modelData.scale) < 0.01).id)
-                            onPicked: id => dpPage.set(modelData.name, "scale", id)
+                            options: dpCol.scales(modelData.scale)
+                            current: String(dpCol.scales(modelData.scale).find(o => Math.abs(Number(o.id) - modelData.scale) < 0.01).id)
+                            onPicked: id => dpCol.set(modelData.name, "scale", id)
                         }
                     }
                     SettingsRow {
@@ -849,14 +849,14 @@ FocusScope {
                         Segmented {
                             options: modelData.rates.map(r => ({ id: String(r), label: r + " Hz" }))
                             current: String(modelData.rate)
-                            onPicked: id => dpPage.set(modelData.name, "rate", id)
+                            onPicked: id => dpCol.set(modelData.name, "rate", id)
                         }
                     }
                     SettingsRow {
                         visible: modelData.changed
                         label: "Changed here"
                         detail: "Over what monitors.lua says for this screen"
-                        Button { height: Theme.sp(30); size: Theme.tSub; text: "Use monitors.lua"; onClicked: dpPage.set(modelData.name, "reset", "") }
+                        Button { height: Theme.sp(30); size: Theme.tSub; text: "Use monitors.lua"; onClicked: dpCol.set(modelData.name, "reset", "") }
                     }
                 }
             }
