@@ -41,7 +41,7 @@ Scope {
     property string accessoryGlyph: ""
     property string linkGlyph: ""         // how it's attached: Bluetooth or USB
     property string accessory: ""
-    property real level: 0                // 0..1 fill
+    property real level: 0                // 0..1
     property string valueText: ""
     property bool muted: false
     property bool showTrack: true

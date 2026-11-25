@@ -66,20 +66,20 @@ QtObject {
     // Opens at (x, y) in the target's coordinates. From the keyboard (no point),
     // it opens under the target's leading edge with its first row lit.
     function popup(x, y) {
-        const keys = x === undefined;
+        const fromKeyboard = x === undefined;
         if (!enabled || !target || !target.visible || Menu.first(entries) < 0) return;
         const host = bounds || (target.Window.window ? target.Window.window.contentItem : null);
         if (!host) return;
         // A row partly scrolled out of its list opens its menu at the edge that shows.
-        const q = target.mapToItem(host, keys ? Theme.s4 : x, keys ? target.height : y);
+        const q = target.mapToItem(host, fromKeyboard ? Theme.s4 : x, fromKeyboard ? target.height : y);
         const p = Qt.point(Math.max(0, Math.min(host.width, q.x)), Math.max(0, Math.min(host.height, q.y)));
         if (!overlay || !overlay.shown) giveBack = target.Window.activeFocusItem;
         where = host;                         // loads the card (synchronously)
         if (!overlay) return;
         overlay.at = p;
         overlay.shown = true;
-        overlay.byKeys = keys;
-        overlay.current = keys ? Menu.first(entries) : -1;
+        overlay.byKeys = fromKeyboard;
+        overlay.current = fromKeyboard ? Menu.first(entries) : -1;
         overlay.forceActiveFocus();
         opened();
     }
@@ -183,7 +183,7 @@ QtObject {
                 acceptedButtons: Qt.AllButtons
                 onPressed: m => { m.accepted = true; menu.close(); }
                 onWheel: w => w.accepted = true
-                Accessible.ignored: true        // Esc does this from the keys
+                Accessible.ignored: true        // Esc does this from the keyboard
             }
 
             Item {
