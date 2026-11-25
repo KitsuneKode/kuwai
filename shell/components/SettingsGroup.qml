@@ -9,7 +9,7 @@ import qs.components.ui
 Column {
     id: g
     property string title
-    default property alias rows: list.body
+    default property alias rows: list.data
     width: parent ? parent.width : 480
     spacing: 8
 
@@ -18,8 +18,8 @@ Column {
         text: g.title
     }
     Card {
-        id: list
         width: g.width
         flush: true
+        Column { id: list; width: parent.width }
     }
 }
