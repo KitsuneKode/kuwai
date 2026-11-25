@@ -68,12 +68,12 @@ Row {
             color: status.bt && status.bt.enabled ? (status.btConnected.length ? status.tint : Qt.alpha(status.tint, 0.6)) : Qt.alpha(status.tint, 0.3)
         }
         HoverHandler { id: btHover; cursorShape: status.bar ? Qt.PointingHandCursor : Qt.ArrowCursor }
-        TapHandler { enabled: !!status.bar; acceptedButtons: Qt.LeftButton | Qt.RightButton; onTapped: btMenu.open = !btMenu.open }
+        TapHandler { enabled: !!status.bar; acceptedButtons: Qt.LeftButton | Qt.RightButton; onTapped: (p, b) => { if (b === Qt.RightButton) btMenu.open = !btMenu.open; else Notifs.openControls("bluetooth", "pointer", status.bar.screenName); } }
         Accessible.role: Accessible.ButtonMenu
         Accessible.name: !status.bt ? "Bluetooth" : !status.bt.enabled ? "Bluetooth, off"
             : status.btConnected.length ? "Bluetooth, " + status.btConnected.map(d => (d.name || d.deviceName) + (d.batteryAvailable ? " " + Math.round(d.battery * 100) + "%" : "")).join(", ")
             : "Bluetooth, nothing connected"
-        Accessible.onPressAction: if (status.bar) btMenu.open = !btMenu.open
+        Accessible.onPressAction: if (status.bar) Notifs.openControls("bluetooth", "key", status.bar.screenName)
         Tip {
             text: !status.bt ? "" : !status.bt.enabled ? "Bluetooth is off"
                 : status.btConnected.length ? status.btConnected.map(d => (d.name || d.deviceName) + (d.batteryAvailable ? " · " + Math.round(d.battery * 100) + "%" : "")).join("  ·  ")
@@ -111,10 +111,10 @@ Row {
             }
         }
         HoverHandler { id: netHover; cursorShape: status.bar ? Qt.PointingHandCursor : Qt.ArrowCursor }
-        TapHandler { enabled: !!status.bar; acceptedButtons: status.showBluetooth ? Qt.LeftButton | Qt.RightButton : Qt.RightButton; onTapped: netMenu.open = !netMenu.open }
+        TapHandler { enabled: !!status.bar; acceptedButtons: status.showBluetooth ? Qt.LeftButton | Qt.RightButton : Qt.RightButton; onTapped: (p, b) => { if (b === Qt.RightButton) netMenu.open = !netMenu.open; else Notifs.openControls("wifi", "pointer", status.bar.screenName); } }
         Accessible.role: Accessible.ButtonMenu
         Accessible.name: status.wired ? "Network, wired" : !status.wifiDev ? "No Wi-Fi" : status.net ? "Wi-Fi, " + status.net.name + ", " + Math.round(status.signal * 100) + "%" : "Wi-Fi, not connected"
-        Accessible.onPressAction: if (status.bar) netMenu.open = !netMenu.open
+        Accessible.onPressAction: if (status.bar) Notifs.openControls("wifi", "key", status.bar.screenName)
         Tip {
             text: status.wired ? "Wired" : !status.wifiDev ? "No Wi-Fi" : status.net ? status.net.name + " · " + Math.round(status.signal * 100) + "%" : "Not connected"
             shown: netHover.hovered && !netMenu.open
@@ -144,10 +144,10 @@ Row {
             color: status.drawnPct > 38 ? Qt.rgba(0.08, 0.08, 0.1, 0.92) : status.tint
         }
         HoverHandler { id: batHover; cursorShape: status.bar ? Qt.PointingHandCursor : Qt.ArrowCursor }
-        TapHandler { enabled: !!status.bar; acceptedButtons: status.showBluetooth ? Qt.LeftButton | Qt.RightButton : Qt.RightButton; onTapped: batMenu.open = !batMenu.open }
+        TapHandler { enabled: !!status.bar; acceptedButtons: status.showBluetooth ? Qt.LeftButton | Qt.RightButton : Qt.RightButton; onTapped: (p, b) => { if (b === Qt.RightButton) batMenu.open = !batMenu.open; else Notifs.openControls("", "pointer", status.bar.screenName); } }
         Accessible.role: Accessible.ButtonMenu
         Accessible.name: "Battery " + status.pct + "%, " + (status.charging ? "charging" : status.onAC ? "plugged in" : "on battery")
-        Accessible.onPressAction: if (status.bar) batMenu.open = !batMenu.open
+        Accessible.onPressAction: if (status.bar) Notifs.openControls("", "key", status.bar.screenName)
         Tip {
             text: status.pct + "% · " + (status.charging ? "Charging" + (status.battery.timeToFull > 0 ? ", full in " + status.hm(status.battery.timeToFull) : "")
                   : status.onAC ? "Plugged in" : "On battery" + (status.battery.timeToEmpty > 0 ? ", " + status.hm(status.battery.timeToEmpty) + " left" : ""))

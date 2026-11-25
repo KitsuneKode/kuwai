@@ -109,6 +109,11 @@ FocusScope {
         { name: "Update in a terminal", sub: "sysup", glyph: "\u{f018d}", run: () => Updates.terminal() },
         { name: "Do Not Disturb", sub: Notifs.dnd ? "On: turn off" : "Off: turn on", glyph: "\u{f0594}", run: () => { Notifs.toggleUserDnd(); } },
         { name: "Sound", sub: "Outputs, inputs, the microphone", glyph: "\u{f057e}", run: () => Notifs.toggleCenter("sound", "key") },
+        { name: "Focus mode", sub: "Desktop mode: opaque windows, glass on the shell only", also: "desktop mode", glyph: "\u{f0f49}", run: () => Apps.run([Paths.bin + "/kuwai", "mode", "focus"]) },
+        { name: "Default mode", sub: "Desktop mode: the theme as designed, per-app translucency", also: "desktop mode", glyph: "\u{f0f49}", run: () => Apps.run([Paths.bin + "/kuwai", "mode", "default"]) },
+        { name: "Glass mode", sub: "Desktop mode: liquid glass, translucent windows", also: "desktop mode", glyph: "\u{f0f49}", run: () => Apps.run([Paths.bin + "/kuwai", "mode", "glass"]) },
+        { name: "Gaming mode", sub: "Desktop mode: nothing between you and the frame", also: "desktop mode", glyph: "\u{f0eb5}", run: () => Apps.run([Paths.bin + "/kuwai", "mode", "gaming"]) },
+        { name: "Battery mode", sub: "Desktop mode: light effects, longer battery", also: "desktop mode", glyph: "\u{f0079}", run: () => Apps.run([Paths.bin + "/kuwai", "mode", "battery"]) },
         { name: "Controls", sub: "Wi-Fi, Bluetooth, Do Not Disturb, brightness, sound · Super+Ctrl+Alt+W", glyph: "\u{f0493}", run: () => Notifs.toggleCenter("controls", "key") },
         { name: "Wi-Fi", sub: "Networks, join one", glyph: "\u{f05a9}", run: () => Notifs.toggleCenter("controls", "key") },
         // vicinae's names for them (it went on 11-05), so the habit still works.

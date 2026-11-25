@@ -214,7 +214,7 @@ bind("CTRL + ALT + W", "Top bar: tuck the island (Minimal ⇄ Hidden) / Waybar o
 bind("CTRL + ALT + SHIFT + W", "Island: minimal ⇄ everything (workspaces, time, status)", kuwai("island-style"), { locked = true })
 bind(S .. " + slash", "Keyboard shortcuts", kuwai("keys"))
 bind(S .. " + CTRL + SHIFT + U", "Software Update", kuwai("updates"))
-bind(S .. " + SHIFT + slash", "Desktop mode (focus, glass, gaming…)", BIN .. "/kuwai mode --pick")
+bind(S .. " + SHIFT + slash", "Desktop mode (focus, glass, gaming…)", kuwai("modes"))
 bind(S .. " + ALT + G", "Game mode on/off", function()
 	kuwai.mode_toggle("gaming")
 end)

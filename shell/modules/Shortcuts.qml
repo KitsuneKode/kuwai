@@ -158,6 +158,12 @@ Scope {
         description: "Keyboard shortcuts"
         onPressed: Island.toggle("keys", "", "key")
     }
+    GlobalShortcut {
+        appid: "kuwai"
+        name: "modes"
+        description: "Desktop modes, in the launcher"
+        onPressed: Island.openWith("mode ")
+    }
     // Hold Super (kuwai.automation): open — never toggle — and close only if
     // it was this hold that opened it and a real shortcut followed.
     // The switcher (services/Switcher): kuwai sends these from Alt+Tab,

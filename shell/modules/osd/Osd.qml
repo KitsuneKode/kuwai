@@ -707,7 +707,23 @@ Scope {
             width: hud.inIsland ? hud.islandW + (316 - hud.islandW) * reveal : 316
             height: hud.inIsland ? 34 + (74 - 34) * reveal : 74
             radius: hud.inIsland ? 14 + (30 - 14) * reveal : height / 2.9
-            tint: hud.inIsland ? Qt.rgba(0, 0, 0, 0.9) : Theme.glassTint
+            tint: hud.notch ? "transparent" : hud.inIsland ? Qt.rgba(0, 0, 0, 0.9) : Theme.glassTint
+            rimColor: hud.notch ? "transparent" : spec.rim
+            sheen: hud.notch ? 0 : spec.sheen
+            darkRing: hud.notch ? 0 : spec.darkRing
+            NotchShape {
+                visible: hud.notch
+                z: -1
+                readonly property real grownT: Math.max(0, Math.min(1, (card.height - 34) / 24))
+                x: -ear
+                w: card.width
+                h: card.height
+                ear: 9 + 5 * grownT
+                radius: 14 + 16 * grownT
+                fill: Qt.rgba(0, 0, 0, 0.94)
+                expand: card.reveal
+                capH: 34
+            }
             x: (hud.width - width) / 2
             y: hud.inIsland ? (hud.notch ? 0 : 6) : 10 - (1 - reveal) * (Theme.reduceMotion ? 0 : 6)
             opacity: hud.inIsland ? Math.min(1, reveal * 4) : Math.min(1, reveal * 1.4)
