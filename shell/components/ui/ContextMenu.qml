@@ -202,14 +202,7 @@ QtObject {
                 Accessible.role: Accessible.PopupMenu
                 Accessible.name: menu.title
 
-                Elevation { target: frame; radius: Theme.r2; strength: 0.5 }
-                Rectangle {
-                    anchors.fill: parent
-                    radius: Theme.r2
-                    color: Theme.menuSurface
-                    border.width: 1
-                    border.color: Theme.menuEdge
-                }
+                MenuSurface { anchors.fill: parent }
                 MouseArea { anchors.fill: parent; acceptedButtons: Qt.AllButtons; onPressed: m => m.accepted = true }
 
                 Flickable {
@@ -233,72 +226,27 @@ QtObject {
                         Repeater {
                             id: rep
                             model: menu.entries
-                            Item {
+                            MenuRow {
                                 id: row
                                 required property var modelData
                                 required property int index
                                 readonly property var e: modelData
-                                readonly property bool can: Menu.actionable(e)
-                                readonly property bool danger: e.variant === "destructive"
-                                readonly property real indent: menu.lead ? Theme.sp(28) : Theme.s2
-                                readonly property real natural: e.kind === "separator" ? 0
-                                    : indent + words.implicitWidth + (keys.visible ? Theme.s4 + keys.implicitWidth : 0) + Theme.s2
                                 width: rows.width
-                                height: e.kind === "separator" ? Theme.s2 + 1 : e.kind === "label" ? Theme.sp(26) : Theme.sp(30)
+                                kind: e.kind === "checkbox" ? "check" : e.kind || "item"
+                                checked: !!e.checked
+                                glyph: e.glyph || ""
+                                text: e.text || ""
+                                shortcut: e.shortcut || ""
+                                danger: e.variant === "destructive"
+                                can: Menu.actionable(e)
+                                lead: menu.lead
+                                selected: ov.current === index
                                 onCanChanged: if (!can && ov.current === index) ov.current = -1
-
-                                Rectangle {
-                                    visible: row.e.kind === "separator"
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    x: -ov.pad; width: parent.width + 2 * ov.pad; height: 1
-                                    color: Theme.menuEdge
+                                onPointed: on => {
+                                    if (on) { ov.byKeys = false; ov.current = index; }
+                                    else if (ov.current === index && !ov.byKeys) ov.current = -1;
                                 }
-                                // The leading column: the entry's glyph, or a checkbox's check.
-                                Text {
-                                    textFormat: Text.PlainText
-                                    visible: row.e.kind === "checkbox" ? !!row.e.checked : !!row.e.glyph && row.e.kind === "item"
-                                    width: row.indent; horizontalAlignment: Text.AlignHCenter
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    text: row.e.kind === "checkbox" ? "\u{f012c}" : (row.e.glyph || "")
-                                    font.family: Theme.fontGlyph; font.pixelSize: Theme.sp(Theme.glyphS)
-                                    color: !row.can ? Theme.textTertiary : row.danger ? Theme.red : row.e.kind === "checkbox" ? Theme.textPrimary : Theme.textSecondary
-                                }
-                                Label {
-                                    id: words
-                                    visible: row.e.kind !== "separator"
-                                    anchors { left: parent.left; leftMargin: row.indent; right: keys.visible ? keys.left : parent.right; rightMargin: keys.visible ? Theme.s4 : Theme.s2; verticalCenter: parent.verticalCenter }
-                                    elide: Text.ElideRight
-                                    text: row.e.text || ""
-                                    size: row.e.kind === "label" ? Theme.tFootnote : Theme.tBody
-                                    weight: row.e.kind === "label" ? Theme.wSemibold : Theme.wRegular
-                                    color: row.e.kind === "label" || !row.can ? Theme.textTertiary : row.danger ? Theme.redText : Theme.textPrimary
-                                }
-                                // shadcn's ContextMenuShortcut: the key the surface answers to, quiet, at the end.
-                                Label {
-                                    id: keys
-                                    visible: !!row.e.shortcut && row.e.kind !== "label" && row.e.kind !== "separator"
-                                    anchors { right: parent.right; rightMargin: Theme.s2; verticalCenter: parent.verticalCenter }
-                                    text: row.e.shortcut || ""
-                                    size: Theme.tFootnote
-                                    color: Theme.textTertiary
-                                }
-                                MouseArea {
-                                    anchors.fill: parent
-                                    enabled: row.can
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onEntered: { ov.byKeys = false; ov.current = row.index; }
-                                    onExited: if (ov.current === row.index && !ov.byKeys) ov.current = -1
-                                    onClicked: menu.choose(row.index)
-                                }
-                                Accessible.role: row.e.kind === "separator" ? Accessible.Separator : row.e.kind === "label" ? Accessible.StaticText : Accessible.MenuItem
-                                Accessible.name: row.e.text || ""
-                                Accessible.description: row.e.shortcut || ""
-                                Accessible.checkable: row.e.kind === "checkbox"
-                                Accessible.checked: !!row.e.checked
-                                Accessible.selected: ov.current === row.index
-                                Accessible.ignored: row.e.kind === "separator"
-                                Accessible.onPressAction: menu.choose(row.index)
+                                onActivated: menu.choose(index)
                             }
                         }
                     }

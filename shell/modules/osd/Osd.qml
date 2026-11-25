@@ -25,6 +25,7 @@ import Quickshell.Hyprland
 import Quickshell.Services.Pipewire
 import Quickshell.Bluetooth
 import qs.config
+import qs.components.ui
 import qs.components
 import qs.services
 import "state.mjs" as OsdState
@@ -944,10 +945,11 @@ Scope {
                         height: 6
                         transform: Scale { id: trackScale; xScale: 1 }
 
-                        Rectangle {
+                        LevelBar {
                             anchors.fill: parent
-                            radius: 3
-                            color: Theme.track
+                            value: root.level
+                            glide: !cardArea.dragging
+                            dim: root.muted
                         }
                         // Drag (or click) along the track to set the level; the
                         // hit area is taller than the 6px line.
@@ -961,20 +963,6 @@ Scope {
                             onPositionChanged: mouse => { if (pressed) root.setLevel(mouse.x / width); }
                             onReleased: cardArea.dragging = false
                             onCanceled: cardArea.dragging = false
-                        }
-                        Rectangle {
-                            id: fill
-                            property real shown: root.level
-                            // The fill chases its target from wherever it is,
-                            // so held keys glide instead of stepping.
-                            // A dragging pointer is followed 1:1.
-                            Behavior on shown { enabled: !cardArea.dragging; NumberAnimation { duration: Theme.glideMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
-                            width: Math.max(height, parent.width * Math.max(0, Math.min(1, shown)))
-                            visible: shown > 0.004
-                            height: parent.height
-                            radius: 3
-                            color: root.muted ? Theme.fillDim : Theme.fill
-                            Behavior on color { ColorAnimation { duration: Theme.colorMs } }
                         }
                     }
 

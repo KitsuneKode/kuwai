@@ -115,10 +115,10 @@ Item {
         y: menu.lerp(menu.from.y, menu.toY, t.value)
         width: Math.max(1, menu.lerp(menu.from.width, menu.toW, t.value))
         height: Math.max(1, menu.lerp(menu.from.height, menu.toH, t.value))
-        radius: menu.lerp(menu.from.height / 2, 16, Math.min(1, t.value))
-        color: Qt.rgba(0.15, 0.15, 0.18, 0.98)
+        radius: menu.lerp(menu.from.height / 2, Theme.r2, Math.min(1, t.value))
+        color: Theme.menuSurface
         border.width: 1
-        border.color: Theme.edge(1)
+        border.color: Theme.menuEdge
         opacity: Math.min(1, t.value * 4)
         clip: true
 
@@ -150,7 +150,7 @@ Item {
                     size: Theme.tFootnote
                     color: Theme.textTertiary
                 }
-                Rectangle { anchors { left: parent.left; right: parent.right; bottom: parent.bottom } height: 1; color: Theme.wash(1) }
+                Rectangle { anchors { left: parent.left; right: parent.right; bottom: parent.bottom } height: 1; color: Theme.menuEdge }
             }
 
             ListView {
@@ -167,7 +167,7 @@ Item {
                     parent: list.contentItem
                     target: menu.open && list.currentItem ? list.currentItem.hit : null
                     ring: menu.keyboard
-                    radius: 10
+                    radius: Theme.r1
                 }
 
                 delegate: Item {

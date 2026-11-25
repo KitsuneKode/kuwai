@@ -19,6 +19,7 @@ import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Widgets
 import qs.config
+import qs.components.ui
 
 Item {
     id: tm
@@ -99,44 +100,26 @@ Item {
             id: card
             x: 12; y: 4
             width: pop.implicitWidth - 24
-            implicitHeight: list.contentHeight + (tm.stack.length ? 34 : 0) + 12
+            implicitHeight: list.contentHeight + (tm.stack.length ? header.height + 4 : 0) + 12
             height: Math.min(560, implicitHeight)
             opacity: k.value
             scale: 0.96 + 0.04 * k.value
             transformOrigin: Item.Top
             HoverHandler { id: cardHover }
 
-            // Shadow, then the glass.
-            Repeater {
-                model: 3
-                Rectangle {
-                    required property int index
-                    readonly property real s: 2 + index * 5
-                    x: -s; y: -s + 6 + index * 2
-                    width: card.width + s * 2; height: card.height + s * 2
-                    radius: Theme.r2 + s
-                    color: Qt.rgba(0, 0, 0, 0.09)
-                }
-            }
-            Rectangle {
-                anchors.fill: parent
-                radius: Theme.r2
-                color: Qt.rgba(0.07, 0.07, 0.08, 0.97)
-                border.width: 1
-                border.color: Theme.edge(1)
-            }
+            MenuSurface { anchors.fill: parent }
 
             // Submenu header.
             Item {
                 id: header
                 visible: tm.stack.length > 0
                 x: 6; y: 6
-                width: card.width - 12; height: visible ? 30 : 0
+                width: card.width - 12; height: visible ? Theme.sp(30) : 0
                 Rectangle { anchors.fill: parent; radius: Theme.r1; color: backArea.containsMouse ? Theme.pill : "transparent"; Behavior on color { ColorAnimation { duration: Theme.hoverMs } } }
                 Row {
                     anchors { left: parent.left; leftMargin: 8; verticalCenter: parent.verticalCenter }
                     spacing: 6
-                    Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f0141}"; font.family: Theme.fontGlyph; font.pixelSize: 14; color: Theme.accent }
+                    Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f0141}"; font.family: Theme.fontGlyph; font.pixelSize: Theme.sp(Theme.glyphS); color: Theme.accent }
                     Label { anchors.verticalCenter: parent.verticalCenter; text: tm.stack.length ? (tm.stack[tm.stack.length - 1].title || "Back").replace(/_/g, "") : ""; size: Theme.tBody; weight: Theme.wSemibold }
                 }
                 MouseArea { id: backArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: tm.back() }
@@ -168,87 +151,29 @@ Item {
                 property Item hoverRow: null
                 FluidHighlight { parent: list.contentItem; radius: Theme.r1; target: list.hoverRow }
 
-                delegate: Item {
+                delegate: MenuRow {
                     id: row
                     required property var modelData
                     // (null for a moment while the list is replaced: a Wi-Fi scan, a device connecting)
                     readonly property var e: modelData || ({ isSeparator: true, enabled: false, text: "", hasChildren: false })
                     width: list.width
-                    height: e.isSeparator ? 9 : Theme.sp(30)
-
-                    Rectangle {
-                        visible: row.e.isSeparator
-                        anchors.verticalCenter: parent.verticalCenter
-                        x: 8; width: parent.width - 16; height: 1
-                        color: Theme.wash(2)
+                    kind: e.isSeparator ? "separator"
+                        : e.buttonType === QsMenuButtonType.RadioButton ? "radio"
+                        : e.buttonType === QsMenuButtonType.CheckBox ? "check" : "item"
+                    checked: e.checkState === Qt.Checked
+                    glyph: e.glyph || ""
+                    icon: e.icon || ""
+                    // Mnemonic underscores ("_Quit") are for keyboard menus.
+                    text: (e.text || "").replace(/_(?!_)/g, "")
+                    submenu: !!e.hasChildren
+                    danger: !!e.danger
+                    can: !!e.enabled
+                    selected: list.hoverRow === row
+                    onPointed: on => {
+                        if (on && row.can) list.hoverRow = row;
+                        else if (list.hoverRow === row) list.hoverRow = null;
                     }
-                    // Check / radio mark, the app's icon, the label, a submenu chevron.
-                    Item {
-                        visible: !row.e.isSeparator
-                        anchors.fill: parent
-                        opacity: row.e.enabled ? 1 : 0.38
-                        Text {
-                            textFormat: Text.PlainText
-                            id: mark
-                            x: 8; anchors.verticalCenter: parent.verticalCenter
-                            width: 14
-                            text: row.e.buttonType === QsMenuButtonType.None ? ""
-                                : row.e.checkState === Qt.Checked ? (row.e.buttonType === QsMenuButtonType.RadioButton ? "\u{f0765}" : "\u{f012c}")
-                                : (row.e.buttonType === QsMenuButtonType.RadioButton ? "\u{f0766}" : "")
-                            font.family: Theme.fontGlyph; font.pixelSize: 12
-                            color: Theme.accent
-                        }
-                        Text {
-                            textFormat: Text.PlainText
-                            visible: !!row.e.glyph
-                            x: 26; anchors.verticalCenter: parent.verticalCenter
-                            text: row.e.glyph || ""
-                            font.family: Theme.fontGlyph; font.pixelSize: 14
-                            color: row.e.danger ? Theme.orange : Theme.textSecondary
-                        }
-                        IconImage {
-                            id: icon
-                            visible: !!row.e.icon && !row.e.glyph
-                            x: 26; anchors.verticalCenter: parent.verticalCenter
-                            implicitSize: 16
-                            source: row.e.icon || ""
-                            asynchronous: true
-                        }
-                        Label {
-                            anchors { left: parent.left; leftMargin: row.e.icon || row.e.glyph ? 50 : 26; right: chev.left; rightMargin: 6; verticalCenter: parent.verticalCenter }
-                            elide: Text.ElideRight
-                            // Mnemonic underscores ("_Quit") are for keyboard menus.
-                            text: (row.e.text || "").replace(/_(?!_)/g, "")
-                            size: Theme.tBody
-                            color: row.e.danger ? Theme.orange : Theme.textPrimary
-                        }
-                        Text {
-                            id: chev
-                            visible: row.e.hasChildren
-                            anchors { right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter }
-                            text: "\u{f0142}"
-                            font.family: Theme.fontGlyph; font.pixelSize: 13
-                            color: Theme.textTertiary
-                        }
-                    }
-                    MouseArea {
-                        id: rowArea
-                        anchors.fill: parent
-                        enabled: !row.e.isSeparator
-                        hoverEnabled: true
-                        cursorShape: row.e.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                        onContainsMouseChanged: {
-                            if (containsMouse && row.e.enabled) list.hoverRow = row;
-                            else if (list.hoverRow === row) list.hoverRow = null;
-                        }
-                        onClicked: tm.trigger(row.e)
-                    }
-                    // The app's own menu, as a screen reader would read it.
-                    Accessible.role: row.e.isSeparator ? Accessible.Separator : Accessible.MenuItem
-                    Accessible.name: (row.e.text || "").replace(/_(?!_)/g, "") + (row.e.hasChildren ? ", submenu" : "")
-                    Accessible.checkable: !row.e.isSeparator && row.e.buttonType !== QsMenuButtonType.None
-                    Accessible.checked: row.e.checkState === Qt.Checked
-                    Accessible.onPressAction: if (!row.e.isSeparator && row.e.enabled) tm.trigger(row.e)
+                    onActivated: tm.trigger(row.e)
                 }
             }
         }

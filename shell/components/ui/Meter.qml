@@ -21,14 +21,12 @@ Column {
         Label { anchors { right: parent.right; verticalCenter: parent.verticalCenter }
             text: m.big; size: Theme.tTitle2; weight: Theme.wSemibold; rounded: true; tabular: true }
     }
-    Item {
+    LevelBar {
         width: parent.width; height: 8
-        Rectangle { anchors.fill: parent; radius: 4; color: Theme.platterDim }
-        Rectangle {
-            width: Math.max(8, parent.width * Math.min(1, m.value)); height: parent.height; radius: 4
-            color: m.value > 0.9 ? Theme.red : m.value > 0.75 ? Theme.orange : Theme.accent
-            Behavior on width { NumberAnimation { duration: Theme.glideMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
-        }
+        value: m.value
+        trackColor: Theme.platterDim
+        fillColor: m.value > 0.9 ? Theme.red : m.value > 0.75 ? Theme.orange : Theme.accent
+        Accessible.ignored: true
     }
     Label { visible: text !== ""; text: m.detail; size: Theme.tFootnote; color: Theme.textTertiary }
     Accessible.role: Accessible.ProgressBar

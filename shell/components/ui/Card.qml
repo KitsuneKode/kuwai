@@ -9,10 +9,11 @@ Rectangle {
     id: card
     default property alias body: col.data
     property int padding: 14
+    property bool flush: false
     property alias spacing: col.spacing
 
     width: parent ? parent.width : 0
-    implicitHeight: col.implicitHeight + padding * 2 - 4
+    implicitHeight: flush ? col.implicitHeight : col.implicitHeight + padding * 2 - 4
     height: implicitHeight
     radius: Theme.r3
     color: Theme.card
@@ -32,8 +33,8 @@ Rectangle {
 
     Column {
         id: col
-        x: card.padding; y: card.padding - 2
-        width: card.width - card.padding * 2
-        spacing: 10
+        x: card.flush ? 0 : card.padding; y: card.flush ? 0 : card.padding - 2
+        width: card.width - (card.flush ? 0 : card.padding * 2)
+        spacing: card.flush ? 0 : 10
     }
 }

@@ -22,7 +22,7 @@ Item {
     width: parent ? parent.width : 480
     // Full help wraps. Constrained controls move below it without conflicting anchors.
     readonly property bool stacked: slot.implicitWidth > width * 0.48
-    height: Math.max(detail ? 60 : 46, stacked ? text.implicitHeight + slot.implicitHeight + 32 : Math.max(text.implicitHeight, slot.implicitHeight) + 24)
+    height: Math.max(Theme.sp(detail ? 60 : Theme.rowMin), stacked ? text.implicitHeight + slot.implicitHeight + 32 : Math.max(text.implicitHeight, slot.implicitHeight) + 24)
 
     // Found by the Settings search (SettingsPanel.markFound): a soft accent
     // wash while the search points here, and one pulse when you go to it

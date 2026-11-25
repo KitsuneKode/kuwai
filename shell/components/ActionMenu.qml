@@ -12,6 +12,7 @@
 //   menu.toggle()   menu.key(event) → handled?
 import QtQuick
 import qs.config
+import qs.components.ui
 
 Item {
     id: menu
@@ -160,47 +161,18 @@ Item {
                         weight: Theme.wSemibold
                         color: Theme.textTertiary
                     }
-                    Item {
+                    MenuRow {
                         id: plate
                         anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
-                        height: Theme.sp(30)
-                        scale: rowArea.pressed ? 0.97 : 1
+                        scale: pressed ? 0.97 : 1
                         Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
-                        Text {
-                            textFormat: Text.PlainText
-                            id: g
-                            width: Theme.sp(28); horizontalAlignment: Text.AlignHCenter
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: row.modelData.glyph || ""
-                            font.family: Theme.fontGlyph
-                            font.pixelSize: Theme.sp(Theme.glyphS)
-                            color: row.modelData.danger ? Theme.red : Theme.textSecondary
-                        }
-                        Label {
-                            anchors { left: g.right; right: keys.left; rightMargin: Theme.s4; verticalCenter: parent.verticalCenter }
-                            elide: Text.ElideRight
-                            text: row.modelData.label
-                            size: Theme.tBody
-                            color: row.modelData.danger ? Theme.redText : Theme.textPrimary
-                        }
-                        Row {
-                            id: keys
-                            anchors { right: parent.right; rightMargin: Theme.s2; verticalCenter: parent.verticalCenter }
-                            spacing: 3
-                            Repeater { model: row.modelData.keys || []; KeyCap { required property string modelData; text: modelData } }
-                        }
-                        MouseArea {
-                            id: rowArea
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onEntered: menu.sel = row.index
-                            onClicked: { menu.open = false; menu.picked(row.modelData.id); }
-                        }
-                        Accessible.role: Accessible.MenuItem
-                        Accessible.name: row.modelData.label
-                        Accessible.selected: menu.sel === row.index
-                        Accessible.onPressAction: { menu.open = false; menu.picked(row.modelData.id); }
+                        glyph: row.modelData.glyph || ""
+                        text: row.modelData.label
+                        keys: row.modelData.keys || []
+                        danger: !!row.modelData.danger
+                        selected: menu.sel === row.index
+                        onPointed: on => { if (on) menu.sel = row.index; }
+                        onActivated: { menu.open = false; menu.picked(row.modelData.id); }
                     }
                 }
             }

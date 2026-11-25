@@ -23,6 +23,7 @@ import QtQuick
 import QtQuick.Effects
 import Quickshell.Widgets
 import qs.config
+import qs.components.ui
 import qs.components
 import qs.services
 
@@ -244,12 +245,11 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     width: parent.width - levelText.width - 10
                     height: 6
-                    Rectangle { anchors.fill: parent; radius: 3; color: Theme.track }
-                    Rectangle {
-                        height: parent.height; radius: 3
-                        width: Math.max(height, parent.width * Math.max(0, Math.min(1, card.level)) * card.levelFill)
-                        visible: card.level * card.levelFill > 0.004
-                        color: card.item && card.item.muted ? Theme.fillDim : Theme.fill
+                    LevelBar {
+                        anchors.fill: parent
+                        glide: false
+                        value: Math.max(0, Math.min(1, card.level)) * card.levelFill
+                        dim: !!(card.item && card.item.muted)
                     }
                 }
                 Label {

@@ -4,29 +4,22 @@
 //   SettingsGroup { title: "On hover"; SettingsRow { … } SettingsRow { … } }
 import QtQuick
 import qs.config
+import qs.components.ui
 
 Column {
     id: g
     property string title
-    default property alias rows: list.data
+    default property alias rows: list.body
     width: parent ? parent.width : 480
     spacing: 8
 
-    Label {
+    SectionLabel {
         visible: g.title !== ""
-        x: 4
         text: g.title
-        size: Theme.tSub
-        weight: Theme.wMedium
-        color: Theme.textTertiary
     }
-    Rectangle {
+    Card {
+        id: list
         width: g.width
-        height: list.implicitHeight
-        radius: Theme.r2
-        color: Theme.wash(1)
-        border.width: 1
-        border.color: Theme.edge(0)
-        Column { id: list; width: parent.width }
+        flush: true
     }
 }
