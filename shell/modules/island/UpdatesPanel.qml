@@ -283,8 +283,10 @@ FocusScope {
             Notice {
                 visible: Updates.checkError !== "" || !!(Updates.data && Updates.data.repoError)
                 glyph: "\u{f0026}"; tone: Theme.red
-                title: "The check didn't finish"
-                detail: Updates.checkError || (Updates.data ? String(Updates.data.repoError) : "")
+                readonly property bool hadOne: Updates.total >= 0
+                readonly property string why: Updates.checkError || (Updates.data && typeof Updates.data.repoError === "string" ? Updates.data.repoError : "")
+                title: hadOne ? "The latest check didn't finish" : "The check didn't finish"
+                detail: why && why !== "Couldn't read the update check" ? why : hadOne ? "This is what the one before found" : ""
                 action: "Retry"
                 onActed: Updates.check()
             }

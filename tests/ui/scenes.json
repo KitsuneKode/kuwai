@@ -477,6 +477,11 @@
       "kernel": false,
       "flatpak": []
      }
+    ],
+    [
+     "Updates",
+     "checkError",
+     ""
     ]
    ]
   },
@@ -8386,6 +8391,11 @@
       "kernel": true,
       "flatpak": []
      }
+    ],
+    [
+     "Updates",
+     "checkError",
+     ""
     ]
    ]
   },
@@ -8459,6 +8469,11 @@
       "kernel": true,
       "flatpak": []
      }
+    ],
+    [
+     "Updates",
+     "checkError",
+     ""
     ]
    ]
   },
@@ -8543,6 +8558,11 @@
       "kernel": true,
       "flatpak": []
      }
+    ],
+    [
+     "Updates",
+     "checkError",
+     ""
     ]
    ]
   },
@@ -8846,6 +8866,11 @@
        "trusted": false
       }
      }
+    ],
+    [
+     "Updates",
+     "checkError",
+     ""
     ]
    ]
   },
@@ -8926,6 +8951,11 @@
       "kernel": true,
       "flatpak": []
      }
+    ],
+    [
+     "Updates",
+     "checkError",
+     ""
     ]
    ],
    "props": {
@@ -9135,6 +9165,11 @@
       "kernel": true,
       "flatpak": []
      }
+    ],
+    [
+     "Updates",
+     "checkError",
+     ""
     ]
    ],
    "props": {
