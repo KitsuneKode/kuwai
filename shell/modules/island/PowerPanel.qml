@@ -29,7 +29,7 @@ FocusScope {
 
     readonly property var actions: [
         { id: "lock", label: Tr.t("Lock"), hint: Tr.t("Click or press ↵ to lock"), glyph: "\u{f033e}", hold: false, cmd: [Paths.bin + "/kuwai", "lock"] },
-        { id: "sleep", label: Tr.t("Sleep"), hint: Tr.t("Hold to sleep"), glyph: "\u{f0594}", hold: true, bye: "suspend", cmd: ["systemctl", "suspend"] },
+        { id: "sleep", label: Tr.t("Sleep"), hint: Tr.t("Hold to sleep"), glyph: "\u{f0594}", hold: true, bye: "suspend", cmd: ["sh", "-c", '"$1" lock --wait && exec systemctl suspend', "sh", Paths.bin + "/kuwai"] },
         { id: "logout", label: Tr.t("Log Out"), hint: Tr.t("Hold to log out"), glyph: "\u{f0343}", hold: true, bye: "logout", cmd: ["hyprctl", "dispatch", "hl.dsp.exit()"] },
         { id: "reboot", label: Tr.t("Restart"), hint: Tr.t("Hold to restart"), glyph: "\u{f0709}", hold: true, bye: "reboot", cmd: ["systemctl", "reboot"] },
         { id: "firmware", label: Tr.t("Firmware"), hint: Tr.t("Hold to restart into the firmware setup"), glyph: "\u{f061a}", hold: true, bye: "reboot", cmd: ["systemctl", "reboot", "--firmware-setup"] },

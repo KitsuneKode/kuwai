@@ -10,7 +10,7 @@ Rectangle {
     signal decided(string decision)
 
     readonly property string kind: request.kind || "command"
-    readonly property string verb: kind === "command" ? "Run" : kind === "write" ? "Save" : "Open"
+    readonly property string verb: kind === "command" ? "Run" : kind === "write" ? "Save" : kind === "read" ? "Read" : kind === "network" ? "Go online" : "Open"
 
     implicitHeight: col.implicitHeight + 24
     radius: Theme.r3
@@ -30,7 +30,7 @@ Rectangle {
             spacing: 8
             Icon {
                 name: root.kind === "command" ? "terminal-window" : root.kind === "launch" ? "app-window"
-                    : root.kind === "write" ? "file-text" : "link"
+                    : root.kind === "write" || root.kind === "read" ? "file-text" : root.kind === "network" ? "globe" : "link"
                 size: 15
                 color: Theme.accent
                 anchors.verticalCenter: parent.verticalCenter
@@ -39,6 +39,7 @@ Rectangle {
                 text: root.kind === "command" ? "Run this command?"
                     : root.kind === "write" ? (root.request.summary || "Change a file") + "?"
                     : root.kind === "launch" ? (root.request.summary || "Open an app") + "?"
+                    : root.kind === "network" ? "It read your files. Go online now?"
                     : "Open this link?"
                 size: Theme.tBody
                 weight: Theme.wSemibold

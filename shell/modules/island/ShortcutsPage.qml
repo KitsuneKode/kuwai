@@ -197,7 +197,7 @@ Column {
                         sourceComponent: RowLayout {
                             spacing: Theme.s1
                             Button { height: Theme.sp(30); size: Theme.tSub; primary: true; enabled: KeyBinds.canSave; text: KeyBinds.clash && KeyBinds.clash.kind === "kuwai" ? "Replace" : "Save"; onClicked: page.save() }
-                            Button { visible: !!r.modelData.keys; height: Theme.sp(30); size: Theme.tSub; kind: "quiet"; text: "None"; onClicked: page.none() }
+                            Button { visible: !!r.modelData.keys && r.modelData.text !== "Lock"; height: Theme.sp(30); size: Theme.tSub; kind: "quiet"; text: "None"; onClicked: page.none() }
                             Button { height: Theme.sp(30); size: Theme.tSub; kind: "quiet"; text: "Cancel"; onClicked: page.stop(true) }
                         }
                     }

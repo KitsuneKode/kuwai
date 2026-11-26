@@ -59,7 +59,7 @@ Singleton {
         onTriggered: if (!desktopInit.running) desktopInit.running = true
     }
 
-    readonly property var hooks: desktopFeed.filter(d => d && d.id && d.state && d.state !== "ready" && (!d.updated_at || !d.ttl || root.now / 1000 - d.updated_at <= d.ttl))
+    readonly property var hooks: desktopFeed.filter(d => d && d.id && d.state && d.state !== "ready" && d.updated_at > 0 && root.now / 1000 - d.updated_at <= Math.min(Number(d.ttl) || 1800, 1800))
 
     readonly property var panes: {
         const events = Kittymux.attention || [];

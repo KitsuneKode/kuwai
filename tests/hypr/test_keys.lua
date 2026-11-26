@@ -66,6 +66,8 @@ assert(K.chord('SUPER + SHIFT + ALT + n') == K.chord('ALT + SUPER + SHIFT + N'),
 assert(K.show('SUPER + code:10') == 'SUPER + 1' and K.show('SUPER + code:19') == 'SUPER + 0', 'keycodes 10…19 read as 1…0')
 assert(M.valid('SUPER + SHIFT + E') and M.valid('SUPER + code:12') and M.valid(''), 'chords the editor writes are valid')
 assert(not M.valid('SUPER + E + SHIFT') and not M.valid('SUPER + $(x)') and not M.valid('SUPER +'), 'anything else is not')
+assert(not M.valid('Return') and not M.valid('A') and not M.valid('SHIFT + A') and not M.valid('code:36'), 'a bare key would take typing away')
+assert(M.valid('F7') and M.valid('Print') and M.valid('SHIFT + F9'), 'F-keys, Print and Pause may stand alone')
 
 local files = entry('Files')
 assert(files and files.aid == 'SUPER+E', 'an action is known by its default chord: ' .. tostring(files and files.aid))
@@ -105,6 +107,10 @@ assert(M.fixed(entry('Hold to talk')), 'a hold action is fixed')
 write({ 'CTRL+F12\tSUPER + F12\tHold to talk' })
 M.apply()
 assert(bound('SUPER + F12') == 0 and bound('CTRL + F12') == 1, 'a hold action is not moved apart from its release')
+
+write({ 'SUPER+L\t\tLock' })
+M.apply()
+assert(bound('SUPER + L') == 1, 'Lock never goes without a chord')
 
 write({})
 M.plain_fkeys = nil

@@ -85,6 +85,9 @@ local function cmdline(pid)
 	end
 	local parts = {}
 	for arg in s:gmatch("([^%z]+)") do
+		if arg:find("[\t\n\r]") then
+			return nil
+		end
 		parts[#parts + 1] = K.q(arg)
 	end
 	return table.concat(parts, " ")
@@ -95,7 +98,7 @@ function R.save(keep_if_empty)
 	for _, w in ipairs(hl.get_windows() or {}) do
 		local cls = (w.class or ""):lower()
 		local ws = w.workspace
-		if not skip(cls) and ws and ws.id and ws.id > 0 and not seen[cls] then
+		if cls:match("^[%w%._%-]+$") and not skip(cls) and ws and ws.id and ws.id > 0 and not seen[cls] then
 			local cmd = cmdline(w.pid)
 			if cmd then
 				seen[cls] = true
@@ -149,7 +152,7 @@ function R.restore()
 	local n = 0
 	for line in s:gmatch("[^\n]+") do
 		local ws, fl, pos, size, cls, cmd = line:match("^(%-?%d+)\t(%d)\t([^\t]*)\t([^\t]*)\t([^\t]*)\t(.+)$")
-		if ws and not running[cls] then
+		if ws and cls:match("^[%w%._%-]+$") and not running[cls] then
 			local rules = { workspace = ws .. " silent" }
 			if fl == "1" then
 				local x, y = pos:match("(%-?%d+),(%-?%d+)")

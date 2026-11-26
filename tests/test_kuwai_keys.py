@@ -72,3 +72,12 @@ def test_a_hand_edited_bad_line_is_skipped(tmp_path):
     d.mkdir()
     (d / "keys.tsv").write_text("SUPER+E\tSUPER + CTRL + E\tFiles\ngarbage\nSUPER+T\tSUPER + ; rm\tTerminal\n")
     assert listed(tmp_path) == {"SUPER+E": {"keys": "SUPER + CTRL + E", "text": "Files"}}
+
+
+def test_a_bare_key_is_refused_and_lock_keeps_a_chord(tmp_path):
+    for keys in ("Return", "A", "SHIFT + A", "code:36"):
+        assert run(tmp_path, "set", "SUPER+E", keys, "Files").returncode == 2, keys
+    assert run(tmp_path, "set", "SUPER+E", "F7", "Files").returncode == 0
+    r = run(tmp_path, "set", "SUPER+L", "", "Lock")
+    assert r.returncode == 2 and "Lock" in r.stderr
+    assert run(tmp_path, "set", "SUPER+L", "SUPER + ALT + L", "Lock").returncode == 0

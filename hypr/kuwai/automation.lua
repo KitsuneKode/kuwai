@@ -5,7 +5,7 @@ local dsp = hl.dsp
 K.privacy = K.privacy
 	or {
 		windows = "^(Bitwarden|bitwarden|org\\.keepassxc\\.KeePassXC|1Password|pinentry-.*|gcr-prompter|org\\.telegram\\.desktop|vesktop|discord|com\\.rtosta\\.zapzap|signal|Signal)$",
-		layers = "^(kuwai-notifs|kuwai-center|kuwai-island|kuwai-assistant|notifications|swaync-notification-window|swaync-control-center)$",
+		layers = "^(kuwai-notifs|kuwai-center|kuwai-island|kuwai-islandbar|kuwai-assistant|notifications|swaync-notification-window|swaync-control-center)$",
 	}
 
 function kuwai.privacy_resync()
@@ -68,6 +68,9 @@ if K.feature("screenshare_privacy") then
 	hl.on("screenshare.state", function(active)
 		if active then
 			shares = shares + 1
+			if held == 0 and os.time() >= grace then
+				privacy(true)
+			end
 			local mine = run
 			hl.timer(function()
 				check(mine)
@@ -82,6 +85,8 @@ if K.feature("screenshare_privacy") then
 				privacy(false)
 				K.set_state("sharing", "0")
 				hl.exec_cmd(K.bin .. "/kuwai notifs mute-off")
+			elseif shares == 0 then
+				privacy(false)
 			end
 		end
 	end)

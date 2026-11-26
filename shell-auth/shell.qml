@@ -213,8 +213,9 @@ ShellRoot {
             "org.freedesktop.timedate1.set-time": "Change the date and time",
             "org.freedesktop.hostname1.set-hostname": "Rename this computer"
         };
-        if (id === "org.freedesktop.policykit.exec" && /\/usr\/bin\/pacman\b/.test(root.message))
-            return /pacman -U\b/.test(root.message) ? "Install AUR updates" : "Install system updates";
+        if (id === "org.freedesktop.policykit.exec")
+            return /^Authentication is needed to run `\/usr\/local\/lib\/kuwai\/kuwai-update-root' as the super user$/.test(root.message)
+                ? "Install updates" : "Run a command as administrator";
         return m[id] || "Administrator access";
     }
     property string facePng: ""
@@ -385,13 +386,19 @@ ShellRoot {
                                 text: root.succeeded ? "Done" : root.describe(root.actionId)
                                 size: 16; weight: Theme.wSemibold
                             }
-                            Label {
+                            Flickable {
                                 width: parent.width
-                                wrapMode: Text.Wrap
-                                maximumLineCount: 3
-                                elide: Text.ElideRight
-                                text: root.message
-                                size: 12; color: Theme.textSecondary
+                                height: Math.min(contentHeight, 120)
+                                contentHeight: whole.implicitHeight
+                                clip: true
+                                boundsBehavior: Flickable.StopAtBounds
+                                Label {
+                                    id: whole
+                                    width: parent.width
+                                    wrapMode: Text.WrapAnywhere
+                                    text: root.message
+                                    size: 12; color: Theme.textSecondary
+                                }
                             }
                         }
                     }

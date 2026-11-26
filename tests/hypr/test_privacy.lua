@@ -1,14 +1,15 @@
 -- No compositor: the actual automation module emits only collected commands.
 package.path = 'hypr/?.lua;hypr/?/init.lua;' .. package.path
 local commands, timers, handlers, state
+local rules_on
 local function setup(enabled)
     commands, timers, handlers, state = {}, {}, {}, {}
     _G.kuwai = {}
     _G.hl = {
         dsp = { no_op=function() return {} end },
         exec_cmd=function(command) table.insert(commands,command) end,
-        window_rule=function() return {set_enabled=function() end} end,
-        layer_rule=function() return {set_enabled=function() end} end,
+        window_rule=function() return {set_enabled=function(_, on) rules_on = on end} end,
+        layer_rule=function() return {set_enabled=function(_, on) rules_on = on end} end,
         on=function(event, fn) handlers[event]=fn end,
         timer=function(fn) table.insert(timers,fn) end,
     }
@@ -25,6 +26,8 @@ kuwai.privacy_resync()
 assert(commands[#commands]=='/fixture/bin/kuwai notifs mute-off','idle resync must acknowledge known-not-sharing')
 assert(state.sharing=='0','idle resync must keep sharing=0')
 handlers['screenshare.state'](true)
+assert(rules_on == true, 'private windows and layers leave the capture the moment a share starts')
+assert(state.sharing=='0', 'notifications are muted only once the share is confirmed')
 table.remove(timers,1)()
 assert(state.sharing=='1','engaged share must write sharing=1')
 kuwai.privacy_resync()
@@ -33,6 +36,11 @@ assert(state.sharing=='1','active resync must keep sharing=1')
 handlers['screenshare.state'](false)
 assert(commands[#commands]=='/fixture/bin/kuwai notifs mute-off','end must release share state')
 assert(state.sharing=='0','end must reset sharing=0')
+setup(true)
+handlers['screenshare.state'](true)
+assert(rules_on == true, 'a capture starts private')
+handlers['screenshare.state'](false)
+assert(rules_on == false and state.sharing == '0', 'a capture that ends before it is a share (a screenshot) releases the rules and never mutes')
 setup(false)
 kuwai.privacy_resync()
 assert(commands[#commands]=='/fixture/bin/kuwai notifs mute-off','disabled automation must acknowledge deliberate opt-out')

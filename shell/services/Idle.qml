@@ -152,7 +152,7 @@ Singleton {
         enabled: root.enabled && !root.held && !Caffeine.working && root.sleepAfter > 0
         timeout: root.sleepAfter
         respectInhibitors: true
-        onIsIdleChanged: if (isIdle && !(Settings.idleNoSleepWhilePlaying && Media.playing)) Quickshell.execDetached(["systemctl", "suspend"])
+        onIsIdleChanged: if (isIdle && !(Settings.idleNoSleepWhilePlaying && Media.playing)) Quickshell.execDetached(["sh", "-c", '"$1" lock --wait && exec systemctl suspend', "sh", root.kuwai])
     }
 
     // ── Lock before every sleep, and on `loginctl lock-session` ─────────
@@ -165,7 +165,7 @@ Singleton {
         // setpriv --pdeathsig: these die with the shell, even a kill -9 (a
         // left-over guard would delay every sleep; a listener, lock twice).
         command: ["setpriv", "--pdeathsig", "KILL", "--", "systemd-inhibit", "--what=sleep", "--mode=delay", "--who=kuwai", "--why=Lock the screen before sleeping",
-                  "setpriv", "--pdeathsig", "KILL", "--", "sh", "-c", 'setpriv --pdeathsig KILL -- gdbus monitor --system --dest org.freedesktop.login1 --object-path /org/freedesktop/login1 | while read -r l; do case $l in *PrepareForSleep*true*) "$1" lock --wait; exit 0;; esac; done', "sh", root.kuwai]
+                  "setpriv", "--pdeathsig", "KILL", "--", "sh", "-c", 'setpriv --pdeathsig KILL -- gdbus monitor --system --dest org.freedesktop.login1 --object-path /org/freedesktop/login1 | while read -r l; do case $l in *PrepareForSleep*true*) for t in 1 2 3; do "$1" lock --wait && exit 0; sleep 0.3; done; exit 1;; esac; done', "sh", root.kuwai]
         onExited: if (root.enabled) rearm.restart()
     }
     // Soon after waking (a lid closed again right away is still locked first);

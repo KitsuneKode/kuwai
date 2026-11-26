@@ -28,7 +28,7 @@ find "$cache/thumbs" -type f -mtime +7 -delete 2>/dev/null || true
 
 emit() {
     case "$1" in
-        pin:*) cat -- "$pins/${1#pin:}" ;;
+        pin:*) id=${1#pin:}; case $id in ''|*/*|.*) exit 2 ;; esac; cat -- "$pins/$id" ;;
         *)     printf '%s\t\n' "$1" | cliphist decode ;;
     esac
 }
@@ -69,7 +69,10 @@ case "${1:-}" in
     list)  cliphist list -preview-width 400 ;;
     text)  emit "$2" | head -c 65536 ;;
     thumb)
-        out="$cache/thumbs/$2.${3:-png}"
+        case ${2:-} in ''|*[!0-9]*) case ${2:-} in pin:*) ;; *) exit 2 ;; esac ;; esac
+        case ${3:-png} in png|jpg|jpeg|gif|webp|bmp|svg|tiff|x-icon) ;; *) exit 2 ;; esac
+        case ${2#pin:} in */*|.*) exit 2 ;; esac
+        out="$cache/thumbs/${2#pin:}.${3:-png}"
         [ -s "$out" ] || emit "$2" > "$out"
         printf '%s\n' "$out" ;;
     copy)  copy "$2" ;;

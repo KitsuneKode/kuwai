@@ -171,7 +171,7 @@ def repo_of(names):
     """Which repository each package comes from (core/extra/multilib…), in one pacman call."""
     if not names:
         return {}
-    r = sh(["pacman", "-Si", *names])
+    r = sh(["pacman", "-Si", "--", *names])
     repo, name, out = None, None, {}
     for l in r.stdout.splitlines():
         if l.startswith("Repository"):
@@ -382,7 +382,7 @@ def clone(pkg):
 
 
 def installed_version(pkg):
-    r = sh(["pacman", "-Q", pkg])
+    r = sh(["pacman", "-Q", "--", pkg])
     return r.stdout.split()[1] if r.returncode == 0 and len(r.stdout.split()) == 2 else ""
 
 
@@ -525,29 +525,37 @@ def review(pkg):
     ver = re.search(r"^\s*pkgver = (.+)$", head_si, re.M)
     rel = re.search(r"^\s*pkgrel = (.+)$", head_si, re.M)
 
+    pkgver_line = re.compile(r"^\s*(pkgver|_[a-z0-9_]*ver)\s*=\s*(['\"]?)([0-9][A-Za-z0-9._+~]*)\2\s*$")
     vers = set()
     have = installed_version(pkg)
     if have:
         vers.add(have.rpartition(":")[2].rpartition("-")[0])
-    if ver:
-        vers.add(ver[1].strip())
-    if base:
-        bsi = git(d, "show", f"{base}:.SRCINFO").stdout
-        bv = re.search(r"^\s*pkgver = (.+)$", bsi, re.M)
-        if bv:
-            vers.add(bv[1].strip())
-    vers = sorted((v for v in vers if v), key=len, reverse=True)
+    for f in files:
+        if f["path"] == "PKGBUILD":
+            for h in f["hunks"]:
+                for r in h["lines"]:
+                    m = pkgver_line.match(r["s"])
+                    if m:
+                        vers.add(m.group(3))
+    vers = sorted((v for v in vers if len(v) >= 3 and re.match(r"^[0-9][A-Za-z0-9._+~]*$", v)), key=len, reverse=True)
 
-    metadata = re.compile(r"^\s*(pkgver|pkgrel|epoch|_?[a-z0-9_]*ver|source(_[a-z0-9_]+)?|(sha\d+|b2|md5|ck)sums(_[a-z0-9_]+)?)\s*[=+]|^\s*['\"][^'\"]*['\"]\s*\)?\s*$")
+    release = re.compile(r"^\s*(pkgrel|epoch)\s*=\s*(['\"]?)\d+(\.\d+)?\2\s*$")
+    sums = re.compile(r"^\s*((sha\d+|b2|md5|ck)sums(_[a-z0-9_]+)?\s*=\s*\(\s*)?(['\"]([0-9a-f]{32,}|SKIP)['\"]\s*)+\)?\s*$")
+    sourced = re.compile(r"^\s*(source(_[a-z0-9_]+)?\s*[=+]|['\"])")
 
     def norm(x):
         x = x.strip()
-        for v in vers:
-            x = x.replace(v, "{V}")
-        if metadata.search(x):
-            x = re.sub(r"\b[0-9a-f]{32,}\b", "{H}", x)
-            x = re.sub(r"^(pkgrel|epoch)\s*=\s*\S+", r"\1={R}", x)
-            x = re.sub(r"\b\d+(\.\d+){1,3}\b", "{N}", x)
+        m = pkgver_line.match(x)
+        if m:
+            return m.group(1) + "={V}"
+        m = release.match(x)
+        if m:
+            return m.group(1) + "={R}"
+        if sums.match(x):
+            return re.sub(r"['\"][0-9a-f]{32,}['\"]", "'{H}'", x)
+        if sourced.match(x):
+            for v in vers:
+                x = x.replace(v, "{V}")
         return x
 
     def substantive(text):
@@ -556,7 +564,7 @@ def review(pkg):
 
     routine = diff_ok
     for f in files:
-        if f["binary"] or f.get("mode") or f["status"] != "modified":
+        if f["binary"] or f.get("mode") or f["status"] != "modified" or f["path"] != "PKGBUILD":
             routine = False
         removed = {norm(r["s"]) for h in f["hunks"] for r in h["lines"] if r["t"] == "-"}
         added = {norm(r["s"]) for h in f["hunks"] for r in h["lines"] if r["t"] == "+"}
@@ -571,8 +579,7 @@ def review(pkg):
                     continue
                 if base and norm(r["s"]) in removed:
                     r["routine"] = True
-                    continue
-                if r["s"].strip() and not r["s"].strip().startswith("#"):
+                elif r["s"].strip() and not r["s"].strip().startswith("#"):
                     routine = False
                 for rx, why in FLAGS:
                     if re.search(rx, r["s"]):
@@ -975,9 +982,9 @@ def missing_deps(d):
         deps = [x for x in deps if re.split(r"[<>=]", x)[0] not in own]
         if not deps:
             return [], []
-        miss = [x for x in sh(["pacman", "-T", *deps]).stdout.split() if x]
+        miss = [x for x in sh(["pacman", "-T", "--", *deps]).stdout.split() if x]
         names = sorted({re.split(r"[<>=]", x)[0] for x in miss})
-        in_repo = [x for x in names if sh(["pacman", "-Si", x]).returncode == 0]
+        in_repo = [x for x in names if sh(["pacman", "-Si", "--", x]).returncode == 0]
         return in_repo, [x for x in names if x not in in_repo]
 
     in_repo, aur_only = missing("depends|makedepends")

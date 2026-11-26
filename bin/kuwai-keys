@@ -43,6 +43,8 @@ def chord(keys: str) -> str | None:
     up = [m.upper() for m in mods]
     if len(set(up)) != len(up) or any(m not in MODS for m in up) or not KEY.match(key):
         return None
+    if not (set(up) - {"SHIFT"}) and not re.match(r"^(F\d{1,2}|Print|Pause)$", key):
+        return None
     return "+".join([m for m in MODS if m in up] + [key.upper()])
 
 
@@ -118,6 +120,8 @@ def main(argv: list[str]) -> int:
                 return fail(f"not an action: {aid!r}")
             if keys and not chord(keys):
                 return fail(f"not a chord: {keys!r} (e.g. \"SUPER + CTRL + E\")")
+            if not keys and text == "Lock":
+                return fail("Lock always keeps a shortcut; give it another one instead")
             if keys and chord(keys) == aid:
                 over.pop(aid, None)
             else:

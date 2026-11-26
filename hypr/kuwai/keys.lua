@@ -26,7 +26,11 @@ function M.valid(keys)
 			return false
 		end
 	end
-	return key ~= nil and n <= 4
+	if key == nil or n > 4 then
+		return false
+	end
+	local plain = n == 0 or (n == 1 and keys:upper():find("SHIFT", 1, true))
+	return not plain or key:match("^F%d%d?$") ~= nil or key == "Print" or key == "Pause"
 end
 
 function M.read()
@@ -104,7 +108,7 @@ function M.apply()
 	local list = {}
 	for _, o in ipairs(M.read()) do
 		local e = K.palette_index["|" .. o.aid]
-		if e and e.text == o.text and not M.fixed(e) and not M.overrides[e.id] then
+		if e and e.text == o.text and not M.fixed(e) and not M.overrides[e.id] and not (o.keys == "" and e.text == "Lock") then
 			o.entry = e
 			list[#list + 1] = o
 			M.overrides[e.id] = o.keys

@@ -38,6 +38,10 @@ UA = {"User-Agent": "kuwai-ollama/1.0"}
 MAX_TOOL_ROUNDS = 10
 CHAT = ""
 MODE = "agent"
+OFFERED = None
+PRIVATE = False
+OUTBOUND = {"web_search", "shop_search", "web_fetch", "sandbox_run", "open_url"}
+PRIVATE_READS = {"read_clipboard", "read_selection", "system_audit"}
 NUM_PREDICT = 2048
 
 
@@ -1309,6 +1313,13 @@ def _launch_request(args):
     return "launch", f"Open {found[1]}", found[0]
 
 
+def _host_read_request(args, key="path", default=""):
+    full, inside, _parts = _jail_target(args, key, default)
+    if inside:
+        return None
+    return "read", "Read " + kuwai_files.show(full), kuwai_files.show(full)
+
+
 def _url_request(args):
     url = check_url(args)
     return "open_url", "Open a link", url
@@ -1469,6 +1480,8 @@ ROUTES = [
 ]
 
 
+HOST_READS = {"read": "", "ls": "", "find": str(kuwai_files.HOME), "grep": str(kuwai_files.HOME)}
+
 CHAT_SAFE = {"web_search", "web_fetch", "shop_search", "active_window", "system_info",
              "read_selection", "ask_user", "read", "ls", "find", "grep"}
 
@@ -1612,6 +1625,8 @@ def run_tool(ids, name, raw_args):
         bad = ""
     if tool and MODE == "chat" and name not in CHAT_SAFE:
         bad = f"{name} isn't available in Chat mode (it only reads). Tell the user to switch this chat to Agent mode."
+    elif tool and OFFERED is not None and name not in OFFERED:
+        bad = f"{name} wasn't offered for this request. Use only the tools you were given."
     item_type = tool["item"] if tool else "dynamic_tool_call"
     title = tool["title"](args) if tool else name
     item_id = ids.next("t")
@@ -1645,6 +1660,9 @@ def run_tool(ids, name, raw_args):
                     emit({"type": "item.completed", "id": item_id, "status": "completed", "output": answer})
                     return "completed", f"The user answered: {answer}"
                 ask = tool["approve"](args) if tool["approve"] else None
+                if not ask and PRIVATE and name in OUTBOUND:
+                    target = args.get("url") or args.get("query") or args.get("command") or ""
+                    ask = ("network", "Go online after reading your files", str(target)[:400])
                 if ask:
                     kind, summary, detail = ask
                     decision = APPROVALS.ask(ids, item_id, kind, summary, detail)
@@ -1655,6 +1673,8 @@ def run_tool(ids, name, raw_args):
                         return "declined", (f"The user declined this {what}. Don't run it again or try another way "
                                             "to do it; say in one line that you didn't, and carry on without it.")
                 status, output = "completed", tool["run"](args)
+                if name in PRIVATE_READS or (name in HOST_READS and _host_read_request(args, default=HOST_READS[name])):
+                    globals()["PRIVATE"] = True
             except ToolError as e:
                 status, output = "failed", str(e)
             except Interrupted:
@@ -1761,7 +1781,7 @@ def apply_steers(messages):
 
 
 def run_turn(req):
-    global CHAT, FILE_BUDGET, MODE
+    global CHAT, FILE_BUDGET, MODE, OFFERED, PRIVATE
     CHAT = str(req.get("chat") or "")
     FILE_BUDGET = int(int((req.get("options") or {}).get("num_ctx", 4096)) * 1.4)
     model = req.get("model") or "qwen3.5:4b"
@@ -1780,6 +1800,8 @@ def run_turn(req):
     mode = "chat" if req.get("mode") == "chat" else "agent"
     MODE = mode
     offered = route_tools(raw_msgs, any((m.get("context") or {}).get("files") for m in raw_msgs[-2:] if isinstance(m.get("context"), dict)), mode)
+    OFFERED = set(offered)
+    PRIVATE = False
     tools = [t["schema"] for n, t in TOOLS.items() if n in offered and (not t.get("sandbox") or sandbox_ready())]
     if os.environ.get("KUWAI_AGENT_CONTEXT") != "off":
         last = next((m for m in reversed(raw_msgs) if m.get("role") == "user"), {})

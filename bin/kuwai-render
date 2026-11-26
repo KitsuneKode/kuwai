@@ -191,7 +191,12 @@ def render(text):
 
     if looks_markdown(s):
         import markdown
-        body = markdown.markdown(s, extensions=["fenced_code", "tables", "sane_lists"])
+        body = markdown.markdown(s.replace("<", "&lt;"), extensions=["fenced_code", "tables", "sane_lists"])
+        def alt(m):
+            a = re.search(r'alt="([^"]*)"', m.group(0))
+            return "[image" + (": " + a.group(1) if a and a.group(1) else "") + "]"
+        body = re.sub(r"<img\b[^>]*>", alt, body)
+        body = re.sub(r"\s(?:src|srcset|background|style)\s*=\s*(\"[^\"]*\"|'[^']*')", "", body)
 
         def block(m):
             lang, code = (m.group(1) or ""), html.unescape(m.group(2))

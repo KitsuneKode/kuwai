@@ -17,7 +17,7 @@ const readText = (p) => { try { return readFileSync(p, "utf8").trim(); } catch {
 const readJson = (p) => { try { return JSON.parse(readFileSync(p, "utf8")); } catch { return null; } };
 const token = t3Token("operate");
 const runtime = readJson(join(T3_HOME, "userdata/server-runtime.json"));
-if (!token || !runtime || !runtime.port || !/^(127\.\d{1,3}\.\d{1,3}\.\d{1,3}|::1|\[::1\]|localhost)$/.test(String(runtime.host || "127.0.0.1"))) out({ ok: false, why: "offline" });
+if (!token || !runtime || !(Number.isInteger(runtime.port) && runtime.port > 0 && runtime.port < 65536) || !/^(127\.\d{1,3}\.\d{1,3}\.\d{1,3}|::1|\[::1\]|localhost)$/.test(String(runtime.host || "127.0.0.1"))) out({ ok: false, why: "offline" });
 const url = `ws://${runtime.host || "127.0.0.1"}:${runtime.port}/ws?orchestrationProtocol=2`;
 const command = { type: "runtime-request.respond", commandId: "kuwai-" + randomUUID(), threadId: thread, requestId: request, decision };
 let ws;
