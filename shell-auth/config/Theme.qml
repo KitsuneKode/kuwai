@@ -48,7 +48,17 @@ Singleton {
         const m = text.match(/^\s*color4\s+(#[0-9A-Fa-f]{6})\s*$/m);
         return m ? m[1] : "";
     }
+    function lookAccent(text) {
+        try {
+            const d = JSON.parse(text);
+            return d && d.schema === 1 && d.role && typeof d.role.accent === "string" && /^#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?$/.test(d.role.accent) ? d.role.accent : "";
+        } catch (e) {
+            return "";
+        }
+    }
     function recolor() {
+        const look = kuwaiLook.ok ? lookAccent(kuwaiLook.text()) : "";
+        if (look) { accent = Qt.color(look); return; }
         let a = "";
         if (colorMode === 0 && themeName) {
             if (themeDcol.ok) a = dcolAccent(themeDcol.text());
@@ -70,6 +80,16 @@ Singleton {
             root.themeName = n ? n[1] : "";
             root.recolor();
         }
+    }
+    FileView {
+        id: kuwaiLook
+        property bool ok: false
+        path: (Quickshell.env("XDG_STATE_HOME") || root.home + "/.local/state") + "/kuwai/look/current/palette.json"
+        watchChanges: true
+        printErrors: false
+        onFileChanged: reload()
+        onLoaded: { ok = true; root.recolor(); }
+        onLoadFailed: { ok = false; root.recolor(); }
     }
     FileView {
         id: themeDcol
