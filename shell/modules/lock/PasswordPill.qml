@@ -66,13 +66,13 @@ Column {
     Item {
         id: pill
         anchors.horizontalCenter: parent.horizontalCenter
-        width: 270; height: 42
+        width: Theme.sp(270); height: Theme.sp(42)
         Spring { id: shake; tier: ({ stiffness: 900, damping: 9 }); target: 0 }
         Connections { target: entry.lock; function onFailuresChanged() { if (Theme.reduceMotion) return; shake.velocity = 900; shake.settled = false; } }
         transform: Translate { x: shake.value }
         Rectangle {
             anchors.fill: parent
-            radius: 21
+            radius: height / 2
             color: Theme.wash(3)
             border.width: 1
             border.color: entry.lock.error ? Qt.alpha(Theme.red, 0.6) : Theme.edge(2)
@@ -131,7 +131,7 @@ Column {
             activeFocusOnTab: !entry.preview
             onActiveFocusChanged: if (!activeFocus && !entry.preview) Qt.callLater(entry.reclaim)
             color: "white"
-            font.pixelSize: 14
+            font.pixelSize: Theme.sp(14)
             font.letterSpacing: 2
             horizontalAlignment: TextInput.AlignHCenter
             Keys.onReturnPressed: entry.lock.submit()
@@ -143,7 +143,7 @@ Column {
         Rectangle {
             id: go
             anchors { right: parent.right; rightMargin: 6; verticalCenter: parent.verticalCenter }
-            width: 30; height: 30; radius: 15
+            width: Theme.sp(30); height: width; radius: width / 2
             color: entry.lock.password ? Qt.alpha(entry.accent, 0.9) : Theme.wash(2)
             Behavior on color { ColorAnimation { duration: Theme.colorMs } }
             scale: goPress.pressed ? 0.9 : 1
@@ -152,7 +152,7 @@ Column {
                 textFormat: Text.PlainText
                 anchors.centerIn: parent
                 text: entry.lock.checking ? "\u{f0772}" : "\u{f0054}"
-                font.family: Theme.fontGlyph; font.pixelSize: Theme.glyphS
+                font.family: Theme.fontGlyph; font.pixelSize: Theme.sp(Theme.glyphS)
                 color: entry.lock.password ? entry.onAccent : "white"
                 Behavior on color { ColorAnimation { duration: Theme.colorMs } }
                 RotationAnimation on rotation { running: entry.lock.checking && !Theme.reduceMotion; loops: Animation.Infinite; from: 0; to: 360; duration: Theme.spinMs }

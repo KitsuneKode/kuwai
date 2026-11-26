@@ -128,7 +128,7 @@ FocusScope {
     // ── Sidebar ──────────────────────────────────────────────────────────
     Rectangle {
         id: side
-        width: Math.round(212 * Theme.textScale)   // grows with Text size
+        width: Math.min(Theme.sp(212), Math.round(settings.width * 0.38))
         height: parent.height
         color: Theme.wash(0)
         // The search sits where the title was (System Settings): the panel
@@ -244,7 +244,7 @@ FocusScope {
                     required property int index
                     readonly property bool on: settings.current === index
                     width: parent.width
-                    height: 36
+                    height: Math.max(36, sideLabel.implicitHeight + 10)
                     radius: 9
                     color: on ? Theme.wash(2) : itemArea.containsMouse ? Theme.rowHover : "transparent"
                     Behavior on color { ColorAnimation { duration: Theme.colorMs } }
@@ -255,7 +255,8 @@ FocusScope {
                         color: item.modelData.tint
                         Text { textFormat: Text.PlainText; anchors.centerIn: parent; text: item.modelData.glyph; font.family: Theme.fontGlyph; font.pixelSize: 14; color: "white" }
                     }
-                    Label { anchors { left: chip.right; leftMargin: 10; verticalCenter: parent.verticalCenter }
+                    Label { id: sideLabel; anchors { left: chip.right; leftMargin: 10; right: parent.right; rightMargin: 6; verticalCenter: parent.verticalCenter }
+                    wrapMode: Text.Wrap; maximumLineCount: 2
                     text: item.modelData.label; size: Theme.tBody; weight: item.on ? Theme.wMedium : Theme.wRegular }
                     MouseArea { id: itemArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: settings.current = item.index }
                     Accessible.role: Accessible.PageTab
@@ -281,7 +282,7 @@ FocusScope {
                     required property int index
                     readonly property bool on: settings.pick === index
                     width: parent.width
-                    height: Theme.sp(44)
+                    height: Math.max(Theme.sp(44), resText.implicitHeight + 12)
                     radius: 9
                     color: on ? Theme.wash(2) : resArea.containsMouse ? Theme.rowHover : "transparent"
                     Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
@@ -293,6 +294,7 @@ FocusScope {
                         Text { textFormat: Text.PlainText; anchors.centerIn: parent; text: res.modelData.section.glyph; font.family: Theme.fontGlyph; font.pixelSize: 13; color: "white" }
                     }
                     Column {
+                        id: resText
                         anchors { left: resChip.right; leftMargin: 10; right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter }
                         spacing: 1
                         Label {
@@ -301,7 +303,7 @@ FocusScope {
                             size: Theme.tBody; weight: res.on ? Theme.wMedium : Theme.wRegular
                         }
                         Label {
-                            width: parent.width; elide: Text.ElideRight
+                            width: parent.width; wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight
                             text: res.modelData.row ? res.modelData.section.label + (res.modelData.row.group ? " · " + res.modelData.row.group : "") : "Page"
                             size: Theme.tFootnote; color: Theme.textTertiary
                         }

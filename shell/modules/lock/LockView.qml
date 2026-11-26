@@ -160,7 +160,7 @@ Item {
             TextMorph {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: Dates.clock(view.now)
-                size: Theme.tLockClock; weight: Theme.wBold; rounded: true
+                size: Math.min(Theme.tLockClock, Math.floor(view.height * 0.2 / Theme.textScale)); weight: Theme.wBold; rounded: true
                 color: view.tint
                 duration: Theme.breatheMs; stagger: 60
             }

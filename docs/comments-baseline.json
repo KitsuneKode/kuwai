@@ -1,5 +1,5 @@
 {
-  "total_comment_lines": 7505,
+  "total_comment_lines": 7504,
   "files_with_comments": 291,
   "files": {
     "shell/components/ActionMenu.qml": 23,
@@ -107,7 +107,7 @@
     "shell/modules/island/PowerPanel.qml": 26,
     "shell/modules/island/QuickShelf.qml": 27,
     "shell/modules/island/ReadPanel.qml": 30,
-    "shell/modules/island/SettingsPanel.qml": 54,
+    "shell/modules/island/SettingsPanel.qml": 53,
     "shell/modules/island/SwitcherPanel.qml": 10,
     "shell/modules/island/SysMarks.qml": 24,
     "shell/modules/island/SystemPanel.qml": 47,
