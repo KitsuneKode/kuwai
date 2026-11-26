@@ -164,8 +164,8 @@ FocusScope {
                 text: cp.error ? cp.error
                     : !cp.report ? "Reading your agents' transcripts…"
                     : cp.report.unused.length === 0 ? "tokens: every skill was used in the last " + cp.days + " days. Nothing to clear."
-                    : "tokens every session spends listing " + cp.report.unused.length + " skills nobody called in " + cp.days + " days"
-                      + " (of " + cp.num(cp.report.listTokens) + " for all " + cp.report.skills + ")"
+                    : "tokens each session spends on " + cp.report.unused.length + " skills unused in " + cp.days + " days · "
+                      + cp.num(cp.report.listTokens) + " for all " + cp.report.skills
                 size: Theme.tSub; color: cp.error ? Theme.orange : Theme.textSecondary
             }
         }
@@ -179,7 +179,7 @@ FocusScope {
             visible: cp.rows.length > 0
             width: parent.width
             // Room for the leftovers and the action under it (the island has a ceiling).
-            height: Math.min(contentHeight, (cp.report && cp.report.leftovers.length ? 4 : 6) * 46)
+            height: Math.min(contentHeight, (cp.report && cp.report.leftovers.length ? 6 : 8) * 46)
             clip: true
             spacing: 2
             boundsBehavior: Flickable.StopAtBounds
@@ -253,7 +253,7 @@ FocusScope {
             visible: !!cp.report && cp.report.leftovers.length > 0
             width: parent.width
             spacing: 6
-            Label { text: "Leftovers"; size: Theme.tFootnote; weight: Theme.wSemibold; color: Theme.textTertiary }
+            Label { leftPadding: 10; text: "Leftovers"; size: Theme.tFootnote; weight: Theme.wSemibold; color: Theme.textTertiary }
             Repeater {
                 model: cp.report ? cp.report.leftovers : []
                 delegate: Item {

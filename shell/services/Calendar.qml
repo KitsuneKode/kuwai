@@ -151,6 +151,9 @@ Singleton {
         const a = new Date(day.getFullYear(), day.getMonth(), day.getDate()).getTime(), b = a + 86400000;
         return events.filter(e => e.start < b && e.end > a);
     }
+    function nextAfter(now, within) {
+        return events.find(e => !e.allDay && e.start > now && e.start - now <= within) || null;
+    }
     function timeOf(e) {
         if (e.allDay) return "All day";
         return Dates.time(e.start) + " – " + Dates.time(e.end);

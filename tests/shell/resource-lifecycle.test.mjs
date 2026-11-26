@@ -173,10 +173,22 @@ test('the saver scene and its timer are suppressed while locked or displays are 
   const qml = source('shell/modules/screensaver/Screensaver.qml');
   const expression = qml.match(/readonly property bool showing: ([\s\S]+?)\n\n/)[1];
   const isShowing = new Function('s', `with(s){return ${expression}}`);
-  const state = {forced:true, allowed:true, fullscreenAnywhere:false, idle:{isIdle:true}, dismissed:false};
+  const state = {forced:true, allowed:true, fullscreenAnywhere:false, idleShown:true, wakeGrace:false, dismissed:false};
   expect(isShowing({...state, Saver:{locked:false, screensOff:false}})).toBe(true);
   expect(isShowing({...state, Saver:{locked:true, screensOff:false}})).toBe(false);
   expect(isShowing({...state, Saver:{locked:false, screensOff:true}})).toBe(false);
+});
+
+test('a media key keeps the saver up: the moment after waking holds it, then only a media change keeps it', () => {
+  const qml = source('shell/modules/screensaver/Screensaver.qml');
+  const expression = qml.match(/readonly property bool showing: ([\s\S]+?)\n\n/)[1];
+  const isShowing = new Function('s', `with(s){return ${expression}}`);
+  const woke = {forced:false, allowed:true, fullscreenAnywhere:false, idleShown:false, dismissed:false, Saver:{locked:false, screensOff:false}, Idle:{appHeld:false}};
+  expect(isShowing({...woke, wakeGrace:true})).toBe(true);
+  expect(isShowing({...woke, wakeGrace:false})).toBe(false);
+  expect(isShowing({...woke, wakeGrace:true, Saver:{locked:true, screensOff:false}})).toBe(false);
+  expect(qml).toMatch(/function mediaTouched\(\) \{ if \(!wakeGrace\) return; graceEnd\.stop\(\); wakeGrace = false; forced = true; \}/);
+  expect(qml).toMatch(/function dismiss\(\) \{ forced = false; wakeGrace = false; dismissed = true; \}/);
 });
 
 test('a film the GPU decoder refuses plays again decoded on the CPU, once', () => {

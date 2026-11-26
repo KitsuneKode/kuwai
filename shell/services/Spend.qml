@@ -10,6 +10,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.config
+import "spendreport.mjs" as SpendReport
 
 Singleton {
     id: root
@@ -33,7 +34,7 @@ Singleton {
     function line(id) {
         const p = of(id);
         if (!p || (!p.today.tokens && !p.week.tokens)) return "";
-        const money = v => "~$" + (v >= 100 ? Math.round(v) : v.toFixed(2));
+        const money = v => "~" + SpendReport.money(v);
         const today = !p.today.tokens ? "Nothing today"
             : "Today " + tokens(p.today.tokens) + " tokens" + (p.today.priced && p.today.cost > 0 ? " · " + money(p.today.cost) : "");
         const week = "7 days " + (p.week.priced && p.week.cost > 0 ? money(p.week.cost) : tokens(p.week.tokens) + " tokens");

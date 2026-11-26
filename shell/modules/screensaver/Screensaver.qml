@@ -17,6 +17,7 @@ import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Hyprland
 import Quickshell.Services.UPower
+import Quickshell.Services.Pipewire
 import qs.config
 import qs.components
 import qs.services
@@ -37,7 +38,7 @@ Scope {
     // Without this, stop only ended a saver that start had forced; one that
     // idleness brought up came straight back, because nothing had been typed.
     property bool dismissed: false
-    readonly property bool showing: (forced || (allowed && idle.isIdle && !dismissed))
+    readonly property bool showing: (forced || wakeGrace || (allowed && idleShown && !dismissed))
         && !fullscreenAnywhere && !Saver.locked && !Saver.screensOff && (forced || !Idle.appHeld)
 
     IdleMonitor {
@@ -48,7 +49,25 @@ Scope {
         timeout: Math.max(1, Settings.screensaverMins || 3) * 60
         // Caffeine is an inhibitor of our own: idle still counts here.
         respectInhibitors: false
-        onIsIdleChanged: if (!isIdle) { root.forced = false; root.dismissed = false; }
+        onIsIdleChanged: {
+            if (isIdle) { root.idleShown = true; return; }
+            const up = (root.forced || (root.idleShown && !root.dismissed)) && !root.fullscreenAnywhere && !Saver.locked && !Saver.screensOff;
+            root.forced = false; root.dismissed = false; root.idleShown = false;
+            if (up && Media.active) { root.wakeGrace = true; graceEnd.restart(); }
+        }
+    }
+    property bool idleShown: false
+    property bool wakeGrace: false
+    Timer { id: graceEnd; interval: 250; onTriggered: root.wakeGrace = false }
+    function mediaTouched() { if (!wakeGrace) return; graceEnd.stop(); wakeGrace = false; forced = true; }
+    Connections { target: Media; function onPlayingChanged() { root.mediaTouched(); } function onActiveChanged() { root.mediaTouched(); } }
+    Connections { target: Media.active; ignoreUnknownSignals: true; function onTrackTitleChanged() { root.mediaTouched(); } }
+    PwObjectTracker { objects: root.showing ? [Pipewire.defaultAudioSink] : [] }
+    Connections {
+        target: Pipewire.defaultAudioSink ? Pipewire.defaultAudioSink.audio : null
+        ignoreUnknownSignals: true
+        function onVolumeChanged() { root.mediaTouched(); }
+        function onMutedChanged() { root.mediaTouched(); }
     }
 
     // What to play: the live wallpaper's pick, else the still wallpaper.
@@ -236,7 +255,7 @@ Scope {
     // SIGKILL, never SIGTERM: Quickshell can crash on a polite exit and its
     // crash handler would relaunch the film (bin/kuwai-shell has the story).
     Component.onDestruction: if (filmProc.running) filmProc.signal(9)
-    function dismiss() { forced = false; dismissed = true; }
+    function dismiss() { forced = false; wakeGrace = false; dismissed = true; }
     IpcHandler {
         target: "screensaver"
         // (Not show/hide: `qs ipc … show` is the CLI's own "list functions".)
@@ -383,6 +402,19 @@ Scope {
                             textFormat: Text.PlainText
                             visible: Weather.ok
                             text: Weather.glyph + "  " + Weather.temp + "°" + (Weather.desc ? " · " + Weather.desc : "")
+                            font.family: Theme.fontText
+                            font.pixelSize: Math.round(win.height * 0.017)
+                            color: Qt.rgba(1, 1, 1, 0.6)
+                            leftPadding: 6; topPadding: 10
+                        }
+                        Text {
+                            readonly property var next: Calendar.nextAfter(face.now.getTime(), 12 * 3600000)
+                            readonly property bool named: Settings.notifPrivacy === "never" && !Notifs.sharing
+                            textFormat: Text.PlainText
+                            visible: !!next
+                            text: next ? "\u{f00f0}  " + (named ? Dates.time(next.start) + " · " + next.title : "Next event at " + Dates.time(next.start)) : ""
+                            elide: Text.ElideRight
+                            width: Math.min(implicitWidth, win.width * 0.4)
                             font.family: Theme.fontText
                             font.pixelSize: Math.round(win.height * 0.017)
                             color: Qt.rgba(1, 1, 1, 0.6)
