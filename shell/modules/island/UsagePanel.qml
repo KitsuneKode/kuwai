@@ -37,7 +37,8 @@ FocusScope {
     // (By the rows' own heights: they grow with the Text size; fixed numbers
     // let the panel outgrow the island at 200 %.)
     readonly property real listMax: Math.max(120, ceiling - 40 - head.height - col.spacing - viewSeg.height - col.spacing
-        - (hasTabs ? tabsRow.height + col.spacing : 0) - (hasFoot ? foot.height + col.spacing : 0) - (Limits.down ? downBox.height + col.spacing : 0))
+        - (hasTabs ? tabsRow.height + col.spacing : 0) - (hasFoot ? foot.height + col.spacing : 0) - (Limits.down ? downBox.height + col.spacing : 0)
+        - (healthLine.visible ? healthLine.height + col.spacing : 0))
 
     // Countdowns tick (once a minute) while this is open.
     Binding { target: Limits; property: "panelShown"; value: usage.visible }
@@ -96,7 +97,7 @@ FocusScope {
             const id = pid(x.provider);
             const g = by[id] || (by[id] = { id: id, p: x.provider, name: Limits.providerShort(x.provider),
                                             brand: Limits.brandFor(x.provider), tint: Limits.tintFor(x.provider), claude: isClaude(x.provider),
-                                            accounts: {}, rows: {}, rank: 0, back: Infinity, top: 0 });
+                                            accounts: {}, rows: {}, rank: 0, back: Infinity, top: 0, early: false });
             // Per account (its key), each account's windows once: keyed by
             // the account's name, T3's two "Cursor" accounts were one
             // section with every row twice.
@@ -106,7 +107,9 @@ FocusScope {
             if (g.rows[k]) continue;
             g.rows[k] = { key: x.key, label: Limits.windowLabel(x.window), acct: acct, window: x.window, used: x.used, level: x.level,
                           plan: x.account.plan || "", checkedAt: x.account.checkedAt || 0 };
-            const rank = x.level === "exhausted" ? 2 : x.level === "approaching" ? 1 : 0;
+            const early = x.level !== "exhausted" && !!Usage.runsOut(x.window, Limits.now);
+            if (early) g.early = true;
+            const rank = x.level === "exhausted" ? 2 : x.level === "approaching" || early ? 1 : 0;
             g.rank = Math.max(g.rank, rank);
             g.top = Math.max(g.top, x.used);
             if (rank === 2 && x.window.resetsAt) g.back = Math.min(g.back, x.window.resetsAt);
@@ -142,6 +145,7 @@ FocusScope {
     readonly property var shown: tab === "all" ? groups : groups.filter(g => g.id === tab)
     readonly property int outCount: groups.filter(g => g.rank === 2).length
     readonly property int partCount: groups.filter(g => g.rank === 1.5).length
+    readonly property int earlyCount: groups.filter(g => g.rank === 1 && g.early).length
     readonly property real firstBack: Math.min(...groups.filter(g => g.rank === 2).map(g => g.back), Infinity)
 
     // "Tue 21:00" a day or more away, else "21:00".
@@ -179,9 +183,10 @@ FocusScope {
                 visible: Limits.loaded && usage.limitsView
                 text: usage.outCount
                     ? usage.outCount + " out" + (usage.partCount ? " · " + usage.partCount + " partly" : "") + (usage.backIn(usage.firstBack) ? " · first back in " + usage.backIn(usage.firstBack) : "")
-                    : usage.partCount ? usage.partCount + " partly out · the rest have room" : "All agents have room"
+                    : usage.partCount ? usage.partCount + " partly out · the rest have room"
+                    : usage.earlyCount ? usage.earlyCount + " on pace to run out early · the rest have room" : "All agents have room"
                 size: Theme.tFootnote; weight: Theme.wSemibold
-                color: usage.outCount ? Theme.orange : Theme.textTertiary
+                color: usage.outCount || usage.earlyCount ? Theme.orange : Theme.textTertiary
                 tabular: true
             }
         }
@@ -413,6 +418,7 @@ FocusScope {
                                         anchors.centerIn: parent
                                         text: card.g.rank === 2 ? "Out" + (usage.backIn(card.g.back) ? " · back in " + usage.backIn(card.g.back) : "")
                                             : card.g.rank === 1.5 ? card.g.why
+                                            : card.g.rank === 1 && card.g.early ? "Runs out early"
                                             : card.g.rank === 1 ? Math.max(0, 100 - Math.round(card.g.top * 100)) + "% left" : "OK"   // the rows' own unit (it said "89%", used, above rows saying "11% left")
                                         size: Theme.tCaption; weight: Theme.wBold
                                         // Out: red for text (red itself on its own wash read 4.3:1).
@@ -625,89 +631,6 @@ FocusScope {
                         }
                     }
                 }
-                Rectangle {
-                    id: healthBox
-                    visible: usage.hasHealth
-                    width: cards.width
-                    height: healthCol.implicitHeight + Theme.s2 * 2
-                    radius: Theme.r2
-                    color: Theme.card
-                    border.width: 1; border.color: Theme.cardEdge
-                    Column {
-                        id: healthCol
-                        x: Theme.s3; y: Theme.s2
-                        width: parent.width - Theme.s3 * 2
-                        spacing: Theme.s1
-                        Repeater {
-                            model: usage.healthRows
-                            delegate: Item {
-                                id: hr
-                                required property var modelData
-                                readonly property real lineH: Theme.sp(Theme.s5)
-                                width: healthCol.width
-                                height: lineH + (hrWhy.visible ? hrWhy.implicitHeight : 0)
-                                Rectangle {
-                                    id: hrDot
-                                    y: (hr.lineH - height) / 2
-                                    width: 6; height: 6; radius: 3
-                                    color: hr.modelData.tone
-                                }
-                                AgentMark {
-                                    id: hrMark
-                                    anchors { left: hrDot.right; leftMargin: Theme.s2 }
-                                    y: (hr.lineH - height) / 2
-                                    width: Theme.sp(14); height: width
-                                    tiled: false
-                                    agent: Providers.agentOf(hr.modelData.p.id)
-                                    name: Providers.name(hr.modelData.p.id)
-                                }
-                                Label {
-                                    id: hrName
-                                    anchors { left: hrMark.right; leftMargin: Theme.s2; right: parent.right }
-                                    y: (hr.lineH - implicitHeight) / 2
-                                    elide: Text.ElideRight
-                                    text: Providers.name(hr.modelData.p.id)
-                                    size: Theme.tSub; weight: Theme.wSemibold
-                                }
-                                Label {
-                                    id: hrWhy
-                                    visible: text !== ""
-                                    anchors { left: hrName.left; right: parent.right }
-                                    y: hr.lineH
-                                    wrapMode: Text.Wrap; maximumLineCount: 3; elide: Text.ElideRight
-                                    text: hr.modelData.why
-                                    size: Theme.tFootnote; color: Theme.textSecondary
-                                }
-                                HoverHandler { cursorShape: Qt.PointingHandCursor }
-                                TapHandler { onTapped: { T3Code.focus(); Island.close(); } }
-                                Accessible.role: Accessible.Button
-                                Accessible.name: Providers.name(hr.modelData.p.id) + ": " + hr.modelData.why + ". Open T3 Code"
-                                Accessible.onPressAction: { T3Code.focus(); Island.close(); }
-                            }
-                        }
-                        Label {
-                            visible: usage.uncheckedLine !== ""
-                            width: parent.width
-                            wrapMode: Text.Wrap
-                            text: usage.uncheckedLine
-                            size: Theme.tFootnote; color: Theme.textTertiary
-                        }
-                        Label {
-                            visible: usage.offLine !== ""
-                            width: parent.width
-                            wrapMode: Text.Wrap
-                            text: usage.offLine
-                            size: Theme.tFootnote; color: Theme.textTertiary
-                        }
-                        Label {
-                            visible: usage.unreadLine !== ""
-                            width: parent.width
-                            wrapMode: Text.Wrap
-                            text: usage.unreadLine
-                            size: Theme.tFootnote; color: Theme.textTertiary
-                        }
-                    }
-                }
             }
         }
         // More below: the list fades out (a row cut through its middle read as
@@ -716,6 +639,30 @@ FocusScope {
         ScrollHint { flickable: flick; anchors { right: parent.right; top: parent.top; bottom: parent.bottom; rightMargin: -10 } }
         }
 
+        Item {
+            id: healthLine
+            visible: usage.limitsView && usage.hasHealth
+            width: parent.width
+            height: visible ? Math.max(troubleBtn.visible ? troubleBtn.implicitHeight : 0, infoLine.visible ? infoLine.implicitHeight : 0) : 0
+            Ui.Button {
+                id: troubleBtn
+                visible: usage.healthRows.length > 0
+                kind: "quiet"; glyph: "\u{f0026}"; tone: Theme.orange
+                text: usage.healthRows.length === 1 ? Providers.name(usage.healthRows[0].p.id) + " needs you" : usage.healthRows.length + " providers need you"
+                label: usage.healthRows.map(r => Providers.name(r.p.id) + ": " + r.why).join(". ") + ". Open T3 Code"
+                onClicked: { T3Code.focus(); Island.close(); }
+                HoverHandler { id: troubleHover }
+                Tip { text: usage.healthRows.map(r => Providers.name(r.p.id) + ": " + r.why).concat([usage.uncheckedLine, usage.offLine, usage.unreadLine].filter(x => x)).join("\n"); shown: troubleHover.hovered }
+            }
+            Label {
+                id: infoLine
+                visible: !troubleBtn.visible
+                width: parent.width
+                elide: Text.ElideRight
+                text: [usage.uncheckedLine, usage.offLine, usage.unreadLine].filter(x => x).join(" · ")
+                size: Theme.tFootnote; color: Theme.textTertiary
+            }
+        }
         // ── Where the numbers come from, and how old they are ────────────
         // A reading is pushed as it changes (nothing to refresh by hand), so
         // what is worth saying is its source and, when it isn't live, its age.
