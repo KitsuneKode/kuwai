@@ -70,7 +70,7 @@ add() (
     local base="scale=-2:$H:flags=lanczos,fps=30,format=yuv420p"
     local filters=() codec=() temporary
     temporary=$(mktemp "$LIB/.encode.XXXXXX") || return 1
-    trap 'rm -f -- "$temporary"' EXIT
+    trap "rm -f -- $(printf %q "$temporary")" EXIT
     if [ "$loop" = 1 ] && awk -v d="$D" 'BEGIN{exit !(d > 4)}'; then
         local off; off=$(awk -v d="$D" -v f="$F" 'BEGIN{printf "%.3f", d-2*f}')
         filters=(-filter_complex "[0:v]${base},split[x][y];[x]trim=start=$F,setpts=PTS-STARTPTS[a];[y]trim=end=$F,setpts=PTS-STARTPTS[b];[a][b]xfade=transition=fade:duration=$F:offset=${off},format=yuv420p[v]" -map "[v]")

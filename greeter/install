@@ -44,7 +44,7 @@ stage_code() {
 install_code() {
     local src
     src=$(mktemp -d) || exit 1
-    trap 'rm -rf "$src"' EXIT
+    trap "rm -rf -- $(printf %q "$src")" EXIT
     stage_code "$src" || exit 1
     install -d -m755 -o root -g root "$DEST"
     chown root:root "$DEST"; chmod 755 "$DEST"
