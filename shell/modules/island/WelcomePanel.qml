@@ -70,12 +70,18 @@ Item {
                         }
                         Label {
                             id: what
-                            anchors { left: parent.left; leftMargin: Theme.sp(96); right: parent.right; verticalCenter: parent.verticalCenter }
+                            anchors { left: parent.left; leftMargin: Theme.sp(60); right: parent.right; verticalCenter: parent.verticalCenter }
                             wrapMode: Text.Wrap
                             text: modelData.what
                             size: Theme.tBody
                         }
                     }
+                }
+                Label {
+                    width: parent.width
+                    wrapMode: Text.Wrap
+                    text: "⌘ is the Super key, the one with the Windows logo. Shortcuts written in words say Super."
+                    size: Theme.tFootnote; color: Theme.textTertiary
                 }
             }
 
@@ -89,7 +95,7 @@ Item {
                 }
                 SettingsRow {
                     label: "GitHub and Gmail"
-                    detail: "GitHub through your gh login; Gmail after kuwai feeds gmail-setup"
+                    detail: "GitHub through your gh sign-in; Gmail once you give it an app password (the README says how)"
                     Toggle { on: Welcome.collecting("feeds"); onToggled: Welcome.setCollecting("feeds", !on) }
                 }
             }
