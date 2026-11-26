@@ -72,6 +72,17 @@ ShellRoot {
                 fake.query = "";
                 d.reset();
                 t.wait(300);
+                const warmth = scene.find(d, c => c.label === "Warmth" && c.visible && c.moved !== undefined);
+                if (!warmth) { scene.fail("no Warmth slider to walk past"); return; }
+                let moves = 0;
+                warmth.moved.connect(() => moves++);
+                warmth.forceActiveFocus(Qt.TabFocusReason);
+                t.keyClick(Qt.Key_Down);
+                if (moves !== 0) { scene.fail("↓ on a slider lying flat changed it instead of moving on"); return; }
+                if (warmth.activeFocus) { scene.fail("↓ on a slider lying flat did not move to the next row"); return; }
+                warmth.forceActiveFocus(Qt.TabFocusReason);
+                t.keyClick(Qt.Key_Right);
+                if (moves !== 1) { scene.fail("→ on a slider did not change it"); return; }
                 console.log("UI_SMOKE_CAPTURED");
                 Qt.quit();
             }

@@ -593,7 +593,8 @@ Scope {
             readonly property real peekH: Notifs.peekExpanded ? (peekLoader.item ? Math.min(peekLoader.item.wantH, maxWinH - 40) : 172) : 76
             readonly property real bannerH: bannerHere && alertLoader.item ? alertLoader.item.implicitHeight : 72
             readonly property real targetW: panelHere ? panelSize.width : grown ? hoverSize.width : bannerHere ? Theme.cardW : peekHere ? Theme.cardW : deviceHere ? (win.alarmCard ? Theme.cardW : Theme.cardWNarrow) : restRow.implicitWidth + 32
-            readonly property real targetH: panelHere ? panelSize.height : grown ? hoverSize.height : bannerHere ? bannerH : peekHere ? peekH : deviceHere ? 84 : restH
+            readonly property bool filmRest: screenFullscreen && !panelHere && !grown && !cardHere && !askingMoment
+            readonly property real targetH: panelHere ? panelSize.height : grown ? hoverSize.height : bannerHere ? bannerH : peekHere ? peekH : deviceHere ? 84 : filmRest ? 0 : restH
             // Published so surfaces that grow out of the island (the HUD, the
             // clipboard) start from the shape actually on screen: rest, banner,
             // hover or panel. Changes with the state, not per frame.
@@ -808,7 +809,8 @@ Scope {
                 x: Math.round((win.width - width) / 2)
                 y: win.top
                 // Without the bar it is only there for a panel: it fades in as it grows.
-                opacity: win.showBar ? (win.outNow ? 1 : 0) : Math.max(0, Math.min(1, Math.max(pv.value, bv.value, nv.value, dv.value) * 2.5))
+                opacity: (win.showBar ? (win.outNow ? 1 : 0) : Math.max(0, Math.min(1, Math.max(pv.value, bv.value, nv.value, dv.value) * 2.5)))
+                         * (win.filmRest ? Math.max(0, Math.min(1, sh.value / Math.max(1, win.restH))) : 1)
                 Behavior on opacity { enabled: win.tucked || !win.outNow; NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
 
                 HoverHandler {

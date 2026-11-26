@@ -179,8 +179,8 @@ Item {
     property real lastPassWheel: 0
     Timer { id: wheelArm; interval: 450; onTriggered: s.wheelReady = true }
 
-    // Keyboard and screen readers: ←→ (↑↓) move it a twentieth, Shift a
-    // fifth; Home/End to the ends.
+    // Keyboard and screen readers: ←→ (a fader: ↑↓) move it a twentieth, Shift a
+    // fifth; Home/End to the ends. ↑↓ on a slider lying flat go to the next row.
     activeFocusOnTab: true
     Accessible.role: Accessible.Slider
     Accessible.name: s.label + (s.valueText ? ", " + s.valueText : "")
@@ -194,8 +194,9 @@ Item {
         const span = s.to - s.from, big = e.modifiers & Qt.ShiftModifier;
         const step = Math.max(Math.abs(s.stepSize), Math.abs(span) / (big ? 5 : 20)) * (span < 0 ? -1 : 1);
         let v = null;
-        if (e.key === Qt.Key_Right || e.key === Qt.Key_Up) v = s.value + step;
-        else if (e.key === Qt.Key_Left || e.key === Qt.Key_Down) v = s.value - step;
+        const more = s.vertical ? Qt.Key_Up : Qt.Key_Right, less = s.vertical ? Qt.Key_Down : Qt.Key_Left;
+        if (e.key === more) v = s.value + step;
+        else if (e.key === less) v = s.value - step;
         else if (e.key === Qt.Key_Home) v = s.from;
         else if (e.key === Qt.Key_End) v = s.to;
         if (v === null) return;

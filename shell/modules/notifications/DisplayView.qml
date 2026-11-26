@@ -221,7 +221,7 @@ Item {
                     onToggled: Notifs.toggleUserDnd()
                 }
                 Tile {
-                    glyph: Display.nightOn ? "\u{f0594}" : "\u{f05a8}"
+                    glyph: Display.nightOn ? "\u{f0599}" : "\u{f05a8}"
                     title: "Night Shift"
                     subtitle: Display.nightHeld ? "Paused · Accurate" : Display.nightOn ? Display.temperature + " K" : "Off"
                     on: Display.nightOn

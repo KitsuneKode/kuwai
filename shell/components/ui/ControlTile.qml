@@ -23,7 +23,7 @@ Rectangle {
     signal tip(bool shown, string text)   // expandable: which half does what
 
     implicitWidth: 200
-    implicitHeight: 56
+    implicitHeight: Theme.sp(56)
     // Keyboard, like Tile: Space toggles; Return toggles, or on an
     // expandable tile opens more (so does →). The expandable split is a
     // pointer idea, so the keys name both halves instead.
