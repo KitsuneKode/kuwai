@@ -94,6 +94,7 @@ Scope {
             id: slot
             required property ShellScreen modelData
             readonly property bool here: root.on && !!root.box && root.box.monitor === modelData.name
+                && !(Island.panel !== "" && Island.screen === modelData.name)
             active: root.shownOn === modelData.name
             PanelWindow {
                 screen: slot.modelData
