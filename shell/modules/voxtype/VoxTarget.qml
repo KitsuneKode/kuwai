@@ -10,6 +10,7 @@
 // when a take starts); its place from `hyprctl clients`, read again only
 // when a window moves while a take is on.
 import QtQuick
+import QtQuick.Shapes
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
@@ -75,14 +76,16 @@ Scope {
     }
     property real glow: 0
     Timer {
-        interval: 100; repeat: true
+        interval: 66; repeat: true
         running: voice.enabled
         onTriggered: {
             const p = voice.peaks && voice.peaks.length ? Math.max(...voice.peaks) : (voice.peak || 0);
-            root.glow = Math.min(1, Math.sqrt(Math.max(0, p)) * 1.4);
+            const v = Math.min(1, Math.sqrt(Math.max(0, p)) * 1.4);
+            root.glow = v > root.glow ? root.glow + (v - root.glow) * 0.6 : root.glow * 0.8 + v * 0.2;
         }
-        onRunningChanged: if (!running) root.glow = 0
+        onRunningChanged: if (running) root.glow = 0
     }
+    readonly property bool writing: Activities.voxState === "transcribing" && !Theme.reduceMotion
     readonly property string target: on && box ? box.monitor : ""
     property string shownOn: ""
     onTargetChanged: { if (target) { linger.stop(); shownOn = target; } else linger.restart(); }
@@ -119,17 +122,68 @@ Scope {
                     radius: root.rounding + out
                     color: "transparent"
                     border.width: stroke
-                    border.color: Qt.alpha(Activities.voxListening ? Theme.red : Theme.accent, 0.6)
+                    border.color: Qt.alpha(Activities.voxListening ? Theme.red : Theme.accent, root.writing ? 0.35 : 0.6)
                     Behavior on border.color { ColorAnimation { duration: Theme.colorMs } }
                     opacity: slot.here ? 1 : 0
-                    Rectangle {
+                    Item {
+                        id: bloom
                         anchors.fill: parent
-                        radius: parent.radius
-                        color: "transparent"
-                        border.width: parent.border.width
-                        border.color: Theme.red
-                        opacity: 0.4 * root.glow
-                        visible: root.glow > 0.01
+                        opacity: voice.enabled ? 1 : 0
+                        visible: opacity > 0
+                        Behavior on opacity { NumberAnimation { duration: Theme.exitMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+                        Repeater {
+                            model: [0.34, 0.2, 0.1, 0.04]
+                            Rectangle {
+                                required property real modelData
+                                required property int index
+                                readonly property real step: ring.stroke * (index + 1) * 2 / 3
+                                x: -step; y: -step
+                                width: ring.width + step * 2
+                                height: ring.height + step * 2
+                                radius: ring.radius + step
+                                color: "transparent"
+                                border.width: ring.stroke * 2 / 3
+                                border.color: Theme.red
+                                opacity: modelData * root.glow
+                            }
+                        }
+                    }
+                    Shape {
+                        id: sweep
+                        anchors.fill: parent
+                        preferredRendererType: Shape.CurveRenderer
+                        readonly property real perimeter: 2 * (width + height) - (8 - 2 * Math.PI) * ring.radius
+                        readonly property real run: perimeter * 0.16
+                        property real travelled: 0
+                        opacity: root.writing && slot.here ? 1 : 0
+                        visible: opacity > 0
+                        Behavior on opacity { NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+                        NumberAnimation on travelled {
+                            running: sweep.visible
+                            from: 0; to: sweep.perimeter
+                            duration: Theme.shimmerMs * 3 / 2
+                            loops: Animation.Infinite
+                        }
+                        ShapePath {
+                            strokeColor: Qt.alpha(Theme.accent, 0.3)
+                            strokeWidth: ring.stroke * 3
+                            fillColor: "transparent"
+                            capStyle: ShapePath.RoundCap
+                            strokeStyle: ShapePath.DashLine
+                            dashPattern: [sweep.run / strokeWidth, (sweep.perimeter - sweep.run) / strokeWidth]
+                            dashOffset: -sweep.travelled / strokeWidth
+                            PathRectangle { x: ring.stroke / 2; y: ring.stroke / 2; width: sweep.width - ring.stroke; height: sweep.height - ring.stroke; radius: ring.radius - ring.stroke / 2 }
+                        }
+                        ShapePath {
+                            strokeColor: Qt.lighter(Theme.accent, 1.3)
+                            strokeWidth: ring.stroke
+                            fillColor: "transparent"
+                            capStyle: ShapePath.RoundCap
+                            strokeStyle: ShapePath.DashLine
+                            dashPattern: [sweep.run / strokeWidth, (sweep.perimeter - sweep.run) / strokeWidth]
+                            dashOffset: -sweep.travelled / strokeWidth
+                            PathRectangle { x: ring.stroke / 2; y: ring.stroke / 2; width: sweep.width - ring.stroke; height: sweep.height - ring.stroke; radius: ring.radius - ring.stroke / 2 }
+                        }
                     }
                     Behavior on opacity { NumberAnimation { duration: slot.here ? Theme.enterMs : Theme.exitMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                 }
