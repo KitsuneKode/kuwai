@@ -590,6 +590,39 @@ Item {
          : rest.width - width
       spacing: 10
     Row {
+        visible: Activities.micInUse || Activities.camInUse || (Notifs.shareKnown && Notifs.dndMute)
+        spacing: 7
+        anchors.verticalCenter: parent.verticalCenter
+        Rectangle {
+            visible: Activities.micInUse
+            anchors.verticalCenter: parent.verticalCenter
+            width: 6; height: 6; radius: 3
+            color: Theme.orange
+            HoverHandler { id: micHover; margin: 6 }
+            Tip { text: "Microphone in use" + (Activities.micUseSummary ? " · " + Activities.micUseSummary : Activities.micName ? " · " + Activities.micName : ""); shown: micHover.hovered; below: true }
+        }
+        // Privacy, together (Apple's colours): mic orange (above), camera
+        // green, the screen shared or recorded purple. Each says who on hover.
+        Rectangle {
+            visible: Activities.camInUse
+            anchors.verticalCenter: parent.verticalCenter
+            width: 6; height: 6; radius: 3
+            color: Theme.green
+            HoverHandler { id: camHover; margin: 6 }
+            Tip { text: "Camera in use" + (Activities.camUsers.length ? " · " + Activities.camUsers.join(", ") : ""); shown: camHover.hovered; below: true }
+        }
+        Rectangle {
+            // Hyprland tells the shell when a capture starts (kuwai.privacy →
+            // Notifs.setDndMute): toasts are already held while it runs.
+            visible: Notifs.shareKnown && Notifs.dndMute
+            anchors.verticalCenter: parent.verticalCenter
+            width: 6; height: 6; radius: 3
+            color: Theme.purple
+            HoverHandler { id: shareHover; margin: 6 }
+            Tip { text: "Your screen is being shared or recorded · notifications are held"; shown: shareHover.hovered; below: true }
+        }
+    }
+    Row {
         visible: Settings.restStatus
         spacing: 7
         anchors.verticalCenter: parent.verticalCenter
@@ -626,34 +659,6 @@ Item {
                     : Notifs.missed.length + " you missed · " + Notifs.missed.slice(0, 2).map(i => i.title || i.app).join(", ")
                 shown: missedHover.hovered; below: true
             }
-        }
-        Rectangle {
-            visible: Activities.micInUse
-            anchors.verticalCenter: parent.verticalCenter
-            width: 6; height: 6; radius: 3
-            color: Theme.orange
-            HoverHandler { id: micHover; margin: 6 }
-            Tip { text: "Microphone in use" + (Activities.micUseSummary ? " · " + Activities.micUseSummary : Activities.micName ? " · " + Activities.micName : ""); shown: micHover.hovered; below: true }
-        }
-        // Privacy, together (Apple's colours): mic orange (above), camera
-        // green, the screen shared or recorded purple. Each says who on hover.
-        Rectangle {
-            visible: Activities.camInUse
-            anchors.verticalCenter: parent.verticalCenter
-            width: 6; height: 6; radius: 3
-            color: Theme.green
-            HoverHandler { id: camHover; margin: 6 }
-            Tip { text: "Camera in use" + (Activities.camUsers.length ? " · " + Activities.camUsers.join(", ") : ""); shown: camHover.hovered; below: true }
-        }
-        Rectangle {
-            // Hyprland tells the shell when a capture starts (kuwai.privacy →
-            // Notifs.setDndMute): toasts are already held while it runs.
-            visible: Notifs.shareKnown && Notifs.dndMute
-            anchors.verticalCenter: parent.verticalCenter
-            width: 6; height: 6; radius: 3
-            color: Theme.purple
-            HoverHandler { id: shareHover; margin: 6 }
-            Tip { text: "Your screen is being shared or recorded · notifications are held"; shown: shareHover.hovered; below: true }
         }
         // Agents at work (kittymux): their marks, stacked (AgentStack).
         AgentStack {

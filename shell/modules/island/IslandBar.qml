@@ -593,7 +593,7 @@ Scope {
             readonly property real peekH: Notifs.peekExpanded ? (peekLoader.item ? Math.min(peekLoader.item.wantH, maxWinH - 40) : 172) : 76
             readonly property real bannerH: bannerHere && alertLoader.item ? alertLoader.item.implicitHeight : 72
             readonly property real targetW: panelHere ? panelSize.width : grown ? hoverSize.width : bannerHere ? Theme.cardW : peekHere ? Theme.cardW : deviceHere ? (win.alarmCard ? Theme.cardW : Theme.cardWNarrow) : restRow.implicitWidth + 32
-            readonly property bool filmRest: screenFullscreen && !panelHere && !grown && !cardHere && !askingMoment
+            readonly property bool filmRest: screenFullscreen && !panelHere && !grown && !cardHere && !askingMoment && !Activities.micInUse && !Activities.camInUse
             readonly property real targetH: panelHere ? panelSize.height : grown ? hoverSize.height : bannerHere ? bannerH : peekHere ? peekH : deviceHere ? 84 : filmRest ? 0 : restH
             // Published so surfaces that grow out of the island (the HUD, the
             // clipboard) start from the shape actually on screen: rest, banner,
