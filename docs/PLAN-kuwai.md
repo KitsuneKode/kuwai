@@ -9,53 +9,65 @@ they land. User wants: extremely secure, premium, tasteful, fast, Apple-grade.
 
 Threads: Grok 4.7 (attacker as you), Sol 6.2 (data/runtime), Astra 6.2 (privileged
 paths, install), Gemini 4 Neon (features x matrix, voxtype/shuush), Fable 5.2 (design).
-Done: greeter home group (Astra 1, 6645c84).
+Done: greeter home group (Astra 1, 6645c84); everything ticked below landed by 15614aa
+(P0 d55aa5c 32220b2; security 70e552d 0ab421b c2b77c1; install b5ae061; runtime baac617;
+design 2ef43f8..15614aa; voxtype fork bb8aebb4; shuush 54c95b3 a817adc a8caa41).
 
 P0, broken for the owner now:
-- [ ] voxtype paste_over_chars never runs: streaming post-process returns before it (Gemini C1; fork daemon.rs stream_post_process).
-- [ ] paste restore races shuush's PP_KEEP_ON_CLIPBOARD wl-copy; restore keeps one MIME and drops x-kde-passwordManagerHint (Gemini C2).
-- [ ] closing Wi-Fi/Controls in minimal mode leaves the notch full width (owner).
-- [ ] reminders, alarms, pomodoro, timers in the notch "not working" (owner): check end to end.
-- [ ] alarms due together: only the last rings, the rest vanish (Sol 2); timers that end during a restart are dropped (Sol 7).
-- [ ] swipe up closes the Controls/Wi-Fi and notification panels, like the island (owner).
+- [x] voxtype paste_over_chars never runs: streaming post-process returns before it (Gemini C1; fork daemon.rs stream_post_process).
+- [x] paste restore races shuush's PP_KEEP_ON_CLIPBOARD wl-copy; restore keeps one MIME and drops x-kde-passwordManagerHint (Gemini C2).
+- [x] closing Wi-Fi/Controls in minimal mode leaves the notch full width (owner).
+- [x] reminders, alarms, pomodoro, timers in the notch "not working" (owner): check end to end.
+- [x] alarms due together: only the last rings, the rest vanish (Sol 2); timers that end during a restart are dropped (Sol 7).
+- [x] swipe up closes the Controls/Wi-Fi and notification panels, like the island (owner).
 P1 security:
-- [ ] update helper: one pkexec per operation, op in argv, exit after it; -Syu once; refuse .pacnew on passwd/shadow/group/gshadow/fstab/crypttab (Grok 1, Astra 4/5/11).
-- [ ] root installs from a writable tree (install-helper, system/install, greeter/install, auth pin; wake unit hardening) (Grok 2, Astra 2/3): install from signed-tag blobs, digest in the prompt.
-- [ ] kuwai-auth.service loads user shell-auth when unpinned; drop-ins (Grok 3).
-- [ ] authWords: require /usr/bin/qs, the pinned path, the kuwai-auth cgroup (Grok 4).
-- [ ] x-kuwai-crash hint from any sender briefs the assistant (Grok 8).
-- [ ] assistant: request file swappable; read → sandbox script → network (Grok 5).
-- [ ] VoxtypeHost loads QML from XDG_DATA_HOME into the shell (Grok 6, plan S4).
-- [ ] update-self: signers from the current commit only; KUWAI_UPDATE_REF unsigned (Grok 7).
-- [ ] greeter/start /tmp fallback; extend the lint to greeter/ and system/ (Grok 10).
-- [ ] PAM multi-challenge (password + OTP) on greeter and lock (Astra 9).
+- [x] update helper: one pkexec per operation, op in argv, exit after it; -Syu once; refuse .pacnew on passwd/shadow/group/gshadow/fstab/crypttab (Grok 1, Astra 4/5/11).
+- [x] root installs from a writable tree (install-helper, system/install, greeter/install, auth pin; wake unit hardening) (Grok 2, Astra 2/3): install from signed-tag blobs, digest in the prompt.
+- [~] kuwai-auth.service loads user shell-auth when unpinned; drop-ins (Grok 3). Accepted, see below.
+- [x] authWords: require /usr/bin/qs, the pinned path, the kuwai-auth cgroup (Grok 4).
+- [x] x-kuwai-crash hint from any sender briefs the assistant (Grok 8).
+- [x] assistant: request file swappable; read → sandbox script → network (Grok 5).
+- [~] VoxtypeHost loads QML from XDG_DATA_HOME into the shell (Grok 6, plan S4). Accepted, see below.
+- [x] update-self: signers from the current commit only; KUWAI_UPDATE_REF unsigned (Grok 7).
+- [x] greeter/start /tmp fallback; extend the lint to greeter/ and system/ (Grok 10).
+- [x] PAM multi-challenge (password + OTP) on greeter and lock (Astra 9).
 P1 runtime and install:
-- [ ] idle dim / pre-lock fade stick when an inhibitor engages (Gemini 4).
-- [ ] screen-share privacy resets on a config reload mid-share (Gemini 3).
-- [ ] a panel/Center open on an unplugged monitor strands state (Gemini 5).
-- [ ] Dim forgets a missing monitor's level (Sol 3); OTP history misses (Sol 4); T3 answer dies with the panel (Sol 5);
+- [x] idle dim / pre-lock fade stick when an inhibitor engages (Gemini 4).
+- [x] screen-share privacy resets on a config reload mid-share (Gemini 3).
+- [x] a panel/Center open on an unplugged monitor strands state (Gemini 5).
+- [x] Dim forgets a missing monitor's level (Sol 3); OTP history misses (Sol 4); T3 answer dies with the panel (Sol 5);
       volume keys without a player wake the saver, forced latch after fullscreen (Sol 9, Gemini 19); calendar TZID (Sol 10);
       Limits "partly out" (Sol 11); FluidHighlight brightens on loss (Sol 12); keys.tsv lost edit (Sol 8).
-- [ ] rollback migrations order (Astra 6); kuwai-home reinstall drops a replaced config (Astra 7); migration 0006 consent (Astra 8);
+- [x] rollback migrations order (Astra 6); kuwai-home reinstall drops a replaced config (Astra 7); migration 0006 consent (Astra 8);
       wallpaper link blocks migration 0005 (Astra 10); two users share the root log (Astra 12); greeter undo with greetd (Astra 13);
       dev channel root outside ~/Projects (Astra 14); session restore umask (Gemini 21).
 P1 voxtype/shuush quality:
-- [ ] long takes: budgets and max_tokens scale with length; `break` -> `continue` on a rejected provider (Gemini 6).
-- [ ] gate mangles "first/second" lists, "bullet", >10 items, negated self-corrections (Gemini 7).
-- [ ] drop-term/float-term get Ctrl+V, not Ctrl+Shift+V (kuwai-clip, fork active_window) (Gemini 8).
+- [x] long takes: budgets and max_tokens scale with length; `break` -> `continue` on a rejected provider (Gemini 6).
+- [x] gate mangles "first/second" lists, "bullet", >10 items, negated self-corrections (Gemini 7).
+- [x] drop-term/float-term get Ctrl+V, not Ctrl+Shift+V (kuwai-clip, fork active_window) (Gemini 8).
 - [ ] cancelled take: keep the last one in RAM, restore key (owner, proposal).
 P1 design (Fable):
-- [ ] Cleanup: size from the ceiling, pin the action row, Mark all + Ctrl+A, scenes (1, 2).
-- [ ] section tabs move between 460/640 panels (3); stage section panels in the strip (4).
-- [ ] one key notation; Welcome says ⌘ is Super (5); Welcome steals focus (Gemini 14).
-- [ ] Usage: header, chip and forecast agree; provider trouble as one pinned line (6, 7).
-- [ ] one error primitive (Ui.Notice + Retry) (8); EmptyState everywhere (9); Now Playing centred on play (10); copy (12, 13).
-- [ ] 2x text: lock, Settings sidebar, Wi-Fi rows, Island chrome, Theme, Updates grid (Gemini 9).
+- [x] Cleanup: size from the ceiling, pin the action row, Mark all + Ctrl+A, scenes (1, 2).
+- [x] section tabs move between 460/640 panels (3); stage section panels in the strip (4).
+- [x] one key notation; Welcome says ⌘ is Super (5); Welcome steals focus (Gemini 14).
+- [x] Usage: header, chip and forecast agree; provider trouble as one pinned line (6, 7).
+- [x] one error primitive (Ui.Notice + Retry) (8); EmptyState everywhere (9); Now Playing centred on play (10); copy (12, 13).
+- [x] 2x text: lock, Settings sidebar, Wi-Fi rows, Island chrome, Theme, Updates grid (Gemini 9).
 P2 small:
-- [ ] Launcher Controls/Wi-Fi text and action, ⌥1–3 in notch mode (Gemini 16); iwd glyph (17); Island.toggle routing (18);
+- [x] Launcher Controls/Wi-Fi text and action, ⌥1–3 in notch mode (Gemini 16); iwd glyph (17); Island.toggle routing (18);
       weather location refresh (20); reduced-motion latch (11); HyDE terminal button (12); VoxtypeHost focusedMonitor (13);
       Shortcuts page: non-Latin, Lock ⌫, ↑↓ in search, F9 (15); Theme colours on Live (22); F9 release tail (23);
       Sound mute "M"; Shortcuts "[Utilities]" prefix; Usage tooltip over tabs; Sound strips mismatched; Displays "Reading…" forever (Gemini 10).
+
+Accepted risks (same user, no new boundary):
+- VoxtypeHost loads voxtype's QML from XDG_DATA_HOME into the shell (Grok 6). The shell
+  itself runs from files that user can write; the password prompt is a separate pinned
+  process (kuwai auth pin) whose window the island trusts only from /usr/bin/qs, the
+  pinned or stable shell-auth path and the kuwai-auth.service cgroup (authWords.isPrompt).
+- kuwai-auth.service is a user unit, so that user can change it or add drop-ins (Grok 3).
+  Same mitigation: the prompt pinned under /usr/local by root, and isPrompt above.
+Left: cancelled-take recovery (proposal only, the owner's call); a VM first login and the
+README clips (both need the owner).
 
 ## REVIEW (2026-11-26, night) — six models, what is fixed and what is left
 
