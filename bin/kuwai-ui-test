@@ -73,7 +73,7 @@ def main():
         shutil.copy2(root/'bin/kuwai-settings', helpers/'kuwai-settings')
         for name in (staged.get('running', []) if args.case == 'rehearse' and isinstance(staged, dict) else []):
             if '/' not in name and (root/'bin'/name).is_file():
-                (helpers/name).write_text('#!/bin/sh\nexec sleep 600\n')
+                (helpers/name).write_text('#!/bin/sh\nexec sleep infinity\n')
         command = ['bwrap','--unshare-all','--die-with-parent','--new-session',
                    '--ro-bind','/usr','/usr','--symlink','usr/bin','/bin',
                    '--symlink','usr/lib','/lib','--symlink','usr/lib','/lib64',

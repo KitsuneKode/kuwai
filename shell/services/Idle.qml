@@ -77,7 +77,23 @@ Singleton {
     // Caffeine, or you're dictating: talking to voxtype is no key or pointer
     // input, and the screen dimmed and locked mid-sentence. (voxtype's own
     // systemd-inhibit only spoke to hypridle; these monitors don't read it.)
-    readonly property bool held: Caffeine.on || Activities.voxBusy
+    readonly property bool held: Caffeine.on || Activities.voxBusy || appHeld
+    property var appHolds: []
+    readonly property bool appHeld: appHolds.length > 0
+    Process {
+        id: inhibitBridge
+        running: true
+        command: ["setpriv", "--pdeathsig", "KILL", "--", Paths.bin + "/kuwai-inhibit"]
+        stdout: SplitParser {
+            onRead: line => {
+                let v = null;
+                try { v = JSON.parse(line); } catch (e) { return; }
+                if (Array.isArray(v)) root.appHolds = v;
+            }
+        }
+        onExited: code => { root.appHolds = []; if (code !== 3) bridgeAgain.start(); }
+    }
+    Timer { id: bridgeAgain; interval: 30000; onTriggered: inhibitBridge.running = true }
     readonly property string kuwai: Paths.bin + "/kuwai"
 
     function run(cmd) { Quickshell.execDetached(["sh", "-c", cmd]); }

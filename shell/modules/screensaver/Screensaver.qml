@@ -38,7 +38,7 @@ Scope {
     // idleness brought up came straight back, because nothing had been typed.
     property bool dismissed: false
     readonly property bool showing: (forced || (allowed && idle.isIdle && !dismissed))
-        && !fullscreenAnywhere && !Saver.locked && !Saver.screensOff
+        && !fullscreenAnywhere && !Saver.locked && !Saver.screensOff && (forced || !Idle.appHeld)
 
     IdleMonitor {
         id: idle

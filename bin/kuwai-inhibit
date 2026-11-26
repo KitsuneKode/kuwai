@@ -1,0 +1,111 @@
+#!/usr/bin/env python3
+"""org.freedesktop.ScreenSaver for apps that ask the screen to stay on.
+
+A video in a window, a call: browsers, Electron apps and the desktop portal
+ask this name to hold the screen on. Nothing on this desktop answered it, so
+each ask failed and the screen dimmed, locked or showed the saver over the
+video. This answers Inhibit and UnInhibit, drops a hold when its app leaves
+the bus, and prints who holds the screen as one JSON line whenever that
+changes; the shell (services/Idle) holds the dim, the lock, the screens-off
+and the screensaver while anything does.
+
+Exit 3: another program already answers the name (it is left to it).
+"""
+from __future__ import annotations
+
+import json
+import re
+import sys
+
+from gi.repository import Gio, GLib
+
+NAME = "org.freedesktop.ScreenSaver"
+PATHS = ("/org/freedesktop/ScreenSaver", "/ScreenSaver")
+PER_SENDER = 32
+XML = """<node>
+ <interface name="org.freedesktop.ScreenSaver">
+  <method name="Inhibit"><arg type="s" direction="in"/><arg type="s" direction="in"/><arg type="u" direction="out"/></method>
+  <method name="UnInhibit"><arg type="u" direction="in"/></method>
+  <method name="SimulateUserActivity"/>
+  <method name="GetActive"><arg type="b" direction="out"/></method>
+  <signal name="ActiveChanged"><arg type="b"/></signal>
+ </interface>
+</node>"""
+
+holds: dict[int, dict[str, str]] = {}
+watches: dict[str, int] = {}
+next_cookie = 1
+loop = GLib.MainLoop()
+
+
+def clean(text: str) -> str:
+    return re.sub(r"[\x00-\x1f\x7f]+", " ", str(text or "")).strip()[:80]
+
+
+def publish() -> None:
+    out = sorted(({"app": h["app"], "reason": h["reason"]} for h in holds.values()), key=lambda h: (h["app"], h["reason"]))
+    print(json.dumps(out, ensure_ascii=False), flush=True)
+
+
+def vanished(_conn, sender: str) -> None:
+    gone = [c for c, h in holds.items() if h["sender"] == sender]
+    for c in gone:
+        del holds[c]
+    unwatch(sender)
+    if gone:
+        publish()
+
+
+def unwatch(sender: str) -> None:
+    w = watches.pop(sender, None)
+    if w is not None:
+        Gio.bus_unwatch_name(w)
+
+
+def call(conn, sender, _path, _iface, method, params, invocation) -> None:
+    global next_cookie
+    if method == "Inhibit":
+        app, reason = params.unpack()
+        if sum(1 for h in holds.values() if h["sender"] == sender) >= PER_SENDER:
+            invocation.return_dbus_error("org.freedesktop.DBus.Error.LimitsExceeded", "too many holds")
+            return
+        cookie = next_cookie
+        next_cookie += 1
+        holds[cookie] = {"sender": sender, "app": clean(app) or "An app", "reason": clean(reason)}
+        if sender not in watches:
+            watches[sender] = Gio.bus_watch_name_on_connection(conn, sender, Gio.BusNameWatcherFlags.NONE, None, vanished)
+        invocation.return_value(GLib.Variant("(u)", (cookie,)))
+        publish()
+    elif method == "UnInhibit":
+        (cookie,) = params.unpack()
+        h = holds.get(cookie)
+        if h and h["sender"] == sender:
+            del holds[cookie]
+            if not any(x["sender"] == sender for x in holds.values()):
+                unwatch(sender)
+            publish()
+        invocation.return_value(None)
+    elif method == "GetActive":
+        invocation.return_value(GLib.Variant("(b)", (False,)))
+    else:
+        invocation.return_value(None)
+
+
+def main() -> int:
+    conn = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+    iface = Gio.DBusNodeInfo.new_for_xml(XML).interfaces[0]
+    for path in PATHS:
+        conn.register_object(path, iface, call, None, None)
+    result = {"code": 0}
+
+    def lost(_c, _n):
+        result["code"] = 3
+        loop.quit()
+
+    Gio.bus_own_name_on_connection(conn, NAME, Gio.BusNameOwnerFlags.DO_NOT_QUEUE, lambda *_: publish(), lost)
+    loop.run()
+    return result["code"]
+
+
+if __name__ == "__main__":
+    sys.exit(main())

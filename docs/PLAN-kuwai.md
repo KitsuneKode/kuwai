@@ -5,6 +5,37 @@ they land. User wants: extremely secure, premium, tasteful, fast, Apple-grade.
 
 **2026-11-16: the order of work toward a public launch is in [PLAN-launch.md](PLAN-launch.md)** (in-flight worktrees, the 12 reported issues, references, pstack verification, clips).
 
+## NEXT (2026-11-26, evening) — what is left, in order
+
+Done today and live: shortcuts you can change, plain F-keys, one agent
+identity, the screensaver's black start and the Dusk flash on exit, dim at
+3 min to the floor (panel 1, monitor 0), the Esc and right-click pass, apps
+holding the screen on (org.freedesktop.ScreenSaver: bin/kuwai-inhibit), the
+rehearsal's Usage flake (its stand-in helper died after 10 minutes). The
+providers/budget/recap work landed from its own thread (ab9d974).
+
+Needs the owner (minutes each):
+1. `sudo greeter/install --code`, then one logout: the login handoff, never yet seen.
+2. voxtype's video memory (3.4 GB of 6, the root of every failed video
+   allocation): pick a step in the fork (arena that grows by what's asked,
+   unload after 15 idle minutes, fp16). Agent work once chosen.
+3. kittymux PR #47: review.
+4. Look once at what was only ever rehearsed: Settings → Shortcuts (change a
+   key), the saver starting and ending, F-keys Plain.
+
+Agent work, best value first:
+1. A launch-blocker pass: install.sh on a clean container end to end (CI's
+   cleanroom covers the repo; a first login has never run anywhere fresh).
+2. Statecharts for login, idle and agent attention (PLAN-launch §4): the
+   idle chain alone has caffeine, dictation, saver, share and app holds now.
+3. Screensaver: the next calendar event; media keys that act without waking it.
+4. kittymux: Live Activities (a build in a pane → ✓ in the notch), hooks first.
+5. Launch assets: README with clips (PLAN-launch §6).
+
+Outside kuwai, seen in the logs: kittymux's sidebar-kit test runs abort in
+cairo at exit (15 kitty cores a day); kitsunesnipe's install.ps1 tests write
+~10k PowerShell warnings a day to the journal.
+
 ## STATUS (2026-11-26) — shortcuts you can change, plain F-keys, one agent identity
 
 Landed and live (stable d1ff63a, then the row polish): Settings → Shortcuts
