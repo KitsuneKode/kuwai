@@ -44,3 +44,47 @@ def test_install_runs_in_a_terminal_you_can_see(tmp_path):
     assert argv[-1].count("sudo pacman -S --needed -- ripgrep") == 2
     bad = subprocess.run([str(ROOT / "bin/kuwai-pkgs"), "remove", "x;rm -rf ~"], env=env, capture_output=True, text=True)
     assert bad.returncode == 2
+
+
+QEI = """Name            : zsh
+Version         : 5.9.1-1
+Description     : A very advanced and programmable command interpreter (shell) for UNIX
+Architecture    : x86_64
+URL             : https://www.zsh.org/
+Licenses        : custom
+Depends On      : pcre2  libcap  gdbm>=1.20
+Required By     : None
+Installed Size  : 8.00 MiB
+Install Date    : Tuesday 10 November 2026 07:37:56 PM
+Install Reason  : Explicitly installed
+
+Name            : paru
+Version         : 2.1.0-1
+Description     : Feature packed AUR helper
+URL             : None
+Licenses        : GPL-3.0-or-later
+Depends On      : git  pacman
+Optional Deps   : bat: colored pkgbuild printing
+                  devtools: build in chroot
+Required By     : kuwai-meta
+Installed Size  : 9.50 MiB
+Install Date    : Monday 09 November 2026 10:00:00 AM
+
+Name            : -Rf
+Version         : 1-1
+"""
+
+
+def test_your_packages_with_details_and_holds(monkeypatch, tmp_path):
+    m = module()
+    out = {("pacman", "-Qei"): QEI, ("pacman", "-Qqm"): "paru\n"}
+    monkeypatch.setattr(m, "run", lambda cmd, timeout=6: out.get(tuple(cmd), ""))
+    (tmp_path / "kuwai").mkdir()
+    (tmp_path / "kuwai" / "held.json").write_text(json.dumps({"zsh": {"version": "5.9.1-1", "at": 1}}))
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path))
+    rows = {r["name"]: r for r in m.installed_list()}
+    assert sorted(rows) == ["paru", "zsh"], "a name that isn't a package name is never listed"
+    z, p = rows["zsh"], rows["paru"]
+    assert z["size"] == 8 * 1024 * 1024 and z["depends"] == ["pcre2", "libcap", "gdbm"] and z["requiredBy"] == []
+    assert z["held"] is True and z["heldAt"] == "5.9.1-1" and z["aur"] is False and z["url"] == "https://www.zsh.org/"
+    assert p["aur"] is True and p["held"] is False and p["url"] == "" and p["requiredBy"] == ["kuwai-meta"]

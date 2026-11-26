@@ -20,6 +20,9 @@
                                        kuwai-update, sleep/shutdown held off): it keeps going whatever
                                        happens to the shell; follow it in $XDG_RUNTIME_DIR/kuwai/update.jsonl
     kuwai-update status                 JSON: {"running": bool}
+    kuwai-update hold NAME | unhold NAME
+                                       keep a package at the version you have (pacman --ignore on every
+                                       update, Arch and AUR) until you let it go; `state` lists them
     kuwai-update install-helper         install kuwai-update-root (one password, once): from then on a
                                        whole update asks for your password once, not once per step
     kuwai-update run [--repo] [--aur PKG ...]
@@ -65,6 +68,7 @@ AUR_DIR = os.path.join(DATA, "aur")
 INSTALLED = os.path.join(STATE, "aur-installed.json")
 APPROVED = os.path.join(STATE, "aur-approved.json")
 TRUSTED = os.path.join(STATE, "aur-trusted.json")
+HELD = os.path.join(STATE, "held.json")
 LOG_DIR = os.path.join(STATE, "updates")
 NEWS_URL = "https://archlinux.org/feeds/news/"
 AUR_GIT = "https://aur.archlinux.org/{}.git"
@@ -119,6 +123,23 @@ def save(path, data):
     finally:
         if os.path.exists(tmp):
             os.unlink(tmp)
+
+
+def held():
+    """{name: {"version": the one you had when you held it, "at": epoch}}: packages every update leaves alone."""
+    h = load(HELD, {})
+    return {k: v for k, v in h.items() if NAME_OK.match(k) and not k.startswith("-") and isinstance(v, dict)} if isinstance(h, dict) else {}
+
+
+def hold(name, on):
+    h = held()
+    if on:
+        have = sh(["pacman", "-Q", "--", name]).stdout.split()
+        h[name] = {"version": have[1] if len(have) == 2 else "", "at": int(time.time())}
+    else:
+        h.pop(name, None)
+    save(HELD, h)
+    return h
 
 
 def valid_name(p):
@@ -229,8 +250,10 @@ def check(flatpak_on=True):
     repo = parse_updates(repo_run.stdout, "")
     repos = repo_of([p["name"] for p in repo])
     extra = resolved_extra({p["name"] for p in repo}) if repo else []
+    holds = held()
     for p in repo:
         p["repo"] = repos.get(p["name"], "")
+        p["held"] = p["name"] in holds
     aur = []
     if shutil.which("paru"):
         aur = parse_updates(sh(["paru", "-Qua"]).stdout, "aur")
@@ -238,6 +261,7 @@ def check(flatpak_on=True):
     approved = load(APPROVED, {})
     community = aur_info([p["name"] for p in aur])
     for p in aur:
+        p["held"] = p["name"] in holds
         p["trusted"] = p["name"] in trusted
         p["approved"] = approved.get(p["name"], "")
         p["community"] = community.get(p["name"])
@@ -716,7 +740,8 @@ class Root:
             return rc or 127
         return 0
 
-    def run(self, op, progress=None, deps=(), files=(), keep=2):
+    def run(self, op, progress=None, deps=(), files=(), keep=2, hold=()):
+        ignore = ["--ignore", ",".join(hold)] if hold else []
         if self.stale:
             self.stale = False
             self.R.emit(e="log", line="kuwai-update-root is missing or out of date, so each step asks for the password. "
@@ -733,10 +758,11 @@ class Root:
                 script = f'/usr/bin/paccache -rk{int(keep)} && /usr/bin/paccache -ruk0'
                 return self.R.stream(["pkexec", "/bin/sh", "-c", script], progress=progress)
             if op == "upgrade" and deps:
-                script = ('/usr/bin/pacman -Syu --noconfirm --needed || exit $?; '
+                script = ('/usr/bin/pacman -Syu --noconfirm --needed ${KUWAI_HOLD:+--ignore "$KUWAI_HOLD"} || exit $?; '
                           f'/usr/bin/pacman -S --noconfirm --needed --asdeps -- "$@" || exit {DEPS_FAILED}')
-                return self.R.stream(["pkexec", "/bin/sh", "-c", script, "sh", *deps], progress=progress)
-            cmd = {"upgrade": ["-Syu", "--noconfirm", "--needed"],
+                return self.R.stream(["pkexec", "/usr/bin/env", "KUWAI_HOLD=" + ",".join(hold), "/bin/sh", "-c", script, "sh", *deps],
+                                     progress=progress)
+            cmd = {"upgrade": ["-Syu", "--noconfirm", "--needed", *ignore],
                    "deps": ["-S", "--noconfirm", "--needed", "--asdeps", "--", *deps],
                    "install": ["-U", "--noconfirm", "--needed", "--", *files]}[op]
             return self.R.stream(["pkexec", "pacman", *cmd], progress=progress)
@@ -745,7 +771,7 @@ class Root:
             return rc
         self.R.log.write(f"$ (root) pacman {op} {' '.join([*deps, *[f['path'] if isinstance(f, dict) else f for f in files]])}\n")
         try:
-            payload = {"op": op, "deps": list(deps), "files": list(files)}
+            payload = {"op": op, "deps": list(deps), "files": list(files), "hold": list(hold)}
             if op == "clean-cache":
                 payload = {"op": "clean-cache", "keep": int(keep)}
             self.p.stdin.write(json.dumps(payload) + "\n")
@@ -1328,7 +1354,8 @@ def run_locked(args):
                 break
             out.append(a)
         return out
-    aur = [valid_name(a) for a in after("--aur")]
+    holds = sorted(held())
+    aur = [valid_name(a) for a in after("--aur") if a not in holds]
     flatpaks = [a for a in after("--flatpak") if FLATPAK_TARGET.match(a)]
     R = Run()
     approved = load(APPROVED, {})
@@ -1395,7 +1422,8 @@ def run_locked(args):
         if want_repo or extra_repo_deps:
             R.emit(e="phase", id="repo", label="Updating Arch packages" if want_repo else "Installing build dependencies")
             together = want_repo and extra_repo_deps and not root.helper
-            rc = root.run("upgrade" if want_repo else "deps", progress="repo", deps=extra_repo_deps if together or not want_repo else ())
+            rc = root.run("upgrade" if want_repo else "deps", progress="repo", deps=extra_repo_deps if together or not want_repo else (),
+                          hold=holds if want_repo else ())
             if rc in AUTH_FAIL:
                 R.emit(e="error", msg=cancelled_msg())
                 R.emit(e="done", **{**result, "ok": False, "cancelled": True})
@@ -1541,7 +1569,9 @@ def main(argv):
             (t.add if argv[2] == "on" else t.discard)(valid_name(argv[1]))
             save(TRUSTED, sorted(t))
         elif cmd == "state":
-            print(json.dumps({"approved": load(APPROVED, {}), "trusted": load(TRUSTED, [])}))
+            print(json.dumps({"approved": load(APPROVED, {}), "trusted": load(TRUSTED, []), "held": held()}))
+        elif cmd in ("hold", "unhold") and len(argv) == 2 and not argv[1].startswith("-"):
+            print(json.dumps({"held": hold(valid_name(argv[1]), cmd == "hold")}))
         elif cmd == "storage" and len(argv) == 1:
             print(json.dumps(storage_report()))
         elif cmd == "clean":

@@ -75,7 +75,7 @@ Singleton {
     // and the first look at what's connected) and the island is free; only
     // for versions not told before (remembered across restarts), at most
     // every 6 h (a nightly package moves daily). Then shown in System.
-    readonly property var updateKeys: Updates.total > 0 ? Updates.repo.concat(Updates.aur).map(p => p.name + "@" + (p.new || "")).concat(Updates.flatpak.map(p => p.id + "@" + (p.new || p.version || ""))) : []
+    readonly property var updateKeys: Updates.total > 0 ? Updates.repoLive.concat(Updates.aurLive).map(p => p.name + "@" + (p.new || "")).concat(Updates.flatpak.map(p => p.id + "@" + (p.new || p.version || ""))) : []
     FileView {
         id: told
         path: Paths.stateHome + "/kuwai/updates-told.json"

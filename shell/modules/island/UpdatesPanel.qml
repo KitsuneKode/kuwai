@@ -31,7 +31,7 @@ FocusScope {
     implicitWidth: Theme.panelL
     // The list view is exactly its content plus the footer: a guessed constant
     // here left the list 4 px short, so it "scrolled" (and faded) with nothing to scroll.
-    implicitHeight: Math.min(560, (view === "review" ? 540 : view === "run" ? runCol.implicitHeight + 44
+    implicitHeight: Math.min(560, (view === "review" || view === "pkgs" ? 540 : view === "run" ? runCol.implicitHeight + 44
         : listFlick.contentHeight + listFlick.anchors.bottomMargin + listFoot.height + listFoot.anchors.bottomMargin))
     Behavior on implicitHeight { NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
 
@@ -46,7 +46,8 @@ FocusScope {
 
     function openReview(name) { pkg = name; fileIx = 0; Updates.review(name); go("review"); }
     // The island's Back row leads back to the list from a review (or a result).
-    readonly property bool deep: view === "review" || (view === "run" && !Updates.running && !!Updates.result)
+    readonly property bool deep: view === "review" || view === "pkgs" || (view === "run" && !Updates.running && !!Updates.result)
+    property alias packages: pkgView.list
     function syncBack() {
         if (deep) { Island.innerBack = () => { if (up.view === "run") Updates.result = null; up.go("list"); }; Island.innerBackLabel = "Software Update"; }
         else if (Island.innerBackLabel === "Software Update") { Island.innerBack = null; Island.innerBackLabel = ""; }
@@ -69,7 +70,7 @@ FocusScope {
     }
 
     Keys.onPressed: event => {
-        if (event.key === Qt.Key_Escape && view === "review") { go("list"); event.accepted = true; }
+        if (event.key === Qt.Key_Escape && (view === "review" || view === "pkgs")) { go("list"); event.accepted = true; }
         else if (event.key === Qt.Key_Escape && view === "run" && !Updates.running && Updates.result) { Updates.result = null; go("list"); event.accepted = true; }
         else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && view === "list") { Updates.run(); event.accepted = true; }
         else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && view === "review") { Updates.approve(pkg); go("list"); event.accepted = true; }
@@ -214,7 +215,8 @@ FocusScope {
                     Label {
                         text: Updates.checking ? "Checking…"
                             : Updates.total < 0 ? "Not checked yet"
-                            : ([Updates.repo.length + " Arch", Updates.aur.length + " AUR", Updates.flatpak.length ? Updates.flatpak.length + " Flatpak" : ""].filter(x => x).join(" · ") + " · checked " + Updates.ago(Updates.checkedAt))
+                            : ([Updates.repoLive.length + " Arch", Updates.aurLive.length + " AUR", Updates.flatpak.length ? Updates.flatpak.length + " Flatpak" : "",
+                                Updates.heldCount ? Updates.heldCount + " held" : ""].filter(x => x).join(" · ") + " · checked " + Updates.ago(Updates.checkedAt))
                         width: parent.width; elide: Text.ElideRight
                         size: Theme.tSub; color: Theme.textTertiary
                     }
@@ -296,11 +298,18 @@ FocusScope {
                     Column {
                         id: archHead
                         x: 32; anchors.verticalCenter: parent.verticalCenter
+                        width: parent.width - x - archToggle.width - Theme.s3
                         spacing: 1
                         Label { text: "Arch Linux · " + Updates.repo.length + (Updates.repo.length === 1 ? " package" : " packages"); size: Theme.tCallout; weight: Theme.wSemibold }
-                        Label { text: "Updated together, the way Arch supports"; size: Theme.tFootnote; color: Theme.textTertiary }
+                        Label {
+                            width: parent.width; wrapMode: Text.Wrap
+                            text: Updates.repo.length > Updates.repoLive.length ? (Updates.repo.length - Updates.repoLive.length) + " held at the version you have; the rest together, the way Arch supports"
+                                : "Updated together, the way Arch supports · clear a check to hold one"
+                            size: Theme.tFootnote; color: Theme.textTertiary
+                        }
                     }
                     Toggle {
+                        id: archToggle
                         anchors { right: parent.right; verticalCenter: parent.verticalCenter }
                         label: "Include Arch packages"
                         on: Updates.includeRepo
@@ -329,14 +338,38 @@ FocusScope {
                                 ContextMenuItem { text: "Copy name"; glyph: "\u{f018f}"; onTriggered: Clipboard.copyText(repoRow.modelData.name) }
                                 ContextMenuItem { text: "Copy name and versions"; onTriggered: Clipboard.copyText(repoRow.modelData.name + " " + repoRow.modelData.old + " → " + repoRow.modelData.new) }
                                 ContextMenuSeparator {}
+                                ContextMenuCheckboxItem { text: "Hold at " + repoRow.modelData.old; checked: Updates.isHeld(repoRow.modelData.name); onToggled: on => Updates.setHeld(repoRow.modelData.name, on) }
                                 ContextMenuCheckboxItem { text: "Include Arch packages"; checked: Updates.includeRepo; onToggled: on => Updates.includeRepo = on }
+                            }
+                            readonly property bool held: Updates.isHeld(modelData.name)
+                            Rectangle {
+                                id: holdBox
+                                y: Theme.s1 / 2
+                                width: Theme.sp(16); height: width; radius: Theme.r1 / 2
+                                color: repoRow.held ? "transparent" : Theme.accent
+                                border.width: repoRow.held ? 1 : 0; border.color: Theme.textTertiary
+                                Text {
+                                    visible: !repoRow.held
+                                    anchors.centerIn: parent
+                                    textFormat: Text.PlainText
+                                    text: "\u{f012c}"; font.family: Theme.fontGlyph; font.pixelSize: Theme.tCaption
+                                    color: Theme.onAccent
+                                }
+                                TapHandler { margin: Theme.s1; onTapped: Updates.setHeld(repoRow.modelData.name, !repoRow.held) }
+                                HoverHandler { margin: Theme.s1; cursorShape: Qt.PointingHandCursor }
+                                Accessible.role: Accessible.CheckBox
+                                Accessible.checked: !repoRow.held
+                                Accessible.name: (repoRow.held ? "Held: " : "Update ") + repoRow.modelData.name
+                                Accessible.onPressAction: Updates.setHeld(repoRow.modelData.name, !repoRow.held)
                             }
                             Column {
                                 id: pkg
-                                width: parent.width
+                                x: holdBox.width + Theme.s2
+                                width: parent.width - x
                                 spacing: 1
-                                Label { width: parent.width; elide: Text.ElideRight; text: modelData.name; size: Theme.tBody; weight: Theme.wMedium }
-                                Version { from: modelData.old; to: modelData.new }
+                                Label { width: parent.width; elide: Text.ElideRight; text: modelData.name; size: Theme.tBody; weight: Theme.wMedium; color: repoRow.held ? Theme.textSecondary : Theme.textPrimary }
+                                Version { visible: !repoRow.held; from: modelData.old; to: modelData.new }
+                                Label { visible: repoRow.held; text: "Held at " + modelData.old; size: Theme.tFootnote; color: Theme.orange }
                             }
                             Label { anchors.right: parent.right; text: modelData.repo; size: Theme.tCaption; color: Theme.textTertiary; visible: modelData.repo !== "" && modelData.repo !== "extra" }
                         }
@@ -449,6 +482,7 @@ FocusScope {
                             }
                             ContextMenuSeparator {}
                             ContextMenuItem { text: "Open on the AUR"; glyph: "\u{f03cc}"; enabled: aurRow.page !== ""; onTriggered: Apps.open(aurRow.page) }
+                            ContextMenuCheckboxItem { text: "Hold at " + aurRow.modelData.old; checked: Updates.isHeld(aurRow.modelData.name); onToggled: on => Updates.setHeld(aurRow.modelData.name, on) }
                             ContextMenuItem { text: "Copy name"; glyph: "\u{f018f}"; onTriggered: Clipboard.copyText(aurRow.modelData.name) }
                         }
                         Toggle {
@@ -472,6 +506,7 @@ FocusScope {
                             anchors { right: chev.left; rightMargin: 10; verticalCenter: parent.verticalCenter }
                             readonly property var look: {
                                 const s = aurRow.st, r = aurRow.rv;
+                                if (Updates.isHeld(aurRow.modelData.name)) return ["Held at " + aurRow.modelData.old, Theme.textSecondary, ""];
                                 if (s === "trusted") return ["Trusted", Theme.accent, "\u{f0565}"];
                                 if (s === "approved") return [Updates.autoApproved.indexOf(aurRow.modelData.name) >= 0 ? "Version bump · auto" : "Approved", Theme.green, "\u{f012c}"];
                                 if (s === "loading" || !r) return ["Reading…", Theme.textSecondary, ""];   // tertiary read 3.7:1 on a row
@@ -551,8 +586,22 @@ FocusScope {
                 }
             }
 
+            Button {
+                glyph: "\u{f03d6}"
+                text: "Your packages"
+                onClicked: up.go("pkgs")
+            }
+
             Item { width: 1; height: 4 }
         }
+    }
+    PackagesView {
+        id: pkgView
+        visible: up.view === "pkgs"
+        opacity: up.view === "pkgs" ? up.enter : 0
+        x: (1 - up.enter) * 14
+        width: parent.width; height: parent.height
+        focus: visible
     }
     // Both follow the list's own visibility: never bind their `visible` (an
     // override showed ScrollFade's mask, a black rectangle, over the list).

@@ -936,7 +936,7 @@ Item {
                 }
                 Tip {
                     text: Updates.running ? "Updating · " + Updates.phaseLabel
-                        : Updates.repo.length + " Arch · " + Updates.aur.length + " AUR" + (Updates.waitingReview ? " · " + Updates.waitingReview + " to review" : "") + " · click to install"
+                        : Updates.repoLive.length + " Arch · " + Updates.aurLive.length + " AUR" + (Updates.waitingReview ? " · " + Updates.waitingReview + " to review" : "") + " · click to install"
                     shown: updArea.containsMouse
                     below: true
                 }

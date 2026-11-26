@@ -10,10 +10,12 @@ never run from your home folder, which anything running as you could rewrite.
 
 It reads one JSON request per line on stdin and only ever runs pacman:
 
-    {"op": "upgrade", "deps": [PKG...]}   pacman -Sy, then {"plan": ["NAME VERSION"...]}: the
+    {"op": "upgrade", "deps": [PKG...], "hold": [PKG...]}
+                                          pacman -Sy, then {"plan": ["NAME VERSION"...]}: the
                                           transaction pacman resolved against the fresh
                                           databases (replacements and new dependencies too),
-                                          then pacman -Su --noconfirm --needed; with deps,
+                                          then pacman -Su --noconfirm --needed (--ignore the held
+                                          packages: they stay at the version installed); with deps,
                                           pacman -S --noconfirm --needed --asdeps PKG...
     {"op": "deps", "deps": [PKG...]}      pacman -S --noconfirm --needed --asdeps PKG...
     {"op": "install", "files": [{"path": FILE, "sha256": HEX}...]}
@@ -101,10 +103,10 @@ def pacman(args):
     return run_tool([PACMAN, *args])
 
 
-def resolved():
+def resolved(ignore=()):
     """What -Su would install now, as pacman itself resolved it."""
     try:
-        r = subprocess.run([PACMAN, "-Su", "--print", "--print-format", "%n %v"], env=ENV,
+        r = subprocess.run([PACMAN, "-Su", *ignore, "--print", "--print-format", "%n %v"], env=ENV,
                            stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=300)
     except (OSError, subprocess.TimeoutExpired):
         return []
@@ -127,8 +129,8 @@ def clean_cache(req):
 SHA256 = re.compile(r"[0-9a-f]{64}")
 
 
-def names(req):
-    pkgs = req.get("deps") or []
+def names(req, key="deps"):
+    pkgs = req.get(key) or []
     if not isinstance(pkgs, list) or not all(isinstance(x, str) and NAME.match(x) for x in pkgs):
         raise ValueError("not package names")
     return pkgs
@@ -282,10 +284,12 @@ def main():
             op = req.get("op")
             if op == "upgrade":
                 deps = names(req)
+                hold = names(req, "hold")
+                ignore = ["--ignore", ",".join(hold)] if hold else []
                 rc = pacman(["-Sy"])
                 if rc == 0:
-                    say(plan=resolved())
-                    rc = pacman(["-Su", "--noconfirm", "--needed"])
+                    say(plan=resolved(ignore))
+                    rc = pacman(["-Su", "--noconfirm", "--needed", *ignore])
                 if rc == 0 and deps:
                     rc = pacman(["-S", "--noconfirm", "--needed", "--asdeps", "--", *deps])
             elif op == "deps":

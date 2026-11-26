@@ -4,6 +4,8 @@
   kuwai-pkgs search QUERY            [{name, repo, version, desc, installed, aur}] as JSON
   kuwai-pkgs install NAME [--aur]    a terminal runs pacman -S (or the AUR helper) and waits
   kuwai-pkgs remove NAME             a terminal runs pacman -Rs (your edited configs kept as .pacsave) and waits
+  kuwai-pkgs installed               what you installed yourself (pacman -Qe) with its details, AUR ones marked,
+                                     and whether kuwai-update holds it, as JSON
 Never runs pacman as root itself: sudo asks in the terminal, where you see what it does.
 """
 import json
@@ -74,7 +76,68 @@ def terminal(script, title):
     return True
 
 
+UNITS = {"B": 1, "KiB": 1024, "MiB": 1024 ** 2, "GiB": 1024 ** 3, "TiB": 1024 ** 4}
+LISTS = ("Depends On", "Required By", "Optional For", "Licenses", "Groups", "Provides")
+
+
+def size_of(text):
+    m = re.match(r"^([\d.]+)\s*(B|KiB|MiB|GiB|TiB)$", text.strip())
+    return int(float(m.group(1)) * UNITS[m.group(2)]) if m else 0
+
+
+def blocks(text):
+    cur, key = {}, ""
+    for line in text.splitlines():
+        if not line.strip():
+            if cur:
+                yield cur
+            cur, key = {}, ""
+            continue
+        m = re.match(r"^([A-Z][A-Za-z ]+?)\s*:\s?(.*)$", line)
+        if m and not line.startswith(" "):
+            key = m.group(1).strip()
+            cur[key] = m.group(2).strip()
+        elif key:
+            cur[key] += "  " + line.strip()
+    if cur:
+        yield cur
+
+
+def held_names():
+    state = os.environ.get("XDG_STATE_HOME") or os.path.join(os.path.expanduser("~"), ".local/state")
+    try:
+        with open(os.path.join(state, "kuwai", "held.json")) as f:
+            h = json.load(f)
+        return h if isinstance(h, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def installed_list():
+    foreign = set(run(["pacman", "-Qqm"]).split())
+    held = held_names()
+    out = []
+    for b in blocks(run(["pacman", "-Qei"], timeout=20)):
+        name = b.get("Name", "")
+        if not NAME.match(name):
+            continue
+        lists = {k: [w for w in re.split(r"\s{2,}", b.get(k, "")) if w and w != "None"] for k in LISTS}
+        out.append({
+            "name": name, "version": b.get("Version", ""), "desc": b.get("Description", "")[:200],
+            "url": b.get("URL", "") if b.get("URL", "None") != "None" else "", "size": size_of(b.get("Installed Size", "")),
+            "installed": b.get("Install Date", ""), "built": b.get("Build Date", ""),
+            "licenses": lists["Licenses"][:6], "depends": [re.split(r"[<>=:]", d)[0] for d in lists["Depends On"]][:60],
+            "requiredBy": lists["Required By"][:60], "aur": name in foreign,
+            "held": name in held, "heldAt": (held.get(name) or {}).get("version", "") if name in held else "",
+        })
+    out.sort(key=lambda p: p["name"])
+    return out
+
+
 def main(args):
+    if args == ["installed"]:
+        print(json.dumps(installed_list()))
+        return 0
     if len(args) >= 2 and args[0] == "search":
         print(json.dumps(search(" ".join(args[1:]))))
         return 0

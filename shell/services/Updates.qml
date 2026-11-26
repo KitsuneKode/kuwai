@@ -5,7 +5,7 @@ pragma Singleton
 // this). The work is bin/kuwai-update's; this keeps its answers and runs it.
 //
 //   Arch packages   one group, updated together (Arch doesn't do partial
-//                   upgrades): include or leave out, never pick and choose
+//                   upgrades): include or leave out; one you hold stays put (--ignore)
 //   AUR packages    each one shows what changed in its build files since the
 //                   version you have; it can be selected only once you've
 //                   approved that exact change (or you trust the package).
@@ -35,11 +35,31 @@ Singleton {
     readonly property var news: data && data.news ? data.news : []
     readonly property var flatpak: data && data.flatpak && Settings.updatesFlatpak ? data.flatpak : []
     readonly property var manualNews: news.filter(n => n.manual)
-    readonly property int total: data ? repo.length + aur.length + flatpak.length : -1
+    property var held: ({})
+    function isHeld(name) { return !!held[name]; }
+    readonly property var repoLive: repo.filter(p => !held[p.name])
+    readonly property var aurLive: aur.filter(p => !held[p.name])
+    readonly property int heldCount: repo.length + aur.length - repoLive.length - aurLive.length
+    readonly property int total: data ? repoLive.length + aurLive.length + flatpak.length : -1
+    function setHeld(name, on) {
+        const h = Object.assign({}, held);
+        if (on) h[name] = { version: "", at: Math.floor(Date.now() / 1000) }; else delete h[name];
+        held = h;
+        holder.createObject(root, { command: [bin, on ? "hold" : "unhold", name] }).running = true;
+    }
+    Component {
+        id: holder
+        Process {
+            id: hp
+            stdout: StdioCollector {
+                onStreamFinished: { try { const d = JSON.parse(text); if (d && d.held) root.held = d.held; } catch (e) {} hp.destroy(); }
+            }
+        }
+    }
     // The set as names@versions: has the person seen *this* set yet? The notch
     // shows the count only while it's new to them (opening Software Update
     // marks it seen); a different set brings it back.
-    readonly property string setKey: total > 0 ? repo.concat(aur).map(p => p.name + "@" + (p.new || ""))
+    readonly property string setKey: total > 0 ? repoLive.concat(aurLive).map(p => p.name + "@" + (p.new || ""))
         .concat(flatpak.map(p => p.id + "@" + (p.new || p.version || ""))).join(",") : ""
     property string viewedKey: ""
     readonly property bool fresh: total > 0 && setKey !== viewedKey
@@ -190,6 +210,7 @@ Singleton {
                 try {
                     const st = JSON.parse(text);
                     root.trusted = st.trusted || [];
+                    root.held = st.held || ({});
                     root.approvedSha = Object.assign({}, st.approved || {}, root.approvedSha);
                 } catch (e) {}
             }
@@ -296,10 +317,10 @@ Singleton {
     function setTrusted(name, on) { enqueueMutation({ op: "trust", name: name, on: on, args: ["trust", name, on ? "on" : "off"] }); }
 
     // ── The run ──────────────────────────────────────────────────────────
-    readonly property var chosenAur: aur.filter(p => selected(p.name)).map(p => p.name)
+    readonly property var chosenAur: aurLive.filter(p => selected(p.name)).map(p => p.name)
     readonly property var chosenFlatpak: flatpak.filter(p => !flatpakOff[p.id]).map(p => p.id)
-    readonly property int chosenCount: (includeRepo ? repo.length : 0) + chosenAur.length + chosenFlatpak.length
-    readonly property int waitingReview: aur.filter(p => !selectable(p.name)).length
+    readonly property int chosenCount: (includeRepo ? repoLive.length : 0) + chosenAur.length + chosenFlatpak.length
+    readonly property int waitingReview: aurLive.filter(p => !selectable(p.name)).length
     readonly property bool lowPower: !!(data && data.power && !data.power.ac && data.power.battery !== null && data.power.battery < 30)
     readonly property bool lowSpace: !!(data && data.freeBytes < 3 * 1024 * 1024 * 1024)
 
@@ -327,7 +348,7 @@ Singleton {
 
     function run() {
         if (running || chosenCount === 0 || lowSpace) return;
-        plan = { repo: includeRepo && repo.length > 0, aur: chosenAur.slice(), flatpak: chosenFlatpak.slice() };
+        plan = { repo: includeRepo && repoLive.length > 0, aur: chosenAur.slice(), flatpak: chosenFlatpak.slice() };
         const args = [bin, "start"];
         if (plan.repo) args.push("--repo");
         if (plan.aur.length) args.push("--aur", ...plan.aur);
@@ -345,7 +366,7 @@ Singleton {
     // review (for this run only; you chose it), every Flatpak app.
     function runAll() {
         if (running || total <= 0 || lowSpace) return;
-        plan = { repo: repo.length > 0, aur: aur.map(p => p.name), flatpak: flatpak.map(p => p.id) };
+        plan = { repo: repoLive.length > 0, aur: aurLive.map(p => p.name), flatpak: flatpak.map(p => p.id) };
         const args = [bin, "start"];
         if (plan.repo) args.push("--repo");
         if (plan.aur.length) args.push("--aur", ...plan.aur);

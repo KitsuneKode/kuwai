@@ -84,3 +84,31 @@ def test_check_names_what_pacman_adds_beyond_the_list(m, tmp_path, monkeypatch):
     monkeypatch.setenv("CHECKUPDATES_DB", str(db))
     monkeypatch.setattr(m, "sh", lambda cmd, **kw: SimpleNamespace(returncode=0, stdout="linux 7.3-1\nnew-dep 1.0-1\n", stderr=""))
     assert m.resolved_extra({"linux"}) == [{"name": "new-dep", "new": "1.0-1"}]
+
+
+def test_held_packages_are_left_alone(m, tmp_path, monkeypatch):
+    monkeypatch.setattr(m, "HELD", str(tmp_path / "held.json"))
+    m.save(m.HELD, {"linux-lts": {"version": "6.12-1", "at": 1}, "-bad": {}, "fixture": {"version": "1", "at": 1}})
+    seen = []
+
+    class Holding(m.Root):
+        def __init__(self, R):
+            self.helper, self.p, self.prompts, self.transaction = True, True, 1, []
+
+        def run(self, op, **kw):
+            seen.append((op, kw.get("hold")))
+            return 0
+    monkeypatch.setattr(m, "Root", Holding)
+    m.answers = {}
+    m.save(m.TRUSTED, ["fixture"])
+    m.run_locked(["--repo", "--aur", "fixture"])
+    assert seen[0] == ("upgrade", ["fixture", "linux-lts"]), "every update ignores what you hold, and nothing that isn't a name"
+    done, _ = m.done()
+    assert not done["built"], "a held AUR package isn't built"
+
+
+def test_hold_remembers_the_version_you_had(m, tmp_path, monkeypatch):
+    monkeypatch.setattr(m, "HELD", str(tmp_path / "held.json"))
+    monkeypatch.setattr(m, "sh", lambda cmd, **kw: SimpleNamespace(stdout="linux-lts 6.12.9-1\n", returncode=0))
+    assert m.hold("linux-lts", True)["linux-lts"]["version"] == "6.12.9-1"
+    assert m.hold("linux-lts", False) == {}

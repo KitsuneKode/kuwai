@@ -6884,6 +6884,598 @@
    ]
   },
   {
+   "id": "updates/held",
+   "name": "updates",
+   "panel": "UpdatesPanel",
+   "set": [
+    [
+     "Updates",
+     "held",
+     {
+      "mesa": {
+       "version": "",
+       "at": 1
+      },
+      "firefox": {
+       "version": "",
+       "at": 1
+      }
+     }
+    ],
+    [
+     "Updates",
+     "data",
+     {
+      "checkedAt": "@now-600s",
+      "repo": [
+       {
+        "name": "linux-zen",
+        "old": "7.3.4.zen2-2",
+        "new": "7.3.5.zen1-1",
+        "repo": "extra"
+       },
+       {
+        "name": "mesa",
+        "old": "26.2.1-1",
+        "new": "26.2.2-1",
+        "repo": "extra"
+       },
+       {
+        "name": "qt6-base",
+        "old": "6.12.0-2",
+        "new": "6.12.1-1",
+        "repo": "extra"
+       },
+       {
+        "name": "firefox",
+        "old": "151.0-1",
+        "new": "151.0.1-1",
+        "repo": "extra"
+       },
+       {
+        "name": "hyprland",
+        "old": "0.57.0-1",
+        "new": "0.57.1-1",
+        "repo": "extra"
+       }
+      ],
+      "aur": [
+       {
+        "name": "quickshell-git",
+        "old": "0.3.2.r12-1",
+        "new": "0.3.2.r19-1",
+        "repo": "aur"
+       },
+       {
+        "name": "a-package-with-an-unusually-long-name-for-testing-bin",
+        "old": "2026.11.01.r1234.gabcdef0-1",
+        "new": "2026.11.17.r1301.g0123abc-1",
+        "repo": "aur"
+       }
+      ],
+      "repoError": false,
+      "lastUpgrade": "@now-432000s",
+      "news": [],
+      "freeBytes": 48000000000,
+      "power": {
+       "ac": true,
+       "battery": 100
+      },
+      "kernel": true,
+      "flatpak": []
+     }
+    ]
+   ]
+  },
+  {
+   "id": "updates/packages",
+   "name": "updates",
+   "panel": "UpdatesPanel",
+   "set": [
+    [
+     "Updates",
+     "held",
+     {
+      "linux-lts": {
+       "version": "6.12.9-1",
+       "at": 1
+      }
+     }
+    ],
+    [
+     "Updates",
+     "data",
+     {
+      "checkedAt": "@now-600s",
+      "repo": [
+       {
+        "name": "linux-zen",
+        "old": "7.3.4.zen2-2",
+        "new": "7.3.5.zen1-1",
+        "repo": "extra"
+       },
+       {
+        "name": "mesa",
+        "old": "26.2.1-1",
+        "new": "26.2.2-1",
+        "repo": "extra"
+       },
+       {
+        "name": "qt6-base",
+        "old": "6.12.0-2",
+        "new": "6.12.1-1",
+        "repo": "extra"
+       },
+       {
+        "name": "firefox",
+        "old": "151.0-1",
+        "new": "151.0.1-1",
+        "repo": "extra"
+       },
+       {
+        "name": "hyprland",
+        "old": "0.57.0-1",
+        "new": "0.57.1-1",
+        "repo": "extra"
+       }
+      ],
+      "aur": [
+       {
+        "name": "quickshell-git",
+        "old": "0.3.2.r12-1",
+        "new": "0.3.2.r19-1",
+        "repo": "aur"
+       },
+       {
+        "name": "a-package-with-an-unusually-long-name-for-testing-bin",
+        "old": "2026.11.01.r1234.gabcdef0-1",
+        "new": "2026.11.17.r1301.g0123abc-1",
+        "repo": "aur"
+       }
+      ],
+      "repoError": false,
+      "lastUpgrade": "@now-432000s",
+      "news": [],
+      "freeBytes": 48000000000,
+      "power": {
+       "ac": true,
+       "battery": 100
+      },
+      "kernel": true,
+      "flatpak": []
+     }
+    ]
+   ],
+   "props": {
+    "packages": [
+     {
+      "name": "firefox",
+      "version": "161.0-1",
+      "desc": "Fast, Private & Safe Web Browser",
+      "url": "https://archlinux.org/packages/firefox",
+      "size": 268435456,
+      "installed": "Tuesday 10 November 2026 07:37:56 PM",
+      "built": "",
+      "licenses": [
+       "GPL-3.0-or-later"
+      ],
+      "depends": [
+       "gtk3",
+       "nss",
+       "dbus-glib",
+       "ffmpeg"
+      ],
+      "requiredBy": [],
+      "aur": false,
+      "held": false,
+      "heldAt": ""
+     },
+     {
+      "name": "hyprland",
+      "version": "0.57.2-2",
+      "desc": "a highly customizable dynamic tiling Wayland compositor",
+      "url": "https://archlinux.org/packages/hyprland",
+      "size": 31457280,
+      "installed": "Tuesday 10 November 2026 07:37:56 PM",
+      "built": "",
+      "licenses": [
+       "GPL-3.0-or-later"
+      ],
+      "depends": [
+       "glibc",
+       "bash"
+      ],
+      "requiredBy": [
+       "xdg-desktop-portal-hyprland"
+      ],
+      "aur": false,
+      "held": false,
+      "heldAt": ""
+     },
+     {
+      "name": "linux-lts",
+      "version": "6.12.9-1",
+      "desc": "The LTS Linux kernel and modules",
+      "url": "https://archlinux.org/packages/linux-lts",
+      "size": 141557760,
+      "installed": "Tuesday 10 November 2026 07:37:56 PM",
+      "built": "",
+      "licenses": [
+       "GPL-3.0-or-later"
+      ],
+      "depends": [
+       "glibc",
+       "bash"
+      ],
+      "requiredBy": [],
+      "aur": false,
+      "held": false,
+      "heldAt": ""
+     },
+     {
+      "name": "paru",
+      "version": "2.1.0-1",
+      "desc": "Feature packed AUR helper",
+      "url": "https://archlinux.org/packages/paru",
+      "size": 9437184,
+      "installed": "Tuesday 10 November 2026 07:37:56 PM",
+      "built": "",
+      "licenses": [
+       "GPL-3.0-or-later"
+      ],
+      "depends": [
+       "glibc",
+       "bash"
+      ],
+      "requiredBy": [],
+      "aur": true,
+      "held": false,
+      "heldAt": ""
+     },
+     {
+      "name": "visual-studio-code-bin",
+      "version": "1.106.2-1",
+      "desc": "Editor for building and debugging modern web and cloud applications",
+      "url": "https://archlinux.org/packages/visual-studio-code-bin",
+      "size": 398458880,
+      "installed": "Tuesday 10 November 2026 07:37:56 PM",
+      "built": "",
+      "licenses": [
+       "GPL-3.0-or-later"
+      ],
+      "depends": [
+       "glibc",
+       "bash"
+      ],
+      "requiredBy": [],
+      "aur": true,
+      "held": false,
+      "heldAt": ""
+     },
+     {
+      "name": "zsh",
+      "version": "5.9.1-1",
+      "desc": "A very advanced and programmable command interpreter (shell) for UNIX",
+      "url": "https://archlinux.org/packages/zsh",
+      "size": 8388608,
+      "installed": "Tuesday 10 November 2026 07:37:56 PM",
+      "built": "",
+      "licenses": [
+       "GPL-3.0-or-later"
+      ],
+      "depends": [
+       "glibc",
+       "bash"
+      ],
+      "requiredBy": [],
+      "aur": false,
+      "held": false,
+      "heldAt": ""
+     }
+    ],
+    "view": "pkgs"
+   }
+  },
+  {
+   "id": "updates/packages-worst",
+   "name": "updates",
+   "panel": "UpdatesPanel",
+   "set": [
+    [
+     "Updates",
+     "held",
+     {
+      "linux-lts": {
+       "version": "6.12.9-1",
+       "at": 1
+      }
+     }
+    ],
+    [
+     "Updates",
+     "data",
+     {
+      "checkedAt": "@now-600s",
+      "repo": [
+       {
+        "name": "linux-zen",
+        "old": "7.3.4.zen2-2",
+        "new": "7.3.5.zen1-1",
+        "repo": "extra"
+       },
+       {
+        "name": "mesa",
+        "old": "26.2.1-1",
+        "new": "26.2.2-1",
+        "repo": "extra"
+       },
+       {
+        "name": "qt6-base",
+        "old": "6.12.0-2",
+        "new": "6.12.1-1",
+        "repo": "extra"
+       },
+       {
+        "name": "firefox",
+        "old": "151.0-1",
+        "new": "151.0.1-1",
+        "repo": "extra"
+       },
+       {
+        "name": "hyprland",
+        "old": "0.57.0-1",
+        "new": "0.57.1-1",
+        "repo": "extra"
+       }
+      ],
+      "aur": [
+       {
+        "name": "quickshell-git",
+        "old": "0.3.2.r12-1",
+        "new": "0.3.2.r19-1",
+        "repo": "aur"
+       },
+       {
+        "name": "a-package-with-an-unusually-long-name-for-testing-bin",
+        "old": "2026.11.01.r1234.gabcdef0-1",
+        "new": "2026.11.17.r1301.g0123abc-1",
+        "repo": "aur"
+       }
+      ],
+      "repoError": false,
+      "lastUpgrade": "@now-432000s",
+      "news": [],
+      "freeBytes": 48000000000,
+      "power": {
+       "ac": true,
+       "battery": 100
+      },
+      "kernel": true,
+      "flatpak": []
+     }
+    ]
+   ],
+   "props": {
+    "packages": [
+     {
+      "name": "firefox",
+      "version": "161.0-1",
+      "desc": "Fast, Private & Safe Web Browser",
+      "url": "https://archlinux.org/packages/firefox",
+      "size": 268435456,
+      "installed": "Tuesday 10 November 2026 07:37:56 PM",
+      "built": "",
+      "licenses": [
+       "GPL-3.0-or-later"
+      ],
+      "depends": [
+       "gtk3",
+       "nss",
+       "dbus-glib",
+       "ffmpeg"
+      ],
+      "requiredBy": [],
+      "aur": false,
+      "held": false,
+      "heldAt": ""
+     },
+     {
+      "name": "hyprland",
+      "version": "0.57.2-2",
+      "desc": "a highly customizable dynamic tiling Wayland compositor",
+      "url": "https://archlinux.org/packages/hyprland",
+      "size": 31457280,
+      "installed": "Tuesday 10 November 2026 07:37:56 PM",
+      "built": "",
+      "licenses": [
+       "GPL-3.0-or-later"
+      ],
+      "depends": [
+       "glibc",
+       "bash"
+      ],
+      "requiredBy": [
+       "xdg-desktop-portal-hyprland"
+      ],
+      "aur": false,
+      "held": false,
+      "heldAt": ""
+     },
+     {
+      "name": "linux-lts",
+      "version": "6.12.9-1",
+      "desc": "The LTS Linux kernel and modules",
+      "url": "https://archlinux.org/packages/linux-lts",
+      "size": 141557760,
+      "installed": "Tuesday 10 November 2026 07:37:56 PM",
+      "built": "",
+      "licenses": [
+       "GPL-3.0-or-later"
+      ],
+      "depends": [
+       "glibc",
+       "bash"
+      ],
+      "requiredBy": [],
+      "aur": false,
+      "held": false,
+      "heldAt": ""
+     },
+     {
+      "name": "paru",
+      "version": "2.1.0-1",
+      "desc": "Feature packed AUR helper",
+      "url": "https://archlinux.org/packages/paru",
+      "size": 9437184,
+      "installed": "Tuesday 10 November 2026 07:37:56 PM",
+      "built": "",
+      "licenses": [
+       "GPL-3.0-or-later"
+      ],
+      "depends": [
+       "glibc",
+       "bash"
+      ],
+      "requiredBy": [],
+      "aur": true,
+      "held": false,
+      "heldAt": ""
+     },
+     {
+      "name": "visual-studio-code-bin",
+      "version": "1.106.2-1",
+      "desc": "Editor for building and debugging modern web and cloud applications",
+      "url": "https://archlinux.org/packages/visual-studio-code-bin",
+      "size": 398458880,
+      "installed": "Tuesday 10 November 2026 07:37:56 PM",
+      "built": "",
+      "licenses": [
+       "GPL-3.0-or-later"
+      ],
+      "depends": [
+       "glibc",
+       "bash"
+      ],
+      "requiredBy": [],
+      "aur": true,
+      "held": false,
+      "heldAt": ""
+     },
+     {
+      "name": "zsh",
+      "version": "5.9.1-1",
+      "desc": "A very advanced and programmable command interpreter (shell) for UNIX",
+      "url": "https://archlinux.org/packages/zsh",
+      "size": 8388608,
+      "installed": "Tuesday 10 November 2026 07:37:56 PM",
+      "built": "",
+      "licenses": [
+       "GPL-3.0-or-later"
+      ],
+      "depends": [
+       "glibc",
+       "bash"
+      ],
+      "requiredBy": [],
+      "aur": false,
+      "held": false,
+      "heldAt": ""
+     },
+     {
+      "name": "python-a-very-long-package-name-for-the-scientific-computing-stack-bindings",
+      "version": "1:2026.11.26.r1234.gabcdef0-1",
+      "desc": "A description that runs on for a long while to see what the row does when it can't fit: bindings, plugins and extras",
+      "url": "https://archlinux.org/packages/python-a-very-long-package-name-for-the-scientific-computing-stack-bindings",
+      "size": 3221225472,
+      "installed": "Tuesday 10 November 2026 07:37:56 PM",
+      "built": "",
+      "licenses": [
+       "GPL-3.0-or-later"
+      ],
+      "depends": [
+       "python0",
+       "python1",
+       "python2",
+       "python3",
+       "python4",
+       "python5",
+       "python6",
+       "python7",
+       "python8",
+       "python9",
+       "python10",
+       "python11",
+       "python12",
+       "python13",
+       "python14",
+       "python15",
+       "python16",
+       "python17",
+       "python18",
+       "python19",
+       "python20",
+       "python21",
+       "python22",
+       "python23",
+       "python24",
+       "python25",
+       "python26",
+       "python27",
+       "python28",
+       "python29"
+      ],
+      "requiredBy": [
+       "x0",
+       "x1",
+       "x2",
+       "x3",
+       "x4",
+       "x5",
+       "x6",
+       "x7",
+       "x8",
+       "x9",
+       "x10",
+       "x11",
+       "x12",
+       "x13",
+       "x14",
+       "x15",
+       "x16",
+       "x17",
+       "x18",
+       "x19",
+       "x20",
+       "x21",
+       "x22",
+       "x23",
+       "x24",
+       "x25",
+       "x26",
+       "x27",
+       "x28",
+       "x29",
+       "x30",
+       "x31",
+       "x32",
+       "x33",
+       "x34",
+       "x35",
+       "x36",
+       "x37",
+       "x38",
+       "x39"
+      ],
+      "aur": true,
+      "held": false,
+      "heldAt": ""
+     }
+    ],
+    "view": "pkgs"
+   },
+   "kind": "worst"
+  },
+  {
    "id": "system/typical",
    "name": "system",
    "panel": "SystemPanel"

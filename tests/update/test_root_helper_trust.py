@@ -67,3 +67,14 @@ def test_verified_helper_is_started_directly(updater, monkeypatch):
     root = m.Root(FakeRun())
     assert root.open() == 0
     assert popened == [['pkexec', m.HELPER]]
+
+
+def test_a_held_package_is_ignored_even_without_the_helper(updater, monkeypatch):
+    m = updater
+    monkeypatch.setattr(m, 'helper_ok', lambda: False)
+    R = FakeRun()
+    assert m.Root(R).run('upgrade', hold=['nvidia-dkms', 'linux-lts']) == 0
+    assert R.streamed[0] == ['pkexec', 'pacman', '-Syu', '--noconfirm', '--needed', '--ignore', 'nvidia-dkms,linux-lts']
+    R = FakeRun()
+    assert m.Root(R).run('upgrade', deps=['meson'], hold=['linux-lts']) == 0
+    assert 'KUWAI_HOLD=linux-lts' in R.streamed[0] and '--ignore "$KUWAI_HOLD"' in ' '.join(R.streamed[0])

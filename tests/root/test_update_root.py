@@ -190,3 +190,19 @@ def test_taken_copies_what_was_checked_and_refuses_a_link(ur, tmp_path):
         ur.taken([(str(link), sha(b"x"))], str(into), uid)
     with pytest.raises(ValueError):
         ur.taken([(str(pkg), sha(b"swapped afterwards"))], str(tmp_path / "other"), uid + 1)
+
+
+@pytest.mark.parametrize("hold", [["-Syu"], ["linux,glibc"], ["a b"], "linux"])
+def test_held_names_are_package_names_only(ur, hold):
+    with pytest.raises(ValueError):
+        ur.names({"hold": hold}, "hold")
+
+
+def test_held_packages_stay_out_of_the_plan_and_the_upgrade(ur, monkeypatch):
+    ran, printed = [], []
+    monkeypatch.setattr(ur, "pacman", lambda args: ran.append(args) or 0)
+    monkeypatch.setattr(ur.subprocess, "run", lambda cmd, **kw: printed.append(cmd) or type("R", (), {"stdout": "linux 7.3-1\n"})())
+    monkeypatch.setattr(ur, "say", lambda **kw: None)
+    ignore = ["--ignore", ",".join(ur.names({"hold": ["nvidia-dkms", "linux"]}, "hold"))]
+    assert ur.resolved(ignore) == ["linux 7.3-1"]
+    assert printed[0][1:4] == ["-Su", "--ignore", "nvidia-dkms,linux"]
