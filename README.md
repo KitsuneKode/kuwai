@@ -4,6 +4,30 @@
 
 Commands stay `bin/kuwai …` (control plane); the product name is **kuwai**.
 
+## A look around
+
+Frames from the shell's own rehearsal (`bin/kuwai-rehearse`: every panel, every
+state, drawn in a private window with sample data; nothing here is a mock-up).
+
+<table>
+<tr>
+<td><img src="docs/media/tour/agents-typical.png" alt="Agents: what each agent is doing, approvals answered from the notch" width="380"></td>
+<td><img src="docs/media/tour/usage-typical.png" alt="Usage: how much each account has left, and when it resets" width="380"></td>
+</tr>
+<tr>
+<td><img src="docs/media/tour/settings-shortcuts.png" alt="Settings, Shortcuts: change any of kuwai's keys by pressing the new chord" width="380"></td>
+<td><img src="docs/media/tour/updates-typical.png" alt="Software Update: repo and AUR updates, each AUR change reviewed before it builds" width="380"></td>
+</tr>
+<tr>
+<td><img src="docs/media/tour/calendar-events.png" alt="Calendar: your events from any iCal link" width="380"></td>
+<td><img src="docs/media/tour/system-typical.png" alt="System: CPU, memory and what is using it" width="380"></td>
+</tr>
+<tr>
+<td><img src="docs/media/tour/launcher-packages.png" alt="Launcher: apps, windows, actions, math and packages" width="380"></td>
+<td><img src="docs/media/tour/media-playing.png" alt="Now Playing" width="380"></td>
+</tr>
+</table>
+
 ## Install
 
 ```sh
