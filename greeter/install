@@ -68,7 +68,14 @@ install_code() {
             rm -f "$old"
         fi
     done
-    chown -R "$USER_NAME": "$DEST/home"
+    if getent group greeter >/dev/null; then
+        chown -R "$USER_NAME:greeter" "$DEST/home"
+        chmod -R g+rX "$DEST/home"
+        runuser -u greeter -- test -r "$DEST/home/.kuwai-user" || [ ! -e "$DEST/home/.kuwai-user" ] \
+            || { echo "the login screen can't read your name in $DEST/home; nothing else was changed there" >&2; exit 1; }
+    else
+        chown -R "$USER_NAME": "$DEST/home"
+    fi
 }
 
 if [ $MODE = code ]; then
