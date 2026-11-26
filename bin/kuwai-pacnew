@@ -170,7 +170,7 @@ def describe(path):
 
 def helper_cmd():
     """pkexec the installed root helper; None when it is missing or not this version's
-    (installing it is its own reviewed step: kuwai-update install-helper)."""
+    (installing it is its own reviewed step: kuwai update install-helper)."""
     try:
         st = os.stat(HELPER)
         with open(HELPER, "rb") as a, open(HELPER_SRC, "rb") as b:
@@ -191,7 +191,7 @@ def apply(raw):
     cmd = helper_cmd()
     if not cmd:
         print(json.dumps({"ok": False, "done": 0, "log": [
-            "kuwai-update-root is missing or not this version's. Install it once with `kuwai-update install-helper` "
+            "kuwai-update-root is missing or not this version's. Install it once with `kuwai update install-helper` "
             "(it shows what it installs and asks for the password), then apply again."]}))
         return 1
     p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)

@@ -23,7 +23,7 @@
     kuwai-update hold NAME | unhold NAME
                                        keep a package at the version you have (pacman --ignore on every
                                        update, Arch and AUR) until you let it go; `state` lists them
-    kuwai-update install-helper         install kuwai-update-root (one password, once): from then on a
+    kuwai update install-helper         install kuwai-update-root (one password, once): from then on a
                                        whole update asks for your password once, not once per step
     kuwai-update run [--repo] [--aur PKG ...]
                                        the update itself (what `start` runs): one JSON event per line
@@ -753,10 +753,10 @@ class Root:
         if self.stale:
             self.stale = False
             self.R.emit(e="log", line="kuwai-update-root is missing or out of date, so each step asks for the password. "
-                                      "Run `kuwai-update install-helper` once to review and install it.")
+                                      "Run `kuwai update install-helper` once to review and install it.")
         if not self.helper and op == "install":
             self.R.emit(e="log", line="Built packages are installed only through kuwai-update-root, which copies and checks "
-                                      "each file first. Run `kuwai-update install-helper` once, then update again.")
+                                      "each file first. Run `kuwai update install-helper` once, then update again.")
             return 1
         if not self.helper:
             self.prompts += 1

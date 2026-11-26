@@ -635,7 +635,7 @@ Singleton {
     }
     function restart() { Quickshell.execDetached(["systemctl", "reboot"]); }
 
-    // One password per update: `kuwai-update install-helper` puts kuwai-update-root
+    // One password per update: `kuwai update install-helper` puts kuwai-update-root
     // in place (root-owned; asks for the password this once).
     property string helperState: ""     // "", "working", "done", "failed"
     function setupOnePrompt() {

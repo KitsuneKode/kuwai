@@ -5,7 +5,7 @@ kuwai-update starts it once per update as
 
     pkexec /usr/local/lib/kuwai/kuwai-update-root
 
-from where `kuwai-update install-helper` put it: owned by root, writable only by root. It is
+from where `kuwai update install-helper` put it: owned by root, writable only by root. It is
 never run from your home folder, which anything running as you could rewrite.
 
 It reads one JSON request per line on stdin and only ever runs pacman:

@@ -15,7 +15,7 @@ Left, needs a decision or the owner:
 1. Signed releases (Opus): `release-signers` is empty, so `kuwai update-self`
    trusts whatever GitHub serves. Needs the owner's signing key; about an hour.
 2. Root installs from folders you can write (Astra, Opus, Gemini, Grok):
-   `kuwai-update install-helper`, `kuwai auth pin`, `system/install`, greeter
+   `kuwai update install-helper`, `kuwai auth pin`, `system/install`, greeter
    `--undo` from a legacy backup. Real fix: install from a signed tag's blobs
    (after 1) or a root-owned package; show the helper's sha256 in the prompt.
 3. The root update session (Gemini, Grok): one prompt opens four hours of any
@@ -47,7 +47,7 @@ providers/budget/recap work landed from its own thread (ab9d974).
 Needs the owner (minutes each):
 0. Rebuild Quickshell (`quickshell` was built against Qt 6.12.0, the system has 6.12.1:
    Quickshell itself warns this "is likely to cause crashes"); `kuwai auth pin` so the
-   password prompt takes the kuwai theme's colour (418af39); `kuwai-update install-helper`
+   password prompt takes the kuwai theme's colour (418af39); `kuwai update install-helper`
    so one-password updates carry package holds (c7b5fc0).
 1. `sudo greeter/install --code`, then one logout: the login handoff, never yet seen.
 2. voxtype's video memory (3.4 GB of 6, the root of every failed video
