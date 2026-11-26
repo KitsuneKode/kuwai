@@ -13,5 +13,6 @@ Singleton {
     // Present while this session is locked (modules/lock). Per Hyprland
     // instance and in the runtime dir: a lock left at a reboot, or held by
     // another session on another tty, must not lock this one.
-    readonly property string lockFlag: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/kuwai/locked-" + (Quickshell.env("HYPRLAND_INSTANCE_SIGNATURE") || "session")
+    readonly property string runtime: (Quickshell.env("XDG_RUNTIME_DIR") || (Quickshell.env("HOME") + "/.cache/kuwai/runtime")).replace(/\/+$/, "")
+    readonly property string lockFlag: runtime + "/kuwai/locked-" + (Quickshell.env("HYPRLAND_INSTANCE_SIGNATURE") || "session")
 }

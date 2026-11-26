@@ -451,7 +451,7 @@ Singleton {
     Process {
         id: missedDone
         command: ["sh", "-c", 'f="$1"; [ -f "$f" ] && [ $(( $(date +%s) - $(stat -c %Y "$f") )) -lt 900 ] && tail -n 3 "$f"', "kuwai-missed",
-                  (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/kuwai/update.jsonl"]
+                  Paths.runtime + "/kuwai/update.jsonl"]
         stdout: StdioCollector {
             onStreamFinished: {
                 if (root.running) return;
@@ -519,7 +519,7 @@ Singleton {
     }
     Process {
         id: recoverLastEvent
-        command: ["tail", "-n", "20", (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/kuwai/update.jsonl"]
+        command: ["tail", "-n", "20", Paths.runtime + "/kuwai/update.jsonl"]
         stdout: StdioCollector {
             onStreamFinished: {
                 if (!root.running) return;
@@ -591,7 +591,7 @@ Singleton {
     }
     Process {
         id: follower
-        command: ["setpriv", "--pdeathsig", "KILL", "--", "tail", "-n", "+1", "-F", (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/kuwai/update.jsonl"]
+        command: ["setpriv", "--pdeathsig", "KILL", "--", "tail", "-n", "+1", "-F", Paths.runtime + "/kuwai/update.jsonl"]
         stdout: SplitParser {
             onRead: line => {
                 let ev = null;

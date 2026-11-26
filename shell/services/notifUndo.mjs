@@ -129,14 +129,16 @@ export function isHeld(batch, item) {
 
 /**
  * What the history file gets: never a held item, even one still in the list
- * while its toast leaves, and never one already on its way out.
+ * while its toast leaves, never one already on its way out, and never a
+ * secret (a one-time code lives in memory only: a file outlives its minutes).
  * @param {Item[]} items
  * @param {Item[]} snoozed
  * @param {Batch | null} batch
+ * @param {(item: Item) => boolean} [secret]
  * @returns {Item[]}
  */
-export function persisted(items, snoozed, batch) {
-    return items.concat(snoozed).filter(i => !(/** @type {{ discard?: boolean }} */ (i)).discard && !isHeld(batch, i));
+export function persisted(items, snoozed, batch, secret) {
+    return items.concat(snoozed).filter(i => !(/** @type {{ discard?: boolean }} */ (i)).discard && !isHeld(batch, i) && !(secret && secret(i)));
 }
 
 /**

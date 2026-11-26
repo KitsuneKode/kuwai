@@ -23,7 +23,7 @@ Scope {
     id: root
 
     readonly property bool on: Activities.voxBusy && !Saver.away
-    readonly property string runtime: Quickshell.env("XDG_RUNTIME_DIR") || "/tmp"
+    readonly property string runtime: Paths.runtime
     property string address: ""
     // { monitor, x, y, w, h } in that monitor's logical pixels, or null
     property var box: null

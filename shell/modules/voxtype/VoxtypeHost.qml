@@ -23,7 +23,7 @@ import "voxScreens.mjs" as VoxScreens
 Scope {
     id: host
 
-    readonly property string runtime: Quickshell.env("XDG_RUNTIME_DIR") || "/tmp"
+    readonly property string runtime: Paths.runtime
     readonly property string dir: (Quickshell.env("XDG_DATA_HOME") || Quickshell.env("HOME") + "/.local/share") + "/voxtype/quickshell"
     readonly property string styleFile: runtime + "/voxtype/quickshell-style.json"
     property bool hosting: false

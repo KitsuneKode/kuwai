@@ -18,7 +18,7 @@ import qs.config
 Singleton {
     id: root
 
-    readonly property string runtime: Quickshell.env("XDG_RUNTIME_DIR") || "/tmp"
+    readonly property string runtime: Paths.runtime
     readonly property string scripts: Quickshell.env("HOME") + "/.local/share/shuush/libexec"
 
     // ── voxtype ──────────────────────────────────────────────────────────

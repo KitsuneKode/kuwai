@@ -152,6 +152,14 @@ describe("the history file", () => {
     const s = mk("snoozed");
     expect(names(persisted([a, gone, b], [s], null))).toEqual(["a", "b", "snoozed"]);
   });
+
+  test("a one-time code is never written, snoozed or not", () => {
+    const [a, b] = ["a", "b"].map(n => mk(n));
+    const code = mk("code", { otp: true }), later = mk("later", { otp: true });
+    const secret = i => !!i.otp;
+    expect(names(persisted([a, code, b], [later], null, secret))).toEqual(["a", "b"]);
+    expect(names(persisted([a, code], [], null))).toEqual(["a", "code"]);
+  });
 });
 
 describe("place", () => {

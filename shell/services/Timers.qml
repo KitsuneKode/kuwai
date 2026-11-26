@@ -8,6 +8,7 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
+import qs.config
 import Quickshell.Io
 
 Singleton {
@@ -88,7 +89,7 @@ Singleton {
     Process { id: ding; command: ["pw-play", "--volume", "0.8", "/usr/share/sounds/freedesktop/stereo/complete.oga"] }
 
     // ── Kept across shell restarts ───────────────────────────────────────
-    readonly property string file: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/kuwai/timers.json"
+    readonly property string file: Paths.runtime + "/kuwai/timers.json"
     property bool loaded: false
     FileView {
         id: store

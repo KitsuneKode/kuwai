@@ -912,7 +912,7 @@ Singleton {
 
     Process {
         id: mkdir
-        command: ["mkdir", "-p", root.stateDir]
+        command: ["sh", "-c", "mkdir -p -m 700 -- \"$1\" && chmod 700 -- \"$1\"", "sh", root.stateDir]
         onExited: store.path = root.stateDir + "/notifications.json"
     }
 
@@ -927,7 +927,11 @@ Singleton {
             // Older entries may hold an in-memory image handle from a past run.
             for (const h of data.history || [])
                 if (/^image:\/\/qsimage\/|\/tmp\//.test(h.icon || "")) h.icon = "";
-            const restored = (data.history || []).map(h => itemComp.createObject(root, h));
+            const restored = (data.history || []).map(h => itemComp.createObject(root, h)).filter(i => {
+                if (!root.isCode(i)) return true;
+                i.destroy();
+                return false;
+            });
             root.items = [...root.items, ...restored.filter(i => !(i.snoozedUntil > 0))];
             root.snoozed = restored.filter(i => i.snoozedUntil > 0);
             root.loaded = true;
@@ -946,7 +950,7 @@ Singleton {
         onTriggered: store.setText(JSON.stringify({
             dnd: root.dnd,
             lastSeen: root.lastSeen,
-            history: Undo.persisted(root.items, root.snoozed, root.undo).map(i => i.toJson())
+            history: Undo.persisted(root.items, root.snoozed, root.undo, i => root.isCode(i)).map(i => i.toJson())
         }))
     }
 

@@ -1,0 +1,46 @@
+/**
+ * What a waiting password prompt may say in the island. shell-auth writes one
+ * of these (its describe()) to $XDG_RUNTIME_DIR/kuwai/auth-pending; any other
+ * program running as you can write that file too, so the island shows only
+ * these words, never what a file says. tests/shell/auth-words.test.mjs keeps
+ * this list equal to describe()'s.
+ * @type {string[]}
+ */
+export const WORDS = [
+    "Install updates",
+    "Run a command as administrator",
+    "Install software",
+    "Update the system",
+    "Mount a drive",
+    "Unlock an encrypted drive",
+    "Change network settings",
+    "Restart while others are signed in",
+    "Shut down while others are signed in",
+    "Manage a system service",
+    "Change the date and time",
+    "Rename this computer",
+    "Administrator access"
+];
+
+/**
+ * Is this process kuwai's password prompt (`qs -p …/shell-auth`)?
+ * @param {string} cmdline /proc/<pid>/cmdline
+ * @returns {boolean}
+ */
+export function isPrompt(cmdline) {
+    const args = String(cmdline || "").split("\u0000");
+    const at = args.indexOf("-p");
+    const dir = at >= 0 ? String(args[at + 1] || "").replace(/\/+$/, "") : "";
+    return /(^|\/)qs$/.test(args[0] || "") && /\/shell-auth$/.test(dir);
+}
+
+/**
+ * The words to show, or "" when the file isn't the prompt's.
+ * @param {string} text   the first line of auth-pending
+ * @param {string} cmdline /proc/<pid>/cmdline of the process it names
+ * @returns {string}
+ */
+export function believed(text, cmdline) {
+    const t = String(text || "").trim();
+    return WORDS.indexOf(t) >= 0 && isPrompt(cmdline) ? t : "";
+}

@@ -167,7 +167,7 @@ Singleton {
     property var told: ({})
     FileView {
         id: toldFile
-        path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/kuwai/devices-told.json"
+        path: Paths.runtime + "/kuwai/devices-told.json"
         printErrors: false
         onLoaded: { try { root.told = JSON.parse(text()) || {}; } catch (e) { root.told = {}; } }
     }
@@ -344,7 +344,7 @@ Singleton {
     }
     FileView {
         id: hello
-        path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/kuwai/welcomed"
+        path: Paths.runtime + "/kuwai/welcomed"
         printErrors: false
         onLoadFailed: { root.freshLogin = true; setText(String(Date.now()) + "\n"); helloLater.start(); }
     }

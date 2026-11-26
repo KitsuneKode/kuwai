@@ -106,7 +106,7 @@ Rectangle {
     property string dictPath: ""
     function toggleMic() {
         if (micState === "idle") {
-            dictPath = (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/kuwai/ai/dictation-" + Date.now() + ".txt";
+            dictPath = Paths.runtime + "/kuwai/ai/dictation-" + Date.now() + ".txt";
             micProc.command = ["voxtype", "record", "start", "--file=" + dictPath];
             micProc.running = true;
             micState = "recording";

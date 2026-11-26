@@ -566,7 +566,14 @@ Singleton {
     }
     Component {
         id: runner
-        Process { onExited: { destroy(); root.refresh(); } }
+        Process {
+            onExited: code => {
+                if (code === 3 && command[1] && command[1].startsWith("paste"))
+                    Moments.show({ kind: "copied", glyph: "\u{f018f}", label: "Copied", value: "Its window has gone: paste it where you like", ring: -1, tone: Theme.textPrimary }, 2600);
+                destroy();
+                root.refresh();
+            }
+        }
     }
 
     // Images: decoded into the cache once, on demand, for the rows on screen.

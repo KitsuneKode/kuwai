@@ -120,7 +120,7 @@ Scope {
     property real filmCover: 1
     property bool filmShown: false
     onActiveFilmChanged: if (activeFilm === "") { coverOut.stop(); filmCover = 1; filmShown = false; firstFrame.stop(); mpvIpc.connected = false; }
-    readonly property string ipcPath: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/kuwai/saver-mpv/ipc"
+    readonly property string ipcPath: Paths.runtime + "/kuwai/saver-mpv/ipc"
     function reveal() {
         if (filmShown || activeFilm === "") return;
         filmShown = true;

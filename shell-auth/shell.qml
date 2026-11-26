@@ -8,6 +8,7 @@ import qs.components
 
 ShellRoot {
     id: root
+    readonly property string runtime: (Quickshell.env("XDG_RUNTIME_DIR") || (Quickshell.env("HOME") + "/.cache/kuwai/runtime")).replace(/\/+$/, "")
 
     PolkitAgent {
         id: agent
@@ -48,7 +49,7 @@ ShellRoot {
         pendingFile.setText("");
         Qt.callLater(() => { if (agent.flow && !agent.flow.isCompleted && !root.open) root.begin(); });
     }
-    FileView { id: pendingFile; path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/kuwai/auth-pending"; printErrors: false }
+    FileView { id: pendingFile; path: root.runtime + "/kuwai/auth-pending"; printErrors: false }
     property string myPid: ""
     Process {
         running: true
@@ -57,7 +58,7 @@ ShellRoot {
     }
     onOpenChanged: if (open) pendingFile.setText(describe(actionId) + "\n" + screenName + "\n" + myPid + "\n")
     FileView {
-        path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/kuwai/auth-summon"
+        path: root.runtime + "/kuwai/auth-summon"
         watchChanges: true; printErrors: false
         onFileChanged: reload()
         onLoaded: {
@@ -192,7 +193,7 @@ ShellRoot {
 
     property var shapes: ({})
     FileView {
-        path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/kuwai/island.json"
+        path: root.runtime + "/kuwai/island.json"
         watchChanges: true
         printErrors: false
         onFileChanged: reload()
@@ -219,7 +220,7 @@ ShellRoot {
         return m[id] || "Administrator access";
     }
     property string facePng: ""
-    readonly property string faceOut: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/kuwai/face.png"
+    readonly property string faceOut: root.runtime + "/kuwai/face.png"
     Process {
         running: true
         command: ["sh", "-c", 'f="$HOME/.face"; o="$1"; [ -r "$f" ] || exit 1; [ "$o" -nt "$f" ] && { echo ok; exit; }; m="$o.mask.png"; magick -size 132x132 xc:none -fill white -draw "circle 66,66 66,0" "png:$m" && magick "$f[0]" -resize 132x132^ -gravity center -extent 132x132 "$m" -compose DstIn -composite "png:$o"; rm -f "$m"; [ -s "$o" ] && echo ok', "face", root.faceOut]

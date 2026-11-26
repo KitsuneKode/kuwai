@@ -82,23 +82,25 @@ FocusScope {
     function answerT3(r, decision) {
         if (!r || !r.request || (t3Answers[r.request.id] || {}).busy) return;
         setT3Answer(r.request.id, { busy: true, done: "", why: "" });
-        t3AnswerProc.pending = { id: r.request.id, decision: decision };
-        t3AnswerProc.command = [Paths.bin + "/kuwai-t3-answer", r.thread, r.request.id, decision];
-        t3AnswerProc.running = true;
+        t3Answer.createObject(ap, { asked: { id: r.request.id, decision: decision },
+            command: [Paths.bin + "/kuwai-t3-answer", r.thread, r.request.id, decision] }).running = true;
     }
-    Process {
-        id: t3AnswerProc
-        property var pending: null
-        stdout: StdioCollector {
-            onStreamFinished: {
-                const p = t3AnswerProc.pending;
-                if (!p) return;
-                let r = {};
-                try { r = JSON.parse(text); } catch (e) {}
-                ap.setT3Answer(p.id, { busy: false, done: r.ok ? p.decision : "",
-                    why: r.ok ? "" : r.why === "scope" ? "T3's token for Kuwai can't answer yet (it needs orchestration:operate). Open it in T3."
-                        : r.why === "gone" ? "Already answered." : "T3 didn't take it. Open it in T3." });
-                if (r.ok) T3Code.read();
+    Component {
+        id: t3Answer
+        Process {
+            id: one
+            property var asked: null
+            onExited: destroy(1000)
+            stdout: StdioCollector {
+                onStreamFinished: {
+                    const p = one.asked;
+                    let r = {};
+                    try { r = JSON.parse(text); } catch (e) {}
+                    ap.setT3Answer(p.id, { busy: false, done: r.ok ? p.decision : "",
+                        why: r.ok ? "" : r.why === "scope" ? "T3's token for Kuwai can't answer yet (it needs orchestration:operate). Open it in T3."
+                            : r.why === "gone" ? "Already answered." : "T3 didn't take it. Open it in T3." });
+                    if (r.ok) T3Code.read();
+                }
             }
         }
     }

@@ -24,7 +24,7 @@ Singleton {
     id: root
 
     readonly property string ctl: Paths.bin + "/kuwai-brightness"
-    readonly property string file: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/kuwai/saver-dim.json"
+    readonly property string file: Paths.runtime + "/kuwai/saver-dim.json"
     function floorOf(o) { return o && o.bus !== null && o.bus !== undefined ? 0 : 1; }
 
     property bool dimmed: false

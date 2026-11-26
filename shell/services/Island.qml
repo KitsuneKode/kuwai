@@ -16,6 +16,7 @@ import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
 import qs.config
+import "authWords.mjs" as AuthWords
 
 Singleton {
     id: root
@@ -61,7 +62,7 @@ Singleton {
     }
     FileView {
         id: shapeFile
-        path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/kuwai/island.json"
+        path: Paths.runtime + "/kuwai/island.json"
         printErrors: false
         atomicWrites: true
     }
@@ -91,10 +92,10 @@ Singleton {
     // what is asking and on which screen; nothing typed ever comes here).
     // The island shows a lock chip on every screen; a click brings the prompt
     // to that screen (auth-summon).
-    readonly property string authPending: authLive ? authWant : ""
+    readonly property string authPending: authLive ? AuthWords.believed(authWant, authCmd) : ""
     property string authScreen: ""
     FileView {
-        path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/kuwai/auth-pending"
+        path: Paths.runtime + "/kuwai/auth-pending"
         watchChanges: true; printErrors: false
         onFileChanged: reload()
         onLoaded: {
@@ -112,14 +113,15 @@ Singleton {
     property bool authAlive: false
     FileView {
         id: procFile
-        path: root.authPid ? "/proc/" + root.authPid + "/comm" : ""
+        path: /^[0-9]+$/.test(root.authPid) ? "/proc/" + root.authPid + "/cmdline" : ""
         printErrors: false
-        onLoaded: root.authAlive = text().trim() === "qs"
-        onLoadFailed: root.authAlive = false
+        onLoaded: { root.authCmd = text(); root.authAlive = AuthWords.isPrompt(root.authCmd); }
+        onLoadFailed: { root.authCmd = ""; root.authAlive = false; }
     }
+    property string authCmd: ""
     Timer { interval: 4000; repeat: true; running: root.authWant !== ""; onTriggered: procFile.reload() }
     readonly property bool authLive: authWant !== "" && authAlive
-    FileView { id: summonFile; path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/kuwai/auth-summon"; printErrors: false }
+    FileView { id: summonFile; path: Paths.runtime + "/kuwai/auth-summon"; printErrors: false }
     function summonAuth(screenName) { summonFile.setText(screenName + "\n"); }
     // Minimal island: reveal the resting details for a moment (Super+Alt+I, or
     // the pointer nearing the top edge by the island).

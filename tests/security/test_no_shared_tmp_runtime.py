@@ -34,3 +34,16 @@ def test_update_runtime_is_private(monkeypatch, tmp_path):
     m = importlib.util.module_from_spec(spec)
     loader.exec_module(m)
     assert not m.RUNTIME.startswith(str(shared)), "a group/world-writable runtime dir must not be used"
+
+
+QML_TMP = re.compile(r'"/tmp"|\x27/tmp\x27')
+
+
+def test_no_tmp_fallback_in_the_shell_or_its_prompt():
+    hits = []
+    for base in ("shell", "shell-auth", "greeter"):
+        for p in (ROOT / base).rglob("*.qml"):
+            for n, line in enumerate(p.read_text(encoding="utf-8").splitlines(), 1):
+                if QML_TMP.search(line):
+                    hits.append(f"{p.relative_to(ROOT)}:{n}: {line.strip()}")
+    assert not hits, "a runtime path falls back to Paths.runtime (your own folder), never to a shared /tmp:\n" + "\n".join(hits)

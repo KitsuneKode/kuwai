@@ -61,7 +61,7 @@ Singleton {
     onOnChanged: if (loaded) state.setText(on ? "on\n" : "off\n")
     FileView {
         id: state
-        path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/kuwai/caffeine"
+        path: Paths.runtime + "/kuwai/caffeine"
         printErrors: false
         onLoaded: { root.on = text().trim() === "on"; root.loaded = true; adopt.running = true; }
         onLoadFailed: { root.loaded = true; adopt.running = true; root.fresh = true; if (Settings.loaded) root.startOn(); }

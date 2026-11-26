@@ -2,6 +2,7 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
+import qs.config
 import Quickshell.Io
 
 Singleton {
@@ -12,7 +13,7 @@ Singleton {
     Component.onCompleted: publish()
     FileView {
         id: file
-        path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/kuwai/keys"
+        path: Paths.runtime + "/kuwai/keys"
         printErrors: false
     }
 }
