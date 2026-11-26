@@ -48,11 +48,17 @@ Column {
         KeyBinds.save();
         if (returnTo) returnTo.forceActiveFocus();
     }
+    function none() {
+        const e = KeyBinds.editEntry;
+        if (!e || !e.keys || KeyBinds.busy) return;
+        stop(true);
+        KeyBinds.none(e);
+    }
     function chordText(keys) { return KC.caps(keys).join("+"); }
     function rowDetail(e) {
         if (KeyBinds.editing === e.aid) {
             const p = KeyBinds.pending, c = KeyBinds.clash;
-            if (!p) return "Press the new keys · esc cancels";
+            if (!p) return "Press the new keys · esc cancels" + (e.keys ? " · ⌫ leaves it without one" : "");
             if (p.why) return p.why;
             if (c && c.kind === "same") return "That's already its shortcut";
             if (c && c.kind === "kuwai") return "Now “" + c.text + "”: Replace leaves that one without a shortcut";
@@ -77,6 +83,7 @@ Column {
             const bare = !(ev.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier | Qt.ShiftModifier));
             if (bare && ev.key === Qt.Key_Escape) { page.stop(true); return; }
             if (bare && (ev.key === Qt.Key_Return || ev.key === Qt.Key_Enter) && KeyBinds.pending) { page.save(); return; }
+            if (bare && (ev.key === Qt.Key_Backspace || ev.key === Qt.Key_Delete)) { page.none(); return; }
             if (ev.isAutoRepeat) return;
             const c = KC.chordOf(ev.key, ev.modifiers, ev.nativeScanCode);
             if (c) KeyBinds.pending = c;
@@ -190,6 +197,7 @@ Column {
                         sourceComponent: RowLayout {
                             spacing: Theme.s1
                             Button { height: Theme.sp(30); size: Theme.tSub; primary: true; enabled: KeyBinds.canSave; text: KeyBinds.clash && KeyBinds.clash.kind === "kuwai" ? "Replace" : "Save"; onClicked: page.save() }
+                            Button { visible: !!r.modelData.keys; height: Theme.sp(30); size: Theme.tSub; kind: "quiet"; text: "None"; onClicked: page.none() }
                             Button { height: Theme.sp(30); size: Theme.tSub; kind: "quiet"; text: "Cancel"; onClicked: page.stop(true) }
                         }
                     }
@@ -205,19 +213,15 @@ Column {
                                 enabled: !KeyBinds.busy
                                 onClicked: page.edit(r.modelData, change)
                             }
-                            Button {
-                                visible: !!r.modelData.custom
-                                height: Theme.sp(30); size: Theme.tSub; kind: "quiet"
-                                text: "Default"
-                                enabled: !KeyBinds.busy
-                                onClicked: KeyBinds.reset(r.modelData)
-                            }
-                            Button {
-                                visible: !r.modelData.custom && !!r.modelData.keys
-                                height: Theme.sp(30); size: Theme.tSub; kind: "quiet"
-                                text: "None"
-                                enabled: !KeyBinds.busy
-                                onClicked: KeyBinds.none(r.modelData)
+                            Loader {
+                                active: !!r.modelData.custom
+                                visible: active
+                                sourceComponent: Button {
+                                    height: Theme.sp(30); size: Theme.tSub; kind: "quiet"
+                                    text: "Default"
+                                    enabled: !KeyBinds.busy
+                                    onClicked: KeyBinds.reset(r.modelData)
+                                }
                             }
                         }
                     }

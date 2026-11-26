@@ -5,6 +5,20 @@ they land. User wants: extremely secure, premium, tasteful, fast, Apple-grade.
 
 **2026-11-16: the order of work toward a public launch is in [PLAN-launch.md](PLAN-launch.md)** (in-flight worktrees, the 12 reported issues, references, pstack verification, clips).
 
+## STATUS (2026-11-26) — shortcuts you can change, plain F-keys, one agent identity
+
+Landed and live (stable d1ff63a, then the row polish): Settings → Shortcuts
+rebinds any kuwai action (a key-free submap so the chord reaches the panel;
+conflicts named, Replace moves a chord off another action; ~/.config/kuwai/keys.tsv,
+`kuwai keys`, hypr/kuwai/keys.lua applies it live after user.lua). Keyboard →
+Function keys: F7/F8/F10 kuwai's (default) or plain (settings fKeys). Agents:
+one canonical key per session (kitty pane, T3 thread, hook session) in
+agents.mjs `sessions`; every surface reads Agents.sessions / Agents.tally
+(tests/shell/agents-identity.test.mjs). Proven live: a rebind and its reset,
+plain F-keys on and off (hyprctl binds), the agents tally over IPC.
+Not proven: a chord pressed into the panel on the live session (no synthetic
+input); the capture submap's 30 s self-reset.
+
 ## STATUS (2026-11-21, later) — the shell is a systemd service (feat/shell-unit)
 
 Why it felt flaky: the shell had no keeper. 09:36 crash → Quickshell's handler
