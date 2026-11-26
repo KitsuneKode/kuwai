@@ -14,7 +14,13 @@ Singleton {
     readonly property string pollBin: Paths.bin + "/kuwai-crash-poll"
     readonly property string alertBin: Paths.bin + "/kuwai-crash-alert"
     readonly property string token: tokenFile.loaded ? tokenFile.text().trim() : ""
-    FileView { id: tokenFile; path: Paths.runtime + "/kuwai/crash-token"; watchChanges: true; printErrors: false; onFileChanged: reload() }
+    FileView { id: tokenFile; path: Paths.runtime + "/kuwai/crash-token"; blockLoading: true; watchChanges: true; printErrors: false; onFileChanged: reload() }
+    function isAlert(n) {
+        const h = n && n.hints ? n.hints["x-kuwai-crash"] : undefined;
+        if (typeof h !== "string" || h.length < 32) return false;
+        if (h !== token) tokenFile.reload();
+        return h === token;
+    }
 
     function runDiagnose(brief) {
         if (!Settings.assistantOptIn) {
@@ -38,7 +44,7 @@ Singleton {
                 let row;
                 try { row = JSON.parse(line); } catch (e) { return; }
                 if (!row || !row.brief) return;
-                Quickshell.execDetached([root.alertBin, row.brief]);
+                Quickshell.execDetached([root.alertBin, row.brief, String(row.exe || ""), String(row.signal || "")]);
             }
         }
     }

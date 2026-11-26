@@ -52,7 +52,7 @@ Singleton {
             }
         },
         {
-            match: n => !!(n.hints && Crashes.token.length >= 32 && n.hints["x-kuwai-crash"] === Crashes.token),
+            match: n => Crashes.isAlert(n),
             adapt: n => ({
                 app: "System",
                 title: n.summary,
@@ -61,7 +61,7 @@ Singleton {
                 statusGlyph: "\u{f0028}",
                 statusTone: "caution",
                 icon: root.entryIcon("dialog-warning") || "",
-                groupKey: "crash:" + (n.body || "").slice(0, 40),
+                groupKey: "crash:" + (n.summary || ""),
                 severity: "warning"
             })
         },

@@ -1,13 +1,20 @@
 #!/usr/bin/env bash
 set -eu
 ROOT="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
-brief=${1:?usage: kuwai-crash-alert BRIEF}
+brief=${1:?usage: kuwai-crash-alert BRIEF [PROGRAM] [SIGNAL]}
 brief=${brief:0:8000}
+name=$(basename -- "${2:-}")
+sig=${3:-}
 run="${XDG_RUNTIME_DIR:?}/kuwai"
 mkdir -p "$run"
 token=$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n')
 (umask 077; printf '%s' "$token" >"$run/crash-token")
+title="Something crashed"; body=$brief
+if [ -n "$name" ]; then
+    title="$name crashed"
+    body="It stopped unexpectedly${sig:+ (signal $sig)}."
+fi
 exec "$ROOT/bin/kuwai-notify" -a System -u critical -i dialog-warning \
-    -H x-kuwai-crash="$token" \
+    -H x-kuwai-crash="$token" -H x-kuwai-brief="$brief" \
     -A default=Diagnose -A dismiss=Dismiss \
-    "Something crashed" "$brief"
+    "$title" "$body"

@@ -55,3 +55,23 @@ def test_crash_poll_filters_uid_emits_ndjson_and_dedupes(tmp_path):
 
     second = subprocess.run([str(BIN)], env=env, capture_output=True, text=True, check=True)
     assert second.stdout.strip() == ""
+
+
+def test_a_crash_from_a_session_that_has_ended_is_not_reported(tmp_path):
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    uid = os.getuid()
+    (fake_bin / "coredumpctl").write_text(
+        "#!/usr/bin/env python3\nimport json, sys\na = sys.argv[1:]\n"
+        f"if a[0] == 'list': print(json.dumps([{{'time': 1, 'pid': 808, 'uid': {uid}, 'sig': 6, 'exe': '/usr/bin/Xwayland'}},"
+        f" {{'time': 2, 'pid': 909, 'uid': {uid}, 'sig': 11, 'exe': '/usr/bin/qs'}}]))\n"
+        "else: print('  Session: ' + ('7' if a[1] == '808' else '9'))\n")
+    (fake_bin / "loginctl").write_text("#!/bin/sh\n[ \"$2\" = 9 ]\n")
+    for f in ("coredumpctl", "loginctl"):
+        (fake_bin / f).chmod(0o755)
+    env = {**os.environ, "PATH": f"{fake_bin}:{os.environ['PATH']}", "XDG_STATE_HOME": str(tmp_path / "state")}
+    out = subprocess.run([str(BIN)], env=env, capture_output=True, text=True, check=True).stdout
+    rows = [json.loads(l) for l in out.splitlines() if l.strip()]
+    assert [r["exe"] for r in rows] == ["/usr/bin/qs"], "Xwayland ending with a logout is not news at the next login"
+    again = subprocess.run([str(BIN)], env=env, capture_output=True, text=True, check=True).stdout
+    assert again.strip() == ""

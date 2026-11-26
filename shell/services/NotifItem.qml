@@ -85,16 +85,16 @@ QtObject {
 
     function apply(n, a) {
         nid = n.id;
-        app = a.app;
-        title = a.title;
-        body = a.body;
-        status = a.status;
-        statusGlyph = a.statusGlyph;
-        statusTone = a.statusTone;
-        icon = a.icon;
-        savedIcon = NotifAdapters.lastingIcon(n, a.icon);
-        groupKey = a.groupKey;
-        focusClass = a.focusClass;
+        app = a.app || "";
+        title = a.title || "";
+        body = a.body || "";
+        status = a.status || "";
+        statusGlyph = a.statusGlyph || "";
+        statusTone = a.statusTone || "";
+        icon = a.icon || "";
+        savedIcon = NotifAdapters.lastingIcon(n, a.icon || "");
+        groupKey = a.groupKey || "";
+        focusClass = a.focusClass || "";
         jump = a.jump || "";
         event = a.event || "";
         agentState = a.agentState || "";

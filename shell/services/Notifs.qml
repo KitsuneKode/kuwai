@@ -558,11 +558,11 @@ Singleton {
 
     function invokeAction(item, id) {
         const n = item.notification;
-        if (n && n.hints && n.hints["x-kuwai-crash"] === "1") {
+        if (Crashes.isAlert(n)) {
             item.discard = true;
             if (item.popup) item.leaving = true;
             else forget.later(item);
-            if (id === "default") Crashes.runDiagnose(item.body);
+            if (id === "default") Crashes.runDiagnose(n.hints["x-kuwai-brief"] || item.body);
             return;
         }
         if (n && n.hints && n.hints["x-kuwai-agent-limit"] === "1") {

@@ -12,7 +12,13 @@ while IFS=$'\t' read -r time pid sig exe; do
     [ -n "$pid" ] || continue
     id="${time}-${pid}-${exe}"
     if jq -e --arg k "$id" '.[$k]' "$seen" >/dev/null 2>&1; then continue; fi
-    brief=$(coredumpctl info "$pid" 2>/dev/null | head -25 | tail -20 || true)
+    info=$(coredumpctl info "$pid" 2>/dev/null || true)
+    sess=$(sed -n 's/^ *Session: *\([0-9a-z]*\).*/\1/p' <<<"$info" | head -1)
+    if [ -n "$sess" ] && command -v loginctl >/dev/null 2>&1 && ! loginctl show-session "$sess" >/dev/null 2>&1; then
+        jq --arg k "$id" '.[$k]=true' "$seen" > "${seen}.tmp" && mv "${seen}.tmp" "$seen"
+        continue
+    fi
+    brief=$(head -25 <<<"$info" | tail -20)
     [ -n "$brief" ] || brief="$exe signal $sig"
     jq -cn --arg id "$id" --arg exe "$exe" --arg sig "$sig" --arg time "$time" --arg brief "$brief" \
         '{id:$id,exe:$exe,signal:$sig,time:$time,brief:$brief}'
