@@ -159,10 +159,23 @@ function L.apply_theme()
 	T.apply()
 end
 
+L.SHAPE = {
+	general = { border_size = 2, gaps_in = 5, gaps_out = 10 },
+	decoration = {
+		rounding = 18,
+		rounding_power = 4,
+		active_opacity = 1.0,
+		inactive_opacity = 1.0,
+		dim_inactive = false,
+		shadow = { enabled = true, range = 40, render_power = 3, offset = "0 12" },
+		glow = { enabled = true, range = 12, render_power = 3 },
+	},
+}
+
 function L.apply_identity()
+	K.config(L.SHAPE)
 	K.config({
 		decoration = {
-			rounding_power = 4,
 			blur = { noise = 0.02, vibrancy = 0.3, vibrancy_darkness = 0.35, special = true, passes = 3, size = 6 },
 		},
 		render = { new_render_scheduling = false },
