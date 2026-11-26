@@ -176,7 +176,7 @@ Item {
         scale: view.mix(1, 0.9, view.fp)
         opacity: view.shown(view.tClock) * view.mix(1, 0.85, view.f)
         transform: Translate { y: view.lift(view.tClock) }
-        spacing: 0
+        spacing: Theme.s2
         Label {
             anchors.horizontalCenter: parent.horizontalCenter
             text: Dates.longDate(view.now)
