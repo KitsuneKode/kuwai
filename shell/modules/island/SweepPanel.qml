@@ -11,7 +11,7 @@ FocusScope {
     focus: true
     implicitWidth: Theme.panelS
     implicitHeight: col.implicitHeight + 40
-    readonly property real ceiling: Math.min(Theme.panelMaxH, Theme.screenSize(Screen, "height", 1080) - 24) - 40 - 34
+    readonly property real ceiling: Math.min(Theme.panelMaxH, Theme.screenSize(Screen, "height", 1080) - 24) - 40 - Theme.sp(34)
     onSelChanged: Qt.callLater(showSel)
     function showSel() {
         const it = sel >= 0 ? rowsRep.itemAt(sel) : null;

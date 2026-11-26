@@ -302,7 +302,7 @@ FocusScope {
                 + (keyHints.visible ? keyHints.height : 0) + (health.visible ? health.height + col.spacing : 0)
                 + (budgetNote.visible ? budgetNote.height + col.spacing : 0)
                 + col.spacing * (1 + (portsCard.visible ? 1 : 0) + (keyHints.visible ? 1 : 0))
-            readonly property real room: Theme.panelMaxH - (ap.inStrip ? 34 : 0) - col.y - 18
+            readonly property real room: Theme.panelMaxH - (ap.inStrip ? Theme.sp(34) : 0) - col.y - 18
             height: Math.min(contentHeight, Math.max(Theme.sp(96), room - others))
             clip: true
             spacing: Theme.s2

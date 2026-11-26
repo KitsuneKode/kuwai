@@ -193,7 +193,7 @@ Item {
         id: timeChip
         anchors.horizontalCenter: parent.horizontalCenter
         y: 12
-        height: 38; radius: Theme.r2
+        height: Math.max(38, timeRow.implicitHeight + 10); radius: Theme.r2
         width: timeRow.implicitWidth + 22
         color: chipHover.hovered ? Theme.ghostHover : "transparent"
         Behavior on color { ColorAnimation { duration: Theme.colorMs } }

@@ -466,7 +466,7 @@ Scope {
             Binding { target: hoverLoader.item; property: "clockHidden"; value: win.clockFlying; when: !!hoverLoader.item }
 
             readonly property bool sectioned: Island.isSection(shownPanel)
-            readonly property real backH: Island.canBack || sectioned ? 34 : 0
+            readonly property real backH: Island.canBack || sectioned ? Theme.sp(34) : 0
             // A panel's own size, but never past the window (room for the shadow):
             // on a normal screen nothing changes, on a small one it fits.
             readonly property size panelSize: panelLoader.item

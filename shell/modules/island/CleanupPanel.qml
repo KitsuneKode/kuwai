@@ -204,7 +204,7 @@ FocusScope {
             visible: cp.view === "skills" && cp.rows.length > 0
             width: parent.width
             // Room for the leftovers and the action under it (the island has a ceiling).
-            height: Math.min(contentHeight, Math.max(2 * (Theme.sp(44) + 2), Theme.panelMaxH - (cp.inStrip ? 34 : 0) - col.y - 20
+            height: Math.min(contentHeight, Math.max(2 * (Theme.sp(44) + 2), Theme.panelMaxH - (cp.inStrip ? Theme.sp(34) : 0) - col.y - 20
                                 - theNumber.height - (leftovers.visible ? leftovers.height + col.spacing : 0) - action.height - 2 * col.spacing))
             clip: true
             spacing: 2
