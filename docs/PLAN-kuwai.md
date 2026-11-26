@@ -5,6 +5,34 @@ they land. User wants: extremely secure, premium, tasteful, fast, Apple-grade.
 
 **2026-11-16: the order of work toward a public launch is in [PLAN-launch.md](PLAN-launch.md)** (in-flight worktrees, the 12 reported issues, references, pstack verification, clips).
 
+## REVIEW (2026-11-26, night) — six models, what is fixed and what is left
+
+Reviews (read-only): GPT-6.2 Astra (privileged paths), GPT-6.2 Sol (data and
+runtime), Opus 5.5 (architecture, launch), Fable 5.2 (design, island), Grok 4.7
+(attacker as you), Gemini 4 Neon (features, voxtype). Fixed: 6c17030, c7ec6b5.
+
+Left, needs a decision or the owner:
+1. Signed releases (Opus): `release-signers` is empty, so `kuwai update-self`
+   trusts whatever GitHub serves. Needs the owner's signing key; about an hour.
+2. Root installs from folders you can write (Astra, Opus, Gemini, Grok):
+   `kuwai-update install-helper`, `kuwai auth pin`, `system/install`, greeter
+   `--undo` from a legacy backup. Real fix: install from a signed tag's blobs
+   (after 1) or a root-owned package; show the helper's sha256 in the prompt.
+3. The root update session (Gemini, Grok): one prompt opens four hours of any
+   op; put the op and package list in pkexec's argv; split -Sy/-Su into one
+   -Syu; refuse `.pacnew` take on passwd/shadow/group/fstab/crypttab.
+4. voxtype: VoxtypeHost loads voxtype's QML into the shell (Gemini S4);
+   voxtype.lua's suppress submap has no timeout and paths aren't quoted (S6).
+
+Left, agent work: the remaining /tmp fallbacks in shell/ and greeter/ plus a
+lint over them (Fable, Gemini); notification history keeps OTPs and its dir
+isn't 0700 (Sol, Grok); auth-summon/auth-pending can be spoofed (Grok);
+paste can land in another window (Sol); two T3 approvals share one process
+(Sol); the island's design list (Fable): keyboard section switches crossfade,
+a panel swap fades on two clocks, two drag handlers on the peek, Now Playing's
+transport rebuilt on each play/pause, glance panels close under a reader,
+DND and Night Shift share a glyph, ControlTile at 200 %.
+
 ## NEXT (2026-11-26, evening) — what is left, in order
 
 Done today and live: new AUR packages install through the review (c329b4b), the
