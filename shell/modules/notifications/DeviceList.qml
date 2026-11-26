@@ -14,6 +14,7 @@ Column {
     property var nodes: []
     property var current: null
     signal picked(var node)
+    property Item hoverRow: null
     width: parent ? parent.width : 0
     spacing: 8
     visible: nodes.length > 0
@@ -26,6 +27,7 @@ Column {
         color: Theme.wash(1)
         border.width: 1
         border.color: Theme.edge(0)
+        FluidHighlight { target: devList.hoverRow; radius: 14 }
         Column {
             id: devices
             x: 4; y: 4
@@ -42,18 +44,19 @@ Column {
                     height: 64
 
                     Rectangle {
-                        anchors.fill: parent
-                        radius: 14
-                        color: devHover.hovered && !dev.on ? Theme.rowHover : "transparent"
-                        Behavior on color { ColorAnimation { duration: Theme.colorMs } }
-                    }
-                    Rectangle {
                         visible: dev.index > 0
                         anchors { left: parent.left; right: parent.right; top: parent.top; leftMargin: 44; rightMargin: 10 }
                         height: 1
                         color: Theme.wash(1)
                     }
-                    HoverHandler { id: devHover }
+                    HoverHandler {
+                        id: devHover
+                        onHoveredChanged: {
+                            if (hovered && !dev.on) devList.hoverRow = dev;
+                            else if (devList.hoverRow === dev) devList.hoverRow = null;
+                        }
+                    }
+                    onOnChanged: if (on && devList.hoverRow === dev) devList.hoverRow = null
 
                     // Default: a filled disc with a tick; others a ring to click.
                     Rectangle {

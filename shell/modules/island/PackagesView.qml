@@ -82,6 +82,8 @@ Item {
         spacing: Theme.s1
         boundsBehavior: Flickable.StopAtBounds
         model: ScriptModel { values: pv.shown; objectProp: "name" }
+        property Item hoverRow: null
+        FluidHighlight { parent: rows.contentItem; target: rows.hoverRow; radius: Theme.r2 }
         delegate: Rectangle {
             id: row
             required property var modelData
@@ -90,9 +92,16 @@ Item {
             width: rows.width
             height: Math.max(Theme.sp(46), top.implicitHeight + Theme.s2 * 2) + (expanded ? more.implicitHeight + Theme.s2 : 0)
             radius: Theme.r2
-            color: rowHover.hovered || expanded ? Theme.wash(1) : "transparent"
+            color: expanded ? Theme.wash(1) : "transparent"
             Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
-            HoverHandler { id: rowHover }
+            HoverHandler {
+                id: rowHover
+                onHoveredChanged: {
+                    if (hovered && !row.expanded) rows.hoverRow = row;
+                    else if (rows.hoverRow === row) rows.hoverRow = null;
+                }
+            }
+            onExpandedChanged: if (expanded && rows.hoverRow === row) rows.hoverRow = null
             TapHandler { onTapped: pv.open = row.expanded ? "" : row.modelData.name }
             Accessible.role: Accessible.Button
             Accessible.name: row.modelData.name + " " + row.modelData.version + (row.held ? ", held" : "")

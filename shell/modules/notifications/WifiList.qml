@@ -45,6 +45,7 @@ Column {
     spacing: 2
 
     property var asking: null                  // the network whose password is being typed
+    property Item hoverRow: null
     property var failed: ({})                  // network name → why it didn't join
     function back() {
         if (asking) { asking = null; return true; }
@@ -137,13 +138,21 @@ Column {
             }
 
             Rectangle {
+                id: band
                 width: parent.width
                 height: 38
                 radius: Theme.r2
-                color: row.net.connected ? Qt.alpha(Theme.accent, 0.16) : hover.hovered ? Theme.rowHover : "transparent"
+                color: row.net.connected ? Qt.alpha(Theme.accent, 0.16) : "transparent"
                 Behavior on color { ColorAnimation { duration: Theme.colorMs } }
             }
-            HoverHandler { id: hover; cursorShape: row.net.connected ? Qt.ArrowCursor : Qt.PointingHandCursor }
+            HoverHandler {
+                id: hover
+                cursorShape: row.net.connected ? Qt.ArrowCursor : Qt.PointingHandCursor
+                onHoveredChanged: {
+                    if (hovered && !row.net.connected) wifi.hoverRow = band;
+                    else if (wifi.hoverRow === band) wifi.hoverRow = null;
+                }
+            }
             TapHandler { enabled: !row.net.connected; onTapped: wifi.join(row.net) }
             // The keyboard reaches all of it (review 2026-11-10, finding 18):
             // Tab to a network, Return/Space joins, Delete disconnects the one
@@ -281,5 +290,10 @@ Column {
                 }
             }
         }
+    }
+
+    Item {
+        width: 0; height: 0
+        FluidHighlight { target: wifi.hoverRow; radius: Theme.r2 }
     }
 }

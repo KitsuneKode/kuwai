@@ -34,6 +34,7 @@ FocusScope {
     property string query: ""
     property int current: -1
     property var lastPointer: null
+    property bool pointerPicked: false
 
     // ── Data ─────────────────────────────────────────────────────────────
     readonly property var keyNames: ({
@@ -199,6 +200,16 @@ FocusScope {
         cacheBuffer: 400
         currentIndex: -1
         highlightFollowsCurrentItem: false
+        property Item selRow: null
+        FluidHighlight {
+            parent: list.contentItem
+            target: list.selRow && list.selRow.lit ? list.selRow : null
+            instant: !pal.pointerPicked
+            inset: 2
+            radius: 11
+            fill: Theme.wash(2)
+            edge: Theme.edge(0)
+        }
         boundsBehavior: Flickable.StopAtBounds
         model: pal.rows
 
@@ -211,17 +222,9 @@ FocusScope {
             width: list.width
             height: header ? 32 : 40
 
-            Rectangle {
-                anchors.fill: parent
-                anchors.leftMargin: 2; anchors.rightMargin: 2
-                radius: 11
-                visible: !row.header
-                color: Theme.wash(2)
-                border.width: 1
-                border.color: Theme.edge(0)
-                opacity: row.on ? 1 : 0
-                Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 0 : 90; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
-            }
+            readonly property bool lit: on && !header
+            onLitChanged: if (lit) list.selRow = row
+            Component.onCompleted: if (lit) list.selRow = row
 
             Label {
                 visible: row.header
@@ -285,7 +288,11 @@ FocusScope {
                     const g = mapToGlobal(mouse.x, mouse.y);
                     const was = pal.lastPointer;
                     pal.lastPointer = g;
-                    if (was && (g.x !== was.x || g.y !== was.y)) pal.current = row.index;
+                    if (was && (g.x !== was.x || g.y !== was.y) && pal.current !== row.index) {
+                        pal.pointerPicked = true;
+                        pal.current = row.index;
+                        pal.pointerPicked = false;
+                    }
                 }
                 onClicked: pal.run(row.modelData)
             }

@@ -40,6 +40,8 @@ Item {
     }
 
     property var forgetTarget: null
+    property Item hoverRow: null
+    FluidHighlight { target: bt.hoverRow; radius: Theme.r2 }
     function requestForget(d) {
         if (!d || !d.paired) return;
         forgetTarget = d;
@@ -66,7 +68,7 @@ Item {
         width: col.width
         height: lrow.implicitHeight
         radius: Theme.r2
-        color: rowArea.containsMouse || row.activeFocus ? Theme.rowHover : "transparent"
+        color: row.activeFocus && bt.hoverRow !== row ? Theme.rowHover : "transparent"
         Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
         activeFocusOnTab: true
         Keys.onReturnPressed: bt.act(row.dev)
@@ -76,6 +78,10 @@ Item {
         FocusRing { cornerRadius: Theme.r2 }
         MouseArea {
             id: rowArea
+            onContainsMouseChanged: {
+                if (containsMouse) bt.hoverRow = row;
+                else if (bt.hoverRow === row) bt.hoverRow = null;
+            }
             anchors.fill: parent
             hoverEnabled: true
             cursorShape: bt.busy(row.dev) ? Qt.BusyCursor : Qt.PointingHandCursor

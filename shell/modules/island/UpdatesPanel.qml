@@ -404,9 +404,12 @@ FocusScope {
 
             // AUR packages
             Card {
+                id: aurCard
                 visible: Updates.aur.length > 0
+                property Item hoverRow: null
                 Item {
                     width: parent.width; height: Math.max(Theme.sp(34), aurHead.implicitHeight)
+                    FluidHighlight { target: aurCard.hoverRow; radius: Theme.r1 }
                     Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f0393}"; font.family: Theme.fontGlyph; font.pixelSize: Theme.glyphM; color: Theme.accent }
                     Column {
                         id: aurHead
@@ -442,9 +445,17 @@ FocusScope {
                             id: aurWash
                             anchors.fill: parent; anchors.topMargin: 2; anchors.bottomMargin: 2
                             radius: Theme.r1
-                            color: rowArea.containsMouse || aurMenu.open ? Theme.rowHover : "transparent"
+                            color: aurMenu.open ? Theme.rowHover : "transparent"
                         }
-                        MouseArea { id: rowArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: up.openReview(aurRow.modelData.name) }
+                        MouseArea {
+                            id: rowArea
+                            anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                            onClicked: up.openReview(aurRow.modelData.name)
+                            onContainsMouseChanged: {
+                                if (containsMouse) aurCard.hoverRow = aurWash;
+                                else if (aurCard.hoverRow === aurWash) aurCard.hoverRow = null;
+                            }
+                        }
                         // Keyboard: Tab reaches the row; ↵ reviews it, Space includes or leaves it out, Menu / Shift+F10 its menu.
                         activeFocusOnTab: true
                         Keys.onPressed: e => {

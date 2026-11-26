@@ -66,6 +66,7 @@ FocusScope {
     }
     property int current: 0
     property var lastPointer: null
+    property bool pointerPicked: false
     // A length that holds text grows with Text size (at 200 % the rows ran into each other).
     readonly property int rowH: Theme.sp(50)
     // Seven rows at 100 %; as rows grow with Text size, fewer of them, so the
@@ -685,6 +686,15 @@ FocusScope {
         boundsBehavior: Flickable.StopAtBounds
         currentIndex: -1
         highlightFollowsCurrentItem: false
+        property Item selRow: null
+        FluidHighlight {
+            parent: list.contentItem
+            target: list.selRow && list.selRow.lit ? list.selRow : null
+            instant: !launcher.pointerPicked
+            inset: 2
+            fill: Theme.wash(2)
+            edge: Theme.edge(0)
+        }
 
         delegate: Item {
             id: row
@@ -702,19 +712,9 @@ FocusScope {
             // No cascade: the launcher opens many times a day and the island's
             // grow already carries it in (one entrance per container).
 
-            // Selection: drawn by the row itself, so it can't travel or flicker
-            // when the results change under it; it moves instantly.
-            Rectangle {
-                anchors.fill: parent
-                anchors.leftMargin: 2; anchors.rightMargin: 2
-                radius: Theme.r2
-                visible: !row.header && !row.dock
-                color: Theme.wash(2)
-                border.width: 1
-                border.color: Theme.edge(0)
-                // Instant: arrow keys move it hundreds of times a day.
-                opacity: row.on ? 1 : 0
-            }
+            readonly property bool lit: on && !header && !dock
+            onLitChanged: if (lit) list.selRow = row
+            Component.onCompleted: if (lit) list.selRow = row
 
             Label {
                 visible: row.header && !row.tips
@@ -906,7 +906,11 @@ FocusScope {
                     const g = mapToGlobal(mouse.x, mouse.y);
                     const was = launcher.lastPointer;
                     launcher.lastPointer = g;
-                    if (was && (g.x !== was.x || g.y !== was.y)) launcher.current = row.index;
+                    if (was && (g.x !== was.x || g.y !== was.y) && launcher.current !== row.index) {
+                        launcher.pointerPicked = true;
+                        launcher.current = row.index;
+                        launcher.pointerPicked = false;
+                    }
                 }
                 onClicked: launcher.run(row.modelData)
             }

@@ -20,13 +20,18 @@ Item {
     property Item target: null
     property bool ring: false
     property bool glideKeys: false      // true only for a list that wants the ring to travel
+    property bool instant: false
     property real radius: Theme.r2
+    property real inset: 0
+    property color fill: h.ring ? Theme.wash(2) : Theme.rowHover
+    property color edge: "transparent"
+    property bool lit: false
 
     z: 50
     visible: opacity > 0.001
-    opacity: target ? 1 : 0
+    opacity: lit ? 1 : 0
     Behavior on opacity {
-        NumberAnimation { duration: h.target ? Theme.hoverMs : Theme.springFast.exitMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+        NumberAnimation { duration: h.lit ? Theme.hoverMs : Theme.springFast.exitMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
     }
 
     x: sx.value; y: sy.value; width: sw.value; height: sh.value
@@ -63,6 +68,8 @@ Item {
         if (!target || !parent) return;
         const onMove = () => h.scheduleFollow();
         const onReparent = () => { h.watchChain(); h.scheduleFollow(); };
+        bindWatch(parent.xChanged, onMove);
+        bindWatch(parent.yChanged, onMove);
         let p = target;
         let depth = 0;
         while (p && depth < 32) {
@@ -88,23 +95,26 @@ Item {
 
     onTargetChanged: {
         watchChain();
-        if (!target) freshTimer.restart();
-        else { freshTimer.stop(); follow(); }
+        if (!target) outTimer.restart();
+        else { outTimer.stop(); freshTimer.stop(); follow(); lit = true; }
     }
     onParentChanged: watchChain()
+    Component.onCompleted: if (target) { watchChain(); follow(); lit = true; }
     Component.onDestruction: clearWatches()
     // Once it has faded out, the next entry starts fresh.
     Timer { id: freshTimer; interval: Theme.springFast.exitMs; onTriggered: h.fresh = true }
+    Timer { id: outTimer; interval: Theme.handoffMs; onTriggered: if (!h.target) { h.lit = false; freshTimer.restart(); } }
 
     function follow() {
         if (!target || !parent) return;
         const p = target.mapToItem(parent, 0, 0);
         // Reduced motion: no glide, just the fade at the new item. Keys: no glide.
-        if (fresh || Theme.reduceMotion || (ring && !glideKeys)) {
-            sx.snap(p.x); sy.snap(p.y); sw.snap(target.width); sh.snap(target.height);
+        const x = p.x + inset, w = Math.max(0, target.width - inset * 2);
+        if (fresh || instant || Theme.reduceMotion || (ring && !glideKeys)) {
+            sx.snap(x); sy.snap(p.y); sw.snap(w); sh.snap(target.height);
             fresh = false;
         } else {
-            sx.target = p.x; sy.target = p.y; sw.target = target.width; sh.target = target.height;
+            sx.target = x; sy.target = p.y; sw.target = w; sh.target = target.height;
         }
     }
 
@@ -113,9 +123,9 @@ Item {
         opacity: h.target ? h.target.opacity : 1
         radius: h.radius
         // Surface-relative overlays: hover +6% white, selected +10%.
-        color: Qt.rgba(1, 1, 1, h.ring ? 0.10 : 0.06)
-        border.width: h.ring ? 2 : 0
-        border.color: Qt.rgba(1, 1, 1, 0.6)          // = components/FocusRing
+        color: h.fill
+        border.width: h.ring ? 2 : h.edge.a > 0 ? 1 : 0
+        border.color: h.ring ? Qt.rgba(1, 1, 1, 0.6) : h.edge          // = components/FocusRing
         Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
     }
 }
