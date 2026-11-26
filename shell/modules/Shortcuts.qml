@@ -69,7 +69,13 @@ Scope {
     GlobalShortcut {
         appid: "kuwai"
         name: "wifi"
-        description: "Wi-Fi and the other controls"
+        description: "Wi-Fi: the networks, in Controls"
+        onPressed: Notifs.openControls("wifi", "key")
+    }
+    GlobalShortcut {
+        appid: "kuwai"
+        name: "controls"
+        description: "Controls: Wi-Fi, Bluetooth, sound, Do Not Disturb"
         onPressed: Notifs.toggleCenter("controls", "key")
     }
     GlobalShortcut {

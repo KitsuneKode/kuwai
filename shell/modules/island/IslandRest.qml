@@ -313,6 +313,7 @@ Item {
     // row showing, its value beside it ("◔ 60%"), not split to the far
     // ends with the pills between. Compact, Apple's split returns (icon
     // leading, value trailing). Rest on it: what it's doing, in words.
+    readonly property bool videoArt: (activity === "media" || (restMusic && !Media.playing)) && restArt.wide
     Row {
         id: actChip
         visible: ((rest.activity !== "" && rest.activity !== "moment")
@@ -324,7 +325,7 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         spacing: 7
         Item {
-            width: 20; height: 20
+            width: rest.videoArt ? 32 : 20; height: 20
             anchors.verticalCenter: parent.verticalCenter
 
             // A password prompt is waiting: a lock (click: bring it here).
@@ -433,11 +434,11 @@ Item {
             ClippingRectangle {
                 visible: rest.activity === "media" || (rest.restMusic && !Media.playing)
                 anchors.centerIn: parent
-                width: 20; height: 20; radius: 5
+                width: rest.videoArt ? 32 : 20; height: rest.videoArt ? 18 : 20; radius: rest.videoArt ? 4 : 5
                 color: Theme.pill
                 // No cover (a browser tab often sends none): a note, not an empty grey square.
                 ArtImage { id: restArt; anchors.fill: parent; source: rest.bar.player ? (rest.bar.player.trackArtUrl || "") : ""; px: 40 }
-                ImageEdge { visible: restArt.ready; radius: 5 }
+                ImageEdge { visible: restArt.ready; radius: rest.videoArt ? 4 : 5 }
                 MusicTap {}
             }
         }
@@ -936,6 +937,24 @@ Item {
             pull.target = 0;
         }
         onTranslationChanged: { pullFling.add(0, translation.y); pull.snap(Theme.swipeDamp(translation.y)); }
+    }
+
+    TapHandler {
+        enabled: rest.activity === "" && !rest.agentMoment
+        acceptedButtons: Qt.RightButton
+        onTapped: Notifs.toggleCenter("controls", "pointer", rest.bar.screenName)
+    }
+    WheelHandler {
+        enabled: !rest.agentMoment
+        acceptedDevices: PointerDevice.TouchPad
+        property real sum: 0
+        onWheel: event => {
+            const down = -(event.inverted ? -1 : 1) * (event.pixelDelta.y || event.angleDelta.y);
+            sum = down > 0 ? sum + down : 0;
+            if (sum < 60) return;
+            sum = 0;
+            if (!Notifs.centerOpen) Notifs.toggleCenter(point.position.x > rest.width * 0.62 ? "controls" : "notifications", "pointer", rest.bar.screenName);
+        }
     }
 
     // A click on an activity acts on it: stop dictation, open the song.

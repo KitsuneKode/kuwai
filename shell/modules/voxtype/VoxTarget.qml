@@ -14,6 +14,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Hyprland
+import Quickshell.Services.Pipewire
 import qs.config
 import qs.services
 
@@ -66,6 +67,22 @@ Scope {
     }
 
     // The screen the ring is on; kept a moment after it goes, so it fades.
+    PwObjectTracker { objects: root.on ? [Pipewire.defaultAudioSource] : [] }
+    PwNodePeakMonitor {
+        id: voice
+        node: Pipewire.defaultAudioSource
+        enabled: root.on && Activities.voxListening && !Theme.reduceMotion
+    }
+    property real glow: 0
+    Timer {
+        interval: 100; repeat: true
+        running: voice.enabled
+        onTriggered: {
+            const p = voice.peaks && voice.peaks.length ? Math.max(...voice.peaks) : (voice.peak || 0);
+            root.glow = Math.min(1, Math.sqrt(Math.max(0, p)) * 1.4);
+        }
+        onRunningChanged: if (!running) root.glow = 0
+    }
     readonly property string target: on && box ? box.monitor : ""
     property string shownOn: ""
     onTargetChanged: { if (target) { linger.stop(); shownOn = target; } else linger.restart(); }
@@ -82,7 +99,7 @@ Scope {
                 screen: slot.modelData
                 anchors { top: true; bottom: true; left: true; right: true }
                 exclusionMode: ExclusionMode.Ignore
-                WlrLayershell.layer: WlrLayer.Overlay
+                WlrLayershell.layer: WlrLayer.Top
                 WlrLayershell.namespace: "kuwai.voxtarget"
                 WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
                 mask: Region {}
@@ -101,9 +118,18 @@ Scope {
                     radius: root.rounding + out
                     color: "transparent"
                     border.width: stroke
-                    border.color: Activities.voxListening ? Theme.red : Theme.accent
+                    border.color: Qt.alpha(Activities.voxListening ? Theme.red : Theme.accent, 0.6)
                     Behavior on border.color { ColorAnimation { duration: Theme.colorMs } }
-                    opacity: slot.here ? 0.9 : 0
+                    opacity: slot.here ? 1 : 0
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: parent.radius
+                        color: "transparent"
+                        border.width: parent.border.width
+                        border.color: Theme.red
+                        opacity: 0.4 * root.glow
+                        visible: root.glow > 0.01
+                    }
                     Behavior on opacity { NumberAnimation { duration: slot.here ? Theme.enterMs : Theme.exitMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                 }
             }

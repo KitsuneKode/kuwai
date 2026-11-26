@@ -21,13 +21,15 @@ Item {
     property int px: 40                       // decoded size (2× the shown size)
     property var windowSource: null
     readonly property bool ready: img.status === Image.Ready
+    readonly property real aspect: ready && img.implicitHeight > 0 ? img.implicitWidth / img.implicitHeight : 1
+    readonly property bool wide: aspect > 1.3
     readonly property var win: !art.source && art.px >= 80 && art.visible ? art.windowSource : null
     readonly property bool framed: !!(win && win.wayland) && shot.hasContent
     Image {
         id: img
         anchors.fill: parent
         source: art.source || ""
-        sourceSize: Qt.size(art.px, art.px)
+        sourceSize: Qt.size(Math.round(art.px * 1.78), 0)
         fillMode: Image.PreserveAspectCrop
         asynchronous: true
     }

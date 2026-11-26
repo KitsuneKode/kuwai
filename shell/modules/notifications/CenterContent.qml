@@ -312,6 +312,37 @@ Item {
                 color: helpArea.containsMouse ? Theme.textSecondary : Theme.textTertiary
             }
         }
+        Row {
+            id: settingsRow
+            anchors.right: helpRow.left
+            anchors.rightMargin: Theme.s4
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 5
+            opacity: settingsArea.containsMouse ? 1 : 0.85
+            Text {
+                textFormat: Text.PlainText
+                anchors.verticalCenter: parent.verticalCenter
+                text: "\u{f0493}"
+                font.family: Theme.fontGlyph; font.pixelSize: Theme.sp(Theme.tFootnote)
+                color: settingsArea.containsMouse ? Theme.textSecondary : Theme.textTertiary
+            }
+            Label {
+                anchors.verticalCenter: parent.verticalCenter
+                text: "Settings"
+                size: Theme.tFootnote
+                color: settingsArea.containsMouse ? Theme.textSecondary : Theme.textTertiary
+            }
+        }
+        MouseArea {
+            id: settingsArea
+            anchors { fill: settingsRow; leftMargin: -Theme.s1; rightMargin: -Theme.s1; topMargin: -Theme.s2; bottomMargin: -Theme.s2 }
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: Island.openSettings("")
+            Accessible.role: Accessible.Button
+            Accessible.name: "Settings"
+            Accessible.onPressAction: Island.openSettings("")
+        }
         MouseArea {
             id: helpArea
             anchors.fill: helpRow

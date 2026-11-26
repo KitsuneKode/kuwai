@@ -400,6 +400,56 @@
    ]
   },
   {
+   "id": "media/video",
+   "name": "media",
+   "panel": "MediaPanel",
+   "kind": "typical",
+   "set": [
+    [
+     "Media",
+     "active",
+     null
+    ],
+    [
+     "Media",
+     "staged",
+     true
+    ],
+    [
+     "Media",
+     "call",
+     "stagePlayer",
+     [
+      {
+       "identity": "Mozilla Firefox",
+       "desktopEntry": "firefox",
+       "dbusName": "org.mpris.MediaPlayer2.firefox.instance_1_42",
+       "trackTitle": "Building a Dynamic Island in QML — full walkthrough",
+       "trackArtist": "Kuwai Notes",
+       "trackArtUrl": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKAAAABaCAIAAACwpMoFAAACWklEQVR42u2d2UpCURSG144eoQszCZp7lOboqsimq+oJGkCQKJsgIioru2mmrqLZRymbIMp8C7s40Z00ncG9+D42ojjh+vyXnOU5asoa0yJ5I+Kcfp3hoo6LJQKqKXWMA4IBwYBgQDAgGBAMCEYw2A+TLBIMCAYEA4IBwYBgQDCCAcFgB0yySDAgGBAMCPaM08XnQld1j1Ui2FbOFp6+vc3J4otzpmc8gmBrOJ9//O1djhdeRaR3IoLgouZi7uE/dz+afxWR6GSFou1g53glFevyf3a/OJx7U1MTPYIvZ+9dfOMfzma1CFbBVeLe9cc8SGRp0UWxrhIZj6qzn8jSogNe1zMZTxOwP/OO4MDWzXTGhy63N22xY0aVP8PwGex/fKfufCvT3lSOBBNiEuzeSsfvfK7UbjxHggkxs2gE+92iLSQduw3keXdiORJMiBGMYAQjGMEIRjCCEYxgQDCCixgrZ9FNS42BFGtoKcQ+WUCLpj/Tor/v0ssNPldqcDnE14XElwS7t5pX/AvxwEqIXXaILwl2PcSr9X7Ed7Wc/aIDWy1r3jruXytnx/eAV+u6V47718MculIcjpN1rtvtS4YVVEbPJKvNVcfRZFhHWVQdAN62UeuO3Y0KNTXRtpnUvllrRM5H/3iof+9mRCRvFNVE53Zwx1aNETkb+cVPsfRsRYyIUVcNzYOOzlS106hOhwv+nlJ3qvLz75RNnm+TbKVru6rg/2Vrf/mMKhEMCAYEQ1CDDiDBgGBAMCAYEAwIBgQjGBAMNsAkiwQDggHBgGBAMCAYEIxgUMMHheynH7TO6VcAAAAASUVORK5CYII=",
+       "metadata": {},
+       "playbackState": 1,
+       "isPlaying": true,
+       "lengthSupported": true,
+       "length": 1514,
+       "positionSupported": true,
+       "position": 402,
+       "canSeek": true,
+       "canGoNext": true,
+       "canGoPrevious": true,
+       "canTogglePlaying": true,
+       "canControl": true,
+       "canRaise": true,
+       "loopSupported": false,
+       "loopState": 0,
+       "shuffleSupported": false,
+       "shuffle": false
+      }
+     ]
+    ]
+   ]
+  },
+  {
    "id": "updates/new-machine",
    "name": "updates",
    "panel": "UpdatesPanel"

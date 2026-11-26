@@ -24,8 +24,9 @@ import qs.services
 FocusScope {
     id: np
     focus: true
-    implicitWidth: Theme.panelS
-    implicitHeight: 212
+    implicitWidth: Theme.textScale > 1.4 ? Theme.panelM : Theme.panelS
+    implicitHeight: 212 + titleSpill
+    readonly property real titleSpill: Math.max(0, titles.height - art.height)
 
     readonly property var p: Media.active
     readonly property color tint: Media.artColor
@@ -115,21 +116,23 @@ FocusScope {
         // ── Art, title, live waveform ────────────────────────────────────
         ClippingRectangle {
             id: art
-            width: 64; height: 64; radius: 14
+            readonly property bool video: cover.wide || cover.framed
+            width: video ? 96 : 64; height: video ? 54 : 64; radius: video ? Theme.r2 : 14
             color: Theme.wash(2)
             // The shared cover: art, else a frame of the playing window (a film), else the note.
-            ArtImage { anchors.fill: parent; source: Media.art; px: 128; windowSource: np.p && !Media.art ? Media.windowShowing(np.p) : null }
-            ImageEdge { radius: 14 }
+            ArtImage { id: cover; anchors.fill: parent; source: Media.art; px: 128; windowSource: np.p && !Media.art ? Media.windowShowing(np.p) : null }
+            ImageEdge { radius: art.radius }
             scale: artArea.pressed ? 0.96 : 1
             Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
         }
         Column {
             id: titles
-            anchors { left: art.right; leftMargin: 14; right: ctx.visible ? ctx.left : wave.left; rightMargin: 12; verticalCenter: art.verticalCenter }
+            anchors { left: art.right; leftMargin: 14; right: ctx.visible ? ctx.left : wave.left; rightMargin: 12 }
+            y: art.y + Math.max(0, (art.height - height) / 2)
             spacing: 3
-            Label { width: parent.width; elide: Text.ElideRight; text: np.p ? (Media.title(np.p) || "Unknown") : ""; size: Theme.tHeadline; weight: Theme.wSemibold }
+            Label { width: parent.width; wrapMode: Text.Wrap; maximumLineCount: 3; elide: Text.ElideRight; text: np.p ? (Media.title(np.p) || "Unknown") : ""; size: Theme.tHeadline; weight: Theme.wSemibold }
             Label {
-                width: parent.width; elide: Text.ElideRight
+                width: parent.width; wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight
                 text: np.note !== "" ? np.note : np.p ? [np.p.trackArtist || Media.byline(np.p), np.p.trackArtist ? np.p.identity : ""].filter(x => x).join(" · ") : ""
                 size: Theme.tBody; color: np.note !== "" ? np.tint : Theme.textSecondary
                 Behavior on color { ColorAnimation { duration: Theme.colorMs } }
@@ -232,7 +235,7 @@ FocusScope {
         // ── Time and scrubber ────────────────────────────────────────────
         Item {
             id: scrub
-            anchors { left: parent.left; right: parent.right; top: art.bottom; topMargin: 18 }
+            anchors { left: parent.left; right: parent.right; top: art.bottom; topMargin: 18 + np.titleSpill }
             height: 18
             readonly property bool can: !!np.p && np.p.canSeek && Media.length > 0
             // While dragging, the knob follows you; the player seeks on release.
