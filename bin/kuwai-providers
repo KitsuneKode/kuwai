@@ -1,0 +1,173 @@
+#!/usr/bin/env python3
+"""kuwai-providers: T3 Code's provider instances, as the island shows them.
+
+  kuwai-providers      one JSON line: {"state": "ok" | "none" | "unavailable", "providers": [...]}
+
+T3 Code writes one file per provider instance in ~/.t3/caches/ ($T3CODE_HOME/caches), fields as
+seen in T3 Code v0.1.12-nightly.20261125. Kept, and nothing else: instanceId, driver, displayName,
+accentColor, enabled, status, message, auth.status, auth.label (the plan), models[].slug and
+models[].name. Every other key is dropped while the file is parsed, so the account's email and
+workspace in `auth` never reach a dict, the cache, the output or a log; a kept value that looks
+like an email address is dropped too.
+
+Each provider: {id, driver, name, accent, enabled, status, reason, auth, plan, models: [[slug, name]]}.
+status is ready, warning, disabled or error as T3 says, or "unavailable" when the file isn't JSON,
+is too big, or no longer has the shape above: never a guessed value. state is "none" without
+T3 Code's caches, "unavailable" when no file could be read.
+
+A file is parsed again only when its size or time changes: the rest comes from
+~/.cache/kuwai/providers.json, which holds only the kept fields.
+"""
+import json
+import os
+import re
+import sys
+import tempfile
+
+HOME = os.path.expanduser("~")
+T3_HOME = os.environ.get("T3CODE_HOME") or os.path.join(HOME, ".t3")
+CACHES = os.path.join(T3_HOME, "caches")
+CACHE_HOME = os.environ.get("XDG_CACHE_HOME") or os.path.join(HOME, ".cache")
+CACHE = os.path.join(CACHE_HOME, "kuwai", "providers.json")
+
+KEEP = frozenset({"instanceId", "driver", "displayName", "accentColor", "enabled", "status", "message",
+                  "auth", "label", "models", "slug", "name"})
+STATUSES = ("ready", "warning", "error", "disabled")
+AUTH = ("authenticated", "unauthenticated", "unknown")
+MAX_BYTES = 8 * 1024 * 1024
+MAX_MODELS = 120
+EMAIL = re.compile(r"[^\s@]+@[^\s@]+\.[^\s@]+")
+ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,95}$")
+SLUG = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:/~+-]{0,127}$")
+HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
+SKIP = re.compile(r"^acp-auth-")
+CACHE_VERSION = 1
+
+
+def kept(pairs):
+    return {k: v for k, v in pairs if k in KEEP}
+
+
+def words(value, cap):
+    if not isinstance(value, str):
+        return ""
+    s = " ".join("".join(c if c.isprintable() else " " for c in value).split())
+    if not s or EMAIL.search(s):
+        return ""
+    return s if len(s) <= cap else s[:cap - 1].rstrip() + "…"
+
+
+def unavailable(file_id):
+    return {"id": file_id, "status": "unavailable"}
+
+
+def entry(file_id, d):
+    if not isinstance(d, dict):
+        return unavailable(file_id)
+    driver, status = d.get("driver"), d.get("status")
+    if not isinstance(driver, str) or not ID.match(driver) or status not in STATUSES:
+        return unavailable(file_id)
+    iid = d.get("instanceId")
+    auth = d.get("auth") if isinstance(d.get("auth"), dict) else {}
+    models = []
+    raw = d.get("models")
+    if isinstance(raw, list):
+        for m in raw:
+            if len(models) >= MAX_MODELS:
+                break
+            if isinstance(m, dict) and isinstance(m.get("slug"), str) and SLUG.match(m["slug"]):
+                name = words(m.get("name"), 60)
+                if name:
+                    models.append([m["slug"], name])
+    accent = d.get("accentColor")
+    enabled = d.get("enabled")
+    return {
+        "id": iid if isinstance(iid, str) and ID.match(iid) else file_id,
+        "driver": driver,
+        "name": words(d.get("displayName"), 40),
+        "accent": accent.lower() if isinstance(accent, str) and HEX.match(accent) else "",
+        "enabled": enabled if isinstance(enabled, bool) else None,
+        "status": status,
+        "reason": words(d.get("message"), 160),
+        "auth": auth.get("status") if auth.get("status") in AUTH else "",
+        "plan": words(auth.get("label"), 60),
+        "models": models,
+    }
+
+
+def read_file(path, file_id):
+    try:
+        with open(path, "rb") as f:
+            data = f.read(MAX_BYTES + 1)
+        if len(data) > MAX_BYTES:
+            return unavailable(file_id)
+        return entry(file_id, json.loads(data, object_pairs_hook=kept))
+    except (OSError, ValueError, RecursionError):
+        return unavailable(file_id)
+
+
+def load_cache():
+    try:
+        with open(CACHE, encoding="utf-8") as f:
+            c = json.load(f)
+        if isinstance(c, dict) and c.get("v") == CACHE_VERSION and isinstance(c.get("files"), dict):
+            return c["files"]
+    except (OSError, ValueError):
+        pass
+    return {}
+
+
+def save_cache(files):
+    try:
+        os.makedirs(os.path.dirname(CACHE), mode=0o700, exist_ok=True)
+        fd, tmp = tempfile.mkstemp(prefix=".providers-", dir=os.path.dirname(CACHE))
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump({"v": CACHE_VERSION, "files": files}, f, separators=(",", ":"))
+        os.replace(tmp, CACHE)
+    except OSError:
+        pass
+
+
+def read_all():
+    if not os.path.isdir(CACHES):
+        return {"state": "none", "providers": []}
+    try:
+        names = sorted(n for n in os.listdir(CACHES) if n.endswith(".json") and not SKIP.match(n))
+    except OSError:
+        return {"state": "unavailable", "providers": []}
+    old = load_cache()
+    files, out = {}, []
+    for n in names:
+        path = os.path.join(CACHES, n)
+        try:
+            st = os.stat(path)
+        except OSError:
+            continue
+        if not os.path.isfile(path):
+            continue
+        file_id = n[:-5]
+        key = [st.st_mtime_ns, st.st_size]
+        had = old.get(n)
+        e = had["e"] if isinstance(had, dict) and had.get("k") == key and isinstance(had.get("e"), dict) else read_file(path, file_id)
+        files[n] = {"k": key, "e": e}
+        out.append(e)
+    if files != old:
+        save_cache(files)
+    if not out:
+        return {"state": "none", "providers": []}
+    ok = any(e.get("status") != "unavailable" for e in out)
+    out.sort(key=lambda e: (e.get("driver", "~"), e.get("name", "").lower(), e["id"]))
+    return {"state": "ok" if ok else "unavailable", "providers": out}
+
+
+def main(argv):
+    if argv and argv[0] in ("-h", "--help"):
+        print(__doc__.strip())
+        return 0
+    json.dump(read_all(), sys.stdout, separators=(",", ":"))
+    sys.stdout.write("\n")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

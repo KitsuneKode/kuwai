@@ -44,6 +44,13 @@ FocusScope {
     // What each provider spent, from this machine's logs (services/Spend): read
     // only while this shows.
     Binding { target: Spend; property: "wanted"; value: usage.visible }
+    Binding { target: Providers; property: "usageShown"; value: usage.visible }
+    readonly property var healthRows: Providers.trouble.map(p => ({ p: p, tone: Theme.orange, why: Providers.why(p) }))
+        .concat(Providers.unchecked.map(p => ({ p: p, tone: Theme.textTertiary, why: "Not checked yet" })))
+    readonly property string offLine: Providers.off.length ? "Off in T3 Code: " + Providers.off.map(p => Providers.name(p.id)).join(", ") : ""
+    readonly property string unreadLine: Providers.availability === "unavailable" ? "Provider status unavailable"
+        : Providers.unreadable ? "Status of " + Providers.unreadable + (Providers.unreadable === 1 ? " provider" : " providers") + " unavailable" : ""
+    readonly property bool hasHealth: healthRows.length > 0 || offLine !== "" || unreadLine !== ""
 
     function pid(p) { return p.driver || p.label; }
     function isClaude(p) { return /claude/i.test(String(p.driver || p.label || "")); }
@@ -320,6 +327,84 @@ FocusScope {
                 id: cards
                 width: flick.width
                 spacing: 8
+                Rectangle {
+                    id: healthBox
+                    visible: usage.hasHealth
+                    width: cards.width
+                    height: healthCol.implicitHeight + Theme.s2 * 2
+                    radius: Theme.r2
+                    color: Theme.card
+                    border.width: 1; border.color: Theme.cardEdge
+                    Column {
+                        id: healthCol
+                        x: Theme.s3; y: Theme.s2
+                        width: parent.width - Theme.s3 * 2
+                        spacing: Theme.s1
+                        Repeater {
+                            model: usage.healthRows
+                            delegate: Item {
+                                id: hr
+                                required property var modelData
+                                readonly property string mark: Limits.brandFor({ driver: modelData.p.driver + " " + modelData.p.id })
+                                readonly property real lineH: Theme.sp(Theme.s5)
+                                width: healthCol.width
+                                height: lineH + (hrWhy.visible ? hrWhy.implicitHeight : 0)
+                                Rectangle {
+                                    id: hrDot
+                                    y: (hr.lineH - height) / 2
+                                    width: 6; height: 6; radius: 3
+                                    color: hr.modelData.tone
+                                }
+                                Image {
+                                    id: hrMark
+                                    visible: hr.mark !== ""
+                                    anchors { left: hrDot.right; leftMargin: Theme.s2 }
+                                    y: (hr.lineH - height) / 2
+                                    width: Theme.sp(14); height: width
+                                    source: hr.mark
+                                    sourceSize: Qt.size(28, 28)
+                                    asynchronous: true
+                                }
+                                Label {
+                                    id: hrName
+                                    anchors { left: hrMark.visible ? hrMark.right : hrDot.right; leftMargin: Theme.s2; right: parent.right }
+                                    y: (hr.lineH - implicitHeight) / 2
+                                    elide: Text.ElideRight
+                                    text: Providers.name(hr.modelData.p.id)
+                                    size: Theme.tSub; weight: Theme.wSemibold
+                                }
+                                Label {
+                                    id: hrWhy
+                                    visible: text !== ""
+                                    anchors { left: hrName.left; right: parent.right }
+                                    y: hr.lineH
+                                    wrapMode: Text.Wrap; maximumLineCount: 3; elide: Text.ElideRight
+                                    text: hr.modelData.why
+                                    size: Theme.tFootnote; color: Theme.textSecondary
+                                }
+                                HoverHandler { cursorShape: Qt.PointingHandCursor }
+                                TapHandler { onTapped: { T3Code.focus(); Island.close(); } }
+                                Accessible.role: Accessible.Button
+                                Accessible.name: Providers.name(hr.modelData.p.id) + ": " + hr.modelData.why + ". Open T3 Code"
+                                Accessible.onPressAction: { T3Code.focus(); Island.close(); }
+                            }
+                        }
+                        Label {
+                            visible: usage.offLine !== ""
+                            width: parent.width
+                            wrapMode: Text.Wrap
+                            text: usage.offLine
+                            size: Theme.tFootnote; color: Theme.textTertiary
+                        }
+                        Label {
+                            visible: usage.unreadLine !== ""
+                            width: parent.width
+                            wrapMode: Text.Wrap
+                            text: usage.unreadLine
+                            size: Theme.tFootnote; color: Theme.textTertiary
+                        }
+                    }
+                }
                 Repeater {
                     model: ScriptModel { values: usage.shown; objectProp: "id" }
                     delegate: Rectangle {

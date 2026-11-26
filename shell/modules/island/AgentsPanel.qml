@@ -52,6 +52,7 @@ FocusScope {
         }
     }
     function askModels() { if (modelArgs.length && !modelsProc.running) modelsProc.running = true; }
+    Binding { target: Providers; property: "agentsShown"; value: ap.visible }
     Component.onCompleted: askModels()
     Timer { interval: 30000; repeat: true; running: ap.visible; onTriggered: ap.askModels() }
     property real now: Date.now()
@@ -150,9 +151,9 @@ FocusScope {
                 section: "T3 Code",
                 word: said.key === "blocked" ? (i.held ? "Waiting on background work" : "Waiting on another thread") : (said.tone === "attention" && said.key !== "waiting") || said.key === "goal" ? said.word : "",
                 stateKey: said.key,
-                key: "t" + i.thread, src: "t3", agent: ap.t3Agent(i.provider), title: i.title || "Untitled thread",
+                key: "t" + i.thread, src: "t3", agent: ap.t3Agent(i.provider), who: Providers.name(i.provider), title: i.title || "Untitled thread",
                 where: i.project && i.project !== "No project" ? i.project : "",
-                model: ap.on(i.model, i.effort), state: st, status: "", question: i.request && i.request.prompt ? i.request.prompt : "",
+                model: Providers.modelName(i.provider, i.model) ? Providers.modelName(i.provider, i.model) + (i.effort ? " " + i.effort : "") : ap.on(i.model, i.effort), state: st, status: "", question: i.request && i.request.prompt ? i.request.prompt : "",
                 request: i.request || null,
                 t: i.at ? Date.parse(i.at) : 0, thread: i.thread, item: i
             });
@@ -334,7 +335,8 @@ FocusScope {
             visible: ap.rows.length > 0
             width: parent.width
             readonly property real others: (head.visible ? head.height + col.spacing : 0) + footRow.height + (portsCard.visible ? portsCard.height : 0)
-                + (keyHints.visible ? keyHints.height : 0) + col.spacing * (1 + (portsCard.visible ? 1 : 0) + (keyHints.visible ? 1 : 0))
+                + (keyHints.visible ? keyHints.height : 0) + (health.visible ? health.height + col.spacing : 0)
+                + col.spacing * (1 + (portsCard.visible ? 1 : 0) + (keyHints.visible ? 1 : 0))
             readonly property real room: Theme.panelMaxH - (ap.inStrip ? 34 : 0) - col.y - 18
             height: Math.min(contentHeight, Math.max(Theme.sp(96), room - others))
             clip: true
@@ -510,7 +512,7 @@ FocusScope {
                     // The × takes its place on hover (a removable row).
                     trailOpacity: row.dismissable && rowHover.hovered ? 0 : 1
                     subFormat: Text.StyledText
-                    sub: [Kittymux.agentLabel(row.modelData.agent), row.modelData.where, row.modelData.model]
+                    sub: [row.modelData.who || Kittymux.agentLabel(row.modelData.agent), row.modelData.where, row.modelData.model]
                         .filter(x => x).map(x => ap.esc(x)).join(" · ")
                         + (ap.fill(row.modelData) ? " · " + ap.fill(row.modelData) : "")
                     subColor: Theme.textSecondary
@@ -747,6 +749,30 @@ FocusScope {
             hints: [["↑↓", "Choose"], ["↩", "Go"], ["⌫", "Mark read / forget"], ["A", "All read"], ["U", "Usage"], ["esc", "Back"]]
         }
         // The way on: how much they've got left, or the full list with recent ones to resume.
+        Item {
+            id: health
+            visible: Providers.troubleLine !== ""
+            width: parent.width
+            height: visible ? Math.max(Theme.sp(Theme.s5), healthLine.implicitHeight) : 0
+            Rectangle {
+                id: healthDot
+                y: (Theme.sp(Theme.s5) - height) / 2
+                width: 6; height: 6; radius: 3
+                color: Theme.orange
+            }
+            Label {
+                id: healthLine
+                anchors { left: healthDot.right; leftMargin: Theme.s2; right: parent.right; verticalCenter: parent.verticalCenter }
+                wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight
+                text: Providers.troubleLine
+                size: Theme.tFootnote; color: Theme.textSecondary
+            }
+            HoverHandler { cursorShape: Qt.PointingHandCursor }
+            TapHandler { onTapped: Island.open("usage", Island.screen, "pointer") }
+            Accessible.role: Accessible.Button
+            Accessible.name: Providers.troubleLine + ". Open Usage"
+            Accessible.onPressAction: Island.open("usage", Island.screen, "pointer")
+        }
         Row {
             id: footRow
             width: parent.width

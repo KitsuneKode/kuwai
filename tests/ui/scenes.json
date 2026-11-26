@@ -1132,6 +1132,560 @@
    ]
   },
   {
+   "id": "usage/providers",
+   "name": "usage",
+   "panel": "UsagePanel",
+   "kind": "typical",
+   "set": [
+    [
+     "Providers",
+     "pinned",
+     true
+    ],
+    [
+     "Providers",
+     "availability",
+     "ok"
+    ],
+    [
+     "Providers",
+     "instances",
+     [
+      {
+       "id": "claudeAgent_2",
+       "driver": "claudeAgent",
+       "name": "Claude-2",
+       "accent": "#eb2575",
+       "enabled": true,
+       "status": "ready",
+       "reason": "",
+       "auth": "authenticated",
+       "plan": "Claude Pro Subscription",
+       "models": [
+        [
+         "claude-opus-5-5",
+         "Claude Opus 5.5"
+        ],
+        [
+         "claude-sonnet-5-5",
+         "Claude Sonnet 5.5"
+        ]
+       ]
+      },
+      {
+       "id": "codex_2",
+       "driver": "codex",
+       "name": "Codex-2",
+       "accent": "",
+       "enabled": true,
+       "status": "warning",
+       "reason": "Sign in with ChatGPT to use Codex.",
+       "auth": "unauthenticated",
+       "plan": "",
+       "models": []
+      },
+      {
+       "id": "devin_local",
+       "driver": "acpRegistry",
+       "name": "Local ACP",
+       "accent": "",
+       "enabled": true,
+       "status": "warning",
+       "reason": "The ACP agent could not create a test session.",
+       "auth": "unknown",
+       "plan": "",
+       "models": []
+      },
+      {
+       "id": "oc",
+       "driver": "opencode",
+       "name": "2",
+       "accent": "",
+       "enabled": true,
+       "status": "warning",
+       "reason": "OpenCode provider status has not been checked in this session yet.",
+       "auth": "unknown",
+       "plan": "",
+       "models": []
+      },
+      {
+       "id": "pi",
+       "driver": "pi",
+       "name": "Pi",
+       "accent": "",
+       "enabled": false,
+       "status": "disabled",
+       "reason": "Pi is disabled in T3 Code settings.",
+       "auth": "unknown",
+       "plan": "",
+       "models": []
+      },
+      {
+       "id": "muse",
+       "driver": "muse",
+       "name": "Muse Code",
+       "accent": "",
+       "enabled": false,
+       "status": "disabled",
+       "reason": "Muse Code is disabled in T3 Code settings.",
+       "auth": "unknown",
+       "plan": "",
+       "models": []
+      }
+     ]
+    ],
+    [
+     "Limits",
+     "loaded",
+     true
+    ],
+    [
+     "Limits",
+     "source",
+     "t3"
+    ],
+    [
+     "Limits",
+     "checkedAt",
+     "@now-240000ms"
+    ],
+    [
+     "Limits",
+     "providers",
+     [
+      {
+       "driver": "claude",
+       "label": "Claude",
+       "color": "#d97757",
+       "accounts": [
+        {
+         "key": "claude:Work",
+         "driver": "claude",
+         "name": "Work",
+         "email": "ada@example.com",
+         "plan": "Max 20x",
+         "accent": null,
+         "note": null,
+         "credits": 0,
+         "checkedAt": "@now-240000ms",
+         "windows": [
+          {
+           "id": "session",
+           "kind": "session",
+           "label": "Session",
+           "used": 38,
+           "resetsAt": "@now+10800000ms",
+           "durationMins": 300
+          },
+          {
+           "id": "weekly",
+           "kind": "weekly",
+           "label": "Weekly",
+           "used": 61,
+           "resetsAt": "@now+259200000ms",
+           "durationMins": 10080
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "driver": "codex",
+       "label": "Codex",
+       "color": "#10a37f",
+       "accounts": [
+        {
+         "key": "codex:Personal",
+         "driver": "codex",
+         "name": "Personal",
+         "email": "ada@example.com",
+         "plan": "Pro",
+         "accent": null,
+         "note": null,
+         "credits": 0,
+         "checkedAt": "@now-240000ms",
+         "windows": [
+          {
+           "id": "session",
+           "kind": "session",
+           "label": "Session",
+           "used": 12,
+           "resetsAt": "@now+14400000ms",
+           "durationMins": 300
+          },
+          {
+           "id": "weekly",
+           "kind": "weekly",
+           "label": "Weekly",
+           "used": 27,
+           "resetsAt": "@now+432000000ms",
+           "durationMins": 10080
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    ],
+    [
+     "Limits",
+     "fails",
+     0
+    ]
+   ]
+  },
+  {
+   "id": "usage/providers-worst",
+   "name": "usage",
+   "panel": "UsagePanel",
+   "kind": "worst",
+   "set": [
+    [
+     "Providers",
+     "pinned",
+     true
+    ],
+    [
+     "Providers",
+     "availability",
+     "ok"
+    ],
+    [
+     "Providers",
+     "instances",
+     [
+      {
+       "id": "codex_20219caf-90a9-4531-a5b1-4fc5b519dae7",
+       "driver": "codex",
+       "name": "ChatGPT for the shared engineering workspace",
+       "accent": "",
+       "enabled": true,
+       "status": "warning",
+       "reason": "Sign in with ChatGPT to use Codex. Your session expired while T3 Code was closed, and the refresh token was rejected by the server.",
+       "auth": "unauthenticated",
+       "plan": "",
+       "models": []
+      },
+      {
+       "id": "devin_local",
+       "driver": "acpRegistry",
+       "name": "Local ACP agent on the build machine",
+       "accent": "",
+       "enabled": true,
+       "status": "error",
+       "reason": "The ACP agent could not create a test session: the agent process exited before it answered the initialize request.",
+       "auth": "unknown",
+       "plan": "",
+       "models": []
+      },
+      {
+       "id": "kiro",
+       "driver": "kiro",
+       "name": "Kiro",
+       "accent": "",
+       "enabled": true,
+       "status": "disabled",
+       "reason": "",
+       "auth": "unknown",
+       "plan": "",
+       "models": []
+      },
+      {
+       "id": "opencode_2",
+       "driver": "opencode",
+       "name": "2",
+       "accent": "",
+       "enabled": true,
+       "status": "warning",
+       "reason": "OpenCode provider status has not been checked in this session yet.",
+       "auth": "unknown",
+       "plan": "",
+       "models": []
+      },
+      {
+       "id": "grok_3",
+       "status": "unavailable"
+      },
+      {
+       "id": "cursor_9",
+       "status": "unavailable"
+      },
+      {
+       "id": "x0",
+       "driver": "pi",
+       "name": "Pi",
+       "accent": "",
+       "enabled": false,
+       "status": "disabled",
+       "reason": "",
+       "auth": "unknown",
+       "plan": "",
+       "models": []
+      },
+      {
+       "id": "x1",
+       "driver": "pi",
+       "name": "Muse Code",
+       "accent": "",
+       "enabled": false,
+       "status": "disabled",
+       "reason": "",
+       "auth": "unknown",
+       "plan": "",
+       "models": []
+      },
+      {
+       "id": "x2",
+       "driver": "pi",
+       "name": "ChatGPT - Personal",
+       "accent": "",
+       "enabled": false,
+       "status": "disabled",
+       "reason": "",
+       "auth": "unknown",
+       "plan": "",
+       "models": []
+      },
+      {
+       "id": "x3",
+       "driver": "pi",
+       "name": "Claude (old work account)",
+       "accent": "",
+       "enabled": false,
+       "status": "disabled",
+       "reason": "",
+       "auth": "unknown",
+       "plan": "",
+       "models": []
+      },
+      {
+       "id": "x4",
+       "driver": "pi",
+       "name": "Antigravity-3",
+       "accent": "",
+       "enabled": false,
+       "status": "disabled",
+       "reason": "",
+       "auth": "unknown",
+       "plan": "",
+       "models": []
+      },
+      {
+       "id": "x5",
+       "driver": "pi",
+       "name": "Replay (dev)",
+       "accent": "",
+       "enabled": false,
+       "status": "disabled",
+       "reason": "",
+       "auth": "unknown",
+       "plan": "",
+       "models": []
+      }
+     ]
+    ],
+    [
+     "Limits",
+     "loaded",
+     true
+    ],
+    [
+     "Limits",
+     "source",
+     "t3-cached"
+    ],
+    [
+     "Limits",
+     "checkedAt",
+     "@now-18000000ms"
+    ],
+    [
+     "Limits",
+     "providers",
+     [
+      {
+       "driver": "claude",
+       "label": "Claude",
+       "color": "#d97757",
+       "accounts": [
+        {
+         "key": "claude:Work",
+         "driver": "claude",
+         "name": "Work",
+         "email": "a.very.long.address.for.a.shared.team.mailbox@engineering.example-company.co.uk",
+         "plan": "Max 20x (team seat)",
+         "accent": null,
+         "note": null,
+         "credits": 0,
+         "checkedAt": "@now-18000000ms",
+         "windows": [
+          {
+           "id": "session",
+           "kind": "session",
+           "label": "Session",
+           "used": 100,
+           "resetsAt": "@now+2400000ms",
+           "durationMins": 300
+          },
+          {
+           "id": "weekly",
+           "kind": "weekly",
+           "label": "Weekly",
+           "used": 93,
+           "resetsAt": "@now+518400000ms",
+           "durationMins": 10080
+          },
+          {
+           "id": "opus",
+           "kind": "opus",
+           "label": "Weekly · Opus",
+           "used": 71,
+           "resetsAt": "@now+518400000ms",
+           "durationMins": 10080
+          }
+         ]
+        },
+        {
+         "key": "claude:Personal second account",
+         "driver": "claude",
+         "name": "Personal second account",
+         "email": "ada@example.com",
+         "plan": "Pro",
+         "accent": null,
+         "note": null,
+         "credits": 0,
+         "checkedAt": "@now-18000000ms",
+         "windows": [
+          {
+           "id": "session",
+           "kind": "session",
+           "label": "Session",
+           "used": 82,
+           "resetsAt": "@now+14400000ms",
+           "durationMins": 300
+          },
+          {
+           "id": "weekly",
+           "kind": "weekly",
+           "label": "Weekly",
+           "used": 12,
+           "resetsAt": "@now+172800000ms",
+           "durationMins": 10080
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "driver": "codex",
+       "label": "Codex",
+       "color": "#10a37f",
+       "accounts": [
+        {
+         "key": "codex:Personal",
+         "driver": "codex",
+         "name": "Personal",
+         "email": "ada@example.com",
+         "plan": "Pro",
+         "accent": null,
+         "note": null,
+         "credits": 0,
+         "checkedAt": "@now-18000000ms",
+         "windows": [
+          {
+           "id": "session",
+           "kind": "session",
+           "label": "Session",
+           "used": 55,
+           "resetsAt": "@now+16200000ms",
+           "durationMins": 300
+          },
+          {
+           "id": "weekly",
+           "kind": "weekly",
+           "label": "Weekly",
+           "used": 100,
+           "resetsAt": "@now+432000000ms",
+           "durationMins": 10080
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "driver": "antigravity",
+       "label": "Antigravity",
+       "color": "#4285f4",
+       "accounts": [
+        {
+         "key": "antigravity:Main",
+         "driver": "antigravity",
+         "name": "Main",
+         "email": "ada@example.com",
+         "plan": "Ultra",
+         "accent": null,
+         "note": null,
+         "credits": 0,
+         "checkedAt": "@now-27000000ms",
+         "windows": [
+          {
+           "id": "shared",
+           "kind": "shared",
+           "label": "Claude & GPT (shared)",
+           "used": 64,
+           "resetsAt": "@now+7200000ms",
+           "durationMins": 300
+          },
+          {
+           "id": "gemini",
+           "kind": "gemini",
+           "label": "Gemini 3 Pro",
+           "used": 8,
+           "resetsAt": "@now+7200000ms",
+           "durationMins": 300
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "driver": "cursor",
+       "label": "Cursor",
+       "color": "#888888",
+       "accounts": [
+        {
+         "key": "cursor:Main",
+         "driver": "cursor",
+         "name": "Main",
+         "email": "ada@example.com",
+         "plan": "Ultra",
+         "accent": null,
+         "note": null,
+         "credits": 0,
+         "checkedAt": "@now-18000000ms",
+         "windows": [
+          {
+           "id": "monthly",
+           "kind": "monthly",
+           "label": "Monthly",
+           "used": 44,
+           "resetsAt": "@now+1036800000ms",
+           "durationMins": 43200
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    ],
+    [
+     "Limits",
+     "fails",
+     0
+    ]
+   ]
+  },
+  {
    "id": "usage/spend-cost",
    "name": "usage",
    "panel": "UsagePanel",
@@ -3358,6 +3912,523 @@
        }
       ]
      }
+    ]
+   ]
+  },
+  {
+   "id": "agents/provider-health",
+   "name": "agents",
+   "panel": "AgentsPanel",
+   "set": [
+    [
+     "Providers",
+     "pinned",
+     true
+    ],
+    [
+     "Providers",
+     "availability",
+     "ok"
+    ],
+    [
+     "Providers",
+     "instances",
+     [
+      {
+       "id": "claudeAgent_2",
+       "driver": "claudeAgent",
+       "name": "Claude-2",
+       "accent": "#eb2575",
+       "enabled": true,
+       "status": "ready",
+       "reason": "",
+       "auth": "authenticated",
+       "plan": "Claude Pro Subscription",
+       "models": [
+        [
+         "claude-opus-5-5",
+         "Claude Opus 5.5"
+        ],
+        [
+         "claude-sonnet-5-5",
+         "Claude Sonnet 5.5"
+        ]
+       ]
+      },
+      {
+       "id": "codex_2",
+       "driver": "codex",
+       "name": "Codex-2",
+       "accent": "",
+       "enabled": true,
+       "status": "warning",
+       "reason": "Sign in with ChatGPT to use Codex.",
+       "auth": "unauthenticated",
+       "plan": "",
+       "models": []
+      },
+      {
+       "id": "devin_local",
+       "driver": "acpRegistry",
+       "name": "Local ACP",
+       "accent": "",
+       "enabled": true,
+       "status": "warning",
+       "reason": "The ACP agent could not create a test session.",
+       "auth": "unknown",
+       "plan": "",
+       "models": []
+      },
+      {
+       "id": "oc",
+       "driver": "opencode",
+       "name": "2",
+       "accent": "",
+       "enabled": true,
+       "status": "warning",
+       "reason": "OpenCode provider status has not been checked in this session yet.",
+       "auth": "unknown",
+       "plan": "",
+       "models": []
+      },
+      {
+       "id": "pi",
+       "driver": "pi",
+       "name": "Pi",
+       "accent": "",
+       "enabled": false,
+       "status": "disabled",
+       "reason": "Pi is disabled in T3 Code settings.",
+       "auth": "unknown",
+       "plan": "",
+       "models": []
+      },
+      {
+       "id": "muse",
+       "driver": "muse",
+       "name": "Muse Code",
+       "accent": "",
+       "enabled": false,
+       "status": "disabled",
+       "reason": "Muse Code is disabled in T3 Code settings.",
+       "auth": "unknown",
+       "plan": "",
+       "models": []
+      },
+      {
+       "id": "codex_2nd",
+       "driver": "codex",
+       "name": "2nd",
+       "accent": "",
+       "enabled": true,
+       "status": "ready",
+       "reason": "",
+       "auth": "authenticated",
+       "plan": "ChatGPT Plus Subscription",
+       "models": [
+        [
+         "gpt-6.1-sol",
+         "GPT-6.1-Sol"
+        ]
+       ]
+      }
+     ]
+    ],
+    [
+     "Kittymux",
+     "feedPinned",
+     true
+    ],
+    [
+     "Kittymux",
+     "feed",
+     {
+      "version": 1,
+      "agents": [
+       {
+        "key": "fx-4",
+        "agent": "claude",
+        "brand": "claude",
+        "title": "Port detection for the island",
+        "tab_title": "rice",
+        "cwd": "~/Projects/rice",
+        "state": "working",
+        "account": "main"
+       },
+       {
+        "key": "fx-3",
+        "agent": "claude",
+        "brand": "claude",
+        "title": "Write the rehearsal notes",
+        "tab_title": "rice",
+        "cwd": "~/Projects/rice",
+        "state": "done",
+        "account": "main"
+       }
+      ]
+     }
+    ],
+    [
+     "T3Code",
+     "alive",
+     true
+    ],
+    [
+     "T3Code",
+     "rawFinished",
+     0
+    ],
+    [
+     "T3Code",
+     "running",
+     1
+    ],
+    [
+     "T3Code",
+     "waiting",
+     1
+    ],
+    [
+     "T3Code",
+     "rawItems",
+     [
+      {
+       "thread": "t-a",
+       "status": "waiting",
+       "ask": "approval",
+       "provider": "claudeAgent_2",
+       "title": "Approve the migration plan",
+       "at": "@now-480000iso",
+       "request": {
+        "id": "req-m",
+        "kind": "command",
+        "prompt": "bun run migrate --plan plans/0042.sql"
+       },
+       "project": "rice"
+      },
+      {
+       "thread": "t-b",
+       "status": "running",
+       "provider": "codex_2nd",
+       "title": "Port the greeter",
+       "project": "rice",
+       "at": "@now-1800000iso"
+      }
+     ]
+    ]
+   ],
+   "kind": "typical"
+  },
+  {
+   "id": "agents/provider-health-worst",
+   "name": "agents",
+   "panel": "AgentsPanel",
+   "kind": "worst",
+   "set": [
+    [
+     "Providers",
+     "pinned",
+     true
+    ],
+    [
+     "Providers",
+     "availability",
+     "ok"
+    ],
+    [
+     "Providers",
+     "instances",
+     [
+      {
+       "id": "codex_20219caf-90a9-4531-a5b1-4fc5b519dae7",
+       "driver": "codex",
+       "name": "ChatGPT for the shared engineering workspace",
+       "accent": "",
+       "enabled": true,
+       "status": "warning",
+       "reason": "Sign in with ChatGPT to use Codex. Your session expired while T3 Code was closed, and the refresh token was rejected by the server.",
+       "auth": "unauthenticated",
+       "plan": "",
+       "models": []
+      },
+      {
+       "id": "devin_local",
+       "driver": "acpRegistry",
+       "name": "Local ACP agent on the build machine",
+       "accent": "",
+       "enabled": true,
+       "status": "error",
+       "reason": "The ACP agent could not create a test session: the agent process exited before it answered the initialize request.",
+       "auth": "unknown",
+       "plan": "",
+       "models": []
+      },
+      {
+       "id": "kiro",
+       "driver": "kiro",
+       "name": "Kiro",
+       "accent": "",
+       "enabled": true,
+       "status": "disabled",
+       "reason": "",
+       "auth": "unknown",
+       "plan": "",
+       "models": []
+      },
+      {
+       "id": "opencode_2",
+       "driver": "opencode",
+       "name": "2",
+       "accent": "",
+       "enabled": true,
+       "status": "warning",
+       "reason": "OpenCode provider status has not been checked in this session yet.",
+       "auth": "unknown",
+       "plan": "",
+       "models": []
+      },
+      {
+       "id": "grok_3",
+       "status": "unavailable"
+      },
+      {
+       "id": "cursor_9",
+       "status": "unavailable"
+      },
+      {
+       "id": "x0",
+       "driver": "pi",
+       "name": "Pi",
+       "accent": "",
+       "enabled": false,
+       "status": "disabled",
+       "reason": "",
+       "auth": "unknown",
+       "plan": "",
+       "models": []
+      },
+      {
+       "id": "x1",
+       "driver": "pi",
+       "name": "Muse Code",
+       "accent": "",
+       "enabled": false,
+       "status": "disabled",
+       "reason": "",
+       "auth": "unknown",
+       "plan": "",
+       "models": []
+      },
+      {
+       "id": "x2",
+       "driver": "pi",
+       "name": "ChatGPT - Personal",
+       "accent": "",
+       "enabled": false,
+       "status": "disabled",
+       "reason": "",
+       "auth": "unknown",
+       "plan": "",
+       "models": []
+      },
+      {
+       "id": "x3",
+       "driver": "pi",
+       "name": "Claude (old work account)",
+       "accent": "",
+       "enabled": false,
+       "status": "disabled",
+       "reason": "",
+       "auth": "unknown",
+       "plan": "",
+       "models": []
+      },
+      {
+       "id": "x4",
+       "driver": "pi",
+       "name": "Antigravity-3",
+       "accent": "",
+       "enabled": false,
+       "status": "disabled",
+       "reason": "",
+       "auth": "unknown",
+       "plan": "",
+       "models": []
+      },
+      {
+       "id": "x5",
+       "driver": "pi",
+       "name": "Replay (dev)",
+       "accent": "",
+       "enabled": false,
+       "status": "disabled",
+       "reason": "",
+       "auth": "unknown",
+       "plan": "",
+       "models": []
+      },
+      {
+       "id": "claudeAgent_2",
+       "driver": "claudeAgent",
+       "name": "Claude-2",
+       "accent": "#eb2575",
+       "enabled": true,
+       "status": "ready",
+       "reason": "",
+       "auth": "authenticated",
+       "plan": "Claude Pro Subscription",
+       "models": [
+        [
+         "claude-opus-5-5",
+         "Claude Opus 5.5"
+        ]
+       ]
+      }
+     ]
+    ],
+    [
+     "Kittymux",
+     "feedPinned",
+     true
+    ],
+    [
+     "Kittymux",
+     "feed",
+     {
+      "version": 1,
+      "agents": [
+       {
+        "key": "fx-1",
+        "agent": "claude",
+        "brand": "claude",
+        "title": "Rework the notification centre so that a long thread of replies folds into one row and still shows who wrote last",
+        "tab_title": "rice",
+        "cwd": "~/Projects/rice",
+        "state": "waiting",
+        "account": "main",
+        "question": "Allow Bash: find . -name '*.qml' -newer shell/shell.qml -exec qmllint --max-warnings 0 {} + in ~/Projects/a/deeply/nested/checkout?"
+       },
+       {
+        "key": "fx-2",
+        "agent": "codex",
+        "brand": "codex",
+        "title": "Port the greeter",
+        "tab_title": "rice",
+        "cwd": "~/Projects/rice",
+        "state": "limited",
+        "account": "personal",
+        "limit_reset": "@now+5400s"
+       },
+       {
+        "key": "fx-3",
+        "agent": "gemini",
+        "brand": "gemini",
+        "title": "Translate the settings pages",
+        "tab_title": "rice",
+        "cwd": "~/Projects/rice",
+        "state": "error",
+        "account": "main",
+        "error": "the process ended without an answer (see the terminal)"
+       },
+       {
+        "key": "fx-4",
+        "agent": "cursor",
+        "brand": "cursor",
+        "title": "A",
+        "tab_title": "rice",
+        "cwd": "~/Projects/rice",
+        "state": "working",
+        "account": "main"
+       },
+       {
+        "key": "fx-5",
+        "agent": "opencode",
+        "brand": "opencode",
+        "title": "Benchmark the wallpaper player across three outputs at once",
+        "tab_title": "rice",
+        "cwd": "~/Projects/rice",
+        "state": "working",
+        "account": "main"
+       },
+       {
+        "key": "fx-6",
+        "agent": "claude",
+        "brand": "claude",
+        "title": "Second question",
+        "tab_title": "rice",
+        "cwd": "~/Projects/rice",
+        "state": "waiting",
+        "account": "main",
+        "question": "Edit shell/config/Theme.qml?"
+       },
+       {
+        "key": "fx-7",
+        "agent": "agy",
+        "brand": "agy",
+        "title": "Done one",
+        "tab_title": "rice",
+        "cwd": "~/Projects/rice",
+        "state": "done",
+        "account": "main"
+       },
+       {
+        "key": "fx-8",
+        "agent": "claude",
+        "brand": "claude",
+        "title": "Idle one",
+        "tab_title": "rice",
+        "cwd": "~/Projects/rice",
+        "state": "idle",
+        "account": "main"
+       }
+      ]
+     }
+    ],
+    [
+     "T3Code",
+     "alive",
+     true
+    ],
+    [
+     "T3Code",
+     "running",
+     2
+    ],
+    [
+     "T3Code",
+     "waiting",
+     0
+    ],
+    [
+     "T3Code",
+     "rawFinished",
+     0
+    ],
+    [
+     "T3Code",
+     "rawItems",
+     [
+      {
+       "thread": "t-w1",
+       "status": "running",
+       "provider": "claudeAgent_2",
+       "model": "claude-opus-5-5",
+       "effort": "high",
+       "title": "Move the provider marks into one service and teach every panel to ask it",
+       "project": "rice",
+       "at": "@now-600iso"
+      },
+      {
+       "thread": "t-w2",
+       "status": "running",
+       "provider": "codex_20219caf-90a9-4531-a5b1-4fc5b519dae7",
+       "model": "gpt-6.2-astra",
+       "effort": "xhigh",
+       "title": "Port the greeter",
+       "project": "a-very-long-project-name-for-the-shared-checkout",
+       "at": "@now-1200iso"
+      }
+     ]
     ]
    ]
   },
