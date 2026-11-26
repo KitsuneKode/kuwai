@@ -252,7 +252,7 @@ Item {
     Item {
         id: footer
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: 16; bottomMargin: 12 }
-        height: 22
+        height: Theme.sp(22)
 
         // Hairline above: where the list ends and the chrome begins.
         Rectangle {

@@ -326,7 +326,7 @@ Item {
             Rectangle {
                 visible: view.hasBattery
                 width: parent.width
-                height: 52
+                height: Theme.sp(52)
                 radius: Theme.r3
                 color: Theme.wash(1)
                 border.width: 1

@@ -85,7 +85,7 @@ Column {
 
     Item {
         width: wifi.width
-        height: 26
+        height: Theme.sp(26)
         Label { x: 4; anchors.verticalCenter: parent.verticalCenter; text: "Networks"; size: Theme.tBody; weight: Theme.wSemibold; color: Theme.textSecondary }
         Row {
             anchors { right: parent.right; rightMargin: 4; verticalCenter: parent.verticalCenter }
@@ -124,7 +124,7 @@ Column {
             readonly property bool asking: wifi.asking === net
             readonly property string why: wifi.failed[net.name] || ""
             width: wifi.width
-            height: 38 + (asking ? 44 : 0) + (why ? 18 : 0)
+            height: Theme.sp(38) + (asking ? Theme.sp(44) : 0) + (why ? Theme.sp(18) : 0)
             Behavior on height { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.reflowMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
             clip: true
 
@@ -140,7 +140,7 @@ Column {
             Rectangle {
                 id: band
                 width: parent.width
-                height: 38
+                height: Theme.sp(38)
                 radius: Theme.r2
                 color: row.net.connected ? Qt.alpha(Theme.accent, 0.16) : "transparent"
                 Behavior on color { ColorAnimation { duration: Theme.colorMs } }
@@ -175,15 +175,14 @@ Column {
             Text {
                 textFormat: Text.PlainText
                 id: strength
-                x: 10; y: 9
+                x: 10; anchors.verticalCenter: band.verticalCenter
                 text: wifi.bars(row.net.signalStrength)
                 font.family: Theme.fontGlyph
                 font.pixelSize: Theme.glyphM
                 color: row.net.connected ? Theme.accent : Theme.textSecondary
             }
             Label {
-                anchors { left: strength.right; leftMargin: 10; right: trail.left; rightMargin: 8 }
-                y: 10
+                anchors { left: strength.right; leftMargin: 10; right: trail.left; rightMargin: 8; verticalCenter: band.verticalCenter }
                 elide: Text.ElideRight
                 text: wifi.center.highlight(row.net.name)
                 textFormat: Text.StyledText
@@ -194,7 +193,7 @@ Column {
                 id: trail
                 anchors.right: parent.right
                 anchors.rightMargin: 10
-                y: 9
+                anchors.verticalCenter: band.verticalCenter
                 spacing: 8
                 Label {
                     anchors.verticalCenter: parent.verticalCenter
@@ -209,7 +208,7 @@ Column {
                 Rectangle {
                     visible: row.lit && !row.busy && (row.net.connected || row.net.known)
                     anchors.verticalCenter: parent.verticalCenter
-                    height: 20; radius: 10
+                    height: Theme.sp(20); radius: height / 2
                     width: actLabel.implicitWidth + 14
                     color: actArea.containsMouse ? Theme.pillHover : Theme.pill
                     Label { id: actLabel; anchors.centerIn: parent; text: row.net.connected ? "Disconnect" : "Forget"; size: Theme.tFootnote; weight: Theme.wMedium }
@@ -237,7 +236,7 @@ Column {
 
             Label {
                 visible: row.why !== ""
-                x: 37; y: 36
+                x: 37; y: Theme.sp(36)
                 text: "Couldn't join: " + row.why
                 size: Theme.tFootnote
                 color: Theme.red
@@ -247,9 +246,9 @@ Column {
             Rectangle {
                 visible: row.asking
                 x: 37
-                y: 38 + (row.why ? 18 : 0) + 4
+                y: Theme.sp(38) + (row.why ? Theme.sp(18) : 0) + 4
                 width: parent.width - 37 - 4
-                height: 34
+                height: Theme.sp(34)
                 radius: 10
                 color: Theme.wash(2)
                 border.width: 1
@@ -260,7 +259,7 @@ Column {
                     echoMode: TextInput.Password
                     color: Theme.textPrimary
                     font.family: Theme.fontText
-                    font.pixelSize: 13
+                    font.pixelSize: Theme.sp(13)
                     renderType: Text.NativeRendering
                     clip: true
                     onVisibleChanged: if (visible) { text = ""; forceActiveFocus(); }
@@ -272,7 +271,7 @@ Column {
                 Rectangle {
                     id: joinBtn
                     anchors { right: parent.right; rightMargin: 4; verticalCenter: parent.verticalCenter }
-                    height: 26; radius: Theme.r1
+                    height: Theme.sp(26); radius: Theme.r1
                     width: joinLabel.implicitWidth + 20
                     color: psk.text.length >= 8 ? Theme.accent : Theme.pill
                     function join() {
