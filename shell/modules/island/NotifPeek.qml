@@ -14,7 +14,6 @@ Item {
     required property var bar
     width: Theme.cardW
     height: parent ? parent.height : 76
-    opacity: swipeFade
     readonly property bool expanded: Notifs.peekExpanded
     // Expanded, its own height (IslandBar.peekH): padding, the header, the
     // body (scrolling past maxBody), a gap, the buttons, padding. A fixed 340
@@ -34,20 +33,6 @@ Item {
         : item.statusTone === "critical" ? Theme.red : Theme.textSecondary
 
     property real pop: 1
-    // The pointer drives it 1:1 while down (snap per move); on release a
-    // spring seeded with the pointer's speed (Fling) takes it home or up and
-    // out, and can be caught again mid-flight. The fade is the way out.
-    Spring { id: sy; tier: Theme.springModerate; epsilon: 0.5; onSettledChanged: peek.landed() }
-    Fling { id: fling }
-    readonly property real swipeY: sy.value
-    property bool swiping: false
-    property bool swipingOut: false
-    property real outFrom: 0
-    readonly property real outTo: -height - 40
-    readonly property real swipeFade: !swipingOut ? 1 : Math.max(0, Math.min(1, 1 - (outFrom - swipeY) / Math.max(1, outFrom - outTo)))
-    function landed() { if (swipingOut && sy.settled) Notifs.dismissPeekItem(peek.item); }
-
-    transform: Translate { y: swipeY }
 
     onItemChanged: if (item && !Theme.reduceMotion) popIn.restart()
     // Arrives tens of times a day: quick and settled, no bounce (a 460 ms
@@ -55,55 +40,10 @@ Item {
     // already carries the arrival). Ease-out, from 0.94.
     NumberAnimation { id: popIn; target: peek; property: "pop"; from: 0.94; to: 1; duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
 
-    DragHandler {
-        target: null
-        dragThreshold: 4
-        property real grab: 0
-        onActiveChanged: {
-            if (active) {
-                peek.swipingOut = false;        // caught on its way out: it stays
-                grab = sy.value;
-                sy.snap(sy.value);
-                fling.reset();
-                peek.swiping = true;
-                return;
-            }
-            peek.swiping = false;
-            const up = -fling.vy();             // px/ms, + is up (out)
-            if (peek.swipeY < 0 && up > -Theme.swipeFlick && (peek.swipeY < -Theme.swipeThreshold || up > Theme.swipeFlick)) {
-                peek.swipingOut = true;
-                peek.outFrom = sy.value;
-                sy.velocity = -Math.max(0, up) * 1000;
-                sy.target = peek.outTo;
-                peek.landed();                  // reduced motion: already there
-            } else {
-                // Pulled down (it rubber-bands), in two steps like iOS: the
-                // first opens the preview (more of it, Reply); pulled again,
-                // or one long pull, it's the reader (the whole message, the
-                // conversation).
-                // (By the finger's real travel: the shown pull is damped and
-                // never passed ~20 px, so a 36 px check never fired.)
-                if (rawDown > 40 && peek.item) {
-                    if (Notifs.peekExpanded || rawDown > 140) Notifs.readInIsland(peek.item);
-                    else Notifs.expandPeek();
-                }
-                sy.velocity = peek.swipeY < 0 ? fling.vy() * 1000 : 0;   // keeps the pointer's speed; the damped pull gets no throw
-                sy.target = 0;
-            }
-        }
-        property real rawDown: 0
-        onTranslationChanged: {
-            fling.add(translation.x, translation.y);
-            const v = grab + translation.y;
-            rawDown = Math.max(0, translation.y);
-            sy.snap(v < 0 ? v : Theme.swipeDamp(v));
-        }
-    }
-
     HoverHandler { onHoveredChanged: Notifs.peekHeld = hovered }
 
     // For `qs ipc call islandbar-SCREEN dump`: where its parts sit.
-    function geom() { return { h: height, want: wantH, swipeY: swipeY, markY: mark.y, copyY: copy.y, copyH: copy.height, expanded: expanded }; }
+    function geom() { return { h: height, want: wantH, swipeY: 0, markY: mark.y, copyY: copy.y, copyH: copy.height, expanded: expanded }; }
 
     function openItem() {
         const i = peek.item;
@@ -268,7 +208,7 @@ Item {
                 visible: !peek.expanded && !!peek.item
                 width: parent.width
                 elide: Text.ElideRight
-                text: peek.hiddenOpen ? "Swipe up to dismiss" : "Pull down or tap to read · swipe up to dismiss"
+                text: peek.hiddenOpen ? "Swipe up to put it away" : "Pull down or tap to read · swipe up to put it away"
                 size: Theme.tFootnote
                 weight: Theme.wMedium
                 color: Theme.textTertiary

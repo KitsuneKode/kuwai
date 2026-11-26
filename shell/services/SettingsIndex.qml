@@ -23,7 +23,7 @@ Singleton {
         { id: "shortcuts", keys: "shortcuts keys keybindings keybinds hotkeys bind rebind chord change reset default super", label: "Shortcuts", glyph: "\u{f0633}", tint: Theme.gray },
         { id: "pointer", keys: "mouse trackpad touchpad pointer speed acceleration natural scrolling tap to click scroll", label: "Mouse & Trackpad", glyph: "\u{f037d}", tint: Theme.gray },
         { id: "displays", keys: "displays screens monitors scale resolution refresh rate hz hidpi", label: "Displays", glyph: "\u{f0379}", tint: Theme.blue },
-        { id: "island", keys: "island style minimal hidden everything reveal approach proximity quick switch caffeine", label: "Island", glyph: "\u{f0d6f}", tint: Theme.orange },
+        { id: "island", keys: "island style minimal hidden everything reveal approach proximity quick switch caffeine", label: "Island Behaviour", glyph: "\u{f0d6f}", tint: Theme.orange },
         { id: "workspaces", keys: "workspaces screens monitors desktops pills keys", label: "Workspaces", glyph: "\u{f0570}", tint: Theme.indigo },
         { id: "power", keys: "power idle dim lock screen off sleep battery hypridle suspend caffeine music", label: "Power & Idle", glyph: "\u{f0425}", tint: Theme.green },
         { id: "saver", keys: "screensaver dusk live wallpaper still battery", label: "Screensaver", glyph: "\u{f0379}", tint: Theme.indigo },

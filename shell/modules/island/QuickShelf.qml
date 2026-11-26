@@ -69,7 +69,7 @@ Item {
         property real reveal: shelf.open ? 1 : 0
         Behavior on reveal {
             enabled: !Theme.reduceMotion
-            NumberAnimation { duration: shelf.open ? 200 : 120; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
+            NumberAnimation { duration: shelf.open ? Theme.enterMs : Theme.exitMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
         }
         visible: reveal > 0.01
         // Grows out of the trigger: its right edge sits on the trigger's.

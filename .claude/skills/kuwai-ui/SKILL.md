@@ -40,7 +40,7 @@ rise.
 - Motion is never the only signal: a state also changes colour, glyph or words.
 - Reduced motion (`Theme.reduceMotion`): Springs settle at once by themselves; anything else that
   moves must check it. Fades stay, travel and bounce go.
-- Staggered entrances only for rare, staged reveals (`Theme.revealStepMs` 30–80), never routine
+- Staggered entrances only for rare, staged reveals (30–80 ms steps), never routine
   rows.
 
 ## 2. Gestures (gestures skill, in QML)
@@ -56,7 +56,7 @@ rise.
 - **Linked values:** fades and dims derive from the position (`swipeFade` from distance), never
   their own animation; they can't drift apart when the gesture reverses.
 - **Dismiss along the axis it entered.** Toasts: right or up. The island peek: up.
-- Patterns: `modules/notifications/NotifCard.qml`, `modules/island/NotifPeek.qml`.
+- Pattern: `modules/notifications/NotifCard.qml` (the island's cards are swiped by IslandBar's `pushDrag`).
 
 ## 3. Surfaces and layout
 

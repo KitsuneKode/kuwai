@@ -86,7 +86,7 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             text: "\u{f0349}"                          // magnify
             font.family: Theme.fontGlyph
-            font.pixelSize: 15
+            font.pixelSize: Theme.sp(Theme.glyphS)
             color: Theme.textTertiary
         }
 

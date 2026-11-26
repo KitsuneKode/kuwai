@@ -474,7 +474,7 @@ Item {
         id: hintBox
         visible: opacity > 0.01
         opacity: rest.hintOn * rest.chromeReveal
-        Behavior on opacity { NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+        Behavior on opacity { NumberAnimation { duration: rest.hintOn ? Theme.hoverMs : Theme.colorMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
         x: clock.x + clock.width / 2 - width / 2
         anchors.verticalCenter: parent.verticalCenter
         width: hintRow.implicitWidth
@@ -528,8 +528,8 @@ Item {
         // Not during a moment: its words run through the middle (they overlapped).
         // (Split island: T3 has its own pill beside the island instead.)
         visible: rest.stageTaken && T3Code.total > 0 && !rest.momentUnified && !rest.helloFocus && rest.activity !== "moment" && !Settings.islandSplit
-        x: Math.round((rest.width - width) / 2)
-        Behavior on x { NumberAnimation { duration: Theme.reflowMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+        x: Math.round(t3x.value)
+        Spring { id: t3x; tier: t3x.target >= t3x.value ? Theme.surfaceIn : Theme.surfaceOut; epsilon: 0.3; target: (rest.width - t3centre.width) / 2; Component.onCompleted: settle() }
         anchors.verticalCenter: parent.verticalCenter
         wordmark: "T3"
         value: T3Code.waiting > 0 ? String(T3Code.waiting) : String(T3Code.running)
@@ -549,14 +549,14 @@ Item {
         id: clock
         visible: rest.clockShown && !rest.clockHidden
         opacity: (1 - rest.hintOn) * rest.chromeReveal
-        Behavior on opacity { NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+        Behavior on opacity { NumberAnimation { duration: rest.hintOn ? Theme.colorMs : Theme.hoverMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
         now: rest.bar.now; size: Theme.tHeadline
         rounded: false
         weight: Theme.wMedium
         color: Qt.rgba(1, 0.98, 0.95, 0.92)
-        x: rest.mini ? rest.miniPad : (rest.balanced ? rest.side : leftGroup.implicitWidth) + rest.gap
-        // Glides with the shape (it jumped while the notch sprang).
-        Behavior on x { NumberAnimation { duration: Theme.reflowMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+        x: Math.round(clockX.value)
+        // Rides the notch's own springs, so the two land together.
+        Spring { id: clockX; tier: clockX.target >= clockX.value ? Theme.surfaceIn : Theme.surfaceOut; epsilon: 0.3; target: rest.mini ? rest.miniPad : (rest.balanced ? rest.side : leftGroup.implicitWidth) + rest.gap; Component.onCompleted: settle() }
         anchors.verticalCenter: parent.verticalCenter
         HoverHandler { cursorShape: Qt.PointingHandCursor }
         // The centre opens everything (the calendar is its time chip); a click

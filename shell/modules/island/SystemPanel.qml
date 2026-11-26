@@ -89,7 +89,7 @@ FocusScope {
             id: head
             visible: !sys.inStrip
             width: parent.width; height: 26
-            Label { anchors.verticalCenter: parent.verticalCenter; text: "System"; size: Theme.tTitle2; weight: Theme.wSemibold }
+            Label { anchors.verticalCenter: parent.verticalCenter; text: "System"; size: Theme.tTitle3; weight: Theme.wSemibold }
             Label {
                 anchors { right: parent.right; verticalCenter: parent.verticalCenter }
                 text: sys.uptime + (SystemStats.load ? "  ·  load " + SystemStats.load.split(" ")[0] : "")

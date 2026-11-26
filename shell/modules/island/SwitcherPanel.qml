@@ -187,7 +187,7 @@ FocusScope {
         }
         Label {
             anchors.horizontalCenter: parent.horizontalCenter
-            text: Switcher.workspaceOnly ? "W shows every workspace's" : "Open an app from the launcher, Super+A"
+            text: Switcher.workspaceOnly ? "W shows every workspace's" : "Open an app from the launcher, ⌘A"
             size: Theme.tSub; color: Theme.textSecondary
         }
     }

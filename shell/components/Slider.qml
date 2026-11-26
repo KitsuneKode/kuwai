@@ -70,6 +70,7 @@ Item {
             height: s.vertical ? s.fillLen : parent.height
             radius: track.radius
             color: s.fillColor
+            visible: shown.value > 0.002
             opacity: s.dim ? 0.45 : 1
             Behavior on opacity { NumberAnimation { duration: Theme.colorMs } }
         }

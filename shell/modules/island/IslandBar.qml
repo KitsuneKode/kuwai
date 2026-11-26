@@ -97,7 +97,7 @@ Scope {
                 target: Island
                 function onPanelChanged() {
                     if (!win.panelHere) return;
-                    if (win.shownPanel !== "" && win.shownPanel !== Island.panel && pv.value > 0.9 && panelLoader.item && !Theme.reduceMotion) {
+                    if (win.shownPanel !== "" && win.shownPanel !== Island.panel && pv.value > 0.9 && panelLoader.item && !Theme.reduceMotion && !win.keyed) {
                         panelGhost.width = panelLoader.width;
                         panelGhost.height = panelLoader.height;
                         panelGhost.x = panelScope.x;
@@ -116,7 +116,10 @@ Scope {
                 panelGhost.show = 1;
                 ghostOut.restart();
                 win.shownPanel = Island.panel;
-                panelIn.restart();
+                if (win.fitIn(panelScope.width, panelScope.height).shown < 0.99) {
+                    panelIn.stop();
+                    panelLoader.swapIn = 1;
+                } else panelIn.restart();
             }
             Timer {
                 id: swapLater
@@ -137,7 +140,7 @@ Scope {
             // still fold away.
             Timer {
                 id: idle
-                interval: ["calendar", "system", "power"].includes(win.shownPanel) ? 12000 : 30000
+                interval: ["calendar", "system", "power"].includes(win.shownPanel) && Island.via !== "key" ? 12000 : 30000
                 running: win.panelHere && !win.hovered
                 onTriggered: Island.close()
             }
@@ -1159,10 +1162,11 @@ Scope {
                             // ⌥1–4: the sections (keys the panel didn't take bubble here).
                             if (win.sectioned && (event.modifiers & Qt.AltModifier) && event.key >= Qt.Key_1 && event.key <= Qt.Key_4) {
                                 const s = Island.sections[event.key - Qt.Key_1];
-                                if (s) { Island.switchTo(s.id); event.accepted = true; return; }
+                                if (s) { Island.via = "key"; Island.switchTo(s.id); event.accepted = true; return; }
                             }
                             if (win.sectioned && (event.modifiers & Qt.AltModifier) && (event.key === Qt.Key_Left || event.key === Qt.Key_Right)) {
                                 const ids = Island.sections.map(x => x.id), at = ids.indexOf(win.shownPanel);
+                                Island.via = "key";
                                 Island.switchTo(ids[(at + (event.key === Qt.Key_Left ? ids.length - 1 : 1)) % ids.length]);
                                 event.accepted = true;
                                 return;

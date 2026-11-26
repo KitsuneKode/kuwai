@@ -140,12 +140,12 @@ FocusScope {
                         Rectangle {
                             id: nav
                             required property var modelData
-                            width: 28; height: 28; radius: 14
+                            width: Theme.sp(28); height: width; radius: width / 2
                             color: navArea.containsMouse ? Theme.pillHover : "transparent"
                             scale: navArea.pressed ? 0.94 : 1
                             Behavior on color { ColorAnimation { duration: Theme.colorMs } }
                             Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
-                            Text { textFormat: Text.PlainText; anchors.centerIn: parent; text: nav.modelData.g; font.family: Theme.fontGlyph; font.pixelSize: Theme.glyphS; color: Theme.textSecondary }
+                            Text { textFormat: Text.PlainText; anchors.centerIn: parent; text: nav.modelData.g; font.family: Theme.fontGlyph; font.pixelSize: Theme.sp(Theme.glyphS); color: Theme.textSecondary }
                             MouseArea { id: navArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: cal.shiftMonth(nav.modelData.d) }
                             Accessible.role: Accessible.Button
                             Accessible.name: nav.modelData.d < 0 ? "Previous month" : "Next month"

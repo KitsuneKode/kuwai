@@ -25,7 +25,7 @@ FocusScope {
     id: np
     focus: true
     implicitWidth: Theme.textScale > 1.4 ? Theme.panelM : Theme.panelS
-    implicitHeight: 212 + titleSpill
+    implicitHeight: 212 + titleSpill + Theme.sp(48) - 48 + (Island.via === "key" && np.p ? Theme.sp(30) : 0)
     readonly property real titleSpill: Math.max(0, titles.height - art.height)
 
     readonly property var p: Media.active
@@ -33,6 +33,19 @@ FocusScope {
     Component.onCompleted: Media.watch()
     Component.onDestruction: Media.unwatch()
 
+    function button(id, p, playing, shuffle, loop) {
+        const none = !p;
+        switch (id) {
+        case "shuffle": return { g: "\u{f049d}", tip: "Shuffle", show: !none && p.shuffleSupported, on: !none && shuffle, ok: !none && p.canControl, size: Theme.glyphM, act: () => p.shuffle = !p.shuffle };
+        case "previous": return { g: "\u{f04ae}", tip: "Previous", show: true, ok: !none && p.canGoPrevious, size: Theme.tTitle1, act: () => p.previous() };
+        case "play": return { g: playing ? "\u{f03e4}" : "\u{f040a}", tip: playing ? "Pause" : "Play", show: true, ok: !none && p.canTogglePlaying, size: Theme.glyphPlay, big: true, act: () => p.togglePlaying() };
+        case "next": return { g: "\u{f04ad}", tip: "Next", show: true, ok: !none && p.canGoNext, size: Theme.tTitle1, act: () => p.next() };
+        case "loop": return { g: loop === MprisLoopState.Track ? "\u{f0458}" : "\u{f0456}", tip: loop === MprisLoopState.Track ? "Repeat one" : "Repeat", show: !none && p.loopSupported,
+                              on: !none && loop !== MprisLoopState.None, ok: !none && p.canControl, size: Theme.glyphM, act: () => np.cycleLoop() };
+        default: return { g: "\u{f02cb}", tip: "Plays on " + (Pipewire.defaultAudioSink ? (Pipewire.defaultAudioSink.nickname || Pipewire.defaultAudioSink.description) : "…"), show: true, ok: true, size: Theme.glyphM,
+                          act: () => { Island.close(); Notifs.toggleCenter("sound", "pointer", Island.screen); } };
+        }
+    }
     function nudge(s) { if (p && p.canSeek && Media.length > 0) Media.seekTo((Media.position + s) / Media.length); }
     Keys.onPressed: event => {
         const k = event.key, shift = event.modifiers & Qt.ShiftModifier;
@@ -303,55 +316,60 @@ FocusScope {
 
         // ── Controls ─────────────────────────────────────────────────────
         Row {
-            anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom }
+            id: transport
+            anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: keyHints.visible ? keyHints.height + Theme.s2 : 0 }
             spacing: 18
             Repeater {
-                model: [
-                    { g: "\u{f049d}", tip: "Shuffle", show: !!np.p && np.p.shuffleSupported, on: !!np.p && np.p.shuffle, act: () => np.p.shuffle = !np.p.shuffle, ok: !!np.p && np.p.canControl },
-                    { g: "\u{f04ae}", tip: "Previous", show: true, act: () => np.p.previous(), ok: !!np.p && np.p.canGoPrevious, size: 24 },
-                    { g: np.p && np.p.isPlaying ? "\u{f03e4}" : "\u{f040a}", tip: np.p && np.p.isPlaying ? "Pause" : "Play", show: true, act: () => np.p.togglePlaying(), ok: !!np.p && np.p.canTogglePlaying, size: Theme.glyphPlay, big: true },
-                    { g: "\u{f04ad}", tip: "Next", show: true, act: () => np.p.next(), ok: !!np.p && np.p.canGoNext, size: 24 },
-                    { g: np.p && np.p.loopState === MprisLoopState.Track ? "\u{f0458}" : "\u{f0456}", tip: np.p && np.p.loopState === MprisLoopState.Track ? "Repeat one" : "Repeat", show: !!np.p && np.p.loopSupported,
-                      on: !!np.p && np.p.loopState !== MprisLoopState.None, act: () => np.cycleLoop(), ok: !!np.p && np.p.canControl },
-                    { g: "\u{f02cb}", tip: "Plays on " + (Pipewire.defaultAudioSink ? (Pipewire.defaultAudioSink.nickname || Pipewire.defaultAudioSink.description) : "…"), show: true,
-                      act: () => { Island.close(); Notifs.toggleCenter("sound", "pointer", Island.screen); }, ok: true }
-                ].filter(b => b.show)
+                model: ["shuffle", "previous", "play", "next", "loop", "output"]
                 Item {
                     id: btn
-                    required property var modelData
-                    width: modelData.big ? 48 : 36; height: 48
-                    opacity: modelData.ok ? 1 : 0.3
+                    required property string modelData
+                    readonly property var b: np.button(modelData, np.p, np.p ? np.p.isPlaying : false, np.p ? np.p.shuffle : false, np.p ? np.p.loopState : 0)
+                    visible: b.show
+                    width: Theme.sp(b.big ? 48 : 36); height: Theme.sp(48)
+                    opacity: b.ok ? 1 : 0.3
                     Rectangle {
+                        id: face
                         anchors.centerIn: parent
-                        width: btn.modelData.big ? 48 : 34; height: width; radius: width / 2
-                        color: btnArea.containsMouse ? Theme.ghostHover : btn.modelData.on ? Qt.alpha(np.tint, 0.18) : "transparent"
+                        width: Theme.sp(btn.b.big ? 48 : 34); height: width; radius: width / 2
+                        color: btnArea.containsMouse ? Theme.ghostHover : btn.b.on ? Qt.alpha(np.tint, 0.18) : "transparent"
                         Behavior on color { ColorAnimation { duration: Theme.colorMs } }
+                        activeFocusOnTab: btn.b.ok
+                        Keys.onSpacePressed: btn.b.act()
+                        Keys.onReturnPressed: btn.b.act()
+                        Keys.onEnterPressed: btn.b.act()
+                        FocusRing {}
                     }
                     Text {
                         textFormat: Text.PlainText
                         anchors.centerIn: parent
-                        text: btn.modelData.g
+                        text: btn.b.g
                         font.family: Theme.fontGlyph
-                        font.pixelSize: btn.modelData.size || 17
-                        color: btn.modelData.on ? np.tint : Theme.textPrimary
-                        scale: btnArea.pressed ? 0.86 : 1
+                        font.pixelSize: Theme.sp(btn.b.size)
+                        color: btn.b.on ? np.tint : Theme.textPrimary
+                        scale: btnArea.pressed ? 0.97 : 1
                         Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                     }
-                    // Shuffle / repeat on: a dot under it (Apple's).
                     Rectangle {
-                        visible: !!btn.modelData.on
+                        visible: !!btn.b.on
                         anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 4 }
                         width: 4; height: 4; radius: 2
                         color: np.tint
                     }
-                    MouseArea { id: btnArea; anchors.fill: parent; enabled: btn.modelData.ok; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: btn.modelData.act() }
+                    MouseArea { id: btnArea; anchors.fill: parent; enabled: btn.b.ok; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: btn.b.act() }
                     Accessible.role: Accessible.Button
-                    Accessible.name: btn.modelData.tip
-                    Accessible.description: btn.modelData.on ? "On" : ""
-                    Accessible.onPressAction: if (btn.modelData.ok) btn.modelData.act()
-                    Tip { text: btn.modelData.tip; shown: btnArea.containsMouse; below: true }
+                    Accessible.name: btn.b.tip
+                    Accessible.description: btn.b.on ? "On" : ""
+                    Accessible.onPressAction: if (btn.b.ok) btn.b.act()
+                    Tip { text: btn.b.tip; shown: btnArea.containsMouse; below: true }
                 }
             }
+        }
+        KeyHints {
+            id: keyHints
+            anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom }
+            visible: Island.via === "key"
+            hints: [["space", "Play"], ["←→", "Seek"], ["N P", "Next, back"], ["↩", "Go to it"], ["esc", "Back"]]
         }
     }
 }

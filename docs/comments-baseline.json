@@ -1,5 +1,5 @@
 {
-  "total_comment_lines": 7526,
+  "total_comment_lines": 7512,
   "files_with_comments": 291,
   "files": {
     "shell/components/ActionMenu.qml": 23,
@@ -102,8 +102,8 @@
     "shell/modules/island/IslandStatus.qml": 22,
     "shell/modules/island/KeysPanel.qml": 28,
     "shell/modules/island/LauncherPanel.qml": 115,
-    "shell/modules/island/MediaPanel.qml": 35,
-    "shell/modules/island/NotifPeek.qml": 37,
+    "shell/modules/island/MediaPanel.qml": 34,
+    "shell/modules/island/NotifPeek.qml": 24,
     "shell/modules/island/PowerPanel.qml": 26,
     "shell/modules/island/QuickShelf.qml": 27,
     "shell/modules/island/ReadPanel.qml": 30,
