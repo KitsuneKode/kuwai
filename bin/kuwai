@@ -26,6 +26,7 @@ command goes to the shell half, bin/kuwai-ctl (channel, promote, bar, notifs, ti
   kuwai focus [MINUTES|stop]      focus session: DND + focus mode for a while
   kuwai session [save|restore]    the open apps and where they were
   kuwai binds [WORD]              every bind, grouped as in the Shortcuts panel
+  kuwai keys [set ACTION KEYS NAME|reset ACTION|reset-all]   your own chords for kuwai's shortcuts
   kuwai reload
 KUWAI_USAGE
 }
@@ -485,6 +486,7 @@ case ${1:-info} in
     motion) shift; cmd_motion "$@" ;;
     gpu) shift; cmd_gpu "$@" ;;
     binds) shift; cmd_binds "$@" ;;
+    keys) shift; exec "$HERE/kuwai-keys" "$@" ;;
     feature|features) shift; cmd_feature "$@" ;;
     keyboard|kb) shift; cmd_keyboard "$@" ;;
     pointer|mouse|trackpad) shift; cmd_pointer "$@" ;;

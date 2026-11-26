@@ -929,6 +929,23 @@
       "searchTerms": "wallpaper change transition animation pieces shards cuts glass subject cut out",
       "requires": [],
       "restartScope": "live"
+    },
+    {
+      "key": "fKeys",
+      "type": "string",
+      "default": "actions",
+      "enum": [
+        "actions",
+        "plain"
+      ],
+      "maxLength": 512,
+      "section": "keyboard",
+      "label": "F7, F8 and F10",
+      "detail": "F7 dims, F8 brightens, F10 mutes; Plain leaves them to apps (for keyboards whose Fn row already sends those)",
+      "group": "Function keys",
+      "searchTerms": "function keys fn f7 f8 f10 brightness mute media plain raw laptop",
+      "requires": [],
+      "restartScope": "live"
     }
   ],
   "additionalRows": [
@@ -987,6 +1004,27 @@
       "detail": "fcitx5 (or ibus) for Japanese, Chinese, Korean, Indic scripts; applies after a reload",
       "group": "",
       "words": "input method fcitx5 (or ibus) for japanese, chinese, korean, indic scripts; applies after a reload  "
+    },
+    {
+      "page": "keyboard",
+      "label": "Shortcuts",
+      "detail": "Give any of kuwai's actions keys of your own",
+      "group": "Function keys",
+      "words": "shortcuts give any of kuwai's actions keys of your own keybindings rebind change function keys"
+    },
+    {
+      "page": "shortcuts",
+      "label": "Find a shortcut",
+      "detail": "",
+      "group": "",
+      "words": "find a shortcut change rebind keybinding hotkey chord conflict reset default"
+    },
+    {
+      "page": "shortcuts",
+      "label": "Your shortcuts",
+      "detail": "Reset all",
+      "group": "",
+      "words": "your shortcuts reset all default custom changed"
     },
     {
       "page": "pointer",

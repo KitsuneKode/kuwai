@@ -208,9 +208,43 @@ _G.kuwai.bind_conflicts = function()
 	return table.concat(K.conflicts, "\n")
 end
 
-local function bind_id(keys, release)
-	return submap .. "|" .. keys:upper():gsub("%s+", "") .. (release and "#release" or "")
+local mod_names = { SUPER = "SUPER", WIN = "SUPER", LOGO = "SUPER", MOD4 = "SUPER", META = "SUPER", CTRL = "CTRL", CONTROL = "CTRL", ALT = "ALT", MOD1 = "ALT", SHIFT = "SHIFT" }
+local mod_order = { "SUPER", "CTRL", "ALT", "SHIFT" }
+
+function K.chord(keys)
+	local mods, key = {}, ""
+	for part in tostring(keys or ""):gmatch("[^+]+") do
+		local p = part:gsub("^%s+", ""):gsub("%s+$", ""):upper()
+		if mod_names[p] then
+			mods[mod_names[p]] = true
+		elseif p ~= "" then
+			key = p
+		end
+	end
+	local out = {}
+	for _, m in ipairs(mod_order) do
+		if mods[m] then
+			out[#out + 1] = m
+		end
+	end
+	out[#out + 1] = key
+	return table.concat(out, "+")
 end
+
+function K.show(keys)
+	return (tostring(keys or ""):gsub("code:(%d+)", function(n)
+		n = tonumber(n)
+		if n >= 10 and n <= 19 then
+			return tostring((n - 9) % 10)
+		end
+	end))
+end
+
+local function bind_id(keys, release)
+	return submap .. "|" .. K.chord(keys) .. (release and "#release" or "")
+end
+K.bind_id = bind_id
+K.bind_spec = {}
 
 function K.group(name)
 	group = name
@@ -238,6 +272,10 @@ function K.bind(keys, desc, action, opts)
 			K.binds[id]:remove()
 		end)
 	end
+	local spec = {}
+	for k, v in pairs(opts) do
+		spec[k] = v
+	end
 	local ok, b = pcall(hl.bind, keys, d, opts)
 	if not ok then
 		K.err("bind '" .. keys .. "': " .. tostring(b))
@@ -245,13 +283,32 @@ function K.bind(keys, desc, action, opts)
 	end
 	K.binds[id] = b
 	K.bind_desc[id] = opts.description
+	K.bind_spec[id] = { keys = keys, d = d, opts = spec }
 	if desc and desc ~= "" and submap == "" and not opts.mouse and not opts.release and not keys:find("^switch:") then
 		if not K.palette_index[id] then
 			K.palette_order[#K.palette_order + 1] = id
 		end
-		K.palette_index[id] = { group = group or "Other", text = desc, keys = show, action = d }
+		K.palette_index[id] = { id = id, aid = K.chord(keys), group = group or "Other", text = desc, keys = show, action = d }
 	end
 	return b
+end
+
+function K.setting(key)
+	local s = K.read(K.config_home .. "/kuwai/settings.json")
+	if not s then
+		return nil
+	end
+	local v = s:match('"' .. key .. '"%s*:%s*("[^"]*")') or s:match('"' .. key .. '"%s*:%s*([%w%.%-]+)')
+	if not v then
+		return nil
+	end
+	if v:sub(1, 1) == '"' then
+		return v:sub(2, -2)
+	end
+	if v == "true" or v == "false" then
+		return v == "true"
+	end
+	return tonumber(v)
 end
 
 K.palette_order, K.palette_index = {}, {}

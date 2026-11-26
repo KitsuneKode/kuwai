@@ -7,5 +7,5 @@
     "noEmit": true, "allowJs": true, "checkJs": true, "strict": true,
     "target": "es2022", "module": "nodenext", "moduleResolution": "nodenext", "skipLibCheck": true
   },
-  "files": ["shell/services/providers.mjs", "shell/services/otp.mjs", "shell/services/clipstate.mjs", "shell/services/notifUndo.mjs", "shell/services/moments.mjs", "shell/config/dates.mjs", "shell/services/usage.mjs", "shell/services/t3.mjs", "shell/services/agents.mjs", "shell/services/limits.mjs", "shell/services/spendreport.mjs", "shell/config/tr.mjs", "shell/services/caches.mjs", "shell/services/ai/chatstore.mjs"]
+  "files": ["shell/services/providers.mjs", "shell/services/otp.mjs", "shell/services/clipstate.mjs", "shell/services/notifUndo.mjs", "shell/services/moments.mjs", "shell/config/dates.mjs", "shell/services/usage.mjs", "shell/services/t3.mjs", "shell/services/agents.mjs", "shell/services/limits.mjs", "shell/services/spendreport.mjs", "shell/config/tr.mjs", "shell/services/caches.mjs", "shell/services/ai/chatstore.mjs", "shell/services/keychord.mjs"]
 }

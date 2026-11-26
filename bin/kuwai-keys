@@ -1,0 +1,146 @@
+#!/usr/bin/env python3
+"""Your own chords for kuwai's shortcuts.
+
+Kept in $XDG_CONFIG_HOME/kuwai/keys.tsv, one line per action you moved:
+the action's default chord (its id, e.g. SUPER+E), the chord it has now
+("" for none) and its name. Updates never touch the file and binds.lua is
+never rewritten; Hyprland reads it at every load (hypr/kuwai/keys.lua) and
+this tool asks the running one to take it at once.
+
+  kuwai keys                          what you changed
+  kuwai keys set ACTION KEYS NAME …   ACTION to KEYS ("SUPER + CTRL + E", "" for none); several at once
+  kuwai keys reset ACTION …           back to the default
+  kuwai keys reset-all
+  --json   machine output   --no-apply   only write the file
+"""
+from __future__ import annotations
+
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+AID = re.compile(r"^[A-Z0-9_:+]{1,80}$")
+KEY = re.compile(r"^(?:[A-Za-z0-9_]{1,40}|code:\d{1,3})$")
+MODS = ("SUPER", "CTRL", "ALT", "SHIFT")
+
+
+def path() -> Path:
+    base = os.environ.get("XDG_CONFIG_HOME") or str(Path.home() / ".config")
+    return Path(base) / "kuwai" / "keys.tsv"
+
+
+def chord(keys: str) -> str | None:
+    """The canonical id of a chord, as hypr/kuwai/core.lua's K.chord makes it; None when it isn't one."""
+    parts = [p.strip() for p in keys.split("+")]
+    if not parts or any(p == "" for p in parts):
+        return None
+    *mods, key = parts
+    up = [m.upper() for m in mods]
+    if len(set(up)) != len(up) or any(m not in MODS for m in up) or not KEY.match(key):
+        return None
+    return "+".join([m for m in MODS if m in up] + [key.upper()])
+
+
+def clean(text: str) -> str:
+    return re.sub(r"[\x00-\x1f\x7f]+", " ", text).strip()[:200]
+
+
+def read() -> dict[str, dict[str, str]]:
+    out: dict[str, dict[str, str]] = {}
+    try:
+        lines = path().read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return out
+    for line in lines:
+        f = line.split("\t")
+        if len(f) == 3 and AID.match(f[0]) and (f[1] == "" or chord(f[1])):
+            out[f[0]] = {"keys": f[1], "text": f[2]}
+    return out
+
+
+def write(over: dict[str, dict[str, str]]) -> None:
+    p = path()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(prefix=".keys-", dir=str(p.parent))
+    try:
+        os.chmod(fd, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            for aid in sorted(over):
+                fh.write(f"{aid}\t{over[aid]['keys']}\t{over[aid]['text']}\n")
+        os.replace(tmp, p)
+    except BaseException:
+        Path(tmp).unlink(missing_ok=True)
+        raise
+
+
+def apply() -> None:
+    if not os.environ.get("HYPRLAND_INSTANCE_SIGNATURE") or not shutil.which("hyprctl"):
+        return
+    try:
+        subprocess.run(["hyprctl", "dispatch", "kuwai.keys_apply()"], stdout=subprocess.DEVNULL,
+                       stderr=subprocess.DEVNULL, timeout=5, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+
+
+def fail(msg: str) -> int:
+    print(f"kuwai keys: {msg}", file=sys.stderr)
+    return 2
+
+
+def main(argv: list[str]) -> int:
+    no_apply = "--no-apply" in argv
+    as_json = "--json" in argv
+    args = [a for a in argv if a not in ("--no-apply", "--json")]
+    cmd = args[0] if args else "list"
+    over = read()
+    if cmd == "list":
+        if as_json:
+            print(json.dumps(over, ensure_ascii=False, sort_keys=True))
+        elif not over:
+            print("every shortcut is as it came")
+        else:
+            for aid in sorted(over):
+                print(f"  {over[aid]['text'][:40]:<40} {aid:<26} → {over[aid]['keys'] or '(none)'}")
+        return 0
+    if cmd == "set":
+        rest = args[1:]
+        if not rest or len(rest) % 3:
+            return fail("usage: kuwai keys set ACTION KEYS NAME [ACTION KEYS NAME …]")
+        for i in range(0, len(rest), 3):
+            aid, keys, text = rest[i], rest[i + 1].strip(), clean(rest[i + 2])
+            if not AID.match(aid):
+                return fail(f"not an action: {aid!r}")
+            if keys and not chord(keys):
+                return fail(f"not a chord: {keys!r} (e.g. \"SUPER + CTRL + E\")")
+            if keys and chord(keys) == aid:
+                over.pop(aid, None)
+            else:
+                over[aid] = {"keys": keys, "text": text}
+        taken: dict[str, str] = {}
+        for aid, o in over.items():
+            c = chord(o["keys"]) if o["keys"] else None
+            if c and c in taken:
+                return fail(f"{o['keys']} would run two actions: {over[taken[c]]['text']} and {o['text']}")
+            if c:
+                taken[c] = aid
+    elif cmd == "reset":
+        for aid in args[1:]:
+            over.pop(aid, None)
+    elif cmd == "reset-all":
+        over = {}
+    else:
+        return fail(f"no command {cmd!r} (list, set, reset, reset-all)")
+    write(over)
+    if not no_apply:
+        apply()
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

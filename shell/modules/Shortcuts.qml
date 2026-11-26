@@ -11,6 +11,8 @@ import qs.config
 import qs.services
 
 Scope {
+    readonly property string fKeys: Settings.loaded ? Settings.fKeys : ""
+    onFKeysChanged: if (fKeys) Hyprland.dispatch(fKeys === "plain" ? "kuwai.fkeys(true)" : "kuwai.fkeys(false)")
     // The island's card from the keyboard (Island.cardKeys): only while one
     // shows; held (its timer paused) while the keyboard is on it.
     readonly property bool cardUp: Notifs.peek !== null || Moments.card !== null

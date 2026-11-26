@@ -49,7 +49,7 @@ FocusScope {
         target = r.row ? r.row.label : "";
         targetGroup = r.row ? r.row.group : "";
         goPending = go;
-        sideFlick.revealAt(i * 46, 44);
+        sideFlick.revealAt(i * (Theme.sp(44) + 2), Theme.sp(44));
         const si = sections.findIndex(x => x.id === r.section.id);
         if (si >= 0 && si !== current) current = si;     // onCurrentChanged marks once the page is in
         else markLater.restart();
@@ -281,7 +281,7 @@ FocusScope {
                     required property int index
                     readonly property bool on: settings.pick === index
                     width: parent.width
-                    height: 44
+                    height: Theme.sp(44)
                     radius: 9
                     color: on ? Theme.wash(2) : resArea.containsMouse ? Theme.rowHover : "transparent"
                     Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
@@ -361,7 +361,7 @@ FocusScope {
             Loader {
                 id: page
                 width: parent.width
-                sourceComponent: [barPage, clockPage, notifPage, assistantPage, motionPage, keyboardPage, pointerPage, displaysPage, islandRestPage, workspacesPage, powerPage, saverPage, timePage, clipboardPage, updatesPage, aboutPage][settings.current]
+                sourceComponent: [barPage, clockPage, notifPage, assistantPage, motionPage, keyboardPage, shortcutsPage, pointerPage, displaysPage, islandRestPage, workspacesPage, powerPage, saverPage, timePage, clipboardPage, updatesPage, aboutPage][settings.current]
             }
         }
         ScrollFade { flickable: pageFlick }
@@ -706,6 +706,24 @@ FocusScope {
                 }
             }
             SettingsGroup {
+                title: "Function keys"
+                SettingsRow {
+                    key: "fKeys"
+                    label: "F7, F8 and F10"
+                    detail: Settings.fKeys === "plain" ? "Apps get them as F7, F8 and F10; brightness and mute stay on their own keys" : "F7 dims, F8 brightens, F10 mutes; Plain leaves them to apps (for keyboards whose Fn row already sends those)"
+                    Segmented {
+                        options: [{ id: "actions", label: "Brightness, mute" }, { id: "plain", label: "Plain" }]
+                        current: Settings.fKeys
+                        onPicked: id => Settings.set("fKeys", id)
+                    }
+                }
+                SettingsRow {
+                    label: "Shortcuts"
+                    detail: "Give any of kuwai's actions keys of your own"
+                    Button { height: Theme.sp(30); size: Theme.tSub; text: "Change shortcuts"; onClicked: settings.goTo("shortcuts") }
+                }
+            }
+            SettingsGroup {
                 SettingsRow {
                     label: "Input method"
                     detail: "fcitx5 (or ibus) for Japanese, Chinese, Korean, Indic scripts; applies after a reload"
@@ -716,6 +734,10 @@ FocusScope {
                 }
             }
         }
+    }
+    Component {
+        id: shortcutsPage
+        ShortcutsPage {}
     }
     Component {
         id: pointerPage

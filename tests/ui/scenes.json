@@ -5075,7 +5075,7 @@
    "panel": "SettingsPanel",
    "kind": "typical",
    "props": {
-    "current": 6
+    "current": 7
    }
   },
   {
@@ -5084,7 +5084,7 @@
    "panel": "SettingsPanel",
    "kind": "typical",
    "props": {
-    "current": 7
+    "current": 8
    }
   },
   {
@@ -5095,6 +5095,912 @@
    "props": {
     "current": 5
    }
+  },
+  {
+   "id": "settings/function-keys",
+   "name": "settings",
+   "panel": "SettingsPanel",
+   "kind": "typical",
+   "props": {
+    "searchText": "f10"
+   }
+  },
+  {
+   "id": "settings/shortcuts",
+   "name": "settings",
+   "panel": "SettingsPanel",
+   "kind": "typical",
+   "props": {
+    "current": 6
+   },
+   "set": [
+    [
+     "KeyBinds",
+     "pinned",
+     true
+    ],
+    [
+     "KeyBinds",
+     "loaded",
+     true
+    ],
+    [
+     "KeyBinds",
+     "entries",
+     [
+      {
+       "id": "b65",
+       "kind": "bind",
+       "group": "Workspaces",
+       "text": "Workspace 1",
+       "keys": "SUPER + 1",
+       "aid": "SUPER+CODE:10",
+       "def": "SUPER + 1",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b66",
+       "kind": "bind",
+       "group": "Workspaces",
+       "text": "Move window to workspace 1",
+       "keys": "SUPER + SHIFT + 1",
+       "aid": "SUPER+SHIFT+CODE:10",
+       "def": "SUPER + SHIFT + 1",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b67",
+       "kind": "bind",
+       "group": "Workspaces",
+       "text": "Send window to workspace 1 (stay)",
+       "keys": "SUPER + ALT + 1",
+       "aid": "SUPER+ALT+CODE:10",
+       "def": "SUPER + ALT + 1",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b68",
+       "kind": "bind",
+       "group": "Workspaces",
+       "text": "Workspace 2",
+       "keys": "SUPER + 2",
+       "aid": "SUPER+CODE:11",
+       "def": "SUPER + 2",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b69",
+       "kind": "bind",
+       "group": "Workspaces",
+       "text": "Move window to workspace 2",
+       "keys": "SUPER + SHIFT + 2",
+       "aid": "SUPER+SHIFT+CODE:11",
+       "def": "SUPER + SHIFT + 2",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b70",
+       "kind": "bind",
+       "group": "Workspaces",
+       "text": "Send window to workspace 2 (stay)",
+       "keys": "SUPER + ALT + 2",
+       "aid": "SUPER+ALT+CODE:11",
+       "def": "SUPER + ALT + 2",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b113",
+       "kind": "bind",
+       "group": "Launch",
+       "text": "Terminal",
+       "keys": "SUPER + T",
+       "aid": "SUPER+T",
+       "def": "SUPER + T",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b114",
+       "kind": "bind",
+       "group": "Launch",
+       "text": "Terminal",
+       "keys": "SUPER + RETURN",
+       "aid": "SUPER+RETURN",
+       "def": "SUPER + RETURN",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b115",
+       "kind": "bind",
+       "group": "Launch",
+       "text": "Terminal here (focused terminal's folder)",
+       "keys": "SUPER + SHIFT + RETURN",
+       "aid": "SUPER+SHIFT+RETURN",
+       "def": "SUPER + SHIFT + RETURN",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b116",
+       "kind": "bind",
+       "group": "Launch",
+       "text": "Claude here (kittymux tab in this folder)",
+       "keys": "SUPER + ALT + RETURN",
+       "aid": "SUPER+ALT+RETURN",
+       "def": "SUPER + ALT + RETURN",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b117",
+       "kind": "bind",
+       "group": "Launch",
+       "text": "Codex here (kittymux tab in this folder)",
+       "keys": "SUPER + ALT + SHIFT + RETURN",
+       "aid": "SUPER+ALT+SHIFT+RETURN",
+       "def": "SUPER + ALT + SHIFT + RETURN",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b118",
+       "kind": "bind",
+       "group": "Launch",
+       "text": "Files",
+       "keys": "SUPER + E",
+       "aid": "SUPER+E",
+       "def": "SUPER + E",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b119",
+       "kind": "bind",
+       "group": "Launch",
+       "text": "Editor",
+       "keys": "SUPER + C",
+       "aid": "SUPER+C",
+       "def": "SUPER + C",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b120",
+       "kind": "bind",
+       "group": "Launch",
+       "text": "Browser",
+       "keys": "SUPER + SHIFT + B",
+       "aid": "SUPER+SHIFT+B",
+       "def": "SUPER + SHIFT + B",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b124",
+       "kind": "bind",
+       "group": "Shell",
+       "text": "Launcher",
+       "keys": "SUPER + A",
+       "aid": "SUPER+A",
+       "def": "SUPER + A",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b125",
+       "kind": "bind",
+       "group": "Shell",
+       "text": "AI Assistant",
+       "keys": "SUPER + CTRL + SHIFT + A",
+       "aid": "SUPER+CTRL+SHIFT+A",
+       "def": "SUPER + CTRL + SHIFT + A",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b126",
+       "kind": "bind",
+       "group": "Shell",
+       "text": "Notifications",
+       "keys": "SUPER + N",
+       "aid": "SUPER+N",
+       "def": "SUPER + N",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b127",
+       "kind": "bind",
+       "group": "Shell",
+       "text": "Agents: every pane and thread",
+       "keys": "SUPER + SHIFT + N",
+       "aid": "SUPER+SHIFT+N",
+       "def": "SUPER + SHIFT + N",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b128",
+       "kind": "bind",
+       "group": "Shell",
+       "text": "Agents: go to the one that needs you",
+       "keys": "SUPER + CTRL + A",
+       "aid": "SUPER+CTRL+A",
+       "def": "SUPER + CTRL + A",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b129",
+       "kind": "bind",
+       "group": "Shell",
+       "text": "Do not disturb",
+       "keys": "SUPER + ALT + N",
+       "aid": "SUPER+ALT+N",
+       "def": "SUPER + ALT + N",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b130",
+       "kind": "bind",
+       "group": "Shell",
+       "text": "Bluetooth",
+       "keys": "SUPER + ALT + B",
+       "aid": "SUPER+ALT+B",
+       "def": "SUPER + ALT + B",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b131",
+       "kind": "bind",
+       "group": "Shell",
+       "text": "Wi-Fi and controls",
+       "keys": "SUPER + CTRL + ALT + W",
+       "aid": "SUPER+CTRL+ALT+W",
+       "def": "SUPER + CTRL + ALT + W",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b132",
+       "kind": "bind",
+       "group": "Shell",
+       "text": "Open the newest notification",
+       "keys": "SUPER + SHIFT + ALT + N",
+       "aid": "SUPER+ALT+SHIFT+N",
+       "def": "SUPER + SHIFT + ALT + N",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b133",
+       "kind": "bind",
+       "group": "Shell",
+       "text": "Island: answer its card (a notification, an alarm) from the keyboard",
+       "keys": "SUPER + CTRL + Return",
+       "aid": "SUPER+CTRL+RETURN",
+       "def": "SUPER + CTRL + Return",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b134",
+       "kind": "bind",
+       "group": "Shell",
+       "text": "Quick note (jot)",
+       "keys": "SUPER + CTRL + J",
+       "aid": "SUPER+CTRL+J",
+       "def": "SUPER + CTRL + J",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b135",
+       "kind": "bind",
+       "group": "Shell",
+       "text": "Remind me",
+       "keys": "SUPER + CTRL + SHIFT + J",
+       "aid": "SUPER+CTRL+SHIFT+J",
+       "def": "SUPER + CTRL + SHIFT + J",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b163",
+       "kind": "bind",
+       "group": "Hardware|Audio",
+       "text": "Volume up",
+       "keys": "XF86AudioRaiseVolume",
+       "aid": "XF86AUDIORAISEVOLUME",
+       "def": "XF86AudioRaiseVolume",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b164",
+       "kind": "bind",
+       "group": "Hardware|Audio",
+       "text": "Volume down",
+       "keys": "XF86AudioLowerVolume",
+       "aid": "XF86AUDIOLOWERVOLUME",
+       "def": "XF86AudioLowerVolume",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b165",
+       "kind": "bind",
+       "group": "Hardware|Audio",
+       "text": "Mute",
+       "keys": "XF86AudioMute",
+       "aid": "XF86AUDIOMUTE",
+       "def": "XF86AudioMute",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b166",
+       "kind": "bind",
+       "group": "Hardware|Audio",
+       "text": "Mute",
+       "keys": "",
+       "aid": "F10",
+       "def": "F10",
+       "custom": true,
+       "fixed": false
+      },
+      {
+       "id": "b167",
+       "kind": "bind",
+       "group": "Hardware|Audio",
+       "text": "Microphone on/off",
+       "keys": "XF86AudioMicMute",
+       "aid": "XF86AUDIOMICMUTE",
+       "def": "XF86AudioMicMute",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b168",
+       "kind": "bind",
+       "group": "Hardware|Audio",
+       "text": "Microphone on/off",
+       "keys": "CTRL + ALT + M",
+       "aid": "CTRL+ALT+M",
+       "def": "CTRL + ALT + M",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b169",
+       "kind": "bind",
+       "group": "Hardware|Media",
+       "text": "Play / pause",
+       "keys": "XF86AudioPlay",
+       "aid": "XF86AUDIOPLAY",
+       "def": "XF86AudioPlay",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b170",
+       "kind": "bind",
+       "group": "Hardware|Media",
+       "text": "Play / pause",
+       "keys": "XF86AudioPause",
+       "aid": "XF86AUDIOPAUSE",
+       "def": "XF86AudioPause",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b171",
+       "kind": "bind",
+       "group": "Hardware|Media",
+       "text": "Next track",
+       "keys": "XF86AudioNext",
+       "aid": "XF86AUDIONEXT",
+       "def": "XF86AudioNext",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b172",
+       "kind": "bind",
+       "group": "Hardware|Media",
+       "text": "Previous track",
+       "keys": "XF86AudioPrev",
+       "aid": "XF86AUDIOPREV",
+       "def": "XF86AudioPrev",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b900",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate while held (tap: hands-free)",
+       "keys": "F9",
+       "aid": "F9",
+       "def": "F9",
+       "custom": false,
+       "fixed": true
+      }
+     ]
+    ],
+    [
+     "KeyBinds",
+     "live",
+     []
+    ],
+    [
+     "KeyBinds",
+     "replaced",
+     "SUPER + CTRL + N: [Utilities] Blank the other screen ← replaced by Blank"
+    ]
+   ]
+  },
+  {
+   "id": "settings/shortcuts-capture",
+   "name": "settings",
+   "panel": "SettingsPanel",
+   "kind": "typical",
+   "props": {
+    "current": 6
+   },
+   "set": [
+    [
+     "KeyBinds",
+     "pinned",
+     true
+    ],
+    [
+     "KeyBinds",
+     "loaded",
+     true
+    ],
+    [
+     "KeyBinds",
+     "entries",
+     [
+      {
+       "id": "b65",
+       "kind": "bind",
+       "group": "Workspaces",
+       "text": "Workspace 1",
+       "keys": "SUPER + 1",
+       "aid": "SUPER+CODE:10",
+       "def": "SUPER + 1",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b66",
+       "kind": "bind",
+       "group": "Workspaces",
+       "text": "Move window to workspace 1",
+       "keys": "SUPER + SHIFT + 1",
+       "aid": "SUPER+SHIFT+CODE:10",
+       "def": "SUPER + SHIFT + 1",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b67",
+       "kind": "bind",
+       "group": "Workspaces",
+       "text": "Send window to workspace 1 (stay)",
+       "keys": "SUPER + ALT + 1",
+       "aid": "SUPER+ALT+CODE:10",
+       "def": "SUPER + ALT + 1",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b68",
+       "kind": "bind",
+       "group": "Workspaces",
+       "text": "Workspace 2",
+       "keys": "SUPER + 2",
+       "aid": "SUPER+CODE:11",
+       "def": "SUPER + 2",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b69",
+       "kind": "bind",
+       "group": "Workspaces",
+       "text": "Move window to workspace 2",
+       "keys": "SUPER + SHIFT + 2",
+       "aid": "SUPER+SHIFT+CODE:11",
+       "def": "SUPER + SHIFT + 2",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b70",
+       "kind": "bind",
+       "group": "Workspaces",
+       "text": "Send window to workspace 2 (stay)",
+       "keys": "SUPER + ALT + 2",
+       "aid": "SUPER+ALT+CODE:11",
+       "def": "SUPER + ALT + 2",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b113",
+       "kind": "bind",
+       "group": "Launch",
+       "text": "Terminal",
+       "keys": "SUPER + T",
+       "aid": "SUPER+T",
+       "def": "SUPER + T",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b114",
+       "kind": "bind",
+       "group": "Launch",
+       "text": "Terminal",
+       "keys": "SUPER + RETURN",
+       "aid": "SUPER+RETURN",
+       "def": "SUPER + RETURN",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b115",
+       "kind": "bind",
+       "group": "Launch",
+       "text": "Terminal here (focused terminal's folder)",
+       "keys": "SUPER + SHIFT + RETURN",
+       "aid": "SUPER+SHIFT+RETURN",
+       "def": "SUPER + SHIFT + RETURN",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b116",
+       "kind": "bind",
+       "group": "Launch",
+       "text": "Claude here (kittymux tab in this folder)",
+       "keys": "SUPER + ALT + RETURN",
+       "aid": "SUPER+ALT+RETURN",
+       "def": "SUPER + ALT + RETURN",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b117",
+       "kind": "bind",
+       "group": "Launch",
+       "text": "Codex here (kittymux tab in this folder)",
+       "keys": "SUPER + ALT + SHIFT + RETURN",
+       "aid": "SUPER+ALT+SHIFT+RETURN",
+       "def": "SUPER + ALT + SHIFT + RETURN",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b118",
+       "kind": "bind",
+       "group": "Launch",
+       "text": "Files",
+       "keys": "SUPER + E",
+       "aid": "SUPER+E",
+       "def": "SUPER + E",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b119",
+       "kind": "bind",
+       "group": "Launch",
+       "text": "Editor",
+       "keys": "SUPER + C",
+       "aid": "SUPER+C",
+       "def": "SUPER + C",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b120",
+       "kind": "bind",
+       "group": "Launch",
+       "text": "Browser",
+       "keys": "SUPER + SHIFT + B",
+       "aid": "SUPER+SHIFT+B",
+       "def": "SUPER + SHIFT + B",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b124",
+       "kind": "bind",
+       "group": "Shell",
+       "text": "Launcher",
+       "keys": "SUPER + A",
+       "aid": "SUPER+A",
+       "def": "SUPER + A",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b125",
+       "kind": "bind",
+       "group": "Shell",
+       "text": "AI Assistant",
+       "keys": "SUPER + CTRL + SHIFT + A",
+       "aid": "SUPER+CTRL+SHIFT+A",
+       "def": "SUPER + CTRL + SHIFT + A",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b126",
+       "kind": "bind",
+       "group": "Shell",
+       "text": "Notifications",
+       "keys": "SUPER + N",
+       "aid": "SUPER+N",
+       "def": "SUPER + N",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b127",
+       "kind": "bind",
+       "group": "Shell",
+       "text": "Agents: every pane and thread",
+       "keys": "SUPER + SHIFT + N",
+       "aid": "SUPER+SHIFT+N",
+       "def": "SUPER + SHIFT + N",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b128",
+       "kind": "bind",
+       "group": "Shell",
+       "text": "Agents: go to the one that needs you",
+       "keys": "SUPER + CTRL + A",
+       "aid": "SUPER+CTRL+A",
+       "def": "SUPER + CTRL + A",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b129",
+       "kind": "bind",
+       "group": "Shell",
+       "text": "Do not disturb",
+       "keys": "SUPER + ALT + N",
+       "aid": "SUPER+ALT+N",
+       "def": "SUPER + ALT + N",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b130",
+       "kind": "bind",
+       "group": "Shell",
+       "text": "Bluetooth",
+       "keys": "SUPER + ALT + B",
+       "aid": "SUPER+ALT+B",
+       "def": "SUPER + ALT + B",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b131",
+       "kind": "bind",
+       "group": "Shell",
+       "text": "Wi-Fi and controls",
+       "keys": "SUPER + CTRL + ALT + W",
+       "aid": "SUPER+CTRL+ALT+W",
+       "def": "SUPER + CTRL + ALT + W",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b132",
+       "kind": "bind",
+       "group": "Shell",
+       "text": "Open the newest notification",
+       "keys": "SUPER + SHIFT + ALT + N",
+       "aid": "SUPER+ALT+SHIFT+N",
+       "def": "SUPER + SHIFT + ALT + N",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b133",
+       "kind": "bind",
+       "group": "Shell",
+       "text": "Island: answer its card (a notification, an alarm) from the keyboard",
+       "keys": "SUPER + CTRL + Return",
+       "aid": "SUPER+CTRL+RETURN",
+       "def": "SUPER + CTRL + Return",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b134",
+       "kind": "bind",
+       "group": "Shell",
+       "text": "Quick note (jot)",
+       "keys": "SUPER + CTRL + J",
+       "aid": "SUPER+CTRL+J",
+       "def": "SUPER + CTRL + J",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b135",
+       "kind": "bind",
+       "group": "Shell",
+       "text": "Remind me",
+       "keys": "SUPER + CTRL + SHIFT + J",
+       "aid": "SUPER+CTRL+SHIFT+J",
+       "def": "SUPER + CTRL + SHIFT + J",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b163",
+       "kind": "bind",
+       "group": "Hardware|Audio",
+       "text": "Volume up",
+       "keys": "XF86AudioRaiseVolume",
+       "aid": "XF86AUDIORAISEVOLUME",
+       "def": "XF86AudioRaiseVolume",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b164",
+       "kind": "bind",
+       "group": "Hardware|Audio",
+       "text": "Volume down",
+       "keys": "XF86AudioLowerVolume",
+       "aid": "XF86AUDIOLOWERVOLUME",
+       "def": "XF86AudioLowerVolume",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b165",
+       "kind": "bind",
+       "group": "Hardware|Audio",
+       "text": "Mute",
+       "keys": "XF86AudioMute",
+       "aid": "XF86AUDIOMUTE",
+       "def": "XF86AudioMute",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b166",
+       "kind": "bind",
+       "group": "Hardware|Audio",
+       "text": "Mute",
+       "keys": "",
+       "aid": "F10",
+       "def": "F10",
+       "custom": true,
+       "fixed": false
+      },
+      {
+       "id": "b167",
+       "kind": "bind",
+       "group": "Hardware|Audio",
+       "text": "Microphone on/off",
+       "keys": "XF86AudioMicMute",
+       "aid": "XF86AUDIOMICMUTE",
+       "def": "XF86AudioMicMute",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b168",
+       "kind": "bind",
+       "group": "Hardware|Audio",
+       "text": "Microphone on/off",
+       "keys": "CTRL + ALT + M",
+       "aid": "CTRL+ALT+M",
+       "def": "CTRL + ALT + M",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b169",
+       "kind": "bind",
+       "group": "Hardware|Media",
+       "text": "Play / pause",
+       "keys": "XF86AudioPlay",
+       "aid": "XF86AUDIOPLAY",
+       "def": "XF86AudioPlay",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b170",
+       "kind": "bind",
+       "group": "Hardware|Media",
+       "text": "Play / pause",
+       "keys": "XF86AudioPause",
+       "aid": "XF86AUDIOPAUSE",
+       "def": "XF86AudioPause",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b171",
+       "kind": "bind",
+       "group": "Hardware|Media",
+       "text": "Next track",
+       "keys": "XF86AudioNext",
+       "aid": "XF86AUDIONEXT",
+       "def": "XF86AudioNext",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b172",
+       "kind": "bind",
+       "group": "Hardware|Media",
+       "text": "Previous track",
+       "keys": "XF86AudioPrev",
+       "aid": "XF86AUDIOPREV",
+       "def": "XF86AudioPrev",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b900",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate while held (tap: hands-free)",
+       "keys": "F9",
+       "aid": "F9",
+       "def": "F9",
+       "custom": false,
+       "fixed": true
+      }
+     ]
+    ],
+    [
+     "KeyBinds",
+     "live",
+     []
+    ],
+    [
+     "KeyBinds",
+     "editing",
+     "SUPER+A"
+    ],
+    [
+     "KeyBinds",
+     "pending",
+     {
+      "keys": "SUPER + E",
+      "canon": "SUPER+E",
+      "why": ""
+     }
+    ]
+   ]
   },
   {
    "id": "controls/vpn-printers",

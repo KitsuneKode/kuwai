@@ -11,6 +11,7 @@ themes, wallpapers and pickers working while HyDE is still installed.
 ~/.config/kuwai/hypr/hyprland.lua  entry: finds kuwai (KUWAI_ROOT), safety net if it fails
 ~/.config/kuwai/hypr/monitors.lua  this machine's screens            (yours)
 ~/.config/kuwai/hypr/user.lua      apps, launchers, per-app rules     (yours)
+~/.config/kuwai/keys.tsv           your own chords for kuwai's actions (yours; Settings → Shortcuts, `kuwai keys`)
 /usr/local/bin/kuwai-session       the "Kuwai" login entry: start-hyprland -- --config <entry>
 
 hypr/init.lua                  load order; errors → one notification + `kuwai doctor`
@@ -28,6 +29,7 @@ hypr/kuwai/core.lua            K: paths, file probes, binds (K.bind/K.bind_hold/
            browsers.lua        popups float in place (replaces zen_popups.py)
            actions.lua         float/pin/PiP/zoom/close as Lua (replaces scripts)
            binds.lua           the keyboard (groups = Super+/ panel sections)
+           keys.lua            your chords over binds.lua, live (keys.tsv); F7/F8/F10 plain or kuwai's (fKeys)
            voxtype.lua         dictation: PTT hold, toggle, Esc guard, output submap
            hyde.lua            HyDE bridge (only if HyDE is installed)
            startup.lua         session services, the shell, clipboard, tray
@@ -37,7 +39,7 @@ hypr/kuwai/core.lua            K: paths, file probes, binds (K.bind/K.bind_hold/
            extras.lua          resize mode, place memory, smart PiP, focus sessions
            modes.lua           focus · default · glass · gaming · battery (applied last)
 hypr/templates/hyprland.lua    the entry file, for a fresh machine
-bin/kuwai                      CLI: info, doctor, mode, motion, gpu, binds, reload
+bin/kuwai                      CLI: info, doctor, mode, motion, gpu, binds, keys, reload
 ```
 
 ## Everyday

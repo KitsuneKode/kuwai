@@ -93,6 +93,7 @@ Singleton {
     readonly property int sweepMinGB: value("sweepMinGB")
     readonly property string quickPrimary: value("quickPrimary")
     readonly property bool liveOnBattery: value("liveOnBattery")
+    readonly property string fKeys: value("fKeys")
     readonly property string wallTransition: value("wallTransition")   // auto | shards | glass (services/WallFx)
 
     function value(key) {

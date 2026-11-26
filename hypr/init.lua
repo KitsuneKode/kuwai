@@ -35,6 +35,14 @@ K.load_user("monitors.lua")
 
 K.load_user("user.lua")
 
+K.keys = K.load("kuwai.keys")
+if K.keys then
+	local ok, err = pcall(K.keys.apply)
+	if not ok then
+		K.err("keys: " .. tostring(err))
+	end
+end
+
 K.modes = K.load("kuwai.modes")
 if K.modes then
 	K.modes.apply()
@@ -72,11 +80,18 @@ function kuwai.info()
 	)
 end
 
-function kuwai.palette()
-	local j, out = K.json_str, {}
+function kuwai.palette(all)
+	local j, out, KK = K.json_str, {}, K.keys
 	for i, id in ipairs(K.palette_order) do
 		local e = K.palette_index[id]
-		out[#out + 1] = ('{"id":"b%d","kind":"bind","group":%s,"text":%s,"keys":%s}'):format(i, j(e.group), j(e.text), j(e.keys))
+		local keys, custom = e.keys, false
+		if KK then
+			keys, custom = KK.current(e)
+		end
+		if not (KK and KK.hidden[id]) and (all or keys ~= "") then
+			out[#out + 1] = ('{"id":"b%d","kind":"bind","group":%s,"text":%s,"keys":%s,"aid":%s,"def":%s,"custom":%s,"fixed":%s}'):format(
+				i, j(e.group), j(e.text), j(keys), j(e.aid), j(e.keys), custom and "true" or "false", KK and KK.fixed(e) and "true" or "false")
+		end
 	end
 	local F = K.F or { defaults = {}, describe = {} }
 	local names = {}
