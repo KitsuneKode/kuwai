@@ -46,3 +46,19 @@ kuwai.privacy_resync()
 assert(commands[#commands]=='/fixture/bin/kuwai notifs mute-off','disabled automation must acknowledge deliberate opt-out')
 assert(state.sharing=='0','disabled resync must write sharing=0')
 print('privacy handshake fixtures pass')
+
+-- A config reload in the middle of a share keeps privacy on.
+setup(true)
+handlers['screenshare.state'](true)
+table.remove(timers, 1)()
+assert(state.sharing == '1' and rules_on == true, 'share engaged before the reload')
+local kept = state
+commands, timers, handlers = {}, {}, {}
+rules_on = nil
+package.loaded['kuwai.core'].state = kept
+dofile('hypr/kuwai/automation.lua')
+assert(rules_on == true, 'a reload mid-share leaves private windows hidden')
+assert(kept.sharing == '1', 'and the share still counts as engaged')
+handlers['screenshare.state'](false)
+assert(rules_on == false and kept.sharing == '0', 'the share ending after the reload releases privacy')
+print('privacy reload fixture passes')

@@ -92,7 +92,7 @@ Singleton {
     // what is asking and on which screen; nothing typed ever comes here).
     // The island shows a lock chip on every screen; a click brings the prompt
     // to that screen (auth-summon).
-    readonly property string authPending: authLive ? AuthWords.believed(authWant, authCmd) : ""
+    readonly property string authPending: authLive ? AuthWords.believed(authWant, authCmd, authCgroup, Paths.root + "/shell-auth") : ""
     property string authScreen: ""
     FileView {
         path: Paths.runtime + "/kuwai/auth-pending"
@@ -115,10 +115,18 @@ Singleton {
         id: procFile
         path: /^[0-9]+$/.test(root.authPid) ? "/proc/" + root.authPid + "/cmdline" : ""
         printErrors: false
-        onLoaded: { root.authCmd = text(); root.authAlive = AuthWords.isPrompt(root.authCmd); }
+        onLoaded: { root.authCmd = text(); cgroupFile.reload(); }
         onLoadFailed: { root.authCmd = ""; root.authAlive = false; }
     }
+    FileView {
+        id: cgroupFile
+        path: /^[0-9]+$/.test(root.authPid) ? "/proc/" + root.authPid + "/cgroup" : ""
+        printErrors: false
+        onLoaded: { root.authCgroup = text(); root.authAlive = AuthWords.isPrompt(root.authCmd, root.authCgroup, Paths.root + "/shell-auth"); }
+        onLoadFailed: { root.authCgroup = ""; root.authAlive = false; }
+    }
     property string authCmd: ""
+    property string authCgroup: ""
     Timer { interval: 4000; repeat: true; running: root.authWant !== ""; onTriggered: procFile.reload() }
     readonly property bool authLive: authWant !== "" && authAlive
     FileView { id: summonFile; path: Paths.runtime + "/kuwai/auth-summon"; printErrors: false }
@@ -230,6 +238,14 @@ Singleton {
         focusNew.restart();
     }
     function close() { panel = ""; history = []; innerBack = null; innerBackLabel = ""; previewing = false; }
+    Connections {
+        target: Quickshell
+        function onScreensChanged() {
+            const here = n => Quickshell.screens.some(x => x.name === n);
+            if (root.panel !== "" && root.screen !== "" && !here(root.screen)) root.close();
+            if (Notifs.centerOpen && Notifs.centerScreen !== "" && !here(Notifs.centerScreen)) Notifs.setCenter(false, "pointer");
+        }
+    }
     // Opened by resting the pointer (the music's art): it folds away when the
     // pointer leaves the island, unless you click to keep it (open()).
     property bool previewing: false
@@ -255,7 +271,10 @@ Singleton {
         });
     }
     function toggle(name, screenName, how) {
+        if (name === "notifs" || name === "notifications" || name === "controls" || name === "sound" || name === "bluetooth") { open(name, screenName, how); return; }
+        if (name === "sweep") { cleanupView = "projects"; name = "cleanup"; }
         name = canon(name);
+        if (panels.indexOf(name) < 0) return;
         const go = s => {
             if (root.panel === name && root.screen === s) root.close();
             else root.openOn(name, s, how);

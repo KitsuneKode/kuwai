@@ -28,6 +28,7 @@ Scope {
     readonly property string when: Settings.screensaverWhen || "caffeine"
     readonly property bool allowed: when === "always" || (when === "caffeine" && Caffeine.on)
     property bool forced: false
+    onFullscreenAnywhereChanged: if (fullscreenAnywhere) { forced = false; wakeGrace = false; }
     // hasFullscreen is live (Hyprland events). lastIpcObject was a snapshot
     // that only refreshed on request: one fullscreen video earlier kept it
     // "true", and the screensaver never came again (nor `kuwai screensaver`).
@@ -53,7 +54,7 @@ Scope {
             if (isIdle) { root.idleShown = true; return; }
             const up = (root.forced || (root.idleShown && !root.dismissed)) && !root.fullscreenAnywhere && !Saver.locked && !Saver.screensOff;
             root.forced = false; root.dismissed = false; root.idleShown = false;
-            if (up && Media.active) { root.wakeGrace = true; graceEnd.restart(); }
+            if (up) { root.wakeGrace = true; graceEnd.restart(); }
         }
     }
     property bool idleShown: false
@@ -424,6 +425,8 @@ Scope {
                             textFormat: Text.PlainText
                             visible: Media.playing && !!Media.active
                             text: Media.active ? "\u{f075a}  " + (Media.title(Media.active)) + (Media.active.trackArtist ? " · " + Media.active.trackArtist : "") : ""
+                            elide: Text.ElideRight
+                            width: Math.min(implicitWidth, win.width * 0.4)
                             font.family: Theme.fontText
                             font.pixelSize: Math.round(win.height * 0.017)
                             color: Qt.rgba(1, 1, 1, 0.6)

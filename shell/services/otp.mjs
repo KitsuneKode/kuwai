@@ -181,3 +181,19 @@ export function otpLikely(item) {
 // A line that itself shows something code-shaped (the lock hides such a title).
 /** @param {unknown} text @returns {boolean} */
 export function codeShaped(text) { return candidates(clean(text)).length > 0; }
+
+/**
+ * Never written to history: a code the card would show, a code anywhere in
+ * the conversation it carries, or a body that is nothing but a code ("Sign
+ * in" / "482913"). Stricter than what the card does with it.
+ * @param {{ title?: string, body?: string, full?: string, thread?: unknown }} item
+ * @returns {boolean}
+ */
+export function secretForHistory(item) {
+    if (!item) return false;
+    if (otpOf(item) !== "" || otpLikely(item)) return true;
+    const body = clean(String(item.body || "")).trim();
+    if (/^[A-Z0-9-]{4,10}$/i.test(body) && (body.match(/\d/g) || []).length >= 4) return true;
+    const thread = item.thread ? (typeof item.thread === "string" ? item.thread : JSON.stringify(item.thread)) : "";
+    return thread !== "" && (otpLikely(thread) || otpOf({ body: thread }) !== "");
+}

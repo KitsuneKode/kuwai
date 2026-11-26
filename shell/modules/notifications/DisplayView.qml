@@ -160,7 +160,7 @@ Item {
                 transformOrigin: Item.Top
 
                 Tile {
-                    glyph: Networking.wifiEnabled ? "\u{f05a9}" : "\u{f05aa}"
+                    glyph: (view.iwd ? NetExtras.iwdPowered : Networking.wifiEnabled) ? "\u{f05a9}" : "\u{f05aa}"
                     title: "Wi‑Fi"
                     subtitle: view.iwd ? (!NetExtras.iwdPowered ? "Off" : NetExtras.iwdNetwork || "Not connected")
                             : !Networking.wifiEnabled ? "Off" : view.wifiNetwork ? view.wifiNetwork.name : "Not connected"
@@ -294,9 +294,10 @@ Item {
                     visible: view.wifiOpen || view.btOpen
                     anchors { right: parent.right; rightMargin: Theme.s1; verticalCenter: parent.verticalCenter }
                     label: view.btOpen ? "Bluetooth" : "Wi‑Fi"
-                    on: view.btOpen ? !!(view.adapter && view.adapter.enabled) : Networking.wifiEnabled
+                    on: view.btOpen ? !!(view.adapter && view.adapter.enabled) : view.iwd ? NetExtras.iwdPowered : Networking.wifiEnabled
                     onToggled: {
                         if (view.btOpen) { if (view.adapter) view.adapter.enabled = !view.adapter.enabled; }
+                        else if (view.iwd) NetExtras.setIwdPower(!NetExtras.iwdPowered);
                         else Networking.wifiEnabled = !Networking.wifiEnabled;
                     }
                 }

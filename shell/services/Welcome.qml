@@ -47,7 +47,7 @@ Singleton {
         interval: 6000
         running: root.loaded && root.version !== "" && !root.announced && root.mode !== ""
         onTriggered: {
-            if (Saver.locked || Saver.showing) { restart(); return; }
+            if (Saver.locked || Saver.showing || Island.panel !== "" || Notifs.centerOpen || Notifs.fullscreenNow) { restart(); return; }
             root.announced = true;
             if (root.mode === "first") Island.open("welcome", "", "pointer");
             else Moments.show({ kind: "update", glyph: "\u{f06b0}", label: "Kuwai " + root.version, value: "What's new", ring: -1, tone: Theme.textPrimary,

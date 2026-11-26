@@ -481,6 +481,7 @@ FocusScope {
     // Where colours come from, for every app at once (HyDE's wallbash mode):
     // the theme's own palette, or the wallpaper's (as it is, darkened, lightened).
     Column {
+        visible: picker.mode === "themes" || picker.mode === "wallpapers"
         anchors { right: parent.right; rightMargin: 22; bottom: parent.bottom; bottomMargin: 14 }
         width: 310
         spacing: 8

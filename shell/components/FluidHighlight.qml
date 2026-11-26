@@ -26,6 +26,9 @@ Item {
     property color fill: h.ring ? Theme.wash(2) : Theme.rowHover
     property color edge: "transparent"
     property bool lit: false
+    property real keptOp: 1
+    readonly property real targetOp: target ? target.opacity : keptOp
+    onTargetOpChanged: if (target) keptOp = targetOp
 
     z: 50
     visible: opacity > 0.001
@@ -120,7 +123,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        opacity: h.target ? h.target.opacity : 1
+        opacity: h.targetOp
         radius: h.radius
         // Surface-relative overlays: hover +6% white, selected +10%.
         color: h.fill

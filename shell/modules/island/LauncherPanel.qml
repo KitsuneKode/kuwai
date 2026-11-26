@@ -115,8 +115,8 @@ FocusScope {
         { name: "Glass mode", sub: "Desktop mode: liquid glass, translucent windows", also: "desktop mode", glyph: "\u{f0f49}", run: () => Apps.run([Paths.bin + "/kuwai", "mode", "glass"]) },
         { name: "Gaming mode", sub: "Desktop mode: nothing between you and the frame", also: "desktop mode", glyph: "\u{f0eb5}", run: () => Apps.run([Paths.bin + "/kuwai", "mode", "gaming"]) },
         { name: "Battery mode", sub: "Desktop mode: light effects, longer battery", also: "desktop mode", glyph: "\u{f0079}", run: () => Apps.run([Paths.bin + "/kuwai", "mode", "battery"]) },
-        { name: "Controls", sub: "Wi-Fi, Bluetooth, Do Not Disturb, brightness, sound · Super+Ctrl+Alt+W", glyph: "\u{f0493}", run: () => Notifs.toggleCenter("controls", "key") },
-        { name: "Wi-Fi", sub: "Networks, join one", glyph: "\u{f05a9}", run: () => Notifs.toggleCenter("controls", "key") },
+        { name: "Controls", sub: "Wi-Fi, Bluetooth, Do Not Disturb, brightness, sound · Super+Ctrl+Space", glyph: "\u{f0493}", run: () => Notifs.toggleCenter("controls", "key") },
+        { name: "Wi-Fi", sub: "Networks, join one · Super+Ctrl+Alt+W", glyph: "\u{f05a9}", run: () => Notifs.openControls("wifi") },
         // vicinae's names for them (it went on 11-05), so the habit still works.
         { name: "Kill Process", sub: "End an app or a process · or type kill zen", glyph: "\u{f0675}", run: () => launcher.enterMode("! "), keep: true },
         { name: "Kill Port", sub: "Free a port, or type kill 3000", glyph: "\u{f0675}", run: () => launcher.enterMode("! :"), keep: true }

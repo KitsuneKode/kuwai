@@ -1,5 +1,5 @@
 {
-  "total_comment_lines": 7512,
+  "total_comment_lines": 7511,
   "files_with_comments": 291,
   "files": {
     "shell/components/ActionMenu.qml": 23,
@@ -131,7 +131,7 @@
     "shell/modules/lock/PasswordPill.qml": 23,
     "shell/modules/notifications/Center.qml": 77,
     "shell/modules/notifications/CenterContent.qml": 20,
-    "shell/modules/notifications/CenterGroup.qml": 24,
+    "shell/modules/notifications/CenterGroup.qml": 23,
     "shell/modules/notifications/CenterRow.qml": 31,
     "shell/modules/notifications/DeviceList.qml": 6,
     "shell/modules/notifications/DisplayView.qml": 41,

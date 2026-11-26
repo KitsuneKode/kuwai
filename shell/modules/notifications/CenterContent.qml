@@ -273,7 +273,7 @@ Item {
                     ? (Notifs.undoSurface === "center"
                         ? [{ k: ["↑", "↓"], t: "Select" }, { k: ["↩"], t: "Open" }, { k: ["⌫"], t: "Dismiss" }, { k: ["⌃", "Z"], t: "Undo" }]
                         : [{ k: ["↑", "↓"], t: "Select" }, { k: ["↩"], t: "Open" }, { k: ["r"], t: "Reply" }, { k: ["⌫"], t: "Dismiss" }])
-                    : [{ k: ["⌥", "1–3"], t: "Tabs" }, { k: ["⎋"], t: "Close" }]
+                    : [{ k: ["⌥", content.center.notch ? "1–2" : "1–3"], t: "Tabs" }, { k: ["⎋"], t: "Close" }]
                 Row {
                     id: hint
                     required property var modelData

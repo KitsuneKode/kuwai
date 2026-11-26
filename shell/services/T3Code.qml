@@ -180,6 +180,33 @@ Singleton {
         const it = items.find(i => i.thread);
         if (it) openThread(it.thread); else focus();
     }
+    property var answers: ({})
+    function setAnswer(id, v) { const n = Object.assign({}, answers); n[id] = v; answers = n; }
+    function answer(thread, id, decision) {
+        if (!thread || !id || (answers[id] || {}).busy) return;
+        setAnswer(id, { busy: true, done: "", why: "" });
+        answerProc.createObject(root, { asked: { id: id, decision: decision },
+            command: [Paths.bin + "/kuwai-t3-answer", String(thread), String(id), decision] }).running = true;
+    }
+    Component {
+        id: answerProc
+        Process {
+            id: one
+            property var asked: null
+            onExited: destroy(1000)
+            stdout: StdioCollector {
+                onStreamFinished: {
+                    const p = one.asked;
+                    let r = {};
+                    try { r = JSON.parse(text); } catch (e) {}
+                    root.setAnswer(p.id, { busy: false, done: r.ok ? p.decision : "",
+                        why: r.ok ? "" : r.why === "scope" ? "T3's token for Kuwai can't answer yet (it needs orchestration:operate). Open it in T3."
+                            : r.why === "gone" ? "Already answered." : "T3 didn't take it. Open it in T3." });
+                    if (r.ok) root.read();
+                }
+            }
+        }
+    }
     // qs ipc -p <shell> call t3 best | open THREAD  (keybinds, tests)
     IpcHandler {
         target: "t3"

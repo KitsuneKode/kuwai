@@ -22,6 +22,8 @@ Singleton {
     property string glyph: "\u{f0599}"
     readonly property string location: Settings.weatherLocation || ""
     readonly property bool automatic: location === ""
+    onLocationChanged: relocate.restart()
+    Timer { id: relocate; interval: 1500; onTriggered: if (!fetch.running) fetch.running = true }
     property string place: ""                 // the place wttr.in answered for (nearest_area)
 
     // wttr/WWO weather codes → Material Design glyphs (Symbols Nerd Font).

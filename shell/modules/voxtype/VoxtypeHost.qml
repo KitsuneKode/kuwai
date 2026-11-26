@@ -109,7 +109,7 @@ Scope {
         if ("outcome" in osd && "outcome" in sh.state) osd.outcome = Qt.binding(() => sh.state.outcome);
         if ("activeOutput" in osd) {
             const name = scr.name;
-            osd.activeOutput = Qt.binding(() => !Hyprland.focusedMonitor || Hyprland.focusedMonitor.name === name);
+            osd.activeOutput = Qt.binding(() => !Screens.focusedName || Screens.focusedName === name);
         }
         return osd;
     }

@@ -146,5 +146,14 @@ def main(argv: list[str]) -> int:
     return 0
 
 
+def locked(argv: list[str]) -> int:
+    """One edit at a time: two that read the same file would each write over the other's."""
+    import fcntl
+    path().parent.mkdir(parents=True, exist_ok=True)
+    with open(path().with_name(".keys.lock"), "a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        return main(argv)
+
+
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))
+    sys.exit(locked(sys.argv[1:]))

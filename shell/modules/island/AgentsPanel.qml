@@ -77,33 +77,8 @@ FocusScope {
     Timer { interval: 30000; repeat: true; running: ap.visible; onTriggered: ap.askModels() }
     property real now: Date.now()
     Timer { interval: 30000; repeat: true; running: ap.visible; triggeredOnStart: true; onTriggered: ap.now = Date.now() }
-    property var t3Answers: ({})
-    function setT3Answer(id, v) { const n = Object.assign({}, t3Answers); n[id] = v; t3Answers = n; }
-    function answerT3(r, decision) {
-        if (!r || !r.request || (t3Answers[r.request.id] || {}).busy) return;
-        setT3Answer(r.request.id, { busy: true, done: "", why: "" });
-        t3Answer.createObject(ap, { asked: { id: r.request.id, decision: decision },
-            command: [Paths.bin + "/kuwai-t3-answer", r.thread, r.request.id, decision] }).running = true;
-    }
-    Component {
-        id: t3Answer
-        Process {
-            id: one
-            property var asked: null
-            onExited: destroy(1000)
-            stdout: StdioCollector {
-                onStreamFinished: {
-                    const p = one.asked;
-                    let r = {};
-                    try { r = JSON.parse(text); } catch (e) {}
-                    ap.setT3Answer(p.id, { busy: false, done: r.ok ? p.decision : "",
-                        why: r.ok ? "" : r.why === "scope" ? "T3's token for Kuwai can't answer yet (it needs orchestration:operate). Open it in T3."
-                            : r.why === "gone" ? "Already answered." : "T3 didn't take it. Open it in T3." });
-                    if (r.ok) T3Code.read();
-                }
-            }
-        }
-    }
+    readonly property var t3Answers: T3Code.answers
+    function answerT3(r, decision) { if (r && r.request) T3Code.answer(r.thread, r.request.id, decision); }
     property bool inStrip: false
     readonly property string headerMeta: [needN ? needN + " need" + (needN === 1 ? "s" : "") + " you" : "", workN ? workN + " working" : ""].filter(x => x).join(" · ")
     readonly property color headerMetaTone: needN ? Theme.orange : Theme.textTertiary

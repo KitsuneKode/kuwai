@@ -137,7 +137,7 @@ Singleton {
         const gates = list.filter(x => !poolOf(x.window)), pools = list.filter(x => !!poolOf(x.window));
         const gateOut = gates.some(x => x.level === "exhausted");
         const poolsOut = pools.filter(x => x.level === "exhausted");
-        const allPoolsOut = pools.length > 0 && poolsOut.length === new Set(pools.map(x => poolOf(x.window))).size
+        const allPoolsOut = pools.length > 0
             && new Set(poolsOut.map(x => poolOf(x.window))).size === new Set(pools.map(x => poolOf(x.window))).size;
         const out = gateOut || (gates.length === 0 && allPoolsOut);
         return { out: out, partial: !out && poolsOut.length > 0, near: list.some(x => x.level === "approaching"),

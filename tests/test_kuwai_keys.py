@@ -81,3 +81,14 @@ def test_a_bare_key_is_refused_and_lock_keeps_a_chord(tmp_path):
     r = run(tmp_path, "set", "SUPER+L", "", "Lock")
     assert r.returncode == 2 and "Lock" in r.stderr
     assert run(tmp_path, "set", "SUPER+L", "SUPER + ALT + L", "Lock").returncode == 0
+
+
+def test_edits_at_the_same_time_all_land(tmp_path):
+    env = {k: v for k, v in os.environ.items() if k != "HYPRLAND_INSTANCE_SIGNATURE"}
+    env["XDG_CONFIG_HOME"] = str(tmp_path)
+    keys = [f"SUPER + CTRL + ALT + F{n}" for n in range(1, 13)] + [f"SUPER + CTRL + SHIFT + F{n}" for n in range(1, 9)]
+    procs = [subprocess.Popen([str(BIN), "set", f"SUPER+F{n}", k, f"Action {n}", "--no-apply"], env=env,
+                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) for n, k in enumerate(keys)]
+    assert all(p.wait(timeout=30) == 0 for p in procs)
+    lines = (tmp_path / "kuwai/keys.tsv").read_text().splitlines()
+    assert len([l for l in lines if l.strip()]) == len(keys), "every concurrent edit was kept"

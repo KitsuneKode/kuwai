@@ -58,7 +58,7 @@ Column {
     function rowDetail(e) {
         if (KeyBinds.editing === e.aid) {
             const p = KeyBinds.pending, c = KeyBinds.clash;
-            if (!p) return "Press the new keys · esc cancels" + (e.keys ? " · ⌫ leaves it without one" : "");
+            if (!p) return "Press the new keys · esc cancels" + (e.keys && e.text !== "Lock" ? " · ⌫ leaves it without one" : "");
             if (p.why) return p.why;
             if (c && c.kind === "same") return "That's already its shortcut";
             if (c && c.kind === "kuwai") return "Now “" + c.text + "”: Replace leaves that one without a shortcut";
@@ -83,7 +83,7 @@ Column {
             const bare = !(ev.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier | Qt.ShiftModifier));
             if (bare && ev.key === Qt.Key_Escape) { page.stop(true); return; }
             if (bare && (ev.key === Qt.Key_Return || ev.key === Qt.Key_Enter) && KeyBinds.pending) { page.save(); return; }
-            if (bare && (ev.key === Qt.Key_Backspace || ev.key === Qt.Key_Delete)) { page.none(); return; }
+            if (bare && (ev.key === Qt.Key_Backspace || ev.key === Qt.Key_Delete)) { if (KeyBinds.editEntry && KeyBinds.editEntry.text !== "Lock") page.none(); return; }
             if (ev.isAutoRepeat) return;
             const c = KC.chordOf(ev.key, ev.modifiers, ev.nativeScanCode);
             if (c) KeyBinds.pending = c;
@@ -120,6 +120,7 @@ Column {
                     onTextChanged: page.filter = text
                     Keys.onPressed: ev => {
                         if (ev.key === Qt.Key_Escape && text !== "") { text = ""; ev.accepted = true; }
+                        else if (ev.key === Qt.Key_Up || ev.key === Qt.Key_Down) ev.accepted = true;
                     }
                     Label {
                         visible: field.text === ""

@@ -26,10 +26,15 @@ if K.feature("screenshare_privacy") then
 			end
 		end
 	end
-	privacy(false)
-	K.set_state("sharing", "0")
+	local session = os.getenv("HYPRLAND_INSTANCE_SIGNATURE") or ""
+	local kept_n = tonumber(((K.state.shares or ""):match("^" .. session:gsub("%p", "%%%0") .. ":(%d+)$")) or "") or 0
+	local shares, engaged = kept_n, kept_n > 0 and K.state.sharing == "1"
+	local function keep_count()
+		K.set_state("shares", session .. ":" .. shares)
+	end
+	privacy(shares > 0)
+	K.set_state("sharing", engaged and "1" or "0")
 
-	local shares, engaged = 0, false
 	local held, grace = 0, 0
 	function kuwai.capture_reset()
 		held = 0
@@ -68,6 +73,7 @@ if K.feature("screenshare_privacy") then
 	hl.on("screenshare.state", function(active)
 		if active then
 			shares = shares + 1
+			keep_count()
 			if held == 0 and os.time() >= grace then
 				privacy(true)
 			end
@@ -77,6 +83,7 @@ if K.feature("screenshare_privacy") then
 			end, { timeout = 2500, type = "oneshot" })
 		else
 			shares = math.max(0, shares - 1)
+			keep_count()
 			if shares == 0 then
 				run = run + 1
 			end

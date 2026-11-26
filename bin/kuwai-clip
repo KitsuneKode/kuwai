@@ -94,7 +94,7 @@ case "${1:-}" in
         class=$(printf '%s' "$active" | jq -r '.class // empty' 2>/dev/null)
         class=${class:-$hint_class}
         case "${class,,}" in
-            *kitty*|*ghostty*|*foot*|*alacritty*|*wezterm*|*konsole*|*terminal*|*terminator*|*tilix*)
+            *kitty*|*ghostty*|*foot*|*alacritty*|*wezterm*|*konsole*|*terminal*|*terminator*|*tilix*|drop-term|float-term|kuwai-console|kuwai-edit|kuwai-monitor)
                 wtype -M ctrl -M shift -k v -m shift -m ctrl ;;
             *)  wtype -M ctrl -k v -m ctrl ;;
         esac ;;

@@ -1,7 +1,7 @@
 // One-time codes: what the notch may show big with a Copy button, and what
 // the lock screen hides. `bun test tests/shell/otp.test.mjs`
 import { describe, expect, test } from "bun:test";
-import { otpOf, otpLikely, candidates, clean, mentionsCode, codeShaped, originBound } from "../../shell/services/otp.mjs";
+import { otpOf, otpLikely, candidates, clean, mentionsCode, codeShaped, originBound, secretForHistory } from "../../shell/services/otp.mjs";
 
 const n = (title, body = "", full = "") => ({ title, body, full });
 
@@ -119,5 +119,19 @@ describe("the sender's own marking (origin-bound codes, WICG)", () => {
     expect(originBound("mail me @anna #lunch")).toBe(null);
     expect(originBound("see @example.com #1")).toBe(null);
     expect(otpOf(n("Slack", "@channel #general 20261117"))).toBe("");
+  });
+});
+
+describe("history never keeps a code", () => {
+  test("a bare code under a sign-in title", () => {
+    expect(secretForHistory({ title: "Sign in", body: "482913" })).toBe(true);
+  });
+  test("a code inside the conversation a card carries", () => {
+    expect(secretForHistory({ title: "Messages", body: "New message", thread: [{ who: "Bank", text: "Your verification code is 552 019" }] })).toBe(true);
+  });
+  test("ordinary notifications are kept", () => {
+    expect(secretForHistory({ title: "Build finished", body: "42 tests passed in 3.1 s" })).toBe(false);
+    expect(secretForHistory({ title: "Mail", body: "Lunch at 1230?" })).toBe(false);
+    expect(secretForHistory({ title: "Order", body: "Order 2024 shipped" })).toBe(false);
   });
 });

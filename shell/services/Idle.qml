@@ -104,17 +104,24 @@ Singleton {
         enabled: root.enabled && !root.held && root.dimAfter > 0
         timeout: root.dimAfter
         respectInhibitors: true
+        property bool down: false
         onIsIdleChanged: {
-            if (isIdle) { Dim.down(); root.run("brightnessctl -sqd rgb:kbd_backlight set 0 2>/dev/null"); }
-            else { Dim.up(); root.run("brightnessctl -qrd rgb:kbd_backlight 2>/dev/null"); }
+            if (isIdle && enabled) { down = true; Dim.down(); root.run("brightnessctl -sqd rgb:kbd_backlight set 0 2>/dev/null"); }
+            else if (down) { down = false; Dim.up(); root.run("brightnessctl -qrd rgb:kbd_backlight 2>/dev/null"); }
         }
+        onEnabledChanged: if (!enabled && down) { down = false; Dim.up(); root.run("brightnessctl -qrd rgb:kbd_backlight 2>/dev/null"); }
     }
     // ── Fade, 15 s before the lock: any input cancels it (modules/lock)
     IdleMonitor {
         enabled: root.enabled && !root.held && root.lockAfter > 20
         timeout: root.lockAfter - 15
         respectInhibitors: true
-        onIsIdleChanged: Quickshell.execDetached([root.kuwai, "fade", isIdle ? "start" : "stop"])
+        property bool fading: false
+        onIsIdleChanged: {
+            if (isIdle && enabled) { fading = true; Quickshell.execDetached([root.kuwai, "fade", "start"]); }
+            else if (fading) { fading = false; Quickshell.execDetached([root.kuwai, "fade", "stop"]); }
+        }
+        onEnabledChanged: if (!enabled && fading) { fading = false; Quickshell.execDetached([root.kuwai, "fade", "stop"]); }
     }
     // ── Lock
     IdleMonitor {
@@ -149,11 +156,19 @@ Singleton {
     onScreensHeldChanged: if (!screensHeld && offMonitor.enabled && offMonitor.isIdle && !Saver.screensOff) screens(true)
     // ── Sleep (never while music plays, nor while work runs: Caffeine.working)
     IdleMonitor {
+        id: sleepIdle
         enabled: root.enabled && !root.held && !Caffeine.working && root.sleepAfter > 0
         timeout: root.sleepAfter
         respectInhibitors: true
-        onIsIdleChanged: if (isIdle && !(Settings.idleNoSleepWhilePlaying && Media.playing)) Quickshell.execDetached(["sh", "-c", '"$1" lock --wait && exec systemctl suspend', "sh", root.kuwai])
+        onIsIdleChanged: root.sleepIfIdle()
     }
+    function sleepIfIdle() {
+        if (sleepIdle.enabled && sleepIdle.isIdle && !(Settings.idleNoSleepWhilePlaying && Media.playing))
+            Quickshell.execDetached(["sh", "-c", '"$1" lock --wait && exec systemctl suspend', "sh", root.kuwai]);
+    }
+    Connections { target: Media; function onPlayingChanged() { if (Media.playing) afterMusic.stop(); else afterMusic.restart(); } }
+    Timer { id: afterMusic; interval: 10000; onTriggered: root.sleepIfIdle() }
+    onEnabledChanged: { sleepGuard.running = enabled; lockSignal.running = enabled; }
 
     // ── Lock before every sleep, and on `loginctl lock-session` ─────────
     // A delay inhibitor: logind waits (up to InhibitDelayMaxSec) while we
@@ -161,7 +176,7 @@ Singleton {
     // go on. After waking it starts again for the next sleep.
     Process {
         id: sleepGuard
-        running: root.enabled
+        Component.onCompleted: running = root.enabled
         // setpriv --pdeathsig: these die with the shell, even a kill -9 (a
         // left-over guard would delay every sleep; a listener, lock twice).
         command: ["setpriv", "--pdeathsig", "KILL", "--", "systemd-inhibit", "--what=sleep", "--mode=delay", "--who=kuwai", "--why=Lock the screen before sleeping",
@@ -173,7 +188,7 @@ Singleton {
     Timer { id: rearm; interval: 500; onTriggered: if (root.enabled) sleepGuard.running = true }
     Process {
         id: lockSignal
-        running: root.enabled
+        Component.onCompleted: running = root.enabled
         command: ["setpriv", "--pdeathsig", "KILL", "--", "sh", "-c", 'setpriv --pdeathsig KILL -- gdbus monitor --system --dest org.freedesktop.login1 | grep --line-buffered -E "Session\\.Lock \\(\\)"']
         stdout: SplitParser { onRead: Quickshell.execDetached([root.kuwai, "lock"]) }
         onExited: if (root.enabled) relisten.restart()

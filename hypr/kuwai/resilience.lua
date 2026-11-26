@@ -120,6 +120,7 @@ function R.save(keep_if_empty)
 		end
 		return 0
 	end
+	os.execute("umask 077 && : >> " .. K.q(SNAP) .. " && chmod 600 " .. K.q(SNAP))
 	local f = io.open(SNAP, "w")
 	if not f then
 		return 0
