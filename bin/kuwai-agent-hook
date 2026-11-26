@@ -21,6 +21,8 @@ from typing import Any
 
 MAX_STDIN_BYTES = 65536
 ACTIVE_TTL_S = 1800
+QUIET_S = 600
+BUSY = ("working", "goal", "waiting", "blocked", "woke")
 ENDED_TTL_S = 900
 
 WINDOW_CLASSES = {
@@ -32,7 +34,7 @@ WINDOW_CLASSES = {
 }
 
 EVENT_MAP: dict[str, tuple[str, str | None]] = {
-    "sessionstart": ("working", None),
+    "sessionstart": ("ready", None),
     "beforesubmitprompt": ("working", None),
     "userpromptsubmit": ("working", None),
     "pretooluse": ("working", None),
@@ -61,7 +63,7 @@ EVENT_MAP: dict[str, tuple[str, str | None]] = {
     "blocked": ("blocked", None),
     "woke": ("woke", None),
     "stop": ("done", None),
-    "subagentstop": ("done", None),
+    "subagentstop": ("working", None),
     "afteragentresponse": ("done", None),
     "done": ("done", None),
     "completed": ("done", None),
@@ -245,6 +247,8 @@ def load_fresh_agents(now: float | None = None, prune: bool = True) -> list[dict
             if prune:
                 p.unlink(missing_ok=True)
             continue
+        if st in ("working", "goal") and updated > 0 and now_t - updated > QUIET_S:
+            entry = dict(entry, state="ready")
         out.append(entry)
     out.sort(key=lambda e: float(e.get("updated_at") or 0), reverse=True)
     return out
@@ -382,6 +386,11 @@ def handle_hook(args: argparse.Namespace) -> int:
                 prev = loaded
         except (OSError, ValueError):
             prev = {}
+    was = str(prev.get("state") or "")
+    if state == "done" and was not in BUSY:
+        state = "ready"
+    if state == "waiting" and ask == "question" and re.sub(r"[^a-z]+", "", (event or "").lower()) == "notification" and was not in ("working", "goal"):
+        state, ask = (was or "ready"), prev.get("ask")
 
     title = clean_line(
         args.title

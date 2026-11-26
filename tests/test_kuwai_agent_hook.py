@@ -60,10 +60,14 @@ def test_cursor_hook_lifecycle_and_atomic_index(tmp_path: Path) -> None:
     row = idx["agents"][0]
     assert row["id"] == "cursor-conv-42"
     assert row["agent"] == "cursor"
-    assert row["state"] == "working"
+    assert row["state"] == "ready"
     assert row["project"] == "kuwai"
     assert row["title"] == "Fix the island limit carousel"
     assert row["window_class"] == "^(cursor|Cursor)$"
+
+    work_payload = json.dumps({"hook_event_name": "preToolUse", "conversation_id": "conv-42"})
+    assert run_hook(["--agent", "cursor"], env, work_payload).returncode == 0
+    assert json.loads(index_file.read_text(encoding="utf-8"))["agents"][0]["state"] == "working"
 
     stop_payload = json.dumps({"hook_event_name": "stop", "conversation_id": "conv-42"})
     assert run_hook(["--agent", "cursor"], env, stop_payload).returncode == 0
@@ -282,3 +286,41 @@ def test_a_title_never_starts_with_an_instructions_block(tmp_path: Path) -> None
                           "prompt": "<system_notes a=\"1\">long rules</system_notes>\n Make the docs clearer"})
     run_hook(["--agent", "cursor"], env, payload)
     assert json.loads(run_hook(["list"], env).stdout)[0]["title"] == "Make the docs clearer"
+
+
+def _state(env, sid):
+    rows = [r for r in _rows(env) if r["id"].endswith(sid)]
+    return rows[0]["state"] if rows else None
+
+
+def test_opening_the_app_is_not_an_agent_at_work(tmp_path: Path) -> None:
+    """Devin or Cursor opened, nothing asked of it: SessionStart, then perhaps a
+    Notification and a Stop. None of that is work, so nothing reads working,
+    needs you or done."""
+    env = make_env(tmp_path) | {"DEVIN_PROJECT_DIR": "/p/kuwai"}
+    run_hook(["--agent", "devin", "--event", "SessionStart"], env, json.dumps({"session_id": "d-9"}))
+    assert _state(env, "d-9") == "ready"
+    run_hook(["--agent", "devin", "--event", "Notification"], env, json.dumps({"session_id": "d-9", "message": "Devin is ready"}))
+    assert _state(env, "d-9") == "ready"
+    run_hook(["--agent", "devin", "--event", "Stop"], env, json.dumps({"session_id": "d-9"}))
+    assert _state(env, "d-9") == "ready"
+
+
+def test_a_notification_mid_task_still_asks_and_a_subagent_ending_is_not_the_end(tmp_path: Path) -> None:
+    env = make_env(tmp_path) | {"DEVIN_PROJECT_DIR": "/p/kuwai"}
+    run_hook(["--agent", "devin", "--event", "UserPromptSubmit"], env, json.dumps({"session_id": "d-8"}))
+    run_hook(["--agent", "devin", "--event", "SubagentStop"], env, json.dumps({"session_id": "d-8"}))
+    assert _state(env, "d-8") == "working"
+    run_hook(["--agent", "devin", "--event", "Notification"], env, json.dumps({"session_id": "d-8", "message": "Allow?"}))
+    assert _state(env, "d-8") == "waiting"
+
+
+def test_working_with_no_word_for_ten_minutes_reads_as_ready(tmp_path: Path) -> None:
+    env = make_env(tmp_path)
+    run_hook(["--agent", "cursor", "--event", "preToolUse"], env, json.dumps({"conversation_id": "c-7"}))
+    f = tmp_path / "state" / "kuwai" / "desktop-agents" / "cursor-c-7.json"
+    row = json.loads(f.read_text())
+    row["updated_at"] = row["since"] = time.time() - 700
+    f.write_text(json.dumps(row))
+    assert _state(env, "c-7") == "ready"
+
