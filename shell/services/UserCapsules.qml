@@ -17,7 +17,7 @@ Singleton {
     readonly property var latest: items.length ? items[0] : null
 
     FileView {
-        path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/kuwai/capsules.json"
+        path: Quickshell.env("XDG_RUNTIME_DIR") ? Quickshell.env("XDG_RUNTIME_DIR") + "/kuwai/capsules.json" : ""
         watchChanges: true
         printErrors: false
         onFileChanged: reload()

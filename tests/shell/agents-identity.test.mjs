@@ -20,7 +20,7 @@ const threads = [
 ];
 const desktop = [
   { id: "claude-s1", agent: "claude", state: "waiting", ask: "approval", pane: "w100.1", question: "Allow Bash: rm -rf build?", since: s - 30 },
-  { id: "codex-s2", agent: "codex", state: "working", cwd: "~/Projects/api", since: s - 300 },
+  { id: "codex-s2", agent: "codex", state: "working", cwd: "~/Projects/api", pane: "w100.2", since: s - 300 },
   { id: "cursor-s3", agent: "cursor", state: "working", title: "Cursor chat", window_class: "^(cursor|Cursor)$", since: s - 200 },
   { id: "claude-s4", agent: "claude", state: "working", thread: "th-2", since: s - 100 },
   { id: "cursor-s5", agent: "cursor", state: "done", title: "Finished chat", since: s - 50 }
@@ -47,13 +47,15 @@ describe("one identity per real agent session", () => {
     expect(x).toMatchObject({ src: "kitty", section: "Terminal", state: "needs", stateKey: "approval", question: "Allow Bash: rm -rf build?" });
     expect(x.sources.sort()).toEqual(["desktop", "kitty"]);
   });
-  test("a hook with no pane named, the one pane of its agent in its folder", () => {
+  test("a hook naming its pane folds into it", () => {
     expect(byKey["pane:w100.2"].sources.sort()).toEqual(["desktop", "kitty"]);
     expect(byKey["pane:w100.2"].state).toBe("needs");
   });
-  test("two panes of that agent in that folder: the hook stays its own", () => {
-    const two = [panes[2], Object.assign({}, panes[2], { key: "w100.9", w: "9" })];
-    expect(sessions(two, [], [desktop[1]], opts).map(x => x.key).sort()).toEqual(["hook:codex-s2", "pane:w100.2", "pane:w100.9"]);
+  test("an agent outside kitty in the same folder as a pane is its own session", () => {
+    const apart = Object.assign({}, desktop[1], { pane: undefined, state: "waiting" });
+    const got = sessions([panes[2]], [], [apart], opts);
+    expect(got.map(x => x.key).sort()).toEqual(["hook:codex-s2", "pane:w100.2"]);
+    expect(got.find(x => x.key === "hook:codex-s2").src).toBe("desktop");
   });
   test("a hook in a T3 thread is the thread", () => {
     expect(byKey["t3:th-2"]).toMatchObject({ src: "t3", section: "T3 Code", state: "working", thread: "th-2" });

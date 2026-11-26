@@ -1,5 +1,5 @@
 {
-  "total_comment_lines": 7532,
+  "total_comment_lines": 7529,
   "files_with_comments": 291,
   "files": {
     "shell/components/ActionMenu.qml": 23,
@@ -146,7 +146,7 @@
     "shell/modules/overview/Overview.qml": 64,
     "shell/modules/screensaver/BorealisScene.qml": 20,
     "shell/modules/screensaver/DuskScene.qml": 24,
-    "shell/modules/screensaver/Screensaver.qml": 102,
+    "shell/modules/screensaver/Screensaver.qml": 99,
     "shell/modules/voxtype/VoxTarget.qml": 17,
     "shell/modules/voxtype/VoxtypeHost.qml": 43,
     "shell/modules/voxtype/voxScreens.mjs": 12,

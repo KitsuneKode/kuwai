@@ -310,8 +310,9 @@ Singleton {
     // Order: the notification's own image (screenshots, album art, avatars),
     // its app icon, then the icon of its desktop entry, looked up by the
     // desktop-entry hint or, failing that, by app name.
+    function localImage(src) { return /^(file:|image:\/\/|\/)/.test(String(src || "")) ? (String(src).startsWith("/") ? "file://" + src : String(src)) : ""; }
     function imageOrIcon(n) {
-        if (n.image) return n.image;
+        if (localImage(n.image)) return localImage(n.image);
         const own = iconSource(n.appIcon);
         if (own) return own;
         const entry = lookupEntry(n);
@@ -365,7 +366,8 @@ Singleton {
     function iconSource(icon) {
         if (!icon) return "";
         if (icon.startsWith("/")) return "file://" + icon;
-        if (/^(file|image|https?):/.test(icon)) return icon;
+        if (/^(file|image):/.test(icon)) return icon;
+        if (/^[a-z][a-z0-9+.-]*:/i.test(icon)) return "";
         const c = iconCache;
         if (Object.prototype.hasOwnProperty.call(c.names, icon)) return c.names[icon];
         const p = Quickshell.iconPath(icon, true);

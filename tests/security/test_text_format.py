@@ -40,4 +40,5 @@ def test_every_dynamic_text_declares_its_format():
 
 
 def test_label_is_plain_text():
-    assert "textFormat: Text.PlainText" in (REPO / "shell/components/Label.qml").read_text()
+    for label in ("shell/components/Label.qml", "shell-auth/components/Label.qml"):
+        assert "textFormat: Text.PlainText" in (REPO / label).read_text(), label

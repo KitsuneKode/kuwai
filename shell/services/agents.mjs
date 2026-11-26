@@ -126,9 +126,6 @@ export function identity(src, r) {
     return "hook:" + String(x.id || "");
 }
 
-/** @param {string | undefined} p @param {string} home */
-function dir(p, home) { return String(p || "").replace(/^~(?=\/|$)/, home || "~").replace(/\/+$/, ""); }
-
 const STATES = ["needs", "error", "limited", "working", "done", "idle"];
 const SECTIONS = /** @type {Record<string, string>} */ ({ kitty: "Terminal", t3: "T3 Code", desktop: "Desktop" });
 const LEAD = /** @type {Record<string, number>} */ ({ kitty: 0, t3: 1, desktop: 2 });
@@ -141,7 +138,7 @@ function stateOfItem(it) {
 
 /**
  * Every real agent session once. A hook session inside a kitty pane (the
- * pane it names, or the one pane of that agent in its folder), a thread T3
+ * pane it names; a folder in common is not the same session), a thread T3
  * lists twice, a pane kittymux lists twice: one session, whose state is the
  * most urgent any surface reports and whose click goes through the surface
  * that can take you there (the pane, then the thread, then the window).
@@ -149,20 +146,11 @@ function stateOfItem(it) {
  * @returns {Session[]}
  */
 export function sessions(panes, threads, desktop, opts) {
-    const home = opts && opts.home || "";
     /** @type {{ id: string, it: Item, rec: any }[]} */
     const all = [];
     for (const p of panes || []) all.push({ id: identity("kitty", p), it: fromPane(p), rec: p });
     for (const t of threads || []) all.push({ id: identity("t3", t), it: fromThread(t), rec: t });
-    for (const d of desktop || []) {
-        let id = identity("desktop", d);
-        if (id.startsWith("hook:") && !d.pane && d.cwd) {
-            const at = dir(d.cwd, home), who = providerId(d.agent || "");
-            const same = (panes || []).filter(p => providerId(p.agent || "") === who && at !== "" && dir(p.where, home) === at);
-            if (same.length === 1) id = identity("kitty", same[0]);
-        }
-        all.push({ id, it: fromDesktop(d), rec: d });
-    }
+    for (const d of desktop || []) all.push({ id: identity("desktop", d), it: fromDesktop(d), rec: d });
     /** @type {Record<string, { id: string, it: Item, rec: any }[]>} */
     const by = {};
     /** @type {string[]} */

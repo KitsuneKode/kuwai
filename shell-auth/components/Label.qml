@@ -13,5 +13,6 @@ Text {
     font.weight: weight
     font.letterSpacing: Theme.tracking(size, rounded) + extraTracking
     renderType: Text.NativeRendering
+    textFormat: Text.PlainText
     color: Theme.textPrimary
 }

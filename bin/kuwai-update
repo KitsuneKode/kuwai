@@ -596,6 +596,7 @@ def review(pkg):
         "approved": load(APPROVED, {}).get(pkg, "") == head,
         "community": aur_info([pkg]).get(pkg),
         "trusted": pkg in load(TRUSTED, []),
+        **({} if diff_ok else {"error": "The changes couldn't be shown, so this can't be approved. Try again."}),
     }
 
 

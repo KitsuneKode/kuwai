@@ -236,13 +236,6 @@ Scope {
     // SIGKILL, never SIGTERM: Quickshell can crash on a polite exit and its
     // crash handler would relaunch the film (bin/kuwai-shell has the story).
     Component.onDestruction: if (filmProc.running) filmProc.signal(9)
-    // Backstop: a film left over from an earlier shell (before pdeathsig, or
-    // however it happened) goes when this one starts.
-    Component.onCompleted: {
-        Quickshell.execDetached(["pkill", "-9", "-f", "^qs -p .*/shell-saver$"]);
-        Quickshell.execDetached(["pkill", "-9", "-f", "^mpvpaper -l top -o "]);   // the live wallpaper's never say -l
-    }
-
     function dismiss() { forced = false; dismissed = true; }
     IpcHandler {
         target: "screensaver"

@@ -240,7 +240,8 @@ test('mpv plays the saver film once for every screen, refusing what it could not
   expect(src).toMatch(/hwdec=" \+ \(filmOnCpu \? "no" : "auto-copy-safe"\)/);
   expect(src).toMatch(/MPV_HOME="\$home"/);
   // A film left over from an earlier shell goes, and only the saver's (-l top) player.
-  expect(src).toMatch(/pkill", "-9", "-f", "\^mpvpaper -l top -o "/);
+  expect(src).not.toMatch(/pkill/);
+  expect(src).toMatch(/exec setpriv --pdeathsig KILL mpvpaper/);
   // It starts once the screen is dark; the black over it lifts once it plays.
   expect(src).toMatch(/wantedFilm: showing && darkened \? film : ""/);
   expect(src).toMatch(/input-ipc-server=" \+ ipcPath/);

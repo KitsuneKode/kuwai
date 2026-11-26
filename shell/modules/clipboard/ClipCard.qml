@@ -312,7 +312,7 @@ Item {
             textFormat: Text.StyledText
             text: !card.e ? ""
                 : card.e.kind === "image" ? "Image" + (card.e.dims ? "  " + card.e.dims.replace("x", " × ") : "")
-                : card.isFiles && card.file0 ? card.file0.name + (card.fileList.length > 1 ? "  +" + (card.fileList.length - 1) : "")
+                : card.isFiles && card.file0 ? Clipboard.marked(card.file0.name, [], Theme.yellow) + (card.fileList.length > 1 ? "  +" + (card.fileList.length - 1) : "")
                 : card.masked ? "•••••••••"
                 : Clipboard.marked(card.e.preview.replace(/\s+/g, " ").slice(0, 120), card.r.m ? card.r.m.pos : [], Theme.yellow)
             size: Theme.tSub
