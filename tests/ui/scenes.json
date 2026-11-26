@@ -6968,6 +6968,309 @@
    ]
   },
   {
+   "id": "updates/install-new",
+   "name": "updates",
+   "panel": "UpdatesPanel",
+   "kind": "typical",
+   "props": {
+    "view": "review",
+    "pkg": "localsend-bin",
+    "installing": true
+   },
+   "set": [
+    [
+     "Updates",
+     "reviews",
+     {
+      "localsend-bin": {
+       "pkg": "localsend-bin",
+       "packageBase": "localsend-bin",
+       "base": null,
+       "head": "3f6b2c1d9e8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c",
+       "firstTime": true,
+       "routine": false,
+       "installed": "",
+       "next": "1.17.0-1",
+       "files": [
+        {
+         "path": "PKGBUILD",
+         "status": "added",
+         "add": 40,
+         "del": 0,
+         "binary": false,
+         "hunks": [
+          {
+           "header": "@@ -0,0 +1,40 @@",
+           "context": "",
+           "lines": [
+            {
+             "t": "+",
+             "o": null,
+             "n": 1,
+             "s": "# Maintainer: NourEddineX"
+            },
+            {
+             "t": "+",
+             "o": null,
+             "n": 2,
+             "s": "# Contributor: Nixuge"
+            },
+            {
+             "t": "+",
+             "o": null,
+             "n": 3,
+             "s": "# Contributor: Noah Vogt <noah@noahvogt.com>"
+            },
+            {
+             "t": "+",
+             "o": null,
+             "n": 4,
+             "s": "# Contributor: SpieringsAE (aarch64 addition)"
+            },
+            {
+             "t": "+",
+             "o": null,
+             "n": 5,
+             "s": ""
+            },
+            {
+             "t": "+",
+             "o": null,
+             "n": 6,
+             "s": "# Note: "
+            },
+            {
+             "t": "+",
+             "o": null,
+             "n": 7,
+             "s": "# using the .deb instead of the .tar.gz as it already contains the icons as well as the .desktop file."
+            },
+            {
+             "t": "+",
+             "o": null,
+             "n": 8,
+             "s": ""
+            },
+            {
+             "t": "+",
+             "o": null,
+             "n": 9,
+             "s": "pkgname=localsend-bin"
+            },
+            {
+             "t": "+",
+             "o": null,
+             "n": 10,
+             "s": "pkgver=1.19.0"
+            },
+            {
+             "t": "+",
+             "o": null,
+             "n": 11,
+             "s": "pkgrel=1"
+            },
+            {
+             "t": "+",
+             "o": null,
+             "n": 12,
+             "s": "pkgdesc='An open source cross-platform alternative to AirDrop'"
+            },
+            {
+             "t": "+",
+             "o": null,
+             "n": 13,
+             "s": "url=https://github.com/localsend/localsend"
+            },
+            {
+             "t": "+",
+             "o": null,
+             "n": 14,
+             "s": "arch=('x86_64' 'aarch64')"
+            },
+            {
+             "t": "+",
+             "o": null,
+             "n": 15,
+             "s": "license=(Apache-2.0)"
+            },
+            {
+             "t": "+",
+             "o": null,
+             "n": 16,
+             "s": "depends=(fuse2 xdg-user-dirs libayatana-appindicator libayatana-indicator)"
+            },
+            {
+             "t": "+",
+             "o": null,
+             "n": 17,
+             "s": "conflicts=('localsend')"
+            },
+            {
+             "t": "+",
+             "o": null,
+             "n": 18,
+             "s": "provides=('localsend')"
+            },
+            {
+             "t": "+",
+             "o": null,
+             "n": 19,
+             "s": "options=(!debug)"
+            },
+            {
+             "t": "+",
+             "o": null,
+             "n": 20,
+             "s": "source_x86_64=(\"${url}/releases/download/v${pkgver}/LocalSend-${pkgver}-linux-x86-64.deb\")"
+            },
+            {
+             "t": "+",
+             "o": null,
+             "n": 21,
+             "s": "source_aarch64=(\"${url}/releases/download/v${pkgver}/LocalSend-${pkgver}-linux-arm-64.deb\")"
+            },
+            {
+             "t": "+",
+             "o": null,
+             "n": 22,
+             "s": "sha256sums_x86_64=('f2cc2d1f8a2542799576e4c1cc61ed1f35c6a7dba2f375870e8500eab6fbfe66')"
+            },
+            {
+             "t": "+",
+             "o": null,
+             "n": 23,
+             "s": "sha256sums_aarch64=('8a54f1dc0f70ef4d9fa3037a29e8713d5580c461675fae9a5ba59b39010513c3')"
+            },
+            {
+             "t": "+",
+             "o": null,
+             "n": 24,
+             "s": "_pkgdesktop=\"localsend_app.desktop\""
+            },
+            {
+             "t": "+",
+             "o": null,
+             "n": 25,
+             "s": ""
+            },
+            {
+             "t": "+",
+             "o": null,
+             "n": 26,
+             "s": ""
+            },
+            {
+             "t": "+",
+             "o": null,
+             "n": 27,
+             "s": "prepare() {"
+            },
+            {
+             "t": "+",
+             "o": null,
+             "n": 28,
+             "s": "\ttar -xf data.tar.zst"
+            },
+            {
+             "t": "+",
+             "o": null,
+             "n": 29,
+             "s": "}"
+            },
+            {
+             "t": "+",
+             "o": null,
+             "n": 30,
+             "s": ""
+            },
+            {
+             "t": "+",
+             "o": null,
+             "n": 31,
+             "s": "build() {"
+            },
+            {
+             "t": "+",
+             "o": null,
+             "n": 32,
+             "s": "\tsed -i -E \\"
+            },
+            {
+             "t": "+",
+             "o": null,
+             "n": 33,
+             "s": "\t\t\"s|Exec=localsend_app|Exec=localsend|\" \\"
+            },
+            {
+             "t": "+",
+             "o": null,
+             "n": 34,
+             "s": "\t\t\"${srcdir}/usr/share/applications/${_pkgdesktop}\""
+            },
+            {
+             "t": "+",
+             "o": null,
+             "n": 35,
+             "s": ""
+            },
+            {
+             "t": "+",
+             "o": null,
+             "n": 36,
+             "s": "\t# Adjust .desktop to have it point to the correct icon"
+            },
+            {
+             "t": "+",
+             "o": null,
+             "n": 37,
+             "s": "\tsed -i -E 's/^Icon=.+/Icon=localsend/' \"${srcdir}/usr/share/applications/${_pkgdesktop}\""
+            },
+            {
+             "t": "+",
+             "o": null,
+             "n": 38,
+             "s": ""
+            },
+            {
+             "t": "+",
+             "o": null,
+             "n": 39,
+             "s": "\t# Add StartupWMClass so app can be pinned to taskbar"
+            },
+            {
+             "t": "+",
+             "o": null,
+             "n": 40,
+             "s": "\tsed -i -E '/^Exec=localsend/a StartupWMClass=org.localsend.localsend_app' \"${srcdir}/usr/share/applications/${_pkgdesktop}\""
+            }
+           ]
+          }
+         ]
+        }
+       ],
+       "flags": [],
+       "commits": [],
+       "url": "https://aur.archlinux.org/cgit/aur.git/log/?h=localsend-bin",
+       "approved": false,
+       "community": {
+        "votes": 214,
+        "popularity": 4.1,
+        "maintainer": "NourEddineX",
+        "firstSubmitted": 1672531200,
+        "lastModified": "@now-864000s",
+        "outOfDate": null,
+        "packageBase": "localsend-bin",
+        "url": "https://localsend.org",
+        "binary": true,
+        "established": true
+       },
+       "trusted": false
+      }
+     }
+    ]
+   ]
+  },
+  {
    "id": "updates/packages",
    "name": "updates",
    "panel": "UpdatesPanel",

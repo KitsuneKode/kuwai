@@ -290,12 +290,13 @@ Singleton {
     function finishMutation(code) {
         const job = root.mutationCurrent;
         if (!job) return;
-        if (code !== 0) root.mutationError = "Couldn't save " + job.name + ". Try again.";
+        if (code !== 0) { root.mutationError = "Couldn't save " + job.name + ". Try again."; if (root.installPending === job.name) root.installPending = ""; }
         else if (job.op === "approve") {
             if (root.reviews[job.name] && root.reviews[job.name].head === job.sha) {
                 const a = Object.assign({}, root.approvedSha); a[job.name] = job.sha; root.approvedSha = a;
                 root.setExcluded(job.name, false);
                 if (job.automatic) root.autoApproved = [...root.autoApproved.filter(n => n !== job.name), job.name];
+                if (root.installPending === job.name) { root.installPending = ""; root.installNew(job.name); }
             }
         } else if (job.op === "unapprove") {
             const a = Object.assign({}, root.approvedSha); delete a[job.name]; root.approvedSha = a;
@@ -307,6 +308,29 @@ Singleton {
     Process {
         id: mutator
         onExited: (code, status) => { root.finishMutation(code); Qt.callLater(root.nextMutation); }
+    }
+    property string installAsk: ""
+    property string installPending: ""
+    function requestInstall(name) {
+        if (!/^[a-z0-9@._+-]{1,100}$/.test(String(name || ""))) return;
+        installAsk = name;
+        Island.open("updates", Island.screen, "pointer");
+    }
+    function approveAndInstall(name) {
+        if (running) return;
+        if (selectable(name)) { installNew(name); return; }
+        installPending = name;
+        approve(name);
+    }
+    function installNew(name) {
+        if (running || lowSpace) return false;
+        plan = { repo: false, aur: [name], flatpak: [] };
+        starter.command = [bin, "start", "--aur", name];
+        resetRun();
+        ownedRun = true;
+        running = true;
+        starter.running = true;
+        return true;
     }
     function approve(name, automatic) {
         const r = reviews[name];

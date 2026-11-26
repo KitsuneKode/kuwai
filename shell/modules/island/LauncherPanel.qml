@@ -219,10 +219,11 @@ FocusScope {
     }
     function runPkg(r) {
         const p = r.pkg;
+        if (p.aur && !p.installed) { armedPkg = ""; Updates.requestInstall(p.name); return; }
         if (armedPkg !== p.name) { armedPkg = p.name; return; }
         armedPkg = "";
         pkgRun.who = p.name;
-        pkgRun.command = [Paths.bin + "/kuwai-pkgs", p.installed ? "remove" : "install", p.name].concat(p.aur && !p.installed ? ["--aur"] : []);
+        pkgRun.command = [Paths.bin + "/kuwai-pkgs", p.installed ? "remove" : "install", p.name];
         pkgRun.running = true;
     }
     property var providers: []
@@ -416,7 +417,7 @@ FocusScope {
             else section("Packages", pkgHits.map(p => ({
                 kind: "pkg", pkg: p, name: p.name,
                 sub: (armedPkg === p.name ? "↵ again to " + (p.installed ? "remove it" : "install it") + " in a terminal · " : "")
-                     + (p.aur ? "AUR" : p.repo) + " · " + p.version + (p.installed ? " · installed" : "") + (p.desc ? " · " + p.desc : ""),
+                     + (p.aur ? (p.installed ? "AUR" : "AUR · ↵ reads its build files first") : p.repo) + " · " + p.version + (p.installed ? " · installed" : "") + (p.desc ? " · " + p.desc : ""),
                 glyph: p.installed ? "\u{f012c}" : "\u{f03d7}" })));
             return out;
         }

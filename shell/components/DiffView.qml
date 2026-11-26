@@ -17,7 +17,7 @@ Item {
     id: dv
     property var file: null
     property var flags: []
-    property int fontSize: 11
+    property int fontSize: Theme.sp(Theme.tFootnote)
     readonly property real rowH: Math.round(fontSize * 1.65)
     readonly property real charW: metrics.advanceWidth
     // Line → its flag reason, for this file.
@@ -57,7 +57,7 @@ Item {
         visible: !!(dv.file && dv.file.binary)
         anchors.centerIn: parent
         text: "Binary file: not shown"
-        font.family: Theme.fontText; font.pixelSize: 12
+        font.family: Theme.fontText; font.pixelSize: Theme.sp(Theme.tFootnote)
         color: Theme.textTertiary
     }
 
@@ -67,8 +67,8 @@ Item {
         clip: true
         model: dv.rows
         boundsBehavior: Flickable.StopAtBounds
-        flickableDirection: Flickable.HorizontalAndVerticalFlick
-        contentWidth: Math.max(width, dv.gutterW + dv.longest * dv.charW + 40)
+        flickableDirection: Flickable.VerticalFlick
+        contentWidth: width
         reuseItems: true
 
         delegate: Item {
@@ -79,8 +79,8 @@ Item {
             readonly property bool add: r.kind === "line" && r.t === "+"
             readonly property bool del: r.kind === "line" && r.t === "-"
             readonly property string why: add && r.n ? (dv.flagged[r.n] || "") : ""
-            width: list.contentWidth
-            height: r.kind === "hunk" ? dv.rowH + 6 : dv.rowH
+            width: list.width
+            height: r.kind === "hunk" ? dv.rowH + 6 : Math.max(dv.rowH, code.implicitHeight + 6)
 
             // Hunk header: where in the file this is.
             Rectangle {
@@ -126,26 +126,26 @@ Item {
                 Text {
                     textFormat: Text.PlainText
                     x: 8; width: (dv.gutterW - 26) / 2
-                    anchors.verticalCenter: parent.verticalCenter
+                    y: (dv.rowH - height) / 2
                     horizontalAlignment: Text.AlignRight
                     text: row.r.o || ""
-                    font.family: Theme.fontMono; font.pixelSize: dv.fontSize - 1
-                    color: Theme.wash(5)
+                    font.family: Theme.fontMono; font.pixelSize: Theme.sp(Theme.tCaption)
+                    color: Theme.textTertiary
                 }
                 Text {
                     textFormat: Text.PlainText
                     x: 8 + (dv.gutterW - 26) / 2 + 4; width: (dv.gutterW - 26) / 2
-                    anchors.verticalCenter: parent.verticalCenter
+                    y: (dv.rowH - height) / 2
                     horizontalAlignment: Text.AlignRight
                     text: row.r.n || ""
-                    font.family: Theme.fontMono; font.pixelSize: dv.fontSize - 1
-                    color: Theme.wash(5)
+                    font.family: Theme.fontMono; font.pixelSize: Theme.sp(Theme.tCaption)
+                    color: Theme.textTertiary
                 }
                 Text {
                     textFormat: Text.PlainText
                     x: dv.gutterW - 12
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: row.r.t === " " ? "" : row.r.t
+                    y: (dv.rowH - height) / 2
+                    text: !row.r.t || row.r.t === " " ? "" : row.r.t
                     font.family: Theme.fontMono; font.pixelSize: dv.fontSize
                     color: row.add ? Theme.green : Theme.red
                 }
@@ -153,9 +153,15 @@ Item {
 
             // The code itself.
             Text {
+                id: code
                 visible: row.r.kind === "line"
                 x: dv.gutterW + 8
-                anchors.verticalCenter: parent.verticalCenter
+                y: 3
+                width: Math.max(0, list.width - x - 8 - (row.why ? whyTag.width + 8 : 0))
+                wrapMode: Text.WrapAnywhere
+                lineHeight: dv.rowH - 6
+                lineHeightMode: Text.FixedHeight
+                verticalAlignment: Text.AlignVCenter
                 text: row.r.s || " "
                 textFormat: Text.PlainText
                 font.family: Theme.fontMono; font.pixelSize: dv.fontSize
@@ -165,8 +171,9 @@ Item {
             // blends into the code under it. (Routine lines carry no tag: the
             // review's header already says only versions changed.)
             Rectangle {
+                id: whyTag
                 visible: !!row.why
-                anchors { right: parent.right; rightMargin: list.contentWidth - list.contentX - list.width + 8; verticalCenter: parent.verticalCenter }
+                anchors { right: parent.right; rightMargin: 8; top: parent.top; topMargin: 2 }
                 height: dv.rowH - 4; radius: height / 2
                 width: tag.implicitWidth + 14
                 color: Qt.tint(Theme.glassBlack, Qt.alpha(Theme.orange, 0.18))
@@ -178,11 +185,12 @@ Item {
                     id: tag
                     anchors.centerIn: parent
                     text: row.why
-                    font.family: Theme.fontText; font.pixelSize: dv.fontSize - 1; font.weight: Theme.wMedium
+                    font.family: Theme.fontText; font.pixelSize: Theme.sp(Theme.tCaption); font.weight: Theme.wMedium
                     color: Theme.orange
                 }
             }
         }
     }
+    ScrollFade { flickable: list }
     ScrollHint { flickable: list; anchors { right: parent.right; top: parent.top; bottom: parent.bottom; margins: 2 } }
 }

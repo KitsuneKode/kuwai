@@ -45,6 +45,13 @@ FocusScope {
     property string menuOf: ""                    // a package whose menu is open (the rehearsal stages it)
 
     function openReview(name) { pkg = name; fileIx = 0; Updates.review(name); go("review"); }
+    property bool installing: false
+    function openInstall(name) { installing = true; openReview(name); }
+    function takeAsk() { if (Updates.installAsk) { const n = Updates.installAsk; Updates.installAsk = ""; openInstall(n); } }
+    function approveHere() {
+        if (installing) Updates.approveAndInstall(pkg);
+        else { Updates.approve(pkg); go("list"); }
+    }
     // The island's Back row leads back to the list from a review (or a result).
     readonly property bool deep: view === "review" || view === "pkgs" || (view === "run" && !Updates.running && !!Updates.result)
     property alias packages: pkgView.list
@@ -54,7 +61,7 @@ FocusScope {
     }
     onDeepChanged: syncBack()
     Component.onDestruction: if (Island.innerBackLabel === "Software Update") { Island.innerBack = null; Island.innerBackLabel = ""; }
-    function go(v) { view = v; swap.restart(); }
+    function go(v) { if (v !== "review" && v !== "run") installing = false; view = v; swap.restart(); }
 
     Component.onCompleted: {
         Updates.markViewed();
@@ -63,17 +70,19 @@ FocusScope {
         // Read every AUR change now (the service also does on each check), so
         // the list can say which ones are only version bumps.
         for (const p of Updates.aur) if (Updates.aurState(p.name) === "review") Updates.review(p.name);
+        takeAsk();
     }
     Connections {
         target: Updates
         function onRunningChanged() { if (Updates.running) up.go("run"); }
+        function onInstallAskChanged() { up.takeAsk(); }
     }
 
     Keys.onPressed: event => {
         if (event.key === Qt.Key_Escape && (view === "review" || view === "pkgs")) { go("list"); event.accepted = true; }
         else if (event.key === Qt.Key_Escape && view === "run" && !Updates.running && Updates.result) { Updates.result = null; go("list"); event.accepted = true; }
         else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && view === "list") { Updates.run(); event.accepted = true; }
-        else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && view === "review") { Updates.approve(pkg); go("list"); event.accepted = true; }
+        else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && view === "review") { approveHere(); event.accepted = true; }
         else if (event.key === Qt.Key_R && view === "list") { Updates.check(); event.accepted = true; }
     }
 
@@ -704,6 +713,7 @@ FocusScope {
                 visible: !!c
                 spacing: 6
                 Chip {
+                    id: standing
                     readonly property var c: parent.c
                     text: c ? (c.established ? "Established" : "Not established") : ""
                     tone: c && c.established ? Theme.green : Theme.orange
@@ -718,6 +728,8 @@ FocusScope {
                                      years >= 1 ? Math.floor(years) + (Math.floor(years) === 1 ? " year" : " years") + " on the AUR" : Math.max(1, Math.round(years * 12)) + " months on the AUR",
                                      c.outOfDate ? "flagged out of date" : "",
                                      c.binary ? "prebuilt program (not reviewable)" : ""].filter(x => x).join(" · ")
+                    width: rvInfo.width - standing.width - 6
+                    wrapMode: Text.Wrap
                     size: Theme.tFootnote; color: Theme.textTertiary
                 }
             }
@@ -818,10 +830,10 @@ FocusScope {
                 Button {
                     primary: true
                     readonly property bool done: Updates.aurState(up.pkg) === "approved" || Updates.aurState(up.pkg) === "trusted"
-                    enabled: !!reviewView.r && !reviewView.r.error && !done
-                    glyph: done ? "\u{f012c}" : ""
-                    text: done ? "Approved" : "Approve this change"
-                    onClicked: { Updates.approve(up.pkg); up.go("list"); }
+                    enabled: !!reviewView.r && !reviewView.r.error && (up.installing ? !Updates.running && Updates.installPending === "" : !done)
+                    glyph: done && !up.installing ? "\u{f012c}" : ""
+                    text: up.installing ? (done ? "Install" : "Approve and install") : done ? "Approved" : "Approve this change"
+                    onClicked: up.approveHere()
                 }
             }
         }

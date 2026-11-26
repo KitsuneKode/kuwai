@@ -119,6 +119,7 @@ Rectangle {
     }
     onCurrentChanged: pickCurrent()
     // Deferred: on a reload the item can be gone by the time this runs.
+    function measureLater() { Qt.callLater(() => { if (seg && typeof seg.measure === "function" && typeof seg.pickCurrent === "function") seg.measure(); }); }
     function placeLater() { Qt.callLater(() => { if (seg && typeof seg.place === "function") seg.place(true); }); }
     onExtraChanged: placeLater()
     Component.onCompleted: placeLater()
@@ -150,15 +151,15 @@ Rectangle {
         Repeater {
             id: rep
             model: seg.options
-            onItemAdded: Qt.callLater(seg.measure)
-            onItemRemoved: Qt.callLater(seg.measure)
+            onItemAdded: seg.measureLater()
+            onItemRemoved: seg.measureLater()
             delegate: Item {
                 id: opt
                 required property var modelData
                 readonly property string optionId: modelData.id
                 readonly property bool on: seg.current === modelData.id
                 readonly property real natural: inner.implicitWidth + 20
-                onNaturalChanged: Qt.callLater(seg.measure)
+                onNaturalChanged: seg.measureLater()
                 width: natural + seg.extra
                 height: seg.height - seg.pad * 2
                 scale: optArea.pressed && !Theme.reduceMotion ? 0.97 : 1
