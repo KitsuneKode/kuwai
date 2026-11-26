@@ -10,7 +10,19 @@ import pytest
 
 BIN = Path(__file__).resolve().parents[1] / "bin" / "kuwai-inhibit"
 
-pytestmark = pytest.mark.skipif(not shutil.which("dbus-run-session"), reason="needs dbus-run-session")
+def has_gi():
+    return subprocess.run([sys.executable, "-c", "from gi.repository import Gio"], capture_output=True).returncode == 0
+
+
+pytestmark = pytest.mark.skipif(not shutil.which("dbus-run-session") or not has_gi(), reason="needs dbus-run-session and PyGObject")
+
+
+def test_without_pygobject_it_says_so_and_is_not_retried(tmp_path):
+    fake = tmp_path / "gi"
+    fake.mkdir()
+    (fake / "__init__.py").write_text("raise ImportError('no gi')\n")
+    r = subprocess.run([sys.executable, str(BIN)], env={**os.environ, "PYTHONPATH": str(tmp_path)}, capture_output=True, timeout=10)
+    assert r.returncode == 4
 
 DRIVER = r'''
 import json, subprocess, sys, time

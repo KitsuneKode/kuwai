@@ -68,6 +68,7 @@ pkgbase = kuwai
 	optdepends = ripgrep: Cleanup panel
 	optdepends = networkmanager: Wi Fi controls
 	optdepends = bluez-utils: Bluetooth controls
+	optdepends = python-gobject: apps keeping the screen on for a video or a call
 	source = LICENSE-0.1.0::https://raw.githubusercontent.com/KitsuneKode/kuwai/v0.1.0/LICENSE
 	source = kuwai-setup
 	sha256sums = fb981668c18a279e285fc4d83fba1e836cc84dd4daa73c9697d3cfd2d8aca6e0

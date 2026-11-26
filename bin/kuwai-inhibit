@@ -10,6 +10,7 @@ changes; the shell (services/Idle) holds the dim, the lock, the screens-off
 and the screensaver while anything does.
 
 Exit 3: another program already answers the name (it is left to it).
+Exit 4: PyGObject isn't installed (python-gobject); nothing to retry.
 """
 from __future__ import annotations
 
@@ -17,7 +18,10 @@ import json
 import re
 import sys
 
-from gi.repository import Gio, GLib
+try:
+    from gi.repository import Gio, GLib
+except ImportError:
+    sys.exit(4)
 
 NAME = "org.freedesktop.ScreenSaver"
 PATHS = ("/org/freedesktop/ScreenSaver", "/ScreenSaver")

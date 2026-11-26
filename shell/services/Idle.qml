@@ -91,7 +91,7 @@ Singleton {
                 if (Array.isArray(v)) root.appHolds = v;
             }
         }
-        onExited: code => { root.appHolds = []; if (code !== 3) bridgeAgain.start(); }
+        onExited: code => { root.appHolds = []; if (code !== 3 && code !== 4) bridgeAgain.start(); }
     }
     Timer { id: bridgeAgain; interval: 30000; onTriggered: inhibitBridge.running = true }
     readonly property string kuwai: Paths.bin + "/kuwai"
