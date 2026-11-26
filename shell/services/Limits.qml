@@ -9,7 +9,7 @@ pragma Singleton
 //                note, credits, windows: [{ id, kind, label, used, resetsAt,
 //                durationMins }] }] }]
 //
-// Always connected (cheap: T3 Code pushes, nothing polls). If kuwai-usage
+// Connected while T3 Code or kittymux is there; with neither, nothing runs. If kuwai-usage
 // dies the last state stays and it comes back with a backoff (2 s → 5 min);
 // `down` says it isn't running, for the Usage panel's error and Retry.
 //
@@ -237,7 +237,7 @@ Singleton {
         running: root.exhausted.length > 0 || root.panelShown || root.centerShown
         onTriggered: { root.now = Date.now(); root.scan(); }
     }
-    onPanelShownChanged: if (panelShown) now = Date.now()
+    onPanelShownChanged: if (panelShown) { now = Date.now(); if (!reader.running && !probe.running) probe.running = true; }
     onCenterShownChanged: if (centerShown) now = Date.now()
 
     Process {
@@ -273,7 +273,20 @@ Singleton {
     }
     Timer { id: backoff; onTriggered: reader.running = true }
     function retry() { backoff.stop(); fails = 0; if (!reader.running) reader.running = true; }
-    Component.onCompleted: reader.running = true
+
+    property bool t3Home: false
+    readonly property bool wanted: t3Home || Kittymux.available
+    function maybeStart() {
+        if (wanted) { if (!reader.running && !backoff.running) reader.running = true; }
+        else if (!reader.running) loaded = true;
+    }
+    Process {
+        id: probe
+        command: ["sh", "-c", '[ -d "${T3CODE_HOME:-$HOME/.t3}" ]']
+        onExited: code => { root.t3Home = code === 0; root.maybeStart(); }
+    }
+    Connections { target: Kittymux; function onAvailableChanged() { root.maybeStart(); } }
+    Component.onCompleted: probe.running = true
 
     // ── Alerts ────────────────────────────────────────────────────────────
     // told: { key: { resetsAt, name, approach, exhausted } }, one entry per

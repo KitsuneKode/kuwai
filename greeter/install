@@ -131,7 +131,7 @@ if [ $YES = 0 ]; then
     read -r reply || reply=""
     case $reply in [yY]*) ;; *) echo "Nothing changed."; exit 0 ;; esac
 fi
-pacman -S --needed greetd rsync
+pacman -S --needed greetd rsync || { echo "greetd couldn't be installed, so the login screen is as it was." >&2; exit 1; }
 
 keep() {
     if [ -e "$KEEP/$1" ] || [ -e "$KEEP/$1.absent" ]; then return 0; fi

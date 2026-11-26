@@ -45,7 +45,7 @@ for p in $(pgrep -f '^systemd-inhibit .*--who=kuwai' ; pgrep -f 'gdbus monitor -
 done
 if [ -z "$orph" ]; then ok "orphans: none"; else bad "orphans: helpers left by an earlier shell:$orph (kill them)"; fi
 
-expected='^(udevadm monitor |bun [^ ]*/kuwai-usage --watch|(bun|node) [^ ]*/kuwai-spend --watch|sh -c setpriv --pdeathsig KILL -- gdbus monitor --system --dest org\.freedesktop\.login1|systemd-inhibit .*--who=kuwai|pactl subscribe|[^ ]*/voxtype-audio-bridge|mpvpaper -l top |qs -p [^ ]*/shell-saver|python3 [^ ]*/kuwai-inhibit)'
+expected='^(udevadm monitor |(bun|node) [^ ]*/kuwai-usage --watch|(bun|node) [^ ]*/kuwai-spend --watch|sh -c setpriv --pdeathsig KILL -- gdbus monitor --system --dest org\.freedesktop\.login1|systemd-inhibit .*--who=kuwai|pactl subscribe|[^ ]*/voxtype-audio-bridge|mpvpaper -l top |qs -p [^ ]*/shell-saver|python3 [^ ]*/kuwai-inhibit)'
 open_ui=$(hyprctl layers -j 2>/dev/null | jq -r '[.. | objects | select(.namespace?) | .namespace] | map(select(test("^kuwai-(assistant|island)$"))) | length' 2>/dev/null)
 stray=""
 for c in $(pgrep -P "$pid"); do
