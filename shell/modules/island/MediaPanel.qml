@@ -315,55 +315,20 @@ FocusScope {
         }
 
         // ── Controls ─────────────────────────────────────────────────────
-        Row {
+        Item {
             id: transport
-            anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: keyHints.visible ? keyHints.height + Theme.s2 : 0 }
-            spacing: 18
-            Repeater {
-                model: ["shuffle", "previous", "play", "next", "loop", "output"]
-                Item {
-                    id: btn
-                    required property string modelData
-                    readonly property var b: np.button(modelData, np.p, np.p ? np.p.isPlaying : false, np.p ? np.p.shuffle : false, np.p ? np.p.loopState : 0)
-                    visible: b.show
-                    width: Theme.sp(b.big ? 48 : 36); height: Theme.sp(48)
-                    opacity: b.ok ? 1 : 0.3
-                    Rectangle {
-                        id: face
-                        anchors.centerIn: parent
-                        width: Theme.sp(btn.b.big ? 48 : 34); height: width; radius: width / 2
-                        color: btnArea.containsMouse ? Theme.ghostHover : btn.b.on ? Qt.alpha(np.tint, 0.18) : "transparent"
-                        Behavior on color { ColorAnimation { duration: Theme.colorMs } }
-                        activeFocusOnTab: btn.b.ok
-                        Keys.onSpacePressed: btn.b.act()
-                        Keys.onReturnPressed: btn.b.act()
-                        Keys.onEnterPressed: btn.b.act()
-                        FocusRing {}
-                    }
-                    Text {
-                        textFormat: Text.PlainText
-                        anchors.centerIn: parent
-                        text: btn.b.g
-                        font.family: Theme.fontGlyph
-                        font.pixelSize: Theme.sp(btn.b.size)
-                        color: btn.b.on ? np.tint : Theme.textPrimary
-                        scale: btnArea.pressed ? 0.97 : 1
-                        Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
-                    }
-                    Rectangle {
-                        visible: !!btn.b.on
-                        anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 4 }
-                        width: 4; height: 4; radius: 2
-                        color: np.tint
-                    }
-                    MouseArea { id: btnArea; anchors.fill: parent; enabled: btn.b.ok; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: btn.b.act() }
-                    Accessible.role: Accessible.Button
-                    Accessible.name: btn.b.tip
-                    Accessible.description: btn.b.on ? "On" : ""
-                    Accessible.onPressAction: if (btn.b.ok) btn.b.act()
-                    Tip { text: btn.b.tip; shown: btnArea.containsMouse; below: true }
+            anchors { left: parent.left; right: parent.right; bottom: parent.bottom; bottomMargin: keyHints.visible ? keyHints.height + Theme.s2 : 0 }
+            height: Theme.sp(48)
+            Row {
+                id: mid
+                x: Math.min((transport.width - width) / 2, transport.width - outBtn.width - Theme.s2 - width)
+                spacing: 18
+                Repeater {
+                    model: ["shuffle", "previous", "play", "next", "loop"]
+                    CtlButton { required property string modelData; kind: modelData }
                 }
             }
+            CtlButton { id: outBtn; kind: "output"; anchors.right: parent.right }
         }
         KeyHints {
             id: keyHints
@@ -371,5 +336,50 @@ FocusScope {
             visible: Island.via === "key"
             hints: [["space", "Play"], ["←→", "Seek"], ["N P", "Next, back"], ["↩", "Go to it"], ["esc", "Back"]]
         }
+    }
+
+    component CtlButton: Item {
+        id: btn
+        property string kind
+        readonly property var b: np.button(kind, np.p, np.p ? np.p.isPlaying : false, np.p ? np.p.shuffle : false, np.p ? np.p.loopState : 0)
+        visible: b.show || kind === "shuffle" || kind === "loop"
+        enabled: b.show
+        Accessible.ignored: !b.show
+        width: Theme.sp(b.big ? 48 : 36); height: Theme.sp(48)
+        opacity: !b.show ? 0 : b.ok ? 1 : 0.3
+        Rectangle {
+            id: face
+            anchors.centerIn: parent
+            width: Theme.sp(btn.b.big ? 48 : 34); height: width; radius: width / 2
+            color: btnArea.containsMouse ? Theme.ghostHover : btn.b.on ? Qt.alpha(np.tint, 0.18) : "transparent"
+            Behavior on color { ColorAnimation { duration: Theme.colorMs } }
+            activeFocusOnTab: btn.b.ok
+            Keys.onSpacePressed: btn.b.act()
+            Keys.onReturnPressed: btn.b.act()
+            Keys.onEnterPressed: btn.b.act()
+            FocusRing {}
+        }
+        Text {
+            textFormat: Text.PlainText
+            anchors.centerIn: parent
+            text: btn.b.g
+            font.family: Theme.fontGlyph
+            font.pixelSize: Theme.sp(btn.b.size)
+            color: btn.b.on ? np.tint : Theme.textPrimary
+            scale: btnArea.pressed ? 0.97 : 1
+            Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+        }
+        Rectangle {
+            visible: !!btn.b.on
+            anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 4 }
+            width: 4; height: 4; radius: 2
+            color: np.tint
+        }
+        MouseArea { id: btnArea; anchors.fill: parent; enabled: btn.b.ok; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: btn.b.act() }
+        Accessible.role: Accessible.Button
+        Accessible.name: btn.b.tip
+        Accessible.description: btn.b.on ? "On" : ""
+        Accessible.onPressAction: if (btn.b.ok) btn.b.act()
+        Tip { text: btn.b.tip; shown: btnArea.containsMouse; below: true }
     }
 }
