@@ -82,7 +82,7 @@ Singleton {
 
     function run(cmd) { Quickshell.execDetached(["sh", "-c", cmd]); }
 
-    // ── Dim: every screen (services/Dim: 40 %, at most 15 %, monitors too),
+    // ── Dim: every screen (services/Dim: the panel to 1, a monitor to 0),
     // the keyboard light off
     IdleMonitor {
         enabled: root.enabled && !root.held && root.dimAfter > 0

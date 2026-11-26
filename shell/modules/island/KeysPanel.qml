@@ -169,7 +169,7 @@ FocusScope {
                 else if (k === Qt.Key_PageDown) pal.page(1);
                 else if (k === Qt.Key_PageUp) pal.page(-1);
                 else if (k === Qt.Key_Return || k === Qt.Key_Enter) pal.run(pal.rows[pal.current]);
-                else if (k === Qt.Key_Escape) { if (text) text = ""; else Island.close(); }
+                else if (k === Qt.Key_Escape) { if (text) text = ""; else Island.back(); }
                 else return;
                 event.accepted = true;
             }

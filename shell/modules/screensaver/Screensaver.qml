@@ -117,7 +117,44 @@ Scope {
     readonly property bool darkened: level >= 0.999
     readonly property string wantedFilm: showing && darkened ? film : ""
     property real filmCover: 1
-    onActiveFilmChanged: if (activeFilm === "") { coverOut.stop(); filmCover = 1; }
+    property bool filmShown: false
+    onActiveFilmChanged: if (activeFilm === "") { coverOut.stop(); filmCover = 1; filmShown = false; firstFrame.stop(); mpvIpc.connected = false; }
+    readonly property string ipcPath: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/kuwai/saver-mpv/ipc"
+    function reveal() {
+        if (filmShown || activeFilm === "") return;
+        filmShown = true;
+        firstFrame.stop();
+        coverOut.restart();
+    }
+    Socket {
+        id: mpvIpc
+        path: root.ipcPath
+        onConnectedChanged: if (connected) { write('{"command":["observe_property",1,"playback-time"]}\n'); flush(); }
+        parser: SplitParser {
+            onRead: data => {
+                let m = null;
+                try { m = JSON.parse(data); } catch (e) { return; }
+                if (m && m.event === "property-change" && m.name === "playback-time" && typeof m.data === "number" && m.data > 0) {
+                    root.reveal();
+                    mpvIpc.connected = false;
+                }
+            }
+        }
+    }
+    Timer {
+        id: firstFrame
+        property int waited: 0
+        interval: 250; repeat: true
+        onTriggered: {
+            waited += interval;
+            if (!mpvIpc.connected) mpvIpc.connected = true;
+            if (waited >= 8000) {
+                stop();
+                console.warn("screensaver: the film drew nothing in 8 s; trying again without it");
+                filmProc.signal(9);
+            }
+        }
+    }
     SequentialAnimation {
         id: coverOut
         PauseAnimation { duration: Theme.ambientFadeMs }   // a beat for the first frames
@@ -156,6 +193,7 @@ Scope {
     // CPU was learnt (filmOnCpu: no video memory at all).
     readonly property string mpvOptions: "really-quiet no-audio loop-file=inf panscan=1.0 profile=fast load-scripts=no osc=no cache=no"
         + " demuxer-max-bytes=16MiB demuxer-max-back-bytes=0 hwdec=" + (filmOnCpu ? "no" : "auto-copy-safe")
+        + " input-ipc-server=" + ipcPath
     Process {
         id: filmProc
         // A missing file never starts it (test -r; exit 66 goes straight to Dusk).
@@ -171,7 +209,11 @@ Scope {
                 + 'home="${XDG_RUNTIME_DIR:?}/kuwai/saver-mpv"; (umask 077; mkdir -p "$home") || exit 1; '
                 + 'MPV_HOME="$home" exec setpriv --pdeathsig KILL mpvpaper -l top -o "$1" "*" "$KUWAI_SAVER_FILE" </dev/null >/dev/null 2>&1', "kuwai-saver", root.mpvOptions]
             : ["sh", "-c", 'test -r "$KUWAI_SAVER_FILE" || exit 66; exec setpriv --pdeathsig KILL qs -p "$1"', "kuwai-saver", Quickshell.shellDir + "/../shell-saver"]
-        onStarted: coverOut.restart()
+        onStarted: {
+            if (!root.mpvSaver) { root.reveal(); return; }
+            firstFrame.waited = 0;
+            firstFrame.restart();
+        }
         // Every screen: one screen with the film and the other black read as
         // "the screensaver only came up on one monitor". It's a separate
         // process, killed on wake, so the second decoder costs nothing after.
@@ -182,11 +224,11 @@ Scope {
             : ({ KUWAI_SAVER_FILE: root.activeFilm, KUWAI_SAVER_SCREEN: "*", QSG_RENDER_LOOP: "basic" })
         onExited: (exitCode, exitStatus) => root.filmExited(exitCode)
     }
-    // ── Dim after a while: ten minutes in, every screen down (services/Dim),
+    // ── Dim after a while: "Dim the screen" in, every screen down (services/Dim),
     // back where it was on wake.
     Timer {
-        interval: 10 * 60 * 1000
-        running: root.showing && !Dim.wanted
+        interval: Math.max(60, Idle.dimAfter) * 1000
+        running: root.showing && !Dim.wanted && Idle.dimAfter > 0
         onTriggered: Dim.down()
     }
 
@@ -237,7 +279,7 @@ Scope {
                     // The film's screen stays clear: the film is under this
                     // surface (its own process, Top layer).
                     // (The film wanted, not yet started: the screen darkens first.)
-                    readonly property bool filmHere: root.showing && root.film !== ""
+                    readonly property bool filmHere: root.film !== ""
                     Rectangle { anchors.fill: parent; color: "black"; opacity: stage.filmHere ? root.filmCover : 1; visible: opacity > 0.001 }
 
                     // What fills the screen: the Dusk scene (default, drawn live,
@@ -342,6 +384,15 @@ Scope {
                             font.pixelSize: Math.round(win.height * 0.022)
                             color: Qt.rgba(1, 1, 1, 0.7)
                             leftPadding: 6
+                        }
+                        Text {
+                            textFormat: Text.PlainText
+                            visible: Weather.ok
+                            text: Weather.glyph + "  " + Weather.temp + "°" + (Weather.desc ? " · " + Weather.desc : "")
+                            font.family: Theme.fontText
+                            font.pixelSize: Math.round(win.height * 0.017)
+                            color: Qt.rgba(1, 1, 1, 0.6)
+                            leftPadding: 6; topPadding: 10
                         }
                         Text {
                             textFormat: Text.PlainText

@@ -420,7 +420,7 @@
     {
       "key": "idleDimAc",
       "type": "integer",
-      "default": 240,
+      "default": 180,
       "min": 0,
       "max": 86400,
       "section": "power",

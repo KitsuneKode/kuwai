@@ -1021,7 +1021,7 @@ FocusScope {
             SettingsGroup {
                 title: "On power"
                 opacity: Settings.idleOwner === "shell" ? 1 : 0.45
-                SettingsRow { key: "idleDimAc"; label: "Dim the screen"; SecondsChoice { key: "idleDimAc"; values: [120, 240, 600, 0] } }
+                SettingsRow { key: "idleDimAc"; label: "Dim the screen"; SecondsChoice { key: "idleDimAc"; values: [120, 180, 300, 0] } }
                 SettingsRow { key: "idleLockAc"; label: "Lock"; SecondsChoice { key: "idleLockAc"; values: [180, 300, 900, 0] } }
                 SettingsRow { key: "idleOffAc"; label: "Screen off"; SecondsChoice { key: "idleOffAc"; values: [330, 600, 1800, 0] } }
                 SettingsRow { key: "idleSleepAc"; label: "Sleep"; SecondsChoice { key: "idleSleepAc"; values: [1800, 3600, 0] } }

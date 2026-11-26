@@ -91,6 +91,11 @@ FocusScope {
     // ── How to add your own (? or the header button): per tab, the steps,
     // the command (click: copied), the folder (Open), and what's worth adding.
     property bool guide: false
+    onGuideChanged: {
+        if (guide) { Island.innerBack = () => { picker.guide = false; }; Island.innerBackLabel = "Themes"; }
+        else if (Island.innerBackLabel === "Themes") { Island.innerBack = null; Island.innerBackLabel = ""; }
+    }
+    Component.onDestruction: if (Island.innerBackLabel === "Themes") { Island.innerBack = null; Island.innerBackLabel = ""; }
     property string copied: ""
     Timer { id: copiedFor; interval: 1600; onTriggered: picker.copied = "" }
     function copyCmd(t) { Quickshell.execDetached(["sh", "-c", 'printf %s "$1" | wl-copy', "copy", t]); copied = t; copiedFor.restart(); }

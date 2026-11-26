@@ -101,6 +101,7 @@ FocusScope {
     function gb(b) { return b >= 1e9 ? (b / 1e9).toFixed(1) + " GB" : Math.round(b / 1e6) + " MB"; }
 
     Keys.onPressed: e => {
+        if (e.key === Qt.Key_Escape && confirm) { confirm = false; e.accepted = true; return; }
         if (e.key === Qt.Key_Tab && (e.modifiers & Qt.ControlModifier)) { view = view === "skills" ? "projects" : "skills"; e.accepted = true; return; }
         if (view !== "skills") return;
         if ([Qt.Key_Down, Qt.Key_Up, Qt.Key_Space, Qt.Key_Delete, Qt.Key_Backspace].indexOf(e.key) >= 0) keyboard = true;

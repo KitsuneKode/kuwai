@@ -628,6 +628,12 @@ FocusScope {
                 const k = event.key, ctrl = event.modifiers & Qt.ControlModifier;
                 const alt = event.modifiers & Qt.AltModifier;
                 if (k === Qt.Key_Escape && field.text !== "") { field.text = ""; event.accepted = true; return; }
+                if (k === Qt.Key_Menu || (k === Qt.Key_F10 && (event.modifiers & Qt.ShiftModifier))) {
+                    const it = list.itemAtIndex(launcher.current);
+                    if (it && it.menu && it.menu.enabled) { list.positionViewAtIndex(launcher.current, ListView.Contain); it.menu.popup(it.width * 0.55, it.height / 2); }
+                    event.accepted = true;
+                    return;
+                }
                 // The dock row: ←/→ choose a tile (the field is empty there, so
                 // the caret has nowhere to go); ⌥1…⌥8 open one from anywhere.
                 if (launcher.onDock && field.text === "" && (k === Qt.Key_Left || k === Qt.Key_Right)) {
@@ -683,6 +689,7 @@ FocusScope {
             id: row
             required property var modelData
             required property int index
+            readonly property var menu: rowMenu
             readonly property bool on: index === launcher.current
             readonly property bool header: modelData.kind === "header" || modelData.kind === "tips"
             readonly property bool card: !!modelData.card

@@ -4,8 +4,8 @@ pragma Singleton
 // you return. One place for it: the idle dim (Idle, Caffeine off) and the
 // screensaver's ten-minute dim (Caffeine on) both call down()/up().
 //
-// Down is 40 % of where you had it, at most 15 % (100 → 15, 30 → 12, 10 → 4):
-// a flat 15 % did nothing at night, when you already sit at 15 or below. It
+// Down is as low as each screen goes and stays lit: 1 on the laptop's panel,
+// 0 on a monitor (DDC; it still shows at 0). Nothing goes up to "dim". It
 // goes through bin/kuwai-brightness, so external monitors (DDC) dim too
 // and the brightness controller keeps knowing the real level (brightnessctl
 // behind its back left the laptop panel only, and the controller stale).
@@ -25,8 +25,7 @@ Singleton {
 
     readonly property string ctl: Paths.bin + "/kuwai-brightness"
     readonly property string file: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/kuwai/saver-dim.json"
-    readonly property int most: 15
-    function of(v) { return Math.max(1, Math.min(most, Math.round(v * 0.4))); }
+    function floorOf(o) { return o && o.bus !== null && o.bus !== undefined ? 0 : 1; }
 
     property bool dimmed: false
     property bool wanted: false          // down() asked, up() not yet
@@ -77,13 +76,13 @@ Singleton {
                     const now = st.outputs[name].value;
                     if (typeof now !== "number") continue;
                     const v = prior && typeof prior[name] === "number" && prior[name] > now ? prior[name] : now;
-                    if (root.of(v) < now) w[name] = v;
+                    if (root.floorOf(st.outputs[name]) < now) w[name] = v;
                 }
                 if (!Object.keys(w).length) return;
                 root.was = w;
                 saved.setText(JSON.stringify(w));
                 root.dimmed = true;
-                for (const name in w) root.set(name, root.of(w[name]));   // 40 % of yours, not of what shows
+                for (const name in w) root.set(name, root.floorOf(st.outputs[name]));
             }
         }
     }
