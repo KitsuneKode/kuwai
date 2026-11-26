@@ -30,6 +30,7 @@ depends=(
   'libpulse'
   'lua'
   'nodejs'
+  'openssh'
   'pacman-contrib'
   'pipewire-audio'
   'pipewire-pulse'

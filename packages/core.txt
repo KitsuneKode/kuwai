@@ -16,6 +16,7 @@ python3:python
 luac:lua
 playerctl:playerctl
 git:git
+ssh-keygen:openssh
 file:file
 node:nodejs
 :qt6-multimedia

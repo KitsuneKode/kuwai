@@ -25,6 +25,7 @@ pkgbase = kuwai
 	depends = libpulse
 	depends = lua
 	depends = nodejs
+	depends = openssh
 	depends = pacman-contrib
 	depends = pipewire-audio
 	depends = pipewire-pulse
