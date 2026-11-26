@@ -56,16 +56,27 @@ ShellRoot {
     property int failures: 0
     property string farewell: ""      // suspend | reboot | poweroff: the goodbye showing
 
+    property string challenge: ""
+    property int answers: 0
     function submit() {
-        if (checking || leaving || password === "") return;
+        if (leaving || password === "") return;
+        if (challenge !== "") {
+            const answer = password;
+            password = ""; challenge = ""; checking = true;
+            Greetd.respond(answer);
+            return;
+        }
+        if (checking) return;
         if (!Greetd.available) { fail("greetd isn't running"); return; }
         error = "";
+        answers = 0;
         checking = true;
         trace("auth-request");
         Greetd.createSession(user);
     }
     function fail(message) {
         trace("failure");
+        challenge = "";
         handoff.stop();
         quitAnyway.stop();
         locked = true;
@@ -94,8 +105,12 @@ ShellRoot {
     Connections {
         target: Greetd
         function onAuthMessage(message, error, responseRequired, echoResponse) {
-            if (responseRequired) Greetd.respond(echoResponse ? root.user : root.password);
-            else if (error) root.error = message;
+            if (!responseRequired) { if (error) root.error = message; return; }
+            if (echoResponse && root.answers === 0) { Greetd.respond(root.user); return; }
+            if (root.answers++ === 0) { Greetd.respond(root.password); return; }
+            root.checking = false;
+            root.password = "";
+            root.challenge = String(message || "Verification code").replace(/[:\s]+$/, "");
         }
         function onAuthFailure(message) { root.fail("Incorrect password"); }
         function onError(error) { root.fail("Couldn't log in (" + error + ")"); }

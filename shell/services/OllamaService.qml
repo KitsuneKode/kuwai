@@ -21,7 +21,6 @@ Singleton {
 
     readonly property string bin: Paths.bin + "/kuwai-ollama"     // the running channel's copy, not the dev checkout
     readonly property string runtimeDir: (Quickshell.env("XDG_RUNTIME_DIR") || ("/run/user/" + Quickshell.env("UID"))) + "/kuwai/ai"
-    readonly property string reqPath: runtimeDir + "/request.json"
 
     property string status: "offline" // "ready" | "loading" | "offline"
     property string model: "qwen3.5:4b"
@@ -1030,11 +1029,6 @@ function onPanelClosed() {
     }
 
     // ── Send Chat Turn ────────────────────────────────────────────────
-    FileView {
-        id: reqFileWriter
-        path: root.reqPath
-        printErrors: false
-    }
 
     function send(promptText) {
         if (!promptText || promptText.trim() === "") return;
@@ -1136,7 +1130,7 @@ function onPanelClosed() {
         chatProc.sentIndex = sent.index;
         chatProc.sentUpTo = upTo;
 
-        reqFileWriter.setText(JSON.stringify({
+        chatProc.request = JSON.stringify({
             model: model,
             messages: sent.api,
             summary: summary,
@@ -1145,7 +1139,7 @@ function onPanelClosed() {
             mode: mode,
             keep_alive: "5m",
             options: { num_ctx: ctx, temperature: model.indexOf("hermes") >= 0 ? 0.4 : 0.7 }
-        }, null, 2));
+        });
 
         chatProc.sawTurnEnd = false;
         chatProc.running = false;
@@ -1157,8 +1151,10 @@ function onPanelClosed() {
         property bool sawTurnEnd: false
         property var sentIndex: []
         property int sentUpTo: 0
-        command: [root.bin, "agent", root.reqPath]
+        command: [root.bin, "agent", "-"]
         stdinEnabled: true
+        property string request: ""
+        onStarted: { write(request + "\n"); request = ""; }
         stdout: SplitParser {
             splitMarker: "\n"
             onRead: line => {

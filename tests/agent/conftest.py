@@ -47,9 +47,9 @@ def run_agent(tmp_path):
                 "KUWAI_SANDBOX_DIR": str(tmp_path / "sandbox"),
                 **(env or {}),
             }
-            stdin = "".join(json.dumps(l) + "\n" for l in stdin_lines)
+            stdin = json.dumps(req) + "\n" + "".join(json.dumps(l) + "\n" for l in stdin_lines)
             proc = subprocess.run(
-                [str(HELPER), "agent", str(req_file)],
+                [str(HELPER), "agent", "-"],
                 input=stdin, capture_output=True, text=True, env=e, timeout=30,
             )
         assert proc.returncode == 0, proc.stderr
@@ -71,8 +71,10 @@ def start_agent(tmp_path):
         with FakeOllama(script, caps) as fake:
             e = {**os.environ, "OLLAMA_HOST": fake.url, "PATH": f"{STUBS}:{os.environ['PATH']}",
                  "HOME": str(tmp_path), "KUWAI_TEST_TMP": str(tmp_path)}
-            proc = subprocess.Popen([str(HELPER), "agent", str(req_file)], stdin=subprocess.PIPE,
+            proc = subprocess.Popen([str(HELPER), "agent", "-"], stdin=subprocess.PIPE,
                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=e)
+            proc.stdin.write(json.dumps(req) + "\n")
+            proc.stdin.flush()
             try:
                 yield proc, fake
             finally:

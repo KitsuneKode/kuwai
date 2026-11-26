@@ -218,7 +218,7 @@ Item {
                 transform: Translate { y: (1 - Math.min(1, ask.value)) * 14 }
                 lock: view.lock
                 preview: view.preview
-                placeholder: view.lock.openAfter ? "Unlock to open " + (view.lock.openAfter.app || "it") : "Enter Password"
+                placeholder: view.lock.challenge ? view.lock.challenge : view.lock.openAfter ? "Unlock to open " + (view.lock.openAfter.app || "it") : "Enter Password"
                 onActivity: view.ask()
                 onDismissed: view.asking = false
             }

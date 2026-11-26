@@ -18,7 +18,7 @@ Column {
     id: entry
     required property var lock
     property bool preview: false
-    property string placeholder: "Enter Password"
+    property string placeholder: entry.lock && entry.lock.challenge ? entry.lock.challenge : "Enter Password"
     property color accent: Theme.accent
     readonly property color onAccent: (0.2126 * accent.r + 0.7152 * accent.g + 0.0722 * accent.b) > 0.55 ? Theme.inkOnLight : "white"
     property bool capsLock: false

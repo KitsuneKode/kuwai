@@ -1023,6 +1023,34 @@ def tool_read(args):
 _DECIDED = {}
 
 
+def _scripts_shown(command):
+    """What a sandbox command would run, for its approval: the start of each
+    file in the sandbox it names ("bash send.sh" shows send.sh, not just its name)."""
+    if not command:
+        return ""
+    import shlex
+    try:
+        words = shlex.split(str(command))
+    except ValueError:
+        words = str(command).split()
+    try:
+        ws = kuwai_sandbox.workspace(CHAT).resolve()
+    except Exception:
+        return ""
+    out = []
+    for w in words[:20]:
+        rel = w[len("/work/"):].split("/", 1)[-1] if w.startswith("/work/") else w
+        if rel.startswith(("/", "~")) or ".." in Path(rel).parts:
+            continue
+        f = (ws / rel)
+        try:
+            if f.is_file() and f.resolve().is_relative_to(ws):
+                out.append(f"\n\n--- {rel} ---\n" + f.read_text(errors="replace")[:1500])
+        except OSError:
+            continue
+    return "".join(out)[:4000]
+
+
 def _classify(args):
     """(full path, in the sandbox?, sandbox-relative parts). Relative and /work/… paths are
     always the sandbox's; ~/ and / paths are yours unless they sit lexically in its folder."""
@@ -1662,7 +1690,7 @@ def run_tool(ids, name, raw_args):
                 ask = tool["approve"](args) if tool["approve"] else None
                 if not ask and PRIVATE and name in OUTBOUND:
                     target = args.get("url") or args.get("query") or args.get("command") or ""
-                    ask = ("network", "Go online after reading your files", str(target)[:400])
+                    ask = ("network", "Go online after reading your files", str(target)[:400] + _scripts_shown(args.get("command")))
                 if ask:
                     kind, summary, detail = ask
                     decision = APPROVALS.ask(ids, item_id, kind, summary, detail)
@@ -1930,11 +1958,14 @@ def _on_term(_sig, _frame):
 def main(req_file):
     global APPROVALS
     signal.signal(signal.SIGTERM, _on_term)
-    APPROVALS = Approvals()
     try:
-        with open(req_file, "r", encoding="utf-8") as f:
-            req = json.load(f)
+        if req_file == "-":
+            req = json.loads(sys.stdin.readline())
+        else:
+            with open(req_file, "r", encoding="utf-8") as f:
+                req = json.load(f)
     except (OSError, ValueError) as e:
         emit({"type": "turn.completed", "status": "failed", "error": f"Bad request file: {e}", "stats": {}})
         return
+    APPROVALS = Approvals()
     run_turn(req)

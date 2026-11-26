@@ -73,10 +73,20 @@ Scope {
         printErrors: false
         onLoaded: if (!root.locked) { console.warn("lock: the session was locked when the shell stopped; locking again"); root.lock(); }
     }
+    property string challenge: ""
+    property int answers: 0
     function submit() {
-        if (checking || leaving || password === "") return;
+        if (leaving || password === "") return;
+        if (challenge !== "") {
+            const answer = password;
+            password = ""; challenge = ""; checking = true;
+            pam.respond(answer);
+            return;
+        }
+        if (checking) return;
         error = "";
         checking = true;
+        answers = 0;
         pam.start();
     }
 
@@ -87,10 +97,14 @@ Scope {
         config: "login"
         onResponseRequiredChanged: {
             if (!responseRequired) return;
-            respond(root.password);
+            if (root.answers++ === 0) { respond(root.password); return; }
+            root.checking = false;
+            root.password = "";
+            root.challenge = String(message || "Verification code").replace(/[:\s]+$/, "");
         }
         onCompleted: result => {
             root.checking = false;
+            root.challenge = "";
             if (result === PamResult.Success) {
                 root.password = "";
                 root.leaving = true;
@@ -103,6 +117,7 @@ Scope {
         }
         onError: err => {
             root.checking = false;
+            root.challenge = "";
             root.password = "";
             root.error = "Couldn't check the password (" + PamError.toString(err) + ")";
             root.failures++;

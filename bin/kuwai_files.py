@@ -25,7 +25,8 @@ SECRET = [HOME / ".ssh", HOME / ".gnupg", HOME / ".local/share/keyrings", HOME /
           HOME / ".local/share/kwalletd", HOME / ".pki", HOME / ".cert", HOME / ".local/share/devin", HOME / ".t3",
           HOME / ".codex", HOME / ".config/kuwai/feeds", HOME / ".claude", HOME / ".claude.json", HOME / ".config/op",
           HOME / ".config/rclone", HOME / ".local/state/kuwai", HOME / ".cursor", HOME / ".config/Cursor",
-          HOME / ".local/share/fish/fish_history"]
+          HOME / ".local/share/fish/fish_history", HOME / ".local/share/kuwai-data/clipboard", HOME / ".cache/kuwai/clip",
+          HOME / ".cache/cliphist", HOME / ".local/share/voxtype", HOME / ".local/state/voxtype"]
 SECRET_NAME = re.compile(r"(^id_[a-z0-9]+$|\.pem$|\.key$|\.p12$|\.pfx$|^\.env(\..*)?$|^credentials(\.(json|toml|ya?ml))?$|\.kdbx$"
                          r"|^\.netrc$|^\.git-credentials$|^\.npmrc$|^\.pypirc$|^cookies(\.sqlite)?$|^login data$|^\.pgpass$|^\.wakatime\.cfg$|_history$|^\.histfile$"
                          r"|^key[34]\.db$|^logins\.json$|^hosts\.ya?ml$|^auth\.json$|token)", re.I)
