@@ -29,6 +29,12 @@ Singleton {
     function brandLabel(id) { return Kittymux.agentLabel(agentOf(id)); }
     function name(id) { return P.label(of(id), brandLabel(id)); }
     function why(p) { return P.why(p); }
+    function roomFor(id) {
+        const accounts = [];
+        for (const pr of Limits.providers || []) for (const a of pr.accounts || []) accounts.push(a);
+        const p = P.roomFor(instances, accounts, String(id || ""));
+        return p ? name(p.id) : "";
+    }
     function modelName(id, slug) { return P.modelName(of(id), String(slug || "")); }
     function refresh(force) {
         if (reader.running || pinned) return;

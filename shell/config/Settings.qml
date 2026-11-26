@@ -88,6 +88,7 @@ Singleton {
     readonly property bool sleepReminder: value("sleepReminder")
     readonly property string sleepAt: value("sleepAt")
     readonly property int limitThreshold: value("limitThreshold")
+    readonly property int agentBudget: value("agentBudget")
     readonly property bool islandProximity: value("islandProximity")
     readonly property bool sweepMark: value("sweepMark")
     readonly property int sweepMinGB: value("sweepMinGB")

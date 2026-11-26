@@ -4818,6 +4818,58 @@
    "panel": "AgentsPanel",
    "set": [
     [
+     "Providers",
+     "pinned",
+     true
+    ],
+    [
+     "Providers",
+     "availability",
+     "ok"
+    ],
+    [
+     "Providers",
+     "instances",
+     [
+      {
+       "id": "codex",
+       "driver": "codex",
+       "name": "Codex",
+       "accent": "",
+       "enabled": true,
+       "status": "ready",
+       "reason": "",
+       "auth": "authenticated",
+       "plan": "",
+       "models": []
+      },
+      {
+       "id": "codex_2",
+       "driver": "codex",
+       "name": "Codex-2",
+       "accent": "",
+       "enabled": true,
+       "status": "ready",
+       "reason": "",
+       "auth": "authenticated",
+       "plan": "",
+       "models": []
+      },
+      {
+       "id": "claudeAgent",
+       "driver": "claudeAgent",
+       "name": "Claude",
+       "accent": "",
+       "enabled": true,
+       "status": "ready",
+       "reason": "",
+       "auth": "authenticated",
+       "plan": "",
+       "models": []
+      }
+     ]
+    ],
+    [
      "Kittymux",
      "feedPinned",
      true
@@ -4909,7 +4961,7 @@
         {
          "key": "codex:work",
          "driver": "codex",
-         "name": "Work",
+         "name": "Codex-2",
          "email": "",
          "plan": "Plus",
          "accent": null,
@@ -4926,6 +4978,27 @@
            "durationMins": 300
           }
          ]
+        },
+        {
+         "key": "codex:home",
+         "driver": "codex",
+         "name": "Codex",
+         "email": "",
+         "plan": "Plus",
+         "accent": null,
+         "note": null,
+         "credits": 0,
+         "checkedAt": "@now-60000ms",
+         "windows": [
+          {
+           "id": "session",
+           "kind": "session",
+           "label": "Session",
+           "used": 20,
+           "resetsAt": "@now+9000000ms",
+           "durationMins": 300
+          }
+         ]
         }
        ]
       }
@@ -4933,6 +5006,342 @@
     ]
    ],
    "kind": "worst"
+  },
+  {
+   "id": "agents/budget",
+   "name": "agents",
+   "panel": "AgentsPanel",
+   "set": [
+    [
+     "Kittymux",
+     "feedPinned",
+     true
+    ],
+    [
+     "Kittymux",
+     "feed",
+     {
+      "version": 1,
+      "agents": [
+       {
+        "key": "fx-1",
+        "agent": "claude",
+        "brand": "claude",
+        "title": "Fix the calendar header at large text",
+        "tab_title": "rice",
+        "cwd": "~/Projects/rice",
+        "state": "waiting",
+        "account": "main",
+        "question": "Allow Bash: bun test tests/shell in ~/Projects/rice?"
+       },
+       {
+        "key": "fx-2",
+        "agent": "codex",
+        "brand": "codex",
+        "title": "Review the updates panel",
+        "tab_title": "rice",
+        "cwd": "~/Projects/rice",
+        "state": "working",
+        "account": "main"
+       },
+       {
+        "key": "fx-3",
+        "agent": "claude",
+        "brand": "claude",
+        "title": "Write the rehearsal notes",
+        "tab_title": "rice",
+        "cwd": "~/Projects/rice",
+        "state": "done",
+        "account": "main"
+       }
+      ]
+     }
+    ],
+    [
+     "T3Code",
+     "alive",
+     true
+    ],
+    [
+     "T3Code",
+     "running",
+     1
+    ],
+    [
+     "T3Code",
+     "waiting",
+     2
+    ],
+    [
+     "T3Code",
+     "rawFinished",
+     2
+    ],
+    [
+     "T3Code",
+     "rawItems",
+     [
+      {
+       "thread": "t1",
+       "env": "e1",
+       "project": "rice",
+       "status": "waiting",
+       "provider": "claudeAgent",
+       "title": "Approve the migration plan",
+       "at": "@now-460iso",
+       "ask": "approval",
+       "request": {
+        "id": "req-fixture",
+        "kind": "command",
+        "prompt": "bun run migrate --plan plans/0042.sql"
+       }
+      },
+      {
+       "thread": "t2",
+       "env": "e1",
+       "project": "rice",
+       "status": "waiting",
+       "provider": "codex",
+       "title": "Which shortcut for the switcher?",
+       "at": "@now-920iso",
+       "ask": "question"
+      },
+      {
+       "thread": "t3",
+       "env": "e1",
+       "project": "rice",
+       "status": "running",
+       "provider": "claudeAgent",
+       "title": "Rehearsal harness",
+       "at": "@now-1380iso"
+      },
+      {
+       "thread": "t4",
+       "env": "e1",
+       "project": "rice",
+       "status": "running",
+       "provider": "codex",
+       "title": "Port the greeter",
+       "at": "@now-1840iso",
+       "blocked": true
+      },
+      {
+       "thread": "t5",
+       "env": "e1",
+       "project": "rice",
+       "status": "completed",
+       "provider": "claudeAgent",
+       "title": "OTP detection: origin-bound codes",
+       "at": "@now-2300iso"
+      },
+      {
+       "thread": "t6",
+       "env": "e1",
+       "project": "rice",
+       "status": "failed",
+       "provider": "gemini",
+       "title": "Translate the settings pages",
+       "at": "@now-2760iso",
+       "limited": true
+      }
+     ]
+    ]
+   ],
+   "kind": "worst",
+   "props": {
+    "budget": 40,
+    "costs": {
+     "available": true,
+     "threads": {
+      "t1": {
+       "cost": 12.4,
+       "priced": true
+      },
+      "t3": {
+       "cost": 3.1,
+       "priced": true
+      },
+      "t5": {
+       "cost": 0.42,
+       "priced": false
+      }
+     },
+     "today": {
+      "cost": 52.75,
+      "tokens": 180000000,
+      "unpriced": 0,
+      "gaps": 3
+     }
+    }
+   }
+  },
+  {
+   "id": "agents/budget-under",
+   "name": "agents",
+   "panel": "AgentsPanel",
+   "set": [
+    [
+     "Kittymux",
+     "feedPinned",
+     true
+    ],
+    [
+     "Kittymux",
+     "feed",
+     {
+      "version": 1,
+      "agents": [
+       {
+        "key": "fx-1",
+        "agent": "claude",
+        "brand": "claude",
+        "title": "Fix the calendar header at large text",
+        "tab_title": "rice",
+        "cwd": "~/Projects/rice",
+        "state": "waiting",
+        "account": "main",
+        "question": "Allow Bash: bun test tests/shell in ~/Projects/rice?"
+       },
+       {
+        "key": "fx-2",
+        "agent": "codex",
+        "brand": "codex",
+        "title": "Review the updates panel",
+        "tab_title": "rice",
+        "cwd": "~/Projects/rice",
+        "state": "working",
+        "account": "main"
+       },
+       {
+        "key": "fx-3",
+        "agent": "claude",
+        "brand": "claude",
+        "title": "Write the rehearsal notes",
+        "tab_title": "rice",
+        "cwd": "~/Projects/rice",
+        "state": "done",
+        "account": "main"
+       }
+      ]
+     }
+    ],
+    [
+     "T3Code",
+     "alive",
+     true
+    ],
+    [
+     "T3Code",
+     "running",
+     1
+    ],
+    [
+     "T3Code",
+     "waiting",
+     2
+    ],
+    [
+     "T3Code",
+     "rawFinished",
+     2
+    ],
+    [
+     "T3Code",
+     "rawItems",
+     [
+      {
+       "thread": "t1",
+       "env": "e1",
+       "project": "rice",
+       "status": "waiting",
+       "provider": "claudeAgent",
+       "title": "Approve the migration plan",
+       "at": "@now-460iso",
+       "ask": "approval",
+       "request": {
+        "id": "req-fixture",
+        "kind": "command",
+        "prompt": "bun run migrate --plan plans/0042.sql"
+       }
+      },
+      {
+       "thread": "t2",
+       "env": "e1",
+       "project": "rice",
+       "status": "waiting",
+       "provider": "codex",
+       "title": "Which shortcut for the switcher?",
+       "at": "@now-920iso",
+       "ask": "question"
+      },
+      {
+       "thread": "t3",
+       "env": "e1",
+       "project": "rice",
+       "status": "running",
+       "provider": "claudeAgent",
+       "title": "Rehearsal harness",
+       "at": "@now-1380iso"
+      },
+      {
+       "thread": "t4",
+       "env": "e1",
+       "project": "rice",
+       "status": "running",
+       "provider": "codex",
+       "title": "Port the greeter",
+       "at": "@now-1840iso",
+       "blocked": true
+      },
+      {
+       "thread": "t5",
+       "env": "e1",
+       "project": "rice",
+       "status": "completed",
+       "provider": "claudeAgent",
+       "title": "OTP detection: origin-bound codes",
+       "at": "@now-2300iso"
+      },
+      {
+       "thread": "t6",
+       "env": "e1",
+       "project": "rice",
+       "status": "failed",
+       "provider": "gemini",
+       "title": "Translate the settings pages",
+       "at": "@now-2760iso",
+       "limited": true
+      }
+     ]
+    ]
+   ],
+   "kind": "worst",
+   "props": {
+    "budget": 40,
+    "costs": {
+     "available": true,
+     "threads": {
+      "t1": {
+       "cost": 12.4,
+       "priced": true
+      },
+      "t3": {
+       "cost": 3.1,
+       "priced": true
+      },
+      "t5": {
+       "cost": 0.42,
+       "priced": false
+      }
+     },
+     "today": {
+      "cost": 18.2,
+      "tokens": 180000000,
+      "unpriced": 0,
+      "gaps": 3
+     }
+    }
+   }
   },
   {
    "id": "agents/context",

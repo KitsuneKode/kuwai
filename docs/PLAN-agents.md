@@ -25,6 +25,30 @@ from today, so none of it is a guess about what exists.
 - **The screens stay on while agents work** (62d3520): turning them off
   disconnected the external monitor and moved its workspaces.
 
+## Done (2026-11-26)
+
+1. **Providers service** (52ff6d6): `bin/kuwai-providers` + `services/Providers.qml`,
+   T3's provider caches read field by field (the email in `auth` never reaches a
+   dict); names, marks and models for T3 rows.
+2. **Spend and tokens from T3's turns** (84173ff): `lib/t3usage.mjs`, read from
+   `statev2.sqlite` without a token; partial and unrecorded turns said, never 0;
+   OpenAI, Google and xAI prices with their source; T3's own sessions left out of
+   the local logs.
+3. **Marks everywhere** (84173ff): `island/AgentMark.qml` (tile, mark, two
+   letters, the model's vendor badge, the T3 badge); Kiro's mark from T3 Code.
+   Pi, Muse and fx have no mark in T3 Code's source yet: two letters.
+4. **Usage** (84173ff, on 59a40c6): every provider T3 runs, its instances, "no
+   price" rows, cache hit rate, coverage.
+5. **Provider health** (52ff6d6): Usage's card, the Agents footer line. A tap
+   opens Usage or T3 Code; T3's settings page has no known link to open it at.
+6. **Rows say more** (63dd44f): context fill, "Cache warm 3 min", a limited T3
+   thread's time back.
+7. **One capsule** (63dd44f): it was one already; the ✓ now counts only what
+   finished since you last opened the Agents panel.
+8. **The rest**: Super+Ctrl+A already went to what needs you; the away recap
+   says what failed or hit a limit; a daily budget (Settings → Bar) with cost on
+   T3 rows and a footer line; a limited thread names an instance with room.
+
 ## What T3 Code already gives us (found 2026-11-21, no new token needed)
 
 - **Every provider's state**: `~/.t3/caches/<instance>.json`, one per provider

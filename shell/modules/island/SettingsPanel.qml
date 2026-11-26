@@ -430,6 +430,15 @@ FocusScope {
                         onPicked: id => Settings.set("limitThreshold", Number(id))
                     }
                 }
+                SettingsRow {
+                    key: "agentBudget"
+                    label: "Daily agent budget"; detail: "An estimate at list prices from T3 Code's records; the Agents panel says when today passes it, each row says what its thread cost"
+                    Segmented {
+                        options: [0, 10, 25, 50, 100].map(n => ({ id: String(n), label: n ? "$" + n : "Off" }))
+                        current: String(Settings.agentBudget)
+                        onPicked: id => Settings.set("agentBudget", Number(id))
+                    }
+                }
             }
             SettingsGroup {
                 title: "On hover"

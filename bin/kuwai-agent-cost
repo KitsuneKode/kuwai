@@ -1,0 +1,24 @@
+#!/usr/bin/env node
+import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+import { costSql, costs } from "../lib/t3usage.mjs";
+
+const HOME = process.env.HOME || "";
+const T3_HOME = process.env.T3CODE_HOME || join(HOME, ".t3");
+const DB = join(process.env.T3_USERDATA || join(T3_HOME, "userdata"), "statev2.sqlite");
+const here = dirname(fileURLToPath(import.meta.url));
+const now = Number(process.env.KUWAI_NOW_MS) || Date.now();
+
+let prices = { models: [] };
+try { prices = JSON.parse(readFileSync(join(here, "../lib/spend-prices.json"), "utf8")); } catch {}
+const midnight = new Date(now);
+midnight.setHours(0, 0, 0, 0);
+let out = { available: false, threads: {}, today: { cost: 0, tokens: 0, unpriced: 0, gaps: 0 } };
+try {
+  const raw = execFileSync("sqlite3", ["-readonly", "-json", "-cmd", ".timeout 3000", `file:${DB}?mode=ro`, costSql(process.argv.slice(2), midnight.toISOString())],
+    { encoding: "utf8", timeout: 15000, maxBuffer: 16 << 20, stdio: ["ignore", "pipe", "ignore"] });
+  out = Object.assign({ available: true }, costs(raw.trim() ? JSON.parse(raw) : [], prices));
+} catch {}
+process.stdout.write(JSON.stringify(out) + "\n");

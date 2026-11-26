@@ -146,3 +146,25 @@ export function monogram(name) {
     if (words.length === 1) return words[0].length <= 2 ? words[0] : words[0].charAt(0).toUpperCase() + words[0].charAt(1).toLowerCase();
     return (words[0].charAt(0) + words[1].charAt(0)).toUpperCase();
 }
+
+/**
+ * Where a thread stopped by a limit could go on: another instance T3 says is ready whose account (Limits, by the instance's
+ * name) has every window under its cap. The same tool first, then the one with most room left. null when none is known
+ * to have room: an instance Limits doesn't report isn't offered.
+ * @param {Provider[]} list @param {{ name?: string | null, windows?: { used?: number }[] }[]} accounts @param {string} id
+ * @returns {Provider | null}
+ */
+export function roomFor(list, accounts, id) {
+    const me = (list || []).find(p => p.id === id);
+    /** @param {string} name */
+    const used = name => {
+        const a = (accounts || []).find(x => x && x.name === name);
+        if (!a || !(a.windows || []).length) return -1;
+        return Math.max.apply(null, (a.windows || []).map(w => w.used || 0));
+    };
+    const ready = (list || []).filter(p => p.id !== id && p.status === "ready" && p.enabled !== false && p.name)
+        .map(p => ({ p: p, used: used(p.name || "") }))
+        .filter(c => c.used >= 0 && c.used < 100)
+        .sort((a, b) => Number(!!me && b.p.driver === me.driver) - Number(!!me && a.p.driver === me.driver) || a.used - b.used);
+    return ready.length ? ready[0].p : null;
+}

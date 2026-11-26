@@ -361,7 +361,10 @@ Singleton {
         const t3Done = T3Code.liveItems.filter(i => i.status === "completed" && Date.parse(i.at || "") >= since).length;
         const waiting = Agents.tally.needs;
         const alerts = Notifs.items.filter(i => !i.discard && i.time >= since && (i.severity === "critical" || i.severity === "warning")).length;
-        return { waiting: waiting, done: kittyDone + t3Done, alerts: alerts };
+        const since2 = s => (s.t || 0) >= since;
+        const failed = Agents.sessions.filter(s => s.state === "error" && since2(s)).length;
+        const limited = Agents.sessions.filter(s => s.state === "limited" && since2(s)).length;
+        return { waiting: waiting, done: kittyDone + t3Done, alerts: alerts, failed: failed, limited: limited };
     }
     function recap(since) {
         if (!Settings.awayRecap || Notifs.dnd || Notifs.sharing || Date.now() - since < 120000) return false;

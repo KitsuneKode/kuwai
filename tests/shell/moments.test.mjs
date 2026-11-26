@@ -54,4 +54,8 @@ describe("while you were away", () => {
     expect(awaySummary({ waiting: 0, done: 0, alerts: 2 })).toEqual({ label: "While you were away", value: "2 alerts", tone: "caution", opens: "center" });
     expect(awaySummary({ waiting: 0, done: 4, alerts: 0 }).tone).toBe("done");
   });
+  test("what failed or hit a limit is said, after what needs you", () => {
+    expect(awaySummary({ waiting: 1, done: 2, alerts: 0, failed: 1, limited: 2 }).value).toBe("1 needs you · 1 failed · 2 hit a limit · 2 finished");
+    expect(awaySummary({ waiting: 0, done: 0, alerts: 0, limited: 1 })).toEqual({ label: "While you were away", value: "1 hit a limit", tone: "caution", opens: "agents" });
+  });
 });

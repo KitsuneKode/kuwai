@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { parse, index, trouble, off, unchecked, label, why, line, modelName, vendorOf, monogram } from "../../shell/services/providers.mjs";
+import { parse, index, trouble, off, unchecked, label, why, line, modelName, vendorOf, monogram, roomFor } from "../../shell/services/providers.mjs";
 
 const claude = { id: "claudeAgent_2", driver: "claudeAgent", name: "Claude-2", accent: "#eb2575", enabled: true, status: "ready",
   reason: "", auth: "authenticated", plan: "Claude Pro Subscription", models: [["claude-opus-5-5", "Claude Opus 5.5"]] };
@@ -100,5 +100,23 @@ describe("marks", () => {
     expect(monogram("GLM Agent")).toBe("GA");
     expect(monogram("opencode")).toBe("Op");
     expect(monogram("")).toBe("?");
+  });
+});
+
+describe("room elsewhere", () => {
+  const inst = (id, driver, name, status = "ready", enabled = true) => ({ id, driver, name, status, enabled, accent: "", reason: "", auth: "", plan: "", models: [] });
+  const list = [inst("claudeAgent", "claudeAgent", "Claude"), inst("claudeAgent_2", "claudeAgent", "Claude-2"), inst("codex", "codex", "Codex"),
+                inst("codex_2", "codex", "Codex-2"), inst("pi", "pi", "Pi", "disabled", false), inst("grok", "grok", "Grok")];
+  const acct = (name, ...used) => ({ name, windows: used.map(u => ({ used: u })) });
+  test("the same tool first, when it has room", () => {
+    expect(roomFor(list, [acct("Claude", 100, 40), acct("Claude-2", 30, 60), acct("Codex", 5)], "claudeAgent").id).toBe("claudeAgent_2");
+  });
+  test("else the one with most room", () => {
+    expect(roomFor(list, [acct("Claude", 100), acct("Claude-2", 100, 10), acct("Codex", 70), acct("Codex-2", 20)], "claudeAgent").id).toBe("codex_2");
+  });
+  test("one Limits doesn't report, or a disabled one, isn't offered", () => {
+    expect(roomFor(list, [acct("Claude", 100)], "claudeAgent")).toBe(null);
+    expect(roomFor(list, [acct("Pi", 0)], "claudeAgent")).toBe(null);
+    expect(roomFor([], [], "x")).toBe(null);
   });
 });

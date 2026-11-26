@@ -850,6 +850,20 @@
       "restartScope": "live"
     },
     {
+      "key": "agentBudget",
+      "type": "integer",
+      "default": 0,
+      "min": 0,
+      "max": 100000,
+      "section": "bar",
+      "label": "Daily agent budget",
+      "detail": "An estimate at list prices from T3 Code's records; the Agents panel says when today passes it, each row says what its thread cost",
+      "group": "",
+      "searchTerms": "daily agent budget an estimate at list prices from t3 code's records; the agents panel says when today passes it, each row says what its thread cost spend cost money dollars budget per day limit",
+      "requires": [],
+      "restartScope": "live"
+    },
+    {
       "key": "islandProximity",
       "type": "boolean",
       "default": true,

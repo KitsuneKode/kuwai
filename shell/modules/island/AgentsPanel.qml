@@ -53,6 +53,26 @@ FocusScope {
     }
     function askModels() { if (modelArgs.length && !modelsProc.running) modelsProc.running = true; }
     Binding { target: Providers; property: "agentsShown"; value: ap.visible }
+    property var costs: null
+    property int budget: Settings.agentBudget
+    readonly property bool budgeted: budget > 0
+    readonly property var t3Threads: T3Code.liveItems.map(i => String(i.thread || "")).filter(t => t)
+    Process {
+        id: costProc
+        command: [Paths.bin + "/kuwai-agent-cost"].concat(ap.t3Threads)
+        stdout: StdioCollector {
+            onStreamFinished: { try { const v = JSON.parse(text); if (v && v.available) ap.costs = v; } catch (e) {} }
+        }
+    }
+    Timer { interval: Theme.panelPollMs * 12; repeat: true; running: ap.visible && ap.budgeted; triggeredOnStart: true; onTriggered: if (!costProc.running) costProc.running = true }
+    function money(v) { return v >= 100 ? "$" + Math.round(v) : "$" + v.toFixed(2); }
+    function costOf(thread) {
+        const c = budgeted && costs && thread ? costs.threads[thread] : null;
+        return c && c.cost >= 0.01 ? money(c.cost) + (c.priced ? "" : "+") : "";
+    }
+    readonly property string budgetLine: !budgeted || !costs ? ""
+        : "Today ~" + money(costs.today.cost) + (costs.today.unpriced > 0 ? "+" : "") + " of your $" + budget + " budget"
+    readonly property bool overBudget: budgeted && !!costs && costs.today.cost > budget
     Component.onCompleted: askModels()
     Timer { interval: 30000; repeat: true; running: ap.visible; onTriggered: ap.askModels() }
     property real now: Date.now()
@@ -137,7 +157,9 @@ FocusScope {
                     : d ? ap.on(d.model, "") : "",
                 modelId: m.model || (i && i.model) || (d && d.model) || "",
                 state: x.state, status: r ? r.status : "", ctx: m.context || (i && i.ctx) || 0, win: m.window || (i && i.win) || 0,
-                warm: i && (x.state === "done" || x.state === "idle") ? Ag.warm(i.cacheUntil, ap.now) : "", reply: m.reply || "", steps: m.steps || [],
+                warm: i && (x.state === "done" || x.state === "idle") ? Ag.warm(i.cacheUntil, ap.now) : "",
+                cost: i ? ap.costOf(i.thread) : "",
+                room: i && x.state === "limited" ? Providers.roomFor(i.provider) : "", reply: m.reply || "", steps: m.steps || [],
                 question: x.question || (ev && ev.severity === "needs-you" ? Notifs.readable(ev.body || "") : ""),
                 request: i ? i.request || null : null,
                 t: x.t, event: x.event, action: x.action, thread: x.thread, item: i,
@@ -304,6 +326,7 @@ FocusScope {
             width: parent.width
             readonly property real others: (head.visible ? head.height + col.spacing : 0) + footRow.height + (portsCard.visible ? portsCard.height : 0)
                 + (keyHints.visible ? keyHints.height : 0) + (health.visible ? health.height + col.spacing : 0)
+                + (budgetNote.visible ? budgetNote.height + col.spacing : 0)
                 + col.spacing * (1 + (portsCard.visible ? 1 : 0) + (keyHints.visible ? 1 : 0))
             readonly property real room: Theme.panelMaxH - (ap.inStrip ? 34 : 0) - col.y - 18
             height: Math.min(contentHeight, Math.max(Theme.sp(96), room - others))
@@ -447,6 +470,8 @@ FocusScope {
                         .filter(x => x).map(x => ap.esc(x)).join(" · ")
                         + (ap.fill(row.modelData) ? " · " + ap.fill(row.modelData) : "")
                         + (row.modelData.warm ? " · " + row.modelData.warm : "")
+                        + (row.modelData.cost ? " · " + row.modelData.cost : "")
+                        + (row.modelData.room ? " · " + ap.esc(row.modelData.room) + " has room" : "")
                     subColor: Theme.textSecondary
                     Label {
                         readonly property var ask: row.modelData.src === "kitty" ? Kittymux.askFor(row.modelData.raw)
@@ -681,6 +706,15 @@ FocusScope {
             hints: [["↑↓", "Choose"], ["↩", "Go"], ["⌫", "Mark read / forget"], ["A", "All read"], ["U", "Usage"], ["esc", "Back"]]
         }
         // The way on: how much they've got left, or the full list with recent ones to resume.
+        Label {
+            id: budgetNote
+            visible: ap.budgetLine !== ""
+            width: parent.width
+            wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight
+            text: ap.budgetLine + (ap.overBudget ? " · over" : "")
+            size: Theme.tFootnote; color: ap.overBudget ? Theme.orange : Theme.textTertiary
+            tabular: true
+        }
         Item {
             id: health
             visible: Providers.troubleLine !== ""

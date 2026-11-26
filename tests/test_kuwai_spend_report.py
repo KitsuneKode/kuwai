@@ -125,3 +125,25 @@ def test_t3s_turn_records_by_hour(tmp_path):
     assert {"2026-11-22T10:00", "2026-11-22T11:00", "2026-11-22T09:00"} <= hours
     assert all(h.startswith("2026-11-2") for h in hours), "nothing from before the last day"
     assert d["outside"] == 0
+
+
+def test_what_each_listed_thread_cost_and_today(tmp_path):
+    t3_fixture(tmp_path)
+    runner = shutil.which("bun") or shutil.which("node")
+    env = {"PATH": os.environ.get("PATH", ""), "HOME": str(tmp_path), "T3CODE_HOME": str(tmp_path / "t3"), "TZ": "UTC",
+           "KUWAI_NOW_MS": str(1795348800000)}
+    out = subprocess.run([runner, str(ROOT / "bin/kuwai-agent-cost"), "th1", "th3", "x'; drop table y; --"],
+                         env=env, capture_output=True, text=True, timeout=60, check=True)
+    d = json.loads(out.stdout)
+    assert d["available"] is True
+    assert d["threads"]["th1"]["priced"] is True and d["threads"]["th1"]["cost"] > 0
+    assert d["threads"]["th3"]["priced"] is False, "Composer has no price: said, not $0"
+    assert "th2" not in d["threads"], "only the threads asked for"
+    assert d["today"]["tokens"] == 1_010_000 + 101_000 + 5_500 and d["today"]["gaps"] == 1
+
+
+def test_no_t3_no_costs(tmp_path):
+    runner = shutil.which("bun") or shutil.which("node")
+    env = {"PATH": os.environ.get("PATH", ""), "HOME": str(tmp_path), "T3CODE_HOME": str(tmp_path / "t3")}
+    out = subprocess.run([runner, str(ROOT / "bin/kuwai-agent-cost"), "th1"], env=env, capture_output=True, text=True, timeout=60, check=True)
+    assert json.loads(out.stdout)["available"] is False
