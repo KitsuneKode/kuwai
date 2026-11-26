@@ -288,12 +288,12 @@ FocusScope {
             }
         }
 
-        Label {
+        Ui.EmptyState {
             visible: usage.limitsView && Limits.loaded && usage.groups.length === 0
-            width: parent.width
-            topPadding: 4; bottomPadding: 4
-            text: "No usage yet · T3 Code or kittymux reports it"
-            size: Theme.tBody; color: Theme.textTertiary
+            topPadding: Theme.s3; bottomPadding: Theme.s3
+            glyph: "\u{f0128}"
+            title: "No usage yet"
+            body: "T3 Code and kittymux report it as your agents work."
         }
 
         // ── One card per agent ───────────────────────────────────────────

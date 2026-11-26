@@ -11,6 +11,7 @@ import QtQuick
 import Quickshell
 import qs.config
 import qs.components
+import qs.components.ui as Ui
 import qs.services
 
 FocusScope {
@@ -241,30 +242,18 @@ FocusScope {
                 spacing: 8
                 readonly property var dayEvents: Calendar.eventsOn(cal.selected)
                 Label {
-                    visible: !Calendar.configured || parent.dayEvents.length === 0
+                    visible: Calendar.configured && parent.dayEvents.length === 0
+                    text: "No events"
+                    size: Theme.tFootnote; color: Theme.textTertiary
+                }
+                Ui.EmptyState {
+                    visible: !Calendar.configured
                     width: parent.width
-                    wrapMode: Text.Wrap
-                    // Not set up: one click opens the list to paste a link into,
-                    // instead of a path to go and find.
-                    text: Calendar.configured ? "No events" : "No calendars yet. Add one: paste an iCal link or the path of an .ics file, one per line."
-                    size: Theme.tFootnote
-                    color: !Calendar.configured && addCal.containsMouse ? Theme.textSecondary : Theme.textTertiary
-                    Accessible.role: Calendar.configured ? Accessible.StaticText : Accessible.Button
-                    Accessible.name: text
-                    function addCalendar() { if (!Calendar.configured) { Apps.run(["sh", "-c", 'mkdir -p "$(dirname "$1")" && touch "$1" && xdg-open "$1"', "sh", Calendar.listPath]); Island.close(); } }
-                    Accessible.onPressAction: addCalendar()
-                    activeFocusOnTab: !Calendar.configured
-                    Keys.onReturnPressed: addCalendar()
-                    Keys.onEnterPressed: addCalendar()
-                    FocusRing { cornerRadius: Theme.r1 }
-                    MouseArea {
-                        id: addCal
-                        anchors.fill: parent
-                        enabled: !Calendar.configured
-                        hoverEnabled: true
-                        cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                        onClicked: { Apps.run(["sh", "-c", 'mkdir -p "$(dirname "$1")" && touch "$1" && xdg-open "$1"', "sh", Calendar.listPath]); Island.close(); }
-                    }
+                    glyph: "\u{f00ed}"
+                    title: "No calendars yet"
+                    body: "Add one: paste an iCal link or the path of an .ics file, one per line."
+                    actionLabel: "Add a calendar"
+                    onActionTriggered: { Apps.run(["sh", "-c", 'mkdir -p "$(dirname "$1")" && touch "$1" && xdg-open "$1"', "sh", Calendar.listPath]); Island.close(); }
                 }
                 // As many as the island has room for: five, fewer as the text grows;
                 // the rest as "+N more".

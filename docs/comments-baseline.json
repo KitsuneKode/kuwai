@@ -1,5 +1,5 @@
 {
-  "total_comment_lines": 7507,
+  "total_comment_lines": 7505,
   "files_with_comments": 291,
   "files": {
     "shell/components/ActionMenu.qml": 23,
@@ -89,7 +89,7 @@
     "shell/modules/island/AgentsPanel.qml": 54,
     "shell/modules/island/AlarmCard.qml": 33,
     "shell/modules/island/AlertBanner.qml": 6,
-    "shell/modules/island/CalendarPanel.qml": 30,
+    "shell/modules/island/CalendarPanel.qml": 28,
     "shell/modules/island/Capsules.qml": 59,
     "shell/modules/island/CleanupPanel.qml": 25,
     "shell/modules/island/DeviceCard.qml": 35,

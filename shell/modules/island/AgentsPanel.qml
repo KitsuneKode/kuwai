@@ -22,6 +22,7 @@ import Quickshell.Io
 import Quickshell.Widgets
 import qs.config
 import qs.components
+import qs.components.ui as Ui
 import qs.components.ui
 import qs.services
 import "../../services/t3.mjs" as T3
@@ -282,19 +283,15 @@ FocusScope {
         }
 
         // ── Empty: say so, and how to start one ─────────────────────────
-        Column {
+        Ui.EmptyState {
             visible: ap.rows.length === 0
-            width: parent.width
             topPadding: 8; bottomPadding: 8
-            spacing: 4
-            Label { text: "No agents running"; size: Theme.tSub; color: Theme.textSecondary }
-            Label {
-                width: parent.width
-                wrapMode: Text.Wrap
-                text: !Kittymux.available && !T3Code.alive ? "Neither kittymux nor T3 Code is running."
-                    : "Super+A, then “claude” or “codex”, starts one here."
-                size: Theme.tFootnote; color: Theme.textTertiary
-            }
+            glyph: "\u{f06a9}"
+            title: "No agents running"
+            body: !Kittymux.available && !T3Code.alive ? "Neither kittymux nor T3 Code is running."
+                : "Search for “claude” or “codex” to start one here."
+            actionLabel: Kittymux.available || T3Code.alive ? "Search" : ""
+            onActionTriggered: Island.open("launcher", Island.screen, "pointer")
         }
 
         ListView {

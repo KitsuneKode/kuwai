@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Io
 import qs.config
 import qs.components
+import qs.components.ui as Ui
 import qs.services
 import "../../services/spendreport.mjs" as SR
 
@@ -80,12 +81,21 @@ Column {
         Skeleton { width: parent.width; height: Theme.sp(96); radius: Theme.r2 }
     }
 
-    Label {
-        visible: sv.failed || (!!sv.rep && sv.rep.empty)
+    Ui.Notice {
+        visible: sv.failed
         width: sv.width
-        wrapMode: Text.Wrap
-        text: sv.failed ? "Usage can't be read right now" : "No usage in this period"
-        size: Theme.tBody; color: Theme.textTertiary
+        glyph: "\u{f0026}"
+        title: "Usage can't be read right now"
+        action: "Retry"
+        onActed: sv.load()
+    }
+    Ui.EmptyState {
+        visible: !sv.failed && !!sv.rep && sv.rep.empty
+        width: sv.width
+        topPadding: Theme.s3; bottomPadding: Theme.s3
+        glyph: "\u{f0128}"
+        title: "No usage in this period"
+        body: "Pick a longer period above."
     }
 
     Item {

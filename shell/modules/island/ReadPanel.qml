@@ -61,12 +61,13 @@ FocusScope {
 
         // Nothing to read (the message was cleared while this was open): say
         // so. It used to leave an empty circle and an Open button for nothing.
-        Column {
+        Ui.EmptyState {
             visible: !rp.item
-            width: parent.width
-            spacing: 4
-            Label { text: "Nothing to read"; size: Theme.tSub; color: Theme.textSecondary }
-            Label { width: parent.width; wrapMode: Text.Wrap; text: "The message this showed was cleared. Recent ones are in the notification centre."; size: Theme.tFootnote; color: Theme.textTertiary }
+            glyph: "\u{f009c}"
+            title: "Nothing to read"
+            body: "The message this showed was cleared. Recent ones are in the notification centre."
+            actionLabel: "Notifications"
+            onActionTriggered: Notifs.toggleCenter("notifications", "pointer")
         }
         // ── Who: the sender leads, the app and when trail ────────────────
         Item {

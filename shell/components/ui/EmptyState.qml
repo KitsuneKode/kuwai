@@ -18,7 +18,7 @@ Column {
         visible: empty.icon !== ""
         anchors.horizontalCenter: parent.horizontalCenter
         name: empty.icon
-        size: Theme.glyphXL
+        size: Theme.sp(Theme.glyphXL)
         color: Theme.textTertiary
     }
 
@@ -28,7 +28,7 @@ Column {
         textFormat: Text.PlainText
         text: empty.glyph
         font.family: Theme.fontGlyph
-        font.pixelSize: Theme.tTitle1
+        font.pixelSize: Theme.sp(Theme.tTitle1)
         color: Theme.textTertiary
     }
 
