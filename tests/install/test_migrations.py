@@ -256,10 +256,27 @@ def test_0006_keeps_what_ran_at_login_without_asking_systemd(shipped):
     units.mkdir(parents=True)
     (units / 'kuwai-clipboard.service').symlink_to(ROOT / 'systemd/kuwai-clipboard.service')
     (units / 'kuwai-feeds.service').symlink_to(ROOT / 'systemd/kuwai-feeds.service')
+    wants = units / 'graphical-session.target.wants'
+    wants.mkdir()
+    (wants / 'kuwai-clipboard.service').symlink_to(units / 'kuwai-clipboard.service')
+    (wants / 'kuwai-feeds.service').symlink_to(units / 'kuwai-feeds.service')
     (cfg / 'gh').mkdir()
     (cfg / 'gh/hosts.yml').write_text('github.com: {}\n')
     assert run(shipped).returncode == 0
     assert (cfg / 'kuwai/collect.conf').read_text().split() == ['clipboard=on', 'feeds=on']
+
+
+@needs_landlock
+def test_0006_a_linked_but_disabled_service_stays_yours_to_choose(shipped):
+    cfg = shipped['home'] / '.config'
+    units = cfg / 'systemd/user'
+    units.mkdir(parents=True)
+    (units / 'kuwai-clipboard.service').symlink_to(ROOT / 'systemd/kuwai-clipboard.service')
+    (units / 'kuwai-feeds.service').symlink_to(ROOT / 'systemd/kuwai-feeds.service')
+    (cfg / 'gh').mkdir()
+    (cfg / 'gh/hosts.yml').write_text('github.com: {}\n')
+    assert run(shipped).returncode == 0
+    assert not (cfg / 'kuwai/collect.conf').exists(), "linked is not enabled: nothing is switched on, the installer asks"
 
 
 def test_list_without_a_state_folder_writes_nothing(shipped):
@@ -384,3 +401,17 @@ def test_every_shipped_migration_names_what_it_touches():
         text = f.read_text()
         assert '# what:' in text, f.name
         assert '# touches:' in text, f.name
+
+
+
+@needs_landlock
+def test_a_wallpaper_linked_into_pictures_does_not_stop_the_migrations(shipped):
+    pictures = shipped['home'] / 'Pictures'
+    pictures.mkdir(parents=True, exist_ok=True)
+    (pictures / 'wall.jpg').write_bytes(b'not really a jpeg')
+    shipped['state'].mkdir(parents=True, exist_ok=True)
+    (shipped['state'] / 'wallpaper').symlink_to(pictures / 'wall.jpg')
+    r = run(shipped)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert (shipped['state'] / 'wallpaper').is_symlink(), "the link is kept as a link"
+    assert (pictures / 'wall.jpg').read_bytes() == b'not really a jpeg', "the picture itself is never touched"

@@ -56,7 +56,7 @@ import time
 
 PACMAN = "/usr/bin/pacman"
 PACCACHE = "/usr/bin/paccache"
-OUT = "/run/kuwai-update-root.out"
+OUT_DIR = "/run"
 NAME = re.compile(r"^[a-z0-9@_+][a-z0-9@._+-]*$")
 PKGFILE = re.compile(r"\.pkg\.tar(\.[a-z0-9]+)?$")
 ENV = {"PATH": "/usr/bin:/bin", "LC_ALL": "C", "PACMAN_COLOR": "never", "HOME": "/root"}
@@ -76,12 +76,22 @@ def say(**msg):
 
 
 def run_tool(cmd):
-    fd = os.open(OUT, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)
+    fd, out = tempfile.mkstemp(prefix="kuwai-update-root.", suffix=".out", dir=OUT_DIR)
+    try:
+        return _run_tool(cmd, fd, out)
+    finally:
+        try:
+            os.unlink(out)
+        except OSError:
+            pass
+
+
+def _run_tool(cmd, fd, out):
     with os.fdopen(fd, "w") as w:
         p = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=w, stderr=subprocess.STDOUT,
                              env=ENV, start_new_session=True, umask=0o022)
     pending = ""
-    with open(OUT) as r:
+    with open(out) as r:
         while True:
             chunk = r.read()
             if chunk:

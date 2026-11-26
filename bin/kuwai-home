@@ -17,6 +17,10 @@ while IFS= read -r -d '' f; do
     if [ -L "$dst" ] && [ "$(readlink "$dst")" = "$f" ]; then continue; fi
     if [ $DRY = 1 ]; then printf 'would link %s → %s\n' "$dst" "$f"; n=$((n + 1)); continue; fi
     python3 "$REPO/bin/kuwai_install.py" --state "$STATE" remember "$dst" || { printf 'kuwai-home: could not keep %s; left it alone\n' "$dst" >&2; continue; }
+    if [ -e "$dst" ] && [ ! -L "$dst" ] && python3 "$REPO/bin/kuwai_install.py" --state "$STATE" edited "$dst"; then
+        printf 'kuwai-home: %s is yours now (you replaced the link); kept it, left alone\n' "$dst" >&2
+        continue
+    fi
     mkdir -p "$(dirname "$dst")"
     tmp=$(dirname "$dst")/.$(basename "$dst").kuwai-new
     rm -f "$tmp"

@@ -31,7 +31,7 @@ def make_world(tmp_path):
     (dev / "hypr/init.lua").write_text("return {}\n")
     for tool in ("kuwai-check", "kuwai-backup", "kuwai-loadtest", "kuwai-migrations", "kuwai-shell"):
         p = dev / "bin" / tool
-        p.write_text("#!/bin/sh\nexit 0\n")
+        p.write_text(f'#!/bin/sh\n[ -n "$KUWAI_TEST_CALLS" ] && echo "{tool} $*" >> "$KUWAI_TEST_CALLS"\nexit 0\n')
         p.chmod(0o755)
     git(dev, "init", "-q", "-b", "main")
     git(dev, "config", "user.email", "t@example.invalid")
@@ -289,3 +289,19 @@ def test_kuwai_release_signs_with_the_listed_key_and_nothing_else(tmp_path):
     assert r.returncode == 0, r.stderr
     assert "-----BEGIN SSH SIGNATURE-----" in git(dev, "cat-file", "tag", "v1.0.0")
     assert git(dev, "rev-parse", "v1.0.0^{commit}") == git(dev, "rev-parse", "HEAD")
+
+
+def test_a_second_rollback_moves_forward_and_runs_the_migrations(tmp_path):
+    env, dev, stable, a, b = make_world(tmp_path)
+    calls = tmp_path / "calls"
+    env = {**env, "KUWAI_TEST_CALLS": str(calls)}
+    assert ctl(env, "promote").returncode == 0
+    calls.write_text("")
+    assert ctl(env, "rollback").returncode == 0
+    assert git(stable, "rev-parse", "HEAD") == a
+    assert "kuwai-migrations \n" not in calls.read_text(), "going back undoes; it doesn't run them forward"
+    calls.write_text("")
+    r = ctl(env, "rollback")
+    assert r.returncode == 0, r.stderr
+    assert git(stable, "rev-parse", "HEAD") == b
+    assert "kuwai-migrations \n" in calls.read_text(), "going forward again runs that release's migrations"

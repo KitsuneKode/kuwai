@@ -4,13 +4,14 @@
 
 f="$XDG_CONFIG_HOME/kuwai/collect.conf"
 [ -e "$f" ] && exit 0
-units="$XDG_CONFIG_HOME/systemd/user"
-clip=off; feeds=off
-[ -e "$units/kuwai-clipboard.service" ] && clip=on
-if [ -e "$units/kuwai-feeds.service" ] && { [ -e "$XDG_CONFIG_HOME/kuwai/feeds.json" ] || [ -e "$XDG_CONFIG_HOME/gh/hosts.yml" ]; }; then
-    feeds=on
+on() { compgen -G "$XDG_CONFIG_HOME/systemd/user/*.wants/$1" >/dev/null; }
+lines=""
+on kuwai-clipboard.service && lines+="clipboard=on"$'\n'
+if on kuwai-feeds.service && { [ -e "$XDG_CONFIG_HOME/kuwai/feeds.json" ] || [ -e "$XDG_CONFIG_HOME/gh/hosts.yml" ]; }; then
+    lines+="feeds=on"$'\n'
 fi
+[ -n "$lines" ] || { echo "collect.conf: nothing ran at login; the installer asks"; exit 0; }
 mkdir -p "$(dirname "$f")"
-printf 'clipboard=%s\nfeeds=%s\n' "$clip" "$feeds" >"$f.new"
+printf '%s' "$lines" >"$f.new"
 mv -- "$f.new" "$f"
-echo "collect.conf: clipboard history $clip, feeds $feeds (kuwai collect changes them)"
+echo "collect.conf: kept on what ran at login: $(printf '%s' "$lines" | tr '\n' ' ')(kuwai collect changes them)"

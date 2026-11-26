@@ -225,3 +225,14 @@ def test_the_helper_does_only_what_the_prompt_named(ur):
     src = (ROOT / "bin" / "kuwai-update-root").read_text()
     assert "wasn't named at the password prompt" in src
     assert 'pacman(["-Syu", "--noconfirm", "--needed", *ignore])' in src, "the upgrade itself is one -Syu"
+
+
+def test_each_root_run_has_its_own_output_file(ur, tmp_path, monkeypatch):
+    monkeypatch.setattr(ur, "OUT_DIR", str(tmp_path))
+    said = []
+    monkeypatch.setattr(ur, "say", lambda **kw: said.append(kw))
+    assert ur.run_tool(["/bin/sh", "-c", "echo one; echo two"]) == 0
+    assert [s["log"] for s in said if "log" in s] == ["one", "two"]
+    assert list(tmp_path.iterdir()) == [], "the output file goes when the run ends"
+    src = (ROOT / "bin" / "kuwai-update-root").read_text()
+    assert "/run/kuwai-update-root.out" not in src, "no file two users' runs would share"

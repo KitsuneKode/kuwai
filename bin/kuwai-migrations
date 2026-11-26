@@ -99,7 +99,7 @@ touched() {
         p=${p//\$\{XDG_DATA_HOME\}/$DATA}; p=${p//\$XDG_DATA_HOME/$DATA}
         case $p in /*) ;; *) return 1 ;; esac
         case $p in *'$'*|*'..'*) return 1 ;; esac
-        rr=$(realpath -m -- "$p"); ok=0
+        rr=$(realpath -m -- "$(dirname -- "$p")")/$(basename -- "$p"); ok=0
         for r in "${ROOTS[@]}"; do case $rr/ in "$r"/?*) ok=1 ;; esac; done
         [ "$ok" = 1 ] || return 1
         printf '%s\n' "$rr"

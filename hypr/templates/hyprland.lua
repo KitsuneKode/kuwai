@@ -10,10 +10,20 @@ do
 		channel = (cf:read("l") or ""):match("^%s*(%a+)")
 		cf:close()
 	end
+	local rf, devroot = io.open(state:gsub("channel$", "dev-root"), "r"), nil
+	if rf then
+		devroot = (rf:read("l") or ""):match("^%s*(/.-)%s*$")
+		rf:close()
+	end
 	if channel == "stable" then
 		tries = { data .. "/kuwai", home .. "/Projects/kuwai", home .. "/Projects/rice" }
-	elseif channel ~= "dev" and os.getenv("KUWAI_ROOT") then
-		table.insert(tries, 1, os.getenv("KUWAI_ROOT"))
+	else
+		if devroot then
+			table.insert(tries, 1, devroot)
+		end
+		if channel ~= "dev" and os.getenv("KUWAI_ROOT") then
+			table.insert(tries, 1, os.getenv("KUWAI_ROOT"))
+		end
 	end
 	for _, dir in ipairs(tries) do
 		local f = io.open(dir .. "/hypr/init.lua", "r")

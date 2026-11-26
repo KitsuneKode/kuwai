@@ -40,3 +40,15 @@ def test_links_follow_xdg_config_home(tmp_path):
     subprocess.run([str(ROOT / "bin/kuwai-home")], env=env, capture_output=True, text=True, check=True)
     assert (xdg / "fastfetch/config.jsonc").is_symlink()
     assert not (tmp_path / ".config").exists()
+
+
+def test_a_link_you_replaced_with_your_own_file_is_left_alone(tmp_path):
+    cfg = tmp_path / ".config/fastfetch/config.jsonc"
+    run(tmp_path)
+    assert cfg.is_symlink()
+    cfg.unlink()
+    cfg.write_text('{"logo": "mine"}')
+    env = {"HOME": str(tmp_path), "XDG_STATE_HOME": str(tmp_path / ".local/state"), "KUWAI_HOME_SRC": str(ROOT / "home"), "PATH": os.environ["PATH"]}
+    r = subprocess.run([str(ROOT / "bin/kuwai-home")], env=env, capture_output=True, text=True, check=True)
+    assert "is yours now" in r.stderr
+    assert not cfg.is_symlink() and cfg.read_text() == '{"logo": "mine"}', "a reinstall keeps the file you put there"

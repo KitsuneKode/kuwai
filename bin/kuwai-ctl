@@ -343,8 +343,19 @@ case ${1:-} in
         [ -z "$dirty" ] || { echo "kuwai: stable has uncommitted changes; refusing rollback" >&2; exit 1; }
         cur=$(git -C "$STABLE" rev-parse HEAD)
         [ "$cur" != "$target" ] || { echo "kuwai: stable is already at stable-prev ($target)"; exit 0; }
-        undo_migrations "$target"
-        set_head "$target" || { echo "kuwai: git refused to move stable to $target; nothing was rolled back" >&2; exit 1; }
+        forward=0
+        git -C "$STABLE" merge-base --is-ancestor "$cur" "$target" 2>/dev/null && forward=1
+        if [ $forward = 0 ]; then
+            undo_migrations "$target" || { echo "kuwai: undoing this release's migrations failed; nothing was rolled back" >&2; exit 1; }
+        fi
+        if ! set_head "$target"; then
+            [ $forward = 0 ] && "$STABLE/bin/kuwai-migrations" >/dev/null 2>&1
+            echo "kuwai: git refused to move stable to $target; nothing was rolled back" >&2
+            exit 1
+        fi
+        if [ $forward = 1 ] && [ -x "$STABLE/bin/kuwai-migrations" ]; then
+            "$STABLE/bin/kuwai-migrations" || echo "kuwai: a migration for $(git -C "$STABLE" log --oneline -1) failed; see above" >&2
+        fi
         git -C "$STABLE" branch -f stable-prev "$cur" 2>/dev/null || true
         echo "stable rolled back to $(git -C "$STABLE" log --oneline -1)"
         git -C "$STABLE" diff --quiet "$cur" HEAD -- systemd || systemctl --user daemon-reload 2>/dev/null
