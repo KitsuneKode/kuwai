@@ -8,7 +8,7 @@ BANNED = re.compile(r'XDG_RUNTIME_DIR:-/tmp|XDG_RUNTIME_DIR",\s*"/tmp"|XDG_RUNTI
 
 def test_no_tmp_runtime_fallback_in_scripts():
     hits = []
-    for base in ("bin", "lib"):
+    for base in ("bin", "lib", "greeter", "system"):
         for p in (ROOT / base).rglob("*"):
             if p.is_file() and p.stat().st_size < 2_000_000:
                 try:

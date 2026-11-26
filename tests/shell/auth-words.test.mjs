@@ -17,19 +17,24 @@ test("every phrase the prompt can write is one the island shows, and no other", 
   expect([...said].sort()).toEqual([...WORDS].sort());
 });
 
+const unit = "0::/user.slice/user-1000.slice/user@1000.service/session.slice/kuwai-auth.service\n";
+const stable = "/home/me/.local/share/kuwai/shell-auth";
+
 test("the prompt's own words from the prompt's own process", () => {
-  expect(believed("Install updates", prompt)).toBe("Install updates");
-  expect(believed("Install updates", cmd("qs", "-p", "/home/me/.local/share/kuwai/shell-auth/"))).toBe("Install updates");
+  expect(believed("Install updates", prompt, unit, stable)).toBe("Install updates");
+  expect(believed("Install updates", cmd("/usr/bin/qs", "-p", stable + "/"), unit, stable)).toBe("Install updates");
 });
 
 test("words of a writer's own choosing never show", () => {
-  expect(believed("Enter your password to keep your files", prompt)).toBe("");
-  expect(believed("", prompt)).toBe("");
+  expect(believed("Enter your password to keep your files", prompt, unit, stable)).toBe("");
+  expect(believed("", prompt, unit, stable)).toBe("");
 });
 
-test("a file naming another process is not the prompt's", () => {
-  expect(isPrompt(cmd("/usr/bin/qs", "-p", "/home/me/.local/share/kuwai/shell"))).toBe(false);
-  expect(isPrompt(cmd("/usr/bin/python3", "fake.py", "-p", "/x/shell-auth"))).toBe(false);
-  expect(isPrompt("")).toBe(false);
-  expect(believed("Install updates", cmd("/usr/bin/qs", "-p", "/home/me/.local/share/kuwai/shell"))).toBe("");
+test("a copy of the prompt elsewhere, another qs, or another unit is not the prompt", () => {
+  expect(isPrompt(cmd("/usr/bin/qs", "-p", "/tmp/x/shell-auth"), unit, stable)).toBe(false);
+  expect(isPrompt(cmd("/home/me/bin/qs", "-p", "/usr/local/share/kuwai/shell-auth"), unit, stable)).toBe(false);
+  expect(isPrompt(prompt, "0::/user.slice/user-1000.slice/user@1000.service/app.slice/evil.scope\n", stable)).toBe(false);
+  expect(isPrompt(cmd("/usr/bin/qs", "-p", "/home/me/.local/share/kuwai/shell"), unit, stable)).toBe(false);
+  expect(isPrompt(cmd("/usr/bin/python3", "fake.py", "-p", "/x/shell-auth"), unit, stable)).toBe(false);
+  expect(isPrompt("", unit, stable)).toBe(false);
 });

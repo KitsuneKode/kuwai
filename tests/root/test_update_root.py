@@ -206,3 +206,13 @@ def test_held_packages_stay_out_of_the_plan_and_the_upgrade(ur, monkeypatch):
     ignore = ["--ignore", ",".join(ur.names({"hold": ["nvidia-dkms", "linux"]}, "hold"))]
     assert ur.resolved(ignore) == ["linux 7.3-1"]
     assert printed[0][1:4] == ["-Su", "--ignore", "nvidia-dkms,linux"]
+
+
+@pytest.mark.parametrize("name", ["passwd", "shadow", "group", "gshadow", "fstab", "crypttab"])
+def test_pacnew_never_takes_accounts_or_disks(ur, etc, name):
+    d, _ = etc
+    (d / name).write_text("yours")
+    (d / f"{name}.pacnew").write_text("packaged")
+    with pytest.raises(ValueError, match="merge .* by hand"):
+        ur.pacnew_one(str(d / name), "take")
+    assert (d / name).read_text() == "yours"

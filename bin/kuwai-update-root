@@ -219,11 +219,16 @@ def backup(path):
         os.close(src)
 
 
+NEVER_TAKE = frozenset({"passwd", "shadow", "group", "gshadow", "fstab", "crypttab"})
+
+
 def pacnew_one(path, action):
     if action not in ("keep", "take") or not isinstance(path, str) or not path.startswith(ETC) \
             or "\0" in path or any(part in ("", ".", "..") for part in path[1:].split("/")):
         raise ValueError(f"not a config file: {path!r}")
     new = path + ".pacnew"
+    if action == "take" and path[len(ETC):] in NEVER_TAKE:
+        raise ValueError(f"{path} holds your accounts or disks: merge {new} by hand (pacdiff); yours stays")
     if os.path.realpath(new) != new or os.path.realpath(os.path.dirname(path)) != os.path.dirname(path):
         raise ValueError(f"symlink in the way: {path!r}")
     st = os.lstat(new)

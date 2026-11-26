@@ -13,6 +13,8 @@ Singleton {
 
     readonly property string pollBin: Paths.bin + "/kuwai-crash-poll"
     readonly property string alertBin: Paths.bin + "/kuwai-crash-alert"
+    readonly property string token: tokenFile.loaded ? tokenFile.text().trim() : ""
+    FileView { id: tokenFile; path: Paths.runtime + "/kuwai/crash-token"; watchChanges: true; printErrors: false; onFileChanged: reload() }
 
     function runDiagnose(brief) {
         if (!Settings.assistantOptIn) {

@@ -2,7 +2,8 @@
 ROOT=/var/lib/kuwai-greeter
 [ -n "${LANG:-}" ] || . /etc/locale.conf 2>/dev/null
 export LANG="${LANG:-C.UTF-8}"
-run="${XDG_RUNTIME_DIR:-/tmp}/kuwai-greeter"
+run="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/kuwai-greeter"
+[ -L "$run" ] && { echo "kuwai greeter: $run is a link; not using it" >&2; exit 1; }
 mkdir -p "$run/state/kuwai" "$run/cache"
 : >"$run/brightness"
 cp -f "$ROOT/home/.local/state/kuwai/prefs.json" "$run/state/kuwai/" 2>/dev/null

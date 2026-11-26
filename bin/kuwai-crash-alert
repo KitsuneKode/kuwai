@@ -3,7 +3,11 @@ set -eu
 ROOT="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
 brief=${1:?usage: kuwai-crash-alert BRIEF}
 brief=${brief:0:8000}
+run="${XDG_RUNTIME_DIR:?}/kuwai"
+mkdir -p "$run"
+token=$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n')
+(umask 077; printf '%s' "$token" >"$run/crash-token")
 exec "$ROOT/bin/kuwai-notify" -a System -u critical -i dialog-warning \
-    -H x-kuwai-crash=1 \
+    -H x-kuwai-crash="$token" \
     -A default=Diagnose -A dismiss=Dismiss \
     "Something crashed" "$brief"

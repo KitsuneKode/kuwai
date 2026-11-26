@@ -52,7 +52,7 @@ Singleton {
             }
         },
         {
-            match: n => !!(n.hints && n.hints["x-kuwai-crash"]),
+            match: n => !!(n.hints && Crashes.token.length >= 32 && n.hints["x-kuwai-crash"] === Crashes.token),
             adapt: n => ({
                 app: "System",
                 title: n.summary,

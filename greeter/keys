@@ -1,6 +1,7 @@
 #!/bin/sh
 set -u
-run="${XDG_RUNTIME_DIR:-/tmp}/kuwai-greeter"
+run="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/kuwai-greeter"
+[ -L "$run" ] && { echo "kuwai greeter: $run is a link; not using it" >&2; exit 1; }
 mkdir -p "$run"
 case "${1:-} ${2:-}" in
     "brightness up") sign=+ ;;
