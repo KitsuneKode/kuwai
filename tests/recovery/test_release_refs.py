@@ -233,3 +233,56 @@ def test_update_self_refuses_an_unsigned_release_once_signers_are_listed(tmp_pat
     r = ctl(env, "update-self")
     assert r.returncode != 0 and "isn't signed" in r.stderr
     assert git(stable, "rev-parse", "HEAD") == a
+
+
+def ssh_key(tmp_path, name):
+    key = tmp_path / name
+    subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-C", name, "-f", str(key)], check=True)
+    return key
+
+
+def test_update_self_takes_a_release_signed_by_a_listed_ssh_key_and_no_other(tmp_path):
+    env, dev, stable, a, b = make_world(tmp_path)
+    with_origin(tmp_path, dev)
+    mine, theirs = ssh_key(tmp_path, "mine"), ssh_key(tmp_path, "theirs")
+    conf = Path(env["HOME"]) / ".config/kuwai"
+    conf.mkdir(parents=True)
+    (conf / "release-signers").write_text("# releases\n" + Path(f"{theirs}.pub").read_text())
+    git(dev, "-c", "gpg.format=ssh", "-c", f"user.signingkey={mine}", "tag", "-s", "-m", "r", "v0.2.0", b)
+    git(dev, "push", "-q", "origin", "--tags")
+    r = ctl(env, "update-self")
+    assert r.returncode != 0 and "isn't signed" in r.stderr, "a key that isn't listed is refused"
+    assert git(stable, "rev-parse", "HEAD") == a
+    (conf / "release-signers").write_text(Path(f"{mine}.pub").read_text())
+    r = ctl(env, "update-self")
+    assert r.returncode == 0, r.stderr
+    assert git(stable, "rev-parse", "HEAD") == b
+
+
+def test_an_unsigned_release_is_refused_when_only_ssh_keys_are_listed(tmp_path):
+    env, dev, stable, a, b = make_world(tmp_path)
+    with_origin(tmp_path, dev)
+    conf = Path(env["HOME"]) / ".config/kuwai"
+    conf.mkdir(parents=True)
+    (conf / "release-signers").write_text(Path(f"{ssh_key(tmp_path, 'mine')}.pub").read_text())
+    git(dev, "tag", "-a", "-m", "r", "v0.2.0", b)
+    git(dev, "push", "-q", "origin", "--tags")
+    r = ctl(env, "update-self")
+    assert r.returncode != 0 and "isn't signed" in r.stderr
+    assert git(stable, "rev-parse", "HEAD") == a
+
+
+def test_kuwai_release_signs_with_the_listed_key_and_nothing_else(tmp_path):
+    env, dev, stable, a, b = make_world(tmp_path)
+    mine, other = ssh_key(tmp_path, "mine"), ssh_key(tmp_path, "other")
+    (dev / "release-signers").write_text("# releases\n" + Path(f"{mine}.pub").read_text())
+    git(dev, "add", "release-signers")
+    git(dev, "commit", "-qm", "signers")
+    r = ctl({**env, "KUWAI_RELEASE_KEY": str(other)}, "release", "v1.0.0")
+    assert r.returncode != 0 and "isn't in release-signers" in r.stderr
+    assert git(dev, "tag", "-l", "v1.0.0") == "", "no tag from a key that isn't listed"
+    assert ctl({**env, "KUWAI_RELEASE_KEY": str(mine)}, "release", "1.0").returncode == 2
+    r = ctl({**env, "KUWAI_RELEASE_KEY": str(mine)}, "release", "v1.0.0")
+    assert r.returncode == 0, r.stderr
+    assert "-----BEGIN SSH SIGNATURE-----" in git(dev, "cat-file", "tag", "v1.0.0")
+    assert git(dev, "rev-parse", "v1.0.0^{commit}") == git(dev, "rev-parse", "HEAD")
