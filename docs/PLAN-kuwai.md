@@ -7,7 +7,9 @@ they land. User wants: extremely secure, premium, tasteful, fast, Apple-grade.
 
 ## NEXT (2026-11-26, evening) — what is left, in order
 
-Done today and live: shortcuts you can change, plain F-keys, one agent
+Done today and live: new AUR packages install through the review (c329b4b), the
+password prompt's accent (418af39), Devin/Cursor not "working" when only opened
+(e281031), holds and the package browser (c7b5fc0, its own thread), shortcuts you can change, plain F-keys, one agent
 identity, the screensaver's black start and the Dusk flash on exit, dim at
 3 min to the floor (panel 1, monitor 0), the Esc and right-click pass, apps
 holding the screen on (org.freedesktop.ScreenSaver: bin/kuwai-inhibit), the
@@ -15,6 +17,10 @@ rehearsal's Usage flake (its stand-in helper died after 10 minutes). The
 providers/budget/recap work landed from its own thread (ab9d974).
 
 Needs the owner (minutes each):
+0. Rebuild Quickshell (`quickshell` was built against Qt 6.12.0, the system has 6.12.1:
+   Quickshell itself warns this "is likely to cause crashes"); `kuwai auth pin` so the
+   password prompt takes the kuwai theme's colour (418af39); `kuwai-update install-helper`
+   so one-password updates carry package holds (c7b5fc0).
 1. `sudo greeter/install --code`, then one logout: the login handoff, never yet seen.
 2. voxtype's video memory (3.4 GB of 6, the root of every failed video
    allocation): pick a step in the fork (arena that grows by what's asked,
