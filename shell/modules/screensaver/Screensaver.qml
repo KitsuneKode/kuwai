@@ -86,10 +86,11 @@ Scope {
     onVideoChanged: filmFresh()
     // The screen you were on when it came up: the one Live plays on.
     property string mainScreen: ""
+    property bool dimmedHere: false
     onShowingChanged: {
         if (showing) { mainScreen = Screens.focusedName; filmFresh(); }
         Saver.showing = showing;
-        if (!showing && Dim.wanted) Dim.up();
+        if (!showing && dimmedHere) { dimmedHere = false; if (Dim.wanted) Dim.up(); }
     }
     readonly property string still: Hyde.wallpaper ? "file://" + Hyde.wallpaper : ""   // none: black
 
@@ -229,7 +230,7 @@ Scope {
     Timer {
         interval: Math.max(60, Idle.dimAfter) * 1000
         running: root.showing && !Dim.wanted && Idle.dimAfter > 0
-        onTriggered: Dim.down()
+        onTriggered: { root.dimmedHere = true; Dim.down(); }
     }
 
     // SIGKILL, never SIGTERM: Quickshell can crash on a polite exit and its
