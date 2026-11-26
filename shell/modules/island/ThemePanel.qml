@@ -685,7 +685,9 @@ FocusScope {
     }
 
     Row {
+        id: themeHints
         anchors { left: parent.left; leftMargin: 22; bottom: parent.bottom; bottomMargin: 14 }
+        visible: picker.items.length > 0 && x + width <= preview.x - Theme.s2
         spacing: 14
         Repeater {
             // The keys that work on this tab. (It said "⇥ Themes" on Live, where

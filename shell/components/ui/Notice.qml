@@ -21,7 +21,7 @@ Rectangle {
     radius: Theme.r3 - 2
     color: Qt.alpha(tone, Theme.tintNotice)
 
-    Text { textFormat: Text.PlainText; x: 14; anchors.verticalCenter: parent.verticalCenter; text: n.glyph; font.family: Theme.fontGlyph; font.pixelSize: Theme.glyphM; color: n.tone }
+    Text { textFormat: Text.PlainText; x: 14; anchors.verticalCenter: parent.verticalCenter; text: n.glyph; font.family: Theme.fontGlyph; font.pixelSize: Theme.sp(Theme.glyphM); color: n.tone }
     Column {
         id: col
         x: Theme.sp(42); anchors.verticalCenter: parent.verticalCenter
