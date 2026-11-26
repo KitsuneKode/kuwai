@@ -47,7 +47,6 @@ assert(commands[#commands]=='/fixture/bin/kuwai notifs mute-off','disabled autom
 assert(state.sharing=='0','disabled resync must write sharing=0')
 print('privacy handshake fixtures pass')
 
--- A config reload in the middle of a share keeps privacy on.
 setup(true)
 handlers['screenshare.state'](true)
 table.remove(timers, 1)()
