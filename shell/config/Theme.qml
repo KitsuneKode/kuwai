@@ -84,7 +84,7 @@ Singleton {
     // Agents' own colours (T3 Code's usage palette), for their bars and discs.
     readonly property var brandTint: ({ claude: "#d97757", antigravity: "#8c7bd1", opencode: "#5b9bbd",
                                         cursor: "#8b8b8b", openai: "#e8e8ea", grok: "#b8b8bc", googlegemini: "#7aa2f7",
-                                        kimi: "#6d8cff", qwen: "#7f6cf0", devin: "#38bdf8" })
+                                        kimi: "#6d8cff", qwen: "#7f6cf0", devin: "#38bdf8", kiro: "#9046ff" })
     // The login screen's accent when the greeter is given none
     // (KUWAI_GREETER_ACCENT): kuwai's pink.
     readonly property color loginAccent: "#fc2e64"

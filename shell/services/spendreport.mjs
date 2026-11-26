@@ -3,15 +3,15 @@
 /**
  * One bucket from bin/kuwai-spend-report.
  * @typedef {{ day: string, hour?: string, provider: string, model: string, input?: number, cached?: number, cacheWrite?: number,
- *   output?: number, tokens: number, cost: number, saved?: number, priced?: boolean }} Bucket
+ *   output?: number, other?: number, tokens: number, cost: number, saved?: number, priced?: boolean, partial?: boolean, local?: boolean }} Bucket
  */
-/** @typedef {{ id: string, cost: number, tokens: number, sessions: number, share: number }} ProviderRow */
-/** @typedef {{ provider: string, model: string, cost: number, tokens: number, share: number }} ModelRow */
+/** @typedef {{ id: string, cost: number, tokens: number, sessions: number, share: number, unpriced: number }} ProviderRow */
+/** @typedef {{ provider: string, model: string, cost: number, tokens: number, share: number, priced: boolean }} ModelRow */
 /** @typedef {{ key: string, label: string, total: number, parts: Record<string, number> }} Slot */
 
 /** @type {Record<string, string>} */
 const NAMES = { claude: "Claude", codex: "Codex", grok: "Grok", cursor: "Cursor", opencode: "OpenCode",
-    antigravity: "Antigravity", pi: "Pi", muse: "Muse", gemini: "Gemini" };
+    antigravity: "Antigravity", pi: "Pi", muse: "Muse", gemini: "Gemini", devin: "Devin", kiro: "Kiro", fx: "fx" };
 
 /** @param {string} id @returns {string} */
 export function providerName(id) {
@@ -87,7 +87,7 @@ export function report(buckets, sessions, period, metric, now) {
     const list = buckets || [];
     /** @param {Bucket} b */
     const val = b => metric === "tokens" ? (b.tokens || 0) : (b.cost || 0);
-    const totals = { cost: 0, tokens: 0, input: 0, cached: 0, cacheWrite: 0, output: 0, saved: 0, unpriced: 0 };
+    const totals = { cost: 0, tokens: 0, input: 0, cached: 0, cacheWrite: 0, output: 0, other: 0, saved: 0, unpriced: 0, partial: 0 };
     /** @type {Record<string, ProviderRow>} */
     const prov = {};
     /** @type {Record<string, ModelRow>} */
@@ -103,13 +103,16 @@ export function report(buckets, sessions, period, metric, now) {
         totals.cached += b.cached || 0;
         totals.cacheWrite += b.cacheWrite || 0;
         totals.output += b.output || 0;
+        totals.other += b.other || 0;
         totals.saved += b.saved || 0;
         if (b.priced === false) totals.unpriced += b.tokens || 0;
-        const p = prov[b.provider] || (prov[b.provider] = { id: b.provider, cost: 0, tokens: 0, sessions: (sessions || {})[b.provider] || 0, share: 0 });
+        if (b.partial) totals.partial += b.tokens || 0;
+        const p = prov[b.provider] || (prov[b.provider] = { id: b.provider, cost: 0, tokens: 0, sessions: (sessions || {})[b.provider] || 0, share: 0, unpriced: 0 });
         p.cost += b.cost || 0;
         p.tokens += b.tokens || 0;
+        if (b.priced === false) p.unpriced += b.tokens || 0;
         const mk = b.provider + "\u0000" + (b.model || "");
-        const m = mods[mk] || (mods[mk] = { provider: b.provider, model: b.model || "", cost: 0, tokens: 0, share: 0 });
+        const m = mods[mk] || (mods[mk] = { provider: b.provider, model: b.model || "", cost: 0, tokens: 0, share: 0, priced: b.priced !== false });
         m.cost += b.cost || 0;
         m.tokens += b.tokens || 0;
         const s = at[slotKey(b, period === "24h")];
@@ -121,13 +124,40 @@ export function report(buckets, sessions, period, metric, now) {
     const whole = metric === "tokens" ? totals.tokens : totals.cost;
     /** @param {{ cost: number, tokens: number }} x */
     const of = x => metric === "tokens" ? x.tokens : x.cost;
+    /** @param {{ cost: number, tokens: number }} a @param {{ cost: number, tokens: number }} b */
+    const order = (a, b) => of(b) - of(a) || b.tokens - a.tokens;
     const providers = Object.values(prov).map(p => Object.assign(p, { share: whole > 0 ? of(p) / whole : 0 }))
-        .filter(p => of(p) > 0).sort((a, b) => of(b) - of(a));
+        .filter(p => p.tokens > 0).sort(order);
     const models = Object.values(mods).map(m => Object.assign(m, { share: whole > 0 ? of(m) / whole : 0 }))
-        .filter(m => of(m) > 0).sort((a, b) => of(b) - of(a));
+        .filter(m => m.tokens > 0).sort(order);
     const peak = chart.reduce((a, s) => Math.max(a, s.total), 0);
     const sessionsTotal = Object.values(sessions || {}).reduce((a, n) => a + (n || 0), 0);
-    return { totals, providers, models, chart, peak, sessions: sessionsTotal, empty: list.length === 0 || whole <= 0 };
+    const input = totals.input + totals.cached + totals.cacheWrite;
+    const hitRate = input > 0 ? totals.cached / input : 0;
+    return { totals, providers, models, chart, peak, sessions: sessionsTotal, hitRate, empty: list.length === 0 || totals.tokens <= 0 };
+}
+
+/**
+ * How much of the period's work the records cover, in words: turns T3 kept no usage for aren't counted (never as 0),
+ * partial ones count what they recorded. "" when every turn was recorded whole.
+ * @param {{ complete?: number, partial?: number, unavailable?: number } | null | undefined} c @returns {string}
+ */
+export function coverageText(c) {
+    if (!c) return "";
+    const partial = c.partial || 0, none = c.unavailable || 0;
+    const turns = (/** @type {number} */ n) => n + (n === 1 ? " turn" : " turns");
+    return [none ? turns(none) + " without usage records, not counted" : "", partial ? turns(partial) + " recorded in part" : ""]
+        .filter(x => x).join(" · ");
+}
+
+/**
+ * A row's value: money, or "no price" (with its tokens) for a model no price list row matches.
+ * @param {{ cost: number, tokens: number, unpriced?: number, priced?: boolean }} x @param {boolean} tokens @returns {string}
+ */
+export function valueText(x, tokens) {
+    if (tokens) return compact(x.tokens);
+    if (x.cost > 0) return money(x.cost) + ((x.unpriced || 0) > 0 ? "+" : "");
+    return x.tokens > 0 ? "no price · " + compact(x.tokens) : money(0);
 }
 
 /** "claude-opus-5-5" → "Opus 5.5", "gpt-6.1-sol" → "GPT-6.1 Sol", "grok-4.7" → "Grok 4.7". @param {string} m @returns {string} */

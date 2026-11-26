@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { report, slots, money, compact, providerName, dayKey, hourKey, modelName } from "../../shell/services/spendreport.mjs";
+import { report, slots, money, compact, providerName, dayKey, hourKey, modelName, valueText, coverageText } from "../../shell/services/spendreport.mjs";
 
 const now = new Date(2026, 10, 22, 14, 30).getTime();
 const today = dayKey(now), yesterday = dayKey(now - 86400000);
@@ -58,7 +58,27 @@ describe("what the Spend view shows", () => {
   });
   test("nothing in the period: empty", () => {
     expect(report([], {}, "7d", "cost", now).empty).toBe(true);
-    expect(report([b({ cost: 0 })], {}, "7d", "cost", now).empty).toBe(true);
+    expect(report([b({ cost: 0, tokens: 0 })], {}, "7d", "cost", now).empty).toBe(true);
+  });
+  test("tokens without a price are shown, never as nothing or $0", () => {
+    const r = report([b({ provider: "cursor", model: "composer-2.5", priced: false, cost: 0, tokens: 5e6 })], {}, "7d", "cost", now);
+    expect(r.empty).toBe(false);
+    expect(r.providers.map(p => p.id)).toEqual(["cursor"]);
+    expect(valueText(r.providers[0], false)).toBe("no price · 5.0M");
+    expect(r.models[0].priced).toBe(false);
+  });
+  test("a partly priced provider says so", () => {
+    const r = report([b({ provider: "claude", cost: 3, tokens: 10 }), b({ provider: "claude", model: "x", priced: false, cost: 0, tokens: 5 })], {}, "7d", "cost", now);
+    expect(valueText(r.providers[0], false)).toBe("$3.00+");
+  });
+  test("the cache hit rate is cached input over all input", () => {
+    const r = report([b({ input: 10, cached: 80, cacheWrite: 10, output: 5, tokens: 105 })], {}, "7d", "tokens", now);
+    expect(r.hitRate).toBeCloseTo(0.8);
+  });
+  test("coverage in words: missing records aren't counted as zero", () => {
+    expect(coverageText({ complete: 9, partial: 0, unavailable: 0 })).toBe("");
+    expect(coverageText({ complete: 9, partial: 2, unavailable: 1 })).toBe("1 turn without usage records, not counted · 2 turns recorded in part");
+    expect(coverageText(null)).toBe("");
   });
   test("unpriced tokens are counted apart", () => {
     expect(report([b({ priced: false, cost: 0, tokens: 50 })], {}, "7d", "tokens", now).totals.unpriced).toBe(50);

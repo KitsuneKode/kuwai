@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 import { readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { t3Token } from "./kuwai_t3token.mjs";
+import { turnsSql, sessionsSql, NATIVE_SQL, toBuckets, sessionsBy, instancesBy, outsideT3 } from "../lib/t3usage.mjs";
 
 const HOME = process.env.HOME || "";
 const STATE = process.env.XDG_STATE_HOME || join(HOME, ".local/state");
@@ -17,6 +19,30 @@ const dayOf = ms => new Date(ms).toLocaleDateString("en-CA", { timeZone: zone })
 
 function readText(p) { try { return readFileSync(p, "utf8").trim(); } catch { return ""; } }
 function readJson(p) { try { return JSON.parse(readFileSync(p, "utf8")); } catch { return null; } }
+
+const here = dirname(fileURLToPath(import.meta.url));
+const prices = readJson(join(here, "../lib/spend-prices.json")) || { models: [] };
+const DB = join(process.env.T3_USERDATA || join(T3_HOME, "userdata"), "statev2.sqlite");
+
+function sql(query) {
+  const out = execFileSync("sqlite3", ["-readonly", "-json", "-cmd", ".timeout 3000", `file:${DB}?mode=ro`, query],
+    { encoding: "utf8", timeout: 20000, maxBuffer: 64 << 20, stdio: ["ignore", "pipe", "ignore"] });
+  return out.trim() ? JSON.parse(out) : [];
+}
+
+function fromT3Db(why) {
+  const days = PERIODS[period];
+  const since = new Date(days === 1 ? now - 86400000 : Date.parse(dayOf(now - (days - 1) * 86400000) + "T00:00:00")).toISOString();
+  const { buckets, coverage } = toBuckets(sql(turnsSql(since)), prices, days === 1);
+  const counted = sql(sessionsSql(since));
+  const sessions = sessionsBy(counted);
+  const native = new Set(sql(NATIVE_SQL).map(r => String(r.id)));
+  const local = outsideT3(readJson(join(CACHE, "kuwai/spend.json")), native, dayOf(now - (days - 1) * 86400000), prices);
+  for (const [p, c] of Object.entries(local.sessions)) sessions[p] = (sessions[p] || 0) + c;
+  return { source: "t3-db", why, readAt: new Date(now).toISOString(), buckets: buckets.concat(days === 1 ? [] : local.buckets), sessions,
+           instances: instancesBy(counted), coverage, outside: days === 1 ? 0 : local.buckets.reduce((a, b) => a + b.tokens, 0),
+           pricing: "", pricesAsOf: prices.asOf || "" };
+}
 
 function readT3Token() { return t3Token("read"); }
 
@@ -92,6 +118,9 @@ function fromLocal(why) {
 }
 
 let out;
-try { out = await fromT3(); } catch (e) { out = fromLocal(e && e.message || "failed"); }
+try { out = await fromT3(); } catch (e) {
+  const why = e && e.message || "failed";
+  try { out = fromT3Db(why); } catch { out = fromLocal(why); }
+}
 out.period = period;
 process.stdout.write(JSON.stringify(out) + "\n");

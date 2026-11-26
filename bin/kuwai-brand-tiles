@@ -23,6 +23,7 @@ STYLE = {
     "opencode": ("#141416", "#FFFFFF"),
     "kimi": ("#141416", "#FFFFFF"),
     "qwen": ("#5B45E0", "#FFFFFF"),
+    "kiro": ("#9046FF", "#FFFFFF"),
 }
 
 

@@ -21,8 +21,9 @@ import { stateOf, stateGlyph } from "./t3.mjs";
 /** T3's provider names → kittymux's agent names (its brand marks). @param {string | undefined} p */
 export function t3Agent(p) {
     const base = String(p || "").replace(/^acpRegistry_/, "").replace(/_(\d+|personal|work|main)$/, "");
-    return /** @type {Record<string, string>} */ ({ claudeAgent: "claude", codex: "codex", cursor: "cursor", antigravity: "antigravity",
-        opencode: "opencode", gemini: "gemini", grok: "grok", devin: "devin" })[base] || base;
+    const known = /** @type {Record<string, string>} */ ({ claudeAgent: "claude", codex: "codex", cursor: "cursor", antigravity: "antigravity",
+        opencode: "opencode", gemini: "gemini", grok: "grok", devin: "devin", kiro: "kiro" });
+    return known[base] || known[base.split("_")[0]] || base;
 }
 
 /**

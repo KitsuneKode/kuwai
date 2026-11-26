@@ -309,7 +309,7 @@ Singleton {
         "cursor-agent": "cursor", gemini: "googlegemini", agy: "antigravity", antigravity: "antigravity",
         grok: "grok", devin: "devin", opencode: "opencode", amp: "amp", goose: "goose", kimi: "kimi",
         qwen: "qwen", vibe: "mistralvibe", junie: "junie", kilo: "kilo", auggie: "auggie", droid: "factorydroid",
-        kittymux: "kittymux"
+        kiro: "kiro", kittymux: "kittymux"
     })
     readonly property string brandDir: Qt.resolvedUrl("../assets/brands")
     function brand(agent) {

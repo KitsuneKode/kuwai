@@ -121,3 +121,28 @@ export function modelName(p, slug) {
     const first = /^([A-Za-z]+)\s+(.+)$/.exec(m[1]);
     return lead && first && first[1].toLowerCase() === lead[0].toLowerCase() ? first[2] : m[1];
 }
+
+/**
+ * Whose model it is, as a brand mark name (shell/assets/brands): "claude-opus-5-5" → claude, "gpt-6.1-sol" → openai,
+ * "gemini-4-neon" → googlegemini, "grok-4.7" → grok. "" for a model of the harness's own (composer, swe) or unknown.
+ * @param {string} model @returns {string}
+ */
+export function vendorOf(model) {
+    const m = String(model || "").toLowerCase().replace(/^.*\//, "").replace(/^~?(anthropic|openai|google|xai)[-/]/, "");
+    if (/^(fusion-)?claude|^(opus|sonnet|haiku|fable)\b/.test(m)) return "claude";
+    if (/^(fusion-)?(gpt|o\d|codex)/.test(m)) return "openai";
+    if (/^gemini/.test(m)) return "googlegemini";
+    if (/^grok/.test(m)) return "grok";
+    return "";
+}
+
+/**
+ * Two letters for a tool with no mark: "Muse Code" → "MC", "Pi" → "Pi", "fx" → "fx", "GLM Agent" → "GA".
+ * @param {string} name @returns {string}
+ */
+export function monogram(name) {
+    const words = String(name || "").replace(/[^A-Za-z0-9 ]+/g, " ").trim().split(/\s+/).filter(w => w);
+    if (!words.length) return "?";
+    if (words.length === 1) return words[0].length <= 2 ? words[0] : words[0].charAt(0).toUpperCase() + words[0].charAt(1).toLowerCase();
+    return (words[0].charAt(0) + words[1].charAt(0)).toUpperCase();
+}

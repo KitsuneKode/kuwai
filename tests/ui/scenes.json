@@ -2110,6 +2110,1626 @@
    }
   },
   {
+   "id": "usage/spend-t3db",
+   "name": "usage",
+   "panel": "UsagePanel",
+   "kind": "typical",
+   "set": [
+    [
+     "Providers",
+     "pinned",
+     true
+    ],
+    [
+     "Providers",
+     "availability",
+     "ok"
+    ],
+    [
+     "Providers",
+     "instances",
+     [
+      {
+       "id": "claudeAgent",
+       "driver": "claudeAgent",
+       "name": "Claude",
+       "accent": "",
+       "enabled": true,
+       "status": "ready",
+       "reason": "",
+       "auth": "authenticated",
+       "plan": "",
+       "models": []
+      },
+      {
+       "id": "claudeAgent_2",
+       "driver": "claudeAgent",
+       "name": "Claude-2",
+       "accent": "",
+       "enabled": true,
+       "status": "ready",
+       "reason": "",
+       "auth": "authenticated",
+       "plan": "",
+       "models": []
+      },
+      {
+       "id": "cursor_2",
+       "driver": "cursor",
+       "name": "Cursor-2",
+       "accent": "",
+       "enabled": true,
+       "status": "ready",
+       "reason": "",
+       "auth": "authenticated",
+       "plan": "",
+       "models": []
+      },
+      {
+       "id": "antigravity_2",
+       "driver": "antigravity",
+       "name": "Antigravity-2",
+       "accent": "",
+       "enabled": true,
+       "status": "ready",
+       "reason": "",
+       "auth": "authenticated",
+       "plan": "",
+       "models": []
+      }
+     ]
+    ],
+    [
+     "Limits",
+     "loaded",
+     true
+    ],
+    [
+     "Limits",
+     "source",
+     "t3"
+    ],
+    [
+     "Limits",
+     "checkedAt",
+     "@now-240000ms"
+    ],
+    [
+     "Limits",
+     "providers",
+     [
+      {
+       "driver": "claude",
+       "label": "Claude",
+       "color": "#d97757",
+       "accounts": [
+        {
+         "key": "claude:Work",
+         "driver": "claude",
+         "name": "Work",
+         "email": "ada@example.com",
+         "plan": "Max 20x",
+         "accent": null,
+         "note": null,
+         "credits": 0,
+         "checkedAt": "@now-240000ms",
+         "windows": [
+          {
+           "id": "session",
+           "kind": "session",
+           "label": "Session",
+           "used": 38,
+           "resetsAt": "@now+10800000ms",
+           "durationMins": 300
+          },
+          {
+           "id": "weekly",
+           "kind": "weekly",
+           "label": "Weekly",
+           "used": 61,
+           "resetsAt": "@now+259200000ms",
+           "durationMins": 10080
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "driver": "codex",
+       "label": "Codex",
+       "color": "#10a37f",
+       "accounts": [
+        {
+         "key": "codex:Personal",
+         "driver": "codex",
+         "name": "Personal",
+         "email": "ada@example.com",
+         "plan": "Pro",
+         "accent": null,
+         "note": null,
+         "credits": 0,
+         "checkedAt": "@now-240000ms",
+         "windows": [
+          {
+           "id": "session",
+           "kind": "session",
+           "label": "Session",
+           "used": 12,
+           "resetsAt": "@now+14400000ms",
+           "durationMins": 300
+          },
+          {
+           "id": "weekly",
+           "kind": "weekly",
+           "label": "Weekly",
+           "used": 27,
+           "resetsAt": "@now+432000000ms",
+           "durationMins": 10080
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    ],
+    [
+     "Limits",
+     "fails",
+     0
+    ],
+    [
+     "Spend",
+     "providers",
+     {
+      "claude": {
+       "today": {
+        "tokens": 114704330,
+        "cost": 38.98,
+        "priced": true
+       },
+       "week": {
+        "tokens": 589036835,
+        "cost": 176.88,
+        "priced": true
+       }
+      },
+      "codex": {
+       "today": {
+        "tokens": 0,
+        "cost": 0,
+        "priced": true
+       },
+       "week": {
+        "tokens": 322496458,
+        "cost": 0,
+        "priced": false
+       }
+      }
+     }
+    ],
+    [
+     "Spend",
+     "pricesAsOf",
+     "2026-11-03"
+    ]
+   ],
+   "props": {
+    "view": "spend",
+    "spendData": {
+     "source": "t3-db",
+     "why": "scope",
+     "readAt": "@now-60iso",
+     "period": "7d",
+     "buckets": [
+      {
+       "day": "",
+       "hour": "@now-600iso",
+       "provider": "claude",
+       "model": "claude-opus-5-5",
+       "input": 2000000,
+       "cached": 30000000,
+       "cacheWrite": 200000,
+       "output": 600000,
+       "tokens": 32800000,
+       "cost": 18.36,
+       "saved": 7.34,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-600iso",
+       "provider": "codex",
+       "model": "gpt-6.1-sol",
+       "input": 1000000,
+       "cached": 12000000,
+       "cacheWrite": 100000,
+       "output": 300000,
+       "tokens": 13400000,
+       "cost": 3.96,
+       "saved": 1.58,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-600iso",
+       "provider": "grok",
+       "model": "grok-4.7",
+       "input": 300000,
+       "cached": 2000000,
+       "cacheWrite": 30000,
+       "output": 90000,
+       "tokens": 2420000,
+       "cost": 2.13,
+       "saved": 0.85,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-87000iso",
+       "provider": "claude",
+       "model": "claude-opus-5-5",
+       "input": 2000000,
+       "cached": 30000000,
+       "cacheWrite": 200000,
+       "output": 600000,
+       "tokens": 32800000,
+       "cost": 10.32,
+       "saved": 4.13,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-87000iso",
+       "provider": "codex",
+       "model": "gpt-6.1-sol",
+       "input": 1000000,
+       "cached": 12000000,
+       "cacheWrite": 100000,
+       "output": 300000,
+       "tokens": 13400000,
+       "cost": 8.97,
+       "saved": 3.59,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-173400iso",
+       "provider": "claude",
+       "model": "claude-opus-5-5",
+       "input": 2000000,
+       "cached": 30000000,
+       "cacheWrite": 200000,
+       "output": 600000,
+       "tokens": 32800000,
+       "cost": 19.7,
+       "saved": 7.88,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-173400iso",
+       "provider": "codex",
+       "model": "gpt-6.1-sol",
+       "input": 1000000,
+       "cached": 12000000,
+       "cacheWrite": 100000,
+       "output": 300000,
+       "tokens": 13400000,
+       "cost": 2.75,
+       "saved": 1.1,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-173400iso",
+       "provider": "grok",
+       "model": "grok-4.7",
+       "input": 300000,
+       "cached": 2000000,
+       "cacheWrite": 30000,
+       "output": 90000,
+       "tokens": 2420000,
+       "cost": 1.77,
+       "saved": 0.71,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-259800iso",
+       "provider": "claude",
+       "model": "claude-opus-5-5",
+       "input": 2000000,
+       "cached": 30000000,
+       "cacheWrite": 200000,
+       "output": 600000,
+       "tokens": 32800000,
+       "cost": 9.2,
+       "saved": 3.68,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-259800iso",
+       "provider": "codex",
+       "model": "gpt-6.1-sol",
+       "input": 1000000,
+       "cached": 12000000,
+       "cacheWrite": 100000,
+       "output": 300000,
+       "tokens": 13400000,
+       "cost": 7.64,
+       "saved": 3.06,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-346200iso",
+       "provider": "claude",
+       "model": "claude-opus-5-5",
+       "input": 2000000,
+       "cached": 30000000,
+       "cacheWrite": 200000,
+       "output": 600000,
+       "tokens": 32800000,
+       "cost": 10.24,
+       "saved": 4.1,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-346200iso",
+       "provider": "codex",
+       "model": "gpt-6.1-sol",
+       "input": 1000000,
+       "cached": 12000000,
+       "cacheWrite": 100000,
+       "output": 300000,
+       "tokens": 13400000,
+       "cost": 3.18,
+       "saved": 1.27,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-346200iso",
+       "provider": "grok",
+       "model": "grok-4.7",
+       "input": 300000,
+       "cached": 2000000,
+       "cacheWrite": 30000,
+       "output": 90000,
+       "tokens": 2420000,
+       "cost": 1.56,
+       "saved": 0.62,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-432600iso",
+       "provider": "claude",
+       "model": "claude-opus-5-5",
+       "input": 2000000,
+       "cached": 30000000,
+       "cacheWrite": 200000,
+       "output": 600000,
+       "tokens": 32800000,
+       "cost": 34.46,
+       "saved": 13.78,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-432600iso",
+       "provider": "codex",
+       "model": "gpt-6.1-sol",
+       "input": 1000000,
+       "cached": 12000000,
+       "cacheWrite": 100000,
+       "output": 300000,
+       "tokens": 13400000,
+       "cost": 3.61,
+       "saved": 1.44,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-519000iso",
+       "provider": "claude",
+       "model": "claude-opus-5-5",
+       "input": 2000000,
+       "cached": 30000000,
+       "cacheWrite": 200000,
+       "output": 600000,
+       "tokens": 32800000,
+       "cost": 15.14,
+       "saved": 6.06,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-519000iso",
+       "provider": "codex",
+       "model": "gpt-6.1-sol",
+       "input": 1000000,
+       "cached": 12000000,
+       "cacheWrite": 100000,
+       "output": 300000,
+       "tokens": 13400000,
+       "cost": 10.16,
+       "saved": 4.06,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-519000iso",
+       "provider": "grok",
+       "model": "grok-4.7",
+       "input": 300000,
+       "cached": 2000000,
+       "cacheWrite": 30000,
+       "output": 90000,
+       "tokens": 2420000,
+       "cost": 2.87,
+       "saved": 1.15,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-87000iso",
+       "provider": "claude",
+       "model": "claude-sonnet-5-5",
+       "input": 900000,
+       "cached": 8000000,
+       "cacheWrite": 90000,
+       "output": 200000,
+       "tokens": 9190000,
+       "cost": 6.4,
+       "saved": 2.56,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-600iso",
+       "provider": "cursor",
+       "model": "composer-2.5",
+       "input": 900000,
+       "cached": 4000000,
+       "cacheWrite": 0,
+       "output": 80000,
+       "tokens": 4980000,
+       "cost": 0,
+       "saved": 0,
+       "priced": false
+      },
+      {
+       "day": "",
+       "hour": "@now-87000iso",
+       "provider": "antigravity",
+       "model": "gemini-4-neon",
+       "input": 600000,
+       "cached": 9000000,
+       "cacheWrite": 0,
+       "output": 90000,
+       "other": 120000,
+       "tokens": 9810000,
+       "cost": 4.55,
+       "saved": 1.2,
+       "priced": true
+      }
+     ],
+     "sessions": {
+      "claude": 42,
+      "codex": 17,
+      "grok": 4
+     },
+     "pricing": "fresh",
+     "coverage": {
+      "complete": 640,
+      "partial": 85,
+      "unavailable": 206
+     },
+     "instances": {
+      "claude": [
+       "claudeAgent",
+       "claudeAgent_2"
+      ],
+      "cursor": [
+       "cursor_2"
+      ],
+      "antigravity": [
+       "antigravity_2"
+      ]
+     },
+     "outside": 40000000
+    }
+   }
+  },
+  {
+   "id": "usage/spend-t3db-tokens",
+   "name": "usage",
+   "panel": "UsagePanel",
+   "kind": "typical",
+   "set": [
+    [
+     "Providers",
+     "pinned",
+     true
+    ],
+    [
+     "Providers",
+     "availability",
+     "ok"
+    ],
+    [
+     "Providers",
+     "instances",
+     [
+      {
+       "id": "claudeAgent",
+       "driver": "claudeAgent",
+       "name": "Claude",
+       "accent": "",
+       "enabled": true,
+       "status": "ready",
+       "reason": "",
+       "auth": "authenticated",
+       "plan": "",
+       "models": []
+      },
+      {
+       "id": "claudeAgent_2",
+       "driver": "claudeAgent",
+       "name": "Claude-2",
+       "accent": "",
+       "enabled": true,
+       "status": "ready",
+       "reason": "",
+       "auth": "authenticated",
+       "plan": "",
+       "models": []
+      },
+      {
+       "id": "cursor_2",
+       "driver": "cursor",
+       "name": "Cursor-2",
+       "accent": "",
+       "enabled": true,
+       "status": "ready",
+       "reason": "",
+       "auth": "authenticated",
+       "plan": "",
+       "models": []
+      },
+      {
+       "id": "antigravity_2",
+       "driver": "antigravity",
+       "name": "Antigravity-2",
+       "accent": "",
+       "enabled": true,
+       "status": "ready",
+       "reason": "",
+       "auth": "authenticated",
+       "plan": "",
+       "models": []
+      }
+     ]
+    ],
+    [
+     "Limits",
+     "loaded",
+     true
+    ],
+    [
+     "Limits",
+     "source",
+     "t3"
+    ],
+    [
+     "Limits",
+     "checkedAt",
+     "@now-240000ms"
+    ],
+    [
+     "Limits",
+     "providers",
+     [
+      {
+       "driver": "claude",
+       "label": "Claude",
+       "color": "#d97757",
+       "accounts": [
+        {
+         "key": "claude:Work",
+         "driver": "claude",
+         "name": "Work",
+         "email": "ada@example.com",
+         "plan": "Max 20x",
+         "accent": null,
+         "note": null,
+         "credits": 0,
+         "checkedAt": "@now-240000ms",
+         "windows": [
+          {
+           "id": "session",
+           "kind": "session",
+           "label": "Session",
+           "used": 38,
+           "resetsAt": "@now+10800000ms",
+           "durationMins": 300
+          },
+          {
+           "id": "weekly",
+           "kind": "weekly",
+           "label": "Weekly",
+           "used": 61,
+           "resetsAt": "@now+259200000ms",
+           "durationMins": 10080
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "driver": "codex",
+       "label": "Codex",
+       "color": "#10a37f",
+       "accounts": [
+        {
+         "key": "codex:Personal",
+         "driver": "codex",
+         "name": "Personal",
+         "email": "ada@example.com",
+         "plan": "Pro",
+         "accent": null,
+         "note": null,
+         "credits": 0,
+         "checkedAt": "@now-240000ms",
+         "windows": [
+          {
+           "id": "session",
+           "kind": "session",
+           "label": "Session",
+           "used": 12,
+           "resetsAt": "@now+14400000ms",
+           "durationMins": 300
+          },
+          {
+           "id": "weekly",
+           "kind": "weekly",
+           "label": "Weekly",
+           "used": 27,
+           "resetsAt": "@now+432000000ms",
+           "durationMins": 10080
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    ],
+    [
+     "Limits",
+     "fails",
+     0
+    ],
+    [
+     "Spend",
+     "providers",
+     {
+      "claude": {
+       "today": {
+        "tokens": 114704330,
+        "cost": 38.98,
+        "priced": true
+       },
+       "week": {
+        "tokens": 589036835,
+        "cost": 176.88,
+        "priced": true
+       }
+      },
+      "codex": {
+       "today": {
+        "tokens": 0,
+        "cost": 0,
+        "priced": true
+       },
+       "week": {
+        "tokens": 322496458,
+        "cost": 0,
+        "priced": false
+       }
+      }
+     }
+    ],
+    [
+     "Spend",
+     "pricesAsOf",
+     "2026-11-03"
+    ]
+   ],
+   "props": {
+    "view": "tokens",
+    "spendData": {
+     "source": "t3-db",
+     "why": "scope",
+     "readAt": "@now-60iso",
+     "period": "7d",
+     "buckets": [
+      {
+       "day": "",
+       "hour": "@now-600iso",
+       "provider": "claude",
+       "model": "claude-opus-5-5",
+       "input": 2000000,
+       "cached": 30000000,
+       "cacheWrite": 200000,
+       "output": 600000,
+       "tokens": 32800000,
+       "cost": 18.36,
+       "saved": 7.34,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-600iso",
+       "provider": "codex",
+       "model": "gpt-6.1-sol",
+       "input": 1000000,
+       "cached": 12000000,
+       "cacheWrite": 100000,
+       "output": 300000,
+       "tokens": 13400000,
+       "cost": 3.96,
+       "saved": 1.58,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-600iso",
+       "provider": "grok",
+       "model": "grok-4.7",
+       "input": 300000,
+       "cached": 2000000,
+       "cacheWrite": 30000,
+       "output": 90000,
+       "tokens": 2420000,
+       "cost": 2.13,
+       "saved": 0.85,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-87000iso",
+       "provider": "claude",
+       "model": "claude-opus-5-5",
+       "input": 2000000,
+       "cached": 30000000,
+       "cacheWrite": 200000,
+       "output": 600000,
+       "tokens": 32800000,
+       "cost": 10.32,
+       "saved": 4.13,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-87000iso",
+       "provider": "codex",
+       "model": "gpt-6.1-sol",
+       "input": 1000000,
+       "cached": 12000000,
+       "cacheWrite": 100000,
+       "output": 300000,
+       "tokens": 13400000,
+       "cost": 8.97,
+       "saved": 3.59,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-173400iso",
+       "provider": "claude",
+       "model": "claude-opus-5-5",
+       "input": 2000000,
+       "cached": 30000000,
+       "cacheWrite": 200000,
+       "output": 600000,
+       "tokens": 32800000,
+       "cost": 19.7,
+       "saved": 7.88,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-173400iso",
+       "provider": "codex",
+       "model": "gpt-6.1-sol",
+       "input": 1000000,
+       "cached": 12000000,
+       "cacheWrite": 100000,
+       "output": 300000,
+       "tokens": 13400000,
+       "cost": 2.75,
+       "saved": 1.1,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-173400iso",
+       "provider": "grok",
+       "model": "grok-4.7",
+       "input": 300000,
+       "cached": 2000000,
+       "cacheWrite": 30000,
+       "output": 90000,
+       "tokens": 2420000,
+       "cost": 1.77,
+       "saved": 0.71,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-259800iso",
+       "provider": "claude",
+       "model": "claude-opus-5-5",
+       "input": 2000000,
+       "cached": 30000000,
+       "cacheWrite": 200000,
+       "output": 600000,
+       "tokens": 32800000,
+       "cost": 9.2,
+       "saved": 3.68,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-259800iso",
+       "provider": "codex",
+       "model": "gpt-6.1-sol",
+       "input": 1000000,
+       "cached": 12000000,
+       "cacheWrite": 100000,
+       "output": 300000,
+       "tokens": 13400000,
+       "cost": 7.64,
+       "saved": 3.06,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-346200iso",
+       "provider": "claude",
+       "model": "claude-opus-5-5",
+       "input": 2000000,
+       "cached": 30000000,
+       "cacheWrite": 200000,
+       "output": 600000,
+       "tokens": 32800000,
+       "cost": 10.24,
+       "saved": 4.1,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-346200iso",
+       "provider": "codex",
+       "model": "gpt-6.1-sol",
+       "input": 1000000,
+       "cached": 12000000,
+       "cacheWrite": 100000,
+       "output": 300000,
+       "tokens": 13400000,
+       "cost": 3.18,
+       "saved": 1.27,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-346200iso",
+       "provider": "grok",
+       "model": "grok-4.7",
+       "input": 300000,
+       "cached": 2000000,
+       "cacheWrite": 30000,
+       "output": 90000,
+       "tokens": 2420000,
+       "cost": 1.56,
+       "saved": 0.62,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-432600iso",
+       "provider": "claude",
+       "model": "claude-opus-5-5",
+       "input": 2000000,
+       "cached": 30000000,
+       "cacheWrite": 200000,
+       "output": 600000,
+       "tokens": 32800000,
+       "cost": 34.46,
+       "saved": 13.78,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-432600iso",
+       "provider": "codex",
+       "model": "gpt-6.1-sol",
+       "input": 1000000,
+       "cached": 12000000,
+       "cacheWrite": 100000,
+       "output": 300000,
+       "tokens": 13400000,
+       "cost": 3.61,
+       "saved": 1.44,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-519000iso",
+       "provider": "claude",
+       "model": "claude-opus-5-5",
+       "input": 2000000,
+       "cached": 30000000,
+       "cacheWrite": 200000,
+       "output": 600000,
+       "tokens": 32800000,
+       "cost": 15.14,
+       "saved": 6.06,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-519000iso",
+       "provider": "codex",
+       "model": "gpt-6.1-sol",
+       "input": 1000000,
+       "cached": 12000000,
+       "cacheWrite": 100000,
+       "output": 300000,
+       "tokens": 13400000,
+       "cost": 10.16,
+       "saved": 4.06,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-519000iso",
+       "provider": "grok",
+       "model": "grok-4.7",
+       "input": 300000,
+       "cached": 2000000,
+       "cacheWrite": 30000,
+       "output": 90000,
+       "tokens": 2420000,
+       "cost": 2.87,
+       "saved": 1.15,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-87000iso",
+       "provider": "claude",
+       "model": "claude-sonnet-5-5",
+       "input": 900000,
+       "cached": 8000000,
+       "cacheWrite": 90000,
+       "output": 200000,
+       "tokens": 9190000,
+       "cost": 6.4,
+       "saved": 2.56,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-600iso",
+       "provider": "cursor",
+       "model": "composer-2.5",
+       "input": 900000,
+       "cached": 4000000,
+       "cacheWrite": 0,
+       "output": 80000,
+       "tokens": 4980000,
+       "cost": 0,
+       "saved": 0,
+       "priced": false
+      },
+      {
+       "day": "",
+       "hour": "@now-87000iso",
+       "provider": "antigravity",
+       "model": "gemini-4-neon",
+       "input": 600000,
+       "cached": 9000000,
+       "cacheWrite": 0,
+       "output": 90000,
+       "other": 120000,
+       "tokens": 9810000,
+       "cost": 4.55,
+       "saved": 1.2,
+       "priced": true
+      }
+     ],
+     "sessions": {
+      "claude": 42,
+      "codex": 17,
+      "grok": 4
+     },
+     "pricing": "fresh",
+     "coverage": {
+      "complete": 640,
+      "partial": 85,
+      "unavailable": 206
+     },
+     "instances": {
+      "claude": [
+       "claudeAgent",
+       "claudeAgent_2"
+      ],
+      "cursor": [
+       "cursor_2"
+      ],
+      "antigravity": [
+       "antigravity_2"
+      ]
+     },
+     "outside": 40000000
+    }
+   }
+  },
+  {
+   "id": "usage/spend-t3db-worst",
+   "name": "usage",
+   "panel": "UsagePanel",
+   "kind": "worst",
+   "set": [
+    [
+     "Providers",
+     "pinned",
+     true
+    ],
+    [
+     "Providers",
+     "availability",
+     "ok"
+    ],
+    [
+     "Providers",
+     "instances",
+     [
+      {
+       "id": "claudeAgent",
+       "driver": "claudeAgent",
+       "name": "Claude",
+       "accent": "",
+       "enabled": true,
+       "status": "ready",
+       "reason": "",
+       "auth": "authenticated",
+       "plan": "",
+       "models": []
+      },
+      {
+       "id": "claudeAgent_2",
+       "driver": "claudeAgent",
+       "name": "Claude-2",
+       "accent": "",
+       "enabled": true,
+       "status": "ready",
+       "reason": "",
+       "auth": "authenticated",
+       "plan": "",
+       "models": []
+      },
+      {
+       "id": "cursor_2",
+       "driver": "cursor",
+       "name": "Cursor-2",
+       "accent": "",
+       "enabled": true,
+       "status": "ready",
+       "reason": "",
+       "auth": "authenticated",
+       "plan": "",
+       "models": []
+      },
+      {
+       "id": "antigravity_2",
+       "driver": "antigravity",
+       "name": "Antigravity-2",
+       "accent": "",
+       "enabled": true,
+       "status": "ready",
+       "reason": "",
+       "auth": "authenticated",
+       "plan": "",
+       "models": []
+      }
+     ]
+    ],
+    [
+     "Limits",
+     "loaded",
+     true
+    ],
+    [
+     "Limits",
+     "source",
+     "t3"
+    ],
+    [
+     "Limits",
+     "checkedAt",
+     "@now-240000ms"
+    ],
+    [
+     "Limits",
+     "providers",
+     [
+      {
+       "driver": "claude",
+       "label": "Claude",
+       "color": "#d97757",
+       "accounts": [
+        {
+         "key": "claude:Work",
+         "driver": "claude",
+         "name": "Work",
+         "email": "ada@example.com",
+         "plan": "Max 20x",
+         "accent": null,
+         "note": null,
+         "credits": 0,
+         "checkedAt": "@now-240000ms",
+         "windows": [
+          {
+           "id": "session",
+           "kind": "session",
+           "label": "Session",
+           "used": 38,
+           "resetsAt": "@now+10800000ms",
+           "durationMins": 300
+          },
+          {
+           "id": "weekly",
+           "kind": "weekly",
+           "label": "Weekly",
+           "used": 61,
+           "resetsAt": "@now+259200000ms",
+           "durationMins": 10080
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "driver": "codex",
+       "label": "Codex",
+       "color": "#10a37f",
+       "accounts": [
+        {
+         "key": "codex:Personal",
+         "driver": "codex",
+         "name": "Personal",
+         "email": "ada@example.com",
+         "plan": "Pro",
+         "accent": null,
+         "note": null,
+         "credits": 0,
+         "checkedAt": "@now-240000ms",
+         "windows": [
+          {
+           "id": "session",
+           "kind": "session",
+           "label": "Session",
+           "used": 12,
+           "resetsAt": "@now+14400000ms",
+           "durationMins": 300
+          },
+          {
+           "id": "weekly",
+           "kind": "weekly",
+           "label": "Weekly",
+           "used": 27,
+           "resetsAt": "@now+432000000ms",
+           "durationMins": 10080
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    ],
+    [
+     "Limits",
+     "fails",
+     0
+    ],
+    [
+     "Spend",
+     "providers",
+     {
+      "claude": {
+       "today": {
+        "tokens": 114704330,
+        "cost": 38.98,
+        "priced": true
+       },
+       "week": {
+        "tokens": 589036835,
+        "cost": 176.88,
+        "priced": true
+       }
+      },
+      "codex": {
+       "today": {
+        "tokens": 0,
+        "cost": 0,
+        "priced": true
+       },
+       "week": {
+        "tokens": 322496458,
+        "cost": 0,
+        "priced": false
+       }
+      }
+     }
+    ],
+    [
+     "Spend",
+     "pricesAsOf",
+     "2026-11-03"
+    ]
+   ],
+   "props": {
+    "view": "spend",
+    "spendData": {
+     "source": "t3-db",
+     "why": "scope",
+     "readAt": "@now-60iso",
+     "period": "7d",
+     "buckets": [
+      {
+       "day": "",
+       "hour": "@now-600iso",
+       "provider": "claude",
+       "model": "claude-opus-5-5",
+       "input": 2000000,
+       "cached": 30000000,
+       "cacheWrite": 200000,
+       "output": 600000,
+       "tokens": 32800000,
+       "cost": 18.36,
+       "saved": 7.34,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-600iso",
+       "provider": "codex",
+       "model": "gpt-6.1-sol",
+       "input": 1000000,
+       "cached": 12000000,
+       "cacheWrite": 100000,
+       "output": 300000,
+       "tokens": 13400000,
+       "cost": 3.96,
+       "saved": 1.58,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-600iso",
+       "provider": "grok",
+       "model": "grok-4.7",
+       "input": 300000,
+       "cached": 2000000,
+       "cacheWrite": 30000,
+       "output": 90000,
+       "tokens": 2420000,
+       "cost": 2.13,
+       "saved": 0.85,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-87000iso",
+       "provider": "claude",
+       "model": "claude-opus-5-5",
+       "input": 2000000,
+       "cached": 30000000,
+       "cacheWrite": 200000,
+       "output": 600000,
+       "tokens": 32800000,
+       "cost": 10.32,
+       "saved": 4.13,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-87000iso",
+       "provider": "codex",
+       "model": "gpt-6.1-sol",
+       "input": 1000000,
+       "cached": 12000000,
+       "cacheWrite": 100000,
+       "output": 300000,
+       "tokens": 13400000,
+       "cost": 8.97,
+       "saved": 3.59,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-173400iso",
+       "provider": "claude",
+       "model": "claude-opus-5-5",
+       "input": 2000000,
+       "cached": 30000000,
+       "cacheWrite": 200000,
+       "output": 600000,
+       "tokens": 32800000,
+       "cost": 19.7,
+       "saved": 7.88,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-173400iso",
+       "provider": "codex",
+       "model": "gpt-6.1-sol",
+       "input": 1000000,
+       "cached": 12000000,
+       "cacheWrite": 100000,
+       "output": 300000,
+       "tokens": 13400000,
+       "cost": 2.75,
+       "saved": 1.1,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-173400iso",
+       "provider": "grok",
+       "model": "grok-4.7",
+       "input": 300000,
+       "cached": 2000000,
+       "cacheWrite": 30000,
+       "output": 90000,
+       "tokens": 2420000,
+       "cost": 1.77,
+       "saved": 0.71,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-259800iso",
+       "provider": "claude",
+       "model": "claude-opus-5-5",
+       "input": 2000000,
+       "cached": 30000000,
+       "cacheWrite": 200000,
+       "output": 600000,
+       "tokens": 32800000,
+       "cost": 9.2,
+       "saved": 3.68,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-259800iso",
+       "provider": "codex",
+       "model": "gpt-6.1-sol",
+       "input": 1000000,
+       "cached": 12000000,
+       "cacheWrite": 100000,
+       "output": 300000,
+       "tokens": 13400000,
+       "cost": 7.64,
+       "saved": 3.06,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-346200iso",
+       "provider": "claude",
+       "model": "claude-opus-5-5",
+       "input": 2000000,
+       "cached": 30000000,
+       "cacheWrite": 200000,
+       "output": 600000,
+       "tokens": 32800000,
+       "cost": 10.24,
+       "saved": 4.1,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-346200iso",
+       "provider": "codex",
+       "model": "gpt-6.1-sol",
+       "input": 1000000,
+       "cached": 12000000,
+       "cacheWrite": 100000,
+       "output": 300000,
+       "tokens": 13400000,
+       "cost": 3.18,
+       "saved": 1.27,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-346200iso",
+       "provider": "grok",
+       "model": "grok-4.7",
+       "input": 300000,
+       "cached": 2000000,
+       "cacheWrite": 30000,
+       "output": 90000,
+       "tokens": 2420000,
+       "cost": 1.56,
+       "saved": 0.62,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-432600iso",
+       "provider": "claude",
+       "model": "claude-opus-5-5",
+       "input": 2000000,
+       "cached": 30000000,
+       "cacheWrite": 200000,
+       "output": 600000,
+       "tokens": 32800000,
+       "cost": 34.46,
+       "saved": 13.78,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-432600iso",
+       "provider": "codex",
+       "model": "gpt-6.1-sol",
+       "input": 1000000,
+       "cached": 12000000,
+       "cacheWrite": 100000,
+       "output": 300000,
+       "tokens": 13400000,
+       "cost": 3.61,
+       "saved": 1.44,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-519000iso",
+       "provider": "claude",
+       "model": "claude-opus-5-5",
+       "input": 2000000,
+       "cached": 30000000,
+       "cacheWrite": 200000,
+       "output": 600000,
+       "tokens": 32800000,
+       "cost": 15.14,
+       "saved": 6.06,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-519000iso",
+       "provider": "codex",
+       "model": "gpt-6.1-sol",
+       "input": 1000000,
+       "cached": 12000000,
+       "cacheWrite": 100000,
+       "output": 300000,
+       "tokens": 13400000,
+       "cost": 10.16,
+       "saved": 4.06,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-519000iso",
+       "provider": "grok",
+       "model": "grok-4.7",
+       "input": 300000,
+       "cached": 2000000,
+       "cacheWrite": 30000,
+       "output": 90000,
+       "tokens": 2420000,
+       "cost": 2.87,
+       "saved": 1.15,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-87000iso",
+       "provider": "claude",
+       "model": "claude-sonnet-5-5",
+       "input": 900000,
+       "cached": 8000000,
+       "cacheWrite": 90000,
+       "output": 200000,
+       "tokens": 9190000,
+       "cost": 6.4,
+       "saved": 2.56,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-600iso",
+       "provider": "cursor",
+       "model": "composer-2.5",
+       "input": 900000,
+       "cached": 4000000,
+       "cacheWrite": 0,
+       "output": 80000,
+       "tokens": 4980000,
+       "cost": 0,
+       "saved": 0,
+       "priced": false
+      },
+      {
+       "day": "",
+       "hour": "@now-87000iso",
+       "provider": "antigravity",
+       "model": "gemini-4-neon",
+       "input": 600000,
+       "cached": 9000000,
+       "cacheWrite": 0,
+       "output": 90000,
+       "other": 120000,
+       "tokens": 9810000,
+       "cost": 4.55,
+       "saved": 1.2,
+       "priced": true
+      },
+      {
+       "day": "",
+       "hour": "@now-87000iso",
+       "provider": "devin",
+       "model": "fusion-claude-opus-5-5-high-sidekick-swe-2-high",
+       "input": 100,
+       "cached": 0,
+       "cacheWrite": 0,
+       "output": 10,
+       "tokens": 110,
+       "cost": 0,
+       "saved": 0,
+       "priced": false
+      }
+     ],
+     "sessions": {
+      "claude": 42,
+      "codex": 17,
+      "grok": 4
+     },
+     "pricing": "fresh",
+     "coverage": {
+      "complete": 640,
+      "partial": 85,
+      "unavailable": 206
+     },
+     "instances": {
+      "claude": [
+       "claudeAgent",
+       "claudeAgent_2",
+       "claude_shared_engineering_workspace_with_a_long_name"
+      ],
+      "cursor": [
+       "cursor_2"
+      ],
+      "antigravity": [
+       "antigravity_2"
+      ]
+     },
+     "outside": 40000000
+    }
+   }
+  },
+  {
    "id": "usage/spend-tokens",
    "name": "usage",
    "panel": "UsagePanel",

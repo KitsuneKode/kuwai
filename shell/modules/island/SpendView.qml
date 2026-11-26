@@ -16,11 +16,17 @@ Column {
     property bool failed: false
     readonly property bool tokens: metric === "tokens"
     readonly property var rep: doc ? SR.report(doc.buckets || [], doc.sessions || {}, doc.period, metric, Date.now()) : null
-    readonly property bool fromT3: !!doc && doc.source === "t3"
+    readonly property bool fromT3: !!doc && (doc.source === "t3" || doc.source === "t3-db")
+    readonly property string coverage: doc ? SR.coverageText(doc.coverage) : ""
+    function instancesOf(id) {
+        const list = doc && doc.instances ? doc.instances[id] || [] : [];
+        return list.length > 1 || (list.length === 1 && Providers.name(list[0]) !== SR.providerName(id)) ? list.map(i => Providers.name(i)).join(" · ") : "";
+    }
     readonly property var periods: [{ id: "24h", label: "24h" }, { id: "7d", label: "7d" }, { id: "30d", label: "30d" }, { id: "90d", label: "90d" }]
     spacing: Theme.s3
 
-    function value(x) { return tokens ? SR.compact(x.tokens) : SR.money(x.cost); }
+    function value(x) { return SR.valueText(x, tokens); }
+    function shareText(x) { return !tokens && !(x.cost > 0) ? "" : "  " + Math.round(x.share * 100) + "%"; }
     function tone(id) {
         return ({ claude: Theme.orange, codex: Theme.green, grok: Theme.textSecondary, cursor: Theme.cyan, opencode: Theme.indigo,
                   antigravity: Theme.blue, gemini: Theme.blue, pi: Theme.mint, muse: Theme.pink })[id] || Theme.brown;
@@ -115,8 +121,17 @@ Column {
                         sv.tokens ? "processed tokens" : "API estimate",
                         sv.rep.sessions ? sv.rep.sessions + (sv.rep.sessions === 1 ? " session" : " sessions") : "",
                         !sv.tokens && sv.rep.totals.saved > 0 ? SR.money(sv.rep.totals.saved) + " saved by cache" : "",
-                        sv.tokens && sv.rep.totals.unpriced > 0 && !sv.fromT3 ? SR.compact(sv.rep.totals.unpriced) + " without a price" : ""
+                        sv.tokens && sv.rep.hitRate > 0 ? "cache hit " + Math.round(sv.rep.hitRate * 100) + "%" : "",
+                        sv.rep.totals.unpriced > 0 ? SR.compact(sv.rep.totals.unpriced) + " tokens without a price" : ""
                     ].filter(x => x).join(" · ")
+                    size: Theme.tFootnote; color: Theme.textTertiary
+                    tabular: true
+                }
+                Label {
+                    visible: sv.coverage !== ""
+                    width: parent.width
+                    wrapMode: Text.Wrap
+                    text: sv.coverage
                     size: Theme.tFootnote; color: Theme.textTertiary
                     tabular: true
                 }
@@ -213,19 +228,14 @@ Column {
                         Item {
                             width: parent.width
                             height: Math.max(Theme.sp(20), pname.implicitHeight)
-                            Image {
+                            AgentMark {
                                 id: plogo
                                 anchors.verticalCenter: parent.verticalCenter
                                 width: Theme.sp(16); height: width
-                                sourceSize: Qt.size(32, 32)
-                                source: Kittymux.brand(prow.modelData.id === "codex" ? "openai" : prow.modelData.id)
-                                visible: status === Image.Ready
-                            }
-                            Rectangle {
-                                visible: !plogo.visible
-                                anchors.verticalCenter: parent.verticalCenter
-                                width: Theme.s2; height: width; radius: width / 2
-                                color: sv.tone(prow.modelData.id)
+                                tiled: false
+                                agent: prow.modelData.id
+                                name: SR.providerName(prow.modelData.id)
+                                tint: sv.tone(prow.modelData.id)
                             }
                             Label {
                                 id: pname
@@ -242,10 +252,19 @@ Column {
                             }
                             Label {
                                 anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-                                text: sv.value(prow.modelData) + "  " + Math.round(prow.modelData.share * 100) + "%"
+                                text: sv.value(prow.modelData) + sv.shareText(prow.modelData)
                                 size: Theme.tBody; weight: Theme.wSemibold
+                                color: !sv.tokens && !(prow.modelData.cost > 0) ? Theme.textTertiary : Theme.textPrimary
                                 tabular: true
                             }
+                        }
+                        Label {
+                            visible: text !== ""
+                            x: Theme.sp(16) + Theme.s2
+                            width: parent.width - x
+                            elide: Text.ElideRight
+                            text: sv.instancesOf(prow.modelData.id)
+                            size: Theme.tFootnote; color: Theme.textTertiary
                         }
                         Rectangle {
                             width: parent.width; height: Theme.s1; radius: height / 2
@@ -256,7 +275,7 @@ Column {
                             }
                         }
                         Accessible.role: Accessible.StaticText
-                        Accessible.name: SR.providerName(prow.modelData.id) + ", " + sv.value(prow.modelData) + ", " + Math.round(prow.modelData.share * 100) + " percent"
+                        Accessible.name: SR.providerName(prow.modelData.id) + ", " + sv.value(prow.modelData) + (sv.shareText(prow.modelData) ? ", " + Math.round(prow.modelData.share * 100) + " percent" : "")
                     }
                 }
             }
@@ -267,7 +286,7 @@ Column {
                 spacing: Theme.s1
                 Label { text: "By type"; size: Theme.tFootnote; weight: Theme.wSemibold; color: Theme.textSecondary }
                 Repeater {
-                    model: !sv.rep ? [] : [["Input", sv.rep.totals.input], ["Cached input", sv.rep.totals.cached], ["Cache writes", sv.rep.totals.cacheWrite], ["Output", sv.rep.totals.output]]
+                    model: !sv.rep ? [] : [["Input", sv.rep.totals.input], ["Cached input", sv.rep.totals.cached], ["Cache writes", sv.rep.totals.cacheWrite], ["Output", sv.rep.totals.output]].concat(sv.rep.totals.other > 0 ? [["Subagents and compaction", sv.rep.totals.other]] : [])
                     delegate: Item {
                         required property var modelData
                         width: parent.width
@@ -300,7 +319,7 @@ Column {
                         Label {
                             id: mval
                             anchors.right: parent.right
-                            text: sv.value(mrow.modelData) + "  " + Math.round(mrow.modelData.share * 100) + "%"
+                            text: sv.value(mrow.modelData) + sv.shareText(mrow.modelData)
                             size: Theme.tSub; color: Theme.textSecondary
                             tabular: true
                         }
@@ -311,7 +330,8 @@ Column {
             Label {
                 width: parent.width
                 wrapMode: Text.Wrap
-                text: sv.fromT3 ? "From T3 Code's usage records. Money is what the APIs would charge."
+                text: sv.doc && sv.doc.source === "t3-db" ? "From T3 Code's own turn records" + (sv.doc.outside > 0 ? ", and this machine's logs for agents run outside T3" : "") + ". Money is an estimate at list prices; a subscription doesn't pay these."
+                    : sv.fromT3 ? "From T3 Code's usage records. Money is what the APIs would charge."
                     : "From the logs Claude, Codex and OpenCode keep on this machine. Money is an estimate at list prices."
                       + (sv.doc && sv.doc.why === "scope" ? " T3 Code's fuller records need a token with usage access (README → Usage)." : "")
                 size: Theme.tCaption; color: Theme.textTertiary

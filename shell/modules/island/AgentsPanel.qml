@@ -135,6 +135,7 @@ FocusScope {
                 model: m.model ? ap.on(m.model, m.effort)
                     : i ? (Providers.modelName(i.provider, i.model) ? Providers.modelName(i.provider, i.model) + (i.effort ? " " + i.effort : "") : ap.on(i.model, i.effort))
                     : d ? ap.on(d.model, "") : "",
+                modelId: m.model || (i && i.model) || (d && d.model) || "",
                 state: x.state, status: r ? r.status : "", ctx: m.context || 0, win: m.window || 0, reply: m.reply || "", steps: m.steps || [],
                 question: x.question || (ev && ev.severity === "needs-you" ? Notifs.readable(ev.body || "") : ""),
                 request: i ? i.request || null : null,
@@ -429,49 +430,12 @@ FocusScope {
                     id: lrow
                     y: row.headH + Theme.s2
                     width: parent.width
-                    lead: Item {
+                    lead: AgentMark {
                         anchors.fill: parent
-                        Image {
-                            id: tileImg
-                            anchors.fill: parent
-                            sourceSize: Qt.size(64, 64)
-                            source: Kittymux.tile(row.modelData.agent)
-                            smooth: true; mipmap: true
-                        }
-                        Rectangle {
-                            visible: row.modelData.src === "t3" && t3Badge.status === Image.Ready
-                            anchors { right: parent.right; bottom: parent.bottom; rightMargin: -4; bottomMargin: -4 }
-                            width: 16; height: 16; radius: 5
-                            color: Theme.cutout
-                            Image {
-                                id: t3Badge
-                                anchors.centerIn: parent
-                                width: 13; height: 13
-                                sourceSize: Qt.size(26, 26)
-                                source: row.modelData.src === "t3" ? NotifAdapters.entryIcon("t3code") : ""
-                                smooth: true; mipmap: true
-                            }
-                        }
-                        Rectangle {
-                            visible: tileImg.status !== Image.Ready
-                            anchors.fill: parent; radius: Theme.r1
-                            color: Theme.wash(2)
-                            Image {
-                                id: mark
-                                anchors.centerIn: parent
-                                width: 18; height: 18
-                                sourceSize: Qt.size(36, 36)
-                                source: Kittymux.brand(row.modelData.agent)
-                                smooth: true; mipmap: true
-                            }
-                            Text {
-                                visible: mark.status !== Image.Ready
-                                anchors.centerIn: parent
-                                text: "\u{f06a9}"
-                                font.family: Theme.fontGlyph; font.pixelSize: 15
-                                color: Theme.textSecondary
-                            }
-                        }
+                        agent: row.modelData.agent
+                        name: row.modelData.who || Kittymux.agentLabel(row.modelData.agent)
+                        model: row.modelData.modelId || ""
+                        t3: row.modelData.src === "t3"
                     }
                     title: row.modelData.title
                     trail: StatusPill { text: ap.pillText(row.modelData); dot: ap.dotOf(row.modelData) }

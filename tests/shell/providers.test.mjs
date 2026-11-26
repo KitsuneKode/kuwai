@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { parse, index, trouble, off, unchecked, label, why, line, modelName } from "../../shell/services/providers.mjs";
+import { parse, index, trouble, off, unchecked, label, why, line, modelName, vendorOf, monogram } from "../../shell/services/providers.mjs";
 
 const claude = { id: "claudeAgent_2", driver: "claudeAgent", name: "Claude-2", accent: "#eb2575", enabled: true, status: "ready",
   reason: "", auth: "authenticated", plan: "Claude Pro Subscription", models: [["claude-opus-5-5", "Claude Opus 5.5"]] };
@@ -77,5 +77,28 @@ describe("names", () => {
     expect(modelName(codexReady, "gpt-6.2-sol")).toBe("GPT-6.2-Sol");
     expect(modelName(claude, "claude-haiku-9")).toBe("");
     expect(modelName(null, "claude-opus-5-5")).toBe("");
+  });
+});
+
+describe("marks", () => {
+  test("whose model it is, for the badge on a harness that runs others' models", () => {
+    expect(vendorOf("claude-opus-5-5")).toBe("claude");
+    expect(vendorOf("fusion-claude-opus-5-5-high-sidekick-swe-2-high")).toBe("claude");
+    expect(vendorOf("gpt-6.2-astra")).toBe("openai");
+    expect(vendorOf("fusion-gpt-6-2-sol-high-sidekick-swe-2-medium")).toBe("openai");
+    expect(vendorOf("gemini-3.8-flash-high")).toBe("googlegemini");
+    expect(vendorOf("grok-4.7")).toBe("grok");
+    expect(vendorOf("openrouter/~anthropic/claude-opus-latest")).toBe("claude");
+    expect(vendorOf("composer-2.5")).toBe("");
+    expect(vendorOf("swe-2-flash-medium")).toBe("");
+    expect(vendorOf("")).toBe("");
+  });
+  test("two letters where there is no mark", () => {
+    expect(monogram("Muse Code")).toBe("MC");
+    expect(monogram("Pi")).toBe("Pi");
+    expect(monogram("fx")).toBe("fx");
+    expect(monogram("GLM Agent")).toBe("GA");
+    expect(monogram("opencode")).toBe("Op");
+    expect(monogram("")).toBe("?");
   });
 });

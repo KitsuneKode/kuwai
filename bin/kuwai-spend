@@ -3,6 +3,7 @@ import { readFileSync, writeFileSync, mkdirSync, statSync, readdirSync, openSync
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { claudeLine, codexLine, opencodeMessage, costOf, add, prune, summary, dayOf } from "../lib/spend.mjs";
+import { sessionOf } from "../lib/t3usage.mjs";
 
 const HOME = process.env.HOME || "";
 const KEEP = 35;
@@ -31,8 +32,8 @@ const ROOTS = {
   opencode: [join(HOME, ".local/share/opencode/storage/message")],
 };
 
-let state = { version: 1, files: {}, days: {} };
-try { const s = JSON.parse(readFileSync(statePath, "utf8")); if (s && s.version === 1) state = s; } catch {}
+let state = { version: 2, files: {}, days: {} };
+try { const s = JSON.parse(readFileSync(statePath, "utf8")); if (s && s.version === 2) state = s; } catch {}
 
 const since = Date.now() - KEEP * 86400000;
 function walk(dir, want, out, depth = 0) {
@@ -85,26 +86,41 @@ function eachNewLine(path, st, want, onLine) {
 const TOKEN = Buffer.from("token_count"), CONTEXT = Buffer.from("turn_context"), META = Buffer.from("session_meta");
 const has = (needle) => { const b = Buffer.from(needle); return (line) => line.indexOf(b) >= 0; };
 
+function count(meta, provider, root, path, rec) {
+  const cost = costOf(prices, rec);
+  add(state.days, rec, cost);
+  meta.provider = provider;
+  if (meta.sid === undefined) meta.sid = sessionOf(provider, path.slice(root.length));
+  const by = {};
+  add(by, rec, cost);
+  const d = by[rec.provider] && by[rec.provider][rec.day];
+  if (!d) return;
+  const days = (meta.days ||= {});
+  const into = (days[rec.day] ||= { tokens: 0, cost: 0, unpriced: 0, models: {} });
+  into.tokens += d.tokens; into.cost += d.cost; into.unpriced += d.unpriced;
+  for (const [m, v] of Object.entries(d.models)) into.models[m] = (into.models[m] || 0) + v;
+}
+
 function scan() {
   let changed = false;
   const usage = has('"usage"');
-  for (const [path, st] of ROOTS.claude.flatMap(dir => walk(dir, (n) => n.endsWith(".jsonl"), []))) {
+  for (const root of ROOTS.claude) for (const [path, st] of walk(root, (n) => n.endsWith(".jsonl"), [])) {
     eachNewLine(path, st, usage, (l, meta) => {
       let o; try { o = JSON.parse(l); } catch { return; }
       const r = claudeLine(o);
       if (!r || r.id === meta.lastId) return;
       meta.lastId = r.id;
-      add(state.days, r, costOf(prices, r)); changed = true;
+      count(meta, "claude", root, path, r); changed = true;
     });
   }
   const tokenOrModel = (line) => line.indexOf(TOKEN) >= 0 || line.indexOf(CONTEXT) >= 0 || line.indexOf(META) >= 0;
-  for (const [path, st] of ROOTS.codex.flatMap(dir => walk(dir, (n) => n.endsWith(".jsonl"), []))) {
+  for (const root of ROOTS.codex) for (const [path, st] of walk(root, (n) => n.endsWith(".jsonl"), [])) {
     const known = state.files[path];
     const ctx = { model: (known && known.model) || "" };
-    const meta = eachNewLine(path, st, tokenOrModel, (l) => {
+    const meta = eachNewLine(path, st, tokenOrModel, (l, m) => {
       let o; try { o = JSON.parse(l); } catch { return; }
       const r = codexLine(o, ctx);
-      if (r) { add(state.days, r, costOf(prices, r)); changed = true; }
+      if (r) { count(m, "codex", root, path, r); changed = true; }
     });
     meta.model = ctx.model;
   }
@@ -115,8 +131,8 @@ function scan() {
     let o; try { o = JSON.parse(readFileSync(path, "utf8")); } catch { continue; }
     const r = opencodeMessage(o);
     const done = !!(o && o.time && o.time.completed);
-    state.files[path] = { size: st.size, mtime: st.mtimeMs, counted: done };
-    if (r && done) { add(state.days, r, costOf(prices, r)); changed = true; }
+    state.files[path] = { size: st.size, mtime: st.mtimeMs, counted: done, sid: String((o && o.sessionID) || "") };
+    if (r && done) { count(state.files[path], "opencode", "", path, r); changed = true; }
   }
   for (const p of Object.keys(state.files)) {
     try { if (statSync(p).mtimeMs < since) delete state.files[p]; } catch { delete state.files[p]; }

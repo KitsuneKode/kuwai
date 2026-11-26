@@ -92,6 +92,10 @@ describe("small readings", () => {
     expect(t3Agent("codex_2")).toBe("codex");
     expect(t3Agent("devin")).toBe("devin");
     expect(t3Agent("newthing")).toBe("newthing");
+    expect(t3Agent("codex_2nd")).toBe("codex");
+    expect(t3Agent("codex_20219caf-90a9-4531-a5b1-4fc5b519dae7")).toBe("codex");
+    expect(t3Agent("devin_local")).toBe("devin");
+    expect(t3Agent("kiro")).toBe("kiro");
   });
 });
 

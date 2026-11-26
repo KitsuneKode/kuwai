@@ -22,10 +22,11 @@ Singleton {
     readonly property string troubleLine: P.line(trouble, p => brandLabel(p.id))
 
     function of(id) { return byId[String(id || "")] || null; }
-    function brandLabel(id) {
+    function agentOf(id) {
         const p = of(id);
-        return Kittymux.agentLabel(Agents.t3Agent(p && p.driver && p.driver !== "acpRegistry" ? p.driver : id));
+        return Agents.t3Agent(p && p.driver && p.driver !== "acpRegistry" ? p.driver : id);
     }
+    function brandLabel(id) { return Kittymux.agentLabel(agentOf(id)); }
     function name(id) { return P.label(of(id), brandLabel(id)); }
     function why(p) { return P.why(p); }
     function modelName(id, slug) { return P.modelName(of(id), String(slug || "")); }

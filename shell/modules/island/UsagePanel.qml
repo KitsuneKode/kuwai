@@ -345,7 +345,6 @@ FocusScope {
                             delegate: Item {
                                 id: hr
                                 required property var modelData
-                                readonly property string mark: Limits.brandFor({ driver: modelData.p.driver + " " + modelData.p.id })
                                 readonly property real lineH: Theme.sp(Theme.s5)
                                 width: healthCol.width
                                 height: lineH + (hrWhy.visible ? hrWhy.implicitHeight : 0)
@@ -355,19 +354,18 @@ FocusScope {
                                     width: 6; height: 6; radius: 3
                                     color: hr.modelData.tone
                                 }
-                                Image {
+                                AgentMark {
                                     id: hrMark
-                                    visible: hr.mark !== ""
                                     anchors { left: hrDot.right; leftMargin: Theme.s2 }
                                     y: (hr.lineH - height) / 2
                                     width: Theme.sp(14); height: width
-                                    source: hr.mark
-                                    sourceSize: Qt.size(28, 28)
-                                    asynchronous: true
+                                    tiled: false
+                                    agent: Providers.agentOf(hr.modelData.p.id)
+                                    name: Providers.name(hr.modelData.p.id)
                                 }
                                 Label {
                                     id: hrName
-                                    anchors { left: hrMark.visible ? hrMark.right : hrDot.right; leftMargin: Theme.s2; right: parent.right }
+                                    anchors { left: hrMark.right; leftMargin: Theme.s2; right: parent.right }
                                     y: (hr.lineH - implicitHeight) / 2
                                     elide: Text.ElideRight
                                     text: Providers.name(hr.modelData.p.id)
