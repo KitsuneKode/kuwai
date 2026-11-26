@@ -16,7 +16,7 @@
 // QML changes only: after changing this file, save a QML file too.
 // @ts-check
 
-/** A thread as bin/kuwai-t3 gives it. @typedef {{ status?: string, ask?: string | null, blocked?: boolean, limited?: boolean, goal?: boolean, woke?: boolean, at?: string }} Thread */
+/** A thread as bin/kuwai-t3 gives it. @typedef {{ status?: string, ask?: string | null, blocked?: boolean, held?: boolean, limited?: boolean, goal?: boolean, woke?: boolean, at?: string }} Thread */
 /** What its row says. `tone`: attention (it wants you), working, idle, caution, error, done. @typedef {{ key: string, word: string, tone: string, timed: boolean }} State */
 
 /**
