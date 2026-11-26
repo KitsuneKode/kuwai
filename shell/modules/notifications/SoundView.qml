@@ -367,12 +367,13 @@ Item {
                 scale: muteArea.pressed ? 0.94 : 1
                 Behavior on color { ColorAnimation { duration: Theme.colorMs } }
                 Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
-                Label {
+                Text {
+                    textFormat: Text.PlainText
                     anchors.centerIn: parent
-                    text: "M"
-                    size: Theme.tFootnote
-                    rounded: true
-                    weight: Theme.wSemibold
+                    readonly property bool input: !!strip.node && !strip.node.isSink && !strip.node.isStream
+                    text: input ? (strip.muted ? "\u{f036d}" : "\u{f036c}") : (strip.muted ? "\u{f0581}" : "\u{f057e}")
+                    font.family: Theme.fontGlyph
+                    font.pixelSize: Theme.sp(Theme.glyphS)
                     color: strip.muted ? "white" : Theme.textSecondary
                 }
                 MouseArea {

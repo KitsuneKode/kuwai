@@ -10,6 +10,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Hyprland
 
 Singleton {
     id: root
@@ -614,17 +615,23 @@ Singleton {
     // Motion, remembered in ~/.local/state/kuwai/prefs.json), when
     // KUWAI_REDUCE_MOTION=1, or when Hyprland's own animations are off.
     readonly property bool reduceMotion: prefs.reduceMotion || envReduce || hyprStill
+    readonly property bool userReduce: prefs.reduceMotion
     readonly property bool envReduce: Quickshell.env("KUWAI_REDUCE_MOTION") === "1"
     property bool hyprStill: false
     function setReduceMotion(on) { prefs.reduceMotion = on; }
     Process {
+        id: stillProbe
         running: true
         command: ["hyprctl", "getoption", "animations:enabled", "-j"]
         stdout: StdioCollector {
             onStreamFinished: {
-                try { if (JSON.parse(text).int === 0) root.hyprStill = true; } catch (e) {}
+                try { root.hyprStill = JSON.parse(text).int === 0; } catch (e) {}
             }
         }
+    }
+    Connections {
+        target: Hyprland
+        function onRawEvent(event) { if (event.name === "configreloaded" && !stillProbe.running) stillProbe.running = true; }
     }
     FileView {
         path: Paths.stateHome + "/kuwai/prefs.json"

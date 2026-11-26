@@ -631,7 +631,9 @@ Singleton {
     }
     function terminal() {
         // sysup in a terminal, for anything the panel leaves to paru.
-        Hyde.run(["app", "system.update.sh", "up"], "Updating in a terminal");
+        if (Hyde.hasShell) { Hyde.run(["app", "system.update.sh", "up"], "Updating in a terminal"); return; }
+        Apps.run(["sh", "-c", 'for t in xdg-terminal-exec kitty ghostty foot alacritty wezterm konsole; do command -v "$t" >/dev/null || continue; case $t in xdg-terminal-exec) exec "$t" sh -c "$1" ;; wezterm) exec "$t" start -- sh -c "$1" ;; *) exec "$t" -e sh -c "$1" ;; esac; done',
+                  "sh", 'if command -v paru >/dev/null; then paru -Syu; else sudo pacman -Syu; fi; printf "\\nDone. Press Enter to close. "; read _']);
     }
     function restart() { Quickshell.execDetached(["systemctl", "reboot"]); }
 

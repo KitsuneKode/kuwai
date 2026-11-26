@@ -101,17 +101,21 @@ Singleton {
                 let st = null;
                 try { st = JSON.parse(text); } catch (e) {}
                 if (!want || root.dimmed) return;
+                if (!st || !st.outputs) { if (++check.tries < 2) checkLater.restart(); return; }
                 let off = 0;
+                const missing = {};
                 for (const name in want) {
-                    const o = st && st.outputs && st.outputs[name];
-                    if (!o) continue;
+                    const o = st.outputs[name];
+                    if (!o) { missing[name] = want[name]; continue; }
                     if (o.pending !== null && o.pending !== undefined) off++;   // still writing: look again
                     else if (o.value !== want[name]) { off++; root.set(name, want[name]); }
                 }
                 if (off && ++check.tries < 2) checkLater.restart();
                 else {
                     check.want = null;
-                    if (!root.dimmed) Quickshell.execDetached(["rm", "-f", root.file]);   // back: the saved levels are done
+                    if (root.dimmed) return;
+                    if (Object.keys(missing).length) saved.setText(JSON.stringify(missing));
+                    else Quickshell.execDetached(["rm", "-f", root.file]);
                 }
             }
         }
@@ -119,4 +123,6 @@ Singleton {
 
     // Dimmed when the last shell went: put it back.
     Component.onCompleted: if (saved.text() !== "") up()
+    Connections { target: Quickshell; function onScreensChanged() { if (!root.dimmed && saved.text() !== "") screensBack.restart(); } }
+    Timer { id: screensBack; interval: 2000; onTriggered: { saved.reload(); if (!root.dimmed && saved.text() !== "") root.up(); } }
 }

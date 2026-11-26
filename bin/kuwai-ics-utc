@@ -1,0 +1,73 @@
+#!/usr/bin/env python3
+"""Calendar times with a TZID, rewritten as UTC, for the shell's calendar.
+
+The shell's iCalendar reader runs in Qt's JavaScript, which has no time-zone
+database: a 09:00 meeting in New York read as 09:00 here. This reads an .ics
+on stdin and writes it back with every DTSTART/DTEND/EXDATE/RECURRENCE-ID/DUE
+that names a zone (TZID=…) turned into a UTC time ("…Z"). Dates without a
+time (all-day) and zones Python's zoneinfo doesn't know are left as they are.
+"""
+import re
+import sys
+from datetime import datetime, timezone
+
+try:
+    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+except ImportError:
+    sys.stdout.write(sys.stdin.read())
+    sys.exit(0)
+
+PROPS = {"DTSTART", "DTEND", "EXDATE", "RECURRENCE-ID", "DUE"}
+WINDOWS = {"Eastern Standard Time": "America/New_York", "Central Standard Time": "America/Chicago",
+           "Mountain Standard Time": "America/Denver", "Pacific Standard Time": "America/Los_Angeles",
+           "GMT Standard Time": "Europe/London", "W. Europe Standard Time": "Europe/Berlin",
+           "Central European Standard Time": "Europe/Warsaw", "Romance Standard Time": "Europe/Paris",
+           "India Standard Time": "Asia/Kolkata", "China Standard Time": "Asia/Shanghai",
+           "Tokyo Standard Time": "Asia/Tokyo", "AUS Eastern Standard Time": "Australia/Sydney",
+           "UTC": "UTC", "Coordinated Universal Time": "UTC"}
+STAMP = re.compile(r"^(\d{8})T(\d{6})$")
+
+
+def zone(name):
+    name = name.strip('"')
+    try:
+        return ZoneInfo(WINDOWS.get(name, name))
+    except (ZoneInfoNotFoundError, ValueError, KeyError):
+        return None
+
+
+def rewrite(line):
+    head, sep, value = line.partition(":")
+    if not sep:
+        return line
+    parts = head.split(";")
+    if parts[0].upper() not in PROPS:
+        return line
+    tzid = [p for p in parts[1:] if p.upper().startswith("TZID=")]
+    if not tzid:
+        return line
+    tz = zone(tzid[0][5:])
+    if tz is None:
+        return line
+    out = []
+    for v in value.split(","):
+        m = STAMP.match(v.strip())
+        if not m:
+            return line
+        local = datetime.strptime(m.group(1) + m.group(2), "%Y%m%d%H%M%S").replace(tzinfo=tz)
+        out.append(local.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ"))
+    return ";".join([parts[0]] + [p for p in parts[1:] if not p.upper().startswith("TZID=")]) + ":" + ",".join(out)
+
+
+def main():
+    lines = []
+    for raw in sys.stdin.read().splitlines():
+        if raw[:1] in (" ", "\t") and lines:
+            lines[-1] += raw[1:]
+        else:
+            lines.append(raw)
+    sys.stdout.write("\n".join(rewrite(l) for l in lines) + "\n")
+
+
+if __name__ == "__main__":
+    main()

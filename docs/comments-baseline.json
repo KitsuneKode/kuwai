@@ -1,5 +1,5 @@
 {
-  "total_comment_lines": 7511,
+  "total_comment_lines": 7510,
   "files_with_comments": 291,
   "files": {
     "shell/components/ActionMenu.qml": 23,
@@ -161,7 +161,7 @@
     "shell/services/Clipboard.qml": 120,
     "shell/services/Crashes.qml": 8,
     "shell/services/DeviceArt.qml": 17,
-    "shell/services/Dim.qml": 30,
+    "shell/services/Dim.qml": 29,
     "shell/services/Display.qml": 38,
     "shell/services/Glyphs.qml": 7,
     "shell/services/Goodbye.qml": 16,

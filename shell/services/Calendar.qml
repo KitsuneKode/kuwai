@@ -68,8 +68,10 @@ Singleton {
                     "~/"*) f="$HOME/\${src#\\~/}" ;;
                     *) f=$src ;;
                 esac
-                [ -r "$f" ] && { cat "$f"; printf '\\nX-RICE-END-OF-FILE\\n'; }
-            done < "$list"`, "sh", root.cacheDir, root.listPath]
+                [ -r "$f" ] || continue
+                if out=$(python3 -I "$3" < "$f" 2>/dev/null); then printf '%s\\n' "$out"; else cat "$f"; fi
+                printf '\\nX-RICE-END-OF-FILE\\n'
+            done < "$list"`, "sh", root.cacheDir, root.listPath, Paths.bin + "/kuwai-ics-utc"]
         stdout: StdioCollector { onStreamFinished: root.events = root.parse(text) }
     }
     Timer { interval: 30 * 60 * 1000; running: root.configured; repeat: true; onTriggered: root.refresh() }

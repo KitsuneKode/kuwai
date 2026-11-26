@@ -612,8 +612,11 @@ FocusScope {
             spacing: 18
             SettingsGroup {
                 SettingsRow {
-                    label: "Reduce motion"; detail: "Fades instead of slides and springs; digits change without rolling"
-                    Toggle { on: Theme.reduceMotion; enabled: !Theme.envReduce; onToggled: Theme.setReduceMotion(!Theme.reduceMotion) }
+                    label: "Reduce motion"
+                    detail: Theme.envReduce ? "On for this session (KUWAI_REDUCE_MOTION)"
+                        : Theme.hyprStill && !Theme.userReduce ? "On while your desktop mode keeps animations off (Gaming, Battery)"
+                        : "Fades instead of slides and springs; digits change without rolling"
+                    Toggle { on: Theme.reduceMotion; enabled: !Theme.envReduce && !(Theme.hyprStill && !Theme.userReduce); onToggled: Theme.setReduceMotion(!Theme.reduceMotion) }
                 }
             }
             SettingsGroup {
