@@ -12,8 +12,9 @@ runtime), Opus 5.5 (architecture, launch), Fable 5.2 (design, island), Grok 4.7
 (attacker as you), Gemini 4 Neon (features, voxtype). Fixed: 6c17030, c7ec6b5.
 
 Left, needs a decision or the owner:
-1. Signed releases (Opus): `release-signers` is empty, so `kuwai update-self`
-   trusts whatever GitHub serves. Needs the owner's signing key; about an hour.
+1. Signed releases (Opus): done 2026-11-27. The owner's SSH key is in
+   `release-signers`; `kuwai release vX.Y.Z` signs, update-self refuses anything
+   else. Left: a passphrase on ~/.ssh/kuwai_release, and the first signed tag.
 2. Root installs from folders you can write (Astra, Opus, Gemini, Grok):
    `kuwai update install-helper`, `kuwai auth pin`, `system/install`, greeter
    `--undo` from a legacy backup. Real fix: install from a signed tag's blobs
@@ -44,16 +45,18 @@ holding the screen on (org.freedesktop.ScreenSaver: bin/kuwai-inhibit), the
 rehearsal's Usage flake (its stand-in helper died after 10 minutes). The
 providers/budget/recap work landed from its own thread (ab9d974).
 
-Needs the owner (minutes each):
-0. Rebuild Quickshell (`quickshell` was built against Qt 6.12.0, the system has 6.12.1:
-   Quickshell itself warns this "is likely to cause crashes"); `kuwai auth pin` so the
-   password prompt takes the kuwai theme's colour (418af39); `kuwai update install-helper`
-   so one-password updates carry package holds (c7b5fc0).
-1. `sudo greeter/install --code`, then one logout: the login handoff, never yet seen.
+Needs the owner (minutes each). Done 2026-11-27: `kuwai auth pin`, `kuwai update
+install-helper`, `sudo greeter/install --code`, the USB-mic udev rule, the release key,
+kittymux #47 #49 #59 #60 merged.
+0. Quickshell: Arch's package is still built against Qt 6.12.0 (the system has 6.12.1);
+   wait for Arch's rebuild (pacman -Si quickshell: a new pkgrel) or build it from Arch's
+   own recipe (gitlab.archlinux.org/archlinux/packaging/packages/quickshell, makepkg -si).
+1. One logout: the login handoff, never yet seen.
 2. voxtype's video memory (3.4 GB of 6, the root of every failed video
    allocation): pick a step in the fork (arena that grows by what's asked,
    unload after 15 idle minutes, fp16). Agent work once chosen.
-3. kittymux PR #47: review.
+3. Look once at the gliding list highlight (Wi-Fi, Bluetooth, Sound, the launcher)
+   and the dictation ring's voice glow and writing light.
 4. Look once at what was only ever rehearsed: Settings → Shortcuts (change a
    key), the saver starting and ending, F-keys Plain.
 
