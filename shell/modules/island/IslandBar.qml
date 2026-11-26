@@ -549,7 +549,7 @@ Scope {
             // approval. The notch's rim is lit for as long as it waits (a
             // still light, so no frames; it blooms once as it starts and again
             // when one more joins). The glance says who, and takes you there.
-            readonly property var waitingAgents: Kittymux.running.filter(r => r.needs)
+            readonly property var waitingAgents: Agents.stack("needs")
             readonly property int waitingCount: Agents.needN + (OllamaService.pendingRequest ? 1 : 0)
             readonly property string waitingWho: {
                 if (waitingCount > 1) return waitingCount + " need you";

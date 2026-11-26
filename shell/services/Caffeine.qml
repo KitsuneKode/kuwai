@@ -43,7 +43,7 @@ Singleton {
     readonly property var workNow: {
         if (UPower.onBattery) return [];
         const r = [];
-        const k = (Kittymux.working ? Kittymux.working.length : 0) + Agents.desktop.filter(d => d.state === "working").length;
+        const k = Agents.sessions.filter(x => x.state === "working" && x.src !== "t3").length;
         if (k > 0) r.push(k === 1 ? "an agent is working" : k + " agents are working");
         if (T3Code.running > 0) r.push(T3Code.running === 1 ? "a T3 thread is running" : T3Code.running + " T3 threads are running");
         if (Updates.running) r.push("an update is running");

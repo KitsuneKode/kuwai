@@ -3622,6 +3622,163 @@
    }
   },
   {
+   "id": "agents/one-identity",
+   "name": "agents",
+   "panel": "AgentsPanel",
+   "kind": "typical",
+   "set": [
+    [
+     "Kittymux",
+     "feedPinned",
+     true
+    ],
+    [
+     "Kittymux",
+     "feed",
+     {
+      "version": 1,
+      "agents": [
+       {
+        "key": "w4100.7",
+        "kitty_pid": 4100,
+        "window_id": 7,
+        "agent": "claude",
+        "brand": "claude",
+        "title": "Port detection for the island",
+        "tab_title": "rice",
+        "cwd": "~/Projects/rice",
+        "state": "working",
+        "account": "main"
+       },
+       {
+        "key": "w4100.7",
+        "kitty_pid": 4100,
+        "window_id": 7,
+        "agent": "claude",
+        "brand": "claude",
+        "title": "Port detection for the island",
+        "tab_title": "rice",
+        "cwd": "~/Projects/rice",
+        "state": "working",
+        "account": "main"
+       },
+       {
+        "key": "w4100.9",
+        "kitty_pid": 4100,
+        "window_id": 9,
+        "agent": "codex",
+        "brand": "openai",
+        "title": "Split the settings store",
+        "tab_title": "api",
+        "cwd": "~/Projects/api",
+        "state": "working",
+        "account": "main"
+       }
+      ]
+     }
+    ],
+    [
+     "Agents",
+     "desktopPinned",
+     true
+    ],
+    [
+     "Agents",
+     "desktopFeed",
+     [
+      {
+       "id": "claude-91f2",
+       "agent": "claude",
+       "state": "waiting",
+       "ask": "approval",
+       "title": "Port detection for the island",
+       "project": "rice",
+       "cwd": "~/Projects/rice",
+       "pane": "w4100.7",
+       "question": "Allow Bash: bun test tests/shell",
+       "since": "@now-90s",
+       "updated_at": "@now-90s",
+       "ttl": 1800
+      },
+      {
+       "id": "codex-77aa",
+       "agent": "codex",
+       "state": "working",
+       "title": "Split the settings store",
+       "project": "api",
+       "cwd": "~/Projects/api",
+       "since": "@now-400s",
+       "updated_at": "@now-60s",
+       "ttl": 1800
+      },
+      {
+       "id": "claude-t3",
+       "agent": "claude",
+       "state": "working",
+       "title": "Port the greeter",
+       "thread": "t-b",
+       "since": "@now-300s",
+       "updated_at": "@now-60s",
+       "ttl": 1800
+      },
+      {
+       "id": "cursor-5c",
+       "agent": "cursor",
+       "state": "working",
+       "title": "Refactor the theme picker",
+       "project": "themes",
+       "window_class": "^(cursor|Cursor)$",
+       "since": "@now-200s",
+       "updated_at": "@now-30s",
+       "ttl": 1800
+      }
+     ]
+    ],
+    [
+     "T3Code",
+     "alive",
+     true
+    ],
+    [
+     "T3Code",
+     "rawFinished",
+     0
+    ],
+    [
+     "T3Code",
+     "running",
+     1
+    ],
+    [
+     "T3Code",
+     "waiting",
+     0
+    ],
+    [
+     "T3Code",
+     "rawItems",
+     [
+      {
+       "thread": "t-b",
+       "status": "running",
+       "provider": "claudeAgent",
+       "title": "Port the greeter",
+       "project": "rice",
+       "at": "@now-1800000iso"
+      },
+      {
+       "thread": "t-b",
+       "status": "running",
+       "provider": "claudeAgent",
+       "title": "Port the greeter",
+       "project": "rice",
+       "at": "@now-1800000iso"
+      }
+     ]
+    ]
+   ]
+  },
+  {
    "id": "agents/servers",
    "name": "agents",
    "panel": "AgentsPanel",

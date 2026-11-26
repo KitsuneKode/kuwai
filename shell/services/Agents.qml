@@ -59,13 +59,7 @@ Singleton {
         onTriggered: if (!desktopInit.running) desktopInit.running = true
     }
 
-    function trimDir(p) { return String(p || "").replace(/^~(?=\/|$)/, Quickshell.env("HOME") || "~").replace(/\/+$/, ""); }
-    function inKitty(d) {
-        if (d.pane) return Kittymux.available;
-        const agent = String(d.agent || "").toLowerCase(), dir = trimDir(d.cwd);
-        return (Kittymux.running || []).filter(r => String(r.agent || "").toLowerCase() === agent && dir !== "" && trimDir(r.where) === dir).length === 1;
-    }
-    readonly property var desktop: desktopFeed.filter(d => d && d.id && (!d.updated_at || !d.ttl || root.now / 1000 - d.updated_at <= d.ttl) && !inKitty(d))
+    readonly property var hooks: desktopFeed.filter(d => d && d.id && (!d.updated_at || !d.ttl || root.now / 1000 - d.updated_at <= d.ttl))
 
     readonly property var panes: {
         const events = Kittymux.attention || [];
@@ -75,19 +69,24 @@ Singleton {
                 key: r.key, agent: r.agent, title: r.title, account: r.account || "",
                 state: ev && r.state !== "error" && r.state !== "limited" ? "waiting" : r.state || (r.working ? "working" : ""),
                 needs: r.needs || !!ev, working: r.working, ask: !!Kittymux.askFor(r),
-                since: r.since || 0, limitReset: r.limitReset || 0, event: ev ? ev.id : "", action: r.action
+                since: r.since || 0, limitReset: r.limitReset || 0, event: ev ? ev.id : "", action: r.action,
+                pid: r.pid || "", w: r.w || "", where: r.where || "", question: r.question || "", raw: r
             };
         });
     }
+    readonly property var sessions: A.sessions(panes, T3Code.liveItems, hooks, { home: Quickshell.env("HOME") || "" })
+    readonly property var desktop: sessions.filter(s => s.src === "desktop").map(s => s.hook)
+    readonly property var tally: A.counts(sessions)
     readonly property int doneKitty: (Kittymux.attention || []).filter(e => e.kind === "done").length
-    readonly property int doneDesktop: desktop.filter(d => d.state === "done").length
-    readonly property var head: A.headline(panes, T3Code.liveItems, doneKitty, T3Code.liveFinished, now, desktop, doneDesktop)
-    readonly property var next: A.target(panes, T3Code.liveItems, desktop)
-    readonly property var items: A.merge(panes, T3Code.liveItems, desktop)
-    readonly property int needN: items.filter(i => i.rank === 0).length
-    readonly property int workN: items.filter(i => i.rank === 2).length
+    readonly property int doneDesktop: sessions.filter(s => s.src === "desktop" && s.state === "done").length
+    readonly property var head: A.headlineOf(sessions, doneKitty, T3Code.liveFinished, doneDesktop)
+    readonly property var next: A.targetOf(sessions)
+    readonly property var items: A.ranked(sessions)
+    readonly property int needN: tally.needs
+    readonly property int workN: tally.working
+    function stack(only) { return A.stackList(sessions, only); }
     function providerId(name) { return A.providerId(name); }
-    readonly property var extraLimited: A.limitedItems(panes, T3Code.liveItems, desktop).map(it => ({
+    readonly property var extraLimited: A.limitedOf(sessions).map(it => ({
         key: it.key,
         id: A.providerId(it.agent),
         brand: Kittymux.brand(it.agent),
@@ -145,6 +144,7 @@ Singleton {
         function state(): string {
             return JSON.stringify({
                 head: root.head,
+                tally: root.tally,
                 desktop: root.desktop.length,
                 next: root.next ? { src: root.next.src, word: root.next.word, title: root.next.title } : null
             });

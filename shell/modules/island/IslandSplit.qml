@@ -234,7 +234,7 @@ Item {
 
     // What waits on you, by capsule: the light goes on what's asking
     // (IslandBar keeps its own rim for what's still in the island).
-    readonly property bool agentsNeed: agentStack.list.some(a => a.needs) || Kittymux.running.some(r => r.needs) || Agents.desktop.some(d => d.state === "waiting" || d.state === "woke")
+    readonly property bool agentsNeed: Agents.tally.needs > 0
     readonly property bool agentsHold: agentsPill.shown
     // For the window's input mask (IslandBar): what's out takes clicks.
     readonly property var pills: [askPill, musicPill, agentsPill, sysPill, limitsPill, customPill, minPill, morePill]

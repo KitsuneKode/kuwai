@@ -118,62 +118,28 @@ FocusScope {
     readonly property var sections: [...new Set(rows.map(r => r.section))]
     readonly property var rows: {
         const out = [];
-        const events = Kittymux.attention || [];
-        for (const r of Kittymux.running) {
-            // Its unread event, if any: going there through it marks it read.
-            const ev = events.find(e => String(e.pid) === String(r.pid) && String(e.w) === r.w);
-            const m = ap.models[r.agent + ":" + r.where] || {};
-            const state = r.needs || (ev && ev.severity === "needs-you") ? "needs"
-                : r.working ? "working" : r.state === "error" ? "error" : r.state === "limited" ? "limited"
-                : r.state === "done" ? "done" : "idle";
-            const stateKey = state === "needs" ? (Kittymux.askFor(r) ? "approval" : "waiting")
-                : state === "error" ? "failed" : state;
-            const back = state === "limited" ? Ag.until((r.limitReset || 0) * 1000, Date.now()) : "";
+        for (const x of Agents.sessions) {
+            const r = x.pane && x.pane.raw ? x.pane.raw : null, i = x.t3, d = x.hook;
+            const ev = x.event ? Kittymux.eventById(x.event) : null;
+            const m = r ? ap.models[r.agent + ":" + r.where] || {} : {};
+            const back = x.state === "limited" ? Ag.until(x.reset || 0, Date.now()) : "";
             out.push({
-                section: "Terminal",
-                word: stateKey === "approval" ? "Approval" : back ? "Limit · back in " + back : "",
-                stateKey: stateKey,
-                key: "k" + r.key, src: "kitty", agent: r.agent, title: r.title,
-                where: r.project || String(r.where || "").replace(/^.*\//, ""),
-                model: ap.on(m.model, m.effort), state: state, status: r.status, ctx: m.context || 0, win: m.window || 0, reply: m.reply || "", steps: m.steps || [],
-                question: r.question || (ev && ev.severity === "needs-you" ? Notifs.readable(ev.body || "") : ""),
-                t: (r.since || 0) * 1000, event: ev ? ev.id : "", action: r.action, raw: r
-            });
-        }
-        for (const i of T3Code.liveItems) {
-            // The same reading as the T3 panel's (t3.mjs): what it wants from you,
-            // parked on another thread, stopped by a limit. It said "Working" for a
-            // parked thread and "Error" for one that had only run out of quota.
-            const said = T3.stateOf(i);
-            const st = said.tone === "attention" ? "needs" : said.key === "done" ? "done" : said.key === "limited" ? "limited"
-                     : said.key === "failed" ? "error" : said.key === "blocked" ? "idle" : "working";
-            out.push({
-                section: "T3 Code",
-                word: said.key === "blocked" ? (i.held ? "Waiting on background work" : "Waiting on another thread") : (said.tone === "attention" && said.key !== "waiting") || said.key === "goal" ? said.word : "",
-                stateKey: said.key,
-                key: "t" + i.thread, src: "t3", agent: ap.t3Agent(i.provider), who: Providers.name(i.provider), title: i.title || "Untitled thread",
-                where: i.project && i.project !== "No project" ? i.project : "",
-                model: Providers.modelName(i.provider, i.model) ? Providers.modelName(i.provider, i.model) + (i.effort ? " " + i.effort : "") : ap.on(i.model, i.effort), state: st, status: "", question: i.request && i.request.prompt ? i.request.prompt : "",
-                request: i.request || null,
-                t: i.at ? Date.parse(i.at) : 0, thread: i.thread, item: i
-            });
-        }
-        for (const d of Agents.desktop) {
-            const st = d.state === "waiting" || d.state === "woke" ? "needs"
-                : d.state === "failed" ? "error" : d.state === "limited" ? "limited"
-                : d.state === "done" ? "done" : d.state === "blocked" ? "idle" : "working";
-            const stateKey = d.state === "waiting" ? (d.ask === "approval" ? "approval" : (d.ask === "question" || d.ask === "input") ? "question" : d.ask === "request" ? "request" : "waiting")
-                : d.state || "working";
-            const word = stateKey === "approval" ? "Approval" : stateKey === "question" ? "Question" : stateKey === "request" ? "Request"
-                : stateKey === "woke" ? "Woke" : stateKey === "goal" ? "Goal" : stateKey === "blocked" ? "Waiting" : "";
-            out.push({
-                section: "Desktop",
-                word: word,
-                stateKey: stateKey,
-                key: "d" + d.id, src: "desktop", agent: d.agent || "desktop", title: d.title || Kittymux.agentLabel(d.agent),
-                where: d.project || "",
-                model: ap.on(d.model, ""), state: st, status: "", question: d.question || "",
-                t: (d.since || d.updated_at || 0) * 1000, windowClass: d.window_class || "", desktopId: d.id, raw: d
+                section: x.section,
+                word: x.stateKey === "blocked" ? (i && i.held ? "Waiting on background work" : x.src === "t3" ? "Waiting on another thread" : "Waiting")
+                    : back ? "Limit · back in " + back
+                    : ({ approval: "Approval", question: "Question", request: "Request", woke: "Woke", goal: "Goal" })[x.stateKey] || "",
+                stateKey: x.stateKey || x.state,
+                key: x.key, src: x.src, agent: x.agent, who: i ? Providers.name(i.provider) : "", title: x.title || (x.src === "t3" ? "Untitled thread" : Kittymux.agentLabel(x.agent)),
+                where: r ? r.project || String(r.where || "").replace(/^.*\//, "")
+                    : i ? (i.project && i.project !== "No project" ? i.project : "") : d ? d.project || "" : "",
+                model: m.model ? ap.on(m.model, m.effort)
+                    : i ? (Providers.modelName(i.provider, i.model) ? Providers.modelName(i.provider, i.model) + (i.effort ? " " + i.effort : "") : ap.on(i.model, i.effort))
+                    : d ? ap.on(d.model, "") : "",
+                state: x.state, status: r ? r.status : "", ctx: m.context || 0, win: m.window || 0, reply: m.reply || "", steps: m.steps || [],
+                question: x.question || (ev && ev.severity === "needs-you" ? Notifs.readable(ev.body || "") : ""),
+                request: i ? i.request || null : null,
+                t: x.t, event: x.event, action: x.action, thread: x.thread, item: i,
+                windowClass: x.windowClass, desktopId: x.desktopId, raw: r || d, sources: x.sources
             });
         }
         // Closed conversations to reopen (kittymux asks before resuming one),
@@ -210,8 +176,8 @@ FocusScope {
         sel = Math.min(sel, Math.max(0, rows.length - 1));
         if (list.followTop) Qt.callLater(() => list.positionViewAtBeginning());
     }
-    readonly property int needN: rows.filter(r => r.state === "needs").length
-    readonly property int workN: rows.filter(r => r.state === "working").length
+    readonly property int needN: Agents.tally.needs
+    readonly property int workN: Agents.tally.working
 
     // What can be put away from here: a finished T3 thread, a finished kitty
     // agent's unread event, a kitty agent's limit or error (until its state

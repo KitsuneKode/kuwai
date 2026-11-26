@@ -359,7 +359,7 @@ Singleton {
     function awayCounts(since) {
         const kittyDone = (Kittymux.attention || []).filter(e => e.kind === "done" && (e.t || 0) * 1000 >= since).length;
         const t3Done = T3Code.liveItems.filter(i => i.status === "completed" && Date.parse(i.at || "") >= since).length;
-        const waiting = Kittymux.running.filter(r => r.needs).length + T3Code.liveItems.filter(i => i.status === "waiting").length;
+        const waiting = Agents.tally.needs;
         const alerts = Notifs.items.filter(i => !i.discard && i.time >= since && (i.severity === "critical" || i.severity === "warning")).length;
         return { waiting: waiting, done: kittyDone + t3Done, alerts: alerts };
     }

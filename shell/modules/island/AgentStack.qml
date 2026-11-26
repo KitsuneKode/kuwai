@@ -17,39 +17,13 @@ Item {
     property var bar
     property bool withT3: false
     property bool withDesktop: true
-    readonly property var t3Rows: withT3 ? T3Code.liveItems.filter(i => i.status === "waiting" || i.status === "running" || i.status === "woke" || i.status === "goal")
-        .map(i => ({ agent: Agents.t3Agent(i.provider), title: i.title || "T3 thread", where: "T3", src: "t3",
-                     status: i.status === "waiting" || i.status === "woke" ? "needs you" : "working",
-                     needs: i.status === "waiting" || i.status === "woke", thread: i.thread })) : []
-    // One mark per pane that waits (its newest unread event, if any, is where a
-    // click goes); events of panes that have closed are not marks.
-    function eventOf(r) {
-        const ev = Kittymux.attention.filter(e => e.severity === "needs-you" && String(e.pid) === String(r.pid) && String(e.w) === r.w);
-        return ev.length ? ev[ev.length - 1] : null;
-    }
-    readonly property var waiting: Kittymux.running.filter(r => r.needs || eventOf(r) !== null).map(r => {
-        const e = eventOf(r);
-        return Object.assign({ src: "kitty", where: "TUI", status: "needs you", needs: true, event: e ? e.id : "" }, r,
-                             { title: Kittymux.clean((e && (e.tab || e.title)) || r.title), needs: true, status: "needs you" });
-    })
-    readonly property var tuiWorking: Kittymux.working.filter(r => !waiting.some(w => w.key === r.key)).map(r => Object.assign({ src: "kitty", where: "TUI" }, r))
-    readonly property var tuiRows: waiting.concat(tuiWorking)
-    readonly property var desktopRows: withDesktop ? Agents.desktop.filter(d => d.state === "waiting" || d.state === "woke" || d.state === "working" || d.state === "goal")
-        .map(d => ({ agent: d.agent || "desktop", title: d.title || Kittymux.agentLabel(d.agent), where: "Desktop", src: "desktop",
-                     status: d.state === "waiting" || d.state === "woke" ? "needs you" : "working",
-                     needs: d.state === "waiting" || d.state === "woke", windowClass: d.window_class || "", desktop: d })) : []
     property string only: ""
-    readonly property var all: waiting.concat(t3Rows.filter(a => a.needs), desktopRows.filter(a => a.needs),
-                                              tuiWorking, t3Rows.filter(a => !a.needs), desktopRows.filter(a => !a.needs))
+    readonly property var all: Agents.stack("").filter(a => (withT3 || a.src !== "t3") && (withDesktop || a.src !== "desktop"))
+        .map(a => Object.assign({}, a, { title: a.title || (a.src === "t3" ? "T3 thread" : Kittymux.agentLabel(a.agent)), desktop: a.hook }))
     readonly property var list: only === "needs" ? all.filter(a => a.needs) : only === "work" ? all.filter(a => !a.needs) : all
-    readonly property var groups: {
-        const g = [];
-        const sortNeeds = arr => arr.filter(a => a.needs).concat(arr.filter(a => !a.needs));
-        if (t3Rows.length) g.push({ id: "t3", tag: "T3", glyph: "", tint: Theme.cyan, items: sortNeeds(t3Rows) });
-        if (tuiRows.length) g.push({ id: "tui", tag: "", glyph: "\u{f018d}", tint: Theme.textSecondary, items: sortNeeds(tuiRows) });
-        if (desktopRows.length) g.push({ id: "desktop", tag: "", glyph: "\u{f0379}", tint: Theme.mint, items: sortNeeds(desktopRows) });
-        return g;
-    }
+    readonly property var t3Rows: all.filter(a => a.src === "t3")
+    readonly property var tuiRows: all.filter(a => a.src === "kitty")
+    readonly property var desktopRows: all.filter(a => a.src === "desktop")
     readonly property var marks: Agents.stackMarks(list, 3)
     readonly property int needN: list.filter(a => a.needs).length
     readonly property int workN: list.length - needN
