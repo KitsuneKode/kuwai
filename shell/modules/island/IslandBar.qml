@@ -88,6 +88,7 @@ Scope {
                     arm.restart();
                     idle.restart();
                 } else {
+                    win.holdNear();
                     armed = false;
                     armSeq++;
                     if (hovered) grown = true;
@@ -269,10 +270,17 @@ Scope {
             // nothing moves under a hand that has arrived.
             readonly property bool onCapsule: onThisScreen && split.hitAt(localX - (screen.width - width) / 2, localY, 10)
             property int zoneHits: 0
+            property bool nearHeld: false
+            function holdNear() { near = false; zoneHits = 0; nearHeld = true; }
+            Connections { target: Notifs; function onCenterOpenChanged() { if (!Notifs.centerOpen) win.holdNear(); } }
             Connections {
                 target: Pointer
                 function onTChanged() {
                     if (!win.wantsProximity) { win.zoneHits = 0; return; }
+                    if (win.nearHeld) {
+                        if (win.inZone(20) || win.hovered) return;
+                        win.nearHeld = false;
+                    }
                     // Reaching (resting near it, or heading up at it under
                     // 1100 px/s), not passing by: services/proximity.js.
                     if (win.onCapsule) { win.zoneHits = 0; if (win.near) nearOff.stop(); return; }
@@ -1113,6 +1121,30 @@ Scope {
                     }
                     FocusScope {
                         id: panelScope
+                        function nearEdge(y) { return y < Math.max(win.backH, 30) || y > height - 36; }
+                        WheelHandler {
+                            enabled: win.panelHere
+                            acceptedDevices: PointerDevice.TouchPad
+                            property real sum: 0
+                            onWheel: event => {
+                                const up = (event.inverted ? -1 : 1) * (event.pixelDelta.y || event.angleDelta.y);
+                                sum = up > 0 && panelScope.nearEdge(point.position.y) ? sum + up : 0;
+                                if (sum < 90) return;
+                                sum = 0;
+                                Island.close();
+                            }
+                        }
+                        DragHandler {
+                            enabled: win.panelHere
+                            target: null
+                            xAxis.enabled: false
+                            acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchScreen
+                            property bool fromEdge: false
+                            onActiveChanged: {
+                                if (active) { fromEdge = panelScope.nearEdge(centroid.pressPosition.y); return; }
+                                if (fromEdge && (translation.y < -60 || centroid.velocity.y < -600)) Island.close();
+                            }
+                        }
                         width: win.panelSize.width
                         height: win.panelSize.height
                         x: Math.round((body.width - width) / 2)

@@ -217,6 +217,7 @@ Item {
             width: parent.width; height: Math.max(24, group.peeks * 8)
             cursorShape: Qt.PointingHandCursor
             onClicked: stackView.unfold()
+            Accessible.ignored: true
         }
     }
 

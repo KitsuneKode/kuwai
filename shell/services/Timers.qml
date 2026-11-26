@@ -95,7 +95,7 @@ Singleton {
         id: store
         path: root.file
         printErrors: false
-        onLoaded: { try { root.timers = (JSON.parse(text()) || []).filter(t => t.end > Date.now()); } catch (e) {} root.loaded = true; }
+        onLoaded: { try { root.timers = (JSON.parse(text()) || []).filter(t => t.end > Date.now() - 3600000); } catch (e) {} root.loaded = true; }
         onLoadFailed: root.loaded = true
     }
     function save() { if (loaded) store.setText(JSON.stringify(timers)); }

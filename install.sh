@@ -337,6 +337,13 @@ install_all() {
     done
     [ "$dir" = "$CFG/hypr" ] || [ ! -f "$CFG/hypr/hyprland.lua" ] || ok "$CFG/hypr/hyprland.lua: not Kuwai's, left as it is"
 
+    step "The kuwai command"
+    local kbin=$HOME/.local/bin/kuwai
+    if [ "$(readlink -f "$kbin" 2>/dev/null)" = "$(readlink -f "$STABLE/bin/kuwai")" ]; then ok "kuwai on your PATH"
+    elif [ -e "$kbin" ] && ! { [ -L "$kbin" ] && [ -f "$(dirname "$(readlink -f "$kbin")")/kuwai-ctl" ]; }; then ok "$kbin is your own: left as it is"
+    elif place -s "$STABLE/bin/kuwai" "$kbin"; then ok "kuwai → $STABLE/bin/kuwai"; fi
+    case ":$PATH:" in *":$HOME/.local/bin:"*) ;; *) warn "$HOME/.local/bin isn't on your PATH: add it to run kuwai by name" ;; esac
+
     step "User services"
     if [ $NO_SERVICES = 1 ]; then
         ok "skipped (--no-services)"

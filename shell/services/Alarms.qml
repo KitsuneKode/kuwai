@@ -62,7 +62,9 @@ Singleton {
         function onCardChanged() { if (root.ringing && !(Moments.card && Moments.card.key === "alarm")) root.stop(); }
     }
     function stop() {
+        const a = ringing;
         ringing = null;
+        if (a) { items = items.filter(i => i.id !== a.id); save(); }
         if (Moments.card && Moments.card.key === "alarm") Moments.dropCard();
     }
     function snooze(mins) {
@@ -70,7 +72,7 @@ Singleton {
         const a = ringing;
         ringing = null;
         if (Moments.card && Moments.card.key === "alarm") Moments.dropCard();
-        items = [...items, { id: Date.now(), label: a.label, at: Date.now() + mins * 60000 }].sort((x, y) => x.at - y.at);
+        items = [...items.filter(i => i.id !== a.id), { id: Date.now(), label: a.label, at: Date.now() + mins * 60000 }].sort((x, y) => x.at - y.at);
         save();
     }
     // The sound, again and again while it rings (5 minutes at most).
@@ -102,15 +104,17 @@ Singleton {
         running: root.items.length > 0
         onTriggered: {
             const now = Date.now();
-            const due = root.items.filter(i => i.at <= now);
-            if (!due.length) return;
-            root.items = root.items.filter(i => i.at > now);
-            root.save();
             // Missed by more than an hour (the laptop was off): say so, don't ring.
-            const fresh = due.filter(a => now - a.at < 3600000);
-            for (const a of due) if (now - a.at >= 3600000)
-                Quickshell.execDetached([Paths.bin + "/kuwai-notify", "-a", "Alarm", "-i", "alarm-symbolic", "Missed alarm", a.label + " · " + Dates.time(a.at)]);
-            if (fresh.length) root.ring(fresh[fresh.length - 1]);
+            const stale = root.items.filter(i => now - i.at >= 3600000 && !(root.ringing && root.ringing.id === i.id));
+            if (stale.length) {
+                for (const a of stale)
+                    Quickshell.execDetached([Paths.bin + "/kuwai-notify", "-a", "Alarm", "-i", "alarm-symbolic", "Missed alarm", a.label + " · " + Dates.time(a.at)]);
+                root.items = root.items.filter(i => stale.indexOf(i) < 0);
+                root.save();
+            }
+            if (root.ringing) return;
+            const due = root.items.find(i => i.at <= now);
+            if (due) root.ring(due);
         }
     }
 

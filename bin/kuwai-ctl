@@ -42,7 +42,11 @@ SHELL_DIR="$KUWAI/shell"
 # shellcheck source=lib/hyde.sh
 . "$KUWAI/lib/hyde.sh"
 
-ipc() { qs ipc -p "$SHELL_DIR" call "$@" 2>/dev/null; }
+ipc() {
+    local dir=$SHELL_DIR st="${XDG_DATA_HOME:-$HOME/.local/share}/kuwai/shell"
+    if [ "$dir" != "$st" ] && [ -f "$st/shell.qml" ] && ! qs ipc -p "$dir" show >/dev/null 2>&1; then dir=$st; fi
+    qs ipc -p "$dir" call "$@" 2>/dev/null
+}
 
 COLLECT="${XDG_CONFIG_HOME:-$HOME/.config}/kuwai/collect.conf"
 collect() {
