@@ -656,6 +656,1535 @@
    "panel": "CleanupPanel"
   },
   {
+   "id": "cleanup/typical",
+   "name": "cleanup",
+   "panel": "CleanupPanel",
+   "kind": "typical",
+   "props": {
+    "report": {
+     "unused": [
+      {
+       "name": "agent-browser",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 2,
+       "tokens": 240
+      },
+      {
+       "name": "chrome-extensions",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 237
+      },
+      {
+       "name": "context-doctor",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 234
+      },
+      {
+       "name": "unslop-ui",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 1,
+       "tokens": 231
+      },
+      {
+       "name": "gsap-scrolltrigger",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 228
+      },
+      {
+       "name": "vercel-functions",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 2,
+       "tokens": 225
+      },
+      {
+       "name": "agent-browser-6",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 1,
+       "tokens": 222
+      },
+      {
+       "name": "chrome-extensions-7",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 219
+      },
+      {
+       "name": "context-doctor-8",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 216
+      },
+      {
+       "name": "unslop-ui-9",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 1,
+       "tokens": 213
+      },
+      {
+       "name": "gsap-scrolltrigger-10",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 2,
+       "tokens": 210
+      },
+      {
+       "name": "vercel-functions-11",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 207
+      },
+      {
+       "name": "agent-browser-12",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 1,
+       "tokens": 204
+      },
+      {
+       "name": "chrome-extensions-13",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 201
+      },
+      {
+       "name": "context-doctor-14",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 198
+      },
+      {
+       "name": "unslop-ui-15",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 2,
+       "tokens": 195
+      },
+      {
+       "name": "gsap-scrolltrigger-16",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 192
+      },
+      {
+       "name": "vercel-functions-17",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 189
+      },
+      {
+       "name": "agent-browser-18",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 1,
+       "tokens": 186
+      },
+      {
+       "name": "chrome-extensions-19",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 183
+      },
+      {
+       "name": "context-doctor-20",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 2,
+       "tokens": 180
+      },
+      {
+       "name": "unslop-ui-21",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 1,
+       "tokens": 177
+      },
+      {
+       "name": "gsap-scrolltrigger-22",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 174
+      },
+      {
+       "name": "vercel-functions-23",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 171
+      },
+      {
+       "name": "agent-browser-24",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 1,
+       "tokens": 168
+      },
+      {
+       "name": "chrome-extensions-25",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 2,
+       "tokens": 165
+      },
+      {
+       "name": "context-doctor-26",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 162
+      },
+      {
+       "name": "unslop-ui-27",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 1,
+       "tokens": 159
+      },
+      {
+       "name": "gsap-scrolltrigger-28",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 156
+      },
+      {
+       "name": "vercel-functions-29",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 153
+      },
+      {
+       "name": "agent-browser-30",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 2,
+       "tokens": 150
+      },
+      {
+       "name": "chrome-extensions-31",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 147
+      },
+      {
+       "name": "context-doctor-32",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 144
+      },
+      {
+       "name": "unslop-ui-33",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 1,
+       "tokens": 141
+      },
+      {
+       "name": "gsap-scrolltrigger-34",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 138
+      },
+      {
+       "name": "vercel-functions-35",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 2,
+       "tokens": 135
+      },
+      {
+       "name": "agent-browser-36",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 1,
+       "tokens": 132
+      },
+      {
+       "name": "chrome-extensions-37",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 129
+      },
+      {
+       "name": "context-doctor-38",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 126
+      },
+      {
+       "name": "unslop-ui-39",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 1,
+       "tokens": 123
+      },
+      {
+       "name": "gsap-scrolltrigger-40",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 2,
+       "tokens": 120
+      },
+      {
+       "name": "vercel-functions-41",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 117
+      },
+      {
+       "name": "agent-browser-42",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 1,
+       "tokens": 114
+      },
+      {
+       "name": "chrome-extensions-43",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 111
+      },
+      {
+       "name": "context-doctor-44",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 108
+      },
+      {
+       "name": "unslop-ui-45",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 2,
+       "tokens": 105
+      },
+      {
+       "name": "gsap-scrolltrigger-46",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 102
+      },
+      {
+       "name": "vercel-functions-47",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 99
+      },
+      {
+       "name": "agent-browser-48",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 1,
+       "tokens": 96
+      },
+      {
+       "name": "chrome-extensions-49",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 93
+      },
+      {
+       "name": "context-doctor-50",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 2,
+       "tokens": 90
+      },
+      {
+       "name": "unslop-ui-51",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 1,
+       "tokens": 87
+      },
+      {
+       "name": "gsap-scrolltrigger-52",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 84
+      }
+     ],
+     "listTokens": 14032,
+     "skills": 135,
+     "leftovers": [],
+     "days": 30,
+     "unusedTokens": 8586
+    }
+   }
+  },
+  {
+   "id": "cleanup/worst",
+   "name": "cleanup",
+   "panel": "CleanupPanel",
+   "kind": "worst",
+   "props": {
+    "report": {
+     "unused": [
+      {
+       "name": "agent-browser-with-a-name-that-goes-on-and-on-past-the-edge",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 2,
+       "tokens": 240
+      },
+      {
+       "name": "chrome-extensions",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 237
+      },
+      {
+       "name": "context-doctor",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 234
+      },
+      {
+       "name": "unslop-ui",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 1,
+       "tokens": 231
+      },
+      {
+       "name": "gsap-scrolltrigger",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 228
+      },
+      {
+       "name": "vercel-functions",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 2,
+       "tokens": 225
+      },
+      {
+       "name": "agent-browser-6",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 1,
+       "tokens": 222
+      },
+      {
+       "name": "chrome-extensions-7",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 219
+      },
+      {
+       "name": "context-doctor-8",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 216
+      },
+      {
+       "name": "unslop-ui-9",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 1,
+       "tokens": 213
+      },
+      {
+       "name": "gsap-scrolltrigger-10",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 2,
+       "tokens": 210
+      },
+      {
+       "name": "vercel-functions-11",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 207
+      },
+      {
+       "name": "agent-browser-12",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 1,
+       "tokens": 204
+      },
+      {
+       "name": "chrome-extensions-13",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 201
+      },
+      {
+       "name": "context-doctor-14",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 198
+      },
+      {
+       "name": "unslop-ui-15",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 2,
+       "tokens": 195
+      },
+      {
+       "name": "gsap-scrolltrigger-16",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 192
+      },
+      {
+       "name": "vercel-functions-17",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 189
+      },
+      {
+       "name": "agent-browser-18",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 1,
+       "tokens": 186
+      },
+      {
+       "name": "chrome-extensions-19",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 183
+      },
+      {
+       "name": "context-doctor-20",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 2,
+       "tokens": 180
+      },
+      {
+       "name": "unslop-ui-21",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 1,
+       "tokens": 177
+      },
+      {
+       "name": "gsap-scrolltrigger-22",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 174
+      },
+      {
+       "name": "vercel-functions-23",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 171
+      },
+      {
+       "name": "agent-browser-24",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 1,
+       "tokens": 168
+      },
+      {
+       "name": "chrome-extensions-25",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 2,
+       "tokens": 165
+      },
+      {
+       "name": "context-doctor-26",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 162
+      },
+      {
+       "name": "unslop-ui-27",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 1,
+       "tokens": 159
+      },
+      {
+       "name": "gsap-scrolltrigger-28",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 156
+      },
+      {
+       "name": "vercel-functions-29",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 153
+      },
+      {
+       "name": "agent-browser-30",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 2,
+       "tokens": 150
+      },
+      {
+       "name": "chrome-extensions-31",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 147
+      },
+      {
+       "name": "context-doctor-32",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 144
+      },
+      {
+       "name": "unslop-ui-33",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 1,
+       "tokens": 141
+      },
+      {
+       "name": "gsap-scrolltrigger-34",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 138
+      },
+      {
+       "name": "vercel-functions-35",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 2,
+       "tokens": 135
+      },
+      {
+       "name": "agent-browser-36",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 1,
+       "tokens": 132
+      },
+      {
+       "name": "chrome-extensions-37",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 129
+      },
+      {
+       "name": "context-doctor-38",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 126
+      },
+      {
+       "name": "unslop-ui-39",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 1,
+       "tokens": 123
+      },
+      {
+       "name": "gsap-scrolltrigger-40",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 2,
+       "tokens": 120
+      },
+      {
+       "name": "vercel-functions-41",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 117
+      },
+      {
+       "name": "agent-browser-42",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 1,
+       "tokens": 114
+      },
+      {
+       "name": "chrome-extensions-43",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 111
+      },
+      {
+       "name": "context-doctor-44",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 108
+      },
+      {
+       "name": "unslop-ui-45",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 2,
+       "tokens": 105
+      },
+      {
+       "name": "gsap-scrolltrigger-46",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 102
+      },
+      {
+       "name": "vercel-functions-47",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 99
+      },
+      {
+       "name": "agent-browser-48",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 1,
+       "tokens": 96
+      },
+      {
+       "name": "chrome-extensions-49",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 93
+      },
+      {
+       "name": "context-doctor-50",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 2,
+       "tokens": 90
+      },
+      {
+       "name": "unslop-ui-51",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 1,
+       "tokens": 87
+      },
+      {
+       "name": "gsap-scrolltrigger-52",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 84
+      }
+     ],
+     "listTokens": 14032,
+     "skills": 135,
+     "leftovers": [
+      {
+       "label": "Reference clones",
+       "bytes": 2300000000.0,
+       "detail": "other dotfiles kept to study · re-clonable",
+       "safe": false,
+       "paths": [
+        "/home/ada/Projects/rice/refs"
+       ]
+      },
+      {
+       "label": "bun's second cache",
+       "bytes": 1600000000.0,
+       "detail": "bun also keeps ~/.bun/install/cache; one is enough",
+       "safe": true,
+       "paths": [
+        "/home/ada/.cache/bun"
+       ]
+      },
+      {
+       "label": "AUR build scratch",
+       "bytes": 6100000000.0,
+       "detail": "paru's build folders from finished builds",
+       "safe": true,
+       "paths": [
+        "/home/ada/.cache/paru/clone"
+       ]
+      }
+     ],
+     "days": 30,
+     "unusedTokens": 8586
+    }
+   }
+  },
+  {
+   "id": "cleanup/leftovers",
+   "name": "cleanup",
+   "panel": "CleanupPanel",
+   "kind": "typical",
+   "props": {
+    "report": {
+     "unused": [
+      {
+       "name": "agent-browser-with-a-name-that-goes-on-and-on-past-the-edge",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 2,
+       "tokens": 240
+      },
+      {
+       "name": "chrome-extensions",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 237
+      },
+      {
+       "name": "context-doctor",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 234
+      },
+      {
+       "name": "unslop-ui",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 1,
+       "tokens": 231
+      },
+      {
+       "name": "gsap-scrolltrigger",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 228
+      },
+      {
+       "name": "vercel-functions",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 2,
+       "tokens": 225
+      },
+      {
+       "name": "agent-browser-6",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 1,
+       "tokens": 222
+      },
+      {
+       "name": "chrome-extensions-7",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 219
+      },
+      {
+       "name": "context-doctor-8",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 216
+      },
+      {
+       "name": "unslop-ui-9",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 1,
+       "tokens": 213
+      },
+      {
+       "name": "gsap-scrolltrigger-10",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 2,
+       "tokens": 210
+      },
+      {
+       "name": "vercel-functions-11",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 207
+      },
+      {
+       "name": "agent-browser-12",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 1,
+       "tokens": 204
+      },
+      {
+       "name": "chrome-extensions-13",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 201
+      },
+      {
+       "name": "context-doctor-14",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 198
+      },
+      {
+       "name": "unslop-ui-15",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 2,
+       "tokens": 195
+      },
+      {
+       "name": "gsap-scrolltrigger-16",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 192
+      },
+      {
+       "name": "vercel-functions-17",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 189
+      },
+      {
+       "name": "agent-browser-18",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 1,
+       "tokens": 186
+      },
+      {
+       "name": "chrome-extensions-19",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 183
+      },
+      {
+       "name": "context-doctor-20",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 2,
+       "tokens": 180
+      },
+      {
+       "name": "unslop-ui-21",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 1,
+       "tokens": 177
+      },
+      {
+       "name": "gsap-scrolltrigger-22",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 174
+      },
+      {
+       "name": "vercel-functions-23",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 171
+      },
+      {
+       "name": "agent-browser-24",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 1,
+       "tokens": 168
+      },
+      {
+       "name": "chrome-extensions-25",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 2,
+       "tokens": 165
+      },
+      {
+       "name": "context-doctor-26",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 162
+      },
+      {
+       "name": "unslop-ui-27",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 1,
+       "tokens": 159
+      },
+      {
+       "name": "gsap-scrolltrigger-28",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 156
+      },
+      {
+       "name": "vercel-functions-29",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 153
+      },
+      {
+       "name": "agent-browser-30",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 2,
+       "tokens": 150
+      },
+      {
+       "name": "chrome-extensions-31",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 147
+      },
+      {
+       "name": "context-doctor-32",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 144
+      },
+      {
+       "name": "unslop-ui-33",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 1,
+       "tokens": 141
+      },
+      {
+       "name": "gsap-scrolltrigger-34",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 138
+      },
+      {
+       "name": "vercel-functions-35",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 2,
+       "tokens": 135
+      },
+      {
+       "name": "agent-browser-36",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 1,
+       "tokens": 132
+      },
+      {
+       "name": "chrome-extensions-37",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 129
+      },
+      {
+       "name": "context-doctor-38",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 126
+      },
+      {
+       "name": "unslop-ui-39",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 1,
+       "tokens": 123
+      },
+      {
+       "name": "gsap-scrolltrigger-40",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 2,
+       "tokens": 120
+      },
+      {
+       "name": "vercel-functions-41",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 117
+      },
+      {
+       "name": "agent-browser-42",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 1,
+       "tokens": 114
+      },
+      {
+       "name": "chrome-extensions-43",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 111
+      },
+      {
+       "name": "context-doctor-44",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 108
+      },
+      {
+       "name": "unslop-ui-45",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 2,
+       "tokens": 105
+      },
+      {
+       "name": "gsap-scrolltrigger-46",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 102
+      },
+      {
+       "name": "vercel-functions-47",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 99
+      },
+      {
+       "name": "agent-browser-48",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 1,
+       "tokens": 96
+      },
+      {
+       "name": "chrome-extensions-49",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 93
+      },
+      {
+       "name": "context-doctor-50",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 2,
+       "tokens": 90
+      },
+      {
+       "name": "unslop-ui-51",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 1,
+       "tokens": 87
+      },
+      {
+       "name": "gsap-scrolltrigger-52",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 84
+      }
+     ],
+     "listTokens": 14032,
+     "skills": 135,
+     "leftovers": [
+      {
+       "label": "Reference clones",
+       "bytes": 2300000000.0,
+       "detail": "other dotfiles kept to study · re-clonable",
+       "safe": false,
+       "paths": [
+        "/home/ada/Projects/rice/refs"
+       ]
+      },
+      {
+       "label": "bun's second cache",
+       "bytes": 1600000000.0,
+       "detail": "bun also keeps ~/.bun/install/cache; one is enough",
+       "safe": true,
+       "paths": [
+        "/home/ada/.cache/bun"
+       ]
+      },
+      {
+       "label": "AUR build scratch",
+       "bytes": 6100000000.0,
+       "detail": "paru's build folders from finished builds",
+       "safe": true,
+       "paths": [
+        "/home/ada/.cache/paru/clone"
+       ]
+      }
+     ],
+     "days": 30,
+     "unusedTokens": 8586
+    },
+    "view": "leftovers"
+   }
+  },
+  {
+   "id": "cleanup/few",
+   "name": "cleanup",
+   "panel": "CleanupPanel",
+   "kind": "typical",
+   "props": {
+    "report": {
+     "unused": [
+      {
+       "name": "agent-browser",
+       "agents": [
+        "Codex"
+       ],
+       "copies": 2,
+       "tokens": 240
+      },
+      {
+       "name": "chrome-extensions",
+       "agents": [
+        "Claude",
+        "Claude (personal)"
+       ],
+       "copies": 1,
+       "tokens": 237
+      }
+     ],
+     "listTokens": 14032,
+     "skills": 135,
+     "leftovers": [
+      {
+       "label": "Reference clones",
+       "bytes": 2300000000.0,
+       "detail": "other dotfiles kept to study · re-clonable",
+       "safe": false,
+       "paths": [
+        "/home/ada/Projects/rice/refs"
+       ]
+      }
+     ],
+     "days": 30,
+     "unusedTokens": 477
+    }
+   }
+  },
+  {
    "id": "read/new-machine",
    "name": "read",
    "panel": "ReadPanel"

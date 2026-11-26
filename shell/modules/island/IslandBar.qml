@@ -1211,14 +1211,14 @@ Scope {
                             id: backStrip
                             visible: Island.canBack || win.sectioned
                             width: parent.width; height: win.backH
-                            // Sections (Island.sections): the views of the same
-                            // place, on the right; the one you're on lit (14 %),
+                            // Sections (Island.sections): centred, so they stay put
+                            // as the island grows; the one you're on lit (14 %),
                             // the one under the pointer 7 %, ⌥1–4 from the keys.
                             // A click switches in place (Clove's tab strip):
                             // hover would switch under a pointer passing by.
                             Row {
                                 visible: win.sectioned
-                                anchors { right: parent.right; rightMargin: 14 }
+                                anchors.horizontalCenter: parent.horizontalCenter
                                 y: 10
                                 spacing: 2
                                 Repeater {

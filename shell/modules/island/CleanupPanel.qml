@@ -51,7 +51,7 @@ FocusScope {
         reader.command = [Paths.bin + "/kuwai-cleanup", "--days", String(days)].concat(fresh ? ["--fresh"] : []);
         reader.running = true;
     }
-    Component.onCompleted: { takeView(); load(false); }
+    Component.onCompleted: { takeView(); if (!report) load(false); else loading = false; }
     onDaysChanged: { marked = ({}); confirm = false; load(false); }
 
     Process {
@@ -87,6 +87,13 @@ FocusScope {
         marked = m;
         confirm = false;
     }
+    function markAll() {
+        const all = rows.length > 0 && markedCount === rows.length;
+        const m = {};
+        if (!all) for (const r of rows) m[r.name] = true;
+        marked = m;
+        confirm = false;
+    }
     function trashMarked() {
         if (!markedCount) return;
         if (!confirm) { confirm = true; return; }
@@ -102,8 +109,14 @@ FocusScope {
 
     Keys.onPressed: e => {
         if (e.key === Qt.Key_Escape && confirm) { confirm = false; e.accepted = true; return; }
-        if (e.key === Qt.Key_Tab && (e.modifiers & Qt.ControlModifier)) { view = view === "skills" ? "projects" : "skills"; e.accepted = true; return; }
+        if (e.key === Qt.Key_Tab && (e.modifiers & Qt.ControlModifier)) {
+            const ids = viewSwitch.options.map(o => o.id);
+            view = ids[(ids.indexOf(view) + 1) % ids.length];
+            e.accepted = true;
+            return;
+        }
         if (view !== "skills") return;
+        if (e.key === Qt.Key_A && (e.modifiers & Qt.ControlModifier)) { markAll(); e.accepted = true; return; }
         if ([Qt.Key_Down, Qt.Key_Up, Qt.Key_Space, Qt.Key_Delete, Qt.Key_Backspace].indexOf(e.key) >= 0) keyboard = true;
         if (e.key === Qt.Key_Down) sel = Math.min(rows.length - 1, sel + 1);
         else if (e.key === Qt.Key_Up) sel = Math.max(0, sel - 1);
@@ -119,13 +132,16 @@ FocusScope {
         id: viewSwitch
         x: 20; y: cp.inStrip ? Theme.s2 : 20
         options: [{ id: "skills", label: "Skills" }, { id: "projects", label: "Idle projects" }]
+            .concat(cp.report && cp.report.leftovers && cp.report.leftovers.length ? [{ id: "leftovers", label: "Leftovers" }] : [])
         current: cp.view
         onPicked: id => cp.view = id
     }
     Segmented {
+        id: daysSwitch
+        readonly property bool below: viewSwitch.width + width + 56 > cp.width
         visible: cp.view === "skills"
-        anchors { right: parent.right; rightMargin: 20 }
-        y: viewSwitch.y
+        x: below ? 20 : cp.width - 20 - width
+        y: below ? viewSwitch.y + viewSwitch.height + Theme.s2 : viewSwitch.y
         options: [{ id: "30", label: "30 days" }, { id: "90", label: "90" }, { id: "180", label: "180" }]
         current: String(cp.days)
         onPicked: id => cp.days = Number(id)
@@ -141,13 +157,15 @@ FocusScope {
     }
     Column {
         id: col
-        x: 20; y: viewSwitch.y + viewSwitch.height + 10
-        visible: cp.view === "skills"
+        x: 20; y: (daysSwitch.visible && daysSwitch.below ? daysSwitch.y + daysSwitch.height : viewSwitch.y + viewSwitch.height) + 10
+        visible: cp.view === "skills" || cp.view === "leftovers"
         width: cp.width - 40
         spacing: 14
 
         // ── The number ──────────────────────────────────────────────────
         Column {
+            id: theNumber
+            visible: cp.view === "skills"
             width: parent.width
             spacing: 2
             Label {
@@ -176,10 +194,11 @@ FocusScope {
         ScrollHint { flickable: list; inside: true }
         ListView {
             id: list
-            visible: cp.rows.length > 0
+            visible: cp.view === "skills" && cp.rows.length > 0
             width: parent.width
             // Room for the leftovers and the action under it (the island has a ceiling).
-            height: Math.min(contentHeight, (cp.report && cp.report.leftovers.length ? 6 : 8) * 46)
+            height: Math.min(contentHeight, Math.max(2 * (Theme.sp(44) + 2), Theme.panelMaxH - (cp.inStrip ? 34 : 0) - col.y - 20
+                                - theNumber.height - (leftovers.visible ? leftovers.height + col.spacing : 0) - action.height - 2 * col.spacing))
             clip: true
             spacing: 2
             boundsBehavior: Flickable.StopAtBounds
@@ -196,15 +215,15 @@ FocusScope {
                 required property int index
                 readonly property bool on: !!cp.marked[modelData.name]
                 width: list.width
-                height: 44
+                height: Theme.sp(44)
                 Accessible.role: Accessible.CheckBox
                 Accessible.name: modelData.name + ", " + modelData.tokens + " tokens a session" + (on ? ", marked" : "")
                 Accessible.checked: on
-                // The mark: a ring, filled when marked.
+                // The mark: a box, filled when marked.
                 Rectangle {
                     id: box
                     x: 10; anchors.verticalCenter: parent.verticalCenter
-                    width: 16; height: 16; radius: Theme.r1
+                    width: 16; height: 16; radius: 4
                     color: row.on ? Theme.accent : "transparent"
                     border.width: row.on ? 0 : 1.5
                     border.color: Theme.edge(4)
@@ -224,7 +243,7 @@ FocusScope {
                     Label {
                         width: parent.width; elide: Text.ElideRight
                         text: (row.modelData.agents.length ? row.modelData.agents.join(", ") : "Every agent that reads ~/.agents")
-                            + (row.modelData.copies > 1 ? " · " + row.modelData.copies + " copies" : "") + " · never in " + cp.days + " days"
+                            + (row.modelData.copies > 1 ? " · " + row.modelData.copies + " copies" : "")
                         size: Theme.tFootnote; color: Theme.textTertiary
                     }
                 }
@@ -250,7 +269,8 @@ FocusScope {
 
         // ── Leftovers on disk ───────────────────────────────────────────
         Column {
-            visible: !!cp.report && cp.report.leftovers.length > 0
+            id: leftovers
+            visible: cp.view === "leftovers" && !!cp.report && cp.report.leftovers.length > 0
             width: parent.width
             spacing: 6
             Label { leftPadding: 10; text: "Leftovers"; size: Theme.tFootnote; weight: Theme.wSemibold; color: Theme.textTertiary }
@@ -260,12 +280,13 @@ FocusScope {
                     id: lo
                     required property var modelData
                     width: parent.width
-                    height: 36
+                    height: Math.max(Theme.sp(36), loText.implicitHeight + Theme.s2)
                     Column {
+                        id: loText
                         anchors { left: parent.left; leftMargin: 10; right: loAct.left; rightMargin: 12; verticalCenter: parent.verticalCenter }
                         spacing: 1
-                        Label { width: parent.width; elide: Text.ElideRight; text: lo.modelData.label + "  ·  " + cp.gb(lo.modelData.bytes); size: Theme.tBody; weight: Theme.wMedium }
-                        Label { width: parent.width; elide: Text.ElideRight; text: lo.modelData.detail; size: Theme.tFootnote; color: Theme.textTertiary }
+                        Label { width: parent.width; wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight; text: lo.modelData.label + "  ·  " + cp.gb(lo.modelData.bytes); size: Theme.tBody; weight: Theme.wMedium }
+                        Label { width: parent.width; wrapMode: Text.Wrap; maximumLineCount: 3; elide: Text.ElideRight; text: lo.modelData.detail; size: Theme.tFootnote; color: Theme.textTertiary }
                     }
                     Ui.Button {
                         id: loAct
@@ -281,6 +302,8 @@ FocusScope {
 
         // ── The action ──────────────────────────────────────────────────
         Item {
+            id: action
+            visible: cp.view === "skills"
             width: parent.width
             height: 34
             Ui.Button {
@@ -296,13 +319,22 @@ FocusScope {
                 text: cp.status || (cp.rows.length ? "Click a skill (or Space) to mark it" : "")
                 size: Theme.tSub; color: Theme.textSecondary
             }
-            Ui.Button {
+            Row {
                 anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-                visible: cp.canPutBack
-                kind: "secondary"
-                glyph: "\u{f054d}"
-                text: "Put back"
-                onClicked: cp.act(["restore"], "restore")
+                spacing: Theme.s1
+                Ui.Button {
+                    visible: cp.rows.length > 1
+                    kind: "quiet"
+                    text: cp.markedCount === cp.rows.length ? "Mark none" : "Mark all " + cp.rows.length
+                    onClicked: cp.markAll()
+                }
+                Ui.Button {
+                    visible: cp.canPutBack
+                    kind: "secondary"
+                    glyph: "\u{f054d}"
+                    text: "Put back"
+                    onClicked: cp.act(["restore"], "restore")
+                }
             }
         }
     }
