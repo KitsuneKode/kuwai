@@ -14,18 +14,19 @@ Rectangle {
     property color tone: Theme.orange
     property string action: ""
     signal acted()
+    readonly property bool stacked: act.visible && n.width - Theme.sp(42) - act.implicitWidth - 24 < Theme.sp(180)
 
     width: parent ? parent.width : 0
-    implicitHeight: Math.max(Theme.sp(48), col.implicitHeight + 20, act.visible ? act.height + 16 : 0)
+    implicitHeight: stacked ? col.implicitHeight + act.height + 30 : Math.max(Theme.sp(48), col.implicitHeight + 20, act.visible ? act.height + 16 : 0)
     height: implicitHeight
     radius: Theme.r3 - 2
     color: Qt.alpha(tone, Theme.tintNotice)
 
-    Text { textFormat: Text.PlainText; x: 14; anchors.verticalCenter: parent.verticalCenter; text: n.glyph; font.family: Theme.fontGlyph; font.pixelSize: Theme.sp(Theme.glyphM); color: n.tone }
+    Text { textFormat: Text.PlainText; x: 14; y: n.stacked ? 10 : (n.height - height) / 2; text: n.glyph; font.family: Theme.fontGlyph; font.pixelSize: Theme.sp(Theme.glyphM); color: n.tone }
     Column {
         id: col
-        x: Theme.sp(42); anchors.verticalCenter: parent.verticalCenter
-        width: n.width - x - (act.visible ? act.width + 24 : 14)
+        x: Theme.sp(42); y: n.stacked ? 10 : (n.height - implicitHeight) / 2
+        width: n.width - x - (act.visible && !n.stacked ? act.width + 24 : 14)
         spacing: 2
         Label { width: parent.width; wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight; text: n.title; size: Theme.tBody; weight: Theme.wSemibold }
         Label { width: parent.width; wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight; text: n.detail; size: Theme.tFootnote; color: Theme.textSecondary; visible: text !== "" }
@@ -34,7 +35,8 @@ Rectangle {
         id: act
         visible: n.action !== ""
         text: n.action; kind: "secondary"
-        anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
+        x: n.stacked ? col.x : n.width - width - 10
+        y: n.stacked ? col.y + col.implicitHeight + 10 : (n.height - height) / 2
         height: Theme.sp(28)
         onClicked: n.acted()
     }

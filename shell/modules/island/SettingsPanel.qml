@@ -835,6 +835,7 @@ FocusScope {
             spacing: 18
             readonly property string kuwai: Paths.bin + "/kuwai"
             property var screens: []
+            property bool read: false
             function load() { if (!reader.running) reader.running = true; }
             Component.onCompleted: load()
             Process {
@@ -844,8 +845,10 @@ FocusScope {
                     onStreamFinished: {
                         const t = text.trim(), i = t.indexOf("[");
                         try { dpCol.screens = i >= 0 ? JSON.parse(t.slice(i)) : []; } catch (e) { dpCol.screens = []; }
+                        dpCol.read = true;
                     }
                 }
+                onExited: dpCol.read = true
             }
             Timer { id: reread; interval: 700; onTriggered: dpCol.load() }
             function set(name, field, value) {
@@ -861,9 +864,17 @@ FocusScope {
             Label {
                 width: parent.width
                 wrapMode: Text.Wrap
-                visible: dpCol.screens.length === 0
+                visible: dpCol.screens.length === 0 && !dpCol.read
                 text: "Reading your screens…"
                 size: Theme.tSub; color: Theme.textTertiary
+            }
+            Notice {
+                visible: dpCol.screens.length === 0 && dpCol.read
+                glyph: "\u{f0026}"
+                title: "Couldn't read your screens"
+                detail: "Hyprland didn't answer"
+                action: "Try again"
+                onActed: { dpCol.read = false; dpCol.load(); }
             }
             Repeater {
                 model: dpCol.screens
