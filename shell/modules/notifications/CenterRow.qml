@@ -110,6 +110,9 @@ Item {
         onKept: if (row.removing) { shrink.stop(); row.removing = false; grow.start(); }
     }
 
+    property bool folded: false
+    signal unfold()
+
     HoverHandler {
         id: hover
         onHoveredChanged: if (row.center) row.center.setHover(row, hovered)
@@ -128,6 +131,7 @@ Item {
         id: tapH
         acceptedButtons: Qt.LeftButton
         onTapped: {
+            if (row.folded) { row.unfold(); return; }
             if (!Settings.seenNotifC1Hint) Settings.set("seenNotifC1Hint", true);
             if (row.canOpen && !row.replying) Notifs.openItem(row.item);
             else row.selectRow();

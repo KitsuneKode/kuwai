@@ -105,11 +105,9 @@ Item {
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
             spacing: 6
-            opacity: headerHover.hovered || group.expanded ? 1 : 0
-            Behavior on opacity { NumberAnimation { duration: Theme.colorMs } }
 
             Rectangle {
-                visible: group.expanded && group.canFold
+                visible: group.canFold && group.count > 1
                 height: 22; radius: 11
                 width: lessLabel.implicitWidth + 18
                 color: lessArea.containsMouse ? Theme.pillHover : Theme.pill
@@ -117,22 +115,25 @@ Item {
                 Label {
                     id: lessLabel
                     anchors.centerIn: parent
-                    text: "Show less"
+                    text: group.expanded ? "Show less" : group.count - 1 + " more"
                     size: Theme.tFootnote
                     weight: Theme.wSemibold
                 }
                 MouseArea {
                     id: lessArea
                     anchors.fill: parent
+                    anchors.margins: -2
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: group.toggled()
                 }
                 Accessible.role: Accessible.Button
-                Accessible.name: "Show less from " + group.modelData.app
+                Accessible.name: (group.expanded ? "Show less from " : "Show all from ") + group.modelData.app
                 Accessible.onPressAction: group.toggled()
             }
             Rectangle {
+                opacity: headerHover.hovered || group.expanded ? 1 : 0
+                Behavior on opacity { NumberAnimation { duration: Theme.colorMs } }
                 width: 22; height: 22; radius: 11
                 color: clearArea.containsMouse ? Theme.pillHover : Theme.pill
                 Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
@@ -166,7 +167,7 @@ Item {
         Accessible.name: group.stacked ? group.modelData.app + ", " + group.count + " notifications" : group.modelData.app
         Accessible.expandable: group.stacked
         Accessible.expanded: group.expanded
-        Accessible.onPressAction: if (group.stacked && group.center) { group.center.setExpanded(group.modelData.key, true); group.center.selected = group.items[0]; group.center.keyboard = false; }
+        Accessible.onPressAction: if (group.stacked) stackView.unfold()
         anchors.top: header.bottom
         anchors.topMargin: 8
         width: parent.width
@@ -197,23 +198,25 @@ Item {
             }
         }
 
+        function unfold() {
+            if (!group.center) return;
+            group.center.setExpanded(group.modelData.key, true);
+            group.center.selected = group.items[0];
+            group.center.keyboard = false;
+        }
         CenterRow {
             id: first
             item: group.items[0]
             center: group.center
+            folded: group.stacked
+            onUnfold: stackView.unfold()
         }
-
-        // Tapping a folded stack opens it rather than the top notification.
         MouseArea {
             visible: group.stacked
-            anchors.fill: parent
+            x: 0; y: first.height + group.peeks * 8 - height
+            width: parent.width; height: Math.max(24, group.peeks * 8)
             cursorShape: Qt.PointingHandCursor
-            onClicked: {
-                if (!group.center) return;
-                group.center.setExpanded(group.modelData.key, true);
-                group.center.selected = group.items[0];
-                group.center.keyboard = false;
-            }
+            onClicked: stackView.unfold()
         }
     }
 
