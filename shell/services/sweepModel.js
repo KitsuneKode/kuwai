@@ -112,8 +112,8 @@ function tilde(path, home) {
 }
 
 function emptyText(s) {
-    if (!s.loaded) return "Looking for sweep…";
-    if (!s.alive) return "sweep isn't installed — bun add -g @kitsunekode/sweep @opentui/core";
+    if (!s.loaded) return "Looking for Sweep…";
+    if (!s.alive) return "Sweep isn't installed. Add it with: bun add -g @kitsunekode/sweep @opentui/core";
     if (s.error && !s.counted) return "Couldn't count " + tilde(s.root, s.home) + ": " + s.error + ".";
     if (s.pending) return "Counting " + tilde(s.root, s.home) + "…  the first scan can take a minute.";
     if (!s.hasBar) return "Nothing to free here.";

@@ -52,11 +52,11 @@ export function runsOut(w, now) {
     return earlyMs >= len * 0.05 ? { inMs: inMs, earlyMs: earlyMs } : null;
 }
 
-/** "42m", "3h 5m", "2d 4h": the two largest units. @param {number} ms */
+/** "42m", "3h 5m", "2d 4h", "5h": the two largest units, a zero second one left out. @param {number} ms */
 export function span(ms) {
     const m = Math.max(0, Math.floor(ms / MIN));
     const d = Math.floor(m / 1440), h = Math.floor(m % 1440 / 60), mm = m % 60;
-    return d > 0 ? d + "d " + h + "h" : h > 0 ? h + "h " + mm + "m" : mm + "m";
+    return d > 0 ? d + "d" + (h ? " " + h + "h" : "") : h > 0 ? h + "h" + (mm ? " " + mm + "m" : "") : mm + "m";
 }
 
 /**

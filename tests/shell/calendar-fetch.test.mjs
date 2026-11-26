@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 
 const src = readFileSync(new URL('../../shell/services/Calendar.qml', import.meta.url), 'utf8');
-const m = /command: \["sh", "-c", (`[\s\S]*?`), "sh", root\.cacheDir, root\.listPath\]/.exec(src);
+const m = /command: \["sh", "-c", (`[\s\S]*?`), "sh", root\.cacheDir, root\.listPath, Paths\.bin \+ "\/kuwai-ics-utc"\]/.exec(src);
 
 test('calendar links come from the list file, never the arguments, and plain http is skipped', () => {
   expect(m).toBeTruthy();
@@ -15,7 +15,8 @@ test('calendar links come from the list file, never the arguments, and plain htt
   spawnSync('mkdir', [bin]);
   writeFileSync(bin + '/curl', '#!/bin/sh\necho "$@" >> ' + d + '/curl-args\ncat >> ' + d + '/curl-stdin\nexit 1\n', { mode: 0o755 });
   writeFileSync(d + '/list', `# mine\nhttp://plain.invalid/x.ics\nhttps://sec.invalid/private-token.ics\nhttps://bad"quote.invalid\n${d}/a.ics\n`);
-  const r = spawnSync('sh', ['-c', script, 'sh', d + '/cache', d + '/list'], { encoding: 'utf8', env: { PATH: `${bin}:/usr/bin:/bin`, HOME: d } });
+  const utc = new URL('../../bin/kuwai-ics-utc', import.meta.url).pathname;
+  const r = spawnSync('sh', ['-c', script, 'sh', d + '/cache', d + '/list', utc], { encoding: 'utf8', env: { PATH: `${bin}:/usr/bin:/bin`, HOME: d } });
   expect(r.status).toBe(0);
   expect(r.stdout).toContain('BEGIN:VCALENDAR');
   const args = readFileSync(d + '/curl-args', 'utf8');

@@ -119,7 +119,7 @@ Scope {
             root.checking = false;
             root.challenge = "";
             root.password = "";
-            root.error = "Couldn't check the password (" + PamError.toString(err) + ")";
+            root.error = "Couldn't check the password. Try again";
             root.failures++;
         }
     }

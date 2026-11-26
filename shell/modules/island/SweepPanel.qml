@@ -215,7 +215,7 @@ FocusScope {
                     readonly property var at: Model.where(modelData.path, modelData.name)
                     Accessible.role: Accessible.Button
                     Accessible.name: (row.at.repo ? row.at.repo + " › " : "") + row.at.name + ", idle " + Model.idleText(row.modelData.idleDays) + ", " + Model.long(row.modelData.bytes)
-                    Accessible.description: "Opens sweep's review of this project"
+                    Accessible.description: "Opens Sweep's review of this project"
                     Accessible.onPressAction: { Sweep.openUi(row.modelData.path); Island.close(); }
                     readonly property bool stack: repoName.implicitWidth + nameLabel.implicitWidth + meta.implicitWidth + 32 > width
                     height: stack ? nameRow.height + meta.implicitHeight + Theme.s3 : Math.max(Theme.sp(34), nameRow.height + Theme.s2)
@@ -269,7 +269,7 @@ FocusScope {
 
         KeyHints {
             visible: Island.via === "key" && Sweep.alive
-            hints: [["↑↓", "Project"], ["←→", "Part"], ["↩", "Review in sweep"], ["esc", "Back"]]
+            hints: [["↑↓", "Project"], ["←→", "Part"], ["↩", "Review in Sweep"], ["esc", "Back"]]
         }
 
         Column {
@@ -279,7 +279,7 @@ FocusScope {
             Ui.Button {
                 id: review
                 height: Theme.sp(30); size: Theme.tSub
-                text: "Review in sweep"
+                text: "Review in Sweep"
                 onClicked: { Sweep.openUi(); Island.close(); }
             }
             Label {
@@ -294,7 +294,7 @@ FocusScope {
         Label {
             visible: Sweep.alive
             width: parent.width
-            text: "Nothing is deleted from here. sweep asks before it removes anything."
+            text: "Nothing is deleted from here. Sweep asks before it removes anything."
                 + (Settings.sweepMark ? "" : " The idle projects mark is off in Settings → Island.")
             size: Theme.tCaption
             color: Theme.textTertiary

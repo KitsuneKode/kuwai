@@ -598,11 +598,11 @@ FocusScope {
                                     }
                                     Label {
                                         id: note
-                                        visible: w.out || !!w.forecast
+                                        visible: (w.out && !w.r.window.resetsAt) || (!w.out && !!w.forecast)
                                         width: parent.width
                                         wrapMode: Text.Wrap
-                                        text: w.out ? (w.r.window.resetsAt ? "Back " + usage.at(w.r.window.resetsAt) : "Spent")
-                                            : w.forecast ? "At this rate it runs out in " + Usage.span(w.forecast.inMs) + ", " + Usage.span(w.forecast.earlyMs) + " before it resets" : ""
+                                        text: w.out ? "Spent"
+                                            : w.forecast ? "Runs out in " + Usage.span(w.forecast.inMs) + ", " + Usage.span(w.forecast.earlyMs) + " early" : ""
                                         size: Theme.tCaption
                                         color: w.out ? Theme.redText : Theme.orange
                                         tabular: true

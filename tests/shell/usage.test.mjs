@@ -48,12 +48,14 @@ describe("words", () => {
     expect(span(3 * H + 5 * MIN)).toBe("3h 5m");
     expect(span(2 * 24 * H + 4 * H + 59 * MIN)).toBe("2d 4h");
     expect(span(-5)).toBe("0m");
+    expect(span(5 * H)).toBe("5h");
+    expect(span(3 * 24 * H + 20 * MIN)).toBe("3d");
   });
   test("freshness: say the age only when it matters", () => {
     expect(freshness(now - 20 * 1000, now, "t3")).toEqual({ known: true, stale: false, old: false, age: "just now" });
     expect(freshness(now - 12 * MIN, now, "t3")).toEqual({ known: true, stale: false, old: false, age: "12m ago" });
     expect(freshness(now - 45 * MIN, now, "t3")).toEqual({ known: true, stale: true, old: false, age: "45m ago" });
-    expect(freshness(now - 4 * H, now, "t3")).toEqual({ known: true, stale: true, old: true, age: "4h 0m ago" });
+    expect(freshness(now - 4 * H, now, "t3")).toEqual({ known: true, stale: true, old: true, age: "4h ago" });
     expect(freshness(now - 2 * MIN, now, "t3-cached").old).toBe(true);
     expect(freshness(0, now, "t3")).toEqual({ known: false, stale: false, old: false, age: "" });
   });
