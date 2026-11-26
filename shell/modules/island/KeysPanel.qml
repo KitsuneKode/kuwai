@@ -310,23 +310,16 @@ FocusScope {
             text: "Nothing matches “" + pal.query.trim() + "”"
             size: Theme.tBody; color: Theme.textTertiary
         }
-        // Nothing to list at all (Hyprland didn't answer): what happened and
-        // what to do, with the panel shrunk around it.
-        Column {
+        Ui.EmptyState {
             id: emptyState
             visible: pal.empty
             anchors.centerIn: parent
-            spacing: Theme.s2
-            Text {
-                anchors.horizontalCenter: parent.horizontalCenter
-                textFormat: Text.PlainText
-                text: "\u{f030c}"
-                font.family: Theme.fontGlyph; font.pixelSize: Theme.glyphXL
-                color: Theme.textTertiary
-            }
-            Label { anchors.horizontalCenter: parent.horizontalCenter; text: "No shortcuts to show"; size: Theme.tCallout; weight: Theme.wSemibold }
-            Label { anchors.horizontalCenter: parent.horizontalCenter; text: "Hyprland didn't list its key bindings."; size: Theme.tSub; color: Theme.textSecondary }
-            Ui.Button { anchors.horizontalCenter: parent.horizontalCenter; text: "Try again"; size: Theme.tSub; height: Theme.sp(30); onClicked: pal.retry() }
+            width: Math.min(parent.width - 40, Theme.sp(300))
+            glyph: "\u{f030c}"
+            title: "No shortcuts to show"
+            body: "Hyprland didn't list its key bindings."
+            actionLabel: "Try again"
+            onActionTriggered: pal.retry()
         }
     }
 

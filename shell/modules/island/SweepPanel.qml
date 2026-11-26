@@ -109,13 +109,20 @@ FocusScope {
             }
         }
 
+        Ui.Notice {
+            visible: Sweep.loaded && Sweep.alive && !!Sweep.error && !Sweep.counted
+            glyph: "\u{f0026}"
+            title: panel.empty
+            action: "Retry"
+            onActed: Sweep.check(true)
+        }
         Label {
-            visible: panel.empty !== ""
+            visible: panel.empty !== "" && !(Sweep.loaded && Sweep.alive && !!Sweep.error && !Sweep.counted)
             width: parent.width
             topPadding: 4; bottomPadding: 4
             wrapMode: Text.WordWrap
             text: panel.empty
-            size: Theme.tBody; color: Sweep.error && !Sweep.counted ? Theme.orange : Theme.textTertiary
+            size: Theme.tBody; color: Theme.textTertiary
         }
 
         Item {

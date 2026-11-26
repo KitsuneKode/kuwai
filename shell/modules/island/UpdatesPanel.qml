@@ -790,18 +790,14 @@ FocusScope {
             anchors { top: rvInfo.bottom; topMargin: 10; bottom: rvFoot.top; bottomMargin: 12 }
             radius: Theme.r2
         }
-        Label {
+        Notice {
             visible: !!(reviewView.r && reviewView.r.error)
-            anchors.centerIn: diff
-            text: reviewView.r ? (reviewView.r.error || "") : ""
-            size: Theme.tSub; color: Theme.red
-        }
-
-        Button {
-            visible: !!(reviewView.r && reviewView.r.error)
-            anchors { top: diff.top; topMargin: 10; horizontalCenter: diff.horizontalCenter }
-            text: "Retry review"
-            onClicked: Updates.review(up.pkg, true)
+            anchors { top: diff.top; left: diff.left; right: diff.right }
+            glyph: "\u{f0026}"; tone: Theme.red
+            title: "Couldn't review this package"
+            detail: reviewView.r ? (reviewView.r.error || "") : ""
+            action: "Retry"
+            onActed: Updates.review(up.pkg, true)
         }
 
         Item {

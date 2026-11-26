@@ -267,31 +267,14 @@ FocusScope {
         }
 
         // ── Error: on the thing that failed, with Retry beside it ─────────
-        Rectangle {
+        Ui.Notice {
             id: downBox
             visible: usage.limitsView && Limits.down
-            width: parent.width
-            // Its line wraps (the row grows) rather than lose its end beside Retry at a large Text size.
-            height: Math.max(44, downLine.implicitHeight + 2 * Theme.s3)
-            radius: Theme.r2
-            color: Qt.alpha(Theme.orange, Theme.tintNotice)
-            Label {
-                id: downLine
-                anchors { left: parent.left; leftMargin: 14; right: retry.left; rightMargin: 10; verticalCenter: parent.verticalCenter }
-                wrapMode: Text.WordWrap
-                maximumLineCount: 3
-                elide: Text.ElideRight
-                text: Limits.loaded ? "Not updating · showing the last reading" : "Usage can't be read right now"
-                size: Theme.tBody; weight: Theme.wMedium
-                color: Theme.orange
-            }
-            Ui.Button {
-                id: retry
-                height: Theme.sp(30); size: Theme.tSub
-                anchors { right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter }
-                text: "Retry"
-                onClicked: Limits.retry()
-            }
+            glyph: "\u{f0026}"
+            title: Limits.loaded ? "Not updating" : "Usage can't be read right now"
+            detail: Limits.loaded ? "Showing the last reading" : ""
+            action: "Retry"
+            onActed: Limits.retry()
         }
 
         // ── Loading: the cards' own shape ────────────────────────────────

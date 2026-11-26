@@ -63,7 +63,7 @@ FocusScope {
                 cp.loading = false;
             }
         }
-        onExited: code => { if (code !== 0) { cp.error = "Couldn't look through your agents' skills. Pick a period above to try again."; cp.loading = false; } }
+        onExited: code => { if (code !== 0) { cp.error = "Couldn't look through your agents' skills"; cp.loading = false; } }
     }
     Process {
         id: actor
@@ -176,15 +176,22 @@ FocusScope {
                 size: Theme.tClock * 2 - 8; weight: Theme.wBold; rounded: true
                 tabular: true
             }
+            Ui.Notice {
+                visible: cp.error !== ""
+                glyph: "\u{f0026}"
+                title: cp.error
+                action: "Try again"
+                onActed: cp.load(true)
+            }
             Label {
+                visible: !cp.error
                 width: parent.width
                 wrapMode: Text.Wrap
-                text: cp.error ? cp.error
-                    : !cp.report ? "Reading your agents' transcripts…"
+                text: !cp.report ? "Reading your agents' transcripts…"
                     : cp.report.unused.length === 0 ? "tokens: every skill was used in the last " + cp.days + " days. Nothing to clear."
                     : "tokens each session spends on " + cp.report.unused.length + " skills unused in " + cp.days + " days · "
                       + cp.num(cp.report.listTokens) + " for all " + cp.report.skills
-                size: Theme.tSub; color: cp.error ? Theme.orange : Theme.textSecondary
+                size: Theme.tSub; color: Theme.textSecondary
             }
         }
 

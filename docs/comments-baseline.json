@@ -1,5 +1,5 @@
 {
-  "total_comment_lines": 7510,
+  "total_comment_lines": 7507,
   "files_with_comments": 291,
   "files": {
     "shell/components/ActionMenu.qml": 23,
@@ -100,7 +100,7 @@
     "shell/modules/island/IslandRest.qml": 172,
     "shell/modules/island/IslandSplit.qml": 128,
     "shell/modules/island/IslandStatus.qml": 22,
-    "shell/modules/island/KeysPanel.qml": 28,
+    "shell/modules/island/KeysPanel.qml": 26,
     "shell/modules/island/LauncherPanel.qml": 115,
     "shell/modules/island/MediaPanel.qml": 34,
     "shell/modules/island/NotifPeek.qml": 24,
@@ -114,7 +114,7 @@
     "shell/modules/island/ThemePanel.qml": 75,
     "shell/modules/island/TrayRow.qml": 10,
     "shell/modules/island/UpdatesPanel.qml": 73,
-    "shell/modules/island/UsagePanel.qml": 90,
+    "shell/modules/island/UsagePanel.qml": 89,
     "shell/modules/lock/ClockGround.qml": 25,
     "shell/modules/lock/Farewell.qml": 24,
     "shell/modules/lock/GoodbyeOverlay.qml": 3,
