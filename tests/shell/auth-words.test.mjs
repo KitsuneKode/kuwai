@@ -11,7 +11,7 @@ test("every phrase the prompt can write is one the island shows, and no other", 
   const ids = [...src.slice(src.indexOf("function describe")).matchAll(/"(org\.freedesktop\.[\w.-]+)":/g)].map(m => m[1]);
   expect(ids.length).toBeGreaterThan(5);
   const said = new Set();
-  for (const message of ["Authentication is needed to run `/usr/local/lib/kuwai/kuwai-update-root' as the super user", "anything else"])
+  for (const message of ["upgrade install", "pacnew", "clean-cache"].map(o => "Authentication is needed to run `/usr/local/lib/kuwai/kuwai-update-root " + o + "' as the super user").concat(["anything else"]))
     for (const id of [...ids, "org.example.unknown"])
       said.add(functions("shell-auth/shell.qml", ["describe"], { message }).describe(id));
   expect([...said].sort()).toEqual([...WORDS].sort());

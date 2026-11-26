@@ -30,7 +30,8 @@ def m(tmp_path, monkeypatch):
         def __init__(self, R):
             self.helper, self.p, self.prompts, self.transaction = True, True, 1, ["linux 7.3-1"]
 
-        def open(self):
+        def open(self, ops=()):
+            mod.opened = list(ops)
             return 0
 
         def run(self, op, **kw):
@@ -57,6 +58,7 @@ def test_upgrade_ok_then_deps_fail_is_partial_not_nothing(m):
     assert m.run_locked(["--repo", "--aur", "fixture"]) == 1
     done, errors = m.done()
     assert m.calls == ["upgrade", "deps"], "upgrade and its build deps are separate, recorded steps"
+    assert m.opened == ["upgrade", "deps", "install"], "the password prompt names every operation the run may do, and no other"
     assert done["repo"] is True and done["deps"] is False and done["partial"] is True
     assert [p["id"] for p in done["phases"]] == ["repo", "deps"]
     assert done["phases"][0]["transaction"] == ["linux 7.3-1"]

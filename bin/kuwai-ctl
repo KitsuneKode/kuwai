@@ -30,7 +30,7 @@ Control the running kuwai.
   kuwai promote              validate dev HEAD and fast-forward stable (with auto-rollback)
   kuwai rollback             revert stable to the previous promoted commit (stable-prev)
   kuwai update-self          update stable to origin's newest release tag (signed by a key in release-signers when it lists any;
-                             a tag that moves is refused; KUWAI_UPDATE_REF=<ref> follows another on purpose), validate, migrate, restart
+                             a tag that moves is refused; --ref REF follows another on purpose), validate, migrate, restart
   kuwai version              the version, the commit stable runs, and the channel
   kuwai release vX.Y.Z       tag main's HEAD as a release, signed with ~/.ssh/kuwai_release (KUWAI_RELEASE_KEY);
                              checked against release-signers; pushing the tag is left to you
@@ -382,15 +382,18 @@ case ${1:-} in
         [ -z "$dirty" ] || { echo "kuwai: stable has uncommitted changes; refusing update-self" >&2; exit 1; }
         git -C "$STABLE" remote get-url origin >/dev/null 2>&1 || { echo "kuwai: no origin remote configured in $STABLE" >&2; exit 1; }
         prev=$(git -C "$STABLE" rev-parse HEAD)
-        if [ -n "${KUWAI_UPDATE_REF:-}" ]; then
-            ref="$KUWAI_UPDATE_REF"
+        follow=""
+        [ "${2:-}" = --ref ] && follow=${3:?usage: kuwai update-self [--ref REF]}
+        [ -n "${KUWAI_UPDATE_REF:-}" ] && [ -z "$follow" ] && echo "kuwai: KUWAI_UPDATE_REF is ignored now (any program can set it); say kuwai update-self --ref $KUWAI_UPDATE_REF" >&2
+        if [ -n "$follow" ]; then
+            ref="$follow"
             git -C "$STABLE" fetch --quiet origin || { echo "kuwai: git fetch origin failed" >&2; exit 1; }
-            echo "kuwai: following $ref because KUWAI_UPDATE_REF says so: not a release, not signature-checked" >&2
+            echo "kuwai: following $ref because you asked (--ref): not a release, not signature-checked" >&2
             target=$(git -C "$STABLE" rev-parse --verify -q "$ref^{commit}") || { echo "kuwai: $ref is not a commit" >&2; exit 1; }
         else
             remote=$(git -C "$STABLE" ls-remote --tags --refs origin 'refs/tags/v[0-9]*') || { echo "kuwai: can't list origin's release tags" >&2; exit 1; }
             ref=$(printf '%s\n' "$remote" | awk 'NF == 2 { sub("^refs/tags/", "", $2); print $2 }' | sort -V | tail -n1)
-            [ -n "$ref" ] || { echo "kuwai: origin has no release tag (v*); to follow a branch on purpose, set KUWAI_UPDATE_REF=origin/main" >&2; exit 1; }
+            [ -n "$ref" ] || { echo "kuwai: origin has no release tag (v*); to follow a branch on purpose: kuwai update-self --ref origin/main" >&2; exit 1; }
             want=$(printf '%s\n' "$remote" | awk -v t="refs/tags/$ref" '$2 == t { print $1 }')
             git -C "$STABLE" fetch --quiet --no-tags origin "+refs/tags/$ref:refs/kuwai/release/$ref" || { echo "kuwai: git fetch of $ref failed" >&2; exit 1; }
             [ "$(git -C "$STABLE" rev-parse "refs/kuwai/release/$ref")" = "$want" ] || { echo "kuwai: $ref changed while it was fetched; staying on $prev" >&2; exit 1; }
@@ -400,7 +403,10 @@ case ${1:-} in
                 echo "kuwai: release $ref now points somewhere else than when this machine first saw it ($pinned → $want); staying on $prev" >&2
                 exit 1
             fi
-            listed=$( { git -C "$STABLE" show HEAD:release-signers 2>/dev/null; cat "${XDG_CONFIG_HOME:-$HOME/.config}/kuwai/release-signers" 2>/dev/null; } )
+            extra="${XDG_CONFIG_HOME:-$HOME/.config}/kuwai/release-signers"
+            listed=$( { git -C "$STABLE" show HEAD:release-signers 2>/dev/null; cat "$extra" 2>/dev/null; } )
+            n_extra=$(grep -cvE '^\s*(#|$)' "$extra" 2>/dev/null || true)
+            [ "${n_extra:-0}" -gt 0 ] && echo "kuwai: also trusting $n_extra key(s) from $extra (yours, not kuwai's)" >&2
             signers=$(printf '%s\n' "$listed" | tr -d ' ' | grep -Eio '^[0-9a-f]{40}$' | tr 'a-f' 'A-F')
             sshkeys=$(printf '%s\n' "$listed" | grep -Eo '^(ssh-ed25519|sk-ssh-ed25519@openssh\.com|ecdsa-sha2-nistp(256|384|521)|ssh-rsa) [A-Za-z0-9+/]+={0,2}')
             if [ -n "$signers$sshkeys" ]; then

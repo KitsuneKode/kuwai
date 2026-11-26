@@ -216,3 +216,12 @@ def test_pacnew_never_takes_accounts_or_disks(ur, etc, name):
     with pytest.raises(ValueError, match="merge .* by hand"):
         ur.pacnew_one(str(d / name), "take")
     assert (d / name).read_text() == "yours"
+
+
+def test_the_helper_does_only_what_the_prompt_named(ur):
+    assert ur.allowed_ops(["upgrade", "install"]) == {"upgrade", "install"}
+    assert ur.allowed_ops([]) is None, "nothing named: nothing allowed"
+    assert ur.allowed_ops(["upgrade", "rm"]) is None, "an unknown operation refuses the run"
+    src = (ROOT / "bin" / "kuwai-update-root").read_text()
+    assert "wasn't named at the password prompt" in src
+    assert 'pacman(["-Syu", "--noconfirm", "--needed", *ignore])' in src, "the upgrade itself is one -Syu"

@@ -214,9 +214,13 @@ ShellRoot {
             "org.freedesktop.timedate1.set-time": "Change the date and time",
             "org.freedesktop.hostname1.set-hostname": "Rename this computer"
         };
-        if (id === "org.freedesktop.policykit.exec")
-            return /^Authentication is needed to run `\/usr\/local\/lib\/kuwai\/kuwai-update-root' as the super user$/.test(root.message)
-                ? "Install updates" : "Run a command as administrator";
+        if (id === "org.freedesktop.policykit.exec") {
+            const m = /^Authentication is needed to run `\/usr\/local\/lib\/kuwai\/kuwai-update-root((?: (?:upgrade|deps|install|clean-cache|pacnew))+)' as the super user$/.exec(root.message);
+            if (!m) return "Run a command as administrator";
+            const ops = m[1].trim().split(" ");
+            return ops.some(o => o === "upgrade" || o === "install" || o === "deps") ? "Install updates"
+                : ops.indexOf("pacnew") >= 0 ? "Replace config files" : "Clean the package cache";
+        }
         return m[id] || "Administrator access";
     }
     property string facePng: ""

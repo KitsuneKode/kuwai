@@ -202,6 +202,9 @@ def test_update_self_needs_a_release_or_an_explicit_ref(tmp_path):
     assert r.returncode != 0 and "no release tag" in r.stderr
     assert git(stable, "rev-parse", "HEAD") == a, "no silent branch fallback"
     r = ctl({**env, "KUWAI_UPDATE_REF": "origin/main"}, "update-self")
+    assert r.returncode != 0 and "ignored now" in r.stderr, "an ambient variable no longer moves stable"
+    assert git(stable, "rev-parse", "HEAD") == a
+    r = ctl(env, "update-self", "--ref", "origin/main")
     assert r.returncode == 0, r.stderr
     assert git(stable, "rev-parse", "HEAD") == b
 

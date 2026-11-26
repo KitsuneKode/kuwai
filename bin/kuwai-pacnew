@@ -175,7 +175,7 @@ def helper_cmd():
         st = os.stat(HELPER)
         with open(HELPER, "rb") as a, open(HELPER_SRC, "rb") as b:
             if st.st_uid == 0 and not (st.st_mode & 0o022) and a.read() == b.read():
-                return ["pkexec", HELPER]
+                return ["pkexec", HELPER, "pacnew"]
     except OSError:
         pass
     return None

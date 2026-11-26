@@ -8,6 +8,8 @@
  */
 export const WORDS = [
     "Install updates",
+    "Replace config files",
+    "Clean the package cache",
     "Run a command as administrator",
     "Install software",
     "Update the system",

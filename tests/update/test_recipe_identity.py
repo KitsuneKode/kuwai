@@ -160,7 +160,7 @@ def test_cancelled_authentication_closes_helper_and_prunes_while_locked(updater,
     class Root:
         helper=True
         def __init__(self,r):pass
-        def open(self):return 126
+        def open(self, ops=()):return 126
         def close(self):closed.append(True)
     monkeypatch.setattr(m,'Run',Run);monkeypatch.setattr(m,'Root',Root)
     assert m.run(['--aur','fixture'])==1

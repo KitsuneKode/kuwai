@@ -730,16 +730,20 @@ class Root:
         self.p = None
         self.prompts = 0
         self.transaction = None
+        self.ops = ()
         verified = os.path.isfile(HELPER_SRC) and helper_ok()
         self.stale = os.path.isfile(HELPER_SRC) and not verified
         self.helper = verified
 
-    def open(self):
-        """0 once root is there; pkexec's code (126/127: cancelled) when it isn't."""
+    def open(self, ops=()):
+        """0 once root is there; pkexec's code (126/127: cancelled) when it isn't. The
+        operations go in pkexec's argv, so the password prompt names them and the
+        helper does nothing else."""
         if not self.helper or self.p:
             return 0
         self.prompts += 1
-        cmd = ["pkexec", HELPER]
+        self.ops = sorted(set(ops or self.ops or ()))
+        cmd = ["pkexec", HELPER, *self.ops]
         self.p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, bufsize=1)
         hello = self.p.stdout.readline()
         if '"ready"' not in hello:
@@ -774,7 +778,7 @@ class Root:
                    "deps": ["-S", "--noconfirm", "--needed", "--asdeps", "--", *deps],
                    "install": ["-U", "--noconfirm", "--needed", "--", *files]}[op]
             return self.R.stream(["pkexec", "pacman", *cmd], progress=progress)
-        rc = self.open()
+        rc = self.open((op,))
         if rc:
             return rc
         self.R.log.write(f"$ (root) pacman {op} {' '.join([*deps, *[f['path'] if isinstance(f, dict) else f for f in files]])}\n")
@@ -1421,7 +1425,8 @@ def run_locked(args):
     try:
         result["oneprompt"] = root.helper
         if root.helper and (want_repo or extra_repo_deps or plan):
-            rc = root.open()
+            rc = root.open(["upgrade"] * bool(want_repo) + ["deps"] * bool(extra_repo_deps) + ["install"] * bool(plan)
+                           + ["clean-cache"] * bool(prune))
             if rc:
                 R.emit(e="error", msg=cancelled_msg())
                 R.emit(e="done", **{**result, "ok": False, "cancelled": True})
@@ -1592,7 +1597,12 @@ def main(argv):
             if helper_ok():
                 print(json.dumps({"installed": True, "already": True}))
                 return 0
-            r = subprocess.run(["pkexec", "/usr/bin/install", "-D", "-o", "root", "-g", "root", "-m", "0755", HELPER_SRC, HELPER])
+            with open(HELPER_SRC, "rb") as f:
+                digest = hashlib.sha256(f.read()).hexdigest()
+            print(f"installing kuwai-update-root, sha256 {digest}", file=sys.stderr)
+            script = ('t=$(mktemp) && cp -- "$1" "$t" && echo "$2  $t" | sha256sum -c --status '
+                      '&& install -D -o root -g root -m 0755 "$t" "$3"; rc=$?; rm -f "$t"; exit $rc')
+            r = subprocess.run(["pkexec", "/bin/sh", "-c", script, "sh", HELPER_SRC, digest, HELPER])
             ok = r.returncode == 0 and helper_ok()
             print(json.dumps({"installed": ok} if ok else {"error": "not installed (cancelled at the password prompt?)"}))
             return 0 if ok else 1

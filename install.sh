@@ -32,8 +32,9 @@ What it does:
      backup), linked from the stable checkout and enabled; clipboard history and
      GitHub/Gmail feeds only if you say yes (asked once, kept in
      ~/.config/kuwai/collect.conf; kuwai collect changes it)
-  6. a "Kuwai" entry on the login screen, beside your other sessions (sudo,
-     once: system/session; without a terminal it says the command instead)
+  6. a "Kuwai" entry on the login screen, beside your other sessions, and a
+     root-owned copy of the password prompt (sudo, once: system/session and
+     kuwai auth pin; without a terminal it says the commands instead)
   7. the checks
 Never: autologin, or your settings. The login screen and alarms that wake the
 laptop are separate, with sudo: greeter/install, system/install.
@@ -279,6 +280,18 @@ login_session() {
     fi
 }
 
+pin_prompt() {
+    step "Password prompt"
+    if [ -f /usr/local/share/kuwai/shell-auth/shell.qml ]; then ok "runs from root's copy (/usr/local/share/kuwai/shell-auth)"
+    elif [ $DRY = 1 ]; then say "  would: kuwai auth pin (a root-owned copy of the password prompt; sudo, once)"
+    elif [ -t 0 ] && [ -t 1 ] && command -v sudo >/dev/null; then
+        say "  pinning the password prompt: a root-owned copy, so the code that reads your password isn't code your account can change"
+        "$STABLE/bin/kuwai" auth pin | sed 's/^/  /' || warn "not pinned; run: kuwai auth pin"
+    else
+        warn "pin the password prompt with: kuwai auth pin (until then it runs from your own copy of kuwai)"
+    fi
+}
+
 install_all() {
     check_deps
 
@@ -383,6 +396,7 @@ install_all() {
     fi
 
     login_session
+    pin_prompt
 
     [ $DRY = 1 ] || { step "Original state"; ok "kept in $STATE/original (./install.sh --uninstall puts it back)"; }
 
@@ -412,6 +426,7 @@ uninstall_all() {
     if [ -f "$STABLE/.git" ]; then say "  Remove the checkout too:  git -C $REPO worktree remove $STABLE"
     else say "  Remove the checkout too:  rm -rf $STABLE"; fi
     say "  The Kuwai login entry: sudo $REPO/system/session --undo"
+    say "  The pinned password prompt: kuwai auth unpin"
     say "  The login screen / alarms: sudo greeter/install --undo · sudo system/install --undo"
     return $rc
 }

@@ -419,10 +419,15 @@ cmd_auth() {
             tmp=$(mktemp -d) || return 1
             git -C "$ROOT" archive HEAD shell-auth | tar -x -C "$tmp" || { rm -rf "$tmp"; return 1; }
             if [ -n "$(find "$tmp" ! -type f ! -type d)" ]; then rm -rf "$tmp"; echo "shell-auth/ holds something that isn't a plain file; refusing" >&2; return 1; fi
-            echo "Copies the password prompt (shell-auth/ at $(git -C "$ROOT" rev-parse --short HEAD)) to $AUTH_PINNED,"
+            local sum
+            sum=$(cd "$tmp/shell-auth" && find . -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -c1-64)
+            echo "Copies the password prompt (shell-auth/ at $(git -C "$ROOT" rev-parse --short HEAD), tree sha256 $sum) to $AUTH_PINNED,"
             echo "owned by root, so the code that reads your password isn't code your account can change. sudo asks once."
             sudo sh -c 'set -e; rm -rf "$1.new"; mkdir -p "$(dirname "$1")"; cp -R --no-preserve=all "$2/shell-auth" "$1.new"
-                        chown -R root:root "$1.new"; chmod -R u=rwX,go=rX "$1.new"; rm -rf "$1"; mv "$1.new" "$1"' sh "$AUTH_PINNED" "$tmp"
+                        chown -R root:root "$1.new"; chmod -R u=rwX,go=rX "$1.new"
+                        got=$(cd "$1.new" && find . -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -c1-64)
+                        [ "$got" = "$3" ] || { rm -rf "$1.new"; echo "the copy changed after it was checked; nothing pinned" >&2; exit 1; }
+                        rm -rf "$1"; mv "$1.new" "$1"' sh "$AUTH_PINNED" "$tmp" "$sum"
             st=$?; rm -rf "$tmp"
             [ $st = 0 ] || { echo "not pinned" >&2; return 1; }
             systemctl --user reset-failed kuwai-auth.service 2>/dev/null; systemctl --user restart kuwai-auth.service && echo "password prompt now runs from $AUTH_PINNED" ;;

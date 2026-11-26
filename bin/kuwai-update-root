@@ -272,6 +272,15 @@ def pacnew(req):
     return rc
 
 
+OPS = frozenset({"upgrade", "deps", "pacnew", "install", "clean-cache"})
+
+
+def allowed_ops(argv):
+    """The operations named on pkexec's command line (what the password prompt showed); None if any is unknown or none is named."""
+    ops = set(argv)
+    return ops if ops and ops <= OPS else None
+
+
 def main():
     os.umask(0o077)
     signal.signal(signal.SIGHUP, signal.SIG_IGN)
@@ -280,6 +289,10 @@ def main():
     if os.geteuid() != 0 or "PKEXEC_UID" not in os.environ:
         print("kuwai-update-root: run by kuwai-update through pkexec", file=sys.stderr)
         return 2
+    allowed = allowed_ops(sys.argv[1:])
+    if allowed is None:
+        print("kuwai-update-root: name the operations this run may do: " + " ".join(sorted(OPS)), file=sys.stderr)
+        return 2
     uid = int(os.environ["PKEXEC_UID"])
     home = os.path.realpath(pwd.getpwuid(uid).pw_dir)
     say(ready=True)
@@ -287,6 +300,8 @@ def main():
         try:
             req = json.loads(line)
             op = req.get("op")
+            if op not in allowed:
+                raise ValueError(f"{op!r} wasn't named at the password prompt")
             if op == "upgrade":
                 deps = names(req)
                 hold = names(req, "hold")
@@ -294,7 +309,7 @@ def main():
                 rc = pacman(["-Sy"])
                 if rc == 0:
                     say(plan=resolved(ignore))
-                    rc = pacman(["-Su", "--noconfirm", "--needed", *ignore])
+                    rc = pacman(["-Syu", "--noconfirm", "--needed", *ignore])
                 if rc == 0 and deps:
                     rc = pacman(["-S", "--noconfirm", "--needed", "--asdeps", "--", *deps])
             elif op == "deps":

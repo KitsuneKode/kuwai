@@ -41,11 +41,18 @@ stage_code() {
     printf '%s\n' "$rev" >"$out/code-revision"
 }
 
+STAGED=""
+stage_once() {
+    [ -n "$STAGED" ] && return 0
+    STAGED=$(mktemp -d) || exit 1
+    trap "rm -rf -- $(printf %q "$STAGED")" EXIT
+    stage_code "$STAGED" || exit 1
+    SUM=$(cd "$STAGED" && find . -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -c1-64)
+}
+
 install_code() {
-    local src
-    src=$(mktemp -d) || exit 1
-    trap "rm -rf -- $(printf %q "$src")" EXIT
-    stage_code "$src" || exit 1
+    stage_once
+    local src=$STAGED
     install -d -m755 -o root -g root "$DEST"
     chown root:root "$DEST"; chmod 755 "$DEST"
     rsync -r --delete --no-links --chown=root:root --chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r "$src/shell/" "$DEST/shell/"
@@ -80,6 +87,8 @@ install_code() {
 
 if [ $MODE = code ]; then
     [ -d "$DEST" ] || { echo "the login screen isn't installed: sudo $KUWAI/greeter/install" >&2; exit 1; }
+    stage_once
+    echo "Installing the login screen's code: $(cat "$STAGED/code-revision"), tree sha256 $SUM"
     install_code
     sudo -u "$USER_NAME" -H "$KUWAI/greeter/sync"
     echo "The login screen's code is current, and root's."
@@ -107,12 +116,13 @@ if [ $MODE = undo ]; then
 fi
 
 was=$(basename "$(readlink -f /etc/systemd/system/display-manager.service 2>/dev/null)" 2>/dev/null || true)
+stage_once
 cat <<PLAN
 This makes Kuwai's login screen the one this machine boots to:
   · installs greetd and rsync (pacman shows what and asks)
   · replaces /etc/pam.d/greetd and /etc/greetd/config.toml (the old ones are kept in $KEEP)
   · removes /etc/systemd/system/getty@tty1.service.d/override.conf (an autologin, if you had one; kept too)
-  · copies the committed shell/ and greeter/ to $DEST, owned by root
+  · copies the committed shell/ and greeter/ ($(cat "$STAGED/code-revision"), tree sha256 $SUM) to $DEST, owned by root
   · turns off ${was:-no other login manager} and turns on greetd from the next boot
 Undo, all of it: sudo $KUWAI/greeter/install --undo
 PLAN
@@ -134,7 +144,6 @@ keep greetd-config.toml /etc/greetd/config.toml
 keep getty-tty1-override.conf /etc/systemd/system/getty@tty1.service.d/override.conf
 if [ ! -e "$KEEP/display-manager" ]; then
     dm=$(basename "$(readlink -f /etc/systemd/system/display-manager.service 2>/dev/null)" 2>/dev/null || true)
-    [ "$dm" = greetd.service ] && dm=
     printf '%s\n' "$dm" >"$KEEP/display-manager"
 fi
 
