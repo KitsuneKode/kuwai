@@ -41,6 +41,17 @@ if [ "$(timeout 3 sqlite3 -readonly -cmd ".timeout 2000" "file:$DB?mode=ro" "sel
            where pt.thread_id = th.thread
              and (json_extract(bt.value, '\$.awaited') = 1 or json_extract(bt.value, '\$.kind') in ('subagent', 'background_task')))"
 fi
+CTX=null; WIN=null; CACHE=null
+if [ "$HOLDING" != 0 ]; then
+  CTX="(select json_extract(pt.payload_json, '\$.contextUsage.usedTokens') from orchestration_v2_projection_provider_threads pt
+        where pt.thread_id = th.thread order by pt.rowid desc limit 1)"
+  WIN="(select json_extract(pt.payload_json, '\$.contextUsage.maxTokens') from orchestration_v2_projection_provider_threads pt
+        where pt.thread_id = th.thread order by pt.rowid desc limit 1)"
+fi
+if [ "$(timeout 3 sqlite3 -readonly -cmd ".timeout 2000" "file:$DB?mode=ro" "select count(*) from sqlite_master where name = 'orchestration_v2_projection_provider_turns';" 2>/dev/null)" = 1 ]; then
+  CACHE="(select json_extract(pt.payload_json, '\$.tokenUsage.promptCacheExpiresAt') from orchestration_v2_projection_provider_turns pt
+          where pt.thread_id = th.thread order by pt.started_at desc limit 1)"
+fi
 rows=$(timeout 3 sqlite3 -readonly -json -cmd ".timeout 2000" "file:$DB?mode=ro" "
   with th as (
     select t.thread_id as thread, coalesce(t.title, '') as title, t.payload_json as pj
@@ -108,7 +119,8 @@ rows=$(timeout 3 sqlite3 -readonly -json -cmd ".timeout 2000" "file:$DB?mode=ro"
          json_extract(th.pj, '\$.modelSelection.model') as model,
          (select json_extract(o.value, '\$.value') from json_each(th.pj, '\$.modelSelection.options') o
            where json_extract(o.value, '\$.id') = 'reasoningEffort') as effort,
-         (select pp.title from projection_projects pp where pp.project_id = json_extract(th.pj, '\$.projectId')) as project
+         (select pp.title from projection_projects pp where pp.project_id = json_extract(th.pj, '\$.projectId')) as project,
+         $CTX as ctx, $WIN as win, $CACHE as cache_until
   from th
   left join active a on a.thread = th.thread and a.n = 1
   left join latest l on l.thread = th.thread and l.n = 1
@@ -149,6 +161,8 @@ jq -cn --argjson rows "$rows" --arg env "$env_id" '
                  ask: (if .s != "waiting" then null elif ((.asks // 0) - (.questions // 0)) > 0 then "approval"
                        elif (.questions // 0) > 0 then "question" else "request" end),
                  request: (if .s == "waiting" and .req != null then (.req | fromjson? // null) else null end),
-                 provider, title: (.title | .[0:80]), thread, at: (.active_at // .latest_at), model, effort, project}]
+                 provider, title: (.title | .[0:80]), thread, at: (.active_at // .latest_at), model, effort, project,
+                 ctx: (.ctx // 0), win: (.win // 0), cacheUntil: (.cache_until // "")}]
             + [$done[] | {status: (if .s == "limited" then "failed" else .s end), limited: (.s == "limited"),
-                 provider, title: (.title | .[0:80]), thread, at: .latest_at, model, effort, project}])}' 2>/dev/null || none
+                 provider, title: (.title | .[0:80]), thread, at: .latest_at, model, effort, project,
+                 ctx: (.ctx // 0), win: (.win // 0), cacheUntil: (.cache_until // "")}])}' 2>/dev/null || none

@@ -214,3 +214,26 @@ def test_a_finished_turn_still_waiting_on_its_background_work_is_not_done(tmp_pa
     assert items["t-sub"]["status"] == "running" and items["t-sub"]["held"] is True and items["t-sub"]["blocked"] is True
     assert items["t-awaited"]["held"] is True
     assert items["t-devserver"]["status"] == "completed", "a dev server left running doesn't hold the thread"
+
+
+def test_a_row_knows_how_full_its_context_is_and_how_long_its_cache_holds(tmp_path):
+    db = sqlite3.connect(tmp_path / "statev2.sqlite")
+    db.executescript(SCHEMA + "create table orchestration_v2_projection_provider_threads (thread_id text, payload_json text);"
+                     + "create table orchestration_v2_projection_provider_turns (thread_id text, started_at text, payload_json text);")
+    thread(db, "t-full", "Nearly full")
+    run(db, "r-full", "t-full", "running")
+    db.execute("insert into orchestration_v2_projection_provider_threads values (?, ?)",
+               ("t-full", json.dumps({"contextUsage": {"usedTokens": 840000, "maxTokens": 1000000}})))
+    for at, until in ((NOW, "2099-01-01T00:30:00.000Z"), (LATER, "2099-01-02T01:00:00.000Z")):
+        db.execute("insert into orchestration_v2_projection_provider_turns values (?, ?, ?)",
+                   ("t-full", at, json.dumps({"tokenUsage": {"promptCacheExpiresAt": until}})))
+    thread(db, "t-plain", "Nothing recorded")
+    run(db, "r-plain", "t-plain", "running")
+    db.commit()
+    (tmp_path / "environment-id").write_text("env-1")
+    import os as _os
+    (tmp_path / "server-runtime.json").write_text(json.dumps({"pid": _os.getpid()}))
+    items = {i["title"]: i for i in read(tmp_path)["items"]}
+    assert (items["Nearly full"]["ctx"], items["Nearly full"]["win"]) == (840000, 1000000)
+    assert items["Nearly full"]["cacheUntil"] == "2099-01-02T01:00:00.000Z", "the newest turn's cache"
+    assert (items["Nothing recorded"]["ctx"], items["Nothing recorded"]["cacheUntil"]) == (0, "")

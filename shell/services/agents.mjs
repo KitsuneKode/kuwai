@@ -8,7 +8,7 @@ import { stateOf, stateGlyph } from "./t3.mjs";
  *   pid?: number | string, w?: string, where?: string, question?: string, raw?: any }} Pane
  */
 /** An unread kittymux event. @typedef {{ id: string, kind?: string, severity?: string, agent?: string, t?: number }} Event */
-/** A T3 thread (bin/kuwai-t3). @typedef {{ thread?: string, title?: string, status?: string, ask?: string | null, limited?: boolean, blocked?: boolean, goal?: boolean, woke?: boolean, held?: boolean, at?: string, provider?: string, request?: { prompt?: string } | null }} Thread */
+/** A T3 thread (bin/kuwai-t3). @typedef {{ thread?: string, title?: string, status?: string, ask?: string | null, limited?: boolean, blocked?: boolean, goal?: boolean, woke?: boolean, held?: boolean, at?: string, provider?: string, request?: { prompt?: string } | null, ctx?: number, win?: number, cacheUntil?: string }} Thread */
 /** A Desktop agent hook session (bin/kuwai-agent-hook). @typedef {{ id?: string, agent?: string, state?: string, ask?: string | null, title?: string, project?: string, cwd?: string, model?: string, question?: string, window_class?: string, since?: number, updated_at?: number, pane?: string, thread?: string }} Desktop */
 /** One agent, any surface (kitty TUI, t3, desktop). @typedef {{ src: string, agent: string, key: string, stateKey: string, glyph: string, word: string, rank: number, t: number, reset: number, account: string, title: string, event: string, action: any, thread: string, windowClass: string, desktopId: string }} Item */
 /**
@@ -248,6 +248,32 @@ export function limitedOf(list) {
         .sort((a, b) => ((a.reset || Infinity) - (b.reset || Infinity)) || ((a.t || Infinity) - (b.t || Infinity)));
 }
 
+/**
+ * "Cache warm 3 min" while an idle thread's prompt cache still holds (answering now is cheaper), else "".
+ * @param {string | undefined} cacheUntil @param {number} now @returns {string}
+ */
+export function warm(cacheUntil, now) {
+    const t = Date.parse(String(cacheUntil || ""));
+    if (!isFinite(t) || t <= now) return "";
+    return "Cache warm " + Math.max(1, Math.round((t - now) / 60000)) + " min";
+}
+
+/**
+ * When a provider is back: the soonest reset among its spent windows (Limits.windows), 0 when none is known.
+ * @param {{ provider?: { driver?: string, label?: string }, level?: string, window?: { resetsAt?: number } }[]} windows
+ * @param {string} id providerId of the agent @param {number} now @returns {number}
+ */
+export function backAt(windows, id, now) {
+    let best = 0;
+    for (const x of windows || []) {
+        if (x.level !== "exhausted" || !x.window || !x.provider) continue;
+        if (providerId(String(x.provider.driver || x.provider.label || "")) !== id) continue;
+        const r = x.window.resetsAt || 0;
+        if (r > now && (!best || r < best)) best = r;
+    }
+    return best;
+}
+
 /** "41m", "2h 5m": how long until a time (ms). "" when unknown or past. @param {number} at @param {number} now */
 export function until(at, now) {
     if (!at || at <= now) return "";
@@ -343,4 +369,18 @@ export function stackMarks(list, max) {
     }
     all.sort((a, b) => Number(b.needs) - Number(a.needs));
     return { marks: all.slice(0, max), more: Math.max(0, all.length - max) };
+}
+
+/**
+ * How many finished since you last looked (opened the Agents panel): a time in ms, seconds or 0 (unknown). An unknown
+ * time counts only before you've ever looked, so the ✓ doesn't stay for good.
+ * @param {number[]} times @param {number} lookedAt ms @returns {number}
+ */
+export function doneSince(times, lookedAt) {
+    let n = 0;
+    for (const raw of times || []) {
+        const t = raw > 0 && raw < 1e12 ? raw * 1000 : raw || 0;
+        if (t ? t > (lookedAt || 0) : !lookedAt) n++;
+    }
+    return n;
 }

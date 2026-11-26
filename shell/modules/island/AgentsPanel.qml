@@ -122,7 +122,7 @@ FocusScope {
             const r = x.pane && x.pane.raw ? x.pane.raw : null, i = x.t3, d = x.hook;
             const ev = x.event ? Kittymux.eventById(x.event) : null;
             const m = r ? ap.models[r.agent + ":" + r.where] || {} : {};
-            const back = x.state === "limited" ? Ag.until(x.reset || 0, Date.now()) : "";
+            const back = x.state === "limited" ? Ag.until(x.reset || (i ? Ag.backAt(Limits.windows, Agents.providerId(i.provider), ap.now) : 0), ap.now) : "";
             out.push({
                 section: x.section,
                 word: x.stateKey === "blocked" ? (i && i.held ? "Waiting on background work" : x.src === "t3" ? "Waiting on another thread" : "Waiting")
@@ -136,7 +136,8 @@ FocusScope {
                     : i ? (Providers.modelName(i.provider, i.model) ? Providers.modelName(i.provider, i.model) + (i.effort ? " " + i.effort : "") : ap.on(i.model, i.effort))
                     : d ? ap.on(d.model, "") : "",
                 modelId: m.model || (i && i.model) || (d && d.model) || "",
-                state: x.state, status: r ? r.status : "", ctx: m.context || 0, win: m.window || 0, reply: m.reply || "", steps: m.steps || [],
+                state: x.state, status: r ? r.status : "", ctx: m.context || (i && i.ctx) || 0, win: m.window || (i && i.win) || 0,
+                warm: i && (x.state === "done" || x.state === "idle") ? Ag.warm(i.cacheUntil, ap.now) : "", reply: m.reply || "", steps: m.steps || [],
                 question: x.question || (ev && ev.severity === "needs-you" ? Notifs.readable(ev.body || "") : ""),
                 request: i ? i.request || null : null,
                 t: x.t, event: x.event, action: x.action, thread: x.thread, item: i,
@@ -445,6 +446,7 @@ FocusScope {
                     sub: [row.modelData.who || Kittymux.agentLabel(row.modelData.agent), row.modelData.where, row.modelData.model]
                         .filter(x => x).map(x => ap.esc(x)).join(" · ")
                         + (ap.fill(row.modelData) ? " · " + ap.fill(row.modelData) : "")
+                        + (row.modelData.warm ? " · " + row.modelData.warm : "")
                     subColor: Theme.textSecondary
                     Label {
                         readonly property var ask: row.modelData.src === "kitty" ? Kittymux.askFor(row.modelData.raw)

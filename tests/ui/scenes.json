@@ -4813,6 +4813,128 @@
    "kind": "worst"
   },
   {
+   "id": "agents/row-extras",
+   "name": "agents",
+   "panel": "AgentsPanel",
+   "set": [
+    [
+     "Kittymux",
+     "feedPinned",
+     true
+    ],
+    [
+     "Kittymux",
+     "feed",
+     {
+      "version": 1,
+      "agents": []
+     }
+    ],
+    [
+     "T3Code",
+     "alive",
+     true
+    ],
+    [
+     "T3Code",
+     "running",
+     1
+    ],
+    [
+     "T3Code",
+     "waiting",
+     0
+    ],
+    [
+     "T3Code",
+     "rawFinished",
+     2
+    ],
+    [
+     "T3Code",
+     "rawItems",
+     [
+      {
+       "thread": "t3",
+       "env": "e1",
+       "project": "rice",
+       "status": "running",
+       "provider": "claudeAgent",
+       "title": "Rehearsal harness",
+       "at": "@now-1380iso",
+       "ctx": 840000,
+       "win": 1000000
+      },
+      {
+       "thread": "t5",
+       "env": "e1",
+       "project": "rice",
+       "status": "completed",
+       "provider": "claudeAgent",
+       "title": "OTP detection: origin-bound codes",
+       "at": "@now-2300iso",
+       "cacheUntil": "@now+180iso"
+      },
+      {
+       "thread": "t6",
+       "env": "e1",
+       "project": "rice",
+       "status": "failed",
+       "provider": "codex_2",
+       "title": "Translate the settings pages",
+       "at": "@now-2760iso",
+       "limited": true
+      }
+     ]
+    ],
+    [
+     "Limits",
+     "loaded",
+     true
+    ],
+    [
+     "Limits",
+     "source",
+     "t3"
+    ],
+    [
+     "Limits",
+     "providers",
+     [
+      {
+       "driver": "codex",
+       "label": "Codex",
+       "color": "#e5e5ea",
+       "accounts": [
+        {
+         "key": "codex:work",
+         "driver": "codex",
+         "name": "Work",
+         "email": "",
+         "plan": "Plus",
+         "accent": null,
+         "note": null,
+         "credits": 0,
+         "checkedAt": "@now-60000ms",
+         "windows": [
+          {
+           "id": "session",
+           "kind": "session",
+           "label": "Session",
+           "used": 100,
+           "resetsAt": "@now+4200000ms",
+           "durationMins": 300
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    ]
+   ],
+   "kind": "worst"
+  },
+  {
    "id": "agents/context",
    "name": "agents",
    "panel": "AgentsPanel",

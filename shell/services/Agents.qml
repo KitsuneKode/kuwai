@@ -77,9 +77,34 @@ Singleton {
     readonly property var sessions: A.sessions(panes, T3Code.liveItems, hooks, { home: Quickshell.env("HOME") || "" })
     readonly property var desktop: sessions.filter(s => s.src === "desktop").map(s => s.hook)
     readonly property var tally: A.counts(sessions)
-    readonly property int doneKitty: (Kittymux.attention || []).filter(e => e.kind === "done").length
-    readonly property int doneDesktop: sessions.filter(s => s.src === "desktop" && s.state === "done").length
-    readonly property var head: A.headlineOf(sessions, doneKitty, T3Code.liveFinished, doneDesktop)
+    property real lookedAt: 0
+    property string lookedOn: ""
+    function look() {
+        lookedAt = Date.now();
+        lookedFile.setText(JSON.stringify({ at: lookedAt }));
+    }
+    FileView {
+        id: lookedFile
+        path: Paths.stateHome + "/kuwai/agents-looked.json"
+        printErrors: false
+        onLoaded: { try { const d = JSON.parse(text()); if (d && d.at > root.lookedAt) root.lookedAt = d.at; } catch (e) {} }
+    }
+    Connections {
+        target: Island
+        function onPanelChanged() {
+            if (Island.panel === "agents" || root.lookedOn === "agents") root.look();
+            root.lookedOn = Island.panel;
+        }
+    }
+    readonly property var t3DoneTimes: T3Code.alive ? T3Code.items.filter(i => i.status === "completed" || i.status === "failed").map(i => Date.parse(i.at) || 0) : []
+    readonly property int doneT3: {
+        const extra = Math.max(0, T3Code.liveFinished - t3DoneTimes.length);
+        const oldest = Math.min(...t3DoneTimes.filter(t => t > 0), Infinity);
+        return A.doneSince(t3DoneTimes, lookedAt) + (lookedAt < oldest ? extra : 0);
+    }
+    readonly property int doneKitty: A.doneSince((Kittymux.attention || []).filter(e => e.kind === "done").map(e => e.t || 0), lookedAt)
+    readonly property int doneDesktop: A.doneSince(sessions.filter(s => s.src === "desktop" && s.state === "done").map(s => s.t || 0), lookedAt)
+    readonly property var head: A.headlineOf(sessions, doneKitty, doneT3, doneDesktop)
     readonly property var next: A.targetOf(sessions)
     readonly property var items: A.ranked(sessions)
     readonly property int needN: tally.needs

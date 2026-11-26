@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { headline, limitedItems, target, merge, until, t3Agent, stateGlyph, stackMarks, providerId } from "../../shell/services/agents.mjs";
+import { headline, limitedItems, target, merge, until, t3Agent, stateGlyph, stackMarks, providerId, warm, backAt, doneSince } from "../../shell/services/agents.mjs";
 
 const now = Date.parse("2026-11-22T12:00:00Z");
 const pane = (o) => Object.assign({ key: "p", agent: "claude", state: "working", working: true, since: 0 }, o);
@@ -137,4 +137,39 @@ describe('one provider id whichever source names it', () => {
         expect(providerId('acpRegistry_devin')).toBe('devin');
         expect(providerId('Codex')).toBe('codex');
     });
+});
+
+describe("rows say more, quietly", () => {
+  const now = Date.parse("2026-11-26T12:00:00.000Z");
+  test("an idle thread whose prompt cache still holds", () => {
+    expect(warm("2026-11-26T12:03:10.000Z", now)).toBe("Cache warm 3 min");
+    expect(warm("2026-11-26T12:00:20.000Z", now)).toBe("Cache warm 1 min");
+    expect(warm("2026-11-26T11:59:00.000Z", now)).toBe("");
+    expect(warm("", now)).toBe("");
+    expect(warm(undefined, now)).toBe("");
+  });
+  test("a limited thread is back when its provider's soonest spent window resets", () => {
+    const w = (driver, level, resetsAt) => ({ provider: { driver }, level, window: { resetsAt } });
+    const windows = [w("claude", "exhausted", now + 7200000), w("claude", "exhausted", now + 3600000), w("claude", "ok", now + 60000),
+                     w("codex", "exhausted", now + 600000), w("claude", "exhausted", now - 1000)];
+    expect(backAt(windows, "claude", now)).toBe(now + 3600000);
+    expect(backAt(windows, providerId("claudeAgent_2"), now)).toBe(now + 3600000);
+    expect(backAt(windows, "grok", now)).toBe(0);
+    expect(backAt(null, "claude", now)).toBe(0);
+  });
+});
+
+describe("the ✓ counts until you've looked", () => {
+  const looked = Date.parse("2026-11-26T12:00:00.000Z");
+  test("only what finished after you last opened the Agents panel", () => {
+    expect(doneSince([looked - 60000, looked + 60000, looked + 120000], looked)).toBe(2);
+    expect(doneSince([looked / 1000 + 30, looked / 1000 - 30], looked)).toBe(1);
+  });
+  test("never looked: everything counts, an unknown time too", () => {
+    expect(doneSince([0, looked], 0)).toBe(2);
+  });
+  test("an unknown time doesn't keep the ✓ once you've looked", () => {
+    expect(doneSince([0, 0], looked)).toBe(0);
+    expect(doneSince([], looked)).toBe(0);
+  });
 });
