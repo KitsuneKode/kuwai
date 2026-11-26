@@ -145,11 +145,13 @@ Item {
 
                     Row {
                         id: stripRow
-                        height: parent.height
+                        y: (strips.height - masterStrip.height) / 2
+                        height: masterStrip.height
                         spacing: 6
                         Strip {
                             node: view.source
                             title: "Mic"
+                            input: true
                             glyph: "\u{f036c}"
                             // Orange means "recording now" (the island's dot too).
                             tint: Activities.micInUse ? Theme.orange : "white"
@@ -220,6 +222,7 @@ Item {
         property color tint: Theme.blue
         property string caption              // under the name: the device (Mic, Master)
         property bool routable: false        // app streams: which output, and a picker
+        property bool input: false
         readonly property var audio: node && node.audio ? node.audio : null
         // Where an app plays: the sink its links lead to.
         PwNodeLinkTracker { id: links; node: strip.routable ? strip.node : null }
@@ -242,7 +245,7 @@ Item {
             // Icon tile
             Rectangle {
                 anchors.horizontalCenter: parent.horizontalCenter
-                width: 32; height: 32; radius: 10
+                width: Theme.sp(32); height: width; radius: 10
                 color: Qt.alpha(strip.tint, 0.20)
                 border.width: 1
                 border.color: Qt.alpha(strip.tint, 0.28)
@@ -260,7 +263,7 @@ Item {
                     visible: !(strip.icon !== "" && appImg.status === Image.Ready)
                     text: strip.glyph
                     font.family: Theme.fontGlyph
-                    font.pixelSize: 15
+                    font.pixelSize: Theme.sp(15)
                     color: strip.tint
                 }
             }
@@ -370,7 +373,7 @@ Item {
                 Text {
                     textFormat: Text.PlainText
                     anchors.centerIn: parent
-                    readonly property bool input: !!strip.node && !strip.node.isSink && !strip.node.isStream
+                    readonly property bool input: strip.input || (!!strip.node && !strip.node.isSink && !strip.node.isStream)
                     text: input ? (strip.muted ? "\u{f036d}" : "\u{f036c}") : (strip.muted ? "\u{f0581}" : "\u{f057e}")
                     font.family: Theme.fontGlyph
                     font.pixelSize: Theme.sp(Theme.glyphS)

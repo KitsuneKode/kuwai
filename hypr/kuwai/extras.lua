@@ -364,8 +364,10 @@ local function kuwai_pip_screen()
 	pip.dodged[tostring(w.address)] = pip.tick
 	place(w, c[1], c[2])
 end
+K.group("Windows")
 bind("SUPER + ALT + W", "Picture-in-picture: next corner", kuwai_pip_corner)
 bind("SUPER + ALT + SHIFT + W", "Picture-in-picture: the other screen", kuwai_pip_screen)
+K.group(nil)
 
 _G.kuwai = _G.kuwai or {}
 if K.feature("focus_sessions") then
