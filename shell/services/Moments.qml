@@ -48,6 +48,10 @@ Singleton {
         if (Notifs.fullscreenNow && !asks && ambient.indexOf(m.kind) >= 0) return false;
         return true;
     }
+    IpcHandler {
+        target: "moment"
+        function say(text: string): void { root.show({ kind: "note", glyph: "\u{f0e09}", label: String(text).slice(0, 80), value: "", ring: -1, tone: Theme.textPrimary }, 1600); }
+    }
     function show(m, ms) {
         if (!allowed(m)) return;
         // Answered while it waited in the queue: not shown again.

@@ -1,0 +1,103 @@
+#!/usr/bin/env python3
+"""Step through wallpapers, live wallpapers and screensaver styles from a key.
+
+  kuwai-wallstep still|live|saver next|prev
+
+still: the current theme's wallpapers (HyDE's, else the folder of the one you
+have), played with the shell's transition and applied the way the Themes panel
+does. live: the live-wallpaper library, in play order. saver: the screensaver
+styles. Each says where it landed in the island.
+"""
+import json
+import os
+import subprocess
+import sys
+
+BIN = os.path.dirname(os.path.realpath(__file__))
+SHELL = os.path.join(os.path.dirname(BIN), "shell")
+STATE = os.path.join(os.environ.get("XDG_STATE_HOME") or os.path.expanduser("~/.local/state"), "kuwai")
+STYLES = ["dusk", "borealis", "night", "live", "still"]
+PICTURES = (".jpg", ".jpeg", ".png", ".webp")
+
+
+def run(cmd, **kw):
+    return subprocess.run(cmd, capture_output=True, text=True, timeout=30, **kw)
+
+
+def ipc(*args):
+    return run(["qs", "ipc", "-p", SHELL, "call", *args])
+
+
+def say(text):
+    ipc("moment", "say", text)
+
+
+def turn(items, current, step):
+    if not items:
+        return None
+    i = items.index(current) if current in items else (-1 if step > 0 else 0)
+    return items[(i + step) % len(items)]
+
+
+def still(step):
+    hyde = run([os.path.join(BIN, "kuwai-themes"), "list"])
+    walls, cur = [], ""
+    try:
+        d = json.loads(hyde.stdout)
+        if d.get("hyde"):
+            walls = [w["path"] for w in d.get("wallpapers", [])]
+            cur = next((w["path"] for w in d.get("wallpapers", []) if w.get("current")), "")
+    except (ValueError, KeyError, TypeError):
+        pass
+    if not walls:
+        cur = os.path.realpath(os.path.join(STATE, "wallpaper"))
+        folder = os.path.dirname(cur)
+        if not os.path.isdir(folder):
+            say("No wallpapers to step through")
+            return 1
+        walls = sorted(os.path.join(folder, f) for f in os.listdir(folder) if f.lower().endswith(PICTURES))
+        d = {"hyde": False}
+    pick = turn(walls, cur, step)
+    if not pick or pick == cur:
+        say("Only one wallpaper here")
+        return 0
+    ipc("wallfx", "play", pick)
+    env = dict(os.environ, WALLPAPER_AWWW_TRANSITION_DEFAULT="none")
+    tool = [os.path.join(BIN, "kuwai-themes"), "wallpaper", pick, "--wait"] if d.get("hyde") else [os.path.join(BIN, "kuwai-look"), "set-wallpaper", pick]
+    subprocess.Popen(tool, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+    return 0
+
+
+def live(step):
+    names = run([os.path.join(BIN, "kuwai-wall"), "list"]).stdout.split()
+    try:
+        last = os.path.basename(open(os.path.expanduser("~/.local/state/live-wallpaper/last")).read().strip())
+    except OSError:
+        last = ""
+    pick = turn(names, last, step)
+    if not pick:
+        say("No live wallpapers yet")
+        return 1
+    run([os.path.join(BIN, "kuwai-wall"), "play", pick])
+    say("Live wallpaper: " + os.path.splitext(pick)[0].split("-", 1)[-1].replace("-", " "))
+    return 0
+
+
+def saver(step):
+    cur = run([os.path.join(BIN, "kuwai"), "get", "screensaverStyle"]).stdout.strip() or "dusk"
+    pick = turn(STYLES, cur, step)
+    run([os.path.join(BIN, "kuwai"), "set", "screensaverStyle", pick])
+    say("Screensaver: " + pick.capitalize())
+    return 0
+
+
+def main(argv):
+    if len(argv) != 2 or argv[0] not in ("still", "live", "saver") or argv[1] not in ("next", "prev"):
+        print(__doc__.strip(), file=sys.stderr)
+        return 2
+    step = 1 if argv[1] == "next" else -1
+    return {"still": still, "live": live, "saver": saver}[argv[0]](step)
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
