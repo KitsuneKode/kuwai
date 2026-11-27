@@ -1,0 +1,60 @@
+#!/usr/bin/env python3
+"""kuwai-icons resolve NAME... — find icons Qt's frozen theme scan can't know.
+
+Qt scans icon themes once per process, so an app installed after the shell
+started has no theme icon until a restart. This probes the files directly:
+for each name, $XDG_DATA_HOME then each $XDG_DATA_DIRS entry (first base that
+has the icon wins), hicolor's scalable svg then fixed pngs largest first,
+then pixmaps. Prints NAME<TAB>path for each name found. Names off the
+freedesktop character set, and files whose realpath leaves the directory
+searched (a planted symlink), are never printed.
+"""
+import os
+import re
+import sys
+
+NAME = re.compile(r"^[A-Za-z0-9._+-]{1,128}$")
+SIZES = ("512x512", "256x256", "128x128", "96x96", "72x72", "64x64", "48x48", "36x36", "32x32", "24x24", "22x22", "16x16")
+
+
+def bases():
+    home = os.environ.get("XDG_DATA_HOME") or os.path.expanduser("~/.local/share")
+    dirs = (os.environ.get("XDG_DATA_DIRS") or "/usr/local/share:/usr/share").split(":")
+    return [home] + [d for d in dirs if d]
+
+
+def regular_under(path, directory):
+    if not os.path.isfile(path):
+        return ""
+    real = os.path.realpath(path)
+    root = os.path.realpath(directory)
+    return real if real.startswith(root + os.sep) else ""
+
+
+def resolve(name):
+    for base in bases():
+        hicolor = os.path.join(base, "icons", "hicolor")
+        spots = [(os.path.join(hicolor, "scalable", "apps"), name + ".svg")]
+        spots += [(os.path.join(hicolor, size, "apps"), name + ".png") for size in SIZES]
+        spots += [(os.path.join(base, "pixmaps"), name + "." + ext) for ext in ("svg", "png")]
+        for directory, filename in spots:
+            hit = regular_under(os.path.join(directory, filename), directory)
+            if hit:
+                return hit
+    return ""
+
+
+def main(argv):
+    if len(argv) < 2 or argv[1] != "resolve":
+        print(__doc__.strip().splitlines()[0], file=sys.stderr)
+        return 2
+    for name in argv[2:]:
+        if NAME.match(name):
+            hit = resolve(name)
+            if hit:
+                print(name + "\t" + hit)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))
