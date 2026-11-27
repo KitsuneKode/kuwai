@@ -11252,7 +11252,7 @@
    }
   },
   {
-   "id": "agents/servers",
+   "id": "agents/servers-busy",
    "name": "agents",
    "panel": "AgentsPanel",
    "set": [
