@@ -68,7 +68,8 @@ GPGV = "/usr/bin/gpgv"
 TAG_MAX = 1 << 16
 FILE_MAX = 1 << 28
 ROOT_ENV = {"PATH": "/usr/bin:/bin", "LC_ALL": "C"}
-GIT_SAFE = ["-c", "core.hooksPath=/dev/null", "-c", "core.fsmonitor=false", "-c", "gpg.format=openpgp",
+GIT_SAFE = ["-c", "core.hooksPath=/dev/null", "-c", "core.fsmonitor=false", "-c", "core.attributesFile=/dev/null",
+            "-c", "gpg.format=openpgp",
             "-c", "gpg.program=gpg", "-c", "protocol.ext.allow=never", "-c", "advice.detachedHead=false"]
 PIECES = {"update-helper", "auth-prompt"}
 

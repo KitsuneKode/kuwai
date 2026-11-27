@@ -21,6 +21,9 @@ Tagging a release
     d=$(bin/kuwai-verify manifest-rev . HEAD)
     git -c gpg.format=openpgp tag -s -u FINGERPRINT -m "kuwai X.Y.Z" -m "kuwai-tree-sha256 $d" vX.Y.Z HEAD
   then checks the tag the way an install will, and deletes it if that fails.
+  It refuses while a .gitattributes (or .git/info/attributes) marks anything
+  export-ignore or export-subst: git archive would then give other files than
+  a checkout, and every install of that tag would be refused.
   The kuwai-tree-sha256 line is the digest of every file in the tree (path,
   executable bit, content, link target): root checks its copy against it without
   git. A tag made by plain `git tag -s` has no such line and is refused.

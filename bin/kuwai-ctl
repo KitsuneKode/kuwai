@@ -395,6 +395,13 @@ case ${1:-} in
             echo "kuwai: ${key:-none of your secret keys} isn't in release-signers at HEAD; a tag it signs would be refused" >&2
             exit 1
         fi
+        attrs=$(git -C "$dev" rev-parse --path-format=absolute --git-path info/attributes)
+        if marked=$(git -C "$dev" grep -ohE 'export-(ignore|subst)' HEAD -- ':(glob)**/.gitattributes' 2>/dev/null \
+                     || grep -ohsE 'export-(ignore|subst)' -- "$attrs"); then
+            rm -rf -- "$keys"
+            echo "kuwai: an attributes file marks files $(sort -u <<<"$marked" | paste -sd/), so git archive (what a release's digest is taken from) wouldn't give the files a checkout does; remove those attributes first" >&2
+            exit 1
+        fi
         if ! digest=$("${verify[@]}" manifest-rev "$dev" HEAD); then rm -rf -- "$keys"; exit 1; fi
         if ! git -C "$dev" -c gpg.format=openpgp tag -s -u "$key" -m "kuwai ${v#v}" -m "kuwai-tree-sha256 $digest" "$v" HEAD; then
             rm -rf -- "$keys"; exit 1

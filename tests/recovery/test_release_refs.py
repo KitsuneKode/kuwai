@@ -309,6 +309,22 @@ def test_kuwai_release_signs_with_the_listed_key_and_nothing_else(tmp_path, rele
     assert v.returncode == 0 and k.mine in v.stdout, v.stderr
 
 
+@pytest.mark.parametrize("where, attr", [(".gitattributes", "export-ignore"), ("hypr/.gitattributes", "export-subst"),
+                                         (".git/info/attributes", "export-ignore")])
+def test_kuwai_release_refuses_attributes_that_make_an_archive_differ_from_a_checkout(tmp_path, release_keys, where, attr):
+    k = release_keys
+    env, dev, stable, a, b = make_world(tmp_path)
+    env = {**env, "GNUPGHOME": k.home}
+    k.signers(dev / "release-signers", k.mine)
+    (dev / where).parent.mkdir(parents=True, exist_ok=True)
+    (dev / where).write_text(f"hypr/extra.lua {attr}\n")
+    git(dev, "add", "-A")
+    git(dev, "commit", "-qm", "attributes")
+    r = ctl(env, "release", "v1.0.0")
+    assert r.returncode != 0 and attr in r.stderr, r.stderr
+    assert git(dev, "tag", "-l", "v1.0.0") == ""
+
+
 def test_kuwai_release_refuses_while_release_signers_holds_no_key(tmp_path, release_keys):
     env, dev, stable, a, b = make_world(tmp_path)
     r = ctl({**env, "GNUPGHOME": release_keys.home}, "release", "v1.0.0")
