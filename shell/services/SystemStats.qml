@@ -27,6 +27,7 @@ Singleton {
     property real swapUsed: 0
     property int cpuTemp: 0              // °C
     property int gpuTemp: 0
+    property string gpuVendor: ""
     property var fans: []                // rpm
     property string gpuState: ""         // active | suspended | "" (no NVIDIA GPU)
     property real gpu: 0                 // 0–1
@@ -47,6 +48,7 @@ Singleton {
     property var frame: []
 
     function commit(lines) {
+        gpuTemp = 0;
         const next = {};
         const cores = [];
         for (const l of lines) {
@@ -66,13 +68,15 @@ Singleton {
             else if (f[0] === "SwapFree:") swapUsed = root._swapTotal - Number(f[1]) * 1024;
             else if (f[0] === "temps") {
                 cpuTemp = Math.round(Number(f[1] || 0) / 1000);
-                gpuTemp = Math.round(Number(f[2] || 0) / 1000);
+                if (Number(f[2]) > 0) gpuTemp = Math.round(Number(f[2]) / 1000);
                 fans = f.slice(3).map(Number).filter(n => !isNaN(n));
             } else if (f[0] === "gpustate") gpuState = f[1] || "";
+            else if (f[0] === "gpuvendor") gpuVendor = f[1] || "";
             else if (f[0] === "gputemp" && Number(f[1]) > 0) gpuTemp = Math.round(Number(f[1]) / 1000);
             else if (f[0] === "gpu") {
                 const g = l.slice(4).split(",").map(s => Number(s.trim()));
                 gpu = (g[0] || 0) / 100; gpuMemUsed = g[1] || 0; gpuMemTotal = g[2] || 0; gpuPower = g[3] || 0;
+                if (g[4] > 0) gpuTemp = Math.round(g[4]);
             } else if (f[0] === "load") load = f.slice(1).join(" ");
             else if (f[0] === "freq") coreMHz = f.slice(1).map(n => Math.round(Number(n) / 1000));
             else if (f[0] === "kinds" && f[1]) pThreads = ranges(f[1]);
@@ -91,19 +95,19 @@ Singleton {
         running: root.watchers > 0
         // Dies with the shell (a kill -9 while a panel showed left it looping).
         command: ["setpriv", "--pdeathsig", "KILL", "--", "sh", "-c", `
-            hw=; for name in legion_hwmon k10temp coretemp zenpower; do for h in /sys/class/hwmon/*; do [ "$(cat "$h/name" 2>/dev/null)" = "$name" ] && [ -r "$h/temp1_input" ] && { hw=$h; break 2; }; done; done
+            hw=; hn=; for name in legion_hwmon k10temp coretemp zenpower; do for h in /sys/class/hwmon/*; do [ "$(cat "$h/name" 2>/dev/null)" = "$name" ] && [ -r "$h/temp1_input" ] && { hw=$h; hn=$name; break 2; }; done; done
             gs=; for d in /sys/bus/pci/drivers/nvidia/0000:*; do [ -e "$d/power/runtime_status" ] && gs=$d/power/runtime_status; done
             amd=; [ -z "$gs" ] && for c in /sys/class/drm/card[0-9]*; do [ -r "$c/device/gpu_busy_percent" ] && { amd=$c/device; break; }; done
             while :; do
                 echo @
                 grep '^cpu' /proc/stat
                 grep -E '^(MemTotal|MemAvailable|SwapTotal|SwapFree):' /proc/meminfo
-                [ -n "$hw" ] && echo "temps $(cat "$hw/temp1_input" "$hw/temp2_input" "$hw"/fan*_input 2>/dev/null | tr '\\n' ' ')"
+                if [ -n "$hw" ]; then t2=0; [ "$hn" = legion_hwmon ] && t2=$(cat "$hw/temp2_input" 2>/dev/null || echo 0); echo "temps $(cat "$hw/temp1_input") $t2 $(cat "$hw"/fan*_input 2>/dev/null | tr '\\n' ' ')"; fi
                 if [ -n "$gs" ]; then
-                    read -r st < "$gs"; echo "gpustate $st"
-                    [ "$st" = active ] && echo "gpu $(nvidia-smi --query-gpu=utilization.gpu,memory.used,memory.total,power.draw --format=csv,noheader,nounits 2>/dev/null | head -1)"
+                    read -r st < "$gs"; echo "gpustate $st"; echo "gpuvendor nvidia"
+                    [ "$st" = active ] && echo "gpu $(nvidia-smi --query-gpu=utilization.gpu,memory.used,memory.total,power.draw,temperature.gpu --format=csv,noheader,nounits 2>/dev/null | head -1)"
                 elif [ -n "$amd" ]; then
-                    st=active; [ -r "$amd/power/runtime_status" ] && read -r st < "$amd/power/runtime_status"; echo "gpustate $st"
+                    st=active; [ -r "$amd/power/runtime_status" ] && read -r st < "$amd/power/runtime_status"; echo "gpustate $st"; echo "gpuvendor amd"
                     if [ "$st" = active ]; then
                         read -r u < "$amd/gpu_busy_percent"; mu=$(cat "$amd/mem_info_vram_used" 2>/dev/null || echo 0); mt=$(cat "$amd/mem_info_vram_total" 2>/dev/null || echo 0)
                         pw=$(cat "$amd"/hwmon/hwmon*/power1_average "$amd"/hwmon/hwmon*/power1_input 2>/dev/null | head -n 1)

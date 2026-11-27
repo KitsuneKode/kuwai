@@ -171,8 +171,11 @@ Singleton {
         const verdict = Triage.triage({ app: n.appName, summary: n.summary, body: n.body, urgency: n.urgency, transient: n.transient,
                                         desktopEntry: n.desktopEntry, hints: n.hints, actions: (n.actions || []).map(x => ({ identifier: x.identifier })) }, focused);
         if (verdict === "drop") { n.dismiss(); return; }
-        const twin = a.groupKey ? items.find(i => i.groupKey === a.groupKey && i.popup && !i.leaving) : null;
+        const fleeting = !!n.transient || verdict === "toast";
+        const near = a.groupKey ? items.find(i => i.groupKey === a.groupKey && i.popup && !i.leaving) : null;
+        const twin = near && !(fleeting && !near.fleeting) ? near : null;
         if (twin) {
+            twin.fleeting = fleeting;
             twin.absorb(n, a);
             save();
             return;
@@ -189,7 +192,7 @@ Singleton {
         // does a quiet one (a bot's pull request, say).
         item.popup = toastsFor(item);
         if (n.transient && !item.popup) { n.dismiss(); item.destroy(); return; }
-        item.fleeting = !!n.transient || verdict === "toast";
+        item.fleeting = fleeting;
         if (verdict === "toast" && !item.popup) { n.dismiss(); item.destroy(); return; }
         // One app, one toast: a burst (14 meeting reminders) replaces its own
         // toast on screen instead of pushing everyone else's off. The earlier

@@ -206,18 +206,19 @@ installed() { [ $DRY = 1 ] || ORIG installed "$1"; }
 
 stage() {
     local link=$1 src=$2 dst=$3 tmp
-    mkdir -p "$(dirname "$dst")"
+    mkdir -p "$(dirname "$dst")" || return 1
     if [ "$link" = 1 ]; then
-        tmp=$(mktemp -u "$(dirname "$dst")/.$(basename "$dst").XXXXXX")
-        ln -s "$src" "$tmp"
+        tmp=$(mktemp -u "$(dirname "$dst")/.$(basename "$dst").XXXXXX") || return 1
+        ln -s "$src" "$tmp" || return 1
     else
-        tmp=$(mktemp "$(dirname "$dst")/.$(basename "$dst").XXXXXX")
-        cp -- "$src" "$tmp"
-        chmod --reference="$src" "$tmp"
+        tmp=$(mktemp "$(dirname "$dst")/.$(basename "$dst").XXXXXX") || return 1
+        cp -- "$src" "$tmp" && chmod --reference="$src" "$tmp" || { rm -f -- "$tmp"; return 1; }
     fi
     if [ "${4:-}" = new ]; then mv -nT -- "$tmp" "$dst"; rm -f -- "$tmp"
-    else mv -fT -- "$tmp" "$dst"; fi
+    else mv -fT -- "$tmp" "$dst" || { rm -f -- "$tmp"; return 1; }; fi
 }
+
+stop_install() { printf '  ✗ %s\n' "$*" >&2; exit 1; }
 
 create() {
     local dst=$1 tmp
@@ -232,14 +233,14 @@ place() {
     local link=0; [ "$1" = -s ] && { link=1; shift; }
     local src=$1 dst=$2
     if [ $DRY = 1 ]; then printf '  would: %s %s → %s\n' "$([ $link = 1 ] && echo link || echo copy)" "$src" "$dst"; return; fi
-    remember "$dst"
+    remember "$dst" || stop_install "couldn't back up $dst first, so it wasn't replaced; nothing after it was installed"
     if ORIG edited "$dst"; then
-        stage "$link" "$src" "$dst.kuwai-new"
+        stage "$link" "$src" "$dst.kuwai-new" || stop_install "couldn't write $dst.kuwai-new"
         warn "you changed $dst since kuwai installed it: kept yours; the new one is $dst.kuwai-new"
         return 1
     fi
-    stage "$link" "$src" "$dst"
-    installed "$dst"
+    stage "$link" "$src" "$dst" || stop_install "couldn't write $dst (your original is backed up)"
+    installed "$dst" || stop_install "couldn't record $dst as kuwai's (your original is backed up)"
 }
 
 KDIR=$CFG/kuwai/hypr

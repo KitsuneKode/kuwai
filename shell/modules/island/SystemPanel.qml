@@ -209,7 +209,7 @@ FocusScope {
             width: sys.hasIntel ? (parent.width - parent.spacing) / 2 : parent.width
             visible: sys.hasNvidia
             Meter {
-                title: "NVIDIA GPU" + (SystemStats.gpuTemp ? "  ·  " + SystemStats.gpuTemp + "°" : "") + (SystemStats.gpuPower ? "  ·  " + Math.round(SystemStats.gpuPower) + " W" : "")
+                title: (SystemStats.gpuVendor === "amd" ? "AMD GPU" : "NVIDIA GPU") + (SystemStats.gpuTemp ? "  ·  " + SystemStats.gpuTemp + "°" : "") + (SystemStats.gpuPower ? "  ·  " + Math.round(SystemStats.gpuPower) + " W" : "")
                 value: SystemStats.gpuState === "suspended" ? 0 : SystemStats.gpu
                 big: SystemStats.gpuState === "suspended" ? "Asleep" : Math.round(SystemStats.gpu * 100) + "%"
                 detail: SystemStats.gpuState === "suspended" ? "Powered down: nothing is using it"

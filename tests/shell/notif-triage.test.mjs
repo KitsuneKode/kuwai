@@ -78,3 +78,9 @@ test("a toast-only notification is never written to the history file", async () 
     const items = [{ id: 1, discard: false, fleeting: true }, { id: 2, discard: false }];
     expect(persisted(items, [], null, null).map(i => i.id)).toEqual([2]);
 });
+
+test("a fleeting update never takes over a kept card, and a kept one makes its card kept", () => {
+    const src = require("node:fs").readFileSync(new URL("../../shell/services/Notifs.qml", import.meta.url), "utf8");
+    expect(src).toContain("const twin = near && !(fleeting && !near.fleeting) ? near : null;");
+    expect(src).toContain("twin.fleeting = fleeting;");
+});
