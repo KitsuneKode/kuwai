@@ -1,5 +1,6 @@
 """kuwai-setup installs only a release signed by a key in release-signers, whose every file is the
 signed one, and runs nothing from it before both are checked."""
+import hashlib
 import json
 import os
 import shutil
@@ -117,6 +118,32 @@ def test_an_ssh_signed_tag_is_refused_plainly(tmp_path, release_keys):
           "-m", f"kuwai-tree-sha256 {k.digest(repo, 'HEAD')}", "v1.0.0")
     r = verify("tag", repo, "v1.0.0", "--signers", k.signers(tmp_path / "signers", k.mine))
     assert r.returncode == 1 and "SSH key" in r.stderr
+
+
+def test_a_name_with_a_newline_cant_stand_for_two_files(tmp_path, release_keys):
+    full, short = tmp_path / "full", tmp_path / "short"
+    full.mkdir()
+    short.mkdir()
+    (full / "a").write_bytes(b"one\n")
+    (full / "b").write_bytes(b"two\n")
+    (short / f"a\nf {hashlib.sha256(b'two' + chr(10).encode()).hexdigest()} b").write_bytes(b"one\n")
+    good = verify("manifest", full)
+    assert good.returncode == 0, good.stderr
+    r = verify("manifest", short)
+    assert r.returncode == 1 and "control character" in r.stderr, f"one file hashed as two: {r.stdout.strip()} == {good.stdout.strip()}"
+    for name in ("tab\there", "esc\x1bhere", "del\x7fhere"):
+        odd = tmp_path / f"odd-{len(name)}-{ord(name[3])}"
+        odd.mkdir()
+        (odd / name).write_text("x\n")
+        r = verify("manifest", odd)
+        assert r.returncode == 1 and "control character" in r.stderr, name
+    k = release_keys
+    repo = source_repo(tmp_path, k)
+    (repo / "two\nlines").write_text("x\n")
+    k.git(repo, "add", "-A")
+    k.git(repo, "commit", "-qm", "odd")
+    r = verify("manifest-rev", repo, "HEAD")
+    assert r.returncode == 1 and "control character" in r.stderr
 
 
 def setup_dir(tmp_path, keys, *fprs):

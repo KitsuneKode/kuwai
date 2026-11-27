@@ -1,6 +1,7 @@
 """Root installs only from its own copy of a signed release, checked by root again: against the
 fingerprints root keeps, file by file, after the copy is root's. Run under KUWAI_SYSROOT, a
 stand-in / owned by the test user, who stands in for root."""
+import hashlib
 import json
 import os
 import shutil
@@ -127,6 +128,27 @@ def test_root_needs_a_fingerprint_the_first_time_and_takes_no_new_one_later(worl
     r = install(sysroot, stage, info)
     assert r.returncode == 1 and "older than root's v1.1.0" in r.stderr
     assert os.readlink(lib / "current") == "releases/v1.1.0"
+
+
+def test_a_copy_missing_files_behind_a_name_with_a_newline_is_refused(tmp_path, release_keys):
+    k = release_keys
+    repo = make_repo(tmp_path / "src", k, [k.mine])
+    (repo / "a").write_bytes(b"one\n")
+    (repo / "b").write_bytes(b"two\n")
+    k.git(repo, "add", "-A")
+    k.git(repo, "commit", "-qm", "two files")
+    k.release(repo, "v1.0.0")
+    stage = tmp_path / "cache/v1.0.0"
+    info = fetch(k, repo, "v1.0.0", stage)
+    (stage / "a").unlink()
+    (stage / "b").unlink()
+    (stage / f"a\nf {hashlib.sha256(b'two' + chr(10).encode()).hexdigest()} b").write_bytes(b"one\n")
+    sysroot = tmp_path / "sys"
+    sysroot.mkdir()
+    lib = sysroot / "usr/local/lib/kuwai"
+    r = install(sysroot, stage, info, signers=[k.mine])
+    assert r.returncode == 1 and "control character" in r.stderr, "root took a copy missing a and b"
+    assert nothing_installed(lib)
 
 
 @pytest.mark.parametrize("change", ["edit", "add", "writable"])

@@ -94,6 +94,8 @@ def file_sha256(path):
 def digest_of(entries):
     h = hashlib.sha256()
     for path, kind, sha in sorted(entries):
+        if any(c < 0x20 or c == 0x7f for c in path):
+            raise Refused(f"a name in the release has a control character in it: {os.fsdecode(path)!r}")
         h.update(kind.encode() + b" " + sha.encode() + b" " + path + b"\n")
     return h.hexdigest()
 
