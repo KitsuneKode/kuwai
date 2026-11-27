@@ -614,7 +614,8 @@ Singleton {
     // scale and stagger go. On when you switch it on (Controls → Reduce
     // Motion, remembered in ~/.local/state/kuwai/prefs.json), when
     // KUWAI_REDUCE_MOTION=1, or when Hyprland's own animations are off.
-    readonly property bool reduceMotion: prefs.reduceMotion || envReduce || hyprStill
+    readonly property bool inGreeter: (Quickshell.env("KUWAI_GREETER_USER") || "") !== ""
+    readonly property bool reduceMotion: prefs.reduceMotion || envReduce || (hyprStill && !inGreeter)
     readonly property bool userReduce: prefs.reduceMotion
     readonly property bool envReduce: Quickshell.env("KUWAI_REDUCE_MOTION") === "1"
     property bool hyprStill: false

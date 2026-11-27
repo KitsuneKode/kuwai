@@ -136,7 +136,7 @@ layer({ name = "xray-default", match = { namespace = "negative:^(glass-osd|kuwai
 layer({ name = "kuwai-glass", match = { namespace = "^kuwai-.*$" }, blur = true, ignore_alpha = 0.3, xray = false, no_anim = true })
 layer({ name = "kuwai-island-shape", match = { namespace = "^kuwai-(island|islandbar|osd|auth)$" }, ignore_alpha = 0.75 })
 layer({ name = "kuwai-toasts", match = { namespace = "^kuwai-notifs$" }, ignore_alpha = 0.7 })
-layer({ name = "kuwai-saver", match = { namespace = "^kuwai\\.(screensaver|saver-film|fade)$" }, no_anim = true })
+layer({ name = "kuwai-saver", match = { namespace = "^kuwai\\.(screensaver|saver-film|fade|goodbye|unlock)$" }, no_anim = true })
 layer({ name = "kuwai-wallpaper", match = { namespace = "^kuwai\\.wallpaper$" }, no_anim = true })
 layer({ name = "kuwai-wallfx", match = { namespace = "^kuwai\\.wallfx$" }, no_anim = true })
 layer({ name = "kuwai-auth-private", match = { namespace = "^kuwai-auth$" }, no_screen_share = true })

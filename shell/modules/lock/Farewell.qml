@@ -57,7 +57,20 @@ Item {
     NumberAnimation { id: back; target: bye; properties: "tIn,tMark,tOut"; to: 0; duration: Theme.settleMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
 
     // The room going dark.
-    Rectangle { anchors.fill: parent; color: "black"; opacity: Math.max(bye.tIn * 0.82, bye.tOut) }
+    Rectangle { anchors.fill: parent; color: "black"; opacity: Math.max(bye.tIn * 0.82, bye.tOut); visible: Theme.reduceMotion }
+    ShaderEffect {
+        anchors.fill: parent
+        visible: !Theme.reduceMotion && (bye.kind !== "" || bye.tIn > 0)
+        property color accent: Theme.accent
+        property color coolTint: Theme.indigo
+        property vector2d size: Qt.vector2d(width, height)
+        property vector2d center: Qt.vector2d(width / 2, height / 2 - Theme.sp(30))
+        property real mode: ({ poweroff: 0, reboot: 1, suspend: 2, logout: 3 })[bye.kind] ?? 0
+        property real tIn: bye.tIn
+        property real tMark: bye.tMark
+        property real tOut: bye.tOut
+        fragmentShader: Qt.resolvedUrl("../../shaders/farewell.frag.qsb")
+    }
     MouseArea { anchors.fill: parent; enabled: bye.kind !== ""; hoverEnabled: true }
 
     Column {
