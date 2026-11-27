@@ -62,12 +62,13 @@ Singleton {
         }
         // Stream callbacks from a cancelled transition can still arrive.
         // Allow the next wallpaper through immediately while they drain.
-        if (query.running || check.running || mapLookup.running || Theme.reduceMotion) { start(); return; }
+        if (liveProbe.running || query.running || check.running || mapLookup.running || Theme.reduceMotion) { start(); return; }
         next = path; startFn = start; ready = 0; t = 0; before = ({}); known = false;
         startedAt = Date.now();
         mapPath = ""; seed = Math.random() * 100;
         phase = "loading";
-        query.running = true;
+        liveThumb = "";
+        liveProbe.running = true;
         mapLookup.command = [Paths.bin + "/kuwai-wallmap", "--cached", path];
         mapLookup.running = true;
         loadLimit.restart();
@@ -96,6 +97,13 @@ Singleton {
         }
         return m;
     }
+    property string liveThumb: ""
+    Process {
+        id: liveProbe
+        command: ["sh", "-c", 's="${XDG_STATE_HOME:-$HOME/.local/state}/live-wallpaper"; [ -f "$s/enabled" ] && pgrep -x mpvpaper >/dev/null || exit 1; f=$(basename "$(cat "$s/last")"); t="${XDG_CACHE_HOME:-$HOME/.cache}/kuwai/live-thumbs/${f%.*}.jpg"; [ -s "$t" ] && printf %s "$t"']
+        stdout: StdioCollector { onStreamFinished: root.liveThumb = text.trim() }
+        onExited: if (root.phase === "loading") query.running = true
+    }
     Process {
         id: query
         command: ["awww", "query"]
@@ -104,6 +112,7 @@ Singleton {
                 if (root.phase !== "loading") return;
                 const m = root.parse(text);
                 if (!Object.keys(m).length) { if (root.phase === "loading") root.bail("awww shows nothing"); return; }
+                if (root.liveThumb) for (const k in m) m[k] = root.liveThumb;
                 root.before = m;
                 root.known = true;
             }
@@ -139,6 +148,7 @@ Singleton {
         id: handOff
         interval: 50
         onTriggered: {
+            if (root.liveThumb) Quickshell.execDetached([Paths.bin + "/kuwai-wall", "off"]);
             if (root.startFn) root.startFn();
             root.startFn = null;
             beginReveal.restart();
@@ -187,7 +197,8 @@ Singleton {
     IpcHandler {
         target: "wallfx"
         function play(path: string): void {
-            root.play(path, () => Quickshell.execDetached(["env", "WALLPAPER_AWWW_TRANSITION_DEFAULT=none", Paths.bin + "/kuwai-themes", "wallpaper", path]));
+            root.play(path, () => Quickshell.execDetached(Hyde.present ? ["env", "WALLPAPER_AWWW_TRANSITION_DEFAULT=none", Paths.bin + "/kuwai-themes", "wallpaper", path]
+                                                                      : [Paths.bin + "/kuwai-look", "set-wallpaper", path]));
         }
         function stats(): string { return JSON.stringify({ phase: root.phase, lastRun: root.lastRun }); }
     }

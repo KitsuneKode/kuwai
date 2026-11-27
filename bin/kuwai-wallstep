@@ -60,10 +60,9 @@ def still(step):
     if not pick or pick == cur:
         say("Only one wallpaper here")
         return 0
-    ipc("wallfx", "play", pick)
-    env = dict(os.environ, WALLPAPER_AWWW_TRANSITION_DEFAULT="none")
-    tool = [os.path.join(BIN, "kuwai-themes"), "wallpaper", pick, "--wait"] if themed else [os.path.join(BIN, "kuwai-look"), "set-wallpaper", pick]
-    subprocess.Popen(tool, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+    if ipc("wallfx", "play", pick).returncode != 0:
+        tool = [os.path.join(BIN, "kuwai-themes"), "wallpaper", pick] if themed else [os.path.join(BIN, "kuwai-look"), "set-wallpaper", pick]
+        subprocess.Popen(tool, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
     return 0
 
 
