@@ -9,7 +9,7 @@ local function run(state, keys)
     }
     local files = { ['/run/voxtype/state'] = state, ['/run/kuwai/keys'] = keys }
     package.loaded['kuwai.core'] = {
-        home = '/fixture', runtime = '/run', voxtype_scripts = '/s/',
+        home = '/fixture', runtime = '/run', voxtype_scripts = '/s/', bin = '/kuwai/bin',
         has = function() return true end,
         exists = function() return true end,
         read_line = function(path) return files[path] end,
