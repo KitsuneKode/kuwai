@@ -232,15 +232,18 @@ def signer_of(status, trusted):
                 raise Refused("the release tag is signed with a hash too weak to trust")
             valid.append((parts[11] if len(parts) > 11 else parts[2]).upper())
     if "NO_PUBKEY" in seen:
-        raise Refused("the release tag is signed by a key that isn't a kuwai release key")
+        raise Refused(f"the release tag is signed by a key that isn't a kuwai release key; {KEY_CHANGED}")
     if seen & BAD_STATUS:
         raise Refused("the release tag's signature doesn't check out")
     for fpr in valid:
         if fpr in trusted:
             return fpr
     if valid:
-        raise Refused(f"the release tag is signed by a key that isn't a kuwai release key ({valid[0]})")
+        raise Refused(f"the release tag is signed by a key that isn't a kuwai release key ({valid[0]}); {KEY_CHANGED}")
     raise Refused("the release tag isn't signed by a kuwai release key")
+
+
+KEY_CHANGED = "if kuwai changed its release key, install the releases in between first"
 
 
 def asc_files(dirs):

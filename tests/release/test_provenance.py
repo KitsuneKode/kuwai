@@ -66,7 +66,7 @@ def test_the_newest_release_is_picked_by_version_not_by_name(tmp_path, release_k
 @pytest.mark.parametrize("case, why", [
     ("unsigned", "isn't signed"),
     ("plain", "plain tag"),
-    ("unknown-key", "isn't a kuwai release key"),
+    ("unknown-key", "isn't a kuwai release key; if kuwai changed its release key, install the releases in between first"),
     ("no-digest", "digest of its files"),
     ("wrong-digest", "aren't the ones its signature names"),
     ("renamed", "was made as"),

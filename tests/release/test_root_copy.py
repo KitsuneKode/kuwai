@@ -200,6 +200,7 @@ def test_root_takes_its_keys_from_each_release_a_key_it_trusts_signed(world, tmp
     removed = cut("v1.3.0", k.mine, k.mine, k.theirs)
     r = install(sysroot, *removed)
     assert r.returncode == 1 and "isn't a kuwai release key" in r.stderr, "a removed key signs nothing root takes"
+    assert "if kuwai changed its release key, install the releases in between first" in r.stderr
     assert os.readlink(lib / "current") == "releases/v1.2.0" and fprs() == [k.theirs]
     r = install(sysroot, *removed, signers=[k.mine])
     assert r.returncode == 1 and fprs() == [k.theirs], "nor can it be named back in"
