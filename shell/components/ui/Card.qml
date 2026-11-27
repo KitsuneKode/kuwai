@@ -31,6 +31,18 @@ Rectangle {
         color: Theme.cardDrop
     }
 
+    Rectangle {
+        x: card.radius; y: 1
+        width: card.width - card.radius * 2
+        height: 1
+        gradient: Gradient {
+            orientation: Gradient.Horizontal
+            GradientStop { position: 0; color: "transparent" }
+            GradientStop { position: 0.5; color: Qt.rgba(1, 1, 1, Theme.contrast ? 0.16 : 0.07) }
+            GradientStop { position: 1; color: "transparent" }
+        }
+    }
+
     Column {
         id: col
         x: card.flush ? 0 : card.padding; y: card.flush ? 0 : card.padding - 2

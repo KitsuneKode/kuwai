@@ -412,7 +412,7 @@ Singleton {
     readonly property string fontRounded: roundedFace ? "SF Pro Rounded" : fontText
     readonly property string fontUi: fontText          // older name, same face
     readonly property string fontGlyph: "Symbols Nerd Font"
-    readonly property string fontMono: hasFont("SF Mono") ? "SF Mono" : "monospace"   // code and raw text
+    readonly property string fontMono: hasFont("SF Mono") ? "SF Mono" : hasFont("Geist Mono") ? "Geist Mono" : hasFont("GeistMono Nerd Font") ? "GeistMono Nerd Font" : "monospace"   // code and raw text
     // A variable Inter without its static Display cut: optical size goes
     // through the opsz axis (Label sets it).
     readonly property bool fontOpszAxis: fontKind === "inter" && fontDisplay === fontText
