@@ -9,6 +9,10 @@ mpv_wall_home() {
     (umask 077; mkdir -p "$MPV_WALL_HOME")
     local want='# Written by kuwai-livewall for the live wallpaper (mpvpaper). Your ~/.config/mpv is for films.
 profile=fast
+dither=ordered
+temporal-dither=no
+interpolation=no
+video-sync=audio
 load-scripts=no
 osc=no
 input-default-bindings=no

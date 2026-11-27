@@ -26,9 +26,9 @@ import os, sys
 from pathlib import Path
 args = sys.argv[1:]
 if '-encoders' in args:
-    print('h264_nvenc')
+    print('hevc_nvenc')
     sys.exit(0)
-if os.environ.get('FAIL_ALL') or ('h264_nvenc' in args and os.environ.get('FAIL_GPU')):
+if os.environ.get('FAIL_ALL') or ('hevc_nvenc' in args and os.environ.get('FAIL_GPU')):
     Path(args[-1]).write_bytes(b'incomplete')
     sys.exit(1)
 Path(args[-1]).write_bytes(b'encoded')
@@ -117,4 +117,4 @@ def test_a_loop_is_made_in_colour_a_gpu_decodes(tmp_path, loop):
     out = next((home / 'Pictures/live-wallpapers').glob('*-colour.mp4'))
     fmt = subprocess.run(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=pix_fmt',
                           '-of', 'csv=p=0', str(out)], capture_output=True, text=True).stdout.strip()
-    assert fmt == 'yuv420p'
+    assert fmt == 'yuv420p10le', 'Main 10: dark skies band at 8 bits'

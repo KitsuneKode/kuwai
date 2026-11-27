@@ -44,9 +44,10 @@ target_h() {
     echo "$h"
 }
 
+SOFTWARE="-c:v libx265 -preset slow -crf 18 -profile:v main10 -pix_fmt yuv420p10le -tag:v hvc1 -x265-params log-level=error"
 encoder() {
-    if ffmpeg -hide_banner -encoders 2>/dev/null | grep -q h264_nvenc; then echo "-c:v h264_nvenc -preset p6 -rc vbr -cq 23 -b:v 0"
-    else echo "-c:v libx264 -preset slow -crf 22"; fi
+    if ffmpeg -hide_banner -encoders 2>/dev/null | grep -q hevc_nvenc; then echo "-c:v hevc_nvenc -preset p6 -rc vbr -cq 19 -b:v 0 -profile:v main10 -pix_fmt p010le -tag:v hvc1"
+    else echo "$SOFTWARE"; fi
 }
 
 add() (
@@ -67,21 +68,21 @@ add() (
         echo "kuwai-wall: video duration is unavailable" >&2; return 1
     fi
     local F=1.5
-    local base="scale=-2:$H:flags=lanczos,fps=30,format=yuv420p"
+    local base="scale=-2:$H:flags=lanczos,fps=30,format=yuv420p10le"
     local filters=() codec=() temporary
     temporary=$(mktemp "$LIB/.encode.XXXXXX") || return 1
     trap "rm -f -- $(printf %q "$temporary")" EXIT
     if [ "$loop" = 1 ] && awk -v d="$D" 'BEGIN{exit !(d > 4)}'; then
         local off; off=$(awk -v d="$D" -v f="$F" 'BEGIN{printf "%.3f", d-2*f}')
-        filters=(-filter_complex "[0:v]${base},split[x][y];[x]trim=start=$F,setpts=PTS-STARTPTS[a];[y]trim=end=$F,setpts=PTS-STARTPTS[b];[a][b]xfade=transition=fade:duration=$F:offset=${off},format=yuv420p[v]" -map "[v]")
+        filters=(-filter_complex "[0:v]${base},split[x][y];[x]trim=start=$F,setpts=PTS-STARTPTS[a];[y]trim=end=$F,setpts=PTS-STARTPTS[b];[a][b]xfade=transition=fade:duration=$F:offset=${off},format=yuv420p10le[v]" -map "[v]")
     else
         filters=(-vf "$base")
     fi
     read -r -a codec <<<"$(encoder)"
-    codec+=(-pix_fmt yuv420p)
     if ! ffmpeg -nostdin -v error -stats -y -i "$src" "${filters[@]}" -an "${codec[@]}" -movflags +faststart -f mp4 "$temporary"; then
-        [ "${codec[1]}" = h264_nvenc ] || return 1
-        ffmpeg -nostdin -v error -stats -y -i "$src" "${filters[@]}" -an -c:v libx264 -preset slow -crf 22 -pix_fmt yuv420p -movflags +faststart -f mp4 "$temporary" || return 1
+        [ "${codec[1]}" = hevc_nvenc ] || return 1
+        read -r -a codec <<<"$SOFTWARE"
+        ffmpeg -nostdin -v error -stats -y -i "$src" "${filters[@]}" -an "${codec[@]}" -movflags +faststart -f mp4 "$temporary" || return 1
     fi
     [ -s "$temporary" ] || return 1
     mv -- "$temporary" "$out" || return 1
