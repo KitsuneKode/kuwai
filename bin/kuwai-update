@@ -816,9 +816,24 @@ def helper_ok():
         return False
 
 
+AHEAD = ("or, if this copy of kuwai is ahead of the newest release, {cmd} once, which installs this copy's helper "
+         "as it is, trusting every file in it")
+
+
+def release_helper_differs():
+    try:
+        with open(os.path.join(RELEASE, "bin/kuwai-update-root"), "rb") as a, open(HELPER_SRC, "rb") as b:
+            return a.read() != b.read()
+    except OSError:
+        return False
+
+
 def helper_how():
     """How to put kuwai-update-root in place from here."""
     if os.path.lexists(RELEASE):
+        if release_helper_differs():
+            return ("Root's release has a different update helper from this kuwai's: bring root's copy up to date with "
+                    "`kuwai setup --system`, " + AHEAD.format(cmd="run `kuwai update install-helper --trust-clone`") + ".")
         return "Run `kuwai update install-helper` once to install it from root's checked copy of kuwai."
     return ("Root has no checked copy of a signed kuwai release yet (kuwai setup makes one); until then, run "
             "`kuwai update install-helper --trust-clone` once, which installs the helper from your own copy of kuwai "
@@ -1772,7 +1787,8 @@ def main(argv):
                     return 0
                 if r.returncode == 0:
                     print(json.dumps({"error": "Root's release has a different update helper from this kuwai's: "
-                                               "bring root's copy up to date with kuwai setup --system."}))
+                                               "bring root's copy up to date with kuwai setup --system, "
+                                               + AHEAD.format(cmd="in a terminal, kuwai update install-helper --trust-clone") + "."}))
                 elif r.returncode in AUTH_FAIL:
                     print(json.dumps({"error": "Not installed: cancelled at the password prompt."}))
                 else:

@@ -147,6 +147,36 @@ def test_without_roots_release_every_hint_names_the_way_that_works(updater, monk
     assert '--trust-clone' not in R.events[0]['line'] and 'kuwai update install-helper' in R.events[0]['line']
 
 
+def test_when_this_copy_is_ahead_of_roots_release_the_hints_name_trust_clone(updater, monkeypatch, capsys, tmp_path):
+    m = updater
+    release = tmp_path / 'releases/v1.0.0'
+    (release / 'bin').mkdir(parents=True)
+    (release / 'bin/kuwai-update-root').write_text('#!/usr/bin/python3\nolder\n')
+    (tmp_path / 'current').symlink_to('releases/v1.0.0')
+    monkeypatch.setattr(m, 'RELEASE', str(tmp_path / 'current'))
+    monkeypatch.setattr(m, 'helper_ok', lambda: False)
+    R = FakeRun()
+    root = m.Root(R)
+    root.run('upgrade')
+    root.run('install', files=['/x.pkg.tar.zst'])
+    hints = [str(e.get('line', '')) for e in R.events]
+    assert len(hints) == 2 and all('kuwai setup --system' in h and 'ahead of the newest release' in h
+                                   and 'kuwai update install-helper --trust-clone' in h for h in hints), hints
+    monkeypatch.setattr(m.os.path, 'isfile', lambda p: p == m.RELEASE_VERIFY)
+    monkeypatch.setattr(m.subprocess, 'run', lambda cmd, **kw: type('R', (), {'returncode': 0, 'stderr': ''})())
+    assert m.main(['install-helper']) == 1
+    error = json.loads(capsys.readouterr().out)['error']
+    assert 'kuwai setup --system' in error and 'ahead of the newest release' in error
+    assert 'kuwai update install-helper --trust-clone' in error
+    (release / 'bin/kuwai-update-root').write_bytes(Path(m.HELPER_SRC).read_bytes())
+    monkeypatch.undo()
+    monkeypatch.setattr(m, 'RELEASE', str(tmp_path / 'current'))
+    monkeypatch.setattr(m, 'helper_ok', lambda: False)
+    R = FakeRun()
+    m.Root(R).run('upgrade')
+    assert '--trust-clone' not in R.events[0]['line'] and 'kuwai update install-helper' in R.events[0]['line']
+
+
 def test_pacnew_names_the_way_to_the_helper_that_works(monkeypatch, tmp_path, capsys):
     loader = importlib.machinery.SourceFileLoader('pacnew_helper', str(ROOT / 'bin/kuwai-pacnew'))
     spec = importlib.util.spec_from_loader('pacnew_helper', loader)
