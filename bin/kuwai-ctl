@@ -357,8 +357,11 @@ case ${1:-} in
             echo "kuwai: git refused to move stable to $target; nothing was rolled back" >&2
             exit 1
         fi
-        if [ $forward = 1 ] && [ -x "$STABLE/bin/kuwai-migrations" ]; then
-            "$STABLE/bin/kuwai-migrations" || echo "kuwai: a migration for $(git -C "$STABLE" log --oneline -1) failed; see above" >&2
+        if [ $forward = 1 ] && [ -x "$STABLE/bin/kuwai-migrations" ] && ! "$STABLE/bin/kuwai-migrations"; then
+            undo_migrations "$cur"
+            set_head "$cur" || echo "kuwai: git refused to move stable back; run: git -C $STABLE reset --hard $cur" >&2
+            echo "kuwai: a migration for $(git -C "$STABLE" log --oneline -1 "$target") failed (above); nothing was rolled forward, stable stays at $(git -C "$STABLE" log --oneline -1 "$cur")" >&2
+            exit 1
         fi
         git -C "$STABLE" branch -f stable-prev "$cur" 2>/dev/null || true
         echo "stable rolled back to $(git -C "$STABLE" log --oneline -1)"

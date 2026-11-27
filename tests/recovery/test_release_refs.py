@@ -291,6 +291,37 @@ def test_kuwai_release_signs_with_the_listed_key_and_nothing_else(tmp_path):
     assert git(dev, "rev-parse", "v1.0.0^{commit}") == git(dev, "rev-parse", "HEAD")
 
 
+def test_a_forward_rollback_whose_migration_fails_activates_nothing(tmp_path):
+    env, dev, stable, a, b = make_world(tmp_path)
+    fail = tmp_path / "fail-migrations"
+    (dev / "bin/kuwai-migrations").write_text(
+        '#!/bin/sh\n[ -n "$KUWAI_TEST_CALLS" ] && echo "kuwai-migrations $*" >> "$KUWAI_TEST_CALLS"\n'
+        f'[ -z "$1" ] && [ -e "{fail}" ] && exit 1\nexit 0\n')
+    git(dev, "add", "-A")
+    git(dev, "commit", "-qm", "C")
+    c = git(dev, "rev-parse", "HEAD")
+    calls = tmp_path / "calls"
+    env = {**env, "KUWAI_TEST_CALLS": str(calls)}
+    assert ctl(env, "promote").returncode == 0
+    assert ctl(env, "rollback").returncode == 0
+    assert git(stable, "rev-parse", "HEAD") == a and prev_of(stable) == c
+    state = Path(env["XDG_STATE_HOME"]) / "kuwai"
+    state.mkdir(parents=True, exist_ok=True)
+    (state / "channel").write_text("stable\n")
+    fail.write_text("")
+    calls.write_text("")
+    r = ctl(env, "rollback")
+    assert r.returncode != 0, r.stdout
+    assert "nothing was rolled forward" in r.stderr
+    assert git(stable, "rev-parse", "HEAD") == a, "stable stays where it was"
+    assert prev_of(stable) == c, "the rollback target is kept for another try"
+    assert "kuwai-shell" not in calls.read_text(), "nothing was activated"
+    fail.unlink()
+    r = ctl(env, "rollback")
+    assert r.returncode == 0, r.stderr
+    assert git(stable, "rev-parse", "HEAD") == c
+
+
 def test_a_second_rollback_moves_forward_and_runs_the_migrations(tmp_path):
     env, dev, stable, a, b = make_world(tmp_path)
     calls = tmp_path / "calls"
