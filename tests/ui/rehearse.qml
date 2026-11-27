@@ -69,19 +69,6 @@ ShellRoot {
         }
 
         readonly property bool screen: at >= 0 && at < scenes.length && !!scenes[at].screen
-        QtObject {
-            id: fakeLock
-            property string password: ""
-            property bool checking: false
-            property string error: ""
-            property int failures: 0
-            property bool leaving: false
-            property string challenge: ""
-            property var openAfter: null
-            property bool fingerReady: false
-            property string note: ""
-            function submit() {}
-        }
         Item {
             id: island
             anchors.horizontalCenter: parent.horizontalCenter
