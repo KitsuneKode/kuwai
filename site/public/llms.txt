@@ -1,20 +1,20 @@
 # kuwai
 
-> Liquid-glass Hyprland 0.57 (Lua) and Quickshell (QML) desktop environment built for developers running coding agents, featuring a Dynamic Island status bar, native permission approvals, atomic theming, and automated visual regression verification.
+> An Arch Linux desktop built from a Lua Hyprland 0.57 session and a Quickshell shell around a top-edge island.
 
 ## Pages
-- [Home](https://kuwai.kitsunekode.in/): Interactive Dynamic Island showcase, the v0.1.0 release, captured UI surfaces, measured resource headroom, and side-by-side install guide.
-- [Changelog](https://kuwai.kitsunekode.in/changelog): Release history and verified milestones.
-- [Brand Kit](https://kuwai.kitsunekode.in/brand): Official SVG marks, wordmarks, liquid-glass design tokens, and Open Graph previews.
+- [Home](https://kuwai.kitsunekode.in/): Overview, features, requirements, install, privacy and security, credits and licence.
+- [Changelog](https://kuwai.kitsunekode.in/changelog/): Tagged release notes.
+- [Brand](https://kuwai.kitsunekode.in/brand/): SVG marks, wordmarks, and core colour tokens from shell/config/Theme.qml.
 
 ## Syndication
 - [RSS 2.0 Feed](https://kuwai.kitsunekode.in/feed.xml)
 - [Atom 1.0 Feed](https://kuwai.kitsunekode.in/atom.xml)
 - [XML Sitemap](https://kuwai.kitsunekode.in/sitemap-index.xml)
 
-## Key Facts (v0.1.0)
-- License: GPL-3.0-or-later (https://github.com/KitsuneKode/kuwai)
-- Platform: Arch Linux, Hyprland 0.57 (Lua), Quickshell (QtQuick/QML), systemd user units
+## Facts (v0.1.0)
+- Licence: GPL-3.0-or-later (https://github.com/KitsuneKode/kuwai)
+- Platform: Arch Linux, Hyprland 0.57+ (Lua), Quickshell (QtQuick/QML), systemd user services
 - Session isolation: Installs to ~/.config/kuwai/hypr/ as its own login session without modifying ~/.config/hypr
-- Design system: Zero hardcoded token drift, Inter optical sizes default (SF Pro optional), critically damped springs, 141-frame automated visual checks
-- Agent integration: Dedicated orange approval capsule, native PermissionRequest hooks, multi-profile quota tracking across Claude, OpenAI Codex, Antigravity, Cursor, Grok, Gemini, and Devin
+- Themes: 13 dark theme definitions via kuwai-look; third-party wallpapers are downloaded on demand and credited in themes/*/CREDITS.txt, not shipped in the repository
+- Privacy: Clipboard history and GitHub/Gmail feeds are opt-in (kuwai collect); local assistant (Ollama) is opt-in; no telemetry

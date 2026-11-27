@@ -3,59 +3,53 @@
 ## Surfaces
 
 | Surface | When | Dismiss |
-|---------|------|---------|
-| **Island peek** | Critical, warning, replyable (default **One place**) | **Swipe up**, × button, or Open |
-| **Toast** (top-right) | Everything else (or **Both** in settings) | **Swipe right/up**, right-click, × |
-| **Center** (Super+N) | History, search, Reply | ⌦ dismiss row |
+| --- | --- | --- |
+| **Island peek** | Critical, warning, or replyable alerts (default **One place**) | **Swipe up**, `×`, or Open |
+| **Toast** (top-right) | Normal/low alerts (or **Both** in settings) | **Swipe right/up**, right-click, or `×` |
+| **Notification Center** (`Super+N`) | Grouped history, search, inline Reply | `Delete` dismisses a row (`Ctrl+Z` undoes) |
 
-Default **One place** means WhatsApp-style alerts often **only peek from the notch** — they do **not** also appear as a corner toast. Swipe works on **peek**, not only on toasts.
+In the default **One place** mode, chat alerts that can be replied to peek from the notch rather than also showing a corner toast.
 
-## Privacy (sensitive apps)
+## Privacy (sensitive apps and screen sharing)
 
-Settings → Notifications → **Hide sensitive message text** (default **on**).
+**`Settings → Notifications → Hide sensitive message text`** is on by default:
 
-For chat/mail apps (WhatsApp/ZapZap, Telegram, Signal, Discord, Gmail, …):
+- For chat apps (WhatsApp/ZapZap, Telegram, Signal, Discord, Slack, Element, Messenger, Beeper), the app name and sender stay visible while the message body is hidden on toasts, notch peeks, and the lock screen.
+- Selecting the row inside the Notification Center or tapping the peek reveals the body.
+- **While sharing your screen**, all non-critical bodies stay hidden everywhere, and normal alerts are muted until screen sharing ends.
+- Critical and warning alerts are never redacted.
 
-- **Title / app** stay visible (who sent it).
-- **Body** is hidden on passive surfaces (toast, the peek at rest) for **chat apps only**, matched by the app's name: ZapZap/WhatsApp, Telegram, Signal, Discord, Slack, Element, Messenger, Beeper.
-- **Opening it on purpose** shows the body: tap the peek, or select the row in Notifications.
-- **Sharing your screen**: every non-critical body stays hidden everywhere, even when opened ("Hidden while sharing your screen").
-- **Gmail and GitHub** (kuwai-feeds) are never redacted: previewing and replying in the island is the point.
-- Critical/warning alerts are never redacted.
+## Do Not Disturb and Focus
 
-## Island bell (expanded hover)
+- Toggle Do Not Disturb with **`Super+Alt+N`**, `kuwai notifs dnd`, the moon control in Controls, or right-clicking/holding the island bell.
+- `kuwai notifs dnd-off` clears both Focus/DND and any stuck screen-share mute.
+- Only **critical** notifications break through Do Not Disturb.
 
-- **Badge**: count of notifications **still in the center** until you dismiss them (⌦), not cleared by opening the panel. Caps at **9+**. **Focus** → purple bell-slash.
-- **Click** → notification **center** (Notifications tab).
-- **Right-click** or **hold** → Do Not Disturb on or off.
-- Rows in the center still show **unread** styling (since last “mark read”) separately from the badge.
+## GitHub and Gmail feeds (`kuwai-feeds`)
 
-## Do Not Disturb (most common “nothing shows”)
+`kuwai-feeds` (`systemd/kuwai-feeds.service`) is **off by default**. Enable it during install (`--feeds`) or later with `kuwai collect feeds on`.
 
-- **Focus** (purple chip, Super+Alt+N, center moon): blocks normal toasts; only **critical** breaks through.
-- **Screen share**: `mute-on` while sharing (not saved to disk); `kuwai notifs dnd-off` clears Focus **and** share mute.
-- Check: island bell **slash** or purple tint when Focus is on.
+- **GitHub:** polls notifications through your existing `gh` CLI login using `If-Modified-Since` (unchanged polls do not consume rate-limit quota). Review requests, mentions, assignments, and failed CI peek from the notch; comments toast; bots stay quiet in the center unless a check fails.
+- **Gmail:** connects over IMAP IDLE (push, no polling) for unread, important Primary mail. Run `kuwai feeds gmail-setup` to store your Gmail address and app password in the system keyring (`secret-tool`). Remove it with `kuwai feeds gmail-forget`.
+- Settings live in `~/.config/kuwai/feeds.json` (read on each cycle without restarting):
 
-## Music / media (not in the notification card)
+```json
+{
+  "gmail": "user@example.com",
+  "gmailQuery": "is:unread is:important category:primary",
+  "github": {
+    "enabled": true,
+    "mute": ["someorg/*"],
+    "quiet": ["owner/repo"],
+    "bots": "quiet"
+  }
+}
+```
 
-Notifications are for **alerts**, not playback control. Media lives in the **island**:
+Check feed health with `kuwai feeds status` and follow logs with `kuwai feeds logs`.
 
-- **Hover the island** → art, waveform, hover controls; click art to focus the player.
-- **Now Playing panel**: hover the playing row or preview from rest activity → **seek bar**, ⏮ ⏯ ⏭, shuffle/repeat when supported.
-- **Keys** (with panel focused): Space play/pause, ←/→ ±10 s (Shift ±30 s), N/P next/prev, S shuffle, R repeat.
-- **Hardware**: XF86Audio*, Super+F6/F7/F8 for media (F7/F8 are **not** brightness — see binds).
+## Troubleshooting
 
-## ZapZap / WhatsApp
-
-- Not from `kuwai-feeds` (that is GitHub + Gmail only).
-- Needs **org.freedesktop.Notifications** owned by **qs** (`kuwai restart`).
-- After a **shell load failure**, restart **ZapZap** (it may disable the backend for the session).
-- WhatsApp often **won’t notify** for the chat/window you’re already in.
-
-## kuwai-feeds
-
-`systemctl --user status kuwai-feeds` · `kuwai feeds status` · hints in `NotifAdapters` (`x-kuwai-feed`).
-
-## Stress test
-
-`bin/kuwai-fixture notifs worst` · `bin/kuwai-notify` (D-Bus, when `notify-send` is broken).
+- Run `kuwai doctor` to verify `org.freedesktop.Notifications` is owned by `qs` (not `dunst` or empty) and that DND is off.
+- If a chat app such as ZapZap stops notifying after a shell crash or outage, run `kuwai restart` and then restart the app.
+- Send a test notification directly over D-Bus without libnotify: `bin/kuwai-notify -a test "Title" "Body"`, or stress-test with `bin/kuwai-fixture notifs one`.

@@ -2,13 +2,14 @@ import { useState } from "react";
 
 const SWATCHES: [string, string][] = [
   ["Desktop ground", "#0b0b0f"],
-  ["Liquid glass tint", "#111114"],
-  ["Elevated solid", "#1c1c1f"],
-  ["Selection accent", "#0a84ff"],
-  ["Attention and ask", "#ff9f0a"],
-  ["Healthy and ready", "#30d158"],
-  ["Critical and error", "#ff453a"],
-  ["Focus and share", "#bf5af2"]
+  ["Glass tint base", "#111114"],
+  ["Solid surface", "#1c1c1f"],
+  ["Accent (selection)", "#0a84ff"],
+  ["Attention / warning", "#ff9f0a"],
+  ["Positive / charging", "#30d158"],
+  ["Critical / error", "#ff453a"],
+  ["Search / Caffeine", "#ffd60a"],
+  ["Focus / screen share", "#bf5af2"]
 ];
 
 export default function BrandSwatches() {

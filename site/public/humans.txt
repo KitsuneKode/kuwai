@@ -1,10 +1,4 @@
-/* TEAM */
-Author: KitsuneKode
 Repository: https://github.com/KitsuneKode/kuwai
-
-/* SITE */
-Last update: 2026/11/24
+Licence: GPL-3.0-or-later
 Language: English
-Standards: HTML5, CSS3, SVG, RSS 2.0, Atom 1.0, Schema.org JSON-LD
-Typography: Inter (OFL), JetBrains Mono (OFL)
-Curated Imagery: https://imageory.in/
+Typography: Inter (SIL OFL), JetBrains Mono (SIL OFL)

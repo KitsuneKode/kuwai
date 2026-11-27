@@ -1,7 +1,7 @@
 {
   "name": "kuwai",
   "short_name": "kuwai",
-  "description": "Liquid-glass Hyprland desktop and Dynamic Island built for coding agents, verified updates, and calm focus.",
+  "description": "Arch Linux Hyprland 0.57 desktop and Quickshell shell built around a top-edge island.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0b0b0f",

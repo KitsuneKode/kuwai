@@ -7,7 +7,6 @@ interface Props {
   canonicalPath?: string;
   ogImage?: string;
   ogAlt?: string;
-  ogVideo?: string;
   solidHeader?: boolean;
   schemaJson?: Record<string, unknown>;
 }
@@ -17,8 +16,7 @@ const {
   description,
   canonicalPath = "/",
   ogImage = "/og-image.png",
-  ogAlt = "kuwai liquid-glass Hyprland Dynamic Island showing an orange Claude Code Approval capsule beside a centered clock",
-  ogVideo,
+  ogAlt = "kuwai Hyprland desktop and Quickshell island",
   solidHeader = false,
   schemaJson
 } = Astro.props;
@@ -26,7 +24,6 @@ const {
 const siteUrl = "https://kuwai.kitsunekode.in";
 const canonicalUrl = new URL(canonicalPath, siteUrl).toString();
 const fullOgImage = new URL(ogImage, siteUrl).toString();
-const fullOgVideo = ogVideo ? new URL(ogVideo, siteUrl).toString() : null;
 const currentPath = Astro.url.pathname;
 
 const defaultSchema = {
@@ -37,7 +34,7 @@ const defaultSchema = {
       "@id": `${siteUrl}/#website`,
       url: `${siteUrl}/`,
       name: "kuwai",
-      description: "Liquid-glass Hyprland desktop and Dynamic Island built for coding agents.",
+      description: "An Arch Linux desktop built from a Lua Hyprland 0.57 session and a Quickshell shell.",
       inLanguage: "en-US"
     },
     {
@@ -45,18 +42,13 @@ const defaultSchema = {
       "@id": `${siteUrl}/#software`,
       name: "kuwai",
       applicationCategory: "DesktopEnvironment",
-      operatingSystem: "Linux (Arch Linux, Hyprland 0.57)",
+      operatingSystem: "Arch Linux (Hyprland 0.57+)",
       softwareVersion: "0.1.0",
       license: "https://www.gnu.org/licenses/gpl-3.0.en.html",
       url: `${siteUrl}/`,
       downloadUrl: "https://github.com/KitsuneKode/kuwai",
       codeRepository: "https://github.com/KitsuneKode/kuwai",
       screenshot: `${siteUrl}/og-image.png`,
-      author: {
-        "@type": "Person",
-        name: "KitsuneKode",
-        url: "https://github.com/KitsuneKode"
-      },
       offers: {
         "@type": "Offer",
         price: "0",
@@ -75,7 +67,7 @@ const jsonLd = JSON.stringify(schemaJson ?? defaultSchema);
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{title}</title>
   <meta name="description" content={description}>
-  <meta name="robots" content="index, follow, max-image-preview:large, max-video-preview:-1">
+  <meta name="robots" content="index, follow, max-image-preview:large">
   <meta name="theme-color" content="#0b0b0f">
   <meta name="color-scheme" content="dark">
   <link rel="canonical" href={canonicalUrl}>
@@ -90,14 +82,6 @@ const jsonLd = JSON.stringify(schemaJson ?? defaultSchema);
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content={ogAlt}>
-  {fullOgVideo && (
-    <>
-      <meta property="og:video" content={fullOgVideo}>
-      <meta property="og:video:type" content="video/mp4">
-      <meta property="og:video:width" content="1920">
-      <meta property="og:video:height" content="1080">
-    </>
-  )}
 
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content={title}>
@@ -128,13 +112,13 @@ const jsonLd = JSON.stringify(schemaJson ?? defaultSchema);
         <span>kuwai</span>
       </a>
       <nav class="site-nav" aria-label="Primary">
-        <a href="/#island">Island</a>
-        <a href="/#upgrades">Upgrades</a>
-        <a href="/#craft">Surfaces</a>
-        <a href="/#improve">Roadmap</a>
+        <a href="/#what-you-get">Features</a>
+        <a href="/#requirements">Requirements</a>
+        <a href="/#install">Install</a>
+        <a href="/#security">Privacy &amp; security</a>
         <a href="/changelog/" aria-current={currentPath.startsWith("/changelog") ? "page" : undefined}>Changelog</a>
         <a href="/brand/" aria-current={currentPath.startsWith("/brand") ? "page" : undefined}>Brand</a>
-        <a href="/#install">Install</a>
+        <a href="https://github.com/KitsuneKode/kuwai" target="_blank" rel="noopener noreferrer">GitHub</a>
       </nav>
     </div>
   </header>
@@ -148,48 +132,45 @@ const jsonLd = JSON.stringify(schemaJson ?? defaultSchema);
           <a href="/" class="footer-logo" aria-label="kuwai home">
             <img src="/assets/brand/kuwai-wordmark.svg" alt="kuwai" width="114" height="26">
           </a>
-          <p class="footer-tagline">A liquid-glass Hyprland desktop and Dynamic Island built for coding agents, reviewed system updates, and calm focus.</p>
-          <p class="footer-colophon">Designed with Gemini Frontend Design. Atmospheric imagery curated from <a href="https://imageory.in/" target="_blank" rel="noopener noreferrer" class="inline-link">imageory.in</a>.</p>
+          <p class="footer-tagline">An Arch Linux desktop made of a Lua Hyprland 0.57 session and a Quickshell shell around a top-edge island.</p>
         </div>
 
         <div class="footer-col">
-          <h3 class="footer-heading">Product</h3>
+          <h3 class="footer-heading">On this page</h3>
           <ul class="footer-list">
-            <li><a href="/#island">Dynamic Island</a></li>
-            <li><a href="/#upgrades">Verified upgrades</a></li>
-            <li><a href="/#craft">Surfaces and glass</a></li>
-            <li><a href="/#shortcuts">Keyboard shortcuts</a></li>
-            <li><a href="/#improve">Headroom and roadmap</a></li>
-            <li><a href="/#install">Install guide</a></li>
+            <li><a href="/#what-you-get">What you get</a></li>
+            <li><a href="/#requirements">Requirements</a></li>
+            <li><a href="/#install">Install</a></li>
+            <li><a href="/#security">Privacy and security</a></li>
+            <li><a href="/#credits">Credits and licence</a></li>
           </ul>
         </div>
 
         <div class="footer-col">
-          <h3 class="footer-heading">Resources</h3>
+          <h3 class="footer-heading">Documentation</h3>
           <ul class="footer-list">
-            <li><a href="/changelog/">Release changelog</a></li>
-            <li><a href="/brand/">Brand kit and tokens</a></li>
-            <li><a href="/#faq">Questions and requirements</a></li>
-            <li><a href="https://github.com/KitsuneKode/kuwai" target="_blank" rel="noopener noreferrer">GitHub repository</a></li>
+            <li><a href="/changelog/">Changelog</a></li>
+            <li><a href="/brand/">Brand and tokens</a></li>
+            <li><a href="https://github.com/KitsuneKode/kuwai/blob/main/docs/manual/README.md" target="_blank" rel="noopener noreferrer">Manual</a></li>
+            <li><a href="https://github.com/KitsuneKode/kuwai/blob/main/docs/DESIGN.md" target="_blank" rel="noopener noreferrer">Design tokens</a></li>
             <li><a href="/.well-known/security.txt">Security policy</a></li>
           </ul>
         </div>
 
         <div class="footer-col">
-          <h3 class="footer-heading">Syndication</h3>
+          <h3 class="footer-heading">Repository</h3>
           <ul class="footer-list">
+            <li><a href="https://github.com/KitsuneKode/kuwai" target="_blank" rel="noopener noreferrer">Source on GitHub</a></li>
             <li><a href="/feed.xml">RSS 2.0 feed</a></li>
-            <li><a href="/atom.xml">Atom 1.0 feed</a></li>
-            <li><a href="/sitemap-index.xml">XML sitemap</a></li>
-            <li><a href="/llms.txt">llms.txt summary</a></li>
-            <li><a href="/media/kuwai-launch-demo.mp4">Launch reel (1080p MP4)</a></li>
+            <li><a href="/atom.xml">Atom feed</a></li>
+            <li><a href="/llms.txt">llms.txt</a></li>
           </ul>
         </div>
       </div>
 
       <div class="footer-bottom">
-        <span>kuwai v0.1.0 · Open source under GPL-3.0-or-later</span>
-        <span>Built for Arch Linux and Hyprland 0.57 · Crafted with Gemini Frontend Design</span>
+        <span>kuwai v0.1.0 · GPL-3.0-or-later</span>
+        <span>Arch Linux · Hyprland 0.57+ · Quickshell</span>
       </div>
     </div>
   </footer>
@@ -199,7 +180,7 @@ const jsonLd = JSON.stringify(schemaJson ?? defaultSchema);
       (() => {
         const h = document.getElementById("siteHeader");
         if (!h) return;
-        const sync = () => h.classList.toggle("is-scrolled", window.scrollY > 32);
+        const sync = () => h.classList.toggle("is-scrolled", window.scrollY > 24);
         sync();
         window.addEventListener("scroll", sync, { passive: true });
       })();

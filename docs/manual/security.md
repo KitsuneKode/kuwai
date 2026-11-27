@@ -1,54 +1,36 @@
-# Security notes (kuwai / kuwai shell)
+# Security and privacy
 
-Last reviewed: 2026-11-17.
+kuwai runs as your normal user session (Hyprland, Quickshell, systemd user units). No telemetry is sent. Privileged operations are isolated into narrow root-owned helpers, and background data collection is opt-in.
 
-## 2026-11-17 review
+## What runs as root and why
 
-| Area | What was wrong | Now |
-|------|----------------|-----|
-| **Text from outside** | Qt's `Text` treats a string that looks like HTML as HTML and fetches any `<img>` in it (checked on Qt 6.12: default `Text`, `StyledText`, `TextEdit` Markdown and RichText all made the request). A song or tab title on the screensaver, a device name in the HUD, tool output and model reasoning in the assistant reached such elements | Every `Text` with outside text says `textFormat: Text.PlainText` (103 elements); `tests/security/test_text_format.py` fails CI on a new one |
-| **Streaming answers** | The live block of an answer went to Qt's Markdown reader as written: `![x](https://host/?data)` was fetched as it arrived | `Turn.liveMarkdown`: an image becomes a link, raw HTML shows as text (`turn.test.mjs`) |
-| **Links** | A link in an answer or a copied text was opened whatever its scheme | The web and mail only (`Turn.safeLink`, `kuwai_md.py`, Quick Look) |
-| **Login screen** | `/var/lib/kuwai-greeter` was the user's, and `greeter/sync` copied the shell into it at every login: a program running as you could rewrite the code that takes the login password | The code is root's (`sudo greeter/install`, `--code` after an update); you write only `home/` (wallpaper, colours, settings, name, face). **Needs one `sudo greeter/install --code`** on a machine installed before this date; until then sync keeps the old layout working and says so |
-| **Login screen, undo** | `--undo` didn't put PAM, greetd's config or tty1's override back, and assumed SDDM | What was replaced is kept in `/var/lib/kuwai-greeter/original` and restored |
-| **State on disk** | Notification bodies and chats were written 0644 | `~/.local/state/kuwai`, `~/.cache/kuwai`, `~/.config/kuwai` are 0700 at every shell start |
+| Component | Installed by | Boundary |
+| --- | --- | --- |
+| `/usr/local/bin/kuwai-session` and `/usr/share/wayland-sessions/kuwai.desktop` | `sudo system/session` (run once by `install.sh`; `--undo` removes) | Registers the **Kuwai** Wayland session entry |
+| `/usr/local/share/kuwai/shell-auth/` | `kuwai auth pin` (run once by `install.sh`; `unpin` removes) | Root-owned copy of the standalone polkit password prompt (`kuwai-auth.service`). Uses vendored components (no symlinks to `shell/`), software rendering, no core dumps, and `TextInput.NoEcho` (five-dot pulse so password length is never revealed). The island only trusts prompts from `/usr/bin/qs` running the pinned/stable path in the `kuwai-auth.service` cgroup |
+| `/usr/local/lib/kuwai/kuwai-update-root` | `kuwai update install-helper` | Started on demand via `pkexec` with the allowed operations named in `argv` (`upgrade`, `deps`, `install`, `pacnew`, `clean-cache`). Runs `pacman` and `paccache` only; copies built AUR packages without following symlinks into a root-only directory and checks their `sha256` before `pacman -U`; refuses automatic `.pacnew` replacement on `passwd`, `shadow`, `group`, `gshadow`, `fstab`, and `crypttab`; validates sudoers with `visudo -c` |
+| `/var/lib/kuwai-greeter/` (optional) | `sudo greeter/install` (`--code` updates; `--undo` restores previous DM) | Installs committed `shell/` and `greeter/` files owned by root (links refused). Your user can write only `/var/lib/kuwai-greeter/home/` (wallpaper, colours, face, and plain monitor/keyboard data validated line-by-line by `greeter/hyprland.lua`) |
+| `/usr/local/libexec/kuwai-wake-root` (optional) | `sudo system/install` (`--undo` removes) | Reads one bounded Unix timestamp (next 8 days max) from `/var/lib/kuwai-wake/at` and writes `/sys/class/rtc/rtc0/wakealarm` |
 
-Still open: the assistant's tool execution has not had an outside review; the
-root updater installs its helper from the repo copy on first use (the prompt
-shows `/bin/sh`); nothing here replaces disk encryption (see the audit notes).
+## What is collected and where it stays
 
-## Fixed / hardened in this track
+- **Clipboard history (`kuwai-clipboard.service`):** off by default until enabled during install or with `kuwai collect clipboard on`. Stored locally by `cliphist` and `~/.local/share/kuwai`.
+- **GitHub and Gmail feeds (`kuwai-feeds.service`):** off by default (`kuwai collect feeds on`). GitHub uses your `gh` login; Gmail uses an app password kept in the system keyring (`secret-tool`). State lives in `~/.local/state/kuwai/feeds.json`.
+- **Local assistant:** off by default (`Settings → Assistant`). Secret-shaped text is redacted from clipboard/selection reads and sandbox logs; file reads and searches share one exclusion policy.
+- **Permissions on disk:** `~/.config/kuwai`, `~/.local/state/kuwai`, and `~/.cache/kuwai` are kept mode `0700`. T3 Code tokens (`t3-token`, `t3-operate-token`) are ignored if group/world-readable and can be stored in the system keyring instead.
 
-| Area | Mitigation |
-|------|------------|
-| **kuwai-notify** | `-H` keys restricted to `x-kuwai-*`; values JSON-escaped via `jq`; argv for title/body/app |
-| **Usage limit moments** | Read-only `kuwai-usage`; labels shown as text in the island, no notifications sent |
-| **Crash alerts** | Brief truncated; uses kuwai-notify + adapter gate for diagnose action |
-| **Root updater** | Hostile requests refused before anything is touched (`tests/root`: bad paths and names, and real symlinks in a stand-in /etc); no shell interpolation. Not fuzzed, and no privileged transaction is run in tests |
-| **Assistant files** | Searches follow the same secrets rule as reads; sandbox job and attachment files are opened without following links (`tests/agent/test_file_policy.py`, `test_sandbox_boundary.py`) |
-| **Installer** | Uninstall restores the state before the first install; replacements never write through a link (`tests/install`) |
+## Hardening enforced by tests
 
-## Known gaps (Phase 6 — do before assistant default-on)
+- **Untrusted text (`tests/security/test_text_format.py`):** external strings (titles, notification text, tool output) render as `Text.PlainText` or sanitized markup with no remote `<img>` fetches.
+- **Links (`tests/security/test_links.py`):** opened links pass through `Links.safeLink` (web and mail schemes only).
+- **Commands:** values are passed as `argv`, never interpolated into shell strings; process termination from the launcher checks process identity so reused PIDs cannot be hit.
+- **Releases (`tests/recovery/test_release_refs.py`):** `kuwai update-self` fetches only `v*` release tags from `origin`, verifies signatures against `release-signers`, and refuses any tag whose target commit moves after first sight.
+- **Root helper and installer (`tests/root/`, `tests/install/`):** hostile paths, `..` traversal, and symlinks are refused before touching files; uninstall restores pre-install state.
 
-| Risk | Status | Mitigation planned |
-|------|--------|-------------------|
-| **Assistant tool exec** | Ollama sandbox exists; not fully audited | Deny-list `sudo`, `rm -rf`, `curl \| sh`; confirm dangerous commands |
-| **Idle.qml `sh -c`** | Fixed commands only | Keep audit when adding idle hooks |
-| **Launcher xdg-open** | User-driven search | URLs encoded; no auto-exec of pasted shell |
-| **notify-send fallback** | kuwai session restore only | Prefer kuwai-notify |
+## Known limitations and accepted boundaries
 
-## Flaky behaviour to watch
+- **Same-user trust boundary:** `VoxtypeHost` loads voxtype QML from `$XDG_DATA_HOME/voxtype/quickshell` when voxtype is installed, and `kuwai-auth.service` is a user unit. Both run under the same user account as the main shell; pinning `shell-auth/` via `kuwai auth pin` protects the prompt code itself.
+- **Not yet formally qualified across all hardware:** live lock-screen failure recovery on every GPU/compositor crash mode, portal screen-share blackouts across all compositor/app combinations, and an independent audit of the optional Ollama assistant's tool execution.
+- **Full-disk encryption:** kuwai does not replace OS-level disk encryption.
 
-| Symptom | Cause | Fix |
-|---------|-------|-----|
-| Welcome back pill empty on the right | `away` was blank for short unlocks; moment split label/value across island sides | Fixed: unified hello row + “Unlocked” when <1 min |
-| Notch stuck after fast unlock | Welcome moment queued behind another; island width min 220 | Hello cuts in; +520 ms delay after unlock anim |
-| Volume HUD looks unlike notch | OSD is a separate layer but **morphs from island width** when `Settings.bar === island`; lock/greeter use **LockOsd** (bottom pill) | Session: island bar + `brightness.sh watch --part osd`; greeter: brightness only without PipeWire user |
-| F7/F8 do nothing | Binds only existed when `~/Scripts/brightness.sh` present | Now fall back to `brightnessctl` always |
-| No WhatsApp toasts | DND, shell down, ZapZap backend disabled | `kuwai doctor`; restart ZapZap after shell outage |
-| Double notifications | Hot reload + keepOnReload | By design; dismiss duplicates |
-| Limit alert on every reload | Restart | What was said is kept in `~/.local/state/kuwai/limits-told.json` (once per window per reset) |
-| Memory >450 MB after reload | Quickshell hot reload | `kuwai-check`; restart shell if over budget |
-| `notify-send` broken | libnotify | All kuwai/shell paths use `kuwai-notify` |
-
-Run **`bin/kuwai doctor`** after promote or when notifications feel dead.
+Report vulnerabilities privately as described in [SECURITY.md](../../SECURITY.md).

@@ -1,489 +1,169 @@
 # kuwai
 
-**kuwai** is my Hyprland desktop: the **kuwai** session (Hyprland + Lua) and the **kuwai** shell (Quickshell — island, notifications, lock, center). One look: dark liquid glass, Inter (or SF Pro, where you have it), calm motion ([docs/DESIGN.md](docs/DESIGN.md), [docs/brandkit/README.md](docs/brandkit/README.md)).
-
-Commands stay `bin/kuwai …` (control plane); the product name is **kuwai**.
+**kuwai** is a desktop environment for Arch Linux made of two halves: a **Hyprland 0.57+** session configured in Lua (`hypr/`) and a **Quickshell** shell (`shell/`) built around a top-edge island. One design system covers every surface — dark liquid glass, Inter with optical sizes (or SF Pro if you have it installed), and critically damped motion ([docs/DESIGN.md](docs/DESIGN.md)).
 
 ## A look around
 
-Frames from the shell's own rehearsal (`bin/kuwai-rehearse`: every panel, every
-state, drawn in a private window with sample data; nothing here is a mock-up).
+Captured from the shell's rehearsal suite (`bin/kuwai-rehearse`, sample data in an isolated window) and recorded live on a 2560×1440 session at 60 fps:
 
 <table>
 <tr>
-<td><img src="docs/media/tour/agents-typical.png" alt="Agents: what each agent is doing, approvals answered from the notch" width="380"></td>
-<td><img src="docs/media/tour/usage-typical.png" alt="Usage: how much each account has left, and when it resets" width="380"></td>
+<td><img src="docs/media/tour/agents-typical.png" alt="Agents section with active work and waiting approvals" width="380"></td>
+<td><img src="docs/media/tour/usage-typical.png" alt="Usage section showing remaining quota and reset times per account" width="380"></td>
 </tr>
 <tr>
-<td><img src="docs/media/tour/settings-shortcuts.png" alt="Settings, Shortcuts: change any of kuwai's keys by pressing the new chord" width="380"></td>
-<td><img src="docs/media/tour/updates-typical.png" alt="Software Update: repo and AUR updates, each AUR change reviewed before it builds" width="380"></td>
+<td><img src="docs/media/tour/settings-shortcuts.png" alt="Settings Shortcuts page for rebinding kuwai shortcuts" width="380"></td>
+<td><img src="docs/media/tour/updates-typical.png" alt="Software Update panel showing official and AUR updates" width="380"></td>
 </tr>
 <tr>
-<td><img src="docs/media/tour/calendar-events.png" alt="Calendar: your events from any iCal link" width="380"></td>
-<td><img src="docs/media/tour/system-typical.png" alt="System: CPU, memory and what is using it" width="380"></td>
+<td><img src="docs/media/tour/calendar-events.png" alt="Calendar panel with events from an iCal feed" width="380"></td>
+<td><img src="docs/media/tour/system-typical.png" alt="System panel showing CPU and proportional memory by app" width="380"></td>
 </tr>
 <tr>
-<td><img src="docs/media/tour/launcher-packages.png" alt="Launcher: apps, windows, actions, math and packages" width="380"></td>
-<td><img src="docs/media/tour/media-playing.png" alt="Now Playing" width="380"></td>
+<td><img src="docs/media/tour/launcher-packages.png" alt="Launcher searching Arch and AUR packages" width="380"></td>
+<td><img src="docs/media/tour/media-playing.png" alt="Now Playing panel" width="380"></td>
 </tr>
 </table>
 
-In motion, recorded on a real session (a 2560×1440 screen at 60 fps):
+In motion:
 
 <table>
 <tr>
-<td colspan="2"><img src="docs/media/clips/island-hover.webp" alt="Resting on the island opens it: the app, workspaces, time, machine and agents at a glance" width="780"></td>
+<td colspan="2"><img src="docs/media/clips/island-hover.webp" alt="Hovering the island opens the glance row" width="780"></td>
 </tr>
 <tr>
-<td><img src="docs/media/clips/launcher.webp" alt="The launcher answers math as you type" width="380"></td>
-<td><img src="docs/media/clips/themes.webp" alt="Themes: each with its wallpapers and colours" width="380"></td>
+<td><img src="docs/media/clips/launcher.webp" alt="Launcher calculating inline" width="380"></td>
+<td><img src="docs/media/clips/themes.webp" alt="Switching themes from the island" width="380"></td>
 </tr>
 <tr>
-<td><img src="docs/media/clips/wallpaper.webp" alt="A new wallpaper arrives through the glass, from the island" width="380"></td>
-<td><img src="docs/media/clips/sound.webp" alt="Sound: every app and device, the microphone as it hears you" width="380"></td>
+<td><img src="docs/media/clips/wallpaper.webp" alt="Wallpaper transition growing out of the notch" width="380"></td>
+<td><img src="docs/media/clips/sound.webp" alt="Sound mixer and device switching" width="380"></td>
 </tr>
 <tr>
-<td colspan="2"><img src="docs/media/clips/island-timer.webp" alt="A timer lives in the island as a ring" width="600"></td>
+<td colspan="2"><img src="docs/media/clips/island-timer.webp" alt="Running timer inside the island" width="600"></td>
 </tr>
 </table>
+
+## Requirements
+
+- **Arch Linux** with systemd user sessions
+- **Hyprland 0.57 or newer** (`install.sh` refuses older versions because kuwai uses Hyprland's Lua configuration)
+- **Quickshell** (`quickshell`, `qt6-multimedia`) and core utilities listed in [packages/core.txt](packages/core.txt)
+- **Fonts**: `inter-font` (default, SIL OFL) and `ttf-nerd-fonts-symbols` ([packages/fonts.txt](packages/fonts.txt))
+
+Optional packages (screenshot annotation, OCR, live wallpapers, external monitor DDC brightness, Wi-Fi/Bluetooth controls, GitHub/Gmail feeds, dictation, local assistant) are listed in [packages/optional.txt](packages/optional.txt).
 
 ## Install
 
 ```sh
-git clone https://github.com/KitsuneKode/kuwai.git ~/Projects/kuwai && cd ~/Projects/kuwai
-# legacy path ~/Projects/rice works if KUWAI_ROOT points at the clone
-./install.sh --dry-run     # what it would change (nothing yet)
-./install.sh --deps        # install: packages, the stable channel, Kuwai's Hyprland config, user services, the "Kuwai" login entry (sudo, once)
-sudo greeter/install       # optional: the login screen (greetd; --undo puts back what was there; --code refreshes it after an update)
-sudo system/install        # optional: alarms that wake the laptop from sleep
+git clone https://github.com/KitsuneKode/kuwai.git ~/Projects/kuwai
+cd ~/Projects/kuwai
+./install.sh --dry-run     # preview every change without writing
+./install.sh --deps        # install missing Arch packages, stable channel, Hyprland config, user units, and login entry
 ```
 
-Kuwai is its own session: log out and pick **Kuwai** on the login screen.
-Its Hyprland config lives in `~/.config/kuwai/hypr/` (`hyprland.lua`,
-`monitors.lua`, `user.lua`), so `~/.config/hypr` and the plain Hyprland session
-(Omarchy's, HyDE's or your own) stay exactly as they were. An install from
-before this used `~/.config/hypr`; `./install.sh --separate-session` moves it.
-
-Everything it replaces is backed up first (`./install.sh --uninstall` puts it
-back, and `sudo system/session --undo` takes the login entry away). It never
-touches your `monitors.lua`, `user.lua` or settings, needs sudo only for the
-login entry, and never sets up autologin. Check a running desktop
-any time with `./install.sh --doctor` or `bin/kuwai doctor` (kuwai + notifications + shell).
-
-**The font.** The shell is set in [Inter](https://rsms.me/inter/) (OFL,
-`inter-font` from Arch's official repos; `--deps` installs it), with its
-optical sizes. If Apple's SF Pro is installed, the shell uses it instead,
-with Apple's tracking and SF Pro Rounded numerals. kuwai doesn't ship or
-install SF Pro: Apple's licence limits it to Apple platforms. To pick one
-yourself, set `KUWAI_FONT=inter`, `sf` or `system` in the shell's environment.
-
-Your session runs from the **stable channel** (`~/.local/share/kuwai`, the
-`stable` branch). Changes in the repo reach it with `kuwai promote`, which
-refuses unless `kuwai-check` passes (`kuwai channel dev` runs straight from
-the repo while you work).
-
-Releases are tagged (`v0.1.0` is the first; what changed is in
-[CHANGELOG.md](CHANGELOG.md)). `kuwai update-self` moves an install to the
-newest release, and `kuwai version` says which one you run.
-
-## Every day
-
-| | |
-|---|---|
-| Launcher (Super+A) | apps, windows, files, maths, conversions, and words: `timer 10m pizza`, `pomodoro`, `remind me at 5 to call mum`, `in 20m stretch`, `alarm 7:30`, `note buy milk`, a setting's name (`idle`, `screensaver`) |
-| Processes and ports | `!` in the launcher: what's using the most right now, `! zen` what matches, `! 3000` what listens there; ↵ twice ends one, ⌃↵ forces it (your own only) |
-| Quick note · remind me | Super+Ctrl+J · Super+Ctrl+Shift+J |
-| Settings | Super+Ctrl+I or `kuwai settings [power\|saver\|time\|notifs\|island…]`: every setting, applied at once |
-| Software Update | the island's update chip: packages, AUR reviews, config files an update left (`.pacnew`) with a recommendation each |
-| From a terminal | `kuwai remind …`, `kuwai alarm …`, `kuwai note …`, `kuwai pomodoro`, `kuwai timer 10m` |
-
-The design system (one primitive per job, Theme tokens) is in
-[docs/DESIGN.md](docs/DESIGN.md); where it's going, in
-[docs/ROADMAP.md](docs/ROADMAP.md).
-
-## The island
-
-The notch is the desktop's one status surface. At rest it holds the time and
-what's live (a recording, dictation, a timer, music). Work going on in the
-background floats beside it in its own capsules, shared out evenly left and
-right so the time stays centred: your agents in kitty, T3 Code's threads,
-system news (updates, a warning, a used-up limit) and minimized windows
-(Super+O). A capsule's edge says its state, and a click (or pulling it down)
-opens the panel where you act on it.
-
-![Capsule states: working, needs you, hit a limit, error](docs/media/island/capsule-states.png)
-
-- **Hover** shows a one-row glance (the app, the time, the song or how many
-  notifications); a click anywhere on it, the time included, opens everything.
-  There, the time chip opens the calendar and the clock flies into it.
-- **It moves like the Dynamic Island.** The notch's shoulders are continuous
-  flares that grow with it, so a panel pours out of the screen's edge; growing
-  settles with a touch of give, folding back lands clean. A capsule changing
-  state (working → needs you → done) swaps its content: the old leaves, the
-  new arrives from 97 % through a blur that clears, the capsule springs once to
-  its new width. A capsule's icon arrives after the capsule has opened.
-- **Sections.** Agents, Usage, System and Cleanup are views of one place: a
-  strip in the panel's top row (or ⌥1–4) switches between them in place.
-- **Privacy dots** beside the status: the mic in use (orange), the camera
-  (green), your screen shared or recorded (purple), each saying who on hover.
-- **What's playing** is named for people: a browser's "Watch … - JioHotstar"
-  reads as the film and the site, and a film with no cover shows a frame of
-  the window playing it (that window only, never on the lock screen).
-- **Agents** live in one place: the notch's Agents panel (Super+Shift+N, or a
-  click on the agents capsule) lists every kitty pane and T3 thread, the one
-  waiting on you first with its question. Finished ones swipe away; closed
-  conversations can be reopened.
-- **Who may interrupt.** An agent asking you (an approval, a question, a
-  password) reaches you everywhere, over a fullscreen film or game too. Under
-  Focus, Do Not Disturb or screen sharing nothing grows the notch: the
-  capsule's light and the Agents panel still say it. Over a fullscreen window
-  only important notifications peek (Settings → fullscreen notifications);
-  the rest wait in the center with the missed dot.
-- **Cleanup** (launcher: Cleanup, or ⌥4 in a section): the tokens every agent
-  session spends listing skills nobody called in 30/90/180 days, the skills to
-  mark, duplicate copies, and leftovers on disk; everything goes to the Trash,
-  Put back restores skills and their links (`bin/kuwai-cleanup`).
-- **Memory by app** (System): one number, a field of dots by app, a legend that
-  lights with them; proportional memory, so a browser's processes count once.
-- **Allow / Deny from the notch, through the agent's own hook.** kittymux's
-  `mux-ask` (a PermissionRequest hook for Claude Code and Codex) publishes the
-  exact command or file; the Agents panel answers it and the agent gets the
-  decision, nothing typed into the pane. Only for a request you can read whole
-  (one line, 240 characters at most, or a file edit), never when that pane is
-  focused, falling back to the agent's own prompt after 45 s. Install it
-  (backs up your settings first; `--remove` takes it out):
-  `kittymux hooks --install` (and `--settings ~/.claude_personal/settings.json`
-  for a second account), `kittymux hooks --codex --install`.
-- **Idle projects** (needs [sweep](https://github.com/KitsuneKode/sweep)): when old
-  projects hold space worth getting back (10 GB by default; Settings → Island),
-  a small broom mark joins the system news with the size. Rest on it for the
-  bar of what's taking it (node_modules, target, .next…) with the old projects
-  below; a click keeps it open, and Review in sweep (or Enter) opens sweep's own
-  review, in your terminal. Nothing is deleted from the island, and the mark
-  steps back once you've looked until the number grows by 5 GB. It reads
-  sweep's own scan, kept for 6 hours (30 minutes when you open the panel) and
-  refreshed at idle priority (`bin/kuwai-sweep`); also in the launcher as Idle
-  Projects.
-- **HDR** reads the signal on the wire (`bin/kuwai-hdr`), not the preset name:
-  the notch says HDR when the screen is really receiving PQ or HLG.
-
-## What's in it
-
-| Piece | Replaces | Where |
-|---|---|---|
-| Glass HUD: brightness, volume, mic | HyDE volume popups, dunst brightness OSD | `shell/modules/osd/` |
-| Notification server + Sonner-style toast stack; important ones (critical, a reply, an action) also peek out of the notch, and an agent finishing or needing you is a notch moment. Devices too: earbuds, a speaker, your IEMs behind a DAC, a mouse or a pad connecting or going grow a card out of the notch with the device, what happened and its battery (and once at login, what's already connected) | dunst | `shell/services/Notifs.qml`, `shell/modules/notifications/Popups.qml` |
-| The center, the notch grown: Notifications (Super+N, or pull the notch down; a Today row on top) · Controls with Sound (Super+Ctrl+Alt+W, or pull from the notch's right side: Wi‑Fi, Bluetooth, DND, Night Shift, Caffeine, Mic, Reduce Motion, battery, volume, brightness; Sound: coloured mixer, per-app output, device lists) | dunst history, pavucontrol, nm-applet, brightness/hyprsunset scripts | `shell/modules/notifications/Center.qml` + `CenterContent.qml` + `*View.qml` |
-| The clipboard island (Super+V): a pill at the top centre that shows each copy, and melts into a shelf of cards: fzf search, Quick Look, ⌃K actions, OCR, pins, rendered Markdown/code/Mermaid, secrets masked | HyDE's rofi cliphist menus | `shell/modules/clipboard/`, `shell/services/Clipboard.qml`, `bin/kuwai-clip`, `bin/kuwai-render` |
-
-| The login screen and the lock screen: one design, the same password pill, status and motion | SDDM (astronaut theme), hyprlock | `greeter/`, `shell/greeter.qml`, `shell/modules/lock/` |
-| The assistant (Super+Ctrl+Shift+A): a local agent on Ollama that uses tools (the focused window, system load, clipboard, selection, files in ~, web search) and asks before it runs a command, opens an app or a link; reasoning folds away; screenshots go to a vision model first when the chosen model can't see | — | `shell/modules/assistant/`, `shell/components/ai/`, `shell/services/OllamaService.qml`, `bin/kuwai_agent.py` |
-
-
-## Look
-
-- **Kuwai Night** (`bin/kuwai-theme install --apply`): sixteen dark and dim
-  photographs (night ridges, blue dunes, fog, mono peaks) and hairline window
-  borders like the island's rim; your GTK theme, icons, font and terminal
-  colours are kept. The photos are downloaded from Panacea's collection (each
-  belongs to its photographer; see the theme's CREDITS.txt), not shipped here.
-- **Wallpaper changes grow out of the island** (`services/WallFx.qml`,
-  `shaders/wallreveal.frag`): the new picture spreads from the notch with a
-  liquid-glass front, on a layer that exists only while it plays.
-- **`kuwai-fetch`**: fastfetch with an animated GIF beside it in kitty (any GIF
-  in `~/.config/kuwai/fetch`; `kuwai-fetch --get-pokemon 25` fetches one).
-
-## Run / control
+Optional system integrations (require `sudo` and support `--undo`):
 
 ```sh
-bin/kuwai start        # (re)start; stops dunst and takes org.freedesktop.Notifications
-bin/kuwai stop         # dunst comes back by itself on the next notification
-bin/kuwai logs         # follow the shell's log
-bin/kuwai notifs dnd   # also: dnd-on dnd-off mute-on mute-off clear hide open last count waybar
-bin/kuwai center [agents]   # toggle the center; starts the shell if it isn't running
+sudo greeter/install       # greetd login screen sharing the lock screen's design (--code refreshes after updates)
+sudo system/install        # RTC wake helper so alarms wake a sleeping laptop
+kuwai update install-helper # root-owned pacman helper for Software Update
 ```
 
-### Notifications not showing (ZapZap, toasts, peek)
+kuwai registers its own **Kuwai** login session with Hyprland config in `~/.config/kuwai/hypr/` (`hyprland.lua`, `monitors.lua`, `user.lua`), leaving `~/.config/hypr` and your plain Hyprland session untouched. Everything replaced on first install is recorded in `~/.local/state/kuwai/original/` and restored by `./install.sh --uninstall` (plus `sudo system/session --undo` and `kuwai auth unpin` for the two root-installed pieces).
 
-0. **`bin/kuwai doctor`** — one report: notification owner, DND, `kuwai-notify`, shell health, feeds, ZapZap hint.
-1. **Who owns the bus?** `busctl --user get-property org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus GetNameOwner s org.freedesktop.Notifications` — should be **qs**, not empty and not dunst alone while you use the island.
-2. **Focus / DND** — `kuwai notifs dnd-off` (clears Focus and screen-share mute). Island hover: purple **Focus** chip or **bell-slash** = normal alerts suppressed (WhatsApp included). Center moon button too.
-3. **Shell failed to load** — `kuwai restart`; if QML broke, nothing owns notifications until fixed. **`kuwai-check`** must pass. Restart **ZapZap** after a long outage (it disables the backend for the session).
-4. **ZapZap** — Settings → Notifications on; message with the app **in the background** (WhatsApp often skips notify for the focused chat).
-5. **Stress test** — `bin/kuwai-fixture notifs one` · `bin/kuwai-notify -a test Title Body` (D-Bus, no libnotify); worst case: `bin/kuwai-fixture notifs worst`.
+An AUR `PKGBUILD` and `kuwai-setup` wrapper also live in `packaging/aur/kuwai/`. Full details on channels, migrations, backups, and uninstall are in [docs/manual/install.md](docs/manual/install.md).
 
-Quickshell hot-reloads on save, so editing a `.qml` file updates the running
-shell. The shell runs by path (`qs -p ~/Projects/rice/shell`), not `qs -c`,
-because `~/.config/quickshell/shell.qml` exists and makes Quickshell ignore
-named configs there.
+## What you get
 
-Manual (one page per area): [docs/manual/README.md](docs/manual/README.md).
+- **The island** ([docs/manual/island.md](docs/manual/island.md)): Top-edge notch holding workspaces, clock, status, privacy dots (mic, camera, screen share/recording), media, and timers. Background work floats beside it in capsules (agents, waiting approvals, usage limits, system news, minimized windows). Click or pull down to grow a panel.
+  ![Capsule states: working, needs you, hit a limit, error](docs/media/island/capsule-states.png)
+- **Notifications** ([docs/manual/notifications.md](docs/manual/notifications.md)): Built-in `org.freedesktop.Notifications` server with stacked toasts, notch peeks, and a Notification Center (`Super+N`) grouped by app with search and undo clear. Chat bodies stay hidden on passive surfaces and the lock screen; screen sharing hides non-critical bodies everywhere. Optional GitHub (`gh`) and Gmail (IMAP IDLE, keyring app password) feeds are off until enabled.
+- **Controls, Sound, and Displays** ([docs/manual/display.md](docs/manual/display.md), [docs/manual/audio.md](docs/manual/audio.md)): `Super+Ctrl+Space` opens Controls (Wi-Fi, Bluetooth, DND, Night Shift, Caffeine, microphone, Reduce Motion, brightness, Display presets, and a per-app PipeWire sound mixer). HDR status reads the live signal on the wire (`bin/kuwai-hdr`).
+- **Launcher**: `Super+A` searches apps, open windows, files (`fd`), settings, and actions. Inline prefixes: `=` calculator (math, units, currencies), `!` processes and listening ports (`! 3000`), `+` Arch and AUR packages, `:` emoji, `;` Nerd Font glyphs, plus `timer 10m`, `pomodoro`, `remind me …`, `alarm 7:30`, and `note …`.
+- **Clipboard**: Opt-in shelf (`Super+V`, pins on `Super+Shift+V`) backed by `cliphist` with fuzzy search, Quick Look (`Space`), inline editing, OCR (`Ctrl+O`), rendered Markdown/code/Mermaid, secret masking, and undo delete (`Ctrl+Z`).
+- **Lock and login**: `Super+L` locks the session; `sudo greeter/install` installs the matching `greetd` login screen. Both use a five-dot pulse password pill (length is never revealed) and hold-to-confirm power actions (0.8 s).
+  | | |
+  |---|---|
+  | ![Login screen](docs/media/login/login.webp) | ![Lock screen](docs/media/login/lock.webp) |
+- **Themes, wallpapers, and screensavers** ([docs/manual/looks.md](docs/manual/looks.md)): `Super+Shift+T` opens Themes, Wallpapers, Live wallpapers, and Screensavers. `kuwai look` manages 13 dark theme definitions with WCAG 4.5:1 contrast checks, notch-origin wallpaper transitions, GPU-decoded live wallpapers (`kuwai-wall`), and five screensaver modes (`Dusk`, `Borealis`, `Night`, `Live`, `Still`). HyDE is optional.
+- **Dictation hooks**: When `voxtype` is installed, `hypr/kuwai/voxtype.lua` binds `F9` (hold to dictate), `Super+Ctrl+D` (toggle), `Super+Shift+D` / `Esc` (cancel), `Super+Ctrl+Alt+D` (recover cancelled take), and `Super+Ctrl+E` (voice edit), and the shell can host voxtype's HUD inside the main process.
+- **Agents and usage**: `Super+Shift+N` opens the Agents section (`Alt+1–4` switches Agents, Usage, System, Cleanup). Lists kitty/kittymux panes, T3 Code threads, and agents reporting through `bin/kuwai-agent-hook`. Waiting approvals appear in an orange capsule and can be answered via native hooks (Claude Code/Codex via kittymux `PermissionRequest`, T3 Code via a separate operate token) without typing into terminal panes. Usage tracks per-account rate-limit resets and local log spend.
+- **Updates with AUR review** ([docs/manual/updates.md](docs/manual/updates.md)): `Super+Ctrl+Shift+U` opens Software Update. Runs in a detached `kuwai-update` systemd unit, upgrades Arch repo packages together (`pacman -Syu`), requires reviewing AUR `PKGBUILD` diffs before building as your user from the approved git commit, and surfaces `.pacnew` diffs with backups.
+- **Cleanup**: Audits unused agent skills (30/90/180 days) and recoverable tool caches (`pip`, `uv`, `npm`, `bun`, `pnpm`, `go`, `yarn`, thumbnails), plus idle project builds when [sweep](https://github.com/KitsuneKode/sweep) is installed. Skills move to the freedesktop Trash with **Put back** restoring their symlinks.
+- **Optional local assistant** ([docs/manual/assistant.md](docs/manual/assistant.md)): Off by default (`Settings → Assistant`, `Super+Ctrl+Shift+A`). Connects to a local Ollama server with tool calls, secret redaction on clipboard/selection reads, and confirmation before running commands or opening links.
 
-## Shortcuts
+## Keybindings
 
-| Keys | Does |
+Press `Super+/` (or hold `Super`) to open the live shortcuts sheet, or rebind any kuwai action in `Settings → Shortcuts` (`Super+Ctrl+I`). Full reference: [docs/manual/keybindings.md](docs/manual/keybindings.md).
+
+| Keys | Action |
 |---|---|
-| Super+N | Notifications (again: close) |
-| Super+Shift+N | Agents (kittymux); with the center open, switches tab |
-| Super+Alt+N | Do Not Disturb on/off (the HUD confirms) |
-| Super+Shift+Alt+N | Open the newest notification (its app, its thread) |
-| Super+Ctrl+Shift+N | kittymux's own panel |
+| `Super+A` | Launcher (apps, windows, files, `=` calc, `!` procs/ports, `+` packages) |
+| `Super+N` | Notifications center |
+| `Super+Ctrl+Space` | Controls (Wi-Fi, Bluetooth, Sound, DND, Display) |
+| `Super+V` / `Super+Shift+V` | Clipboard / Clipboard pins |
+| `Super+Shift+N` / `Super+Ctrl+A` | Agents panel / Jump to waiting agent |
+| `Super+Ctrl+I` | Settings |
+| `Super+Shift+T` / `Super+Shift+W` | Themes / Wallpapers |
+| `Super+Ctrl+Shift+U` | Software Update |
+| `Super+L` / `Super+Backspace` | Lock screen / Power menu |
+| `Super+/` | Keyboard shortcuts sheet |
+| `Super+Ctrl+Enter` | Answer active island card (notification peek, alarm, reminder) |
 
-Inside the center: type to search · ↑↓ select · click row · Open or ↵ · double-click open · ⌦ dismiss (or mark
-read) · →← expand/fold a group · ⇥ filter · ⌃⇥ next tab · ⌥1–4 a tab ·
-⌃D Do Not Disturb · ⌃⇧⌫ clear all · Esc clears the search, then closes ·
-? (or F1, ⌃/) shows every shortcut.
+## Control, updates, and troubleshooting
 
-Inside the assistant: ↵ send · ⇧↵ newline · ⌃K model · / commands · ⌃V paste an image ·
-⌃N new chat · ⌃O apps · ⌃M studio · ⌃B sidebar · ⌃↵ run (when it asks) · Esc don't run,
-then stop, then close · ⌫ on an empty prompt removes the last attachment.
+Your session runs from the **stable** checkout in `~/.local/share/kuwai` supervised by `kuwai-shell.service`:
 
-The Super shortcuts are Hyprland global shortcuts (`global, kuwai:center` …)
-that call straight into the running shell (`shell/modules/Shortcuts.qml`):
-no process per keypress. `hyprctl globalshortcuts` lists them.
+```sh
+kuwai doctor              # check Hyprland config, notifications, services, and shell health
+kuwai status              # systemd status of kuwai-shell.service
+kuwai start | stop        # restart or stop the shell (never use killall qs)
+kuwai logs                # follow the shell log
+kuwai version             # installed version, stable commit, and active channel
+kuwai update-self         # update stable to the newest signed release tag and run migrations
+kuwai rollback            # return stable to the previous commit and undo its migrations
+kuwai demo                # 45-second tour of the island with pretend agents
+```
+
+If you develop inside a clone, switch with `kuwai channel dev` and land changes onto stable with `kuwai promote` (which runs `kuwai-check`, backup, `qmllint`, Lua syntax checks, and offscreen load tests, with automatic rollback on failure). Troubleshooting guide: [docs/manual/doctor.md](docs/manual/doctor.md).
+
+## Privacy and security
+
+- **No telemetry.** Settings, notification history, and logs remain local in `~/.config/kuwai`, `~/.local/state/kuwai` (`0700`), and `~/.cache/kuwai` (`0700`).
+- **Opt-in collection.** Clipboard history and GitHub/Gmail feeds start off until you accept them during install or enable them with `kuwai collect`. The local Ollama assistant is also off by default.
+- **Narrow root boundaries.** Only five components ever use root: `system/session` (login entry), `kuwai auth pin` (root-owned polkit password prompt), `kuwai-update-root` (op-scoped `pkexec` pacman helper), and the optional `greeter/install` and `system/install` helpers.
+
+See [SECURITY.md](SECURITY.md) and [docs/manual/security.md](docs/manual/security.md) for the trust model and known limitations.
+
+## Documentation
+
+- [docs/manual/README.md](docs/manual/README.md) — User manual (install, keybindings, settings, island, notifications, updates, looks, display, audio, assistant, doctor, security)
+- [docs/DESIGN.md](docs/DESIGN.md) — Material, typography, colour, motion, and UI primitives
+- [docs/ROADMAP-public.md](docs/ROADMAP-public.md) — What is planned after v0.1.0
+- [CHANGELOG.md](CHANGELOG.md) — Release history
+- [CONTRIBUTING.md](CONTRIBUTING.md) — Development workflow and test gates
 
 ## Layout
 
-```
-shell/
-  shell.qml                 entry: instantiates the modules
-  config/Theme.qml          design tokens (material, text, type, motion)
-  components/               shared visuals (GlassCard, …)
-  services/                 data + state singletons (Notifs, NotifAdapters, …)
-  modules/                  surfaces (osd/, notifications/, …)
-bin/                        kuwai (control CLI), kuwai-shell (launcher), kuwai-usage (usage limits, read-only)
-hypr/                       kuwai: the Hyprland side (Lua) — see hypr/README.md
-greeter/                    the login screen: install, sync, preview, its Hyprland config
-waybar/                     Waybar module overrides (symlinked into ~/.config/waybar/modules)
-docs/                       DESIGN.md (the look), BORROWING.md (what to take from where), media/ (README previews)
-refs/                       shallow clones of other shells to read (gitignored)
-```
-
-## How it hooks into the system
-
-- `kuwai-session` (the "Kuwai" login entry) starts Hyprland on
-  `~/.config/kuwai/hypr/hyprland.lua`, which loads kuwai (`hypr/init.lua`) and autostarts
-  `bin/kuwai-shell`, binds the shell's global shortcuts and gives every `kuwai-*`
-  layer blur without animation, exempt from xray so the glass blurs real
-  windows, not just the wallpaper. Details: [hypr/README.md](hypr/README.md).
-- `~/.config/waybar/modules/custom-dunst.jsonc` → `waybar/custom-dunst.jsonc`
-  keeps HyDE's bell working against kuwai (or dunst, as fallback).
-- dunst stays installed as the fallback. Its drop-ins in
-  `~/.config/dunst/dunstrc.d/` (T3 Code, Ghostty) keep it presentable.
-- Brightness (the OSD, dimming, the keys, Display) goes through
-  `bin/kuwai-brightness` (see "What kuwai owns" below).
-
-### What kuwai owns, what stays yours
-
-Everything the desktop calls lives in this repo and runs from the copy you're
-on (stable or dev), so a fresh install has it and a fix lands once:
-
-| Was | Now | For |
-| --- | --- | --- |
-| `~/Scripts/brightness.sh` (+ `brightness.py`, `brightness-client.py`) | `bin/kuwai-brightness`, `lib/brightness/` | brightness of every screen, the OSD, dimming |
-| `~/Scripts/live-wallpaper.sh` | `bin/kuwai-livewall` | live wallpapers (`kuwai wall`) |
-| `~/Scripts/tile-two.sh` + `lib-dispatch.sh` | `bin/kuwai-tile-two`, `lib/dispatch.sh` | Super+Alt+F tile two |
-| `~/Scripts/shazam-now.sh` | `bin/kuwai-shazam` | “what's playing” recognition |
-
-Edit the repo's copies. The old `~/Scripts` names are one-line forwarders to
-these (so Waybar, HyDE binds and `user.lua` keep working); the originals were
-moved to `~/Scripts/.moved-to-kuwai-2026-11-08/`.
-
-`~/Scripts` is for what belongs to this machine and not to the desktop: your
-voxtype dictation scripts (kuwai binds them when they exist; `user.lua` can
-point `K.voxtype_scripts` elsewhere), game and app helpers. HyDE's helpers
-(`~/.local/lib/hyde`) and kittymux (`~/.local/bin/kittymux`) are their own
-projects; kuwai uses them when present.
-
-## Usage limits (Usage panel)
-
-`bin/kuwai-usage` reads T3 Code's own usage data: every provider and every
-signed-in account (two Claude logins show as two segments), pushed live over
-T3 Code's config subscription while the Usage panel is open. It only reads.
-Give it a read-only token once:
-
-```sh
-umask 077; mkdir -p ~/.local/state/kuwai
-t3 auth session issue --scope orchestration:read --scope diagnostics:read --label kuwai-usage --ttl 365d --token-only > ~/.local/state/kuwai/t3-token
+```text
+hypr/         Hyprland 0.57 Lua configuration (see hypr/README.md)
+shell/        Quickshell shell (config/, components/, services/, modules/)
+shell-auth/   Standalone polkit password prompt (kuwai-auth.service)
+shell-saver/  Out-of-process screensaver video player
+greeter/      Optional greetd login screen installer and config
+system/       Session desktop entry and optional RTC wake helper
+bin/          kuwai CLI and helper tools
+lib/          Shared libraries (brightness, look palette engine, dispatch, lists)
+themes/       13 theme definitions, palettes, wallpaper URLs, and CREDITS.txt
+packages/     Arch core, optional, and font package lists
+packaging/    AUR PKGBUILD and kuwai-setup wrapper
+site/         Static website (Astro)
+tests/        Python, Bun, Lua, and UI rehearsal test suites
 ```
 
-Answering T3's permission requests from the notch (Allow/Deny) uses a second,
-separate token, so the readers above never hold one that can approve:
+## Licence and credits
 
-```sh
-t3 auth session issue --scope orchestration:operate --label kuwai-answer --ttl 365d --token-only > ~/.local/state/kuwai/t3-operate-token
-```
+kuwai is free software under the **GNU General Public License v3.0 or later** ([LICENSE](LICENSE)).
 
-Both files must be yours alone (`umask 077` makes them 0600); a token file
-others can read is ignored. The keyring works too (`secret-tool store
---label kuwai service kuwai key t3-operate-token`).
-
-Without a token, or with T3 Code closed, it falls back to kittymux's
-`agent-usage.json` (one account per provider).
-
-## Motion
-
-Reduce Motion (Controls tab) turns travel, scale and stagger into plain
-fades; it's remembered in `~/.local/state/kuwai/prefs.json`, and it's also on
-when `KUWAI_REDUCE_MOTION=1` or Hyprland's animations are off. `hypr/kuwai/motion.lua`
-gives Hyprland the same language: one ease-out, ~250ms in, ~160ms out, and a
-critically damped spring for window moves (`kuwai motion reduced|off`).
-
-## Login and lock screen
-
-![The login screen coming up at boot](docs/media/login/login-intro.gif)
-
-The login screen replaces SDDM and shows on every monitor. greetd runs a
-bare Hyprland (`greeter/hyprland.lua`) with kuwai's own Quickshell login
-on it (`shell/greeter.qml`). It comes up with your screens and keyboard
-layout as your session last had them: at each login `greeter/sync` writes
-them as plain data (`kuwai-greeter.conf`: modes, positions, scale, 10-bit
-where you use it, the layout, variant and switch), and the login screen
-checks every line and ignores the whole file if anything in it is off,
-falling back to each screen's preferred mode and a US keyboard. It never
-runs anything from your files: its code is root's. The lock screen (`kuwai lock`) is its sibling: the
-same password pill, the same corner status, the same motion.
-
-- **One axis, as on a Mac.** The art stays sharp at rest. The date, the
-  clock and a greeting sit at the top centre (where the lock screen has its
-  clock), your picture and name at the bottom centre with "Press any key to
-  log in", and the power row under you. The first key or click focuses it
-  in place: the art blurs and dims, the clock steps back, your picture
-  grows and the password pill takes the hint's place.
-- **Password pill.** Five dots pulse on every keystroke, so the length is
-  never shown, and there's no show-password button. Caps Lock is flagged
-  under the pill.
-- **Status.** Bluetooth (when it's on), Wi-Fi bars or a cable, and the
-  charge sit loose in the top-right corner, as on a Mac.
-- **Power is held, never clicked.** Sleep, Restart and Shut Down fill a
-  ring while you hold (0.8 s), then say goodbye. The island's power menu
-  (Super+Backspace) works the same way.
-- **Lock screen.** A blurred, drifting wallpaper sits behind the clock,
-  the weather, what's playing and the notifications that matter.
-
-| | |
-|---|---|
-| ![Login screen at rest](docs/media/login/login.webp) | ![Lock screen](docs/media/login/lock.webp) |
-| ![Logging in: the dots pulse, the arrow fills](docs/media/login/login-typing.webp) | ![A timer on the lock screen](docs/media/login/lock-timer.webp) |
-
-### Motion
-
-Reduce Motion keeps only the fades.
-
-| | |
-|---|---|
-| **Focusing the login.** The art blurs, the clock glides up, and you rise into the middle. | ![Rest to login](docs/media/login/login-ask.gif) |
-| **Logging in.** Your picture opens into your desktop's wallpaper with "Welcome back" over it, which is where the session starts. On the desktop, the notch then says "Good evening" with your picture, once per login. | ![Login hand-off](docs/media/login/login-handoff.gif) |
-| **A wrong password.** The pill shakes and the ring around your picture flashes red. | ![Wrong password](docs/media/login/login-wrong-password.gif) |
-| **Hold to restart.** The ring fills, the label says what holding does, then the goodbye. | ![Hold to restart](docs/media/login/login-hold-restart.gif) |
-| **Goodbyes.** The screen goes quiet and a mark draws itself: an arrow round a circle to restart, the power symbol powering down, a breathing moon for sleep. The line under it reads "Good night, kitsunekode" late at night. Then black, and only then does it happen. | ![Shutting down](docs/media/login/goodbye-shut-down.gif) ![Sleeping](docs/media/login/goodbye-sleep.gif) |
-| **Locking.** The island opens out of a dot and the padlock's shackle snaps shut. | ![Locking](docs/media/login/lock-locking.gif) |
-| **Unlocking.** The shackle springs open in green ("Unlocked"), the blur clears, and everything lifts off the wallpaper. The notch then says "Welcome back · away 42 min". | ![Unlock](docs/media/login/lock-unlock.gif) |
-| **Notifications while locked.** A preview, as on an iPhone: the ones that matter (critical, warning, or something you can act on) since you last looked, with the app, when, the headline, one line, and the app's own status ("Needs you", "Completed"). A conversation is one card with a count. A verification code reads "Code hidden · unlock to see". Tap one and it opens once you've typed your password. | ![Notifications](docs/media/login/lock-notifications.gif) |
-| **Plugging in.** The battery fills from empty to its charge in green, and a ring pings out of it. | ![Charging](docs/media/login/lock-charging.gif) |
-| **A timer.** The island holds it while it runs. When the timer ends it swells and says "Done". | ![Timer island](docs/media/login/lock-timer.gif) |
-| **A device on the desktop.** Earbuds connecting grow a card out of the notch: the photo from `devices.json` (or its kind), the name, "Connected", the battery ring filling. Going, it greys and says where the sound went. A click opens Sound. | ![Device card](docs/media/login/island-device.gif) |
-
-### Switching from SDDM
-
-```sh
-sudo greeter/install          # greetd + the login screen; SDDM off
-sudo greeter/install --undo   # back to SDDM
-```
-
-The install script installs greetd and gives it SDDM's PAM stack, so the
-GNOME keyring still unlocks at login. It also copies the shell to
-`/var/lib/kuwai-greeter`, because greetd's `greeter` user can't read your
-home. `greeter/sync` refreshes that copy, with your wallpaper and theme, on
-every login (`hypr/kuwai/startup.lua`). Ctrl+Alt+F2 is always a text login.
-
-### Regenerating the previews
-
-```sh
-greeter/preview   # ~1 min: redraws everything in docs/media/login
-```
-
-It draws the screens in windows inside your session, in a throwaway home
-and runtime dir, so nothing is locked, nobody is logged in, and the fake
-notifications and timers never touch yours. The stills come from `greeter.qml`'s shot mode.
-The GIFs come from `shell/film.qml`, which saves frames with timestamps,
-so the GIFs play at real speed. It needs ffmpeg and ImageMagick.
-
-## Clipboard island
-
-Super+V opens it (Super+Shift+V / Super+Alt+V on your pins). cliphist stays
-the store; kuwai adds copy times, pins (files that outlive the 750-entry
-cap) and the island. ↵ pastes into the window you came from, ⌃K lists every
-action. Mermaid diagrams draw if mermaid-cli is installed
-(`npm i -g @mermaid-js/mermaid-cli`); without it their source shows
-highlighted.
-
-## Screenshots of the center
-
-Screenshot pickers work over it: when slurp, hyprpicker, grimblast and the
-like take the pointer, the center stays open and takes the keyboard back
-after they exit.
-
-## GitHub and Gmail
-
-`bin/kuwai-feeds` (a user service, `systemd/kuwai-feeds.service`) turns both
-into ordinary notifications, without their apps:
-
-- **GitHub**, through `gh` and its login. It asks once a minute, sending
-  If-Modified-Since, so an unchanged inbox costs nothing against the rate
-  limit. Review requests, mentions, assignments and failed CI peek out of
-  the notch. Comments get a plain toast. Repeated runs of one workflow on
-  one branch share a card. Bots (Dependabot, Renovate, their branches' CI)
-  go quietly into the center, and your own activity isn't news.
-- **Gmail**, over IMAP IDLE: Gmail pushes new mail, so nothing polls. Only
-  mail Gmail marks important, in Primary, unread. It needs an app password
-  (2-Step Verification on), kept in the keyring: `kuwai feeds gmail-setup`.
-
-Every card has Open and Mark as Read (mail has Archive too), and goes away
-by itself once you've read it on github.com or in Gmail. GitHub cards show
-the person's avatar. Where there's someone to answer, Reply in the center
-answers without a browser: a comment on the issue or pull request, or an
-email Gmail threads with the original (sent through smtp.gmail.com with the
-same app password; no-reply senders get no reply field). Anything longer,
-Open. `kuwai feeds` shows the status, `kuwai feeds logs` follows it.
-
-Settings live in `~/.config/kuwai/feeds.json`, read each time, so changes need
-no restart (the address is the exception; `gmail-setup` sets it and restarts):
-
-```json
-{
-  "gmail": "you@gmail.com",
-  "gmailQuery": "is:unread is:important category:primary",
-  "github": {
-    "enabled": true,
-    "mute": ["someorg/*"],
-    "quiet": ["KitsuneKode/dotfiles"],
-    "bots": "quiet"
-  }
-}
-```
-
-`mute` drops a repository (glob patterns), `quiet` keeps it out of the notch
-and the toasts but in the center, and `bots` is `quiet`, `hide` or `show`.
-`gmailQuery` is any Gmail search. `tests/feeds` checks what each kind of
-thread and message turns into (`python -m pytest tests/feeds`).
-
-## Notifications: adding an app
-
-Apps send inconsistent things. `shell/services/NotifAdapters.qml` has one rule
-per app that rewrites the D-Bus notification into what the card should say
-(headline, status line + tone, icon, group key, window to focus). Examples:
-
-- **T3 Code** sends `"Thread completed"` + the thread name and no icon. The card
-  shows the thread as the headline, a green check status, the T3 icon, merges
-  repeats for the same thread (`×2`), and focuses T3 on click.
-- **Ghostty** (and Claude Code running in it) sends an empty app name. Matched
-  on its desktop-entry hint instead.
-
-Everything else gets the generic rule, with icons resolved from the
-notification image → app icon → desktop entry.
-
-## License
-
-GPL-3.0-or-later ([LICENSE](LICENSE)); third-party icons, logos and design
-references keep their own terms ([NOTICE.md](NOTICE.md)).
+Third-party wallpapers are **not** shipped in this repository; `kuwai-theme install` downloads them directly to your machine with checksum verification and credits every photographer, artist, and licence in `themes/*/CREDITS.txt`. Third-party icon sets, glyph databases, and brand marks keep their own terms ([NOTICE.md](NOTICE.md)).
