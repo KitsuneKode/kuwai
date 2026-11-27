@@ -1,37 +1,57 @@
 #!/usr/bin/env bash
 set -eu
-[ "$(id -u)" = 0 ] || { echo "run with sudo" >&2; exit 1; }
+SYS=""
+[ "$(id -u)" = 0 ] || SYS=${KUWAI_SYSROOT:?run with sudo}
 USER_NAME=${SUDO_USER:?run with sudo from your account}
 KUWAI="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
-DEST=/var/lib/kuwai-greeter
+# shellcheck source=system/release.sh
+. "$KUWAI/system/release.sh"
+DEST=$SYS/var/lib/kuwai-greeter
 KEEP=$DEST/original
-YES=0; DIRTY=0; MODE=install
+RECEIPT=$KEEP/receipt
+SAVED="pam-greetd:/etc/pam.d/greetd greetd-config.toml:/etc/greetd/config.toml getty-tty1-override.conf:/etc/systemd/system/getty@tty1.service.d/override.conf"
+YES=0; DIRTY=0; TRUST=0; MODE=install
 for a in "$@"; do
     case $a in
         --code) MODE=code ;; --undo) MODE=undo ;;
-        --yes|-y) YES=1 ;; --dirty) DIRTY=1 ;;
-        *) echo "usage: sudo greeter/install [--code] [--undo] [--yes] [--dirty]
-  the login screen runs the committed shell/ and greeter/, never edits or links;
-  --dirty installs the working tree instead (links still refused)" >&2; exit 2 ;;
+        --yes|-y) YES=1 ;; --dirty) DIRTY=1 ;; --trust-clone) TRUST=1 ;;
+        *) echo "usage: sudo greeter/install [--code] [--undo] [--yes] [--trust-clone [--dirty]]
+  the login screen runs root's checked copy of a signed release (kuwai setup puts it in place);
+  --trust-clone installs this clone's committed shell/ and greeter/ instead, trusting it as it is,
+  and --dirty with it the working tree (links still refused)" >&2; exit 2 ;;
     esac
 done
+[ $DIRTY = 0 ] || [ $TRUST = 1 ] || { echo "--dirty installs this clone's working tree, so it needs --trust-clone too" >&2; exit 2; }
+case $MODE in
+    install) from_release "$KUWAI" "$TRUST" "greeter/install" ;;
+    *) from_release "$KUWAI" "$TRUST" "greeter/install --$MODE" ;;
+esac
+own=(-o root -g root); [ -z "$SYS" ] || own=()
+greeter_group() { [ -z "$SYS" ] && getent group greeter >/dev/null; }
+as_user() { if [ -z "$SYS" ]; then sudo -u "$USER_NAME" -H "$@"; else "$@"; fi; }
+sync_greeter() { if [ -z "$SYS" ]; then sudo -u "$USER_NAME" -H "$KUWAI/greeter/sync"; else KUWAI_GREETER_DIR=$DEST "$KUWAI/greeter/sync"; fi; }
 
 stage_code() {
     local out=$1 rev
-    if rev=$(sudo -u "$USER_NAME" git -C "$KUWAI" rev-parse HEAD 2>/dev/null); then
-        if [ -n "$(sudo -u "$USER_NAME" git -C "$KUWAI" status --porcelain -- shell greeter)" ] && [ $DIRTY = 0 ]; then
+    if [ $TRUST = 0 ]; then
+        cp -R -- "$KUWAI/shell" "$KUWAI/greeter" "$out/"
+        rev="$(basename "$KUWAI"), root's checked copy"
+    elif rev=$(as_user git -C "$KUWAI" rev-parse HEAD 2>/dev/null); then
+        if [ -n "$(as_user git -C "$KUWAI" status --porcelain -- shell greeter)" ] && [ $DIRTY = 0 ]; then
             echo "shell/ or greeter/ has uncommitted changes: commit them, or pass --dirty to install the working tree" >&2
             return 1
+        fi
+        if [ $DIRTY = 1 ]; then
+            (cd "$KUWAI" && tar -c shell greeter) | tar -x -C "$out"
+            rev="$rev+dirty"
+        else
+            as_user git -C "$KUWAI" archive HEAD shell greeter | tar -x -C "$out"
         fi
     else
         rev=unknown
         [ $DIRTY = 1 ] || { echo "$KUWAI isn't a git checkout: pass --dirty to install it as it is" >&2; return 1; }
-    fi
-    if [ $DIRTY = 1 ]; then
         (cd "$KUWAI" && tar -c shell greeter) | tar -x -C "$out"
         rev="$rev+dirty"
-    else
-        sudo -u "$USER_NAME" git -C "$KUWAI" archive HEAD shell greeter | tar -x -C "$out"
     fi
     if [ -n "$(find "$out" ! -type f ! -type d)" ]; then
         echo "refused: links or special files in shell/ or greeter/:" >&2
@@ -52,21 +72,25 @@ stage_once() {
 
 install_code() {
     stage_once
-    local src=$STAGED
-    install -d -m755 -o root -g root "$DEST"
-    chown root:root "$DEST"; chmod 755 "$DEST"
-    rsync -r --delete --no-links --chown=root:root --chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r "$src/shell/" "$DEST/shell/"
-    chown -R root:root "$DEST/shell"
+    local src=$STAGED chown_to=(--chown=root:root)
+    [ -z "$SYS" ] || chown_to=()
+    install -d -m755 "${own[@]}" "$DEST"
+    [ -n "$SYS" ] || chown root:root "$DEST"
+    chmod 755 "$DEST"
+    rsync -r --delete --no-links "${chown_to[@]}" --chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r "$src/shell/" "$DEST/shell/"
+    [ -n "$SYS" ] || chown -R root:root "$DEST/shell"
     for f in start session-start compositor-start keys; do
-        install -m755 -o root -g root "$src/greeter/$f" "$DEST/$f"
+        install -m755 "${own[@]}" "$src/greeter/$f" "$DEST/$f"
     done
-    install -m644 -o root -g root "$src/greeter/hyprland.lua" "$DEST/hyprland.lua"
-    install -m644 -o root -g root "$src/code-revision" "$DEST/code-revision"
-    if getent group greeter >/dev/null; then
+    install -m644 "${own[@]}" "$src/greeter/hyprland.lua" "$DEST/hyprland.lua"
+    install -m644 "${own[@]}" "$src/code-revision" "$DEST/code-revision"
+    if greeter_group; then
         install -d -m2750 -o "$USER_NAME" -g greeter "$DEST/home"
         chgrp greeter "$DEST/home"; chmod 2750 "$DEST/home"
-    else
+    elif [ -z "$SYS" ]; then
         install -d -m755 -o "$USER_NAME" "$DEST/home"
+    else
+        install -d -m755 "$DEST/home"
     fi
     for pair in user:.kuwai-user face:.face; do
         old=$DEST/${pair%%:*}; new=$DEST/home/${pair#*:}
@@ -75,7 +99,7 @@ install_code() {
             rm -f "$old"
         fi
     done
-    if getent group greeter >/dev/null; then
+    if greeter_group; then
         chown -R "$USER_NAME:greeter" "$DEST/home"
         chmod -R g+rX "$DEST/home"
         runuser -u greeter -- test -r "$DEST/home/.kuwai-user" || [ ! -e "$DEST/home/.kuwai-user" ] \
@@ -85,27 +109,69 @@ install_code() {
     fi
 }
 
+mine_alone() {
+    local p perm
+    for p in "$DEST" "$KEEP" "$RECEIPT"; do
+        [ -e "$p" ] && [ ! -L "$p" ] && [ "$(stat -c %u -- "$p")" = "$(id -u)" ] || return 1
+        perm=$(stat -c %a -- "$p")
+        (( (8#$perm & 8#022) == 0 )) || return 1
+    done
+    [ -f "$RECEIPT" ]
+}
+
+write_receipt() {
+    [ -e "$RECEIPT" ] && return 0
+    local pair name target sum dm tmp
+    tmp=$(mktemp "$KEEP/.receipt.XXXXXX")
+    for pair in $SAVED; do
+        name=${pair%%:*}; target=${pair#*:}
+        if [ -f "$KEEP/$name" ] && [ ! -L "$KEEP/$name" ]; then
+            sum=$(sha256sum <"$KEEP/$name" | cut -c1-64)
+            printf 'restore\t%s\t%s\t%s\n' "$target" "$name" "$sum" >>"$tmp"
+        elif [ -e "$KEEP/$name.absent" ]; then
+            printf 'remove\t%s\n' "$target" >>"$tmp"
+        fi
+    done
+    dm=$(cat "$KEEP/display-manager" 2>/dev/null || true)
+    [[ $dm =~ ^[A-Za-z0-9@._-]+\.service$ ]] && printf 'display-manager\t%s\n' "$dm" >>"$tmp"
+    chmod 600 "$tmp"
+    mv -T -- "$tmp" "$RECEIPT"
+}
+
 if [ $MODE = code ]; then
-    [ -d "$DEST" ] || { echo "the login screen isn't installed: sudo $KUWAI/greeter/install" >&2; exit 1; }
+    [ -d "$DEST" ] || { echo "the login screen isn't installed: sudo $KUWAI_LIB/current/greeter/install" >&2; exit 1; }
     stage_once
     echo "Installing the login screen's code: $(cat "$STAGED/code-revision"), tree sha256 $SUM"
     install_code
-    sudo -u "$USER_NAME" -H "$KUWAI/greeter/sync"
+    sync_greeter
     echo "The login screen's code is current, and root's."
     exit 0
 fi
 
 if [ $MODE = undo ]; then
+    if ! mine_alone; then
+        echo "There is no root-owned record of what the login screen's install replaced, so nothing is restored." >&2
+        echo "Put back /etc/pam.d/greetd and /etc/greetd/config.toml by hand if you changed them; greetd is left as it is." >&2
+        exit 1
+    fi
     systemctl disable greetd.service 2>/dev/null || true
-    for pair in pam-greetd:/etc/pam.d/greetd greetd-config.toml:/etc/greetd/config.toml getty-tty1-override.conf:/etc/systemd/system/getty@tty1.service.d/override.conf; do
-        saved=$KEEP/${pair%%:*}; target=${pair#*:}
-        if [ -f "$saved" ]; then install -D -m644 "$saved" "$target"; echo "restored $target"
-        elif [ -f "$saved.absent" ]; then rm -f "$target"; fi
-    done
-    if [ ! -f "$KEEP/pam-greetd" ] && [ -f /etc/pam.d/greetd.orig ]; then cp -f /etc/pam.d/greetd.orig /etc/pam.d/greetd; fi
-    if [ ! -f "$KEEP/greetd-config.toml" ] && [ -f /etc/greetd/config.toml.orig ]; then cp -f /etc/greetd/config.toml.orig /etc/greetd/config.toml; fi
+    was=""
+    while IFS=$'\t' read -r kind target saved sum; do
+        case $kind in
+            display-manager) [[ $target =~ ^[A-Za-z0-9@._-]+\.service$ ]] && was=$target; continue ;;
+            restore|remove) ;;
+            *) echo "skipped a line of the record it doesn't know" >&2; continue ;;
+        esac
+        case " $SAVED " in *":$target "*) ;; *) echo "skipped $target: the install never replaces it" >&2; continue ;; esac
+        if [ "$kind" = remove ]; then rm -f -- "$SYS$target"; echo "removed $target"; continue; fi
+        case " $SAVED " in *" $saved:$target "*) ;; *) echo "skipped $target: not where the install kept it" >&2; continue ;; esac
+        if [ -L "$KEEP/$saved" ] || [ ! -f "$KEEP/$saved" ] || [ "$(sha256sum <"$KEEP/$saved" | cut -c1-64)" != "$sum" ]; then
+            echo "skipped $target: its kept copy isn't the one the install recorded" >&2; continue
+        fi
+        install -D -m644 "${own[@]}" "$KEEP/$saved" "$SYS$target"
+        echo "restored $target"
+    done <"$RECEIPT"
     systemctl daemon-reload
-    was=$(cat "$KEEP/display-manager" 2>/dev/null || echo sddm.service)
     if [ -n "$was" ] && systemctl cat "$was" >/dev/null 2>&1; then
         systemctl enable "$was"
         echo "${was%.service} is the login again from the next boot."
@@ -115,16 +181,16 @@ if [ $MODE = undo ]; then
     exit 0
 fi
 
-was=$(basename "$(readlink -f /etc/systemd/system/display-manager.service 2>/dev/null)" 2>/dev/null || true)
+was=$(basename "$(readlink -f "$SYS/etc/systemd/system/display-manager.service" 2>/dev/null)" 2>/dev/null || true)
 stage_once
 cat <<PLAN
 This makes Kuwai's login screen the one this machine boots to:
   · installs greetd and rsync (pacman shows what and asks)
   · replaces /etc/pam.d/greetd and /etc/greetd/config.toml (the old ones are kept in $KEEP)
   · removes /etc/systemd/system/getty@tty1.service.d/override.conf (an autologin, if you had one; kept too)
-  · copies the committed shell/ and greeter/ ($(cat "$STAGED/code-revision"), tree sha256 $SUM) to $DEST, owned by root
+  · copies shell/ and greeter/ ($(cat "$STAGED/code-revision"), tree sha256 $SUM) to $DEST, owned by root
   · turns off ${was:-no other login manager} and turns on greetd from the next boot
-Undo, all of it: sudo $KUWAI/greeter/install --undo
+Undo, all of it: sudo $KUWAI_LIB/current/greeter/install --undo
 PLAN
 if [ $YES = 0 ]; then
     printf 'Go ahead? [y/N] '
@@ -137,17 +203,17 @@ keep() {
     if [ -e "$KEEP/$1" ] || [ -e "$KEEP/$1.absent" ]; then return 0; fi
     if [ -f "$2" ]; then install -D -m600 "$2" "$KEEP/$1"; else : >"$KEEP/$1.absent"; fi
 }
-install -d -m700 -o root -g root "$DEST" "$KEEP"
+install -d -m700 "${own[@]}" "$DEST" "$KEEP"
 chmod 755 "$DEST"
-keep pam-greetd /etc/pam.d/greetd
-keep greetd-config.toml /etc/greetd/config.toml
-keep getty-tty1-override.conf /etc/systemd/system/getty@tty1.service.d/override.conf
+for pair in $SAVED; do keep "${pair%%:*}" "$SYS${pair#*:}"; done
 if [ ! -e "$KEEP/display-manager" ]; then
-    dm=$(basename "$(readlink -f /etc/systemd/system/display-manager.service 2>/dev/null)" 2>/dev/null || true)
+    dm=$(basename "$(readlink -f "$SYS/etc/systemd/system/display-manager.service" 2>/dev/null)" 2>/dev/null || true)
     printf '%s\n' "$dm" >"$KEEP/display-manager"
 fi
+write_receipt
 
-cat >/etc/pam.d/greetd <<'EOF'
+install -d "$SYS/etc/pam.d"
+cat >"$SYS/etc/pam.d/greetd" <<'EOF'
 #%PAM-1.0
 
 auth        include     system-login
@@ -164,23 +230,23 @@ session     include     system-login
 EOF
 
 install_code
-sudo -u "$USER_NAME" -H "$KUWAI/greeter/sync"
+sync_greeter
 
-install -d /etc/greetd
-cat >/etc/greetd/config.toml <<EOF
+install -d "$SYS/etc/greetd"
+cat >"$SYS/etc/greetd/config.toml" <<EOF
 [terminal]
 vt = 1
 
 [default_session]
-command = "$DEST/compositor-start"
+command = "${DEST#"$SYS"}/compositor-start"
 user = "greeter"
 EOF
 
-rm -f /etc/systemd/system/getty@tty1.service.d/override.conf
-rmdir /etc/systemd/system/getty@tty1.service.d 2>/dev/null || true
+rm -f "$SYS/etc/systemd/system/getty@tty1.service.d/override.conf"
+rmdir "$SYS/etc/systemd/system/getty@tty1.service.d" 2>/dev/null || true
 systemctl daemon-reload
 
 was=$(cat "$KEEP/display-manager" 2>/dev/null || true)
 [ -n "$was" ] && systemctl disable "$was" 2>/dev/null || true
 systemctl enable greetd.service
-echo "Done. Reboot to get the login screen. Undo: sudo $KUWAI/greeter/install --undo"
+echo "Done. Reboot to get the login screen. Undo: sudo $KUWAI_LIB/current/greeter/install --undo"

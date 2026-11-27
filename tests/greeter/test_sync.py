@@ -76,7 +76,8 @@ def test_a_login_screen_you_can_write_gets_no_code_and_says_how_to_close_it(tmp_
 
 def test_install_script_keeps_the_code_roots():
     text = (REPO / "greeter" / "install").read_text()
-    assert 'install -d -m755 -o root -g root "$DEST"' in text
+    assert 'own=(-o root -g root); [ -z "$SYS" ] || own=()' in text, "root owns it, outside a stand-in root"
+    assert 'install -d -m755 "${own[@]}" "$DEST"' in text
     assert '-o "$USER_NAME" "$DEST/home"' in text
     assert '-o "$USER_NAME" "$DEST"\n' not in text      # the whole directory is never yours again
 
