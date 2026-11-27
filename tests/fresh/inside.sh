@@ -68,7 +68,7 @@ sys_snap() { find /usr/share/wayland-sessions /usr/local /etc/systemd/system /et
 wait_for() {
     local secs=$1; shift
     local end=$((SECONDS + secs))
-    while [ $SECONDS -lt $end ]; do "$@" && return 0; sleep 1; done
+    while [ "$SECONDS" -lt "$end" ]; do "$@" && return 0; sleep 1; done
     "$@"
 }
 qs_ipc() { as_sess "qs ipc -p '$STABLE/shell' call $*" 2>&1; }
@@ -112,6 +112,12 @@ as_user "git -C '$K' config user.email t@example.invalid; git -C '$K' config use
 
 before=$(snap)
 sys_before=$(sys_snap)
+dirs_snap() { find /usr/local /usr/share/wayland-sessions /etc/systemd/system /etc/sudoers.d /var/lib/kuwai-greeter /etc/greetd -type d 2>/dev/null | LC_ALL=C sort; }
+dirs_before=$(dirs_snap)
+pkgs_before=$(pacman -Qq | LC_ALL=C sort)
+MARK=/run/kuwai-fresh-mark
+touch "$MARK"
+sleep 1
 
 phase "install: ./install.sh --deps --yes as the new user"
 as_user "cd '$K' && ./install.sh --dry-run" >"$OUT/dry.log" 2>&1
@@ -128,7 +134,7 @@ check "migrations recorded, none pending" as_user "'$STABLE/bin/kuwai-migrations
 check "kuwai's Hyprland entry is in ~/.config/kuwai/hypr; ~/.config/hypr is untouched" as_user "cmp -s ~/.config/kuwai/hypr/hyprland.lua '$K/hypr/templates/hyprland.lua' && [ ! -e ~/.config/hypr/hyprland.lua ]"
 check "the kuwai command is linked in ~/.local/bin and runs" as_user "[ -L ~/.local/bin/kuwai ] && ~/.local/bin/kuwai version | grep -q '^kuwai '"
 if as_user 'command -v kuwai' >/dev/null 2>&1; then pass "the kuwai command is on a fresh user's PATH"
-else info "~/.local/bin is not on a fresh Arch user's PATH: the kuwai command is not found by name until they add it (install.sh says so)"; fi
+else info "the .local/bin folder of a fresh Arch user is not on their PATH: the kuwai command is not found by name until they add it (install.sh says so)"; fi
 check "user units linked" as_user "for u in kuwai-shell kuwai-auth kuwai-wallpaper kuwai-clipboard kuwai-feeds kuwai-backup; do [ -L ~/.config/systemd/user/\$u.service ] || exit 1; done"
 installed_snap=$(snap)
 as_user "cd '$K' && ./install.sh" >"$OUT/install2.log" 2>&1
@@ -137,8 +143,30 @@ check "a second install changes nothing" [ "$(snap)" = "$installed_snap" ]
 
 as_user "sudo '$K/system/session'" >"$OUT/session-add.log" 2>&1
 check "\"Kuwai\" is added to the login screen (system/session)" bash -c "[ -f /usr/share/wayland-sessions/kuwai.desktop ] && '$K/system/session' --check"
+as_user "'$STABLE/bin/kuwai' auth pin" >"$OUT/auth-pin.log" 2>&1
+PINNED=/usr/local/share/kuwai/shell-auth
+check "kuwai auth pin: root's copy of the password prompt exists and no account but root can change it" bash -c "[ -f $PINNED/shell.qml ] && [ -z \"\$(find $PINNED \\( ! -user root -o -perm /022 \\))\" ] && [ -z \"\$(find $PINNED ! -type f ! -type d)\" ]"
 exec_line=$(sed -n 's/^Exec=//p' /usr/share/wayland-sessions/kuwai.desktop | head -1)
 check "the login entry's Exec ($exec_line) is an executable that exists" bash -c "command -v ${exec_line%% *} >/dev/null"
+
+unowned_new() {
+    local skip=(/proc /sys /dev /run /tmp /in /out /hostcache /var/cache /var/lib/pacman /var/log /var/tmp "$H")
+    local prune=() d
+    for d in "${skip[@]}"; do prune+=(-path "$d" -o); done
+    find / -xdev \( "${prune[@]}" -false \) -prune -o \( -type f -o -type l \) -newer "$MARK" -print | LC_ALL=C sort >"$OUT/new-files.txt"
+    pacman -Qlq | LC_ALL=C sort -u >"$OUT/owned-files.txt"
+    LC_ALL=C comm -23 "$OUT/new-files.txt" "$OUT/owned-files.txt"
+}
+EXPECTED_OUTSIDE='^/usr/(local/bin/kuwai-session|local/share/kuwai/shell-auth/|share/wayland-sessions/kuwai\.desktop$)'
+SYSTEM_AREAS='^/(root|opt|srv|boot|usr/local|etc/(pam\.d|sudoers\.d|greetd|systemd/system|polkit-1|udev|sysctl\.d|modprobe\.d|ssh)|var/lib/kuwai|home/)|kuwai'
+outside=$(unowned_new)
+printf '%s\n' "$outside" >"$OUT/outside-expected.txt"
+stray=$(printf '%s\n' "$outside" | grep -E "$SYSTEM_AREAS" | grep -vE "$EXPECTED_OUTSIDE|^/etc/sudoers\.d/90-kuwaitest$|^/home/$U/" || true)
+check "install wrote nothing to the system but its login entry (stray: ${stray:-none})" [ -z "$stray" ]
+printf '%s\n' "$outside" | grep -E "$EXPECTED_OUTSIDE" | grep -v shell-auth/ | while read -r f; do info "outside the home, from system/session (sudo, asked): $f"; done
+info "outside the home, from kuwai auth pin (sudo, asked): $(printf '%s\n' "$outside" | grep -c shell-auth/) files in /usr/local/share/kuwai/shell-auth"
+others=$(printf '%s\n' "$outside" | grep -vE "$SYSTEM_AREAS" | grep -c . || true)
+info "$others other files appeared outside the home that no package owns: package scriptlets and caches (pipewire's units, lastlog), listed in outside-expected.txt"
 
 phase "first-run state: clipboard and feeds off, the default theme and wallpaper in place"
 check "collect.conf says clipboard=off and feeds=off" as_user "grep -qx clipboard=off ~/.config/kuwai/collect.conf && grep -qx feeds=off ~/.config/kuwai/collect.conf"
@@ -159,7 +187,29 @@ check "the shell loads offscreen (kuwai-loadtest)" [ $? -eq 0 ]
 as_user "cd '$STABLE' && bin/kuwai-loadtest HEAD greeter.qml" >"$OUT/loadtest-greeter.log" 2>&1
 check "the login face loads offscreen" [ $? -eq 0 ]
 as_user "'$STABLE/bin/kuwai' doctor" >"$OUT/doctor-nosession.log" 2>&1
-info "kuwai doctor with no session: exit $? (log: doctor-nosession.log)"
+doctor_rc=$?
+info "kuwai doctor with no session: exit $doctor_rc (log: doctor-nosession.log)"
+sed 's/\x1b\[[0-9;]*m//g' "$OUT/doctor-nosession.log" | grep '✗' | sed 's/^ *//' | while read -r l; do info "expected with no session: $l"; done
+unexpected=$(sed 's/\x1b\[[0-9;]*m//g' "$OUT/doctor-nosession.log" | grep '✗' | grep -vE 'verify-config crashed|polkit agent|Notifications owner|shell is not running|shell compile check' || true)
+check "kuwai doctor with no session fails only on what needs a session (other: ${unexpected:-none})" [ -z "$unexpected" ]
+
+phase "unlock: the PAM path the lock screen uses, with the test user's password"
+PW="kuwai-fresh-$RANDOM-$RANDOM"
+echo "$U:$PW" | chpasswd
+check "the test user has a password (chpasswd)" bash -c "[ \"\$(passwd -S $U | cut -d' ' -f2)\" = P ]"
+check "the login PAM stack the lock names exists (/etc/pam.d/login)" [ -f /etc/pam.d/login ]
+pam_result() {
+    as_user "cd '$K/tests/fresh/pamcheck' && KUWAI_PAM_USER=$U KUWAI_PAM_PASSWORD=$(printf %q "$1") QT_QPA_PLATFORM=offscreen timeout -k 2 25 qs -p . 2>&1" \
+        | sed 's/\x1b\[[0-9;]*m//g' | sed -n 's/.*PAM-RESULT //p' | tail -1
+}
+r_wrong=$(pam_result "not-the-password")
+echo "$r_wrong" >"$OUT/pam-wrong.txt"
+check "Quickshell's PamContext on 'login' refuses a wrong password (got: ${r_wrong:-nothing})" [ "$r_wrong" = failed ]
+r_empty=$(pam_result "")
+check "and an empty one (got: ${r_empty:-nothing})" [ "$r_empty" = failed ]
+r_right=$(pam_result "$PW")
+echo "$r_right" >"$OUT/pam-right.txt"
+check "and accepts the right one (got: ${r_right:-nothing})" [ "$r_right" = success ]
 
 session_possible=0
 if [ "$ONLY" = install ]; then skip "the session phase (KUWAI_FRESH_ONLY=install)"
@@ -197,7 +247,7 @@ UNIT
 systemctl daemon-reload
 systemctl start kuwai-fresh-session.service
 sock_up() {
-    SIG=$(ls -1t "$RT/hypr" 2>/dev/null | head -1)
+    SIG=$(find "$RT/hypr" -mindepth 1 -maxdepth 1 -printf '%T@ %f\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2)
     [ -n "$SIG" ] && [ -S "$RT/hypr/$SIG/.socket.sock" ]
 }
 check "Hyprland's socket comes up" wait_for 60 sock_up
@@ -207,7 +257,7 @@ if [ -z "$SIG" ]; then
     fail "Hyprland never started (journal: session-start-failure.log)"
     finish
 fi
-WLD=$(ls "$RT" | grep -E '^wayland-[0-9]+$' | head -1)
+WLD=$(find "$RT" -maxdepth 1 -regex '.*/wayland-[0-9]+' -printf '%f\n' | head -1)
 mon_up() { as_sess "hyprctl -j monitors" | jq -e 'length > 0' >/dev/null 2>&1; }
 check "a monitor exists" wait_for 30 mon_up
 SCREEN=$(as_sess "hyprctl -j monitors" | jq -r '.[0].name')
@@ -267,8 +317,25 @@ as_user "systemctl --user restart kuwai-shell.service" >/dev/null 2>&1
 check "the shell is back after a restart" wait_for 60 shell_loaded
 check "the session is still locked after the shell restarted" wait_for 30 lock_state
 
+phase "unlock: the password typed into the lock (this session is the test user's own: wtype is allowed here)"
+pacman -S --needed --noconfirm wtype >/dev/null 2>&1
+type_in() { as_sess "wtype -s 60 -- $(printf %q "$1") && wtype -k Return"; }
+type_in "not-the-password"
+sleep 3
+check "a wrong password leaves the session locked" lock_state
+as_sess "grim -t ppm '$OUT/locked-wrong.ppm'" >/dev/null 2>&1
+check "the lock shows the refusal (its screen differs from the plain locked one)" bash -c "[ -s '$OUT/locked-wrong.ppm' ] && ! cmp -s '$OUT/locked.ppm' '$OUT/locked-wrong.ppm'"
+type_in "$PW"
+unlocked() { [ "$(qs_ipc lock state)" = unlocked ]; }
+check "the right password unlocks it (lock state becomes 'unlocked')" wait_for 20 unlocked
+qs_log >"$OUT/shell.after-unlock.qslog.txt"
+check "the unlock left no 'Failed to load' or ERROR lines of its own" bash -c "! grep -E 'Failed to load' '$OUT/shell.after-unlock.qslog.txt' && ! grep -E '(^| )ERROR' '$OUT/shell.after-unlock.qslog.txt' | grep -vE '$VM_ERRORS'"
+qs_ipc lock lock >/dev/null
+check "it locks again after an unlock" wait_for 20 lock_state
+
 if [ "${KUWAI_FRESH_SUSPEND:-0}" = 1 ]; then
     phase "suspend and resume while locked"
+    journalctl -f -n0 -o short-monotonic -p info >/dev/ttyS0 2>&1 &
     pid_before=$(as_user "systemctl --user show -p MainPID --value kuwai-shell.service")
     n_before=$(journalctl -k -b --no-pager | grep -c 'PM: suspend entry')
     echo "KUWAI-FRESH-SUSPEND"
@@ -280,6 +347,9 @@ if [ "${KUWAI_FRESH_SUSPEND:-0}" = 1 ]; then
     check "the shell survived suspend and resume (pid $pid_before)" bash -c "[ \"\$(runuser -u $U -- env -i ${BASE_ENV[*]} systemctl --user show -p MainPID --value kuwai-shell.service)\" = '$pid_before' ]"
     check "the session is still locked after resume" wait_for 20 lock_state
 fi
+
+type_in "$PW"
+check "the right password unlocks it again (after the suspend, when there was one)" wait_for 20 unlocked
 
 phase "consent in a live session: clipboard and feeds only start when asked"
 as_sess "wl-copy 'kuwai-fresh-secret-1'" >/dev/null 2>&1
@@ -317,6 +387,30 @@ else fail "kuwai helpers outlive the session: $(pgrep -u "$U" -a | grep -iE 'kuw
 journalctl -u kuwai-fresh-session --no-pager >"$OUT/session.journal" 2>&1
 fi
 
+phase "greeter: greeter/install --yes writes the login screen's config here, then --undo puts it back"
+G=/var/lib/kuwai-greeter
+g_hash() { { sha256sum /etc/pam.d/greetd /etc/greetd/config.toml 2>&1; readlink -f /etc/systemd/system/display-manager.service 2>&1; } | sed 's/ \+/ /g'; }
+pacman -S --needed --noconfirm greetd rsync >/dev/null 2>"$OUT/pacman-greetd.err"
+check "greetd and rsync install from the official repos" bash -c "pacman -Q greetd rsync >/dev/null"
+g_before=$(g_hash)
+yes | as_user "cd '$K' && sudo ./greeter/install --yes" >"$OUT/greeter-install.log" 2>&1
+check "greeter/install --yes exits 0" [ "${PIPESTATUS[1]}" -eq 0 ]
+check "/etc/greetd/config.toml starts the greeter's compositor as user greeter on vt 1" bash -c "grep -qx 'command = \"$G/compositor-start\"' /etc/greetd/config.toml && grep -qx 'user = \"greeter\"' /etc/greetd/config.toml && grep -qx 'vt = 1' /etc/greetd/config.toml"
+check "/etc/pam.d/greetd includes the system login stack" bash -c "grep -q 'auth *include *system-login' /etc/pam.d/greetd"
+check "the greeter's code is root's: root-owned, no links, start scripts executable" bash -c "[ -z \"\$(find $G/shell $G/start $G/session-start $G/compositor-start $G/keys $G/hyprland.lua ! -user root)\" ] && [ -z \"\$(find $G/shell ! -type f ! -type d)\" ] && [ -x $G/compositor-start ] && [ -x $G/start ]"
+check "the greeter's code is the committed revision ($(cut -c1-9 "$G/code-revision" 2>/dev/null))" bash -c "[ \"\$(cut -c1-40 $G/code-revision)\" = \"\$(git -C '$K' rev-parse HEAD)\" ]"
+check "the login screen can read the user's name as the greeter account" bash -c "runuser -u greeter -- test -r $G/home/.kuwai-user && [ \"\$(runuser -u greeter -- cat $G/home/.kuwai-user)\" = $U ]"
+check "greetd.service is enabled for the next boot" bash -c "systemctl is-enabled greetd.service | grep -qx enabled"
+as_user "cd '$K' && sudo ./greeter/install --code" >"$OUT/greeter-code.log" 2>&1
+check "greeter/install --code (just the code, again) exits 0" [ $? -eq 0 ]
+yes | as_user "cd '$K' && sudo ./greeter/install --undo" >"$OUT/greeter-undo.log" 2>&1
+check "greeter/install --undo exits 0" [ "${PIPESTATUS[1]}" -eq 0 ]
+check "greetd is off again and its package config is as it was" bash -c "! systemctl is-enabled greetd.service 2>/dev/null | grep -qx enabled"
+g_after=$(g_hash)
+check "/etc/pam.d/greetd, /etc/greetd/config.toml and the display manager link are as before" [ "$g_after" = "$g_before" ]
+check "greeter/install --undo took root's copy of the login screen ($G) with it" bash -c "[ ! -e $G ]"
+info "left by greeter/install --undo: the packages greetd and rsync (pacman -Rns greetd rsync removes them)"
+
 phase "uninstall: ./install.sh --uninstall puts back what was there"
 as_user "cd '$K' && ./install.sh --uninstall" >"$OUT/uninstall.log" 2>&1
 rc=$?
@@ -326,6 +420,8 @@ if [ $rc -ne 0 ]; then
     as_user "cd '$K' && ./install.sh --uninstall" >"$OUT/uninstall2.log" 2>&1
     check "running uninstall again, as it says, exits 0" [ $? -eq 0 ]
 fi
+as_user "'$STABLE/bin/kuwai' auth unpin" >"$OUT/auth-unpin.log" 2>&1
+check "kuwai auth unpin removes root's copy" bash -c "[ ! -e $PINNED ]"
 as_user "sudo '$K/system/session' --undo" >"$OUT/session-undo.log" 2>&1
 check "the login entry is gone" bash -c "[ ! -e /usr/share/wayland-sessions/kuwai.desktop ] && [ ! -e /usr/local/bin/kuwai-session ]"
 as_user "rm -rf ~/.local/share/kuwai"
@@ -337,12 +433,28 @@ placed=$(LC_ALL=C comm -13 <(printf '%s\n' "$before" | norm) <(printf '%s\n' "$i
 mine=""
 for f in $placed; do printf '%s\n' "$left" | awk '{print $1}' | grep -qxF -- "$f" && mine="$mine $f"; done
 check "everything install placed is gone (left:${mine:- none})" [ -z "$mine" ]
-extra=$(printf '%s\n' "$left" | awk 'NF {print $1}' | grep -vxF -f <(printf '%s\n' $placed) || true)
+extra=$(printf '%s\n' "$left" | awk 'NF {print $1}' | grep -vxF -f <(printf '%s\n' "$placed") || true)
 [ -z "$extra" ] || info "files that appeared during the run and aren't from install.sh (the session's own, e.g. caches, crash reports): $(printf '%s' "$extra" | tr '\n' ' ')"
 if [ -n "$changed" ]; then printf '%s\n' "$changed" >"$OUT/uninstall-changed.txt"; fail "files that were there before were changed or removed: $(printf '%s' "$changed" | head -5 | tr '\n' ' ')"
 else pass "every file that was there before is as it was"; fi
 sys_snap >"$OUT/sys-after.txt"; printf '%s\n' "$sys_before" >"$OUT/sys-before.txt"
 sys_new=$(comm -13 "$OUT/sys-before.txt" "$OUT/sys-after.txt" | grep -vE 'kuwai-fresh|90-kuwaitest' | while read -r f; do pacman -Qo "$f" >/dev/null 2>&1 || echo "$f"; done)
 check "system paths (login entries, units, /usr/local) are as before (new:${sys_new:- none})" [ -z "$sys_new" ]
+
+dirs_after=$(dirs_snap)
+left_dirs=$(LC_ALL=C comm -13 <(printf '%s\n' "$dirs_before") <(printf '%s\n' "$dirs_after") | grep -vE '^/etc/greetd$|^/etc/systemd/system/.*\.wants$' | while read -r d; do pacman -Qo "$d" >/dev/null 2>&1 || echo "$d"; done)
+check "no directories left behind outside the home (left:${left_dirs:- none})" [ -z "$left_dirs" ]
+{
+    echo "what is left after install, the login entry, the pinned prompt and the greeter were each put back:"
+    echo "-- the home folder: kuwai's own folders (kept on purpose; install.sh says so)"
+    as_user "cd ~ && find .config/kuwai .local/state/kuwai .local/share/kuwai-data .cache/kuwai .config/gtk-3.0 .config/gtk-4.0 .config/qt6ct -type f 2>/dev/null | LC_ALL=C sort" || true
+    echo "-- the home folder: anything else new"
+    printf '%s\n' "$left" | awk 'NF {print $1}'
+    echo "-- outside the home"
+    find /var/lib/kuwai-greeter /usr/local/share/kuwai /usr/local/bin/kuwai-session /usr/share/wayland-sessions/kuwai.desktop -maxdepth 0 2>/dev/null
+    echo "-- packages added (install.sh --deps never removes packages)"
+    LC_ALL=C comm -13 <(printf '%s\n' "$pkgs_before") <(pacman -Qq | LC_ALL=C sort)
+} >"$OUT/remains.txt"
+info "left behind: $(grep -c . "$OUT/remains.txt") lines in remains.txt (home: $(as_user 'cd ~ && find .config/kuwai .local/state/kuwai -type f 2>/dev/null | wc -l') files of kuwai's own settings and records; outside the home: $(find /var/lib/kuwai-greeter /usr/local/share/kuwai /usr/local/bin/kuwai-session /usr/share/wayland-sessions/kuwai.desktop -maxdepth 0 2>/dev/null | wc -l) paths; packages added: $(LC_ALL=C comm -13 <(printf '%s\n' "$pkgs_before") <(pacman -Qq | LC_ALL=C sort) | wc -l))"
 
 finish

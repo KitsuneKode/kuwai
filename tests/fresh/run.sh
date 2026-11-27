@@ -60,16 +60,18 @@ VOL=kuwai-fresh-pkgcache
 stage=$(mktemp -d)
 cleanup() {
     rm -rf "$stage"
-    if [ $KEEP = 1 ]; then echo "fresh: container $NAME left running: docker exec -it $NAME bash   (docker rm -f $NAME when done)"
+    if [ "$KEEP" = 1 ]; then echo "fresh: container $NAME left running: docker exec -it $NAME bash   (docker rm -f $NAME when done)"
     else docker rm -f "$NAME" >/dev/null 2>&1; fi
 }
 trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM HUP
 
-[ $DROP = 1 ] && docker volume rm "$VOL" >/dev/null 2>&1
+[ "$DROP" = 1 ] && docker volume rm "$VOL" >/dev/null 2>&1
 docker volume create "$VOL" >/dev/null || exit 2
 docker image inspect "$IMAGE" >/dev/null 2>&1 || docker pull -q "$IMAGE" >/dev/null || { echo "fresh: can't get $IMAGE" >&2; exit 2; }
 
-if [ $COMMITTED = 1 ]; then
+if [ "$COMMITTED" = 1 ]; then
     git -C "$ROOT" bundle create "$stage/kuwai.bundle" HEAD >/dev/null 2>&1 || { echo "fresh: can't bundle $ROOT" >&2; exit 2; }
     echo "fresh: testing committed $(git -C "$ROOT" rev-parse --short HEAD)"
 else
@@ -82,8 +84,8 @@ chmod -R a+rX "$stage"
 args=(--name "$NAME" --detach --cgroupns=private --tmpfs /run --tmpfs /run/lock --tmpfs /tmp:exec
       --security-opt writable-cgroups=true --shm-size=1g
       -v "$VOL:/var/cache/pacman/pkg")
-[ $HOSTCACHE = 1 ] && [ -r /var/cache/pacman/pkg ] && args+=(-v /var/cache/pacman/pkg:/hostcache:ro)
-[ $GPU = 1 ] && args+=(--device /dev/dri/renderD128)
+[ "$HOSTCACHE" = 1 ] && [ -r /var/cache/pacman/pkg ] && args+=(-v /var/cache/pacman/pkg:/hostcache:ro)
+[ "$GPU" = 1 ] && args+=(--device /dev/dri/renderD128)
 docker run "${args[@]}" "$IMAGE" /usr/lib/systemd/systemd >/dev/null || { echo "fresh: couldn't start the container" >&2; exit 2; }
 for _ in $(seq 50); do
     docker exec "$NAME" systemctl is-system-running 2>/dev/null | grep -qE 'running|degraded' && break

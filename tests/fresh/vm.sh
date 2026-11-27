@@ -74,6 +74,9 @@ if [ $REBUILD = 1 ] || [ ! -f "$CACHE/base.img" ] || [ ! -f "$CACHE/vmlinuz" ] |
     docker volume create kuwai-fresh-pkgcache >/dev/null
     hc=(); [ $HOSTCACHE = 1 ] && [ -r /var/cache/pacman/pkg ] && hc=(-v /var/cache/pacman/pkg:/hostcache:ro)
     rm -f "$CACHE/base.img" "$CACHE/vmlinuz" "$CACHE/initramfs.img"
+    trap 'docker rm -f "kuwai-fresh-build-$$" >/dev/null 2>&1' EXIT
+    trap 'exit 130' INT
+    trap 'exit 143' TERM HUP
     cat >"$CACHE/build.sh" <<'BUILD'
 set -eu
 trap 'chown -R "$HUID:$HGID" /w; chmod a+r /w/* 2>/dev/null' EXIT
@@ -128,7 +131,7 @@ sync
 echo "KUWAI-FRESH-DONE rc=$rc"
 [ -e /in/interactive ] || { umount /in; poweroff; }
 BOOT
-    docker run --rm -e HUID="$(id -u)" -e HGID="$(id -g)" "${hc[@]}" -v kuwai-fresh-pkgcache:/var/cache/pacman/pkg -v "$CACHE:/w" archlinux:latest bash /w/build.sh || { echo "vm: building the base disk failed" >&2; rm -f "$CACHE/base.img"; exit 2; }
+    docker run --rm --name "kuwai-fresh-build-$$" -e HUID="$(id -u)" -e HGID="$(id -g)" "${hc[@]}" -v kuwai-fresh-pkgcache:/var/cache/pacman/pkg -v "$CACHE:/w" archlinux:latest bash /w/build.sh || { echo "vm: building the base disk failed" >&2; rm -f "$CACHE/base.img"; exit 2; }
     chmod a+r "$CACHE"/vmlinuz "$CACHE"/initramfs.img "$CACHE"/base.img 2>/dev/null
 fi
 
@@ -136,6 +139,8 @@ qemu_pid=""
 w=$CACHE/run-$$
 mkdir -p "$w/seed"
 trap 'kill $qemu_pid 2>/dev/null; rm -rf "$w"' EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM HUP
 (cd "$ROOT" && git ls-files -co --exclude-standard -z | tar --null -T - -czf "$w/seed/src.tar.gz")
 cp "$ROOT/tests/fresh/inside.sh" "$w/seed/inside.sh"
 printf '%s' "$ONLY" >"$w/seed/only"
@@ -157,7 +162,7 @@ qemu-system-x86_64 "${ACCEL[@]}" -machine q35 -m "$MEM" -smp "$CPUS" \
     -netdev user,id=n0 -device virtio-net-pci,netdev=n0 \
     -device VGA -device qemu-xhci -device usb-kbd -device usb-tablet \
     "${fs[@]}" -serial "file:$OUT/console.log" -serial "file:$OUT/serial.log" -qmp "unix:$qmp,server=on,wait=off" \
-    "${display[@]}" -no-reboot &
+    "${display[@]}" -no-reboot 2>"$OUT/qemu.log" &
 qemu_pid=$!
 echo "vm: booted (qemu $qemu_pid); the test's output: $OUT/serial.log, the boot console: $OUT/console.log"
 
@@ -178,7 +183,7 @@ PY
 
 start=$SECONDS; woke=0; shown=0
 until grep -aq 'KUWAI-FRESH-DONE' "$OUT/serial.log" 2>/dev/null; do
-    kill -0 "$qemu_pid" 2>/dev/null || { echo "vm: qemu exited before the test finished" >&2; break; }
+    kill -0 "$qemu_pid" 2>/dev/null || { wait "$qemu_pid"; echo "vm: qemu exited (status $?) before the test finished; see $OUT/qemu.log" >&2; [ $SUSPEND = 1 ] && echo "vm: with --suspend the guest has reset itself a minute or two after resuming, every time so far (tests/fresh/README.md); the checks before the suspend and the suspend's own are in the output" >&2; break; }
     [ $((SECONDS - start)) -gt 5400 ] && { echo "vm: gave up after 90 minutes" >&2; break; }
     if [ $SUSPEND = 1 ] && grep -aq 'KUWAI-FRESH-SUSPEND' "$OUT/serial.log" 2>/dev/null && qmp_cmd query-status 2>/dev/null | grep -q '"suspended"'; then
         [ $woke = 0 ] && echo "vm: the guest is suspended; waking it"
