@@ -1,5 +1,5 @@
 {
- "about": "The rehearsal's scenes (bin/kuwai-rehearse, docs/design/REHEARSAL.md). Each scene is one panel in one state: `set` puts services in that state ([service, property, value] or [service, \"call\", function, arguments]) and is undone after the frame. `kind: worst` is data longer than ordinary, where shortening with an ellipsis is the right answer. `seed` are files written into the private home before the shell starts (paths under that home, e.g. \".local/state/kuwai/notifications.json\": Notifs keeps its store under HOME, not XDG_STATE_HOME). A string \"@now-300s\" or \"@now+5400000ms\" becomes that moment (epoch seconds or milliseconds); \"@now-300iso\" the same as ISO text. `running` are helpers a service keeps alive: their stand-in stays up silently (the others exit at once, as on a machine where they are missing). `props` are the panel's own properties; \"@date:2026-11-18T10:10:00\" is that moment. A seed value \"copy:tests/ui/fixtures/x.png\" copies that repository file instead of writing JSON. `late` are sets (same form as `set`) applied once the panel is up, for a reading a helper the panel starts would overwrite (SystemStats).",
+ "about": "The rehearsal's scenes (bin/kuwai-rehearse, docs/design/REHEARSAL.md). Each scene is one panel in one state: `set` puts services in that state ([service, property, value] or [service, \"call\", function, arguments]) and is undone after the frame. `kind: worst` is data longer than ordinary, where shortening with an ellipsis is the right answer. `seed` are files written into the private home before the shell starts (paths under that home, e.g. \".local/state/kuwai/notifications.json\": Notifs keeps its store under HOME, not XDG_STATE_HOME). A string \"@now-300s\" or \"@now+5400000ms\" becomes that moment (epoch seconds or milliseconds); \"@now-300iso\" the same as ISO text. `running` are helpers a service keeps alive: their stand-in stays up silently (the others exit at once, as on a machine where they are missing). `props` are the panel's own properties; \"@date:2026-11-18T10:10:00\" is that moment. A seed value \"copy:tests/ui/fixtures/x.png\" copies that repository file instead of writing JSON. `late` are sets (same form as `set`) applied once the panel is up, for a reading a helper the panel starts would overwrite (SystemStats). `screen: true` stages a whole screen (1066 x 600, no island ground) for the lock screen; a prop \"@lock\" is a stand-in lock in its resting state; `hide` names item types left out of the picture once it settles (the lock's clock digits: their line boxes overlap the date by design and are measured by clock-ground).",
  "running": [
   "kuwai-usage"
  ],
@@ -210,7 +210,8 @@
     }
    ]
   },
-  "cover-sample.png": "copy:tests/ui/fixtures/cover-sample.png"
+  "cover-sample.png": "copy:tests/ui/fixtures/cover-sample.png",
+  "walls/bright.jpg": "copy:tests/ui/fixtures/wall-bright.jpg"
  },
  "scenes": [
   {
@@ -12336,6 +12337,88 @@
      }
     ]
    }
+  },
+  {
+   "id": "lock/media-bright",
+   "name": "lock",
+   "panel": "../lock/LockView",
+   "kind": "typical",
+   "screen": true,
+   "settle": 2000,
+   "props": {
+    "lock": "@lock",
+    "preview": true
+   },
+   "set": [
+    [
+     "Notifs",
+     "shareKnown",
+     true
+    ],
+    [
+     "Hyde",
+     "wallpaper",
+     "/home/test/walls/bright.jpg"
+    ],
+    [
+     "Media",
+     "active",
+     null
+    ],
+    [
+     "Media",
+     "staged",
+     true
+    ],
+    [
+     "Media",
+     "call",
+     "stagePlayer",
+     [
+      {
+       "identity": "Spotify",
+       "desktopEntry": "spotify",
+       "dbusName": "org.mpris.MediaPlayer2.spotify",
+       "trackTitle": "Slow Tide",
+       "trackArtist": "The Paper Lanterns",
+       "trackArtUrl": "file:///home/test/cover-sample.png",
+       "metadata": {},
+       "playbackState": 2,
+       "isPlaying": false,
+       "canGoNext": true,
+       "canGoPrevious": true,
+       "canTogglePlaying": true
+      }
+     ]
+    ],
+    [
+     "Notifs",
+     "items",
+     []
+    ],
+    [
+     "Notifs",
+     "call",
+     "stageItems",
+     [
+      [
+       {
+        "nid": 901,
+        "time": "@now-240000ms",
+        "app": "Calendar",
+        "title": "Dentist moved to Friday",
+        "body": "Dr. Rao's office confirmed 10:30 on Friday instead.",
+        "groupKey": "Calendar",
+        "severity": "warning",
+        "hasDefault": true
+       }
+      ]
+     ]
+    ]
+   ],
+   "hide": [
+    "TextMorph"
+   ]
   }
  ]
 }

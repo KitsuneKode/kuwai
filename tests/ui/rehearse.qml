@@ -14,6 +14,7 @@ import qs.components
 import qs.config
 import qs.services
 import qs.modules.island
+import qs.modules.lock
 
 ShellRoot {
     Window {
@@ -37,12 +38,26 @@ ShellRoot {
             return null;
         }
 
+        readonly property bool screen: at >= 0 && at < scenes.length && !!scenes[at].screen
+        QtObject {
+            id: fakeLock
+            property string password: ""
+            property bool checking: false
+            property string error: ""
+            property int failures: 0
+            property bool leaving: false
+            property string challenge: ""
+            property var openAfter: null
+            property bool fingerReady: false
+            property string note: ""
+            function submit() {}
+        }
         Item {
             id: island
             anchors.horizontalCenter: parent.horizontalCenter
-            width: panel.item ? Math.min(panel.item.implicitWidth, stage.width - 40) : 0
-            height: panel.item ? Math.min(panel.item.implicitHeight, stage.height - 40) : 0
-            Rectangle { anchors.fill: parent; radius: Theme.r4; color: Qt.rgba(0, 0, 0, 0.94) }
+            width: stage.screen ? 1066 : panel.item ? Math.min(panel.item.implicitWidth, stage.width - 40) : 0
+            height: stage.screen ? 600 : panel.item ? Math.min(panel.item.implicitHeight, stage.height - 40) : 0
+            Rectangle { visible: !stage.screen; anchors.fill: parent; radius: Theme.r4; color: Qt.rgba(0, 0, 0, 0.94) }
             Loader { id: panel; anchors.fill: parent; focus: true }
         }
 
@@ -126,9 +141,16 @@ ShellRoot {
             return true;
         }
         property bool lateDone: false
+        property bool hideDone: false
+        function hideKinds(item, kinds) {
+            if (kinds.indexOf(kind(item)) >= 0) { item.visible = false; return; }
+            const kids = item.children || [];
+            for (let i = 0; i < kids.length; i++) hideKinds(kids[i], kinds);
+        }
         function next() {
             restore();
             lateDone = false;
+            hideDone = false;
             panel.source = "";
             if (++at >= scenes.length) { console.log("UI_SMOKE_CAPTURED"); Qt.quit(); return; }
             const s = scenes[at];
@@ -138,7 +160,7 @@ ShellRoot {
             const props = {};
             for (const k in (s.props || {})) {
                 const v = s.props[k];
-                props[k] = typeof v === "string" && v.indexOf("@date:") === 0 ? new Date(v.slice(6)) : v;
+                props[k] = v === "@lock" ? fakeLock : typeof v === "string" && v.indexOf("@date:") === 0 ? new Date(v.slice(6)) : v;
             }
             panel.setSource(Qt.resolvedUrl("modules/island/" + s.panel + ".qml"), props);
             if (panel.status === Loader.Error) { fail("scene " + s.id + ": " + s.panel + " did not load"); return; }
@@ -150,6 +172,13 @@ ShellRoot {
             onTriggered: {
                 const s = stage.scenes[stage.at], it = panel.item;
                 if (!it) { stage.fail("scene " + s.id + ": nothing loaded"); return; }
+                if (s.hide && !stage.hideDone) {
+                    stage.hideDone = true;
+                    stage.hideKinds(it, s.hide);
+                    settle.interval = 250;
+                    settle.restart();
+                    return;
+                }
                 if (s.late && !stage.lateDone) {
                     stage.lateDone = true;
                     if (!stage.applySets(s, s.late)) return;
@@ -158,7 +187,7 @@ ShellRoot {
                     return;
                 }
                 const out = { id: s.id, panel: s.panel, kind: s.kind || "typical", scale: Theme.textScale,
-                              w: island.width, h: island.height, wants: [stage.r1(it.implicitWidth), stage.r1(it.implicitHeight)],
+                              w: island.width, h: island.height, wants: stage.screen ? [island.width, island.height] : [stage.r1(it.implicitWidth), stage.r1(it.implicitHeight)],
                               texts: [], targets: [], scrolls: [], covers: [], waiting: 0 };
                 stage.walk(it, { clip: null, op: 1, scroll: false, path: [], layer: 0 }, out);
                 // In pieces: a log line has a length the logger may cut.

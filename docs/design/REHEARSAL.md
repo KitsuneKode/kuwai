@@ -48,6 +48,12 @@ with no scene data shows what it shows on a machine that has nothing yet.
 - `"@now-300s"`, `"@now+5400000ms"`, `"@now-60iso"` are moments relative to the run.
 - `seed` (top level) are files written into the private home before start;
   `running` are helpers whose stand-in stays up instead of exiting.
+- `screen: true` stages a whole screen instead of the island (the lock:
+  `"panel": "../lock/LockView"`, props `{"lock": "@lock", "preview": true}`,
+  a wallpaper through `["Hyde", "wallpaper", path]`). Its text is judged on
+  the real picture, so a light wallpaper is a real test of the lock's plate.
+  `hide` lists item types left out of the frame (the lock's clock digits,
+  which clock-ground measures on its own).
 
 Every `*Panel.qml` under `shell/modules/island/` must have a scene
 (`tests/test_rehearse_gate.py`). A new panel gets at least: what a new machine

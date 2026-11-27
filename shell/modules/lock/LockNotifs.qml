@@ -19,8 +19,9 @@ import qs.services
 Column {
     id: stack
     signal tapped(var item)
+    property real plate: 0
     spacing: 8
-    width: 430
+    width: Theme.sp(430)
     readonly property real move: Theme.reduceMotion ? 0 : 1
 
     function notable(i) {
@@ -38,7 +39,13 @@ Column {
         }
         return out;
     }
-    readonly property var shownGroups: groups.slice(0, 3)
+    property real room: Infinity
+    function fits(total, room, each, gap, note) {
+        let n = Math.min(3, total);
+        while (n > 0 && n * each + (n - 1) * gap + (n < total ? gap + note : 0) > room) n--;
+        return n;
+    }
+    readonly property var shownGroups: groups.slice(0, fits(groups.length, room, Theme.sp(90), spacing, Theme.sp(18)))
     readonly property var byKey: { const m = {}; for (const g of groups) m[g.k] = g; return m; }
 
     // A code can sit in the title as well as the body ("123456 is your
@@ -126,15 +133,26 @@ Column {
                 anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom }
                 width: parent.width - 24; height: 30
                 radius: Theme.r3
-                color: Theme.wash(2)
-                border.width: 1
-                border.color: Theme.edge(1)
+                color: Qt.alpha(Theme.glassBlack, stack.plate)
+                Rectangle {
+                    anchors.fill: parent
+                    radius: parent.radius
+                    color: Theme.wash(2)
+                    border.width: 1
+                    border.color: Theme.edge(1)
+                }
             }
             Item {
                 id: face
                 width: parent.width
-                height: 64 + (lineLabel.visible ? 18 : 0) + (statusRow.visible ? 20 : 0)
+                height: Math.max(64, words.implicitHeight + 27)
 
+                Rectangle {
+                    anchors.fill: parent
+                    radius: faceBg.radius
+                    visible: stack.plate > 0.005
+                    color: Qt.alpha(Theme.glassBlack, stack.plate)
+                }
                 Rectangle {
                     id: faceBg
                     anchors.fill: parent
@@ -178,6 +196,7 @@ Column {
                     }
                 }
                 Column {
+                    id: words
                     anchors { left: iconBox.right; leftMargin: 12; right: parent.right; rightMargin: 16; top: parent.top; topMargin: 13 }
                     spacing: 2
                     Item {
@@ -277,11 +296,20 @@ Column {
             }
         }
     }
-    Label {
+    Rectangle {
         anchors.horizontalCenter: parent.horizontalCenter
         visible: stack.groups.length > stack.shownGroups.length
-        text: (stack.groups.length - stack.shownGroups.length) + " more"
-        size: Theme.tBody; weight: Theme.wMedium
-        color: Qt.rgba(1, 1, 1, 0.6)
+        width: more.width + Theme.s5; height: more.height + Theme.s2
+        radius: height / 2
+        color: Qt.alpha(Theme.glassBlack, stack.plate)
+        Rectangle { anchors.fill: parent; radius: parent.radius; color: Theme.platter }
+        Label {
+            id: more
+            anchors.centerIn: parent
+            text: stack.shownGroups.length ? (stack.groups.length - stack.shownGroups.length) + " more"
+                : stack.groups.length === 1 ? "1 notification" : stack.groups.length + " notifications"
+            size: Theme.tBody; weight: Theme.wMedium
+            color: Qt.rgba(1, 1, 1, 0.72)
+        }
     }
 }

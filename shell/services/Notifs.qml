@@ -980,6 +980,7 @@ Singleton {
         id: itemComp
         NotifItem {}
     }
+    function stageItems(list) { items = (list || []).map(h => itemComp.createObject(root, h)); }
 
     // ── IPC: `qs ipc -p <shell> call notifs <fn>` (wrapped by bin/kuwai) ──
     IpcHandler {

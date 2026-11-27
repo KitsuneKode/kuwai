@@ -23,6 +23,7 @@ import Quickshell.Widgets
 import qs.config
 import qs.components
 import qs.services
+import "../../services/lockPlate.mjs" as Plate
 
 Item {
     id: view
@@ -95,7 +96,7 @@ Item {
         Item {
             anchors.fill: parent
             layer.enabled: true
-            opacity: (Media.playing && lockArt.status === Image.Ready ? 1 : 0) * (1 - view.u)
+            opacity: (view.artShown ? 1 : 0) * (1 - view.u)
             visible: opacity > 0.01
             Behavior on opacity { NumberAnimation { duration: Theme.artMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeInOut } }
             Image {
@@ -137,6 +138,25 @@ Item {
     // Under the date and clock, as much darker as this wallpaper needs (none
     // over a dark one). It goes with the scrim on unlock.
     ClockGround { anchors.fill: parent; source: wall.source; ink: view.tint; base: 0.22; opacity: 1 - view.u }
+    readonly property bool artShown: Media.playing && lockArt.status === Image.Ready
+    WallTone {
+        id: tones
+        source: view.artShown ? lockArt.source : wall.source
+        zones: [
+            Plate.zoneOf(cards, view.width, view.height),
+            Plate.zoneOf({ x: unlockBox.x + hint.x, y: unlockBox.y + hint.y, width: hint.width, height: hint.height }, view.width, view.height)
+        ]
+    }
+    property real plate: Plate.plateFor(tones.tones[0] || 0, {
+        scrim: 0.22, frost: Theme.platter.a, tone: Theme.glassBlack.r, most: Theme.glassIsland.a,
+        inks: [{ alpha: 1, want: 4.5 }, { alpha: 0.5, want: 3 }]
+    })
+    property real hintPlate: Plate.plateFor(tones.tones[1] || 0, {
+        scrim: 0.22, frost: 0, tone: Theme.glassBlack.r, most: Theme.glassIsland.a,
+        inks: [{ alpha: 0.85 * view.tint.a, tone: Plate.grey(Theme.luminance(view.tint)), want: 4.5 }]
+    })
+    Behavior on plate { NumberAnimation { duration: Theme.artMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeInOut } }
+    Behavior on hintPlate { NumberAnimation { duration: Theme.artMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeInOut } }
 
     // ── What sits on the wallpaper (lifts away on unlock) ────────────────
     Item {
@@ -199,22 +219,38 @@ Item {
 
         // ── Now playing ──────────────────────────────────────────────────────
         Column {
+            id: cards
             anchors.horizontalCenter: parent.horizontalCenter
             y: Math.round(parent.height * 0.46)
             spacing: 12
-            LockMedia { anchors.horizontalCenter: parent.horizontalCenter; live: view.awake || view.preview }
-            LockNotifs { anchors.horizontalCenter: parent.horizontalCenter; onTapped: item => { view.lock.openAfter = item; view.ask(); } }
+            LockMedia { id: media; anchors.horizontalCenter: parent.horizontalCenter; plate: view.plate; live: view.awake || view.preview }
+            LockNotifs {
+                anchors.horizontalCenter: parent.horizontalCenter
+                plate: view.plate
+                room: unlockBox.y + hint.y - cards.y - (media.visible ? media.height + cards.spacing : 0) - Theme.s4
+                onTapped: item => { view.lock.openAfter = item; view.ask(); }
+            }
         }
 
         // ── Unlock ───────────────────────────────────────────────────────────
         Spring { id: ask; tier: Theme.surfaceIn; target: view.asking || view.lock.checking || view.lock.error !== "" ? 1 : 0 }
         Item {
+            id: unlockBox
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.bottom: parent.bottom
             anchors.bottomMargin: Math.round(parent.height * 0.08)
             width: 300; height: 76
 
+            Rectangle {
+                anchors.centerIn: hint
+                width: hint.width + Theme.s5; height: hint.height + Theme.s3
+                radius: height / 2
+                opacity: hint.opacity
+                visible: hint.visible && view.hintPlate > 0.005
+                color: Qt.alpha(Theme.glassBlack, view.hintPlate)
+            }
             Label {
+                id: hint
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.bottom: parent.bottom
                 opacity: Math.max(0, 1 - ask.value * 2)
