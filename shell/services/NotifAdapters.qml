@@ -23,7 +23,9 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import Quickshell.Services.Notifications
+import qs.config
 
 Singleton {
     id: root
@@ -362,8 +364,10 @@ Singleton {
     // time. A name already asked is answered from here.
     // Mutated in place, never reassigned: bindings call this, and writing a
     // property they read would be a binding loop.
-    readonly property var iconCache: ({ names: {}, count: 0 })
+    readonly property var iconCache: ({ names: {}, count: 0, misses: {} })
+    property int iconRev: 0
     function iconSource(icon) {
+        void root.iconRev;
         if (!icon) return "";
         if (icon.startsWith("/")) return "file://" + icon;
         if (/^(file|image):/.test(icon)) return icon;
@@ -373,6 +377,48 @@ Singleton {
         const p = Quickshell.iconPath(icon, true);
         if (c.count >= 500) { c.names = {}; c.count = 0; }
         c.names[icon] = p; c.count++;
+        if (!p) {
+            const keys = Object.keys(c.misses);
+            if (keys.length >= 200) for (const k of keys) delete c.misses[k];
+            c.misses[icon] = true;
+            iconScan.restart();
+        }
         return p;
+    }
+
+    function applyIconResolutions(text) {
+        const c = iconCache;
+        let hit = false;
+        for (const line of String(text || "").split("\n")) {
+            const tab = line.indexOf("\t");
+            if (tab < 1) continue;
+            const path = line.slice(tab + 1).trim();
+            if (!path) continue;
+            const name = line.slice(0, tab);
+            c.names[name] = "file://" + path; c.count++;
+            delete c.misses[name];
+            hit = true;
+        }
+        if (hit) root.iconRev++;
+    }
+
+    Timer {
+        id: iconScan
+        interval: Theme.durSettle
+        onTriggered: {
+            if (iconResolve.running) { restart(); return; }
+            const names = Object.keys(root.iconCache.misses);
+            if (!names.length) return;
+            iconResolve.command = [Paths.bin + "/kuwai-icons", "resolve"].concat(names);
+            iconResolve.running = true;
+        }
+    }
+    Process {
+        id: iconResolve
+        stdout: StdioCollector { onStreamFinished: root.applyIconResolutions(text) }
+    }
+    Connections {
+        target: DesktopEntries
+        function onApplicationsChanged() { if (Object.keys(root.iconCache.misses).length) iconScan.restart(); }
     }
 }

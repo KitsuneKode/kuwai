@@ -51,7 +51,7 @@ DATA=${XDG_DATA_HOME:-$HOME/.local/share}
 STATE=${XDG_STATE_HOME:-$HOME/.local/state}/kuwai
 STABLE=$DATA/kuwai
 LIB=${KUWAI_SYSROOT:-}/usr/local/lib/kuwai
-UNITS=(kuwai-auth.service kuwai-shell.service kuwai-shell-broken.service kuwai-wallpaper.service kuwai-clipboard.service kuwai-feeds.service kuwai-backup.service kuwai-backup.timer)
+UNITS=(kuwai-auth.service kuwai-shell.service kuwai-shell-broken.service kuwai-wallpaper.service kuwai-clipboard.service kuwai-feeds.service kuwai-backup.service kuwai-backup.timer kuwai-hotwatch.service kuwai-hotwatch.timer)
 
 FROM_RELEASE=0; DRY=0; DEPS=0; YES=0; PRINT_MISSING=0; NO_SERVICES=0; MODE=install; SEPARATE=0; WANT_CLIP=""; WANT_FEEDS=""
 for a in "$@"; do
@@ -307,14 +307,18 @@ default_wallpaper() {
     local name="" url="" sum="" sumtool dest tmp list=$REPO/themes/kuwai-night/wallpapers.tsv
     [ -f "$list" ] && { IFS=$'\t' read -r name url sum _ < <(grep -v '^#' "$list" | head -1) || true; }
     case $name in ''|*[!A-Za-z0-9._-]*) warn "no default wallpaper listed"; return 0 ;; esac
+    case ${sum:-} in
+        sha1:*) sumtool=sha1sum; sum=${sum#sha1:}; printf '%s' "$sum" | grep -Eq '^[0-9a-f]{40}$' || { warn "the default wallpaper checksum is malformed; not used"; return 0; } ;;
+        sha256:*) sumtool=sha256sum; sum=${sum#sha256:}; printf '%s' "$sum" | grep -Eq '^[0-9a-f]{64}$' || { warn "the default wallpaper checksum is malformed; not used"; return 0; } ;;
+        *) warn "the default wallpaper has no checksum pin; not used"; return 0 ;;
+    esac
     dest=$STATE/wallpapers/$name.jpg
     mkdir -p "$STATE/wallpapers"
     tmp=$(mktemp)
     if ! curl -fsSL --proto =https --proto-redir =https --max-time 120 --max-filesize 40M -A "kuwai-install/1 (+https://github.com/KitsuneKode/kuwai)" -o "$tmp" "$url"; then
         rm -f "$tmp"; warn "couldn't download a wallpaper (offline?): set one later with kuwai-wall set IMAGE"; return 0
     fi
-    case ${sum:-} in sha1:*) sumtool=sha1sum; sum=${sum#sha1:} ;; *) sumtool=sha256sum; sum=${sum#sha256:} ;; esac
-    if [ -n "${sum:-}" ] && ! printf '%s  %s\n' "$sum" "$tmp" | "$sumtool" -c --status; then
+    if ! printf '%s  %s\n' "$sum" "$tmp" | "$sumtool" -c --status; then
         rm -f "$tmp"; warn "the wallpaper isn't the file Kuwai Night lists; not used"; return 0
     fi
     if ! file -b --mime-type "$tmp" | grep -Eq '^image/(jpeg|png|webp)$'; then
@@ -323,7 +327,7 @@ default_wallpaper() {
     mv "$tmp" "$dest"
     cp "$REPO/themes/kuwai-night/CREDITS.txt" "$STATE/wallpapers/CREDITS.txt"
     ln -sfn "$dest" "$STATE/wallpaper"
-    "$STABLE/bin/kuwai-look" set-wallpaper --no-apply "$dest" >/dev/null 2>&1 || true
+    "$STABLE/bin/kuwai-look" theme kuwai-night --no-apply >/dev/null 2>&1 || "$STABLE/bin/kuwai-look" set-wallpaper --no-apply "$dest" >/dev/null 2>&1 || true
     ok "Kuwai Night's wallpaper ($name), set at your first login; credits beside it"
 }
 

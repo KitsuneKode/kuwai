@@ -415,3 +415,26 @@ def test_a_wallpaper_linked_into_pictures_does_not_stop_the_migrations(shipped):
     assert r.returncode == 0, r.stdout + r.stderr
     assert (shipped['state'] / 'wallpaper').is_symlink(), "the link is kept as a link"
     assert (pictures / 'wall.jpg').read_bytes() == b'not really a jpeg', "the picture itself is never touched"
+
+
+@needs_landlock
+def test_0007_turns_on_the_busy_shell_watch_once(shipped, tmp_path):
+    units = shipped['home'] / '.config/systemd/user'
+    units.mkdir(parents=True)
+    (units / 'kuwai-shell.service').symlink_to(ROOT / 'systemd/kuwai-shell.service')
+    fake = tmp_path / 'fakebin'
+    fake.mkdir()
+    (fake / 'systemctl').write_text('#!/bin/sh\nexit 0\n')
+    (fake / 'systemctl').chmod(0o755)
+    extra = {'PATH': f"{fake}:{shipped['env']['PATH']}"}
+    r = run(shipped, extra=extra)
+    assert r.returncode == 0, r.stderr
+    for u in ('kuwai-hotwatch.service', 'kuwai-hotwatch.timer'):
+        assert (units / u).resolve() == (ROOT / 'systemd' / u).resolve()
+    assert (units / 'timers.target.wants/kuwai-hotwatch.timer').resolve() == (ROOT / 'systemd/kuwai-hotwatch.timer').resolve()
+
+
+@needs_landlock
+def test_0007_leaves_a_machine_without_kuwai_units_alone(shipped):
+    assert run(shipped).returncode == 0
+    assert not (shipped['home'] / '.config/systemd/user/kuwai-hotwatch.timer').exists()

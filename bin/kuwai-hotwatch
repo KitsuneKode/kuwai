@@ -1,0 +1,214 @@
+#!/usr/bin/env python3
+"""Catch the shell busy, in the act. Run once a minute by kuwai-hotwatch.timer.
+
+When kuwai's shell uses more than half a CPU for two samples in a row, it saves
+which of its threads are busy, what they wait on, its memory and the end of its
+log to $XDG_STATE_HOME/kuwai/hot/<time>/ once per shell run, keeps the newest
+five, and says so once. Nothing about windows, messages or accounts is kept.
+
+  kuwai-hotwatch            sample now (what the timer runs)
+  kuwai-hotwatch --last     the newest capture's summary
+"""
+from __future__ import annotations
+
+import json
+import os
+import shutil
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+HOT_PERCENT = 50.0
+HOT_SAMPLES = 2
+KEEP = 5
+
+
+def state_dir() -> Path:
+    return Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local/state") / "kuwai"
+
+
+def runtime_file() -> Path:
+    base = os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}"
+    return Path(base) / "kuwai" / "hotwatch.json"
+
+
+def shell_pid() -> int:
+    try:
+        out = subprocess.run(["systemctl", "--user", "show", "-p", "MainPID", "--value", "kuwai-shell.service"],
+                             capture_output=True, text=True, timeout=5, check=False).stdout.strip()
+    except (OSError, subprocess.TimeoutExpired):
+        return 0
+    return int(out) if out.isdigit() else 0
+
+
+def stat_fields(path: Path) -> list[str] | None:
+    try:
+        text = path.read_text()
+    except OSError:
+        return None
+    return text.rsplit(")", 1)[1].split() if ")" in text else None
+
+
+def ticks(fields: list[str]) -> int:
+    return int(fields[11]) + int(fields[12])
+
+
+def threads(proc: Path) -> dict[str, dict]:
+    out: dict[str, dict] = {}
+    try:
+        tids = sorted(os.listdir(proc / "task"))
+    except OSError:
+        return out
+    for tid in tids:
+        t = proc / "task" / tid
+        f = stat_fields(t / "stat")
+        if not f:
+            continue
+        try:
+            name = (t / "comm").read_text().strip()
+        except OSError:
+            name = "?"
+        try:
+            wchan = (t / "wchan").read_text().strip() or "-"
+        except OSError:
+            wchan = "-"
+        out[tid] = {"name": name, "ticks": ticks(f), "wchan": wchan}
+    return out
+
+
+def sample(pid: int, proc_root: Path, now: float) -> dict | None:
+    proc = proc_root / str(pid)
+    f = stat_fields(proc / "stat")
+    if not f:
+        return None
+    return {"pid": pid, "start": f[19], "ticks": ticks(f), "at": now, "threads": threads(proc)}
+
+
+def busy_percent(prev: dict, cur: dict, hz: int) -> float:
+    dt = cur["at"] - prev["at"]
+    if dt <= 0 or prev["pid"] != cur["pid"] or prev["start"] != cur["start"]:
+        return 0.0
+    return 100.0 * (cur["ticks"] - prev["ticks"]) / hz / dt
+
+
+def thread_table(prev: dict, cur: dict, hz: int) -> list[str]:
+    dt = max(cur["at"] - prev["at"], 1e-6)
+    rows = []
+    for tid, t in cur["threads"].items():
+        before = prev["threads"].get(tid, {}).get("ticks", t["ticks"])
+        rows.append((100.0 * (t["ticks"] - before) / hz / dt, tid, t["name"], t["wchan"]))
+    rows.sort(reverse=True)
+    return [f"{pct:6.1f}%  {tid:>8}  {name:<18} {wchan}" for pct, tid, name, wchan in rows]
+
+
+def memory(proc: Path) -> str:
+    try:
+        text = (proc / "smaps_rollup").read_text()
+    except OSError:
+        return "unknown"
+    keep = [line for line in text.splitlines() if line.split(":")[0] in ("Rss", "Pss", "Pss_Anon", "Swap")]
+    return "; ".join(" ".join(line.split()) for line in keep)
+
+
+def log_tail() -> str:
+    try:
+        return subprocess.run(["journalctl", "--user", "-u", "kuwai-shell.service", "-n", "200", "--no-pager", "-o", "short-iso"],
+                              capture_output=True, text=True, timeout=10, check=False).stdout
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+
+
+def capture(out_root: Path, pid: int, pct: float, prev: dict, cur: dict, hz: int, proc_root: Path) -> Path:
+    out_root.mkdir(parents=True, exist_ok=True, mode=0o700)
+    d = out_root / time.strftime("%Y%m%d-%H%M%S", time.localtime(cur["at"]))
+    d.mkdir(exist_ok=True, mode=0o700)
+    proc = proc_root / str(pid)
+    summary = [
+        f"time: {time.strftime('%F %T', time.localtime(cur['at']))}",
+        f"shell pid: {pid}",
+        f"busy: {pct:.0f}% of one CPU over the last {cur['at'] - prev['at']:.0f} s",
+        f"memory: {memory(proc)}",
+    ]
+    try:
+        summary.append("load: " + " ".join(Path("/proc/loadavg").read_text().split()[:3]))
+    except OSError:
+        pass
+    (d / "summary.txt").write_text("\n".join(summary) + "\n")
+    (d / "threads.txt").write_text("\n".join(thread_table(prev, cur, hz)) + "\n")
+    (d / "shell-log.txt").write_text(log_tail())
+    captures = sorted(p for p in out_root.iterdir() if p.is_dir())
+    for old in captures[:-KEEP]:
+        shutil.rmtree(old, ignore_errors=True)
+    return d
+
+
+def tell() -> None:
+    if not shutil.which("notify-send"):
+        return
+    try:
+        subprocess.run(["notify-send", "-a", "kuwai", "-u", "low", "The shell was busy for a while",
+                        "What it was doing was saved, for finding out why."],
+                       timeout=5, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+
+
+def load(path: Path) -> dict:
+    try:
+        return json.loads(path.read_text())
+    except (OSError, ValueError):
+        return {}
+
+
+def save(path: Path, data: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(data))
+    os.replace(tmp, path)
+
+
+def step(pid: int, proc_root: Path, state_path: Path, out_root: Path, now: float, hz: int, notify=tell) -> Path | None:
+    st = load(state_path)
+    cur = sample(pid, proc_root, now) if pid > 0 else None
+    if not cur:
+        save(state_path, {})
+        return None
+    prev = st.get("last")
+    pct = busy_percent(prev, cur, hz) if prev else 0.0
+    streak = st.get("streak", 0) + 1 if pct >= HOT_PERCENT else 0
+    run = f"{cur['pid']}:{cur['start']}"
+    captured = st.get("captured") == run
+    made = None
+    if streak >= HOT_SAMPLES and not captured and prev:
+        made = capture(out_root, pid, pct, prev, cur, hz, proc_root)
+        captured = True
+        notify()
+    save(state_path, {"last": cur, "streak": streak, "captured": run if captured else st.get("captured", "")})
+    return made
+
+
+def last(out_root: Path) -> int:
+    caps = sorted(p for p in out_root.iterdir() if p.is_dir()) if out_root.is_dir() else []
+    if not caps:
+        print("the shell hasn't been caught busy")
+        return 1
+    print(caps[-1])
+    print((caps[-1] / "summary.txt").read_text(), end="")
+    print((caps[-1] / "threads.txt").read_text().splitlines()[0] if (caps[-1] / "threads.txt").exists() else "")
+    return 0
+
+
+def main(argv: list[str]) -> int:
+    out_root = state_dir() / "hot"
+    if argv[:1] == ["--last"]:
+        return last(out_root)
+    if argv:
+        print(__doc__.strip(), file=sys.stderr)
+        return 2
+    step(shell_pid(), Path("/proc"), runtime_file(), out_root, time.time(), os.sysconf("SC_CLK_TCK"))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

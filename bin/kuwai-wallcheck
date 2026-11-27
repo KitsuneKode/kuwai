@@ -7,6 +7,8 @@
   kuwai-wallcheck --tsv themes/<slug>   check a theme's wallpapers.tsv: every row pinned
                                         (sha256:… or sha1:…) and licensed, every downloaded file the
                                         one pinned (needs --dir with the downloaded files)
+  kuwai-wallcheck --default             check the default wallpaper (themes/kuwai-night row 1) and
+                                        every default-offered theme are pinned, licensed and credited
   options: --json   --sheet OUT.jpg (a contact sheet with each verdict)   --ocr (look for
            text and watermarks with tesseract)   --band LO,HI (mean lightness, L* 0–100)
            --skip size (checking small previews of pictures whose full size is known)
@@ -235,20 +237,70 @@ def check_tsv(theme, files_dir=None):
     problems = []
     t = Path(theme) / "theme.toml"
     personal = t.exists() and tomllib.loads(t.read_text()).get("personal", False)
-    for row in read_tsv(theme):
+    rows = read_tsv(theme)
+    if not personal and not rows:
+        problems.append(f"{theme}/wallpapers.tsv: no wallpapers listed")
+    for row in rows:
         where = f"{theme}/wallpapers.tsv:{row['line']} {row['name']}"
         if not personal:
+            if not re.fullmatch(r"[A-Za-z0-9._-]+", row["name"]):
+                problems.append(f"{where}: unsafe filename")
+            if not row["url"].startswith("https://"):
+                problems.append(f"{where}: URL is not https")
             if not re.fullmatch(r"sha256:[0-9a-f]{64}|sha1:[0-9a-f]{40}", row["sha256"]):
                 problems.append(f"{where}: not pinned (sha256:… or sha1:…, as Commons reports it)")
             if row["licence"] not in LICENCES - {"personal"}:
                 problems.append(f"{where}: licence {row['licence'] or 'missing'} is not one kuwai can ship")
             if not row["author"]:
                 problems.append(f"{where}: no author to credit")
+            if not row["page"].startswith("https://"):
+                problems.append(f"{where}: no source page URL")
         if files_dir and ":" in row["sha256"]:
             algo, want = row["sha256"].split(":", 1)
             f = next((Path(files_dir) / f"{row['name']}{e}" for e in (".jpg", ".png", ".webp") if (Path(files_dir) / f"{row['name']}{e}").exists()), None)
             if f and hashlib.new(algo, f.read_bytes()).hexdigest() != want:
                 problems.append(f"{where}: the file on disk is not the pinned one")
+    return problems
+
+
+def check_default(root=None, files_dir=None):
+    """Gate the default wallpaper (themes/kuwai-night row 1) and every default-offered theme."""
+    repo = Path(root) if root else Path(__file__).resolve().parent.parent
+    themes_dir = repo / "themes"
+    problems = []
+    kn = themes_dir / "kuwai-night"
+    if not kn.is_dir():
+        return [f"{kn}: default theme missing"]
+    t = kn / "theme.toml"
+    if not t.is_file():
+        problems.append(f"{kn}/theme.toml: missing")
+    elif tomllib.loads(t.read_text()).get("personal", False):
+        problems.append(f"{kn}/theme.toml: default theme cannot be personal")
+    if not (kn / "CREDITS.txt").is_file():
+        problems.append(f"{kn}/CREDITS.txt: missing")
+    if not (kn / "wallpapers.tsv").is_file():
+        problems.append(f"{kn}/wallpapers.tsv: missing")
+    else:
+        rows = read_tsv(kn)
+        if not rows:
+            problems.append(f"{kn}/wallpapers.tsv: default wallpaper missing")
+        elif files_dir:
+            first = rows[0]
+            f = next((Path(files_dir) / f"{first['name']}{e}" for e in (".jpg", ".png", ".webp") if (Path(files_dir) / f"{first['name']}{e}").exists()), None)
+            if f:
+                r = check(f, band=theme_band(kn), accent=theme_accent(kn))
+                if r["verdict"] != "ok":
+                    problems.append(f"{f}: default wallpaper verdict {r['verdict']} ({'; '.join(r['why'])})")
+    for d in sorted(p for p in themes_dir.iterdir() if p.is_dir()):
+        dt = d / "theme.toml"
+        personal = dt.is_file() and tomllib.loads(dt.read_text()).get("personal", False)
+        if not personal:
+            if not (d / "CREDITS.txt").is_file():
+                problems.append(f"{d}/CREDITS.txt: missing")
+            if (d / "wallpapers.tsv").is_file():
+                problems.extend(check_tsv(d, files_dir if d == kn else None))
+            else:
+                problems.append(f"{d}/wallpapers.tsv: missing")
     return problems
 
 
@@ -278,18 +330,23 @@ def sheet(results, out):
 
 
 def main(argv):
-    args, opts = [], {"json": False, "ocr": False, "sheet": None, "band": None, "theme": None, "tsv": None, "dir": None, "skip": ""}
+    args, opts = [], {"json": False, "ocr": False, "default": False, "sheet": None, "band": None, "theme": None, "tsv": None, "dir": None, "root": None, "skip": ""}
     it = iter(argv)
     for a in it:
         if a in ("-h", "--help"):
             print(__doc__.strip())
             return 0
-        if a in ("--json", "--ocr"):
+        if a in ("--json", "--ocr", "--default"):
             opts[a[2:]] = True
-        elif a in ("--sheet", "--band", "--theme", "--tsv", "--dir", "--skip"):
+        elif a in ("--sheet", "--band", "--theme", "--tsv", "--dir", "--root", "--skip"):
             opts[a[2:]] = next(it, None)
         else:
             args.append(a)
+    if opts["default"]:
+        problems = check_default(opts["root"], opts["dir"])
+        for p in problems:
+            print(p)
+        return 1 if problems else 0
     if opts["tsv"]:
         problems = check_tsv(opts["tsv"], opts["dir"])
         for p in problems:

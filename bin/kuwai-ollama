@@ -160,8 +160,11 @@ def app_display_name(wm_class):
     """com.t3tools.T3Code → "T3 Code", from its desktop entry (StartupWMClass or file name)."""
     if not wm_class:
         return "Window"
-    dirs = [os.path.expanduser("~/.local/share/applications"), "/usr/local/share/applications", "/usr/share/applications",
-            os.path.expanduser("~/.local/share/flatpak/exports/share/applications"), "/var/lib/flatpak/exports/share/applications"]
+    data_home = os.environ.get("XDG_DATA_HOME") or os.path.expanduser("~/.local/share")
+    dirs = [os.path.join(data_home, "applications"), os.path.expanduser("~/.local/share/applications"),
+            "/usr/local/share/applications", "/usr/share/applications",
+            os.path.join(data_home, "flatpak/exports/share/applications"),
+            "/var/lib/flatpak/exports/share/applications"]
     want = wm_class.lower()
     for d in dirs:
         if not os.path.isdir(d):
@@ -189,7 +192,8 @@ def fresh_text(kind, text):
         return ""
     if looks_secret(text):
         return ""
-    state_file = os.path.expanduser("~/.cache/kuwai/assistant/last-context.json")
+    cache_home = os.environ.get("XDG_CACHE_HOME") or os.path.expanduser("~/.cache")
+    state_file = os.path.join(cache_home, "kuwai", "assistant", "last-context.json")
     try:
         state = json.load(open(state_file))
     except (OSError, ValueError):
@@ -472,7 +476,7 @@ SEARXNG_IMAGE = os.environ.get("KUWAI_SEARXNG_IMAGE") or \
 def cmd_search(args):
     """kuwai-ollama search <start|stop|status>: the local SearXNG the assistant searches first."""
     sub = args[0] if args else "status"
-    conf = os.path.expanduser("~/.config/kuwai/searxng")
+    conf = os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"), "kuwai", "searxng")
     label = subprocess.run(["docker", "inspect", "-f", '{{index .Config.Labels "kuwai.search"}}', "kuwai-searxng"],
                            capture_output=True, text=True)
     stranger = label.returncode == 0 and label.stdout.strip() != "1"

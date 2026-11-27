@@ -291,7 +291,8 @@ def _matches(name, src, dest, net):
 
 
 def _touch(slug):
-    path = Path(os.path.expanduser("~/.cache/kuwai/assistant/sandbox-used.json"))
+    cache = os.environ.get("XDG_CACHE_HOME") or os.path.expanduser("~/.cache")
+    path = Path(cache) / "kuwai" / "assistant" / "sandbox-used.json"
     try:
         used = json.loads(path.read_text())
     except (OSError, ValueError):

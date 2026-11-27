@@ -88,3 +88,34 @@ def test_a_kuwai_theme_row_must_be_pinned_licensed_and_credited(tmp_path):
     problems = wc.check_tsv(t)
     assert len(problems) == 3
     assert "02-nopin" in problems[0] and "03-nc" in problems[1] and "04-anon" in problems[2]
+
+
+def test_default_themes_and_default_wallpaper_pass_wallcheck_default():
+    problems = wc.check_default(ROOT)
+    assert problems == [], "\n".join(problems)
+    assert wc.main(["--default", "--root", str(ROOT)]) == 0
+
+
+def test_default_check_rejects_unpinned_or_bad_digest_default_wallpaper(tmp_path):
+    kn = tmp_path / "themes" / "kuwai-night"
+    kn.mkdir(parents=True)
+    (kn / "theme.toml").write_text('schema = 1\nslug = "kuwai-night"\nname = "Kuwai Night"\naccent = "#66c7ff"\n')
+    (kn / "CREDITS.txt").write_text("credits\n")
+    (kn / "wallpapers.tsv").write_text("01-night\thttps://example.invalid/night.jpg\n")
+    problems = wc.check_default(tmp_path)
+    assert any("not pinned" in p for p in problems)
+    assert any("licence" in p for p in problems)
+
+    pic = night(tmp_path / "01-night.png")
+    (kn / "wallpapers.tsv").write_text(
+        "01-night\thttps://example.invalid/night.png\tsha256:" + "0" * 64 + "\tPD\tNPS\thttps://commons.wikimedia.org/wiki/File:Test\n"
+    )
+    bad_file = wc.check_default(tmp_path, files_dir=tmp_path)
+    assert any("not the pinned one" in p for p in bad_file)
+
+    import hashlib
+    good = hashlib.sha256(pic.read_bytes()).hexdigest()
+    (kn / "wallpapers.tsv").write_text(
+        f"01-night\thttps://example.invalid/night.png\tsha256:{good}\tPD\tNPS\thttps://commons.wikimedia.org/wiki/File:Test\n"
+    )
+    assert wc.check_default(tmp_path, files_dir=tmp_path) == []

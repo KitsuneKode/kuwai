@@ -49,8 +49,8 @@ local rules = {}
 local function key_of(output)
 	return "screen." .. tostring(output):lower():gsub("[^%w]+", "-")
 end
-function D.override(spec, m)
-	local k = key_of(spec.output)
+function D.override(spec, m, key_override)
+	local k = key_override or key_of(spec.output)
 	local scale = tonumber(K.state[k .. ".scale"] or "")
 	if scale then
 		spec.scale = scale
@@ -96,12 +96,44 @@ local function internal(m)
 end
 
 local function rule_for(m)
+	local best, best_len = nil, -1
+	local desc = m.description or ""
 	for _, r in ipairs(rules) do
 		local o = r.base.output
-		if o == m.name or (o:sub(1, 5) == "desc:" and (m.description or ""):sub(1, #o - 5) == o:sub(6)) then
+		if o == m.name then
 			return r
 		end
+		if o:sub(1, 5) == "desc:" then
+			local pref = o:sub(6)
+			if desc:sub(1, #pref) == pref and #pref > best_len then
+				best, best_len = r, #pref
+			end
+		end
 	end
+	return best
+end
+
+local function rule_shared(r, mons)
+	if not r then
+		return false
+	end
+	local n = 0
+	for _, x in ipairs(mons or hl.get_monitors() or {}) do
+		if rule_for(x) == r then
+			n = n + 1
+			if n > 1 then
+				return true
+			end
+		end
+	end
+	return false
+end
+
+local function screen_key(m, r, mons)
+	if r and not rule_shared(r, mons) then
+		return key_of(r.orig.output)
+	end
+	return key_of(m.name)
 end
 
 local function mode_for(m, base_mode, preset)
@@ -132,7 +164,12 @@ function D.icc_name(m)
 	return (d:lower():gsub("[^%w]+", "-"):gsub("^-+", ""):gsub("-+$", ""))
 end
 function D.icc_for(m)
-	local path = K.home .. "/.local/share/kuwai-data/icc/" .. D.icc_name(m) .. ".icc"
+	local base = K.home .. "/.local/share/kuwai-data/icc/"
+	local full = ((m.description or "") ~= "" and m.description or m.name or ""):lower():gsub("[^%w]+", "-"):gsub("^-+", ""):gsub("-+$", "")
+	if full ~= "" and K.exists(base .. full .. ".icc") then
+		return base .. full .. ".icc"
+	end
+	local path = base .. D.icc_name(m) .. ".icc"
 	return K.exists(path) and path or nil
 end
 
@@ -171,40 +208,108 @@ local function external_player(gone)
 end
 
 local function hdr_capable(m, r)
-	if r.base.hdr == false then
+	if r then
+		if r.base.hdr == false then
+			return false
+		end
+		if r.base.hdr == true then
+			return true
+		end
+		return not internal(m) and r.base.max_luminance ~= nil
+	end
+	if m.hdr == false then
 		return false
 	end
-	if r.base.hdr == true then
+	if m.hdr == true then
 		return true
 	end
-	return not internal(m) and r.base.max_luminance ~= nil
+	return not internal(m)
+end
+
+local unruled = {}
+local applied_screens = {}
+
+local function unruled_base(m)
+	if not unruled[m.name] then
+		local mode
+		if m.width and m.height then
+			if m.refresh_rate and m.refresh_rate > 0 then
+				mode = ("%dx%d@%d"):format(m.width, m.height, math.floor(m.refresh_rate + 0.5))
+			else
+				mode = ("%dx%d"):format(m.width, m.height)
+			end
+		else
+			mode = "preferred"
+		end
+		local pos = (m.x ~= nil and m.y ~= nil) and ("%dx%d"):format(m.x, m.y) or "auto"
+		unruled[m.name] = { output = m.name, mode = mode, position = pos, scale = m.scale or "auto" }
+	end
+	local spec = {}
+	for k, v in pairs(unruled[m.name]) do
+		spec[k] = v
+	end
+	return spec
+end
+
+local function original(m)
+	local r = rule_for(m)
+	local spec = {}
+	if r then
+		for k, v in pairs(r.orig) do
+			spec[k] = v
+		end
+		return spec, r
+	end
+	return unruled_base(m), nil
 end
 
 local function apply_screens(preset)
 	local players = preset == "movie" and D.choice() == "everyday" and player_screens() or nil
 	local hdr = D.hdr_active(preset)
-	for _, m in ipairs(hl.get_monitors() or {}) do
+	local mons = hl.get_monitors() or {}
+	for _, m in ipairs(mons) do
 		local r = rule_for(m)
-		if r then
-			local mode = (players and not players[m.name]) and r.base.mode
-				or mode_for(m, r.base.mode, preset) or r.base.mode
-			local cm = (hdr and hdr_capable(m, r)) and "hdredid" or r.base.cm
+		local shared = r ~= nil and rule_shared(r, mons)
+		local k = screen_key(m, r, mons)
+		local base
+		if r and not shared then
+			base = r.base
+		else
+			local spec = original(m)
+			spec.output = m.name
+			base = D.override(spec, m, k)
+		end
+		local mode = (players and not players[m.name]) and base.mode
+			or mode_for(m, base.mode, preset) or base.mode
+		local cm = (hdr and hdr_capable(m, r)) and "hdredid" or base.cm
+		if r and not shared then
 			r.ref.mode = mode
 			r.ref.cm = cm
-			local icc = preset == "accurate" and D.icc_for(m) or nil
-			if mode ~= r.base.mode or cm ~= r.base.cm or icc then
-				local spec = {}
-				for k, v in pairs(r.base) do
-					spec[k] = v
-				end
-				spec.mode = mode
-				if cm ~= nil then
-					spec.cm = cm
-				end
-				if icc then
-					spec.icc = icc
-				end
-				pcall(raw_monitor, spec)
+		end
+		local icc = preset == "accurate" and D.icc_for(m) or nil
+		local changed = mode ~= base.mode or cm ~= base.cm or icc ~= nil
+		local prev = applied_screens[m.name]
+		local revert = (not r or shared) and prev ~= nil and (prev.mode ~= mode or prev.cm ~= cm or prev.icc ~= icc)
+		if changed or revert then
+			local spec = {}
+			for sk, sv in pairs(base) do
+				spec[sk] = sv
+			end
+			if shared or not r then
+				spec.output = m.name
+			end
+			spec.mode = mode
+			if cm ~= nil then
+				spec.cm = cm
+			elseif revert and prev.cm ~= nil then
+				spec.cm = "srgb"
+			end
+			if icc then
+				spec.icc = icc
+			end
+			pcall(raw_monitor, spec)
+			if not r or shared then
+				applied_screens[m.name] = changed and { mode = mode, cm = cm, icc = icc } or nil
 			end
 		end
 	end
@@ -536,27 +641,16 @@ local function screen_named(name)
 	end
 end
 
-local unruled = {}
-local function original(m)
-	local r = rule_for(m)
-	local spec = {}
-	if r then
-		for k, v in pairs(r.orig) do
-			spec[k] = v
-		end
-		return spec, r
-	end
-	unruled[m.name] = unruled[m.name] or { output = m.name, mode = ("%dx%d"):format(m.width, m.height), position = ("%dx%d"):format(m.x, m.y), scale = m.scale }
-	for k, v in pairs(unruled[m.name]) do
-		spec[k] = v
-	end
-	return spec, nil
-end
-
 local function apply_override(m)
+	local mons = hl.get_monitors() or {}
 	local spec, r = original(m)
-	local applied = D.override(spec, m)
-	if r then
+	local shared = r ~= nil and rule_shared(r, mons)
+	local k = screen_key(m, r, mons)
+	if shared or not r then
+		spec.output = m.name
+	end
+	local applied = D.override(spec, m, k)
+	if r and not shared then
 		r.base.scale, r.base.mode = applied.scale, applied.mode
 		r.ref.scale, r.ref.mode = applied.scale, applied.mode
 	end
@@ -568,7 +662,8 @@ function kuwai.screen(name, field, value)
 	if not m then
 		return "no screen " .. tostring(name)
 	end
-	local k = key_of((original(m)).output)
+	local mons = hl.get_monitors() or {}
+	local k = screen_key(m, rule_for(m), mons)
 	if field == "reset" then
 		K.set_state(k .. ".scale", nil)
 		K.set_state(k .. ".rate", nil)
@@ -598,8 +693,9 @@ end
 
 function kuwai.screens_json()
 	local out = {}
-	for _, m in ipairs(hl.get_monitors() or {}) do
-		local k = key_of((original(m)).output)
+	local mons = hl.get_monitors() or {}
+	for _, m in ipairs(mons) do
+		local k = screen_key(m, rule_for(m), mons)
 		local rates, seen = {}, {}
 		for _, am in ipairs(m.available_modes or {}) do
 			local hz = math.floor(am.refresh_rate + 0.5)
@@ -621,8 +717,9 @@ function kuwai.screens_json()
 end
 
 hl.on("hyprland.start", function()
-	for _, m in ipairs(hl.get_monitors() or {}) do
-		local k = key_of((original(m)).output)
+	local mons = hl.get_monitors() or {}
+	for _, m in ipairs(mons) do
+		local k = screen_key(m, rule_for(m), mons)
 		if K.state[k .. ".scale"] or K.state[k .. ".rate"] then
 			apply_override(m)
 		end

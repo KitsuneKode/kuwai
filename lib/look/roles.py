@@ -146,7 +146,7 @@ def build_palette(raw, source, generation, mode="dark"):
         if luma is None and raw.get("bg"):
             luma = relative_luminance(raw["bg"])
         effective_mode = "light" if (luma is not None and luma > 0.62) else "dark"
-    dark = effective_mode != "light"
+    dark = (raw.get("mode") != "light") if effective_mode == "theme" else (effective_mode != "light")
 
     raw_bg = norm_hex(raw.get("bg"), "#111114" if dark else "#f4f4f7")
     bg = raw_bg if source.get("kind") == "theme" and raw.get("exactBg") else clamp_ground(raw_bg, dark=dark)

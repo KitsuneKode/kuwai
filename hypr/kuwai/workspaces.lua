@@ -3,12 +3,83 @@ local K = require("kuwai.core")
 local W = {}
 local dsp = hl.dsp
 
-local function ident(m)
-	return (m and m.description and m.description ~= "") and m.description or (m and m.name) or "?"
+local function raw_ident(m)
+	if not m then
+		return "?"
+	end
+	local d = (m.description and m.description ~= "") and m.description or ""
+	if d == "" then
+		local parts = {}
+		if m.make and m.make ~= "" then
+			parts[#parts + 1] = m.make
+		end
+		if m.model and m.model ~= "" then
+			parts[#parts + 1] = m.model
+		end
+		d = table.concat(parts, " ")
+	end
+	if m.serial and m.serial ~= "" and d ~= "" and not d:find(m.serial, 1, true) then
+		d = d .. " " .. m.serial
+	end
+	return d ~= "" and d or (m.name or "?")
+end
+
+local function ident_collides(m, mons)
+	local mine = raw_ident(m)
+	for _, o in ipairs(mons or hl.get_monitors() or {}) do
+		if o.name ~= m.name and raw_ident(o) == mine then
+			return true
+		end
+	end
+	return false
+end
+
+local function desc_collides(m, mons)
+	local d = m and m.description or ""
+	if d == "" then
+		return true
+	end
+	for _, o in ipairs(mons or hl.get_monitors() or {}) do
+		if o.name ~= m.name then
+			local od = o.description or ""
+			if od == d or (od ~= "" and (od:sub(1, #d) == d or d:sub(1, #od) == od)) then
+				return true
+			end
+		end
+	end
+	return false
+end
+
+local function ident(m, mons)
+	local base = raw_ident(m)
+	if m and m.name and ident_collides(m, mons) then
+		return base .. "@" .. m.name
+	end
+	return base
+end
+
+local function monitor_sel(m, mons)
+	if desc_collides(m, mons) then
+		return m.name
+	end
+	return "desc:" .. m.description
 end
 
 local function is_internal(m)
-	return m and m.name and m.name:match("^eDP") ~= nil
+	local n = m and m.name or ""
+	return n:match("^eDP") ~= nil or n:match("^LVDS") ~= nil or n:match("^DSI") ~= nil
+end
+
+local function has_internal(mons)
+	for _, o in ipairs(mons or hl.get_monitors() or {}) do
+		if is_internal(o) then
+			if K.state["wsinternal"] ~= "1" then
+				K.set_state("wsinternal", "1")
+			end
+			return true
+		end
+	end
+	return K.state["wsinternal"] == "1"
 end
 
 function W.block(m)
@@ -18,18 +89,42 @@ function W.block(m)
 	if is_internal(m) then
 		return 0
 	end
-	local key = "wsblock." .. ident(m):gsub("[^%w]", "_")
+	local mons = hl.get_monitors() or {}
+	local plain_key = "wsblock." .. raw_ident(m):gsub("[^%w]", "_")
+	local key = "wsblock." .. ident(m, mons):gsub("[^%w]", "_")
 	local b = tonumber(K.state[key])
 	if b then
 		return b
 	end
-	local used = { [0] = true }
+	if key ~= plain_key then
+		local prev_plain = tonumber(K.state[plain_key])
+		local prev_base = tonumber(K.state["wsbase." .. (m.name or "")])
+		if prev_plain ~= nil and prev_base ~= nil and prev_base == prev_plain * 10 then
+			local taken = false
+			for _, o in ipairs(mons) do
+				if o.name ~= m.name then
+					local ok_key = "wsblock." .. ident(o, mons):gsub("[^%w]", "_")
+					if tonumber(K.state[ok_key]) == prev_plain then
+						taken = true
+					end
+				end
+			end
+			if not taken then
+				K.set_state(key, prev_plain)
+				return prev_plain
+			end
+		end
+	end
+	local used = {}
+	if has_internal(mons) then
+		used[0] = true
+	end
 	for k, v in pairs(K.state) do
 		if k:match("^wsblock%.") then
 			used[tonumber(v) or -1] = true
 		end
 	end
-	b = 1
+	b = 0
 	while used[b] do
 		b = b + 1
 	end
@@ -46,6 +141,7 @@ local function claim(m)
 	if not m then
 		return
 	end
+	local mons = hl.get_monitors() or {}
 	if K.state["wsbase." .. m.name] ~= tostring(W.base(m)) then
 		K.set_state("wsbase." .. m.name, W.base(m))
 	end
@@ -53,14 +149,22 @@ local function claim(m)
 		return
 	end
 	local base = W.base(m)
-	local sel = "desc:" .. ident(m)
+	local sel = monitor_sel(m, mons)
 	for n = 1, 10 do
 		local id = tostring(base + n)
-		if not rules[id] then
+		local cur = rules[id]
+		if cur and cur.sel ~= sel then
+			pcall(function()
+				cur.handle:set_enabled(false)
+			end)
+			rules[id] = nil
+			cur = nil
+		end
+		if not cur then
 			local spec = { workspace = id, monitor = sel, default = (n == 1) }
 			local ok, h = pcall(hl.workspace_rule, spec)
 			if ok then
-				rules[id] = h
+				rules[id] = { handle = h, sel = sel }
 			end
 		end
 	end
@@ -84,7 +188,9 @@ for _, m in ipairs(hl.get_monitors() or {}) do
 	claim(m)
 end
 hl.on("monitor.added", function(m)
-	claim(m)
+	for _, o in ipairs(hl.get_monitors() or {}) do
+		claim(o)
+	end
 	if K.feature("per_monitor_ws") then
 		reclaim(m)
 	end

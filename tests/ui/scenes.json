@@ -2327,6 +2327,184 @@
    "panel": "ThemePanel"
   },
   {
+   "id": "theme/fresh-install",
+   "name": "theme",
+   "panel": "ThemePanel",
+   "kind": "typical",
+   "props": {
+    "loading": false,
+    "mode": "themes",
+    "current": 2,
+    "info": {
+     "schema": 1,
+     "current": "kuwai-night",
+     "mode": 0,
+     "modes": [
+      "theme",
+      "auto",
+      "dark",
+      "light"
+     ],
+     "themes": [
+      {
+       "name": "deep-field",
+       "path": "/home/test/themes/deep-field",
+       "thumb": "",
+       "downloadable": true,
+       "current": false,
+       "bg": "#0b0a12",
+       "fg": "#e8e6f4",
+       "accent": "#a48bff",
+       "palette": [
+        "#0b0a12",
+        "#ff6b8a",
+        "#ffd479",
+        "#6be6b0",
+        "#78dcff",
+        "#a48bff",
+        "#e09eff",
+        "#e8e6f4"
+       ]
+      },
+      {
+       "name": "earthlight",
+       "path": "/home/test/themes/earthlight",
+       "thumb": "",
+       "downloadable": true,
+       "current": false,
+       "bg": "#110d09",
+       "fg": "#f4ece2",
+       "accent": "#ffad4a",
+       "palette": [
+        "#110d09",
+        "#ff6e5a",
+        "#ffad4a",
+        "#8fd694",
+        "#6ec8e8",
+        "#ffad4a",
+        "#e598c8",
+        "#f4ece2"
+       ]
+      },
+      {
+       "name": "kuwai-night",
+       "path": "/home/test/themes/kuwai-night",
+       "thumb": "/home/test/cover-sample.png",
+       "downloadable": true,
+       "current": true,
+       "bg": "#0a0c12",
+       "fg": "#f4f4f6",
+       "accent": "#66c7ff",
+       "palette": [
+        "#0a0c12",
+        "#ff6961",
+        "#ffd60a",
+        "#86e0b4",
+        "#64d2ff",
+        "#66c7ff",
+        "#bf5af2",
+        "#f4f4f6"
+       ]
+      }
+     ],
+     "wallpapers": [
+      {
+       "name": "01-chisos-night-sky",
+       "path": "/home/test/cover-sample.png",
+       "thumb": "/home/test/cover-sample.png",
+       "current": true,
+       "palette": []
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "theme/first-use",
+   "name": "theme",
+   "panel": "ThemePanel",
+   "kind": "typical",
+   "props": {
+    "loading": false,
+    "mode": "themes",
+    "current": 0,
+    "info": {
+     "schema": 1,
+     "current": "kuwai-night",
+     "mode": 0,
+     "modes": [
+      "theme",
+      "auto",
+      "dark",
+      "light"
+     ],
+     "themes": [
+      {
+       "name": "deep-field",
+       "path": "/home/test/themes/deep-field",
+       "thumb": "",
+       "downloadable": true,
+       "current": false,
+       "bg": "#0b0a12",
+       "fg": "#e8e6f4",
+       "accent": "#a48bff",
+       "palette": [
+        "#0b0a12",
+        "#ff6b8a",
+        "#ffd479",
+        "#6be6b0",
+        "#78dcff",
+        "#a48bff",
+        "#e09eff",
+        "#e8e6f4"
+       ]
+      },
+      {
+       "name": "earthlight",
+       "path": "/home/test/themes/earthlight",
+       "thumb": "",
+       "downloadable": true,
+       "current": false,
+       "bg": "#110d09",
+       "fg": "#f4ece2",
+       "accent": "#ffad4a",
+       "palette": [
+        "#110d09",
+        "#ff6e5a",
+        "#ffad4a",
+        "#8fd694",
+        "#6ec8e8",
+        "#ffad4a",
+        "#e598c8",
+        "#f4ece2"
+       ]
+      },
+      {
+       "name": "kuwai-night",
+       "path": "/home/test/themes/kuwai-night",
+       "thumb": "/home/test/cover-sample.png",
+       "downloadable": true,
+       "current": true,
+       "bg": "#0a0c12",
+       "fg": "#f4f4f6",
+       "accent": "#66c7ff",
+       "palette": [
+        "#0a0c12",
+        "#ff6961",
+        "#ffd60a",
+        "#86e0b4",
+        "#64d2ff",
+        "#66c7ff",
+        "#bf5af2",
+        "#f4f4f6"
+       ]
+      }
+     ],
+     "wallpapers": []
+    }
+   }
+  },
+  {
    "id": "usage/typical",
    "name": "usage",
    "panel": "UsagePanel",

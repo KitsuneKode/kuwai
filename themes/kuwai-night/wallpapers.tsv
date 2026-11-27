@@ -1,16 +1,7 @@
-01-daniel-olah-dark-blue	https://raw.githubusercontent.com/EnsixD/Panacea/45ddf2e/wallpapers/daniel_olah_dark_blue.jpg
-02-dark-blue-11	https://raw.githubusercontent.com/EnsixD/Panacea/45ddf2e/wallpapers/dark_blue_11.jpg
-03-dark-blue-7	https://raw.githubusercontent.com/EnsixD/Panacea/45ddf2e/wallpapers/dark_blue_7.jpg
-04-dark-blue-12	https://raw.githubusercontent.com/EnsixD/Panacea/45ddf2e/wallpapers/dark_blue_12.jpg
-05-dark-blue-4	https://raw.githubusercontent.com/EnsixD/Panacea/45ddf2e/wallpapers/dark_blue_4.jpg
-06-dark-blue-6	https://raw.githubusercontent.com/EnsixD/Panacea/45ddf2e/wallpapers/dark_blue_6.jpg
-07-dark-blue-9	https://raw.githubusercontent.com/EnsixD/Panacea/45ddf2e/wallpapers/dark_blue_9.jpg
-08-dark-mono-12	https://raw.githubusercontent.com/EnsixD/Panacea/45ddf2e/wallpapers/dark_mono_12.jpg
-09-dark-mono-8	https://raw.githubusercontent.com/EnsixD/Panacea/45ddf2e/wallpapers/dark_mono_8.jpg
-10-dark-mono-10	https://raw.githubusercontent.com/EnsixD/Panacea/45ddf2e/wallpapers/dark_mono_10.jpg
-11-dark-mono-11	https://raw.githubusercontent.com/EnsixD/Panacea/45ddf2e/wallpapers/dark_mono_11.jpg
-12-dark-teal	https://raw.githubusercontent.com/EnsixD/Panacea/45ddf2e/wallpapers/dark_teal.jpg
-13-dark-teal-5	https://raw.githubusercontent.com/EnsixD/Panacea/45ddf2e/wallpapers/dark_teal_5.jpg
-14-dim-blue-13	https://raw.githubusercontent.com/EnsixD/Panacea/45ddf2e/wallpapers/dim_blue_13.png
-15-clay-banks-dark-mono	https://raw.githubusercontent.com/EnsixD/Panacea/45ddf2e/wallpapers/clay_banks_dark_mono.jpg
-16-daniel-leone-dark-teal	https://raw.githubusercontent.com/EnsixD/Panacea/45ddf2e/wallpapers/daniel_leone_dark_teal.jpg
+# name	url	pin	licence	author	page   (Wikimedia Commons; pin = sha256 of the original file)
+01-chisos-night-sky	https://upload.wikimedia.org/wikipedia/commons/b/b3/Night_Sky_Over_Chisos_Mountains_%28de3b5b2d-7015-4ca5-871b-4da5a8858774%29.jpg	sha256:486c1954a8ce938d9e6e9efe77a390f5bc03da19b0ae14d4071667190130530b	PD	NPS Photo	https://commons.wikimedia.org/wiki/File:Night_Sky_Over_Chisos_Mountains_(de3b5b2d-7015-4ca5-871b-4da5a8858774).jpg
+02-cerro-paranal-night	https://upload.wikimedia.org/wikipedia/commons/2/2e/Night_view_of_Cerro_Paranal_%28vlt-7047%29.jpg	sha256:e3b40edebce3f769c4cc5f291bce99887f6d828716bf932d7fb90489bcf818c2	CC-BY-4.0	ESO/M. Claro	https://commons.wikimedia.org/wiki/File:Night_view_of_Cerro_Paranal_(vlt-7047).jpg
+03-glacier-aurora	https://upload.wikimedia.org/wikipedia/commons/c/c5/The_Aurora_Borealis_adds_green_hue_to_night_skies_over_Glacier_National_Park%2C_Montana._%280d18dad7-1dd8-b71b-0ba2-394f5a8d3ff8%29.jpg	sha256:47b79cc9477e63a18446ee60e8fae3640b2b875ad7ead2f6944fadbfaff16be5	PD	NPS	https://commons.wikimedia.org/wiki/File:The_Aurora_Borealis_adds_green_hue_to_night_skies_over_Glacier_National_Park,_Montana._(0d18dad7-1dd8-b71b-0ba2-394f5a8d3ff8).jpg
+04-rocky-mountain-milky-way	https://upload.wikimedia.org/wikipedia/commons/5/53/Milky_Way_Over_Rocky_Mountain_National_Park_%2826367177284%29.jpg	sha256:2937e9671532b5893afd5772dff37d9f1d6ddaf1c4c45afd86df7a3f540d837a	PD	NPS/Jeremy M. White	https://commons.wikimedia.org/wiki/File:Milky_Way_Over_Rocky_Mountain_National_Park_(26367177284).jpg
+05-la-silla-starry-night	https://upload.wikimedia.org/wikipedia/commons/3/30/Starry_Night_at_La_Silla.jpg	sha256:14c6f8c38e0f371bc89bef498b8c00f378a2151343128824d04edb23216e1e1b	CC-BY-4.0	ESO/H. Dahle	https://commons.wikimedia.org/wiki/File:Starry_Night_at_La_Silla.jpg
+06-andorra-starry-mountains	https://upload.wikimedia.org/wikipedia/commons/7/7c/Starry_sky_over_rough_mountains_%28Unsplash%29.jpg	sha256:a1b2abe319f38ffcc3854416496ee8316e077845a9c12b35003645e0ea8281bb	CC0	Korney Violin (reka)	https://commons.wikimedia.org/wiki/File:Starry_sky_over_rough_mountains_(Unsplash).jpg

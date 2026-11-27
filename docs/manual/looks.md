@@ -21,23 +21,15 @@ If HyDE is installed, kuwai continues to read HyDE themes and wallpapers alongsi
 
 ## Shipped themes
 
-kuwai ships 13 dark theme definitions under `themes/`. **No third-party wallpaper images are shipped in the repository.** Each theme lists pinned wallpaper URLs and checksums in `themes/<slug>/wallpapers.tsv` and full attributions in `themes/<slug>/CREDITS.txt`. Run `kuwai-theme install <slug> [--apply]` to download a theme's wallpapers to your machine for personal use with `CREDITS.txt` copied beside them.
+kuwai offers 3 verified, digest-pinned dark themes by default under `themes/`. **No third-party wallpaper images are shipped in the repository.** Each default theme lists SHA-pinned Wikimedia Commons URLs, licences, authors and source pages in `themes/<slug>/wallpapers.tsv` (checked by `kuwai-wallcheck --default`) with full attributions in `themes/<slug>/CREDITS.txt`. Applying a theme downloads its first wallpaper on first use (verifying its digest before writing it), and `kuwai-theme install <slug> [--apply]` downloads the full set.
 
-| Slug | Accent | Mood |
-| --- | --- | --- |
-| `kuwai-night` | `#66c7ff` | Dark photographs, default look |
-| `aurora` | `#5eead4` | Mountains, night skies, nebulae |
-| `chrome-sunset` | `#ff3fb0` | Synthwave, city pop, retro cars |
-| `crimson-noir` | `#ff4d6a` | Dark illustrated and gothic art |
-| `deep-field` | `#a48bff` | Deep-sky photography (Wikimedia Commons) |
-| `earthlight` | `#ffad4a` | Earth and orbital photography (Wikimedia Commons) |
-| `garage` | `#ff5a3c` | Automotive photography and art |
-| `matcha` | `#8fe3a2` | Soft green forest and cosy scenes |
-| `neon-district` | `#3ee6ff` | Cyberpunk and night cities |
-| `pixel-dusk` | `#ffb86b` | Pixel art and warm dusk scenes |
-| `sakura-night` | `#f5a9c8` | Soft pink night illustrations |
-| `violet-hour` | `#b48cff` | Moonlit violet art |
-| `void` | `#8ab4ff` | Minimal dark and abstract |
+| Slug | Accent | Mood | Licence |
+| --- | --- | --- | --- |
+| `kuwai-night` | `#66c7ff` | Night skies and mountains (default look) | Public domain (NPS), CC BY 4.0 (ESO), CC0 |
+| `deep-field` | `#a48bff` | Deep-sky photography (Webb, Hubble, Euclid) | Public domain (NASA), CC BY 4.0 / CC BY-SA 3.0 / CC0 |
+| `earthlight` | `#ffad4a` | Earth and orbital photography (ISS crew) | Public domain (NASA) |
+
+Ten additional personal-use palettes (`aurora`, `chrome-sunset`, `crimson-noir`, `garage`, `matcha`, `neon-district`, `pixel-dusk`, `sakura-night`, `violet-hour`, `void`) carry `personal = true` in `theme.toml` because their `wallpapers.tsv` links point to Wallhaven images without a verifiable redistributable licence. They are not offered by default in `kuwai-look list` or the Themes panel; pass `--all` to `kuwai-look list` or apply a palette explicitly by slug if you use your own wallpapers.
 
 Every theme keeps kuwai's shared window geometry and motion curves (`hypr/kuwai/look.lua`, `hypr/kuwai/motion.lua`); only colour and imagery change.
 

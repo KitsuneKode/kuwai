@@ -36,6 +36,7 @@ ShellRoot {
     readonly property var memDiary: MemLog       // ~/.local/state/kuwai/memlog/ every 10 min
     readonly property var keyOwner: KeyOwner
     readonly property var welcome: Welcome
+    readonly property var dimmer: Dim
     readonly property var wallFx: WallFx         // wallpaper changes out of the island (its IPC: wallfx play PATH)
     // The stable copy (~/.local/share/kuwai) doesn't hot-reload: each reload
     // left ~25–30 MB behind, and `kuwai promote` restarts it cleanly anyway.

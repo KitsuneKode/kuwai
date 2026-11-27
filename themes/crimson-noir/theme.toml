@@ -3,3 +3,4 @@ slug = "crimson-noir"
 name = "Crimson Noir"
 mode = "dark"
 accent = "#ff4d6a"
+personal = true

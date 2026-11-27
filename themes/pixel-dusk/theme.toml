@@ -3,3 +3,4 @@ slug = "pixel-dusk"
 name = "Pixel Dusk"
 mode = "dark"
 accent = "#ffb86b"
+personal = true

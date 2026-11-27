@@ -3,3 +3,4 @@ slug = "aurora"
 name = "Aurora"
 mode = "dark"
 accent = "#5eead4"
+personal = true

@@ -3,3 +3,4 @@ slug = "matcha"
 name = "Matcha"
 mode = "dark"
 accent = "#8fe3a2"
+personal = true

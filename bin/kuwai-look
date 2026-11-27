@@ -8,9 +8,10 @@
     kuwai-look undo [--no-apply]
     kuwai-look init [--no-apply]
     kuwai-look status [--json]
-    kuwai-look list [--json]
+    kuwai-look list [--json] [--all]
 """
 import fcntl
+import hashlib
 import json
 import os
 import re
@@ -20,6 +21,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 if os.path.join(ROOT, "lib") not in sys.path:
@@ -37,6 +39,7 @@ DATA_HOME = os.environ.get("XDG_DATA_HOME") or os.path.join(HOME, ".local/share"
 
 KUWAI_STATE = os.path.join(STATE_HOME, "kuwai")
 LOOK_DIR = os.path.join(KUWAI_STATE, "look")
+STATE_WALLS = os.path.join(KUWAI_STATE, "wallpapers")
 WALL_LINK = os.path.join(KUWAI_STATE, "wallpaper")
 PALETTE_CACHE = os.path.join(CACHE_HOME, "kuwai", "palettes")
 CUSTOM_TEMPLATES = os.path.join(CONFIG_HOME, "kuwai", "custom", "templates")
@@ -116,16 +119,130 @@ def parse_dcol(path):
     return vals
 
 
-def theme_dirs():
+def theme_meta(repo_dir):
+    return parse_simple_toml(os.path.join(repo_dir, "theme.toml"))
+
+
+def is_personal_theme(repo_dir):
+    return theme_meta(repo_dir).get("personal", "").lower() == "true"
+
+
+def theme_dirs(include_personal=True):
     out = {}
-    for base in (os.path.join(ROOT, "themes"), USER_THEMES):
-        if not os.path.isdir(base):
-            continue
-        for name in sorted(os.listdir(base)):
-            full = os.path.join(base, name)
+    shipped = os.path.join(ROOT, "themes")
+    if os.path.isdir(shipped):
+        for name in sorted(os.listdir(shipped)):
+            full = os.path.join(shipped, name)
+            if os.path.isdir(full) and not name.startswith("."):
+                if include_personal or not is_personal_theme(full):
+                    out[name] = full
+    if os.path.isdir(USER_THEMES):
+        for name in sorted(os.listdir(USER_THEMES)):
+            full = os.path.join(USER_THEMES, name)
             if os.path.isdir(full) and not name.startswith("."):
                 out[name] = full
     return out
+
+
+def tsv_rows(repo_dir):
+    tsv = os.path.join(repo_dir, "wallpapers.tsv")
+    if not os.path.isfile(tsv):
+        return []
+    rows = []
+    for raw in open(tsv, encoding="utf-8", errors="replace"):
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = line.split("\t")
+        if len(parts) < 2:
+            continue
+        name = parts[0].strip()
+        if not re.fullmatch(r"[A-Za-z0-9._-]+", name):
+            continue
+        rows.append({
+            "name": name,
+            "url": parts[1].strip(),
+            "pin": parts[2].strip() if len(parts) > 2 else "",
+        })
+    return rows
+
+
+def theme_wall_dirs(name, repo_dir):
+    dirs = [os.path.join(repo_dir, "wallpapers")]
+    user_w = os.path.join(USER_THEMES, name, "wallpapers")
+    if user_w not in dirs:
+        dirs.append(user_w)
+    dirs.append(os.path.join(STATE_WALLS, name))
+    return dirs
+
+
+def find_theme_wall(name, repo_dir):
+    for d in theme_wall_dirs(name, repo_dir):
+        img = first_image_in(d)
+        if img:
+            return img
+    if os.path.isdir(STATE_WALLS):
+        for row in tsv_rows(repo_dir):
+            for ext in (".jpg", ".jpeg", ".png", ".webp", ".avif"):
+                cand = os.path.join(STATE_WALLS, row["name"] + ext)
+                if os.path.isfile(cand):
+                    return cand
+    return ""
+
+
+def verify_pin(pin, data):
+    m = re.fullmatch(r"(sha256):([0-9a-f]{64})|(sha1):([0-9a-f]{40})", pin or "")
+    if not m:
+        return False
+    algo = m.group(1) or m.group(3)
+    want = m.group(2) or m.group(4)
+    return hashlib.new(algo, data).hexdigest() == want
+
+
+def image_ext_for_bytes(data):
+    if data.startswith(b"\xff\xd8\xff"):
+        return ".jpg"
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return ".png"
+    if len(data) >= 12 and data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return ".webp"
+    return ""
+
+
+def fetch_first_theme_wall(name, repo_dir):
+    rows = tsv_rows(repo_dir)
+    if not rows:
+        return ""
+    row = rows[0]
+    url = row["url"]
+    pin = row["pin"]
+    if not url.startswith("https://") or not pin:
+        return ""
+    try:
+        req = urllib.request.Request(
+            url,
+            headers={"User-Agent": "kuwai-look/1 (+https://github.com/KitsuneKode/kuwai)"},
+        )
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data = resp.read(40 * 1024 * 1024 + 1)
+    except Exception:
+        return ""
+    if len(data) > 40 * 1024 * 1024 or not verify_pin(pin, data):
+        return ""
+    ext = image_ext_for_bytes(data)
+    if not ext:
+        return ""
+    dest_dir = os.path.join(STATE_WALLS, name)
+    os.makedirs(dest_dir, exist_ok=True)
+    dest = os.path.join(dest_dir, row["name"] + ext)
+    tmp = os.path.join(dest_dir, f".{row['name']}-{os.getpid()}-{time.time_ns()}.tmp")
+    with open(tmp, "wb") as f:
+        f.write(data)
+    os.replace(tmp, dest)
+    credits = os.path.join(repo_dir, "CREDITS.txt")
+    if os.path.isfile(credits):
+        shutil.copyfile(credits, os.path.join(dest_dir, "CREDITS.txt"))
+    return dest
 
 
 def theme_raw_from_dir(repo_dir):
@@ -310,23 +427,30 @@ def cmd_set_wallpaper(image, mode="dark", apply_live=True):
 
 
 def cmd_theme(name, mode="theme", apply_live=True):
-    raw, wall_dir = theme_raw(name)
+    raw, _wall_dir = theme_raw(name)
     if raw is None:
         raise SystemExit(f"kuwai-look: unknown theme: {name}")
-    wall = os.path.realpath(WALL_LINK) if os.path.exists(WALL_LINK) else ""
-    if not wall:
-        wall = first_image_in(wall_dir)
+    repo_dir = theme_dirs(include_personal=True).get(name) or ""
+    meta = theme_meta(repo_dir) if repo_dir else {}
+    if meta.get("mode"):
+        raw = dict(raw, mode=meta["mode"])
+    wall = find_theme_wall(name, repo_dir) if repo_dir else ""
+    if not wall and apply_live and repo_dir and not is_personal_theme(repo_dir):
+        wall = fetch_first_theme_wall(name, repo_dir)
+    if not wall and os.path.exists(WALL_LINK):
+        wall = os.path.realpath(WALL_LINK)
     gen = new_generation()
     palette = build_palette(
         raw,
         source={"kind": "theme", "name": name, "wallpaper": wall, "mode": mode},
         generation=gen,
-        mode="dark" if mode == "theme" else mode,
+        mode=mode,
     )
     _, state = write_generation(LOOK_DIR, palette, custom_templates_dir=CUSTOM_TEMPLATES)
     if wall and os.path.isfile(wall):
         set_wall_symlink(wall)
-    reload_errors = reload_consumers(wall if wall and os.path.isfile(wall) else None, mode=palette["mode"], state=state) if apply_live else []
+    live_mode = meta.get("mode", "dark") if palette["mode"] == "theme" else palette["mode"]
+    reload_errors = reload_consumers(wall if wall and os.path.isfile(wall) else None, mode=live_mode, state=state) if apply_live else []
     return {"ok": True, "state": state, "palette": palette, "reloadErrors": reload_errors}
 
 
@@ -334,10 +458,11 @@ def cmd_mode(mode, apply_live=True):
     if mode not in MODES:
         raise SystemExit(f"kuwai-look: unknown mode: {mode}")
     cur = load_json(os.path.join(LOOK_DIR, "state.json"), {})
-    if mode == "theme" and cur.get("theme"):
-        raw, _ = theme_raw(cur["theme"])
+    if mode == "theme":
+        tname = cur.get("theme") or "kuwai-night"
+        raw, _ = theme_raw(tname)
         if raw is not None:
-            return cmd_theme(cur["theme"], mode="theme", apply_live=apply_live)
+            return cmd_theme(tname, mode="theme", apply_live=apply_live)
     wall = cur.get("wallpaper") or (os.path.realpath(WALL_LINK) if os.path.exists(WALL_LINK) else "")
     if wall and os.path.isfile(wall):
         return cmd_set_wallpaper(wall, mode=mode, apply_live=apply_live)
@@ -510,16 +635,21 @@ def cmd_status():
     }
 
 
-def cmd_list():
+def cmd_list(include_personal=False):
     state = load_json(os.path.join(LOOK_DIR, "state.json"), {})
     cur_theme = state.get("theme") or ""
     cur_wall = os.path.realpath(WALL_LINK) if os.path.exists(WALL_LINK) else ""
     cur_mode_name = state.get("mode") or "theme"
     cur_mode_idx = MODES.index(cur_mode_name) if cur_mode_name in MODES else 0
 
+    all_dirs = theme_dirs(include_personal=True)
+    shown_dirs = theme_dirs(include_personal=include_personal)
+    if cur_theme and cur_theme in all_dirs and cur_theme not in shown_dirs:
+        shown_dirs[cur_theme] = all_dirs[cur_theme]
+
     themes = []
-    for name, full in sorted(theme_dirs().items(), key=lambda kv: kv[0].lower()):
-        raw, wall_dir = theme_raw_from_dir(full)
+    for name, full in sorted(shown_dirs.items(), key=lambda kv: kv[0].lower()):
+        raw, _wall_dir = theme_raw_from_dir(full)
         if raw is None:
             continue
         bg = raw.get("bg") or "#111114"
@@ -527,10 +657,12 @@ def cmd_list():
         accent = raw.get("accent") or "#66c7ff"
         ansi = raw.get("ansi")
         swatch = [bg, ansi[1], ansi[3], ansi[2], ansi[6], ansi[4], ansi[5], fg] if ansi and len(ansi) >= 7 else [bg, accent, raw.get("secondary") or accent, raw.get("tertiary") or accent, fg]
+        thumb = find_theme_wall(name, full)
         themes.append({
             "name": name,
             "path": full,
-            "thumb": first_image_in(wall_dir),
+            "thumb": thumb,
+            "downloadable": bool(tsv_rows(full)),
             "current": name == cur_theme,
             "bg": bg,
             "fg": fg,
@@ -541,11 +673,14 @@ def cmd_list():
     walls = []
     seen = set()
     folders = [
+        STATE_WALLS,
         os.path.join(HOME, "Pictures", "Wallpapers"),
         os.path.join(HOME, "Pictures", "wallpapers"),
     ]
-    if cur_theme and cur_theme in theme_dirs():
-        folders.insert(0, os.path.join(theme_dirs()[cur_theme], "wallpapers"))
+    if cur_theme and cur_theme in all_dirs:
+        for d in reversed(theme_wall_dirs(cur_theme, all_dirs[cur_theme])):
+            if d not in folders:
+                folders.insert(0, d)
     for folder in folders:
         if not os.path.isdir(folder):
             continue
@@ -563,6 +698,15 @@ def cmd_list():
                             "current": real == cur_wall,
                             "palette": [],
                         })
+    if cur_wall and os.path.isfile(cur_wall) and cur_wall not in seen:
+        seen.add(cur_wall)
+        walls.insert(0, {
+            "name": os.path.splitext(os.path.basename(cur_wall))[0],
+            "path": cur_wall,
+            "thumb": cur_wall,
+            "current": True,
+            "palette": [],
+        })
     return {
         "schema": 1,
         "current": cur_theme,
@@ -617,7 +761,7 @@ def main(argv):
         print(json.dumps(cmd_status()))
         return 0
     if cmd == "list":
-        print(json.dumps(cmd_list()))
+        print(json.dumps(cmd_list(include_personal="--all" in args)))
         return 0
     print(__doc__.strip(), file=sys.stderr)
     return 2
