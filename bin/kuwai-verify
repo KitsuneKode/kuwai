@@ -378,6 +378,12 @@ def secure(path, top):
             raise Refused(f"{cur} isn't root's alone, so nothing in it is trusted")
 
 
+def root_folder(path, top):
+    os.makedirs(path, mode=0o755, exist_ok=True)
+    secure(path, top)
+    os.chmod(path, 0o755)
+
+
 def owned_tree(top):
     uid = os.geteuid()
     for path, st in walk(top):
@@ -432,6 +438,7 @@ def copy_tree(src, dst, links=True):
         s, d = os.path.join(srcb, path), os.path.join(dstb, path)
         if stat.S_ISDIR(st.st_mode):
             os.mkdir(d, 0o755)
+            os.chmod(d, 0o755)
         elif stat.S_ISREG(st.st_mode):
             copy_file(s, d)
         elif stat.S_ISLNK(st.st_mode) and links:
@@ -564,8 +571,7 @@ def install(src, tag_file, name, digest, asked, allow_older):
         raise Refused("--signer is a key's full fingerprint")
     top = sysroot() or "/"
     base = lib()
-    os.makedirs(base, mode=0o755, exist_ok=True)
-    secure(base, top)
+    root_folder(base, top)
     signers = os.path.join(base, "signers")
     trusted = stored_signers(signers) if os.path.isdir(signers) else None
     first = trusted is None
@@ -590,15 +596,13 @@ def install(src, tag_file, name, digest, asked, allow_older):
             raise Refused(f"{name} is older than root's {current}; nothing changed")
         adopted = trusted & listed if older else listed
         releases = os.path.join(base, "releases")
-        os.makedirs(releases, mode=0o755, exist_ok=True)
-        secure(releases, top)
+        root_folder(releases, top)
         dest = os.path.join(releases, name)
         if os.path.lexists(dest):
             os.rename(dest, os.path.join(work, "old"))
         os.rename(tree, dest)
         write_atomic(dest + ".tag", raw, 0o644)
-        os.makedirs(signers, mode=0o755, exist_ok=True)
-        secure(signers, top)
+        root_folder(signers, top)
         write_atomic(os.path.join(signers, "fingerprints"), ("\n".join(sorted(adopted)) + "\n").encode(), 0o644)
         link = os.path.join(base, f".current-{secrets.token_hex(6)}")
         os.symlink(f"releases/{name}", link)
@@ -646,8 +650,7 @@ def place(what):
         write_atomic(os.path.join(base, "kuwai-update-root"), read_small(os.path.join(tree, "bin/kuwai-update-root"), 1 << 20), 0o755)
         return {**info, "placed": os.path.join(base, "kuwai-update-root")}
     share = sysroot() + "/usr/local/share/kuwai"
-    os.makedirs(share, mode=0o755, exist_ok=True)
-    secure(share, sysroot() or "/")
+    root_folder(share, sysroot() or "/")
     dest = os.path.join(share, "shell-auth")
     new = f"{dest}.{secrets.token_hex(6)}.new"
     try:
@@ -670,6 +673,7 @@ def signers_of(dirs):
 
 
 def main(argv):
+    os.umask(0o022)
     ap = argparse.ArgumentParser(prog="kuwai-verify", add_help=False)
     sub = ap.add_subparsers(dest="cmd")
     p = sub.add_parser("manifest")

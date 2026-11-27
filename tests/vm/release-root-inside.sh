@@ -34,6 +34,7 @@ printf '#!/bin/sh\necho "$*" >> /tmp/systemctl.log\nexit 0\n' > /tmp/stubs/syste
 printf '#!/bin/sh\n[ "$1" = -Qoq ] && exit 1\nexit 0\n' > /tmp/stubs/pacman
 chmod 755 /tmp/stubs/*
 export PATH=/tmp/stubs:$PATH SUDO_USER=tester
+umask 077
 
 cp $STAGE/system/kuwai.desktop /tmp/desktop.orig
 echo "# planted" >> $STAGE/system/kuwai.desktop
@@ -44,6 +45,8 @@ refuses "nothing was left behind by the refusal" test -e $LIB/current
 refuses "root refuses a key it wasn't given" /usr/bin/python3 -I $VERIFY install --from $STAGE --tag-file $STAGE/.git/kuwai-release.tag --name v0.2.0 --digest $DIGEST --signer "$(cat $H/other)"
 check "root installs its own checked copy" /usr/bin/python3 -I $VERIFY install --from $STAGE --tag-file $STAGE/.git/kuwai-release.tag --name v0.2.0 --digest $DIGEST --signer $FPR
 check "root's copy is root's alone" bash -c "[ \"\$(find $LIB ! -user root | wc -l)\" = 0 ] && [ \"\$(find $LIB -perm /022 ! -type l | wc -l)\" = 0 ]"
+check "under root's umask 077, every folder and file of root's copy can be read by everyone" bash -c "[ \"\$(find $LIB ! -type l ! -perm -444 | wc -l)\" = 0 ] && [ \"\$(find $LIB -type d ! -perm -555 | wc -l)\" = 0 ]"
+check "the user can read root's copy" su tester -c "/usr/bin/python3 -I $LIB/current/bin/kuwai-verify --help >/dev/null && ls $LIB/current/shell-auth >/dev/null"
 check "root's check passes" /usr/bin/python3 -I $LIB/current/bin/kuwai-verify check $LIB/current
 refuses "the login entry refuses to install from the clone" $H/src/system/session
 refuses "the clone refusal installed nothing" test -e /usr/local/bin/kuwai-session
@@ -56,6 +59,7 @@ refuses "the wake helper refuses the clone" $H/src/system/install
 check "the wake helper installs from root's copy" bash -c "$LIB/current/system/install && [ \"\$(stat -c %U /usr/local/libexec/kuwai-wake-root)\" = root ]"
 check "the update helper is placed from root's copy" bash -c "/usr/bin/python3 -I $LIB/current/bin/kuwai-verify place update-helper && cmp -s $LIB/kuwai-update-root $H/src/bin/kuwai-update-root && [ \"\$(stat -c %U:%a $LIB/kuwai-update-root)\" = root:755 ]"
 check "the password prompt is placed from root's copy" bash -c "/usr/bin/python3 -I $LIB/current/bin/kuwai-verify place auth-prompt && diff -r /usr/local/share/kuwai/shell-auth $H/src/shell-auth && [ \"\$(find /usr/local/share/kuwai ! -user root | wc -l)\" = 0 ]"
+check "the user can see the update helper and read the pinned prompt" su tester -c "stat $LIB/kuwai-update-root >/dev/null && find /usr/local/share/kuwai/shell-auth -type f -exec cat {} + >/dev/null"
 
 su - tester -c '
 set -euo pipefail

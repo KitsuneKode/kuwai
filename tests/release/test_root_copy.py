@@ -33,9 +33,10 @@ def make_repo(path, keys, signers):
     return path
 
 
-def verify(*args, sysroot=None):
+def verify(*args, sysroot=None, umask=None):
     env = {**GIT_ENV, **({"KUWAI_SYSROOT": str(sysroot)} if sysroot else {})}
-    return subprocess.run([str(VERIFY), *map(str, args)], capture_output=True, text=True, env=env, timeout=60)
+    return subprocess.run([str(VERIFY), *map(str, args)], capture_output=True, text=True, env=env, timeout=60,
+                          preexec_fn=None if umask is None else (lambda: os.umask(umask)))
 
 
 def fetch(keys, repo, name, into, *fprs):
@@ -45,10 +46,10 @@ def fetch(keys, repo, name, into, *fprs):
     return json.loads(r.stdout)
 
 
-def install(sysroot, stage, info, *more, signers=None, tag_file=None):
+def install(sysroot, stage, info, *more, signers=None, tag_file=None, umask=None):
     sig = [a for f in (signers if signers is not None else []) for a in ("--signer", f)]
     return verify("install", "--from", stage, "--tag-file", tag_file or info["tagFile"], "--name", info["name"],
-                  "--digest", info["digest"], *sig, *more, sysroot=sysroot)
+                  "--digest", info["digest"], *sig, *more, sysroot=sysroot, umask=umask)
 
 
 @pytest.fixture
@@ -62,6 +63,24 @@ def world(tmp_path, release_keys):
     sysroot.mkdir()
     lib = sysroot / "usr/local/lib/kuwai"
     return k, repo, stage, info, sysroot, lib
+
+
+@pytest.mark.parametrize("umask", [0o027, 0o077])
+def test_roots_copy_is_readable_by_everyone_whatever_the_callers_umask(world, umask):
+    k, repo, stage, info, sysroot, lib = world
+    r = install(sysroot, stage, info, signers=[k.mine], umask=umask)
+    assert r.returncode == 0, r.stderr
+    for what in ("update-helper", "auth-prompt"):
+        r = verify("place", what, sysroot=sysroot, umask=umask)
+        assert r.returncode == 0, r.stderr
+    share = sysroot / "usr/local/share/kuwai"
+    folders = [lib, lib / "releases", lib / "signers", share, share / "shell-auth"]
+    folders += [p for p in (lib / "releases/v1.0.0").rglob("*") if p.is_dir() and not p.is_symlink()]
+    folders += [lib / "releases/v1.0.0"]
+    assert {str(p.relative_to(sysroot)): oct(p.stat().st_mode & 0o777) for p in folders if p.stat().st_mode & 0o755 != 0o755} == {}
+    files = [lib / "kuwai-update-root", lib / "signers/fingerprints", lib / "releases/v1.0.0.tag", share / "shell-auth/shell.qml"]
+    assert all(p.stat().st_mode & 0o044 == 0o044 for p in files)
+    assert verify("check", lib / "current", sysroot=sysroot, umask=umask).returncode == 0
 
 
 def nothing_installed(lib):
