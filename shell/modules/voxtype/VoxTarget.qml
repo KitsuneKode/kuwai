@@ -115,11 +115,14 @@ Scope {
 
                 Rectangle {
                     id: caption
-                    readonly property bool want: slot.here && Activities.voxListening && !Activities.voxInField && Activities.voxText !== "" && !!root.box && !Notifs.sharing
+                    readonly property bool wanted: slot.here && Activities.voxListening && !Activities.voxInField && Activities.voxText !== "" && !!root.box && !Notifs.sharing
+                    property bool want: false
+                    onWantedChanged: { if (wanted) settle.restart(); else { settle.stop(); want = false; } }
+                    Timer { id: settle; interval: Theme.enterMs * 2; onTriggered: caption.want = caption.wanted }
                     width: Math.min(words.implicitWidth + Theme.s4 * 2, root.box ? root.box.w * 0.7 : 0)
                     height: words.implicitHeight + Theme.s2 * 2
                     x: root.box ? root.box.x + (root.box.w - width) / 2 : 0
-                    y: root.box ? root.box.y + root.box.h - height - Theme.s5 : 0
+                    y: root.box ? Math.min(root.box.y + root.box.h - height - Theme.s5, parent.height - Theme.s5 * 4 - height) : 0
                     radius: height / 2
                     color: Qt.rgba(0.07, 0.07, 0.09, 0.88)
                     border.width: 1; border.color: Theme.edge(1)
