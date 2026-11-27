@@ -510,7 +510,7 @@ FocusScope {
                 SettingsRow {
                     key: "notifSurface"
                     label: "Where they appear"
-                    detail: Settings.notifSurface === "both" ? "In the island and as a toast" : "One place each: urgent, warnings and replies in the island; the rest as a toast; low ones only in the center"
+                    detail: Settings.notifSurface === "both" ? "In the island and as a toast" : "One place each: urgent, warnings and replies in the island; the rest as a toast; low ones only in the centre"
                     Segmented {
                         options: [{ id: "one", label: "One place" }, { id: "both", label: "Both" }]
                         current: Settings.notifSurface
@@ -520,7 +520,7 @@ FocusScope {
                 SettingsRow {
                     key: "notifFullscreen"
                     label: "In fullscreen"
-                    detail: Settings.notifFullscreen === "off" ? "Nothing interrupts a fullscreen app; it all waits in the center"
+                    detail: Settings.notifFullscreen === "off" ? "Nothing interrupts a fullscreen app; it all waits in the centre"
                           : Settings.notifFullscreen === "critical" ? "Only critical ones grow the notch over the game or film"
                           : "The notch grows for critical ones, warnings and people you can reply to; the rest wait"
                     Segmented {
@@ -545,7 +545,7 @@ FocusScope {
                 SettingsRow {
                     key: "notifToastInstantOpen"
                     label: "Toast opens on first click"
-                    detail: Settings.notifToastInstantOpen ? "Tap a toast to open or run its default action" : "Tap to preview, then Open (center and island peek stay explicit)"
+                    detail: Settings.notifToastInstantOpen ? "Tap a toast to open or run its default action" : "Tap to preview, then Open (centre and island peek stay explicit)"
                     Toggle {
                         on: Settings.notifToastInstantOpen
                         onToggled: Settings.set("notifToastInstantOpen", !Settings.notifToastInstantOpen)
@@ -563,7 +563,7 @@ FocusScope {
                 SettingsRow {
                     key: "notifKeepSeenHours"
                     label: "Keep seen notifications"
-                    detail: "How long dismissed-but-unread rows stay in the center"
+                    detail: "How long dismissed-but-unread rows stay in the centre"
                     Segmented {
                         options: [{ id: "6", label: "6 h" }, { id: "24", label: "1 day" }, { id: "72", label: "3 days" }, { id: "0", label: "Never" }]
                         current: String(Settings.notifKeepSeenHours)
@@ -574,7 +574,7 @@ FocusScope {
             Label {
                 width: parent.width
                 wrapMode: Text.WordWrap
-                text: "A notification you click, answer or open from the center leaves the list, and so does one the app withdraws (you read it there)."
+                text: "A notification you click, answer or open from the centre leaves the list, and so does one the app withdraws (you read it there)."
                 size: Theme.tSub
                 color: Theme.textTertiary
             }

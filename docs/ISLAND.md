@@ -1,14 +1,14 @@
-# Kuwai as one island
+# kuwai as one island
 
 Status: roadmap, 2026-10-29. Built so far: the island bar at rest and on hover (`kuwai bar island`, step 1), the clipboard island (copy pill, shelf, Quick Look), the recording island
-(setup, pill, saved), the center (notifications, agents, sound, controls), the OSD. This page is the plan for making
+(setup, pill, saved), the centre (notifications, agents, sound, controls), the OSD. This page is the plan for making
 the island the whole shell, replacing Waybar, rofi, hyprlock's look and the scattered popups.
 
 ## The idea
 
 One black-glass island at the top centre of each monitor (Apple's Dynamic Island, macOS notch apps, the references in
 the conversation: "insane hyprland", Skiper's island, the island kuwai video). At rest it is a small pill with the
-essentials; it grows, never jumps, into whatever is needed, and shrinks back. Everything else (control center,
+essentials; it grows, never jumps, into whatever is needed, and shrinks back. Everything else (control centre,
 calendar, power menu, launcher, settings, auth prompts, the lock screen) is the same material and the same motion,
 growing out of the island or from it, so kuwai reads as one object, not a bar plus windows.
 
@@ -19,16 +19,16 @@ growing out of the island or from it, so kuwai reads as one object, not a bar pl
 | Rest | workspace capsules · clock · signal + battery | always |
 | Hover | grows to: workspace name + capsules · clock + date · media card (art, title, artist, waveform) · "All caught up"/count + bell · signal + battery | pointer on it (300 ms intent delay), shrinks on leave |
 | Live activity | recording (dot, time, stop ring) · copy (pill) · timer · now playing (art + bars) · voxtype dictation · agent needs you · low battery · volume/brightness (replaces the OSD) | while it lasts; activities queue, the newest wins, others show as a small second bubble |
-| Expanded | a panel grown out of the island: control center, calendar, media player, Wi-Fi/Bluetooth/Sound pages, power menu, launcher, clipboard shelf, recording setup, polkit prompt | click a part of the island, or its key |
+| Expanded | a panel grown out of the island: control centre, calendar, media player, Wi-Fi/Bluetooth/Sound pages, power menu, launcher, clipboard shelf, recording setup, polkit prompt | click a part of the island, or its key |
 
 Clicking a part opens that part: clock → calendar (week strip at first, month on a second click); status → control
-center; media → player; capsules → workspace overview.
+centre; media → player; capsules → workspace overview.
 
 ## Surfaces (each its own module, one material)
 
 1. **Island bar** (replaces Waybar): rest/hover/live as above; workspaces from Hyprland IPC events (`Hyprland`
    singleton), not polling. Per monitor.
-2. **Control center** (from the island's right): tiles Wi-Fi, Focus (DND), Bluetooth, Game Mode, Night Light, Lock;
+2. **Control centre** (from the island's right): tiles Wi-Fi, Focus (DND), Bluetooth, Game Mode, Night Light, Lock;
    Sound and Display sliders with a chevron into their pages; notifications list. Pages slide in (Wi-Fi networks,
    Bluetooth devices with Connect/Pair and Scanning, Sound: outputs/inputs with device icons and checks, per-app
    volumes). Layout editable (drag, resize, add/remove), stored in settings.
@@ -86,7 +86,7 @@ install/         installer: packages, fonts, symlinks, Hyprland include, migrati
 ## Order
 
 1. `Settings` singleton + the island bar at rest and hover (behind a switch; Waybar stays until it's ready).
-2. Control center with pages (Wi-Fi, Bluetooth, Sound), calendar, power menu.
+2. Control centre with pages (Wi-Fi, Bluetooth, Sound), calendar, power menu.
 3. Live activities moved into the island (OSD, now playing, timer, voxtype, agents).
 4. Launcher (retire rofi), polkit agent.
 5. Settings app.

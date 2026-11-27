@@ -1,6 +1,6 @@
 # kuwai
 
-Kuwai's name. One desktop, made by one hand: Hyprland underneath (Lua,
+kuwai's name. One desktop, made by one hand: Hyprland underneath (Lua,
 `hypr/`), a Quickshell shell on top (`shell/`), one design language across
 both (`docs/DESIGN.md`).
 

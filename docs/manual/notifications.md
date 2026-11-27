@@ -6,7 +6,7 @@
 | --- | --- | --- |
 | **Island peek** | Critical, warning, or replyable alerts (default **One place**) | **Swipe up**, `×`, or Open |
 | **Toast** (top-right) | Normal/low alerts (or **Both** in settings) | **Swipe right/up**, right-click, or `×` |
-| **Notification Center** (`Super+N`) | Grouped history, search, inline Reply | `Delete` dismisses a row (`Ctrl+Z` undoes) |
+| **Notification Centre** (`Super+N`) | Grouped history, search, inline Reply | `Delete` dismisses a row (`Ctrl+Z` undoes) |
 
 In the default **One place** mode, chat alerts that can be replied to peek from the notch rather than also showing a corner toast.
 
@@ -15,7 +15,7 @@ In the default **One place** mode, chat alerts that can be replied to peek from 
 **`Settings → Notifications → Hide sensitive message text`** is on by default:
 
 - For chat apps (WhatsApp/ZapZap, Telegram, Signal, Discord, Slack, Element, Messenger, Beeper), the app name and sender stay visible while the message body is hidden on toasts, notch peeks, and the lock screen.
-- Selecting the row inside the Notification Center or tapping the peek reveals the body.
+- Selecting the row inside the Notification Centre or tapping the peek reveals the body.
 - **While sharing your screen**, all non-critical bodies stay hidden everywhere, and normal alerts are muted until screen sharing ends.
 - Critical and warning alerts are never redacted.
 
@@ -29,7 +29,7 @@ In the default **One place** mode, chat alerts that can be replied to peek from 
 
 `kuwai-feeds` (`systemd/kuwai-feeds.service`) is **off by default**. Enable it during install (`--feeds`) or later with `kuwai collect feeds on`.
 
-- **GitHub:** polls notifications through your existing `gh` CLI login using `If-Modified-Since` (unchanged polls do not consume rate-limit quota). Review requests, mentions, assignments, and failed CI peek from the notch; comments toast; bots stay quiet in the center unless a check fails.
+- **GitHub:** polls notifications through your existing `gh` CLI login using `If-Modified-Since` (unchanged polls do not consume rate-limit quota). Review requests, mentions, assignments, and failed CI peek from the notch; comments toast; bots stay quiet in the centre unless a check fails.
 - **Gmail:** connects over IMAP IDLE (push, no polling) for unread, important Primary mail. Run `kuwai feeds gmail-setup` to store your Gmail address and app password in the system keyring (`secret-tool`). Remove it with `kuwai feeds gmail-forget`.
 - Settings live in `~/.config/kuwai/feeds.json` (read on each cycle without restarting):
 

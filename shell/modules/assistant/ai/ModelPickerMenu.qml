@@ -146,7 +146,7 @@ Item {
                 Label {
                     anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
                     text: menu.query ? (menu.shown.length ? "" : "No match")
-                        : OllamaService.messages.length > 0 ? "↵ switch · ⌃↵ new chat with it" : "Type to filter"
+                        : OllamaService.messages.length > 0 ? "↵ switch · Ctrl+↵ new chat with it" : "Type to filter"
                     size: Theme.tFootnote
                     color: Theme.textTertiary
                 }

@@ -5,10 +5,10 @@ transcript after context compaction lost some). One line per request; status is 
 Keep it current: tick things off in the commit that does them.
 
 ## Done
-- Notifications as our own layer (toasts on the focused monitor, Sonner mechanics, center with tabs,
+- Notifications as our own layer (toasts on the focused monitor, Sonner mechanics, centre with tabs,
   agents tab, sound mixer with colours, brightness/display tab, usage like t3code with multi-account).
 - SF Pro / SF Pro Rounded / SF Mono throughout; Apple-style motion (Emil, fluid functionalism).
-- Shortcut sheet as a floating menu (not a tiled window); center layout overlaps fixed.
+- Shortcut sheet as a floating menu (not a tiled window); centre layout overlaps fixed.
 - Clipboard island (Super+V): images, Quick Look, markdown/code/mermaid rendering, open with default
   app, date filter (yesterday, five days ago…), pins, save-as, OCR.
 - Notification jump focusing the exact window (no workspace jumps on the other monitor).
@@ -28,7 +28,7 @@ Keep it current: tick things off in the commit that does them.
 - Shaders (screen and per-surface), used sparingly; use the GPUs well without waking the NVIDIA one.
 - Hyprland 0.57 port (when it's installed here; 0.56.2 now); monocle and scrolling layouts.
 - Installer + folder structure so others can use the rice; settings app grown to every surface.
-- Popups unified with the island (center from the island or the right: configurable).
+- Popups unified with the island (centre from the island or the right: configurable).
 - Lock screen: animated background options; make it the default after it's proven.
 - Clipboard: nested pin folders, encrypted vault, multi-select, return to the last position.
 - kittymux: Rex-level UI (see below), tmux-level sessions, kitty graphics protocol, Gemini later.
@@ -42,7 +42,7 @@ crash fixed + browse all apps; clipboard one-notch-one-item + ⌥← last positi
 screen after the reference (press any key → password pill); themes grow open + large preview;
 shortcuts panel from Hyprland binds (Super+/).
 Still open from this round: clipboard multi-select; night light in the notification panel; the
-center growing out of the island (configurable); kittymux Rex-level UI.
+centre growing out of the island (configurable); kittymux Rex-level UI.
 
 - Island default = floating dynamic island (the photos), notch as an option.
 - Workspace pills like the reference: equal widths, dim inactive, glowing active, tighter group spacing;

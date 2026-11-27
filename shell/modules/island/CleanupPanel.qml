@@ -45,6 +45,7 @@ FocusScope {
     property string status: ""
     property bool canPutBack: false
     readonly property var rows: report && report.unused ? report.unused : []
+    readonly property string phase: error !== "" ? "error" : !report ? "loading" : report.skills === 0 ? "empty" : "content"
 
     function load(fresh) {
         loading = true;
@@ -178,27 +179,27 @@ FocusScope {
             width: parent.width
             spacing: 2
             Skeleton {
-                visible: cp.loading && !cp.report && !cp.error
+                visible: cp.phase === "loading"
                 width: Theme.sp(150); height: Theme.tClock * 2 - 8
                 radius: Theme.r2
             }
             Label {
                 // No number when there is none: a failed look showed "0" in the
                 // big face, which reads as "nothing to clean".
-                visible: !!cp.report && !cp.error && cp.report.skills > 0
+                visible: cp.phase === "content"
                 text: cp.num(cp.report ? cp.report.unusedTokens : 0)
                 size: Theme.tClock * 2 - 8; weight: Theme.wBold; rounded: true
                 tabular: true
             }
             Ui.Notice {
-                visible: cp.error !== ""
+                visible: cp.phase === "error"
                 glyph: "\u{f0026}"
                 title: cp.error
                 action: "Try again"
                 onActed: cp.load(true)
             }
             Ui.EmptyState {
-                visible: !!cp.report && !cp.error && cp.report.skills === 0
+                visible: cp.phase === "empty"
                 width: parent.width
                 topPadding: 8; bottomPadding: 8
                 glyph: "\u{f0e7b}"
@@ -206,7 +207,7 @@ FocusScope {
                 body: "Skills your agents never use show up here, with what they cost each session."
             }
             Label {
-                visible: !cp.error && !(cp.report && cp.report.skills === 0)
+                visible: cp.phase === "loading" || cp.phase === "content"
                 width: parent.width
                 wrapMode: Text.Wrap
                 text: !cp.report ? "Reading your agents' transcripts…"
@@ -220,7 +221,7 @@ FocusScope {
         // ── The skills nobody used ──────────────────────────────────────
         // More that way: the rows fade, and a thumb shows while it scrolls.
         Column {
-            visible: cp.view === "skills" && cp.loading && !cp.report && !cp.error
+            visible: cp.view === "skills" && cp.phase === "loading"
             width: parent.width
             spacing: 2
             Repeater { model: 4; Skeleton { width: parent.width; height: Theme.sp(44); radius: Theme.r2 } }
@@ -229,7 +230,7 @@ FocusScope {
         ScrollHint { flickable: list; inside: true }
         ListView {
             id: list
-            visible: cp.view === "skills" && cp.rows.length > 0
+            visible: cp.view === "skills" && cp.phase === "content" && cp.rows.length > 0
             width: parent.width
             // Room for the leftovers and the action under it (the island has a ceiling).
             height: Math.min(contentHeight, Math.max(2 * (Theme.sp(44) + 2), Theme.panelMaxH - (cp.inStrip ? Theme.sp(34) : 0) - col.y - 20
@@ -338,7 +339,7 @@ FocusScope {
         // ── The action ──────────────────────────────────────────────────
         Item {
             id: action
-            visible: cp.view === "skills"
+            visible: cp.view === "skills" && cp.phase === "content"
             width: parent.width
             height: 34
             Ui.Button {

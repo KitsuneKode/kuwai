@@ -114,7 +114,7 @@ Rectangle {
             KeyCap { text: "Esc"; size: Theme.tCaption }
             Label { text: "don't"; size: Theme.tFootnote; color: Theme.textTertiary; anchors.verticalCenter: parent.verticalCenter }
             Item { width: 8; height: 1 }
-            KeyCap { text: "⌃"; size: Theme.tCaption }
+            KeyCap { text: "Ctrl"; size: Theme.tCaption }
             KeyCap { text: "↵"; size: Theme.tCaption }
             Label { text: root.verb.toLowerCase(); size: Theme.tFootnote; color: Theme.textTertiary; anchors.verticalCenter: parent.verticalCenter }
         }

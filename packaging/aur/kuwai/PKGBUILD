@@ -1,6 +1,6 @@
 # Maintainer: KitsuneKode
 #
-# Kuwai: a Hyprland desktop shell (Quickshell). pacman owns everything it needs;
+# kuwai: a Hyprland desktop shell (Quickshell). pacman owns everything it needs;
 # the desktop itself lives in each person's home: kuwai-setup clones this
 # release there and runs its install.sh (which can undo itself).
 pkgname=kuwai

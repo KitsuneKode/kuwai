@@ -111,7 +111,7 @@ FocusScope {
             cmd: home + "/.local/lib/hyde/theme.patch.sh \"Theme-Name\" https://github.com/User/Repository",
             folder: home + "/.config/hyde/themes",
             worth: "One clear accent on near-black: the island keeps colour for state." } : { title: "Add a theme",
-            steps: ["Install any Kuwai theme git repository.", "Run kuwai-look install with the repository URL.", "It appears here on the next open; ↵ applies it."],
+            steps: ["Install any kuwai theme git repository.", "Run kuwai-look install with the repository URL.", "It appears here on the next open; ↵ applies it."],
             cmd: "kuwai-look install https://github.com/User/kuwai-theme",
             folder: home + "/.local/share/kuwai-data/themes",
             worth: "One clear accent on near-black: the island keeps colour for state." },
@@ -271,7 +271,7 @@ FocusScope {
             }
             else {
                 const why = String(applyErr.text || "").split("\n").map(x => x.trim()).filter(x => x).pop() || "";
-                picker.applyError = "Couldn't apply " + (nice || "colours") + (why ? ": " + why.slice(0, 120) : "") + " · ↩ tries again";
+                picker.applyError = "Couldn't apply " + (nice || "colours") + (why ? ": " + why.slice(0, 120) : "") + " · ↵ tries again";
             }
             picker.applyingName = "";
             lister.running = true;
@@ -762,8 +762,8 @@ FocusScope {
             // The keys that work on this tab. (It said "⇥ Themes" on Live, where
             // Tab goes to Screensaver; nothing after ⇥ on Screensaver; and
             // "F Favourite" on every tab, though only themes have favourites.)
-            model: [["← → ↑ ↓", "Choose"], ["↩", picker.mode === "saver" ? "Use" : "Apply"],
-                    ["⇥", ({ themes: "Wallpapers", wallpapers: "Live", live: "Screensaver", saver: "Themes" })[picker.mode]]]
+            model: [["← → ↑ ↓", "Choose"], ["↵", picker.mode === "saver" ? "Use" : "Apply"],
+                    ["Tab", ({ themes: "Wallpapers", wallpapers: "Live", live: "Screensaver", saver: "Themes" })[picker.mode]]]
                 .concat(picker.canPreview ? [["space", picker.previewPlaying ? "Stop preview" : "Preview"]] : [])
                 .concat(picker.mode === "saver" ? [["P", "Use and show now"]] : [])
                 .concat(picker.mode === "themes" ? [["F", "Favourite"]] : [])

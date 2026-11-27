@@ -1,4 +1,4 @@
-"""The Kuwai login session: its launcher and the sudo step that lists it."""
+"""The kuwai login session: its launcher and the sudo step that lists it."""
 import os
 from pathlib import Path
 import subprocess
@@ -62,7 +62,7 @@ def test_a_file_that_isnt_kuwais_is_never_replaced_or_removed(tmp_path):
     entry.parent.mkdir(parents=True)
     entry.write_text('[Desktop Entry]\nName=Someone else\n')
     r = run_session(tmp_path)
-    assert r.returncode != 0 and "isn't Kuwai's" in r.stderr
+    assert r.returncode != 0 and "isn't kuwai's" in r.stderr
     run_session(tmp_path, '--undo')
     assert entry.read_text() == '[Desktop Entry]\nName=Someone else\n'
 

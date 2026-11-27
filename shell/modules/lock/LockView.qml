@@ -45,7 +45,7 @@ Item {
     Timer { id: idleFor; interval: 30000; running: true; onTriggered: view.awake = false }
     // The clock's tint: the theme's accent, lifted towards white. That alone does
     // not make it readable over a light wallpaper: ClockGround below does.
-    readonly property color tint: Qt.tint(Qt.rgba(1, 1, 1, 0.9), Qt.alpha(Theme.accent, 0.35))
+    readonly property color tint: Theme.lockTint(Theme.accent)
 
     // Asking for the password, or just showing the time.
     property bool asking: false
@@ -161,10 +161,10 @@ Item {
         // Asking for the password, it makes room: smaller, a little higher.
         Column {
             anchors.horizontalCenter: parent.horizontalCenter
-            y: Math.round(parent.height * 0.11) - ask.value * 24 * view.move
+            y: Math.round(parent.height * Theme.lockClockTop) - ask.value * 24 * view.move
             transformOrigin: Item.Top
             scale: 1 - ask.value * 0.16 * view.move
-            spacing: 4
+            spacing: Theme.lockClockGap
             Label {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: Dates.shortDate(view.now)
@@ -174,7 +174,7 @@ Item {
             TextMorph {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: Dates.clock(view.now)
-                size: Math.min(Theme.tLockClock, Math.floor(view.height * 0.2 / Theme.textScale)); weight: Theme.wBold; rounded: true
+                size: Theme.lockClockSize(view.height); weight: Theme.wBold; rounded: true
                 color: view.tint
                 duration: Theme.breatheMs; stagger: 60
             }
@@ -186,13 +186,13 @@ Item {
                     visible: SystemStats.weatherTemp !== ""
                     spacing: 7
                     Text { textFormat: Text.PlainText; anchors.verticalCenter: parent.verticalCenter; text: SystemStats.weatherGlyph; font.family: Theme.fontGlyph; font.pixelSize: 18; color: view.tint }
-                    Label { anchors.verticalCenter: parent.verticalCenter; text: SystemStats.weatherTemp; size: Theme.tTitle3; weight: Theme.wMedium; color: view.tint }
+                    Label { anchors.verticalCenter: parent.verticalCenter; text: SystemStats.weatherTemp; size: Theme.tLockLine; weight: Theme.wMedium; color: view.tint }
                 }
                 Row {
                     visible: Notifs.muted
                     spacing: 7
                     Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f0594}"; font.family: Theme.fontGlyph; font.pixelSize: 18; color: view.tint }
-                    Label { anchors.verticalCenter: parent.verticalCenter; text: "Focus"; size: Theme.tTitle3; weight: Theme.wMedium; color: view.tint }
+                    Label { anchors.verticalCenter: parent.verticalCenter; text: "Focus"; size: Theme.tLockLine; weight: Theme.wMedium; color: view.tint }
                 }
             }
         }
@@ -212,7 +212,7 @@ Item {
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.bottom: parent.bottom
             anchors.bottomMargin: Math.round(parent.height * 0.08)
-            width: 300; height: 76
+            width: Theme.lockPillW; height: 76
 
             Label {
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -221,7 +221,7 @@ Item {
                 visible: opacity > 0.01
                 text: "Press any key to unlock"
                 size: Theme.tLockBody; weight: Theme.wMedium
-                color: Qt.alpha(view.tint, 0.85)
+                color: Qt.alpha(view.tint, Theme.lockHintAlpha)
             }
 
             PasswordPill {

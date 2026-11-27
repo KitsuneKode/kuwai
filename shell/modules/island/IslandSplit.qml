@@ -218,7 +218,7 @@ Item {
             const count = arrangement.overflow.length;
             return count === 1 ? "1 more activity" : count + " more activities";
         }
-        return ({ask: "Needs you", music: "Now Playing", agents: "Agents", sys: "System status", limits: "Usage limits", min: "Restore minimized window"})[k] || k;
+        return ({ask: "Needs you", music: "Now Playing", agents: "Agents", sys: "System status", limits: "Usage limits", min: "Restore minimised window"})[k] || k;
     }
     property var overflowSelection: []
     function openOverflow(how) {
@@ -809,7 +809,7 @@ Item {
                 HoverHandler { id: moreHover; enabled: parent.enabled; cursorShape: Qt.PointingHandCursor }
                 TapHandler { gesturePolicy: TapHandler.WithinBounds; onTapped: split.bringBack(split.minimized[split.minimized.length - 1]) }
                 Accessible.role: Accessible.Button
-                Accessible.name: (split.minimized.length - 3) + " more minimized, bring one back"
+                Accessible.name: (split.minimized.length - 3) + " more minimised, bring one back"
                 Accessible.description: split.minimized.slice(3).map(t => t.title).join(", ")
                 Accessible.onPressAction: split.bringBack(split.minimized[split.minimized.length - 1])
                 Tip { text: split.minimized.slice(3).map(t => t.title).join(" · ") + "\nClick: bring one back (or Super+Shift+O)"; shown: moreHover.hovered; below: true }

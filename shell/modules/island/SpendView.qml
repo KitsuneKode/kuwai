@@ -29,8 +29,8 @@ Column {
     function value(x) { return SR.valueText(x, tokens); }
     function shareText(x) { return !tokens && !(x.cost > 0) ? "" : "  " + Math.round(x.share * 100) + "%"; }
     function tone(id) {
-        return ({ claude: Theme.orange, codex: Theme.green, grok: Theme.textSecondary, cursor: Theme.cyan, opencode: Theme.indigo,
-                  antigravity: Theme.blue, gemini: Theme.blue, pi: Theme.mint, muse: Theme.pink })[id] || Theme.brown;
+        return ({ claude: Theme.mint, codex: Theme.green, grok: Theme.textSecondary, cursor: Theme.cyan, opencode: Theme.indigo,
+                  antigravity: Theme.blue, gemini: Theme.blue, pi: Theme.gray, muse: Theme.pink })[id] || Theme.brown;
     }
     function step(d) {
         const i = periods.findIndex(p => p.id === period);

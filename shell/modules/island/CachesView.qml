@@ -20,7 +20,7 @@ Item {
     property string clearing: ""
     property string note: ""
     readonly property var items: report && report.items ? report.items : []
-    readonly property var pal: [Theme.orange, Theme.blue, Theme.green, Theme.indigo, Theme.cyan, Theme.yellow, Theme.red, Theme.purple]
+    readonly property var pal: [Theme.blue, Theme.green, Theme.indigo, Theme.cyan, Theme.mint, Theme.brown, Theme.pink, Theme.gray]
     readonly property real backBytes: items.filter(i => i.clearable).reduce((n, i) => n + i.bytes, 0)
 
     function load(fresh) {

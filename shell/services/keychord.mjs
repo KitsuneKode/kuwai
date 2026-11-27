@@ -132,7 +132,7 @@ export function groupsOf(entries, filter) {
  */
 export function caps(keys) {
     const names = /** @type {Record<string, string>} */ ({ SUPER: "Super", CTRL: "Ctrl", CONTROL: "Ctrl", ALT: "Alt", SHIFT: "Shift",
-        RETURN: "↩", ESCAPE: "esc", DELETE: "Del", BACKSPACE: "⌫", TAB: "⇥", SPACE: "Space", LEFT: "←", RIGHT: "→", UP: "↑", DOWN: "↓",
+        RETURN: "↵", ESCAPE: "esc", DELETE: "Del", BACKSPACE: "⌫", TAB: "Tab", SPACE: "Space", LEFT: "←", RIGHT: "→", UP: "↑", DOWN: "↓",
         GRAVE: "`", SLASH: "/", BACKSLASH: "\\", COMMA: ",", PERIOD: ".", EQUAL: "=", MINUS: "−", BRACKETLEFT: "[", BRACKETRIGHT: "]",
         SEMICOLON: ";", APOSTROPHE: "'", PRIOR: "PgUp", NEXT: "PgDn", PRINT: "PrtSc" });
     return String(keys || "").split("+").map(k => k.trim()).filter(k => k).map(k => {

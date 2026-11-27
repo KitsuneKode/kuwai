@@ -207,7 +207,7 @@ Singleton {
                     let r = {};
                     try { r = JSON.parse(text); } catch (e) {}
                     root.setAnswer(p.id, { busy: false, done: r.ok ? p.decision : "",
-                        why: r.ok ? "" : r.why === "scope" ? "T3's token for Kuwai can't answer yet (it needs orchestration:operate). Open it in T3."
+                        why: r.ok ? "" : r.why === "scope" ? "T3's token for kuwai can't answer yet (it needs orchestration:operate). Open it in T3."
                             : r.why === "gone" ? "Already answered." : "T3 didn't take it. Open it in T3." });
                     if (r.ok) root.read();
                 }

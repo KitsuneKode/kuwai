@@ -13,7 +13,7 @@ Column {
     property real progress: 1
     property real motion: 1
 
-    spacing: 6
+    spacing: Theme.lockClockGap
     opacity: Math.max(0, Math.min(1, (progress - 0.35) / 0.4))
     visible: opacity > 0
     transform: Translate { y: (1 - Math.min(1, welcome.progress)) * 10 * welcome.motion }
@@ -28,7 +28,7 @@ Column {
     Label {
         anchors.horizontalCenter: parent.horizontalCenter
         text: welcome.name
-        size: Theme.tTitle3; weight: Theme.wMedium
+        size: Theme.tLockLine; weight: Theme.wMedium
         color: Qt.rgba(1, 1, 1, 0.8)
         layer.enabled: true
         layer.effect: MultiEffect { shadowEnabled: true; shadowBlur: 0.8; shadowOpacity: 0.5 }

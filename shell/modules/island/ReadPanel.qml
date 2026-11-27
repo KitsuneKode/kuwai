@@ -324,7 +324,7 @@ FocusScope {
                 height: 30
                 Label {
                     anchors { left: parent.left; verticalCenter: parent.verticalCenter }
-                    text: "⌃↵ send · ↵ new line · Esc back"
+                    text: "Ctrl+↵ send · ↵ new line · Esc back"
                     size: Theme.tCaption; color: Theme.textTertiary
                 }
                 Ui.Button {

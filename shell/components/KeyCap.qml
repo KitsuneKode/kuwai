@@ -1,8 +1,8 @@
-// A keyboard key, drawn the way macOS menus and cheatsheets show them: a
-// small rounded cap with the key's symbol in SF Pro (which carries Apple's
-// own ⌘ ⌥ ⇧ ⌃ ↩ ⌫ ⌦ ⇥ ⎋ glyphs), centred, never narrower than it is tall.
+// A keyboard key as a PC keyboard prints it: a small rounded cap with the
+// key's name (Super, Ctrl, Alt, Shift, Esc, Tab), or its symbol where the
+// keyboard prints one (↵ ⌫ ↑ ↓ ← →), centred, never narrower than it is tall.
 //
-//   KeyCap { text: "↩" }    KeyCap { text: "Super" }   (shown as ⌘; Ctrl ⌃, Shift ⇧, Alt ⌥, Esc ⎋)
+//   KeyCap { text: "↵" }    KeyCap { text: "super" }   (shown as Super; "⌘" and "Cmd" too)
 import QtQuick
 import qs.config
 
@@ -10,10 +10,11 @@ Rectangle {
     id: cap
     property string text
     property int size: Theme.tCaption
-    // Modifier and special keys as macOS writes them (Super is ⌘ here).
-    readonly property string glyph: ({ Super: "⌘", Meta: "⌘", Cmd: "⌘", Win: "⌘", Ctrl: "⌃", Control: "⌃", Shift: "⇧",
-        Alt: "⌥", Option: "⌥", Esc: "⎋", Escape: "⎋", Enter: "↩", Return: "↩", Tab: "⇥", Backspace: "⌫", Delete: "⌦",
-        Up: "↑", Down: "↓", Left: "←", Right: "→", "^": "⌃" })[text] || text
+    readonly property var names: ({ "super": "Super", meta: "Super", cmd: "Super", win: "Super", "⌘": "Super",
+        ctrl: "Ctrl", control: "Ctrl", "⌃": "Ctrl", "^": "Ctrl", shift: "Shift", "⇧": "Shift", alt: "Alt", option: "Alt", "⌥": "Alt",
+        esc: "Esc", escape: "Esc", "⎋": "Esc", enter: "↵", "return": "↵", "↩": "↵", tab: "Tab", "⇥": "Tab",
+        backspace: "⌫", "delete": "Del", del: "Del", "⌦": "Del", up: "↑", down: "↓", left: "←", right: "→", space: "Space" })
+    readonly property string glyph: names[String(text).toLowerCase()] || text
     readonly property bool word: glyph.length > 1
 
     height: size + 9

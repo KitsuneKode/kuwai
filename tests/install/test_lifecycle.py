@@ -359,7 +359,7 @@ def test_a_hyprland_lua_kuwai_did_not_write_is_never_touched(install_env):
     assert (i.cfg / 'hypr/monitors.lua').read_text() == '-- omarchy monitors\n'
     assert i.entry.read_text() == '-- installed entry\n'
     assert (i.cfg / 'kuwai/hypr/monitors.lua').exists() and (i.cfg / 'kuwai/hypr/user.lua').exists()
-    assert 'not Kuwai' in out
+    assert 'not kuwai' in out
     i.run('--uninstall')
     assert own.read_text() == '-- omarchy\n'
     assert not i.entry.exists()
@@ -423,7 +423,7 @@ def test_the_login_entry_is_offered_without_a_terminal(install_env):
     out = i.run()
     assert 'sudo ' + str(i.repo / 'system/session') in out
     subprocess.run([str(i.repo / 'system/session')], env=i.env, check=True, capture_output=True)
-    assert '"Kuwai" is on the login screen' in i.run()
+    assert '"kuwai" is on the login screen' in i.run()
 
 
 def test_uninstall_never_touches_units_kuwai_did_not_record(install_env):

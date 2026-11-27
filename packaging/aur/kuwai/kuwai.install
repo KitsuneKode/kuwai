@@ -1,8 +1,8 @@
 post_install() {
-    echo ":: Kuwai is installed. Set it up for your account (not as root):"
+    echo ":: kuwai is installed. Set it up for your account (not as root):"
     echo "     kuwai-setup            (kuwai-setup --dry-run shows what it does first)"
-    echo "   Then pick \"Kuwai\" on the login screen."
+    echo "   Then pick \"kuwai\" on the login screen."
 }
 post_upgrade() {
-    echo ":: Kuwai updates itself in place: kuwai update-self (or Software Update)."
+    echo ":: kuwai updates itself in place: kuwai update-self (or Software Update)."
 }

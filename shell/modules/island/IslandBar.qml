@@ -1243,7 +1243,7 @@ Scope {
                                         }
                                         MouseArea { id: secArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: Island.switchTo(sec.modelData.id) }
                                         Accessible.onPressAction: Island.switchTo(sec.modelData.id)
-                                        Tip { text: sec.modelData.label + "  ⌥" + (sec.index + 1); shown: secArea.containsMouse; below: true }
+                                        Tip { text: sec.modelData.label + "  Alt+" + (sec.index + 1); shown: secArea.containsMouse; below: true }
                                     }
                                 }
                             }

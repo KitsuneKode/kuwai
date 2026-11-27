@@ -187,12 +187,13 @@ def main():
     faults, shots = [], []
     for scale in scales:
         tag = f"x{scale:g}"
-        verdict, frames = stage({"seed": at_now(seed), "scenes": at_now(scenes)}, scale, out / tag)
+        scenes_now = [s for s in scenes if scale in s.get("scales", scales)]
+        verdict, frames = stage({"seed": at_now(seed), "scenes": at_now(scenes_now)}, scale, out / tag)
         if verdict.get("status") == "UNQUALIFIED":
             print(f"could not stage at text {tag}: {verdict.get('reason')}", file=sys.stderr)
             return 2
         staged_fail = verdict.get("status") != "PASS"
-        for s in scenes:
+        for s in scenes_now:
             sid = f"{s['id']} @{tag}"
             frame = frames.get(s["id"])
             if frame is None:
@@ -258,7 +259,7 @@ def main():
     sheet(shots, out / "sheet.png")
     known = set(KNOWN.read_text().splitlines()) - {""} if KNOWN.is_file() else set()
     known = {k for k in known if not k.startswith("#")}
-    staged = {f"{s['id']} @x{scale:g}" for s in scenes for scale in scales}
+    staged = {f"{s['id']} @x{scale:g}" for s in scenes for scale in scales if scale in s.get("scales", scales)}
     if not args.only and not args.scale:
         staged |= {"gestures (full motion)", "gestures (reduced motion)", "lock clock"}
     known_here = {k for k in known if k.split(" | ", 1)[0] in staged}

@@ -33,11 +33,12 @@ FocusScope {
     // ceiling of 566 on a 1080-high screen: the last card ran under the edge.
     readonly property real ceiling: Math.min(Theme.panelMaxH, Theme.screenSize(Screen, "height", 1080) - 24) - 40 - Theme.sp(34)
     readonly property bool hasTabs: tabs.length > 2
-    readonly property bool hasFoot: Limits.loaded && groups.length > 0
+    readonly property string phase: !limitsView ? "" : Limits.loaded && groups.length > 0 ? "content" : Limits.down ? "error" : Limits.loaded ? "empty" : "loading"
+    readonly property bool hasFoot: phase === "content"
     // (By the rows' own heights: they grow with the Text size; fixed numbers
     // let the panel outgrow the island at 200 %.)
     readonly property real listMax: Math.max(120, ceiling - 40 - head.height - col.spacing - viewSeg.height - col.spacing
-        - (hasTabs ? tabsRow.height + col.spacing : 0) - (hasFoot ? foot.height + col.spacing : 0) - (Limits.down ? downBox.height + col.spacing : 0)
+        - (hasTabs ? tabsRow.height + col.spacing : 0) - (hasFoot ? foot.height + col.spacing : 0)
         - (healthLine.visible ? healthLine.height + col.spacing : 0))
 
     // Countdowns tick (once a minute) while this is open.
@@ -180,7 +181,7 @@ FocusScope {
                 y: head.stack ? headTitle.implicitHeight + 2 : (head.height - implicitHeight) / 2
                 width: head.stack ? head.width : implicitWidth
                 wrapMode: head.stack ? Text.Wrap : Text.NoWrap
-                visible: Limits.loaded && usage.limitsView
+                visible: usage.phase === "content"
                 text: usage.outCount
                     ? usage.outCount + " out" + (usage.partCount ? " · " + usage.partCount + " partly" : "") + (usage.backIn(usage.firstBack) ? " · first back in " + usage.backIn(usage.firstBack) : "")
                     : usage.partCount ? usage.partCount + " partly out · the rest have room"
@@ -269,17 +270,16 @@ FocusScope {
         // ── Error: on the thing that failed, with Retry beside it ─────────
         Ui.Notice {
             id: downBox
-            visible: usage.limitsView && Limits.down
+            visible: usage.phase === "error"
             glyph: "\u{f0026}"
-            title: Limits.loaded ? "Not updating" : "Usage can't be read right now"
-            detail: Limits.loaded ? "Showing the last reading" : ""
+            title: "Usage can't be read right now"
             action: "Retry"
             onActed: Limits.retry()
         }
 
         // ── Loading: the cards' own shape ────────────────────────────────
         Column {
-            visible: usage.limitsView && !Limits.loaded && !Limits.down
+            visible: usage.phase === "loading"
             width: parent.width
             spacing: 8
             Repeater {
@@ -289,7 +289,7 @@ FocusScope {
         }
 
         Ui.EmptyState {
-            visible: usage.limitsView && Limits.loaded && usage.groups.length === 0
+            visible: usage.phase === "empty"
             topPadding: Theme.s3; bottomPadding: Theme.s3
             glyph: "\u{f0128}"
             title: "No usage yet"
@@ -299,7 +299,7 @@ FocusScope {
         // ── One card per agent ───────────────────────────────────────────
         Item {
           id: listWrap
-          visible: usage.limitsView
+          visible: usage.phase === "content"
           width: parent.width
           height: flick.height
         Flickable {
@@ -624,7 +624,7 @@ FocusScope {
 
         Item {
             id: healthLine
-            visible: usage.limitsView && usage.hasHealth
+            visible: usage.phase === "content" && usage.hasHealth
             width: parent.width
             height: visible ? Math.max(troubleBtn.visible ? troubleBtn.implicitHeight : 0, infoLine.visible ? infoLine.implicitHeight : 0) : 0
             Ui.Button {
@@ -651,9 +651,9 @@ FocusScope {
         // what is worth saying is its source and, when it isn't live, its age.
         Item {
             id: foot
-            visible: usage.limitsView && usage.hasFoot
+            visible: usage.hasFoot
             width: parent.width
-            height: 14
+            height: Math.max(14, retry.visible ? retry.height : 0)
             readonly property var fresh: Usage.freshness(Limits.checkedAt, Limits.now, Limits.source)
             readonly property bool live: Limits.source === "t3" && !Limits.down && !(fresh.known && fresh.stale)
             readonly property bool caution: Limits.down || fresh.old
@@ -663,10 +663,18 @@ FocusScope {
                 width: 6; height: 6; radius: 3
                 color: foot.live ? Theme.green : foot.caution ? Theme.orange : Theme.textTertiary
             }
+            Ui.Button {
+                id: retry
+                visible: Limits.down
+                anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                kind: "quiet"; text: "Retry"
+                onClicked: Limits.retry()
+            }
             Label {
-                anchors { left: dot.right; leftMargin: 6; right: parent.right; verticalCenter: parent.verticalCenter }
+                anchors { left: dot.right; leftMargin: 6; right: retry.visible ? retry.left : parent.right; verticalCenter: parent.verticalCenter }
                 elide: Text.ElideRight
-                text: Limits.source === "t3-cached" ? "T3 Code is closed · its last reading" + (foot.fresh.known ? ", " + foot.fresh.age : "")
+                text: Limits.down ? "Not updating" + (foot.fresh.known ? " · " + foot.fresh.age : "")
+                    : Limits.source === "t3-cached" ? "T3 Code is closed · its last reading" + (foot.fresh.known ? ", " + foot.fresh.age : "")
                     : (foot.live ? "Live from " : "From ") + (Usage.sourceName(Limits.source) || "the last reading")
                       + (foot.fresh.known ? " · checked " + foot.fresh.age : "")
                 size: Theme.tCaption

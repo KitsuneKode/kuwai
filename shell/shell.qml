@@ -1,5 +1,5 @@
 //@ pragma UseQApplication
-// Kuwai: one Quickshell process for every desktop surface.
+// kuwai: one Quickshell process for every desktop surface.
 //
 //   bin/kuwai-shell        start it (takes over notifications from dunst)
 //   bin/kuwai …            control it (notifs …, center, reload, logs)

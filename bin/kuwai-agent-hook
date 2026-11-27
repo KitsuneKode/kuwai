@@ -2,7 +2,7 @@
 """Unified push hook receiver for desktop coding agents (Cursor, Devin, MCP).
 
 Writes per-session state files under $XDG_STATE_HOME/kuwai/desktop-agents/
-and an atomic snapshot at $XDG_STATE_HOME/kuwai/desktop-agents.json so Kuwai's
+and an atomic snapshot at $XDG_STATE_HOME/kuwai/desktop-agents.json so kuwai's
 Dynamic Island watches one file via inotify with 0% idle CPU.
 """
 from __future__ import annotations
@@ -519,7 +519,7 @@ def merge_devin_hooks(config_path: Path, hook_bin: str, dry_run: bool) -> dict[s
 
 
 def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="kuwai-agent-hook", description="Kuwai desktop agent HUD hook receiver")
+    p = argparse.ArgumentParser(prog="kuwai-agent-hook", description="kuwai desktop agent HUD hook receiver")
     sub = p.add_subparsers(dest="cmd")
 
     sub.add_parser("list", help="Print live desktop agents as JSON")
@@ -529,7 +529,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("clear", help="Clear all desktop agent sessions")
 
-    ip = sub.add_parser("install-hooks", help="Wire Kuwai hooks into Cursor / Devin configs without clobbering existing hooks")
+    ip = sub.add_parser("install-hooks", help="Wire kuwai hooks into Cursor / Devin configs without clobbering existing hooks")
     ip.add_argument("--cursor", action="store_true", help="Install into ~/.cursor/hooks.json")
     ip.add_argument("--devin", action="store_true", help="Install into ~/.config/devin/config.json")
     ip.add_argument("--cursor-path", default="", help="Override Cursor hooks.json path")

@@ -244,12 +244,12 @@ Item {
         anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 12 }
         opacity: Math.max(0, Math.min(1, (t.value - 0.6) / 0.4))
         text: !ql.entry ? ""
-            : ql.editing ? "Editing  ·  ⌃S keep as a new copy  ·  ⌃↵ paste this  ·  Esc cancel"
+            : ql.editing ? "Editing  ·  Ctrl+S keep as a new copy  ·  Ctrl+↵ paste this  ·  Esc cancel"
             : [({ markdown: "Markdown", code: "Code", mermaid: "Mermaid diagram" })[ql.rendered.kind] || "",
                ql.rendered.kind === "code" ? ql.rendered.lang : "",
                ql.panel.detailOf(ql.entry, ql.full),
-               ql.rendered.kind !== "text" ? (ql.raw ? "⌃R rendered" : "⌃R raw") : "",
-               ql.masked ? "" : "⌃E or double-click to edit", "Space close"].filter(x => x).join("    ")
+               ql.rendered.kind !== "text" ? (ql.raw ? "Ctrl+R rendered" : "Ctrl+R raw") : "",
+               ql.masked ? "" : "Ctrl+E or double-click to edit", "Space close"].filter(x => x).join("    ")
         size: Theme.tFootnote
         color: Theme.textTertiary
     }

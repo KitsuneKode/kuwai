@@ -33,10 +33,10 @@ What `install.sh` puts in place:
 3. Writes `~/.config/kuwai/hypr/hyprland.lua` and creates empty `monitors.lua` and `user.lua` beside it if missing (never overwritten). `~/.config/hypr` is untouched.
 4. Symlinks `~/.local/bin/kuwai` to `~/.local/share/kuwai/bin/kuwai`.
 5. Links user systemd units (`kuwai-shell.service`, `kuwai-shell-broken.service`, `kuwai-auth.service`, `kuwai-wallpaper.service`, `kuwai-backup.service`, `kuwai-backup.timer`, plus opt-in `kuwai-clipboard.service` and `kuwai-feeds.service`).
-6. Installs the **Kuwai** login session entry (`sudo system/session`) and pins the polkit password prompt (`kuwai auth pin`) when run interactively.
+6. Installs the **kuwai** login session entry (`sudo system/session`) and pins the polkit password prompt (`kuwai auth pin`) when run interactively.
 7. Downloads the first wallpaper from `themes/kuwai-night/wallpapers.tsv` (verified by checksum) when no wallpaper or HyDE setup is present.
 
-Log out and choose **Kuwai** on your display manager, or start it from a TTY with `kuwai-session`.
+Log out and choose **kuwai** on your display manager, or start it from a TTY with `kuwai-session`.
 
 ## AUR package wrapper
 
