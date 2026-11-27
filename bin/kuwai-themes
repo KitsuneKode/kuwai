@@ -25,6 +25,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 if os.path.join(ROOT, "lib") not in sys.path:
     sys.path.insert(0, os.path.join(ROOT, "lib"))
 
+from look.packs import installed_walls
 from look.screens import connected_screen_walls, set_global_wall
 
 HOME = os.path.expanduser("~")
@@ -165,14 +166,12 @@ def color_mode() -> int:
 
 
 def listing() -> dict:
-    if not os.path.isdir(THEMES):
-        return {"current": "", "themes": [], "wallpapers": [], "mode": 0, "modes": MODES, "hyde": hyde_here()}
     cache = load_cache()
     known = len(cache)
     cur = current()
     themes, walls = [], []
     wd = os.path.join(THEMES, cur, "wallpapers")
-    names = sorted(os.listdir(THEMES), key=str.lower)
+    names = sorted(os.listdir(THEMES), key=str.lower) if os.path.isdir(THEMES) else []
     own = sorted(os.listdir(wd)) if os.path.isdir(wd) else []
     warm([os.path.realpath(os.path.join(THEMES, n, "wall.set")) for n in names]
          + [os.path.join(wd, f) for f in own if f.lower().endswith(IMG)], cache)
@@ -189,9 +188,20 @@ def listing() -> dict:
             if f.lower().endswith(IMG):
                 walls.append({"path": p, "name": os.path.splitext(f)[0], "thumb": thumb(p, cache),
                               "current": os.path.realpath(p) == active, "palette": wall_palette(p, cache)})
+    native_wall = os.path.join(STATE_HOME, "kuwai", "wallpaper")
+    packed = installed_walls(ROOT)
+    monitors, screen_walls = connected_screen_walls(STATE_HOME, fallback_wall=active)
+    if monitors:
+        active = next((m["wallpaper"] for m in monitors if m["focused"]), active)
+        for item in walls:
+            item["current"] = os.path.realpath(item["path"]) == active
+    elif os.path.isfile(native_wall):
+        active = os.path.realpath(native_wall)
+    for item in packed:
+        path = item["path"]
+        walls.append({**item, "thumb": thumb(path, cache), "current": path == active, "palette": []})
     if len(cache) != known:
         save(CACHE, json.dumps(cache))
-    monitors, screen_walls = connected_screen_walls(STATE_HOME, fallback_wall=active)
     return {
         "current": cur,
         "themes": themes,

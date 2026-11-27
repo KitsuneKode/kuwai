@@ -31,6 +31,7 @@ if os.path.join(ROOT, "lib") not in sys.path:
     sys.path.insert(0, os.path.join(ROOT, "lib"))
 
 from look.extract import extract_image
+from look.packs import installed_walls
 from look.render import write_generation
 from look.roles import build_palette
 from look.screens import (
@@ -204,7 +205,9 @@ def find_named_wall(name, repo_dir, stem):
             cand = os.path.join(folder, stem + ext)
             if os.path.isfile(cand):
                 return os.path.realpath(cand)
-    return ""
+    return next((item["path"] for item in installed_walls(ROOT)
+                 if os.path.splitext(os.path.basename(item["path"]))[0] == stem
+                 and os.path.basename(os.path.dirname(item["path"])).startswith(name + "-")), "")
 
 
 def find_theme_wall(name, repo_dir):
@@ -488,7 +491,10 @@ def cmd_set_wallpaper(image, mode="dark", apply_live=True, output=None):
 
 
 def current_wall():
-    return os.path.realpath(WALL_LINK) if os.path.isfile(WALL_LINK) else ""
+    if os.path.isfile(WALL_LINK):
+        return os.path.realpath(WALL_LINK)
+    hyde_wall = os.path.join(CACHE_HOME, "hyde", "wall.set")
+    return os.path.realpath(hyde_wall) if os.path.isfile(hyde_wall) else ""
 
 
 def cmd_focus_wallpaper(apply_live=True, wall=None, mode=None):
@@ -843,6 +849,13 @@ def cmd_list(include_personal=False):
                             "variant": variant_map.get(stem, ""),
                             "palette": [],
                         })
+    for item in installed_walls(ROOT):
+        path = os.path.realpath(item["path"])
+        if path not in seen:
+            seen.add(path)
+            walls.append({**item, "path": path, "thumb": path, "current": path == cur_wall,
+                          "variant": variant_map.get(os.path.splitext(os.path.basename(path))[0], ""),
+                          "palette": []})
     if cur_wall and os.path.isfile(cur_wall) and cur_wall not in seen:
         seen.add(cur_wall)
         walls.insert(0, {

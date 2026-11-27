@@ -43,6 +43,7 @@ from pathlib import Path
 from PIL import Image, ImageChops, ImageCms, ImageDraw, ImageFont, ImageStat
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "lib"))
+from look.packs import LICENCES, MANIFEST, catalog
 try:
     from rehearse import wall as lockwall
 except ImportError:
@@ -56,8 +57,7 @@ LOUD_SAT, LOUD_VALUE, LOUD_SHARE = 0.55, 0.5, 0.20
 CROP_WARN = 0.30
 TWIN_BITS = 6
 EXTS = {".jpg", ".jpeg", ".png", ".webp"}
-LICENCES = {"CC0", "PD", "CC-BY-4.0", "CC-BY-SA-4.0", "CC-BY-3.0", "CC-BY-SA-3.0", "CC-BY-2.0", "CC-BY-SA-2.0",
-            "ESO-CC-BY-4.0", "personal"}
+
 
 _lab = ImageCms.buildTransform(ImageCms.createProfile("sRGB"), ImageCms.createProfile("LAB"), "RGB", "LAB")
 
@@ -250,7 +250,7 @@ def check_tsv(theme, files_dir=None):
                 problems.append(f"{where}: URL is not https")
             if not re.fullmatch(r"sha256:[0-9a-f]{64}|sha1:[0-9a-f]{40}", row["sha256"]):
                 problems.append(f"{where}: not pinned (sha256:… or sha1:…, as Commons reports it)")
-            if row["licence"] not in LICENCES - {"personal"}:
+            if row["licence"] not in LICENCES:
                 problems.append(f"{where}: licence {row['licence'] or 'missing'} is not one kuwai can ship")
             if not row["author"]:
                 problems.append(f"{where}: no author to credit")
@@ -304,6 +304,11 @@ def check_default(root=None, files_dir=None):
                 problems.extend(check_tsv(d, files_dir if d == kn else None))
             else:
                 problems.append(f"{d}/wallpapers.tsv: missing")
+    if (repo / MANIFEST).exists() or repo == Path(__file__).resolve().parent.parent:
+        try:
+            catalog(repo)
+        except (OSError, ValueError, KeyError, AttributeError, TypeError) as error:
+            problems.append(f"{MANIFEST}: {error}")
     return problems
 
 

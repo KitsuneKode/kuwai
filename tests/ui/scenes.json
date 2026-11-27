@@ -2546,6 +2546,286 @@
    ]
   },
   {
+   "id": "theme/packs",
+   "name": "theme",
+   "panel": "ThemePanel",
+   "props": {
+    "mode": "wallpapers",
+    "loading": false,
+    "showPacks": true
+   },
+   "set": [
+    [
+     "WallpaperPacks",
+     "catalog",
+     [
+      {
+       "id": "deep-field",
+       "name": "Deep Field",
+       "images": [
+        {
+         "bytes": 18208443
+        },
+        {
+         "bytes": 15276428
+        },
+        {
+         "bytes": 7720984
+        }
+       ],
+       "installed": false
+      },
+      {
+       "id": "earthlight",
+       "name": "Earthlight",
+       "images": [
+        {
+         "bytes": 9295708
+        },
+        {
+         "bytes": 3402438
+        }
+       ],
+       "installed": false
+      }
+     ]
+    ],
+    [
+     "WallpaperPacks",
+     "catalogState",
+     "ready"
+    ]
+   ]
+  },
+  {
+   "id": "theme/packs-downloading",
+   "name": "theme",
+   "panel": "ThemePanel",
+   "props": {
+    "mode": "wallpapers",
+    "loading": false,
+    "showPacks": true
+   },
+   "set": [
+    [
+     "WallpaperPacks",
+     "catalog",
+     [
+      {
+       "id": "deep-field",
+       "name": "Deep Field",
+       "images": [
+        {
+         "bytes": 18208443
+        },
+        {
+         "bytes": 15276428
+        },
+        {
+         "bytes": 7720984
+        }
+       ],
+       "installed": false
+      },
+      {
+       "id": "earthlight",
+       "name": "Earthlight",
+       "images": [
+        {
+         "bytes": 9295708
+        },
+        {
+         "bytes": 3402438
+        }
+       ],
+       "installed": false
+      }
+     ]
+    ],
+    [
+     "WallpaperPacks",
+     "catalogState",
+     "ready"
+    ],
+    [
+     "WallpaperPacks",
+     "activePack",
+     "deep-field"
+    ],
+    [
+     "WallpaperPacks",
+     "done",
+     1
+    ],
+    [
+     "WallpaperPacks",
+     "total",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "theme/packs-failed",
+   "name": "theme",
+   "panel": "ThemePanel",
+   "props": {
+    "mode": "wallpapers",
+    "loading": false,
+    "showPacks": true
+   },
+   "set": [
+    [
+     "WallpaperPacks",
+     "catalog",
+     [
+      {
+       "id": "deep-field",
+       "name": "Deep Field",
+       "images": [
+        {
+         "bytes": 18208443
+        },
+        {
+         "bytes": 15276428
+        },
+        {
+         "bytes": 7720984
+        }
+       ],
+       "installed": false
+      },
+      {
+       "id": "earthlight",
+       "name": "Earthlight",
+       "images": [
+        {
+         "bytes": 9295708
+        },
+        {
+         "bytes": 3402438
+        }
+       ],
+       "installed": false
+      }
+     ]
+    ],
+    [
+     "WallpaperPacks",
+     "catalogState",
+     "ready"
+    ],
+    [
+     "WallpaperPacks",
+     "failedPack",
+     "earthlight"
+    ]
+   ]
+  },
+  {
+   "id": "theme/packs-downloaded",
+   "name": "theme",
+   "panel": "ThemePanel",
+   "props": {
+    "mode": "wallpapers",
+    "loading": false,
+    "showPacks": true
+   },
+   "set": [
+    [
+     "WallpaperPacks",
+     "catalog",
+     [
+      {
+       "id": "deep-field",
+       "name": "Deep Field",
+       "images": [
+        {
+         "bytes": 18208443
+        },
+        {
+         "bytes": 15276428
+        },
+        {
+         "bytes": 7720984
+        }
+       ],
+       "installed": true
+      },
+      {
+       "id": "earthlight",
+       "name": "Earthlight",
+       "images": [
+        {
+         "bytes": 9295708
+        },
+        {
+         "bytes": 3402438
+        }
+       ],
+       "installed": false
+      }
+     ]
+    ],
+    [
+     "WallpaperPacks",
+     "catalogState",
+     "ready"
+    ]
+   ]
+  },
+  {
+   "id": "theme/packs-unavailable",
+   "name": "theme",
+   "panel": "ThemePanel",
+   "props": {
+    "mode": "wallpapers",
+    "loading": false,
+    "showPacks": true
+   },
+   "set": [
+    [
+     "WallpaperPacks",
+     "catalog",
+     [
+      {
+       "id": "deep-field",
+       "name": "Deep Field",
+       "images": [
+        {
+         "bytes": 18208443
+        },
+        {
+         "bytes": 15276428
+        },
+        {
+         "bytes": 7720984
+        }
+       ],
+       "installed": false
+      },
+      {
+       "id": "earthlight",
+       "name": "Earthlight",
+       "images": [
+        {
+         "bytes": 9295708
+        },
+        {
+         "bytes": 3402438
+        }
+       ],
+       "installed": false
+      }
+     ]
+    ],
+    [
+     "WallpaperPacks",
+     "catalogState",
+     "error"
+    ]
+   ]
+  },
+  {
    "id": "usage/typical",
    "name": "usage",
    "panel": "UsagePanel",
