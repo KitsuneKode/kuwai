@@ -112,6 +112,7 @@ if [ $MODE = undo ]; then
     else
         echo "greetd is off. No earlier login manager to turn back on: enable one, or log in on a tty."
     fi
+    rm -rf -- "$DEST"
     exit 0
 fi
 
