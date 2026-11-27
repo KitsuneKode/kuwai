@@ -1,0 +1,212 @@
+#!/usr/bin/env python3
+"""The apps you have running, one line of JSON a second (the System panel's Activity tab).
+
+  kuwai-activity               stream frames until the reader goes away
+  kuwai-activity --once        one frame (two readings a moment apart), then exit
+
+Each frame: {"t", "cpus", "units": [{unit, id, launcher, label, main, pid, start,
+procs, cpu, mem, protected}]}, one entry per systemd app unit (app-*.scope, app-*.service and
+the run-*.service the shell opens apps in, under the user manager's slices). `cpu` is the share of one
+logical CPU since the last frame (100 = one whole thread busy), from the unit's
+cpu.stat usage_usec; `mem` is the unit's proportional memory (PSS summed over its
+processes), read every few seconds, not every frame. `protected` marks what the
+session lives on: it is shown, never offered to stop (bin/kuwai-procs --end-unit).
+A unit that goes away between two readings is simply not in the frame.
+"""
+import argparse
+import importlib.machinery
+import importlib.util
+import json
+import os
+import re
+import sys
+import time
+
+HERE = os.path.dirname(os.path.realpath(__file__))
+
+
+def load_procs():
+    loader = importlib.machinery.SourceFileLoader("kuwai_procs", os.path.join(HERE, "kuwai-procs"))
+    spec = importlib.util.spec_from_loader("kuwai_procs", loader)
+    mod = importlib.util.module_from_spec(spec)
+    loader.exec_module(mod)
+    return mod
+
+
+P = load_procs()
+
+
+def read(path):
+    with open(path) as f:
+        return f.read()
+
+
+def usage_usec(path):
+    for line in read(path + "/cpu.stat").splitlines():
+        if line.startswith("usage_usec "):
+            return int(line.split()[1])
+    raise ValueError("no usage_usec")
+
+
+def proc_stat(proc, pid):
+    st = read("%s/%d/stat" % (proc, pid))
+    rest = st[st.rindex(")") + 2:].split()
+    return int(rest[1]), int(rest[19])
+
+
+def proc_comm(proc, pid):
+    try:
+        comm = read("%s/%d/comm" % (proc, pid)).strip()
+    except OSError:
+        return ""
+    try:
+        with open("%s/%d/cmdline" % (proc, pid), "rb") as f:
+            cmd = f.read().replace(b"\0", b" ").decode(errors="replace").strip()
+    except OSError:
+        cmd = ""
+    return P.full_name(comm, cmd) if comm else ""
+
+
+def pss(proc, pid):
+    """Proportional memory in bytes; a process that won't show its map (a protected one) counts its resident pages."""
+    try:
+        for line in read("%s/%d/smaps_rollup" % (proc, pid)).splitlines():
+            if line.startswith("Pss:"):
+                return int(line.split()[1]) * 1024
+    except (OSError, ValueError, IndexError):
+        pass
+    try:
+        st = read("%s/%d/stat" % (proc, pid))
+        return int(st[st.rindex(")") + 2:].split()[21]) * P.PAGE
+    except (OSError, ValueError, IndexError):
+        return None
+
+
+def pretty(app):
+    parts = [x for x in app.split(".") if x]
+    word = parts[-1] if len(parts) >= 3 else app
+    return word[:1].upper() + word[1:]
+
+
+class Sampler:
+    def __init__(self, cgroup_root, proc_root, cpus, mem_every):
+        self.cg = cgroup_root
+        self.proc = proc_root
+        self.cpus = cpus
+        self.mem_every = mem_every
+        self.last = {}
+        self.facts = {}
+        self.mem_at = {}
+        self.own = P.own_unit()
+
+    def facts_of(self, unit, pids):
+        """The main process (the one whose parent is not in the unit), its name, and whether the session needs it."""
+        listed = set(pids)
+        best = None
+        comms = []
+        for pid in pids:
+            try:
+                ppid, start = proc_stat(self.proc, pid)
+            except (OSError, ValueError, IndexError):
+                continue
+            comms.append(proc_comm(self.proc, pid))
+            if (ppid not in listed or ppid == pid) and (best is None or (start, pid) < best[:2]):
+                best = (start, pid)
+        if best is None:
+            return None
+        start, main = best
+        launcher, app = P.unit_app(unit)
+        name = proc_comm(self.proc, main)
+        app = app or name
+        kept = P.unit_kept(unit, [c for c in comms if c], unit == self.own)
+        return {"unit": unit, "id": app, "launcher": launcher, "label": pretty(app) if app else name, "main": name,
+                "pid": main, "start": start, "protected": kept}
+
+    def sample(self, now=None):
+        now = time.monotonic() if now is None else now
+        units = P.find_units(self.cg)
+        rows = []
+        seen = set()
+        for unit, path in units.items():
+            try:
+                usec = usage_usec(path)
+                pids = P.unit_pids(path)
+            except (OSError, ValueError):
+                self.last.pop(unit, None)
+                continue
+            if not pids:
+                self.last.pop(unit, None)
+                continue
+            seen.add(unit)
+            before = self.last.get(unit)
+            self.last[unit] = (now, usec)
+            cpu = 0.0
+            if before and now > before[0]:
+                cpu = max(0.0, (usec - before[1]) / ((now - before[0]) * 1e6) * 100)
+            due = unit not in self.facts or now - self.mem_at.get(unit, -1e9) >= self.mem_every
+            if due:
+                facts = self.facts_of(unit, pids)
+                if facts is None:
+                    self.last.pop(unit, None)
+                    continue
+                total, got = 0, False
+                for pid in pids:
+                    v = pss(self.proc, pid)
+                    if v is not None:
+                        total += v
+                        got = True
+                facts["mem"] = total if got else None
+                self.facts[unit] = facts
+                self.mem_at[unit] = now
+            row = dict(self.facts[unit])
+            row["procs"] = len(pids)
+            row["cpu"] = round(cpu, 1)
+            rows.append(row)
+        for gone in set(self.last) - seen:
+            del self.last[gone]
+        for gone in set(self.facts) - seen:
+            del self.facts[gone]
+            self.mem_at.pop(gone, None)
+        rows.sort(key=lambda r: r["unit"])
+        return {"t": round(time.time(), 1), "cpus": self.cpus, "units": rows}
+
+
+def cpu_count():
+    try:
+        return len(os.sched_getaffinity(0))
+    except (AttributeError, OSError):
+        return os.cpu_count() or 1
+
+
+def main(argv):
+    ap = argparse.ArgumentParser(prog="kuwai-activity")
+    ap.add_argument("--once", action="store_true")
+    ap.add_argument("--interval", type=float, default=1.0)
+    ap.add_argument("--first", type=float, default=0.4)
+    ap.add_argument("--mem-every", type=float, default=5.0)
+    ap.add_argument("--frames", type=int, default=0)
+    ap.add_argument("--cpus", type=int, default=0)
+    ap.add_argument("--cgroup-root", default=None)
+    ap.add_argument("--proc-root", default="/proc")
+    a = ap.parse_args(argv)
+    s = Sampler(a.cgroup_root, a.proc_root, a.cpus or cpu_count(), a.mem_every)
+    s.sample()
+    sent = 0
+    wait = a.first
+    while True:
+        time.sleep(wait)
+        wait = a.interval
+        frame = s.sample()
+        try:
+            sys.stdout.write(json.dumps(frame, separators=(",", ":")) + "\n")
+            sys.stdout.flush()
+        except BrokenPipeError:
+            os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
+            return 0
+        sent += 1
+        if a.once or (a.frames and sent >= a.frames):
+            return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

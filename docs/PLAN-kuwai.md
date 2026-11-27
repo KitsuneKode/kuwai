@@ -161,9 +161,12 @@ one is still running; cards' top-edge light; Geist Mono fallback; no wallmap job
 without the model.
 
 Next, in order (both reviews agree):
-- [ ] Activity tab in System: apps grouped by systemd scope (app-*.scope) with
+- [x] Activity tab in System: apps grouped by systemd scope (app-*.scope) with
       desktop icons, CPU per logical CPU from cgroup cpu.stat deltas while open,
-      PSS on a slower beat, Stop/Force quit through kuwai-procs.
+      PSS on a slower beat, Stop/Force quit through kuwai-procs. Done: bin/kuwai-activity
+      (1 s frames, PSS every 5 s, only while the tab is open), kuwai-procs --end-unit,
+      services/Activity.qml + activity.mjs, modules/island/ActivityView.qml; scenes
+      system/activity-*. Not done: opening System straight on the tab from the CLI.
 - [x] API keys in shell rc files → Secret Service: scan named files only (name,
       file:line, never the value), store via secret-tool on stdin, verify, then
       rewrite atomically; a per-tool launcher loads it. Never print or log a value.

@@ -83,6 +83,14 @@ solve concrete desktop failure modes:
      deduplicating Claude's multi-block assistant entries by message ID.
    - `bin/kuwai-procs` samples `/proc` over 0.6 s with a 10% CPU busy threshold
      and restricts full-cmdline matching to 4+ character queries.
+   - `bin/kuwai-activity` streams one JSON line a second while the System
+     panel's Activity tab is open (`setpriv --pdeathsig KILL`, nothing runs
+     when it is closed): app units (`app-*.scope`, `app-*.service`, the
+     shell's `run-*.service`) with CPU from the cgroup's `cpu.stat`
+     `usage_usec` deltas and PSS summed over the unit's processes every 5 s.
+     `kuwai-procs --end-unit UNIT [--force]` signals every process of one
+     unit through pidfds and refuses a unit holding the session, a portal,
+     a key or login agent, kuwai itself or the launcher that asked.
    - `bin/kuwai-rehearse` + `lib/rehearse/` enforce WCAG 2.2 minimum target
      size (24 px) and contrast (4.5:1 normal, 3:1 large); `bin/kuwai-ui-test`
      runs offscreen scenes in isolated net/home namespaces with real

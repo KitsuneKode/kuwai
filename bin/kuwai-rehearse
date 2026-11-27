@@ -168,6 +168,7 @@ def main():
 
     doc = json.loads(args.scenes.read_text())
     seed, scenes = (doc.get("seed", {}), doc["scenes"]) if isinstance(doc, dict) else ({}, doc)
+    running = doc.get("running", []) if isinstance(doc, dict) else []
     if args.only:
         scenes = [s for s in scenes if any(s["id"].startswith(p) for p in args.only)]
     if not scenes:
@@ -177,7 +178,7 @@ def main():
     scales = args.scale or [1, 1.2, 2]
 
     if args.pixels != 1:
-        verdict, frames = stage({"seed": at_now(seed), "scenes": at_now(scenes)}, 1, out, args.pixels)
+        verdict, frames = stage({"seed": at_now(seed), "running": running, "scenes": at_now(scenes)}, 1, out, args.pixels)
         if verdict.get("status") != "PASS":
             print(f"could not stage: {verdict.get('reason')} ({out / 'runtime.log'})", file=sys.stderr)
             return 2
@@ -188,7 +189,7 @@ def main():
     for scale in scales:
         tag = f"x{scale:g}"
         scenes_now = [s for s in scenes if scale in s.get("scales", scales)]
-        verdict, frames = stage({"seed": at_now(seed), "scenes": at_now(scenes_now)}, scale, out / tag)
+        verdict, frames = stage({"seed": at_now(seed), "running": running, "scenes": at_now(scenes_now)}, scale, out / tag)
         if verdict.get("status") == "UNQUALIFIED":
             print(f"could not stage at text {tag}: {verdict.get('reason')}", file=sys.stderr)
             return 2

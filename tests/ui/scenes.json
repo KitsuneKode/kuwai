@@ -1,7 +1,8 @@
 {
  "about": "The rehearsal's scenes (bin/kuwai-rehearse, docs/design/REHEARSAL.md). Each scene is one panel in one state: `set` puts services in that state ([service, property, value] or [service, \"call\", function, arguments]) and is undone after the frame. `kind: worst` is data longer than ordinary, where shortening with an ellipsis is the right answer. `seed` are files written into the private home before the shell starts (paths under that home, e.g. \".local/state/kuwai/notifications.json\": Notifs keeps its store under HOME, not XDG_STATE_HOME). A string \"@now-300s\" or \"@now+5400000ms\" becomes that moment (epoch seconds or milliseconds); \"@now-300iso\" the same as ISO text. `running` are helpers a service keeps alive: their stand-in stays up silently (the others exit at once, as on a machine where they are missing). `props` are the panel's own properties; \"@date:2026-11-18T10:10:00\" is that moment. A seed value \"copy:tests/ui/fixtures/x.png\" copies that repository file instead of writing JSON. `late` are sets (same form as `set`) applied once the panel is up, for a reading a helper the panel starts would overwrite (SystemStats).",
  "running": [
-  "kuwai-usage"
+  "kuwai-usage",
+  "kuwai-activity"
  ],
  "seed": {
   ".local/state/kuwai/notifications.json": {
@@ -9927,6 +9928,759 @@
      "SystemStats",
      "igpuMHz",
      0
+    ]
+   ]
+  },
+  {
+   "id": "system/activity-loading",
+   "name": "system",
+   "panel": "SystemPanel",
+   "kind": "typical",
+   "props": {
+    "tab": "activity"
+   }
+  },
+  {
+   "id": "system/activity-busy",
+   "name": "system",
+   "panel": "SystemPanel",
+   "kind": "typical",
+   "props": {
+    "tab": "activity"
+   },
+   "set": [
+    [
+     "Activity",
+     "call",
+     "show",
+     [
+      {
+       "t": 0,
+       "cpus": 16,
+       "units": [
+        {
+         "unit": "app-Hyprland-zen\\x2dbrowser-4101.scope",
+         "id": "zen-browser",
+         "launcher": "Hyprland",
+         "label": "Zen",
+         "main": "zen-bin",
+         "pid": 4394,
+         "start": 1000,
+         "procs": 31,
+         "cpu": 38.4,
+         "mem": 2023751680,
+         "protected": false
+        },
+        {
+         "unit": "app-com.t3tools.T3Code-4102.scope",
+         "id": "com.t3tools.T3Code",
+         "launcher": "",
+         "label": "T3Code",
+         "main": "t3code",
+         "pid": 4327,
+         "start": 1000,
+         "procs": 64,
+         "cpu": 21.7,
+         "mem": 1174405120,
+         "protected": false
+        },
+        {
+         "unit": "app-kitty-4103.scope",
+         "id": "kitty",
+         "launcher": "",
+         "label": "Kitty",
+         "main": "kitty",
+         "pid": 4864,
+         "start": 1000,
+         "procs": 9,
+         "cpu": 9.2,
+         "mem": 325058560,
+         "protected": false
+        },
+        {
+         "unit": "app-code-4104.scope",
+         "id": "code",
+         "launcher": "",
+         "label": "Code",
+         "main": "code",
+         "pid": 4252,
+         "start": 1000,
+         "procs": 14,
+         "cpu": 4.8,
+         "mem": 859832320,
+         "protected": false
+        },
+        {
+         "unit": "app-spotify-4105.scope",
+         "id": "spotify",
+         "launcher": "",
+         "label": "Spotify",
+         "main": "spotify",
+         "pid": 4489,
+         "start": 1000,
+         "procs": 7,
+         "cpu": 2.1,
+         "mem": 566231040,
+         "protected": false
+        },
+        {
+         "unit": "app-steam-4106.scope",
+         "id": "steam",
+         "launcher": "",
+         "label": "Steam",
+         "main": "steam",
+         "pid": 4526,
+         "start": 1000,
+         "procs": 12,
+         "cpu": 0.6,
+         "mem": 639631360,
+         "protected": false
+        },
+        {
+         "unit": "app-discord-4107.scope",
+         "id": "discord",
+         "launcher": "",
+         "label": "Discord",
+         "main": "Discord",
+         "pid": 4132,
+         "start": 1000,
+         "procs": 8,
+         "cpu": 0.4,
+         "mem": 503316480,
+         "protected": false
+        },
+        {
+         "unit": "app-mpv-4108.scope",
+         "id": "mpv",
+         "launcher": "",
+         "label": "Mpv",
+         "main": "mpv",
+         "pid": 4893,
+         "start": 1000,
+         "procs": 1,
+         "cpu": 0.0,
+         "mem": 125829120,
+         "protected": false
+        },
+        {
+         "unit": "app-org.freedesktop.impl.portal.desktop.hyprland-4109.scope",
+         "id": "org.freedesktop.impl.portal.desktop.hyprland",
+         "launcher": "",
+         "label": "Hyprland",
+         "main": "xdg-desktop-por",
+         "pid": 4001,
+         "start": 1000,
+         "procs": 2,
+         "cpu": 0.3,
+         "mem": 39845888,
+         "protected": true
+        }
+       ]
+      }
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "system/activity-armed",
+   "name": "system",
+   "panel": "SystemPanel",
+   "kind": "typical",
+   "props": {
+    "tab": "activity"
+   },
+   "set": [
+    [
+     "Activity",
+     "call",
+     "show",
+     [
+      {
+       "t": 0,
+       "cpus": 16,
+       "units": [
+        {
+         "unit": "app-Hyprland-zen\\x2dbrowser-4101.scope",
+         "id": "zen-browser",
+         "launcher": "Hyprland",
+         "label": "Zen",
+         "main": "zen-bin",
+         "pid": 4394,
+         "start": 1000,
+         "procs": 31,
+         "cpu": 38.4,
+         "mem": 2023751680,
+         "protected": false
+        },
+        {
+         "unit": "app-com.t3tools.T3Code-4102.scope",
+         "id": "com.t3tools.T3Code",
+         "launcher": "",
+         "label": "T3Code",
+         "main": "t3code",
+         "pid": 4327,
+         "start": 1000,
+         "procs": 64,
+         "cpu": 21.7,
+         "mem": 1174405120,
+         "protected": false
+        },
+        {
+         "unit": "app-kitty-4103.scope",
+         "id": "kitty",
+         "launcher": "",
+         "label": "Kitty",
+         "main": "kitty",
+         "pid": 4864,
+         "start": 1000,
+         "procs": 9,
+         "cpu": 9.2,
+         "mem": 325058560,
+         "protected": false
+        },
+        {
+         "unit": "app-code-4104.scope",
+         "id": "code",
+         "launcher": "",
+         "label": "Code",
+         "main": "code",
+         "pid": 4252,
+         "start": 1000,
+         "procs": 14,
+         "cpu": 4.8,
+         "mem": 859832320,
+         "protected": false
+        },
+        {
+         "unit": "app-spotify-4105.scope",
+         "id": "spotify",
+         "launcher": "",
+         "label": "Spotify",
+         "main": "spotify",
+         "pid": 4489,
+         "start": 1000,
+         "procs": 7,
+         "cpu": 2.1,
+         "mem": 566231040,
+         "protected": false
+        },
+        {
+         "unit": "app-steam-4106.scope",
+         "id": "steam",
+         "launcher": "",
+         "label": "Steam",
+         "main": "steam",
+         "pid": 4526,
+         "start": 1000,
+         "procs": 12,
+         "cpu": 0.6,
+         "mem": 639631360,
+         "protected": false
+        },
+        {
+         "unit": "app-discord-4107.scope",
+         "id": "discord",
+         "launcher": "",
+         "label": "Discord",
+         "main": "Discord",
+         "pid": 4132,
+         "start": 1000,
+         "procs": 8,
+         "cpu": 0.4,
+         "mem": 503316480,
+         "protected": false
+        },
+        {
+         "unit": "app-mpv-4108.scope",
+         "id": "mpv",
+         "launcher": "",
+         "label": "Mpv",
+         "main": "mpv",
+         "pid": 4893,
+         "start": 1000,
+         "procs": 1,
+         "cpu": 0.0,
+         "mem": 125829120,
+         "protected": false
+        },
+        {
+         "unit": "app-org.freedesktop.impl.portal.desktop.hyprland-4109.scope",
+         "id": "org.freedesktop.impl.portal.desktop.hyprland",
+         "launcher": "",
+         "label": "Hyprland",
+         "main": "xdg-desktop-por",
+         "pid": 4001,
+         "start": 1000,
+         "procs": 2,
+         "cpu": 0.3,
+         "mem": 39845888,
+         "protected": true
+        }
+       ]
+      }
+     ]
+    ],
+    [
+     "Activity",
+     "call",
+     "press",
+     [
+      "app-Hyprland-zen\\x2dbrowser-4101.scope",
+      "force",
+      "Zen"
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "system/activity-stuck",
+   "name": "system",
+   "panel": "SystemPanel",
+   "kind": "typical",
+   "props": {
+    "tab": "activity"
+   },
+   "set": [
+    [
+     "Activity",
+     "call",
+     "show",
+     [
+      {
+       "t": 0,
+       "cpus": 16,
+       "units": [
+        {
+         "unit": "app-Hyprland-zen\\x2dbrowser-4101.scope",
+         "id": "zen-browser",
+         "launcher": "Hyprland",
+         "label": "Zen",
+         "main": "zen-bin",
+         "pid": 4394,
+         "start": 1000,
+         "procs": 31,
+         "cpu": 38.4,
+         "mem": 2023751680,
+         "protected": false
+        },
+        {
+         "unit": "app-com.t3tools.T3Code-4102.scope",
+         "id": "com.t3tools.T3Code",
+         "launcher": "",
+         "label": "T3Code",
+         "main": "t3code",
+         "pid": 4327,
+         "start": 1000,
+         "procs": 64,
+         "cpu": 21.7,
+         "mem": 1174405120,
+         "protected": false
+        },
+        {
+         "unit": "app-kitty-4103.scope",
+         "id": "kitty",
+         "launcher": "",
+         "label": "Kitty",
+         "main": "kitty",
+         "pid": 4864,
+         "start": 1000,
+         "procs": 9,
+         "cpu": 9.2,
+         "mem": 325058560,
+         "protected": false
+        },
+        {
+         "unit": "app-code-4104.scope",
+         "id": "code",
+         "launcher": "",
+         "label": "Code",
+         "main": "code",
+         "pid": 4252,
+         "start": 1000,
+         "procs": 14,
+         "cpu": 4.8,
+         "mem": 859832320,
+         "protected": false
+        },
+        {
+         "unit": "app-spotify-4105.scope",
+         "id": "spotify",
+         "launcher": "",
+         "label": "Spotify",
+         "main": "spotify",
+         "pid": 4489,
+         "start": 1000,
+         "procs": 7,
+         "cpu": 2.1,
+         "mem": 566231040,
+         "protected": false
+        },
+        {
+         "unit": "app-steam-4106.scope",
+         "id": "steam",
+         "launcher": "",
+         "label": "Steam",
+         "main": "steam",
+         "pid": 4526,
+         "start": 1000,
+         "procs": 12,
+         "cpu": 0.6,
+         "mem": 639631360,
+         "protected": false
+        },
+        {
+         "unit": "app-discord-4107.scope",
+         "id": "discord",
+         "launcher": "",
+         "label": "Discord",
+         "main": "Discord",
+         "pid": 4132,
+         "start": 1000,
+         "procs": 8,
+         "cpu": 0.4,
+         "mem": 503316480,
+         "protected": false
+        },
+        {
+         "unit": "app-mpv-4108.scope",
+         "id": "mpv",
+         "launcher": "",
+         "label": "Mpv",
+         "main": "mpv",
+         "pid": 4893,
+         "start": 1000,
+         "procs": 1,
+         "cpu": 0.0,
+         "mem": 125829120,
+         "protected": false
+        },
+        {
+         "unit": "app-org.freedesktop.impl.portal.desktop.hyprland-4109.scope",
+         "id": "org.freedesktop.impl.portal.desktop.hyprland",
+         "launcher": "",
+         "label": "Hyprland",
+         "main": "xdg-desktop-por",
+         "pid": 4001,
+         "start": 1000,
+         "procs": 2,
+         "cpu": 0.3,
+         "mem": 39845888,
+         "protected": true
+        }
+       ]
+      }
+     ]
+    ],
+    [
+     "Activity",
+     "call",
+     "ended",
+     [
+      "app-com.t3tools.T3Code-4102.scope",
+      "T3Code",
+      {
+       "ok": true,
+       "gone": false
+      }
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "system/activity-worst",
+   "name": "system",
+   "panel": "SystemPanel",
+   "kind": "worst",
+   "props": {
+    "tab": "activity"
+   },
+   "set": [
+    [
+     "Activity",
+     "call",
+     "show",
+     [
+      {
+       "t": 0,
+       "cpus": 32,
+       "units": [
+        {
+         "unit": "app-worst-0.scope",
+         "id": "worst0",
+         "launcher": "",
+         "label": "Visual Studio Code – Insiders, the preview build of the next release with every extension on",
+         "main": "worst",
+         "pid": 4198,
+         "start": 1000,
+         "procs": 1,
+         "cpu": 1280.4,
+         "mem": 29360128000,
+         "protected": false
+        },
+        {
+         "unit": "app-worst-1.scope",
+         "id": "worst1",
+         "launcher": "",
+         "label": "Firefox Developer Edition (a profile that has been open for nine days with four hundred tabs)",
+         "main": "worst",
+         "pid": 4334,
+         "start": 1000,
+         "procs": 8,
+         "cpu": 612.0,
+         "mem": 9542041600,
+         "protected": false
+        },
+        {
+         "unit": "app-worst-2.scope",
+         "id": "worst2",
+         "launcher": "",
+         "label": "org.gnome.Nautilus.Extension.FileRoller.Preview.Service",
+         "main": "worst",
+         "pid": 4124,
+         "start": 1000,
+         "procs": 15,
+         "cpu": 340.9,
+         "mem": null,
+         "protected": false
+        },
+        {
+         "unit": "app-worst-3.scope",
+         "id": "worst3",
+         "launcher": "",
+         "label": "Zen",
+         "main": "worst",
+         "pid": 4798,
+         "start": 1000,
+         "procs": 22,
+         "cpu": 88.5,
+         "mem": 2726297600,
+         "protected": false
+        },
+        {
+         "unit": "app-worst-4.scope",
+         "id": "worst4",
+         "launcher": "",
+         "label": "Telegram Desktop",
+         "main": "worst",
+         "pid": 4217,
+         "start": 1000,
+         "procs": 29,
+         "cpu": 31.2,
+         "mem": 1363148800,
+         "protected": false
+        },
+        {
+         "unit": "app-worst-5.scope",
+         "id": "worst5",
+         "launcher": "",
+         "label": "Obsidian",
+         "main": "worst",
+         "pid": 4829,
+         "start": 1000,
+         "procs": 36,
+         "cpu": 9.9,
+         "mem": 985661440,
+         "protected": false
+        },
+        {
+         "unit": "app-worst-6.scope",
+         "id": "worst6",
+         "launcher": "",
+         "label": "Blender 4.5 (render farm node with a very long window title)",
+         "main": "worst",
+         "pid": 4676,
+         "start": 1000,
+         "procs": 43,
+         "cpu": 5.6,
+         "mem": 132120576,
+         "protected": false
+        },
+        {
+         "unit": "app-worst-7.scope",
+         "id": "worst7",
+         "launcher": "",
+         "label": "Steam",
+         "main": "worst",
+         "pid": 4482,
+         "start": 1000,
+         "procs": 50,
+         "cpu": 5.199999999999999,
+         "mem": 143654912,
+         "protected": false
+        },
+        {
+         "unit": "app-worst-8.scope",
+         "id": "worst8",
+         "launcher": "",
+         "label": "Slack",
+         "main": "worst",
+         "pid": 4669,
+         "start": 1000,
+         "procs": 57,
+         "cpu": 4.8,
+         "mem": 155189248,
+         "protected": false
+        },
+        {
+         "unit": "app-worst-9.scope",
+         "id": "worst9",
+         "launcher": "",
+         "label": "Signal",
+         "main": "worst",
+         "pid": 4366,
+         "start": 1000,
+         "procs": 64,
+         "cpu": 4.4,
+         "mem": 166723584,
+         "protected": false
+        },
+        {
+         "unit": "app-worst-10.scope",
+         "id": "worst10",
+         "launcher": "",
+         "label": "Kitty",
+         "main": "worst",
+         "pid": 4737,
+         "start": 1000,
+         "procs": 71,
+         "cpu": 4.0,
+         "mem": 178257920,
+         "protected": false
+        },
+        {
+         "unit": "app-worst-11.scope",
+         "id": "worst11",
+         "launcher": "",
+         "label": "Cursor",
+         "main": "worst",
+         "pid": 4151,
+         "start": 1000,
+         "procs": 78,
+         "cpu": 3.5999999999999996,
+         "mem": 189792256,
+         "protected": false
+        },
+        {
+         "unit": "app-worst-12.scope",
+         "id": "worst12",
+         "launcher": "",
+         "label": "LibreOffice Writer",
+         "main": "worst",
+         "pid": 4507,
+         "start": 1000,
+         "procs": 85,
+         "cpu": 3.1999999999999993,
+         "mem": 201326592,
+         "protected": false
+        },
+        {
+         "unit": "app-worst-13.scope",
+         "id": "worst13",
+         "launcher": "",
+         "label": "Inkscape",
+         "main": "worst",
+         "pid": 4169,
+         "start": 1000,
+         "procs": 2,
+         "cpu": 2.8,
+         "mem": 212860928,
+         "protected": false
+        },
+        {
+         "unit": "app-worst-14.scope",
+         "id": "worst14",
+         "launcher": "",
+         "label": "GIMP",
+         "main": "worst",
+         "pid": 4187,
+         "start": 1000,
+         "procs": 9,
+         "cpu": 2.3999999999999995,
+         "mem": 224395264,
+         "protected": false
+        },
+        {
+         "unit": "app-worst-15.scope",
+         "id": "worst15",
+         "launcher": "",
+         "label": "Krita",
+         "main": "worst",
+         "pid": 4471,
+         "start": 1000,
+         "procs": 16,
+         "cpu": 2.0,
+         "mem": 235929600,
+         "protected": false
+        },
+        {
+         "unit": "app-worst-16.scope",
+         "id": "worst16",
+         "launcher": "",
+         "label": "Chromium",
+         "main": "worst",
+         "pid": 4433,
+         "start": 1000,
+         "procs": 23,
+         "cpu": 1.5999999999999996,
+         "mem": 247463936,
+         "protected": false
+        },
+        {
+         "unit": "app-worst-17.scope",
+         "id": "worst17",
+         "launcher": "",
+         "label": "Spotify",
+         "main": "worst",
+         "pid": 4182,
+         "start": 1000,
+         "procs": 30,
+         "cpu": 1.1999999999999993,
+         "mem": 258998272,
+         "protected": true
+        }
+       ]
+      }
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "system/activity-empty",
+   "name": "system",
+   "panel": "SystemPanel",
+   "kind": "typical",
+   "props": {
+    "tab": "activity"
+   },
+   "set": [
+    [
+     "Activity",
+     "call",
+     "show",
+     [
+      {
+       "t": 0,
+       "cpus": 16,
+       "units": []
+      }
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "system/activity-error",
+   "name": "system",
+   "panel": "SystemPanel",
+   "kind": "typical",
+   "props": {
+    "tab": "activity"
+   },
+   "set": [
+    [
+     "Activity",
+     "call",
+     "fail",
+     []
     ]
    ]
   },
