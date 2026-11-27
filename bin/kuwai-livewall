@@ -221,12 +221,12 @@ freeze() {
         [ -S "$s" ] || continue
         out=${s##*/mpvpaper-}; out=${out%.sock}
         out_pid "$out" >/dev/null || continue
-        shot="$SOCK_DIR/frozen-$out.png"
+        shot="$SOCK_DIR/frozen-$out.jpg"
         rm -f "$shot"
         out_cmd "$out" '{ "command": ["set_property", "pause", true] }'
-        jq -cn --arg f "$shot" '{command: ["screenshot-to-file", $f, "video"]}' | socat - "$s" >/dev/null 2>&1
-        for _ in $(seq 20); do [ -s "$shot" ] && break; sleep 0.02; done
-        [ -s "$shot" ] && printf '%s %s\n' "$out" "$shot"
+        jq -cn --arg f "$shot" '{command: ["screenshot-to-file", $f, "video"], request_id: 7}' \
+            | socat -t 3 - "$s" 2>/dev/null | grep -q '"request_id":7.*"error":"success"\|"error":"success".*"request_id":7' \
+            && [ -s "$shot" ] && printf '%s %s\n' "$out" "$shot"
     done
     return 0
 }
