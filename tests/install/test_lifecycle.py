@@ -70,6 +70,12 @@ if a[0] == 'enable' and a[1] == os.environ.get('TEST_FAIL_ENABLE'):
 if a[0] == 'is-enabled':
     print(s.get(a[1], 'disabled'))
     sys.exit(0 if s.get(a[1]) == 'enabled' else 1)
+if os.environ.get('TEST_NOT_LOADED') and a[0] == 'stop':
+    sys.exit(5)
+if os.environ.get('TEST_NOT_LOADED') and a[0] == 'disable' and '--now' in sys.argv:
+    s[a[1]] = 'disabled'
+    with open(p, 'w') as f: json.dump(s, f)
+    sys.exit(5)
 if a[0] in ('enable', 'disable'):
     s[a[1]] = 'enabled' if a[0] == 'enable' else 'disabled'
     with open(p, 'w') as f: json.dump(s, f)
@@ -473,6 +479,17 @@ def test_a_failed_unit_restore_keeps_the_record_to_retry(install_env):
     del i.env['TEST_FAIL_ENABLE']
     i.run('--uninstall')
     assert json.loads(i.services.read_text())[UNITS[0]] == 'enabled'
+    assert not i.entry.exists()
+
+
+def test_uninstall_disables_units_that_were_never_started(install_env):
+    """systemd removes the link, then can't stop a unit it never loaded (exit 5): that is not a failed restore."""
+    i = install_env
+    i.run()
+    i.env['TEST_NOT_LOADED'] = '1'
+    r = subprocess.run(['bash', str(i.repo / 'install.sh'), '--uninstall'], env=i.env, text=True, capture_output=True)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert 'again' not in r.stdout
     assert not i.entry.exists()
 
 
