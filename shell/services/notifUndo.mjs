@@ -138,7 +138,7 @@ export function isHeld(batch, item) {
  * @returns {Item[]}
  */
 export function persisted(items, snoozed, batch, secret) {
-    return items.concat(snoozed).filter(i => !(/** @type {{ discard?: boolean }} */ (i)).discard && !isHeld(batch, i) && !(secret && secret(i)));
+    return items.concat(snoozed).filter(i => !(/** @type {{ discard?: boolean, fleeting?: boolean }} */ (i)).discard && !(/** @type {{ fleeting?: boolean }} */ (i)).fleeting && !isHeld(batch, i) && !(secret && secret(i)));
 }
 
 /**

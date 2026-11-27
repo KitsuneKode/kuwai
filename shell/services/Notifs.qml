@@ -19,6 +19,7 @@ import qs.config
 import "otp.mjs" as Otp
 import "notifUndo.mjs" as Undo
 import "notifTidy.mjs" as Tidy
+import "notifTriage.mjs" as Triage
 import "notifMarkup.mjs" as Markup
 import "notifPrivacy.mjs" as Privacy
 
@@ -165,6 +166,11 @@ Singleton {
             n.dismiss();
             return;
         }
+        const top = Hyprland.activeToplevel;
+        const focused = top ? { appId: top.wayland ? String(top.wayland.appId || "") : "", class: top.lastIpcObject ? String(top.lastIpcObject["class"] || "") : "", title: String(top.title || "") } : null;
+        const verdict = Triage.triage({ app: n.appName, summary: n.summary, body: n.body, urgency: n.urgency, transient: n.transient,
+                                        desktopEntry: n.desktopEntry, hints: n.hints, actions: (n.actions || []).map(x => ({ identifier: x.identifier })) }, focused);
+        if (verdict === "drop") { n.dismiss(); return; }
         const twin = a.groupKey ? items.find(i => i.groupKey === a.groupKey && i.popup && !i.leaving) : null;
         if (twin) {
             twin.absorb(n, a);
@@ -175,12 +181,16 @@ Singleton {
         item.apply(n, a);
         // A kitty pane in front of you (its sudo prompt, an agent done there):
         // into the list, no toast, no notch, no missed dot.
-        if (item.jump && Kittymux.onScreen(item.jump)) item.quiet = true;
+        if (item.jump && Kittymux.onScreen(item.jump)) {
+            if (item.agentState === "done") { n.dismiss(); item.destroy(); return; }
+            item.quiet = true;
+        }
         // While the center is open the new one just lands in its list; so
         // does a quiet one (a bot's pull request, say).
         item.popup = toastsFor(item);
         if (n.transient && !item.popup) { n.dismiss(); item.destroy(); return; }
-        item.fleeting = !!n.transient;
+        item.fleeting = !!n.transient || verdict === "toast";
+        if (verdict === "toast" && !item.popup) { n.dismiss(); item.destroy(); return; }
         // One app, one toast: a burst (14 meeting reminders) replaces its own
         // toast on screen instead of pushing everyone else's off. The earlier
         // ones stay in the history; the toast counts them (+13).
@@ -850,6 +860,12 @@ Singleton {
 
     // What is no longer news leaves on its own (notifTidy.mjs): seen ones after
     // notifKeepSeenHours, low ones an hour after seen, sudo prompts, T3 threads opened.
+    Connections {
+        target: Kittymux
+        function onInboxChanged() {
+            for (const i of root.items.filter(i => i.event && !i.popup && Triage.authAsk(i) && Kittymux.answered(i.event))) root.remove(i);
+        }
+    }
     function sweepSeen() {
         if (!loaded) return;
         for (const i of Tidy.expired(items, Date.now(), lastSeen, Settings.notifKeepSeenHours)) remove(i);

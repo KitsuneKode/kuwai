@@ -79,7 +79,7 @@ playable() {
     disown 2>/dev/null || true
 }
 
-notify() { command -v notify-send >/dev/null && notify-send -a "󰸉 Live Wallpaper" "$1" || true; }
+notify() { case $1 in "▶"*|"⏹"*) shell_up 2>/dev/null && return 0 ;; esac; command -v notify-send >/dev/null && notify-send -e -t 2500 -a "󰸉 Live Wallpaper" "$1" || true; }
 
 is_video() { case "$1" in *.mp4|*.MP4|*.webm|*.mkv|*.mov) return 0;; *) return 1;; esac; }
 

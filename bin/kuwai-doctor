@@ -51,7 +51,7 @@ fi
 
 if [ -x "$KUWAI/bin/kuwai-notify" ]; then
     if [ -n "$npid" ] && [ "$(cat /proc/"$npid"/comm 2>/dev/null)" != dunst ]; then
-        if "$KUWAI/bin/kuwai-notify" -u low "Doctor" "Smoke test (ignore)" >/dev/null 2>&1; then
+        if "$KUWAI/bin/kuwai-notify" -u low -t "Doctor" "Smoke test (ignore)" >/dev/null 2>&1; then
             ok "kuwai-notify → D-Bus Notify"
         else
             bad "kuwai-notify could not reach the notification server"
