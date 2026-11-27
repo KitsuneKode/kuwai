@@ -1307,6 +1307,7 @@ Scope {
                             height: panelScope.height - win.backH
                             active: win.panelHere || pv.value > 0.01
                             focus: true
+                            onStatusChanged: if (status === Loader.Error && win.panelHere) { console.warn("island: the " + win.shownPanel + " panel didn't build; closing it"); Island.close(); }
                             sourceComponent: ({ activities: activitiesPanel, calendar: calendarPanel, power: powerPanel, launcher: launcherPanel, settings: settingsPanel, system: systemPanel, theme: themePanel, keys: keysPanel, switcher: switcherPanel, updates: updatesPanel, media: mediaPanel, agents: agentsPanel, usage: usagePanel, read: readPanel, cleanup: cleanupPanel, notifications: centerPanel, controls: centerPanel, welcome: welcomePanel })[win.shownPanel] || null
                             onLoaded: if (item && item.inStrip !== undefined) item.inStrip = win.sectioned && !Island.canBack
                         }

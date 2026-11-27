@@ -86,6 +86,7 @@ add() (
     fi
     [ -s "$temporary" ] || return 1
     mv -- "$temporary" "$out" || return 1
+    thumb_of "$out"
     echo "added $(basename "$out") ($(du -h "$out" | cut -f1))"
 )
 
@@ -116,24 +117,38 @@ import() {
     echo "imported $n video wallpapers; $skipped scene/web ones skipped"
 }
 
+THUMBS="${XDG_CACHE_HOME:-$HOME/.cache}/kuwai/live-thumbs"
+thumb_of() {
+    local path=$1 thumb="$THUMBS/$(basename "${1%.*}").jpg" d
+    [ -s "$thumb" ] && [ ! "$thumb" -ot "$path" ] && return 0
+    mkdir -p "$THUMBS"
+    d=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$path" 2>/dev/null)
+    nice -n 10 ffmpeg -nostdin -v error -y -ss "$(awk -v d="${d:-3}" 'BEGIN{print d/3}')" -i "$path" -frames:v 1 -vf "scale=640:-2" -q:v 4 "$thumb.part.jpg" 2>/dev/null \
+        && mv -f -- "$thumb.part.jpg" "$thumb" || rm -f -- "$thumb.part.jpg"
+}
+thumbs() {
+    mkdir -p "$THUMBS"
+    exec 8>"$THUMBS/.make.lock"
+    flock -n 8 || return 0
+    local f
+    while IFS= read -r -d '' f; do thumb_of "$LIB/$f"; done < <(find "$LIB" -maxdepth 1 -type f \( -iname '*.mp4' -o -iname '*.webm' -o -iname '*.mkv' \) -printf '%f\0' | sort -zV)
+}
 json() {
-    local cache="${XDG_CACHE_HOME:-$HOME/.cache}/kuwai/live-thumbs" cur
-    mkdir -p "$cache"
+    local cur missing=0
+    mkdir -p "$THUMBS"
     cur=$(cat "${XDG_STATE_HOME:-$HOME/.local/state}/live-wallpaper/last" 2>/dev/null)
     local first=1
     printf '['
     while IFS= read -r -d '' f; do
-        local path="$LIB/$f" base="${f%.*}" thumb="$cache/${f%.*}.jpg"
-        if [ ! -s "$thumb" ] || [ "$thumb" -ot "$path" ]; then
-            local d; d=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$path" 2>/dev/null)
-            ffmpeg -nostdin -v error -y -ss "$(awk -v d="${d:-3}" 'BEGIN{print d/3}')" -i "$path" -frames:v 1 -vf "scale=640:-2" -q:v 4 "$thumb" 2>/dev/null
-        fi
+        local path="$LIB/$f" base="${f%.*}" thumb="$THUMBS/${f%.*}.jpg"
+        if [ ! -s "$thumb" ] || [ "$thumb" -ot "$path" ]; then thumb=""; missing=1; fi
         [ $first = 1 ] || printf ','
         first=0
         jq -cn --arg n "$(printf '%s' "$base" | sed 's/^[0-9]*-//')" --arg p "$path" --arg t "$thumb" --argjson c "$([ "$path" = "$cur" ] && echo true || echo false)" \
             '{name: $n, path: $p, thumb: $t, current: $c}' | tr -d '\n'
     done < <(find "$LIB" -maxdepth 1 -type f \( -iname '*.mp4' -o -iname '*.webm' -o -iname '*.mkv' \) -printf '%f\0' | sort -zV)
     printf ']\n'
+    [ $missing = 0 ] || setsid -f "$0" thumbs </dev/null >/dev/null 2>&1
 }
 
 STILL=${XDG_STATE_HOME:-$HOME/.local/state}/kuwai/wallpaper
@@ -172,6 +187,7 @@ case "${1:-list}" in
     set)    still "${2:?usage: kuwai-wall set IMAGE}" ;;
     restore) [ -e "$STILL" ] || exit 0; still "$STILL" ;;
     json)   json ;;
+    thumbs) thumbs ;;
     off)    "$SCRIPT" stop; [ -e "$STILL" ] && WALLPAPER_AWWW_TRANSITION_DEFAULT=${WALLPAPER_AWWW_TRANSITION_DEFAULT:-none} still "$STILL"; exit 0 ;;
     add)    shift; add "$@" ;;
     import) shift; import "$@" ;;

@@ -46,11 +46,13 @@ Item {
 
     property bool fresh: true
     property bool pendingFollow: false
+    property bool gone: false
     property var _unsubs: []
     function scheduleFollow() {
         if (pendingFollow) return;
         pendingFollow = true;
         Qt.callLater(() => {
+            if (gone) return;
             pendingFollow = false;
             follow();
         });
@@ -103,7 +105,7 @@ Item {
     }
     onParentChanged: watchChain()
     Component.onCompleted: if (target) { watchChain(); follow(); lit = true; }
-    Component.onDestruction: clearWatches()
+    Component.onDestruction: { gone = true; clearWatches(); }
     // Once it has faded out, the next entry starts fresh.
     Timer { id: freshTimer; interval: Theme.springFast.exitMs; onTriggered: h.fresh = true }
     Timer { id: outTimer; interval: Theme.handoffMs; onTriggered: if (!h.target) { h.lit = false; freshTimer.restart(); } }

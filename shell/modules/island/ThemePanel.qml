@@ -40,10 +40,15 @@ FocusScope {
         stdout: StdioCollector {
             onStreamFinished: {
                 try { picker.live = JSON.parse(text); } catch (e) {}
+                picker.liveListed = true;
                 if (picker.mode === "live") picker.current = Math.max(0, picker.items.findIndex(x => x.current));
+                if (picker.live.some(x => !x.thumb)) thumbsLater.restart();
             }
         }
     }
+    property bool liveListed: false
+    readonly property bool liveWaiting: mode === "live" && (!liveListed || live.some(x => !x.thumb))
+    Timer { id: thumbsLater; interval: 1500; onTriggered: if (picker.mode === "live" && !liveLister.running) liveLister.running = true }
     // Screensavers: Dusk and Borealis (drawn live), every film in the folder (drop an .mp4
     // in, it's listed), your live wallpaper, or the still one. ↵ uses it,
     // P shows it now. Settings → Screensaver has when and after how long.
@@ -200,7 +205,7 @@ FocusScope {
     // One sweep for every placeholder (Skeleton.phase), only while loading.
     property real sheen: 0
     NumberAnimation on sheen {
-        running: picker.loading && picker.visible && !Theme.reduceMotion
+        running: (picker.loading || picker.liveWaiting) && picker.visible && !Theme.reduceMotion
         from: 0; to: 1
         duration: Theme.shimmerMs
         loops: Animation.Infinite
@@ -513,11 +518,11 @@ FocusScope {
         x: grid.x; y: grid.y
         width: grid.width; height: grid.height
         clip: true
-        opacity: picker.loading && picker.listed ? 1 : 0
+        opacity: (picker.loading && picker.listed) || (picker.mode === "live" && !picker.liveListed) ? 1 : 0
         visible: opacity > 0
         Behavior on opacity { enabled: picker.settled; NumberAnimation { duration: Theme.microMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
         Accessible.role: Accessible.Animation
-        Accessible.name: picker.mode === "wallpapers" ? "Loading wallpapers" : "Loading themes"
+        Accessible.name: picker.mode === "wallpapers" ? "Loading wallpapers" : picker.mode === "live" ? "Loading live wallpapers" : "Loading themes"
         Loader {
             active: cardsSkeleton.visible
             sourceComponent: Grid {
@@ -601,14 +606,23 @@ FocusScope {
                     text: "\u{f0e09}"; font.family: Theme.fontGlyph; font.pixelSize: Theme.glyphL
                     color: Theme.textTertiary
                 }
-                Image {
+                Skeleton {
                     anchors.fill: parent
-                    visible: !card.modelData.off
+                    radius: parent.radius
+                    phase: picker.sheen
+                    visible: !card.modelData.off && (thumbImg.status === Image.Loading || (picker.mode === "live" && !card.modelData.thumb))
+                }
+                Image {
+                    id: thumbImg
+                    anchors.fill: parent
+                    visible: !card.modelData.off && opacity > 0
                     source: card.modelData.thumb ? "file://" + card.modelData.thumb : ""
                     sourceSize: Qt.size(360, 202)
                     fillMode: Image.PreserveAspectCrop
                     asynchronous: true
                     cache: true
+                    opacity: status === Image.Ready ? 1 : 0
+                    Behavior on opacity { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.microMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                 }
                 Row {
                     anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
