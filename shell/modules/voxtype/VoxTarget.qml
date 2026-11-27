@@ -72,7 +72,7 @@ Scope {
     PwNodePeakMonitor {
         id: voice
         node: Pipewire.defaultAudioSource
-        enabled: root.on && Activities.voxListening && !Theme.reduceMotion
+        enabled: root.on && !!root.box && Activities.voxListening && !Theme.reduceMotion
     }
     property real glow: 0
     property vector4d hist0: Qt.vector4d(0, 0, 0, 0)
@@ -132,7 +132,7 @@ Scope {
                     Label {
                         id: words
                         anchors.centerIn: parent
-                        width: Math.min(implicitWidth, caption.width - Theme.s4 * 2)
+                        width: Math.max(0, Math.min(implicitWidth, caption.width - Theme.s4 * 2))
                         elide: Text.ElideLeft
                         text: Activities.voxText
                         size: Theme.tCallout

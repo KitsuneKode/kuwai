@@ -17,6 +17,7 @@ import qs.services
 
 Item {
     id: rest
+    readonly property bool onScreen: visible && !Saver.locked && !Saver.screensOff && !Saver.showing
     required property var bar
     // Left (activity + pills) and right (status + activity) take the same
     // width, so the time sits in the middle; the gap either side of it is
@@ -235,7 +236,7 @@ Item {
     }
     Timer {
         interval: 1000; repeat: true; triggeredOnStart: true
-        running: actChip.visible && rest.actReveal >= 1 && !Theme.reduceMotion
+        running: rest.onScreen && actChip.visible && rest.actReveal >= 1 && !Theme.reduceMotion
         onTriggered: actGhost.scheduleUpdate()
     }
     NumberAnimation { id: actIn; target: rest; property: "actReveal"; to: 1; duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
@@ -336,7 +337,7 @@ Item {
                 active: true
                 color: Theme.accent
                 SequentialAnimation on opacity {
-                    running: rest.activity === "auth" && !Theme.reduceMotion
+                    running: rest.onScreen && rest.activity === "auth" && !Theme.reduceMotion
                     loops: Animation.Infinite
                     NumberAnimation { to: 0.55; duration: Theme.breatheMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }
                     NumberAnimation { to: 1; duration: Theme.breatheMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }
@@ -349,7 +350,7 @@ Item {
             width: 10; height: 10; radius: 5
             color: Theme.red
             SequentialAnimation on opacity {
-                running: rest.activity === "rec" && !Theme.reduceMotion
+                running: rest.onScreen && rest.activity === "rec" && !Theme.reduceMotion
                 loops: Animation.Infinite
                 NumberAnimation { to: 0.45; duration: Theme.breatheMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }
                 NumberAnimation { to: 1; duration: Theme.breatheMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }
@@ -388,13 +389,13 @@ Item {
                 font.pixelSize: 15
                 color: Activities.voxListening ? Theme.red : Theme.accent
                 SequentialAnimation on opacity {
-                    running: rest.activity === "vox" && Activities.voxListening && !Theme.reduceMotion
+                    running: rest.onScreen && rest.activity === "vox" && Activities.voxListening && !Theme.reduceMotion
                     loops: Animation.Infinite
                     NumberAnimation { to: 0.45; duration: Theme.breatheMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }
                     NumberAnimation { to: 1; duration: Theme.breatheMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }
                 }
                 RotationAnimation on rotation {
-                    running: rest.activity === "vox" && !Activities.voxListening && !Theme.reduceMotion
+                    running: rest.onScreen && rest.activity === "vox" && !Activities.voxListening && !Theme.reduceMotion
                     loops: Animation.Infinite; from: 0; to: 360; duration: Theme.spinMs
                 }
             }
@@ -424,7 +425,7 @@ Item {
                 font.pixelSize: Theme.glyphS
                 color: Theme.accent
                 SequentialAnimation on scale {
-                    running: rest.activity === "shazam" && Activities.shazamListening && !Theme.reduceMotion
+                    running: rest.onScreen && rest.activity === "shazam" && Activities.shazamListening && !Theme.reduceMotion
                     loops: Animation.Infinite
                     NumberAnimation { to: 1.18; duration: Theme.pulseMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }
                     NumberAnimation { to: 1; duration: Theme.pulseMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }
@@ -769,7 +770,7 @@ Item {
                         width: 5; height: 5; radius: 2.5
                         color: done ? Theme.red : now ? Theme.red : Theme.platter
                         SequentialAnimation on opacity {
-                            running: pomoDot.now && !Theme.reduceMotion
+                            running: rest.onScreen && pomoDot.now && !Theme.reduceMotion
                             loops: Animation.Infinite
                             NumberAnimation { to: 0.35; duration: Theme.breatheMs * 2; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }
                             NumberAnimation { to: 1; duration: Theme.breatheMs * 2; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }

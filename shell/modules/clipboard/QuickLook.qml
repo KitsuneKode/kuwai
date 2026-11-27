@@ -108,6 +108,7 @@ Item {
             sourceSize: Qt.size(Math.round(ql.to.width * 2), Math.round(ql.to.height * 2))
             fillMode: Image.PreserveAspectCrop
             asynchronous: true
+            cache: false
             smooth: true
             mipmap: true
             retainWhileLoading: true
@@ -124,6 +125,7 @@ Item {
             sourceSize: Qt.size(Math.round(ql.to.width * 2), Math.round(ql.to.height * 2))
             fillMode: Image.PreserveAspectFit
             asynchronous: true
+            cache: false
             smooth: true
             mipmap: true
         }
@@ -179,8 +181,10 @@ Item {
             anchors.fill: parent
             anchors.margins: 22
             source: ql.rendered.image ? "file://" + ql.rendered.image : ""
+            sourceSize: Qt.size(Math.round(ql.to.width * 2), Math.round(ql.to.height * 2))
             fillMode: Image.PreserveAspectFit
             asynchronous: true
+            cache: false
             smooth: true
             mipmap: true
         }

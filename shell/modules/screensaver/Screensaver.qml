@@ -266,14 +266,14 @@ Scope {
 
     property real level: showing ? 1 : 0
     Behavior on level { NumberAnimation { duration: root.showing ? 900 : 220; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
-    readonly property bool veiling: !Theme.reduceMotion && level > 0.001 && level < 0.999
+    readonly property bool veiling: !Theme.reduceMotion && level > 0.02 && level < 0.999
 
     Variants {
         model: Quickshell.screens
         LazyLoader {
             id: slot
             required property ShellScreen modelData
-            active: root.showing || root.level > 0.01
+            active: root.showing || root.level > 0
             PanelWindow {
                 id: win
                 screen: slot.modelData
@@ -287,7 +287,7 @@ Scope {
                 Item {
                     id: stage
                     anchors.fill: parent
-                    opacity: Theme.reduceMotion ? root.level : 1
+                    opacity: Theme.reduceMotion ? root.level : root.veiling || root.level >= 0.999 ? 1 : 0
                     focus: true
                     layer.enabled: root.veiling
                     layer.effect: ShaderEffect {

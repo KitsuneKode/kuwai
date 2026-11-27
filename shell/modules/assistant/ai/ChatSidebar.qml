@@ -228,7 +228,7 @@ Rectangle {
                             anchors.fill: parent; radius: 4
                             color: "transparent"; border.width: 1.5; border.color: Theme.accent
                             Rectangle { width: 3; height: 3; radius: 1.5; color: Theme.accent; x: 2.5; y: -0.5 }
-                            RotationAnimation on rotation { running: row.working && !Theme.reduceMotion; loops: Animation.Infinite; from: 0; to: 360; duration: Theme.spinMs }
+                            RotationAnimation on rotation { running: row.visible && row.working && !Theme.reduceMotion; loops: Animation.Infinite; from: 0; to: 360; duration: Theme.spinMs }
                         }
                     }
                     Label {

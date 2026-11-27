@@ -897,7 +897,7 @@ Scope {
                         width: 9; height: 9; radius: 4.5
                         color: Theme.red
                         SequentialAnimation on opacity {
-                            running: root.recording && !Theme.reduceMotion
+                            running: recRow.visible && root.recording && !Theme.reduceMotion
                             loops: Animation.Infinite
                             NumberAnimation { to: 0.35; duration: Theme.breatheMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }
                             NumberAnimation { to: 1; duration: Theme.breatheMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }
@@ -914,7 +914,7 @@ Scope {
                             id: sweep
                             anchors.fill: parent
                             property real f: (root.nowSec - Clipboard.recSince) % 1
-                            onFChanged: requestPaint()
+                            onFChanged: if (recRow.visible) requestPaint()
                             onPaint: {
                                 const c = getContext("2d"); c.reset();
                                 c.strokeStyle = Theme.red; c.lineWidth = 2; c.lineCap = "round";

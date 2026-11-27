@@ -59,7 +59,7 @@ Rectangle {
                         color: stepRow.isDone ? Theme.green : stepRow.isNow ? Theme.accent : Theme.textDim
                         Behavior on color { ColorAnimation { duration: Theme.colorMs } }
                         RotationAnimation on rotation {
-                            running: stepRow.isNow && root.live && !Theme.reduceMotion
+                            running: stepRow.visible && stepRow.isNow && root.live && !Theme.reduceMotion
                             loops: Animation.Infinite; from: 0; to: 360; duration: Theme.spinMs
                         }
                         onNameChanged: rotation = 0

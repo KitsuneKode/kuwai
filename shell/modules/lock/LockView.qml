@@ -114,9 +114,11 @@ Item {
             id: sharp
             anchors.fill: parent
             visible: false
-            source: view.lock.leaving || view.u > 0 ? wall.source : ""
+            source: view.asking || view.lock.checking || view.lock.leaving || view.u > 0 ? wall.source : ""
             sourceSize: Qt.size(view.width, view.height)
             fillMode: Image.PreserveAspectCrop
+            asynchronous: true
+            cache: false
         }
         ShaderEffect {
             anchors.fill: parent

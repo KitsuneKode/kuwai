@@ -95,7 +95,7 @@ Item {
                         size: 14
                         color: root.status === "failed" ? Theme.red : root.running ? Theme.accent : Theme.textTertiary
                         RotationAnimation on rotation {
-                            running: root.running && !root.pending && !Theme.reduceMotion
+                            running: root.visible && root.running && !root.pending && !Theme.reduceMotion
                             loops: Animation.Infinite
                             from: 0; to: 360
                             duration: Theme.spinMs

@@ -205,7 +205,7 @@ Rectangle {
                             visible: qrow.modelData.steering
                             anchors.centerIn: parent
                             name: "circle-notch"; style: "bold"; size: 12; color: Theme.accent
-                            RotationAnimation on rotation { running: qrow.modelData.steering && !Theme.reduceMotion; loops: Animation.Infinite; from: 0; to: 360; duration: Theme.spinMs }
+                            RotationAnimation on rotation { running: qrow.visible && qrow.modelData.steering && !Theme.reduceMotion; loops: Animation.Infinite; from: 0; to: 360; duration: Theme.spinMs }
                         }
                     }
                     Label {
@@ -483,7 +483,7 @@ Rectangle {
                         color: root.micState === "recording" ? Qt.alpha(Theme.red, 0.18) : Qt.rgba(1, 1, 1, micArea.containsMouse ? 0.08 : 0)
                         Behavior on color { ColorAnimation { duration: Theme.colorMs } }
                         SequentialAnimation on scale {
-                            running: root.micState === "recording" && !Theme.reduceMotion
+                            running: root.visible && root.micState === "recording" && !Theme.reduceMotion
                             loops: Animation.Infinite
                             onRunningChanged: if (!running) parent.scale = 1
                             NumberAnimation { to: 1.12; duration: Theme.breatheMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }
@@ -497,7 +497,7 @@ Rectangle {
                         size: 15
                         color: root.micState === "recording" ? Theme.red : micArea.containsMouse ? Theme.textPrimary : Theme.textTertiary
                         RotationAnimation on rotation {
-                            running: root.micState === "transcribing" && !Theme.reduceMotion
+                            running: root.visible && root.micState === "transcribing" && !Theme.reduceMotion
                             loops: Animation.Infinite; from: 0; to: 360; duration: Theme.spinMs
                         }
                         onNameChanged: rotation = 0

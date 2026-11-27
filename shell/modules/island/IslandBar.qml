@@ -814,7 +814,7 @@ Scope {
                 id: frame
                 // Under the screensaver nothing here is seen: hidden, its
                 // spinners and waveforms stop drawing frames.
-                visible: !Saver.showing
+                visible: !Saver.showing && !Saver.locked && !Saver.screensOff
                 width: win.shapeW + win.ear * 2
                 height: Math.max(0, sh.value - win.pull)
                 x: Math.round((win.width - width) / 2)
@@ -1002,7 +1002,7 @@ Scope {
                             property real pos: 0
                             x: -width + pos * (parent.width + width)
                             NumberAnimation on pos {
-                                running: assistGlow.visible && !assistGlow.done && !Theme.reduceMotion
+                                running: assistGlow.visible && !assistGlow.done && !OllamaService.pendingRequest && !Saver.locked && !Saver.screensOff && !Theme.reduceMotion
                                 from: 0; to: 1; duration: Theme.shimmerMs; loops: Animation.Infinite; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine
                             }
                             gradient: Gradient {

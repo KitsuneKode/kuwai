@@ -52,8 +52,9 @@ Singleton {
         Process {
             id: hp
             stdout: StdioCollector {
-                onStreamFinished: { try { const d = JSON.parse(text); if (d && d.held) root.held = d.held; } catch (e) {} hp.destroy(); }
+                onStreamFinished: { try { const d = JSON.parse(text); if (d && d.held) root.held = d.held; } catch (e) {} }
             }
+            onExited: hp.destroy(1000)
         }
     }
     // The set as names@versions: has the person seen *this* set yet? The notch

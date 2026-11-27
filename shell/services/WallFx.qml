@@ -62,7 +62,6 @@ Singleton {
 
     function play(path, start, live) {
         if (!path) return;
-        toLive = !!live;
         if (phase !== "") {
             queued = { path: path, start: start, live: !!live };
             return;
@@ -70,6 +69,7 @@ Singleton {
         // Stream callbacks from a cancelled transition can still arrive.
         // Allow the next wallpaper through immediately while they drain.
         if (liveProbe.running || query.running || check.running || mapLookup.running || Theme.reduceMotion) { start(); return; }
+        toLive = !!live;
         next = path; startFn = start; ready = 0; t = 0; before = ({}); known = false; swapped = false; needMap = false; fade = 0;
         startedAt = Date.now();
         mapPath = ""; seed = Math.random() * 100;
@@ -282,7 +282,7 @@ Singleton {
         lastRun = "forced: " + why;
         after.restart();
     }
-    Timer { id: after; interval: 300; onTriggered: { root.phase = ""; root.liveHeld = false; watchdog.stop(); root.drain(); } }
+    Timer { id: after; interval: 300; onTriggered: { root.cancelTransition(); root.drain(); } }
     function finish(how) {
         lastRun = how + " (" + mode + ") " + ((Date.now() - startedAt) / 1000).toFixed(2) + " s";
         const map = needMap ? next : "";

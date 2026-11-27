@@ -13,6 +13,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Pipewire
 import qs.config
+import qs.services
 
 Item {
     id: hud
@@ -50,7 +51,7 @@ Item {
     }
     FileView { id: bl; path: hud.backlight ? hud.backlight + "/brightness" : ""; printErrors: false
         onLoaded: { const v = Number(text().trim()); if (hud.maxB > 0 && v !== hud.curB) { const first = hud.curB < 0; hud.curB = v; if (!first && hud.armed) hud.show("brightness", v / hud.maxB, false); } } }
-    Timer { interval: 300; repeat: true; running: hud.active && hud.backlight !== ""; onTriggered: bl.reload() }
+    Timer { interval: 300; repeat: true; running: hud.active && hud.backlight !== "" && !hud.brightnessFeed && !Saver.screensOff; onTriggered: bl.reload() }
 
     // The session's lock screen: the brightness controller's own events
     // (bin/kuwai-brightness, the same feed as the session HUD), so a change on
@@ -60,7 +61,7 @@ Item {
     // screen has no controller (greeter/keys and ddcFile instead).
     property bool brightnessFeed: false
     Process {
-        running: hud.active && hud.brightnessFeed
+        running: hud.active && hud.brightnessFeed && !Saver.screensOff
         command: ["setpriv", "--pdeathsig", "KILL", "--", Paths.bin + "/kuwai-brightness", "watch", "--part", "osd"]
         stdout: SplitParser {
             onRead: line => {

@@ -181,7 +181,14 @@ Singleton {
         if (it) openThread(it.thread); else focus();
     }
     property var answers: ({})
-    function setAnswer(id, v) { const n = Object.assign({}, answers); n[id] = v; answers = n; }
+    function setAnswer(id, v) {
+        const n = Object.assign({}, answers);
+        delete n[id];
+        n[id] = v;
+        const keys = Object.keys(n);
+        for (let k = 0; k < keys.length - 64; k++) delete n[keys[k]];
+        answers = n;
+    }
     function answer(thread, id, decision) {
         if (!thread || !id || (answers[id] || {}).busy) return;
         setAnswer(id, { busy: true, done: "", why: "" });
