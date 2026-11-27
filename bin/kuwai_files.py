@@ -18,15 +18,127 @@ MAX_LINES = 250
 MAX_BYTES = 12_000
 LINE_CAP = 400
 HOME = Path.home()
-SECRET = [HOME / ".ssh", HOME / ".gnupg", HOME / ".local/share/keyrings", HOME / ".password-store",
-          HOME / ".config/kuwai/secrets", HOME / ".aws", HOME / ".kube", HOME / ".mozilla", HOME / ".zen",
-          HOME / ".config/chromium", HOME / ".config/google-chrome", HOME / ".config/BraveSoftware",
-          HOME / ".config/gh", HOME / ".docker", HOME / ".gcloud", HOME / ".config/gcloud", HOME / ".azure",
-          HOME / ".local/share/kwalletd", HOME / ".pki", HOME / ".cert", HOME / ".local/share/devin", HOME / ".t3",
-          HOME / ".codex", HOME / ".config/kuwai/feeds", HOME / ".claude", HOME / ".claude.json", HOME / ".config/op",
-          HOME / ".config/rclone", HOME / ".local/state/kuwai", HOME / ".cursor", HOME / ".config/Cursor",
-          HOME / ".local/share/fish/fish_history", HOME / ".local/share/kuwai-data/clipboard", HOME / ".cache/kuwai/clip",
-          HOME / ".cache/cliphist", HOME / ".local/share/voxtype", HOME / ".local/state/voxtype"]
+_HOME_SECRETS = (
+    ".ssh", ".gnupg", ".password-store", ".aws", ".kube", ".mozilla", ".zen",
+    ".docker", ".gcloud", ".azure", ".pki", ".cert", ".t3", ".codex",
+    ".claude", ".claude.json", ".cursor",
+)
+_CONFIG_SECRETS = (
+    "kuwai/secrets", "kuwai/feeds", "chromium", "google-chrome", "BraveSoftware",
+    "gh", "gcloud", "op", "rclone", "Cursor", "devin", "sops", "age",
+)
+_DATA_SECRETS = (
+    "keyrings", "kwalletd", "devin", "fish/fish_history", "kuwai-data/clipboard",
+    "voxtype", "gnupg", "password-store",
+)
+_STATE_SECRETS = ("kuwai", "voxtype")
+_CACHE_SECRETS = ("kuwai/clip", "cliphist")
+_RUNTIME_SECRETS = ("kuwai", "keyring", "gnupg", "gcr", "p11-kit", "ssh-agent.socket")
+_TOOL_ENV_VARS = (
+    "GNUPGHOME", "PASSWORD_STORE_DIR", "DOCKER_CONFIG",
+    "AWS_SHARED_CREDENTIALS_FILE", "AWS_CONFIG_FILE", "GH_CONFIG_DIR",
+    "CLOUDSDK_CONFIG", "AZURE_CONFIG_DIR", "RCLONE_CONFIG",
+    "CLAUDE_CONFIG_DIR", "CODEX_HOME", "T3CODE_HOME",
+)
+_USER_DIR_RE = re.compile(r'^\s*XDG_(DESKTOP|DOWNLOAD|TEMPLATES|PUBLICSHARE|DOCUMENTS|MUSIC|PICTURES|VIDEOS)_DIR\s*=\s*"?([^"\n]+)"?\s*$')
+
+
+def home_dir():
+    return Path(os.environ.get("HOME") or Path.home())
+
+
+def _abs_env_path(raw, home):
+    val = (raw or "").strip()
+    if not val:
+        return None
+    if val.startswith("$HOME"):
+        val = str(home) + val[5:]
+    elif val.startswith("${HOME}"):
+        val = str(home) + val[7:]
+    p = Path(os.path.expanduser(val))
+    return p if p.is_absolute() else None
+
+
+def _xdg_bases(env_var, default_rel, home):
+    bases = [home / default_rel]
+    custom = _abs_env_path(os.environ.get(env_var), home)
+    if custom and custom not in bases:
+        bases.append(custom)
+    return bases
+
+
+def user_dirs(home=None):
+    """Resolved XDG user-dirs (Documents, Downloads, …) from user-dirs.dirs and env."""
+    h = home or home_dir()
+    found = {}
+    for key in ("DESKTOP", "DOWNLOAD", "TEMPLATES", "PUBLICSHARE", "DOCUMENTS", "MUSIC", "PICTURES", "VIDEOS"):
+        p = _abs_env_path(os.environ.get(f"XDG_{key}_DIR"), h)
+        if p:
+            found[key] = p
+    for cfg in _xdg_bases("XDG_CONFIG_HOME", ".config", h):
+        f = cfg / "user-dirs.dirs"
+        try:
+            text = f.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        for line in text.splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            m = _USER_DIR_RE.match(line)
+            if m:
+                p = _abs_env_path(m.group(2), h)
+                if p:
+                    found[m.group(1)] = p
+    return found
+
+
+def _expand_resolved(paths):
+    out = []
+    seen = set()
+    for p in paths:
+        for cand in (p, p.resolve()):
+            if cand not in seen:
+                seen.add(cand)
+                out.append(cand)
+    return out
+
+
+def secret_paths():
+    """Denied paths for the current HOME and relocated XDG / tool environment directories."""
+    h = home_dir()
+    h_res = h.resolve()
+    raw = [h / rel for rel in _HOME_SECRETS]
+    for cfg in _xdg_bases("XDG_CONFIG_HOME", ".config", h):
+        raw.extend(cfg / rel for rel in _CONFIG_SECRETS)
+    for data in _xdg_bases("XDG_DATA_HOME", ".local/share", h):
+        raw.extend(data / rel for rel in _DATA_SECRETS)
+    for st in _xdg_bases("XDG_STATE_HOME", ".local/state", h):
+        raw.extend(st / rel for rel in _STATE_SECRETS)
+    for cache in _xdg_bases("XDG_CACHE_HOME", ".cache", h):
+        raw.extend(cache / rel for rel in _CACHE_SECRETS)
+    rt_bases = [Path(f"/run/user/{os.getuid()}")]
+    rt_custom = _abs_env_path(os.environ.get("XDG_RUNTIME_DIR"), h)
+    if rt_custom and rt_custom not in rt_bases:
+        rt_bases.append(rt_custom)
+    for rt in rt_bases:
+        rt_res = rt.resolve()
+        if rt_res not in (Path("/"), Path("/tmp"), h, h_res) and rt_res not in h_res.parents:
+            raw.append(rt)
+        raw.extend(rt / rel for rel in _RUNTIME_SECRETS)
+    for var in _TOOL_ENV_VARS:
+        p = _abs_env_path(os.environ.get(var), h)
+        if p:
+            raw.append(p)
+    kube = os.environ.get("KUBECONFIG") or ""
+    for item in kube.split(os.pathsep):
+        p = _abs_env_path(item, h)
+        if p:
+            raw.append(p)
+    return _expand_resolved(raw)
+
+
+SECRET = secret_paths()
 SECRET_NAME = re.compile(r"(^id_[a-z0-9]+$|\.pem$|\.key$|\.p12$|\.pfx$|^\.env(\..*)?$|^credentials(\.(json|toml|ya?ml))?$|\.kdbx$"
                          r"|^\.netrc$|^\.git-credentials$|^\.npmrc$|^\.pypirc$|^cookies(\.sqlite)?$|^login data$|^\.pgpass$|^\.wakatime\.cfg$|_history$|^\.histfile$"
                          r"|^key[34]\.db$|^logins\.json$|^hosts\.ya?ml$|^auth\.json$|token)", re.I)
@@ -54,20 +166,27 @@ def resolve(path, sandbox_dir):
     return full, inside
 
 
+def _name_parts(p, home):
+    for base in (home, home.resolve()):
+        try:
+            return p.relative_to(base).parts
+        except ValueError:
+            pass
+    return p.parts[1:]
+
+
 def check_readable(full):
     """Refuse secrets places and secret-named files, and any file under a secret-named folder
     (review finding 02: ~/x/credentials/notes.txt was refused by grep but readable by path).
     Judged on the path as given and where it really leads."""
     full = Path(full)
+    h = home_dir()
+    secrets = secret_paths()
     for p in {full, full.resolve()}:
-        for s in SECRET:
+        for s in secrets:
             if p == s or s in p.parents:
                 raise FileError(f"{p} holds secrets; it isn't read")
-        try:
-            parts = p.relative_to(HOME).parts
-        except ValueError:
-            parts = p.parts[1:]
-        for part in parts:
+        for part in _name_parts(p, h):
             if SECRET_NAME.search(part):
                 raise FileError(f"{part} looks like a key or secrets place; it isn't read")
 
@@ -77,19 +196,29 @@ def is_secret(path, root):
     secret if it, or any folder between root and it, is a secrets place or
     has a secrets name. Followed links are judged by where they land too."""
     path = Path(path)
-    for p in {path, path.resolve()}:
-        if any(p == s or s in p.parents for s in SECRET):
+    root = Path(root)
+    h = home_dir()
+    secrets = secret_paths()
+    resolved = path.resolve()
+    for p in {path, resolved}:
+        if any(p == s or s in p.parents for s in secrets):
             return True
     try:
         parts = path.relative_to(root).parts
     except ValueError:
         parts = path.parts[-1:]
-    return any(SECRET_NAME.search(x) for x in parts) or bool(SECRET_NAME.search(path.resolve().name))
+    if any(SECRET_NAME.search(x) for x in parts):
+        return True
+    try:
+        res_parts = resolved.relative_to(root.resolve()).parts
+    except ValueError:
+        res_parts = _name_parts(resolved, h)
+    return any(SECRET_NAME.search(x) for x in res_parts)
 
 
 def show(full):
     s = str(full)
-    h = str(HOME)
+    h = str(home_dir())
     return "~" + s[len(h):] if s.startswith(h) else s
 
 
@@ -255,8 +384,17 @@ def grep(pattern, full, glob=None, ignore_case=False, literal=False, limit=60):
         raise FileError("ripgrep (rg) isn't installed")
     argv = [rg, "--null", "--line-number", "--no-heading", "--color", "never", "--max-columns", str(LINE_CAP),
             "--max-columns-preview", "--glob", "!.git"]
-    for s in SECRET:
-        argv += ["--glob", f"!{s.name}/**"]
+    full_res = full.resolve()
+    excluded = set()
+    for s in secret_paths():
+        for base in (full, full_res):
+            try:
+                rel = s.relative_to(base).as_posix()
+            except ValueError:
+                continue
+            if rel and rel != "." and rel not in excluded:
+                excluded.add(rel)
+                argv += ["--glob", f"!{rel}", "--glob", f"!{rel}/**"]
     if ignore_case:
         argv.append("-i")
     if literal:
@@ -279,7 +417,7 @@ def grep(pattern, full, glob=None, ignore_case=False, literal=False, limit=60):
     p.stderr = p.stderr.read() if p.stderr and not p.stderr.closed else ""
     if p.returncode == 2:
         raise FileError(p.stderr.strip()[:300] or "grep failed")
-    h = str(HOME)
+    h = str(home_dir())
     lines, cache = [], {}
     single = full.is_file()
     for raw in p.stdout.splitlines():

@@ -1088,6 +1088,7 @@ def _write_request(args):
     full, inside, _parts = _decide(args)
     if inside:
         return None
+    _files(kuwai_files.check_readable, full)
     content = str(args.get("content") or "")
     old = full.read_text(encoding="utf-8", errors="replace") if full.is_file() else ""
     detail = kuwai_files.diff(full, old, content) if old else content[:4000]
@@ -1103,6 +1104,7 @@ def _write_text(full, inside, text, parts=None):
     """Your files: written as usual (after approval). The sandbox's: written
     without following links, since the container may have just made one."""
     if not inside:
+        kuwai_files.check_readable(full)
         full.parent.mkdir(parents=True, exist_ok=True)
         full.write_text(text, encoding="utf-8")
         return
@@ -1160,12 +1162,12 @@ def tool_ls(args):
 
 
 def tool_find(args):
-    full, _, _ = _jail_target(args, default=str(kuwai_files.HOME))
+    full, _, _ = _jail_target(args, default=str(kuwai_files.home_dir()))
     return _files(kuwai_files.find, str(args.get("pattern") or "*"), full)
 
 
 def tool_grep(args):
-    full, _, _ = _jail_target(args, default=str(kuwai_files.HOME))
+    full, _, _ = _jail_target(args, default=str(kuwai_files.home_dir()))
     return _files(kuwai_files.grep, str(args.get("pattern") or ""), full, args.get("glob"),
                   bool(args.get("ignoreCase")), False)
 
@@ -1223,7 +1225,7 @@ def tool_system_audit(_args):
     if shutil.which("docker"):
         section("Docker containers and published ports", run(["docker", "ps", "--format", "{{.Names}}  {{.Image}}  {{.Ports}}"]))
     section("Your enabled user services", run(["systemctl", "--user", "list-unit-files", "--state=enabled", "--no-legend", "--plain"]))
-    auto = os.path.expanduser("~/.config/autostart")
+    auto = os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"), "autostart")
     section("Autostart entries", "\n".join(sorted(os.listdir(auto))) if os.path.isdir(auto) else "(none)")
     section("Your crontab", run(["crontab", "-l"]))
     section("Kernel and uptime", run(["uname", "-sr"]) + "\n" + run(["uptime", "-p"]))
@@ -1508,7 +1510,7 @@ ROUTES = [
 ]
 
 
-HOST_READS = {"read": "", "ls": "", "find": str(kuwai_files.HOME), "grep": str(kuwai_files.HOME)}
+HOST_READS = {"read": False, "ls": False, "find": True, "grep": True}
 
 CHAT_SAFE = {"web_search", "web_fetch", "shop_search", "active_window", "system_info",
              "read_selection", "ask_user", "read", "ls", "find", "grep"}
@@ -1701,7 +1703,7 @@ def run_tool(ids, name, raw_args):
                         return "declined", (f"The user declined this {what}. Don't run it again or try another way "
                                             "to do it; say in one line that you didn't, and carry on without it.")
                 status, output = "completed", tool["run"](args)
-                if name in PRIVATE_READS or (name in HOST_READS and _host_read_request(args, default=HOST_READS[name])):
+                if name in PRIVATE_READS or (name in HOST_READS and _host_read_request(args, default=str(kuwai_files.home_dir()) if HOST_READS[name] else "")):
                     globals()["PRIVATE"] = True
             except ToolError as e:
                 status, output = "failed", str(e)
