@@ -142,7 +142,7 @@ check "a second install changes nothing" [ "$(snap)" = "$installed_snap" ]
 
 as_user "sudo '$K/system/session' --trust-clone" >"$OUT/session-add.log" 2>&1
 check "\"Kuwai\" is added to the login screen (system/session)" bash -c "[ -f /usr/share/wayland-sessions/kuwai.desktop ] && '$K/system/session' --check"
-as_user "'$STABLE/bin/kuwai' auth pin" >"$OUT/auth-pin.log" 2>&1
+as_user "'$STABLE/bin/kuwai' auth pin --trust-clone" >"$OUT/auth-pin.log" 2>&1
 PINNED=/usr/local/share/kuwai/shell-auth
 check "kuwai auth pin: root's copy of the password prompt exists and no account but root can change it" bash -c "[ -f $PINNED/shell.qml ] && [ -z \"\$(find $PINNED \\( ! -user root -o -perm /022 \\))\" ] && [ -z \"\$(find $PINNED ! -type f ! -type d)\" ]"
 exec_line=$(sed -n 's/^Exec=//p' /usr/share/wayland-sessions/kuwai.desktop | head -1)
@@ -421,7 +421,7 @@ if [ $rc -ne 0 ]; then
 fi
 as_user "'$STABLE/bin/kuwai' auth unpin" >"$OUT/auth-unpin.log" 2>&1
 check "kuwai auth unpin removes root's copy" bash -c "[ ! -e $PINNED ]"
-as_user "sudo '$K/system/session' --undo" >"$OUT/session-undo.log" 2>&1
+as_user "sudo '$K/system/session' --undo --trust-clone" >"$OUT/session-undo.log" 2>&1
 check "the login entry is gone" bash -c "[ ! -e /usr/share/wayland-sessions/kuwai.desktop ] && [ ! -e /usr/local/bin/kuwai-session ]"
 as_user "rm -rf ~/.local/share/kuwai"
 after=$(snap)
