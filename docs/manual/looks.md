@@ -77,4 +77,4 @@ kuwai saver remove loop
 kuwai screensaver start                 # show now (or Super+Alt+Shift+S)
 ```
 
-Step between screensavers with **`Super+Ctrl+Alt+]`** and **`Super+Ctrl+Alt+[`**. By default, the screensaver runs automatically only while Caffeine is active (`Settings → Screensaver → When`: `caffeine`, `always`, or `off`).
+Step between screensavers with **`Super+Ctrl+Alt+]`** and **`Super+Ctrl+Alt+[`**. By default, the screensaver is a step of the idle ladder: your still wallpaper with the time comes up before the screen fades and locks, and the lock keeps its usual time. While Caffeine holds the lock off, it comes after its own minutes (`Settings → Screensaver → When`: `always`, `caffeine` for only while Caffeine is on, or `off`).

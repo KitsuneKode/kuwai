@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { headline, limitedItems, target, merge, until, t3Agent, stateGlyph, stackMarks, providerId, warm, backAt, doneSince } from "../../shell/services/agents.mjs";
+import { headline, headlineOf, sessions, withResets, limitedItems, target, merge, until, t3Agent, stateGlyph, stackMarks, providerId, warm, backAt, doneSince } from "../../shell/services/agents.mjs";
 
 const now = Date.parse("2026-11-22T12:00:00Z");
 const pane = (o) => Object.assign({ key: "p", agent: "claude", state: "working", working: true, since: 0 }, o);
@@ -50,6 +50,36 @@ describe("one capsule says the one thing that matters most", () => {
   test("agents that are only limited say so, never a finished tick", () => {
     const h = headline([], [thread({ status: "failed", limited: true })], 2, 0, now);
     expect(h).toMatchObject({ word: "Limited", tone: "limited", stateKey: "limited", working: 0, limited: 1, glyph: stateGlyph("limited") });
+  });
+  test("a T3 thread stopped at a limit says when it is back, from T3's own reset time", () => {
+    const h = headline([], [thread({ status: "failed", limited: true, resetAt: new Date(now + 600000).toISOString() })], 0, 0, now);
+    expect(h).toMatchObject({ word: "Limited", tone: "limited", reset: now + 600000 });
+    expect("Limited · back in " + until(h.reset, now)).toBe("Limited · back in 10m");
+    const lims = limitedItems([], [thread({ status: "failed", limited: true, resetAt: new Date(now + 600000).toISOString() })]);
+    expect(lims[0].reset).toBe(now + 600000);
+  });
+  test("a T3 limit without a time takes its provider's soonest reset; none known stays plain", () => {
+    const w = (driver, level, resetsAt) => ({ provider: { driver }, level, window: { resetsAt } });
+    const list = sessions([], [thread({ status: "failed", limited: true, resetAt: "" })]);
+    expect(headlineOf(list, 0, 0).reset).toBe(0);
+    const windows = [w("codex", "exhausted", now + 1500000), w("codex", "exhausted", now + 900000), w("claude", "exhausted", now + 60000)];
+    const h = headlineOf(withResets(list, windows, now), 0, 0);
+    expect(h.reset).toBe(now + 900000);
+    expect(until(h.reset, now)).toBe("15m");
+    expect(headlineOf(withResets(list, [w("claude", "exhausted", now + 60000)], now), 0, 0).reset).toBe(0);
+  });
+  test("a reset T3 gave wins over the provider's; a passed one is replaced; others are untouched", () => {
+    const w = (driver, resetsAt) => ({ provider: { driver }, level: "exhausted", window: { resetsAt } });
+    const told = sessions([], [thread({ status: "failed", limited: true, resetAt: new Date(now + 600000).toISOString() })]);
+    expect(withResets(told, [w("codex", now + 900000)], now)[0].reset).toBe(now + 600000);
+    const stale = sessions([], [thread({ status: "failed", limited: true, resetAt: new Date(now - 60000).toISOString() })]);
+    expect(withResets(stale, [w("codex", now + 900000)], now)[0].reset).toBe(now + 900000);
+    const working = sessions([], [thread({})]);
+    expect(withResets(working, [w("codex", now + 900000)], now)[0]).toBe(working[0]);
+    expect(withResets(told, [], now)).toBe(told);
+  });
+  test("a thread that merely failed carries no reset", () => {
+    expect(sessions([], [thread({ status: "failed", resetAt: new Date(now + 600000).toISOString() })])[0].reset).toBe(0);
   });
   test("working still leads over a limit", () => {
     const h = headline([], [thread({ status: "failed", limited: true }), thread({ thread: "b", status: "running" })], 0, 0, now);

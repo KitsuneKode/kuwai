@@ -80,6 +80,11 @@ def build(tmp_path):
     run(db, "r-limit", "t-limit", "failed", completed=LATER)
     db.execute("insert into orchestration_v2_projection_turn_items values (?,?,?,?,?,?)",
                ("t-limit", "r-limit", "error", "failed", json.dumps({"failure": {"class": "usage_limit"}}), LATER))
+    thread(db, "t-limit-at", "Hit a limit that says when")
+    run(db, "r-limit-at", "t-limit-at", "failed", completed=LATER)
+    db.execute("insert into orchestration_v2_projection_turn_items values (?,?,?,?,?,?)",
+               ("t-limit-at", "r-limit-at", "error", "failed",
+                json.dumps({"failure": {"class": "usage_limit", "message": "try again at 1:41 AM", "resetAt": "2099-01-03T01:41:00.000Z"}}), LATER))
     db.commit()
     db.close()
     (tmp_path / "server-runtime.json").write_text(json.dumps({"pid": os.getpid()}))
@@ -106,7 +111,10 @@ def test_only_real_work_counts(tmp_path):
     assert d["items"][0]["title"] == "Needs approval"       # attention first
     assert titles["Done, not seen"]["status"] == "completed"
     assert titles["Hit a limit"]["status"] == "failed" and titles["Hit a limit"]["limited"] is True
-    assert d["finished"] == 2
+    assert titles["Hit a limit"]["resetAt"] == ""
+    assert titles["Hit a limit that says when"]["resetAt"] == "2099-01-03T01:41:00.000Z"
+    assert titles["Done, not seen"].get("resetAt", "") == ""
+    assert d["finished"] == 3
 
 
 def test_every_unseen_finished_thread_is_counted(tmp_path):
@@ -119,7 +127,7 @@ def test_every_unseen_finished_thread_is_counted(tmp_path):
     db.commit()
     db.close()
     d = read(tmp_path)
-    assert d["finished"] == 32                                  # the two of build() and thirty more
+    assert d["finished"] == 33                                  # the three of build() and thirty more
     assert len([i for i in d["items"] if i["status"] in ("completed", "failed")]) == 24   # the newest, as rows
 
 

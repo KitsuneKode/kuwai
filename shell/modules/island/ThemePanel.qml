@@ -67,7 +67,7 @@ FocusScope {
     }
     function clipName(c) { return ({ "smoke-soft": "Smoke", "stars-lake": "Stars" })[c] || c.replace(/[-_]/g, " ").replace(/^./, x => x.toUpperCase()); }
     readonly property var saverItems: {
-        const st = Settings.screensaverStyle || "dusk", clip = Settings.screensaverClip || "smoke-soft";
+        const st = Settings.screensaverStyle || "still", clip = Settings.screensaverClip || "smoke-soft";
         const liveThumb = (live.find(x => x.current) || {}).thumb || "";
         // Dusk is drawn, so its picture ships with it (it looked in your films'
         // folder, where none was: a blank card).
@@ -327,7 +327,7 @@ FocusScope {
         Label {
             anchors { right: guideBtn.left; rightMargin: 14; verticalCenter: parent.verticalCenter }
             text: picker.mode === "saver" ? (Settings.screensaverWhen === "off" ? "Off · Settings → Screensaver"
-                    : (Settings.screensaverWhen === "always" ? "When idle" : "With Caffeine on") + " · after " + (Settings.screensaverMins || 3) + " min · P to see it")
+                    : (Settings.screensaverWhen === "caffeine" ? "With Caffeine on" : "Before the lock") + " · after " + Idle.saverAfterText + " · P to see it")
                 : picker.mode === "live" ? "Plays behind your windows; pauses when they cover it" : (picker.info.current || "").replace(/-/g, " ")
             size: Theme.tBody; weight: Theme.wMedium; color: Theme.textSecondary
         }

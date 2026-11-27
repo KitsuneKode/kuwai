@@ -1073,9 +1073,9 @@ FocusScope {
                 SettingsRow {
                     key: "screensaverWhen"
                     label: "Show the screensaver"
-                    detail: Settings.screensaverWhen === "caffeine" ? "While Caffeine keeps the screen on, after a while of no input" : Settings.screensaverWhen === "always" ? "Whenever you're away, before the lock" : "Never"
+                    detail: Settings.screensaverWhen === "caffeine" ? "While Caffeine keeps the screen on, after a while of no input" : Settings.screensaverWhen === "always" ? "Whenever you're away, before the screen fades and locks (after " + Idle.saverAfterText + ")" : "Never"
                     Segmented {
-                        options: [{ id: "caffeine", label: "With Caffeine" }, { id: "always", label: "Always" }, { id: "off", label: "Off" }]
+                        options: [{ id: "always", label: "Always" }, { id: "caffeine", label: "With Caffeine" }, { id: "off", label: "Off" }]
                         current: Settings.screensaverWhen
                         onPicked: id => Settings.set("screensaverWhen", id)
                     }
@@ -1083,6 +1083,7 @@ FocusScope {
                 SettingsRow {
                     key: "screensaverMins"
                     label: "After"
+                    detail: Settings.screensaverWhen === "always" && Idle.saverAfter < Settings.screensaverMins * 60 ? "Comes " + Idle.saverAfterText + " in, before the lock" : ""
                     Segmented {
                         options: [1, 3, 5, 10].map(n => ({ id: String(n), label: n + " min" }))
                         current: String(Settings.screensaverMins)

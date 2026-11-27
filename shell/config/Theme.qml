@@ -187,8 +187,9 @@ Singleton {
     // island body itself stays near-black in every mode, like the hardware
     // island it's modelled on; light themes tint it, never whiten it.
     property color accent: blue
-    // A theme change recolours the island as a 400 ms blend, not a cut.
-    Behavior on accent { ColorAnimation { duration: root.artMs; easing.type: Easing.OutCubic } }
+    // One commit per recolour; only the always-visible fills blend (accentLive).
+    property color accentLive: accent
+    Behavior on accentLive { ColorAnimation { duration: root.artMs; easing.type: Easing.OutCubic } }
     property color accentSoft: Qt.rgba(0.04, 0.52, 1, 0.5)
     // Text and glyphs that sit *on* the accent: dark on light accents, white on dark.
     function luminance(c) {
@@ -258,13 +259,13 @@ Singleton {
         return v;
     }
     function fromDcol(v) {
-        if (!v.pry1 && !v["1xa7"]) return false;
-        if (v["1xa7"]) accent = vivid(v["1xa7"]);
-        if (v["1xa5"]) accentSoft = v["1xa5"];
-        if (v.pry1) themeBg = v.pry1;
-        if (v.txt1) themeFg = v.txt1;
-        palette = ["pry1", "pry2", "1xa7", "2xa7", "3xa7", "4xa7"].filter(k => v[k]).map(k => v[k]);
-        return true;
+        if (!v.pry1 && !v["1xa7"]) return null;
+        const c = { palette: ["pry1", "pry2", "1xa7", "2xa7", "3xa7", "4xa7"].filter(k => v[k]).map(k => v[k]) };
+        if (v["1xa7"]) c.accent = vivid(v["1xa7"]);
+        if (v["1xa5"]) c.accentSoft = Qt.color(v["1xa5"]);
+        if (v.pry1) c.themeBg = Qt.color(v.pry1);
+        if (v.txt1) c.themeFg = Qt.color(v.txt1);
+        return c;
     }
     function fromKitty(text) {
         const v = {};
@@ -272,44 +273,58 @@ Singleton {
             const p = l.trim().split(/\s+/);
             if (p.length >= 2 && /^#[0-9A-Fa-f]{6}$/.test(p[1])) v[p[0]] = p[1];
         }
-        if (!v.color4) return false;
-        accent = vivid(v.color4);
-        accentSoft = Qt.rgba(Qt.color(v.color4).r, Qt.color(v.color4).g, Qt.color(v.color4).b, 0.5);
-        if (v.background) themeBg = v.background;
-        if (v.foreground) themeFg = v.foreground;
-        palette = ["background", "color1", "color3", "color2", "color6", "color4", "color5"].filter(k => v[k]).map(k => v[k]);
-        return true;
+        if (!v.color4) return null;
+        const c4 = Qt.color(v.color4);
+        const c = { accent: vivid(v.color4), accentSoft: Qt.rgba(c4.r, c4.g, c4.b, 0.5),
+                    palette: ["background", "color1", "color3", "color2", "color6", "color4", "color5"].filter(k => v[k]).map(k => v[k]) };
+        if (v.background) c.themeBg = Qt.color(v.background);
+        if (v.foreground) c.themeFg = Qt.color(v.foreground);
+        return c;
     }
     function fromKuwaiLook(text) {
         try {
             const d = JSON.parse(text);
-            if (!d || d.schema !== 1 || !d.role || !d.role.accent) return false;
-            accent = Qt.color(d.role.accent);
-            if (d.role.accentSoft) accentSoft = Qt.color(d.role.accentSoft);
-            if (d.role.bg) themeBg = Qt.color(d.role.bg);
-            if (d.role.fg) themeFg = Qt.color(d.role.fg);
-            if (Array.isArray(d.swatches) && d.swatches.length > 0) palette = d.swatches;
-            if (d.source && d.source.name) themeName = d.source.name;
-            if (d.wall && typeof d.wall.topLuma === "number") wallTopLuma = d.wall.topLuma;
-            if (d.wall && d.wall.ink) wallInk = Qt.color(d.wall.ink);
+            if (!d || d.schema !== 1 || !d.role || !d.role.accent) return null;
             const m = d.mode || "dark";
-            colorMode = m === "theme" ? 0 : m === "auto" ? 1 : m === "light" ? 3 : 2;
-            return true;
+            const c = { accent: Qt.color(d.role.accent), colorMode: m === "theme" ? 0 : m === "auto" ? 1 : m === "light" ? 3 : 2 };
+            if (d.role.accentSoft) c.accentSoft = Qt.color(d.role.accentSoft);
+            if (d.role.bg) c.themeBg = Qt.color(d.role.bg);
+            if (d.role.fg) c.themeFg = Qt.color(d.role.fg);
+            if (Array.isArray(d.swatches) && d.swatches.length > 0) c.palette = d.swatches;
+            if (d.source && d.source.name) c.themeName = String(d.source.name);
+            if (d.wall && typeof d.wall.topLuma === "number") c.wallTopLuma = d.wall.topLuma;
+            if (d.wall && d.wall.ink) c.wallInk = Qt.color(d.wall.ink);
+            return c;
         } catch (e) {
-            return false;
+            return null;
         }
     }
     function reloadLook() {
         kuwaiPalette.reload();
     }
-    function recolor() {
-        if (kuwaiPalette.loaded && fromKuwaiLook(kuwaiPalette.text())) return;
+    function colours() {
+        const look = kuwaiPalette.loaded ? fromKuwaiLook(kuwaiPalette.text()) : null;
+        if (look) return look;
         if (colorMode === 0 && themeName) {
-            if (themeDcol.loaded && fromDcol(parseDcol(themeDcol.text()))) return;
-            if (themeKitty.loaded && fromKitty(themeKitty.text())) return;
+            const dcol = themeDcol.loaded ? fromDcol(parseDcol(themeDcol.text())) : null;
+            if (dcol) return dcol;
+            const kitty = themeKitty.loaded ? fromKitty(themeKitty.text()) : null;
+            if (kitty) return kitty;
         }
-        if (wallDcol.loaded) fromDcol(parseDcol(wallDcol.text()));
+        return wallDcol.loaded ? fromDcol(parseDcol(wallDcol.text())) : null;
     }
+    function commit(c) {
+        if (!c) return 0;
+        let n = 0;
+        for (const k of ["accent", "accentSoft", "themeBg", "themeFg", "wallInk"])
+            if (c[k] !== undefined && !Qt.colorEqual(root[k], c[k])) { root[k] = c[k]; n++; }
+        for (const k of ["themeName", "colorMode", "wallTopLuma"])
+            if (c[k] !== undefined && root[k] !== c[k]) { root[k] = c[k]; n++; }
+        if (c.palette && JSON.stringify(c.palette) !== JSON.stringify(root.palette)) { root.palette = c.palette; n++; }
+        return n;
+    }
+    function recolor() { root.recolorSettle.restart(); }
+    property Timer recolorSettle: Timer { interval: root.recolorMs; onTriggered: root.commit(root.colours()) }
     FileView {
         id: kuwaiPalette
         property bool loaded: false
@@ -497,6 +512,7 @@ Singleton {
     readonly property int reflowMs: durBase         // neighbours closing a gap
     readonly property int colorMs: durFast
     readonly property int hoverMs: durInstant           // hover tints: answer the pointer at once
+    readonly property int recolorMs: durSettle
     readonly property int artMs: durSlow            // a colour following its new source: album art after a new track, the accent after a theme change
     readonly property int spinMs: 750           // one turn of a spinner: brisk (a faster turn reads as faster work; every spinner uses it)
     readonly property int stepMs: 600           // one step of a working ring (glides, then rests ~2.4 s)

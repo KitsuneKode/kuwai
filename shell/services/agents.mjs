@@ -8,7 +8,7 @@ import { stateOf, stateGlyph } from "./t3.mjs";
  *   pid?: number | string, w?: string, where?: string, question?: string, raw?: any }} Pane
  */
 /** An unread kittymux event. @typedef {{ id: string, kind?: string, severity?: string, agent?: string, t?: number }} Event */
-/** A T3 thread (bin/kuwai-t3). @typedef {{ thread?: string, title?: string, status?: string, ask?: string | null, limited?: boolean, blocked?: boolean, goal?: boolean, woke?: boolean, held?: boolean, at?: string, provider?: string, request?: { prompt?: string } | null, ctx?: number, win?: number, cacheUntil?: string }} Thread */
+/** A T3 thread (bin/kuwai-t3). @typedef {{ thread?: string, title?: string, status?: string, ask?: string | null, limited?: boolean, resetAt?: string, blocked?: boolean, goal?: boolean, woke?: boolean, held?: boolean, at?: string, provider?: string, request?: { prompt?: string } | null, ctx?: number, win?: number, cacheUntil?: string }} Thread */
 /** A Desktop agent hook session (bin/kuwai-agent-hook). @typedef {{ id?: string, agent?: string, state?: string, ask?: string | null, title?: string, project?: string, cwd?: string, model?: string, question?: string, window_class?: string, since?: number, updated_at?: number, pane?: string, thread?: string }} Desktop */
 /** One agent, any surface (kitty TUI, t3, desktop). @typedef {{ src: string, agent: string, key: string, stateKey: string, glyph: string, word: string, rank: number, t: number, reset: number, account: string, title: string, event: string, action: any, thread: string, windowClass: string, desktopId: string }} Item */
 /**
@@ -62,10 +62,11 @@ function fromThread(i) {
     const rank = st.tone === "attention" ? WANTS : st.key === "failed" ? FAILED : st.key === "limited" ? LIMITED
         : st.key === "working" || st.key === "starting" || st.key === "goal" ? WORKING : OTHER;
     const t = Date.parse(String(i.at || ""));
+    const back = rank === LIMITED ? Date.parse(String(i.resetAt || "")) : NaN;
     return {
         src: "t3", agent: t3Agent(i.provider), key: "t" + (i.thread || ""), stateKey: st.key, glyph: stateGlyph(st.key), title: String(i.title || ""),
         word: rank === WORKING || rank === OTHER ? "" : st.word,
-        rank, t: isFinite(t) ? t : 0, reset: 0, account: "", event: "", action: null, thread: String(i.thread || ""), windowClass: "", desktopId: ""
+        rank, t: isFinite(t) ? t : 0, reset: isFinite(back) ? back : 0, account: "", event: "", action: null, thread: String(i.thread || ""), windowClass: "", desktopId: ""
     };
 }
 
@@ -260,6 +261,21 @@ export function backAt(windows, id, now) {
         if (r > now && (!best || r < best)) best = r;
     }
     return best;
+}
+
+/**
+ * Limited agents that didn't say when they are back get their provider's
+ * soonest reset (Limits.windows); the others are returned as they are.
+ * @template {{ rank: number, reset: number, agent: string }} T
+ * @param {T[]} list @param {Parameters<typeof backAt>[0]} windows @param {number} now @returns {T[]}
+ */
+export function withResets(list, windows, now) {
+    if (!(windows || []).length) return list;
+    return list.map(x => {
+        if (x.rank !== LIMITED || x.reset > now) return x;
+        const r = backAt(windows, providerId(x.agent), now);
+        return r ? Object.assign({}, x, { reset: r }) : x;
+    });
 }
 
 /** "41m", "2h 5m": how long until a time (ms). "" when unknown or past. @param {number} at @param {number} now */
