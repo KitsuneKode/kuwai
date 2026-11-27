@@ -74,6 +74,22 @@ def test_a_login_screen_you_can_write_gets_no_code_and_says_how_to_close_it(tmp_
     assert list(dest.iterdir()) == []
 
 
+@pytest.mark.skipif(os.geteuid() == 0, reason="as root every folder is writable: the check only applies to the user")
+def test_the_way_to_close_it_is_one_root_will_run(tmp_path):
+    home = home_with_data(tmp_path)
+    dest = tmp_path / "greeter"
+    dest.mkdir()
+    sysroot = tmp_path / "sys"
+    lib = sysroot / "usr/local/lib/kuwai"
+    lib.mkdir(parents=True)
+    env = {"PATH": os.environ["PATH"], "HOME": str(home), "KUWAI_GREETER_DIR": str(dest), "KUWAI_SYSROOT": str(sysroot)}
+    r = subprocess.run([str(SYNC)], env=env, capture_output=True, text=True)
+    assert f"sudo {REPO}/greeter/install --code --trust-clone" in r.stderr and "trusting" in r.stderr
+    (lib / "current").symlink_to("releases/v1.0.0")
+    r = subprocess.run([str(SYNC)], env=env, capture_output=True, text=True)
+    assert f"sudo {lib}/current/greeter/install --code" in r.stderr and "--trust-clone" not in r.stderr
+
+
 def test_install_script_keeps_the_code_roots():
     text = (REPO / "greeter" / "install").read_text()
     assert 'own=(-o root -g root); [ -z "$SYS" ] || own=()' in text, "root owns it, outside a stand-in root"

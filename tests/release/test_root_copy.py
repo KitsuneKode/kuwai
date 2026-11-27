@@ -4,6 +4,7 @@ stand-in / owned by the test user, who stands in for root."""
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -273,3 +274,17 @@ def test_root_scripts_refuse_a_clone_before_doing_anything():
         guard = text.index("from_release ")
         first_change = min(i for i in (text.find(w, guard - 1) for w in ("install -", "rm -", "systemctl ", "rsync ")) if i >= 0)
         assert guard < first_change, f"{script} changes something before it checks where it runs from"
+
+
+def test_every_hint_to_run_a_root_script_names_one_root_will_run():
+    hint = re.compile(r"sudo[^\n]{0,80}(?:system/install|greeter/install|system/session)")
+    ok = ("$LIB/current", "$KUWAI_LIB/current", "/usr/local/lib/kuwai/current", "--trust-clone")
+    stale = []
+    for top in ("bin", "shell", "greeter", "system", "lib", "install.sh"):
+        for path in sorted((ROOT / top).rglob("*")) if (ROOT / top).is_dir() else [ROOT / top]:
+            if not path.is_file() or path.suffix in (".png", ".jpg", ".ttf", ".otf"):
+                continue
+            for n, line in enumerate(path.read_text(errors="replace").splitlines(), 1):
+                if hint.search(line) and not any(o in line for o in ok):
+                    stale.append(f"{path.relative_to(ROOT)}:{n}")
+    assert stale == [], "these point at a copy root refuses to install from"
