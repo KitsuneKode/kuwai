@@ -20,7 +20,7 @@ The clone only provides `kuwai-setup` and the release keys; what gets installed 
 1. It picks the newest `vX.Y.Z` tag at `--source` (GitHub by default), or `--tag vX.Y.Z`.
 2. It fetches only that tag into a new folder of its own under `~/.cache/kuwai/releases`.
 3. It checks the tag before anything in it runs: `git verify-tag` against a keyring built from `release-signers/*.asc` alone, in a temporary `GNUPGHOME`; the tag's own name; and `kuwai-tree-sha256`, the digest of every file in the tree, which the signature covers. After checking out it compares the files on disk with that digest again.
-4. Root's copy (`sudo`, once): `/usr/local/lib/kuwai/releases/vX.Y.Z`, owned by root. Root checks its copy again with `gpgv` against the fingerprint it keeps (the one `kuwai-setup` passed at the first install) and the digest of every file. Without a terminal for `sudo`, `kuwai-setup` prints this command for later.
+4. Root's copy (`sudo`, once): `/usr/local/lib/kuwai/releases/vX.Y.Z`, owned by root. Root checks its copy again with `gpgv` against the fingerprints it keeps and the digest of every file, with its own `kuwai-verify` once it has a release. `kuwai-setup` names the release keys to root only at the first install; after that root takes its keys from each release a key it already trusts signed (how a key changes: [release-signers/README](../../release-signers/README)). If root refuses the release, nothing is installed. Without a terminal for `sudo`, `kuwai-setup` prints this command for later.
 5. It runs that release's `install.sh` as you. Options it doesn't know go there.
 
 It prints the fingerprint of the key that signed the release; the release key is `7C78 CB85 5D50 4BDF 3E9B 74AF F150 E88B 5072 0270`. An unsigned tag, a tag signed by any other key, a tag without the digest or with another tree's, or a tag renamed from another release is refused, and nothing from it runs. While `release-signers/` holds no key, every release is refused.
@@ -62,10 +62,10 @@ All of them run only from root's checked copy, check it again first, and are rev
 ```sh
 sudo /usr/local/lib/kuwai/current/greeter/install   # greetd login screen (--code updates its root copy; --undo restores the previous login)
 sudo /usr/local/lib/kuwai/current/system/install    # kuwai-wake RTC alarm wake helper (--undo removes it)
-kuwai update install-helper                          # /usr/local/lib/kuwai/kuwai-update-root for Software Update, from root's copy
+kuwai update install-helper                          # /usr/local/lib/kuwai/kuwai-update-root for Software Update, from root's copy (--trust-clone: from your clone, before root has a release)
 ```
 
-`greeter/install` writes a receipt the first time (`/var/lib/kuwai-greeter/original/receipt`, root's, `0600`): the files it replaced, the digest of each kept copy, and the login manager that was on. `--undo` restores only what that receipt lists, from copies that still match it; without the receipt it restores nothing.
+`greeter/install` writes a receipt the first time (`/var/lib/kuwai-greeter/original/receipt`, root's, `0600`): the files it replaced, the digest of each kept copy, and the login manager that was on. `--undo` restores only what that receipt lists, from copies that still match it. An install from before receipts has none: `--undo` then records what is kept, but only when every folder down to the kept copies, and each copy, is root's alone; otherwise it restores nothing.
 
 ## Channels, releases, and updates
 
