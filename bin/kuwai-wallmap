@@ -33,7 +33,7 @@ from pathlib import Path
 HOME = Path.home()
 CACHE = Path(os.environ.get("XDG_CACHE_HOME", HOME / ".cache")) / "kuwai" / "wallmaps"
 CUTOUT_MEMORY = os.environ.get("KUWAI_WALLMAP_MEMORY", "8G")
-CUTOUT_ROOM = 10 * 1024 * 1024
+CUTOUT_ROOM = int(os.environ.get("KUWAI_WALLMAP_ROOM_KB", 10 * 1024 * 1024))
 VENV = Path(os.environ.get("XDG_DATA_HOME", HOME / ".local/share")) / "kuwai-data" / "cutout" / "venv"
 MODEL = "birefnet-general-lite"
 WIDTH = 640

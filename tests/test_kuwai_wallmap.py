@@ -31,7 +31,7 @@ def test_first_map_on_a_fresh_cache(tmp_path):
     picture = tmp_path / "wall.png"
     Image.new("RGB", (1600, 900), (20, 20, 30)).save(picture)
 
-    env = {**os.environ, "XDG_DATA_HOME": str(data), "XDG_CACHE_HOME": str(cache)}
+    env = {**os.environ, "XDG_DATA_HOME": str(data), "XDG_CACHE_HOME": str(cache), "KUWAI_WALLMAP_ROOM_KB": "0"}
     r = subprocess.run([sys.executable, str(ROOT / "bin/kuwai-wallmap"), str(picture)], env=env, capture_output=True, text=True, timeout=60)
     assert r.returncode == 0, r.stderr
     out = Path(r.stdout.strip())
