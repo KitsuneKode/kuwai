@@ -28,6 +28,25 @@ state, drawn in a private window with sample data; nothing here is a mock-up).
 </tr>
 </table>
 
+In motion, recorded on a real session (a 2560×1440 screen at 60 fps):
+
+<table>
+<tr>
+<td colspan="2"><img src="docs/media/clips/island-hover.webp" alt="Resting on the island opens it: the app, workspaces, time, machine and agents at a glance" width="780"></td>
+</tr>
+<tr>
+<td><img src="docs/media/clips/launcher.webp" alt="The launcher answers math as you type" width="380"></td>
+<td><img src="docs/media/clips/themes.webp" alt="Themes: each with its wallpapers and colours" width="380"></td>
+</tr>
+<tr>
+<td><img src="docs/media/clips/wallpaper.webp" alt="A new wallpaper arrives through the glass, from the island" width="380"></td>
+<td><img src="docs/media/clips/sound.webp" alt="Sound: every app and device, the microphone as it hears you" width="380"></td>
+</tr>
+<tr>
+<td colspan="2"><img src="docs/media/clips/island-timer.webp" alt="A timer lives in the island as a ring" width="600"></td>
+</tr>
+</table>
+
 ## Install
 
 ```sh
