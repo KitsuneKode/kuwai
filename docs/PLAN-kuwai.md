@@ -126,7 +126,7 @@ Next, by severity then value:
 - [ ] Lock: a sampled plate behind media and notifications (Grok 3); next event
       on the lock, title only under the privacy rule (Grok 4); dismissing a
       hidden or code notification needs an unlock (Grok 5).
-- [ ] One ClockFace for lock, login and saver (Sonnet 3); login ClockGround zone.
+- [x] One ClockFace for lock, login and saver (Sonnet 3); login ClockGround zone. Done 2026-11-28: components/ClockFace + ClockChip, SaverClock, login grounds top and bottom; owner to watch the real screens.
 - [x] Saver as a real idle step: saver → fade → lock, default Still with the
       current wallpaper (Sonnet 4); long-idle ladder: after an hour, clock on
       black or DPMS (Composer 1); photo shuffle (Composer 2); one throttled GLSL

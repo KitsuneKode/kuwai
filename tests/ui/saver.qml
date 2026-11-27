@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Window
 import Quickshell
 import qs.config
+import qs.services
 import qs.modules.screensaver
 
 ShellRoot {
@@ -39,6 +40,28 @@ ShellRoot {
         }
 
         Item { id: stage; anchors.fill: parent }
+
+        Rectangle {
+            id: clockWall
+            parent: stage
+            anchors.fill: parent
+            visible: false
+            property color from: "#d9a066"
+            property color to: "#7a3b52"
+            gradient: Gradient {
+                GradientStop { position: 0; color: clockWall.from }
+                GradientStop { position: 1; color: clockWall.to }
+            }
+            Rectangle {
+                anchors.fill: parent
+                gradient: Gradient {
+                    GradientStop { position: 0; color: Qt.rgba(0, 0, 0, 0.15) }
+                    GradientStop { position: 0.6; color: Qt.rgba(0, 0, 0, 0.25) }
+                    GradientStop { position: 1; color: Qt.rgba(0, 0, 0, 0.55) }
+                }
+            }
+            SaverClock { id: sclock; areaW: 960; areaH: 540; showing: false }
+        }
 
         Rectangle {
             id: pulseBox
@@ -135,6 +158,31 @@ ShellRoot {
             });
         }
 
+        function clockRun() {
+            Settings.set("notifPrivacy", "never");
+            Weather.ok = true; Weather.temp = 14; Weather.desc = "Light rain";
+            Calendar.events = [{ start: Date.now() + 900000, end: Date.now() + 4500000, title: "Design review with the platform team", location: "", allDay: false, private: false }];
+            Media.stagePlayer({ identity: "Spotify", trackTitle: "Slow Tide", trackArtist: "The Paper Lanterns", metadata: {}, playbackState: 1, isPlaying: true });
+            clockWall.visible = true;
+            sclock.showing = true;
+            settle.run(Theme.saverMoveMs + 600, () => {
+                const inside = sclock.x >= 0 && sclock.y >= 0 && sclock.x + sclock.width <= sclock.areaW + 0.5 && sclock.y + sclock.height <= sclock.areaH + 0.5;
+                console.log("SAVER_CLOCK", JSON.stringify({ scale: Theme.textScale, x: sclock.x, y: sclock.y, w: sclock.width, h: sclock.height, digits: sclock.digits.height, inside: inside, text: sclock.digits.text }));
+                if (!inside) { fail("clock: the face does not fit the screen at text " + Theme.textScale); return; }
+                save(clockWall, "clock-full", () => {
+                    Weather.ok = false; Calendar.events = []; Media.active = null;
+                    settle.run(Theme.saverMoveMs + 600, () => {
+                        save(clockWall, "clock-bare", () => {
+                            sclock.dark = true; sclock.level = 0.8;
+                            settle.run(300, () => {
+                                save(clockWall, "clock-long", () => { sclock.showing = false; clockWall.visible = false; next(); });
+                            });
+                        });
+                    });
+                });
+            });
+        }
+
         Timer {
             id: settle
             property var then: null
@@ -148,8 +196,9 @@ ShellRoot {
             else if (step === 1) flowFrame(0);
             else if (step === 2) photoRun();
             else if (step === 3) pulseRun();
+            else if (step === 4) clockRun();
             else { console.log("UI_SMOKE_CAPTURED"); Qt.quit(); }
         }
-        Timer { interval: 600; running: true; onTriggered: win.next() }
+        Timer { interval: 600; running: true; onTriggered: { Settings.set("textScale", Number(Quickshell.env("KUWAI_UI_TEXT_SCALE") || 1)); win.next(); } }
     }
 }

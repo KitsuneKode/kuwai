@@ -72,8 +72,8 @@ ShellRoot {
         Item {
             id: island
             anchors.horizontalCenter: parent.horizontalCenter
-            width: stage.screen ? 1066 : stage.cur && stage.cur.size ? Math.min(stage.cur.size[0], stage.width - 40) : panel.item ? Math.min(panel.item.implicitWidth, stage.width - 40) : 0
-            height: stage.screen ? 600 : stage.cur && stage.cur.size ? Math.min(stage.cur.size[1], stage.height - 40) : panel.item ? Math.min(panel.item.implicitHeight, stage.height - 40) : 0
+            width: stage.screen && !(stage.cur && stage.cur.size) ? 1066 : stage.cur && stage.cur.size ? Math.min(stage.cur.size[0], stage.width - 40) : panel.item ? Math.min(panel.item.implicitWidth, stage.width - 40) : 0
+            height: stage.screen && !(stage.cur && stage.cur.size) ? 600 : stage.cur && stage.cur.size ? Math.min(stage.cur.size[1], stage.height - 40) : panel.item ? Math.min(panel.item.implicitHeight, stage.height - 40) : 0
             Rectangle { visible: !stage.screen; anchors.fill: parent; radius: Theme.r4; color: Qt.rgba(0, 0, 0, 0.94) }
             Loader { id: panel; anchors.fill: parent; focus: true }
         }
@@ -274,7 +274,7 @@ ShellRoot {
                     return;
                 }
                 const out = { id: s.id, panel: s.panel, kind: s.kind || "typical", scale: Theme.textScale,
-                              w: grab.width, h: grab.height, wants: stage.screen ? [grab.width, grab.height] : [stage.r1(it.implicitWidth), stage.r1(it.implicitHeight)],
+                              w: grab.width, h: grab.height, wants: stage.screen && !(stage.cur && stage.cur.size) ? [grab.width, grab.height] : [stage.r1(it.implicitWidth), stage.r1(it.implicitHeight)],
                               texts: [], targets: [], scrolls: [], covers: [], waiting: 0 };
                 stage.walk(it, { clip: null, op: 1, scroll: false, path: [], layer: 0 }, out);
                 // In pieces: a log line has a length the logger may cut.
