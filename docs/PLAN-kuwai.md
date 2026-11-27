@@ -19,13 +19,14 @@ the 13 GB OOM (two BiRefNet cut-outs) capped for good; two audits fixed
 
 Left, in order:
 - [ ] Warm mic + pre-roll, queued dictations (fork, feat/warm-mic-queue).
-- [ ] Screensaver as a real idle step (saver → fade → lock; still default).
-- [ ] README screenshots from healthy rehearsal scenes; clips as 1:1 crops.
+- [x] Screensaver as a real idle step (saver → fade → lock; still default). c4c8d05
+- [x] README screenshots from healthy rehearsal scenes (7bf600d). Clips as 1:1 crops: the owner runs the recording brief while away.
 - [ ] Fresh-VM pass: install, first login, lock, suspend/resume, greeter, uninstall.
 - [ ] Root never runs checkout code; signed release (needs the owner's key).
-- [ ] The shell's 99 % / 853 MB episode (17:18–20:35) is unexplained; watch
-      kuwai-check. Quickshell is built against Qt 6.12.0 on 6.12.1: crashes
-      and the stuck-panel hangs point there until Arch rebuilds it.
+- [ ] The shell's 99 % / 853 MB episode (17:18–20:35) is unexplained. The
+      repo's quickshell (built against Qt 6.12.0, running on 6.12.1) is a weak
+      suspect: a patch release keeps Qt's private symbols. Stay on extra's
+      quickshell (never quickshell-git); catch the next episode with a stack.
 
 Where the experience is still thin:
 - Feedback when something silently can't happen: a muted mic (fixed), no
@@ -98,7 +99,7 @@ Before announcing (P1/P2):
 - [ ] AUR updates with yay or no helper (Neon); kittymux path from PATH.
 - [ ] Cache clear via O_NOFOLLOW/fwalk (Grok P2); ports pid from /proc, not ss
       text (Grok P2); Agents Stop can force and says "on this network".
-- [ ] Voxtype: clear stale cancelled takes at daemon start (Astra P2).
+- [x] Voxtype: clear stale cancelled takes at daemon start (Astra P2).
 - [ ] Rehearsal scenes for Clipboard, Lock, Greeter, Assistant, Osd, Popups.
 
 ## VISUALS + HEX PASS (2026-11-27, evening) — six reviews
