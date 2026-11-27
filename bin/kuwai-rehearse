@@ -7,6 +7,8 @@
   kuwai-rehearse --gate                  also fail (exit 1) on a fault that
                                          is not in the list of known ones
   kuwai-rehearse --accept                write today's faults as the known ones
+  kuwai-rehearse --pixels 2 usage        pictures at twice the pixels, text 100 %,
+                                         for documentation (not judged)
   kuwai-rehearse --out DIR               where the frames and the sheet go
   kuwai-rehearse --wall IMAGE…           can the lock screen's clock be read
                                          over these wallpapers?
@@ -58,13 +60,13 @@ def at_now(value, now=None):
     return round(now * 1000) + int(m[1]) if m[2] == "ms" else round(now) + int(m[1])
 
 
-def stage(scenes, scale, out):
+def stage(scenes, scale, out, pixels=1):
     """Run the scenes at one text scale; frames as {id: facts}, or a reason."""
     out.mkdir(parents=True, exist_ok=True)
     listing = out / "scenes.json"
     listing.write_text(json.dumps(scenes))
     run = subprocess.run([str(ROOT / "bin/kuwai-ui-test"), "--case", "rehearse", "--backend", "x11",
-                          "--text-scale", f"{scale:g}", "--scenes", str(listing), "--output", str(out)],
+                          "--text-scale", f"{scale:g}", "--pixels", f"{pixels:g}", "--scenes", str(listing), "--output", str(out)],
                          capture_output=True, text=True)
     try:
         verdict = json.loads(run.stdout.strip().splitlines()[-1])
@@ -139,6 +141,7 @@ def main():
     ap.add_argument("--scale", type=float, action="append", choices=[1, 1.2, 2], help="text scale (default: 1, 1.2 and 2)")
     ap.add_argument("--scenes", type=Path, default=ROOT / "tests/ui/scenes.json")
     ap.add_argument("--out", type=Path)
+    ap.add_argument("--pixels", type=float, default=1, help="draw the pictures at this many times the pixels, text 100 %%, and do not judge them (for documentation)")
     ap.add_argument("--gate", action="store_true")
     ap.add_argument("--accept", action="store_true")
     ap.add_argument("--wall", nargs="+", type=Path, metavar="IMAGE",
@@ -172,6 +175,14 @@ def main():
         return 2
     out = args.out or Path(tempfile.mkdtemp(prefix="kuwai-rehearsal-"))
     scales = args.scale or [1, 1.2, 2]
+
+    if args.pixels != 1:
+        verdict, frames = stage({"seed": at_now(seed), "scenes": at_now(scenes)}, 1, out, args.pixels)
+        if verdict.get("status") != "PASS":
+            print(f"could not stage: {verdict.get('reason')} ({out / 'runtime.log'})", file=sys.stderr)
+            return 2
+        print(f"{len(scenes)} pictures at {args.pixels:g}x in {out}")
+        return 0
 
     faults, shots = [], []
     for scale in scales:

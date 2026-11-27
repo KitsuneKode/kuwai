@@ -13,6 +13,14 @@ bin/kuwai-rehearse --scale 1.2     # one text size
 bin/kuwai-rehearse --gate          # exit 1 on a new fault (run before a promote)
 ```
 
+`--pixels 2` draws the pictures at twice the pixels (text at 100 %, nothing
+judged): it is how the README's tour (`docs/media/tour/`) is made, from the
+scenes `updates/tour`, `system/calm`, `launcher/tour`, `settings/shortcuts-tour`
+and `media/playing`. A scene's `late` sets are applied once its panel is up, for
+a reading a helper the panel starts would overwrite (`system/calm`); a seed
+value `"copy:tests/ui/fixtures/x.png"` copies that repository file into the
+private home (the sample cover).
+
 It prints one line per fault and the path of `sheet.png`. **Open the sheet.**
 A passing gate means nothing measurable is wrong; whether the frame is good is
 still a person's call, and the sheet is where that call is made.

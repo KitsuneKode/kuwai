@@ -25,6 +25,7 @@ def main():
     parser.add_argument('--compile-components', action='store_true', help='requires a real PanelWindow backend; otherwise UNQUALIFIED')
     parser.add_argument('--self-test-isolation', action='store_true')
     parser.add_argument('--text-scale', type=float, choices=[1, 1.2, 2], default=1)
+    parser.add_argument('--pixels', type=float, default=1, help='--case rehearse: draw each picture at this many times the pixels (for pictures to publish)')
     parser.add_argument('--motion', choices=['reduced', 'full'], default='reduced')
     parser.add_argument('--backend', choices=['offscreen', 'x11'], default='offscreen', help='x11 uses private Xvfb/Mesa and can compile PanelWindow components')
     parser.add_argument('--scenes', type=Path, help='--case rehearse: the scenes to stage (JSON list; bin/kuwai-rehearse writes it)')
@@ -59,7 +60,12 @@ def main():
                 target = (home/where).resolve()
                 if home.resolve() not in target.parents: raise SystemExit('seed outside the private home: ' + where)
                 target.parent.mkdir(parents=True, exist_ok=True)
-                target.write_text(json.dumps(content))
+                if isinstance(content, str) and content.startswith('copy:'):
+                    source = (root/content[5:]).resolve()
+                    if root.resolve() not in source.parents or not source.is_file(): raise SystemExit('seed copies a file outside the repository: ' + content)
+                    shutil.copy2(source, target)
+                else:
+                    target.write_text(json.dumps(content))
             names = sorted(q.stem for d in ('services', 'config') for q in (root/'shell'/d).glob('*.qml') if 'pragma Singleton' in q.read_text())
             fixture = fixture.replace('/*SERVICES*/', ' '.join('case "%s": return %s;' % (n, n) for n in names), 1)
             fixture = fixture.replace('/*SCENES*/[]', json.dumps(scenes), 1)
@@ -86,7 +92,7 @@ def main():
              'XDG_CONFIG_HOME':'/home/test/config','XDG_STATE_HOME':'/home/test/state',
              'XDG_CACHE_HOME':'/home/test/cache','XDG_DATA_HOME':'/home/test/data',
              'QT_QPA_PLATFORM':'offscreen','QT_QUICK_BACKEND':'software','QSG_RENDER_LOOP':'basic',
-             'KUWAI_UI_COMPILE':json.dumps([str(p.relative_to(root/'shell')) for directory in ('components','modules') for p in (root/'shell'/directory).rglob('*.qml')] if args.compile_components else []),'KUWAI_UI_TEXT_SCALE':str(args.text_scale),'KUWAI_ROOT':'/app','KUWAI_REDUCE_MOTION':'1' if args.motion == 'reduced' else '0','LANG':'C.UTF-8'}
+             'KUWAI_UI_COMPILE':json.dumps([str(p.relative_to(root/'shell')) for directory in ('components','modules') for p in (root/'shell'/directory).rglob('*.qml')] if args.compile_components else []),'KUWAI_UI_TEXT_SCALE':str(args.text_scale),'KUWAI_UI_PIXELS':f'{args.pixels:g}','KUWAI_ROOT':'/app','KUWAI_REDUCE_MOTION':'1' if args.motion == 'reduced' else '0','LANG':'C.UTF-8'}
         if args.backend == 'x11':
             vendors = sorted(Path('/usr/share/glvnd/egl_vendor.d').glob('*mesa*.json'))
             if not vendors:

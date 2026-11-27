@@ -114,20 +114,25 @@ ShellRoot {
             for (let i = undo.length - 1; i >= 0; i--) undo[i][0][undo[i][1]] = undo[i][2];
             undo = [];
         }
-        function next() {
-            restore();
-            panel.source = "";
-            if (++at >= scenes.length) { console.log("UI_SMOKE_CAPTURED"); Qt.quit(); return; }
-            const s = scenes[at];
-            const sets = [["Island", "panel", s.name]].concat(s.set || []);
+        function applySets(s, sets) {
             for (const one of sets) {
                 const svc = service(one[0]);
-                if (!svc) { fail("scene " + s.id + " names an unknown service: " + one[0]); return; }
+                if (!svc) { fail("scene " + s.id + " names an unknown service: " + one[0]); return false; }
                 if (one[1] === "call") { svc[one[2]].apply(svc, one[3] || []); continue; }
-                if (!(one[1] in svc)) { fail("scene " + s.id + ": " + one[0] + " has no " + one[1]); return; }
+                if (!(one[1] in svc)) { fail("scene " + s.id + ": " + one[0] + " has no " + one[1]); return false; }
                 undo.push([svc, one[1], svc[one[1]]]);
                 svc[one[1]] = one[2];
             }
+            return true;
+        }
+        property bool lateDone: false
+        function next() {
+            restore();
+            lateDone = false;
+            panel.source = "";
+            if (++at >= scenes.length) { console.log("UI_SMOKE_CAPTURED"); Qt.quit(); return; }
+            const s = scenes[at];
+            if (!applySets(s, [["Island", "panel", s.name]].concat(s.set || []))) return;
             // A property given as "@date:2026-11-18T10:10:00" is that moment (a
             // panel that shows today would otherwise differ every day).
             const props = {};
@@ -145,6 +150,13 @@ ShellRoot {
             onTriggered: {
                 const s = stage.scenes[stage.at], it = panel.item;
                 if (!it) { stage.fail("scene " + s.id + ": nothing loaded"); return; }
+                if (s.late && !stage.lateDone) {
+                    stage.lateDone = true;
+                    if (!stage.applySets(s, s.late)) return;
+                    settle.interval = 250;
+                    settle.restart();
+                    return;
+                }
                 const out = { id: s.id, panel: s.panel, kind: s.kind || "typical", scale: Theme.textScale,
                               w: island.width, h: island.height, wants: [stage.r1(it.implicitWidth), stage.r1(it.implicitHeight)],
                               texts: [], targets: [], scrolls: [], covers: [], waiting: 0 };
@@ -153,10 +165,11 @@ ShellRoot {
                 const json = JSON.stringify(out);
                 for (let i = 0, n = 0; i < json.length; i += 3000, n++) console.log("REHEARSE_PART", s.id, n, json.slice(i, i + 3000));
                 console.log("REHEARSE_END", s.id);
+                const px = Number(Quickshell.env("KUWAI_UI_PIXELS") || 1);
                 island.grabToImage(result => {
                     if (!result.saveToFile("/out/" + s.id.replace(/[^\w.-]+/g, "_") + ".png")) { stage.fail("capture failed: " + s.id); return; }
                     stage.next();
-                });
+                }, px === 1 ? Qt.size(0, 0) : Qt.size(Math.round(island.width * px), Math.round(island.height * px)));
             }
         }
         Timer {
