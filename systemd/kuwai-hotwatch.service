@@ -1,0 +1,8 @@
+[Unit]
+Description=kuwai: if the shell has been busy for two minutes, save what it was doing (once a run)
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c 'exec "${KUWAI_ROOT:-%h/.local/share/kuwai}/bin/kuwai-hotwatch"'
+Nice=10
+IOSchedulingClass=idle

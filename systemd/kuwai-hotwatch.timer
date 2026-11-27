@@ -1,0 +1,10 @@
+[Unit]
+Description=kuwai: notice when the shell stays busy, once a minute
+
+[Timer]
+OnActiveSec=2min
+OnUnitActiveSec=1min
+AccuracySec=10s
+
+[Install]
+WantedBy=timers.target
