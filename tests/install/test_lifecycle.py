@@ -485,3 +485,34 @@ def test_a_planted_link_never_redirects_a_new_config(install_env, tmp_path):
     (d / 'monitors.lua').symlink_to(target)
     i.run()
     assert not target.exists(), "the empty monitors.lua is never written through a link"
+
+
+def test_a_fresh_install_without_hyde_gets_a_wallpaper_once(install_env):
+    """The VM's first login was a flat grey desktop: no HyDE, so no wallpaper."""
+    themes = install_env.repo / 'themes/kuwai-night'
+    themes.mkdir(parents=True)
+    (themes / 'wallpapers.tsv').write_text('# name\turl\n01-night\thttps://example.invalid/night.jpg\n')
+    (themes / 'CREDITS.txt').write_text('credits\n')
+    tools = Path(install_env.env['PATH'].split(':')[0])
+    (tools / 'curl').write_text('#!/bin/sh\nwhile [ $# -gt 0 ]; do [ "$1" = -o ] && { printf JPEG > "$2"; }; shift; done\n')
+    (tools / 'file').write_text('#!/bin/sh\necho image/jpeg\n')
+    state = install_env.home / '.local/state/kuwai'
+    out = install_env.run()
+    assert "Kuwai Night's wallpaper (01-night)" in out
+    assert (state / 'wallpaper').resolve() == (state / 'wallpapers/01-night.jpg').resolve()
+    assert (state / 'wallpapers/CREDITS.txt').exists()
+    again = install_env.run()
+    assert 'yours, kept' in again
+
+
+def test_a_wallpaper_that_isnt_an_image_is_not_used(install_env):
+    themes = install_env.repo / 'themes/kuwai-night'
+    themes.mkdir(parents=True)
+    (themes / 'wallpapers.tsv').write_text('01-night\thttps://example.invalid/night.jpg\n')
+    (themes / 'CREDITS.txt').write_text('credits\n')
+    tools = Path(install_env.env['PATH'].split(':')[0])
+    (tools / 'curl').write_text('#!/bin/sh\nwhile [ $# -gt 0 ]; do [ "$1" = -o ] && { printf "<html>" > "$2"; }; shift; done\n')
+    (tools / 'file').write_text('#!/bin/sh\necho text/html\n')
+    out = install_env.run()
+    assert "isn't an image" in out
+    assert not (install_env.home / '.local/state/kuwai/wallpaper').exists()

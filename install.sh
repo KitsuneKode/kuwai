@@ -292,6 +292,29 @@ pin_prompt() {
     fi
 }
 
+default_wallpaper() {
+    local name="" url="" sum="" dest tmp list=$REPO/themes/kuwai-night/wallpapers.tsv
+    [ -f "$list" ] && { IFS=$'\t' read -r name url sum _ < <(grep -v '^#' "$list" | head -1) || true; }
+    case $name in ''|*[!A-Za-z0-9._-]*) warn "no default wallpaper listed"; return 0 ;; esac
+    dest=$STATE/wallpapers/$name.jpg
+    mkdir -p "$STATE/wallpapers"
+    tmp=$(mktemp)
+    if ! curl -fsSL --proto =https --proto-redir =https --max-time 120 --max-filesize 40M -o "$tmp" "$url"; then
+        rm -f "$tmp"; warn "couldn't download a wallpaper (offline?): set one later with kuwai-wall set IMAGE"; return 0
+    fi
+    if [ -n "${sum:-}" ] && ! printf '%s  %s\n' "$sum" "$tmp" | sha256sum -c --status; then
+        rm -f "$tmp"; warn "the wallpaper isn't the file Kuwai Night lists; not used"; return 0
+    fi
+    if ! file -b --mime-type "$tmp" | grep -Eq '^image/(jpeg|png|webp)$'; then
+        rm -f "$tmp"; warn "the wallpaper download isn't an image; not used"; return 0
+    fi
+    mv "$tmp" "$dest"
+    cp "$REPO/themes/kuwai-night/CREDITS.txt" "$STATE/wallpapers/CREDITS.txt"
+    ln -sfn "$dest" "$STATE/wallpaper"
+    "$STABLE/bin/kuwai-look" set-wallpaper --no-apply "$dest" >/dev/null 2>&1 || true
+    ok "Kuwai Night's wallpaper ($name), set at your first login; credits beside it"
+}
+
 install_all() {
     check_deps
 
@@ -356,6 +379,12 @@ install_all() {
     elif [ -e "$kbin" ] && ! { [ -L "$kbin" ] && [ -f "$(dirname "$(readlink -f "$kbin")")/kuwai-ctl" ]; }; then ok "$kbin is your own: left as it is"
     elif place -s "$STABLE/bin/kuwai" "$kbin"; then ok "kuwai → $STABLE/bin/kuwai"; fi
     case ":$PATH:" in *":$HOME/.local/bin:"*) ;; *) warn "$HOME/.local/bin isn't on your PATH: add it to run kuwai by name" ;; esac
+
+    step "Wallpaper"
+    if hyde_here; then ok "HyDE's (its themes and wallpapers)"
+    elif [ -e "$STATE/wallpaper" ]; then ok "yours, kept"
+    elif [ $DRY = 1 ]; then say "  would: download Kuwai Night's first wallpaper into $STATE/wallpapers and use it"
+    else default_wallpaper; fi
 
     step "User services"
     if [ $NO_SERVICES = 1 ]; then
