@@ -14,15 +14,15 @@ const Qt = {
 function theme() {
   const sets = {};
   const file = () => ({ loaded: false, body: '', text() { return this.body; } });
-  const scope = { Qt, JSON, coloured: true, colorMode: 0, themeName: '', wallTopLuma: 0.1, palette: [],
+  const scope = { Qt, JSON, coloured: true, recolorHeld: false, recolorDirty: false, colorMode: 0, themeName: '', wallTopLuma: 0.1, palette: [],
     kuwaiPalette: file(), themeDcol: file(), themeKitty: file(), wallDcol: file(),
-    recolorSettle: { restarts: 0, restart() { this.restarts++; } } };
+    recolorSettle: { running: false, restarts: 0, stops: 0, restart() { this.running = true; this.restarts++; }, stop() { this.running = false; this.stops++; } } };
   for (const k of ['accent', 'accentSoft', 'themeBg', 'themeFg', 'wallInk']) {
     let v = { hex: 'start-' + k };
     sets[k] = 0;
     Object.defineProperty(scope, k, { get: () => v, set: x => { v = x; sets[k]++; }, enumerable: true });
   }
-  functions('shell/config/Theme.qml', ['vivid', 'parseDcol', 'fromDcol', 'fromKitty', 'fromKuwaiLook', 'colours', 'commit', 'recolor'], scope);
+  functions('shell/config/Theme.qml', ['vivid', 'parseDcol', 'fromDcol', 'fromKitty', 'fromKuwaiLook', 'colours', 'commit', 'recolor', 'holdRecolor', 'flushRecolor'], scope);
   scope.fire = () => scope.commit(scope.colours());
   return { t: scope, sets };
 }
@@ -93,4 +93,20 @@ test('only the always-visible fills blend; the accent itself is one commit', () 
   const capsules = read('shell/modules/island/Capsules.qml');
   expect(capsules).not.toMatch(/Theme\.accent\b(?!Live)/);
   expect(capsules).toMatch(/Theme\.accentLive/);
+});
+
+test('a held recolour batches until flushRecolor commits it once', () => {
+  const { t, sets } = theme();
+  t.holdRecolor(true);
+  t.wallDcol.loaded = true;
+  t.wallDcol.body = dcol('11AAFF', '101014');
+  t.colorMode = 1;
+  t.recolor();
+  t.recolor();
+  expect(t.recolorSettle.restarts).toBe(0);
+  expect(sets.accent).toBe(0);
+  expect(t.flushRecolor()).toBeGreaterThan(0);
+  expect(sets.accent).toBe(1);
+  expect(t.recolorHeld).toBe(false);
+  expect(t.recolorDirty).toBe(false);
 });

@@ -139,9 +139,24 @@ Singleton {
     // they go off once the work ends if you're still away. (Holding the
     // monitor off instead would wake the screens whenever an agent started.)
     readonly property bool screensHeld: Settings.idleScreensWhileWork && Caffeine.workNow.length > 0
+    property string dpmsPending: ""
     function screens(off) {
-        Saver.screensOff = off;
-        root.run(`hyprctl dispatch 'hl.dsp.dpms({ action = "${off ? "disable" : "enable"}" })'`);
+        const action = off ? "disable" : "enable";
+        if (dpmsProc.running) { dpmsPending = action; return; }
+        dpmsProc.command = ["hyprctl", "dispatch", 'hl.dsp.dpms({ action = "' + action + '" })'];
+        dpmsProc.running = true;
+    }
+    Process {
+        id: dpmsProc
+        onExited: {
+            Saver.probeDpms();
+            if (root.dpmsPending !== "") {
+                const next = root.dpmsPending;
+                root.dpmsPending = "";
+                dpmsProc.command = ["hyprctl", "dispatch", 'hl.dsp.dpms({ action = "' + next + '" })'];
+                dpmsProc.running = true;
+            }
+        }
     }
     IdleMonitor {
         id: offMonitor
