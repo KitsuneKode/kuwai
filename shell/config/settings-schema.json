@@ -430,6 +430,18 @@
       "restartScope": "live"
     },
     {
+      "key": "screensaverPulse",
+      "type": "boolean",
+      "default": false,
+      "section": "saver",
+      "label": "Music pulse",
+      "detail": "While music plays, a quiet ring breathes beside the track title; no cover art",
+      "group": "",
+      "searchTerms": "music pulse ring breathes track title media playing screensaver",
+      "requires": [],
+      "restartScope": "live"
+    },
+    {
       "key": "screensaverLongMins",
       "type": "integer",
       "default": 60,

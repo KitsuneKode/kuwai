@@ -599,6 +599,7 @@ Singleton {
     readonly property int saverFrameMs: 66
     readonly property int saverLongFadeMs: 5000
     readonly property int saverPhotoFadeMs: 4000
+    readonly property int saverPulseMs: 3200
     readonly property real saverLongDim: 0.4
     readonly property int duskMeteorWaitMs: 14000  // Dusk: quiet sky before a shooting star…
     readonly property int duskMeteorInMs: 180      // …it flashes on…

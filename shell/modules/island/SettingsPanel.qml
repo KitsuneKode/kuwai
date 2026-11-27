@@ -1146,6 +1146,11 @@ FocusScope {
                     }
                 }
                 SettingsRow {
+                    key: "screensaverPulse"
+                    label: "Music pulse"; detail: "While music plays, a quiet ring breathes beside the track title; no cover art"
+                    Toggle { on: Settings.screensaverPulse; onToggled: Settings.set("screensaverPulse", !Settings.screensaverPulse) }
+                }
+                SettingsRow {
                     label: "Preview"; detail: "Any input ends it"
                     Button { height: Theme.sp(30); size: Theme.tSub; text: "Start now"; onClicked: Quickshell.execDetached([settings.kuwai, "screensaver", "start"]) }
                 }

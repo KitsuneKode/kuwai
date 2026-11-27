@@ -57,6 +57,7 @@ Singleton {
     readonly property string jackMicName: value("jackMicName")
     readonly property string screensaverClip: value("screensaverClip")
     readonly property int screensaverLongMins: value("screensaverLongMins")
+    readonly property bool screensaverPulse: value("screensaverPulse")
     readonly property int screensaverPhotoMins: value("screensaverPhotoMins")
     readonly property string screensaverFolder: value("screensaverFolder")
     readonly property string idleOwner: value("idleOwner")

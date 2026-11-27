@@ -79,3 +79,7 @@ After an hour on the screensaver (`Settings → Screensaver → Then go dark`: 3
 ### Photos
 
 The **Photos** look shows one picture at a time, fading slowly into the next every few minutes (`Settings → Screensaver → Change photo`: 1, 5, 15 or 30 min). By default the pictures are your current theme's wallpapers; to use a folder instead, `kuwai set screensaverFolder "~/Pictures/favourites"` (one level of the folder, `jpg`, `png` and `webp`; `kuwai set screensaverFolder ""` goes back). Each screen follows its own shuffle. Only the picture on screen and the next one are held in memory, decoded at screen size; between changes nothing moves. A folder with no pictures shows the still wallpaper.
+
+### Music pulse
+
+With **Settings → Screensaver → Music pulse** on (`screensaverPulse`, off by default), the track line becomes a small ring that breathes slowly beside the title and artist while music plays. It never shows cover art and never flashes; it is drawn at the same 15 frames a second as Flow, goes with the clock when the clock moves, and is a still ring with Reduce Motion on. It goes away when the screensaver goes dark after its long wait.

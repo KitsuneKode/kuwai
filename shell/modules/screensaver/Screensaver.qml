@@ -481,7 +481,7 @@ Scope {
                         }
                         Text {
                             textFormat: Text.PlainText
-                            visible: Media.playing && !!Media.active && !root.longDark
+                            visible: Media.playing && !!Media.active && !root.longDark && !Settings.screensaverPulse
                             opacity: 1 - root.longLevel
                             text: Media.active ? "\u{f075a}  " + (Media.title(Media.active)) + (Media.active.trackArtist ? " · " + Media.active.trackArtist : "") : ""
                             elide: Text.ElideRight
@@ -490,6 +490,14 @@ Scope {
                             font.pixelSize: Math.round(win.height * 0.017)
                             color: Qt.rgba(1, 1, 1, 0.6)
                             leftPadding: 6; topPadding: 10
+                        }
+                        MediaPulse {
+                            visible: Settings.screensaverPulse && Media.playing && !!Media.active && !root.longDark
+                            opacity: 1 - root.longLevel
+                            active: visible && root.showing
+                            title: Media.active ? Media.title(Media.active) + (Media.active.trackArtist ? " · " + Media.active.trackArtist : "") : ""
+                            size: Math.round(win.height * 0.017)
+                            maxWidth: win.width * 0.4
                         }
                         // Bottom-left third at first, then a new place each minute.
                         x: win.width * 0.07; y: win.height * 0.62

@@ -40,6 +40,23 @@ ShellRoot {
 
         Item { id: stage; anchors.fill: parent }
 
+        Rectangle {
+            id: pulseBox
+            parent: stage
+            width: 640; height: 96
+            color: "#0a0a0d"
+            visible: false
+            MediaPulse {
+                id: pulse
+                anchors { left: parent.left; verticalCenter: parent.verticalCenter }
+                active: true
+                size: 22
+                maxWidth: 520
+                title: "Teardrop · Massive Attack"
+            }
+        }
+        property var pulseTitles: ["Teardrop · Massive Attack", "A very long title that goes on and on about nothing in particular, the whole second movement · Some Orchestra of Somewhere"]
+
         Loader { id: flow; parent: stage; anchors.fill: parent; active: false; sourceComponent: FlowScene { running: false; t: win.flowT } }
         property real flowT: 0
 
@@ -100,6 +117,24 @@ ShellRoot {
             });
         }
 
+        function pulseRun() {
+            pulseBox.visible = true;
+            const moved = pulse.phase;
+            settle.run(500, () => {
+                console.log("SAVER_PULSE", JSON.stringify({ reduced: Theme.reduceMotion, moved: pulse.phase !== moved, phase: pulse.phase }));
+                if (Theme.reduceMotion === (pulse.phase !== moved)) { fail("pulse: motion does not follow reduced motion"); return; }
+                pulse.phase = 0.15;
+                save(pulseBox, "pulse-0", () => {
+                    pulse.phase = 0.7;
+                    save(pulseBox, "pulse-1", () => {
+                        pulse.title = pulseTitles[1];
+                        pulse.phase = 0.4;
+                        save(pulseBox, "pulse-long", () => { pulse.active = false; pulseBox.visible = false; next(); });
+                    });
+                });
+            });
+        }
+
         Timer {
             id: settle
             property var then: null
@@ -112,6 +147,7 @@ ShellRoot {
             if (step === 0) makePhotos();
             else if (step === 1) flowFrame(0);
             else if (step === 2) photoRun();
+            else if (step === 3) pulseRun();
             else { console.log("UI_SMOKE_CAPTURED"); Qt.quit(); }
         }
         Timer { interval: 600; running: true; onTriggered: win.next() }
