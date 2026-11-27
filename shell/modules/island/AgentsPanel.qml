@@ -92,6 +92,28 @@ FocusScope {
         }
     }
     Timer { interval: Theme.panelPollMs; repeat: true; running: ap.visible && Settings.agentServers; triggeredOnStart: true; onTriggered: if (!portsProc.running) portsProc.running = true }
+    property int stopArmed: 0
+    property string stopNote: ""
+    function age(s) { return s < 3600 ? Math.max(1, Math.round(s / 60)) + "m" : s < 86400 ? Math.round(s / 3600) + "h" : Math.round(s / 86400) + "d"; }
+    function stopServer(r) {
+        if (stopArmed !== r.pid) { stopArmed = r.pid; return; }
+        stopArmed = 0;
+        stopProc.who = ":" + r.port;
+        stopProc.command = [Paths.bin + "/kuwai-procs", "--end", String(r.pid), "--start", String(r.start)];
+        stopProc.running = true;
+    }
+    Process {
+        id: stopProc
+        property string who: ""
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let r = {};
+                try { r = JSON.parse(text); } catch (e) {}
+                ap.stopNote = !r.ok ? "Couldn't stop " + stopProc.who + ": " + (r.why || "unknown") : r.gone === false ? stopProc.who + ": " + r.why : "";
+                if (!portsProc.running) portsProc.running = true;
+            }
+        }
+    }
 
     // "claude-opus-5-5" → "Opus 5.5", "grok-4.7" → "Grok 4.7", "gpt-6.1-sol" → "GPT-6.1 Sol".
     function modelName(m) {
@@ -627,7 +649,7 @@ FocusScope {
                 id: portsCol
                 x: Theme.s3; y: Theme.s2
                 width: parent.width - Theme.s3 * 2
-                readonly property real rowH: Theme.sp(36)
+                readonly property real rowH: Theme.sp(44)
                 height: Math.min(count, 2) * rowH
                 implicitHeight: height
                 clip: true
@@ -638,26 +660,45 @@ FocusScope {
                         required property var modelData
                         width: portsCol.width
                         height: portsCol.rowH
-                        Row {
-                            id: portWords
+                        Item {
+                            id: portLead
                             anchors.verticalCenter: parent.verticalCenter
-                            width: parent.width - portOpen.width - Theme.s2
-                            spacing: Theme.s2
-                            Rectangle { anchors.verticalCenter: parent.verticalCenter; width: 6; height: 6; radius: 3; color: Theme.green }
+                            width: Theme.sp(24); height: width
+                            AgentMark {
+                                anchors.fill: parent
+                                visible: !!modelData.agent
+                                agent: (modelData.agent || "").toLowerCase()
+                                name: modelData.agent || ""
+                            }
+                            Rectangle { visible: !modelData.agent; anchors.centerIn: parent; width: 8; height: 8; radius: 4; color: Theme.green }
+                        }
+                        Column {
+                            id: portWords
+                            anchors { left: portLead.right; leftMargin: Theme.s2; right: portStop.left; rightMargin: Theme.s2; verticalCenter: parent.verticalCenter }
+                            spacing: 1
                             Label {
-                                id: portNum
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: ":" + modelData.port
-                                size: Theme.tSub; weight: Theme.wBold
+                                width: parent.width
+                                elide: Text.ElideRight
+                                text: ":" + modelData.port + "  " + (modelData.what || modelData.proc)
+                                size: Theme.tSub; weight: Theme.wSemibold
                                 tabular: true
                             }
                             Label {
-                                anchors.verticalCenter: parent.verticalCenter
-                                width: Math.max(0, portWords.width - portNum.width - 6 - Theme.s2 * 2)
+                                width: parent.width
                                 elide: Text.ElideRight
-                                text: modelData.proc + " · " + modelData.project
-                                size: Theme.tSub; color: Theme.textSecondary
+                                text: [modelData.project, modelData.agent ? "from " + modelData.agent : "", modelData.age !== undefined ? ap.age(modelData.age) : ""].filter(x => x).join(" · ")
+                                size: Theme.tFootnote; color: Theme.textTertiary
                             }
+                        }
+                        Button {
+                            id: portStop
+                            anchors { right: portOpen.left; rightMargin: Theme.s2; verticalCenter: parent.verticalCenter }
+                            height: Theme.sp(28); size: Theme.tFootnote
+                            kind: "quiet"
+                            visible: !!modelData.start
+                            text: ap.stopArmed === modelData.pid ? "Stop it?" : "Stop"
+                            onClicked: ap.stopServer(modelData)
+                            Accessible.name: "Stop the server on port " + modelData.port
                         }
                         Button {
                             id: portOpen
@@ -670,6 +711,13 @@ FocusScope {
                     }
             }
             ScrollHint { flickable: portsCol; inside: true }
+        }
+        Label {
+            visible: ap.stopNote !== "" && portsCard.visible
+            width: parent.width
+            wrapMode: Text.Wrap
+            text: ap.stopNote
+            size: Theme.tFootnote; color: Theme.orange
         }
 
 

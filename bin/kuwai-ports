@@ -1,7 +1,11 @@
 #!/usr/bin/env -S python3 -I
 """Local servers you started: listening TCP ports whose process works in a folder of yours.
 
-  kuwai-ports    print [{port, proc, project, pid, local}] as JSON, by port
+  kuwai-ports    print [{port, proc, what, project, pid, start, age, agent, local}] as JSON, by port
+
+`what` is the server as you'd name it ("next dev", "vite"), `agent` the coding
+agent it was started under (its parent chain, nothing else), `start` the
+kernel's start time, so stopping it later can check it's still the same one.
 """
 import json
 import os
@@ -13,6 +17,69 @@ SKIP = re.compile(r"^(t3code|antigravity|chrome|chromium|firefox|zen|electron|co
                   r"syncthing|kdeconnectd|Hyprland|qs|quickshell|kitty|ghostty|systemd.*|pipewire.*|wireplumber|obs|zapzap|"
                   r"language_server.*|gopls|rust-analyzer|tsserver|vscode.*|claude|codex|opencode|kittymux.*)$", re.I)
 LINE = re.compile(r"\s(\[?[0-9a-fA-F:.*%\w]*\]?):(\d+)\s.*users:\(\(\"([^\"]+)\",pid=(\d+)")
+
+
+AGENTS = [(re.compile(r"^claude$|claude-code", re.I), "Claude"), (re.compile(r"^codex", re.I), "Codex"),
+          (re.compile(r"^opencode", re.I), "OpenCode"), (re.compile(r"cursor-agent|^cursor$", re.I), "Cursor"),
+          (re.compile(r"^gemini", re.I), "Gemini"), (re.compile(r"^grok", re.I), "Grok"), (re.compile(r"^devin", re.I), "Devin"),
+          (re.compile(r"^kiro", re.I), "Kiro"), (re.compile(r"antigravity", re.I), "Antigravity"), (re.compile(r"t3code|t3-code", re.I), "T3 Code")]
+SERVERS = [(r"next(/dist/bin/next)?\b.*\bdev\b", "next dev"), (r"next\b.*\bstart\b", "next start"), (r"\bvite\b", "vite"),
+           (r"\bastro\b.*\bdev\b", "astro dev"), (r"\bnuxt\b", "nuxt dev"), (r"\bremix\b", "remix dev"),
+           (r"wrangler\b.*\bdev\b", "wrangler dev"), (r"\bstorybook\b", "storybook"), (r"\buvicorn\b", "uvicorn"),
+           (r"\bgunicorn\b", "gunicorn"), (r"manage\.py\s+runserver", "django"), (r"\bflask\b", "flask"),
+           (r"-m\s+http\.server", "python http.server"), (r"\bjupyter", "jupyter"), (r"\brails\s+s", "rails"), (r"cargo\s+run|\btrunk\b", "cargo run")]
+TICK = os.sysconf("SC_CLK_TCK")
+
+
+def stat(pid):
+    with open(f"/proc/{pid}/stat") as f:
+        st = f.read()
+    rest = st[st.rindex(")") + 2:].split()
+    return st[st.index("(") + 1:st.rindex(")")], int(rest[1]), int(rest[19])
+
+
+def argv(pid):
+    try:
+        with open(f"/proc/{pid}/cmdline", "rb") as f:
+            return [a.decode(errors="replace") for a in f.read().split(b"\0") if a]
+    except OSError:
+        return []
+
+
+def what(pid, name):
+    cmd = " ".join(argv(pid))[:400]
+    for pat, label in SERVERS:
+        if re.search(pat, cmd):
+            return label
+    for runner in ("bun", "npm", "pnpm", "yarn", "deno"):
+        m = re.search(r"\b" + runner + r"\s+(?:run\s+)?([\w:-]+)", cmd)
+        if m and m.group(1) not in ("x", "exec"):
+            return runner + " " + m.group(1)
+    return name
+
+
+def agent(pid):
+    """The coding agent this server runs under, if one of its ancestors is one."""
+    seen = 0
+    while pid > 1 and seen < 40:
+        seen += 1
+        try:
+            name, ppid, _ = stat(pid)
+        except (OSError, ValueError, IndexError):
+            return ""
+        a = argv(pid)
+        base = os.path.basename(a[0]) if a else ""
+        script = os.path.basename(a[1]) if len(a) > 1 and base in ("node", "bun", "python3", "python") else ""
+        for pat, label in AGENTS:
+            if pat.search(name) or pat.search(base) or (script and pat.search(script)):
+                return label
+        pid = ppid
+    return ""
+
+
+def uptime():
+    with open("/proc/uptime") as f:
+        return float(f.read().split()[0])
 
 
 def project(cwd):
@@ -40,8 +107,13 @@ def listening(text):
             continue
         if not cwd.startswith(HOME + os.sep):
             continue
+        try:
+            _, _, start = stat(pid)
+        except (OSError, ValueError, IndexError):
+            continue
         seen.add(port)
-        out.append({"port": port, "proc": name, "project": project(cwd), "pid": pid,
+        out.append({"port": port, "proc": name, "what": what(pid, name), "project": project(cwd), "pid": pid, "start": start,
+                    "age": max(0, int(uptime() - start / TICK)), "agent": agent(pid),
                     "local": host.startswith(("127.", "[::1]", "localhost"))})
     return sorted(out, key=lambda r: r["port"])
 

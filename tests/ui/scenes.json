@@ -11250,6 +11250,174 @@
      "items": []
     }
    }
+  },
+  {
+   "id": "agents/servers",
+   "name": "agents",
+   "panel": "AgentsPanel",
+   "set": [
+    [
+     "Kittymux",
+     "feedPinned",
+     true
+    ],
+    [
+     "Kittymux",
+     "feed",
+     {
+      "version": 1,
+      "agents": [
+       {
+        "key": "fx-1",
+        "agent": "claude",
+        "brand": "claude",
+        "title": "Fix the calendar header at large text",
+        "tab_title": "rice",
+        "cwd": "~/Projects/rice",
+        "state": "waiting",
+        "account": "main",
+        "question": "Allow Bash: bun test tests/shell in ~/Projects/rice?"
+       },
+       {
+        "key": "fx-2",
+        "agent": "codex",
+        "brand": "codex",
+        "title": "Review the updates panel",
+        "tab_title": "rice",
+        "cwd": "~/Projects/rice",
+        "state": "working",
+        "account": "main"
+       },
+       {
+        "key": "fx-3",
+        "agent": "claude",
+        "brand": "claude",
+        "title": "Write the rehearsal notes",
+        "tab_title": "rice",
+        "cwd": "~/Projects/rice",
+        "state": "done",
+        "account": "main"
+       }
+      ]
+     }
+    ],
+    [
+     "T3Code",
+     "alive",
+     true
+    ],
+    [
+     "T3Code",
+     "running",
+     1
+    ],
+    [
+     "T3Code",
+     "waiting",
+     2
+    ],
+    [
+     "T3Code",
+     "rawFinished",
+     2
+    ],
+    [
+     "T3Code",
+     "rawItems",
+     [
+      {
+       "thread": "t1",
+       "env": "e1",
+       "project": "rice",
+       "status": "waiting",
+       "provider": "claudeAgent",
+       "title": "Approve the migration plan",
+       "at": "@now-460iso",
+       "ask": "approval",
+       "request": {
+        "id": "req-fixture",
+        "kind": "command",
+        "prompt": "bun run migrate --plan plans/0042.sql"
+       }
+      },
+      {
+       "thread": "t2",
+       "env": "e1",
+       "project": "rice",
+       "status": "waiting",
+       "provider": "codex",
+       "title": "Which shortcut for the switcher?",
+       "at": "@now-920iso",
+       "ask": "question"
+      },
+      {
+       "thread": "t3",
+       "env": "e1",
+       "project": "rice",
+       "status": "running",
+       "provider": "claudeAgent",
+       "title": "Rehearsal harness",
+       "at": "@now-1380iso"
+      },
+      {
+       "thread": "t4",
+       "env": "e1",
+       "project": "rice",
+       "status": "running",
+       "provider": "codex",
+       "title": "Port the greeter",
+       "at": "@now-1840iso",
+       "blocked": true
+      },
+      {
+       "thread": "t5",
+       "env": "e1",
+       "project": "rice",
+       "status": "completed",
+       "provider": "claudeAgent",
+       "title": "OTP detection: origin-bound codes",
+       "at": "@now-2300iso"
+      },
+      {
+       "thread": "t6",
+       "env": "e1",
+       "project": "rice",
+       "status": "failed",
+       "provider": "gemini",
+       "title": "Translate the settings pages",
+       "at": "@now-2760iso",
+       "limited": true
+      }
+     ]
+    ]
+   ],
+   "kind": "worst",
+   "props": {
+    "ports": [
+     {
+      "port": 3000,
+      "proc": "node",
+      "what": "next dev",
+      "project": "my-site",
+      "pid": 4242,
+      "start": 123,
+      "age": 86400,
+      "agent": "Codex",
+      "local": true
+     },
+     {
+      "port": 5173,
+      "proc": "node",
+      "what": "vite",
+      "project": "a-much-longer-project-name-for-the-dashboard",
+      "pid": 4343,
+      "start": 124,
+      "age": 1800,
+      "agent": "Claude",
+      "local": true
+     }
+    ]
+   }
   }
  ]
 }
