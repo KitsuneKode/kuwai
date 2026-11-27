@@ -498,6 +498,7 @@ case ${1:-info} in
     gpu) shift; cmd_gpu "$@" ;;
     binds) shift; cmd_binds "$@" ;;
     keys) shift; exec "$HERE/kuwai-keys" "$@" ;;
+    secrets) shift; exec "$HERE/kuwai-secrets" "$@" ;;
     update|updates) shift; exec "$HERE/kuwai-update" "$@" ;;
     feature|features) shift; cmd_feature "$@" ;;
     keyboard|kb) shift; cmd_keyboard "$@" ;;
