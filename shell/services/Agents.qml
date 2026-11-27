@@ -13,7 +13,7 @@ Singleton {
     property real now: Date.now()
     Timer {
         interval: 60000; repeat: true
-        running: root.panes.some(p => p.state === "limited") || root.desktopFeed.length > 0
+        running: root.tally.limited > 0 || root.desktopFeed.length > 0
         onTriggered: root.now = Date.now()
     }
 
@@ -74,7 +74,7 @@ Singleton {
             };
         });
     }
-    readonly property var sessions: A.sessions(panes, T3Code.liveItems, hooks, { home: Quickshell.env("HOME") || "" })
+    readonly property var sessions: A.withResets(A.sessions(panes, T3Code.liveItems, hooks, { home: Quickshell.env("HOME") || "" }), Limits.windows, Limits.now)
     readonly property var desktop: sessions.filter(s => s.src === "desktop").map(s => s.hook)
     readonly property var tally: A.counts(sessions)
     property real lookedAt: 0

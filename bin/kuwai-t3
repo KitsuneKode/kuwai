@@ -115,6 +115,10 @@ rows=$(timeout 3 sqlite3 -readonly -json -cmd ".timeout 2000" "file:$DB?mode=ro"
            where l.status = 'failed' and ti.thread_id = l.thread and ti.run_id = l.run
              and ti.type = 'error' and ti.status = 'failed'
            order by ti.updated_at desc limit 1) as failure,
+         (select json_extract(ti.payload_json, '\$.failure.resetAt') from orchestration_v2_projection_turn_items ti
+           where l.status = 'failed' and ti.thread_id = l.thread and ti.run_id = l.run
+             and ti.type = 'error' and ti.status = 'failed'
+           order by ti.updated_at desc limit 1) as failure_reset,
          $HOLDING as holding,
          json_extract(th.pj, '\$.modelSelection.model') as model,
          (select json_extract(o.value, '\$.value') from json_each(th.pj, '\$.modelSelection.options') o
@@ -164,5 +168,6 @@ jq -cn --argjson rows "$rows" --arg env "$env_id" '
                  provider, title: (.title | .[0:80]), thread, at: (.active_at // .latest_at), model, effort, project,
                  ctx: (.ctx // 0), win: (.win // 0), cacheUntil: (.cache_until // "")}]
             + [$done[] | {status: (if .s == "limited" then "failed" else .s end), limited: (.s == "limited"),
+                 resetAt: (if .s == "limited" and (.failure_reset | type) == "string" then .failure_reset else "" end),
                  provider, title: (.title | .[0:80]), thread, at: .latest_at, model, effort, project,
                  ctx: (.ctx // 0), win: (.win // 0), cacheUntil: (.cache_until // "")}])}' 2>/dev/null || none
