@@ -73,3 +73,13 @@ def test_only_the_newest_wallpaper_apply_runs(tmp_path):
         p.wait(timeout=10)
     applied = out.read_text().split()
     assert applied[-1] == "four" and len(applied) <= 2, applied
+
+
+def test_presses_at_the_same_moment_each_take_one_step(tmp_path):
+    walls = [{"path": f"/w/{n}.jpg", "current": n == "a"} for n in "abcdef"]
+    bin_, log, env = setup(tmp_path, {"hyde": True, "wallpapers": walls}, [])
+    procs = [subprocess.Popen([str(bin_ / "kuwai-wallstep"), "still", "next"], env=env) for _ in range(3)]
+    for p in procs:
+        p.wait(timeout=30)
+    plays = [l.split()[-1] for l in log.read_text().splitlines() if "wallfx play" in l]
+    assert plays == ["/w/b.jpg", "/w/c.jpg", "/w/d.jpg"], plays

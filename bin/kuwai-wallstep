@@ -8,6 +8,7 @@ the one you have), played with the shell's transition and applied the way the
 Themes panel does. live: the live-wallpaper library, in play order. saver: the screensaver
 styles. Each says where it landed in the island.
 """
+import fcntl
 import json
 import os
 import subprocess
@@ -120,7 +121,16 @@ def main(argv):
         print(__doc__.strip(), file=sys.stderr)
         return 2
     step = 1 if argv[1] == "next" else -1
-    return {"still": still, "live": live, "saver": saver}[argv[0]](step)
+    try:
+        lock = open(RECENT + ".lock", "w")
+        fcntl.flock(lock, fcntl.LOCK_EX)
+    except OSError:
+        lock = None
+    try:
+        return {"still": still, "live": live, "saver": saver}[argv[0]](step)
+    finally:
+        if lock:
+            lock.close()
 
 
 if __name__ == "__main__":
