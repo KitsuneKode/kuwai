@@ -56,6 +56,7 @@ Live wallpapers are stored in `~/Pictures/live-wallpapers/` (or a theme's `wallp
 Several styles are available in **`Themes → Screensaver`** or **`Settings → Screensaver`**:
 
 - **Dusk** and **Borealis** — live shaders (Borealis follows your theme accent; no video decoding).
+- **Flow** — one quiet shader: a slow drift of your theme accent on near-black, drawn about 15 times a second (not at your screen's rate) and only while the screensaver is showing. Reduced motion draws a single frame.
 - **Night** — seamless half-speed looping films stored in `~/.local/share/kuwai-data/screensavers/`, played in a separate `shell-saver` process whose memory is reclaimed immediately on wake.
 - **Live wallpaper** — plays the current live wallpaper full screen.
 - **Still wallpaper** — displays the current still wallpaper with subtle drift.

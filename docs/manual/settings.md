@@ -20,7 +20,7 @@ Changes apply immediately and are stored in `~/.config/kuwai/settings.json`, val
 | Island Behaviour | `island` | Minimal vs everything at rest, reveal on approach, limit alerts threshold, idle project threshold |
 | Workspaces | `workspaces` | Minimum workspaces shown, per-monitor workspace behaviour |
 | Power & Idle | `power` | Idle dim, lock, screen-off, and suspend timeouts on AC and battery |
-| Screensaver | `saver` | Style (`still` by default, `live`, `dusk`, `borealis`, `night`, `photos`), when it runs (`always` before the fade and lock by default, `caffeine`, `off`), timeout, Night clip, photo interval and folder, the long-wait black clock |
+| Screensaver | `saver` | Style (`still` by default, `live`, `dusk`, `borealis`, `night`, `photos`, `flow`), when it runs (`always` before the fade and lock by default, `caffeine`, `off`), timeout, Night clip, photo interval and folder, the long-wait black clock |
 | Reminders & Alarms | `time` | Alarm sound, snooze, Pomodoro lengths, Focus on work blocks |
 | Clipboard | `clipboard` | History behaviour, secret masking |
 | Software Update | `updates` | Check interval (`0` = only when opened), Flatpak inclusion, routine AUR bump approval, post-update cache pruning |

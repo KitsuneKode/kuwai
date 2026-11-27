@@ -18,9 +18,9 @@ Item {
     property real fade: 0
     property bool pending: false
     property var bad: ({})
-    readonly property Image top: aTop ? imgA : imgB
-    readonly property Image under: aTop ? imgB : imgA
-    readonly property bool shown: top.status === Image.Ready
+    readonly property Image front: aTop ? imgA : imgB
+    readonly property Image back: aTop ? imgB : imgA
+    readonly property bool shown: front.status === Image.Ready
 
     function source(i) { return count > 0 ? Photos.fileUrl(paths[plan[((i % count) + count) % count]]) : ""; }
     function load(img, i) { img.idx = i; img.source = i >= 0 ? source(i) : ""; }
@@ -35,26 +35,26 @@ Item {
 
     function advance() {
         if (fadeAnim.running) return false;
-        if (under.idx < 0 || under.status !== Image.Ready) { pending = under.idx >= 0; return false; }
+        if (back.idx < 0 || back.status !== Image.Ready) { pending = back.idx >= 0; return false; }
         pending = false;
         fadeAnim.start();
         return true;
     }
     function landed() {
-        at = under.idx;
+        at = back.idx;
         aTop = !aTop;
         fade = 0;
-        load(under, Photos.after(at, count, bad));
+        load(back, Photos.after(at, count, bad));
     }
     function statusOf(img) {
         if (img.status === Image.Error) {
             const b = Object.assign({}, bad);
             b[img.idx] = true;
             bad = b;
-            if (img === under) load(under, Photos.after(at, count, bad));
+            if (img === back) load(back, Photos.after(at, count, bad));
             else if (count > 1) pending = true;
         }
-        if (pending && under.status === Image.Ready) advance();
+        if (pending && back.status === Image.Ready) advance();
     }
 
     opacity: shown ? 1 : 0

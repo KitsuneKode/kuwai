@@ -18,7 +18,7 @@ import time
 BIN = os.path.dirname(os.path.realpath(__file__))
 SHELL = os.path.join(os.path.dirname(BIN), "shell")
 STATE = os.path.join(os.environ.get("XDG_STATE_HOME") or os.path.expanduser("~/.local/state"), "kuwai")
-STYLES = ["dusk", "borealis", "night", "live", "photos", "still"]
+STYLES = ["dusk", "borealis", "flow", "night", "live", "photos", "still"]
 PICTURES = (".jpg", ".jpeg", ".png", ".webp")
 
 

@@ -364,14 +364,15 @@
         "night",
         "live",
         "still",
-        "photos"
+        "photos",
+        "flow"
       ],
       "maxLength": 512,
       "section": "saver",
       "label": "Look",
       "detail": "",
       "group": "",
-      "searchTerms": "look  dusk borealis aurora northern lights night live still photos photo shuffle slideshow wallpapers ",
+      "searchTerms": "look  dusk borealis aurora northern lights night live still photos photo shuffle slideshow wallpapers flow gradient drift shader ",
       "requires": [],
       "restartScope": "live"
     },

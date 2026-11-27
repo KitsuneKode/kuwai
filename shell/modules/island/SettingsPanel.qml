@@ -1109,10 +1109,11 @@ FocusScope {
                         : Settings.screensaverStyle === "borealis" ? "Northern lights in your theme's colour over a night sky"
                         : Settings.screensaverStyle === "night" ? "A dark film on the screen you were using; black on the others"
                         : Settings.screensaverStyle === "live" ? "Your live wallpaper, full screen"
+                        : Settings.screensaverStyle === "flow" ? "A slow drift of your accent colour on near-black, drawn at 15 frames a second"
                         : Settings.screensaverStyle === "photos" ? "Your theme's wallpapers, or a folder of pictures, one at a time"
                         : "Your wallpaper, still, with the time"
                     Segmented {
-                        options: [{ id: "dusk", label: "Dusk" }, { id: "borealis", label: "Borealis" }, { id: "night", label: "Night" }, { id: "live", label: "Live" }, { id: "still", label: "Still" }, { id: "photos", label: "Photos" }]
+                        options: [{ id: "dusk", label: "Dusk" }, { id: "borealis", label: "Borealis" }, { id: "night", label: "Night" }, { id: "live", label: "Live" }, { id: "still", label: "Still" }, { id: "photos", label: "Photos" }, { id: "flow", label: "Flow" }]
                         current: Settings.screensaverStyle
                         onPicked: id => Settings.set("screensaverStyle", id)
                     }

@@ -82,7 +82,7 @@ Scope {
         onLoadFailed: root.video = ""
     }
     readonly property bool useVideo: video !== "" && (!UPower.onBattery || Settings.liveOnBattery)
-    readonly property string style: Settings.screensaverStyle || "still"   // "still" · "live" · "dusk" · "borealis" · "night" · "photos"
+    readonly property string style: Settings.screensaverStyle || "still"   // "still" · "live" · "dusk" · "borealis" · "night" · "photos" · "flow"
     // Night: a dark film from ~/.local/share/kuwai-data/screensavers (seamless
     // half-speed loops, ~3–7 Mbit/s: cheap to decode, made by kuwai's setup).
     readonly property string clipDir: Quickshell.env("HOME") + "/.local/share/kuwai-data/screensavers"
@@ -338,6 +338,7 @@ Scope {
                     // nothing to decode), your live wallpaper, or the still one.
                     readonly property bool stillHere: root.style === "still"
                     readonly property bool photosHere: root.style === "photos"
+                    readonly property bool flowHere: root.style === "flow"
                     // Night and Live: the film on every screen (the saver process).
                     // The drawn scenes are ambient: clouds that cross the sky in
                     // minutes, stars, petals. Drawn at the screen's own rate they
@@ -350,7 +351,7 @@ Scope {
                     Loader {
                         id: sceneLoader
                         anchors.fill: parent
-                        active: !stage.filmHere && !stage.stillHere && !stage.photosHere && !root.longDark
+                        active: !stage.filmHere && !stage.stillHere && !stage.photosHere && !stage.flowHere && !root.longDark
                         sourceComponent: root.style === "borealis" ? borealisC : duskC
                         onLoaded: sceneFrame.scheduleUpdate()
                         onWidthChanged: sceneFrame.scheduleUpdate()
@@ -372,6 +373,11 @@ Scope {
                     }
                     Component { id: duskC; DuskScene { running: root.showing } }
                     Component { id: borealisC; BorealisScene { running: root.showing } }
+                    Loader {
+                        anchors.fill: parent
+                        active: stage.flowHere && !root.longDark
+                        sourceComponent: FlowScene { running: root.showing && !root.longBlack }
+                    }
                     Loader {
                         anchors.fill: parent
                         active: stage.photosHere && root.photosListed && !root.longDark
