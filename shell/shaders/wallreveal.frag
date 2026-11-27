@@ -48,5 +48,5 @@ void main() {
     // as arriving on top (a shadow under glass).
     float shade = exp(-pow((dist - r) / (band * 0.5), 2.0)) * step(r, dist) * sin(3.14159265 * t);
     c.rgb *= 1.0 - 0.10 * shade;
-    fragColor = vec4(c.rgb, 1.0) * qt_Opacity;
+    fragColor = vec4(c.rgb, c.a) * qt_Opacity;
 }

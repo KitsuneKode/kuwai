@@ -228,9 +228,18 @@ FocusScope {
         }
         applyingName = it.name;
         if (mode === "themes") {
-            applicator.environment = ({});
-            applicator.command = useLook ? [bin, "theme", it.name] : [bin, "theme", it.name, "--wait"];
-            applicator.running = true;
+            if (useLook) {
+                applicator.environment = ({});
+                applicator.command = [bin, "theme", it.name];
+                applicator.running = true;
+                return;
+            }
+            const name = it.name;
+            WallFx.play(Hyde.config + "/themes/" + name + "/wall.set", () => {
+                applicator.environment = ({ WALLPAPER_AWWW_TRANSITION_DEFAULT: "none" });
+                applicator.command = [bin, "theme", name, "--wait"];
+                applicator.running = true;
+            });
             return;
         }
         // A wallpaper: the shell plays the change (services/WallFx: the new
