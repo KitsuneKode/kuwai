@@ -3,7 +3,7 @@ release-signers: the OpenPGP public keys whose signed release tags kuwai trusts.
 What goes here
   One armored public key per file, named NAME.asc. Nothing else is read.
   kuwai-setup, kuwai update-self and root's own check build a keyring from these
-  files alone (in a temporary GNUPGHOME, or a keyring root keeps), never from
+  files alone (in a temporary GNUPGHOME; root's from its own copy's folder), never from
   your own GnuPG keyring, so a key you happen to trust elsewhere signs nothing here.
   While this folder holds no key, every one of them refuses: no release can be checked.
 
@@ -27,7 +27,22 @@ Tagging a release
   Publish it: git push origin vX.Y.Z (a release tag never moves once pushed).
 
 Changing keys
-  A new key is added here and released in a tag signed by a key already here.
-  Root keeps the fingerprints it was first given (kuwai-setup passes this
-  folder's); it refreshes the key material from each release it checks but
-  never adds a fingerprint from one.
+  Root keeps one list: /usr/local/lib/kuwai/signers/fingerprints. The first
+  install fills it from the fingerprints kuwai-setup names (this folder's keys).
+  After that kuwai-setup names none, and each release root takes replaces the
+  list with the keys that release lists here, but only once the release's tag
+  checked out against a key already on the list. So a key changes in two releases:
+
+    1. Add the new key's .asc here next to the old one; tag that release with
+       the OLD key. Root takes it (signed by a key it trusts) and now trusts both.
+    2. Remove the old key's .asc; tag the next release with the NEW key. Root
+       takes it (the new key is trusted since step 1) and drops the old one.
+
+  A release must list the key that signs it (kuwai release refuses otherwise).
+  From then on a tag signed by the removed key is refused, and naming it to
+  root again (--signer) is refused too. A release older than root's (only with
+  --allow-older) can drop keys from the list but never add one.
+  Each machine moves only by installing the releases in between: a machine
+  that skipped step 1 refuses step 2's release until it has taken step 1's.
+  The list is written in one step (a new file renamed over the old), before
+  root's current release changes.

@@ -158,9 +158,9 @@ def setup_dir(tmp_path, keys, *fprs):
     return d
 
 
-def run_setup(tmp_path, d, *args):
+def run_setup(tmp_path, d, *args, sysroot=None):
     env = {**GIT_ENV, "HOME": str(tmp_path / "home"), "XDG_CACHE_HOME": str(tmp_path / "cache"),
-           "KUWAI_TEST_MARK": str(tmp_path / "ran")}
+           "KUWAI_TEST_MARK": str(tmp_path / "ran"), **({"KUWAI_SYSROOT": str(sysroot)} if sysroot else {})}
     return subprocess.run([str(d / "bin/kuwai-setup"), *map(str, args)], env=env, capture_output=True, text=True,
                           stdin=subprocess.DEVNULL, timeout=120)
 
@@ -174,6 +174,22 @@ def test_setup_runs_the_release_only_after_checking_it(tmp_path, release_keys):
     assert f"Verified kuwai v1.0.0: signed by {k.mine}" in r.stdout
     assert (tmp_path / "ran").read_text().split() == ["--from-release", "--yes"]
     assert "sudo /usr/bin/python3 -I" in r.stdout and "--signer " + k.mine in r.stdout, "root's step is said, not skipped"
+
+
+def test_setup_names_the_release_keys_to_root_only_the_first_time(tmp_path, release_keys):
+    k = release_keys
+    repo = source_repo(tmp_path, k, k.mine, k.theirs)
+    k.release(repo, "v1.0.0")
+    d = setup_dir(tmp_path, k, k.mine, k.theirs)
+    sysroot = tmp_path / "sys"
+    signers = sysroot / "usr/local/lib/kuwai/signers"
+    signers.mkdir(parents=True)
+    (signers / "fingerprints").write_text(k.mine + "\n")
+    r = run_setup(tmp_path, d, "--source", repo, "--system", sysroot=sysroot)
+    assert "--signer" not in r.stdout, "root already keeps its keys; a second key in release-signers mustn't break its step"
+    (signers / "fingerprints").unlink()
+    r = run_setup(tmp_path, d, "--source", repo, "--system", sysroot=sysroot)
+    assert f"--signer {k.mine}" in r.stdout and f"--signer {k.theirs}" in r.stdout
 
 
 @pytest.mark.parametrize("signed_by", ["theirs", "nobody"])

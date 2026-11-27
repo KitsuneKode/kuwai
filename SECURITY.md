@@ -29,10 +29,18 @@ not a public issue. Say what you did, what happened, and the commit you ran.
 - **What root runs.** Root installs only from its own copy,
   `/usr/local/lib/kuwai/releases/vX.Y.Z` (owned by root, writable by no one else). Root makes
   that copy from the checked folder, then checks the copy itself: `gpgv` on the tag against
-  the fingerprints root keeps in `/usr/local/lib/kuwai/signers` (given once, at the first
-  install; never taken from a release afterwards), and the digest of every file. A file
-  changed after `kuwai-setup` checked it, a swapped tag, a key root doesn't trust, an older
-  release than root's, or a link out of the tree is refused, and nothing is installed.
+  the fingerprints root keeps in `/usr/local/lib/kuwai/signers/fingerprints`, and the digest
+  of every file. A file changed after `kuwai-setup` checked it, a swapped tag, a key root
+  doesn't trust, an older release than root's, a name with a control character in it, or a
+  link out of the tree is refused, and nothing is installed.
+- **Root's release keys.** `kuwai-setup` names the release keys to root only at the first
+  install. After that, each release root takes replaces root's list with the keys listed in
+  that release's `release-signers/`, and only after its tag checked out against a key
+  already on the list: a key is added by a release the old key signs, and removed by the
+  next one, which the new key signs. A tag signed by a removed key is refused, and it can't
+  be named back in. The list is written in one step, before root's current release changes.
+  A release older than root's can only drop keys. [`release-signers/README`](release-signers/README)
+  has the steps.
   `system/session`, `system/install`, `greeter/install`, `kuwai auth pin` and
   `kuwai update install-helper` run from that copy only, and check it again each time
   (ownership of every folder and file, signature, digest). From a clone they refuse unless

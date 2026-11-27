@@ -37,8 +37,9 @@ def verify(*args, sysroot=None):
     return subprocess.run([str(VERIFY), *map(str, args)], capture_output=True, text=True, env=env, timeout=60)
 
 
-def fetch(keys, repo, name, into):
-    r = verify("fetch", repo, name, "--signers", keys.signers(into.parent / f"signers-{name}", keys.mine), "--into", into)
+def fetch(keys, repo, name, into, *fprs):
+    r = verify("fetch", repo, name, "--signers", keys.signers(into.parent / f"signers-{name}", *(fprs or [keys.mine])),
+               "--into", into)
     assert r.returncode == 0, r.stderr
     return json.loads(r.stdout)
 
@@ -121,7 +122,7 @@ def test_root_needs_a_fingerprint_the_first_time_and_takes_no_new_one_later(worl
     k.release(repo, "v1.1.0")
     nxt = fetch(k, repo, "v1.1.0", tmp_path / "cache/v1.1.0")
     r = install(sysroot, tmp_path / "cache/v1.1.0", nxt, signers=[k.theirs])
-    assert r.returncode == 1 and "takes no new ones" in r.stderr
+    assert r.returncode == 1 and "signed by one it already trusts" in r.stderr
     r = install(sysroot, tmp_path / "cache/v1.1.0", nxt)
     assert r.returncode == 0, r.stderr
     assert os.readlink(lib / "current") == "releases/v1.1.0"
@@ -149,6 +150,52 @@ def test_a_copy_missing_files_behind_a_name_with_a_newline_is_refused(tmp_path, 
     r = install(sysroot, stage, info, signers=[k.mine])
     assert r.returncode == 1 and "control character" in r.stderr, "root took a copy missing a and b"
     assert nothing_installed(lib)
+
+
+def test_root_takes_its_keys_from_each_release_a_key_it_trusts_signed(world, tmp_path):
+    k, repo, stage, info, sysroot, lib = world
+    def fprs():
+        return sorted((lib / "signers/fingerprints").read_text().split())
+
+    assert install(sysroot, stage, info, signers=[k.mine]).returncode == 0
+
+    def cut(name, signer, *listed):
+        shutil.rmtree(repo / "release-signers")
+        k.signers(repo / "release-signers", *listed)
+        k.git(repo, "add", "-A")
+        k.git(repo, "commit", "-q", "--allow-empty", "-m", name)
+        k.release(repo, name, fpr=signer)
+        return tmp_path / f"cache/{name}", fetch(k, repo, name, tmp_path / f"cache/{name}", k.mine, k.theirs)
+
+    added = cut("v1.1.0", k.mine, k.mine, k.theirs)
+    r = install(sysroot, *added)
+    assert r.returncode == 0, r.stderr
+    assert fprs() == sorted([k.mine, k.theirs]), "a release signed by a trusted key adds the key it lists"
+    rotated = cut("v1.2.0", k.theirs, k.theirs)
+    r = install(sysroot, *rotated)
+    assert r.returncode == 0, r.stderr
+    assert fprs() == [k.theirs], "and drops the one it no longer lists"
+    assert verify("check", lib / "current", sysroot=sysroot).returncode == 0
+    assert verify("place", "update-helper", sysroot=sysroot).returncode == 0
+    removed = cut("v1.3.0", k.mine, k.mine, k.theirs)
+    r = install(sysroot, *removed)
+    assert r.returncode == 1 and "isn't a kuwai release key" in r.stderr, "a removed key signs nothing root takes"
+    assert os.readlink(lib / "current") == "releases/v1.2.0" and fprs() == [k.theirs]
+    r = install(sysroot, *removed, signers=[k.mine])
+    assert r.returncode == 1 and fprs() == [k.theirs], "nor can it be named back in"
+
+
+def test_root_reads_a_keys_fingerprint_as_gpg_does(release_keys, tmp_path):
+    import importlib.machinery
+    import importlib.util
+    loader = importlib.machinery.SourceFileLoader("kuwai_verify", str(VERIFY))
+    spec = importlib.util.spec_from_loader("kuwai_verify", loader)
+    mod = importlib.util.module_from_spec(spec)
+    loader.exec_module(mod)
+    d = release_keys.signers(tmp_path / "both", release_keys.mine, release_keys.theirs)
+    assert mod.key_fingerprints(mod.dearmor(mod.asc_files([d]))) == {release_keys.mine, release_keys.theirs}
+    with pytest.raises(mod.Refused):
+        mod.key_fingerprints(b"\x99\x00\x40" + b"\x04" * 8)
 
 
 @pytest.mark.parametrize("change", ["edit", "add", "writable"])

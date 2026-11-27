@@ -7,7 +7,8 @@ release-signers/, its message carrying the digest of every file in its tree,
     kuwai-tree-sha256 HEX
 
 so any copy can be checked file by file, with or without git. The digest covers each path,
-whether it is executable, its content, and where each link points.
+whether it is executable, its content, and where each link points. A name with a control
+character in it (a newline would let one file read as two) is refused wherever a digest is taken.
 
 As you:
     kuwai-verify manifest DIR             the tree digest of a folder (its top .git left out)
@@ -30,6 +31,9 @@ As root (sudo or pkexec):
                                           root trusts (the --signer fingerprints the first time;
                                           its own list after that), naming HEX, and every file the
                                           signed one. An older release than root's is refused.
+                                          Root then trusts exactly the keys that release lists in
+                                          its release-signers/ (a key added there, a key removed),
+                                          written at once to root's fingerprints file.
     kuwai-verify check DIR                DIR is root's copy of a release, still as signed
     kuwai-verify place update-helper|auth-prompt
                                           puts one piece of root's current release in place,
@@ -452,6 +456,66 @@ def dearmor(paths):
     return out
 
 
+def packets(data):
+    """Each OpenPGP packet in data as (tag, body), RFC 9580 section 4.2."""
+    i = 0
+    try:
+        while i < len(data):
+            b = data[i]
+            if not b & 0x80:
+                raise Refused("release-signers holds something that isn't an OpenPGP key")
+            if b & 0x40:
+                tag, first = b & 0x3F, data[i + 1]
+                if first < 192:
+                    n, i = first, i + 2
+                elif first < 224:
+                    n, i = ((first - 192) << 8) + data[i + 2] + 192, i + 3
+                elif first == 255:
+                    n, i = int.from_bytes(data[i + 2:i + 6], "big"), i + 6
+                else:
+                    raise Refused("release-signers holds a key kuwai can't read")
+            else:
+                tag, size = (b >> 2) & 0x0F, b & 3
+                if size == 3:
+                    raise Refused("release-signers holds a key kuwai can't read")
+                width = 1 << size
+                n, i = int.from_bytes(data[i + 1:i + 1 + width], "big"), i + 1 + width
+            body = data[i:i + n]
+            if len(body) != n:
+                raise Refused("release-signers holds a key that is cut short")
+            i += n
+            yield tag, body
+    except IndexError:
+        raise Refused("release-signers holds a key that is cut short") from None
+
+
+KEY_HASH = {4: (b"\x99", 2, hashlib.sha1), 5: (b"\x9a", 4, hashlib.sha256), 6: (b"\x9b", 4, hashlib.sha256)}
+
+
+def key_fingerprints(data):
+    """The fingerprint of every primary key in data, as gpg prints it."""
+    fprs = set()
+    for tag, body in packets(data):
+        if tag != 6:
+            continue
+        if not body or body[0] not in KEY_HASH:
+            raise Refused("release-signers holds a key of a version kuwai can't read")
+        mark, width, algo = KEY_HASH[body[0]]
+        fprs.add(algo(mark + len(body).to_bytes(width, "big") + body).hexdigest().upper())
+    if not fprs:
+        raise Refused("release-signers holds no key")
+    return fprs
+
+
+def release_keyring(tree, work):
+    """A keyring of the keys tree's release-signers lists, and their fingerprints."""
+    data = dearmor(asc_files([os.path.join(tree, "release-signers")]))
+    listed = key_fingerprints(data)
+    keyring = os.path.join(work, "keyring.gpg")
+    write_new(keyring, data, 0o644)
+    return keyring, listed
+
+
 def stored_signers(signers):
     path = os.path.join(signers, "fingerprints")
     if not os.path.lexists(path):
@@ -507,25 +571,23 @@ def install(src, tag_file, name, digest, asked, allow_older):
     if first and not asked:
         raise Refused("root trusts no release key yet: name the release key's fingerprint (--signer)")
     if not first and asked - trusted:
-        raise Refused("root already trusts its own release keys and takes no new ones here")
+        raise Refused("root takes a new release key only from a release signed by one it already trusts "
+                      "(release-signers/README, Changing keys)")
     trusted = asked if first else trusted
     work = tempfile.mkdtemp(prefix=".incoming-", dir=base)
     try:
         tree = os.path.join(work, "tree")
         copy_tree(src, tree)
         raw = read_small(tag_file)
-        keyring = os.path.join(signers, "keyring.gpg")
-        if first:
-            keyring = os.path.join(work, "keyring.gpg")
-            write_new(keyring, dearmor(asc_files([os.path.join(tree, "release-signers")])), 0o644)
-        else:
-            secure(keyring, top)
+        keyring, listed = release_keyring(tree, work)
         signer = gpgv(raw, name, digest, keyring, trusted, work)
         if manifest_dir(tree) != digest:
             raise Refused(f"root's copy isn't the tree {name}'s signature names")
         current = current_name(base)
-        if current and version(name) < version(current) and not allow_older:
+        older = bool(current) and version(name) < version(current)
+        if older and not allow_older:
             raise Refused(f"{name} is older than root's {current}; nothing changed")
+        adopted = trusted & listed if older else listed
         releases = os.path.join(base, "releases")
         os.makedirs(releases, mode=0o755, exist_ok=True)
         secure(releases, top)
@@ -536,13 +598,7 @@ def install(src, tag_file, name, digest, asked, allow_older):
         write_atomic(dest + ".tag", raw, 0o644)
         os.makedirs(signers, mode=0o755, exist_ok=True)
         secure(signers, top)
-        if first:
-            write_atomic(os.path.join(signers, "fingerprints"), ("\n".join(sorted(trusted)) + "\n").encode(), 0o644)
-        try:
-            write_atomic(os.path.join(signers, "keyring.gpg"), dearmor(asc_files([os.path.join(dest, "release-signers")])), 0o644)
-        except Refused:
-            if first:
-                raise
+        write_atomic(os.path.join(signers, "fingerprints"), ("\n".join(sorted(adopted)) + "\n").encode(), 0o644)
         link = os.path.join(base, f".current-{secrets.token_hex(6)}")
         os.symlink(f"releases/{name}", link)
         os.replace(link, os.path.join(base, "current"))
@@ -564,12 +620,12 @@ def check(tree):
     trusted = stored_signers(signers)
     if not trusted:
         raise Refused("root trusts no release key")
-    keyring = os.path.join(signers, "keyring.gpg")
-    for p in (real + ".tag", keyring, os.path.join(signers, "fingerprints")):
+    for p in (real + ".tag", os.path.join(signers, "fingerprints")):
         secure(p, top)
     raw = read_small(real + ".tag")
     digest = tree_digest(split_tag(raw)[3])
     with tempfile.TemporaryDirectory(prefix="kuwai-verify-") as work:
+        keyring, _ = release_keyring(real, work)
         signer = gpgv(raw, name, digest, keyring, trusted, work)
     if manifest_dir(real) != digest:
         raise Refused(f"root's copy of {name} has changed since it was checked")

@@ -18,8 +18,10 @@ kuwai-setup: install kuwai from a signed release, never from the folder this run
      script (a keyring of those keys alone, in a temporary GNUPGHOME), and every file the
      one the signature names (the tag carries the digest of the whole tree)
   4. root's copy (sudo, once): /usr/local/lib/kuwai/releases/vX.Y.Z, owned by root and
-     checked again by root against the release keys' fingerprints; the login entry, the
-     login screen, the alarms, the password prompt and the update helper install from it
+     checked again by root against the fingerprints it keeps (this folder's release keys,
+     named to root only the first time; after that, the keys each release it took lists);
+     the login entry, the login screen, the alarms, the password prompt and the update
+     helper install from it
   5. that release's install.sh, as you (INSTALL OPTIONS go to it: install.sh --help)
 
 Without a terminal for sudo, step 4 is printed for you to run later, and the rest goes on.
@@ -30,7 +32,7 @@ KUWAI_USAGE
 HERE="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
 VERIFY=$HERE/bin/kuwai-verify
 SIGNERS=$HERE/release-signers
-LIB=/usr/local/lib/kuwai
+LIB=${KUWAI_SYSROOT:-}/usr/local/lib/kuwai
 SOURCE=https://github.com/KitsuneKode/kuwai.git
 TAG=""; MODE=install; PASS=()
 while [ $# -gt 0 ]; do
@@ -67,7 +69,9 @@ if [ $MODE = verify ]; then
 fi
 
 root_cmd=(sudo /usr/bin/python3 -I "$VERIFY" install --from "$STAGE" --tag-file "$STAGE/.git/kuwai-release.tag" --name "$name" --digest "$digest")
-for f in $fprs; do root_cmd+=(--signer "$f"); done
+if [ ! -e "$LIB/signers/fingerprints" ] && [ ! -L "$LIB/signers/fingerprints" ]; then
+    for f in $fprs; do root_cmd+=(--signer "$f"); done
+fi
 if [ "$(readlink "$LIB/current" 2>/dev/null)" = "releases/$name" ]; then
     echo "Root's copy is $name already."
 elif [ -t 0 ] && [ -t 1 ] && command -v sudo >/dev/null; then
