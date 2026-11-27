@@ -60,6 +60,7 @@ ShellRoot {
                 property int urgency: 1
                 property var actions: []
                 property var notification: null
+                function toJson() { return ({ nid: nid, time: time, app: app, title: title, body: body, groupKey: groupKey }); }
             }
         }
 
@@ -159,7 +160,8 @@ ShellRoot {
                 if (swipe.gone || !scene.near(swipe.offset, 0, 1) || swipe.fade < 0.99) { scene.fail("a row whose item stayed was left out of sight"); return; }
 
                 // 8 · The lock screen's card is the same swipe: a flick clears its conversation.
-                const a = note.createObject(scene, { nid: 1, title: "Ada Lovelace", body: "Lunch on Thursday?", groupKey: "mail-ada" });
+                Notifs.shareKnown = true;
+                const a = note.createObject(scene, { nid: 1, title: "Dentist moved", body: "Friday at 10:30", app: "Calendar", groupKey: "cal-dentist" });
                 const b = note.createObject(scene, { nid: 2, title: "Build failed", body: "2 tests", app: "CI", groupKey: "ci", time: Date.now() - 60000 });
                 Notifs.lastSeen = Date.now() - 600000;
                 Notifs.items = [a, b];
@@ -177,6 +179,27 @@ ShellRoot {
                 scene.drop(110, top);
                 driver.wait(600);
                 if (Notifs.items.length !== 1 || Notifs.items[0].groupKey !== "ci") { scene.fail("a flick did not clear the lock-screen card's conversation (left: " + Notifs.items.length + ")"); return; }
+
+                const c = note.createObject(scene, { nid: 3, title: "Ada Lovelace", body: "Lunch on Thursday?", groupKey: "mail-ada" });
+                const d = note.createObject(scene, { nid: 4, title: "Your code", body: "Your code is 482913", app: "Bank", groupKey: "bank", time: Date.now() - 30000 });
+                Notifs.items = [c, d, b];
+                driver.wait(500);
+                if (lockStack.shownGroups.length !== 3) { scene.fail("the lock stack did not show three conversations"); return; }
+                scene.pull(110, 4, 8, top);
+                scene.drop(110, top);
+                driver.wait(600);
+                if (Notifs.items.length !== 3) { scene.fail("a flick cleared a hidden message on the lock screen"); return; }
+                scene.pull(300, 15, 20, top);
+                driver.wait(180);
+                scene.drop(300, top);
+                driver.wait(600);
+                if (Notifs.items.length !== 3) { scene.fail("a long drag cleared a hidden message on the lock screen"); return; }
+                const second = lockStack.y + 36 + 90;
+                scene.pull(110, 4, 8, second);
+                scene.drop(110, second);
+                driver.wait(600);
+                if (Notifs.items.length !== 3) { scene.fail("a flick cleared a code on the lock screen"); return; }
+                Notifs.shareKnown = false;
 
                 scene.contentItem.grabToImage(result => {
                     console.log(result.saveToFile("/out/gestures.png") ? "UI_SMOKE_CAPTURED" : "UI_SMOKE_FAILED: capture failed");

@@ -12557,6 +12557,144 @@
      ]
     ]
    ]
+  },
+  {
+   "id": "lock/notif-hidden",
+   "name": "lock",
+   "panel": "../lock/LockView",
+   "kind": "typical",
+   "screen": true,
+   "settle": 2000,
+   "hide": [
+    "TextMorph"
+   ],
+   "props": {
+    "lock": "@lock",
+    "preview": true
+   },
+   "set": [
+    [
+     "Notifs",
+     "shareKnown",
+     true
+    ],
+    [
+     "Hyde",
+     "wallpaper",
+     "/home/test/walls/bright.jpg"
+    ],
+    [
+     "Media",
+     "active",
+     null
+    ],
+    [
+     "Media",
+     "staged",
+     true
+    ],
+    [
+     "Notifs",
+     "items",
+     []
+    ],
+    [
+     "Notifs",
+     "call",
+     "stageItems",
+     [
+      [
+       {
+        "nid": 911,
+        "time": "@now-60000ms",
+        "app": "Signal",
+        "title": "Anna Kowalska",
+        "body": "Are we still on for tonight? I booked the table.",
+        "groupKey": "signal-anna",
+        "hasDefault": true
+       },
+       {
+        "nid": 912,
+        "time": "@now-180000ms",
+        "app": "Bank",
+        "title": "Sign in",
+        "body": "Your code is 482913. It expires in 10 minutes.",
+        "groupKey": "bank",
+        "hasDefault": true
+       }
+      ]
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "lock/notif-hidden-thread",
+   "name": "lock",
+   "panel": "../lock/LockView",
+   "kind": "typical",
+   "screen": true,
+   "settle": 2000,
+   "hide": [
+    "TextMorph"
+   ],
+   "props": {
+    "lock": "@lock",
+    "preview": true
+   },
+   "set": [
+    [
+     "Notifs",
+     "shareKnown",
+     true
+    ],
+    [
+     "Hyde",
+     "wallpaper",
+     "/home/test/walls/bright.jpg"
+    ],
+    [
+     "Media",
+     "active",
+     null
+    ],
+    [
+     "Media",
+     "staged",
+     true
+    ],
+    [
+     "Notifs",
+     "items",
+     []
+    ],
+    [
+     "Notifs",
+     "call",
+     "stageItems",
+     [
+      [
+       {
+        "nid": 913,
+        "time": "@now-300000ms",
+        "app": "Deploy",
+        "title": "Staging is live",
+        "body": "Version 4.2 went out to staging.",
+        "groupKey": "deploy",
+        "hasDefault": true
+       },
+       {
+        "nid": 914,
+        "time": "@now-900000ms",
+        "app": "Deploy",
+        "title": "Credentials rotated",
+        "body": "Your new password is in the vault.",
+        "groupKey": "deploy",
+        "hasDefault": true
+       }
+      ]
+     ]
+    ]
+   ]
   }
  ]
 }

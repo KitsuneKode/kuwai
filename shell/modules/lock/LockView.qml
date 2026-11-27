@@ -3,7 +3,7 @@
 // charge), the island only for a moment (LockIsland: locking, unlocking, a
 // timer), the date over a big rounded clock in the theme's tint, a line of
 // glanceable things (weather, focus), the next event today (LockEvent), what's
-// playing, the notifications that matter (LockNotifs; all on a plate as dark as the picture needs), and "Press any key to unlock" at
+// playing, the notifications that matter (LockNotifs), all on a plate, and "Press any key to unlock" at
 // the bottom. A key or a click turns that line into the password
 // pill (it rises out of the hint on a spring) and the clock shrinks a little
 // to make room; left empty for 12 s it settles back. The wallpaper is
