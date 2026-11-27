@@ -324,9 +324,32 @@ Singleton {
         return n;
     }
     property bool coloured: false
+    property bool recolorHeld: false
+    property bool recolorDirty: false
     function recolor() {
         if (!root.coloured) root.commit(root.colours());
+        if (root.recolorHeld) { root.recolorDirty = true; return; }
         root.recolorSettle.restart();
+    }
+    function holdRecolor(on) {
+        root.recolorHeld = !!on;
+        if (root.recolorHeld) {
+            if (root.recolorSettle.running) { root.recolorSettle.stop(); root.recolorDirty = true; }
+            return;
+        }
+        if (root.recolorDirty) {
+            root.recolorDirty = false;
+            root.coloured = true;
+            root.commit(root.colours());
+        }
+    }
+    function flushRecolor() {
+        root.recolorHeld = false;
+        if (!root.recolorDirty && !root.recolorSettle.running) return 0;
+        root.recolorDirty = false;
+        root.recolorSettle.stop();
+        root.coloured = true;
+        return root.commit(root.colours());
     }
     property Timer recolorSettle: Timer { interval: root.recolorMs; onTriggered: { root.coloured = true; root.commit(root.colours()); } }
     FileView {

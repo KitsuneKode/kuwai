@@ -1,15 +1,38 @@
 /**
- * What awww shows, per screen (": DP-3: 2560x1440, … image: /path").
+ * @param {string} p
+ * @returns {string}
+ */
+export function normalizePath(p) {
+    const s = String(p || "").trim();
+    if (!s) return "";
+    const collapsed = s.replace(/\/+/g, "/");
+    return collapsed.length > 1 && collapsed.endsWith("/") ? collapsed.slice(0, -1) : collapsed;
+}
+
+/**
+ * What awww shows, per screen (": DP-3: 2560x1440, … image: /path"),
+ * preferring canonical realpath lines when present.
  * @param {string} text
  * @returns {Record<string, string>}
  */
 export function parseShown(text) {
     const m = /** @type {Record<string, string>} */ ({});
     for (const l of String(text || "").split("\n")) {
+        const r = l.match(/^kuwai-real (\S+) (\/.+)$/);
+        if (r) { m[r[1]] = normalizePath(r[2]); continue; }
         const x = l.match(/^:?\s*([^:\s]+):.*image:\s*(.+)$/);
-        if (x) m[x[1]] = x[2].trim();
+        if (x && !m[x[1]]) m[x[1]] = normalizePath(x[2]);
     }
     return m;
+}
+
+/**
+ * @param {string} text
+ * @returns {string}
+ */
+export function parseWanted(text) {
+    const m = String(text || "").match(/^kuwai-wanted (.*)$/m);
+    return m ? normalizePath(m[1]) : "";
 }
 
 /**
@@ -23,9 +46,12 @@ export function parseShown(text) {
  */
 export function unchanged(before, now, wanted) {
     const keys = Object.keys(before || {});
-    if (!keys.length || !Object.keys(now || {}).length) return false;
-    if (wanted && keys.every(k => before[k] === wanted)) return false;
-    return keys.every(k => now[k] === before[k]) && !Object.keys(now).some(k => now[k] === wanted);
+    const nowKeys = Object.keys(now || {});
+    if (!keys.length || !nowKeys.length) return false;
+    const w = normalizePath(wanted);
+    if (w && keys.every(k => normalizePath(before[k]) === w)) return false;
+    return keys.every(k => normalizePath(now[k]) === normalizePath(before[k]))
+        && !nowKeys.some(k => w && normalizePath(now[k]) === w);
 }
 
 /**
