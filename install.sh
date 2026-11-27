@@ -282,6 +282,8 @@ login_session() {
         warn "the login entry comes from root's checked copy of a signed release, which isn't installed: kuwai setup puts it in place"
         say "    (developing kuwai, trusting this clone as it is: sudo $s --trust-clone)"
     elif [ $DRY = 1 ]; then say "  would: sudo $r (adds \"kuwai\" to the login screen)"
+    elif [ -n "${KUWAI_SYSROOT:-}" ]; then
+        "$r" | sed 's/^/  /' || warn "not added; run: $r"
     elif [ -t 0 ] && [ -t 1 ] && command -v sudo >/dev/null; then
         say "  adding \"kuwai\" to the login screen from root's checked copy (sudo, once; nothing else of the system changes)"
         sudo "$r" | sed 's/^/  /' || warn "not added; run: sudo $r"

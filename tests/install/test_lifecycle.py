@@ -428,6 +428,27 @@ def test_the_login_entry_is_offered_without_a_terminal(install_env):
     assert '"kuwai" is on the login screen' in i.run()
 
 
+def test_a_stand_in_root_adds_the_login_entry_without_sudo(install_env, tmp_path):
+    i = install_env
+    (i.repo / 'system').mkdir()
+    for rel in ('system/session', 'system/kuwai.desktop', 'system/release.sh', 'bin/kuwai-session'):
+        shutil.copy2(ROOT / rel, i.repo / rel)
+    sysroot = i.home.parent / 'sysroot'
+    i.env['KUWAI_SYSROOT'] = str(sysroot)
+    log = tmp_path / 'ran.log'
+    roots = sysroot / 'usr/local/lib/kuwai/current/system'
+    roots.mkdir(parents=True)
+    (roots / 'session').write_text(f'#!/bin/sh\necho "root\'s copy $*" >> {log}\n')
+    (roots / 'session').chmod(0o755)
+    stubs = tmp_path / 'stubs'
+    stubs.mkdir()
+    (stubs / 'sudo').write_text(f'#!/bin/sh\necho "sudo $*" >> {log}\nexit 1\n')
+    (stubs / 'sudo').chmod(0o755)
+    i.env['PATH'] = f"{stubs}:{i.env['PATH']}"
+    i.run()
+    assert log.read_text().splitlines() == ["root's copy "], "a stand-in root needs no sudo, and no terminal to ask for it"
+
+
 def test_uninstall_never_touches_units_kuwai_did_not_record(install_env):
     i = install_env
     i.services.write_text(json.dumps({u: 'enabled' for u in UNITS}))
