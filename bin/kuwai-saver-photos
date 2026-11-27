@@ -4,13 +4,13 @@
   kuwai-saver-photos [FOLDER]
 
 With a folder, its pictures (one level). Without one, the current theme's
-wallpapers (HyDE: ~/.config/hyde/themes/THEME/wallpapers), else the folder of
-the wallpaper you have now. A folder that isn't there lists nothing, and the
+wallpapers (asked of kuwai-themes), else the folder of the wallpaper you have now. A folder that isn't there lists nothing, and the
 saver shows the still wallpaper instead. The list is capped; hidden files,
 empty files and anything but a picture are left out.
 """
 import json
 import os
+import subprocess
 import sys
 
 PICTURES = (".jpg", ".jpeg", ".png", ".webp")
@@ -22,14 +22,16 @@ def home():
     return os.environ.get("HOME") or os.path.expanduser("~")
 
 
-def theme():
+def theme_walls():
+    tool = os.path.join(os.path.dirname(os.path.realpath(__file__)), "kuwai-themes")
     try:
-        for line in open(os.path.join(home(), ".local/state/hyde/staterc")):
-            if line.startswith("HYDE_THEME="):
-                return line.split("=", 1)[1].strip().strip('"')
-    except OSError:
-        pass
-    return ""
+        done = subprocess.run([tool, "photos"], capture_output=True, text=True, timeout=10)
+        listed = json.loads(done.stdout)
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return []
+    if not isinstance(listed, list):
+        return []
+    return [p for p in listed if isinstance(p, str) and p.lower().endswith(PICTURES) and os.path.isfile(p)]
 
 
 def pictures(folder):
@@ -55,17 +57,14 @@ def pictures(folder):
 
 def current_folder():
     state = os.environ.get("XDG_STATE_HOME") or os.path.join(home(), ".local/state")
-    for link in (os.path.join(state, "kuwai", "wallpaper"), os.path.join(home(), ".cache/hyde/wall.set")):
-        if os.path.exists(link):
-            return os.path.dirname(os.path.realpath(link))
-    return ""
+    link = os.path.join(state, "kuwai", "wallpaper")
+    return os.path.dirname(os.path.realpath(link)) if os.path.exists(link) else ""
 
 
 def listing(folder=""):
     if folder:
         return pictures(os.path.expanduser(folder))
-    name = theme()
-    found = pictures(os.path.join(home(), ".config/hyde/themes", name, "wallpapers")) if name else []
+    found = theme_walls()
     return found or pictures(current_folder() or os.devnull)
 
 

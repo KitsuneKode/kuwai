@@ -12336,6 +12336,64 @@
      }
     ]
    }
+  },
+  {
+   "id": "settings/saver",
+   "name": "settings",
+   "panel": "SettingsPanel",
+   "kind": "typical",
+   "props": {
+    "current": 12
+   }
+  },
+  {
+   "id": "settings/saver-photos",
+   "name": "settings",
+   "panel": "SettingsPanel",
+   "kind": "typical",
+   "props": {
+    "current": 12
+   },
+   "set": [
+    [
+     "Settings",
+     "call",
+     "set",
+     [
+      "screensaverStyle",
+      "photos"
+     ]
+    ],
+    [
+     "Settings",
+     "call",
+     "set",
+     [
+      "screensaverPulse",
+      true
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "settings/saver-photos-worst",
+   "name": "settings",
+   "panel": "SettingsPanel",
+   "kind": "worst",
+   "props": {
+    "current": 12
+   },
+   "set": [
+    [
+     "Settings",
+     "call",
+     "set",
+     [
+      "screensaverFolder",
+      "/home/someone-with-a-long-name/Pictures/Photographs/2025/Holidays in the mountains with the whole family and friends/Favourites"
+     ]
+    ]
+   ]
   }
  ]
 }

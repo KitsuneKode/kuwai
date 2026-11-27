@@ -2,6 +2,7 @@
 """kuwai-themes: HyDE's themes and wallpapers as JSON for the island's Themes panel.
 
     kuwai-themes list                 {"current": NAME, "themes": [...], "wallpapers": [...]}
+    kuwai-themes photos               ["PATH", ...]: the current theme's own wallpapers, nothing hashed (the Photos screensaver)
     kuwai-themes theme NAME [--wait]  switch theme (HyDE's theme.switch.sh: GTK, kitty, Hyprland, Waybar, wallpaper)
     kuwai-themes wallpaper PATH       set the wallpaper (HyDE's wallpaper.sh --global; wallbash recolours from it)
     kuwai-themes colormode MODE       theme | auto | dark | light: where apps take colours from (HyDE's wallbash
@@ -186,6 +187,16 @@ def listing() -> dict:
     return {"current": cur, "themes": themes, "wallpapers": walls, "mode": color_mode(), "modes": MODES, "hyde": hyde_here()}
 
 
+def photos() -> list:
+    cur = current()
+    wd = os.path.join(THEMES, cur, "wallpapers") if cur else ""
+    try:
+        names = sorted(os.listdir(wd), key=str.lower) if wd else []
+    except OSError:
+        return []
+    return [os.path.join(wd, f) for f in names if f.lower().endswith(IMG) and not f.startswith(".")]
+
+
 def save(path: str, text: str) -> None:
     os.makedirs(os.path.dirname(path), mode=0o700, exist_ok=True)
     tmp = path + ".tmp"
@@ -239,6 +250,8 @@ def main(argv):
             save(LAST, out)
         except OSError:
             pass
+    elif cmd == "photos":
+        print(json.dumps(photos()), flush=True)
     elif cmd == "theme" and len(argv) == 2 and os.path.isdir(os.path.join(THEMES, argv[1])):
         return bar_after(launch([os.path.join(LIB, "theme.switch.sh"), "-s", argv[1]], wait), wait)
     elif cmd == "wallpaper" and len(argv) == 2 and os.path.isfile(argv[1]):
