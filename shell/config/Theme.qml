@@ -665,6 +665,7 @@ Singleton {
     // deleting a copy. Long enough to notice and reach (Material's snackbar:
     // 4–10 s), short enough that it is soon final.
     readonly property int undoMs: 6000
+    readonly property int copiedMs: 1600
     readonly property int panelPollMs: 5000     // live numbers that need a process, only while their panel is open
 
     // Reduced motion: fewer and gentler: fades and colour stay, travel,
