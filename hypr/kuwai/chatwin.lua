@@ -59,6 +59,9 @@ end
 C.big = {}
 
 function C.resize(w, big)
+	if K.shutting_down then
+		return
+	end
 	local mon = w.monitor or hl.get_active_monitor()
 	if not mon then
 		return
@@ -91,12 +94,15 @@ local function still(addr)
 end
 
 function C.on_active(w)
-	if not K.feature("chat_autoexpand") then
+	if K.shutting_down or not K.feature("chat_autoexpand") then
 		return
 	end
 	for addr in pairs(C.big) do
 		if not w or w.address ~= addr then
 			hl.timer(function()
+				if K.shutting_down then
+					return
+				end
 				local cur = hl.get_window("address:" .. addr)
 				local a = hl.get_active_window()
 				if cur and C.big[addr] and not (a and a.address == addr) then
@@ -110,6 +116,9 @@ function C.on_active(w)
 	if C.is_chat(w) and not C.big[w.address] then
 		local addr = w.address
 		hl.timer(function()
+			if K.shutting_down then
+				return
+			end
 			local cur = still(addr)
 			if cur and not C.big[addr] then
 				C.resize(cur, true)
@@ -120,6 +129,9 @@ end
 
 hl.on("window.active", C.on_active)
 hl.on("window.destroy", function(w)
+	if K.shutting_down then
+		return
+	end
 	if w then
 		C.big[w.address] = nil
 	end

@@ -60,6 +60,9 @@ if K.feature("remember_place") then
 		end
 	end
 	hl.on("window.close", function(w)
+		if K.shutting_down then
+			return
+		end
 		if not (w and w.floating and w.class and w.class ~= "" and not w.pinned) then
 			return
 		end

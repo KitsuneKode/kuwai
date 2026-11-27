@@ -135,6 +135,17 @@ def test_absent_owned_paths_removed_and_user_settings_kept(install_env):
     assert (i.cfg / 'kuwai/hypr/user.lua').read_text() == '-- custom settings\n'
 
 
+def test_environmentd_puts_local_bin_on_the_session_path_and_uninstall_removes_it(install_env):
+    i = install_env
+    dropin = i.cfg / 'environment.d/kuwai.conf'
+    out = i.run()
+    assert dropin.is_symlink()
+    assert dropin.read_text() == 'PATH=${HOME}/.local/bin${PATH:+:${PATH}}\n'
+    assert ".local/bin isn't on your PATH" in out
+    i.run('--uninstall')
+    assert not dropin.exists() and not dropin.is_symlink()
+
+
 def test_uninstall_preserves_user_edits_as_conflict(install_env):
     i = install_env
     i.entry.parent.mkdir(parents=True)
