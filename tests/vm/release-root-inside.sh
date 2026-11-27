@@ -106,12 +106,15 @@ check "its code is root's" bash -c '[ "$(find /var/lib/kuwai-greeter -path /var/
 check "undo restores what the receipt lists" bash -c "$LIB/current/greeter/install --undo && [ \"\$(cat /etc/pam.d/greetd)\" = 'old pam' ] && [ \"\$(cat /etc/systemd/system/getty@tty1.service.d/override.conf)\" = autologin ] && [ ! -e /etc/greetd/config.toml ] && grep -q 'enable sddm.service' /tmp/systemctl.log"
 check "a second install keeps the first record" bash -c "$LIB/current/greeter/install --yes && [ \"\$(wc -l < /var/lib/kuwai-greeter/original/receipt)\" = 4 ]"
 rm /var/lib/kuwai-greeter/original/receipt
-check "undo of an install without a receipt records root's kept copies, then restores them" bash -c "$LIB/current/greeter/install --undo 2>&1 | grep -q 'no record' && [ \"\$(cat /etc/pam.d/greetd)\" = 'old pam' ] && [ \"\$(stat -c %U:%a /var/lib/kuwai-greeter/original/receipt)\" = root:600 ]"
+check "undo of an install without a receipt records root's kept copies, then restores them" bash -c "$LIB/current/greeter/install --undo 2>&1 | grep -q 'no record' && [ \"\$(cat /etc/pam.d/greetd)\" = 'old pam' ] && [ ! -e /var/lib/kuwai-greeter ]"
 check "the login screen installs again" $LIB/current/greeter/install --yes
 rm /var/lib/kuwai-greeter/original/receipt
 chmod 777 /var/lib/kuwai-greeter/original
 refuses "undo without a receipt, kept copies others could write, restores nothing" $LIB/current/greeter/install --undo
 check "the kuwai pam file stayed" grep -q pam_keyinit /etc/pam.d/greetd
+echo "planted autologin" > /var/lib/kuwai-greeter/original/getty-tty1-override.conf
+refuses "an install over kept copies others could write refuses" $LIB/current/greeter/install --yes
+check "and writes no receipt over them, nor takes their folder" bash -c '[ ! -e /var/lib/kuwai-greeter/original/receipt ] && [ "$(stat -c %a /var/lib/kuwai-greeter/original)" = 777 ]'
 
 echo "# planted" >> "$(readlink -f $LIB/current)/system/kuwai.desktop"
 refuses "root's copy, changed by root afterwards, is refused" $LIB/current/system/session
