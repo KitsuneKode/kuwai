@@ -241,21 +241,13 @@ FocusScope {
                 return;
             }
             const name = it.name;
-            WallFx.play(Hyde.config + "/themes/" + name + "/wall.set", () => {
-                applicator.environment = ({ WALLPAPER_AWWW_TRANSITION_DEFAULT: "none" });
-                applicator.command = [bin, "theme", name, "--wait"];
-                applicator.running = true;
-            });
+            WallFx.play(Hyde.config + "/themes/" + name + "/wall.set", () => Quickshell.execDetached(["env", "WALLPAPER_AWWW_TRANSITION_DEFAULT=none", bin, "theme", name]));
             return;
         }
         // A wallpaper: the shell plays the change (services/WallFx: the new
         // picture grows out of the island); awww's own transition is off.
         const path = it.path;
-        WallFx.play(path, () => {
-            applicator.environment = ({ WALLPAPER_AWWW_TRANSITION_DEFAULT: "none" });
-            applicator.command = useLook ? [bin, "set-wallpaper", path] : [bin, "wallpaper", path, "--wait"];
-            applicator.running = true;
-        });
+        WallFx.play(path, () => Quickshell.execDetached(["env", "WALLPAPER_AWWW_TRANSITION_DEFAULT=none", bin, useLook ? "set-wallpaper" : "wallpaper", path]));
     }
     // What an apply did, said where you are looking: which one is being
     // applied (and a turning mark on its card), that it landed, or why it
@@ -608,7 +600,7 @@ FocusScope {
                 }
                 Skeleton {
                     anchors.fill: parent
-                    radius: parent.radius
+                    radius: Theme.r2
                     phase: picker.sheen
                     visible: !card.modelData.off && (thumbImg.status === Image.Loading || (picker.mode === "live" && !card.modelData.thumb))
                 }
