@@ -1,15 +1,21 @@
-# Rice manual
+# kuwai manual
 
-One page per area (Omarchy-style). Start here, then open the topic you care about.
+One page per area. Every keybinding, path, and command below reflects the current code in `v0.1.0`.
 
 | Page | What it covers |
-|------|----------------|
-| [doctor.md](doctor.md) | `kuwai doctor`, promote gate, notification troubleshooting |
-| [notifications.md](notifications.md) | Toasts, island peek, center, DND, ZapZap, kuwai-feeds |
-| [island.md](island.md) | Bar, hover, moments, usage limits in the notch, settings |
-| [display.md](display.md) | Display presets, HDR, 10-bit, calibrating, Night Shift |
-| [assistant.md](assistant.md) | Opt-in, Ollama overlay, crash diagnose, agent stubs |
-| [updates.md](updates.md) | `kuwai update`, root helper, orange dialog |
-| [security.md](security.md) | Trust model, hardened paths, flaky edges, Phase 6 gaps |
+| --- | --- |
+| [install.md](install.md) | Requirements, install, AUR wrapper, channels, `update-self`, `promote`, `rollback`, uninstall |
+| [keybindings.md](keybindings.md) | Full Hyprland, shell, and optional dictation keybindings, plus rebinding (`Settings → Shortcuts`) |
+| [settings.md](settings.md) | Settings panel sections, `settings.json`, `kuwai set`/`get`, desktop modes, `kuwai feature`, `kuwai collect` |
+| [island.md](island.md) | Bar modes, hover glance, sections (Agents, Usage, System, Cleanup), media, timers, demo |
+| [notifications.md](notifications.md) | Toasts, notch peeks, Notification Center, sensitive-app privacy, DND, GitHub/Gmail feeds |
+| [updates.md](updates.md) | Software Update panel, AUR `PKGBUILD` review, `kuwai-update-root`, `.pacnew`, cache cleanup |
+| [looks.md](looks.md) | 13 themes, `kuwai look`, wallpapers, live wallpapers, screensavers, optional HyDE support |
+| [display.md](display.md) | Display presets, automatic switching, HDR, 10-bit, calibration, Night Shift |
+| [audio.md](audio.md) | Sound panel, PipeWire/EasyEffects routing, custom device cards (`devices.json`) |
+| [assistant.md](assistant.md) | Opt-in local Ollama assistant, tools, secret redaction, crash diagnosis |
+| [doctor.md](doctor.md) | `kuwai doctor`, `kuwai-check`, `kuwai rescue`, and common fixes |
+| [security.md](security.md) | Privilege boundaries, root helpers, data storage, signed releases, known limitations |
+| [keyboard-lighting.md](keyboard-lighting.md) | Matching RGB keyboard lighting to kuwai's theme accents |
 
-Control: `bin/kuwai` · health: `bin/kuwai doctor` · promote gate: `bin/kuwai-check` · dev channel: `kuwai channel dev` · ship: `kuwai promote`.
+Quick commands: `kuwai doctor` (health check) · `kuwai status` (shell unit) · `kuwai version` (release and channel) · `kuwai demo` (45-second tour).

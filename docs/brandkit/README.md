@@ -1,38 +1,27 @@
-# kuwai brandkit
+# kuwai brand kit
 
-**kuwai** is the desktop: Hyprland session + Quickshell shell (the island, notifications, lock). The **`rice`** CLI and `bin/rice-*` tools are the control plane — keep those names in code and docs for commands; the product name people see is **kuwai**.
+**kuwai** is the desktop: Hyprland session (`hypr/`) + Quickshell shell (`shell/`). Both the product name and the CLI (`bin/kuwai`, `~/.local/state/kuwai`) use **kuwai**.
 
 ## Identity
 
-- **Hook:** the island (notch / pill at the top). No mascot.
-- **Tone:** calm, precise, Apple-adjacent motion; never loud chrome on the clock row.
-- **One meaning per colour** (see [DESIGN.md](../DESIGN.md)): accent = selection; white = status; green = good; orange = attention; red = bad; yellow = search/Caffeine.
-
-## Name usage
-
-| Context | Use |
-|---------|-----|
-| README, manual, install | **kuwai** |
-| Commands, IPC, state paths | `rice`, `~/.local/state/rice`, `org.freedesktop.Notifications` owner |
-| Hyprland module | `kuwai.*` in Lua |
-| Repo / GitHub | `kuwai` (this repository) |
+- **Hook:** the flared top-edge island. No mascot.
+- **Tone:** calm, plain, concrete; no loud chrome on the clock row.
+- **One meaning per colour** (see [DESIGN.md](../DESIGN.md) and `shell/config/Theme.qml`): accent (`#0a84ff` or active theme) = selection; white = status; green (`#30d158`) = good/charging; orange (`#ff9f0a`) = attention/warning; red (`#ff453a`) = critical/error; yellow (`#ffd60a`) = search/Caffeine; purple (`#bf5af2`) = Focus/screen share.
 
 ## Assets
 
 | Asset | Location |
-|-------|----------|
-| SVG brand marks (light, dark, app tile) | `docs/brandkit/assets/kuwai-mark.svg`, `kuwai-mark-dark.svg`, `kuwai-mark-tile.svg` |
+| --- | --- |
+| SVG marks (light, dark, app tile) | `docs/brandkit/assets/kuwai-mark.svg`, `kuwai-mark-dark.svg`, `kuwai-mark-tile.svg` |
 | SVG horizontal wordmarks (light, dark) | `docs/brandkit/assets/kuwai-wordmark.svg`, `kuwai-wordmark-dark.svg` |
+| Web/PWA mirrors | `site/public/assets/brand/` |
 | UI tokens (colour, type, motion) | `shell/config/Theme.qml`, [DESIGN.md](../DESIGN.md) |
-| Phosphor map (island glyphs) | `shell/assets/phosphor/` |
-| Greeter / lock art | `greeter/`, `shell/modules/lock/` |
-| Manual diagrams | `docs/media/` |
+| Phosphor icons | `shell/assets/phosphor/` |
+| Brand marks (agents/tools) | `shell/assets/brands/` (see [NOTICE.md](../../NOTICE.md)) |
+| Media captures | `docs/media/` |
 
-All brand marks live in `docs/brandkit/assets/` (SVG only; no raster mascots) and mirror into `site/assets/brand/` for web, PWA, and Open Graph surfaces. The continuous-ear Dynamic Island silhouette with a single amber attention dot and Inter / SF Pro typography *are* the brand.
+## Guidelines
 
-## Do / don't
-
-- **Do:** one interruption surface per event (peek, toast, or moment — not all three).
-- **Do:** name the harness in agent alerts (Claude, Codex, T3, kittymux).
-- **Don't:** red pills beside the clock for quota; don't duplicate Quattro's always-on usage bar.
-- **Don't:** introduce new accent colours outside Theme tokens.
+- One interruption surface per event (peek, toast, or moment — not all three).
+- Name the agent harness in approval alerts (Claude Code, Codex, T3 Code, kittymux, Cursor, Devin).
+- Keep all UI colours inside `Theme` tokens (`bin/kuwai-tokens --check`).

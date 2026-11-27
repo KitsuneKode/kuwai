@@ -6,9 +6,9 @@
 | --- | --- |
 | `hypr/` | The Hyprland half, in Lua (`hypr/init.lua`, `hypr/kuwai/*.lua`) |
 | `shell/` | The Quickshell shell: `config/` (Theme, Paths), `components/`, `services/`, `modules/` |
-| `bin/` | Commands (`kuwai`, `kuwai`, `kuwai-check`, …) and the assistant's Python |
-| `lib/` | What commands share: `brightness/` (the DDC/backlight daemon), `dispatch.sh` |
-| `tests/` | Python tests (`pytest`); `shell/services/ai/turn.test.mjs` (`bun test`) |
+| `bin/` | Commands (`kuwai`, `kuwai-ctl`, `kuwai-check`, …) and the assistant's Python |
+| `lib/` | What commands share: `brightness/` (the DDC/backlight daemon), `look/`, `dispatch.sh` |
+| `tests/` | Python tests (`pytest`), shell JS tests (`bun test`), and Hyprland Lua tests |
 | `docs/` | Design notes, the manual, research |
 
 ## Channels
@@ -23,9 +23,11 @@ Hyprland or the shell fails to load, it rolls back.
 
 ```sh
 PYTHONDONTWRITEBYTECODE=1 python -m pytest -q -p no:cacheprovider tests
-bun test shell/services/ai/turn.test.mjs tests/shell/privacy.test.mjs
+bun test
+for t in tests/hypr/test_*.lua; do lua "$t"; done
 bin/kuwai-loadtest HEAD && bin/kuwai-loadtest HEAD greeter.qml
 bin/kuwai-tokens --check
+bin/kuwai-comments --check
 ```
 
 CI (`.github/workflows/shell-check.yml`) runs the syntax checks and tests above;
