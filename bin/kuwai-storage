@@ -1,0 +1,166 @@
+#!/usr/bin/env python3
+"""What fills the disk that a tool would rebuild, and clearing it the tool's own way.
+
+  kuwai-storage scan [--fresh]   JSON: the home filesystem and each cache found
+  kuwai-storage clear ID         clear one cache that comes back on its own
+
+Sizes are blocks on disk (`du -sx`: links not followed, other filesystems not
+crossed), measured at low priority and kept for 30 minutes. Only caches a tool
+rebuilds by itself can be cleared from here, and only with that tool's own
+command (pip, uv, npm, bun, pnpm, go, yarn) or, for thumbnails, by emptying
+the folder. The rest (pacman's package downloads, the AUR build cache, the
+Trash) are listed as "check first" with what to do, never touched.
+"""
+import json
+import os
+import shutil
+import subprocess
+import sys
+import time
+
+HOME = os.path.expanduser("~")
+CACHE = os.environ.get("XDG_CACHE_HOME") or os.path.join(HOME, ".cache")
+DATA = os.environ.get("XDG_DATA_HOME") or os.path.join(HOME, ".local/share")
+KEPT = os.path.join(CACHE, "kuwai", "storage.json")
+FRESH_S = 1800
+
+BACK = "comes back"
+CHECK = "check first"
+
+KINDS = [
+    {"id": "thumbnails", "label": "Thumbnails", "path": os.path.join(CACHE, "thumbnails"), "tag": BACK,
+     "why": "Previews file managers draw again when they need them", "clear": ["empty"]},
+    {"id": "pip", "label": "Python packages (pip)", "path": os.path.join(CACHE, "pip"), "tag": BACK,
+     "why": "Downloads pip fetches again on the next install", "clear": ["python3", "-m", "pip", "cache", "purge"], "needs": "python3"},
+    {"id": "uv", "label": "Python packages (uv)", "path": os.path.join(CACHE, "uv"), "tag": BACK,
+     "why": "uv downloads them again when a project needs them", "clear": ["uv", "cache", "clean"], "needs": "uv"},
+    {"id": "npm", "label": "npm downloads", "path": os.path.join(HOME, ".npm", "_cacache"), "tag": BACK,
+     "why": "npm fetches them again on the next install", "clear": ["npm", "cache", "clean", "--force"], "needs": "npm"},
+    {"id": "bun", "label": "Bun downloads", "path": os.path.join(HOME, ".bun", "install", "cache"), "tag": BACK,
+     "why": "Bun fetches them again on the next install", "clear": ["bun", "pm", "cache", "rm"], "needs": "bun"},
+    {"id": "pnpm", "label": "pnpm store (unused)", "path": os.path.join(DATA, "pnpm", "store"), "tag": BACK,
+     "why": "Only packages no project links to are removed", "clear": ["pnpm", "store", "prune"], "needs": "pnpm"},
+    {"id": "go", "label": "Go build cache", "path": os.path.join(CACHE, "go-build"), "tag": BACK,
+     "why": "Go rebuilds it on the next build", "clear": ["go", "clean", "-cache"], "needs": "go"},
+    {"id": "yarn", "label": "Yarn downloads", "path": os.path.join(CACHE, "yarn"), "tag": BACK,
+     "why": "Yarn fetches them again on the next install", "clear": ["yarn", "cache", "clean"], "needs": "yarn"},
+    {"id": "pacman", "label": "Package downloads (pacman)", "path": "/var/cache/pacman/pkg", "tag": CHECK,
+     "why": "Older versions you can go back to. Settings → Software Update can prune them after each update"},
+    {"id": "paru", "label": "AUR builds (paru)", "path": os.path.join(CACHE, "paru"), "tag": CHECK,
+     "why": "Sources and builds of AUR packages; paru -Sc asks what to remove"},
+    {"id": "trash", "label": "Trash", "path": os.path.join(DATA, "Trash"), "tag": CHECK,
+     "why": "What you deleted: look before you empty it"},
+]
+
+
+def size(path):
+    if not os.path.isdir(path) or os.path.islink(path):
+        return 0
+    try:
+        out = subprocess.run(["nice", "-n", "19", "ionice", "-c", "3", "du", "-sx", "--block-size=1", "--", path],
+                             capture_output=True, text=True, timeout=120).stdout
+        return int(out.split()[0]) if out.split() else 0
+    except (OSError, ValueError, subprocess.TimeoutExpired):
+        return 0
+
+
+def disk():
+    st = os.statvfs(HOME)
+    total = st.f_blocks * st.f_frsize
+    free = st.f_bavail * st.f_frsize
+    return {"total": total, "free": free, "used": total - st.f_bfree * st.f_frsize}
+
+
+def scan():
+    items = []
+    for k in KINDS:
+        if k.get("needs") and not shutil.which(k["needs"]):
+            continue
+        b = size(k["path"])
+        if b < 1 << 20:
+            continue
+        items.append({"id": k["id"], "label": k["label"], "bytes": b, "tag": k["tag"], "why": k["why"],
+                      "clearable": k["tag"] == BACK and "clear" in k})
+    items.sort(key=lambda i: -i["bytes"])
+    return {"at": int(time.time()), "disk": disk(), "items": items}
+
+
+def kept():
+    try:
+        with open(KEPT) as f:
+            d = json.load(f)
+        if time.time() - d.get("at", 0) < FRESH_S:
+            d["disk"] = disk()
+            return d
+    except (OSError, ValueError):
+        pass
+    return None
+
+
+def keep(d):
+    os.makedirs(os.path.dirname(KEPT), exist_ok=True)
+    tmp = KEPT + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(d, f)
+    os.replace(tmp, KEPT)
+
+
+def empty(path):
+    """Remove what's inside path, never following a link out of it."""
+    if not os.path.isdir(path) or os.path.islink(path):
+        return
+    dev = os.stat(path).st_dev
+    for root, dirs, files in os.walk(path, topdown=False, followlinks=False):
+        if os.lstat(root).st_dev != dev:
+            continue
+        for n in files:
+            try:
+                os.unlink(os.path.join(root, n))
+            except OSError:
+                pass
+        for n in dirs:
+            p = os.path.join(root, n)
+            try:
+                os.unlink(p) if os.path.islink(p) else os.rmdir(p)
+            except OSError:
+                pass
+
+
+def clear(kid):
+    k = next((k for k in KINDS if k["id"] == kid), None)
+    if not k or k["tag"] != BACK or "clear" not in k:
+        return {"ok": False, "why": "that one isn't cleared from here"}
+    before = size(k["path"])
+    if k["clear"] == ["empty"]:
+        empty(k["path"])
+    else:
+        if k.get("needs") and not shutil.which(k["needs"]):
+            return {"ok": False, "why": k["label"] + ": its tool isn't installed"}
+        r = subprocess.run(k["clear"], capture_output=True, text=True, timeout=300, stdin=subprocess.DEVNULL)
+        if r.returncode != 0:
+            return {"ok": False, "why": k["label"] + " couldn't be cleared"}
+    after = size(k["path"])
+    try:
+        os.unlink(KEPT)
+    except OSError:
+        pass
+    return {"ok": True, "freed": max(0, before - after)}
+
+
+def main(argv):
+    if argv[:1] == ["clear"] and len(argv) == 2:
+        print(json.dumps(clear(argv[1])))
+        return 0
+    if argv[:1] == ["scan"]:
+        d = None if "--fresh" in argv else kept()
+        if d is None:
+            d = scan()
+            keep(d)
+        print(json.dumps(d))
+        return 0
+    print(__doc__.strip(), file=sys.stderr)
+    return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

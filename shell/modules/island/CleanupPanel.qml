@@ -26,7 +26,7 @@ FocusScope {
     property bool inStrip: false
     focus: true
     implicitWidth: Theme.panelM
-    implicitHeight: view === "projects" ? projects.y + projects.implicitHeight : col.y + col.implicitHeight + 20
+    implicitHeight: view === "projects" ? projects.y + projects.implicitHeight : view === "caches" ? caches.y + caches.implicitHeight + 10 : col.y + col.implicitHeight + 20
     property string view: "skills"
     function takeView() { if (Island.cleanupView) { view = Island.cleanupView; Island.cleanupView = ""; } }
     Connections { target: Island; function onCleanupViewChanged() { cp.takeView(); } }
@@ -35,6 +35,7 @@ FocusScope {
     property var report: null              // (not `data`: that is every Item's children list)
     property bool loading: true
     property string error: ""
+    property var storage: null
     property var marked: ({})
     readonly property int markedCount: Object.keys(marked).length
     property int sel: 0
@@ -131,7 +132,7 @@ FocusScope {
     Segmented {
         id: viewSwitch
         x: 20; y: cp.inStrip ? Theme.s2 : 20
-        options: [{ id: "skills", label: "Skills" }, { id: "projects", label: "Idle projects" }]
+        options: [{ id: "skills", label: "Skills" }, { id: "projects", label: "Idle projects" }, { id: "caches", label: "Caches" }]
             .concat(cp.report && cp.report.leftovers && cp.report.leftovers.length ? [{ id: "leftovers", label: "Leftovers" }] : [])
         current: cp.view
         onPicked: id => cp.view = id
@@ -154,6 +155,14 @@ FocusScope {
         visible: active
         focus: active
         sourceComponent: SweepPanel {}
+    }
+    Loader {
+        id: caches
+        y: viewSwitch.y + viewSwitch.height
+        width: cp.width
+        active: cp.view === "caches"
+        visible: active
+        sourceComponent: CachesView { seed: cp.storage; maxHeight: Theme.panelMaxH - (cp.inStrip ? Theme.sp(34) : 0) - caches.y - 10 }
     }
     Column {
         id: col

@@ -104,7 +104,7 @@ Column {
                 required property var modelData
                 required property int index
                 readonly property bool lit: lb.hot === index
-                width: chipRow.implicitWidth + 14; height: 22; radius: 11
+                width: Math.min(chipRow.implicitWidth + 14, lb.width); height: Math.max(22, chipRow.implicitHeight + 6); radius: height / 2
                 color: Qt.rgba(1, 1, 1, lit ? 0.12 : 0)
                 Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
                 Row {

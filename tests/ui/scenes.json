@@ -11058,6 +11058,198 @@
      }
     ]
    }
+  },
+  {
+   "id": "cleanup/caches",
+   "name": "cleanup",
+   "panel": "CleanupPanel",
+   "kind": "typical",
+   "props": {
+    "view": "caches",
+    "storage": {
+     "at": 0,
+     "disk": {
+      "total": 511101108224,
+      "used": 384184824627,
+      "free": 126701535232
+     },
+     "items": [
+      {
+       "id": "pacman",
+       "label": "Package downloads (pacman)",
+       "bytes": 10522669875,
+       "tag": "check first",
+       "why": "Older versions you can go back to. Settings → Software Update can prune them after each update",
+       "clearable": false
+      },
+      {
+       "id": "bun",
+       "label": "Bun downloads",
+       "bytes": 2899102924,
+       "tag": "comes back",
+       "why": "Bun fetches them again on the next install",
+       "clearable": true
+      },
+      {
+       "id": "npm",
+       "label": "npm downloads",
+       "bytes": 1503238553,
+       "tag": "comes back",
+       "why": "npm fetches them again on the next install",
+       "clearable": true
+      },
+      {
+       "id": "uv",
+       "label": "Python packages (uv)",
+       "bytes": 708669603,
+       "tag": "comes back",
+       "why": "uv downloads them again when a project needs them",
+       "clearable": true
+      },
+      {
+       "id": "go",
+       "label": "Go build cache",
+       "bytes": 644245094,
+       "tag": "comes back",
+       "why": "Go rebuilds it on the next build",
+       "clearable": true
+      },
+      {
+       "id": "trash",
+       "label": "Trash",
+       "bytes": 214748364,
+       "tag": "check first",
+       "why": "What you deleted: look before you empty it",
+       "clearable": false
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "cleanup/caches-worst",
+   "name": "cleanup",
+   "panel": "CleanupPanel",
+   "kind": "worst",
+   "props": {
+    "view": "caches",
+    "storage": {
+     "at": 0,
+     "disk": {
+      "total": 2047625658368,
+      "used": 2029372047360,
+      "free": 18253611008
+     },
+     "items": [
+      {
+       "id": "pacman",
+       "label": "Package downloads (pacman)",
+       "bytes": 51754355916,
+       "tag": "check first",
+       "why": "Older versions you can go back to. Settings → Software Update can prune them after each update",
+       "clearable": false
+      },
+      {
+       "id": "paru",
+       "label": "AUR builds (paru)",
+       "bytes": 33822867456,
+       "tag": "check first",
+       "why": "Sources and builds of AUR packages; paru -Sc asks what to remove",
+       "clearable": false
+      },
+      {
+       "id": "bun",
+       "label": "Bun downloads",
+       "bytes": 24373939404,
+       "tag": "comes back",
+       "why": "Bun fetches them again on the next install",
+       "clearable": true
+      },
+      {
+       "id": "npm",
+       "label": "npm downloads",
+       "bytes": 15461882265,
+       "tag": "comes back",
+       "why": "npm fetches them again on the next install",
+       "clearable": true
+      },
+      {
+       "id": "pnpm",
+       "label": "pnpm store (unused)",
+       "bytes": 9771050598,
+       "tag": "comes back",
+       "why": "Only packages no project links to are removed",
+       "clearable": true
+      },
+      {
+       "id": "uv",
+       "label": "Python packages (uv)",
+       "bytes": 7086696038,
+       "tag": "comes back",
+       "why": "uv downloads them again when a project needs them",
+       "clearable": true
+      },
+      {
+       "id": "pip",
+       "label": "Python packages (pip)",
+       "bytes": 3543348019,
+       "tag": "comes back",
+       "why": "Downloads pip fetches again on the next install",
+       "clearable": true
+      },
+      {
+       "id": "go",
+       "label": "Go build cache",
+       "bytes": 2791728742,
+       "tag": "comes back",
+       "why": "Go rebuilds it on the next build",
+       "clearable": true
+      },
+      {
+       "id": "yarn",
+       "label": "Yarn downloads",
+       "bytes": 1288490188,
+       "tag": "comes back",
+       "why": "Yarn fetches them again on the next install",
+       "clearable": true
+      },
+      {
+       "id": "thumbnails",
+       "label": "Thumbnails",
+       "bytes": 966367641,
+       "tag": "comes back",
+       "why": "Previews file managers draw again when they need them",
+       "clearable": true
+      },
+      {
+       "id": "trash",
+       "label": "Trash",
+       "bytes": 12884901888,
+       "tag": "check first",
+       "why": "What you deleted: look before you empty it",
+       "clearable": false
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "cleanup/caches-clean",
+   "name": "cleanup",
+   "panel": "CleanupPanel",
+   "kind": "typical",
+   "props": {
+    "view": "caches",
+    "storage": {
+     "at": 0,
+     "disk": {
+      "total": 511101108224,
+      "used": 128849018880,
+      "free": 382252089344
+     },
+     "items": []
+    }
+   }
   }
  ]
 }

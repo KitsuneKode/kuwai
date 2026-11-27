@@ -1,0 +1,188 @@
+import QtQuick
+import Quickshell
+import Quickshell.Io
+import qs.config
+import qs.components
+import qs.components.ui as Ui
+import qs.services
+
+Item {
+    id: cv
+    property real maxHeight: Theme.panelMaxH
+    implicitHeight: Math.min(col.implicitHeight + 30, maxHeight)
+
+    property var seed: null
+    property var report: null
+    property bool loading: true
+    property bool failed: false
+    property string armed: ""
+    property string clearing: ""
+    property string note: ""
+    readonly property var items: report && report.items ? report.items : []
+    readonly property var pal: [Theme.orange, Theme.blue, Theme.green, Theme.indigo, Theme.cyan, Theme.yellow, Theme.red, Theme.purple]
+    readonly property real backBytes: items.filter(i => i.clearable).reduce((n, i) => n + i.bytes, 0)
+
+    function load(fresh) {
+        loading = true;
+        failed = false;
+        reader.command = [Paths.bin + "/kuwai-storage", "scan"].concat(fresh ? ["--fresh"] : []);
+        reader.running = true;
+    }
+    function clear(item) {
+        if (clearing) return;
+        if (armed !== item.id) { armed = item.id; note = ""; return; }
+        armed = "";
+        clearing = item.id;
+        clearer.label = item.label;
+        clearer.command = [Paths.bin + "/kuwai-storage", "clear", item.id];
+        clearer.running = true;
+    }
+    Component.onCompleted: { if (seed) { report = seed; loading = false; } else load(false); }
+
+    Process {
+        id: reader
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try { cv.report = JSON.parse(text); } catch (e) { cv.failed = !cv.report; }
+                cv.loading = false;
+            }
+        }
+        onExited: code => { if (code !== 0) { cv.failed = !cv.report; cv.loading = false; } }
+    }
+    Process {
+        id: clearer
+        property string label: ""
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let r = {};
+                try { r = JSON.parse(text); } catch (e) {}
+                cv.note = r.ok ? clearer.label + " cleared · " + SystemStats.bytes(r.freed || 0) + " freed" : (r.why || "Couldn't clear " + clearer.label);
+                cv.clearing = "";
+                cv.load(true);
+            }
+        }
+    }
+
+    ScrollFade { flickable: flick }
+    Flickable {
+        id: flick
+        anchors.fill: parent
+        contentHeight: col.implicitHeight + 30
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
+        interactive: contentHeight > height
+    Column {
+        id: col
+        x: 20; y: Theme.s2
+        width: cv.width - 40
+        spacing: 14
+
+        Ui.Notice {
+            visible: cv.failed
+            glyph: "\u{f0026}"
+            title: "The disk couldn't be read"
+            action: "Try again"
+            onActed: cv.load(true)
+        }
+
+        Item {
+            width: parent.width
+            height: bar.height
+            visible: !!cv.report
+            LinkedBar {
+                id: bar
+                width: parent.width
+                title: "Disk"
+                big: cv.report ? SystemStats.bytes(cv.report.disk.used) : ""
+                caption: cv.report ? "of " + SystemStats.bytes(cv.report.disk.total) + " used · " + SystemStats.bytes(cv.report.disk.free) + " free" : ""
+                total: cv.report ? cv.report.disk.total / 1073741824 : 1
+                unit: " GB"
+                parts: {
+                    if (!cv.report) return [];
+                    const found = cv.items.map((i, k) => ({ label: i.label, value: i.bytes / 1073741824, color: cv.pal[k % cv.pal.length],
+                        detail: i.clearable ? "comes back on its own" : "check first" }));
+                    const rest = Math.max(0, cv.report.disk.used / 1073741824 - found.reduce((n, p) => n + p.value, 0));
+                    return found.concat([{ label: "Everything else", value: rest, color: Theme.gray, detail: "your files, apps and the system" }]);
+                }
+            }
+            Ui.Button {
+                anchors { right: parent.right; top: parent.top }
+                kind: "quiet"; glyph: "\u{f0450}"
+                text: cv.loading ? "Measuring…" : "Rescan"
+                enabled: !cv.loading
+                onClicked: cv.load(true)
+            }
+        }
+
+        Label {
+            visible: !!cv.report
+            width: parent.width
+            wrapMode: Text.Wrap
+            text: cv.backBytes > 0 ? SystemStats.bytes(cv.backBytes) + " of caches can be cleared: the tools that made them make them again when they need them"
+                                   : "Nothing here needs clearing"
+            size: Theme.tSub; color: Theme.textSecondary
+        }
+
+        Column {
+            width: parent.width
+            spacing: 2
+            Repeater {
+                model: cv.items
+                Item {
+                    id: row
+                    required property var modelData
+                    required property int index
+                    width: parent.width
+                    height: Math.max(Theme.sp(48), text.implicitHeight + Theme.s3)
+                    Rectangle {
+                        width: 8; height: 8; radius: 4
+                        anchors.verticalCenter: parent.verticalCenter
+                        color: cv.pal[row.index % cv.pal.length]
+                    }
+                    Column {
+                        id: text
+                        anchors { left: parent.left; leftMargin: 18; right: side.left; rightMargin: Theme.s3; verticalCenter: parent.verticalCenter }
+                        spacing: 2
+                        Label { width: parent.width; elide: Text.ElideRight; text: row.modelData.label; size: Theme.tBody; weight: Theme.wMedium }
+                        Label {
+                            width: parent.width; wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight
+                            text: (row.modelData.clearable ? "Comes back on its own · " : "Check first · ") + row.modelData.why
+                            size: Theme.tFootnote
+                            color: row.modelData.clearable ? Theme.textTertiary : Theme.orange
+                        }
+                    }
+                    Row {
+                        id: side
+                        anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                        spacing: Theme.s2
+                        Label { anchors.verticalCenter: parent.verticalCenter; text: SystemStats.bytes(row.modelData.bytes); size: Theme.tSub; tabular: true; color: Theme.textSecondary }
+                        Ui.Button {
+                            visible: row.modelData.clearable
+                            anchors.verticalCenter: parent.verticalCenter
+                            height: Theme.sp(28); size: Theme.tSub
+                            text: cv.clearing === row.modelData.id ? "Clearing…" : cv.armed === row.modelData.id ? "Clear " + SystemStats.bytes(row.modelData.bytes) + "?" : "Clear"
+                            enabled: !cv.clearing
+                            onClicked: cv.clear(row.modelData)
+                        }
+                    }
+                }
+            }
+        }
+
+        Label {
+            visible: cv.note !== ""
+            width: parent.width
+            wrapMode: Text.Wrap
+            text: cv.note
+            size: Theme.tSub; color: Theme.textSecondary
+        }
+
+        Column {
+            visible: !cv.report && cv.loading
+            width: parent.width
+            spacing: Theme.s2
+            Repeater { model: 4; Skeleton { width: parent.width; height: Theme.sp(40); radius: Theme.r2 } }
+        }
+    }
+    }
+}
