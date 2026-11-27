@@ -58,13 +58,13 @@ Singleton {
     property bool liveHeld: false
     property bool toLive: false
     property var frozen: ({})
+    property var queued: null
 
     function play(path, start, live) {
         if (!path) return;
         toLive = !!live;
         if (phase !== "") {
-            cancelTransition();
-            start();
+            queued = { path: path, start: start, live: !!live };
             return;
         }
         // Stream callbacks from a cancelled transition can still arrive.
@@ -94,6 +94,12 @@ Singleton {
         cancelTransition();
         lastRun = "fallback: " + why;
         if (start) start();
+        drain();
+    }
+    function drain() {
+        const q = queued;
+        queued = null;
+        if (q) Qt.callLater(() => root.play(q.path, q.start, q.live));
     }
 
     // What awww shows now, per screen (": DP-3: 2560x1440, … image: /path").
@@ -274,12 +280,13 @@ Singleton {
         lastRun = "forced: " + why;
         after.restart();
     }
-    Timer { id: after; interval: 300; onTriggered: { root.phase = ""; root.watchdog.stop(); } }
+    Timer { id: after; interval: 300; onTriggered: { root.phase = ""; root.watchdog.stop(); root.drain(); } }
     function finish(how) {
         lastRun = how + " (" + mode + ") " + ((Date.now() - startedAt) / 1000).toFixed(2) + " s";
         const map = needMap ? next : "";
         cancelTransition();
-        if (map) Quickshell.execDetached(["setpriv", "--pdeathsig", "KILL", "--", "nice", "-n", "19", Paths.bin + "/kuwai-wallmap", map]);
+        if (queued) drain();
+        else if (map) Quickshell.execDetached(["setpriv", "--pdeathsig", "KILL", "--", "nice", "-n", "19", Paths.bin + "/kuwai-wallmap", map]);
     }
     Timer { id: watchdog; interval: 8000; onTriggered: if (root.phase !== "") { if (root.startFn) root.bail("stuck before the hand-off"); else root.force("stuck"); } }
 

@@ -12,6 +12,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 
 BIN = os.path.dirname(os.path.realpath(__file__))
 SHELL = os.path.join(os.path.dirname(BIN), "shell")
@@ -39,6 +40,28 @@ def turn(items, current, step):
     return items[(i + step) % len(items)]
 
 
+RECENT = os.path.join(os.environ.get("XDG_RUNTIME_DIR") or STATE, "kuwai-wallstep")
+
+
+def recent(walls):
+    try:
+        if time.time() - os.path.getmtime(RECENT) > 15:
+            return ""
+        path = open(RECENT).read().strip()
+    except OSError:
+        return ""
+    return path if path in walls else ""
+
+
+def remember(path):
+    try:
+        with open(RECENT + ".tmp", "w") as f:
+            f.write(path)
+        os.replace(RECENT + ".tmp", RECENT)
+    except OSError:
+        pass
+
+
 def still(step):
     listed = run([os.path.join(BIN, "kuwai-themes"), "list"])
     walls, cur, themed = [], "", False
@@ -56,10 +79,12 @@ def still(step):
             say("No wallpapers to step through")
             return 1
         walls = sorted(os.path.join(folder, f) for f in os.listdir(folder) if f.lower().endswith(PICTURES))
+    cur = recent(walls) or cur
     pick = turn(walls, cur, step)
     if not pick or pick == cur:
         say("Only one wallpaper here")
         return 0
+    remember(pick)
     if ipc("wallfx", "play", pick).returncode != 0:
         tool = [os.path.join(BIN, "kuwai-themes"), "wallpaper", pick] if themed else [os.path.join(BIN, "kuwai-look"), "set-wallpaper", pick]
         subprocess.Popen(tool, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
