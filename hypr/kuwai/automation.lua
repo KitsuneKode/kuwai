@@ -5,7 +5,7 @@ local dsp = hl.dsp
 K.privacy = K.privacy
 	or {
 		windows = "^(Bitwarden|bitwarden|org\\.keepassxc\\.KeePassXC|1Password|pinentry-.*|gcr-prompter|org\\.telegram\\.desktop|vesktop|discord|com\\.rtosta\\.zapzap|signal|Signal)$",
-		layers = "^(kuwai-notifs|kuwai-center|kuwai-island|kuwai-islandbar|kuwai-assistant|notifications|swaync-notification-window|swaync-control-center)$",
+		layers = "^(kuwai-notifs|kuwai-center|kuwai-island|kuwai-islandbar|kuwai-assistant|kuwai\\.voxtarget|notifications|swaync-notification-window|swaync-control-center)$",
 	}
 
 function kuwai.privacy_resync()

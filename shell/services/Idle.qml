@@ -171,20 +171,15 @@ Singleton {
     onEnabledChanged: { sleepGuard.running = enabled; lockSignal.running = enabled; }
 
     // ── Lock before every sleep, and on `loginctl lock-session` ─────────
-    // A delay inhibitor: logind waits (up to InhibitDelayMaxSec) while we
-    // lock; the process ends once the lock is confirmed, which lets the sleep
-    // go on. After waking it starts again for the next sleep.
+    // kuwai-sleepguard holds a logind "delay" inhibitor for the whole session:
+    // on PrepareForSleep it locks, letting go only once the lock is confirmed
+    // (or logind's own deadline is near), and takes it again on waking.
     Process {
         id: sleepGuard
         Component.onCompleted: running = root.enabled
-        // setpriv --pdeathsig: these die with the shell, even a kill -9 (a
-        // left-over guard would delay every sleep; a listener, lock twice).
-        command: ["setpriv", "--pdeathsig", "KILL", "--", "systemd-inhibit", "--what=sleep", "--mode=delay", "--who=kuwai", "--why=Lock the screen before sleeping",
-                  "setpriv", "--pdeathsig", "KILL", "--", "sh", "-c", 'setpriv --pdeathsig KILL -- gdbus monitor --system --dest org.freedesktop.login1 --object-path /org/freedesktop/login1 | while read -r l; do case $l in *PrepareForSleep*true*) for t in 1 2 3; do "$1" lock --wait && exit 0; sleep 0.3; done; exit 1;; esac; done', "sh", root.kuwai]
+        command: ["setpriv", "--pdeathsig", "KILL", "--", Paths.bin + "/kuwai-sleepguard", root.kuwai]
         onExited: if (root.enabled) rearm.restart()
     }
-    // Soon after waking (a lid closed again right away is still locked first);
-    // not instantly, so a guard that fails at once can't spin.
     Timer { id: rearm; interval: 500; onTriggered: if (root.enabled) sleepGuard.running = true }
     Process {
         id: lockSignal

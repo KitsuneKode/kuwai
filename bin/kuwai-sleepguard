@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+set -u
+KUWAI=${1:?usage: kuwai-sleepguard KUWAI}
+guard=""
+
+hold() {
+    [ -n "$guard" ] && kill -0 "$guard" 2>/dev/null && return
+    setpriv --pdeathsig KILL -- systemd-inhibit --what=sleep --mode=delay --who=kuwai \
+        --why="Lock the screen before sleeping" sleep infinity &
+    guard=$!
+}
+
+drop() {
+    [ -n "$guard" ] || return 0
+    kill "$guard" 2>/dev/null
+    wait "$guard" 2>/dev/null
+    guard=""
+}
+
+now_ms() { echo $(( $(date +%s%N) / 1000000 )); }
+
+budget_ms() {
+    local us
+    us=$(busctl get-property org.freedesktop.login1 /org/freedesktop/login1 org.freedesktop.login1.Manager InhibitDelayMaxUSec 2>/dev/null | awk '{print $2}')
+    case $us in ''|*[!0-9]*) us=5000000 ;; esac
+    echo $(( us / 1000 > 1000 ? us / 1000 - 500 : 500 ))
+}
+
+lock_then_release() {
+    local end=$(( $(now_ms) + $(budget_ms) ))
+    until "$KUWAI" lock --wait >/dev/null 2>&1; do
+        [ "$(now_ms)" -ge "$end" ] && break
+        sleep 0.2
+    done
+    drop
+}
+
+trap 'drop; exit 0' TERM INT HUP
+hold
+while read -r line; do
+    case $line in
+        *PrepareForSleep*true*) lock_then_release ;;
+        *PrepareForSleep*false*) hold ;;
+    esac
+done < <(setpriv --pdeathsig KILL -- gdbus monitor --system --dest org.freedesktop.login1 --object-path /org/freedesktop/login1)
+drop
+exit 1

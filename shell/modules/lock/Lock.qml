@@ -23,6 +23,8 @@ import Quickshell.Wayland
 import Quickshell.Services.Pam
 import qs.config
 import qs.services
+import "../../services/faillock.mjs" as Faillock
+import "../../services/pamTurn.mjs" as PamTurn
 
 Scope {
     id: root
@@ -49,11 +51,15 @@ Scope {
 
     readonly property string flag: Paths.lockFlag
     function lock() {
-        password = ""; error = ""; checking = false;
+        password = ""; error = ""; checking = false; held = ""; note = ""; challenge = "";
         release.stop(); leaving = false;
         welcomeLater.stop();
         lockedAt = Date.now();
         openAfter = null;
+        missed = false;
+        recount();
+        fingerTries = 0;
+        enrolled.running = true;
         mark.command = ["sh", "-c", 'mkdir -p "$(dirname "$1")" && : > "$1"', "sh", flag];
         mark.running = true;
         locked = true;
@@ -62,6 +68,8 @@ Scope {
         Quickshell.execDetached(["hyprctl", "switchxkblayout", "all", "0"]);
     }
     function unlocked() {
+        fingerAgain.stop();
+        finger.running = false;
         mark.command = ["rm", "-f", flag];
         mark.running = true;
         locked = false;
@@ -73,10 +81,68 @@ Scope {
         printErrors: false
         onLoaded: if (!root.locked) { console.warn("lock: the session was locked when the shell stopped; locking again"); root.lock(); }
     }
+    property var tries: Faillock.DEFAULTS
+    property int fails: 0
+    property real lockedUntil: 0
+    property real now: Date.now()
+    readonly property int lockLeft: Math.max(0, Math.ceil((lockedUntil - now) / 1000))
+    property bool missed: false
+    onLockLeftChanged: {
+        if (lockLeft > 0) error = Faillock.lockedWords(lockLeft);
+        else if (lockedUntil > 0) { lockedUntil = 0; fails = 0; error = ""; }
+    }
+    Timer { interval: 1000; repeat: true; running: root.locked && root.lockedUntil > root.now; onTriggered: root.now = Date.now() }
+    FileView {
+        path: "/etc/security/faillock.conf"
+        printErrors: false
+        onLoaded: root.tries = Faillock.parseConf(text())
+    }
+    Process {
+        id: tally
+        command: ["faillock", "--user", Quickshell.env("USER") || ""]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                root.now = Date.now();
+                const t = Faillock.tally(text, root.now, root.tries);
+                root.fails = t.fails;
+                root.lockedUntil = t.lockedUntil;
+                if (root.lockLeft > 0) root.error = Faillock.lockedWords(root.lockLeft);
+                else if (root.missed) root.error = Faillock.missWords(t.fails, root.tries);
+            }
+        }
+    }
+    function recount() { tally.running = false; tally.running = true; }
+    property bool fingers: false
+    property int fingerTries: 0
+    readonly property bool fingerReady: fingers && finger.running && !leaving
+    Process {
+        id: enrolled
+        command: ["sh", "-c", 'command -v fprintd-verify >/dev/null && fprintd-list "$1" 2>/dev/null | grep -q "#[0-9]"', "sh", Quickshell.env("USER") || ""]
+        onExited: code => { root.fingers = code === 0; root.listen(); }
+    }
+    Process {
+        id: finger
+        command: ["setpriv", "--pdeathsig", "TERM", "fprintd-verify"]
+        stdout: StdioCollector { id: fingerSaid }
+        onExited: code => {
+            if (!root.locked || root.leaving) return;
+            if (code === 0 && /verify-match/.test(fingerSaid.text)) {
+                root.password = ""; root.error = ""; root.held = "";
+                if (root.checking) pam.abort();
+                root.checking = false;
+                root.leaving = true;
+                release.restart();
+            } else if (root.fingerTries++ < 5) fingerAgain.restart();
+        }
+    }
+    Timer { id: fingerAgain; interval: 1500; onTriggered: root.listen() }
+    function listen() { if (fingers && locked && !leaving && lockLeft === 0 && !finger.running) finger.running = true; }
     property string challenge: ""
-    property int answers: 0
+    property string note: ""
+    property string held: ""
     function submit() {
         if (leaving || password === "") return;
+        if (lockLeft > 0) { password = ""; failures++; return; }
         if (challenge !== "") {
             const answer = password;
             password = ""; challenge = ""; checking = true;
@@ -85,8 +151,10 @@ Scope {
         }
         if (checking) return;
         error = "";
+        missed = false;
+        note = "";
+        held = password;
         checking = true;
-        answers = 0;
         pam.start();
     }
 
@@ -95,29 +163,42 @@ Scope {
         // The system's login stack (/etc/pam.d/login): what hyprlock's own
         // file includes, without depending on the hyprlock package.
         config: "login"
-        onResponseRequiredChanged: {
-            if (!responseRequired) return;
-            if (root.answers++ === 0) { respond(root.password); return; }
+        onPamMessage: {
+            if (!responseRequired) { root.note = PamTurn.note(message); return; }
+            root.note = "";
+            if (PamTurn.kind(message, responseVisible) === "password" && root.held !== "") {
+                const p = root.held;
+                root.held = "";
+                respond(p);
+                return;
+            }
             root.checking = false;
             root.password = "";
-            root.challenge = String(message || "Verification code").replace(/[:\s]+$/, "");
+            root.challenge = PamTurn.label(message);
         }
         onCompleted: result => {
             root.checking = false;
             root.challenge = "";
+            root.held = "";
+            root.note = "";
             if (result === PamResult.Success) {
                 root.password = "";
+                root.fails = 0; root.lockedUntil = 0; root.missed = false;
                 root.leaving = true;
                 release.restart();
             } else {
                 root.password = "";
                 root.error = result === PamResult.MaxTries ? "Too many attempts" : "Incorrect password";
+                root.missed = true;
                 root.failures++;
+                root.recount();
             }
         }
         onError: err => {
             root.checking = false;
             root.challenge = "";
+            root.held = "";
+            root.note = "";
             root.password = "";
             root.error = "Couldn't check the password. Try again";
             root.failures++;

@@ -1,5 +1,6 @@
 const IMAGE = /\.(jpe?g|png|webp|gif|bmp|avif|mp4|webm|mkv|mov)$/i;
-const LEVEL = /^\s*(\d{1,3}\s*%?|muted|unmuted|mute|unmute|volume|brightness)\b/i;
+const LEVEL = /^\s*(?:(?:volume|brightness|mic(?:rophone)?)\s*:?\s*)?(?:\d{1,3}\s*%|muted|unmuted)\s*$|^\s*(?:volume|brightness|muted|unmuted)\s*$/i;
+const STATUS_SENDER = /^$|wall|theme|alert|notify|swww|awww|waypaper|variety|notify-send/i;
 const FAILURE = /\b(fail(ed|ure)?|error|not (found|installed)|unavailable|couldn'?t|can'?t)\b/i;
 
 function text(v) { return String(v || "").replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim(); }
@@ -10,8 +11,9 @@ export function statusNotice(n) {
     const app = text(n.app || n.appName);
     const title = text(n.summary || n.title);
     if (/live wallpaper/i.test(app)) return true;
-    if (actionless(n) && (IMAGE.test(title) || /^wallpaper set for/i.test(title))) return true;
-    if (actionless(n) && LEVEL.test(title) && title.length <= 24) return true;
+    if (actionless(n) && /^wallpaper set for/i.test(title)) return true;
+    if (actionless(n) && IMAGE.test(title) && !/\s/.test(title) && STATUS_SENDER.test(app)) return true;
+    if (actionless(n) && LEVEL.test(title)) return true;
     const sync = String(hint(n, "x-canonical-private-synchronous") || hint(n, "x-dunst-stack-tag") || "");
     if (/^(brightness|volume|audio|sink|mic)$/i.test(sync)) return true;
     return hint(n, "value") !== undefined && actionless(n);

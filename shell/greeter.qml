@@ -26,6 +26,7 @@ import Quickshell.Services.UPower
 import qs.config
 import qs.services
 import qs.modules.lock
+import "services/pamTurn.mjs" as PamTurn
 
 ShellRoot {
     id: root
@@ -57,7 +58,9 @@ ShellRoot {
     property string farewell: ""      // suspend | reboot | poweroff: the goodbye showing
 
     property string challenge: ""
-    property int answers: 0
+    property string note: ""
+    property string held: ""
+    property bool named: false
     function submit() {
         if (leaving || password === "") return;
         if (challenge !== "") {
@@ -69,7 +72,9 @@ ShellRoot {
         if (checking) return;
         if (!Greetd.available) { fail("greetd isn't running"); return; }
         error = "";
-        answers = 0;
+        note = "";
+        held = password;
+        named = false;
         checking = true;
         trace("auth-request");
         Greetd.createSession(user);
@@ -77,6 +82,8 @@ ShellRoot {
     function fail(message) {
         trace("failure");
         challenge = "";
+        held = "";
+        note = "";
         handoff.stop();
         launchAck.stop();
         quitAnyway.stop();
@@ -106,17 +113,21 @@ ShellRoot {
     Connections {
         target: Greetd
         function onAuthMessage(message, error, responseRequired, echoResponse) {
-            if (!responseRequired) { if (error) root.error = message; return; }
-            if (echoResponse && root.answers === 0) { Greetd.respond(root.user); return; }
-            if (root.answers++ === 0) { Greetd.respond(root.password); return; }
+            if (!responseRequired) { if (error) root.error = message; else root.note = PamTurn.note(message); return; }
+            root.note = "";
+            const k = PamTurn.kind(message, echoResponse);
+            if (k === "user" && !root.named) { root.named = true; Greetd.respond(root.user); return; }
+            if (k === "password" && root.held !== "") { const p = root.held; root.held = ""; Greetd.respond(p); return; }
             root.checking = false;
             root.password = "";
-            root.challenge = String(message || "Verification code").replace(/[:\s]+$/, "");
+            root.challenge = PamTurn.label(message);
         }
         function onAuthFailure(message) { root.fail("Incorrect password"); }
         function onError(error) { root.trace("error"); root.fail("Couldn't log in. Try again"); }
         function onReadyToLaunch() {
             root.password = "";
+            root.held = "";
+            root.note = "";
             root.trace("authenticated");
             root.leaving = true;      // the views play their outro, into your wallpaper
             handoff.start();

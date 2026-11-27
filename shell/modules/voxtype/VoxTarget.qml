@@ -115,7 +115,7 @@ Scope {
 
                 Rectangle {
                     id: caption
-                    readonly property bool want: slot.here && Activities.voxListening && !Activities.voxInField && Activities.voxText !== "" && !!root.box
+                    readonly property bool want: slot.here && Activities.voxListening && !Activities.voxInField && Activities.voxText !== "" && !!root.box && !Notifs.sharing
                     width: Math.min(words.implicitWidth + Theme.s4 * 2, root.box ? root.box.w * 0.7 : 0)
                     height: words.implicitHeight + Theme.s2 * 2
                     x: root.box ? root.box.x + (root.box.w - width) / 2 : 0

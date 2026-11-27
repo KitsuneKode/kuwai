@@ -69,7 +69,14 @@ for _ in $(seq 3600); do
     fi
 done'
 
+relock() {
+    [ -e "$RT/kuwai/locked-${HYPRLAND_INSTANCE_SIGNATURE:-session}" ] || return 0
+    command -v hyprlock >/dev/null || return 0
+    pidof hyprlock >/dev/null || setsid -f hyprlock >/dev/null 2>&1 </dev/null
+}
+
 fall_back() {
+    relock
     local log=$1 why
     why=$(strings "$log" 2>/dev/null | grep -m3 'caused by' | sed 's/^[^c]*caused by //' | paste -sd ' ' | cut -c1-220)
     echo "kuwai-shell: the shell didn't load: $why" >&2

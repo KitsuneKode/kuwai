@@ -12,6 +12,17 @@ test("the shell's and HyDE's own status never reaches the list", () => {
     expect(triage(n({ app: "notify-send", summary: "x", hints: { "x-dunst-stack-tag": "volume" } }))).toBe("drop");
 });
 
+test("real news that starts with a number or names a picture stays", () => {
+    expect(triage(n({ app: "Thunderbird", summary: "3 new messages" }))).toBe("keep");
+    expect(triage(n({ app: "Signal", summary: "1 missed call" }))).toBe("keep");
+    expect(triage(n({ app: "Discover", summary: "12 updates available" }))).toBe("keep");
+    expect(triage(n({ app: "Calendar", summary: "10:30 Stand-up" }))).toBe("keep");
+    expect(triage(n({ app: "KDE Connect", summary: "IMG_2041.jpg" }))).toBe("keep");
+    expect(triage(n({ app: "Firefox", summary: "report-final.png" }))).toBe("keep");
+    expect(triage(n({ app: "Volume", summary: "Volume: 40%" }))).toBe("drop");
+    expect(triage(n({ app: "notify-send", summary: "wall-07.png" }))).toBe("drop");
+});
+
 test("a failure in that status still shows once, and isn't kept", () => {
     expect(triage(n({ app: "HyDE Alert", summary: "Wallpaper not found" }))).toBe("keep");
     expect(triage(n({ app: "󰸉 Live Wallpaper", summary: "mpvpaper not installed" }))).toBe("toast");
