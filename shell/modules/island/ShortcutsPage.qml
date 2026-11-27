@@ -153,7 +153,10 @@ Column {
             model: KeyBinds.replaced ? KeyBinds.replaced.split("\n") : []
             SettingsRow {
                 required property var modelData
-                label: String(modelData).replace(/^[^:]*:\s*/, "")
+                readonly property var parts: String(modelData).replace(/^[^:]*:\s*/, "").split(/\s*←\s*replaced by\s*/)
+                readonly property string was: String(parts[0] || "").replace(/^\[[^\]]*\]\s*/, "")
+                readonly property string now: String(parts[1] || "").replace(/^\[[^\]]*\]\s*/, "")
+                label: now ? now + " · was “" + was + "”" : was
                 detail: page.chordText(String(modelData).replace(/:.*$/, ""))
             }
         }

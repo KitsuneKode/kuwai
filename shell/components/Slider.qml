@@ -78,6 +78,7 @@ Item {
         // The handle: a 2px line at the fill's edge.
         Rectangle {
             readonly property real inset: s.hot ? 7 : 8
+            visible: shown.value > 0.002
             x: s.vertical ? inset : s.fillLen - 7
             y: s.vertical ? parent.height - s.fillLen + 5 : inset
             width: s.vertical ? parent.width - inset * 2 : 2

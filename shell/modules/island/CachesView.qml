@@ -16,6 +16,7 @@ Item {
     property bool loading: true
     property bool failed: false
     property string armed: ""
+    Timer { id: disarm; interval: Theme.undoMs; onTriggered: cv.armed = "" }
     property string clearing: ""
     property string note: ""
     readonly property var items: report && report.items ? report.items : []
@@ -30,8 +31,9 @@ Item {
     }
     function clear(item) {
         if (clearing) return;
-        if (armed !== item.id) { armed = item.id; note = ""; return; }
+        if (armed !== item.id) { armed = item.id; note = ""; disarm.restart(); return; }
         armed = "";
+        disarm.stop();
         clearing = item.id;
         clearer.label = item.label;
         clearer.command = [Paths.bin + "/kuwai-storage", "clear", item.id];

@@ -14,7 +14,10 @@ set("ELECTRON_OZONE_PLATFORM_HINT", "auto")
 set("MOZ_ENABLE_WAYLAND", "1")
 set("QT_AUTO_SCREEN_SCALE_FACTOR", "1")
 set("QT_WAYLAND_DISABLE_WINDOWDECORATION", "1")
-set("QT_QPA_PLATFORMTHEME", K.state["qt_theme"] or (K.has("qt6ct") and "qt6ct" or "qt5ct"))
+local qt_theme = K.state["qt_theme"] or (K.has("qt6ct") and "qt6ct") or (K.has("qt5ct") and "qt5ct") or nil
+if qt_theme then
+	set("QT_QPA_PLATFORMTHEME", qt_theme)
+end
 set("GDK_SCALE", "1")
 set("ACCESSIBILITY_ENABLED", "1")
 set("QT_LINUX_ACCESSIBILITY_ALWAYS_ON", "1")
@@ -28,7 +31,9 @@ set("HYPRCURSOR_THEME", cursor_theme)
 set("HYPRCURSOR_SIZE", cursor_size)
 K.cursor = { theme = cursor_theme, size = cursor_size }
 
-set("SSH_AUTH_SOCK", K.runtime .. "/gcr/ssh")
+if K.exists("/usr/lib/systemd/user/gcr-ssh-agent.socket") then
+	set("SSH_AUTH_SOCK", K.runtime .. "/gcr/ssh")
+end
 
 set("HYPRLAND_CONFIG", K.user_dir .. "/hyprland.lua")
 

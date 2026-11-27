@@ -93,6 +93,7 @@ case "$mode" in
     area|quick|freeze) ;;
     delay)   sleep 3; shoot=(grim -o "$(focused_output)") ;;
     ocr)
+        command -v tesseract >/dev/null || { notify -a "Screenshot" "Reading text needs Tesseract" "Install tesseract and tesseract-data-eng, then try again."; exit 0; }
         tmp=$(mktemp --suffix=.png)
         if geo=$(slurp 2>/dev/null) && grim -g "$geo" "$tmp" 2>/dev/null && [ -s "$tmp" ]; then
             text=$(tesseract "$tmp" - 2>/dev/null | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}')
@@ -125,6 +126,11 @@ if [ $rc -ne 0 ] || [ ! -s "$out" ]; then
 fi
 
 case "$mode" in quick|window|delay) exit 0 ;; esac
+
+if ! command -v satty >/dev/null; then
+    notify -a "Screenshot" "Screenshot copied" "Install satty to mark it up before it's copied."
+    exit 0
+fi
 
 log="${XDG_STATE_HOME:-$HOME/.local/state}/kuwai/kuwai-shot.log"
 mkdir -p "$(dirname "$log")" || exit 1

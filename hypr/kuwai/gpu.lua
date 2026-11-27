@@ -42,7 +42,12 @@ if nv and igpu then
 	elseif mode == "intel" or mode == "igpu" then
 		primary = igpu
 	else
-		local on_ac = K.read_line("/sys/class/power_supply/ACAD/online") == "1"
+		local on_ac = false
+		for _, name in ipairs({ "ACAD", "AC", "AC0", "ADP0", "ADP1", "ACAD0" }) do
+			if K.read_line("/sys/class/power_supply/" .. name .. "/online") == "1" then
+				on_ac = true
+			end
+		end
 		local uptime = tonumber((K.read_line("/proc/uptime") or ""):match("^[%d.]+")) or 0
 		primary = (#nv.outputs > 0 or (on_ac and uptime < 120)) and nv or igpu
 	end
@@ -62,7 +67,9 @@ end
 if nv then
 	hl.env("NVD_BACKEND", "direct")
 	if primary == nv then
-		hl.env("LIBVA_DRIVER_NAME", "nvidia")
+		if K.exists("/usr/lib/dri/nvidia_drv_video.so") then
+			hl.env("LIBVA_DRIVER_NAME", "nvidia")
+		end
 		hl.env("__GLX_VENDOR_LIBRARY_NAME", "nvidia")
 	end
 end

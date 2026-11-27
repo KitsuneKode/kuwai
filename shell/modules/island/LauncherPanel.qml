@@ -85,6 +85,12 @@ FocusScope {
 
     // ── Sources ──────────────────────────────────────────────────────────
     readonly property var apps: DesktopEntries.applications.values.filter(e => !e.noDisplay)
+    property var have: ({})
+    Process {
+        running: true
+        command: ["sh", "-c", 'k=$(command -v kittymux || [ -x "$HOME/.local/bin/kittymux" ] && echo y); for c in claude codex; do [ -n "$k" ] && command -v "$c" >/dev/null && echo "$c"; done; for d in "${XDG_DATA_HOME:-$HOME/.local/share}/applications" /usr/share/applications; do ls "$d" 2>/dev/null; done | grep -qi "t3" && echo t3; true']
+        stdout: StdioCollector { onStreamFinished: { const h = {}; for (const w of text.split("\n")) if (w) h[w] = true; launcher.have = h; } }
+    }
     readonly property var actions: [
         { name: "Lock Screen", sub: "Lock now", glyph: "\u{f033e}", run: () => Quickshell.execDetached(["loginctl", "lock-session"]) },
         { name: "Power", sub: "Sleep, restart, shut down", glyph: "\u{f0425}", run: () => Qt.callLater(() => Island.open("power", Island.screen, "key")), keep: true },
@@ -97,13 +103,13 @@ FocusScope {
         { name: "Screen Recording", sub: "Choose a screen, audio and frame rate", glyph: "\u{f044a}", run: () => Clipboard.recordKey() },
         { name: "Screenshot", sub: "Pick an area or a window, then annotate", glyph: "\u{f0104}", run: () => Apps.run([Paths.bin + "/kuwai-shot", "area"]) },
         { name: "Notifications", sub: "The center", glyph: "\u{f009a}", run: () => Notifs.toggleCenter("notifications", "key") },
-        { name: "Claude here", sub: "Claude Code in this folder, as a kittymux tab", glyph: "\u{f06a9}", run: () => launcher.agentHere("claude") },
-        { name: "Codex here", sub: "Codex in this folder, as a kittymux tab", glyph: "\u{f06a9}", run: () => launcher.agentHere("codex") },
+        { name: "Claude here", need: "claude", sub: "Claude Code in this folder, as a kittymux tab", glyph: "\u{f06a9}", run: () => launcher.agentHere("claude") },
+        { name: "Codex here", need: "codex", sub: "Codex in this folder, as a kittymux tab", glyph: "\u{f06a9}", run: () => launcher.agentHere("codex") },
         { name: "Agents", sub: "Every kitty pane and T3 thread, the model each runs", glyph: "\u{f0e7b}", run: () => Qt.callLater(() => Island.open("agents", Island.screen, "key")), keep: true },
         { name: "Agent Usage", sub: "What each account has left, and when it resets", glyph: "\u{f029a}", run: () => Qt.callLater(() => Island.open("usage", Island.screen, "key")), keep: true },
         { name: "Idle Projects", sub: "What sweep could free, and the old projects holding it", glyph: "\u{f00e2}", run: () => Qt.callLater(() => Island.open("sweep", Island.screen, "key")), keep: true },
         { name: "Now Playing", sub: "The player, its queue and the output", glyph: "\u{f075a}", run: () => Qt.callLater(() => Island.open("media", Island.screen, "key")), keep: true },
-        { name: "T3 Code", sub: "Open T3 Code · its threads are in Agents", glyph: "\u{f0a1e}", run: () => T3Code.focus() },
+        { name: "T3 Code", need: "t3", sub: "Open T3 Code · its threads are in Agents", glyph: "\u{f0a1e}", run: () => T3Code.focus() },
         { name: "Bluetooth", sub: "Pair, connect, forget · in Controls", glyph: "\u{f00af}", run: () => Qt.callLater(() => Island.open("bluetooth", Island.screen, "key")), keep: true },
         { name: "Cleanup", sub: "Skills your agents never use, what they cost each session · leftovers on disk", glyph: "\u{f00e2}", run: () => Qt.callLater(() => Island.open("cleanup", Island.screen, "key")), keep: true },
         { name: "Software Update", sub: "Review and install updates", glyph: "\u{f06b0}", run: () => Qt.callLater(() => Island.open("updates", Island.screen, "key")), keep: true },
@@ -471,6 +477,7 @@ FocusScope {
             if (m) winHit.push({ kind: "window", toplevel: t, name: t.title || cls, pos: m.pos, sub: (app ? app.name : cls) + (t.workspace && t.workspace.id > 0 ? " · workspace " + ((t.workspace.id - 1) % 10 + 1) : ""), icon: app ? app.icon : cls.toLowerCase(), rank: m.score * 0.85 });
         }
         for (const a of actions) {
+            if (a.need && !launcher.have[a.need]) continue;
             const m = score(q, a.name, [a.sub, a.also || ""]);
             if (m) actHit.push({ kind: "action", action: a, name: a.name, pos: m.pos, sub: a.sub, glyph: a.glyph, rank: m.score * 0.9 + Math.min(20, frecency("action:" + a.name) * 4) });
         }

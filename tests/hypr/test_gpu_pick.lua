@@ -5,6 +5,7 @@ local function pick(files, mode)
     package.loaded['kuwai.core'] = {
         state = { gpu = mode }, config = function() end,
         read_line = function(p) return files[p] end,
+        exists = function(p) return files[p] ~= nil or p:find('nvidia_drv_video') ~= nil end,
     }
     local real_print = print
     print = function() end

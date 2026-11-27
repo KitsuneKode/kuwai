@@ -93,13 +93,16 @@ FocusScope {
     }
     Timer { interval: Theme.panelPollMs; repeat: true; running: ap.visible && Settings.agentServers; triggeredOnStart: true; onTriggered: if (!portsProc.running) portsProc.running = true }
     property int stopArmed: 0
+    property string stopStart: ""
     property string stopNote: ""
+    Timer { id: stopDisarm; interval: Theme.undoMs; onTriggered: ap.stopArmed = 0 }
     function age(s) { return s < 3600 ? Math.max(1, Math.round(s / 60)) + "m" : s < 86400 ? Math.round(s / 3600) + "h" : Math.round(s / 86400) + "d"; }
     function stopServer(r) {
-        if (stopArmed !== r.pid) { stopArmed = r.pid; return; }
+        if (stopArmed !== r.pid) { stopArmed = r.pid; stopStart = String(r.start); stopDisarm.restart(); return; }
         stopArmed = 0;
+        stopDisarm.stop();
         stopProc.who = ":" + r.port;
-        stopProc.command = [Paths.bin + "/kuwai-procs", "--end", String(r.pid), "--start", String(r.start)];
+        stopProc.command = [Paths.bin + "/kuwai-procs", "--end", String(r.pid), "--start", stopStart];
         stopProc.running = true;
     }
     Process {
@@ -109,7 +112,7 @@ FocusScope {
             onStreamFinished: {
                 let r = {};
                 try { r = JSON.parse(text); } catch (e) {}
-                ap.stopNote = !r.ok ? "Couldn't stop " + stopProc.who + ": " + (r.why || "unknown") : r.gone === false ? stopProc.who + ": " + r.why : "";
+                ap.stopNote = !r.ok ? (r.why ? "Couldn't stop " + stopProc.who + ": " + r.why : "Couldn't stop " + stopProc.who) : r.gone === false ? stopProc.who + ": " + r.why : "";
                 if (!portsProc.running) portsProc.running = true;
             }
         }

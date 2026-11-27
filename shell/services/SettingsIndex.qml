@@ -14,7 +14,7 @@ import "../config/settingsSchema.js" as Contract
 Singleton {
     id: root
     readonly property var sections: [
-        { id: "bar", keys: "top bar waybar notch shape workspaces at rest battery signal music weather hover delay now playing", label: "Bar & Island", glyph: "\u{f0d6f}", tint: Theme.blue },
+        { id: "bar", keys: "top bar waybar notch shape workspaces at rest battery signal music weather hover delay now playing", label: "Bar & Island", glyph: "\u{f1513}", tint: Theme.blue },
         { id: "clock", keys: "clock 24-hour time seconds date", label: "Clock & Date", glyph: "\u{f0954}", tint: Theme.orange },
         { id: "notifs", keys: "notifications do not disturb dnd focus toast where they appear clear seen", label: "Notifications", glyph: "\u{f009a}", tint: Theme.red },
         { id: "assistant", keys: "assistant ai agent opt in local ollama diagnose crash", label: "Assistant", glyph: "\u{f06a9}", tint: Theme.indigo },
@@ -23,10 +23,10 @@ Singleton {
         { id: "shortcuts", keys: "shortcuts keys keybindings keybinds hotkeys bind rebind chord change reset default super", label: "Shortcuts", glyph: "\u{f0633}", tint: Theme.gray },
         { id: "pointer", keys: "mouse trackpad touchpad pointer speed acceleration natural scrolling tap to click scroll", label: "Mouse & Trackpad", glyph: "\u{f037d}", tint: Theme.gray },
         { id: "displays", keys: "displays screens monitors scale resolution refresh rate hz hidpi", label: "Displays", glyph: "\u{f0379}", tint: Theme.blue },
-        { id: "island", keys: "island style minimal hidden everything reveal approach proximity quick switch caffeine", label: "Island Behaviour", glyph: "\u{f0d6f}", tint: Theme.orange },
+        { id: "island", keys: "island style minimal hidden everything reveal approach proximity quick switch caffeine", label: "Island Behaviour", glyph: "\u{f0741}", tint: Theme.orange },
         { id: "workspaces", keys: "workspaces screens monitors desktops pills keys", label: "Workspaces", glyph: "\u{f0570}", tint: Theme.indigo },
         { id: "power", keys: "power idle dim lock screen off sleep battery hypridle suspend caffeine music", label: "Power & Idle", glyph: "\u{f0425}", tint: Theme.green },
-        { id: "saver", keys: "screensaver dusk live wallpaper still battery", label: "Screensaver", glyph: "\u{f0379}", tint: Theme.indigo },
+        { id: "saver", keys: "screensaver dusk live wallpaper still battery", label: "Screensaver", glyph: "\u{f1104}", tint: Theme.indigo },
         { id: "time", keys: "reminders alarms wake notes pomodoro focus timer", label: "Reminders & Alarms", glyph: "\u{f0020}", tint: Theme.orange },
         { id: "clipboard", keys: "clipboard pins history secrets", label: "Clipboard", glyph: "\u{f014c}", tint: Theme.cyan },
         { id: "updates", keys: "software update aur flatpak check packages", label: "Software Update", glyph: "\u{f06b0}", tint: Theme.green },
