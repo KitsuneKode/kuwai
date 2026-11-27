@@ -12991,14 +12991,6 @@
      },
      "items": [
       {
-       "id": "pacman",
-       "label": "Package downloads (pacman)",
-       "bytes": 10522669875,
-       "tag": "check first",
-       "why": "Older versions you can go back to. Settings \u2192 Software Update can prune them after each update",
-       "clearable": false
-      },
-      {
        "id": "docker",
        "label": "Docker",
        "bytes": 16995397600,
@@ -13041,12 +13033,36 @@
        ]
       },
       {
+       "id": "pacman",
+       "label": "Package downloads (pacman)",
+       "bytes": 10522669875,
+       "tag": "check first",
+       "why": "Older versions you can go back to. Settings \u2192 Software Update can prune them after each update",
+       "clearable": false
+      },
+      {
        "id": "bun",
        "label": "Bun downloads",
        "bytes": 2899102924,
        "tag": "comes back",
        "why": "Bun fetches them again on the next install",
        "clearable": true
+      },
+      {
+       "id": "npm",
+       "label": "npm downloads",
+       "bytes": 1503238553,
+       "tag": "comes back",
+       "why": "npm fetches them again on the next install",
+       "clearable": true
+      },
+      {
+       "id": "trash",
+       "label": "Trash",
+       "bytes": 214748364,
+       "tag": "check first",
+       "why": "What you deleted: look before you empty it",
+       "clearable": false
       },
       {
        "id": "journal",
@@ -13073,22 +13089,6 @@
          "note": "Needs your admin password: run it yourself. Keeps the last two weeks"
         }
        ]
-      },
-      {
-       "id": "npm",
-       "label": "npm downloads",
-       "bytes": 1503238553,
-       "tag": "comes back",
-       "why": "npm fetches them again on the next install",
-       "clearable": true
-      },
-      {
-       "id": "trash",
-       "label": "Trash",
-       "bytes": 214748364,
-       "tag": "check first",
-       "why": "What you deleted: look before you empty it",
-       "clearable": false
       }
      ]
     }

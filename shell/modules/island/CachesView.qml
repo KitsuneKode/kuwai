@@ -160,7 +160,7 @@ Item {
                             spacing: 2
                             Label { width: parent.width; elide: Text.ElideRight; text: row.modelData.label; size: Theme.tBody; weight: Theme.wMedium }
                             Label {
-                                width: parent.width; wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight
+                                width: parent.width; wrapMode: Text.Wrap
                                 text: (row.modelData.clearable ? "Comes back on its own · " : "Check first · ") + row.modelData.why
                                 size: Theme.tFootnote
                                 color: row.modelData.clearable ? Theme.textTertiary : Theme.orange
@@ -214,7 +214,7 @@ Item {
                                     id: pside
                                     anchors { right: parent.right; top: parent.top }
                                     spacing: Theme.s2
-                                    Label { anchors.verticalCenter: parent.verticalCenter; text: SystemStats.bytes(part.modelData.bytes); size: Theme.tSub; tabular: true; color: Theme.textSecondary }
+                                    Label { anchors.verticalCenter: parent.verticalCenter; text: part.modelData.bytes < 1048576 ? "< 1 MB" : SystemStats.bytes(part.modelData.bytes); size: Theme.tSub; tabular: true; color: Theme.textSecondary }
                                     Ui.Button {
                                         visible: part.modelData.runnable
                                         height: Theme.sp(28); size: Theme.tSub

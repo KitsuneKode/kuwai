@@ -15,9 +15,10 @@ function whole(n) {
  * @returns {Part[]}
  */
 export function partRows(item) {
-    const parts = item && Array.isArray(item.parts) ? item.parts : [];
+    const parts = item && item.parts && typeof item.parts !== "string" && typeof item.parts.length === "number" ? item.parts : [];
     const rows = [];
-    for (const p of parts) {
+    for (let i = 0; i < parts.length; i++) {
+        const p = parts[i];
         if (!p || typeof p.id !== "string" || typeof p.command !== "string" || p.command === "") continue;
         rows.push({
             id: p.id,
