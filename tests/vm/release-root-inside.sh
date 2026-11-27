@@ -54,7 +54,7 @@ check "the login entry installs from root's copy" $LIB/current/system/session
 check "the login entry is root's" bash -c '[ "$(stat -c %U /usr/local/bin/kuwai-session)" = root ] && cmp -s /usr/local/bin/kuwai-session /usr/local/lib/kuwai/current/bin/kuwai-session'
 check "the login entry check (as the user) agrees" su tester -c "$LIB/current/system/session --check"
 check "the login entry undo from root's copy" bash -c "$LIB/current/system/session --undo && [ ! -e /usr/local/bin/kuwai-session ]"
-check "the clone installs with --trust-clone, saying so" bash -c "$H/src/system/session --trust-clone 2>&1 | grep -q 'trusts every file' && $H/src/system/session --undo --trust-clone"
+check "the clone installs with --trust-clone, saying so" bash -c "$H/src/system/session --trust-clone >/tmp/trust.out 2>&1 && grep -q 'trusts every file' /tmp/trust.out && $H/src/system/session --undo --trust-clone"
 refuses "the wake helper refuses the clone" $H/src/system/install
 check "the wake helper installs from root's copy" bash -c "$LIB/current/system/install && [ \"\$(stat -c %U /usr/local/libexec/kuwai-wake-root)\" = root ]"
 check "the update helper is placed from root's copy" bash -c "/usr/bin/python3 -I $LIB/current/bin/kuwai-verify place update-helper && cmp -s $LIB/kuwai-update-root $H/src/bin/kuwai-update-root && [ \"\$(stat -c %U:%a $LIB/kuwai-update-root)\" = root:755 ]"
@@ -106,7 +106,7 @@ check "its code is root's" bash -c '[ "$(find /var/lib/kuwai-greeter -path /var/
 check "undo restores what the receipt lists" bash -c "$LIB/current/greeter/install --undo && [ \"\$(cat /etc/pam.d/greetd)\" = 'old pam' ] && [ \"\$(cat /etc/systemd/system/getty@tty1.service.d/override.conf)\" = autologin ] && [ ! -e /etc/greetd/config.toml ] && grep -q 'enable sddm.service' /tmp/systemctl.log"
 check "a second install keeps the first record" bash -c "$LIB/current/greeter/install --yes && [ \"\$(wc -l < /var/lib/kuwai-greeter/original/receipt)\" = 4 ]"
 rm /var/lib/kuwai-greeter/original/receipt
-check "undo of an install without a receipt records root's kept copies, then restores them" bash -c "$LIB/current/greeter/install --undo 2>&1 | grep -q 'no record' && [ \"\$(cat /etc/pam.d/greetd)\" = 'old pam' ] && [ ! -e /var/lib/kuwai-greeter ]"
+check "undo of an install without a receipt records root's kept copies, then restores them" bash -c "$LIB/current/greeter/install --undo >/tmp/undo.out 2>&1 && grep -q 'no record' /tmp/undo.out && [ \"\$(cat /etc/pam.d/greetd)\" = 'old pam' ] && [ ! -e /var/lib/kuwai-greeter ]"
 check "the login screen installs again" $LIB/current/greeter/install --yes
 rm /var/lib/kuwai-greeter/original/receipt
 chmod 777 /var/lib/kuwai-greeter/original
