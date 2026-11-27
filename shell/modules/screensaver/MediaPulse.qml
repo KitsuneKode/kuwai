@@ -6,7 +6,7 @@ Row {
 
     property bool active: false
     property string title: ""
-    property real size: 14
+    property real size: Theme.tSub
     property real maxWidth: 400
     property real phase: 0.55
     readonly property bool moving: active && !Theme.reduceMotion
