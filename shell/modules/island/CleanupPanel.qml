@@ -177,11 +177,16 @@ FocusScope {
             visible: cp.view === "skills"
             width: parent.width
             spacing: 2
+            Skeleton {
+                visible: cp.loading && !cp.report && !cp.error
+                width: Theme.sp(150); height: Theme.tClock * 2 - 8
+                radius: Theme.r2
+            }
             Label {
                 // No number when there is none: a failed look showed "0" in the
                 // big face, which reads as "nothing to clean".
-                visible: !(cp.error && !cp.report)
-                text: cp.loading && !cp.report ? "…" : cp.num(cp.report ? cp.report.unusedTokens : 0)
+                visible: !!cp.report && !cp.error && cp.report.skills > 0
+                text: cp.num(cp.report ? cp.report.unusedTokens : 0)
                 size: Theme.tClock * 2 - 8; weight: Theme.wBold; rounded: true
                 tabular: true
             }
@@ -192,8 +197,16 @@ FocusScope {
                 action: "Try again"
                 onActed: cp.load(true)
             }
+            Ui.EmptyState {
+                visible: !!cp.report && !cp.error && cp.report.skills === 0
+                width: parent.width
+                topPadding: 8; bottomPadding: 8
+                glyph: "\u{f0e7b}"
+                title: "No agent skills yet"
+                body: "Skills your agents never use show up here, with what they cost each session."
+            }
             Label {
-                visible: !cp.error
+                visible: !cp.error && !(cp.report && cp.report.skills === 0)
                 width: parent.width
                 wrapMode: Text.Wrap
                 text: !cp.report ? "Reading your agents' transcripts…"
@@ -206,6 +219,12 @@ FocusScope {
 
         // ── The skills nobody used ──────────────────────────────────────
         // More that way: the rows fade, and a thumb shows while it scrolls.
+        Column {
+            visible: cp.view === "skills" && cp.loading && !cp.report && !cp.error
+            width: parent.width
+            spacing: 2
+            Repeater { model: 4; Skeleton { width: parent.width; height: Theme.sp(44); radius: Theme.r2 } }
+        }
         ScrollFade { flickable: list }
         ScrollHint { flickable: list; inside: true }
         ListView {

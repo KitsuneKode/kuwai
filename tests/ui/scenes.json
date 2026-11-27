@@ -2190,6 +2190,21 @@
    }
   },
   {
+   "id": "cleanup/no-skills",
+   "name": "cleanup",
+   "panel": "CleanupPanel",
+   "kind": "typical",
+   "props": {
+    "report": {
+     "unused": [],
+     "listTokens": 0,
+     "skills": 0,
+     "unusedTokens": 0,
+     "leftovers": []
+    }
+   }
+  },
+  {
    "id": "read/new-machine",
    "name": "read",
    "panel": "ReadPanel"
