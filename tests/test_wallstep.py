@@ -35,6 +35,14 @@ def test_wallpapers_step_and_wrap(tmp_path):
     assert log.read_text().splitlines()[-1].endswith("wallfx play /w/c.jpg"), "back from where you just went, not from where HyDE still says"
 
 
+def test_native_wallstep_uses_native_gallery_even_when_packs_are_listed(tmp_path):
+    bin_, log, env = setup(tmp_path, {"hyde": False, "wallpapers": [{"path": "/w/pack.jpg"}]}, [])
+    native = {"wallpapers": [{"path": "/w/current.jpg", "current": True}, {"path": "/w/native.jpg"}]}
+    (bin_ / "kuwai-look").write_text(f"#!/bin/sh\necho '{json.dumps(native)}'\n")
+    assert subprocess.run([str(bin_ / "kuwai-wallstep"), "still", "next"], env=env, timeout=30).returncode == 0
+    assert "wallfx play /w/native.jpg" in log.read_text()
+
+
 def test_live_and_saver_step(tmp_path):
     bin_, log, env = setup(tmp_path, {"hyde": False, "wallpapers": []}, ["1-a.mp4", "2-b.mp4"], last="/lib/2-b.mp4")
     subprocess.run([str(bin_ / "kuwai-wallstep"), "live", "next"], env=env, timeout=30)
